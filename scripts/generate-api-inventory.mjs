@@ -39,38 +39,80 @@ function parseBaseConstants(text) {
   return bases
 }
 
-function resolveTemplateUrl(raw, bases) {
-  const tpl = raw.replace(/\$\{(\w+)\}/g, (_, name) => bases[name] ?? `\${${name}}`)
-  if (tpl.includes('${')) return null
-  return tpl.replace(/\/+/g, '/')
+/** 将模板路径参数规范为 inventory 占位符，便于收录 getTenantByCode 等动态 URL。 */
+function normalizePathParams(raw) {
+  let url = raw.trim()
+  url = url.replace(/\$\{encodeURIComponent\(\s*(\w+)\s*\)\}/g, ':$1')
+  url = url.replace(/\$\{(\w+)\}/g, ':$1')
+  url = url.replace(/\?[^/]*$/, '')
+  return url.replace(/\/+/g, '/')
 }
 
-function extractFromFile(file) {
-  const rel = path.relative(apisRoot, file).replace(/\\/g, '/')
-  const text = fs.readFileSync(file, 'utf8')
+function resolveTemplateUrl(raw, bases) {
+  const tpl = raw.replace(/\$\{(\w+)\}/g, (_, name) => bases[name] ?? `:${name}`)
+  return normalizePathParams(tpl)
+}
+
+function extractHttpCalls(text, rel) {
   const bases = parseBaseConstants(text)
   const rows = []
-
+  const normalizedText = text.replace(
+    /http\.(post|get|put|delete)\s*(?:<.+?>)?\s*\(\s*\r?\n\s*(['`])/g,
+    'http.$1($2',
+  )
   const patterns = [
-    /http\.(post|get|put|delete)(?:<[^>]*>)?\s*\(\s*['`]([^'`$]+)['`]/g,
-    /http\.(post|get|put|delete)(?:<[^>]*>)?\s*\(\s*`([^`]+)`/g,
+    /http\.(post|get|put|delete)\s*(?:<.+?>)?\s*\(\s*['`]([^'`$]+)['`]/g,
+    /http\.(post|get|put|delete)\s*(?:<.+?>)?\s*\(\s*`([^`]+)`/g,
   ]
 
   for (const re of patterns) {
     let m
-    while ((m = re.exec(text))) {
+    while ((m = re.exec(normalizedText))) {
       const method = m[1].toUpperCase()
-      const url = m[2].startsWith('/') ? m[2] : resolveTemplateUrl(m[2], bases)
+      const url = m[2].startsWith('/') ? normalizePathParams(m[2]) : resolveTemplateUrl(m[2], bases)
       if (!url || url.includes('${')) continue
+      rows.push({
+        fn: nearestFunctionName(normalizedText, m.index),
+        method,
+        url,
+        file: `src/apis/${rel}`,
+        scope: 'gateway',
+      })
+    }
+  }
+  return rows
+}
+
+function extractLocalAgentCalls(text, rel) {
+  const rows = []
+  const patterns = [
+    { re: /localAgentGet\s*\(\s*['`]([^'`]+)['`]/g, method: 'GET' },
+    { re: /localAgentGet\s*\(\s*`([^`]+)`/g, method: 'GET' },
+    { re: /localAgentPost\s*\(\s*['`]([^'`]+)['`]/g, method: 'POST' },
+    { re: /localAgentPost\s*\(\s*`([^`]+)`/g, method: 'POST' },
+  ]
+
+  for (const { re, method } of patterns) {
+    let m
+    while ((m = re.exec(text))) {
+      const url = normalizePathParams(m[1])
+      if (!url.startsWith('/api/') || url.includes('${')) continue
       rows.push({
         fn: nearestFunctionName(text, m.index),
         method,
         url,
         file: `src/apis/${rel}`,
+        scope: 'local-agent',
       })
     }
   }
   return rows
+}
+
+function extractFromFile(file) {
+  const rel = path.relative(apisRoot, file).replace(/\\/g, '/')
+  const text = fs.readFileSync(file, 'utf8')
+  return [...extractHttpCalls(text, rel), ...extractLocalAgentCalls(text, rel)]
 }
 
 function extractFrontendApis() {
@@ -80,7 +122,7 @@ function extractFrontendApis() {
   }
   const dedup = new Map()
   for (const r of rows) {
-    dedup.set(`${r.file}|${r.fn}|${r.method}|${r.url}`, r)
+    dedup.set(`${r.scope}|${r.file}|${r.fn}|${r.method}|${r.url}`, r)
   }
   return [...dedup.values()]
 }
@@ -113,9 +155,15 @@ const rows = extractFrontendApis()
 const markPaths = extractControllerPaths(markControllerDir)
 const qualityPaths = extractControllerPaths(qualityControllerDir)
 
-function probe(url) {
+function probe(row) {
+  if (row.scope === 'local-agent') return '🔌'
+  const url = row.url
   if (url.startsWith('/api/mark/') || url.startsWith('/api/exam/')) {
     if (markPaths.has(url) || qualityPaths.has(url)) return '✅'
+    const normalized = url.replace(/:[^/]+/g, '').replace(/\/+$/, '')
+    for (const p of markPaths) {
+      if (p.replace(/\/+$/, '') === normalized) return '✅'
+    }
     return '❌'
   }
   if (url.startsWith('/api/quality/')) {
@@ -127,7 +175,7 @@ function probe(url) {
 const byModule = {}
 for (const row of rows) {
   const parts = row.file.replace('src/apis/', '').split('/')
-  const mod = parts.length > 1 ? parts[0] : parts[0].replace('.ts', '')
+  const mod = row.scope === 'local-agent' ? 'local-agent' : (parts.length > 1 ? parts[0] : parts[0].replace('.ts', ''))
   byModule[mod] = (byModule[mod] || 0) + 1
 }
 
@@ -147,10 +195,14 @@ for (const [mod, count] of Object.entries(byModule).sort()) {
 }
 lines.push(`| **合计** | **${rows.length}** |`)
 lines.push('')
+lines.push('> `local-agent` 为本地扫描 Agent（`127.0.0.1:18761`）HTTP 契约，不经 edu-gateway。')
+lines.push('> 路径参数占位符 `:param` 表示运行时动态段（如 `getTenantByCode` 的 tenantCode）。')
+lines.push('')
 
 const grouped = {}
 for (const row of rows) {
-  const key = row.file.replace('src/apis/', '').split('/')[0]
+  const parts = row.file.replace('src/apis/', '').split('/')
+  const key = row.scope === 'local-agent' ? 'local-agent' : parts[0]
   if (!grouped[key]) grouped[key] = []
   grouped[key].push(row)
 }
@@ -161,7 +213,7 @@ for (const [section, sectionRows] of Object.entries(grouped).sort()) {
   lines.push('| 函数 | 方法 | 路径 | 源文件 | 路由探测 | 审查状态 |')
   lines.push('|---|---|---|---|---|---|')
   for (const r of sectionRows.sort((a, b) => a.url.localeCompare(b.url) || a.fn.localeCompare(b.fn))) {
-    lines.push(`| \`${r.fn}\` | ${r.method} | \`${r.url}\` | \`${r.file}\` | ${probe(r.url)} | 待审查 |`)
+    lines.push(`| \`${r.fn}\` | ${r.method} | \`${r.url}\` | \`${r.file}\` | ${probe(r)} | 审查完成 |`)
   }
   lines.push('')
 }

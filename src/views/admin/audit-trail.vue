@@ -57,7 +57,14 @@
             @search="searchLogs"
           />
 
+          <UiErrorRetryPanel
+            v-if="logsLoadError"
+            :error="logsLoadError"
+            @retry="searchLogs"
+          />
+
           <UiDataTable
+            v-else
             :columns="logColumns"
             :data-source="operationLogs"
             :loading="logLoading"
@@ -116,7 +123,14 @@
             </template>
           </UiFilterBar>
 
+          <UiErrorRetryPanel
+            v-if="incidentsLoadError"
+            :error="incidentsLoadError"
+            @retry="loadIncidents"
+          />
+
           <UiDataTable
+            v-else
             pagination-mode="client"
             :columns="incidentColumns"
             :data-source="incidents"
@@ -184,7 +198,14 @@
             @search="searchDiagnosticSamples"
           />
 
+          <UiErrorRetryPanel
+            v-if="samplesLoadError"
+            :error="samplesLoadError"
+            @retry="searchDiagnosticSamples"
+          />
+
           <UiDataTable
+            v-else
             :columns="sampleColumns"
             :data-source="diagnosticSamples"
             :loading="sampleLoading"
@@ -270,7 +291,7 @@ import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   AUDIT_TARGET_TYPE_LABEL,
@@ -291,6 +312,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
@@ -420,13 +442,14 @@ const incidentColumns = [
 ]
 
 async function loadIncidents() {
-  if (!selectedExamId.value) return
+  const examId = selectedExamId.value
+  if (!examId) return
   incidentLoading.value = true
   incidentsLoadError.value = null
   try {
     incidents.value = await readAllPages(
       (pageNum) => listIncidents({
-        examId: selectedExamId.value,
+        examId,
         unresolvedOnly: incidentFilter.unresolvedOnly,
         pageNum,
         pageSize: 100,
@@ -515,12 +538,13 @@ const sampleColumns = [
 ]
 
 async function loadDiagnosticSamples() {
-  if (!selectedExamId.value) return
+  const examId = selectedExamId.value
+  if (!examId) return
   sampleLoading.value = true
   samplesLoadError.value = null
   try {
     const page = await listDiagnosticSamples({
-      examId: selectedExamId.value,
+      examId,
       sampleType: sampleFilter.sampleType,
       pageNum: samplePagination.current ?? 1,
       pageSize: samplePagination.pageSize ?? 20,
@@ -609,6 +633,12 @@ onMounted(async () => {
   if (route.query.unresolvedOnly === '1') {
     incidentFilter.unresolvedOnly = true
   }
+  if (selectedExamId.value) {
+    reloadAll()
+  }
+})
+
+onActivated(() => {
   if (selectedExamId.value) {
     reloadAll()
   }

@@ -82,7 +82,13 @@
         @search="handleRecordFilterSearch"
         @reset="handleRecordFilterReset"
       />
+      <UiErrorRetryPanel
+        v-if="recordsLoadError"
+        :error="recordsLoadError"
+        @retry="loadRecords"
+      />
       <UiDataTable
+        v-else
         class="student-detail-table__data-table"
         :columns="recordColumns"
         :data-source="records"
@@ -209,7 +215,7 @@ import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
 import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
 import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   ABSENCE_REASON_LABEL,
   ABSENCE_SCORE_POLICY_LABEL,
@@ -227,6 +233,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
@@ -575,7 +582,7 @@ watch(selectedExamId, async (value) => {
   if (value) {
     await loadRecords()
   }
-})
+}, { immediate: true })
 
 function handleRecordFilterSearch() {
   if (!selectedExamId.value) return
@@ -589,12 +596,6 @@ function handleRecordFilterReset() {
     void loadRecords()
   }
 }
-
-onMounted(async () => {
-  if (selectedExamId.value) {
-    await loadRecords()
-  }
-})
 </script>
 
 <style lang="scss" scoped>

@@ -2,6 +2,8 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type {
+  AccreditationCockpitVO,
+  AccreditationCycleVO,
   AccreditationEvidenceCategory,
   AccreditationEvidenceSaveRequest,
   AccreditationEvidenceVO,
@@ -24,6 +26,11 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import {
+  canExportExpertPackage,
+  canMutateAccreditationEvidence,
+  expertPackageExportBlockers,
+} from '@/composables/useAccreditationWorkbench'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
@@ -32,6 +39,8 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 const props = defineProps<{
   programId: string
   trainingPlanId: string
+  activeCycle?: AccreditationCycleVO
+  cockpit?: AccreditationCockpitVO
 }>()
 
 const emit = defineEmits<{ 'count-change': [count: number], "exported": [] }>()
@@ -81,6 +90,34 @@ const evidenceForm = reactive<AccreditationEvidenceSaveRequest>({
 })
 const evidenceEditing = computed(() => !!evidenceForm.id)
 
+const canMutateEvidence = computed(() => canMutateAccreditationEvidence(props.activeCycle))
+
+const canExportPackage = computed(() =>
+  canExportExpertPackage(props.activeCycle, props.cockpit, evidenceTotal.value),
+)
+
+const exportPackageHint = computed(() => {
+  const blockers = expertPackageExportBlockers(
+    props.activeCycle,
+    props.cockpit,
+    evidenceTotal.value,
+  )
+  return blockers.length ? blockers.join('；') : ''
+})
+
+const evidenceMutationHint = computed(() => {
+  if (!props.activeCycle) {
+    return '请先创建并启用认证周期后再登记证据'
+  }
+  if (!canMutateEvidence.value) {
+    if (props.activeCycle.conclusionRegisteredAt) {
+      return '认证结论登记后原始资料证据已冻结，仅可下载查阅'
+    }
+    return '当前认证阶段不允许维护原始资料证据'
+  }
+  return ''
+})
+
 function emitCount() {
   emit('count-change', evidenceTotal.value)
 }
@@ -103,6 +140,8 @@ async function loadEvidences() {
     })
     evidences.value = readPageList(result, '认证证据列表加载失败，请刷新后重试')
     evidenceTotal.value = readPageTotal(result, '认证证据列表加载失败，请刷新后重试')
+    evidenceQuery.pageNum = result.pageNum
+    evidenceQuery.pageSize = result.pageSize
     if (evidences.value.length === 0 && evidenceTotal.value > 0 && evidenceQuery.pageNum > 1) {
       evidenceQuery.pageNum -= 1
       await loadEvidences()
@@ -169,12 +208,20 @@ function resetEvidenceForm(category?: AccreditationEvidenceCategory) {
 }
 
 function openEvidenceCreate(category?: AccreditationEvidenceCategory) {
+  if (!canMutateEvidence.value) {
+    message.error(evidenceMutationHint.value || '当前不可登记认证证据')
+    return
+  }
   evidenceDrawerTitle.value = '登记认证证据'
   resetEvidenceForm(category)
   evidenceOpen.value = true
 }
 
 function openEvidenceEdit(record: AccreditationEvidenceVO) {
+  if (!canMutateEvidence.value) {
+    message.error(evidenceMutationHint.value || '当前不可编辑认证证据')
+    return
+  }
   evidenceDrawerTitle.value = '编辑认证证据'
   evidenceForm.id = record.id
   evidenceForm.programId = record.programId
@@ -246,6 +293,10 @@ async function downloadEvidence(record: AccreditationEvidenceVO) {
 }
 
 async function deleteEvidence(id: string) {
+  if (!canMutateEvidence.value) {
+    message.error(evidenceMutationHint.value || '当前不可删除认证证据')
+    return
+  }
   const ok = await confirmAsync({ title: '确认删除该证据？' })
   if (!ok) return
   try {
@@ -257,6 +308,10 @@ async function deleteEvidence(id: string) {
 }
 
 async function openMarkImport() {
+  if (!canMutateEvidence.value) {
+    message.error(evidenceMutationHint.value || '当前不可同步 mark 扫描页证据')
+    return
+  }
   await loadLinkedExams()
   selectedExamIds.value = []
   markImportOpen.value = true
@@ -283,6 +338,10 @@ async function submitMarkImport() {
 
 async function exportExpertPackage() {
   if (!props.trainingPlanId) return
+  if (!canExportPackage.value) {
+    message.error(exportPackageHint.value || '专家材料包导出条件未满足')
+    return
+  }
   exporting.value = true
   try {
     await archiveApi.exportExpertPackage({
@@ -325,6 +384,8 @@ defineExpose({ loadEvidences })
 
 <template>
   <div class="evidence-panel">
+    <p v-if="exportPackageHint && !canExportPackage" class="hint">{{ exportPackageHint }}</p>
+    <p v-if="evidenceMutationHint" class="hint">{{ evidenceMutationHint }}</p>
     <div class="toolbar">
       <a-radio-group v-model:value="categoryFilter" button-style="solid" size="small">
         <a-radio-button v-for="tab in CATEGORY_TABS" :key="tab.key || 'all'" :value="tab.key">
@@ -332,16 +393,24 @@ defineExpose({ loadEvidences })
         </a-radio-button>
       </a-radio-group>
       <div class="toolbar-actions">
-        <UiButton variant="primary" :disabled="!trainingPlanId" @click="openEvidenceCreate()">
+        <UiButton
+          variant="primary"
+          :disabled="!trainingPlanId || !canMutateEvidence"
+          @click="openEvidenceCreate()"
+        >
           上传登记
         </UiButton>
-        <UiButton variant="outline" :disabled="!trainingPlanId" @click="openMarkImport">
+        <UiButton
+          variant="outline"
+          :disabled="!trainingPlanId || !canMutateEvidence"
+          @click="openMarkImport"
+        >
           mark 扫描页同步
         </UiButton>
         <UiButton
           variant="outline"
           :loading="exporting"
-          :disabled="!trainingPlanId"
+          :disabled="!trainingPlanId || !canExportPackage"
           @click="exportExpertPackage"
         >
           导出专家材料包
@@ -379,8 +448,21 @@ defineExpose({ loadEvidences })
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiButton size="sm" variant="ghost" @click="downloadEvidence(record)">下载</UiButton>
-          <UiButton size="sm" variant="outline" @click="openEvidenceEdit(record)">编辑</UiButton>
-          <UiButton size="sm" status="danger" variant="ghost" @click="deleteEvidence(record.id)">
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="!canMutateEvidence"
+            @click="openEvidenceEdit(record)"
+          >
+            编辑
+          </UiButton>
+          <UiButton
+            size="sm"
+            status="danger"
+            variant="ghost"
+            :disabled="!canMutateEvidence"
+            @click="deleteEvidence(record.id)"
+          >
             删除
           </UiButton>
         </template>
@@ -420,7 +502,7 @@ defineExpose({ loadEvidences })
           />
         </a-form-item>
         <a-form-item label="证据编码" required>
-          <a-input v-model:value="evidenceForm.evidenceCode" />
+          <a-input v-model:value="evidenceForm.evidenceCode" :disabled="evidenceEditing" />
         </a-form-item>
         <a-form-item label="证据标题" required>
           <a-input v-model:value="evidenceForm.evidenceTitle" />

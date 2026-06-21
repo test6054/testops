@@ -11,7 +11,13 @@
       </a-space>
     </template>
 
-    <a-spin :spinning="loading">
+    <UiErrorRetryPanel
+      v-if="loadError"
+      :error="loadError"
+      @retry="reload"
+    />
+
+    <a-spin v-else :spinning="loading">
       <a-form layout="vertical" :model="form">
         <a-row :gutter="16">
           <a-col :span="12">
@@ -109,12 +115,14 @@ import {
   saveReviewWindowPolicy,
 } from '@/apis/mark/grade-review'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewWindowPolicyCard' })
 
 const props = defineProps<{ examId: string, reloadToken: number }>()
+const emit = defineEmits<{ (e: 'changed'): void }>()
 
 function reviewWindowStatusColor(status: ReviewWindowPolicyStatusCode): BadgeTone {
   return strictEnumTone(REVIEW_WINDOW_STATUS_COLOR, status, '复核窗口状态')
@@ -202,6 +210,7 @@ async function handleSave(): Promise<void> {
       allowedReasonTypes: form.allowedReasonTypes.length > 0 ? form.allowedReasonTypes : undefined,
     })
     message.success('复核窗口策略已保存')
+    emit('changed')
   } catch (e) {
     showUserError(e, '成绩复核窗口保存失败')
   } finally {
@@ -215,6 +224,7 @@ async function handleActivate(): Promise<void> {
     await activateReviewWindow(props.examId)
     message.success('已激活')
     await reload()
+    emit('changed')
   } catch (e) {
     showUserError(e, '成绩复核窗口开启失败')
   } finally {
@@ -228,6 +238,7 @@ async function handleClose(): Promise<void> {
     await closeReviewWindow(props.examId)
     message.success('已关闭')
     await reload()
+    emit('changed')
   } catch (e) {
     showUserError(e, '成绩复核窗口关闭失败')
   } finally {

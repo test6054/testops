@@ -35,7 +35,7 @@ import type {
   WorkbenchStageStatus,
 } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
@@ -50,7 +50,7 @@ import {
   aiResultApi,
   aiTaskApi,
 } from '@/apis/quality'
-import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   AchievementResultSelector,
   CourseSelector,
@@ -77,13 +77,18 @@ import {
   TaskResultPanel,
 } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
+import { useAuthStore } from '@/stores'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { RoleEnum } from '@/utils/permission'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const aiTaskStore = useAiTaskStore()
+const authStore = useAuthStore()
+const isSuperAdmin = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
 
 function aiTaskTypeLabel(value: AiTaskType): string {
   return strictEnumLabel(AI_TASK_TYPE_LABEL, value, 'AI 任务类型')
@@ -191,6 +196,13 @@ const manualHandleForm = reactive<AiTaskManualHandleRequest>({
   id: '',
   manualHandlingStatus: 'PENDING',
   manualHandlingRemark: '',
+})
+
+const resetProcessingVisible = ref(false)
+const resetProcessingSubmitting = ref(false)
+const resetProcessingForm = reactive({
+  id: '',
+  handlingRemark: '',
 })
 
 const auditDrawerOpen = ref(false)
@@ -335,9 +347,66 @@ function handleReset() {
   resetQuery()
 }
 
-const submitDisabled = computed(() => {
-  return !submitForm.taskType || !submitForm.businessType || !submitForm.businessId?.trim()
-})
+/** 对齐后端 AiTaskSubmitValidator 的前端提交门禁 */
+function validateAiTaskSubmit(form: AiTaskSubmitRequest): boolean {
+  if (!form.taskType || !form.businessType || !form.businessId?.trim()) {
+    return false
+  }
+  const businessId = form.businessId.trim()
+  switch (form.taskType) {
+    case 'ACHIEVEMENT_DIAGNOSIS':
+    case 'IMPROVEMENT_SUGGESTION_GENERATE':
+      return (
+        form.businessType === 'ACHIEVEMENT_RESULT'
+        && !!form.achievementResultId?.trim()
+        && businessId === form.achievementResultId.trim()
+      )
+    case 'COURSE_REPORT_GENERATE':
+      return (
+        form.businessType === 'REPORT'
+        && !!form.qualityCourseId?.trim()
+        && !!form.reportId?.trim()
+        && businessId === form.reportId.trim()
+      )
+    case 'PROGRAM_REPORT_GENERATE':
+      return (
+        form.businessType === 'REPORT'
+        && !!form.programId?.trim()
+        && !!form.trainingPlanId?.trim()
+        && !!form.reportId?.trim()
+        && businessId === form.reportId.trim()
+      )
+    case 'SYLLABUS_PARSE':
+      return (
+        form.businessType === 'QUALITY_COURSE'
+        && !!form.fileNodeId?.trim()
+        && !!form.qualityCourseId?.trim()
+        && businessId === form.qualityCourseId.trim()
+      )
+    case 'TRAINING_PLAN_PARSE':
+      return (
+        form.businessType === 'TRAINING_PLAN'
+        && !!form.fileNodeId?.trim()
+        && !!form.programId?.trim()
+        && !!form.trainingPlanId?.trim()
+        && businessId === form.trainingPlanId.trim()
+      )
+    case 'MATERIAL_QA':
+      return (
+        form.businessType === 'QUALITY_COURSE'
+        && !!form.qualityCourseId?.trim()
+        && businessId === form.qualityCourseId.trim()
+        && !!form.fileNodeId?.trim()
+        && !!form.question?.trim()
+      )
+    case 'INDIRECT_RESPONSE_DOC_PARSE':
+      return form.businessType === 'INDIRECT_FORM' && !!form.fileNodeId?.trim()
+    default:
+      return false
+  }
+}
+
+const submitDisabled = computed(() => !validateAiTaskSubmit(submitForm))
 
 const resultSummaryLines = computed(() => {
   return (
@@ -384,7 +453,9 @@ async function loadList() {
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()
+      return
     }
+    syncListPolling()
   } catch (error) {
     listLoadError.value = toUserError(error, 'AI 任务加载失败')
     showUserError(error, 'AI 任务加载失败')
@@ -393,10 +464,68 @@ async function loadList() {
   }
 }
 
+let listPollTimer: ReturnType<typeof setInterval> | null = null
+
+function syncListPolling(): void {
+  for (const record of list.value) {
+    if (record.status === 'PENDING' || record.status === 'PROCESSING') {
+      aiTaskStore.startPolling(record.id)
+    }
+  }
+  const shouldPoll = list.value.some(
+    (record) => record.status === 'PENDING' || record.status === 'PROCESSING',
+  )
+  if (shouldPoll && !listPollTimer) {
+    listPollTimer = setInterval(() => {
+      void loadListQuietly()
+    }, 3000)
+  } else if (!shouldPoll && listPollTimer) {
+    clearInterval(listPollTimer)
+    listPollTimer = null
+  }
+}
+
+async function loadListQuietly(): Promise<void> {
+  if (loading.value) {
+    return
+  }
+  try {
+    const page = await aiTaskApi.page({
+      ...query,
+      taskType: query.taskType || undefined,
+      status: query.status || undefined,
+      businessType: query.businessType,
+      businessId: query.businessId?.trim() || undefined,
+      operatorUserId: query.operatorUserId?.trim() || undefined,
+      programId: query.programId?.trim() || undefined,
+      trainingPlanId:
+        query.trainingPlanId?.trim() || qualityStore.currentTrainingPlanId || undefined,
+      qualityCourseId: query.qualityCourseId?.trim() || undefined,
+      achievementResultId: query.achievementResultId?.trim() || undefined,
+      reportId: query.reportId?.trim() || undefined,
+    })
+    list.value = readPageList(page, 'AI 任务加载失败，请稍后重试')
+    query.pageNum = page.pageNum
+    query.pageSize = page.pageSize
+    total.value = readPageTotal(page, 'AI 任务加载失败，请稍后重试')
+    if (detailRecord.value?.id && detailVisible.value) {
+      const updated = list.value.find((item) => item.id === detailRecord.value!.id)
+      if (updated) {
+        detailRecord.value = updated
+      }
+    }
+    syncListPolling()
+  } catch {
+    // 轮询刷新失败时不打断当前页面操作
+  }
+}
+
 async function handleScopeChange(): Promise<void> {
   listLoadError.value = null
   await loadList()
 }
+
+useQualityScopeReload(handleScopeChange)
 
 function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
@@ -485,7 +614,7 @@ function openSubmitPrefill(
   Object.assign(submitForm, {
     taskType: resolvedType,
     businessType: taskBusinessTypeMap[resolvedType],
-    businessId: scope?.trainingPlanId || qualityStore.currentTrainingPlanId || '',
+    businessId: '',
     programId: scope?.programId || qualityStore.currentProgramId || '',
     trainingPlanId: scope?.trainingPlanId || qualityStore.currentTrainingPlanId || '',
     qualityCourseId: '',
@@ -538,6 +667,14 @@ function handleReportChange(value: string | null) {
 
 function handleSubmitTaskTypeChange(value: SelectValue) {
   submitForm.businessId = ''
+  submitForm.programId = qualityStore.currentProgramId || ''
+  submitForm.trainingPlanId = qualityStore.currentTrainingPlanId || ''
+  submitForm.qualityCourseId = ''
+  submitForm.achievementResultId = ''
+  submitForm.reportId = ''
+  submitForm.fileNodeId = ''
+  submitForm.question = ''
+  uploadedMaterial.value = null
   if (typeof value !== 'string' || Array.isArray(value)) {
     showUserError(null, '任务类型选择无效，请重新选择')
     return
@@ -556,6 +693,9 @@ function handleSubmitBusinessObjectChange(value: string | null): void {
 
 function handleAchievementResultChange(value: string | null): void {
   submitForm.achievementResultId = value ?? ''
+  if (submitForm.businessType === 'ACHIEVEMENT_RESULT') {
+    submitForm.businessId = value ?? ''
+  }
 }
 
 function syncBusinessObjectFromTrainingPlan(value: string | null): void {
@@ -600,6 +740,10 @@ async function handleMaterialUpload(options: UploadRequestOption): Promise<void>
 }
 
 async function submitTask() {
+  if (!validateAiTaskSubmit(submitForm)) {
+    message.error('请按所选 AI 能力补齐业务锚点后再提交')
+    return
+  }
   submitting.value = true
   try {
     const result = await aiTaskApi.submit({
@@ -633,11 +777,41 @@ async function runNow(record: AiTaskVO) {
     onOk: async () => {
       await aiTaskApi.runNow(record.id)
       message.success('已触发同步执行')
-      // runNow 会使任务进入 PROCESSING，启动轮询跟踪终态
       aiTaskStore.startPolling(record.id)
       await loadList()
     },
   })
+}
+
+function openResetProcessing(record: AiTaskVO) {
+  if (record.status !== 'PROCESSING') {
+    message.error('仅处理中任务允许运维重置')
+    return
+  }
+  resetProcessingForm.id = record.id
+  resetProcessingForm.handlingRemark = ''
+  resetProcessingVisible.value = true
+}
+
+async function submitResetProcessing() {
+  if (!resetProcessingForm.handlingRemark.trim()) {
+    message.error('运维重置必须填写处置备注')
+    return
+  }
+  resetProcessingSubmitting.value = true
+  try {
+    await aiTaskApi.resetProcessing({
+      id: resetProcessingForm.id,
+      handlingRemark: resetProcessingForm.handlingRemark.trim(),
+    })
+    message.success('已将卡住任务重置为待处理')
+    resetProcessingVisible.value = false
+    await loadList()
+  } catch (error) {
+    showUserError(error)
+  } finally {
+    resetProcessingSubmitting.value = false
+  }
 }
 
 async function cancelTask(record: AiTaskVO) {
@@ -753,10 +927,14 @@ watch(
   },
 )
 
-// 页面卸载时保险地停掉详情轮询
+// 页面卸载时保险地停掉详情轮询与列表轮询
 onBeforeUnmount(() => {
   if (detailRecord.value?.id) {
     aiTaskStore.stopPolling(detailRecord.value.id)
+  }
+  if (listPollTimer) {
+    clearInterval(listPollTimer)
+    listPollTimer = null
   }
 })
 
@@ -791,7 +969,7 @@ async function openAuditDrawer(record: AiTaskVO) {
       pageSize: 50,
       module: 'AI_TASK',
       category: 'QUALITY',
-      description: record.id,
+      bizId: record.id,
     })
     auditEvents.value = readPageList(page, 'AI 任务审计记录加载失败，请稍后重试').map((log) => {
       return {
@@ -911,21 +1089,24 @@ onMounted(async () => {
   applyAccreditationRoutePrefill()
   await loadList()
 })
+
+onActivated(async () => {
+  if (qualityStore.currentTrainingPlanId) {
+    await loadList()
+  }
+})
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
-        <template #status>
-          <QualityScopeHeader @change="handleScopeChange" />
-        </template>
+      <QualityPageContextBar>
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="handleScopeChange">
             刷新
           </UiButton>
         </template>
-      </ContextBar>
+      </QualityPageContextBar>
     </template>
 
     <UiEmpty
@@ -1127,6 +1308,13 @@ onMounted(async () => {
                 >
                   取消
                 </UiTextAction>
+                <UiTextAction
+                  v-if="isSuperAdmin && record.status === 'PROCESSING'"
+                  tone="primary"
+                  @click="openResetProcessing(record)"
+                >
+                  重置为待处理
+                </UiTextAction>
                 <UiTextAction tone="primary" @click="openManualHandle(record)">
                   人工处置
                 </UiTextAction>
@@ -1240,7 +1428,7 @@ onMounted(async () => {
               "
               :quality-course-id="submitForm.qualityCourseId || null"
               placeholder="选择达成度分析结果"
-              @change="handleAchievementResultChange"
+              @change="syncBusinessObjectFromAchievementResult"
             />
           </a-form-item>
           <a-form-item label="报告">
@@ -1273,6 +1461,34 @@ onMounted(async () => {
               placeholder="材料问答必填，最长 1000 字符"
               :maxlength="1000"
               show-count
+            />
+          </a-form-item>
+        </a-form>
+      </UiDrawer>
+
+      <UiDrawer
+        v-model:open="resetProcessingVisible"
+        title="运维重置 PROCESSING 任务"
+        :width="480"
+        :confirm-loading="resetProcessingSubmitting"
+        :hide-footer="false"
+        ok-text="确认重置"
+        @ok="submitResetProcessing"
+      >
+        <a-alert
+          type="warning"
+          show-icon
+          message="仅平台超级管理员可执行。重置后任务回到待处理队列，备注会写入审计日志。"
+          class="ai-task__reset-alert"
+        />
+        <a-form layout="vertical" class="ai-task__reset-form">
+          <a-form-item label="处置备注" required>
+            <a-textarea
+              v-model:value="resetProcessingForm.handlingRemark"
+              :rows="4"
+              :maxlength="500"
+              show-count
+              placeholder="说明卡住原因与重置依据"
             />
           </a-form-item>
         </a-form>

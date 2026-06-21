@@ -20,6 +20,7 @@ import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import HistoryOutlined from '@ant-design/icons-vue/HistoryOutlined'
 import MailOutlined from '@ant-design/icons-vue/MailOutlined'
+import ReconciliationOutlined from '@ant-design/icons-vue/ReconciliationOutlined'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDevice } from '@/hooks'
@@ -70,6 +71,12 @@ const allTabBarItems: TabBarItem[] = [
     icon: DashboardOutlined,
     roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER],
   },
+  {
+    path: '/quality/dashboard',
+    label: '质量评价',
+    icon: ReconciliationOutlined,
+    roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER, RoleEnum.SUPER_ADMIN],
+  },
 
   // 管理员菜单
   {
@@ -109,6 +116,9 @@ function isActive(path: string): boolean {
       || route.path.startsWith('/teacher/exam-workspace/')
       || route.path.startsWith('/teacher/exam/')
     )
+  }
+  if (path === '/quality/dashboard') {
+    return route.path.startsWith('/quality')
   }
   return route.path.startsWith(path)
 }

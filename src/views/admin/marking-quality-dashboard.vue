@@ -49,6 +49,12 @@
     />
 
     <template v-else>
+      <UiErrorRetryPanel
+        v-if="organizationLoadError"
+        :error="organizationLoadError"
+        @retry="loadOrganizationDetail"
+      />
+
       <SignalBand :metrics="signalMetrics" compact class="quality-dashboard__signals" />
 
       <a-tabs v-model:active-key="activeTab" class="quality-dashboard__tabs">
@@ -349,6 +355,12 @@
               class="quality-dashboard__alert"
             />
 
+            <UiErrorRetryPanel
+              v-if="scannerBatchesLoadError"
+              :error="scannerBatchesLoadError"
+              @retry="loadScannerBatches"
+            />
+
             <a-form layout="vertical" class="quality-dashboard__form">
               <a-form-item label="扫描批次" required>
                 <a-select
@@ -425,7 +437,7 @@ import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { pageScannerBatches } from '@/apis/mark/exam'
 import {
@@ -497,8 +509,12 @@ const selectedGroupId = ref<string | undefined>(
 )
 const organizationDetail = ref<MarkingOrganizationVO | null>(null)
 const organizationLoading = ref(false)
+// D-9：阅卷组织加载失败时展示可重试错误面板
+const organizationLoadError = ref<Error | null>(null)
 const scannerBatches = ref<ExamScannerBatchVO[]>([])
 const scannerBatchLoading = ref(false)
+// D-9：异常重处理扫描批次列表加载失败时展示可重试错误面板
+const scannerBatchesLoadError = ref<Error | null>(null)
 
 const scopeValid = computed(() => Boolean(selectedExamId.value && selectedOrganizationId.value))
 
@@ -948,6 +964,7 @@ async function loadOrganizationDetail(): Promise<void> {
     return
   }
   organizationLoading.value = true
+  organizationLoadError.value = null
   try {
     const detail = await getOrganization({ examId: selectedExamId.value })
     organizationDetail.value = detail
@@ -957,6 +974,10 @@ async function loadOrganizationDetail(): Promise<void> {
       ? queryGroupId
       : undefined
   } catch (error) {
+    organizationDetail.value = null
+    selectedOrganizationId.value = undefined
+    selectedGroupId.value = undefined
+    organizationLoadError.value = toUserError(error, '阅卷组织加载失败')
     showUserError(error, '阅卷组织加载失败')
   } finally {
     organizationLoading.value = false
@@ -970,6 +991,7 @@ async function loadScannerBatches(): Promise<void> {
     return
   }
   scannerBatchLoading.value = true
+  scannerBatchesLoadError.value = null
   try {
     scannerBatches.value = await readAllPages(
       (pageNum) => pageScannerBatches({
@@ -981,6 +1003,9 @@ async function loadScannerBatches(): Promise<void> {
       '扫描批次加载失败',
     )
   } catch (error) {
+    scannerBatches.value = []
+    reprocessForm.scanBatchId = ''
+    scannerBatchesLoadError.value = toUserError(error, '扫描批次加载失败')
     showUserError(error, '扫描批次加载失败')
   } finally {
     scannerBatchLoading.value = false
@@ -1022,13 +1047,16 @@ watch(selectedExamId, async () => {
   await Promise.all([loadOrganizationDetail(), loadScannerBatches()])
   syncRouteQuery()
   reloadActiveTab()
-})
+}, { immediate: true })
 
 onMounted(async () => {
   await initExamSelector()
-  await Promise.all([loadOrganizationDetail(), loadScannerBatches()])
-  syncRouteQuery()
-  reloadActiveTab()
+})
+
+onActivated(() => {
+  if (selectedExamId.value) {
+    reloadActiveTab()
+  }
 })
 </script>
 

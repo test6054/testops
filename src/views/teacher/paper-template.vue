@@ -8,11 +8,25 @@
         {{ questions.length }} 题 · 总分 {{ totalScore }}
       </UiTag>
     </div>
-    <UiButton size="sm" :loading="saving" @click="handleSave">
+    <UiButton
+      size="sm"
+      :loading="saving"
+      :disabled="templateWriteLocked"
+      :title="templateWriteLockReason || undefined"
+      @click="handleSave"
+    >
       <template #icon><SaveOutlined /></template>
       保存
     </UiButton>
   </div>
+
+  <UiAlertStrip
+    v-if="selectedExamId && templateWriteLocked"
+    tone="warning"
+    :title="templateWriteLockReason"
+    dense
+    class="paper-template-page__lock-alert"
+  />
 
   <UiEmpty
     v-if="!selectedExamId"
@@ -20,10 +34,10 @@
     class="paper-template-page__empty"
   />
 
-  <UiEmpty
+  <UiErrorRetryPanel
     v-else-if="templateLoadError"
-    description="暂无数据"
-    class="paper-template-page__empty"
+    :error="templateLoadError"
+    @retry="loadTemplate"
   />
 
   <a-spin v-else :spinning="loading">
@@ -38,6 +52,7 @@
             v-model:value="form.templateName"
             placeholder="例如：2026 春《工程制图》期末 v1"
             :maxlength="100"
+            :disabled="templateWriteLocked"
             style="width: 360px"
           />
         </a-form-item>
@@ -46,6 +61,7 @@
             v-model:value="form.totalPages"
             :min="1"
             :max="50"
+            :disabled="templateWriteLocked"
             style="width: 120px"
           />
         </a-form-item>
@@ -69,7 +85,7 @@
         </UiBadge>
       </template>
       <template #extra>
-        <UiButton size="sm" variant="outline" @click="addPage">
+        <UiButton size="sm" variant="outline" :disabled="templateWriteLocked" @click="addPage">
           <template #icon>
             <PlusOutlined />
           </template>
@@ -77,7 +93,12 @@
         </UiButton>
       </template>
 
-      <ExamTemplatePageTable ref="pageTableRef" v-model:pages="pages" @remove="removePage" />
+      <ExamTemplatePageTable
+        ref="pageTableRef"
+        v-model:pages="pages"
+        :read-only="templateWriteLocked"
+        @remove="removePage"
+      />
     </UiCard>
 
     <UiCard class="info-card">
@@ -87,7 +108,7 @@
       </template>
       <template #extra>
         <span class="paper-template__total-score">总分 {{ totalScore }}</span>
-        <UiButton size="sm" @click="addQuestion">
+        <UiButton size="sm" :disabled="templateWriteLocked" @click="addQuestion">
           <template #icon>
             <PlusOutlined />
           </template>
@@ -138,9 +159,11 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <UiTextAction @click="openQuestionEdit(index)">编辑</UiTextAction>
+              <UiTextAction :disabled="templateWriteLocked" @click="openQuestionEdit(index)">
+                编辑
+              </UiTextAction>
               <UiConfirmPopover
-                v-if="record.questionTemplateId"
+                v-if="record.questionTemplateId && !templateWriteLocked"
                 title="确认删除该题目？"
                 description="删除后需重新配置区域坐标与标准答案。"
                 danger
@@ -148,7 +171,13 @@
               >
                 <UiTextAction tone="danger">删除</UiTextAction>
               </UiConfirmPopover>
-              <UiTextAction v-else tone="danger" @click="removeQuestion(index)">删除</UiTextAction>
+              <UiTextAction
+                v-else-if="!templateWriteLocked"
+                tone="danger"
+                @click="removeQuestion(index)"
+              >
+                删除
+              </UiTextAction>
             </div>
           </template>
         </template>
@@ -178,11 +207,17 @@
                 <header class="question-expand__head">
                   <span class="question-expand__title">标准答案</span>
                   <UiTextAction
-                    v-if="record.questionTemplateId"
+                    v-if="record.questionTemplateId && !templateWriteLocked"
                     @click="openAnswerModal(record)"
                   >
                     编辑
                   </UiTextAction>
+                  <span
+                    v-else-if="record.questionTemplateId && templateWriteLocked"
+                    class="question-cell__muted"
+                  >
+                    已锁定
+                  </span>
                 </header>
                 <a-spin v-if="isAnswerPreviewLoading(record)" size="small" />
                 <span v-else-if="!record.questionTemplateId" class="question-cell__muted">
@@ -192,6 +227,20 @@
                   v-else-if="getAnswerPreview(record)?.data"
                   class="question-expand__answer-body"
                 >
+                  <UiTag
+                    v-if="getAnswerPreview(record)?.effectiveConfig?.effectiveStatus === 'ACTIVE'"
+                    tone="green"
+                    size="sm"
+                  >
+                    批改生效中
+                  </UiTag>
+                  <UiTag
+                    v-else-if="getAnswerPreview(record)?.data?.effectiveStatus === 'DRAFT'"
+                    tone="gray"
+                    size="sm"
+                  >
+                    草稿未生效
+                  </UiTag>
                   <UiTag
                     v-if="getAnswerPreview(record)?.data?.comparePolicy"
                     tone="blue"
@@ -448,6 +497,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
+  ExamDetailVO,
   ExamMaterialLayoutModeCode,
   ExamPageTemplateRequest,
   ExamPaperPageTemplateVO,
@@ -466,7 +516,7 @@ import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   getExamDetail,
   getExamTemplate,
@@ -478,8 +528,10 @@ import {
 } from '@/apis/mark/exam'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import { getPaperMaster, isPaperMasterNotConfiguredError } from '@/apis/mark/paper-master'
-import { confirmAnswerEffective } from '@/apis/mark/question-analysis'
+import type { ExamAnswerEffectiveConfigVO } from '@/apis/mark/question-analysis'
+import { confirmAnswerEffective, getEffectiveAnswerConfig } from '@/apis/mark/question-analysis'
 import ExamTemplatePageTable from '@/components/mark/ExamTemplatePageTable.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -489,6 +541,7 @@ import UiConfirmPopover from '@/components/ui-guide/ui/UiConfirmPopover.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { hydrateTemplatePageFileNames } from '@/utils/mark-storage-file'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -496,6 +549,7 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherPaperTemplate' })
 
 const { selectedExamId } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 const pageTableRef = ref<InstanceType<typeof ExamTemplatePageTable> | null>(null)
 
@@ -523,6 +577,7 @@ interface ObjectiveOptionRow {
 interface AnswerPreviewState {
   loading: boolean
   data: ExamStandardAnswerVO | null
+  effectiveConfig: ExamAnswerEffectiveConfigVO | null
 }
 
 const questionTypeOptions = [
@@ -558,8 +613,32 @@ const loading = ref(false)
 const saving = ref(false)
 // D-9 错误态：仅当后端返回非”未配置”类错误时才上报（”未配置模板”是合法空态）
 const templateLoadError = ref<Error | null>(null)
+const examDetail = ref<ExamDetailVO | null>(null)
 const layoutMode = ref<ExamMaterialLayoutModeCode | undefined>()
 const isFullPaperLayout = computed(() => layoutMode.value === 'FULL_PAPER')
+
+/** 与后端 requireExamNotPrintedOrScanned + 母版存在守门对齐，禁止前端继续编辑。 */
+const templateWriteLocked = computed(() => {
+  const detail = examDetail.value
+  if (!detail) return false
+  if (detail.status === 'CLOSED') return true
+  if (detail.layoutModeLocked === true) return true
+  if (detail.masterConfigured === true) return true
+  return false
+})
+
+const templateWriteLockReason = computed(() => {
+  const detail = examDetail.value
+  if (!detail) return ''
+  if (detail.status === 'CLOSED') return '考试已关闭，模板与标准答案不可再修改'
+  if (detail.masterConfigured === true) {
+    return '考试已生成试卷母版，请先撤销母版后再修改模板或标准答案'
+  }
+  if (detail.layoutModeLocked === true) {
+    return '考试已开印或已开始扫描，模板与标准答案已锁定'
+  }
+  return ''
+})
 
 const totalScore = computed(() =>
   questions.reduce((sum, row) => sum + (Number(row.fullScore) || 0), 0).toFixed(2),
@@ -646,15 +725,21 @@ async function loadAnswerPreview(questionTemplateId: string): Promise<void> {
   if (!selectedExamId.value) return
   const cached = answerPreviewMap.get(questionTemplateId)
   if (cached && !cached.loading) return
-  answerPreviewMap.set(questionTemplateId, { loading: true, data: null })
+  answerPreviewMap.set(questionTemplateId, { loading: true, data: null, effectiveConfig: null })
   try {
-    const data = await getStandardAnswer({
-      examId: selectedExamId.value,
-      questionTemplateId,
-    })
-    answerPreviewMap.set(questionTemplateId, { loading: false, data })
+    const [data, effectiveConfig] = await Promise.all([
+      getStandardAnswer({
+        examId: selectedExamId.value,
+        questionTemplateId,
+      }),
+      getEffectiveAnswerConfig({
+        examId: selectedExamId.value,
+        questionTemplateId,
+      }),
+    ])
+    answerPreviewMap.set(questionTemplateId, { loading: false, data, effectiveConfig })
   } catch (error) {
-    answerPreviewMap.set(questionTemplateId, { loading: false, data: null })
+    answerPreviewMap.set(questionTemplateId, { loading: false, data: null, effectiveConfig: null })
     showUserError(error, '标准答案加载失败')
   }
 }
@@ -680,6 +765,7 @@ function clearAnswerPreviewCache(): void {
 }
 
 function clearTemplate(): void {
+  examDetail.value = null
   form.templateName = ''
   form.totalPages = undefined
   pages.value = []
@@ -731,8 +817,9 @@ async function loadTemplate(): Promise<void> {
   templateLoadError.value = null
   clearAnswerPreviewCache()
   try {
-    const examDetail = await getExamDetail(selectedExamId.value)
-    layoutMode.value = examDetail.materialLayoutMode
+    const detail = await getExamDetail(selectedExamId.value)
+    examDetail.value = detail
+    layoutMode.value = detail.materialLayoutMode
     const tpl = await getExamTemplate(selectedExamId.value)
     await applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages, tpl.questions)
     objectiveOptions.splice(0, objectiveOptions.length)
@@ -765,6 +852,7 @@ async function loadTemplate(): Promise<void> {
 }
 
 function addPage(): void {
+  if (templateWriteLocked.value) return
   const row: ExamTemplatePageRow = {
     rowKey: nextRowKey('p'),
     pageNo: pages.value.length + 1,
@@ -774,10 +862,12 @@ function addPage(): void {
 }
 
 function removePage(index: number): void {
+  if (templateWriteLocked.value) return
   pages.value = pages.value.filter((_, i) => i !== index)
 }
 
 function addQuestion(): void {
+  if (templateWriteLocked.value) return
   questions.push({
     rowKey: nextRowKey('q'),
     questionNo: String(questions.length + 1),
@@ -791,6 +881,7 @@ function addQuestion(): void {
 }
 
 function removeQuestion(index: number): void {
+  if (templateWriteLocked.value) return
   const row = questions[index]
   if (row?.questionTemplateId) {
     answerPreviewMap.delete(row.questionTemplateId)
@@ -823,6 +914,7 @@ function resetQuestionDraft(row?: QuestionRow): void {
 }
 
 function openQuestionEdit(index: number): void {
+  if (templateWriteLocked.value) return
   if (index < 0 || index >= questions.length) return
   questionEditIndex.value = index
   resetQuestionDraft(questions[index])
@@ -1003,6 +1095,10 @@ function buildQuestionsRequest(): ExamQuestionTemplateRequest[] | null {
 
 async function handleSave(): Promise<void> {
   if (!selectedExamId.value) return
+  if (templateWriteLocked.value) {
+    message.warning(templateWriteLockReason.value || '当前考试模板不可修改')
+    return
+  }
   const name = form.templateName.trim()
   if (!name) {
     message.error('模板名称必填')
@@ -1029,6 +1125,7 @@ async function handleSave(): Promise<void> {
     })
     message.success('试卷模板已保存')
     await loadTemplate()
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '试卷模板保存失败')
   } finally {
@@ -1208,6 +1305,10 @@ const answerFormRules: Record<string, Rule[]> = {
 }
 
 async function openAnswerModal(row: QuestionRow): Promise<void> {
+  if (templateWriteLocked.value) {
+    message.warning(templateWriteLockReason.value || '当前考试标准答案不可修改')
+    return
+  }
   if (!row.questionTemplateId) {
     message.warning('请先保存模板，题目编号生成后再录入标准答案')
     return
@@ -1233,7 +1334,12 @@ async function openAnswerModal(row: QuestionRow): Promise<void> {
       examId: selectedExamId.value,
       questionTemplateId: row.questionTemplateId,
     })
+    const effectiveConfig = await getEffectiveAnswerConfig({
+      examId: selectedExamId.value,
+      questionTemplateId: row.questionTemplateId,
+    })
     if (currentAnswer == null) {
+      answerForm.effectiveNow = effectiveConfig?.effectiveStatus === 'ACTIVE'
       return
     }
     answerForm.standardAnswer = currentAnswer.standardAnswer ?? ''
@@ -1244,7 +1350,8 @@ async function openAnswerModal(row: QuestionRow): Promise<void> {
     answerForm.numericUnit = currentAnswer.numericUnit ?? ''
     answerForm.gradingRubric = currentAnswer.gradingRubric ?? ''
     answerForm.aiHint = currentAnswer.aiHint ?? ''
-    answerForm.effectiveNow = currentAnswer.effectiveStatus === 'ACTIVE'
+    answerForm.effectiveNow = effectiveConfig?.effectiveStatus === 'ACTIVE'
+      || currentAnswer.effectiveStatus === 'ACTIVE'
     if (currentAnswer.comparePolicy === 'CHOICE_SET') {
       answerForm.standardAnswer = ''
       const optionRow = objectiveOptions.find(
@@ -1273,6 +1380,10 @@ async function openAnswerModal(row: QuestionRow): Promise<void> {
 }
 
 async function handleSaveAnswer(): Promise<void> {
+  if (templateWriteLocked.value) {
+    message.warning(templateWriteLockReason.value || '当前考试标准答案不可修改')
+    return
+  }
   if (!selectedExamId.value || !answerContext.questionTemplateId) return
   if (!answerFormRef.value) return
   try {
@@ -1345,6 +1456,7 @@ async function handleSaveAnswer(): Promise<void> {
     await loadAnswerPreview(answerContext.questionTemplateId)
     message.success(answerForm.effectiveNow ? '标准答案已保存并确认生效' : '标准答案已保存为草稿')
     answerModalOpen.value = false
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '标准答案保存失败')
   } finally {
@@ -1359,17 +1471,15 @@ watch(selectedExamId, (value) => {
   } else {
     clearTemplate()
   }
-})
-
-onMounted(async () => {
-  if (selectedExamId.value) {
-    await loadTemplate()
-  }
-})
+}, { immediate: true })
 </script>
 
 <style lang="scss" scoped>
 .paper-template-page {
+  &__lock-alert {
+    margin-bottom: 8px;
+  }
+
   &__toolbar {
     display: flex;
     align-items: center;

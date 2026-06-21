@@ -61,7 +61,14 @@
           @reset="handleSyncFilterReset"
         />
 
+        <UiErrorRetryPanel
+          v-if="syncTasksLoadError"
+          :error="syncTasksLoadError"
+          @retry="loadSyncTasks"
+        />
+
         <UiDataTable
+          v-else
           pagination-mode="client"
           class="student-detail-table__data-table"
           :columns="syncColumns"
@@ -148,7 +155,14 @@
           @reset="handlePassbackFilterReset"
         />
 
+        <UiErrorRetryPanel
+          v-if="passbackLoadError"
+          :error="passbackLoadError"
+          @retry="reloadPassbackRecordsFromFirstPage"
+        />
+
         <UiDataTable
+          v-else
           class="student-detail-table__data-table"
           :columns="passbackColumns"
           :data-source="passbackRecords"
@@ -214,12 +228,16 @@
       </a-form-item>
       <a-form-item label="同步类型" required>
         <a-radio-group v-model:value="createForm.syncType">
-          <a-radio-button v-for="(label, code) in SYNC_TYPE_LABEL" :key="code" :value="code">
+          <a-radio-button
+            v-for="(label, code) in CREATABLE_SYNC_TYPE_LABEL"
+            :key="code"
+            :value="code"
+          >
             {{ label }}
           </a-radio-button>
         </a-radio-group>
         <div class="hint-text" style="margin-top: 4px">
-          当前支持成绩回写流程；其他同步类型将在配置开放后使用。
+          当前仅开放成绩回写；名单导入、成绩更正与撤销将在后端能力开放后启用。
         </div>
       </a-form-item>
       <a-form-item label="外部课程编号">
@@ -253,7 +271,12 @@
           刷新
         </UiButton>
       </template>
-      <template v-if="detailProgress">
+      <UiErrorRetryPanel
+        v-if="progressLoadError"
+        :error="progressLoadError"
+        @retry="handleRefreshProgress"
+      />
+      <template v-else-if="detailProgress">
         <a-progress
           :percent="detailProgressPercent"
           :status="detailProgressStatus"
@@ -354,7 +377,7 @@ import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
   cancelSyncTask,
   createSyncTask,
@@ -372,6 +395,7 @@ import {
   SYNC_TASK_STATUS_COLOR,
   SYNC_TASK_STATUS_LABEL,
   SYNC_TYPE_LABEL,
+  CREATABLE_SYNC_TYPE_LABEL,
 } from '@/apis/mark/teaching-affairs-sync'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -380,6 +404,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
@@ -442,17 +467,59 @@ const syncColumns: ColumnType<SyncTaskVO>[] = [
 const syncTasksLoadError = ref<Error | null>(null)
 const passbackLoadError = ref<Error | null>(null)
 
-async function loadSyncTasks(): Promise<void> {
+async function loadSyncTasks(options?: { quiet?: boolean }): Promise<void> {
   if (!selectedExamId.value) return
-  syncLoading.value = true
+  if (!options?.quiet) {
+    syncLoading.value = true
+  }
   syncTasksLoadError.value = null
   try {
     syncTasks.value = await listSyncTasks(selectedExamId.value, syncFilterForm.status)
   } catch (error) {
     syncTasksLoadError.value = toUserError(error, '教务同步任务加载失败')
-    showUserError(error, '教务同步任务加载失败')
+    if (!options?.quiet) {
+      showUserError(error, '教务同步任务加载失败')
+    }
   } finally {
-    syncLoading.value = false
+    if (!options?.quiet) {
+      syncLoading.value = false
+    }
+    syncSyncPolling()
+  }
+}
+
+let syncPollTimer: ReturnType<typeof setInterval> | null = null
+
+function syncSyncPolling(): void {
+  const syncingTask = syncTasks.value.some((task) => task.taskStatus === 'SYNCING')
+  const pendingPassback = passbackRecords.value.some(
+    (record) => record.passbackStatus === 'PENDING' || record.passbackStatus === 'SENT',
+  )
+  const shouldPoll = syncingTask || pendingPassback
+  if (shouldPoll && !syncPollTimer) {
+    syncPollTimer = setInterval(() => {
+      void loadAllQuietly()
+    }, 3000)
+  } else if (!shouldPoll && syncPollTimer) {
+    clearInterval(syncPollTimer)
+    syncPollTimer = null
+  }
+}
+
+async function loadAllQuietly(): Promise<void> {
+  if (!selectedExamId.value || loading.value) {
+    return
+  }
+  try {
+    await Promise.all([
+      loadSyncTasks({ quiet: true }),
+      loadPassbackRecords({ quiet: true }),
+    ])
+    if (taskDetailOpen.value && detailTask.value?.id) {
+      await loadProgress(detailTask.value.id)
+    }
+  } catch {
+    // 轮询刷新失败时不打断当前页面操作
   }
 }
 
@@ -544,7 +611,7 @@ async function handleCreate(): Promise<void> {
     })
     message.success('已创建同步任务')
     createModalOpen.value = false
-    await loadSyncTasks()
+    await loadAll()
   } catch (error) {
     showUserError(error, '教务同步任务创建失败')
   } finally {
@@ -682,9 +749,11 @@ const passbackColumns: ColumnType<PassbackRecordVO>[] = [
   { title: '处理说明', key: 'errorMessage', width: 220 },
 ]
 
-async function loadPassbackRecords(): Promise<void> {
+async function loadPassbackRecords(options?: { quiet?: boolean }): Promise<void> {
   if (!selectedExamId.value) return
-  passbackLoading.value = true
+  if (!options?.quiet) {
+    passbackLoading.value = true
+  }
   passbackLoadError.value = null
   try {
     const page = await listPassbackRecords({
@@ -700,9 +769,14 @@ async function loadPassbackRecords(): Promise<void> {
     passbackPagination.total = readPageTotal(page, '教务回写记录加载失败，请稍后重试')
   } catch (error) {
     passbackLoadError.value = toUserError(error, '教务回写记录加载失败')
-    showUserError(error, '教务回写记录加载失败')
+    if (!options?.quiet) {
+      showUserError(error, '教务回写记录加载失败')
+    }
   } finally {
-    passbackLoading.value = false
+    if (!options?.quiet) {
+      passbackLoading.value = false
+    }
+    syncSyncPolling()
   }
 }
 
@@ -792,12 +866,22 @@ watch(selectedExamId, (value) => {
   if (value) {
     void loadAll()
   }
-})
+}, { immediate: true })
 
 onMounted(async () => {
   await initExamSelector()
+})
+
+onActivated(() => {
   if (selectedExamId.value) {
-    await loadAll()
+    void loadAll()
+  }
+})
+
+onBeforeUnmount(() => {
+  if (syncPollTimer) {
+    clearInterval(syncPollTimer)
+    syncPollTimer = null
   }
 })
 </script>

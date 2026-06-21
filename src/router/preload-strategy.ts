@@ -57,7 +57,6 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
 
   // ── 教师 ① 考试列表 + 工作台 ────────────────────────
   TeacherExamList: () => import('@/views/teacher/exam-list.vue'),
-  TeacherScanDeviceManagement: () => import('@/views/teacher/printer-management.vue'),
   TeacherExamWorkspace: () => import('@/views/teacher/exam-workspace-layout.vue'),
   TeacherExamWorkspaceOverview: () => import('@/views/teacher/exam-detail.vue'),
   TeacherExamWorkspacePrep: () => import('@/views/teacher/exam-prep-workbench.vue'),
@@ -192,7 +191,6 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
   // ── ① 考试列表 + 工作台 ───────────────────────────
   TeacherExamList: [
     'TeacherExamWorkspaceOverview',
-    'TeacherScanDeviceManagement',
     'TeacherExamWorkspacePrep',
     'TeacherExamWorkspaceScanMonitor',
     'TeacherExamWorkspaceMarkingTaskPool',

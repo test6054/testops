@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  AccreditationCycleVO,
   OnsiteChecklistCategory,
   OnsiteChecklistItemUpdateRequest,
   OnsiteChecklistItemVO,
@@ -26,6 +27,7 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 const props = defineProps<{
   programId: string
   trainingPlanId: string
+  activeCycle?: AccreditationCycleVO
   activeCycleId?: string
 }>()
 
@@ -67,7 +69,13 @@ const checklistDrawerOpen = ref(false)
 const editingItem = ref<OnsiteChecklistItemVO>()
 const checklistCategoryFilter = ref<'' | OnsiteChecklistCategory>('')
 
-const canCreatePlan = computed(() => !!props.activeCycleId)
+const canMutateOnsitePlan = computed(
+  () =>
+    props.activeCycle?.cycleStatus === 'ACTIVE'
+    && props.activeCycle?.currentPhase === 'ONSITE_VISIT',
+)
+
+const canCreatePlan = computed(() => canMutateOnsitePlan.value && !!props.activeCycleId)
 
 const checklistProgress = computed(() => {
   const items = selectedPlan.value?.checklistItems || []
@@ -146,12 +154,20 @@ function openCreate() {
     message.error('请先创建认证周期')
     return
   }
+  if (!canMutateOnsitePlan.value) {
+    message.error('仅现场考查阶段可新建考查计划')
+    return
+  }
   drawerTitle.value = '新建现场考查计划'
   resetPlanForm(accreditationCycleId)
   drawerOpen.value = true
 }
 
 function openEdit(record: OnsiteVisitPlanVO) {
+  if (!canMutateOnsitePlan.value) {
+    message.error('仅现场考查阶段可编辑考查计划')
+    return
+  }
   drawerTitle.value = '编辑现场考查计划'
   form.id = record.id
   form.programId = record.programId
@@ -168,6 +184,10 @@ function openEdit(record: OnsiteVisitPlanVO) {
 }
 
 async function submitPlan() {
+  if (!canMutateOnsitePlan.value) {
+    message.error('仅现场考查阶段可维护考查计划')
+    return
+  }
   if (!form.visitCode.trim() || !form.visitTitle.trim() || !form.visitStart || !form.visitEnd) {
     message.error('请完整填写考查计划信息')
     return
@@ -191,6 +211,10 @@ async function submitPlan() {
 }
 
 async function removePlan(id: string) {
+  if (!canMutateOnsitePlan.value) {
+    message.error('仅现场考查阶段可删除考查计划')
+    return
+  }
   const ok = await confirmAsync({ title: '确认删除该现场考查计划？' })
   if (!ok) return
   try {
@@ -213,6 +237,18 @@ function openChecklistItem(item: OnsiteChecklistItemVO) {
 }
 
 async function submitChecklistItem() {
+  if (!canMutateOnsitePlan.value) {
+    message.error('仅现场考查阶段可更新检查项')
+    return
+  }
+  if (checklistForm.itemStatus === 'COMPLETED' && !checklistForm.evidenceArchiveId) {
+    message.error('已完成检查项必须关联证据归档')
+    return
+  }
+  if (checklistForm.itemStatus === 'NOT_APPLICABLE' && !checklistForm.remark?.trim()) {
+    message.error('不适用检查项必须填写说明')
+    return
+  }
   try {
     await accreditationApi.updateChecklistItem({
       id: checklistForm.id,
@@ -237,7 +273,13 @@ defineExpose({ openCreate, loadPlans })
 
 <template>
   <div class="onsite-panel">
-    <p v-if="!canCreatePlan" class="hint">请先创建认证周期；进入现场考查阶段后可新建考查计划。</p>
+    <p v-if="!canCreatePlan" class="hint">
+      {{
+        activeCycleId
+          ? '当前认证阶段不可维护现场考查计划；进入现场考查阶段后可新建考查计划。'
+          : '请先创建认证周期；进入现场考查阶段后可新建考查计划。'
+      }}
+    </p>
     <div class="toolbar">
       <UiButton variant="primary" :disabled="!canCreatePlan" @click="openCreate">
         新建考查计划
@@ -265,8 +307,16 @@ defineExpose({ openCreate, loadPlans })
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiButton size="sm" variant="ghost" @click="selectPlan(record.id)">清单</UiButton>
-          <UiButton size="sm" variant="outline" @click="openEdit(record)">编辑</UiButton>
-          <UiButton size="sm" status="danger" variant="ghost" @click="removePlan(record.id)">
+          <UiButton size="sm" variant="outline" :disabled="!canMutateOnsitePlan" @click="openEdit(record)">
+            编辑
+          </UiButton>
+          <UiButton
+            size="sm"
+            status="danger"
+            variant="ghost"
+            :disabled="!canMutateOnsitePlan"
+            @click="removePlan(record.id)"
+          >
             删除
           </UiButton>
         </template>
@@ -313,7 +363,14 @@ defineExpose({ openCreate, loadPlans })
             }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton size="sm" variant="outline" @click="openChecklistItem(record)">更新</UiButton>
+            <UiButton
+              size="sm"
+              variant="outline"
+              :disabled="!canMutateOnsitePlan"
+              @click="openChecklistItem(record)"
+            >
+              更新
+            </UiButton>
           </template>
         </template>
       </UiDataTable>
@@ -328,7 +385,7 @@ defineExpose({ openCreate, loadPlans })
     >
       <a-form layout="vertical">
         <a-form-item label="计划编码" required>
-          <a-input v-model:value="form.visitCode" />
+          <a-input v-model:value="form.visitCode" :disabled="!!form.id" />
         </a-form-item>
         <a-form-item label="计划标题" required>
           <a-input v-model:value="form.visitTitle" />
@@ -368,10 +425,10 @@ defineExpose({ openCreate, loadPlans })
               <a-select-option value="NOT_APPLICABLE">不适用</a-select-option>
             </a-select>
           </a-form-item>
-          <a-form-item label="证据归档">
+          <a-form-item label="证据归档" :required="checklistForm.itemStatus === 'COMPLETED'">
             <ArchiveSelector v-model:value="checklistForm.evidenceArchiveId" />
           </a-form-item>
-          <a-form-item label="备注">
+          <a-form-item label="备注" :required="checklistForm.itemStatus === 'NOT_APPLICABLE'">
             <a-textarea v-model:value="checklistForm.remark" :rows="3" />
           </a-form-item>
         </a-form>

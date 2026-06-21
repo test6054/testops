@@ -19,7 +19,7 @@ import type {
 } from '@/apis/quality'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   AI_TASK_BUSINESS_TYPE_LABEL,
@@ -34,6 +34,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -167,10 +168,23 @@ watch(
   },
 )
 
+async function handleScopeChange(): Promise<void> {
+  await loadTaskOptions()
+  if (selectedAiTaskId.value) {
+    await loadMapping()
+  }
+}
+
+useQualityScopeReload(handleScopeChange)
+
 onMounted(async () => {
   filterForm.aiTaskId = selectedAiTaskId.value
   await loadTaskOptions()
   if (selectedAiTaskId.value) await loadMapping()
+})
+
+onActivated(() => {
+  void handleScopeChange()
 })
 </script>
 

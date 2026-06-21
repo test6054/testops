@@ -11,7 +11,7 @@ import type {
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -21,6 +21,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -232,7 +233,10 @@ function handleScaleTypeChange(value: SelectValue) {
   editor.scaleType = scaleType
   if (editorMode.value === 'create') {
     editor.items = defaultItemsByScaleType(scaleType)
+    return
   }
+  message.warning('编辑已有规则时变更量表类型将重置换算项，请确认后重新保存')
+  editor.items = defaultItemsByScaleType(scaleType)
 }
 
 function addItem() {
@@ -240,6 +244,10 @@ function addItem() {
 }
 
 function removeItem(index: number) {
+  if (editor.items.length <= 1) {
+    message.error('量表换算规则至少保留一条换算项')
+    return
+  }
   editor.items.splice(index, 1)
   editor.items.forEach((item, itemIndex) => {
     item.sortOrder = itemIndex + 1
@@ -368,7 +376,17 @@ const signals = computed<SignalMetric[]>(() => {
 })
 
 
-onMounted(() => loadList())
+useQualityScopeReload(() => {
+  void loadList()
+})
+
+onMounted(() => {
+  void loadList()
+})
+
+onActivated(() => {
+  void loadList()
+})
 </script>
 
 <template>

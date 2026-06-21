@@ -10,6 +10,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { getStudentsByClass } from '@/apis/edu/class'
 import { listExamClassStudents } from '@/apis/mark/exam'
 import { showUserError } from '@/utils/error-handler'
+import { readAllPages } from '@/utils/page-result'
 import { requirePageList } from './page-contract'
 
 interface Props {
@@ -68,20 +69,25 @@ async function loadOptions(keyword?: string) {
   loading.value = true
   try {
     const res = props.examId
-      ? await listExamClassStudents({
-          examId: props.examId,
-          classId: props.classId,
-          pageNum: 1,
-          pageSize: 50,
-          keyword: keyword ?? searchText.value ?? undefined,
-        })
+      ? await readAllPages(
+          (pageNum) => listExamClassStudents({
+            examId: props.examId!,
+            classId: props.classId!,
+            pageNum,
+            pageSize: 100,
+            keyword: keyword ?? searchText.value ?? undefined,
+          }),
+          '学生列表加载失败',
+        )
       : await getStudentsByClass({
           pageNum: 1,
           pageSize: 50,
           keyword: keyword ?? searchText.value ?? undefined,
           classId: props.classId,
         })
-    options.value = requirePageList(res, '学生')
+    options.value = props.examId
+      ? res
+      : requirePageList(res, '学生')
   } catch (e) {
     showUserError(e, '学生列表加载失败')
   } finally {

@@ -18,7 +18,7 @@ import type {
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
@@ -33,6 +33,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -390,8 +391,16 @@ async function handleDelete(record: ProfessionAlgorithmTemplateVO) {
   })
 }
 
+useQualityScopeReload(() => {
+  void loadList()
+})
+
 onMounted(async () => {
   await Promise.all([loadList(), loadStandards()])
+})
+
+onActivated(() => {
+  void Promise.all([loadList(), loadStandards()])
 })
 </script>
 
@@ -476,7 +485,7 @@ onMounted(async () => {
         <a-row :gutter="12">
           <a-col :span="8">
             <a-form-item label="编码" required>
-              <a-input v-model:value="editor.templateCode" />
+              <a-input v-model:value="editor.templateCode" :disabled="editorMode === 'edit'" />
             </a-form-item>
           </a-col>
           <a-col :span="16">
@@ -488,7 +497,11 @@ onMounted(async () => {
         <a-row :gutter="12">
           <a-col :span="8">
             <a-form-item label="认证类型" required>
-              <a-select v-model:value="editor.accreditationType" :options="accreditationOptions" />
+              <a-select
+                v-model:value="editor.accreditationType"
+                :options="accreditationOptions"
+                :disabled="editorMode === 'edit'"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">

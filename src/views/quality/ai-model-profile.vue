@@ -21,7 +21,7 @@ import type {
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import {
   AI_HEALTH_STATUS_COLOR,
   AI_HEALTH_STATUS_LABEL,
@@ -38,6 +38,7 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -233,13 +234,15 @@ async function submitEditor() {
   }
   submitting.value = true
   try {
-    await aiModelProfileApi.save({
+    const payload = {
       ...editor,
       profileName,
       modelName,
       apiHost,
       apiKey: editor.apiKey?.trim() || undefined,
-    })
+      enabled: editorMode.value === 'create' ? false : editor.enabled,
+    }
+    await aiModelProfileApi.save(payload)
     message.success('已保存')
     editorVisible.value = false
     await loadList()
@@ -371,7 +374,15 @@ const signals = computed<SignalMetric[]>(() => {
 })
 
 
+useQualityScopeReload(() => {
+  void loadList()
+})
+
 onMounted(() => {
+  void loadList()
+})
+
+onActivated(() => {
   void loadList()
 })
 </script>
@@ -539,7 +550,7 @@ onMounted(() => {
         <a-row :gutter="12">
           <a-col :span="12">
             <a-form-item label="模型服务商">
-              <a-select v-model:value="editor.providerType">
+              <a-select v-model:value="editor.providerType" :disabled="editorMode === 'edit'">
                 <a-select-option value="DEEPSEEK"> DeepSeek </a-select-option>
                 <a-select-option value="QWEN"> 通义千问 </a-select-option>
               </a-select>
@@ -620,9 +631,11 @@ onMounted(() => {
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="启用为平台同供应商唯一 AI 模型">
-          <a-switch v-model:checked="editor.enabled" />
-        </a-form-item>
+        <a-alert
+          type="info"
+          show-icon
+          message="启用状态仅可通过列表「设为启用」操作切换；编辑抽屉不会变更当前启用模型。"
+        />
       </a-form>
     </UiDrawer>
   </StageWorkbenchShell>

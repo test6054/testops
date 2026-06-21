@@ -28,6 +28,12 @@
       </ContextBar>
     </template>
 
+    <UiErrorRetryPanel
+      v-if="setLoadError"
+      :error="setLoadError"
+      @retry="loadSet"
+    />
+
     <UiCard v-if="set" class="paper-archive-detail-page__overview">
       <template #title>
         <ProfileOutlined />
@@ -82,7 +88,13 @@
         </template>
       </UiFilterBar>
 
-      <UiEmpty v-if="!loading && items.length === 0" description="暂无数据" />
+      <UiErrorRetryPanel
+        v-if="itemsLoadError"
+        :error="itemsLoadError"
+        @retry="loadItems"
+      />
+
+      <UiEmpty v-if="!loading && !itemsLoadError && items.length === 0" description="暂无数据" />
 
       <UiDataTable
         pagination-mode="none"
@@ -315,7 +327,7 @@ import {
   UploadOutlined,
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile, uploadFile } from '@/apis/edu/file-management'
 import {
@@ -339,7 +351,7 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
-import { showUserError } from '@/utils/error-handler'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumTone } from '@/utils/strict-enum'
@@ -357,6 +369,9 @@ const set = ref<PaperArchiveSetVO | null>(null)
 const items = ref<PaperArchiveItemVO[]>([])
 const loading = ref(false)
 const uploading = ref(false)
+// D-9：档案集详情 / 明细加载失败时展示可重试错误面板
+const setLoadError = ref<Error | null>(null)
+const itemsLoadError = ref<Error | null>(null)
 const uploadProgress = ref(0)
 const uploadModalOpen = ref(false)
 const tagSaving = ref(false)
@@ -495,16 +510,22 @@ const canUpload = computed(() => {
 
 async function loadSet(): Promise<void> {
   if (!archiveSetId.value) return
+  setLoadError.value = null
   try {
     set.value = await getPaperArchiveSetDetail(archiveSetId.value)
   } catch (error) {
+    set.value = null
+    setLoadError.value = toUserError(error, '纸质试卷档案集详情加载失败')
     showUserError(error, '纸质试卷档案集详情加载失败')
   }
 }
 
-async function loadItems(): Promise<void> {
+async function loadItems(options?: { quiet?: boolean }): Promise<void> {
   if (!archiveSetId.value) return
-  loading.value = true
+  if (!options?.quiet) {
+    loading.value = true
+  }
+  itemsLoadError.value = null
   try {
     const result = await searchPaperArchiveItems({
       pageNum: pagination.pageNum,
@@ -520,15 +541,51 @@ async function loadItems(): Promise<void> {
     pagination.pageNum = result.pageNum
     pagination.pageSize = result.pageSize
     pagination.total = readPageTotal(result, '纸质试卷档案集明细加载失败，请稍后重试')
+    syncOcrPolling()
   } catch (error) {
-    showUserError(error, '纸质试卷档案集明细加载失败')
+    items.value = []
+    pagination.total = 0
+    itemsLoadError.value = toUserError(error, '纸质试卷档案集明细加载失败')
+    if (!options?.quiet) {
+      showUserError(error, '纸质试卷档案集明细加载失败')
+    }
   } finally {
-    loading.value = false
+    if (!options?.quiet) {
+      loading.value = false
+    }
   }
 }
 
 async function reload(): Promise<void> {
   await Promise.all([loadSet(), loadItems()])
+}
+
+let ocrPollTimer: ReturnType<typeof setInterval> | null = null
+
+function syncOcrPolling(): void {
+  const shouldPoll = items.value.some(
+    (item) => item.ocrStatus === 'PENDING' || item.ocrStatus === 'RUNNING',
+  )
+  if (shouldPoll && !ocrPollTimer) {
+    ocrPollTimer = setInterval(() => {
+      void reloadQuietly()
+    }, 3000)
+  } else if (!shouldPoll && ocrPollTimer) {
+    clearInterval(ocrPollTimer)
+    ocrPollTimer = null
+  }
+}
+
+async function reloadQuietly(): Promise<void> {
+  if (loading.value || !archiveSetId.value) {
+    return
+  }
+  try {
+    await loadSet()
+    await loadItems({ quiet: true })
+  } catch {
+    // 轮询刷新失败时不打断当前页面操作
+  }
 }
 
 function handleSearch(): void {
@@ -701,7 +758,7 @@ function confirmTriggerOcr(item: PaperArchiveItemVO): void {
       try {
         await triggerPaperArchiveItemOcr(item.itemId)
         message.success('已入队，等待识别')
-        await loadItems()
+        await reload()
       } catch (error) {
         showUserError(error, '试卷识别任务提交失败')
       }
@@ -753,6 +810,17 @@ function truncate(value: string | undefined, max: number): string {
 
 onMounted(() => {
   void reload()
+})
+
+onActivated(() => {
+  void reload()
+})
+
+onBeforeUnmount(() => {
+  if (ocrPollTimer) {
+    clearInterval(ocrPollTimer)
+    ocrPollTimer = null
+  }
 })
 </script>
 

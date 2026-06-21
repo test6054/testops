@@ -72,6 +72,7 @@ export interface ScoreImportPreviewVO {
 
 /** 分页查询 - 严格对齐 ScoreBatchQueryRequest */
 export interface ScoreBatchQueryRequest extends QueryDto {
+  trainingPlanId?: string
   qualityCourseId?: string
   assessmentItemId?: string
   status?: ScoreBatchStatus

@@ -8,7 +8,11 @@
     </div>
 
     <div class="appeal-page__cards">
-      <ReviewWindowPolicyCard :exam-id="currentExamId" :reload-token="windowReloadToken" />
+      <ReviewWindowPolicyCard
+        :exam-id="currentExamId"
+        :reload-token="windowReloadToken"
+        @changed="onAppealFlowChanged"
+      />
       <ReviewRequestsCard
         :exam-id="currentExamId"
         :reload-token="requestReloadToken"
@@ -19,16 +23,21 @@
         :reload-token="correctionReloadToken"
         @created="onCorrectionCreated"
       />
-      <BatchCorrectionPlansCard :exam-id="currentExamId" :reload-token="batchReloadToken" />
+      <BatchCorrectionPlansCard
+        :exam-id="currentExamId"
+        :reload-token="batchReloadToken"
+        @changed="onAppealFlowChanged"
+      />
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import BatchCorrectionPlansCard from './appeal-handle/BatchCorrectionPlansCard.vue'
 import CorrectionsCard from './appeal-handle/CorrectionsCard.vue'
 import ReviewRequestsCard from './appeal-handle/ReviewRequestsCard.vue'
@@ -37,6 +46,7 @@ import ReviewWindowPolicyCard from './appeal-handle/ReviewWindowPolicyCard.vue'
 defineOptions({ name: 'TeacherAppealHandle' })
 
 const { selectedExamId } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 const currentExamId = computed(() => selectedExamId.value || '')
 
 const windowReloadToken = ref(0)
@@ -51,27 +61,31 @@ function reloadAll(): void {
   batchReloadToken.value += 1
 }
 
-function onRequestHandled(): void {
+async function onRequestHandled(): Promise<void> {
   requestReloadToken.value += 1
   correctionReloadToken.value += 1
+  await refreshSnapshot()
 }
 
-function onCorrectionCreated(): void {
+async function onCorrectionCreated(): Promise<void> {
   correctionReloadToken.value += 1
   requestReloadToken.value += 1
+  await refreshSnapshot()
+}
+
+async function onAppealFlowChanged(): Promise<void> {
+  windowReloadToken.value += 1
+  requestReloadToken.value += 1
+  correctionReloadToken.value += 1
+  batchReloadToken.value += 1
+  await refreshSnapshot()
 }
 
 watch(selectedExamId, (value) => {
   if (value) {
     reloadAll()
   }
-})
-
-onMounted(() => {
-  if (selectedExamId.value) {
-    reloadAll()
-  }
-})
+}, { immediate: true })
 </script>
 
 <style lang="scss" scoped>

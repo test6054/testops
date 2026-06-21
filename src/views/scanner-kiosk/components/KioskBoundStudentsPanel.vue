@@ -37,8 +37,10 @@ function refresh() {
 watch(
   effectiveBatchId,
   (batchId) => {
+    // 未显式传入 scanBatchId 时由 workflow.boundPaperScanBatchId 监听统一刷新，避免双请求
+    if (!props.scanBatchId) return
     if (batchId) {
-      workflow.refreshBoundPapers(batchId).catch(() => {})
+      void workflow.refreshBoundPapers(batchId)
     }
   },
   { immediate: true },
@@ -66,9 +68,12 @@ watch(
     <p v-if="!effectiveBatchId" class="bound-empty">
       当前无活跃扫描批次，绑定结果将在开始扫描后出现
     </p>
-    <p v-else-if="workflow.boundPapersError.value" class="bound-error">
-      {{ workflow.boundPapersError.value.message }}
-    </p>
+    <UiErrorRetryPanel
+      v-else-if="workflow.boundPapersError.value"
+      :error="workflow.boundPapersError.value"
+      compact
+      @retry="refresh"
+    />
     <p v-else-if="workflow.boundPapersLoading.value && workflow.boundPapers.value.length === 0" class="bound-empty">
       加载中…
     </p>
@@ -162,17 +167,12 @@ watch(
   opacity: 0.55;
 }
 
-.bound-empty,
-.bound-error {
+.bound-empty {
   margin: 0;
   font-size: var(--kiosk-fz-caption);
   color: var(--kiosk-ink-tertiary);
   text-align: center;
   padding: var(--kiosk-space-3) 0;
-}
-
-.bound-error {
-  color: var(--kiosk-danger);
 }
 
 .bound-table-wrap {

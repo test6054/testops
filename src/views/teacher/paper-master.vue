@@ -30,7 +30,11 @@
     class="paper-master-page__empty"
   />
 
-  <UiEmpty v-else-if="!loading && masterLoadError" description="暂无数据" />
+  <UiErrorRetryPanel
+    v-else-if="masterLoadError"
+    :error="masterLoadError"
+    @retry="loadMasterData"
+  />
 
   <a-spin v-else :spinning="loading">
     <!-- PDF 预览/编辑区 -->
@@ -299,6 +303,11 @@
             show-search
             option-filter-prop="label"
           />
+          <UiErrorRetryPanel
+            v-if="questionsLoadError"
+            :error="questionsLoadError"
+            @retry="loadQuestions"
+          />
         </a-form-item>
         <a-form-item label="页号" required>
           <a-input-number
@@ -348,6 +357,11 @@
     ok-text="生成并预览"
     @ok="handleGenerate"
   >
+    <UiErrorRetryPanel
+      v-if="generatePrefillError"
+      :error="generatePrefillError"
+      @retry="prefetchGenerateForm"
+    />
     <a-form layout="vertical">
       <a-form-item label="学校名称" required>
         <a-input v-model:value="genForm.universityName" placeholder="例如：XX大学" />
@@ -417,6 +431,7 @@ import UiConfirmPopover from '@/components/ui-guide/ui/UiConfirmPopover.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError, toUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'TeacherPaperMaster' })
@@ -424,6 +439,7 @@ defineOptions({ name: 'TeacherPaperMaster' })
 const router = useRouter()
 
 const { selectedExamId } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 // ─── 母版表单 ────────────────────────────────────────────────────────
 
@@ -492,6 +508,8 @@ interface ObjectiveAreaRow extends PaperMasterObjectiveAreaRequest {
 
 const objectiveAreas = ref<ObjectiveAreaRow[]>([])
 const questionsLoading = ref(false)
+// D-9：母版客观题区题目列表加载失败时展示可重试错误面板
+const questionsLoadError = ref<Error | null>(null)
 const questions = ref<ExamQuestionTemplateVO[]>([])
 const questionOptions = computed(() =>
   questions.value.map((item) => {
@@ -674,11 +692,13 @@ const subjectiveColumns: ColumnType[] = [
 async function loadQuestions() {
   if (!selectedExamId.value) return
   questionsLoading.value = true
+  questionsLoadError.value = null
   try {
     const template = await getExamTemplate(selectedExamId.value)
     questions.value = template.questions
   } catch (error) {
     questions.value = []
+    questionsLoadError.value = toUserError(error, '题目列表加载失败')
     showUserError(error, '题目列表加载失败')
   } finally {
     questionsLoading.value = false
@@ -795,6 +815,8 @@ function onPdfSaved(newFileId: string) {
 }
 
 const generateModalOpen = ref(false)
+// D-9：生成弹窗预填考试详情失败时展示可重试错误面板
+const generatePrefillError = ref<Error | null>(null)
 const generating = ref(false)
 const genForm = reactive({
   universityName: '',
@@ -805,6 +827,20 @@ const genForm = reactive({
   durationMin: 120,
 })
 
+async function prefetchGenerateForm(): Promise<void> {
+  if (!selectedExamId.value) return
+  generatePrefillError.value = null
+  try {
+    const d = await getExamDetail(selectedExamId.value)
+    genForm.academicYear = d.academicYear ?? ''
+    genForm.semester = d.semester ?? '1'
+    genForm.courseName = d.examName ?? ''
+  } catch (error) {
+    generatePrefillError.value = toUserError(error, '考试详情加载失败，生成表单预填字段为空')
+    showUserError(error, '考试详情加载失败，请手动填写生成表单')
+  }
+}
+
 async function openGenerateModal() {
   genForm.universityName = ''
   genForm.academicYear = ''
@@ -812,16 +848,9 @@ async function openGenerateModal() {
   genForm.courseName = ''
   genForm.examType = '闭卷'
   genForm.durationMin = 120
-  // 预填考试已有数据
-  if (selectedExamId.value) {
-    try {
-      const d = await getExamDetail(selectedExamId.value)
-      genForm.academicYear = d.academicYear ?? ''
-      genForm.semester = d.semester ?? '1'
-      genForm.courseName = d.examName ?? ''
-    } catch { /* 预填失败不影响使用 */ }
-  }
+  generatePrefillError.value = null
   generateModalOpen.value = true
+  await prefetchGenerateForm()
 }
 
 async function handleGenerate() {
@@ -920,6 +949,7 @@ async function handleSave() {
     })
     message.success('母版保存成功')
     await loadMasterData()
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '试卷母版保存失败，请稍后重试')
   } finally {

@@ -16,6 +16,12 @@
   />
 
   <UiCard v-else class="print-package-page__list-card">
+    <UiErrorRetryPanel
+      v-if="packagesLoadError"
+      :error="packagesLoadError"
+      @retry="loadPackageList"
+    />
+
     <UiDataTable
       v-model:current="pagination.pageNum"
       v-model:page-size="pagination.pageSize"
@@ -169,18 +175,22 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
-import { showUserError } from '@/utils/error-handler'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherPrintPackage' })
 
 const { selectedExamId } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 // ─── 印刷包分页列表 ─────────────────────────────────────────────────
 
 const loading = ref(false)
 const packageList = ref<PrintPackageVO[]>([])
+// D-9：印刷包列表加载失败时展示可重试错误面板
+const packagesLoadError = ref<Error | null>(null)
 const pagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 
 const packageColumns: ColumnType<PrintPackageVO>[] = [
@@ -196,6 +206,7 @@ const packageColumns: ColumnType<PrintPackageVO>[] = [
 async function loadPackageList() {
   if (!selectedExamId.value) return
   loading.value = true
+  packagesLoadError.value = null
   try {
     const res = await pagePrintPackages({
       examId: selectedExamId.value,
@@ -209,6 +220,7 @@ async function loadPackageList() {
   } catch (e) {
     packageList.value = []
     pagination.total = 0
+    packagesLoadError.value = toUserError(e, '印刷包列表加载失败')
     showUserError(e, '印刷包列表加载失败')
   } finally {
     loading.value = false
@@ -272,6 +284,7 @@ async function handleGenerate() {
     generateModalVisible.value = false
     pagination.pageNum = 1
     await loadPackageList()
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '印刷包生成失败，请确认已上传母版 PDF 且考生名册不为空')
   } finally {

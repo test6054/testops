@@ -138,7 +138,7 @@ const scanReadinessLoading = ref(false)
 const submitting = ref(false)
 const previewLoading = ref(false)
 const starting = ref(false)
-const questionLoadError = ref<string | null>(null)
+const questionLoadError = ref<Error | null>(null)
 const questions = ref<ExamQuestionTemplateVO[]>([])
 const teacherOptions = ref<TeacherUserInfoDto[]>([])
 const teacherLoading = ref(false)
@@ -338,7 +338,7 @@ watch(selectedExamId, async () => {
     return
   }
   await Promise.all([loadCollaboratorOrganization(), loadScanReadiness()])
-})
+}, { immediate: true })
 
 watch(
   () => form.allocationUnit,
@@ -384,10 +384,10 @@ async function loadExamQuestions(): Promise<void> {
     questions.value = template.questions
   } catch (error) {
     if (error instanceof Error && isPaperTemplateNotConfiguredError(error)) {
-      questionLoadError.value = '当前考试尚未配置有效试卷模板，不能生成真实阅卷任务。'
+      questionLoadError.value = toUserError(error, '当前考试尚未配置有效试卷模板，不能生成真实阅卷任务')
       return
     }
-    questionLoadError.value = '试卷题目加载失败，不能生成真实阅卷任务。'
+    questionLoadError.value = toUserError(error, '试卷题目加载失败，不能生成真实阅卷任务')
     showUserError(error, '试卷题目加载失败')
   } finally {
     templateLoading.value = false
@@ -749,15 +749,6 @@ function formatDualReviewRule(): string {
 
 onMounted(async () => {
   await loadTeachers()
-  if (!selectedExamId.value) {
-    return
-  }
-  await loadExamOwnership()
-  if (canManageExam.value) {
-    await Promise.all([loadExamQuestions(), loadScanReadiness()])
-    return
-  }
-  await Promise.all([loadCollaboratorOrganization(), loadScanReadiness()])
 })
 </script>
 
@@ -796,10 +787,10 @@ onMounted(async () => {
         dense
         class="review-assignment__alert"
       />
-      <UiEmpty
+      <UiErrorRetryPanel
         v-if="organizationLoadError"
-        description="暂无数据"
-        class="review-assignment__alert"
+        :error="organizationLoadError"
+        @retry="loadCollaboratorOrganization"
       />
       <a-spin v-else :spinning="organizationLoading || scanReadinessLoading">
         <UiAlertStrip
@@ -983,15 +974,13 @@ onMounted(async () => {
         :title="`身份绑定 ${scanReadinessSummary.bound} 份 · 可阅卷 ${scanReadinessSummary.gradable} 份`"
         class="review-assignment__alert"
       />
-      <UiAlertStrip
+      <UiErrorRetryPanel
         v-if="questionLoadError"
-        tone="error"
-        title="试卷模板不可用"
-        :description="questionLoadError"
-        class="review-assignment__alert"
+        :error="questionLoadError"
+        @retry="loadExamQuestions"
       />
 
-      <section class="review-assignment__grid">
+      <section v-else class="review-assignment__grid">
         <UiCard class="review-assignment__panel">
           <template #title>
             <DeploymentUnitOutlined />

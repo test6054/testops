@@ -18,6 +18,7 @@ import type { LocationQueryValue } from 'vue-router'
 import type {
   AgentHealthResponse,
   AgentHealthStatus,
+  AgentUpdateStatus,
   LocalScanJobStatus,
   ScanJobListResponse,
   ScanJobResponse,
@@ -45,6 +46,7 @@ import { SCANNER_ENDPOINT_ONLINE_STATUS_LABEL } from '@/apis/mark/exam-mark-scan
 import {
   activateLocalAgent,
   AGENT_HEALTH_STATUS_LABEL,
+  AGENT_UPDATE_STATUS_LABEL,
   cancelScanJob,
   deleteScanJob,
   discardScanJob,
@@ -53,6 +55,7 @@ import {
   getAgentSetupContext,
   getPageImageUrl,
   getScanJob,
+  installAgentUpdate,
   listLocalScanners,
   listScanJobs,
   LocalAgentUnavailableError,
@@ -149,6 +152,8 @@ export function useKioskWorkflow() {
   const boundPapersLoading = ref(false)
   const boundPapersError = ref<Error | null>(null)
   const currentJob = ref<ScanJobResponse | null>(null)
+  /** 终态清空 currentJob 后，Review 阶段仍用此 ID 拉本地页预览。 */
+  const lastPreviewScanJobId = ref('')
   const loading = ref(false)
   const errorMessage = ref('')
   const successMessage = ref('')
@@ -196,6 +201,7 @@ export function useKioskWorkflow() {
   const examOptions = ref<ExamScannerKioskExamOptionVO[]>([])
   const examOptionTotal = ref(0)
   const examOptionLoading = ref(false)
+  const examOptionLoadError = ref<Error | null>(null)
   const examOptionFilter = reactive<{
     keyword: string
     academicYear: string
@@ -325,8 +331,11 @@ export function useKioskWorkflow() {
     }),
   )
   const previewImageUrl = computed(() => {
-    if (!currentJob.value || previewPageNo.value === 0) return ''
-    return getPageImageUrl(currentJob.value.scanJobId, previewPageNo.value)
+    if (previewPageNo.value === 0) return ''
+    const scanJobId
+      = currentJob.value?.scanJobId?.trim() || lastPreviewScanJobId.value.trim()
+    if (!scanJobId) return ''
+    return getPageImageUrl(scanJobId, previewPageNo.value)
   })
   const scanProgress = computed(() => {
     if (!currentJob.value) return 0
@@ -431,6 +440,11 @@ export function useKioskWorkflow() {
     if (!health.value?.bound) return '一体机未激活'
     if (health.value?.tokenResetRequired) return '一体机需要重新激活'
     if (health.value?.upgradeRequired) return '本机扫描组件需要升级'
+    if (health.value?.updateStatus === 'DOWNLOADING') return '本机扫描组件更新包下载中'
+    if (health.value?.updateStatus === 'INSTALLING') return '本机扫描组件安装中'
+    if (health.value?.updateStatus === 'FAILED') {
+      return health.value.updateDiagnosticMessage.trim() || '本机扫描组件更新失败'
+    }
     if (!health.value?.scannerConnected) return '本地扫描仪未连接'
     if (health.value.lastHeartbeatAt && !health.value.scanAllowed) return '系统暂未允许开始扫描'
     if (!selectedScannerId.value) return '未检测到可用本地扫描仪'
@@ -598,6 +612,10 @@ export function useKioskWorkflow() {
 
   function agentHealthStatusLabel(status: AgentHealthStatus) {
     return strictEnumLabel(AGENT_HEALTH_STATUS_LABEL, status, '本地扫描服务状态')
+  }
+
+  function agentUpdateStatusLabel(status: AgentUpdateStatus) {
+    return strictEnumLabel(AGENT_UPDATE_STATUS_LABEL, status, '本地扫描组件更新状态')
   }
 
   function endpointOnlineStatusLabel(
@@ -863,6 +881,32 @@ export function useKioskWorkflow() {
     ].includes(job.status)
   }
 
+  /** 从本地终态 REPORTED 任务恢复预览 scanJobId，供 Review 阶段 currentJob 为空时看图。 */
+  function hydratePreviewScanJobId(jobs: ScanJobResponse[]) {
+    const activeJobId = currentJob.value?.scanJobId?.trim()
+    if (activeJobId) {
+      lastPreviewScanJobId.value = activeJobId
+      return
+    }
+    const batchNo = pageLedger.value?.batchExternalNo?.trim() || activeBatchExternalNo.value.trim()
+    if (!batchNo) return
+    const deviceId = getActiveScannerDeviceId()
+    const stationId = getActiveScannerStationId()
+    const terminalJob = jobs.find((job) => {
+      return (
+        job.batchExternalNo === batchNo
+        && job.status === 'REPORTED'
+        && job.reported
+        && job.examId === examId.value
+        && job.scannerDeviceId === deviceId
+        && job.scannerStationId === stationId
+      )
+    })
+    if (terminalJob?.scanJobId) {
+      lastPreviewScanJobId.value = terminalJob.scanJobId
+    }
+  }
+
   function shouldPollRecoveredJob(job: ScanJobResponse) {
     return ['CREATED', 'SCANNING', 'READYTOUPLOAD', 'UPLOADING', 'RETRYING'].includes(job.status)
   }
@@ -1063,6 +1107,7 @@ export function useKioskWorkflow() {
       return
     }
     examOptionLoading.value = true
+    examOptionLoadError.value = null
     try {
       const request: ExamScannerKioskExamOptionRequest = {
         pageNum: examOptionFilter.pageNum,
@@ -1080,7 +1125,7 @@ export function useKioskWorkflow() {
       examOptionFilter.pageSize = result.pageSize
       examOptionTotal.value = readPageTotal(result)
     } catch (error) {
-      handleError(error)
+      examOptionLoadError.value = toUserError(error, '考试列表加载失败')
       examOptions.value = []
       examOptionTotal.value = 0
     } finally {
@@ -1322,6 +1367,7 @@ export function useKioskWorkflow() {
       }
       throw error
     }
+    hydratePreviewScanJobId(response.jobs)
     const currentJobId = currentJob.value?.scanJobId || ''
     const hasActiveCurrentJob = Boolean(
       currentJob.value && currentJob.value.status !== 'REPORTED',
@@ -1711,6 +1757,7 @@ export function useKioskWorkflow() {
         activeScanBatchId.value = ''
         successMessage.value = '已废弃扫描批次并清理本地扫描任务'
         currentJob.value = null
+        lastPreviewScanJobId.value = ''
         await refreshKioskContext()
         await refreshPageLedger()
       } catch (error) {
@@ -1831,6 +1878,29 @@ export function useKioskWorkflow() {
       successMessage.value = '一体机已激活'
     } catch (error) {
       activationErrorMessage.value = getUserErrorMessage(error, '一体机激活失败')
+      handleError(error)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function installAgentUpdatePackage() {
+    if (currentJobBlocksWorkspace.value) {
+      errorMessage.value = '当前扫描任务未结束，不能安装更新包'
+      return
+    }
+    if (!health.value?.updateInstallable) {
+      errorMessage.value = '当前没有可安装的更新包'
+      return
+    }
+    loading.value = true
+    errorMessage.value = ''
+    successMessage.value = ''
+    try {
+      await installAgentUpdate()
+      await refreshAll()
+      successMessage.value = '已开始安装本机扫描组件更新'
+    } catch (error) {
       handleError(error)
     } finally {
       loading.value = false
@@ -2012,6 +2082,9 @@ export function useKioskWorkflow() {
     activeScanBatchId.value = ''
     currentJob.value = null
     previewPageNo.value = 0
+    batchHistoryFilter.pageNum = 1
+    batchHistoryList.value = []
+    batchHistoryTotal.value = 0
     if (jobTimer) {
       window.clearInterval(jobTimer)
       jobTimer = undefined
@@ -2048,7 +2121,9 @@ export function useKioskWorkflow() {
     (newBatchNo, oldBatchNo) => {
       if (newBatchNo === oldBatchNo) return
       if (!isActivatedForMarkApis()) return
-      refreshPageLedger().catch(() => {})
+      refreshPageLedger().catch((error) => {
+        handleError(error)
+      })
     },
   )
 
@@ -2074,7 +2149,9 @@ export function useKioskWorkflow() {
           refreshKioskContext().catch((error) => {
             handleError(error)
           })
-          refreshPageLedger().catch(() => {})
+          refreshPageLedger().catch((error) => {
+            handleError(error)
+          })
           refreshBoundPapers().catch((error) => {
             handleError(error)
           })
@@ -2082,6 +2159,16 @@ export function useKioskWorkflow() {
       }
     },
     { deep: false },
+  )
+
+  watch(
+    () => currentJob.value?.scanJobId,
+    (scanJobId) => {
+      if (scanJobId) {
+        lastPreviewScanJobId.value = scanJobId
+      }
+    },
+    { immediate: true },
   )
 
   // -------------------------------------------------------------
@@ -2158,6 +2245,7 @@ export function useKioskWorkflow() {
     examOptions,
     examOptionTotal,
     examOptionLoading,
+    examOptionLoadError,
     examOptionFilter,
 
     // ---- 历史批次浏览（HistoryStage） ----
@@ -2216,6 +2304,7 @@ export function useKioskWorkflow() {
     // ---- 文案 helper ----
     scanModeText,
     agentHealthStatusLabel,
+    agentUpdateStatusLabel,
     endpointOnlineStatusLabel,
     scannerColorModeLabel,
     scannerDuplexModeLabel,
@@ -2269,6 +2358,7 @@ export function useKioskWorkflow() {
 
     // ---- Agent 操作 ----
     activateAgent,
+    installAgentUpdatePackage,
     openActivationModal,
   }
 }

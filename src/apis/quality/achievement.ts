@@ -243,8 +243,30 @@ export interface AchievementResultAuditRequest {
   auditRemark?: string
 }
 
+/** 计算就绪查询 - 严格对齐 AchievementComputeReadinessRequest */
+export interface AchievementComputeReadinessRequest {
+  programId?: string
+  trainingPlanId?: string
+  qualityCourseId?: string
+  courseGoalId?: string
+  trainingObjectiveId?: string
+  schoolYear?: string
+  semester?: string
+}
+
+/** 计算就绪项 - 严格对齐 AchievementComputeReadinessItemVO */
+export interface AchievementComputeReadinessItemVO {
+  computeKind: string
+  stageOrder: number
+  stageTitle: string
+  ready: boolean
+  blockingReasons: string[]
+}
+
 export const achievementApi = {
   // ─── 计算入口 ─────────────────────────────────────────
+  computeReadiness: (data: AchievementComputeReadinessRequest) =>
+    http.post<AchievementComputeReadinessItemVO[]>(`${CALC}/compute-readiness`, data),
   computeCourseGoal: (data: ComputeCourseGoalRequest) =>
     http.post<CourseGoalAchievementSummaryVO>(`${CALC}/compute-course-goal`, data),
   computeRequirement: (data: ComputeRequirementRequest) =>

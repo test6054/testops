@@ -11,17 +11,25 @@
       </a-space>
     </template>
 
+    <UiErrorRetryPanel
+      v-if="loadError"
+      :error="loadError"
+      @retry="reload"
+    />
+
     <UiDataTable
-      pagination-mode="client"
+      v-else
+      v-model:current="pagination.current"
+      v-model:page-size="pagination.pageSize"
       class="student-detail-table__data-table"
       :columns="columns"
       :data-source="rows"
       :loading="loading"
       row-key="id"
       size="small"
-      :page-size="20"
-      :total="rows.length"
+      :total="pagination.total"
       flat
+      @page-change="handlePageChange"
     >
       <template #bodyCell="{ column, index }">
         <template v-if="column.key === 'student'">
@@ -135,10 +143,11 @@ import {
 } from '@/apis/mark/grade-review'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readAllPages } from '@/utils/page-result'
+import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CorrectionsCard' })
@@ -153,6 +162,11 @@ const loading = ref(false)
 const loadError = ref<Error | null>(null)
 const approvedReviewRequests = ref<GradeReviewRequestItemResponse[]>([])
 const reviewRequestLoading = ref(false)
+const pagination = reactive({
+  current: 1,
+  pageSize: 20,
+  total: 0,
+})
 
 const columns: ColumnType<ExamGradeCorrectionRecordVO>[] = [
   { title: '学生', key: 'student', width: 150 },
@@ -220,16 +234,35 @@ async function reload(): Promise<void> {
   loading.value = true
   loadError.value = null
   try {
-    const records = await listCorrections({ examId: props.examId })
+    const result = await listCorrections({
+      examId: props.examId,
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+    })
+    const records = readPageList(result, '成绩更正记录加载失败')
     validateCorrectionDisplayContracts(records)
     rows.value = records
+    pagination.total = readPageTotal(result, '成绩更正记录加载失败')
+    pagination.current = result.pageNum ?? pagination.current
+    pagination.pageSize = result.pageSize ?? pagination.pageSize
+    if (rows.value.length === 0 && pagination.total > 0 && pagination.current > 1) {
+      pagination.current -= 1
+      await reload()
+    }
   } catch (e) {
     rows.value = []
+    pagination.total = 0
     loadError.value = toUserError(e, '成绩更正记录加载失败')
     showUserError(e, '成绩更正记录加载失败')
   } finally {
     loading.value = false
   }
+}
+
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+  pagination.current = pageInfo.current
+  pagination.pageSize = pageInfo.pageSize
+  void reload()
 }
 
 async function loadApprovedReviewRequests(): Promise<void> {
@@ -389,7 +422,10 @@ function reviewRequestQuestionLabel(request: GradeReviewRequestItemResponse): st
 watch(
   () => [props.examId, props.reloadToken],
   () => {
-    if (props.examId) void reload()
+    if (props.examId) {
+      pagination.current = 1
+      void reload()
+    }
   },
   { immediate: true },
 )

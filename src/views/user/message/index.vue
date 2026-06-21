@@ -275,7 +275,7 @@ import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import {
   confirmReadAnnouncement,
   getInboxMessages,
@@ -676,6 +676,10 @@ async function reloadAll() {
 onMounted(async () => {
   lastRefreshAt.value = new Date()
   await Promise.all([loadMessages(1), loadAnnouncements(1), notificationStore.loadUnreadCount()])
+})
+
+onActivated(() => {
+  void reloadAll()
 })
 </script>
 

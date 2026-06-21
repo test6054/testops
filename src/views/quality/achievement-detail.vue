@@ -25,7 +25,7 @@ import type {
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
@@ -47,6 +47,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 import { promptModal } from './_helpers'
 
@@ -62,6 +63,11 @@ const detailColumns: ColumnsType = [
 
 const route = useRoute()
 const router = useRouter()
+
+/** 全局 scope 切换时返回列表，避免详情与当前培养方案/课程错位 */
+useQualityScopeReload(() => {
+  void router.push({ name: 'QualityAchievement' })
+})
 
 const resultId = computed(() => String(route.params.resultId || ''))
 
@@ -115,12 +121,17 @@ function manualReviewDecisionLabel(value: ManualReviewDecision): string {
   return strictEnumLabel(MANUAL_REVIEW_DECISION_LABEL, value, '人工复核决定')
 }
 
+function auditEventLabel(event: AchievementAuditStatus): string {
+  if (event === 'CALCULATED') return '达成度计算'
+  return auditStatusLabel(event)
+}
+
 const auditTransitMap: Record<AchievementAuditStatus, AchievementAuditStatus[]> = {
   DRAFT: ['CALCULATED'],
   CALCULATED: ['DRAFT', 'SUBMITTED'],
   SUBMITTED: ['CONFIRMED', 'RETURNED'],
   CONFIRMED: ['ARCHIVED', 'RETURNED'],
-  RETURNED: ['CALCULATED'],
+  RETURNED: [],
   ARCHIVED: [],
 }
 
@@ -129,6 +140,83 @@ const nextStatuses = computed<AchievementAuditStatus[]>(() => {
   if (!status) return []
   return strictEnumValue(auditTransitMap, status, '达成审核状态')
 })
+
+const targetTypeToComputeKind: Partial<Record<AchievementTargetType, string>> = {
+  COURSE_GOAL: 'COURSE_GOAL',
+  REQUIREMENT_INDICATOR: 'REQUIREMENT',
+  GRADUATION_REQUIREMENT: 'REQUIREMENT',
+  TRAINING_OBJECTIVE: 'TRAINING_OBJECTIVE',
+  PROGRAM_SUMMARY: 'PROGRAM',
+  CIVIC_GOAL_AGGREGATE: 'CIVIC_GOAL_AGGREGATE',
+  COMPLEX_ENGINEERING_AGGREGATE: 'COMPLEX_ENGINEERING',
+}
+
+function canRecomputeResult(value: AchievementResultVO | null): boolean {
+  if (!value) return false
+  return value.auditStatus === 'RETURNED'
+    || isResultStale(value)
+    || value.auditStatus === 'DRAFT'
+    || value.auditStatus === 'CALCULATED'
+}
+
+function canSubmitManualReview(value: AchievementResultVO | null): boolean {
+  if (!value?.auditStatus) return false
+  return value.auditStatus === 'SUBMITTED' || value.auditStatus === 'CONFIRMED'
+}
+
+const recomputeLoading = ref(false)
+
+async function handleRecompute() {
+  const record = result.value
+  if (!record) return
+  const computeKind = targetTypeToComputeKind[record.targetType]
+  if (!computeKind) {
+    message.warning('当前目标类型不支持在此页重算')
+    return
+  }
+  if (!record.trainingPlanId || !record.programId) {
+    message.warning('结果缺少培养方案或专业信息，无法重算')
+    return
+  }
+  recomputeLoading.value = true
+  try {
+    const base = {
+      programId: record.programId,
+      trainingPlanId: record.trainingPlanId,
+      schoolYear: record.schoolYear || undefined,
+      semester: record.semester || undefined,
+    }
+    if (computeKind === 'COURSE_GOAL') {
+      if (!record.qualityCourseId) {
+        message.warning('课程目标重算缺少关联课程')
+        return
+      }
+      await achievementApi.computeCourseGoal({
+        qualityCourseId: record.qualityCourseId,
+        courseGoalId: record.targetId,
+        schoolYear: base.schoolYear,
+        semester: base.semester,
+      })
+    } else if (computeKind === 'REQUIREMENT') {
+      await achievementApi.computeRequirement(base)
+    } else if (computeKind === 'TRAINING_OBJECTIVE') {
+      await achievementApi.computeTrainingObjective({
+        ...base,
+        trainingObjectiveId: record.targetId,
+      })
+    } else if (computeKind === 'PROGRAM') {
+      await achievementApi.computeProgram(base)
+    } else if (computeKind === 'CIVIC_GOAL_AGGREGATE') {
+      await achievementApi.computeCivicGoalAggregate(base)
+    } else if (computeKind === 'COMPLEX_ENGINEERING') {
+      await achievementApi.computeComplexEngineeringAggregate(base)
+    }
+    message.success('重新计算完成')
+    await loadAll()
+  } finally {
+    recomputeLoading.value = false
+  }
+}
 
 async function loadAll() {
   if (!resultId.value) return
@@ -172,6 +260,10 @@ async function handleTransit(to: AchievementAuditStatus) {
 
 async function submitReview() {
   if (!result.value) return
+  if (!canSubmitManualReview(result.value)) {
+    message.warning('当前审核状态不允许记录人工复核')
+    return
+  }
   if (!reviewForm.decision.trim()) {
     message.error('请选择复核决定')
     return
@@ -245,6 +337,10 @@ const reviewVisible = ref(false)
 
 function openReviewDrawer() {
   if (!result.value) return
+  if (!canSubmitManualReview(result.value)) {
+    message.warning('当前审核状态不允许记录人工复核')
+    return
+  }
   reviewVisible.value = true
 }
 
@@ -253,7 +349,15 @@ async function submitReviewAndClose() {
   reviewVisible.value = false
 }
 
-onMounted(loadAll)
+watch(resultId, () => {
+  void loadAll()
+}, { immediate: true })
+
+onActivated(() => {
+  if (resultId.value) {
+    void loadAll()
+  }
+})
 </script>
 
 <template>
@@ -268,10 +372,18 @@ onMounted(loadAll)
         </template>
         <template #actions>
           <UiButton
-            v-if="result"
+            v-if="result && canRecomputeResult(result)"
+            variant="primary"
+            size="sm"
+            :loading="recomputeLoading"
+            @click="handleRecompute"
+          >
+            重新计算
+          </UiButton>
+          <UiButton
+            v-if="result && canSubmitManualReview(result)"
             variant="outline"
             size="sm"
-            :disabled="!result"
             @click="openReviewDrawer"
           >
             人工复核
@@ -434,7 +546,7 @@ onMounted(loadAll)
               :color="auditStatusColor(audit.auditStatusTo) === 'red' ? 'red' : 'blue'"
             >
               <p class="achievement-detail__audit-line">
-                <UiTag tone="gray" size="sm">{{ auditStatusLabel(audit.auditEvent) }}</UiTag>
+                <UiTag tone="gray" size="sm">{{ auditEventLabel(audit.auditEvent) }}</UiTag>
                 <strong v-if="audit.auditStatusFrom">
                   {{ auditStatusLabel(audit.auditStatusFrom) }}
                 </strong>

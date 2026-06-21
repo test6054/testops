@@ -3,17 +3,9 @@
     <template #context>
       <ContextBar>
         <template #status>
-          <MarkExamSelect
-            :selected-exam-id="selectedExamId"
-            :exam-options="examOptions"
-            :loading="examLoading"
-            :searching="searching"
-            :resolving-pinned="resolvingPinned"
-            select-class="experience-page__exam-select"
-            placeholder="选择考试"
-            @change="handleExamChange"
-            @search="onExamSearch"
-          />
+          <UiTag v-if="selectedExamLabel" tone="gray" size="sm">
+            {{ selectedExamLabel }}
+          </UiTag>
           <UiTag v-if="signatures.length > 0" tone="blue" size="sm">
             签名 {{ signatures.length }}
           </UiTag>
@@ -54,6 +46,12 @@
               </UiButton>
             </a-space>
           </template>
+
+          <UiErrorRetryPanel
+            v-if="signaturesLoadError"
+            :error="signaturesLoadError"
+            @retry="loadSignatures"
+          />
 
           <UiDataTable
             pagination-mode="client"
@@ -116,6 +114,12 @@
             search-text="查询"
             @search="loadExperiences"
             @reset="handleExperienceFilterReset"
+          />
+
+          <UiErrorRetryPanel
+            v-if="experiencesLoadError"
+            :error="experiencesLoadError"
+            @retry="loadExperiences"
           />
 
           <UiDataTable
@@ -192,8 +196,14 @@
             @reset="handleClusterFilterReset"
           />
 
+          <UiErrorRetryPanel
+            v-if="clusterLoadError"
+            :error="clusterLoadError"
+            @retry="loadLatestCluster"
+          />
+
           <UiEmpty
-            v-if="!clusterLoading && !latestCluster"
+            v-if="!clusterLoading && !latestCluster && !clusterLoadError"
             description="暂无数据"
           />
 
@@ -381,7 +391,6 @@
 </template>
 
 <script lang="ts" setup>
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   AiAnalysisStatusCode,
@@ -398,7 +407,7 @@ import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
@@ -414,7 +423,6 @@ import {
   QUESTION_TYPE_LABEL,
   searchSimilar
 } from '@/apis/mark/grading-experience'
-import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -424,23 +432,16 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherGradingExperienceHub' })
 
-// B-8 统一考试选择器
-const {
-  examOptions,
-  loading: examLoading,
-  selectedExamId,
-  onExamChange,
-  onExamSearch,
-  searching,
-  resolvingPinned,
-  init: initExamSelector,
-} = useMarkExamSelector()
+// 考试工作台内由 useMarkExamContext 注入当前考试
+const { selectedExamId, selectedExamLabel } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 const activeTab = ref<'signature' | 'experience' | 'cluster'>('signature')
 
@@ -517,6 +518,7 @@ async function handleGenerateSignatures(): Promise<void> {
     const result = await generateSignatures(selectedExamId.value)
     signatures.value = result
     message.success(`已生成 ${result.length} 条题目签名`)
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '题目签名生成失败')
   } finally {
@@ -594,6 +596,7 @@ async function handleExtract(): Promise<void> {
     await extractExperience(selectedExamId.value, experienceFilterForm.questionTemplateId)
     message.success('AI 经验已提取')
     await loadExperiences()
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '阅卷经验提取失败')
   } finally {
@@ -650,6 +653,7 @@ async function handleGenerateCluster(): Promise<void> {
       clusterFilterForm.questionTemplateId,
     )
     message.success('AI 答案聚类已完成')
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '答案聚类分析生成失败')
   } finally {
@@ -749,18 +753,6 @@ function gradingExperienceFailureMessage(errorMessage?: string): string {
   return getUserProcessFailureMessage(errorMessage, '阅卷经验提取未完成，请稍后重新提取')
 }
 
-function handleExamChange(value: SelectValue): void {
-  onExamChange(value)
-  signatures.value = []
-  experiences.value = []
-  latestCluster.value = null
-  experienceFilterForm.questionTemplateId = undefined
-  clusterFilterForm.questionTemplateId = undefined
-  if (selectedExamId.value) {
-    void reloadActiveTab()
-  }
-}
-
 async function reloadActiveTab(): Promise<void> {
   if (!selectedExamId.value) return
   if (activeTab.value === 'signature') {
@@ -779,7 +771,6 @@ watch(activeTab, () => {
   void reloadActiveTab()
 })
 
-// B-8: selectedExamId 由 useMarkExamSelector 与 URL 双向同步
 watch(selectedExamId, (value) => {
   signatures.value = []
   experiences.value = []
@@ -789,13 +780,10 @@ watch(selectedExamId, (value) => {
   if (value) {
     void reloadActiveTab()
   }
-})
+}, { immediate: true })
 
-onMounted(async () => {
-  await initExamSelector()
-  if (selectedExamId.value) {
-    await reloadActiveTab()
-  }
+onActivated(() => {
+  void reloadActiveTab()
 })
 </script>
 

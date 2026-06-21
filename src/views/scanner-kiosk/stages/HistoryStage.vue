@@ -19,7 +19,7 @@ import {
   ReloadOutlined,
   SafetyCertificateFilled,
 } from '@ant-design/icons-vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
@@ -146,11 +146,6 @@ const historyTotalPages = computed(() =>
   Math.max(1, Math.ceil(workflow.batchHistoryTotal.value / workflow.batchHistoryFilter.pageSize)),
 )
 
-// 进入 stage / 关键身份字段变化时加载（缺字段时 workflow 内部自动空响应）
-onMounted(() => {
-  workflow.loadBatchHistory()
-})
-
 watch(
   () => [
     workflow.examId.value,
@@ -161,6 +156,7 @@ watch(
     workflow.batchHistoryFilter.pageNum = 1
     workflow.loadBatchHistory()
   },
+  { immediate: true },
 )
 </script>
 
@@ -187,14 +183,14 @@ watch(
         <span v-else-if="awaitingWebSeal" class="badge badge-warning"> 待 Web 封存 </span>
       </div>
     </header>
-    <div v-if="awaitingWebSeal" class="web-seal-hint">
-      <ExclamationCircleFilled />
-      <span>本批次已提交，请在教师 Web 端「扫描录入」页面核对后封存。</span>
-    </div>
-    <div v-else class="batch-empty">
+    <div v-if="!batch" class="batch-empty">
       <SafetyCertificateFilled class="batch-empty-icon" />
       <p>当前考试暂无已落库扫描批次</p>
       <small>请先返回「准备扫描」完成一次扫描并等待扫描页入库</small>
+    </div>
+    <div v-else-if="awaitingWebSeal" class="web-seal-hint">
+      <ExclamationCircleFilled />
+      <span>本批次已提交，请在教师 Web 端「扫描录入」页面核对后封存。</span>
     </div>
 
     <div v-if="batch" class="history-body">

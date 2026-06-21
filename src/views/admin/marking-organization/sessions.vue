@@ -39,10 +39,10 @@
       </ContextBar>
     </template>
 
-    <UiEmpty
+    <UiErrorRetryPanel
       v-if="!loading && sessionsLoadError"
-      description="暂无数据"
-      class="org-sessions__empty"
+      :error="sessionsLoadError"
+      @retry="reloadAll"
     />
     <UiEmpty
       v-else-if="!organization && !loading"
@@ -60,7 +60,7 @@
             :group-options="groupOptions"
             :sessions="trialSessions"
             :can-manage="canManageOrganization"
-            @refresh="loadTrialSessions"
+            @refresh="onTrialSessionsChanged"
             @open-lifecycle="openLifecycleModal"
           />
         </a-col>
@@ -70,7 +70,7 @@
             :group-options="groupOptions"
             :sessions="formalSessions"
             :can-manage="canManageOrganization"
-            @refresh="loadFormalSessions"
+            @refresh="onFormalSessionsChanged"
             @open-lifecycle="openLifecycleModal"
           />
         </a-col>
@@ -97,7 +97,7 @@ import type {
 } from '@/apis/mark/marking-organization'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getExamDetail } from '@/apis/mark/exam'
 import {
@@ -114,6 +114,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -125,6 +126,7 @@ defineOptions({ name: 'AdminMarkingOrganizationSessions' })
 
 const route = useRoute()
 const userStore = useUserStore()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 const organizationId = computed(() => String(route.params.organizationId || ''))
 
@@ -163,16 +165,25 @@ function guardOrganizationOwnerAction(): boolean {
   return false
 }
 
+function resetSessionState(): void {
+  organization.value = null
+  examDetail.value = null
+  trialSessions.value = []
+  formalSessions.value = []
+}
+
 async function loadOrganization(): Promise<void> {
-  if (!organizationId.value) return
+  if (!organizationId.value) {
+    resetSessionState()
+    return
+  }
   try {
     const nextOrganization = await getOrganizationById({ organizationId: organizationId.value })
     validateMarkingOrganizationContract(nextOrganization)
     organization.value = nextOrganization
     examDetail.value = await getExamDetail(nextOrganization.examId)
   } catch (error) {
-    organization.value = null
-    examDetail.value = null
+    resetSessionState()
     sessionsLoadError.value = toUserError(error, '阅卷组织加载失败')
     showUserError(error, '阅卷组织加载失败')
   }
@@ -213,6 +224,10 @@ async function loadFormalSessions(): Promise<void> {
 }
 
 async function reloadAll(): Promise<void> {
+  if (!organizationId.value) {
+    resetSessionState()
+    return
+  }
   loading.value = true
   // D-9：重试前清空错误态，让 UiErrorRetryPanel 在新失败时重新渲染
   sessionsLoadError.value = null
@@ -268,15 +283,28 @@ function openLifecycleModal(action: LifecycleAction, sessionId: string): void {
   lifecycleModalOpen.value = true
 }
 
+async function onTrialSessionsChanged(): Promise<void> {
+  await loadTrialSessions()
+  await refreshSnapshot()
+}
+
+async function onFormalSessionsChanged(): Promise<void> {
+  await loadFormalSessions()
+  await refreshSnapshot()
+}
+
 async function onLifecycleSuccess(): Promise<void> {
   if (lifecycleAction.value === 'closeTrial') {
     await loadTrialSessions()
   } else {
     await loadFormalSessions()
   }
+  await refreshSnapshot()
 }
 
-onMounted(reloadAll)
+watch(organizationId, () => {
+  void reloadAll()
+}, { immediate: true })
 </script>
 
 <style lang="scss" scoped>

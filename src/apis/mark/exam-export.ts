@@ -40,6 +40,14 @@ export const EXPORT_STATUS_TONE: Record<ExportTaskStatusCode, 'gray' | 'blue' | 
   FAILED: 'red',
 }
 
+/** 导出任务状态编码全集，筛选项与后端 ExportTaskStatus 逐值对齐 */
+export const EXPORT_STATUS_CODES: ExportTaskStatusCode[] = [
+  'PENDING',
+  'GENERATING',
+  'COMPLETED',
+  'FAILED',
+]
+
 /** 导出类型编码 */
 export type ExportTypeCode
   = | 'SCORE_EXCEL'
@@ -53,6 +61,14 @@ export const EXPORT_TYPE_LABEL: Record<ExportTypeCode, string> = {
   ANALYSIS_REPORT: '分析报告',
   IMAGE_ARCHIVE: '影像归档包',
 }
+
+/** 导出类型编码全集 */
+export const EXPORT_TYPE_CODES: ExportTypeCode[] = [
+  'SCORE_EXCEL',
+  'SCORE_PDF',
+  'ANALYSIS_REPORT',
+  'IMAGE_ARCHIVE',
+]
 
 /** 导出范围编码 */
 export type ExportScopeCode = 'EXAM' | 'CLASS' | 'QUESTION' | 'STUDENT'

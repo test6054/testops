@@ -21,7 +21,7 @@ import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
   assessmentItemApi,
   rubricItemApi,
@@ -30,7 +30,7 @@ import {
   scoreBatchApi,
   scoreRecordApi,
 } from '@/apis/quality'
-import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   ClassSelector,
   CourseSelector,
@@ -46,6 +46,7 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { readAllPages } from '@/utils/page-result'
@@ -99,6 +100,20 @@ const batches = ref<ScoreBatchVO[]>([])
 const batchesLoading = ref(false)
 const selectedBatch = ref<ScoreBatchVO | null>(null)
 
+const isBatchRecordEditable = computed(() => {
+  if (!selectedBatch.value) return false
+  const status = selectedBatch.value.status
+  return status !== 'CONFIRMED' && status !== 'PARSING' && status !== 'CANCELLED'
+})
+
+async function refreshSelectedBatch() {
+  if (!selectedBatch.value) return
+  const updated = await scoreBatchApi.detail(selectedBatch.value.id)
+  selectedBatch.value = updated
+  const index = batches.value.findIndex(item => item.id === updated.id)
+  if (index >= 0) batches.value[index] = updated
+}
+
 function selectBatch(batch: ScoreBatchVO) {
   selectedBatch.value = batch
 }
@@ -120,6 +135,51 @@ async function loadBatches() {
     )
   } finally {
     batchesLoading.value = false
+  }
+  syncBatchStatusPolling()
+}
+
+let batchStatusPollTimer: ReturnType<typeof setInterval> | null = null
+
+function syncBatchStatusPolling(): void {
+  const shouldPoll = batches.value.some((batch) => batch.status === 'PARSING')
+    || selectedBatch.value?.status === 'PARSING'
+  if (shouldPoll && !batchStatusPollTimer) {
+    batchStatusPollTimer = setInterval(() => {
+      void refreshBatchesQuietly()
+    }, 3000)
+  } else if (!shouldPoll && batchStatusPollTimer) {
+    clearInterval(batchStatusPollTimer)
+    batchStatusPollTimer = null
+  }
+}
+
+async function refreshBatchesQuietly(): Promise<void> {
+  if (!qualityStore.currentQualityCourseId || batchesLoading.value) {
+    return
+  }
+  try {
+    const nextBatches = await readAllPages(
+      (pageNum) => scoreBatchApi.page({
+        pageNum,
+        pageSize: SCORE_BATCH_OPTION_PAGE_SIZE,
+        qualityCourseId: qualityStore.currentQualityCourseId,
+      }),
+      '成绩批次列表加载失败，请稍后重试',
+    )
+    batches.value = nextBatches
+    if (selectedBatch.value) {
+      const updated = nextBatches.find((item) => item.id === selectedBatch.value!.id)
+      if (updated) {
+        selectedBatch.value = updated
+        if (updated.status !== 'PARSING') {
+          await loadRecords()
+        }
+      }
+    }
+    syncBatchStatusPolling()
+  } catch {
+    // 轮询刷新失败时不打断当前页面操作
   }
 }
 
@@ -310,6 +370,10 @@ function handleEditorStudentChange(value: string | null, option?: UserDto): void
 
 async function openCreate() {
   if (!selectedBatch.value) return
+  if (!isBatchRecordEditable.value) {
+    message.error('批次已确认，不允许新增成绩明细')
+    return
+  }
   editorMode.value = 'create'
   editor.value = {
     batchId: selectedBatch.value.id,
@@ -341,6 +405,10 @@ async function openCreate() {
 }
 
 async function openEdit(record: ScoreRecordVO) {
+  if (!isBatchRecordEditable.value) {
+    message.error('批次已确认，不允许修改成绩明细')
+    return
+  }
   editorMode.value = 'edit'
   editor.value = { ...record }
   await loadEditorRubrics(record.assessmentItemId, record)
@@ -348,6 +416,10 @@ async function openEdit(record: ScoreRecordVO) {
 }
 
 async function submitEditor() {
+  if (!isBatchRecordEditable.value) {
+    message.error('批次已确认，不允许修改成绩明细')
+    return
+  }
   const v = editor.value
   if (!v.assessmentItemId || v.score == null || v.fullScore == null) {
     message.error('请填写考核环节、得分、满分')
@@ -376,12 +448,17 @@ async function submitEditor() {
     message.success('已保存')
     editorVisible.value = false
     await loadRecords()
+    await refreshSelectedBatch()
   } finally {
     editorSubmitting.value = false
   }
 }
 
 async function handleDelete(record: ScoreRecordVO) {
+  if (!isBatchRecordEditable.value) {
+    message.error('批次已确认，不允许删除成绩明细')
+    return
+  }
   void confirmAsync({
     title: `删除该明细？`,
     content: `学号 ${record.studentNumber} 姓名 ${record.studentName}`,
@@ -390,6 +467,7 @@ async function handleDelete(record: ScoreRecordVO) {
       await scoreRecordApi.delete(record.id)
       message.success('已删除')
       await loadRecords()
+      await refreshSelectedBatch()
     },
   })
 }
@@ -450,7 +528,29 @@ watch(
   },
 )
 
-watch(selectedBatch, () => loadRecords())
+watch(selectedBatch, () => {
+  void loadRecords()
+  syncBatchStatusPolling()
+})
+
+async function handleScopeReload(): Promise<void> {
+  selectedBatch.value = null
+  if (!qualityStore.currentTrainingPlanId) {
+    batches.value = []
+    records.value = []
+    assessmentItems.value = []
+    return
+  }
+  if (qualityStore.currentQualityCourseId) {
+    await Promise.all([loadBatches(), loadAssessmentItems()])
+  } else {
+    batches.value = []
+    records.value = []
+    assessmentItems.value = []
+  }
+}
+
+useQualityScopeReload(handleScopeReload)
 
 onMounted(async () => {
   if (!qualityStore.currentTrainingPlanId) {
@@ -464,6 +564,23 @@ onMounted(async () => {
   }
 })
 
+onActivated(async () => {
+  if (qualityStore.currentQualityCourseId) {
+    await Promise.all([loadBatches(), loadAssessmentItems()])
+    if (selectedBatch.value) {
+      await refreshSelectedBatch()
+      await loadRecords()
+    }
+  }
+})
+
+onBeforeUnmount(() => {
+  if (batchStatusPollTimer) {
+    clearInterval(batchStatusPollTimer)
+    batchStatusPollTimer = null
+  }
+})
+
 function handleCourseChange(courseId: string | null) {
   qualityStore.setQualityCourse(courseId || '')
 }
@@ -472,9 +589,8 @@ function handleCourseChange(courseId: string | null) {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <QualityPageContextBar>
         <template #status>
-          <QualityScopeHeader />
           <span class="score-record__context-label">质量评价课程</span>
           <CourseSelector
             :value="qualityStore.currentQualityCourseId || null"
@@ -483,7 +599,7 @@ function handleCourseChange(courseId: string | null) {
             @change="handleCourseChange"
           />
         </template>
-      </ContextBar>
+      </QualityPageContextBar>
     </template>
 
     <UiEmpty
@@ -550,10 +666,21 @@ function handleCourseChange(courseId: string | null) {
           <template v-if="selectedBatch" #extra>
             <a-space>
               <UiTextAction @click="openValidByItem">按考核环节查有效</UiTextAction>
-              <router-link :to="{ name: 'QualityScoreBatch' }" class="score-record__import-link">
+              <router-link
+                v-if="isBatchRecordEditable"
+                :to="{ name: 'QualityScoreBatch' }"
+                class="score-record__import-link"
+              >
                 <UiButton variant="outline" size="sm">批量导入（Excel）</UiButton>
               </router-link>
-              <UiButton variant="primary" size="sm" @click="openCreate">新增明细</UiButton>
+              <UiButton
+                v-if="isBatchRecordEditable"
+                variant="primary"
+                size="sm"
+                @click="openCreate"
+              >
+                新增明细
+              </UiButton>
             </a-space>
           </template>
 
@@ -610,10 +737,11 @@ function handleCourseChange(courseId: string | null) {
                   </a-space>
                 </template>
                 <template v-else-if="column.key === 'actions'">
-                  <div class="operations-cell" @click.stop>
+                  <div v-if="isBatchRecordEditable" class="operations-cell" @click.stop>
                     <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
                     <UiTextAction tone="danger" @click="handleDelete(record)">删除</UiTextAction>
                   </div>
+                  <span v-else class="score-record__locked-hint">已锁定</span>
                 </template>
               </template>
             </UiDataTable>

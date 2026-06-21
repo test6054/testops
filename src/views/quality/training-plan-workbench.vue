@@ -49,7 +49,8 @@ import type {
 import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
 import {
   accreditationStandardApi,
@@ -63,7 +64,7 @@ import {
   trainingObjectiveRequirementApi,
   trainingPlanApi,
 } from '@/apis/quality'
-import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import ProgramEvaluationProfileSelector from '@/components/quality/selectors/ProgramEvaluationProfileSelector.vue'
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -75,6 +76,7 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -118,6 +120,9 @@ const stdMappingColumns: ColumnsType = [
 ]
 
 const qualityStore = useQualityStore()
+const route = useRoute()
+
+const planGateVisible = computed(() => route.query.planGate === 'requires-confirmed')
 
 const WEIGHT_EPSILON = 1e-3
 
@@ -319,6 +324,16 @@ const canRevokePlan = computed(
   () => !!currentPlan.value && planConfirmationStatus.value === 'CONFIRMED',
 )
 
+const isPlanStructureEditable = computed(
+  () => !!currentPlan.value && planConfirmationStatus.value !== 'CONFIRMED',
+)
+
+function guardPlanStructureEditable(action: string): boolean {
+  if (isPlanStructureEditable.value) return true
+  message.error(`培养方案已确认，请先撤回后再${action}`)
+  return false
+}
+
 const signals = computed<SignalMetric[]>(() => [
   {
     key: 'plan',
@@ -444,7 +459,7 @@ function openPlanCreate() {
 }
 
 function openPlanEdit() {
-  if (!currentPlan.value) return
+  if (!currentPlan.value || !guardPlanStructureEditable('编辑方案')) return
   planEditorMode.value = 'edit'
   Object.assign(planEditor, {
     id: currentPlan.value.id,
@@ -463,6 +478,7 @@ function openPlanEdit() {
 }
 
 async function submitPlan() {
+  if (planEditorMode.value === 'edit' && !guardPlanStructureEditable('编辑方案')) return
   if (
     !planEditor.programId.trim()
     || !planEditor.planCode.trim()
@@ -523,6 +539,7 @@ async function confirmPlan() {
       await trainingPlanApi.confirm(planId)
       message.success('培养方案已确认')
       await loadCurrentPlan()
+      await qualityStore.loadTrainingPlanOptions()
     },
   })
 }
@@ -539,12 +556,13 @@ async function revokePlan() {
       await trainingPlanApi.revoke(planId)
       message.success('培养方案已撤回')
       await loadCurrentPlan()
+      await qualityStore.loadTrainingPlanOptions()
     },
   })
 }
 
 async function deletePlan() {
-  if (!currentPlan.value) return
+  if (!currentPlan.value || !guardPlanStructureEditable('删除方案')) return
   const planId = currentPlan.value.id
   const planCode = currentPlan.value.planCode
   void confirmAsync({
@@ -580,6 +598,7 @@ const objectiveEditor = reactive<TrainingObjectiveSaveRequest>({
 const objectiveSubmitting = ref(false)
 
 function openObjectiveCreate() {
+  if (!guardPlanStructureEditable('新建培养目标')) return
   if (!qualityStore.currentTrainingPlanId) {
     message.warning('请先选择培养方案')
     return
@@ -597,6 +616,7 @@ function openObjectiveCreate() {
 }
 
 function openObjectiveEdit(record: TrainingObjectiveVO) {
+  if (!guardPlanStructureEditable('编辑培养目标')) return
   objectiveEditorMode.value = 'edit'
   Object.assign(objectiveEditor, record)
   objectiveEditorVisible.value = true
@@ -620,6 +640,7 @@ async function submitObjective() {
 }
 
 async function deleteObjective(record: TrainingObjectiveVO) {
+  if (!guardPlanStructureEditable('删除培养目标')) return
   void confirmAsync({
     title: `删除培养目标 ${record.objectiveCode}？`,
     content: '将级联删除其下所有"目标→毕业要求"权重映射。',
@@ -648,6 +669,7 @@ const objMappingSubmitting = ref(false)
 const objMappingEditingId = ref<string | undefined>(undefined)
 
 function openObjMappingCreate() {
+  if (!guardPlanStructureEditable('新增映射')) return
   if (!selectedObjective.value) return
   if (requirements.value.length === 0) {
     message.warning('当前方案下没有毕业要求，请先在「毕业要求与观测点」Tab 创建')
@@ -668,6 +690,7 @@ function openObjMappingCreate() {
 }
 
 function openObjMappingEdit(record: TrainingObjectiveRequirementVO) {
+  if (!guardPlanStructureEditable('编辑映射')) return
   objMappingEditorMode.value = 'edit'
   objMappingEditingId.value = record.id
   Object.assign(objMappingEditor, {
@@ -686,6 +709,7 @@ function handleObjectiveRequirementCellClick(cellEvent: {
   col: MatrixCol
   cell: MatrixCell | undefined
 }): void {
+  if (!guardPlanStructureEditable('维护映射')) return
   const objective = objectives.value.find((item) => item.id === cellEvent.row.key)
   if (!objective) return
   selectedObjective.value = objective
@@ -740,6 +764,7 @@ async function submitObjMapping() {
 }
 
 async function deleteObjMapping(record: TrainingObjectiveRequirementVO) {
+  if (!guardPlanStructureEditable('删除映射')) return
   void confirmAsync({
     title: '删除该映射？',
     type: 'error',
@@ -768,6 +793,7 @@ const requirementEditor = reactive<GraduationRequirementSaveRequest>({
 const requirementSubmitting = ref(false)
 
 function openRequirementCreate() {
+  if (!guardPlanStructureEditable('新建毕业要求')) return
   if (!qualityStore.currentTrainingPlanId) {
     message.warning('请先选择培养方案')
     return
@@ -788,6 +814,7 @@ function openRequirementCreate() {
 }
 
 function openRequirementEdit(record: GraduationRequirementVO) {
+  if (!guardPlanStructureEditable('编辑毕业要求')) return
   requirementEditorMode.value = 'edit'
   Object.assign(requirementEditor, {
     id: record.id,
@@ -823,6 +850,7 @@ async function submitRequirement() {
 }
 
 async function deleteRequirement(record: GraduationRequirementVO) {
+  if (!guardPlanStructureEditable('删除毕业要求')) return
   void confirmAsync({
     title: `删除毕业要求 ${record.requirementCode}？`,
     content: '将级联删除其下所有观测点、培养目标映射和标准条款映射。',
@@ -858,6 +886,7 @@ const indicatorEditor = reactive<RequirementIndicatorSaveRequest>({
 const indicatorSubmitting = ref(false)
 
 function openIndicatorCreate() {
+  if (!guardPlanStructureEditable('新增观测点')) return
   if (!selectedRequirement.value) return
   indicatorEditorMode.value = 'create'
   const sumNow = indicatorWeightSumByReq(selectedRequirement.value.id)
@@ -877,6 +906,7 @@ function openIndicatorCreate() {
 }
 
 function openIndicatorEdit(record: RequirementIndicatorVO) {
+  if (!guardPlanStructureEditable('编辑观测点')) return
   indicatorEditorMode.value = 'edit'
   Object.assign(indicatorEditor, {
     id: record.id,
@@ -919,6 +949,7 @@ async function submitIndicator() {
 }
 
 async function deleteIndicator(record: RequirementIndicatorVO) {
+  if (!guardPlanStructureEditable('删除观测点')) return
   void confirmAsync({
     title: `删除观测点 ${record.indicatorCode}？`,
     type: 'error',
@@ -947,6 +978,7 @@ const stdEditor = reactive<RequirementStandardMappingSaveRequest>({
 })
 
 function openStdMappingCreate() {
+  if (!guardPlanStructureEditable('新增标准映射')) return
   if (!selectedRequirement.value) return
   stdEditorMode.value = 'create'
   Object.assign(stdEditor, {
@@ -960,6 +992,7 @@ function openStdMappingCreate() {
 }
 
 function openStdMappingEdit(record: RequirementStandardMappingVO) {
+  if (!guardPlanStructureEditable('编辑标准映射')) return
   stdEditorMode.value = 'edit'
   Object.assign(stdEditor, {
     id: record.id,
@@ -984,6 +1017,7 @@ async function submitStdMapping() {
 }
 
 async function deleteStdMapping(record: RequirementStandardMappingVO) {
+  if (!guardPlanStructureEditable('删除标准映射')) return
   void confirmAsync({
     title: '删除该标准条款映射？',
     type: 'error',
@@ -999,17 +1033,16 @@ async function deleteStdMapping(record: RequirementStandardMappingVO) {
 
 const activeTab = ref<'objective' | 'requirement'>('objective')
 
-watch(
-  () => qualityStore.currentTrainingPlanId,
-  async () => {
-    selectedObjective.value = null
-    selectedRequirement.value = null
-    await loadCurrentPlan()
-    await Promise.all([loadObjectives(), loadRequirements(), loadObjectiveRequirementMappings()])
-    await loadAllIndicators()
-    await loadStandardMappings()
-  },
-)
+async function handleScopeChange(): Promise<void> {
+  selectedObjective.value = null
+  selectedRequirement.value = null
+  await loadCurrentPlan()
+  await Promise.all([loadObjectives(), loadRequirements(), loadObjectiveRequirementMappings()])
+  await loadAllIndicators()
+  await loadStandardMappings()
+}
+
+useQualityScopeReload(handleScopeChange)
 
 watch(selectedRequirement, () => loadStandardMappings())
 
@@ -1021,10 +1054,20 @@ onMounted(async () => {
       qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
     }
   } else {
+    await handleScopeChange()
+  }
+})
+
+onActivated(async () => {
+  if (qualityStore.currentTrainingPlanId) {
     await loadCurrentPlan()
-    await Promise.all([loadObjectives(), loadRequirements(), loadObjectiveRequirementMappings()])
-    await loadAllIndicators()
-    await loadStandardMappings()
+    await Promise.all([
+      loadObjectives(),
+      loadRequirements(),
+      loadAllIndicators(),
+      loadObjectiveRequirementMappings(),
+      loadStandardMappings(),
+    ])
   }
 })
 
@@ -1056,10 +1099,17 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 
 <template>
   <StageWorkbenchShell>
+    <a-alert
+      v-if="planGateVisible"
+      type="warning"
+      show-icon
+      banner
+      message="达成度与报告页面要求培养方案已确认。请在本页完成培养方案确认后再进入。"
+      class="tpw__plan-gate"
+    />
     <template #context>
-      <ContextBar>
+      <QualityPageContextBar>
         <template #status>
-          <QualityScopeHeader show-plan-confirmation />
           <span v-if="currentPlan" class="tpw__context-meta">
             学年 {{ currentPlan.schoolYear || '未配置学年' }} · 年级
             {{ currentPlan.gradeLevel || '未配置年级' }}
@@ -1067,16 +1117,23 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
         </template>
         <template #actions>
           <UiTextAction @click="openPlanCreate">新建方案</UiTextAction>
-          <UiButton variant="outline" size="sm" :disabled="!currentPlan" @click="openPlanEdit">
+          <UiButton
+            v-if="isPlanStructureEditable"
+            variant="outline"
+            size="sm"
+            @click="openPlanEdit"
+          >
             编辑方案
           </UiButton>
           <UiButton size="sm" :disabled="!canConfirmPlan" @click="confirmPlan">提交确认</UiButton>
           <UiButton v-if="canRevokePlan" variant="outline" size="sm" @click="revokePlan">
             撤回修订
           </UiButton>
-          <UiTextAction tone="danger" @click="deletePlan">删除方案</UiTextAction>
+          <UiTextAction v-if="isPlanStructureEditable" tone="danger" @click="deletePlan">
+            删除方案
+          </UiTextAction>
         </template>
-      </ContextBar>
+      </QualityPageContextBar>
     </template>
 
     <UiEmpty

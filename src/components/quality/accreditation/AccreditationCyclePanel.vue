@@ -7,6 +7,7 @@ import type {
   AccreditationCyclePhase,
   AccreditationCycleSaveRequest,
   AccreditationCycleVO,
+  AccreditationStandardVO,
   SelfAssessmentReviewDecisionRequest,
 } from '@/apis/quality'
 import { DownOutlined } from '@ant-design/icons-vue'
@@ -17,6 +18,7 @@ import {
   ACCREDITATION_CYCLE_PHASE_LABEL,
   ACCREDITATION_CYCLE_STATUS_LABEL,
   accreditationApi,
+  accreditationStandardApi,
 } from '@/apis/quality'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -24,16 +26,17 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import {
-  canConclusion,
   canDeleteCycle,
   canEditCycle,
   canRecordApplication,
+  canRegisterConclusion,
   canReview,
   canSubmitSelfAssessment,
+  canEditSelfAssessmentSection,
 } from '@/composables/useAccreditationWorkbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
+import { readAllPages, readPageList } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -63,6 +66,7 @@ const columns: ColumnsType<AccreditationCycleVO> = [
 
 const loading = ref(false)
 const cycles = ref<AccreditationCycleVO[]>([])
+const standards = ref<AccreditationStandardVO[]>([])
 const drawerOpen = ref(false)
 const detailOpen = ref(false)
 const reviewOpen = ref(false)
@@ -100,6 +104,8 @@ const conclusionForm = reactive<
 
 const activeCycle = computed(() => props.cockpit?.activeCycle)
 
+const canEditSelfAssessment = computed(() => canEditSelfAssessmentSection(activeCycle.value))
+
 const conclusionReadinessItems = computed(() => props.cockpit?.conclusionReadinessItems || [])
 
 const blockedConclusionItems = computed(() =>
@@ -118,6 +124,23 @@ const deadlineHints = computed(() => {
   }
   return hints
 })
+
+async function loadStandards() {
+  try {
+    standards.value = await readAllPages(
+      (pageNum) =>
+        accreditationStandardApi.page({
+          pageNum,
+          pageSize: 100,
+          enabled: true,
+        }),
+      '认证标准加载失败，请刷新后重试',
+    )
+  } catch (e) {
+    standards.value = []
+    showUserError(e)
+  }
+}
 
 async function loadCycles() {
   if (!props.trainingPlanId) return
@@ -140,6 +163,7 @@ function openCreate() {
   form.id = undefined
   form.programId = props.programId
   form.trainingPlanId = props.trainingPlanId
+  form.accreditationStandardId = standards.value[0]?.id
   form.cycleCode = `ACC-${new Date().getFullYear()}`
   form.cycleName = `${new Date().getFullYear()} 工程教育认证`
   form.remark = ''
@@ -152,6 +176,7 @@ function openEdit(row: AccreditationCycleVO) {
   form.id = row.id
   form.programId = row.programId
   form.trainingPlanId = row.trainingPlanId
+  form.accreditationStandardId = row.accreditationStandardId
   form.cycleCode = row.cycleCode
   form.cycleName = row.cycleName
   form.remark = row.remark
@@ -173,6 +198,10 @@ async function openDetail(row: AccreditationCycleVO) {
 async function submitCycle() {
   if (!form.cycleCode.trim() || !form.cycleName.trim()) {
     message.error('请填写周期编码与名称')
+    return
+  }
+  if (!form.id && !form.accreditationStandardId) {
+    message.error('请选择绑定的认证标准')
     return
   }
   try {
@@ -237,6 +266,10 @@ async function submitReview() {
 }
 
 function openConclusion(row: AccreditationCycleVO) {
+  if (!canRegisterConclusion(row, props.cockpit)) {
+    message.error('认证结论登记前置条件未全部就绪，请先处理阻断项')
+    return
+  }
   if (blockedConclusionItems.value.length) {
     message.error('认证结论登记前置条件未全部就绪，请先处理阻断项')
     return
@@ -294,7 +327,7 @@ function buildMenuItems(row: AccreditationCycleVO): AccreditationCycleMenuItem[]
   if (canReview(row)) {
     items.push({ key: 'review', label: '自评审阅决议' })
   }
-  if (canConclusion(row)) {
+  if (canRegisterConclusion(row, props.cockpit)) {
     items.push({ key: 'conclusion', label: '登记认证结论' })
   }
   if (canDeleteCycle(row)) {
@@ -324,6 +357,10 @@ async function handleCycleMenuClick(row: AccreditationCycleVO, event: MenuInfo) 
     return
   }
   if (matchedItem.key === 'self') {
+    if (!canSubmitSelfAssessment(row)) {
+      message.error('请先登记申请书提交，并确保自评八节内容就绪后再提交')
+      return
+    }
     await runAction(
       () => accreditationApi.submitSelfAssessment(row.id),
       '确认提交自评报告？提交后进入自评审阅阶段。',
@@ -331,10 +368,18 @@ async function handleCycleMenuClick(row: AccreditationCycleVO, event: MenuInfo) 
     return
   }
   if (matchedItem.key === 'review') {
+    if (!canReview(row)) {
+      message.error('当前周期不可登记自评审阅决议')
+      return
+    }
     openReview(row)
     return
   }
   if (matchedItem.key === 'conclusion') {
+    if (!canRegisterConclusion(row, props.cockpit)) {
+      message.error('认证结论登记前置条件未全部就绪，请先处理阻断项')
+      return
+    }
     openConclusion(row)
     return
   }
@@ -343,7 +388,10 @@ async function handleCycleMenuClick(row: AccreditationCycleVO, event: MenuInfo) 
   }
 }
 
-watch(() => props.trainingPlanId, loadCycles, { immediate: true })
+watch(() => props.trainingPlanId, () => {
+  void loadCycles()
+  void loadStandards()
+}, { immediate: true })
 
 defineExpose({ openCreate, loadCycles })
 </script>
@@ -364,7 +412,12 @@ defineExpose({ openCreate, loadCycles })
         <span v-for="hint in deadlineHints" :key="hint" class="meta">{{ hint }}</span>
       </div>
       <div class="banner-actions">
-        <UiButton size="sm" variant="outline" @click="emit('go-ai-report')">
+        <UiButton
+          size="sm"
+          variant="outline"
+          :disabled="!canEditSelfAssessment"
+          @click="emit('go-ai-report')"
+        >
           AI 生成自评报告
         </UiButton>
         <UiButton size="sm" @click="openDetail(activeCycle)">周期详情</UiButton>
@@ -455,6 +508,27 @@ defineExpose({ openCreate, loadCycles })
       @ok="submitCycle"
     >
       <a-form layout="vertical">
+        <a-form-item v-if="!form.id" label="绑定认证标准" required>
+          <a-select
+            v-model:value="form.accreditationStandardId"
+            placeholder="请选择已启用的认证标准"
+            :options="
+              standards.map((item) => ({
+                value: item.id,
+                label: `${item.standardCode} · ${item.standardName}`,
+              }))
+            "
+          />
+        </a-form-item>
+        <a-form-item v-else-if="form.accreditationStandardId" label="绑定认证标准">
+          <a-input
+            :value="
+              standards.find((item) => item.id === form.accreditationStandardId)?.standardName
+                || form.accreditationStandardId
+            "
+            disabled
+          />
+        </a-form-item>
         <a-form-item label="周期编码" required>
           <a-input v-model:value="form.cycleCode" :disabled="!!form.id" />
         </a-form-item>

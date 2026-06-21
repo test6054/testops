@@ -86,7 +86,14 @@
         @reset="resetFilter"
       />
 
+      <UiErrorRetryPanel
+        v-if="tasksLoadError"
+        :error="tasksLoadError"
+        @retry="loadTasks"
+      />
+
       <UiDataTable
+        v-else
         pagination-mode="client"
         :columns="columns"
         :data-source="tasks"
@@ -201,7 +208,7 @@ import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ANONYMITY_MODE_LABEL,
@@ -216,6 +223,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
@@ -472,13 +480,7 @@ watch(selectedExamId, () => {
   claimForm.sessionId = ''
   void loadTasks()
   void loadClaimContext()
-})
-
-onMounted(async () => {
-  if (selectedExamId.value) {
-    await Promise.all([loadTasks(), loadClaimContext()])
-  }
-})
+}, { immediate: true })
 </script>
 
 <style lang="scss" scoped>

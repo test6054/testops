@@ -39,7 +39,14 @@
         @reset="handleReset"
       />
 
+      <UiErrorRetryPanel
+        v-if="archiveLoadError"
+        :error="archiveLoadError"
+        @retry="loadArchives"
+      />
+
       <UiDataTable
+        v-else
         :columns="columns"
         :data-source="archives"
         :loading="loading"
@@ -187,7 +194,7 @@ import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ARCHIVE_PACKAGE_STATUS_CODES,
@@ -203,6 +210,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
@@ -465,10 +473,12 @@ watch(selectedExamId, (value) => {
     archives.value = []
     archivePagination.total = 0
   }
-})
+}, { immediate: true })
 
-onMounted(async () => {
-  await loadArchives()
+onActivated(() => {
+  if (!selectedExamId.value) return
+  void loadArchives()
+  void refreshSnapshot()
 })
 </script>
 

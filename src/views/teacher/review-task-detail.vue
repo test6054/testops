@@ -34,7 +34,11 @@
       class="task-detail-page__empty"
     />
 
-    <UiEmpty v-else-if="taskLoadError" description="暂无数据" />
+    <UiErrorRetryPanel
+      v-else-if="taskLoadError"
+      :error="taskLoadError"
+      @retry="loadTask"
+    />
 
     <a-spin v-else :spinning="loading" tip="正在加载任务...">
       <UiCard v-if="detail" class="info-card">
@@ -138,18 +142,20 @@ import PictureOutlined from '@ant-design/icons-vue/PictureOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   getReviewTaskDetail,
   listAnnotations,
   REVIEW_TASK_STATUS_LABEL,
   REVIEW_TASK_STATUS_TONE,
+  validateAnnotationContract,
 } from '@/apis/mark/exam'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -214,6 +220,7 @@ async function loadAnnotations(): Promise<void> {
       }),
       '批注记录加载失败，请刷新后重试',
     )
+    annotations.value.forEach(validateAnnotationContract)
   } catch (error) {
     showUserError(error, '批注记录加载失败')
   }
@@ -250,11 +257,8 @@ watch(
   () => {
     if (hasParams.value) void loadTask()
   },
+  { immediate: true },
 )
-
-onMounted(() => {
-  if (hasParams.value) void loadTask()
-})
 </script>
 
 <style lang="scss" scoped>

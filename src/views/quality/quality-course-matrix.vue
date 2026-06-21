@@ -50,7 +50,7 @@ import type { CourseListVO } from '@/apis/quality/user-catalog'
 import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
 import {
   AGGREGATION_FUNCTION_LABEL,
@@ -67,7 +67,7 @@ import {
   SUPPORT_LEVEL_DEFAULT_FACTOR,
   SUPPORT_LEVEL_LABEL,
 } from '@/apis/quality'
-import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import CourseSelector from '@/components/quality/selectors/CourseSelector.vue'
@@ -82,6 +82,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { ContextBar, MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -115,6 +116,16 @@ const rubricColumns: ColumnsType = [
 ]
 
 const qualityStore = useQualityStore()
+
+const isPlanStructureEditable = computed(
+  () => qualityStore.currentPlan?.confirmationStatus !== 'CONFIRMED',
+)
+
+function guardCourseMatrixEditable(action: string): boolean {
+  if (isPlanStructureEditable.value) return true
+  message.error(`培养方案已确认，请先撤回后再${action}`)
+  return false
+}
 
 const WEIGHT_EPSILON = 1e-3
 
@@ -527,6 +538,7 @@ const syllabusFileUploading = ref(false)
 const syllabusFileName = ref('')
 
 function openCourseCreate() {
+  if (!guardCourseMatrixEditable('新建课程')) return
   if (!qualityStore.currentTrainingPlanId) {
     message.warning('请先在"培养方案体系工作台"选择培养方案')
     return
@@ -556,7 +568,7 @@ function openCourseCreate() {
 }
 
 function openCourseEdit() {
-  if (!currentCourse.value) return
+  if (!currentCourse.value || !guardCourseMatrixEditable('编辑课程')) return
   courseEditorMode.value = 'edit'
   Object.assign(courseEditor, currentCourse.value)
   syllabusFileName.value = currentCourse.value.syllabusFileId ? '已关联教学大纲附件' : ''
@@ -626,6 +638,8 @@ function handleClassChange(value: string | null) {
 }
 
 async function submitCourse() {
+  if (courseEditorMode.value === 'edit' && !guardCourseMatrixEditable('编辑课程')) return
+  if (courseEditorMode.value === 'create' && !guardCourseMatrixEditable('新建课程')) return
   if (
     !courseEditor.programId.trim()
     || !courseEditor.trainingPlanId.trim()
@@ -655,7 +669,7 @@ async function submitCourse() {
 }
 
 async function deleteCourse() {
-  if (!currentCourse.value) return
+  if (!currentCourse.value || !guardCourseMatrixEditable('删除课程')) return
   const courseId = currentCourse.value.id
   const courseCode = currentCourse.value.courseCode
   void confirmAsync({
@@ -698,6 +712,7 @@ const goalEditor = reactive<CourseGoalSaveRequest>({
 const goalSubmitting = ref(false)
 
 function openGoalCreate() {
+  if (!guardCourseMatrixEditable('新建课程目标')) return
   if (!qualityStore.currentQualityCourseId) {
     message.warning('请先选择课程')
     return
@@ -722,12 +737,14 @@ function openGoalCreate() {
 }
 
 function openGoalEdit(record: CourseGoalVO) {
+  if (!guardCourseMatrixEditable('编辑课程目标')) return
   goalEditorMode.value = 'edit'
   Object.assign(goalEditor, record)
   goalEditorVisible.value = true
 }
 
 async function submitGoal() {
+  if (!guardCourseMatrixEditable('保存课程目标')) return
   if (!goalEditor.goalCode.trim() || !goalEditor.goalName.trim()) {
     message.error('请填写编码与名称')
     return
@@ -745,6 +762,7 @@ async function submitGoal() {
 }
 
 async function deleteGoal(record: CourseGoalVO) {
+  if (!guardCourseMatrixEditable('删除课程目标')) return
   void confirmAsync({
     title: `删除课程目标 ${record.goalCode}？`,
     content: '将级联删除该目标的所有支撑映射、考核权重、Rubric 关联和计算规则。',
@@ -774,6 +792,7 @@ const supportEditorDisplay = reactive({
 })
 
 function openSupportCreate(rowKey: string, colKey: string) {
+  if (!guardCourseMatrixEditable('维护课程支撑')) return
   supportEditorMode.value = 'create'
   const colMeta = supportCols.value.find((c) => c.key === colKey)
   if (!colMeta) return
@@ -800,6 +819,7 @@ function openSupportCreate(rowKey: string, colKey: string) {
 }
 
 function openSupportEdit(record: CourseGoalRequirementVO) {
+  if (!guardCourseMatrixEditable('编辑课程支撑')) return
   supportEditorMode.value = 'edit'
   Object.assign(supportEditor, {
     id: record.id,
@@ -819,6 +839,7 @@ function openSupportEdit(record: CourseGoalRequirementVO) {
 }
 
 async function submitSupport() {
+  if (!guardCourseMatrixEditable('保存课程支撑')) return
   if (!supportEditor.requirementId && !supportEditor.indicatorId) {
     message.error('必须指定毕业要求或观测点')
     return
@@ -868,6 +889,7 @@ function handleSupportCellClick(cellEvent: {
   col: MatrixCol
   cell: MatrixCell | undefined
 }) {
+  if (!guardCourseMatrixEditable('维护课程支撑')) return
   const colMeta = supportCols.value.find((c) => c.key === cellEvent.col.key)
   if (!colMeta) return
   const goalSupports = supportsOfGoal(cellEvent.row.key)
@@ -902,6 +924,7 @@ const itemEditor = reactive<AssessmentItemSaveRequest>({
 const itemSubmitting = ref(false)
 
 function openItemCreate() {
+  if (!guardCourseMatrixEditable('新建考核环节')) return
   if (!qualityStore.currentQualityCourseId) {
     message.warning('请先选择课程')
     return
@@ -924,12 +947,14 @@ function openItemCreate() {
 }
 
 function openItemEdit(record: AssessmentItemVO) {
+  if (!guardCourseMatrixEditable('编辑考核环节')) return
   itemEditorMode.value = 'edit'
   Object.assign(itemEditor, record)
   itemEditorVisible.value = true
 }
 
 async function submitItem() {
+  if (!guardCourseMatrixEditable('保存考核环节')) return
   if (!itemEditor.itemCode.trim() || !itemEditor.itemName.trim() || !itemEditor.itemType) {
     message.error('请填写编码、名称、类型')
     return
@@ -951,6 +976,7 @@ async function submitItem() {
 }
 
 async function deleteItem(record: AssessmentItemVO) {
+  if (!guardCourseMatrixEditable('删除考核环节')) return
   void confirmAsync({
     title: `删除考核环节 ${record.itemCode}？`,
     content: '将级联删除该环节的所有课程目标权重和 Rubric。',
@@ -989,6 +1015,7 @@ const weightEditorDisplay = reactive({
 })
 
 function openWeightCreate(itemId: string, goalId: string) {
+  if (!guardCourseMatrixEditable('维护考核权重')) return
   weightEditorMode.value = 'create'
   const item = assessmentItems.value.find((i) => i.id === itemId)
   const courseGoal = courseGoals.value.find((g) => g.id === goalId)
@@ -1017,6 +1044,7 @@ function openWeightCreate(itemId: string, goalId: string) {
 }
 
 function openWeightEdit(record: AssessmentGoalWeightVO) {
+  if (!guardCourseMatrixEditable('编辑考核权重')) return
   weightEditorMode.value = 'edit'
   Object.assign(weightEditor, {
     id: record.id,
@@ -1033,6 +1061,7 @@ function openWeightEdit(record: AssessmentGoalWeightVO) {
 }
 
 async function submitWeight() {
+  if (!guardCourseMatrixEditable('保存考核权重')) return
   if (weightEditor.weight == null || weightEditor.weight < 0 || weightEditor.weight > 1) {
     message.error('权重必须在 [0, 1] 之间')
     return
@@ -1049,6 +1078,7 @@ async function submitWeight() {
 }
 
 async function deleteWeight(record: AssessmentGoalWeightVO) {
+  if (!guardCourseMatrixEditable('删除考核权重')) return
   void confirmAsync({
     title: '删除该考核-目标权重？',
     type: 'error',
@@ -1072,6 +1102,7 @@ function handleAssessCellClick(cellEvent: {
   col: MatrixCol
   cell: MatrixCell | undefined
 }) {
+  if (!guardCourseMatrixEditable('维护考核权重')) return
   const matched = weightsOfItem(cellEvent.row.key).find((w) => w.courseGoalId === cellEvent.col.key)
   if (matched) openWeightEdit(matched)
   else openWeightCreate(cellEvent.row.key, cellEvent.col.key)
@@ -1099,6 +1130,7 @@ function openRubricList(item: AssessmentItemVO) {
 }
 
 function openRubricCreate() {
+  if (!guardCourseMatrixEditable('新增 Rubric')) return
   if (!rubricItem.value) return
   rubricEditorMode.value = 'create'
   Object.assign(rubricEditor, {
@@ -1115,6 +1147,7 @@ function openRubricCreate() {
 }
 
 function openRubricEdit(record: RubricItemVO) {
+  if (!guardCourseMatrixEditable('编辑 Rubric')) return
   rubricEditorMode.value = 'edit'
   Object.assign(rubricEditor, {
     id: record.id,
@@ -1130,6 +1163,7 @@ function openRubricEdit(record: RubricItemVO) {
 }
 
 async function submitRubric() {
+  if (!guardCourseMatrixEditable('保存 Rubric')) return
   if (
     !rubricEditor.rubricName.trim()
     || rubricEditor.fullScore == null
@@ -1146,6 +1180,7 @@ async function submitRubric() {
 }
 
 async function deleteRubric(record: RubricItemVO) {
+  if (!guardCourseMatrixEditable('删除 Rubric')) return
   void confirmAsync({
     title: `删除 Rubric「${record.rubricName}」？`,
     type: 'error',
@@ -1175,6 +1210,7 @@ const ruleEditor = reactive<CourseGoalAssessmentRuleSaveRequest>({
 })
 
 async function openRuleEditor(goal: CourseGoalVO) {
+  if (!guardCourseMatrixEditable('维护计算规则')) return
   ruleGoal.value = goal
   const existing = await courseGoalAssessmentRuleApi.findByCourseGoal(goal.id)
   if (existing) {
@@ -1210,6 +1246,7 @@ async function openRuleEditor(goal: CourseGoalVO) {
 }
 
 async function submitRule() {
+  if (!guardCourseMatrixEditable('保存计算规则')) return
   if (ruleEditor.thresholdValue == null) {
     message.error('请填写阈值')
     return
@@ -1224,6 +1261,21 @@ async function submitRule() {
 
 const activeTab = ref<'support' | 'assess' | 'goals'>('support')
 
+async function handleScopeChange(): Promise<void> {
+  if (!qualityStore.currentQualityCourseId && qualityStore.currentTrainingPlanId) {
+    await qualityStore.loadQualityCourseOptions()
+    if (qualityStore.qualityCourseOptions.length) {
+      qualityStore.setQualityCourse(qualityStore.qualityCourseOptions[0].id)
+      return
+    }
+  }
+  await loadCurrentCourse()
+  await Promise.all([loadCourseGoals(), loadAssessmentItems()])
+  await Promise.all([loadAllSupports(), loadAllItemMeta(), loadReferenceData()])
+}
+
+useQualityScopeReload(handleScopeChange)
+
 watch(
   () => qualityStore.currentQualityCourseId,
   async () => {
@@ -1231,6 +1283,7 @@ watch(
     await Promise.all([loadCourseGoals(), loadAssessmentItems()])
     await Promise.all([loadAllSupports(), loadAllItemMeta(), loadReferenceData()])
   },
+  { immediate: true },
 )
 
 function handleCourseChange(courseId: string | null) {
@@ -1238,18 +1291,16 @@ function handleCourseChange(courseId: string | null) {
 }
 
 onMounted(async () => {
-  if (!qualityStore.currentQualityCourseId) {
-    if (qualityStore.currentTrainingPlanId) {
-      await qualityStore.loadQualityCourseOptions()
-      if (qualityStore.qualityCourseOptions.length) {
-        qualityStore.setQualityCourse(qualityStore.qualityCourseOptions[0].id)
-      }
+  if (!qualityStore.currentQualityCourseId && qualityStore.currentTrainingPlanId) {
+    await qualityStore.loadQualityCourseOptions()
+    if (qualityStore.qualityCourseOptions.length) {
+      qualityStore.setQualityCourse(qualityStore.qualityCourseOptions[0].id)
     }
-  } else {
-    await loadCurrentCourse()
-    await Promise.all([loadCourseGoals(), loadAssessmentItems()])
-    await Promise.all([loadAllSupports(), loadAllItemMeta(), loadReferenceData()])
   }
+})
+
+onActivated(async () => {
+  await handleScopeChange()
 })
 
 /* ========== 字典 ========== */
@@ -1286,9 +1337,8 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <QualityPageContextBar>
         <template #status>
-          <QualityScopeHeader />
           <span class="qcm__context-label">质量评价课程</span>
           <CourseSelector
             :value="qualityStore.currentQualityCourseId || null"
@@ -1316,7 +1366,7 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
           </UiButton>
           <UiTextAction tone="danger" @click="deleteCourse">删除课程</UiTextAction>
         </template>
-      </ContextBar>
+      </QualityPageContextBar>
     </template>
 
     <UiEmpty

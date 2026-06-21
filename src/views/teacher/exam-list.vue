@@ -77,6 +77,12 @@
       单人批阅确认完成后，可直接进入成绩确认与发布。
     </UiAlertStrip>
 
+    <UiErrorRetryPanel
+      v-if="progressLoadError && !examsLoadError"
+      :error="progressLoadError"
+      @retry="loadAggregateProgress"
+    />
+
     <a-card :bordered="false" class="detail-table-card exam-list-page__table-card">
       <template #title>
         <span class="section-title">全部考试</span>
@@ -108,7 +114,14 @@
         </template>
       </UiFilterBar>
 
+      <UiErrorRetryPanel
+        v-if="examsLoadError"
+        :error="examsLoadError"
+        @retry="loadExams"
+      />
+
       <UiDataTable
+        v-else
         v-model:current="pagination.current"
         v-model:page-size="pagination.pageSize"
         :columns="columns"
@@ -178,7 +191,7 @@
                 关闭
               </UiTextAction>
               <UiTextAction
-                v-if="record.status !== 'CLOSED'"
+                v-if="record.status !== 'CLOSED' && isExamOwner(record)"
                 tone="danger"
                 @click="confirmDelete(record)"
               >
@@ -305,7 +318,7 @@ import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
 import Modal from 'ant-design-vue/es/modal'
 import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   batchGetMarkingProgress,
@@ -325,15 +338,17 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
+import { resolveScanStageEntryRoute } from '@/utils/resolve-scan-stage-entry'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamList' })
@@ -430,7 +445,7 @@ type ExamScoreCompositionMode = 'EXAM_ONLY' | 'EXAM_WITH_DAILY'
 
 const dataSource = ref<ExamSummaryVO[]>([])
 const loading = ref(false)
-const examsLoadError = ref(false)
+const examsLoadError = ref<Error | null>(null)
 const pagination = reactive<TablePaginationConfig>({
   current: 1,
   pageSize: 10,
@@ -451,7 +466,7 @@ const columns: ColumnType<ExamSummaryVO>[] = [
 
 const examProgressMap = ref<Map<string, MarkingProgressVO>>(new Map())
 const progressLoading = ref(false)
-const progressLoadError = ref('')
+const progressLoadError = ref<Error | null>(null)
 
 const progressReady = computed<boolean>(() => !progressLoading.value)
 
@@ -639,7 +654,7 @@ function formatAcademicTerm(exam: ExamSummaryVO): string {
 
 async function loadExams(): Promise<void> {
   loading.value = true
-  examsLoadError.value = false
+  examsLoadError.value = null
   try {
     const [startTime, endTime] = filterForm.dateRange ?? []
     const result = await pageExams({
@@ -655,8 +670,14 @@ async function loadExams(): Promise<void> {
     })
     dataSource.value = readPageList(result, '考试列表加载失败，请稍后重试')
     pagination.total = readPageTotal(result)
+    if (result.pageNum != null) {
+      pagination.current = result.pageNum
+    }
+    if (result.pageSize != null) {
+      pagination.pageSize = result.pageSize
+    }
   } catch (error) {
-    examsLoadError.value = true
+    examsLoadError.value = toUserError(error, '考试列表加载失败')
     dataSource.value = []
     pagination.total = 0
     showUserError(error, '考试列表加载失败')
@@ -668,7 +689,7 @@ async function loadExams(): Promise<void> {
 
 async function loadAggregateProgress(): Promise<void> {
   const activeExams = dataSource.value.filter((e) => e.status === 'ACTIVE')
-  progressLoadError.value = ''
+  progressLoadError.value = null
   if (activeExams.length === 0) {
     examProgressMap.value = new Map()
     return
@@ -684,11 +705,13 @@ async function loadAggregateProgress(): Promise<void> {
     examProgressMap.value = nextMap
     const failedCount = examIds.length - nextMap.size
     if (failedCount > 0) {
-      progressLoadError.value = `${failedCount} 场进行中考试的阅卷进度未能读取，今日待办和阶段状态可能不完整，请刷新后重试。`
+      progressLoadError.value = new Error(
+        `${failedCount} 场进行中考试的阅卷进度未能读取，今日待办和阶段状态可能不完整，请刷新后重试。`,
+      )
     }
   } catch (error) {
     examProgressMap.value = new Map()
-    progressLoadError.value = getUserErrorMessage(error, '阅卷进度批量加载失败')
+    progressLoadError.value = toUserError(error, '阅卷进度批量加载失败')
     showUserError(error, '阅卷进度批量加载失败')
   } finally {
     progressLoading.value = false
@@ -733,11 +756,15 @@ function goSmartExamEntry(examId: string): void {
     return
   }
   if (p.scanAttentionCount > 0) {
-    void router.push({ name: 'TeacherExamWorkspaceScanMonitor', params: { examId } })
+    void router.push(resolveScanStageEntryRoute(examId, { scanAttentionCount: p.scanAttentionCount }))
     return
   }
   if (p.totalQuestionGradeCount <= 0) {
-    void router.push({ name: 'TeacherExamWorkspaceOverview', params: { examId } })
+    if (p.questionCount <= 0) {
+      void router.push({ name: 'TeacherExamWorkspacePrep', params: { examId } })
+    } else {
+      void router.push(resolveScanStageEntryRoute(examId, { scanAttentionCount: 0 }))
+    }
     return
   }
   if (Math.max(0, p.totalQuestionGradeCount - p.confirmedQuestionGradeCount) > 0) {
@@ -797,7 +824,7 @@ const examForm = reactive<{
   examWindow?: [string, string]
   gradingStrategy?: GradingStrategyCode
   scoreCompositionMode: ExamScoreCompositionMode
-  dailyScoreFull: number | null
+  dailyScoreFull?: number
   remark?: string
 }>({
   courseId: null,
@@ -808,7 +835,7 @@ const examForm = reactive<{
   examWindow: undefined,
   gradingStrategy: undefined,
   scoreCompositionMode: 'EXAM_ONLY',
-  dailyScoreFull: null,
+  dailyScoreFull: undefined,
   remark: '',
 })
 
@@ -889,7 +916,7 @@ function resetExamForm(): void {
   examForm.examWindow = undefined
   examForm.gradingStrategy = undefined
   examForm.scoreCompositionMode = 'EXAM_ONLY'
-  examForm.dailyScoreFull = null
+  examForm.dailyScoreFull = undefined
   examForm.remark = ''
   formRef.value?.clearValidate()
 }
@@ -911,7 +938,7 @@ function openEditModal(exam: ExamSummaryVO): void {
     = exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
   examForm.gradingStrategy = exam.gradingStrategy
   examForm.scoreCompositionMode = exam.dailyScoreFull != null ? 'EXAM_WITH_DAILY' : 'EXAM_ONLY'
-  examForm.dailyScoreFull = exam.dailyScoreFull ?? null
+  examForm.dailyScoreFull = exam.dailyScoreFull ?? undefined
   examForm.remark = exam.remark ?? ''
   formModalOpen.value = true
 }
@@ -997,7 +1024,7 @@ function confirmClose(exam: ExamSummaryVO): void {
     async onOk() {
       await closeExam({ examId: exam.examId })
       message.success('考试已关闭')
-      await Promise.all([loadExams(), loadStatusTotals(), loadAggregateProgress()])
+      await Promise.all([loadExams(), loadStatusTotals()])
     },
   })
 }
@@ -1026,6 +1053,10 @@ async function reloadAll(): Promise<void> {
 }
 
 onMounted(() => {
+  void reloadAll()
+})
+
+onActivated(() => {
   void reloadAll()
 })
 </script>

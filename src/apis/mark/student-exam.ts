@@ -39,6 +39,16 @@ export const FINAL_SCORE_STATUS_TONE: Record<FinalScoreStatusCode, BadgeTone> = 
   WITHDRAWN: 'red',
 }
 
+/** 学生成绩状态筛选项真源 - 与 FINAL_SCORE_STATUS_LABEL 键集合一致 */
+export const FINAL_SCORE_STATUS_CODES: FinalScoreStatusCode[] = [
+  'PENDING',
+  'CALCULATED',
+  'CONFIRMED',
+  'CORRECTED',
+  'PUBLISHED',
+  'WITHDRAWN',
+]
+
 export type StudentReviewWindowStatusCode = 'DRAFT' | 'ACTIVE' | 'CLOSED'
 
 export const STUDENT_REVIEW_WINDOW_STATUS_LABEL: Record<StudentReviewWindowStatusCode, string> = {

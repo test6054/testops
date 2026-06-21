@@ -34,10 +34,11 @@
         <span>{{ record.heightPx ?? '—' }}</span>
       </template>
       <template v-else-if="column.key === 'pageActions'">
-        <a-space>
+        <a-space v-if="!readOnly">
           <UiButton size="sm" variant="ghost" @click="openEdit(index)">编辑</UiButton>
           <UiButton size="sm" variant="ghost" @click="emitRemove(index)">删除</UiButton>
         </a-space>
+        <span v-else class="exam-template-page-table__readonly-hint">—</span>
       </template>
     </template>
   </UiDataTable>
@@ -153,6 +154,14 @@ export interface ExamTemplatePageRow {
 
 const pages = defineModel<ExamTemplatePageRow[]>('pages', { required: true })
 
+const props = withDefaults(
+  defineProps<{
+    /** 只读模式：隐藏页级编辑/删除，用于考试已开印或已扫描后的模板页。 */
+    readOnly?: boolean
+  }>(),
+  { readOnly: false },
+)
+
 const emit = defineEmits<{
   remove: [index: number]
 }>()
@@ -196,6 +205,7 @@ function resetDraft(): void {
 }
 
 function openEdit(index: number): void {
+  if (props.readOnly) return
   const row = pages.value[index]
   if (!row) {
     return
@@ -250,6 +260,7 @@ function handleEditOk(): void {
 }
 
 function emitRemove(index: number): void {
+  if (props.readOnly) return
   emit('remove', index)
 }
 

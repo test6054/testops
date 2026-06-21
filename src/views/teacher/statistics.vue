@@ -34,8 +34,15 @@
       </UiButton>
     </div>
 
+    <UiErrorRetryPanel
+      v-if="rosterLoadError && currentExamId"
+      :error="rosterLoadError"
+      @retry="() => loadRoster(currentExamId)"
+    />
+
     <div v-if="currentExamId" class="stats-page__export-bar">
       <span class="stats-page__export-label">考后讲评</span>
+      <MarkQualitySyncChip :exam="selectedExam" />
       <UiButton variant="primary" size="sm" @click="exportTeachingLecture">
         导出讲评讲义
       </UiButton>
@@ -70,7 +77,11 @@
             :class-id="activeClassId"
             @generated="reloadRejudge"
           />
-          <RejudgePlanCard :exam-id="currentExamId" :reload-token="rejudgeToken" />
+          <RejudgePlanCard
+            :exam-id="currentExamId"
+            :reload-token="rejudgeToken"
+            @changed="onRejudgePlanChanged"
+          />
           <ErrorCauseClusterCard
             :exam-id="currentExamId"
             :reload-token="errorCauseToken"
@@ -121,11 +132,13 @@
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import MarkQualitySyncChip from '@/components/quality/MarkQualitySyncChip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import ClassWeaknessCard from './statistics/ClassWeaknessCard.vue'
 import ErrorCauseClusterCard from './statistics/ErrorCauseClusterCard.vue'
 import QuestionAnalysisCard from './statistics/QuestionAnalysisCard.vue'
@@ -136,7 +149,8 @@ import TeachingImprovementCard from './statistics/TeachingImprovementCard.vue'
 
 defineOptions({ name: 'TeacherStatistics' })
 
-const { selectedExamId } = useMarkExamContext()
+const { selectedExamId, selectedExam } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 const currentExamId = computed(() => selectedExamId.value || '')
 
 // B-12 联动：考试切换后统一加载考生名册，派生班级 / 学生选项交给子卡片，避免教师手输 ID
@@ -144,6 +158,7 @@ const {
   classOptions,
   studentOptions,
   loading: rosterLoading,
+  loadError: rosterLoadError,
   load: loadRoster,
   reset: resetRoster,
 } = useMarkExamRoster()
@@ -210,6 +225,9 @@ function clearLinkage(): void {
 }
 
 function reloadAll(): void {
+  if (currentExamId.value) {
+    void loadRoster(currentExamId.value)
+  }
   scoreDistToken.value += 1
   qaToken.value += 1
   rejudgeToken.value += 1
@@ -221,6 +239,11 @@ function reloadAll(): void {
 
 function reloadRejudge(): void {
   rejudgeToken.value += 1
+}
+
+async function onRejudgePlanChanged(): Promise<void> {
+  reloadAll()
+  await refreshSnapshot()
 }
 
 function exportTeachingLecture(): void {
@@ -240,14 +263,7 @@ watch(selectedExamId, (v) => {
   } else {
     resetRoster()
   }
-})
-
-onMounted(() => {
-  if (selectedExamId.value) {
-    void loadRoster(selectedExamId.value)
-    reloadAll()
-  }
-})
+}, { immediate: true })
 </script>
 
 <style lang="scss" scoped>

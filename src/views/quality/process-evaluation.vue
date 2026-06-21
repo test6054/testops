@@ -25,7 +25,7 @@ import type {
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
 import {
   CONFIRMATION_STATUS_COLOR,
@@ -37,7 +37,7 @@ import {
   processRecordApi,
 } from '@/apis/quality'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
-import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   AssessmentItemSelector,
   CourseGoalSelector,
@@ -54,6 +54,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -92,6 +93,25 @@ function confirmationStatusLabel(value: ConfirmationStatus): string {
 
 function confirmationStatusColor(value: ConfirmationStatus): BadgeTone {
   return strictEnumTone(CONFIRMATION_STATUS_COLOR, value, '确认状态')
+}
+
+const nodeStatusTransitMap: Record<ConfirmationStatus, ConfirmationStatus[]> = {
+  DRAFT: ['SUBMITTED'],
+  SUBMITTED: ['CONFIRMED', 'RETURNED'],
+  RETURNED: ['DRAFT', 'SUBMITTED'],
+  CONFIRMED: [],
+}
+
+function allowedNodeTransitions(current: ConfirmationStatus): ConfirmationStatus[] {
+  return nodeStatusTransitMap[current] ?? []
+}
+
+function isNodeMutable(node: ProcessEvaluationNodeVO): boolean {
+  return node.confirmationStatus !== 'CONFIRMED'
+}
+
+function canConfirmProcessRecord(record: ProcessEvaluationRecordVO): boolean {
+  return record.confirmationStatus === 'DRAFT' || record.confirmationStatus === 'SUBMITTED'
 }
 
 function processNodeTypeLabel(value: ProcessNodeType): string {
@@ -141,8 +161,13 @@ async function loadNodes() {
 async function handleScopeChange(): Promise<void> {
   if (qualityStore.currentQualityCourseId) {
     await loadNodes()
+    if (selectedNode.value) {
+      await loadRecords()
+    }
   }
 }
+
+useQualityScopeReload(handleScopeChange)
 
 /* ========== 节点编辑 ========== */
 
@@ -195,6 +220,10 @@ function openNodeCreate() {
 }
 
 function openNodeEdit(record: ProcessEvaluationNodeVO) {
+  if (!isNodeMutable(record)) {
+    message.warning('节点已确认，禁止编辑')
+    return
+  }
   nodeEditorMode.value = 'edit'
   nodeEditor.value = { ...record }
   nodeEditorVisible.value = true
@@ -206,6 +235,13 @@ async function submitNode() {
     message.error('请填写节点编码和名称')
     return
   }
+  if (nodeEditorMode.value === 'edit' && nodeEditor.value.id) {
+    const existed = nodes.value.find(item => item.id === nodeEditor.value.id)
+    if (existed && !isNodeMutable(existed)) {
+      message.warning('节点已确认，禁止编辑')
+      return
+    }
+  }
   if (nodeEditorMode.value === 'create') await processNodeApi.create(v)
   else await processNodeApi.update(v)
   message.success('已保存')
@@ -214,6 +250,10 @@ async function submitNode() {
 }
 
 async function handleNodeDelete(record: ProcessEvaluationNodeVO) {
+  if (!isNodeMutable(record)) {
+    message.warning('节点已确认，禁止删除')
+    return
+  }
   void confirmAsync({
     title: `删除节点 ${record.nodeCode}？`,
     type: 'error',
@@ -227,6 +267,10 @@ async function handleNodeDelete(record: ProcessEvaluationNodeVO) {
 }
 
 async function changeNodeStatus(record: ProcessEvaluationNodeVO, target: ConfirmationStatus) {
+  if (!allowedNodeTransitions(record.confirmationStatus).includes(target)) {
+    message.warning(`禁止由 ${confirmationStatusLabel(record.confirmationStatus)} 流转到 ${confirmationStatusLabel(target)}`)
+    return
+  }
   await processNodeApi.updateConfirmationStatus(record.id, target)
   message.success(`已切换到 ${confirmationStatusLabel(target)}`)
   await loadNodes()
@@ -365,6 +409,13 @@ async function submitRecord() {
     message.error('请填写完整记录')
     return
   }
+  if (recordEditorMode.value === 'edit' && recordEditor.value.id) {
+    const existed = records.value.find(item => item.id === recordEditor.value.id)
+    if (existed && existed.confirmationStatus === 'CONFIRMED') {
+      message.warning('记录已确认，禁止编辑')
+      return
+    }
+  }
   if (recordEditorMode.value === 'create') await processRecordApi.create(v)
   else await processRecordApi.update(v)
   message.success('已保存')
@@ -373,6 +424,10 @@ async function submitRecord() {
 }
 
 async function confirmRecord(record: ProcessEvaluationRecordVO) {
+  if (!canConfirmProcessRecord(record)) {
+    message.warning('仅起草或已提交状态的记录允许确认')
+    return
+  }
   await processRecordApi.confirm(record.id)
   message.success('记录已确认')
   await loadRecords()
@@ -578,6 +633,10 @@ onMounted(async () => {
   }
 })
 
+onActivated(async () => {
+  await handleScopeChange()
+})
+
 function handleCourseChange(courseId: string | null) {
   qualityStore.setQualityCourse(courseId || '')
 }
@@ -586,9 +645,8 @@ function handleCourseChange(courseId: string | null) {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <QualityPageContextBar>
         <template #status>
-          <QualityScopeHeader @change="handleScopeChange" />
           <span class="pe__filter-label">质量评价课程：</span>
           <CourseSelector
             :value="qualityStore.currentQualityCourseId || null"
@@ -597,7 +655,7 @@ function handleCourseChange(courseId: string | null) {
             @change="handleCourseChange"
           />
         </template>
-      </ContextBar>
+      </QualityPageContextBar>
     </template>
 
     <SignalBand
@@ -659,36 +717,28 @@ function handleCourseChange(courseId: string | null) {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
-                  <UiTextAction @click.stop="openNodeEdit(record)">编辑</UiTextAction>
-                  <a-dropdown>
+                  <UiTextAction v-if="isNodeMutable(record)" @click.stop="openNodeEdit(record)">编辑</UiTextAction>
+                  <a-dropdown v-if="allowedNodeTransitions(record.confirmationStatus).length">
                     <UiTextAction tone="primary" @click.stop.prevent>状态</UiTextAction>
                     <template #overlay>
                       <a-menu>
-                        <a-menu-item key="DRAFT" @click.stop="changeNodeStatus(record, 'DRAFT')">
-                          起草
-                        </a-menu-item>
                         <a-menu-item
-                          key="SUBMITTED"
-                          @click.stop="changeNodeStatus(record, 'SUBMITTED')"
+                          v-for="target in allowedNodeTransitions(record.confirmationStatus)"
+                          :key="target"
+                          @click.stop="changeNodeStatus(record, target)"
                         >
-                          提交
-                        </a-menu-item>
-                        <a-menu-item
-                          key="CONFIRMED"
-                          @click.stop="changeNodeStatus(record, 'CONFIRMED')"
-                        >
-                          确认
-                        </a-menu-item>
-                        <a-menu-item
-                          key="RETURNED"
-                          @click.stop="changeNodeStatus(record, 'RETURNED')"
-                        >
-                          退回
+                          {{ confirmationStatusLabel(target) }}
                         </a-menu-item>
                       </a-menu>
                     </template>
                   </a-dropdown>
-                  <UiTextAction tone="danger" @click.stop="handleNodeDelete(record)">删除</UiTextAction>
+                  <UiTextAction
+                    v-if="isNodeMutable(record)"
+                    tone="danger"
+                    @click.stop="handleNodeDelete(record)"
+                  >
+                    删除
+                  </UiTextAction>
                 </div>
               </template>
             </template>
@@ -781,7 +831,7 @@ function handleCourseChange(courseId: string | null) {
                     编辑
                   </UiTextAction>
                   <UiTextAction
-                    v-if="record.confirmationStatus !== 'CONFIRMED'"
+                    v-if="canConfirmProcessRecord(record)"
                     tone="primary"
                     @click="confirmRecord(record)"
                   >

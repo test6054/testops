@@ -32,12 +32,21 @@
           </a-space>
         </a-form-item>
       </a-form>
+      <UiErrorRetryPanel
+        v-if="experiencesLoadError"
+        :error="experiencesLoadError"
+        @retry="handleSourceExamChange"
+      />
     </div>
 
     <a-spin :spinning="loading || generating">
-      <!-- D-9 错误态：AI 经验有效性评估加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="loadError"
+        :error="loadError"
+        @retry="reload"
+      />
       <UiEmpty
-        v-if="!loading && !generating && !record"
+        v-else-if="!loading && !generating && !record"
         description="暂无数据"
       />
       <div v-else-if="record" class="ai-record">
@@ -162,6 +171,8 @@ const evalHistory = ref<ExperienceEffectivenessEvalVO[]>([])
 const experiences = ref<GradingExperienceCaseVO[]>([])
 const loading = ref(false)
 const experienceLoading = ref(false)
+// D-9：经验案例下拉列表加载失败时展示可重试错误面板
+const experiencesLoadError = ref<Error | null>(null)
 // D-9 错误态：AI 经验有效性评估加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<Error | null>(null)
 const generating = ref(false)
@@ -434,9 +445,12 @@ async function handleSourceExamChange(): Promise<void> {
   experiences.value = []
   if (!form.sourceExamId) return
   experienceLoading.value = true
+  experiencesLoadError.value = null
   try {
     experiences.value = (await listExperiences(form.sourceExamId)).map(acceptExperienceCase)
   } catch (e) {
+    experiences.value = []
+    experiencesLoadError.value = toUserError(e, '经验案例列表加载失败')
     showUserError(e, '经验案例列表加载失败')
   } finally {
     experienceLoading.value = false

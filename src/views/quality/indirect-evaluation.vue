@@ -12,24 +12,34 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  */
 import type {
   AchievementTargetType,
+  IndirectEvaluationFormPublishRequest,
   IndirectEvaluationFormQueryRequest,
   IndirectEvaluationFormSaveRequest,
   IndirectEvaluationFormVO,
   IndirectEvaluationItemSaveRequest,
   IndirectEvaluationItemType,
   IndirectEvaluationItemVO,
+  IndirectEvaluationProgressVO,
   IndirectEvaluationResponseSaveRequest,
   IndirectEvaluationResponseVO,
+  IndirectEvaluationStatisticsVO,
+  IndirectFormAccessMode,
+  IndirectFormStatus,
   IndirectFormType,
   RespondentType,
   ScaleConversionRuleVO,
 } from '@/apis/quality'
+import type { SurveyIdentityFieldVO } from '@/apis/public-survey'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
+import type { Dayjs } from 'dayjs'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import dayjs from 'dayjs'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import {
   ACHIEVEMENT_TARGET_TYPE_LABEL,
+  INDIRECT_FORM_ACCESS_MODE_LABEL,
+  INDIRECT_FORM_STATUS_LABEL,
   INDIRECT_FORM_TYPE_LABEL,
   indirectFormApi,
   indirectItemApi,
@@ -37,7 +47,7 @@ import {
   RESPONDENT_TYPE_LABEL,
   scaleConversionRuleApi,
 } from '@/apis/quality'
-import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   ClassSelector,
   CourseGoalSelector,
@@ -56,9 +66,11 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { throwUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
@@ -76,10 +88,11 @@ const listLoadError = ref<Error | null>(null)
 const formColumns: ColumnsType = [
   { title: '编码', dataIndex: 'formCode', key: 'formCode', width: 120 },
   { title: '名称', dataIndex: 'formName', key: 'formName' },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 90 },
   { title: '问卷类型', dataIndex: 'formType', key: 'formType', width: 140 },
   { title: '目标', dataIndex: 'targetType', key: 'targetType', width: 200 },
   { title: '期望样本', dataIndex: 'expectedSample', key: 'expectedSample', width: 100 },
-  { title: '操作', key: 'actions', width: 180, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 360, fixed: 'right' },
 ]
 
 const itemColumns: ColumnsType = [
@@ -105,6 +118,212 @@ function targetTypeLabel(value: AchievementTargetType): string {
 
 function respondentTypeLabel(value: RespondentType): string {
   return strictEnumLabel(RESPONDENT_TYPE_LABEL, value, '应答人类型')
+}
+
+function formTypeLabel(value: IndirectFormType): string {
+  return strictEnumLabel(INDIRECT_FORM_TYPE_LABEL, value, '间接评价问卷类型')
+}
+
+function formStatusLabel(value: IndirectFormStatus | undefined): string {
+  if (!value) {
+    return strictEnumLabel(INDIRECT_FORM_STATUS_LABEL, 'DRAFT', '间接评价问卷状态')
+  }
+  return strictEnumLabel(INDIRECT_FORM_STATUS_LABEL, value, '间接评价问卷状态')
+}
+
+function formStatusTone(value: IndirectFormStatus | undefined): 'gray' | 'green' | 'orange' | 'blue' {
+  const status = value ?? 'DRAFT'
+  if (status === 'PUBLISHED') return 'green'
+  if (status === 'CLOSED') return 'orange'
+  if (status === 'ARCHIVED') return 'blue'
+  return 'gray'
+}
+
+function canPublishForm(record: IndirectEvaluationFormVO): boolean {
+  const status = record.status ?? 'DRAFT'
+  return status === 'DRAFT' || status === 'CLOSED'
+}
+
+function isFormStructureMutable(record: IndirectEvaluationFormVO | null | undefined): boolean {
+  if (!record) return false
+  const status = record.status ?? 'DRAFT'
+  return status === 'DRAFT' || status === 'CLOSED'
+}
+
+function isTeacherResponseWritable(record: IndirectEvaluationFormVO | null | undefined): boolean {
+  if (!record) return false
+  const status = record.status ?? 'DRAFT'
+  return status === 'DRAFT' || status === 'PUBLISHED'
+}
+
+function canCloseForm(record: IndirectEvaluationFormVO): boolean {
+  return record.status === 'PUBLISHED'
+}
+
+function canShowWorkflowInsights(record: IndirectEvaluationFormVO): boolean {
+  const status = record.status ?? 'DRAFT'
+  return status === 'PUBLISHED' || status === 'CLOSED' || status === 'ARCHIVED'
+}
+
+function buildPublicSurveyUrl(accessToken: string): string {
+  return `${window.location.origin}/survey/${accessToken}`
+}
+
+const DEFAULT_IDENTITY_FIELDS: SurveyIdentityFieldVO[] = [
+  { fieldKey: 'NAME', fieldLabel: '姓名', fieldType: 'TEXT', required: true },
+  { fieldKey: 'ORGANIZATION', fieldLabel: '单位', fieldType: 'TEXT', required: false },
+  { fieldKey: 'CONTACT', fieldLabel: '联系方式', fieldType: 'TEXT', required: false },
+]
+
+const accessModeOptions: { value: IndirectFormAccessMode, label: string }[] = [
+  {
+    value: 'PUBLIC_LINK',
+    label: strictEnumLabel(INDIRECT_FORM_ACCESS_MODE_LABEL, 'PUBLIC_LINK', '问卷访问模式'),
+  },
+  {
+    value: 'AUTHENTICATED',
+    label: strictEnumLabel(INDIRECT_FORM_ACCESS_MODE_LABEL, 'AUTHENTICATED', '问卷访问模式'),
+  },
+  {
+    value: 'BOTH',
+    label: strictEnumLabel(INDIRECT_FORM_ACCESS_MODE_LABEL, 'BOTH', '问卷访问模式'),
+  },
+]
+
+const publishDrawerVisible = ref(false)
+const publishSubmitting = ref(false)
+const publishTargetForm = ref<IndirectEvaluationFormVO | null>(null)
+const publishTimeRange = ref<[Dayjs, Dayjs] | null>(null)
+const publishEditor = reactive<IndirectEvaluationFormPublishRequest>({
+  id: '',
+  startTime: '',
+  endTime: '',
+  accessMode: 'PUBLIC_LINK',
+  allowAnonymous: false,
+  requireIdentityFields: [...DEFAULT_IDENTITY_FIELDS],
+  maxSubmissionsPerRespondent: 1,
+  welcomeMessage: '',
+  thankYouMessage: '',
+})
+const publishResultUrl = ref('')
+
+const progressDrawerVisible = ref(false)
+const progressLoading = ref(false)
+const progressData = ref<IndirectEvaluationProgressVO | null>(null)
+
+const statisticsDrawerVisible = ref(false)
+const statisticsLoading = ref(false)
+const statisticsData = ref<IndirectEvaluationStatisticsVO | null>(null)
+
+function openPublishDrawer(record: IndirectEvaluationFormVO) {
+  publishTargetForm.value = record
+  publishResultUrl.value = ''
+  const start = dayjs()
+  const end = dayjs().add(14, 'day')
+  publishTimeRange.value = [start, end]
+  Object.assign(publishEditor, {
+    id: record.id,
+    startTime: start.format('YYYY-MM-DD HH:mm:ss'),
+    endTime: end.format('YYYY-MM-DD HH:mm:ss'),
+    accessMode: 'PUBLIC_LINK' as IndirectFormAccessMode,
+    allowAnonymous: false,
+    requireIdentityFields: [...DEFAULT_IDENTITY_FIELDS],
+    maxSubmissionsPerRespondent: 1,
+    welcomeMessage: record.description ?? '',
+    thankYouMessage: '感谢您的填写。',
+  })
+  publishDrawerVisible.value = true
+}
+
+async function submitPublish() {
+  if (!publishTargetForm.value) return
+  if (!publishTimeRange.value) {
+    message.error('请设置问卷填写时间窗口')
+    return
+  }
+  publishEditor.startTime = publishTimeRange.value[0].format('YYYY-MM-DD HH:mm:ss')
+  publishEditor.endTime = publishTimeRange.value[1].format('YYYY-MM-DD HH:mm:ss')
+  if (!publishEditor.allowAnonymous && (!publishEditor.requireIdentityFields?.length)) {
+    message.error('非匿名问卷必须配置身份字段')
+    return
+  }
+  publishSubmitting.value = true
+  try {
+    const result = await indirectFormApi.publish({
+      ...publishEditor,
+      requireIdentityFields: publishEditor.allowAnonymous ? [] : publishEditor.requireIdentityFields,
+    })
+    publishResultUrl.value = result.publicUrl.startsWith('http')
+      ? result.publicUrl
+      : buildPublicSurveyUrl(result.accessToken)
+    message.success('问卷已发布')
+    await loadForms()
+    if (selectedForm.value?.id === publishTargetForm.value.id) {
+      selectedForm.value = forms.value.find((item) => item.id === publishTargetForm.value?.id) ?? null
+    }
+  } catch (error) {
+    showUserError(error, '问卷发布失败')
+  } finally {
+    publishSubmitting.value = false
+  }
+}
+
+async function handleCloseForm(record: IndirectEvaluationFormVO) {
+  void confirmAsync({
+    title: `关闭问卷「${record.formName}」？`,
+    content: '关闭后将停止接受新的填答。',
+    type: 'warning',
+    onOk: async () => {
+      await indirectFormApi.close(record.id)
+      message.success('问卷已关闭')
+      await loadForms()
+      if (selectedForm.value?.id === record.id) {
+        selectedForm.value = forms.value.find((item) => item.id === record.id) ?? null
+      }
+    },
+  })
+}
+
+async function openProgressDrawer(record: IndirectEvaluationFormVO) {
+  progressDrawerVisible.value = true
+  progressLoading.value = true
+  progressData.value = null
+  try {
+    progressData.value = await indirectFormApi.progress(record.id)
+  } catch (error) {
+    showUserError(error, '问卷进度加载失败')
+    progressDrawerVisible.value = false
+  } finally {
+    progressLoading.value = false
+  }
+}
+
+async function openStatisticsDrawer(record: IndirectEvaluationFormVO) {
+  statisticsDrawerVisible.value = true
+  statisticsLoading.value = true
+  statisticsData.value = null
+  try {
+    statisticsData.value = await indirectFormApi.statistics(record.id)
+  } catch (error) {
+    showUserError(error, '问卷统计加载失败')
+    statisticsDrawerVisible.value = false
+  } finally {
+    statisticsLoading.value = false
+  }
+}
+
+async function copySurveyLink(record: IndirectEvaluationFormVO) {
+  if (!record.accessToken) {
+    message.error('问卷尚未发布，无法复制填答链接')
+    return
+  }
+  const url = buildPublicSurveyUrl(record.accessToken)
+  try {
+    await navigator.clipboard.writeText(url)
+    message.success('填答链接已复制')
+  } catch {
+    message.error(`复制失败，请手动复制：${url}`)
+  }
 }
 
 const formTypeOptions: { value: IndirectFormType, label: string }[] = [
@@ -185,10 +404,6 @@ const itemTypeOptions: { value: IndirectEvaluationItemType, label: string }[] = 
   { value: 'MULTI_CHOICE', label: '多选题' },
   { value: 'OPEN_TEXT', label: '开放文本' },
 ]
-
-function formTypeLabel(value: IndirectFormType): string {
-  return strictEnumLabel(INDIRECT_FORM_TYPE_LABEL, value, '间接评价问卷类型')
-}
 
 /* ========== 问卷分页 ========== */
 
@@ -400,8 +615,21 @@ async function loadForms() {
 
 async function handleScopeChange(): Promise<void> {
   listLoadError.value = null
-  await loadForms()
+  await reloadIndirectWorkbench()
 }
+
+async function reloadIndirectWorkbench(): Promise<void> {
+  await loadForms()
+  if (selectedForm.value) {
+    await loadItems()
+    await refreshValidCounts()
+    if (selectedItem.value) {
+      await loadResponses()
+    }
+  }
+}
+
+useQualityScopeReload(handleScopeChange)
 
 function syncFormFilterToQuery() {
   formQuery.formType = formFilterForm.formType
@@ -456,6 +684,10 @@ function openFormCreate() {
 }
 
 function openFormEdit(record: IndirectEvaluationFormVO) {
+  if (!isFormStructureMutable(record)) {
+    message.error('已发布或已归档的问卷不允许编辑')
+    return
+  }
   formEditorMode.value = 'edit'
   formEditorQualityCourseId.value = qualityStore.currentQualityCourseId
   formEditorTrainingPlanId.value = qualityStore.currentTrainingPlanId
@@ -477,6 +709,10 @@ async function submitForm() {
 }
 
 async function handleFormDelete(record: IndirectEvaluationFormVO) {
+  if (!isFormStructureMutable(record)) {
+    message.error('已发布或已归档的问卷不允许删除')
+    return
+  }
   void confirmAsync({
     title: `删除问卷 ${record.formCode}？`,
     type: 'error',
@@ -602,7 +838,10 @@ function assertEditableItemContract(record: IndirectEvaluationItemVO) {
 }
 
 function openItemCreate() {
-  if (!selectedForm.value) return
+  if (!selectedForm.value || !isFormStructureMutable(selectedForm.value)) {
+    message.error('当前问卷已发布，请先关闭后再维护题项')
+    return
+  }
   itemEditorMode.value = 'create'
   itemEditorQualityCourseId.value
     = formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
@@ -629,6 +868,10 @@ function openItemCreate() {
 }
 
 function openItemEdit(record: IndirectEvaluationItemVO) {
+  if (!selectedForm.value || !isFormStructureMutable(selectedForm.value)) {
+    message.error('当前问卷已发布，请先关闭后再维护题项')
+    return
+  }
   assertEditableItemContract(record)
   itemEditorMode.value = 'edit'
   itemEditorQualityCourseId.value
@@ -719,6 +962,10 @@ async function submitItem() {
 }
 
 async function deleteItem(record: IndirectEvaluationItemVO) {
+  if (!selectedForm.value || !isFormStructureMutable(selectedForm.value)) {
+    message.error('当前问卷已发布，请先关闭后再维护题项')
+    return
+  }
   void confirmAsync({
     title: `删除题项 ${record.itemCode}？`,
     type: 'error',
@@ -770,6 +1017,10 @@ const responseEditor = ref<IndirectEvaluationResponseSaveRequest>({
 
 function openResponseCreate() {
   if (!selectedItem.value || !selectedForm.value) return
+  if (!isTeacherResponseWritable(selectedForm.value)) {
+    message.error('问卷已关闭或已归档，不允许录入答卷')
+    return
+  }
   responseEditorMode.value = 'create'
   responseMultiChoiceValues.value = []
   responseEditorClassId.value = ''
@@ -795,16 +1046,20 @@ function openResponseCreate() {
 }
 
 function openResponseEdit(record: IndirectEvaluationResponseVO) {
+  if (!selectedForm.value || !isTeacherResponseWritable(selectedForm.value)) {
+    message.error('问卷已关闭或已归档，不允许修改答卷')
+    return
+  }
   responseEditorMode.value = 'edit'
   responseMultiChoiceValues.value
     = record.multipleChoiceValues?.map((option) => option.optionValue) ?? []
   responseEditorClassId.value = ''
   responseIdentityName.value
-    = record.identityValues?.find((item) => item.fieldKey === 'name')?.fieldValue ?? ''
+    = record.identityValues?.find((item) => item.fieldKey === 'NAME')?.fieldValue ?? ''
   responseIdentityOrganization.value
-    = record.identityValues?.find((item) => item.fieldKey === 'organization')?.fieldValue ?? ''
+    = record.identityValues?.find((item) => item.fieldKey === 'ORGANIZATION')?.fieldValue ?? ''
   responseIdentityContact.value
-    = record.identityValues?.find((item) => item.fieldKey === 'contact')?.fieldValue ?? ''
+    = record.identityValues?.find((item) => item.fieldKey === 'CONTACT')?.fieldValue ?? ''
   responseEditor.value = {
     ...record,
     multipleChoiceValues: record.multipleChoiceValues?.map((option) => ({ ...option })) ?? [],
@@ -836,9 +1091,9 @@ async function submitResponse() {
     }
     v.respondentId = undefined
     v.identityValues = [
-      { fieldKey: 'name', fieldValue: responseIdentityName.value.trim() },
-      { fieldKey: 'organization', fieldValue: responseIdentityOrganization.value.trim() },
-      { fieldKey: 'contact', fieldValue: responseIdentityContact.value.trim() },
+      { fieldKey: 'NAME', fieldValue: responseIdentityName.value.trim() },
+      { fieldKey: 'ORGANIZATION', fieldValue: responseIdentityOrganization.value.trim() },
+      { fieldKey: 'CONTACT', fieldValue: responseIdentityContact.value.trim() },
     ].filter((item) => item.fieldValue)
   } else {
     v.identityValues = []
@@ -955,6 +1210,10 @@ function selectedItemChoiceOptions() {
 }
 
 async function deleteResponse(record: IndirectEvaluationResponseVO) {
+  if (!selectedForm.value || !isTeacherResponseWritable(selectedForm.value)) {
+    message.error('问卷已关闭或已归档，不允许删除答卷')
+    return
+  }
   void confirmAsync({
     title: '删除该答卷？',
     type: 'error',
@@ -972,6 +1231,10 @@ const importExcelVisible = ref(false)
 
 function openImportExcel() {
   if (!selectedForm.value) return
+  if (!isTeacherResponseWritable(selectedForm.value)) {
+    message.error('问卷已关闭或已归档，不允许导入答卷')
+    return
+  }
   importExcelVisible.value = true
 }
 
@@ -991,6 +1254,10 @@ async function handleAiDocParseDone() {
 
 function openImportDocument() {
   if (!selectedForm.value) return
+  if (!isTeacherResponseWritable(selectedForm.value)) {
+    message.error('问卷已关闭或已归档，不允许导入答卷')
+    return
+  }
   importDocumentVisible.value = true
 }
 
@@ -1089,23 +1356,26 @@ watch(selectedForm, async () => {
 watch(selectedItem, () => loadResponses())
 
 onMounted(async () => {
-  await Promise.all([loadForms(), loadScaleRules()])
+  await loadScaleRules()
+  await reloadIndirectWorkbench()
+})
+
+onActivated(async () => {
+  await loadScaleRules()
+  await reloadIndirectWorkbench()
 })
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
-        <template #status>
-          <QualityScopeHeader @change="handleScopeChange" />
-        </template>
+      <QualityPageContextBar>
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="formsLoading" @click="handleScopeChange">
             刷新
           </UiButton>
         </template>
-      </ContextBar>
+      </QualityPageContextBar>
     </template>
 
     <SignalBand :metrics="signals" compact class="ie__signals" />
@@ -1146,7 +1416,12 @@ onMounted(async () => {
         "
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'formType'">
+          <template v-if="column.key === 'status'">
+            <UiTag :tone="formStatusTone(record.status)" size="sm">
+              {{ formStatusLabel(record.status) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'formType'">
             {{ formTypeLabel(record.formType) }}
           </template>
           <template v-else-if="column.key === 'targetType'">
@@ -1154,8 +1429,40 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <UiTextAction @click.stop="openFormEdit(record)">编辑</UiTextAction>
-              <UiTextAction tone="danger" @click.stop="handleFormDelete(record)">删除</UiTextAction>
+              <UiTextAction v-if="canPublishForm(record)" @click.stop="openPublishDrawer(record)">
+                发布
+              </UiTextAction>
+              <UiTextAction v-if="canCloseForm(record)" @click.stop="handleCloseForm(record)">
+                关闭
+              </UiTextAction>
+              <UiTextAction
+                v-if="canShowWorkflowInsights(record)"
+                @click.stop="openProgressDrawer(record)"
+              >
+                进度
+              </UiTextAction>
+              <UiTextAction
+                v-if="canShowWorkflowInsights(record)"
+                @click.stop="openStatisticsDrawer(record)"
+              >
+                统计
+              </UiTextAction>
+              <UiTextAction
+                v-if="record.status === 'PUBLISHED' && record.accessToken"
+                @click.stop="copySurveyLink(record)"
+              >
+                复制链接
+              </UiTextAction>
+              <UiTextAction v-if="isFormStructureMutable(record)" @click.stop="openFormEdit(record)">
+                编辑
+              </UiTextAction>
+              <UiTextAction
+                v-if="isFormStructureMutable(record)"
+                tone="danger"
+                @click.stop="handleFormDelete(record)"
+              >
+                删除
+              </UiTextAction>
             </div>
           </template>
         </template>
@@ -1163,11 +1470,54 @@ onMounted(async () => {
     </UiCard>
 
     <a-row v-if="selectedForm" :gutter="12" class="ie__split">
+      <a-col :span="24">
+        <UiCard v-if="canShowWorkflowInsights(selectedForm)" class="ie__workflow-card">
+          <template #title>问卷运行态</template>
+          <template #extra>
+            <div class="ie__panel-actions">
+              <UiButton
+                v-if="selectedForm.status === 'PUBLISHED' && selectedForm.accessToken"
+                size="sm"
+                variant="outline"
+                @click="copySurveyLink(selectedForm)"
+              >
+                复制填答链接
+              </UiButton>
+              <UiButton size="sm" variant="outline" @click="openProgressDrawer(selectedForm)">
+                查看进度
+              </UiButton>
+              <UiButton size="sm" variant="outline" @click="openStatisticsDrawer(selectedForm)">
+                查看统计
+              </UiButton>
+              <UiButton
+                v-if="canCloseForm(selectedForm)"
+                size="sm"
+                variant="outline"
+                @click="handleCloseForm(selectedForm)"
+              >
+                关闭问卷
+              </UiButton>
+            </div>
+          </template>
+          <p class="ie__workflow-line">
+            状态：{{ formStatusLabel(selectedForm.status) }}
+            <span v-if="selectedForm.startTime"> · 开始 {{ selectedForm.startTime }}</span>
+            <span v-if="selectedForm.endTime"> · 截止 {{ selectedForm.endTime }}</span>
+          </p>
+        </UiCard>
+      </a-col>
       <a-col :span="12">
         <UiCard class="detail-table-card ie__item-card">
           <template #title>题项</template>
           <template #extra>
-            <UiButton variant="primary" size="sm" @click="openItemCreate">新建题项</UiButton>
+            <UiButton
+              v-if="isFormStructureMutable(selectedForm)"
+              variant="primary"
+              size="sm"
+              @click="openItemCreate"
+            >
+              新建题项
+            </UiButton>
           </template>
 
           <UiDataTable
@@ -1207,7 +1557,7 @@ onMounted(async () => {
                 </span>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <div class="operations-cell" @click.stop>
+                <div v-if="isFormStructureMutable(selectedForm)" class="operations-cell" @click.stop>
                   <UiTextAction @click.stop="openItemEdit(record)">编辑</UiTextAction>
                   <UiTextAction tone="danger" @click.stop="deleteItem(record)">删除</UiTextAction>
                 </div>
@@ -1226,11 +1576,30 @@ onMounted(async () => {
           </template>
           <template #extra>
             <a-space>
-              <UiButton variant="outline" size="sm" @click="openImportExcel">Excel 导入</UiButton>
-              <UiButton variant="outline" size="sm" @click="openImportDocument">
+              <UiButton
+                v-if="isTeacherResponseWritable(selectedForm)"
+                variant="outline"
+                size="sm"
+                @click="openImportExcel"
+              >
+                Excel 导入
+              </UiButton>
+              <UiButton
+                v-if="isTeacherResponseWritable(selectedForm)"
+                variant="outline"
+                size="sm"
+                @click="openImportDocument"
+              >
                 PDF / Word / 图片
               </UiButton>
-              <UiButton variant="primary" size="sm" @click="openResponseCreate">新增答卷</UiButton>
+              <UiButton
+                v-if="isTeacherResponseWritable(selectedForm)"
+                variant="primary"
+                size="sm"
+                @click="openResponseCreate"
+              >
+                新增答卷
+              </UiButton>
             </a-space>
           </template>
 
@@ -1276,10 +1645,15 @@ onMounted(async () => {
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <div class="operations-cell" @click.stop>
+                <div
+                  v-if="isTeacherResponseWritable(selectedForm)"
+                  class="operations-cell"
+                  @click.stop
+                >
                   <UiTextAction @click="openResponseEdit(record)">编辑</UiTextAction>
                   <UiTextAction tone="danger" @click="deleteResponse(record)">删除</UiTextAction>
                 </div>
+                <span v-else class="ie__sub-desc">已锁定</span>
               </template>
             </template>
           </UiDataTable>
@@ -1803,6 +2177,92 @@ onMounted(async () => {
       </a-form>
     </a-modal>
 
+    <UiDrawer
+      v-model:open="publishDrawerVisible"
+      title="发布间接评价问卷"
+      width="560"
+      :confirm-loading="publishSubmitting"
+      @ok="submitPublish"
+    >
+      <a-form layout="vertical">
+        <a-form-item label="填写时间窗口" required>
+          <a-range-picker
+            v-model:value="publishTimeRange"
+            show-time
+            format="YYYY-MM-DD HH:mm:ss"
+            style="width: 100%"
+          />
+        </a-form-item>
+        <a-form-item label="访问模式" required>
+          <a-select v-model:value="publishEditor.accessMode" :options="accessModeOptions" />
+        </a-form-item>
+        <a-form-item label="允许匿名">
+          <a-switch v-model:checked="publishEditor.allowAnonymous" />
+        </a-form-item>
+        <a-form-item label="每人最大提交次数" required>
+          <a-input-number
+            v-model:value="publishEditor.maxSubmissionsPerRespondent"
+            :min="1"
+            style="width: 100%"
+          />
+        </a-form-item>
+        <a-form-item label="欢迎语">
+          <a-textarea v-model:value="publishEditor.welcomeMessage" :rows="2" />
+        </a-form-item>
+        <a-form-item label="感谢语">
+          <a-textarea v-model:value="publishEditor.thankYouMessage" :rows="2" />
+        </a-form-item>
+        <a-alert
+          v-if="publishResultUrl"
+          type="success"
+          show-icon
+          :message="`填答链接：${publishResultUrl}`"
+        />
+      </a-form>
+    </UiDrawer>
+
+    <UiDrawer v-model:open="progressDrawerVisible" title="问卷填写进度" width="480" hide-footer>
+      <a-spin :spinning="progressLoading">
+        <template v-if="progressData">
+          <p>问卷：{{ progressData.formName }}</p>
+          <p>状态：{{ formStatusLabel(progressData.status as IndirectFormStatus | undefined) }}</p>
+          <p>提交份数：{{ progressData.submissionCount }} / 有效 {{ progressData.validCount }}</p>
+          <p v-if="progressData.expectedSample">期望样本：{{ progressData.expectedSample }}</p>
+          <p v-if="progressData.completionRate != null">
+            完成率：{{ progressData.completionRate }}%
+          </p>
+        </template>
+      </a-spin>
+    </UiDrawer>
+
+    <UiDrawer v-model:open="statisticsDrawerVisible" title="问卷统计分析" width="720" hide-footer>
+      <a-spin :spinning="statisticsLoading">
+        <template v-if="statisticsData">
+          <p>
+            总样本：{{ statisticsData.overallSampleCount }}
+            <span v-if="statisticsData.overallScore != null">
+              · 综合换算分 {{ statisticsData.overallScore }}
+            </span>
+          </p>
+          <UiDataTable
+            pagination-mode="none"
+            :columns="[
+              { title: '题项', dataIndex: 'itemCode', key: 'itemCode', width: 100 },
+              { title: '题干', dataIndex: 'itemText', key: 'itemText' },
+              { title: '有效样本', dataIndex: 'validCount', key: 'validCount', width: 100 },
+              { title: '均值', dataIndex: 'mean', key: 'mean', width: 80 },
+              { title: '换算分', dataIndex: 'convertedScore', key: 'convertedScore', width: 90 },
+            ]"
+            :data-source="statisticsData.items"
+            row-key="itemId"
+            :show-pagination="false"
+            flat
+            :total="statisticsData.items.length"
+          />
+        </template>
+      </a-spin>
+    </UiDrawer>
+
     <!-- Excel 批量导入答卷 -->
     <ImportResponseExcelModal
       v-model:open="importExcelVisible"
@@ -1821,6 +2281,16 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .ie {
+  &__workflow-card {
+    margin-bottom: 12px;
+  }
+
+  &__workflow-line {
+    margin: 0;
+    color: var(--dp-text-muted, #64748b);
+    font-size: 13px;
+  }
+
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;

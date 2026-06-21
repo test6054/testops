@@ -127,6 +127,12 @@ watch(
             <ReloadOutlined :spin="workflow.examOptionLoading.value" />
           </button>
         </div>
+        <UiErrorRetryPanel
+          v-if="workflow.examOptionLoadError.value && !workflow.examOptionLoading.value"
+          :error="workflow.examOptionLoadError.value"
+          compact
+          @retry="workflow.refreshExamOptionsByUser"
+        />
         <p v-if="workflow.selectedExamOption.value" class="field__hint">
           {{ workflow.selectedExamOption.value.examNo }}
           <template v-if="workflow.selectedExamOption.value.academicYear">

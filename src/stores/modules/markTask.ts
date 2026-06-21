@@ -26,11 +26,13 @@ import type {
 } from '@/apis/mark/marking-organization'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { listReviewTasks } from '@/apis/mark/exam'
+import { listReviewTasks, validateReviewTaskItemContract } from '@/apis/mark/exam'
 import {
   claimMarkingTasks,
   getTeacherClaimContext,
   listMarkingTasks,
+  validateMarkingTaskContract,
+  validateTeacherClaimContextContract,
 } from '@/apis/mark/marking-organization'
 import { readAllPages } from '@/utils/page-result'
 
@@ -79,7 +81,9 @@ export const useMarkTaskStore = defineStore('markTask', () => {
   async function loadTasks(request: MarkingTaskQueryRequest): Promise<MarkingTaskVO[]> {
     tasksLoading.value = true
     try {
-      tasks.value = await listMarkingTasks(request)
+      const loaded = await listMarkingTasks(request)
+      loaded.forEach(validateMarkingTaskContract)
+      tasks.value = loaded
       tasksLoadedExamId.value = request.examId
       return tasks.value
     } finally {
@@ -89,6 +93,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
 
   async function claimTasks(request: MarkingTaskClaimRequest): Promise<MarkingTaskVO[]> {
     const claimed = await claimMarkingTasks(request)
+    claimed.forEach(validateMarkingTaskContract)
     if (claimed.length > 0) {
       tasks.value = [...claimed, ...tasks.value]
     }
@@ -101,6 +106,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     claimContextLoading.value = true
     try {
       const result = await getTeacherClaimContext(request)
+      validateTeacherClaimContextContract(result)
       const next = new Map(claimContextByExam.value)
       next.set(request.examId, result)
       claimContextByExam.value = next
@@ -126,6 +132,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
         }),
         '复核任务列表加载失败，请稍后重试',
       )
+      reviewTasks.value.forEach(validateReviewTaskItemContract)
       reviewTasksPagination.value = {
         pageNum: 1,
         pageSize: reviewTasks.value.length,

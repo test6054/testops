@@ -22,10 +22,10 @@
       class="ledger-page__empty"
     />
 
-    <UiEmpty
-      v-else-if="!loadingDetail && ledgerLoadError"
-      description="暂无数据"
-      class="ledger-page__empty"
+    <UiErrorRetryPanel
+      v-else-if="ledgerLoadError"
+      :error="ledgerLoadError"
+      @retry="loadAll"
     />
 
     <div v-else class="ledger-page__cards">
@@ -45,7 +45,7 @@
           @balance="handleBalance"
         />
       </a-card>
-      <DuplicateResolutionCard :exam-id="selectedExamId" @resolve="openResolve" />
+      <DuplicateResolutionCard ref="duplicateCardRef" :exam-id="selectedExamId" @resolve="openResolve" />
     </div>
   </div>
 
@@ -67,8 +67,10 @@ import { useRouter } from 'vue-router'
 import { executeImageLedgerBalance, getImageLedgerDetail, normalizeImageLedgerDetail } from '@/apis/mark/image-ledger'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
 import DuplicateResolutionCard from './image-ledger/DuplicateResolutionCard.vue'
@@ -79,6 +81,7 @@ defineOptions({ name: 'TeacherImageLedger' })
 
 const router = useRouter()
 const { selectedExamId } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 function goBackToScanLiveMonitor(): void {
   if (selectedExamId.value) {
@@ -90,6 +93,7 @@ function goBackToScanLiveMonitor(): void {
 }
 
 const ledger = ref<ImageLedgerDetailVO | null>(null)
+const duplicateCardRef = ref<InstanceType<typeof DuplicateResolutionCard> | null>(null)
 const loadingDetail = ref(false)
 const balancing = ref(false)
 const ledgerLoadError = ref<Error | null>(null)
@@ -113,6 +117,7 @@ async function loadDetail(): Promise<void> {
 
 async function loadAll(): Promise<void> {
   await loadDetail()
+  await duplicateCardRef.value?.reload()
 }
 
 async function handleBalance(): Promise<void> {
@@ -124,6 +129,7 @@ async function handleBalance(): Promise<void> {
       await executeImageLedgerBalance({ examId: selectedExamId.value }),
     )
     message.success('已执行考试整体对账')
+    await refreshSnapshot()
   } catch (e) {
     balanceError.value = getUserErrorMessage(e, '考试整体对账失败')
     showUserError(e, '考试整体对账失败')
@@ -141,6 +147,7 @@ function openResolve(record: ExamPaperDuplicateResolutionVO): void {
 
 async function onChildSubmitted(): Promise<void> {
   await loadAll()
+  await refreshSnapshot()
 }
 
 watch(selectedExamId, (v) => {
@@ -150,10 +157,9 @@ watch(selectedExamId, (v) => {
   } else {
     ledger.value = null
   }
-})
+}, { immediate: true })
 
-onMounted(async () => {
-  if (selectedExamId.value) await loadAll()
+onMounted(() => {
   mittBus.on('scan-workbench:refresh', loadAll)
 })
 

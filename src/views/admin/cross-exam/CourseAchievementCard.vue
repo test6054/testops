@@ -31,9 +31,13 @@
     </div>
 
     <a-spin :spinning="loading || generating">
-      <!-- D-9 错误态：AI 课程达成度加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="loadError"
+        :error="loadError"
+        @retry="reload"
+      />
       <UiEmpty
-        v-if="!loading && !generating && !record"
+        v-else-if="!loading && !generating && !record"
         description="暂无数据"
       />
       <div v-else-if="record" class="ai-record">
@@ -167,6 +171,7 @@ import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.v
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'

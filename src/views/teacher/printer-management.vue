@@ -1,5 +1,13 @@
 <template>
   <div class="printer-management-page">
+    <UiAlertStrip
+      v-if="isExamWorkspaceRoute"
+      tone="info"
+      title="扫描设备为租户级资产"
+      description="此处维护的扫描仪与激活码对本租户全部考试生效，不受当前考试切换影响。"
+      dense
+      class="printer-management-page__scope-banner"
+    />
     <a-card :bordered="false" class="detail-table-card printer-management">
       <template #title>扫描设备</template>
       <template #extra>
@@ -20,8 +28,14 @@
         @reset="handleResetSearch"
       />
 
-      <!-- 设备列表 -->
+      <UiErrorRetryPanel
+        v-if="devicesLoadError"
+        :error="devicesLoadError"
+        @retry="loadDevices"
+      />
+
       <UiDataTable
+        v-else
         pagination-mode="none"
         class="student-detail-table__data-table"
         :columns="columns"
@@ -231,7 +245,12 @@
       :footer="null"
       destroy-on-close
     >
-      <a-descriptions v-if="detailInfo" bordered :column="2" size="small">
+      <UiErrorRetryPanel
+        v-if="detailLoadError"
+        :error="detailLoadError"
+        @retry="reloadDeviceDetail"
+      />
+      <a-descriptions v-else-if="detailInfo" bordered :column="2" size="small">
         <a-descriptions-item label="设备名称">{{ detailInfo.deviceName }}</a-descriptions-item>
         <a-descriptions-item label="扫描设备编号">
           {{ detailInfo.scannerDeviceId }}
@@ -371,6 +390,7 @@ import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
 import AQrcode from 'ant-design-vue/es/qrcode'
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   createScannerActivationCode,
   createScannerDevice,
@@ -392,12 +412,25 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import mittBus from '@/utils/mitt'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import mittBus from '@/utils/mitt'
 import { readArrayResponse } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'PrinterManagement' })
+
+const route = useRoute()
+const isExamWorkspaceRoute = computed(() => route.name === 'TeacherExamWorkspaceScanDevices')
+
+const { refreshSnapshot } = useWorkspaceExamId()
+
+/** 扫描设备写操作后刷新列表，并同步工作台 SCAN 段快照与 OCR 配置页。 */
+async function syncAfterDeviceMutation(): Promise<void> {
+  await loadDevices()
+  await refreshSnapshot()
+  mittBus.emit('scan-workbench:refresh')
+}
 
 // ─── 列表与筛选 ───────────────────────────────────────
 const loading = ref(false)
@@ -593,7 +626,7 @@ async function handleFormSubmit(): Promise<void> {
       if (createdToken.pushToken) {
         openTokenModal(createdToken)
       }
-      await loadDevices()
+      await syncAfterDeviceMutation()
     } else {
       const request: ExamScannerDeviceUpdateRequest = {
         id: formData.id!,
@@ -609,7 +642,7 @@ async function handleFormSubmit(): Promise<void> {
       await updateScannerDevice(request)
       message.success('扫描设备已更新')
       showFormModal.value = false
-      await loadDevices()
+      await syncAfterDeviceMutation()
     }
   } catch (error) {
     formSubmitError.value = toUserError(error, '扫描设备保存失败')
@@ -666,7 +699,7 @@ async function handleResetToken(record: ExamScannerDeviceVO): Promise<void> {
         const result = await resetScannerDevicePushToken(record.id)
         message.success('设备接入密钥已重置')
         openTokenModal(result)
-        await loadDevices()
+        await syncAfterDeviceMutation()
       } catch (error) {
         tokenActionError.value = toUserError(error, '扫描设备接入密钥重置失败')
         showUserError(error, '扫描设备接入密钥重置失败')
@@ -702,7 +735,7 @@ function handleUnbindAgent(record: ExamScannerDeviceVO): void {
         agentUnbindError.value = null
         await unbindScannerDeviceAgent(record.id)
         message.success('扫描组件已解绑')
-        await loadDevices()
+        await syncAfterDeviceMutation()
       } catch (error) {
         agentUnbindError.value = toUserError(error, '扫描组件解绑失败')
         showUserError(error, '扫描组件解绑失败')
@@ -726,10 +759,24 @@ function copyText(value?: string | null): void {
 // ─── 详情弹窗 ────────────────────────────────────────
 const showDetailModal = ref(false)
 const detailInfo = ref<ExamScannerDeviceDetailVO | null>(null)
+const detailDeviceId = ref<string | null>(null)
 const detailLoadError = ref<Error | null>(null)
+
+async function reloadDeviceDetail(): Promise<void> {
+  if (!detailDeviceId.value) return
+  detailLoadError.value = null
+  try {
+    detailInfo.value = await getScannerDeviceDetail(detailDeviceId.value)
+  } catch (error) {
+    detailInfo.value = null
+    detailLoadError.value = toUserError(error, '扫描设备详情加载失败')
+    showUserError(error, '扫描设备详情加载失败')
+  }
+}
 
 async function handleViewDetail(record: ExamScannerDeviceVO): Promise<void> {
   detailInfo.value = null
+  detailDeviceId.value = record.id
   showDetailModal.value = true
   detailLoadError.value = null
   try {
@@ -751,7 +798,7 @@ function handleDelete(record: ExamScannerDeviceVO): void {
         deviceDeleteError.value = null
         await deleteScannerDevice(record.id)
         message.success('扫描设备已删除')
-        await loadDevices()
+        await syncAfterDeviceMutation()
       } catch (error) {
         deviceDeleteError.value = toUserError(error, '扫描设备删除失败')
         showUserError(error, '扫描设备删除失败')
@@ -771,6 +818,16 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
+.printer-management-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &__scope-banner {
+    margin-bottom: 0;
+  }
+}
+
 .printer-management {
   &__workspace {
     padding: 0;

@@ -63,6 +63,13 @@ export const useQualityStore = defineStore(
     const qualityCourseOptions = ref<QualityCourseVO[]>([])
     const qualityCourseLoading = ref(false)
 
+    /** Layout / 页面范围切换代际，供 keepAlive 页面统一刷新 */
+    const scopeChangeEpoch = ref(0)
+
+    function bumpScopeChangeEpoch(): void {
+      scopeChangeEpoch.value += 1
+    }
+
     /* ========== Computed ========== */
 
     const hasProgram = computed(() => !!currentProgramId.value)
@@ -174,7 +181,8 @@ export const useQualityStore = defineStore(
 
     /** 切换专业大类：清空下游 trainingPlan / course / requirement 缓存 */
     function setProgram(programId: string, accreditationProfileId?: string) {
-      if (currentProgramId.value !== programId) {
+      const programChanged = currentProgramId.value !== programId
+      if (programChanged) {
         currentTrainingPlanId.value = ''
         currentQualityCourseId.value = ''
         trainingPlanOptions.value = []
@@ -185,27 +193,45 @@ export const useQualityStore = defineStore(
       if (accreditationProfileId !== undefined) {
         currentAccreditationProfileId.value = accreditationProfileId
       }
+      if (programChanged) {
+        bumpScopeChangeEpoch()
+      }
     }
 
     /** 切换培养方案：清空下游 requirement / course 缓存 */
     function setTrainingPlan(trainingPlanId: string) {
-      if (currentTrainingPlanId.value !== trainingPlanId) {
+      const planChanged = currentTrainingPlanId.value !== trainingPlanId
+      if (planChanged) {
         currentQualityCourseId.value = ''
         requirementOptions.value = []
         qualityCourseOptions.value = []
       }
       currentTrainingPlanId.value = trainingPlanId
+      if (planChanged) {
+        bumpScopeChangeEpoch()
+      }
     }
 
     function setSchoolPeriod(schoolYear?: string, semester?: string) {
-      if (schoolYear !== undefined) currentSchoolYear.value = schoolYear
-      if (semester !== undefined) currentSemester.value = semester
-      // 学期切换会影响 quality course 列表
-      qualityCourseOptions.value = []
+      const yearChanged = schoolYear !== undefined && currentSchoolYear.value !== schoolYear
+      const semesterChanged = semester !== undefined && currentSemester.value !== semester
+      if (schoolYear !== undefined) {
+        currentSchoolYear.value = schoolYear
+      }
+      if (semester !== undefined) {
+        currentSemester.value = semester
+      }
+      if (yearChanged || semesterChanged) {
+        qualityCourseOptions.value = []
+        bumpScopeChangeEpoch()
+      }
     }
 
     function setQualityCourse(qualityCourseId: string) {
-      currentQualityCourseId.value = qualityCourseId
+      if (currentQualityCourseId.value !== qualityCourseId) {
+        currentQualityCourseId.value = qualityCourseId
+        bumpScopeChangeEpoch()
+      }
     }
 
     function reset() {
@@ -220,6 +246,7 @@ export const useQualityStore = defineStore(
       trainingPlanOptions.value = []
       requirementOptions.value = []
       qualityCourseOptions.value = []
+      bumpScopeChangeEpoch()
     }
 
     return {
@@ -242,6 +269,7 @@ export const useQualityStore = defineStore(
       requirementLoading,
       qualityCourseOptions,
       qualityCourseLoading,
+      scopeChangeEpoch,
 
       // computed
       hasProgram,

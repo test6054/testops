@@ -155,6 +155,11 @@ export function useSurveyFill() {
       message.warning('请填写必填身份信息')
       return false
     }
+    const hasRequiredItem = survey.value.items.some((item) => item.required)
+    if (!hasRequiredItem && buildAnswerList().length === 0) {
+      message.warning('请至少填写一题后再提交')
+      return false
+    }
 
     submitting.value = true
     try {
@@ -207,5 +212,6 @@ export function useSurveyFill() {
     hasRequiredIdentityFilled,
     findFirstUnansweredRequired,
     submitSurvey,
+    loadSurvey,
   }
 }

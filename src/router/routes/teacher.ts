@@ -1,7 +1,7 @@
 /**
  * 教师（SCH_TECH / CROP_ADMIN / CROP_USER）路由
  *
- * L0：考试列表、扫描设备维护 + 质量评价（全局侧栏）
+ * L0：考试列表 + 质量评价（全局侧栏）
  * L1-L3：/teacher/exam-workspace/:examId/* 考试工作台嵌套路由
  */
 import type { RouteRecordRaw } from 'vue-router'
@@ -31,22 +31,6 @@ export const teacherRoutes: RouteRecordRaw[] = [
           title: '考试列表',
           roles: TEACHER_ROLES,
           icon: 'dashboard',
-          hideInMenu: false,
-          keepAlive: true,
-          menuGroup: 'exam-prep',
-          menuGroupTitle: '阅卷中心',
-          menuGroupIcon: 'dashboard',
-          menuGroupOrder: 1,
-        },
-      },
-      {
-        path: 'scan-devices',
-        name: 'TeacherScanDeviceManagement',
-        component: () => import('@/views/teacher/printer-management.vue'),
-        meta: {
-          title: '扫描设备',
-          roles: TEACHER_ROLES,
-          icon: 'desktop',
           hideInMenu: false,
           keepAlive: true,
           menuGroup: 'exam-prep',

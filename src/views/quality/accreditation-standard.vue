@@ -16,7 +16,7 @@ import type {
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { ACCREDITATION_TYPE_LABEL, accreditationStandardApi } from '@/apis/quality'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -26,6 +26,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -284,7 +285,15 @@ const signals = computed<SignalMetric[]>(() => {
 })
 
 
+useQualityScopeReload(() => {
+  void loadPageData()
+})
+
 onMounted(() => loadPageData())
+
+onActivated(() => {
+  void loadPageData()
+})
 </script>
 
 <template>
@@ -350,7 +359,7 @@ onMounted(() => loadPageData())
         <a-row :gutter="12">
           <a-col :span="8">
             <a-form-item label="编码" required>
-              <a-input v-model:value="editor.standardCode" />
+              <a-input v-model:value="editor.standardCode" :disabled="editorMode === 'edit'" />
             </a-form-item>
           </a-col>
           <a-col :span="16">
@@ -362,7 +371,11 @@ onMounted(() => loadPageData())
         <a-row :gutter="12">
           <a-col :span="12">
             <a-form-item label="认证类型" required>
-              <a-select v-model:value="editor.accreditationType" :options="accreditationOptions" />
+              <a-select
+                v-model:value="editor.accreditationType"
+                :options="accreditationOptions"
+                :disabled="editorMode === 'edit'"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="6">

@@ -50,7 +50,7 @@ import type {
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import {
   aiTaskApi,
   AUDIT_ISSUE_STATUS_COLOR,
@@ -66,7 +66,7 @@ import {
   improvementTaskApi,
 } from '@/apis/quality'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
-import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   AchievementResultSelector,
   ArchiveSelector,
@@ -89,10 +89,11 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 import { promptModal } from './_helpers'
 
@@ -520,6 +521,10 @@ function openImprovementCreate() {
 }
 
 function openImprovementEdit(record: ImprovementTaskVO) {
+  if (!canEditImprovementTask(record.status)) {
+    message.error('当前状态不允许编辑改进任务')
+    return
+  }
   improvementEditorMode.value = 'edit'
   Object.assign(improvementEditor, {
     id: record.id,
@@ -540,6 +545,13 @@ function openImprovementEdit(record: ImprovementTaskVO) {
 }
 
 async function submitImprovementEditor() {
+  if (improvementEditorMode.value === 'edit' && improvementEditor.id) {
+    const current = improvementList.value.find((item) => item.id === improvementEditor.id)
+    if (current && !canEditImprovementTask(current.status)) {
+      message.error('当前状态不允许编辑改进任务')
+      return
+    }
+  }
   if (
     !improvementEditor.taskTitle.trim()
     || !improvementEditor.problemSummary.trim()
@@ -826,6 +838,29 @@ const issueEditor = reactive<AuditIssueSaveRequest>({
   raisedAt: '',
 })
 const issueEditorSubmitting = ref(false)
+const issueRectificationCount = ref<Map<string, number>>(new Map())
+
+function hasLinkedRectification(issueId: string): boolean {
+  return (issueRectificationCount.value.get(issueId) ?? 0) > 0
+}
+
+async function refreshIssueRectificationCounts() {
+  const rects = await readAllPages(
+    pageNum => auditRectificationApi.page({
+      pageNum,
+      pageSize: 100,
+      programId: issueQuery.programId || qualityStore.currentProgramId || undefined,
+      trainingPlanId: issueQuery.trainingPlanId || qualityStore.currentTrainingPlanId || undefined,
+    }),
+    '整改任务加载失败，请稍后重试',
+  )
+  const countMap = new Map<string, number>()
+  for (const rect of rects) {
+    if (!rect.auditIssueId) continue
+    countMap.set(rect.auditIssueId, (countMap.get(rect.auditIssueId) ?? 0) + 1)
+  }
+  issueRectificationCount.value = countMap
+}
 
 async function loadIssueList() {
   issueLoading.value = true
@@ -843,7 +878,9 @@ async function loadIssueList() {
     if (issueList.value.length === 0 && issueTotal.value > 0 && issueQuery.pageNum > 1) {
       issueQuery.pageNum -= 1
       await loadIssueList()
+      return
     }
+    await refreshIssueRectificationCounts()
   } finally {
     issueLoading.value = false
   }
@@ -888,6 +925,10 @@ function openIssueCreate() {
 }
 
 function openIssueEdit(record: AuditIssueVO) {
+  if (!canEditAuditIssue(record.status)) {
+    message.error('当前状态不允许编辑审核问题')
+    return
+  }
   issueEditorMode.value = 'edit'
   Object.assign(issueEditor, {
     id: record.id,
@@ -911,6 +952,13 @@ function openIssueEdit(record: AuditIssueVO) {
 }
 
 async function submitIssueEditor() {
+  if (issueEditorMode.value === 'edit' && issueEditor.id) {
+    const current = issueList.value.find((item) => item.id === issueEditor.id)
+    if (current && !canEditAuditIssue(current.status)) {
+      message.error('当前状态不允许编辑审核问题')
+      return
+    }
+  }
   if (
     !issueEditor.issueCode.trim()
     || !issueEditor.issueTitle.trim()
@@ -1155,6 +1203,10 @@ function openRectCreate() {
 }
 
 function openRectEdit(record: AuditRectificationVO) {
+  if (!canEditAuditRectification(record.status)) {
+    message.error('当前状态不允许编辑整改任务')
+    return
+  }
   rectEditorMode.value = 'edit'
   Object.assign(rectEditor, {
     id: record.id,
@@ -1170,6 +1222,13 @@ function openRectEdit(record: AuditRectificationVO) {
 }
 
 async function submitRectEditor() {
+  if (rectEditorMode.value === 'edit' && rectEditor.id) {
+    const current = rectList.value.find((item) => item.id === rectEditor.id)
+    if (current && !canEditAuditRectification(current.status)) {
+      message.error('当前状态不允许编辑整改任务')
+      return
+    }
+  }
   if (
     !rectEditor.auditIssueId
     || !rectEditor.rectificationCode.trim()
@@ -1762,21 +1821,6 @@ const signals = computed<SignalMetric[]>(() => {
 
 /* ========== 监听 + 初始化 ========== */
 
-watch(
-  () => qualityStore.currentTrainingPlanId,
-  () => {
-    loadImprovementList()
-  },
-)
-
-watch(
-  () => qualityStore.currentProgramId,
-  () => {
-    if (activeTab.value === 'issue') loadIssueList()
-    if (activeTab.value === 'supervision') loadSupList()
-  },
-)
-
 watch(activeTab, async (tab) => {
   if (tab === 'improvement') await loadImprovementList()
   else if (tab === 'issue') await loadIssueList()
@@ -1788,16 +1832,28 @@ async function handleScopeChange(): Promise<void> {
   workbenchLoadError.value = null
   await Promise.all([loadImprovementList(), loadIssueList(), loadRectList(), loadSupList()])
 }
+
+useQualityScopeReload(handleScopeChange)
+
+onMounted(async () => {
+  if (!qualityStore.currentTrainingPlanId) {
+    await qualityStore.loadTrainingPlanOptions()
+    if (qualityStore.trainingPlanOptions.length) {
+      qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
+    }
+  }
+  await handleScopeChange()
+})
+
+onActivated(async () => {
+  await handleScopeChange()
+})
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
-        <template #status>
-          <QualityScopeHeader @change="handleScopeChange" />
-        </template>
-      </ContextBar>
+      <QualityPageContextBar />
     </template>
 
     <SignalBand :metrics="signals" compact class="iwb__signals" />
@@ -1876,7 +1932,7 @@ async function handleScopeChange(): Promise<void> {
                 <div class="operations-cell" @click.stop>
                   <UiTextAction @click="openImprovementDetail(record)">详情</UiTextAction>
                   <UiTextAction
-                    :disabled="canEditImprovementTask(record.status)"
+                    :disabled="!canEditImprovementTask(record.status)"
                     @click="openImprovementEdit(record)"
                   >
                     编辑
@@ -1962,7 +2018,7 @@ async function handleScopeChange(): Promise<void> {
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
                   <UiTextAction
-                    :disabled="canEditAuditIssue(record.status)"
+                    :disabled="!canEditAuditIssue(record.status)"
                     @click="openIssueEdit(record)"
                   >
                     编辑
@@ -1978,7 +2034,7 @@ async function handleScopeChange(): Promise<void> {
                     </template>
                   </a-dropdown>
                   <UiTextAction
-                    v-if="record.status === 'OPEN'"
+                    v-if="record.status === 'OPEN' && !hasLinkedRectification(record.id)"
                     tone="danger"
                     @click="handleIssueDelete(record)"
                   >
@@ -2047,7 +2103,7 @@ async function handleScopeChange(): Promise<void> {
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
                   <UiTextAction
-                    :disabled="canEditAuditRectification(record.status)"
+                    :disabled="!canEditAuditRectification(record.status)"
                     @click="openRectEdit(record)"
                   >
                     编辑
@@ -2186,7 +2242,11 @@ async function handleScopeChange(): Promise<void> {
         <a-row :gutter="12">
           <a-col :span="8">
             <a-form-item label="任务编码" required>
-              <a-input v-model:value="improvementEditor.taskCode" placeholder="如 IMP-2024-001" />
+              <a-input
+                v-model:value="improvementEditor.taskCode"
+                placeholder="如 IMP-2024-001"
+                :disabled="improvementEditorMode === 'edit'"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="16">
@@ -2607,7 +2667,7 @@ async function handleScopeChange(): Promise<void> {
         <a-row :gutter="12">
           <a-col :span="6">
             <a-form-item label="编码" required>
-              <a-input v-model:value="supEditor.supervisionCode" />
+              <a-input v-model:value="supEditor.supervisionCode" :disabled="supEditorMode === 'edit'" />
             </a-form-item>
           </a-col>
           <a-col :span="6">
@@ -2615,12 +2675,17 @@ async function handleScopeChange(): Promise<void> {
               <a-select
                 v-model:value="supEditor.supervisionType"
                 :options="supervisionTypeOptions"
+                :disabled="supEditorMode === 'edit'"
               />
             </a-form-item>
           </a-col>
           <a-col :span="6">
             <a-form-item label="范围">
-              <a-select v-model:value="supEditor.supervisionScope" :options="supScopeOptions" />
+              <a-select
+                v-model:value="supEditor.supervisionScope"
+                :options="supScopeOptions"
+                :disabled="supEditorMode === 'edit'"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="6">
@@ -2712,6 +2777,7 @@ async function handleScopeChange(): Promise<void> {
             <a-form-item label="关联问题">
               <AuditIssueSelector
                 :value="supEditor.auditIssueId || null"
+                :disabled="supEditorMode === 'edit'"
                 @change="handleSupAuditIssueChange"
               />
             </a-form-item>
@@ -2721,6 +2787,7 @@ async function handleScopeChange(): Promise<void> {
               <AuditRectificationSelector
                 :value="supEditor.rectificationId || null"
                 :audit-issue-id="supEditor.auditIssueId || null"
+                :disabled="supEditorMode === 'edit'"
                 @change="handleSupRectificationChange"
               />
             </a-form-item>
@@ -2729,6 +2796,7 @@ async function handleScopeChange(): Promise<void> {
             <a-form-item label="所属专业">
               <ProgramSelector
                 :value="supEditor.programId || null"
+                :disabled="supEditorMode === 'edit'"
                 @change="handleSupProgramChange"
               />
             </a-form-item>
@@ -2740,6 +2808,7 @@ async function handleScopeChange(): Promise<void> {
               <TrainingPlanSelector
                 :value="supEditor.trainingPlanId || null"
                 :program-id="supEditor.programId || null"
+                :disabled="supEditorMode === 'edit'"
                 @change="handleSupTrainingPlanChange"
               />
             </a-form-item>
@@ -2750,6 +2819,7 @@ async function handleScopeChange(): Promise<void> {
                 :value="supEditor.qualityCourseId || null"
                 :program-id="supEditor.programId || null"
                 :training-plan-id="supEditor.trainingPlanId || null"
+                :disabled="supEditorMode === 'edit'"
                 @change="handleSupCourseChange"
               />
             </a-form-item>

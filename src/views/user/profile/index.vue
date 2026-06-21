@@ -169,7 +169,7 @@ import SafetyOutlined from '@ant-design/icons-vue/SafetyOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import { message } from 'ant-design-vue'
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -248,6 +248,13 @@ function handleLogout() {
 
 onMounted(() => {
   notificationStore.loadUnreadCount().catch(() => {})
+})
+
+onActivated(() => {
+  void userStore.getInfo(true).catch((error) => {
+    showUserError(error, '个人信息刷新失败')
+  })
+  void notificationStore.loadUnreadCount().catch(() => {})
 })
 </script>
 

@@ -1,3 +1,4 @@
+export * from './mark-exam-sync'
 export * from './accreditation'
 export * from './accreditation-standard'
 export * from './achievement'
@@ -25,6 +26,7 @@ export * from './requirement-indicator'
 export * from './scale-conversion-rule'
 export * from './score-batch'
 export * from './score-record'
+export * from './self-assessment-section'
 export * from './training-objective'
 export * from './training-plan'
 /**

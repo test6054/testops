@@ -28,8 +28,10 @@ const WORKER_ONLY_PATHS = new Set([
 
 /** 人工审查备注：路径 → 说明 */
 const MANUAL_REVIEW_NOTES = {
-  '/api/mark/exams/export/detail': '导出任务页仅轮询 list；detail 供单任务深查预留',
-  '/api/exam/question-analysis/answer-effective/get': '保存答案走 confirm；读生效配置未接 UI',
+  '/api/mark/exams/export/detail': '导出任务页 list + getExportTask 轮询深查',
+  '/api/mark/ocr/config/save': '平台超管在 web-vue 配置；mark-vue ocr-settings 只读',
+  '/api/mark/ocr/paddle/instance/register': '平台运维注册 Paddle 实例；mark-vue 只读展示列表',
+  '/api/exam/question-analysis/answer-effective/get': 'paper-template 预览/编辑弹窗已接线',
 }
 
 const DEVICE_PREFIXES = [
@@ -110,6 +112,24 @@ function parseFrontendApis() {
         byPath.get(p).functions.add(fn)
         byPath.get(p).files.add(rel)
         fnToPath.set(fn, p)
+      }
+    }
+    // 分页包装函数（如 listTrialSessions → pageTrialSessions）继承同路径登记
+    fnIdx = 0
+    for (const fn of fns) {
+      const block = fnBlocks[fnIdx + 1] || text
+      fnIdx++
+      if (fnToPath.has(fn)) continue
+      for (const callee of fns) {
+        if (callee === fn) continue
+        if (!fnToPath.has(callee)) continue
+        if (!new RegExp(`\\b${callee}\\s*\\(`).test(block)) continue
+        const path = fnToPath.get(callee)
+        if (!byPath.has(path)) byPath.set(path, { functions: new Set(), files: new Set() })
+        byPath.get(path).functions.add(fn)
+        byPath.get(path).files.add(rel)
+        fnToPath.set(fn, path)
+        break
       }
     }
     for (const p of pathHits) {

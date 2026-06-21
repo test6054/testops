@@ -61,7 +61,14 @@
         @reset="handleTaskFilterReset"
       />
 
+      <UiErrorRetryPanel
+        v-if="tasksLoadError"
+        :error="tasksLoadError"
+        @retry="loadTasks"
+      />
+
       <UiDataTable
+        v-else
         class="student-detail-table__data-table"
         :columns="columns"
         :data-source="filteredTasks"
@@ -266,15 +273,17 @@ import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
 import { getExamTemplate } from '@/apis/mark/exam'
 import {
   createExportTask,
   EXPORT_SCOPE_LABEL,
+  EXPORT_STATUS_CODES,
   EXPORT_STATUS_LABEL,
   EXPORT_STATUS_TONE,
+  EXPORT_TYPE_CODES,
   EXPORT_TYPE_LABEL,
   getExportTask,
   listExportTasks,
@@ -285,9 +294,11 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -297,6 +308,7 @@ defineOptions({ name: 'ExamExportTasks' })
 
 const route = useRoute()
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
+const { refreshSnapshot } = useWorkspaceExamId()
 
 const {
   examOptions,
@@ -345,7 +357,10 @@ const exportFilterFields: FilterField[] = [
     placeholder: '全部状态',
     allowClear: true,
     width: 160,
-    options: Object.entries(EXPORT_STATUS_LABEL).map(([value, label]) => ({ label, value })),
+    options: EXPORT_STATUS_CODES.map((value) => ({
+      value,
+      label: strictEnumLabel(EXPORT_STATUS_LABEL, value, '导出任务状态'),
+    })),
   },
   {
     key: 'typeFilter',
@@ -353,7 +368,10 @@ const exportFilterFields: FilterField[] = [
     placeholder: '全部类型',
     allowClear: true,
     width: 160,
-    options: Object.entries(EXPORT_TYPE_LABEL).map(([value, label]) => ({ label, value })),
+    options: EXPORT_TYPE_CODES.map((value) => ({
+      value,
+      label: strictEnumLabel(EXPORT_TYPE_LABEL, value, '导出类型'),
+    })),
   },
 ]
 
@@ -471,14 +489,17 @@ function canDownloadExportTask(task: ExportTaskVO): task is ExportTaskCompletedV
   return task.taskStatus === 'COMPLETED'
 }
 
-async function loadTasks(): Promise<void> {
+async function loadTasks(options?: { quiet?: boolean }): Promise<void> {
   if (!selectedExamId.value) {
     tasks.value = []
     taskPagination.total = 0
     tasksLoadError.value = null
+    syncExportPolling()
     return
   }
-  loading.value = true
+  if (!options?.quiet) {
+    loading.value = true
+  }
   tasksLoadError.value = null
   try {
     const page = await listExportTasks({
@@ -490,11 +511,49 @@ async function loadTasks(): Promise<void> {
     taskPagination.pageNum = page.pageNum
     taskPagination.pageSize = page.pageSize
     taskPagination.total = readPageTotal(page, '导出任务加载失败，请稍后重试')
+    await refreshOpenDetailIfNeeded()
+    syncExportPolling()
   } catch (error) {
     tasksLoadError.value = toUserError(error, '导出任务加载失败')
-    showUserError(error, '导出任务加载失败')
+    if (!options?.quiet) {
+      showUserError(error, '导出任务加载失败')
+    }
   } finally {
-    loading.value = false
+    if (!options?.quiet) {
+      loading.value = false
+    }
+  }
+}
+
+let exportPollTimer: ReturnType<typeof setInterval> | null = null
+
+function syncExportPolling(): void {
+  const shouldPoll = tasks.value.some(
+    (task) => task.taskStatus === 'PENDING' || task.taskStatus === 'GENERATING',
+  )
+  if (shouldPoll && !exportPollTimer) {
+    exportPollTimer = setInterval(() => {
+      void loadTasks({ quiet: true })
+    }, 3000)
+  } else if (!shouldPoll && exportPollTimer) {
+    clearInterval(exportPollTimer)
+    exportPollTimer = null
+  }
+}
+
+async function refreshOpenDetailIfNeeded(): Promise<void> {
+  if (!detailDrawerOpen.value || !detailTask.value?.taskId) {
+    return
+  }
+  const taskId = detailTask.value.taskId
+  try {
+    const fresh = await getExportTask({ taskId })
+    if (!detailDrawerOpen.value || detailTask.value?.taskId !== taskId) {
+      return
+    }
+    detailTask.value = fresh
+  } catch {
+    // 轮询刷新详情失败时不打断列表轮询
   }
 }
 
@@ -607,6 +666,7 @@ async function handleCreate(): Promise<void> {
     message.success('已创建导出任务，系统正在生成文件')
     createModalOpen.value = false
     await loadTasks()
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '导出任务创建失败')
   } finally {
@@ -698,7 +758,7 @@ watch(selectedExamId, (value) => {
     resetRoster()
     questionOptions.value = []
   }
-})
+}, { immediate: true })
 
 watch(
   () => createForm.exportScope,
@@ -711,8 +771,18 @@ watch(
 
 onMounted(async () => {
   await initExamSelector()
+})
+
+onActivated(() => {
   if (selectedExamId.value) {
-    await loadTasks()
+    void loadTasks()
+  }
+})
+
+onBeforeUnmount(() => {
+  if (exportPollTimer) {
+    clearInterval(exportPollTimer)
+    exportPollTimer = null
   }
 })
 </script>

@@ -18,7 +18,7 @@ import type {
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
@@ -35,6 +35,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -325,8 +326,16 @@ async function handleDelete(record: ProgramEvaluationProfileVO) {
   })
 }
 
+useQualityScopeReload(() => {
+  void loadList()
+})
+
 onMounted(async () => {
   await Promise.all([loadList(), loadDicts()])
+})
+
+onActivated(() => {
+  void Promise.all([loadList(), loadDicts()])
 })
 </script>
 
@@ -406,7 +415,11 @@ onMounted(async () => {
         <a-row :gutter="12">
           <a-col :span="24">
             <a-form-item label="专业" required>
-              <ProgramSelector :value="editor.programId || null" @change="handleProgramChange" />
+              <ProgramSelector
+                :value="editor.programId || null"
+                :disabled="editorMode === 'edit'"
+                @change="handleProgramChange"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -430,7 +443,7 @@ onMounted(async () => {
         <a-form-item label="关联认证标准">
           <a-select
             v-model:value="editor.standardId"
-            allow-clear
+            :allow-clear="editorMode === 'create'"
             show-search
             option-filter-prop="label"
           >

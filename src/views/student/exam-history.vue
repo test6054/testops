@@ -23,7 +23,14 @@
         search-text="查询"
       />
 
+      <UiErrorRetryPanel
+        v-if="examsLoadError"
+        :error="examsLoadError"
+        @retry="loadExams"
+      />
+
       <UiDataTable
+        v-else
         pagination-mode="client"
         :columns="columns"
         :data-source="filteredExams"
@@ -73,21 +80,9 @@
             {{ formatDateTime(filteredExams[index].publishedTime) }}
           </template>
           <template v-else-if="column.key === 'reviewWindowStatus'">
-            <UiTag
-              v-if="filteredExams[index].reviewWindowStatus === 'ACTIVE'"
-              tone="orange"
-              size="sm"
-            >
-              开放中
+            <UiTag :tone="reviewWindowStatusTone(filteredExams[index])" size="sm">
+              {{ reviewWindowStatusLabel(filteredExams[index]) }}
             </UiTag>
-            <UiTag
-              v-else-if="filteredExams[index].reviewWindowStatus === 'CLOSED'"
-              tone="gray"
-              size="sm"
-            >
-              已关闭
-            </UiTag>
-            <span v-else class="muted">未开放</span>
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
@@ -115,19 +110,24 @@
 import type { FinalScoreStatusCode, StudentExamItemVO } from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   canSubmitReview,
+  FINAL_SCORE_STATUS_CODES,
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_TONE,
   listMyExams,
+  STUDENT_REVIEW_WINDOW_STATUS_LABEL,
+  STUDENT_REVIEW_WINDOW_STATUS_TONE,
 } from '@/apis/mark/student-exam'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -148,14 +148,10 @@ const historyFilterForm = reactive<{
   statusFilter: undefined,
 })
 
-const statusOptions: Array<{ value: FinalScoreStatusCode, label: string }> = [
-  { value: 'PENDING', label: '待计算' },
-  { value: 'CALCULATED', label: '已计算' },
-  { value: 'CONFIRMED', label: '已确认' },
-  { value: 'CORRECTED', label: '已更正' },
-  { value: 'PUBLISHED', label: '已发布' },
-  { value: 'WITHDRAWN', label: '已撤回' },
-]
+const statusOptions = FINAL_SCORE_STATUS_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(FINAL_SCORE_STATUS_LABEL, value, '最终成绩状态'),
+}))
 
 const historyFilterFields: FilterField[] = [
   {
@@ -218,12 +214,25 @@ async function loadExams() {
   loading.value = true
   examsLoadError.value = null
   try {
-    exams.value = await listMyExams()
+    const loadedExams = await listMyExams()
+    validatePublishedExamContracts(loadedExams)
+    exams.value = loadedExams
   } catch (error) {
     examsLoadError.value = toUserError(error, '考试列表加载失败')
     showUserError(error, '历次考试加载失败')
   } finally {
     loading.value = false
+  }
+}
+
+/** 校验学生考试列表的发布态合同，避免模板渲染阶段才暴露缺失字段。 */
+function validatePublishedExamContracts(list: StudentExamItemVO[]): void {
+  const dataError = '成绩数据异常，请刷新后重试'
+  for (const item of list) {
+    if (item.finalScoreStatus === 'PUBLISHED') {
+      assertUserFacing(item.finalScore != null, dataError)
+      assertUserFacing(Boolean(item.publishedTime), dataError)
+    }
   }
 }
 
@@ -233,6 +242,18 @@ function finalScoreStatusTone(status: FinalScoreStatusCode): BadgeTone {
 
 function finalScoreStatusLabel(status: FinalScoreStatusCode): string {
   return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, status, '最终成绩状态')
+}
+
+function reviewWindowStatusTone(item: StudentExamItemVO): BadgeTone {
+  return strictEnumTone(STUDENT_REVIEW_WINDOW_STATUS_TONE, item.reviewWindowStatus, '复核窗口状态')
+}
+
+function reviewWindowStatusLabel(item: StudentExamItemVO): string {
+  return strictEnumLabel(
+    STUDENT_REVIEW_WINDOW_STATUS_LABEL,
+    item.reviewWindowStatus,
+    '复核窗口状态',
+  )
 }
 
 /** 未发布成绩列展示固定文案，避免 `--` 让学生误以为数据缺失 */
@@ -252,6 +273,8 @@ function goAppeal(examId: string) {
 }
 
 onMounted(loadExams)
+
+onActivated(loadExams)
 </script>
 
 <style lang="scss" scoped>

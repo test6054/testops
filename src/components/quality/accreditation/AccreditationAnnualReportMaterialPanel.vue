@@ -2,6 +2,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type {
+  AccreditationCycleVO,
   AnnualReportMaterialCategory,
   AnnualReportMaterialReviewStatus,
   AnnualReportMaterialSaveRequest,
@@ -9,7 +10,7 @@ import type {
   AnnualReportMaterialVO,
 } from '@/apis/quality'
 import { message } from 'ant-design-vue'
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
 import {
   accreditationApi,
@@ -24,6 +25,10 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import {
+  annualReportMaterialPhaseHint,
+  canMutateAnnualReportMaterial,
+} from '@/composables/useAccreditationWorkbench'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -32,6 +37,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 const props = defineProps<{
   programId: string
   trainingPlanId: string
+  activeCycle?: AccreditationCycleVO
   activeCycleId?: string
 }>()
 
@@ -110,16 +116,22 @@ const reviewForm = reactive<{
   reviewComment: '',
 })
 
+const annualMaterialPhaseHint = computed(() => annualReportMaterialPhaseHint(props.activeCycle))
+
+const canMutateMaterial = computed(() => canMutateAnnualReportMaterial(props.activeCycle))
+
 function canEdit(record: AnnualReportMaterialVO) {
-  return record.reportStatus === 'DRAFT' || record.reportStatus === 'REJECTED'
+  return canMutateMaterial.value
+    && (record.reportStatus === 'DRAFT' || record.reportStatus === 'REJECTED')
 }
 
 function canSubmit(record: AnnualReportMaterialVO) {
-  return record.reportStatus === 'DRAFT' || record.reportStatus === 'REJECTED'
+  return canMutateMaterial.value
+    && (record.reportStatus === 'DRAFT' || record.reportStatus === 'REJECTED')
 }
 
 function canReview(record: AnnualReportMaterialVO) {
-  return record.reportStatus === 'SUBMITTED'
+  return canMutateMaterial.value && record.reportStatus === 'SUBMITTED'
 }
 
 function isCourseEvaluationMaterial(category?: AnnualReportMaterialCategory) {
@@ -161,7 +173,6 @@ async function loadMaterials() {
     if (materials.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadMaterials()
-      return
     }
   } catch (e) {
     showUserError(e)
@@ -186,6 +197,10 @@ function openCreate() {
   const accreditationCycleId = props.activeCycleId
   if (!accreditationCycleId) {
     message.error('请先创建认证周期')
+    return
+  }
+  if (!canMutateMaterial.value) {
+    message.error(annualMaterialPhaseHint.value || '当前不可新增年度报备材料')
     return
   }
   materialDrawerTitle.value = '新增年度报备材料'
@@ -228,6 +243,10 @@ async function uploadMaterialFile(option: UploadRequestOption) {
 async function submitMaterial() {
   if (!props.activeCycleId && !form.id) {
     message.error('请先创建认证周期')
+    return
+  }
+  if (!canMutateMaterial.value) {
+    message.error(annualMaterialPhaseHint.value || '当前不可维护年度报备材料')
     return
   }
   if (!form.reportYear.trim() || !form.materialCategory || !form.materialName.trim()) {
@@ -299,6 +318,10 @@ function openReview(record: AnnualReportMaterialVO, status: AnnualReportMaterial
 }
 
 async function submitReview() {
+  if (!canMutateMaterial.value) {
+    message.error(annualMaterialPhaseHint.value || '当前不可审核年度报备材料')
+    return
+  }
   if (!reviewForm.id) {
     message.error('年度报备材料审核对象缺失，请关闭后重新打开')
     return
@@ -387,10 +410,10 @@ defineExpose({ loadMaterials, openCreate })
 <template>
   <div class="annual-report-material-panel">
     <a-alert
-      v-if="!activeCycleId"
+      v-if="annualMaterialPhaseHint"
       type="warning"
       show-icon
-      message="请先创建认证周期；年度报备材料必须归属认证周期后才能新增。"
+      :message="annualMaterialPhaseHint"
     />
 
     <div class="material-toolbar">
@@ -438,7 +461,7 @@ defineExpose({ loadMaterials, openCreate })
       </a-select>
       <UiButton variant="outline" @click="searchMaterials">查询</UiButton>
       <UiButton variant="ghost" @click="resetFilters">重置</UiButton>
-      <UiButton variant="primary" :disabled="!activeCycleId" @click="openCreate">
+      <UiButton variant="primary" :disabled="!canMutateMaterial" @click="openCreate">
         新增材料
       </UiButton>
     </div>
@@ -550,10 +573,10 @@ defineExpose({ loadMaterials, openCreate })
     >
       <a-form layout="vertical">
         <a-form-item label="年度" required>
-          <a-input v-model:value="form.reportYear" placeholder="如 2025" />
+          <a-input v-model:value="form.reportYear" placeholder="如 2025" :disabled="!!form.id" />
         </a-form-item>
         <a-form-item label="材料类别" required>
-          <a-select v-model:value="form.materialCategory">
+          <a-select v-model:value="form.materialCategory" :disabled="!!form.id">
             <a-select-option
               v-for="item in MATERIAL_CATEGORY_OPTIONS"
               :key="item.value"
@@ -577,7 +600,7 @@ defineExpose({ loadMaterials, openCreate })
             :training-plan-id="trainingPlanId"
             :program-id="programId"
             :allow-clear="!isCourseEvaluationMaterial(form.materialCategory)"
-            :disabled="!isCourseEvaluationMaterial(form.materialCategory)"
+            :disabled="!isCourseEvaluationMaterial(form.materialCategory) || !!form.id"
             :placeholder="
               isCourseEvaluationMaterial(form.materialCategory)
                 ? '请选择本周期内启用的质量评价课程'

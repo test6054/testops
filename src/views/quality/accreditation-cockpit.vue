@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AccreditationCyclePhase } from '@/apis/quality'
 import { SafetyCertificateOutlined } from '@ant-design/icons-vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AccreditationAnnualPanel from '@/components/quality/accreditation/AccreditationAnnualPanel.vue'
 import AccreditationAnnualReportMaterialPanel from '@/components/quality/accreditation/AccreditationAnnualReportMaterialPanel.vue'
@@ -9,13 +9,16 @@ import AccreditationCyclePanel from '@/components/quality/accreditation/Accredit
 import AccreditationEvidencePanel from '@/components/quality/accreditation/AccreditationEvidencePanel.vue'
 import AccreditationOnsitePanel from '@/components/quality/accreditation/AccreditationOnsitePanel.vue'
 import AccreditationSupportPanel from '@/components/quality/accreditation/AccreditationSupportPanel.vue'
-import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import SelfAssessmentReportPanel from '@/components/quality/accreditation/SelfAssessmentReportPanel.vue'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import { ContextBar, SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import { SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
 import { useAccreditationWorkbench } from '@/composables/useAccreditationWorkbench'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 
 const {
   cockpit,
@@ -36,6 +39,8 @@ const {
 } = useAccreditationWorkbench()
 
 const router = useRouter()
+
+const professionDrawerOpen = ref(false)
 
 const activeTab = ref('cycle')
 const evidenceCount = ref(0)
@@ -61,7 +66,13 @@ const deadlineHints = computed(() => {
   return hints
 })
 
-/** CEEAA 2024 标准5章思政全覆盖检查 */
+function readinessReady(itemKey: string): boolean {
+  return (
+    cockpit.value?.conclusionReadinessItems?.find((item) => item.itemKey === itemKey)?.ready === true
+  )
+}
+
+/** CEEAA 2024 标准对齐检查：以驾驶舱 conclusionReadinessItems 为真源，禁止用 activeCycle 存在性误判通过 */
 const ceeaa2024CheckItems = computed(() => {
   const c = cockpit.value
   return [
@@ -69,46 +80,60 @@ const ceeaa2024CheckItems = computed(() => {
       key: '4.1-student',
       label: '4.1 学生·思政引领',
       desc: '学生管理制度中应体现思政引领和品德培养措施',
-      passed: !!c?.activeCycle,
+      passed: readinessReady('SELF_ASSESSMENT_ACCEPTED') && readinessReady('SUPPORT_PROFILE_CONFIRMED'),
     },
     {
       key: '4.2-objective',
       label: '4.2 培养目标·为党育人',
       desc: '培养目标应符合"为党育人、为国育才"总要求',
-      passed: !!c?.activeCycle,
+      passed:
+        readinessReady('GRADUATION_REQUIREMENT_READY')
+        && readinessReady('PROGRAM_QUALITY_REPORT_READY'),
     },
     {
       key: '4.3-graduate',
       label: '4.3 毕业要求·工程报国',
       desc: '毕业要求应包含工程伦理和职业规范（含工程报国意识）',
-      passed: !!c?.activeCycle,
+      passed:
+        readinessReady('GRADUATION_REQUIREMENT_READY')
+        && readinessReady('ACHIEVEMENT_RESULT_READY'),
     },
     {
       key: '4.4-curriculum',
       label: '4.4 课程体系·价值导向',
       desc: '课程设置和教学实施应体现正确的价值导向',
-      passed: !!c?.activeCycle,
+      passed:
+        readinessReady('ENABLED_QUALITY_COURSE_READY')
+        && readinessReady('COURSE_GOAL_READY')
+        && readinessReady('SUPPORT_MATRIX_READY'),
     },
     {
       key: '4.5-faculty',
       label: '4.5 师资队伍·师德师风',
       desc: '教师应具有良好的师德师风',
-      passed: !!c?.activeCycle,
+      passed: readinessReady('FACULTY_PROFILE_READY'),
     },
     {
       key: '4.6-support',
       label: '4.6 支持条件',
       desc: '教室/实验室/设备等支持条件',
-      passed: c?.supportProfileConfirmed ?? false,
+      passed: c?.supportProfileConfirmed === true || readinessReady('SUPPORT_PROFILE_CONFIRMED'),
     },
     {
       key: '4.7-achievement',
       label: '4.7 持续改进·达成度闭环',
       desc: '"评价→分析→改进→再评价"闭环机制',
-      passed: c?.annualReportMaterialsReady === true,
+      passed:
+        readinessReady('ACHIEVEMENT_RESULT_READY')
+        && readinessReady('IMPROVEMENT_TASK_CLOSED')
+        && c?.annualReportMaterialsReady === true,
     },
   ]
 })
+
+const canCreateCycle = computed(
+  () => hasScope.value && activeCycle.value?.cycleStatus !== 'ACTIVE',
+)
 
 /** P2-1: 当前认证阶段的下一步操作指引 */
 const phaseActionHint = computed<string | null>(() => {
@@ -179,20 +204,25 @@ function goFixCheckItem(key: string): void {
   }
 }
 
+function openProfessionConfig(name: string) {
+  professionDrawerOpen.value = false
+  void router.push({ name })
+}
+
 onMounted(refreshAll)
+useQualityScopeReload(refreshAll)
+
+onActivated(() => {
+  if (hasScope.value) {
+    void refreshAll()
+  }
+})
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        show-title
-        title="工程教育认证驾驶舱"
-        subtitle="校内自评 → 审阅 → 现场考查 → 结论 → 保持改进（不含 eqem 对接）"
-      >
-        <template #status>
-          <QualityScopeHeader @change="refreshAll" />
-        </template>
+      <QualityPageContextBar show-title title="工程教育认证驾驶舱">
         <template #actions>
           <UiButton
             variant="outline"
@@ -203,14 +233,17 @@ onMounted(refreshAll)
           >
             刷新
           </UiButton>
+          <UiButton variant="outline" size="sm" :disabled="!hasScope" @click="professionDrawerOpen = true">
+            专业配置
+          </UiButton>
           <UiButton variant="outline" size="sm" :disabled="!hasScope" @click="goCourseMatrix">
             课程矩阵
           </UiButton>
-          <UiButton variant="primary" size="sm" :disabled="!hasScope" @click="onCreateCycle">
+          <UiButton variant="primary" size="sm" :disabled="!canCreateCycle" @click="onCreateCycle">
             新建认证周期
           </UiButton>
         </template>
-      </ContextBar>
+      </QualityPageContextBar>
     </template>
 
     <template v-if="hasScope" #rail>
@@ -294,6 +327,16 @@ onMounted(refreshAll)
             @go-ai-report="goAiProgramReport"
           />
         </a-tab-pane>
+        <a-tab-pane key="self-assessment" tab="自评报告">
+          <SelfAssessmentReportPanel
+            :cockpit="cockpit"
+            :active-cycle="activeCycle"
+            :program-id="programId"
+            :training-plan-id="trainingPlanId"
+            @go-ai-report="goAiProgramReport"
+            @saved="refreshAll"
+          />
+        </a-tab-pane>
         <a-tab-pane key="annual" tab="年度评价">
           <AccreditationAnnualPanel
             ref="annualPanelRef"
@@ -308,6 +351,7 @@ onMounted(refreshAll)
             ref="annualReportMaterialPanelRef"
             :program-id="programId"
             :training-plan-id="trainingPlanId"
+            :active-cycle="activeCycle"
             :active-cycle-id="activeCycleId"
             @refresh="refreshAll"
           />
@@ -317,6 +361,7 @@ onMounted(refreshAll)
             ref="onsitePanelRef"
             :program-id="programId"
             :training-plan-id="trainingPlanId"
+            :active-cycle="activeCycle"
             :active-cycle-id="activeCycleId"
             @refresh="refreshAll"
           />
@@ -334,16 +379,44 @@ onMounted(refreshAll)
             ref="evidencePanelRef"
             :program-id="programId"
             :training-plan-id="trainingPlanId"
+            :active-cycle="activeCycle"
+            :cockpit="cockpit"
             @count-change="evidenceCount = $event"
             @exported="goArchive"
           />
         </a-tab-pane>
       </a-tabs>
     </template>
+
+    <UiDrawer
+      v-model:open="professionDrawerOpen"
+      title="专业配置"
+      :width="420"
+      :hide-footer="true"
+    >
+      <div class="acc-profession-links">
+        <UiButton variant="outline" size="sm" block @click="openProfessionConfig('QualityProgramEvaluationProfile')">
+          专业评价口径
+        </UiButton>
+        <UiButton variant="outline" size="sm" block @click="openProfessionConfig('QualityProfessionAlgorithmProfile')">
+          专业算法实例
+        </UiButton>
+        <UiButton variant="outline" size="sm" block @click="openProfessionConfig('QualityEvaluationWorkgroup')">
+          评价工作组
+        </UiButton>
+        <UiButton variant="outline" size="sm" block @click="openProfessionConfig('QualityScaleConversionRule')">
+          量表换算规则
+        </UiButton>
+      </div>
+    </UiDrawer>
   </StageWorkbenchShell>
 </template>
 
 <style scoped>
+.acc-profession-links {
+  display: grid;
+  gap: 8px;
+}
 .acc-scope__select {
   width: 200px;
 }

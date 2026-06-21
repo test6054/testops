@@ -15,10 +15,11 @@ import type {
   WorkgroupMember,
   WorkgroupMemberRole,
 } from '@/apis/quality'
+import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import {
   evaluationWorkgroupApi,
   WORKGROUP_LEVEL_LABEL,
@@ -36,6 +37,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -225,12 +227,42 @@ function handleEditorProgramChange(value: string | null) {
   editor.programId = value ?? ''
 }
 
-function handleEditorConvenerChange(value: string | string[] | null) {
+function handleEditorConvenerChange(
+  value: string | string[] | null,
+  option?: TeacherUserInfoDto | TeacherUserInfoDto[],
+) {
   if (Array.isArray(value)) {
     showUserError(null, '召集人只能单选，请重新选择')
     return
   }
   editor.convenerUserId = value ?? ''
+  if (!value || Array.isArray(option) || !option) {
+    return
+  }
+  const userCode = option.teacherNumber?.trim() || option.userName?.trim()
+  const userName = option.nickName?.trim() || option.userName?.trim()
+  if (!userCode || !userName) {
+    message.error('召集人缺少工号或姓名，无法写入成员清单')
+    return
+  }
+  const existingIndex = editor.members.findIndex((member) => member.userId === value)
+  if (existingIndex >= 0) {
+    editor.members[existingIndex] = {
+      ...editor.members[existingIndex],
+      userId: value,
+      userCode,
+      userName,
+      role: 'CONVENER',
+    }
+    return
+  }
+  editor.members.unshift({
+    userId: value,
+    userCode,
+    userName,
+    role: 'CONVENER',
+    note: '',
+  })
 }
 
 function appendMember() {
@@ -259,6 +291,7 @@ async function submitEditor() {
     return
   }
   const members: WorkgroupMember[] = []
+  const userCodes = new Set<string>()
   for (let index = 0; index < editor.members.length; index += 1) {
     const member = editor.members[index]
     const userCode = member.userCode.trim()
@@ -267,6 +300,11 @@ async function submitEditor() {
       message.error(`请完整填写第 ${index + 1} 名成员的工号和姓名`)
       return
     }
+    if (userCodes.has(userCode)) {
+      message.error(`成员工号重复：${userCode}`)
+      return
+    }
+    userCodes.add(userCode)
     members.push({
       userId: member.userId,
       userCode,
@@ -274,6 +312,13 @@ async function submitEditor() {
       role: member.role,
       note: member.note ? member.note.trim() : '',
     })
+  }
+  const convenerMember = members.find(
+    (member) => member.userId === editor.convenerUserId && member.role === 'CONVENER',
+  )
+  if (!convenerMember) {
+    message.error('召集人必须出现在成员清单中且角色为 CONVENER')
+    return
   }
   const request: EvaluationWorkgroupSaveRequest = {
     id: editor.id,
@@ -380,8 +425,16 @@ const signals = computed<SignalMetric[]>(() => {
 })
 
 
+useQualityScopeReload(() => {
+  void loadList()
+})
+
 onMounted(async () => {
   await loadList()
+})
+
+onActivated(() => {
+  void loadList()
 })
 </script>
 
@@ -468,12 +521,12 @@ onMounted(async () => {
         <a-row :gutter="12">
           <a-col :span="12">
             <a-form-item label="编码" required>
-              <a-input v-model:value="editor.workgroupCode" />
+              <a-input v-model:value="editor.workgroupCode" :disabled="editorMode === 'edit'" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="层级" required>
-              <a-select v-model:value="editor.levelCode" :options="levelOptions" />
+              <a-select v-model:value="editor.levelCode" :options="levelOptions" :disabled="editorMode === 'edit'" />
             </a-form-item>
           </a-col>
         </a-row>
@@ -481,7 +534,11 @@ onMounted(async () => {
           <a-input v-model:value="editor.workgroupName" />
         </a-form-item>
         <a-form-item label="专业大类" required>
-          <ProgramSelector :value="editor.programId || null" @change="handleEditorProgramChange" />
+          <ProgramSelector
+            :value="editor.programId || null"
+            :disabled="editorMode === 'edit'"
+            @change="handleEditorProgramChange"
+          />
         </a-form-item>
         <a-form-item label="召集人" required>
           <TeacherSelector
@@ -548,7 +605,7 @@ onMounted(async () => {
       accept=".xlsx,.xls"
       accept-hint="支持 .xlsx / .xls 格式"
       description-title="模板说明"
-      description="Excel 列顺序：工号 | 姓名 | 角色（召集人 / 成员 / 外部专家，留空默认成员） | 备注。前两列必填。导入后将覆盖该工作组现有成员。"
+      description="Excel 列顺序：工号 | 姓名 | 角色（CONVENER / MEMBER / EXTERNAL_EXPERT，留空默认 MEMBER） | 备注。前两列必填。导入后将覆盖该工作组现有成员。"
       template-button-label="下载工作组成员模板"
       template-file-name="工作组成员导入模板.xlsx"
       :template-api="importTemplateApi"

@@ -116,6 +116,9 @@ export function useStageMachine(workflow: KioskWorkflow) {
       }
       return
     }
+    if (autoStage.value === 'review' && stageId === 'setup') {
+      return
+    }
     const stage = ALL_KIOSK_STAGES.find((s) => s.id === stageId)
     if (!stage) return
     router.push({ name: stage.routeName, query: route.query })

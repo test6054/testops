@@ -9,7 +9,7 @@ import type { FileSystemNodeResponseDTO } from '@/apis/edu/file-management'
  * - POST /quality/archives/page 分页查询
  * - POST /quality/archives/detail 详情
  * - POST /quality/archives/create / update / delete 手工台帐补登
- * - POST /quality/archives/export-expert-package 专家材料包异步导出，返回 archiveId
+ * - POST /quality/archives/export-expert-package 专家材料包同步导出，返回 archiveId
  */
 import type {
   ArchiveBusinessType,
@@ -24,8 +24,10 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
-import { ARCHIVE_BUSINESS_TYPE_LABEL, archiveApi, EXPERT_PACKAGE_TYPE_LABEL } from '@/apis/quality'
-import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import { ARCHIVE_BUSINESS_TYPE_CODES, ARCHIVE_BUSINESS_TYPE_LABEL, archiveApi, EXPERT_PACKAGE_TYPE_LABEL } from '@/apis/quality'
+import { accreditationApi } from '@/apis/quality/accreditation'
+import type { AccreditationCockpitVO, AccreditationCycleVO } from '@/apis/quality/accreditation'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   AchievementResultSelector,
   AuditRectificationSelector,
@@ -51,8 +53,14 @@ import {
   StageWorkbenchShell,
 } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import {
+  canExportExpertPackage,
+  expertPackageExportBlockers,
+} from '@/composables/useAccreditationWorkbench'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
+import { handleDownloadFile } from '@/utils/file-download'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -92,12 +100,10 @@ const query = reactive<ArchiveQueryRequest>({
   keyword: '',
 })
 
-const businessTypeOptions: { value: ArchiveBusinessType, label: string }[] = Object.entries(
-  ARCHIVE_BUSINESS_TYPE_LABEL,
-).map(([value, label]) => ({
+const businessTypeOptions = ARCHIVE_BUSINESS_TYPE_CODES.map((value) => ({
   value,
-  label,
-})) as { value: ArchiveBusinessType, label: string }[]
+  label: strictEnumLabel(ARCHIVE_BUSINESS_TYPE_LABEL, value, '归档业务类型'),
+}))
 
 const filterModel = ref<ArchiveFilterModel>({
   businessType: undefined,
@@ -147,6 +153,66 @@ const exportForm = reactive<ExpertPackageExportRequest>({
   recipientUserIds: [],
 })
 const exportTrainingPlanId = ref('')
+const exportCockpit = ref<AccreditationCockpitVO | undefined>()
+const exportActiveCycle = ref<AccreditationCycleVO | undefined>()
+const exportEvidenceCount = ref(0)
+const exportReadinessLoading = ref(false)
+
+const exportProgramBlockers = computed(() => {
+  if (exportForm.packageType !== 'PROGRAM_ACCREDITATION') {
+    return []
+  }
+  return expertPackageExportBlockers(
+    exportActiveCycle.value,
+    exportCockpit.value,
+    exportEvidenceCount.value,
+  )
+})
+
+const canSubmitProgramExport = computed(() => {
+  if (exportForm.packageType !== 'PROGRAM_ACCREDITATION') {
+    return true
+  }
+  return canExportExpertPackage(
+    exportActiveCycle.value,
+    exportCockpit.value,
+    exportEvidenceCount.value,
+  )
+})
+
+async function loadProgramExportReadiness(trainingPlanId: string) {
+  if (!trainingPlanId.trim()) {
+    exportCockpit.value = undefined
+    exportActiveCycle.value = undefined
+    exportEvidenceCount.value = 0
+    return
+  }
+  exportReadinessLoading.value = true
+  try {
+    const cockpit = await accreditationApi.cockpit(trainingPlanId.trim())
+    exportCockpit.value = cockpit
+    exportActiveCycle.value = cockpit.activeCycle
+    const programId = qualityStore.currentProgramId
+    if (!programId) {
+      exportEvidenceCount.value = 0
+      return
+    }
+    const evidencePage = await accreditationApi.evidencePage({
+      programId,
+      trainingPlanId: trainingPlanId.trim(),
+      pageNum: 1,
+      pageSize: 1,
+    })
+    exportEvidenceCount.value = readPageTotal(evidencePage, '认证证据数量加载失败，请刷新后重试')
+  } catch (error) {
+    exportCockpit.value = undefined
+    exportActiveCycle.value = undefined
+    exportEvidenceCount.value = 0
+    showUserError(error)
+  } finally {
+    exportReadinessLoading.value = false
+  }
+}
 
 const detailVisible = ref(false)
 const detailRecord = ref<ArchiveVO | null>(null)
@@ -202,6 +268,8 @@ async function handleScopeChange(): Promise<void> {
   await loadList()
 }
 
+useQualityScopeReload(handleScopeChange)
+
 function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
@@ -238,6 +306,9 @@ function openExport() {
     recipientUserIds: [],
   })
   exportTrainingPlanId.value = qualityStore.currentTrainingPlanId || ''
+  exportCockpit.value = undefined
+  exportActiveCycle.value = undefined
+  exportEvidenceCount.value = 0
   exportVisible.value = true
 }
 
@@ -246,9 +317,16 @@ async function submitExport() {
     message.error('请选择材料包对应的毕业要求或培养方案')
     return
   }
+  if (exportForm.packageType === 'PROGRAM_ACCREDITATION') {
+    await loadProgramExportReadiness(exportForm.targetId.trim())
+    if (!canSubmitProgramExport.value) {
+      message.error(exportProgramBlockers.value.join('；') || '专业认证专家材料包导出条件未满足')
+      return
+    }
+  }
   exportSubmitting.value = true
   try {
-    await archiveApi.exportExpertPackage({
+    const archiveId = await archiveApi.exportExpertPackage({
       ...exportForm,
       targetId: exportForm.targetId.trim(),
       archiveCode: exportForm.archiveCode?.trim() || undefined,
@@ -261,9 +339,23 @@ async function submitExport() {
     message.success('专家材料包导出成功')
     exportVisible.value = false
     await loadList()
+    if (archiveId) {
+      await openDetail({ id: archiveId } as ArchiveVO)
+    }
   } finally {
     exportSubmitting.value = false
   }
+}
+
+async function downloadArchiveFile(record: ArchiveVO) {
+  if (!record.fileId) {
+    message.warning('归档记录缺少文件')
+    return
+  }
+  await handleDownloadFile({
+    fileId: record.fileId,
+    fileName: record.fileName,
+  })
 }
 
 async function openDetail(record: ArchiveVO) {
@@ -366,7 +458,24 @@ async function submitEditor() {
   }
 }
 
+function isArchiveDestroyable(record: ArchiveVO): boolean {
+  if (!record.archivedAt || typeof record.retentionYears !== 'number') {
+    return false
+  }
+  const archivedAt = new Date(record.archivedAt)
+  if (Number.isNaN(archivedAt.getTime())) {
+    return false
+  }
+  const expireAt = new Date(archivedAt)
+  expireAt.setFullYear(expireAt.getFullYear() + record.retentionYears)
+  return Date.now() >= expireAt.getTime()
+}
+
 function handleDelete(record: ArchiveVO) {
+  if (!isArchiveDestroyable(record)) {
+    message.warning('档案保管期未到期，禁止删除')
+    return
+  }
   void confirmAsync({
     title: `删除归档 ${record.archiveCode}？`,
     content: '删除后仅移除归档台帐记录，已上传的归档文件不会被删除。',
@@ -468,7 +577,7 @@ async function openAuditDrawer(record: ArchiveVO) {
       pageSize: 50,
       module: 'ARCHIVE',
       category: 'QUALITY',
-      description: record.id,
+      bizId: record.id,
     })
     auditEvents.value = readPageList(page, '归档审计记录加载失败，请稍后重试').map((log) => {
       return {
@@ -491,6 +600,22 @@ watch(
   () => exportForm.packageType,
   () => {
     exportForm.targetId = ''
+    exportCockpit.value = undefined
+    exportActiveCycle.value = undefined
+    exportEvidenceCount.value = 0
+  },
+)
+
+watch(
+  () => [exportForm.packageType, exportForm.targetId] as const,
+  async ([packageType, targetId]) => {
+    if (packageType !== 'PROGRAM_ACCREDITATION' || !targetId.trim()) {
+      exportCockpit.value = undefined
+      exportActiveCycle.value = undefined
+      exportEvidenceCount.value = 0
+      return
+    }
+    await loadProgramExportReadiness(targetId.trim())
   },
 )
 
@@ -513,10 +638,7 @@ onMounted(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title title="质量评价 - 材料归档">
-        <template #status>
-          <QualityScopeHeader @change="handleScopeChange" />
-        </template>
+      <QualityPageContextBar show-title title="质量评价 - 材料归档">
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
             刷新
@@ -524,7 +646,7 @@ onMounted(async () => {
           <UiButton variant="primary" size="sm" @click="openCreate"> 补登台帐 </UiButton>
           <UiButton variant="outline" size="sm" @click="openExport"> 导出专家材料包 </UiButton>
         </template>
-      </ContextBar>
+      </QualityPageContextBar>
     </template>
 
     <SignalBand :metrics="signals" compact class="archive__signals" />
@@ -567,9 +689,9 @@ onMounted(async () => {
             {{ record.businessLabel }}
           </template>
           <template v-else-if="column.key === 'fileRef'">
-            <UiTag tone="green" size="sm">
+            <UiTextAction v-if="record.fileId" @click="downloadArchiveFile(record)">
               {{ record.fileName }}
-            </UiTag>
+            </UiTextAction>
           </template>
           <template v-else-if="column.key === 'retentionYears'">
             {{
@@ -589,8 +711,12 @@ onMounted(async () => {
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
               <UiTextAction @click="openDetail(record)">详情</UiTextAction>
+              <UiTextAction v-if="record.fileId" @click="downloadArchiveFile(record)">
+                下载
+              </UiTextAction>
               <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
-              <UiTextAction tone="danger" @click="handleDelete(record)">删除</UiTextAction>
+              <UiTextAction v-if="isArchiveDestroyable(record)" tone="danger" @click="handleDelete(record)">删除</UiTextAction>
+              <span v-else class="archive-page__locked-hint">保管期内</span>
               <UiTextAction @click="openAuditDrawer(record)">审计</UiTextAction>
             </div>
           </template>
@@ -644,6 +770,25 @@ onMounted(async () => {
             placeholder="请选择培养方案"
           />
         </a-form-item>
+        <a-alert
+          v-if="exportForm.packageType === 'PROGRAM_ACCREDITATION' && exportForm.targetId"
+          :type="canSubmitProgramExport ? 'success' : 'warning'"
+          show-icon
+          class="archive-page__export-readiness"
+        >
+          <template #message>
+            {{
+              exportReadinessLoading
+                ? '正在校验专业认证导出就绪条件…'
+                : (canSubmitProgramExport ? '已满足专业认证专家材料包导出条件' : '尚未满足专业认证专家材料包导出条件')
+            }}
+          </template>
+          <template v-if="!exportReadinessLoading && exportProgramBlockers.length" #description>
+            <ul class="archive-page__export-blockers">
+              <li v-for="item in exportProgramBlockers" :key="item">{{ item }}</li>
+            </ul>
+          </template>
+        </a-alert>
         <a-form-item label="归档编码">
           <a-input
             v-model:value="exportForm.archiveCode"
@@ -685,12 +830,12 @@ onMounted(async () => {
         <a-row :gutter="12">
           <a-col :span="12">
             <a-form-item label="归档编码" required>
-              <a-input v-model:value="editor.archiveCode" placeholder="例：EP-REQ-1-2026" />
+              <a-input v-model:value="editor.archiveCode" placeholder="例：EP-REQ-1-2026" :disabled="editorMode === 'edit'" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="业务类型" required>
-              <a-select v-model:value="editor.businessType" :options="businessTypeOptions" />
+              <a-select v-model:value="editor.businessType" :options="businessTypeOptions" :disabled="editorMode === 'edit'" />
             </a-form-item>
           </a-col>
         </a-row>
@@ -702,6 +847,7 @@ onMounted(async () => {
                 :value="editor.businessId || null"
                 :program-id="qualityStore.currentProgramId || null"
                 placeholder="请选择培养方案"
+                :disabled="editorMode === 'edit'"
                 @change="syncEditorTrainingPlan"
               />
               <GraduationRequirementSelector
@@ -711,6 +857,7 @@ onMounted(async () => {
                   editorTrainingPlanId || qualityStore.currentTrainingPlanId || null
                 "
                 placeholder="请选择毕业要求"
+                :disabled="editorMode === 'edit'"
               />
               <CourseSelector
                 v-else-if="editor.businessType === 'COURSE_GOAL'"
@@ -720,6 +867,7 @@ onMounted(async () => {
                 "
                 :program-id="qualityStore.currentProgramId || null"
                 placeholder="请先选择课程目标所属课程"
+                :disabled="editorMode === 'edit'"
                 @change="syncEditorCourse"
               />
               <CourseGoalSelector
@@ -730,6 +878,7 @@ onMounted(async () => {
                 "
                 class="archive__stacked-control"
                 placeholder="请选择课程目标"
+                :disabled="editorMode === 'edit'"
               />
               <AchievementResultSelector
                 v-else-if="editor.businessType === 'ACHIEVEMENT_RESULT'"
@@ -741,6 +890,7 @@ onMounted(async () => {
                   editorQualityCourseId || qualityStore.currentQualityCourseId || null
                 "
                 placeholder="请选择达成度结果"
+                :disabled="editorMode === 'edit'"
               />
               <ReportSelector
                 v-else-if="editor.businessType === 'REPORT'"
@@ -753,11 +903,13 @@ onMounted(async () => {
                   editorQualityCourseId || qualityStore.currentQualityCourseId || null
                 "
                 placeholder="请选择报告"
+                :disabled="editorMode === 'edit'"
               />
               <AuditRectificationSelector
                 v-else-if="editor.businessType === 'AUDIT_RECTIFICATION'"
                 v-model:value="editor.businessId"
                 placeholder="请选择审核评估整改任务"
+                :disabled="editorMode === 'edit'"
               />
               <a-alert v-else type="warning" show-icon message="该类型需要从对应业务页面发起归档" />
             </a-form-item>
@@ -767,7 +919,7 @@ onMounted(async () => {
               <a-upload
                 :show-upload-list="false"
                 :custom-request="handleArchiveFileUpload"
-                :disabled="archiveFileUploading"
+                :disabled="archiveFileUploading || editorMode === 'edit'"
               >
                 <UiButton variant="outline" size="sm" :loading="archiveFileUploading">
                   上传归档文件
@@ -825,9 +977,12 @@ onMounted(async () => {
           {{ detailRecord.businessLabel }}
         </a-descriptions-item>
         <a-descriptions-item label="归档文件">
-          <UiTag tone="green" size="sm">
+          <UiTextAction
+            v-if="detailRecord.fileId"
+            @click="downloadArchiveFile(detailRecord)"
+          >
             {{ detailRecord.fileName }}
-          </UiTag>
+          </UiTextAction>
         </a-descriptions-item>
         <a-descriptions-item label="分类">
           {{ detailRecord.archiveCategory || '未设置分类' }}

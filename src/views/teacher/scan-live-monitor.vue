@@ -170,7 +170,14 @@
             </template>
           </UiFilterBar>
 
+          <UiErrorRetryPanel
+            v-if="attentionsLoadError"
+            :error="attentionsLoadError"
+            @retry="loadAttentions"
+          />
+
           <UiDataTable
+            v-else
             class="student-detail-table__data-table"
             v-model:current="attentionPagination.current"
             v-model:page-size="attentionPagination.pageSize"
@@ -247,8 +254,29 @@
                   >
                     身份绑定
                   </UiTextAction>
-                  <UiTextAction v-else tone="primary" @click="openLedger">
-                    处置入口
+                  <UiTextAction
+                    v-else-if="record.attentionType === 'RECOGNITION_REVIEW'"
+                    tone="primary"
+                    @click="openAttentionReviewWorkspace"
+                  >
+                    OCR/AI 复核
+                  </UiTextAction>
+                  <UiTextAction
+                    v-else-if="record.attentionType === 'DUPLICATE_PENDING'"
+                    tone="primary"
+                    @click="openAttentionLedger"
+                  >
+                    重复影像处置
+                  </UiTextAction>
+                  <UiTextAction
+                    v-else-if="record.attentionType === 'QUALITY_BLOCK' || record.attentionType === 'PROCESSING_BLOCK'"
+                    tone="primary"
+                    @click="openDetail(record)"
+                  >
+                    查看处置
+                  </UiTextAction>
+                  <UiTextAction v-else tone="primary" @click="openAttentionLedger">
+                    影像账本
                   </UiTextAction>
                   <UiTextAction
                     v-if="record.sourceType === 'SCANNED_PAGE' && record.pageId"
@@ -308,10 +336,10 @@
       @confirm="handleBind"
     >
       <a-form ref="bindFormRef" :model="bindForm" :rules="bindFormRules" layout="vertical">
-        <UiEmpty
+        <UiErrorRetryPanel
           v-if="candidatesLoadError"
-          description="暂无数据"
-          class="scan-monitor__bind-alert"
+          :error="candidatesLoadError"
+          @retry="ensureCandidatesLoaded"
         />
         <UiAlertStrip
           v-if="bindSubmitError"
@@ -451,10 +479,10 @@
       @close="closeBatchBindDrawer"
       @confirm="submitBatchBind"
     >
-      <UiEmpty
+      <UiErrorRetryPanel
         v-if="candidatesLoadError"
-        description="暂无数据"
-        class="scan-monitor__bind-alert"
+        :error="candidatesLoadError"
+        @retry="ensureCandidatesLoaded"
       />
       <UiAlertStrip
         v-if="batchBindError"
@@ -636,7 +664,7 @@ import type {
   TaskStatusCode,
 } from '@/apis/mark/exam'
 import type { ExamPaperBatchBindResultVO } from '@/apis/mark/exam-mark-scanner'
-import type { ScanEventStatusCode, ScanLiveEventVO } from '@/apis/mark/scan-live'
+import type { ScanLiveEventVO } from '@/apis/mark/scan-live'
 import type { GradeStatusCode } from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
@@ -644,6 +672,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
+  BINDING_STATUS_LABEL,
   bindPaper,
   CANDIDATE_STATUS_LABEL,
   FINAL_SCORE_STATUS_LABEL,
@@ -652,6 +681,7 @@ import {
   pageExamScoreSummary,
   pageScannerBatches,
   SCAN_BATCH_STATUS_LABEL,
+  validateScanAttentionItemContract,
 } from '@/apis/mark/exam'
 import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
@@ -668,7 +698,9 @@ import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
+import { SCAN_EVENT_STATUS_LABEL, SCAN_EVENT_STATUS_TONE } from '@/apis/mark/scan-live'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds, formatTimeOfDay } from '@/utils/format'
@@ -698,6 +730,13 @@ const {
   selectedExamId,
   selectedExamLabel,
 } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
+
+/** 扫描链写操作后同步 StageRail 与本页数据。 */
+async function syncScanWorkbenchState(): Promise<void> {
+  await refreshSnapshot()
+  mittBus.emit('scan-workbench:refresh')
+}
 
 // ─── 列表筛选 + 数据 ─────────────────────────────
 const filterForm = reactive<{
@@ -777,7 +816,7 @@ const paperCandidateOptions = computed(() =>
       label: [
         `${item.studentName}（${item.studentNo}）`,
         item.studentClassName,
-        item.bindingStatus,
+        strictEnumLabel(BINDING_STATUS_LABEL, item.bindingStatus, '试卷绑定状态'),
         finalScoreStatusLabel(item.finalScoreStatus),
       ]
         .filter(Boolean)
@@ -917,23 +956,11 @@ const monitorTabs = computed<UiSectionTabItem[]>(() => [
   },
 ])
 
-const SCAN_EVENT_STATUS_LABEL: Record<ScanEventStatusCode, string> = {
-  PENDING: '待入账',
-  BATCHED: '已入账',
-  INVALID: '无效事件',
-}
-
-const SCAN_EVENT_STATUS_TONE: Record<ScanEventStatusCode, BadgeTone> = {
-  PENDING: 'blue',
-  BATCHED: 'green',
-  INVALID: 'red',
-}
-
-function scanEventStatusLabel(status: ScanEventStatusCode): string {
+function scanEventStatusLabel(status: ScanLiveEventVO['status']): string {
   return strictEnumLabel(SCAN_EVENT_STATUS_LABEL, status, '扫描实时事件状态')
 }
 
-function scanEventStatusTone(status: ScanEventStatusCode): BadgeTone {
+function scanEventStatusTone(status: ScanLiveEventVO['status']): BadgeTone {
   return strictEnumTone(SCAN_EVENT_STATUS_TONE, status, '扫描实时事件状态')
 }
 
@@ -944,11 +971,28 @@ function openScanEventDetail(event: ScanLiveEventVO): void {
 
 async function handleRefresh(): Promise<void> {
   await Promise.all([
+    refreshSnapshot(),
     loadAttentions(),
     loadScanBatches(),
     loadPaperCandidates(),
     selectedExamId.value ? refreshScanLive() : Promise.resolve(),
   ])
+}
+
+function openAttentionLedger(): void {
+  if (!selectedExamId.value) return
+  void router.push({
+    name: 'TeacherExamWorkspaceScanLedger',
+    params: { examId: selectedExamId.value },
+  })
+}
+
+function openAttentionReviewWorkspace(): void {
+  if (!selectedExamId.value) return
+  void router.push({
+    name: 'TeacherExamWorkspaceMarkingReview',
+    params: { examId: selectedExamId.value },
+  })
 }
 
 const attentionTypeOptions: { label: string, value: ScanAttentionTypeCode }[] = [
@@ -1069,7 +1113,16 @@ async function loadAttentionPage(queryGroup: ScanAttentionQueryGroupCode): Promi
     return
   }
   attentionPagination.total = total
-  attentions.value = rows
+  if (result.pageNum != null) {
+    attentionPagination.current = result.pageNum
+  }
+  if (result.pageSize != null) {
+    attentionPagination.pageSize = result.pageSize
+  }
+  attentions.value = rows.map((row) => {
+    validateScanAttentionItemContract(row)
+    return row
+  })
 }
 
 function reloadAttentionsFromFirstPage(): void {
@@ -1398,6 +1451,7 @@ async function confirmDiscardPage(): Promise<void> {
     pageDiscardTarget.value = null
     pageDiscardReason.value = ''
     await loadAttentions()
+    await syncScanWorkbenchState()
   } catch (error) {
     pageDiscardError.value = getUserErrorMessage(error, '扫描页废弃失败')
     showUserError(error, '扫描页废弃失败')
@@ -1601,16 +1655,6 @@ function openBindDrawer(record: ScanAttentionItemVO): void {
   void ensureCandidatesLoaded()
 }
 
-function openLedger(): void {
-  if (!selectedExamId.value) return
-  void router.push({
-    name: 'TeacherExamWorkspaceScanLedger',
-    query: {
-      examId: selectedExamId.value,
-    },
-  })
-}
-
 async function handleBind(): Promise<void> {
   if (!selectedExamId.value) return
   if (!bindFormRef.value) return
@@ -1653,6 +1697,7 @@ async function handleBind(): Promise<void> {
     releaseBindIdentitySliceImage()
     releaseBindSourcePageImage()
     await loadAttentions()
+    await syncScanWorkbenchState()
   } catch (error) {
     bindSubmitError.value = getUserErrorMessage(error, '试卷身份绑定失败')
     showUserError(error, '试卷身份绑定失败')
@@ -1842,6 +1887,7 @@ async function submitBatchBind(): Promise<void> {
     batchBindResult.value = result
     message.success(`批量绑定：成功 ${result.successCount} 条，失败 ${result.failureCount} 条`)
     await loadAttentions()
+    await syncScanWorkbenchState()
     if (result.failureCount === 0) {
       selectedRowKeys.value = []
       batchBindRows.value = []
@@ -1894,7 +1940,7 @@ watch(selectedExamId, (value) => {
     stopScanLive()
     attentions.value = []
   }
-})
+}, { immediate: true })
 
 watch(activeTab, (value) => {
   attentionPagination.current = 1
@@ -1924,14 +1970,8 @@ function onWorkbenchRefresh(): void {
   }
 }
 
-onMounted(async () => {
+onMounted(() => {
   mittBus.on('scan-workbench:refresh', onWorkbenchRefresh)
-  if (selectedExamId.value) {
-    await loadScanBatches()
-    await loadPaperCandidates()
-    await loadAttentions()
-    await startScanLive()
-  }
 })
 
 onBeforeUnmount(() => {

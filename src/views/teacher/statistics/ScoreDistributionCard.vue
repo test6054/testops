@@ -19,8 +19,13 @@
       </a-space>
     </template>
 
+    <UiErrorRetryPanel
+      v-if="loadError"
+      :error="loadError"
+      @retry="reload"
+    />
     <UiEmpty
-      v-if="!loading && !distribution"
+      v-else-if="!loading && !distribution"
       description="暂无数据"
     />
     <div v-else-if="distribution" class="score-dist">
@@ -57,6 +62,7 @@ import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError, toUserError } from '@/utils/error-handler'

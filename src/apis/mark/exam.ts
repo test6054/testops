@@ -1,5 +1,6 @@
 import type { AxiosResponse } from 'axios'
 import type { QuestionTypeCode } from './grading-experience'
+import { QUESTION_TYPE_LABEL } from './grading-experience'
 import type { AnonymityModeCode } from './marking-organization'
 import type { ScannerKioskScanMode } from './scanner-kiosk'
 import type { GradeStatusCode, ObjectiveResultCode } from './student-exam'
@@ -15,11 +16,17 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { UserDto } from '@/types/api-types.d'
 import http from '@/config/axios'
+import { assertUserFacing } from '@/utils/contract-guard'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const EXAM_TEMPLATE_DATA_ERROR = '试卷模板数据异常，请刷新后重试'
 const STANDARD_ANSWER_DATA_ERROR = '标准答案数据异常，请刷新后重试'
+const EXAM_SCORE_DATA_ERROR = '成绩数据异常，请刷新后重试'
+const REVIEW_TASK_DATA_ERROR = '复核任务数据异常，请刷新后重试'
+const SCAN_ATTENTION_DATA_ERROR = '扫描异常数据异常，请刷新后重试'
+const ANNOTATION_DATA_ERROR = '批注数据异常，请刷新后重试'
+const STUDENT_TREE_DATA_ERROR = '班级学生树数据异常，请刷新后重试'
 
 /** 试卷模板未配置业务码 - 与后端 ResultCodeEnum.EXAM_MARK_PAPER_TEMPLATE_NOT_CONFIGURED 对齐 */
 export const PAPER_TEMPLATE_NOT_CONFIGURED_CODE = 20014
@@ -72,6 +79,14 @@ export const CANDIDATE_STATUS_LABEL: Record<CandidateStatusCode, string> = {
 
 /** 试卷绑定状态编码 - 与后端 BindingStatus 枚举完全一致 */
 export type BindingStatusCode = 'UNBOUND' | 'BOUND' | 'CONFLICT' | 'DISCARDED'
+
+/** 试卷绑定状态文案 - 与后端 BindingStatus.message 完全一致 */
+export const BINDING_STATUS_LABEL: Record<BindingStatusCode, string> = {
+  UNBOUND: '未绑定',
+  BOUND: '已绑定',
+  CONFLICT: '冲突',
+  DISCARDED: '已废弃',
+}
 
 /** 扫描页质量判定 - 与后端 QualityDecision 枚举完全一致 */
 export type QualityDecisionCode = 'PASS' | 'BLOCKED'
@@ -795,6 +810,26 @@ export interface ExamClassStudentTreeNodeVO {
   children?: ExamClassStudentTreeNodeVO[]
 }
 
+const EXAM_CLASS_STUDENT_TREE_NODE_TYPE_LABEL: Record<
+  ExamClassStudentTreeNodeVO['nodeType'],
+  string
+> = {
+  DEPARTMENT: '院系',
+  CLASS: '班级',
+  STUDENT: '学生',
+}
+
+function validateExamClassStudentTreeNodeContract(node: ExamClassStudentTreeNodeVO): void {
+  requireTemplateText(node.id, STUDENT_TREE_DATA_ERROR)
+  requireTemplateText(node.name, STUDENT_TREE_DATA_ERROR)
+  requireTemplateText(node.originalId, STUDENT_TREE_DATA_ERROR)
+  strictEnumLabel(EXAM_CLASS_STUDENT_TREE_NODE_TYPE_LABEL, node.nodeType, '树节点类型')
+  if (typeof node.selectable !== 'boolean' || typeof node.isLeaf !== 'boolean') {
+    throw new TypeError(STUDENT_TREE_DATA_ERROR)
+  }
+  node.children?.forEach(validateExamClassStudentTreeNodeContract)
+}
+
 export interface ExamStudentTreeRequest {
   examId: string
   classIds?: string[]
@@ -803,7 +838,12 @@ export interface ExamStudentTreeRequest {
 export function listExamStudentTree(
   request: ExamStudentTreeRequest,
 ): Promise<ExamClassStudentTreeNodeVO[]> {
-  return http.post<ExamClassStudentTreeNodeVO[]>('/api/mark/exams/scope/student-tree', request)
+  return http
+    .post<ExamClassStudentTreeNodeVO[]>('/api/mark/exams/scope/student-tree', request)
+    .then((nodes) => {
+      nodes.forEach(validateExamClassStudentTreeNodeContract)
+      return nodes
+    })
 }
 
 /**
@@ -1245,6 +1285,17 @@ export interface ScanAttentionItemVO {
   updateTime?: string
 }
 
+/** 扫描异常待办项契约校验。 */
+export function validateScanAttentionItemContract(record: ScanAttentionItemVO): void {
+  requireTemplateText(record.id, SCAN_ATTENTION_DATA_ERROR)
+  requireTemplateText(record.examId, SCAN_ATTENTION_DATA_ERROR)
+  requireTemplateText(record.sourceId, SCAN_ATTENTION_DATA_ERROR)
+  requireTemplateText(record.sourceDisplayName, SCAN_ATTENTION_DATA_ERROR)
+  requireTemplateText(record.scanBatchDisplayName, SCAN_ATTENTION_DATA_ERROR)
+  requireTemplateText(record.pageDisplayName, SCAN_ATTENTION_DATA_ERROR)
+  requireTemplateText(record.paperDisplay?.primaryText, SCAN_ATTENTION_DATA_ERROR)
+}
+
 // ─── 扫描事件 / 批次 / 设备 模型重构（2026-05-06） ─────────────────
 
 /**
@@ -1341,6 +1392,19 @@ export interface ExamScannerBatchCreateVO {
   scanEndTime: string
 }
 
+function validateExamScannerBatchCreateContract(
+  record: ExamScannerBatchCreateVO,
+): ExamScannerBatchCreateVO {
+  requireTemplateText(record.scanBatchId, '扫描批次创建响应异常，请刷新后重试')
+  requireTemplateText(record.batchNo, '扫描批次创建响应异常，请刷新后重试')
+  requireTemplateNumber(record.eventCount, '扫描批次创建响应异常，请刷新后重试')
+  requireTemplateNumber(record.fileCount, '扫描批次创建响应异常，请刷新后重试')
+  requireTemplateNumber(record.pageCount, '扫描批次创建响应异常，请刷新后重试')
+  requireTemplateText(record.scanStartTime, '扫描批次创建响应异常，请刷新后重试')
+  requireTemplateText(record.scanEndTime, '扫描批次创建响应异常，请刷新后重试')
+  return record
+}
+
 /** 扫描批次创建请求 - 对应 ExamScannerBatchCreateRequest */
 export interface ExamScannerBatchCreateRequest {
   examId: string
@@ -1379,7 +1443,9 @@ export interface ExamScannerBatchQueryRequest extends QueryDto {
 export function createScanBatchByCondition(
   request: ExamScannerBatchCreateRequest,
 ): Promise<ExamScannerBatchCreateVO> {
-  return http.post<ExamScannerBatchCreateVO>('/api/mark/exams/scanner-batches/create', request)
+  return http
+    .post<ExamScannerBatchCreateVO>('/api/mark/exams/scanner-batches/create', request)
+    .then(validateExamScannerBatchCreateContract)
 }
 
 /** 按设备的事件分布片段 - 对应 ExamScannerBatchDeviceBreakdown */
@@ -1511,6 +1577,23 @@ export interface ExamPaperScoreVO {
   totalScore?: number
   finalScoreStatus: FinalScoreStatusCode
   questions?: ExamQuestionScoreVO[]
+}
+
+function validateExamPaperScoreContract(record: ExamPaperScoreVO): ExamPaperScoreVO {
+  requireTemplateText(record.examId, EXAM_SCORE_DATA_ERROR)
+  requireTemplateText(record.paperInstanceId, EXAM_SCORE_DATA_ERROR)
+  requireTemplateText(record.candidateRosterId, EXAM_SCORE_DATA_ERROR)
+  requireTemplateText(record.studentUserId, EXAM_SCORE_DATA_ERROR)
+  requireTemplateText(record.studentNo, EXAM_SCORE_DATA_ERROR)
+  requireTemplateText(record.studentName, EXAM_SCORE_DATA_ERROR)
+  strictEnumLabel(FINAL_SCORE_STATUS_LABEL, record.finalScoreStatus, '最终成绩状态')
+  record.questions?.forEach((item) => {
+    requireTemplateText(item.questionTemplateId, EXAM_SCORE_DATA_ERROR)
+    requireTemplateText(item.questionNo, EXAM_SCORE_DATA_ERROR)
+    strictEnumLabel(QUESTION_TYPE_LABEL, item.questionType, '题型')
+    requireTemplateNumber(item.fullScore, EXAM_SCORE_DATA_ERROR)
+  })
+  return record
 }
 
 /**
@@ -1761,7 +1844,9 @@ export function withdrawFinalScore(request: ExamFinalScoreWithdrawRequest): Prom
  * POST /api/mark/exams/paper-score
  */
 export function getPaperScore(examId: string, paperInstanceId: string): Promise<ExamPaperScoreVO> {
-  return http.post<ExamPaperScoreVO>('/api/mark/exams/paper-score', { examId, paperInstanceId })
+  return http
+    .post<ExamPaperScoreVO>('/api/mark/exams/paper-score', { examId, paperInstanceId })
+    .then(validateExamPaperScoreContract)
 }
 
 // ─── 复核任务（匿名批阅）─────────────────────────────────────────
@@ -1791,6 +1876,12 @@ export const REVIEW_TASK_TYPE_META: Record<
   OBJECTIVE_AUTO_REVIEW: { label: '客观题（硬比对）', color: 'green' },
   OBJECTIVE_AI_REVIEW: { label: '客观题（AI 评分）', color: 'blue' },
   SUBJECTIVE_AI_REVIEW: { label: '主观题（AI 评分）', color: 'purple' },
+}
+
+const REVIEW_TASK_TYPE_LABEL: Record<ReviewTaskTypeCode, string> = {
+  OBJECTIVE_AUTO_REVIEW: REVIEW_TASK_TYPE_META.OBJECTIVE_AUTO_REVIEW.label,
+  OBJECTIVE_AI_REVIEW: REVIEW_TASK_TYPE_META.OBJECTIVE_AI_REVIEW.label,
+  SUBJECTIVE_AI_REVIEW: REVIEW_TASK_TYPE_META.SUBJECTIVE_AI_REVIEW.label,
 }
 
 /**
@@ -1902,6 +1993,53 @@ export interface ReviewTaskDetailVO {
   evaluationCriteria?: string
 }
 
+const GRADE_SOURCE_LABEL: Record<GradeSourceCode, string> = {
+  AUTO_OBJECTIVE: '客观自动',
+  AUTO_OBJECTIVE_AI: '客观 AI',
+  LOCAL_SUBJECTIVE_AI: '主观 AI',
+  TEACHER: '教师',
+  RECOGNITION_FAILURE: '识别失败',
+}
+
+/** 复核任务列表项契约校验，供 store 与列表页在消费前显式失败。 */
+export function validateReviewTaskItemContract(record: ReviewTaskItemVO): void {
+  requireTemplateText(record.reviewTaskId, REVIEW_TASK_DATA_ERROR)
+  requireTemplateText(record.examId, REVIEW_TASK_DATA_ERROR)
+  requireTemplateText(record.paperInstanceId, REVIEW_TASK_DATA_ERROR)
+  requireTemplateText(record.gradeResultId, REVIEW_TASK_DATA_ERROR)
+  requireTemplateText(record.questionTemplateId, REVIEW_TASK_DATA_ERROR)
+  requireTemplateText(record.questionNo, REVIEW_TASK_DATA_ERROR)
+  requireTemplateText(record.studentUserId, REVIEW_TASK_DATA_ERROR)
+  requireTemplateText(record.studentNo, REVIEW_TASK_DATA_ERROR)
+  requireTemplateText(record.studentName, REVIEW_TASK_DATA_ERROR)
+  requireTemplateText(record.className, REVIEW_TASK_DATA_ERROR)
+  requireTemplateNumber(record.fullScore, REVIEW_TASK_DATA_ERROR)
+  strictEnumLabel(REVIEW_TASK_STATUS_LABEL, record.status, '复核任务状态')
+  strictEnumLabel(QUESTION_TYPE_LABEL, record.questionType, '题型')
+  strictEnumLabel(REVIEW_TASK_TYPE_LABEL, record.reviewType, '复核任务类型')
+  strictEnumLabel(GRADE_SOURCE_LABEL, record.gradeSource, '批改来源')
+  requireTemplateText(record.paperDisplay?.primaryText, REVIEW_TASK_DATA_ERROR)
+}
+
+/** 复核任务详情契约校验：AI trace 与能力编码必须同现。 */
+export function validateReviewTaskDetailContract(record: ReviewTaskDetailVO): void {
+  requireTemplateText(record.reviewTaskId, REVIEW_TASK_DATA_ERROR)
+  requireTemplateText(record.examId, REVIEW_TASK_DATA_ERROR)
+  requireTemplateText(record.paperInstanceId, REVIEW_TASK_DATA_ERROR)
+  requireTemplateText(record.gradeResultId, REVIEW_TASK_DATA_ERROR)
+  requireTemplateText(record.questionTemplateId, REVIEW_TASK_DATA_ERROR)
+  requireTemplateText(record.questionNo, REVIEW_TASK_DATA_ERROR)
+  requireTemplateNumber(record.fullScore, REVIEW_TASK_DATA_ERROR)
+  strictEnumLabel(REVIEW_TASK_STATUS_LABEL, record.status, '复核任务状态')
+  strictEnumLabel(QUESTION_TYPE_LABEL, record.questionType, '题型')
+  if (record.aiTraceId && !record.aiAbilityCode) {
+    assertUserFacing(false, REVIEW_TASK_DATA_ERROR)
+  }
+  if (record.aiAbilityCode) {
+    strictEnumLabel(AI_ABILITY_LABEL, record.aiAbilityCode, 'AI 能力编码')
+  }
+}
+
 /**
  * 查询匿名批阅任务列表
  * POST /api/mark/exams/review-tasks
@@ -1917,7 +2055,12 @@ export function listReviewTasks(
  * POST /api/mark/exams/review-tasks/detail
  */
 export function getReviewTaskDetail(request: ReviewTaskActionRequest): Promise<ReviewTaskDetailVO> {
-  return http.post<ReviewTaskDetailVO>('/api/mark/exams/review-tasks/detail', request)
+  return http
+    .post<ReviewTaskDetailVO>('/api/mark/exams/review-tasks/detail', request)
+    .then((record) => {
+      validateReviewTaskDetailContract(record)
+      return record
+    })
 }
 
 /**
@@ -1925,7 +2068,12 @@ export function getReviewTaskDetail(request: ReviewTaskActionRequest): Promise<R
  * POST /api/mark/exams/review-tasks/claim
  */
 export function claimReviewTask(request: ReviewTaskActionRequest): Promise<ReviewTaskDetailVO> {
-  return http.post<ReviewTaskDetailVO>('/api/mark/exams/review-tasks/claim', request)
+  return http
+    .post<ReviewTaskDetailVO>('/api/mark/exams/review-tasks/claim', request)
+    .then((record) => {
+      validateReviewTaskDetailContract(record)
+      return record
+    })
 }
 
 // ─── 批注与阅卷进度 ─────────────────────────────────────────────
@@ -1954,6 +2102,20 @@ export interface AnnotationVO {
   correlationId?: string
   createTime?: string
 }
+
+const ANNOTATION_SCOPE_LABEL: Record<AnnotationScopeCode, string> = {
+  QUESTION: '题目',
+  PAGE: '页面',
+}
+
+/** 批注记录契约校验。 */
+export function validateAnnotationContract(record: AnnotationVO): void {
+  requireTemplateText(record.annotationId, ANNOTATION_DATA_ERROR)
+  if (record.annotationScope) {
+    strictEnumLabel(ANNOTATION_SCOPE_LABEL, record.annotationScope, '批注范围')
+  }
+}
+
 /** 阅卷进度响应 - 对应 MarkingProgressResponse */
 export interface MarkingProgressVO {
   examId: string
@@ -2110,6 +2272,25 @@ export interface ExamScoreDistributionVO {
   counts: number[]
 }
 
+function validateExamScoreDistributionContract(
+  record: ExamScoreDistributionVO,
+): ExamScoreDistributionVO {
+  requireTemplateText(record.examId, EXAM_SCORE_DATA_ERROR)
+  requireTemplateNumber(record.fullScore, EXAM_SCORE_DATA_ERROR)
+  requireTemplateNumber(record.passScore, EXAM_SCORE_DATA_ERROR)
+  requireTemplateNumber(record.participantCount, EXAM_SCORE_DATA_ERROR)
+  requireTemplateNumber(record.passCount, EXAM_SCORE_DATA_ERROR)
+  requireTemplateNumber(record.avgScore, EXAM_SCORE_DATA_ERROR)
+  requireTemplateNumber(record.stdDev, EXAM_SCORE_DATA_ERROR)
+  if (!Array.isArray(record.ranges) || !Array.isArray(record.counts)) {
+    throw new TypeError(EXAM_SCORE_DATA_ERROR)
+  }
+  if (record.ranges.length !== record.counts.length) {
+    throw new TypeError(EXAM_SCORE_DATA_ERROR)
+  }
+  return record
+}
+
 /**
  * 查询考试分数分布（五级分段直方图）
  * POST /api/mark/exams/score-distribution
@@ -2117,5 +2298,7 @@ export interface ExamScoreDistributionVO {
 export function getExamScoreDistribution(
   request: ExamScoreDistributionQueryRequest,
 ): Promise<ExamScoreDistributionVO> {
-  return http.post<ExamScoreDistributionVO>('/api/mark/exams/score-distribution', request)
+  return http
+    .post<ExamScoreDistributionVO>('/api/mark/exams/score-distribution', request)
+    .then(validateExamScoreDistributionContract)
 }

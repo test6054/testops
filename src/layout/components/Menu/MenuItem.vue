@@ -1,6 +1,6 @@
 <template>
   <template v-if="isRenderableMenuNode">
-    <a-menu-item v-if="shouldShowAsMenuItem" :key="menuItemKey">
+    <a-menu-item v-if="shouldShowAsMenuItem" :key="menuItemKey" :disabled="menuItemDisabled">
       <template #icon>
         <MenuIcon :icon="menuItemIcon" />
       </template>
@@ -92,6 +92,11 @@ const isRenderableMenuNode = computed(() => {
 // 菜单项的key
 const menuItemKey = computed(() => {
   return menuData.value.onlyOneChild?.path || props.item.path
+})
+
+const menuItemDisabled = computed(() => {
+  const target = menuData.value.onlyOneChild ?? props.item
+  return !!target.meta?.disabled
 })
 
 // 菜单项的图标

@@ -54,7 +54,14 @@
           @reset="handleReset"
         />
 
+        <UiErrorRetryPanel
+          v-if="candidatesLoadError"
+          :error="candidatesLoadError"
+          @retry="loadCandidates"
+        />
+
         <UiDataTable
+          v-else
           v-model:current="pagination.current"
           v-model:page-size="pagination.pageSize"
           :columns="columns"
@@ -332,7 +339,7 @@ import type { FilterField } from '@/components/ui-guide/ui/types'
 import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { listAbsenceRecords } from '@/apis/mark/absence'
 import {
@@ -348,6 +355,7 @@ import {
   withdrawFinalScore,
 } from '@/apis/mark/exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -361,7 +369,6 @@ import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 
 defineOptions({ name: 'TeacherScorePublish' })
 
@@ -494,6 +501,12 @@ async function loadCandidates(): Promise<void> {
     })
     candidates.value = readPageList(result, '成绩发布名单加载失败，请稍后重试')
     pagination.total = readPageTotal(result)
+    if (result.pageNum != null) {
+      pagination.current = result.pageNum
+    }
+    if (result.pageSize != null) {
+      pagination.pageSize = result.pageSize
+    }
   } catch (error) {
     candidatesLoadError.value = toUserError(error, '成绩发布名单加载失败，请稍后重试')
     showUserError(error, '成绩发布名单加载失败，请稍后重试')
@@ -825,18 +838,7 @@ watch(selectedExamId, (value) => {
     pendingAbsenceCount.value = 0
     finalScoreOverview.value = null
   }
-})
-
-onMounted(async () => {
-  if (selectedExamId.value) {
-    await Promise.all([
-      loadExamDetail(),
-      loadCandidates(),
-      loadPendingAbsenceCount(),
-      loadFinalScoreOverview(),
-    ])
-  }
-})
+}, { immediate: true })
 </script>
 
 <style lang="scss" scoped>

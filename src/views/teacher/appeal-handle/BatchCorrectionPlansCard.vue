@@ -14,7 +14,14 @@
       @reset="handleFilterReset"
     />
 
+    <UiErrorRetryPanel
+      v-if="loadError"
+      :error="loadError"
+      @retry="reload"
+    />
+
     <UiDataTable
+      v-else
       class="student-detail-table__data-table"
       v-model:current="pagination.current"
       v-model:page-size="pagination.pageSize"
@@ -258,6 +265,7 @@ import {
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -267,6 +275,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'BatchCorrectionPlansCard' })
 
 const props = defineProps<{ examId: string, reloadToken: number }>()
+const emit = defineEmits<{ (e: 'changed'): void }>()
 
 const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 100
 
@@ -586,6 +595,7 @@ async function handleCreate(): Promise<void> {
     message.success('批量更正计划草稿已创建')
     createOpen.value = false
     await reload()
+    emit('changed')
   } catch (e) {
     showUserError(e, '批量成绩更正计划创建失败')
   } finally {
@@ -600,6 +610,7 @@ async function handleSubmitPlan(planId: string): Promise<void> {
     await submitBatchCorrectionPlan({ planId })
     message.success('已提交审批')
     await reload()
+    emit('changed')
   } catch (e) {
     showUserError(e, '批量成绩更正计划提交失败')
   } finally {
@@ -614,6 +625,7 @@ async function handleApprove(planId: string): Promise<void> {
     await approveBatchCorrectionPlan({ planId, approved: true })
     message.success('已审批通过')
     await reload()
+    emit('changed')
   } catch (e) {
     showUserError(e, '批量成绩更正计划审批失败')
   } finally {
@@ -644,6 +656,7 @@ async function handleReject(): Promise<void> {
     message.success('已驳回')
     rejectModalOpen.value = false
     await reload()
+    emit('changed')
   } catch (e) {
     showUserError(e, '批量成绩更正计划驳回失败')
   } finally {
@@ -677,6 +690,7 @@ async function handleExecute(): Promise<void> {
     message.success('批量更正执行完成')
     executeModalOpen.value = false
     await reload()
+    emit('changed')
   } catch (e) {
     showUserError(e, '批量成绩更正计划执行失败')
   } finally {

@@ -96,6 +96,10 @@ declare module 'vue-router' {
     markStageKey?: string
     /** 工作台侧栏分组 */
     workspacePhase?: string
+    /** 侧栏项是否要求培养方案已确认后才可进入 */
+    requiresPlanConfirmed?: boolean
+    /** 侧栏项禁用（由 Menu 根据业务状态写入） */
+    disabled?: boolean
   }
 }
 

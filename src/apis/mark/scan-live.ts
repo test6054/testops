@@ -32,6 +32,23 @@ export class ScanLiveFatalAuthError extends Error {
 /** SSE 扫描事件状态码 - 对应后端 ScanEventStatus 枚举 */
 export type ScanEventStatusCode = 'PENDING' | 'BATCHED' | 'INVALID'
 
+/** 扫描 SSE 事件状态文案 - 与后端 ScanEventStatus.message 一致 */
+export const SCAN_EVENT_STATUS_LABEL: Record<ScanEventStatusCode, string> = {
+  PENDING: '待入账',
+  BATCHED: '已入账',
+  INVALID: '无效事件',
+}
+
+/** 扫描 SSE 事件状态徽标色调 */
+export const SCAN_EVENT_STATUS_TONE: Record<
+  ScanEventStatusCode,
+  import('@/components/ui-guide/ui/types').BadgeTone
+> = {
+  PENDING: 'blue',
+  BATCHED: 'green',
+  INVALID: 'red',
+}
+
 /** 来源文件引用 - 对应后端 ExamFileRefVO */
 export interface ExamFileRefVO {
   fileId: string

@@ -22,7 +22,11 @@
 
   <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="sheet-page__empty" />
 
-  <UiEmpty v-else-if="!loading && templateLoadError" description="暂无数据" />
+  <UiErrorRetryPanel
+    v-else-if="templateLoadError"
+    :error="templateLoadError"
+    @retry="loadTemplate"
+  />
 
   <a-spin v-else :spinning="loading">
     <UiAlertStrip
@@ -125,7 +129,7 @@ import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   getExamTemplate,
@@ -141,6 +145,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { hydrateTemplatePageFileNames } from '@/utils/mark-storage-file'
 
@@ -150,6 +155,7 @@ const router = useRouter()
 const pageTableRef = ref<InstanceType<typeof ExamTemplatePageTable> | null>(null)
 
 const { selectedExamId } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 let rowSeq = 0
 function nextRowKey(): string {
@@ -388,6 +394,7 @@ async function handleSave(): Promise<void> {
     })
     message.success('答卷页页面配置已保存')
     await loadTemplate()
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '答卷页模板保存失败')
   } finally {
@@ -401,13 +408,7 @@ watch(selectedExamId, (value) => {
   } else {
     clearTemplate()
   }
-})
-
-onMounted(async () => {
-  if (selectedExamId.value) {
-    await loadTemplate()
-  }
-})
+}, { immediate: true })
 </script>
 
 <style lang="scss" scoped>

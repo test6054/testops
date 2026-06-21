@@ -11,7 +11,13 @@
         <template #icon><ReloadOutlined /></template>刷新
       </a-button>
     </template>
+    <UiErrorRetryPanel
+      v-if="loadError"
+      :error="loadError"
+      @retry="reload"
+    />
     <UiDataTable
+      v-else
       pagination-mode="client"
       class="student-detail-table__data-table"
       :columns="columns"
@@ -121,4 +127,6 @@ watch(
   },
   { immediate: true },
 )
+
+defineExpose({ reload })
 </script>

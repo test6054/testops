@@ -20,7 +20,7 @@ import type {
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
@@ -38,6 +38,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -301,7 +302,15 @@ function openCreate() {
   editorVisible.value = true
 }
 
+function canEditProfile(record: ProfessionAlgorithmProfileVO): boolean {
+  return record.confirmationStatus !== 'CONFIRMED'
+}
+
 function openEdit(record: ProfessionAlgorithmProfileVO) {
+  if (!canEditProfile(record)) {
+    message.error('已确认实例禁止直接修改，请先退回')
+    return
+  }
   editorMode.value = 'edit'
   Object.assign(editor, record)
   editorVisible.value = true
@@ -364,6 +373,10 @@ async function handleRevoke(record: ProfessionAlgorithmProfileVO) {
 }
 
 async function handleDelete(record: ProfessionAlgorithmProfileVO) {
+  if (!canEditProfile(record)) {
+    message.error('已确认实例禁止删除')
+    return
+  }
   void confirmAsync({
     title: `删除实例 ${record.profileCode}？`,
     type: 'error',
@@ -456,8 +469,16 @@ const signals = computed<SignalMetric[]>(() => {
 })
 
 
+useQualityScopeReload(() => {
+  void loadList()
+})
+
 onMounted(async () => {
   await Promise.all([loadList(), loadDicts()])
+})
+
+onActivated(() => {
+  void Promise.all([loadList(), loadDicts()])
 })
 </script>
 
@@ -519,9 +540,9 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
+              <UiTextAction v-if="canEditProfile(record)" @click="openEdit(record)">编辑</UiTextAction>
               <UiTextAction
-                v-if="record.confirmationStatus === 'DRAFT'"
+                v-if="record.confirmationStatus === 'DRAFT' || record.confirmationStatus === 'RETURNED'"
                 tone="primary"
                 @click="handleConfirm(record)"
               >
@@ -534,7 +555,9 @@ onMounted(async () => {
               >
                 退回
               </UiTextAction>
-              <UiTextAction tone="danger" @click="handleDelete(record)">删除</UiTextAction>
+              <UiTextAction v-if="canEditProfile(record)" tone="danger" @click="handleDelete(record)">
+                删除
+              </UiTextAction>
             </div>
           </template>
         </template>
@@ -569,6 +592,7 @@ onMounted(async () => {
                 placeholder="选择模板会自动继承默认值"
                 show-search
                 option-filter-prop="label"
+                :disabled="editorMode === 'edit'"
                 @change="onTemplateSelectChange"
               >
                 <a-select-option
@@ -587,6 +611,7 @@ onMounted(async () => {
               <ProgramSelector
                 :value="editor.programId || null"
                 placeholder="选择本租户专业"
+                :disabled="editorMode === 'edit'"
                 @change="handleEditorProgramChange"
               />
             </a-form-item>

@@ -18,11 +18,12 @@ import type {
 } from '@/apis/quality'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
-import type {QualityChartGroup} from '@/utils/quality-workbench-charts';
+import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
 import { storeToRefs } from 'pinia'
-import { computed, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
+  accreditationApi,
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
   ACHIEVEMENT_STATUS_COLOR,
@@ -38,16 +39,17 @@ import {
   IMPROVEMENT_TASK_STATUS_LABEL,
   improvementTaskApi,
 } from '@/apis/quality'
-import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import QualityWorkbenchCharts from '@/components/quality/QualityWorkbenchCharts.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import { ContextBar, SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
-import { useQualityStore } from '@/stores/modules/quality'
+import { SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
+import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { buildStatusChartGroup } from '@/utils/quality-workbench-charts'
@@ -427,6 +429,7 @@ async function reload() {
     loadAchievement(),
     loadImprovement(),
     loadAiTasks(),
+    loadCockpitPhase(),
     qualityTaskStore.refreshAll({
       trainingPlanId: trainingPlanId.value || undefined,
       programId: qualityStore.currentProgramId || undefined,
@@ -435,9 +438,23 @@ async function reload() {
   ])
 }
 
-function handleScopeChange() {
-  void reload()
-}
+useQualityScopeReload(reload)
+
+onMounted(async () => {
+  if (!qualityStore.currentTrainingPlanId) {
+    await qualityStore.loadTrainingPlanOptions()
+    if (qualityStore.trainingPlanOptions.length) {
+      qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
+    }
+  }
+  await reload()
+})
+
+onActivated(() => {
+  if (trainingPlanId.value) {
+    void reload()
+  }
+})
 
 function goAchievement() {
   router.push({ name: 'QualityAchievement' })
@@ -450,15 +467,135 @@ function goImprovement() {
 function goAiTask() {
   router.push({ name: 'QualityAiTask' })
 }
+
+interface DashboardTodoItem {
+  key: string
+  label: string
+  actionLabel: string
+  tone: BadgeTone
+}
+
+const cockpitPhase = ref<string>()
+
+const dashboardTodos = computed<DashboardTodoItem[]>(() => {
+  if (!trainingPlanId.value) return []
+  const items: DashboardTodoItem[] = []
+  if (planConfirmationStatus.value !== 'CONFIRMED') {
+    items.push({
+      key: 'plan-confirm',
+      label: `培养方案待确认（${planConfirmationLabel.value}）`,
+      actionLabel: '去培养方案',
+      tone: 'orange',
+    })
+  }
+  if (planConfirmationStatus.value === 'CONFIRMED' && achievementCounts.calculated === 0) {
+    items.push({
+      key: 'ingest',
+      label: '尚未产生达成度计算输入，请先完成成绩或过程数据接入',
+      actionLabel: '去数据接入',
+      tone: 'blue',
+    })
+  }
+  if (achievementCounts.submitted > 0) {
+    items.push({
+      key: 'audit',
+      label: `${achievementCounts.submitted} 条达成度待审核确认`,
+      actionLabel: '去审核',
+      tone: 'orange',
+    })
+  }
+  if (improvementCounts.total - improvementCounts.closed > 0) {
+    items.push({
+      key: 'improve',
+      label: `${improvementCounts.total - improvementCounts.closed} 项改进任务未闭环`,
+      actionLabel: '去改进',
+      tone: 'purple',
+    })
+  }
+  if (aiCounts.failed > 0) {
+    items.push({
+      key: 'ai-fail',
+      label: `${aiCounts.failed} 个 AI 任务失败待处理`,
+      actionLabel: '查看 AI 任务',
+      tone: 'red',
+    })
+  }
+  if (cockpitPhase.value === 'ONSITE_VISIT') {
+    items.push({
+      key: 'onsite',
+      label: '认证周期处于现场考查阶段，请闭合考查计划与清单',
+      actionLabel: '去认证驾驶舱',
+      tone: 'orange',
+    })
+  }
+  return items
+})
+
+function handleStageSelect(stage: WorkbenchStage) {
+  switch (stage.key) {
+    case 'config':
+      void router.push({ name: 'QualityAccreditationCockpit' })
+      break
+    case 'plan':
+      void router.push({ name: 'QualityTrainingPlanWorkbench' })
+      break
+    case 'data':
+      void router.push({ path: '/quality/ingest-hub/score-batch' })
+      break
+    case 'calc':
+    case 'audit':
+      goAchievement()
+      break
+    case 'improve':
+      goImprovement()
+      break
+    case 'archive':
+      void router.push({ name: 'QualityArchive' })
+      break
+  }
+}
+
+function handleTodoAction(key: string) {
+  switch (key) {
+    case 'plan-confirm':
+      void router.push({ name: 'QualityTrainingPlanWorkbench' })
+      break
+    case 'ingest':
+      void router.push({ path: '/quality/ingest-hub/score-batch' })
+      break
+    case 'audit':
+      goAchievement()
+      break
+    case 'improve':
+      goImprovement()
+      break
+    case 'ai-fail':
+      goAiTask()
+      break
+    case 'onsite':
+      void router.push({ name: 'QualityAccreditationCockpit' })
+      break
+  }
+}
+
+async function loadCockpitPhase() {
+  if (!trainingPlanId.value) {
+    cockpitPhase.value = undefined
+    return
+  }
+  try {
+    const cockpit = await accreditationApi.cockpit(trainingPlanId.value)
+    cockpitPhase.value = cockpit.activeCycle?.currentPhase
+  } catch {
+    cockpitPhase.value = undefined
+  }
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
-        <template #status>
-          <QualityScopeHeader show-plan-confirmation @change="handleScopeChange" />
-        </template>
+      <QualityPageContextBar>
         <template #actions>
           <UiButton
             variant="outline"
@@ -477,7 +614,7 @@ function goAiTask() {
             进入达成度
           </UiButton>
         </template>
-      </ContextBar>
+      </QualityPageContextBar>
     </template>
 
     <UiEmpty
@@ -487,7 +624,18 @@ function goAiTask() {
     />
 
     <template v-else>
-      <StageRail :stages="stages" class="quality-dashboard__stages" />
+      <StageRail :stages="stages" class="quality-dashboard__stages" @select="handleStageSelect" />
+      <UiCard v-if="dashboardTodos.length" class="quality-dashboard__todo-card" title="待办事项">
+        <ul class="quality-dashboard__todo-list">
+          <li v-for="item in dashboardTodos" :key="item.key" class="quality-dashboard__todo-item">
+            <UiTag :tone="item.tone" size="sm">{{ item.tone === 'red' ? '紧急' : '待办' }}</UiTag>
+            <span class="quality-dashboard__todo-label">{{ item.label }}</span>
+            <UiButton variant="ghost" size="sm" @click="handleTodoAction(item.key)">
+              {{ item.actionLabel }}
+            </UiButton>
+          </li>
+        </ul>
+      </UiCard>
       <SignalBand :metrics="signals" compact class="quality-dashboard__signals" />
       <QualityWorkbenchCharts :groups="qualityChartGroups" />
 
@@ -640,6 +788,32 @@ function goAiTask() {
 
   &__stages {
     margin-bottom: 16px;
+  }
+
+  &__todo-card {
+    margin-bottom: 16px;
+  }
+
+  &__todo-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 12px;
+  }
+
+  &__todo-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__todo-label {
+    flex: 1;
+    min-width: 200px;
+    color: var(--dp-text-primary, #0f172a);
+    font-size: 14px;
   }
 
   &__signals {

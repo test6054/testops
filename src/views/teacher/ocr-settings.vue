@@ -17,12 +17,14 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
+  BINDING_STATUS_LABEL,
   FINAL_SCORE_STATUS_LABEL,
   getExamTemplate,
   isPaperTemplateNotConfiguredError,
   pageExamScoreSummary,
 } from '@/apis/mark/exam'
 import {
+  checkMarkOcrHealth,
   getCurrentMarkOcrConfig,
   listPaddleOcrInstances,
   MARK_OCR_HEALTH_STATUS_COLOR,
@@ -39,9 +41,10 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
-import mittBus from '@/utils/mitt'
+import { useUserStore } from '@/stores/modules/user'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import mittBus from '@/utils/mitt'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -57,11 +60,15 @@ interface DebugFormState {
 
 const debugFormRef = ref<FormInstance | null>(null)
 const loading = ref(false)
+const healthChecking = ref(false)
 const recognizing = ref(false)
 const currentConfig = ref<MarkOcrConfigVO | null>(null)
+// D-9：OCR 租户配置加载失败时展示可重试错误面板
+const configLoadError = ref<Error | null>(null)
 const recognizeResult = ref<MarkOcrRecognizeVO | null>(null)
 const debugForm = ref<DebugFormState>({})
 const { selectedExamId, selectedExamLabel } = useMarkExamContext()
+const userStore = useUserStore()
 
 // 仅 PADDLE 渠道相关：展示后端已注册的 PaddleOCR 服务实例列表。
 // 用 watch(currentConfig.providerType) 自动开关加载，无需手动触发。
@@ -125,7 +132,7 @@ const paperCandidateOptions = computed(() =>
       label: [
         `${item.studentName}（${item.studentNo}）`,
         item.studentClassName,
-        item.bindingStatus,
+        bindingStatusLabel(item.bindingStatus),
         finalScoreStatusLabel(item.finalScoreStatus),
       ]
         .filter(Boolean)
@@ -135,6 +142,11 @@ const paperCandidateOptions = computed(() =>
 
 function finalScoreStatusLabel(status: ExamScoreSummaryItemVO['finalScoreStatus']): string {
   return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, status, '最终成绩状态')
+}
+
+function bindingStatusLabel(status: ExamScoreSummaryItemVO['bindingStatus']): string | undefined {
+  if (!status) return undefined
+  return strictEnumLabel(BINDING_STATUS_LABEL, status, '试卷绑定状态')
 }
 
 function providerLabel(providerType: MarkOcrProviderTypeCode): string {
@@ -169,13 +181,34 @@ function applyConfig(config: MarkOcrConfigVO): void {
 
 async function loadConfig(): Promise<void> {
   loading.value = true
+  configLoadError.value = null
   try {
     applyConfig(await getCurrentMarkOcrConfig())
   } catch (error) {
     currentConfig.value = null
+    configLoadError.value = toUserError(error, 'OCR 识别配置加载失败')
     showUserError(error, 'OCR 识别配置加载失败')
   } finally {
     loading.value = false
+  }
+}
+
+/** 触发当前租户 OCR 渠道健康探活，并刷新只读配置展示。 */
+async function handleHealthCheck(): Promise<void> {
+  const tenantId = userStore.userInfo.tenantId
+  if (!tenantId) {
+    message.error('当前会话缺少租户信息，不能执行 OCR 健康检查')
+    return
+  }
+  healthChecking.value = true
+  try {
+    const result = await checkMarkOcrHealth(tenantId)
+    message.success(`OCR 健康检查完成：${strictEnumLabel(MARK_OCR_HEALTH_STATUS_LABEL, result.healthStatus, 'OCR 健康状态')}`)
+    await loadConfig()
+  } catch (error) {
+    showUserError(error, 'OCR 健康检查失败')
+  } finally {
+    healthChecking.value = false
   }
 }
 
@@ -327,13 +360,25 @@ function paddleInstanceHealthLabel(status: MarkOcrHealthStatusCode): string {
   return strictEnumLabel(MARK_OCR_HEALTH_STATUS_LABEL, status, 'PaddleOCR 实例健康状态')
 }
 
+async function reloadOcrWorkbench(): Promise<void> {
+  await loadConfig()
+  const examId = selectedExamId.value
+  if (!examId) {
+    return
+  }
+  await Promise.all([
+    loadQuestions(examId),
+    loadPaperCandidates(examId),
+  ])
+}
+
 onMounted(async () => {
   await loadConfig()
-  mittBus.on('scan-workbench:refresh', loadConfig)
+  mittBus.on('scan-workbench:refresh', reloadOcrWorkbench)
 })
 
 onBeforeUnmount(() => {
-  mittBus.off('scan-workbench:refresh', loadConfig)
+  mittBus.off('scan-workbench:refresh', reloadOcrWorkbench)
 })
 </script>
 
@@ -341,7 +386,22 @@ onBeforeUnmount(() => {
   <div class="ocr-settings">
     <UiEmpty v-if="!selectedExamId" description="未进入考试工作台" />
 
+    <UiErrorRetryPanel
+      v-else-if="configLoadError"
+      :error="configLoadError"
+      @retry="loadConfig"
+    />
+
+    <a-spin v-else-if="loading && !currentConfig" />
+
     <template v-else-if="currentConfig">
+      <UiAlertStrip
+        tone="info"
+        title="OCR 渠道为租户级配置"
+        description="运行渠道由平台超级管理员统一配置；调试识别仅使用当前考试上下文验证，不修改租户渠道。"
+        dense
+        class="ocr-settings__scope-banner"
+      />
       <div class="ocr-settings__toolbar">
         <div class="ocr-settings__status">
           <UiTag :tone="currentConfig.enabled ? 'green' : 'gray'" size="sm">
@@ -351,6 +411,9 @@ onBeforeUnmount(() => {
             {{ healthLabel }}
           </UiTag>
         </div>
+        <UiButton variant="outline" size="sm" :loading="healthChecking" @click="handleHealthCheck">
+          健康检查
+        </UiButton>
         <UiButton variant="outline" size="sm" :loading="loading" @click="loadConfig">
           <template #icon><ReloadOutlined /></template>
           刷新
@@ -502,9 +565,11 @@ onBeforeUnmount(() => {
                   @dropdown-visible-change="handlePaperCandidateDropdownVisibleChange"
                   @change="handlePaperCandidateChange"
                 />
-                <div v-if="paperCandidatesError" class="debug-form__hint debug-form__hint--error">
-                  答题卡列表加载失败，请刷新后重试
-                </div>
+                <UiErrorRetryPanel
+                  v-if="paperCandidatesError && debugForm.examId"
+                  :error="paperCandidatesError"
+                  @retry="() => loadPaperCandidates(debugForm.examId!)"
+                />
               </a-form-item>
             </a-col>
             <a-col :xs="24" :md="12">
@@ -518,9 +583,11 @@ onBeforeUnmount(() => {
                   option-filter-prop="label"
                   placeholder="请选择题目"
                 />
-                <div v-if="questionsError" class="debug-form__hint debug-form__hint--error">
-                  题目列表加载失败，请刷新后重试
-                </div>
+                <UiErrorRetryPanel
+                  v-if="questionsError && debugForm.examId"
+                  :error="questionsError"
+                  @retry="() => loadQuestions(debugForm.examId!)"
+                />
               </a-form-item>
             </a-col>
           </a-row>
@@ -556,6 +623,10 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+
+  &__scope-banner {
+    margin-bottom: 0;
+  }
 
   &__toolbar {
     display: flex;

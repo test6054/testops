@@ -302,8 +302,8 @@ service.interceptors.response.use(
 
     // AJ-Captcha 返回 ResponseModel（repCode/repMsg/repData），不是 ResultInfo
     const requestUrl = response.config?.url || ''
-    const isAjCaptchaResponse =
-      (requestUrl.includes('/captcha/get') || requestUrl.includes('/captcha/check'))
+    const isAjCaptchaResponse
+      = (requestUrl.includes('/captcha/get') || requestUrl.includes('/captcha/check'))
       && typeof response.data === 'object'
       && response.data !== null
       && 'repCode' in response.data

@@ -16,6 +16,13 @@
       </ContextBar>
     </template>
 
+    <UiErrorRetryPanel
+      v-if="examsLoadError"
+      :error="examsLoadError"
+      @retry="loadExams"
+    />
+
+    <template v-else>
     <!-- 最近一场已发布详情卡 -->
     <UiCard v-if="latestPublished" class="student-score__latest-card">
       <template #title>
@@ -120,9 +127,6 @@
             <UiTag :tone="finalScoreStatusTone(record)" size="sm">
               {{ finalScoreStatusLabel(record) }}
             </UiTag>
-            <UiTag v-if="record.reviewWindowStatus === 'ACTIVE'" tone="orange" size="sm">
-              复核中
-            </UiTag>
           </template>
           <template v-else-if="column.key === 'finalScore'">
             <template v-if="record.finalScoreStatus === 'PUBLISHED'">
@@ -164,6 +168,7 @@
         </template>
       </UiDataTable>
     </UiCard>
+    </template>
   </StageWorkbenchShell>
 </template>
 
@@ -173,7 +178,7 @@ import type { StudentExamItemVO } from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   canSubmitReview,
@@ -188,10 +193,11 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { assertUserFacing } from '@/utils/contract-guard'
-import { showUserError } from '@/utils/error-handler'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -199,6 +205,7 @@ defineOptions({ name: 'StudentScore' })
 
 const router = useRouter()
 const loading = ref(false)
+const examsLoadError = ref<Error | null>(null)
 const exams = ref<StudentExamItemVO[]>([])
 
 const examColumns: ColumnType<StudentExamItemVO>[] = [
@@ -231,10 +238,6 @@ function reviewWindowStatusLabel(item: StudentExamItemVO): string {
   )
 }
 
-const latestPublished = computed<StudentExamItemVO | null>(() => {
-  return exams.value.find((e) => e.finalScoreStatus === 'PUBLISHED') ?? null
-})
-
 const publishedCount = computed(
   () => exams.value.filter((e) => e.finalScoreStatus === 'PUBLISHED').length,
 )
@@ -250,6 +253,10 @@ const publishedExamsSorted = computed<StudentExamItemVO[]>(() => {
       const tb = requirePublishedTimestamp(b)
       return tb - ta
     })
+})
+
+const latestPublished = computed<StudentExamItemVO | null>(() => {
+  return publishedExamsSorted.value[0] ?? null
 })
 
 /** 复核窗口当前开放中的考试数 */
@@ -356,12 +363,14 @@ const insightItems = computed(() => {
 
 async function loadExams() {
   loading.value = true
+  examsLoadError.value = null
   try {
     const loadedExams = await listMyExams()
     validatePublishedExamContracts(loadedExams)
     exams.value = loadedExams
   } catch (error) {
     exams.value = []
+    examsLoadError.value = toUserError(error, '考试成绩列表加载失败')
     showUserError(error, '考试成绩列表加载失败')
   } finally {
     loading.value = false
@@ -404,6 +413,8 @@ function goAppeal(examId: string) {
 }
 
 onMounted(loadExams)
+
+onActivated(loadExams)
 </script>
 
 <style lang="scss" scoped>

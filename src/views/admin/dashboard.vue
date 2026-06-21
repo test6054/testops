@@ -33,7 +33,13 @@
       </ContextBar>
     </template>
 
-    <a-spin v-if="loading && !overview" :spinning="true" class="admin-dashboard__loading" />
+    <a-spin v-if="loading && !overview && !overviewLoadError" :spinning="true" class="admin-dashboard__loading" />
+
+    <UiErrorRetryPanel
+      v-else-if="overviewLoadError"
+      :error="overviewLoadError"
+      @retry="loadOverview"
+    />
 
     <!-- 考试规模 + 批改进度 + 异常告警 -->
     <a-row v-else-if="gradingMetrics && incidentMetrics" :gutter="16">
@@ -222,7 +228,7 @@ import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   INCIDENT_LEVEL_LABEL,
@@ -236,6 +242,7 @@ import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
@@ -452,6 +459,10 @@ function goIncidentDetail(incident: DashboardIncidentRecordVO) {
 
 watch(recentLimit, () => loadOverview())
 onMounted(loadOverview)
+
+onActivated(() => {
+  void loadOverview()
+})
 </script>
 
 <style lang="scss" scoped>

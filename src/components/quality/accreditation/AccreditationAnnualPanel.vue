@@ -8,6 +8,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import { canMutateAnnualEvaluationPlan } from '@/composables/useAccreditationWorkbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 
@@ -63,6 +64,12 @@ const courseProgress = computed(() => {
   }
 })
 
+const canMutatePlan = computed(() => canMutateAnnualEvaluationPlan(props.activeCycleId))
+
+const annualPlanHint = computed(() =>
+  canMutatePlan.value ? '' : '请先创建并启用认证周期后再维护年度评价计划',
+)
+
 function coveragePercent(record: AnnualEvaluationPlanVO) {
   const actual = record.actualCoverageRate ?? 0
   const target = record.coverageTargetRate ?? 100
@@ -110,12 +117,20 @@ function resetForm() {
 }
 
 function openCreate() {
+  if (!canMutatePlan.value) {
+    message.error(annualPlanHint.value)
+    return
+  }
   drawerTitle.value = '新建年度评价课程计划'
   resetForm()
   drawerOpen.value = true
 }
 
 function openEdit(record: AnnualEvaluationPlanVO) {
+  if (!canMutatePlan.value) {
+    message.error(annualPlanHint.value)
+    return
+  }
   drawerTitle.value = '编辑年度评价课程计划'
   form.id = record.id
   form.programId = record.programId
@@ -131,6 +146,14 @@ function openEdit(record: AnnualEvaluationPlanVO) {
 async function submitPlan() {
   if (!form.planYear.trim() || !form.planTitle.trim()) {
     message.error('请填写年度与计划标题')
+    return
+  }
+  if (!canMutatePlan.value) {
+    message.error(annualPlanHint.value)
+    return
+  }
+  if (!form.accreditationCycleId) {
+    message.error('年度评价计划必须绑定当前有效认证周期')
     return
   }
   try {
@@ -150,6 +173,10 @@ async function submitPlan() {
 }
 
 async function removePlan(id: string) {
+  if (!canMutatePlan.value) {
+    message.error(annualPlanHint.value)
+    return
+  }
   const ok = await confirmAsync({ title: '确认删除该年度评价计划？' })
   if (!ok) return
   try {
@@ -164,6 +191,10 @@ async function removePlan(id: string) {
 }
 
 async function updateCourseStatus(courseRowId: string, evaluationCompleted: boolean) {
+  if (!canMutatePlan.value) {
+    message.error(annualPlanHint.value)
+    return
+  }
   try {
     await accreditationApi.updateAnnualPlanCourseStatus({ id: courseRowId, evaluationCompleted })
     message.success(evaluationCompleted ? '已登记课程评价完成' : '已撤销课程评价完成')
@@ -182,8 +213,9 @@ defineExpose({ openCreate, loadPlans })
 
 <template>
   <div class="annual-panel">
+    <p v-if="annualPlanHint" class="hint">{{ annualPlanHint }}</p>
     <div class="toolbar">
-      <UiButton variant="primary" :disabled="!trainingPlanId" @click="openCreate">
+      <UiButton variant="primary" :disabled="!trainingPlanId || !canMutatePlan" @click="openCreate">
         新建年度计划
       </UiButton>
     </div>
@@ -205,8 +237,21 @@ defineExpose({ openCreate, loadPlans })
           <UiButton size="sm" variant="ghost" @click.stop="selectPlan(record.id)">
             课程明细
           </UiButton>
-          <UiButton size="sm" variant="outline" @click.stop="openEdit(record)">编辑</UiButton>
-          <UiButton size="sm" status="danger" variant="ghost" @click.stop="removePlan(record.id)">
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="!canMutatePlan"
+            @click.stop="openEdit(record)"
+          >
+            编辑
+          </UiButton>
+          <UiButton
+            size="sm"
+            status="danger"
+            variant="ghost"
+            :disabled="!canMutatePlan"
+            @click.stop="removePlan(record.id)"
+          >
             删除
           </UiButton>
         </template>
@@ -246,6 +291,7 @@ defineExpose({ openCreate, loadPlans })
               v-if="record.evaluationRequired && !record.evaluationCompleted"
               size="sm"
               variant="primary"
+              :disabled="!canMutatePlan"
               @click="updateCourseStatus(record.id, true)"
             >
               登记完成
@@ -254,6 +300,7 @@ defineExpose({ openCreate, loadPlans })
               v-else-if="record.evaluationCompleted"
               size="sm"
               variant="outline"
+              :disabled="!canMutatePlan"
               @click="updateCourseStatus(record.id, false)"
             >
               撤销完成
@@ -272,7 +319,7 @@ defineExpose({ openCreate, loadPlans })
     >
       <a-form layout="vertical">
         <a-form-item label="计划年度" required>
-          <a-input v-model:value="form.planYear" />
+          <a-input v-model:value="form.planYear" :disabled="!!form.id" />
         </a-form-item>
         <a-form-item label="计划标题" required>
           <a-input v-model:value="form.planTitle" />

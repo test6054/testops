@@ -1,6 +1,6 @@
 import type { AxiosResponse } from 'axios'
-import type { PageResult } from '@/types'
 import type { PaperInstanceDisplayVO, QualityDecisionCode } from './exam'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -337,6 +337,41 @@ export interface RecyclePolicySaveRequest {
   reassignMode?: MarkingReassignModeCode
 }
 
+/** 任务分配策略查询响应 - 对应后端 AllocationPolicyResponse */
+export interface AllocationPolicyVO {
+  id: string
+  organizationId: string
+  groupId?: string | null
+  allocationMode: MarkingAllocationModeCode
+  anonymityMode: AnonymityModeCode
+  allocationUnit: AllocationUnitCode
+  batchSize: number
+  loadLimit: number
+  anonymousTokenPolicy: AnonymousTokenPolicyCode
+  priorityRule?: string
+  randomQuestionSampleSize?: number
+  dualReviewEnabled: boolean
+  arbitrationScoreThreshold?: number
+  arbitrationRatioThreshold?: number
+  arbitratorUserId?: string
+}
+
+/** 任务回收策略查询响应 - 对应后端 RecyclePolicyResponse */
+export interface RecyclePolicyVO {
+  id: string
+  organizationId: string
+  groupId?: string | null
+  timeoutMinutes?: number
+  maxPendingCount?: number
+  reassignMode?: MarkingReassignModeCode
+}
+
+/** 阅卷组织任务策略列表响应 - 对应后端 MarkingPolicyListResponse */
+export interface MarkingPolicyListVO {
+  allocationPolicies: AllocationPolicyVO[]
+  recyclePolicies: RecyclePolicyVO[]
+}
+
 /** 创建试评会话请求 - 对应后端 TrialSessionCreateRequest */
 export interface TrialSessionCreateRequest {
   organizationId: string
@@ -519,6 +554,8 @@ export interface MarkingTaskVO {
   questionTypeMessage: string | null
   allocatedAt?: string
   submittedAt?: string
+  recycledAt?: string
+  recycleReason?: string
   /** 已定稿任务的逐题给分回显；非 FINALIZED 为 undefined */
   submittedQuestionScores?: MarkingTaskSubmittedQuestionScoreVO[]
 }
@@ -719,6 +756,51 @@ export function validateFormalSessionContract(record: FormalSessionVO): void {
   })
 }
 
+/** 校验阅卷任务合同枚举，供回收待分配等管理页使用。 */
+export function validateMarkingTaskContract(record: MarkingTaskVO): void {
+  strictEnumLabel(MARKING_TASK_STATUS_LABEL, record.taskStatus, '阅卷任务状态')
+  strictEnumTone(MARKING_TASK_STATUS_TONE, record.taskStatus, '阅卷任务状态')
+  strictEnumLabel(FORMAL_SESSION_STATUS_LABEL, record.sessionStatus, '正评会话状态')
+  strictEnumLabel(ALLOCATION_UNIT_LABEL, record.taskUnit, '批阅任务单元')
+  if (record.questionType != null) {
+    strictEnumLabel(QUESTION_TYPE_LABEL, record.questionType, '题型')
+  }
+}
+
+/** 校验任务分配策略合同枚举，供策略 Tab 回显前使用。 */
+export function validateAllocationPolicyContract(record: AllocationPolicyVO): void {
+  strictEnumLabel(MARKING_ALLOCATION_MODE_LABEL, record.allocationMode, '分配模式')
+  strictEnumLabel(ALLOCATION_UNIT_LABEL, record.allocationUnit, '批阅任务单元')
+  strictEnumLabel(ANONYMITY_MODE_LABEL, record.anonymityMode, '匿名模式')
+  strictEnumLabel(ANONYMOUS_TOKEN_POLICY_LABEL, record.anonymousTokenPolicy, '匿名令牌策略')
+}
+
+/** 校验任务回收策略合同枚举，供策略 Tab 回显前使用。 */
+export function validateRecyclePolicyContract(record: RecyclePolicyVO): void {
+  if (record.reassignMode != null) {
+    strictEnumLabel(MARKING_REASSIGN_MODE_LABEL, record.reassignMode, '再分配模式')
+  }
+}
+
+/** 校验阅卷组织任务策略列表合同，避免策略 Tab 成为首次枚举失败位置。 */
+export function validateMarkingPolicyListContract(record: MarkingPolicyListVO): void {
+  for (const policy of record.allocationPolicies ?? []) {
+    validateAllocationPolicyContract(policy)
+  }
+  for (const policy of record.recyclePolicies ?? []) {
+    validateRecyclePolicyContract(policy)
+  }
+}
+
+/** 校验教师领取上下文合同，供任务池 claim 下拉使用前发现枚举漂移。 */
+export function validateTeacherClaimContextContract(record: TeacherClaimContextVO): void {
+  for (const group of record.groups ?? []) {
+    for (const session of group.activeSessions ?? []) {
+      validateFormalSessionContract(session)
+    }
+  }
+}
+
 // ─── API 调用 ────────────────────────────────────────────────
 
 // ===================== 阅卷组织 =====================
@@ -844,6 +926,14 @@ export function saveRecyclePolicy(request: RecyclePolicySaveRequest): Promise<bo
   return http.post<boolean>('/api/mark/organization/policy/recycle/save', request)
 }
 
+/**
+ * 查询阅卷组织任务策略列表。
+ * POST /api/mark/organization/policy/list
+ */
+export function listMarkingPolicies(request: OrganizationQueryByIdRequest): Promise<MarkingPolicyListVO> {
+  return http.post<MarkingPolicyListVO>('/api/mark/organization/policy/list', request)
+}
+
 // ===================== 试评会话 =====================
 
 /**
@@ -954,6 +1044,21 @@ export function claimMarkingTasks(request: MarkingTaskClaimRequest): Promise<Mar
  */
 export function submitMarkingTask(request: MarkingTaskSubmitRequest): Promise<boolean> {
   return http.post<boolean>('/api/mark/organization/task/submit', request)
+}
+
+/** 已回收任务手动再分配请求 - 对应后端 MarkingTaskReassignRequest */
+export interface MarkingTaskReassignRequest {
+  taskId: string
+  targetReviewerUserId: string
+  reassignReason?: string
+}
+
+/**
+ * 手动再分配已回收阅卷任务（RECYCLED → ALLOCATED）。
+ * POST /api/mark/organization/task/reassign-recycled
+ */
+export function reassignRecycledMarkingTask(request: MarkingTaskReassignRequest): Promise<MarkingTaskVO> {
+  return http.post<MarkingTaskVO>('/api/mark/organization/task/reassign-recycled', request)
 }
 
 /**

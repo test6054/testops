@@ -54,10 +54,10 @@
       description="请选择考试"
       class="org-index__empty"
     />
-    <UiEmpty
-      v-else-if="!loading && organizationLoadError"
-      description="暂无数据"
-      class="org-index__empty"
+    <UiErrorRetryPanel
+      v-else-if="organizationLoadError"
+      :error="organizationLoadError"
+      @retry="loadOrganization"
     />
 
     <a-spin v-else :spinning="loading" tip="加载组织中...">
@@ -290,11 +290,13 @@ import {
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -321,6 +323,7 @@ const {
   resolvingPinned,
   init: initExamSelector,
 } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 const canManageSelectedExam = computed(
   () =>
@@ -499,6 +502,7 @@ async function submitCreate(): Promise<void> {
     organization.value = nextOrganization
     message.success('阅卷组织已创建')
     createDrawerOpen.value = false
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '阅卷组织创建失败')
   } finally {
@@ -539,6 +543,7 @@ async function submitUpdate(): Promise<void> {
     organization.value = nextOrganization
     message.success('阅卷组织已更新')
     editDrawerOpen.value = false
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '阅卷组织更新失败')
   } finally {
@@ -554,6 +559,7 @@ async function submitDelete(): Promise<void> {
     await deleteOrganization({ organizationId: organization.value.id })
     organization.value = null
     message.success('阅卷组织已删除')
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '阅卷组织删除失败')
   } finally {
@@ -592,13 +598,10 @@ function goAssignmentScheme(): void {
 
 watch(selectedExamId, () => {
   void loadOrganization()
-})
+}, { immediate: true })
 
 onMounted(async () => {
   await initExamSelector()
-  if (selectedExamId.value) {
-    await loadOrganization()
-  }
 })
 </script>
 

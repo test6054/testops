@@ -23,7 +23,13 @@
           {{ reviewTasks.length }}
         </UiBadge>
       </template>
+      <UiErrorRetryPanel
+        v-if="tasksLoadError"
+        :error="tasksLoadError"
+        @retry="loadTasks"
+      />
       <UiDataTable
+        v-else
         pagination-mode="client"
         :columns="reviewColumns"
         :data-source="reviewTasks"
@@ -99,7 +105,13 @@
           {{ arbitrationTasks.length }}
         </UiBadge>
       </template>
+      <UiErrorRetryPanel
+        v-if="markingTasksLoadError"
+        :error="markingTasksLoadError"
+        @retry="loadTasks"
+      />
       <UiDataTable
+        v-else
         pagination-mode="client"
         :columns="markingColumns"
         :data-source="arbitrationTasks"
@@ -128,10 +140,10 @@
           </template>
           <template v-else-if="column.key === 'taskStatus'">
             <UiTag
-              :tone="MARKING_TASK_STATUS_TONE[arbitrationTasks[index].taskStatus]"
+              :tone="markingTaskStatusTone(arbitrationTasks[index].taskStatus)"
               size="sm"
             >
-              {{ MARKING_TASK_STATUS_LABEL[arbitrationTasks[index].taskStatus] }}
+              {{ markingTaskStatusLabel(arbitrationTasks[index].taskStatus) }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'reviewerUserId'">
@@ -170,12 +182,13 @@ import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOu
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   MARKING_TASK_STATUS_LABEL,
   MARKING_TASK_STATUS_TONE,
   pageMarkingTasks,
+  validateMarkingTaskContract,
 } from '@/apis/mark/marking-organization'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -183,11 +196,13 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages } from '@/utils/page-result'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherReviewArbitration' })
 
@@ -197,6 +212,7 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const { selectedExamId } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 const currentUserId = computed(() => userStore.userInfo.userId || '')
 
@@ -207,6 +223,14 @@ const markingTasksLoadError = ref<Error | null>(null)
 const arbitrationTasks = ref<MarkingTaskVO[]>([])
 
 const pendingTotal = computed(() => reviewTasks.value.length + arbitrationTasks.value.length)
+
+function markingTaskStatusTone(status: MarkingTaskVO['taskStatus']): BadgeTone {
+  return strictEnumTone(MARKING_TASK_STATUS_TONE, status, '阅卷任务状态')
+}
+
+function markingTaskStatusLabel(status: MarkingTaskVO['taskStatus']): string {
+  return strictEnumLabel(MARKING_TASK_STATUS_LABEL, status, '阅卷任务状态')
+}
 
 const reviewColumns: ColumnType<ReviewTaskItemVO>[] = [
   { title: '答卷', key: 'paperDisplay', width: 180 },
@@ -258,6 +282,7 @@ async function loadArbitrationMarkingTasks(): Promise<void> {
     }),
     '双评仲裁任务加载失败',
   )
+  tasks.forEach(validateMarkingTaskContract)
   arbitrationTasks.value = tasks.filter(
     (task) => task.taskStatus === 'ALLOCATED' || task.taskStatus === 'IN_PROGRESS',
   )
@@ -316,11 +341,12 @@ watch(selectedExamId, (value) => {
     markTaskStore.clearReviewTasks()
     arbitrationTasks.value = []
   }
-})
+}, { immediate: true })
 
-onMounted(async () => {
+onActivated(() => {
   if (selectedExamId.value) {
-    await loadTasks()
+    void loadTasks()
+    void refreshSnapshot()
   }
 })
 </script>

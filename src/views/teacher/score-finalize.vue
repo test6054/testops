@@ -69,7 +69,14 @@
         @reset="handleReset"
       />
 
+      <UiErrorRetryPanel
+        v-if="candidatesLoadError"
+        :error="candidatesLoadError"
+        @retry="loadCandidates"
+      />
+
       <UiDataTable
+        v-else
         v-model:current="pagination.current"
         v-model:page-size="pagination.pageSize"
         :columns="columns"
@@ -477,7 +484,7 @@ import type { BadgeTone, FilterField, UiStatPanelItem, UiTrendPoint } from '@/co
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { listOperationLogs, OPERATION_TYPE_LABEL } from '@/apis/mark/admin-audit'
 import {
@@ -503,6 +510,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiActivityTimeline from '@/components/ui-guide/ui/UiActivityTimeline.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
@@ -658,6 +666,12 @@ async function loadCandidates(): Promise<void> {
     })
     candidates.value = readPageList(result, '成绩确认名单加载失败，请稍后重试')
     pagination.total = readPageTotal(result)
+    if (result.pageNum != null) {
+      pagination.current = result.pageNum
+    }
+    if (result.pageSize != null) {
+      pagination.pageSize = result.pageSize
+    }
   } catch (error) {
     candidatesLoadError.value = toUserError(error, '成绩确认名单加载失败，请稍后重试')
     showUserError(error, '成绩确认名单加载失败，请稍后重试')
@@ -1557,21 +1571,14 @@ watch(selectedExamId, (value) => {
   pagination.current = 1
   reviewedRiskReasonCodes.value = new Set()
   riskReviewDrawerOpen.value = false
+  examDetail.value = null
+  candidates.value = []
+  riskOverview.value = null
+  pagination.total = 0
   if (value) {
     void Promise.all([loadExamDetail(), refreshScoreFinalizeData()])
-  } else {
-    examDetail.value = null
-    candidates.value = []
-    riskOverview.value = null
-    pagination.total = 0
   }
-})
-
-onMounted(async () => {
-  if (selectedExamId.value) {
-    await Promise.all([loadExamDetail(), refreshScoreFinalizeData()])
-  }
-})
+}, { immediate: true })
 </script>
 
 <style lang="scss" scoped>

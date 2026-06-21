@@ -55,6 +55,20 @@ export interface AgentHealthResponse {
   tokenResetRequired: boolean
   /** 最近一次成功心跳的本地时间（ISO 字符串） */
   lastHeartbeatAt: string | null
+  /** 服务端是否公告了可下载的 Agent 更新包 */
+  updateAvailable: boolean
+  /** 本地更新包状态 */
+  updateStatus: AgentUpdateStatus
+  /** 可更新或已下载的 Agent 版本号 */
+  updatePackageVersion: string
+  /** 更新包文件名 */
+  updatePackageFileName: string
+  /** 更新包下载完成时间（ISO 字符串） */
+  updateDownloadedAt: string | null
+  /** 更新下载或安装诊断信息 */
+  updateDiagnosticMessage: string
+  /** 更新包已下载且当前可触发自动安装 */
+  updateInstallable: boolean
 }
 
 export type AgentHealthStatus = 'RUNNING'
@@ -64,6 +78,31 @@ export const AGENT_HEALTH_STATUS_LABEL: Record<AgentHealthStatus, string> = {
 }
 
 export type AgentDiagnosticStatus = 'OK' | 'WARNING'
+
+export type AgentUpdateStatus
+  = | 'NONE'
+    | 'AVAILABLE'
+    | 'DOWNLOADING'
+    | 'DOWNLOADED'
+    | 'INSTALLING'
+    | 'INSTALLED'
+    | 'FAILED'
+
+export const AGENT_UPDATE_STATUS_LABEL: Record<AgentUpdateStatus, string> = {
+  NONE: '无更新',
+  AVAILABLE: '可下载',
+  DOWNLOADING: '下载中',
+  DOWNLOADED: '已下载',
+  INSTALLING: '安装中',
+  INSTALLED: '已安装',
+  FAILED: '更新失败',
+}
+
+export interface LocalScannerAgentInstallUpdateResponse {
+  installing: boolean
+  packageVersion: string
+  packageFileName: string
+}
 
 export type LocalScanJobStatus
   = | 'CREATED'
@@ -284,6 +323,11 @@ export async function activateLocalAgent(
 ): Promise<ScannerAgentActivateResponse> {
   const payload = await localAgentPost('/api/agent/activate', request)
   return normalizeAgentPayload(() => validateScannerAgentActivateResponse(payload))
+}
+
+export async function installAgentUpdate(): Promise<LocalScannerAgentInstallUpdateResponse> {
+  const payload = await localAgentPost('/api/agent/update/install', {})
+  return normalizeAgentPayload(() => validateLocalScannerAgentInstallUpdateResponse(payload))
 }
 
 export async function startScanJob(request: StartScanJobRequest): Promise<ScanJobResponse> {
@@ -612,6 +656,33 @@ function validateLocalApiResult(value: LocalAgentJsonValue, response: Response):
   return envelope
 }
 
+function requireAgentUpdateStatus(value: LocalAgentJsonObject, field: string): AgentUpdateStatus {
+  const fieldValue = value[field]
+  if (
+    fieldValue !== 'NONE'
+    && fieldValue !== 'AVAILABLE'
+    && fieldValue !== 'DOWNLOADING'
+    && fieldValue !== 'DOWNLOADED'
+    && fieldValue !== 'INSTALLING'
+    && fieldValue !== 'INSTALLED'
+    && fieldValue !== 'FAILED'
+  ) {
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
+  }
+  return fieldValue
+}
+
+function validateLocalScannerAgentInstallUpdateResponse(
+  value: LocalAgentJsonValue,
+): LocalScannerAgentInstallUpdateResponse {
+  const result = requireObject(value)
+  return {
+    installing: requireBoolean(result, 'installing'),
+    packageVersion: requireString(result, 'packageVersion'),
+    packageFileName: requireString(result, 'packageFileName'),
+  }
+}
+
 function validateAgentHealthResponse(value: LocalAgentJsonValue): AgentHealthResponse {
   const result = requireObject(value)
   return {
@@ -631,6 +702,13 @@ function validateAgentHealthResponse(value: LocalAgentJsonValue): AgentHealthRes
     scanAllowed: requireBoolean(result, 'scanAllowed'),
     tokenResetRequired: requireBoolean(result, 'tokenResetRequired'),
     lastHeartbeatAt: requireNullableString(result, 'lastHeartbeatAt'),
+    updateAvailable: requireBoolean(result, 'updateAvailable'),
+    updateStatus: requireAgentUpdateStatus(result, 'updateStatus'),
+    updatePackageVersion: requireString(result, 'updatePackageVersion'),
+    updatePackageFileName: requireString(result, 'updatePackageFileName'),
+    updateDownloadedAt: requireNullableString(result, 'updateDownloadedAt'),
+    updateDiagnosticMessage: requireString(result, 'updateDiagnosticMessage'),
+    updateInstallable: requireBoolean(result, 'updateInstallable'),
   }
 }
 

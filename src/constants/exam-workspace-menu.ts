@@ -63,6 +63,7 @@ export const EXAM_WORKSPACE_MENU_SECTIONS: ExamWorkspaceMenuSection[] = [
       { key: 'marking-arbitration', label: '仲裁裁定', routeName: 'TeacherExamWorkspaceMarkingArbitration', markStageKey: 'FORMAL_MARKING' },
       { key: 'marking-quality', label: '抽检处理', routeName: 'TeacherExamWorkspaceMarkingQuality', markStageKey: 'FORMAL_MARKING' },
       { key: 'marking-review', label: 'OCR/AI 复核', routeName: 'TeacherExamWorkspaceMarkingReview', markStageKey: 'FORMAL_MARKING' },
+      { key: 'marking-review-batch', label: '批量复核确认', routeName: 'TeacherExamWorkspaceReviewBatchConfirm', markStageKey: 'FORMAL_MARKING' },
     ],
   },
   {
@@ -76,6 +77,7 @@ export const EXAM_WORKSPACE_MENU_SECTIONS: ExamWorkspaceMenuSection[] = [
       { key: 'score-appeal', label: '复核申诉', routeName: 'TeacherExamWorkspaceScoreAppeal', markStageKey: 'SCORE_PUBLISH' },
       { key: 'archive-package', label: '归档列表', routeName: 'TeacherExamWorkspaceArchivePackage', markStageKey: 'ARCHIVE' },
       { key: 'archive-statistics', label: '成绩统计', routeName: 'TeacherExamWorkspaceArchiveStatistics', markStageKey: 'ARCHIVE' },
+      { key: 'archive-grading-experience', label: '阅卷经验库', routeName: 'TeacherExamWorkspaceGradingExperience', markStageKey: 'ARCHIVE' },
       { key: 'archive-exports', label: '导出任务', routeName: 'TeacherExamWorkspaceArchiveExports', markStageKey: 'ARCHIVE' },
     ],
   },

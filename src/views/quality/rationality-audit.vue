@@ -1,15 +1,14 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar subtitle="CEEAA 2025强制要求：每门课程须经考核评价依据合理性审核">
+      <QualityPageContextBar subtitle="CEEAA 2025强制要求：每门课程须经考核评价依据合理性审核">
         <template #status>
-          <QualityScopeHeader @change="handleScopeChange" />
           <UiTag tone="blue" size="sm">覆盖率 {{ coverageRate }}%</UiTag>
           <UiTag :tone="coverageRate >= 100 ? 'green' : 'orange'" size="sm">
             {{ coverageRate >= 100 ? '已全部覆盖' : `${pendingCount} 门未通过/未审核` }}
           </UiTag>
         </template>
-      </ContextBar>
+      </QualityPageContextBar>
     </template>
 
     <UiCard>
@@ -69,9 +68,10 @@
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction @click="openEdit(record)">
+              <UiTextAction v-if="isCourseAuditMutable(record)" @click="openEdit(record)">
                 {{ record.hasAuditRecord ? '编辑审核' : '新建审核' }}
               </UiTextAction>
+              <span v-else class="rationality-audit__locked-hint">已通过</span>
             </template>
           </template>
         </UiDataTable>
@@ -106,7 +106,16 @@
         <a-space>
           <UiButton variant="outline" @click="editOpen = false">取消</UiButton>
           <UiButton status="danger" :loading="editing" @click="submitAudit('REJECTED')">驳回</UiButton>
-          <UiButton variant="primary" :loading="editing" @click="submitAudit('APPROVED')">审核通过</UiButton>
+          <UiButton
+            variant="primary"
+            :loading="editing"
+            :disabled="
+              !editForm.contentAligned || !editForm.rubricMeasurable || !editForm.methodReasonable
+            "
+            @click="submitAudit('APPROVED')"
+          >
+            审核通过
+          </UiButton>
         </a-space>
       </template>
     </a-modal>
@@ -122,13 +131,13 @@ import type {
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import {
   createRationalityAudit,
   getRationalityAuditCourseLedger,
   updateRationalityAudit,
 } from '@/apis/quality/rationality-audit'
-import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -136,6 +145,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError, toUserError } from '@/utils/error-handler'
@@ -215,6 +225,10 @@ function auditStatusLabel(s: string) {
   return s === 'APPROVED' ? '已通过' : s === 'REJECTED' ? '已驳回' : '待审核'
 }
 
+function isCourseAuditMutable(record: RationalityAuditCourseLedgerItemVO): boolean {
+  return record.auditStatus !== 'APPROVED'
+}
+
 function booleanTagTone(v?: boolean) {
   return v === true ? 'green' : v === false ? 'red' : 'orange'
 }
@@ -271,7 +285,35 @@ function handleScopeChange(): void {
   }
 }
 
+useQualityScopeReload(handleScopeChange)
+
+onMounted(async () => {
+  if (!qualityStore.currentTrainingPlanId) {
+    await qualityStore.loadTrainingPlanOptions()
+    if (qualityStore.trainingPlanOptions.length) {
+      qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
+    }
+  }
+  if (!filterForm.schoolYear && qualityStore.currentSchoolYear) {
+    filterForm.schoolYear = qualityStore.currentSchoolYear
+  }
+  if (!filterForm.semester && qualityStore.currentSemester) {
+    filterForm.semester = qualityStore.currentSemester
+  }
+  if (filterForm.schoolYear && filterForm.semester && qualityStore.currentTrainingPlanId) {
+    await loadList()
+  }
+})
+
+onActivated(() => {
+  handleScopeChange()
+})
+
 function openEdit(record: RationalityAuditCourseLedgerItemVO) {
+  if (!isCourseAuditMutable(record)) {
+    message.warning('该课程合理性审核已通过，禁止修改')
+    return
+  }
   editForm.value = {
     id: record.id,
     qualityCourseId: record.qualityCourseId,
@@ -287,6 +329,15 @@ function openEdit(record: RationalityAuditCourseLedgerItemVO) {
 async function submitAudit(status: 'APPROVED' | 'REJECTED') {
   if (!editForm.value.qualityCourseId) {
     message.error('缺少课程信息，无法提交审核')
+    return
+  }
+  if (
+    status === 'APPROVED'
+    && (!editForm.value.contentAligned
+      || !editForm.value.rubricMeasurable
+      || !editForm.value.methodReasonable)
+  ) {
+    message.error('审核通过必须同时满足三项合理性检查')
     return
   }
   editing.value = true

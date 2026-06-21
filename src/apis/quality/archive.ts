@@ -66,7 +66,7 @@ export const archiveApi = {
   create: (data: ArchiveSaveRequest) => http.post<string>(`${BASE}/create`, data),
   update: (data: ArchiveSaveRequest) => http.post<void>(`${BASE}/update`, data),
   delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
-  /** 专家材料包导出（按毕业要求 / 按专业认证整包） */
+  /** 专家材料包导出（按毕业要求 / 按专业认证整包；同步打包，延长超时） */
   exportExpertPackage: (data: ExpertPackageExportRequest) =>
-    http.post<string>(`${BASE}/export-expert-package`, data),
+    http.post<string>(`${BASE}/export-expert-package`, data, { timeout: 120000 }),
 }

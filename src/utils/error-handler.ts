@@ -495,8 +495,5 @@ export function isAuthRequestFailure(error: unknown): boolean {
   const err = error as HandledError
   const status = err?.response?.status
   const businessCode = err?.response?.data?.code ?? err?.code
-  if (status === 401 || businessCode === 401) {
-    return true
-  }
-  return false
+  return status === 401 || businessCode === 401;
 }

@@ -28,7 +28,7 @@ import type {
 import { LoadingOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import Modal from 'ant-design-vue/es/modal'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   REPORT_EXPORT_STATUS_COLOR,
@@ -38,7 +38,7 @@ import {
   REPORT_TYPE_LABEL,
   reportApi,
 } from '@/apis/quality'
-import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   AchievementResultSelector,
   CourseSelector,
@@ -62,8 +62,10 @@ import {
   TaskResultPanel,
 } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { handleDownloadFile } from '@/utils/file-download'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
@@ -260,7 +262,9 @@ async function loadList() {
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()
+      return
     }
+    resumeExportPollingForList()
   } catch (error) {
     listLoadError.value = toUserError(error, '质量报告加载失败')
     showUserError(error, '质量报告加载失败')
@@ -273,6 +277,8 @@ async function handleScopeChange(): Promise<void> {
   listLoadError.value = null
   await loadList()
 }
+
+useQualityScopeReload(handleScopeChange)
 
 function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
@@ -322,6 +328,10 @@ function openCreate() {
 }
 
 async function openEdit(record: ReportVO) {
+  if (!canEditReport(record.status)) {
+    message.error('当前状态不允许编辑报告')
+    return
+  }
   editorMode.value = 'edit'
   detailLoading.value = true
   try {
@@ -345,6 +355,13 @@ async function openEdit(record: ReportVO) {
 }
 
 async function submitEditor() {
+  if (editorMode.value === 'edit' && editor.id) {
+    const current = list.value.find((item) => item.id === editor.id)
+    if (current && !canEditReport(current.status)) {
+      message.error('当前状态不允许编辑报告')
+      return
+    }
+  }
   if (!editor.title.trim()) {
     message.error('请填写报告标题')
     return
@@ -413,6 +430,9 @@ async function handleTransit(record: ReportVO, to: ReportStatus) {
 
 /** 正在轮询导出状态的报告 ID 集合，用于禁用重复点击与表格展示加载动画。 */
 const pollingExportIds = ref<Set<string>>(new Set())
+/** 轮询代次：组件卸载时递增以中止在途 pollExportStatus 循环。 */
+let exportPollGeneration = 0
+const exportPollTokens = new Map<string, number>()
 
 const EXPORT_POLL_INTERVAL_MS = 5000
 /** 最大轮询时长 30 分钟：超出后停止轮询但不影响后端实际执行，用户可手工刷新列表。 */
@@ -423,10 +443,18 @@ const EXPORT_POLL_MAX_ATTEMPTS = 360
  * 或达到最大尝试次数（30 分钟）。非终态（IDLE / PENDING / PROCESSING）持续轮询。
  */
 async function pollExportStatus(id: string) {
+  const token = ++exportPollGeneration
+  exportPollTokens.set(id, token)
   pollingExportIds.value.add(id)
   try {
     for (let attempt = 0; attempt < EXPORT_POLL_MAX_ATTEMPTS; attempt++) {
+      if (exportPollTokens.get(id) !== token) {
+        return
+      }
       await new Promise((resolve) => setTimeout(resolve, EXPORT_POLL_INTERVAL_MS))
+      if (exportPollTokens.get(id) !== token) {
+        return
+      }
       const detail = await reportApi.detail(id)
       const idx = list.value.findIndex((item) => item.id === id)
       if (idx >= 0) list.value[idx] = detail
@@ -449,6 +477,9 @@ async function pollExportStatus(id: string) {
       `报告导出已超过 ${(EXPORT_POLL_INTERVAL_MS * EXPORT_POLL_MAX_ATTEMPTS) / 60_000} 分钟未完成，已停止轮询；请稍后手工刷新列表查看最新状态。`,
     )
   } finally {
+    if (exportPollTokens.get(id) === token) {
+      exportPollTokens.delete(id)
+    }
     pollingExportIds.value.delete(id)
   }
 }
@@ -489,6 +520,31 @@ async function handleExport(record: ReportVO) {
 
 function isExportInFlight(status: ReportExportStatus | undefined) {
   return status === 'PENDING' || status === 'PROCESSING'
+}
+
+function resumeExportPollingForList() {
+  for (const record of list.value) {
+    if (isExportInFlight(record.exportStatus) && !pollingExportIds.value.has(record.id)) {
+      void pollExportStatus(record.id)
+    }
+  }
+}
+
+async function downloadReportExportFile(record: ReportVO, kind: 'word' | 'pdf' | 'excel') {
+  const fileId = kind === 'word'
+    ? record.wordFileId
+    : kind === 'pdf'
+      ? record.pdfFileId
+      : record.excelFileId
+  if (!fileId) {
+    message.warning('该格式文件尚未生成')
+    return
+  }
+  const suffix = kind === 'word' ? 'docx' : kind === 'pdf' ? 'pdf' : 'xlsx'
+  await handleDownloadFile({
+    fileId,
+    fileName: `${reportTitle(record)}.${suffix}`,
+  })
 }
 
 async function handleDelete(record: ReportVO) {
@@ -606,7 +662,7 @@ async function openAuditDrawer(record: ReportVO) {
       pageSize: 50,
       module: 'REPORT',
       category: 'QUALITY',
-      description: record.id,
+      bizId: record.id,
     })
     auditEvents.value = readPageList(page, '报告审计记录加载失败，请稍后重试').map((log) => {
       return {
@@ -648,21 +704,30 @@ function handleReportResultAction(actionEvent: { item: TaskResultItem, action: {
 }
 
 onMounted(loadList)
+
+onActivated(() => {
+  if (qualityStore.currentTrainingPlanId) {
+    void loadList()
+  }
+})
+
+onBeforeUnmount(() => {
+  exportPollGeneration += 1
+  exportPollTokens.clear()
+  pollingExportIds.value.clear()
+})
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
-        <template #status>
-          <QualityScopeHeader @change="handleScopeChange" />
-        </template>
+      <QualityPageContextBar>
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="handleScopeChange">
             刷新
           </UiButton>
         </template>
-      </ContextBar>
+      </QualityPageContextBar>
     </template>
 
     <UiEmpty
@@ -742,9 +807,24 @@ onMounted(loadList)
             </template>
             <template v-else-if="column.key === 'exports'">
               <a-space size="small" wrap>
-                <UiTag v-if="record.wordFileId" tone="blue" size="sm"> Word </UiTag>
-                <UiTag v-if="record.pdfFileId" tone="orange" size="sm"> PDF </UiTag>
-                <UiTag v-if="record.excelFileId" tone="green" size="sm"> Excel </UiTag>
+                <UiTextAction
+                  v-if="record.wordFileId"
+                  @click="downloadReportExportFile(record, 'word')"
+                >
+                  Word
+                </UiTextAction>
+                <UiTextAction
+                  v-if="record.pdfFileId"
+                  @click="downloadReportExportFile(record, 'pdf')"
+                >
+                  PDF
+                </UiTextAction>
+                <UiTextAction
+                  v-if="record.excelFileId"
+                  @click="downloadReportExportFile(record, 'excel')"
+                >
+                  Excel
+                </UiTextAction>
                 <UiTag
                   v-if="record.exportStatus && record.exportStatus !== 'COMPLETED'"
                   :tone="exportStatusColor(record.exportStatus)"
@@ -765,7 +845,7 @@ onMounted(loadList)
               <div class="operations-cell" @click.stop>
                 <UiTextAction @click="openDetail(record)">详情</UiTextAction>
                 <UiTextAction
-                  :disabled="canEditReport(record.status)"
+                  :disabled="!canEditReport(record.status)"
                   @click="openEdit(record)"
                 >
                   编辑
@@ -780,6 +860,7 @@ onMounted(loadList)
                 </UiTextAction>
                 <UiTextAction
                   v-if="record.status === 'SUBMITTED' || record.status === 'CONFIRMED' || record.status === 'ARCHIVED'"
+                  :disabled="isExportInFlight(record.exportStatus) || pollingExportIds.has(record.id)"
                   @click="handleExport(record)"
                 >
                   导出三格式
@@ -815,7 +896,11 @@ onMounted(loadList)
             </a-col>
             <a-col :span="8">
               <a-form-item label="类型" required>
-                <a-select v-model:value="editor.reportType" :options="reportTypeOptions" />
+                <a-select
+                  v-model:value="editor.reportType"
+                  :options="reportTypeOptions"
+                  :disabled="editorMode === 'edit'"
+                />
               </a-form-item>
             </a-col>
           </a-row>
@@ -825,6 +910,7 @@ onMounted(loadList)
                 <ProgramSelector
                   :value="editor.programId || null"
                   placeholder="选择专业"
+                  :disabled="editorMode === 'edit'"
                   @change="handleEditorProgramChange"
                 />
               </a-form-item>
@@ -834,6 +920,7 @@ onMounted(loadList)
                 <TrainingPlanSelector
                   :value="editor.trainingPlanId || null"
                   placeholder="选择培养方案（可选）"
+                  :disabled="editorMode === 'edit'"
                   @change="handleEditorTrainingPlanChange"
                 />
               </a-form-item>
@@ -844,6 +931,7 @@ onMounted(loadList)
                   :value="editor.qualityCourseId || null"
                   :training-plan-id="editor.trainingPlanId || null"
                   placeholder="选择质量评价课程（可选）"
+                  :disabled="editorMode === 'edit'"
                   @change="handleEditorQualityCourseChange"
                 />
               </a-form-item>
@@ -860,6 +948,7 @@ onMounted(loadList)
                   :school-year="editor.schoolYear || null"
                   :semester="editor.semester || null"
                   placeholder="可选，用于关联已有达成度结果"
+                  :disabled="editorMode === 'edit'"
                   @change="handleEditorAchievementResultChange"
                 />
               </a-form-item>
@@ -868,12 +957,12 @@ onMounted(loadList)
           <a-row :gutter="12">
             <a-col :span="6">
               <a-form-item label="学年" required>
-                <a-input v-model:value="editor.schoolYear" />
+                <a-input v-model:value="editor.schoolYear" :disabled="editorMode === 'edit'" />
               </a-form-item>
             </a-col>
             <a-col :span="6">
               <a-form-item label="学期" required>
-                <a-input v-model:value="editor.semester" />
+                <a-input v-model:value="editor.semester" :disabled="editorMode === 'edit'" />
               </a-form-item>
             </a-col>
           </a-row>
@@ -919,13 +1008,31 @@ onMounted(loadList)
             {{ detailRecord.schoolYear }} / {{ detailRecord.semester }}
           </a-descriptions-item>
           <a-descriptions-item label="Word 文件">
-            {{ detailRecord.wordFileId ? '已生成 Word 文件' : '未生成 Word 文件' }}
+            <UiTextAction
+              v-if="detailRecord.wordFileId"
+              @click="downloadReportExportFile(detailRecord, 'word')"
+            >
+              下载 Word
+            </UiTextAction>
+            <span v-else>未生成 Word 文件</span>
           </a-descriptions-item>
           <a-descriptions-item label="PDF 文件">
-            {{ detailRecord.pdfFileId ? '已生成 PDF 文件' : '未生成 PDF 文件' }}
+            <UiTextAction
+              v-if="detailRecord.pdfFileId"
+              @click="downloadReportExportFile(detailRecord, 'pdf')"
+            >
+              下载 PDF
+            </UiTextAction>
+            <span v-else>未生成 PDF 文件</span>
           </a-descriptions-item>
           <a-descriptions-item label="Excel 文件">
-            {{ detailRecord.excelFileId ? '已生成 Excel 文件' : '未生成 Excel 文件' }}
+            <UiTextAction
+              v-if="detailRecord.excelFileId"
+              @click="downloadReportExportFile(detailRecord, 'excel')"
+            >
+              下载 Excel
+            </UiTextAction>
+            <span v-else>未生成 Excel 文件</span>
           </a-descriptions-item>
           <a-descriptions-item label="导出状态">
             <UiTag :tone="exportStatusColor(detailRecord.exportStatus)" size="sm">

@@ -318,6 +318,10 @@ async function loadAvailableClasses(): Promise<void> {
   loadingClasses.value = true
   try {
     availableClasses.value = await getCasAvailableClasses(completionToken.value)
+  } catch (error: unknown) {
+    availableClasses.value = []
+    fieldErrors.classId = getUserErrorMessage(error, '统一认证可选班级加载失败')
+    throw error
   } finally {
     loadingClasses.value = false
   }

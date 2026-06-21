@@ -142,6 +142,12 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'trial',
       keepAlive: true,
     }),
+    workspaceChild('marking/review-batch', 'TeacherExamWorkspaceReviewBatchConfirm', () => import('@/views/teacher/review-batch-confirm.vue'), {
+      title: '批量复核确认',
+      markStageKey: 'FORMAL_MARKING',
+      workspacePhase: 'marking',
+      keepAlive: true,
+    }),
     workspaceChild('marking/task-pool', 'TeacherExamWorkspaceMarkingTaskPool', () => import('@/views/teacher/marking-task-pool.vue'), {
       title: '阅卷任务池',
       markStageKey: 'FORMAL_MARKING',
@@ -229,6 +235,12 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
     }),
     workspaceChild('archive/statistics', 'TeacherExamWorkspaceArchiveStatistics', () => import('@/views/teacher/statistics.vue'), {
       title: '成绩统计',
+      markStageKey: 'ARCHIVE',
+      workspacePhase: 'archive',
+      keepAlive: true,
+    }),
+    workspaceChild('archive/grading-experience', 'TeacherExamWorkspaceGradingExperience', () => import('@/views/teacher/grading-experience-hub.vue'), {
+      title: '阅卷经验库',
       markStageKey: 'ARCHIVE',
       workspacePhase: 'archive',
       keepAlive: true,

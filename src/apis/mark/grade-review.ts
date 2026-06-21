@@ -190,6 +190,14 @@ export interface GradeReviewQuestionRefVO {
   fullScore: number
 }
 
+/** 复核申请佐证文件业务引用 */
+export interface GradeReviewEvidenceFileRefVO {
+  /** edu-storage 文件系统节点 ID */
+  fileId: string
+  /** 佐证文件展示名 */
+  fileName: string
+}
+
 /** 教师端复核申请列表项 - 对应 GradeReviewRequestItemResponse */
 export interface GradeReviewRequestItemResponse {
   id: string
@@ -202,6 +210,7 @@ export interface GradeReviewRequestItemResponse {
   studentName: string
   paperInstanceId: string
   questionRefs: GradeReviewQuestionRefVO[]
+  evidenceFileRefs: GradeReviewEvidenceFileRefVO[]
   requestReason: string
   reasonType: GradeReviewReasonTypeCode
   requestStatus: GradeReviewRequestStatusCode
@@ -278,6 +287,7 @@ export interface StudentGradeReviewRequestItemVO {
   studentNo: string
   studentName: string
   questionRefs: GradeReviewQuestionRefVO[]
+  evidenceFileRefs: GradeReviewEvidenceFileRefVO[]
   requestReason: string
   reasonType: GradeReviewReasonTypeCode
   requestStatus: GradeReviewRequestStatusCode
@@ -289,19 +299,30 @@ export interface StudentGradeReviewRequestItemVO {
 }
 
 /**
- * 跨考试聚合查询当前学生的复核申请。
+ * 跨考试聚合分页查询当前学生的复核申请。
  * 用于学生端 /student/appeal，避免按考试逐个调用 listReviewRequests 的 N+1。
- * GET /api/exam/grade-review/request/student-list?requestStatus=
+ * POST /api/exam/grade-review/request/student-list
  */
+export interface StudentGradeReviewRequestListQueryRequest extends QueryDto {
+  requestStatus?: GradeReviewRequestStatusCode
+  examId?: string
+}
+
 export function listMyReviewRequests(
-  params: {
-    requestStatus?: GradeReviewRequestStatusCode
-  } = {},
-): Promise<StudentGradeReviewRequestItemVO[]> {
-  return http.get<StudentGradeReviewRequestItemVO[]>(
+  request: StudentGradeReviewRequestListQueryRequest = {},
+): Promise<PageResult<StudentGradeReviewRequestItemVO>> {
+  return http.post<PageResult<StudentGradeReviewRequestItemVO>>(
     '/api/exam/grade-review/request/student-list',
-    { params },
+    request,
   )
+}
+
+/**
+ * 统计当前学生待处理复核申请数量（PENDING + IN_REVIEW）
+ * GET /api/exam/grade-review/request/student-pending-count
+ */
+export function countMyPendingReviewRequests(): Promise<number> {
+  return http.get<number>('/api/exam/grade-review/request/student-pending-count')
 }
 
 /**
@@ -401,15 +422,20 @@ export function createCorrection(
 
 /**
  * 查询成绩更正记录
- * GET /api/exam/grade-review/correction/list?examId=&studentUserId=
+ * POST /api/exam/grade-review/correction/list
  */
-export function listCorrections(params: {
+export interface GradeCorrectionListQueryRequest extends QueryDto {
   examId: string
   studentUserId?: string
-}): Promise<ExamGradeCorrectionRecordVO[]> {
-  return http.get<ExamGradeCorrectionRecordVO[]>('/api/exam/grade-review/correction/list', {
-    params,
-  })
+}
+
+export function listCorrections(
+  request: GradeCorrectionListQueryRequest,
+): Promise<PageResult<ExamGradeCorrectionRecordVO>> {
+  return http.post<PageResult<ExamGradeCorrectionRecordVO>>(
+    '/api/exam/grade-review/correction/list',
+    request,
+  )
 }
 
 // ─── 批量更正计划 ─────────────────────────────────

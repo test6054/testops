@@ -15,7 +15,14 @@
       @reset="handleFilterReset"
     />
 
+    <UiErrorRetryPanel
+      v-if="loadError"
+      :error="loadError"
+      @retry="reload"
+    />
+
     <UiDataTable
+      v-else
       class="student-detail-table__data-table"
       v-model:current="pagination.current"
       v-model:page-size="pagination.pageSize"
@@ -42,6 +49,9 @@
         </template>
         <template v-else-if="column.key === 'questionRefs'">
           <span class="ellipsis">{{ formatQuestionRefs(rows[index]) }}</span>
+        </template>
+        <template v-else-if="column.key === 'evidenceFileRefs'">
+          <span class="ellipsis">{{ formatEvidenceRefs(rows[index]) }}</span>
         </template>
         <template v-else-if="column.key === 'createTime'">
           {{ formatDateTime(rows[index].createTime) }}
@@ -96,6 +106,17 @@
         <a-form-item label="申请原因">
           <a-textarea :value="targetRequest?.requestReason ?? ''" :rows="3" disabled />
         </a-form-item>
+        <a-form-item v-if="targetRequest && targetRequest.evidenceFileRefs.length > 0" label="佐证材料">
+          <div class="evidence-file-list">
+            <UiTextAction
+              v-for="file in targetRequest.evidenceFileRefs"
+              :key="file.fileId"
+              @click="downloadEvidenceFile(file)"
+            >
+              {{ file.fileName }}
+            </UiTextAction>
+          </div>
+        </a-form-item>
         <a-form-item label="复核备注">
           <a-textarea
             v-model:value="reviewNote"
@@ -113,6 +134,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
+  GradeReviewEvidenceFileRefVO,
   GradeReviewReasonTypeCode,
   GradeReviewRequestItemResponse,
   GradeReviewRequestStatusCode,
@@ -133,9 +155,11 @@ import {
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
+import { handleDownloadFile } from '@/utils/file-download'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -175,6 +199,7 @@ const filterFields: FilterField[] = [
 const columns: ColumnType<GradeReviewRequestItemResponse>[] = [
   { title: '学生', key: 'student', width: 150 },
   { title: '复核题目', key: 'questionRefs', width: 220 },
+  { title: '佐证', key: 'evidenceFileRefs', width: 140 },
   { title: '原因类型', dataIndex: 'reasonType', key: 'reasonType', width: 120 },
   { title: '申请原因', dataIndex: 'requestReason', key: 'requestReason', ellipsis: true },
   { title: '状态', key: 'requestStatus', width: 100 },
@@ -272,6 +297,7 @@ function validateReviewRequestDisplayContracts(list: GradeReviewRequestItemRespo
       Boolean(record.studentName?.trim()) && Boolean(record.studentNo?.trim()),
       dataError,
     )
+    assertUserFacing(Array.isArray(record.evidenceFileRefs), dataError)
   }
 }
 
@@ -332,6 +358,21 @@ function formatQuestionRefs(record: GradeReviewRequestItemResponse): string {
     .join('、')
 }
 
+function formatEvidenceRefs(record: GradeReviewRequestItemResponse): string {
+  if (record.evidenceFileRefs.length === 0) {
+    return '—'
+  }
+  return `${record.evidenceFileRefs.length} 个文件`
+}
+
+async function downloadEvidenceFile(file: GradeReviewEvidenceFileRefVO): Promise<void> {
+  try {
+    await handleDownloadFile({ fileId: file.fileId, fileName: file.fileName })
+  } catch (error) {
+    showUserError(error, '佐证文件下载失败')
+  }
+}
+
 watch(
   () => [props.examId, props.reloadToken],
   () => {
@@ -351,5 +392,11 @@ watch(
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.evidence-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 </style>

@@ -29,8 +29,14 @@
     </div>
 
     <a-spin :spinning="loading">
+      <UiErrorRetryPanel
+        v-if="!loading && detailLoadError"
+        :error="detailLoadError"
+        @retry="loadDetail"
+      />
+
       <UiEmpty
-        v-if="!loading && !detail"
+        v-else-if="!loading && !detail"
         description="暂无数据"
         class="exam-workspace-overview__empty"
       />
@@ -167,7 +173,7 @@ import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   EXAM_STATUS_LABEL,
@@ -181,8 +187,9 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { formatSemester } from '@/types/enums/semester-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -190,10 +197,13 @@ defineOptions({ name: 'TeacherExamWorkspaceOverview' })
 
 const router = useRouter()
 const { selectedExamId: examIdRef } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 const examId = computed<string>(() => examIdRef.value ?? '')
 const detail = ref<ExamDetailVO | null>(null)
 const loading = ref(false)
+// D-9：考试概览加载失败时展示可重试错误面板
+const detailLoadError = ref<Error | null>(null)
 
 const labelStyle: CSSProperties = { color: 'var(--ant-color-text-tertiary)', width: '88px' }
 
@@ -226,10 +236,12 @@ async function loadDetail(): Promise<void> {
     return
   }
   loading.value = true
+  detailLoadError.value = null
   try {
     detail.value = await getExamDetail(examId.value)
   } catch (error) {
     detail.value = null
+    detailLoadError.value = toUserError(error, '考试详情加载失败')
     showUserError(error, '考试详情加载失败')
   } finally {
     loading.value = false
@@ -254,6 +266,13 @@ watch(examId, () => {
 
 onMounted(() => {
   void loadDetail()
+})
+
+onActivated(() => {
+  if (examId.value) {
+    void loadDetail()
+    void refreshSnapshot()
+  }
 })
 </script>
 

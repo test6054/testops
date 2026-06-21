@@ -1,5 +1,11 @@
 import type { AiTaskSubmitResponseVO } from './ai-task'
-import type { AchievementTargetType, IndirectFormType, RespondentType } from './types'
+import type {
+  AchievementTargetType,
+  IndirectFormAccessMode,
+  IndirectFormStatus,
+  IndirectFormType,
+  RespondentType,
+} from './types'
 import type {
   SurveyChoiceOptionVO,
   SurveyIdentityFieldVO,
@@ -37,11 +43,11 @@ export interface IndirectEvaluationFormVO {
   description?: string
   expectedSample?: number
   enabled: boolean
-  status?: string
+  status?: IndirectFormStatus
   accessToken?: string
   startTime?: string
   endTime?: string
-  accessMode?: string
+  accessMode?: IndirectFormAccessMode
   allowAnonymous?: boolean
   requireIdentityFields?: SurveyIdentityFieldVO[]
   maxSubmissionsPerRespondent?: number
@@ -156,7 +162,7 @@ export interface IndirectEvaluationFormPublishRequest {
   id: string
   startTime: string
   endTime: string
-  accessMode: string
+  accessMode: IndirectFormAccessMode
   allowAnonymous?: boolean
   requireIdentityFields?: SurveyIdentityFieldVO[]
   maxSubmissionsPerRespondent: number

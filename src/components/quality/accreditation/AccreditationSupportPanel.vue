@@ -8,7 +8,7 @@ import type {
 } from '@/apis/quality'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import { message } from 'ant-design-vue'
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { accreditationApi } from '@/apis/quality'
 import { TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -29,6 +29,8 @@ const emit = defineEmits<{ refresh: [] }>()
 const loading = ref(false)
 const saving = ref(false)
 const profile = ref<ProgramSupportProfileVO | null>(null)
+
+const isProfileLocked = computed(() => profile.value?.profileStatus === 'CONFIRMED')
 const facultyLoading = ref(false)
 const facultySaving = ref(false)
 const facultyDrawerOpen = ref(false)
@@ -178,6 +180,10 @@ async function loadFacultyProfiles() {
 }
 
 async function saveProfile() {
+  if (isProfileLocked.value) {
+    message.error('已确认档案不可修改，如需调整请联系管理员退回后重编')
+    return
+  }
   saving.value = true
   try {
     form.id = await accreditationApi.saveSupportProfile(form)
@@ -211,12 +217,20 @@ function openFacultyCreate() {
     message.error('请先选择培养方案')
     return
   }
+  if (isProfileLocked.value) {
+    message.error('师资与支持条件档案已确认，不可再新增教师档案')
+    return
+  }
   facultyDrawerTitle.value = '新增教师档案'
   resetFacultyForm()
   facultyDrawerOpen.value = true
 }
 
 function openFacultyEdit(record: FacultyProfileVO) {
+  if (isProfileLocked.value) {
+    message.error('师资与支持条件档案已确认，不可再编辑教师档案')
+    return
+  }
   facultyDrawerTitle.value = '编辑教师档案'
   selectedTeacherId.value = record.teacherUserId
   facultyForm.id = record.id
@@ -346,6 +360,10 @@ async function submitFacultyProfile() {
 }
 
 async function deleteFacultyProfile(record: FacultyProfileVO) {
+  if (isProfileLocked.value) {
+    message.error('师资与支持条件档案已确认，不可删除教师档案')
+    return
+  }
   const ok = await confirmAsync({
     title: `确认删除 ${record.teacherName} 的认证师资档案？`,
   })
@@ -401,10 +419,12 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
           <span v-else-if="profile" class="draft">草稿</span>
           <span v-else class="draft">尚未建档</span>
           <div class="actions">
-            <UiButton variant="outline" :loading="saving" @click="saveProfile">保存</UiButton>
+            <UiButton variant="outline" :loading="saving" :disabled="isProfileLocked" @click="saveProfile">
+              保存
+            </UiButton>
             <UiButton
               variant="primary"
-              :disabled="!form.id || profile?.profileStatus === 'CONFIRMED'"
+              :disabled="!form.id || isProfileLocked"
               @click="confirmProfile"
             >
               确认档案
@@ -414,28 +434,28 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
       </div>
       <a-form layout="vertical" class="form-grid">
         <a-form-item label="师资队伍概况（标准 6）">
-          <a-textarea v-model:value="form.facultySummary" :rows="4" />
+          <a-textarea v-model:value="form.facultySummary" :rows="4" :disabled="isProfileLocked" />
         </a-form-item>
         <a-form-item label="师资结构说明">
-          <a-textarea v-model:value="form.facultyStructureRemark" :rows="3" />
+          <a-textarea v-model:value="form.facultyStructureRemark" :rows="3" :disabled="isProfileLocked" />
         </a-form-item>
         <a-form-item label="实验与工程训练设施（标准 7）">
-          <a-textarea v-model:value="form.supportFacilitySummary" :rows="4" />
+          <a-textarea v-model:value="form.supportFacilitySummary" :rows="4" :disabled="isProfileLocked" />
         </a-form-item>
         <a-form-item label="图书与文献资源">
-          <a-textarea v-model:value="form.supportLibraryRemark" :rows="3" />
+          <a-textarea v-model:value="form.supportLibraryRemark" :rows="3" :disabled="isProfileLocked" />
         </a-form-item>
         <a-form-item label="信息化与计算资源">
-          <a-textarea v-model:value="form.supportItRemark" :rows="3" />
+          <a-textarea v-model:value="form.supportItRemark" :rows="3" :disabled="isProfileLocked" />
         </a-form-item>
         <a-form-item label="产学合作与实习基地">
-          <a-textarea v-model:value="form.industryCoopRemark" :rows="3" />
+          <a-textarea v-model:value="form.industryCoopRemark" :rows="3" :disabled="isProfileLocked" />
         </a-form-item>
         <a-form-item label="学生发展与支持">
-          <a-textarea v-model:value="form.studentDevelopmentRemark" :rows="3" />
+          <a-textarea v-model:value="form.studentDevelopmentRemark" :rows="3" :disabled="isProfileLocked" />
         </a-form-item>
         <a-form-item label="质量保障体系">
-          <a-textarea v-model:value="form.qualityAssuranceRemark" :rows="3" />
+          <a-textarea v-model:value="form.qualityAssuranceRemark" :rows="3" :disabled="isProfileLocked" />
         </a-form-item>
       </a-form>
     </section>
@@ -449,7 +469,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
             每位教师按当前培养方案建档，供自评报告、专家材料包和标准 6 师资举证引用。
           </p>
         </div>
-        <UiButton variant="primary" :disabled="!trainingPlanId" @click="openFacultyCreate">
+        <UiButton variant="primary" :disabled="!trainingPlanId || isProfileLocked" @click="openFacultyCreate">
           新增教师档案
         </UiButton>
       </div>
@@ -512,11 +532,19 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
             </div>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton size="sm" variant="outline" @click="openFacultyEdit(record)">编辑</UiButton>
+            <UiButton
+              size="sm"
+              variant="outline"
+              :disabled="isProfileLocked"
+              @click="openFacultyEdit(record)"
+            >
+              编辑
+            </UiButton>
             <UiButton
               size="sm"
               status="danger"
               variant="ghost"
+              :disabled="isProfileLocked"
               @click="deleteFacultyProfile(record)"
             >
               删除

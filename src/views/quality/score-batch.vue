@@ -30,7 +30,7 @@ import type {
   WorkbenchStage,
 } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
@@ -41,7 +41,7 @@ import {
   SCORE_BATCH_STATUS_LABEL,
   scoreBatchApi,
 } from '@/apis/quality'
-import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -59,6 +59,7 @@ import {
   TaskResultPanel,
 } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
@@ -351,6 +352,7 @@ async function loadBatches() {
   try {
     const page = await scoreBatchApi.page({
       ...query,
+      trainingPlanId: qualityStore.currentTrainingPlanId,
       qualityCourseId: query.qualityCourseId || undefined,
       assessmentItemId: query.assessmentItemId || undefined,
       status: query.status || undefined,
@@ -364,7 +366,9 @@ async function loadBatches() {
     if (batches.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadBatches()
+      return
     }
+    syncBatchPolling()
   } catch (error) {
     listLoadError.value = toUserError(error, '成绩批次加载失败')
     showUserError(error, '成绩批次加载失败')
@@ -373,11 +377,51 @@ async function loadBatches() {
   }
 }
 
+let batchPollTimer: ReturnType<typeof setInterval> | null = null
+
+function syncBatchPolling(): void {
+  const shouldPoll = batches.value.some((batch) => batch.status === 'PARSING')
+  if (shouldPoll && !batchPollTimer) {
+    batchPollTimer = setInterval(() => {
+      void loadBatchesQuietly()
+    }, 3000)
+  } else if (!shouldPoll && batchPollTimer) {
+    clearInterval(batchPollTimer)
+    batchPollTimer = null
+  }
+}
+
+async function loadBatchesQuietly(): Promise<void> {
+  if (!qualityStore.currentTrainingPlanId || loading.value) {
+    return
+  }
+  try {
+    const page = await scoreBatchApi.page({
+      ...query,
+      trainingPlanId: qualityStore.currentTrainingPlanId,
+      qualityCourseId: query.qualityCourseId || undefined,
+      assessmentItemId: query.assessmentItemId || undefined,
+      status: query.status || undefined,
+      sourceMode: query.sourceMode || undefined,
+      keyword: query.keyword?.trim() || undefined,
+    })
+    batches.value = readPageList(page, '成绩批次加载失败，请稍后重试')
+    query.pageNum = page.pageNum
+    query.pageSize = page.pageSize
+    total.value = readPageTotal(page, '成绩批次加载失败，请稍后重试')
+    syncBatchPolling()
+  } catch {
+    // 轮询刷新失败时不打断当前页面操作
+  }
+}
+
 async function handleScopeChange(): Promise<void> {
   listLoadError.value = null
   await loadCourses()
   await loadBatches()
 }
+
+useQualityScopeReload(handleScopeChange)
 
 function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
@@ -648,7 +692,7 @@ async function openAuditDrawer(record: ScoreBatchVO) {
       pageSize: 50,
       module: 'SCORE_BATCH',
       category: 'QUALITY',
-      description: record.id,
+      bizId: record.id,
     })
     auditEvents.value = readPageList(page, '成绩批次审计记录加载失败，请稍后重试').map((log) => {
       return {
@@ -704,8 +748,10 @@ async function handleDelete(record: ScoreBatchVO) {
   })
 }
 
-function canValidate(status: ScoreBatchStatus) {
-  return status === 'PREVIEW_READY'
+function canValidate(record: ScoreBatchVO) {
+  return record.status === 'PREVIEW_READY'
+    && (record.errorRows ?? 0) === 0
+    && (record.successRows ?? 0) > 0
 }
 function canConfirm(status: ScoreBatchStatus) {
   return status === 'VALIDATED'
@@ -756,15 +802,19 @@ onMounted(async () => {
     await loadBatches()
   }
 })
+
+onBeforeUnmount(() => {
+  if (batchPollTimer) {
+    clearInterval(batchPollTimer)
+    batchPollTimer = null
+  }
+})
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
-        <template #status>
-          <QualityScopeHeader @change="handleScopeChange" />
-        </template>
+      <QualityPageContextBar>
         <template #actions>
           <UiButton
             variant="outline"
@@ -776,7 +826,7 @@ onMounted(async () => {
             刷新
           </UiButton>
         </template>
-      </ContextBar>
+      </QualityPageContextBar>
     </template>
 
     <UiEmpty
@@ -840,11 +890,7 @@ onMounted(async () => {
             />
           </a-form-item>
           <a-form-item label="接入模式">
-            <a-select
-              v-model:value="uploadForm.sourceMode"
-              class="score-batch__filter score-batch__filter--lg"
-              :options="SOURCE_MODE_OPTIONS"
-            />
+            <a-input :value="sourceModeLabel('EXCEL_IMPORT')" disabled class="score-batch__filter score-batch__filter--lg" />
           </a-form-item>
           <a-form-item label="学年">
             <a-input
@@ -953,7 +999,7 @@ onMounted(async () => {
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
                 <UiTextAction v-if="canPreview(record.status)" @click="openPreview(record)">预览</UiTextAction>
-                <UiTextAction v-if="canValidate(record.status)" @click="handleValidate(record)">校验</UiTextAction>
+                <UiTextAction v-if="canValidate(record)" @click="handleValidate(record)">校验</UiTextAction>
                 <UiTextAction v-if="canConfirm(record.status)" tone="primary" @click="handleConfirm(record)">
                   确认
                 </UiTextAction>
@@ -1098,7 +1144,7 @@ onMounted(async () => {
           </a-col>
           <a-col :span="12">
             <a-form-item label="接入模式">
-              <a-select v-model:value="editor.sourceMode" :options="SOURCE_MODE_OPTIONS" />
+              <a-input :value="sourceModeLabel(editor.sourceMode)" disabled />
             </a-form-item>
           </a-col>
         </a-row>

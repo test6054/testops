@@ -19,6 +19,7 @@ import type {
   AchievementResultVO,
   AchievementStatus,
   AchievementTargetType,
+  AchievementComputeReadinessItemVO,
 } from '@/apis/quality'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type {
@@ -29,8 +30,8 @@ import type {
   WorkbenchStageStatus,
 } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -40,7 +41,7 @@ import {
   achievementApi,
   achievementAuditApi,
 } from '@/apis/quality'
-import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   ClassSelector,
   CourseGoalSelector,
@@ -64,6 +65,7 @@ import {
   StageWorkbenchShell,
   TaskResultPanel,
 } from '@/components/workbench'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -94,6 +96,18 @@ function isResultStale(record: AchievementResultVO): boolean {
   return record.staleFlag === true
 }
 
+function auditEventLabel(event: AchievementAuditStatus): string {
+  if (event === 'CALCULATED') return '达成度计算'
+  return auditStatusLabel(event)
+}
+
+function canRecomputeRecord(record: AchievementResultVO): boolean {
+  return record.auditStatus === 'RETURNED'
+    || isResultStale(record)
+    || record.auditStatus === 'DRAFT'
+    || record.auditStatus === 'CALCULATED'
+}
+
 function resultValidityLabel(record: AchievementResultVO): string {
   return isResultStale(record) ? '已过期' : '有效'
 }
@@ -103,6 +117,7 @@ function resultValidityColor(record: AchievementResultVO): BadgeTone {
 }
 
 const router = useRouter()
+const route = useRoute()
 const qualityStore = useQualityStore()
 const listLoadError = ref<Error | null>(null)
 
@@ -299,6 +314,24 @@ async function handleScopeChange(): Promise<void> {
   await loadList()
 }
 
+/** 阅卷桥接跳转：按 query 预填质量评价范围 */
+async function applyRouteScopeQuery(): Promise<void> {
+  const trainingPlanId = route.query.trainingPlanId
+  const qualityCourseId = route.query.qualityCourseId
+  if (typeof trainingPlanId === 'string' && trainingPlanId) {
+    if (qualityStore.currentProgramId) {
+      await qualityStore.loadTrainingPlanOptions()
+    }
+    qualityStore.setTrainingPlan(trainingPlanId)
+  }
+  if (typeof qualityCourseId === 'string' && qualityCourseId) {
+    qualityStore.setQualityCourse(qualityCourseId)
+    await qualityStore.loadQualityCourseOptions()
+  }
+}
+
+useQualityScopeReload(handleScopeChange)
+
 function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
@@ -445,6 +478,11 @@ async function handleTrigger(key: string, handler: () => Promise<AchievementComp
     message.warning('请先在顶部选择专业')
     return
   }
+  const readiness = readinessByKind.value.get(key)
+  if (readiness && !readiness.ready) {
+    message.warning(readiness.blockingReasons[0] || '当前步骤尚未就绪')
+    return
+  }
   triggerLoading.value = key
   try {
     const result = await handler()
@@ -455,6 +493,9 @@ async function handleTrigger(key: string, handler: () => Promise<AchievementComp
         : 0
     message.success(count > 0 ? `计算完成，生成 / 更新 ${count} 条结果` : '计算完成')
     await loadList()
+    if (triggerVisible.value) {
+      await loadComputeReadiness()
+    }
   } catch (err) {
     // 计算被用户取消（如未填 courseGoalId）静默忽略
     if (
@@ -476,7 +517,7 @@ const auditTransitMap: Record<AchievementAuditStatus, AchievementAuditStatus[]> 
   CALCULATED: ['DRAFT', 'SUBMITTED'],
   SUBMITTED: ['CONFIRMED', 'RETURNED'],
   CONFIRMED: ['ARCHIVED', 'RETURNED'],
-  RETURNED: ['CALCULATED'],
+  RETURNED: [],
   ARCHIVED: [],
 }
 
@@ -574,6 +615,46 @@ const signals = computed<SignalMetric[]>(() => {
 /* ========== 触发计算抽屉 ========== */
 
 const triggerVisible = ref(false)
+const computeReadinessItems = ref<AchievementComputeReadinessItemVO[]>([])
+const readinessLoading = ref(false)
+
+const readinessByKind = computed(() => {
+  const map = new Map<string, AchievementComputeReadinessItemVO>()
+  for (const item of computeReadinessItems.value) {
+    map.set(item.computeKind, item)
+  }
+  return map
+})
+
+const orderedTriggerSteps = computed(() =>
+  triggerButtons
+    .map((btn) => ({
+      ...btn,
+      readiness: readinessByKind.value.get(btn.key),
+    }))
+    .sort((a, b) => (a.readiness?.stageOrder ?? 99) - (b.readiness?.stageOrder ?? 99)),
+)
+
+async function loadComputeReadiness() {
+  if (!qualityStore.currentTrainingPlanId) {
+    computeReadinessItems.value = []
+    return
+  }
+  readinessLoading.value = true
+  try {
+    computeReadinessItems.value = await achievementApi.computeReadiness({
+      programId: triggerForm.programId || qualityStore.currentProgramId,
+      trainingPlanId: qualityStore.currentTrainingPlanId,
+      qualityCourseId: triggerForm.qualityCourseId || undefined,
+      courseGoalId: triggerForm.courseGoalId || undefined,
+      trainingObjectiveId: triggerForm.trainingObjectiveId || undefined,
+      schoolYear: triggerForm.schoolYear || undefined,
+      semester: triggerForm.semester || undefined,
+    })
+  } finally {
+    readinessLoading.value = false
+  }
+}
 
 function openTriggerDrawer() {
   if (!qualityStore.currentTrainingPlanId) {
@@ -581,6 +662,46 @@ function openTriggerDrawer() {
     return
   }
   triggerVisible.value = true
+  void loadComputeReadiness()
+}
+
+const targetTypeToComputeKind: Partial<Record<AchievementTargetType, string>> = {
+  COURSE_GOAL: 'COURSE_GOAL',
+  REQUIREMENT_INDICATOR: 'REQUIREMENT',
+  GRADUATION_REQUIREMENT: 'REQUIREMENT',
+  TRAINING_OBJECTIVE: 'TRAINING_OBJECTIVE',
+  PROGRAM_SUMMARY: 'PROGRAM',
+  CIVIC_GOAL_AGGREGATE: 'CIVIC_GOAL_AGGREGATE',
+  COMPLEX_ENGINEERING_AGGREGATE: 'COMPLEX_ENGINEERING',
+}
+
+async function handleRecomputeRecord(record: AchievementResultVO) {
+  const computeKind = targetTypeToComputeKind[record.targetType]
+  if (!computeKind) {
+    message.warning('当前目标类型不支持在此页重算')
+    return
+  }
+  if (record.programId) {
+    triggerForm.programId = record.programId
+  }
+  if (record.qualityCourseId) {
+    triggerForm.qualityCourseId = record.qualityCourseId
+  }
+  if (record.targetType === 'COURSE_GOAL') {
+    triggerForm.courseGoalId = record.targetId
+  }
+  if (record.targetType === 'TRAINING_OBJECTIVE') {
+    triggerForm.trainingObjectiveId = record.targetId
+  }
+  if (record.schoolYear) {
+    triggerForm.schoolYear = record.schoolYear
+  }
+  if (record.semester) {
+    triggerForm.semester = record.semester
+  }
+  const button = triggerButtons.find((item) => item.key === computeKind)
+  if (!button) return
+  await handleTrigger(button.key, button.handler)
 }
 
 function formatValue(value?: number) {
@@ -608,7 +729,9 @@ async function openAuditDrawer(record: AchievementResultVO) {
       id: a.id,
       operatorName: a.auditorNickName,
       operationType: a.auditEvent,
-      operationLabel: `${auditStatusLabel(a.auditStatusFrom)} → ${auditStatusLabel(a.auditStatusTo)}`,
+      operationLabel: a.auditEvent === 'CALCULATED'
+        ? auditEventLabel('CALCULATED')
+        : `${auditStatusLabel(a.auditStatusFrom)} → ${auditStatusLabel(a.auditStatusTo)}`,
       time: a.auditedAt,
       detail: a.auditOpinion || a.returnReason || undefined,
       targetType: '达成度结果',
@@ -648,6 +771,22 @@ function handleResultAction(actionEvent: { item: TaskResultItem, action: { key: 
 }
 
 watch(
+  () => [
+    triggerForm.qualityCourseId,
+    triggerForm.courseGoalId,
+    triggerForm.trainingObjectiveId,
+    triggerForm.programId,
+    triggerForm.schoolYear,
+    triggerForm.semester,
+  ],
+  () => {
+    if (triggerVisible.value) {
+      void loadComputeReadiness()
+    }
+  },
+)
+
+watch(
   () => qualityStore.currentTrainingPlanId,
   (value) => {
     triggerForm.trainingPlanId = value
@@ -662,6 +801,7 @@ watch(
 )
 
 onMounted(async () => {
+  await applyRouteScopeQuery()
   if (!qualityStore.currentTrainingPlanId) {
     await qualityStore.loadTrainingPlanOptions()
     if (qualityStore.trainingPlanOptions.length) {
@@ -672,16 +812,23 @@ onMounted(async () => {
   triggerForm.programId = qualityStore.currentProgramId
   query.trainingPlanId = qualityStore.currentTrainingPlanId
   await loadList()
+  await loadComputeReadiness()
+})
+
+onActivated(async () => {
+  if (!qualityStore.currentTrainingPlanId) {
+    return
+  }
+  query.trainingPlanId = qualityStore.currentTrainingPlanId
+  triggerForm.trainingPlanId = qualityStore.currentTrainingPlanId
+  await Promise.all([loadList(), loadComputeReadiness()])
 })
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
-        <template #status>
-          <QualityScopeHeader @change="handleScopeChange" />
-        </template>
+      <QualityPageContextBar>
         <template #actions>
           <UiButton
             variant="outline"
@@ -693,7 +840,7 @@ onMounted(async () => {
             刷新
           </UiButton>
         </template>
-      </ContextBar>
+      </QualityPageContextBar>
     </template>
 
     <UiEmpty
@@ -822,6 +969,13 @@ onMounted(async () => {
               <div class="operations-cell" @click.stop>
                 <UiTextAction @click="goDetail(record)">详情</UiTextAction>
                 <UiTextAction
+                  v-if="canRecomputeRecord(record)"
+                  tone="primary"
+                  @click="handleRecomputeRecord(record)"
+                >
+                  重新计算
+                </UiTextAction>
+                <UiTextAction
                   v-for="to in nextStatuses(record.auditStatus)"
                   :key="to"
                   :tone="to === 'RETURNED' ? 'danger' : 'primary'"
@@ -898,18 +1052,48 @@ onMounted(async () => {
           </a-col>
         </a-row>
       </a-form>
-      <h4 class="achievement__section-title">计算入口</h4>
-      <div class="achievement__trigger-grid">
-        <UiButton
-          v-for="btn in triggerButtons"
-          :key="btn.key"
-          variant="outline"
-          :loading="triggerLoading === btn.key"
-          :disabled="trainingPlanRequired"
-          @click="handleTrigger(btn.key, btn.handler)"
+      <h4 class="achievement__section-title">计算入口（按依赖顺序）</h4>
+      <p v-if="readinessLoading" class="achievement__readiness-hint">正在检查计算就绪状态…</p>
+      <div class="achievement__trigger-chain">
+        <div
+          v-for="step in orderedTriggerSteps"
+          :key="step.key"
+          class="achievement__trigger-step"
+          :class="{ 'achievement__trigger-step--blocked': step.readiness && !step.readiness.ready }"
         >
-          {{ btn.label }}
-        </UiButton>
+          <div class="achievement__trigger-step-head">
+            <span class="achievement__trigger-step-title">
+              {{ step.readiness?.stageTitle || step.label }}
+            </span>
+            <UiTag
+              v-if="step.readiness"
+              :tone="step.readiness.ready ? 'green' : 'orange'"
+              size="sm"
+            >
+              {{ step.readiness.ready ? '可计算' : '未就绪' }}
+            </UiTag>
+          </div>
+          <ul
+            v-if="step.readiness && !step.readiness.ready && step.readiness.blockingReasons.length"
+            class="achievement__trigger-blockers"
+          >
+            <li v-for="(reason, idx) in step.readiness.blockingReasons.slice(0, 3)" :key="idx">
+              {{ reason }}
+            </li>
+            <li v-if="step.readiness.blockingReasons.length > 3">
+              另有 {{ step.readiness.blockingReasons.length - 3 }} 项依赖未满足
+            </li>
+          </ul>
+          <UiButton
+            variant="outline"
+            size="sm"
+            :loading="triggerLoading === step.key"
+            :disabled="trainingPlanRequired || programRequired || (step.readiness != null && !step.readiness.ready)"
+            @click="handleTrigger(step.key, step.handler)"
+          >
+            计算{{ step.label }}
+          </UiButton>
+        </div>
       </div>
     </UiDrawer>
 
@@ -1013,6 +1197,52 @@ onMounted(async () => {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 8px;
+  }
+
+  &__trigger-chain {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__trigger-step {
+    padding: 12px;
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    background: var(--dp-surface, #fff);
+
+    &--blocked {
+      border-color: var(--ant-color-warning-border, #fcd34d);
+      background: var(--ant-color-warning-bg, #fffbeb);
+    }
+  }
+
+  &__trigger-step-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  &__trigger-step-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__trigger-blockers {
+    margin: 0 0 8px;
+    padding-left: 18px;
+    font-size: 12px;
+    color: var(--dp-text-secondary, #475569);
+    line-height: 1.5;
+  }
+
+  &__readiness-hint {
+    margin: 0 0 8px;
+    font-size: 12px;
+    color: var(--dp-text-muted, #64748b);
   }
 
   &__value--success {

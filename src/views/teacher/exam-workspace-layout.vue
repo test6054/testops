@@ -136,7 +136,21 @@
           </UiEmpty>
 
           <a-spin v-else :spinning="loading && !snapshot">
-            <router-view />
+            <router-view v-slot="{ Component, route: childRoute }">
+              <keep-alive v-if="shouldCacheWorkspaceRoute(childRoute)">
+                <component
+                  :is="Component"
+                  v-if="Component"
+                  :key="getWorkspaceRouteKey(childRoute)"
+                />
+              </keep-alive>
+              <component
+                v-else
+                :is="Component"
+                v-if="Component"
+                :key="getWorkspaceRouteKey(childRoute)"
+              />
+            </router-view>
           </a-spin>
         </div>
       </main>
@@ -145,13 +159,14 @@
 </template>
 
 <script lang="ts" setup>
-import type { Component } from 'vue'
+import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { MarkStageKey } from '@/stores/modules/markStage'
+import type { Component } from 'vue'
 import type { ExamWorkspaceMenuSection } from '@/constants/exam-workspace-menu'
-import ArchiveOutlined from '@ant-design/icons-vue/ArchiveOutlined'
+import type { MarkStageKey } from '@/stores/modules/markStage'
 import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
+import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
 import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
@@ -160,6 +175,7 @@ import DesktopOutlined from '@ant-design/icons-vue/DesktopOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import ExportOutlined from '@ant-design/icons-vue/ExportOutlined'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import FolderOutlined from '@ant-design/icons-vue/FolderOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import FundOutlined from '@ant-design/icons-vue/FundOutlined'
 import HighlightOutlined from '@ant-design/icons-vue/HighlightOutlined'
@@ -167,11 +183,13 @@ import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
 import MenuFoldOutlined from '@ant-design/icons-vue/MenuFoldOutlined'
 import MenuOutlined from '@ant-design/icons-vue/MenuOutlined'
 import MenuUnfoldOutlined from '@ant-design/icons-vue/MenuUnfoldOutlined'
+import PrinterOutlined from '@ant-design/icons-vue/PrinterOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
+import type { RouteLocationNormalized } from 'vue-router'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
@@ -180,6 +198,9 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { provideMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
+import { useMarkWorkbenchSnapshot } from '@/composables/useMarkWorkbenchSnapshot'
 import {
   EXAM_WORKSPACE_MENU_SECTIONS,
   findExamWorkspaceMenuItem,
@@ -189,26 +210,25 @@ import {
   resolveWorkspaceStage,
   WORKSPACE_STAGE_STATUS_LABEL,
 } from '@/constants/mark-workspace-nav'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
-import { provideMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
-import { useMarkWorkbenchSnapshot } from '@/composables/useMarkWorkbenchSnapshot'
 import HeaderRightBar from '@/layout/components/HeaderRightBar/index.vue'
 import { useAppStore } from '@/stores/modules/app'
 import { MARK_STAGE_ORDER } from '@/stores/modules/markStage'
 import { navigateToMarkStage } from '@/utils/mark-stage-navigation'
-import { strictEnumLabel } from '@/utils/strict-enum'
 import mittBus from '@/utils/mitt'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ExamWorkspaceLayout' })
 
-const menuIconMap: Record<string, Component> = {
-  overview: DashboardOutlined,
-  prep: ContainerOutlined,
+type ExamWorkspaceMenuKey = typeof EXAM_WORKSPACE_MENU_SECTIONS[number]['items'][number]['key']
+
+const menuIconMap: Record<ExamWorkspaceMenuKey, Component> = {
+  'overview': DashboardOutlined,
+  'prep': ContainerOutlined,
   'paper-template': ProfileOutlined,
   'answer-sheet': FormOutlined,
   'paper-master': FileSearchOutlined,
   'candidate-roster': TeamOutlined,
-  'print-package': ArchiveOutlined,
+  'print-package': PrinterOutlined,
   'scan-batches': CloudUploadOutlined,
   'scan-monitor': DesktopOutlined,
   'scan-ledger': AuditOutlined,
@@ -223,11 +243,13 @@ const menuIconMap: Record<string, Component> = {
   'marking-arbitration': AuditOutlined,
   'marking-quality': CheckCircleOutlined,
   'marking-review': EditOutlined,
+  'marking-review-batch': CheckCircleOutlined,
+  'archive-grading-experience': BulbOutlined,
   'score-summary': CheckCircleOutlined,
   'score-release': FundOutlined,
   'score-absence': TeamOutlined,
   'score-appeal': AuditOutlined,
-  'archive-package': ArchiveOutlined,
+  'archive-package': FolderOutlined,
   'archive-statistics': BarChartOutlined,
   'archive-exports': ExportOutlined,
 }
@@ -341,8 +363,8 @@ function onExamSwitch(value: SelectValue): void {
   })
 }
 
-function onMenuClick({ key }: { key: string }): void {
-  const item = findExamWorkspaceMenuItem(String(key))
+function onMenuClick(info: MenuInfo): void {
+  const item = findExamWorkspaceMenuItem(String(info.key))
   if (!item || !examId.value) {
     return
   }
@@ -358,7 +380,24 @@ function goSuggestedStage(): void {
   if (!suggested || !examId.value) {
     return
   }
-  navigateToMarkStage(router, suggested, examId.value)
+  navigateToMarkStage(router, suggested, examId.value, {
+    scanAttentionCount: snapshot.value?.markingProgress?.scanAttentionCount,
+  })
+}
+
+function shouldCacheWorkspaceRoute(childRoute: RouteLocationNormalized): boolean {
+  if (childRoute.meta.noCache === true) {
+    return false
+  }
+  return childRoute.meta.keepAlive !== false
+}
+
+function getWorkspaceRouteKey(childRoute: RouteLocationNormalized): string {
+  const workspaceExamId = childRoute.params.examId
+  if (workspaceExamId != null && String(workspaceExamId).length > 0) {
+    return `${String(childRoute.name ?? childRoute.path)}_${String(workspaceExamId)}`
+  }
+  return childRoute.fullPath
 }
 
 function goPrepWorkbench(): void {

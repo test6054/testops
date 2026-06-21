@@ -15,8 +15,14 @@
       </UiButton>
     </div>
 
+    <UiErrorRetryPanel
+      v-if="progressLoadError"
+      :error="progressLoadError"
+      @retry="loadAll"
+    />
+
     <UiEmpty
-      v-if="!loading && !progress"
+      v-else-if="!loading && !progress"
       description="暂无数据"
       class="progress-page__empty"
     />
@@ -193,7 +199,7 @@ import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, ref, watch } from 'vue'
 import {
   getMarkingProgress,
   REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
@@ -207,10 +213,12 @@ import MarkHeatmapSection from '@/components/chart/MarkHeatmapSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { captureLoadFailure, showUserError } from '@/utils/error-handler'
 import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
@@ -231,6 +239,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherReviewProgress' })
 
 const { selectedExamId } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 const successColor = toneToColor('green')
 const primaryColor = toneToColor('blue')
@@ -445,11 +454,12 @@ watch(selectedExamId, (value) => {
   } else {
     progress.value = null
   }
-})
+}, { immediate: true })
 
-onMounted(async () => {
+onActivated(() => {
   if (selectedExamId.value) {
-    await loadAll()
+    void loadAll()
+    void refreshSnapshot()
   }
 })
 </script>

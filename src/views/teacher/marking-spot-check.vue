@@ -19,7 +19,14 @@
         </UiBadge>
       </template>
 
+      <UiErrorRetryPanel
+        v-if="listLoadError"
+        :error="listLoadError"
+        @retry="loadList"
+      />
+
       <UiDataTable
+        v-else
         pagination-mode="client"
         class="student-detail-table__data-table"
         :columns="columns"
@@ -171,6 +178,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError, toUserError } from '@/utils/error-handler'

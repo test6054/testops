@@ -17,7 +17,7 @@ import {
   SyncOutlined,
   WarningFilled,
 } from '@ant-design/icons-vue'
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
@@ -87,6 +87,23 @@ function selectItem(item: ReviewItem) {
   workflow.previewPageNo.value = item.pageNo
 }
 
+/** 进入复核阶段或待办列表变化时，默认选中首条，避免有异常却空白预览 */
+watch(
+  reviewItems,
+  (items) => {
+    if (items.length === 0) {
+      workflow.previewPageNo.value = 0
+      return
+    }
+    const currentPageNo = workflow.previewPageNo.value
+    if (currentPageNo > 0 && items.some((item) => item.pageNo === currentPageNo)) {
+      return
+    }
+    workflow.previewPageNo.value = items[0].pageNo
+  },
+  { immediate: true },
+)
+
 function discardSelected() {
   if (!selectedItem.value || selectedItem.value.source !== 'ledger') return
   if (!workflow.canDiscardLedgerPage.value) return
@@ -132,6 +149,13 @@ const reviewBoundBatchId = computed(
         </button>
       </header>
 
+      <UiErrorRetryPanel
+        v-if="workflow.pageLedgerError.value && !workflow.pageLedgerLoading.value"
+        :error="workflow.pageLedgerError.value"
+        compact
+        @retry="workflow.onManualRefreshLedger"
+      />
+
       <div v-if="totalIssues === 0" class="issue-empty">
         <ExclamationCircleFilled class="issue-empty-icon" />
         <p>暂无需要复核的项</p>
@@ -167,7 +191,7 @@ const reviewBoundBatchId = computed(
     <!-- 中：大画布预览 -->
     <main class="preview-wrap">
       <div class="preview-canvas">
-        <div v-if="!job" class="preview-empty">
+        <div v-if="!job && totalIssues === 0" class="preview-empty">
           <FileTextOutlined class="preview-empty-icon" />
           <p>暂无扫描批次</p>
           <small>请返回「准备扫描」开始一次扫描后再进行复核</small>
@@ -288,9 +312,6 @@ const reviewBoundBatchId = computed(
             <dd>{{ batch.batchExternalNo }}</dd>
           </div>
         </dl>
-        <div v-if="workflow.pageLedgerError.value" class="ledger-error">
-          {{ workflow.ledgerErrorText(workflow.pageLedgerError.value) }}
-        </div>
       </section>
     </aside>
   </section>
@@ -646,15 +667,6 @@ const reviewBoundBatchId = computed(
   color: var(--kiosk-ink-primary);
   text-align: right;
   word-break: break-all;
-}
-.ledger-error {
-  margin-top: var(--kiosk-space-2);
-  padding: var(--kiosk-space-2) var(--kiosk-space-3);
-  background: var(--kiosk-warning-soft);
-  border: 1px solid rgba(217, 119, 6, 0.3);
-  border-radius: var(--kiosk-radius-sm);
-  font-size: var(--kiosk-fz-caption);
-  color: var(--kiosk-warning);
 }
 
 @media (max-width: 1280px) {

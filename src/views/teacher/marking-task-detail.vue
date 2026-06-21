@@ -38,7 +38,6 @@
         </template>
       </div>
       <div class="marking-task-detail-page__toolbar-actions">
-        <UiTag v-if="batchTasksLoadError" tone="red" size="sm">上下题导航加载失败</UiTag>
         <template v-if="batchProgress">
           <UiButton
             size="sm"
@@ -75,11 +74,23 @@
       class="marking-task-detail-page__empty"
     />
 
+    <UiErrorRetryPanel
+      v-else-if="taskLoadError"
+      :error="taskLoadError"
+      @retry="loadTask"
+    />
+
     <a-spin v-else :spinning="loading">
       <UiEmpty
         v-if="!loading && !task"
         description="暂无数据"
         class="marking-task-detail-page__empty"
+      />
+
+      <UiErrorRetryPanel
+        v-if="batchTasksLoadError && task"
+        :error="batchTasksLoadError"
+        @retry="() => ensureBatchLoaded(task.examId)"
       />
 
       <GradingWorkspaceLayout v-if="task">
@@ -93,9 +104,10 @@
               v-if="usesWholePaperWorkspace"
               description="暂无数据"
             />
-            <UiEmpty
+            <UiErrorRetryPanel
               v-else-if="questionViewError"
-              description="暂无数据"
+              :error="questionViewError"
+              @retry="() => openQuestionView()"
             />
             <a-spin v-else :spinning="questionViewLoading" tip="加载题目信息中...">
               <UiEmpty
@@ -511,6 +523,7 @@ import {
   listAnnotations,
   QUALITY_DECISION_LABEL,
   QUALITY_DECISION_TONE,
+  validateAnnotationContract,
 } from '@/apis/mark/exam'
 import {
   ALLOCATION_UNIT_LABEL,
@@ -522,6 +535,7 @@ import {
   MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
   MARKING_TASK_STATUS_TONE as STATUS_TONE,
   submitMarkingTask,
+  validateMarkingTaskContract,
 } from '@/apis/mark/marking-organization'
 import GradingWorkspaceLayout from '@/components/mark/GradingWorkspaceLayout.vue'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
@@ -532,6 +546,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'
@@ -544,6 +559,7 @@ defineOptions({ name: 'TeacherExamWorkspaceMarkingTaskDetail' })
 
 const SUBMITTED_PAGE_ANNOTATION_PAGE_SIZE = 100
 const route = useRoute()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 function taskStatusTone(status: MarkingTaskStatusCode): BadgeTone {
   return strictEnumTone(STATUS_TONE, status, '阅卷任务状态')
@@ -643,6 +659,7 @@ async function loadSubmittedPageAnnotations(): Promise<void> {
     '批注列表加载失败，请刷新后重试',
   )
   for (const annotation of pageAnnotations) {
+    validateAnnotationContract(annotation)
     if (annotation.annotationScope !== 'PAGE') continue
     if (!annotation.pageId || !annotation.annotationText) continue
     wholePageAnnotationForms[annotation.pageId] = annotation.annotationText
@@ -710,6 +727,7 @@ async function loadTask(): Promise<void> {
   taskLoadError.value = null
   try {
     const detail = await getMarkingTaskDetail({ taskId: taskId.value })
+    validateMarkingTaskContract(detail)
     task.value = detail
     examDetail.value = await getExamDetail(detail.examId)
     if (form.score === undefined && detail.score !== undefined && detail.score !== null) {
@@ -1259,6 +1277,7 @@ async function submit(): Promise<void> {
           pageAnnotations: [],
         }
     await submitMarkingTask({ taskId: taskId.value, ...submitRequest })
+    await refreshSnapshot()
     if (nextTaskId.value) {
       message.success(`阅卷任务已提交，已切换到${isWholePaperTask.value ? '下一份' : '下一题'}`)
       goToTask(nextTaskId.value)
@@ -1304,7 +1323,7 @@ watch(taskId, () => {
   clearRevealedIdentity()
   revealOpen.value = false
   void loadTask()
-})
+}, { immediate: true })
 
 watch(
   () => [
@@ -1319,9 +1338,6 @@ watch(
 
 onMounted(() => {
   window.addEventListener('keydown', handleWorkspaceKeydown)
-  if (taskId.value) {
-    void loadTask()
-  }
 })
 
 onBeforeUnmount(() => {

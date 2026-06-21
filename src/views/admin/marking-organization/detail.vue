@@ -56,10 +56,10 @@
       </ContextBar>
     </template>
 
-    <UiEmpty
-      v-if="!loading && organizationLoadError"
-      description="暂无数据"
-      class="org-detail__empty"
+    <UiErrorRetryPanel
+      v-if="organizationLoadError"
+      :error="organizationLoadError"
+      @retry="loadOrganization"
     />
     <UiEmpty
       v-else-if="!organization && !loading"
@@ -390,6 +390,15 @@
             </a-form>
           </a-tab-pane>
 
+          <a-tab-pane v-if="canReassignRecycledTasks" key="recycled" tab="回收待分配">
+            <RecycledTaskReassignPanel
+              :exam-id="examId"
+              :groups="groups"
+              :view-all-recycled="canViewAllRecycledTasks"
+              :leader-group-ids="leaderGroupIds"
+            />
+          </a-tab-pane>
+
           <a-tab-pane key="status" tab="状态推进">
             <a-form layout="vertical" class="status-form">
               <a-form-item label="当前状态">
@@ -553,14 +562,15 @@ import type {
   QuestionGroupSaveRequest,
   QuestionMarkingGroupStatusCode,
   QuestionMarkingGroupVO,
-  RecyclePolicySaveRequest,
+  AllocationPolicyVO,
+  RecyclePolicyVO,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { adminGetUserPage } from '@/apis/edu/admin-user'
 import { getExamDetail, getExamTemplate } from '@/apis/mark/exam'
@@ -574,6 +584,8 @@ import {
   deleteQuestionGroup,
   getOrganizationById,
   isMarkingOrgNotCreatedError,
+  listMarkingPolicies,
+  validateMarkingPolicyListContract,
   MARKING_ALLOCATION_MODE_LABEL,
   MARKING_ORGANIZATION_STATUS_LABEL,
   MARKING_ORGANIZATION_STATUS_TONE,
@@ -583,6 +595,7 @@ import {
   saveAllocationPolicy,
   saveQuestionGroup,
   saveRecyclePolicy,
+  type RecyclePolicySaveRequest,
   updateOrganization,
   updateOrganizationStatus,
   validateMarkingOrganizationContract,
@@ -593,7 +606,9 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import RecycledTaskReassignPanel from '@/views/admin/marking-organization/components/RecycledTaskReassignPanel.vue'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -607,6 +622,7 @@ const MARKING_TEACHER_OPTION_PAGE_SIZE = 100
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 const organizationId = computed(() => String(route.params.organizationId || ''))
 
@@ -616,7 +632,7 @@ const examId = computed(() => String(organization.value?.examId || ''))
 const loading = ref(false)
 // D-9 错误态：仅当后端返回非“未创建组织”业务码时才上报
 const organizationLoadError = ref<Error | null>(null)
-const activeTab = ref<'info' | 'policy' | 'status'>('info')
+const activeTab = ref<'info' | 'policy' | 'recycled' | 'status'>('info')
 
 const groups = computed<QuestionMarkingGroupVO[]>(() => organization.value?.groups ?? [])
 const organizationExamLabel = computed(() => {
@@ -628,6 +644,26 @@ const organizationExamLabel = computed(() => {
 const canManageOrganization = computed(
   () => !!examDetail.value?.createUser && examDetail.value.createUser === userStore.userInfo.userId,
 )
+const canReassignRecycledTasks = computed(() => {
+  if (!organization.value) {
+    return false
+  }
+  const userId = userStore.userInfo.userId
+  if (canManageOrganization.value) {
+    return true
+  }
+  if (organization.value.leaderUserId === userId) {
+    return true
+  }
+  return groups.value.some((group) => group.leaderUserId === userId)
+})
+const canViewAllRecycledTasks = computed(
+  () => canManageOrganization.value || organization.value?.leaderUserId === userStore.userInfo.userId,
+)
+const leaderGroupIds = computed(() => {
+  const userId = userStore.userInfo.userId
+  return groups.value.filter((group) => group.leaderUserId === userId).map((group) => group.id)
+})
 
 /** P1-3: 阅卷组织步骤引导 — 根据当前状态给出下一步建议 */
 const organizationStepAlertTone = computed(() => {
@@ -689,9 +725,18 @@ const editRules: Record<string, Rule[]> = {
   remark: [{ max: 200, message: '备注最多 200 字', trigger: 'blur' }],
 }
 
+function resetPolicyState(): void {
+  allocationPolicies.value = []
+  recyclePolicies.value = []
+  applyAllocationPolicyToForm()
+  applyRecyclePolicyToForm()
+}
+
 async function loadOrganization(): Promise<void> {
   if (!organizationId.value) {
     organization.value = null
+    examDetail.value = null
+    resetPolicyState()
     return
   }
   loading.value = true
@@ -701,9 +746,11 @@ async function loadOrganization(): Promise<void> {
     validateMarkingOrganizationContract(nextOrganization)
     organization.value = nextOrganization
     examDetail.value = await getExamDetail(nextOrganization.examId)
+    await loadMarkingPolicies()
   } catch (error) {
     organization.value = null
     examDetail.value = null
+    resetPolicyState()
     if (!(error instanceof Error && isMarkingOrgNotCreatedError(error))) {
       organizationLoadError.value = toUserError(error, '阅卷组织详情加载失败')
     }
@@ -884,6 +931,7 @@ async function submitGroup(): Promise<void> {
     message.success(groupForm.groupId ? '题组已更新' : '题组已创建')
     groupModalOpen.value = false
     await loadOrganization()
+    await refreshSnapshot()
   } catch (error) {
     const fallback = groupForm.groupId ? '更新题组失败' : '创建题组失败'
     showUserError(error, fallback)
@@ -914,6 +962,7 @@ async function submitGroupDelete(record: QuestionMarkingGroupVO): Promise<void> 
     await deleteQuestionGroup({ groupId: record.id })
     message.success('题组已删除')
     await loadOrganization()
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '题组删除失败')
   } finally {
@@ -928,6 +977,7 @@ async function submitGroupClose(record: QuestionMarkingGroupVO): Promise<void> {
     await closeQuestionGroup({ groupId: record.id })
     message.success('题组已关闭')
     await loadOrganization()
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '题组关闭失败')
   } finally {
@@ -966,6 +1016,7 @@ async function submitUpdate(): Promise<void> {
     organization.value = nextOrganization
     message.success('阅卷组织已更新')
     editDrawerOpen.value = false
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '阅卷组织更新失败')
   } finally {
@@ -979,6 +1030,7 @@ async function submitDelete(): Promise<void> {
   deleting.value = true
   try {
     await deleteOrganization({ organizationId: organization.value.id })
+    await refreshSnapshot()
     message.success('阅卷组织已删除')
     await router.push({
       name: route.path.startsWith('/teacher')
@@ -1021,6 +1073,85 @@ const policyForm = reactive<PolicyForm>({
   maxPendingCount: 30,
   reassignMode: 'AUTO',
 })
+
+const allocationPolicies = ref<AllocationPolicyVO[]>([])
+const recyclePolicies = ref<RecyclePolicyVO[]>([])
+
+const DEFAULT_ALLOCATION_POLICY_FIELDS = {
+  allocationMode: 'BY_QUESTION' as MarkingAllocationModeCode,
+  allocationUnit: 'SELECTED_QUESTIONS' as AllocationUnitCode,
+  anonymityMode: 'ANONYMOUS' as AnonymityModeCode,
+  randomQuestionSampleSize: undefined as number | undefined,
+  batchSize: 20,
+  loadLimit: 50,
+  anonymousTokenPolicy: 'PER_EXAM' as AnonymousTokenPolicyCode,
+}
+
+const DEFAULT_RECYCLE_POLICY_FIELDS = {
+  timeoutMinutes: 60,
+  maxPendingCount: 30,
+  reassignMode: 'AUTO' as MarkingReassignModeCode,
+}
+
+function findPolicyByGroup<T extends { groupId?: string | null }>(
+  policies: T[],
+  groupId?: string,
+): T | undefined {
+  if (groupId) {
+    return policies.find((item) => item.groupId === groupId)
+  }
+  return policies.find((item) => item.groupId == null)
+}
+
+function applyAllocationPolicyToForm(): void {
+  const saved = findPolicyByGroup(allocationPolicies.value, policyForm.allocationGroupId)
+  if (saved) {
+    policyForm.allocationMode = saved.allocationMode
+    policyForm.allocationUnit = saved.allocationUnit
+    policyForm.anonymityMode = saved.anonymityMode
+    policyForm.randomQuestionSampleSize = saved.randomQuestionSampleSize
+    policyForm.batchSize = saved.batchSize
+    policyForm.loadLimit = saved.loadLimit
+    policyForm.anonymousTokenPolicy = saved.anonymousTokenPolicy
+    return
+  }
+  Object.assign(policyForm, DEFAULT_ALLOCATION_POLICY_FIELDS)
+}
+
+function applyRecyclePolicyToForm(): void {
+  const saved = findPolicyByGroup(recyclePolicies.value, policyForm.recycleGroupId)
+  if (saved) {
+    policyForm.timeoutMinutes = saved.timeoutMinutes
+    policyForm.maxPendingCount = saved.maxPendingCount
+    policyForm.reassignMode = saved.reassignMode
+    return
+  }
+  Object.assign(policyForm, DEFAULT_RECYCLE_POLICY_FIELDS)
+}
+
+async function loadMarkingPolicies(): Promise<void> {
+  if (!organizationId.value) {
+    allocationPolicies.value = []
+    recyclePolicies.value = []
+    applyAllocationPolicyToForm()
+    applyRecyclePolicyToForm()
+    return
+  }
+  try {
+    const response = await listMarkingPolicies({ organizationId: organizationId.value })
+    validateMarkingPolicyListContract(response)
+    allocationPolicies.value = response.allocationPolicies ?? []
+    recyclePolicies.value = response.recyclePolicies ?? []
+    applyAllocationPolicyToForm()
+    applyRecyclePolicyToForm()
+  } catch (error) {
+    showUserError(error, '阅卷任务策略加载失败')
+    resetPolicyState()
+  }
+}
+
+watch(() => policyForm.allocationGroupId, applyAllocationPolicyToForm)
+watch(() => policyForm.recycleGroupId, applyRecyclePolicyToForm)
 
 const groupSelectOptions = computed(() => [
   ...groups.value.map((g) => ({ value: g.id, label: g.groupName })),
@@ -1070,6 +1201,8 @@ async function submitAllocation(): Promise<void> {
     }
     await saveAllocationPolicy(request)
     message.success('分配策略已保存')
+    await loadMarkingPolicies()
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '阅卷任务分配策略保存失败')
   } finally {
@@ -1092,6 +1225,8 @@ async function submitRecycle(): Promise<void> {
     }
     await saveRecyclePolicy(request)
     message.success('回收策略已保存')
+    await loadMarkingPolicies()
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '阅卷任务回收策略保存失败')
   } finally {
@@ -1135,6 +1270,7 @@ async function submitStatusUpdate(): Promise<void> {
     message.success('组织状态已推进')
     targetStatus.value = undefined
     await loadOrganization()
+    await refreshSnapshot()
   } catch (error) {
     showUserError(error, '阅卷组织状态推进失败')
   } finally {
@@ -1160,7 +1296,9 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
   return strictEnumLabel(QUESTION_GROUP_STATUS_LABEL, status, '题组状态')
 }
 
-onMounted(loadOrganization)
+watch(organizationId, () => {
+  void loadOrganization()
+}, { immediate: true })
 </script>
 
 <style lang="scss" scoped>

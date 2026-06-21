@@ -100,8 +100,21 @@ const liveEventCount = computed(() => workflow.liveEvents.value.length)
 const upgradeRequired = computed(() => Boolean(health.value?.upgradeRequired))
 const tokenResetRequired = computed(() => Boolean(health.value?.tokenResetRequired))
 const kioskBrowserSessionLost = computed(() => workflow.kioskBrowserSessionLost.value)
+const agentUpdateStatus = computed(() => health.value?.updateStatus ?? 'NONE')
+const agentUpdateAvailable = computed(() => Boolean(health.value?.updateAvailable))
+const agentUpdateInstallable = computed(() => Boolean(health.value?.updateInstallable))
+const agentUpdateInProgress = computed(
+  () => agentUpdateStatus.value === 'DOWNLOADING' || agentUpdateStatus.value === 'INSTALLING',
+)
+const agentUpdateFailed = computed(() => agentUpdateStatus.value === 'FAILED')
 const showMaintenanceSection = computed(
-  () => upgradeRequired.value || tokenResetRequired.value || kioskBrowserSessionLost.value,
+  () =>
+    upgradeRequired.value
+    || tokenResetRequired.value
+    || kioskBrowserSessionLost.value
+    || agentUpdateInProgress.value
+    || agentUpdateFailed.value
+    || agentUpdateAvailable.value,
 )
 
 const minAgentVersion = computed(() => health.value?.minimumAgentVersion || '')
@@ -182,6 +195,38 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
               </div>
             </dl>
             <small> 请联系管理员或运维下载新版本安装包；升级期间一体机会自动暂停业务。 </small>
+          </div>
+
+          <div v-if="agentUpdateAvailable || agentUpdateInProgress || agentUpdateFailed" class="alert-block">
+            <p>本机扫描组件更新</p>
+            <dl class="kv">
+              <div>
+                <dt>更新状态</dt>
+                <dd>{{ workflow.agentUpdateStatusLabel(agentUpdateStatus) }}</dd>
+              </div>
+              <div v-if="health?.updatePackageVersion">
+                <dt>更新版本</dt>
+                <dd>{{ health.updatePackageVersion }}</dd>
+              </div>
+              <div v-if="health?.updatePackageFileName">
+                <dt>更新包</dt>
+                <dd>{{ health.updatePackageFileName }}</dd>
+              </div>
+              <div v-if="health?.updateDownloadedAt">
+                <dt>下载完成</dt>
+                <dd>{{ workflow.formatTime(health.updateDownloadedAt) }}</dd>
+              </div>
+            </dl>
+            <small v-if="health?.updateDiagnosticMessage">{{ health.updateDiagnosticMessage }}</small>
+            <button
+              v-if="agentUpdateInstallable"
+              type="button"
+              class="ghost-btn"
+              :disabled="workflow.loading.value"
+              @click="workflow.installAgentUpdatePackage()"
+            >
+              安装已下载更新包
+            </button>
           </div>
         </section>
 

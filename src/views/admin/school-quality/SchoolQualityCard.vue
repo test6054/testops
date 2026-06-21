@@ -49,9 +49,13 @@
     </div>
 
     <a-spin :spinning="loading || generating">
-      <!-- D-9 错误态：AI 校级质量加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="loadError"
+        :error="loadError"
+        @retry="reload"
+      />
       <UiEmpty
-        v-if="!loading && !generating && !record"
+        v-else-if="!loading && !generating && !record"
         description="暂无数据"
       />
       <div v-else-if="record" class="ai-record">
@@ -324,6 +328,7 @@ async function handleGenerate(): Promise<void> {
     return
   }
   generating.value = true
+  loadError.value = null
   try {
     record.value = await generateQualityAnalysis({
       analysisDimension: form.analysisDimension,
@@ -333,6 +338,7 @@ async function handleGenerate(): Promise<void> {
     })
     message.success('已生成校级质量分析')
   } catch (e) {
+    loadError.value = toUserError(e, '校级质量分析生成失败')
     showUserError(e, '校级质量分析生成失败')
   } finally {
     generating.value = false

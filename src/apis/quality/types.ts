@@ -348,6 +348,20 @@ export const ARCHIVE_BUSINESS_TYPE_LABEL: Record<ArchiveBusinessType, string> = 
   AUDIT_RECTIFICATION: '审核评估整改材料',
 }
 
+/** 归档业务类型编码全集，筛选项与后端 ArchiveBusinessType 逐值对齐 */
+export const ARCHIVE_BUSINESS_TYPE_CODES: ArchiveBusinessType[] = [
+  'TRAINING_PLAN',
+  'GRADUATION_REQUIREMENT',
+  'COURSE_GOAL',
+  'SCORE_BATCH',
+  'ACHIEVEMENT_RESULT',
+  'AI_RESULT',
+  'REPORT',
+  'IMPROVEMENT_TASK',
+  'EXPERT_PACKAGE',
+  'AUDIT_RECTIFICATION',
+]
+
 /** 专家材料包类型 */
 export type ExpertPackageType = 'REQUIREMENT' | 'PROGRAM_ACCREDITATION'
 
@@ -833,4 +847,23 @@ export const INDIRECT_FORM_TYPE_LABEL: Record<IndirectFormType, string> = {
   TEACHER_EVALUATION: '教师评价',
   EXPERT_EVALUATION: '行业或校外专家评价',
   SUPERVISOR_EVALUATION: '教学督导评价',
+}
+
+/** 间接评价问卷状态 - 对应后端 form.status */
+export type IndirectFormStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'ARCHIVED'
+
+export const INDIRECT_FORM_STATUS_LABEL: Record<IndirectFormStatus, string> = {
+  DRAFT: '草稿',
+  PUBLISHED: '已发布',
+  CLOSED: '已关闭',
+  ARCHIVED: '已归档',
+}
+
+/** 间接评价问卷访问模式 - 对应后端 accessMode */
+export type IndirectFormAccessMode = 'PUBLIC_LINK' | 'AUTHENTICATED' | 'BOTH'
+
+export const INDIRECT_FORM_ACCESS_MODE_LABEL: Record<IndirectFormAccessMode, string> = {
+  PUBLIC_LINK: '公开链接',
+  AUTHENTICATED: '登录用户',
+  BOTH: '公开链接或登录',
 }

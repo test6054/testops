@@ -12,6 +12,9 @@
       <p class="m-survey__status-title">无法加载问卷</p>
       <p class="m-survey__status-text">{{ errorMessage }}</p>
       <p class="m-survey__status-hint">请检查链接是否正确，或联系问卷发布者</p>
+      <button type="button" class="m-survey__btn m-survey__btn--retry" @click="loadSurvey">
+        重新加载
+      </button>
     </div>
 
     <!-- 提交成功 -->
@@ -334,6 +337,7 @@ const {
   choiceOptionsOf,
   hasRequiredIdentityFilled,
   submitSurvey,
+  loadSurvey,
 } = useSurveyFill()
 
 type Step = 'cover' | 'identity' | 'question'
@@ -985,6 +989,19 @@ async function handleSubmit() {
 .m-survey__btn--ghost {
   background: var(--ant-color-fill-tertiary, #f5f5f5);
   color: var(--survey-text-secondary);
+}
+
+.m-survey__btn--retry {
+  margin-top: 16px;
+  padding: 0 24px;
+  height: 44px;
+  border: none;
+  border-radius: 22px;
+  background: var(--ant-color-primary, #1677ff);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .m-survey__btn--lg {

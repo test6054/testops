@@ -14,6 +14,15 @@
           </UiTag>
         </template>
         <template #actions>
+          <UiButton
+            v-if="canDownloadArchive"
+            size="sm"
+            :loading="archiveDownloading"
+            @click="downloadArchiveZip"
+          >
+            <template #icon><CloudDownloadOutlined /></template>
+            下载 ZIP
+          </UiButton>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadDetail">
             <template #icon><ReloadOutlined /></template>
             刷新
@@ -111,7 +120,7 @@
           {{ archive.archiveStatus === 'PACKAGING_FAILED' ? '重试打包' : '入队打包' }}
         </UiButton>
         <UiButton
-          v-if="archive.archiveStatus === 'ACTIVE'"
+          v-if="canRequestAppraisal"
           size="sm"
           @click="confirmRequestAppraisal"
         >
@@ -147,6 +156,9 @@
         >
           执行物理销毁
         </UiButton>
+        <span v-if="archive.archiveStatus === 'DESTRUCTION_FAILED'" class="archive-detail-page__failed-hint">
+          销毁执行已达重试上限，请联系平台管理员人工处置。
+        </span>
         <span v-if="!hasAnyAction" class="muted">当前状态没有可执行的下一步操作</span>
       </a-space>
     </UiCard>
@@ -207,6 +219,12 @@
       </a-tabs>
     </UiCard>
   </StageWorkbenchShell>
+
+  <UiErrorRetryPanel
+    v-else-if="detailLoadError"
+    :error="detailLoadError"
+    @retry="loadDetail"
+  />
 
   <UiEmpty
     v-else-if="!loading && !archive"
@@ -314,6 +332,7 @@ import type {
 } from '@/apis/mark/archive'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
+import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
 import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -343,7 +362,9 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
+import { handleDownloadFile } from '@/utils/file-download'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -351,6 +372,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherArchiveDetail' })
 
 const examContextStore = useMarkExamContextStore()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 const route = useRoute()
 const router = useRouter()
@@ -376,6 +398,7 @@ function archivePhaseLabel(phase: ArchivePackagingPhase): string {
 const archiveId = String(route.params.archiveId ?? '')
 
 const archive = ref<ArchivePackageVO | null>(null)
+const archiveDownloading = ref(false)
 const items = ref<ArchiveItemVO[]>([])
 const events = ref<ArchiveEventVO[]>([])
 const loading = ref(false)
@@ -458,17 +481,47 @@ const canRequestDestruction = computed(() => {
   )
 })
 
+const canRequestAppraisal = computed(() => archive.value?.archiveStatus === 'ACTIVE')
+
+const canDownloadArchive = computed(() => {
+  if (!archive.value?.archiveFileId) return false
+  const status = archive.value.archiveStatus
+  return status !== 'DRAFT' && status !== 'PACKAGING' && status !== 'PACKAGING_FAILED'
+})
+
+async function downloadArchiveZip(): Promise<void> {
+  const record = archive.value
+  if (!record?.archiveFileId) return
+  archiveDownloading.value = true
+  try {
+    await handleDownloadFile({
+      fileId: record.archiveFileId,
+      fileName: record.archiveFileName || `${record.archiveNo}.zip`,
+    })
+  } catch (error) {
+    showUserError(error, '归档 ZIP 下载失败')
+  } finally {
+    archiveDownloading.value = false
+  }
+}
+
 const hasAnyAction = computed(() => {
   if (!archive.value) return false
   return (
     canPackage.value
-    || archive.value.archiveStatus === 'ACTIVE'
+    || canRequestAppraisal.value
     || archive.value.archiveStatus === 'APPRAISAL_PENDING'
     || canRequestDestruction.value
     || archive.value.archiveStatus === 'DESTRUCTION_PENDING'
     || archive.value.archiveStatus === 'DESTRUCTION_APPROVED'
+    || canDownloadArchive.value
   )
 })
+
+async function syncAfterArchiveMutation(): Promise<void> {
+  await loadDetail()
+  await refreshSnapshot()
+}
 
 async function loadDetail(): Promise<void> {
   if (!archiveId) {
@@ -523,7 +576,7 @@ function confirmPackage(): void {
       try {
         await packageArchive(archiveId)
         message.success('考试电子归档包已入队，正在异步打包')
-        await loadDetail()
+        await syncAfterArchiveMutation()
       } catch (error) {
         showUserError(error, '考试电子归档包打包提交失败')
       }
@@ -542,7 +595,7 @@ function confirmRequestAppraisal(): void {
       try {
         await requestAppraisal(archiveId)
         message.success('已申请档案鉴定')
-        await loadDetail()
+        await syncAfterArchiveMutation()
       } catch (error) {
         showUserError(error, '档案鉴定申请失败')
       }
@@ -574,7 +627,7 @@ async function submitAppraisal(): Promise<void> {
     })
     message.success('鉴定决议已提交')
     appraiseModalOpen.value = false
-    await loadDetail()
+    await syncAfterArchiveMutation()
   } catch (error) {
     showUserError(error, '档案鉴定决议提交失败')
   } finally {
@@ -600,7 +653,7 @@ async function submitDestructionRequest(): Promise<void> {
     })
     message.success('销毁申请已提交，等待审批')
     destructionRequestModalOpen.value = false
-    await loadDetail()
+    await syncAfterArchiveMutation()
   } catch (error) {
     showUserError(error, '档案销毁申请失败')
   } finally {
@@ -624,7 +677,7 @@ async function submitApproveDestruction(): Promise<void> {
     })
     message.success('销毁审批已提交')
     approveDestructionModalOpen.value = false
-    await loadDetail()
+    await syncAfterArchiveMutation()
   } catch (error) {
     showUserError(error, '档案销毁审批失败')
   } finally {
@@ -643,7 +696,7 @@ function confirmExecuteDestruction(): void {
       try {
         await executeDestruction(archiveId)
         message.success('考试电子归档包已物理销毁')
-        await loadDetail()
+        await syncAfterArchiveMutation()
       } catch (error) {
         showUserError(error, '考试电子归档包销毁执行失败')
       }
@@ -652,7 +705,15 @@ function confirmExecuteDestruction(): void {
 }
 
 function goBack(): void {
-  void router.push({ name: 'TeacherArchiveList' })
+  const examId = archive.value?.examId
+  if (examId) {
+    void router.push({
+      name: 'TeacherExamWorkspaceArchivePackage',
+      params: { examId },
+    })
+    return
+  }
+  void router.push({ name: 'TeacherExamList' })
 }
 
 function formatBytes(bytes: number): string {
@@ -720,6 +781,11 @@ onUnmounted(() => {
 
 .muted {
   color: var(--ant-color-text-quaternary);
+}
+
+.archive-detail-page__failed-hint {
+  color: var(--ant-color-error);
+  font-size: 13px;
 }
 
 .ml-2 {

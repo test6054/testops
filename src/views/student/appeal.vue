@@ -36,8 +36,14 @@
         <span>选择待申诉的考试</span>
       </template>
 
+      <UiErrorRetryPanel
+        v-if="!loadingExams && examsLoadError"
+        :error="examsLoadError"
+        @retry="loadExams"
+      />
+
       <UiEmpty
-        v-if="!loadingExams && (examsLoadError || appealableExams.length === 0)"
+        v-else-if="!loadingExams && appealableExams.length === 0"
         description="暂无数据"
       />
 
@@ -55,8 +61,8 @@
           <div class="exam-pick-item__main">
             <div class="exam-pick-item__title-row">
               <h3 class="exam-pick-item__title">{{ exam.examName }}</h3>
-              <UiTag tone="green" size="sm">已发布</UiTag>
-              <UiTag tone="orange" size="sm">复核进行中</UiTag>
+              <UiTag :tone="finalScoreStatusTone(exam)" size="sm">{{ finalScoreStatusLabel(exam) }}</UiTag>
+              <UiTag :tone="reviewWindowStatusTone(exam)" size="sm">{{ reviewWindowStatusLabel(exam) }}</UiTag>
             </div>
             <div class="exam-pick-item__meta">
               <span class="meta-item">编号：{{ exam.examNo }}</span>
@@ -91,52 +97,71 @@
         @reset="handleRequestFilterReset"
       />
 
+      <UiErrorRetryPanel
+        v-if="requestsLoadError"
+        :error="requestsLoadError"
+        @retry="loadRequests"
+      />
+
       <UiDataTable
-        pagination-mode="client"
+        v-model:current="requestPagination.current"
+        v-model:page-size="requestPagination.pageSize"
         class="student-detail-table__data-table requests-table"
         :columns="columns"
-        :data-source="filteredRequests"
+        :data-source="requests"
         :loading="loadingRequests"
         row-key="id"
         size="middle"
-        :page-size="10"
-        :total="filteredRequests.length"
+        :total="requestPagination.total"
         flat
+        @page-change="handleRequestPageChange"
       >
         <template #bodyCell="{ column, index }">
           <template v-if="column.key === 'examName'">
             <div class="exam-cell">
               <strong class="exam-cell__title">
-                {{ filteredRequests[index].examName }}
+                {{ requests[index].examName }}
               </strong>
-              <span class="exam-cell__sub">编号：{{ filteredRequests[index].examNo }}</span>
+              <span class="exam-cell__sub">编号：{{ requests[index].examNo }}</span>
             </div>
           </template>
           <template v-else-if="column.key === 'reasonType'">
             <UiTag tone="purple" size="sm">
-              {{ formatReasonType(filteredRequests[index].reasonType) }}
+              {{ formatReasonType(requests[index].reasonType) }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'requestReason'">
-            <a-tooltip :title="filteredRequests[index].requestReason">
-              <div class="reason-cell">{{ filteredRequests[index].requestReason }}</div>
+            <a-tooltip :title="requests[index].requestReason">
+              <div class="reason-cell">{{ requests[index].requestReason }}</div>
             </a-tooltip>
           </template>
           <template v-else-if="column.key === 'requestStatus'">
-            <UiTag :tone="requestStatusTone(filteredRequests[index].requestStatus)" size="sm">
-              {{ requestStatusLabel(filteredRequests[index].requestStatus) }}
+            <UiTag :tone="requestStatusTone(requests[index].requestStatus)" size="sm">
+              {{ requestStatusLabel(requests[index].requestStatus) }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'createTime'">
-            {{ formatDateTime(filteredRequests[index].createTime) }}
+            {{ formatDateTime(requests[index].createTime) }}
           </template>
           <template v-else-if="column.key === 'reviewTime'">
-            {{ formatDateTime(filteredRequests[index].reviewTime) }}
+            {{ formatDateTime(requests[index].reviewTime) }}
           </template>
           <template v-else-if="column.key === 'reviewNote'">
-            <a-tooltip :title="filteredRequests[index].reviewNote">
-              <div class="reason-cell">{{ reviewNoteText(filteredRequests[index]) }}</div>
+            <a-tooltip :title="requests[index].reviewNote">
+              <div class="reason-cell">{{ reviewNoteText(requests[index]) }}</div>
             </a-tooltip>
+          </template>
+          <template v-else-if="column.key === 'evidenceFileRefs'">
+            <div v-if="requests[index].evidenceFileRefs.length === 0" class="muted">—</div>
+            <div v-else class="appeal-evidence-links">
+              <UiTextAction
+                v-for="file in requests[index].evidenceFileRefs"
+                :key="file.fileId"
+                @click="downloadEvidenceFile(file)"
+              >
+                {{ file.fileName }}
+              </UiTextAction>
+            </div>
           </template>
         </template>
       </UiDataTable>
@@ -178,6 +203,22 @@
             show-count
           />
         </a-form-item>
+        <a-form-item label="佐证材料（可选）">
+          <a-upload
+            :file-list="evidenceUploadList"
+            :custom-request="handleEvidenceUpload"
+            :max-count="EVIDENCE_MAX_COUNT"
+            accept=".jpg,.jpeg,.png,.webp,.pdf"
+            @remove="handleEvidenceRemove"
+          >
+            <UiButton variant="outline" size="sm" :loading="evidenceUploading">
+              上传佐证
+            </UiButton>
+          </a-upload>
+          <div class="appeal-evidence-hint">
+            支持 JPG / PNG / WEBP / PDF，最多 {{ EVIDENCE_MAX_COUNT }} 个，单个不超过 10MB。
+          </div>
+        </a-form-item>
         <a-form-item
           :label="
             sourceQuestionId ? '复核题目（已带入成绩明细中的题目，可调整）' : '复核题目（可选）'
@@ -193,9 +234,11 @@
             option-filter-prop="label"
             show-search
           />
-          <div v-if="questionLoadError" class="question-load-error">
-            题目列表加载失败，请刷新后重试。
-          </div>
+          <UiErrorRetryPanel
+            v-if="questionLoadError"
+            :error="questionLoadError"
+            @retry="loadSelectedExamQuestions"
+          />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -204,11 +247,14 @@
 
 <script lang="ts" setup>
 import type {
+  GradeReviewEvidenceFileRefVO,
   GradeReviewReasonTypeCode,
   GradeReviewRequestStatusCode,
   StudentGradeReviewRequestItemVO,
 } from '@/apis/mark/grade-review'
 import type { StudentExamItemVO, StudentQuestionScoreVO } from '@/apis/mark/student-exam'
+import type { UploadFile } from 'ant-design-vue'
+import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
@@ -221,25 +267,34 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   GRADE_REVIEW_REASON_TYPE_LABEL,
   GRADE_REVIEW_REASON_TYPE_OPTIONS,
+  countMyPendingReviewRequests,
   listMyReviewRequests,
   REVIEW_REQUEST_STATUS_LABEL,
   REVIEW_REQUEST_STATUS_TONE,
   submitReviewRequest,
 } from '@/apis/mark/grade-review'
-import { canSubmitReview, getMyScoreDetail, listMyExams } from '@/apis/mark/student-exam'
+import { canSubmitReview, FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE, getMyScoreDetail, listMyExams, STUDENT_REVIEW_WINDOW_STATUS_LABEL, STUDENT_REVIEW_WINDOW_STATUS_TONE } from '@/apis/mark/student-exam'
+import { uploadFile } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
+import { handleDownloadFile } from '@/utils/file-download'
 import { formatDateTime } from '@/utils/format'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'StudentAppeal' })
+
+const EVIDENCE_MAX_COUNT = 5
+const EVIDENCE_MAX_BYTES = 10 * 1024 * 1024
+const GRADE_REVIEW_EVIDENCE_BUSINESS_TYPE = 'exam-grade-review-evidence'
 
 const route = useRoute()
 const router = useRouter()
@@ -251,6 +306,12 @@ const scoreDetailLoading = ref(false)
 
 const exams = ref<StudentExamItemVO[]>([])
 const requests = ref<StudentGradeReviewRequestItemVO[]>([])
+const requestPagination = reactive({
+  current: 1,
+  pageSize: 10,
+  total: 0,
+})
+const pendingRequestCount = ref(0)
 const selectedExamQuestions = ref<StudentQuestionScoreVO[]>([])
 // D-9 错误态：考试 / 复核申请列表加载失败时 UiErrorRetryPanel 重试入口
 const examsLoadError = ref<Error | null>(null)
@@ -322,6 +383,10 @@ const form = reactive<ReviewRequestFormState>({
   questionIds: [],
 })
 
+const evidenceFileIds = ref<string[]>([])
+const evidenceUploadList = ref<UploadFile[]>([])
+const evidenceUploading = ref(false)
+
 // 来自 score-detail 题目级复核入口时，记录来源题号用于弹窗内提示
 
 const selectedAppealableExam = computed<StudentExamItemVO | null>(() => {
@@ -336,17 +401,15 @@ const questionOptions = computed(() =>
   })),
 )
 
-const filteredRequests = computed<StudentGradeReviewRequestItemVO[]>(() => {
-  return requests.value.filter((item) => {
-    return !(requestFilterForm.examId && item.examId !== requestFilterForm.examId)
-  })
-})
 
-const pendingRequestCount = computed(
-  () =>
-    requests.value.filter((r) => r.requestStatus === 'PENDING' || r.requestStatus === 'IN_REVIEW')
-      .length,
-)
+async function loadPendingRequestCount(): Promise<void> {
+  try {
+    pendingRequestCount.value = await countMyPendingReviewRequests()
+  } catch (error) {
+    pendingRequestCount.value = 0
+    showUserError(error, '待处理复核申请数量加载失败')
+  }
+}
 
 /** 每秒刷新复核窗口倒计时展示 */
 const countdownTick = ref(0)
@@ -383,6 +446,7 @@ const columns = [
   { title: '考试', key: 'examName', dataIndex: 'examName', width: 240 },
   { title: '原因类型', key: 'reasonType', dataIndex: 'reasonType', width: 130 },
   { title: '申请理由', key: 'requestReason', dataIndex: 'requestReason', ellipsis: true },
+  { title: '佐证', key: 'evidenceFileRefs', width: 160 },
   { title: '处理状态', key: 'requestStatus', dataIndex: 'requestStatus', width: 110 },
   { title: '提交时间', key: 'createTime', dataIndex: 'createTime', width: 170 },
   { title: '处理时间', key: 'reviewTime', dataIndex: 'reviewTime', width: 170 },
@@ -398,8 +462,15 @@ async function loadExams() {
     exams.value = loadedExams
     if (!selectedExamId.value && appealableExams.value.length > 0) {
       const queryExamId = typeof route.query.examId === 'string' ? route.query.examId : undefined
-      if (queryExamId && appealableExams.value.some((e) => e.examId === queryExamId)) {
-        selectedExamId.value = queryExamId
+      if (queryExamId) {
+        if (appealableExams.value.some((e) => e.examId === queryExamId)) {
+          selectedExamId.value = queryExamId
+        } else if (loadedExams.some((e) => e.examId === queryExamId)) {
+          selectedExamId.value = undefined
+          message.warning('该考试当前不在复核窗口内，无法提交新申请')
+        } else {
+          selectedExamId.value = appealableExams.value[0].examId
+        }
       } else {
         selectedExamId.value = appealableExams.value[0].examId
       }
@@ -431,10 +502,25 @@ async function loadRequests() {
   loadingRequests.value = true
   requestsLoadError.value = null
   try {
-    requests.value = await listMyReviewRequests({
+    const result = await listMyReviewRequests({
       requestStatus: requestFilterForm.status,
+      examId: requestFilterForm.examId,
+      pageNum: requestPagination.current,
+      pageSize: requestPagination.pageSize,
     })
+    const list = readPageList(result, '复核申请列表加载失败')
+    validateReviewRequestEvidenceContracts(list)
+    requests.value = list
+    requestPagination.total = readPageTotal(result, '复核申请列表加载失败')
+    requestPagination.current = result.pageNum ?? requestPagination.current
+    requestPagination.pageSize = result.pageSize ?? requestPagination.pageSize
+    if (requests.value.length === 0 && requestPagination.total > 0 && requestPagination.current > 1) {
+      requestPagination.current -= 1
+      await Promise.all([loadRequests(), loadPendingRequestCount()])
+    }
   } catch (error) {
+    requests.value = []
+    requestPagination.total = 0
     requestsLoadError.value = toUserError(error, '复核申请列表加载失败')
     showUserError(error, '复核申请记录加载失败')
   } finally {
@@ -442,17 +528,43 @@ async function loadRequests() {
   }
 }
 
+function handleRequestPageChange(pageInfo: { current: number, pageSize: number }): void {
+  requestPagination.current = pageInfo.current
+  requestPagination.pageSize = pageInfo.pageSize
+  void loadRequests()
+}
+
 async function reloadAll() {
   await loadExams()
-  await loadRequests()
+  await Promise.all([loadRequests(), loadPendingRequestCount()])
 }
 
 function handleRequestFilterSearch() {
-  void loadRequests()
+  requestPagination.current = 1
+  void Promise.all([loadRequests(), loadPendingRequestCount()])
 }
 
 function handleRequestFilterReset() {
-  void loadRequests()
+  requestFilterForm.status = undefined
+  requestFilterForm.examId = undefined
+  requestPagination.current = 1
+  void Promise.all([loadRequests(), loadPendingRequestCount()])
+}
+
+function finalScoreStatusLabel(exam: StudentExamItemVO): string {
+  return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, exam.finalScoreStatus, '最终成绩状态')
+}
+
+function finalScoreStatusTone(exam: StudentExamItemVO): BadgeTone {
+  return strictEnumTone(FINAL_SCORE_STATUS_TONE, exam.finalScoreStatus, '最终成绩状态')
+}
+
+function reviewWindowStatusLabel(exam: StudentExamItemVO): string {
+  return strictEnumLabel(STUDENT_REVIEW_WINDOW_STATUS_LABEL, exam.reviewWindowStatus, '成绩复核窗口状态')
+}
+
+function reviewWindowStatusTone(exam: StudentExamItemVO): BadgeTone {
+  return strictEnumTone(STUDENT_REVIEW_WINDOW_STATUS_TONE, exam.reviewWindowStatus, '成绩复核窗口状态')
 }
 
 function formatPublishedScore(exam: StudentExamItemVO): string {
@@ -478,12 +590,77 @@ function formatReasonType(value: GradeReviewReasonTypeCode): string {
   return strictEnumLabel(GRADE_REVIEW_REASON_TYPE_LABEL, value, '复核原因类型')
 }
 
+function validateReviewRequestEvidenceContracts(list: StudentGradeReviewRequestItemVO[]): void {
+  const dataError = '复核申请列表数据异常，请刷新后重试'
+  for (const item of list) {
+    assertUserFacing(Array.isArray(item.evidenceFileRefs), dataError)
+  }
+}
+
+async function downloadEvidenceFile(file: GradeReviewEvidenceFileRefVO): Promise<void> {
+  try {
+    await handleDownloadFile({ fileId: file.fileId, fileName: file.fileName })
+  } catch (error) {
+    showUserError(error, '佐证文件下载失败')
+  }
+}
+
+function resetEvidenceFiles(): void {
+  evidenceFileIds.value = []
+  evidenceUploadList.value = []
+}
+
+async function handleEvidenceUpload(options: UploadRequestOption): Promise<void> {
+  const { file } = options
+  if (!(file instanceof File)) {
+    options.onError?.(new Error('无效的佐证文件'))
+    return
+  }
+  if (file.size > EVIDENCE_MAX_BYTES) {
+    message.error('单个佐证文件不能超过 10MB')
+    options.onError?.(new Error('佐证文件过大'))
+    return
+  }
+  if (evidenceFileIds.value.length >= EVIDENCE_MAX_COUNT) {
+    message.warning(`最多上传 ${EVIDENCE_MAX_COUNT} 个佐证文件`)
+    options.onError?.(new Error('佐证文件数量已达上限'))
+    return
+  }
+  evidenceUploading.value = true
+  try {
+    const uploaded = await uploadFile(file, { businessType: GRADE_REVIEW_EVIDENCE_BUSINESS_TYPE })
+    evidenceFileIds.value.push(uploaded.id)
+    evidenceUploadList.value = [
+      ...evidenceUploadList.value,
+      {
+        uid: uploaded.id,
+        name: uploaded.nodeName,
+        status: 'done',
+      },
+    ]
+    options.onSuccess?.({})
+  } catch (error) {
+    showUserError(error, '佐证文件上传失败')
+    options.onError?.(error instanceof Error ? error : new Error(String(error)))
+  } finally {
+    evidenceUploading.value = false
+  }
+}
+
+function handleEvidenceRemove(file: UploadFile): boolean {
+  const fileId = file.uid
+  evidenceFileIds.value = evidenceFileIds.value.filter((id) => id !== fileId)
+  evidenceUploadList.value = evidenceUploadList.value.filter((item) => item.uid !== fileId)
+  return true
+}
+
 function openSubmitModal() {
   if (!selectedAppealableExam.value) return
   sourceQuestionId.value = undefined
   form.reasonType = DEFAULT_REASON_TYPE
   form.requestReason = ''
   form.questionIds = []
+  resetEvidenceFiles()
   submitModalOpen.value = true
   void loadSelectedExamQuestions()
 }
@@ -510,9 +687,11 @@ async function submit() {
       requestReason: form.requestReason.trim(),
       reasonType: form.reasonType,
       questionIds: form.questionIds,
+      evidenceFileIds: evidenceFileIds.value.length > 0 ? [...evidenceFileIds.value] : undefined,
     })
     message.success('复核申请已提交')
     submitModalOpen.value = false
+    resetEvidenceFiles()
     // 来源题号已落库，清理状态与 URL 防止刷新再次自动弹出
     if (sourceQuestionId.value) {
       sourceQuestionId.value = undefined
@@ -520,7 +699,7 @@ async function submit() {
       delete nextQuery.questionId
       void router.replace({ query: nextQuery })
     }
-    await loadRequests()
+    await Promise.all([loadRequests(), loadPendingRequestCount()])
   } catch (error) {
     showUserError(error, '复核申请提交失败')
   } finally {
@@ -531,9 +710,22 @@ async function submit() {
 watch(
   () => route.query.examId,
   (val) => {
-    if (typeof val === 'string' && appealableExams.value.some((e) => e.examId === val)) {
+    if (typeof val !== 'string') return
+    if (appealableExams.value.some((e) => e.examId === val)) {
       selectedExamId.value = val
+      return
     }
+    if (exams.value.some((e) => e.examId === val)) {
+      selectedExamId.value = undefined
+      message.warning('该考试当前不在复核窗口内，无法提交新申请')
+    }
+  },
+)
+
+watch(
+  () => route.query.questionId,
+  () => {
+    autoOpenFromQuestionQuery()
   },
 )
 
@@ -552,7 +744,7 @@ onMounted(async () => {
     countdownTick.value += 1
   }, 1000)
   await loadExams()
-  await loadRequests()
+  await Promise.all([loadRequests(), loadPendingRequestCount()])
   autoOpenFromQuestionQuery()
 })
 
@@ -575,6 +767,7 @@ function autoOpenFromQuestionQuery(): void {
   form.reasonType = DEFAULT_REASON_TYPE
   form.requestReason = ''
   form.questionIds = [queryQuestionId]
+  resetEvidenceFiles()
   submitModalOpen.value = true
   void loadSelectedExamQuestions()
 }
@@ -740,6 +933,19 @@ async function loadSelectedExamQuestions(): Promise<void> {
 
 .muted {
   color: var(--ant-color-text-tertiary);
+}
+
+.appeal-evidence-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ant-color-text-secondary);
+  line-height: 1.5;
+}
+
+.appeal-evidence-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .modal-exam-info {

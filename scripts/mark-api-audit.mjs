@@ -23,6 +23,9 @@ const DEVICE_PREFIXES = [
 
 const WEBHOOK_PATHS = new Set(['/api/exam/teaching-affairs/passback/callback'])
 
+/** 平台 OCR 供应商配置在 edu-practice-web-vue 维护，mark-vue 只读租户 OCR 渠道 */
+const BROWSER_EXCLUDED_PREFIXES = ['/api/mark/ocr/platform-provider']
+
 function walkTsFiles(dir) {
   const out = []
   for (const name of readdirSync(dir)) {
@@ -84,10 +87,17 @@ const covered = []
 for (const ep of backend) {
   const kind = classify(ep.path)
   if (kind !== 'browser') continue
+  if (BROWSER_EXCLUDED_PREFIXES.some((p) => ep.path.startsWith(p))) continue
   const hit = [...frontend].some((p) => p === ep.path || ep.path.startsWith(p))
   if (hit) covered.push(ep)
   else missing.push(ep)
 }
 if (missing.length) {
+  console.error('浏览器端 API 缺失（需在 apis/mark 声明或加入 BROWSER_EXCLUDED）：')
+  for (const ep of missing) {
+    console.error(`  ${ep.method} ${ep.path} (${ep.controller})`)
+  }
   process.exitCode = 1
+} else {
+  console.log(`mark-api-audit OK: ${covered.length} browser endpoints covered`)
 }

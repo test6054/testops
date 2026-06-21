@@ -20,7 +20,7 @@ import type {
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, TaskResultItem } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   EXTERNAL_PULL_AUDIT_CHECK_STATUS_LABEL,
   EXTERNAL_PULL_AUDIT_EVENT_LABEL,
@@ -55,6 +55,7 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { SignalBand, StageWorkbenchShell, TaskResultPanel } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -223,9 +224,19 @@ const BUSINESS_ANCHOR_LABEL = {
 
 type BusinessAnchorCode = keyof typeof BUSINESS_ANCHOR_LABEL
 
-const businessAnchorOptions = Object.entries(BUSINESS_ANCHOR_LABEL).map(([value, label]) => ({
+const BUSINESS_ANCHOR_CODES: BusinessAnchorCode[] = [
+  'TRAINING_PLAN',
+  'QUALITY_COURSE',
+  'ASSESSMENT_ITEM',
+  'ACHIEVEMENT_RESULT',
+  'REPORT',
+  'AUDIT_ISSUE',
+  'AUDIT_RECTIFICATION',
+]
+
+const businessAnchorOptions = BUSINESS_ANCHOR_CODES.map((value) => ({
   value,
-  label,
+  label: BUSINESS_ANCHOR_LABEL[value],
 }))
 
 interface ExternalPullTaskFilterModel {
@@ -550,6 +561,8 @@ async function reloadAll() {
   await Promise.all([loadSources(), loadTasks()])
 }
 
+useQualityScopeReload(reloadAll)
+
 async function loadSources() {
   sourceLoading.value = true
   try {
@@ -583,9 +596,48 @@ async function loadTasks() {
     if (tasks.value.length === 0 && taskTotal.value > 0 && taskQuery.pageNum > 1) {
       taskQuery.pageNum -= 1
       await loadTasks()
+      return
     }
+    syncTaskPolling()
   } finally {
     taskLoading.value = false
+  }
+}
+
+let taskPollTimer: ReturnType<typeof setInterval> | null = null
+
+function syncTaskPolling(): void {
+  const shouldPoll = tasks.value.some(
+    (task) => task.status === 'PENDING' || task.status === 'RUNNING',
+  )
+  if (shouldPoll && !taskPollTimer) {
+    taskPollTimer = setInterval(() => {
+      void loadTasksQuietly()
+    }, 3000)
+  } else if (!shouldPoll && taskPollTimer) {
+    clearInterval(taskPollTimer)
+    taskPollTimer = null
+  }
+}
+
+async function loadTasksQuietly(): Promise<void> {
+  if (taskLoading.value) {
+    return
+  }
+  try {
+    const page = await externalPullTaskApi.page({
+      ...taskQuery,
+      sourceId: taskQuery.sourceId || undefined,
+      status: taskQuery.status || undefined,
+      businessAnchor: taskQuery.businessAnchor?.trim() || undefined,
+    })
+    tasks.value = readPageList(page, '外部拉取任务加载失败，请稍后重试')
+    taskQuery.pageNum = page.pageNum
+    taskQuery.pageSize = page.pageSize
+    taskTotal.value = readPageTotal(page, '外部拉取任务加载失败，请稍后重试')
+    syncTaskPolling()
+  } catch {
+    // 轮询刷新失败时不打断当前页面操作
   }
 }
 
@@ -852,6 +904,10 @@ async function confirmResult(result: ExternalPullResultVO) {
   if (confirmedRows === null || confirmedRows === undefined) {
     throw new Error('结果批次尚未生成预览数据，不能确认')
   }
+  if (confirmedRows <= 0) {
+    message.warning('预览行数为 0，无法确认导入')
+    return
+  }
   void confirmAsync({
     title: '确认当前拔取结果批次？',
     content: '确认后进入达成度计算可用来源',
@@ -908,6 +964,17 @@ function handlePullResultAction(actionEvent: { item: TaskResultItem, action: { k
 
 onMounted(async () => {
   await Promise.all([loadSources(), loadTasks()])
+})
+
+onActivated(async () => {
+  await Promise.all([loadSources(), loadTasks()])
+})
+
+onBeforeUnmount(() => {
+  if (taskPollTimer) {
+    clearInterval(taskPollTimer)
+    taskPollTimer = null
+  }
 })
 </script>
 
@@ -1594,7 +1661,7 @@ onMounted(async () => {
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
                 <UiTextAction
-                  v-if="record.confirmationStatus === 'PREVIEW'"
+                  v-if="record.confirmationStatus === 'PREVIEW' && (record.previewRows ?? 0) > 0"
                   tone="primary"
                   @click="confirmResult(record)"
                 >

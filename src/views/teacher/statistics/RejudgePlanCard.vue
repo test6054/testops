@@ -13,7 +13,14 @@
       @reset="handleFilterReset"
     />
 
+    <UiErrorRetryPanel
+      v-if="loadError"
+      :error="loadError"
+      @retry="reload"
+    />
+
     <UiDataTable
+      v-else
       class="student-detail-table__data-table"
       v-model:current="pagination.current"
       v-model:page-size="pagination.pageSize"
@@ -144,6 +151,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -153,6 +161,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'RejudgePlanCard' })
 
 const props = defineProps<{ examId: string, reloadToken: number }>()
+const emit = defineEmits<{ changed: [] }>()
 
 const rows = ref<ExamRejudgePlanVO[]>([])
 const loading = ref(false)
@@ -256,6 +265,7 @@ async function handleApprove(planId: string): Promise<void> {
     await approveRejudgePlan({ planId, approved: true })
     message.success('已审批')
     await reload()
+    emit('changed')
   } catch (e) {
     showUserError(e, '重判计划审批失败')
   } finally {
@@ -287,6 +297,7 @@ async function handleReject(): Promise<void> {
     message.success('已驳回')
     rejectModalOpen.value = false
     await reload()
+    emit('changed')
   } catch (e) {
     showUserError(e, '重判计划驳回失败')
   } finally {
@@ -321,6 +332,7 @@ async function handleExecute(): Promise<void> {
     message.success('重判执行完成')
     executeModalOpen.value = false
     await reload()
+    emit('changed')
   } catch (e) {
     showUserError(e, '重判计划执行失败')
   } finally {

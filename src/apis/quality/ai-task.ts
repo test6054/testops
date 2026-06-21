@@ -200,6 +200,12 @@ export interface AiTaskManualHandleRequest {
   manualHandlingRemark?: string
 }
 
+/** AI 任务运维重置请求 - 对齐后端 AiTaskResetProcessingRequest */
+export interface AiTaskResetProcessingRequest {
+  id: string
+  handlingRemark: string
+}
+
 /** AI 结果保存请求 - 严格对齐后端 AiResultSaveRequest */
 export interface AiResultSaveRequest {
   aiTaskId: string
@@ -280,6 +286,8 @@ export const aiTaskApi = {
   submit: (data: AiTaskSubmitRequest) =>
     http.post<AiTaskSubmitResponseVO>(`${TRIGGER}/submit`, data),
   runNow: (id: string) => http.post<void>(`${TRIGGER}/run-now`, { id }),
+  resetProcessing: (data: AiTaskResetProcessingRequest) =>
+    http.post<void>(`${TRIGGER}/reset-processing`, data),
   cancel: (id: string, reason?: string) => http.post<void>(`${TASK}/cancel`, { id, reason }),
   manualHandle: (data: AiTaskManualHandleRequest) => http.post<void>(`${TASK}/manual-handle`, data),
 }

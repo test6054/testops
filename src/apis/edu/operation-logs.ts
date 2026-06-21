@@ -20,6 +20,8 @@ export interface OperationLogQueryDto extends QueryDto {
   status?: number
   /** 操作描述 */
   description?: string
+  /** 业务主键 ID - 后端 Long */
+  bizId?: string
 }
 
 /** 操作日志DTO - 与后端OperateLogDto完全对应 */

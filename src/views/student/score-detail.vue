@@ -31,8 +31,14 @@
       </ContextBar>
     </template>
 
+    <UiErrorRetryPanel
+      v-if="detailLoadError"
+      :error="detailLoadError"
+      @retry="loadDetail"
+    />
+
     <UiEmpty
-      v-if="!loading && !detail"
+      v-else-if="!loading && !detail"
       description="暂无数据"
       class="score-detail__empty"
     />
@@ -283,12 +289,10 @@
         </template>
 
         <a-spin :spinning="reportLoading">
-          <UiAlertStrip
+          <UiErrorRetryPanel
             v-if="reportLoadError"
-            tone="error"
-            title="AI 学习报告加载失败"
-            :description="reportLoadError"
-            dense
+            :error="reportLoadError"
+            @retry="loadLearningReport"
           />
           <UiEmpty
             v-else-if="!reportLoading && !learningReport"
@@ -416,7 +420,7 @@ import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
@@ -444,6 +448,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { assertUserFacing } from '@/utils/contract-guard'
@@ -725,7 +730,7 @@ function goAppealForQuestion(q: StudentQuestionScoreVO): void {
 
 const learningReport = ref<Awaited<ReturnType<typeof getMyAiLearningReport>> | null>(null)
 const reportLoading = ref(false)
-const reportLoadError = ref('')
+const reportLoadError = ref<Error | null>(null)
 
 const profileDiagnosisItems = computed<StudentAiDiagnosisItemVO[]>(
   () => learningReport.value?.diagnosisItems ?? [],
@@ -740,22 +745,22 @@ const errorClusters = computed<StudentAiErrorClusterVO[]>(
 async function loadLearningReport(): Promise<void> {
   if (!detail.value || detail.value.finalScoreStatus !== 'PUBLISHED') {
     learningReport.value = null
-    reportLoadError.value = ''
+    reportLoadError.value = null
     return
   }
   if (!detail.value.examId) {
     learningReport.value = null
-    reportLoadError.value = '成绩信息不完整，暂无法加载学习报告。'
+    reportLoadError.value = toUserError(null, '成绩信息不完整，暂无法加载学习报告')
     return
   }
   reportLoading.value = true
-  reportLoadError.value = ''
+  reportLoadError.value = null
   try {
     const report = await getMyAiLearningReport(detail.value.examId)
     validateLearningReportContract(report)
     learningReport.value = report
   } catch (error) {
-    reportLoadError.value = getUserErrorMessage(error, 'AI 学习报告加载失败')
+    reportLoadError.value = toUserError(error, 'AI 学习报告加载失败')
     learningReport.value = null
   } finally {
     reportLoading.value = false
@@ -852,7 +857,7 @@ function getScoreTagTone(answer: StudentQuestionAnswerDetailVO): BadgeTone {
   return 'orange'
 }
 
-watch(examId, () => loadDetail())
+watch(examId, () => loadDetail(), { immediate: true })
 watch(detail, () => {
   selectedQuestionId.value = null
   currentDetail.value = null
@@ -871,7 +876,6 @@ watch(filteredQuestions, (list) => {
     void selectQuestion(list[0])
   }
 })
-onMounted(loadDetail)
 onBeforeUnmount(() => {
   releaseSliceImage()
 })

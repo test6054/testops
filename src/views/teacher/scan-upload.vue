@@ -7,6 +7,12 @@
     />
 
     <template v-else>
+      <UiErrorRetryPanel
+        v-if="progressLoadError"
+        :error="progressLoadError"
+        @retry="loadProgress"
+      />
+
       <!-- 扫描进度概览 KPI + 卷面绑定率环 -->
       <div v-if="progress" class="scan-batch-page__progress-row">
         <UiStatPanel
@@ -38,6 +44,13 @@
         </UiCard>
       </div>
 
+      <ScanManualSupplementPanel
+        :exam-id="selectedExamId"
+        :devices="devices"
+        :devices-loading="devicesLoading"
+        @success="onManualSupplementSuccess"
+      />
+
       <div class="scan-batch-page__monitor-grid">
         <UiCard class="scan-batch-page__device-card">
           <template #title>
@@ -45,6 +58,11 @@
             <span>当前连接扫描仪</span>
             <span class="scan-batch-page__panel-meta">{{ onlineDeviceCount }} / {{ devices.length }} 在线</span>
           </template>
+          <UiErrorRetryPanel
+            v-if="devicesLoadError"
+            :error="devicesLoadError"
+            @retry="loadDevices"
+          />
           <UiDataTable
             pagination-mode="none"
             :columns="scannerDeviceColumns"
@@ -81,12 +99,17 @@
         <UiCard class="scan-batch-page__events-card">
           <template #title>
             <ThunderboltOutlined />
-            <span>实时扫描事件</span>
+            <span>最近扫描事件</span>
             <span class="scan-batch-page__panel-meta">{{ connectionLabel }} · 最新 {{ liveEvents.length }} 条</span>
           </template>
           <template #extra>
             <UiTextAction @click="goScanLiveMonitor">打开实时监控</UiTextAction>
           </template>
+          <UiErrorRetryPanel
+            v-if="recentEventsLoadError"
+            :error="recentEventsLoadError"
+            @retry="loadRecentEventsSnapshot"
+          />
           <UiDataTable
             pagination-mode="none"
             :columns="liveEventColumns"
@@ -205,6 +228,12 @@
             刷新
           </UiButton>
         </template>
+
+        <UiErrorRetryPanel
+          v-if="batchesLoadError"
+          :error="batchesLoadError"
+          @retry="() => loadBatches()"
+        />
 
         <UiDataTable
           v-model:current="batchQuery.pageNum"
@@ -420,7 +449,7 @@ import type {
   ExamScannerDeviceQueryRequest,
   ExamScannerDeviceVO,
 } from '@/apis/mark/exam-mark-scanner'
-import type { ScanEventStatusCode, ScanLiveEventVO } from '@/apis/mark/scan-live'
+import type { ScanLiveEventVO } from '@/apis/mark/scan-live'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import DesktopOutlined from '@ant-design/icons-vue/DesktopOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
@@ -439,10 +468,15 @@ import {
   sealScanBatchByTeacher,
 } from '@/apis/mark/exam'
 import { listScannerDevices } from '@/apis/mark/exam-mark-scanner'
-import { listRecentScanEvents } from '@/apis/mark/scan-live'
+import {
+  listRecentScanEvents,
+  SCAN_EVENT_STATUS_LABEL,
+  SCAN_EVENT_STATUS_TONE,
+} from '@/apis/mark/scan-live'
 import { discardScanJob, listScanJobs } from '@/apis/mark/scanner-agent-local'
 import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
+import ScanManualSupplementPanel from '@/components/mark/ScanManualSupplementPanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -453,8 +487,9 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { formatDateTime, formatDateTimeWithSeconds, formatTimeOfDay } from '@/utils/format'
 import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
@@ -502,17 +537,32 @@ function openSealAttentionMonitor(): void {
 
 const examContext = useMarkExamContext()
 const { selectedExamId } = examContext
+const { refreshSnapshot } = useWorkspaceExamId()
+
+/** 扫描链写操作后同步 StageRail 与本页进度。 */
+async function syncScanWorkbenchState(): Promise<void> {
+  await refreshSnapshot()
+  mittBus.emit('scan-workbench:refresh')
+}
+
+async function onManualSupplementSuccess(): Promise<void> {
+  await loadAllForExam()
+  await syncScanWorkbenchState()
+}
 
 // ─── 概览统计 ─────────────────────────────
 const progress = ref<MarkingProgressVO | null>(null)
 const progressLoading = ref(false)
+// D-9：扫描进度 KPI 加载失败时展示可重试错误面板
+const progressLoadError = ref<Error | null>(null)
 const hasOpenTasks = computed(() => {
   const current = progress.value
   return current ? current.openProcessingTaskCount > 0 : false
 })
-computed(() => progress.value?.scanAttentionCount ?? 0)
 const liveEvents = ref<ScanLiveEventVO[]>([])
 const recentEventsLoading = ref(false)
+// D-9：实时扫描事件快照加载失败时展示可重试错误面板
+const recentEventsLoadError = ref<Error | null>(null)
 
 const livePendingEventTotal = computed(() =>
   liveEvents.value.filter((event) => event.status === 'PENDING').length,
@@ -537,22 +587,12 @@ const liveEventColumns: ColumnType<ScanLiveEventVO>[] = [
 
 const connectionLabel = computed(() => '最近事件快照')
 
-function scanEventStatusLabel(status: ScanEventStatusCode): string {
-  const labels: Record<ScanEventStatusCode, string> = {
-    PENDING: '待聚合',
-    BATCHED: '已聚合',
-    INVALID: '已失效',
-  }
-  return strictEnumLabel(labels, status, '扫描事件状态')
+function scanEventStatusLabel(status: ScanLiveEventVO['status']): string {
+  return strictEnumLabel(SCAN_EVENT_STATUS_LABEL, status, '扫描事件状态')
 }
 
-function scanEventStatusTone(status: ScanEventStatusCode): BadgeTone {
-  const tones: Record<ScanEventStatusCode, BadgeTone> = {
-    PENDING: 'orange',
-    BATCHED: 'green',
-    INVALID: 'red',
-  }
-  return strictEnumTone(tones, status, '扫描事件状态')
+function scanEventStatusTone(status: ScanLiveEventVO['status']): BadgeTone {
+  return strictEnumTone(SCAN_EVENT_STATUS_TONE, status, '扫描事件状态')
 }
 
 /** 全局加载状态：任一子加载中即视为正在加载 */
@@ -563,10 +603,13 @@ const globalLoading = computed(
 async function loadProgress(): Promise<void> {
   if (!selectedExamId.value) return
   progressLoading.value = true
+  progressLoadError.value = null
   try {
     progress.value = await getMarkingProgress(selectedExamId.value)
-  } catch {
+  } catch (error) {
     progress.value = null
+    progressLoadError.value = toUserError(error, '扫描进度加载失败')
+    showUserError(error, '扫描进度加载失败')
   } finally {
     progressLoading.value = false
   }
@@ -669,6 +712,8 @@ const previewMetrics = computed(() => {
 // ─── 扫描设备列表 ─────────────────────────────
 const devices = ref<ExamScannerDeviceVO[]>([])
 const devicesLoading = ref(false)
+// D-9：扫描设备列表加载失败时展示可重试错误面板
+const devicesLoadError = ref<Error | null>(null)
 
 const deviceSelectOptions = computed(() =>
   devices.value
@@ -709,11 +754,13 @@ function deviceOnlineLabel(device: ExamScannerDeviceVO): string {
 
 async function loadDevices(): Promise<void> {
   devicesLoading.value = true
+  devicesLoadError.value = null
   try {
     const query: ExamScannerDeviceQueryRequest = {}
     devices.value = await listScannerDevices(query)
   } catch (error) {
     devices.value = []
+    devicesLoadError.value = toUserError(error, '扫描设备列表加载失败')
     showUserError(error, '扫描设备列表加载失败')
   } finally {
     devicesLoading.value = false
@@ -828,6 +875,7 @@ async function handleCreateBatch(): Promise<void> {
     await loadBatches(1)
     await loadProgress()
     await loadRecentEventsSnapshot()
+    await syncScanWorkbenchState()
   } catch (error) {
     showUserError(error, '扫描批次创建失败')
   } finally {
@@ -839,6 +887,8 @@ async function handleCreateBatch(): Promise<void> {
 const batches = ref<ExamScannerBatchVO[]>([])
 const batchTotal = ref(0)
 const batchLoading = ref(false)
+// D-9：扫描批次列表加载失败时展示可重试错误面板
+const batchesLoadError = ref<Error | null>(null)
 const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
   pageNum: 1,
   pageSize: 10,
@@ -966,6 +1016,7 @@ async function confirmSealBatch(): Promise<void> {
     batchSealModalOpen.value = false
     batchSealTarget.value = null
     await Promise.all([loadBatches(), loadProgress(), loadRecentEventsSnapshot()])
+    await syncScanWorkbenchState()
   } catch (error) {
     batchSealError.value = getUserErrorMessage(error, '扫描批次封存失败')
   } finally {
@@ -1021,6 +1072,7 @@ async function confirmDiscardBatch(): Promise<void> {
     batchDiscardReason.value = ''
     await loadBatches()
     await loadProgress()
+    await syncScanWorkbenchState()
   } catch (error) {
     batchDiscardError.value = getUserErrorMessage(error, '扫描批次废弃失败')
     showUserError(error, '扫描批次废弃失败')
@@ -1071,6 +1123,7 @@ async function loadBatches(pageNum?: number): Promise<void> {
   if (!selectedExamId.value) return
   if (pageNum) batchQuery.pageNum = pageNum
   batchLoading.value = true
+  batchesLoadError.value = null
   try {
     const request: ExamScannerBatchQueryRequest = {
       examId: selectedExamId.value,
@@ -1080,9 +1133,16 @@ async function loadBatches(pageNum?: number): Promise<void> {
     const result = await pageScannerBatches(request)
     batches.value = readPageList(result, '扫描批次加载失败，请稍后重试')
     batchTotal.value = readPageTotal(result, '扫描批次加载失败，请稍后重试')
+    if (result.pageNum != null) {
+      batchQuery.pageNum = result.pageNum
+    }
+    if (result.pageSize != null) {
+      batchQuery.pageSize = result.pageSize
+    }
   } catch (error) {
     batches.value = []
     batchTotal.value = 0
+    batchesLoadError.value = toUserError(error, '扫描批次列表加载失败')
     showUserError(error, '扫描批次列表加载失败')
   } finally {
     batchLoading.value = false
@@ -1101,6 +1161,7 @@ async function loadRecentEventsSnapshot(): Promise<void> {
     return
   }
   recentEventsLoading.value = true
+  recentEventsLoadError.value = null
   try {
     liveEvents.value = await listRecentScanEvents({
       examId: selectedExamId.value,
@@ -1109,6 +1170,7 @@ async function loadRecentEventsSnapshot(): Promise<void> {
   }
   catch (error) {
     liveEvents.value = []
+    recentEventsLoadError.value = toUserError(error, '扫描事件快照加载失败')
     showUserError(error, '扫描事件快照加载失败')
   }
   finally {
@@ -1128,10 +1190,14 @@ watch(selectedExamId, (value) => {
     progress.value = null
     batches.value = []
     batchTotal.value = 0
+    progressLoadError.value = null
+    batchesLoadError.value = null
+    devicesLoadError.value = null
+    recentEventsLoadError.value = null
     batchDiscardError.value = ''
     liveEvents.value = []
   }
-})
+}, { immediate: true })
 
 function onWorkbenchRefresh(): void {
   if (selectedExamId.value) {
@@ -1141,9 +1207,6 @@ function onWorkbenchRefresh(): void {
 
 onMounted(() => {
   mittBus.on('scan-workbench:refresh', onWorkbenchRefresh)
-  if (selectedExamId.value) {
-    void loadAllForExam()
-  }
 })
 
 onBeforeUnmount(() => {
@@ -1294,11 +1357,6 @@ onBeforeUnmount(() => {
     font-size: 13px;
     color: var(--dp-text-secondary, #475569);
   }
-
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 8px 10px;
 }
 
 .info-card {

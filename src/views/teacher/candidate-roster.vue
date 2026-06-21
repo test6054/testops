@@ -1,6 +1,12 @@
 <template>
   <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="roster-page__empty" />
 
+  <UiErrorRetryPanel
+    v-else-if="rosterLoadError"
+    :error="rosterLoadError"
+    @retry="loadExamContext"
+  />
+
   <a-spin v-else :spinning="contextLoading">
     <UiCard class="info-card">
       <template #title>
@@ -81,7 +87,14 @@
         @reset="handleRosterReset"
       />
 
+      <UiErrorRetryPanel
+        v-if="tableLoadError"
+        :error="tableLoadError"
+        @retry="loadCandidatePage"
+      />
+
       <UiDataTable
+        v-else
         v-model:current="pagination.current"
         v-model:page-size="pagination.pageSize"
         :columns="columns"
@@ -327,7 +340,7 @@ import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
 import Modal from 'ant-design-vue/es/modal'
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import * as XLSX from 'xlsx'
 import {
   commitExamCandidateImport,
@@ -355,6 +368,7 @@ import UiConfirmPopover from '@/components/ui-guide/ui/UiConfirmPopover.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { ErrorType, handleError, showUserError, toUserError } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { buildScopedClassTags, mergeClassSelectOptions } from './candidate-roster/class-scope'
@@ -392,6 +406,7 @@ interface ImportPreviewSampleRow {
 }
 
 const { selectedExamId } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 const classIds = ref<string[]>([])
 const examClassRefs = ref<ExamClassRefVO[]>([])
@@ -660,6 +675,12 @@ async function loadCandidatePage(): Promise<void> {
       ),
     )
     pagination.total = readPageTotal(result)
+    if (result.pageNum != null) {
+      pagination.current = result.pageNum
+    }
+    if (result.pageSize != null) {
+      pagination.pageSize = result.pageSize
+    }
   } catch (error) {
     if (seq !== loadTableSeq) {
       return
@@ -679,6 +700,7 @@ async function reloadExamContext(): Promise<void> {
   }
   await loadExamContext()
   await loadCandidatePage()
+  await refreshSnapshot()
 }
 
 async function loadExamContext(): Promise<void> {
@@ -1217,14 +1239,7 @@ watch(selectedExamId, (value) => {
     candidateTotal.value = 0
     pagination.total = 0
   }
-})
-
-onMounted(async () => {
-  if (selectedExamId.value) {
-    await loadExamContext()
-    await loadCandidatePage()
-  }
-})
+}, { immediate: true })
 </script>
 
 <style lang="scss" scoped>

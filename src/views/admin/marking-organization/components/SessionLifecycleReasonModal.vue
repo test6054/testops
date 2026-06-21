@@ -11,6 +11,13 @@
     @ok="confirm"
   >
     <a-alert :message="modalAlert" type="warning" show-icon style="margin-bottom: 12px" />
+    <a-alert
+      v-if="submitError"
+      type="error"
+      show-icon
+      style="margin-bottom: 12px"
+      :message="submitError"
+    />
     <a-form layout="vertical">
       <a-form-item label="操作原因" required>
         <a-textarea
@@ -33,7 +40,7 @@ import {
   closeTrialSession,
   pauseFormalSession,
 } from '@/apis/mark/marking-organization'
-import { showUserError } from '@/utils/error-handler'
+import { showUserError, getUserErrorMessage } from '@/utils/error-handler'
 
 export type LifecycleAction = 'pauseFormal' | 'closeFormal' | 'closeTrial'
 
@@ -53,12 +60,14 @@ const emit = defineEmits<{
 
 const reason = ref('')
 const submitting = ref(false)
+const submitError = ref('')
 
 watch(
   () => props.open,
   (next) => {
     if (next) {
       reason.value = ''
+      submitError.value = ''
     }
   },
 )
@@ -106,10 +115,12 @@ async function confirm(): Promise<void> {
   }
   const trimmed = reason.value.trim()
   if (!trimmed) {
+    submitError.value = '请填写操作原因'
     message.warning('请填写操作原因')
     return
   }
   submitting.value = true
+  submitError.value = ''
   try {
     switch (props.action) {
       case 'pauseFormal':
@@ -128,6 +139,7 @@ async function confirm(): Promise<void> {
     emit('success')
     emit('update:open', false)
   } catch (error) {
+    submitError.value = getUserErrorMessage(error, '会话状态调整失败')
     showUserError(error, '会话状态调整失败')
   } finally {
     submitting.value = false

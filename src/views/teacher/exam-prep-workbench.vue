@@ -21,7 +21,7 @@ import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, inject, onMounted, ref, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   EXAM_MATERIAL_LAYOUT_MODE_LABEL,
@@ -36,6 +36,7 @@ import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
@@ -411,12 +412,6 @@ watch(selectedExamId, (next) => {
     detail.value = null
   }
 }, { immediate: true })
-
-onMounted(() => {
-  if (selectedExamId.value) {
-    void loadDetail(selectedExamId.value)
-  }
-})
 </script>
 
 <template>
@@ -426,10 +421,10 @@ onMounted(() => {
     class="exam-prep__empty"
   />
 
-  <UiEmpty
+  <UiErrorRetryPanel
     v-else-if="detailLoadError"
-    description="暂无数据"
-    class="exam-prep__empty"
+    :error="detailLoadError"
+    @retry="() => loadDetail(selectedExamId)"
   />
 
   <template v-else>

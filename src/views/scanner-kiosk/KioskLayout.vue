@@ -12,7 +12,7 @@ import type { KioskUiState } from './composables/kioskInjection'
  *
  * 此文件不再持有 UI 细节，仅负责 grid 布局与组件编排。
  */
-import { computed, onMounted, provide, ref } from 'vue'
+import { computed, onActivated, onMounted, provide, ref } from 'vue'
 import KioskActivationModal from './components/KioskActivationModal.vue'
 import KioskAppBar from './components/KioskAppBar.vue'
 import KioskBottomBar from './components/KioskBottomBar.vue'
@@ -76,6 +76,12 @@ const showBottomBar = computed(() => stage.currentStage.value === 'scanning')
 // - 等到 workflow 自身 onMounted 链路（refreshAll + loadExamOptions）完成后下一个 tick 调用
 onMounted(() => {
   setTimeout(() => stage.autoSyncOnce(), 0)
+})
+
+onActivated(() => {
+  void workflow.refreshAll().then(() => {
+    stage.autoSyncOnce()
+  })
 })
 </script>
 
