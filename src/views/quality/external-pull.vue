@@ -4,23 +4,31 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ExternalDataSourceSaveRequest,
   ExternalDataSourceVO,
-  ExternalPullAuditCheckStatus,
-  ExternalPullAuditEvent,
-  ExternalPullAuditVO,
-  ExternalPullConfirmationStatus,
+  ExternalSourceFieldScope,
+} from '@/apis/quality/external-data-source'
+import type { ExternalPullAuditVO } from '@/apis/quality/external-pull-audit'
+import type { ExternalPullResultVO } from '@/apis/quality/external-pull-result'
+import type {
   ExternalPullFilterOperator,
-  ExternalPullResultVO,
   ExternalPullSortDirection,
   ExternalPullTaskQueryRequest,
   ExternalPullTaskSaveRequest,
   ExternalPullTaskVO,
-  ExternalSourceFieldScope,
+} from '@/apis/quality/external-pull-task'
+import type {
+  ExternalPullAuditCheckStatus,
+  ExternalPullAuditEvent,
+  ExternalPullConfirmationStatus,
   ExternalSourceType,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, TaskResultItem } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { externalDataSourceApi } from '@/apis/quality/external-data-source'
+import { externalPullAuditApi } from '@/apis/quality/external-pull-audit'
+import { externalPullResultApi } from '@/apis/quality/external-pull-result'
+import { externalPullTaskApi } from '@/apis/quality/external-pull-task'
 import {
   EXTERNAL_PULL_AUDIT_CHECK_STATUS_LABEL,
   EXTERNAL_PULL_AUDIT_EVENT_LABEL,
@@ -31,11 +39,7 @@ import {
   EXTERNAL_PULL_TASK_STATUS_OPTIONS,
   EXTERNAL_SOURCE_TYPE_LABEL,
   EXTERNAL_SOURCE_TYPE_OPTIONS,
-  externalDataSourceApi,
-  externalPullAuditApi,
-  externalPullResultApi,
-  externalPullTaskApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import {
   AchievementResultSelector,
   AssessmentItemSelector,

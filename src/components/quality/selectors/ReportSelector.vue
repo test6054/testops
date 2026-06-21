@@ -5,9 +5,11 @@
 -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { ReportStatus, ReportType, ReportVO } from '@/apis/quality'
+import type { ReportVO } from '@/apis/quality/report'
+import type { ReportStatus, ReportType } from '@/apis/quality/types'
 import { onMounted, ref, watch } from 'vue'
-import { REPORT_TYPE_LABEL, reportApi } from '@/apis/quality'
+import { reportApi } from '@/apis/quality/report'
+import { REPORT_TYPE_LABEL } from '@/apis/quality/types'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { requireAllPages } from './page-contract'

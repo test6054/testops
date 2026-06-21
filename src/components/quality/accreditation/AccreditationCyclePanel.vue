@@ -7,9 +7,9 @@ import type {
   AccreditationCyclePhase,
   AccreditationCycleSaveRequest,
   AccreditationCycleVO,
-  AccreditationStandardVO,
   SelfAssessmentReviewDecisionRequest,
-} from '@/apis/quality'
+} from '@/apis/quality/accreditation'
+import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
 import { DownOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -18,8 +18,8 @@ import {
   ACCREDITATION_CYCLE_PHASE_LABEL,
   ACCREDITATION_CYCLE_STATUS_LABEL,
   accreditationApi,
-  accreditationStandardApi,
-} from '@/apis/quality'
+} from '@/apis/quality/accreditation'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -28,11 +28,11 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import {
   canDeleteCycle,
   canEditCycle,
+  canEditSelfAssessmentSection,
   canRecordApplication,
   canRegisterConclusion,
   canReview,
   canSubmitSelfAssessment,
-  canEditSelfAssessmentSection,
 } from '@/composables/useAccreditationWorkbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'

@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type {
+  ReportQueryRequest,
+  ReportSaveRequest,
+  ReportVO,
+} from '@/apis/quality/report'
 /**
  * 质量评价 - 报告生成与确认台
  *
@@ -11,12 +16,9 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  */
 import type {
   ReportExportStatus,
-  ReportQueryRequest,
-  ReportSaveRequest,
   ReportStatus,
   ReportType,
-  ReportVO,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
@@ -31,13 +33,15 @@ import Modal from 'ant-design-vue/es/modal'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
+  reportApi,
+} from '@/apis/quality/report'
+import {
   REPORT_EXPORT_STATUS_COLOR,
   REPORT_EXPORT_STATUS_LABEL,
   REPORT_STATUS_COLOR,
   REPORT_STATUS_LABEL,
   REPORT_TYPE_LABEL,
-  reportApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   AchievementResultSelector,
@@ -55,7 +59,6 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import {
   AuditTimelineDrawer,
-  ContextBar,
   SignalBand,
   StageRail,
   StageWorkbenchShell,

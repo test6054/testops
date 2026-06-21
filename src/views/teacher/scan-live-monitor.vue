@@ -339,7 +339,7 @@
         <UiErrorRetryPanel
           v-if="candidatesLoadError"
           :error="candidatesLoadError"
-          @retry="ensureCandidatesLoaded"
+          @retry="retryEnsureCandidatesLoaded"
         />
         <UiAlertStrip
           v-if="bindSubmitError"
@@ -482,7 +482,7 @@
       <UiErrorRetryPanel
         v-if="candidatesLoadError"
         :error="candidatesLoadError"
-        @retry="ensureCandidatesLoaded"
+        @retry="retryEnsureCandidatesLoaded"
       />
       <UiAlertStrip
         v-if="batchBindError"
@@ -650,20 +650,22 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { ExamPaperBatchBindResultVO } from '@/apis/mark/exam-mark-scanner'
 import type {
-  CandidateStatusCode,
   DuplicateResolutionStatusCode,
-  ExamCandidateVO,
   ExamScannerBatchVO,
-  ExamScoreSummaryItemVO,
   QualityDecisionCode,
   ScanAttentionItemVO,
   ScanAttentionQueryGroupCode,
   ScanAttentionSourceTypeCode,
   ScanAttentionTypeCode,
   TaskStatusCode,
-} from '@/apis/mark/exam'
-import type { ExamPaperBatchBindResultVO } from '@/apis/mark/exam-mark-scanner'
+} from '@/apis/mark/exam-scan'
+import type {
+  CandidateStatusCode,
+  ExamCandidateVO,
+} from '@/apis/mark/exam-scope'
+import type { ExamScoreSummaryItemVO } from '@/apis/mark/exam-score'
 import type { ScanLiveEventVO } from '@/apis/mark/scan-live'
 import type { GradeStatusCode } from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
@@ -674,16 +676,23 @@ import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
   BINDING_STATUS_LABEL,
   bindPaper,
-  CANDIDATE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_LABEL,
-  listExamCandidates,
+} from '@/apis/mark/exam-binding'
+import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
+import {
   listScanAttentions,
-  pageExamScoreSummary,
   pageScannerBatches,
   SCAN_BATCH_STATUS_LABEL,
   validateScanAttentionItemContract,
-} from '@/apis/mark/exam'
-import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
+} from '@/apis/mark/exam-scan'
+import {
+  CANDIDATE_STATUS_LABEL,
+  listExamCandidates,
+} from '@/apis/mark/exam-scope'
+import {
+  FINAL_SCORE_STATUS_LABEL,
+  pageExamScoreSummary,
+} from '@/apis/mark/exam-score'
+import { SCAN_EVENT_STATUS_LABEL, SCAN_EVENT_STATUS_TONE } from '@/apis/mark/scan-live'
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -700,7 +709,6 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
-import { SCAN_EVENT_STATUS_LABEL, SCAN_EVENT_STATUS_TONE } from '@/apis/mark/scan-live'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds, formatTimeOfDay } from '@/utils/format'
@@ -834,7 +842,6 @@ const {
   isStreaming: scanLiveStreaming,
   connectionPhase: scanLiveConnectionPhase,
   error: scanLiveError,
-  start: startScanLive,
   stop: stopScanLive,
   refresh: refreshScanLive,
 } = useScanLiveStream({
@@ -1585,6 +1592,10 @@ async function ensureCandidatesLoaded(): Promise<boolean> {
   } finally {
     candidatesLoading.value = false
   }
+}
+
+async function retryEnsureCandidatesLoaded(): Promise<void> {
+  await ensureCandidatesLoaded()
 }
 
 function releaseBindIdentitySliceImage(): void {

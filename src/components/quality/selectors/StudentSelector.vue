@@ -8,7 +8,7 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { UserDto } from '@/types/api-types.d'
 import { computed, onMounted, ref, watch } from 'vue'
 import { getStudentsByClass } from '@/apis/edu/class'
-import { listExamClassStudents } from '@/apis/mark/exam'
+import { listExamClassStudents } from '@/apis/mark/exam-scope'
 import { showUserError } from '@/utils/error-handler'
 import { readAllPages } from '@/utils/page-result'
 import { requirePageList } from './page-contract'
@@ -68,26 +68,27 @@ async function loadOptions(keyword?: string) {
   if (!props.classId) return
   loading.value = true
   try {
-    const res = props.examId
-      ? await readAllPages(
-          (pageNum) => listExamClassStudents({
+    if (props.examId) {
+      options.value = await readAllPages(
+        (pageNum) =>
+          listExamClassStudents({
             examId: props.examId!,
             classId: props.classId!,
             pageNum,
             pageSize: 100,
             keyword: keyword ?? searchText.value ?? undefined,
           }),
-          '学生列表加载失败',
-        )
-      : await getStudentsByClass({
-          pageNum: 1,
-          pageSize: 50,
-          keyword: keyword ?? searchText.value ?? undefined,
-          classId: props.classId,
-        })
-    options.value = props.examId
-      ? res
-      : requirePageList(res, '学生')
+        '学生列表加载失败',
+      )
+    } else {
+      const page = await getStudentsByClass({
+        pageNum: 1,
+        pageSize: 50,
+        keyword: keyword ?? searchText.value ?? undefined,
+        classId: props.classId,
+      })
+      options.value = requirePageList(page, '学生')
+    }
   } catch (e) {
     showUserError(e, '学生列表加载失败')
   } finally {

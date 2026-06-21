@@ -1,5 +1,6 @@
 import type { AxiosResponse } from 'axios'
-import type { PaperInstanceDisplayVO, QualityDecisionCode } from './exam'
+import type { QualityDecisionCode } from './exam-scan'
+import type { PaperInstanceDisplayVO } from './exam-score'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 import { readAllPages } from '@/utils/page-result'

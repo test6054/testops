@@ -14,14 +14,20 @@ import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
  */
 import type {
   AssessmentItemVO,
-  DataSourceMode,
+} from '@/apis/quality/assessment-item'
+import type {
   QualityCourseVO,
+} from '@/apis/quality/quality-course'
+import type {
   ScoreBatchQueryRequest,
   ScoreBatchSaveRequest,
-  ScoreBatchStatus,
   ScoreBatchVO,
   ScoreImportRowDiagnostic,
-} from '@/apis/quality'
+} from '@/apis/quality/score-batch'
+import type {
+  DataSourceMode,
+  ScoreBatchStatus,
+} from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
@@ -35,12 +41,18 @@ import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   assessmentItemApi,
-  DATA_SOURCE_MODE_LABEL,
+} from '@/apis/quality/assessment-item'
+import {
   qualityCourseApi,
+} from '@/apis/quality/quality-course'
+import {
+  scoreBatchApi,
+} from '@/apis/quality/score-batch'
+import {
+  DATA_SOURCE_MODE_LABEL,
   SCORE_BATCH_STATUS_COLOR,
   SCORE_BATCH_STATUS_LABEL,
-  scoreBatchApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -52,7 +64,6 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import {
   AuditTimelineDrawer,
-  ContextBar,
   SignalBand,
   StageRail,
   StageWorkbenchShell,

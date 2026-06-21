@@ -3,6 +3,11 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type { FileSystemNodeResponseDTO } from '@/apis/edu/file-management'
+import type {
+  AiResultPriority,
+  AiResultSeverity,
+  AiResultVO,
+} from '@/apis/quality/ai-result'
 /**
  * 质量评价 / AI 能力 - AI 任务与结果审计台
  *
@@ -13,19 +18,18 @@ import type { FileSystemNodeResponseDTO } from '@/apis/edu/file-management'
  * - 结果 updateValidation 可调 PASSED / WARN / REJECTED
  */
 import type {
-  AiManualHandlingStatus,
-  AiOutputValidation,
-  AiResultPriority,
-  AiResultSeverity,
-  AiResultVO,
-  AiTaskBusinessType,
   AiTaskManualHandleRequest,
   AiTaskQueryRequest,
-  AiTaskStatus,
-  AiTaskSubmitRequest,
-  AiTaskType,
   AiTaskVO,
-} from '@/apis/quality'
+} from '@/apis/quality/ai-task'
+import type { AiTaskSubmitRequest } from '@/apis/quality/ai-task-trigger'
+import type {
+  AiManualHandlingStatus,
+  AiOutputValidation,
+  AiTaskBusinessType,
+  AiTaskStatus,
+  AiTaskType,
+} from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
@@ -39,6 +43,9 @@ import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch
 import { useRoute, useRouter } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
+import { aiResultApi } from '@/apis/quality/ai-result'
+import { aiTaskApi } from '@/apis/quality/ai-task'
+import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
 import {
   AI_MANUAL_HANDLING_STATUS_LABEL,
   AI_OUTPUT_VALIDATION_COLOR,
@@ -47,9 +54,7 @@ import {
   AI_TASK_STATUS_COLOR,
   AI_TASK_STATUS_LABEL,
   AI_TASK_TYPE_LABEL,
-  aiResultApi,
-  aiTaskApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   AchievementResultSelector,
@@ -70,7 +75,6 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import {
   AuditTimelineDrawer,
-  ContextBar,
   SignalBand,
   StageRail,
   StageWorkbenchShell,
@@ -82,8 +86,8 @@ import { useAuthStore } from '@/stores'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
-import { RoleEnum } from '@/utils/permission'
 import { readPageList, readPageTotal } from '@/utils/page-result'
+import { RoleEnum } from '@/utils/permission'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const aiTaskStore = useAiTaskStore()
@@ -746,7 +750,7 @@ async function submitTask() {
   }
   submitting.value = true
   try {
-    const result = await aiTaskApi.submit({
+    const result = await aiTaskTriggerApi.submit({
       taskType: submitForm.taskType,
       businessType: submitForm.businessType,
       businessId: submitForm.businessId.trim(),
@@ -775,7 +779,7 @@ async function runNow(record: AiTaskVO) {
     content: '仅待处理状态可立即执行，常用于演示 / 运维场景。',
     type: 'info',
     onOk: async () => {
-      await aiTaskApi.runNow(record.id)
+      await aiTaskTriggerApi.runNow(record.id)
       message.success('已触发同步执行')
       aiTaskStore.startPolling(record.id)
       await loadList()
@@ -800,7 +804,7 @@ async function submitResetProcessing() {
   }
   resetProcessingSubmitting.value = true
   try {
-    await aiTaskApi.resetProcessing({
+    await aiTaskTriggerApi.resetProcessing({
       id: resetProcessingForm.id,
       handlingRemark: resetProcessingForm.handlingRemark.trim(),
     })

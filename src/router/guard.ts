@@ -8,11 +8,11 @@ import { getValidToken } from '@/utils/auth'
 import { isAuthRequestFailure, isTransientRequestError } from '@/utils/error-handler'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
 import { isValidRole } from '@/utils/permission'
-import { applySeoMeta } from '@/utils/seo'
 import {
   ensureQualityPlanConfirmedForNavigation,
   routeRequiresPlanConfirmed,
 } from '@/utils/quality-plan-guard'
+import { applySeoMeta } from '@/utils/seo'
 import { getRoutePreloadManager } from './preload-strategy'
 import 'nprogress/nprogress.css'
 

@@ -246,6 +246,8 @@
 </template>
 
 <script lang="ts" setup>
+import type { UploadFile } from 'ant-design-vue'
+import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type {
   GradeReviewEvidenceFileRefVO,
   GradeReviewReasonTypeCode,
@@ -253,8 +255,6 @@ import type {
   StudentGradeReviewRequestItemVO,
 } from '@/apis/mark/grade-review'
 import type { StudentExamItemVO, StudentQuestionScoreVO } from '@/apis/mark/student-exam'
-import type { UploadFile } from 'ant-design-vue'
-import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
@@ -264,24 +264,24 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { uploadFile } from '@/apis/edu/file-management'
 import {
+  countMyPendingReviewRequests,
   GRADE_REVIEW_REASON_TYPE_LABEL,
   GRADE_REVIEW_REASON_TYPE_OPTIONS,
-  countMyPendingReviewRequests,
   listMyReviewRequests,
   REVIEW_REQUEST_STATUS_LABEL,
   REVIEW_REQUEST_STATUS_TONE,
   submitReviewRequest,
 } from '@/apis/mark/grade-review'
 import { canSubmitReview, FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE, getMyScoreDetail, listMyExams, STUDENT_REVIEW_WINDOW_STATUS_LABEL, STUDENT_REVIEW_WINDOW_STATUS_TONE } from '@/apis/mark/student-exam'
-import { uploadFile } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'

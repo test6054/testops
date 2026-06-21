@@ -40,7 +40,7 @@ import {
   closeTrialSession,
   pauseFormalSession,
 } from '@/apis/mark/marking-organization'
-import { showUserError, getUserErrorMessage } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 
 export type LifecycleAction = 'pauseFormal' | 'closeFormal' | 'closeTrial'
 

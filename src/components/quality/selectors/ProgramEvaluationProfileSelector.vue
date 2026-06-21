@@ -6,17 +6,17 @@
 -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { ProgramEvaluationProfileVO } from '@/apis/quality/program-evaluation-profile'
 import type {
   AccreditationType,
   EvaluationMethod,
-  ProgramEvaluationProfileVO,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import { onMounted, ref, watch } from 'vue'
+import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
 import {
   ACCREDITATION_TYPE_LABEL,
   EVALUATION_METHOD_LABEL,
-  programEvaluationProfileApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { requireAllPages } from './page-contract'

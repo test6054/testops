@@ -192,8 +192,10 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   MarkingProgressVO,
   ReviewQuestionProgressItemVO,
+} from '@/apis/mark/exam-progress'
+import type {
   ReviewTaskStatusCode,
-} from '@/apis/mark/exam'
+} from '@/apis/mark/exam-review-task'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
@@ -202,9 +204,11 @@ import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import { computed, onActivated, ref, watch } from 'vue'
 import {
   getMarkingProgress,
+} from '@/apis/mark/exam-progress'
+import {
   REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
   REVIEW_TASK_STATUS_TONE as STATUS_TONE,
-} from '@/apis/mark/exam'
+} from '@/apis/mark/exam-review-task'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkDistributionSection from '@/components/chart/MarkDistributionSection.vue'
@@ -213,9 +217,9 @@ import MarkHeatmapSection from '@/components/chart/MarkHeatmapSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'

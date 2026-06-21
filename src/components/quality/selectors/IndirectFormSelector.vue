@@ -4,13 +4,14 @@
 -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { IndirectEvaluationFormVO } from '@/apis/quality/indirect-form'
 import type {
   AchievementTargetType,
-  IndirectEvaluationFormVO,
   IndirectFormType,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import { computed, onMounted, ref, watch } from 'vue'
-import { INDIRECT_FORM_TYPE_LABEL, indirectFormApi } from '@/apis/quality'
+import { indirectFormApi } from '@/apis/quality/indirect-form'
+import { INDIRECT_FORM_TYPE_LABEL } from '@/apis/quality/types'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { requireAllPages } from './page-contract'

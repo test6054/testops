@@ -380,6 +380,7 @@ import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
   cancelSyncTask,
+  CREATABLE_SYNC_TYPE_LABEL,
   createSyncTask,
   executeGradePassback,
   EXTERNAL_SYSTEM_TYPE_LABEL,
@@ -395,7 +396,6 @@ import {
   SYNC_TASK_STATUS_COLOR,
   SYNC_TASK_STATUS_LABEL,
   SYNC_TYPE_LABEL,
-  CREATABLE_SYNC_TYPE_LABEL,
 } from '@/apis/mark/teaching-affairs-sync'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'

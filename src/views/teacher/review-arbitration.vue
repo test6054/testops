@@ -175,7 +175,7 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ReviewTaskItemVO } from '@/apis/mark/exam'
+import type { ReviewTaskItemVO } from '@/apis/mark/exam-review-task'
 import type { MarkingTaskVO } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'

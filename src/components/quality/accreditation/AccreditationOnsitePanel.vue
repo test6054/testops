@@ -7,14 +7,14 @@ import type {
   OnsiteChecklistItemVO,
   OnsiteVisitPlanSaveRequest,
   OnsiteVisitPlanVO,
-} from '@/apis/quality'
+} from '@/apis/quality/accreditation'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   accreditationApi,
   ONSITE_CHECKLIST_CATEGORY_LABEL,
   ONSITE_CHECKLIST_STATUS_LABEL,
-} from '@/apis/quality'
+} from '@/apis/quality/accreditation'
 import { ArchiveSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

@@ -1,70 +1,24 @@
 import type {
-  AchievementAuditStatus,
   AchievementStatus,
   AchievementTargetType,
   AggregationFunction,
   EvaluationMethod,
 } from './types'
 /**
- * 达成度计算 + 结果查询 / 审核 API - 对接 edu-quality
+ * 达成度计算 API - 对齐 AchievementCalculationController
  *
  * 后端路径：
  * - /api/quality/achievement            确定性计算入口（6 个 compute-* 子端点）
- * - /api/quality/achievement-results    结果查询与审核（page/detail/update-audit-status）
  *
- * 字段严格对齐 AchievementResultVO / AchievementResultQueryRequest / AchievementResultAuditRequest
- * 以及各 compute-* 入参 / 出参 VO。
+ * 结果查询 / 审核 API 位于 ./achievement-result。
  *
  * 审核责任链、明细、人工复核的相关查询 / 处理 API 分别位于：
  * - ./achievement-audit       (achievementAuditApi / achievementManualReviewApi)
  * - ./achievement-detail      (achievementDetailApi)
  */
-import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 const CALC = '/api/quality/achievement'
-const RESULT = '/api/quality/achievement-results'
-
-/** 达成度计算结果 VO - 严格对齐后端 AchievementResultVO */
-export interface AchievementResultVO {
-  id: string
-  targetType: AchievementTargetType
-  targetId: string
-  targetLabel: string
-  programId?: string
-  programName: string
-  trainingPlanId?: string
-  trainingPlanCode: string
-  trainingPlanName: string
-  qualityCourseId?: string
-  qualityCourseCode: string
-  qualityCourseName: string
-  schoolYear: string
-  semester: string
-  gradeLevel?: string
-  classId?: string
-  className: string
-  teacherUserId?: string
-  sampleTotal: number
-  sampleValid: number
-  directValue?: number
-  indirectValue?: number
-  finalValue?: number
-  thresholdValue?: number
-  achievementStatus: AchievementStatus
-  aggregation?: AggregationFunction
-  scoreBatchIds: string[]
-  auditStatus: AchievementAuditStatus
-  auditRemark?: string
-  staleFlag?: boolean
-  staleReason?: string
-  staleAt?: string
-  staleSourceType?: string
-  staleSourceId?: string
-  calculatedAt?: string
-  createTime?: string
-  updateTime?: string
-}
 
 // ─── 计算入口请求 ──────────────────────────────────────────────────
 
@@ -220,29 +174,6 @@ export interface ComplexEngineeringGoalAchievementSummaryVO {
   indicatorCount?: number
 }
 
-// ─── 结果维护请求 ─────────────────────────────────────────────────
-
-/** 结果分页查询 - 严格对齐 AchievementResultQueryRequest */
-export interface AchievementResultQueryRequest extends QueryDto {
-  targetType?: AchievementTargetType
-  targetId?: string
-  programId?: string
-  trainingPlanId?: string
-  qualityCourseId?: string
-  classId?: string
-  schoolYear?: string
-  semester?: string
-  auditStatus?: AchievementAuditStatus
-  achievementStatus?: AchievementStatus
-}
-
-/** 审核流转请求 - 严格对齐 AchievementResultAuditRequest */
-export interface AchievementResultAuditRequest {
-  id: string
-  auditStatus: AchievementAuditStatus
-  auditRemark?: string
-}
-
 /** 计算就绪查询 - 严格对齐 AchievementComputeReadinessRequest */
 export interface AchievementComputeReadinessRequest {
   programId?: string
@@ -283,11 +214,4 @@ export const achievementApi = {
       data,
     ),
 
-  // ─── 结果查询与审核 ───────────────────────────────────
-  page: (data: AchievementResultQueryRequest) =>
-    http.post<PageResult<AchievementResultVO>>(`${RESULT}/page`, data),
-  detail: (id: string) => http.post<AchievementResultVO>(`${RESULT}/detail`, { id }),
-  /** 审核状态流转：DRAFT ↔ CALCULATED ↔ SUBMITTED ↔ CONFIRMED / RETURNED / ARCHIVED */
-  updateAuditStatus: (data: AchievementResultAuditRequest) =>
-    http.post<void>(`${RESULT}/update-audit-status`, data),
 }

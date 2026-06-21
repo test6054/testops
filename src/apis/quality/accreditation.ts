@@ -3,7 +3,6 @@ import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/accreditation'
-const FACULTY_PROFILE_BASE = '/api/quality/faculty-profiles'
 
 export type AccreditationCyclePhase
   = | 'SELF_EVALUATION'
@@ -170,56 +169,6 @@ export interface ProgramSupportProfileVO {
   qualityAssuranceRemark?: string
   profileStatus?: string
   confirmedAt?: string
-}
-
-export interface FacultyProfileQueryRequest extends QueryDto {
-  trainingPlanId: string
-  keyword?: string
-  department?: string
-  title?: string
-}
-
-export interface FacultyProfileSaveRequest {
-  id?: string
-  trainingPlanId: string
-  teacherUserId: string
-  teacherName: string
-  teacherNo: string
-  title: string
-  department: string
-  hasTeachingEthicsTraining: boolean
-  ethicsTrainingDate: string
-  teachingEvaluation: string
-  researchDirection?: string
-  courses: string
-  engineeringPracticeExperience: string
-  engineeringAbilityEvidence: string
-  teacherDevelopmentRecord: string
-  teachingReformContribution: string
-  graduationDesignGuidance: string
-}
-
-export interface FacultyProfileVO {
-  id: string
-  trainingPlanId: string
-  teacherUserId: string
-  teacherName: string
-  teacherNo: string
-  title: string
-  department: string
-  hasTeachingEthicsTraining: boolean
-  ethicsTrainingDate: string
-  teachingEvaluation: string
-  researchDirection?: string
-  courses: string
-  engineeringPracticeExperience: string
-  engineeringAbilityEvidence: string
-  teacherDevelopmentRecord: string
-  teachingReformContribution: string
-  graduationDesignGuidance: string
-  profileStatus: 'ACTIVE'
-  createTime?: string
-  updateTime?: string
 }
 
 export interface OnsiteVisitPlanSaveRequest {
@@ -593,16 +542,6 @@ export const accreditationApi = {
     http.post<string>(`${BASE}/support-profiles/save`, data),
   confirmSupportProfile: (id: string) =>
     http.post<void>(`${BASE}/support-profiles/confirm`, { id }),
-  facultyProfilePage: (data: FacultyProfileQueryRequest) =>
-    http.post<PageResult<FacultyProfileVO>>(`${FACULTY_PROFILE_BASE}/page`, data),
-  facultyProfileDetail: (id: string) =>
-    http.post<FacultyProfileVO>(`${FACULTY_PROFILE_BASE}/detail`, { id }),
-  facultyProfileCreate: (data: FacultyProfileSaveRequest) =>
-    http.post<string>(`${FACULTY_PROFILE_BASE}/create`, data),
-  facultyProfileUpdate: (data: FacultyProfileSaveRequest) =>
-    http.post<void>(`${FACULTY_PROFILE_BASE}/update`, data),
-  facultyProfileDelete: (id: string) =>
-    http.post<void>(`${FACULTY_PROFILE_BASE}/delete`, { id }),
   evidencePage: (data: AccreditationEvidenceQueryRequest) =>
     http.post<PageResult<AccreditationEvidenceVO>>(`${BASE}/evidences/page`, data),
   evidenceCreate: (data: AccreditationEvidenceSaveRequest) =>

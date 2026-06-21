@@ -68,7 +68,7 @@
 
 <script setup lang="ts">
 import type { AxiosResponseHeaders, RawAxiosResponseHeaders } from 'axios'
-import type { ImportDiagnostic, ImportResult } from '@/apis/quality'
+import type { ImportDiagnostic, ImportResult } from '@/apis/quality/importing'
 import type { BlobDownloadResponse } from '@/config/axios/types'
 import { InboxOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'

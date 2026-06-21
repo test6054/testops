@@ -24,11 +24,11 @@
 
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue'
+import QualityLayoutContext from '@/components/quality/QualityLayoutContext.vue'
 import { useDevice } from '@/hooks'
 import { getToken } from '@/utils/auth'
 import NoticePopup from '@/views/user/message/components/NoticePopup.vue'
 import AiTaskRunningBar from './components/AiTaskRunningBar.vue'
-import QualityLayoutContext from '@/components/quality/QualityLayoutContext.vue'
 
 import Asider from './components/Asider/index.vue'
 import Header from './components/Header/index.vue'

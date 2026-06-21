@@ -396,7 +396,7 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
+import type { ExamQuestionTemplateVO } from '@/apis/mark/exam-template'
 import type {
   PaperMasterIdentityAreaRequest,
   PaperMasterIdentityAreaTypeCode,
@@ -414,7 +414,8 @@ import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getFileArrayBuffer, uploadFile } from '@/apis/edu/file-management'
-import { getExamDetail, getExamTemplate } from '@/apis/mark/exam'
+import { getExamDetail } from '@/apis/mark/exam'
+import { getExamTemplate } from '@/apis/mark/exam-template'
 import {
   generateStandardPaper,
   getPaperMaster,

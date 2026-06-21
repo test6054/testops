@@ -6,13 +6,14 @@ import type {
   ScaleConversionRuleQueryRequest,
   ScaleConversionRuleSaveRequest,
   ScaleConversionRuleVO,
-  ScaleType,
-} from '@/apis/quality'
+} from '@/apis/quality/scale-conversion-rule'
+import type { ScaleType } from '@/apis/quality/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
+import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
+import { SCALE_TYPE_LABEL } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'

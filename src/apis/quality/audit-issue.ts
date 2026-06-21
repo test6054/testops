@@ -1,20 +1,14 @@
-import type { AuditIssueStatus, AuditRectificationStatus, AuditSupervisionType } from './types'
+import type { AuditIssueStatus } from './types'
 /**
- * 审核评估问题 + 整改任务 + 督导复查 API
+ * 审核评估问题 API - 对接 AuditIssueController
  *
- * 后端路径：
- * - /api/quality/audit-evaluation/issues            审核评估问题清单 + 状态流转
- * - /api/quality/audit-evaluation/rectifications    整改任务台账 + 推进 + 复核 + 闭环
- * - /api/quality/audit-evaluation/supervisions      督导复查 / 现场检查记录
- *
- * 设计文档 §7.10：认证 / 审核 / 督导链路，问题从 OPEN → IN_RECTIFICATION → RECTIFIED → VERIFIED → CLOSED。
+ * 后端路径：/api/quality/audit-evaluation/issues
+ * 设计文档 §7.10：问题从 OPEN -> IN_RECTIFICATION -> RECTIFIED -> VERIFIED -> CLOSED。
  */
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
-const ISSUE = '/api/quality/audit-evaluation/issues'
-const RECT = '/api/quality/audit-evaluation/rectifications'
-const SUPER = '/api/quality/audit-evaluation/supervisions'
+const BASE = '/api/quality/audit-evaluation/issues'
 
 /** 审核评估问题来源 - 对应后端 AuditIssueSourceEnum */
 export type AuditIssueSource
@@ -25,14 +19,6 @@ export type AuditIssueSource
 
 /** 审核评估问题严重度 - 对应后端 AuditIssueSeverityEnum */
 export type AuditIssueSeverity = 'MINOR' | 'MAJOR' | 'CRITICAL'
-
-/** 督导复查范围 - 对应后端 AuditSupervisionScopeEnum */
-export type AuditSupervisionScope = 'COURSE' | 'PROGRAM' | 'TRAINING_PLAN' | 'COMPREHENSIVE'
-
-/** 督导复查结论 - 对应后端 AuditSupervisionConclusionEnum */
-export type AuditSupervisionConclusion = 'PASS' | 'NEEDS_IMPROVEMENT' | 'FAIL'
-
-/* ========== 审核评估问题 ========== */
 
 export interface AuditIssueVO {
   id: string
@@ -92,177 +78,11 @@ export interface AuditIssueQueryRequest extends QueryDto {
 
 export const auditIssueApi = {
   page: (data: AuditIssueQueryRequest) =>
-    http.post<PageResult<AuditIssueVO>>(`${ISSUE}/page`, data),
-  detail: (id: string) => http.post<AuditIssueVO>(`${ISSUE}/detail`, { id }),
-  create: (data: AuditIssueSaveRequest) => http.post<string>(`${ISSUE}/create`, data),
-  update: (data: AuditIssueSaveRequest) => http.post<void>(`${ISSUE}/update`, data),
-  delete: (id: string) => http.post<void>(`${ISSUE}/delete`, { id }),
+    http.post<PageResult<AuditIssueVO>>(`${BASE}/page`, data),
+  detail: (id: string) => http.post<AuditIssueVO>(`${BASE}/detail`, { id }),
+  create: (data: AuditIssueSaveRequest) => http.post<string>(`${BASE}/create`, data),
+  update: (data: AuditIssueSaveRequest) => http.post<void>(`${BASE}/update`, data),
+  delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
   transitStatus: (id: string, targetStatus: AuditIssueStatus) =>
-    http.post<void>(`${ISSUE}/transit-status`, { id, targetStatus }),
-}
-
-/* ========== 审核评估整改任务 ========== */
-
-export interface AuditRectificationVO {
-  id: string
-  tenantId?: string
-  auditIssueId: string
-  auditIssueCode: string
-  auditIssueTitle: string
-  auditIssueSeverity: AuditIssueSeverity
-  auditIssueStatus: AuditIssueStatus
-  rectificationCode: string
-  rectificationTitle: string
-  rectificationAction: string
-  ownerUserId: string
-  /** 责任人用户名称，ownerUserId 非空时后端必填 */
-  ownerUserName: string
-  ownerRole?: string
-  /** yyyy-MM-dd */
-  dueDate: string
-  status: AuditRectificationStatus
-  progressRemark?: string
-  evidenceItems?: QualityAuditEvidenceItem[]
-  submittedAt?: string
-  verifiedAt?: string
-  verifiedBy?: string
-  verifyDecision?: string
-  verifyRemark?: string
-  closedAt?: string
-  createUser?: string
-  updateUser?: string
-  createTime?: string
-  updateTime?: string
-}
-
-export interface AuditRectificationSaveRequest {
-  id?: string
-  auditIssueId: string
-  rectificationCode: string
-  rectificationTitle: string
-  rectificationAction: string
-  ownerUserId: string
-  ownerRole?: string
-  dueDate: string
-}
-
-export interface AuditRectificationQueryRequest extends QueryDto {
-  auditIssueId?: string
-  ownerUserId?: string
-  status?: AuditRectificationStatus
-  keyword?: string
-}
-
-export interface AuditRectificationProgressRequest {
-  id: string
-  targetStatus: 'IN_PROGRESS' | 'SUBMITTED'
-  progressRemark?: string
-  evidenceItems?: QualityAuditEvidenceItem[]
-}
-
-export interface AuditRectificationVerifyRequest {
-  id: string
-  decision: 'APPROVED' | 'REJECTED'
-  remark?: string
-}
-
-export const auditRectificationApi = {
-  page: (data: AuditRectificationQueryRequest) =>
-    http.post<PageResult<AuditRectificationVO>>(`${RECT}/page`, data),
-  detail: (id: string) => http.post<AuditRectificationVO>(`${RECT}/detail`, { id }),
-  create: (data: AuditRectificationSaveRequest) => http.post<string>(`${RECT}/create`, data),
-  update: (data: AuditRectificationSaveRequest) => http.post<void>(`${RECT}/update`, data),
-  delete: (id: string) => http.post<void>(`${RECT}/delete`, { id }),
-  /** PLANNED→IN_PROGRESS / IN_PROGRESS→SUBMITTED / RETURNED→IN_PROGRESS */
-  updateProgress: (data: AuditRectificationProgressRequest) =>
-    http.post<void>(`${RECT}/update-progress`, data),
-  /** 复核：APPROVED → VERIFIED / REJECTED → RETURNED */
-  verify: (data: AuditRectificationVerifyRequest) => http.post<void>(`${RECT}/verify`, data),
-  /** 闭环：VERIFIED → CLOSED */
-  close: (id: string) => http.post<void>(`${RECT}/close`, { id }),
-}
-
-/* ========== 督导复查 / 现场检查记录 ========== */
-
-export interface AuditSupervisionVO {
-  id: string
-  tenantId?: string
-  auditIssueId?: string
-  rectificationId?: string
-  programId?: string
-  trainingPlanId?: string
-  qualityCourseId?: string
-  supervisionCode: string
-  supervisionTitle: string
-  supervisionType: AuditSupervisionType
-  supervisionScope?: AuditSupervisionScope
-  supervisorUserId?: string
-  supervisedAt?: string
-  summary?: string
-  findingItems?: AuditSupervisionFindingItem[]
-  conclusion?: AuditSupervisionConclusion
-  archiveId?: string
-  evidenceItems?: QualityAuditEvidenceItem[]
-  createUser?: string
-  updateUser?: string
-  createTime?: string
-  updateTime?: string
-}
-
-export interface AuditSupervisionSaveRequest {
-  id?: string
-  auditIssueId?: string
-  rectificationId?: string
-  programId?: string
-  trainingPlanId?: string
-  qualityCourseId?: string
-  supervisionCode: string
-  supervisionTitle: string
-  supervisionType: AuditSupervisionType
-  supervisionScope?: AuditSupervisionScope
-  supervisorUserId?: string
-  supervisedAt?: string
-  summary?: string
-  findingItems?: AuditSupervisionFindingItem[]
-  conclusion?: AuditSupervisionConclusion
-  archiveId?: string
-  evidenceItems?: QualityAuditEvidenceItem[]
-}
-
-export interface QualityAuditEvidenceItem {
-  evidenceType?: string
-  evidenceTitle?: string
-  evidenceCode?: string
-  archiveId?: string
-  fileNodeId?: string
-  reportId?: string
-  remark?: string
-}
-
-export interface AuditSupervisionFindingItem {
-  findingType?: string
-  findingTitle?: string
-  findingDescription?: string
-  severity?: string
-  responsibleUnit?: string
-  improvementSuggestion?: string
-}
-
-export interface AuditSupervisionQueryRequest extends QueryDto {
-  auditIssueId?: string
-  programId?: string
-  trainingPlanId?: string
-  supervisionType?: AuditSupervisionType
-  conclusion?: string
-  supervisorUserId?: string
-  keyword?: string
-}
-
-export const auditSupervisionApi = {
-  page: (data: AuditSupervisionQueryRequest) =>
-    http.post<PageResult<AuditSupervisionVO>>(`${SUPER}/page`, data),
-  detail: (id: string) => http.post<AuditSupervisionVO>(`${SUPER}/detail`, { id }),
-  create: (data: AuditSupervisionSaveRequest) => http.post<string>(`${SUPER}/create`, data),
-  update: (data: AuditSupervisionSaveRequest) => http.post<void>(`${SUPER}/update`, data),
-  delete: (id: string) => http.post<void>(`${SUPER}/delete`, { id }),
+    http.post<void>(`${BASE}/transit-status`, { id, targetStatus }),
 }

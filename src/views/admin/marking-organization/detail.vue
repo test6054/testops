@@ -551,6 +551,7 @@ import type { UserListItemDto } from '@/apis/edu/admin-user'
 import type { ExamDetailVO } from '@/apis/mark/exam'
 import type {
   AllocationPolicySaveRequest,
+  AllocationPolicyVO,
   AllocationUnitCode,
   AnonymityModeCode,
   AnonymousTokenPolicyCode,
@@ -562,8 +563,7 @@ import type {
   QuestionGroupSaveRequest,
   QuestionMarkingGroupStatusCode,
   QuestionMarkingGroupVO,
-  AllocationPolicyVO,
-  RecyclePolicyVO,
+  RecyclePolicySaveRequest, RecyclePolicyVO
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
@@ -573,40 +573,16 @@ import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { adminGetUserPage } from '@/apis/edu/admin-user'
-import { getExamDetail, getExamTemplate } from '@/apis/mark/exam'
+import { getExamDetail } from '@/apis/mark/exam'
+import { getExamTemplate } from '@/apis/mark/exam-template'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
-import {
-  ALLOCATION_UNIT_LABEL,
-  ANONYMITY_MODE_LABEL,
-  ANONYMOUS_TOKEN_POLICY_LABEL,
-  closeQuestionGroup,
-  deleteOrganization,
-  deleteQuestionGroup,
-  getOrganizationById,
-  isMarkingOrgNotCreatedError,
-  listMarkingPolicies,
-  validateMarkingPolicyListContract,
-  MARKING_ALLOCATION_MODE_LABEL,
-  MARKING_ORGANIZATION_STATUS_LABEL,
-  MARKING_ORGANIZATION_STATUS_TONE,
-  MARKING_REASSIGN_MODE_LABEL,
-  QUESTION_GROUP_STATUS_LABEL,
-  QUESTION_GROUP_STATUS_TONE,
-  saveAllocationPolicy,
-  saveQuestionGroup,
-  saveRecyclePolicy,
-  type RecyclePolicySaveRequest,
-  updateOrganization,
-  updateOrganizationStatus,
-  validateMarkingOrganizationContract,
-} from '@/apis/mark/marking-organization'
+import { ALLOCATION_UNIT_LABEL, ANONYMITY_MODE_LABEL, ANONYMOUS_TOKEN_POLICY_LABEL, closeQuestionGroup, deleteOrganization, deleteQuestionGroup, getOrganizationById, isMarkingOrgNotCreatedError, listMarkingPolicies, MARKING_ALLOCATION_MODE_LABEL, MARKING_ORGANIZATION_STATUS_LABEL, MARKING_ORGANIZATION_STATUS_TONE, MARKING_REASSIGN_MODE_LABEL, QUESTION_GROUP_STATUS_LABEL, QUESTION_GROUP_STATUS_TONE, saveAllocationPolicy, saveQuestionGroup, saveRecyclePolicy, updateOrganization, updateOrganizationStatus, validateMarkingOrganizationContract, validateMarkingPolicyListContract } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import RecycledTaskReassignPanel from '@/views/admin/marking-organization/components/RecycledTaskReassignPanel.vue'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
@@ -614,6 +590,7 @@ import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import RecycledTaskReassignPanel from '@/views/admin/marking-organization/components/RecycledTaskReassignPanel.vue'
 
 defineOptions({ name: 'AdminMarkingOrganizationDetail' })
 

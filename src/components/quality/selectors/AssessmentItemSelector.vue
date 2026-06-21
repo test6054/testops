@@ -5,9 +5,9 @@
 -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { AssessmentItemVO } from '@/apis/quality'
+import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
 import { computed, onMounted, ref, watch } from 'vue'
-import { assessmentItemApi } from '@/apis/quality'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'

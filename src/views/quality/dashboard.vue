@@ -1,5 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type {
+  AchievementResultVO,
+} from '@/apis/quality/achievement-result'
+import type {
+  AiTaskVO,
+} from '@/apis/quality/ai-task'
+import type {
+  ImprovementTaskVO,
+} from '@/apis/quality/improvement-task'
 /**
  * 质量评价 - 年度工作台
  *
@@ -7,38 +16,37 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  */
 import type {
   AchievementAuditStatus,
-  AchievementResultVO,
   AchievementStatus,
   AchievementTargetType,
   AiTaskStatus,
   AiTaskType,
-  AiTaskVO,
   ImprovementTaskStatus,
-  ImprovementTaskVO,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
 import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
 import { storeToRefs } from 'pinia'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { accreditationApi } from '@/apis/quality/accreditation'
+import { achievementResultApi } from '@/apis/quality/achievement-result'
+import { aiTaskApi } from '@/apis/quality/ai-task'
 import {
-  accreditationApi,
+  improvementTaskApi,
+} from '@/apis/quality/improvement-task'
+import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
   ACHIEVEMENT_STATUS_COLOR,
   ACHIEVEMENT_STATUS_LABEL,
   ACHIEVEMENT_TARGET_TYPE_LABEL,
-  achievementApi,
   AI_TASK_STATUS_COLOR,
   AI_TASK_STATUS_LABEL,
   AI_TASK_TYPE_LABEL,
-  aiTaskApi,
   CONFIRMATION_STATUS_LABEL,
   IMPROVEMENT_TASK_STATUS_COLOR,
   IMPROVEMENT_TASK_STATUS_LABEL,
-  improvementTaskApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import QualityWorkbenchCharts from '@/components/quality/QualityWorkbenchCharts.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -48,8 +56,8 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
 import { useQualityScopeReload } from '@/composables/useQualityPageScope'
-import { useQualityTaskStore } from '@/stores/modules/qualityTask'
 import { useQualityStore } from '@/stores/modules/quality'
+import { useQualityTaskStore } from '@/stores/modules/qualityTask'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { buildStatusChartGroup } from '@/utils/quality-workbench-charts'
@@ -289,7 +297,7 @@ async function loadAchievement() {
   if (!trainingPlanId.value) return
   loading.achievement = true
   try {
-    const page = await achievementApi.page({
+    const page = await achievementResultApi.page({
       pageNum: 1,
       pageSize: 5,
       trainingPlanId: trainingPlanId.value,
@@ -298,31 +306,31 @@ async function loadAchievement() {
     achievementCounts.total = readPageTotal(page)
 
     const [calculated, submitted, confirmed, archived, notAchieved] = await Promise.all([
-      achievementApi.page({
+      achievementResultApi.page({
         pageNum: 1,
         pageSize: 1,
         trainingPlanId: trainingPlanId.value,
         auditStatus: 'CALCULATED',
       }),
-      achievementApi.page({
+      achievementResultApi.page({
         pageNum: 1,
         pageSize: 1,
         trainingPlanId: trainingPlanId.value,
         auditStatus: 'SUBMITTED',
       }),
-      achievementApi.page({
+      achievementResultApi.page({
         pageNum: 1,
         pageSize: 1,
         trainingPlanId: trainingPlanId.value,
         auditStatus: 'CONFIRMED',
       }),
-      achievementApi.page({
+      achievementResultApi.page({
         pageNum: 1,
         pageSize: 1,
         trainingPlanId: trainingPlanId.value,
         auditStatus: 'ARCHIVED',
       }),
-      achievementApi.page({
+      achievementResultApi.page({
         pageNum: 1,
         pageSize: 1,
         trainingPlanId: trainingPlanId.value,

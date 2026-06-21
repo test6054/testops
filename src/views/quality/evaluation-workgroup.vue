@@ -11,10 +11,10 @@ import type {
   EvaluationWorkgroupQueryRequest,
   EvaluationWorkgroupSaveRequest,
   EvaluationWorkgroupVO,
-  WorkgroupLevel,
   WorkgroupMember,
   WorkgroupMemberRole,
-} from '@/apis/quality'
+} from '@/apis/quality/evaluation-workgroup'
+import type { WorkgroupLevel } from '@/apis/quality/types'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -22,10 +22,12 @@ import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import {
   evaluationWorkgroupApi,
+  WORKGROUP_MEMBER_ROLE_LABEL,
+} from '@/apis/quality/evaluation-workgroup'
+import {
   WORKGROUP_LEVEL_LABEL,
   WORKGROUP_LEVEL_OPTIONS,
-  WORKGROUP_MEMBER_ROLE_LABEL,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import { ProgramSelector, TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'

@@ -1,4 +1,4 @@
-import type { PaperInstanceDisplayVO } from '@/apis/mark/exam'
+import type { PaperInstanceDisplayVO } from '@/apis/mark/exam-score'
 import type {
   MarkingOrganizationStatusCode,
   QuestionMarkingGroupStatusCode,

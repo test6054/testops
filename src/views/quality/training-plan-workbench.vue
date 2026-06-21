@@ -29,41 +29,51 @@ import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
  *   - /api/quality/requirement-standard-mappings    观测点-标准条款映射
  *   - /api/quality/accreditation-standards          认证标准条目
  */
+import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
 import type {
-  AccreditationStandardVO,
-  CivicDimension,
-  ConfirmationStatus,
   GraduationRequirementSaveRequest,
   GraduationRequirementVO,
+} from '@/apis/quality/graduation-requirement'
+import type {
   RequirementIndicatorSaveRequest,
   RequirementIndicatorVO,
+} from '@/apis/quality/requirement-indicator'
+import type {
   RequirementStandardMappingSaveRequest,
   RequirementStandardMappingVO,
-  TrainingObjectiveRequirementSaveRequest,
-  TrainingObjectiveRequirementVO,
+} from '@/apis/quality/requirement-standard-mapping'
+import type {
   TrainingObjectiveSaveRequest,
   TrainingObjectiveVO,
-  TrainingPlanSaveRequest,
-  TrainingPlanVO,
-} from '@/apis/quality'
+} from '@/apis/quality/training-objective'
+import type {
+  TrainingObjectiveRequirementSaveRequest,
+  TrainingObjectiveRequirementVO,
+} from '@/apis/quality/training-objective-requirement'
+import type { TrainingPlanSaveRequest, TrainingPlanVO } from '@/apis/quality/training-plan'
+import type { CivicDimension, ConfirmationStatus } from '@/apis/quality/types'
 import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
+import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import {
-  accreditationStandardApi,
+  requirementIndicatorApi,
+} from '@/apis/quality/requirement-indicator'
+import { requirementStandardMappingApi } from '@/apis/quality/requirement-standard-mapping'
+import {
+  trainingObjectiveApi,
+} from '@/apis/quality/training-objective'
+import { trainingObjectiveRequirementApi } from '@/apis/quality/training-objective-requirement'
+import { trainingPlanApi } from '@/apis/quality/training-plan'
+import {
   AGGREGATION_FUNCTION_LABEL,
   CIVIC_DIMENSION_LABEL,
   CONFIRMATION_STATUS_LABEL,
-  graduationRequirementApi,
-  requirementIndicatorApi,
-  requirementStandardMappingApi,
-  trainingObjectiveApi,
-  trainingObjectiveRequirementApi,
-  trainingPlanApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import ProgramEvaluationProfileSelector from '@/components/quality/selectors/ProgramEvaluationProfileSelector.vue'
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
@@ -74,7 +84,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { ContextBar, MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'

@@ -2,14 +2,19 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamQuestionTemplateVO, ExamScoreSummaryItemVO } from '@/apis/mark/exam'
+import type { ExamScoreSummaryItemVO } from '@/apis/mark/exam-score'
+import type { ExamQuestionTemplateVO } from '@/apis/mark/exam-template'
 import type {
   MarkOcrConfigVO,
+} from '@/apis/mark/ocr-config'
+import type {
+  PaddleOcrInstanceVO,
+} from '@/apis/mark/ocr-paddle-instance'
+import type { MarkOcrRecognizeVO } from '@/apis/mark/ocr-recognition'
+import type {
   MarkOcrHealthStatusCode,
   MarkOcrProviderTypeCode,
-  MarkOcrRecognizeVO,
-  PaddleOcrInstanceVO,
-} from '@/apis/mark/ocr'
+} from '@/apis/mark/ocr-types'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
 import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
 import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
@@ -18,21 +23,31 @@ import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   BINDING_STATUS_LABEL,
+} from '@/apis/mark/exam-binding'
+import {
   FINAL_SCORE_STATUS_LABEL,
+  pageExamScoreSummary,
+} from '@/apis/mark/exam-score'
+import {
   getExamTemplate,
   isPaperTemplateNotConfiguredError,
-  pageExamScoreSummary,
-} from '@/apis/mark/exam'
+} from '@/apis/mark/exam-template'
 import {
   checkMarkOcrHealth,
   getCurrentMarkOcrConfig,
+} from '@/apis/mark/ocr-config'
+import {
   listPaddleOcrInstances,
+} from '@/apis/mark/ocr-paddle-instance'
+import {
+  recognizeMarkOcr,
+} from '@/apis/mark/ocr-recognition'
+import {
   MARK_OCR_HEALTH_STATUS_COLOR,
   MARK_OCR_HEALTH_STATUS_LABEL,
   MARK_OCR_PAPER_CUT_CAPABILITY,
   MARK_OCR_PROVIDER_LABEL,
-  recognizeMarkOcr,
-} from '@/apis/mark/ocr'
+} from '@/apis/mark/ocr-types'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'

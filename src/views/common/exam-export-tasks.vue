@@ -37,7 +37,7 @@
             variant="outline"
             :disabled="!selectedExamId"
             :loading="loading"
-            @click="loadTasks"
+            @click="handleRefreshTasks"
           >
             <template #icon><ReloadOutlined /></template>
             刷新
@@ -61,11 +61,7 @@
         @reset="handleTaskFilterReset"
       />
 
-      <UiErrorRetryPanel
-        v-if="tasksLoadError"
-        :error="tasksLoadError"
-        @retry="loadTasks"
-      />
+      <UiErrorRetryPanel v-if="tasksLoadError" :error="tasksLoadError" @retry="loadTasks" />
 
       <UiDataTable
         v-else
@@ -258,7 +254,6 @@
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
 import type {
   ExportCreateRequest,
   ExportScopeCode,
@@ -268,6 +263,7 @@ import type {
   ExportTaskVO,
   ExportTypeCode,
 } from '@/apis/mark/exam-export'
+import type { ExamQuestionTemplateVO } from '@/apis/mark/exam-template'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -276,7 +272,6 @@ import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
-import { getExamTemplate } from '@/apis/mark/exam'
 import {
   createExportTask,
   EXPORT_SCOPE_LABEL,
@@ -288,6 +283,7 @@ import {
   getExportTask,
   listExportTasks,
 } from '@/apis/mark/exam-export'
+import { getExamTemplate } from '@/apis/mark/exam-template'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -298,8 +294,8 @@ import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
-import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -314,7 +310,6 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
-  selectedExamLabel,
   onExamChange,
   onExamSearch,
   searching,
@@ -523,6 +518,10 @@ async function loadTasks(options?: { quiet?: boolean }): Promise<void> {
       loading.value = false
     }
   }
+}
+
+function handleRefreshTasks(): void {
+  void loadTasks()
 }
 
 let exportPollTimer: ReturnType<typeof setInterval> | null = null
@@ -747,18 +746,22 @@ async function handleDownload(record: ExportTaskVO): Promise<void> {
   }
 }
 
-watch(selectedExamId, (value) => {
-  if (value) {
-    taskPagination.pageNum = 1
-    void loadTasks()
-  } else {
-    tasks.value = []
-    taskPagination.total = 0
-    tasksLoadError.value = null
-    resetRoster()
-    questionOptions.value = []
-  }
-}, { immediate: true })
+watch(
+  selectedExamId,
+  (value) => {
+    if (value) {
+      taskPagination.pageNum = 1
+      void loadTasks()
+    } else {
+      tasks.value = []
+      taskPagination.total = 0
+      tasksLoadError.value = null
+      resetRoster()
+      questionOptions.value = []
+    }
+  },
+  { immediate: true },
+)
 
 watch(
   () => createForm.exportScope,

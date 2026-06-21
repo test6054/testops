@@ -96,17 +96,21 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExamGradeBatchConfirmResponse,
+} from '@/apis/mark/exam-grade'
+import type {
   GradeSourceCode,
   ReviewTaskItemVO,
-} from '@/apis/mark/exam'
+} from '@/apis/mark/exam-review-task'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   batchConfirmQuestionGrades,
+} from '@/apis/mark/exam-grade'
+import {
   listReviewTasks,
   validateReviewTaskItemContract,
-} from '@/apis/mark/exam'
+} from '@/apis/mark/exam-review-task'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -114,9 +118,9 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'

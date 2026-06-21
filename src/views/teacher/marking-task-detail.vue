@@ -90,7 +90,7 @@
       <UiErrorRetryPanel
         v-if="batchTasksLoadError && task"
         :error="batchTasksLoadError"
-        @retry="() => ensureBatchLoaded(task.examId)"
+        @retry="retryBatchLoad"
       />
 
       <GradingWorkspaceLayout v-if="task">
@@ -107,7 +107,7 @@
             <UiErrorRetryPanel
               v-else-if="questionViewError"
               :error="questionViewError"
-              @retry="() => openQuestionView()"
+              @retry="reloadQuestionView"
             />
             <a-spin v-else :spinning="questionViewLoading" tip="加载题目信息中...">
               <UiEmpty
@@ -489,9 +489,9 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type {
   ExamDetailVO,
-  PaperInstanceDisplayVO,
-  QualityDecisionCode,
 } from '@/apis/mark/exam'
+import type { QualityDecisionCode } from '@/apis/mark/exam-scan'
+import type { PaperInstanceDisplayVO } from '@/apis/mark/exam-score'
 import type {
   AllocationUnitCode,
   AnonymityModeCode,
@@ -520,11 +520,15 @@ import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
   getExamDetail,
+} from '@/apis/mark/exam'
+import {
   listAnnotations,
+  validateAnnotationContract,
+} from '@/apis/mark/exam-annotation'
+import {
   QUALITY_DECISION_LABEL,
   QUALITY_DECISION_TONE,
-  validateAnnotationContract,
-} from '@/apis/mark/exam'
+} from '@/apis/mark/exam-scan'
 import {
   ALLOCATION_UNIT_LABEL,
   ANONYMITY_MODE_LABEL,
@@ -775,6 +779,12 @@ async function ensureBatchLoaded(examId: string): Promise<void> {
   } catch (error) {
     batchTasksLoadError.value = toUserError(error, '上下题导航任务列表加载失败')
   }
+}
+
+function retryBatchLoad(): void {
+  const examId = task.value?.examId
+  if (!examId) return
+  void ensureBatchLoaded(examId)
 }
 
 // ─── 题目级批阅视图 ───────────────────────────────────

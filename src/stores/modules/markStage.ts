@@ -1,7 +1,7 @@
 /**
  * 阅卷主链阶段状态 Store：仅缓存后端 workbench-stage-snapshot，不做客户端推导。
  */
-import type { WorkbenchStageSnapshotVO } from '@/apis/mark/exam'
+import type { WorkbenchStageSnapshotVO } from '@/apis/mark/exam-progress'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'

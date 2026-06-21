@@ -138,12 +138,12 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
+import type { ExamQuestionTemplateVO } from '@/apis/mark/exam-template'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import { getExamTemplate } from '@/apis/mark/exam'
+import { getExamTemplate } from '@/apis/mark/exam-template'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import {
   generateAllQuestionAnalysis,

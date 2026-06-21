@@ -23,151 +23,151 @@
     />
 
     <template v-else>
-    <!-- 最近一场已发布详情卡 -->
-    <UiCard v-if="latestPublished" class="student-score__latest-card">
-      <template #title>
-        <CheckCircleOutlined />
-        <span>最近一场已发布成绩</span>
-        <UiBadge tone="green">已发布</UiBadge>
-      </template>
-      <template #extra>
-        <a-space>
-          <UiButton size="sm" @click="goDetail(latestPublished.examId)">查看明细</UiButton>
-          <UiButton
-            v-if="canSubmitReview(latestPublished)"
-            variant="outline"
-            size="sm"
-            @click="goAppeal(latestPublished.examId)"
-          >
-            提交复核
-          </UiButton>
-        </a-space>
-      </template>
-
-      <div class="latest-grid">
-        <div class="latest-grid__score">
-          <p class="score-label">本次得分</p>
-          <p class="score-value">
-            <strong>{{ formatPublishedScore(latestPublished) }}</strong>
-          </p>
-          <p class="score-helper">满分明细请进入详情页</p>
-        </div>
-        <div class="latest-grid__info">
-          <div class="info-row">
-            <span class="info-label">考试名称</span>
-            <span class="info-value">{{ latestPublished.examName }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">考务编号</span>
-            <span class="info-value">{{ latestPublished.examNo }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">开始时间</span>
-            <span class="info-value">{{ formatDateTime(latestPublished.examStartTime) }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">发布时间</span>
-            <span class="info-value">{{ requirePublishedTime(latestPublished) }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">复核窗口</span>
-            <span class="info-value">
-              <template v-if="latestPublished.reviewWindowStatus === 'ACTIVE'">
-                {{ formatDateTime(latestPublished.reviewWindowOpenTime) }}
-                <span class="student-score__hint"> 至 </span>
-                {{ formatDateTime(latestPublished.reviewWindowCloseTime) }}
-              </template>
-              <UiTag v-else :tone="reviewWindowStatusTone(latestPublished)" size="sm">
-                {{ reviewWindowStatusLabel(latestPublished) }}
-              </UiTag>
-            </span>
-          </div>
-        </div>
-      </div>
-    </UiCard>
-
-    <!-- D-6 个性化洞察（基于 exams 已加载数据派生，零额外 RPC） -->
-    <UiStatPanel
-      v-if="insightItems.length > 0"
-      :items="insightItems"
-      :columns="3"
-      variant="grid"
-      compact
-      class="student-score__insights"
-    />
-
-    <!-- 全部考试列表 -->
-    <UiCard class="student-score__list-card">
-      <template #title>
-        <FileOutlined />
-        <span>全部考试</span>
-      </template>
-
-      <UiDataTable
-        pagination-mode="none"
-        class="student-detail-table__data-table"
-        :columns="examColumns"
-        :data-source="exams"
-        :loading="loading"
-        :show-pagination="false"
-        flat
-        :total="exams.length"
-        row-key="examId"
-        size="middle"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'examName'">
-            <div>{{ record.examName }}</div>
-            <div v-if="record.examNo" class="student-score__exam-no">编号：{{ record.examNo }}</div>
-          </template>
-          <template v-else-if="column.key === 'examStartTime'">
-            {{ formatDateTime(record.examStartTime) }}
-          </template>
-          <template v-else-if="column.key === 'finalScoreStatus'">
-            <UiTag :tone="finalScoreStatusTone(record)" size="sm">
-              {{ finalScoreStatusLabel(record) }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'finalScore'">
-            <template v-if="record.finalScoreStatus === 'PUBLISHED'">
-              {{ formatPublishedScore(record) }}
-            </template>
-            <span v-else class="student-score__muted">—</span>
-          </template>
-          <template v-else-if="column.key === 'publishedTime'">
-            <template v-if="record.finalScoreStatus === 'PUBLISHED'">
-              {{ requirePublishedTime(record) }}
-            </template>
-            <span v-else class="student-score__muted">—</span>
-          </template>
-          <template v-else-if="column.key === 'reviewWindowStatus'">
-            <UiTag :tone="reviewWindowStatusTone(record)" size="sm">
-              {{ reviewWindowStatusLabel(record) }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiButton
-                size="sm"
-                variant="outline"
-                :disabled="record.finalScoreStatus !== 'PUBLISHED'"
-                @click="goDetail(record.examId)"
-              >
-                查看详情
-              </UiButton>
-              <UiButton
-                size="sm"
-                :variant="canSubmitReview(record) ? 'primary' : 'ghost'"
-                :disabled="!canSubmitReview(record)"
-                @click="goAppeal(record.examId)"
-              >
-                提交复核
-              </UiButton>
-            </div>
-          </template>
+      <!-- 最近一场已发布详情卡 -->
+      <UiCard v-if="latestPublished" class="student-score__latest-card">
+        <template #title>
+          <CheckCircleOutlined />
+          <span>最近一场已发布成绩</span>
+          <UiBadge tone="green">已发布</UiBadge>
         </template>
-      </UiDataTable>
-    </UiCard>
+        <template #extra>
+          <a-space>
+            <UiButton size="sm" @click="goDetail(latestPublished.examId)">查看明细</UiButton>
+            <UiButton
+              v-if="canSubmitReview(latestPublished)"
+              variant="outline"
+              size="sm"
+              @click="goAppeal(latestPublished.examId)"
+            >
+              提交复核
+            </UiButton>
+          </a-space>
+        </template>
+
+        <div class="latest-grid">
+          <div class="latest-grid__score">
+            <p class="score-label">本次得分</p>
+            <p class="score-value">
+              <strong>{{ formatPublishedScore(latestPublished) }}</strong>
+            </p>
+            <p class="score-helper">满分明细请进入详情页</p>
+          </div>
+          <div class="latest-grid__info">
+            <div class="info-row">
+              <span class="info-label">考试名称</span>
+              <span class="info-value">{{ latestPublished.examName }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">考务编号</span>
+              <span class="info-value">{{ latestPublished.examNo }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">开始时间</span>
+              <span class="info-value">{{ formatDateTime(latestPublished.examStartTime) }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">发布时间</span>
+              <span class="info-value">{{ requirePublishedTime(latestPublished) }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">复核窗口</span>
+              <span class="info-value">
+                <template v-if="latestPublished.reviewWindowStatus === 'ACTIVE'">
+                  {{ formatDateTime(latestPublished.reviewWindowOpenTime) }}
+                  <span class="student-score__hint"> 至 </span>
+                  {{ formatDateTime(latestPublished.reviewWindowCloseTime) }}
+                </template>
+                <UiTag v-else :tone="reviewWindowStatusTone(latestPublished)" size="sm">
+                  {{ reviewWindowStatusLabel(latestPublished) }}
+                </UiTag>
+              </span>
+            </div>
+          </div>
+        </div>
+      </UiCard>
+
+      <!-- D-6 个性化洞察（基于 exams 已加载数据派生，零额外 RPC） -->
+      <UiStatPanel
+        v-if="insightItems.length > 0"
+        :items="insightItems"
+        :columns="3"
+        variant="grid"
+        compact
+        class="student-score__insights"
+      />
+
+      <!-- 全部考试列表 -->
+      <UiCard class="student-score__list-card">
+        <template #title>
+          <FileOutlined />
+          <span>全部考试</span>
+        </template>
+
+        <UiDataTable
+          pagination-mode="none"
+          class="student-detail-table__data-table"
+          :columns="examColumns"
+          :data-source="exams"
+          :loading="loading"
+          :show-pagination="false"
+          flat
+          :total="exams.length"
+          row-key="examId"
+          size="middle"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'examName'">
+              <div>{{ record.examName }}</div>
+              <div v-if="record.examNo" class="student-score__exam-no">编号：{{ record.examNo }}</div>
+            </template>
+            <template v-else-if="column.key === 'examStartTime'">
+              {{ formatDateTime(record.examStartTime) }}
+            </template>
+            <template v-else-if="column.key === 'finalScoreStatus'">
+              <UiTag :tone="finalScoreStatusTone(record)" size="sm">
+                {{ finalScoreStatusLabel(record) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'finalScore'">
+              <template v-if="record.finalScoreStatus === 'PUBLISHED'">
+                {{ formatPublishedScore(record) }}
+              </template>
+              <span v-else class="student-score__muted">—</span>
+            </template>
+            <template v-else-if="column.key === 'publishedTime'">
+              <template v-if="record.finalScoreStatus === 'PUBLISHED'">
+                {{ requirePublishedTime(record) }}
+              </template>
+              <span v-else class="student-score__muted">—</span>
+            </template>
+            <template v-else-if="column.key === 'reviewWindowStatus'">
+              <UiTag :tone="reviewWindowStatusTone(record)" size="sm">
+                {{ reviewWindowStatusLabel(record) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <div class="operations-cell" @click.stop>
+                <UiButton
+                  size="sm"
+                  variant="outline"
+                  :disabled="record.finalScoreStatus !== 'PUBLISHED'"
+                  @click="goDetail(record.examId)"
+                >
+                  查看详情
+                </UiButton>
+                <UiButton
+                  size="sm"
+                  :variant="canSubmitReview(record) ? 'primary' : 'ghost'"
+                  :disabled="!canSubmitReview(record)"
+                  @click="goAppeal(record.examId)"
+                >
+                  提交复核
+                </UiButton>
+              </div>
+            </template>
+          </template>
+        </UiDataTable>
+      </UiCard>
     </template>
   </StageWorkbenchShell>
 </template>

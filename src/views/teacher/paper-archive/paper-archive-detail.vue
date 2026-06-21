@@ -183,8 +183,8 @@
           :total="pagination.total"
           :show-size-changer="true"
           :show-total="(total: number) => `共 ${total} 条`"
-          @change="loadItems"
-          @show-size-change="loadItems"
+          @change="handleItemPageChange"
+          @show-size-change="handleItemPageChange"
         />
       </div>
     </UiCard>
@@ -350,15 +350,12 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherPaperArchiveDetail' })
-
-const examContextStore = useMarkExamContextStore()
 
 const route = useRoute()
 const router = useRouter()
@@ -554,6 +551,12 @@ async function loadItems(options?: { quiet?: boolean }): Promise<void> {
       loading.value = false
     }
   }
+}
+
+function handleItemPageChange(page: number, pageSize: number): void {
+  pagination.pageNum = page
+  pagination.pageSize = pageSize
+  void loadItems()
 }
 
 async function reload(): Promise<void> {

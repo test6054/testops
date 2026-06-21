@@ -136,20 +136,20 @@
           </UiEmpty>
 
           <a-spin v-else :spinning="loading && !snapshot">
-            <router-view v-slot="{ Component, route: childRoute }">
-              <keep-alive v-if="shouldCacheWorkspaceRoute(childRoute)">
+            <router-view v-slot="{ Component: ViewComponent, route: childRoute }">
+              <template v-if="ViewComponent">
+                <keep-alive v-if="shouldCacheWorkspaceRoute(childRoute)">
+                  <component
+                    :is="ViewComponent"
+                    :key="getWorkspaceRouteKey(childRoute)"
+                  />
+                </keep-alive>
                 <component
-                  :is="Component"
-                  v-if="Component"
+                  v-else
+                  :is="ViewComponent"
                   :key="getWorkspaceRouteKey(childRoute)"
                 />
-              </keep-alive>
-              <component
-                v-else
-                :is="Component"
-                v-if="Component"
-                :key="getWorkspaceRouteKey(childRoute)"
-              />
+              </template>
             </router-view>
           </a-spin>
         </div>
@@ -162,6 +162,7 @@
 import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { Component } from 'vue'
+import type { RouteLocationNormalized } from 'vue-router'
 import type { ExamWorkspaceMenuSection } from '@/constants/exam-workspace-menu'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
@@ -189,7 +190,6 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
-import type { RouteLocationNormalized } from 'vue-router'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'

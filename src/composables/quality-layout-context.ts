@@ -1,5 +1,5 @@
 import type { InjectionKey, Ref } from 'vue'
-import type { AccreditationCockpitVO } from '@/apis/quality'
+import type { AccreditationCockpitVO } from '@/apis/quality/accreditation'
 
 /** Layout 已注入质量范围选择器，页面无需重复渲染 QualityScopeHeader */
 export const qualityLayoutScopeProvidedKey: InjectionKey<Ref<boolean>> = Symbol('qualityLayoutScopeProvided')

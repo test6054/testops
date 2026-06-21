@@ -2,11 +2,11 @@ import type {
   AccreditationCockpitVO,
   AccreditationCyclePhase,
   AccreditationCycleVO,
-} from '@/apis/quality'
+} from '@/apis/quality/accreditation'
 import type { WorkbenchStage } from '@/types/workbench'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ACCREDITATION_CYCLE_PHASE_LABEL, accreditationApi } from '@/apis/quality'
+import { ACCREDITATION_CYCLE_PHASE_LABEL, accreditationApi } from '@/apis/quality/accreditation'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'

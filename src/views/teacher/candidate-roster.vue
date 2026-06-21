@@ -325,12 +325,14 @@
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { CandidateRow } from './candidate-roster/types'
 import type {
+  ExamClassRefVO,
+} from '@/apis/mark/exam'
+import type {
   ExamCandidateImportPreviewResponse,
   ExamCandidateImportRowRequest,
   ExamCandidateImportRowResponse,
   ExamCandidateRosterRequest,
-  ExamClassRefVO,
-} from '@/apis/mark/exam'
+} from '@/apis/mark/exam-scope'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -343,19 +345,21 @@ import Modal from 'ant-design-vue/es/modal'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import * as XLSX from 'xlsx'
 import {
-  commitExamCandidateImport,
   getExamDetail,
+} from '@/apis/mark/exam'
+import { pageScannerBatches } from '@/apis/mark/exam-scan'
+import {
+  commitExamCandidateImport,
   listExamCandidates,
   listExamClassOptions,
   mergeExamCandidates,
   pageExamCandidates,
-  pageScannerBatches,
   previewExamCandidateImport,
   previewExamCandidates,
   removeExamCandidates,
   saveExamClassScope,
   saveExamScope,
-} from '@/apis/mark/exam'
+} from '@/apis/mark/exam-scope'
 import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSelectorDrawer.vue'
 import StudentSelector from '@/components/quality/selectors/StudentSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'

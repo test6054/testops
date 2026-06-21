@@ -8,8 +8,8 @@ import type {
   ExamMaterialLayoutModeCode,
   ExamPrintSourceModeCode,
   ExamStatusCode,
-  MarkingProgressVO,
 } from '@/apis/mark/exam'
+import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
 import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import type { WorkbenchStageStatus } from '@/types/workbench'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -29,15 +29,15 @@ import {
   EXAM_STATUS_LABEL,
   EXAM_STATUS_TONE,
   getExamDetail,
-  getMarkingProgress,
   saveMaterialLayout,
 } from '@/apis/mark/exam'
+import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'

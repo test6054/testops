@@ -24,7 +24,7 @@ const slots = useSlots()
 
 const showContextBar = computed(() => {
   if (props.showTitle) return true
-  if (showPageScopeHeader.value) return true
+  if (showPageScopeHeader) return true
   return Boolean(slots.actions || slots.status)
 })
 </script>

@@ -10,25 +10,31 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  */
 import type {
   AccreditationStandardVO,
-  AccreditationType,
-  ConfirmationStatus,
+} from '@/apis/quality/accreditation-standard'
+import type {
   ProfessionAlgorithmProfileQueryRequest,
   ProfessionAlgorithmProfileSaveRequest,
   ProfessionAlgorithmProfileVO,
+} from '@/apis/quality/profession-algorithm-profile'
+import type {
   ProfessionAlgorithmTemplateVO,
-} from '@/apis/quality'
+} from '@/apis/quality/profession-algorithm-template'
+import type {
+  AccreditationType,
+  ConfirmationStatus,
+} from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
+import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorithm-profile'
+import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import {
   ACCREDITATION_TYPE_LABEL,
-  accreditationStandardApi,
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
-  professionAlgorithmProfileApi,
-  professionAlgorithmTemplateApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import { ProgramSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'

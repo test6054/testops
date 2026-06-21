@@ -133,7 +133,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { AnnotationVO, ReviewTaskDetailVO, ReviewTaskStatusCode } from '@/apis/mark/exam'
+import type { AnnotationVO } from '@/apis/mark/exam-annotation'
+import type { ReviewTaskDetailVO, ReviewTaskStatusCode } from '@/apis/mark/exam-review-task'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
@@ -145,18 +146,20 @@ import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  getReviewTaskDetail,
   listAnnotations,
+  validateAnnotationContract,
+} from '@/apis/mark/exam-annotation'
+import {
+  getReviewTaskDetail,
   REVIEW_TASK_STATUS_LABEL,
   REVIEW_TASK_STATUS_TONE,
-  validateAnnotationContract,
-} from '@/apis/mark/exam'
+} from '@/apis/mark/exam-review-task'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages } from '@/utils/page-result'

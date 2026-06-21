@@ -10,13 +10,15 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  */
 import type {
   AssessmentItemVO,
-  RubricItemVO,
-  ScoreBatchStatus,
-  ScoreBatchVO,
+} from '@/apis/quality/assessment-item'
+import type { RubricItemVO } from '@/apis/quality/rubric-item'
+import type { ScoreBatchVO } from '@/apis/quality/score-batch'
+import type {
   ScoreRecordRubricScoreRequest,
   ScoreRecordSaveRequest,
   ScoreRecordVO,
-} from '@/apis/quality'
+} from '@/apis/quality/score-record'
+import type {ScoreBatchStatus} from '@/apis/quality/types';
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
@@ -24,12 +26,19 @@ import { message } from 'ant-design-vue'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
   assessmentItemApi,
-  rubricItemApi,
-  SCORE_BATCH_STATUS_COLOR,
-  SCORE_BATCH_STATUS_LABEL,
+} from '@/apis/quality/assessment-item'
+import { rubricItemApi } from '@/apis/quality/rubric-item'
+import {
   scoreBatchApi,
+} from '@/apis/quality/score-batch'
+import {
   scoreRecordApi,
-} from '@/apis/quality'
+} from '@/apis/quality/score-record'
+import {
+  SCORE_BATCH_STATUS_COLOR,
+  SCORE_BATCH_STATUS_LABEL
+  
+} from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   ClassSelector,
@@ -44,7 +53,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'

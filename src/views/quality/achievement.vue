@@ -1,5 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type {
+  AchievementComputeReadinessItemVO,
+} from '@/apis/quality/achievement'
+import type {
+  AchievementResultQueryRequest,
+  AchievementResultVO,
+} from '@/apis/quality/achievement-result'
 /**
  * 质量评价 - 达成度评价驾驶舱
  *
@@ -15,12 +22,9 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  */
 import type {
   AchievementAuditStatus,
-  AchievementResultQueryRequest,
-  AchievementResultVO,
   AchievementStatus,
   AchievementTargetType,
-  AchievementComputeReadinessItemVO,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
@@ -33,14 +37,19 @@ import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  achievementApi,
+} from '@/apis/quality/achievement'
+import {
+  achievementAuditApi,
+} from '@/apis/quality/achievement-audit'
+import { achievementResultApi } from '@/apis/quality/achievement-result'
+import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
   ACHIEVEMENT_STATUS_COLOR,
   ACHIEVEMENT_STATUS_LABEL,
   ACHIEVEMENT_TARGET_TYPE_LABEL,
-  achievementApi,
-  achievementAuditApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   ClassSelector,
@@ -59,7 +68,6 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import {
   AuditTimelineDrawer,
-  ContextBar,
   SignalBand,
   StageRail,
   StageWorkbenchShell,
@@ -282,7 +290,7 @@ async function loadList() {
   loading.value = true
   listLoadError.value = null
   try {
-    const page = await achievementApi.page({
+    const page = await achievementResultApi.page({
       ...query,
       trainingPlanId: qualityStore.currentTrainingPlanId,
       qualityCourseId: query.qualityCourseId || undefined,
@@ -535,7 +543,7 @@ async function handleTransit(record: AchievementResultVO, to: AchievementAuditSt
     emptyErrorMessage: '驳回必须填写审核备注',
   })
   if (to === 'RETURNED' && !remark) return
-  await achievementApi.updateAuditStatus({
+  await achievementResultApi.updateAuditStatus({
     id: record.id,
     auditStatus: to,
     auditRemark: remark || undefined,

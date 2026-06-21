@@ -1,5 +1,5 @@
 import type { InjectionKey, Ref } from 'vue'
-import type { WorkbenchStageSnapshotVO } from '@/apis/mark/exam'
+import type { WorkbenchStageSnapshotVO } from '@/apis/mark/exam-progress'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 import { computed, inject, provide } from 'vue'
 import { useRoute } from 'vue-router'

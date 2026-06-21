@@ -8,7 +8,7 @@ import type {
   AnnualReportMaterialSaveRequest,
   AnnualReportMaterialStatus,
   AnnualReportMaterialVO,
-} from '@/apis/quality'
+} from '@/apis/quality/accreditation'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
@@ -17,18 +17,18 @@ import {
   ANNUAL_REPORT_MATERIAL_CATEGORY_LABEL,
   ANNUAL_REPORT_MATERIAL_STATUS_LABEL,
   ANNUAL_REPORT_MATERIAL_STATUS_TONE,
-} from '@/apis/quality'
+} from '@/apis/quality/accreditation'
 import { CourseSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   annualReportMaterialPhaseHint,
   canMutateAnnualReportMaterial,
 } from '@/composables/useAccreditationWorkbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { readPageList, readPageTotal } from '@/utils/page-result'

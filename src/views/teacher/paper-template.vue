@@ -499,16 +499,21 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExamDetailVO,
   ExamMaterialLayoutModeCode,
-  ExamPageTemplateRequest,
-  ExamPaperPageTemplateVO,
+} from '@/apis/mark/exam'
+import type {
   ExamQuestionStandardAnswerOptionRequest,
-  ExamQuestionTemplateRequest,
-  ExamQuestionTemplateVO,
   ExamStandardAnswerVO,
   ObjectiveComparePolicyCode,
-} from '@/apis/mark/exam'
+} from '@/apis/mark/exam-standard-answer'
+import type {
+  ExamPageTemplateRequest,
+  ExamPaperPageTemplateVO,
+  ExamQuestionTemplateRequest,
+  ExamQuestionTemplateVO,
+} from '@/apis/mark/exam-template'
 import type { QuestionTypeCode } from '@/apis/mark/grading-experience'
 import type { PaperMasterObjectiveOptionVO } from '@/apis/mark/paper-master'
+import type { ExamAnswerEffectiveConfigVO } from '@/apis/mark/question-analysis'
 import type { ExamTemplatePageRow } from '@/components/mark/ExamTemplatePageTable.vue'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
@@ -519,24 +524,27 @@ import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   getExamDetail,
-  getExamTemplate,
-  getStandardAnswer,
-  isPaperTemplateNotConfiguredError,
-  OBJECTIVE_COMPARE_POLICY_OPTIONS,
-  saveExamTemplate,
-  saveStandardAnswer,
 } from '@/apis/mark/exam'
+import {
+  getStandardAnswer,
+  OBJECTIVE_COMPARE_POLICY_OPTIONS,
+  saveStandardAnswer,
+} from '@/apis/mark/exam-standard-answer'
+import {
+  getExamTemplate,
+  isPaperTemplateNotConfiguredError,
+  saveExamTemplate,
+} from '@/apis/mark/exam-template'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import { getPaperMaster, isPaperMasterNotConfiguredError } from '@/apis/mark/paper-master'
-import type { ExamAnswerEffectiveConfigVO } from '@/apis/mark/question-analysis'
 import { confirmAnswerEffective, getEffectiveAnswerConfig } from '@/apis/mark/question-analysis'
 import ExamTemplatePageTable from '@/components/mark/ExamTemplatePageTable.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiConfirmPopover from '@/components/ui-guide/ui/UiConfirmPopover.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'

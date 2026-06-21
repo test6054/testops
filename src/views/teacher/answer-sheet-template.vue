@@ -121,7 +121,7 @@ import type {
   ExamPageTemplateRequest,
   ExamPaperPageTemplateVO,
   ExamQuestionTemplateVO,
-} from '@/apis/mark/exam'
+} from '@/apis/mark/exam-template'
 import type { ExamTemplatePageRow } from '@/components/mark/ExamTemplatePageTable.vue'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
@@ -135,7 +135,7 @@ import {
   getExamTemplate,
   isPaperTemplateNotConfiguredError,
   saveAnswerSheetTemplate,
-} from '@/apis/mark/exam'
+} from '@/apis/mark/exam-template'
 import { generateStandardAnswerSheet } from '@/apis/mark/paper-master'
 import ExamTemplatePageTable from '@/components/mark/ExamTemplatePageTable.vue'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'

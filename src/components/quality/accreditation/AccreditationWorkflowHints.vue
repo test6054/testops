@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AccreditationCycleVO } from '@/apis/quality'
+import type { AccreditationCycleVO } from '@/apis/quality/accreditation'
 import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import {

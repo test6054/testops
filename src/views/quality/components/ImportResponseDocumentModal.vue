@@ -79,16 +79,20 @@
 </template>
 
 <script setup lang="ts">
-import type { AiTaskStatus } from '@/apis/quality'
+import type { AiTaskStatus } from '@/apis/quality/types'
 import { InboxOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import {
+  aiTaskApi,
+} from '@/apis/quality/ai-task'
+import {
+  indirectResponseApi,
+} from '@/apis/quality/indirect-response'
+import {
   AI_TASK_STATUS_COLOR,
   AI_TASK_STATUS_LABEL,
-  aiTaskApi,
-  indirectResponseApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'

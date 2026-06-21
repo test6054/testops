@@ -5,9 +5,9 @@
 -->
 <script setup lang="ts">
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
-import type { QualityCourseVO } from '@/apis/quality'
+import type { QualityCourseVO } from '@/apis/quality/quality-course'
 import { onMounted, ref, watch } from 'vue'
-import { qualityCourseApi } from '@/apis/quality'
+import { qualityCourseApi } from '@/apis/quality/quality-course'
 import { showUserError } from '@/utils/error-handler'
 import { requireAllPages } from './page-contract'
 

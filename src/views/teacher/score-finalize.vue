@@ -474,12 +474,13 @@ import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { OperationLogVO, OperationTypeCode } from '@/apis/mark/admin-audit'
 import type {
   ExamDetailVO,
-  ExamPaperScoreVO,
-  ExamQuestionScoreVO,
+} from '@/apis/mark/exam'
+import type { ExamPaperScoreVO, ExamQuestionScoreVO } from '@/apis/mark/exam-grade'
+import type {
   ExamScoreSummaryItemVO,
   FinalScoreRiskOverviewVO,
   FinalScoreRiskReasonCode, FinalScoreStatusCode
-} from '@/apis/mark/exam'
+} from '@/apis/mark/exam-score'
 import type { BadgeTone, FilterField, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import message from 'ant-design-vue/es/message'
@@ -488,20 +489,22 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { listOperationLogs, OPERATION_TYPE_LABEL } from '@/apis/mark/admin-audit'
 import {
+  getExamDetail,
+  pageExams,
+} from '@/apis/mark/exam'
+import { getPaperScore } from '@/apis/mark/exam-grade'
+import {
   batchConfirmSafeFinalScores,
   confirmFinalScore,
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_OPTIONS,
   FINAL_SCORE_STATUS_TONE,
-  getExamDetail,
   getFinalScoreRiskOverview,
-  getPaperScore,
-  pageExams,
   pageExamScoreSummary,
   publishFinalScore,
   saveFinalScoreRiskReview,
   withdrawFinalScore,
-} from '@/apis/mark/exam'
+} from '@/apis/mark/exam-score'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -510,8 +513,8 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiActivityTimeline from '@/components/ui-guide/ui/UiActivityTimeline.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'

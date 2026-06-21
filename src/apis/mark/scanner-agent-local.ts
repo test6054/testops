@@ -474,10 +474,13 @@ function isFetchNetworkFailure(error: unknown): boolean {
 
 async function parseLocalAgentResponse(response: Response): Promise<LocalAgentJsonValue> {
   const text = await response.text()
-  let parsed: LocalAgentJsonValue
+  let parsed: unknown
   try {
-    parsed = JSON.parse(text) as LocalAgentJsonValue
+    parsed = JSON.parse(text)
   } catch {
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
+  }
+  if (!isLocalAgentJsonValue(parsed)) {
     throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   const envelope = normalizeAgentPayload(() => validateLocalApiResult(parsed, response))
@@ -514,6 +517,24 @@ function requireObject(value: LocalAgentJsonValue): LocalAgentJsonObject {
   return value
 }
 
+function isLocalAgentJsonValue(value: unknown): value is LocalAgentJsonValue {
+  if (
+    value === null
+    || typeof value === 'string'
+    || typeof value === 'number'
+    || typeof value === 'boolean'
+  ) {
+    return true
+  }
+  if (Array.isArray(value)) {
+    return value.every(isLocalAgentJsonValue)
+  }
+  if (typeof value !== 'object') {
+    return false
+  }
+  return Object.values(value).every(isLocalAgentJsonValue)
+}
+
 function requireString(value: LocalAgentJsonObject, field: string): string {
   const fieldValue = value[field]
   if (typeof fieldValue !== 'string') {
@@ -543,7 +564,12 @@ function requireStringArray(value: LocalAgentJsonObject, field: string): string[
   if (!Array.isArray(fieldValue) || fieldValue.some((item) => typeof item !== 'string')) {
     throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
-  return fieldValue as string[]
+  return fieldValue.map((item) => {
+    if (typeof item !== 'string') {
+      throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
+    }
+    return item
+  })
 }
 
 function requireOptionalString(value: LocalAgentJsonObject, field: string): string | undefined {

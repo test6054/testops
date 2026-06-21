@@ -304,9 +304,9 @@ service.interceptors.response.use(
     const requestUrl = response.config?.url || ''
     const isAjCaptchaResponse
       = (requestUrl.includes('/captcha/get') || requestUrl.includes('/captcha/check'))
-      && typeof response.data === 'object'
-      && response.data !== null
-      && 'repCode' in response.data
+        && typeof response.data === 'object'
+        && response.data !== null
+        && 'repCode' in response.data
     if (isAjCaptchaResponse) {
       return response
     }

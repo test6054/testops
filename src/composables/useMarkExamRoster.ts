@@ -1,4 +1,4 @@
-import type { ExamCandidateVO } from '@/apis/mark/exam'
+import type { ExamCandidateVO } from '@/apis/mark/exam-scope'
 /**
  * 批改主链：考试考生名册 composable
  *
@@ -18,7 +18,7 @@ import type { ExamCandidateVO } from '@/apis/mark/exam'
  * ```
  */
 import { computed, ref } from 'vue'
-import { listExamCandidates } from '@/apis/mark/exam'
+import { listExamCandidates } from '@/apis/mark/exam-scope'
 import { showUserError, toUserError } from '@/utils/error-handler'
 
 export interface MarkClassOption {

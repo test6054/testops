@@ -1,17 +1,16 @@
-import type {
-  DuplicateResolutionStatusCode,
-  ExamFileRefVO,
-  ExamStatusCode,
-  QualityDecisionCode,
-  ScanAttentionSourceTypeCode,
-  ScanAttentionTypeCode,
-  TaskStatusCode,
-} from '@/apis/mark/exam'
+import type { ExamFileRefVO, ExamStatusCode } from '@/apis/mark/exam'
 import type {
   ScannerAgentDiagnosticStatusCode,
   ScannerDeviceStatusCode,
   ScannerEndpointOnlineStatusCode,
 } from '@/apis/mark/exam-mark-scanner'
+import type {
+  DuplicateResolutionStatusCode,
+  QualityDecisionCode,
+  ScanAttentionSourceTypeCode,
+  ScanAttentionTypeCode,
+  TaskStatusCode,
+} from '@/apis/mark/exam-scan'
 import type { GradeStatusCode } from '@/apis/mark/student-exam'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'

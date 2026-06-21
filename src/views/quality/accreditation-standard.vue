@@ -11,13 +11,14 @@ import type {
   AccreditationStandardSaveRequest,
   AccreditationStandardSummaryVO,
   AccreditationStandardVO,
-  AccreditationType,
-} from '@/apis/quality'
+} from '@/apis/quality/accreditation-standard'
+import type { AccreditationType } from '@/apis/quality/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { ACCREDITATION_TYPE_LABEL, accreditationStandardApi } from '@/apis/quality'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
+import { ACCREDITATION_TYPE_LABEL } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'

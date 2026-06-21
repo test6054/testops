@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import type { MarkingScanPageRefVO } from '@/apis/mark/exam'
+import type { MarkingScanPageRefVO } from '@/apis/mark/exam-scan'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import { QUALITY_DECISION_LABEL, QUALITY_DECISION_TONE } from '@/apis/mark/exam'
+import { QUALITY_DECISION_LABEL, QUALITY_DECISION_TONE } from '@/apis/mark/exam-scan'
 import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'

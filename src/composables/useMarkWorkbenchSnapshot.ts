@@ -1,6 +1,6 @@
 import { storeToRefs } from 'pinia'
 import { ref, watch } from 'vue'
-import { getWorkbenchStageSnapshot } from '@/apis/mark/exam'
+import { getWorkbenchStageSnapshot } from '@/apis/mark/exam-progress'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { showUserError } from '@/utils/error-handler'
 

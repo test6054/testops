@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AccreditationCyclePhase } from '@/apis/quality'
+import type { AccreditationCyclePhase } from '@/apis/quality/accreditation'
 import { SafetyCertificateOutlined } from '@ant-design/icons-vue'
 import { computed, onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'

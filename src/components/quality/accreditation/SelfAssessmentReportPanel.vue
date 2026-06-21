@@ -6,7 +6,7 @@ import type {
   AccreditationCockpitVO,
   AccreditationCycleVO,
   AccreditationEvidenceVO,
-} from '@/apis/quality'
+} from '@/apis/quality/accreditation'
 import type {
   SelfAssessmentSectionEvidenceRefItem,
   SelfAssessmentSectionKey,
@@ -14,20 +14,20 @@ import type {
 } from '@/apis/quality/self-assessment-section'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
+import { accreditationApi } from '@/apis/quality/accreditation'
 import {
   SELF_ASSESSMENT_SECTION_CONTENT_STATUS_LABEL,
   SELF_ASSESSMENT_SECTION_CONTENT_STATUS_TONE,
   selfAssessmentSectionApi,
 } from '@/apis/quality/self-assessment-section'
-import { accreditationApi } from '@/apis/quality'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import { canSubmitSelfAssessment, canEditSelfAssessmentSection } from '@/composables/useAccreditationWorkbench'
+import { canEditSelfAssessmentSection, canSubmitSelfAssessment } from '@/composables/useAccreditationWorkbench'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'SelfAssessmentReportPanel' })
@@ -169,8 +169,8 @@ async function openEvidenceDrawer() {
     .filter(item => item.refType === 'ACCREDITATION_EVIDENCE' && item.accreditationEvidenceId)
     .map(item => item.accreditationEvidenceId!)
   try {
-    evidenceOptions.value = await readPageList(
-      pageNum =>
+    evidenceOptions.value = await readAllPages(
+      (pageNum: number) =>
         accreditationApi.evidencePage({
           pageNum,
           pageSize: 100,
@@ -305,15 +305,15 @@ watch(activeSectionKey, () => {
             </UiButton>
           </div>
           <ul v-if="editor.evidenceRefs.length" class="self-assessment-panel__evidence-list">
-            <li v-for="(ref, index) in editor.evidenceRefs" :key="`${ref.refType}-${index}`">
+            <li v-for="(evidenceRef, index) in editor.evidenceRefs" :key="`${evidenceRef.refType}-${index}`">
               <UiTag tone="gray" size="sm">
-                {{ ref.refType === 'FIELD_PATH' ? '字段路径' : '认证证据' }}
+                {{ evidenceRef.refType === 'FIELD_PATH' ? '字段路径' : '认证证据' }}
               </UiTag>
               <span>
                 {{
-                  ref.refType === 'FIELD_PATH'
-                    ? ref.fieldPath
-                    : ref.accreditationEvidenceId
+                  evidenceRef.refType === 'FIELD_PATH'
+                    ? evidenceRef.fieldPath
+                    : evidenceRef.accreditationEvidenceId
                 }}
               </span>
               <UiButton

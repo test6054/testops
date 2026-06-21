@@ -65,10 +65,10 @@
 </template>
 
 <script setup lang="ts">
-import type { IndirectResponseImportResult } from '@/apis/quality/indirect-evaluation'
+import type { IndirectResponseImportResult } from '@/apis/quality/indirect-response'
 import { InboxOutlined } from '@ant-design/icons-vue'
 import { computed, ref } from 'vue'
-import { indirectResponseApi } from '@/apis/quality/indirect-evaluation'
+import { indirectResponseApi } from '@/apis/quality/indirect-response'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 

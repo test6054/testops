@@ -5,9 +5,9 @@
 -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { RequirementIndicatorVO } from '@/apis/quality'
+import type { RequirementIndicatorVO } from '@/apis/quality/requirement-indicator'
 import { computed, onMounted, ref, watch } from 'vue'
-import { requirementIndicatorApi } from '@/apis/quality'
+import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
 import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
 

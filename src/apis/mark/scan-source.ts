@@ -1,4 +1,4 @@
-import type { ExamScannerScanConfigVO, ExamScannerBoundPaperItemVO, ScannerKioskScanMode } from '@/apis/mark/scanner-kiosk'
+import type { ExamScannerBoundPaperItemVO, ExamScannerScanConfigVO, ScannerKioskScanMode } from '@/apis/mark/scanner-kiosk'
 import http from '@/config/axios'
 
 /** 扫描来源页映射 - 对应 ExamScanSourcePageMappingRequest */

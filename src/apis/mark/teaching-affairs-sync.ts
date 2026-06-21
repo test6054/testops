@@ -42,9 +42,9 @@ export const SYNC_TYPE_LABEL: Record<TeachingAffairsSyncTypeCode, string> = {
 }
 
 /** 当前后端 createSyncTask 已开放的同步类型（与 TeachingAffairsSyncServiceImpl 一致） */
-export const CREATABLE_SYNC_TYPE_LABEL = {
+export const CREATABLE_SYNC_TYPE_LABEL: Partial<Record<TeachingAffairsSyncTypeCode, string>> = {
   GRADE_EXPORT: SYNC_TYPE_LABEL.GRADE_EXPORT,
-} as const satisfies Partial<Record<TeachingAffairsSyncTypeCode, string>>
+}
 
 /** 同步任务状态 - 对应 SyncTaskStatus */
 export type SyncTaskStatusCode

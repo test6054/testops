@@ -1,7 +1,7 @@
 import type { DashboardGradingMetricsVO } from '@/apis/mark/admin-dashboard'
 import type { CourseAchievementItemVO, ExamStatSnapshotVO, SemesterGrowthItemVO } from '@/apis/mark/cross-exam-analysis'
 import type { ErrorCauseClusterItemVO } from '@/apis/mark/error-cause-cluster'
-import type { ReviewQuestionProgressItemVO } from '@/apis/mark/exam'
+import type { ReviewQuestionProgressItemVO } from '@/apis/mark/exam-progress'
 import type { ProgressMonitorRecordVO } from '@/apis/mark/marking-quality'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
 import type { BadgeTone, UiBarChartItem, UiScatterSeries, UiTrendPoint } from '@/components/ui-guide/ui/types'

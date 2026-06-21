@@ -1,4 +1,4 @@
-import type { ExamScannerBatchVO } from '@/apis/mark/exam'
+import type { ExamScannerBatchVO } from '@/apis/mark/exam-scan'
 
 /** 封存检查项：与后端 executeSealScanBatch 前置规则对齐。 */
 export interface BatchSealCheckItem {

@@ -12,23 +12,27 @@ import type { SelectValue } from 'ant-design-vue/es/select'
  */
 import type {
   AiMaskMappingVO,
+} from '@/apis/quality/ai-mask-mapping'
+import type {
+  AiTaskVO,
+} from '@/apis/quality/ai-task'
+import type {
   AiTaskBusinessType,
   AiTaskStatus,
   AiTaskType,
-  AiTaskVO,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { aiMaskMappingApi } from '@/apis/quality/ai-mask-mapping'
+import { aiTaskApi } from '@/apis/quality/ai-task'
 import {
   AI_TASK_BUSINESS_TYPE_LABEL,
   AI_TASK_STATUS_COLOR,
   AI_TASK_STATUS_LABEL,
   AI_TASK_TYPE_LABEL,
-  aiMaskMappingApi,
-  aiTaskApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'

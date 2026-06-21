@@ -18,9 +18,9 @@
 <script lang="ts" setup>
 import { useDevice } from '@/hooks'
 import Breadcrumb from '../Breadcrumb/index.vue'
-import DomainSwitch from './DomainSwitch.vue'
 import HeaderRightBar from '../HeaderRightBar/index.vue'
 import MenuFoldBtn from '../MenuFoldBtn.vue'
+import DomainSwitch from './DomainSwitch.vue'
 
 defineOptions({name: 'LayoutHeader'})
 const { isMobile } = useDevice()

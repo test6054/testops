@@ -5,14 +5,15 @@
 -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { AuditRectificationStatus, AuditRectificationVO } from '@/apis/quality'
+import type { AuditRectificationVO } from '@/apis/quality/audit-rectification'
+import type { AuditRectificationStatus } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { onMounted, ref, watch } from 'vue'
+import { auditRectificationApi } from '@/apis/quality/audit-rectification'
 import {
   AUDIT_RECTIFICATION_STATUS_COLOR,
   AUDIT_RECTIFICATION_STATUS_LABEL,
-  auditRectificationApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'

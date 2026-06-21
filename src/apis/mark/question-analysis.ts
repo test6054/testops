@@ -1,7 +1,7 @@
+import type { ObjectiveComparePolicyCode } from './exam-standard-answer'
 import type {
   EffectiveStatusCode,
-  ObjectiveComparePolicyCode,
-} from './exam'
+} from './exam-template'
 import type { QuestionTypeCode } from './grading-experience'
 import type { GradeStatusCode, ObjectiveResultCode } from './student-exam'
 /**

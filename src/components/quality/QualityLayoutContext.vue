@@ -1,13 +1,13 @@
 <script setup lang="ts">
+import type { AccreditationCockpitVO } from '@/apis/quality/accreditation'
 /**
  * 质量评价域 Layout 级上下文：培养方案范围 + 认证阶段提示。
  */
 import { computed, onMounted, provide, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { accreditationApi } from '@/apis/quality'
-import type { AccreditationCockpitVO } from '@/apis/quality'
-import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import { accreditationApi } from '@/apis/quality/accreditation'
 import AccreditationPhaseBanner from '@/components/quality/AccreditationPhaseBanner.vue'
+import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
 import {
   accreditationPhaseContextKey,
   qualityLayoutScopeProvidedKey,

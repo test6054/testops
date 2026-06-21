@@ -1,32 +1,47 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type {
+  AchievementAuditVO,
+} from '@/apis/quality/achievement-audit'
+import type { AchievementDetailVO } from '@/apis/quality/achievement-detail'
+import type { AchievementManualReviewVO } from '@/apis/quality/achievement-manual-review'
+import type {
+  AchievementResultVO,
+} from '@/apis/quality/achievement-result'
 /**
  * 质量评价 - 达成度详情
  *
  * 状态机：DRAFT / CALCULATED -> SUBMITTED -> CONFIRMED / RETURNED -> ARCHIVED
  *
  * 后端契约：
- * - achievementApi.detail / updateAuditStatus
+ * - achievementResultApi.detail / updateAuditStatus
  * - achievementDetailApi.listByResult
  * - achievementAuditApi.listByResult
  * - achievementManualReviewApi.listByResult / create
  */
 import type {
   AchievementAuditStatus,
-  AchievementAuditVO,
   AchievementDetailType,
-  AchievementDetailVO,
-  AchievementManualReviewVO,
-  AchievementResultVO,
   AchievementStatus,
   AchievementTargetType,
   ManualReviewDecision,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  achievementApi,
+} from '@/apis/quality/achievement'
+import {
+  achievementAuditApi,
+} from '@/apis/quality/achievement-audit'
+import {
+  achievementDetailApi,
+} from '@/apis/quality/achievement-detail'
+import { achievementManualReviewApi } from '@/apis/quality/achievement-manual-review'
+import { achievementResultApi } from '@/apis/quality/achievement-result'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -34,12 +49,8 @@ import {
   ACHIEVEMENT_STATUS_COLOR,
   ACHIEVEMENT_STATUS_LABEL,
   ACHIEVEMENT_TARGET_TYPE_LABEL,
-  achievementApi,
-  achievementAuditApi,
-  achievementDetailApi,
-  achievementManualReviewApi,
   MANUAL_REVIEW_DECISION_LABEL,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -223,7 +234,7 @@ async function loadAll() {
   loading.value = true
   try {
     const [r, d, a, rv] = await Promise.all([
-      achievementApi.detail(resultId.value),
+      achievementResultApi.detail(resultId.value),
       achievementDetailApi.listByResult(resultId.value),
       achievementAuditApi.listByResult(resultId.value),
       achievementManualReviewApi.listByResult(resultId.value),
@@ -249,7 +260,7 @@ async function handleTransit(to: AchievementAuditStatus) {
     emptyErrorMessage: '驳回必须填写审核备注',
   })
   if (to === 'RETURNED' && !remark) return
-  await achievementApi.updateAuditStatus({
+  await achievementResultApi.updateAuditStatus({
     id: result.value.id,
     auditStatus: to,
     auditRemark: remark || undefined,

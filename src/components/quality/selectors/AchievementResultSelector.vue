@@ -5,19 +5,19 @@
 -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { AchievementResultVO } from '@/apis/quality/achievement-result'
 import type {
   AchievementAuditStatus,
-  AchievementResultVO,
   AchievementTargetType,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import { Tag } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
+import { achievementResultApi } from '@/apis/quality/achievement-result'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
   ACHIEVEMENT_TARGET_TYPE_LABEL,
-  achievementApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { requireAllPages } from './page-contract'
@@ -83,7 +83,7 @@ async function loadOptions() {
   loading.value = true
   try {
     options.value = await requireAllPages(
-      (pageNum) => achievementApi.page({
+      (pageNum) => achievementResultApi.page({
         pageNum,
         pageSize: 100,
         targetType: props.targetType,

@@ -413,7 +413,7 @@
 <script lang="ts" setup>
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamScannerBatchVO } from '@/apis/mark/exam'
+import type { ExamScannerBatchVO } from '@/apis/mark/exam-scan'
 import type {
   MarkingOrganizationVO,
   QuestionGroupReviewerVO,
@@ -439,7 +439,7 @@ import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { pageScannerBatches } from '@/apis/mark/exam'
+import { pageScannerBatches } from '@/apis/mark/exam-scan'
 import {
   getOrganization,
   MARKING_ORGANIZATION_STATUS_LABEL,

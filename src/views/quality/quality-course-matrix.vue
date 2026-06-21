@@ -2,6 +2,39 @@
 import type { RadioChangeEvent } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
+import type {
+  AssessmentGoalWeightSaveRequest,
+  AssessmentGoalWeightVO,
+} from '@/apis/quality/assessment-goal-weight'
+import type {
+  AssessmentItemSaveRequest,
+  AssessmentItemVO,
+} from '@/apis/quality/assessment-item'
+import type {
+  CourseGoalSaveRequest,
+  CourseGoalVO,
+} from '@/apis/quality/course-goal'
+import type {
+  CourseGoalAssessmentRuleSaveRequest,
+} from '@/apis/quality/course-goal-assessment-rule'
+import type {
+  CourseGoalRequirementSaveRequest,
+  CourseGoalRequirementVO,
+} from '@/apis/quality/course-goal-requirement'
+import type {
+  GraduationRequirementVO,
+} from '@/apis/quality/graduation-requirement'
+import type {
+  QualityCourseSaveRequest,
+  QualityCourseVO,
+} from '@/apis/quality/quality-course'
+import type {
+  RequirementIndicatorVO,
+} from '@/apis/quality/requirement-indicator'
+import type {
+  RubricItemSaveRequest,
+  RubricItemVO,
+} from '@/apis/quality/rubric-item'
 /**
  * 质量评价课程 - 支撑矩阵工作台（3-in-1）
  *
@@ -28,45 +61,40 @@ import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
  */
 import type {
   AggregationFunction,
-  AssessmentGoalWeightSaveRequest,
-  AssessmentGoalWeightVO,
-  AssessmentItemSaveRequest,
   AssessmentItemType,
-  AssessmentItemVO,
-  CourseGoalAssessmentRuleSaveRequest,
-  CourseGoalRequirementSaveRequest,
-  CourseGoalRequirementVO,
-  CourseGoalSaveRequest,
-  CourseGoalVO,
-  GraduationRequirementVO,
-  QualityCourseSaveRequest,
-  QualityCourseVO,
-  RequirementIndicatorVO,
-  RubricItemSaveRequest,
-  RubricItemVO,
   SupportLevel,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import type { CourseListVO } from '@/apis/quality/user-catalog'
 import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
+import { assessmentGoalWeightApi } from '@/apis/quality/assessment-goal-weight'
+import {
+  assessmentItemApi,
+} from '@/apis/quality/assessment-item'
+import {
+  courseGoalApi,
+} from '@/apis/quality/course-goal'
+import { courseGoalAssessmentRuleApi } from '@/apis/quality/course-goal-assessment-rule'
+import { courseGoalRequirementApi } from '@/apis/quality/course-goal-requirement'
+import {
+  graduationRequirementApi,
+} from '@/apis/quality/graduation-requirement'
+import {
+  qualityCourseApi,
+} from '@/apis/quality/quality-course'
+import {
+  requirementIndicatorApi,
+} from '@/apis/quality/requirement-indicator'
+import { rubricItemApi } from '@/apis/quality/rubric-item'
 import {
   AGGREGATION_FUNCTION_LABEL,
   ASSESSMENT_ITEM_TYPE_LABEL,
-  assessmentGoalWeightApi,
-  assessmentItemApi,
-  courseGoalApi,
-  courseGoalAssessmentRuleApi,
-  courseGoalRequirementApi,
-  graduationRequirementApi,
-  qualityCourseApi,
-  requirementIndicatorApi,
-  rubricItemApi,
   SUPPORT_LEVEL_DEFAULT_FACTOR,
   SUPPORT_LEVEL_LABEL,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
@@ -80,7 +108,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import { ContextBar, MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'

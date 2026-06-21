@@ -7,7 +7,7 @@ import type {
   AccreditationEvidenceCategory,
   AccreditationEvidenceSaveRequest,
   AccreditationEvidenceVO,
-} from '@/apis/quality'
+} from '@/apis/quality/accreditation'
 import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -16,7 +16,7 @@ import {
   ACCREDITATION_EVIDENCE_ANCHOR_LABEL,
   ACCREDITATION_EVIDENCE_CATEGORY_LABEL,
   accreditationApi,
-} from '@/apis/quality'
+} from '@/apis/quality/accreditation'
 import { archiveApi } from '@/apis/quality/archive'
 import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import { qualityCourseApi } from '@/apis/quality/quality-course'
@@ -25,12 +25,12 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   canExportExpertPackage,
   canMutateAccreditationEvidence,
   expertPackageExportBlockers,
 } from '@/composables/useAccreditationWorkbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'

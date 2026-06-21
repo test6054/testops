@@ -5,9 +5,9 @@
 -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { GraduationRequirementVO } from '@/apis/quality'
+import type { GraduationRequirementVO } from '@/apis/quality/graduation-requirement'
 import { computed, onMounted, ref, watch } from 'vue'
-import { graduationRequirementApi } from '@/apis/quality'
+import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
 

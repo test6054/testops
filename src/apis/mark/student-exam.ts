@@ -1,4 +1,5 @@
-import type { BindingStatusCode, ExamStatusCode } from './exam'
+import type { ExamStatusCode } from './exam'
+import type { BindingStatusCode } from './exam-binding'
 import type { QuestionTypeCode } from './grading-experience'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'

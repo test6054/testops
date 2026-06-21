@@ -328,13 +328,14 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type {
   ExamDetailVO,
-  ExamPaperScoreVO,
-  ExamQuestionScoreVO,
+} from '@/apis/mark/exam'
+import type { ExamPaperScoreVO, ExamQuestionScoreVO } from '@/apis/mark/exam-grade'
+import type {
   ExamScoreSummaryItemVO,
   FinalScoreBatchPublishVO,
   FinalScoreRiskOverviewVO,
   FinalScoreStatusCode,
-} from '@/apis/mark/exam'
+} from '@/apis/mark/exam-score'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
@@ -343,17 +344,19 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { listAbsenceRecords } from '@/apis/mark/absence'
 import {
+  getExamDetail,
+} from '@/apis/mark/exam'
+import { getPaperScore } from '@/apis/mark/exam-grade'
+import {
   batchPublishFinalScores,
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_OPTIONS,
   FINAL_SCORE_STATUS_TONE,
-  getExamDetail,
   getFinalScoreRiskOverview,
-  getPaperScore,
   pageExamScoreSummary,
   publishFinalScore,
   withdrawFinalScore,
-} from '@/apis/mark/exam'
+} from '@/apis/mark/exam-score'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'

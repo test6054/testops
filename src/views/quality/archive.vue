@@ -2,6 +2,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type { FileSystemNodeResponseDTO } from '@/apis/edu/file-management'
+import type { AccreditationCockpitVO, AccreditationCycleVO } from '@/apis/quality/accreditation'
 /**
  * 质量评价 - 材料归档与专家包导出台
  *
@@ -12,21 +13,25 @@ import type { FileSystemNodeResponseDTO } from '@/apis/edu/file-management'
  * - POST /quality/archives/export-expert-package 专家材料包同步导出，返回 archiveId
  */
 import type {
-  ArchiveBusinessType,
   ArchiveQueryRequest,
   ArchiveSaveRequest,
   ArchiveVO,
   ExpertPackageExportRequest,
-} from '@/apis/quality'
+} from '@/apis/quality/archive'
+import type { ArchiveBusinessType } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
-import { ARCHIVE_BUSINESS_TYPE_CODES, ARCHIVE_BUSINESS_TYPE_LABEL, archiveApi, EXPERT_PACKAGE_TYPE_LABEL } from '@/apis/quality'
 import { accreditationApi } from '@/apis/quality/accreditation'
-import type { AccreditationCockpitVO, AccreditationCycleVO } from '@/apis/quality/accreditation'
+import { archiveApi } from '@/apis/quality/archive'
+import {
+  ARCHIVE_BUSINESS_TYPE_CODES,
+  ARCHIVE_BUSINESS_TYPE_LABEL,
+  EXPERT_PACKAGE_TYPE_LABEL,
+} from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   AchievementResultSelector,
@@ -48,15 +53,14 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import {
   AuditTimelineDrawer,
-  ContextBar,
   SignalBand,
   StageWorkbenchShell,
 } from '@/components/workbench'
-import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   canExportExpertPackage,
   expertPackageExportBlockers,
 } from '@/composables/useAccreditationWorkbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'

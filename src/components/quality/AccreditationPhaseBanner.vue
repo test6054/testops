@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { AccreditationCockpitVO, AccreditationCyclePhase } from '@/apis/quality'
+import type { AccreditationCockpitVO, AccreditationCyclePhase } from '@/apis/quality/accreditation'
 import { computed } from 'vue'
-import { ACCREDITATION_CYCLE_PHASE_LABEL } from '@/apis/quality'
-import { UiButton, UiTag } from '@/components/ui-guide/ui'
+import { ACCREDITATION_CYCLE_PHASE_LABEL } from '@/apis/quality/accreditation'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AccreditationPhaseBanner' })

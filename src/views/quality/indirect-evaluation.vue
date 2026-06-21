@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { Dayjs } from 'dayjs'
+import type { SurveyIdentityFieldVO } from '@/apis/public-survey'
 /**
  * 间接评价管理 - 问卷 + 题项 + 答卷
  *
@@ -11,42 +13,46 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 设计：先选问卷 → 显示题项 → 选题项查看答卷
  */
 import type {
-  AchievementTargetType,
   IndirectEvaluationFormPublishRequest,
   IndirectEvaluationFormQueryRequest,
   IndirectEvaluationFormSaveRequest,
   IndirectEvaluationFormVO,
+  IndirectEvaluationProgressVO,
+  IndirectEvaluationStatisticsVO,
+} from '@/apis/quality/indirect-form'
+import type {
   IndirectEvaluationItemSaveRequest,
   IndirectEvaluationItemType,
   IndirectEvaluationItemVO,
-  IndirectEvaluationProgressVO,
+} from '@/apis/quality/indirect-item'
+import type {
   IndirectEvaluationResponseSaveRequest,
   IndirectEvaluationResponseVO,
-  IndirectEvaluationStatisticsVO,
+} from '@/apis/quality/indirect-response'
+import type { ScaleConversionRuleVO } from '@/apis/quality/scale-conversion-rule'
+import type {
+  AchievementTargetType,
   IndirectFormAccessMode,
   IndirectFormStatus,
   IndirectFormType,
   RespondentType,
-  ScaleConversionRuleVO,
-} from '@/apis/quality'
-import type { SurveyIdentityFieldVO } from '@/apis/public-survey'
+} from '@/apis/quality/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import type { Dayjs } from 'dayjs'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { indirectFormApi } from '@/apis/quality/indirect-form'
+import { indirectItemApi } from '@/apis/quality/indirect-item'
+import { indirectResponseApi } from '@/apis/quality/indirect-response'
+import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
 import {
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   INDIRECT_FORM_ACCESS_MODE_LABEL,
   INDIRECT_FORM_STATUS_LABEL,
   INDIRECT_FORM_TYPE_LABEL,
-  indirectFormApi,
-  indirectItemApi,
-  indirectResponseApi,
   RESPONDENT_TYPE_LABEL,
-  scaleConversionRuleApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   ClassSelector,
@@ -68,7 +74,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
@@ -193,7 +199,7 @@ const accessModeOptions: { value: IndirectFormAccessMode, label: string }[] = [
 const publishDrawerVisible = ref(false)
 const publishSubmitting = ref(false)
 const publishTargetForm = ref<IndirectEvaluationFormVO | null>(null)
-const publishTimeRange = ref<[Dayjs, Dayjs] | null>(null)
+const publishTimeRange = ref<[Dayjs, Dayjs] | undefined>(undefined)
 const publishEditor = reactive<IndirectEvaluationFormPublishRequest>({
   id: '',
   startTime: '',

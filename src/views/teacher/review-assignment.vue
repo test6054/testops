@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamQuestionTemplateVO, MarkingProgressVO } from '@/apis/mark/exam'
+import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
+import type { ExamQuestionTemplateVO } from '@/apis/mark/exam-template'
 import type { ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
 import type {
   AllocationUnitCode,
@@ -28,10 +29,14 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   getExamDetail,
-  getExamTemplate,
-  getMarkingProgress,
-  isPaperTemplateNotConfiguredError,
 } from '@/apis/mark/exam'
+import {
+  getMarkingProgress,
+} from '@/apis/mark/exam-progress'
+import {
+  getExamTemplate,
+  isPaperTemplateNotConfiguredError,
+} from '@/apis/mark/exam-template'
 import { getImageLedgerDetail, normalizeImageLedgerDetail } from '@/apis/mark/image-ledger'
 import {
   ALLOCATION_UNIT_LABEL,

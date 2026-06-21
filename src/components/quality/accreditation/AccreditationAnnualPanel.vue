@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { AnnualEvaluationPlanSaveRequest, AnnualEvaluationPlanVO } from '@/apis/quality'
+import type { AnnualEvaluationPlanSaveRequest, AnnualEvaluationPlanVO } from '@/apis/quality/accreditation'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
-import { accreditationApi } from '@/apis/quality'
+import { accreditationApi } from '@/apis/quality/accreditation'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'

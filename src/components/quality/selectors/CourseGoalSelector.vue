@@ -5,9 +5,9 @@
 -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { CourseGoalVO } from '@/apis/quality'
+import type { CourseGoalVO } from '@/apis/quality/course-goal'
 import { computed, onMounted, ref, watch } from 'vue'
-import { courseGoalApi } from '@/apis/quality'
+import { courseGoalApi } from '@/apis/quality/course-goal'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'

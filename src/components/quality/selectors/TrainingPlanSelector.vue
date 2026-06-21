@@ -5,9 +5,9 @@
 -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { TrainingPlanVO } from '@/apis/quality'
+import type { TrainingPlanVO } from '@/apis/quality/training-plan'
 import { onMounted, ref, watch } from 'vue'
-import { trainingPlanApi } from '@/apis/quality'
+import { trainingPlanApi } from '@/apis/quality/training-plan'
 import { showUserError } from '@/utils/error-handler'
 import { requireAllPages } from './page-contract'
 

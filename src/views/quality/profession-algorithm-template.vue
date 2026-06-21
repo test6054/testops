@@ -9,22 +9,26 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  */
 import type {
   AccreditationStandardVO,
-  AccreditationType,
-  AggregationFunction,
+} from '@/apis/quality/accreditation-standard'
+import type {
   ProfessionAlgorithmTemplateQueryRequest,
   ProfessionAlgorithmTemplateSaveRequest,
   ProfessionAlgorithmTemplateVO,
-} from '@/apis/quality'
+} from '@/apis/quality/profession-algorithm-template'
+import type {
+  AccreditationType,
+  AggregationFunction,
+} from '@/apis/quality/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
+import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import {
   ACCREDITATION_TYPE_LABEL,
-  accreditationStandardApi,
   AGGREGATION_FUNCTION_LABEL,
-  professionAlgorithmTemplateApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'

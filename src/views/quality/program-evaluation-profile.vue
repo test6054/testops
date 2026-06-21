@@ -8,24 +8,28 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  */
 import type {
   AccreditationStandardVO,
-  AccreditationType,
-  EvaluationCycle,
-  EvaluationMethod,
+} from '@/apis/quality/accreditation-standard'
+import type {
   ProgramEvaluationProfileQueryRequest,
   ProgramEvaluationProfileSaveRequest,
   ProgramEvaluationProfileVO,
-} from '@/apis/quality'
+} from '@/apis/quality/program-evaluation-profile'
+import type {
+  AccreditationType,
+  EvaluationCycle,
+  EvaluationMethod,
+} from '@/apis/quality/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
+import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
 import {
   ACCREDITATION_TYPE_LABEL,
-  accreditationStandardApi,
   EVALUATION_CYCLE_LABEL,
   EVALUATION_METHOD_LABEL,
-  programEvaluationProfileApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import { ProgramSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'

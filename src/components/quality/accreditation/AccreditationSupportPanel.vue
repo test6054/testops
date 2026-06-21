@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  FacultyProfileSaveRequest,
-  FacultyProfileVO,
-  ProgramSupportProfileSaveRequest,
-  ProgramSupportProfileVO,
-} from '@/apis/quality'
+import type { ProgramSupportProfileSaveRequest, ProgramSupportProfileVO } from '@/apis/quality/accreditation'
+import type { FacultyProfileSaveRequest, FacultyProfileVO } from '@/apis/quality/faculty-profile'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
-import { accreditationApi } from '@/apis/quality'
+import { accreditationApi } from '@/apis/quality/accreditation'
+import { facultyProfileApi } from '@/apis/quality/faculty-profile'
 import { TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -155,7 +152,7 @@ async function loadFacultyProfiles() {
   }
   facultyLoading.value = true
   try {
-    const page = await accreditationApi.facultyProfilePage({
+    const page = await facultyProfileApi.page({
       trainingPlanId: props.trainingPlanId,
       pageNum: facultyQuery.pageNum,
       pageSize: facultyQuery.pageSize,
@@ -170,7 +167,6 @@ async function loadFacultyProfiles() {
     if (facultyProfiles.value.length === 0 && facultyTotal.value > 0 && facultyQuery.pageNum > 1) {
       facultyQuery.pageNum -= 1
       await loadFacultyProfiles()
-      return
     }
   } catch (e) {
     showUserError(e)
@@ -343,10 +339,10 @@ async function submitFacultyProfile() {
   try {
     facultyForm.trainingPlanId = props.trainingPlanId
     if (facultyForm.id) {
-      await accreditationApi.facultyProfileUpdate(facultyForm)
+      await facultyProfileApi.update(facultyForm)
       message.success('教师档案已更新')
     } else {
-      facultyForm.id = await accreditationApi.facultyProfileCreate(facultyForm)
+      facultyForm.id = await facultyProfileApi.create(facultyForm)
       message.success('教师档案已创建')
     }
     facultyDrawerOpen.value = false
@@ -369,7 +365,7 @@ async function deleteFacultyProfile(record: FacultyProfileVO) {
   })
   if (!ok) return
   try {
-    await accreditationApi.facultyProfileDelete(record.id)
+    await facultyProfileApi.delete(record.id)
     await loadFacultyProfiles()
     emit('refresh')
   } catch (e) {

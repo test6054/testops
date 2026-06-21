@@ -310,8 +310,8 @@ import type {
   ExamStatusCode,
   ExamSummaryVO,
   GradingStrategyCode,
-  MarkingProgressVO,
 } from '@/apis/mark/exam'
+import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -321,7 +321,6 @@ import dayjs from 'dayjs'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  batchGetMarkingProgress,
   closeExam,
   createExam,
   deleteExam,
@@ -331,6 +330,7 @@ import {
   pageExams,
   updateExam,
 } from '@/apis/mark/exam'
+import { batchGetMarkingProgress } from '@/apis/mark/exam-progress'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -345,7 +345,7 @@ import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { resolveScanStageEntryRoute } from '@/utils/resolve-scan-stage-entry'

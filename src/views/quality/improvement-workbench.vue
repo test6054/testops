@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { QualityAuditEvidenceItem } from '@/apis/quality/audit-evidence'
 /**
  * 持续改进与审核闭环工作台（4-in-1）
  *
@@ -28,43 +29,50 @@ import type {
   AuditIssueSaveRequest,
   AuditIssueSeverity,
   AuditIssueSource,
-  AuditIssueStatus,
   AuditIssueVO,
+} from '@/apis/quality/audit-issue'
+import type {
   AuditRectificationQueryRequest,
   AuditRectificationSaveRequest,
-  AuditRectificationStatus,
   AuditRectificationVO,
+} from '@/apis/quality/audit-rectification'
+import type {
   AuditSupervisionConclusion,
   AuditSupervisionFindingItem,
   AuditSupervisionQueryRequest,
   AuditSupervisionSaveRequest,
   AuditSupervisionScope,
-  AuditSupervisionType,
   AuditSupervisionVO,
+} from '@/apis/quality/audit-supervision'
+import type {
   ImprovementTaskQueryRequest,
   ImprovementTaskSaveRequest,
-  ImprovementTaskStatus,
   ImprovementTaskVO,
-  QualityAuditEvidenceItem,
-} from '@/apis/quality'
+} from '@/apis/quality/improvement-task'
+import type {
+  AuditIssueStatus,
+  AuditRectificationStatus,
+  AuditSupervisionType,
+  ImprovementTaskStatus,
+} from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
+import { auditIssueApi } from '@/apis/quality/audit-issue'
+import { auditRectificationApi } from '@/apis/quality/audit-rectification'
+import { auditSupervisionApi } from '@/apis/quality/audit-supervision'
+import { improvementTaskApi } from '@/apis/quality/improvement-task'
 import {
-  aiTaskApi,
   AUDIT_ISSUE_STATUS_COLOR,
   AUDIT_ISSUE_STATUS_LABEL,
   AUDIT_RECTIFICATION_STATUS_COLOR,
   AUDIT_RECTIFICATION_STATUS_LABEL,
   AUDIT_SUPERVISION_TYPE_LABEL,
-  auditIssueApi,
-  auditRectificationApi,
-  auditSupervisionApi,
   IMPROVEMENT_TASK_STATUS_COLOR,
   IMPROVEMENT_TASK_STATUS_LABEL,
-  improvementTaskApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
@@ -87,7 +95,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
@@ -213,10 +221,6 @@ function handleImprovementOwnerChange(value: string | string[] | null) {
     return
   }
   improvementEditor.ownerUserId = value ?? ''
-}
-
-function handleImprovementQueryOwnerChange(value: string | string[] | null) {
-  improvementFilterForm.ownerUserId = typeof value === 'string' ? value : ''
 }
 
 function handleImprovementProgramChange(value: string | null | undefined) {
@@ -664,7 +668,7 @@ async function handleImprovementAiSuggestion(record: ImprovementTaskVO) {
     content: '将提交改进草稿生成任务，完成后可在 AI 任务中心查看结果',
     type: 'info',
     onOk: async () => {
-      const res = await aiTaskApi.submit({
+      const res = await aiTaskTriggerApi.submit({
         taskType: 'IMPROVEMENT_SUGGESTION_GENERATE',
         businessType: 'ACHIEVEMENT_RESULT',
         businessId: achievementResultId,
@@ -845,18 +849,26 @@ function hasLinkedRectification(issueId: string): boolean {
 }
 
 async function refreshIssueRectificationCounts() {
-  const rects = await readAllPages(
-    pageNum => auditRectificationApi.page({
+  const scopedIssues = await readAllPages(
+    pageNum => auditIssueApi.page({
       pageNum,
       pageSize: 100,
       programId: issueQuery.programId || qualityStore.currentProgramId || undefined,
       trainingPlanId: issueQuery.trainingPlanId || qualityStore.currentTrainingPlanId || undefined,
     }),
+    '审核评估问题加载失败，请稍后重试',
+  )
+  const scopedIssueIds = new Set(scopedIssues.map(issue => issue.id))
+  const rects = await readAllPages(
+    pageNum => auditRectificationApi.page({
+      pageNum,
+      pageSize: 100,
+    }),
     '整改任务加载失败，请稍后重试',
   )
   const countMap = new Map<string, number>()
   for (const rect of rects) {
-    if (!rect.auditIssueId) continue
+    if (!rect.auditIssueId || !scopedIssueIds.has(rect.auditIssueId)) continue
     countMap.set(rect.auditIssueId, (countMap.get(rect.auditIssueId) ?? 0) + 1)
   }
   issueRectificationCount.value = countMap

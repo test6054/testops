@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
+import type {
+  ProcessEvaluationNodeSaveRequest,
+  ProcessEvaluationNodeVO,
+} from '@/apis/quality/process-evaluation'
+import type {
+  ProcessEvaluationRecordSaveRequest,
+  ProcessEvaluationRecordVO,
+} from '@/apis/quality/process-evaluation-record'
 /**
  * 过程性评价节点配置 + 节点记录管理
  *
@@ -16,26 +24,24 @@ import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
  */
 import type {
   ConfirmationStatus,
-  ProcessEvaluationNodeSaveRequest,
-  ProcessEvaluationNodeVO,
-  ProcessEvaluationRecordSaveRequest,
-  ProcessEvaluationRecordVO,
   ProcessNodeType,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
 import {
+  processNodeApi,
+} from '@/apis/quality/process-evaluation'
+import { processRecordApi } from '@/apis/quality/process-evaluation-record'
+import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
   DATA_SOURCE_MODE_LABEL,
   PROCESS_NODE_TYPE_LABEL,
   PROCESS_NODE_TYPE_OPTIONS,
-  processNodeApi,
-  processRecordApi,
-} from '@/apis/quality'
+} from '@/apis/quality/types'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
@@ -52,7 +58,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopeReload } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'

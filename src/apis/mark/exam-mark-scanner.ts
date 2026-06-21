@@ -6,7 +6,8 @@
  * - 租户与操作人从 UserHold 注入，前端只传业务字段
  * - 后端 Long ID 统一用 string 表达到前端（保持与其他模块一致）
  */
-import type { ExamStatusCode, ScanAttentionTypeCode } from './exam'
+import type { ExamStatusCode } from './exam'
+import type { ScanAttentionTypeCode } from './exam-scan'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'

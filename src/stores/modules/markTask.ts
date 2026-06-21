@@ -1,4 +1,4 @@
-import type { ReviewTaskItemVO, ReviewTaskQueryRequest } from '@/apis/mark/exam'
+import type { ReviewTaskItemVO, ReviewTaskQueryRequest } from '@/apis/mark/exam-review-task'
 /**
  * 阅卷任务 Store
  *
@@ -26,7 +26,7 @@ import type {
 } from '@/apis/mark/marking-organization'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { listReviewTasks, validateReviewTaskItemContract } from '@/apis/mark/exam'
+import { listReviewTasks, validateReviewTaskItemContract } from '@/apis/mark/exam-review-task'
 import {
   claimMarkingTasks,
   getTeacherClaimContext,
