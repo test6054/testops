@@ -631,8 +631,7 @@ const templateWriteLocked = computed(() => {
   if (!detail) return false
   if (detail.status === 'CLOSED') return true
   if (detail.layoutModeLocked === true) return true
-  if (detail.masterConfigured === true) return true
-  return false
+  return detail.masterConfigured === true;
 })
 
 const templateWriteLockReason = computed(() => {
