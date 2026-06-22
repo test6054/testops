@@ -33,6 +33,7 @@ import {
   isPaperTemplateNotConfiguredError,
 } from '@/apis/mark/exam-template'
 import {
+  checkMarkOcrHealth,
   getCurrentMarkOcrConfig,
 } from '@/apis/mark/ocr-config'
 import {

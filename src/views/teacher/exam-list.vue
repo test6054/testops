@@ -70,107 +70,107 @@
         </div>
 
         <UiFilterBar
-        v-model="filterModel"
-        :fields="filterFields"
-        search-text="查询"
-        actions-align="end"
-        @search="handleSearch"
-        @reset="handleReset"
-      >
-        <template #field-dateRange>
-          <a-range-picker
-            v-model:value="filterForm.dateRange"
-            style="width: 260px"
-            format="YYYY-MM-DD"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            :placeholder="['开始日期', '结束日期']"
-            allow-clear
-          />
-        </template>
-      </UiFilterBar>
+          v-model="filterModel"
+          :fields="filterFields"
+          search-text="查询"
+          actions-align="end"
+          @search="handleSearch"
+          @reset="handleReset"
+        >
+          <template #field-dateRange>
+            <a-range-picker
+              v-model:value="filterForm.dateRange"
+              style="width: 260px"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              :placeholder="['开始日期', '结束日期']"
+              allow-clear
+            />
+          </template>
+        </UiFilterBar>
 
 
 
-      <UiDataTable
-        v-model:current="pagination.current"
-        v-model:page-size="pagination.pageSize"
-        :columns="columns"
-        :data-source="dataSource"
-        :loading="loading"
-        :total="pagination.total"
-        row-key="examId"
-        size="middle"
-        flat
-        class="exam-table student-detail-table__data-table"
-        @page-change="handleUiPageChange"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'examName'">
-            <button type="button" class="link-cell" @click="goSmartExamEntry(record.examId)">
-              {{ record.examName }}
-            </button>
-            <div v-if="record.examNo" class="link-cell__sub">编号：{{ record.examNo }}</div>
+        <UiDataTable
+          v-model:current="pagination.current"
+          v-model:page-size="pagination.pageSize"
+          :columns="columns"
+          :data-source="dataSource"
+          :loading="loading"
+          :total="pagination.total"
+          row-key="examId"
+          size="middle"
+          flat
+          class="exam-table student-detail-table__data-table"
+          @page-change="handleUiPageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'examName'">
+              <button type="button" class="link-cell" @click="goSmartExamEntry(record.examId)">
+                {{ record.examName }}
+              </button>
+              <div v-if="record.examNo" class="link-cell__sub">编号：{{ record.examNo }}</div>
+            </template>
+            <template v-else-if="column.key === 'academicTerm'">
+              <span v-if="formatAcademicTerm(record)">
+                {{ formatAcademicTerm(record) }}
+              </span>
+              <span v-else class="muted">未设置</span>
+            </template>
+            <template v-else-if="column.key === 'status'">
+              <UiTag :tone="examStatusTone(record)" size="sm">
+                {{ examStatusLabel(record) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'progress'">
+              <span v-if="getExamProgressText(record.examId)" class="exam-list-page__progress-text">
+                {{ getExamProgressText(record.examId) }}
+              </span>
+              <span v-else class="muted">—</span>
+            </template>
+            <template v-else-if="column.key === 'examWindow'">
+              <span v-if="record.examStartTime || record.examEndTime">
+                {{ formatDateTime(record.examStartTime) }}
+                <span class="time-divider">~</span>
+                {{ formatDateTime(record.examEndTime) }}
+              </span>
+              <span v-else class="muted">未设置</span>
+            </template>
+            <template v-else-if="column.key === 'createTime'">
+              {{ formatDateTime(record.createTime) }}
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <div class="operations-cell" @click.stop>
+                <UiTextAction
+                  v-if="record.status !== 'CLOSED'"
+                  tone="primary"
+                  @click="goSmartExamEntry(record.examId)"
+                >
+                  进入考试
+                </UiTextAction>
+                <UiTextAction
+                  v-if="record.status !== 'CLOSED'"
+                  @click="openEditModal(record)"
+                >
+                  编辑
+                </UiTextAction>
+                <UiTextAction
+                  v-if="record.status !== 'CLOSED' && isExamOwner(record)"
+                  @click="confirmClose(record)"
+                >
+                  关闭
+                </UiTextAction>
+                <UiTextAction
+                  v-if="record.status !== 'CLOSED' && isExamOwner(record)"
+                  tone="danger"
+                  @click="confirmDelete(record)"
+                >
+                  删除
+                </UiTextAction>
+              </div>
+            </template>
           </template>
-          <template v-else-if="column.key === 'academicTerm'">
-            <span v-if="formatAcademicTerm(record)">
-              {{ formatAcademicTerm(record) }}
-            </span>
-            <span v-else class="muted">未设置</span>
-          </template>
-          <template v-else-if="column.key === 'status'">
-            <UiTag :tone="examStatusTone(record)" size="sm">
-              {{ examStatusLabel(record) }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'progress'">
-            <span v-if="getExamProgressText(record.examId)" class="exam-list-page__progress-text">
-              {{ getExamProgressText(record.examId) }}
-            </span>
-            <span v-else class="muted">—</span>
-          </template>
-          <template v-else-if="column.key === 'examWindow'">
-            <span v-if="record.examStartTime || record.examEndTime">
-              {{ formatDateTime(record.examStartTime) }}
-              <span class="time-divider">~</span>
-              {{ formatDateTime(record.examEndTime) }}
-            </span>
-            <span v-else class="muted">未设置</span>
-          </template>
-          <template v-else-if="column.key === 'createTime'">
-            {{ formatDateTime(record.createTime) }}
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiTextAction
-                v-if="record.status !== 'CLOSED'"
-                tone="primary"
-                @click="goSmartExamEntry(record.examId)"
-              >
-                进入考试
-              </UiTextAction>
-              <UiTextAction
-                v-if="record.status !== 'CLOSED'"
-                @click="openEditModal(record)"
-              >
-                编辑
-              </UiTextAction>
-              <UiTextAction
-                v-if="record.status !== 'CLOSED' && isExamOwner(record)"
-                @click="confirmClose(record)"
-              >
-                关闭
-              </UiTextAction>
-              <UiTextAction
-                v-if="record.status !== 'CLOSED' && isExamOwner(record)"
-                tone="danger"
-                @click="confirmDelete(record)"
-              >
-                删除
-              </UiTextAction>
-            </div>
-          </template>
-        </template>
-      </UiDataTable>
+        </UiDataTable>
       </section>
     </UiSectionTabs>
   </StageWorkbenchShell>
@@ -286,11 +286,11 @@ import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
 import type { BadgeTone, FilterField, UiSectionTabItem, UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
 import LockOutlined from '@ant-design/icons-vue/LockOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
 import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'

@@ -18,7 +18,7 @@
  * 使用 `buildNumericColumn()` 或列 `align: 'right'`，经 `normalizeDataTableColumns` 统一表头/单元格右对齐。
  *
  * ## 窄视口列（768 / 992）
- * - 列 `meta.hideBelow: 'md' | 'lg'`，或使用 `withHideBelowMd()` / `withHideBelowLg()`。
+ * - 列 `meta.hideBelow: 'md' | 'lg'`。
  * - `UiDataTable` 默认 `responsiveColumns` 开启，对未标注列按 key/title 推断低优先级列并在 <768px 隐藏。
  * - 操作列在 compact 视口下改为纵向堆叠，触控目标 ≥44px。
  */
@@ -191,38 +191,6 @@ export function inferDataTableColumnHideBelow<RecordType>(
     return 'md'
   }
   return undefined
-}
-
-/**
- * 为列标注 md 以下隐藏。
- */
-export function withHideBelowMd<RecordType>(
-  column: ColumnType<RecordType>,
-): ColumnType<RecordType> {
-  return mergeDataTableColumnMeta(column, { hideBelow: 'md' })
-}
-
-/**
- * 为列标注 lg 以下隐藏。
- */
-export function withHideBelowLg<RecordType>(
-  column: ColumnType<RecordType>,
-): ColumnType<RecordType> {
-  return mergeDataTableColumnMeta(column, { hideBelow: 'lg' })
-}
-
-function mergeDataTableColumnMeta<RecordType>(
-  column: ColumnType<RecordType>,
-  partial: UiDataTableColumnMeta,
-): ColumnType<RecordType> {
-  const withMeta = column as ColumnWithMeta<RecordType>
-  return {
-    ...column,
-    meta: {
-      ...withMeta.meta,
-      ...partial,
-    },
-  }
 }
 
 function shouldHideResponsiveColumn<RecordType>(

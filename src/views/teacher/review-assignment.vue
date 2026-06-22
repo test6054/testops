@@ -769,6 +769,7 @@ onMounted(async () => {
 
     <template v-if="!canManageExam">
       <a-spin :spinning="organizationLoading || scanReadinessLoading">
+        <UiEmpty
           v-if="!organization && !organizationLoading"
           description="暂无数据"
           class="review-assignment__empty"
