@@ -21,9 +21,10 @@
       </template>
 
       <UiFilterBar
-        v-model="searchForm"
+        :model-value="searchForm"
         :fields="deviceFilterFields"
         search-text="查询"
+        @update:model-value="syncSearchForm"
         @search="handleSearch"
         @reset="handleResetSearch"
       />
@@ -437,6 +438,10 @@ const loading = ref(false)
 const devicesLoadError = ref<Error | null>(null)
 const devices = ref<ExamScannerDeviceVO[]>([])
 const searchForm = reactive<ExamScannerDeviceQueryRequest>({})
+
+function syncSearchForm(next: Record<string, unknown>): void {
+  Object.assign(searchForm, next)
+}
 const showActivationCodeModal = ref(false)
 const activationCodeInfo = ref<ExamScannerActivationCodeVO | null>(null)
 const activationCodeDeviceName = ref('')

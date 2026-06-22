@@ -54,9 +54,10 @@
         <span>当前考试导出任务</span>
       </template>
       <UiFilterBar
-        v-model="exportFilterForm"
+        :model-value="exportFilterForm"
         :fields="exportFilterFields"
         search-text="查询"
+        @update:model-value="syncExportFilterForm"
         @search="handleTaskFilterSearch"
         @reset="handleTaskFilterReset"
       />
@@ -344,6 +345,10 @@ const exportFilterForm = reactive<{
   statusFilter: undefined,
   typeFilter: undefined,
 })
+
+function syncExportFilterForm(next: Record<string, unknown>): void {
+  Object.assign(exportFilterForm, next)
+}
 
 const exportFilterFields: FilterField[] = [
   {

@@ -36,7 +36,7 @@ import type {
   WorkbenchStage,
 } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
@@ -70,7 +70,9 @@ import {
   TaskResultPanel,
 } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useQualityScopeReload } from '@/composables/useQualityPageScope'
+import { usePolling } from '@/composables/usePolling'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
+import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
@@ -356,8 +358,10 @@ async function loadBatches() {
   if (!qualityStore.currentTrainingPlanId) {
     batches.value = []
     total.value = 0
+    batchPolling.syncPolling()
     return
   }
+  const scope = beginQualityScopeRequest()
   loading.value = true
   listLoadError.value = null
   try {
@@ -370,6 +374,9 @@ async function loadBatches() {
       sourceMode: query.sourceMode || undefined,
       keyword: query.keyword?.trim() || undefined,
     })
+    if (scope.isStale()) {
+      return
+    }
     batches.value = readPageList(page, '成绩批次加载失败，请稍后重试')
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
@@ -379,33 +386,36 @@ async function loadBatches() {
       await loadBatches()
       return
     }
-    syncBatchPolling()
+    batchPolling.syncPolling()
   } catch (error) {
+    if (scope.isStale()) {
+      return
+    }
     listLoadError.value = toUserError(error, '成绩批次加载失败')
     showUserError(error, '成绩批次加载失败')
   } finally {
-    loading.value = false
+    if (!scope.isStale()) {
+      loading.value = false
+    }
   }
 }
 
-let batchPollTimer: ReturnType<typeof setInterval> | null = null
-
-function syncBatchPolling(): void {
-  const shouldPoll = batches.value.some((batch) => batch.status === 'PARSING')
-  if (shouldPoll && !batchPollTimer) {
-    batchPollTimer = setInterval(() => {
-      void loadBatchesQuietly()
-    }, 3000)
-  } else if (!shouldPoll && batchPollTimer) {
-    clearInterval(batchPollTimer)
-    batchPollTimer = null
-  }
-}
+const batchPolling = usePolling(
+  () => loadBatchesQuietly(),
+  {
+    getOptions: () => ({
+      intervalMs: 3000,
+      when: batches.value.some((batch) => batch.status === 'PARSING'),
+    }),
+    pauseWhenDocumentHidden: true,
+  },
+)
 
 async function loadBatchesQuietly(): Promise<void> {
   if (!qualityStore.currentTrainingPlanId || loading.value) {
     return
   }
+  const scope = beginQualityScopeRequest()
   try {
     const page = await scoreBatchApi.page({
       ...query,
@@ -416,11 +426,14 @@ async function loadBatchesQuietly(): Promise<void> {
       sourceMode: query.sourceMode || undefined,
       keyword: query.keyword?.trim() || undefined,
     })
+    if (scope.isStale()) {
+      return
+    }
     batches.value = readPageList(page, '成绩批次加载失败，请稍后重试')
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = readPageTotal(page, '成绩批次加载失败，请稍后重试')
-    syncBatchPolling()
+    batchPolling.syncPolling()
   } catch {
     // 轮询刷新失败时不打断当前页面操作
   }
@@ -432,7 +445,7 @@ async function handleScopeChange(): Promise<void> {
   await loadBatches()
 }
 
-useQualityScopeReload(handleScopeChange)
+useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false })
 
 function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
@@ -811,13 +824,6 @@ onMounted(async () => {
   if (qualityStore.currentTrainingPlanId) {
     await loadCourses()
     await loadBatches()
-  }
-})
-
-onBeforeUnmount(() => {
-  if (batchPollTimer) {
-    clearInterval(batchPollTimer)
-    batchPollTimer = null
   }
 })
 </script>

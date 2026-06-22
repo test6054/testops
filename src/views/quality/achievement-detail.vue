@@ -58,7 +58,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
-import { useQualityScopeReload } from '@/composables/useQualityPageScope'
+import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 import { promptModal } from './_helpers'
 
@@ -76,9 +76,9 @@ const route = useRoute()
 const router = useRouter()
 
 /** 全局 scope 切换时返回列表，避免详情与当前培养方案/课程错位 */
-useQualityScopeReload(() => {
+useQualityScopedLoader(() => {
   void router.push({ name: 'QualityAchievement' })
-})
+}, { watchScope: true, immediate: false, reloadOnActivated: false })
 
 const resultId = computed(() => String(route.params.resultId || ''))
 

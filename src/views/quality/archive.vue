@@ -61,7 +61,7 @@ import {
   expertPackageExportBlockers,
 } from '@/composables/useAccreditationWorkbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useQualityScopeReload } from '@/composables/useQualityPageScope'
+import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
@@ -272,7 +272,7 @@ async function handleScopeChange(): Promise<void> {
   await loadList()
 }
 
-useQualityScopeReload(handleScopeChange)
+useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false })
 
 function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current

@@ -1,0 +1,694 @@
+<script setup lang="ts">
+import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import type {
+  AuditIssueQueryRequest,
+  AuditIssueSaveRequest,
+  AuditIssueSeverity,
+  AuditIssueSource,
+  AuditIssueVO,
+} from '@/apis/quality/audit-issue'
+import type { AuditIssueStatus } from '@/apis/quality/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { reactive, ref } from 'vue'
+import { auditIssueApi } from '@/apis/quality/audit-issue'
+import { auditRectificationApi } from '@/apis/quality/audit-rectification'
+import {
+  AUDIT_ISSUE_STATUS_COLOR,
+  AUDIT_ISSUE_STATUS_LABEL,
+} from '@/apis/quality/types'
+import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
+import {
+  AchievementResultSelector,
+  CourseGoalSelector,
+  CourseSelector,
+  ProgramSelector,
+  RequirementIndicatorSelector,
+  TeacherSelector,
+  TrainingPlanSelector,
+} from '@/components/quality/selectors'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import {
+  refreshWorkbenchSignalsAfterMutation,
+  selectedId,
+  type WorkbenchSignalRefreshHandler,
+} from '@/composables/quality/improvement/improvementWorkbenchShared'
+import { beginQualityScopeRequest, assertQualityScopeFresh, isQualityScopeStaleError, type QualityScopeRequestToken } from '@/composables/useScopeRequestGuard'
+import { useQualityStore } from '@/stores/modules/quality'
+import { showUserError, toUserError } from '@/utils/error-handler'
+import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
+import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
+
+defineOptions({ name: 'AuditIssueTab' })
+
+const props = defineProps<{
+  onLoadError?: (error: Error | null) => void
+  onWorkbenchRefresh?: WorkbenchSignalRefreshHandler
+}>()
+
+const qualityStore = useQualityStore()
+
+const issueColumns: ColumnsType = [
+  { title: '编码', dataIndex: 'issueCode', key: 'issueCode', width: 140 },
+  { title: '标题', key: 'issueTitle' },
+  { title: '来源', dataIndex: 'issueSource', key: 'issueSource', width: 120 },
+  { title: '严重度', dataIndex: 'severity', key: 'severity', width: 90 },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 110 },
+  { title: '年度', dataIndex: 'auditYear', key: 'auditYear', width: 80 },
+  { title: '操作', key: 'actions', width: 260, fixed: 'right' },
+]
+
+const issueSourceOptions = [
+  { value: 'SELF_AUDIT', label: '自评自查' },
+  { value: 'EXPERT_AUDIT', label: '专家审核' },
+  { value: 'ACCREDITATION_AUDIT', label: '认证审核' },
+  { value: 'EXTERNAL_INSPECTION', label: '外部检查' },
+]
+const issueSourceLabelMap: Record<AuditIssueSource, string> = {
+  SELF_AUDIT: '自评自查',
+  EXPERT_AUDIT: '专家审核',
+  ACCREDITATION_AUDIT: '认证审核',
+  EXTERNAL_INSPECTION: '外部检查',
+}
+const severityOptions = [
+  { value: 'MINOR', label: '轻微' },
+  { value: 'MAJOR', label: '严重' },
+  { value: 'CRITICAL', label: '重大' },
+]
+const severityLabelMap: Record<AuditIssueSeverity, string> = {
+  MINOR: '轻微',
+  MAJOR: '严重',
+  CRITICAL: '重大',
+}
+const severityColorMap: Record<AuditIssueSeverity, BadgeTone> = {
+  MINOR: 'gray',
+  MAJOR: 'orange',
+  CRITICAL: 'red',
+}
+const issueStatusOptions: AuditIssueStatus[] = [
+  'OPEN',
+  'IN_RECTIFICATION',
+  'RECTIFIED',
+  'VERIFIED',
+  'CLOSED',
+]
+
+function issueStatusLabel(value: AuditIssueStatus): string {
+  return strictEnumLabel(AUDIT_ISSUE_STATUS_LABEL, value, '审核问题状态')
+}
+
+function issueStatusColor(value: AuditIssueStatus): BadgeTone {
+  return strictEnumTone(AUDIT_ISSUE_STATUS_COLOR, value, '审核问题状态')
+}
+
+function issueSourceLabel(value: AuditIssueSource): string {
+  return strictEnumLabel(issueSourceLabelMap, value, '审核问题来源')
+}
+
+function severityLabel(value: AuditIssueSeverity): string {
+  return strictEnumLabel(severityLabelMap, value, '审核问题严重度')
+}
+
+function severityColor(value: AuditIssueSeverity): BadgeTone {
+  return strictEnumTone(severityColorMap, value, '审核问题严重度')
+}
+
+const issueList = ref<AuditIssueVO[]>([])
+const issueTotal = ref(0)
+const issueLoading = ref(false)
+const issueQuery = reactive<AuditIssueQueryRequest>({
+  pageNum: 1,
+  pageSize: 10,
+  programId: undefined,
+  trainingPlanId: undefined,
+  qualityCourseId: undefined,
+  issueSource: undefined,
+  severity: undefined,
+  status: undefined,
+  auditYear: undefined,
+  keyword: '',
+})
+
+const issueFilterForm = reactive({
+  issueSource: undefined as AuditIssueSource | undefined,
+  severity: undefined as AuditIssueSeverity | undefined,
+  status: undefined as AuditIssueStatus | undefined,
+  auditYear: '',
+  keyword: '',
+})
+
+const issueFilterFields: FilterField[] = [
+  {
+    key: 'severity',
+    type: 'select',
+    label: '严重度',
+    placeholder: '严重度',
+    allowClear: true,
+    width: 120,
+    options: severityOptions,
+  },
+  {
+    key: 'status',
+    type: 'select',
+    label: '状态',
+    placeholder: '状态',
+    allowClear: true,
+    width: 120,
+    options: issueStatusOptions.map((status) => ({
+      value: status,
+      label: issueStatusLabel(status),
+    })),
+  },
+  {
+    key: 'keyword',
+    type: 'input',
+    label: '关键字',
+    placeholder: '编码 / 标题',
+    width: 180,
+    triggerSearchOnChange: false,
+  },
+]
+
+function syncIssueFilterToQuery() {
+  issueQuery.issueSource = issueFilterForm.issueSource
+  issueQuery.severity = issueFilterForm.severity
+  issueQuery.status = issueFilterForm.status
+  issueQuery.auditYear = issueFilterForm.auditYear || undefined
+  issueQuery.keyword = issueFilterForm.keyword
+}
+
+function handleIssueFilterSearch() {
+  issueQuery.pageNum = 1
+  syncIssueFilterToQuery()
+  loadList()
+}
+
+const issueTransitMap: Record<AuditIssueStatus, AuditIssueStatus[]> = {
+  OPEN: ['IN_RECTIFICATION'],
+  IN_RECTIFICATION: ['RECTIFIED'],
+  RECTIFIED: ['VERIFIED'],
+  VERIFIED: ['CLOSED'],
+  CLOSED: [],
+}
+
+const issueEditorVisible = ref(false)
+const issueEditorMode = ref<'create' | 'edit'>('create')
+const issueEditor = reactive<AuditIssueSaveRequest>({
+  programId: '',
+  trainingPlanId: '',
+  qualityCourseId: '',
+  requirementIndicatorId: '',
+  courseGoalId: '',
+  achievementResultId: '',
+  issueCode: '',
+  issueTitle: '',
+  issueDescription: '',
+  issueSource: 'SELF_AUDIT',
+  severity: 'MINOR',
+  auditRound: '',
+  auditYear: '',
+  raisedBy: '',
+  raisedAt: '',
+})
+const issueEditorSubmitting = ref(false)
+const issueRectificationCount = ref<Map<string, number>>(new Map())
+
+function hasLinkedRectification(issueId: string): boolean {
+  return (issueRectificationCount.value.get(issueId) ?? 0) > 0
+}
+
+async function refreshIssueRectificationCounts(scope: QualityScopeRequestToken) {
+  const scopedIssues = await readAllPages(
+    pageNum => auditIssueApi.page({
+      pageNum,
+      pageSize: 100,
+      programId: issueQuery.programId || qualityStore.currentProgramId || undefined,
+      trainingPlanId: issueQuery.trainingPlanId || qualityStore.currentTrainingPlanId || undefined,
+    }),
+    '审核评估问题加载失败，请稍后重试',
+  )
+  assertQualityScopeFresh(scope)
+  const scopedIssueIds = new Set(scopedIssues.map(issue => issue.id))
+  const rects = await readAllPages(
+    pageNum => auditRectificationApi.page({
+      pageNum,
+      pageSize: 100,
+    }),
+    '整改任务加载失败，请稍后重试',
+  )
+  assertQualityScopeFresh(scope)
+  const countMap = new Map<string, number>()
+  for (const rect of rects) {
+    if (!rect.auditIssueId || !scopedIssueIds.has(rect.auditIssueId)) continue
+    countMap.set(rect.auditIssueId, (countMap.get(rect.auditIssueId) ?? 0) + 1)
+  }
+  assertQualityScopeFresh(scope)
+  issueRectificationCount.value = countMap
+}
+
+async function loadList(options?: { refreshSignals?: boolean }) {
+  const scope = beginQualityScopeRequest()
+  issueLoading.value = true
+  try {
+    const page = await auditIssueApi.page({
+      ...issueQuery,
+      programId: issueQuery.programId || qualityStore.currentProgramId || undefined,
+      trainingPlanId: issueQuery.trainingPlanId || qualityStore.currentTrainingPlanId || undefined,
+      keyword: issueQuery.keyword?.trim() || undefined,
+    })
+    assertQualityScopeFresh(scope)
+    issueList.value = readPageList(page, '审核评估问题加载失败，请稍后重试')
+    issueQuery.pageNum = page.pageNum
+    issueQuery.pageSize = page.pageSize
+    issueTotal.value = readPageTotal(page, '审核评估问题加载失败，请稍后重试')
+    if (issueList.value.length === 0 && issueTotal.value > 0 && issueQuery.pageNum > 1) {
+      issueQuery.pageNum -= 1
+      await loadList(options)
+      return
+    }
+    await refreshIssueRectificationCounts(scope)
+    if (options?.refreshSignals) {
+      await refreshWorkbenchSignalsAfterMutation(
+        scope,
+        props.onWorkbenchRefresh,
+        props.onLoadError,
+        '工作台指标加载失败，请稍后重试',
+      )
+    }
+  } catch (error) {
+    if (isQualityScopeStaleError(error) || scope.isStale()) {
+      return
+    }
+    const err = toUserError(error, '审核评估问题加载失败')
+    props.onLoadError?.(err)
+    showUserError(error, '审核评估问题加载失败')
+    throw err
+  } finally {
+    issueLoading.value = false
+  }
+}
+
+function handleIssuePageChange(page: { current: number, pageSize: number }) {
+  issueQuery.pageNum = page.current
+  issueQuery.pageSize = page.pageSize
+  loadList()
+}
+
+function resetIssueQuery() {
+  issueQuery.pageNum = 1
+  issueQuery.programId = undefined
+  issueQuery.trainingPlanId = undefined
+  issueQuery.qualityCourseId = undefined
+  syncIssueFilterToQuery()
+  loadList()
+}
+
+function openIssueCreate() {
+  issueEditorMode.value = 'create'
+  Object.assign(issueEditor, {
+    id: undefined,
+    programId: qualityStore.currentProgramId || '',
+    trainingPlanId: qualityStore.currentTrainingPlanId || '',
+    qualityCourseId: '',
+    requirementIndicatorId: '',
+    courseGoalId: '',
+    achievementResultId: '',
+    issueCode: '',
+    issueTitle: '',
+    issueDescription: '',
+    issueSource: 'SELF_AUDIT',
+    severity: 'MINOR',
+    auditRound: '',
+    auditYear: new Date().getFullYear().toString(),
+    raisedBy: '',
+    raisedAt: '',
+  })
+  issueEditorVisible.value = true
+}
+
+function openIssueEdit(record: AuditIssueVO) {
+  if (!canEditAuditIssue(record.status)) {
+    message.error('当前状态不允许编辑审核问题')
+    return
+  }
+  issueEditorMode.value = 'edit'
+  Object.assign(issueEditor, {
+    id: record.id,
+    programId: record.programId || '',
+    trainingPlanId: record.trainingPlanId || '',
+    qualityCourseId: record.qualityCourseId || '',
+    requirementIndicatorId: record.requirementIndicatorId || '',
+    courseGoalId: record.courseGoalId || '',
+    achievementResultId: record.achievementResultId || '',
+    issueCode: record.issueCode,
+    issueTitle: record.issueTitle,
+    issueDescription: record.issueDescription || '',
+    issueSource: record.issueSource,
+    severity: record.severity,
+    auditRound: record.auditRound || '',
+    auditYear: record.auditYear || '',
+    raisedBy: record.raisedBy || '',
+    raisedAt: record.raisedAt || '',
+  })
+  issueEditorVisible.value = true
+}
+
+async function submitIssueEditor() {
+  if (issueEditorMode.value === 'edit' && issueEditor.id) {
+    const current = issueList.value.find((item) => item.id === issueEditor.id)
+    if (current && !canEditAuditIssue(current.status)) {
+      message.error('当前状态不允许编辑审核问题')
+      return
+    }
+  }
+  if (
+    !issueEditor.issueCode.trim()
+    || !issueEditor.issueTitle.trim()
+    || !issueEditor.issueSource
+    || !issueEditor.severity
+  ) {
+    message.error('请填写编码、标题、来源、严重程度')
+    return
+  }
+  issueEditorSubmitting.value = true
+  try {
+    const request: AuditIssueSaveRequest = {
+      ...issueEditor,
+      programId: issueEditor.programId || undefined,
+      trainingPlanId: issueEditor.trainingPlanId || undefined,
+      qualityCourseId: issueEditor.qualityCourseId || undefined,
+      requirementIndicatorId: issueEditor.requirementIndicatorId || undefined,
+      courseGoalId: issueEditor.courseGoalId || undefined,
+      achievementResultId: issueEditor.achievementResultId || undefined,
+      issueCode: issueEditor.issueCode.trim(),
+      issueTitle: issueEditor.issueTitle.trim(),
+      issueDescription: issueEditor.issueDescription || undefined,
+      auditRound: issueEditor.auditRound || undefined,
+      auditYear: issueEditor.auditYear || undefined,
+      raisedBy: issueEditor.raisedBy || undefined,
+      raisedAt: issueEditor.raisedAt || undefined,
+    }
+    if (issueEditorMode.value === 'create') {
+      await auditIssueApi.create(request)
+      message.success('已登记')
+    } else {
+      await auditIssueApi.update(request)
+      message.success('已保存')
+    }
+    issueEditorVisible.value = false
+    await loadList({ refreshSignals: true })
+  } finally {
+    issueEditorSubmitting.value = false
+  }
+}
+
+async function handleIssueDelete(record: AuditIssueVO) {
+  void confirmAsync({
+    title: `删除问题 ${record.issueCode}？`,
+    type: 'error',
+    onOk: async () => {
+      await auditIssueApi.delete(record.id)
+      message.success('已删除')
+      await loadList({ refreshSignals: true })
+    },
+  })
+}
+
+function canEditAuditIssue(status: AuditIssueStatus): boolean {
+  return status === 'OPEN' || status === 'IN_RECTIFICATION'
+}
+
+function nextAuditIssueStatuses(status: AuditIssueStatus): AuditIssueStatus[] {
+  return strictEnumValue(issueTransitMap, status, '审核问题状态')
+}
+
+async function changeIssueStatus(record: AuditIssueVO, target: AuditIssueStatus) {
+  await auditIssueApi.transitStatus(record.id, target)
+  message.success(`已切换到「${issueStatusLabel(target)}」`)
+  await loadList({ refreshSignals: true })
+}
+
+function handleIssueStatusMenuClick(record: AuditIssueVO, event: MenuInfo) {
+  if (typeof event.key !== 'string') {
+    showUserError(null, '状态切换无效，请重新操作')
+    return
+  }
+  if (!nextAuditIssueStatuses(record.status).includes(event.key as AuditIssueStatus)) {
+    showUserError(null, `当前状态无法切换到「${issueStatusLabel(event.key as AuditIssueStatus)}」`)
+    return
+  }
+  changeIssueStatus(record, event.key as AuditIssueStatus)
+}
+
+function handleIssueProgramChange(value: string | null | undefined) {
+  issueEditor.programId = selectedId(value)
+  issueEditor.qualityCourseId = ''
+  issueEditor.requirementIndicatorId = ''
+}
+
+function handleIssueTrainingPlanChange(value: string | null | undefined) {
+  issueEditor.trainingPlanId = selectedId(value)
+}
+
+function handleIssueCourseChange(value: string | null | undefined) {
+  issueEditor.qualityCourseId = selectedId(value)
+}
+
+function handleIssueRequirementIndicatorChange(value: string | null | undefined) {
+  issueEditor.requirementIndicatorId = selectedId(value)
+}
+
+function handleIssueCourseGoalChange(value: string | null | undefined) {
+  issueEditor.courseGoalId = selectedId(value)
+}
+
+function handleIssueAchievementResultChange(value: string | null | undefined) {
+  issueEditor.achievementResultId = selectedId(value)
+}
+
+function handleIssueRaisedByChange(value: string | string[] | null | undefined) {
+  issueEditor.raisedBy = Array.isArray(value) ? '' : selectedId(value)
+}
+
+defineExpose({
+  loadList,
+})
+</script>
+
+<template>
+  <ImprovementWorkbenchPanel title="审核评估问题清单">
+    <template #extra>
+      <UiButton variant="primary" size="sm" @click="openIssueCreate">登记问题</UiButton>
+    </template>
+
+    <UiFilterBar
+      v-model="issueFilterForm"
+      :fields="issueFilterFields"
+      show-labels
+      search-text="查询"
+      @search="handleIssueFilterSearch"
+      @reset="resetIssueQuery"
+    />
+
+    <UiDataTable
+      class="student-detail-table__data-table"
+      v-model:current="issueQuery.pageNum"
+      v-model:page-size="issueQuery.pageSize"
+      :columns="issueColumns"
+      :data-source="issueList"
+      :loading="issueLoading"
+      row-key="id"
+      size="middle"
+      :total="issueTotal"
+      flat
+      @page-change="handleIssuePageChange"
+    >
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'issueTitle'">
+          <div>{{ record.issueTitle }}</div>
+          <div v-if="record.issueDescription" class="iwb-tab__sub-desc">
+            {{ record.issueDescription.substring(0, 80)
+            }}{{ record.issueDescription.length > 80 ? '…' : '' }}
+          </div>
+        </template>
+        <template v-else-if="column.key === 'issueSource'">
+          {{ issueSourceLabel(record.issueSource) }}
+        </template>
+        <template v-else-if="column.key === 'severity'">
+          <UiTag :tone="severityColor(record.severity)" size="sm">
+            {{ severityLabel(record.severity) }}
+          </UiTag>
+        </template>
+        <template v-else-if="column.key === 'status'">
+          <UiTag :tone="issueStatusColor(record.status)" size="sm">
+            {{ issueStatusLabel(record.status) }}
+          </UiTag>
+        </template>
+        <template v-else-if="column.key === 'actions'">
+          <div class="operations-cell" @click.stop>
+            <UiTextAction
+              :disabled="!canEditAuditIssue(record.status)"
+              @click="openIssueEdit(record)"
+            >
+              编辑
+            </UiTextAction>
+            <a-dropdown v-if="nextAuditIssueStatuses(record.status).length">
+              <UiTextAction tone="primary" @click.prevent>状态</UiTextAction>
+              <template #overlay>
+                <a-menu @click="handleIssueStatusMenuClick(record, $event)">
+                  <a-menu-item v-for="s in nextAuditIssueStatuses(record.status)" :key="s">
+                    {{ issueStatusLabel(s) }}
+                  </a-menu-item>
+                </a-menu>
+              </template>
+            </a-dropdown>
+            <UiTextAction
+              v-if="record.status === 'OPEN' && !hasLinkedRectification(record.id)"
+              tone="danger"
+              @click="handleIssueDelete(record)"
+            >
+              删除
+            </UiTextAction>
+          </div>
+        </template>
+      </template>
+    </UiDataTable>
+  </ImprovementWorkbenchPanel>
+
+  <a-modal
+    v-model:open="issueEditorVisible"
+    :title="issueEditorMode === 'create' ? '登记审核评估问题' : '编辑审核评估问题'"
+    :confirm-loading="issueEditorSubmitting"
+    width="820px"
+    @ok="submitIssueEditor"
+  >
+    <a-form layout="vertical" :model="issueEditor">
+      <a-row :gutter="12">
+        <a-col :span="6">
+          <a-form-item label="编码" required>
+            <a-input v-model:value="issueEditor.issueCode" />
+          </a-form-item>
+        </a-col>
+        <a-col :span="6">
+          <a-form-item label="问题来源" required>
+            <a-select v-model:value="issueEditor.issueSource" :options="issueSourceOptions" />
+          </a-form-item>
+        </a-col>
+        <a-col :span="6">
+          <a-form-item label="严重程度" required>
+            <a-select v-model:value="issueEditor.severity" :options="severityOptions" />
+          </a-form-item>
+        </a-col>
+        <a-col :span="6">
+          <a-form-item label="审核年度">
+            <a-input v-model:value="issueEditor.auditYear" />
+          </a-form-item>
+        </a-col>
+      </a-row>
+      <a-form-item label="标题" required>
+        <a-input v-model:value="issueEditor.issueTitle" />
+      </a-form-item>
+      <a-form-item label="详细描述">
+        <a-textarea v-model:value="issueEditor.issueDescription" :rows="4" />
+      </a-form-item>
+      <a-row :gutter="12">
+        <a-col :span="8">
+          <a-form-item label="审核轮次">
+            <a-input v-model:value="issueEditor.auditRound" />
+          </a-form-item>
+        </a-col>
+        <a-col :span="8">
+          <a-form-item label="提出人">
+            <TeacherSelector
+              :value="issueEditor.raisedBy || null"
+              placeholder="选择提出人（可选）"
+              @change="handleIssueRaisedByChange"
+            />
+          </a-form-item>
+        </a-col>
+        <a-col :span="8">
+          <a-form-item label="提出时间">
+            <a-input v-model:value="issueEditor.raisedAt" placeholder="yyyy-MM-dd HH:mm:ss" />
+          </a-form-item>
+        </a-col>
+      </a-row>
+      <a-divider orientation="left">关联业务对象（可选）</a-divider>
+      <a-row :gutter="12">
+        <a-col :span="8">
+          <a-form-item label="所属专业">
+            <ProgramSelector
+              :value="issueEditor.programId || null"
+              @change="handleIssueProgramChange"
+            />
+          </a-form-item>
+        </a-col>
+        <a-col :span="8">
+          <a-form-item label="培养方案">
+            <TrainingPlanSelector
+              :value="issueEditor.trainingPlanId || null"
+              :program-id="issueEditor.programId || null"
+              @change="handleIssueTrainingPlanChange"
+            />
+          </a-form-item>
+        </a-col>
+        <a-col :span="8">
+          <a-form-item label="质量评价课程">
+            <CourseSelector
+              :value="issueEditor.qualityCourseId || null"
+              :program-id="issueEditor.programId || null"
+              :training-plan-id="issueEditor.trainingPlanId || null"
+              @change="handleIssueCourseChange"
+            />
+          </a-form-item>
+        </a-col>
+      </a-row>
+      <a-row :gutter="12">
+        <a-col :span="8">
+          <a-form-item label="观测点">
+            <RequirementIndicatorSelector
+              :value="issueEditor.requirementIndicatorId || null"
+              :training-plan-id="issueEditor.trainingPlanId || null"
+              @change="handleIssueRequirementIndicatorChange"
+            />
+          </a-form-item>
+        </a-col>
+        <a-col :span="8">
+          <a-form-item label="课程目标">
+            <CourseGoalSelector
+              :value="issueEditor.courseGoalId || null"
+              :quality-course-id="issueEditor.qualityCourseId || null"
+              @change="handleIssueCourseGoalChange"
+            />
+          </a-form-item>
+        </a-col>
+        <a-col :span="8">
+          <a-form-item label="达成度结果">
+            <AchievementResultSelector
+              :value="issueEditor.achievementResultId || null"
+              :program-id="issueEditor.programId || null"
+              :training-plan-id="issueEditor.trainingPlanId || null"
+              :quality-course-id="issueEditor.qualityCourseId || null"
+              @change="handleIssueAchievementResultChange"
+            />
+          </a-form-item>
+        </a-col>
+      </a-row>
+    </a-form>
+  </a-modal>
+</template>
+
+<style scoped lang="scss">
+.iwb-tab {
+  &__sub-desc {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--dp-text-muted, #64748b);
+  }
+}
+</style>

@@ -61,6 +61,8 @@
   --dp-font-size-2xl: 20px;
   --dp-font-size-3xl: 24px;
 
+  --dp-font-size-xxs: 11px;
+
   --dp-font-weight-body: 400;
   --dp-font-weight-emphasis: 500;
   --dp-font-weight-title: 600;
@@ -92,6 +94,16 @@
   --dp-type-hint-line-height: 18px;
   --dp-type-hint-weight: 400;
 
+  /* KPI / 大数字角色字阶 */
+  --dp-type-metric-size: 24px;
+  --dp-type-metric-line-height: 32px;
+  --dp-type-metric-weight: var(--dp-font-weight-metric);
+
+  /* 标签角色字阶（表单 label、卡片副标题、元信息 key） */
+  --dp-type-label-size: 12px;
+  --dp-type-label-line-height: 16px;
+  --dp-type-label-weight: 500;
+
   /* 质量评价域长文正文行高（Phase 3） */
   --dp-type-quality-body-line-height: 1.6;
 
@@ -109,6 +121,11 @@
   --dp-space-7: 28px;
   --dp-space-8: 32px;
   --dp-space-10: 40px;
+  --dp-space-12: 48px;
+  --dp-space-16: 64px;
+
+  /* 语义间距别名 */
+  --dp-space-section: var(--dp-space-8);
 
   --dp-bg-muted: var(--ant-color-bg-layout);
   --dp-surface: var(--ant-color-bg-container);
@@ -199,6 +216,7 @@
 
   --dp-purple-50: #f5f3ff;
   --dp-purple-200: #ddd6fe;
+  --dp-purple-500: #8b5cf6;
   --dp-purple-700: #7c3aed;
 
   --dp-focus-ring: rgba(22, 119, 255, 0.18);

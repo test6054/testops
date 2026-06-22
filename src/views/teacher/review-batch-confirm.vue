@@ -11,6 +11,9 @@
           </UiTag>
         </template>
         <template #actions>
+          <UiButton variant="outline" size="sm" @click="goSingleReview">
+            OCR/AI 单题复核
+          </UiButton>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadTasks">
             <template #icon><ReloadOutlined /></template>
             刷新
@@ -35,7 +38,7 @@
       </ContextBar>
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请先选择考试" />
+    <UiEmpty v-if="!selectedExamId" description="缺少考试上下文，请从考试列表进入" />
 
     <UiErrorRetryPanel
       v-else-if="loadError"
@@ -44,7 +47,13 @@
     />
 
     <UiCard v-else>
+      <UiEmpty
+        v-if="!loading && rows.length === 0"
+        description="当前暂无待批量确认的复核任务"
+        class="batch-confirm__empty"
+      />
       <UiDataTable
+        v-else
         pagination-mode="server"
         row-key="gradeResultId"
         :columns="columns"
@@ -58,7 +67,7 @@
         size="middle"
         @page-change="onPageChange"
       >
-        <template #bodyCell="{ column, record }">
+        <template #bodyCell="{ column, record }: { column: ColumnType<ReviewTaskItemVO>, record: ReviewTaskItemVO }">
           <template v-if="column.key === 'paper'">
             {{ record.paperDisplay.primaryText }}
           </template>
@@ -103,7 +112,8 @@ import type {
 } from '@/apis/mark/exam-review-task'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   batchConfirmQuestionGrades,
 } from '@/apis/mark/exam-grade'
@@ -120,7 +130,7 @@ import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
-import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -143,8 +153,10 @@ const GRADE_SOURCE_TONE: Record<GradeSourceCode, 'blue' | 'green' | 'orange' | '
   RECOGNITION_FAILURE: 'red',
 }
 
+const router = useRouter()
 const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
+const { refreshing: workbenchRefreshing } = useMarkWorkbenchContext()
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -184,8 +196,8 @@ function gradeSourceTone(source: GradeSourceCode): 'blue' | 'green' | 'orange' |
 
 function initScoreDraft(records: ReviewTaskItemVO[]): void {
   for (const record of records) {
-    if (scoreDraftMap[record.gradeResultId] == null) {
-      scoreDraftMap[record.gradeResultId] = record.aiScore ?? 0
+    if (scoreDraftMap[record.gradeResultId] == null && record.aiScore != null) {
+      scoreDraftMap[record.gradeResultId] = record.aiScore
     }
   }
 }
@@ -242,6 +254,16 @@ function onPageChange(page: { current: number, pageSize: number }): void {
   void loadTasks()
 }
 
+function goSingleReview(): void {
+  if (!selectedExamId.value) {
+    return
+  }
+  void router.push({
+    name: 'TeacherExamWorkspaceMarkingReview',
+    params: { examId: selectedExamId.value },
+  })
+}
+
 function openConfirm(): void {
   if (selectedRowKeys.value.length === 0) return
   const missingScore = selectedRowKeys.value.some((id) => scoreDraftMap[id] == null)
@@ -294,9 +316,25 @@ watch(selectedExamId, (value) => {
     pagination.total = 0
   }
 }, { immediate: true })
+
+onActivated(() => {
+  if (selectedExamId.value) {
+    void loadTasks()
+  }
+})
+
+watch(workbenchRefreshing, (isRefreshing, wasRefreshing) => {
+  if (wasRefreshing && !isRefreshing && selectedExamId.value) {
+    void loadTasks()
+  }
+})
 </script>
 
 <style lang="scss" scoped>
+.batch-confirm__empty {
+  padding: 40px 0;
+}
+
 .batch-confirm__full-score {
   margin-left: 4px;
   color: var(--dp-text-secondary, #64748b);

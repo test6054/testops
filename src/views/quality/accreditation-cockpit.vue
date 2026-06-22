@@ -18,7 +18,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
 import { useAccreditationWorkbench } from '@/composables/useAccreditationWorkbench'
-import { useQualityScopeReload } from '@/composables/useQualityPageScope'
+import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 
 const {
   cockpit,
@@ -210,7 +210,7 @@ function openProfessionConfig(name: string) {
 }
 
 onMounted(refreshAll)
-useQualityScopeReload(refreshAll)
+useQualityScopedLoader(refreshAll, { watchScope: true, immediate: false, reloadOnActivated: false })
 
 onActivated(() => {
   if (hasScope.value) {

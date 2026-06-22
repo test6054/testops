@@ -68,7 +68,7 @@ import type { CourseListVO } from '@/apis/quality/user-catalog'
 import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
 import { assessmentGoalWeightApi } from '@/apis/quality/assessment-goal-weight'
 import {
@@ -110,7 +110,9 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useQualityScopeReload } from '@/composables/useQualityPageScope'
+import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { usePolling } from '@/composables/usePolling'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -171,6 +173,7 @@ const currentCourse = ref<QualityCourseVO | null>(null)
 const courseLoading = ref(false)
 
 async function loadCurrentCourse() {
+  const scope = beginQualityScopeRequest()
   const courseId = qualityStore.currentQualityCourseId
   if (!courseId) {
     currentCourse.value = null
@@ -178,9 +181,15 @@ async function loadCurrentCourse() {
   }
   courseLoading.value = true
   try {
-    currentCourse.value = await qualityCourseApi.detail(courseId)
+    const detail = await qualityCourseApi.detail(courseId)
+    if (scope.isStale()) {
+      return
+    }
+    currentCourse.value = detail
   } finally {
-    courseLoading.value = false
+    if (!scope.isStale()) {
+      courseLoading.value = false
+    }
   }
 }
 
@@ -190,15 +199,22 @@ const courseGoals = ref<CourseGoalVO[]>([])
 const courseGoalsLoading = ref(false)
 
 async function loadCourseGoals() {
+  const scope = beginQualityScopeRequest()
   if (!qualityStore.currentQualityCourseId) {
     courseGoals.value = []
     return
   }
   courseGoalsLoading.value = true
   try {
-    courseGoals.value = await courseGoalApi.listByCourse(qualityStore.currentQualityCourseId)
+    const goals = await courseGoalApi.listByCourse(qualityStore.currentQualityCourseId)
+    if (scope.isStale()) {
+      return
+    }
+    courseGoals.value = goals
   } finally {
-    courseGoalsLoading.value = false
+    if (!scope.isStale()) {
+      courseGoalsLoading.value = false
+    }
   }
 }
 
@@ -208,16 +224,25 @@ const courseGoalSupports = ref<Map<string, CourseGoalRequirementVO[]>>(new Map()
 const supportsLoading = ref(false)
 
 async function loadAllSupports() {
+  const scope = beginQualityScopeRequest()
   supportsLoading.value = true
   try {
     const map = new Map<string, CourseGoalRequirementVO[]>()
     for (const goal of courseGoals.value) {
       const list = await courseGoalRequirementApi.listByCourseGoal(goal.id)
+      if (scope.isStale()) {
+        return
+      }
       map.set(goal.id, list)
+    }
+    if (scope.isStale()) {
+      return
     }
     courseGoalSupports.value = map
   } finally {
-    supportsLoading.value = false
+    if (!scope.isStale()) {
+      supportsLoading.value = false
+    }
   }
 }
 
@@ -241,17 +266,24 @@ const assessmentItems = ref<AssessmentItemVO[]>([])
 const assessmentItemsLoading = ref(false)
 
 async function loadAssessmentItems() {
+  const scope = beginQualityScopeRequest()
   if (!qualityStore.currentQualityCourseId) {
     assessmentItems.value = []
     return
   }
   assessmentItemsLoading.value = true
   try {
-    assessmentItems.value = await assessmentItemApi.listByCourse(
+    const items = await assessmentItemApi.listByCourse(
       qualityStore.currentQualityCourseId,
     )
+    if (scope.isStale()) {
+      return
+    }
+    assessmentItems.value = items
   } finally {
-    assessmentItemsLoading.value = false
+    if (!scope.isStale()) {
+      assessmentItemsLoading.value = false
+    }
   }
 }
 
@@ -262,6 +294,7 @@ const rubricsByItem = ref<Map<string, RubricItemVO[]>>(new Map())
 const itemMetaLoading = ref(false)
 
 async function loadAllItemMeta() {
+  const scope = beginQualityScopeRequest()
   itemMetaLoading.value = true
   try {
     const wMap = new Map<string, AssessmentGoalWeightVO[]>()
@@ -271,13 +304,21 @@ async function loadAllItemMeta() {
         assessmentGoalWeightApi.listByItem(item.id),
         rubricItemApi.listByItem(item.id),
       ])
+      if (scope.isStale()) {
+        return
+      }
       wMap.set(item.id, weights)
       rMap.set(item.id, rubrics)
+    }
+    if (scope.isStale()) {
+      return
     }
     assessmentGoalWeights.value = wMap
     rubricsByItem.value = rMap
   } finally {
-    itemMetaLoading.value = false
+    if (!scope.isStale()) {
+      itemMetaLoading.value = false
+    }
   }
 }
 
@@ -300,6 +341,7 @@ const indicators = ref<RequirementIndicatorVO[]>([])
 const referenceLoading = ref(false)
 
 async function loadReferenceData() {
+  const scope = beginQualityScopeRequest()
   const planId = currentCourse.value?.trainingPlanId || qualityStore.currentTrainingPlanId
   if (!planId) {
     requirements.value = []
@@ -309,15 +351,26 @@ async function loadReferenceData() {
   referenceLoading.value = true
   try {
     const reqList = await graduationRequirementApi.listByPlan(planId)
+    if (scope.isStale()) {
+      return
+    }
     requirements.value = reqList
     const indicatorAcc: RequirementIndicatorVO[] = []
     for (const req of reqList) {
       const list = await requirementIndicatorApi.listByRequirement(req.id)
+      if (scope.isStale()) {
+        return
+      }
       indicatorAcc.push(...list)
+    }
+    if (scope.isStale()) {
+      return
     }
     indicators.value = indicatorAcc
   } finally {
-    referenceLoading.value = false
+    if (!scope.isStale()) {
+      referenceLoading.value = false
+    }
   }
 }
 
@@ -1302,17 +1355,7 @@ async function handleScopeChange(): Promise<void> {
   await Promise.all([loadAllSupports(), loadAllItemMeta(), loadReferenceData()])
 }
 
-useQualityScopeReload(handleScopeChange)
-
-watch(
-  () => qualityStore.currentQualityCourseId,
-  async () => {
-    await loadCurrentCourse()
-    await Promise.all([loadCourseGoals(), loadAssessmentItems()])
-    await Promise.all([loadAllSupports(), loadAllItemMeta(), loadReferenceData()])
-  },
-  { immediate: true },
-)
+useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: true })
 
 function handleCourseChange(courseId: string | null) {
   qualityStore.setQualityCourse(courseId || '')
@@ -1325,10 +1368,6 @@ onMounted(async () => {
       qualityStore.setQualityCourse(qualityStore.qualityCourseOptions[0].id)
     }
   }
-})
-
-onActivated(async () => {
-  await handleScopeChange()
 })
 
 /* ========== 字典 ========== */

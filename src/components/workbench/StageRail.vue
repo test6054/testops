@@ -3,6 +3,7 @@
     :stages="timelineStages"
     :active-key="activeKey"
     :compact="compact"
+    :allow-pending-select="allowPendingSelect"
     @select="handleSelect"
   />
 </template>
@@ -25,11 +26,14 @@ const props = withDefaults(
     stages?: WorkbenchStage[]
     activeKey?: string
     compact?: boolean
+    /** 为 true 时 pending 阶段仍可点击（六步旅程轨导航） */
+    allowPendingSelect?: boolean
   }>(),
   {
     stages: () => [],
     activeKey: '',
     compact: false,
+    allowPendingSelect: false,
   },
 )
 

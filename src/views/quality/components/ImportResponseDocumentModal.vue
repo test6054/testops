@@ -95,6 +95,7 @@ import {
 } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import { usePolling } from '@/composables/usePolling'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -134,7 +135,17 @@ const currentTaskStatus = ref<AiTaskStatus>('PENDING')
 const failureReason = ref<string | null>(null)
 const pollCount = ref(0)
 const pollFailureCount = ref(0)
-let pollTimer: ReturnType<typeof setInterval> | null = null
+
+const taskPolling = usePolling(
+  () => pollTaskStatus(),
+  {
+    getOptions: () => ({
+      intervalMs: POLL_INTERVAL_MS,
+      when: phase.value === 'processing' && visible.value,
+    }),
+    pauseWhenDocumentHidden: true,
+  },
+)
 
 const isPolling = computed(() => phase.value === 'processing')
 
@@ -158,14 +169,14 @@ watch(
   () => props.open,
   (v) => {
     if (!v) {
-      stopPolling()
+      taskPolling.pause()
       resetState()
     }
   },
 )
 
 onBeforeUnmount(() => {
-  stopPolling()
+  taskPolling.pause()
 })
 
 function beforeUpload(file: File): boolean {
@@ -184,22 +195,15 @@ async function handleSubmitAiParse() {
     pollCount.value = 0
     pollFailureCount.value = 0
     message.info('AI 解析任务已提交，正在后台处理…')
-    startPolling()
+    taskPolling.resume()
+    taskPolling.syncPolling()
   } finally {
     uploading.value = false
   }
 }
 
-function startPolling() {
-  stopPolling()
-  pollTimer = setInterval(pollTaskStatus, POLL_INTERVAL_MS)
-}
-
-function stopPolling() {
-  if (pollTimer) {
-    clearInterval(pollTimer)
-    pollTimer = null
-  }
+function stopPolling(): void {
+  taskPolling.pause()
 }
 
 async function pollTaskStatus() {

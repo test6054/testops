@@ -73,7 +73,7 @@ import {
   StageWorkbenchShell,
   TaskResultPanel,
 } from '@/components/workbench'
-import { useQualityScopeReload } from '@/composables/useQualityPageScope'
+import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -338,7 +338,7 @@ async function applyRouteScopeQuery(): Promise<void> {
   }
 }
 
-useQualityScopeReload(handleScopeChange)
+useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false, reloadOnActivated: false })
 
 function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current

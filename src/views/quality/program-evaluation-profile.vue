@@ -39,7 +39,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useQualityScopeReload } from '@/composables/useQualityPageScope'
+import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -330,9 +330,9 @@ async function handleDelete(record: ProgramEvaluationProfileVO) {
   })
 }
 
-useQualityScopeReload(() => {
+useQualityScopedLoader(() => {
   void loadList()
-})
+}, { watchScope: true, immediate: false, reloadOnActivated: false })
 
 onMounted(async () => {
   await Promise.all([loadList(), loadDicts()])

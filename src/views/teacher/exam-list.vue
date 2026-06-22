@@ -746,8 +746,8 @@ function goMarkingTaskPool(examId: string): void {
 /**
  * 根据考试当前进度，智能跳转到最优操作入口。
  *
- * <p>优先级：扫描异常待处理 → 准备工作台(准备未完成) → 教师复核(有AI建议待确认)
- * → 阅卷任务池(有未批阅任务) → 成绩确认与发布。</p>
+ * <p>优先级：扫描异常待处理 → 准备工作台(准备未完成) → 批量复核确认(有待复核/复核中任务)
+ * → 阅卷任务池(有进行中批阅任务或未确认得分) → 成绩确认与发布。</p>
  */
 function goSmartExamEntry(examId: string): void {
   const p = examProgressMap.value.get(examId)
@@ -767,11 +767,15 @@ function goSmartExamEntry(examId: string): void {
     }
     return
   }
-  if (Math.max(0, p.totalQuestionGradeCount - p.confirmedQuestionGradeCount) > 0) {
-    void router.push({ name: 'TeacherExamWorkspaceMarkingReview', params: { examId } })
+  if (p.pendingReviewTaskCount > 0 || p.inProgressReviewTaskCount > 0) {
+    void router.push({ name: 'TeacherExamWorkspaceReviewBatchConfirm', params: { examId } })
     return
   }
-  if (p.pendingReviewTaskCount > 0 || p.inProgressReviewTaskCount > 0) {
+  if (p.openProcessingTaskCount > 0) {
+    void router.push({ name: 'TeacherExamWorkspaceMarkingTaskPool', params: { examId } })
+    return
+  }
+  if (Math.max(0, p.totalQuestionGradeCount - p.confirmedQuestionGradeCount) > 0) {
     void router.push({ name: 'TeacherExamWorkspaceMarkingTaskPool', params: { examId } })
     return
   }

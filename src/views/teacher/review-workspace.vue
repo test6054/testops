@@ -1,5 +1,6 @@
 <template>
-  <div class="review-workspace">
+  <ReviewTaskHub v-if="!taskId" />
+  <div v-else class="review-workspace">
     <div class="review-workspace__toolbar">
       <UiButton variant="outline" size="sm" @click="goBack">返回</UiButton>
       <UiTag v-if="detail?.paperDisplay" tone="gray" size="sm">
@@ -9,7 +10,7 @@
       <UiTag v-if="detail?.status" :tone="reviewStatusTone(detail.status)" size="sm">
         {{ reviewStatusLabel(detail.status) }}
       </UiTag>
-      <UiTag v-if="queueTotal > 0" tone="purple" size="sm">
+      <UiTag v-if="queueTotal > 0 && currentQueueIndex > 0" tone="purple" size="sm">
         同题进度 {{ currentQueueIndex }} / {{ queueTotal }}
       </UiTag>
       <UiButton
@@ -23,7 +24,7 @@
       </UiButton>
     </div>
 
-    <UiEmpty v-if="!examId || !taskId" description="暂无数据" class="review-workspace__empty" />
+    <UiEmpty v-if="!examId" description="缺少考试上下文" class="review-workspace__empty" />
 
     <UiErrorRetryPanel v-else-if="taskLoadError" :error="taskLoadError" @retry="loadTask" />
 
@@ -31,7 +32,7 @@
       <!-- B-7 流水线进度：当前任务在同题复核队列中的位次 -->
       <GradingWorkspaceLayout v-if="detail">
         <template #queue>
-          <div v-if="queueTotal > 0" class="review-workspace__queue-progress">
+          <div v-if="queueTotal > 0 && currentQueueIndex > 0" class="review-workspace__queue-progress">
             <div class="review-workspace__queue-progress-meta">
               <span class="review-workspace__queue-progress-title">本题复核流水线</span>
               <span class="review-workspace__queue-progress-text">
@@ -436,6 +437,7 @@ import type {
   ReviewTaskItemVO,
   ReviewTaskStatusCode,
 } from '@/apis/mark/exam-review-task'
+import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
@@ -465,6 +467,7 @@ import {
   REVIEW_TASK_STATUS_LABEL,
   REVIEW_TASK_STATUS_TONE,
 } from '@/apis/mark/exam-review-task'
+import { OBJECTIVE_COMPARE_POLICY_OPTIONS } from '@/apis/mark/exam-standard-answer'
 import GradingWorkspaceLayout from '@/components/mark/GradingWorkspaceLayout.vue'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -480,6 +483,7 @@ import { formatDateTime } from '@/utils/format'
 import { isGradingKeyboardInputTarget } from '@/utils/grading-keyboard'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import ReviewTaskHub from '@/views/teacher/review-task-hub.vue'
 
 defineOptions({ name: 'TeacherExamWorkspaceReviewWorkspace' })
 
@@ -493,18 +497,13 @@ function reviewStatusLabel(value: ReviewTaskStatusCode): string {
   return strictEnumLabel(REVIEW_TASK_STATUS_LABEL, value, '复核任务状态')
 }
 
-/** FIX-5: 客观题比对策略文案映射 */
-const COMPARE_POLICY_LABEL: Record<string, string> = {
-  EXACT: '严格全等',
-  CASE_INSENSITIVE: '忽略大小写',
-  IGNORE_WHITESPACE: '忽略空白符',
-  CHOICE_SET: '无序选项集合',
-  NUMERIC: '数值容差',
-  REGEX: '正则表达式',
-}
+/** 客观题比对策略文案，与后端 ObjectiveComparePolicy 枚举对齐 */
+const COMPARE_POLICY_LABEL = Object.fromEntries(
+  OBJECTIVE_COMPARE_POLICY_OPTIONS.map((item) => [item.value, item.label]),
+) as Record<ObjectiveComparePolicyCode, string>
 
-function comparePolicyLabel(code: string): string {
-  return COMPARE_POLICY_LABEL[code] ?? code
+function comparePolicyLabel(code: ObjectiveComparePolicyCode): string {
+  return strictEnumLabel(COMPARE_POLICY_LABEL, code, '客观题比较策略')
 }
 
 const route = useRoute()
@@ -515,11 +514,15 @@ const examId = computed(() => (route.params.examId ? String(route.params.examId)
 const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
 
 function goBack(): void {
-  if (window.history.length > 1) {
-    router.back()
-  } else {
+  if (!examId.value) {
     void router.push({ name: 'TeacherExamList' })
+    return
   }
+  if (taskId.value) {
+    void router.push({ name: 'TeacherExamWorkspaceReviewBatchConfirm', params: { examId: examId.value } })
+    return
+  }
+  void router.push({ name: 'TeacherExamWorkspaceMarkingTaskPool', params: { examId: examId.value } })
 }
 
 // ─── 复核任务详情 ──────────────────────────
@@ -618,9 +621,11 @@ async function loadReviewQueue(): Promise<void> {
  * 当前任务在同题复核队列中的 1-based 位次，找不到时回退为 1（流水线尚未刷新到当前任务）。
  */
 const currentQueueIndex = computed<number>(() => {
-  if (!detail.value || reviewQueue.value.length === 0) return 0
+  if (!detail.value || reviewQueue.value.length === 0) {
+    return 0
+  }
   const idx = reviewQueue.value.findIndex((item) => item.reviewTaskId === taskId.value)
-  return idx >= 0 ? idx + 1 : 1
+  return idx >= 0 ? idx + 1 : 0
 })
 
 const queueTotal = computed<number>(() => reviewQueue.value.length)
@@ -1140,7 +1145,7 @@ async function takeNextTask(): Promise<void> {
     if (!candidate) {
       message.success('同题剩余任务复核完毕，返回考试工作台')
       void router.push({
-        name: 'TeacherExamWorkspaceMarkingReview',
+        name: 'TeacherExamWorkspaceReviewBatchConfirm',
         params: { examId: examId.value },
       })
       return

@@ -39,7 +39,7 @@ import type {
   WorkbenchStageStatus,
 } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
@@ -81,7 +81,9 @@ import {
   TaskResultPanel,
 } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useQualityScopeReload } from '@/composables/useQualityPageScope'
+import { usePolling } from '@/composables/usePolling'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
+import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useAuthStore } from '@/stores'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
@@ -433,6 +435,7 @@ const evidenceItems = computed(() => detailResult.value?.evidenceItems ?? [])
 const improvementItems = computed(() => detailResult.value?.improvementItems ?? [])
 
 async function loadList() {
+  const scope = beginQualityScopeRequest()
   loading.value = true
   listLoadError.value = null
   try {
@@ -450,6 +453,9 @@ async function loadList() {
       achievementResultId: query.achievementResultId?.trim() || undefined,
       reportId: query.reportId?.trim() || undefined,
     })
+    if (scope.isStale()) {
+      return
+    }
     list.value = readPageList(page, 'AI 任务加载失败，请稍后重试')
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
@@ -461,38 +467,49 @@ async function loadList() {
     }
     syncListPolling()
   } catch (error) {
+    if (scope.isStale()) {
+      return
+    }
     listLoadError.value = toUserError(error, 'AI 任务加载失败')
     showUserError(error, 'AI 任务加载失败')
   } finally {
-    loading.value = false
+    if (!scope.isStale()) {
+      loading.value = false
+    }
   }
 }
 
-let listPollTimer: ReturnType<typeof setInterval> | null = null
-
-function syncListPolling(): void {
+function syncAiTaskStorePolling(): void {
   for (const record of list.value) {
     if (record.status === 'PENDING' || record.status === 'PROCESSING') {
       aiTaskStore.startPolling(record.id)
     }
   }
-  const shouldPoll = list.value.some(
-    (record) => record.status === 'PENDING' || record.status === 'PROCESSING',
-  )
-  if (shouldPoll && !listPollTimer) {
-    listPollTimer = setInterval(() => {
-      void loadListQuietly()
-    }, 3000)
-  } else if (!shouldPoll && listPollTimer) {
-    clearInterval(listPollTimer)
-    listPollTimer = null
-  }
+}
+
+const listPolling = usePolling(
+  () => loadListQuietly(),
+  {
+    getOptions: () => ({
+      intervalMs: 3000,
+      when: list.value.some(
+        (record) => record.status === 'PENDING' || record.status === 'PROCESSING',
+      ),
+    }),
+    pauseWhenDocumentHidden: true,
+  },
+)
+
+function syncListPolling(): void {
+  syncAiTaskStorePolling()
+  listPolling.syncPolling()
 }
 
 async function loadListQuietly(): Promise<void> {
   if (loading.value) {
     return
   }
+  const scope = beginQualityScopeRequest()
   try {
     const page = await aiTaskApi.page({
       ...query,
@@ -508,6 +525,9 @@ async function loadListQuietly(): Promise<void> {
       achievementResultId: query.achievementResultId?.trim() || undefined,
       reportId: query.reportId?.trim() || undefined,
     })
+    if (scope.isStale()) {
+      return
+    }
     list.value = readPageList(page, 'AI 任务加载失败，请稍后重试')
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
@@ -529,7 +549,7 @@ async function handleScopeChange(): Promise<void> {
   await loadList()
 }
 
-useQualityScopeReload(handleScopeChange)
+useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false })
 
 function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
@@ -931,14 +951,10 @@ watch(
   },
 )
 
-// 页面卸载时保险地停掉详情轮询与列表轮询
+// 页面卸载时保险地停掉详情轮询
 onBeforeUnmount(() => {
   if (detailRecord.value?.id) {
     aiTaskStore.stopPolling(detailRecord.value.id)
-  }
-  if (listPollTimer) {
-    clearInterval(listPollTimer)
-    listPollTimer = null
   }
 })
 
@@ -1079,11 +1095,6 @@ const signals = computed<SignalMetric[]>(() => {
 })
 
 
-watch(
-  () => qualityStore.currentTrainingPlanId,
-  () => loadList(),
-)
-
 onMounted(async () => {
   if (!qualityStore.currentTrainingPlanId) {
     await qualityStore.loadTrainingPlanOptions()
@@ -1091,13 +1102,7 @@ onMounted(async () => {
       qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
   }
   applyAccreditationRoutePrefill()
-  await loadList()
-})
-
-onActivated(async () => {
-  if (qualityStore.currentTrainingPlanId) {
-    await loadList()
-  }
+  await handleScopeChange()
 })
 </script>
 

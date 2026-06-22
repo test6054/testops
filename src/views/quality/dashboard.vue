@@ -55,7 +55,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
-import { useQualityScopeReload } from '@/composables/useQualityPageScope'
+import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
 import { showUserError, toUserError } from '@/utils/error-handler'
@@ -446,7 +446,7 @@ async function reload() {
   ])
 }
 
-useQualityScopeReload(reload)
+useQualityScopedLoader(reload, { watchScope: true, immediate: false, reloadOnActivated: false })
 
 onMounted(async () => {
   if (!qualityStore.currentTrainingPlanId) {

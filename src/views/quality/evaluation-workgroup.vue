@@ -39,7 +39,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useQualityScopeReload } from '@/composables/useQualityPageScope'
+import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -427,9 +427,9 @@ const signals = computed<SignalMetric[]>(() => {
 })
 
 
-useQualityScopeReload(() => {
+useQualityScopedLoader(() => {
   void loadList()
-})
+}, { watchScope: true, immediate: false, reloadOnActivated: false })
 
 onMounted(async () => {
   await loadList()

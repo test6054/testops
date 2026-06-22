@@ -15,6 +15,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { EChartsCoreOption } from 'echarts/core'
 import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
 import { computed } from 'vue'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
@@ -31,18 +32,56 @@ const props = withDefaults(defineProps<{
   visible: true,
 })
 
+interface ChartSectionView {
+  key: string
+  title: string
+  hint?: string
+  height?: string
+  items: QualityChartGroup['items']
+  option: EChartsCoreOption
+}
+
+/** 按 group.key + items 内容生成签名，避免数据未变时重复 buildCategoryBarChartOption */
+function buildGroupSignature(group: QualityChartGroup): string {
+  const itemSig = group.items.map((item) => `${item.label}\0${item.value}`).join('\n')
+  return `${group.key}\0${group.title}\0${group.hint ?? ''}\0${itemSig}`
+}
+
+const optionCache = new Map<string, EChartsCoreOption>()
+
+function resolveOption(group: QualityChartGroup): EChartsCoreOption {
+  const signature = buildGroupSignature(group)
+  const cached = optionCache.get(signature)
+  if (cached) {
+    return cached
+  }
+  const option = buildCategoryBarChartOption(group.items, {
+    orientation: 'vertical',
+    yAxisName: '数量',
+    emptyText: '暂无统计数据',
+  })
+  optionCache.set(signature, option)
+  if (optionCache.size > 48) {
+    const firstKey = optionCache.keys().next().value
+    if (firstKey) {
+      optionCache.delete(firstKey)
+    }
+  }
+  return option
+}
+
 const visibleGroups = computed(() =>
   props.visible ? props.groups.filter((group) => group.items.length > 0) : [],
 )
 
-const sectionViews = computed(() =>
+const sectionViews = computed<ChartSectionView[]>(() =>
   visibleGroups.value.map((group) => ({
-    ...group,
-    option: buildCategoryBarChartOption(group.items, {
-      orientation: 'vertical',
-      yAxisName: '数量',
-      emptyText: '暂无统计数据',
-    }),
+    key: group.key,
+    title: group.title,
+    hint: group.hint,
+    height: group.height,
+    items: group.items,
+    option: resolveOption(group),
   })),
 )
 </script>

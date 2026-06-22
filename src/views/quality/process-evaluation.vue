@@ -60,7 +60,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useQualityScopeReload } from '@/composables/useQualityPageScope'
+import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -173,7 +173,7 @@ async function handleScopeChange(): Promise<void> {
   }
 }
 
-useQualityScopeReload(handleScopeChange)
+useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false, reloadOnActivated: false })
 
 /* ========== 节点编辑 ========== */
 

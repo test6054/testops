@@ -109,9 +109,10 @@
           </template>
 
           <UiFilterBar
-            v-model="experienceFilterForm"
+            :model-value="experienceFilterForm"
             :fields="experienceFilterFields"
             search-text="查询"
+            @update:model-value="syncExperienceFilterForm"
             @search="loadExperiences"
             @reset="handleExperienceFilterReset"
           />
@@ -189,9 +190,10 @@
           </template>
 
           <UiFilterBar
-            v-model="clusterFilterForm"
+            :model-value="clusterFilterForm"
             :fields="clusterFilterFields"
             search-text="查询最新"
+            @update:model-value="syncClusterFilterForm"
             @search="loadLatestCluster"
             @reset="handleClusterFilterReset"
           />
@@ -467,6 +469,10 @@ const questionOptions = computed(() =>
 
 const experienceFilterForm = reactive<{ questionTemplateId?: string }>({})
 
+function syncExperienceFilterForm(next: Record<string, unknown>): void {
+  Object.assign(experienceFilterForm, next)
+}
+
 const experienceFilterFields = computed<FilterField[]>(() => [
   {
     key: 'questionTemplateId',
@@ -480,6 +486,10 @@ const experienceFilterFields = computed<FilterField[]>(() => [
 ])
 
 const clusterFilterForm = reactive<{ questionTemplateId?: string }>({})
+
+function syncClusterFilterForm(next: Record<string, unknown>): void {
+  Object.assign(clusterFilterForm, next)
+}
 
 const clusterFilterFields = computed<FilterField[]>(() => [
   {

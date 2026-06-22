@@ -23,7 +23,7 @@ import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   assessmentItemApi,
 } from '@/apis/quality/assessment-item'
@@ -55,7 +55,9 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useQualityScopeReload } from '@/composables/useQualityPageScope'
+import { usePolling } from '@/composables/usePolling'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
+import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { readAllPages } from '@/utils/page-result'
@@ -130,43 +132,11 @@ function selectBatch(batch: ScoreBatchVO) {
 async function loadBatches() {
   if (!qualityStore.currentQualityCourseId) {
     batches.value = []
+    batchStatusPolling.syncPolling()
     return
   }
+  const scope = beginQualityScopeRequest()
   batchesLoading.value = true
-  try {
-    batches.value = await readAllPages(
-      (pageNum) => scoreBatchApi.page({
-        pageNum,
-        pageSize: SCORE_BATCH_OPTION_PAGE_SIZE,
-        qualityCourseId: qualityStore.currentQualityCourseId,
-      }),
-      '成绩批次列表加载失败，请稍后重试',
-    )
-  } finally {
-    batchesLoading.value = false
-  }
-  syncBatchStatusPolling()
-}
-
-let batchStatusPollTimer: ReturnType<typeof setInterval> | null = null
-
-function syncBatchStatusPolling(): void {
-  const shouldPoll = batches.value.some((batch) => batch.status === 'PARSING')
-    || selectedBatch.value?.status === 'PARSING'
-  if (shouldPoll && !batchStatusPollTimer) {
-    batchStatusPollTimer = setInterval(() => {
-      void refreshBatchesQuietly()
-    }, 3000)
-  } else if (!shouldPoll && batchStatusPollTimer) {
-    clearInterval(batchStatusPollTimer)
-    batchStatusPollTimer = null
-  }
-}
-
-async function refreshBatchesQuietly(): Promise<void> {
-  if (!qualityStore.currentQualityCourseId || batchesLoading.value) {
-    return
-  }
   try {
     const nextBatches = await readAllPages(
       (pageNum) => scoreBatchApi.page({
@@ -176,6 +146,47 @@ async function refreshBatchesQuietly(): Promise<void> {
       }),
       '成绩批次列表加载失败，请稍后重试',
     )
+    if (scope.isStale()) {
+      return
+    }
+    batches.value = nextBatches
+  } finally {
+    if (!scope.isStale()) {
+      batchesLoading.value = false
+    }
+  }
+  batchStatusPolling.syncPolling()
+}
+
+const batchStatusPolling = usePolling(
+  () => refreshBatchesQuietly(),
+  {
+    getOptions: () => ({
+      intervalMs: 3000,
+      when: batches.value.some((batch) => batch.status === 'PARSING')
+        || selectedBatch.value?.status === 'PARSING',
+    }),
+    pauseWhenDocumentHidden: true,
+  },
+)
+
+async function refreshBatchesQuietly(): Promise<void> {
+  if (!qualityStore.currentQualityCourseId || batchesLoading.value) {
+    return
+  }
+  const scope = beginQualityScopeRequest()
+  try {
+    const nextBatches = await readAllPages(
+      (pageNum) => scoreBatchApi.page({
+        pageNum,
+        pageSize: SCORE_BATCH_OPTION_PAGE_SIZE,
+        qualityCourseId: qualityStore.currentQualityCourseId,
+      }),
+      '成绩批次列表加载失败，请稍后重试',
+    )
+    if (scope.isStale()) {
+      return
+    }
     batches.value = nextBatches
     if (selectedBatch.value) {
       const updated = nextBatches.find((item) => item.id === selectedBatch.value!.id)
@@ -186,7 +197,7 @@ async function refreshBatchesQuietly(): Promise<void> {
         }
       }
     }
-    syncBatchStatusPolling()
+    batchStatusPolling.syncPolling()
   } catch {
     // 轮询刷新失败时不打断当前页面操作
   }
@@ -539,7 +550,7 @@ watch(
 
 watch(selectedBatch, () => {
   void loadRecords()
-  syncBatchStatusPolling()
+  batchStatusPolling.syncPolling()
 })
 
 async function handleScopeReload(): Promise<void> {
@@ -559,7 +570,7 @@ async function handleScopeReload(): Promise<void> {
   }
 }
 
-useQualityScopeReload(handleScopeReload)
+useQualityScopedLoader(handleScopeReload, { watchScope: true, immediate: false })
 
 onMounted(async () => {
   if (!qualityStore.currentTrainingPlanId) {
@@ -568,26 +579,7 @@ onMounted(async () => {
       qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
     }
   }
-  if (qualityStore.currentQualityCourseId) {
-    await Promise.all([loadBatches(), loadAssessmentItems()])
-  }
-})
-
-onActivated(async () => {
-  if (qualityStore.currentQualityCourseId) {
-    await Promise.all([loadBatches(), loadAssessmentItems()])
-    if (selectedBatch.value) {
-      await refreshSelectedBatch()
-      await loadRecords()
-    }
-  }
-})
-
-onBeforeUnmount(() => {
-  if (batchStatusPollTimer) {
-    clearInterval(batchStatusPollTimer)
-    batchStatusPollTimer = null
-  }
+  await handleScopeReload()
 })
 
 function handleCourseChange(courseId: string | null) {

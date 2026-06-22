@@ -71,10 +71,11 @@
       </template>
 
       <UiFilterBar
-        v-model="searchForm"
+        :model-value="searchForm"
         :fields="archiveItemFilterFields"
         show-labels
         search-text="查询"
+        @update:model-value="syncSearchForm"
         @search="handleSearch"
         @reset="handleReset"
       >
@@ -392,6 +393,10 @@ const searchForm = reactive<{
   ocrStatus: undefined,
   tagAny: [],
 })
+
+function syncSearchForm(next: Record<string, unknown>): void {
+  Object.assign(searchForm, next)
+}
 
 /**
  * 上传表单。

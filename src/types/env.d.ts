@@ -94,6 +94,8 @@ declare module 'vue-router' {
     layout?: 'ExamWorkspace'
     /** StageRail 当前页高亮阶段键 */
     markStageKey?: string
+    /** 考试工作台六步旅程键 */
+    journeyKey?: 'overview' | 'prep' | 'scan' | 'assign' | 'mark' | 'publish' | 'archive'
     /** 工作台侧栏分组 */
     workspacePhase?: string
     /** 侧栏项是否要求培养方案已确认后才可进入 */

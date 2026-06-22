@@ -24,7 +24,7 @@ import type {
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, TaskResultItem } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { externalDataSourceApi } from '@/apis/quality/external-data-source'
 import { externalPullAuditApi } from '@/apis/quality/external-pull-audit'
 import { externalPullResultApi } from '@/apis/quality/external-pull-result'
@@ -59,7 +59,9 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { SignalBand, StageWorkbenchShell, TaskResultPanel } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useQualityScopeReload } from '@/composables/useQualityPageScope'
+import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { usePolling } from '@/composables/usePolling'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -565,9 +567,10 @@ async function reloadAll() {
   await Promise.all([loadSources(), loadTasks()])
 }
 
-useQualityScopeReload(reloadAll)
+useQualityScopedLoader(reloadAll, { watchScope: true, immediate: false })
 
 async function loadSources() {
+  const scope = beginQualityScopeRequest()
   sourceLoading.value = true
   try {
     sources.value = await readAllPages(
@@ -578,13 +581,19 @@ async function loadSources() {
         }),
       '外部数据源加载失败，请稍后重试',
     )
+    if (scope.isStale()) {
+      return
+    }
     sourceTotal.value = sources.value.length
   } finally {
-    sourceLoading.value = false
+    if (!scope.isStale()) {
+      sourceLoading.value = false
+    }
   }
 }
 
 async function loadTasks() {
+  const scope = beginQualityScopeRequest()
   taskLoading.value = true
   try {
     const page = await externalPullTaskApi.page({
@@ -593,6 +602,9 @@ async function loadTasks() {
       status: taskQuery.status || undefined,
       businessAnchor: taskQuery.businessAnchor?.trim() || undefined,
     })
+    if (scope.isStale()) {
+      return
+    }
     tasks.value = readPageList(page, '外部拉取任务加载失败，请稍后重试')
     taskQuery.pageNum = page.pageNum
     taskQuery.pageSize = page.pageSize
@@ -602,32 +614,32 @@ async function loadTasks() {
       await loadTasks()
       return
     }
-    syncTaskPolling()
+    taskPolling.syncPolling()
   } finally {
-    taskLoading.value = false
+    if (!scope.isStale()) {
+      taskLoading.value = false
+    }
   }
 }
 
-let taskPollTimer: ReturnType<typeof setInterval> | null = null
-
-function syncTaskPolling(): void {
-  const shouldPoll = tasks.value.some(
-    (task) => task.status === 'PENDING' || task.status === 'RUNNING',
-  )
-  if (shouldPoll && !taskPollTimer) {
-    taskPollTimer = setInterval(() => {
-      void loadTasksQuietly()
-    }, 3000)
-  } else if (!shouldPoll && taskPollTimer) {
-    clearInterval(taskPollTimer)
-    taskPollTimer = null
-  }
-}
+const taskPolling = usePolling(
+  () => loadTasksQuietly(),
+  {
+    getOptions: () => ({
+      intervalMs: 3000,
+      when: tasks.value.some(
+        (task) => task.status === 'PENDING' || task.status === 'RUNNING',
+      ),
+    }),
+    pauseWhenDocumentHidden: true,
+  },
+)
 
 async function loadTasksQuietly(): Promise<void> {
   if (taskLoading.value) {
     return
   }
+  const scope = beginQualityScopeRequest()
   try {
     const page = await externalPullTaskApi.page({
       ...taskQuery,
@@ -635,11 +647,14 @@ async function loadTasksQuietly(): Promise<void> {
       status: taskQuery.status || undefined,
       businessAnchor: taskQuery.businessAnchor?.trim() || undefined,
     })
+    if (scope.isStale()) {
+      return
+    }
     tasks.value = readPageList(page, '外部拉取任务加载失败，请稍后重试')
     taskQuery.pageNum = page.pageNum
     taskQuery.pageSize = page.pageSize
     taskTotal.value = readPageTotal(page, '外部拉取任务加载失败，请稍后重试')
-    syncTaskPolling()
+    taskPolling.syncPolling()
   } catch {
     // 轮询刷新失败时不打断当前页面操作
   }
@@ -967,18 +982,7 @@ function handlePullResultAction(actionEvent: { item: TaskResultItem, action: { k
 }
 
 onMounted(async () => {
-  await Promise.all([loadSources(), loadTasks()])
-})
-
-onActivated(async () => {
-  await Promise.all([loadSources(), loadTasks()])
-})
-
-onBeforeUnmount(() => {
-  if (taskPollTimer) {
-    clearInterval(taskPollTimer)
-    taskPollTimer = null
-  }
+  await reloadAll()
 })
 </script>
 

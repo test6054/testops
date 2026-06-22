@@ -86,7 +86,8 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useQualityScopeReload } from '@/composables/useQualityPageScope'
+import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -140,6 +141,7 @@ const currentPlan = ref<TrainingPlanVO | null>(null)
 const planLoading = ref(false)
 
 async function loadCurrentPlan() {
+  const scope = beginQualityScopeRequest()
   const planId = qualityStore.currentTrainingPlanId
   if (!planId) {
     currentPlan.value = null
@@ -147,9 +149,15 @@ async function loadCurrentPlan() {
   }
   planLoading.value = true
   try {
-    currentPlan.value = await trainingPlanApi.detail(planId)
+    const detail = await trainingPlanApi.detail(planId)
+    if (scope.isStale()) {
+      return
+    }
+    currentPlan.value = detail
   } finally {
-    planLoading.value = false
+    if (!scope.isStale()) {
+      planLoading.value = false
+    }
   }
 }
 
@@ -158,13 +166,18 @@ const objectivesLoading = ref(false)
 const selectedObjective = ref<TrainingObjectiveVO | null>(null)
 
 async function loadObjectives() {
+  const scope = beginQualityScopeRequest()
   if (!qualityStore.currentTrainingPlanId) {
     objectives.value = []
     return
   }
   objectivesLoading.value = true
   try {
-    objectives.value = await trainingObjectiveApi.listByPlan(qualityStore.currentTrainingPlanId)
+    const list = await trainingObjectiveApi.listByPlan(qualityStore.currentTrainingPlanId)
+    if (scope.isStale()) {
+      return
+    }
+    objectives.value = list
     if (selectedObjective.value) {
       const matched = objectives.value.find((o) => o.id === selectedObjective.value!.id)
       selectedObjective.value = matched || objectives.value[0] || null
@@ -172,7 +185,9 @@ async function loadObjectives() {
       selectedObjective.value = objectives.value[0]
     }
   } finally {
-    objectivesLoading.value = false
+    if (!scope.isStale()) {
+      objectivesLoading.value = false
+    }
   }
 }
 
@@ -181,15 +196,20 @@ const requirementsLoading = ref(false)
 const selectedRequirement = ref<GraduationRequirementVO | null>(null)
 
 async function loadRequirements() {
+  const scope = beginQualityScopeRequest()
   if (!qualityStore.currentTrainingPlanId) {
     requirements.value = []
     return
   }
   requirementsLoading.value = true
   try {
-    requirements.value = await graduationRequirementApi.listByPlan(
+    const list = await graduationRequirementApi.listByPlan(
       qualityStore.currentTrainingPlanId,
     )
+    if (scope.isStale()) {
+      return
+    }
+    requirements.value = list
     if (selectedRequirement.value) {
       const matched = requirements.value.find((r) => r.id === selectedRequirement.value!.id)
       selectedRequirement.value = matched || requirements.value[0] || null
@@ -197,7 +217,9 @@ async function loadRequirements() {
       selectedRequirement.value = requirements.value[0]
     }
   } finally {
-    requirementsLoading.value = false
+    if (!scope.isStale()) {
+      requirementsLoading.value = false
+    }
   }
 }
 
@@ -205,16 +227,25 @@ const indicatorsByReq = ref<Map<string, RequirementIndicatorVO[]>>(new Map())
 const indicatorsLoading = ref(false)
 
 async function loadAllIndicators() {
+  const scope = beginQualityScopeRequest()
   indicatorsLoading.value = true
   try {
     const map = new Map<string, RequirementIndicatorVO[]>()
     for (const req of requirements.value) {
       const list = await requirementIndicatorApi.listByRequirement(req.id)
+      if (scope.isStale()) {
+        return
+      }
       map.set(req.id, list)
+    }
+    if (scope.isStale()) {
+      return
     }
     indicatorsByReq.value = map
   } finally {
-    indicatorsLoading.value = false
+    if (!scope.isStale()) {
+      indicatorsLoading.value = false
+    }
   }
 }
 
@@ -227,17 +258,24 @@ const objectiveRequirementMappings = ref<TrainingObjectiveRequirementVO[]>([])
 const mappingLoading = ref(false)
 
 async function loadObjectiveRequirementMappings() {
+  const scope = beginQualityScopeRequest()
   if (!qualityStore.currentTrainingPlanId) {
     objectiveRequirementMappings.value = []
     return
   }
   mappingLoading.value = true
   try {
-    objectiveRequirementMappings.value = await trainingObjectiveRequirementApi.listByPlan(
+    const list = await trainingObjectiveRequirementApi.listByPlan(
       qualityStore.currentTrainingPlanId,
     )
+    if (scope.isStale()) {
+      return
+    }
+    objectiveRequirementMappings.value = list
   } finally {
-    mappingLoading.value = false
+    if (!scope.isStale()) {
+      mappingLoading.value = false
+    }
   }
 }
 
@@ -267,7 +305,8 @@ const standardMappingsLoading = ref(false)
 const standardOptions = ref<AccreditationStandardVO[]>([])
 
 async function loadStandardOptions() {
-  standardOptions.value = await readAllPages(
+  const scope = beginQualityScopeRequest()
+  const options = await readAllPages(
     (pageNum) => accreditationStandardApi.page({
       pageNum,
       pageSize: ACCREDITATION_STANDARD_OPTION_PAGE_SIZE,
@@ -275,20 +314,31 @@ async function loadStandardOptions() {
     }),
     '认证标准列表加载失败，请稍后重试',
   )
+  if (scope.isStale()) {
+    return
+  }
+  standardOptions.value = options
 }
 
 async function loadStandardMappings() {
+  const scope = beginQualityScopeRequest()
   if (!selectedRequirement.value) {
     standardMappings.value = []
     return
   }
   standardMappingsLoading.value = true
   try {
-    standardMappings.value = await requirementStandardMappingApi.listByRequirement(
+    const list = await requirementStandardMappingApi.listByRequirement(
       selectedRequirement.value.id,
     )
+    if (scope.isStale()) {
+      return
+    }
+    standardMappings.value = list
   } finally {
-    standardMappingsLoading.value = false
+    if (!scope.isStale()) {
+      standardMappingsLoading.value = false
+    }
   }
 }
 
@@ -1052,7 +1102,7 @@ async function handleScopeChange(): Promise<void> {
   await loadStandardMappings()
 }
 
-useQualityScopeReload(handleScopeChange)
+useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false, reloadOnActivated: false })
 
 watch(selectedRequirement, () => loadStandardMappings())
 

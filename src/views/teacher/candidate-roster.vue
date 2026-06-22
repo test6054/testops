@@ -80,9 +80,10 @@
       </template>
 
       <UiFilterBar
-        v-model="rosterFilterForm"
+        :model-value="rosterFilterForm"
         :fields="rosterFilterFields"
         search-text="查询"
+        @update:model-value="syncRosterFilterForm"
         @search="handleRosterSearch"
         @reset="handleRosterReset"
       />
@@ -442,6 +443,10 @@ const rosterFilterForm = reactive<{
   keyword: '',
   classId: undefined,
 })
+
+function syncRosterFilterForm(next: Record<string, unknown>): void {
+  Object.assign(rosterFilterForm, next)
+}
 
 const pagination = reactive<TablePaginationConfig>({
   current: 1,

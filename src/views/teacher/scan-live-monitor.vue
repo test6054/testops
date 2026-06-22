@@ -997,7 +997,7 @@ function openAttentionLedger(): void {
 function openAttentionReviewWorkspace(): void {
   if (!selectedExamId.value) return
   void router.push({
-    name: 'TeacherExamWorkspaceMarkingReview',
+    name: 'TeacherExamWorkspaceReviewBatchConfirm',
     params: { examId: selectedExamId.value },
   })
 }

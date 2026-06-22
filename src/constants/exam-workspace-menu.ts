@@ -1,3 +1,4 @@
+import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 
 export interface ExamWorkspaceMenuItem {
@@ -7,27 +8,30 @@ export interface ExamWorkspaceMenuItem {
   markStageKey: MarkStageKey
 }
 
-/** 考试工作台侧栏分组：仅作信息架构分组，不做前端角色过滤；权限与数据由后端控制 */
-export interface ExamWorkspaceMenuSection {
+export interface ExamWorkspaceMenuGroup {
   key: string
   title: string
-  markStageKey: MarkStageKey
+  journeyKey: ExamWorkspaceJourneyKey
+  stageKeys: readonly MarkStageKey[]
   items: ExamWorkspaceMenuItem[]
 }
 
-export const EXAM_WORKSPACE_MENU_SECTIONS: ExamWorkspaceMenuSection[] = [
+/** 9 个 group、31 个 menu item；侧栏按 activeJourneyKey 过滤 group */
+export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
   {
     key: 'overview',
     title: '考试概览',
-    markStageKey: 'EXAM_PREP',
+    journeyKey: 'overview',
+    stageKeys: ['EXAM_PREP'],
     items: [
       { key: 'overview', label: '考试概览', routeName: 'TeacherExamWorkspaceOverview', markStageKey: 'EXAM_PREP' },
     ],
   },
   {
     key: 'prep',
-    title: '考试准备',
-    markStageKey: 'EXAM_PREP',
+    title: '准备项进度',
+    journeyKey: 'prep',
+    stageKeys: ['EXAM_PREP', 'PAPER_TEMPLATE', 'CANDIDATE_ROSTER'],
     items: [
       { key: 'prep', label: '准备工作台', routeName: 'TeacherExamWorkspacePrep', markStageKey: 'EXAM_PREP' },
       { key: 'paper-template', label: '试卷题目', routeName: 'TeacherExamWorkspacePaperTemplate', markStageKey: 'PAPER_TEMPLATE' },
@@ -40,7 +44,8 @@ export const EXAM_WORKSPACE_MENU_SECTIONS: ExamWorkspaceMenuSection[] = [
   {
     key: 'scan',
     title: '扫描识别',
-    markStageKey: 'SCAN',
+    journeyKey: 'scan',
+    stageKeys: ['SCAN'],
     items: [
       { key: 'scan-batches', label: '录入与批次', routeName: 'TeacherExamWorkspaceScanBatches', markStageKey: 'SCAN' },
       { key: 'scan-monitor', label: '扫描监控', routeName: 'TeacherExamWorkspaceScanMonitor', markStageKey: 'SCAN' },
@@ -50,31 +55,65 @@ export const EXAM_WORKSPACE_MENU_SECTIONS: ExamWorkspaceMenuSection[] = [
     ],
   },
   {
-    key: 'marking',
-    title: '阅卷批阅',
-    markStageKey: 'FORMAL_MARKING',
+    key: 'assign',
+    title: '阅卷安排',
+    journeyKey: 'assign',
+    stageKeys: ['MARKING_ORG'],
     items: [
       { key: 'marking-org', label: '阅卷安排', routeName: 'TeacherExamWorkspaceMarkingOrg', markStageKey: 'MARKING_ORG' },
       { key: 'marking-assignment', label: '分派方案', routeName: 'TeacherExamWorkspaceReviewAssignment', markStageKey: 'MARKING_ORG' },
+    ],
+  },
+  {
+    key: 'mark-trial',
+    title: '试评',
+    journeyKey: 'mark',
+    stageKeys: ['TRIAL_MARKING'],
+    items: [
       { key: 'trial-pool', label: '试评任务池', routeName: 'TeacherExamWorkspaceTrialTaskPool', markStageKey: 'TRIAL_MARKING' },
       { key: 'trial-progress', label: '试评进度', routeName: 'TeacherExamWorkspaceTrialProgress', markStageKey: 'TRIAL_MARKING' },
+    ],
+  },
+  {
+    key: 'mark-formal',
+    title: '正评',
+    journeyKey: 'mark',
+    stageKeys: ['FORMAL_MARKING'],
+    items: [
       { key: 'marking-pool', label: '阅卷任务池', routeName: 'TeacherExamWorkspaceMarkingTaskPool', markStageKey: 'FORMAL_MARKING' },
       { key: 'marking-progress', label: '进度看板', routeName: 'TeacherExamWorkspaceMarkingProgress', markStageKey: 'FORMAL_MARKING' },
-      { key: 'marking-arbitration', label: '仲裁裁定', routeName: 'TeacherExamWorkspaceMarkingArbitration', markStageKey: 'FORMAL_MARKING' },
-      { key: 'marking-quality', label: '抽检处理', routeName: 'TeacherExamWorkspaceMarkingQuality', markStageKey: 'FORMAL_MARKING' },
       { key: 'marking-review', label: 'OCR/AI 复核', routeName: 'TeacherExamWorkspaceMarkingReview', markStageKey: 'FORMAL_MARKING' },
       { key: 'marking-review-batch', label: '批量复核确认', routeName: 'TeacherExamWorkspaceReviewBatchConfirm', markStageKey: 'FORMAL_MARKING' },
     ],
   },
   {
-    key: 'post-exam',
-    title: '成绩归档',
-    markStageKey: 'ARCHIVE',
+    key: 'mark-qc',
+    title: '质控',
+    journeyKey: 'mark',
+    stageKeys: ['FORMAL_MARKING'],
+    items: [
+      { key: 'marking-arbitration', label: '仲裁裁定', routeName: 'TeacherExamWorkspaceMarkingArbitration', markStageKey: 'FORMAL_MARKING' },
+      { key: 'marking-quality', label: '抽检处理', routeName: 'TeacherExamWorkspaceMarkingQuality', markStageKey: 'FORMAL_MARKING' },
+    ],
+  },
+  {
+    key: 'publish',
+    title: '成绩发布',
+    journeyKey: 'publish',
+    stageKeys: ['SCORE_PUBLISH'],
     items: [
       { key: 'score-summary', label: '成绩确认', routeName: 'TeacherExamWorkspaceScoreSummary', markStageKey: 'SCORE_PUBLISH' },
       { key: 'score-release', label: '成绩发布', routeName: 'TeacherExamWorkspaceScoreRelease', markStageKey: 'SCORE_PUBLISH' },
       { key: 'score-absence', label: '缺考确认', routeName: 'TeacherExamWorkspaceScoreAbsence', markStageKey: 'SCORE_PUBLISH' },
       { key: 'score-appeal', label: '复核申诉', routeName: 'TeacherExamWorkspaceScoreAppeal', markStageKey: 'SCORE_PUBLISH' },
+    ],
+  },
+  {
+    key: 'archive',
+    title: '归档',
+    journeyKey: 'archive',
+    stageKeys: ['ARCHIVE'],
+    items: [
       { key: 'archive-package', label: '归档列表', routeName: 'TeacherExamWorkspaceArchivePackage', markStageKey: 'ARCHIVE' },
       { key: 'archive-statistics', label: '成绩统计', routeName: 'TeacherExamWorkspaceArchiveStatistics', markStageKey: 'ARCHIVE' },
       { key: 'archive-grading-experience', label: '阅卷经验库', routeName: 'TeacherExamWorkspaceGradingExperience', markStageKey: 'ARCHIVE' },
@@ -91,10 +130,17 @@ export const EXAM_WORKSPACE_MENU_ROUTE_FALLBACK: Record<string, string> = {
 }
 
 const MENU_ITEM_BY_ROUTE = new Map<string, ExamWorkspaceMenuItem>()
-for (const section of EXAM_WORKSPACE_MENU_SECTIONS) {
-  for (const item of section.items) {
+for (const group of EXAM_WORKSPACE_MENU_GROUPS) {
+  for (const item of group.items) {
     MENU_ITEM_BY_ROUTE.set(item.routeName, item)
   }
+}
+
+export function getMenuGroupsForJourney(journeyKey: ExamWorkspaceJourneyKey): ExamWorkspaceMenuGroup[] {
+  if (journeyKey === 'overview') {
+    return EXAM_WORKSPACE_MENU_GROUPS.filter((group) => group.journeyKey === 'overview')
+  }
+  return EXAM_WORKSPACE_MENU_GROUPS.filter((group) => group.journeyKey === journeyKey)
 }
 
 export function resolveExamWorkspaceMenuKey(routeName: string | undefined): string {
@@ -113,11 +159,14 @@ export function resolveExamWorkspaceMenuKey(routeName: string | undefined): stri
 }
 
 export function findExamWorkspaceMenuItem(menuKey: string): ExamWorkspaceMenuItem | undefined {
-  for (const section of EXAM_WORKSPACE_MENU_SECTIONS) {
-    const item = section.items.find((entry) => entry.key === menuKey)
+  for (const group of EXAM_WORKSPACE_MENU_GROUPS) {
+    const item = group.items.find((entry) => entry.key === menuKey)
     if (item) {
       return item
     }
   }
   return undefined
 }
+
+/** 所有菜单项 key，供侧栏图标映射使用 */
+export type ExamWorkspaceMenuKey = typeof EXAM_WORKSPACE_MENU_GROUPS[number]['items'][number]['key']

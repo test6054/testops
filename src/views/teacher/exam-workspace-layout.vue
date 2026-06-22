@@ -1,11 +1,18 @@
 <template>
   <div class="exam-detail-layout">
-    <header class="exam-detail-layout__header" :class="{ 'exam-detail-layout__header--collapsed': sidebarCollapsed }">
+    <header
+      class="exam-detail-layout__header"
+      :class="{
+        'exam-detail-layout__header--collapsed': sidebarCollapsed && !isImmersiveWorkspace,
+        'exam-detail-layout__header--immersive': isImmersiveWorkspace,
+      }"
+    >
       <div class="exam-detail-layout__logo" @click="goExamList">
         <img alt="logo" class="exam-detail-layout__logo-img" src="/logo.svg" />
         <span class="exam-detail-layout__logo-title">{{ appTitle }}</span>
       </div>
       <UiButton
+        v-if="examId && !isImmersiveWorkspace"
         class="exam-detail-layout__menu-toggle"
         variant="outline"
         size="sm"
@@ -40,63 +47,55 @@
       <HeaderRightBar class="exam-detail-layout__header-right" />
     </header>
 
+    <div v-if="examId && !isImmersiveWorkspace" class="exam-detail-layout__journey">
+      <UiAlertStrip
+        v-if="snapshotError"
+        tone="error"
+        :title="snapshotError"
+        dense
+        class="exam-detail-layout__journey-error"
+      >
+        <template #actions>
+          <UiButton size="sm" variant="outline" :loading="refreshing" @click="handleRefresh">
+            重试
+          </UiButton>
+        </template>
+      </UiAlertStrip>
+      <a-skeleton
+        v-else-if="loading && !snapshot"
+        active
+        :title="false"
+        :paragraph="{ rows: 1, width: '100%' }"
+        class="exam-detail-layout__journey-skeleton"
+      />
+      <ExamJourneyRail
+        v-else
+        :stages="journeyStages"
+        :active-key="activeJourneyKey === 'overview' ? '' : activeJourneyKey"
+        @select="onJourneySelect"
+      />
+    </div>
+
     <div class="exam-detail-layout__body">
       <div
-        v-if="mobileNavOpen"
+        v-if="examId && mobileNavOpen && !isImmersiveWorkspace"
         class="exam-detail-layout__backdrop"
         @click="mobileNavOpen = false"
       />
-      <aside
-        class="exam-detail-layout__sidebar"
-        :class="{
-          'exam-detail-layout__sidebar--collapsed': sidebarCollapsed && !mobileNavOpen,
-          'exam-detail-layout__sidebar--mobile-open': mobileNavOpen,
-        }"
-      >
-        <div v-if="snapshot && !sidebarCollapsed" class="exam-detail-layout__exam-info">
-          <h3 class="exam-detail-layout__exam-title">{{ snapshot.examName }}</h3>
-          <div class="exam-detail-layout__exam-meta">
-            <span v-if="snapshot.examNo" class="exam-detail-layout__exam-no">编号 {{ snapshot.examNo }}</span>
-            <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">{{ examStatusLabel }}</UiTag>
-          </div>
-        </div>
-
-        <a-divider v-if="!sidebarCollapsed" class="exam-detail-layout__divider" />
-
-        <nav class="exam-detail-layout__nav">
-          <a-menu
-            :selected-keys="[activeMenuKey]"
-            :inline-collapsed="sidebarCollapsed"
-            mode="inline"
-            @click="onMenuClick"
-          >
-            <template v-for="section in EXAM_WORKSPACE_MENU_SECTIONS" :key="section.key">
-              <a-menu-item-group v-if="!sidebarCollapsed" :title="sectionMenuTitle(section)">
-                <a-menu-item v-for="item in section.items" :key="item.key">
-                  <template #icon>
-                    <component :is="menuIconMap[item.key]" />
-                  </template>
-                  {{ item.label }}
-                </a-menu-item>
-              </a-menu-item-group>
-              <template v-else>
-                <a-menu-item v-for="item in section.items" :key="item.key">
-                  <template #icon>
-                    <component :is="menuIconMap[item.key]" />
-                  </template>
-                </a-menu-item>
-              </template>
-            </template>
-          </a-menu>
-        </nav>
-
-        <div class="exam-detail-layout__sidebar-footer">
-          <button type="button" class="exam-detail-layout__collapse-btn" @click="sidebarCollapsed = !sidebarCollapsed">
-            <MenuFoldOutlined v-if="!sidebarCollapsed" />
-            <MenuUnfoldOutlined v-else />
-          </button>
-        </div>
-      </aside>
+      <ExamSubSidebar
+        v-if="examId && !isImmersiveWorkspace"
+        :snapshot="snapshot"
+        :exam-status-label="examStatusLabel"
+        :exam-status-tone="examStatusTone"
+        :active-menu-key="activeMenuKey"
+        :active-journey-key="activeJourneyKey"
+        :ordered-stages="orderedStages"
+        :collapsed="sidebarCollapsed"
+        :mobile-open="mobileNavOpen"
+        :menu-icon-map="menuIconMap"
+        @menu-click="onMenuClick"
+        @toggle-collapse="sidebarCollapsed = !sidebarCollapsed"
+      />
 
       <main class="exam-detail-layout__main">
         <div
@@ -159,11 +158,11 @@
 </template>
 
 <script lang="ts" setup>
-import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { Component } from 'vue'
 import type { RouteLocationNormalized } from 'vue-router'
-import type { ExamWorkspaceMenuSection } from '@/constants/exam-workspace-menu'
+import type { ExamJourneyKey } from '@/constants/exam-journey'
+import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
@@ -181,9 +180,7 @@ import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import FundOutlined from '@ant-design/icons-vue/FundOutlined'
 import HighlightOutlined from '@ant-design/icons-vue/HighlightOutlined'
 import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
-import MenuFoldOutlined from '@ant-design/icons-vue/MenuFoldOutlined'
 import MenuOutlined from '@ant-design/icons-vue/MenuOutlined'
-import MenuUnfoldOutlined from '@ant-design/icons-vue/MenuUnfoldOutlined'
 import PrinterOutlined from '@ant-design/icons-vue/PrinterOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -196,30 +193,25 @@ import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import { ExamJourneyRail, ExamSubSidebar } from '@/components/workbench'
+import { useExamJourneySteps } from '@/composables/useExamJourneySteps'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { provideMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
 import { useMarkWorkbenchSnapshot } from '@/composables/useMarkWorkbenchSnapshot'
 import {
-  EXAM_WORKSPACE_MENU_SECTIONS,
   findExamWorkspaceMenuItem,
   resolveExamWorkspaceMenuKey,
 } from '@/constants/exam-workspace-menu'
-import {
-  resolveWorkspaceStage,
-  WORKSPACE_STAGE_STATUS_LABEL,
-} from '@/constants/mark-workspace-nav'
+import { WORKSPACE_STAGE_STATUS_LABEL } from '@/constants/mark-workspace-nav'
 import HeaderRightBar from '@/layout/components/HeaderRightBar/index.vue'
 import { useAppStore } from '@/stores/modules/app'
 import { MARK_STAGE_ORDER } from '@/stores/modules/markStage'
-import { navigateToMarkStage } from '@/utils/mark-stage-navigation'
+import { navigateToJourneyStep, navigateToMarkStage } from '@/utils/mark-stage-navigation'
 import mittBus from '@/utils/mitt'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ExamWorkspaceLayout' })
-
-type ExamWorkspaceMenuKey = typeof EXAM_WORKSPACE_MENU_SECTIONS[number]['items'][number]['key']
 
 const menuIconMap: Record<ExamWorkspaceMenuKey, Component> = {
   'overview': DashboardOutlined,
@@ -262,7 +254,13 @@ const sidebarCollapsed = ref(false)
 const mobileNavOpen = ref(false)
 
 const examId = computed(() => String(route.params.examId ?? ''))
-const isLayoutWide = computed(() => route.meta.layoutWide === true)
+/**
+ * 批阅 / 复核沉浸页：隐藏旅程轨与侧栏，主内容全宽。
+ * 当前每个 layoutWide 路由都是沉浸页，故沉浸判定与宽内容样式共用同一来源；
+ * 若未来出现「宽内容但保留导航」的页面，再拆分为两个独立标志。
+ */
+const isImmersiveWorkspace = computed(() => route.meta.layoutWide === true)
+const isLayoutWide = isImmersiveWorkspace
 
 const {
   examOptions,
@@ -275,12 +273,15 @@ const {
 const {
   snapshot,
   loading,
+  error: snapshotError,
   refreshing,
   orderedStages,
   suggestedStageKey,
   prepAdvisoryReasons,
   refreshSnapshot,
 } = useMarkWorkbenchSnapshot(() => examId.value)
+
+const { journeyStages, activeJourneyKey } = useExamJourneySteps(orderedStages)
 
 provideMarkWorkbenchContext({
   examId,
@@ -327,7 +328,9 @@ const suggestionBanner = computed(() => {
   if (!stage) {
     return ''
   }
-  return `建议优先处理「${stage.title}」：${stage.statusText || '仍有待完善项'}`
+  const statusLabel = stage.statusText?.trim()
+    || strictEnumLabel(WORKSPACE_STAGE_STATUS_LABEL, stage.status, '工作台阶段状态')
+  return `建议优先处理「${stage.title}」：${statusLabel}`
 })
 
 const prepAdvisoryBanner = computed(() => {
@@ -337,18 +340,14 @@ const prepAdvisoryBanner = computed(() => {
   return `准备项仍有待完善：${prepAdvisoryReasons.value.join('；')}`
 })
 
-function sectionMenuTitle(section: ExamWorkspaceMenuSection): string {
-  const stage = resolveWorkspaceStage(orderedStages.value, section.markStageKey)
-  if (!stage) {
-    return section.title
-  }
-  const statusLabel = stage.statusText
-    || strictEnumLabel(WORKSPACE_STAGE_STATUS_LABEL, stage.status, '工作台阶段状态')
-  return `${section.title} · ${statusLabel}`
-}
-
 function goExamList(): void {
   void router.push({ name: 'TeacherExamList' })
+}
+
+/** 识别详情页对象 ID 参数，切换考试时不得复用 */
+function hasObjectIdParam(currentRoute: RouteLocationNormalized): boolean {
+  const taskId = currentRoute.params.taskId
+  return taskId != null && String(taskId).length > 0
 }
 
 function onExamSwitch(value: SelectValue): void {
@@ -356,15 +355,21 @@ function onExamSwitch(value: SelectValue): void {
   if (!nextExamId || nextExamId === examId.value) {
     return
   }
+  const nextJourney = activeJourneyKey.value === 'overview' ? 'prep' : activeJourneyKey.value
+  if (isImmersiveWorkspace.value || hasObjectIdParam(route)) {
+    navigateToJourneyStep(router, nextJourney as ExamJourneyKey, nextExamId, {
+      scanAttentionCount: snapshot.value?.markingProgress?.scanAttentionCount,
+    })
+    return
+  }
   void router.push({
     name: route.name,
-    params: { ...route.params, examId: nextExamId },
-    query: route.query,
+    params: { examId: nextExamId },
   })
 }
 
-function onMenuClick(info: MenuInfo): void {
-  const item = findExamWorkspaceMenuItem(String(info.key))
+function onMenuClick(menuKey: string): void {
+  const item = findExamWorkspaceMenuItem(menuKey)
   if (!item || !examId.value) {
     return
   }
@@ -372,6 +377,16 @@ function onMenuClick(info: MenuInfo): void {
   void router.push({
     name: item.routeName,
     params: { examId: examId.value },
+  })
+}
+
+function onJourneySelect(journeyKey: ExamJourneyKey): void {
+  if (!examId.value) {
+    return
+  }
+  mobileNavOpen.value = false
+  navigateToJourneyStep(router, journeyKey, examId.value, {
+    scanAttentionCount: snapshot.value?.markingProgress?.scanAttentionCount,
   })
 }
 
@@ -424,6 +439,12 @@ watch(examId, async (id) => {
     await syncPinnedExam(id)
   }
 }, { immediate: true })
+
+watch(isImmersiveWorkspace, (immersive) => {
+  if (immersive) {
+    mobileNavOpen.value = false
+  }
+})
 </script>
 
 <style lang="scss" scoped>
@@ -447,6 +468,14 @@ watch(examId, async (id) => {
 
     &--collapsed {
       --sidebar-width: 64px;
+    }
+
+    &--immersive {
+      --sidebar-width: auto;
+
+      .exam-detail-layout__logo {
+        width: auto;
+      }
     }
   }
 
@@ -504,102 +533,12 @@ watch(examId, async (id) => {
     min-height: 0;
   }
 
-  &__sidebar {
-    width: 260px;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    background: var(--ant-color-bg-container);
-    border-right: 1px solid var(--ant-color-border-secondary);
-
-    &--collapsed {
-      width: 64px;
-    }
-  }
-
-  &__exam-info {
-    padding: 16px;
-    flex-shrink: 0;
-  }
-
-  &__exam-title {
-    margin: 0 0 8px;
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 1.5;
-    color: var(--ant-color-text);
-    word-break: break-word;
-  }
-
-  &__exam-meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-  }
-
-  &__exam-no {
-    font-size: 13px;
-    color: var(--ant-color-text-secondary);
-  }
-
-  &__divider {
-    margin: 0 !important;
-  }
-
-  &__nav {
-    flex: 1;
-    overflow: auto;
-    padding: 8px;
-
-    :deep(.ant-menu-item-group-title) {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--ant-color-text-tertiary);
-      padding-left: 12px;
-    }
-
-    :deep(.ant-menu-item) {
-      border-radius: var(--dp-radius-md);
-      font-weight: 500;
-    }
-
-    :deep(.ant-menu-item-selected) {
-      background: var(--ant-color-primary-bg);
-    }
-  }
-
-  &__sidebar-footer {
-    padding: 12px 16px;
-    border-top: 1px solid var(--ant-color-border-secondary);
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  &__collapse-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border: none;
-    border-radius: var(--dp-radius-md);
-    background: transparent;
-    color: var(--ant-color-text-tertiary);
-    cursor: pointer;
-
-    &:hover {
-      background: var(--ant-color-fill-tertiary);
-      color: var(--ant-color-text);
-    }
-  }
-
   &__main {
     flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    background: #f5f7fa;
+    background: var(--ant-color-bg-layout);
   }
 
   &__content {
@@ -615,6 +554,18 @@ watch(examId, async (id) => {
         margin: 0 auto;
       }
     }
+  }
+
+  &__journey {
+    flex-shrink: 0;
+  }
+
+  &__journey-error {
+    margin: 12px 16px 0;
+  }
+
+  &__journey-skeleton {
+    padding: 12px 16px;
   }
 
   &__banner {
@@ -641,26 +592,6 @@ watch(examId, async (id) => {
       inset: 56px 0 0;
       z-index: 190;
       background: rgba(0, 0, 0, 0.35);
-    }
-
-    &__sidebar {
-      position: fixed;
-      z-index: 200;
-      top: 56px;
-      left: 0;
-      height: calc(100vh - 56px);
-      width: 260px;
-      transform: translateX(-100%);
-      transition: transform 0.2s ease;
-      box-shadow: var(--dp-shadow-md);
-
-      &--mobile-open {
-        transform: translateX(0);
-      }
-
-      &--collapsed:not(.exam-detail-layout__sidebar--mobile-open) {
-        width: 260px;
-      }
     }
   }
 }

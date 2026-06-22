@@ -8,7 +8,19 @@
       }"
     >
       <router-view v-slot="{ Component, route: childRoute }">
-        <component v-if="Component" :is="Component" :key="getRouteKey(childRoute)" />
+        <template v-if="Component">
+          <keep-alive v-if="shouldCacheRoute(childRoute)">
+            <component
+              :is="Component"
+              :key="getRouteKey(childRoute)"
+            />
+          </keep-alive>
+          <component
+            v-else
+            :is="Component"
+            :key="getRouteKey(childRoute)"
+          />
+        </template>
       </router-view>
     </div>
   </a-layout>
@@ -45,6 +57,14 @@ const getRouteKey = (route: RouteLocationNormalized) => {
   }
   // 默认使用路径
   return route.path
+}
+
+/** 与路由 meta.keepAlive 对齐：仅显式 true 时缓存（quality / teacher 列表页） */
+function shouldCacheRoute(childRoute: RouteLocationNormalized): boolean {
+  if (childRoute.meta.noCache === true) {
+    return false
+  }
+  return childRoute.meta.keepAlive === true
 }
 </script>
 

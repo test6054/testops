@@ -401,7 +401,7 @@ function goNextStep(target: 'scan' | 'review'): void {
   if (target === 'scan') {
     void router.push({ name: 'TeacherExamWorkspaceScanBatches', params: { examId: selectedExamId.value } })
   } else {
-    void router.push({ name: 'TeacherExamWorkspaceMarkingReview', params: { examId: selectedExamId.value } })
+    void router.push({ name: 'TeacherExamWorkspaceReviewBatchConfirm', params: { examId: selectedExamId.value } })
   }
 }
 

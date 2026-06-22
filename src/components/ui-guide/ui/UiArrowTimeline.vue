@@ -9,9 +9,9 @@
         { 'ui-arrow-timeline__stage--active': stage.key === activeKey },
         { 'ui-arrow-timeline__stage--first': index === 0 },
         { 'ui-arrow-timeline__stage--last': index === normalizedStages.length - 1 },
-        { 'ui-arrow-timeline__stage--disabled': stage.status === 'pending' },
+        { 'ui-arrow-timeline__stage--disabled': !allowPendingSelect && stage.status === 'pending' },
       ]"
-      @click="stage.status !== 'pending' && handleStageClick(stage)"
+      @click="(allowPendingSelect || stage.status !== 'pending') && handleStageClick(stage)"
     >
       <div class="ui-arrow-timeline__chevron">
         <svg class="ui-arrow-timeline__shape" viewBox="0 0 200 80" preserveAspectRatio="none">
@@ -95,11 +95,14 @@ const props = withDefaults(
     stages?: UiArrowTimelineStage[]
     activeKey?: string
     compact?: boolean
+    /** 为 true 时 pending 阶段仍可点击（六步旅程轨导航） */
+    allowPendingSelect?: boolean
   }>(),
   {
     stages: () => [],
     activeKey: '',
     compact: false,
+    allowPendingSelect: false,
   },
 )
 
