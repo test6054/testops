@@ -80,7 +80,6 @@
       </div>
 
       <UiEmpty
-        v-else
         size="sm"
         title="暂无图表内容"
         :description="props.emptyText"

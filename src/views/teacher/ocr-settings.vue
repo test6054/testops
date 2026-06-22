@@ -78,8 +78,7 @@ const loading = ref(false)
 const healthChecking = ref(false)
 const recognizing = ref(false)
 const currentConfig = ref<MarkOcrConfigVO | null>(null)
-// D-9：OCR 租户配置加载失败时展示可重试错误面板
-const configLoadError = ref<Error | null>(null)
+// 加载失败：toast 提示，主区保持空态/列表壳
 const recognizeResult = ref<MarkOcrRecognizeVO | null>(null)
 const debugForm = ref<DebugFormState>({})
 const { selectedExamId, selectedExamLabel } = useMarkExamContext()
@@ -196,12 +195,10 @@ function applyConfig(config: MarkOcrConfigVO): void {
 
 async function loadConfig(): Promise<void> {
   loading.value = true
-  configLoadError.value = null
   try {
     applyConfig(await getCurrentMarkOcrConfig())
   } catch (error) {
     currentConfig.value = null
-    configLoadError.value = toUserError(error, 'OCR 识别配置加载失败')
     showUserError(error, 'OCR 识别配置加载失败')
   } finally {
     loading.value = false
@@ -401,11 +398,7 @@ onBeforeUnmount(() => {
   <div class="ocr-settings">
     <UiEmpty v-if="!selectedExamId" description="未进入考试工作台" />
 
-    <UiErrorRetryPanel
-      v-else-if="configLoadError"
-      :error="configLoadError"
-      @retry="loadConfig"
-    />
+
 
     <a-spin v-else-if="loading && !currentConfig" />
 
@@ -580,11 +573,6 @@ onBeforeUnmount(() => {
                   @dropdown-visible-change="handlePaperCandidateDropdownVisibleChange"
                   @change="handlePaperCandidateChange"
                 />
-                <UiErrorRetryPanel
-                  v-if="paperCandidatesError && debugForm.examId"
-                  :error="paperCandidatesError"
-                  @retry="() => loadPaperCandidates(debugForm.examId!)"
-                />
               </a-form-item>
             </a-col>
             <a-col :xs="24" :md="12">
@@ -597,11 +585,6 @@ onBeforeUnmount(() => {
                   show-search
                   option-filter-prop="label"
                   placeholder="请选择题目"
-                />
-                <UiErrorRetryPanel
-                  v-if="questionsError && debugForm.examId"
-                  :error="questionsError"
-                  @retry="() => loadQuestions(debugForm.examId!)"
                 />
               </a-form-item>
             </a-col>

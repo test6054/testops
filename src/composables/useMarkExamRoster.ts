@@ -19,7 +19,7 @@ import type { ExamCandidateVO } from '@/apis/mark/exam-scope'
  */
 import { computed, ref } from 'vue'
 import { listExamCandidates } from '@/apis/mark/exam-scope'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 
 export interface MarkClassOption {
   /** 班级 ID（后端 Long 字符串化） */
@@ -50,7 +50,6 @@ export interface MarkStudentOption {
 export function useMarkExamRoster() {
   const candidates = ref<ExamCandidateVO[]>([])
   const loading = ref(false)
-  const loadError = ref<Error | null>(null)
 
   const classOptions = computed<MarkClassOption[]>(() => {
     const grouped = new Map<string, { className: string, count: number }>()
@@ -96,16 +95,13 @@ export function useMarkExamRoster() {
   async function load(examId: string | undefined): Promise<void> {
     if (!examId) {
       candidates.value = []
-      loadError.value = null
       return
     }
     loading.value = true
-    loadError.value = null
     try {
       candidates.value = await listExamCandidates(examId)
     } catch (e) {
       candidates.value = []
-      loadError.value = toUserError(e, '考生名册加载失败')
       showUserError(e, '考生名册加载失败')
     } finally {
       loading.value = false
@@ -114,16 +110,13 @@ export function useMarkExamRoster() {
 
   function reset(): void {
     candidates.value = []
-    loadError.value = null
   }
 
   return {
     candidates,
     classOptions,
     studentOptions,
-    loading,
-    loadError,
-    load,
+    loading,    load,
     reset,
   }
 }

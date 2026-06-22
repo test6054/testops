@@ -116,14 +116,8 @@
             </a-button>
           </div>
         </template>
-        <UiErrorRetryPanel
-          v-if="historyLoadError && !historyLoading"
-          :error="historyLoadError"
-          compact
-          @retry="fetchPasswordHistory"
-        />
+
         <UiDataTable
-          v-else
           pagination-mode="none"
           class="student-detail-table__data-table"
           :columns="historyColumns"
@@ -172,7 +166,7 @@ import UiFormSection from '@/components/ui-guide/ui/UiFormSection.vue'
 import UiPageHeader from '@/components/ui-guide/ui/UiPageHeader.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAuthStore, useUserStore } from '@/stores'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
 import { evaluatePasswordStrength, getPasswordStrengthText } from '@/utils/password-policy'
 
@@ -188,7 +182,6 @@ const isForceMode = computed(() => shouldEnforcePasswordChange(userStore.userInf
 // 响应式数据
 const loading = ref(false)
 const historyLoading = ref(false)
-const historyLoadError = ref<Error | null>(null)
 const passwordHistory = ref<PasswordHistoryDto[]>([])
 
 // 表单引用
@@ -257,12 +250,10 @@ const passwordStrengthText = computed(() => getPasswordStrengthText(passwordStre
 const fetchPasswordHistory = async () => {
   try {
     historyLoading.value = true
-    historyLoadError.value = null
 
     passwordHistory.value = await getPasswordHistory()
   } catch (error) {
     passwordHistory.value = []
-    historyLoadError.value = toUserError(error, '密码修改记录加载失败，请稍后重试')
     showUserError(error, '密码修改记录加载失败，请稍后重试')
   } finally {
     historyLoading.value = false

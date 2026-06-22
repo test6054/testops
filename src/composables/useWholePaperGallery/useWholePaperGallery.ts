@@ -1,18 +1,17 @@
-import type { QualityDecisionCode } from '@/apis/mark/exam-scan'
+import type { Ref } from 'vue'
 import type {
   MarkingPageAnnotationSubmitItem,
   MarkingQuestionScoreSubmitItem,
   QuestionMarkingGroupQuestionVO,
   ScannedPageRef,
 } from '@/apis/mark/marking-organization'
-import { message } from 'ant-design-vue'
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
   getMarkingScanPageDisplayBlobUrl,
   getWholePaperView,
 } from '@/apis/mark/marking-organization'
-import { toUserError, showUserError } from '@/utils/error-handler'
+import { showUserError, toUserError } from '@/utils/error-handler'
 
 const WHOLE_PAGE_ESTIMATED_HEIGHT = 1180
 const WHOLE_PAGE_RENDER_BUFFER = 2
@@ -36,10 +35,39 @@ export interface UseWholePaperGalleryOptions {
   onViewReady: () => void
 }
 
+/** 整卷影像画廊 composable 对外 API */
+export interface UseWholePaperGalleryReturn {
+  wholePages: Ref<ScannedPageRef[]>
+  wholeQuestions: Ref<QuestionMarkingGroupQuestionVO[]>
+  wholePagesLoaded: Ref<boolean>
+  wholePagesLoading: Ref<boolean>
+  wholePagesError: Ref<Error | null>
+  wholePageImageUrls: Record<string, string>
+  wholePageImageLoading: Record<string, boolean>
+  wholePageImageErrors: Record<string, Error | null>
+  wholeQuestionForms: Record<string, WholeQuestionForm>
+  wholePageAnnotationForms: Record<string, string>
+  wholePageViewportRef: Ref<HTMLElement | null>
+  currentWholePageIndex: Ref<number>
+  visibleWholePages: Ref<VisibleWholePage[]>
+  wholePageTopSpacerHeight: Ref<number>
+  wholePageBottomSpacerHeight: Ref<number>
+  getWholeQuestionForm: (questionTemplateId: string) => WholeQuestionForm
+  openWholePaperView: () => Promise<void>
+  reloadWholePaperView: () => Promise<void>
+  resetWholePaperState: () => void
+  handleWholePageGalleryScroll: (event: Event) => void
+  scrollToWholePage: (index: number) => void
+  buildWholePaperSubmitRequest: () => {
+    questionScores: MarkingQuestionScoreSubmitItem[]
+    pageAnnotations: MarkingPageAnnotationSubmitItem[]
+  }
+}
+
 /**
  * 整卷影像画廊：消费 WholePaperViewResponse，按 pageId 虚拟窗口渲染 ScannedPageRef。
  */
-export function useWholePaperGallery(options: UseWholePaperGalleryOptions) {
+export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseWholePaperGalleryReturn {
   const wholePages = ref<ScannedPageRef[]>([])
   const wholeQuestions = ref<QuestionMarkingGroupQuestionVO[]>([])
   const wholePagesLoaded = ref(false)
@@ -346,14 +374,9 @@ export function useWholePaperGallery(options: UseWholePaperGalleryOptions) {
     getWholeQuestionForm,
     openWholePaperView,
     reloadWholePaperView,
-    releaseWholePageImages,
     resetWholePaperState,
     handleWholePageGalleryScroll,
     scrollToWholePage,
     buildWholePaperSubmitRequest,
-    syncWholePaperForms,
   }
 }
-
-export type WholePaperGalleryQualityLabel = (status: QualityDecisionCode) => string
-export type WholePaperGalleryQualityTone = (status: QualityDecisionCode) => string

@@ -1,5 +1,5 @@
-import { showUserError, toUserError } from '@/utils/error-handler'
 import { isQualityScopeStaleError } from '@/composables/useScopeRequestGuard'
+import { showUserError, toUserError } from '@/utils/error-handler'
 
 /** 质量 selector 变更值：单选 string 或空 */
 export type QualitySelectorChangeValue = string | string[] | null | undefined
@@ -18,6 +18,17 @@ export function normalizeTextareaLineItems(value: string | null | undefined): st
     .filter(Boolean)
 }
 
+function failRefreshMutation(
+  cause: unknown,
+  onLoadError: ((error: Error | null) => void) | undefined,
+  fallbackMessage: string,
+): never {
+  const err = toUserError(cause, fallbackMessage)
+  onLoadError?.(err)
+  showUserError(cause, fallbackMessage)
+  throw err
+}
+
 /** mutation 后刷新 SignalBand：scope 过期静默丢弃；未写入且 scope 仍有效则显式失败 */
 export async function refreshWorkbenchSignalsAfterMutation(
   scope: { isStale: () => boolean },
@@ -31,18 +42,12 @@ export async function refreshWorkbenchSignalsAfterMutation(
       if (scope.isStale()) {
         return
       }
-      const err = toUserError(null, fallbackMessage)
-      onLoadError?.(err)
-      showUserError(null, fallbackMessage)
-      throw err
+      failRefreshMutation(null, onLoadError, fallbackMessage)
     }
   } catch (refreshError) {
     if (isQualityScopeStaleError(refreshError) || scope.isStale()) {
       return
     }
-    const err = toUserError(refreshError, fallbackMessage)
-    onLoadError?.(err)
-    showUserError(refreshError, fallbackMessage)
-    throw err
+    failRefreshMutation(refreshError, onLoadError, fallbackMessage)
   }
 }

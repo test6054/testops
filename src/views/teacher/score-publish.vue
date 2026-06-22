@@ -54,14 +54,9 @@
           @reset="handleReset"
         />
 
-        <UiErrorRetryPanel
-          v-if="candidatesLoadError"
-          :error="candidatesLoadError"
-          @retry="loadCandidates"
-        />
+
 
         <UiDataTable
-          v-else
           v-model:current="pagination.current"
           v-model:page-size="pagination.pageSize"
           :columns="columns"
@@ -368,7 +363,7 @@ import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -477,7 +472,6 @@ function onScoreReleaseStepChange(value: string | number): void {
 // ─── 数据加载（服务端分页） ─────────────────────────────
 const candidates = ref<ExamScoreSummaryItemVO[]>([])
 const loading = ref(false)
-const candidatesLoadError = ref<Error | null>(null)
 const pendingAbsenceCount = ref(0)
 const absenceGuardLoading = ref(false)
 const finalScoreOverview = ref<FinalScoreRiskOverviewVO | null>(null)
@@ -493,7 +487,6 @@ const pagination = reactive<TablePaginationConfig>({
 async function loadCandidates(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
-  candidatesLoadError.value = null
   try {
     const result = await pageExamScoreSummary({
       examId: selectedExamId.value,
@@ -511,7 +504,6 @@ async function loadCandidates(): Promise<void> {
       pagination.pageSize = result.pageSize
     }
   } catch (error) {
-    candidatesLoadError.value = toUserError(error, '成绩发布名单加载失败，请稍后重试')
     showUserError(error, '成绩发布名单加载失败，请稍后重试')
   } finally {
     loading.value = false

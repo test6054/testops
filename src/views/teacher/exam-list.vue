@@ -77,11 +77,7 @@
       单人批阅确认完成后，可直接进入成绩确认与发布。
     </UiAlertStrip>
 
-    <UiErrorRetryPanel
-      v-if="progressLoadError && !examsLoadError"
-      :error="progressLoadError"
-      @retry="loadAggregateProgress"
-    />
+
 
     <a-card :bordered="false" class="detail-table-card exam-list-page__table-card">
       <template #title>
@@ -114,14 +110,9 @@
         </template>
       </UiFilterBar>
 
-      <UiErrorRetryPanel
-        v-if="examsLoadError"
-        :error="examsLoadError"
-        @retry="loadExams"
-      />
+
 
       <UiDataTable
-        v-else
         v-model:current="pagination.current"
         v-model:page-size="pagination.pageSize"
         :columns="columns"
@@ -338,14 +329,14 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { resolveScanStageEntryRoute } from '@/utils/resolve-scan-stage-entry'
@@ -445,7 +436,6 @@ type ExamScoreCompositionMode = 'EXAM_ONLY' | 'EXAM_WITH_DAILY'
 
 const dataSource = ref<ExamSummaryVO[]>([])
 const loading = ref(false)
-const examsLoadError = ref<Error | null>(null)
 const pagination = reactive<TablePaginationConfig>({
   current: 1,
   pageSize: 10,
@@ -466,7 +456,6 @@ const columns: ColumnType<ExamSummaryVO>[] = [
 
 const examProgressMap = ref<Map<string, MarkingProgressVO>>(new Map())
 const progressLoading = ref(false)
-const progressLoadError = ref<Error | null>(null)
 
 const progressReady = computed<boolean>(() => !progressLoading.value)
 
@@ -497,22 +486,22 @@ const progressAggregate = computed(() => {
 const summarySignals = computed<SignalMetric[]>(() => {
   const a = progressAggregate.value
   const dash = '—'
-  const pendingValue = progressLoadError.value
+  const pendingValue = false
     ? dash
     : progressReady.value
       ? a.pendingReview
       : '…'
-  const inProgressValue = progressLoadError.value
+  const inProgressValue = false
     ? dash
     : progressReady.value
       ? a.inProgressReview
       : '…'
-  const unconfirmedValue = progressLoadError.value
+  const unconfirmedValue = false
     ? dash
     : progressReady.value
       ? a.unconfirmedQuestionGrades
       : '…'
-  const scanValue = progressLoadError.value ? dash : progressReady.value ? a.scanAttention : '…'
+  const scanValue = false ? dash : progressReady.value ? a.scanAttention : '…'
   return [
     {
       key: 'pending-review',
@@ -624,7 +613,7 @@ function getExamProgressText(examId: string): string {
 
 const urgentBanner = computed<{ title: string } | null>(() => {
   const a = progressAggregate.value
-  if (!progressReady.value || progressLoadError.value) return null
+  if (!progressReady.value || false) return null
   if (a.scanAttention > 0) {
     return {
       title: `${a.scanAttention} 条扫描异常待处理`,
@@ -654,7 +643,6 @@ function formatAcademicTerm(exam: ExamSummaryVO): string {
 
 async function loadExams(): Promise<void> {
   loading.value = true
-  examsLoadError.value = null
   try {
     const [startTime, endTime] = filterForm.dateRange ?? []
     const result = await pageExams({
@@ -677,10 +665,9 @@ async function loadExams(): Promise<void> {
       pagination.pageSize = result.pageSize
     }
   } catch (error) {
-    examsLoadError.value = toUserError(error, '考试列表加载失败')
+    showUserError(error, '考试列表加载失败')
     dataSource.value = []
     pagination.total = 0
-    showUserError(error, '考试列表加载失败')
   } finally {
     loading.value = false
   }
@@ -689,7 +676,6 @@ async function loadExams(): Promise<void> {
 
 async function loadAggregateProgress(): Promise<void> {
   const activeExams = dataSource.value.filter((e) => e.status === 'ACTIVE')
-  progressLoadError.value = null
   if (activeExams.length === 0) {
     examProgressMap.value = new Map()
     return
@@ -705,13 +691,14 @@ async function loadAggregateProgress(): Promise<void> {
     examProgressMap.value = nextMap
     const failedCount = examIds.length - nextMap.size
     if (failedCount > 0) {
-      progressLoadError.value = new Error(
+      showUserError(new Error(
+        `${failedCount} 场进行中考试的阅卷进度未能读取，今日待办和阶段状态可能不完整，请刷新后重试。`,
+      ), 
         `${failedCount} 场进行中考试的阅卷进度未能读取，今日待办和阶段状态可能不完整，请刷新后重试。`,
       )
     }
   } catch (error) {
     examProgressMap.value = new Map()
-    progressLoadError.value = toUserError(error, '阅卷进度批量加载失败')
     showUserError(error, '阅卷进度批量加载失败')
   } finally {
     progressLoading.value = false

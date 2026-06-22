@@ -51,11 +51,9 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import {
-  AuditTimelineDrawer,
-  SignalBand,
-  StageWorkbenchShell,
-} from '@/components/workbench'
+import AuditTimelineDrawer from '@/components/workbench/AuditTimelineDrawer.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import {
   canExportExpertPackage,
   expertPackageExportBlockers,
@@ -63,7 +61,7 @@ import {
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -87,7 +85,6 @@ const list = ref<ArchiveVO[]>([])
 const total = ref(0)
 const loading = ref(false)
 const qualityStore = useQualityStore()
-const listLoadError = ref<Error | null>(null)
 
 interface ArchiveFilterModel {
   businessType?: ArchiveBusinessType
@@ -243,7 +240,6 @@ const archiveFileUploading = ref(false)
 
 async function loadList() {
   loading.value = true
-  listLoadError.value = null
   try {
     const page = await archiveApi.page({
       ...query,
@@ -260,7 +256,6 @@ async function loadList() {
       await loadList()
     }
   } catch (error) {
-    listLoadError.value = toUserError(error, '质量归档材料加载失败')
     showUserError(error, '质量归档材料加载失败')
   } finally {
     loading.value = false
@@ -268,7 +263,6 @@ async function loadList() {
 }
 
 async function handleScopeChange(): Promise<void> {
-  listLoadError.value = null
   await loadList()
 }
 

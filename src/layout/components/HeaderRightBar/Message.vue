@@ -8,18 +8,10 @@
     <!-- 消息列表 -->
     <div class="popup-body">
       <a-spin :spinning="loading" style="width: 100%">
-        <!-- 加载失败状态 -->
-        <div v-if="loadError" class="empty-state error-state">
-          <span>加载失败，</span>
-          <a class="retry-link" @click="getMessageData">点击重试</a>
-        </div>
-
-        <!-- 空状态 -->
-        <div v-else-if="!messageList || messageList.length === 0" class="empty-state">
+        <div v-if="!messageList || messageList.length === 0" class="empty-state">
           <span>暂无未读消息</span>
         </div>
 
-        <!-- 消息列表 -->
         <div v-else class="message-list">
           <div
             v-for="item in messageList"
@@ -95,7 +87,6 @@ interface UnifiedMessageItem {
 // 状态定义
 const messageList = ref<UnifiedMessageItem[]>([])
 const loading = ref(false)
-const loadError = ref(false)
 const readAllLoading = ref(false)
 
 const inboxQueryParam = reactive({
@@ -137,7 +128,6 @@ const stripHtmlAndTruncate = (html?: string, maxLength = MESSAGE_CONTENT_MAX_LEN
 const getMessageData = async () => {
   try {
     loading.value = true
-    loadError.value = false
 
     const results = await Promise.allSettled([
       getInboxMessages(inboxQueryParam),
@@ -154,7 +144,6 @@ const getMessageData = async () => {
 
     // 两个接口都失败才展示错误状态
     if (inboxResult.status === 'rejected' && announcementResult.status === 'rejected') {
-      loadError.value = true
       messageList.value = []
       showUserError(inboxResult.reason, '未读消息加载失败，请稍后重试')
       return
@@ -188,7 +177,6 @@ const getMessageData = async () => {
     allMessages.sort((a, b) => new Date(b.sendTime).getTime() - new Date(a.sendTime).getTime())
     messageList.value = allMessages.slice(0, MESSAGE_LIST_PAGE_SIZE)
   } catch (error) {
-    loadError.value = true
     messageList.value = []
     showUserError(error, '未读消息加载失败，请稍后重试')
   } finally {
@@ -272,19 +260,6 @@ onMounted(() => {
       text-align: center;
       color: var(--ant-color-text-tertiary);
       font-size: 13px;
-
-      &.error-state {
-        color: var(--ant-color-error);
-      }
-
-      .retry-link {
-        color: var(--ant-color-primary);
-        cursor: pointer;
-
-        &:hover {
-          color: var(--ant-color-primary-hover);
-        }
-      }
     }
 
     .message-list {

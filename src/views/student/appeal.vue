@@ -36,14 +36,10 @@
         <span>选择待申诉的考试</span>
       </template>
 
-      <UiErrorRetryPanel
-        v-if="!loadingExams && examsLoadError"
-        :error="examsLoadError"
-        @retry="loadExams"
-      />
+      <a-skeleton v-if="loadingExams" active :paragraph="{ rows: 3 }" />
 
       <UiEmpty
-        v-else-if="!loadingExams && appealableExams.length === 0"
+        v-else-if="appealableExams.length === 0"
         description="暂无数据"
       />
 
@@ -97,11 +93,7 @@
         @reset="handleRequestFilterReset"
       />
 
-      <UiErrorRetryPanel
-        v-if="requestsLoadError"
-        :error="requestsLoadError"
-        @retry="loadRequests"
-      />
+
 
       <UiDataTable
         v-model:current="requestPagination.current"
@@ -234,11 +226,6 @@
             option-filter-prop="label"
             show-search
           />
-          <UiErrorRetryPanel
-            v-if="questionLoadError"
-            :error="questionLoadError"
-            @retry="loadSelectedExamQuestions"
-          />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -282,9 +269,10 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { assertUserFacing } from '@/utils/contract-guard'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -313,10 +301,6 @@ const requestPagination = reactive({
 })
 const pendingRequestCount = ref(0)
 const selectedExamQuestions = ref<StudentQuestionScoreVO[]>([])
-// D-9 错误态：考试 / 复核申请列表加载失败时 UiErrorRetryPanel 重试入口
-const examsLoadError = ref<Error | null>(null)
-const requestsLoadError = ref<Error | null>(null)
-const questionLoadError = ref<Error | null>(null)
 const selectedExamId = ref<string | undefined>(undefined)
 const sourceQuestionId = ref<string | undefined>(undefined)
 
@@ -455,7 +439,6 @@ const columns = [
 
 async function loadExams() {
   loadingExams.value = true
-  examsLoadError.value = null
   try {
     const loadedExams = await listMyExams()
     validateAppealableExamContracts(loadedExams)
@@ -476,8 +459,7 @@ async function loadExams() {
       }
     }
   } catch (error) {
-    examsLoadError.value = toUserError(error, '考试列表加载失败')
-    showUserError(error, '可复核考试加载失败')
+    showUserError(error, '考试列表加载失败')
   } finally {
     loadingExams.value = false
   }
@@ -500,7 +482,6 @@ function validateAppealableExamContracts(list: StudentExamItemVO[]): void {
  */
 async function loadRequests() {
   loadingRequests.value = true
-  requestsLoadError.value = null
   try {
     const result = await listMyReviewRequests({
       requestStatus: requestFilterForm.status,
@@ -521,8 +502,7 @@ async function loadRequests() {
   } catch (error) {
     requests.value = []
     requestPagination.total = 0
-    requestsLoadError.value = toUserError(error, '复核申请列表加载失败')
-    showUserError(error, '复核申请记录加载失败')
+    showUserError(error, '复核申请列表加载失败')
   } finally {
     loadingRequests.value = false
   }
@@ -733,7 +713,6 @@ watch(
   () => selectedExamId.value,
   () => {
     selectedExamQuestions.value = []
-    questionLoadError.value = null
     form.questionIds = []
     sourceQuestionId.value = undefined
   },
@@ -775,14 +754,12 @@ function autoOpenFromQuestionQuery(): void {
 async function loadSelectedExamQuestions(): Promise<void> {
   if (!selectedAppealableExam.value) return
   scoreDetailLoading.value = true
-  questionLoadError.value = null
   try {
     const detail = await getMyScoreDetail(selectedAppealableExam.value.examId)
     selectedExamQuestions.value = detail.questions
   } catch (error) {
     selectedExamQuestions.value = []
-    questionLoadError.value = toUserError(error, '题目成绩加载失败')
-    showUserError(error, '题目列表加载失败')
+    showUserError(error, '题目成绩加载失败')
   } finally {
     scoreDetailLoading.value = false
   }

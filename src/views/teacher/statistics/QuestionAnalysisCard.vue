@@ -24,12 +24,6 @@
     </template>
 
     <div class="question-analysis-card">
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        @retry="reload"
-      />
-
       <MarkScatterSection
         title="难度-区分度分布"
         hint="理想区间：难度 0.3-0.8 且 区分度 ≥ 0.4；点击图例可隐藏对应区段。"
@@ -37,7 +31,7 @@
         :option="scatterChartOption"
         height="300px"
         :aria-label="scatterChartAriaLabel"
-        :visible="!loading && !loadError"
+        :visible="!loading"
         class="question-analysis-card__chart"
       />
 
@@ -48,7 +42,7 @@
         :option="correctRatioChartOption"
         height="300px"
         :aria-label="correctRatioChartAriaLabel"
-        :visible="!loading && !loadError"
+        :visible="!loading"
         class="question-analysis-card__chart"
       />
 
@@ -156,10 +150,9 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildCategoryBarChartOption, buildScatterChartOption } from '@/utils/mark-echarts-options'
 import {
@@ -177,7 +170,6 @@ const emit = defineEmits<{ (e: 'generated'): void }>()
 
 const rows = ref<ExamQuestionAnalysisRecordVO[]>([])
 const loading = ref(false)
-const loadError = ref<Error | null>(null)
 const generatingAll = ref(false)
 const generatingId = ref<string>('')
 const selectedQuestionTemplateId = ref<string>()
@@ -217,7 +209,6 @@ const columns: ColumnType<ExamQuestionAnalysisRecordVO>[] = [
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
-  loadError.value = null
   try {
     const records = await listQuestionAnalysis({
       examId: props.examId,
@@ -227,7 +218,6 @@ async function reload(): Promise<void> {
     rows.value = acceptQuestionAnalysisRows(records)
   } catch (e) {
     rows.value = []
-    loadError.value = toUserError(e, '题目质量分析加载失败')
     showUserError(e, '题目质量分析加载失败')
   } finally {
     loading.value = false

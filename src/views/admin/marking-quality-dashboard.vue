@@ -49,12 +49,6 @@
     />
 
     <template v-else>
-      <UiErrorRetryPanel
-        v-if="organizationLoadError"
-        :error="organizationLoadError"
-        @retry="loadOrganizationDetail"
-      />
-
       <SignalBand :metrics="signalMetrics" compact class="quality-dashboard__signals" />
 
       <a-tabs v-model:active-key="activeTab" class="quality-dashboard__tabs">
@@ -95,15 +89,10 @@
               </a-space>
             </template>
 
-            <UiErrorRetryPanel
-              v-if="progressLoadError"
-              :error="progressLoadError"
-              helper="阅卷进度快照"
-              @retry="loadProgress"
-            />
+
             <UiEmpty
-              v-else-if="!scopeValid"
-              description="请选择"
+              v-if="!scopeValid"
+              description="请选择阅卷组织与题组"
               class="quality-dashboard__alert"
             />
             <a-skeleton v-else-if="progressLoading" active :paragraph="{ rows: 3 }" />
@@ -156,7 +145,6 @@
                 </ul>
               </a-descriptions-item>
             </a-descriptions>
-
             <UiEmpty
               v-else
               description="暂无进度快照，请点击「立即快照」生成"
@@ -164,14 +152,6 @@
             />
 
             <div v-if="progress" class="quality-dashboard__charts">
-              <UiAlertStrip
-                v-if="progressHistoryLoadError"
-                tone="error"
-                title="历史快照加载失败"
-                :description="progressHistoryLoadError.message"
-                dense
-                class="quality-dashboard__alert"
-              />
               <MarkTrendSection
                 title="完成率走势"
                 hint="基于历史进度快照，悬停查看各时点完成率"
@@ -224,16 +204,8 @@
               @reset="handleReviewerFilterReset"
             />
 
-            <UiErrorRetryPanel
-              v-if="reviewerMetricsLoadError"
-              :error="reviewerMetricsLoadError"
-              helper="教师质量指标"
-              @retry="loadReviewerMetrics"
-            />
-
             <UiDataTable
               pagination-mode="client"
-              v-else
               class="student-detail-table__data-table"
               :columns="reviewerColumns"
               :data-source="reviewerMetrics"
@@ -355,11 +327,7 @@
               class="quality-dashboard__alert"
             />
 
-            <UiErrorRetryPanel
-              v-if="scannerBatchesLoadError"
-              :error="scannerBatchesLoadError"
-              @retry="loadScannerBatches"
-            />
+
 
             <a-form layout="vertical" class="quality-dashboard__form">
               <a-form-item label="扫描批次" required>
@@ -469,11 +437,12 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
-import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { progressSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
 import { readAllPages } from '@/utils/page-result'
@@ -509,12 +478,10 @@ const selectedGroupId = ref<string | undefined>(
 )
 const organizationDetail = ref<MarkingOrganizationVO | null>(null)
 const organizationLoading = ref(false)
-// D-9：阅卷组织加载失败时展示可重试错误面板
-const organizationLoadError = ref<Error | null>(null)
+// 加载失败：toast 提示，主区保持空态/列表壳
 const scannerBatches = ref<ExamScannerBatchVO[]>([])
 const scannerBatchLoading = ref(false)
-// D-9：异常重处理扫描批次列表加载失败时展示可重试错误面板
-const scannerBatchesLoadError = ref<Error | null>(null)
+// 加载失败：toast 提示，主区保持空态/列表壳
 
 const scopeValid = computed(() => Boolean(selectedExamId.value && selectedOrganizationId.value))
 
@@ -589,9 +556,6 @@ const progress = ref<ProgressMonitorRecordVO | null>(null)
 const progressHistory = ref<ProgressMonitorRecordVO[]>([])
 const progressLoading = ref(false)
 const snapshotting = ref(false)
-// D-9 错误态：进度快照加载失败时，UiErrorRetryPanel 上报 + 重试
-const progressLoadError = ref<Error | null>(null)
-const progressHistoryLoadError = ref<Error | null>(null)
 const progressRiskItems = computed<ProgressRiskItemVO[]>(() => progress.value?.riskItems ?? [])
 
 const progressTrendPoints = computed(() => progressSnapshotsToTrendPoints(progressHistory.value))
@@ -651,10 +615,8 @@ const progressTaskBarAriaLabel = computed(() => {
 async function loadProgressHistory(): Promise<void> {
   if (!scopeValid.value) {
     progressHistory.value = []
-    progressHistoryLoadError.value = null
     return
   }
-  progressHistoryLoadError.value = null
   try {
     progressHistory.value = await listProgressSnapshots({
       examId: selectedExamId.value!,
@@ -664,7 +626,6 @@ async function loadProgressHistory(): Promise<void> {
     })
   } catch (error) {
     progressHistory.value = []
-    progressHistoryLoadError.value = toUserError(error, '阅卷进度历史加载失败')
     showUserError(error, '阅卷进度历史加载失败')
   }
 }
@@ -672,7 +633,6 @@ async function loadProgressHistory(): Promise<void> {
 async function loadProgress(): Promise<void> {
   if (!scopeValid.value) return
   progressLoading.value = true
-  progressLoadError.value = null
   try {
     progress.value = await getLatestProgress({
       examId: selectedExamId.value!,
@@ -681,7 +641,6 @@ async function loadProgress(): Promise<void> {
     })
     await loadProgressHistory()
   } catch (error) {
-    progressLoadError.value = toUserError(error, '阅卷进度快照加载失败')
     showUserError(error, '阅卷进度快照加载失败')
   } finally {
     progressLoading.value = false
@@ -728,8 +687,6 @@ const reviewerFilterFields: FilterField[] = [
   },
 ]
 
-// D-9 错误态：教师质量指标加载失败时，UiErrorRetryPanel 上报 + 重试
-const reviewerMetricsLoadError = ref<Error | null>(null)
 
 const reviewerColumns: ColumnType<ReviewerQualityMetricResponse>[] = [
   { title: '教师', key: 'reviewer', width: 180 },
@@ -749,7 +706,6 @@ const reviewerColumns: ColumnType<ReviewerQualityMetricResponse>[] = [
 async function loadReviewerMetrics(): Promise<void> {
   if (!selectedExamId.value) return
   reviewerLoading.value = true
-  reviewerMetricsLoadError.value = null
   try {
     reviewerMetrics.value = await readAllPages(
       (pageNum) => listReviewerMetrics({
@@ -763,7 +719,6 @@ async function loadReviewerMetrics(): Promise<void> {
       '阅卷教师质量指标加载失败',
     )
   } catch (error) {
-    reviewerMetricsLoadError.value = toUserError(error, '阅卷教师质量指标加载失败')
     showUserError(error, '阅卷教师质量指标加载失败')
   } finally {
     reviewerLoading.value = false
@@ -964,7 +919,6 @@ async function loadOrganizationDetail(): Promise<void> {
     return
   }
   organizationLoading.value = true
-  organizationLoadError.value = null
   try {
     const detail = await getOrganization({ examId: selectedExamId.value })
     organizationDetail.value = detail
@@ -977,7 +931,6 @@ async function loadOrganizationDetail(): Promise<void> {
     organizationDetail.value = null
     selectedOrganizationId.value = undefined
     selectedGroupId.value = undefined
-    organizationLoadError.value = toUserError(error, '阅卷组织加载失败')
     showUserError(error, '阅卷组织加载失败')
   } finally {
     organizationLoading.value = false
@@ -991,7 +944,6 @@ async function loadScannerBatches(): Promise<void> {
     return
   }
   scannerBatchLoading.value = true
-  scannerBatchesLoadError.value = null
   try {
     scannerBatches.value = await readAllPages(
       (pageNum) => pageScannerBatches({
@@ -1005,7 +957,6 @@ async function loadScannerBatches(): Promise<void> {
   } catch (error) {
     scannerBatches.value = []
     reprocessForm.scanBatchId = ''
-    scannerBatchesLoadError.value = toUserError(error, '扫描批次加载失败')
     showUserError(error, '扫描批次加载失败')
   } finally {
     scannerBatchLoading.value = false

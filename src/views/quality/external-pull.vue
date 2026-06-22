@@ -57,10 +57,12 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { SignalBand, StageWorkbenchShell, TaskResultPanel } from '@/components/workbench'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { usePolling } from '@/composables/usePolling'
+import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
@@ -1485,7 +1487,6 @@ onMounted(async () => {
             </div>
           </div>
           <UiEmpty
-            v-else
             description="暂无数据"
             class="external-pull__empty"
           />

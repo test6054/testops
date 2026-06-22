@@ -23,14 +23,9 @@
         search-text="查询"
       />
 
-      <UiErrorRetryPanel
-        v-if="examsLoadError"
-        :error="examsLoadError"
-        @retry="loadExams"
-      />
+
 
       <UiDataTable
-        v-else
         pagination-mode="client"
         :columns="columns"
         :data-source="filteredExams"
@@ -124,11 +119,11 @@ import {
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { assertUserFacing } from '@/utils/contract-guard'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -136,8 +131,6 @@ defineOptions({ name: 'StudentExamHistory' })
 
 const router = useRouter()
 const loading = ref(false)
-// D-9 错误态：学生考试列表加载失败时 UiErrorRetryPanel 重试入口
-const examsLoadError = ref<Error | null>(null)
 const exams = ref<StudentExamItemVO[]>([])
 
 const historyFilterForm = reactive<{
@@ -212,14 +205,12 @@ const publishedCount = computed(
 
 async function loadExams() {
   loading.value = true
-  examsLoadError.value = null
   try {
     const loadedExams = await listMyExams()
     validatePublishedExamContracts(loadedExams)
     exams.value = loadedExams
   } catch (error) {
-    examsLoadError.value = toUserError(error, '考试列表加载失败')
-    showUserError(error, '历次考试加载失败')
+    showUserError(error, '考试列表加载失败')
   } finally {
     loading.value = false
   }

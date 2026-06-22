@@ -16,7 +16,7 @@
       <a-spin :spinning="claimContextLoading">
         <UiEmpty
           v-if="!claimContextLoading && (claimContext?.groups.length ?? 0) === 0"
-          description="暂无数据"
+          :description="claimEmptyDescription"
         />
         <a-form v-else layout="inline" :model="claimForm" @submit.prevent="submitClaim">
           <a-form-item label="题组" required>
@@ -86,14 +86,9 @@
         @reset="resetFilter"
       />
 
-      <UiErrorRetryPanel
-        v-if="tasksLoadError"
-        :error="tasksLoadError"
-        @retry="loadTasks"
-      />
+
 
       <UiDataTable
-        v-else
         pagination-mode="client"
         :columns="columns"
         :data-source="tasks"
@@ -103,6 +98,8 @@
         row-key="id"
         size="middle"
         flat
+        empty-kind="first-run"
+        :empty-description="taskTableEmptyDescription"
         class="student-detail-table__data-table"
       >
         <template #bodyCell="{ column, index }">
@@ -209,7 +206,7 @@ import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ANONYMITY_MODE_LABEL,
   FORMAL_SESSION_STATUS_LABEL,
@@ -223,20 +220,34 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
-import { captureLoadFailure, showUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherMarkingTaskPool' })
 
+const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+
+const isTrialTaskPool = computed(() => route.meta.workspacePhase === 'trial')
+
+const claimEmptyDescription = computed(() => (
+  isTrialTaskPool.value
+    ? '当前无可领取试评题组，请确认阅卷组织已开启试评会话'
+    : '当前无可领取题组，请确认正评会话已开启后再刷新'
+))
+
+const taskTableEmptyDescription = computed(() => (
+  isTrialTaskPool.value
+    ? '暂无待处理试评任务，领取后将在此展示'
+    : '当前无待处理任务，所有试卷可能已完成评阅'
+))
 
 const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
@@ -252,7 +263,6 @@ const markTaskStore = useMarkTaskStore()
 // 注意：tasks / tasksLoading 仅用于读取，写入必须经 markTaskStore.loadTasks /
 // clearTasks 等 action，避免组件直接修改 storeToRefs 解开后的 ref。
 const { tasks, tasksLoading: loading, claimContextLoading } = storeToRefs(markTaskStore)
-const tasksLoadError = ref<Error | null>(null)
 
 const filterForm = reactive<{
   taskStatus?: MarkingTaskStatusCode
@@ -303,13 +313,12 @@ async function loadTasks(): Promise<void> {
     return
   }
   if (!currentUserId.value) {
-    tasksLoadError.value = new Error('当前登录用户缺少 userId，无法加载阅卷任务')
+    showUserError(new Error('当前登录用户缺少 userId，无法加载阅卷任务'), '当前登录用户缺少 userId，无法加载阅卷任务')
     message.error('登录状态异常，请重新登录后再加载阅卷任务')
     return
   }
   // tasksLoading 由 markTaskStore.loadTasks 内部 try/finally 维护，
   // 组件不再直接写 loading.value，防止与 store 状态机交叉
-  tasksLoadError.value = null
   try {
     const request: MarkingTaskQueryRequest = {
       examId: selectedExamId.value,
@@ -320,7 +329,6 @@ async function loadTasks(): Promise<void> {
     }
     await markTaskStore.loadTasks(request)
   } catch (error) {
-    tasksLoadError.value = captureLoadFailure(error, '阅卷任务列表加载失败')
     showUserError(error, '阅卷任务列表加载失败')
   }
 }

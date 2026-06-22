@@ -43,13 +43,8 @@
     </div>
 
     <a-spin :spinning="loading || generating">
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        @retry="reload"
-      />
       <UiEmpty
-        v-else-if="!loading && !generating && !record"
+        v-if="!loading && !generating && !record"
         description="暂无数据"
       />
       <div v-else-if="record" class="ai-record">
@@ -161,10 +156,9 @@ import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.v
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { assertUserFacing } from '@/utils/contract-guard'
-import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { examStatSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
@@ -197,8 +191,6 @@ const selectedExams = ref<ExamSummaryVO[]>([])
 const classOptions = ref<{ label: string, value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
-// D-9 错误态：AI 跨考试趋势加载失败时 UiErrorRetryPanel 重试 + 上报
-const loadError = ref<Error | null>(null)
 const generating = ref(false)
 
 const trendItems = computed(() => record.value?.trendItems ?? [])
@@ -393,14 +385,12 @@ async function reload(): Promise<void> {
     message.warning('请选择考试')
     return
   }
-  loadError.value = null
   loading.value = true
   try {
     const list = await listTrends({ scopeType: scopeMode.value, courseId })
     acceptCrossExamTrendRecord(list[0] ?? null)
     if (list.length === 0) message.info('暂无历史记录')
   } catch (e) {
-    loadError.value = toUserError(e, '跨考试趋势分析加载失败')
     showUserError(e, '跨考试趋势分析加载失败')
   } finally {
     loading.value = false

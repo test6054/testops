@@ -26,7 +26,7 @@
 
     <UiEmpty v-if="!examId" description="缺少考试上下文" class="review-workspace__empty" />
 
-    <UiErrorRetryPanel v-else-if="taskLoadError" :error="taskLoadError" @retry="loadTask" />
+
 
     <a-spin v-else :spinning="loading" tip="正在加载任务...">
       <!-- B-7 流水线进度：当前任务在同题复核队列中的位次 -->
@@ -217,13 +217,8 @@
             destroy-on-close
           >
             <a-spin :spinning="executionsLoading" tip="加载 AI 历史...">
-              <UiErrorRetryPanel
-                v-if="executionsLoadError"
-                :error="executionsLoadError"
-                @retry="loadAiExecutions"
-              />
               <UiEmpty
-                v-else-if="!executionsLoading && aiExecutions.length === 0"
+                v-if="!executionsLoading && aiExecutions.length === 0"
                 description="暂无数据"
               />
               <a-timeline v-else>
@@ -417,8 +412,6 @@
           </div>
         </template>
       </GradingWorkspaceLayout>
-
-      <UiErrorRetryPanel v-if="queueLoadError" :error="queueLoadError" @retry="loadReviewQueue" />
     </a-spin>
   </div>
 </template>
@@ -475,10 +468,9 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { isGradingKeyboardInputTarget } from '@/utils/grading-keyboard'
 import { readAllPages } from '@/utils/page-result'
@@ -528,7 +520,6 @@ function goBack(): void {
 // ─── 复核任务详情 ──────────────────────────
 const detail = ref<ReviewTaskDetailVO | null>(null)
 const loading = ref(false)
-const taskLoadError = ref<Error | null>(null)
 
 const canSubmit = computed(() => !!examId.value && !!taskId.value)
 
@@ -566,7 +557,6 @@ async function loadAnnotations(): Promise<void> {
 
 // ─── B-7 同题剩余复核任务队列（用于「提交并取下一份」流水线接力） ─────
 const reviewQueue = ref<ReviewTaskItemVO[]>([])
-const queueLoadError = ref<Error | null>(null)
 
 /**
  * 加载当前考试 + 当前题目下仍可复核的任务集合（PENDING + IN_PROGRESS）。
@@ -579,7 +569,6 @@ async function loadReviewQueue(): Promise<void> {
   }
   const currentExamId = examId.value
   const { questionTemplateId } = detail.value
-  queueLoadError.value = null
   try {
     // 后端 ReviewTaskQueryRequest.status 可选；同题下分别拉 PENDING / IN_PROGRESS 后合并去重。
     const [pendingItems, inProgressItems] = await Promise.all([
@@ -612,7 +601,7 @@ async function loadReviewQueue(): Promise<void> {
     }
     reviewQueue.value = Array.from(merged.values())
   } catch (error) {
-    queueLoadError.value = toUserError(error, '同题复核队列加载失败，提交并取下一份暂不可用。')
+    showUserError(error, '同题复核队列加载失败，提交并取下一份暂不可用。')
     reviewQueue.value = []
   }
 }
@@ -714,7 +703,6 @@ function handleReviewWorkspaceKeydown(event: KeyboardEvent): void {
 async function loadTask(): Promise<void> {
   if (!canSubmit.value) return
   loading.value = true
-  taskLoadError.value = null
   try {
     detail.value = await loadReviewTaskDetail()
     await Promise.all([loadAnnotations(), loadReviewQueue()])
@@ -727,8 +715,7 @@ async function loadTask(): Promise<void> {
       gradeForm.teacherReviewScore = detail.value.aiScore
     }
   } catch (error) {
-    taskLoadError.value = toUserError(error, '教师复核工作台任务加载失败')
-    showUserError(error, '教师复核任务详情加载失败')
+    showUserError(error, '教师复核工作台任务加载失败')
   } finally {
     loading.value = false
   }
@@ -747,11 +734,8 @@ function resetTaskState(): void {
   detail.value = null
   annotations.value = []
   reviewQueue.value = []
-  queueLoadError.value = null
-  taskLoadError.value = null
   executionsDrawerOpen.value = false
   aiExecutions.value = []
-  executionsLoadError.value = null
 }
 
 /**
@@ -948,7 +932,6 @@ function clearAiSuggestionToManual(): void {
 // AI 历史执行记录抽屉状态
 const executionsDrawerOpen = ref<boolean>(false)
 const executionsLoading = ref<boolean>(false)
-const executionsLoadError = ref<Error | null>(null)
 const aiExecutions = ref<ExamQuestionAiExecutionItemVO[]>([])
 
 /** 打开抽屉后拉取历史记录 */
@@ -961,7 +944,6 @@ function openExecutionsDrawer(): void {
 async function loadAiExecutions(): Promise<void> {
   if (!examId.value || !detail.value) return
   executionsLoading.value = true
-  executionsLoadError.value = null
   try {
     const records = await listAiExecutionsForQuestion({
       examId: examId.value,
@@ -970,7 +952,7 @@ async function loadAiExecutions(): Promise<void> {
     validateAiExecutionContracts(records)
     aiExecutions.value = records
   } catch (error) {
-    executionsLoadError.value = toUserError(error, 'AI 复评历史加载失败')
+    showUserError(error, 'AI 复评历史加载失败')
     aiExecutions.value = []
   } finally {
     executionsLoading.value = false

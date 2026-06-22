@@ -49,13 +49,8 @@
     </div>
 
     <a-spin :spinning="loading || generating">
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        @retry="reload"
-      />
       <UiEmpty
-        v-else-if="!loading && !generating && !record"
+        v-if="!loading && !generating && !record"
         description="暂无数据"
       />
       <div v-else-if="record" class="ai-record">
@@ -190,7 +185,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
-import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { examStatSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
@@ -214,8 +209,6 @@ const form = reactive<SchoolQualityForm>({
 
 const record = ref<SchoolQualityAnalysisVO | null>(null)
 const loading = ref(false)
-// D-9 错误态：AI 校级质量加载失败时 UiErrorRetryPanel 重试 + 上报
-const loadError = ref<Error | null>(null)
 const generating = ref(false)
 
 const qualityItems = computed(() => record.value?.qualityItems ?? [])
@@ -293,7 +286,6 @@ function schoolQualityDimensionLabel(value: SchoolQualityDimensionCode): string 
 
 async function reload(): Promise<void> {
   loading.value = true
-  loadError.value = null
   try {
     const list = await listQualityAnalysis({
       analysisDimension: form.analysisDimension,
@@ -302,7 +294,6 @@ async function reload(): Promise<void> {
     record.value = list[0] ?? null
     if (list.length === 0) message.info('暂无历史记录')
   } catch (e) {
-    loadError.value = toUserError(e, '校级质量分析加载失败')
     showUserError(e, '校级质量分析加载失败')
   } finally {
     loading.value = false
@@ -328,7 +319,6 @@ async function handleGenerate(): Promise<void> {
     return
   }
   generating.value = true
-  loadError.value = null
   try {
     record.value = await generateQualityAnalysis({
       analysisDimension: form.analysisDimension,
@@ -338,7 +328,6 @@ async function handleGenerate(): Promise<void> {
     })
     message.success('已生成校级质量分析')
   } catch (e) {
-    loadError.value = toUserError(e, '校级质量分析生成失败')
     showUserError(e, '校级质量分析生成失败')
   } finally {
     generating.value = false

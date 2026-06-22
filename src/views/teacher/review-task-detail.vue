@@ -34,11 +34,7 @@
       class="task-detail-page__empty"
     />
 
-    <UiErrorRetryPanel
-      v-else-if="taskLoadError"
-      :error="taskLoadError"
-      @retry="loadTask"
-    />
+
 
     <a-spin v-else :spinning="loading" tip="正在加载任务...">
       <UiCard v-if="detail" class="info-card">
@@ -159,8 +155,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
-import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -194,7 +189,6 @@ const hasParams = computed(() => !!examId.value && !!taskId.value)
 
 const detail = ref<ReviewTaskDetailVO | null>(null)
 const loading = ref(false)
-const taskLoadError = ref<Error | null>(null)
 
 const labelStyle: CSSProperties = { color: 'var(--ant-color-text-tertiary)', width: '100px' }
 
@@ -232,7 +226,6 @@ async function loadAnnotations(): Promise<void> {
 async function loadTask(): Promise<void> {
   if (!hasParams.value) return
   loading.value = true
-  taskLoadError.value = null
   try {
     detail.value = await getReviewTaskDetail({
       examId: examId.value,
@@ -240,7 +233,6 @@ async function loadTask(): Promise<void> {
     })
     await loadAnnotations()
   } catch (error) {
-    taskLoadError.value = toUserError(error, '复核任务详情加载失败')
     showUserError(error, '复核任务详情加载失败')
   } finally {
     loading.value = false

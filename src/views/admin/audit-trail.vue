@@ -57,14 +57,9 @@
             @search="searchLogs"
           />
 
-          <UiErrorRetryPanel
-            v-if="logsLoadError"
-            :error="logsLoadError"
-            @retry="searchLogs"
-          />
+
 
           <UiDataTable
-            v-else
             :columns="logColumns"
             :data-source="operationLogs"
             :loading="logLoading"
@@ -123,14 +118,9 @@
             </template>
           </UiFilterBar>
 
-          <UiErrorRetryPanel
-            v-if="incidentsLoadError"
-            :error="incidentsLoadError"
-            @retry="loadIncidents"
-          />
+
 
           <UiDataTable
-            v-else
             pagination-mode="client"
             :columns="incidentColumns"
             :data-source="incidents"
@@ -198,14 +188,9 @@
             @search="searchDiagnosticSamples"
           />
 
-          <UiErrorRetryPanel
-            v-if="samplesLoadError"
-            :error="samplesLoadError"
-            @retry="searchDiagnosticSamples"
-          />
+
 
           <UiDataTable
-            v-else
             :columns="sampleColumns"
             :data-source="diagnosticSamples"
             :loading="sampleLoading"
@@ -312,11 +297,11 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
-import { captureLoadFailure, showUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -340,7 +325,6 @@ const activeTab = ref<'logs' | 'incidents' | 'diagnostic-samples'>('logs')
 
 // ─── 审计日志 ──────────────────────────────────
 const logLoading = ref(false)
-const logsLoadError = ref<Error | null>(null)
 const operationLogs = ref<OperationLogVO[]>([])
 const logFilter = reactive<{ operationType?: OperationTypeCode }>({})
 const logPagination = reactive<TablePaginationConfig>({
@@ -381,7 +365,6 @@ const logColumns = [
 async function loadLogs() {
   if (!selectedExamId.value) return
   logLoading.value = true
-  logsLoadError.value = null
   try {
     const page = await listOperationLogs({
       examId: selectedExamId.value,
@@ -394,7 +377,6 @@ async function loadLogs() {
     logPagination.pageSize = page.pageSize
     logPagination.total = readPageTotal(page, '审计日志加载失败，请稍后重试')
   } catch (error) {
-    logsLoadError.value = captureLoadFailure(error, '审计日志加载失败')
     showUserError(error, '审计日志加载失败')
   } finally {
     logLoading.value = false
@@ -414,7 +396,6 @@ function handleLogPageChange(pageInfo: { current: number, pageSize: number }) {
 
 // ─── 重大事件 ──────────────────────────────────
 const incidentLoading = ref(false)
-const incidentsLoadError = ref<Error | null>(null)
 const incidents = ref<IncidentRecordVO[]>([])
 const incidentFilter = reactive({ unresolvedOnly: false })
 
@@ -445,7 +426,6 @@ async function loadIncidents() {
   const examId = selectedExamId.value
   if (!examId) return
   incidentLoading.value = true
-  incidentsLoadError.value = null
   try {
     incidents.value = await readAllPages(
       (pageNum) => listIncidents({
@@ -457,7 +437,6 @@ async function loadIncidents() {
       '重大事件加载失败，请稍后重试',
     )
   } catch (error) {
-    incidentsLoadError.value = captureLoadFailure(error, '重大事件加载失败')
     showUserError(error, '重大事件加载失败')
   } finally {
     incidentLoading.value = false
@@ -501,7 +480,6 @@ async function submitResolve() {
 
 // ─── 异常留痕样本 ──────────────────────────────────
 const sampleLoading = ref(false)
-const samplesLoadError = ref<Error | null>(null)
 const diagnosticSamples = ref<DiagnosticSampleVO[]>([])
 const sampleFilter = reactive<{ sampleType?: DiagnosticSampleTypeCode }>({})
 const samplePagination = reactive<TablePaginationConfig>({
@@ -541,7 +519,6 @@ async function loadDiagnosticSamples() {
   const examId = selectedExamId.value
   if (!examId) return
   sampleLoading.value = true
-  samplesLoadError.value = null
   try {
     const page = await listDiagnosticSamples({
       examId,
@@ -554,7 +531,6 @@ async function loadDiagnosticSamples() {
     samplePagination.pageSize = page.pageSize
     samplePagination.total = readPageTotal(page, '异常留痕样本加载失败，请稍后重试')
   } catch (error) {
-    samplesLoadError.value = captureLoadFailure(error, '异常留痕样本加载失败')
     showUserError(error, '异常留痕样本加载失败')
   } finally {
     sampleLoading.value = false

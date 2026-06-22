@@ -48,13 +48,7 @@
               </div>
 
               <div class="login-panel__surface">
-                <UiErrorRetryPanel
-                  v-if="ssoConfigLoadError"
-                  :error="ssoConfigLoadError"
-                  compact
-                  @retry="fetchSsoConfig"
-                />
-                <div v-else-if="isSubdomain" class="login-body">
+                <div v-if="isSubdomain" class="login-body">
                   <UiStateBlock v-if="subdomainLoading" state="loading" title="正在识别学校..." compact />
                   <StudentLogin v-else :subdomain-mode="true" :subdomain-tenant="subdomainTenant" />
                 </div>
@@ -96,7 +90,8 @@ import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import { resetAuthState } from '@/config/axios/auth-state'
 import { useAppStore } from '@/stores'
-import { toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
+
 import { resolveSubdomainTenant, subdomainLoading, subdomainTenant } from '@/utils/subdomain'
 import AccountLogin from './components/account/index.vue'
 import CasLogin from './components/cas/index.vue'
@@ -112,7 +107,6 @@ const activeTab = ref('1')
 const studentPrefill = ref<{ studentNo: string, password: string }>({ studentNo: '', password: '' })
 
 const ssoConfig = ref<SsoConfigResponse | null>(null)
-const ssoConfigLoadError = ref<Error | null>(null)
 const casEnabled = computed(() => ssoConfig.value?.casEnabled ?? false)
 const casDisplayName = computed(() => ssoConfig.value?.casDisplayName || '统一认证')
 const casTenantId = ref<string>('')
@@ -183,12 +177,10 @@ async function fetchSsoConfig() {
   const tenantId = casTenantId.value || (await resolveCurrentTenantId())
 
   if (!tenantId) {
-    ssoConfigLoadError.value = null
     ssoConfig.value = { casEnabled: false, casDisplayName: '统一认证' }
     return
   }
 
-  ssoConfigLoadError.value = null
   try {
     const config = await getSsoConfig(tenantId)
     ssoConfig.value = config
@@ -198,7 +190,7 @@ async function fetchSsoConfig() {
     }
   } catch (error) {
     ssoConfig.value = null
-    ssoConfigLoadError.value = toUserError(error, '登录方式配置加载失败')
+    showUserError(error, '登录方式配置加载失败')
   }
 }
 

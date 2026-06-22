@@ -73,21 +73,19 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import {
-  AuditTimelineDrawer,
-  SignalBand,
-  StageRail,
-  StageWorkbenchShell,
-  TaskResultPanel,
-} from '@/components/workbench'
+import AuditTimelineDrawer from '@/components/workbench/AuditTimelineDrawer.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageRail from '@/components/workbench/StageRail.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePolling } from '@/composables/usePolling'
-import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useAuthStore } from '@/stores'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
-import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { RoleEnum } from '@/utils/permission'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -150,7 +148,6 @@ function aiResultPriorityLabel(value: AiResultPriority): string {
 }
 
 const qualityStore = useQualityStore()
-const listLoadError = ref<Error | null>(null)
 const route = useRoute()
 const router = useRouter()
 
@@ -192,7 +189,6 @@ const submitForm = reactive<AiTaskSubmitRequest>({
 
 const detailVisible = ref(false)
 const detailLoading = ref(false)
-const detailLoadError = ref<Error | null>(null)
 const detailRecord = ref<AiTaskVO | null>(null)
 const detailResult = ref<AiResultVO | null>(null)
 const validationUpdating = ref(false)
@@ -437,7 +433,6 @@ const improvementItems = computed(() => detailResult.value?.improvementItems ?? 
 async function loadList() {
   const scope = beginQualityScopeRequest()
   loading.value = true
-  listLoadError.value = null
   try {
     const page = await aiTaskApi.page({
       ...query,
@@ -470,7 +465,6 @@ async function loadList() {
     if (scope.isStale()) {
       return
     }
-    listLoadError.value = toUserError(error, 'AI 任务加载失败')
     showUserError(error, 'AI 任务加载失败')
   } finally {
     if (!scope.isStale()) {
@@ -545,7 +539,6 @@ async function loadListQuietly(): Promise<void> {
 }
 
 async function handleScopeChange(): Promise<void> {
-  listLoadError.value = null
   await loadList()
 }
 
@@ -887,7 +880,6 @@ async function submitManualHandle() {
 async function openDetail(record: AiTaskVO) {
   detailVisible.value = true
   detailLoading.value = true
-  detailLoadError.value = null
   detailRecord.value = record
   detailResult.value = null
   // 非终态任务启动轮询，让抽屉实时反映 PROCESSING/SUCCEEDED/FAILED 状态变化
@@ -897,7 +889,6 @@ async function openDetail(record: AiTaskVO) {
   try {
     detailResult.value = await aiResultApi.getByTask(record.id)
   } catch (error) {
-    detailLoadError.value = toUserError(error, 'AI 任务详情加载失败')
     showUserError(error, 'AI 任务详情加载失败')
   } finally {
     detailLoading.value = false
@@ -943,8 +934,7 @@ watch(
             }
           })
           .catch((error) => {
-            detailLoadError.value = toUserError(error, 'AI 任务详情加载失败')
-            showUserError(error, 'AI 任务详情加载失败')
+    showUserError(error, 'AI 任务详情加载失败')
           })
       }
     }
@@ -1532,13 +1522,6 @@ onMounted(async () => {
 
       <UiDrawer v-model:open="detailVisible" title="AI 任务详情" :width="840" :hide-footer="true">
         <UiEmpty v-if="!detailRecord && !detailLoading" description="暂无数据" size="sm" />
-        <a-alert
-          v-if="detailLoadError"
-          type="error"
-          show-icon
-          :message="detailLoadError.message"
-          class="ai-task__detail-error"
-        />
         <a-descriptions v-if="detailRecord" :column="1" size="small" bordered>
           <a-descriptions-item label="能力">
             {{ aiTaskTypeLabel(detailRecord.taskType) }}

@@ -53,11 +53,12 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePolling } from '@/composables/usePolling'
-import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { readAllPages } from '@/utils/page-result'
@@ -845,7 +846,6 @@ function handleCourseChange(courseId: string | null) {
               </div>
             </div>
             <UiEmpty
-              v-else
               description="暂无数据"
               class="score-record__rubric-empty"
             />

@@ -47,11 +47,7 @@
             </a-space>
           </template>
 
-          <UiErrorRetryPanel
-            v-if="signaturesLoadError"
-            :error="signaturesLoadError"
-            @retry="loadSignatures"
-          />
+
 
           <UiDataTable
             pagination-mode="client"
@@ -117,11 +113,7 @@
             @reset="handleExperienceFilterReset"
           />
 
-          <UiErrorRetryPanel
-            v-if="experiencesLoadError"
-            :error="experiencesLoadError"
-            @retry="loadExperiences"
-          />
+
 
           <UiDataTable
             pagination-mode="client"
@@ -198,14 +190,10 @@
             @reset="handleClusterFilterReset"
           />
 
-          <UiErrorRetryPanel
-            v-if="clusterLoadError"
-            :error="clusterLoadError"
-            @retry="loadLatestCluster"
-          />
+
 
           <UiEmpty
-            v-if="!clusterLoading && !latestCluster && !clusterLoadError"
+            v-if="!clusterLoading && !latestCluster"
             description="暂无数据"
           />
 
@@ -433,10 +421,11 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherGradingExperienceHub' })
@@ -503,19 +492,14 @@ const clusterFilterFields = computed<FilterField[]>(() => [
   },
 ])
 
-// D-9 错误态：三个标签页各自加载失败时由 UiErrorRetryPanel 重试 + 上报
-const signaturesLoadError = ref<Error | null>(null)
-const experiencesLoadError = ref<Error | null>(null)
 
 async function loadSignatures(): Promise<void> {
   if (!selectedExamId.value) return
   signaturesLoading.value = true
-  signaturesLoadError.value = null
   try {
     signatures.value = await listSignatures(selectedExamId.value)
   } catch (error) {
-    signaturesLoadError.value = toUserError(error, '题目特征加载失败')
-    showUserError(error, '题目签名加载失败')
+    showUserError(error, '题目特征加载失败')
   } finally {
     signaturesLoading.value = false
   }
@@ -581,7 +565,6 @@ const experienceColumns: ColumnType<GradingExperienceCaseVO>[] = [
 async function loadExperiences(): Promise<void> {
   if (!selectedExamId.value) return
   experienceLoading.value = true
-  experiencesLoadError.value = null
   try {
     if (experienceFilterForm.questionTemplateId) {
       experiences.value = await listExperiencesByQuestion(
@@ -592,8 +575,7 @@ async function loadExperiences(): Promise<void> {
       experiences.value = await listExperiences(selectedExamId.value)
     }
   } catch (error) {
-    experiencesLoadError.value = toUserError(error, '评分经验加载失败')
-    showUserError(error, '阅卷经验案例加载失败')
+    showUserError(error, '评分经验加载失败')
   } finally {
     experienceLoading.value = false
   }
@@ -634,21 +616,17 @@ function handleExperienceFilterReset(): void {
 const latestCluster = ref<AnswerClusterRecordVO | null>(null)
 const clusterLoading = ref(false)
 const clustering = ref(false)
-// D-9 错误态：AI 答案聚类加载失败时 UiErrorRetryPanel 重试 + 上报
-const clusterLoadError = ref<Error | null>(null)
 
 async function loadLatestCluster(): Promise<void> {
   if (!selectedExamId.value || !clusterFilterForm.questionTemplateId) return
   clusterLoading.value = true
-  clusterLoadError.value = null
   try {
     latestCluster.value = await getLatestAnswerCluster(
       selectedExamId.value,
       clusterFilterForm.questionTemplateId,
     )
   } catch (error) {
-    clusterLoadError.value = toUserError(error, '错误簇加载失败')
-    showUserError(error, '答案聚类结果加载失败')
+    showUserError(error, '错误簇加载失败')
   } finally {
     clusterLoading.value = false
   }

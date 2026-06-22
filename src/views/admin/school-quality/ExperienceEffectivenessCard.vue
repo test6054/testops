@@ -32,21 +32,11 @@
           </a-space>
         </a-form-item>
       </a-form>
-      <UiErrorRetryPanel
-        v-if="experiencesLoadError"
-        :error="experiencesLoadError"
-        @retry="handleSourceExamChange"
-      />
     </div>
 
     <a-spin :spinning="loading || generating">
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        @retry="reload"
-      />
       <UiEmpty
-        v-else-if="!loading && !generating && !record"
+        v-if="!loading && !generating && !record"
         description="暂无数据"
       />
       <div v-else-if="record" class="ai-record">
@@ -171,10 +161,7 @@ const evalHistory = ref<ExperienceEffectivenessEvalVO[]>([])
 const experiences = ref<GradingExperienceCaseVO[]>([])
 const loading = ref(false)
 const experienceLoading = ref(false)
-// D-9：经验案例下拉列表加载失败时展示可重试错误面板
-const experiencesLoadError = ref<Error | null>(null)
-// D-9 错误态：AI 经验有效性评估加载失败时 UiErrorRetryPanel 重试 + 上报
-const loadError = ref<Error | null>(null)
+// 加载失败：toast 提示，主区保持空态/列表壳
 const generating = ref(false)
 
 const experienceOptions = computed(() =>
@@ -400,7 +387,6 @@ async function reload(): Promise<void> {
     message.warning('请选择经验案例')
     return
   }
-  loadError.value = null
   loading.value = true
   try {
     const list = await listExperienceEvals(experienceCaseId)
@@ -408,7 +394,6 @@ async function reload(): Promise<void> {
     record.value = evalHistory.value[0] ?? null
     if (list.length === 0) message.info('暂无历史记录')
   } catch (e) {
-    loadError.value = toUserError(e, '经验案例效果评估加载失败')
     showUserError(e, '经验案例效果评估加载失败')
   } finally {
     loading.value = false
@@ -423,7 +408,6 @@ async function handleGenerate(): Promise<void> {
     return
   }
   generating.value = true
-  loadError.value = null
   try {
     record.value = acceptExperienceEffectivenessRecord(
       await evaluateExperienceEffectiveness({ experienceCaseId, evalExamId }),
@@ -432,7 +416,6 @@ async function handleGenerate(): Promise<void> {
     evalHistory.value = list.map((item) => acceptExperienceEffectivenessRecord(item))
     message.success('已完成有效性评估')
   } catch (e) {
-    loadError.value = toUserError(e, '经验案例效果评估生成失败')
     showUserError(e, '经验案例效果评估生成失败')
   } finally {
     generating.value = false
@@ -445,12 +428,10 @@ async function handleSourceExamChange(): Promise<void> {
   experiences.value = []
   if (!form.sourceExamId) return
   experienceLoading.value = true
-  experiencesLoadError.value = null
   try {
     experiences.value = (await listExperiences(form.sourceExamId)).map(acceptExperienceCase)
   } catch (e) {
     experiences.value = []
-    experiencesLoadError.value = toUserError(e, '经验案例列表加载失败')
     showUserError(e, '经验案例列表加载失败')
   } finally {
     experienceLoading.value = false

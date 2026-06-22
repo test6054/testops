@@ -39,14 +39,9 @@
         @reset="handleReset"
       />
 
-      <UiErrorRetryPanel
-        v-if="archiveLoadError"
-        :error="archiveLoadError"
-        @retry="loadArchives"
-      />
+
 
       <UiDataTable
-        v-else
         :columns="columns"
         :data-source="archives"
         :loading="loading"
@@ -56,6 +51,8 @@
         :total="archivePagination.total"
         row-key="archiveId"
         size="middle"
+        empty-kind="first-run"
+        empty-description="尚无归档包，考试结束后可点击「新建电子归档包」"
         class="archive-table student-detail-table__data-table"
         @page-change="handleArchivePageChange"
       >
@@ -210,12 +207,11 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -230,7 +226,6 @@ const archives = ref<ArchivePackageVO[]>([])
 const loading = ref(false)
 const creating = ref(false)
 const createModalOpen = ref(false)
-const archiveLoadError = ref<Error | null>(null)
 const archivePagination = reactive({
   pageNum: 1,
   pageSize: 20,
@@ -294,7 +289,6 @@ const archiveAlert = computed<ArchiveAlert | null>(() => {
   const examId = selectedExamId.value
   if (!examId) return null
   if (loading.value) return null
-  if (archiveLoadError.value) return null
   if (archives.value.length === 0) {
     return {
       tone: 'error',
@@ -321,7 +315,6 @@ const archiveAlert = computed<ArchiveAlert | null>(() => {
 
 async function loadArchives(): Promise<void> {
   loading.value = true
-  archiveLoadError.value = null
   try {
     const page = await listArchives({
       examId: selectedExamId.value || undefined,
@@ -334,8 +327,7 @@ async function loadArchives(): Promise<void> {
     archivePagination.pageSize = page.pageSize
     archivePagination.total = readPageTotal(page, '电子归档包列表加载失败，请稍后重试')
   } catch (error) {
-    archiveLoadError.value = toUserError(error, '电子归档包列表加载失败')
-    showUserError(error, '考试电子归档包加载失败')
+    showUserError(error, '电子归档包列表加载失败')
   } finally {
     loading.value = false
   }

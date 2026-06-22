@@ -37,11 +37,10 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamPrepWorkbench' })
@@ -115,7 +114,6 @@ const markingProgress = ref<MarkingProgressVO | null>(null)
 
 const detail = ref<ExamDetailVO | null>(null)
 const detailLoading = ref(false)
-const detailLoadError = ref<Error | null>(null)
 const layoutSaving = ref(false)
 const draftLayoutMode = ref<ExamMaterialLayoutModeCode | undefined>()
 const draftPrintSource = ref<ExamPrintSourceModeCode | undefined>()
@@ -131,11 +129,9 @@ async function loadMarkingProgress(examId: string): Promise<void> {
 async function loadDetail(examId: string | undefined) {
   if (!examId) {
     detail.value = null
-    detailLoadError.value = null
     markingProgress.value = null
     return
   }
-  detailLoadError.value = null
   detailLoading.value = true
   try {
     const [examDetail] = await Promise.all([getExamDetail(examId), loadMarkingProgress(examId)])
@@ -145,7 +141,6 @@ async function loadDetail(examId: string | undefined) {
   } catch (error) {
     detail.value = null
     markingProgress.value = null
-    detailLoadError.value = toUserError(error, '考试准备信息加载失败')
     showUserError(error, '考试准备信息加载失败')
   } finally {
     detailLoading.value = false
@@ -421,11 +416,7 @@ watch(selectedExamId, (next) => {
     class="exam-prep__empty"
   />
 
-  <UiErrorRetryPanel
-    v-else-if="detailLoadError"
-    :error="detailLoadError"
-    @retry="() => loadDetail(selectedExamId)"
-  />
+
 
   <template v-else>
     <a-spin :spinning="detailLoading">

@@ -30,11 +30,7 @@
     class="paper-master-page__empty"
   />
 
-  <UiErrorRetryPanel
-    v-else-if="masterLoadError"
-    :error="masterLoadError"
-    @retry="loadMasterData"
-  />
+
 
   <a-spin v-else :spinning="loading">
     <!-- PDF 预览/编辑区 -->
@@ -303,11 +299,6 @@
             show-search
             option-filter-prop="label"
           />
-          <UiErrorRetryPanel
-            v-if="questionsLoadError"
-            :error="questionsLoadError"
-            @retry="loadQuestions"
-          />
         </a-form-item>
         <a-form-item label="页号" required>
           <a-input-number
@@ -357,11 +348,6 @@
     ok-text="生成并预览"
     @ok="handleGenerate"
   >
-    <UiErrorRetryPanel
-      v-if="generatePrefillError"
-      :error="generatePrefillError"
-      @retry="prefetchGenerateForm"
-    />
     <a-form layout="vertical">
       <a-form-item label="学校名称" required>
         <a-input v-model:value="genForm.universityName" placeholder="例如：XX大学" />
@@ -446,8 +432,7 @@ const { refreshSnapshot } = useWorkspaceExamId()
 
 const loading = ref(false)
 const saving = ref(false)
-// D-9 错误态：仅当后端返回非“未配置”类错误时才上报
-const masterLoadError = ref<Error | null>(null)
+// 加载失败：toast 提示，主区保持空态/列表壳
 const uploading = ref(false)
 const uploadedFileName = ref('')
 const masterData = ref<PaperMasterVO | null>(null)
@@ -509,8 +494,7 @@ interface ObjectiveAreaRow extends PaperMasterObjectiveAreaRequest {
 
 const objectiveAreas = ref<ObjectiveAreaRow[]>([])
 const questionsLoading = ref(false)
-// D-9：母版客观题区题目列表加载失败时展示可重试错误面板
-const questionsLoadError = ref<Error | null>(null)
+// 加载失败：toast 提示，主区保持空态/列表壳
 const questions = ref<ExamQuestionTemplateVO[]>([])
 const questionOptions = computed(() =>
   questions.value.map((item) => {
@@ -693,13 +677,11 @@ const subjectiveColumns: ColumnType[] = [
 async function loadQuestions() {
   if (!selectedExamId.value) return
   questionsLoading.value = true
-  questionsLoadError.value = null
   try {
     const template = await getExamTemplate(selectedExamId.value)
     questions.value = template.questions
   } catch (error) {
     questions.value = []
-    questionsLoadError.value = toUserError(error, '题目列表加载失败')
     showUserError(error, '题目列表加载失败')
   } finally {
     questionsLoading.value = false
@@ -709,7 +691,6 @@ async function loadQuestions() {
 async function loadMasterData() {
   if (!selectedExamId.value) return
   loading.value = true
-  masterLoadError.value = null
   try {
     const detail = await getExamDetail(selectedExamId.value)
     pageTemplateReady.value = detail.pageTemplateReady === true
@@ -741,7 +722,9 @@ async function loadMasterData() {
       )
       if (invalidObjectiveArea) {
         objectiveAreas.value = []
-        masterLoadError.value = new Error(
+        showUserError(new Error(
+          '试卷母版引用的题目已不在当前考试模板中，请先完成数据治理',
+        ), 
           '试卷母版引用的题目已不在当前考试模板中，请先完成数据治理',
         )
         return
@@ -765,7 +748,7 @@ async function loadMasterData() {
   } catch (error) {
     masterData.value = null
     if (!(error instanceof Error && isPaperMasterNotConfiguredError(error))) {
-      masterLoadError.value = toUserError(error, '试卷主数据加载失败')
+    showUserError(error, '试卷主数据加载失败')
     }
   } finally {
     loading.value = false
@@ -816,7 +799,7 @@ function onPdfSaved(newFileId: string) {
 }
 
 const generateModalOpen = ref(false)
-// D-9：生成弹窗预填考试详情失败时展示可重试错误面板
+// 加载失败：toast 提示，主区保持空态/列表壳
 const generatePrefillError = ref<Error | null>(null)
 const generating = ref(false)
 const genForm = reactive({

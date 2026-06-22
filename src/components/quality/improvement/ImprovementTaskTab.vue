@@ -7,6 +7,7 @@ import type {
 } from '@/apis/quality/improvement-task'
 import type { ImprovementTaskStatus } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
 import { message } from 'ant-design-vue'
 import { reactive, ref } from 'vue'
 import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
@@ -30,14 +31,13 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   normalizeTextareaLineItems,
   refreshWorkbenchSignalsAfterMutation,
   selectedId,
-  type WorkbenchSignalRefreshHandler,
-} from '@/composables/quality/improvement/improvementWorkbenchShared'
-import { beginQualityScopeRequest, assertQualityScopeFresh, isQualityScopeStaleError } from '@/composables/useScopeRequestGuard'
+} from '@/composables/quality/improvement'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { assertQualityScopeFresh, beginQualityScopeRequest, isQualityScopeStaleError } from '@/composables/useScopeRequestGuard'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'

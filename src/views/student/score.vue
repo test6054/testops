@@ -16,11 +16,7 @@
       </ContextBar>
     </template>
 
-    <UiErrorRetryPanel
-      v-if="examsLoadError"
-      :error="examsLoadError"
-      @retry="loadExams"
-    />
+    <a-skeleton v-if="loading" active :paragraph="{ rows: 4 }" />
 
     <template v-else>
       <!-- 最近一场已发布详情卡 -->
@@ -193,11 +189,11 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { assertUserFacing } from '@/utils/contract-guard'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -205,7 +201,6 @@ defineOptions({ name: 'StudentScore' })
 
 const router = useRouter()
 const loading = ref(false)
-const examsLoadError = ref<Error | null>(null)
 const exams = ref<StudentExamItemVO[]>([])
 
 const examColumns: ColumnType<StudentExamItemVO>[] = [
@@ -363,14 +358,12 @@ const insightItems = computed(() => {
 
 async function loadExams() {
   loading.value = true
-  examsLoadError.value = null
   try {
     const loadedExams = await listMyExams()
     validatePublishedExamContracts(loadedExams)
     exams.value = loadedExams
   } catch (error) {
     exams.value = []
-    examsLoadError.value = toUserError(error, '考试成绩列表加载失败')
     showUserError(error, '考试成绩列表加载失败')
   } finally {
     loading.value = false

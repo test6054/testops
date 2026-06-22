@@ -40,11 +40,7 @@
 
     <UiEmpty v-if="!selectedExamId" description="缺少考试上下文，请从考试列表进入" />
 
-    <UiErrorRetryPanel
-      v-else-if="loadError"
-      :error="loadError"
-      @retry="loadTasks"
-    />
+
 
     <UiCard v-else>
       <UiEmpty
@@ -53,7 +49,6 @@
         class="batch-confirm__empty"
       />
       <UiDataTable
-        v-else
         pagination-mode="server"
         row-key="gradeResultId"
         :columns="columns"
@@ -126,12 +121,12 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -160,7 +155,6 @@ const { refreshing: workbenchRefreshing } = useMarkWorkbenchContext()
 
 const loading = ref(false)
 const submitting = ref(false)
-const loadError = ref<Error | null>(null)
 const rows = ref<ReviewTaskItemVO[]>([])
 const scoreDraftMap = reactive<Record<string, number>>({})
 const selectedRowKeys = ref<string[]>([])
@@ -222,7 +216,6 @@ function applyAiScores(): void {
 async function loadTasks(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
-  loadError.value = null
   try {
     const result = await listReviewTasks({
       examId: selectedExamId.value,
@@ -241,7 +234,6 @@ async function loadTasks(): Promise<void> {
   } catch (error) {
     rows.value = []
     pagination.total = 0
-    loadError.value = toUserError(error, '待复核任务加载失败')
     showUserError(error, '待复核任务加载失败')
   } finally {
     loading.value = false
@@ -306,6 +298,8 @@ async function submitBatch(): Promise<void> {
   }
 }
 
+const skipFirstActivatedLoad = ref(true)
+
 watch(selectedExamId, (value) => {
   pagination.current = 1
   selectedRowKeys.value = []
@@ -318,6 +312,10 @@ watch(selectedExamId, (value) => {
 }, { immediate: true })
 
 onActivated(() => {
+  if (skipFirstActivatedLoad.value) {
+    skipFirstActivatedLoad.value = false
+    return
+  }
   if (selectedExamId.value) {
     void loadTasks()
   }

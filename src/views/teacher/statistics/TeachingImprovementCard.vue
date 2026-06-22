@@ -24,11 +24,7 @@
         title="AI 教学改进方案生成中"
         :waiting-text="props.classId ? '正在等待后端返回当前班级的真实教学改进方案。' : '正在等待后端返回本场考试的真实教学改进方案。'"
       />
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        @retry="reload"
-      />
+
       <UiEmpty
         v-else-if="!loading && !generating && !record"
         description="暂无数据"
@@ -120,9 +116,8 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { assertUserFacing } from '@/utils/contract-guard'
-import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
@@ -133,7 +128,6 @@ const props = defineProps<{ examId: string, reloadToken: number, classId?: strin
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)
 const generating = ref(false)
-const loadError = ref<Error | null>(null)
 
 const improvementItems = computed<TeachingImprovementItemVO[]>(() => {
   return record.value?.improvementItems ?? []
@@ -192,13 +186,11 @@ function analysisTraceText(value: ExamTeachingAnalysisRecordVO): string {
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
-  loadError.value = null
   try {
     const latest = await getLatestTeachingImprovement(props.examId, props.classId || undefined)
     record.value = acceptTeachingImprovementRecord(latest)
   } catch (e) {
     record.value = null
-    loadError.value = toUserError(e, '教学改进方案加载失败')
     showUserError(e, '教学改进方案加载失败')
   } finally {
     loading.value = false
@@ -207,14 +199,12 @@ async function reload(): Promise<void> {
 
 async function handleGenerate(): Promise<void> {
   generating.value = true
-  loadError.value = null
   try {
     const generated = await generateTeachingImprovement(props.examId, props.classId || undefined)
     record.value = acceptTeachingImprovementRecord(generated)
     message.success('已生成最新改进方案')
   } catch (e) {
     record.value = null
-    loadError.value = toUserError(e, '教学改进方案生成失败')
     showUserError(e, '教学改进方案生成失败')
   } finally {
     generating.value = false

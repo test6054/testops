@@ -82,13 +82,8 @@
         @search="handleRecordFilterSearch"
         @reset="handleRecordFilterReset"
       />
-      <UiErrorRetryPanel
-        v-if="recordsLoadError"
-        :error="recordsLoadError"
-        @retry="loadRecords"
-      />
+
       <UiDataTable
-        v-else
         class="student-detail-table__data-table"
         :columns="recordColumns"
         :data-source="records"
@@ -233,13 +228,12 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
 import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -263,7 +257,6 @@ const reconciling = ref(false)
 
 const records = ref<AbsenceRecordVO[]>([])
 const recordLoading = ref(false)
-const recordsLoadError = ref<Error | null>(null)
 const recordFilterForm = reactive<{ status?: AbsenceStatusCode }>({
   status: undefined,
 })
@@ -420,7 +413,6 @@ async function loadRecords(): Promise<void> {
   if (!selectedExamId.value) {
     records.value = []
     recordPagination.total = 0
-    recordsLoadError.value = null
     return
   }
   recordLoading.value = true
@@ -435,9 +427,7 @@ async function loadRecords(): Promise<void> {
     recordPagination.pageNum = page.pageNum
     recordPagination.pageSize = page.pageSize
     recordPagination.total = readPageTotal(page, '缺考记录加载失败，请稍后重试')
-    recordsLoadError.value = null
   } catch (error) {
-    recordsLoadError.value = toUserError(error, '缺考记录加载失败')
     showUserError(error, '缺考记录加载失败')
   } finally {
     recordLoading.value = false

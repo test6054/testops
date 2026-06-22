@@ -28,11 +28,7 @@
       </ContextBar>
     </template>
 
-    <UiErrorRetryPanel
-      v-if="setLoadError"
-      :error="setLoadError"
-      @retry="loadSet"
-    />
+
 
     <UiCard v-if="set" class="paper-archive-detail-page__overview">
       <template #title>
@@ -89,13 +85,9 @@
         </template>
       </UiFilterBar>
 
-      <UiErrorRetryPanel
-        v-if="itemsLoadError"
-        :error="itemsLoadError"
-        @retry="loadItems"
-      />
 
-      <UiEmpty v-if="!loading && !itemsLoadError && items.length === 0" description="暂无数据" />
+
+      <UiEmpty v-if="!loading && items.length === 0" description="暂无数据" />
 
       <UiDataTable
         pagination-mode="none"
@@ -349,9 +341,10 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumTone } from '@/utils/strict-enum'
@@ -367,9 +360,7 @@ const set = ref<PaperArchiveSetVO | null>(null)
 const items = ref<PaperArchiveItemVO[]>([])
 const loading = ref(false)
 const uploading = ref(false)
-// D-9：档案集详情 / 明细加载失败时展示可重试错误面板
-const setLoadError = ref<Error | null>(null)
-const itemsLoadError = ref<Error | null>(null)
+// 加载失败：toast 提示，主区保持空态/列表壳
 const uploadProgress = ref(0)
 const uploadModalOpen = ref(false)
 const tagSaving = ref(false)
@@ -512,12 +503,10 @@ const canUpload = computed(() => {
 
 async function loadSet(): Promise<void> {
   if (!archiveSetId.value) return
-  setLoadError.value = null
   try {
     set.value = await getPaperArchiveSetDetail(archiveSetId.value)
   } catch (error) {
     set.value = null
-    setLoadError.value = toUserError(error, '纸质试卷档案集详情加载失败')
     showUserError(error, '纸质试卷档案集详情加载失败')
   }
 }
@@ -527,7 +516,6 @@ async function loadItems(options?: { quiet?: boolean }): Promise<void> {
   if (!options?.quiet) {
     loading.value = true
   }
-  itemsLoadError.value = null
   try {
     const result = await searchPaperArchiveItems({
       pageNum: pagination.pageNum,
@@ -547,7 +535,7 @@ async function loadItems(options?: { quiet?: boolean }): Promise<void> {
   } catch (error) {
     items.value = []
     pagination.total = 0
-    itemsLoadError.value = toUserError(error, '纸质试卷档案集明细加载失败')
+    showUserError(error, '纸质试卷档案集明细加载失败')
     if (!options?.quiet) {
       showUserError(error, '纸质试卷档案集明细加载失败')
     }

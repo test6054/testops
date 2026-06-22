@@ -34,11 +34,7 @@
     class="paper-template-page__empty"
   />
 
-  <UiErrorRetryPanel
-    v-else-if="templateLoadError"
-    :error="templateLoadError"
-    @retry="loadTemplate"
-  />
+
 
   <a-spin v-else :spinning="loading">
     <UiCard class="info-card">
@@ -550,7 +546,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { hydrateTemplatePageFileNames } from '@/utils/mark-storage-file'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -619,8 +615,7 @@ const answerPreviewMap = reactive(new Map<string, AnswerPreviewState>())
 
 const loading = ref(false)
 const saving = ref(false)
-// D-9 错误态：仅当后端返回非”未配置”类错误时才上报（”未配置模板”是合法空态）
-const templateLoadError = ref<Error | null>(null)
+// 加载失败：toast 提示，主区保持空态/列表壳
 const examDetail = ref<ExamDetailVO | null>(null)
 const layoutMode = ref<ExamMaterialLayoutModeCode | undefined>()
 const isFullPaperLayout = computed(() => layoutMode.value === 'FULL_PAPER')
@@ -821,7 +816,6 @@ async function applyTemplate(
 async function loadTemplate(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
-  templateLoadError.value = null
   clearAnswerPreviewCache()
   try {
     const detail = await getExamDetail(selectedExamId.value)
@@ -850,7 +844,7 @@ async function loadTemplate(): Promise<void> {
   } catch (error) {
     clearTemplate()
     if (!(error instanceof Error && isPaperTemplateNotConfiguredError(error))) {
-      templateLoadError.value = toUserError(error, '试卷模板加载失败')
+    showUserError(error, '试卷模板加载失败')
       message.warning(getUserErrorMessage(error, '题目模板加载失败，请稍后重试'))
     }
   } finally {

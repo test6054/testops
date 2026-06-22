@@ -63,7 +63,6 @@
             </a-tree>
 
             <UiEmpty
-              v-else
               :title="props.emptyTitle"
               :description="props.emptyDescription"
             />

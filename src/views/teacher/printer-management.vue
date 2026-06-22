@@ -29,14 +29,9 @@
         @reset="handleResetSearch"
       />
 
-      <UiErrorRetryPanel
-        v-if="devicesLoadError"
-        :error="devicesLoadError"
-        @retry="loadDevices"
-      />
+
 
       <UiDataTable
-        v-else
         pagination-mode="none"
         class="student-detail-table__data-table"
         :columns="columns"
@@ -246,12 +241,7 @@
       :footer="null"
       destroy-on-close
     >
-      <UiErrorRetryPanel
-        v-if="detailLoadError"
-        :error="detailLoadError"
-        @retry="reloadDeviceDetail"
-      />
-      <a-descriptions v-else-if="detailInfo" bordered :column="2" size="small">
+      <a-descriptions v-if="detailInfo" bordered :column="2" size="small">
         <a-descriptions-item label="设备名称">{{ detailInfo.deviceName }}</a-descriptions-item>
         <a-descriptions-item label="扫描设备编号">
           {{ detailInfo.scannerDeviceId }}
@@ -435,7 +425,6 @@ async function syncAfterDeviceMutation(): Promise<void> {
 
 // ─── 列表与筛选 ───────────────────────────────────────
 const loading = ref(false)
-const devicesLoadError = ref<Error | null>(null)
 const devices = ref<ExamScannerDeviceVO[]>([])
 const searchForm = reactive<ExamScannerDeviceQueryRequest>({})
 
@@ -512,14 +501,12 @@ function endpointOnlineStatusDisplayColorOf(device: ExamScannerDeviceVO): BadgeT
 
 async function loadDevices(): Promise<void> {
   loading.value = true
-  devicesLoadError.value = null
   agentUnbindError.value = null
   deviceDeleteError.value = null
   try {
     const result = await listScannerDevices(searchForm)
     devices.value = readArrayResponse(result, '扫描设备列表加载失败')
   } catch (error) {
-    devicesLoadError.value = toUserError(error, '扫描设备列表加载失败')
     showUserError(error, '扫描设备列表加载失败')
   } finally {
     loading.value = false
@@ -765,16 +752,13 @@ function copyText(value?: string | null): void {
 const showDetailModal = ref(false)
 const detailInfo = ref<ExamScannerDeviceDetailVO | null>(null)
 const detailDeviceId = ref<string | null>(null)
-const detailLoadError = ref<Error | null>(null)
 
 async function reloadDeviceDetail(): Promise<void> {
   if (!detailDeviceId.value) return
-  detailLoadError.value = null
   try {
     detailInfo.value = await getScannerDeviceDetail(detailDeviceId.value)
   } catch (error) {
     detailInfo.value = null
-    detailLoadError.value = toUserError(error, '扫描设备详情加载失败')
     showUserError(error, '扫描设备详情加载失败')
   }
 }
@@ -783,11 +767,9 @@ async function handleViewDetail(record: ExamScannerDeviceVO): Promise<void> {
   detailInfo.value = null
   detailDeviceId.value = record.id
   showDetailModal.value = true
-  detailLoadError.value = null
   try {
     detailInfo.value = await getScannerDeviceDetail(record.id)
   } catch (error) {
-    detailLoadError.value = toUserError(error, '扫描设备详情加载失败')
     showUserError(error, '扫描设备详情加载失败')
   }
 }

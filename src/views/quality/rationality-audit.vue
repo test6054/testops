@@ -144,11 +144,11 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { StageWorkbenchShell } from '@/components/workbench'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { SemesterOptions } from '@/types/enums/semester-enum'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'QualityRationalityAudit' })
 
@@ -168,7 +168,6 @@ interface RationalityAuditFilterModel {
 }
 
 const loading = ref(false)
-const listLoadError = ref<Error | null>(null)
 const qualityStore = useQualityStore()
 const filterForm = reactive<RationalityAuditFilterModel>({
   schoolYear: '',
@@ -241,7 +240,6 @@ async function loadList() {
     return
   }
   loading.value = true
-  listLoadError.value = null
   try {
     const response = await getRationalityAuditCourseLedger({
       trainingPlanId,
@@ -251,7 +249,6 @@ async function loadList() {
     overview.value = response.overview
     list.value = response.items
   } catch (e: unknown) {
-    listLoadError.value = toUserError(e, '加载审核列表失败')
     showUserError(e, '加载审核列表失败')
   } finally {
     loading.value = false
@@ -267,7 +264,6 @@ function handleReset() {
     schoolYear: '',
     semester: '',
   })
-  listLoadError.value = null
   list.value = []
   overview.value = {
     totalCourseCount: 0,
@@ -279,7 +275,6 @@ function handleReset() {
 }
 
 function handleScopeChange(): void {
-  listLoadError.value = null
   if (filterForm.schoolYear && filterForm.semester && qualityStore.currentTrainingPlanId) {
     void loadList()
   }

@@ -16,20 +16,12 @@
       class="scan-manual-supplement__hint"
     />
 
-    <UiErrorRetryPanel
-      v-if="examDetailLoadError"
-      :error="examDetailLoadError"
-      @retry="loadExamDetail"
-    />
 
-    <UiErrorRetryPanel
-      v-else-if="prepareLoadError"
-      :error="prepareLoadError"
-      @retry="loadPrepareContext"
-    />
+
+
 
     <UiAlertStrip
-      v-else-if="prepareContext && !prepareContext.canSubmitManualSupplement"
+      v-if="prepareContext && !prepareContext.canSubmitManualSupplement"
       tone="warning"
       :title="prepareContext.hasActiveScanSession ? '扫描进程未结束' : '当前不可提交补录'"
       :description="prepareBlockDescription"
@@ -178,9 +170,8 @@ import { prepareTeacherScanSupplement, teacherSupplementScanSource } from '@/api
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'ScanManualSupplementPanel' })
 
@@ -197,8 +188,6 @@ const emit = defineEmits<{
 const router = useRouter()
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
-const examDetailLoadError = ref<Error | null>(null)
-const prepareLoadError = ref<Error | null>(null)
 const prepareLoading = ref(false)
 const prepareContext = ref<ExamTeacherScanSupplementPrepareResponse | null>(null)
 const declaredClassIds = ref<string[]>([])
@@ -342,19 +331,17 @@ async function loadExamDetail(): Promise<void> {
     declaredClassIds.value = []
     return
   }
-  examDetailLoadError.value = null
   try {
     const detail = await getExamDetail(props.examId)
     declaredClassIds.value = (detail.classRefs ?? []).map((item) => item.classId)
   } catch (error) {
     declaredClassIds.value = []
-    examDetailLoadError.value = toUserError(error, '考试详情加载失败')
+    showUserError(error, '考试详情加载失败')
   }
 }
 
 async function loadPrepareContext(): Promise<void> {
   prepareContext.value = null
-  prepareLoadError.value = null
   const device = parseDeviceKey(form.deviceKey)
   if (!device || !props.examId) {
     return
@@ -369,7 +356,7 @@ async function loadPrepareContext(): Promise<void> {
     })
   } catch (error) {
     prepareContext.value = null
-    prepareLoadError.value = toUserError(error, '补录预检加载失败')
+    showUserError(error, '补录预检加载失败')
   } finally {
     prepareLoading.value = false
   }

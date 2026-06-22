@@ -74,11 +74,7 @@
       class="marking-task-detail-page__empty"
     />
 
-    <UiErrorRetryPanel
-      v-else-if="taskLoadError"
-      :error="taskLoadError"
-      @retry="loadTask"
-    />
+
 
     <a-spin v-else :spinning="loading">
       <UiEmpty
@@ -87,11 +83,7 @@
         class="marking-task-detail-page__empty"
       />
 
-      <UiErrorRetryPanel
-        v-if="batchTasksLoadError && task"
-        :error="batchTasksLoadError"
-        @retry="retryBatchLoad"
-      />
+
 
       <GradingWorkspaceLayout v-if="task">
         <template #main>
@@ -99,9 +91,7 @@
             :show-whole-paper-placeholder="usesWholePaperWorkspace"
             :loading="questionViewLoading"
             :loaded="questionViewLoaded"
-            :error="questionViewError"
             :question-view="questionView"
-            @retry="reloadQuestionView"
           />
 
           <WholePaperGallery
@@ -351,18 +341,15 @@ import type {
   AllocationUnitCode,
   AnonymityModeCode,
   AnonymousRevealVO,
-  MarkingPageAnnotationSubmitItem,
   MarkingQuestionScoreSubmitItem,
   MarkingQuestionViewVO,
   MarkingTaskStatusCode,
   MarkingTaskSubmittedQuestionScoreVO,
   MarkingTaskVO,
   QuestionMarkingGroupQuestionVO,
-  ScannedPageRef,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
-import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import LeftOutlined from '@ant-design/icons-vue/LeftOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -395,19 +382,18 @@ import {
 } from '@/apis/mark/marking-organization'
 import GradingWorkspaceLayout from '@/components/mark/GradingWorkspaceLayout.vue'
 import MarkingQuestionViewCard from '@/components/mark/MarkingQuestionViewCard.vue'
-import WholePaperGallery from '@/components/mark/WholePaperGallery.vue'
 import RevealAnonymousModal from '@/components/mark/RevealAnonymousModal.vue'
+import WholePaperGallery from '@/components/mark/WholePaperGallery.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
-import { useWholePaperGallery } from '@/composables/useWholePaperGallery'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { useWholePaperGallery } from '@/composables/useWholePaperGallery'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { isGradingEnterInputTarget, isGradingKeyboardInputTarget } from '@/utils/grading-keyboard'
 import { readAllPages } from '@/utils/page-result'
@@ -449,8 +435,6 @@ const task = ref<MarkingTaskVO | null>(null)
 const examDetail = ref<ExamDetailVO | null>(null)
 const { isExamOwner } = useExamOwnerPermission(examDetail)
 const loading = ref(false)
-// D-9 错误态：阅卷任务详情加载失败时 UiErrorRetryPanel 重试 + 上报
-const taskLoadError = ref<Error | null>(null)
 
 const isReadOnly = computed(() => task.value?.taskStatus === 'FINALIZED')
 
@@ -534,7 +518,6 @@ const router = useRouter()
 const userStore = useUserStore()
 const markTaskStore = useMarkTaskStore()
 const { tasks: batchTasks } = storeToRefs(markTaskStore)
-const batchTasksLoadError = ref<Error | null>(null)
 
 interface BatchProgress {
   current: number
@@ -582,7 +565,6 @@ function goBackToTaskPool(): void {
 async function loadTask(): Promise<void> {
   if (!taskId.value) return
   loading.value = true
-  taskLoadError.value = null
   try {
     const detail = await getMarkingTaskDetail({ taskId: taskId.value })
     validateMarkingTaskContract(detail)
@@ -609,7 +591,6 @@ async function loadTask(): Promise<void> {
     }
   } catch (error) {
     task.value = null
-    taskLoadError.value = toUserError(error, '阅卷任务详情加载失败')
     showUserError(error, '阅卷任务详情加载失败')
   } finally {
     loading.value = false
@@ -627,11 +608,10 @@ async function ensureBatchLoaded(examId: string): Promise<void> {
   if (markTaskStore.tasksLoadedExamId === examId && batchTasks.value.length > 0) return
   const reviewerUserId = userStore.userInfo.userId
   if (!reviewerUserId) return
-  batchTasksLoadError.value = null
   try {
     await markTaskStore.loadTasks({ examId, reviewerUserId })
   } catch (error) {
-    batchTasksLoadError.value = toUserError(error, '上下题导航任务列表加载失败')
+    showUserError(error, '上下题导航任务列表加载失败')
   }
 }
 
@@ -645,14 +625,12 @@ function retryBatchLoad(): void {
 const questionView = ref<MarkingQuestionViewVO | null>(null)
 const questionViewLoaded = ref(false)
 const questionViewLoading = ref(false)
-const questionViewError = ref<Error | null>(null)
 
 async function openQuestionView(currentTask = task.value): Promise<void> {
   if (!currentTask?.examId || !currentTask.id) {
     return
   }
   questionViewLoading.value = true
-  questionViewError.value = null
   try {
     questionView.value = await getMarkingQuestionView({
       examId: currentTask.examId,
@@ -661,7 +639,8 @@ async function openQuestionView(currentTask = task.value): Promise<void> {
     questionViewLoaded.value = true
     focusPrimaryScoreInput()
   } catch (error) {
-    questionViewError.value = toUserError(error, '题目视图加载失败')
+    questionView.value = null
+    questionViewLoaded.value = false
     showUserError(error, '题目级批阅视图加载失败')
   } finally {
     questionViewLoading.value = false
@@ -704,7 +683,6 @@ const {
   handleWholePageGalleryScroll,
   scrollToWholePage,
   buildWholePaperSubmitRequest,
-  syncWholePaperForms,
 } = wholePaper
 
 const scoreInputRef = ref<{ focus?: () => void } | null>(null)
@@ -746,14 +724,14 @@ function handleWorkspaceKeydown(event: KeyboardEvent): void {
     return
   }
   const key = event.key.toLowerCase()
-  if (key === 'j' || key === 'arrowleft') {
+  if (key === 'j' || event.key === 'ArrowLeft') {
     if (prevTaskId.value) {
       event.preventDefault()
       goToTask(prevTaskId.value)
     }
     return
   }
-  if (key === 'k' || key === 'arrowright') {
+  if (key === 'k' || event.key === 'ArrowRight') {
     if (nextTaskId.value) {
       event.preventDefault()
       goToTask(nextTaskId.value)
@@ -936,7 +914,6 @@ watch(taskId, () => {
   questionView.value = null
   questionViewLoaded.value = false
   questionViewLoading.value = false
-  questionViewError.value = null
   resetWholePaperState()
   wholeQuestionScoreInputRefs.value = []
   clearRevealedIdentity()

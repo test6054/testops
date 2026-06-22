@@ -54,11 +54,13 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import { SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageRail from '@/components/workbench/StageRail.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { buildStatusChartGroup } from '@/utils/quality-workbench-charts'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -96,7 +98,6 @@ const loading = reactive({
   ai: false,
 })
 
-const dashboardLoadError = ref<Error | null>(null)
 
 const recentAchievements = ref<AchievementResultVO[]>([])
 const recentImprovements = ref<ImprovementTaskVO[]>([])
@@ -343,7 +344,6 @@ async function loadAchievement() {
     achievementCounts.archived = readPageTotal(archived, '达成度状态统计加载失败，请稍后重试')
     achievementCounts.notAchieved = readPageTotal(notAchieved, '达成度状态统计加载失败，请稍后重试')
   } catch (error) {
-    dashboardLoadError.value = toUserError(error, '达成度数据加载失败')
     showUserError(error, '达成度数据加载失败')
   } finally {
     loading.achievement = false
@@ -393,7 +393,6 @@ async function loadImprovement() {
     improvementCounts.submitted = readPageTotal(submitted, '改进任务状态统计加载失败，请稍后重试')
     improvementCounts.closed = readPageTotal(closed, '改进任务状态统计加载失败，请稍后重试')
   } catch (error) {
-    dashboardLoadError.value = toUserError(error, '改进任务数据加载失败')
     showUserError(error, '改进任务数据加载失败')
   } finally {
     loading.improvement = false
@@ -424,7 +423,6 @@ async function loadAiTasks() {
     aiCounts.succeeded = readPageTotal(succeeded, 'AI 任务状态统计加载失败，请稍后重试')
     aiCounts.failed = readPageTotal(failed, 'AI 任务状态统计加载失败，请稍后重试')
   } catch (error) {
-    dashboardLoadError.value = toUserError(error, 'AI 任务数据加载失败')
     showUserError(error, 'AI 任务数据加载失败')
   } finally {
     loading.ai = false
@@ -432,7 +430,6 @@ async function loadAiTasks() {
 }
 
 async function reload() {
-  dashboardLoadError.value = null
   await Promise.all([
     loadAchievement(),
     loadImprovement(),

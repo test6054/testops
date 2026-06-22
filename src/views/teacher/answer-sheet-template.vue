@@ -22,11 +22,7 @@
 
   <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="sheet-page__empty" />
 
-  <UiErrorRetryPanel
-    v-else-if="templateLoadError"
-    :error="templateLoadError"
-    @retry="loadTemplate"
-  />
+
 
   <a-spin v-else :spinning="loading">
     <UiAlertStrip
@@ -146,7 +142,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { hydrateTemplatePageFileNames } from '@/utils/mark-storage-file'
 
 defineOptions({ name: 'TeacherAnswerSheetTemplate' })
@@ -180,7 +176,6 @@ const pageCountMatched = computed(
 )
 const loading = ref(false)
 const saving = ref(false)
-const templateLoadError = ref<Error | null>(null)
 
 // ─── 生成标准答题卡 ────────────────────────────────────────────
 
@@ -274,14 +269,13 @@ async function applyTemplate(
 async function loadTemplate(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
-  templateLoadError.value = null
   try {
     const tpl = await getExamTemplate(selectedExamId.value)
     await applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages, tpl.questions)
   } catch (error) {
     clearTemplate()
     if (!(error instanceof Error && isPaperTemplateNotConfiguredError(error))) {
-      templateLoadError.value = toUserError(error, '答卷页模板加载失败')
+    showUserError(error, '答卷页模板加载失败')
       message.warning(getUserErrorMessage(error, '答卷页模板加载失败，请稍后重试'))
     }
   } finally {

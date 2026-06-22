@@ -1,4 +1,4 @@
-import { onActivated, onMounted, inject, watch } from 'vue'
+import { inject, onActivated, onMounted, watch } from 'vue'
 import {
   qualityIngestEmbeddedKey,
   qualityLayoutScopeProvidedKey,

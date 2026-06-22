@@ -11,13 +11,8 @@
         <template #icon><ReloadOutlined /></template>刷新
       </a-button>
     </template>
-    <UiErrorRetryPanel
-      v-if="loadError"
-      :error="loadError"
-      @retry="reload"
-    />
+
     <UiDataTable
-      v-else
       pagination-mode="client"
       class="student-detail-table__data-table"
       :columns="columns"
@@ -28,6 +23,8 @@
       flat
       row-key="id"
       size="small"
+      empty-kind="first-run"
+      empty-description="暂无待处置重复影像，扫描对账正常"
     >
       <template #bodyCell="{ column, index }">
         <template v-if="column.key === 'resolutionStatus'">
@@ -56,7 +53,7 @@ import {
 } from '@/apis/mark/image-ledger'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'DuplicateResolutionCard' })
@@ -67,7 +64,6 @@ defineEmits<{ (e: 'resolve', record: ExamPaperDuplicateResolutionVO): void }>()
 
 const rows = ref<ExamPaperDuplicateResolutionVO[]>([])
 const loading = ref(false)
-const loadError = ref<Error | null>(null)
 
 const columns: ColumnType<ExamPaperDuplicateResolutionVO>[] = [
   { title: '页面哈希', dataIndex: 'pageHash', key: 'pageHash', width: 220, ellipsis: true },
@@ -109,11 +105,9 @@ const pendingCount = computed(
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
-  loadError.value = null
   try {
     rows.value = await listPendingDuplicates({ examId: props.examId })
   } catch (e) {
-    loadError.value = toUserError(e, '重复扫描记录加载失败')
     showUserError(e, '重复扫描记录加载失败')
   } finally {
     loading.value = false

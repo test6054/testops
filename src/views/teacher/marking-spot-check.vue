@@ -19,14 +19,9 @@
         </UiBadge>
       </template>
 
-      <UiErrorRetryPanel
-        v-if="listLoadError"
-        :error="listLoadError"
-        @retry="loadList"
-      />
+
 
       <UiDataTable
-        v-else
         pagination-mode="client"
         class="student-detail-table__data-table"
         :columns="columns"
@@ -37,6 +32,8 @@
         flat
         row-key="id"
         size="middle"
+        empty-kind="first-run"
+        empty-description="暂无待处理抽检项，当前批阅质量正常"
       >
         <template #bodyCell="{ column, index }">
           <template v-if="column.key === 'examId'">
@@ -178,10 +175,9 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -194,11 +190,9 @@ const { refreshSnapshot } = useWorkspaceExamId()
 // ─── 待处理抽检列表 ──────────────────────────────────────
 const pendingItems = ref<MyPendingSpotCheckItemResponse[]>([])
 const loading = ref(false)
-const listLoadError = ref<Error | null>(null)
 
 async function loadList(): Promise<void> {
   loading.value = true
-  listLoadError.value = null
   try {
     pendingItems.value = await readAllPages(
       (pageNum) => listMyPendingSpotChecks({
@@ -209,7 +203,6 @@ async function loadList(): Promise<void> {
       '待处理阅卷抽检加载失败，请稍后重试',
     )
   } catch (error) {
-    listLoadError.value = toUserError(error, '待处理阅卷抽检加载失败')
     showUserError(error, '待处理阅卷抽检加载失败')
     pendingItems.value = []
   } finally {

@@ -28,11 +28,7 @@
         @reset="handleReset"
       />
 
-      <UiErrorRetryPanel
-        v-if="setsLoadError"
-        :error="setsLoadError"
-        @retry="loadSets"
-      />
+
 
       <UiDataTable
         pagination-mode="none"
@@ -208,10 +204,11 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumTone } from '@/utils/strict-enum'
@@ -224,8 +221,7 @@ const router = useRouter()
 
 const sets = ref<PaperArchiveSetVO[]>([])
 const loading = ref(false)
-// D-9：纸质试卷档案集列表加载失败时展示可重试错误面板
-const setsLoadError = ref<Error | null>(null)
+// 加载失败：toast 提示，主区保持空态/列表壳
 const creating = ref(false)
 const createModalOpen = ref(false)
 
@@ -326,7 +322,6 @@ const columns: ColumnsType<PaperArchiveSetVO> = [
 
 async function loadSets(): Promise<void> {
   loading.value = true
-  setsLoadError.value = null
   try {
     const result = await pagePaperArchiveSets({
       pageNum: pagination.pageNum,
@@ -344,7 +339,6 @@ async function loadSets(): Promise<void> {
   } catch (error) {
     sets.value = []
     pagination.total = 0
-    setsLoadError.value = toUserError(error, '纸质试卷档案集列表加载失败')
     showUserError(error, '纸质试卷档案集列表加载失败')
   } finally {
     loading.value = false

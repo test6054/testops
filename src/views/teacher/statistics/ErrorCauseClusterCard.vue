@@ -18,11 +18,7 @@
         title="AI 错因聚类分析生成中"
         :waiting-text="props.classId ? '正在等待后端返回当前班级的真实错因聚类结果。' : '正在等待后端返回本场考试的真实错因聚类结果。'"
       />
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        @retry="reload"
-      />
+
       <UiEmpty
         v-else-if="!loading && !generating && !record"
         description="暂无数据"
@@ -127,10 +123,9 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { assertUserFacing } from '@/utils/contract-guard'
-import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import { errorCauseToBarItems } from '@/utils/mark-statistics-chart'
@@ -143,7 +138,6 @@ const props = defineProps<{ examId: string, reloadToken: number, classId?: strin
 const record = ref<ExamErrorCauseClusterVO | null>(null)
 const loading = ref(false)
 const generating = ref(false)
-const loadError = ref<Error | null>(null)
 
 const clusterItems = computed(() => record.value?.clusterItems ?? [])
 const clusterBarItems = computed(() => errorCauseToBarItems(record.value?.clusterItems ?? []))
@@ -220,13 +214,11 @@ function formatPercent(value: number): string {
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
-  loadError.value = null
   try {
     const latest = await getLatestErrorCauseCluster(props.examId, props.classId || undefined)
     record.value = acceptErrorCauseClusterRecord(latest)
   } catch (e) {
     record.value = null
-    loadError.value = toUserError(e, '错因聚类分析加载失败')
     showUserError(e, '错因聚类分析加载失败')
   } finally {
     loading.value = false
@@ -235,14 +227,12 @@ async function reload(): Promise<void> {
 
 async function handleGenerate(): Promise<void> {
   generating.value = true
-  loadError.value = null
   try {
     const generated = await generateErrorCauseCluster(props.examId, props.classId || undefined)
     record.value = acceptErrorCauseClusterRecord(generated)
     message.success('已生成最新错因聚类')
   } catch (e) {
     record.value = null
-    loadError.value = toUserError(e, '错因聚类分析生成失败')
     showUserError(e, '错因聚类分析生成失败')
   } finally {
     generating.value = false

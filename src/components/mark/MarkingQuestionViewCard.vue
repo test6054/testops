@@ -5,11 +5,6 @@
       <span>阅卷影像</span>
     </template>
     <UiEmpty v-if="showWholePaperPlaceholder" description="暂无数据" />
-    <UiErrorRetryPanel
-      v-else-if="error"
-      :error="error"
-      @retry="emit('retry')"
-    />
     <a-spin v-else :spinning="loading" tip="加载题目信息中...">
       <UiEmpty v-if="!loaded && !loading" description="题目信息尚未加载" />
       <div v-else-if="questionView" class="question-viewer">
@@ -84,7 +79,6 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 
 defineOptions({ name: 'MarkingQuestionViewCard' })
 
@@ -92,12 +86,7 @@ defineProps<{
   showWholePaperPlaceholder: boolean
   loading: boolean
   loaded: boolean
-  error: Error | null
   questionView: MarkingQuestionViewVO | null
-}>()
-
-const emit = defineEmits<{
-  (e: 'retry'): void
 }>()
 </script>
 

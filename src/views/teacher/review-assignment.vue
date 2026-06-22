@@ -68,11 +68,11 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import { SignalBand } from '@/components/workbench'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -143,7 +143,6 @@ const scanReadinessLoading = ref(false)
 const submitting = ref(false)
 const previewLoading = ref(false)
 const starting = ref(false)
-const questionLoadError = ref<Error | null>(null)
 const questions = ref<ExamQuestionTemplateVO[]>([])
 const teacherOptions = ref<TeacherUserInfoDto[]>([])
 const teacherLoading = ref(false)
@@ -154,7 +153,6 @@ const markingProgress = ref<MarkingProgressVO | null>(null)
 
 const organization = ref<MarkingOrganizationVO | null>(null)
 const organizationLoading = ref(false)
-const organizationLoadError = ref<Error | null>(null)
 const formalSessions = ref<FormalSessionVO[]>([])
 
 const readOnlyGroupColumns: ColumnType<QuestionMarkingGroupVO>[] = [
@@ -264,8 +262,7 @@ const canSubmit = computed(
     && questionScopeValid.value
     && form.batchSize > 0
     && form.loadLimit > 0
-    && !templateLoading.value
-    && !questionLoadError.value,
+    && !templateLoading.value,
 )
 
 const questionScopeValid = computed(() => {
@@ -379,7 +376,6 @@ watch(
 
 async function loadExamQuestions(): Promise<void> {
   questions.value = []
-  questionLoadError.value = null
   if (!selectedExamId.value) {
     return
   }
@@ -389,11 +385,10 @@ async function loadExamQuestions(): Promise<void> {
     questions.value = template.questions
   } catch (error) {
     if (error instanceof Error && isPaperTemplateNotConfiguredError(error)) {
-      questionLoadError.value = toUserError(error, '当前考试尚未配置有效试卷模板，不能生成真实阅卷任务')
+    showUserError(error, '当前考试尚未配置有效试卷模板，不能生成真实阅卷任务')
       return
     }
-    questionLoadError.value = toUserError(error, '试卷题目加载失败，不能生成真实阅卷任务')
-    showUserError(error, '试卷题目加载失败')
+    showUserError(error, '试卷题目加载失败，不能生成真实阅卷任务')
   } finally {
     templateLoading.value = false
   }
@@ -487,7 +482,6 @@ async function loadCollaboratorOrganization(): Promise<void> {
     return
   }
   organizationLoading.value = true
-  organizationLoadError.value = null
   try {
     const nextOrganization = await getOrganization({ examId: selectedExamId.value })
     validateMarkingOrganizationContract(nextOrganization)
@@ -501,7 +495,7 @@ async function loadCollaboratorOrganization(): Promise<void> {
     if (error instanceof Error && isMarkingOrgNotCreatedError(error)) {
       return
     }
-    organizationLoadError.value = toUserError(error, '阅卷组织加载失败')
+    showUserError(error, '阅卷组织加载失败')
   } finally {
     organizationLoading.value = false
   }
@@ -774,7 +768,6 @@ onMounted(async () => {
         刷新题目
       </UiButton>
       <UiButton
-        v-else
         variant="outline"
         size="sm"
         :loading="organizationLoading"
@@ -792,12 +785,8 @@ onMounted(async () => {
         dense
         class="review-assignment__alert"
       />
-      <UiErrorRetryPanel
-        v-if="organizationLoadError"
-        :error="organizationLoadError"
-        @retry="loadCollaboratorOrganization"
-      />
-      <a-spin v-else :spinning="organizationLoading || scanReadinessLoading">
+
+      <a-spin :spinning="organizationLoading || scanReadinessLoading">
         <UiAlertStrip
           v-if="scanReadinessSummary"
           :tone="scanReadinessSummary.bound > 0 ? 'success' : 'warning'"
@@ -979,11 +968,7 @@ onMounted(async () => {
         :title="`身份绑定 ${scanReadinessSummary.bound} 份 · 可阅卷 ${scanReadinessSummary.gradable} 份`"
         class="review-assignment__alert"
       />
-      <UiErrorRetryPanel
-        v-if="questionLoadError"
-        :error="questionLoadError"
-        @retry="loadExamQuestions"
-      />
+
 
       <section v-else class="review-assignment__grid">
         <UiCard class="review-assignment__panel">

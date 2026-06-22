@@ -1,11 +1,7 @@
 <template>
   <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="roster-page__empty" />
 
-  <UiErrorRetryPanel
-    v-else-if="rosterLoadError"
-    :error="rosterLoadError"
-    @retry="loadExamContext"
-  />
+
 
   <a-spin v-else :spinning="contextLoading">
     <UiCard class="info-card">
@@ -88,14 +84,9 @@
         @reset="handleRosterReset"
       />
 
-      <UiErrorRetryPanel
-        v-if="tableLoadError"
-        :error="tableLoadError"
-        @retry="loadCandidatePage"
-      />
+
 
       <UiDataTable
-        v-else
         v-model:current="pagination.current"
         v-model:page-size="pagination.pageSize"
         :columns="columns"
@@ -374,7 +365,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { ErrorType, handleError, showUserError, toUserError } from '@/utils/error-handler'
+import { ErrorType, handleError, showUserError } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { buildScopedClassTags, mergeClassSelectOptions } from './candidate-roster/class-scope'
 import { toCandidateRow } from './candidate-roster/roster-merge'
@@ -431,8 +422,6 @@ const rosterStudentUserIds = ref<string[]>([])
 const contextLoading = ref(false)
 const fullScopeSaving = ref(false)
 const tableLoading = ref(false)
-const rosterLoadError = ref<Error | null>(null)
-const tableLoadError = ref<Error | null>(null)
 const removingStudentUserId = ref<string | null>(null)
 const singleAddSubmitting = ref(false)
 
@@ -659,7 +648,6 @@ async function loadCandidatePage(): Promise<void> {
   const examId = selectedExamId.value
   const seq = ++loadTableSeq
   tableLoading.value = true
-  tableLoadError.value = null
   try {
     const result = await pageExamCandidates({
       examId,
@@ -694,7 +682,6 @@ async function loadCandidatePage(): Promise<void> {
     if (seq !== loadTableSeq) {
       return
     }
-    tableLoadError.value = toUserError(error, '考生列表加载失败')
     showUserError(error, '考生列表加载失败')
   } finally {
     if (seq === loadTableSeq) {
@@ -719,7 +706,6 @@ async function loadExamContext(): Promise<void> {
   const examId = selectedExamId.value
   const seq = ++loadContextSeq
   contextLoading.value = true
-  rosterLoadError.value = null
   rosterWriteForbidden.value = false
   classScopeHydrating.value = true
   try {
@@ -745,7 +731,6 @@ async function loadExamContext(): Promise<void> {
     if (seq !== loadContextSeq) {
       return
     }
-    rosterLoadError.value = toUserError(error, '考生名册加载失败')
     showUserError(error, '考生名册加载失败')
   } finally {
     if (seq === loadContextSeq) {

@@ -1,6 +1,7 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { MarkStageKey } from '@/stores/modules/markStage'
+import type {MarkStageKey} from '@/stores/modules/markStage';
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
+import { MARK_STAGE_ORDER } from '@/stores/modules/markStage'
 
 /** 阶段默认子路由：StageRail / 智能入口跳转目标（SCAN 阶段请用 resolveScanStageEntryRoute 动态分流） */
 export const MARK_STAGE_DEFAULT_ROUTE: Record<MarkStageKey, string> = {
@@ -39,4 +40,22 @@ export function resolveWorkspaceStage(
   markStageKey: MarkStageKey,
 ): WorkbenchStage | undefined {
   return stages.find((item) => item.key === markStageKey)
+}
+
+/**
+ * 建议阶段横幅是否应展示：用户已进入后续阶段时不占位提示，避免在成绩/归档页重复出现前序建议。
+ */
+export function shouldShowStageSuggestionBanner(
+  activeStageKey: MarkStageKey,
+  suggestedStageKey: MarkStageKey,
+): boolean {
+  if (activeStageKey === suggestedStageKey) {
+    return false
+  }
+  const activeIndex = MARK_STAGE_ORDER.indexOf(activeStageKey)
+  const suggestedIndex = MARK_STAGE_ORDER.indexOf(suggestedStageKey)
+  if (activeIndex < 0 || suggestedIndex < 0) {
+    throw new Error(`无法比较阶段序：${activeStageKey} / ${suggestedStageKey}`)
+  }
+  return activeIndex <= suggestedIndex
 }

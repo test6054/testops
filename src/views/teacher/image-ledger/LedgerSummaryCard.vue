@@ -1,6 +1,9 @@
 <template>
   <a-spin :spinning="loading">
-    <UiEmpty v-if="!ledger" description="暂无数据" />
+    <UiEmpty
+      v-if="!ledger"
+      description="尚未建立影像账本，执行整体对账后将汇总扫描收录与绑定进度"
+    />
     <div v-else class="ledger-summary">
       <!-- 顶栏：状态 + 进度环 + 操作 -->
       <div class="ledger-summary__hero">

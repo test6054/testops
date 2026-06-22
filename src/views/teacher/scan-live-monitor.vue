@@ -85,6 +85,8 @@
             flat
             :total="liveEvents.length"
             row-key="eventId"
+            empty-kind="first-run"
+            empty-description="暂无实时扫描事件，请确认扫描仪在线并在「录入与批次」创建扫描批次"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'batchNo'">
@@ -170,14 +172,9 @@
             </template>
           </UiFilterBar>
 
-          <UiErrorRetryPanel
-            v-if="attentionsLoadError"
-            :error="attentionsLoadError"
-            @retry="loadAttentions"
-          />
+
 
           <UiDataTable
-            v-else
             class="student-detail-table__data-table"
             v-model:current="attentionPagination.current"
             v-model:page-size="attentionPagination.pageSize"
@@ -189,6 +186,8 @@
             :enable-selection="activeTab === 'abnormal'"
             :selected-row-keys="selectedRowKeys"
             flat
+            empty-kind="first-run"
+            :empty-description="attentionTableEmptyDescription"
             v-bind="activeTab === 'abnormal' ? { rowSelection } : {}"
             @page-change="handleAttentionPageChange"
           >
@@ -336,11 +335,6 @@
       @confirm="handleBind"
     >
       <a-form ref="bindFormRef" :model="bindForm" :rules="bindFormRules" layout="vertical">
-        <UiErrorRetryPanel
-          v-if="candidatesLoadError"
-          :error="candidatesLoadError"
-          @retry="retryEnsureCandidatesLoaded"
-        />
         <UiAlertStrip
           v-if="bindSubmitError"
           tone="error"
@@ -378,10 +372,6 @@
                 :paragraph="{ rows: 3 }"
                 class="scan-monitor__identity-skeleton"
               />
-              <UiEmpty
-                v-else-if="bindIdentitySliceError"
-                description="暂无数据"
-              />
               <div v-else-if="bindIdentitySliceImageUrl" class="scan-monitor__identity-image-wrap">
                 <img
                   :src="bindIdentitySliceImageUrl"
@@ -402,10 +392,6 @@
                 active
                 :paragraph="{ rows: 3 }"
                 class="scan-monitor__identity-skeleton"
-              />
-              <UiEmpty
-                v-else-if="bindSourcePageError"
-                description="暂无数据"
               />
               <div v-else-if="bindSourcePageImageUrl" class="scan-monitor__identity-image-wrap">
                 <img
@@ -479,11 +465,6 @@
       @close="closeBatchBindDrawer"
       @confirm="submitBatchBind"
     >
-      <UiErrorRetryPanel
-        v-if="candidatesLoadError"
-        :error="candidatesLoadError"
-        @retry="retryEnsureCandidatesLoaded"
-      />
       <UiAlertStrip
         v-if="batchBindError"
         tone="error"
@@ -759,6 +740,16 @@ const filterForm = reactive<{
 
 const activeTab = ref<'normal' | 'abnormal' | 'duplicate'>('normal')
 
+const attentionTableEmptyDescription = computed(() => {
+  if (activeTab.value === 'abnormal') {
+    return '暂无异常待处理，当前扫描识别正常'
+  }
+  if (activeTab.value === 'duplicate') {
+    return '暂无重复影像待处置，可在影像账本查看历史记录'
+  }
+  return '暂无待关注项'
+})
+
 const attentionFilterFields = computed<FilterField[]>(() => {
   const fields: FilterField[] = []
   if (activeTab.value === 'abnormal') {
@@ -799,7 +790,6 @@ const attentionPagination = reactive({
   pageSize: 20,
   total: 0,
 })
-const attentionsLoadError = ref<Error | null>(null)
 const scanBatches = ref<ExamScannerBatchVO[]>([])
 const scanBatchesLoading = ref(false)
 const scanBatchKeyword = ref('')
@@ -1038,7 +1028,6 @@ async function loadAttentions(): Promise<void> {
     return
   }
   loading.value = true
-  attentionsLoadError.value = null
   try {
     await loadAttentionCounters()
     const queryGroup = currentAttentionQueryGroup()
@@ -1049,7 +1038,6 @@ async function loadAttentions(): Promise<void> {
     }
     await loadAttentionPage(queryGroup)
   } catch (error) {
-    attentionsLoadError.value = toUserError(error, '扫描异常列表加载失败')
     showUserError(error, '扫描异常列表加载失败')
   } finally {
     loading.value = false
@@ -1502,26 +1490,25 @@ const bindFormRules: Record<string, Rule[]> = {
 // 考生名册缓存
 const candidates = ref<ExamCandidateVO[]>([])
 const candidatesLoading = ref(false)
-const candidatesLoadError = ref<Error | null>(null)
 const bindSubmitError = ref('')
 const bindIdentitySliceFileId = ref('')
 const bindIdentitySliceImageUrl = ref('')
 const bindIdentitySliceLoading = ref(false)
-const bindIdentitySliceError = ref<Error | null>(null)
+const bindIdentitySliceLoadFailed = ref(false)
 const bindSourcePageFileId = ref('')
 const bindSourcePageImageUrl = ref('')
 const bindSourcePageLoading = ref(false)
-const bindSourcePageError = ref<Error | null>(null)
+const bindSourcePageLoadFailed = ref(false)
 
 const bindIdentityEvidenceBlockReason = computed(() => {
   if (!bindDrawerOpen.value) return ''
   if (!bindIdentitySliceFileId.value) return '当前异常没有身份切片文件，不能提交身份绑定；请先回到扫描识别链路补齐身份区证据。'
   if (bindIdentitySliceLoading.value) return '手写身份切片仍在加载，确认可见后才能提交身份绑定。'
-  if (bindIdentitySliceError.value) return '手写身份切片加载失败，修复或重试成功后才能提交身份绑定。'
+  if (bindIdentitySliceLoadFailed.value) return '手写身份切片加载失败，请刷新影像后重试身份绑定。'
   if (!bindIdentitySliceImageUrl.value) return '手写身份切片尚未显示，不能提交身份绑定。'
   if (!bindSourcePageFileId.value) return '当前异常缺少原始扫描页文件引用，请检查扫描页登记链路后再绑定。'
   if (bindSourcePageLoading.value) return '原始扫描页仍在加载，确认可见后才能提交身份绑定。'
-  if (bindSourcePageError.value) return '原始扫描页加载失败，修复或重试成功后才能提交身份绑定。'
+  if (bindSourcePageLoadFailed.value) return '原始扫描页加载失败，请刷新影像后重试身份绑定。'
   if (!bindSourcePageImageUrl.value) return '原始扫描页尚未显示，不能提交身份绑定。'
   return ''
 })
@@ -1576,17 +1563,14 @@ function candidateBindingBlockReason(candidateRosterId: string | undefined): str
 async function ensureCandidatesLoaded(): Promise<boolean> {
   if (!selectedExamId.value) return false
   if (candidates.value.length > 0) {
-    candidatesLoadError.value = null
     return true
   }
   candidatesLoading.value = true
-  candidatesLoadError.value = null
   try {
     const result = await listExamCandidates(selectedExamId.value)
     candidates.value = readArrayResponse(result, '考生名册加载失败')
     return true
   } catch (error) {
-    candidatesLoadError.value = toUserError(error, '考生名册加载失败')
     showUserError(error, '考生名册加载失败')
     return false
   } finally {
@@ -1614,7 +1598,7 @@ function releaseBindSourcePageImage(): void {
 
 async function loadBindIdentitySliceImage(): Promise<void> {
   releaseBindIdentitySliceImage()
-  bindIdentitySliceError.value = null
+  bindIdentitySliceLoadFailed.value = false
   if (!bindIdentitySliceFileId.value) {
     return
   }
@@ -1622,7 +1606,8 @@ async function loadBindIdentitySliceImage(): Promise<void> {
   try {
     bindIdentitySliceImageUrl.value = await getImageBlobUrl(bindIdentitySliceFileId.value)
   } catch (error) {
-    bindIdentitySliceError.value = toUserError(error, '手写身份切片加载失败')
+    bindIdentitySliceLoadFailed.value = true
+    showUserError(error, '手写身份切片加载失败')
   } finally {
     bindIdentitySliceLoading.value = false
   }
@@ -1630,7 +1615,7 @@ async function loadBindIdentitySliceImage(): Promise<void> {
 
 async function loadBindSourcePageImage(): Promise<void> {
   releaseBindSourcePageImage()
-  bindSourcePageError.value = null
+  bindSourcePageLoadFailed.value = false
   if (!bindSourcePageFileId.value) {
     return
   }
@@ -1638,7 +1623,8 @@ async function loadBindSourcePageImage(): Promise<void> {
   try {
     bindSourcePageImageUrl.value = await getImageBlobUrl(bindSourcePageFileId.value)
   } catch (error) {
-    bindSourcePageError.value = toUserError(error, '原始扫描页加载失败')
+    bindSourcePageLoadFailed.value = true
+    showUserError(error, '原始扫描页加载失败')
   } finally {
     bindSourcePageLoading.value = false
   }
@@ -1930,14 +1916,13 @@ watch(selectedExamId, (value) => {
   filterForm.attentionType = ''
   filterForm.scanBatchId = ''
   filterForm.paperInstanceId = ''
-  candidatesLoadError.value = null
   bindSubmitError.value = ''
   bindIdentitySliceFileId.value = ''
   bindSourcePageFileId.value = ''
   releaseBindIdentitySliceImage()
   releaseBindSourcePageImage()
-  bindIdentitySliceError.value = null
-  bindSourcePageError.value = null
+  bindIdentitySliceLoadFailed.value = false
+  bindSourcePageLoadFailed.value = false
   batchBindError.value = ''
   batchBindResult.value = null
   liveDrawerOpen.value = false
@@ -1968,8 +1953,8 @@ watch(bindDrawerOpen, (open) => {
   if (!open) {
     bindIdentitySliceFileId.value = ''
     bindSourcePageFileId.value = ''
-    bindIdentitySliceError.value = null
-    bindSourcePageError.value = null
+    bindIdentitySliceLoadFailed.value = false
+    bindSourcePageLoadFailed.value = false
     releaseBindIdentitySliceImage()
     releaseBindSourcePageImage()
   }

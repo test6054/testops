@@ -11,13 +11,7 @@
       </a-space>
     </template>
 
-    <UiErrorRetryPanel
-      v-if="loadError"
-      :error="loadError"
-      @retry="reload"
-    />
-
-    <a-spin v-else :spinning="loading">
+    <a-spin :spinning="loading">
       <a-form layout="vertical" :model="form">
         <a-row :gutter="16">
           <a-col :span="12">
@@ -115,8 +109,7 @@ import {
   saveReviewWindowPolicy,
 } from '@/apis/mark/grade-review'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewWindowPolicyCard' })
@@ -134,7 +127,6 @@ function reviewWindowStatusLabel(status: ReviewWindowPolicyStatusCode): string {
 
 const policy = ref<ExamReviewWindowPolicyVO | null>(null)
 const loading = ref(false)
-const loadError = ref<Error | null>(null)
 const saving = ref(false)
 const activating = ref(false)
 const closing = ref(false)
@@ -169,7 +161,6 @@ const reasonTypeOptions: { label: string, value: GradeReviewReasonTypeCode }[] =
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
-  loadError.value = null
   try {
     const data = await getReviewWindowPolicy(props.examId)
     policy.value = data
@@ -182,8 +173,6 @@ async function reload(): Promise<void> {
     }
   } catch (e) {
     policy.value = null
-    loadError.value
-      = e instanceof Error ? e : new Error(getUserErrorMessage(e, '成绩复核窗口加载失败'))
     showUserError(e, '成绩复核窗口加载失败')
   } finally {
     loading.value = false

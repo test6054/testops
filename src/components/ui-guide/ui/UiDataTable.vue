@@ -88,13 +88,16 @@ import type {
   UiDataTableEmptyKind,
   UiDataTablePaginationMode,
 } from './data-table'
+import { useBreakpoints } from '@vueuse/core'
 import { computed, getCurrentInstance, ref, useAttrs, useSlots, watch } from 'vue'
 import UiCard from './Card.vue'
 import {
+  filterResponsiveDataTableColumns,
   normalizeDataTableColumns,
   resolveDataTableScrollX,
   sliceDataTablePage,
   UI_DATA_TABLE_EMPTY_PRESETS,
+  UI_DATA_TABLE_VIEWPORT,
 } from './data-table'
 import UiEmpty from './Empty.vue'
 import UiPagination from './Pagination.vue'
@@ -139,6 +142,8 @@ const props = withDefaults(
     scrollY?: number | string
     /** 斑马纹行，适合高密度明细表 */
     zebra?: boolean
+    /** 窄视口自动隐藏低优先级列并在操作列启用触控友好布局 */
+    responsiveColumns?: boolean
   }>(),
   {
     loading: false,
@@ -163,6 +168,7 @@ const props = withDefaults(
     stickyHeader: false,
     scrollY: undefined,
     zebra: false,
+    responsiveColumns: true,
   },
 )
 
@@ -178,6 +184,14 @@ const tableRoot = ref<HTMLElement>()
 const instance = getCurrentInstance()
 let missingPageChangeWarned = false
 
+const breakpoints = useBreakpoints({
+  md: UI_DATA_TABLE_VIEWPORT.md,
+  lg: UI_DATA_TABLE_VIEWPORT.lg,
+})
+const isMdViewport = breakpoints.greaterOrEqual('md')
+const isLgViewport = breakpoints.greaterOrEqual('lg')
+const isCompactViewport = computed(() => props.responsiveColumns && !isMdViewport.value)
+
 const rootClass = computed(() => attrs.class)
 
 const rootClasses = computed(() => {
@@ -185,6 +199,7 @@ const rootClasses = computed(() => {
     rootClass.value,
     { 'ui-data-table--flat': props.flat },
     { 'ui-data-table--zebra': props.zebra },
+    { 'ui-data-table--compact-viewport': isCompactViewport.value },
   ]
 })
 
@@ -215,7 +230,15 @@ const resolvedDataSource = computed(() => {
   return sliceDataTablePage(props.dataSource, current.value, pageSize.value)
 })
 
-const resolvedColumns = computed(() => normalizeDataTableColumns(props.columns))
+const resolvedColumns = computed(() => {
+  const viewportColumns = props.responsiveColumns
+    ? filterResponsiveDataTableColumns(props.columns, {
+        md: isMdViewport.value,
+        lg: isLgViewport.value,
+      })
+    : props.columns
+  return normalizeDataTableColumns(viewportColumns)
+})
 
 const emptyPreset = computed(() => UI_DATA_TABLE_EMPTY_PRESETS[props.emptyKind])
 
@@ -249,7 +272,7 @@ const resolvedScroll = computed<TableProps['scroll']>(() => {
   if (props.stickyHeader && merged.y == null) {
     merged.y = 480
   }
-  const autoScrollX = resolveDataTableScrollX(props.columns)
+  const autoScrollX = resolveDataTableScrollX(resolvedColumns.value)
   if (merged.x == null && autoScrollX != null) {
     merged.x = autoScrollX
   }
@@ -568,5 +591,18 @@ const handlePageChange = (page: number, size: number) => {
 
 .ui-data-table__pagination {
   margin-top: 16px;
+}
+
+.ui-data-table--compact-viewport .ui-data-table__table :deep(.operations-cell) {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.ui-data-table--compact-viewport .ui-data-table__table :deep(.operations-cell .ui-text-action),
+.ui-data-table--compact-viewport .ui-data-table__table :deep(.operations-cell .op-link),
+.ui-data-table--compact-viewport .ui-data-table__table :deep(.operations-cell .ant-btn) {
+  min-height: 44px;
+  justify-content: center;
 }
 </style>

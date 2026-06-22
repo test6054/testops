@@ -149,12 +149,7 @@ const reviewBoundBatchId = computed(
         </button>
       </header>
 
-      <UiErrorRetryPanel
-        v-if="workflow.pageLedgerError.value && !workflow.pageLedgerLoading.value"
-        :error="workflow.pageLedgerError.value"
-        compact
-        @retry="workflow.onManualRefreshLedger"
-      />
+
 
       <div v-if="totalIssues === 0" class="issue-empty">
         <ExclamationCircleFilled class="issue-empty-icon" />

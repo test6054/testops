@@ -62,10 +62,9 @@
         @reset="handleTaskFilterReset"
       />
 
-      <UiErrorRetryPanel v-if="tasksLoadError" :error="tasksLoadError" @retry="loadTasks" />
+
 
       <UiDataTable
-        v-else
         class="student-detail-table__data-table"
         :columns="columns"
         :data-source="filteredTasks"
@@ -291,9 +290,9 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
@@ -328,7 +327,6 @@ const {
 
 const tasks = ref<ExportTaskVO[]>([])
 const loading = ref(false)
-const tasksLoadError = ref<Error | null>(null)
 const downloadingId = ref<string | undefined>(undefined)
 const questionOptions = ref<Array<{ value: string, label: string }>>([])
 const questionLoading = ref(false)
@@ -493,14 +491,12 @@ async function loadTasks(options?: { quiet?: boolean }): Promise<void> {
   if (!selectedExamId.value) {
     tasks.value = []
     taskPagination.total = 0
-    tasksLoadError.value = null
     syncExportPolling()
     return
   }
   if (!options?.quiet) {
     loading.value = true
   }
-  tasksLoadError.value = null
   try {
     const page = await listExportTasks({
       examId: selectedExamId.value,
@@ -514,7 +510,7 @@ async function loadTasks(options?: { quiet?: boolean }): Promise<void> {
     await refreshOpenDetailIfNeeded()
     syncExportPolling()
   } catch (error) {
-    tasksLoadError.value = toUserError(error, '导出任务加载失败')
+    showUserError(error, '导出任务加载失败')
     if (!options?.quiet) {
       showUserError(error, '导出任务加载失败')
     }
@@ -575,7 +571,6 @@ function handleExamChange(value: SelectValue): void {
   } else {
     tasks.value = []
     taskPagination.total = 0
-    tasksLoadError.value = null
   }
 }
 
@@ -760,7 +755,6 @@ watch(
     } else {
       tasks.value = []
       taskPagination.total = 0
-      tasksLoadError.value = null
       resetRoster()
       questionOptions.value = []
     }

@@ -69,14 +69,9 @@
         @reset="handleReset"
       />
 
-      <UiErrorRetryPanel
-        v-if="candidatesLoadError"
-        :error="candidatesLoadError"
-        @retry="loadCandidates"
-      />
+
 
       <UiDataTable
-        v-else
         v-model:current="pagination.current"
         v-model:page-size="pagination.pageSize"
         :columns="columns"
@@ -383,7 +378,6 @@
             前往缺考核对
           </UiButton>
           <UiButton
-            v-else
             size="sm"
             variant="outline"
             :loading="riskReviewSavingReasonCode === reason.reasonCode"
@@ -514,13 +508,12 @@ import UiActivityTimeline from '@/components/ui-guide/ui/UiActivityTimeline.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
 import { formatTrendAriaLabel, MARK_CHART_EMPTY } from '@/utils/mark-chart-accessibility'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
@@ -613,7 +606,6 @@ function onScoreReleaseStepChange(value: string | number): void {
 // ─── 考生名单（服务端分页） ─────────────────────────────
 const candidates = ref<ExamScoreSummaryItemVO[]>([])
 const loading = ref(false)
-const candidatesLoadError = ref<Error | null>(null)
 const riskOverview = ref<FinalScoreRiskOverviewVO | null>(null)
 const riskOverviewLoading = ref(false)
 const batchConfirming = ref(false)
@@ -658,7 +650,6 @@ const dailyScoreFull = computed(() => examDetail.value?.dailyScoreFull ?? null)
 async function loadCandidates(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
-  candidatesLoadError.value = null
   try {
     const result = await pageExamScoreSummary({
       examId: selectedExamId.value,
@@ -676,7 +667,6 @@ async function loadCandidates(): Promise<void> {
       pagination.pageSize = result.pageSize
     }
   } catch (error) {
-    candidatesLoadError.value = toUserError(error, '成绩确认名单加载失败，请稍后重试')
     showUserError(error, '成绩确认名单加载失败，请稍后重试')
   } finally {
     loading.value = false

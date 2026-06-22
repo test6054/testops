@@ -9,15 +9,10 @@
     <div class="recycled-panel__toolbar">
       <UiButton variant="outline" size="sm" :loading="loading" @click="loadTasks">刷新</UiButton>
     </div>
-    <UiErrorRetryPanel
-      v-if="tasksLoadError"
-      :error="tasksLoadError"
-      @retry="loadTasks"
-    />
+
     <a-spin :spinning="loading">
-      <UiEmpty v-if="!loading && !tasksLoadError && !tasks.length" description="暂无待分配回收任务" />
+      <UiEmpty v-if="!loading && !tasks.length" description="暂无待分配回收任务" />
       <UiDataTable
-        v-else
         pagination-mode="none"
         :columns="columns"
         :data-source="tasks"
@@ -71,7 +66,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages } from '@/utils/page-result'
 
@@ -87,8 +82,7 @@ const props = defineProps<{
 const loading = ref(false)
 const reassigningId = ref<string | null>(null)
 const tasks = ref<MarkingTaskVO[]>([])
-// D-9：回收待分配任务列表加载失败时展示可重试错误面板
-const tasksLoadError = ref<Error | null>(null)
+// 加载失败：toast 提示，主区保持空态/列表壳
 const targetReviewerByTaskId = reactive<Record<string, string>>({})
 
 const reviewerOptionsByGroupId = computed(() => {
@@ -117,7 +111,6 @@ async function loadTasks() {
     return
   }
   loading.value = true
-  tasksLoadError.value = null
   try {
     if (props.viewAllRecycled) {
       tasks.value = (await readAllPages(
@@ -153,7 +146,6 @@ async function loadTasks() {
     }
     tasks.value = merged
   } catch (error) {
-    tasksLoadError.value = toUserError(error, '回收待分配任务加载失败')
     showUserError(error, '回收待分配任务加载失败')
     tasks.value = []
   } finally {

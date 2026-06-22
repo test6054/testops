@@ -56,13 +56,10 @@
       </ContextBar>
     </template>
 
-    <UiErrorRetryPanel
-      v-if="organizationLoadError"
-      :error="organizationLoadError"
-      @retry="loadOrganization"
-    />
+    <a-skeleton v-if="loading" active :paragraph="{ rows: 4 }" />
+
     <UiEmpty
-      v-else-if="!organization && !loading"
+      v-else-if="!organization"
       description="暂无数据"
       class="org-detail__empty"
     />
@@ -583,10 +580,10 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import { StageWorkbenchShell } from '@/components/workbench'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -607,8 +604,7 @@ const organization = ref<MarkingOrganizationVO | null>(null)
 const examDetail = ref<ExamDetailVO | null>(null)
 const examId = computed(() => String(organization.value?.examId || ''))
 const loading = ref(false)
-// D-9 错误态：仅当后端返回非“未创建组织”业务码时才上报
-const organizationLoadError = ref<Error | null>(null)
+// 加载失败：toast 提示，主区保持空态/列表壳
 const activeTab = ref<'info' | 'policy' | 'recycled' | 'status'>('info')
 
 const groups = computed<QuestionMarkingGroupVO[]>(() => organization.value?.groups ?? [])
@@ -717,7 +713,6 @@ async function loadOrganization(): Promise<void> {
     return
   }
   loading.value = true
-  organizationLoadError.value = null
   try {
     const nextOrganization = await getOrganizationById({ organizationId: organizationId.value })
     validateMarkingOrganizationContract(nextOrganization)
@@ -729,7 +724,7 @@ async function loadOrganization(): Promise<void> {
     examDetail.value = null
     resetPolicyState()
     if (!(error instanceof Error && isMarkingOrgNotCreatedError(error))) {
-      organizationLoadError.value = toUserError(error, '阅卷组织详情加载失败')
+    showUserError(error, '阅卷组织详情加载失败')
     }
   } finally {
     loading.value = false

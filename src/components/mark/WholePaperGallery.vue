@@ -124,17 +124,17 @@ defineProps<{
   qualityTone: (status: QualityDecisionCode) => BadgeTone
 }>()
 
-const galleryViewportRef = ref<HTMLElement | null>(null)
-
 const emit = defineEmits<{
   (e: 'reload'): void
   (e: 'scroll', event: Event): void
   (e: 'update:pageAnnotation', pageId: string, value: string): void
-  (e: 'viewportReady', element: HTMLElement | null): void
+  (e: 'viewport-ready', element: HTMLElement | null): void
 }>()
 
+const galleryViewportRef = ref<HTMLElement | null>(null)
+
 watch(galleryViewportRef, (element) => {
-  emit('viewportReady', element)
+  emit('viewport-ready', element)
 }, { immediate: true })
 </script>
 

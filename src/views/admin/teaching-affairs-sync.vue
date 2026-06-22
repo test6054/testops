@@ -61,14 +61,9 @@
           @reset="handleSyncFilterReset"
         />
 
-        <UiErrorRetryPanel
-          v-if="syncTasksLoadError"
-          :error="syncTasksLoadError"
-          @retry="loadSyncTasks"
-        />
+
 
         <UiDataTable
-          v-else
           pagination-mode="client"
           class="student-detail-table__data-table"
           :columns="syncColumns"
@@ -155,14 +150,9 @@
           @reset="handlePassbackFilterReset"
         />
 
-        <UiErrorRetryPanel
-          v-if="passbackLoadError"
-          :error="passbackLoadError"
-          @retry="reloadPassbackRecordsFromFirstPage"
-        />
+
 
         <UiDataTable
-          v-else
           class="student-detail-table__data-table"
           :columns="passbackColumns"
           :data-source="passbackRecords"
@@ -271,12 +261,8 @@
           刷新
         </UiButton>
       </template>
-      <UiErrorRetryPanel
-        v-if="progressLoadError"
-        :error="progressLoadError"
-        @retry="handleRefreshProgress"
-      />
-      <template v-else-if="detailProgress">
+
+      <template v-if="detailProgress">
         <a-progress
           :percent="detailProgressPercent"
           :status="detailProgressStatus"
@@ -304,7 +290,7 @@
           该任务尚未生成回写记录，可能仍在等待执行。
         </div>
       </template>
-      <a-skeleton v-else active :paragraph="{ rows: 1 }" />
+      <a-skeleton v-else-if="progressLoading" active :paragraph="{ rows: 1 }" />
     </UiCard>
 
     <a-descriptions v-if="detailTask" :column="1" bordered size="small">
@@ -404,11 +390,11 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -463,20 +449,16 @@ const syncColumns: ColumnType<SyncTaskVO>[] = [
   { title: '操作', key: 'actions', width: 280, fixed: 'right' },
 ]
 
-// D-9 错误态：同步任务 / 回写记录加载失败时 UiErrorRetryPanel 重试 + 上报
-const syncTasksLoadError = ref<Error | null>(null)
-const passbackLoadError = ref<Error | null>(null)
 
 async function loadSyncTasks(options?: { quiet?: boolean }): Promise<void> {
   if (!selectedExamId.value) return
   if (!options?.quiet) {
     syncLoading.value = true
   }
-  syncTasksLoadError.value = null
   try {
     syncTasks.value = await listSyncTasks(selectedExamId.value, syncFilterForm.status)
   } catch (error) {
-    syncTasksLoadError.value = toUserError(error, '教务同步任务加载失败')
+    showUserError(error, '教务同步任务加载失败')
     if (!options?.quiet) {
       showUserError(error, '教务同步任务加载失败')
     }
@@ -629,7 +611,6 @@ const reconciling = ref(false)
 // PENDING / SENT / SUCCESS / FAILED / WITHDRAWN 各状态的回写记录计数。
 const detailProgress = ref<PassbackProgressVO | null>(null)
 const progressLoading = ref(false)
-const progressLoadError = ref<Error | null>(null)
 
 const detailProgressPercent = computed<number>(() => {
   const p = detailProgress.value
@@ -650,11 +631,10 @@ const detailProgressStatus = computed<'success' | 'exception' | 'active' | 'norm
 
 async function loadProgress(syncTaskId: string): Promise<void> {
   progressLoading.value = true
-  progressLoadError.value = null
   try {
     detailProgress.value = await getPassbackProgress(syncTaskId)
   } catch (error) {
-    progressLoadError.value = toUserError(error, '教务回写进度加载失败')
+    showUserError(error, '教务回写进度加载失败')
     detailProgress.value = null
   } finally {
     progressLoading.value = false
@@ -665,7 +645,6 @@ function openTaskDetail(record: SyncTaskVO): void {
   detailTask.value = record
   taskDetailOpen.value = true
   detailProgress.value = null
-  progressLoadError.value = null
   if (record.id) {
     void loadProgress(record.id)
   }
@@ -754,7 +733,6 @@ async function loadPassbackRecords(options?: { quiet?: boolean }): Promise<void>
   if (!options?.quiet) {
     passbackLoading.value = true
   }
-  passbackLoadError.value = null
   try {
     const page = await listPassbackRecords({
       examId: selectedExamId.value,
@@ -768,7 +746,7 @@ async function loadPassbackRecords(options?: { quiet?: boolean }): Promise<void>
     passbackPagination.pageSize = page.pageSize
     passbackPagination.total = readPageTotal(page, '教务回写记录加载失败，请稍后重试')
   } catch (error) {
-    passbackLoadError.value = toUserError(error, '教务回写记录加载失败')
+    showUserError(error, '教务回写记录加载失败')
     if (!options?.quiet) {
       showUserError(error, '教务回写记录加载失败')
     }

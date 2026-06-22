@@ -9,6 +9,7 @@ import type {
 } from '@/apis/quality/audit-rectification'
 import type { AuditRectificationStatus } from '@/apis/quality/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { QualitySelectorChangeValue, WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
 import { message } from 'ant-design-vue'
 import { reactive, ref } from 'vue'
 import { auditIssueApi } from '@/apis/quality/audit-issue'
@@ -29,14 +30,12 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   refreshWorkbenchSignalsAfterMutation,
   selectedId,
-  type QualitySelectorChangeValue,
-  type WorkbenchSignalRefreshHandler,
-} from '@/composables/quality/improvement/improvementWorkbenchShared'
-import { beginQualityScopeRequest, assertQualityScopeFresh, isQualityScopeStaleError } from '@/composables/useScopeRequestGuard'
+} from '@/composables/quality/improvement'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { assertQualityScopeFresh, beginQualityScopeRequest, isQualityScopeStaleError } from '@/composables/useScopeRequestGuard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'

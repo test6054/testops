@@ -11,14 +11,9 @@
       </a-space>
     </template>
 
-    <UiErrorRetryPanel
-      v-if="loadError"
-      :error="loadError"
-      @retry="reload"
-    />
+
 
     <UiDataTable
-      v-else
       v-model:current="pagination.current"
       v-model:page-size="pagination.pageSize"
       class="student-detail-table__data-table"
@@ -143,9 +138,8 @@ import {
 } from '@/apis/mark/grade-review'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { assertUserFacing } from '@/utils/contract-guard'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -159,7 +153,6 @@ const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 100
 
 const rows = ref<ExamGradeCorrectionRecordVO[]>([])
 const loading = ref(false)
-const loadError = ref<Error | null>(null)
 const approvedReviewRequests = ref<GradeReviewRequestItemResponse[]>([])
 const reviewRequestLoading = ref(false)
 const pagination = reactive({
@@ -232,7 +225,6 @@ async function openCreateModal(): Promise<void> {
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
-  loadError.value = null
   try {
     const result = await listCorrections({
       examId: props.examId,
@@ -252,7 +244,6 @@ async function reload(): Promise<void> {
   } catch (e) {
     rows.value = []
     pagination.total = 0
-    loadError.value = toUserError(e, '成绩更正记录加载失败')
     showUserError(e, '成绩更正记录加载失败')
   } finally {
     loading.value = false

@@ -74,12 +74,13 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { throwUserFacing } from '@/utils/contract-guard'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ImportResponseDocumentModal from './components/ImportResponseDocumentModal.vue'
@@ -89,7 +90,6 @@ const ITEM_CONFIG_ERROR = '题项配置不完整，请检查后重试'
 const SCALE_CONVERSION_RULE_OPTION_PAGE_SIZE = 100
 
 const qualityStore = useQualityStore()
-const listLoadError = ref<Error | null>(null)
 
 const formColumns: ColumnsType = [
   { title: '编码', dataIndex: 'formCode', key: 'formCode', width: 120 },
@@ -600,7 +600,6 @@ function handleResponseRespondentTypeChange() {
 
 async function loadForms() {
   formsLoading.value = true
-  listLoadError.value = null
   try {
     const page = await indirectFormApi.page({ ...formQuery })
     forms.value = readPageList(page, '间接评价问卷加载失败，请稍后重试')
@@ -612,7 +611,6 @@ async function loadForms() {
       await loadForms()
     }
   } catch (error) {
-    listLoadError.value = toUserError(error, '间接评价问卷加载失败')
     showUserError(error, '间接评价问卷加载失败')
   } finally {
     formsLoading.value = false
@@ -620,7 +618,6 @@ async function loadForms() {
 }
 
 async function handleScopeChange(): Promise<void> {
-  listLoadError.value = null
   await reloadIndirectWorkbench()
 }
 

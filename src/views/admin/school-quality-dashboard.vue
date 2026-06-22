@@ -17,7 +17,8 @@
 
 <script lang="ts" setup>
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import ExperienceEffectivenessCard from './school-quality/ExperienceEffectivenessCard.vue'
 import SchoolQualityCard from './school-quality/SchoolQualityCard.vue'
 

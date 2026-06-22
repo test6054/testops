@@ -8,20 +8,18 @@ import AuditRectificationTab from '@/components/quality/improvement/AuditRectifi
 import AuditSupervisionTab from '@/components/quality/improvement/AuditSupervisionTab.vue'
 import ImprovementTaskTab from '@/components/quality/improvement/ImprovementTaskTab.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
-import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
-import { useImprovementWorkbenchSignalSources } from '@/composables/quality/useImprovementWorkbenchSignalSources'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useImprovementWorkbenchSignals } from '@/composables/quality/useImprovementWorkbenchSignals'
+import { useImprovementWorkbenchSignalSources } from '@/composables/quality/useImprovementWorkbenchSignalSources'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
-import { useQualityStore } from '@/stores/modules/quality'
-import { toUserError } from '@/utils/error-handler'
 import {
-  assertQualityScopeFresh,
   isQualityScopeStaleError,
 } from '@/composables/useScopeRequestGuard'
+import { useQualityStore } from '@/stores/modules/quality'
+import { showUserError, toUserError } from '@/utils/error-handler'
 
 const qualityStore = useQualityStore()
-const workbenchLoadError = ref<Error | null>(null)
 const activeTab = ref<'improvement' | 'issue' | 'rectification' | 'supervision'>('improvement')
 const skipFirstActivatedLoad = ref(true)
 let scopeChangeSerial = 0
@@ -43,14 +41,10 @@ const {
   loadSignalSources,
 } = useImprovementWorkbenchSignalSources()
 
-function clearWorkbenchLoadError(): void {
-  workbenchLoadError.value = null
-}
-
-/** Tab 加载失败上报；忽略 onLoadError(null)，避免并行 load 冲掉其它 Tab 错误 */
+/** Tab 加载失败时仅 toast 提示；忽略 onLoadError(null)，避免并行 load 互相覆盖。 */
 function handleTabLoadError(error: Error | null): void {
   if (error !== null) {
-    workbenchLoadError.value = error
+    showUserError(error, error.message || '数据加载失败')
   }
 }
 
@@ -89,7 +83,6 @@ async function loadTabLists(): Promise<void> {
 
 async function handleScopeChange(): Promise<void> {
   const serial = ++scopeChangeSerial
-  clearWorkbenchLoadError()
   try {
     await loadTabLists()
     if (serial !== scopeChangeSerial) {
@@ -109,9 +102,7 @@ async function handleScopeChange(): Promise<void> {
     if (isQualityScopeStaleError(error)) {
       return
     }
-    if (!workbenchLoadError.value) {
-      handleTabLoadError(resolveWorkbenchLoadError(error, '工作台数据加载失败'))
-    }
+    handleTabLoadError(resolveWorkbenchLoadError(error, '工作台数据加载失败'))
   }
 }
 
@@ -161,14 +152,9 @@ onActivated(async () => {
       <QualityPageContextBar />
     </template>
 
-    <UiErrorRetryPanel
-      v-if="workbenchLoadError"
-      :error="workbenchLoadError"
-      class="iwb__error"
-      @retry="handleScopeChange"
-    />
 
-    <SignalBand v-else :metrics="signals" compact class="iwb__signals" />
+
+    <SignalBand :metrics="signals" compact class="iwb__signals" />
 
     <a-tabs v-model:active-key="activeTab" class="iwb__tabs">
       <a-tab-pane key="improvement" tab="改进任务" force-render>

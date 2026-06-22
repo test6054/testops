@@ -39,13 +39,10 @@
       </ContextBar>
     </template>
 
-    <UiErrorRetryPanel
-      v-if="!loading && sessionsLoadError"
-      :error="sessionsLoadError"
-      @retry="reloadAll"
-    />
+    <a-skeleton v-if="loading" active :paragraph="{ rows: 4 }" />
+
     <UiEmpty
-      v-else-if="!organization && !loading"
+      v-else-if="!organization"
       description="暂无数据"
       class="org-sessions__empty"
     />
@@ -113,10 +110,11 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import FormalSessionPanel from './components/FormalSessionPanel.vue'
 import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
@@ -135,8 +133,6 @@ const examDetail = ref<ExamDetailVO | null>(null)
 const trialSessions = ref<TrialSessionVO[]>([])
 const formalSessions = ref<FormalSessionVO[]>([])
 const loading = ref(false)
-// D-9 错误态：任一加载失败时 UiErrorRetryPanel 重试 + 上报
-const sessionsLoadError = ref<Error | null>(null)
 const filterGroupId = ref<string | undefined>(undefined)
 
 const groupOptions = computed(() =>
@@ -184,7 +180,6 @@ async function loadOrganization(): Promise<void> {
     examDetail.value = await getExamDetail(nextOrganization.examId)
   } catch (error) {
     resetSessionState()
-    sessionsLoadError.value = toUserError(error, '阅卷组织加载失败')
     showUserError(error, '阅卷组织加载失败')
   }
 }
@@ -192,7 +187,6 @@ async function loadOrganization(): Promise<void> {
 async function loadTrialSessions(): Promise<void> {
   if (!organizationId.value) return
   try {
-    sessionsLoadError.value = null
     const records = await listTrialSessions({
       organizationId: organizationId.value,
       groupId: filterGroupId.value,
@@ -201,7 +195,6 @@ async function loadTrialSessions(): Promise<void> {
     trialSessions.value = records
   } catch (error) {
     trialSessions.value = []
-    sessionsLoadError.value = toUserError(error, '试评会话列表加载失败')
     showUserError(error, '试评会话列表加载失败')
   }
 }
@@ -209,7 +202,6 @@ async function loadTrialSessions(): Promise<void> {
 async function loadFormalSessions(): Promise<void> {
   if (!organizationId.value) return
   try {
-    sessionsLoadError.value = null
     const records = await listFormalSessions({
       organizationId: organizationId.value,
       groupId: filterGroupId.value,
@@ -218,7 +210,6 @@ async function loadFormalSessions(): Promise<void> {
     formalSessions.value = records
   } catch (error) {
     formalSessions.value = []
-    sessionsLoadError.value = toUserError(error, '正评会话列表加载失败')
     showUserError(error, '正评会话列表加载失败')
   }
 }
@@ -229,8 +220,6 @@ async function reloadAll(): Promise<void> {
     return
   }
   loading.value = true
-  // D-9：重试前清空错误态，让 UiErrorRetryPanel 在新失败时重新渲染
-  sessionsLoadError.value = null
   try {
     await Promise.all([loadOrganization(), loadTrialSessions(), loadFormalSessions()])
   } finally {

@@ -62,24 +62,21 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import {
-  AuditTimelineDrawer,
-  SignalBand,
-  StageRail,
-  StageWorkbenchShell,
-  TaskResultPanel,
-} from '@/components/workbench'
+import AuditTimelineDrawer from '@/components/workbench/AuditTimelineDrawer.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageRail from '@/components/workbench/StageRail.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePolling } from '@/composables/usePolling'
-import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
-import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const qualityStore = useQualityStore()
-const listLoadError = ref<Error | null>(null)
 
 const batches = ref<ScoreBatchVO[]>([])
 const total = ref(0)
@@ -363,7 +360,6 @@ async function loadBatches() {
   }
   const scope = beginQualityScopeRequest()
   loading.value = true
-  listLoadError.value = null
   try {
     const page = await scoreBatchApi.page({
       ...query,
@@ -391,7 +387,6 @@ async function loadBatches() {
     if (scope.isStale()) {
       return
     }
-    listLoadError.value = toUserError(error, '成绩批次加载失败')
     showUserError(error, '成绩批次加载失败')
   } finally {
     if (!scope.isStale()) {
@@ -440,7 +435,6 @@ async function loadBatchesQuietly(): Promise<void> {
 }
 
 async function handleScopeChange(): Promise<void> {
-  listLoadError.value = null
   await loadCourses()
   await loadBatches()
 }

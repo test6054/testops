@@ -48,21 +48,8 @@
     </header>
 
     <div v-if="examId && !isImmersiveWorkspace" class="exam-detail-layout__journey">
-      <UiAlertStrip
-        v-if="snapshotError"
-        tone="error"
-        :title="snapshotError"
-        dense
-        class="exam-detail-layout__journey-error"
-      >
-        <template #actions>
-          <UiButton size="sm" variant="outline" :loading="refreshing" @click="handleRefresh">
-            重试
-          </UiButton>
-        </template>
-      </UiAlertStrip>
       <a-skeleton
-        v-else-if="loading && !snapshot"
+        v-if="loading && !snapshot"
         active
         :title="false"
         :paragraph="{ rows: 1, width: '100%' }"
@@ -135,7 +122,14 @@
           </UiEmpty>
 
           <a-spin v-else :spinning="loading && !snapshot">
-            <router-view v-slot="{ Component: ViewComponent, route: childRoute }">
+            <UiEmpty
+              v-if="isImmersiveWorkspace && !isDesktopMarkingViewport"
+              description="批阅与复核需在较宽屏幕操作，请使用桌面端（宽度 ≥ 1024px）"
+              class="exam-detail-layout__empty"
+            >
+              <UiButton variant="primary" @click="exitImmersiveWorkspace">返回任务列表</UiButton>
+            </UiEmpty>
+            <router-view v-else v-slot="{ Component: ViewComponent, route: childRoute }">
               <template v-if="ViewComponent">
                 <keep-alive v-if="shouldCacheWorkspaceRoute(childRoute)">
                   <component
@@ -187,6 +181,7 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
+import { useBreakpoints } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
@@ -194,7 +189,8 @@ import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import { ExamJourneyRail, ExamSubSidebar } from '@/components/workbench'
+import ExamJourneyRail from '@/components/workbench/ExamJourneyRail.vue'
+import ExamSubSidebar from '@/components/workbench/ExamSubSidebar.vue'
 import { useExamJourneySteps } from '@/composables/useExamJourneySteps'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { provideMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
@@ -203,7 +199,7 @@ import {
   findExamWorkspaceMenuItem,
   resolveExamWorkspaceMenuKey,
 } from '@/constants/exam-workspace-menu'
-import { WORKSPACE_STAGE_STATUS_LABEL } from '@/constants/mark-workspace-nav'
+import { shouldShowStageSuggestionBanner, WORKSPACE_STAGE_STATUS_LABEL } from '@/constants/mark-workspace-nav'
 import HeaderRightBar from '@/layout/components/HeaderRightBar/index.vue'
 import { useAppStore } from '@/stores/modules/app'
 import { MARK_STAGE_ORDER } from '@/stores/modules/markStage'
@@ -248,6 +244,10 @@ const menuIconMap: Record<ExamWorkspaceMenuKey, Component> = {
 
 const route = useRoute()
 const router = useRouter()
+const breakpoints = useBreakpoints({
+  desktopMarking: 1024,
+})
+const isDesktopMarkingViewport = breakpoints.greaterOrEqual('desktopMarking')
 const appStore = useAppStore()
 const appTitle = computed(() => appStore.getTitle())
 const sidebarCollapsed = ref(false)
@@ -321,7 +321,7 @@ const examStatusTone = computed(() => {
 const suggestionBanner = computed(() => {
   const suggested = suggestedStageKey.value
   const active = activeStageKey.value
-  if (!suggested || suggested === active) {
+  if (!suggested || !shouldShowStageSuggestionBanner(active, suggested)) {
     return ''
   }
   const stage = orderedStages.value.find((item) => item.key === suggested)
@@ -396,6 +396,25 @@ function goSuggestedStage(): void {
     return
   }
   navigateToMarkStage(router, suggested, examId.value, {
+    scanAttentionCount: snapshot.value?.markingProgress?.scanAttentionCount,
+  })
+}
+
+function exitImmersiveWorkspace(): void {
+  if (!examId.value) {
+    goExamList()
+    return
+  }
+  const menuKey = resolveExamWorkspaceMenuKey(route.name ? String(route.name) : undefined)
+  const item = findExamWorkspaceMenuItem(menuKey)
+  if (item) {
+    void router.push({
+      name: item.routeName,
+      params: { examId: examId.value },
+    })
+    return
+  }
+  navigateToJourneyStep(router, 'mark', examId.value, {
     scanAttentionCount: snapshot.value?.markingProgress?.scanAttentionCount,
   })
 }
@@ -558,10 +577,6 @@ watch(isImmersiveWorkspace, (immersive) => {
 
   &__journey {
     flex-shrink: 0;
-  }
-
-  &__journey-error {
-    margin: 12px 16px 0;
   }
 
   &__journey-skeleton {

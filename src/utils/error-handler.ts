@@ -236,18 +236,10 @@ export function toUserError(error: unknown, fallback = '操作失败，请稍后
 }
 
 /**
- * 加载失败时收敛为页面 error ref 可绑定的 Error，不弹出 toast。
+ * 列表/页面加载失败：仅右上角 message 提示，不在主内容区渲染错误块。
  */
-export function captureLoadFailure(error: unknown, fallback: string): Error {
-  return toUserError(error, fallback)
-}
-
-/**
- * 加载失败时弹出用户可见提示，并返回可绑定 error ref 的 Error。
- */
-export function reportLoadFailure(error: unknown, fallback: string): Error {
+export function notifyLoadFailure(error: unknown, fallback: string): void {
   showUserError(error, fallback)
-  return captureLoadFailure(error, fallback)
 }
 
 /**

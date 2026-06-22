@@ -8,8 +8,7 @@ import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
-import { toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'MarkingScanMaterialPanel' })
@@ -28,7 +27,6 @@ const sliceImageUrl = ref('')
 const sourceImageUrl = ref('')
 const masterImageUrl = ref('')
 const loading = ref(false)
-const loadError = ref<Error | null>(null)
 
 const hasSlice = computed(() => Boolean(props.sliceFileId))
 const hasSource = computed(() => Boolean(props.sourceScanPage?.fileId))
@@ -98,7 +96,6 @@ function releaseImages(): void {
 
 async function loadImages(): Promise<void> {
   releaseImages()
-  loadError.value = null
   if (!hasSlice.value && !hasSource.value && !hasMaster.value) {
     return
   }
@@ -136,7 +133,7 @@ async function loadImages(): Promise<void> {
       activeTab.value = 'source'
     }
   } catch (error) {
-    loadError.value = toUserError(error, '阅卷影像加载失败')
+    showUserError(error, '阅卷影像加载失败')
   } finally {
     loading.value = false
   }
@@ -180,12 +177,7 @@ onBeforeUnmount(releaseImages)
         dense
         class="marking-scan-material__alert"
       />
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        title="阅卷影像加载失败"
-        @retry="loadImages"
-      />
+
       <a-spin v-else :spinning="loading" tip="加载影像中...">
         <div v-if="activeTab === 'slice'" class="marking-scan-material__viewer">
           <ScanImageStage
@@ -193,7 +185,7 @@ onBeforeUnmount(releaseImages)
             :src="sliceImageUrl"
             empty-text="切片图片加载失败"
           />
-          <UiEmpty v-else-if="!loading" description="切片图片加载失败" />
+          <UiEmpty v-else-if="!loading" description="暂无数据" />
         </div>
         <div v-else-if="activeTab === 'source'" class="marking-scan-material__viewer">
           <div v-if="sourceScanPage" class="marking-scan-material__source-meta">
@@ -205,7 +197,7 @@ onBeforeUnmount(releaseImages)
             :src="sourceImageUrl"
             empty-text="原始扫描页加载失败"
           />
-          <UiEmpty v-else-if="!loading" description="原始扫描页加载失败" />
+          <UiEmpty v-else-if="!loading" description="暂无数据" />
         </div>
         <div v-else-if="activeTab === 'master'" class="marking-scan-material__viewer">
           <!-- 试卷母版对照（ANSWER_SHEET 模式自动展示，含ROI题目区域高亮） -->
@@ -219,7 +211,7 @@ onBeforeUnmount(releaseImages)
             :roi="masterRoiStyle"
             empty-text="母版页加载失败"
           />
-          <UiEmpty v-else-if="!loading" description="母版页加载失败" />
+          <UiEmpty v-else-if="!loading" description="暂无数据" />
         </div>
       </a-spin>
     </template>

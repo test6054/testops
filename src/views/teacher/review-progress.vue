@@ -15,14 +15,10 @@
       </UiButton>
     </div>
 
-    <UiErrorRetryPanel
-      v-if="progressLoadError"
-      :error="progressLoadError"
-      @retry="loadAll"
-    />
+    <a-skeleton v-if="loading" active :paragraph="{ rows: 4 }" />
 
     <UiEmpty
-      v-else-if="!loading && !progress"
+      v-else-if="!progress"
       description="暂无数据"
       class="progress-page__empty"
     />
@@ -219,12 +215,11 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { captureLoadFailure, showUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
 import {
   buildCategoryBarChartOption,
@@ -250,7 +245,6 @@ const primaryColor = toneToColor('blue')
 
 const progress = ref<MarkingProgressVO | null>(null)
 const loading = ref(false)
-const progressLoadError = ref<Error | null>(null)
 
 const confirmedPercent = computed(() => {
   if (!progress.value) return 0
@@ -441,11 +435,9 @@ const questionColumns: ColumnType<ReviewQuestionProgressItemVO>[] = [
 async function loadAll(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
-  progressLoadError.value = null
   try {
     progress.value = await getMarkingProgress(selectedExamId.value)
   } catch (error) {
-    progressLoadError.value = captureLoadFailure(error, '复核进度加载失败')
     showUserError(error, '复核进度加载失败')
   } finally {
     loading.value = false

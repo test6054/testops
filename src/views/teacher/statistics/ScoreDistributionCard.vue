@@ -19,13 +19,10 @@
       </a-space>
     </template>
 
-    <UiErrorRetryPanel
-      v-if="loadError"
-      :error="loadError"
-      @retry="reload"
-    />
+    <a-skeleton v-if="loading" active :paragraph="{ rows: 3 }" />
+
     <UiEmpty
-      v-else-if="!loading && !distribution"
+      v-else-if="!distribution"
       description="暂无数据"
     />
     <div v-else-if="distribution" class="score-dist">
@@ -62,10 +59,9 @@ import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import { scoreHistogramToBarItems } from '@/utils/mark-statistics-chart'
 
@@ -83,7 +79,6 @@ const emit = defineEmits<{ (e: 'class-change', classId?: string): void }>()
 
 const distribution = ref<ExamScoreDistributionVO | null>(null)
 const loading = ref(false)
-const loadError = ref<Error | null>(null)
 
 const histogramBarItems = computed(() => {
   if (!distribution.value) return []
@@ -143,7 +138,6 @@ const distributionMetrics = computed((): UiStatPanelItem[] => {
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
-  loadError.value = null
   try {
     distribution.value = await getExamScoreDistribution({
       examId: props.examId,
@@ -151,7 +145,6 @@ async function reload(): Promise<void> {
     })
   } catch (e) {
     distribution.value = null
-    loadError.value = toUserError(e, '分数分布加载失败')
     showUserError(e, '分数分布加载失败')
   } finally {
     loading.value = false

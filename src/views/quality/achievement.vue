@@ -66,16 +66,14 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import {
-  AuditTimelineDrawer,
-  SignalBand,
-  StageRail,
-  StageWorkbenchShell,
-  TaskResultPanel,
-} from '@/components/workbench'
+import AuditTimelineDrawer from '@/components/workbench/AuditTimelineDrawer.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageRail from '@/components/workbench/StageRail.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 import { promptModal } from './_helpers'
@@ -127,7 +125,6 @@ function resultValidityColor(record: AchievementResultVO): BadgeTone {
 const router = useRouter()
 const route = useRoute()
 const qualityStore = useQualityStore()
-const listLoadError = ref<Error | null>(null)
 
 const list = ref<AchievementResultVO[]>([])
 const total = ref(0)
@@ -288,7 +285,6 @@ const programRequired = computed(
 async function loadList() {
   if (!qualityStore.currentTrainingPlanId) return
   loading.value = true
-  listLoadError.value = null
   try {
     const page = await achievementResultApi.page({
       ...query,
@@ -310,7 +306,6 @@ async function loadList() {
       await loadList()
     }
   } catch (error) {
-    listLoadError.value = toUserError(error, '达成度结果加载失败')
     showUserError(error, '达成度结果加载失败')
   } finally {
     loading.value = false
@@ -318,7 +313,6 @@ async function loadList() {
 }
 
 async function handleScopeChange(): Promise<void> {
-  listLoadError.value = null
   await loadList()
 }
 

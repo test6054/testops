@@ -58,7 +58,8 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
@@ -141,7 +142,6 @@ function isRecordStudentContractValid(items: ProcessEvaluationRecordVO[]): boole
 
 const nodes = ref<ProcessEvaluationNodeVO[]>([])
 const nodesLoading = ref(false)
-const nodesLoadError = ref<Error | null>(null)
 const selectedNode = ref<ProcessEvaluationNodeVO | null>(null)
 
 const nodeTypeOptions = PROCESS_NODE_TYPE_OPTIONS
@@ -152,12 +152,10 @@ async function loadNodes() {
     return
   }
   nodesLoading.value = true
-  nodesLoadError.value = null
   try {
     nodes.value = await processNodeApi.listByCourse(qualityStore.currentQualityCourseId)
   } catch (error) {
     nodes.value = []
-    nodesLoadError.value = toUserError(error, '过程性评价节点加载失败')
     showUserError(error, '过程性评价节点加载失败')
   } finally {
     nodesLoading.value = false

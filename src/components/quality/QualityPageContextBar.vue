@@ -3,7 +3,7 @@
  * 质量评价页 ContextBar：Layout 已注入范围选择器时仅展示标题与操作区。
  */
 import { computed, useSlots } from 'vue'
-import { ContextBar } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
 import { useQualityPageScope } from '@/composables/useQualityPageScope'
 
 defineOptions({ name: 'QualityPageContextBar' })

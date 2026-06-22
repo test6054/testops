@@ -80,7 +80,7 @@ import {
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
 import { getSemesterDescription, SemesterOptions } from '@/types/enums'
-import { getUserErrorMessage, toUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import {
   clearKioskAuthSession,
@@ -200,9 +200,7 @@ export function useKioskWorkflow() {
   // 考试选择下拉的本地状态：分页 / 关键字 / 学年 / 学期 / 班级 过滤。
   const examOptions = ref<ExamScannerKioskExamOptionVO[]>([])
   const examOptionTotal = ref(0)
-  const examOptionLoading = ref(false)
-  const examOptionLoadError = ref<Error | null>(null)
-  const examOptionFilter = reactive<{
+  const examOptionLoading = ref(false)  const examOptionFilter = reactive<{
     keyword: string
     academicYear: string
     semester?: '1' | '2'
@@ -1106,9 +1104,7 @@ export function useKioskWorkflow() {
       examOptionTotal.value = 0
       return
     }
-    examOptionLoading.value = true
-    examOptionLoadError.value = null
-    try {
+    examOptionLoading.value = true    try {
       const request: ExamScannerKioskExamOptionRequest = {
         pageNum: examOptionFilter.pageNum,
         pageSize: examOptionFilter.pageSize,
@@ -1125,7 +1121,7 @@ export function useKioskWorkflow() {
       examOptionFilter.pageSize = result.pageSize
       examOptionTotal.value = readPageTotal(result)
     } catch (error) {
-      examOptionLoadError.value = toUserError(error, '考试列表加载失败')
+      showUserError(error, '考试列表加载失败')
       examOptions.value = []
       examOptionTotal.value = 0
     } finally {
@@ -2244,9 +2240,7 @@ export function useKioskWorkflow() {
     examId,
     examOptions,
     examOptionTotal,
-    examOptionLoading,
-    examOptionLoadError,
-    examOptionFilter,
+    examOptionLoading,    examOptionFilter,
 
     // ---- 历史批次浏览（HistoryStage） ----
     batchHistoryList,

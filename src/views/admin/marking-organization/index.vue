@@ -48,17 +48,12 @@
       </ContextBar>
     </template>
 
-    <!-- D-9 错误态：阅卷组织加载遇到非“未创建”错误时提供重试 + 上报入口 -->
     <UiEmpty
       v-if="!selectedExamId"
       description="请选择考试"
       class="org-index__empty"
     />
-    <UiErrorRetryPanel
-      v-else-if="organizationLoadError"
-      :error="organizationLoadError"
-      @retry="loadOrganization"
-    />
+
 
     <a-spin v-else :spinning="loading" tip="加载组织中...">
       <UiAlertStrip
@@ -293,12 +288,13 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
-import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -341,8 +337,7 @@ function guardExamOwnerAction(): boolean {
 
 const organization = ref<MarkingOrganizationVO | null>(null)
 const loading = ref(false)
-// D-9 错误态：仅当后端返回非“未创建组织”业务码时才上报
-const organizationLoadError = ref<Error | null>(null)
+// 加载失败：toast 提示，主区保持空态/列表壳
 
 const organizationExamLabel = computed(() => {
   if (organization.value?.examName) {
@@ -359,7 +354,6 @@ async function loadOrganization(): Promise<void> {
     return
   }
   loading.value = true
-  organizationLoadError.value = null
   try {
     const nextOrganization = await getOrganization({ examId: selectedExamId.value })
     validateMarkingOrganizationContract(nextOrganization)
@@ -367,7 +361,7 @@ async function loadOrganization(): Promise<void> {
   } catch (error) {
     organization.value = null
     if (!(error instanceof Error && isMarkingOrgNotCreatedError(error))) {
-      organizationLoadError.value = toUserError(error, '阅卷组织加载失败')
+    showUserError(error, '阅卷组织加载失败')
     }
   } finally {
     loading.value = false

@@ -13,14 +13,9 @@
       @reset="handleFilterReset"
     />
 
-    <UiErrorRetryPanel
-      v-if="loadError"
-      :error="loadError"
-      @retry="reload"
-    />
+
 
     <UiDataTable
-      v-else
       class="student-detail-table__data-table"
       v-model:current="pagination.current"
       v-model:page-size="pagination.pageSize"
@@ -151,9 +146,8 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -165,7 +159,6 @@ const emit = defineEmits<{ changed: [] }>()
 
 const rows = ref<ExamRejudgePlanVO[]>([])
 const loading = ref(false)
-const loadError = ref<Error | null>(null)
 
 const pagination = reactive({
   current: 1,
@@ -219,7 +212,6 @@ const columns: ColumnType<ExamRejudgePlanVO>[] = [
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
-  loadError.value = null
   try {
     const result = await listRejudgePlans({
       examId: props.examId,
@@ -234,7 +226,6 @@ async function reload(): Promise<void> {
   } catch (e) {
     rows.value = []
     pagination.total = 0
-    loadError.value = toUserError(e, '重判计划加载失败')
     showUserError(e, '重判计划加载失败')
   } finally {
     loading.value = false

@@ -16,12 +16,6 @@
   />
 
   <UiCard v-else class="print-package-page__list-card">
-    <UiErrorRetryPanel
-      v-if="packagesLoadError"
-      :error="packagesLoadError"
-      @retry="loadPackageList"
-    />
-
     <UiDataTable
       v-model:current="pagination.pageNum"
       v-model:page-size="pagination.pageSize"
@@ -176,7 +170,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -189,8 +183,7 @@ const { refreshSnapshot } = useWorkspaceExamId()
 
 const loading = ref(false)
 const packageList = ref<PrintPackageVO[]>([])
-// D-9：印刷包列表加载失败时展示可重试错误面板
-const packagesLoadError = ref<Error | null>(null)
+// 加载失败：toast 提示，主区保持空态/列表壳
 const pagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 
 const packageColumns: ColumnType<PrintPackageVO>[] = [
@@ -206,7 +199,6 @@ const packageColumns: ColumnType<PrintPackageVO>[] = [
 async function loadPackageList() {
   if (!selectedExamId.value) return
   loading.value = true
-  packagesLoadError.value = null
   try {
     const res = await pagePrintPackages({
       examId: selectedExamId.value,
@@ -220,7 +212,6 @@ async function loadPackageList() {
   } catch (e) {
     packageList.value = []
     pagination.total = 0
-    packagesLoadError.value = toUserError(e, '印刷包列表加载失败')
     showUserError(e, '印刷包列表加载失败')
   } finally {
     loading.value = false

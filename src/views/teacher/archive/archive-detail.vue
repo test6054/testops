@@ -220,14 +220,10 @@
     </UiCard>
   </StageWorkbenchShell>
 
-  <UiErrorRetryPanel
-    v-else-if="detailLoadError"
-    :error="detailLoadError"
-    @retry="loadDetail"
-  />
+  <a-skeleton v-if="loading" active :paragraph="{ rows: 6 }" />
 
   <UiEmpty
-    v-else-if="!loading && !archive"
+    v-else-if="!archive"
     description="暂无数据"
   />
 
@@ -360,11 +356,12 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
-import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -402,7 +399,6 @@ const archiveDownloading = ref(false)
 const items = ref<ArchiveItemVO[]>([])
 const events = ref<ArchiveEventVO[]>([])
 const loading = ref(false)
-const detailLoadError = ref<Error | null>(null)
 const actionLoading = ref(false)
 const activeTab = ref<'items' | 'events'>('items')
 
@@ -529,7 +525,6 @@ async function loadDetail(): Promise<void> {
     return
   }
   loading.value = true
-  detailLoadError.value = null
   try {
     const detail = await getArchiveDetail(archiveId)
     archive.value = detail.archive
@@ -540,7 +535,7 @@ async function loadDetail(): Promise<void> {
     }
     syncPolling()
   } catch (error) {
-    detailLoadError.value = toUserError(error, '考试电子归档包详情加载失败')
+    showUserError(error, '考试电子归档包详情加载失败')
     archive.value = null
     items.value = []
     events.value = []

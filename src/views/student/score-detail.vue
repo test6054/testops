@@ -31,14 +31,10 @@
       </ContextBar>
     </template>
 
-    <UiErrorRetryPanel
-      v-if="detailLoadError"
-      :error="detailLoadError"
-      @retry="loadDetail"
-    />
+    <a-skeleton v-if="loading" active :paragraph="{ rows: 6 }" />
 
     <UiEmpty
-      v-else-if="!loading && !detail"
+      v-else-if="!detail"
       description="暂无数据"
       class="score-detail__empty"
     />
@@ -152,7 +148,7 @@
                     >
                       <template #previewMask>点击放大查看</template>
                     </a-image>
-                    <UiEmpty v-else-if="!sliceLoading" description="切片加载失败" />
+                    <UiEmpty v-else-if="!sliceLoading" description="暂无数据" />
                   </a-spin>
                 </div>
               </section>
@@ -228,7 +224,6 @@
         </template>
         <UiEmpty v-if="!wrongBookLoading && wrongBookRows.length === 0" description="暂无数据" />
         <UiDataTable
-          v-else
           v-model:current="wrongBookPagination.current"
           v-model:page-size="wrongBookPagination.pageSize"
           :columns="wrongBookColumns"
@@ -289,13 +284,8 @@
         </template>
 
         <a-spin :spinning="reportLoading">
-          <UiErrorRetryPanel
-            v-if="reportLoadError"
-            :error="reportLoadError"
-            @retry="loadLearningReport"
-          />
           <UiEmpty
-            v-else-if="!reportLoading && !learningReport"
+            v-if="!reportLoading && !learningReport"
             description="暂无数据"
           />
           <UiAlertStrip
@@ -448,11 +438,11 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { assertUserFacing } from '@/utils/contract-guard'
-import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { buildHeatmapChartOption } from '@/utils/mark-echarts-options'
 import { scoreSheetToHeatmapCells } from '@/utils/mark-statistics-chart'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -463,7 +453,6 @@ defineOptions({ name: 'StudentScoreDetail' })
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
-const detailLoadError = ref<Error | null>(null)
 const detail = ref<StudentScoreDetailVO | null>(null)
 
 const detailQuestions = computed<StudentQuestionScoreVO[]>(() => detail.value?.questions ?? [])
@@ -677,7 +666,6 @@ async function loadDetail() {
     return
   }
   loading.value = true
-  detailLoadError.value = null
   try {
     const loadedDetail = await getMyScoreDetail(examId.value)
     validateScoreDetailContract(loadedDetail)
@@ -687,7 +675,6 @@ async function loadDetail() {
       await loadWrongBook()
     }
   } catch (error) {
-    detailLoadError.value = toUserError(error, '成绩详情加载失败')
     showUserError(error, '成绩详情加载失败')
     detail.value = null
   } finally {
@@ -730,7 +717,6 @@ function goAppealForQuestion(q: StudentQuestionScoreVO): void {
 
 const learningReport = ref<Awaited<ReturnType<typeof getMyAiLearningReport>> | null>(null)
 const reportLoading = ref(false)
-const reportLoadError = ref<Error | null>(null)
 
 const profileDiagnosisItems = computed<StudentAiDiagnosisItemVO[]>(
   () => learningReport.value?.diagnosisItems ?? [],
@@ -745,22 +731,20 @@ const errorClusters = computed<StudentAiErrorClusterVO[]>(
 async function loadLearningReport(): Promise<void> {
   if (!detail.value || detail.value.finalScoreStatus !== 'PUBLISHED') {
     learningReport.value = null
-    reportLoadError.value = null
     return
   }
   if (!detail.value.examId) {
     learningReport.value = null
-    reportLoadError.value = toUserError(null, '成绩信息不完整，暂无法加载学习报告')
+    showUserError(null, '成绩信息不完整，暂无法加载学习报告')
     return
   }
   reportLoading.value = true
-  reportLoadError.value = null
   try {
     const report = await getMyAiLearningReport(detail.value.examId)
     validateLearningReportContract(report)
     learningReport.value = report
   } catch (error) {
-    reportLoadError.value = toUserError(error, 'AI 学习报告加载失败')
+    showUserError(error, 'AI 学习报告加载失败')
     learningReport.value = null
   } finally {
     reportLoading.value = false

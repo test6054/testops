@@ -68,12 +68,7 @@ watch(
     <p v-if="!effectiveBatchId" class="bound-empty">
       当前无活跃扫描批次，绑定结果将在开始扫描后出现
     </p>
-    <UiErrorRetryPanel
-      v-else-if="workflow.boundPapersError.value"
-      :error="workflow.boundPapersError.value"
-      compact
-      @retry="refresh"
-    />
+
     <p v-else-if="workflow.boundPapersLoading.value && workflow.boundPapers.value.length === 0" class="bound-empty">
       加载中…
     </p>

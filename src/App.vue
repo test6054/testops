@@ -2,7 +2,7 @@
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import theme from 'ant-design-vue/es/theme'
 import { onBeforeUnmount, watch } from 'vue'
-import { GlobalConfirmDialog } from '@/components/workbench'
+import GlobalConfirmDialog from '@/components/workbench/GlobalConfirmDialog.vue'
 import { useAppStore, useUserStore } from '@/stores'
 import { useNotificationStore } from '@/stores/modules/notification'
 

@@ -22,11 +22,7 @@
       class="ledger-page__empty"
     />
 
-    <UiErrorRetryPanel
-      v-else-if="ledgerLoadError"
-      :error="ledgerLoadError"
-      @retry="loadAll"
-    />
+
 
     <div v-else class="ledger-page__cards">
       <a-card title="账本概览" :bordered="false" size="small">
@@ -68,10 +64,9 @@ import { executeImageLedgerBalance, getImageLedgerDetail, normalizeImageLedgerDe
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
 import DuplicateResolutionCard from './image-ledger/DuplicateResolutionCard.vue'
 import DuplicateResolveModal from './image-ledger/DuplicateResolveModal.vue'
@@ -96,19 +91,16 @@ const ledger = ref<ImageLedgerDetailVO | null>(null)
 const duplicateCardRef = ref<InstanceType<typeof DuplicateResolutionCard> | null>(null)
 const loadingDetail = ref(false)
 const balancing = ref(false)
-const ledgerLoadError = ref<Error | null>(null)
 const balanceError = ref('')
 
 async function loadDetail(): Promise<void> {
   if (!selectedExamId.value) return
   loadingDetail.value = true
-  ledgerLoadError.value = null
   try {
     ledger.value = normalizeImageLedgerDetail(
       await getImageLedgerDetail({ examId: selectedExamId.value }),
     )
   } catch (e) {
-    ledgerLoadError.value = toUserError(e, '影像账本加载失败')
     showUserError(e, '影像账本加载失败')
   } finally {
     loadingDetail.value = false

@@ -61,7 +61,6 @@
       </div>
 
       <UiEmpty
-        v-else
         size="sm"
         title="暂无配额数据"
         :description="props.emptyText"

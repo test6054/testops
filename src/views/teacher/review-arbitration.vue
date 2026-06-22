@@ -23,13 +23,8 @@
           {{ reviewTasks.length }}
         </UiBadge>
       </template>
-      <UiErrorRetryPanel
-        v-if="tasksLoadError"
-        :error="tasksLoadError"
-        @retry="loadTasks"
-      />
+
       <UiDataTable
-        v-else
         pagination-mode="client"
         :columns="reviewColumns"
         :data-source="reviewTasks"
@@ -39,6 +34,8 @@
         row-key="reviewTaskId"
         size="middle"
         flat
+        empty-kind="first-run"
+        empty-description="无需仲裁的试卷，评分一致性良好"
         class="arbitration-table student-detail-table__data-table"
       >
         <template #bodyCell="{ column, index }">
@@ -105,13 +102,8 @@
           {{ arbitrationTasks.length }}
         </UiBadge>
       </template>
-      <UiErrorRetryPanel
-        v-if="markingTasksLoadError"
-        :error="markingTasksLoadError"
-        @retry="loadTasks"
-      />
+
       <UiDataTable
-        v-else
         pagination-mode="client"
         :columns="markingColumns"
         :data-source="arbitrationTasks"
@@ -199,7 +191,7 @@ import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -218,8 +210,6 @@ const currentUserId = computed(() => userStore.userInfo.userId || '')
 
 const markTaskStore = useMarkTaskStore()
 const { reviewTasks, reviewTasksLoading: loading } = storeToRefs(markTaskStore)
-const tasksLoadError = ref<Error | null>(null)
-const markingTasksLoadError = ref<Error | null>(null)
 const arbitrationTasks = ref<MarkingTaskVO[]>([])
 
 const pendingTotal = computed(() => reviewTasks.value.length + arbitrationTasks.value.length)
@@ -271,7 +261,6 @@ async function loadArbitrationMarkingTasks(): Promise<void> {
     arbitrationTasks.value = []
     return
   }
-  markingTasksLoadError.value = null
   const examId = selectedExamId.value
   const tasks = await readAllPages(
     (pageNum) => pageMarkingTasks({
@@ -290,22 +279,18 @@ async function loadArbitrationMarkingTasks(): Promise<void> {
 
 async function loadTasks(): Promise<void> {
   if (!selectedExamId.value) return
-  tasksLoadError.value = null
-  markingTasksLoadError.value = null
   try {
     await markTaskStore.loadReviewTasks({
       examId: selectedExamId.value,
       status: 'REJECTED',
     })
   } catch (error) {
-    tasksLoadError.value = toUserError(error, '客观题复核仲裁任务加载失败')
     showUserError(error, '客观题复核仲裁任务加载失败')
     return
   }
   try {
     await loadArbitrationMarkingTasks()
   } catch (error) {
-    markingTasksLoadError.value = toUserError(error, '双评仲裁任务加载失败')
     showUserError(error, '双评仲裁任务加载失败')
   }
 }

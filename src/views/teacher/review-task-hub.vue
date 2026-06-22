@@ -24,11 +24,6 @@
 
     <UiEmpty v-if="!examId" description="缺少考试上下文，请从考试列表进入" />
 
-    <UiErrorRetryPanel
-      v-else-if="loadError"
-      :error="loadError"
-      @retry="loadTasks"
-    />
 
     <UiCard v-else>
       <div class="review-task-hub__filters">
@@ -47,7 +42,6 @@
         class="review-task-hub__empty"
       />
       <UiDataTable
-        v-else
         pagination-mode="server"
         row-key="reviewTaskId"
         :columns="columns"
@@ -135,11 +129,11 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -167,7 +161,6 @@ const { examId } = useWorkspaceExamId()
 const { refreshing: workbenchRefreshing } = useMarkWorkbenchContext()
 
 const loading = ref(false)
-const loadError = ref<Error | null>(null)
 const rows = ref<ReviewTaskItemVO[]>([])
 const statusFilter = ref<ReviewTaskStatusCode>('PENDING')
 
@@ -234,7 +227,6 @@ async function loadTasks(): Promise<void> {
     return
   }
   loading.value = true
-  loadError.value = null
   try {
     const result = await listReviewTasks({
       examId: examId.value,
@@ -249,7 +241,6 @@ async function loadTasks(): Promise<void> {
   } catch (error) {
     rows.value = []
     pagination.total = 0
-    loadError.value = toUserError(error, '复核任务列表加载失败')
     showUserError(error, '复核任务列表加载失败')
   } finally {
     loading.value = false

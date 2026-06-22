@@ -37,11 +37,7 @@
         title="AI 班级薄弱题型分析生成中"
         waiting-text="正在等待后端返回该班级的真实薄弱题型分析。"
       />
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        @retry="reload"
-      />
+
       <UiEmpty
         v-else-if="!loading && !generating && !record"
         description="暂无数据"
@@ -142,9 +138,8 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { assertUserFacing } from '@/utils/contract-guard'
-import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
@@ -165,7 +160,6 @@ const emit = defineEmits<{ (e: 'class-change', classId?: string): void }>()
 
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)
-const loadError = ref<Error | null>(null)
 const generating = ref(false)
 const hasQueried = ref(false)
 
@@ -230,14 +224,12 @@ async function reload(): Promise<void> {
   const classId = props.classId
   if (!props.examId || !classId) return
   hasQueried.value = true
-  loadError.value = null
   loading.value = true
   try {
     const latest = await getLatestClassWeaknessAnalysis({ examId: props.examId, classId })
     record.value = acceptClassWeaknessRecord(latest, classId)
   } catch (e) {
     record.value = null
-    loadError.value = toUserError(e, '班级薄弱题型分析加载失败')
     showUserError(e, '班级薄弱题型分析加载失败')
   } finally {
     loading.value = false
@@ -252,14 +244,12 @@ async function handleGenerate(): Promise<void> {
   }
   hasQueried.value = true
   generating.value = true
-  loadError.value = null
   try {
     const generated = await generateClassWeaknessAnalysis({ examId: props.examId, classId })
     record.value = acceptClassWeaknessRecord(generated, classId)
     message.success('已生成最新分析')
   } catch (e) {
     record.value = null
-    loadError.value = toUserError(e, '班级薄弱题型分析生成失败')
     showUserError(e, '班级薄弱题型分析生成失败')
   } finally {
     generating.value = false

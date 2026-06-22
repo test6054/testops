@@ -36,11 +36,7 @@
         title="AI 学生学情分析生成中"
         waiting-text="正在等待后端返回该学生的真实学情画像。"
       />
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        @retry="reload"
-      />
+
       <UiEmpty
         v-else-if="!loading && !generating && !record"
         description="暂无数据"
@@ -182,9 +178,8 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { assertUserFacing } from '@/utils/contract-guard'
-import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
@@ -207,7 +202,6 @@ const emit = defineEmits<{ (e: 'student-change', studentUserId: string): void }>
 
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)
-const loadError = ref<Error | null>(null)
 const generating = ref(false)
 // 选中的学生用户 ID（来自下拉选择器，避免教师手输）
 const selectedStudentUserId = ref<string | undefined>(undefined)
@@ -285,7 +279,6 @@ async function reload(): Promise<void> {
   const studentUserId = selectedStudentUserId.value
   if (!props.examId || !studentUserId) return
   hasQueried.value = true
-  loadError.value = null
   loading.value = true
   try {
     const latest = await getLatestStudentLearningProfile({ examId: props.examId, studentUserId })
@@ -293,7 +286,6 @@ async function reload(): Promise<void> {
     emit('student-change', studentUserId)
   } catch (e) {
     record.value = null
-    loadError.value = toUserError(e, '学生学情分析加载失败')
     showUserError(e, '学生学情分析加载失败')
   } finally {
     loading.value = false
@@ -308,7 +300,6 @@ async function handleGenerate(): Promise<void> {
   }
   hasQueried.value = true
   generating.value = true
-  loadError.value = null
   try {
     const generated = await generateStudentLearningProfile({ examId: props.examId, studentUserId })
     record.value = acceptStudentLearningProfileRecord(generated, studentUserId)
@@ -316,7 +307,6 @@ async function handleGenerate(): Promise<void> {
     emit('student-change', studentUserId)
   } catch (e) {
     record.value = null
-    loadError.value = toUserError(e, '学生学情分析生成失败')
     showUserError(e, '学生学情分析生成失败')
   } finally {
     generating.value = false

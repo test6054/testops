@@ -34,11 +34,7 @@
       </UiButton>
     </div>
 
-    <UiErrorRetryPanel
-      v-if="rosterLoadError && currentExamId"
-      :error="rosterLoadError"
-      @retry="() => loadRoster(currentExamId)"
-    />
+
 
     <div v-if="currentExamId" class="stats-page__export-bar">
       <span class="stats-page__export-label">考后讲评</span>
@@ -157,9 +153,7 @@ const currentExamId = computed(() => selectedExamId.value || '')
 const {
   classOptions,
   studentOptions,
-  loading: rosterLoading,
-  loadError: rosterLoadError,
-  load: loadRoster,
+  loading: rosterLoading, load: loadRoster,
   reset: resetRoster,
 } = useMarkExamRoster()
 
@@ -205,9 +199,9 @@ const activeStudentText = computed(() => {
 function handleClassChange(value?: SelectValue): void {
   activeClassId.value = typeof value === 'string' ? value : ''
   if (
-    activeStudentUserId.value
-    && activeClassId.value
-    && !studentOptions.value.some(
+  activeStudentUserId.value
+  && activeClassId.value
+  && !studentOptions.value.some(
       (opt) => opt.value === activeStudentUserId.value && opt.classId === activeClassId.value,
     )
   ) {

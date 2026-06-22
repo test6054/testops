@@ -33,13 +33,9 @@
       </ContextBar>
     </template>
 
-    <a-spin v-if="loading && !overview && !overviewLoadError" :spinning="true" class="admin-dashboard__loading" />
+    <a-spin v-if="loading && !overview" :spinning="true" class="admin-dashboard__loading" />
 
-    <UiErrorRetryPanel
-      v-else-if="overviewLoadError"
-      :error="overviewLoadError"
-      @retry="loadOverview"
-    />
+
 
     <!-- 考试规模 + 批改进度 + 异常告警 -->
     <a-row v-else-if="gradingMetrics && incidentMetrics" :gutter="16">
@@ -243,11 +239,11 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import { examScaleMetricsToBarItems, gradingMetricsToBarItems } from '@/utils/mark-statistics-chart'
@@ -257,8 +253,6 @@ defineOptions({ name: 'AdminDashboard' })
 
 const router = useRouter()
 const loading = ref(false)
-// D-9 错误态：阅卷概览加载失败时 UiErrorRetryPanel 重试 + 上报
-const overviewLoadError = ref<Error | null>(null)
 const recentLimit = ref(5)
 const overview = ref<MarkDashboardOverviewVO | null>(null)
 
@@ -267,7 +261,7 @@ const overview = ref<MarkDashboardOverviewVO | null>(null)
  *
  * 字段完整性由 API 层 validateDashboardOverview 在 loadDashboardOverview 内强校验，
  * 缺失会直接抛 TypeError 并落到 overviewLoadError；
- * 模板已通过 `v-if="overview && !overviewLoadError"` 守护渲染，因此 computed
+ * 模板已通过 `v-if="overview"` 守护渲染，因此 computed
  * 只在 overview 为空时返回 null（未加载态），不再承担"验证响应完整性"职责。
  *
  * Vue 文档明确要求 computed 是纯函数，禁止抛错。
@@ -431,11 +425,9 @@ function incidentTypeLabel(type: IncidentTypeCode): string {
 
 async function loadOverview() {
   loading.value = true
-  overviewLoadError.value = null
   try {
     overview.value = await loadDashboardOverview(recentLimit.value)
   } catch (error) {
-    overviewLoadError.value = toUserError(error, '阅卷运营概览加载失败')
     showUserError(error, '阅卷运营概览加载失败')
   } finally {
     loading.value = false

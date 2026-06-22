@@ -7,12 +7,6 @@
     />
 
     <template v-else>
-      <UiErrorRetryPanel
-        v-if="progressLoadError"
-        :error="progressLoadError"
-        @retry="loadProgress"
-      />
-
       <!-- 扫描进度概览 KPI + 卷面绑定率环 -->
       <div v-if="progress" class="scan-batch-page__progress-row">
         <UiStatPanel
@@ -44,284 +38,284 @@
         </UiCard>
       </div>
 
-      <ScanManualSupplementPanel
-        :exam-id="selectedExamId"
-        :devices="devices"
-        :devices-loading="devicesLoading"
-        @success="onManualSupplementSuccess"
-      />
-
-      <div class="scan-batch-page__monitor-grid">
-        <UiCard class="scan-batch-page__device-card">
-          <template #title>
-            <DesktopOutlined />
-            <span>当前连接扫描仪</span>
-            <span class="scan-batch-page__panel-meta">{{ onlineDeviceCount }} / {{ devices.length }} 在线</span>
-          </template>
-          <UiErrorRetryPanel
-            v-if="devicesLoadError"
-            :error="devicesLoadError"
-            @retry="loadDevices"
-          />
-          <UiDataTable
-            pagination-mode="none"
-            :columns="scannerDeviceColumns"
-            :data-source="devices"
-            :loading="devicesLoading"
-            :show-pagination="false"
-            flat
-            :total="devices.length"
-            row-key="id"
-            size="small"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'deviceName'">
-                <div>{{ record.deviceName || record.scannerDeviceId }}</div>
-                <div v-if="record.scannerDeviceId" class="muted">{{ record.scannerDeviceId }}</div>
-              </template>
-              <template v-else-if="column.key === 'status'">
-                <UiTag :tone="deviceOnlineTone(record)" size="sm">
-                  {{ deviceOnlineLabel(record) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'pendingUpload'">
-                <span v-if="record.pendingUploadPageCount">{{ record.pendingUploadPageCount }} 页</span>
-                <span v-else class="muted">—</span>
-              </template>
-              <template v-else-if="column.key === 'diagnostic'">
-                <span v-if="record.diagnosticMessage">{{ record.diagnosticMessage }}</span>
-                <span v-else class="muted">—</span>
-              </template>
-            </template>
-          </UiDataTable>
-        </UiCard>
-
-        <UiCard class="scan-batch-page__events-card">
-          <template #title>
-            <ThunderboltOutlined />
-            <span>最近扫描事件</span>
-            <span class="scan-batch-page__panel-meta">{{ connectionLabel }} · 最新 {{ liveEvents.length }} 条</span>
-          </template>
-          <template #extra>
-            <UiTextAction @click="goScanLiveMonitor">打开实时监控</UiTextAction>
-          </template>
-          <UiErrorRetryPanel
-            v-if="recentEventsLoadError"
-            :error="recentEventsLoadError"
-            @retry="loadRecentEventsSnapshot"
-          />
-          <UiDataTable
-            pagination-mode="none"
-            :columns="liveEventColumns"
-            :data-source="liveEvents"
-            :loading="recentEventsLoading"
-            :show-pagination="false"
-            flat
-            :total="liveEvents.length"
-            row-key="eventId"
-            size="small"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'status'">
-                <UiTag :tone="scanEventStatusTone(record.status)" size="sm">
-                  {{ scanEventStatusLabel(record.status) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'device'">
-                {{ formatDeviceLabel(record.scannerDeviceId) }}
-              </template>
-              <template v-else-if="column.key === 'time'">
-                {{ formatTimeOfDay(record.scanEndTime || record.createTime) }}
-              </template>
-            </template>
-          </UiDataTable>
-        </UiCard>
-      </div>
-
-      <UiCard class="info-card">
-        <template #title>
-          <FileTextOutlined />
-          <span>高级聚合：按扫描仪和时间窗口创建批次</span>
-        </template>
-
-        <a-form ref="formRef" :model="batchForm" :rules="batchFormRules" layout="vertical">
-          <a-row :gutter="16">
-            <a-col :xs="24" :md="12">
-              <a-form-item label="扫描仪（多选，至少 1 台）" name="scannerDeviceIds" required>
-                <a-select
-                  v-model:value="batchForm.scannerDeviceIds"
-                  mode="multiple"
-                  placeholder="选择参与本批次的扫描仪"
-                  :options="deviceSelectOptions"
-                  :loading="devicesLoading"
-                  show-search
-                  option-filter-prop="label"
-                  allow-clear
-                />
-              </a-form-item>
-            </a-col>
-            <a-col :xs="24" :md="12">
-              <a-form-item label="扫描时间窗口（开始 / 结束）" name="scanWindow" required>
-                <a-range-picker
-                  v-model:value="batchForm.scanWindow"
-                  show-time
-                  format="YYYY-MM-DD HH:mm"
-                  value-format="YYYY-MM-DD HH:mm:ss"
-                  style="width: 100%"
-                  :placeholder="['扫描开始时间', '扫描结束时间']"
-                />
-              </a-form-item>
-            </a-col>
-          </a-row>
-          <a-row :gutter="16">
-            <a-col :xs="24">
-              <a-form-item label="操作">
-                <a-space>
-                  <UiButton
-                    size="md"
-                    variant="outline"
-                    :loading="previewLoading"
-                    :disabled="!canPreview"
-                    @click="previewPendingEvents"
-                  >
-                    预览待聚合事件
-                  </UiButton>
-                  <UiButton
-                    size="md"
-                    :loading="creating"
-                    :disabled="!canCreate"
-                    @click="handleCreateBatch"
-                  >
-                    创建扫描批次
-                  </UiButton>
-                </a-space>
-              </a-form-item>
-            </a-col>
-          </a-row>
-        </a-form>
-
-        <!-- 预览结果 -->
-        <a-divider class="divider" />
-        <div v-if="previewLoaded" class="preview-section">
-          <UiStatPanel :items="previewMetrics" :columns="4" variant="strip" compact />
-          <UiDataTable
-            pagination-mode="none"
-            class="student-detail-table__data-table event-table"
-            :columns="deviceBreakdownColumns"
-            :data-source="previewData?.deviceBreakdown ?? []"
-            :show-pagination="false"
-            flat
-            :total="previewData?.deviceBreakdown?.length ?? 0"
-            row-key="scannerDeviceId"
-            size="small"
-          />
-        </div>
-      </UiCard>
-
-      <a-card :bordered="false" class="detail-table-card scan-batch-page__batch-list-card">
-        <template #title>
-          <UnorderedListOutlined />
-          <span>已创建批次</span>
-        </template>
-        <template #extra>
-          <UiButton variant="outline" size="sm" :loading="globalLoading" @click="loadAllForExam">
-            刷新
-          </UiButton>
-        </template>
-
-        <UiErrorRetryPanel
-          v-if="batchesLoadError"
-          :error="batchesLoadError"
-          @retry="() => loadBatches()"
+      <section class="scan-batch-page__section">
+        <h2 class="scan-batch-page__section-title">扫描录入</h2>
+        <ScanManualSupplementPanel
+          :exam-id="selectedExamId"
+          :devices="devices"
+          :devices-loading="devicesLoading"
+          @success="onManualSupplementSuccess"
         />
 
-        <UiDataTable
-          v-model:current="batchQuery.pageNum"
-          v-model:page-size="batchQuery.pageSize"
-          :columns="batchColumns"
-          :data-source="batches"
-          :loading="batchLoading"
-          :total="batchTotal"
-          :scroll="{ x: 1470 }"
-          flat
-          @page-change="onBatchPageChange"
-          row-key="scanBatchId"
-          size="small"
-          class="batch-table student-detail-table__data-table"
-        >
-          <template #bodyCell="{ column, record, text }">
-            <template v-if="column.key === 'batchNo'">
-              <a-typography-text strong :content="record.batchNo" />
+        <div class="scan-batch-page__monitor-grid">
+          <UiCard class="scan-batch-page__device-card">
+            <template #title>
+              <DesktopOutlined />
+              <span>当前连接扫描仪</span>
+              <span class="scan-batch-page__panel-meta">{{ onlineDeviceCount }} / {{ devices.length }} 在线</span>
             </template>
-            <template v-else-if="column.key === 'scannerDevice'">
-              {{ formatDeviceLabel(record.scannerDeviceId) }}
+
+            <UiDataTable
+              pagination-mode="none"
+              :columns="scannerDeviceColumns"
+              :data-source="devices"
+              :loading="devicesLoading"
+              :show-pagination="false"
+              flat
+              :total="devices.length"
+              row-key="id"
+              size="small"
+              empty-kind="first-run"
+              empty-description="尚未绑定扫描仪，请在一台扫描终端登录本考试后再刷新"
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'deviceName'">
+                  <div>{{ record.deviceName || record.scannerDeviceId }}</div>
+                  <div v-if="record.scannerDeviceId" class="muted">{{ record.scannerDeviceId }}</div>
+                </template>
+                <template v-else-if="column.key === 'status'">
+                  <UiTag :tone="deviceOnlineTone(record)" size="sm">
+                    {{ deviceOnlineLabel(record) }}
+                  </UiTag>
+                </template>
+                <template v-else-if="column.key === 'pendingUpload'">
+                  <span v-if="record.pendingUploadPageCount">{{ record.pendingUploadPageCount }} 页</span>
+                  <span v-else class="muted">—</span>
+                </template>
+                <template v-else-if="column.key === 'diagnostic'">
+                  <span v-if="record.diagnosticMessage">{{ record.diagnosticMessage }}</span>
+                  <span v-else class="muted">—</span>
+                </template>
+              </template>
+            </UiDataTable>
+          </UiCard>
+
+          <UiCard class="scan-batch-page__events-card">
+            <template #title>
+              <ThunderboltOutlined />
+              <span>最近扫描事件</span>
+              <span class="scan-batch-page__panel-meta">{{ connectionLabel }} · 最新 {{ liveEvents.length }} 条</span>
             </template>
-            <template v-else-if="column.key === 'status'">
-              <UiTag :tone="batchStatusTone(record)" size="sm">
-                {{ batchStatusLabel(record) }}
-              </UiTag>
+            <template #extra>
+              <UiTextAction @click="goScanLiveMonitor">打开实时监控</UiTextAction>
             </template>
-            <template v-else-if="column.key === 'scanWindow'">
-              <div>{{ formatDateTimeWithSeconds(record.scanStartTime) }}</div>
-              <div class="muted">至 {{ formatDateTimeWithSeconds(record.scanEndTime) }}</div>
-            </template>
-            <template v-else-if="column.key === 'eventCount'">
-              {{ record.eventCount }} 条
-            </template>
-            <template v-else-if="column.key === 'fileCount'">
-              <template v-if="record.sourceFileCount"> {{ record.sourceFileCount }} 份 </template>
-              <template v-else>0 份</template>
-            </template>
-            <template v-else-if="column.key === 'pageProgress'">
-              <span :class="{ warn: (record.pendingUploadCount ?? 0) > 0 }">
-                {{ record.receivedPageCount ?? 0 }} / {{ record.pageCount }}
-              </span>
-            </template>
-            <template v-else-if="column.key === 'attentionCount'">
-              <UiTag v-if="(record.attentionItemCount ?? 0) > 0" tone="orange" size="sm">
-                {{ record.attentionItemCount }} 项
-              </UiTag>
-              <span v-else class="muted">0</span>
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction
-                  :disabled="!record.sourceFileCount"
-                  @click="openBatchSourceFiles(record)"
-                >
-                  查看扫描原件
-                </UiTextAction>
-                <UiTextAction
-                  :disabled="batchSealing === record.scanBatchId || !canSealBatch(record)"
-                  :title="batchSealBlockedReason(record) || '封存批次'"
-                  @click="onSealBatch(record)"
-                >
-                  {{ record.sealedAt ? '已封存' : '封存' }}
-                </UiTextAction>
-                <UiTextAction
-                  tone="danger"
-                  :disabled="
-                    batchDiscarding === record.scanBatchId
-                      || record.status === 'DISCARDED'
-                      || Boolean(record.sealedAt)
-                  "
-                  :title="
-                    record.sealedAt
-                      ? '批次已封存，禁止废弃；请联系扫描终审角色'
-                      : record.status === 'DISCARDED'
-                        ? '批次已废弃'
-                        : '废弃整批'
-                  "
-                  @click="onDiscardBatch(record)"
-                >
-                  {{ record.status === 'DISCARDED' ? '已废弃' : '废弃' }}
-                </UiTextAction>
-              </div>
-            </template>
-            <template v-else>{{ text }}</template>
+
+            <UiDataTable
+              pagination-mode="none"
+              :columns="liveEventColumns"
+              :data-source="liveEvents"
+              :loading="recentEventsLoading"
+              :show-pagination="false"
+              flat
+              :total="liveEvents.length"
+              row-key="eventId"
+              size="small"
+              empty-kind="first-run"
+              empty-description="暂无扫描事件，创建批次或等待扫描仪上报后将在此显示"
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'status'">
+                  <UiTag :tone="scanEventStatusTone(record.status)" size="sm">
+                    {{ scanEventStatusLabel(record.status) }}
+                  </UiTag>
+                </template>
+                <template v-else-if="column.key === 'device'">
+                  {{ formatDeviceLabel(record.scannerDeviceId) }}
+                </template>
+                <template v-else-if="column.key === 'time'">
+                  {{ formatTimeOfDay(record.scanEndTime || record.createTime) }}
+                </template>
+              </template>
+            </UiDataTable>
+          </UiCard>
+        </div>
+      </section>
+
+      <section class="scan-batch-page__section">
+        <h2 class="scan-batch-page__section-title">批次管理</h2>
+        <UiCard class="info-card">
+          <template #title>
+            <FileTextOutlined />
+            <span>高级聚合：按扫描仪和时间窗口创建批次</span>
           </template>
-        </UiDataTable>
-      </a-card>
+
+          <a-form ref="formRef" :model="batchForm" :rules="batchFormRules" layout="vertical">
+            <a-row :gutter="16">
+              <a-col :xs="24" :md="12">
+                <a-form-item label="扫描仪（多选，至少 1 台）" name="scannerDeviceIds" required>
+                  <a-select
+                    v-model:value="batchForm.scannerDeviceIds"
+                    mode="multiple"
+                    placeholder="选择参与本批次的扫描仪"
+                    :options="deviceSelectOptions"
+                    :loading="devicesLoading"
+                    show-search
+                    option-filter-prop="label"
+                    allow-clear
+                  />
+                </a-form-item>
+              </a-col>
+              <a-col :xs="24" :md="12">
+                <a-form-item label="扫描时间窗口（开始 / 结束）" name="scanWindow" required>
+                  <a-range-picker
+                    v-model:value="batchForm.scanWindow"
+                    show-time
+                    format="YYYY-MM-DD HH:mm"
+                    value-format="YYYY-MM-DD HH:mm:ss"
+                    style="width: 100%"
+                    :placeholder="['扫描开始时间', '扫描结束时间']"
+                  />
+                </a-form-item>
+              </a-col>
+            </a-row>
+            <a-row :gutter="16">
+              <a-col :xs="24">
+                <a-form-item label="操作">
+                  <a-space>
+                    <UiButton
+                      size="md"
+                      variant="outline"
+                      :loading="previewLoading"
+                      :disabled="!canPreview"
+                      @click="previewPendingEvents"
+                    >
+                      预览待聚合事件
+                    </UiButton>
+                    <UiButton
+                      size="md"
+                      :loading="creating"
+                      :disabled="!canCreate"
+                      @click="handleCreateBatch"
+                    >
+                      创建扫描批次
+                    </UiButton>
+                  </a-space>
+                </a-form-item>
+              </a-col>
+            </a-row>
+          </a-form>
+
+          <!-- 预览结果 -->
+          <a-divider class="divider" />
+          <div v-if="previewLoaded" class="preview-section">
+            <UiStatPanel :items="previewMetrics" :columns="4" variant="strip" compact />
+            <UiDataTable
+              pagination-mode="none"
+              class="student-detail-table__data-table event-table"
+              :columns="deviceBreakdownColumns"
+              :data-source="previewData?.deviceBreakdown ?? []"
+              :show-pagination="false"
+              flat
+              :total="previewData?.deviceBreakdown?.length ?? 0"
+              row-key="scannerDeviceId"
+              size="small"
+            />
+          </div>
+        </UiCard>
+
+        <a-card :bordered="false" class="detail-table-card scan-batch-page__batch-list-card">
+          <template #title>
+            <UnorderedListOutlined />
+            <span>已创建批次</span>
+          </template>
+          <template #extra>
+            <UiButton variant="outline" size="sm" :loading="globalLoading" @click="loadAllForExam">
+              刷新
+            </UiButton>
+          </template>
+
+
+
+          <UiDataTable
+            v-model:current="batchQuery.pageNum"
+            v-model:page-size="batchQuery.pageSize"
+            :columns="batchColumns"
+            :data-source="batches"
+            :loading="batchLoading"
+            :total="batchTotal"
+            :scroll="{ x: 1470 }"
+            flat
+            empty-kind="first-run"
+            empty-description="尚未创建扫描批次，选择扫描仪与时间窗口后点击「创建扫描批次」"
+            @page-change="onBatchPageChange"
+            row-key="scanBatchId"
+            size="small"
+            class="batch-table student-detail-table__data-table"
+          >
+            <template #bodyCell="{ column, record, text }">
+              <template v-if="column.key === 'batchNo'">
+                <a-typography-text strong :content="record.batchNo" />
+              </template>
+              <template v-else-if="column.key === 'scannerDevice'">
+                {{ formatDeviceLabel(record.scannerDeviceId) }}
+              </template>
+              <template v-else-if="column.key === 'status'">
+                <UiTag :tone="batchStatusTone(record)" size="sm">
+                  {{ batchStatusLabel(record) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'scanWindow'">
+                <div>{{ formatDateTimeWithSeconds(record.scanStartTime) }}</div>
+                <div class="muted">至 {{ formatDateTimeWithSeconds(record.scanEndTime) }}</div>
+              </template>
+              <template v-else-if="column.key === 'eventCount'">
+                {{ record.eventCount }} 条
+              </template>
+              <template v-else-if="column.key === 'fileCount'">
+                <template v-if="record.sourceFileCount"> {{ record.sourceFileCount }} 份 </template>
+                <template v-else>0 份</template>
+              </template>
+              <template v-else-if="column.key === 'pageProgress'">
+                <span :class="{ warn: (record.pendingUploadCount ?? 0) > 0 }">
+                  {{ record.receivedPageCount ?? 0 }} / {{ record.pageCount }}
+                </span>
+              </template>
+              <template v-else-if="column.key === 'attentionCount'">
+                <UiTag v-if="(record.attentionItemCount ?? 0) > 0" tone="orange" size="sm">
+                  {{ record.attentionItemCount }} 项
+                </UiTag>
+                <span v-else class="muted">0</span>
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <div class="operations-cell" @click.stop>
+                  <UiTextAction
+                    :disabled="!record.sourceFileCount"
+                    @click="openBatchSourceFiles(record)"
+                  >
+                    查看扫描原件
+                  </UiTextAction>
+                  <UiTextAction
+                    :disabled="batchSealing === record.scanBatchId || !canSealBatch(record)"
+                    :title="batchSealBlockedReason(record) || '封存批次'"
+                    @click="onSealBatch(record)"
+                  >
+                    {{ record.sealedAt ? '已封存' : '封存' }}
+                  </UiTextAction>
+                  <UiTextAction
+                    tone="danger"
+                    :disabled="
+                      batchDiscarding === record.scanBatchId
+                        || record.status === 'DISCARDED'
+                        || Boolean(record.sealedAt)
+                    "
+                    :title="
+                      record.sealedAt
+                        ? '批次已封存，禁止废弃；请联系扫描终审角色'
+                        : record.status === 'DISCARDED'
+                          ? '批次已废弃'
+                          : '废弃整批'
+                    "
+                    @click="onDiscardBatch(record)"
+                  >
+                    {{ record.status === 'DISCARDED' ? '已废弃' : '废弃' }}
+                  </UiTextAction>
+                </div>
+              </template>
+              <template v-else>{{ text }}</template>
+            </template>
+          </UiDataTable>
+        </a-card>
+      </section>
     </template>
 
     <UiDrawer
@@ -330,7 +324,10 @@
       width="520"
       hide-footer
     >
-      <UiEmpty v-if="!sourceFilesTarget?.sourceFiles?.length" description="暂无数据" />
+      <UiEmpty
+        v-if="!sourceFilesTarget?.sourceFiles?.length"
+        description="该批次暂无扫描原件记录"
+      />
       <a-list v-else size="small" :data-source="sourceFilesTarget.sourceFiles">
         <template #renderItem="{ item }">
           <a-list-item>
@@ -491,7 +488,7 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { formatDateTime, formatDateTimeWithSeconds, formatTimeOfDay } from '@/utils/format'
 import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
@@ -555,16 +552,14 @@ async function onManualSupplementSuccess(): Promise<void> {
 // ─── 概览统计 ─────────────────────────────
 const progress = ref<MarkingProgressVO | null>(null)
 const progressLoading = ref(false)
-// D-9：扫描进度 KPI 加载失败时展示可重试错误面板
-const progressLoadError = ref<Error | null>(null)
+// 加载失败：toast 提示，主区保持空态/列表壳
 const hasOpenTasks = computed(() => {
   const current = progress.value
   return current ? current.openProcessingTaskCount > 0 : false
 })
 const liveEvents = ref<ScanLiveEventVO[]>([])
 const recentEventsLoading = ref(false)
-// D-9：实时扫描事件快照加载失败时展示可重试错误面板
-const recentEventsLoadError = ref<Error | null>(null)
+// 加载失败：toast 提示，主区保持空态/列表壳
 
 const livePendingEventTotal = computed(() =>
   liveEvents.value.filter((event) => event.status === 'PENDING').length,
@@ -605,12 +600,10 @@ const globalLoading = computed(
 async function loadProgress(): Promise<void> {
   if (!selectedExamId.value) return
   progressLoading.value = true
-  progressLoadError.value = null
   try {
     progress.value = await getMarkingProgress(selectedExamId.value)
   } catch (error) {
     progress.value = null
-    progressLoadError.value = toUserError(error, '扫描进度加载失败')
     showUserError(error, '扫描进度加载失败')
   } finally {
     progressLoading.value = false
@@ -714,8 +707,7 @@ const previewMetrics = computed(() => {
 // ─── 扫描设备列表 ─────────────────────────────
 const devices = ref<ExamScannerDeviceVO[]>([])
 const devicesLoading = ref(false)
-// D-9：扫描设备列表加载失败时展示可重试错误面板
-const devicesLoadError = ref<Error | null>(null)
+// 加载失败：toast 提示，主区保持空态/列表壳
 
 const deviceSelectOptions = computed(() =>
   devices.value
@@ -756,13 +748,11 @@ function deviceOnlineLabel(device: ExamScannerDeviceVO): string {
 
 async function loadDevices(): Promise<void> {
   devicesLoading.value = true
-  devicesLoadError.value = null
   try {
     const query: ExamScannerDeviceQueryRequest = {}
     devices.value = await listScannerDevices(query)
   } catch (error) {
     devices.value = []
-    devicesLoadError.value = toUserError(error, '扫描设备列表加载失败')
     showUserError(error, '扫描设备列表加载失败')
   } finally {
     devicesLoading.value = false
@@ -889,8 +879,7 @@ async function handleCreateBatch(): Promise<void> {
 const batches = ref<ExamScannerBatchVO[]>([])
 const batchTotal = ref(0)
 const batchLoading = ref(false)
-// D-9：扫描批次列表加载失败时展示可重试错误面板
-const batchesLoadError = ref<Error | null>(null)
+// 加载失败：toast 提示，主区保持空态/列表壳
 const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
   pageNum: 1,
   pageSize: 10,
@@ -1125,7 +1114,6 @@ async function loadBatches(pageNum?: number): Promise<void> {
   if (!selectedExamId.value) return
   if (pageNum) batchQuery.pageNum = pageNum
   batchLoading.value = true
-  batchesLoadError.value = null
   try {
     const request: ExamScannerBatchQueryRequest = {
       examId: selectedExamId.value,
@@ -1144,7 +1132,6 @@ async function loadBatches(pageNum?: number): Promise<void> {
   } catch (error) {
     batches.value = []
     batchTotal.value = 0
-    batchesLoadError.value = toUserError(error, '扫描批次列表加载失败')
     showUserError(error, '扫描批次列表加载失败')
   } finally {
     batchLoading.value = false
@@ -1163,7 +1150,6 @@ async function loadRecentEventsSnapshot(): Promise<void> {
     return
   }
   recentEventsLoading.value = true
-  recentEventsLoadError.value = null
   try {
     liveEvents.value = await listRecentScanEvents({
       examId: selectedExamId.value,
@@ -1172,7 +1158,6 @@ async function loadRecentEventsSnapshot(): Promise<void> {
   }
   catch (error) {
     liveEvents.value = []
-    recentEventsLoadError.value = toUserError(error, '扫描事件快照加载失败')
     showUserError(error, '扫描事件快照加载失败')
   }
   finally {
@@ -1192,10 +1177,6 @@ watch(selectedExamId, (value) => {
     progress.value = null
     batches.value = []
     batchTotal.value = 0
-    progressLoadError.value = null
-    batchesLoadError.value = null
-    devicesLoadError.value = null
-    recentEventsLoadError.value = null
     batchDiscardError.value = ''
     liveEvents.value = []
   }
@@ -1280,7 +1261,25 @@ onBeforeUnmount(() => {
     display: grid;
     grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.1fr);
     gap: 16px;
-    margin-bottom: 16px;
+  }
+
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: var(--dp-space-6, 24px);
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  &__section-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--dp-text-primary, #0f172a);
   }
 
   &__device-card,
