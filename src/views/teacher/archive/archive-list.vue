@@ -5,20 +5,6 @@
       <UiTag v-if="selectedExamLabel" tone="purple" size="sm">{{ selectedExamLabel }}</UiTag>
     </div>
 
-    <UiAlertStrip
-      v-if="archiveAlert"
-      :tone="archiveAlert.tone"
-      :title="archiveAlert.title"
-      dense
-      class="archive-list-page__alert"
-    >
-      <template #actions>
-        <UiButton size="sm" variant="outline" @click="archiveAlert!.action.handler">
-          {{ archiveAlert.action.label }}
-        </UiButton>
-      </template>
-    </UiAlertStrip>
-
     <a-card :bordered="false" class="detail-table-card archive-list-page__table-card">
       <template #title>
         <FileOutlined />
@@ -32,7 +18,7 @@
       </template>
 
       <UiFilterBar
-        v-model="filterForm"
+        v-model="filterModel"
         :fields="archiveFilterFields"
         search-text="查询"
         @search="handleSearch"
@@ -130,12 +116,6 @@
       @ok="submitCreate"
     >
       <a-form layout="vertical" :model="createForm" class="archive-create-form">
-        <a-alert
-          v-if="!selectedExamId"
-          type="warning"
-          show-icon
-          message="请先选择考试再新建电子归档包"
-        />
         <a-form-item label="当前考试">
           <a-input
             :value="selectedExamLabel"
@@ -205,7 +185,6 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -236,6 +215,13 @@ const filterForm = reactive<{
   archiveStatus?: ArchivePackageStatusCode
 }>({
   archiveStatus: undefined,
+})
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
 })
 
 const createForm = reactive({
@@ -275,43 +261,6 @@ const columns: ColumnsType = [
 ]
 
 const canCreate = computed(() => Boolean(selectedExamId.value))
-
-// ─── B-10 「已发布未归档」提醒 ─────────────────────────
-// 教师从 examId 进入归档列表后，如果尚未创建归档草稿，按档案合规要求需要尽快推进；
-// 如果已有草稿但未入队打包，引导教师一键触发打包。
-interface ArchiveAlert {
-  tone: 'error' | 'warning'
-  title: string
-  action: { label: string, handler: () => void }
-}
-
-const archiveAlert = computed<ArchiveAlert | null>(() => {
-  const examId = selectedExamId.value
-  if (!examId) return null
-  if (loading.value) return null
-  if (archives.value.length === 0) {
-    return {
-      tone: 'error',
-      title: '该考试尚未创建电子归档包',
-      action: { label: '立即创建电子归档包', handler: openCreateModal },
-    }
-  }
-  const pendingArchives = archives.value.filter(
-    (a) => a.archiveStatus === 'DRAFT' || a.archiveStatus === 'PACKAGING_FAILED',
-  )
-  if (pendingArchives.length > 0) {
-    const first = pendingArchives[0]
-    return {
-      tone: 'warning',
-      title: `${pendingArchives.length} 个电子归档包草稿待打包入队`,
-      action: {
-        label: '打包首个电子归档包草稿',
-        handler: () => confirmPackage(first),
-      },
-    }
-  }
-  return null
-})
 
 async function loadArchives(): Promise<void> {
   loading.value = true
@@ -487,10 +436,6 @@ onActivated(() => {
     align-items: center;
     gap: 8px;
   }
-}
-
-.archive-list-page__alert {
-  margin-bottom: 4px;
 }
 
 .archive-list-page__table-card {

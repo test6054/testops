@@ -73,6 +73,13 @@ const mappingVO = ref<AiMaskMappingVO | null>(null)
 
 const filterForm = reactive({ aiTaskId: '' })
 
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
+})
+
 const filterFields: FilterField[] = [
   {
     key: 'aiTaskId',
@@ -198,7 +205,7 @@ onActivated(() => {
       <template #title>脱敏映射审计</template>
 
       <UiFilterBar
-        v-model="filterForm"
+        v-model="filterModel"
         :fields="filterFields"
         show-labels
         search-text="查询"

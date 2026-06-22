@@ -56,7 +56,6 @@ import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/ma
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
 import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
@@ -133,9 +132,6 @@ const stdMappingColumns: ColumnsType = [
 ]
 
 const qualityStore = useQualityStore()
-const route = useRoute()
-
-const planGateVisible = computed(() => route.query.planGate === 'requires-confirmed')
 
 const WEIGHT_EPSILON = 1e-3
 
@@ -1161,14 +1157,6 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 
 <template>
   <StageWorkbenchShell>
-    <a-alert
-      v-if="planGateVisible"
-      type="warning"
-      show-icon
-      banner
-      message="达成度与报告页面要求培养方案已确认。请在本页完成培养方案确认后再进入。"
-      class="tpw__plan-gate"
-    />
     <template #context>
       <QualityPageContextBar>
         <template #status>

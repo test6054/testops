@@ -44,12 +44,8 @@
       <div v-if="archive.packagingUploadId" class="progress-upload-id">
         电子归档包打包任务编号：<span class="archive-inline-value">{{ archive.packagingUploadId }}</span>
       </div>
-      <div v-if="archive.packagingDiagnostic" class="progress-diagnostic">
-        <a-alert
-          type="error"
-          show-icon
-          :message="archivePackagingDiagnosticText(archive.packagingDiagnostic)"
-        />
+      <div v-if="archive.packagingDiagnostic" class="progress-diagnostic archive-detail-page__failed-hint">
+        {{ archivePackagingDiagnosticText(archive.packagingDiagnostic) }}
       </div>
     </UiCard>
 
@@ -281,11 +277,6 @@
           placeholder="请填写销毁理由，便于审批人评估"
         />
       </a-form-item>
-      <a-alert
-        type="warning"
-        show-icon
-        message="申请人无法审批自己提交的销毁申请，请由其他角色审批"
-      />
     </a-form>
   </a-modal>
 

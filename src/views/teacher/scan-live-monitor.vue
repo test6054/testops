@@ -32,20 +32,6 @@
           刷新
         </UiButton>
       </div>
-      <UiAlertStrip
-        v-if="scanLiveConnectionFailed"
-        tone="warning"
-        title="实时扫描连接中断"
-        :description="scanLiveErrorMessage"
-        dense
-        class="scan-monitor__connection-alert"
-      >
-        <template #actions>
-          <UiButton size="sm" variant="outline" @click="retryScanLive">
-            重新连接
-          </UiButton>
-        </template>
-      </UiAlertStrip>
       <div class="scan-monitor__overview">
         <UiStatPanel
           title="扫描监控中控台"
@@ -108,7 +94,7 @@
         </section>
         <section v-else class="scan-monitor__attention-panel">
           <UiFilterBar
-            v-model="filterForm"
+            v-model="filterModel"
             :fields="attentionFilterFields"
             show-labels
             search-text="查询"
@@ -335,22 +321,6 @@
       @confirm="handleBind"
     >
       <a-form ref="bindFormRef" :model="bindForm" :rules="bindFormRules" layout="vertical">
-        <UiAlertStrip
-          v-if="bindSubmitError"
-          tone="error"
-          title="试卷身份绑定失败"
-          :description="bindSubmitError"
-          dense
-          class="scan-monitor__bind-alert"
-        />
-        <UiAlertStrip
-          v-if="bindIdentityEvidenceBlockReason"
-          tone="warning"
-          title="身份核验证据未就绪"
-          :description="bindIdentityEvidenceBlockReason"
-          dense
-          class="scan-monitor__bind-alert"
-        />
         <section class="scan-monitor__identity-evidence">
           <div class="scan-monitor__identity-evidence-header">
             <div>
@@ -465,21 +435,7 @@
       @close="closeBatchBindDrawer"
       @confirm="submitBatchBind"
     >
-      <UiAlertStrip
-        v-if="batchBindError"
-        tone="error"
-        title="批量身份绑定失败"
-        :description="batchBindError"
-        dense
-        class="scan-monitor__bind-alert"
-      />
       <div v-if="batchBindResult" class="scan-monitor__batch-result">
-        <UiAlertStrip
-          :tone="batchBindResult.failureCount > 0 ? 'warning' : 'success'"
-          title="批量绑定结果"
-          :description="`成功 ${batchBindResult.successCount} 条，失败 ${batchBindResult.failureCount} 条`"
-          dense
-        />
         <div v-if="batchBindFailedItems.length > 0" class="scan-monitor__batch-failures">
           <div
             v-for="item in batchBindFailedItems"
@@ -607,13 +563,6 @@
           />
         </a-form-item>
       </a-form>
-      <UiAlertStrip
-        v-if="pageDiscardError"
-        tone="error"
-        title="扫描页废弃失败"
-        :description="pageDiscardError"
-        dense
-      />
     </a-modal>
   </div>
 </template>
@@ -681,7 +630,6 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
@@ -736,6 +684,13 @@ const filterForm = reactive<{
   attentionType: '',
   scanBatchId: '',
   paperInstanceId: '',
+})
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
 })
 
 const activeTab = ref<'normal' | 'abnormal' | 'duplicate'>('normal')
@@ -860,17 +815,10 @@ const connectionLabel = computed(() => {
   return '未连接'
 })
 
-const scanLiveConnectionFailed = computed(() => scanLiveConnectionPhase.value === 'failed')
-const scanLiveErrorMessage = computed(() => scanLiveError.value?.message ?? '请检查网络或稍后重试')
-
 /** SSE 已连接时顶栏状态标签 pulse，提示实时监控活跃 */
 const connectionPulsing = computed(
   () => scanLiveConnectionPhase.value === 'ready' && !!selectedExamId.value,
 )
-
-function retryScanLive(): void {
-  void refreshScanLive()
-}
 
 function jumpToAbnormalTab(): void {
   activeTab.value = 'abnormal'
@@ -1399,7 +1347,6 @@ const pageDiscardModalOpen = ref(false)
 const pageDiscardTarget = ref<ScanAttentionItemVO | null>(null)
 const pageDiscardReason = ref('')
 const pageDiscardReasonError = ref('')
-const pageDiscardError = ref('')
 async function onDiscardPage(record: ScanAttentionItemVO): Promise<void> {
   if (record.sourceType !== 'SCANNED_PAGE' || !record.pageId) {
     message.warning('该异常不是扫描页来源，无法废弃')
@@ -1408,7 +1355,6 @@ async function onDiscardPage(record: ScanAttentionItemVO): Promise<void> {
   pageDiscardTarget.value = record
   pageDiscardReason.value = ''
   pageDiscardReasonError.value = ''
-  pageDiscardError.value = ''
   pageDiscardModalOpen.value = true
 }
 
@@ -1418,7 +1364,6 @@ function closePageDiscardModal(): void {
   pageDiscardTarget.value = null
   pageDiscardReason.value = ''
   pageDiscardReasonError.value = ''
-  pageDiscardError.value = ''
 }
 
 async function confirmDiscardPage(): Promise<void> {
@@ -1437,7 +1382,6 @@ async function confirmDiscardPage(): Promise<void> {
     return
   }
   pageDiscardReasonError.value = ''
-  pageDiscardError.value = ''
   pageDiscarding.value = record.pageId
   try {
     await discardScannedPage({ scannedPageId: record.pageId, discardReason: trimmed })
@@ -1448,7 +1392,6 @@ async function confirmDiscardPage(): Promise<void> {
     await loadAttentions()
     await syncScanWorkbenchState()
   } catch (error) {
-    pageDiscardError.value = getUserErrorMessage(error, '扫描页废弃失败')
     showUserError(error, '扫描页废弃失败')
   } finally {
     pageDiscarding.value = null
@@ -1490,7 +1433,6 @@ const bindFormRules: Record<string, Rule[]> = {
 // 考生名册缓存
 const candidates = ref<ExamCandidateVO[]>([])
 const candidatesLoading = ref(false)
-const bindSubmitError = ref('')
 const bindIdentitySliceFileId = ref('')
 const bindIdentitySliceImageUrl = ref('')
 const bindIdentitySliceLoading = ref(false)
@@ -1643,7 +1585,6 @@ function openBindDrawer(record: ScanAttentionItemVO): void {
   bindForm.confirmedCandidateRosterId = undefined
   bindForm.attemptStatus = 'NORMAL'
   bindForm.attemptNo = ''
-  bindSubmitError.value = ''
   bindIdentitySliceFileId.value = record.identitySliceFileId || ''
   bindSourcePageFileId.value = record.sourceScanPage?.fileId || ''
   bindDrawerOpen.value = true
@@ -1656,7 +1597,6 @@ async function handleBind(): Promise<void> {
   if (!selectedExamId.value) return
   if (!bindFormRef.value) return
   if (bindIdentityEvidenceBlockReason.value) {
-    bindSubmitError.value = bindIdentityEvidenceBlockReason.value
     message.warning(bindIdentityEvidenceBlockReason.value)
     return
   }
@@ -1673,12 +1613,10 @@ async function handleBind(): Promise<void> {
   }
   const candidateBlockReason = candidateBindingBlockReason(bindForm.confirmedCandidateRosterId)
   if (candidateBlockReason) {
-    bindSubmitError.value = candidateBlockReason
     message.error(candidateBlockReason)
     return
   }
   binding.value = true
-  bindSubmitError.value = ''
   try {
     await bindPaper({
       examId: selectedExamId.value,
@@ -1696,7 +1634,6 @@ async function handleBind(): Promise<void> {
     await loadAttentions()
     await syncScanWorkbenchState()
   } catch (error) {
-    bindSubmitError.value = getUserErrorMessage(error, '试卷身份绑定失败')
     showUserError(error, '试卷身份绑定失败')
   } finally {
     binding.value = false
@@ -1716,7 +1653,6 @@ function openDetail(record: ScanAttentionItemVO): void {
 const selectedRowKeys = ref<string[]>([])
 const batchBinding = ref(false)
 const batchBindDrawerOpen = ref(false)
-const batchBindError = ref('')
 const batchBindResult = ref<ExamPaperBatchBindResultVO | null>(null)
 type BatchBindAttemptStatus = 'NORMAL' | 'MAKEUP' | 'RETAKE'
 
@@ -1806,7 +1742,6 @@ async function handleBatchBind(): Promise<void> {
     message.error('当前考试无考生名册，无法绑定')
     return
   }
-  batchBindError.value = ''
   batchBindResult.value = null
   batchBindRows.value = selected.map((item) => ({
     attentionId: item.id,
@@ -1827,7 +1762,6 @@ function closeBatchBindDrawer(): void {
   if (batchBinding.value) return
   batchBindDrawerOpen.value = false
   batchBindRows.value = []
-  batchBindError.value = ''
   batchBindResult.value = null
 }
 
@@ -1850,8 +1784,7 @@ async function submitBatchBind(): Promise<void> {
   )
   if (blockedCandidateRow) {
     const blockReason = candidateBindingBlockReason(blockedCandidateRow.confirmedCandidateRosterId)
-    batchBindError.value = `${blockedCandidateRow.paperDisplayName}：${blockReason}`
-    message.error(batchBindError.value)
+    message.error(`${blockedCandidateRow.paperDisplayName}：${blockReason}`)
     return
   }
   const invalidAttemptStatus = batchBindRows.value.find(
@@ -1867,7 +1800,6 @@ async function submitBatchBind(): Promise<void> {
     return
   }
   batchBinding.value = true
-  batchBindError.value = ''
   batchBindResult.value = null
   try {
     const result = await batchBindPapers({
@@ -1891,7 +1823,6 @@ async function submitBatchBind(): Promise<void> {
       batchBindDrawerOpen.value = false
     }
   } catch (error) {
-    batchBindError.value = getUserErrorMessage(error, '批量绑定失败')
     showUserError(error, '批量绑定失败')
   } finally {
     batchBinding.value = false
@@ -1916,14 +1847,12 @@ watch(selectedExamId, (value) => {
   filterForm.attentionType = ''
   filterForm.scanBatchId = ''
   filterForm.paperInstanceId = ''
-  bindSubmitError.value = ''
   bindIdentitySliceFileId.value = ''
   bindSourcePageFileId.value = ''
   releaseBindIdentitySliceImage()
   releaseBindSourcePageImage()
   bindIdentitySliceLoadFailed.value = false
   bindSourcePageLoadFailed.value = false
-  batchBindError.value = ''
   batchBindResult.value = null
   liveDrawerOpen.value = false
   currentEvent.value = null
@@ -1990,10 +1919,6 @@ onBeforeUnmount(() => {
     align-items: center;
     gap: 8px;
     margin-bottom: 4px;
-  }
-
-  &__connection-alert {
-    margin-bottom: 8px;
   }
 
   &__overview {
@@ -2118,10 +2043,6 @@ onBeforeUnmount(() => {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__bind-alert {
-    margin-bottom: 16px;
   }
 
   &__identity-evidence {

@@ -1,13 +1,5 @@
 <template>
   <div class="printer-management-page">
-    <UiAlertStrip
-      v-if="isExamWorkspaceRoute"
-      tone="info"
-      title="扫描设备为租户级资产"
-      description="此处维护的扫描仪与激活码对本租户全部考试生效，不受当前考试切换影响。"
-      dense
-      class="printer-management-page__scope-banner"
-    />
     <a-card :bordered="false" class="detail-table-card printer-management">
       <template #title>扫描设备</template>
       <template #extra>
@@ -197,11 +189,6 @@
       :footer="null"
       destroy-on-close
     >
-      <UiAlertStrip
-        tone="warning"
-        title="请妥善保管设备接入密钥，关闭对话框后将仅展示脱敏内容。"
-        class="token-modal-alert"
-      />
       <a-descriptions v-if="tokenInfo" bordered :column="1" size="small">
         <a-descriptions-item label="设备记录编号">
           <span>{{ tokenInfo?.id }}</span>
@@ -381,7 +368,6 @@ import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
 import AQrcode from 'ant-design-vue/es/qrcode'
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
 import {
   createScannerActivationCode,
   createScannerDevice,
@@ -399,7 +385,6 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -410,9 +395,6 @@ import { readArrayResponse } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'PrinterManagement' })
-
-const route = useRoute()
-const isExamWorkspaceRoute = computed(() => route.name === 'TeacherExamWorkspaceScanDevices')
 
 const { refreshSnapshot } = useWorkspaceExamId()
 
@@ -809,10 +791,6 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-
-  &__scope-banner {
-    margin-bottom: 0;
-  }
 }
 
 .printer-management {

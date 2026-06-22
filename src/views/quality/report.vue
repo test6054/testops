@@ -1043,11 +1043,9 @@ onBeforeUnmount(() => {
             {{ detailRecord.exportFinishedAt }}
           </a-descriptions-item>
           <a-descriptions-item v-if="detailRecord.exportErrorMessage" label="导出处理说明" :span="2">
-            <a-alert
-              type="error"
-              show-icon
-              :message="reportExportFailureMessage(detailRecord.exportErrorMessage)"
-            />
+            <span class="report__export-error">
+              {{ reportExportFailureMessage(detailRecord.exportErrorMessage) }}
+            </span>
           </a-descriptions-item>
           <a-descriptions-item v-if="detailRecord.confirmedAt" label="确认时间">
             {{ detailRecord.confirmedAt }}
@@ -1142,6 +1140,10 @@ onBeforeUnmount(() => {
     font-size: 14px;
     font-weight: 600;
     color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__export-error {
+    color: var(--ant-color-error, #dc2626);
   }
 
   &__body-preview {

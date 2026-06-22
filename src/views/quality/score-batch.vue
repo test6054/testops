@@ -1061,13 +1061,9 @@ onMounted(async () => {
           <span v-else class="score-batch__sub-text">解析失败，未生成行统计</span>
         </a-descriptions-item>
       </a-descriptions>
-      <a-alert
-        v-if="previewSummary.errorSummary"
-        type="error"
-        show-icon
-        :message="previewSummary.errorSummary"
-        class="score-batch__preview-alert"
-      />
+      <p v-if="previewSummary.errorSummary" class="score-batch__error-msg score-batch__preview-error">
+        {{ previewSummary.errorSummary }}
+      </p>
       <UiDataTable
         pagination-mode="none"
         class="student-detail-table__data-table"
@@ -1285,7 +1281,10 @@ onMounted(async () => {
     margin-bottom: 12px;
   }
 
-  &__preview-alert,
+  &__preview-error {
+    margin-bottom: 12px;
+  }
+
   &__editor-alert {
     margin-bottom: 12px;
   }

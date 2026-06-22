@@ -20,14 +20,6 @@
     </UiButton>
   </div>
 
-  <UiAlertStrip
-    v-if="selectedExamId && templateWriteLocked"
-    tone="warning"
-    :title="templateWriteLockReason"
-    dense
-    class="paper-template-page__lock-alert"
-  />
-
   <UiEmpty
     v-if="!selectedExamId"
     description="请选择需要维护的考试"
@@ -62,14 +54,6 @@
           />
         </a-form-item>
       </a-form>
-    </UiCard>
-
-    <UiCard v-if="isFullPaperLayout" class="info-card">
-      <a-alert
-        type="info"
-        show-icon
-        message="整卷作答模式下，扫描页模板由试卷母版 PDF 自动拆页同步，请前往「试卷母版」维护。"
-      />
     </UiCard>
 
     <UiCard v-if="!isFullPaperLayout" class="info-card">
@@ -305,15 +289,8 @@
           label="正确选项"
           name="choiceAnswers"
         >
-          <a-alert
-            v-if="answerChoiceOptions.length === 0"
-            type="warning"
-            show-icon
-            message="当前题目尚未配置客观题填涂区，不能录入选择题集合答案"
-            style="margin-bottom: 12px"
-          />
           <a-checkbox-group
-            v-else
+            v-if="answerChoiceOptions.length > 0"
             v-model:value="answerForm.choiceAnswers"
             :options="answerChoiceOptions"
             class="answer-choice-grid"
@@ -540,7 +517,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiConfirmPopover from '@/components/ui-guide/ui/UiConfirmPopover.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
@@ -1477,10 +1453,6 @@ watch(selectedExamId, (value) => {
 
 <style lang="scss" scoped>
 .paper-template-page {
-  &__lock-alert {
-    margin-bottom: 8px;
-  }
-
   &__toolbar {
     display: flex;
     align-items: center;

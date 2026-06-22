@@ -8,31 +8,6 @@
       <UiTextAction @click="goScanDevices">管理扫描设备</UiTextAction>
     </template>
 
-    <UiAlertStrip
-      tone="info"
-      title="浏览器直传补录"
-      description="先选扫描设备与补录模式，上传 PDF/图片后由服务端开启批次锚点、commit 并登记扫描页。补扫须在已有首次扫描或已登记页后执行。"
-      dense
-      class="scan-manual-supplement__hint"
-    />
-
-
-
-
-
-    <UiAlertStrip
-      v-if="prepareContext && !prepareContext.canSubmitManualSupplement"
-      tone="warning"
-      :title="prepareContext.hasActiveScanSession ? '扫描进程未结束' : '当前不可提交补录'"
-      :description="prepareBlockDescription"
-      dense
-      class="scan-manual-supplement__block"
-    >
-      <template v-if="prepareContext.hasActiveScanSession" #actions>
-        <UiTextAction @click="goScanMonitor">前往扫描监控</UiTextAction>
-      </template>
-    </UiAlertStrip>
-
     <a-form ref="formRef" :model="form" :rules="formRules" layout="vertical">
       <a-row :gutter="16">
         <a-col :xs="24" :md="12">
@@ -169,7 +144,6 @@ import { getExamDetail } from '@/apis/mark/exam'
 import { prepareTeacherScanSupplement, teacherSupplementScanSource } from '@/apis/mark/scan-source'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { showUserError } from '@/utils/error-handler'
 

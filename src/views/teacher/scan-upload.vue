@@ -373,13 +373,6 @@
           />
         </a-form-item>
       </a-form>
-      <UiAlertStrip
-        v-if="batchDiscardError"
-        tone="error"
-        title="扫描批次废弃失败"
-        :description="batchDiscardError"
-        dense
-      />
     </a-modal>
 
     <a-modal
@@ -406,26 +399,12 @@
             <span v-if="item.detail" class="scan-batch-page__seal-check-detail">{{ item.detail }}</span>
           </li>
         </ul>
-        <UiAlertStrip
-          v-if="batchSealBlockedReasonActive"
-          tone="warning"
-          title="暂不满足封存条件"
-          :description="batchSealBlockedReasonActive"
-          dense
-        />
         <p v-if="(batchSealTarget.attentionItemCount ?? 0) > 0" class="scan-batch-page__seal-hint">
           请先前往
           <UiTextAction @click="openSealAttentionMonitor">扫描监控</UiTextAction>
           处置异常后再封存。
         </p>
       </template>
-      <UiAlertStrip
-        v-if="batchSealError"
-        tone="error"
-        title="扫描批次封存失败"
-        :description="batchSealError"
-        dense
-      />
     </a-modal>
   </div>
 </template>
@@ -480,7 +459,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
@@ -912,12 +890,10 @@ const batchDiscardModalOpen = ref(false)
 const batchDiscardTarget = ref<ExamScannerBatchVO | null>(null)
 const batchDiscardReason = ref('')
 const batchDiscardReasonError = ref('')
-const batchDiscardError = ref('')
 
 const batchSealing = ref<string | null>(null)
 const batchSealModalOpen = ref(false)
 const batchSealTarget = ref<ExamScannerBatchVO | null>(null)
-const batchSealError = ref('')
 
 const batchSealChecklist = computed(() =>
   batchSealTarget.value ? buildBatchSealChecklist(batchSealTarget.value) : [],
@@ -971,14 +947,12 @@ async function onDiscardBatch(batch: ExamScannerBatchVO): Promise<void> {
   batchDiscardTarget.value = batch
   batchDiscardReason.value = ''
   batchDiscardReasonError.value = ''
-  batchDiscardError.value = ''
   batchDiscardModalOpen.value = true
 }
 
 function onSealBatch(batch: ExamScannerBatchVO): void {
   if (!batch.scanBatchId || !canSealBatch(batch)) return
   batchSealTarget.value = batch
-  batchSealError.value = ''
   batchSealModalOpen.value = true
 }
 
@@ -986,7 +960,6 @@ function cancelSealBatch(): void {
   if (batchSealing.value) return
   batchSealModalOpen.value = false
   batchSealTarget.value = null
-  batchSealError.value = ''
 }
 
 async function confirmSealBatch(): Promise<void> {
@@ -996,10 +969,9 @@ async function confirmSealBatch(): Promise<void> {
     return
   }
   if (!canSealBatch(batch)) {
-    batchSealError.value = batchSealBlockedReason(batch) || '当前批次不满足封存条件'
+    message.warning(batchSealBlockedReason(batch) || '当前批次不满足封存条件')
     return
   }
-  batchSealError.value = ''
   batchSealing.value = batch.scanBatchId
   try {
     await sealScanBatchByTeacher({ scanBatchId: batch.scanBatchId })
@@ -1009,7 +981,7 @@ async function confirmSealBatch(): Promise<void> {
     await Promise.all([loadBatches(), loadProgress(), loadRecentEventsSnapshot()])
     await syncScanWorkbenchState()
   } catch (error) {
-    batchSealError.value = getUserErrorMessage(error, '扫描批次封存失败')
+    showUserError(error, '扫描批次封存失败')
   } finally {
     batchSealing.value = null
   }
@@ -1021,7 +993,6 @@ function closeBatchDiscardModal(): void {
   batchDiscardTarget.value = null
   batchDiscardReason.value = ''
   batchDiscardReasonError.value = ''
-  batchDiscardError.value = ''
 }
 
 async function confirmDiscardBatch(): Promise<void> {
@@ -1040,7 +1011,6 @@ async function confirmDiscardBatch(): Promise<void> {
     return
   }
   batchDiscardReasonError.value = ''
-  batchDiscardError.value = ''
   batchDiscarding.value = batch.scanBatchId
   try {
     await discardScannerKioskBatch({ scanBatchId: batch.scanBatchId, discardReason: trimmed })
@@ -1065,7 +1035,6 @@ async function confirmDiscardBatch(): Promise<void> {
     await loadProgress()
     await syncScanWorkbenchState()
   } catch (error) {
-    batchDiscardError.value = getUserErrorMessage(error, '扫描批次废弃失败')
     showUserError(error, '扫描批次废弃失败')
   } finally {
     batchDiscarding.value = null
@@ -1177,7 +1146,6 @@ watch(selectedExamId, (value) => {
     progress.value = null
     batches.value = []
     batchTotal.value = 0
-    batchDiscardError.value = ''
     liveEvents.value = []
   }
 }, { immediate: true })

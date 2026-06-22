@@ -79,7 +79,7 @@
       </template>
 
       <UiFilterBar
-        v-model="filterForm"
+        v-model="filterModel"
         :fields="taskFilterFields"
         search-text="查询"
         @search="loadTasks"
@@ -272,6 +272,13 @@ const filterForm = reactive<{
   taskStatus: undefined,
   groupId: '',
   sessionId: '',
+})
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
 })
 
 const statusOptions = MARKING_TASK_STATUS_OPTIONS

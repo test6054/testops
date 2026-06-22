@@ -768,25 +768,24 @@ onMounted(async () => {
             placeholder="请选择培养方案"
           />
         </a-form-item>
-        <a-alert
+        <div
           v-if="exportForm.packageType === 'PROGRAM_ACCREDITATION' && exportForm.targetId"
-          :type="canSubmitProgramExport ? 'success' : 'warning'"
-          show-icon
           class="archive-page__export-readiness"
         >
-          <template #message>
+          <p class="archive-page__export-readiness-text">
             {{
               exportReadinessLoading
                 ? '正在校验专业认证导出就绪条件…'
                 : (canSubmitProgramExport ? '已满足专业认证专家材料包导出条件' : '尚未满足专业认证专家材料包导出条件')
             }}
-          </template>
-          <template v-if="!exportReadinessLoading && exportProgramBlockers.length" #description>
-            <ul class="archive-page__export-blockers">
-              <li v-for="item in exportProgramBlockers" :key="item">{{ item }}</li>
-            </ul>
-          </template>
-        </a-alert>
+          </p>
+          <ul
+            v-if="!exportReadinessLoading && exportProgramBlockers.length"
+            class="archive-page__export-blockers"
+          >
+            <li v-for="item in exportProgramBlockers" :key="item">{{ item }}</li>
+          </ul>
+        </div>
         <a-form-item label="归档编码">
           <a-input
             v-model:value="exportForm.archiveCode"
@@ -909,7 +908,7 @@ onMounted(async () => {
                 placeholder="请选择审核评估整改任务"
                 :disabled="editorMode === 'edit'"
               />
-              <a-alert v-else type="warning" show-icon message="该类型需要从对应业务页面发起归档" />
+              <span v-else class="archive-page__form-hint">该类型需要从对应业务页面发起归档</span>
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -1088,6 +1087,31 @@ onMounted(async () => {
     color: var(--dp-text-secondary, #475569);
     font-size: 13px;
     line-height: 20px;
+  }
+
+  &__export-readiness {
+    margin-bottom: 16px;
+  }
+
+  &__export-readiness-text {
+    margin: 0;
+    font-size: 14px;
+    line-height: 22px;
+    color: var(--dp-text-secondary, #475569);
+  }
+
+  &__export-blockers {
+    margin: 8px 0 0;
+    padding-left: 18px;
+    color: var(--dp-text-secondary, #475569);
+    font-size: 13px;
+    line-height: 20px;
+  }
+
+  &__form-hint {
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--dp-text-muted, #64748b);
   }
 }
 </style>

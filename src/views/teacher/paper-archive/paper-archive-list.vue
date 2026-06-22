@@ -21,7 +21,7 @@
       </template>
 
       <UiFilterBar
-        v-model="filterForm"
+        v-model="filterModel"
         :fields="paperArchiveFilterFields"
         search-text="查询"
         @search="handleSearch"
@@ -190,7 +190,7 @@ import type { PaperArchiveSetStatusCode, PaperArchiveSetVO } from '@/apis/mark/p
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import { FileOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
-import { onActivated, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   activatePaperArchiveSet,
@@ -243,6 +243,13 @@ const filterForm = reactive<{
   examYear: undefined,
   examTerm: undefined,
   archiveStatus: undefined,
+})
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
 })
 
 interface PaperArchiveSetCreateForm {

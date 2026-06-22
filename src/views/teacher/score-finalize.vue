@@ -16,53 +16,35 @@
       class="score-finalize__signals"
     />
 
-    <UiAlertStrip
-      v-if="riskOverviewAlert.visible"
-      :tone="riskOverviewAlert.tone"
-      :title="riskOverviewAlert.title"
-      dense
-      class="score-finalize__risk-alert"
-    >
-      {{ riskOverviewAlert.message }}
-      <template #actions>
-        <UiButton
-          v-if="canBatchConfirmSafe"
-          variant="primary"
-          size="sm"
-          :loading="batchConfirming"
-          @click="handleBatchConfirmSafe"
-        >
-          批量确认无风险成绩
-        </UiButton>
-        <UiButton
-          v-if="blockingRiskReasons.length > 0"
-          variant="outline"
-          size="sm"
-          @click="openRiskReviewDrawer"
-        >
-          集中复核异常成绩
-        </UiButton>
-      </template>
-    </UiAlertStrip>
-
-    <!-- D-3 当前页偏差提示：z-score >= 1.5 的考生需要复核 -->
-    <UiAlertStrip
-      v-if="biasAlert.visible"
-      tone="warning"
-      title="当前页存在显著偏离均值的成绩参考"
-      :description="biasAlert.message"
-      dense
-      class="score-finalize__bias-alert"
-    />
-
     <a-card :bordered="false" class="detail-table-card score-finalize__table-card">
       <template #title>
         <CheckCircleOutlined />
         <span>考生名单</span>
       </template>
+      <template #extra>
+        <div class="score-finalize__table-actions">
+          <UiButton
+            v-if="canBatchConfirmSafe"
+            variant="primary"
+            size="sm"
+            :loading="batchConfirming"
+            @click="handleBatchConfirmSafe"
+          >
+            批量确认无风险成绩
+          </UiButton>
+          <UiButton
+            v-if="blockingRiskReasons.length > 0"
+            variant="outline"
+            size="sm"
+            @click="openRiskReviewDrawer"
+          >
+            集中复核异常成绩
+          </UiButton>
+        </div>
+      </template>
 
       <UiFilterBar
-        v-model="scoreFilterForm"
+        v-model="scoreFilterModel"
         :fields="scoreFilterFields"
         search-text="查询"
         @search="handleSearch"
@@ -323,12 +305,6 @@
             确认后立即发布并通知学生
           </a-checkbox>
         </a-form-item>
-        <UiAlertStrip
-          v-if="hasUnreviewedBlockingRisks"
-          tone="warning"
-          title="异常成绩未完成集中复核"
-          dense
-        />
       </a-form>
     </UiDrawer>
 
@@ -340,12 +316,6 @@
       @update:open="(v: boolean) => (riskReviewDrawerOpen = v)"
       @close="riskReviewDrawerOpen = false"
     >
-      <UiAlertStrip
-        tone="warning"
-        title="发布前复核闸门"
-        dense
-        class="score-finalize__alert"
-      />
       <UiEmpty
         v-if="blockingRiskReasons.length === 0"
         description="暂无数据"
@@ -401,12 +371,6 @@
       @confirm="handleWithdraw"
     >
       <a-form layout="vertical">
-        <UiAlertStrip
-          tone="warning"
-          title="撤回说明"
-          dense
-          class="score-finalize__alert"
-        />
         <a-form-item label="考生">
           <a-input
             :value="withdrawCandidate ? withdrawCandidate.paperDisplay.primaryText : ''"
@@ -505,7 +469,6 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiActivityTimeline from '@/components/ui-guide/ui/UiActivityTimeline.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
@@ -540,6 +503,13 @@ const scoreFilterForm = reactive<{
 }>({
   keyword: '',
   statusFilter: undefined,
+})
+
+const scoreFilterModel = computed<Record<string, unknown>>({
+  get: () => scoreFilterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(scoreFilterForm, value)
+  },
 })
 
 const scoreFilterFields: FilterField[] = [
@@ -744,8 +714,6 @@ function publishButtonLabel(record: ExamScoreSummaryItemVO): string {
   return record.finalScoreStatus === 'WITHDRAWN' ? '重新发布' : '发布'
 }
 
-type RiskOverviewTone = 'info' | 'success' | 'warning' | 'error'
-
 const blockingRiskReasons = computed(() => {
   const reasons = riskOverview.value?.riskReasons ?? []
   return reasons.filter((reason) => reason.reasonCode !== 'SAFE_CONFIRMABLE' && reason.count > 0)
@@ -849,56 +817,6 @@ const canBatchConfirmSafe = computed(() => {
   )
 })
 
-const riskOverviewAlert = computed<{
-  visible: boolean
-  tone: RiskOverviewTone
-  title: string
-  message: string
-}>(() => {
-  const overview = riskOverview.value
-  if (!overview) {
-    return { visible: false, tone: 'info', title: '', message: '' }
-  }
-  if (hasHardBlockingRisks.value) {
-    const count = hardBlockingRiskReasons.value
-      .reduce((sum, reason) => sum + reason.count, 0)
-    return {
-      visible: true,
-      tone: 'error',
-      title: '缺考核对未完成',
-      message: `当前仍有 ${count} 名学生缺考核对未完成。请先完成缺考核对，再确认或发布成绩。`,
-    }
-  }
-  if (blockingRiskReasons.value.length > 0) {
-    const reasonText = blockingRiskReasons.value
-      .map((reason) => `${reason.reasonName} ${reason.count} 项`)
-      .join('，')
-    return {
-      visible: true,
-      tone: overview.blockedCount > 0 ? 'error' : 'warning',
-      title: '发布前存在全场风险',
-      message: `${reasonText}。请先处理阻塞项，再确认或发布成绩。`,
-    }
-  }
-  if (overview.safeConfirmableCount > 0) {
-    return {
-      visible: true,
-      tone: 'info',
-      title: '存在可安全批量确认成绩',
-      message: `后端已判定 ${overview.safeConfirmableCount} 份已计算成绩满足确认条件，可批量确认后再进入发布。`,
-    }
-  }
-  if (overview.readyToPublish) {
-    return {
-      visible: true,
-      tone: 'success',
-      title: '全场成绩已具备发布条件',
-      message: '可进入成绩发布处理学生侧通知。',
-    }
-  }
-  return { visible: false, tone: 'info', title: '', message: '' }
-})
-
 async function handleBatchConfirmSafe(): Promise<void> {
   if (!selectedExamId.value || !riskOverview.value) return
   if (warnUnreviewedBlockingRisks()) return
@@ -925,8 +843,6 @@ async function handleBatchConfirmSafe(): Promise<void> {
     batchConfirming.value = false
   }
 }
-
-/* ========== 信号指标：核定流程状态分布 ========== */
 
 const statMetrics = computed<UiStatPanelItem[]>(() => {
   const overview = riskOverview.value
@@ -1051,27 +967,6 @@ function biasLevelLabel(level: BiasLevel): string {
 function biasLevelTone(level: BiasLevel): BadgeTone {
   return strictEnumTone(BIAS_LEVEL_TONE, level, '成绩偏差等级')
 }
-
-/** D-3 顶部偏差提示：当前页严重偏离样本数 */
-const biasAlert = computed<{ visible: boolean, severeCount: number, message: string }>(() => {
-  const { count, mean, stddev } = pageScoreStats.value
-  if (count < 3 || stddev === 0) {
-    return { visible: false, severeCount: 0, message: '' }
-  }
-  let severe = 0
-  for (const c of candidates.value) {
-    const lvl = classifyBias(c.finalScore)
-    if (lvl === 'severe-high' || lvl === 'severe-low') severe += 1
-  }
-  if (severe === 0) return { visible: false, severeCount: 0, message: '' }
-  const meanText = mean.toFixed(1)
-  const stdText = stddev.toFixed(1)
-  return {
-    visible: true,
-    severeCount: severe,
-    message: `当前页有 ${severe} 名考生教师复核评分偏离均值 ≥ 1.5 倍标准差（均值 ${meanText} / σ ${stdText}），请对照原卷复核。`,
-  }
-})
 
 function biasDelta(score: number | undefined): string {
   if (typeof score !== 'number' || !Number.isFinite(score)) return ''
@@ -1635,16 +1530,10 @@ watch(selectedExamId, (value) => {
     color: var(--dp-text-muted, #64748b);
   }
 
-  &__alert {
-    margin-bottom: 12px;
-  }
-
-  &__bias-alert {
-    margin-bottom: 12px;
-  }
-
-  &__risk-alert {
-    margin-bottom: 12px;
+  &__table-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   &__risk-review-list {

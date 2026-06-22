@@ -55,8 +55,7 @@ const breadcrumbs = computed<BreadcrumbItem[]>(() => {
     const title = item.meta?.title as string
     const path = item.path
 
-    // 跳过根路径和重复的首页
-    if (path === '/' || !title) {
+    if (path === '/' || !title || item.meta?.hideInBreadcrumb) {
       return
     }
 

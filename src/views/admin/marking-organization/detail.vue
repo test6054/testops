@@ -65,22 +65,6 @@
     />
 
     <a-spin v-else :spinning="loading">
-      <UiAlertStrip
-        v-if="organization && !canManageOrganization"
-        tone="info"
-        title="协作查看模式"
-        dense
-        class="org-detail__collab-alert"
-      />
-      <!-- P1-3 阅卷组织步骤引导 -->
-      <UiAlertStrip
-        v-if="organization && canManageOrganization"
-        :tone="organizationStepAlertTone"
-        :title="organizationStepAlertTitle"
-        :description="organizationStepAlertDescription"
-        dense
-        class="org-detail__step-guide"
-      />
       <section v-if="organization" class="org-detail__panel">
         <a-tabs v-model:active-key="activeTab" class="detail-tabs">
           <a-tab-pane key="info" tab="基本信息 + 题组">
@@ -577,7 +561,6 @@ import { ALLOCATION_UNIT_LABEL, ANONYMITY_MODE_LABEL, ANONYMOUS_TOKEN_POLICY_LAB
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -636,38 +619,6 @@ const canViewAllRecycledTasks = computed(
 const leaderGroupIds = computed(() => {
   const userId = userStore.userInfo.userId
   return groups.value.filter((group) => group.leaderUserId === userId).map((group) => group.id)
-})
-
-/** P1-3: 阅卷组织步骤引导 — 根据当前状态给出下一步建议 */
-const organizationStepAlertTone = computed(() => {
-  if (!organization.value) return 'info'
-  const status = organization.value.organizationStatus
-  if (status === 'ORG_DRAFT' || status === 'ORG_CONFIGURED') return 'warning'
-  if (status === 'TRIAL_MARKING') return 'info'
-  if (status === 'FORMAL_MARKING') return 'success'
-  return 'info'
-})
-
-const organizationStepAlertTitle = computed(() => {
-  if (!organization.value) return ''
-  const status = organization.value.organizationStatus
-  if (status === 'ORG_DRAFT') return '第1步：配置题组与分配策略'
-  if (status === 'ORG_CONFIGURED') return '第2步：开始试评校准'
-  if (status === 'TRIAL_MARKING') return '第3步：试评完成后启动正评'
-  if (status === 'FORMAL_MARKING') return '第4步：正评进行中，前往阅卷任务池'
-  if (status === 'QUALITY_REVIEW') return '第5步：质量抽检与仲裁'
-  return ''
-})
-
-const organizationStepAlertDescription = computed(() => {
-  if (!organization.value) return ''
-  const status = organization.value.organizationStatus
-  if (status === 'ORG_DRAFT') return '先配置题组（分配要批阅的题目），再保存分配策略（设置分配模式、匿名模式）'
-  if (status === 'ORG_CONFIGURED') return '题组和策略已就绪，请创建试评会话，组织阅卷教师校准评分标准'
-  if (status === 'TRIAL_MARKING') return '试评校准完成后，请进入「试评 / 正评」页面启动正式阅卷会话'
-  if (status === 'FORMAL_MARKING') return '正评已启动，阅卷教师可在任务池中 claim 并批阅。请持续关注进度看板'
-  if (status === 'QUALITY_REVIEW') return '可对已批阅答卷进行抽检，如有评分差异提交仲裁处理'
-  return ''
 })
 
 function guardOrganizationOwnerAction(): boolean {

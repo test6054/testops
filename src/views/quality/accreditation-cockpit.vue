@@ -55,19 +55,6 @@ const onsitePanelRef = ref<InstanceType<typeof AccreditationOnsitePanel>>()
 const supportPanelRef = ref<InstanceType<typeof AccreditationSupportPanel>>()
 const evidencePanelRef = ref<InstanceType<typeof AccreditationEvidencePanel>>()
 
-const deadlineHints = computed(() => {
-  const c = cockpit.value
-  if (!c) return []
-  const hints: string[] = []
-  if (c.conditionalDueDaysRemaining != null) {
-    hints.push(`有条件改进剩余 ${c.conditionalDueDaysRemaining} 天`)
-  }
-  if (c.onsiteReportDueDaysRemaining != null) {
-    hints.push(`考查报告剩余 ${c.onsiteReportDueDaysRemaining} 天`)
-  }
-  return hints
-})
-
 function readinessReady(itemKey: string): boolean {
   return (
     cockpit.value?.conclusionReadinessItems?.find((item) => item.itemKey === itemKey)?.ready === true
@@ -136,26 +123,6 @@ const ceeaa2024CheckItems = computed(() => {
 const canCreateCycle = computed(
   () => hasScope.value && activeCycle.value?.cycleStatus !== 'ACTIVE',
 )
-
-/** P2-1: 当前认证阶段的下一步操作指引 */
-const phaseActionHint = computed<string | null>(() => {
-  const phase = activeCycle.value?.currentPhase
-  if (!phase) return null
-  switch (phase) {
-    case 'SELF_EVALUATION':
-      return '当前阶段：校内自评。请首先配置培养方案、课程矩阵和达成度计算，然后提交自评报告。'
-    case 'SELF_ASSESSMENT_REVIEW':
-      return '自评报告已提交，等待审阅决议。如需补充材料，系统将自动创建新的审阅轮次。'
-    case 'ONSITE_VISIT':
-      return '已通过自评审阅，请创建现场考查计划并生成检查清单。'
-    case 'CONCLUSION':
-      return '认证结论已登记且周期已关闭，请查看结论记录并补齐归档证据。'
-    case 'MAINTENANCE':
-      return '认证通过，进入保持改进阶段。请持续更新年度评价计划和课程达成度数据。'
-    default:
-      return null
-  }
-})
 
 const signalMetrics = computed(() => {
   const base = metrics.value
@@ -264,22 +231,6 @@ onActivated(() => {
     <UiEmpty v-if="!hasScope" description="请选择专业与培养方案" class="acc-empty" />
 
     <template v-else>
-      <a-alert
-        v-if="deadlineHints.length"
-        type="warning"
-        show-icon
-        :message="deadlineHints.join(' · ')"
-        class="acc-deadline"
-      />
-      <!-- P2-1: 当前阶段操作指引 -->
-      <a-alert
-        v-if="phaseActionHint"
-        type="info"
-        show-icon
-        :message="phaseActionHint"
-        class="acc-phase-hint"
-      />
-
       <!-- CEEAA 2024 标准对齐检查面板 -->
       <UiCard v-if="activeCycle" class="acc-standard-check">
         <template #title>
@@ -424,12 +375,6 @@ onActivated(() => {
 }
 .acc-empty {
   margin: 48px 0;
-}
-.acc-guide {
-  margin-bottom: 12px;
-}
-.acc-deadline {
-  margin-bottom: 12px;
 }
 .acc-standard-check {
   margin-bottom: 12px;

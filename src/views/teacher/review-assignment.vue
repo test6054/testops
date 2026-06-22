@@ -66,7 +66,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
@@ -231,16 +230,6 @@ const allocationModeOptions = computed(() => {
 const canStartFormal = computed(
   () => Boolean(result.value?.sessionId) && Boolean(planPreview.value?.ready) && !starting.value,
 )
-
-const scanReadinessSummary = computed(() => {
-  if (!ledgerDetail.value && !markingProgress.value) {
-    return null
-  }
-  const bound
-    = ledgerDetail.value?.boundPaperCount ?? markingProgress.value?.gradablePaperCount ?? 0
-  const gradable = markingProgress.value?.gradablePaperCount ?? bound
-  return { bound, gradable }
-})
 
 const questionOptions = computed(() =>
   questions.value.map((item) => ({
@@ -779,21 +768,7 @@ onMounted(async () => {
     </div>
 
     <template v-if="!canManageExam">
-      <UiAlertStrip
-        tone="info"
-        title="协作查看模式"
-        dense
-        class="review-assignment__alert"
-      />
-
       <a-spin :spinning="organizationLoading || scanReadinessLoading">
-        <UiAlertStrip
-          v-if="scanReadinessSummary"
-          :tone="scanReadinessSummary.bound > 0 ? 'success' : 'warning'"
-          :title="`身份绑定 ${scanReadinessSummary.bound} 份 · 可阅卷 ${scanReadinessSummary.gradable} 份`"
-          class="review-assignment__alert"
-        />
-        <UiEmpty
           v-if="!organization && !organizationLoading"
           description="暂无数据"
           class="review-assignment__empty"
@@ -962,15 +937,7 @@ onMounted(async () => {
     </template>
 
     <template v-else>
-      <UiAlertStrip
-        v-if="scanReadinessSummary"
-        :tone="scanReadinessSummary.bound > 0 ? 'success' : 'warning'"
-        :title="`身份绑定 ${scanReadinessSummary.bound} 份 · 可阅卷 ${scanReadinessSummary.gradable} 份`"
-        class="review-assignment__alert"
-      />
-
-
-      <section v-else class="review-assignment__grid">
+      <section class="review-assignment__grid">
         <UiCard class="review-assignment__panel">
           <template #title>
             <DeploymentUnitOutlined />
@@ -1350,8 +1317,7 @@ onMounted(async () => {
   width: 360px;
 }
 
-.review-assignment__empty,
-.review-assignment__alert {
+.review-assignment__empty {
   margin-bottom: 12px;
 }
 

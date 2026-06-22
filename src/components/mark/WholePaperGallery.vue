@@ -44,13 +44,6 @@
               {{ qualityLabel(item.page.qualityStatus) }}
             </UiTag>
           </div>
-          <UiAlertStrip
-            v-if="item.page.qualityStatus === 'BLOCKED'"
-            tone="warning"
-            title="扫描页质量阻断"
-            description="暂无数据"
-            dense
-          />
           <a-image
             v-if="imageUrls[item.page.pageId]"
             :src="imageUrls[item.page.pageId]"
@@ -99,7 +92,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 
 defineOptions({ name: 'WholePaperGallery' })
 

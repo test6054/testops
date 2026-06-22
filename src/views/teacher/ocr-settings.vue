@@ -33,7 +33,6 @@ import {
   isPaperTemplateNotConfiguredError,
 } from '@/apis/mark/exam-template'
 import {
-  checkMarkOcrHealth,
   getCurrentMarkOcrConfig,
 } from '@/apis/mark/ocr-config'
 import {
@@ -45,7 +44,6 @@ import {
 import {
   MARK_OCR_HEALTH_STATUS_COLOR,
   MARK_OCR_HEALTH_STATUS_LABEL,
-  MARK_OCR_PAPER_CUT_CAPABILITY,
   MARK_OCR_PROVIDER_LABEL,
 } from '@/apis/mark/ocr-types'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
@@ -53,7 +51,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useUserStore } from '@/stores/modules/user'
@@ -117,17 +114,6 @@ const healthLabel = computed(() =>
 const currentProviderLabel = computed(() =>
   currentConfig.value?.providerType ? providerLabel(currentConfig.value.providerType) : '未配置',
 )
-const paperCutCapabilityText = computed(() =>
-  currentConfig.value?.providerType
-    ? strictEnumLabel(MARK_OCR_PAPER_CUT_CAPABILITY, currentConfig.value.providerType, 'OCR 切题能力')
-    : '未配置 OCR 渠道，不能执行直接扫描整页切题。',
-)
-const paperCutCapabilityTone = computed<'success' | 'warning' | 'error'>(() => {
-  if (!currentConfig.value?.enabled || !currentConfig.value.providerType) {
-    return 'warning'
-  }
-  return currentConfig.value.providerType === 'TENCENT' ? 'error' : 'success'
-})
 
 const canRecognize = computed(() =>
   Boolean(currentConfig.value?.providerType && currentConfig.value.enabled),
@@ -403,13 +389,6 @@ onBeforeUnmount(() => {
     <a-spin v-else-if="loading && !currentConfig" />
 
     <template v-else-if="currentConfig">
-      <UiAlertStrip
-        tone="info"
-        title="OCR 渠道为租户级配置"
-        description="运行渠道由平台超级管理员统一配置；调试识别仅使用当前考试上下文验证，不修改租户渠道。"
-        dense
-        class="ocr-settings__scope-banner"
-      />
       <div class="ocr-settings__toolbar">
         <div class="ocr-settings__status">
           <UiTag :tone="currentConfig.enabled ? 'green' : 'gray'" size="sm">
@@ -434,15 +413,6 @@ onBeforeUnmount(() => {
             <ApiOutlined />
             <span>当前 OCR 渠道</span>
           </template>
-          <UiAlertStrip
-            tone="info"
-            title="OCR 渠道由平台超级管理员统一配置，租户侧仅可查看运行状态与执行调试。"
-          />
-          <UiAlertStrip
-            class="state-message"
-            :tone="paperCutCapabilityTone"
-            :title="paperCutCapabilityText"
-          />
         </UiCard>
 
         <UiCard class="info-card">
@@ -462,12 +432,6 @@ onBeforeUnmount(() => {
               {{ currentConfig?.lastHealthCheckAt || '未检查' }}
             </a-descriptions-item>
           </a-descriptions>
-          <UiAlertStrip
-            v-if="currentConfig?.lastHealthMessage"
-            class="state-message"
-            :tone="healthStatus === 'FAILED' ? 'error' : 'success'"
-            :title="ocrHealthMessageText(currentConfig.lastHealthMessage)"
-          />
         </UiCard>
       </div>
 
@@ -492,11 +456,6 @@ onBeforeUnmount(() => {
           </UiButton>
         </template>
 
-        <UiAlertStrip
-          class="state-message"
-          tone="info"
-          title="承担直接扫描批改的 PaddleOCR 实例必须暴露 /paper-cut；该接口需返回真实题块 ROI，不能仅返回普通 OCR 文本。"
-        />
         <UiDataTable
           pagination-mode="none"
           class="student-detail-table__data-table"
@@ -541,10 +500,6 @@ onBeforeUnmount(() => {
           <ExperimentOutlined />
           <span>同步调试</span>
         </template>
-        <UiAlertStrip
-          tone="warning"
-          title="同步调试使用当前租户已保存渠道，不支持临时指定供应商。"
-        />
         <a-descriptions :column="1" size="small" bordered class="debug-form__exam">
           <a-descriptions-item label="当前考试">
             {{ selectedExamLabel || debugForm.examId }}
@@ -622,10 +577,6 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 16px;
 
-  &__scope-banner {
-    margin-bottom: 0;
-  }
-
   &__toolbar {
     display: flex;
     align-items: center;
@@ -683,10 +634,6 @@ onBeforeUnmount(() => {
       color: var(--ant-color-error);
     }
   }
-}
-
-.state-message {
-  margin-top: 12px;
 }
 
 .result-text-block {

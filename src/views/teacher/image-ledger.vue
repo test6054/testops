@@ -26,14 +26,6 @@
 
     <div v-else class="ledger-page__cards">
       <a-card title="账本概览" :bordered="false" size="small">
-        <UiAlertStrip
-          v-if="balanceError"
-          tone="error"
-          title="考试整体对账失败"
-          :description="balanceError"
-          dense
-          class="ledger-page__balance-error"
-        />
         <LedgerSummaryCard
           :ledger="ledger"
           :loading="loadingDetail"
@@ -63,10 +55,9 @@ import { useRouter } from 'vue-router'
 import { executeImageLedgerBalance, getImageLedgerDetail, normalizeImageLedgerDetail } from '@/apis/mark/image-ledger'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
 import DuplicateResolutionCard from './image-ledger/DuplicateResolutionCard.vue'
 import DuplicateResolveModal from './image-ledger/DuplicateResolveModal.vue'
@@ -91,7 +82,6 @@ const ledger = ref<ImageLedgerDetailVO | null>(null)
 const duplicateCardRef = ref<InstanceType<typeof DuplicateResolutionCard> | null>(null)
 const loadingDetail = ref(false)
 const balancing = ref(false)
-const balanceError = ref('')
 
 async function loadDetail(): Promise<void> {
   if (!selectedExamId.value) return
@@ -115,7 +105,6 @@ async function loadAll(): Promise<void> {
 async function handleBalance(): Promise<void> {
   if (!selectedExamId.value) return
   balancing.value = true
-  balanceError.value = ''
   try {
     ledger.value = normalizeImageLedgerDetail(
       await executeImageLedgerBalance({ examId: selectedExamId.value }),
@@ -123,7 +112,6 @@ async function handleBalance(): Promise<void> {
     message.success('已执行考试整体对账')
     await refreshSnapshot()
   } catch (e) {
-    balanceError.value = getUserErrorMessage(e, '考试整体对账失败')
     showUserError(e, '考试整体对账失败')
   } finally {
     balancing.value = false
@@ -143,7 +131,6 @@ async function onChildSubmitted(): Promise<void> {
 }
 
 watch(selectedExamId, (v) => {
-  balanceError.value = ''
   if (v) {
     void loadAll()
   } else {
@@ -181,9 +168,5 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.ledger-page__balance-error {
-  margin-bottom: 12px;
 }
 </style>

@@ -45,12 +45,6 @@
       </UiStateBlock>
 
       <section v-else class="cas-completion__panel">
-        <UiAlertStrip
-          tone="info"
-          title="请确认补录信息"
-          description="只展示当前统一认证缺失的字段。提交成功后会继续完成登录并进入对应工作台。"
-        />
-
         <div class="cas-completion__summary">
           <div class="cas-completion__summary-item">
             <span class="cas-completion__summary-label">登录身份</span>
@@ -191,7 +185,6 @@ import {
 import AuthLayout from '@/components/AuthLayout/index.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiFormField from '@/components/ui-guide/ui/UiFormField.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'

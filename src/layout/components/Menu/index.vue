@@ -1,5 +1,13 @@
 <template>
+  <DualDomainSideNav
+    v-if="isDualTeacherQualityMenu"
+    :collapsed="!isDesktop ? false : appStore.menuCollapse"
+    :marking-routes="markingSidebarRoutes"
+    :quality-grouped="qualityGroupedMenus"
+    @menu-item-click-after="emit('menu-item-click-after')"
+  />
   <a-menu
+    v-else
     class="app-side-menu"
     :key="`sidebar-menu-${menuKey}`"
     :inline-collapsed="!isDesktop ? false : appStore.menuCollapse"
@@ -34,9 +42,10 @@ import { message } from 'ant-design-vue'
 import { debounce } from 'lodash-es'
 import { computed, ref, watch } from 'vue'
 import { useDevice } from '@/hooks'
-import { useAppStore, useAuthStore, useRouteStore } from '@/stores'
+import { useAppStore, useRouteStore } from '@/stores'
 import { useQualityStore } from '@/stores/modules/quality'
 import { isExternal } from '@/utils/validate'
+import DualDomainSideNav from './DualDomainSideNav.vue'
 import MenuIcon from './MenuIcon.vue'
 import MenuItem from './MenuItem.vue'
 
@@ -56,7 +65,6 @@ const { isDesktop } = useDevice()
 const route = useRoute()
 const router = useRouter()
 const appStore = useAppStore()
-const authStore = useAuthStore()
 const routeStore = useRouteStore()
 const qualityStore = useQualityStore()
 
@@ -72,7 +80,7 @@ function toAbsoluteLayoutPath(prefix: string, child: RouteRecordRaw): RouteRecor
 }
 
 function isMenuItemDisabled(item: RouteRecordRaw): boolean {
-  if (!route.path.startsWith('/quality')) {
+  if (!item.path.startsWith('/quality')) {
     return false
   }
   if (!item.meta?.requiresPlanConfirmed) {
@@ -92,35 +100,23 @@ function isMenuItemDisabled(item: RouteRecordRaw): boolean {
   return plan.confirmationStatus !== 'CONFIRMED'
 }
 
-const activeLayoutPrefix = computed(() => {
-  return ROLE_LAYOUT_PREFIXES.find((prefix) => route.path.startsWith(prefix)) ?? null
-})
-
-const isRoleLayoutRoute = computed(() => activeLayoutPrefix.value !== null)
-
-const sidebarRoutes = computed(() => {
-  if (props.menus) {
-    return props.menus
+function buildLayoutChildren(prefix: string): RouteRecordRaw[] {
+  const layoutRoutes = routeStore.routes.length > 0 ? routeStore.routes : routeStore.getMenuRoutes()
+  const layoutRoute = layoutRoutes.find((r) => r.path === prefix)
+  if (!layoutRoute?.children) {
+    return []
   }
-  const menuRoutes = routeStore.getMenuRoutes()
-  const prefix = activeLayoutPrefix.value
-  if (prefix) {
-    const layoutRoute = menuRoutes.find((r) => r.path === prefix)
-    if (layoutRoute?.children) {
-      return layoutRoute.children
-        .filter(isSidebarMenuRoute)
-        .map((child) => toAbsoluteLayoutPath(prefix, child))
-        .map((child) => ({
-          ...child,
-          meta: {
-            ...child.meta,
-            disabled: isMenuItemDisabled(child),
-          },
-        }))
-    }
-  }
-  return menuRoutes
-})
+  return layoutRoute.children
+    .filter(isSidebarMenuRoute)
+    .map((child) => toAbsoluteLayoutPath(prefix, child))
+    .map((child) => ({
+      ...child,
+      meta: {
+        ...child.meta,
+        disabled: isMenuItemDisabled(child),
+      },
+    }))
+}
 
 interface MenuGroup {
   key: string
@@ -130,14 +126,11 @@ interface MenuGroup {
   items: RouteRecordRaw[]
 }
 
-const groupedMenus = computed(() => {
-  const empty = { ungrouped: [] as RouteRecordRaw[], groups: [] as MenuGroup[] }
-  if (!isRoleLayoutRoute.value) return empty
-
+function groupRoutes(routes: RouteRecordRaw[]): { ungrouped: RouteRecordRaw[], groups: MenuGroup[] } {
   const ungrouped: RouteRecordRaw[] = []
   const groupMap = new Map<string, MenuGroup>()
 
-  for (const item of sidebarRoutes.value) {
+  for (const item of routes) {
     const groupKey = item.meta?.menuGroup as string | undefined
     if (!groupKey) {
       ungrouped.push(item)
@@ -159,6 +152,62 @@ const groupedMenus = computed(() => {
     ungrouped,
     groups: Array.from(groupMap.values()).sort((a, b) => a.order - b.order),
   }
+}
+
+const layoutRouteSource = computed(() => {
+  return routeStore.routes.length > 0 ? routeStore.routes : routeStore.getMenuRoutes()
+})
+
+const hasMarkingDomain = computed(() => layoutRouteSource.value.some((entry) => entry.path === '/teacher'))
+const hasQualityDomain = computed(() => layoutRouteSource.value.some((entry) => entry.path === '/quality'))
+
+const isDualTeacherQualityMenu = computed(() => {
+  if (props.menus) {
+    return false
+  }
+  if (!hasMarkingDomain.value || !hasQualityDomain.value) {
+    return false
+  }
+  return route.path.startsWith('/teacher') || route.path.startsWith('/quality')
+})
+
+const activeLayoutPrefix = computed(() => {
+  return ROLE_LAYOUT_PREFIXES.find((prefix) => route.path.startsWith(prefix)) ?? null
+})
+
+const isRoleLayoutRoute = computed(() => {
+  if (isDualTeacherQualityMenu.value) {
+    return false
+  }
+  return activeLayoutPrefix.value !== null
+})
+
+const markingSidebarRoutes = computed(() => buildLayoutChildren('/teacher'))
+const qualitySidebarRoutes = computed(() => buildLayoutChildren('/quality'))
+const qualityGroupedMenus = computed(() => groupRoutes(qualitySidebarRoutes.value))
+
+const sidebarRoutes = computed(() => {
+  if (props.menus) {
+    return props.menus
+  }
+  if (isDualTeacherQualityMenu.value) {
+    return [...markingSidebarRoutes.value, ...qualitySidebarRoutes.value]
+  }
+  const prefix = activeLayoutPrefix.value
+  if (prefix) {
+    return buildLayoutChildren(prefix)
+  }
+  return routeStore.getMenuRoutes()
+})
+
+const groupedMenus = computed(() => {
+  if (!isRoleLayoutRoute.value && !isDualTeacherQualityMenu.value) {
+    return { ungrouped: [] as RouteRecordRaw[], groups: [] as MenuGroup[] }
+  }
+  if (isDualTeacherQualityMenu.value) {
+    return { ungrouped: [] as RouteRecordRaw[], groups: [] as MenuGroup[] }
+  }
+  return groupRoutes(sidebarRoutes.value)
 })
 
 const stableSidebarRoutes = ref<RouteRecordRaw[]>([])
@@ -211,18 +260,34 @@ const activeMenu = computed<Key[]>(() => {
 })
 
 function findSidebarItemByKey(keyStr: string): RouteRecordRaw | undefined {
-  for (const item of sidebarRoutes.value) {
-    if (item.path === keyStr) {
-      return item
-    }
-  }
-  for (const group of groupedMenus.value.groups) {
-    for (const item of group.items) {
+  const searchInRoutes = (routes: RouteRecordRaw[]): RouteRecordRaw | undefined => {
+    for (const item of routes) {
       if (item.path === keyStr) {
         return item
       }
     }
+    return undefined
   }
+
+  const direct = searchInRoutes(sidebarRoutes.value)
+  if (direct) {
+    return direct
+  }
+
+  for (const group of groupedMenus.value.groups) {
+    const found = searchInRoutes(group.items)
+    if (found) {
+      return found
+    }
+  }
+
+  for (const group of qualityGroupedMenus.value.groups) {
+    const found = searchInRoutes(group.items)
+    if (found) {
+      return found
+    }
+  }
+
   return undefined
 }
 
@@ -257,7 +322,12 @@ const currentGroupKey = computed<Key | null>(() => {
 watch(
   currentGroupKey,
   (key) => {
-    if (!key) return
+    if (isDualTeacherQualityMenu.value) {
+      return
+    }
+    if (!key) {
+      return
+    }
     if (appStore.menuAccordion) {
       openKeys.value = [key]
     } else if (!openKeys.value.includes(key)) {

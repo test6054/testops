@@ -123,14 +123,6 @@
             <div class="review-workspace__text-block review-workspace__standard-answer">
               {{ detail.standardAnswer }}
             </div>
-            <UiAlertStrip
-              v-if="detail.evaluationCriteria"
-              tone="info"
-              title="评分细则"
-              :description="detail.evaluationCriteria"
-              dense
-              class="review-workspace__criteria-alert"
-            />
           </UiCard>
 
           <UiCard class="review-workspace__card">
@@ -172,12 +164,6 @@
             <div v-else class="review-workspace__text-block">
               {{ executionDiagnosticText(detail.aiDiagnostic) }}
             </div>
-            <UiAlertStrip
-              v-if="!canRescoreByAi && detail"
-              tone="warning"
-              :title="rescoreBlockReason || '当前状态不允许重新生成 AI 复评'"
-              dense
-            />
             <div class="review-workspace__ai-actions">
               <UiButton
                 size="sm"
@@ -467,7 +453,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
@@ -802,15 +787,6 @@ const rejecting = ref(false)
 
 // 单题 AI 复评状态：17B 文档设定仅在教师异议阶段允许调用，服务端守门 CONFIRMED 不可复评
 const rescoring = ref(false)
-
-/** 复评可用不可用的原因，用于异议阶段以外状态提示教师 */
-const rescoreBlockReason = computed<string>(() => {
-  if (!detail.value) return '复核任务尚未载入题目复核结果'
-  if (detail.value.status === 'APPROVED' || detail.value.status === 'REJECTED') {
-    return '任务已关闭，禁止重新生成 AI 复评'
-  }
-  return ''
-})
 
 /** 是否可以调用单题 AI 复评，需同时满足：存在 gradeResultId、状态为 PENDING/IN_PROGRESS、未提交中 */
 const canRescoreByAi = computed<boolean>(() => {

@@ -1,8 +1,8 @@
 /**
  * 教师（SCH_TECH / CROP_ADMIN / CROP_USER）路由
  *
- * L0：考试列表 + 质量评价（全局侧栏）
- * L1-L3：/teacher/exam-workspace/:examId/* 考试工作台嵌套路由
+ * L0 全局左栏（跨考试）：考试列表、历史纸质档案
+ * L1：/teacher/exam-workspace/:examId/* 考试详情工作台（九组功能菜单）
  */
 import type { RouteRecordRaw } from 'vue-router'
 import { RoleEnum } from '@/utils/permission'
@@ -17,10 +17,11 @@ export const teacherRoutes: RouteRecordRaw[] = [
     component: () => import('@/layout/index.vue'),
     redirect: '/teacher/exam-list',
     meta: {
-      title: '阅卷工作台',
+      title: '阅卷中心',
       roles: ALL_TEACHER_ROLES,
       icon: 'audit',
-      hideInMenu: false,
+      hideInMenu: true,
+      hideInBreadcrumb: true,
     },
     children: [
       {
@@ -30,13 +31,9 @@ export const teacherRoutes: RouteRecordRaw[] = [
         meta: {
           title: '考试列表',
           roles: TEACHER_ROLES,
-          icon: 'dashboard',
+          icon: 'unordered-list',
           hideInMenu: false,
           keepAlive: true,
-          menuGroup: 'exam-prep',
-          menuGroupTitle: '阅卷中心',
-          menuGroupIcon: 'dashboard',
-          menuGroupOrder: 1,
         },
       },
       {
@@ -47,7 +44,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           title: '历史纸质档案',
           roles: TEACHER_ROLES,
           icon: 'folder-open',
-          hideInMenu: true,
+          hideInMenu: false,
           keepAlive: true,
         },
       },

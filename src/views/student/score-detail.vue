@@ -40,14 +40,6 @@
     />
 
     <template v-else-if="detail">
-      <UiAlertStrip
-        v-if="detail.finalScoreStatus !== 'PUBLISHED'"
-        tone="info"
-        title="成绩尚未公布"
-        dense
-        class="score-detail__unpublished"
-      />
-
       <div v-if="detail.finalScoreStatus === 'PUBLISHED'" class="score-detail__layout">
         <UiCard class="score-detail__sheet-card">
           <template #title>
@@ -97,13 +89,7 @@
           </template>
           <UiEmpty v-if="!selectedQuestion" description="请选择" />
           <a-spin v-else :spinning="panelLoading">
-            <UiAlertStrip
-              v-if="panelError"
-              tone="error"
-              title="答题明细加载失败"
-              :description="panelError"
-              dense
-            />
+            <UiEmpty v-if="panelError" :description="panelError" />
             <UiEmpty v-else-if="!panelLoading && !currentDetail" description="未加载到答题明细" />
             <div v-else-if="currentDetail && selectedQuestion" class="answer-panel">
               <div class="answer-panel__summary">
@@ -288,28 +274,11 @@
             v-if="!reportLoading && !learningReport"
             description="暂无数据"
           />
-          <UiAlertStrip
+          <UiEmpty
             v-else-if="learningReport && !learningReport.available"
-            tone="warning"
-            title="暂无可展示的 AI 学习内容"
             :description="unavailableLearningReportMessage(learningReport)"
-            dense
           />
           <div v-else-if="learningReport" class="profile-block">
-            <UiAlertStrip
-              v-if="learningReport.profileMessage"
-              tone="warning"
-              title="个体学习内容提示"
-              :description="learningReport.profileMessage"
-              dense
-            />
-            <UiAlertStrip
-              v-if="learningReport.clusterMessage"
-              tone="warning"
-              title="错题聚类提示"
-              :description="learningReport.clusterMessage"
-              dense
-            />
             <p v-if="learningReport.overallSummary" class="profile-summary">
               <strong>整体表现：</strong>{{ learningReport.overallSummary }}
             </p>
@@ -436,7 +405,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -867,10 +835,6 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .score-detail {
-  &__unpublished {
-    margin-top: 8px;
-  }
-
   &__layout {
     display: grid;
     grid-template-columns: 300px minmax(0, 1fr);

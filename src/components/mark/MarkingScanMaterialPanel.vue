@@ -7,7 +7,6 @@ import { QUALITY_DECISION_LABEL, QUALITY_DECISION_TONE } from '@/apis/mark/exam-
 import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -169,16 +168,7 @@ onBeforeUnmount(releaseImages)
       <div v-else-if="hasMaster && !hasSlice && !hasSource" class="marking-scan-material__solo-label">
         试卷母版
       </div>
-      <UiAlertStrip
-        v-if="activeTab === 'source' && sourceScanPage?.qualityStatus === 'BLOCKED'"
-        tone="warning"
-        title="扫描页质量阻断"
-        description="该页扫描质量未通过自动检测，请结合原始影像谨慎批阅。"
-        dense
-        class="marking-scan-material__alert"
-      />
-
-      <a-spin v-else :spinning="loading" tip="加载影像中...">
+      <a-spin :spinning="loading" tip="加载影像中...">
         <div v-if="activeTab === 'slice'" class="marking-scan-material__viewer">
           <ScanImageStage
             v-if="sliceImageUrl"
@@ -233,10 +223,6 @@ onBeforeUnmount(releaseImages)
   color: var(--dp-text-secondary, #475569);
   font-size: 13px;
   font-weight: 600;
-}
-
-.marking-scan-material__alert {
-  margin: 0;
 }
 
 .marking-scan-material__viewer {

@@ -788,14 +788,6 @@ function handleCourseChange(courseId: string | null) {
             @reset="loadRecords"
           />
 
-          <a-alert
-            v-if="selectedNode.confirmationStatus !== 'CONFIRMED'"
-            type="warning"
-            show-icon
-            message="节点尚未确认，无法录入记录"
-            class="pe__alert"
-          />
-
           <UiDataTable
             pagination-mode="none"
             class="student-detail-table__data-table"
@@ -1155,10 +1147,6 @@ function handleCourseChange(courseId: string | null) {
     margin-top: 4px;
     font-size: 12px;
     color: var(--dp-text-muted, #64748b);
-  }
-
-  &__alert {
-    margin-bottom: 12px;
   }
 
   &__modal-toolbar {

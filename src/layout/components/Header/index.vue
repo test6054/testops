@@ -4,7 +4,6 @@
       <MenuFoldBtn></MenuFoldBtn>
     </section>
     <a-flex align="center" class="h-full header-right">
-      <DomainSwitch />
       <div class="header-breadcrumb">
         <Breadcrumb></Breadcrumb>
       </div>
@@ -20,7 +19,6 @@ import { useDevice } from '@/hooks'
 import Breadcrumb from '../Breadcrumb/index.vue'
 import HeaderRightBar from '../HeaderRightBar/index.vue'
 import MenuFoldBtn from '../MenuFoldBtn.vue'
-import DomainSwitch from './DomainSwitch.vue'
 
 defineOptions({name: 'LayoutHeader'})
 const { isMobile } = useDevice()

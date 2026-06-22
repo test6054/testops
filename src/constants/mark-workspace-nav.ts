@@ -43,7 +43,10 @@ export function resolveWorkspaceStage(
 }
 
 /**
- * 建议阶段横幅是否应展示：用户已进入后续阶段时不占位提示，避免在成绩/归档页重复出现前序建议。
+ * 建议阶段横幅是否应展示。
+ * <p>
+ * 规则：仅在建议阶段严格位于当前阶段之后时展示用户"可以往前走"的建议。
+ * 如果用户已进入成绩发布/归档阶段，前序未完成阶段不再弹出建议横幅。
  */
 export function shouldShowStageSuggestionBanner(
   activeStageKey: MarkStageKey,
@@ -57,5 +60,7 @@ export function shouldShowStageSuggestionBanner(
   if (activeIndex < 0 || suggestedIndex < 0) {
     throw new Error(`无法比较阶段序：${activeStageKey} / ${suggestedStageKey}`)
   }
-  return activeIndex <= suggestedIndex
+  // 仅在"建议阶段在当前阶段之后"时显示（往前走）
+  // 不显示"前面的阶段未完成"的建议
+  return suggestedIndex > activeIndex
 }

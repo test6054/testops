@@ -7,13 +7,6 @@
     </template>
 
     <a-form v-if="canManage" layout="vertical" class="session-form">
-      <a-alert
-        v-if="actionError"
-        type="error"
-        show-icon
-        style="margin-bottom: 12px"
-        :message="actionError"
-      />
       <a-form-item label="选择题组" required>
         <a-select
           v-model:value="formalGroupId"
@@ -41,21 +34,7 @@
     <a-divider v-if="canManage" class="section-divider" />
 
     <h4 v-if="canManage" class="subsection-title">会话推进</h4>
-    <a-alert
-      v-if="canManage"
-      type="info"
-      show-icon
-      class="completion-semantics-alert"
-      message="完成正评仅表示本场派发的阅卷任务已全部提交"
-    />
     <a-form v-if="canManage" layout="vertical" class="session-form">
-      <a-alert
-        v-if="actionError"
-        type="error"
-        show-icon
-        style="margin-bottom: 12px"
-        :message="actionError"
-      />
       <a-form-item label="正评会话" required>
         <a-select
           v-model:value="actionSessionId"
@@ -210,7 +189,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -241,7 +220,6 @@ const starting = ref(false)
 const completing = ref(false)
 const resumingId = ref<string | null>(null)
 const deletingId = ref<string | null>(null)
-const actionError = ref('')
 
 const formalSessionOptions = computed(() =>
   props.sessions.map((item) => ({
@@ -340,7 +318,6 @@ async function submitCreate(): Promise<void> {
   if (!guardManageAction()) return
   if (!props.organizationId || !formalGroupId.value || !formalAllocationUnit.value) return
   creating.value = true
-  actionError.value = ''
   try {
     const sessionId = await createFormalSession({
       organizationId: props.organizationId,
@@ -351,7 +328,6 @@ async function submitCreate(): Promise<void> {
     actionSessionId.value = sessionId
     emit('refresh')
   } catch (error) {
-    actionError.value = getUserErrorMessage(error, '创建正评会话失败')
     showUserError(error, '创建正评会话失败')
   } finally {
     creating.value = false
@@ -362,13 +338,11 @@ async function submitStart(): Promise<void> {
   if (!guardManageAction()) return
   if (!actionSessionId.value) return
   starting.value = true
-  actionError.value = ''
   try {
     await startFormalSession(actionSessionId.value)
     message.success('正评会话已启动')
     emit('refresh')
   } catch (error) {
-    actionError.value = getUserErrorMessage(error, '启动正评会话失败')
     showUserError(error, '启动正评会话失败')
   } finally {
     starting.value = false
@@ -379,13 +353,11 @@ async function submitComplete(): Promise<void> {
   if (!guardManageAction()) return
   if (!actionSessionId.value) return
   completing.value = true
-  actionError.value = ''
   try {
     await completeFormalSession(actionSessionId.value)
     message.success('本场正评任务已标记完成')
     emit('refresh')
   } catch (error) {
-    actionError.value = getUserErrorMessage(error, '完成正评会话失败')
     showUserError(error, '完成正评会话失败')
   } finally {
     completing.value = false
@@ -395,13 +367,11 @@ async function submitComplete(): Promise<void> {
 async function submitResume(sessionId: string): Promise<void> {
   if (!guardManageAction()) return
   resumingId.value = sessionId
-  actionError.value = ''
   try {
     await resumeFormalSession(sessionId)
     message.success('正评会话已恢复')
     emit('refresh')
   } catch (error) {
-    actionError.value = getUserErrorMessage(error, '恢复正评会话失败')
     showUserError(error, '恢复正评会话失败')
   } finally {
     resumingId.value = null
@@ -411,13 +381,11 @@ async function submitResume(sessionId: string): Promise<void> {
 async function submitDelete(sessionId: string): Promise<void> {
   if (!guardManageAction()) return
   deletingId.value = sessionId
-  actionError.value = ''
   try {
     await deleteFormalSession(sessionId)
     message.success('正评草稿会话已删除')
     emit('refresh')
   } catch (error) {
-    actionError.value = getUserErrorMessage(error, '删除正评会话失败')
     showUserError(error, '删除正评会话失败')
   } finally {
     deletingId.value = null
@@ -458,10 +426,6 @@ async function submitDelete(sessionId: string): Promise<void> {
   margin-top: 6px;
   color: var(--ant-color-warning);
   font-size: 12px;
-}
-
-.completion-semantics-alert {
-  margin-bottom: 12px;
 }
 
 .session-progress-hint {

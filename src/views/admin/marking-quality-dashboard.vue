@@ -320,13 +320,6 @@
               <span>触发异常批次重处理</span>
             </template>
 
-            <UiAlertStrip
-              tone="warning"
-              title="重处理影响范围"
-              dense
-              class="quality-dashboard__alert"
-            />
-
 
 
             <a-form layout="vertical" class="quality-dashboard__form">
@@ -435,7 +428,6 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'

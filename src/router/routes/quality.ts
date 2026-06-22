@@ -57,10 +57,11 @@ export const qualityRoutes: RouteRecordRaw[] = [
     component: () => import('@/layout/index.vue'),
     redirect: '/quality/dashboard',
     meta: {
-      title: '教学质量评价',
+      title: '质量评价',
       roles: ALL_ROLES,
       icon: 'reconciliation',
-      hideInMenu: false,
+      hideInMenu: true,
+      hideInBreadcrumb: true,
     },
     children: [
       {

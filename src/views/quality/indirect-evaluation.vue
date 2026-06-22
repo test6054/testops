@@ -2215,12 +2215,9 @@ onActivated(async () => {
         <a-form-item label="感谢语">
           <a-textarea v-model:value="publishEditor.thankYouMessage" :rows="2" />
         </a-form-item>
-        <a-alert
-          v-if="publishResultUrl"
-          type="success"
-          show-icon
-          :message="`填答链接：${publishResultUrl}`"
-        />
+        <p v-if="publishResultUrl" class="indirect-evaluation__publish-url">
+          填答链接：{{ publishResultUrl }}
+        </p>
       </a-form>
     </UiDrawer>
 

@@ -1,97 +1,76 @@
 <template>
   <StageWorkbenchShell>
     <template #signal>
-      <UiAlertStrip
-        v-if="urgentBanner"
-        tone="warning"
-        :title="urgentBanner.title"
-        dense
-        class="exam-list-page__banner"
+      <UiStatPanel
+        :items="summaryStatItems"
+        :columns="4"
+        variant="strip"
+        compact
+        class="exam-list-page__signals"
       />
-      <SignalBand :metrics="summarySignals" compact class="exam-list-page__signals" />
     </template>
 
-    <!-- 行动提示：当存在超期待推进考试时显示 -->
-    <UiAlertStrip
-      v-if="staleExamCount > 0"
-      tone="warning"
-      :title="`${staleExamCount} 场进行中考试创建超过 7 天，请核查推进状态`"
-      dense
-      class="exam-list-page__alert"
-    />
-
-    <UiCard v-if="recommendedExams.length > 0" class="exam-list-page__recommend-card">
-      <template #title>
-        <span class="section-title">优先推进的考试</span>
-      </template>
-      <ul class="exam-list-page__recommend-list">
-        <li
-          v-for="item in recommendedExams"
-          :key="item.examId"
-          class="exam-list-page__recommend-item"
-        >
-          <div class="exam-list-page__recommend-main">
-            <div class="exam-list-page__recommend-title-row">
-              <strong>{{ item.examName }}</strong>
-              <span v-if="item.examNo" class="exam-list-page__recommend-no">
-                考务编号 {{ item.examNo }}
-              </span>
-              <UiTag v-if="item.attention > 0" tone="red" size="sm">
-                {{ item.attention }} 条扫描异常
-              </UiTag>
-              <UiTag tone="orange" size="sm">待确认 {{ item.pending }} 题</UiTag>
-              <UiTag tone="blue" size="sm">完成率 {{ item.completeRate }}%</UiTag>
-            </div>
-            <div class="exam-list-page__recommend-meta">
-              已确认 {{ item.confirmedGrades }} / {{ item.totalGrades }} 题
-            </div>
-          </div>
-          <div class="operations-cell exam-list-page__recommend-actions">
-            <UiTextAction tone="primary" @click="goSmartExamEntry(item.examId)">
-              进入考试
-            </UiTextAction>
-            <UiTextAction
-              v-if="item.attention > 0"
-              @click="goScanLiveMonitor(item.examId)"
-            >
-              异常
-            </UiTextAction>
-            <UiTextAction tone="primary" @click="goMarkingTaskPool(item.examId)">
-              阅卷
-            </UiTextAction>
-          </div>
-        </li>
-      </ul>
-    </UiCard>
-
-    <!-- P0-1 批阅路径指引：帮助教师理解 OCR/AI复核 与 阅卷组织正评 的关系 -->
-    <UiAlertStrip
-      v-if="progressReady && recommendedExams.length > 0"
-      tone="info"
-      title="批阅流程说明"
-      dense
-      class="exam-list-page__grading-guide"
+    <UiSectionTabs
+      v-model="listTab"
+      :items="examListTabs"
+      compact
+      class="exam-list-page__tabs"
     >
-      系统支持两种批阅模式：<strong>单人批阅</strong>请进入「OCR/AI 复核」逐题确认 AI 建议；
-      <strong>多人协作</strong>请先设置「阅卷安排」分配题组后再进入「阅卷任务池」批阅。
-      单人批阅确认完成后，可直接进入成绩确认与发布。
-    </UiAlertStrip>
+      <section v-if="listTab === 'priority'" class="exam-list-page__tab-panel">
+        <UiEmpty
+          v-if="recommendedExams.length === 0"
+          description="当前无需要优先推进的考试"
+        />
+        <ul v-else class="exam-list-page__recommend-list">
+          <li
+            v-for="item in recommendedExams"
+            :key="item.examId"
+            class="exam-list-page__recommend-item"
+          >
+            <div class="exam-list-page__recommend-main">
+              <div class="exam-list-page__recommend-title-row">
+                <strong>{{ item.examName }}</strong>
+                <span v-if="item.examNo" class="exam-list-page__recommend-no">
+                  考务编号 {{ item.examNo }}
+                </span>
+                <UiTag v-if="item.attention > 0" tone="red" size="sm">
+                  {{ item.attention }} 条扫描异常
+                </UiTag>
+                <UiTag tone="orange" size="sm">待确认 {{ item.pending }} 题</UiTag>
+                <UiTag tone="blue" size="sm">完成率 {{ item.completeRate }}%</UiTag>
+              </div>
+              <div class="exam-list-page__recommend-meta">
+                已确认 {{ item.confirmedGrades }} / {{ item.totalGrades }} 题
+              </div>
+            </div>
+            <div class="operations-cell exam-list-page__recommend-actions">
+              <UiTextAction tone="primary" @click="goSmartExamEntry(item.examId)">
+                进入考试
+              </UiTextAction>
+              <UiTextAction
+                v-if="item.attention > 0"
+                @click="goScanLiveMonitor(item.examId)"
+              >
+                异常
+              </UiTextAction>
+              <UiTextAction tone="primary" @click="goMarkingTaskPool(item.examId)">
+                阅卷
+              </UiTextAction>
+            </div>
+          </li>
+        </ul>
+      </section>
 
+      <section v-else class="exam-list-page__tab-panel">
+        <div class="exam-list-page__table-toolbar">
+          <UiButton size="sm" @click="openCreateModal">
+            <template #icon><PlusOutlined /></template>
+            新建考试
+          </UiButton>
+        </div>
 
-
-    <a-card :bordered="false" class="detail-table-card exam-list-page__table-card">
-      <template #title>
-        <span class="section-title">全部考试</span>
-      </template>
-      <template #extra>
-        <UiButton size="sm" @click="openCreateModal">
-          <template #icon><PlusOutlined /></template>
-          新建考试
-        </UiButton>
-      </template>
-
-      <UiFilterBar
-        v-model="filterForm"
+        <UiFilterBar
+        v-model="filterModel"
         :fields="filterFields"
         search-text="查询"
         actions-align="end"
@@ -192,7 +171,8 @@
           </template>
         </template>
       </UiDataTable>
-    </a-card>
+      </section>
+    </UiSectionTabs>
   </StageWorkbenchShell>
 
   <!-- 考试维护弹窗 -->
@@ -303,13 +283,20 @@ import type {
   GradingStrategyCode,
 } from '@/apis/mark/exam'
 import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
+import type { BadgeTone, FilterField, UiSectionTabItem, UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
+import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
+import LockOutlined from '@ant-design/icons-vue/LockOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
 import Modal from 'ant-design-vue/es/modal'
 import dayjs from 'dayjs'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   closeExam,
@@ -324,13 +311,13 @@ import {
 import { batchGetMarkingProgress } from '@/apis/mark/exam-progress'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
@@ -343,8 +330,6 @@ import { resolveScanStageEntryRoute } from '@/utils/resolve-scan-stage-entry'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamList' })
-
-const URGENT_PENDING_REVIEW_THRESHOLD = 30
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -380,6 +365,13 @@ const filterForm = reactive<{
   semester: undefined,
   keyword: '',
   dateRange: undefined,
+})
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
 })
 
 const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
@@ -483,25 +475,13 @@ const progressAggregate = computed(() => {
   }
 })
 
-const summarySignals = computed<SignalMetric[]>(() => {
+const summaryStatItems = computed<UiStatPanelItem[]>(() => {
   const a = progressAggregate.value
   const dash = '—'
-  const pendingValue = false
-    ? dash
-    : progressReady.value
-      ? a.pendingReview
-      : '…'
-  const inProgressValue = false
-    ? dash
-    : progressReady.value
-      ? a.inProgressReview
-      : '…'
-  const unconfirmedValue = false
-    ? dash
-    : progressReady.value
-      ? a.unconfirmedQuestionGrades
-      : '…'
-  const scanValue = false ? dash : progressReady.value ? a.scanAttention : '…'
+  const pendingValue = progressReady.value ? a.pendingReview : '…'
+  const inProgressValue = progressReady.value ? a.inProgressReview : '…'
+  const unconfirmedValue = progressReady.value ? a.unconfirmedQuestionGrades : '…'
+  const scanValue = progressReady.value ? a.scanAttention : '…'
   return [
     {
       key: 'pending-review',
@@ -509,6 +489,7 @@ const summarySignals = computed<SignalMetric[]>(() => {
       value: pendingValue,
       unit: '份',
       tone: (a.pendingReview > 0 ? 'orange' : 'gray') as BadgeTone,
+      icon: FileSearchOutlined,
     },
     {
       key: 'in-progress',
@@ -516,6 +497,7 @@ const summarySignals = computed<SignalMetric[]>(() => {
       value: inProgressValue,
       unit: '份',
       tone: (a.inProgressReview > 0 ? 'blue' : 'gray') as BadgeTone,
+      icon: SyncOutlined,
     },
     {
       key: 'unconfirmed',
@@ -523,6 +505,7 @@ const summarySignals = computed<SignalMetric[]>(() => {
       value: unconfirmedValue,
       unit: '题',
       tone: (a.unconfirmedQuestionGrades > 0 ? 'purple' : 'gray') as BadgeTone,
+      icon: CheckCircleOutlined,
     },
     {
       key: 'scan-monitor',
@@ -530,6 +513,7 @@ const summarySignals = computed<SignalMetric[]>(() => {
       value: scanValue,
       unit: '条',
       tone: (a.scanAttention > 0 ? 'red' : 'gray') as BadgeTone,
+      icon: WarningOutlined,
     },
     {
       key: 'filtered',
@@ -537,6 +521,7 @@ const summarySignals = computed<SignalMetric[]>(() => {
       value: pagination.total ?? 0,
       unit: '场',
       tone: 'blue',
+      icon: FilterOutlined,
     },
     {
       key: 'active',
@@ -544,6 +529,7 @@ const summarySignals = computed<SignalMetric[]>(() => {
       value: statusTotalsFailed.value ? dash : activeTotal.value,
       unit: '场',
       tone: 'green',
+      icon: PlayCircleOutlined,
     },
     {
       key: 'closed',
@@ -551,6 +537,7 @@ const summarySignals = computed<SignalMetric[]>(() => {
       value: statusTotalsFailed.value ? dash : closedTotal.value,
       unit: '场',
       tone: 'gray',
+      icon: LockOutlined,
     },
     {
       key: 'stale',
@@ -558,6 +545,7 @@ const summarySignals = computed<SignalMetric[]>(() => {
       value: staleExamCount.value,
       unit: '场',
       tone: (staleExamCount.value > 0 ? 'orange' : 'gray') as BadgeTone,
+      icon: ClockCircleOutlined,
     },
   ]
 })
@@ -600,6 +588,31 @@ const recommendedExams = computed<RecommendedExamItem[]>(() => {
   return result.slice(0, 5)
 })
 
+type ExamListTabKey = 'priority' | 'all'
+
+const listTab = ref<ExamListTabKey>('priority')
+
+const examListTabs = computed<UiSectionTabItem[]>(() => [
+  {
+    key: 'priority',
+    label: '优先推进的考试',
+    count: recommendedExams.value.length,
+    badgeTone: recommendedExams.value.length > 0 ? 'orange' : 'gray',
+  },
+  {
+    key: 'all',
+    label: '全部考试',
+    count: pagination.total ?? 0,
+    badgeTone: 'blue',
+  },
+])
+
+watch(recommendedExams, (items) => {
+  if (items.length === 0 && listTab.value === 'priority') {
+    listTab.value = 'all'
+  }
+})
+
 function getExamProgressText(examId: string): string {
   const p = examProgressMap.value.get(examId)
   if (!p) {
@@ -610,22 +623,6 @@ function getExamProgressText(examId: string): string {
   if (totalGrades <= 0) return '无题目'
   return `${confirmed}/${totalGrades} 题`
 }
-
-const urgentBanner = computed<{ title: string } | null>(() => {
-  const a = progressAggregate.value
-  if (!progressReady.value || false) return null
-  if (a.scanAttention > 0) {
-    return {
-      title: `${a.scanAttention} 条扫描异常待处理`,
-    }
-  }
-  if (a.pendingReview >= URGENT_PENDING_REVIEW_THRESHOLD) {
-    return {
-      title: `${a.pendingReview} 份待阅卷任务待推进`,
-    }
-  }
-  return null
-})
 
 // helper 严格 typed 接收后端 API 对象 ExamSummaryVO，模板侧使用表格 slot record 保留当前行引用。
 function examStatusTone(exam: ExamSummaryVO): BadgeTone {
@@ -1059,20 +1056,23 @@ onActivated(() => {
   gap: 16px;
 }
 
-.exam-list-page__banner {
-  margin-bottom: 8px;
-}
-
 .exam-list-page__signals {
   margin-bottom: 0;
 }
 
-.exam-list-page__alert {
-  margin-bottom: 4px;
+.exam-list-page__tabs {
+  margin-bottom: 0;
 }
 
-.exam-list-page__recommend-card {
-  margin-bottom: 0;
+.exam-list-page__tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.exam-list-page__table-toolbar {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .exam-list-page__recommend-list {

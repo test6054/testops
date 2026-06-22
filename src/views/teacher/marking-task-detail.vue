@@ -186,14 +186,6 @@
               <span>{{ usesWholePaperWorkspace ? '当前任务负责题目' : '批改提交' }}</span>
             </template>
 
-            <a-alert
-              v-if="isReadOnly"
-              type="success"
-              show-icon
-              message="阅卷已提交，当前为只读查看"
-              :description="readOnlyHint"
-              style="margin-bottom: 12px"
-            />
             <a-form
               ref="formRef"
               :model="form"
@@ -454,11 +446,6 @@ const canSubmit = computed(() => {
 const navPrevLabel = computed(() => (isWholePaperTask.value ? '上一份' : '上一题'))
 
 const navNextLabel = computed(() => (isWholePaperTask.value ? '下一份' : '下一题'))
-
-const readOnlyHint = computed(() => {
-  if (!task.value?.submittedAt) return '可查看扫描页、逐题给分与页面批注，不可再次修改。'
-  return `提交于 ${formatDateTime(task.value.submittedAt)}，可查看扫描页、逐题给分与页面批注，不可再次修改。`
-})
 
 function resolvePaperInstanceId(display: PaperInstanceDisplayVO): string | undefined {
   if (display.displayMode === 'REAL_NAME' || display.displayMode === 'ANONYMOUS') {

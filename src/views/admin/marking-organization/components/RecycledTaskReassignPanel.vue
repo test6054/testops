@@ -1,11 +1,5 @@
 <template>
   <section class="recycled-panel">
-    <UiAlertStrip
-      tone="info"
-      title="手动再分配"
-      description="MANUAL 回收策略下超时任务进入 RECYCLED；正评进行中或暂停态均可指定 ACTIVE 教师再分配为 ALLOCATED。"
-      dense
-    />
     <div class="recycled-panel__toolbar">
       <UiButton variant="outline" size="sm" :loading="loading" @click="loadTasks">刷新</UiButton>
     </div>
@@ -64,7 +58,6 @@ import {
 } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'

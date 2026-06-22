@@ -9,19 +9,6 @@
     </div>
 
     <template v-if="selectedExamId">
-      <UiAlertStrip
-        v-if="pendingAbsenceCount > 0"
-        tone="warning"
-        :title="`当前考试仍有 ${pendingAbsenceCount} 条待确认缺考记录`"
-        :closable="false"
-        class="score-publish__absence-alert"
-      >
-        <template #actions>
-          <UiButton size="sm" variant="outline" @click="goToAbsenceConfirm">
-            去核对
-          </UiButton>
-        </template>
-      </UiAlertStrip>
       <UiStatPanel
         :items="statMetrics"
         :columns="3"
@@ -47,7 +34,7 @@
         </template>
 
         <UiFilterBar
-          v-model="scoreFilterForm"
+          v-model="scoreFilterModel"
           :fields="scoreFilterFields"
           search-text="查询"
           @search="handleSearch"
@@ -211,12 +198,6 @@
       @confirm="handleWithdraw"
     >
       <a-form layout="vertical">
-        <UiAlertStrip
-          tone="warning"
-          title="撤回说明"
-          dense
-          class="score-publish__alert"
-        />
         <a-form-item label="考生">
           <a-input
             :value="withdrawCandidate ? withdrawCandidate.paperDisplay.primaryText : ''"
@@ -249,12 +230,6 @@
       cancel-text="取消"
       @ok="runBulkPublish"
     >
-      <UiAlertStrip
-        tone="warning"
-        title="全场发布确认"
-        dense
-        class="score-publish__alert"
-      />
       <a-descriptions
         v-if="finalScoreOverview"
         :column="3"
@@ -356,7 +331,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
@@ -386,6 +360,13 @@ const scoreFilterForm = reactive<{
 }>({
   keyword: '',
   statusFilter: undefined,
+})
+
+const scoreFilterModel = computed<Record<string, unknown>>({
+  get: () => scoreFilterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(scoreFilterForm, value)
+  },
 })
 
 const scoreFilterFields: FilterField[] = [
@@ -473,7 +454,6 @@ function onScoreReleaseStepChange(value: string | number): void {
 const candidates = ref<ExamScoreSummaryItemVO[]>([])
 const loading = ref(false)
 const pendingAbsenceCount = ref(0)
-const absenceGuardLoading = ref(false)
 const finalScoreOverview = ref<FinalScoreRiskOverviewVO | null>(null)
 
 const pagination = reactive<TablePaginationConfig>({
@@ -528,7 +508,6 @@ async function loadPendingAbsenceCount(): Promise<void> {
     pendingAbsenceCount.value = 0
     return
   }
-  absenceGuardLoading.value = true
   try {
     const result = await listAbsenceRecords({
       examId: selectedExamId.value,
@@ -540,8 +519,6 @@ async function loadPendingAbsenceCount(): Promise<void> {
   } catch (error) {
     pendingAbsenceCount.value = 0
     showUserError(error, '待确认缺考记录查询失败')
-  } finally {
-    absenceGuardLoading.value = false
   }
 }
 
@@ -852,10 +829,6 @@ watch(selectedExamId, (value) => {
 }
 
 .score-publish {
-  &__absence-alert {
-    margin-bottom: 12px;
-  }
-
   &__signals {
     margin-bottom: 12px;
     padding: 16px 20px;
@@ -895,10 +868,6 @@ watch(selectedExamId, (value) => {
 
   &__hint {
     color: var(--dp-text-muted, #64748b);
-  }
-
-  &__alert {
-    margin-bottom: 12px;
   }
 
   &__bulk-progress {

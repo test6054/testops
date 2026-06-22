@@ -8,7 +8,7 @@
     </template>
 
     <UiFilterBar
-      v-model="filterForm"
+      v-model="filterModel"
       :fields="filterFields"
       search-text="查询"
       @search="handleSearch"
@@ -174,6 +174,13 @@ const pagination = reactive({
 })
 
 const filterForm = reactive<{ status?: GradeReviewRequestStatusCode }>({})
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
+})
 
 const filterFields: FilterField[] = [
   {

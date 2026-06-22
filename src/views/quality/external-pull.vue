@@ -1153,14 +1153,6 @@ onMounted(async () => {
       ok-text="保存"
       @ok="submitSource"
     >
-      <a-alert
-        v-if="sourceEditorMode === 'edit'"
-        type="warning"
-        show-icon
-        message="编辑模式必须重新输入连接地址 / 账号 / 密码"
-        description="服务端不下行明文凭证，保存时连接地址 / 账号 / 密码会覆盖原有密文。其他字段默认以当前值为准。"
-        class="external-pull__editor-alert"
-      />
       <a-form layout="vertical" :model="sourceForm">
         <a-row :gutter="12">
           <a-col :span="12">
@@ -1775,10 +1767,6 @@ onMounted(async () => {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
-  }
-
-  &__editor-alert {
-    margin-bottom: 12px;
   }
 
   &__entry-list {

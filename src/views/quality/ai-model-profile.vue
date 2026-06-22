@@ -392,13 +392,6 @@ onActivated(() => {
 
 <template>
   <StageWorkbenchShell>
-    <a-alert
-      type="warning"
-      show-icon
-      message="平台同供应商只能启用 1 条 AI 模型配置。阅卷视觉能力使用通义千问，质量评价与阅卷文本能力使用 DeepSeek；缺少对应供应商启用配置时，相关 AI 任务将阻断。"
-      class="ai-model__alert"
-    />
-
     <SignalBand :metrics="signals" compact class="ai-model__signals" />
 
     <UiCard class="detail-table-card ai-model__active-card">
@@ -634,11 +627,6 @@ onActivated(() => {
             </a-form-item>
           </a-col>
         </a-row>
-        <a-alert
-          type="info"
-          show-icon
-          message="启用状态仅可通过列表「设为启用」操作切换；编辑抽屉不会变更当前启用模型。"
-        />
       </a-form>
     </UiDrawer>
   </StageWorkbenchShell>
@@ -646,10 +634,6 @@ onActivated(() => {
 
 <style scoped lang="scss">
 .ai-model {
-  &__alert {
-    margin-bottom: 16px;
-  }
-
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;

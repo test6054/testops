@@ -501,26 +501,6 @@ watch(selectedExamId, (next) => {
           compact
           class="exam-prep__signals"
         />
-        <div v-if="blockingReasons.length > 0" class="exam-prep__advisory">
-          <a-alert
-            v-for="reason in blockingReasons"
-            :key="reason"
-            type="error"
-            show-icon
-            :message="reason"
-            class="exam-prep__alert"
-          />
-        </div>
-        <div v-if="advisoryReasons.length > 0" class="exam-prep__advisory">
-          <a-alert
-            v-for="reason in advisoryReasons"
-            :key="reason"
-            type="warning"
-            show-icon
-            :message="reason"
-            class="exam-prep__alert"
-          />
-        </div>
         <section class="exam-prep__cards">
           <UiCard
             v-for="step in prepSteps"
@@ -640,15 +620,6 @@ watch(selectedExamId, (next) => {
     background: var(--dp-surface-elevated, #f8fafc);
     border: 1px solid var(--dp-border, #e2e8f0);
     border-radius: 8px;
-  }
-  &__advisory {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-  &__alert {
-    margin: 0;
   }
   &__cards {
     display: grid;

@@ -9,13 +9,6 @@
     @ok="handleOk"
   >
     <a-form v-if="resolution" layout="vertical">
-      <a-alert
-        v-if="submitError"
-        type="error"
-        show-icon
-        style="margin-bottom: 12px"
-        :message="submitError"
-      />
       <a-form-item label="重复判定">
         <a-input value="两份影像内容重复，需要选择保留的试卷" disabled />
       </a-form-item>

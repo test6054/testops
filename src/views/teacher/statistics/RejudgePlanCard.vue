@@ -6,7 +6,7 @@
     </template>
 
     <UiFilterBar
-      v-model="filterForm"
+      v-model="filterModel"
       :fields="filterFields"
       search-text="查询"
       @search="handleSearch"
@@ -132,7 +132,7 @@ import type {
 } from '@/apis/mark/question-analysis'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   approveRejudgePlan,
   executeRejudgePlan,
@@ -167,6 +167,13 @@ const pagination = reactive({
 })
 
 const filterForm = reactive<{ status?: RejudgePlanStatusCode }>({})
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
+})
 
 const filterFields: FilterField[] = [
   {

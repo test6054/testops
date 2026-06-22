@@ -56,13 +56,6 @@
 
 
     <a-spin v-else :spinning="loading" tip="加载组织中...">
-      <UiAlertStrip
-        v-if="!canManageSelectedExam"
-        tone="info"
-        title="协作查看模式"
-        dense
-        class="org-index__collab-alert"
-      />
       <SignalBand v-if="organization" :metrics="signalMetrics" compact class="org-index__signals" />
 
       <a-card v-if="organization" :bordered="false" class="detail-table-card org-index__overview-card">
@@ -286,7 +279,6 @@ import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'

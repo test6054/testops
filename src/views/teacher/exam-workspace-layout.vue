@@ -89,30 +89,6 @@
           class="exam-detail-layout__content"
           :class="{ 'exam-detail-layout__content--wide': isLayoutWide }"
         >
-          <UiAlertStrip
-            v-if="suggestionBanner"
-            tone="warning"
-            :title="suggestionBanner"
-            dense
-            class="exam-detail-layout__banner"
-          >
-            <template #actions>
-              <UiButton size="sm" variant="primary" @click="goSuggestedStage">前往建议阶段</UiButton>
-            </template>
-          </UiAlertStrip>
-
-          <UiAlertStrip
-            v-if="prepAdvisoryBanner"
-            tone="info"
-            :title="prepAdvisoryBanner"
-            dense
-            class="exam-detail-layout__banner"
-          >
-            <template #actions>
-              <UiButton size="sm" variant="outline" @click="goPrepWorkbench">去完善准备</UiButton>
-            </template>
-          </UiAlertStrip>
-
           <UiEmpty
             v-if="!examId"
             description="缺少考试上下文，请从考试列表进入"
@@ -157,7 +133,6 @@ import type { Component } from 'vue'
 import type { RouteLocationNormalized } from 'vue-router'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
-import type { MarkStageKey } from '@/stores/modules/markStage'
 import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
@@ -188,7 +163,6 @@ import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import ExamJourneyRail from '@/components/workbench/ExamJourneyRail.vue'
 import ExamSubSidebar from '@/components/workbench/ExamSubSidebar.vue'
 import { useExamJourneySteps } from '@/composables/useExamJourneySteps'
@@ -199,13 +173,10 @@ import {
   findExamWorkspaceMenuItem,
   resolveExamWorkspaceMenuKey,
 } from '@/constants/exam-workspace-menu'
-import { shouldShowStageSuggestionBanner, WORKSPACE_STAGE_STATUS_LABEL } from '@/constants/mark-workspace-nav'
 import HeaderRightBar from '@/layout/components/HeaderRightBar/index.vue'
 import { useAppStore } from '@/stores/modules/app'
-import { MARK_STAGE_ORDER } from '@/stores/modules/markStage'
-import { navigateToJourneyStep, navigateToMarkStage } from '@/utils/mark-stage-navigation'
+import { navigateToJourneyStep } from '@/utils/mark-stage-navigation'
 import mittBus from '@/utils/mitt'
-import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ExamWorkspaceLayout' })
 
@@ -273,11 +244,8 @@ const {
 const {
   snapshot,
   loading,
-  error: snapshotError,
   refreshing,
   orderedStages,
-  suggestedStageKey,
-  prepAdvisoryReasons,
   refreshSnapshot,
 } = useMarkWorkbenchSnapshot(() => examId.value)
 
@@ -290,14 +258,6 @@ provideMarkWorkbenchContext({
   loading,
   refreshing,
   refreshSnapshot,
-})
-
-const activeStageKey = computed<MarkStageKey>(() => {
-  const key = route.meta.markStageKey
-  if (!key || !MARK_STAGE_ORDER.includes(key as MarkStageKey)) {
-    throw new Error(`路由 ${String(route.name)} 缺少有效 meta.markStageKey`)
-  }
-  return key as MarkStageKey
 })
 
 const activeMenuKey = computed(() => resolveExamWorkspaceMenuKey(route.name ? String(route.name) : undefined))
@@ -316,28 +276,6 @@ const examStatusTone = computed(() => {
     return undefined
   }
   return EXAM_STATUS_TONE[status]
-})
-
-const suggestionBanner = computed(() => {
-  const suggested = suggestedStageKey.value
-  const active = activeStageKey.value
-  if (!suggested || !shouldShowStageSuggestionBanner(active, suggested)) {
-    return ''
-  }
-  const stage = orderedStages.value.find((item) => item.key === suggested)
-  if (!stage) {
-    return ''
-  }
-  const statusLabel = stage.statusText?.trim()
-    || strictEnumLabel(WORKSPACE_STAGE_STATUS_LABEL, stage.status, '工作台阶段状态')
-  return `建议优先处理「${stage.title}」：${statusLabel}`
-})
-
-const prepAdvisoryBanner = computed(() => {
-  if (activeStageKey.value !== 'SCAN' || prepAdvisoryReasons.value.length === 0) {
-    return ''
-  }
-  return `准备项仍有待完善：${prepAdvisoryReasons.value.join('；')}`
 })
 
 function goExamList(): void {
@@ -390,16 +328,6 @@ function onJourneySelect(journeyKey: ExamJourneyKey): void {
   })
 }
 
-function goSuggestedStage(): void {
-  const suggested = suggestedStageKey.value
-  if (!suggested || !examId.value) {
-    return
-  }
-  navigateToMarkStage(router, suggested, examId.value, {
-    scanAttentionCount: snapshot.value?.markingProgress?.scanAttentionCount,
-  })
-}
-
 function exitImmersiveWorkspace(): void {
   if (!examId.value) {
     goExamList()
@@ -432,13 +360,6 @@ function getWorkspaceRouteKey(childRoute: RouteLocationNormalized): string {
     return `${String(childRoute.name ?? childRoute.path)}_${String(workspaceExamId)}`
   }
   return childRoute.fullPath
-}
-
-function goPrepWorkbench(): void {
-  if (!examId.value) {
-    return
-  }
-  void router.push({ name: 'TeacherExamWorkspacePrep', params: { examId: examId.value } })
 }
 
 async function handleRefresh(): Promise<void> {
@@ -581,10 +502,6 @@ watch(isImmersiveWorkspace, (immersive) => {
 
   &__journey-skeleton {
     padding: 12px 16px;
-  }
-
-  &__banner {
-    margin-bottom: 12px;
   }
 
   &__empty {

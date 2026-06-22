@@ -409,13 +409,6 @@ defineExpose({ loadMaterials, openCreate })
 
 <template>
   <div class="annual-report-material-panel">
-    <a-alert
-      v-if="annualMaterialPhaseHint"
-      type="warning"
-      show-icon
-      :message="annualMaterialPhaseHint"
-    />
-
     <div class="material-toolbar">
       <a-input
         v-model:value="query.keyword"

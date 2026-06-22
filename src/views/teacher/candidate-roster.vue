@@ -11,14 +11,6 @@
         <UiTag v-if="rosterLocked" tone="orange" size="sm">扫描已开始</UiTag>
         <UiTag v-else-if="classScopeReadOnly" tone="gray" size="sm">只读</UiTag>
       </template>
-      <UiAlertStrip
-        v-if="classScopeReadOnly && !rosterLocked"
-        tone="warning"
-        title="当前账号无权维护该考试名册"
-        description="暂无数据"
-        dense
-        class="info-card__alert"
-      />
       <div v-if="classScopeReadOnly" class="roster-class-tags">
         <UiTag v-for="item in scopedClassTags" :key="item.classId" tone="blue" size="sm">
           {{ item.className }}
@@ -171,13 +163,6 @@
           {{ importPreview.validCount }} 可导入 / {{ importPreview.errorCount }} 错误
         </UiTag>
       </div>
-      <a-alert
-        v-if="importValidationMessage"
-        :message="importValidationMessage"
-        type="warning"
-        show-icon
-        class="roster-import__alert"
-      />
       <div v-if="importColumnOptions.length" class="roster-import__mapping">
         <a-form layout="vertical" class="roster-import__mapping-form">
           <a-form-item label="院系">
@@ -359,7 +344,6 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiConfirmPopover from '@/components/ui-guide/ui/UiConfirmPopover.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
@@ -1316,10 +1300,6 @@ watch(selectedExamId, (value) => {
     flex-wrap: wrap;
     align-items: center;
     gap: var(--dp-space-2, 8px);
-  }
-
-  &__alert {
-    margin: 0;
   }
 
   &__mapping {

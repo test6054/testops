@@ -7,13 +7,6 @@
     </template>
 
     <a-form v-if="canManage" layout="vertical" class="session-form">
-      <a-alert
-        v-if="actionError"
-        type="error"
-        show-icon
-        style="margin-bottom: 12px"
-        :message="actionError"
-      />
       <a-form-item label="选择题组" required>
         <a-select
           v-model:value="trialGroupId"
@@ -31,13 +24,6 @@
 
     <h4 v-if="canManage" class="subsection-title">校准结论</h4>
     <a-form v-if="canManage" layout="vertical" class="session-form">
-      <a-alert
-        v-if="actionError"
-        type="error"
-        show-icon
-        style="margin-bottom: 12px"
-        :message="actionError"
-      />
       <a-form-item label="试评会话" required>
         <a-select
           v-model:value="calibrateSessionId"
@@ -155,7 +141,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -189,7 +175,6 @@ const calibrateForm = reactive<
 })
 const calibrating = ref(false)
 const deletingId = ref<string | null>(null)
-const actionError = ref('')
 
 const trialSessionOptions = computed(() =>
   props.sessions.map((item) => ({
@@ -228,7 +213,6 @@ async function submitCreate(): Promise<void> {
   if (!guardManageAction()) return
   if (!props.organizationId || !trialGroupId.value) return
   creating.value = true
-  actionError.value = ''
   try {
     const sessionId = await createTrialSession({
       organizationId: props.organizationId,
@@ -238,7 +222,6 @@ async function submitCreate(): Promise<void> {
     calibrateSessionId.value = sessionId
     emit('refresh')
   } catch (error) {
-    actionError.value = getUserErrorMessage(error, '创建试评会话失败')
     showUserError(error, '创建试评会话失败')
   } finally {
     creating.value = false
@@ -249,7 +232,6 @@ async function submitCalibrate(): Promise<void> {
   if (!guardManageAction()) return
   if (!calibrateSessionId.value || !calibrateForm.calibrationSummary.trim()) return
   calibrating.value = true
-  actionError.value = ''
   try {
     await calibrateTrialSession({
       sessionId: calibrateSessionId.value,
@@ -261,7 +243,6 @@ async function submitCalibrate(): Promise<void> {
     calibrateForm.discussionNotes = ''
     emit('refresh')
   } catch (error) {
-    actionError.value = getUserErrorMessage(error, '提交试评校准结论失败')
     showUserError(error, '提交试评校准结论失败')
   } finally {
     calibrating.value = false
@@ -271,13 +252,11 @@ async function submitCalibrate(): Promise<void> {
 async function submitDelete(sessionId: string): Promise<void> {
   if (!guardManageAction()) return
   deletingId.value = sessionId
-  actionError.value = ''
   try {
     await deleteTrialSession(sessionId)
     message.success('试评草稿会话已删除')
     emit('refresh')
   } catch (error) {
-    actionError.value = getUserErrorMessage(error, '删除试评会话失败')
     showUserError(error, '删除试评会话失败')
   } finally {
     deletingId.value = null

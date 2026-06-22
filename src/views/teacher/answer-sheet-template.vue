@@ -25,19 +25,6 @@
 
 
   <a-spin v-else :spinning="loading">
-    <UiAlertStrip
-      v-if="!hasQuestions"
-      tone="warning"
-      title="题目结构尚未配置"
-      description="暂无数据"
-      dense
-      class="sheet-page__alert"
-    >
-      <template #actions>
-        <UiButton size="sm" variant="outline" @click="goPaperTemplate">前往试卷模板</UiButton>
-      </template>
-    </UiAlertStrip>
-
     <UiCard class="info-card">
       <template #title>
         <InfoCircleOutlined />
@@ -126,7 +113,6 @@ import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   getExamTemplate,
   isPaperTemplateNotConfiguredError,
@@ -139,7 +125,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
@@ -147,7 +132,6 @@ import { hydrateTemplatePageFileNames } from '@/utils/mark-storage-file'
 
 defineOptions({ name: 'TeacherAnswerSheetTemplate' })
 
-const router = useRouter()
 const pageTableRef = ref<InstanceType<typeof ExamTemplatePageTable> | null>(null)
 
 const { selectedExamId } = useMarkExamContext()
@@ -283,14 +267,6 @@ async function loadTemplate(): Promise<void> {
   }
 }
 
-function goPaperTemplate(): void {
-  if (!selectedExamId.value) return
-  void router.push({
-    name: 'TeacherExamWorkspacePaperTemplate',
-    params: { examId: selectedExamId.value },
-  })
-}
-
 function addPage(): void {
   const row: ExamTemplatePageRow = {
     rowKey: nextRowKey(),
@@ -424,10 +400,6 @@ watch(selectedExamId, (value) => {
 
   &__empty {
     padding: 60px 0;
-  }
-
-  &__alert {
-    margin-bottom: 16px;
   }
 
   display: flex;

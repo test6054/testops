@@ -12,7 +12,7 @@
     <div class="task-center">
       <!-- 工具栏和筛选 -->
       <UiFilterBar
-        v-model="filterForm"
+        v-model="filterModel"
         :fields="filterFields"
         @search="handleSearch"
         @reset="handleReset"
@@ -179,16 +179,6 @@
           </UiEmpty>
         </template>
       </UiDataTable>
-
-      <!-- 导出处理说明展开面板（表格下方） -->
-      <template v-if="expandedTask">
-        <a-alert
-          :message="`导出处理说明：${getExportFailReason(expandedTask)}`"
-          type="error"
-          closable
-          @close="expandedTask = null"
-        />
-      </template>
     </div>
   </a-drawer>
 </template>
@@ -217,7 +207,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { useExportTaskStore } from '@/stores/exportTask'
 import { AsyncTaskStatusEnum, ExportFormatEnum } from '@/types/enums'
-import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 
 defineOptions({ name: 'ExportTaskCenter' })
@@ -230,7 +220,14 @@ const filterForm = reactive({
   status: undefined as AsyncTaskStatusEnum | undefined,
   dateRange: undefined as [string, string] | undefined,
 })
-const expandedTask = ref<ExportJobStatusVO | null>(null)
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
+})
+
 const downloadingJobId = ref<string | null>(null)
 
 // 筛选字段配置
@@ -482,10 +479,6 @@ const formatFileSize = (bytes: number): string => {
   const sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return `${(bytes / k ** i).toFixed(2)} ${sizes[i]}`
-}
-
-const getExportFailReason = (task: ExportJobStatusVO): string => {
-  return getUserProcessFailureMessage(task.failReason, '导出任务处理失败，请检查筛选条件后重新导出')
 }
 
 // 根据格式返回颜色
