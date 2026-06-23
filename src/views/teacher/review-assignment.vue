@@ -780,7 +780,6 @@ onMounted(async () => {
             <template #title>
               <ProfileOutlined />
               <span>组织全貌</span>
-              <UiBadge tone="blue">{{ selectedExamLabel }}</UiBadge>
             </template>
             <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="middle" bordered>
               <a-descriptions-item label="阅卷组长">

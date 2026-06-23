@@ -48,7 +48,7 @@ function resolveHomePath(): string {
     return '/student/score'
   }
   if (role === RoleEnum.SUPER_ADMIN) {
-    return '/admin/dashboard'
+    return '/teacher/dashboard'
   }
   if (
     role === RoleEnum.SCH_TECH
@@ -66,7 +66,7 @@ const backLabel = computed(() => {
     return '返回我的成绩'
   }
   if (role === RoleEnum.SUPER_ADMIN) {
-    return '返回阅卷管理中心'
+    return '返回阅卷中心'
   }
   if (
     role === RoleEnum.SCH_TECH

@@ -19,49 +19,11 @@
         @click="mobileNavOpen = true"
       >
         <template #icon><MenuOutlined /></template>
-        功能菜单
+        <span class="exam-detail-layout__menu-toggle-text">{{ mobileNavLabel }}</span>
       </UiButton>
-      <div class="exam-detail-layout__toolbar">
-        <MarkExamSelect
-          v-if="examOptions.length > 0"
-          :selected-exam-id="examId"
-          :exam-options="examOptions"
-          :loading="selectorLoading"
-          select-class="exam-detail-layout__exam-select"
-          :allow-clear="false"
-          @change="onExamSwitch"
-          @search="onExamSearch"
-        />
-        <UiButton
-          variant="outline"
-          size="sm"
-          :loading="refreshing"
-          :disabled="!examId"
-          @click="handleRefresh"
-        >
-          <template #icon><ReloadOutlined /></template>
-          刷新
-        </UiButton>
-      </div>
       <div class="exam-detail-layout__header-gap" />
       <HeaderRightBar class="exam-detail-layout__header-right" />
     </header>
-
-    <div v-if="examId && !isImmersiveWorkspace" class="exam-detail-layout__journey">
-      <a-skeleton
-        v-if="loading && !snapshot"
-        active
-        :title="false"
-        :paragraph="{ rows: 1, width: '100%' }"
-        class="exam-detail-layout__journey-skeleton"
-      />
-      <ExamJourneyRail
-        v-else
-        :stages="journeyStages"
-        :active-key="activeJourneyKey === 'overview' ? '' : activeJourneyKey"
-        @select="onJourneySelect"
-      />
-    </div>
 
     <div class="exam-detail-layout__body">
       <div
@@ -71,16 +33,27 @@
       />
       <ExamSubSidebar
         v-if="examId && !isImmersiveWorkspace"
-        :snapshot="snapshot"
         :exam-status-label="examStatusLabel"
         :exam-status-tone="examStatusTone"
         :active-menu-key="activeMenuKey"
         :active-journey-key="activeJourneyKey"
+        :journey-stages="journeyStages"
+        :suggested-stage-key="suggestedStageKey"
+        :journey-loading="loading && !snapshot"
         :ordered-stages="orderedStages"
         :collapsed="sidebarCollapsed"
         :mobile-open="mobileNavOpen"
         :menu-icon-map="menuIconMap"
+        :selected-exam-id="examId"
+        :exam-options="examOptions"
+        :selector-loading="examSelectorLoading"
+        :refreshing="refreshing"
+        @exam-change="onExamSwitch"
+        @exam-search="onExamSearch"
+        @refresh="handleRefresh"
         @menu-click="onMenuClick"
+        @journey-select="(key) => onJourneySelect(key as ExamJourneyKey)"
+        @overview-select="onOverviewSelect"
         @toggle-collapse="sidebarCollapsed = !sidebarCollapsed"
       />
 
@@ -152,7 +125,6 @@ import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
 import MenuOutlined from '@ant-design/icons-vue/MenuOutlined'
 import PrinterOutlined from '@ant-design/icons-vue/PrinterOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
@@ -160,11 +132,10 @@ import { useBreakpoints } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
-import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import ExamJourneyRail from '@/components/workbench/ExamJourneyRail.vue'
 import ExamSubSidebar from '@/components/workbench/ExamSubSidebar.vue'
+import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
 import { useExamJourneySteps } from '@/composables/useExamJourneySteps'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { provideMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
@@ -236,16 +207,23 @@ const isLayoutWide = isImmersiveWorkspace
 const {
   examOptions,
   loading: selectorLoading,
+  searching: selectorSearching,
+  resolvingPinned: selectorResolvingPinned,
   onExamSearch,
   syncPinnedExam,
   init: initExamSelector,
 } = useMarkExamSelector({ syncUrl: false })
+
+const examSelectorLoading = computed(() => (
+  selectorLoading.value || selectorSearching.value || selectorResolvingPinned.value
+))
 
 const {
   snapshot,
   loading,
   refreshing,
   orderedStages,
+  suggestedStageKey,
   refreshSnapshot,
 } = useMarkWorkbenchSnapshot(() => examId.value)
 
@@ -261,6 +239,14 @@ provideMarkWorkbenchContext({
 })
 
 const activeMenuKey = computed(() => resolveExamWorkspaceMenuKey(route.name ? String(route.name) : undefined))
+
+const mobileNavLabel = computed(() => {
+  if (activeJourneyKey.value === 'overview') {
+    return '考试概览'
+  }
+  const step = EXAM_JOURNEY_STEPS.find((item) => item.key === activeJourneyKey.value)
+  return step?.title ?? '功能菜单'
+})
 
 const examStatusLabel = computed(() => {
   const status = snapshot.value?.examStatus
@@ -328,6 +314,17 @@ function onJourneySelect(journeyKey: ExamJourneyKey): void {
   })
 }
 
+function onOverviewSelect(): void {
+  if (!examId.value) {
+    return
+  }
+  mobileNavOpen.value = false
+  void router.push({
+    name: 'TeacherExamWorkspaceOverview',
+    params: { examId: examId.value },
+  })
+}
+
 function exitImmersiveWorkspace(): void {
   if (!examId.value) {
     goExamList()
@@ -364,6 +361,7 @@ function getWorkspaceRouteKey(childRoute: RouteLocationNormalized): string {
 
 async function handleRefresh(): Promise<void> {
   await refreshSnapshot()
+  mittBus.emit('exam-workbench:refresh')
   if (route.meta.workspacePhase === 'scan') {
     mittBus.emit('scan-workbench:refresh')
   }
@@ -444,23 +442,12 @@ watch(isImmersiveWorkspace, (immersive) => {
     white-space: nowrap;
   }
 
-  &__toolbar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-width: 0;
-  }
-
   &__menu-toggle {
     display: none;
   }
 
   &__backdrop {
     display: none;
-  }
-
-  &__exam-select {
-    width: 320px;
   }
 
   &__header-gap {
@@ -496,12 +483,11 @@ watch(isImmersiveWorkspace, (immersive) => {
     }
   }
 
-  &__journey {
-    flex-shrink: 0;
-  }
-
-  &__journey-skeleton {
-    padding: 12px 16px;
+  &__menu-toggle-text {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &__empty {
@@ -509,8 +495,7 @@ watch(isImmersiveWorkspace, (immersive) => {
   }
 
   @media (max-width: 768px) {
-    &__logo-title,
-    &__exam-select {
+    &__logo-title {
       display: none;
     }
 

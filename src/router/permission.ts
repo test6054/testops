@@ -134,6 +134,10 @@ export function hasRoutePermission(
         return false
     }
 
+    if (userRole === RoleEnum.SUPER_ADMIN) {
+        return true
+    }
+
     // 检查角色权限
     const hasRolePermission = permission.roles.includes(userRole as RoleEnum)
     if (!hasRolePermission) {
@@ -142,8 +146,7 @@ export function hasRoutePermission(
 
     // 检查是否需要租户管理员权限
     if (permission.requireTenantAdmin && !isTenantAdmin) {
-        // 超级管理员始终具有租户管理员权限
-        return userRole === RoleEnum.SUPER_ADMIN
+        return false
     }
 
     return true
@@ -166,13 +169,16 @@ export function hasRouteNamePermission(
     }
 
     const roles = (route.meta.roles as RoleEnum[]) ?? []
+    if (userRole === RoleEnum.SUPER_ADMIN) {
+        return true
+    }
     if (!roles.includes(userRole as RoleEnum)) {
         return false
     }
 
     const requireTenantAdmin = route.meta.requireTenantAdmin as boolean | undefined
     if (requireTenantAdmin && !isTenantAdmin) {
-        return userRole === RoleEnum.SUPER_ADMIN
+        return false
     }
 
     return true
@@ -184,7 +190,7 @@ export function hasRouteNamePermission(
 export function getDefaultRoute(userRole: string): string {
     switch (userRole) {
         case RoleEnum.SUPER_ADMIN:
-            return '/admin/dashboard'
+            return '/teacher/dashboard'
         case RoleEnum.SCH_TECH:
         case RoleEnum.CROP_ADMIN:
         case RoleEnum.CROP_USER:

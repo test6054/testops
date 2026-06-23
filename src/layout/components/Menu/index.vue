@@ -2,7 +2,7 @@
   <DualDomainSideNav
     v-if="isDualTeacherQualityMenu"
     :collapsed="!isDesktop ? false : appStore.menuCollapse"
-    :marking-routes="markingSidebarRoutes"
+    :marking-grouped="markingGroupedMenus"
     :quality-grouped="qualityGroupedMenus"
     @menu-item-click-after="emit('menu-item-click-after')"
   />
@@ -43,7 +43,9 @@ import { debounce } from 'lodash-es'
 import { computed, ref, watch } from 'vue'
 import { useDevice } from '@/hooks'
 import { useAppStore, useRouteStore } from '@/stores'
+import { useAuthStore } from '@/stores/modules/auth'
 import { useQualityStore } from '@/stores/modules/quality'
+import { RoleEnum } from '@/utils/permission'
 import { isExternal } from '@/utils/validate'
 import DualDomainSideNav from './DualDomainSideNav.vue'
 import MenuIcon from './MenuIcon.vue'
@@ -66,9 +68,12 @@ const route = useRoute()
 const router = useRouter()
 const appStore = useAppStore()
 const routeStore = useRouteStore()
+const authStore = useAuthStore()
 const qualityStore = useQualityStore()
 
-const ROLE_LAYOUT_PREFIXES = ['/admin', '/teacher', '/student', '/quality'] as const
+const ROLE_LAYOUT_PREFIXES = ['/teacher', '/student', '/quality'] as const
+/** 质量域侧栏中的超管租户级配置分组，展示时归入阅卷中心域。 */
+const QUALITY_ADMIN_MENU_GROUP = 'quality-admin'
 
 function isSidebarMenuRoute(routeRecord: RouteRecordRaw): boolean {
   return !routeRecord.meta?.hideInMenu && !(routeRecord.redirect && !routeRecord.component && !routeRecord.components)
@@ -79,25 +84,9 @@ function toAbsoluteLayoutPath(prefix: string, child: RouteRecordRaw): RouteRecor
   return { ...child, path: absPath }
 }
 
-function isMenuItemDisabled(item: RouteRecordRaw): boolean {
-  if (!item.path.startsWith('/quality')) {
-    return false
-  }
-  if (!item.meta?.requiresPlanConfirmed) {
-    return false
-  }
-  const planId = qualityStore.currentTrainingPlanId
-  if (!planId) {
-    return true
-  }
-  if (qualityStore.trainingPlanLoading) {
-    return true
-  }
-  const plan = qualityStore.currentPlan
-  if (!plan) {
-    return true
-  }
-  return plan.confirmationStatus !== 'CONFIRMED'
+function isMenuItemDisabled(_item: RouteRecordRaw): boolean {
+  // 业务菜单不在侧栏置灰；范围与租户校验在页面顶栏/路由内完成
+  return false
 }
 
 function buildLayoutChildren(prefix: string): RouteRecordRaw[] {
@@ -160,6 +149,7 @@ const layoutRouteSource = computed(() => {
 
 const hasMarkingDomain = computed(() => layoutRouteSource.value.some((entry) => entry.path === '/teacher'))
 const hasQualityDomain = computed(() => layoutRouteSource.value.some((entry) => entry.path === '/quality'))
+const isSuperAdmin = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
 
 const isDualTeacherQualityMenu = computed(() => {
   if (props.menus) {
@@ -184,14 +174,39 @@ const isRoleLayoutRoute = computed(() => {
 
 const markingSidebarRoutes = computed(() => buildLayoutChildren('/teacher'))
 const qualitySidebarRoutes = computed(() => buildLayoutChildren('/quality'))
-const qualityGroupedMenus = computed(() => groupRoutes(qualitySidebarRoutes.value))
+
+const qualitySidebarRoutesForMenu = computed(() => {
+  if (!isSuperAdmin.value) {
+    return qualitySidebarRoutes.value
+  }
+  return qualitySidebarRoutes.value.filter((item) => item.meta?.menuGroup !== QUALITY_ADMIN_MENU_GROUP)
+})
+
+const markingSidebarRoutesForMenu = computed(() => {
+  if (!isSuperAdmin.value) {
+    return markingSidebarRoutes.value
+  }
+  const platformAdminRoutes = qualitySidebarRoutes.value.filter(
+    (item) => item.meta?.menuGroup === QUALITY_ADMIN_MENU_GROUP,
+  )
+  return [
+    ...markingSidebarRoutes.value,
+    ...platformAdminRoutes,
+  ]
+})
+
+const markingGroupedMenus = computed(() => groupRoutes(markingSidebarRoutesForMenu.value))
+const qualityGroupedMenus = computed(() => groupRoutes(qualitySidebarRoutesForMenu.value))
 
 const sidebarRoutes = computed(() => {
   if (props.menus) {
     return props.menus
   }
   if (isDualTeacherQualityMenu.value) {
-    return [...markingSidebarRoutes.value, ...qualitySidebarRoutes.value]
+    return [
+      ...markingSidebarRoutesForMenu.value,
+      ...qualitySidebarRoutesForMenu.value,
+    ]
   }
   const prefix = activeLayoutPrefix.value
   if (prefix) {
@@ -282,6 +297,13 @@ function findSidebarItemByKey(keyStr: string): RouteRecordRaw | undefined {
   }
 
   for (const group of qualityGroupedMenus.value.groups) {
+    const found = searchInRoutes(group.items)
+    if (found) {
+      return found
+    }
+  }
+
+  for (const group of markingGroupedMenus.value.groups) {
     const found = searchInRoutes(group.items)
     if (found) {
       return found

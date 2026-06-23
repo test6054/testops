@@ -16,7 +16,6 @@
 
 <script lang="ts" setup>
 import type { Component } from 'vue'
-import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import HistoryOutlined from '@ant-design/icons-vue/HistoryOutlined'
 import MailOutlined from '@ant-design/icons-vue/MailOutlined'
@@ -72,24 +71,16 @@ const allTabBarItems: TabBarItem[] = [
     roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER],
   },
   {
-    path: '/quality/dashboard',
-    label: '质量评价',
-    icon: ReconciliationOutlined,
-    roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER, RoleEnum.SUPER_ADMIN],
-  },
-
-  // 管理员菜单
-  {
-    path: '/admin/dashboard',
-    label: '工作台',
+    path: '/teacher/dashboard',
+    label: '阅卷中心',
     icon: DashboardOutlined,
     roles: [RoleEnum.SUPER_ADMIN],
   },
   {
-    path: '/admin/audit-trail',
-    label: '批改审计',
-    icon: AuditOutlined,
-    roles: [RoleEnum.SUPER_ADMIN],
+    path: '/quality/dashboard',
+    label: '质量评价',
+    icon: ReconciliationOutlined,
+    roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER, RoleEnum.SUPER_ADMIN],
   },
 ]
 

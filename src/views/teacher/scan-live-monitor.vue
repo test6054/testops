@@ -515,7 +515,6 @@
         <a-descriptions-item label="来源说明">
           {{ detailRecord.sourceDisplayName }}
         </a-descriptions-item>
-        <a-descriptions-item label="当前考试">{{ selectedExamLabel }}</a-descriptions-item>
         <a-descriptions-item label="扫描批次">
           {{ detailRecord.scanBatchDisplayName }}
         </a-descriptions-item>
@@ -665,7 +664,6 @@ const router = useRouter()
 
 const {
   selectedExamId,
-  selectedExamLabel,
 } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
 

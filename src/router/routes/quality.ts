@@ -6,14 +6,15 @@
  *   ② 体系与矩阵：培养方案 / 课程矩阵
  *   ③ 数据与达成：数据接入 hub / 达成度
  *   ④ 改进与输出：改进闭环 / 报告 / 归档 / AI 任务
- *   ⑤ 平台管理：仅 SUPER_ADMIN / SCH_TECH 可见项
+ *   ⑤ 平台管理：仅 SUPER_ADMIN（SaaS 租户级配置，展示在阅卷中心域）
+ * 教师角色仅见 ①～④ 业务分组；SUPER_ADMIN 可见全部质量评价菜单 + 平台管理
  */
 import type { RouteRecordRaw } from 'vue-router'
 import { RoleEnum } from '@/utils/permission'
 
 const TEACHER_ROLES = [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER]
 const ALL_ROLES = [RoleEnum.SUPER_ADMIN, ...TEACHER_ROLES]
-const ADMIN_ROLES = [RoleEnum.SUPER_ADMIN, RoleEnum.SCH_TECH]
+const SUPER_ADMIN_ROLES = [RoleEnum.SUPER_ADMIN]
 
 const WORKBENCH_GROUP = {
   menuGroup: 'quality-workbench',
@@ -296,7 +297,7 @@ export const qualityRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/quality/accreditation-standard.vue'),
         meta: {
           title: '认证标准',
-          roles: [RoleEnum.SUPER_ADMIN],
+          roles: SUPER_ADMIN_ROLES,
           icon: 'safety-certificate',
           hideInMenu: false,
           keepAlive: true,
@@ -309,7 +310,7 @@ export const qualityRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/quality/profession-algorithm-template.vue'),
         meta: {
           title: '专业算法模板',
-          roles: [RoleEnum.SUPER_ADMIN],
+          roles: SUPER_ADMIN_ROLES,
           icon: 'block',
           hideInMenu: false,
           keepAlive: true,
@@ -322,7 +323,7 @@ export const qualityRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/quality/scale-conversion-rule.vue'),
         meta: {
           title: '量表换算规则',
-          roles: [RoleEnum.SUPER_ADMIN],
+          roles: SUPER_ADMIN_ROLES,
           icon: 'function',
           hideInMenu: false,
           keepAlive: true,
@@ -335,7 +336,7 @@ export const qualityRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/quality/ai-model-profile.vue'),
         meta: {
           title: 'AI 模型配置',
-          roles: ADMIN_ROLES,
+          roles: SUPER_ADMIN_ROLES,
           icon: 'setting',
           hideInMenu: false,
           keepAlive: true,
@@ -348,7 +349,7 @@ export const qualityRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/quality/ai-mask-mapping.vue'),
         meta: {
           title: 'AI 脱敏映射审计',
-          roles: ADMIN_ROLES,
+          roles: SUPER_ADMIN_ROLES,
           icon: 'safety',
           hideInMenu: false,
           keepAlive: false,

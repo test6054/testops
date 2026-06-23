@@ -8,10 +8,6 @@ import { getValidToken } from '@/utils/auth'
 import { isAuthRequestFailure, isTransientRequestError } from '@/utils/error-handler'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
 import { isValidRole } from '@/utils/permission'
-import {
-  ensureQualityPlanConfirmedForNavigation,
-  routeRequiresPlanConfirmed,
-} from '@/utils/quality-plan-guard'
 import { applySeoMeta } from '@/utils/seo'
 import { getRoutePreloadManager } from './preload-strategy'
 import 'nprogress/nprogress.css'
@@ -184,17 +180,6 @@ export const setupRouterGuard = (router: Router) => {
       } else {
         // 如果默认路由也是当前路由，说明配置有问题，跳转到403页面
         return '/403'
-      }
-    }
-
-    if (to.path.startsWith('/quality') && routeRequiresPlanConfirmed(to.matched)) {
-      const allowed = await ensureQualityPlanConfirmedForNavigation(to)
-      if (!allowed) {
-        return {
-          path: '/quality/training-plan-workbench',
-          query: { planGate: 'requires-confirmed' },
-          replace: true,
-        }
       }
     }
   })

@@ -1,111 +1,135 @@
 <template>
-  <div class="dual-domain-side-nav" :class="{ 'dual-domain-side-nav--collapsed': collapsed }">
-    <section class="dual-domain-side-nav__block">
-      <header class="dual-domain-side-nav__head">
-        <MenuIcon icon="audit" class="dual-domain-side-nav__head-icon" />
-        <span v-if="!collapsed" class="dual-domain-side-nav__head-label">阅卷中心</span>
-      </header>
-      <a-menu
-        class="dual-domain-side-nav__menu"
-        mode="inline"
-        :inline-collapsed="collapsed"
-        :selected-keys="activeMenuKeys"
-        @click="onMenuClick"
+  <a-menu
+    class="dual-domain-side-nav"
+    :class="{ 'dual-domain-side-nav--collapsed': collapsed }"
+    mode="inline"
+    :inline-collapsed="collapsed"
+    :selected-keys="activeMenuKeys"
+    :open-keys="openMenuKeys"
+    @click="onMenuClick"
+    @open-change="onOpenChange"
+  >
+    <a-sub-menu key="domain-marking">
+      <template #title>
+        <span>阅卷中心</span>
+      </template>
+      <template #icon>
+        <MenuIcon icon="audit" />
+      </template>
+      <a-menu-item
+        v-for="item in markingGrouped.ungrouped"
+        :key="item.path"
+        :disabled="item.meta?.disabled"
       >
-        <a-menu-item
-          v-for="item in markingRoutes"
-          :key="item.path"
-          :disabled="item.meta?.disabled"
-        >
-          <template #icon>
-            <MenuIcon :icon="(item.meta?.icon as string) || 'unordered-list'" />
-          </template>
-          <span>{{ item.meta?.title }}</span>
-        </a-menu-item>
-      </a-menu>
-    </section>
-
-    <section class="dual-domain-side-nav__block">
-      <header class="dual-domain-side-nav__head">
-        <MenuIcon icon="reconciliation" class="dual-domain-side-nav__head-icon" />
-        <span v-if="!collapsed" class="dual-domain-side-nav__head-label">质量评价</span>
-      </header>
-      <a-menu
-        class="dual-domain-side-nav__menu"
-        mode="inline"
-        :inline-collapsed="collapsed"
-        :selected-keys="activeMenuKeys"
-        @click="onMenuClick"
-      >
-        <a-menu-item
-          v-for="item in qualityGrouped.ungrouped"
-          :key="item.path"
-          :disabled="item.meta?.disabled"
-        >
-          <template #icon>
-            <MenuIcon :icon="(item.meta?.icon as string) || 'dashboard'" />
-          </template>
-          <span>{{ item.meta?.title }}</span>
-        </a-menu-item>
-        <template v-for="group in qualityGrouped.groups" :key="group.key">
-          <a-sub-menu v-if="!collapsed" :key="group.key">
-            <template #title>
-              <span>{{ group.title }}</span>
-            </template>
-            <template #icon>
-              <MenuIcon :icon="group.icon" />
-            </template>
-            <a-menu-item
-              v-for="item in group.items"
-              :key="item.path"
-              :disabled="item.meta?.disabled"
-            >
-              <template #icon>
-                <MenuIcon :icon="(item.meta?.icon as string) || 'folder'" />
-              </template>
-              <span>{{ item.meta?.title }}</span>
-            </a-menu-item>
-          </a-sub-menu>
-          <template v-else>
-            <a-menu-item
-              v-for="item in group.items"
-              :key="item.path"
-              :disabled="item.meta?.disabled"
-            >
-              <template #icon>
-                <MenuIcon :icon="(item.meta?.icon as string) || 'folder'" />
-              </template>
-            </a-menu-item>
-          </template>
+        <template #icon>
+          <MenuIcon :icon="(item.meta?.icon as string) || 'unordered-list'" />
         </template>
-      </a-menu>
-    </section>
-  </div>
+        <span>{{ item.meta?.title }}</span>
+      </a-menu-item>
+      <a-sub-menu
+        v-for="group in markingGrouped.groups"
+        :key="group.key"
+      >
+        <template #title>
+          <span>{{ group.title }}</span>
+        </template>
+        <template #icon>
+          <MenuIcon :icon="group.icon" />
+        </template>
+        <a-menu-item
+          v-for="item in group.items"
+          :key="item.path"
+          :disabled="item.meta?.disabled"
+        >
+          <template #icon>
+            <MenuIcon :icon="(item.meta?.icon as string) || 'folder'" />
+          </template>
+          <span>{{ item.meta?.title }}</span>
+        </a-menu-item>
+      </a-sub-menu>
+    </a-sub-menu>
+
+    <a-sub-menu key="domain-quality">
+      <template #title>
+        <span>质量评价</span>
+      </template>
+      <template #icon>
+        <MenuIcon icon="reconciliation" />
+      </template>
+      <a-menu-item
+        v-for="item in qualityGrouped.ungrouped"
+        :key="item.path"
+        :disabled="item.meta?.disabled"
+      >
+        <template #icon>
+          <MenuIcon :icon="(item.meta?.icon as string) || 'dashboard'" />
+        </template>
+        <span>{{ item.meta?.title }}</span>
+      </a-menu-item>
+      <a-sub-menu
+        v-for="group in qualityGrouped.groups"
+        :key="group.key"
+      >
+        <template #title>
+          <span>{{ group.title }}</span>
+        </template>
+        <template #icon>
+          <MenuIcon :icon="group.icon" />
+        </template>
+        <a-menu-item
+          v-for="item in group.items"
+          :key="item.path"
+          :disabled="item.meta?.disabled"
+        >
+          <template #icon>
+            <MenuIcon :icon="(item.meta?.icon as string) || 'folder'" />
+          </template>
+          <span>{{ item.meta?.title }}</span>
+        </a-menu-item>
+      </a-sub-menu>
+    </a-sub-menu>
+  </a-menu>
 </template>
 
 <script lang="ts" setup>
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { RouteRecordRaw } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { isExternal } from '@/utils/validate'
 import MenuIcon from './MenuIcon.vue'
 
 defineOptions({ name: 'DualDomainSideNav' })
 
+const MARKING_DOMAIN_KEY = 'domain-marking'
+const QUALITY_DOMAIN_KEY = 'domain-quality'
+
+/** 超管租户级配置与 SaaS 监管分组，展示时归入阅卷中心域（不含考试内阅卷组织）。 */
+const MARKING_DOMAIN_MENU_GROUPS = new Set([
+  'marking-admin',
+  'ai-analysis',
+  'exam-delivery',
+  'quality-admin',
+])
+
+interface MenuGroup {
+  key: string
+  title: string
+  icon: string
+  order: number
+  items: RouteRecordRaw[]
+}
+
 const props = defineProps<{
   collapsed: boolean
-  markingRoutes: RouteRecordRaw[]
+  markingGrouped: {
+    ungrouped: RouteRecordRaw[]
+    groups: MenuGroup[]
+  }
   qualityGrouped: {
     ungrouped: RouteRecordRaw[]
-    groups: Array<{
-      key: string
-      title: string
-      icon: string
-      order: number
-      items: RouteRecordRaw[]
-    }>
+    groups: MenuGroup[]
   }
 }>()
 
@@ -124,16 +148,69 @@ const activeMenuKeys = computed<Key[]>(() => {
   return [path]
 })
 
+const openMenuKeys = ref<Key[]>([])
+
+/** 按当前路由展开对应一级域；超管平台配置项归属阅卷中心域。 */
+function resolveDefaultOpenKeys(): Key[] {
+  if (props.collapsed) {
+    return []
+  }
+  const keys: Key[] = []
+  const groupKey = route.meta?.menuGroup as string | undefined
+
+  if (route.path.startsWith('/teacher')) {
+    keys.push(MARKING_DOMAIN_KEY)
+    if (groupKey) {
+      keys.push(groupKey)
+    }
+    return keys
+  }
+
+  if (route.path.startsWith('/quality')) {
+    if (groupKey && MARKING_DOMAIN_MENU_GROUPS.has(groupKey)) {
+      keys.push(MARKING_DOMAIN_KEY, groupKey)
+    } else {
+      keys.push(QUALITY_DOMAIN_KEY)
+      if (groupKey) {
+        keys.push(groupKey)
+      }
+    }
+  }
+
+  return keys
+}
+
+watch(
+  () => [route.path, route.meta?.menuGroup, props.collapsed] as const,
+  () => {
+    openMenuKeys.value = resolveDefaultOpenKeys()
+  },
+  { immediate: true },
+)
+
+function onOpenChange(keys: Key[]) {
+  openMenuKeys.value = keys
+}
+
+function collectGroupedRoutes(grouped: { ungrouped: RouteRecordRaw[], groups: MenuGroup[] }): RouteRecordRaw[] {
+  return [
+    ...grouped.ungrouped,
+    ...grouped.groups.flatMap((group) => group.items),
+  ]
+}
+
 function onMenuClick({ key }: { key: Key }) {
   const keyStr = String(key)
+  if (keyStr === MARKING_DOMAIN_KEY || keyStr === QUALITY_DOMAIN_KEY) {
+    return
+  }
   if (isExternal(keyStr)) {
     window.open(keyStr)
     return
   }
   const allRoutes = [
-    ...props.markingRoutes,
-    ...props.qualityGrouped.ungrouped,
-    ...props.qualityGrouped.groups.flatMap((g) => g.items),
+    ...collectGroupedRoutes(props.markingGrouped),
+    ...collectGroupedRoutes(props.qualityGrouped),
   ]
   const menuItem = allRoutes.find((item) => item.path === keyStr)
   if (menuItem?.meta?.disabled) {
@@ -149,42 +226,6 @@ function onMenuClick({ key }: { key: Key }) {
 
 <style lang="scss" scoped>
 .dual-domain-side-nav {
-  border: none;
-  background: transparent;
-
-  &--collapsed {
-    .dual-domain-side-nav__head {
-      justify-content: center;
-      padding: 8px 0;
-    }
-  }
-}
-
-.dual-domain-side-nav__block + .dual-domain-side-nav__block {
-  margin-top: 4px;
-}
-
-.dual-domain-side-nav__head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px 6px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ant-color-text);
-  user-select: none;
-}
-
-.dual-domain-side-nav__head-icon {
-  font-size: 16px;
-  color: var(--ant-color-text-secondary);
-}
-
-.dual-domain-side-nav__head-label {
-  line-height: 1.4;
-}
-
-.dual-domain-side-nav__menu {
   border-inline-end: none !important;
   background: transparent !important;
 
@@ -193,6 +234,19 @@ function onMenuClick({ key }: { key: Key }) {
     font-size: 12px;
     font-weight: 600;
     color: var(--ant-color-text-tertiary);
+  }
+
+  :deep(.ant-menu-sub.ant-menu-inline) {
+    background: transparent !important;
+  }
+}
+
+.dual-domain-side-nav--collapsed {
+  :deep(> .ant-menu-submenu > .ant-menu-submenu-title) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding-inline: 0 !important;
   }
 }
 </style>

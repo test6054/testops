@@ -4,7 +4,7 @@ import { cloneDeep, omit } from 'lodash-es'
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import XEUtils from 'xe-utils'
-import { adminRoutes, commonRoutes, qualityRoutes, studentRoutes, teacherRoutes } from '@/router/routes'
+import { commonRoutes, qualityRoutes, studentRoutes, teacherRoutes } from '@/router/routes'
 import { RoleEnum } from '@/types/enums'
 import { useAuthStore } from './auth'
 import { useUserStore } from './user'
@@ -73,8 +73,8 @@ const storeSetup = (): RouteStoreState => {
     let roleRoutes: RouteRecordRaw[]
 
     if (userRole === RoleEnum.SUPER_ADMIN) {
-      // 超管同时拥有：系统管理 + 阅卷工作台 + 教学质量评价工作台
-      roleRoutes = [...adminRoutes, ...teacherRoutes, ...qualityRoutes, ...commonRoutes]
+      // 超管：阅卷中心（含 SaaS 监管）+ 质量评价
+      roleRoutes = [...teacherRoutes, ...qualityRoutes, ...commonRoutes]
     } else if ([RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER].includes(userRole as RoleEnum)) {
       // 教师角色：阅卷工作台 + 教学质量评价工作台（OBE 主链责任人）
       roleRoutes = [...teacherRoutes, ...qualityRoutes, ...commonRoutes]
@@ -101,6 +101,10 @@ const storeSetup = (): RouteStoreState => {
   ): RouteRecordRaw[] => {
     return routes
       .filter(route => {
+        if (userRole === RoleEnum.SUPER_ADMIN) {
+          return true
+        }
+
         // 检查路由权限
         if (route.meta?.roles) {
           const roles = route.meta.roles as string[]
@@ -112,8 +116,7 @@ const storeSetup = (): RouteStoreState => {
 
         // 检查租户管理员权限
         if (route.meta?.requireTenantAdmin && !userIsTenantAdmin) {
-          // 超级管理员始终具有租户管理员权限
-          return userRole === RoleEnum.SUPER_ADMIN
+          return false
         }
 
         return true

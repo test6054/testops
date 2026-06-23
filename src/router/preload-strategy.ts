@@ -101,9 +101,9 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   AdminMarkingQuality: () => import('@/views/admin/marking-quality-dashboard.vue'),
   AdminCrossExamDashboard: () => import('@/views/admin/cross-exam-dashboard.vue'),
   AdminSchoolQualityDashboard: () => import('@/views/admin/school-quality-dashboard.vue'),
-  AdminMarkingOrganizationIndex: () => import('@/views/admin/marking-organization/index.vue'),
-  AdminMarkingOrganizationDetail: () => import('@/views/admin/marking-organization/detail.vue'),
-  AdminMarkingOrganizationSessions: () => import('@/views/admin/marking-organization/sessions.vue'),
+  TeacherMarkingOrganizationIndex: () => import('@/views/admin/marking-organization/index.vue'),
+  TeacherMarkingOrganizationDetail: () => import('@/views/admin/marking-organization/detail.vue'),
+  TeacherMarkingOrganizationSessions: () => import('@/views/admin/marking-organization/sessions.vue'),
   AdminExamExports: () => import('@/views/common/exam-export-tasks.vue'),
   AdminTeachingAffairsSync: () => import('@/views/admin/teaching-affairs-sync.vue'),
 
@@ -235,14 +235,14 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
   TeacherPaperArchiveDetail: ['TeacherPaperArchiveList', 'TeacherExamWorkspaceArchivePackage'],
 
   // ── 管理员 ───────────────────────────────────────
-  AdminDashboard: ['AdminAuditTrail', 'AdminMarkingQuality', 'AdminCrossExamDashboard', 'AdminMarkingOrganizationIndex'],
+  AdminDashboard: ['AdminAuditTrail', 'AdminMarkingQuality', 'AdminCrossExamDashboard', 'TeacherExamList'],
   AdminAuditTrail: ['AdminDashboard', 'AdminMarkingQuality'],
   AdminMarkingQuality: ['AdminAuditTrail', 'AdminCrossExamDashboard', 'AdminDashboard'],
   AdminCrossExamDashboard: ['AdminSchoolQualityDashboard', 'AdminMarkingQuality', 'AdminDashboard'],
   AdminSchoolQualityDashboard: ['AdminCrossExamDashboard', 'AdminMarkingQuality'],
-  AdminMarkingOrganizationIndex: ['AdminMarkingOrganizationDetail', 'AdminMarkingOrganizationSessions'],
-  AdminMarkingOrganizationDetail: ['AdminMarkingOrganizationSessions', 'AdminMarkingOrganizationIndex'],
-  AdminMarkingOrganizationSessions: ['AdminMarkingOrganizationDetail', 'AdminMarkingOrganizationIndex'],
+  TeacherMarkingOrganizationIndex: ['TeacherMarkingOrganizationDetail', 'TeacherMarkingOrganizationSessions'],
+  TeacherMarkingOrganizationDetail: ['TeacherMarkingOrganizationSessions', 'TeacherMarkingOrganizationIndex'],
+  TeacherMarkingOrganizationSessions: ['TeacherMarkingOrganizationDetail', 'TeacherMarkingOrganizationIndex'],
   AdminExamExports: ['AdminTeachingAffairsSync', 'AdminDashboard'],
   AdminTeachingAffairsSync: ['AdminExamExports', 'AdminDashboard'],
 

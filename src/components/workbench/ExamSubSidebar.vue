@@ -6,24 +6,63 @@
       'exam-sub-sidebar--mobile-open': mobileOpen,
     }"
   >
-    <div v-if="snapshot && !collapsed" class="exam-sub-sidebar__exam-info">
-      <h3 class="exam-sub-sidebar__exam-title">{{ snapshot.examName }}</h3>
+    <div v-if="!collapsed" class="exam-sub-sidebar__exam-switch">
+      <MarkExamSelect
+        v-if="examOptions.length > 0"
+        :selected-exam-id="selectedExamId"
+        :exam-options="examOptions"
+        :loading="selectorLoading"
+        :allow-clear="false"
+        placeholder="切换考试"
+        select-class="exam-sub-sidebar__exam-select"
+        @change="(value) => emit('exam-change', value)"
+        @search="(keyword) => emit('exam-search', keyword)"
+      />
       <div class="exam-sub-sidebar__exam-meta">
-        <span v-if="snapshot.examNo" class="exam-sub-sidebar__exam-no">编号 {{ snapshot.examNo }}</span>
         <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">{{ examStatusLabel }}</UiTag>
+        <UiButton
+          variant="ghost"
+          size="sm"
+          :loading="refreshing"
+          :disabled="!selectedExamId"
+          aria-label="刷新工作台"
+          @click="emit('refresh')"
+        >
+          <template #icon><ReloadOutlined /></template>
+        </UiButton>
       </div>
     </div>
 
     <a-divider v-if="!collapsed" class="exam-sub-sidebar__divider" />
 
-    <ExamSubSidebarNav
+    <ExamJourneySidebarNav
+      :journey-stages="journeyStages"
       :active-journey-key="activeJourneyKey"
-      :active-menu-key="activeMenuKey"
-      :ordered-stages="orderedStages"
+      :suggested-stage-key="suggestedStageKey"
       :collapsed="collapsed"
-      :menu-icon-map="menuIconMap"
-      @menu-click="(key) => emit('menu-click', key)"
+      :loading="journeyLoading"
+      @select="(key) => emit('journey-select', key)"
+      @overview-select="emit('overview-select')"
     />
+
+    <template v-if="activeJourneyKey !== 'overview'">
+      <a-divider v-if="!collapsed" class="exam-sub-sidebar__divider" />
+      <div v-if="!collapsed" class="exam-sub-sidebar__section-label">当前步骤功能</div>
+      <div class="exam-sub-sidebar__menu">
+        <ExamSubSidebarNav
+        :active-journey-key="activeJourneyKey"
+        :active-menu-key="activeMenuKey"
+        :ordered-stages="orderedStages"
+        :collapsed="collapsed"
+        :menu-icon-map="menuIconMap"
+        @menu-click="(key) => emit('menu-click', key)"
+        />
+      </div>
+    </template>
+
+    <p v-else-if="!collapsed" class="exam-sub-sidebar__overview-hint">
+      概览页查看全局进度；选择上方旅程步骤进入具体功能。
+    </p>
 
     <div class="exam-sub-sidebar__footer">
       <button type="button" class="exam-sub-sidebar__collapse-btn" @click="emit('toggle-collapse')">
@@ -35,15 +74,21 @@
 </template>
 
 <script lang="ts" setup>
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { Component } from 'vue'
-import type { ExamStatusCode } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
+import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { WorkbenchStage } from '@/types/workbench'
+import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
 import MenuFoldOutlined from '@ant-design/icons-vue/MenuFoldOutlined'
 import MenuUnfoldOutlined from '@ant-design/icons-vue/MenuUnfoldOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import ExamJourneySidebarNav from '@/components/workbench/ExamJourneySidebarNav.vue'
 import ExamSubSidebarNav from '@/components/workbench/ExamSubSidebarNav.vue'
 
 defineOptions({
@@ -51,11 +96,17 @@ defineOptions({
 })
 
 defineProps<{
-  snapshot: ExamSnapshotBrief | null
   examStatusLabel: string
   examStatusTone: BadgeTone | undefined
+  selectedExamId: string
+  examOptions: MarkExamSelectOption[]
+  selectorLoading?: boolean
+  refreshing?: boolean
   activeMenuKey: string
   activeJourneyKey: ExamWorkspaceJourneyKey
+  journeyStages: WorkbenchStage[]
+  suggestedStageKey?: MarkStageKey | null
+  journeyLoading?: boolean
   orderedStages: WorkbenchStage[]
   collapsed: boolean
   mobileOpen: boolean
@@ -64,14 +115,13 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: 'menu-click', key: string): void
+  (e: 'journey-select', key: string): void
+  (e: 'overview-select'): void
+  (e: 'exam-change', value: SelectValue): void
+  (e: 'exam-search', keyword: string): void
+  (e: 'refresh'): void
   (e: 'toggle-collapse'): void
 }>()
-
-interface ExamSnapshotBrief {
-  examName: string
-  examNo?: string
-  examStatus?: ExamStatusCode
-}
 </script>
 
 <style lang="scss" scoped>
@@ -82,46 +132,74 @@ interface ExamSnapshotBrief {
   flex-direction: column;
   background: var(--ant-color-bg-container);
   border-right: 1px solid var(--ant-color-border-secondary);
+  min-height: 0;
 
   &--collapsed {
     width: 64px;
   }
 
-  &__exam-info {
-    padding: 16px;
+  &__exam-switch {
+    padding: 12px 12px 8px;
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 
-  &__exam-title {
-    margin: 0 0 8px;
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 1.5;
-    color: var(--ant-color-text);
-    word-break: break-word;
+  &__exam-select {
+    width: 100%;
+  }
+
+  :deep(.exam-sub-sidebar__exam-select.mark-exam-select) {
+    min-width: 0;
+    width: 100%;
   }
 
   &__exam-meta {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
-  }
-
-  &__exam-no {
-    font-size: 13px;
-    color: var(--ant-color-text-secondary);
   }
 
   &__divider {
     margin: 0 !important;
   }
 
+  &__section-label {
+    padding: 4px 16px 0;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ant-color-text-quaternary);
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  &__overview-hint {
+    flex: 1;
+    margin: 0;
+    padding: 12px 16px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ant-color-text-tertiary);
+  }
+
+  &__menu {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
   &__footer {
+    margin-top: auto;
     padding: 12px 16px;
     border-top: 1px solid var(--ant-color-border-secondary);
     display: flex;
     justify-content: flex-end;
+    flex-shrink: 0;
   }
 
   &__collapse-btn {

@@ -3,9 +3,6 @@
     <template #context>
       <ContextBar>
         <template #status>
-          <UiTag v-if="selectedExamLabel" tone="gray" size="sm">
-            {{ selectedExamLabel }}
-          </UiTag>
           <UiTag v-if="signatures.length > 0" tone="blue" size="sm">
             签名 {{ signatures.length }}
           </UiTag>
@@ -431,7 +428,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherGradingExperienceHub' })
 
 // 考试工作台内由 useMarkExamContext 注入当前考试
-const { selectedExamId, selectedExamLabel } = useMarkExamContext()
+const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const activeTab = ref<'signature' | 'experience' | 'cluster'>('signature')

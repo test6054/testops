@@ -556,9 +556,7 @@ async function submitDelete(): Promise<void> {
 function goDetail(): void {
   if (!organization.value) return
   void router.push({
-    name: route.path.startsWith('/teacher')
-      ? 'TeacherMarkingOrganizationDetail'
-      : 'AdminMarkingOrganizationDetail',
+    name: 'TeacherMarkingOrganizationDetail',
     params: { organizationId: organization.value.id },
   })
 }
@@ -566,9 +564,7 @@ function goDetail(): void {
 function goSessions(): void {
   if (!organization.value) return
   void router.push({
-    name: route.path.startsWith('/teacher')
-      ? 'TeacherMarkingOrganizationSessions'
-      : 'AdminMarkingOrganizationSessions',
+    name: 'TeacherMarkingOrganizationSessions',
     params: { organizationId: organization.value.id },
   })
 }

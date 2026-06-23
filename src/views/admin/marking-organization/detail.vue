@@ -955,11 +955,7 @@ async function submitDelete(): Promise<void> {
     await deleteOrganization({ organizationId: organization.value.id })
     await refreshSnapshot()
     message.success('阅卷组织已删除')
-    await router.push({
-      name: route.path.startsWith('/teacher')
-        ? 'TeacherMarkingOrganizationIndex'
-        : 'AdminMarkingOrganizationIndex',
-    })
+    await router.push({ name: 'TeacherMarkingOrganizationIndex' })
   } catch (error) {
     showUserError(error, '阅卷组织删除失败')
   } finally {
@@ -1203,9 +1199,7 @@ async function submitStatusUpdate(): Promise<void> {
 
 function goSessions(): void {
   void router.push({
-    name: route.path.startsWith('/teacher')
-      ? 'TeacherMarkingOrganizationSessions'
-      : 'AdminMarkingOrganizationSessions',
+    name: 'TeacherMarkingOrganizationSessions',
     params: { organizationId: organizationId.value },
   })
 }

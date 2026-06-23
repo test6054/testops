@@ -29,7 +29,10 @@
         </div>
       </div>
 
-      <div class="ui-data-table__table-wrap">
+      <div
+        class="ui-data-table__table-wrap"
+        :class="{ 'ui-data-table__table-wrap--pinned': hasPinnedColumns }"
+      >
         <a-table
           class="ui-data-table__table"
           :columns="resolvedColumns"
@@ -200,6 +203,7 @@ const rootClasses = computed(() => {
     { 'ui-data-table--flat': props.flat },
     { 'ui-data-table--zebra': props.zebra },
     { 'ui-data-table--compact-viewport': isCompactViewport.value },
+    { 'ui-data-table--pinned-columns': hasPinnedColumns.value },
   ]
 })
 
@@ -282,6 +286,8 @@ const resolvedScroll = computed<TableProps['scroll']>(() => {
 const tableLayout = computed<TableProps['tableLayout']>(() => {
   return resolvedScroll.value?.x != null ? 'fixed' : undefined
 })
+
+const hasPinnedColumns = computed(() => resolvedScroll.value?.x != null)
 
 const effectiveShowPagination = computed(() => {
   if (!props.showPagination || props.paginationMode === 'none') {
@@ -429,6 +435,14 @@ const handlePageChange = (page: number, size: number) => {
   border-radius: var(--dp-radius-panel, 4px);
 }
 
+.ui-data-table__table-wrap--pinned {
+  overflow: hidden;
+}
+
+.ui-data-table--pinned-columns .ui-data-table__table :deep(.ant-table-content) {
+  overflow: auto hidden;
+}
+
 .ui-data-table--flat .ui-data-table__table-wrap :deep(.ant-table-placeholder .ui-empty--sm) {
   padding-top: 20px;
   padding-bottom: 20px;
@@ -540,6 +554,51 @@ const handlePageChange = (page: number, size: number) => {
   max-width: 100%;
 }
 
+.ui-data-table__table :deep(.ant-table-cell-fix-left),
+.ui-data-table__table :deep(.ant-table-cell-fix-right) {
+  z-index: 2;
+  background: var(--dp-surface, #fff);
+}
+
+.ui-data-table__table :deep(.ant-table-thead > tr > th.ant-table-cell-fix-left),
+.ui-data-table__table :deep(.ant-table-thead > tr > th.ant-table-cell-fix-right) {
+  z-index: 3;
+  background: var(--dp-table-header-bg, #f8fafc) !important;
+}
+
+.ui-data-table__table :deep(.ant-table-cell-fix-left-last::after),
+.ui-data-table__table :deep(.ant-table-cell-fix-right-first::after) {
+  position: absolute;
+  top: 0;
+  bottom: -1px;
+  width: 12px;
+  pointer-events: none;
+  content: '';
+  transition: box-shadow 0.2s ease;
+}
+
+.ui-data-table__table :deep(.ant-table-cell-fix-left-last::after) {
+  right: 0;
+  transform: translateX(100%);
+  box-shadow: inset 10px 0 8px -8px rgb(15 23 42 / 8%);
+}
+
+.ui-data-table__table :deep(.ant-table-cell-fix-right-first::after) {
+  left: 0;
+  transform: translateX(-100%);
+  box-shadow: inset -10px 0 8px -8px rgb(15 23 42 / 8%);
+}
+
+.ui-data-table__table :deep(.ant-table-tbody > tr:hover > td.ant-table-cell-fix-left),
+.ui-data-table__table :deep(.ant-table-tbody > tr:hover > td.ant-table-cell-fix-right) {
+  background: var(--dp-gray-50, #f8fafc) !important;
+}
+
+.ui-data-table__table :deep(.ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-fix-left),
+.ui-data-table__table :deep(.ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-fix-right) {
+  background: var(--dp-blue-50, #eff6ff) !important;
+}
+
 .ui-data-table__table :deep(.ant-table-tbody > tr > td.ui-data-table__col--numeric) {
   font-variant-numeric: tabular-nums;
 }
@@ -601,8 +660,13 @@ const handlePageChange = (page: number, size: number) => {
 
 .ui-data-table--compact-viewport .ui-data-table__table :deep(.operations-cell .ui-text-action),
 .ui-data-table--compact-viewport .ui-data-table__table :deep(.operations-cell .op-link),
-.ui-data-table--compact-viewport .ui-data-table__table :deep(.operations-cell .ant-btn) {
+.ui-data-table--compact-viewport .ui-data-table__table :deep(.operations-cell .ant-btn),
+.ui-data-table--compact-viewport .ui-data-table__table :deep(.operations-cell .dp-btn) {
   min-height: 44px;
   justify-content: center;
+}
+
+.ui-data-table--compact-viewport .ui-data-table__table :deep(.operations-cell--buttons .dp-btn) {
+  min-height: var(--dp-button-height-sm, 32px);
 }
 </style>

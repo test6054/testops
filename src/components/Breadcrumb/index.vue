@@ -42,7 +42,7 @@ const getHome = () => {
     const obj = XEUtils.findTree(
       cloneRoutes,
       (i) =>
-        i.path === '/admin/dashboard'
+        i.path === '/teacher/dashboard'
         || i.path === '/teacher/exam-list'
         || i.path === '/student/score',
     )

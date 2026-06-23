@@ -97,7 +97,10 @@ initializeApp().catch(() => {
   message.error('应用初始化失败，请刷新页面后重试')
 })
 
-// 全局错误处理
-app.config.errorHandler = () => {
+// 全局错误处理：生产环境只展示通用文案；开发环境保留控制台堆栈便于定位渲染异常
+app.config.errorHandler = (err, _instance, info) => {
+  if (import.meta.env.DEV) {
+    console.error('[Vue errorHandler]', err, info)
+  }
   message.error('页面运行异常，请刷新页面后重试')
 }

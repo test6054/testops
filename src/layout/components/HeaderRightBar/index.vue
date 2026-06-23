@@ -1,5 +1,5 @@
 <template>
-  <div class="header-right-bar">
+  <div class="header-right-bar" v-bind="$attrs">
     <a-space size="middle">
       <!-- 租户信息 -->
       <div v-if="tenantDisplayInfo" class="tenant-info">
@@ -100,7 +100,7 @@ import { useNotificationStore } from '@/stores/modules/notification'
 import mittBus from '@/utils/mitt'
 import Message from './Message.vue'
 
-defineOptions({ name: 'HeaderRight' })
+defineOptions({ name: 'HeaderRight', inheritAttrs: false })
 
 // 消息弹窗状态
 const messagePopoverVisible = ref(false)

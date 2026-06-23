@@ -87,6 +87,26 @@ export interface ExamSummaryVO {
   dailyScoreFull?: number
 }
 
+/** 考试工作台列表范围 - 对应 ExamListScope */
+export type ExamListScopeCode = 'ALL' | 'ONGOING' | 'PRIORITY'
+
+/** 考试工作台分页查询请求 - 对应 ExamWorkbenchPageQueryRequest */
+export interface ExamWorkbenchPageQueryRequest extends ExamPageQueryRequest {
+  /** 列表范围 */
+  listScope: ExamListScopeCode
+}
+
+/** 考试工作台列表项 - 对应 ExamWorkbenchSummaryResponse */
+export interface ExamWorkbenchSummaryVO extends ExamSummaryVO {
+  questionCount: number
+  totalQuestionGradeCount: number
+  confirmedQuestionGradeCount: number
+  pendingReviewTaskCount: number
+  inProgressReviewTaskCount: number
+  openProcessingTaskCount: number
+  scanAttentionCount: number
+}
+
 /** 考试范围班级引用 - 对应 ExamClassRefVO */
 export interface ExamClassRefVO {
   classId: string
@@ -212,6 +232,13 @@ export interface ExamCloseRequest {
 /** 分页查询考试列表。 */
 export function pageExams(request: ExamPageQueryRequest): Promise<PageResult<ExamSummaryVO>> {
   return http.post<PageResult<ExamSummaryVO>>('/api/mark/exams/page', request)
+}
+
+/** 分页查询考试工作台列表（内嵌阅卷进度摘要）。 */
+export function pageExamWorkbench(
+  request: ExamWorkbenchPageQueryRequest,
+): Promise<PageResult<ExamWorkbenchSummaryVO>> {
+  return http.post<PageResult<ExamWorkbenchSummaryVO>>('/api/mark/exams/workbench-page', request)
 }
 
 /** 查询考试详情。 */

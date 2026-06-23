@@ -2,7 +2,6 @@
   <div class="archive-list-page">
     <div class="archive-list-page__toolbar">
       <UiTag tone="blue" size="sm">{{ archivePagination.total }} 个电子归档包</UiTag>
-      <UiTag v-if="selectedExamLabel" tone="purple" size="sm">{{ selectedExamLabel }}</UiTag>
     </div>
 
     <a-card :bordered="false" class="detail-table-card archive-list-page__table-card">
