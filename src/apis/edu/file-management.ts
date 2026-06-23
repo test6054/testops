@@ -328,7 +328,7 @@ export async function convertLegacyOfficeArrayBuffer(
     method: 'POST',
     credentials: 'include',
     headers: {
-      Authorization: `Bearer ${token}`,
+      "Authorization": `Bearer ${token}`,
       'Content-Type': 'application/json',
       ...getTraceHeaders(),
     },

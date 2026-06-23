@@ -1,17 +1,16 @@
+import type {FilePreviewResponseDTO} from '@/apis/edu/file-management';
+import type {AttachmentPreviewTarget, FilePreviewKind} from '@/utils/file-preview';
 import antMessage from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
 import {
-  type FilePreviewResponseDTO,
   convertLegacyOfficeArrayBuffer,
   getFileArrayBuffer,
-  previewFile,
+  previewFile
 } from '@/apis/edu/file-management'
 import { useUserStore } from '@/stores/modules/user'
 import { ErrorHandler } from '@/utils/error-handler'
 import { handleDownloadFile as downloadFileUtil } from '@/utils/file-download'
 import {
-  type AttachmentPreviewTarget,
-  type FilePreviewKind,
   formatFileSize,
   getMimeTypeForPreview,
   isOleBinaryFormat,
@@ -19,7 +18,7 @@ import {
   LEGACY_OFFICE_EXTENSIONS,
   OFFICE_PREVIEW_EXTENSIONS,
   resolveFileExtension,
-  resolvePreviewKind,
+  resolvePreviewKind
 } from '@/utils/file-preview'
 
 /**

@@ -241,7 +241,7 @@ import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter  } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   createOrganization,
   deleteOrganization,

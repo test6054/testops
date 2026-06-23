@@ -211,10 +211,10 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   ANONYMITY_MODE_LABEL,
   FORMAL_SESSION_STATUS_LABEL,
-  TRIAL_SESSION_STATUS_LABEL,
   MARKING_TASK_STATUS_LABEL,
   MARKING_TASK_STATUS_OPTIONS,
   MARKING_TASK_STATUS_TONE,
+  TRIAL_SESSION_STATUS_LABEL,
 } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'

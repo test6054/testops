@@ -170,6 +170,14 @@
 
 <script lang="ts" setup>
 import type { AllocationUnitCode, FormalSessionStatusCode, FormalSessionVO } from '@/apis/mark/marking-organization'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
+import PauseCircleOutlined from '@ant-design/icons-vue/PauseCircleOutlined'
+import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import StopOutlined from '@ant-design/icons-vue/StopOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import {
   ALLOCATION_UNIT_LABEL,
   completeFormalSession,
@@ -180,14 +188,6 @@ import {
   resumeFormalSession,
   startFormalSession
 } from '@/apis/mark/marking-organization'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
-import PauseCircleOutlined from '@ant-design/icons-vue/PauseCircleOutlined'
-import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import StopOutlined from '@ant-design/icons-vue/StopOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'

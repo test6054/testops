@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar :subtitle="organizationExamLabel">
         <template #status>
           <a-select
             v-model:value="filterGroupId"
@@ -99,8 +99,7 @@ import type {
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { getExamDetail } from '@/apis/mark/exam'
 import {
   getOrganizationById,
