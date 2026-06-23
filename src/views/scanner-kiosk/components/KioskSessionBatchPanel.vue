@@ -18,14 +18,18 @@ const props = withDefaults(
   { variant: 'setup' },
 )
 
-const emit = defineEmits<{
-  'start-scan': []
-}>()
-
-const { workflow, mutex, stage } = useKioskCtx()
+const { workflow, stage } = useKioskCtx()
 
 const batches = computed(() => workflow.kioskContext.value?.sessionBatches ?? [])
-const startReason = computed(() => mutex.reasonOf('startScan'))
+const expectedSheetCount = computed(() => workflow.kioskContext.value?.taskContract?.expectedSheetCount ?? null)
+
+const setupEmptyHint = computed(() => {
+  const expected = expectedSheetCount.value
+  if (expected != null && expected > 0) {
+    return `上方「应扫 ${expected}」为考试总量；送纸后将在此列出本机批次。请先确认扫描参数，再点击右侧「开始扫描」。`
+  }
+  return '送纸后将在此列出本机批次。请先确认扫描参数，再点击右侧「开始扫描」。'
+})
 
 const highlightBatchId = computed(() => {
   const fromJob = workflow.currentJob.value?.scanBatchId
@@ -99,11 +103,6 @@ function onDiscardClick(row: ExamScannerKioskSessionBatchVO, event: MouseEvent) 
   event.stopPropagation()
   void discardSessionBatch(row)
 }
-
-function startScanFromEmpty() {
-  if (!workflow.canStartScan.value) return
-  emit('start-scan')
-}
 </script>
 
 <template>
@@ -149,19 +148,9 @@ function startScanFromEmpty() {
       </li>
     </ul>
     <div v-else class="batch-panel__empty">
-      <p>尚未创建扫描批次</p>
-      <small v-if="variant === 'setup'">确认扫描参数后，点击「开始扫描」送纸</small>
+      <p>尚未创建本机批次</p>
+      <small v-if="variant === 'setup'">{{ setupEmptyHint }}</small>
       <small v-else>送纸后将自动创建本机批次</small>
-      <button
-        v-if="variant === 'setup'"
-        type="button"
-        class="batch-panel__empty-btn"
-        :disabled="!workflow.canStartScan.value"
-        :title="startReason || workflow.scanBlockedReason.value || '开始扫描'"
-        @click="startScanFromEmpty"
-      >
-        开始扫描
-      </button>
     </div>
   </section>
 </template>
@@ -297,22 +286,8 @@ function startScanFromEmpty() {
   color: var(--kiosk-ink-secondary);
 }
 
-.batch-panel__empty-btn {
-  margin-top: var(--kiosk-space-2);
-  height: var(--kiosk-h-action-md);
-  padding: 0 var(--kiosk-space-4);
-  background: var(--kiosk-primary-soft);
-  border: 1px solid var(--kiosk-primary);
-  border-radius: var(--kiosk-radius-md);
-  font-family: inherit;
-  font-size: var(--kiosk-fz-label);
-  color: var(--kiosk-primary);
-  cursor: pointer;
-}
-
-.batch-panel__empty-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.batch-panel__empty small {
+  line-height: var(--kiosk-lh-base);
 }
 
 .batch-panel--scanning .batch-list {

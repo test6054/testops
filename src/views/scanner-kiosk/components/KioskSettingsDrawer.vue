@@ -84,6 +84,9 @@ function handleSelectScanner(localScannerId: string) {
   if (workflow.selectedScannerId.value === localScannerId) return
   workflow.selectedScannerId.value = localScannerId
 }
+function handleRefreshSession() {
+  void workflow.refreshAll()
+}
 function handleReactivate() {
   workflow.openActivationModal()
 }
@@ -100,7 +103,7 @@ const liveEventCount = computed(() => workflow.liveEvents.value.length)
 const upgradeRequired = computed(() => Boolean(health.value?.upgradeRequired))
 const tokenResetRequired = computed(() => Boolean(health.value?.tokenResetRequired))
 const rebindRequired = computed(() => Boolean(health.value?.rebindRequired))
-const kioskBrowserSessionLost = computed(() => workflow.kioskBrowserSessionLost.value)
+const kioskBrowserSessionSyncNeeded = computed(() => workflow.kioskBrowserSessionSyncNeeded.value)
 const agentUpdateStatus = computed(() => health.value?.updateStatus ?? 'NONE')
 const agentUpdateAvailable = computed(() => Boolean(health.value?.updateAvailable))
 const agentUpdateInstallable = computed(() => Boolean(health.value?.updateInstallable))
@@ -113,7 +116,7 @@ const showMaintenanceSection = computed(
     upgradeRequired.value
     || tokenResetRequired.value
     || rebindRequired.value
-    || kioskBrowserSessionLost.value
+    || kioskBrowserSessionSyncNeeded.value
     || agentUpdateInProgress.value
     || agentUpdateFailed.value
     || agentUpdateAvailable.value,
@@ -160,10 +163,13 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
             </span>
           </header>
 
-          <div v-if="kioskBrowserSessionLost" class="alert-block">
-            <p>浏览器未保存一体机鉴权凭证</p>
-            <small>请通过激活弹窗重新激活，实时推送与批次操作才会恢复。</small>
-            <button type="button" class="ghost-btn" @click="handleReactivate">打开激活窗口</button>
+          <div v-if="kioskBrowserSessionSyncNeeded" class="alert-block">
+            <p>浏览器会话未与 Agent 对齐</p>
+            <small>正在从本机 Agent 同步 push_token；若长时间无响应，请刷新连接或重新输入激活码。</small>
+            <button type="button" class="ghost-btn" @click="handleRefreshSession">
+              <ReloadOutlined />
+              刷新连接
+            </button>
           </div>
 
           <div v-if="tokenResetRequired || rebindRequired" class="alert-block">

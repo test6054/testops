@@ -6,7 +6,8 @@
  * 错误优先于成功，同一时刻只展示一条。
  */
 import { Button, notification } from 'ant-design-vue'
-import { h, onBeforeUnmount, watch } from 'vue'
+import { computed, h, onBeforeUnmount, watch } from 'vue'
+import { KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE, KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE } from '@/utils/kiosk-auth'
 import { useKioskCtx } from '../composables/kioskInjection'
 import { KIOSK_NOTICE_KEY } from '../constants/kioskNotice'
 
@@ -16,6 +17,14 @@ notification.config({
   placement: 'topRight',
   top: '72px',
   maxCount: 1,
+})
+
+const showKioskReactivationAction = computed(() => {
+  const err = workflow.errorMessage.value.trim()
+  if (!err) return false
+  if (workflow.needsActivationGate.value) return true
+  return err === KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE
+    || err === KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE
 })
 
 function closeNotice() {
@@ -41,11 +50,11 @@ function syncNotice() {
     notification.error({
       key: KIOSK_NOTICE_KEY,
       message: err,
-      duration: workflow.kioskBrowserSessionLost.value ? 0 : 4.5,
+      duration: showKioskReactivationAction.value ? 0 : 4.5,
       onClose: () => {
         workflow.errorMessage.value = ''
       },
-      ...(workflow.kioskBrowserSessionLost.value
+      ...(showKioskReactivationAction.value
         ? {
             btn: () =>
               h(
@@ -79,11 +88,10 @@ watch(
   [
     () => workflow.errorMessage.value,
     () => workflow.successMessage.value,
-    () => workflow.kioskBrowserSessionLost.value,
+    () => workflow.needsActivationGate.value,
   ],
   syncNotice,
 )
 
 onBeforeUnmount(closeNotice)
 </script>
-
