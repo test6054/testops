@@ -635,16 +635,11 @@ function matchesGroupSearch(group: QuestionMarkingGroupVO, keyword: string): boo
   ) {
     return true
   }
-  if (
-    group.questions.some(
-      (question) =>
-        String(question.questionNo).includes(keyword)
-        || question.questionTypeMessage?.toLowerCase().includes(keyword),
-    )
-  ) {
-    return true
-  }
-  return false
+  return group.questions.some(
+    (question) =>
+      String(question.questionNo).includes(keyword)
+      || question.questionTypeMessage?.toLowerCase().includes(keyword),
+  );
 }
 
 const filteredGroups = computed(() => {
