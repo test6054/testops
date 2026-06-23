@@ -455,6 +455,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { useUserStore } from '@/stores/modules/user'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { isGradingKeyboardInputTarget } from '@/utils/grading-keyboard'
@@ -486,9 +487,12 @@ function comparePolicyLabel(code: ObjectiveComparePolicyCode): string {
 const route = useRoute()
 const router = useRouter()
 const { refreshSnapshot } = useWorkspaceExamId()
+const userStore = useUserStore()
 
 const examId = computed(() => (route.params.examId ? String(route.params.examId) : ''))
 const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
+/** 当前登录阅卷教师 ID，用于约束队列里可继续接手的 IN_PROGRESS 任务。 */
+const currentUserId = computed(() => userStore.userInfo.userId || '')
 
 function goBack(): void {
   if (!examId.value) {
@@ -544,12 +548,17 @@ async function loadAnnotations(): Promise<void> {
 const reviewQueue = ref<ReviewTaskItemVO[]>([])
 
 /**
- * 加载当前考试 + 当前题目下仍可复核的任务集合（PENDING + IN_PROGRESS）。
- * 当前任务自身会包含在内，用于精确计算「我在第几份 / 共几份」。
+ * 加载当前考试 + 当前题目下可继续复核的任务集合。
+ * 只保留 PENDING 和当前教师自己已领取的 IN_PROGRESS 任务，避免把其他教师已领取任务误纳入“下一份”候选。
  */
 async function loadReviewQueue(): Promise<void> {
   if (!examId.value || !detail.value?.questionTemplateId) {
     reviewQueue.value = []
+    return
+  }
+  if (!currentUserId.value) {
+    reviewQueue.value = []
+    showUserError(new Error('当前登录用户缺少 userId，无法加载复核队列'), '当前登录用户缺少 userId，无法加载复核队列')
     return
   }
   const currentExamId = examId.value
@@ -581,7 +590,13 @@ async function loadReviewQueue(): Promise<void> {
       ),
     ])
     const merged = new Map<string, ReviewTaskItemVO>()
-    for (const item of [...pendingItems, ...inProgressItems]) {
+    for (const item of pendingItems) {
+      merged.set(item.reviewTaskId, item)
+    }
+    for (const item of inProgressItems) {
+      if (item.assignedTeacherUserId !== currentUserId.value) {
+        continue
+      }
       merged.set(item.reviewTaskId, item)
     }
     reviewQueue.value = Array.from(merged.values())
@@ -867,11 +882,6 @@ const canAdoptAiSuggestion = computed<boolean>(() => {
   if (!canConfirm.value) return false
   return detail.value?.aiScore != null
 })
-computed(() => {
-  const aiScore = detail.value?.aiScore
-  if (aiScore == null) return '采纳 AI 评分（AI 尚未给分）'
-  return `采纳 AI 评分 (${aiScore} 分)`
-})
 /** 一键采纳当前 AI 评分到教师复核评分表单，并重走表单校验 */
 function adoptAiSuggestion(): void {
   if (!canAdoptAiSuggestion.value) return
@@ -1096,9 +1106,7 @@ async function takeNextTask(): Promise<void> {
     await loadReviewQueue()
     const currentTaskId = taskId.value
     const candidate = reviewQueue.value.find(
-      (item) =>
-        item.reviewTaskId !== currentTaskId
-        && (item.status === 'PENDING' || item.status === 'IN_PROGRESS'),
+      (item) => item.reviewTaskId !== currentTaskId && item.status === 'PENDING',
     )
     if (!candidate) {
       message.success('同题剩余任务复核完毕，返回考试工作台')

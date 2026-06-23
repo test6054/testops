@@ -108,6 +108,14 @@ export const ALLOCATION_UNIT_OPTIONS: Array<{
   { value: 'RANDOM_QUESTIONS', label: ALLOCATION_UNIT_LABEL.RANDOM_QUESTIONS },
 ]
 
+/** 阅卷会话阶段 - 与后端 MarkingSessionPhase enum 对齐 */
+export type MarkingSessionPhaseCode = 'TRIAL' | 'FORMAL'
+
+export const MARKING_SESSION_PHASE_LABEL: Record<MarkingSessionPhaseCode, string> = {
+  TRIAL: '试评',
+  FORMAL: '正评',
+}
+
 /** 阅卷匿名模式编码 - 与后端 AnonymityMode enum 对齐 */
 export type AnonymityModeCode = 'ANONYMOUS' | 'NAMED'
 
@@ -215,7 +223,6 @@ export function isMarkingOrgNotCreatedError(error: MarkBusinessError): boolean {
 /** 创建阅卷组织请求 - 对应后端 OrganizationCreateRequest */
 export interface OrganizationCreateRequest {
   examId: string
-  leaderUserId: string
   anonymousMode?: boolean
   remark?: string
 }
@@ -233,7 +240,6 @@ export interface OrganizationQueryByIdRequest {
 /** 更新阅卷组织主信息请求 - 对应后端 OrganizationUpdateRequest */
 export interface OrganizationUpdateRequest {
   organizationId: string
-  leaderUserId: string
   anonymousMode?: boolean
   remark?: string
 }
@@ -399,6 +405,8 @@ export interface FormalSessionCreateRequest {
 export interface MarkingTaskClaimRequest {
   sessionId: string
   groupId: string
+  /** 试评领取传 TRIAL，正评领取传 FORMAL */
+  markingPhase: MarkingSessionPhaseCode
 }
 
 /** 阅卷任务提交请求 - 对应后端 MarkingTaskSubmitRequest */
@@ -486,8 +494,6 @@ export interface MarkingOrganizationVO {
   remark?: string
   /** 考试主考老师用户 ID - 对应后端 MarkingOrganizationResponse.examCreateUserId */
   examCreateUserId?: string
-  /** 当前用户是否可配置阅卷组织 - 对应后端 canManageMarkingSetup */
-  canManageMarkingSetup?: boolean
   /** 当前用户是否具备主考专属权限 - 对应后端 canManageExamOwner */
   canManageExamOwner?: boolean
   groups: QuestionMarkingGroupVO[]
@@ -801,9 +807,13 @@ export function validateMarkingPolicyListContract(record: MarkingPolicyListVO): 
 
 /** 校验教师领取上下文合同，供任务池 claim 下拉使用前发现枚举漂移。 */
 export function validateTeacherClaimContextContract(record: TeacherClaimContextVO): void {
+  strictEnumLabel(MARKING_SESSION_PHASE_LABEL, record.markingPhase, '阅卷会话阶段')
   for (const group of record.groups ?? []) {
     for (const session of group.activeSessions ?? []) {
       validateFormalSessionContract(session)
+    }
+    for (const session of group.activeTrialSessions ?? []) {
+      validateTrialSessionContract(session)
     }
   }
 }
@@ -960,6 +970,16 @@ export function calibrateTrialSession(request: TrialSessionCalibrateRequest): Pr
 }
 
 /**
+ * 启动试评会话（CAS 守门 TRIAL_CREATED → TRIAL_ASSIGNED）。
+ * POST /api/mark/organization/trial/start?sessionId=
+ */
+export function startTrialSession(sessionId: string): Promise<boolean> {
+  return http.post<boolean>(
+    `/api/mark/organization/trial/start?sessionId=${encodeURIComponent(sessionId)}`,
+  )
+}
+
+/**
  * 分页查询试评会话列表。
  * POST /api/mark/organization/trial/list
  */
@@ -1110,20 +1130,25 @@ export function getMarkingTaskDetail(
 /** 教师领取上下文查询请求 - 对应后端 TeacherClaimContextQueryRequest */
 export interface TeacherClaimContextQueryRequest {
   examId: string
+  /** 试评任务池传 TRIAL，正评任务池传 FORMAL */
+  markingPhase: MarkingSessionPhaseCode
 }
 
-/** 题组级领取上下文 - 对应后端 TeacherClaimContextResponse.GroupClaimContext */
+/** 题组级领取上下文 - 对应后端 TeacherGroupClaimContextResponse */
 export interface GroupClaimContextVO {
   groupId: string
   groupName: string
   organizationId: string
   /** 该题组下当前活跃的正评会话（session_status = SESSION_ACTIVE） */
   activeSessions: FormalSessionVO[]
+  /** 该题组下当前可领取的试评会话（session_status = TRIAL_ASSIGNED） */
+  activeTrialSessions: TrialSessionVO[]
 }
 
 /** 教师领取上下文响应 - 对应后端 TeacherClaimContextResponse */
 export interface TeacherClaimContextVO {
   examId: string
+  markingPhase: MarkingSessionPhaseCode
   /** 教师所属的活跃题组上下文列表 */
   groups: GroupClaimContextVO[]
 }

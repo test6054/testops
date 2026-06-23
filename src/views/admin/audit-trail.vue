@@ -143,6 +143,12 @@
                 </UiTag>
                 <span v-else class="muted">-</span>
               </template>
+              <template v-else-if="column.key === 'incidentType'">
+                <span v-if="incidents[index].incidentType">
+                  {{ incidentTypeLabel(incidents[index].incidentType) }}
+                </span>
+                <span v-else class="muted">-</span>
+              </template>
               <template v-else-if="column.key === 'resolved'">
                 <UiTag :tone="incidents[index].resolved ? 'green' : 'orange'" size="sm">
                   {{ incidents[index].resolved ? '已解决' : '未解决' }}
@@ -271,7 +277,7 @@ import type {
   OperationLogVO,
   OperationTypeCode,
 } from '@/apis/mark/admin-audit'
-import type { IncidentLevelCode, IncidentRecordVO } from '@/apis/mark/admin-dashboard'
+import type { IncidentLevelCode, IncidentRecordVO, IncidentTypeCode } from '@/apis/mark/admin-dashboard'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -289,7 +295,7 @@ import {
   OPERATION_TYPE_OPTIONS,
   resolveIncident,
 } from '@/apis/mark/admin-audit'
-import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE } from '@/apis/mark/admin-dashboard'
+import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE, INCIDENT_TYPE_LABEL } from '@/apis/mark/admin-dashboard'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -598,6 +604,10 @@ function incidentLevelTone(level: IncidentLevelCode): BadgeTone {
 
 function incidentLevelLabel(level: IncidentLevelCode): string {
   return strictEnumLabel(INCIDENT_LEVEL_LABEL, level, '重大事件级别')
+}
+
+function incidentTypeLabel(type: IncidentTypeCode): string {
+  return strictEnumLabel(INCIDENT_TYPE_LABEL, type, '重大事件类型')
 }
 
 onMounted(async () => {

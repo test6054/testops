@@ -21,6 +21,7 @@ import type {
   MarkingTaskClaimRequest,
   MarkingTaskQueryRequest,
   MarkingTaskVO,
+  MarkingSessionPhaseCode,
   TeacherClaimContextQueryRequest,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
@@ -58,9 +59,13 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     total: 0,
   })
 
-  /** 教师领取上下文：活跃题组 + 当前正评会话；按 examId 隔离 */
+  /** 教师领取上下文：活跃题组 + 当前会话；按 examId + markingPhase 隔离 */
   const claimContextByExam = ref<Map<string, TeacherClaimContextVO>>(new Map())
   const claimContextLoading = ref(false)
+
+  function claimContextKey(examId: string, markingPhase: MarkingSessionPhaseCode): string {
+    return `${examId}:${markingPhase}`
+  }
 
   /* ---------- Computed ---------- */
 
@@ -108,7 +113,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
       const result = await getTeacherClaimContext(request)
       validateTeacherClaimContextContract(result)
       const next = new Map(claimContextByExam.value)
-      next.set(request.examId, result)
+      next.set(claimContextKey(request.examId, request.markingPhase), result)
       claimContextByExam.value = next
       return result
     } finally {
@@ -116,8 +121,8 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     }
   }
 
-  function getClaimContext(examId: string): TeacherClaimContextVO | null {
-    return claimContextByExam.value.get(examId) ?? null
+  function getClaimContext(examId: string, markingPhase: MarkingSessionPhaseCode): TeacherClaimContextVO | null {
+    return claimContextByExam.value.get(claimContextKey(examId, markingPhase)) ?? null
   }
 
   async function loadReviewTasks(request: ReviewTaskQueryRequest): Promise<ReviewTaskItemVO[]> {

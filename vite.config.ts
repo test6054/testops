@@ -12,6 +12,36 @@ export default defineConfig(async ({ command, mode }): Promise<UserConfig> => {
     resolve: {
       alias: [
         {
+          find: /^@vue-office\/docx$/,
+          replacement: fileURLToPath(
+            new URL('./node_modules/@vue-office/docx/lib/v3/vue-office-docx.mjs', import.meta.url),
+          ),
+        },
+        {
+          find: /^@vue-office\/excel$/,
+          replacement: fileURLToPath(
+            new URL('./node_modules/@vue-office/excel/lib/v3/vue-office-excel.mjs', import.meta.url),
+          ),
+        },
+        {
+          find: /^@vue-office\/pptx$/,
+          replacement: fileURLToPath(
+            new URL('./node_modules/@vue-office/pptx/lib/v3/vue-office-pptx.mjs', import.meta.url),
+          ),
+        },
+        {
+          find: /^@vue-office\/docx\/lib\/index\.css$/,
+          replacement: fileURLToPath(
+            new URL('./node_modules/@vue-office/docx/lib/v3/index.css', import.meta.url),
+          ),
+        },
+        {
+          find: /^@vue-office\/excel\/lib\/index\.css$/,
+          replacement: fileURLToPath(
+            new URL('./node_modules/@vue-office/excel/lib/v3/index.css', import.meta.url),
+          ),
+        },
+        {
           find: '~',
           replacement: fileURLToPath(new URL('./', import.meta.url)),
         },

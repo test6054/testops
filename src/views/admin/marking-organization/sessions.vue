@@ -55,6 +55,7 @@
           <TrialSessionPanel
             :organization-id="organizationId"
             :group-options="groupOptions"
+            :group-has-allocation-policy-map="groupHasAllocationPolicyMap"
             :sessions="trialSessions"
             :can-manage="canManageOrganization"
             @refresh="onTrialSessionsChanged"
@@ -65,6 +66,7 @@
           <FormalSessionPanel
             :organization-id="organizationId"
             :group-options="groupOptions"
+            :group-allocation-units="groupAllocationUnitMap"
             :sessions="formalSessions"
             :can-manage="canManageOrganization"
             @refresh="onFormalSessionsChanged"
@@ -88,6 +90,8 @@
 import type { LifecycleAction } from './components/SessionLifecycleReasonModal.vue'
 import type { ExamDetailVO } from '@/apis/mark/exam'
 import type {
+  AllocationPolicyVO,
+  AllocationUnitCode,
   FormalSessionVO,
   MarkingOrganizationVO,
   TrialSessionVO,
@@ -100,6 +104,7 @@ import { getExamDetail } from '@/apis/mark/exam'
 import {
   getOrganizationById,
   listFormalSessions,
+  listMarkingPolicies,
   listTrialSessions,
   MARKING_ORGANIZATION_STATUS_LABEL,
   MARKING_ORGANIZATION_STATUS_TONE,
@@ -133,6 +138,7 @@ const organization = ref<MarkingOrganizationVO | null>(null)
 const examDetail = ref<ExamDetailVO | null>(null)
 const trialSessions = ref<TrialSessionVO[]>([])
 const formalSessions = ref<FormalSessionVO[]>([])
+const allocationPolicies = ref<AllocationPolicyVO[]>([])
 const loading = ref(false)
 const filterGroupId = ref<string | undefined>(undefined)
 
@@ -142,6 +148,27 @@ const groupOptions = computed(() =>
     label: g.groupName,
   })),
 )
+
+const groupAllocationUnitMap = computed(() => {
+  const map: Record<string, AllocationUnitCode> = {}
+  const defaultAllocationUnit = allocationPolicies.value.find((policy) => policy.groupId == null)?.allocationUnit
+  for (const group of organization.value?.groups ?? []) {
+    const groupPolicy = allocationPolicies.value.find((policy) => policy.groupId === group.id)
+    const allocationUnit = groupPolicy?.allocationUnit ?? defaultAllocationUnit
+    if (allocationUnit) {
+      map[group.id] = allocationUnit
+    }
+  }
+  return map
+})
+
+const groupHasAllocationPolicyMap = computed(() => {
+  const map: Record<string, boolean> = {}
+  for (const group of organization.value?.groups ?? []) {
+    map[group.id] = Boolean(groupAllocationUnitMap.value[group.id])
+  }
+  return map
+})
 
 const organizationExamLabel = computed(() => {
   if (organization.value?.examName) {
@@ -153,11 +180,11 @@ const organizationExamLabel = computed(() => {
 })
 
 const examCreateUserId = computed(() => examDetail.value?.createUser ?? organization.value?.examCreateUserId)
-const { canManageMarkingSetup: canManageOrganization } = useMarkingOrgPermission(examCreateUserId, organization)
+const { canManageExamOwner: canManageOrganization } = useMarkingOrgPermission(examCreateUserId, organization)
 
 function guardOrganizationOwnerAction(): boolean {
   if (canManageOrganization.value) return true
-  message.warning('仅考试主考或阅卷组长可管理试评 / 正评会话')
+  message.warning('仅考试主考老师可管理试评 / 正评会话')
   return false
 }
 
@@ -166,6 +193,7 @@ function resetSessionState(): void {
   examDetail.value = null
   trialSessions.value = []
   formalSessions.value = []
+  allocationPolicies.value = []
 }
 
 async function loadOrganization(): Promise<void> {
@@ -214,6 +242,20 @@ async function loadFormalSessions(): Promise<void> {
   }
 }
 
+async function loadMarkingPolicies(): Promise<void> {
+  if (!organizationId.value) {
+    allocationPolicies.value = []
+    return
+  }
+  try {
+    const response = await listMarkingPolicies({ organizationId: organizationId.value })
+    allocationPolicies.value = response.allocationPolicies ?? []
+  } catch (error) {
+    allocationPolicies.value = []
+    showUserError(error, '分配策略加载失败')
+  }
+}
+
 async function reloadAll(): Promise<void> {
   if (!organizationId.value) {
     resetSessionState()
@@ -221,7 +263,9 @@ async function reloadAll(): Promise<void> {
   }
   loading.value = true
   try {
-    await Promise.all([loadOrganization(), loadTrialSessions(), loadFormalSessions()])
+    await loadOrganization()
+    await loadMarkingPolicies()
+    await Promise.all([loadTrialSessions(), loadFormalSessions()])
   } finally {
     loading.value = false
   }

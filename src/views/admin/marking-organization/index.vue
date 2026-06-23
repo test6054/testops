@@ -60,12 +60,12 @@
 
       <a-card v-if="organization" :bordered="false" class="detail-table-card org-index__overview-card">
         <a-alert
-          v-if="!canManageMarkingSetup"
+          v-if="!canManageExamOwner"
           type="info"
           show-icon
           class="org-index__readonly-banner"
           message="当前为只读视图"
-          description="阅卷方案由考试主考老师或阅卷组长配置；如需调整题组、策略或启动正评，请联系具备配置权限的老师。"
+          description="阅卷方案由考试主考老师配置；如需调整题组、策略或启动正评，请联系主考老师。"
         />
         <template #title>
           <ProfileOutlined />
@@ -78,7 +78,7 @@
           bordered
           class="org-index__descriptions"
         >
-          <a-descriptions-item label="阅卷组长">
+          <a-descriptions-item label="主考老师">
             {{ organization.leaderUserName }}（{{ organization.leaderTeacherNo }}）
           </a-descriptions-item>
           <a-descriptions-item label="组织状态">
@@ -113,10 +113,10 @@
 
         <div class="org-index__actions">
           <UiButton size="sm" @click="goDetail">
-            {{ canManageMarkingSetup ? '管理题组与策略' : '查看题组与策略' }}
+            {{ canManageExamOwner ? '管理题组与策略' : '查看题组与策略' }}
           </UiButton>
           <UiButton
-            v-if="canManageMarkingSetup"
+            v-if="canManageExamOwner"
             size="sm"
             variant="outline"
             @click="openEditDrawer"
@@ -174,17 +174,6 @@
         <a-form-item label="关联考试">
           <a-input :value="organizationExamLabel" disabled />
         </a-form-item>
-        <a-form-item label="阅卷组长" name="leaderUserId" required>
-          <a-select
-            v-model:value="createForm.leaderUserId"
-            placeholder="选择组长（仅教师）"
-            show-search
-            option-filter-prop="label"
-            :options="teacherOptions"
-            :loading="teacherLoading"
-            allow-clear
-          />
-        </a-form-item>
         <a-form-item label="是否启用匿名阅卷" name="anonymousMode">
           <a-switch v-model:checked="createForm.anonymousMode" />
           <span class="org-index__switch-hint">启用后阅卷教师不可见考生身份</span>
@@ -214,17 +203,6 @@
         <a-form-item label="关联考试">
           <a-input :value="organizationExamLabel" disabled />
         </a-form-item>
-        <a-form-item label="阅卷组长" name="leaderUserId" required>
-          <a-select
-            v-model:value="editForm.leaderUserId"
-            placeholder="选择组长（仅教师）"
-            show-search
-            option-filter-prop="label"
-            :options="teacherOptions"
-            :loading="teacherLoading"
-            allow-clear
-          />
-        </a-form-item>
         <a-form-item label="是否启用匿名阅卷" name="anonymousMode">
           <a-switch v-model:checked="editForm.anonymousMode" />
           <span class="org-index__switch-hint">启用后阅卷教师不可见考生身份</span>
@@ -252,7 +230,6 @@
  * - createOrganization(request)  创建阅卷组织
  */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type { UserListItemDto } from '@/apis/edu/admin-user'
 import type {
   MarkingOrganizationVO,
   OrganizationCreateRequest,
@@ -263,8 +240,7 @@ import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
+import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 import {
   createOrganization,
   deleteOrganization,
@@ -292,12 +268,9 @@ import {
   resolveMarkingOrganizationDetailRoute,
   resolveMarkingOrganizationSessionsRoute,
 } from '@/utils/marking-organization-navigation'
-import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminMarkingOrganizationIndex' })
-
-const MARKING_TEACHER_OPTION_PAGE_SIZE = 100
 
 const router = useRouter()
 const route = useRoute()
@@ -318,17 +291,11 @@ const { refreshSnapshot } = useWorkspaceExamId()
 
 const organization = ref<MarkingOrganizationVO | null>(null)
 const examCreateUserId = computed(() => selectedExam.value?.createUser)
-const { canManageMarkingSetup, canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, organization)
+const { canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, organization)
 const loading = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
 
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
-
-function guardMarkingSetupAction(): boolean {
-  if (canManageMarkingSetup.value) return true
-  message.warning('仅考试主考或阅卷组长可修改阅卷设置')
-  return false
-}
 
 function guardExamOwnerAction(): boolean {
   if (canManageExamOwner.value) return true
@@ -386,52 +353,21 @@ const signalMetrics = computed<SignalMetric[]>(() => {
   ]
 })
 
-const teacherList = ref<UserListItemDto[]>([])
-const teacherLoading = ref(false)
-
-const teacherOptions = computed(() =>
-  teacherList.value.map((item) => ({
-    value: item.id,
-    label: item.identifierNumber ? `${item.nickName} (${item.identifierNumber})` : item.nickName,
-  })),
-)
-
-async function loadTeachers(): Promise<void> {
-  teacherLoading.value = true
-  try {
-    teacherList.value = await readAllPages(
-      (pageNum) => adminGetUserPage({
-        pageNum,
-        pageSize: MARKING_TEACHER_OPTION_PAGE_SIZE,
-        roleKey: 'SCH_TECH',
-      }),
-      '阅卷教师列表加载失败，请稍后重试',
-    )
-  } catch (error) {
-    showUserError(error, '阅卷教师列表加载失败')
-  } finally {
-    teacherLoading.value = false
-  }
-}
-
 const createDrawerOpen = ref(false)
 const creating = ref(false)
 const createFormRef = ref<FormInstance>()
 
 interface CreateForm {
-  leaderUserId?: string
   anonymousMode: boolean
   remark?: string
 }
 
 const createForm = reactive<CreateForm>({
-  leaderUserId: undefined,
   anonymousMode: true,
   remark: '',
 })
 
 const createRules: Record<string, Rule[]> = {
-  leaderUserId: [{ required: true, message: '请选择阅卷组长', trigger: 'change' }],
   remark: [{ max: 200, message: '备注最多 200 字', trigger: 'blur' }],
 }
 
@@ -441,19 +377,16 @@ const deleting = ref(false)
 const editFormRef = ref<FormInstance>()
 
 interface EditForm {
-  leaderUserId?: string
   anonymousMode: boolean
   remark?: string
 }
 
 const editForm = reactive<EditForm>({
-  leaderUserId: undefined,
   anonymousMode: true,
   remark: '',
 })
 
 const editRules: Record<string, Rule[]> = {
-  leaderUserId: [{ required: true, message: '请选择阅卷组长', trigger: 'change' }],
   remark: [{ max: 200, message: '备注最多 200 字', trigger: 'blur' }],
 }
 
@@ -463,13 +396,9 @@ function openCreateDrawer(): void {
     message.warning('请先选择考试')
     return
   }
-  createForm.leaderUserId = undefined
   createForm.anonymousMode = true
   createForm.remark = ''
   createDrawerOpen.value = true
-  if (teacherList.value.length === 0) {
-    void loadTeachers()
-  }
 }
 
 async function submitCreate(): Promise<void> {
@@ -484,7 +413,6 @@ async function submitCreate(): Promise<void> {
   try {
     const request: OrganizationCreateRequest = {
       examId: selectedExamId.value,
-      leaderUserId: createForm.leaderUserId!,
       anonymousMode: createForm.anonymousMode,
       remark: createForm.remark?.trim() || undefined,
     }
@@ -502,19 +430,15 @@ async function submitCreate(): Promise<void> {
 }
 
 function openEditDrawer(): void {
-  if (!guardMarkingSetupAction()) return
+  if (!guardExamOwnerAction()) return
   if (!organization.value) return
-  editForm.leaderUserId = organization.value.leaderUserId
   editForm.anonymousMode = Boolean(organization.value.anonymousMode)
   editForm.remark = organization.value.remark || ''
   editDrawerOpen.value = true
-  if (teacherList.value.length === 0) {
-    void loadTeachers()
-  }
 }
 
 async function submitUpdate(): Promise<void> {
-  if (!guardMarkingSetupAction()) return
+  if (!guardExamOwnerAction()) return
   if (!organization.value || !editFormRef.value) return
   try {
     await editFormRef.value.validate()
@@ -525,7 +449,6 @@ async function submitUpdate(): Promise<void> {
   try {
     const request: OrganizationUpdateRequest = {
       organizationId: organization.value.id,
-      leaderUserId: editForm.leaderUserId!,
       anonymousMode: editForm.anonymousMode,
       remark: editForm.remark?.trim() || undefined,
     }
@@ -558,15 +481,31 @@ async function submitDelete(): Promise<void> {
   }
 }
 
-function goDetail(tab?: string): void {
+/**
+ * 组装阅卷组织详情路由，隔离按钮点击事件和业务 tab 参数。
+ */
+function buildDetailRoute(tab?: string): RouteLocationRaw {
+  const target = resolveMarkingOrganizationDetailRoute(
+    organization.value!.id,
+    isExamWorkspaceRoute.value ? selectedExamId.value : undefined,
+  )
+  if (typeof target === 'string') {
+    return target
+  }
+  return {
+    ...target,
+    query: tab ? { ...(target.query ?? {}), tab } : target.query,
+  }
+}
+
+function goDetail(): void {
   if (!organization.value) return
-  void router.push({
-    ...resolveMarkingOrganizationDetailRoute(
-      organization.value.id,
-      isExamWorkspaceRoute.value ? selectedExamId.value : undefined,
-    ),
-    query: tab ? { tab } : undefined,
-  })
+  void router.push(buildDetailRoute())
+}
+
+function goDetailTab(tab: string): void {
+  if (!organization.value) return
+  void router.push(buildDetailRoute(tab))
 }
 
 function goSessions(): void {
@@ -585,7 +524,7 @@ watch(
   () => [route.query.setupTab, organization.value?.id] as const,
   ([setupTab, orgId]) => {
     if (setupTab === 'launch' && orgId) {
-      goDetail('launch')
+      goDetailTab('launch')
     }
   },
   { immediate: true },

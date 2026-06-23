@@ -31,7 +31,7 @@
               @change="onClaimGroupChange"
             />
           </a-form-item>
-          <a-form-item label="正评会话" required>
+          <a-form-item :label="sessionSelectLabel" required>
             <a-select
               v-model:value="claimForm.sessionId"
               :options="claimSessionOptions"
@@ -194,6 +194,7 @@ import type {
   AnonymityModeCode,
   MarkingTaskClaimRequest,
   MarkingTaskQueryRequest,
+  MarkingSessionPhaseCode,
   MarkingTaskStatusCode,
   MarkingTaskVO,
   TeacherClaimContextVO,
@@ -210,6 +211,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   ANONYMITY_MODE_LABEL,
   FORMAL_SESSION_STATUS_LABEL,
+  TRIAL_SESSION_STATUS_LABEL,
   MARKING_TASK_STATUS_LABEL,
   MARKING_TASK_STATUS_OPTIONS,
   MARKING_TASK_STATUS_TONE,
@@ -236,6 +238,10 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const isTrialTaskPool = computed(() => route.meta.workspacePhase === 'trial')
+
+const markingPhase = computed(() => (isTrialTaskPool.value ? 'TRIAL' : 'FORMAL') as MarkingSessionPhaseCode)
+
+const sessionSelectLabel = computed(() => (isTrialTaskPool.value ? '试评会话' : '正评会话'))
 
 const claimEmptyDescription = computed(() => (
   isTrialTaskPool.value
@@ -357,12 +363,15 @@ watch(
 const claimForm = reactive<MarkingTaskClaimRequest>({
   sessionId: '',
   groupId: '',
+  markingPhase: 'FORMAL',
 })
 
 const canClaim = computed(() => !!claimForm.sessionId.trim() && !!claimForm.groupId.trim())
 
 const claimContext = computed<TeacherClaimContextVO | null>(() =>
-  selectedExamId.value ? markTaskStore.getClaimContext(selectedExamId.value) : null,
+  selectedExamId.value
+    ? markTaskStore.getClaimContext(selectedExamId.value, markingPhase.value)
+    : null,
 )
 
 const claimGroupOptions = computed(() =>
@@ -375,6 +384,12 @@ const claimGroupOptions = computed(() =>
 const claimSessionOptions = computed(() => {
   if (!claimForm.groupId) return []
   const matched = claimContext.value?.groups.find((g) => g.groupId === claimForm.groupId)
+  if (isTrialTaskPool.value) {
+    return (matched?.activeTrialSessions ?? []).map((s) => ({
+      value: s.id,
+      label: `${strictEnumLabel(TRIAL_SESSION_STATUS_LABEL, s.sessionStatus, '试评会话状态')} · ${formatDateTime(s.createTime)}`,
+    }))
+  }
   return (matched?.activeSessions ?? []).map((s) => ({
     value: s.id,
     label: `${strictEnumLabel(FORMAL_SESSION_STATUS_LABEL, s.sessionStatus, '正评会话状态')}${s.startTime ? ` · ${formatDateTime(s.startTime)}` : ''}`,
@@ -384,6 +399,12 @@ const claimSessionOptions = computed(() => {
 const filterSessionOptions = computed(() => {
   if (!filterForm.groupId) return []
   const matched = claimContext.value?.groups.find((g) => g.groupId === filterForm.groupId)
+  if (isTrialTaskPool.value) {
+    return (matched?.activeTrialSessions ?? []).map((s) => ({
+      value: s.id,
+      label: `${strictEnumLabel(TRIAL_SESSION_STATUS_LABEL, s.sessionStatus, '试评会话状态')} · ${formatDateTime(s.createTime)}`,
+    }))
+  }
   return (matched?.activeSessions ?? []).map((s) => ({
     value: s.id,
     label: `${strictEnumLabel(FORMAL_SESSION_STATUS_LABEL, s.sessionStatus, '正评会话状态')}${s.startTime ? ` · ${formatDateTime(s.startTime)}` : ''}`,
@@ -412,7 +433,7 @@ const taskFilterFields = computed<FilterField[]>(() => [
   {
     key: 'sessionId',
     type: 'select',
-    placeholder: '选择正评会话',
+    placeholder: isTrialTaskPool.value ? '选择试评会话' : '选择正评会话',
     allowClear: true,
     width: 180,
     disabled: !filterForm.groupId?.trim(),
@@ -423,7 +444,10 @@ const taskFilterFields = computed<FilterField[]>(() => [
 async function loadClaimContext(): Promise<void> {
   if (!selectedExamId.value) return
   try {
-    await markTaskStore.loadClaimContext({ examId: selectedExamId.value })
+    await markTaskStore.loadClaimContext({
+      examId: selectedExamId.value,
+      markingPhase: markingPhase.value,
+    })
   } catch (error) {
     showUserError(error, '领取条件加载失败')
   }
@@ -437,7 +461,7 @@ const claiming = ref(false)
 
 async function submitClaim(): Promise<void> {
   if (!canClaim.value) {
-    message.warning('请选择题组和正评会话')
+    message.warning(isTrialTaskPool.value ? '请选择题组和试评会话' : '请选择题组和正评会话')
     return
   }
   claiming.value = true
@@ -445,6 +469,7 @@ async function submitClaim(): Promise<void> {
     const claimed = await markTaskStore.claimTasks({
       sessionId: claimForm.sessionId.trim(),
       groupId: claimForm.groupId.trim(),
+      markingPhase: markingPhase.value,
     })
     if (claimed.length === 0) {
       message.info('当前会话 / 题组没有可领取的任务')
@@ -493,9 +518,15 @@ function taskStatusTone(value: MarkingTaskStatusCode): BadgeTone {
 watch(selectedExamId, () => {
   claimForm.groupId = ''
   claimForm.sessionId = ''
+  claimForm.markingPhase = markingPhase.value
   void loadTasks()
   void loadClaimContext()
 }, { immediate: true })
+
+watch(markingPhase, () => {
+  claimForm.markingPhase = markingPhase.value
+  void loadClaimContext()
+})
 </script>
 
 <style lang="scss" scoped>

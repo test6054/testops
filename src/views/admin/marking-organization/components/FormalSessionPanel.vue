@@ -14,15 +14,23 @@
           :options="groupOptions"
         />
       </a-form-item>
+      <a-alert
+        v-if="formalGroupId && !selectedGroupHasAllocationPolicy"
+        type="warning"
+        show-icon
+        message="该题组未配置有效分配策略，不能创建正评会话"
+        class="policy-alert"
+      />
       <a-form-item label="批阅任务单元" required>
         <a-select
           v-model:value="formalAllocationUnit"
           placeholder="选择正评任务拆分方式"
           :options="allocationUnitOptions"
+          :disabled="!selectedGroupHasAllocationPolicy"
         />
       </a-form-item>
       <UiButton
-        :disabled="!formalGroupId || !formalAllocationUnit"
+        :disabled="!formalGroupId || !formalAllocationUnit || !selectedGroupHasAllocationPolicy"
         :loading="creating"
         @click="submitCreate"
       >
@@ -205,6 +213,8 @@ const props = defineProps<{
   groupOptions: GroupOption[]
   sessions: FormalSessionVO[]
   canManage: boolean
+  /** 题组分配策略中的批阅单元，用于限制会话创建与分配单元选择 */
+  groupAllocationUnits?: Record<string, AllocationUnitCode>
 }>()
 
 const emit = defineEmits<{
@@ -213,7 +223,7 @@ const emit = defineEmits<{
 }>()
 
 const formalGroupId = ref<string | undefined>(undefined)
-const formalAllocationUnit = ref<AllocationUnitCode>('SELECTED_QUESTIONS')
+const formalAllocationUnit = ref<AllocationUnitCode | undefined>(undefined)
 const creating = ref(false)
 const actionSessionId = ref<string | undefined>(undefined)
 const starting = ref(false)
@@ -230,6 +240,10 @@ const formalSessionOptions = computed(() =>
 
 const selectedSession = computed(() =>
   props.sessions.find((item) => item.id === actionSessionId.value),
+)
+
+const selectedGroupHasAllocationPolicy = computed(() =>
+  Boolean(formalGroupId.value && props.groupAllocationUnits?.[formalGroupId.value]),
 )
 
 const canCompleteSelectedSession = computed(() => {
@@ -252,6 +266,41 @@ watch(
       actionSessionId.value = undefined
     }
   },
+)
+
+function syncAllocationUnitFromGroup(groupId?: string): void {
+  if (!groupId) {
+    formalAllocationUnit.value = undefined
+    return
+  }
+  const unit = props.groupAllocationUnits?.[groupId]
+  formalAllocationUnit.value = unit
+}
+
+watch(
+  () => props.groupOptions,
+  (options) => {
+    if (options.length === 1) {
+      formalGroupId.value = options[0].value
+      syncAllocationUnitFromGroup(options[0].value)
+    } else if (formalGroupId.value && !options.some((item) => item.value === formalGroupId.value)) {
+      formalGroupId.value = undefined
+      syncAllocationUnitFromGroup()
+    }
+  },
+  { immediate: true },
+)
+
+watch(formalGroupId, (groupId) => {
+  syncAllocationUnitFromGroup(groupId)
+})
+
+watch(
+  () => props.groupAllocationUnits,
+  () => {
+    syncAllocationUnitFromGroup(formalGroupId.value)
+  },
+  { deep: true, immediate: true },
 )
 
 function canPause(status: FormalSessionStatusCode): boolean {
@@ -316,7 +365,9 @@ function guardManageAction(): boolean {
 
 async function submitCreate(): Promise<void> {
   if (!guardManageAction()) return
-  if (!props.organizationId || !formalGroupId.value || !formalAllocationUnit.value) return
+  if (!props.organizationId || !formalGroupId.value || !formalAllocationUnit.value || !selectedGroupHasAllocationPolicy.value) {
+    return
+  }
   creating.value = true
   try {
     const sessionId = await createFormalSession({
@@ -400,6 +451,10 @@ async function submitDelete(sessionId: string): Promise<void> {
 
 .session-form {
   max-width: 100%;
+}
+
+.policy-alert {
+  margin-bottom: 16px;
 }
 
 .section-divider {

@@ -32,7 +32,7 @@
             刷新
           </UiButton>
           <UiButton
-            v-if="organization && canManageMarkingSetup"
+            v-if="organization && canManageExamOwner"
             variant="outline"
             size="sm"
             @click="openEditDrawer"
@@ -67,12 +67,12 @@
     <a-spin v-else :spinning="loading">
       <section v-if="organization" class="org-detail__panel">
         <a-alert
-          v-if="!canManageMarkingSetup"
+          v-if="!canManageExamOwner"
           type="info"
           show-icon
           class="org-detail__readonly-banner"
           message="当前为只读视图"
-          description="题组、策略与正评启动由考试主考或阅卷组长配置。"
+          description="题组、策略与正评启动由考试主考老师配置。"
         />
         <a-tabs v-model:active-key="activeTab" class="detail-tabs">
           <a-tab-pane key="info" tab="基本信息 + 题组">
@@ -82,7 +82,7 @@
                 <UiInfoGridItem label="当前考试">
                   {{ organizationExamLabel }}
                 </UiInfoGridItem>
-                <UiInfoGridItem label="阅卷组长">
+                <UiInfoGridItem label="主考老师">
                   {{ organization.leaderUserName }}（{{ organization.leaderTeacherNo }}）
                 </UiInfoGridItem>
                 <UiInfoGridItem label="题组数量">
@@ -130,13 +130,13 @@
                   size="small"
                 />
               </template>
-              <template v-if="canManageMarkingSetup" #toolbar-right>
+              <template v-if="canManageExamOwner" #toolbar-right>
                 <UiButton size="sm" @click="openGroupModal">
                   <template #icon><PlusOutlined /></template>
                   新建题组
                 </UiButton>
               </template>
-              <template v-if="canManageMarkingSetup" #empty-action>
+              <template v-if="canManageExamOwner" #empty-action>
                 <UiButton size="sm" @click="openGroupModal">
                   <template #icon><PlusOutlined /></template>
                   新建题组
@@ -243,7 +243,7 @@
           </a-tab-pane>
 
           <a-tab-pane key="policy" tab="任务策略">
-            <a-form v-if="canManageMarkingSetup" :model="policyForm" layout="vertical" class="policy-form">
+            <a-form v-if="canManageExamOwner" :model="policyForm" layout="vertical" class="policy-form">
               <a-row :gutter="16">
                 <a-col :xs="24" :lg="12">
                   <h4 class="subsection-title">任务分配策略</h4>
@@ -253,28 +253,28 @@
                       placeholder="选择题组（留空表示组织级默认）"
                       :options="groupSelectOptions"
                       allow-clear
-                      :disabled="!canManageMarkingSetup"
+                      :disabled="!canManageExamOwner"
                     />
                   </a-form-item>
                   <a-form-item label="分配模式" required>
                     <a-select
                       v-model:value="policyForm.allocationMode"
                       :options="ALLOCATION_MODE_OPTIONS"
-                      :disabled="!canManageMarkingSetup"
+                      :disabled="!canManageExamOwner"
                     />
                   </a-form-item>
                   <a-form-item label="批阅任务单元" required>
                     <a-select
                       v-model:value="policyForm.allocationUnit"
                       :options="ALLOCATION_UNIT_OPTIONS"
-                      :disabled="!canManageMarkingSetup"
+                      :disabled="!canManageExamOwner"
                     />
                   </a-form-item>
                   <a-form-item label="匿名模式" required>
                     <a-select
                       v-model:value="policyForm.anonymityMode"
                       :options="ANONYMITY_MODE_OPTIONS"
-                      :disabled="!canManageMarkingSetup"
+                      :disabled="!canManageExamOwner"
                     />
                   </a-form-item>
                   <a-form-item
@@ -287,7 +287,7 @@
                       :min="1"
                       :max="100"
                       style="width: 100%"
-                      :disabled="!canManageMarkingSetup"
+                      :disabled="!canManageExamOwner"
                     />
                     <div class="policy-hint">
                       抽样题池来自当前题组题目范围；正评启动后会固化本次随机抽题结果，后续可在正评会话列表审计复盘。
@@ -299,7 +299,7 @@
                       :min="1"
                       :max="500"
                       style="width: 100%"
-                      :disabled="!canManageMarkingSetup"
+                      :disabled="!canManageExamOwner"
                     />
                   </a-form-item>
                   <a-form-item label="教师最大待处理任务数">
@@ -308,7 +308,7 @@
                       :min="1"
                       :max="500"
                       style="width: 100%"
-                      :disabled="!canManageMarkingSetup"
+                      :disabled="!canManageExamOwner"
                     />
                   </a-form-item>
                   <a-form-item label="匿名令牌策略">
@@ -316,11 +316,11 @@
                       v-model:value="policyForm.anonymousTokenPolicy"
                       :options="ANONYMOUS_TOKEN_OPTIONS"
                       allow-clear
-                      :disabled="!canManageMarkingSetup"
+                      :disabled="!canManageExamOwner"
                     />
                   </a-form-item>
                   <UiButton
-                    v-if="canManageMarkingSetup"
+                    v-if="canManageExamOwner"
                     :loading="savingAllocation"
                     @click="submitAllocation"
                   >
@@ -337,7 +337,7 @@
                       placeholder="选择题组（留空表示组织级默认）"
                       :options="groupSelectOptions"
                       allow-clear
-                      :disabled="!canManageMarkingSetup"
+                      :disabled="!canManageExamOwner"
                     />
                   </a-form-item>
                   <a-form-item label="超时时间（分钟）">
@@ -346,7 +346,7 @@
                       :min="1"
                       :max="1440"
                       style="width: 100%"
-                      :disabled="!canManageMarkingSetup"
+                      :disabled="!canManageExamOwner"
                     />
                   </a-form-item>
                   <a-form-item label="教师最大待处理任务数">
@@ -355,7 +355,7 @@
                       :min="1"
                       :max="500"
                       style="width: 100%"
-                      :disabled="!canManageMarkingSetup"
+                      :disabled="!canManageExamOwner"
                     />
                   </a-form-item>
                   <a-form-item label="再分配模式">
@@ -363,11 +363,11 @@
                       v-model:value="policyForm.reassignMode"
                       :options="REASSIGN_MODE_OPTIONS"
                       allow-clear
-                      :disabled="!canManageMarkingSetup"
+                      :disabled="!canManageExamOwner"
                     />
                   </a-form-item>
                   <UiButton
-                    v-if="canManageMarkingSetup"
+                    v-if="canManageExamOwner"
                     :loading="savingRecycle"
                     @click="submitRecycle"
                   >
@@ -439,8 +439,15 @@
             />
           </a-tab-pane>
 
-          <a-tab-pane v-if="canManageMarkingSetup" key="launch" tab="快速启动">
-            <ReviewAssignmentPanel embedded />
+          <a-tab-pane v-if="canManageExamOwner" key="launch" tab="快速启动">
+            <FormalSessionPanel
+              :organization-id="organizationId"
+              :group-options="groupSelectOptions"
+              :group-allocation-units="groupAllocationUnitMap"
+              :sessions="formalSessions"
+              :can-manage="canManageExamOwner"
+              @refresh="loadFormalSessions"
+            />
           </a-tab-pane>
         </a-tabs>
       </section>
@@ -516,17 +523,6 @@
         <a-form-item label="关联考试">
           <a-input :value="organizationExamLabel" disabled />
         </a-form-item>
-        <a-form-item label="阅卷组长" name="leaderUserId" required>
-          <a-select
-            v-model:value="editForm.leaderUserId"
-            placeholder="选择组长（仅教师）"
-            show-search
-            option-filter-prop="label"
-            :options="teacherOptions"
-            :loading="teacherLoading"
-            allow-clear
-          />
-        </a-form-item>
         <a-form-item label="是否启用匿名阅卷" name="anonymousMode">
           <a-switch v-model:checked="editForm.anonymousMode" />
           <span class="org-detail__switch-hint">启用后阅卷教师不可见考生身份</span>
@@ -556,6 +552,7 @@ import type {
   AllocationUnitCode,
   AnonymityModeCode,
   AnonymousTokenPolicyCode,
+  FormalSessionVO,
   MarkingAllocationModeCode,
   MarkingOrganizationVO,
   MarkingReassignModeCode,
@@ -569,13 +566,13 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, defineAsyncComponent, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { adminGetUserPage } from '@/apis/edu/admin-user'
 import { getExamDetail } from '@/apis/mark/exam'
 import { getExamTemplate } from '@/apis/mark/exam-template'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
-import { ALLOCATION_UNIT_LABEL, ANONYMITY_MODE_LABEL, ANONYMOUS_TOKEN_POLICY_LABEL, closeQuestionGroup, deleteOrganization, deleteQuestionGroup, getOrganizationById, isMarkingOrgNotCreatedError, listMarkingPolicies, MARKING_ALLOCATION_MODE_LABEL, MARKING_ORGANIZATION_STATUS_LABEL, MARKING_ORGANIZATION_STATUS_TONE, MARKING_REASSIGN_MODE_LABEL, QUESTION_GROUP_STATUS_LABEL, QUESTION_GROUP_STATUS_TONE, saveAllocationPolicy, saveQuestionGroup, saveRecyclePolicy, updateOrganization, validateMarkingOrganizationContract, validateMarkingPolicyListContract } from '@/apis/mark/marking-organization'
+import { ALLOCATION_UNIT_LABEL, ANONYMITY_MODE_LABEL, ANONYMOUS_TOKEN_POLICY_LABEL, closeQuestionGroup, deleteOrganization, deleteQuestionGroup, getOrganizationById, isMarkingOrgNotCreatedError, listFormalSessions, listMarkingPolicies, MARKING_ALLOCATION_MODE_LABEL, MARKING_ORGANIZATION_STATUS_LABEL, MARKING_ORGANIZATION_STATUS_TONE, MARKING_REASSIGN_MODE_LABEL, QUESTION_GROUP_STATUS_LABEL, QUESTION_GROUP_STATUS_TONE, saveAllocationPolicy, saveQuestionGroup, saveRecyclePolicy, updateOrganization, validateFormalSessionContract, validateMarkingOrganizationContract, validateMarkingPolicyListContract } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInfoGrid from '@/components/ui-guide/ui/InfoGrid.vue'
@@ -597,10 +594,7 @@ import {
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import RecycledTaskReassignPanel from '@/views/admin/marking-organization/components/RecycledTaskReassignPanel.vue'
-
-const ReviewAssignmentPanel = defineAsyncComponent(
-  () => import('@/views/teacher/review-assignment.vue'),
-)
+import FormalSessionPanel from '@/views/admin/marking-organization/components/FormalSessionPanel.vue'
 
 defineOptions({ name: 'AdminMarkingOrganizationDetail' })
 
@@ -696,13 +690,7 @@ const organizationExamLabel = computed(() => {
     : organization.value.examName
 })
 const examCreateUserId = computed(() => examDetail.value?.createUser ?? organization.value?.examCreateUserId)
-const { canManageMarkingSetup, canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, organization)
-
-function guardMarkingSetupAction(): boolean {
-  if (canManageMarkingSetup.value) return true
-  message.warning('仅考试主考或阅卷组长可修改阅卷设置')
-  return false
-}
+const { canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, organization)
 
 function guardExamOwnerAction(): boolean {
   if (canManageExamOwner.value) return true
@@ -710,19 +698,34 @@ function guardExamOwnerAction(): boolean {
   return false
 }
 
+const formalSessions = ref<FormalSessionVO[]>([])
+
+async function loadFormalSessions(): Promise<void> {
+  if (!organizationId.value) {
+    formalSessions.value = []
+    return
+  }
+  try {
+    const sessions = await listFormalSessions({ organizationId: organizationId.value })
+    sessions.forEach(validateFormalSessionContract)
+    formalSessions.value = sessions
+  } catch (error) {
+    formalSessions.value = []
+    showUserError(error, '正评会话加载失败')
+  }
+}
+
 const canReassignRecycledTasks = computed(() => {
   if (!organization.value) {
     return false
   }
   const userId = userStore.userInfo.userId
-  if (canManageMarkingSetup.value) {
+  if (canManageExamOwner.value) {
     return true
   }
   return groups.value.some((group) => group.leaderUserId === userId)
 })
-const canViewAllRecycledTasks = computed(
-  () => canManageMarkingSetup.value || organization.value?.leaderUserId === userStore.userInfo.userId,
-)
+const canViewAllRecycledTasks = computed(() => canManageExamOwner.value)
 const leaderGroupIds = computed(() => {
   const userId = userStore.userInfo.userId
   return groups.value.filter((group) => group.leaderUserId === userId).map((group) => group.id)
@@ -734,19 +737,16 @@ const deleting = ref(false)
 const editFormRef = ref<FormInstance>()
 
 interface EditForm {
-  leaderUserId?: string
   anonymousMode: boolean
   remark?: string
 }
 
 const editForm = reactive<EditForm>({
-  leaderUserId: undefined,
   anonymousMode: true,
   remark: '',
 })
 
 const editRules: Record<string, Rule[]> = {
-  leaderUserId: [{ required: true, message: '请选择阅卷组长', trigger: 'change' }],
   remark: [{ max: 200, message: '备注最多 200 字', trigger: 'blur' }],
 }
 
@@ -772,6 +772,7 @@ async function loadOrganization(): Promise<void> {
     organization.value = nextOrganization
     examDetail.value = await getExamDetail(nextOrganization.examId)
     await loadMarkingPolicies()
+    await loadFormalSessions()
   } catch (error) {
     organization.value = null
     examDetail.value = null
@@ -908,7 +909,7 @@ const groupRules: Record<string, Rule[]> = {
 }
 
 function openGroupModal(): void {
-  if (!guardMarkingSetupAction()) return
+  if (!guardExamOwnerAction()) return
   groupForm.groupId = undefined
   groupForm.groupName = ''
   groupForm.leaderUserId = undefined
@@ -921,7 +922,7 @@ function openGroupModal(): void {
 }
 
 function openGroupEdit(record: QuestionMarkingGroupVO): void {
-  if (!guardMarkingSetupAction()) return
+  if (!guardExamOwnerAction()) return
   groupForm.groupId = record.id
   groupForm.groupName = record.groupName
   groupForm.leaderUserId = record.leaderUserId
@@ -934,7 +935,7 @@ function openGroupEdit(record: QuestionMarkingGroupVO): void {
 }
 
 async function submitGroup(): Promise<void> {
-  if (!guardMarkingSetupAction()) return
+  if (!guardExamOwnerAction()) return
   if (!organizationId.value || !groupFormRef.value) return
   try {
     await groupFormRef.value.validate()
@@ -966,22 +967,22 @@ async function submitGroup(): Promise<void> {
 }
 
 function canEditGroup(record: QuestionMarkingGroupVO): boolean {
-  return canManageMarkingSetup.value && record.groupStatus !== 'GROUP_CLOSED'
+  return canManageExamOwner.value && record.groupStatus !== 'GROUP_CLOSED'
 }
 
 function canDeleteGroup(record: QuestionMarkingGroupVO): boolean {
-  return canManageMarkingSetup.value && record.groupStatus === 'GROUP_DRAFT'
+  return canManageExamOwner.value && record.groupStatus === 'GROUP_DRAFT'
 }
 
 function canCloseGroup(record: QuestionMarkingGroupVO): boolean {
   return (
-    canManageMarkingSetup.value
+    canManageExamOwner.value
     && (record.groupStatus === 'GROUP_ACTIVE' || record.groupStatus === 'GROUP_CONFIGURED')
   )
 }
 
 async function submitGroupDelete(record: QuestionMarkingGroupVO): Promise<void> {
-  if (!guardMarkingSetupAction()) return
+  if (!guardExamOwnerAction()) return
   groupActionLoadingId.value = record.id
   try {
     await deleteQuestionGroup({ groupId: record.id })
@@ -996,7 +997,7 @@ async function submitGroupDelete(record: QuestionMarkingGroupVO): Promise<void> 
 }
 
 async function submitGroupClose(record: QuestionMarkingGroupVO): Promise<void> {
-  if (!guardMarkingSetupAction()) return
+  if (!guardExamOwnerAction()) return
   groupActionLoadingId.value = record.id
   try {
     await closeQuestionGroup({ groupId: record.id })
@@ -1011,9 +1012,8 @@ async function submitGroupClose(record: QuestionMarkingGroupVO): Promise<void> {
 }
 
 function openEditDrawer(): void {
-  if (!guardMarkingSetupAction()) return
+  if (!guardExamOwnerAction()) return
   if (!organization.value) return
-  editForm.leaderUserId = organization.value.leaderUserId
   editForm.anonymousMode = Boolean(organization.value.anonymousMode)
   editForm.remark = organization.value.remark || ''
   editDrawerOpen.value = true
@@ -1021,7 +1021,7 @@ function openEditDrawer(): void {
 }
 
 async function submitUpdate(): Promise<void> {
-  if (!guardMarkingSetupAction()) return
+  if (!guardExamOwnerAction()) return
   if (!organization.value || !editFormRef.value) return
   try {
     await editFormRef.value.validate()
@@ -1032,7 +1032,6 @@ async function submitUpdate(): Promise<void> {
   try {
     const request: OrganizationUpdateRequest = {
       organizationId: organization.value.id,
-      leaderUserId: editForm.leaderUserId!,
       anonymousMode: editForm.anonymousMode,
       remark: editForm.remark?.trim() || undefined,
     }
@@ -1178,6 +1177,19 @@ const groupSelectOptions = computed(() => [
   ...groups.value.map((g) => ({ value: g.id, label: g.groupName })),
 ])
 
+const groupAllocationUnitMap = computed(() => {
+  const map: Record<string, AllocationUnitCode> = {}
+  const defaultAllocationUnit = allocationPolicies.value.find((policy) => policy.groupId == null)?.allocationUnit
+  for (const group of groups.value) {
+    const groupPolicy = allocationPolicies.value.find((policy) => policy.groupId === group.id)
+    const allocationUnit = groupPolicy?.allocationUnit ?? defaultAllocationUnit
+    if (allocationUnit) {
+      map[group.id] = allocationUnit
+    }
+  }
+  return map
+})
+
 // 从后端枚举 LABEL 对象直接派生 select options。
 const ALLOCATION_MODE_OPTIONS = Object.entries(MARKING_ALLOCATION_MODE_LABEL).map(
   ([value, label]) => ({ value, label }),
@@ -1221,7 +1233,7 @@ function policyScopeLabel(groupId?: string): string {
 
 const savingAllocation = ref(false)
 async function submitAllocation(): Promise<void> {
-  if (!guardMarkingSetupAction()) return
+  if (!guardExamOwnerAction()) return
   if (!organizationId.value) return
   savingAllocation.value = true
   try {
@@ -1250,7 +1262,7 @@ async function submitAllocation(): Promise<void> {
 
 const savingRecycle = ref(false)
 async function submitRecycle(): Promise<void> {
-  if (!guardMarkingSetupAction()) return
+  if (!guardExamOwnerAction()) return
   if (!organizationId.value) return
   savingRecycle.value = true
   try {
@@ -1293,11 +1305,16 @@ watch(organizationId, () => {
 }, { immediate: true })
 
 watch(
-  () => route.query.tab,
-  (tab) => {
-    if (typeof tab === 'string') {
-      activeTab.value = tab === 'launch' || tab === 'policy' || tab === 'recycled' ? tab : 'info'
+  () => [route.query.tab, canManageExamOwner.value] as const,
+  ([tab, canManage]) => {
+    if (typeof tab !== 'string') {
+      return
     }
+    if (tab === 'launch' && !canManage) {
+      activeTab.value = 'info'
+      return
+    }
+    activeTab.value = tab === 'launch' || tab === 'policy' || tab === 'recycled' ? tab : 'info'
   },
   { immediate: true },
 )

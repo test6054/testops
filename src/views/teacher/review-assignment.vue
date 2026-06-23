@@ -131,18 +131,15 @@ async function loadExamOwnership(): Promise<void> {
 }
 
 const canManageExam = computed(() => {
-  if (organization.value?.canManageMarkingSetup != null) {
-    return organization.value.canManageMarkingSetup
+  if (organization.value?.canManageExamOwner != null) {
+    return organization.value.canManageExamOwner
   }
-  if (!!examCreateUserId.value && examCreateUserId.value === userStore.userInfo.userId) {
-    return true
-  }
-  return !!organization.value?.leaderUserId && organization.value.leaderUserId === userStore.userInfo.userId
+  return !!examCreateUserId.value && examCreateUserId.value === userStore.userInfo.userId
 })
 
 function guardExamOwnerAction(): boolean {
   if (canManageExam.value) return true
-  message.warning('仅考试主考或阅卷组长可配置阅卷分配')
+  message.warning('仅考试主考老师可配置阅卷分配')
   return false
 }
 

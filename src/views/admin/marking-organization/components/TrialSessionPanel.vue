@@ -14,9 +14,40 @@
           :options="groupOptions"
         />
       </a-form-item>
-      <UiButton :disabled="!trialGroupId" :loading="creating" @click="submitCreate">
+      <a-alert
+        v-if="trialGroupId && !selectedGroupHasAllocationPolicy"
+        type="warning"
+        show-icon
+        message="该题组未配置有效分配策略，不能创建试评会话"
+        class="policy-alert"
+      />
+      <UiButton
+        :disabled="!trialGroupId || !selectedGroupHasAllocationPolicy"
+        :loading="creating"
+        @click="submitCreate"
+      >
         <template #icon><PlusOutlined /></template>
         创建试评会话
+      </UiButton>
+    </a-form>
+
+    <a-divider v-if="canManage" class="section-divider" />
+
+    <h4 v-if="canManage" class="subsection-title">会话推进</h4>
+    <a-form v-if="canManage" layout="vertical" class="session-form">
+      <a-form-item label="试评会话" required>
+        <a-select
+          v-model:value="actionSessionId"
+          placeholder="选择需要启动的试评会话"
+          :options="draftTrialSessionOptions"
+          show-search
+          option-filter-prop="label"
+          allow-clear
+        />
+      </a-form-item>
+      <UiButton :disabled="!actionSessionId" :loading="starting" @click="submitStart">
+        <template #icon><PlayCircleOutlined /></template>
+        启动试评
       </UiButton>
     </a-form>
 
@@ -28,7 +59,7 @@
         <a-select
           v-model:value="calibrateSessionId"
           placeholder="选择待校准的试评会话"
-          :options="trialSessionOptions"
+          :options="calibrateSessionOptions"
           show-search
           option-filter-prop="label"
           allow-clear
@@ -125,6 +156,7 @@ import type {
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
 import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
+import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import StopOutlined from '@ant-design/icons-vue/StopOutlined'
 import message from 'ant-design-vue/es/message'
@@ -133,6 +165,7 @@ import {
   calibrateTrialSession,
   createTrialSession,
   deleteTrialSession,
+  startTrialSession,
   TRIAL_SESSION_STATUS_LABEL as TRIAL_STATUS_LABEL,
   TRIAL_SESSION_STATUS_TONE as TRIAL_STATUS_TONE,
 } from '@/apis/mark/marking-organization'
@@ -157,6 +190,7 @@ const props = defineProps<{
   groupOptions: GroupOption[]
   sessions: TrialSessionVO[]
   canManage: boolean
+  groupHasAllocationPolicyMap?: Record<string, boolean>
 }>()
 
 const emit = defineEmits<{
@@ -166,6 +200,8 @@ const emit = defineEmits<{
 
 const trialGroupId = ref<string | undefined>(undefined)
 const creating = ref(false)
+const actionSessionId = ref<string | undefined>(undefined)
+const starting = ref(false)
 const calibrateSessionId = ref<string | undefined>(undefined)
 const calibrateForm = reactive<
   Pick<TrialSessionCalibrateRequest, 'calibrationSummary' | 'discussionNotes'>
@@ -176,11 +212,36 @@ const calibrateForm = reactive<
 const calibrating = ref(false)
 const deletingId = ref<string | null>(null)
 
-const trialSessionOptions = computed(() =>
-  props.sessions.map((item) => ({
-    value: item.id,
-    label: `${item.groupName} · ${strictEnumLabel(TRIAL_STATUS_LABEL, item.sessionStatus, '试评会话状态')} · ${formatDateTime(item.createTime)}`,
-  })),
+const calibrateSessionOptions = computed(() =>
+  props.sessions
+    .filter((item) => item.sessionStatus === 'TRIAL_ASSIGNED' || item.sessionStatus === 'TRIAL_SUBMITTED')
+    .map((item) => ({
+      value: item.id,
+      label: `${item.groupName} · ${strictEnumLabel(TRIAL_STATUS_LABEL, item.sessionStatus, '试评会话状态')} · ${formatDateTime(item.createTime)}`,
+    })),
+)
+
+const draftTrialSessionOptions = computed(() =>
+  props.sessions
+    .filter((item) => item.sessionStatus === 'TRIAL_CREATED')
+    .map((item) => ({
+      value: item.id,
+      label: `${item.groupName} · ${formatDateTime(item.createTime)}`,
+    })),
+)
+
+const selectedGroupHasAllocationPolicy = computed(() =>
+  Boolean(trialGroupId.value && props.groupHasAllocationPolicyMap?.[trialGroupId.value]),
+)
+
+watch(
+  () => props.groupOptions,
+  (options) => {
+    if (options.length === 1) {
+      trialGroupId.value = options[0].value
+    }
+  },
+  { immediate: true },
 )
 
 watch(
@@ -188,6 +249,9 @@ watch(
   (next) => {
     if (calibrateSessionId.value && !next.some((s) => s.id === calibrateSessionId.value)) {
       calibrateSessionId.value = undefined
+    }
+    if (actionSessionId.value && !next.some((s) => s.id === actionSessionId.value)) {
+      actionSessionId.value = undefined
     }
   },
 )
@@ -211,7 +275,7 @@ function guardManageAction(): boolean {
 
 async function submitCreate(): Promise<void> {
   if (!guardManageAction()) return
-  if (!props.organizationId || !trialGroupId.value) return
+  if (!props.organizationId || !trialGroupId.value || !selectedGroupHasAllocationPolicy.value) return
   creating.value = true
   try {
     const sessionId = await createTrialSession({
@@ -219,12 +283,28 @@ async function submitCreate(): Promise<void> {
       groupId: trialGroupId.value,
     })
     message.success('试评会话已创建')
+    actionSessionId.value = sessionId
     calibrateSessionId.value = sessionId
     emit('refresh')
   } catch (error) {
     showUserError(error, '创建试评会话失败')
   } finally {
     creating.value = false
+  }
+}
+
+async function submitStart(): Promise<void> {
+  if (!guardManageAction()) return
+  if (!actionSessionId.value) return
+  starting.value = true
+  try {
+    await startTrialSession(actionSessionId.value)
+    message.success('试评会话已启动，教师可在试评任务池领取样本卷')
+    emit('refresh')
+  } catch (error) {
+    showUserError(error, '启动试评会话失败')
+  } finally {
+    starting.value = false
   }
 }
 
@@ -271,6 +351,10 @@ async function submitDelete(sessionId: string): Promise<void> {
 
 .session-form {
   max-width: 100%;
+}
+
+.policy-alert {
+  margin-bottom: 16px;
 }
 
 .section-divider {

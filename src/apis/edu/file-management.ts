@@ -81,6 +81,13 @@ export interface PreviewFileRequestDTO {
   userId: string
 }
 
+/** 旧版 Office 转 OOXML 预览请求 - 对应 edu-cad /api/cad/office/convert-legacy-office */
+export interface ConvertLegacyOfficeRequestDTO {
+  nodeId: string
+  tenantId?: string
+  userId?: string
+}
+
 /** 重命名节点请求DTO */
 export interface RenameNodeRequestDTO {
   nodeId: string
@@ -300,6 +307,47 @@ export async function getFileArrayBuffer(data: DownloadFileRequestDTO): Promise<
   const contentType = response.headers.get('content-type')
   if (contentType?.includes('application/json')) {
     throw new Error('文件下载失败，请稍后重试')
+  }
+
+  return await response.arrayBuffer()
+}
+
+/**
+ * 转换旧版 Office 并获取 OOXML 二进制 - 用于 .doc/.wps/.xls/.ppt 在线预览。
+ * 后端 edu-cad LibreOffice 链路转 docx/xlsx/pptx 后供 vue-office 渲染。
+ */
+export async function convertLegacyOfficeArrayBuffer(
+  data: ConvertLegacyOfficeRequestDTO,
+): Promise<ArrayBuffer> {
+  const token = localStorage.getItem(STORAGE_TOKEN)
+  if (!token) {
+    throw new Error('未登录或登录已过期，请重新登录')
+  }
+
+  const response = await fetch('/api/cad/office/convert-legacy-office', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...getTraceHeaders(),
+    },
+    body: JSON.stringify(data),
+  })
+
+  if (!response.ok) {
+    const contentType = response.headers.get('content-type')
+    if (contentType?.includes('application/json')) {
+      const errorData = await response.json()
+      throw new Error(errorData.msg || `旧版 Office 转换失败: HTTP ${response.status}`)
+    }
+    throw new Error(`旧版 Office 转换失败: HTTP ${response.status}`)
+  }
+
+  const contentType = response.headers.get('content-type')
+  if (contentType?.includes('application/json')) {
+    const errorData = await response.json()
+    throw new Error(errorData.msg || '旧版 Office 转换失败：服务器返回 JSON 错误')
   }
 
   return await response.arrayBuffer()

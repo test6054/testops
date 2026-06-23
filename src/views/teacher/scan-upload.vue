@@ -434,7 +434,7 @@ import {
   listActiveScannerDevices,
   type ExamScannerDeviceVO,
 } from '@/apis/mark/exam-mark-scanner'
-import { getMarkingProgress } from '@/apis/mark/exam-progress'
+import { getMarkingProgress, type MarkingProgressVO } from '@/apis/mark/exam-progress'
 import {
   createScanBatchByCondition,
   pageScannerBatches,

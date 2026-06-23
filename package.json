@@ -19,6 +19,10 @@
   "dependencies": {
     "@ant-design/icons-vue": "^7.0.1",
     "@microsoft/fetch-event-source": "^2.0.1",
+    "@vue-office/docx": "^1.6.3",
+    "@vue-office/excel": "^1.7.14",
+    "@vue-office/pptx": "^1.0.1",
+    "vue-demi": "^0.14.10",
     "@vueuse/components": "^14.2.1",
     "@vueuse/core": "^14.2.1",
     "aieditor": "^1.4.2",

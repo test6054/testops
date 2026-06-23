@@ -568,7 +568,7 @@ import type {
 import type { ExamScoreSummaryItemVO } from '@/apis/mark/exam-score'
 import type { ScanLiveEventVO } from '@/apis/mark/scan-live'
 import type { GradeStatusCode } from '@/apis/mark/student-exam'
-import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField, UiSectionTabItem, UiSelectOption } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -873,19 +873,21 @@ const scanBatchKeyword = ref('')
 const paperCandidates = ref<ExamScoreSummaryItemVO[]>([])
 const paperCandidatesLoading = ref(false)
 const paperCandidateKeyword = ref('')
-const scanBatchOptions = computed(() =>
-  scanBatches.value.map((item) => ({
-    value: item.scanBatchId,
-    label: [
-      item.batchNo || item.batchExternalNo || item.statusMessage,
-      scanBatchStatusLabel(item),
-      `${item.pageCount ?? 0} 页`,
-    ].join(' · '),
-  })),
+const scanBatchOptions = computed<UiSelectOption[]>(() =>
+  scanBatches.value
+    .filter((item): item is ExamScannerBatchVO & { scanBatchId: string } => Boolean(item.scanBatchId))
+    .map((item) => ({
+      value: item.scanBatchId,
+      label: [
+        item.batchNo || item.batchExternalNo || item.statusMessage,
+        scanBatchStatusLabel(item),
+        `${item.pageCount ?? 0} 页`,
+      ].join(' · '),
+    })),
 )
-const paperCandidateOptions = computed(() =>
+const paperCandidateOptions = computed<UiSelectOption[]>(() =>
   paperCandidates.value
-    .filter((item) => item.paperInstanceId)
+    .filter((item): item is ExamScoreSummaryItemVO & { paperInstanceId: string } => Boolean(item.paperInstanceId))
     .map((item) => ({
       value: item.paperInstanceId,
       label: [

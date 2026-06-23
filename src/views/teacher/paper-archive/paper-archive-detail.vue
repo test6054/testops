@@ -152,6 +152,13 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
+              <UiTextAction
+                tone="primary"
+                :disabled="!record.fileId"
+                @click="handlePreviewItem(record)"
+              >
+                预览
+              </UiTextAction>
               <UiTextAction :disabled="!record.fileId" @click="handleDownloadItem(record)">
                 <template #icon><DownloadOutlined /></template>
                 原图
@@ -182,6 +189,8 @@
       </div>
     </UiCard>
   </StageWorkbenchShell>
+
+  <FilePreviewDialog :api="filePreview" />
 
   <!-- 上传试卷弹窗 -->
   <a-modal
@@ -323,6 +332,8 @@ import { message } from 'ant-design-vue'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile, uploadFile } from '@/apis/edu/file-management'
+import FilePreviewDialog from '@/components/FilePreviewDialog.vue'
+import { useFilePreview } from '@/composables/useFilePreview'
 import {
   getPaperArchiveSetDetail,
   PAPER_ARCHIVE_OCR_STATUS_OPTIONS,
@@ -353,6 +364,7 @@ defineOptions({ name: 'TeacherPaperArchiveDetail' })
 
 const route = useRoute()
 const router = useRouter()
+const filePreview = useFilePreview()
 
 const archiveSetId = computed(() => String(route.params.archiveSetId ?? ''))
 
@@ -494,7 +506,7 @@ const itemColumns: ColumnsType<PaperArchiveItemVO> = [
   { title: 'OCR 文本预览', key: 'ocrText', dataIndex: 'ocrText', width: 280 },
   { title: 'tag', key: 'tags', dataIndex: 'tags', width: 200 },
   { title: '上传时间', key: 'createTime', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'actions', width: 180, align: 'right' },
+  { title: '操作', key: 'actions', width: 220, align: 'right' },
 ]
 
 const canUpload = computed(() => {
@@ -677,6 +689,20 @@ async function submitUpload(): Promise<void> {
   } finally {
     uploading.value = false
   }
+}
+
+/**
+ * 在线预览扫描影像：走 edu-storage 节点下载 + FilePreviewDialog 渲染。
+ */
+async function handlePreviewItem(item: PaperArchiveItemVO): Promise<void> {
+  if (!item.fileId) {
+    message.warning('该试卷档案项未关联扫描文件')
+    return
+  }
+  await filePreview.openPreview({
+    fileId: item.fileId,
+    fileName: item.fileName || `paper-archive-${item.itemId}`,
+  })
 }
 
 /**

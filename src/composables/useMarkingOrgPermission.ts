@@ -3,9 +3,7 @@ import type { MarkingOrganizationVO } from '@/apis/mark/marking-organization'
 import { computed } from 'vue'
 import { useUserStore } from '@/stores/modules/user'
 
-/**
- * 阅卷组织权限：与后端 ExamMarkPermissionService.canManageMarkingSetup / isExamOwner 对齐。
- */
+/** 阅卷组织权限：与后端 ExamMarkPermissionService.isExamOwner 对齐，仅考试主考老师可写。 */
 export function useMarkingOrgPermission(
   examCreateUserId: Ref<string | undefined>,
   organization: Ref<MarkingOrganizationVO | null | undefined>,
@@ -21,35 +19,12 @@ export function useMarkingOrgPermission(
     return !!examCreateUserId.value && examCreateUserId.value === currentUserId.value
   })
 
-  const canManageMarkingSetup = computed(() => {
-    const org = organization.value
-    if (org?.canManageMarkingSetup != null) {
-      return org.canManageMarkingSetup
-    }
-    if (canManageExamOwner.value) {
-      return true
-    }
-    return !!org?.leaderUserId && org.leaderUserId === currentUserId.value
-  })
-
-  function guardMarkingSetupAction(actionLabel = '修改阅卷设置'): boolean {
-    if (canManageMarkingSetup.value) {
-      return true
-    }
-    return false
-  }
-
-  function guardExamOwnerAction(actionLabel = '执行该操作'): boolean {
-    if (canManageExamOwner.value) {
-      return true
-    }
-    return false
+  function guardExamOwnerAction(): boolean {
+    return canManageExamOwner.value
   }
 
   return {
     canManageExamOwner,
-    canManageMarkingSetup,
-    guardMarkingSetupAction,
     guardExamOwnerAction,
   }
 }

@@ -63,7 +63,20 @@ export type IncidentSourceTypeCode
     | 'PROCESSING_TASK'
     | 'DUPLICATE_RESOLUTION'
     | 'GRADE_RESULT'
+    | 'MESSAGE_NOTIFICATION'
     | 'PAPER_INSTANCE'
+
+/** 重大事件来源类型文案映射（与 edu-common IncidentSourceType.message 一致） */
+export const INCIDENT_SOURCE_TYPE_LABEL: Record<IncidentSourceTypeCode, string> = {
+  IMAGE_LEDGER: '影像账本',
+  SCAN_BATCH: '扫描批次',
+  SCANNED_PAGE: '扫描页',
+  PROCESSING_TASK: '处理任务',
+  DUPLICATE_RESOLUTION: '重复页处置',
+  GRADE_RESULT: '评分结果',
+  MESSAGE_NOTIFICATION: '站内信通知',
+  PAPER_INSTANCE: '试卷实例',
+}
 
 /** 重大事件级别文案映射 */
 export const INCIDENT_LEVEL_LABEL: Record<IncidentLevelCode, string> = {
@@ -95,6 +108,10 @@ export type IncidentTypeCode
     | 'BINDING_CONFLICT'
     | 'SCAN_BATCH_REPROCESS'
     | 'SCORE_ANOMALY'
+    | 'MISSING_SCAN_PAGE'
+    | 'EXTRA_SCAN_PAGE'
+    | 'MISSING_CANDIDATE_BINDING'
+    | 'MESSAGE_DELIVERY_FAILED'
 
 /** 重大事件类型文案映射 */
 export const INCIDENT_TYPE_LABEL: Record<IncidentTypeCode, string> = {
@@ -102,6 +119,10 @@ export const INCIDENT_TYPE_LABEL: Record<IncidentTypeCode, string> = {
   BINDING_CONFLICT: '绑定冲突',
   SCAN_BATCH_REPROCESS: '异常批次重处理',
   SCORE_ANOMALY: '分数异常',
+  MISSING_SCAN_PAGE: '扫描页缺失',
+  EXTRA_SCAN_PAGE: '扫描页超出',
+  MISSING_CANDIDATE_BINDING: '考生未绑定',
+  MESSAGE_DELIVERY_FAILED: '通知投递失败',
 }
 
 /** 重大事件记录 - 对应 ExamIncidentRecord */

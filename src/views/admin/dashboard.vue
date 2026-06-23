@@ -224,7 +224,7 @@ import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, onActivated, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   INCIDENT_LEVEL_LABEL,
@@ -451,10 +451,6 @@ function goIncidentDetail(incident: DashboardIncidentRecordVO) {
 
 watch(recentLimit, () => loadOverview())
 onMounted(loadOverview)
-
-onActivated(() => {
-  void loadOverview()
-})
 </script>
 
 <style lang="scss" scoped>
