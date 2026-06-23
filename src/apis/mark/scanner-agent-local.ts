@@ -53,6 +53,8 @@ export interface AgentHealthResponse {
   scanAllowed: boolean
   /** 服务端要求重置 token，需要重新激活 */
   tokenResetRequired: boolean
+  /** 当前机器码未绑定服务端端点，需要重新激活 */
+  rebindRequired: boolean
   /** 最近一次成功心跳的本地时间（ISO 字符串） */
   lastHeartbeatAt: string | null
   /** 服务端是否公告了可下载的 Agent 更新包 */
@@ -727,6 +729,7 @@ function validateAgentHealthResponse(value: LocalAgentJsonValue): AgentHealthRes
     latestClientVersion: requireString(result, 'latestClientVersion'),
     scanAllowed: requireBoolean(result, 'scanAllowed'),
     tokenResetRequired: requireBoolean(result, 'tokenResetRequired'),
+    rebindRequired: requireBoolean(result, 'rebindRequired'),
     lastHeartbeatAt: requireNullableString(result, 'lastHeartbeatAt'),
     updateAvailable: requireBoolean(result, 'updateAvailable'),
     updateStatus: requireAgentUpdateStatus(result, 'updateStatus'),

@@ -70,7 +70,9 @@ import {
   closeScannerKioskBatch,
   discardScannedPage,
   discardScannerKioskBatch,
+  bindScannerKioskExam,
   fetchScannerPageLedger,
+  getScannerKioskBootstrap,
   getScannerKioskContext,
   listScannerKioskBoundPapers,
   pageScannerKioskBatchHistory,
@@ -191,6 +193,8 @@ export function useKioskWorkflow() {
     activationCode: '',
     endpointName: '',
   })
+  const examBindingRequired = ref(false)
+  const workbenchTab = ref<'scan' | 'records'>('scan')
 
   // examId 初始值来自 URL query；后续由 ExamPicker 接管。
   const examId = ref<string>(queryValue(route.query.examId))
@@ -200,7 +204,8 @@ export function useKioskWorkflow() {
   // 考试选择下拉的本地状态：分页 / 关键字 / 学年 / 学期 / 班级 过滤。
   const examOptions = ref<ExamScannerKioskExamOptionVO[]>([])
   const examOptionTotal = ref(0)
-  const examOptionLoading = ref(false)  const examOptionFilter = reactive<{
+  const examOptionLoading = ref(false)
+  const examOptionFilter = reactive<{
     keyword: string
     academicYear: string
     semester?: '1' | '2'
@@ -431,12 +436,13 @@ export function useKioskWorkflow() {
     )
   })
   const scanBlockedReason = computed(() => {
-    if (!examId.value) return '请先在顶部下拉中选择考试'
+    if (examBindingRequired.value) return '请先绑定本场扫描考试'
+    if (!examId.value) return '当前工位未绑定考试'
     if (needsKioskBrowserReactivation(health.value?.bound)) {
       return KIOSK_BROWSER_SESSION_LOST_MESSAGE
     }
     if (!health.value?.bound) return '一体机未激活'
-    if (health.value?.tokenResetRequired) return '一体机需要重新激活'
+    if (health.value?.tokenResetRequired || health.value?.rebindRequired) return '一体机需要重新激活'
     if (health.value?.upgradeRequired) return '本机扫描组件需要升级'
     if (health.value?.updateStatus === 'DOWNLOADING') return '本机扫描组件更新包下载中'
     if (health.value?.updateStatus === 'INSTALLING') return '本机扫描组件安装中'
@@ -466,7 +472,11 @@ export function useKioskWorkflow() {
   })
   const canStartScan = computed(() => !scanBlockedReason.value && !loading.value)
   const canSwitchScanMode = computed(() => !currentJobBlocksWorkspace.value)
-  const canSwitchExam = computed(() => !currentJobBlocksWorkspace.value)
+  const canSwitchExam = computed(() => {
+    if (currentJobBlocksWorkspace.value) return false
+    if (kioskContext.value?.kioskLockEnabled && kioskContext.value?.kioskBoundExamId) return false
+    return true
+  })
   const canSwitchScanner = computed(() => !currentJobBlocksWorkspace.value)
   const canActivateAgent = computed(() => !currentJobBlocksWorkspace.value)
   const canDiscardLedgerPage = computed(() => !currentJobBlocksWorkspace.value)
@@ -477,9 +487,95 @@ export function useKioskWorkflow() {
     () =>
       !health.value?.bound
       || Boolean(health.value?.tokenResetRequired)
+      || Boolean(health.value?.rebindRequired)
       || kioskBrowserSessionLost.value,
   )
   const needsActivationGate = computed(() => activationModalForced.value)
+  const needsExamBindingGate = computed(
+    () => !needsActivationGate.value && examBindingRequired.value && Boolean(health.value?.bound),
+  )
+
+  const activationGateReason = computed(() => {
+    if (!health.value?.bound) return 'UNBOUND'
+    if (health.value.rebindRequired) return 'REBIND_REQUIRED'
+    if (health.value.tokenResetRequired || kioskBrowserSessionLost.value) return 'TOKEN_RESET_REQUIRED'
+    return 'NONE'
+  })
+
+  type DeviceReadinessTone = 'success' | 'danger' | 'warning'
+
+  const deviceReadiness = computed((): {
+    tone: DeviceReadinessTone
+    statusText: string
+    headline: string
+    detail: string
+    troubleshooting?: string
+  } => {
+    if (needsActivationGate.value) {
+      const reason = activationGateReason.value
+      if (reason === 'REBIND_REQUIRED') {
+        return {
+          tone: 'danger',
+          statusText: '设备身份已变更',
+          headline: '需要重新激活一体机',
+          detail: '本机设备身份与平台记录不一致，请重新输入激活码完成绑定。',
+        }
+      }
+      if (reason === 'TOKEN_RESET_REQUIRED') {
+        return {
+          tone: 'danger',
+          statusText: '浏览器会话失效',
+          headline: '需要重新激活浏览器会话',
+          detail: KIOSK_BROWSER_SESSION_LOST_MESSAGE,
+        }
+      }
+      return {
+        tone: 'danger',
+        statusText: '一体机未激活',
+        headline: '请先激活扫描一体机',
+        detail: '输入教务平台下发的激活码后，才能连接扫描仪并开始扫描。',
+      }
+    }
+    if (needsExamBindingGate.value) {
+      return {
+        tone: 'warning',
+        statusText: '未绑定考试',
+        headline: '请先绑定扫描考试',
+        detail: '本场考试由教务预配置或首次绑定向导锁定，绑定后工作台只展示任务合同。',
+      }
+    }
+    if (!health.value?.scannerConnected) {
+      return {
+        tone: 'danger',
+        statusText: '扫描仪连接异常',
+        headline: '扫描仪未连接',
+        detail: '请检查 USB 连接与驱动，并在设备设置中刷新扫描仪列表。',
+        troubleshooting: '确认扫描仪电源已打开、USB 线牢固，并退出其他占用扫描仪的软件后重试。',
+      }
+    }
+    if (health.value?.upgradeRequired || health.value?.updateStatus === 'FAILED') {
+      return {
+        tone: 'warning',
+        statusText: '扫描组件需处理',
+        headline: '本机扫描组件需要升级或修复',
+        detail: health.value.updateDiagnosticMessage?.trim() || scanBlockedReason.value || '请打开设备设置处理更新。',
+      }
+    }
+    if (scanBlockedReason.value) {
+      return {
+        tone: 'warning',
+        statusText: '暂不可开始扫描',
+        headline: '扫描前置条件未满足',
+        detail: scanBlockedReason.value,
+      }
+    }
+    return {
+      tone: 'success',
+      statusText: '扫描仪连接正常',
+      headline: '扫描仪连接正常',
+      detail: '设备就绪，可以开始本批次扫描。',
+    }
+  })
 
   /** 未激活时不应调用 edu-mark 扫描工位 API，只走本机 Agent。 */
   function isActivatedForMarkApis(): boolean {
@@ -989,7 +1085,7 @@ export function useKioskWorkflow() {
         handleAgentBindingLost()
         return
       }
-      if (health.value.tokenResetRequired) {
+      if (health.value.tokenResetRequired || health.value.rebindRequired) {
         handleAgentBindingLost()
         return
       }
@@ -1061,7 +1157,58 @@ export function useKioskWorkflow() {
     if (kioskContext.value?.scanConfigOptions?.defaultScanConfig) {
       scanConfig.value = { ...kioskContext.value.scanConfigOptions.defaultScanConfig }
     }
+    examBindingRequired.value = Boolean(kioskContext.value?.examBindingRequired)
     await refreshBoundPapers()
+  }
+
+  async function loadKioskBootstrap() {
+    if (!isActivatedForMarkApis()) {
+      examBindingRequired.value = false
+      return
+    }
+    const scannerDeviceId = getActiveScannerDeviceId()
+    const scannerStationId = getActiveScannerStationId()
+    if (!scannerDeviceId || !scannerStationId) {
+      return
+    }
+    const bootstrap = await getScannerKioskBootstrap({
+      scannerDeviceId,
+      scannerStationId,
+    })
+    examBindingRequired.value = Boolean(bootstrap.examBindingRequired)
+    if (bootstrap.kioskBoundExamId) {
+      examId.value = bootstrap.kioskBoundExamId
+    }
+  }
+
+  async function bindKioskExam(targetExamId: string) {
+    const scannerDeviceId = getActiveScannerDeviceId()
+    const scannerStationId = getActiveScannerStationId()
+    if (!scannerDeviceId || !scannerStationId) {
+      throw toUserError(null, '扫描设备身份缺失，无法绑定考试')
+    }
+    loading.value = true
+    activationErrorMessage.value = ''
+    errorMessage.value = ''
+    try {
+      const bootstrap = await bindScannerKioskExam({
+        examId: targetExamId,
+        scannerDeviceId,
+        scannerStationId,
+      })
+      examBindingRequired.value = Boolean(bootstrap.examBindingRequired)
+      if (bootstrap.kioskBoundExamId) {
+        examId.value = bootstrap.kioskBoundExamId
+      }
+      await refreshKioskContext()
+      await loadExamOptions()
+      successMessage.value = '扫描考试已绑定到本工位'
+    } catch (error) {
+      handleError(error, '绑定扫描考试失败')
+      throw error
+    } finally {
+      loading.value = false
+    }
   }
 
   async function refreshBoundPapers(forcedScanBatchId?: string) {
@@ -1104,7 +1251,8 @@ export function useKioskWorkflow() {
       examOptionTotal.value = 0
       return
     }
-    examOptionLoading.value = true    try {
+    examOptionLoading.value = true
+    try {
       const request: ExamScannerKioskExamOptionRequest = {
         pageNum: examOptionFilter.pageNum,
         pageSize: examOptionFilter.pageSize,
@@ -1869,6 +2017,7 @@ export function useKioskWorkflow() {
         },
       })
       await refreshAll()
+      await loadKioskBootstrap()
       await loadExamOptions()
       await ensureLiveStreamConnected()
       successMessage.value = '一体机已激活'
@@ -2174,9 +2323,10 @@ export function useKioskWorkflow() {
   onMounted(async () => {
     await syncActivationFormFromAgent()
     await refreshAll()
-    if (needsActivationGate.value) {
-      openActivationModal()
-    } else {
+    if (!needsActivationGate.value) {
+      await loadKioskBootstrap().catch((error) => {
+        handleError(error)
+      })
       await loadExamOptions().catch((error) => {
         handleError(error)
       })
@@ -2238,9 +2388,15 @@ export function useKioskWorkflow() {
     scanConfig,
     activationForm,
     examId,
+    examBindingRequired,
+    workbenchTab,
+    deviceReadiness,
+    activationGateReason,
+    needsExamBindingGate,
     examOptions,
     examOptionTotal,
-    examOptionLoading,    examOptionFilter,
+    examOptionLoading,
+    examOptionFilter,
 
     // ---- 历史批次浏览（HistoryStage） ----
     batchHistoryList,
@@ -2318,6 +2474,8 @@ export function useKioskWorkflow() {
     refreshBoundPapers,
     onManualRefreshLedger,
     loadExamOptions,
+    loadKioskBootstrap,
+    bindKioskExam,
     onExamSelectSearch,
     onExamFilterChange,
     refreshExamOptionsByUser,

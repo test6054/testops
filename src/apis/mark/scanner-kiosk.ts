@@ -168,6 +168,66 @@ export interface ExamScannerKioskContextVO {
   canStartSupplementScan: boolean
   blockReason?: string
   supplementBlockReason?: string
+  taskContract?: ExamScannerKioskTaskContractVO
+  sessionBatches?: ExamScannerKioskSessionBatchVO[]
+  kioskBoundExamId?: string
+  examBindingRequired?: boolean
+}
+
+export interface ExamScannerKioskTaskContractVO {
+  schoolName: string
+  gradeSubjectText: string
+  plannedStudentCount: number
+  expectedSheetCount: number
+  scannedSheetCount: number
+  templateDisplayName: string
+  paperStyleText: string
+  candidateIdFormatText: string
+  objectiveQuestionCount: number
+  subjectiveQuestionCount: number
+}
+
+export interface ExamScannerKioskSessionBatchVO {
+  scanBatchId: string
+  batchNo: string
+  batchExternalNo: string
+  scanMode: ScannerKioskScanMode
+  status: ScanBatchStatusCode
+  scannedCount: number
+  exceptionCount: number
+  uploadedCount: number
+  scanStartTime?: string
+  scanEndTime?: string
+}
+
+export interface ExamScannerKioskBootstrapRequest {
+  scannerDeviceId: string
+  scannerStationId: string
+}
+
+export interface ExamScannerKioskBootstrapVO {
+  kioskBoundExamId?: string
+  kioskLockEnabled?: boolean
+  examBindingRequired: boolean
+  boundExam?: ExamScannerKioskExamVO
+}
+
+export interface ExamScannerKioskBindExamRequest {
+  scannerDeviceId: string
+  scannerStationId: string
+  examId: string
+}
+
+export function getScannerKioskBootstrap(
+  request: ExamScannerKioskBootstrapRequest,
+): Promise<ExamScannerKioskBootstrapVO> {
+  return http.post<ExamScannerKioskBootstrapVO>('/api/mark/scanner/kiosk/bootstrap', request)
+}
+
+export function bindScannerKioskExam(
+  request: ExamScannerKioskBindExamRequest,
+): Promise<ExamScannerKioskBootstrapVO> {
+  return http.post<ExamScannerKioskBootstrapVO>('/api/mark/scanner/kiosk/bind-exam', request)
 }
 
 export function getScannerKioskContext(

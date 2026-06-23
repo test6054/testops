@@ -39,6 +39,9 @@ const sseLedTitle = computed(() =>
 const refreshButtonDisabled = computed(() => workflow.loading.value)
 
 function handleExamPillClick() {
+  if (workflow.kioskContext.value?.kioskLockEnabled && workflow.kioskContext.value?.kioskBoundExamId) {
+    return
+  }
   if (stage.currentStage.value !== 'setup') stage.gotoStage('setup')
 }
 

@@ -26,9 +26,12 @@ import { inject } from 'vue'
  */
 export interface KioskUiState {
   settingsDrawerOpen: Ref<boolean>
+  scanParamsDrawerOpen: Ref<boolean>
   shortcutHintsOpen: Ref<boolean>
   openSettings: () => void
   closeSettings: () => void
+  openScanParams: () => void
+  closeScanParams: () => void
   /** 触发查看历史批次 ledger（先关闭其它抽屉再调用 workflow.viewBatchHistoryLedger） */
   viewHistoryLedger: (item: ExamScannerKioskBatchHistoryItem) => void
   /** 关闭历史批次 ledger 抽屉（清空 workflow.historyLedgerBatch） */

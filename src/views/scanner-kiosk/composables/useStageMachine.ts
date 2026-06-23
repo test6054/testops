@@ -24,8 +24,8 @@ export interface KioskStageDef {
 export const KIOSK_STAGES: readonly KioskStageDef[] = Object.freeze([
   {
     id: 'setup',
-    label: '准备',
-    description: '选考试 / 设备就绪',
+    label: '扫描答卷',
+    description: '设备就绪 / 开始扫描',
     routeName: 'ScannerKioskSetup',
     order: 0,
   },
@@ -47,7 +47,7 @@ export const KIOSK_STAGES: readonly KioskStageDef[] = Object.freeze([
 
 export const KIOSK_HISTORY_STAGE: KioskStageDef = Object.freeze({
   id: 'history',
-  label: '本机历史',
+  label: '扫描记录',
   description: '历史批次只读浏览',
   routeName: 'ScannerKioskHistory',
   order: -1,

@@ -13,15 +13,18 @@ import type { KioskUiState } from './composables/kioskInjection'
  * 此文件不再持有 UI 细节，仅负责 grid 布局与组件编排。
  */
 import { computed, onActivated, onMounted, provide, ref } from 'vue'
-import KioskActivationModal from './components/KioskActivationModal.vue'
+import KioskActivationGate from './components/KioskActivationGate.vue'
 import KioskAppBar from './components/KioskAppBar.vue'
 import KioskBottomBar from './components/KioskBottomBar.vue'
+import KioskExamBindingGate from './components/KioskExamBindingGate.vue'
 import KioskHistoryLedgerDrawer from './components/KioskHistoryLedgerDrawer.vue'
 import KioskNoticeBand from './components/KioskNoticeBand.vue'
+import KioskScanParamsDrawer from './components/KioskScanParamsDrawer.vue'
 import KioskSettingsDrawer from './components/KioskSettingsDrawer.vue'
 import KioskShortcutHintOverlay from './components/KioskShortcutHintOverlay.vue'
 import KioskSideRail from './components/KioskSideRail.vue'
 import KioskStageBar from './components/KioskStageBar.vue'
+import KioskWorkbenchTabs from './components/KioskWorkbenchTabs.vue'
 import { KIOSK_CTX_KEY } from './composables/kioskInjection'
 import { useKioskMutex } from './composables/useKioskMutex'
 import { useKioskShortcuts } from './composables/useKioskShortcuts'
@@ -34,17 +37,27 @@ const stage = useStageMachine(workflow)
 
 // UI 共享状态（抽屉互斥 + shortcut hints overlay）
 const settingsDrawerOpen = ref(false)
+const scanParamsDrawerOpen = ref(false)
 const shortcutHintsOpen = ref(false)
 const ui: KioskUiState = {
   settingsDrawerOpen,
+  scanParamsDrawerOpen,
   shortcutHintsOpen,
   openSettings() {
-    // 互斥：先关历史 ledger 抽屉再开 settings
     if (workflow.historyLedgerBatch.value) workflow.closeBatchHistoryLedger()
+    scanParamsDrawerOpen.value = false
     settingsDrawerOpen.value = true
   },
   closeSettings() {
     settingsDrawerOpen.value = false
+  },
+  openScanParams() {
+    if (workflow.historyLedgerBatch.value) workflow.closeBatchHistoryLedger()
+    settingsDrawerOpen.value = false
+    scanParamsDrawerOpen.value = true
+  },
+  closeScanParams() {
+    scanParamsDrawerOpen.value = false
   },
   viewHistoryLedger(item) {
     // 互斥：先关 settings 再触发 ledger 拉取
@@ -70,6 +83,13 @@ provide(KIOSK_CTX_KEY, ctx)
 useKioskShortcuts(ctx)
 
 const showBottomBar = computed(() => stage.currentStage.value === 'scanning')
+const showWorkbenchChrome = computed(() =>
+  stage.currentStage.value === 'setup' || stage.currentStage.value === 'history',
+)
+const showStageBar = computed(() =>
+  stage.currentStage.value === 'scanning' || stage.currentStage.value === 'review',
+)
+const showSideRail = computed(() => showStageBar.value)
 
 // 静默对齐路由到自动推导阶段：
 // - 浏览器刷新 / 直接访问 /scanner-kiosk/* 时按 currentJob 状态机 redirect
@@ -89,11 +109,12 @@ onActivated(() => {
   <div class="kiosk-layout">
     <KioskAppBar />
 
-    <KioskStageBar />
+    <KioskWorkbenchTabs v-if="showWorkbenchChrome" />
+    <KioskStageBar v-else-if="showStageBar" />
 
     <KioskNoticeBand />
 
-    <div class="kiosk-body">
+    <div class="kiosk-body" :class="{ 'kiosk-body--full': !showSideRail }">
       <main class="kiosk-main" :class="{ 'with-bottom': showBottomBar }">
         <router-view v-slot="{ Component }">
           <transition name="stage-fade" mode="out-in">
@@ -102,18 +123,18 @@ onActivated(() => {
         </router-view>
       </main>
 
-      <KioskSideRail class="kiosk-aside" />
+      <KioskSideRail v-if="showSideRail" class="kiosk-aside" />
     </div>
 
     <transition name="bottom-bar-slide">
       <KioskBottomBar v-show="showBottomBar" />
     </transition>
 
-    <!-- 设备设置抽屉（teleport 到 body，由 ant-design-vue Drawer 处理 z-index） -->
-    <KioskSettingsDrawer />
+    <KioskActivationGate />
+    <KioskExamBindingGate />
 
-    <!-- 一体机激活弹窗（未绑定 / 需重新激活时强制弹出） -->
-    <KioskActivationModal />
+    <KioskSettingsDrawer />
+    <KioskScanParamsDrawer />
 
     <!-- 历史批次 ledger 抽屉（点击 HistoryStage 行触发） -->
     <KioskHistoryLedgerDrawer />
@@ -151,6 +172,10 @@ onActivated(() => {
   padding: var(--kiosk-space-4);
   min-height: 0;
   overflow: hidden;
+}
+
+.kiosk-body--full {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .kiosk-main {
