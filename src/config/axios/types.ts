@@ -14,6 +14,8 @@ export interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
   skipAuth?: boolean
   /** 扫描工位接口本次请求实际使用的鉴权来源 */
   markScannerStationAuthSource?: 'jwt' | 'kiosk'
+  /** 一体机 push_token 鉴权失败后是否已尝试过从本机 Agent 同步并重试 */
+  kioskAuthRetried?: boolean
   /** 是否跳过错误处理 */
   skipErrorHandler?: boolean
   /** 是否显示加载状态 */

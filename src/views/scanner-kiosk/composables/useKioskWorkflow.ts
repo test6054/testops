@@ -87,8 +87,10 @@ import {
   clearKioskAuthSession,
   getKioskBindingProfile,
   hasMarkScannerKioskAuth,
-  KIOSK_BROWSER_SESSION_LOST_MESSAGE,
-  needsKioskBrowserReactivation,
+  KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE,
+  KIOSK_BROWSER_SESSION_SYNC_MESSAGE,
+  needsKioskBrowserSessionSync,
+  recoverKioskBrowserSessionFromAgent,
   saveKioskAuthSession,
 } from '@/utils/kiosk-auth'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -283,6 +285,7 @@ export function useKioskWorkflow() {
       scannerDeviceId: getActiveScannerDeviceId() || undefined,
       scannerStationId: getActiveScannerStationId() || undefined,
     }),
+    onKioskAuthRefreshRequired: recoverKioskBrowserSessionFromAgent,
     initialLimit: 20,
     maxEvents: 50,
     ledgerFilter: () => {
@@ -304,13 +307,15 @@ export function useKioskWorkflow() {
     },
   })
 
-  function syncKioskBrowserAuthState(): void {
-    if (!needsKioskBrowserReactivation(health.value?.bound)) {
-      return
+  /** Agent 已绑定时，将浏览器 push_token 与 DeviceBinding 对齐。 */
+  async function recoverKioskBrowserSession(): Promise<boolean> {
+    if (!health.value?.bound) {
+      return false
     }
-    stopSse()
-    errorMessage.value = KIOSK_BROWSER_SESSION_LOST_MESSAGE
-    openActivationModal()
+    if (hasMarkScannerKioskAuth()) {
+      return true
+    }
+    return recoverKioskBrowserSessionFromAgent()
   }
 
   // -------------------------------------------------------------
@@ -437,8 +442,8 @@ export function useKioskWorkflow() {
   const scanBlockedReason = computed(() => {
     if (examBindingRequired.value) return '请先绑定本场扫描考试'
     if (!examId.value) return '当前工位未绑定考试'
-    if (needsKioskBrowserReactivation(health.value?.bound)) {
-      return KIOSK_BROWSER_SESSION_LOST_MESSAGE
+    if (needsKioskBrowserSessionSync(health.value?.bound)) {
+      return KIOSK_BROWSER_SESSION_SYNC_MESSAGE
     }
     if (!health.value?.bound) return '一体机未激活'
     if (health.value?.tokenResetRequired || health.value?.rebindRequired) return '一体机需要重新激活'
@@ -478,15 +483,14 @@ export function useKioskWorkflow() {
   const canSwitchScanner = computed(() => !currentJobBlocksWorkspace.value)
   const canActivateAgent = computed(() => !currentJobBlocksWorkspace.value)
   const canDiscardLedgerPage = computed(() => !currentJobBlocksWorkspace.value)
-  const kioskBrowserSessionLost = computed(() =>
-    needsKioskBrowserReactivation(health.value?.bound),
+  const kioskBrowserSessionSyncNeeded = computed(() =>
+    needsKioskBrowserSessionSync(health.value?.bound),
   )
   const activationModalForced = computed(
     () =>
       !health.value?.bound
       || Boolean(health.value?.tokenResetRequired)
-      || Boolean(health.value?.rebindRequired)
-      || kioskBrowserSessionLost.value,
+      || Boolean(health.value?.rebindRequired),
   )
   const needsActivationGate = computed(() => activationModalForced.value)
   const needsExamBindingGate = computed(
@@ -496,7 +500,7 @@ export function useKioskWorkflow() {
   const activationGateReason = computed(() => {
     if (!health.value?.bound) return 'UNBOUND'
     if (health.value.rebindRequired) return 'REBIND_REQUIRED'
-    if (health.value.tokenResetRequired || kioskBrowserSessionLost.value) return 'TOKEN_RESET_REQUIRED'
+    if (health.value.tokenResetRequired) return 'TOKEN_RESET_REQUIRED'
     return 'NONE'
   })
 
@@ -522,9 +526,9 @@ export function useKioskWorkflow() {
       if (reason === 'TOKEN_RESET_REQUIRED') {
         return {
           tone: 'danger',
-          statusText: '浏览器会话失效',
-          headline: '需要重新激活浏览器会话',
-          detail: KIOSK_BROWSER_SESSION_LOST_MESSAGE,
+          statusText: '服务端 token 已重置',
+          headline: '需要重新激活一体机',
+          detail: '扫描设备 push_token 已变更，请重新输入激活码完成绑定。',
         }
       }
       return {
@@ -532,6 +536,14 @@ export function useKioskWorkflow() {
         statusText: '一体机未激活',
         headline: '请先激活扫描一体机',
         detail: '输入教务平台下发的激活码后，才能连接扫描仪并开始扫描。',
+      }
+    }
+    if (kioskBrowserSessionSyncNeeded.value) {
+      return {
+        tone: 'warning',
+        statusText: '会话同步中',
+        headline: '正在同步本机 Agent 会话',
+        detail: KIOSK_BROWSER_SESSION_SYNC_MESSAGE,
       }
     }
     if (needsExamBindingGate.value) {
@@ -575,9 +587,9 @@ export function useKioskWorkflow() {
     }
   })
 
-  /** 未激活时不应调用 edu-mark 扫描工位 API，只走本机 Agent。 */
+  /** Agent 已绑定时即可访问 edu-mark；浏览器 push_token 由 recoverKioskBrowserSession 自动同步。 */
   function isActivatedForMarkApis(): boolean {
-    return Boolean(health.value?.bound) && hasMarkScannerKioskAuth()
+    return Boolean(health.value?.bound)
   }
 
   /** Agent 未绑定时清理浏览器残留 push_token，避免误用旧会话调用后端。 */
@@ -588,6 +600,11 @@ export function useKioskWorkflow() {
     if (hasMarkScannerKioskAuth() || getKioskBindingProfile()) {
       clearKioskAuthSession()
     }
+  }
+
+  /** Agent 已绑定时，将浏览器 push_token 与本地 DeviceBinding 对齐后再访问 edu-mark。 */
+  async function ensureKioskBrowserAuthSynced(): Promise<boolean> {
+    return recoverKioskBrowserSession()
   }
 
   const workState = computed(() => {
@@ -941,7 +958,10 @@ export function useKioskWorkflow() {
 
   async function ensureLiveStreamConnected() {
     if (!health.value?.bound) return
-    if (!hasMarkScannerKioskAuth()) return
+    if (!hasMarkScannerKioskAuth()) {
+      const recovered = await recoverKioskBrowserSession()
+      if (!recovered) return
+    }
     if (sseStreaming.value) return
     await startSse()
   }
@@ -1063,8 +1083,11 @@ export function useKioskWorkflow() {
     try {
       await Promise.all([refreshHealth(), refreshScanners()])
       if (isActivatedForMarkApis()) {
-        await refreshKioskContext()
-        await recoverLocalScanJob()
+        const sessionReady = await ensureKioskBrowserAuthSynced()
+        if (sessionReady) {
+          await refreshKioskContext()
+          await recoverLocalScanJob()
+        }
       }
     } catch (error) {
       handleError(error)
@@ -1086,8 +1109,13 @@ export function useKioskWorkflow() {
         handleAgentBindingLost()
         return
       }
-      syncKioskBrowserAuthState()
-      if (health.value.bound && hasMarkScannerKioskAuth()) {
+      const sessionReady = await ensureKioskBrowserAuthSynced()
+      if (health.value.bound && !sessionReady) {
+        errorMessage.value = KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE
+      } else {
+        errorMessage.value = ''
+      }
+      if (health.value.bound && sessionReady) {
         await ensureLiveStreamConnected()
       }
     } catch (error) {

@@ -22,7 +22,9 @@ import {
   hasMarkScannerKioskAuth,
   isMarkScannerStationApiUrl,
   isScannerKioskBrowserPage,
-  KIOSK_BROWSER_SESSION_LOST_MESSAGE,
+  KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE,
+  KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE,
+  recoverKioskBrowserSessionFromAgent,
   resolveMarkScannerStationAuthHeaders,
 } from '@/utils/kiosk-auth'
 import { getTraceHeaders } from '@/utils/trace'
@@ -272,6 +274,34 @@ function processFailedQueue(success: boolean): void {
   failedRequestsQueue = []
 }
 
+/**
+ * 一体机 push_token 失效时先从本机 Agent 同步并重试一次，避免 SSE/401 误清激活态。
+ */
+async function retryKioskRequestAfterAgentSync(
+  requestConfig: InternalAxiosRequestConfig,
+): Promise<AxiosResponse<ResultInfo<unknown>> | null> {
+  const extended = requestConfig as ExtendedAxiosRequestConfig
+  if (extended.kioskAuthRetried || !isScannerKioskBrowserPage()) {
+    return null
+  }
+  extended.kioskAuthRetried = true
+  const recovered = await recoverKioskBrowserSessionFromAgent()
+  if (!recovered) {
+    return null
+  }
+  const auth = resolveMarkScannerStationAuthHeaders()
+  if (!auth.headers.Authorization) {
+    return null
+  }
+  requestConfig.headers = requestConfig.headers ?? {}
+  requestConfig.headers.Authorization = auth.headers.Authorization
+  if (auth.headers['X-Tenant-Id']) {
+    requestConfig.headers['X-Tenant-Id'] = auth.headers['X-Tenant-Id']
+  }
+  extended.markScannerStationAuthSource = auth.source ?? undefined
+  return service(requestConfig)
+}
+
 service.interceptors.response.use(
   (response: AxiosResponse<ResultInfo<unknown>>) => {
     // 清理已完成请求的记录
@@ -329,14 +359,28 @@ service.interceptors.response.use(
         }
 
         if (isScannerStationApi && scannerStationAuthSource === 'kiosk') {
-          clearKioskAuthSession()
-          const kioskAuthError: InterceptorError = new Error(
-            response.data.msg || KIOSK_BROWSER_SESSION_LOST_MESSAGE,
-          )
-          kioskAuthError.code = response.data.code
-          kioskAuthError.response = response
-          kioskAuthError._handledByInterceptor = true
-          return Promise.reject(kioskAuthError)
+          return retryKioskRequestAfterAgentSync(response.config).then((retried) => {
+            if (retried) {
+              return retried
+            }
+            if (isScannerKioskBrowserPage() && hasMarkScannerKioskAuth()) {
+              const kioskAuthError: InterceptorError = new Error(
+                response.data.msg || KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE,
+              )
+              kioskAuthError.code = response.data.code
+              kioskAuthError.response = response
+              kioskAuthError._handledByInterceptor = true
+              return Promise.reject(kioskAuthError)
+            }
+            clearKioskAuthSession()
+            const kioskAuthError: InterceptorError = new Error(
+              response.data.msg || KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE,
+            )
+            kioskAuthError.code = response.data.code
+            kioskAuthError.response = response
+            kioskAuthError._handledByInterceptor = true
+            return Promise.reject(kioskAuthError)
+          })
         }
 
         // TOKEN_KICKED 特殊处理：被踢出不可恢复，直接清除
@@ -410,12 +454,24 @@ service.interceptors.response.use(
       }
 
       if (isScannerStationApi && scannerStationAuthSource === 'kiosk') {
-        clearKioskAuthSession()
-        const kioskAuthError: InterceptorError = new Error(KIOSK_BROWSER_SESSION_LOST_MESSAGE)
-        kioskAuthError.code = response?.data?.code || statusCode
-        kioskAuthError.response = response as AxiosResponse<ResultInfo<unknown>>
-        kioskAuthError._handledByInterceptor = true
-        return Promise.reject(kioskAuthError)
+        return retryKioskRequestAfterAgentSync(originalConfig).then((retried) => {
+          if (retried) {
+            return retried
+          }
+          if (isScannerKioskBrowserPage() && hasMarkScannerKioskAuth()) {
+            const kioskAuthError: InterceptorError = new Error(KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE)
+            kioskAuthError.code = response?.data?.code || statusCode
+            kioskAuthError.response = response as AxiosResponse<ResultInfo<unknown>>
+            kioskAuthError._handledByInterceptor = true
+            return Promise.reject(kioskAuthError)
+          }
+          clearKioskAuthSession()
+          const kioskAuthError: InterceptorError = new Error(KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE)
+          kioskAuthError.code = response?.data?.code || statusCode
+          kioskAuthError.response = response as AxiosResponse<ResultInfo<unknown>>
+          kioskAuthError._handledByInterceptor = true
+          return Promise.reject(kioskAuthError)
+        })
       }
 
       // TOKEN_KICKED(4007) 不可恢复，直接登出

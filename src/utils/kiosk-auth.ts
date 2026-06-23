@@ -110,6 +110,29 @@ export function clearKioskAuthSession(): void {
 }
 
 /**
+ * 从本机 Agent DeviceBinding 同步 push_token 到浏览器会话。
+ * @returns 是否写入了新的 push_token
+ */
+export async function syncKioskAuthFromLocalAgent(): Promise<boolean> {
+  const { getAgentKioskBrowserAuth } = await import('@/apis/mark/scanner-agent-local')
+  const session = await getAgentKioskBrowserAuth()
+  const existing = getKioskAuthSession()
+  if (existing?.authorizationHeader === session.pushAuthorizationHeader) {
+    return false
+  }
+  saveKioskAuthSession({
+    pushAuthorizationHeader: session.pushAuthorizationHeader,
+    tenantId: session.tenantId,
+    scannerDeviceId: session.scannerDeviceId,
+    scannerStationId: session.scannerStationId,
+    deviceName: session.deviceName,
+    gatewayBaseUrl: session.gatewayBaseUrl,
+    endpointName: getKioskBindingProfile()?.endpointName,
+  })
+  return true
+}
+
+/**
  * 教师端扫描工位 API 发起前尝试刷新 JWT，避免 access token 过期后误用残留 push_token。
  */
 export async function ensureScannerStationTeacherJwt(): Promise<string | null> {
@@ -201,13 +224,45 @@ export function hasMarkScannerStationAuth(): boolean {
   return resolveMarkScannerStationAuthHeaders().source !== null
 }
 
-/** 一体机 Agent 已绑定但浏览器未缓存 push_token（常见于页面刷新）。 */
-export const KIOSK_BROWSER_SESSION_LOST_MESSAGE
-  = '浏览器会话已失效，请使用激活码重新激活一体机'
+/** Agent 已绑定但浏览器未缓存 push_token，应从本机 Agent 同步，不等于未激活。 */
+export function needsKioskBrowserSessionSync(agentBound: boolean | undefined): boolean {
+  return Boolean(agentBound) && !hasMarkScannerKioskAuth()
+}
 
+/**
+ * @deprecated 一体机页面请用 {@link needsKioskBrowserSessionSync}；仅教师端扫描看板保留。
+ */
 export function needsKioskBrowserReactivation(agentBound: boolean | undefined): boolean {
   if (isScannerKioskBrowserPage()) {
-    return Boolean(agentBound) && !hasMarkScannerKioskAuth()
+    return needsKioskBrowserSessionSync(agentBound)
   }
   return Boolean(agentBound) && !hasMarkScannerJwtAuth() && !hasMarkScannerKioskAuth()
+}
+
+/** 本机 Agent 已绑定，正在或需要从 DeviceBinding 同步 push_token 到浏览器。 */
+export const KIOSK_BROWSER_SESSION_SYNC_MESSAGE
+  = '正在从本机 Agent 同步会话，请稍候'
+
+/** 无法从本机 Agent 拉取 push_token（Agent 未启动、未绑定或版本过旧）。 */
+export const KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE
+  = '无法从本机 Agent 同步会话，请确认 Agent 已启动并完成激活；仍无法恢复时请重新输入激活码'
+
+/** Agent 同步后服务端仍拒绝 push_token，凭证已失效。 */
+export const KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE
+  = '扫描工位凭证已失效，请重新输入激活码完成绑定'
+
+/** @deprecated 使用 {@link KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE} */
+export const KIOSK_BROWSER_SESSION_LOST_MESSAGE = KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE
+
+/**
+ * 从本机 Agent DeviceBinding 恢复浏览器 push_token 会话。
+ * @returns 是否已具备可用 kiosk 鉴权
+ */
+export async function recoverKioskBrowserSessionFromAgent(): Promise<boolean> {
+  try {
+    await syncKioskAuthFromLocalAgent()
+  } catch {
+    // Agent 未绑定或本地 API 不可用时由调用方按激活流程处理
+  }
+  return hasMarkScannerKioskAuth()
 }
