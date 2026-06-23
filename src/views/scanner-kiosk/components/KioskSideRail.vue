@@ -53,7 +53,7 @@ const railCapabilityDpi = computed(() =>
 )
 const railCapabilityDuplex = computed(() => {
   if (!capabilities.value?.loaded) return '未加载'
-  return capabilities.value.supportsDuplex ? '支持双面' : '仅单面'
+  return capabilities.value.supportsDuplex ? '支持双面扫描' : '仅单面扫描'
 })
 const railCapabilityName = computed(() =>
   capabilities.value?.scannerDisplayName || '未加载',
@@ -127,7 +127,7 @@ function handleOpenSettings() {
           <dd>{{ railCapabilityDpi }}</dd>
         </div>
         <div>
-          <dt>双面</dt>
+          <dt>双面扫描能力</dt>
           <dd>{{ railCapabilityDuplex }}</dd>
         </div>
       </dl>
@@ -147,7 +147,7 @@ function handleOpenSettings() {
           <dd>{{ railScanColor }}</dd>
         </div>
         <div>
-          <dt>单双面</dt>
+          <dt>单面/双面扫描</dt>
           <dd>{{ railScanDuplex }}</dd>
         </div>
         <div>

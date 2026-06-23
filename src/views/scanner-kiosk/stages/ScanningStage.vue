@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { LocalScanPageStatus, ScanPageInfo } from '@/apis/mark/scanner-agent-local'
+import type { LocalScanPageStatus } from '@/apis/mark/scanner-agent-local'
 /**
  * Stage 2 - 扫描中
  *
@@ -50,7 +50,27 @@ const { workflow, stage } = useKioskCtx()
 
 const hasJob = computed(() => Boolean(workflow.currentJob.value))
 const job = computed(() => workflow.currentJob.value)
-const pages = computed(() => workflow.visiblePages.value)
+const pages = computed(() => workflow.displayPages.value)
+const canvasEmptyTitle = computed(() => {
+  if (job.value?.status === 'SCANNING') {
+    return job.value.scannedPages > 0
+      ? `正在扫描（${job.value.scannedPages} 页）…`
+      : '正在扫描，请稍候…'
+  }
+  if (job.value?.status === 'UPLOADING' || job.value?.status === 'RETRYING') {
+    return '扫描页上传中…'
+  }
+  return '等待扫描仪送纸…'
+})
+const canvasEmptyHint = computed(() => {
+  if (job.value?.status === 'SCANNING') {
+    return '扫描仪正在采集影像，首张完成后将自动显示预览。'
+  }
+  if (job.value?.status === 'UPLOADING' || job.value?.status === 'RETRYING') {
+    return job.value.message || '上传完成后可在右侧缩略图查看各页。'
+  }
+  return '送纸后将自动显示首张影像，请勿关闭工作台。'
+})
 const emptyScanTitle = computed(() => (workflow.activeBackendScanSession.value ? '存在未结束扫描进程' : '暂无扫描批次'))
 const emptyScanHint = computed(() =>
   workflow.activeBackendScanSession.value
@@ -79,7 +99,8 @@ const imageTransform = computed(
 )
 const imageFilter = computed(() => (grayscale.value ? 'grayscale(1)' : 'none'))
 
-const isPageException = (page: ScanPageInfo) => page.status === 'FAILED' || Boolean(page.diagnostic)
+const isPageException = (page: { status: string, diagnostic?: string }) =>
+  page.status === 'FAILED' || Boolean(page.diagnostic)
 
 const currentIndex = computed(() => {
   if (!previewPageNo.value) return -1
@@ -188,8 +209,9 @@ const PAGE_STATUS_LABEL: Record<LocalScanPageStatus, string> = {
   DELETED: '已删除',
 }
 
-function pageStatusLabel(status: LocalScanPageStatus): string {
-  return strictEnumLabel(PAGE_STATUS_LABEL, status, '扫描页状态')
+function pageStatusLabel(status: string): string {
+  if (status === 'SCANNED') return '已扫描'
+  return strictEnumLabel(PAGE_STATUS_LABEL, status as LocalScanPageStatus, '扫描页状态')
 }
 
 // stage 内部视图键盘快捷键（与全局 useKioskShortcuts 不冲突）
@@ -262,11 +284,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
       <div v-if="hasJob" class="ribbon-counters">
         <div>
           <span>已扫描</span>
-          <strong>{{ job?.scannedPages ?? 0 }}</strong>
+          <strong>{{ workflow.displayScannedCount.value }}</strong>
         </div>
         <div>
           <span>已上传</span>
-          <strong>{{ job?.uploadedPages ?? 0 }}</strong>
+          <strong>{{ workflow.displayUploadedCount.value }}</strong>
         </div>
         <div v-if="workflow.exceptionPages.value.length > 0" class="counter-warn">
           <span>异常</span>
@@ -307,11 +329,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
             </div>
             <div v-else-if="pages.length === 0" class="canvas-empty">
               <ScanOutlined class="canvas-empty-icon canvas-empty-icon--pulse" />
-              <p>等待扫描仪送纸…</p>
-              <small>送纸后将自动显示首张影像，请勿关闭工作台。</small>
+              <p>{{ canvasEmptyTitle }}</p>
+              <small>{{ canvasEmptyHint }}</small>
             </div>
             <div v-else-if="!previewPageNo || !workflow.previewImageUrl.value" class="canvas-empty">
-              <p>请在右侧缩略图中选择一页查看</p>
+              <p v-if="workflow.previewLoadError.value">{{ workflow.previewLoadError.value }}</p>
+              <p v-else>请在右侧缩略图中选择一页查看</p>
             </div>
             <img
               v-else
@@ -320,6 +343,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
               :alt="`第 ${previewPageNo} 页`"
               :style="{ transform: imageTransform, filter: imageFilter }"
               draggable="false"
+              @error="workflow.onPreviewImageLoadError"
             />
 
             <!-- 浮动工具栏 -->

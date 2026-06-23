@@ -21,14 +21,22 @@ const props = withDefaults(
 const { workflow, stage } = useKioskCtx()
 
 const batches = computed(() => workflow.kioskContext.value?.sessionBatches ?? [])
-const expectedSheetCount = computed(() => workflow.kioskContext.value?.taskContract?.expectedSheetCount ?? null)
+const expectedPageCount = computed(
+  () => workflow.kioskContext.value?.taskContract?.expectedPageCount ?? null,
+)
 
 const setupEmptyHint = computed(() => {
-  const expected = expectedSheetCount.value
-  if (expected != null && expected > 0) {
-    return `上方「应扫 ${expected}」为考试总量；送纸后将在此列出本机批次。请先确认扫描参数，再点击右侧「开始扫描」。`
+  const expected = expectedPageCount.value
+  const contract = workflow.kioskContext.value?.taskContract
+  const planned = contract?.plannedStudentCount
+  const pages = contract?.pagesPerSheet
+  if (expected != null && expected > 0 && planned != null && pages != null && pages > 0) {
+    return `应扫页 ${expected}（${planned} 人 × ${pages} 页）为考试总量；可多次送纸，送纸后将在此列出本机批次。`
   }
-  return '送纸后将在此列出本机批次。请先确认扫描参数，再点击右侧「开始扫描」。'
+  if (expected != null && expected > 0) {
+    return `应扫页 ${expected} 为考试总量；可多次送纸，送纸后将在此列出本机批次。`
+  }
+  return '可多次送纸或一次送完；送纸后将在此列出本机批次。'
 })
 
 const highlightBatchId = computed(() => {
