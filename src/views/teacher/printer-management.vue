@@ -607,9 +607,12 @@ async function handleFormSubmit(): Promise<void> {
         kioskLockEnabled: formData.kioskLockEnabled,
         remark: emptyToUndefined(formData.remark),
       }
-      await updateScannerDevice(request)
+      const handoff = await updateScannerDevice(request)
       message.success('扫描设备已更新')
       showFormModal.value = false
+      if (handoff.activationCode) {
+        openActivationHandoff(handoff)
+      }
       await syncAfterDeviceMutation()
     }
   } catch (error) {

@@ -55,7 +55,7 @@ watch(visible, (show) => {
         请选择本场要扫描的考试。绑定后本工位将锁定到该考试，扫描员无需在就绪页重复选择。
       </p>
 
-      <label class="field">
+      <div class="field">
         <span class="field__label">考试</span>
         <div class="field__row">
           <a-select
@@ -78,7 +78,7 @@ watch(visible, (show) => {
             <ReloadOutlined :spin="workflow.examOptionLoading.value" />
           </button>
         </div>
-      </label>
+      </div>
 
       <button
         type="button"

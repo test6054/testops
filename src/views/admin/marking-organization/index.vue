@@ -172,7 +172,7 @@
     >
       <a-form ref="createFormRef" :model="createForm" :rules="createRules" layout="vertical">
         <a-form-item label="关联考试">
-          <a-input :value="selectedExamLabel" disabled />
+          <a-input :value="organizationExamLabel" disabled />
         </a-form-item>
         <a-form-item label="阅卷组长" name="leaderUserId" required>
           <a-select
@@ -212,7 +212,7 @@
     >
       <a-form ref="editFormRef" :model="editForm" :rules="editRules" layout="vertical">
         <a-form-item label="关联考试">
-          <a-input :value="selectedExamLabel" disabled />
+          <a-input :value="organizationExamLabel" disabled />
         </a-form-item>
         <a-form-item label="阅卷组长" name="leaderUserId" required>
           <a-select

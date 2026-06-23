@@ -11,7 +11,7 @@ import type {
 import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
 import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import type { WorkbenchStageStatus } from '@/types/workbench'
-import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
+import { buildPrepStepCards, type PrepStepCard } from '@/utils/exam-prep-step-ui'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
@@ -39,7 +39,6 @@ import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
-import { buildPrepStepCards } from '@/utils/exam-prep-step-ui'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamPrepWorkbench' })

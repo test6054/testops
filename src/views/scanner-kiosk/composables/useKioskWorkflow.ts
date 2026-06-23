@@ -13,7 +13,6 @@
  *   - 单页废弃：仅 DATABASE 来源 + 已落库 localPageId
  */
 
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { LocationQueryValue } from 'vue-router'
 import type {
   AgentHealthResponse,
@@ -67,10 +66,10 @@ import {
   startScanJob,
 } from '@/apis/mark/scanner-agent-local'
 import {
+  bindScannerKioskExam,
   closeScannerKioskBatch,
   discardScannedPage,
   discardScannerKioskBatch,
-  bindScannerKioskExam,
   fetchScannerPageLedger,
   getScannerKioskBootstrap,
   getScannerKioskContext,
@@ -474,8 +473,7 @@ export function useKioskWorkflow() {
   const canSwitchScanMode = computed(() => !currentJobBlocksWorkspace.value)
   const canSwitchExam = computed(() => {
     if (currentJobBlocksWorkspace.value) return false
-    if (kioskContext.value?.kioskLockEnabled && kioskContext.value?.kioskBoundExamId) return false
-    return true
+    return !(kioskContext.value?.kioskLockEnabled && kioskContext.value?.kioskBoundExamId);
   })
   const canSwitchScanner = computed(() => !currentJobBlocksWorkspace.value)
   const canActivateAgent = computed(() => !currentJobBlocksWorkspace.value)
@@ -754,10 +752,6 @@ export function useKioskWorkflow() {
     throw toUserError(null, '扫描异常类型无法识别，请刷新后重试')
   }
 
-  function ledgerErrorText(err: Error) {
-    return getUserErrorMessage(err, '扫描页账本加载失败')
-  }
-
   /** 将一体机诊断转为现场操作员可处理的扫描业务提示，避免展示底层接口或字段细节。 */
   function scannerDiagnosticText(diagnostic?: string) {
     return getUserErrorMessage(
@@ -911,7 +905,7 @@ export function useKioskWorkflow() {
       if (
         origin
         && origin !== 'null'
-        && (origin.startsWith('http://') || origin.startsWith('https://'))
+        && /^https?:\/\//.test(origin)
       ) {
         return origin.replace(/\/+$/, '')
       }
@@ -1044,7 +1038,7 @@ export function useKioskWorkflow() {
       return { ok: false, errorMessage: '平台服务地址格式不正确' }
     }
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      return { ok: false, errorMessage: '平台服务地址必须以 http:// 或 https:// 开头' }
+      return { ok: false, errorMessage: '平台服务地址必须使用 HTTP 或 HTTPS 协议' }
     }
     if (!activationCode) {
       return { ok: false, errorMessage: '激活码不能为空' }
@@ -1292,16 +1286,6 @@ export function useKioskWorkflow() {
     }, 300)
   }
 
-  function onExamFilterChange() {
-    if (!canSwitchExam.value) {
-      errorMessage.value = '当前扫描任务未结束，不能修改考试筛选条件'
-      return
-    }
-    loadExamOptions().catch((error) => {
-      handleError(error)
-    })
-  }
-
   function refreshExamOptionsByUser() {
     if (!canSwitchExam.value) {
       errorMessage.value = '当前扫描任务未结束，不能刷新考试列表'
@@ -1310,17 +1294,6 @@ export function useKioskWorkflow() {
     loadExamOptions().catch((error) => {
       handleError(error)
     })
-  }
-
-  function onExamSelectChange(value: SelectValue) {
-    if (currentJobBlocksWorkspace.value) {
-      errorMessage.value = '当前扫描任务未结束，不能切换考试'
-      return
-    }
-    currentJob.value = null
-    activeBatchExternalNo.value = ''
-    activeScanBatchId.value = ''
-    examId.value = value != null ? String(value) : ''
   }
 
   // -------------------------------------------------------------
@@ -2171,9 +2144,11 @@ export function useKioskWorkflow() {
   function enterBusyState(activeJobId: string) {
     busyPollFailureCount = 0
     busyState.value = { active: true, activeJobId, activeJob: null }
-    pollActiveJob(activeJobId)
+    void pollActiveJob(activeJobId)
     if (busyPollTimer) window.clearInterval(busyPollTimer)
-    busyPollTimer = window.setInterval(() => pollActiveJob(activeJobId), 2000)
+    busyPollTimer = window.setInterval(() => {
+      void pollActiveJob(activeJobId)
+    }, 2000)
   }
 
   async function pollActiveJob(activeJobId: string) {
@@ -2217,7 +2192,7 @@ export function useKioskWorkflow() {
       errorMessage.value = '当前扫描任务未结束，不能切换考试'
       restoringExamId = true
       examId.value = oldVal || ''
-      nextTick(() => {
+      void nextTick(() => {
         restoringExamId = false
       })
       return
@@ -2253,7 +2228,7 @@ export function useKioskWorkflow() {
       errorMessage.value = '当前扫描任务未结束，不能切换本地扫描仪'
       restoringScannerId = true
       selectedScannerId.value = oldVal || lastStableScannerId
-      nextTick(() => {
+      void nextTick(() => {
         restoringScannerId = false
       })
       return
@@ -2392,6 +2367,7 @@ export function useKioskWorkflow() {
     workbenchTab,
     deviceReadiness,
     activationGateReason,
+    needsActivationGate,
     needsExamBindingGate,
     examOptions,
     examOptionTotal,
@@ -2462,7 +2438,6 @@ export function useKioskWorkflow() {
     ledgerSourceText,
     registrationStatusText,
     attentionTypeText,
-    ledgerErrorText,
     scannerDiagnosticText,
     ledgerItemKey,
     formatTime,
@@ -2474,12 +2449,9 @@ export function useKioskWorkflow() {
     refreshBoundPapers,
     onManualRefreshLedger,
     loadExamOptions,
-    loadKioskBootstrap,
     bindKioskExam,
     onExamSelectSearch,
-    onExamFilterChange,
     refreshExamOptionsByUser,
-    onExamSelectChange,
 
     // ---- 历史批次浏览 ----
     loadBatchHistory,

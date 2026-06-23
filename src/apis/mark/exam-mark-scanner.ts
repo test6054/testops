@@ -254,8 +254,10 @@ export function createScannerDevice(
  * 更新扫描设备
  * POST /api/mark/exams/scan-devices/update
  */
-export function updateScannerDevice(request: ExamScannerDeviceUpdateRequest): Promise<boolean> {
-  return http.post<boolean>('/api/mark/exams/scan-devices/update', request)
+export function updateScannerDevice(
+  request: ExamScannerDeviceUpdateRequest,
+): Promise<ExamScannerDeviceActivationHandoffVO> {
+  return http.post<ExamScannerDeviceActivationHandoffVO>('/api/mark/exams/scan-devices/update', request)
 }
 
 /**
