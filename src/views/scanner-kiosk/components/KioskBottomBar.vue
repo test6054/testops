@@ -29,12 +29,13 @@ const showResumeInsteadOfPause = computed(() => workflow.currentJob.value?.statu
 
 const endBatchSummary = computed(() => {
   const job = workflow.currentJob.value
-  const expected = workflow.kioskContext.value?.taskContract?.expectedSheetCount
+  const contract = workflow.kioskContext.value?.taskContract
+  const expected = contract?.expectedPageCount
   if (!job) return ''
   const scanned = job.scannedPages ?? 0
   const pending = Math.max(0, scanned - (job.uploadedPages ?? 0))
   const expectedText = expected != null && expected > 0 ? String(expected) : '—'
-  return `已扫 ${scanned} / 应扫 ${expectedText} · 待上传 ${pending}`
+  return `已扫 ${scanned} / 应扫页 ${expectedText} · 待上传 ${pending}`
 })
 </script>
 

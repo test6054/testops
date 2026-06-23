@@ -36,6 +36,7 @@ import type {
   ExamScannerPageLedgerVO,
   ExamScannerPageRegistrationStatus,
   ExamScannerScanConfigVO,
+  ExamScannerScanConfigOptionsVO,
   ScanAttentionTypeCode,
   ScannerKioskScanMode,
 } from '@/apis/mark/scanner-kiosk'
@@ -63,6 +64,7 @@ import {
   retryCommit,
   retryUpload,
   ScannerBusyError,
+  setPreferredLocalScanner,
   startScanJob,
 } from '@/apis/mark/scanner-agent-local'
 import {
@@ -98,7 +100,7 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 import { promptModal } from '@/views/quality/_helpers'
 
 // ================================================================
-// 静态字典：扫描策略色彩 / 单双面文案，由 UI / SideRail 直接读取。
+// 静态字典：扫描策略色彩 / 单面双面扫描文案，由 UI / SideRail 直接读取。
 // ================================================================
 
 type ScanColorMode = ExamScannerScanConfigVO['colorMode']
@@ -111,8 +113,8 @@ export const SCANNER_COLOR_MODE_LABEL: Record<ScanColorMode, string> = {
 }
 
 export const SCANNER_DUPLEX_MODE_LABEL: Record<ScanDuplexMode, string> = {
-  SIMPLEX: '单面',
-  DUPLEX: '双面',
+  SIMPLEX: '单面扫描',
+  DUPLEX: '双面扫描',
 }
 
 /** 本地扫描任务状态文案：一体机页面只展示现场操作语义，不暴露 Agent 状态编码。 */
@@ -151,6 +153,7 @@ export function useKioskWorkflow() {
   const health = ref<AgentHealthResponse | null>(null)
   const scanners = ref<ScannerDeviceInfo[]>([])
   const selectedScannerId = ref('')
+  const agentPreferredLocalScannerId = ref('')
   const kioskContext = ref<ExamScannerKioskContextVO | null>(null)
   const boundPapers = ref<ExamScannerBoundPaperItemVO[]>([])
   const boundPapersLoading = ref(false)
@@ -181,6 +184,8 @@ export function useKioskWorkflow() {
     duplexMode: 'SIMPLEX',
     blankPageDetectionEnabled: true,
   })
+  /** 已套用考试推荐扫描参数的 examId；仅切换考试时重置 defaultScanConfig。 */
+  const scanConfigSourceExamId = ref('')
   const busyState = ref<{
     active: boolean
     activeJobId: string
@@ -591,6 +596,8 @@ export function useKioskWorkflow() {
   /** Agent 已绑定时即可访问 edu-mark；浏览器 push_token 由 recoverKioskBrowserSession 自动同步。 */
   function isActivatedForMarkApis(): boolean {
     return Boolean(health.value?.bound)
+      && !health.value?.tokenResetRequired
+      && !health.value?.rebindRequired
   }
 
   /** Agent 未绑定时清理浏览器残留 push_token，避免误用旧会话调用后端。 */
@@ -739,7 +746,7 @@ export function useKioskWorkflow() {
   }
 
   function scannerDuplexModeLabel(status: ScanDuplexMode) {
-    return strictEnumLabel(SCANNER_DUPLEX_MODE_LABEL, status, '扫描单双面模式')
+    return strictEnumLabel(SCANNER_DUPLEX_MODE_LABEL, status, '单面/双面扫描方式')
   }
 
   function localScanJobStatusText(status: LocalScanJobStatus) {
@@ -935,6 +942,10 @@ export function useKioskWorkflow() {
     try {
       const setup = await getAgentSetupContext()
       activationForm.value.gatewayBaseUrl = resolveGatewayBaseUrl(setup)
+      const preferred = setup.preferredLocalScannerId?.trim()
+      if (preferred) {
+        agentPreferredLocalScannerId.value = preferred
+      }
       const savedProfile = getKioskBindingProfile()
       if (setup.deviceName && !activationForm.value.endpointName) {
         activationForm.value.endpointName = setup.deviceName
@@ -1139,14 +1150,91 @@ export function useKioskWorkflow() {
       }
       throw error
     }
-    scanners.value = response.devices
-    if (
-      !selectedScannerId.value
-      && availableScanners.value.length > 0
-      && canSwitchScanner.value
-    ) {
-      selectedScannerId.value = availableScanners.value[0].localScannerId
+    if (!agentPreferredLocalScannerId.value) {
+      try {
+        const setup = await getAgentSetupContext()
+        const preferred = setup.preferredLocalScannerId?.trim()
+        if (preferred) {
+          agentPreferredLocalScannerId.value = preferred
+        }
+      } catch {
+        // 首选扫描仪读取失败不阻断设备列表
+      }
     }
+    scanners.value = response.devices
+    const available = availableScanners.value
+    if (available.length === 0) return
+    const current = selectedScannerId.value?.trim()
+    if (current && available.some((scanner) => scanner.localScannerId === current)) {
+      return
+    }
+    const preferred = agentPreferredLocalScannerId.value?.trim()
+    if (
+      preferred
+      && canSwitchScanner.value
+      && available.some((scanner) => scanner.localScannerId === preferred)
+    ) {
+      selectedScannerId.value = preferred
+      return
+    }
+    if (!current && canSwitchScanner.value) {
+      selectedScannerId.value = available[0].localScannerId
+    }
+  }
+
+  function clampScanConfigToOptions(
+    config: ExamScannerScanConfigVO,
+    options: ExamScannerScanConfigOptionsVO,
+  ): ExamScannerScanConfigVO {
+    const allowedDpis = options.allowedDpis
+    const colorModes = options.colorModes
+    const duplexModes = options.duplexModes
+    const defaultConfig = options.defaultScanConfig
+    if (allowedDpis.length === 0) {
+      throw new Error('扫描仪未上报可用分辨率')
+    }
+    if (colorModes.length === 0) {
+      throw new Error('扫描参数缺少色彩模式选项')
+    }
+    if (duplexModes.length === 0) {
+      throw new Error('扫描参数缺少单面/双面扫描选项')
+    }
+    if (!defaultConfig?.dpi || !defaultConfig.colorMode || !defaultConfig.duplexMode) {
+      throw new Error('扫描参数缺少服务端默认建议值')
+    }
+    let dpi = config.dpi
+    if (!allowedDpis.includes(dpi)) {
+      dpi = defaultConfig.dpi
+    }
+    let colorMode = config.colorMode
+    if (!colorModes.includes(colorMode)) {
+      colorMode = defaultConfig.colorMode
+    }
+    let duplexMode = config.duplexMode
+    if (!duplexModes.includes(duplexMode)) {
+      duplexMode = defaultConfig.duplexMode
+    }
+    return {
+      dpi,
+      colorMode,
+      duplexMode,
+      blankPageDetectionEnabled: config.blankPageDetectionEnabled,
+    }
+  }
+
+  /** 切换考试或首次加载时套用服务端按制卷形态/模板推导的推荐扫描参数。 */
+  function applyExamRecommendedScanConfig(force = false) {
+    const options = kioskContext.value?.scanConfigOptions
+    if (!options?.defaultScanConfig || !examId.value) return
+    const examChanged = scanConfigSourceExamId.value !== examId.value
+    if (!examChanged && !force) return
+    try {
+      scanConfig.value = clampScanConfigToOptions(options.defaultScanConfig, options)
+    } catch (error) {
+      errorMessage.value = error instanceof Error ? error.message : '扫描参数契约不完整'
+      return
+    }
+    scanConfigSourceExamId.value = examId.value
   }
 
   async function refreshKioskContext() {
@@ -1158,6 +1246,7 @@ export function useKioskWorkflow() {
     if (!examId.value) {
       kioskContext.value = null
       boundPapers.value = []
+      scanConfigSourceExamId.value = ''
       return
     }
     const scannerDeviceId = getActiveScannerDeviceId()
@@ -1180,8 +1269,17 @@ export function useKioskWorkflow() {
       activeBatchExternalNo.value = kioskContext.value.activeBatch.batchExternalNo
       activeScanBatchId.value = kioskContext.value.activeBatch.scanBatchId
     }
-    if (kioskContext.value?.scanConfigOptions?.defaultScanConfig) {
-      scanConfig.value = { ...kioskContext.value.scanConfigOptions.defaultScanConfig }
+    const activeBatchConfig = kioskContext.value.activeBatch?.scanConfig
+    const scanConfigOptions = kioskContext.value.scanConfigOptions
+    if (activeBatchConfig && scanConfigOptions) {
+      try {
+        scanConfig.value = clampScanConfigToOptions(activeBatchConfig, scanConfigOptions)
+        scanConfigSourceExamId.value = examId.value
+      } catch (error) {
+        errorMessage.value = error instanceof Error ? error.message : '扫描参数契约不完整'
+      }
+    } else if (scanConfigOptions) {
+      applyExamRecommendedScanConfig()
     }
     examBindingRequired.value = Boolean(kioskContext.value?.examBindingRequired)
     await refreshBoundPapers()
@@ -2266,6 +2364,13 @@ export function useKioskWorkflow() {
       return
     }
     lastStableScannerId = newVal
+    const preferredId = newVal?.trim()
+    if (preferredId) {
+      agentPreferredLocalScannerId.value = preferredId
+      setPreferredLocalScanner(preferredId).catch(() => {
+        // 持久化失败不阻断当前会话选仪
+      })
+    }
   })
 
   watch(
@@ -2500,6 +2605,7 @@ export function useKioskWorkflow() {
 
     // ---- 模式切换 ----
     changeScanMode,
+    applyExamRecommendedScanConfig,
 
     // ---- 扫描任务操作 ----
     submitScanJob,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 扫描参数与模式抽屉：从就绪页分离，对标讯飞「就绪页只有开始扫描」。
+ * 扫描参数与模式抽屉：硬件参数与扫描模式；制卷核对在就绪页制卷摘要区。
  */
 import { computed } from 'vue'
 import { useKioskCtx } from '../composables/kioskInjection'
@@ -12,24 +12,36 @@ const open = computed({
   set: (v: boolean) => { ui.scanParamsDrawerOpen.value = v },
 })
 
+const contract = computed(() => workflow.kioskContext.value?.taskContract)
 const scanConfigOptions = computed(() => workflow.kioskContext.value?.scanConfigOptions)
+const recommendedConfig = computed(() => scanConfigOptions.value?.defaultScanConfig)
+const scanConfigAdvisory = computed(() => scanConfigOptions.value?.scanConfigAdvisory?.trim() || '')
+const scanConfigHint = computed(() => scanConfigOptions.value?.scanConfigHint?.trim() || '')
+const scanConfigBoundaryNote = '单面/双面扫描可按实际送纸修改，与应扫页数无强制对应。'
 const dpiOptions = computed(() =>
-  (scanConfigOptions.value?.allowedDpis ?? [300]).map((dpi) => ({ value: dpi, label: `${dpi} DPI` })),
+  (scanConfigOptions.value?.allowedDpis ?? []).map((dpi) => ({ value: dpi, label: `${dpi} DPI` })),
 )
 const colorModeOptions = computed(() =>
-  (scanConfigOptions.value?.colorModes ?? ['COLOR', 'GRAY', 'LINEART']).map((mode) => ({
+  (scanConfigOptions.value?.colorModes ?? []).map((mode) => ({
     value: mode,
     label: workflow.scannerColorModeLabel(mode),
   })),
 )
 const duplexModeOptions = computed(() =>
-  (scanConfigOptions.value?.duplexModes ?? ['SIMPLEX']).map((mode) => ({
+  (scanConfigOptions.value?.duplexModes ?? []).map((mode) => ({
     value: mode,
     label: workflow.scannerDuplexModeLabel(mode),
   })),
 )
 const paramsDisabled = computed(() => !workflow.canSwitchScanMode.value || !scanConfigOptions.value)
 const isSupplement = computed(() => workflow.scanMode.value === 'SUPPLEMENT')
+
+const duplexMismatchHint = computed(() => {
+  const recommended = recommendedConfig.value?.duplexMode
+  const current = workflow.scanConfig.value.duplexMode
+  if (!recommended || !current || recommended === current) return ''
+  return `系统建议 ${workflow.scannerDuplexModeLabel(recommended)}，当前为 ${workflow.scannerDuplexModeLabel(current)}，可按实际送纸修改`
+})
 
 const SCAN_MODES = [
   { id: 'DIRECT' as const, label: '首次扫描' },
@@ -39,6 +51,10 @@ const SCAN_MODES = [
 
 function selectMode(mode: 'DIRECT' | 'SUPPLEMENT' | 'ARCHIVE') {
   if (mode !== workflow.scanMode.value) workflow.changeScanMode(mode)
+}
+
+function applyRecommendedScanConfig() {
+  workflow.applyExamRecommendedScanConfig(true)
 }
 </script>
 
@@ -51,6 +67,34 @@ function selectMode(mode: 'DIRECT' | 'SUPPLEMENT' | 'ARCHIVE') {
     destroy-on-close
   >
     <div class="drawer-body">
+      <section v-if="contract" class="contract-hint">
+        <p class="contract-hint__title">
+          {{ contract.materialKindText || '扫描材料' }}
+          · {{ contract.paperStyleText }}
+        </p>
+        <p v-if="contract.materialLayoutModeText" class="contract-hint__sub">
+          制卷形态：{{ contract.materialLayoutModeText }}
+        </p>
+        <p v-if="scanConfigHint" class="contract-hint__sub">
+          {{ scanConfigHint }}
+        </p>
+        <p v-if="contract.scanMaterialAdvisory" class="contract-hint__warn">
+          {{ contract.scanMaterialAdvisory }}
+        </p>
+        <p v-if="scanConfigAdvisory" class="contract-hint__warn">
+          {{ scanConfigAdvisory }}
+        </p>
+        <button
+          v-if="recommendedConfig"
+          type="button"
+          class="contract-hint__action"
+          :disabled="paramsDisabled"
+          @click="applyRecommendedScanConfig"
+        >
+          恢复考试推荐参数
+        </button>
+      </section>
+
       <div class="field">
         <span class="field__label">扫描模式</span>
         <div class="seg">
@@ -87,13 +131,15 @@ function selectMode(mode: 'DIRECT' | 'SUPPLEMENT' | 'ARCHIVE') {
         />
       </div>
       <div class="field">
-        <span class="field__label">单双面</span>
+        <span class="field__label">单面/双面扫描</span>
         <a-select
           v-model:value="workflow.scanConfig.value.duplexMode"
           :options="duplexModeOptions"
           :disabled="paramsDisabled"
           class="full"
         />
+        <p class="field__hint field__hint--muted">{{ scanConfigBoundaryNote }}</p>
+        <p v-if="duplexMismatchHint" class="field__hint">{{ duplexMismatchHint }}</p>
       </div>
       <label class="check">
         <input
@@ -145,11 +191,65 @@ function selectMode(mode: 'DIRECT' | 'SUPPLEMENT' | 'ARCHIVE') {
   gap: var(--kiosk-space-4);
 }
 
+.contract-hint {
+  padding: var(--kiosk-space-3);
+  background: var(--kiosk-surface-alt);
+  border: 1px solid var(--kiosk-divider);
+  border-radius: var(--kiosk-radius-md);
+}
+
+.contract-hint__title {
+  margin: 0;
+  font-size: var(--kiosk-fz-label);
+  font-weight: var(--kiosk-fw-semibold);
+  color: var(--kiosk-ink-primary);
+}
+
+.contract-hint__sub {
+  margin: var(--kiosk-space-1) 0 0;
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-secondary);
+}
+
+.contract-hint__warn {
+  margin: var(--kiosk-space-2) 0 0;
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-warning);
+  line-height: var(--kiosk-lh-base);
+}
+
+.contract-hint__action {
+  margin-top: var(--kiosk-space-2);
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-primary);
+  cursor: pointer;
+}
+
+.contract-hint__action:disabled {
+  color: var(--kiosk-ink-tertiary);
+  cursor: not-allowed;
+}
+
 .field__label {
   display: block;
   margin-bottom: var(--kiosk-space-2);
   font-size: var(--kiosk-fz-label);
   color: var(--kiosk-ink-secondary);
+}
+
+.field__hint--muted {
+  color: var(--kiosk-ink-tertiary);
+}
+
+.field__hint {
+  margin: var(--kiosk-space-1) 0 0;
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-warning);
+  line-height: var(--kiosk-lh-base);
 }
 
 .seg {

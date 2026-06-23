@@ -154,6 +154,7 @@ export interface AgentSetupContextResponse {
   deviceName?: string
   gatewayBaseUrl?: string
   activatedAt?: string
+  preferredLocalScannerId?: string
 }
 
 /** 本机 Agent 绑定 push_token 会话，供 Kiosk 浏览器与 DeviceBinding 对齐 */
@@ -333,6 +334,10 @@ export async function getAgentKioskBrowserAuth(): Promise<KioskBrowserAuthRespon
 export async function listLocalScanners(): Promise<ScannerListResponse> {
   const payload = await localAgentGet('/api/scanners')
   return normalizeAgentPayload(() => validateScannerListResponse(payload))
+}
+
+export async function setPreferredLocalScanner(localScannerId: string): Promise<void> {
+  await localAgentPost('/api/agent/preferred-scanner', { localScannerId })
 }
 
 export async function activateLocalAgent(
@@ -813,6 +818,10 @@ function validateAgentSetupContextResponse(value: LocalAgentJsonValue): AgentSet
   const activatedAt = requireOptionalString(result, 'activatedAt')
   if (activatedAt !== undefined) {
     payload.activatedAt = activatedAt
+  }
+  const preferredLocalScannerId = requireOptionalString(result, 'preferredLocalScannerId')
+  if (preferredLocalScannerId !== undefined) {
+    payload.preferredLocalScannerId = preferredLocalScannerId
   }
   return payload
 }

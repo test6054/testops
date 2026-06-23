@@ -99,6 +99,10 @@ export interface ExamScannerScanConfigOptionsVO {
   colorModes: Array<'COLOR' | 'GRAY' | 'LINEART'>
   duplexModes: Array<'SIMPLEX' | 'DUPLEX'>
   defaultScanConfig: ExamScannerScanConfigVO
+  /** 纸型与设备能力不匹配时的扫描参数提醒 */
+  scanConfigAdvisory?: string
+  /** 默认单面/双面扫描说明（如纸型 1 张 2 面且设备支持双面时的默认建议） */
+  scanConfigHint?: string
 }
 
 export interface ExamScannerKioskBatchVO {
@@ -178,13 +182,24 @@ export interface ExamScannerKioskTaskContractVO {
   schoolName: string
   gradeSubjectText: string
   plannedStudentCount: number
-  expectedSheetCount: number
-  scannedSheetCount: number
+  /** 应扫页数（计划人数 × 单份页数）；未可计算时为 null */
+  expectedPageCount: number | null
+  /** 考试维度已扫页数累计 */
+  scannedPageCount: number
   templateDisplayName: string
   paperStyleText: string
   candidateIdFormatText: string
   objectiveQuestionCount: number
   subjectiveQuestionCount: number
+  /** 制卷形态：ANSWER_SHEET / FULL_PAPER */
+  materialLayoutMode?: 'ANSWER_SHEET' | 'FULL_PAPER'
+  materialLayoutModeText?: string
+  /** 扫描材料类型：答卷页 / 试卷 / 未配置 */
+  materialKindText?: string
+  /** 单份应扫页数 */
+  pagesPerSheet?: number
+  /** 制卷或模板未完备时的登记提醒 */
+  scanMaterialAdvisory?: string
 }
 
 export interface ExamScannerKioskSessionBatchVO {

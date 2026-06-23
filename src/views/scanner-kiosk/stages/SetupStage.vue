@@ -14,7 +14,7 @@ import { useKioskCtx } from '../composables/kioskInjection'
 
 const CALIBRATION_ACK_PREFIX = 'kiosk-sheet-calibration-ack:'
 
-const { workflow, mutex, ui } = useKioskCtx()
+const { workflow, mutex, ui, stage } = useKioskCtx()
 
 const contract = computed(() => workflow.kioskContext.value?.taskContract)
 const exam = computed(() => workflow.kioskContext.value?.exam)
@@ -30,8 +30,15 @@ const breadcrumb = computed(() => {
   return course ? `${name}（${course}）` : name
 })
 
-const expectedSheets = computed(() => contract.value?.expectedSheetCount ?? null)
-const scannedSheets = computed(() => contract.value?.scannedSheetCount ?? null)
+const expectedPages = computed(() => contract.value?.expectedPageCount ?? null)
+const scannedPages = computed(() => contract.value?.scannedPageCount ?? null)
+const expectedPagesFormula = computed(() => {
+  const planned = contract.value?.plannedStudentCount
+  const pages = contract.value?.pagesPerSheet
+  if (planned == null || planned <= 0 || pages == null || pages <= 0) return ''
+  return `${planned} 人 × ${pages} 页`
+})
+const hasActiveScanSession = computed(() => workflow.activeBackendScanSession.value)
 const attentionCount = computed(() => {
   const raw = workflow.kioskMetrics.value.attentionCount
   if (raw === '-' || raw === '—') return null
@@ -40,8 +47,8 @@ const attentionCount = computed(() => {
 })
 
 const progressPercent = computed(() => {
-  const expected = expectedSheets.value
-  const scanned = scannedSheets.value
+  const expected = expectedPages.value
+  const scanned = scannedPages.value
   if (expected == null || expected <= 0 || scanned == null) return 0
   return Math.min(100, Math.round((scanned / expected) * 100))
 })
@@ -58,9 +65,51 @@ const scanParamSummary = computed(() => {
   return parts.length ? parts.join(' · ') : '参数未加载'
 })
 
+/** 设备状态与当前扫描参数合并为一行，避免状态条与操作区视觉分裂。 */
+const statusSummaryLine = computed(() => {
+  const { tone, statusText } = readiness.value
+  if (tone === 'success') {
+    const params = scanParamSummary.value
+    return params && params !== '参数未加载' ? `${statusText} · ${params}` : statusText
+  }
+  return statusText
+})
+
+const statusDetailLine = computed(() => {
+  const { tone, headline, detail, statusText } = readiness.value
+  if (tone === 'success') return ''
+  if (headline && headline !== statusText) return headline
+  return detail || ''
+})
+
+const troubleshootingLine = computed(() => {
+  const { troubleshooting, detail } = readiness.value
+  if (!troubleshooting) return ''
+  if (troubleshooting === detail) return ''
+  return troubleshooting
+})
+
+const materialKindLabel = computed(() => contract.value?.materialKindText || '扫描材料')
+
+const templateReviewLinkText = computed(() => {
+  const mode = contract.value?.materialLayoutMode
+  if (mode === 'FULL_PAPER') return '试卷核对 →'
+  if (mode === 'ANSWER_SHEET') return '答卷页校验 →'
+  return '制卷核对 →'
+})
+
+const scanMaterialAdvisory = computed(() => contract.value?.scanMaterialAdvisory?.trim() || '')
+
+const scanConfigAdvisory = computed(
+  () => workflow.kioskContext.value?.scanConfigOptions?.scanConfigAdvisory?.trim() || '',
+)
+
 const calibrationExamKey = computed(() => {
   const id = workflow.examId.value
-  return id ? `${CALIBRATION_ACK_PREFIX}${id}` : ''
+  if (!id) return ''
+  const mode = contract.value?.materialLayoutMode ?? 'unset'
+  const pages = contract.value?.pagesPerSheet ?? 0
+  return `${CALIBRATION_ACK_PREFIX}${id}:${mode}:${pages}`
 })
 
 function hasCalibrationAck(): boolean {
@@ -82,18 +131,61 @@ function openParams() {
   ui.openScanParams()
 }
 
+function openTemplateReview() {
+  templateExpanded.value = true
+}
+
+function buildFirstScanCalibrationDialog() {
+  const mode = contract.value?.materialLayoutMode
+  const paperStyle = contract.value?.paperStyleText || '未配置'
+  const kind = contract.value?.materialKindText || '扫描材料'
+  if (mode === 'FULL_PAPER') {
+    return {
+      title: '试卷首次扫描核对',
+      content:
+        `当前考试为整卷作答，纸型 ${paperStyle}。`
+        + '首张送纸后请在「扫描中」预览整卷切分与页序是否正常；'
+        + '若偏差，请暂停并在 Web 端调整试卷母版后再继续批量扫描。',
+      okText: '已了解，开始扫描',
+      cancelText: '先查看制卷摘要',
+    }
+  }
+  if (mode === 'ANSWER_SHEET') {
+    return {
+      title: '答卷页首次扫描核对',
+      content:
+        `当前考试为独立答卷页，纸型 ${paperStyle}。`
+        + '首张送纸后请在「扫描中」预览定位框与考号区是否正常；'
+        + '若偏差，请暂停并在 Web 端调整答卷页模板后再继续批量扫描。',
+      okText: '已了解，开始扫描',
+      cancelText: '先查看制卷摘要',
+    }
+  }
+  return {
+    title: '首次扫描核对',
+    content:
+      `考试制卷形态尚未配置，已按 ${kind} 单面扫描建议参数（纸型 ${paperStyle}）。`
+      + '首张送纸后请核对预览是否正常，并在 Web 端补配制卷形态与模板。',
+    okText: '已了解，开始扫描',
+    cancelText: '先查看制卷摘要',
+  }
+}
+
 async function confirmCalibrationIfNeeded(): Promise<boolean> {
   if (hasCalibrationAck() || !contract.value) return true
+  const dialog = buildFirstScanCalibrationDialog()
   const confirmed = await confirmAsync({
-    title: '答题卡校验提示',
-    content:
-      '首次扫描建议先核对模板与纸型：首张送纸后请在「扫描中」预览定位是否正常；'
-      + '若切分框偏差，请暂停并在 Web 端调整模板后再继续批量扫描。',
-    okText: '已了解，开始扫描',
-    cancelText: '先检查参数',
+    title: dialog.title,
+    content: dialog.content,
+    okText: dialog.okText,
+    cancelText: dialog.cancelText,
   })
-  if (confirmed) markCalibrationAck()
-  return confirmed
+  if (confirmed) {
+    markCalibrationAck()
+    return true
+  }
+  openTemplateReview()
+  return false
 }
 
 async function startScan() {
@@ -101,6 +193,10 @@ async function startScan() {
   const ok = await confirmCalibrationIfNeeded()
   if (!ok) return
   await workflow.submitScanJob()
+}
+
+function continueActiveBatch() {
+  stage.gotoStage('scanning')
 }
 </script>
 
@@ -117,12 +213,13 @@ async function startScan() {
 
         <div class="progress-kpi">
           <div class="progress-kpi__item">
-            <span>应扫</span>
-            <strong>{{ expectedSheets ?? '—' }}</strong>
+            <span>应扫页</span>
+            <strong>{{ expectedPages ?? '—' }}</strong>
+            <small v-if="expectedPagesFormula" class="progress-kpi__sub">{{ expectedPagesFormula }}</small>
           </div>
           <div class="progress-kpi__item">
-            <span>已扫</span>
-            <strong>{{ scannedSheets ?? '—' }}</strong>
+            <span>已扫页</span>
+            <strong>{{ scannedPages ?? '—' }}</strong>
           </div>
           <div class="progress-kpi__item" :class="{ 'progress-kpi__item--warn': (attentionCount ?? 0) > 0 }">
             <span>异常</span>
@@ -130,7 +227,7 @@ async function startScan() {
           </div>
         </div>
 
-        <div v-if="expectedSheets != null && expectedSheets > 0" class="progress-bar-wrap">
+        <div v-if="expectedPages != null && expectedPages > 0" class="progress-bar-wrap">
           <div class="progress-bar">
             <div class="progress-bar__fill" :style="{ width: `${progressPercent}%` }" />
           </div>
@@ -138,15 +235,19 @@ async function startScan() {
         </div>
 
         <p v-if="contract?.plannedStudentCount != null" class="sidebar__hint">
-          计划人数 {{ contract.plannedStudentCount }}
+          计划人数 {{ contract.plannedStudentCount }}；可多次送纸或一次送完，多工位可并行扫描
         </p>
 
         <details v-if="contract" class="template-fold" :open="templateExpanded">
-          <summary @click.prevent="templateExpanded = !templateExpanded">模板摘要</summary>
+          <summary @click.prevent="templateExpanded = !templateExpanded">制卷摘要 · {{ materialKindLabel }}</summary>
           <dl class="template-fold__body">
             <div v-if="contract.schoolName">
               <dt>学校</dt>
               <dd>{{ contract.schoolName }}</dd>
+            </div>
+            <div>
+              <dt>制卷形态</dt>
+              <dd>{{ contract.materialLayoutModeText || '未配置' }}</dd>
             </div>
             <div v-if="contract.templateDisplayName">
               <dt>模板</dt>
@@ -165,46 +266,61 @@ async function startScan() {
               <dd>客观 {{ contract.objectiveQuestionCount }} · 主观 {{ contract.subjectiveQuestionCount }}</dd>
             </div>
           </dl>
-          <button type="button" class="template-fold__link" @click="openParams">答题卡校验 / 扫描参数 →</button>
+          <button type="button" class="template-fold__link" @click="openTemplateReview">{{ templateReviewLinkText }}</button>
         </details>
 
         <KioskSessionBatchPanel variant="setup" class="sidebar__batches" />
       </aside>
 
       <div class="main">
-        <div class="status-bar" :class="`status-bar--${readiness.tone}`">
-          <div class="status-bar__left">
+        <div class="scan-control" :class="`scan-control--${readiness.tone}`">
+          <div class="scan-control__status">
             <span class="status-led" :class="`status-led--${readiness.tone}`" />
-            <div class="status-bar__text">
-              <strong>{{ readiness.statusText }}</strong>
-              <small>{{ scanParamSummary }}</small>
+            <div class="scan-control__copy">
+              <p class="scan-control__line">{{ statusSummaryLine }}</p>
+              <p v-if="statusDetailLine" class="scan-control__sub">{{ statusDetailLine }}</p>
             </div>
           </div>
-          <button type="button" class="icon-btn" title="刷新设备状态" @click="refreshDevice">
-            <ReloadOutlined :spin="workflow.loading.value" />
-          </button>
+          <div class="scan-control__actions">
+            <button type="button" class="icon-btn" title="刷新设备状态" @click="refreshDevice">
+              <ReloadOutlined :spin="workflow.loading.value" />
+            </button>
+            <button type="button" class="param-btn" @click="openParams">
+              <SettingOutlined />
+              <span>扫描参数</span>
+            </button>
+            <button
+              v-if="hasActiveScanSession"
+              type="button"
+              class="continue-btn"
+              title="返回当前未结束批次，使用底部暂停或结束本批次"
+              @click="continueActiveBatch"
+            >
+              继续本批次
+            </button>
+            <button
+              type="button"
+              class="start-btn"
+              :disabled="!workflow.canStartScan.value"
+              :title="startReason || workflow.scanBlockedReason.value || '开始扫描'"
+              @click="startScan"
+            >
+              <PlayCircleFilled />
+              <span>开始扫描</span>
+            </button>
+          </div>
         </div>
 
-        <div v-if="readiness.troubleshooting || readiness.tone !== 'success'" class="status-detail">
-          <p>{{ readiness.troubleshooting || readiness.detail }}</p>
-        </div>
-        <p v-else class="status-ready-hint">确认扫描参数后，点击「开始扫描」送纸。</p>
+        <p class="scan-control__guide">
+          扫描开始后，请用底部「暂停」或「结束本批次」手动控制；结束本批次后可再次开始新批次送纸。
+        </p>
 
-        <div class="actions">
-          <button type="button" class="ghost-btn" @click="openParams">
-            <SettingOutlined />
-            <span>扫描参数</span>
-          </button>
-          <button
-            type="button"
-            class="start-btn"
-            :disabled="!workflow.canStartScan.value"
-            :title="startReason || workflow.scanBlockedReason.value || '开始扫描'"
-            @click="startScan"
-          >
-            <PlayCircleFilled />
-            <span>开始扫描</span>
-          </button>
+        <div v-if="troubleshootingLine" class="scan-control__trouble">
+          <p>{{ troubleshootingLine }}</p>
+        </div>
+        <div v-if="scanMaterialAdvisory || scanConfigAdvisory" class="scan-control__advisory">
+          <p v-if="scanMaterialAdvisory">{{ scanMaterialAdvisory }}</p>
+          <p v-if="scanConfigAdvisory">{{ scanConfigAdvisory }}</p>
         </div>
       </div>
     </div>
@@ -294,6 +410,13 @@ async function startScan() {
 
 .progress-kpi__item--warn strong {
   color: var(--kiosk-warning);
+}
+
+.progress-kpi__sub {
+  font-size: 10px;
+  color: var(--kiosk-ink-tertiary);
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .progress-bar-wrap {
@@ -390,15 +513,14 @@ async function startScan() {
 .main {
   display: flex;
   flex-direction: column;
-  gap: var(--kiosk-space-4);
+  gap: var(--kiosk-space-3);
   background: var(--kiosk-surface);
   border: 1px solid var(--kiosk-divider);
   border-radius: var(--kiosk-radius-lg);
-  padding: var(--kiosk-space-5);
-  justify-content: center;
+  padding: var(--kiosk-space-4);
 }
 
-.status-bar {
+.scan-control {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -409,26 +531,91 @@ async function startScan() {
   background: var(--kiosk-surface-alt);
 }
 
-.status-bar--success {
-  border-color: var(--kiosk-success);
-  background: var(--kiosk-success-soft);
+.scan-control--success {
+  border-left: 4px solid var(--kiosk-success);
 }
 
-.status-bar--danger {
-  border-color: var(--kiosk-danger);
-  background: var(--kiosk-danger-soft);
-}
-
-.status-bar--warning {
-  border-color: var(--kiosk-warning);
+.scan-control--warning {
+  border-left: 4px solid var(--kiosk-warning);
   background: var(--kiosk-warning-soft);
 }
 
-.status-bar__left {
+.scan-control--danger {
+  border-left: 4px solid var(--kiosk-danger);
+  background: var(--kiosk-danger-soft);
+}
+
+.scan-control__status {
   display: flex;
   align-items: center;
   gap: var(--kiosk-space-3);
   min-width: 0;
+  flex: 1;
+}
+
+.scan-control__copy {
+  min-width: 0;
+}
+
+.scan-control__line {
+  margin: 0;
+  font-size: var(--kiosk-fz-h3);
+  font-weight: var(--kiosk-fw-semibold);
+  color: var(--kiosk-ink-primary);
+  line-height: var(--kiosk-lh-tight);
+}
+
+.scan-control__sub {
+  margin: var(--kiosk-space-1) 0 0;
+  font-size: var(--kiosk-fz-label);
+  color: var(--kiosk-ink-secondary);
+  line-height: var(--kiosk-lh-base);
+}
+
+.scan-control__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--kiosk-space-3);
+  flex-shrink: 0;
+}
+
+.scan-control__trouble {
+  padding: var(--kiosk-space-3) var(--kiosk-space-4);
+  border-radius: var(--kiosk-radius-md);
+  background: var(--kiosk-surface-alt);
+  border: 1px solid var(--kiosk-divider);
+}
+
+.scan-control__trouble p {
+  margin: 0;
+  font-size: var(--kiosk-fz-label);
+  color: var(--kiosk-ink-secondary);
+  line-height: var(--kiosk-lh-base);
+}
+
+.scan-control__advisory {
+  padding: var(--kiosk-space-3) var(--kiosk-space-4);
+  border-radius: var(--kiosk-radius-md);
+  background: var(--kiosk-warning-soft);
+  border: 1px solid var(--kiosk-warning);
+}
+
+.scan-control__advisory p {
+  margin: 0;
+  font-size: var(--kiosk-fz-label);
+  color: var(--kiosk-ink-secondary);
+  line-height: var(--kiosk-lh-base);
+}
+
+.scan-control__advisory p + p {
+  margin-top: var(--kiosk-space-2);
+}
+
+.scan-control__guide {
+  margin: var(--kiosk-space-3) 0 0;
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-tertiary);
+  line-height: var(--kiosk-lh-base);
 }
 
 .status-led {
@@ -454,24 +641,6 @@ async function startScan() {
   box-shadow: 0 0 0 var(--kiosk-led-ring) var(--kiosk-warning-soft);
 }
 
-.status-bar__text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.status-bar__text strong {
-  font-size: var(--kiosk-fz-h3);
-  font-weight: var(--kiosk-fw-semibold);
-  color: var(--kiosk-ink-primary);
-}
-
-.status-bar__text small {
-  font-size: var(--kiosk-fz-caption);
-  color: var(--kiosk-ink-secondary);
-}
-
 .icon-btn {
   width: var(--kiosk-h-icon-button);
   height: var(--kiosk-h-icon-button);
@@ -482,35 +651,8 @@ async function startScan() {
   flex: 0 0 auto;
 }
 
-.status-detail {
-  padding: var(--kiosk-space-3) var(--kiosk-space-4);
-  border-radius: var(--kiosk-radius-md);
-  background: var(--kiosk-surface-alt);
-  border: 1px solid var(--kiosk-divider);
-}
-
-.status-detail p {
-  margin: 0;
-  font-size: var(--kiosk-fz-label);
-  color: var(--kiosk-ink-secondary);
-  line-height: var(--kiosk-lh-base);
-}
-
-.status-ready-hint {
-  margin: 0;
-  text-align: center;
-  font-size: var(--kiosk-fz-label);
-  color: var(--kiosk-ink-tertiary);
-}
-
-.actions {
-  display: flex;
-  gap: var(--kiosk-space-3);
-  justify-content: center;
-  align-items: stretch;
-}
-
-.ghost-btn,
+.param-btn,
+.continue-btn,
 .start-btn {
   display: inline-flex;
   align-items: center;
@@ -522,18 +664,27 @@ async function startScan() {
   border-radius: var(--kiosk-radius-md);
 }
 
-.ghost-btn {
+.continue-btn {
   height: var(--kiosk-h-action-md);
   padding: 0 var(--kiosk-space-4);
-  background: var(--kiosk-surface-alt);
+  background: var(--kiosk-surface);
+  border: 1px solid var(--kiosk-primary);
+  color: var(--kiosk-primary);
+  font-size: var(--kiosk-fz-label);
+}
+
+.param-btn {
+  height: var(--kiosk-h-action-md);
+  padding: 0 var(--kiosk-space-4);
+  background: var(--kiosk-surface);
   border: 1px solid var(--kiosk-divider);
   color: var(--kiosk-ink-secondary);
-  font-size: var(--kiosk-fz-h3);
+  font-size: var(--kiosk-fz-label);
 }
 
 .start-btn {
   height: var(--kiosk-h-cta);
-  min-width: 240px;
+  min-width: 200px;
   padding: 0 var(--kiosk-space-6);
   background: var(--kiosk-primary);
   border: none;
@@ -544,6 +695,17 @@ async function startScan() {
 .start-btn:disabled {
   background: var(--kiosk-neutral);
   cursor: not-allowed;
+}
+
+@media (max-width: 1200px) {
+  .scan-control {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .scan-control__actions {
+    justify-content: flex-end;
+  }
 }
 
 @media (max-width: 1024px) {
