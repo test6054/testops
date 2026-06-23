@@ -230,6 +230,7 @@
  * - createOrganization(request)  创建阅卷组织
  */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
+import type {RouteLocationRaw} from 'vue-router';
 import type {
   MarkingOrganizationVO,
   OrganizationCreateRequest,
@@ -240,7 +241,7 @@ import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
+import { useRoute, useRouter  } from 'vue-router'
 import {
   createOrganization,
   deleteOrganization,

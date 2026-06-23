@@ -169,10 +169,16 @@
 </template>
 
 <script lang="ts" setup>
-import type {
-  AllocationUnitCode,
-  FormalSessionStatusCode,
-  FormalSessionVO,
+import type { AllocationUnitCode, FormalSessionStatusCode, FormalSessionVO } from '@/apis/mark/marking-organization'
+import {
+  ALLOCATION_UNIT_LABEL,
+  completeFormalSession,
+  createFormalSession,
+  deleteFormalSession,
+  FORMAL_SESSION_STATUS_LABEL as FORMAL_STATUS_LABEL,
+  FORMAL_SESSION_STATUS_TONE as FORMAL_STATUS_TONE,
+  resumeFormalSession,
+  startFormalSession
 } from '@/apis/mark/marking-organization'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
@@ -182,16 +188,6 @@ import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import StopOutlined from '@ant-design/icons-vue/StopOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import {
-  ALLOCATION_UNIT_LABEL,
-  completeFormalSession,
-  createFormalSession,
-  deleteFormalSession,
-  FORMAL_SESSION_STATUS_LABEL as FORMAL_STATUS_LABEL,
-  FORMAL_SESSION_STATUS_TONE as FORMAL_STATUS_TONE,
-  resumeFormalSession,
-  startFormalSession,
-} from '@/apis/mark/marking-organization'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -273,8 +269,7 @@ function syncAllocationUnitFromGroup(groupId?: string): void {
     formalAllocationUnit.value = undefined
     return
   }
-  const unit = props.groupAllocationUnits?.[groupId]
-  formalAllocationUnit.value = unit
+  formalAllocationUnit.value = props.groupAllocationUnits?.[groupId]
 }
 
 watch(

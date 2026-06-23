@@ -550,7 +550,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamPaperBatchBindResultVO } from '@/apis/mark/exam-mark-scanner'
+import type { ExamPaperBatchBindResultVO, ExamScannerDeviceVO } from '@/apis/mark/exam-mark-scanner'
 import type {
   DuplicateResolutionStatusCode,
   ExamScannerBatchVO,
@@ -577,12 +577,7 @@ import {
   BINDING_STATUS_LABEL,
   bindPaper,
 } from '@/apis/mark/exam-binding'
-import {
-  batchBindPapers,
-  isScannerDeviceOnline,
-  listActiveScannerDevices,
-  type ExamScannerDeviceVO,
-} from '@/apis/mark/exam-mark-scanner'
+import { batchBindPapers, isScannerDeviceOnline, listActiveScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import {
   listScanAttentions,
   pageScannerBatches,
@@ -604,11 +599,11 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
-import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
@@ -1721,10 +1716,6 @@ async function ensureCandidatesLoaded(): Promise<boolean> {
   } finally {
     candidatesLoading.value = false
   }
-}
-
-async function retryEnsureCandidatesLoaded(): Promise<void> {
-  await ensureCandidatesLoaded()
 }
 
 function releaseBindIdentitySliceImage(): void {

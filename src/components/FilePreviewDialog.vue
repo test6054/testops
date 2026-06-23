@@ -5,7 +5,7 @@
     hide-footer
     wrap-class-name="ui-dialog-wrap file-preview-dialog__wrap"
     destroy-on-close
-    @update:open="(value: boolean) => (api.filePreviewOpen.value = value)"
+    @update:open="handleDialogOpenChange"
     @cancel="api.closePreview"
   >
     <template #header>
@@ -108,10 +108,10 @@
 </template>
 
 <script setup lang="ts">
+import type { FilePreviewApi } from '@/composables/useFilePreview'
 import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import FileUnknownOutlined from '@ant-design/icons-vue/FileUnknownOutlined'
 import { computed, defineAsyncComponent } from 'vue'
-import type { FilePreviewApi } from '@/composables/useFilePreview'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import { resolveFileIcon, resolveFileIconTheme } from '@/utils/file-preview'
@@ -125,6 +125,13 @@ const props = defineProps<{
 const VueOfficeDocx = defineAsyncComponent(() => import('@vue-office/docx'))
 const VueOfficeExcel = defineAsyncComponent(() => import('@vue-office/excel'))
 const VueOfficePptx = defineAsyncComponent(() => import('@vue-office/pptx'))
+
+/** 弹窗关闭时走 composable 清理 Blob URL 与预览状态，禁止直接改 prop 内 ref。 */
+function handleDialogOpenChange(open: boolean) {
+  if (!open) {
+    props.api.closePreview()
+  }
+}
 
 const dialogWidth = computed(() => {
   switch (props.api.filePreviewKind.value) {

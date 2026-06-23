@@ -413,6 +413,8 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExamFileRefVO,
 } from '@/apis/mark/exam'
+import type {ExamScannerDeviceVO} from '@/apis/mark/exam-mark-scanner';
+import type {MarkingProgressVO} from '@/apis/mark/exam-progress';
 import type {
   ExamScannerBatchCreateRequest,
   ExamScannerBatchDeviceBreakdownVO,
@@ -431,10 +433,9 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   isScannerDeviceOnline,
-  listActiveScannerDevices,
-  type ExamScannerDeviceVO,
+  listActiveScannerDevices
 } from '@/apis/mark/exam-mark-scanner'
-import { getMarkingProgress, type MarkingProgressVO } from '@/apis/mark/exam-progress'
+import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import {
   createScanBatchByCondition,
   pageScannerBatches,

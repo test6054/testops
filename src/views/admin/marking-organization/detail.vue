@@ -593,8 +593,8 @@ import {
 } from '@/utils/marking-organization-navigation'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import RecycledTaskReassignPanel from '@/views/admin/marking-organization/components/RecycledTaskReassignPanel.vue'
 import FormalSessionPanel from '@/views/admin/marking-organization/components/FormalSessionPanel.vue'
+import RecycledTaskReassignPanel from '@/views/admin/marking-organization/components/RecycledTaskReassignPanel.vue'
 
 defineOptions({ name: 'AdminMarkingOrganizationDetail' })
 
@@ -607,16 +607,18 @@ const { refreshSnapshot } = useWorkspaceExamId()
 
 const organizationId = computed(() => String(route.params.organizationId || ''))
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
+const routeExamId = computed(() => String(route.params.examId || ''))
 
 const organization = ref<MarkingOrganizationVO | null>(null)
 const examDetail = ref<ExamDetailVO | null>(null)
 const examId = computed(() => String(organization.value?.examId || ''))
 const workspaceExamId = computed(() => {
-  if (isExamWorkspaceRoute.value && route.params.examId) {
-    return String(route.params.examId)
+  if (isExamWorkspaceRoute.value && routeExamId.value) {
+    return routeExamId.value
   }
   return examId.value
 })
+const activeExamId = computed(() => examId.value || workspaceExamId.value)
 const loading = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
 const activeTab = ref<'info' | 'policy' | 'recycled' | 'launch'>('info')
@@ -757,6 +759,22 @@ function resetPolicyState(): void {
   applyRecyclePolicyToForm()
 }
 
+/**
+ * 工作台详情路由必须与组织真实 examId 对齐，否则阶段快照、回跳目标与当前操作对象会错位。
+ */
+async function alignWorkspaceRouteExamId(nextOrganization: MarkingOrganizationVO): Promise<boolean> {
+  if (!isExamWorkspaceRoute.value) {
+    return true
+  }
+  if (!nextOrganization.examId || routeExamId.value === nextOrganization.examId) {
+    return true
+  }
+  await router.replace(
+    resolveMarkingOrganizationDetailRoute(nextOrganization.id, nextOrganization.examId),
+  )
+  return false
+}
+
 async function loadOrganization(): Promise<void> {
   if (!organizationId.value) {
     organization.value = null
@@ -769,6 +787,9 @@ async function loadOrganization(): Promise<void> {
   try {
     const nextOrganization = await getOrganizationById({ organizationId: organizationId.value })
     validateMarkingOrganizationContract(nextOrganization)
+    if (!(await alignWorkspaceRouteExamId(nextOrganization))) {
+      return
+    }
     organization.value = nextOrganization
     examDetail.value = await getExamDetail(nextOrganization.examId)
     await loadMarkingPolicies()
@@ -778,7 +799,7 @@ async function loadOrganization(): Promise<void> {
     examDetail.value = null
     resetPolicyState()
     if (!(error instanceof Error && isMarkingOrgNotCreatedError(error))) {
-    showUserError(error, '阅卷组织详情加载失败')
+      showUserError(error, '阅卷组织详情加载失败')
     }
   } finally {
     loading.value = false
@@ -1056,7 +1077,7 @@ async function submitDelete(): Promise<void> {
     await deleteOrganization({ organizationId: organization.value.id })
     await refreshSnapshot()
     message.success('阅卷组织已删除')
-    await router.push(resolveMarkingOrganizationIndexRoute(workspaceExamId.value || undefined))
+    await router.push(resolveMarkingOrganizationIndexRoute(activeExamId.value || undefined))
   } catch (error) {
     showUserError(error, '阅卷组织删除失败')
   } finally {
@@ -1215,7 +1236,7 @@ const ANONYMOUS_TOKEN_OPTIONS = Object.entries(ANONYMOUS_TOKEN_POLICY_LABEL).map
 )
 
 function policyOptionLabel(
-  options: Array<{ value: string; label: string }>,
+  options: Array<{ value: string, label: string }>,
   value?: string | null,
 ): string {
   if (!value) {
@@ -1287,7 +1308,7 @@ async function submitRecycle(): Promise<void> {
 function goSessions(): void {
   void router.push(resolveMarkingOrganizationSessionsRoute(
     organizationId.value,
-    workspaceExamId.value || undefined,
+    activeExamId.value || undefined,
   ))
 }
 
@@ -1300,7 +1321,7 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
   return strictEnumLabel(QUESTION_GROUP_STATUS_LABEL, status, '题组状态')
 }
 
-watch(organizationId, () => {
+watch(() => [organizationId.value, routeExamId.value] as const, () => {
   void loadOrganization()
 }, { immediate: true })
 

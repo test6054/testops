@@ -18,10 +18,10 @@ import type { ReviewTaskItemVO, ReviewTaskQueryRequest } from '@/apis/mark/exam-
  * 不持久化：任务状态对实时性敏感，每次进入页面需重新拉取。
  */
 import type {
+  MarkingSessionPhaseCode,
   MarkingTaskClaimRequest,
   MarkingTaskQueryRequest,
   MarkingTaskVO,
-  MarkingSessionPhaseCode,
   TeacherClaimContextQueryRequest,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'

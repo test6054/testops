@@ -192,9 +192,9 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   AnonymityModeCode,
+  MarkingSessionPhaseCode,
   MarkingTaskClaimRequest,
   MarkingTaskQueryRequest,
-  MarkingSessionPhaseCode,
   MarkingTaskStatusCode,
   MarkingTaskVO,
   TeacherClaimContextVO,

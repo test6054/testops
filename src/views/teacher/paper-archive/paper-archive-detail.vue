@@ -332,8 +332,6 @@ import { message } from 'ant-design-vue'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile, uploadFile } from '@/apis/edu/file-management'
-import FilePreviewDialog from '@/components/FilePreviewDialog.vue'
-import { useFilePreview } from '@/composables/useFilePreview'
 import {
   getPaperArchiveSetDetail,
   PAPER_ARCHIVE_OCR_STATUS_OPTIONS,
@@ -345,6 +343,7 @@ import {
   updatePaperArchiveItemTags,
   updatePaperArchiveSetTags,
 } from '@/apis/mark/paper-archive'
+import FilePreviewDialog from '@/components/FilePreviewDialog.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -355,6 +354,7 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useFilePreview } from '@/composables/useFilePreview'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'

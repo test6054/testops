@@ -100,6 +100,7 @@ import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { getExamDetail } from '@/apis/mark/exam'
 import {
   getOrganizationById,
@@ -119,8 +120,8 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
+import { resolveMarkingOrganizationSessionsRoute } from '@/utils/marking-organization-navigation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import FormalSessionPanel from './components/FormalSessionPanel.vue'
 import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
@@ -129,10 +130,12 @@ import TrialSessionPanel from './components/TrialSessionPanel.vue'
 defineOptions({ name: 'AdminMarkingOrganizationSessions' })
 
 const route = useRoute()
-const userStore = useUserStore()
+const router = useRouter()
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const organizationId = computed(() => String(route.params.organizationId || ''))
+const routeExamId = computed(() => String(route.params.examId || ''))
+const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
 const organization = ref<MarkingOrganizationVO | null>(null)
 const examDetail = ref<ExamDetailVO | null>(null)
@@ -196,19 +199,40 @@ function resetSessionState(): void {
   allocationPolicies.value = []
 }
 
-async function loadOrganization(): Promise<void> {
+/**
+ * 会话页必须绑定到组织真实 examId，对齐后工作台阶段与会话操作才属于同一考试。
+ */
+async function alignWorkspaceRouteExamId(nextOrganization: MarkingOrganizationVO): Promise<boolean> {
+  if (!isExamWorkspaceRoute.value) {
+    return true
+  }
+  if (!nextOrganization.examId || routeExamId.value === nextOrganization.examId) {
+    return true
+  }
+  await router.replace(
+    resolveMarkingOrganizationSessionsRoute(nextOrganization.id, nextOrganization.examId),
+  )
+  return false
+}
+
+async function loadOrganization(): Promise<boolean> {
   if (!organizationId.value) {
     resetSessionState()
-    return
+    return false
   }
   try {
     const nextOrganization = await getOrganizationById({ organizationId: organizationId.value })
     validateMarkingOrganizationContract(nextOrganization)
+    if (!(await alignWorkspaceRouteExamId(nextOrganization))) {
+      return false
+    }
     organization.value = nextOrganization
     examDetail.value = await getExamDetail(nextOrganization.examId)
+    return true
   } catch (error) {
     resetSessionState()
     showUserError(error, '阅卷组织加载失败')
+    return false
   }
 }
 
@@ -263,7 +287,10 @@ async function reloadAll(): Promise<void> {
   }
   loading.value = true
   try {
-    await loadOrganization()
+    const loaded = await loadOrganization()
+    if (!loaded) {
+      return
+    }
     await loadMarkingPolicies()
     await Promise.all([loadTrialSessions(), loadFormalSessions()])
   } finally {
@@ -335,7 +362,7 @@ async function onLifecycleSuccess(): Promise<void> {
   await refreshSnapshot()
 }
 
-watch(organizationId, () => {
+watch(() => [organizationId.value, routeExamId.value] as const, () => {
   void reloadAll()
 }, { immediate: true })
 </script>
