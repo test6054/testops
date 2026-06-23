@@ -1,12 +1,5 @@
 <template>
-  <a-card :bordered="false" size="small">
-    <template #title>
-      <a-space>
-        <span>复核申请</span>
-        <UiTag tone="orange">待处理 {{ pendingCount }}</UiTag>
-      </a-space>
-    </template>
-
+  <section class="appeal-section">
     <UiFilterBar
       v-model="filterModel"
       :fields="filterFields"
@@ -14,8 +7,6 @@
       @search="handleSearch"
       @reset="handleFilterReset"
     />
-
-
 
     <UiDataTable
       class="student-detail-table__data-table"
@@ -123,7 +114,7 @@
         </a-form-item>
       </a-form>
     </a-modal>
-  </a-card>
+  </section>
 </template>
 
 <script lang="ts" setup>
@@ -161,7 +152,10 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'ReviewRequestsCard' })
 
 const props = defineProps<{ examId: string, reloadToken: number }>()
-const emit = defineEmits<{ (e: 'handled'): void }>()
+const emit = defineEmits<{
+  (e: 'handled'): void
+  (e: 'pending-change', count: number): void
+}>()
 
 const rows = ref<GradeReviewRequestItemResponse[]>([])
 const loading = ref(false)
@@ -173,7 +167,9 @@ const pagination = reactive({
   total: 0,
 })
 
-const filterForm = reactive<{ status?: GradeReviewRequestStatusCode }>({})
+const filterForm = reactive<{ status?: GradeReviewRequestStatusCode, keyword: string }>({
+  keyword: '',
+})
 
 const filterModel = computed<Record<string, unknown>>({
   get: () => filterForm as Record<string, unknown>,
@@ -183,6 +179,15 @@ const filterModel = computed<Record<string, unknown>>({
 })
 
 const filterFields: FilterField[] = [
+  {
+    key: 'keyword',
+    type: 'input',
+    placeholder: '按学号 / 姓名 / 申请原因搜索',
+    allowClear: true,
+    width: 260,
+    inputPrefixIcon: 'search',
+    triggerSearchOnChange: false,
+  },
   {
     key: 'status',
     type: 'select',
@@ -239,19 +244,23 @@ function openHandleModal(
 async function loadPendingCount(): Promise<void> {
   if (!props.examId) {
     pendingCount.value = 0
+    emit('pending-change', 0)
     return
   }
   const summary = await getReviewSummary(props.examId)
   pendingCount.value = summary.pendingRequestCount + summary.inReviewRequestCount
+  emit('pending-change', pendingCount.value)
 }
 
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
   try {
+    const keyword = filterForm.keyword.trim() || undefined
     const result = await listReviewRequests({
       examId: props.examId,
       requestStatus: filterForm.status,
+      keyword,
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
@@ -278,6 +287,7 @@ function handleSearch(): void {
 
 function handleFilterReset(): void {
   filterForm.status = undefined
+  filterForm.keyword = ''
   pagination.current = 1
   void reload()
 }

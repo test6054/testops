@@ -15,7 +15,7 @@ const SNAPSHOT_POLL_MAX_MS = 30000
  */
 export function useMarkWorkbenchSnapshot(examId: () => string) {
   const markStageStore = useMarkStageStore()
-  const { snapshot, loading, error, orderedStages, suggestedStageKey, prepAdvisoryReasons, selectedExamLabel }
+  const { snapshot, loading, error, orderedStages, suggestedStageKey, prepAdvisoryReasons, prepBlockingReasons, selectedExamLabel }
     = storeToRefs(markStageStore)
   const refreshing = ref(false)
   const pollIntervalMs = ref(SNAPSHOT_POLL_BASE_MS)
@@ -130,6 +130,7 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
     orderedStages,
     suggestedStageKey,
     prepAdvisoryReasons,
+    prepBlockingReasons,
     selectedExamLabel,
     refreshSnapshot,
     syncSnapshotPolling: polling.syncPolling,

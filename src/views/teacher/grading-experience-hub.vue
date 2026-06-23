@@ -767,7 +767,13 @@ watch(selectedExamId, (value) => {
   }
 }, { immediate: true })
 
+const skipNextActivatedReload = ref(true)
+
 onActivated(() => {
+  if (skipNextActivatedReload.value) {
+    skipNextActivatedReload.value = false
+    return
+  }
   void reloadActiveTab()
 })
 </script>

@@ -416,7 +416,6 @@ import type {
   ExamFileRefVO,
 } from '@/apis/mark/exam'
 import type {
-  ExamScannerDeviceQueryRequest,
   ExamScannerDeviceVO,
 } from '@/apis/mark/exam-mark-scanner'
 import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
@@ -436,7 +435,7 @@ import UnorderedListOutlined from '@ant-design/icons-vue/UnorderedListOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { listScannerDevices } from '@/apis/mark/exam-mark-scanner'
+import { pageScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import {
   createScanBatchByCondition,
@@ -724,11 +723,30 @@ function deviceOnlineLabel(device: ExamScannerDeviceVO): string {
   return '未上报'
 }
 
+const SCANNER_DEVICE_SELECT_PAGE_SIZE = 100
+
+async function loadActiveScannerDevicesForSelect(): Promise<ExamScannerDeviceVO[]> {
+  const items: ExamScannerDeviceVO[] = []
+  let pageNum = 1
+  while (true) {
+    const result = await pageScannerDevices({
+      pageNum,
+      pageSize: SCANNER_DEVICE_SELECT_PAGE_SIZE,
+      status: 'ACTIVE',
+    })
+    items.push(...readPageList(result, '扫描设备列表加载失败'))
+    if (items.length >= readPageTotal(result)) {
+      break
+    }
+    pageNum += 1
+  }
+  return items
+}
+
 async function loadDevices(): Promise<void> {
   devicesLoading.value = true
   try {
-    const query: ExamScannerDeviceQueryRequest = {}
-    devices.value = await listScannerDevices(query)
+    devices.value = await loadActiveScannerDevicesForSelect()
   } catch (error) {
     devices.value = []
     showUserError(error, '扫描设备列表加载失败')

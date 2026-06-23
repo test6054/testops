@@ -91,6 +91,7 @@ export const useMarkStageStore = defineStore('markStage', () => {
   })
 
   const prepAdvisoryReasons = computed(() => snapshot.value?.prepAdvisoryReasons ?? [])
+  const prepBlockingReasons = computed(() => snapshot.value?.prepBlockingReasons ?? [])
 
   const selectedExamLabel = computed(() => {
     const meta = selectedExamMeta.value
@@ -137,6 +138,7 @@ export const useMarkStageStore = defineStore('markStage', () => {
     orderedStages,
     suggestedStageKey,
     prepAdvisoryReasons,
+    prepBlockingReasons,
     selectedExamLabel,
     observeExam,
     applySnapshot,

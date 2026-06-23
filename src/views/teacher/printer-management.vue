@@ -4,7 +4,7 @@
       <template #title>扫描设备</template>
       <template #extra>
         <a-space>
-          <UiTag tone="blue">共 {{ devices.length }} 台设备</UiTag>
+          <UiTag tone="blue">共 {{ pagination.total }} 台设备</UiTag>
           <UiButton size="sm" @click="handleCreate">
             <template #icon><PlusOutlined /></template>
             新增设备
@@ -24,17 +24,19 @@
 
 
       <UiDataTable
-        pagination-mode="none"
+        v-model:current="pagination.current"
+        v-model:page-size="pagination.pageSize"
+        pagination-mode="server"
         class="student-detail-table__data-table"
         :columns="columns"
         :data-source="devices"
         :loading="loading"
-        :show-pagination="false"
         row-key="id"
         size="middle"
         flat
-        :total="devices.length"
+        :total="pagination.total"
         bordered
+        @page-change="handleUiPageChange"
       >
         <template #bodyCell="{ column, index }">
           <template v-if="column.key === 'status'">
@@ -51,12 +53,6 @@
             <span v-if="devices[index].agentVersion">{{ devices[index].agentVersion }}</span>
             <span v-else class="text-muted">未激活</span>
           </template>
-          <template v-else-if="column.key === 'pushTokenMasked'">
-            <span v-if="devices[index].pushTokenMasked" class="token-text">
-              {{ devices[index].pushTokenMasked }}
-            </span>
-            <span v-else class="text-muted">—</span>
-          </template>
           <template v-else-if="column.key === 'lastSeenAt'">
             <span v-if="devices[index].lastSeenAt">{{ devices[index].lastSeenAt }}</span>
             <span v-else class="text-muted">从未通讯</span>
@@ -65,7 +61,7 @@
             <div class="operations-cell">
               <UiTextAction @click="handleViewDetail(devices[index])">详情</UiTextAction>
               <UiTextAction @click="handleEdit(devices[index])">编辑</UiTextAction>
-              <UiTextAction @click="handleResetToken(devices[index])">重置设备接入密钥</UiTextAction>
+              <UiTextAction @click="handleRebindAgent(devices[index])">重新绑定一体机</UiTextAction>
               <UiTextAction @click="handleCreateActivationCode(devices[index])">激活码</UiTextAction>
               <UiTextAction
                 v-if="devices[index].endpointMachineCode"
@@ -133,7 +129,7 @@
             <a-form-item name="scannerIp" label="设备地址">
               <a-input
                 v-model:value="formData.scannerIp"
-                placeholder="可空，HTTP 推送时事件上报会刷新"
+                placeholder="可选，一体机 Agent 心跳会自动刷新"
               />
             </a-form-item>
           </a-col>
@@ -179,45 +175,6 @@
           </a-col>
         </a-row>
       </a-form>
-    </a-modal>
-
-    <!-- 设备接入密钥弹窗（创建 / 重置 / 详情共用） -->
-    <a-modal
-      v-model:open="showTokenModal"
-      title="HTTP 推送配置"
-      width="700px"
-      :footer="null"
-      destroy-on-close
-    >
-      <a-descriptions v-if="tokenInfo" bordered :column="1" size="small">
-        <a-descriptions-item label="设备记录编号">
-          <span>{{ tokenInfo?.id }}</span>
-        </a-descriptions-item>
-        <a-descriptions-item label="完整设备接入密钥">
-          <div class="token-row">
-            <span class="token-text">{{ tokenInfo?.pushToken }}</span>
-            <a-button size="small" @click="copyText(tokenInfo?.pushToken)">复制</a-button>
-          </div>
-        </a-descriptions-item>
-        <a-descriptions-item label="上报地址（当前站点）">
-          <div class="token-row">
-            <span class="token-text">{{ tokenInfo?.pushUrl }}</span>
-            <a-button size="small" @click="copyText(absolutePushUrl)">复制完整上报地址</a-button>
-          </div>
-        </a-descriptions-item>
-        <a-descriptions-item label="完整上报地址">
-          <span class="token-text">{{ absolutePushUrl }}</span>
-        </a-descriptions-item>
-        <a-descriptions-item label="设备接入授权">
-          <div class="token-row">
-            <span class="token-text">{{ tokenInfo?.authorizationHeader }}</span>
-            <a-button size="small" @click="copyText(tokenInfo?.authorizationHeader)">复制</a-button>
-          </div>
-        </a-descriptions-item>
-      </a-descriptions>
-      <p style="margin-top: 12px" class="text-muted">
-        在扫描仪或复合机后台填入上报地址和设备接入授权；考试、班级、扫描时间等内容按设备后台表单要求填写。
-      </p>
     </a-modal>
 
     <!-- 设备详情弹窗 -->
@@ -278,24 +235,6 @@
             scannerDeviceDiagnosticText(detailInfo.diagnosticMessage, detailInfo.diagnosticStatus)
           }}
         </a-descriptions-item>
-        <a-descriptions-item label="完整设备接入密钥" :span="2">
-          <div class="token-row">
-            <span class="token-text">{{ detailInfo.pushToken || '—' }}</span>
-            <a-button
-              v-if="detailInfo.pushToken"
-              size="small"
-              @click="copyText(detailInfo.pushToken)"
-            >
-              复制
-            </a-button>
-          </div>
-        </a-descriptions-item>
-        <a-descriptions-item label="上报地址" :span="2">
-          <span class="token-text">{{ buildAbsolutePushUrl(detailInfo.pushUrl) }}</span>
-        </a-descriptions-item>
-        <a-descriptions-item label="设备接入授权" :span="2">
-          <span class="token-text">{{ detailInfo.authorizationHeader || '—' }}</span>
-        </a-descriptions-item>
         <a-descriptions-item label="厂商">{{ detailInfo.manufacturer || '—' }}</a-descriptions-item>
         <a-descriptions-item label="型号">{{ detailInfo.model || '—' }}</a-descriptions-item>
         <a-descriptions-item label="物理位置" :span="2">
@@ -315,12 +254,15 @@
 
     <a-modal
       v-model:open="showActivationCodeModal"
-      title="扫描组件激活码"
+      title="一体机激活码"
       width="520px"
       :footer="null"
       destroy-on-close
     >
       <div v-if="activationCodeInfo" class="activation-code-modal">
+        <p class="activation-code-modal__hint">
+          请在一体机 Kiosk 页面输入激活码与端点名称完成绑定。激活码一次性有效，过期后需重新生成。
+        </p>
         <div class="activation-code-modal__device">
           {{ activationCodeDeviceName }}
         </div>
@@ -353,10 +295,10 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type {
   ExamScannerActivationCodeVO,
+  ExamScannerDeviceActivationHandoffVO,
   ExamScannerDeviceCreateRequest,
   ExamScannerDeviceDetailVO,
   ExamScannerDeviceQueryRequest,
-  ExamScannerDeviceTokenVO,
   ExamScannerDeviceUpdateRequest,
   ExamScannerDeviceVO,
   ScannerAgentDiagnosticStatusCode,
@@ -373,7 +315,8 @@ import {
   createScannerDevice,
   deleteScannerDevice,
   getScannerDeviceDetail,
-  listScannerDevices,
+  listScannerDeviceLocations,
+  pageScannerDevices,
   resetScannerDevicePushToken,
   SCANNER_DEVICE_STATUS_COLOR,
   SCANNER_DEVICE_STATUS_LABEL,
@@ -391,7 +334,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
-import { readArrayResponse } from '@/utils/page-result'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'PrinterManagement' })
@@ -400,7 +343,7 @@ const { refreshSnapshot } = useWorkspaceExamId()
 
 /** 扫描设备写操作后刷新列表，并同步工作台 SCAN 段快照与 OCR 配置页。 */
 async function syncAfterDeviceMutation(): Promise<void> {
-  await loadDevices()
+  await Promise.all([loadLocationOptions(), loadDevices()])
   await refreshSnapshot()
   mittBus.emit('scan-workbench:refresh')
 }
@@ -408,7 +351,13 @@ async function syncAfterDeviceMutation(): Promise<void> {
 // ─── 列表与筛选 ───────────────────────────────────────
 const loading = ref(false)
 const devices = ref<ExamScannerDeviceVO[]>([])
-const searchForm = reactive<ExamScannerDeviceQueryRequest>({})
+const searchForm = reactive<Pick<ExamScannerDeviceQueryRequest, 'status' | 'scannerDeviceIdKeyword' | 'location' | 'interfaceMode'>>({})
+const pagination = reactive({
+  current: 1,
+  pageSize: 20,
+  total: 0,
+})
+const locationOptions = ref<Array<{ label: string, value: string }>>([])
 
 function syncSearchForm(next: Record<string, unknown>): void {
   Object.assign(searchForm, next)
@@ -424,7 +373,7 @@ const statusOptions = [
   { value: 'DISABLED', label: SCANNER_DEVICE_STATUS_LABEL.DISABLED },
 ]
 
-const deviceFilterFields: FilterField[] = [
+const deviceFilterFields = computed<FilterField[]>(() => [
   {
     key: 'scannerDeviceIdKeyword',
     type: 'input',
@@ -434,6 +383,14 @@ const deviceFilterFields: FilterField[] = [
     triggerSearchOnChange: false,
   },
   {
+    key: 'location',
+    type: 'select',
+    placeholder: '物理位置',
+    allowClear: true,
+    width: 200,
+    options: locationOptions.value,
+  },
+  {
     key: 'status',
     type: 'select',
     placeholder: '设备状态',
@@ -441,7 +398,7 @@ const deviceFilterFields: FilterField[] = [
     width: 160,
     options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
   },
-]
+])
 
 const columns = [
   { title: '设备名称', dataIndex: 'deviceName', key: 'deviceName', width: 160 },
@@ -451,10 +408,9 @@ const columns = [
   { title: '状态', dataIndex: 'status', key: 'status', width: 90 },
   { title: '扫描组件', dataIndex: 'endpointOnlineStatus', key: 'endpointOnlineStatus', width: 100 },
   { title: '组件版本', dataIndex: 'agentVersion', key: 'agentVersion', width: 120 },
-  { title: '设备接入密钥', dataIndex: 'pushTokenMasked', key: 'pushTokenMasked', width: 130 },
   { title: '最近通讯', dataIndex: 'lastSeenAt', key: 'lastSeenAt', width: 170 },
   { title: '位置', dataIndex: 'location', key: 'location', width: 160, ellipsis: true },
-  { title: '操作', dataIndex: 'action', key: 'action', width: 340, fixed: 'right' as const },
+  { title: '操作', dataIndex: 'action', key: 'action', width: 320, fixed: 'right' as const },
 ]
 
 // helper 严格只接受后端枚举类型，零 as 断言。
@@ -481,14 +437,43 @@ function endpointOnlineStatusDisplayColorOf(device: ExamScannerDeviceVO): BadgeT
     : 'gray'
 }
 
+async function loadLocationOptions(): Promise<void> {
+  try {
+    const options = await listScannerDeviceLocations()
+    locationOptions.value = options.map((item) => ({
+      label: item.location,
+      value: item.location,
+    }))
+  } catch (error) {
+    locationOptions.value = []
+    showUserError(error, '扫描设备位置选项加载失败')
+  }
+}
+
 async function loadDevices(): Promise<void> {
   loading.value = true
   agentUnbindError.value = null
   deviceDeleteError.value = null
   try {
-    const result = await listScannerDevices(searchForm)
-    devices.value = readArrayResponse(result, '扫描设备列表加载失败')
+    const result = await pageScannerDevices({
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+      status: searchForm.status,
+      scannerDeviceIdKeyword: searchForm.scannerDeviceIdKeyword,
+      location: searchForm.location,
+      interfaceMode: searchForm.interfaceMode,
+    })
+    devices.value = readPageList(result, '扫描设备列表加载失败')
+    pagination.total = readPageTotal(result)
+    if (result.pageNum != null) {
+      pagination.current = result.pageNum
+    }
+    if (result.pageSize != null) {
+      pagination.pageSize = result.pageSize
+    }
   } catch (error) {
+    devices.value = []
+    pagination.total = 0
     showUserError(error, '扫描设备列表加载失败')
   } finally {
     loading.value = false
@@ -496,10 +481,18 @@ async function loadDevices(): Promise<void> {
 }
 
 function handleSearch(): void {
-  loadDevices()
+  pagination.current = 1
+  void loadDevices()
 }
 
 function handleResetSearch(): void {
+  pagination.current = 1
+  void loadDevices()
+}
+
+function handleUiPageChange(page: { current: number, pageSize: number }): void {
+  pagination.current = page.current
+  pagination.pageSize = page.pageSize
   void loadDevices()
 }
 
@@ -551,7 +544,6 @@ function resetForm(): void {
 function handleCreate(): void {
   formMode.value = 'create'
   formSubmitError.value = null
-  tokenInfo.value = null
   resetForm()
   showFormModal.value = true
 }
@@ -594,11 +586,13 @@ async function handleFormSubmit(): Promise<void> {
         kioskLockEnabled: formData.kioskLockEnabled,
         remark: emptyToUndefined(formData.remark),
       }
-      const createdToken = await createScannerDevice(request)
+      const handoff = await createScannerDevice(request)
       message.success('扫描设备创建成功')
       showFormModal.value = false
-      if (createdToken.pushToken) {
-        openTokenModal(createdToken)
+      if (handoff.activationCode) {
+        openActivationHandoff(handoff)
+      } else {
+        message.warning('设备未启用，未生成激活码；启用后可点击「激活码」重新生成')
       }
       await syncAfterDeviceMutation()
     } else {
@@ -632,23 +626,21 @@ function emptyToUndefined(value?: string): string | undefined {
   return trimmed === '' ? undefined : trimmed
 }
 
-// ─── 设备接入密钥弹窗 ───────────────────────────────────
-const showTokenModal = ref(false)
-const tokenInfo = ref<ExamScannerDeviceTokenVO | null>(null)
-const tokenActionError = ref<Error | null>(null)
-
-const absolutePushUrl = computed(() => buildAbsolutePushUrl(tokenInfo.value?.pushUrl))
-
-function buildAbsolutePushUrl(relativeUrl?: string): string {
-  if (!relativeUrl) return ''
-  if (typeof window === 'undefined') return relativeUrl
-  return window.location.origin + relativeUrl
-}
-
-function openTokenModal(info: ExamScannerDeviceTokenVO): void {
-  tokenInfo.value = info
-  tokenActionError.value = null
-  showTokenModal.value = true
+function openActivationHandoff(handoff: ExamScannerDeviceActivationHandoffVO): void {
+  if (!handoff.activationCode || !handoff.expireAt) {
+    return
+  }
+  activationCodeDeviceName.value = handoff.deviceName || handoff.scannerDeviceId
+  activationCodeInfo.value = {
+    id: handoff.id,
+    scannerDeviceId: handoff.scannerDeviceId,
+    scannerStationId: handoff.scannerStationId,
+    activationCode: handoff.activationCode,
+    status: 'UNUSED',
+    expireAt: handoff.expireAt,
+  }
+  activationCodeError.value = null
+  showActivationCodeModal.value = true
 }
 
 /** 将扫描设备本地诊断转为管理员可处置的维护提示，避免展示接口或驱动调试口径。 */
@@ -660,23 +652,19 @@ function scannerDeviceDiagnosticText(
   return getUserErrorMessage({ message }, fallback)
 }
 
-async function handleResetToken(record: ExamScannerDeviceVO): Promise<void> {
+async function handleRebindAgent(record: ExamScannerDeviceVO): Promise<void> {
   void confirmAsync({
-    title: '重置设备接入密钥',
-    content: `重置后旧设备接入密钥立即失效，扫描仪后台需要重新填入。是否继续？设备：${record.deviceName}`,
+    title: '重新绑定一体机',
+    content: `将重置服务端接入密钥并生成新激活码。原一体机需使用新激活码重新绑定。设备：${record.deviceName}`,
     type: 'warning',
     onOk: async () => {
       try {
-        tokenActionError.value = null
-        tokenInfo.value = null
-        showTokenModal.value = true
-        const result = await resetScannerDevicePushToken(record.id)
-        message.success('设备接入密钥已重置')
-        openTokenModal(result)
+        const handoff = await resetScannerDevicePushToken(record.id)
+        message.success('已生成新的绑定激活码')
+        openActivationHandoff(handoff)
         await syncAfterDeviceMutation()
       } catch (error) {
-        tokenActionError.value = toUserError(error, '扫描设备接入密钥重置失败')
-        showUserError(error, '扫描设备接入密钥重置失败')
+        showUserError(error, '一体机重新绑定准备失败')
       }
     },
   })
@@ -776,13 +764,17 @@ function handleDelete(record: ExamScannerDeviceVO): void {
   })
 }
 
+async function reloadDeviceWorkbench(): Promise<void> {
+  await Promise.all([loadLocationOptions(), loadDevices()])
+}
+
 onMounted(() => {
-  void loadDevices()
-  mittBus.on('scan-workbench:refresh', loadDevices)
+  void reloadDeviceWorkbench()
+  mittBus.on('scan-workbench:refresh', reloadDeviceWorkbench)
 })
 
 onBeforeUnmount(() => {
-  mittBus.off('scan-workbench:refresh', loadDevices)
+  mittBus.off('scan-workbench:refresh', reloadDeviceWorkbench)
 })
 </script>
 
@@ -840,6 +832,14 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: center;
   gap: 16px;
+
+  &__hint {
+    width: 100%;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: left;
+  }
 
   &__device {
     color: #334155;

@@ -6,35 +6,37 @@
       class="scan-monitor__empty"
     />
     <template v-else>
-      <div class="scan-monitor__embedded-toolbar">
-        <UiTag
-          :tone="connectionTone"
-          size="sm"
-          :class="{ 'scan-monitor__connection--pulse': connectionPulsing }"
-        >
-          {{ connectionLabel }}
-        </UiTag>
-        <UiTag :tone="abnormalAttentionTotal > 0 ? 'red' : 'green'" size="sm">
-          {{ abnormalAttentionTotal > 0 ? `${abnormalAttentionTotal} 条异常` : '无阻断异常' }}
-        </UiTag>
-        <UiTag :tone="duplicateAttentionTotal > 0 ? 'purple' : 'green'" size="sm">
-          {{ duplicateAttentionTotal > 0 ? `${duplicateAttentionTotal} 条重复` : '无重复影像' }}
-        </UiTag>
-        <UiButton
-          v-if="abnormalAttentionTotal > 0"
-          size="sm"
-          variant="primary"
-          @click="jumpToAbnormalTab"
-        >
-          查看异常
-        </UiButton>
-        <UiButton size="sm" :disabled="!selectedExamId" :loading="loading" @click="handleRefresh">
-          刷新
-        </UiButton>
-      </div>
+      <header class="scan-monitor__head">
+        <h2 class="scan-monitor__title">扫描监控中控台</h2>
+        <div class="scan-monitor__embedded-toolbar">
+          <UiTag
+            :tone="connectionTone"
+            size="sm"
+            :class="{ 'scan-monitor__connection--pulse': connectionPulsing }"
+          >
+            {{ connectionLabel }}
+          </UiTag>
+          <UiTag :tone="abnormalAttentionTotal > 0 ? 'red' : 'green'" size="sm">
+            {{ abnormalAttentionTotal > 0 ? `${abnormalAttentionTotal} 条异常` : '无阻断异常' }}
+          </UiTag>
+          <UiTag :tone="duplicateAttentionTotal > 0 ? 'purple' : 'green'" size="sm">
+            {{ duplicateAttentionTotal > 0 ? `${duplicateAttentionTotal} 条重复` : '无重复影像' }}
+          </UiTag>
+          <UiButton
+            v-if="abnormalAttentionTotal > 0"
+            size="sm"
+            variant="primary"
+            @click="jumpToAbnormalTab"
+          >
+            查看异常
+          </UiButton>
+          <UiButton size="sm" :disabled="!selectedExamId" :loading="loading" @click="handleRefresh">
+            刷新
+          </UiButton>
+        </div>
+      </header>
       <div class="scan-monitor__overview">
         <UiStatPanel
-          title="扫描监控中控台"
           :items="statPanelMetrics"
           :columns="4"
           variant="grid"
@@ -42,15 +44,17 @@
           class="scan-monitor__stats"
         />
         <UiCard :show-header="false" compact class="scan-monitor__health-card">
-          <MarkGaugeBlock
-            v-bind="healthGaugeBlockProps"
-          >
-            <ul class="mark-gauge-block__detail-list">
-              <li>实时事件 {{ liveEvents.length }} 条</li>
-              <li>异常阻断 {{ abnormalAttentionTotal }} 条</li>
-              <li>重复影像 {{ duplicateAttentionTotal }} 条</li>
-            </ul>
-          </MarkGaugeBlock>
+          <div class="scan-monitor__health-wrap">
+            <MarkGaugeBlock
+              v-bind="healthGaugeBlockProps"
+            >
+              <ul class="mark-gauge-block__detail-list">
+                <li>实时事件 {{ liveEvents.length }} 条</li>
+                <li>异常阻断 {{ abnormalAttentionTotal }} 条</li>
+                <li>重复影像 {{ duplicateAttentionTotal }} 条</li>
+              </ul>
+            </MarkGaugeBlock>
+          </div>
         </UiCard>
       </div>
 
@@ -813,6 +817,15 @@ const connectionLabel = computed(() => {
   return '未连接'
 })
 
+/** 指标卡短文案，与「0 条」类数值卡保持同一视觉节奏 */
+const connectionShortValue = computed(() => {
+  if (scanLiveConnectionPhase.value === 'failed') return '失败'
+  if (scanLiveConnectionPhase.value === 'ready') return '正常'
+  if (scanLiveConnectionPhase.value === 'reconnecting') return '重连'
+  if (scanLiveConnectionPhase.value === 'connecting') return '连接中'
+  return '离线'
+})
+
 /** SSE 已连接时顶栏状态标签 pulse，提示实时监控活跃 */
 const connectionPulsing = computed(
   () => scanLiveConnectionPhase.value === 'ready' && !!selectedExamId.value,
@@ -1319,7 +1332,8 @@ const statPanelMetrics = computed(() => [
   },
   {
     label: '连接状态',
-    value: connectionLabel.value,
+    value: connectionShortValue.value,
+    helper: connectionLabel.value,
     tone: connectionTone.value,
   },
 ])
@@ -1915,19 +1929,46 @@ onBeforeUnmount(() => {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-end;
     gap: 8px;
-    margin-bottom: 4px;
+  }
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--dp-text-primary, #0f172a);
   }
 
   &__overview {
-    display: grid;
-    grid-template-columns: 1fr 280px;
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
     gap: 16px;
-    align-items: start;
+    margin-bottom: 16px;
   }
 
   &__stats {
+    flex: 1 1 520px;
     min-width: 0;
+  }
+
+  &__stats :deep(.ui-stat-panel__list) {
+    align-items: stretch;
+  }
+
+  &__stats :deep(.ui-metric-card) {
+    height: 100%;
   }
 
   &__chart-card {
@@ -1935,7 +1976,26 @@ onBeforeUnmount(() => {
   }
 
   &__health-card {
+    flex: 0 0 260px;
     min-width: 0;
+    display: flex;
+    align-items: stretch;
+  }
+
+  &__health-card :deep(.dp-card__body) {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
+
+  &__health-wrap {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 0;
   }
 
   &__connection--pulse {
@@ -1966,7 +2026,12 @@ onBeforeUnmount(() => {
 
   @media (max-width: 900px) {
     &__overview {
-      grid-template-columns: 1fr;
+      flex-direction: column;
+    }
+
+    &__health-card {
+      flex: 1 1 auto;
+      width: 100%;
     }
   }
 

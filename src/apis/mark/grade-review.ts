@@ -258,6 +258,7 @@ export interface GradeReviewRequestListQueryRequest extends QueryDto {
   examId: string
   studentUserId?: string
   requestStatus?: GradeReviewRequestStatusCode
+  keyword?: string
 }
 
 /**
@@ -427,6 +428,7 @@ export function createCorrection(
 export interface GradeCorrectionListQueryRequest extends QueryDto {
   examId: string
   studentUserId?: string
+  keyword?: string
 }
 
 export function listCorrections(
@@ -541,6 +543,7 @@ export interface BatchCorrectionPlanExecuteRequest {
 export interface BatchCorrectionPlanListQueryRequest extends QueryDto {
   examId: string
   approvalStatus?: BatchCorrectionApprovalStatusCode
+  keyword?: string
 }
 
 /**

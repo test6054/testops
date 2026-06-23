@@ -7,11 +7,11 @@ import type {
   ExamDetailVO,
   ExamMaterialLayoutModeCode,
   ExamPrintSourceModeCode,
-  ExamStatusCode,
 } from '@/apis/mark/exam'
 import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
 import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import type { WorkbenchStageStatus } from '@/types/workbench'
+import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
@@ -26,8 +26,6 @@ import { useRouter } from 'vue-router'
 import {
   EXAM_MATERIAL_LAYOUT_MODE_LABEL,
   EXAM_PRINT_SOURCE_MODE_LABEL,
-  EXAM_STATUS_LABEL,
-  EXAM_STATUS_TONE,
   getExamDetail,
   saveMaterialLayout,
 } from '@/apis/mark/exam'
@@ -41,28 +39,10 @@ import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
+import { buildPrepStepCards } from '@/utils/exam-prep-step-ui'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamPrepWorkbench' })
-
-type PrepStepKey
-  = | 'materialLayout'
-    | 'candidateRoster'
-    | 'paperTemplate'
-    | 'answerSheet'
-    | 'paperMaster'
-    | 'printPackage'
-
-interface PrepStepCard {
-  key: PrepStepKey
-  title: string
-  description: string
-  status: WorkbenchStageStatus
-  statusText: string
-  routeName: string
-  primaryAction: string
-  advisoryReason?: string
-}
 
 const ICON_MAP: Record<string, Component> = {
   materialLayout: ContainerOutlined,
@@ -96,14 +76,6 @@ function resolveIcon(key: string): Component {
 
 function resolveTone(status: WorkbenchStageStatus): BadgeTone {
   return strictEnumTone(TONE_MAP, status, '考试准备阶段状态')
-}
-
-function examStatusTone(status: ExamStatusCode): BadgeTone {
-  return strictEnumTone(EXAM_STATUS_TONE, status, '考试状态')
-}
-
-function examStatusLabel(status: ExamStatusCode): string {
-  return strictEnumLabel(EXAM_STATUS_LABEL, status, '考试状态')
 }
 
 const router = useRouter()
@@ -186,137 +158,13 @@ async function handleSaveLayoutMode() {
   }
 }
 
-function buildQuestionStep(d: ExamDetailVO): PrepStepCard {
-  const hasQuestions = d.questionCount > 0
-  const answersComplete = hasQuestions && d.answerCount >= d.questionCount
-  const subjectivePending = (d.subjectiveQuestionCount ?? 0) > 0 && d.subjectiveRegionReady !== true
-  let status: WorkbenchStageStatus = 'pending'
-  let statusText = '未配置'
-  let description = '未预配题目时，身份绑定后将按扫描页推导页级题目，后续可继续补录题目与答案'
-  let primaryAction = '录入题目（可选）'
-  if (hasQuestions && answersComplete && !subjectivePending) {
-    status = 'completed'
-    statusText = `${d.questionCount} 题`
-    description = `已配置 ${d.questionCount} 道题、标准答案与主观题区域`
-    primaryAction = '查看 / 调整'
-  } else if (hasQuestions && answersComplete && subjectivePending) {
-    status = 'active'
-    statusText = `${d.subjectiveRegionConfiguredCount ?? 0}/${d.subjectiveQuestionCount ?? 0} 主观区`
-    description = '标准答案已齐，请补录主观题区域坐标'
-    primaryAction = '配置主观题区域'
-  } else if (hasQuestions) {
-    status = 'active'
-    statusText = `${d.answerCount}/${d.questionCount} 题`
-    description = `已录入 ${d.questionCount} 道题，标准答案 ${d.answerCount}/${d.questionCount}`
-    primaryAction = '补录标准答案'
-  }
-  return {
-    key: 'paperTemplate',
-    title: '试卷题目',
-    description,
-    status,
-    statusText,
-    routeName: 'TeacherExamWorkspacePaperTemplate',
-    primaryAction,
-  }
-}
-
 const prepSteps = computed<PrepStepCard[]>(() => {
   const d = detail.value
-  if (!d) {
+  const backendSteps = workbenchContext?.snapshot.value?.prepSteps
+  if (!d || !backendSteps?.length) {
     return []
   }
-  const steps: PrepStepCard[] = []
-  steps.push({
-    key: 'materialLayout',
-    title: '制卷形态',
-    description: d.materialLayoutMode
-      ? `${strictEnumLabel(EXAM_MATERIAL_LAYOUT_MODE_LABEL, d.materialLayoutMode, '制卷形态')}，${
-          d.printSourceMode
-            ? strictEnumLabel(EXAM_PRINT_SOURCE_MODE_LABEL, d.printSourceMode, '印刷来源')
-            : '无需系统印刷'
-        }`
-      : '先确定答卷页或整卷作答形态，后续扫描、身份识别与印刷包都按该形态执行',
-    status: d.materialLayoutMode ? 'completed' : 'warning',
-    statusText: d.materialLayoutMode ? '已选择' : '未选择',
-    routeName: 'TeacherExamWorkspacePrep',
-    primaryAction: d.materialLayoutMode ? '调整形态' : '选择形态',
-    advisoryReason: d.materialLayoutMode ? undefined : '制卷形态未选择：扫描识别链路无法确定版面处理方式',
-  })
-  const hasCandidates = d.candidateCount > 0
-  steps.push({
-    key: 'candidateRoster',
-    title: '考生名册',
-    description: hasCandidates
-      ? `已绑定 ${d.candidateCount} 名考生 / ${d.classIds.length} 个班级范围`
-      : '导入考生名册，缺失学生用户会在导入提交时创建为租户学生账号',
-    status: hasCandidates ? 'completed' : 'warning',
-    statusText: hasCandidates ? `${d.candidateCount} 人` : '未配置',
-    routeName: 'TeacherExamWorkspaceCandidateRoster',
-    primaryAction: hasCandidates ? '查看 / 调整' : '配置考生名册',
-    advisoryReason: hasCandidates
-      ? undefined
-      : '考生名册未配置：扫描后无法自动绑定到可登录学生账号，学生端无法承接考试结果',
-  })
-  if (!d.materialLayoutMode) {
-    return steps
-  }
-  steps.push(buildQuestionStep(d))
-  if (d.materialLayoutMode === 'ANSWER_SHEET') {
-    const ready = d.pageTemplateReady === true
-    steps.push({
-      key: 'answerSheet',
-      title: '答卷页模板',
-      description: ready
-        ? `已配置 ${d.totalPages ?? 0} 页扫描底图`
-        : '上传答卷页文件，供扫描对齐与坐标缩放',
-      status: ready ? 'completed' : 'warning',
-      statusText: ready ? '已配置' : '未配置',
-      routeName: 'TeacherExamWorkspaceAnswerSheet',
-      primaryAction: ready ? '查看 / 调整' : '配置答卷页',
-      advisoryReason: ready
-        ? undefined
-        : '答卷页模板未配置：扫描后坐标缩放、题目定位和批改落点将无法稳定识别',
-    })
-  } else {
-    const masterReady = d.masterConfigured === true && d.masterRegionReady === true
-    const pageSynced = d.pageTemplateReady === true
-    steps.push({
-      key: 'paperMaster',
-      title: '试卷母版',
-      description:
-        masterReady && pageSynced
-          ? `母版「${d.masterName ?? ''}」已就绪，${d.totalPages ?? 0} 页已同步`
-          : masterReady
-            ? '母版已上传，请确认身份区 / 客观填涂区并等待拆页同步'
-            : '上传整卷 PDF，配置身份区与客观题填涂区',
-      status: masterReady && pageSynced ? 'completed' : masterReady ? 'active' : 'warning',
-      statusText: masterReady && pageSynced ? '已就绪' : masterReady ? '待完善' : '未配置',
-      routeName: 'TeacherExamWorkspacePaperMaster',
-      primaryAction: masterReady ? '查看 / 调整' : '配置母版',
-      advisoryReason: masterReady
-        ? undefined
-        : '试卷母版未配置：身份区识别、客观题识别和异常件处置将缺少版面基准',
-    })
-    if (d.printSourceMode === 'SYSTEM_PRINT') {
-      const pkgReady = (d.printPackageCount ?? 0) > 0
-      steps.push({
-        key: 'printPackage',
-        title: '印刷包',
-        description: pkgReady
-          ? `已生成 ${d.printPackageCount} 个印刷包`
-          : '按考生名册生成个性化印刷 PDF',
-        status: pkgReady ? 'completed' : 'warning',
-        statusText: pkgReady ? '已生成' : '未生成',
-        routeName: 'TeacherExamWorkspacePrintPackage',
-        primaryAction: pkgReady ? '查看 / 调整' : '生成印刷包',
-        advisoryReason: pkgReady
-          ? undefined
-          : '印刷包未生成：系统制卷无法按考生名册生成印刷件，考前发卷准备不完整',
-      })
-    }
-  }
-  return steps
+  return buildPrepStepCards(backendSteps, d)
 })
 
 /** 准备步骤按钮：仅当前首个未完成步骤保留 primary，避免同屏多颗主按钮 */
@@ -326,29 +174,7 @@ function prepStepButtonVariant(step: PrepStepCard): 'primary' | 'outline' {
   return firstPending?.key === step.key ? 'primary' : 'outline'
 }
 
-const advisoryReasons = computed(() => {
-  return prepSteps.value.filter((s) => s.advisoryReason).map((s) => s.advisoryReason as string)
-})
-
-const blockingReasons = computed(() => {
-  const d = detail.value
-  if (!d) return []
-  const reasons: string[] = []
-  if (!d.materialLayoutMode) {
-    reasons.push('请先选择制卷形态')
-  }
-  if (d.candidateCount <= 0) {
-    reasons.push('请先导入考生名册')
-  }
-  if (
-    d.materialLayoutMode === 'FULL_PAPER'
-    && d.printSourceMode === 'SYSTEM_PRINT'
-    && (d.printPackageCount ?? 0) <= 0
-  ) {
-    reasons.push('系统印刷模式必须先生成印刷包')
-  }
-  return reasons
-})
+const blockingReasons = computed(() => detail.value?.prepBlockingReasons ?? [])
 
 const statMetrics = computed((): UiStatPanelItem[] => {
   const d = detail.value
@@ -420,12 +246,6 @@ watch(selectedExamId, (next) => {
 
   <template v-else>
     <a-spin :spinning="detailLoading">
-      <div v-if="detail?.status" class="exam-prep__status-row">
-        <UiTag :tone="examStatusTone(detail.status)" size="sm">
-          {{ examStatusLabel(detail.status) }}
-        </UiTag>
-      </div>
-
       <UiCard class="exam-prep__mode-card">
         <template #title>制卷形态</template>
         <a-form layout="inline">
@@ -535,7 +355,7 @@ watch(selectedExamId, (next) => {
               <span>关键准备项已完成</span>
             </template>
             <p class="exam-prep__next-step-desc">
-              制卷形态、可登录学生名册与必要印刷准备已就绪，可以开始扫描试卷或进入阅卷。
+              制卷形态与整卷印刷来源等扫描主链前置已就绪，可以开始扫描试卷或进入阅卷；名册、母版、印刷包等待完善项不阻断扫描登记。
             </p>
             <a-space>
               <UiButton variant="primary" @click="goNextStep('scan')">
@@ -558,9 +378,6 @@ watch(selectedExamId, (next) => {
 .exam-prep {
   &__empty {
     margin-top: 32px;
-  }
-  &__status-row {
-    margin-bottom: 12px;
   }
   &__mode-card {
     margin-bottom: 16px;

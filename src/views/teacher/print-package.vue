@@ -158,6 +158,7 @@ import { downloadFile } from '@/apis/edu/file-management'
 import {
   generatePrintPackage,
   getPrintPackage,
+  isPaperMasterNotConfiguredError,
   pagePrintPackages,
   PRINT_PACKAGE_STATUS_LABEL,
   PRINT_PACKAGE_STATUS_TONE,
@@ -277,7 +278,11 @@ async function handleGenerate() {
     await loadPackageList()
     await refreshSnapshot()
   } catch (error) {
-    showUserError(error, '印刷包生成失败，请确认已上传母版 PDF 且考生名册不为空')
+    if (error instanceof Error && isPaperMasterNotConfiguredError(error)) {
+      showUserError(error, '请先在试卷母版页上传并保存母版 PDF，再生成印刷包')
+      return
+    }
+    showUserError(error, '印刷包生成失败，请确认考生名册已配置且母版 PDF 已保存')
   } finally {
     generating.value = false
   }

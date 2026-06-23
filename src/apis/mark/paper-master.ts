@@ -156,13 +156,15 @@ export interface PaperMasterSaveRequest {
 
 /** 母版响应 */
 export interface PaperMasterVO {
-  masterId: string
-  examId: string
-  templateId: string
-  masterName: string
-  masterFileId: string
-  watermarkText: string
-  status: PaperMasterStatusCode
+  /** 是否已配置母版；false 时其余母版字段可能为空 */
+  configured: boolean
+  masterId?: string
+  examId?: string
+  templateId?: string
+  masterName?: string
+  masterFileId?: string
+  watermarkText?: string
+  status?: PaperMasterStatusCode
   identityAreas: PaperMasterIdentityAreaVO[]
   objectiveAreas: PaperMasterObjectiveAreaVO[]
 }
@@ -328,7 +330,7 @@ export function generateStandardAnswerSheet(request: StandardAnswerSheetGenerate
 }
 
 /**
- * 查询考试当前试卷线上母版
+ * 查询考试当前试卷线上母版；未配置时返回 configured=false，不抛业务异常。
  * POST /api/mark/exams/paper-master/detail
  */
 export function getPaperMaster(examId: string): Promise<PaperMasterVO> {
@@ -336,8 +338,16 @@ export function getPaperMaster(examId: string): Promise<PaperMasterVO> {
 }
 
 /**
+ * 撤销考试当前试卷线上母版，释放试卷模板编辑锁。
+ * POST /api/mark/exams/paper-master/revoke
+ */
+export function revokePaperMaster(examId: string): Promise<boolean> {
+  return http.post<boolean>('/api/mark/exams/paper-master/revoke', { examId })
+}
+
+/**
  * 判断后端是否返回“试卷母版尚未配置”业务态。
- * 只读取稳定 code，不依赖可变错误文案。
+ * 用于印刷包生成、选择题 OCR 等必须依赖母版的写操作，不用于 detail 查询。
  */
 export function isPaperMasterNotConfiguredError(error: MarkBusinessError): boolean {
   const code = error.code ?? error.response?.data.code

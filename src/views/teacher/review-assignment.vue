@@ -71,6 +71,7 @@ import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
+import { resolveMarkingOrganizationDetailRoute } from '@/utils/marking-organization-navigation'
 import { formatDateTime } from '@/utils/format'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -506,13 +507,13 @@ function formatGroupReviewers(group: QuestionMarkingGroupVO): string {
 }
 
 function goOrganizationDetailReadOnly(): void {
-  if (!organization.value) {
+  if (!organization.value || !selectedExamId.value) {
     return
   }
-  void router.push({
-    name: 'TeacherMarkingOrganizationDetail',
-    params: { organizationId: organization.value.id },
-  })
+  void router.push(resolveMarkingOrganizationDetailRoute(
+    organization.value.id,
+    selectedExamId.value,
+  ))
 }
 
 async function loadScanReadiness(): Promise<void> {
@@ -649,13 +650,13 @@ function buildRequest(examId: string, leaderUserId: string): ExamAllocationPlanR
 }
 
 function goOrganizationDetail(): void {
-  if (!result.value) {
+  if (!result.value || !selectedExamId.value) {
     return
   }
-  void router.push({
-    name: 'TeacherMarkingOrganizationDetail',
-    params: { organizationId: result.value.organizationId },
-  })
+  void router.push(resolveMarkingOrganizationDetailRoute(
+    result.value.organizationId,
+    selectedExamId.value,
+  ))
 }
 
 function goTaskPool(): void {

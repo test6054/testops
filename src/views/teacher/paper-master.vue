@@ -1,6 +1,7 @@
 <template>
   <div v-if="selectedExamId" class="paper-master-page__toolbar">
     <div class="paper-master-page__toolbar-status">
+      <UiTag v-if="!masterData" tone="gray" size="sm">未配置（考试流程可选）</UiTag>
       <UiTag
         v-if="masterData"
         :tone="masterData.status === 'ACTIVE' ? 'green' : 'gray'"
@@ -21,6 +22,24 @@
         <template #icon><SaveOutlined /></template>
         保存母版
       </UiButton>
+      <UiConfirmPopover
+        v-if="masterData && !layoutModeLocked"
+        title="撤销试卷母版？"
+        description="撤销后可重新编辑试卷题目；身份区与客观填涂区将一并清除。"
+        danger
+        @confirm="handleRevokeMaster"
+      >
+        <UiButton size="sm" variant="outline" :loading="revoking">撤销母版</UiButton>
+      </UiConfirmPopover>
+      <UiButton
+        v-else-if="masterData && layoutModeLocked"
+        size="sm"
+        variant="outline"
+        disabled
+        title="考试已生成印刷包或已开始扫描，无法撤销母版"
+      >
+        撤销母版
+      </UiButton>
     </a-space>
   </div>
 
@@ -33,6 +52,14 @@
 
 
   <a-spin v-else :spinning="loading">
+    <UiAlertStrip
+      v-if="!masterData"
+      tone="info"
+      title="母版为整卷识别增强项"
+      description="未配置母版也可扫描登记；配置后可启用身份区识别、客观题填涂识别与系统印刷包。"
+      dense
+      class="paper-master-page__advisory"
+    />
     <!-- PDF 预览/编辑区 -->
     <UiCard v-if="form.masterFileId" class="preview-card">
       <template #title>
@@ -76,10 +103,10 @@
         <span>母版基本信息</span>
       </template>
       <a-form layout="inline">
-        <a-form-item label="母版名称" required>
+        <a-form-item label="母版名称">
           <a-input
             v-model:value="form.masterName"
-            placeholder="例如：2026 春《工程制图》期末母版"
+            placeholder="例如：2026 春《工程制图》期末母版（保存时必填）"
             :maxlength="100"
             style="width: 360px"
           />
@@ -382,6 +409,7 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { ExamDetailVO } from '@/apis/mark/exam'
 import type { ExamQuestionTemplateVO } from '@/apis/mark/exam-template'
 import type {
   PaperMasterIdentityAreaRequest,
@@ -405,15 +433,16 @@ import { getExamTemplate } from '@/apis/mark/exam-template'
 import {
   generateStandardPaper,
   getPaperMaster,
-  isPaperMasterNotConfiguredError,
   PAPER_MASTER_IDENTITY_AREA_TYPE_LABEL,
-  savePaperMaster
+  revokePaperMaster,
+  savePaperMaster,
 } from '@/apis/mark/paper-master'
 import PdfAnnotationEditor from '@/components/mark/PdfAnnotationEditor.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiConfirmPopover from '@/components/ui-guide/ui/UiConfirmPopover.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
@@ -432,10 +461,13 @@ const { refreshSnapshot } = useWorkspaceExamId()
 
 const loading = ref(false)
 const saving = ref(false)
+const revoking = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
 const uploading = ref(false)
 const uploadedFileName = ref('')
 const masterData = ref<PaperMasterVO | null>(null)
+const examDetail = ref<ExamDetailVO | null>(null)
+const layoutModeLocked = computed(() => examDetail.value?.layoutModeLocked === true)
 const pageTemplateReady = ref(false)
 const examTotalPages = ref<number | undefined>()
 
@@ -693,10 +725,16 @@ async function loadMasterData() {
   loading.value = true
   try {
     const detail = await getExamDetail(selectedExamId.value)
+    examDetail.value = detail
     pageTemplateReady.value = detail.pageTemplateReady === true
     examTotalPages.value = detail.totalPages
     await loadQuestions()
     const res = await getPaperMaster(selectedExamId.value)
+    if (!res.configured) {
+      masterData.value = null
+      clearForm()
+      return
+    }
     masterData.value = res
     if (res) {
       form.masterName = res.masterName ?? ''
@@ -747,9 +785,7 @@ async function loadMasterData() {
     }
   } catch (error) {
     masterData.value = null
-    if (!(error instanceof Error && isPaperMasterNotConfiguredError(error))) {
     showUserError(error, '试卷主数据加载失败')
-    }
   } finally {
     loading.value = false
   }
@@ -941,6 +977,22 @@ async function handleSave() {
   }
 }
 
+async function handleRevokeMaster(): Promise<void> {
+  if (!selectedExamId.value) return
+  revoking.value = true
+  try {
+    await revokePaperMaster(selectedExamId.value)
+    message.success('试卷母版已撤销，可返回题目页继续编辑')
+    clearForm()
+    await loadMasterData()
+    await refreshSnapshot()
+  } catch (error) {
+    showUserError(error, '撤销试卷母版失败')
+  } finally {
+    revoking.value = false
+  }
+}
+
 // ─── PDF 预览 ────────────────────────────────────────────────────────
 
 const pdfPreviewUrl = ref<string | null>(null)
@@ -1015,6 +1067,10 @@ watch(
 
   &__empty {
     margin-top: 80px;
+  }
+
+  &__advisory {
+    margin-bottom: 16px;
   }
 
   .empty-block {

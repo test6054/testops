@@ -71,6 +71,8 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherExamWorkspaceScanDevices: () => import('@/views/teacher/printer-management.vue'),
   TeacherExamWorkspaceScanOcr: () => import('@/views/teacher/ocr-settings.vue'),
   TeacherExamWorkspaceMarkingOrg: () => import('@/views/admin/marking-organization/index.vue'),
+  TeacherExamWorkspaceMarkingOrgDetail: () => import('@/views/admin/marking-organization/detail.vue'),
+  TeacherExamWorkspaceMarkingOrgSessions: () => import('@/views/admin/marking-organization/sessions.vue'),
   TeacherExamWorkspaceReviewAssignment: () => import('@/views/teacher/review-assignment.vue'),
   TeacherExamWorkspaceTrialTaskPool: () => import('@/views/teacher/marking-task-pool.vue'),
   TeacherExamWorkspaceTrialProgress: () => import('@/views/teacher/review-progress.vue'),
@@ -229,6 +231,19 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
     'TeacherExamWorkspaceCandidateRoster',
   ],
   TeacherExamWorkspaceMarkingTaskDetail: ['TeacherExamWorkspaceMarkingTaskPool'],
+  TeacherExamWorkspaceMarkingOrg: [
+    'TeacherExamWorkspaceMarkingOrgDetail',
+    'TeacherExamWorkspaceMarkingOrgSessions',
+    'TeacherExamWorkspaceReviewAssignment',
+  ],
+  TeacherExamWorkspaceMarkingOrgDetail: [
+    'TeacherExamWorkspaceMarkingOrgSessions',
+    'TeacherExamWorkspaceMarkingOrg',
+  ],
+  TeacherExamWorkspaceMarkingOrgSessions: [
+    'TeacherExamWorkspaceMarkingOrgDetail',
+    'TeacherExamWorkspaceMarkingOrg',
+  ],
   TeacherExamWorkspaceReviewWorkspace: ['TeacherExamWorkspaceMarkingReview', 'TeacherExamWorkspaceReviewTaskDetail'],
   TeacherExamWorkspaceArchivePackage: ['TeacherArchiveDetail', 'TeacherPaperArchiveList'],
   TeacherPaperArchiveList: ['TeacherPaperArchiveDetail', 'TeacherExamWorkspaceArchivePackage'],

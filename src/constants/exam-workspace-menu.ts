@@ -124,6 +124,8 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
 
 /** 详情子路由高亮回退到所属菜单项 */
 export const EXAM_WORKSPACE_MENU_ROUTE_FALLBACK: Record<string, string> = {
+  TeacherExamWorkspaceMarkingOrgDetail: 'marking-org',
+  TeacherExamWorkspaceMarkingOrgSessions: 'marking-org',
   TeacherExamWorkspaceMarkingTaskDetail: 'marking-pool',
   TeacherExamWorkspaceReviewWorkspace: 'marking-review',
   TeacherExamWorkspaceReviewTaskDetail: 'marking-review',

@@ -68,72 +68,72 @@
       <section v-if="organization" class="org-detail__panel">
         <a-tabs v-model:active-key="activeTab" class="detail-tabs">
           <a-tab-pane key="info" tab="基本信息 + 题组">
-            <a-descriptions
-              :column="{ xs: 1, sm: 2, lg: 3 }"
-              size="middle"
-              bordered
-              class="info-descriptions"
-            >
-              <a-descriptions-item label="当前考试">
-                {{ organizationExamLabel }}
-              </a-descriptions-item>
-              <a-descriptions-item label="阅卷组长">
-                {{ organization.leaderUserName }}（{{ organization.leaderTeacherNo }}）
-              </a-descriptions-item>
-              <a-descriptions-item label="组织状态">
-                <UiTag
-                  :tone="
-                    strictEnumTone(
-                      MARKING_ORGANIZATION_STATUS_TONE,
-                      organization.organizationStatus,
-                      '阅卷组织状态',
-                    )
-                  "
-                  size="sm"
-                >
-                  {{
-                    strictEnumLabel(
-                      MARKING_ORGANIZATION_STATUS_LABEL,
-                      organization.organizationStatus,
-                      '阅卷组织状态',
-                    )
-                  }}
-                </UiTag>
-              </a-descriptions-item>
-              <a-descriptions-item label="匿名阅卷">
-                <UiTag :tone="organization.anonymousMode ? 'green' : 'gray'" size="sm">
-                  {{ organization.anonymousMode ? '启用' : '关闭' }}
-                </UiTag>
-              </a-descriptions-item>
-              <a-descriptions-item label="题组数量">
-                {{ organization.groups.length }} 组
-              </a-descriptions-item>
-              <a-descriptions-item label="备注" :span="3">
-                {{ organization.remark || '未填写组织备注' }}
-              </a-descriptions-item>
-            </a-descriptions>
+            <section class="org-detail__info">
+              <h4 class="org-detail__info-title">基本信息</h4>
+              <UiInfoGrid :columns="3">
+                <UiInfoGridItem label="当前考试">
+                  {{ organizationExamLabel }}
+                </UiInfoGridItem>
+                <UiInfoGridItem label="阅卷组长">
+                  {{ organization.leaderUserName }}（{{ organization.leaderTeacherNo }}）
+                </UiInfoGridItem>
+                <UiInfoGridItem label="题组数量">
+                  {{ organization.groups.length }} 组
+                </UiInfoGridItem>
+                <UiInfoGridItem label="匿名阅卷">
+                  <UiTag :tone="organization.anonymousMode ? 'green' : 'gray'" size="sm">
+                    {{ organization.anonymousMode ? '启用' : '关闭' }}
+                  </UiTag>
+                </UiInfoGridItem>
+                <UiInfoGridItem label="创建时间">
+                  {{ formatDateTime(organization.createTime) }}
+                </UiInfoGridItem>
+                <UiInfoGridItem label="更新时间">
+                  {{ formatDateTime(organization.updateTime) }}
+                </UiInfoGridItem>
+              </UiInfoGrid>
+              <div class="org-detail__remark">
+                <span class="org-detail__remark-label">备注</span>
+                <span class="org-detail__remark-value">
+                  {{ organization.remark || '未填写组织备注' }}
+                </span>
+              </div>
+            </section>
 
-            <div class="section-header">
-              <h3>题组列表</h3>
-              <UiButton v-if="canManageOrganization" size="sm" @click="openGroupModal">
-                <template #icon><PlusOutlined /></template>
-                新建题组
-              </UiButton>
-            </div>
-
-            <UiEmpty v-if="!groups.length" description="暂无数据" />
             <UiDataTable
+              title="题组列表"
               pagination-mode="none"
-              v-else
               :columns="groupColumns"
-              :data-source="groups"
+              :data-source="filteredGroups"
               row-key="id"
               size="middle"
               :show-pagination="false"
               flat
-              :total="groups.length"
-              class="group-table student-detail-table__data-table"
+              :total="filteredGroups.length"
+              :sorted-info="groupTableSortedInfo"
+              :empty-description="groupTableEmptyDescription"
+              class="group-table student-detail-table__data-table org-detail__group-table"
             >
+              <template #toolbar-left>
+                <UiSearchBox
+                  v-model="groupSearchKeyword"
+                  class="org-detail__group-search"
+                  placeholder="搜索题组名称、组长、阅卷教师、题号"
+                  size="small"
+                />
+              </template>
+              <template v-if="canManageOrganization" #toolbar-right>
+                <UiButton size="sm" @click="openGroupModal">
+                  <template #icon><PlusOutlined /></template>
+                  新建题组
+                </UiButton>
+              </template>
+              <template v-if="canManageOrganization" #empty-action>
+                <UiButton size="sm" @click="openGroupModal">
+                  <template #icon><PlusOutlined /></template>
+                  新建题组
+                </UiButton>
+              </template>
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'groupName'">
                   <a-typography-text strong>
@@ -560,6 +560,9 @@ import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import { ALLOCATION_UNIT_LABEL, ANONYMITY_MODE_LABEL, ANONYMOUS_TOKEN_POLICY_LABEL, closeQuestionGroup, deleteOrganization, deleteQuestionGroup, getOrganizationById, isMarkingOrgNotCreatedError, listMarkingPolicies, MARKING_ALLOCATION_MODE_LABEL, MARKING_ORGANIZATION_STATUS_LABEL, MARKING_ORGANIZATION_STATUS_TONE, MARKING_REASSIGN_MODE_LABEL, QUESTION_GROUP_STATUS_LABEL, QUESTION_GROUP_STATUS_TONE, saveAllocationPolicy, saveQuestionGroup, saveRecyclePolicy, updateOrganization, updateOrganizationStatus, validateMarkingOrganizationContract, validateMarkingPolicyListContract } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInfoGrid from '@/components/ui-guide/ui/InfoGrid.vue'
+import UiInfoGridItem from '@/components/ui-guide/ui/InfoGridItem.vue'
+import UiSearchBox from '@/components/ui-guide/ui/SearchBox.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
@@ -568,6 +571,10 @@ import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import {
+  resolveMarkingOrganizationIndexRoute,
+  resolveMarkingOrganizationSessionsRoute,
+} from '@/utils/marking-organization-navigation'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import RecycledTaskReassignPanel from '@/views/admin/marking-organization/components/RecycledTaskReassignPanel.vue'
@@ -582,15 +589,88 @@ const userStore = useUserStore()
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const organizationId = computed(() => String(route.params.organizationId || ''))
+const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
 const organization = ref<MarkingOrganizationVO | null>(null)
 const examDetail = ref<ExamDetailVO | null>(null)
 const examId = computed(() => String(organization.value?.examId || ''))
+const workspaceExamId = computed(() => {
+  if (isExamWorkspaceRoute.value && route.params.examId) {
+    return String(route.params.examId)
+  }
+  return examId.value
+})
 const loading = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
 const activeTab = ref<'info' | 'policy' | 'recycled' | 'status'>('info')
 
 const groups = computed<QuestionMarkingGroupVO[]>(() => organization.value?.groups ?? [])
+const groupSearchKeyword = ref('')
+const normalizedGroupSearchKeyword = computed(() => groupSearchKeyword.value.trim().toLowerCase())
+
+/** 题组列表前端筛选：匹配名称、组长、阅卷教师、题号与题型 */
+function matchesGroupSearch(group: QuestionMarkingGroupVO, keyword: string): boolean {
+  if (group.groupName?.toLowerCase().includes(keyword)) {
+    return true
+  }
+  if (group.leaderUserName?.toLowerCase().includes(keyword)) {
+    return true
+  }
+  if (group.leaderTeacherNo?.toLowerCase().includes(keyword)) {
+    return true
+  }
+  if (
+    strictEnumLabel(QUESTION_GROUP_STATUS_LABEL, group.groupStatus, '题组状态')
+      .toLowerCase()
+      .includes(keyword)
+  ) {
+    return true
+  }
+  if (
+    group.reviewers.some(
+      (reviewer) =>
+        reviewer.reviewerUserName?.toLowerCase().includes(keyword)
+        || reviewer.reviewerTeacherNo?.toLowerCase().includes(keyword),
+    )
+  ) {
+    return true
+  }
+  if (
+    group.questions.some(
+      (question) =>
+        String(question.questionNo).includes(keyword)
+        || question.questionTypeMessage?.toLowerCase().includes(keyword),
+    )
+  ) {
+    return true
+  }
+  return false
+}
+
+const filteredGroups = computed(() => {
+  const keyword = normalizedGroupSearchKeyword.value
+  if (!keyword) {
+    return groups.value
+  }
+  return groups.value.filter((group) => matchesGroupSearch(group, keyword))
+})
+
+const groupTableSortedInfo = computed(() => {
+  if (!normalizedGroupSearchKeyword.value || groups.value.length === 0) {
+    return ''
+  }
+  return `已筛选 ${filteredGroups.value.length} / ${groups.value.length} 个题组`
+})
+
+const groupTableEmptyDescription = computed(() => {
+  if (groups.value.length === 0) {
+    return '暂无题组，创建后可配置题目范围与阅卷教师'
+  }
+  if (normalizedGroupSearchKeyword.value) {
+    return '未找到匹配题组，请调整搜索关键词'
+  }
+  return '暂无题组，创建后可配置题目范围与阅卷教师'
+})
 const organizationExamLabel = computed(() => {
   if (!organization.value) return '请重新进入阅卷组织详情'
   return organization.value.examNo
@@ -660,6 +740,7 @@ async function loadOrganization(): Promise<void> {
   if (!organizationId.value) {
     organization.value = null
     examDetail.value = null
+    groupSearchKeyword.value = ''
     resetPolicyState()
     return
   }
@@ -955,7 +1036,7 @@ async function submitDelete(): Promise<void> {
     await deleteOrganization({ organizationId: organization.value.id })
     await refreshSnapshot()
     message.success('阅卷组织已删除')
-    await router.push({ name: 'TeacherMarkingOrganizationIndex' })
+    await router.push(resolveMarkingOrganizationIndexRoute(workspaceExamId.value || undefined))
   } catch (error) {
     showUserError(error, '阅卷组织删除失败')
   } finally {
@@ -1198,10 +1279,10 @@ async function submitStatusUpdate(): Promise<void> {
 }
 
 function goSessions(): void {
-  void router.push({
-    name: 'TeacherMarkingOrganizationSessions',
-    params: { organizationId: organizationId.value },
-  })
+  void router.push(resolveMarkingOrganizationSessionsRoute(
+    organizationId.value,
+    workspaceExamId.value || undefined,
+  ))
 }
 
 // 严格 typed helper：题组 groupStatus 是后端合同必返枚举。
@@ -1244,23 +1325,66 @@ watch(organizationId, () => {
   }
 }
 
-.info-descriptions {
-  :deep(.ant-descriptions-item-label) {
-    width: 140px;
-    color: var(--dp-text-secondary, #475569);
-  }
+.org-detail__info {
+  margin-bottom: 16px;
 }
 
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 16px 0 12px;
+.org-detail__info-title {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--dp-text-primary, #0f172a);
+}
 
-  h3 {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 500;
+.org-detail__remark {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--dp-border, #e5e7eb);
+  border-radius: var(--dp-radius-lg, 8px);
+  background: var(--dp-surface, #fff);
+}
+
+.org-detail__remark-label {
+  flex-shrink: 0;
+  min-width: 70px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dp-text-secondary, #475569);
+}
+
+.org-detail__remark-value {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--dp-text-primary, #0f172a);
+  word-break: break-word;
+}
+
+.org-detail__group-table {
+  margin-top: 16px;
+}
+
+.org-detail__group-search {
+  width: min(320px, 100%);
+}
+
+.group-table {
+  &__stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__item {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--dp-text-secondary, #475569);
+  }
+
+  &__more {
+    font-size: 12px;
+    color: var(--dp-text-muted, #64748b);
   }
 }
 

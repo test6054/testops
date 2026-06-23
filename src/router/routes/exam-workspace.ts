@@ -155,6 +155,22 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'marking-org',
       keepAlive: true,
     }),
+    workspaceChild('marking-org/:organizationId', 'TeacherExamWorkspaceMarkingOrgDetail', () => import('@/views/admin/marking-organization/detail.vue'), {
+      title: '组织详情',
+      markStageKey: 'MARKING_ORG',
+      journeyKey: 'assign',
+      workspacePhase: 'marking-org',
+      keepAlive: false,
+      noCache: true,
+    }),
+    workspaceChild('marking-org/:organizationId/sessions', 'TeacherExamWorkspaceMarkingOrgSessions', () => import('@/views/admin/marking-organization/sessions.vue'), {
+      title: '试评 / 正评',
+      markStageKey: 'MARKING_ORG',
+      journeyKey: 'assign',
+      workspacePhase: 'marking-org',
+      keepAlive: false,
+      noCache: true,
+    }),
     workspaceChild('trial/task-pool', 'TeacherExamWorkspaceTrialTaskPool', () => import('@/views/teacher/marking-task-pool.vue'), {
       title: '试评任务池',
       markStageKey: 'TRIAL_MARKING',

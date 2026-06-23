@@ -1,10 +1,10 @@
 <template>
-  <a-card title="批量更正计划" :bordered="false" size="small">
-    <template #extra>
+  <section class="appeal-section">
+    <div class="appeal-section__header">
       <a-button type="primary" @click="openCreateModal">
         <template #icon><PlusOutlined /></template>新建计划
       </a-button>
-    </template>
+    </div>
 
     <UiFilterBar
       v-model="filterModel"
@@ -13,8 +13,6 @@
       @search="handleSearch"
       @reset="handleFilterReset"
     />
-
-
 
     <UiDataTable
       class="student-detail-table__data-table"
@@ -228,7 +226,7 @@
         placeholder="请输入执行说明（不少于 5 字，将写入审计记录）"
       />
     </a-modal>
-  </a-card>
+  </section>
 </template>
 
 <script lang="ts" setup>
@@ -290,7 +288,9 @@ const pagination = reactive({
   total: 0,
 })
 
-const filterForm = reactive<{ status?: BatchCorrectionApprovalStatusCode }>({})
+const filterForm = reactive<{ status?: BatchCorrectionApprovalStatusCode, keyword: string }>({
+  keyword: '',
+})
 
 const filterModel = computed<Record<string, unknown>>({
   get: () => filterForm as Record<string, unknown>,
@@ -300,6 +300,15 @@ const filterModel = computed<Record<string, unknown>>({
 })
 
 const filterFields: FilterField[] = [
+  {
+    key: 'keyword',
+    type: 'input',
+    placeholder: '按计划名称 / 更正原因搜索',
+    allowClear: true,
+    width: 260,
+    inputPrefixIcon: 'search',
+    triggerSearchOnChange: false,
+  },
   {
     key: 'status',
     type: 'select',
@@ -398,9 +407,11 @@ async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
   try {
+    const keyword = filterForm.keyword.trim() || undefined
     const result = await listBatchCorrectionPlans({
       examId: props.examId,
       approvalStatus: filterForm.status,
+      keyword,
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
@@ -426,6 +437,7 @@ function handleSearch(): void {
 
 function handleFilterReset(): void {
   filterForm.status = undefined
+  filterForm.keyword = ''
   pagination.current = 1
   void reload()
 }

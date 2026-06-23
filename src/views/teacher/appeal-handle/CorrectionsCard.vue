@@ -1,17 +1,18 @@
 <template>
-  <a-card title="成绩更正记录" :bordered="false" size="small">
-    <template #extra>
-      <a-space>
-        <a-button type="primary" @click="openCreateModal">
-          <template #icon><PlusOutlined /></template>新建更正
-        </a-button>
-        <a-button :loading="loading" @click="reload">
-          <template #icon><ReloadOutlined /></template>刷新
-        </a-button>
-      </a-space>
-    </template>
+  <section class="appeal-section">
+    <div class="appeal-section__header">
+      <a-button type="primary" @click="openCreateModal">
+        <template #icon><PlusOutlined /></template>新建更正
+      </a-button>
+    </div>
 
-
+    <UiFilterBar
+      v-model="filterModel"
+      :fields="filterFields"
+      search-text="查询"
+      @search="handleSearch"
+      @reset="handleFilterReset"
+    />
 
     <UiDataTable
       v-model:current="pagination.current"
@@ -113,7 +114,7 @@
         </a-form-item>
       </a-form>
     </a-modal>
-  </a-card>
+  </section>
 </template>
 
 <script lang="ts" setup>
@@ -123,9 +124,8 @@ import type {
   GradeCorrectionTypeCode,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import {
@@ -136,6 +136,7 @@ import {
   listCorrections,
   listReviewRequests,
 } from '@/apis/mark/grade-review'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { assertUserFacing } from '@/utils/contract-guard'
@@ -160,6 +161,27 @@ const pagination = reactive({
   pageSize: 20,
   total: 0,
 })
+
+const filterForm = reactive<{ keyword: string }>({ keyword: '' })
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
+})
+
+const filterFields: FilterField[] = [
+  {
+    key: 'keyword',
+    type: 'input',
+    placeholder: '按学号 / 姓名 / 更正原因搜索',
+    allowClear: true,
+    width: 260,
+    inputPrefixIcon: 'search',
+    triggerSearchOnChange: false,
+  },
+]
 
 const columns: ColumnType<ExamGradeCorrectionRecordVO>[] = [
   { title: '学生', key: 'student', width: 150 },
@@ -226,8 +248,10 @@ async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
   try {
+    const keyword = filterForm.keyword.trim() || undefined
     const result = await listCorrections({
       examId: props.examId,
+      keyword,
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
@@ -248,6 +272,17 @@ async function reload(): Promise<void> {
   } finally {
     loading.value = false
   }
+}
+
+function handleSearch(): void {
+  pagination.current = 1
+  void reload()
+}
+
+function handleFilterReset(): void {
+  filterForm.keyword = ''
+  pagination.current = 1
+  void reload()
 }
 
 function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
