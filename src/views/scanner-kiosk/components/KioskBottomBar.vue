@@ -22,6 +22,18 @@ const counterUploaded = computed(() => {
 })
 const counterException = computed(() => String(workflow.exceptionPages.value.length || 0))
 
+const counterExpected = computed(() => {
+  const expected = workflow.kioskContext.value?.taskContract?.expectedSheetCount
+  return expected != null ? String(expected) : '—'
+})
+
+const counterProgressLabel = computed(() => {
+  const scanned = workflow.currentJob.value?.scannedPages
+  const expected = workflow.kioskContext.value?.taskContract?.expectedSheetCount
+  if (scanned == null || expected == null || expected <= 0) return ''
+  return `${scanned} / ${expected} 张`
+})
+
 const cantPause = computed(() => Boolean(mutex.reasonOf('pauseJob')))
 const cantResume = computed(() => Boolean(mutex.reasonOf('resumeJob')))
 const cantEnd = computed(() => Boolean(mutex.reasonOf('endBatch')))
@@ -93,7 +105,9 @@ const showResumeInsteadOfPause = computed(() => workflow.currentJob.value?.statu
       </button>
     </div>
     <div class="bottom-counters">
+      <span v-if="counterProgressLabel" class="progress-label">{{ counterProgressLabel }}</span>
       <span>已扫 <b>{{ counterScanned }}</b></span>
+      <span>应扫 <b>{{ counterExpected }}</b></span>
       <span>已上传 <b>{{ counterUploaded }}</b></span>
       <span class="warn">异常 <b>{{ counterException }}</b></span>
     </div>
@@ -166,6 +180,13 @@ const showResumeInsteadOfPause = computed(() => workflow.currentJob.value?.statu
   margin-left: var(--kiosk-space-1);
   color: var(--kiosk-ink-primary);
   font-weight: var(--kiosk-fw-bold);
+}
+.bottom-counters .progress-label {
+  padding-right: var(--kiosk-space-3);
+  margin-right: var(--kiosk-space-1);
+  border-right: 1px solid var(--kiosk-divider);
+  font-weight: var(--kiosk-fw-semibold);
+  color: var(--kiosk-primary);
 }
 .bottom-counters .warn b {
   color: var(--kiosk-warning);
