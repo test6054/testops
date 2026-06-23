@@ -1043,6 +1043,9 @@ export function useKioskWorkflow() {
     if (!activationCode) {
       return { ok: false, errorMessage: '激活码不能为空' }
     }
+    if (!/^\d{8}$/.test(activationCode)) {
+      return { ok: false, errorMessage: '激活码必须为8位数字' }
+    }
     if (!endpointName) {
       return { ok: false, errorMessage: '端点名称不能为空' }
     }

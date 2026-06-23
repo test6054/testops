@@ -261,7 +261,7 @@
     >
       <div v-if="activationCodeInfo" class="activation-code-modal">
         <p class="activation-code-modal__hint">
-          请在一体机 Kiosk 页面输入激活码与端点名称完成绑定。激活码一次性有效，过期后需重新生成。
+          请在一体机 Kiosk 页面输入 8 位数字激活码与端点名称完成绑定。激活码一次性有效，过期后需重新生成。
         </p>
         <div class="activation-code-modal__device">
           {{ activationCodeDeviceName }}
