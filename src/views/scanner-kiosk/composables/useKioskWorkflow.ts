@@ -128,7 +128,8 @@ const LOCAL_SCAN_JOB_STATUS_LABEL: Record<LocalScanJobStatus, string> = {
   CANCELLED: '已取消',
 }
 
-const KIOSK_BATCH_SUBMITTED_HINT = '本批次已提交，请在教师 Web 端「扫描录入」页面封存'
+const KIOSK_BATCH_SUBMITTED_HINT =
+  '批次已上传，可在阅卷中心「扫描录入」查看异常；试卷与答题卡均支持在线复核'
 
 export { getSemesterDescription, SemesterOptions }
 

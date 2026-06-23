@@ -9,9 +9,7 @@ import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow, stage, ui } = useKioskCtx()
 
-const showExamOverview = computed(
-  () => stage.currentStage.value !== 'setup',
-)
+const showExamOverview = computed(() => stage.currentStage.value === 'review')
 
 const capabilities = computed(() => workflow.kioskContext.value?.capabilities)
 const device = computed(() => workflow.kioskContext.value?.device)

@@ -3,7 +3,7 @@
  * KioskBottomBar - 仅扫描中显示的底部操作栏 88px
  *
  * 操作（左→右）：暂停 / 继续（互斥显示） · 结束本批次 · 重试上传 · 重试提交 · 取消（ghost）
- * 计数（右）：已扫 / 已上传 / 异常
+ * 计数（右）：已上传 / 异常（已扫与应扫见「结束本批次」旁摘要）
  *
  * 在 KioskLayout 中以 transition+ v-show 控制显隐。
  */
@@ -12,27 +12,11 @@ import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow, mutex } = useKioskCtx()
 
-const counterScanned = computed(() => {
-  const job = workflow.currentJob.value
-  return job ? String(job.scannedPages) : '—'
-})
 const counterUploaded = computed(() => {
   const job = workflow.currentJob.value
   return job ? String(job.uploadedPages) : '—'
 })
 const counterException = computed(() => String(workflow.exceptionPages.value.length || 0))
-
-const counterExpected = computed(() => {
-  const expected = workflow.kioskContext.value?.taskContract?.expectedSheetCount
-  return expected != null ? String(expected) : '—'
-})
-
-const counterProgressLabel = computed(() => {
-  const scanned = workflow.currentJob.value?.scannedPages
-  const expected = workflow.kioskContext.value?.taskContract?.expectedSheetCount
-  if (scanned == null || expected == null || expected <= 0) return ''
-  return `${scanned} / ${expected} 张`
-})
 
 const cantPause = computed(() => Boolean(mutex.reasonOf('pauseJob')))
 const cantResume = computed(() => Boolean(mutex.reasonOf('resumeJob')))
@@ -42,6 +26,16 @@ const cantRetryCommit = computed(() => Boolean(mutex.reasonOf('retryCommit')))
 const cantCancel = computed(() => Boolean(mutex.reasonOf('cancelJob')))
 
 const showResumeInsteadOfPause = computed(() => workflow.currentJob.value?.status === 'PAUSED')
+
+const endBatchSummary = computed(() => {
+  const job = workflow.currentJob.value
+  const expected = workflow.kioskContext.value?.taskContract?.expectedSheetCount
+  if (!job) return ''
+  const scanned = job.scannedPages ?? 0
+  const pending = Math.max(0, scanned - (job.uploadedPages ?? 0))
+  const expectedText = expected != null && expected > 0 ? String(expected) : '—'
+  return `已扫 ${scanned} / 应扫 ${expectedText} · 待上传 ${pending}`
+})
 </script>
 
 <template>
@@ -67,15 +61,18 @@ const showResumeInsteadOfPause = computed(() => workflow.currentJob.value?.statu
       >
         继续
       </button>
-      <button
-        type="button"
-        class="action-btn"
-        :disabled="cantEnd"
-        :title="mutex.reasonOf('endBatch') || '结束本批次并提交'"
-        @click="workflow.endCurrentBatch"
-      >
-        结束本批次
-      </button>
+      <div class="end-batch-group">
+        <button
+          type="button"
+          class="action-btn"
+          :disabled="cantEnd"
+          :title="mutex.reasonOf('endBatch') || '结束本批次并提交'"
+          @click="workflow.endCurrentBatch"
+        >
+          结束本批次
+        </button>
+        <span v-if="endBatchSummary" class="end-batch-summary">{{ endBatchSummary }}</span>
+      </div>
       <button
         type="button"
         class="action-btn"
@@ -105,9 +102,6 @@ const showResumeInsteadOfPause = computed(() => workflow.currentJob.value?.statu
       </button>
     </div>
     <div class="bottom-counters">
-      <span v-if="counterProgressLabel" class="progress-label">{{ counterProgressLabel }}</span>
-      <span>已扫 <b>{{ counterScanned }}</b></span>
-      <span>应扫 <b>{{ counterExpected }}</b></span>
       <span>已上传 <b>{{ counterUploaded }}</b></span>
       <span class="warn">异常 <b>{{ counterException }}</b></span>
     </div>
@@ -135,6 +129,21 @@ const showResumeInsteadOfPause = computed(() => workflow.currentJob.value?.statu
 .bottom-actions {
   display: flex;
   gap: var(--kiosk-space-3);
+  align-items: center;
+}
+
+.end-batch-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.end-batch-summary {
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-tertiary);
+  font-variant-numeric: tabular-nums;
+  padding-left: var(--kiosk-space-1);
 }
 
 .action-btn {
@@ -180,13 +189,6 @@ const showResumeInsteadOfPause = computed(() => workflow.currentJob.value?.statu
   margin-left: var(--kiosk-space-1);
   color: var(--kiosk-ink-primary);
   font-weight: var(--kiosk-fw-bold);
-}
-.bottom-counters .progress-label {
-  padding-right: var(--kiosk-space-3);
-  margin-right: var(--kiosk-space-1);
-  border-right: 1px solid var(--kiosk-divider);
-  font-weight: var(--kiosk-fw-semibold);
-  color: var(--kiosk-primary);
 }
 .bottom-counters .warn b {
   color: var(--kiosk-warning);
