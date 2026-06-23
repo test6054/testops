@@ -105,13 +105,13 @@ async function startScan() {
   if (!workflow.canStartScan.value) return
   const ok = await confirmCalibrationIfNeeded()
   if (!ok) return
-  workflow.submitScanJob()
+  await workflow.submitScanJob()
 }
 
 function openBatch(row: ExamScannerKioskSessionBatchVO) {
-  const activeBatchId =
-    workflow.kioskContext.value?.activeBatch?.scanBatchId
-    || workflow.currentJob.value?.scanBatchId
+  const activeBatchId
+    = workflow.kioskContext.value?.activeBatch?.scanBatchId
+      || workflow.currentJob.value?.scanBatchId
   if (row.status === 'IN_PROGRESS' || activeBatchId === row.scanBatchId) {
     stage.gotoStage('scanning')
     return
@@ -156,8 +156,8 @@ async function discardSessionBatch(row: ExamScannerKioskSessionBatchVO) {
     workflow.successMessage.value = '已删除扫描批次'
     await workflow.refreshAll()
   } catch (error) {
-    workflow.errorMessage.value =
-      error instanceof Error ? error.message : '删除扫描批次失败'
+    workflow.errorMessage.value
+      = error instanceof Error ? error.message : '删除扫描批次失败'
   } finally {
     workflow.loading.value = false
   }
