@@ -30,6 +30,7 @@ export interface UseScanLiveStreamOptions {
   initialLimit?: number
   maxEvents?: number
   ledgerFilter?: () => ExamScannerPageLedgerRequest | null
+  onKioskAuthRefreshRequired?: () => Promise<boolean>
 }
 
 export interface UseScanLiveStreamReturn {
@@ -253,6 +254,7 @@ export function useScanLiveStream(
           stop()
         }
       },
+      onKioskAuthRefreshRequired: options.onKioskAuthRefreshRequired,
     })
   }
 

@@ -208,7 +208,7 @@
           {{ detailInfo.scannerIp || '—' }}
         </a-descriptions-item>
         <a-descriptions-item label="Kiosk 防误触锁">
-          <UiTag :tone="detailInfo.kioskLockEnabled === false ? 'orange' : 'green'">
+          <UiTag :tone="!detailInfo.kioskLockEnabled ? 'orange' : 'green'">
             {{ detailInfo.kioskLockEnabled === false ? '已关闭' : '已启用' }}
           </UiTag>
         </a-descriptions-item>
@@ -267,7 +267,7 @@
     >
       <div v-if="activationCodeInfo" class="activation-code-modal">
         <p class="activation-code-modal__hint">
-          请在一体机 Kiosk 页面输入激活码与端点名称完成绑定。激活码一次性有效，过期后需重新生成。
+          请在一体机 Kiosk 页面输入 8 位数字激活码与端点名称完成绑定。激活码一次性有效，过期后需重新生成。
         </p>
         <div class="activation-code-modal__device">
           {{ activationCodeDeviceName }}
@@ -351,6 +351,9 @@ async function syncAfterDeviceMutation(): Promise<void> {
   await Promise.all([loadLocationOptions(), loadDevices()])
   await refreshSnapshot()
   mittBus.emit('scan-workbench:refresh')
+  if (showDetailModal.value && detailDeviceId.value) {
+    await reloadDeviceDetail()
+  }
 }
 
 // ─── 列表与筛选 ───────────────────────────────────────
@@ -787,11 +790,7 @@ async function handleViewDetail(record: ExamScannerDeviceVO): Promise<void> {
   detailInfo.value = null
   detailDeviceId.value = record.id
   showDetailModal.value = true
-  try {
-    detailInfo.value = await getScannerDeviceDetail(record.id)
-  } catch (error) {
-    showUserError(error, '扫描设备详情加载失败')
-  }
+  await reloadDeviceDetail()
 }
 
 // ─── 删除 ────────────────────────────────────────────

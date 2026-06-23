@@ -35,8 +35,10 @@ function handleActivate() {
           <input
             v-model="workflow.activationForm.value.activationCode"
             type="text"
+            inputmode="numeric"
+            maxlength="8"
             class="form-input"
-            placeholder="由教务平台下发"
+            placeholder="8位数字激活码"
             :disabled="!workflow.canActivateAgent.value || workflow.loading.value"
             autofocus
           />

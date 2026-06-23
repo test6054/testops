@@ -1,29 +1,78 @@
 <script setup lang="ts">
 /**
- * 讯飞式扫描工作台：左任务合同 + 中设备就绪大卡 + 下会话批次表。
+ * 讯飞式扫描工作台：左任务进度 + 批次列表，右设备状态条 + 主 CTA。
  */
 import {
   PlayCircleFilled,
-  PrinterOutlined,
   ReloadOutlined,
   SettingOutlined,
 } from '@ant-design/icons-vue'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import KioskSessionBatchPanel from '../components/KioskSessionBatchPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
+
+const CALIBRATION_ACK_PREFIX = 'kiosk-sheet-calibration-ack:'
 
 const { workflow, mutex, ui } = useKioskCtx()
 
 const contract = computed(() => workflow.kioskContext.value?.taskContract)
 const exam = computed(() => workflow.kioskContext.value?.exam)
-const batches = computed(() => workflow.kioskContext.value?.sessionBatches ?? [])
 const readiness = computed(() => workflow.deviceReadiness.value)
 const startReason = computed(() => mutex.reasonOf('startScan'))
+const scanConfig = computed(() => workflow.scanConfig.value)
+
+const templateExpanded = ref(false)
 
 const breadcrumb = computed(() => {
   const name = exam.value?.examName || '未绑定考试'
   const course = exam.value?.courseName
   return course ? `${name}（${course}）` : name
 })
+
+const expectedSheets = computed(() => contract.value?.expectedSheetCount ?? null)
+const scannedSheets = computed(() => contract.value?.scannedSheetCount ?? null)
+const attentionCount = computed(() => {
+  const raw = workflow.kioskMetrics.value.attentionCount
+  if (raw === '-' || raw === '—') return null
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : null
+})
+
+const progressPercent = computed(() => {
+  const expected = expectedSheets.value
+  const scanned = scannedSheets.value
+  if (expected == null || expected <= 0 || scanned == null) return 0
+  return Math.min(100, Math.round((scanned / expected) * 100))
+})
+
+const scanParamSummary = computed(() => {
+  const parts: string[] = []
+  if (scanConfig.value.dpi) parts.push(`${scanConfig.value.dpi} DPI`)
+  if (scanConfig.value.colorMode) {
+    parts.push(workflow.scannerColorModeLabel(scanConfig.value.colorMode))
+  }
+  if (scanConfig.value.duplexMode) {
+    parts.push(workflow.scannerDuplexModeLabel(scanConfig.value.duplexMode))
+  }
+  return parts.length ? parts.join(' · ') : '参数未加载'
+})
+
+const calibrationExamKey = computed(() => {
+  const id = workflow.examId.value
+  return id ? `${CALIBRATION_ACK_PREFIX}${id}` : ''
+})
+
+function hasCalibrationAck(): boolean {
+  const key = calibrationExamKey.value
+  if (!key) return false
+  return sessionStorage.getItem(key) === '1'
+}
+
+function markCalibrationAck() {
+  const key = calibrationExamKey.value
+  if (key) sessionStorage.setItem(key, '1')
+}
 
 function refreshDevice() {
   void workflow.refreshAll()
@@ -33,8 +82,25 @@ function openParams() {
   ui.openScanParams()
 }
 
-function startScan() {
-  if (workflow.canStartScan.value) workflow.submitScanJob()
+async function confirmCalibrationIfNeeded(): Promise<boolean> {
+  if (hasCalibrationAck() || !contract.value) return true
+  const confirmed = await confirmAsync({
+    title: '答题卡校验提示',
+    content:
+      '首次扫描建议先核对模板与纸型：首张送纸后请在「扫描中」预览定位是否正常；'
+      + '若切分框偏差，请暂停并在 Web 端调整模板后再继续批量扫描。',
+    okText: '已了解，开始扫描',
+    cancelText: '先检查参数',
+  })
+  if (confirmed) markCalibrationAck()
+  return confirmed
+}
+
+async function startScan() {
+  if (!workflow.canStartScan.value) return
+  const ok = await confirmCalibrationIfNeeded()
+  if (!ok) return
+  await workflow.submitScanJob()
 }
 </script>
 
@@ -45,56 +111,84 @@ function startScan() {
     </header>
 
     <div class="workbench__grid">
-      <aside class="contract">
-        <h2 class="contract__title">{{ exam?.examName || '—' }}</h2>
-        <p v-if="contract?.gradeSubjectText" class="contract__sub">{{ contract.gradeSubjectText }}</p>
+      <aside class="sidebar">
+        <h2 class="sidebar__title">{{ exam?.examName || '—' }}</h2>
+        <p v-if="contract?.gradeSubjectText" class="sidebar__sub">{{ contract.gradeSubjectText }}</p>
 
-        <dl class="contract__kv">
-          <div>
-            <dt>应扫张数</dt>
-            <dd>{{ contract?.expectedSheetCount ?? '—' }}</dd>
+        <div class="progress-kpi">
+          <div class="progress-kpi__item">
+            <span>应扫</span>
+            <strong>{{ expectedSheets ?? '—' }}</strong>
           </div>
-          <div>
-            <dt>计划人数</dt>
-            <dd>{{ contract?.plannedStudentCount ?? '—' }}</dd>
+          <div class="progress-kpi__item">
+            <span>已扫</span>
+            <strong>{{ scannedSheets ?? '—' }}</strong>
           </div>
-          <div>
-            <dt>已扫张数</dt>
-            <dd>{{ contract?.scannedSheetCount ?? '—' }}</dd>
+          <div class="progress-kpi__item" :class="{ 'progress-kpi__item--warn': (attentionCount ?? 0) > 0 }">
+            <span>异常</span>
+            <strong>{{ attentionCount ?? '—' }}</strong>
           </div>
-          <div v-if="contract?.schoolName">
-            <dt>学校</dt>
-            <dd>{{ contract.schoolName }}</dd>
-          </div>
-          <div v-if="contract?.templateDisplayName">
-            <dt>模板</dt>
-            <dd>{{ contract.templateDisplayName }}</dd>
-          </div>
-        </dl>
-
-        <div v-if="contract" class="contract__meta">
-          <p>纸型 {{ contract.paperStyleText }}</p>
-          <p>考号 {{ contract.candidateIdFormatText }}</p>
-          <p>客观题 {{ contract.objectiveQuestionCount }} · 主观题 {{ contract.subjectiveQuestionCount }}</p>
         </div>
+
+        <div v-if="expectedSheets != null && expectedSheets > 0" class="progress-bar-wrap">
+          <div class="progress-bar">
+            <div class="progress-bar__fill" :style="{ width: `${progressPercent}%` }" />
+          </div>
+          <span class="progress-bar__pct">{{ progressPercent }}%</span>
+        </div>
+
+        <p v-if="contract?.plannedStudentCount != null" class="sidebar__hint">
+          计划人数 {{ contract.plannedStudentCount }}
+        </p>
+
+        <details v-if="contract" class="template-fold" :open="templateExpanded">
+          <summary @click.prevent="templateExpanded = !templateExpanded">模板摘要</summary>
+          <dl class="template-fold__body">
+            <div v-if="contract.schoolName">
+              <dt>学校</dt>
+              <dd>{{ contract.schoolName }}</dd>
+            </div>
+            <div v-if="contract.templateDisplayName">
+              <dt>模板</dt>
+              <dd>{{ contract.templateDisplayName }}</dd>
+            </div>
+            <div>
+              <dt>纸型</dt>
+              <dd>{{ contract.paperStyleText }}</dd>
+            </div>
+            <div>
+              <dt>考号</dt>
+              <dd>{{ contract.candidateIdFormatText }}</dd>
+            </div>
+            <div>
+              <dt>题型</dt>
+              <dd>客观 {{ contract.objectiveQuestionCount }} · 主观 {{ contract.subjectiveQuestionCount }}</dd>
+            </div>
+          </dl>
+          <button type="button" class="template-fold__link" @click="openParams">答题卡校验 / 扫描参数 →</button>
+        </details>
+
+        <KioskSessionBatchPanel variant="setup" class="sidebar__batches" @start-scan="startScan" />
       </aside>
 
       <div class="main">
-        <div class="main__status-row">
-          <span class="status-text" :class="`status-text--${readiness.tone}`">
-            状态：{{ readiness.statusText }}
-          </span>
+        <div class="status-bar" :class="`status-bar--${readiness.tone}`">
+          <div class="status-bar__left">
+            <span class="status-led" :class="`status-led--${readiness.tone}`" />
+            <div class="status-bar__text">
+              <strong>{{ readiness.statusText }}</strong>
+              <small>{{ scanParamSummary }}</small>
+            </div>
+          </div>
           <button type="button" class="icon-btn" title="刷新设备状态" @click="refreshDevice">
             <ReloadOutlined :spin="workflow.loading.value" />
           </button>
         </div>
 
-        <div class="hero" :class="`hero--${readiness.tone}`">
-          <PrinterOutlined class="hero__icon" />
-          <strong>{{ readiness.headline }}</strong>
-          <p v-if="readiness.troubleshooting">{{ readiness.troubleshooting }}</p>
-          <p v-else-if="readiness.tone !== 'success'">{{ readiness.detail }}</p>
+        <div v-if="readiness.troubleshooting || readiness.tone !== 'success'" class="status-detail">
+          <p>{{ readiness.troubleshooting || readiness.detail }}</p>
         </div>
+        <p v-else class="status-ready-hint">{{ readiness.detail }}</p>
 
         <div class="actions">
           <button type="button" class="ghost-btn" @click="openParams">
@@ -111,31 +205,6 @@ function startScan() {
             <PlayCircleFilled />
             <span>开始扫描</span>
           </button>
-        </div>
-
-        <div class="batches">
-          <h3>扫描批次</h3>
-          <table v-if="batches.length" class="batch-table">
-            <thead>
-              <tr>
-                <th>批次</th>
-                <th>扫描</th>
-                <th>异常</th>
-                <th>上传</th>
-                <th>开始时间</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in batches" :key="row.scanBatchId">
-                <td>{{ row.batchNo || row.batchExternalNo }}</td>
-                <td>{{ row.scannedCount }}</td>
-                <td>{{ row.exceptionCount }}</td>
-                <td>{{ row.uploadedCount }}</td>
-                <td>{{ workflow.formatTime(row.scanStartTime) }}</td>
-              </tr>
-            </tbody>
-          </table>
-          <p v-else class="batches__empty">暂无数据</p>
         </div>
       </div>
     </div>
@@ -158,64 +227,164 @@ function startScan() {
 
 .workbench__grid {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 300px minmax(0, 1fr);
   gap: var(--kiosk-space-5);
   flex: 1;
   min-height: 0;
 }
 
-.contract {
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kiosk-space-3);
   background: var(--kiosk-surface);
   border: 1px solid var(--kiosk-divider);
   border-radius: var(--kiosk-radius-lg);
   padding: var(--kiosk-space-4);
+  min-height: 0;
+  overflow-y: auto;
 }
 
-.contract__title {
-  margin: 0 0 var(--kiosk-space-1);
+.sidebar__title {
+  margin: 0;
   font-size: var(--kiosk-fz-h3);
   font-weight: var(--kiosk-fw-bold);
+  line-height: var(--kiosk-lh-tight);
 }
 
-.contract__sub {
-  margin: 0 0 var(--kiosk-space-4);
+.sidebar__sub {
+  margin: 0;
   color: var(--kiosk-ink-secondary);
   font-size: var(--kiosk-fz-label);
 }
 
-.contract__kv {
-  margin: 0 0 var(--kiosk-space-4);
-  display: grid;
-  gap: var(--kiosk-space-3);
-}
-
-.contract__kv div {
-  display: grid;
-  grid-template-columns: 72px 1fr;
-  gap: var(--kiosk-space-2);
-}
-
-.contract__kv dt {
+.sidebar__hint {
   margin: 0;
   font-size: var(--kiosk-fz-caption);
   color: var(--kiosk-ink-tertiary);
 }
 
-.contract__kv dd {
-  margin: 0;
-  font-weight: var(--kiosk-fw-medium);
+.progress-kpi {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--kiosk-space-2);
+  margin-top: var(--kiosk-space-1);
 }
 
-.contract__meta {
-  padding: var(--kiosk-space-3);
+.progress-kpi__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--kiosk-space-2);
   background: var(--kiosk-surface-alt);
   border-radius: var(--kiosk-radius-md);
-  font-size: var(--kiosk-fz-caption);
-  color: var(--kiosk-ink-secondary);
 }
 
-.contract__meta p {
-  margin: 0 0 var(--kiosk-space-1);
+.progress-kpi__item span {
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-tertiary);
+}
+
+.progress-kpi__item strong {
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: var(--kiosk-fw-bold);
+  color: var(--kiosk-ink-primary);
+}
+
+.progress-kpi__item--warn strong {
+  color: var(--kiosk-warning);
+}
+
+.progress-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--kiosk-space-2);
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--kiosk-neutral-soft);
+  border-radius: var(--kiosk-radius-pill);
+  overflow: hidden;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  background: var(--kiosk-primary);
+  border-radius: var(--kiosk-radius-pill);
+  transition: width var(--kiosk-dur-base) var(--kiosk-easing);
+}
+
+.progress-bar__pct {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-secondary);
+  min-width: 36px;
+  text-align: right;
+}
+
+.template-fold {
+  border: 1px solid var(--kiosk-divider);
+  border-radius: var(--kiosk-radius-md);
+  padding: var(--kiosk-space-2) var(--kiosk-space-3);
+  background: var(--kiosk-surface-alt);
+}
+
+.template-fold summary {
+  font-size: var(--kiosk-fz-label);
+  font-weight: var(--kiosk-fw-medium);
+  color: var(--kiosk-ink-secondary);
+  cursor: pointer;
+  list-style: none;
+}
+
+.template-fold summary::-webkit-details-marker {
+  display: none;
+}
+
+.template-fold__body {
+  margin: var(--kiosk-space-2) 0 0;
+  display: grid;
+  gap: var(--kiosk-space-2);
+}
+
+.template-fold__body div {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: var(--kiosk-space-2);
+}
+
+.template-fold__body dt {
+  margin: 0;
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-tertiary);
+}
+
+.template-fold__body dd {
+  margin: 0;
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-primary);
+}
+
+.template-fold__link {
+  margin-top: var(--kiosk-space-2);
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-primary);
+  cursor: pointer;
+}
+
+.sidebar__batches {
+  flex: 1;
+  min-height: 0;
+  margin-top: var(--kiosk-space-2);
+  padding-top: var(--kiosk-space-3);
+  border-top: 1px solid var(--kiosk-divider);
 }
 
 .main {
@@ -226,140 +395,155 @@ function startScan() {
   border: 1px solid var(--kiosk-divider);
   border-radius: var(--kiosk-radius-lg);
   padding: var(--kiosk-space-5);
+  justify-content: center;
 }
 
-.main__status-row {
+.status-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.status-text--success {
-  color: var(--kiosk-success);
-}
-
-.status-text--danger {
-  color: var(--kiosk-danger);
-}
-
-.status-text--warning {
-  color: var(--kiosk-warning);
-}
-
-.icon-btn {
-  width: 36px;
-  height: 36px;
+  gap: var(--kiosk-space-4);
+  padding: var(--kiosk-space-4);
   border: 1px solid var(--kiosk-divider);
   border-radius: var(--kiosk-radius-md);
   background: var(--kiosk-surface-alt);
-  cursor: pointer;
 }
 
-.hero {
+.status-bar--success {
+  border-color: var(--kiosk-success);
+  background: var(--kiosk-success-soft);
+}
+
+.status-bar--danger {
+  border-color: var(--kiosk-danger);
+  background: var(--kiosk-danger-soft);
+}
+
+.status-bar--warning {
+  border-color: var(--kiosk-warning);
+  background: var(--kiosk-warning-soft);
+}
+
+.status-bar__left {
+  display: flex;
+  align-items: center;
+  gap: var(--kiosk-space-3);
+  min-width: 0;
+}
+
+.status-led {
+  width: var(--kiosk-led-size);
+  height: var(--kiosk-led-size);
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--kiosk-neutral);
+}
+
+.status-led--success {
+  background: var(--kiosk-success);
+  box-shadow: 0 0 0 var(--kiosk-led-ring) var(--kiosk-success-soft);
+}
+
+.status-led--danger {
+  background: var(--kiosk-danger);
+  box-shadow: 0 0 0 var(--kiosk-led-ring) var(--kiosk-danger-soft);
+}
+
+.status-led--warning {
+  background: var(--kiosk-warning);
+  box-shadow: 0 0 0 var(--kiosk-led-ring) var(--kiosk-warning-soft);
+}
+
+.status-bar__text {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--kiosk-space-3);
-  min-height: 180px;
-  border-radius: var(--kiosk-radius-md);
-  text-align: center;
-  padding: var(--kiosk-space-5);
+  gap: 2px;
+  min-width: 0;
 }
 
-.hero--success {
-  background: var(--kiosk-success);
-  color: #fff;
-}
-
-.hero--danger {
-  background: var(--kiosk-danger-soft);
-  color: var(--kiosk-danger);
-  border: 1px solid var(--kiosk-danger);
-}
-
-.hero--warning {
-  background: var(--kiosk-warning-soft);
+.status-bar__text strong {
+  font-size: var(--kiosk-fz-h3);
+  font-weight: var(--kiosk-fw-semibold);
   color: var(--kiosk-ink-primary);
-  border: 1px solid var(--kiosk-warning);
 }
 
-.hero__icon {
-  font-size: 40px;
+.status-bar__text small {
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-secondary);
 }
 
-.hero strong {
-  font-size: var(--kiosk-fz-h2);
+.icon-btn {
+  width: var(--kiosk-h-icon-button);
+  height: var(--kiosk-h-icon-button);
+  border: 1px solid var(--kiosk-divider);
+  border-radius: var(--kiosk-radius-md);
+  background: var(--kiosk-surface);
+  cursor: pointer;
+  flex: 0 0 auto;
 }
 
-.hero p {
+.status-detail {
+  padding: var(--kiosk-space-3) var(--kiosk-space-4);
+  border-radius: var(--kiosk-radius-md);
+  background: var(--kiosk-surface-alt);
+  border: 1px solid var(--kiosk-divider);
+}
+
+.status-detail p {
   margin: 0;
   font-size: var(--kiosk-fz-label);
-  opacity: 0.9;
+  color: var(--kiosk-ink-secondary);
+  line-height: var(--kiosk-lh-base);
+}
+
+.status-ready-hint {
+  margin: 0;
+  text-align: center;
+  font-size: var(--kiosk-fz-label);
+  color: var(--kiosk-ink-tertiary);
 }
 
 .actions {
   display: flex;
   gap: var(--kiosk-space-3);
   justify-content: center;
+  align-items: stretch;
 }
 
 .ghost-btn,
 .start-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--kiosk-space-2);
-  height: 48px;
-  padding: 0 var(--kiosk-space-5);
-  border-radius: var(--kiosk-radius-md);
   font-family: inherit;
-  font-size: var(--kiosk-fz-h3);
   font-weight: var(--kiosk-fw-semibold);
   cursor: pointer;
+  border-radius: var(--kiosk-radius-md);
 }
 
 .ghost-btn {
+  height: var(--kiosk-h-action-md);
+  padding: 0 var(--kiosk-space-4);
   background: var(--kiosk-surface-alt);
   border: 1px solid var(--kiosk-divider);
   color: var(--kiosk-ink-secondary);
+  font-size: var(--kiosk-fz-h3);
 }
 
 .start-btn {
+  height: var(--kiosk-h-cta);
+  min-width: 240px;
+  padding: 0 var(--kiosk-space-6);
   background: var(--kiosk-primary);
   border: none;
   color: #fff;
-  min-width: 200px;
-  justify-content: center;
+  font-size: var(--kiosk-fz-h2);
 }
 
 .start-btn:disabled {
   background: var(--kiosk-neutral);
   cursor: not-allowed;
-}
-
-.batches h3 {
-  margin: 0 0 var(--kiosk-space-3);
-  font-size: var(--kiosk-fz-h3);
-}
-
-.batch-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--kiosk-fz-label);
-}
-
-.batch-table th,
-.batch-table td {
-  padding: var(--kiosk-space-2) var(--kiosk-space-3);
-  border-bottom: 1px solid var(--kiosk-divider);
-  text-align: left;
-}
-
-.batches__empty {
-  margin: 0;
-  padding: var(--kiosk-space-6);
-  text-align: center;
-  color: var(--kiosk-ink-tertiary);
 }
 
 @media (max-width: 1024px) {

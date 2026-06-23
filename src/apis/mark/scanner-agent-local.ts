@@ -156,6 +156,16 @@ export interface AgentSetupContextResponse {
   activatedAt?: string
 }
 
+/** 本机 Agent 绑定 push_token 会话，供 Kiosk 浏览器与 DeviceBinding 对齐 */
+export interface KioskBrowserAuthResponse {
+  pushAuthorizationHeader: string
+  tenantId?: string
+  scannerDeviceId: string
+  scannerStationId: string
+  deviceName: string
+  gatewayBaseUrl: string
+}
+
 export interface ScannerAgentActivateResponse {
   scannerDeviceId: string
   scannerStationId: string
@@ -313,6 +323,11 @@ export async function getAgentHealth(): Promise<AgentHealthResponse> {
 export async function getAgentSetupContext(): Promise<AgentSetupContextResponse> {
   const payload = await localAgentGet('/api/agent/setup-context')
   return normalizeAgentPayload(() => validateAgentSetupContextResponse(payload))
+}
+
+export async function getAgentKioskBrowserAuth(): Promise<KioskBrowserAuthResponse> {
+  const payload = await localAgentGet('/api/agent/kiosk-browser-auth')
+  return normalizeAgentPayload(() => validateKioskBrowserAuthResponse(payload))
 }
 
 export async function listLocalScanners(): Promise<ScannerListResponse> {
@@ -798,6 +813,22 @@ function validateAgentSetupContextResponse(value: LocalAgentJsonValue): AgentSet
   const activatedAt = requireOptionalString(result, 'activatedAt')
   if (activatedAt !== undefined) {
     payload.activatedAt = activatedAt
+  }
+  return payload
+}
+
+function validateKioskBrowserAuthResponse(value: LocalAgentJsonValue): KioskBrowserAuthResponse {
+  const result = requireObject(value)
+  const payload: KioskBrowserAuthResponse = {
+    pushAuthorizationHeader: requireString(result, 'pushAuthorizationHeader'),
+    scannerDeviceId: requireString(result, 'scannerDeviceId'),
+    scannerStationId: requireString(result, 'scannerStationId'),
+    deviceName: requireString(result, 'deviceName'),
+    gatewayBaseUrl: requireString(result, 'gatewayBaseUrl'),
+  }
+  const tenantId = requireOptionalString(result, 'tenantId')
+  if (tenantId !== undefined) {
+    payload.tenantId = tenantId
   }
   return payload
 }

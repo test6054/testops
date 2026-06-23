@@ -42,6 +42,8 @@ import {
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
+import KioskScanExceptionPanel from '../components/KioskScanExceptionPanel.vue'
+import KioskSessionBatchPanel from '../components/KioskSessionBatchPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow, stage } = useKioskCtx()
@@ -69,6 +71,7 @@ const ZOOM_STEP = 0.25
 const zoomLevel = ref(1)
 const rotation = ref<0 | 90 | 180 | 270>(0)
 const grayscale = ref(false)
+const exceptionPanelOpen = ref(false)
 
 const zoomPercent = computed(() => `${Math.round(zoomLevel.value * 100)}%`)
 const imageTransform = computed(
@@ -88,20 +91,35 @@ const canNext = computed(
   () => currentIndex.value >= 0 && currentIndex.value < pages.value.length - 1,
 )
 
+function syncExceptionPanel(pageNo: number) {
+  if (!pageNo) {
+    exceptionPanelOpen.value = false
+    return
+  }
+  const page = pages.value.find((p) => p.pageNo === pageNo)
+  exceptionPanelOpen.value = Boolean(page && isPageException(page))
+}
+
 function gotoPage(pageNo: number) {
   previewPageNo.value = pageNo
+  syncExceptionPanel(pageNo)
 }
 function gotoPrev() {
-  if (canPrev.value) previewPageNo.value = pages.value[currentIndex.value - 1].pageNo
+  if (canPrev.value) gotoPage(pages.value[currentIndex.value - 1].pageNo)
 }
 function gotoNext() {
-  if (canNext.value) previewPageNo.value = pages.value[currentIndex.value + 1].pageNo
+  if (canNext.value) gotoPage(pages.value[currentIndex.value + 1].pageNo)
 }
 function gotoFirst() {
-  if (pages.value.length) previewPageNo.value = pages.value[0].pageNo
+  if (pages.value.length) gotoPage(pages.value[0].pageNo)
 }
 function gotoLast() {
-  if (pages.value.length) previewPageNo.value = pages.value[pages.value.length - 1].pageNo
+  if (pages.value.length) gotoPage(pages.value[pages.value.length - 1].pageNo)
+}
+
+function openFirstException() {
+  const first = workflow.exceptionPages.value[0]
+  if (first) gotoPage(first.pageNo)
 }
 
 function clampZoom(v: number) {
@@ -132,7 +150,8 @@ function toggleGrayscale() {
 }
 
 // 切页时重置视图状态：避免上一页放大状态影响下一页观感
-watch(previewPageNo, () => {
+watch(previewPageNo, (pageNo) => {
+  syncExceptionPanel(pageNo)
   zoomLevel.value = 1
   rotation.value = 0
   // grayscale 不重置，作为持久偏好（教师可能持续灰度核对）
@@ -145,12 +164,20 @@ watch(
     if (!next || next <= (prev ?? 0)) return
     const last = pages.value[pages.value.length - 1]
     if (currentIndex.value === (prev ?? 0) - 1 || previewPageNo.value === 0) {
-      previewPageNo.value = last.pageNo
+      gotoPage(last.pageNo)
     }
   },
 )
 
 const stateClass = computed(() => `state-${workflow.workState.value.tone}`)
+
+const stageMainStyle = computed(() => {
+  if (!hasJob.value) return { gridTemplateColumns: 'minmax(0, 1fr)' }
+  if (exceptionPanelOpen.value) {
+    return { gridTemplateColumns: 'minmax(0, 1fr) 280px' }
+  }
+  return { gridTemplateColumns: 'minmax(0, 1fr) 168px' }
+})
 
 const PAGE_STATUS_LABEL: Record<LocalScanPageStatus, string> = {
   CAPTURED: '已采集',
@@ -246,6 +273,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
           <strong>{{ workflow.exceptionPages.value.length }}</strong>
         </div>
       </div>
+      <div v-if="workflow.exceptionPages.value.length > 0" class="ribbon-fix">
+        <button type="button" class="ribbon-fix-btn" @click="openFirstException">
+          修正异常 ({{ workflow.exceptionPages.value.length }})
+        </button>
+      </div>
       <div v-if="job?.status === 'PAUSED'" class="ribbon-paused">
         <PauseCircleOutlined />
         <span>已暂停</span>
@@ -260,170 +292,183 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
     />
 
     <div class="stage-body">
-      <!-- 大画布预览 -->
-      <main class="canvas-wrap">
-        <div class="canvas">
-          <div v-if="!hasJob" class="canvas-empty">
-            <ScanOutlined class="canvas-empty-icon" />
-            <p>{{ emptyScanTitle }}</p>
-            <small>{{ emptyScanHint }}</small>
-          </div>
-          <div v-else-if="pages.length === 0" class="canvas-empty">
-            <ScanOutlined class="canvas-empty-icon canvas-empty-icon--pulse" />
-            <p>等待扫描仪送纸…</p>
-            <small>送纸后将自动显示首张影像，请勿关闭工作台。</small>
-          </div>
-          <div v-else-if="!previewPageNo || !workflow.previewImageUrl.value" class="canvas-empty">
-            <p>请在右侧缩略图中选择一页查看</p>
-          </div>
-          <img
-            v-else
-            class="canvas-image"
-            :src="workflow.previewImageUrl.value"
-            :alt="`第 ${previewPageNo} 页`"
-            :style="{ transform: imageTransform, filter: imageFilter }"
-            draggable="false"
-          />
-
-          <!-- 浮动工具栏 -->
-          <div v-if="hasJob && pages.length > 0" class="canvas-tools">
-            <!-- 翻页组 -->
-            <div class="tool-group" role="group" aria-label="翻页">
-              <button
-                type="button"
-                class="tool-btn"
-                :disabled="!canPrev"
-                title="第一页 [Home]"
-                @click="gotoFirst"
-              >
-                <StepBackwardOutlined />
-              </button>
-              <button
-                type="button"
-                class="tool-btn"
-                :disabled="!canPrev"
-                title="上一页 [←]"
-                @click="gotoPrev"
-              >
-                <CaretLeftOutlined />
-              </button>
-              <span class="tool-info">
-                <strong>{{ previewPageNo }}</strong>
-                <small>/ {{ pages.length }}</small>
-              </span>
-              <button
-                type="button"
-                class="tool-btn"
-                :disabled="!canNext"
-                title="下一页 [→]"
-                @click="gotoNext"
-              >
-                <CaretRightOutlined />
-              </button>
-              <button
-                type="button"
-                class="tool-btn"
-                :disabled="!canNext"
-                title="末页 [End]"
-                @click="gotoLast"
-              >
-                <StepForwardOutlined />
-              </button>
-            </div>
-
-            <span class="tool-divider" />
-
-            <!-- 缩放组 -->
-            <div class="tool-group" role="group" aria-label="缩放">
-              <button
-                type="button"
-                class="tool-btn"
-                :disabled="zoomLevel <= ZOOM_MIN"
-                title="缩小 [-]"
-                @click="zoomOut"
-              >
-                <MinusOutlined />
-              </button>
-              <span class="tool-info" :title="`实际尺寸 100% · 当前 ${zoomPercent}`">
-                <strong>{{ zoomPercent }}</strong>
-              </span>
-              <button
-                type="button"
-                class="tool-btn"
-                :disabled="zoomLevel >= ZOOM_MAX"
-                title="放大 [+]"
-                @click="zoomIn"
-              >
-                <PlusOutlined />
-              </button>
-              <button type="button" class="tool-btn" title="适配窗口 [0]" @click="fitToScreen">
-                <ExpandOutlined />
-              </button>
-            </div>
-
-            <span class="tool-divider" />
-
-            <!-- 旋转组 -->
-            <div class="tool-group" role="group" aria-label="旋转">
-              <button type="button" class="tool-btn" title="左转 90° [Shift+R]" @click="rotateLeft">
-                <UndoOutlined />
-              </button>
-              <span class="tool-info">
-                <strong>{{ rotation }}°</strong>
-              </span>
-              <button type="button" class="tool-btn" title="右转 90° [R]" @click="rotateRight">
-                <RedoOutlined />
-              </button>
-            </div>
-
-            <span class="tool-divider" />
-
-            <!-- 滤镜组 -->
-            <div class="tool-group" role="group" aria-label="滤镜">
-              <button
-                type="button"
-                class="tool-btn tool-btn--toggle"
-                :class="{ 'tool-btn--active': grayscale }"
-                title="灰度 [G]"
-                @click="toggleGrayscale"
-              >
-                <FilterFilled v-if="grayscale" />
-                <FilterOutlined v-else />
-              </button>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      <!-- 缩略图 strip -->
-      <aside v-if="hasJob" class="thumbs">
-        <div class="thumbs-head">
-          <h4>页面 ({{ pages.length }})</h4>
-          <span v-if="workflow.exceptionPages.value.length" class="thumbs-warn">
-            异常 {{ workflow.exceptionPages.value.length }}
-          </span>
-        </div>
-        <div v-if="pages.length === 0" class="thumbs-empty">扫描后页面将显示在此</div>
-        <ul v-else class="thumbs-list">
-          <li
-            v-for="page in pages"
-            :key="page.pageNo"
-            class="thumb"
-            :class="{
-              active: page.pageNo === previewPageNo,
-              exception: isPageException(page),
-            }"
-          >
-            <button type="button" @click="gotoPage(page.pageNo)">
-              <div class="thumb-no">第 {{ page.pageNo }} 页</div>
-              <div class="thumb-status">
-                <WarningFilled v-if="isPageException(page)" class="thumb-warn-icon" />
-                <span>{{ pageStatusLabel(page.status) }}</span>
-              </div>
-            </button>
-          </li>
-        </ul>
+      <aside class="batch-rail">
+        <KioskSessionBatchPanel variant="scanning" />
       </aside>
+
+      <div class="stage-main" :style="stageMainStyle">
+        <!-- 大画布预览 -->
+        <main class="canvas-wrap">
+          <div class="canvas">
+            <div v-if="!hasJob" class="canvas-empty">
+              <ScanOutlined class="canvas-empty-icon" />
+              <p>{{ emptyScanTitle }}</p>
+              <small>{{ emptyScanHint }}</small>
+            </div>
+            <div v-else-if="pages.length === 0" class="canvas-empty">
+              <ScanOutlined class="canvas-empty-icon canvas-empty-icon--pulse" />
+              <p>等待扫描仪送纸…</p>
+              <small>送纸后将自动显示首张影像，请勿关闭工作台。</small>
+            </div>
+            <div v-else-if="!previewPageNo || !workflow.previewImageUrl.value" class="canvas-empty">
+              <p>请在右侧缩略图中选择一页查看</p>
+            </div>
+            <img
+              v-else
+              class="canvas-image"
+              :src="workflow.previewImageUrl.value"
+              :alt="`第 ${previewPageNo} 页`"
+              :style="{ transform: imageTransform, filter: imageFilter }"
+              draggable="false"
+            />
+
+            <!-- 浮动工具栏 -->
+            <div v-if="hasJob && pages.length > 0" class="canvas-tools">
+              <!-- 翻页组 -->
+              <div class="tool-group" role="group" aria-label="翻页">
+                <button
+                  type="button"
+                  class="tool-btn"
+                  :disabled="!canPrev"
+                  title="第一页 [Home]"
+                  @click="gotoFirst"
+                >
+                  <StepBackwardOutlined />
+                </button>
+                <button
+                  type="button"
+                  class="tool-btn"
+                  :disabled="!canPrev"
+                  title="上一页 [←]"
+                  @click="gotoPrev"
+                >
+                  <CaretLeftOutlined />
+                </button>
+                <span class="tool-info">
+                  <strong>{{ previewPageNo }}</strong>
+                  <small>/ {{ pages.length }}</small>
+                </span>
+                <button
+                  type="button"
+                  class="tool-btn"
+                  :disabled="!canNext"
+                  title="下一页 [→]"
+                  @click="gotoNext"
+                >
+                  <CaretRightOutlined />
+                </button>
+                <button
+                  type="button"
+                  class="tool-btn"
+                  :disabled="!canNext"
+                  title="末页 [End]"
+                  @click="gotoLast"
+                >
+                  <StepForwardOutlined />
+                </button>
+              </div>
+
+              <span class="tool-divider" />
+
+              <!-- 缩放组 -->
+              <div class="tool-group" role="group" aria-label="缩放">
+                <button
+                  type="button"
+                  class="tool-btn"
+                  :disabled="zoomLevel <= ZOOM_MIN"
+                  title="缩小 [-]"
+                  @click="zoomOut"
+                >
+                  <MinusOutlined />
+                </button>
+                <span class="tool-info" :title="`实际尺寸 100% · 当前 ${zoomPercent}`">
+                  <strong>{{ zoomPercent }}</strong>
+                </span>
+                <button
+                  type="button"
+                  class="tool-btn"
+                  :disabled="zoomLevel >= ZOOM_MAX"
+                  title="放大 [+]"
+                  @click="zoomIn"
+                >
+                  <PlusOutlined />
+                </button>
+                <button type="button" class="tool-btn" title="适配窗口 [0]" @click="fitToScreen">
+                  <ExpandOutlined />
+                </button>
+              </div>
+
+              <span class="tool-divider" />
+
+              <!-- 旋转组 -->
+              <div class="tool-group" role="group" aria-label="旋转">
+                <button type="button" class="tool-btn" title="左转 90° [Shift+R]" @click="rotateLeft">
+                  <UndoOutlined />
+                </button>
+                <span class="tool-info">
+                  <strong>{{ rotation }}°</strong>
+                </span>
+                <button type="button" class="tool-btn" title="右转 90° [R]" @click="rotateRight">
+                  <RedoOutlined />
+                </button>
+              </div>
+
+              <span class="tool-divider" />
+
+              <!-- 滤镜组 -->
+              <div class="tool-group" role="group" aria-label="滤镜">
+                <button
+                  type="button"
+                  class="tool-btn tool-btn--toggle"
+                  :class="{ 'tool-btn--active': grayscale }"
+                  title="灰度 [G]"
+                  @click="toggleGrayscale"
+                >
+                  <FilterFilled v-if="grayscale" />
+                  <FilterOutlined v-else />
+                </button>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <!-- 缩略图 strip（异常修正时由修正面板占用同列） -->
+        <aside v-if="hasJob && !exceptionPanelOpen" class="thumbs">
+          <div class="thumbs-head">
+            <h4>页面 ({{ pages.length }})</h4>
+            <span v-if="workflow.exceptionPages.value.length" class="thumbs-warn">
+              异常 {{ workflow.exceptionPages.value.length }}
+            </span>
+          </div>
+          <div v-if="pages.length === 0" class="thumbs-empty">扫描后页面将显示在此</div>
+          <ul v-else class="thumbs-list">
+            <li
+              v-for="page in pages"
+              :key="page.pageNo"
+              class="thumb"
+              :class="{
+                active: page.pageNo === previewPageNo,
+                exception: isPageException(page),
+              }"
+            >
+              <button type="button" @click="gotoPage(page.pageNo)">
+                <div class="thumb-no">第 {{ page.pageNo }} 页</div>
+                <div class="thumb-status">
+                  <WarningFilled v-if="isPageException(page)" class="thumb-warn-icon" />
+                  <span>{{ pageStatusLabel(page.status) }}</span>
+                </div>
+              </button>
+            </li>
+          </ul>
+        </aside>
+
+        <KioskScanExceptionPanel
+          v-else-if="hasJob && exceptionPanelOpen"
+          :open="exceptionPanelOpen"
+          :page-no="previewPageNo"
+          @close="exceptionPanelOpen = false"
+        />
+      </div>
     </div>
   </section>
 </template>
@@ -558,6 +603,24 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
   color: var(--kiosk-warning);
 }
 
+.ribbon-fix {
+  flex: 0 0 auto;
+}
+.ribbon-fix-btn {
+  height: 32px;
+  padding: 0 var(--kiosk-space-3);
+  border: 1px solid var(--kiosk-warning);
+  border-radius: var(--kiosk-radius-pill);
+  background: var(--kiosk-warning-soft);
+  color: var(--kiosk-warning);
+  font-size: var(--kiosk-fz-body);
+  font-weight: var(--kiosk-fw-semibold);
+  cursor: pointer;
+}
+.ribbon-fix-btn:hover {
+  background: color-mix(in srgb, var(--kiosk-warning-soft) 70%, var(--kiosk-warning) 30%);
+}
+
 .ribbon-paused {
   display: flex;
   align-items: center;
@@ -575,10 +638,27 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
 
 .stage-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 168px;
+  grid-template-columns: 220px minmax(0, 1fr);
   gap: var(--kiosk-space-3);
   flex: 1;
   min-height: 0;
+}
+
+.batch-rail {
+  background: var(--kiosk-surface);
+  border: 1px solid var(--kiosk-divider);
+  border-radius: var(--kiosk-radius-lg);
+  padding: var(--kiosk-space-3);
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+}
+
+.stage-main {
+  display: grid;
+  gap: var(--kiosk-space-3);
+  min-height: 0;
+  min-width: 0;
 }
 
 .canvas-wrap {
@@ -814,6 +894,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
 }
 .thumb.exception button {
   border-color: var(--kiosk-danger);
+  border-width: 2px;
   background: var(--kiosk-danger-soft);
 }
 .thumb.exception.active button {
@@ -842,8 +923,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
 }
 
 @media (max-width: 1280px) {
-  .stage-body {
-    grid-template-columns: minmax(0, 1fr) 144px;
+  .stage-main {
+    /* gridTemplateColumns 由内联 style 控制 */
   }
   .canvas-tools {
     gap: 1px;
@@ -859,10 +940,37 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
   }
 
   .stage-body {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
   }
+
+  .batch-rail {
+    display: flex;
+    max-height: 132px;
+  }
+
+  .batch-rail :deep(.batch-list) {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .batch-rail :deep(.batch-row) {
+    min-width: 200px;
+  }
+
+  .stage-main {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
   .thumbs {
     display: none;
+  }
+
+  .stage-main > :deep(.exception-panel) {
+    max-height: 280px;
+    height: auto;
   }
 }
 </style>

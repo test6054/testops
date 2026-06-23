@@ -13,9 +13,11 @@ import { fetchEventSource } from '@microsoft/fetch-event-source'
 import http from '@/config/axios'
 import {
   ensureScannerStationTeacherJwt,
+  hasMarkScannerKioskAuth,
   hasMarkScannerStationAuth,
   isScannerKioskBrowserPage,
-  KIOSK_BROWSER_SESSION_LOST_MESSAGE,
+  KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE,
+  KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE,
   resolveMarkScannerStationAuthHeaders,
 } from '@/utils/kiosk-auth'
 
@@ -108,6 +110,8 @@ export interface ScanLiveStreamHandler {
   onClose?: () => void
   /** 重连前需要刷新鉴权 token 时调用 */
   onAuthRefreshRequired?: () => Promise<void>
+  /** 一体机 push_token 失效时，从本机 Agent 绑定重新同步 */
+  onKioskAuthRefreshRequired?: () => Promise<boolean>
 }
 
 /**
@@ -180,9 +184,11 @@ export function subscribeScanLive(
       if (!isScannerKioskBrowserPage()) {
         await ensureScannerStationTeacherJwt()
       }
-      if (retryWithFreshToken && currentAuthSource === 'jwt') {
+      if (retryWithFreshToken) {
         retryWithFreshToken = false
-        await handler.onAuthRefreshRequired?.()
+        if (currentAuthSource === 'jwt') {
+          await handler.onAuthRefreshRequired?.()
+        }
       }
       return fetch(input, {
         ...init,
@@ -202,7 +208,22 @@ export function subscribeScanLive(
           retryWithFreshToken = true
           throw new Error('扫描实时连接暂时不可用，正在尝试重连')
         }
-        const authErr = new ScanLiveFatalAuthError(KIOSK_BROWSER_SESSION_LOST_MESSAGE)
+        if (currentAuthSource === 'kiosk') {
+          const refreshed = await handler.onKioskAuthRefreshRequired?.()
+          if (refreshed) {
+            retryWithFreshToken = true
+            throw new Error('扫描实时连接暂时不可用，正在尝试重连')
+          }
+          const authErr = new ScanLiveFatalAuthError(
+            hasMarkScannerKioskAuth()
+              ? KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE
+              : KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE,
+          )
+          handler.onError?.(authErr)
+          controller.abort()
+          throw authErr
+        }
+        const authErr = new ScanLiveFatalAuthError(KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE)
         handler.onError?.(authErr)
         controller.abort()
         throw authErr
