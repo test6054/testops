@@ -484,7 +484,7 @@ export function useKioskWorkflow() {
   const canSwitchScanner = computed(() => !currentJobBlocksWorkspace.value)
   const canActivateAgent = computed(() => !currentJobBlocksWorkspace.value)
   const canDiscardLedgerPage = computed(() => !currentJobBlocksWorkspace.value)
-  const kioskBrowserSessionLost = computed(() =>
+  const kioskBrowserSessionSyncNeeded = computed(() =>
     needsKioskBrowserSessionSync(health.value?.bound),
   )
   const activationModalForced = computed(
@@ -539,7 +539,7 @@ export function useKioskWorkflow() {
         detail: '输入教务平台下发的激活码后，才能连接扫描仪并开始扫描。',
       }
     }
-    if (kioskBrowserSessionLost.value) {
+    if (kioskBrowserSessionSyncNeeded.value) {
       return {
         tone: 'warning',
         statusText: '会话同步中',
@@ -583,7 +583,7 @@ export function useKioskWorkflow() {
     return {
       tone: 'success',
       statusText: '扫描仪连接正常',
-      headline: '扫描仪连接正常',
+      headline: '可以开始扫描',
       detail: '设备就绪，可以开始本批次扫描。',
     }
   })
@@ -2448,7 +2448,7 @@ export function useKioskWorkflow() {
     canSwitchScanner,
     canActivateAgent,
     canDiscardLedgerPage,
-    kioskBrowserSessionLost,
+    kioskBrowserSessionSyncNeeded,
     workState,
     uploadStage,
     latestBatchText,

@@ -168,7 +168,7 @@ async function startScan() {
           <button type="button" class="template-fold__link" @click="openParams">答题卡校验 / 扫描参数 →</button>
         </details>
 
-        <KioskSessionBatchPanel variant="setup" class="sidebar__batches" @start-scan="startScan" />
+        <KioskSessionBatchPanel variant="setup" class="sidebar__batches" />
       </aside>
 
       <div class="main">
@@ -188,7 +188,7 @@ async function startScan() {
         <div v-if="readiness.troubleshooting || readiness.tone !== 'success'" class="status-detail">
           <p>{{ readiness.troubleshooting || readiness.detail }}</p>
         </div>
-        <p v-else class="status-ready-hint">{{ readiness.detail }}</p>
+        <p v-else class="status-ready-hint">确认扫描参数后，点击「开始扫描」送纸。</p>
 
         <div class="actions">
           <button type="button" class="ghost-btn" @click="openParams">
