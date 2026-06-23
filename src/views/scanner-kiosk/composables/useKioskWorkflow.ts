@@ -338,18 +338,102 @@ export function useKioskWorkflow() {
   const visiblePages = computed(
     () => currentJob.value?.pages.filter((item) => item.status !== 'DELETED') ?? [],
   )
+  const countableLedgerItems = computed(() =>
+    (pageLedger.value?.items ?? []).filter((item) => isCountableLedgerPage(item.registrationStatus)),
+  )
+  /** 扫描中页列表：合并 Agent 本地页与 ledger 已上传页（按 pageNo 去重，本地状态优先）。 */
+  const displayPages = computed(() => {
+    const byPageNo = new Map<
+      number,
+      { pageNo: number, status: string, diagnostic?: string, sourceFileId?: string }
+    >()
+    for (const item of countableLedgerItems.value) {
+      byPageNo.set(item.pageNo, {
+        pageNo: item.pageNo,
+        status: item.uploadStatus === 'UPLOADED' ? 'UPLOADED' : 'SCANNED',
+        diagnostic: item.attentionMessage,
+        sourceFileId: item.sourceFileId,
+      })
+    }
+    for (const page of visiblePages.value) {
+      const existing = byPageNo.get(page.pageNo)
+      byPageNo.set(page.pageNo, {
+        pageNo: page.pageNo,
+        status: page.status,
+        diagnostic: page.diagnostic ?? existing?.diagnostic,
+        sourceFileId: existing?.sourceFileId,
+      })
+    }
+    return [...byPageNo.values()].sort((a, b) => a.pageNo - b.pageNo)
+  })
+  const displayScannedCount = computed(() =>
+    Math.max(currentJob.value?.scannedPages ?? 0, countableLedgerItems.value.length),
+  )
+  const displayUploadedCount = computed(() => {
+    const jobUploaded = currentJob.value?.uploadedPages ?? 0
+    const ledgerUploaded = countableLedgerItems.value.filter(
+      (item) => item.uploadStatus === 'UPLOADED',
+    ).length
+    return Math.max(jobUploaded, ledgerUploaded)
+  })
   const exceptionPages = computed(() =>
     visiblePages.value.filter((item) => {
       return item.status === 'FAILED' || Boolean(item.diagnostic)
     }),
   )
-  const previewImageUrl = computed(() => {
-    if (previewPageNo.value === 0) return ''
-    const scanJobId
-      = currentJob.value?.scanJobId?.trim() || lastPreviewScanJobId.value.trim()
-    if (!scanJobId) return ''
-    return getPageImageUrl(scanJobId, previewPageNo.value)
-  })
+  const previewImageUrl = ref('')
+  const previewLoadError = ref('')
+
+  function resolveActiveScanJobIdForPreview(): string {
+    return currentJob.value?.scanJobId?.trim() || lastPreviewScanJobId.value.trim()
+  }
+
+  /** 预览仅走本机 Agent 本地落盘影像，不访问 storage。 */
+  function refreshPreviewImageUrl() {
+    const pageNo = previewPageNo.value
+    previewLoadError.value = ''
+    if (pageNo <= 0) {
+      previewImageUrl.value = ''
+      return
+    }
+
+    const scanJobId = resolveActiveScanJobIdForPreview()
+    if (!scanJobId) {
+      previewImageUrl.value = ''
+      previewLoadError.value = '缺少本机扫描任务，无法预览'
+      return
+    }
+
+    previewImageUrl.value = getPageImageUrl(scanJobId, pageNo)
+  }
+
+  function onPreviewImageLoadError() {
+    previewImageUrl.value = ''
+    previewLoadError.value = '本地影像加载失败，请确认 Agent 已启动且该页已扫描'
+  }
+
+  watch(
+    () => [
+      previewPageNo.value,
+      currentJob.value?.scanJobId,
+      currentJob.value?.pages?.length,
+      lastPreviewScanJobId.value,
+    ],
+    () => {
+      void refreshPreviewImageUrl()
+    },
+    { immediate: true },
+  )
+
+  watch(
+    () => displayPages.value.length,
+    (next, prev) => {
+      if (next > (prev ?? 0)) {
+        const lastPage = displayPages.value.at(-1)
+        if (lastPage) previewPageNo.value = lastPage.pageNo
+      }
+    },
+  )
   const scanProgress = computed(() => {
     if (!currentJob.value) return 0
     if (currentJob.value.reported) return 100
@@ -633,8 +717,12 @@ export function useKioskWorkflow() {
     if (!currentJob.value) return '等待扫描'
     if (currentJob.value.reported) return '批次已提交'
     if (currentJob.value.status === 'CANCELLED') return '扫描已取消，请删除任务完成清理'
-    if (currentJob.value.status === 'FAILED') return '扫描上传失败，等待重试'
+    if (currentJob.value.status === 'FAILED') return currentJob.value.message || '扫描上传失败，等待重试'
     if (currentJob.value.status === 'PAUSED') return '扫描已暂停'
+    if (currentJob.value.status === 'SCANNING') {
+      if (currentJob.value.scannedPages === 0) return '正在扫描，等待首张影像…'
+      return `正在扫描（${currentJob.value.scannedPages} 页）`
+    }
     if (currentJob.value.scannedPages === 0) return '等待扫描仪送纸'
     if (currentJob.value.uploadedPages < currentJob.value.scannedPages) return '页面自动上传中'
     return '批次自动提交中'
@@ -1028,7 +1116,7 @@ export function useKioskWorkflow() {
   }
 
   function shouldPollRecoveredJob(job: ScanJobResponse) {
-    return ['CREATED', 'SCANNING', 'READYTOUPLOAD', 'UPLOADING', 'RETRYING'].includes(job.status)
+    return ['CREATED', 'SCANNING', 'READYTOUPLOAD', 'UPLOADING', 'RETRYING', 'FAILED'].includes(job.status)
   }
 
   function sameOrderedStringList(left: string[], right: string[]) {
@@ -2532,8 +2620,12 @@ export function useKioskWorkflow() {
     selectedExamOption,
     selectedScanner,
     visiblePages,
+    displayPages,
+    displayScannedCount,
+    displayUploadedCount,
     exceptionPages,
     previewImageUrl,
+    previewLoadError,
     scanProgress,
     activeBackendScanSession,
     activeBackendBatchExternalNo,
@@ -2618,6 +2710,9 @@ export function useKioskWorkflow() {
     removeCurrentScanJob,
     discardLedgerPage,
 
+    // ---- 预览 ----
+    onPreviewImageLoadError,
+
     // ---- Agent 操作 ----
     activateAgent,
     installAgentUpdatePackage,
@@ -2634,6 +2729,10 @@ export type KioskWorkflow = ReturnType<typeof useKioskWorkflow>
 function queryValue(value: LocationQueryValue | LocationQueryValue[]) {
   if (Array.isArray(value)) return typeof value[0] === 'string' ? value[0].trim() : ''
   return typeof value === 'string' ? value.trim() : ''
+}
+
+function isCountableLedgerPage(status?: ExamScannerPageRegistrationStatus) {
+  return status !== 'DISCARDED' && status !== 'SUPERSEDED'
 }
 
 /**

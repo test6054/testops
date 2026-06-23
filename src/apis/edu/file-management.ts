@@ -311,21 +311,21 @@ export async function getFileArrayBuffer(data: DownloadFileRequestDTO): Promise<
  * 注意：调用方需要在不使用时调用 URL.revokeObjectURL 释放内存
  */
 export async function getImageBlobUrl(nodeId: string): Promise<string> {
+  const requestUrl = new URL('/api/storage/filesystem/download', window.location.origin)
+  requestUrl.searchParams.set('nodeId', nodeId)
+
   const token = localStorage.getItem(STORAGE_TOKEN)
   if (!token) {
     throw new Error('未登录或登录已过期')
   }
-
-  const requestUrl = new URL('/api/storage/filesystem/download', window.location.origin)
-  requestUrl.searchParams.set('nodeId', nodeId)
 
   const response = await fetch(requestUrl.toString(), {
     method: 'GET',
     credentials: 'include',
     headers: {
       Authorization: `Bearer ${token}`,
-      ...getTraceHeaders()
-    }
+      ...getTraceHeaders(),
+    },
   })
 
   if (!response.ok) {

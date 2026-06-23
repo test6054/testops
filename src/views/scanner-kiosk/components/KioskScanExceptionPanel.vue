@@ -181,7 +181,11 @@ function gotoReview() {
     </header>
 
     <div v-if="workflow.previewImageUrl.value" class="exception-panel__thumb">
-      <img :src="workflow.previewImageUrl.value" :alt="`第 ${pageNo} 页`" />
+      <img
+        :src="workflow.previewImageUrl.value"
+        :alt="`第 ${pageNo} 页`"
+        @error="workflow.onPreviewImageLoadError"
+      />
     </div>
 
     <p class="exception-panel__diag">{{ diagnosticText }}</p>
