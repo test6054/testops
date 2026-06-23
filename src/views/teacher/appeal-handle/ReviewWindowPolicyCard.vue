@@ -1,15 +1,10 @@
 <template>
-  <a-card title="复核窗口策略" :bordered="false" size="small">
-    <template #extra>
-      <a-space>
-        <UiTag v-if="policy?.policyStatus" :tone="reviewWindowStatusColor(policy.policyStatus)">
-          {{ reviewWindowStatusLabel(policy.policyStatus) }}
-        </UiTag>
-        <a-button :loading="loading" @click="reload">
-          <template #icon><ReloadOutlined /></template>刷新
-        </a-button>
-      </a-space>
-    </template>
+  <section class="appeal-section">
+    <div class="appeal-section__header">
+      <UiTag v-if="policy?.policyStatus" :tone="reviewWindowStatusColor(policy.policyStatus)" size="sm">
+        {{ reviewWindowStatusLabel(policy.policyStatus) }}
+      </UiTag>
+    </div>
 
     <a-spin :spinning="loading">
       <a-form layout="vertical" :model="form">
@@ -85,7 +80,7 @@
         </a-button>
       </a-space>
     </a-spin>
-  </a-card>
+  </section>
 </template>
 
 <script lang="ts" setup>
@@ -96,7 +91,6 @@ import type {
   VisibleMaterialScopeCode,
 } from '@/apis/mark/grade-review'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { reactive, ref, watch } from 'vue'
 import {

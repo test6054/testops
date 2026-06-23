@@ -69,11 +69,17 @@ export type ScannerColorModeCode = 'COLOR' | 'GRAY' | 'LINEART'
 /** 双面模式 */
 export type ScannerDuplexModeCode = 'SIMPLEX' | 'DUPLEX'
 
-/** 扫描设备查询请求 - 对应 ExamScannerDeviceQueryRequest */
-export interface ExamScannerDeviceQueryRequest {
+/** 扫描设备分页查询请求 - 对应 ExamScannerDeviceQueryRequest */
+export interface ExamScannerDeviceQueryRequest extends QueryDto {
   status?: ScannerDeviceStatusCode
   scannerDeviceIdKeyword?: string
+  location?: string
   interfaceMode?: ScannerInterfaceModeCode
+}
+
+/** 扫描设备物理位置筛选项 - 对应 ExamScannerDeviceLocationOptionResponse */
+export interface ExamScannerDeviceLocationOptionVO {
+  location: string
 }
 
 /** 扫描设备视图 - 对应 ExamScannerDeviceResponse */
@@ -130,7 +136,17 @@ export interface ExamScannerDeviceDetailVO extends ExamScannerDeviceVO {
   authorizationHeader?: string
 }
 
-/** 扫描设备 token 响应 - 对应 ExamScannerDeviceTokenResponse */
+/** 扫描设备激活码交接响应 - 对应 ExamScannerDeviceActivationHandoffResponse */
+export interface ExamScannerDeviceActivationHandoffVO {
+  id: string
+  scannerDeviceId: string
+  scannerStationId: string
+  deviceName: string
+  activationCode?: string
+  expireAt?: string
+}
+
+/** 扫描设备 token 响应 - 对应 ExamScannerDeviceTokenResponse（历史接口，教师侧不再使用） */
 export interface ExamScannerDeviceTokenVO {
   id: string
   pushToken: string
@@ -207,13 +223,21 @@ export interface ExamPaperBatchBindResultVO {
 }
 
 /**
- * 列出当前租户的扫描设备
+ * 分页查询当前租户的扫描设备
  * POST /api/mark/exams/scan-devices/list
  */
-export function listScannerDevices(
+export function pageScannerDevices(
   request: ExamScannerDeviceQueryRequest,
-): Promise<ExamScannerDeviceVO[]> {
-  return http.post<ExamScannerDeviceVO[]>('/api/mark/exams/scan-devices/list', request)
+): Promise<PageResult<ExamScannerDeviceVO>> {
+  return http.post<PageResult<ExamScannerDeviceVO>>('/api/mark/exams/scan-devices/list', request)
+}
+
+/**
+ * 查询当前租户扫描设备物理位置选项
+ * POST /api/mark/exams/scan-devices/locations
+ */
+export function listScannerDeviceLocations(): Promise<ExamScannerDeviceLocationOptionVO[]> {
+  return http.post<ExamScannerDeviceLocationOptionVO[]>('/api/mark/exams/scan-devices/locations', {})
 }
 
 /**
@@ -222,8 +246,8 @@ export function listScannerDevices(
  */
 export function createScannerDevice(
   request: ExamScannerDeviceCreateRequest,
-): Promise<ExamScannerDeviceTokenVO> {
-  return http.post<ExamScannerDeviceTokenVO>('/api/mark/exams/scan-devices/create', request)
+): Promise<ExamScannerDeviceActivationHandoffVO> {
+  return http.post<ExamScannerDeviceActivationHandoffVO>('/api/mark/exams/scan-devices/create', request)
 }
 
 /**
@@ -262,8 +286,8 @@ export function getScannerDeviceDetail(id: string): Promise<ExamScannerDeviceDet
  * 重置扫描设备 push_token（仅 HTTP_PUSH 模式可用）
  * POST /api/mark/exams/scan-devices/reset-token
  */
-export function resetScannerDevicePushToken(id: string): Promise<ExamScannerDeviceTokenVO> {
-  return http.post<ExamScannerDeviceTokenVO>('/api/mark/exams/scan-devices/reset-token', { id })
+export function resetScannerDevicePushToken(id: string): Promise<ExamScannerDeviceActivationHandoffVO> {
+  return http.post<ExamScannerDeviceActivationHandoffVO>('/api/mark/exams/scan-devices/reset-token', { id })
 }
 
 /**

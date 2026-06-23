@@ -288,6 +288,10 @@ import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import {
+  resolveMarkingOrganizationDetailRoute,
+  resolveMarkingOrganizationSessionsRoute,
+} from '@/utils/marking-organization-navigation'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -555,18 +559,18 @@ async function submitDelete(): Promise<void> {
 
 function goDetail(): void {
   if (!organization.value) return
-  void router.push({
-    name: 'TeacherMarkingOrganizationDetail',
-    params: { organizationId: organization.value.id },
-  })
+  void router.push(resolveMarkingOrganizationDetailRoute(
+    organization.value.id,
+    isExamWorkspaceRoute.value ? selectedExamId.value : undefined,
+  ))
 }
 
 function goSessions(): void {
   if (!organization.value) return
-  void router.push({
-    name: 'TeacherMarkingOrganizationSessions',
-    params: { organizationId: organization.value.id },
-  })
+  void router.push(resolveMarkingOrganizationSessionsRoute(
+    organization.value.id,
+    isExamWorkspaceRoute.value ? selectedExamId.value : undefined,
+  ))
 }
 
 function goAssignmentScheme(): void {

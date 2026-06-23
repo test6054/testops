@@ -18,6 +18,24 @@
       <template #icon><SaveOutlined /></template>
       保存
     </UiButton>
+    <UiConfirmPopover
+      v-if="examDetail?.masterConfigured && !examDetail.layoutModeLocked"
+      title="撤销试卷母版？"
+      description="撤销后可重新编辑题目与标准答案；已同步页模板文件需自行核对。"
+      danger
+      @confirm="handleRevokeMaster"
+    >
+      <UiButton size="sm" variant="outline" :loading="revokingMaster">撤销母版</UiButton>
+    </UiConfirmPopover>
+    <UiButton
+      v-else-if="examDetail?.masterConfigured && examDetail.layoutModeLocked"
+      size="sm"
+      variant="outline"
+      disabled
+      title="考试已生成印刷包或已开始扫描，无法撤销母版"
+    >
+      撤销母版
+    </UiButton>
   </div>
 
   <UiEmpty
@@ -509,7 +527,7 @@ import {
   saveExamTemplate,
 } from '@/apis/mark/exam-template'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
-import { getPaperMaster, isPaperMasterNotConfiguredError } from '@/apis/mark/paper-master'
+import { getPaperMaster, revokePaperMaster } from '@/apis/mark/paper-master'
 import { confirmAnswerEffective, getEffectiveAnswerConfig } from '@/apis/mark/question-analysis'
 import ExamTemplatePageTable from '@/components/mark/ExamTemplatePageTable.vue'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
@@ -591,6 +609,7 @@ const answerPreviewMap = reactive(new Map<string, AnswerPreviewState>())
 
 const loading = ref(false)
 const saving = ref(false)
+const revokingMaster = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
 const examDetail = ref<ExamDetailVO | null>(null)
 const layoutMode = ref<ExamMaterialLayoutModeCode | undefined>()
@@ -800,8 +819,8 @@ async function loadTemplate(): Promise<void> {
     const tpl = await getExamTemplate(selectedExamId.value)
     await applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages, tpl.questions)
     objectiveOptions.splice(0, objectiveOptions.length)
-    try {
-      const master = await getPaperMaster(selectedExamId.value)
+    const master = await getPaperMaster(selectedExamId.value)
+    if (master.configured) {
       master.objectiveAreas.forEach((area) => {
         objectiveOptions.push({
           questionTemplateId: area.questionTemplateId,
@@ -812,10 +831,6 @@ async function loadTemplate(): Promise<void> {
           })),
         })
       })
-    } catch (error) {
-      if (!(error instanceof Error && isPaperMasterNotConfiguredError(error))) {
-        message.warning(getUserErrorMessage(error, '客观题选项读取失败，选择题标准答案暂不可录入'))
-      }
     }
   } catch (error) {
     clearTemplate()
@@ -1438,6 +1453,21 @@ async function handleSaveAnswer(): Promise<void> {
     showUserError(error, '标准答案保存失败')
   } finally {
     answerSaving.value = false
+  }
+}
+
+async function handleRevokeMaster(): Promise<void> {
+  if (!selectedExamId.value) return
+  revokingMaster.value = true
+  try {
+    await revokePaperMaster(selectedExamId.value)
+    message.success('试卷母版已撤销，可继续编辑模板与标准答案')
+    await loadTemplate()
+    await refreshSnapshot()
+  } catch (error) {
+    showUserError(error, '撤销试卷母版失败')
+  } finally {
+    revokingMaster.value = false
   }
 }
 

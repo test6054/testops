@@ -91,6 +91,7 @@ export interface WorkbenchStageSnapshotVO {
   stages: ExamWorkbenchStageItemVO[]
   prepSteps: ExamWorkbenchPrepStepVO[]
   prepAdvisoryReasons: string[]
+  prepBlockingReasons: string[]
   markingProgress: MarkingProgressVO
   markingOrgConfigured: boolean
   trialSessionActive: boolean

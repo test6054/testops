@@ -27,22 +27,6 @@
           </UiTag>
           <UiTag v-if="counts.failed > 0" tone="red" size="sm">失败 {{ counts.failed }}</UiTag>
         </template>
-        <template #actions>
-          <UiButton size="sm" :disabled="!selectedExamId" @click="openCreateModal">
-            <template #icon><PlusOutlined /></template>
-            创建导出任务
-          </UiButton>
-          <UiButton
-            size="sm"
-            variant="outline"
-            :disabled="!selectedExamId"
-            :loading="loading"
-            @click="handleRefreshTasks"
-          >
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-        </template>
       </ContextBar>
     </template>
 
@@ -52,6 +36,12 @@
       <template #title>
         <CloudDownloadOutlined />
         <span>当前考试导出任务</span>
+      </template>
+      <template #extra>
+        <UiButton size="sm" @click="openCreateModal">
+          <template #icon><PlusOutlined /></template>
+          创建导出任务
+        </UiButton>
       </template>
       <UiFilterBar
         :model-value="exportFilterForm"
@@ -267,7 +257,6 @@ import type { ExamQuestionTemplateVO } from '@/apis/mark/exam-template'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -519,10 +508,6 @@ async function loadTasks(options?: { quiet?: boolean }): Promise<void> {
       loading.value = false
     }
   }
-}
-
-function handleRefreshTasks(): void {
-  void loadTasks()
 }
 
 let exportPollTimer: ReturnType<typeof setInterval> | null = null

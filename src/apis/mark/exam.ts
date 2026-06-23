@@ -173,7 +173,9 @@ export interface ExamDetailVO {
   printPackageReady?: boolean
   printPackageCount?: number
   /** 准备建议项（提示能力缺口，不阻断扫描） */
-  prepAdvisoryReasons?: string[]
+  prepAdvisoryReasons: string[]
+  /** 准备硬阻断项（仅制卷形态与整卷印刷来源等扫描主链前置） */
+  prepBlockingReasons: string[]
 }
 
 /** 保存制卷形态请求 - 对应 ExamMaterialLayoutSaveRequest */

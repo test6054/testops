@@ -71,6 +71,14 @@
           </UiEmpty>
 
           <a-spin v-else :spinning="loading && !snapshot">
+            <UiAlertStrip
+              v-if="prepBlockingReasons.length > 0 && !isImmersiveWorkspace"
+              tone="warning"
+              title="考试准备硬阻断"
+              :description="prepBlockingReasons.join('；')"
+              dense
+              class="exam-detail-layout__prep-blocking"
+            />
             <UiEmpty
               v-if="isImmersiveWorkspace && !isDesktopMarkingViewport"
               description="批阅与复核需在较宽屏幕操作，请使用桌面端（宽度 ≥ 1024px）"
@@ -134,6 +142,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import ExamSubSidebar from '@/components/workbench/ExamSubSidebar.vue'
 import { useExamJourneySteps } from '@/composables/useExamJourneySteps'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
@@ -223,6 +232,7 @@ const {
   refreshing,
   orderedStages,
   suggestedStageKey,
+  prepBlockingReasons,
   refreshSnapshot,
 } = useMarkWorkbenchSnapshot(() => examId.value)
 
@@ -472,6 +482,10 @@ watch(isImmersiveWorkspace, (immersive) => {
         margin: 0 auto;
       }
     }
+  }
+
+  &__prep-blocking {
+    margin-bottom: 16px;
   }
 
   &__menu-toggle-text {

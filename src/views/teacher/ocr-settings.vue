@@ -2,6 +2,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { ExamDetailVO } from '@/apis/mark/exam'
 import type { ExamScoreSummaryItemVO } from '@/apis/mark/exam-score'
 import type { ExamQuestionTemplateVO } from '@/apis/mark/exam-template'
 import type {
@@ -22,6 +23,9 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
+  getExamDetail,
+} from '@/apis/mark/exam'
+import {
   BINDING_STATUS_LABEL,
 } from '@/apis/mark/exam-binding'
 import {
@@ -32,6 +36,7 @@ import {
   getExamTemplate,
   isPaperTemplateNotConfiguredError,
 } from '@/apis/mark/exam-template'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import {
   checkMarkOcrHealth,
   getCurrentMarkOcrConfig,
@@ -45,6 +50,8 @@ import {
 import {
   MARK_OCR_HEALTH_STATUS_COLOR,
   MARK_OCR_HEALTH_STATUS_LABEL,
+  MARK_OCR_PAPER_CUT_CAPABILITY,
+  MARK_OCR_PROVIDER_DESCRIPTION,
   MARK_OCR_PROVIDER_LABEL,
 } from '@/apis/mark/ocr-types'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
@@ -79,7 +86,7 @@ const currentConfig = ref<MarkOcrConfigVO | null>(null)
 // 加载失败：toast 提示，主区保持空态/列表壳
 const recognizeResult = ref<MarkOcrRecognizeVO | null>(null)
 const debugForm = ref<DebugFormState>({})
-const { selectedExamId, selectedExamLabel } = useMarkExamContext()
+const { selectedExamId } = useMarkExamContext()
 const userStore = useUserStore()
 
 // 仅 PADDLE 渠道相关：展示后端已注册的 PaddleOCR 服务实例列表。
@@ -93,11 +100,44 @@ const paperCandidates = ref<ExamScoreSummaryItemVO[]>([])
 const paperCandidatesLoading = ref(false)
 const paperCandidatesError = ref<Error | null>(null)
 const paperCandidateKeyword = ref('')
+const examDetail = ref<ExamDetailVO | null>(null)
+const examDetailLoading = ref(false)
 
-const debugRules: Record<string, Rule[]> = {
-  paperInstanceId: [{ required: true, message: '请选择答题卡', trigger: 'change' }],
-  questionTemplateId: [{ required: true, message: '请选择题目', trigger: 'change' }],
+/** 题目是否已配置 OCR 识别区域（页码与 ROI 坐标）。 */
+function isOcrRegionReady(question: ExamQuestionTemplateVO): boolean {
+  return (
+    question.pageNo != null
+    && question.pageNo > 0
+    && question.x != null
+    && question.y != null
+    && question.width != null
+    && question.height != null
+    && question.width > 0
+    && question.height > 0
+  )
 }
+
+const examMaterialLayoutMode = computed(() => examDetail.value?.materialLayoutMode)
+
+const paperInstanceFieldLabel = computed(() => {
+  const mode = examMaterialLayoutMode.value
+  if (mode === 'ANSWER_SHEET') {
+    return '扫描答卷'
+  }
+  if (mode === 'FULL_PAPER') {
+    return '扫描试卷'
+  }
+  return '试卷实例'
+})
+
+const ocrDebugReady = computed(() => Boolean(examMaterialLayoutMode.value))
+
+const ocrReadyQuestions = computed(() => questions.value.filter(isOcrRegionReady))
+
+const debugRules = computed<Record<string, Rule[]>>(() => ({
+  paperInstanceId: [{ required: true, message: `请选择${paperInstanceFieldLabel.value}`, trigger: 'change' }],
+  questionTemplateId: [{ required: true, message: '请选择已配置识别区域的题目', trigger: 'change' }],
+}))
 
 const healthStatus = computed<MarkOcrHealthStatusCode | undefined>(
   () => currentConfig.value?.healthStatus,
@@ -115,14 +155,36 @@ const healthLabel = computed(() =>
 const currentProviderLabel = computed(() =>
   currentConfig.value?.providerType ? providerLabel(currentConfig.value.providerType) : '未配置',
 )
+const providerDescription = computed(() => {
+  const providerType = currentConfig.value?.providerType
+  if (!providerType) {
+    return '当前租户尚未选择 OCR 渠道，请联系平台管理员完成租户渠道配置。'
+  }
+  return strictEnumLabel(MARK_OCR_PROVIDER_DESCRIPTION, providerType, 'OCR 渠道说明')
+})
+const paperCutCapability = computed(() => {
+  const providerType = currentConfig.value?.providerType
+  if (!providerType) {
+    return ''
+  }
+  return strictEnumLabel(MARK_OCR_PAPER_CUT_CAPABILITY, providerType, 'OCR 切题能力')
+})
 
 const canRecognize = computed(() =>
-  Boolean(currentConfig.value?.providerType && currentConfig.value.enabled),
+  Boolean(
+    ocrDebugReady.value
+    && currentConfig.value?.providerType
+    && currentConfig.value.enabled,
+  ),
 )
 const questionOptions = computed(() =>
-  questions.value.map((question) => ({
+  ocrReadyQuestions.value.map((question) => ({
     value: question.questionTemplateId,
-    label: `题 ${question.questionNo} · ${question.fullScore} 分`,
+    label: [
+      `题 ${question.questionNo}`,
+      strictEnumLabel(QUESTION_TYPE_LABEL, question.questionType, '题型'),
+      `${question.fullScore} 分`,
+    ].join(' · '),
   })),
 )
 const paperCandidateOptions = computed(() =>
@@ -183,7 +245,8 @@ function applyConfig(config: MarkOcrConfigVO): void {
 async function loadConfig(): Promise<void> {
   loading.value = true
   try {
-    applyConfig(await getCurrentMarkOcrConfig())
+    const tenantId = userStore.userInfo.tenantId
+    applyConfig(await getCurrentMarkOcrConfig(tenantId))
   } catch (error) {
     currentConfig.value = null
     showUserError(error, 'OCR 识别配置加载失败')
@@ -225,6 +288,18 @@ async function handleRecognize(): Promise<void> {
   }
 }
 
+async function loadExamDetail(examId: string): Promise<void> {
+  examDetailLoading.value = true
+  try {
+    examDetail.value = await getExamDetail(examId)
+  } catch (error) {
+    examDetail.value = null
+    showUserError(error, '考试详情加载失败')
+  } finally {
+    examDetailLoading.value = false
+  }
+}
+
 async function loadQuestions(examId: string): Promise<void> {
   questionsLoading.value = true
   questionsError.value = null
@@ -257,13 +332,13 @@ async function loadPaperCandidates(
       pageSize: PAPER_CANDIDATE_FILTER_PAGE_SIZE,
       keyword: normalizedKeyword || undefined,
     })
-    paperCandidates.value = readPageList(result, '答卷候选加载失败，请稍后重试').filter(
-      (item) => item.paperInstanceId,
+    paperCandidates.value = readPageList(result, '卷面候选加载失败，请稍后重试').filter(
+      (item) => item.paperInstanceId && item.bindingStatus === 'BOUND',
     )
   } catch (error) {
     paperCandidates.value = []
-    paperCandidatesError.value = toUserError(error, '答卷候选列表加载失败')
-    showUserError(error, '答题卡列表加载失败')
+    paperCandidatesError.value = toUserError(error, '卷面候选列表加载失败')
+    showUserError(error, '卷面候选列表加载失败')
   } finally {
     paperCandidatesLoading.value = false
   }
@@ -340,8 +415,13 @@ watch(
     paperCandidateKeyword.value = ''
     recognizeResult.value = null
     if (examId) {
-      void Promise.all([loadQuestions(examId), loadPaperCandidates(examId)])
+      void Promise.all([
+        loadExamDetail(examId),
+        loadQuestions(examId),
+        loadPaperCandidates(examId),
+      ])
     } else {
+      examDetail.value = null
       questions.value = []
       paperCandidates.value = []
       questionsError.value = null
@@ -366,6 +446,7 @@ async function reloadOcrWorkbench(): Promise<void> {
     return
   }
   await Promise.all([
+    loadExamDetail(examId),
     loadQuestions(examId),
     loadPaperCandidates(examId),
   ])
@@ -399,13 +480,6 @@ onBeforeUnmount(() => {
             {{ healthLabel }}
           </UiTag>
         </div>
-        <UiButton variant="outline" size="sm" :loading="healthChecking" @click="handleHealthCheck">
-          健康检查
-        </UiButton>
-        <UiButton variant="outline" size="sm" :loading="loading" @click="loadConfig">
-          <template #icon><ReloadOutlined /></template>
-          刷新
-        </UiButton>
       </div>
 
       <div class="ocr-grid">
@@ -413,6 +487,26 @@ onBeforeUnmount(() => {
           <template #title>
             <ApiOutlined />
             <span>当前 OCR 渠道</span>
+          </template>
+          <UiEmpty
+            v-if="!currentConfig.providerType"
+            description="租户尚未配置 OCR 渠道"
+          />
+          <template v-else>
+            <div class="ocr-channel__hero">
+              <span class="ocr-channel__name">{{ currentProviderLabel }}</span>
+              <UiTag :tone="healthColor" size="sm">{{ healthLabel }}</UiTag>
+            </div>
+            <p class="ocr-channel__desc">{{ providerDescription }}</p>
+            <p class="ocr-channel__capability">{{ paperCutCapability }}</p>
+            <a-descriptions :column="1" size="small" bordered class="ocr-channel__meta">
+              <a-descriptions-item label="渠道编码">
+                {{ currentConfig.providerType }}
+              </a-descriptions-item>
+              <a-descriptions-item v-if="currentConfig.lastHealthMessage" label="最近诊断">
+                {{ ocrHealthMessageText(currentConfig.lastHealthMessage) }}
+              </a-descriptions-item>
+            </a-descriptions>
           </template>
         </UiCard>
 
@@ -427,7 +521,17 @@ onBeforeUnmount(() => {
               {{ currentConfig?.enabled ? '启用' : '关闭' }}
             </a-descriptions-item>
             <a-descriptions-item label="健康状态">
-              <UiTag :tone="healthColor">{{ healthLabel }}</UiTag>
+              <div class="ocr-health-row">
+                <UiTag :tone="healthColor">{{ healthLabel }}</UiTag>
+                <UiButton
+                  variant="outline"
+                  size="sm"
+                  :loading="healthChecking"
+                  @click="handleHealthCheck"
+                >
+                  健康检查
+                </UiButton>
+              </div>
             </a-descriptions-item>
             <a-descriptions-item label="最近检查">
               {{ currentConfig?.lastHealthCheckAt || '未检查' }}
@@ -501,11 +605,6 @@ onBeforeUnmount(() => {
           <ExperimentOutlined />
           <span>同步调试</span>
         </template>
-        <a-descriptions :column="1" size="small" bordered class="debug-form__exam">
-          <a-descriptions-item label="当前考试">
-            {{ selectedExamLabel || debugForm.examId }}
-          </a-descriptions-item>
-        </a-descriptions>
         <a-form
           ref="debugFormRef"
           :model="debugForm"
@@ -515,16 +614,17 @@ onBeforeUnmount(() => {
         >
           <a-row :gutter="16">
             <a-col :xs="24" :md="12">
-              <a-form-item label="答题卡" name="paperInstanceId" required>
+              <a-form-item :label="paperInstanceFieldLabel" name="paperInstanceId" required>
                 <a-select
                   v-model:value="debugForm.paperInstanceId"
                   :options="paperCandidateOptions"
-                  :loading="paperCandidatesLoading"
-                  :disabled="!debugForm.examId"
+                  :loading="paperCandidatesLoading || examDetailLoading"
+                  :disabled="!debugForm.examId || !ocrDebugReady"
                   show-search
                   :filter-option="false"
                   allow-clear
-                  placeholder="请选择答题卡"
+                  :placeholder="`请选择${paperInstanceFieldLabel}`"
+                  :not-found-content="paperCandidatesLoading ? undefined : '暂无已扫描并绑定的卷面'"
                   @search="handlePaperCandidateSearch"
                   @dropdown-visible-change="handlePaperCandidateDropdownVisibleChange"
                   @change="handlePaperCandidateChange"
@@ -536,11 +636,12 @@ onBeforeUnmount(() => {
                 <a-select
                   v-model:value="debugForm.questionTemplateId"
                   :options="questionOptions"
-                  :loading="questionsLoading"
-                  :disabled="!debugForm.examId"
+                  :loading="questionsLoading || examDetailLoading"
+                  :disabled="!debugForm.examId || !ocrDebugReady"
                   show-search
                   option-filter-prop="label"
-                  placeholder="请选择题目"
+                  placeholder="请选择已配置识别区域的题目"
+                  :not-found-content="questionsLoading ? undefined : '暂无已配置识别区域的题目'"
                 />
               </a-form-item>
             </a-col>
@@ -593,6 +694,13 @@ onBeforeUnmount(() => {
   }
 }
 
+.ocr-health-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .ocr-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -609,6 +717,40 @@ onBeforeUnmount(() => {
   margin-bottom: 0;
 }
 
+.ocr-channel {
+  &__hero {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  &__name {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__desc,
+  &__capability {
+    margin: 0 0 8px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--dp-text-secondary, #475569);
+  }
+
+  &__capability {
+    margin-bottom: 12px;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__meta {
+    margin-top: 4px;
+  }
+}
+
 .provider-group {
   display: flex;
   flex-wrap: wrap;
@@ -620,21 +762,7 @@ onBeforeUnmount(() => {
 }
 
 .debug-form {
-  margin-top: 12px;
-
-  &__exam {
-    margin-top: 12px;
-  }
-
-  &__hint {
-    margin-top: 4px;
-    font-size: 12px;
-    line-height: 1.5;
-
-    &--error {
-      color: var(--ant-color-error);
-    }
-  }
+  margin-top: 0;
 }
 
 .result-text-block {
