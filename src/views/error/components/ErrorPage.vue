@@ -66,7 +66,7 @@ const backLabel = computed(() => {
     return '返回我的成绩'
   }
   if (role === RoleEnum.SUPER_ADMIN) {
-    return '返回阅卷中心'
+    return '返回教学质量中心'
   }
   if (
     role === RoleEnum.SCH_TECH

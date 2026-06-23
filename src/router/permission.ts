@@ -143,13 +143,8 @@ export function hasRoutePermission(
     if (!hasRolePermission) {
         return false
     }
-
     // 检查是否需要租户管理员权限
-    if (permission.requireTenantAdmin && !isTenantAdmin) {
-        return false
-    }
-
-    return true
+    return !(permission.requireTenantAdmin && !isTenantAdmin);
 }
 
 /**
@@ -175,13 +170,8 @@ export function hasRouteNamePermission(
     if (!roles.includes(userRole as RoleEnum)) {
         return false
     }
-
     const requireTenantAdmin = route.meta.requireTenantAdmin as boolean | undefined
-    if (requireTenantAdmin && !isTenantAdmin) {
-        return false
-    }
-
-    return true
+    return !(requireTenantAdmin && !isTenantAdmin);
 }
 
 /**

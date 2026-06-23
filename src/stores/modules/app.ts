@@ -56,8 +56,8 @@ const storeSetup = () => {
     const siteConfig = reactive<BasicConfig>({
         SITE_FAVICON: '/favicon.ico',
         SITE_LOGO: '/logo.svg',
-        SITE_TITLE: '阅卷中心',
-        SITE_COPYRIGHT: '© 阅卷中心',
+        SITE_TITLE: '教学质量中心',
+        SITE_COPYRIGHT: '© 教学质量中心',
         SITE_BEIAN: ''
     })
 

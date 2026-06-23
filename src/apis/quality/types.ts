@@ -772,8 +772,8 @@ export const DATA_SOURCE_MODE_LABEL: Record<DataSourceMode, string> = {
   EXTERNAL_AI_CONNECTOR: '外部 AI 解析草稿',
   READ_ONLY_DATABASE_PULL: '只读数据库主动拔取',
   MANUAL_CONFIRMATION: '人工录入与确认',
-  EDU_MARK_EXAM: '阅卷中心考试环节',
-  EDU_MARK_FINAL_SCORE: '阅卷中心最终成绩',
+  EDU_MARK_EXAM: '考试阅卷环节',
+  EDU_MARK_FINAL_SCORE: '考试阅卷最终成绩',
 }
 
 /** 过程性评价节点类型 - 对应 ProcessNodeTypeEnum */

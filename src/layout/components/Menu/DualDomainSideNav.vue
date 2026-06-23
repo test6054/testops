@@ -11,7 +11,7 @@
   >
     <a-sub-menu key="domain-marking">
       <template #title>
-        <span>阅卷中心</span>
+        <span>考试阅卷</span>
       </template>
       <template #icon>
         <MenuIcon icon="audit" />
@@ -102,10 +102,24 @@ import MenuIcon from './MenuIcon.vue'
 
 defineOptions({ name: 'DualDomainSideNav' })
 
+const props = defineProps<{
+  collapsed: boolean
+  markingGrouped: {
+    ungrouped: RouteRecordRaw[]
+    groups: MenuGroup[]
+  }
+  qualityGrouped: {
+    ungrouped: RouteRecordRaw[]
+    groups: MenuGroup[]
+  }
+}>()
+const emit = defineEmits<{
+  (e: 'menu-item-click-after'): void
+}>()
 const MARKING_DOMAIN_KEY = 'domain-marking'
 const QUALITY_DOMAIN_KEY = 'domain-quality'
 
-/** 超管租户级配置与 SaaS 监管分组，展示时归入阅卷中心域（不含考试内阅卷组织）。 */
+/** 超管租户级配置与 SaaS 监管分组，展示时归入考试阅卷域（不含考试内阅卷组织）。 */
 const MARKING_DOMAIN_MENU_GROUPS = new Set([
   'marking-admin',
   'ai-analysis',
@@ -121,22 +135,6 @@ interface MenuGroup {
   items: RouteRecordRaw[]
 }
 
-const props = defineProps<{
-  collapsed: boolean
-  markingGrouped: {
-    ungrouped: RouteRecordRaw[]
-    groups: MenuGroup[]
-  }
-  qualityGrouped: {
-    ungrouped: RouteRecordRaw[]
-    groups: MenuGroup[]
-  }
-}>()
-
-const emit = defineEmits<{
-  (e: 'menu-item-click-after'): void
-}>()
-
 const route = useRoute()
 const router = useRouter()
 
@@ -150,7 +148,7 @@ const activeMenuKeys = computed<Key[]>(() => {
 
 const openMenuKeys = ref<Key[]>([])
 
-/** 按当前路由展开对应一级域；超管平台配置项归属阅卷中心域。 */
+/** 按当前路由展开对应一级域；超管平台配置项归属考试阅卷域。 */
 function resolveDefaultOpenKeys(): Key[] {
   if (props.collapsed) {
     return []

@@ -48,7 +48,7 @@ export enum NotificationTypeEnum {
   /** 成绩发布 */
   SCORE_PUBLISHED = 'SCORE_PUBLISHED',
 
-  // --- 阅卷中心通知 ---
+  // --- 考试阅卷通知 ---
   /** 试卷扫描完成 */
   EXAM_SCAN_COMPLETED = 'EXAM_SCAN_COMPLETED',
   /** 试卷待复核 */

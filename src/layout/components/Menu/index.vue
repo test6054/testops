@@ -72,7 +72,7 @@ const authStore = useAuthStore()
 const qualityStore = useQualityStore()
 
 const ROLE_LAYOUT_PREFIXES = ['/teacher', '/student', '/quality'] as const
-/** 质量域侧栏中的超管租户级配置分组，展示时归入阅卷中心域。 */
+/** 质量域侧栏中的超管租户级配置分组，展示时归入考试阅卷域。 */
 const QUALITY_ADMIN_MENU_GROUP = 'quality-admin'
 
 function isSidebarMenuRoute(routeRecord: RouteRecordRaw): boolean {

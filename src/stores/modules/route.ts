@@ -73,7 +73,7 @@ const storeSetup = (): RouteStoreState => {
     let roleRoutes: RouteRecordRaw[]
 
     if (userRole === RoleEnum.SUPER_ADMIN) {
-      // 超管：阅卷中心（含 SaaS 监管）+ 质量评价
+      // 超管：考试阅卷（含 SaaS 监管）+ 质量评价
       roleRoutes = [...teacherRoutes, ...qualityRoutes, ...commonRoutes]
     } else if ([RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER].includes(userRole as RoleEnum)) {
       // 教师角色：阅卷工作台 + 教学质量评价工作台（OBE 主链责任人）
@@ -115,11 +115,7 @@ const storeSetup = (): RouteStoreState => {
         }
 
         // 检查租户管理员权限
-        if (route.meta?.requireTenantAdmin && !userIsTenantAdmin) {
-          return false
-        }
-
-        return true
+        return !(route.meta?.requireTenantAdmin && !userIsTenantAdmin);
       })
       .map(route => {
         const filteredChildren = route.children

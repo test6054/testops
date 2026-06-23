@@ -7,30 +7,17 @@
     }"
   >
     <div v-if="!collapsed" class="exam-sub-sidebar__exam-switch">
-      <MarkExamSelect
-        v-if="examOptions.length > 0"
+      <ExamSidebarExamSwitch
         :selected-exam-id="selectedExamId"
         :exam-options="examOptions"
-        :loading="selectorLoading"
-        :allow-clear="false"
-        placeholder="切换考试"
-        select-class="exam-sub-sidebar__exam-select"
-        @change="(value) => emit('exam-change', value)"
-        @search="(keyword) => emit('exam-search', keyword)"
+        :selector-loading="selectorLoading"
+        :exam-display-name="examDisplayName"
+        :exam-display-no="examDisplayNo"
+        :exam-status-label="examStatusLabel"
+        :exam-status-tone="examStatusTone"
+        @exam-change="(value) => emit('exam-change', value)"
+        @exam-search="(keyword) => emit('exam-search', keyword)"
       />
-      <div class="exam-sub-sidebar__exam-meta">
-        <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">{{ examStatusLabel }}</UiTag>
-        <UiButton
-          variant="ghost"
-          size="sm"
-          :loading="refreshing"
-          :disabled="!selectedExamId"
-          aria-label="刷新工作台"
-          @click="emit('refresh')"
-        >
-          <template #icon><ReloadOutlined /></template>
-        </UiButton>
-      </div>
     </div>
 
     <a-divider v-if="!collapsed" class="exam-sub-sidebar__divider" />
@@ -50,12 +37,12 @@
       <div v-if="!collapsed" class="exam-sub-sidebar__section-label">当前步骤功能</div>
       <div class="exam-sub-sidebar__menu">
         <ExamSubSidebarNav
-        :active-journey-key="activeJourneyKey"
-        :active-menu-key="activeMenuKey"
-        :ordered-stages="orderedStages"
-        :collapsed="collapsed"
-        :menu-icon-map="menuIconMap"
-        @menu-click="(key) => emit('menu-click', key)"
+          :active-journey-key="activeJourneyKey"
+          :active-menu-key="activeMenuKey"
+          :ordered-stages="orderedStages"
+          :collapsed="collapsed"
+          :menu-icon-map="menuIconMap"
+          @menu-click="(key) => emit('menu-click', key)"
         />
       </div>
     </template>
@@ -84,11 +71,8 @@ import type { WorkbenchStage } from '@/types/workbench'
 import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
 import MenuFoldOutlined from '@ant-design/icons-vue/MenuFoldOutlined'
 import MenuUnfoldOutlined from '@ant-design/icons-vue/MenuUnfoldOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ExamJourneySidebarNav from '@/components/workbench/ExamJourneySidebarNav.vue'
+import ExamSidebarExamSwitch from '@/components/workbench/ExamSidebarExamSwitch.vue'
 import ExamSubSidebarNav from '@/components/workbench/ExamSubSidebarNav.vue'
 
 defineOptions({
@@ -101,7 +85,8 @@ defineProps<{
   selectedExamId: string
   examOptions: MarkExamSelectOption[]
   selectorLoading?: boolean
-  refreshing?: boolean
+  examDisplayName?: string
+  examDisplayNo?: string
   activeMenuKey: string
   activeJourneyKey: ExamWorkspaceJourneyKey
   journeyStages: WorkbenchStage[]
@@ -119,7 +104,6 @@ const emit = defineEmits<{
   (e: 'overview-select'): void
   (e: 'exam-change', value: SelectValue): void
   (e: 'exam-search', keyword: string): void
-  (e: 'refresh'): void
   (e: 'toggle-collapse'): void
 }>()
 </script>
@@ -141,25 +125,6 @@ const emit = defineEmits<{
   &__exam-switch {
     padding: 12px 12px 8px;
     flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  &__exam-select {
-    width: 100%;
-  }
-
-  :deep(.exam-sub-sidebar__exam-select.mark-exam-select) {
-    min-width: 0;
-    width: 100%;
-  }
-
-  &__exam-meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
   }
 
   &__divider {

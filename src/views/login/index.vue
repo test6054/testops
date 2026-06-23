@@ -1,16 +1,16 @@
 <template>
   <article class="seo-content" aria-hidden="true">
-    <h1>阅卷中心 - 高校在线试卷批改与成绩管理平台</h1>
-    <p>覆盖纸质试卷扫描录入、影像账本、智能识别、教师匿名批阅、复核审计、成绩发布与解匿名查分的完整阅卷链路。</p>
+    <h1>教学质量中心 - 高校考试阅卷与教学质量治理平台</h1>
+    <p>覆盖考试阅卷、OBE 质量评价与教师档案治理：扫描录入、智能识别、批阅复核、成绩发布、达成度分析与认证支撑。</p>
   </article>
 
   <div class="login-page">
     <!-- 右上角 Logo -->
     <div class="login-brand__top">
-      <img src="/logo.svg" alt="阅卷中心" class="login-brand__logo">
+      <img src="/logo.svg" alt="教学质量中心" class="login-brand__logo">
       <div class="login-brand__mark">
-        <div class="login-brand__name">阅卷中心</div>
-        <div class="login-brand__sub">EDU MARK WEB</div>
+        <div class="login-brand__name">教学质量中心</div>
+        <div class="login-brand__sub">TEACHING QUALITY</div>
       </div>
     </div>
 
@@ -35,14 +35,14 @@
               </ul>
               <div class="login-brand__hero">
                 <div class="login-brand__visual">
-                  <img :src="loginHeroVisual" alt="阅卷中心平台能力示意图" class="login-brand__visual-image">
+                  <img :src="loginHeroVisual" alt="教学质量中心平台能力示意图" class="login-brand__visual-image">
                 </div>
               </div>
             </div>
 
             <section class="login-panel">
               <div class="login-panel__header">
-                <h3 class="login-panel__title">登录阅卷中心</h3>
+                <h3 class="login-panel__title">登录教学质量中心</h3>
                 <p v-if="isSubdomain && subdomainTenant" class="login-panel__subtitle">{{ subdomainTenant.tenantName }}</p>
                 <p v-else class="login-panel__subtitle">请选择登录方式并完成身份验证。</p>
               </div>

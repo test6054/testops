@@ -1,5 +1,5 @@
 /**
- * 阅卷中心路由（/teacher）
+ * 考试阅卷路由（/teacher）
  *
  * L0 全局左栏：
  *   - 教师业务：考试列表、历史纸质档案；阅卷组织在考试工作台内按 examId 配置（非 L0 菜单）
@@ -20,7 +20,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
     component: () => import('@/layout/index.vue'),
     redirect: '/teacher/exam-list',
     meta: {
-      title: '阅卷中心',
+      title: '考试阅卷',
       roles: ALL_TEACHER_ROLES,
       icon: 'audit',
       hideInMenu: true,

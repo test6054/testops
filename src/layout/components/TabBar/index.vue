@@ -66,13 +66,13 @@ const allTabBarItems: TabBarItem[] = [
   // 教师端菜单（移动端 TabBar：考试列表为入口，工作台内由 layout 侧栏导航）
   {
     path: '/teacher/exam-list',
-    label: '阅卷中心',
+    label: '考试阅卷',
     icon: DashboardOutlined,
     roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER],
   },
   {
     path: '/teacher/dashboard',
-    label: '阅卷中心',
+    label: '考试阅卷',
     icon: DashboardOutlined,
     roles: [RoleEnum.SUPER_ADMIN],
   },

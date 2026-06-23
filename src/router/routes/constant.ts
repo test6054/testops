@@ -6,10 +6,10 @@ import type { SeoMeta } from '@/utils/seo'
 import { RoleEnum } from '@/utils/permission'
 
 const LOGIN_SEO: SeoMeta = {
-  title: '阅卷中心 | 高校在线试卷批改与成绩管理',
+  title: '教学质量中心 | 考试阅卷与教学质量治理',
   description:
-    '阅卷中心是面向高校的纸质试卷扫描批改与成绩发布平台，覆盖扫描录入、影像账本、智能识别、教师匿名批阅、复核审计、成绩发布、解匿名查分等完整阅卷链路。',
-  keywords: '在线阅卷,试卷扫描,智能批改,匿名批阅,影像账本,成绩发布,复核审计,高校阅卷系统',
+    '教学质量中心面向高校提供考试阅卷、OBE 质量评价与教师档案治理，覆盖扫描录入、智能识别、批阅复核、成绩发布、达成度分析与认证支撑等完整链路。',
+  keywords: '教学质量中心,在线阅卷,质量评价,OBE,达成度,教师档案,高校阅卷系统',
   canonical: 'https://shixunfang.com/marking',
 }
 

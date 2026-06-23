@@ -6,7 +6,7 @@
  *   ② 体系与矩阵：培养方案 / 课程矩阵
  *   ③ 数据与达成：数据接入 hub / 达成度
  *   ④ 改进与输出：改进闭环 / 报告 / 归档 / AI 任务
- *   ⑤ 平台管理：仅 SUPER_ADMIN（SaaS 租户级配置，展示在阅卷中心域）
+ *   ⑤ 平台管理：仅 SUPER_ADMIN（SaaS 租户级配置，展示在考试阅卷域）
  * 教师角色仅见 ①～④ 业务分组；SUPER_ADMIN 可见全部质量评价菜单 + 平台管理
  */
 import type { RouteRecordRaw } from 'vue-router'

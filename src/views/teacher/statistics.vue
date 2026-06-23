@@ -1,12 +1,5 @@
 <template>
   <div class="stats-page">
-    <div class="stats-page__toolbar">
-      <UiButton variant="outline" size="sm" @click="reloadAll">
-        <template #icon><ReloadOutlined /></template>
-        刷新
-      </UiButton>
-    </div>
-
     <div class="stats-page__linkage">
       <div class="stats-page__linkage-main">
         <span class="stats-page__linkage-label">联动范围</span>
@@ -127,14 +120,14 @@
 
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import MarkQualitySyncChip from '@/components/quality/MarkQualitySyncChip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import mittBus from '@/utils/mitt'
 import ClassWeaknessCard from './statistics/ClassWeaknessCard.vue'
 import ErrorCauseClusterCard from './statistics/ErrorCauseClusterCard.vue'
 import QuestionAnalysisCard from './statistics/QuestionAnalysisCard.vue'
@@ -258,6 +251,14 @@ watch(selectedExamId, (v) => {
     resetRoster()
   }
 }, { immediate: true })
+
+onMounted(() => {
+  mittBus.on('exam-workbench:refresh', reloadAll)
+})
+
+onBeforeUnmount(() => {
+  mittBus.off('exam-workbench:refresh', reloadAll)
+})
 </script>
 
 <style lang="scss" scoped>
@@ -266,13 +267,6 @@ watch(selectedExamId, (v) => {
   flex-direction: column;
   gap: 16px;
   min-width: 0;
-
-  &__toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-  }
 
   &__empty {
     padding: 60px 0;

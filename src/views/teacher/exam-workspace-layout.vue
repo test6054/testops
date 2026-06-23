@@ -47,10 +47,10 @@
         :selected-exam-id="examId"
         :exam-options="examOptions"
         :selector-loading="examSelectorLoading"
-        :refreshing="refreshing"
+        :exam-display-name="snapshot?.examName"
+        :exam-display-no="snapshot?.examNo"
         @exam-change="onExamSwitch"
         @exam-search="onExamSearch"
-        @refresh="handleRefresh"
         @menu-click="onMenuClick"
         @journey-select="(key) => onJourneySelect(key as ExamJourneyKey)"
         @overview-select="onOverviewSelect"
@@ -135,11 +135,11 @@ import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import ExamSubSidebar from '@/components/workbench/ExamSubSidebar.vue'
-import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
 import { useExamJourneySteps } from '@/composables/useExamJourneySteps'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { provideMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
 import { useMarkWorkbenchSnapshot } from '@/composables/useMarkWorkbenchSnapshot'
+import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
 import {
   findExamWorkspaceMenuItem,
   resolveExamWorkspaceMenuKey,
@@ -147,7 +147,6 @@ import {
 import HeaderRightBar from '@/layout/components/HeaderRightBar/index.vue'
 import { useAppStore } from '@/stores/modules/app'
 import { navigateToJourneyStep } from '@/utils/mark-stage-navigation'
-import mittBus from '@/utils/mitt'
 
 defineOptions({ name: 'ExamWorkspaceLayout' })
 
@@ -357,14 +356,6 @@ function getWorkspaceRouteKey(childRoute: RouteLocationNormalized): string {
     return `${String(childRoute.name ?? childRoute.path)}_${String(workspaceExamId)}`
   }
   return childRoute.fullPath
-}
-
-async function handleRefresh(): Promise<void> {
-  await refreshSnapshot()
-  mittBus.emit('exam-workbench:refresh')
-  if (route.meta.workspacePhase === 'scan') {
-    mittBus.emit('scan-workbench:refresh')
-  }
 }
 
 const initialized = ref(false)

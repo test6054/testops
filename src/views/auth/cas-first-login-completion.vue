@@ -5,7 +5,7 @@
         <p class="cas-completion__eyebrow">统一认证首次登录</p>
         <h1 class="cas-completion__title">补录身份信息</h1>
         <p class="cas-completion__subtitle">
-          首次接入学校统一认证后，需要补齐当前账号在阅卷中心的基础身份信息。
+          首次接入学校统一认证后，需要补齐当前账号在教学质量中心的基础身份信息。
         </p>
       </div>
 

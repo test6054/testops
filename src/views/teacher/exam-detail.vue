@@ -158,8 +158,7 @@ import type { CSSProperties } from 'vue'
 import type { ExamDetailVO, ExamStatusCode, GradingStrategyCode } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
-import type { SignalMetric } from '@/types/workbench'
-import type { WorkbenchStage } from '@/types/workbench'
+import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
 import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
@@ -319,11 +318,11 @@ function goSuggestedStage(): void {
   })
 }
 
-function onJourneySelect(stage: WorkbenchStage): void {
+function onJourneySelect(journeyKey: ExamJourneyKey): void {
   if (!examId.value) {
     return
   }
-  navigateToJourneyStep(router, stage.key as ExamJourneyKey, examId.value, {
+  navigateToJourneyStep(router, journeyKey, examId.value, {
     scanAttentionCount: snapshot.value?.markingProgress?.scanAttentionCount,
   })
 }

@@ -26,6 +26,16 @@ export const resetHasMenuFlag = () => {
   hasMenuFlag = false
 }
 
+/** 页面标题后缀只用品牌短名，完整副标题保留在 VITE_APP_TITLE 无页标题回退中 */
+function resolveDocumentBrandTitle(): string {
+  const rawTitle = import.meta.env.VITE_APP_TITLE
+  if (typeof rawTitle !== 'string' || !rawTitle.trim()) {
+    return '教学质量中心'
+  }
+  const shortTitle = rawTitle.split('|')[0]?.trim()
+  return shortTitle || rawTitle.trim()
+}
+
 /** 初始化路由守卫 */
 export const setupRouterGuard = (router: Router) => {
   router.beforeEach(async (to, _from) => {
@@ -195,8 +205,7 @@ export const setupRouterGuard = (router: Router) => {
     if (to.meta.seo) {
       applySeoMeta(to.meta.seo as SeoMeta)
     } else if (to.meta.title) {
-      // 回退到普通标题设置
-      document.title = `${to.meta.title} - ${import.meta.env.VITE_APP_TITLE}`
+      document.title = `${to.meta.title} - ${resolveDocumentBrandTitle()}`
     } else {
       document.title = import.meta.env.VITE_APP_TITLE
     }
