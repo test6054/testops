@@ -39,7 +39,7 @@ import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
-import { buildPrepStepCards  } from '@/utils/exam-prep-step-ui'
+import { buildPrepStepCards } from '@/utils/exam-prep-step-ui'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamPrepWorkbench' })
