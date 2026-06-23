@@ -297,177 +297,177 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
       </aside>
 
       <div class="stage-main" :style="stageMainStyle">
-      <!-- 大画布预览 -->
-      <main class="canvas-wrap">
-        <div class="canvas">
-          <div v-if="!hasJob" class="canvas-empty">
-            <ScanOutlined class="canvas-empty-icon" />
-            <p>{{ emptyScanTitle }}</p>
-            <small>{{ emptyScanHint }}</small>
-          </div>
-          <div v-else-if="pages.length === 0" class="canvas-empty">
-            <ScanOutlined class="canvas-empty-icon canvas-empty-icon--pulse" />
-            <p>等待扫描仪送纸…</p>
-            <small>送纸后将自动显示首张影像，请勿关闭工作台。</small>
-          </div>
-          <div v-else-if="!previewPageNo || !workflow.previewImageUrl.value" class="canvas-empty">
-            <p>请在右侧缩略图中选择一页查看</p>
-          </div>
-          <img
-            v-else
-            class="canvas-image"
-            :src="workflow.previewImageUrl.value"
-            :alt="`第 ${previewPageNo} 页`"
-            :style="{ transform: imageTransform, filter: imageFilter }"
-            draggable="false"
-          />
-
-          <!-- 浮动工具栏 -->
-          <div v-if="hasJob && pages.length > 0" class="canvas-tools">
-            <!-- 翻页组 -->
-            <div class="tool-group" role="group" aria-label="翻页">
-              <button
-                type="button"
-                class="tool-btn"
-                :disabled="!canPrev"
-                title="第一页 [Home]"
-                @click="gotoFirst"
-              >
-                <StepBackwardOutlined />
-              </button>
-              <button
-                type="button"
-                class="tool-btn"
-                :disabled="!canPrev"
-                title="上一页 [←]"
-                @click="gotoPrev"
-              >
-                <CaretLeftOutlined />
-              </button>
-              <span class="tool-info">
-                <strong>{{ previewPageNo }}</strong>
-                <small>/ {{ pages.length }}</small>
-              </span>
-              <button
-                type="button"
-                class="tool-btn"
-                :disabled="!canNext"
-                title="下一页 [→]"
-                @click="gotoNext"
-              >
-                <CaretRightOutlined />
-              </button>
-              <button
-                type="button"
-                class="tool-btn"
-                :disabled="!canNext"
-                title="末页 [End]"
-                @click="gotoLast"
-              >
-                <StepForwardOutlined />
-              </button>
+        <!-- 大画布预览 -->
+        <main class="canvas-wrap">
+          <div class="canvas">
+            <div v-if="!hasJob" class="canvas-empty">
+              <ScanOutlined class="canvas-empty-icon" />
+              <p>{{ emptyScanTitle }}</p>
+              <small>{{ emptyScanHint }}</small>
             </div>
-
-            <span class="tool-divider" />
-
-            <!-- 缩放组 -->
-            <div class="tool-group" role="group" aria-label="缩放">
-              <button
-                type="button"
-                class="tool-btn"
-                :disabled="zoomLevel <= ZOOM_MIN"
-                title="缩小 [-]"
-                @click="zoomOut"
-              >
-                <MinusOutlined />
-              </button>
-              <span class="tool-info" :title="`实际尺寸 100% · 当前 ${zoomPercent}`">
-                <strong>{{ zoomPercent }}</strong>
-              </span>
-              <button
-                type="button"
-                class="tool-btn"
-                :disabled="zoomLevel >= ZOOM_MAX"
-                title="放大 [+]"
-                @click="zoomIn"
-              >
-                <PlusOutlined />
-              </button>
-              <button type="button" class="tool-btn" title="适配窗口 [0]" @click="fitToScreen">
-                <ExpandOutlined />
-              </button>
+            <div v-else-if="pages.length === 0" class="canvas-empty">
+              <ScanOutlined class="canvas-empty-icon canvas-empty-icon--pulse" />
+              <p>等待扫描仪送纸…</p>
+              <small>送纸后将自动显示首张影像，请勿关闭工作台。</small>
             </div>
-
-            <span class="tool-divider" />
-
-            <!-- 旋转组 -->
-            <div class="tool-group" role="group" aria-label="旋转">
-              <button type="button" class="tool-btn" title="左转 90° [Shift+R]" @click="rotateLeft">
-                <UndoOutlined />
-              </button>
-              <span class="tool-info">
-                <strong>{{ rotation }}°</strong>
-              </span>
-              <button type="button" class="tool-btn" title="右转 90° [R]" @click="rotateRight">
-                <RedoOutlined />
-              </button>
+            <div v-else-if="!previewPageNo || !workflow.previewImageUrl.value" class="canvas-empty">
+              <p>请在右侧缩略图中选择一页查看</p>
             </div>
+            <img
+              v-else
+              class="canvas-image"
+              :src="workflow.previewImageUrl.value"
+              :alt="`第 ${previewPageNo} 页`"
+              :style="{ transform: imageTransform, filter: imageFilter }"
+              draggable="false"
+            />
 
-            <span class="tool-divider" />
-
-            <!-- 滤镜组 -->
-            <div class="tool-group" role="group" aria-label="滤镜">
-              <button
-                type="button"
-                class="tool-btn tool-btn--toggle"
-                :class="{ 'tool-btn--active': grayscale }"
-                title="灰度 [G]"
-                @click="toggleGrayscale"
-              >
-                <FilterFilled v-if="grayscale" />
-                <FilterOutlined v-else />
-              </button>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      <!-- 缩略图 strip（异常修正时由修正面板占用同列） -->
-      <aside v-if="hasJob && !exceptionPanelOpen" class="thumbs">
-        <div class="thumbs-head">
-          <h4>页面 ({{ pages.length }})</h4>
-          <span v-if="workflow.exceptionPages.value.length" class="thumbs-warn">
-            异常 {{ workflow.exceptionPages.value.length }}
-          </span>
-        </div>
-        <div v-if="pages.length === 0" class="thumbs-empty">扫描后页面将显示在此</div>
-        <ul v-else class="thumbs-list">
-          <li
-            v-for="page in pages"
-            :key="page.pageNo"
-            class="thumb"
-            :class="{
-              active: page.pageNo === previewPageNo,
-              exception: isPageException(page),
-            }"
-          >
-            <button type="button" @click="gotoPage(page.pageNo)">
-              <div class="thumb-no">第 {{ page.pageNo }} 页</div>
-              <div class="thumb-status">
-                <WarningFilled v-if="isPageException(page)" class="thumb-warn-icon" />
-                <span>{{ pageStatusLabel(page.status) }}</span>
+            <!-- 浮动工具栏 -->
+            <div v-if="hasJob && pages.length > 0" class="canvas-tools">
+              <!-- 翻页组 -->
+              <div class="tool-group" role="group" aria-label="翻页">
+                <button
+                  type="button"
+                  class="tool-btn"
+                  :disabled="!canPrev"
+                  title="第一页 [Home]"
+                  @click="gotoFirst"
+                >
+                  <StepBackwardOutlined />
+                </button>
+                <button
+                  type="button"
+                  class="tool-btn"
+                  :disabled="!canPrev"
+                  title="上一页 [←]"
+                  @click="gotoPrev"
+                >
+                  <CaretLeftOutlined />
+                </button>
+                <span class="tool-info">
+                  <strong>{{ previewPageNo }}</strong>
+                  <small>/ {{ pages.length }}</small>
+                </span>
+                <button
+                  type="button"
+                  class="tool-btn"
+                  :disabled="!canNext"
+                  title="下一页 [→]"
+                  @click="gotoNext"
+                >
+                  <CaretRightOutlined />
+                </button>
+                <button
+                  type="button"
+                  class="tool-btn"
+                  :disabled="!canNext"
+                  title="末页 [End]"
+                  @click="gotoLast"
+                >
+                  <StepForwardOutlined />
+                </button>
               </div>
-            </button>
-          </li>
-        </ul>
-      </aside>
 
-      <KioskScanExceptionPanel
-        v-else-if="hasJob && exceptionPanelOpen"
-        :open="exceptionPanelOpen"
-        :page-no="previewPageNo"
-        @close="exceptionPanelOpen = false"
-      />
+              <span class="tool-divider" />
+
+              <!-- 缩放组 -->
+              <div class="tool-group" role="group" aria-label="缩放">
+                <button
+                  type="button"
+                  class="tool-btn"
+                  :disabled="zoomLevel <= ZOOM_MIN"
+                  title="缩小 [-]"
+                  @click="zoomOut"
+                >
+                  <MinusOutlined />
+                </button>
+                <span class="tool-info" :title="`实际尺寸 100% · 当前 ${zoomPercent}`">
+                  <strong>{{ zoomPercent }}</strong>
+                </span>
+                <button
+                  type="button"
+                  class="tool-btn"
+                  :disabled="zoomLevel >= ZOOM_MAX"
+                  title="放大 [+]"
+                  @click="zoomIn"
+                >
+                  <PlusOutlined />
+                </button>
+                <button type="button" class="tool-btn" title="适配窗口 [0]" @click="fitToScreen">
+                  <ExpandOutlined />
+                </button>
+              </div>
+
+              <span class="tool-divider" />
+
+              <!-- 旋转组 -->
+              <div class="tool-group" role="group" aria-label="旋转">
+                <button type="button" class="tool-btn" title="左转 90° [Shift+R]" @click="rotateLeft">
+                  <UndoOutlined />
+                </button>
+                <span class="tool-info">
+                  <strong>{{ rotation }}°</strong>
+                </span>
+                <button type="button" class="tool-btn" title="右转 90° [R]" @click="rotateRight">
+                  <RedoOutlined />
+                </button>
+              </div>
+
+              <span class="tool-divider" />
+
+              <!-- 滤镜组 -->
+              <div class="tool-group" role="group" aria-label="滤镜">
+                <button
+                  type="button"
+                  class="tool-btn tool-btn--toggle"
+                  :class="{ 'tool-btn--active': grayscale }"
+                  title="灰度 [G]"
+                  @click="toggleGrayscale"
+                >
+                  <FilterFilled v-if="grayscale" />
+                  <FilterOutlined v-else />
+                </button>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <!-- 缩略图 strip（异常修正时由修正面板占用同列） -->
+        <aside v-if="hasJob && !exceptionPanelOpen" class="thumbs">
+          <div class="thumbs-head">
+            <h4>页面 ({{ pages.length }})</h4>
+            <span v-if="workflow.exceptionPages.value.length" class="thumbs-warn">
+              异常 {{ workflow.exceptionPages.value.length }}
+            </span>
+          </div>
+          <div v-if="pages.length === 0" class="thumbs-empty">扫描后页面将显示在此</div>
+          <ul v-else class="thumbs-list">
+            <li
+              v-for="page in pages"
+              :key="page.pageNo"
+              class="thumb"
+              :class="{
+                active: page.pageNo === previewPageNo,
+                exception: isPageException(page),
+              }"
+            >
+              <button type="button" @click="gotoPage(page.pageNo)">
+                <div class="thumb-no">第 {{ page.pageNo }} 页</div>
+                <div class="thumb-status">
+                  <WarningFilled v-if="isPageException(page)" class="thumb-warn-icon" />
+                  <span>{{ pageStatusLabel(page.status) }}</span>
+                </div>
+              </button>
+            </li>
+          </ul>
+        </aside>
+
+        <KioskScanExceptionPanel
+          v-else-if="hasJob && exceptionPanelOpen"
+          :open="exceptionPanelOpen"
+          :page-no="previewPageNo"
+          @close="exceptionPanelOpen = false"
+        />
       </div>
     </div>
   </section>

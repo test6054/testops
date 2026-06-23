@@ -128,8 +128,8 @@ const LOCAL_SCAN_JOB_STATUS_LABEL: Record<LocalScanJobStatus, string> = {
   CANCELLED: '已取消',
 }
 
-const KIOSK_BATCH_SUBMITTED_HINT =
-  '批次已上传，可在阅卷中心「扫描录入」查看异常；试卷与答题卡均支持在线复核'
+const KIOSK_BATCH_SUBMITTED_HINT
+  = '批次已上传，可在阅卷中心「扫描录入」查看异常；试卷与答题卡均支持在线复核'
 
 export { getSemesterDescription, SemesterOptions }
 
@@ -484,7 +484,7 @@ export function useKioskWorkflow() {
   const canSwitchScanner = computed(() => !currentJobBlocksWorkspace.value)
   const canActivateAgent = computed(() => !currentJobBlocksWorkspace.value)
   const canDiscardLedgerPage = computed(() => !currentJobBlocksWorkspace.value)
-  const kioskBrowserSessionSyncNeeded = computed(() =>
+  const kioskBrowserSessionLost = computed(() =>
     needsKioskBrowserSessionSync(health.value?.bound),
   )
   const activationModalForced = computed(
@@ -539,7 +539,7 @@ export function useKioskWorkflow() {
         detail: '输入教务平台下发的激活码后，才能连接扫描仪并开始扫描。',
       }
     }
-    if (kioskBrowserSessionSyncNeeded.value) {
+    if (kioskBrowserSessionLost.value) {
       return {
         tone: 'warning',
         statusText: '会话同步中',

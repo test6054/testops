@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type {CandidateStatusCode, ExamCandidateVO} from '@/apis/mark/exam-scope';
 /**
  * 扫描中异常修正面板：边扫边处理，占用缩略图列（非遮罩叠加）。
  */
@@ -7,9 +8,7 @@ import { computed, ref, watch } from 'vue'
 import { bindPaper } from '@/apis/mark/exam-binding'
 import {
   CANDIDATE_STATUS_LABEL,
-  type CandidateStatusCode,
-  type ExamCandidateVO,
-  listExamCandidates,
+  listExamCandidates
 } from '@/apis/mark/exam-scope'
 import { useKioskCtx } from '../composables/kioskInjection'
 
@@ -105,8 +104,8 @@ async function loadCandidates() {
     candidates.value = await listExamCandidates(examId)
   } catch (error) {
     candidates.value = []
-    candidatesLoadError.value =
-      error instanceof Error ? error.message : '考生名册加载失败'
+    candidatesLoadError.value
+      = error instanceof Error ? error.message : '考生名册加载失败'
     workflow.errorMessage.value = candidatesLoadError.value
   } finally {
     candidatesLoading.value = false
@@ -155,8 +154,8 @@ async function submitBind() {
     await workflow.refreshBoundPapers()
     emit('close')
   } catch (error) {
-    workflow.errorMessage.value =
-      error instanceof Error ? error.message : '考号绑定失败'
+    workflow.errorMessage.value
+      = error instanceof Error ? error.message : '考号绑定失败'
   } finally {
     binding.value = false
   }
