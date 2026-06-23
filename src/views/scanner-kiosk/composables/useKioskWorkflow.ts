@@ -35,8 +35,8 @@ import type {
   ExamScannerLedgerDataSource,
   ExamScannerPageLedgerVO,
   ExamScannerPageRegistrationStatus,
-  ExamScannerScanConfigVO,
   ExamScannerScanConfigOptionsVO,
+  ExamScannerScanConfigVO,
   ScanAttentionTypeCode,
   ScannerKioskScanMode,
 } from '@/apis/mark/scanner-kiosk'
