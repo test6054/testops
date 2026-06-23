@@ -56,12 +56,11 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
   },
   {
     key: 'assign',
-    title: '阅卷安排',
+    title: '阅卷设置',
     journeyKey: 'assign',
     stageKeys: ['MARKING_ORG'],
     items: [
-      { key: 'marking-org', label: '阅卷安排', routeName: 'TeacherExamWorkspaceMarkingOrg', markStageKey: 'MARKING_ORG' },
-      { key: 'marking-assignment', label: '分派方案', routeName: 'TeacherExamWorkspaceReviewAssignment', markStageKey: 'MARKING_ORG' },
+      { key: 'marking-org', label: '阅卷设置', routeName: 'TeacherExamWorkspaceMarkingOrg', markStageKey: 'MARKING_ORG' },
     ],
   },
   {

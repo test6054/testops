@@ -1,28 +1,10 @@
 <template>
   <div class="ledger-page">
-    <div v-if="selectedExamId" class="ledger-page__toolbar">
-      <UiButton variant="outline" size="sm" @click="goBackToScanLiveMonitor">
-        <template #icon><LeftOutlined /></template>
-        返回扫描监控
-      </UiButton>
-      <UiButton
-        variant="outline"
-        size="sm"
-        :loading="loadingDetail"
-        @click="loadAll"
-      >
-        <template #icon><ReloadOutlined /></template>
-        刷新
-      </UiButton>
-    </div>
-
     <UiEmpty
       v-if="!selectedExamId"
       description="未进入考试工作台"
       class="ledger-page__empty"
     />
-
-
 
     <div v-else class="ledger-page__cards">
       <a-card title="账本概览" :bordered="false" size="small">
@@ -47,13 +29,9 @@
 
 <script lang="ts" setup>
 import type { ExamPaperDuplicateResolutionVO, ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
-import LeftOutlined from '@ant-design/icons-vue/LeftOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { executeImageLedgerBalance, getImageLedgerDetail, normalizeImageLedgerDetail } from '@/apis/mark/image-ledger'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
@@ -65,18 +43,8 @@ import LedgerSummaryCard from './image-ledger/LedgerSummaryCard.vue'
 
 defineOptions({ name: 'TeacherImageLedger' })
 
-const router = useRouter()
 const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
-
-function goBackToScanLiveMonitor(): void {
-  if (selectedExamId.value) {
-    void router.push({
-      name: 'TeacherExamWorkspaceScanMonitor',
-      params: { examId: selectedExamId.value },
-    })
-  }
-}
 
 const ledger = ref<ImageLedgerDetailVO | null>(null)
 const duplicateCardRef = ref<InstanceType<typeof DuplicateResolutionCard> | null>(null)
@@ -111,6 +79,7 @@ async function handleBalance(): Promise<void> {
     )
     message.success('已执行考试整体对账')
     await refreshSnapshot()
+    mittBus.emit('scan-workbench:refresh')
   } catch (e) {
     showUserError(e, '考试整体对账失败')
   } finally {
@@ -128,6 +97,7 @@ function openResolve(record: ExamPaperDuplicateResolutionVO): void {
 async function onChildSubmitted(): Promise<void> {
   await loadAll()
   await refreshSnapshot()
+  mittBus.emit('scan-workbench:refresh')
 }
 
 watch(selectedExamId, (v) => {
@@ -152,12 +122,6 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-
-  &__toolbar {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-  }
 
   &__empty {
     padding: 60px 0;

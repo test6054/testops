@@ -32,7 +32,7 @@
             刷新
           </UiButton>
           <UiButton
-            v-if="organization && canManageOrganization"
+            v-if="organization && canManageMarkingSetup"
             variant="outline"
             size="sm"
             @click="openEditDrawer"
@@ -40,7 +40,7 @@
             编辑组织
           </UiButton>
           <a-popconfirm
-            v-if="organization && canManageOrganization"
+            v-if="organization && canManageExamOwner"
             title="确认删除该阅卷组织？"
             ok-text="删除"
             cancel-text="取消"
@@ -66,6 +66,14 @@
 
     <a-spin v-else :spinning="loading">
       <section v-if="organization" class="org-detail__panel">
+        <a-alert
+          v-if="!canManageMarkingSetup"
+          type="info"
+          show-icon
+          class="org-detail__readonly-banner"
+          message="当前为只读视图"
+          description="题组、策略与正评启动由考试主考或阅卷组长配置。"
+        />
         <a-tabs v-model:active-key="activeTab" class="detail-tabs">
           <a-tab-pane key="info" tab="基本信息 + 题组">
             <section class="org-detail__info">
@@ -122,13 +130,13 @@
                   size="small"
                 />
               </template>
-              <template v-if="canManageOrganization" #toolbar-right>
+              <template v-if="canManageMarkingSetup" #toolbar-right>
                 <UiButton size="sm" @click="openGroupModal">
                   <template #icon><PlusOutlined /></template>
                   新建题组
                 </UiButton>
               </template>
-              <template v-if="canManageOrganization" #empty-action>
+              <template v-if="canManageMarkingSetup" #empty-action>
                 <UiButton size="sm" @click="openGroupModal">
                   <template #icon><PlusOutlined /></template>
                   新建题组
@@ -235,7 +243,7 @@
           </a-tab-pane>
 
           <a-tab-pane key="policy" tab="任务策略">
-            <a-form :model="policyForm" layout="vertical" class="policy-form">
+            <a-form v-if="canManageMarkingSetup" :model="policyForm" layout="vertical" class="policy-form">
               <a-row :gutter="16">
                 <a-col :xs="24" :lg="12">
                   <h4 class="subsection-title">任务分配策略</h4>
@@ -245,28 +253,28 @@
                       placeholder="选择题组（留空表示组织级默认）"
                       :options="groupSelectOptions"
                       allow-clear
-                      :disabled="!canManageOrganization"
+                      :disabled="!canManageMarkingSetup"
                     />
                   </a-form-item>
                   <a-form-item label="分配模式" required>
                     <a-select
                       v-model:value="policyForm.allocationMode"
                       :options="ALLOCATION_MODE_OPTIONS"
-                      :disabled="!canManageOrganization"
+                      :disabled="!canManageMarkingSetup"
                     />
                   </a-form-item>
                   <a-form-item label="批阅任务单元" required>
                     <a-select
                       v-model:value="policyForm.allocationUnit"
                       :options="ALLOCATION_UNIT_OPTIONS"
-                      :disabled="!canManageOrganization"
+                      :disabled="!canManageMarkingSetup"
                     />
                   </a-form-item>
                   <a-form-item label="匿名模式" required>
                     <a-select
                       v-model:value="policyForm.anonymityMode"
                       :options="ANONYMITY_MODE_OPTIONS"
-                      :disabled="!canManageOrganization"
+                      :disabled="!canManageMarkingSetup"
                     />
                   </a-form-item>
                   <a-form-item
@@ -279,7 +287,7 @@
                       :min="1"
                       :max="100"
                       style="width: 100%"
-                      :disabled="!canManageOrganization"
+                      :disabled="!canManageMarkingSetup"
                     />
                     <div class="policy-hint">
                       抽样题池来自当前题组题目范围；正评启动后会固化本次随机抽题结果，后续可在正评会话列表审计复盘。
@@ -291,7 +299,7 @@
                       :min="1"
                       :max="500"
                       style="width: 100%"
-                      :disabled="!canManageOrganization"
+                      :disabled="!canManageMarkingSetup"
                     />
                   </a-form-item>
                   <a-form-item label="教师最大待处理任务数">
@@ -300,7 +308,7 @@
                       :min="1"
                       :max="500"
                       style="width: 100%"
-                      :disabled="!canManageOrganization"
+                      :disabled="!canManageMarkingSetup"
                     />
                   </a-form-item>
                   <a-form-item label="匿名令牌策略">
@@ -308,11 +316,11 @@
                       v-model:value="policyForm.anonymousTokenPolicy"
                       :options="ANONYMOUS_TOKEN_OPTIONS"
                       allow-clear
-                      :disabled="!canManageOrganization"
+                      :disabled="!canManageMarkingSetup"
                     />
                   </a-form-item>
                   <UiButton
-                    v-if="canManageOrganization"
+                    v-if="canManageMarkingSetup"
                     :loading="savingAllocation"
                     @click="submitAllocation"
                   >
@@ -329,7 +337,7 @@
                       placeholder="选择题组（留空表示组织级默认）"
                       :options="groupSelectOptions"
                       allow-clear
-                      :disabled="!canManageOrganization"
+                      :disabled="!canManageMarkingSetup"
                     />
                   </a-form-item>
                   <a-form-item label="超时时间（分钟）">
@@ -338,7 +346,7 @@
                       :min="1"
                       :max="1440"
                       style="width: 100%"
-                      :disabled="!canManageOrganization"
+                      :disabled="!canManageMarkingSetup"
                     />
                   </a-form-item>
                   <a-form-item label="教师最大待处理任务数">
@@ -347,7 +355,7 @@
                       :min="1"
                       :max="500"
                       style="width: 100%"
-                      :disabled="!canManageOrganization"
+                      :disabled="!canManageMarkingSetup"
                     />
                   </a-form-item>
                   <a-form-item label="再分配模式">
@@ -355,11 +363,11 @@
                       v-model:value="policyForm.reassignMode"
                       :options="REASSIGN_MODE_OPTIONS"
                       allow-clear
-                      :disabled="!canManageOrganization"
+                      :disabled="!canManageMarkingSetup"
                     />
                   </a-form-item>
                   <UiButton
-                    v-if="canManageOrganization"
+                    v-if="canManageMarkingSetup"
                     :loading="savingRecycle"
                     @click="submitRecycle"
                   >
@@ -369,6 +377,57 @@
                 </a-col>
               </a-row>
             </a-form>
+            <a-row v-else :gutter="16" class="policy-form">
+              <a-col :xs="24" :lg="12">
+                <h4 class="subsection-title">任务分配策略</h4>
+                <a-descriptions bordered size="small" :column="1">
+                  <a-descriptions-item label="策略适用范围">
+                    {{ policyScopeLabel(policyForm.allocationGroupId) }}
+                  </a-descriptions-item>
+                  <a-descriptions-item label="分配模式">
+                    {{ policyOptionLabel(ALLOCATION_MODE_OPTIONS, policyForm.allocationMode) }}
+                  </a-descriptions-item>
+                  <a-descriptions-item label="批阅任务单元">
+                    {{ policyOptionLabel(ALLOCATION_UNIT_OPTIONS, policyForm.allocationUnit) }}
+                  </a-descriptions-item>
+                  <a-descriptions-item label="匿名模式">
+                    {{ policyOptionLabel(ANONYMITY_MODE_OPTIONS, policyForm.anonymityMode) }}
+                  </a-descriptions-item>
+                  <a-descriptions-item
+                    v-if="policyForm.allocationUnit === 'RANDOM_QUESTIONS'"
+                    label="随机题目抽样数量"
+                  >
+                    {{ policyForm.randomQuestionSampleSize ?? '—' }}
+                  </a-descriptions-item>
+                  <a-descriptions-item label="每批分配任务数">
+                    {{ policyForm.batchSize }}
+                  </a-descriptions-item>
+                  <a-descriptions-item label="教师最大待处理任务数">
+                    {{ policyForm.loadLimit }}
+                  </a-descriptions-item>
+                  <a-descriptions-item label="匿名令牌策略">
+                    {{ policyOptionLabel(ANONYMOUS_TOKEN_OPTIONS, policyForm.anonymousTokenPolicy) }}
+                  </a-descriptions-item>
+                </a-descriptions>
+              </a-col>
+              <a-col :xs="24" :lg="12">
+                <h4 class="subsection-title">任务回收策略</h4>
+                <a-descriptions bordered size="small" :column="1">
+                  <a-descriptions-item label="策略适用范围">
+                    {{ policyScopeLabel(policyForm.recycleGroupId) }}
+                  </a-descriptions-item>
+                  <a-descriptions-item label="超时时间（分钟）">
+                    {{ policyForm.timeoutMinutes ?? '—' }}
+                  </a-descriptions-item>
+                  <a-descriptions-item label="教师最大待处理任务数">
+                    {{ policyForm.maxPendingCount ?? '—' }}
+                  </a-descriptions-item>
+                  <a-descriptions-item label="再分配模式">
+                    {{ policyOptionLabel(REASSIGN_MODE_OPTIONS, policyForm.reassignMode) }}
+                  </a-descriptions-item>
+                </a-descriptions>
+              </a-col>
+            </a-row>
           </a-tab-pane>
 
           <a-tab-pane v-if="canReassignRecycledTasks" key="recycled" tab="回收待分配">
@@ -380,47 +439,8 @@
             />
           </a-tab-pane>
 
-          <a-tab-pane key="status" tab="状态推进">
-            <a-form layout="vertical" class="status-form">
-              <a-form-item label="当前状态">
-                <UiTag
-                  :tone="
-                    strictEnumTone(
-                      MARKING_ORGANIZATION_STATUS_TONE,
-                      organization.organizationStatus,
-                      '阅卷组织状态',
-                    )
-                  "
-                  size="md"
-                >
-                  {{
-                    strictEnumLabel(
-                      MARKING_ORGANIZATION_STATUS_LABEL,
-                      organization.organizationStatus,
-                      '阅卷组织状态',
-                    )
-                  }}
-                </UiTag>
-              </a-form-item>
-              <a-form-item label="目标状态" required>
-                <a-select
-                  v-model:value="targetStatus"
-                  placeholder="选择目标状态"
-                  style="width: 320px"
-                  :options="statusTransitionOptions"
-                  :disabled="!canManageOrganization"
-                />
-              </a-form-item>
-              <UiButton
-                v-if="canManageOrganization"
-                :disabled="!targetStatus"
-                :loading="updatingStatus"
-                @click="submitStatusUpdate"
-              >
-                <template #icon><ArrowRightOutlined /></template>
-                推进到目标状态
-              </UiButton>
-            </a-form>
+          <a-tab-pane v-if="canManageMarkingSetup" key="launch" tab="快速启动">
+            <ReviewAssignmentPanel embedded />
           </a-tab-pane>
         </a-tabs>
       </section>
@@ -537,7 +557,6 @@ import type {
   AnonymityModeCode,
   AnonymousTokenPolicyCode,
   MarkingAllocationModeCode,
-  MarkingOrganizationStatusCode,
   MarkingOrganizationVO,
   MarkingReassignModeCode,
   OrganizationUpdateRequest,
@@ -547,17 +566,16 @@ import type {
   RecyclePolicySaveRequest, RecyclePolicyVO
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { adminGetUserPage } from '@/apis/edu/admin-user'
 import { getExamDetail } from '@/apis/mark/exam'
 import { getExamTemplate } from '@/apis/mark/exam-template'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
-import { ALLOCATION_UNIT_LABEL, ANONYMITY_MODE_LABEL, ANONYMOUS_TOKEN_POLICY_LABEL, closeQuestionGroup, deleteOrganization, deleteQuestionGroup, getOrganizationById, isMarkingOrgNotCreatedError, listMarkingPolicies, MARKING_ALLOCATION_MODE_LABEL, MARKING_ORGANIZATION_STATUS_LABEL, MARKING_ORGANIZATION_STATUS_TONE, MARKING_REASSIGN_MODE_LABEL, QUESTION_GROUP_STATUS_LABEL, QUESTION_GROUP_STATUS_TONE, saveAllocationPolicy, saveQuestionGroup, saveRecyclePolicy, updateOrganization, updateOrganizationStatus, validateMarkingOrganizationContract, validateMarkingPolicyListContract } from '@/apis/mark/marking-organization'
+import { ALLOCATION_UNIT_LABEL, ANONYMITY_MODE_LABEL, ANONYMOUS_TOKEN_POLICY_LABEL, closeQuestionGroup, deleteOrganization, deleteQuestionGroup, getOrganizationById, isMarkingOrgNotCreatedError, listMarkingPolicies, MARKING_ALLOCATION_MODE_LABEL, MARKING_ORGANIZATION_STATUS_LABEL, MARKING_ORGANIZATION_STATUS_TONE, MARKING_REASSIGN_MODE_LABEL, QUESTION_GROUP_STATUS_LABEL, QUESTION_GROUP_STATUS_TONE, saveAllocationPolicy, saveQuestionGroup, saveRecyclePolicy, updateOrganization, validateMarkingOrganizationContract, validateMarkingPolicyListContract } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInfoGrid from '@/components/ui-guide/ui/InfoGrid.vue'
@@ -567,6 +585,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
@@ -578,6 +597,10 @@ import {
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import RecycledTaskReassignPanel from '@/views/admin/marking-organization/components/RecycledTaskReassignPanel.vue'
+
+const ReviewAssignmentPanel = defineAsyncComponent(
+  () => import('@/views/teacher/review-assignment.vue'),
+)
 
 defineOptions({ name: 'AdminMarkingOrganizationDetail' })
 
@@ -602,7 +625,7 @@ const workspaceExamId = computed(() => {
 })
 const loading = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
-const activeTab = ref<'info' | 'policy' | 'recycled' | 'status'>('info')
+const activeTab = ref<'info' | 'policy' | 'recycled' | 'launch'>('info')
 
 const groups = computed<QuestionMarkingGroupVO[]>(() => organization.value?.groups ?? [])
 const groupSearchKeyword = ref('')
@@ -672,35 +695,38 @@ const organizationExamLabel = computed(() => {
     ? `${organization.value.examName}（${organization.value.examNo}）`
     : organization.value.examName
 })
-const canManageOrganization = computed(
-  () => !!examDetail.value?.createUser && examDetail.value.createUser === userStore.userInfo.userId,
-)
+const examCreateUserId = computed(() => examDetail.value?.createUser ?? organization.value?.examCreateUserId)
+const { canManageMarkingSetup, canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, organization)
+
+function guardMarkingSetupAction(): boolean {
+  if (canManageMarkingSetup.value) return true
+  message.warning('仅考试主考或阅卷组长可修改阅卷设置')
+  return false
+}
+
+function guardExamOwnerAction(): boolean {
+  if (canManageExamOwner.value) return true
+  message.warning('仅考试主考老师可执行该操作')
+  return false
+}
+
 const canReassignRecycledTasks = computed(() => {
   if (!organization.value) {
     return false
   }
   const userId = userStore.userInfo.userId
-  if (canManageOrganization.value) {
-    return true
-  }
-  if (organization.value.leaderUserId === userId) {
+  if (canManageMarkingSetup.value) {
     return true
   }
   return groups.value.some((group) => group.leaderUserId === userId)
 })
 const canViewAllRecycledTasks = computed(
-  () => canManageOrganization.value || organization.value?.leaderUserId === userStore.userInfo.userId,
+  () => canManageMarkingSetup.value || organization.value?.leaderUserId === userStore.userInfo.userId,
 )
 const leaderGroupIds = computed(() => {
   const userId = userStore.userInfo.userId
   return groups.value.filter((group) => group.leaderUserId === userId).map((group) => group.id)
 })
-
-function guardOrganizationOwnerAction(): boolean {
-  if (canManageOrganization.value) return true
-  message.warning('仅考试创建人可修改阅卷安排')
-  return false
-}
 
 const editDrawerOpen = ref(false)
 const updating = ref(false)
@@ -882,7 +908,7 @@ const groupRules: Record<string, Rule[]> = {
 }
 
 function openGroupModal(): void {
-  if (!guardOrganizationOwnerAction()) return
+  if (!guardMarkingSetupAction()) return
   groupForm.groupId = undefined
   groupForm.groupName = ''
   groupForm.leaderUserId = undefined
@@ -895,7 +921,7 @@ function openGroupModal(): void {
 }
 
 function openGroupEdit(record: QuestionMarkingGroupVO): void {
-  if (!guardOrganizationOwnerAction()) return
+  if (!guardMarkingSetupAction()) return
   groupForm.groupId = record.id
   groupForm.groupName = record.groupName
   groupForm.leaderUserId = record.leaderUserId
@@ -908,7 +934,7 @@ function openGroupEdit(record: QuestionMarkingGroupVO): void {
 }
 
 async function submitGroup(): Promise<void> {
-  if (!guardOrganizationOwnerAction()) return
+  if (!guardMarkingSetupAction()) return
   if (!organizationId.value || !groupFormRef.value) return
   try {
     await groupFormRef.value.validate()
@@ -940,22 +966,22 @@ async function submitGroup(): Promise<void> {
 }
 
 function canEditGroup(record: QuestionMarkingGroupVO): boolean {
-  return canManageOrganization.value && record.groupStatus !== 'GROUP_CLOSED'
+  return canManageMarkingSetup.value && record.groupStatus !== 'GROUP_CLOSED'
 }
 
 function canDeleteGroup(record: QuestionMarkingGroupVO): boolean {
-  return canManageOrganization.value && record.groupStatus === 'GROUP_DRAFT'
+  return canManageMarkingSetup.value && record.groupStatus === 'GROUP_DRAFT'
 }
 
 function canCloseGroup(record: QuestionMarkingGroupVO): boolean {
   return (
-    canManageOrganization.value
+    canManageMarkingSetup.value
     && (record.groupStatus === 'GROUP_ACTIVE' || record.groupStatus === 'GROUP_CONFIGURED')
   )
 }
 
 async function submitGroupDelete(record: QuestionMarkingGroupVO): Promise<void> {
-  if (!guardOrganizationOwnerAction()) return
+  if (!guardMarkingSetupAction()) return
   groupActionLoadingId.value = record.id
   try {
     await deleteQuestionGroup({ groupId: record.id })
@@ -970,7 +996,7 @@ async function submitGroupDelete(record: QuestionMarkingGroupVO): Promise<void> 
 }
 
 async function submitGroupClose(record: QuestionMarkingGroupVO): Promise<void> {
-  if (!guardOrganizationOwnerAction()) return
+  if (!guardMarkingSetupAction()) return
   groupActionLoadingId.value = record.id
   try {
     await closeQuestionGroup({ groupId: record.id })
@@ -985,7 +1011,7 @@ async function submitGroupClose(record: QuestionMarkingGroupVO): Promise<void> {
 }
 
 function openEditDrawer(): void {
-  if (!guardOrganizationOwnerAction()) return
+  if (!guardMarkingSetupAction()) return
   if (!organization.value) return
   editForm.leaderUserId = organization.value.leaderUserId
   editForm.anonymousMode = Boolean(organization.value.anonymousMode)
@@ -995,7 +1021,7 @@ function openEditDrawer(): void {
 }
 
 async function submitUpdate(): Promise<void> {
-  if (!guardOrganizationOwnerAction()) return
+  if (!guardMarkingSetupAction()) return
   if (!organization.value || !editFormRef.value) return
   try {
     await editFormRef.value.validate()
@@ -1024,7 +1050,7 @@ async function submitUpdate(): Promise<void> {
 }
 
 async function submitDelete(): Promise<void> {
-  if (!guardOrganizationOwnerAction()) return
+  if (!guardExamOwnerAction()) return
   if (!organization.value) return
   deleting.value = true
   try {
@@ -1176,9 +1202,26 @@ const ANONYMOUS_TOKEN_OPTIONS = Object.entries(ANONYMOUS_TOKEN_POLICY_LABEL).map
   ([value, label]) => ({ value, label }),
 )
 
+function policyOptionLabel(
+  options: Array<{ value: string; label: string }>,
+  value?: string | null,
+): string {
+  if (!value) {
+    return '—'
+  }
+  return options.find((item) => item.value === value)?.label ?? value
+}
+
+function policyScopeLabel(groupId?: string): string {
+  if (!groupId) {
+    return '组织级默认'
+  }
+  return groupSelectOptions.value.find((item) => item.value === groupId)?.label ?? groupId
+}
+
 const savingAllocation = ref(false)
 async function submitAllocation(): Promise<void> {
-  if (!guardOrganizationOwnerAction()) return
+  if (!guardMarkingSetupAction()) return
   if (!organizationId.value) return
   savingAllocation.value = true
   try {
@@ -1207,7 +1250,7 @@ async function submitAllocation(): Promise<void> {
 
 const savingRecycle = ref(false)
 async function submitRecycle(): Promise<void> {
-  if (!guardOrganizationOwnerAction()) return
+  if (!guardMarkingSetupAction()) return
   if (!organizationId.value) return
   savingRecycle.value = true
   try {
@@ -1226,50 +1269,6 @@ async function submitRecycle(): Promise<void> {
     showUserError(error, '阅卷任务回收策略保存失败')
   } finally {
     savingRecycle.value = false
-  }
-}
-
-const targetStatus = ref<MarkingOrganizationStatusCode | undefined>(undefined)
-const updatingStatus = ref(false)
-
-/**
- * 阅卷组织状态推进流转，与后端 OrganizationStatus 业务状态机保持一致。
- */
-const STATUS_TRANSITIONS: Record<MarkingOrganizationStatusCode, MarkingOrganizationStatusCode[]> = {
-  ORG_DRAFT: ['ORG_CONFIGURED'],
-  ORG_CONFIGURED: ['TRIAL_MARKING'],
-  TRIAL_MARKING: ['FORMAL_MARKING'],
-  FORMAL_MARKING: ['QUALITY_REVIEW'],
-  QUALITY_REVIEW: ['CLOSED'],
-  CLOSED: [],
-}
-
-const statusTransitionOptions = computed(() => {
-  const current = organization.value?.organizationStatus
-  if (!current) return []
-  return STATUS_TRANSITIONS[current].map((code) => ({
-    value: code,
-    label: strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, code, '阅卷组织状态'),
-  }))
-})
-
-async function submitStatusUpdate(): Promise<void> {
-  if (!guardOrganizationOwnerAction()) return
-  if (!organizationId.value || !targetStatus.value) return
-  updatingStatus.value = true
-  try {
-    await updateOrganizationStatus({
-      organizationId: organizationId.value,
-      targetStatus: targetStatus.value,
-    })
-    message.success('组织状态已推进')
-    targetStatus.value = undefined
-    await loadOrganization()
-    await refreshSnapshot()
-  } catch (error) {
-    showUserError(error, '阅卷组织状态推进失败')
-  } finally {
-    updatingStatus.value = false
   }
 }
 
@@ -1292,10 +1291,24 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
 watch(organizationId, () => {
   void loadOrganization()
 }, { immediate: true })
+
+watch(
+  () => route.query.tab,
+  (tab) => {
+    if (typeof tab === 'string') {
+      activeTab.value = tab === 'launch' || tab === 'policy' || tab === 'recycled' ? tab : 'info'
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <style lang="scss" scoped>
 .org-detail {
+  &__readonly-banner {
+    margin-bottom: 12px;
+  }
+
   &__panel {
     background: var(--dp-surface, #fff);
     border: 1px solid var(--dp-border, #e2e8f0);

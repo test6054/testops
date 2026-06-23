@@ -484,6 +484,12 @@ export interface MarkingOrganizationVO {
   organizationStatus: MarkingOrganizationStatusCode
   anonymousMode: boolean
   remark?: string
+  /** 考试主考老师用户 ID - 对应后端 MarkingOrganizationResponse.examCreateUserId */
+  examCreateUserId?: string
+  /** 当前用户是否可配置阅卷组织 - 对应后端 canManageMarkingSetup */
+  canManageMarkingSetup?: boolean
+  /** 当前用户是否具备主考专属权限 - 对应后端 canManageExamOwner */
+  canManageExamOwner?: boolean
   groups: QuestionMarkingGroupVO[]
   createTime?: string
   updateTime?: string

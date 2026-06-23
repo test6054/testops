@@ -26,7 +26,7 @@ import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   getExamDetail,
 } from '@/apis/mark/exam'
@@ -78,6 +78,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamWorkspaceReviewAssignment' })
 
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+
 interface AllocationForm {
   leaderUserId: string | null
   anonymityMode: AnonymityModeCode
@@ -100,40 +102,54 @@ type SwitchCheckedValue = boolean | string | number
 type NumberInputValue = string | number
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const { selectedExamId, selectedExamLabel } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
 
+const effectiveExamId = computed(() => {
+  if (selectedExamId.value) {
+    return selectedExamId.value
+  }
+  const routeExamId = route.params.examId
+  return typeof routeExamId === 'string' ? routeExamId : ''
+})
+
 const examCreateUserId = ref('')
 
 async function loadExamOwnership(): Promise<void> {
-  if (!selectedExamId.value) {
+  if (!effectiveExamId.value) {
     examCreateUserId.value = ''
     return
   }
   try {
-    const detail = await getExamDetail(selectedExamId.value)
+    const detail = await getExamDetail(effectiveExamId.value)
     examCreateUserId.value = detail.createUser
   } catch {
     examCreateUserId.value = ''
   }
 }
 
-const canManageExam = computed(
-  () =>
-    !!examCreateUserId.value && examCreateUserId.value === userStore.userInfo.userId,
-)
+const canManageExam = computed(() => {
+  if (organization.value?.canManageMarkingSetup != null) {
+    return organization.value.canManageMarkingSetup
+  }
+  if (!!examCreateUserId.value && examCreateUserId.value === userStore.userInfo.userId) {
+    return true
+  }
+  return !!organization.value?.leaderUserId && organization.value.leaderUserId === userStore.userInfo.userId
+})
 
 function guardExamOwnerAction(): boolean {
   if (canManageExam.value) return true
-  message.warning('仅考试创建人可配置分派方案')
+  message.warning('仅考试主考或阅卷组长可配置阅卷分配')
   return false
 }
 
 function goBackToOrganization(): void {
   void router.push({
     name: 'TeacherExamWorkspaceMarkingOrg',
-    params: selectedExamId.value ? { examId: selectedExamId.value } : {},
+    params: effectiveExamId.value ? { examId: effectiveExamId.value } : {},
   })
 }
 
@@ -244,7 +260,7 @@ const selectedQuestions = computed(() =>
 
 const canSubmit = computed(
   () =>
-    Boolean(selectedExamId.value)
+    Boolean(effectiveExamId.value)
     && Boolean(form.leaderUserId)
     && form.reviewerUserIds.length > 0
     && dualReviewContractValid.value
@@ -288,7 +304,7 @@ const dualReviewContractValid = computed(() => {
 })
 
 const allocationPreview = computed(() => {
-  if (!selectedExamId.value || !form.leaderUserId) {
+  if (!effectiveExamId.value || !form.leaderUserId) {
     return null
   }
   const leader = teacherOptions.value.find((item) => item.id === form.leaderUserId)
@@ -313,13 +329,13 @@ const allocationPreview = computed(() => {
   }
 })
 
-watch(selectedExamId, async () => {
+watch(effectiveExamId, async () => {
   result.value = null
   planPreview.value = null
   form.questionTemplateIds = []
   organization.value = null
   formalSessions.value = []
-  if (!selectedExamId.value) {
+  if (!effectiveExamId.value) {
     examCreateUserId.value = ''
     return
   }
@@ -365,12 +381,12 @@ watch(
 
 async function loadExamQuestions(): Promise<void> {
   questions.value = []
-  if (!selectedExamId.value) {
+  if (!effectiveExamId.value) {
     return
   }
   templateLoading.value = true
   try {
-    const template = await getExamTemplate(selectedExamId.value)
+    const template = await getExamTemplate(effectiveExamId.value)
     questions.value = template.questions
   } catch (error) {
     if (error instanceof Error && isPaperTemplateNotConfiguredError(error)) {
@@ -465,14 +481,14 @@ function clearSelectedQuestions(): void {
 }
 
 async function loadCollaboratorOrganization(): Promise<void> {
-  if (!selectedExamId.value || canManageExam.value) {
+  if (!effectiveExamId.value || canManageExam.value) {
     organization.value = null
     formalSessions.value = []
     return
   }
   organizationLoading.value = true
   try {
-    const nextOrganization = await getOrganization({ examId: selectedExamId.value })
+    const nextOrganization = await getOrganization({ examId: effectiveExamId.value })
     validateMarkingOrganizationContract(nextOrganization)
     organization.value = nextOrganization
     const sessions = await listFormalSessions({ organizationId: nextOrganization.id })
@@ -507,26 +523,26 @@ function formatGroupReviewers(group: QuestionMarkingGroupVO): string {
 }
 
 function goOrganizationDetailReadOnly(): void {
-  if (!organization.value || !selectedExamId.value) {
+  if (!organization.value || !effectiveExamId.value) {
     return
   }
   void router.push(resolveMarkingOrganizationDetailRoute(
     organization.value.id,
-    selectedExamId.value,
+    effectiveExamId.value,
   ))
 }
 
 async function loadScanReadiness(): Promise<void> {
   ledgerDetail.value = null
   markingProgress.value = null
-  if (!selectedExamId.value) {
+  if (!effectiveExamId.value) {
     return
   }
   scanReadinessLoading.value = true
   try {
     const [ledger, progress] = await Promise.all([
-      getImageLedgerDetail({ examId: selectedExamId.value }),
-      getMarkingProgress(selectedExamId.value),
+      getImageLedgerDetail({ examId: effectiveExamId.value }),
+      getMarkingProgress(effectiveExamId.value),
     ])
     ledgerDetail.value = normalizeImageLedgerDetail(ledger)
     markingProgress.value = progress
@@ -538,14 +554,14 @@ async function loadScanReadiness(): Promise<void> {
 }
 
 async function loadPlanPreview(): Promise<void> {
-  if (!selectedExamId.value || !form.leaderUserId || !canSubmit.value) {
+  if (!effectiveExamId.value || !form.leaderUserId || !canSubmit.value) {
     message.error('请补齐分配合同字段后再预览')
     return
   }
   previewLoading.value = true
   try {
     planPreview.value = await previewAllocationPlan(
-      buildRequest(selectedExamId.value, form.leaderUserId),
+      buildRequest(effectiveExamId.value, form.leaderUserId),
     )
   } catch (error) {
     planPreview.value = null
@@ -557,7 +573,7 @@ async function loadPlanPreview(): Promise<void> {
 
 async function submitAllocation(): Promise<void> {
   if (!guardExamOwnerAction()) return
-  if (!selectedExamId.value || !form.leaderUserId) {
+  if (!effectiveExamId.value || !form.leaderUserId) {
     message.error('请选择考试和阅卷负责人')
     return
   }
@@ -567,9 +583,9 @@ async function submitAllocation(): Promise<void> {
   }
   submitting.value = true
   try {
-    result.value = await planAllocation(buildRequest(selectedExamId.value, form.leaderUserId))
+    result.value = await planAllocation(buildRequest(effectiveExamId.value, form.leaderUserId))
     planPreview.value = await previewAllocationPlan(
-      buildRequest(selectedExamId.value, form.leaderUserId),
+      buildRequest(effectiveExamId.value, form.leaderUserId),
     )
     message.success('阅卷配置已保存，可在组织详情调整题组与教师后启动正评')
     try {
@@ -598,7 +614,7 @@ async function startFormalMarking(): Promise<void> {
   try {
     await startFormalSession(result.value.sessionId)
     planPreview.value = await previewAllocationPlan(
-      buildRequest(selectedExamId.value!, form.leaderUserId!),
+      buildRequest(effectiveExamId.value!, form.leaderUserId!),
     )
     message.success(`正评已启动，预计生成 ${planPreview.value.expectedTaskCount ?? 0} 个阅卷任务`)
     try {
@@ -650,20 +666,20 @@ function buildRequest(examId: string, leaderUserId: string): ExamAllocationPlanR
 }
 
 function goOrganizationDetail(): void {
-  if (!result.value || !selectedExamId.value) {
+  if (!result.value || !effectiveExamId.value) {
     return
   }
   void router.push(resolveMarkingOrganizationDetailRoute(
     result.value.organizationId,
-    selectedExamId.value,
+    effectiveExamId.value,
   ))
 }
 
 function goTaskPool(): void {
-  if (!selectedExamId.value) {
+  if (!effectiveExamId.value) {
     return
   }
-  void router.push({ name: 'TeacherExamWorkspaceMarkingTaskPool', params: { examId: selectedExamId.value } })
+  void router.push({ name: 'TeacherExamWorkspaceMarkingTaskPool', params: { examId: effectiveExamId.value } })
 }
 
 function allocationUnitLabel(value: AllocationUnitCode): string {
@@ -741,8 +757,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="review-assignment-page">
-    <div class="review-assignment-page__toolbar">
+  <div class="review-assignment-page" :class="{ 'review-assignment-page--embedded': props.embedded }">
+    <div v-if="!props.embedded" class="review-assignment-page__toolbar">
       <UiButton variant="outline" size="sm" @click="goBackToOrganization">
         返回阅卷安排
       </UiButton>
@@ -1242,7 +1258,7 @@ onMounted(async () => {
             >
               启动正评
             </UiButton>
-            <UiButton size="sm" variant="outline" :disabled="!selectedExamId" @click="goTaskPool">
+            <UiButton size="sm" variant="outline" :disabled="!effectiveExamId" @click="goTaskPool">
               查看任务池
             </UiButton>
           </div>

@@ -75,15 +75,16 @@
           :value-format="field.valueFormat"
           @update:model-value="handleFieldUpdate(field, $event)"
         />
-        <slot
-          v-else
-          :name="`field-${field.key}`"
-          :field="field"
-          :value="modelValue[field.key]"
-          :update="(value: unknown) => updateField(field.key, value, field)"
-          :search="triggerSearch"
-          :reset="triggerReset"
-        />
+        <div v-else class="dp-filter-bar__control">
+          <slot
+            :name="`field-${field.key}`"
+            :field="field"
+            :value="modelValue[field.key]"
+            :update="(value: unknown) => updateField(field.key, value, field)"
+            :search="triggerSearch"
+            :reset="triggerReset"
+          />
+        </div>
       </div>
     </template>
 
@@ -332,11 +333,20 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
 
 .dp-filter-bar__field {
   flex: 0 0 auto;
-  min-width: 220px;
-  max-width: 360px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.dp-filter-bar__control {
+  width: 100%;
+  min-width: 0;
+}
+
+.dp-filter-bar__control :deep(.ui-select),
+.dp-filter-bar__control :deep(.ant-select) {
+  width: 100%;
 }
 
 .dp-filter-bar__label {
@@ -353,6 +363,7 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
   gap: 8px;
   flex-wrap: nowrap;
   flex: 0 0 auto;
+  flex-shrink: 0;
   margin-left: auto;
   align-self: flex-end;
 }

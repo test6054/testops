@@ -6,11 +6,6 @@
         <UiTag tone="orange">待处置 {{ pendingCount }}</UiTag>
       </a-space>
     </template>
-    <template #extra>
-      <a-button :loading="loading" @click="reload">
-        <template #icon><ReloadOutlined /></template>刷新
-      </a-button>
-    </template>
 
     <UiDataTable
       pagination-mode="client"
@@ -44,7 +39,6 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref, watch } from 'vue'
 import {
   DUPLICATE_RESOLUTION_STATUS_COLOR,

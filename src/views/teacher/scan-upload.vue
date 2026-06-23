@@ -7,25 +7,23 @@
     />
 
     <template v-else>
-      <!-- 扫描进度概览 KPI + 卷面绑定率环 -->
-      <div v-if="progress" class="scan-batch-page__progress-row">
-        <UiStatPanel
-          title="扫描进度概览"
-          :items="progressMetrics"
-          :columns="4"
-          variant="grid"
-          compact
-          class="scan-batch-page__progress-panel"
-        />
-        <UiCard
-          v-if="paperBindingPercent !== null"
-          class="scan-batch-page__ring-card"
-          :show-header="false"
-        >
-          <div class="scan-batch-page__ring-wrap">
-            <MarkGaugeBlock
-              v-bind="paperBindingGaugeBlockProps"
-            >
+      <section v-if="progress" class="scan-batch-page__progress-overview">
+        <h2 class="scan-batch-page__section-title">扫描进度概览</h2>
+        <div class="scan-batch-page__progress-row">
+          <UiStatPanel
+            :items="progressMetrics"
+            :columns="4"
+            variant="grid"
+            compact
+            class="scan-batch-page__progress-panel"
+          />
+          <UiCard
+            v-if="paperBindingPercent !== null"
+            class="scan-batch-page__ring-card"
+            :show-header="false"
+            compact
+          >
+            <MarkGaugeBlock v-bind="paperBindingGaugeBlockProps">
               <div class="mark-gauge-block__formula">
                 <strong>{{ progress.gradablePaperCount }}</strong>
                 <span class="muted"> / {{ progress.paperCount }} 份卷面</span>
@@ -34,9 +32,9 @@
                 {{ paperBindingHint }}
               </p>
             </MarkGaugeBlock>
-          </div>
-        </UiCard>
-      </div>
+          </UiCard>
+        </div>
+      </section>
 
       <section class="scan-batch-page__section">
         <h2 class="scan-batch-page__section-title">扫描录入</h2>
@@ -52,21 +50,21 @@
             <template #title>
               <DesktopOutlined />
               <span>当前连接扫描仪</span>
-              <span class="scan-batch-page__panel-meta">{{ onlineDeviceCount }} / {{ devices.length }} 在线</span>
+              <span class="scan-batch-page__panel-meta">{{ connectedDevices.length }} 台在线</span>
             </template>
 
             <UiDataTable
               pagination-mode="none"
               :columns="scannerDeviceColumns"
-              :data-source="devices"
+              :data-source="connectedDevices"
               :loading="devicesLoading"
               :show-pagination="false"
               flat
-              :total="devices.length"
+              :total="connectedDevices.length"
               row-key="id"
               size="small"
               empty-kind="first-run"
-              empty-description="尚未绑定扫描仪，请在一台扫描终端登录本考试后再刷新"
+              :empty-description="connectedDevicesEmptyDescription"
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'deviceName'">
@@ -111,7 +109,7 @@
               row-key="eventId"
               size="small"
               empty-kind="first-run"
-              empty-description="暂无扫描事件，创建批次或等待扫描仪上报后将在此显示"
+              empty-description="当前无在线扫描仪时暂无事件快照，请先在扫描终端登录"
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'status'">
@@ -416,10 +414,6 @@ import type {
   ExamFileRefVO,
 } from '@/apis/mark/exam'
 import type {
-  ExamScannerDeviceVO,
-} from '@/apis/mark/exam-mark-scanner'
-import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
-import type {
   ExamScannerBatchCreateRequest,
   ExamScannerBatchDeviceBreakdownVO,
   ExamScannerBatchPreviewVO,
@@ -435,7 +429,11 @@ import UnorderedListOutlined from '@ant-design/icons-vue/UnorderedListOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { pageScannerDevices } from '@/apis/mark/exam-mark-scanner'
+import {
+  isScannerDeviceOnline,
+  listActiveScannerDevices,
+  type ExamScannerDeviceVO,
+} from '@/apis/mark/exam-mark-scanner'
 import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import {
   createScanBatchByCondition,
@@ -645,6 +643,7 @@ const paperBindingAriaLabel = computed(() => {
 const paperBindingGaugeBlockProps = computed(() => ({
   option: paperBindingGaugeOption.value,
   ariaLabel: paperBindingAriaLabel.value,
+  gaugeSize: 'md' as const,
 }))
 
 const paperBindingHint = computed<string>(() => {
@@ -684,6 +683,28 @@ const previewMetrics = computed(() => {
 // ─── 扫描设备列表 ─────────────────────────────
 const devices = ref<ExamScannerDeviceVO[]>([])
 const devicesLoading = ref(false)
+
+const connectedDevices = computed(() => devices.value.filter(isScannerDeviceOnline))
+
+const connectedDevicesEmptyDescription = computed(() => {
+  if (devices.value.length === 0) {
+    return '尚未注册扫描仪，请先在「扫描设备管理」绑定 Agent 后再刷新'
+  }
+  return '当前无在线扫描仪，请在扫描终端登录本考试后再刷新'
+})
+
+function deviceOnlineTone(device: ExamScannerDeviceVO): BadgeTone {
+  if (device.diagnosticStatus === 'ERROR') return 'red'
+  if (device.diagnosticStatus === 'WARNING') return 'orange'
+  return 'green'
+}
+
+function deviceOnlineLabel(device: ExamScannerDeviceVO): string {
+  if (device.diagnosticStatus === 'ERROR') return '诊断异常'
+  if (device.diagnosticStatus === 'WARNING') return '诊断告警'
+  return '在线'
+}
+
 // 加载失败：toast 提示，主区保持空态/列表壳
 
 const deviceSelectOptions = computed(() =>
@@ -704,49 +725,10 @@ function formatDeviceLabel(deviceId?: string): string {
     : device.deviceName || deviceId
 }
 
-const onlineDeviceCount = computed(() =>
-  devices.value.filter((device) => device.endpointOnlineStatus === 'ONLINE' || device.scannerConnected).length,
-)
-
-function deviceOnlineTone(device: ExamScannerDeviceVO): BadgeTone {
-  if (device.diagnosticStatus === 'ERROR') return 'red'
-  if (device.diagnosticStatus === 'WARNING' || device.endpointOnlineStatus === 'OFFLINE') return 'orange'
-  if (device.endpointOnlineStatus === 'ONLINE' || device.scannerConnected) return 'green'
-  return 'gray'
-}
-
-function deviceOnlineLabel(device: ExamScannerDeviceVO): string {
-  if (device.diagnosticStatus === 'ERROR') return '诊断异常'
-  if (device.diagnosticStatus === 'WARNING') return '诊断告警'
-  if (device.endpointOnlineStatus === 'ONLINE' || device.scannerConnected) return '在线'
-  if (device.endpointOnlineStatus === 'OFFLINE') return '离线'
-  return '未上报'
-}
-
-const SCANNER_DEVICE_SELECT_PAGE_SIZE = 100
-
-async function loadActiveScannerDevicesForSelect(): Promise<ExamScannerDeviceVO[]> {
-  const items: ExamScannerDeviceVO[] = []
-  let pageNum = 1
-  while (true) {
-    const result = await pageScannerDevices({
-      pageNum,
-      pageSize: SCANNER_DEVICE_SELECT_PAGE_SIZE,
-      status: 'ACTIVE',
-    })
-    items.push(...readPageList(result, '扫描设备列表加载失败'))
-    if (items.length >= readPageTotal(result)) {
-      break
-    }
-    pageNum += 1
-  }
-  return items
-}
-
 async function loadDevices(): Promise<void> {
   devicesLoading.value = true
   try {
-    devices.value = await loadActiveScannerDevicesForSelect()
+    devices.value = await listActiveScannerDevices()
   } catch (error) {
     devices.value = []
     showUserError(error, '扫描设备列表加载失败')
@@ -1138,10 +1120,18 @@ async function loadRecentEventsSnapshot(): Promise<void> {
   }
   recentEventsLoading.value = true
   try {
-    liveEvents.value = await listRecentScanEvents({
+    const onlineDeviceIds = new Set(
+      connectedDevices.value.map((device) => device.scannerDeviceId).filter(Boolean),
+    )
+    if (onlineDeviceIds.size === 0) {
+      liveEvents.value = []
+      return
+    }
+    const events = await listRecentScanEvents({
       examId: selectedExamId.value,
       limit: 8,
     })
+    liveEvents.value = events.filter((event) => onlineDeviceIds.has(event.scannerDeviceId))
   }
   catch (error) {
     liveEvents.value = []
@@ -1154,7 +1144,8 @@ async function loadRecentEventsSnapshot(): Promise<void> {
 
 // ─── 生命周期 ─────────────────────────────
 async function loadAllForExam(): Promise<void> {
-  await Promise.all([loadDevices(), loadBatches(1), loadProgress(), loadRecentEventsSnapshot()])
+  await loadDevices()
+  await Promise.all([loadBatches(1), loadProgress(), loadRecentEventsSnapshot()])
 }
 
 watch(selectedExamId, (value) => {
@@ -1199,48 +1190,62 @@ onBeforeUnmount(() => {
     padding: 60px 0;
   }
 
-  &__progress-row {
+  &__progress-overview {
     display: flex;
-    gap: 16px;
+    flex-direction: column;
+    gap: 12px;
     margin-bottom: 16px;
+  }
+
+  &__progress-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+    gap: 16px;
     align-items: stretch;
-    flex-wrap: wrap;
   }
 
   &__progress-panel {
-    flex: 1 1 480px;
     min-width: 0;
-    margin-bottom: 0;
+    height: 100%;
+
+    :deep(.ui-stat-panel) {
+      height: 100%;
+    }
+
+    :deep(.ui-stat-panel__list) {
+      align-items: stretch;
+      height: 100%;
+    }
+
+    :deep(.ui-metric-card) {
+      height: 100%;
+      align-items: center;
+    }
   }
 
   &__ring-card {
-    flex: 0 0 240px;
+    min-width: 0;
     display: flex;
+    align-items: stretch;
+  }
+
+  &__ring-card :deep(.dp-card__body) {
+    display: flex;
+    flex: 1;
     align-items: center;
     justify-content: center;
+    width: 100%;
+    padding: 14px 16px;
   }
 
-  &__ring-wrap {
-    display: flex;
-    align-items: center;
-    gap: 14px;
+  &__ring-card :deep(.mark-gauge-block) {
+    width: 100%;
   }
 
-  &__ring-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  &__ring-formula {
-    font-size: 16px;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__ring-hint {
-    font-size: 12px;
-    color: var(--dp-text-secondary, #475569);
-    max-width: 140px;
+  @media (max-width: 900px) {
+    &__progress-row {
+      grid-template-columns: 1fr;
+    }
   }
 
   &__monitor-grid {

@@ -112,6 +112,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
@@ -151,13 +152,12 @@ const organizationExamLabel = computed(() => {
   return '阅卷组织'
 })
 
-const canManageOrganization = computed(
-  () => !!examDetail.value?.createUser && examDetail.value.createUser === userStore.userInfo.userId,
-)
+const examCreateUserId = computed(() => examDetail.value?.createUser ?? organization.value?.examCreateUserId)
+const { canManageMarkingSetup: canManageOrganization } = useMarkingOrgPermission(examCreateUserId, organization)
 
 function guardOrganizationOwnerAction(): boolean {
   if (canManageOrganization.value) return true
-  message.warning('仅考试创建人可分配批阅任务')
+  message.warning('仅考试主考或阅卷组长可管理试评 / 正评会话')
   return false
 }
 

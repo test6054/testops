@@ -11,6 +11,7 @@ import type { ScanAttentionTypeCode } from './exam-scan'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 
 /** 接入模式编码 - 对应后端 ScannerInterfaceMode 枚举 */
 export type ScannerInterfaceModeCode = 'HTTP_PUSH'
@@ -354,4 +355,30 @@ export function pageMarkExams(
   request: MarkExamPageQueryRequest,
 ): Promise<PageResult<MarkExamSummaryVO>> {
   return http.post<PageResult<MarkExamSummaryVO>>('/api/mark/exams/page', request)
+}
+
+const ACTIVE_SCANNER_DEVICE_PAGE_SIZE = 100
+
+/** 扫描 Agent 端点在线，或扫描组件已连接，视为当前可监控设备。 */
+export function isScannerDeviceOnline(device: ExamScannerDeviceVO): boolean {
+  return device.endpointOnlineStatus === 'ONLINE' || device.scannerConnected === true
+}
+
+/** 分页拉取当前租户全部 ACTIVE 扫描设备。 */
+export async function listActiveScannerDevices(): Promise<ExamScannerDeviceVO[]> {
+  const items: ExamScannerDeviceVO[] = []
+  let pageNum = 1
+  while (true) {
+    const result = await pageScannerDevices({
+      pageNum,
+      pageSize: ACTIVE_SCANNER_DEVICE_PAGE_SIZE,
+      status: 'ACTIVE',
+    })
+    items.push(...readPageList(result, '扫描设备列表加载失败'))
+    if (items.length >= readPageTotal(result, '扫描设备列表加载失败')) {
+      break
+    }
+    pageNum += 1
+  }
+  return items
 }

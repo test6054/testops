@@ -58,19 +58,25 @@
             <span v-else class="text-muted">从未通讯</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <div class="operations-cell">
-              <UiTextAction @click="handleViewDetail(devices[index])">详情</UiTextAction>
-              <UiTextAction @click="handleEdit(devices[index])">编辑</UiTextAction>
-              <UiTextAction @click="handleRebindAgent(devices[index])">重新绑定一体机</UiTextAction>
-              <UiTextAction @click="handleCreateActivationCode(devices[index])">激活码</UiTextAction>
-              <UiTextAction
-                v-if="devices[index].endpointMachineCode"
-                tone="danger"
-                @click="handleUnbindAgent(devices[index])"
-              >
-                解绑扫描组件
-              </UiTextAction>
-              <UiTextAction tone="danger" @click="handleDelete(devices[index])">删除</UiTextAction>
+            <div class="operations-cell operations-cell--split" @click.stop>
+              <button type="button" class="op-link" @click="handleViewDetail(devices[index])">详情</button>
+              <span class="operations-cell__sep" aria-hidden="true" />
+              <button type="button" class="op-link" @click="handleEdit(devices[index])">编辑</button>
+              <span class="operations-cell__sep" aria-hidden="true" />
+              <a-dropdown trigger="click">
+                <button type="button" class="op-link" @click.stop.prevent>更多</button>
+                <template #overlay>
+                  <a-menu @click="(event) => handleDeviceMenuClick(devices[index], event)">
+                    <a-menu-item
+                      v-for="item in buildDeviceMenuItems(devices[index])"
+                      :key="item.key"
+                      :danger="item.danger"
+                    >
+                      {{ item.label }}
+                    </a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
             </div>
           </template>
         </template>
@@ -329,7 +335,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
@@ -410,8 +415,50 @@ const columns = [
   { title: '组件版本', dataIndex: 'agentVersion', key: 'agentVersion', width: 120 },
   { title: '最近通讯', dataIndex: 'lastSeenAt', key: 'lastSeenAt', width: 170 },
   { title: '位置', dataIndex: 'location', key: 'location', width: 160, ellipsis: true },
-  { title: '操作', dataIndex: 'action', key: 'action', width: 320, fixed: 'right' as const },
+  { title: '操作', dataIndex: 'action', key: 'action', width: 200, fixed: 'right' as const },
 ]
+
+interface DeviceMenuItem {
+  key: 'rebind' | 'activation' | 'unbind' | 'delete'
+  label: string
+  danger?: boolean
+}
+
+/** 扫描设备行内次要操作：收进「更多」下拉，避免操作列横向积压换行。 */
+function buildDeviceMenuItems(record: ExamScannerDeviceVO): DeviceMenuItem[] {
+  const items: DeviceMenuItem[] = [
+    { key: 'rebind', label: '重新绑定' },
+    { key: 'activation', label: '激活码' },
+  ]
+  if (record.endpointMachineCode) {
+    items.push({ key: 'unbind', label: '解绑扫描组件', danger: true })
+  }
+  items.push({ key: 'delete', label: '删除', danger: true })
+  return items
+}
+
+function handleDeviceMenuClick(record: ExamScannerDeviceVO, event: { key: string | number }): void {
+  if (typeof event.key !== 'string') {
+    return
+  }
+  const matchedItem = buildDeviceMenuItems(record).find((item) => item.key === event.key)
+  if (!matchedItem) {
+    return
+  }
+  if (matchedItem.key === 'rebind') {
+    void handleRebindAgent(record)
+    return
+  }
+  if (matchedItem.key === 'activation') {
+    void handleCreateActivationCode(record)
+    return
+  }
+  if (matchedItem.key === 'unbind') {
+    handleUnbindAgent(record)
+    return
+  }
+  handleDelete(record)
+}
 
 // helper 严格只接受后端枚举类型，零 as 断言。
 function statusLabelOf(status: ScannerDeviceStatusCode): string {
@@ -657,7 +704,7 @@ function scannerDeviceDiagnosticText(
 
 async function handleRebindAgent(record: ExamScannerDeviceVO): Promise<void> {
   void confirmAsync({
-    title: '重新绑定一体机',
+    title: '重新绑定',
     content: `将重置服务端接入密钥并生成新激活码。原一体机需使用新激活码重新绑定。设备：${record.deviceName}`,
     type: 'warning',
     onOk: async () => {
@@ -667,7 +714,7 @@ async function handleRebindAgent(record: ExamScannerDeviceVO): Promise<void> {
         openActivationHandoff(handoff)
         await syncAfterDeviceMutation()
       } catch (error) {
-        showUserError(error, '一体机重新绑定准备失败')
+        showUserError(error, '重新绑定准备失败')
       }
     },
   })

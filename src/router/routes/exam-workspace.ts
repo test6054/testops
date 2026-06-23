@@ -142,19 +142,30 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       keepAlive: true,
     }),
     workspaceChild('marking-org', 'TeacherExamWorkspaceMarkingOrg', () => import('@/views/admin/marking-organization/index.vue'), {
-      title: '阅卷安排',
+      title: '阅卷设置',
       markStageKey: 'MARKING_ORG',
       journeyKey: 'assign',
       workspacePhase: 'marking-org',
       keepAlive: true,
     }),
-    workspaceChild('marking-org/assignment', 'TeacherExamWorkspaceReviewAssignment', () => import('@/views/teacher/review-assignment.vue'), {
-      title: '分派方案',
-      markStageKey: 'MARKING_ORG',
-      journeyKey: 'assign',
-      workspacePhase: 'marking-org',
-      keepAlive: true,
-    }),
+    {
+      path: 'marking-org/assignment',
+      name: 'TeacherExamWorkspaceReviewAssignment',
+      redirect: (to) => ({
+        name: 'TeacherExamWorkspaceMarkingOrg',
+        params: { examId: to.params.examId },
+        query: { setupTab: 'launch' },
+      }),
+      meta: {
+        roles: TEACHER_ROLES,
+        hideInMenu: true,
+        layout: 'ExamWorkspace',
+        requiresAuth: true,
+        title: '阅卷设置',
+        markStageKey: 'MARKING_ORG',
+        journeyKey: 'assign',
+      },
+    },
     workspaceChild('marking-org/:organizationId', 'TeacherExamWorkspaceMarkingOrgDetail', () => import('@/views/admin/marking-organization/detail.vue'), {
       title: '组织详情',
       markStageKey: 'MARKING_ORG',

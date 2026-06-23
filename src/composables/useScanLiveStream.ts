@@ -123,6 +123,7 @@ export function useScanLiveStream(
   }
 
   function markTransientReconnect(): void {
+    error.value = null
     connectionPhase.value = 'reconnecting'
     ready.value = false
   }
@@ -267,6 +268,9 @@ export function useScanLiveStream(
     isStreaming.value = false
     ready.value = false
     connectionPhase.value = 'idle'
+    events.value = []
+    knownEventIds.clear()
+    lastEventId.value = undefined
     ledgerRequestToken++
     ledger.value = null
     ledgerError.value = null

@@ -30,8 +30,13 @@
           >
             查看异常
           </UiButton>
-          <UiButton size="sm" :disabled="!selectedExamId" :loading="loading" @click="handleRefresh">
-            刷新
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="!selectedExamId"
+            @click="goToScanLedger"
+          >
+            影像账本
           </UiButton>
         </div>
       </header>
@@ -44,17 +49,13 @@
           class="scan-monitor__stats"
         />
         <UiCard :show-header="false" compact class="scan-monitor__health-card">
-          <div class="scan-monitor__health-wrap">
-            <MarkGaugeBlock
-              v-bind="healthGaugeBlockProps"
-            >
-              <ul class="mark-gauge-block__detail-list">
-                <li>实时事件 {{ liveEvents.length }} 条</li>
-                <li>异常阻断 {{ abnormalAttentionTotal }} 条</li>
-                <li>重复影像 {{ duplicateAttentionTotal }} 条</li>
-              </ul>
-            </MarkGaugeBlock>
-          </div>
+          <MarkGaugeBlock v-bind="healthGaugeBlockProps">
+            <ul class="mark-gauge-block__detail-list">
+              <li>实时事件 {{ liveEvents.length }} 条</li>
+              <li>异常阻断 {{ abnormalAttentionTotal }} 条</li>
+              <li>重复影像 {{ duplicateAttentionTotal }} 条</li>
+            </ul>
+          </MarkGaugeBlock>
         </UiCard>
       </div>
 
@@ -64,19 +65,55 @@
         compact
         class="scan-monitor__tabs"
       >
+        <UiFilterBar
+          v-model="filterModel"
+          :fields="monitorFilterFields"
+          show-labels
+          search-text="查询"
+          @search="handleMonitorFilterSearch"
+          @reset="resetFilter"
+        >
+          <template v-if="hasMonitorScanBatchFilter" #field-scanBatchId>
+            <UiSelect
+              v-model="filterForm.scanBatchId"
+              placeholder="选择扫描批次"
+              :options="scanBatchOptions"
+              :loading="scanBatchesLoading"
+              allow-search
+              :filter-option="false"
+              @search="handleScanBatchSearch"
+              @dropdown-visible-change="handleScanBatchDropdownVisibleChange"
+              @change="handleScanBatchFilterChange"
+            />
+          </template>
+          <template v-if="activeTab !== 'normal'" #field-paperInstanceId>
+            <UiSelect
+              v-model="filterForm.paperInstanceId"
+              placeholder="选择答题卡"
+              :options="paperCandidateOptions"
+              :loading="paperCandidatesLoading"
+              allow-search
+              :filter-option="false"
+              @search="handlePaperCandidateSearch"
+              @dropdown-visible-change="handlePaperCandidateDropdownVisibleChange"
+              @change="handlePaperCandidateFilterChange"
+            />
+          </template>
+        </UiFilterBar>
+
         <section v-if="activeTab === 'normal'" class="scan-monitor__normal-panel">
           <UiDataTable
             pagination-mode="none"
             class="student-detail-table__data-table"
             :columns="normalEventColumns"
-            :data-source="liveEvents"
+            :data-source="filteredLiveEvents"
             :loading="scanLiveStreaming && !scanLiveReady"
             :show-pagination="false"
             flat
-            :total="liveEvents.length"
+            :total="filteredLiveEvents.length"
             row-key="eventId"
             empty-kind="first-run"
-            empty-description="暂无实时扫描事件，请确认扫描仪在线并在「录入与批次」创建扫描批次"
+            :empty-description="normalTableEmptyDescription"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'batchNo'">
@@ -97,73 +134,6 @@
           </UiDataTable>
         </section>
         <section v-else class="scan-monitor__attention-panel">
-          <UiFilterBar
-            v-model="filterModel"
-            :fields="attentionFilterFields"
-            show-labels
-            search-text="查询"
-            @search="handleAttentionFilterSearch"
-            @reset="resetFilter"
-          >
-            <template v-if="activeTab === 'abnormal'" #field-attentionType>
-              <a-select
-                v-model:value="filterForm.attentionType"
-                placeholder="全部异常"
-                :options="attentionTypeOptions"
-                allow-clear
-                class="scan-monitor__type-select"
-                style="width: 100%"
-                popup-class-name="ui-select-dropdown"
-                :dropdown-match-select-width="false"
-                :dropdown-style="scanMonitorSelectDropdownStyle"
-                :get-popup-container="scanMonitorSelectPopupContainer"
-                @change="onAttentionTypeChange"
-              />
-            </template>
-            <template #field-scanBatchId>
-              <a-select
-                v-model:value="filterForm.scanBatchId"
-                placeholder="选择扫描批次"
-                :options="scanBatchOptions"
-                :loading="scanBatchesLoading"
-                show-search
-                :filter-option="false"
-                allow-clear
-                class="scan-monitor__filter-select"
-                style="width: 100%"
-                popup-class-name="ui-select-dropdown"
-                :dropdown-match-select-width="false"
-                :dropdown-style="scanMonitorSelectDropdownStyle"
-                :get-popup-container="scanMonitorSelectPopupContainer"
-                @search="handleScanBatchSearch"
-                @dropdown-visible-change="handleScanBatchDropdownVisibleChange"
-                @change="handleScanBatchFilterChange"
-              />
-            </template>
-            <template #field-paperInstanceId>
-              <a-select
-                v-model:value="filterForm.paperInstanceId"
-                placeholder="选择答题卡"
-                :options="paperCandidateOptions"
-                :loading="paperCandidatesLoading"
-                show-search
-                :filter-option="false"
-                allow-clear
-                class="scan-monitor__filter-select"
-                style="width: 100%"
-                popup-class-name="ui-select-dropdown"
-                :dropdown-match-select-width="false"
-                :dropdown-style="scanMonitorSelectDropdownStyle"
-                :get-popup-container="scanMonitorSelectPopupContainer"
-                @search="handlePaperCandidateSearch"
-                @dropdown-visible-change="handlePaperCandidateDropdownVisibleChange"
-                @change="handlePaperCandidateFilterChange"
-              />
-            </template>
-          </UiFilterBar>
-
-
-
           <UiDataTable
             class="student-detail-table__data-table"
             v-model:current="attentionPagination.current"
@@ -253,9 +223,9 @@
                   <UiTextAction
                     v-else-if="record.attentionType === 'DUPLICATE_PENDING'"
                     tone="primary"
-                    @click="openAttentionLedger"
+                    @click="goToScanLedger"
                   >
-                    重复影像处置
+                    去影像账本处置
                   </UiTextAction>
                   <UiTextAction
                     v-else-if="record.attentionType === 'QUALITY_BLOCK' || record.attentionType === 'PROCESSING_BLOCK'"
@@ -263,9 +233,6 @@
                     @click="openDetail(record)"
                   >
                     查看处置
-                  </UiTextAction>
-                  <UiTextAction v-else tone="primary" @click="openAttentionLedger">
-                    影像账本
                   </UiTextAction>
                   <UiTextAction
                     v-if="record.sourceType === 'SCANNED_PAGE' && record.pageId"
@@ -610,7 +577,12 @@ import {
   BINDING_STATUS_LABEL,
   bindPaper,
 } from '@/apis/mark/exam-binding'
-import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
+import {
+  batchBindPapers,
+  isScannerDeviceOnline,
+  listActiveScannerDevices,
+  type ExamScannerDeviceVO,
+} from '@/apis/mark/exam-mark-scanner'
 import {
   listScanAttentions,
   pageScannerBatches,
@@ -632,6 +604,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
@@ -653,16 +626,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanLiveMonitor' })
 
-const scanMonitorSelectDropdownStyle = {
-  minWidth: '360px',
-}
-
 const SCAN_BATCH_FILTER_PAGE_SIZE = 50
 const PAPER_CANDIDATE_FILTER_PAGE_SIZE = 50
-
-function scanMonitorSelectPopupContainer(): HTMLElement {
-  return document.body
-}
 
 const router = useRouter()
 
@@ -682,10 +647,40 @@ const filterForm = reactive<{
   attentionType?: ScanAttentionTypeCode | ''
   scanBatchId?: string
   paperInstanceId?: string
+  eventKeyword: string
+  eventStatus?: ScanLiveEventVO['status']
+  monitorDeviceId: string
 }>({
   attentionType: '',
   scanBatchId: '',
   paperInstanceId: '',
+  eventKeyword: '',
+  eventStatus: undefined,
+  monitorDeviceId: '',
+})
+
+const scannerDevices = ref<ExamScannerDeviceVO[]>([])
+const scannerDevicesLoading = ref(false)
+
+const connectedDevices = computed(() => scannerDevices.value.filter(isScannerDeviceOnline))
+
+const selectedMonitorDevice = computed(() =>
+  connectedDevices.value.find((device) => device.scannerDeviceId === filterForm.monitorDeviceId),
+)
+
+function formatMonitorDeviceLabel(device: ExamScannerDeviceVO): string {
+  const name = device.deviceName || device.scannerDeviceId
+  return device.scannerIp ? `${name}（${device.scannerIp}）` : name
+}
+
+const normalFilterApplied = reactive<{
+  keyword: string
+  scanBatchId: string
+  status?: ScanLiveEventVO['status']
+}>({
+  keyword: '',
+  scanBatchId: '',
+  status: undefined,
 })
 
 const filterModel = computed<Record<string, unknown>>({
@@ -707,16 +702,104 @@ const attentionTableEmptyDescription = computed(() => {
   return '暂无待关注项'
 })
 
+const normalTableEmptyDescription = computed(() => {
+  if (connectedDevices.value.length === 0) {
+    return '当前无在线扫描仪，请先在扫描终端登录后再监控'
+  }
+  if (liveEvents.value.length === 0) {
+    return '当前在线扫描仪暂无实时事件，请确认扫描批次已创建'
+  }
+  if (hasActiveNormalFilters.value) {
+    return '当前筛选条件下无匹配事件，请调整条件后重试'
+  }
+  return '当前在线扫描仪暂无实时事件，请确认扫描批次已创建'
+})
+
+const hasActiveNormalFilters = computed(() =>
+  Boolean(
+    normalFilterApplied.keyword
+    || normalFilterApplied.scanBatchId
+    || normalFilterApplied.status,
+  ),
+)
+
+const normalFilterFields = computed<FilterField[]>(() => {
+  const fields: FilterField[] = []
+  if (connectedDevices.value.length > 0) {
+    fields.push({
+      key: 'monitorDeviceId',
+      type: 'select',
+      label: '在线扫描仪',
+      placeholder: '选择监控设备',
+      allowClear: false,
+      width: 220,
+      minWidth: 200,
+      maxWidth: 280,
+      triggerSearchOnChange: false,
+      options: connectedDevices.value
+        .filter((device) => !!device.scannerDeviceId)
+        .map((device) => ({
+          value: device.scannerDeviceId,
+          label: formatMonitorDeviceLabel(device),
+        })),
+    })
+  }
+  fields.push(
+    {
+      key: 'eventKeyword',
+      type: 'input',
+      label: '关键词',
+      placeholder: '按批次号 / 设备 / 站点搜索',
+      inputPrefixIcon: 'search',
+      triggerSearchOnChange: false,
+      allowClear: true,
+      width: 260,
+      minWidth: 220,
+      maxWidth: 320,
+    },
+    {
+      key: 'scanBatchId',
+      type: 'custom',
+      label: '扫描批次',
+      width: 200,
+      minWidth: 180,
+      maxWidth: 260,
+    },
+    {
+      key: 'eventStatus',
+      type: 'select',
+      label: '状态',
+      placeholder: '全部状态',
+      allowClear: true,
+      width: 140,
+      minWidth: 120,
+      maxWidth: 160,
+      triggerSearchOnChange: false,
+      options: (Object.keys(SCAN_EVENT_STATUS_LABEL) as ScanLiveEventVO['status'][]).map((status) => ({
+        value: status,
+        label: SCAN_EVENT_STATUS_LABEL[status],
+      })),
+    },
+  )
+  return fields
+})
+
 const attentionFilterFields = computed<FilterField[]>(() => {
   const fields: FilterField[] = []
   if (activeTab.value === 'abnormal') {
     fields.push({
       key: 'attentionType',
-      type: 'custom',
+      type: 'select',
       label: '异常类型',
+      placeholder: '全部异常',
+      allowClear: true,
       width: 160,
       minWidth: 140,
       maxWidth: 200,
+      options: attentionTypeOptions.map((item) => ({
+        value: item.value,
+        label: item.label,
+      })),
     })
   }
   fields.push(
@@ -739,6 +822,43 @@ const attentionFilterFields = computed<FilterField[]>(() => {
   )
   return fields
 })
+
+const monitorFilterFields = computed<FilterField[]>(() =>
+  activeTab.value === 'normal' ? normalFilterFields.value : attentionFilterFields.value,
+)
+
+const hasMonitorScanBatchFilter = computed(() =>
+  monitorFilterFields.value.some((field) => field.key === 'scanBatchId'),
+)
+
+const filteredLiveEvents = computed(() => {
+  let rows = liveEvents.value
+  const keyword = normalFilterApplied.keyword.trim().toLowerCase()
+  if (keyword) {
+    rows = rows.filter((event) =>
+      [
+        event.batchExternalNo,
+        event.reportId,
+        event.scannerDeviceId,
+        event.scannerStationId,
+        event.eventId,
+      ].some((value) => value?.toLowerCase().includes(keyword)),
+    )
+  }
+  if (normalFilterApplied.scanBatchId) {
+    rows = rows.filter((event) => event.scanBatchId === normalFilterApplied.scanBatchId)
+  }
+  if (normalFilterApplied.status) {
+    rows = rows.filter((event) => event.status === normalFilterApplied.status)
+  }
+  return rows
+})
+
+function applyNormalFilters(): void {
+  normalFilterApplied.keyword = filterForm.eventKeyword.trim()
+  normalFilterApplied.scanBatchId = filterForm.scanBatchId || ''
+  normalFilterApplied.status = filterForm.eventStatus
+}
 
 const attentions = ref<ScanAttentionItemVO[]>([])
 const loading = ref(false)
@@ -788,11 +908,17 @@ const {
   ready: scanLiveReady,
   isStreaming: scanLiveStreaming,
   connectionPhase: scanLiveConnectionPhase,
-  error: scanLiveError,
   stop: stopScanLive,
   refresh: refreshScanLive,
 } = useScanLiveStream({
-  filter: () => ({ examId: selectedExamId.value || undefined }),
+  filter: () => {
+    const device = selectedMonitorDevice.value
+    return {
+      examId: selectedExamId.value || undefined,
+      scannerDeviceId: device?.scannerDeviceId,
+      scannerStationId: device?.scannerStationId,
+    }
+  },
   initialLimit: 50,
   maxEvents: 200,
 })
@@ -801,6 +927,7 @@ const liveDrawerOpen = ref(false)
 const currentEvent = ref<ScanLiveEventVO | null>(null)
 
 const connectionTone = computed<BadgeTone>(() => {
+  if (connectedDevices.value.length === 0) return 'gray'
   if (scanLiveConnectionPhase.value === 'failed') return 'red'
   if (scanLiveConnectionPhase.value === 'ready') return 'green'
   if (scanLiveConnectionPhase.value === 'connecting' || scanLiveConnectionPhase.value === 'reconnecting') {
@@ -810,6 +937,7 @@ const connectionTone = computed<BadgeTone>(() => {
 })
 
 const connectionLabel = computed(() => {
+  if (connectedDevices.value.length === 0) return '无在线设备'
   if (scanLiveConnectionPhase.value === 'failed') return '连接失败'
   if (scanLiveConnectionPhase.value === 'ready') return '实时同步中'
   if (scanLiveConnectionPhase.value === 'reconnecting') return '正在重连'
@@ -819,6 +947,7 @@ const connectionLabel = computed(() => {
 
 /** 指标卡短文案，与「0 条」类数值卡保持同一视觉节奏 */
 const connectionShortValue = computed(() => {
+  if (connectedDevices.value.length === 0) return '离线'
   if (scanLiveConnectionPhase.value === 'failed') return '失败'
   if (scanLiveConnectionPhase.value === 'ready') return '正常'
   if (scanLiveConnectionPhase.value === 'reconnecting') return '重连'
@@ -828,7 +957,10 @@ const connectionShortValue = computed(() => {
 
 /** SSE 已连接时顶栏状态标签 pulse，提示实时监控活跃 */
 const connectionPulsing = computed(
-  () => scanLiveConnectionPhase.value === 'ready' && !!selectedExamId.value,
+  () =>
+    connectedDevices.value.length > 0
+    && scanLiveConnectionPhase.value === 'ready'
+    && !!selectedExamId.value,
 )
 
 function jumpToAbnormalTab(): void {
@@ -847,13 +979,16 @@ const normalEventColumns: ColumnType<ScanLiveEventVO>[] = [
 ]
 
 const healthPercent = computed(() => {
-  const total = liveEvents.value.length + abnormalAttentionTotal.value + duplicateAttentionTotal.value
-  if (total === 0) return scanLiveReady.value ? 100 : 0
-  return Math.round((liveEvents.value.length / total) * 100)
+  if (connectedDevices.value.length === 0) return 0
+  const blocked = abnormalAttentionTotal.value + duplicateAttentionTotal.value
+  const normal = liveEvents.value.length
+  const total = normal + blocked
+  if (total === 0) return 100
+  return Math.round((normal / total) * 100)
 })
 
 const healthRingLabel = computed(() => {
-  if (scanLiveError.value) return '连接异常'
+  if (connectedDevices.value.length === 0) return '无在线设备'
   if (abnormalAttentionTotal.value > 0) return '需处置'
   if (duplicateAttentionTotal.value > 0) return '需去重'
   if (liveEvents.value.length > 0) return '入账正常'
@@ -861,7 +996,8 @@ const healthRingLabel = computed(() => {
 })
 
 const healthGaugeColor = computed(() => {
-  if (scanLiveError.value || abnormalAttentionTotal.value > 0) return toneToColor('red')
+  if (connectedDevices.value.length === 0) return toneToColor('gray')
+  if (abnormalAttentionTotal.value > 0) return toneToColor('red')
   if (duplicateAttentionTotal.value > 0) return toneToColor('orange')
   return toneToColor('green')
 })
@@ -885,18 +1021,15 @@ const healthAriaLabel = computed(() =>
 const healthGaugeBlockProps = computed(() => ({
   option: healthGaugeOption.value,
   ariaLabel: healthAriaLabel.value,
-  layout: 'stacked' as const,
-  gaugeSize: 'lg' as const,
-  gaugeHeight: '180px',
-  gaugeWidth: '180px',
+  gaugeSize: 'md' as const,
 }))
 
 const monitorTabs = computed<UiSectionTabItem[]>(() => [
   {
     key: 'normal',
     label: '正常',
-    count: liveEvents.value.length,
-    badgeTone: liveEvents.value.length > 0 ? 'blue' : 'gray',
+    count: filteredLiveEvents.value.length,
+    badgeTone: filteredLiveEvents.value.length > 0 ? 'blue' : 'gray',
   },
   {
     key: 'abnormal',
@@ -925,17 +1058,52 @@ function openScanEventDetail(event: ScanLiveEventVO): void {
   liveDrawerOpen.value = true
 }
 
+async function loadConnectedScannerDevices(): Promise<void> {
+  if (!selectedExamId.value) {
+    scannerDevices.value = []
+    filterForm.monitorDeviceId = ''
+    stopScanLive()
+    return
+  }
+  scannerDevicesLoading.value = true
+  try {
+    scannerDevices.value = await listActiveScannerDevices()
+    const online = connectedDevices.value
+    if (online.length === 0) {
+      filterForm.monitorDeviceId = ''
+      stopScanLive()
+      return
+    }
+    const previousDeviceId = filterForm.monitorDeviceId
+    const nextDeviceId = online.some((device) => device.scannerDeviceId === filterForm.monitorDeviceId)
+      ? filterForm.monitorDeviceId
+      : online[0].scannerDeviceId
+    if (nextDeviceId !== previousDeviceId) {
+      filterForm.monitorDeviceId = nextDeviceId
+      return
+    }
+    await refreshScanLive()
+  } catch (error) {
+    scannerDevices.value = []
+    filterForm.monitorDeviceId = ''
+    stopScanLive()
+    showUserError(error, '在线扫描仪加载失败')
+  } finally {
+    scannerDevicesLoading.value = false
+  }
+}
+
 async function handleRefresh(): Promise<void> {
   await Promise.all([
     refreshSnapshot(),
+    loadConnectedScannerDevices(),
     loadAttentions(),
     loadScanBatches(),
     loadPaperCandidates(),
-    selectedExamId.value ? refreshScanLive() : Promise.resolve(),
   ])
 }
 
-function openAttentionLedger(): void {
+function goToScanLedger(): void {
   if (!selectedExamId.value) return
   void router.push({
     name: 'TeacherExamWorkspaceScanLedger',
@@ -1001,10 +1169,6 @@ async function loadAttentions(): Promise<void> {
   } finally {
     loading.value = false
   }
-}
-
-function onAttentionTypeChange(): void {
-  reloadAttentionsFromFirstPage()
 }
 
 function currentAttentionQueryGroup(): ScanAttentionQueryGroupCode | undefined {
@@ -1157,6 +1321,9 @@ function handleScanBatchFilterChange(value: SelectValue): void {
   if (!value) {
     scanBatchKeyword.value = ''
     void loadScanBatches('')
+  }
+  if (activeTab.value === 'normal') {
+    return
   }
   reloadAttentionsFromFirstPage()
 }
@@ -1339,10 +1506,32 @@ const statPanelMetrics = computed(() => [
 ])
 
 function resetFilter(): void {
+  normalFilterApplied.keyword = ''
+  normalFilterApplied.scanBatchId = ''
+  normalFilterApplied.status = undefined
+  filterForm.eventKeyword = ''
+  filterForm.eventStatus = undefined
+  filterForm.scanBatchId = ''
+  if (activeTab.value === 'normal') {
+    const firstOnline = connectedDevices.value[0]
+    filterForm.monitorDeviceId = firstOnline?.scannerDeviceId ?? ''
+    if (firstOnline) {
+      void refreshScanLive()
+    } else {
+      stopScanLive()
+    }
+    return
+  }
+  filterForm.attentionType = ''
+  filterForm.paperInstanceId = ''
   reloadAttentionsFromFirstPage()
 }
 
-function handleAttentionFilterSearch(): void {
+function handleMonitorFilterSearch(): void {
+  if (activeTab.value === 'normal') {
+    applyNormalFilters()
+    return
+  }
   reloadAttentionsFromFirstPage()
 }
 
@@ -1859,6 +2048,9 @@ watch(selectedExamId, (value) => {
   filterForm.attentionType = ''
   filterForm.scanBatchId = ''
   filterForm.paperInstanceId = ''
+  filterForm.eventKeyword = ''
+  filterForm.eventStatus = undefined
+  filterForm.monitorDeviceId = ''
   bindIdentitySliceFileId.value = ''
   bindSourcePageFileId.value = ''
   releaseBindIdentitySliceImage()
@@ -1872,12 +2064,24 @@ watch(selectedExamId, (value) => {
     void loadScanBatches()
     void loadPaperCandidates()
     void loadAttentions()
-    void refreshScanLive()
+    void loadConnectedScannerDevices()
   } else {
     stopScanLive()
+    scannerDevices.value = []
     attentions.value = []
   }
 }, { immediate: true })
+
+watch(() => filterForm.monitorDeviceId, (deviceId, previousDeviceId) => {
+  if (!selectedExamId.value || activeTab.value !== 'normal') return
+  if (!deviceId) {
+    stopScanLive()
+    return
+  }
+  if (deviceId !== previousDeviceId) {
+    void refreshScanLive()
+  }
+})
 
 watch(activeTab, (value) => {
   attentionPagination.current = 1
@@ -1886,6 +2090,10 @@ watch(activeTab, (value) => {
   attentions.value = []
   if (value !== 'abnormal') {
     filterForm.attentionType = ''
+  }
+  if (value === 'normal') {
+    void loadConnectedScannerDevices()
+    return
   }
   void loadAttentions()
 })
@@ -1951,24 +2159,30 @@ onBeforeUnmount(() => {
   }
 
   &__overview {
-    display: flex;
-    align-items: stretch;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
     gap: 16px;
+    align-items: stretch;
     margin-bottom: 16px;
   }
 
   &__stats {
-    flex: 1 1 520px;
     min-width: 0;
-  }
-
-  &__stats :deep(.ui-stat-panel__list) {
-    align-items: stretch;
-  }
-
-  &__stats :deep(.ui-metric-card) {
     height: 100%;
+
+    :deep(.ui-stat-panel) {
+      height: 100%;
+    }
+
+    :deep(.ui-stat-panel__list) {
+      align-items: stretch;
+      height: 100%;
+    }
+
+    :deep(.ui-metric-card) {
+      height: 100%;
+      align-items: center;
+    }
   }
 
   &__chart-card {
@@ -1976,7 +2190,6 @@ onBeforeUnmount(() => {
   }
 
   &__health-card {
-    flex: 0 0 260px;
     min-width: 0;
     display: flex;
     align-items: stretch;
@@ -1988,14 +2201,11 @@ onBeforeUnmount(() => {
     align-items: center;
     justify-content: center;
     width: 100%;
+    padding: 14px 16px;
   }
 
-  &__health-wrap {
-    display: flex;
+  &__health-card :deep(.mark-gauge-block) {
     width: 100%;
-    align-items: center;
-    justify-content: center;
-    padding: 4px 0;
   }
 
   &__connection--pulse {
@@ -2026,12 +2236,7 @@ onBeforeUnmount(() => {
 
   @media (max-width: 900px) {
     &__overview {
-      flex-direction: column;
-    }
-
-    &__health-card {
-      flex: 1 1 auto;
-      width: 100%;
+      grid-template-columns: 1fr;
     }
   }
 
@@ -2069,16 +2274,6 @@ onBeforeUnmount(() => {
       margin-inline-end: 16px;
       margin-bottom: 8px;
     }
-  }
-
-  &__type-select {
-    width: 240px;
-    min-width: 240px;
-  }
-
-  &__filter-select {
-    width: 320px;
-    min-width: 320px;
   }
 
   &__filter-input {

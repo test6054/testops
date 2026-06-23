@@ -34,7 +34,7 @@
             刷新
           </UiButton>
           <UiButton
-            v-if="selectedExamId && !organization && !loading && canManageSelectedExam"
+            v-if="selectedExamId && !organization && !loading && canManageExamOwner"
             variant="primary"
             size="sm"
             @click="openCreateDrawer"
@@ -59,6 +59,14 @@
       <SignalBand v-if="organization" :metrics="signalMetrics" compact class="org-index__signals" />
 
       <a-card v-if="organization" :bordered="false" class="detail-table-card org-index__overview-card">
+        <a-alert
+          v-if="!canManageMarkingSetup"
+          type="info"
+          show-icon
+          class="org-index__readonly-banner"
+          message="当前为只读视图"
+          description="阅卷方案由考试主考老师或阅卷组长配置；如需调整题组、策略或启动正评，请联系具备配置权限的老师。"
+        />
         <template #title>
           <ProfileOutlined />
           <span>组织全貌</span>
@@ -105,10 +113,10 @@
 
         <div class="org-index__actions">
           <UiButton size="sm" @click="goDetail">
-            {{ canManageSelectedExam ? '管理题组与策略' : '查看题组与策略' }}
+            {{ canManageMarkingSetup ? '管理题组与策略' : '查看题组与策略' }}
           </UiButton>
           <UiButton
-            v-if="canManageSelectedExam"
+            v-if="canManageMarkingSetup"
             size="sm"
             variant="outline"
             @click="openEditDrawer"
@@ -116,16 +124,8 @@
             编辑组织
           </UiButton>
           <UiButton size="sm" variant="outline" @click="goSessions"> 试评 / 正评会话 </UiButton>
-          <UiButton
-            v-if="canManageSelectedExam && isTeacherMarkingRoute"
-            size="sm"
-            variant="outline"
-            @click="goAssignmentScheme"
-          >
-            分派方案
-          </UiButton>
           <a-popconfirm
-            v-if="canManageSelectedExam"
+            v-if="canManageExamOwner"
             title="确认删除该阅卷组织？"
             ok-text="删除"
             cancel-text="取消"
@@ -149,14 +149,14 @@
           正评。
         </p>
         <UiButton
-          v-if="canManageSelectedExam"
+          v-if="canManageExamOwner"
           variant="primary"
           size="md"
           @click="openCreateDrawer"
         >
           立即创建阅卷组织
         </UiButton>
-        <p v-else class="org-index__empty-desc">该考试的阅卷组织由考试创建人创建和分配。</p>
+        <p v-else class="org-index__empty-desc">该考试的阅卷组织由考试主考老师创建和分配。</p>
       </a-card>
     </a-spin>
 
@@ -284,8 +284,8 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import {
@@ -301,7 +301,6 @@ const MARKING_TEACHER_OPTION_PAGE_SIZE = 100
 
 const router = useRouter()
 const route = useRoute()
-const userStore = useUserStore()
 
 const {
   examOptions,
@@ -317,23 +316,25 @@ const {
 } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
 
-const canManageSelectedExam = computed(
-  () =>
-    !!selectedExam.value?.createUser && selectedExam.value.createUser === userStore.userInfo.userId,
-)
+const organization = ref<MarkingOrganizationVO | null>(null)
+const examCreateUserId = computed(() => selectedExam.value?.createUser)
+const { canManageMarkingSetup, canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, organization)
+const loading = ref(false)
+// 加载失败：toast 提示，主区保持空态/列表壳
 
-const isTeacherMarkingRoute = computed(() => route.path.startsWith('/teacher'))
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
-function guardExamOwnerAction(): boolean {
-  if (canManageSelectedExam.value) return true
-  message.warning('仅考试创建人可修改阅卷安排')
+function guardMarkingSetupAction(): boolean {
+  if (canManageMarkingSetup.value) return true
+  message.warning('仅考试主考或阅卷组长可修改阅卷设置')
   return false
 }
 
-const organization = ref<MarkingOrganizationVO | null>(null)
-const loading = ref(false)
-// 加载失败：toast 提示，主区保持空态/列表壳
+function guardExamOwnerAction(): boolean {
+  if (canManageExamOwner.value) return true
+  message.warning('仅考试主考老师可执行该操作')
+  return false
+}
 
 const organizationExamLabel = computed(() => {
   if (organization.value?.examName) {
@@ -501,7 +502,7 @@ async function submitCreate(): Promise<void> {
 }
 
 function openEditDrawer(): void {
-  if (!guardExamOwnerAction()) return
+  if (!guardMarkingSetupAction()) return
   if (!organization.value) return
   editForm.leaderUserId = organization.value.leaderUserId
   editForm.anonymousMode = Boolean(organization.value.anonymousMode)
@@ -513,7 +514,7 @@ function openEditDrawer(): void {
 }
 
 async function submitUpdate(): Promise<void> {
-  if (!guardExamOwnerAction()) return
+  if (!guardMarkingSetupAction()) return
   if (!organization.value || !editFormRef.value) return
   try {
     await editFormRef.value.validate()
@@ -557,12 +558,15 @@ async function submitDelete(): Promise<void> {
   }
 }
 
-function goDetail(): void {
+function goDetail(tab?: string): void {
   if (!organization.value) return
-  void router.push(resolveMarkingOrganizationDetailRoute(
-    organization.value.id,
-    isExamWorkspaceRoute.value ? selectedExamId.value : undefined,
-  ))
+  void router.push({
+    ...resolveMarkingOrganizationDetailRoute(
+      organization.value.id,
+      isExamWorkspaceRoute.value ? selectedExamId.value : undefined,
+    ),
+    query: tab ? { tab } : undefined,
+  })
 }
 
 function goSessions(): void {
@@ -573,18 +577,19 @@ function goSessions(): void {
   ))
 }
 
-function goAssignmentScheme(): void {
-  if (!selectedExamId.value) return
-  if (!guardExamOwnerAction()) return
-  void router.push({
-    name: 'TeacherExamWorkspaceReviewAssignment',
-    params: { examId: selectedExamId.value },
-  })
-}
-
 watch(selectedExamId, () => {
   void loadOrganization()
 }, { immediate: true })
+
+watch(
+  () => [route.query.setupTab, organization.value?.id] as const,
+  ([setupTab, orgId]) => {
+    if (setupTab === 'launch' && orgId) {
+      goDetail('launch')
+    }
+  },
+  { immediate: true },
+)
 
 onMounted(async () => {
   await initExamSelector()
@@ -593,6 +598,10 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .org-index {
+  &__readonly-banner {
+    margin-bottom: 12px;
+  }
+
   &__exam-select {
     width: 280px;
   }
