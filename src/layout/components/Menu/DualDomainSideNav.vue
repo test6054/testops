@@ -116,8 +116,8 @@ import type { RouteRecordRaw } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { isExternal } from '@/utils/validate'
 import { PORTFOLIO_MENU_GROUP } from '@/router/routes/quality'
+import { isExternal } from '@/utils/validate'
 import MenuIcon from './MenuIcon.vue'
 
 defineOptions({ name: 'DualDomainSideNav' })

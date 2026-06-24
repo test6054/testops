@@ -43,6 +43,7 @@ import { message } from 'ant-design-vue'
 import { debounce } from 'lodash-es'
 import { computed, ref, watch } from 'vue'
 import { useDevice } from '@/hooks'
+import { PORTFOLIO_MENU_GROUP } from '@/router/routes/quality'
 import { useAppStore, useRouteStore } from '@/stores'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useQualityStore } from '@/stores/modules/quality'
@@ -51,7 +52,6 @@ import { isExternal } from '@/utils/validate'
 import DualDomainSideNav from './DualDomainSideNav.vue'
 import MenuIcon from './MenuIcon.vue'
 import MenuItem from './MenuItem.vue'
-import { PORTFOLIO_MENU_GROUP } from '@/router/routes/quality'
 
 defineOptions({ name: 'AppMenu' })
 const props = withDefaults(defineProps<Props>(), {})
