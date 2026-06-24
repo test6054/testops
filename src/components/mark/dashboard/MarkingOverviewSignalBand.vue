@@ -3,11 +3,11 @@
 </template>
 
 <script lang="ts" setup>
-import type { SignalMetric } from '@/types/workbench'
 import type {
   MarkTeacherDashboardFilterContextVO,
   MarkTeacherDashboardSignalMetricsVO,
 } from '@/apis/mark/teacher-dashboard'
+import type { SignalMetric } from '@/types/workbench'
 import { computed } from 'vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 
