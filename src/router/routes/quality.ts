@@ -419,6 +419,20 @@ export const qualityRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'portfolio/admin/template',
+        name: 'QualityPortfolioTemplateAdmin',
+        component: () => import('@/views/portfolio/template-admin.vue'),
+        meta: {
+          title: '档案模板配置',
+          roles: ALL_ROLES,
+          tenantAdminWriteOnly: true,
+          icon: 'file-protect',
+          hideInMenu: false,
+          keepAlive: true,
+          ...PORTFOLIO_GROUP,
+        },
+      },
+      {
         path: 'portfolio/teachers',
         name: 'QualityPortfolioTeachers',
         component: () => import('@/views/portfolio/teacher-directory.vue'),

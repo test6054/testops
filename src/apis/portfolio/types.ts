@@ -232,3 +232,186 @@ export interface PortfolioTeacherIdentitySaveRequest {
   validFrom?: string
   validTo?: string
 }
+
+/** 档案分类适用范围 */
+export type PortfolioArchiveCategoryScope = 'SCHOOL' | 'DEPARTMENT'
+
+export const PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_LABEL: Record<PortfolioArchiveCategoryScope, string> = {
+  SCHOOL: '全校',
+  DEPARTMENT: '院系',
+}
+
+/** 档案分类状态 */
+export type PortfolioArchiveCategoryStatus = 'ACTIVE' | 'INACTIVE'
+
+export const PORTFOLIO_ARCHIVE_CATEGORY_STATUS_LABEL: Record<PortfolioArchiveCategoryStatus, string> = {
+  ACTIVE: '启用',
+  INACTIVE: '停用',
+}
+
+/** 模板版本状态 */
+export type PortfolioArchiveTemplateVersionStatus = 'DRAFT' | 'TRIAL' | 'PUBLISHED' | 'DEPRECATED'
+
+export const PORTFOLIO_ARCHIVE_TEMPLATE_VERSION_STATUS_LABEL: Record<PortfolioArchiveTemplateVersionStatus, string> = {
+  DRAFT: '草稿',
+  TRIAL: '试算中',
+  PUBLISHED: '已发布',
+  DEPRECATED: '已停用',
+}
+
+export type PortfolioArchiveFieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'ENUM'
+
+export const PORTFOLIO_ARCHIVE_FIELD_TYPE_LABEL: Record<PortfolioArchiveFieldType, string> = {
+  TEXT: '文本',
+  NUMBER: '数值',
+  DATE: '日期',
+  ENUM: '枚举',
+}
+
+export const PORTFOLIO_ARCHIVE_FIELD_TYPE_OPTIONS = (Object.keys(PORTFOLIO_ARCHIVE_FIELD_TYPE_LABEL) as PortfolioArchiveFieldType[])
+  .map(value => ({ value, label: PORTFOLIO_ARCHIVE_FIELD_TYPE_LABEL[value] }))
+
+export type PortfolioArchiveFieldSourceType = 'S1' | 'S2' | 'MANUAL'
+
+export const PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_LABEL: Record<PortfolioArchiveFieldSourceType, string> = {
+  S1: '权威源 S1',
+  S2: '权威源 S2',
+  MANUAL: '手工填报',
+}
+
+export const PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_OPTIONS = (Object.keys(PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_LABEL) as PortfolioArchiveFieldSourceType[])
+  .map(value => ({ value, label: PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_LABEL[value] }))
+
+export const PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_OPTIONS = (Object.keys(PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_LABEL) as PortfolioArchiveCategoryScope[])
+  .map(value => ({ value, label: PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_LABEL[value] }))
+
+export const PORTFOLIO_ARCHIVE_CATEGORY_STATUS_OPTIONS = (Object.keys(PORTFOLIO_ARCHIVE_CATEGORY_STATUS_LABEL) as PortfolioArchiveCategoryStatus[])
+  .map(value => ({ value, label: PORTFOLIO_ARCHIVE_CATEGORY_STATUS_LABEL[value] }))
+
+export interface PortfolioArchiveTemplateDiffSummary {
+  added: string[]
+  removed: string[]
+  changed: string[]
+}
+
+export interface PortfolioArchiveTemplateSeedResultVO {
+  createdCategoryCodes: string[]
+  skippedCategoryCodes: string[]
+}
+
+export interface PortfolioTargetFieldDefinition {
+  fieldCode: string
+  fieldLabel: string
+  fieldType?: PortfolioArchiveFieldType
+  readonly?: boolean
+  required?: boolean
+}
+
+export interface PortfolioArchiveCategoryListRequest {
+  scope?: PortfolioArchiveCategoryScope
+}
+
+export interface PortfolioArchiveCategoryDeleteRequest {
+  categoryId: string
+}
+
+export interface PortfolioArchiveCategoryTreeNodeVO {
+  id: string
+  categoryCode: string
+  categoryName: string
+  parentId?: string
+  scope: PortfolioArchiveCategoryScope
+  sortOrder?: number
+  status: PortfolioArchiveCategoryStatus
+  draftVersionId?: string
+  publishedVersionId?: string
+  children?: PortfolioArchiveCategoryTreeNodeVO[]
+}
+
+export interface PortfolioArchiveCategorySaveRequest {
+  id?: string
+  categoryCode: string
+  categoryName: string
+  parentId?: string
+  scope?: PortfolioArchiveCategoryScope
+  sortOrder?: number
+  status?: PortfolioArchiveCategoryStatus
+}
+
+export interface PortfolioArchiveFieldDefVO {
+  id: string
+  templateVersionId: string
+  fieldCode: string
+  fieldLabel: string
+  fieldType: PortfolioArchiveFieldType
+  required?: boolean
+  readonly?: boolean
+  enumRef?: string
+  sourceType: PortfolioArchiveFieldSourceType
+  sortOrder?: number
+}
+
+export interface PortfolioArchiveFieldDefSaveRequest {
+  id?: string
+  templateVersionId: string
+  fieldCode: string
+  fieldLabel: string
+  fieldType?: PortfolioArchiveFieldType
+  required?: boolean
+  readonly?: boolean
+  enumRef?: string
+  sourceType?: PortfolioArchiveFieldSourceType
+  sortOrder?: number
+}
+
+export interface PortfolioArchiveFieldListRequest {
+  templateVersionId: string
+}
+
+export interface PortfolioArchiveVersionActionRequest {
+  categoryId: string
+  changeSummary?: string
+}
+
+export interface PortfolioArchiveVersionMutationRequest {
+  categoryId: string
+  templateVersionId: string
+  changeSummary?: string
+}
+
+export interface PortfolioArchiveFieldDeleteRequest {
+  fieldId: string
+  templateVersionId: string
+}
+
+export interface PortfolioArchiveTemplateVersionVO {
+  id: string
+  categoryId: string
+  templateCode: string
+  versionNo: string
+  status: PortfolioArchiveTemplateVersionStatus
+  publishedAt?: string
+  changeSummary?: string
+}
+
+export interface PortfolioArchiveTemplateChangeLogVO {
+  id: string
+  categoryId: string
+  fromVersionId?: string
+  toVersionId: string
+  diffSummaryJson?: string
+  createTime?: string
+}
+
+export interface PortfolioArchivePublishedFieldsRequest {
+  categoryId?: string
+  templateCode?: string
+}
+
+export interface PortfolioArchivePublishedFieldsVO {
+  categoryId: string
+  templateCode: string
+  templateVersionId: string
+  versionNo: string
+  targetFields: PortfolioTargetFieldDefinition[]
+}
