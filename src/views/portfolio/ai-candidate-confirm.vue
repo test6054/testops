@@ -2,22 +2,17 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type { FileSystemNodeResponseDTO } from '@/apis/edu/file-management'
-import type { AiTaskVO } from '@/apis/quality/ai-task'
 import type {
   PortfolioAiTaskType,
   PortfolioCandidateFieldVO,
 } from '@/apis/portfolio/types'
+import type { AiTaskVO } from '@/apis/quality/ai-task'
 import type { AiTaskStatus } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
-import { aiTaskApi } from '@/apis/quality/ai-task'
-import {
-  AI_TASK_STATUS_COLOR,
-  AI_TASK_STATUS_LABEL,
-} from '@/apis/quality/types'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import {
   PORTFOLIO_AI_TASK_TYPE_LABEL,
@@ -27,6 +22,11 @@ import {
   PORTFOLIO_TEMPLATE_CODE_CERTIFICATE,
   PORTFOLIO_TEMPLATE_CODE_DOCUMENT,
 } from '@/apis/portfolio/types'
+import { aiTaskApi } from '@/apis/quality/ai-task'
+import {
+  AI_TASK_STATUS_COLOR,
+  AI_TASK_STATUS_LABEL,
+} from '@/apis/quality/types'
 import { TeacherSelector } from '@/components/quality/selectors'
 import UiAlert from '@/components/ui-guide/ui/Alert.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -446,7 +446,6 @@ onMounted(async () => {
       </div>
       <div class="portfolio-ai-confirm__submit-actions">
         <UiButton
-          type="primary"
           :loading="submitting"
           :disabled="uploadingMaterial"
           @click="submitExtractTask"
@@ -507,7 +506,7 @@ onMounted(async () => {
           :title="`有 ${manualFillPendingCount} 个字段含脱敏占位符，请补全真实值后再确认`"
         />
         <div class="portfolio-ai-confirm__candidate-actions">
-          <UiButton size="small" @click="confirmAllEligible">
+          <UiButton size="sm" @click="confirmAllEligible">
             确认全部可自动通过项
           </UiButton>
         </div>

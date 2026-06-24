@@ -1,10 +1,10 @@
-import type { AiTaskVO } from '@/apis/quality/ai-task'
 import type {
   PortfolioAiJobSubmitRequest,
   PortfolioAiJobSubmitVO,
   PortfolioCandidateConfirmRequest,
   PortfolioCandidateFieldVO,
 } from '@/apis/portfolio/types'
+import type { AiTaskVO } from '@/apis/quality/ai-task'
 import http from '@/config/axios'
 
 const BASE = '/api/portfolio/ai/job'
