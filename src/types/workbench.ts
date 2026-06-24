@@ -89,8 +89,8 @@ export interface TaskResultItem {
 export interface AuditTimelineEvent {
   /** 审计日志ID */
   id: string
-  /** 操作人ID */
-  operatorId?: string
+  /** 操作人ID（审计创建人） */
+  createUser?: string
   /** 操作人显示名 */
   operatorName?: string
   /** 操作人角色 */

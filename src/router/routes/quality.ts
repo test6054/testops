@@ -445,6 +445,19 @@ export const qualityRoutes: RouteRecordRaw[] = [
           ...PORTFOLIO_GROUP,
         },
       },
+      {
+        path: 'portfolio/ai-candidate-confirm',
+        name: 'QualityPortfolioAiCandidateConfirm',
+        component: () => import('@/views/portfolio/ai-candidate-confirm.vue'),
+        meta: {
+          title: 'AI 候选字段确认',
+          roles: ALL_ROLES,
+          icon: 'robot',
+          hideInMenu: false,
+          keepAlive: true,
+          ...PORTFOLIO_GROUP,
+        },
+      },
 
       // ─── 数据接入子页：redirect 至 hub ───
       {

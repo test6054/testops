@@ -1,6 +1,7 @@
 /**
  * 教学档案袋 API 共享类型 - 对应 edu-quality portfolio 包
  */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { QueryDto } from '@/types'
 
 /** 扩展组织类型 - PortfolioOrgUnitTypeEnum */
@@ -415,4 +416,88 @@ export interface PortfolioArchivePublishedFieldsVO {
   templateVersionId: string
   versionNo: string
   targetFields: PortfolioTargetFieldDefinition[]
+}
+
+/** 档案袋 AI 任务类型 */
+export type PortfolioAiTaskType = 'PORTFOLIO_CERTIFICATE_OCR' | 'PORTFOLIO_DOCUMENT_PARSE'
+
+export const PORTFOLIO_AI_TASK_TYPE_LABEL: Record<PortfolioAiTaskType, string> = {
+  PORTFOLIO_CERTIFICATE_OCR: '证书证明 OCR 抽取',
+  PORTFOLIO_DOCUMENT_PARSE: '文档结构化抽取',
+}
+
+export const PORTFOLIO_AI_TASK_TYPE_OPTIONS = (Object.keys(PORTFOLIO_AI_TASK_TYPE_LABEL) as PortfolioAiTaskType[])
+  .map(value => ({ value, label: PORTFOLIO_AI_TASK_TYPE_LABEL[value] }))
+
+/** 档案袋材料类型 - PortfolioMaterialTypeEnum */
+export type PortfolioMaterialType = 'CERTIFICATE' | 'DOCUMENT' | 'POLICY' | 'REPORT'
+
+export const PORTFOLIO_MATERIAL_TYPE_LABEL: Record<PortfolioMaterialType, string> = {
+  CERTIFICATE: '证书证明',
+  DOCUMENT: '通用文档',
+  POLICY: '政策材料',
+  REPORT: '报告材料',
+}
+
+/** 档案袋 AI 候选字段确认状态 */
+export type PortfolioCandidateConfirmStatus
+  = | 'PENDING_CONFIRM'
+    | 'CONFIRMED'
+    | 'REJECTED'
+    | 'NEEDS_MANUAL_FILL'
+
+export const PORTFOLIO_CANDIDATE_CONFIRM_STATUS_LABEL: Record<PortfolioCandidateConfirmStatus, string> = {
+  PENDING_CONFIRM: '待确认',
+  CONFIRMED: '已确认',
+  REJECTED: '已驳回',
+  NEEDS_MANUAL_FILL: '需人工补全',
+}
+
+export const PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE: Record<PortfolioCandidateConfirmStatus, BadgeTone> = {
+  PENDING_CONFIRM: 'blue',
+  CONFIRMED: 'green',
+  REJECTED: 'red',
+  NEEDS_MANUAL_FILL: 'orange',
+}
+
+/** 系统预置档案分类编码（与后端种子一致） */
+export const PORTFOLIO_TEMPLATE_CODE_CERTIFICATE = 'CERTIFICATE'
+export const PORTFOLIO_TEMPLATE_CODE_DOCUMENT = 'DOCUMENT'
+
+export interface PortfolioAiJobSubmitRequest {
+  taskType: PortfolioAiTaskType
+  teacherId: string
+  materialId?: string
+  fileNodeId?: string
+  materialType: PortfolioMaterialType
+  templateCode?: string
+  categoryId?: string
+  programId?: string
+}
+
+export interface PortfolioAiJobSubmitVO {
+  taskId: string
+  portfolioAiJobId: string
+  status: string
+}
+
+export interface PortfolioCandidateFieldVO {
+  id: string
+  aiTaskId: string
+  aiJobId: string
+  teacherId: string
+  fileNodeId?: string
+  fieldCode: string
+  fieldLabel: string
+  candidateValue: string
+  evidenceRef: string
+  confirmStatus: PortfolioCandidateConfirmStatus
+  manualFillRequired?: boolean
+}
+
+export interface PortfolioCandidateConfirmRequest {
+  candidateFieldId: string
+  aiTaskId: string
+  confirmStatus: 'CONFIRMED' | 'REJECTED'
+  correctedCandidateValue?: string
 }

@@ -181,7 +181,7 @@ export interface OperationLogVO {
   targetType: AuditTargetTypeCode
   targetId: string
   targetLabel: string
-  operatorId: string
+  createUser: string
   operatorName: string
   operatorRole: string
   reason: string

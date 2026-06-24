@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TreeProps } from 'ant-design-vue'
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioArchiveCategorySaveRequest,
@@ -113,7 +114,7 @@ const selectedCategory = computed(() => selectedNode.value?.raw ?? null)
 const versionStatusLabel = computed(() => {
   const current = versionHistory.value.find(item => item.id === activeVersionId.value)
   return current?.status
-    ? strictEnumLabel(PORTFOLIO_ARCHIVE_TEMPLATE_VERSION_STATUS_LABEL, current.status)
+    ? strictEnumLabel(PORTFOLIO_ARCHIVE_TEMPLATE_VERSION_STATUS_LABEL, current.status, '模板版本状态')
     : '-'
 })
 
@@ -121,9 +122,9 @@ const activeVersion = computed(() =>
   versionHistory.value.find(item => item.id === activeVersionId.value) ?? null)
 
 const versionOptions = computed(() =>
-  versionHistory.value.map(item => ({
+  versionHistory.value.map((item): { value: PortfolioArchiveTemplateVersionVO['id'], label: string } => ({
     value: item.id,
-    label: `${item.versionNo} (${strictEnumLabel(PORTFOLIO_ARCHIVE_TEMPLATE_VERSION_STATUS_LABEL, item.status)})`,
+    label: `${item.versionNo} (${strictEnumLabel(PORTFOLIO_ARCHIVE_TEMPLATE_VERSION_STATUS_LABEL, item.status, '模板版本状态')})`,
   })))
 
 const canEditFields = computed(() =>
@@ -252,9 +253,20 @@ async function selectCategory(node: TreeNode) {
   await loadFields()
 }
 
-async function switchVersion(versionId: string | number) {
-  activeVersionId.value = String(versionId)
+async function switchVersion(versionId: PortfolioArchiveTemplateVersionVO['id']) {
+  activeVersionId.value = versionId
   await loadFields()
+}
+
+function onVersionSelect(value: SelectValue): void {
+  if (value == null || Array.isArray(value))
+    return
+  const versionId = typeof value === 'object'
+    ? String(value.value)
+    : String(value)
+  if (!versionId)
+    return
+  void switchVersion(versionId)
 }
 
 function viewPublishedVersion() {
@@ -346,7 +358,8 @@ function openEditCategory() {
 async function deactivateCategory() {
   if (!selectedCategory.value || selectedCategory.value.status === 'INACTIVE')
     return
-  await confirmAsync(`确认停用分类「${selectedCategory.value.categoryName}」？停用后 AI 将无法解析该分类。`)
+  if (!(await confirmAsync({ content: `确认停用分类「${selectedCategory.value.categoryName}」？停用后 AI 将无法解析该分类。` })))
+    return
   try {
     await portfolioArchiveTemplateApi.saveCategory({
       id: selectedCategory.value.id,
@@ -370,7 +383,8 @@ async function deactivateCategory() {
 async function deleteCategory() {
   if (!selectedCategory.value)
     return
-  await confirmAsync(`确认删除分类「${selectedCategory.value.categoryName}」？存在子分类时无法删除。`)
+  if (!(await confirmAsync({ content: `确认删除分类「${selectedCategory.value.categoryName}」？存在子分类时无法删除。` })))
+    return
   try {
     await portfolioArchiveTemplateApi.deleteCategory({ categoryId: selectedCategory.value.id })
     message.success('分类已删除')
@@ -408,7 +422,8 @@ async function submitCategory() {
 }
 
 async function runSeedDefaults() {
-  await confirmAsync('将初始化 CERTIFICATE / DOCUMENT 默认分类与已发布字段，已存在的跳过。')
+  if (!(await confirmAsync({ content: '将初始化 CERTIFICATE / DOCUMENT 默认分类与已发布字段，已存在的跳过。' })))
+    return
   seeding.value = true
   try {
     const result = await portfolioArchiveTemplateApi.seedDefaultTemplates()
@@ -487,7 +502,8 @@ function openEditField(record: PortfolioArchiveFieldDefVO) {
 async function removeField(record: PortfolioArchiveFieldDefVO) {
   if (!activeVersionId.value || !canEditFields.value)
     return
-  await confirmAsync(`确认删除字段「${record.fieldLabel}」？`)
+  if (!(await confirmAsync({ content: `确认删除字段「${record.fieldLabel}」？` })))
+    return
   try {
     await portfolioArchiveTemplateApi.deleteFieldDef({
       fieldId: record.id,
@@ -565,7 +581,8 @@ async function submitPublish() {
 async function runDeprecate() {
   if (!selectedCategory.value || !activeVersionId.value || !canDeprecate.value)
     return
-  await confirmAsync('确认停用当前已发布版本？停用后 AI 将无法读取该版本字段。')
+  if (!(await confirmAsync({ content: '确认停用当前已发布版本？停用后 AI 将无法读取该版本字段。' })))
+    return
   try {
     await portfolioArchiveTemplateApi.deprecateVersion({
       categoryId: selectedCategory.value.id,
@@ -611,7 +628,7 @@ onMounted(loadTree)
           />
         </div>
         <div v-if="canManageTenant" class="toolbar">
-          <UiButton type="primary" @click="openCreateCategory">
+          <UiButton variant="primary" @click="openCreateCategory">
             新建根分类
           </UiButton>
           <UiButton :disabled="!selectedCategory" @click="openCreateSubCategory">
@@ -643,8 +660,8 @@ onMounted(loadTree)
         <template v-if="selectedCategory">
           <div class="meta-row">
             <UiTag>{{ selectedCategory.categoryCode }}</UiTag>
-            <UiTag>{{ strictEnumLabel(PORTFOLIO_ARCHIVE_CATEGORY_STATUS_LABEL, selectedCategory.status) }}</UiTag>
-            <UiTag tone="info">
+            <UiTag>{{ strictEnumLabel(PORTFOLIO_ARCHIVE_CATEGORY_STATUS_LABEL, selectedCategory.status, '分类状态') }}</UiTag>
+            <UiTag tone="blue">
               当前版本：{{ versionStatusLabel }}
             </UiTag>
             <a-select
@@ -653,7 +670,7 @@ onMounted(loadTree)
               :options="versionOptions"
               style="min-width: 200px"
               placeholder="切换版本"
-              @change="switchVersion"
+              @change="onVersionSelect"
             />
           </div>
           <p v-if="!canManageTenant" class="readonly-hint">
@@ -675,7 +692,7 @@ onMounted(loadTree)
             <UiButton :disabled="!canEditFields" @click="runTrial">
               试算
             </UiButton>
-            <UiButton type="primary" :disabled="!canEditFields" @click="openPublishModal">
+            <UiButton variant="primary" :disabled="!canEditFields" @click="openPublishModal">
               发布
             </UiButton>
             <UiButton :disabled="!canDeprecate" @click="runDeprecate">
@@ -782,7 +799,7 @@ onMounted(loadTree)
       <UiDataTable :columns="historyColumns" :data-source="versionHistory" row-key="id">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'status'">
-            {{ strictEnumLabel(PORTFOLIO_ARCHIVE_TEMPLATE_VERSION_STATUS_LABEL, (record as PortfolioArchiveTemplateVersionVO).status) }}
+            {{ strictEnumLabel(PORTFOLIO_ARCHIVE_TEMPLATE_VERSION_STATUS_LABEL, (record as PortfolioArchiveTemplateVersionVO).status, '模板版本状态') }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTextAction @click="selectVersionFromHistory(record as PortfolioArchiveTemplateVersionVO)">
@@ -801,13 +818,13 @@ onMounted(loadTree)
           <template v-if="isDiffSummary(diff)">
             <div v-if="diff.added.length" class="diff-row">
               <span class="diff-label">新增</span>
-              <UiTag v-for="code in diff.added" :key="`a-${item.id}-${code}`" tone="info">
+              <UiTag v-for="code in diff.added" :key="`a-${item.id}-${code}`" tone="blue">
                 {{ code }}
               </UiTag>
             </div>
             <div v-if="diff.removed.length" class="diff-row">
               <span class="diff-label">删除</span>
-              <UiTag v-for="code in diff.removed" :key="`r-${item.id}-${code}`" tone="danger">
+              <UiTag v-for="code in diff.removed" :key="`r-${item.id}-${code}`" tone="red">
                 {{ code }}
               </UiTag>
             </div>

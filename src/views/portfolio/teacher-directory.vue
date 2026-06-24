@@ -10,6 +10,7 @@ import type {
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   PORTFOLIO_TEACHER_IDENTITY_STATUS_LABEL,
@@ -38,7 +39,7 @@ const listColumns: ColumnsType = [
   { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
   { title: '职称', dataIndex: 'title', key: 'title', width: 100 },
   { title: '主身份', key: 'primaryIdentityType', width: 120 },
-  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 200, fixed: 'right' },
 ]
 
 const identityColumns: ColumnsType = [
@@ -242,6 +243,15 @@ async function submitIdentity() {
   }
 }
 
+const router = useRouter()
+
+function openAiCandidateConfirm(userId: string) {
+  router.push({
+    path: '/quality/portfolio/ai-candidate-confirm',
+    query: { teacherId: userId },
+  })
+}
+
 onMounted(async () => {
   await loadTree(false)
   await loadPage()
@@ -273,6 +283,9 @@ onMounted(async () => {
           <template v-else-if="column.key === 'actions'">
             <UiTextAction @click="openDetail(record)">
               详情
+            </UiTextAction>
+            <UiTextAction @click="openAiCandidateConfirm(record.userId)">
+              AI 确认
             </UiTextAction>
             <UiTextAction @click="openIdentityCreate({ userId: record.userId, nickName: record.nickName, departmentId: record.departmentId })">
               身份

@@ -139,6 +139,10 @@ export type AiTaskType
     | 'IMPROVEMENT_SUGGESTION_GENERATE'
     | 'MATERIAL_QA'
     | 'INDIRECT_RESPONSE_DOC_PARSE'
+    | 'PORTFOLIO_CERTIFICATE_OCR'
+    | 'PORTFOLIO_DOCUMENT_PARSE'
+    | 'PORTFOLIO_POLICY_MATCH'
+    | 'PORTFOLIO_REPORT_GENERATE'
 
 export const AI_TASK_TYPE_LABEL: Record<AiTaskType, string> = {
   SYLLABUS_PARSE: '课程大纲解析',
@@ -149,6 +153,10 @@ export const AI_TASK_TYPE_LABEL: Record<AiTaskType, string> = {
   IMPROVEMENT_SUGGESTION_GENERATE: '改进措施生成',
   MATERIAL_QA: '材料问答',
   INDIRECT_RESPONSE_DOC_PARSE: '间接评价答卷文档解析',
+  PORTFOLIO_CERTIFICATE_OCR: '档案袋证书 OCR 抽取',
+  PORTFOLIO_DOCUMENT_PARSE: '档案袋文档结构化抽取',
+  PORTFOLIO_POLICY_MATCH: '档案袋政策条款匹配',
+  PORTFOLIO_REPORT_GENERATE: '档案袋报告初稿生成',
 }
 
 /** AI 任务业务类型 - AiTaskSubmitRequest.businessType */
@@ -158,6 +166,8 @@ export type AiTaskBusinessType
     | 'TRAINING_PLAN'
     | 'REPORT'
     | 'INDIRECT_FORM'
+    | 'PORTFOLIO_MATERIAL'
+    | 'PORTFOLIO_EVALUATION'
 
 export const AI_TASK_BUSINESS_TYPE_LABEL: Record<AiTaskBusinessType, string> = {
   ACHIEVEMENT_RESULT: '达成度计算结果',
@@ -165,6 +175,8 @@ export const AI_TASK_BUSINESS_TYPE_LABEL: Record<AiTaskBusinessType, string> = {
   TRAINING_PLAN: '培养方案',
   REPORT: '质量报告',
   INDIRECT_FORM: '间接评价问卷',
+  PORTFOLIO_MATERIAL: '教学档案袋材料',
+  PORTFOLIO_EVALUATION: '教学档案袋评价任务',
 }
 
 /** AI 输出校验结果 - AiOutputValidationEnum */
