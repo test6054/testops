@@ -29,6 +29,12 @@
 
 
     <a-spin v-else :spinning="loading" tip="正在加载任务...">
+      <div v-if="detail?.status === 'INVALIDATED'" class="review-workspace__invalidated-banner">
+        <div class="review-workspace__invalidated-title">当前复核任务已因补扫替换失效</div>
+        <div class="review-workspace__invalidated-text">
+          原作答影像已被替换，系统已重新进入识别 / 切片链路，待新复核任务生成后再处理。
+        </div>
+      </div>
       <!-- B-7 流水线进度：当前任务在同题复核队列中的位次 -->
       <GradingWorkspaceLayout v-if="detail">
         <template #queue>
@@ -491,8 +497,24 @@ const userStore = useUserStore()
 
 const examId = computed(() => (route.params.examId ? String(route.params.examId) : ''))
 const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
+const taskSource = computed(() => (route.query.source === 'arbitration' ? 'arbitration' : 'review'))
 /** 当前登录阅卷教师 ID，用于约束队列里可继续接手的 IN_PROGRESS 任务。 */
 const currentUserId = computed(() => userStore.userInfo.userId || '')
+
+function reviewWorkspaceSourceQuery(): Record<string, string> | undefined {
+  if (taskSource.value !== 'arbitration') {
+    return undefined
+  }
+  return { source: 'arbitration' }
+}
+
+function resolveReviewTaskPoolRouteName():
+  | 'TeacherExamWorkspaceMarkingArbitration'
+  | 'TeacherExamWorkspaceReviewBatchConfirm' {
+  return taskSource.value === 'arbitration'
+    ? 'TeacherExamWorkspaceMarkingArbitration'
+    : 'TeacherExamWorkspaceReviewBatchConfirm'
+}
 
 function goBack(): void {
   if (!examId.value) {
@@ -500,7 +522,11 @@ function goBack(): void {
     return
   }
   if (taskId.value) {
-    void router.push({ name: 'TeacherExamWorkspaceReviewBatchConfirm', params: { examId: examId.value } })
+    void router.push({
+      name: resolveReviewTaskPoolRouteName(),
+      params: { examId: examId.value },
+      query: reviewWorkspaceSourceQuery(),
+    })
     return
   }
   void router.push({ name: 'TeacherExamWorkspaceMarkingTaskPool', params: { examId: examId.value } })
@@ -552,7 +578,7 @@ const reviewQueue = ref<ReviewTaskItemVO[]>([])
  * 只保留 PENDING 和当前教师自己已领取的 IN_PROGRESS 任务，避免把其他教师已领取任务误纳入“下一份”候选。
  */
 async function loadReviewQueue(): Promise<void> {
-  if (!examId.value || !detail.value?.questionTemplateId) {
+  if (!examId.value || !detail.value?.questionTemplateId || !detail.value.reviewType || !detail.value.gradeSource) {
     reviewQueue.value = []
     return
   }
@@ -562,7 +588,7 @@ async function loadReviewQueue(): Promise<void> {
     return
   }
   const currentExamId = examId.value
-  const { questionTemplateId } = detail.value
+  const { questionTemplateId, reviewType, gradeSource } = detail.value
   try {
     // 后端 ReviewTaskQueryRequest.status 可选；同题下分别拉 PENDING / IN_PROGRESS 后合并去重。
     const [pendingItems, inProgressItems] = await Promise.all([
@@ -571,6 +597,9 @@ async function loadReviewQueue(): Promise<void> {
           listReviewTasks({
             examId: currentExamId,
             questionTemplateId,
+            reviewType,
+            gradeSource,
+            excludeArbitration: reviewType !== 'QUESTION_REVIEW_ARBITRATION',
             status: 'PENDING',
             pageNum,
             pageSize: REVIEW_WORKSPACE_PAGE_SIZE,
@@ -582,6 +611,9 @@ async function loadReviewQueue(): Promise<void> {
           listReviewTasks({
             examId: currentExamId,
             questionTemplateId,
+            reviewType,
+            gradeSource,
+            excludeArbitration: reviewType !== 'QUESTION_REVIEW_ARBITRATION',
             status: 'IN_PROGRESS',
             pageNum,
             pageSize: REVIEW_WORKSPACE_PAGE_SIZE,
@@ -646,6 +678,7 @@ function handleQueueJump(): void {
     void router.replace({
       name: 'TeacherExamWorkspaceReviewWorkspace',
       params: { examId: examId.value, taskId: targetTask.reviewTaskId },
+      query: reviewWorkspaceSourceQuery(),
     })
   }
 }
@@ -669,6 +702,7 @@ function navigateQueueRelative(offset: -1 | 1): void {
   void router.replace({
     name: 'TeacherExamWorkspaceReviewWorkspace',
     params: { examId: examId.value, taskId: targetTask.reviewTaskId },
+    query: reviewWorkspaceSourceQuery(),
   })
 }
 
@@ -746,11 +780,7 @@ async function loadReviewTaskDetail(): Promise<ReviewTaskDetailVO> {
     examId: examId.value,
     reviewTaskId: taskId.value,
   })
-  if (
-    preview.status === 'PENDING'
-    || preview.status === 'REJECTED'
-    || preview.status === 'IN_PROGRESS'
-  ) {
+  if (preview.status === 'PENDING' || preview.status === 'IN_PROGRESS') {
     return claimReviewTask({
       examId: examId.value,
       reviewTaskId: taskId.value,
@@ -1111,8 +1141,9 @@ async function takeNextTask(): Promise<void> {
     if (!candidate) {
       message.success('同题剩余任务复核完毕，返回考试工作台')
       void router.push({
-        name: 'TeacherExamWorkspaceReviewBatchConfirm',
+        name: resolveReviewTaskPoolRouteName(),
         params: { examId: examId.value },
+        query: reviewWorkspaceSourceQuery(),
       })
       return
     }
@@ -1126,6 +1157,7 @@ async function takeNextTask(): Promise<void> {
     void router.replace({
       name: 'TeacherExamWorkspaceReviewWorkspace',
       params: { examId: examId.value, taskId: candidate.reviewTaskId },
+      query: reviewWorkspaceSourceQuery(),
     })
     // watch(examId, taskId) 会自动触发 loadTask，无需手动调用
   } catch (error) {
@@ -1185,6 +1217,27 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+
+  &__invalidated-banner {
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    background: var(--dp-surface-soft, #f8fafc);
+  }
+
+  &__invalidated-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__invalidated-text {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--dp-text-secondary, #475569);
   }
 
   &__queue-progress-meta {

@@ -137,7 +137,6 @@ const GRADE_SOURCE_LABEL: Record<GradeSourceCode, string> = {
   AUTO_OBJECTIVE_AI: '客观 AI',
   LOCAL_SUBJECTIVE_AI: '主观 AI',
   TEACHER: '教师',
-  RECOGNITION_FAILURE: '识别失败',
 }
 
 const GRADE_SOURCE_TONE: Record<GradeSourceCode, 'blue' | 'green' | 'orange' | 'red' | 'gray'> = {
@@ -145,7 +144,6 @@ const GRADE_SOURCE_TONE: Record<GradeSourceCode, 'blue' | 'green' | 'orange' | '
   AUTO_OBJECTIVE_AI: 'blue',
   LOCAL_SUBJECTIVE_AI: 'blue',
   TEACHER: 'orange',
-  RECOGNITION_FAILURE: 'red',
 }
 
 const router = useRouter()
@@ -220,6 +218,7 @@ async function loadTasks(): Promise<void> {
     const result = await listReviewTasks({
       examId: selectedExamId.value,
       status: 'PENDING',
+      excludeArbitration: true,
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })

@@ -26,6 +26,12 @@ export interface ReviewTaskQueryRequest extends QueryDto {
   /** 复核状态编码，空查全部 */
   status?: ReviewTaskStatusCode
   questionTemplateId?: string
+  /** 复核任务类型过滤，空查全部 */
+  reviewType?: ReviewTaskTypeCode
+  /** 批改来源过滤，空查全部 */
+  gradeSource?: GradeSourceCode
+  /** 是否排除题目复核仲裁任务 */
+  excludeArbitration?: boolean
 }
 
 /** 复核任务类型编码 - 与后端 com.nybc.edu.common.enums.TaskType 一一对齐。 */
@@ -33,6 +39,7 @@ export type ReviewTaskTypeCode
   = | 'OBJECTIVE_AUTO_REVIEW'
     | 'OBJECTIVE_AI_REVIEW'
     | 'SUBJECTIVE_AI_REVIEW'
+    | 'QUESTION_REVIEW_ARBITRATION'
 
 /** 复核任务类型中文标签与颜色，便于前端 tag 渲染 */
 export const REVIEW_TASK_TYPE_META: Record<
@@ -42,12 +49,14 @@ export const REVIEW_TASK_TYPE_META: Record<
   OBJECTIVE_AUTO_REVIEW: { label: '客观题（硬比对）', color: 'green' },
   OBJECTIVE_AI_REVIEW: { label: '客观题（AI 评分）', color: 'blue' },
   SUBJECTIVE_AI_REVIEW: { label: '主观题（AI 评分）', color: 'purple' },
+  QUESTION_REVIEW_ARBITRATION: { label: '题目复核仲裁', color: 'blue' },
 }
 
 const REVIEW_TASK_TYPE_LABEL: Record<ReviewTaskTypeCode, string> = {
   OBJECTIVE_AUTO_REVIEW: REVIEW_TASK_TYPE_META.OBJECTIVE_AUTO_REVIEW.label,
   OBJECTIVE_AI_REVIEW: REVIEW_TASK_TYPE_META.OBJECTIVE_AI_REVIEW.label,
   SUBJECTIVE_AI_REVIEW: REVIEW_TASK_TYPE_META.SUBJECTIVE_AI_REVIEW.label,
+  QUESTION_REVIEW_ARBITRATION: REVIEW_TASK_TYPE_META.QUESTION_REVIEW_ARBITRATION.label,
 }
 
 /** 批改来源编码 - 与后端 com.nybc.edu.common.enums.GradeSource 一一对齐。 */
@@ -56,10 +65,9 @@ export type GradeSourceCode
     | 'AUTO_OBJECTIVE_AI'
     | 'LOCAL_SUBJECTIVE_AI'
     | 'TEACHER'
-    | 'RECOGNITION_FAILURE'
 
 /** 复核任务状态编码 - 与后端 ReviewTaskStatus 枚举对齐 */
-export type ReviewTaskStatusCode = 'PENDING' | 'IN_PROGRESS' | 'APPROVED' | 'REJECTED'
+export type ReviewTaskStatusCode = 'PENDING' | 'IN_PROGRESS' | 'APPROVED' | 'REJECTED' | 'INVALIDATED'
 
 /** 复核任务状态中文标签 */
 export const REVIEW_TASK_STATUS_LABEL: Record<ReviewTaskStatusCode, string> = {
@@ -67,6 +75,7 @@ export const REVIEW_TASK_STATUS_LABEL: Record<ReviewTaskStatusCode, string> = {
   IN_PROGRESS: '复核中',
   APPROVED: '已通过',
   REJECTED: '已驳回',
+  INVALIDATED: '已失效',
 }
 
 /** 复核任务状态标签色 */
@@ -75,6 +84,7 @@ export const REVIEW_TASK_STATUS_TONE: Record<ReviewTaskStatusCode, BadgeTone> = 
   IN_PROGRESS: 'blue',
   APPROVED: 'green',
   REJECTED: 'red',
+  INVALIDATED: 'gray',
 }
 
 /** 匿名批阅任务项 - 对应 ReviewTaskItemResponse */
@@ -146,6 +156,14 @@ export interface ReviewTaskDetailVO {
   status: ReviewTaskStatusCode
   /** 制卷形态: ANSWER_SHEET / FULL_PAPER */
   materialLayoutMode?: string
+  /** 复核任务类型编码 */
+  reviewType: ReviewTaskTypeCode
+  /** 批改来源编码 */
+  gradeSource: GradeSourceCode
+  /** 复核详情绑定的作答切片ID */
+  responseSliceId: string
+  /** 复核详情绑定的 OCR 识别结果ID */
+  recognitionResultId?: string
   /** 试卷母版页引用，仅 ANSWER_SHEET 模式回填 */
   masterPaperPage?: MarkingScanPageRefVO
   /** 题干文本 */
@@ -163,7 +181,6 @@ const GRADE_SOURCE_LABEL: Record<GradeSourceCode, string> = {
   AUTO_OBJECTIVE_AI: '客观 AI',
   LOCAL_SUBJECTIVE_AI: '主观 AI',
   TEACHER: '教师',
-  RECOGNITION_FAILURE: '识别失败',
 }
 
 /** 复核任务列表项契约校验，供 store 与列表页在消费前显式失败。 */
@@ -194,9 +211,12 @@ export function validateReviewTaskDetailContract(record: ReviewTaskDetailVO): vo
   assertUserFacingText(record.gradeResultId, REVIEW_TASK_DATA_ERROR)
   assertUserFacingText(record.questionTemplateId, REVIEW_TASK_DATA_ERROR)
   assertUserFacingText(record.questionNo, REVIEW_TASK_DATA_ERROR)
+  assertUserFacingText(record.responseSliceId, REVIEW_TASK_DATA_ERROR)
   assertUserFacingFiniteNumber(record.fullScore, REVIEW_TASK_DATA_ERROR)
   strictEnumLabel(REVIEW_TASK_STATUS_LABEL, record.status, '复核任务状态')
   strictEnumLabel(QUESTION_TYPE_LABEL, record.questionType, '题型')
+  strictEnumLabel(REVIEW_TASK_TYPE_LABEL, record.reviewType, '复核任务类型')
+  strictEnumLabel(GRADE_SOURCE_LABEL, record.gradeSource, '批改来源')
   if (record.aiTraceId && !record.aiAbilityCode) {
     assertUserFacing(false, REVIEW_TASK_DATA_ERROR)
   }

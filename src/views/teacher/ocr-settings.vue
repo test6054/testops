@@ -4,14 +4,13 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamDetailVO } from '@/apis/mark/exam'
 import type { ExamScoreSummaryItemVO } from '@/apis/mark/exam-score'
-import type { ExamQuestionTemplateVO } from '@/apis/mark/exam-template'
 import type {
   MarkOcrConfigVO,
 } from '@/apis/mark/ocr-config'
 import type {
   PaddleOcrInstanceVO,
 } from '@/apis/mark/ocr-paddle-instance'
-import type { MarkOcrRecognizeVO } from '@/apis/mark/ocr-recognition'
+import type { MarkOcrPaperSliceVO, MarkOcrRecognizeVO } from '@/apis/mark/ocr-recognition'
 import type {
   MarkOcrHealthStatusCode,
   MarkOcrProviderTypeCode,
@@ -32,10 +31,6 @@ import {
   FINAL_SCORE_STATUS_LABEL,
   pageExamScoreSummary,
 } from '@/apis/mark/exam-score'
-import {
-  getExamTemplate,
-  isPaperTemplateNotConfiguredError,
-} from '@/apis/mark/exam-template'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import {
   checkMarkOcrHealth,
@@ -45,6 +40,7 @@ import {
   listPaddleOcrInstances,
 } from '@/apis/mark/ocr-paddle-instance'
 import {
+  listMarkOcrPaperSlices,
   recognizeMarkOcr,
 } from '@/apis/mark/ocr-recognition'
 import {
@@ -75,7 +71,7 @@ const PAPER_CANDIDATE_FILTER_PAGE_SIZE = 50
 interface DebugFormState {
   examId?: string
   paperInstanceId?: string
-  questionTemplateId?: string
+  responseSliceId?: string
 }
 
 const debugFormRef = ref<FormInstance | null>(null)
@@ -93,29 +89,15 @@ const userStore = useUserStore()
 // 用 watch(currentConfig.providerType) 自动开关加载，无需手动触发。
 const paddleInstances = ref<PaddleOcrInstanceVO[]>([])
 const paddleInstancesLoading = ref(false)
-const questions = ref<ExamQuestionTemplateVO[]>([])
-const questionsLoading = ref(false)
-const questionsError = ref<Error | null>(null)
+const paperSlices = ref<MarkOcrPaperSliceVO[]>([])
+const paperSlicesLoading = ref(false)
+const paperSlicesError = ref<Error | null>(null)
 const paperCandidates = ref<ExamScoreSummaryItemVO[]>([])
 const paperCandidatesLoading = ref(false)
 const paperCandidatesError = ref<Error | null>(null)
 const paperCandidateKeyword = ref('')
 const examDetail = ref<ExamDetailVO | null>(null)
 const examDetailLoading = ref(false)
-
-/** 题目是否已配置 OCR 识别区域（页码与 ROI 坐标）。 */
-function isOcrRegionReady(question: ExamQuestionTemplateVO): boolean {
-  return (
-    question.pageNo != null
-    && question.pageNo > 0
-    && question.x != null
-    && question.y != null
-    && question.width != null
-    && question.height != null
-    && question.width > 0
-    && question.height > 0
-  )
-}
 
 const examMaterialLayoutMode = computed(() => examDetail.value?.materialLayoutMode)
 
@@ -132,11 +114,9 @@ const paperInstanceFieldLabel = computed(() => {
 
 const ocrDebugReady = computed(() => Boolean(examMaterialLayoutMode.value))
 
-const ocrReadyQuestions = computed(() => questions.value.filter(isOcrRegionReady))
-
 const debugRules = computed<Record<string, Rule[]>>(() => ({
   paperInstanceId: [{ required: true, message: `请选择${paperInstanceFieldLabel.value}`, trigger: 'change' }],
-  questionTemplateId: [{ required: true, message: '请选择已配置识别区域的题目', trigger: 'change' }],
+  responseSliceId: [{ required: true, message: '请选择当前卷面的正式作答切片', trigger: 'change' }],
 }))
 
 const healthStatus = computed<MarkOcrHealthStatusCode | undefined>(
@@ -174,16 +154,21 @@ const canRecognize = computed(() =>
   Boolean(
     ocrDebugReady.value
     && currentConfig.value?.providerType
-    && currentConfig.value.enabled,
+    && currentConfig.value.enabled
+    && debugForm.value.paperInstanceId
+    && debugForm.value.responseSliceId,
   ),
 )
-const questionOptions = computed(() =>
-  ocrReadyQuestions.value.map((question) => ({
-    value: question.questionTemplateId,
+const currentPaperSlice = computed(() =>
+  paperSlices.value.find((item) => item.responseSliceId === debugForm.value.responseSliceId),
+)
+const paperSliceOptions = computed(() =>
+  paperSlices.value.map((slice) => ({
+    value: slice.responseSliceId,
     label: [
-      `题 ${question.questionNo}`,
-      strictEnumLabel(QUESTION_TYPE_LABEL, question.questionType, '题型'),
-      `${question.fullScore} 分`,
+      `题 ${slice.questionNo}`,
+      strictEnumLabel(QUESTION_TYPE_LABEL, slice.questionType, '题型'),
+      `${slice.fullScore} 分`,
     ].join(' · '),
   })),
 )
@@ -276,12 +261,17 @@ async function handleHealthCheck(): Promise<void> {
 
 async function handleRecognize(): Promise<void> {
   await debugFormRef.value?.validate()
+  if (!currentPaperSlice.value) {
+    message.error('当前卷面的正式作答切片不存在，请重新选择')
+    return
+  }
   recognizing.value = true
   try {
     recognizeResult.value = await recognizeMarkOcr({
       examId: debugForm.value.examId!,
       paperInstanceId: debugForm.value.paperInstanceId!,
-      questionTemplateId: debugForm.value.questionTemplateId!,
+      responseSliceId: currentPaperSlice.value.responseSliceId,
+      questionTemplateId: currentPaperSlice.value.questionTemplateId,
     })
   } finally {
     recognizing.value = false
@@ -300,21 +290,17 @@ async function loadExamDetail(examId: string): Promise<void> {
   }
 }
 
-async function loadQuestions(examId: string): Promise<void> {
-  questionsLoading.value = true
-  questionsError.value = null
+async function loadPaperSlices(examId: string, paperInstanceId: string): Promise<void> {
+  paperSlicesLoading.value = true
+  paperSlicesError.value = null
   try {
-    questions.value = (await getExamTemplate(examId)).questions
+    paperSlices.value = await listMarkOcrPaperSlices({ examId, paperInstanceId })
   } catch (error) {
-    questions.value = []
-    questionsError.value = toUserError(error, '考试题目加载失败')
-    if (error instanceof Error && isPaperTemplateNotConfiguredError(error)) {
-      message.warning('当前考试还没有配置试卷题目，不能执行 OCR 调试')
-    } else {
-      showUserError(error, '题目列表加载失败')
-    }
+    paperSlices.value = []
+    paperSlicesError.value = toUserError(error, '正式作答切片列表加载失败')
+    showUserError(error, '正式作答切片列表加载失败')
   } finally {
-    questionsLoading.value = false
+    paperSlicesLoading.value = false
   }
 }
 
@@ -358,11 +344,19 @@ function handlePaperCandidateDropdownVisibleChange(open: boolean): void {
 }
 
 function handlePaperCandidateChange(value: SelectValue): void {
+  debugForm.value.responseSliceId = undefined
+  recognizeResult.value = null
   if (!value) {
+    paperSlices.value = []
+    paperSlicesError.value = null
     paperCandidateKeyword.value = ''
     if (debugForm.value.examId) {
       void loadPaperCandidates(debugForm.value.examId, '')
     }
+    return
+  }
+  if (debugForm.value.examId && typeof value === 'string') {
+    void loadPaperSlices(debugForm.value.examId, value)
   }
 }
 
@@ -411,20 +405,19 @@ watch(
   (examId) => {
     debugForm.value.examId = examId
     debugForm.value.paperInstanceId = undefined
-    debugForm.value.questionTemplateId = undefined
+    debugForm.value.responseSliceId = undefined
     paperCandidateKeyword.value = ''
     recognizeResult.value = null
     if (examId) {
       void Promise.all([
         loadExamDetail(examId),
-        loadQuestions(examId),
         loadPaperCandidates(examId),
       ])
     } else {
       examDetail.value = null
-      questions.value = []
+      paperSlices.value = []
       paperCandidates.value = []
-      questionsError.value = null
+      paperSlicesError.value = null
       paperCandidatesError.value = null
     }
   },
@@ -447,9 +440,11 @@ async function reloadOcrWorkbench(): Promise<void> {
   }
   await Promise.all([
     loadExamDetail(examId),
-    loadQuestions(examId),
     loadPaperCandidates(examId),
   ])
+  if (debugForm.value.paperInstanceId) {
+    await loadPaperSlices(examId, debugForm.value.paperInstanceId)
+  }
 }
 
 onMounted(async () => {
@@ -632,16 +627,16 @@ onBeforeUnmount(() => {
               </a-form-item>
             </a-col>
             <a-col :xs="24" :md="12">
-              <a-form-item label="题目" name="questionTemplateId" required>
+              <a-form-item label="题目" name="responseSliceId" required>
                 <a-select
-                  v-model:value="debugForm.questionTemplateId"
-                  :options="questionOptions"
-                  :loading="questionsLoading || examDetailLoading"
-                  :disabled="!debugForm.examId || !ocrDebugReady"
+                  v-model:value="debugForm.responseSliceId"
+                  :options="paperSliceOptions"
+                  :loading="paperSlicesLoading || examDetailLoading"
+                  :disabled="!debugForm.examId || !debugForm.paperInstanceId || !ocrDebugReady"
                   show-search
                   option-filter-prop="label"
-                  placeholder="请选择已配置识别区域的题目"
-                  :not-found-content="questionsLoading ? undefined : '暂无已配置识别区域的题目'"
+                  placeholder="请选择当前卷面的正式作答切片"
+                  :not-found-content="paperSlicesLoading ? undefined : '当前卷面暂无正式作答切片'"
                 />
               </a-form-item>
             </a-col>

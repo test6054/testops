@@ -95,8 +95,8 @@
             {{ formatDateTime(record.updateTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiTextAction tone="primary" @click="enterReview(record)">
-              进入复核
+            <UiTextAction :tone="record.status === 'INVALIDATED' ? 'default' : 'primary'" @click="enterReview(record)">
+              {{ record.status === 'INVALIDATED' ? '查看详情' : '进入复核' }}
             </UiTextAction>
           </template>
         </template>
@@ -145,7 +145,6 @@ const GRADE_SOURCE_LABEL: Record<GradeSourceCode, string> = {
   AUTO_OBJECTIVE_AI: '客观 AI',
   LOCAL_SUBJECTIVE_AI: '主观 AI',
   TEACHER: '教师',
-  RECOGNITION_FAILURE: '识别失败',
 }
 
 const GRADE_SOURCE_TONE: Record<GradeSourceCode, BadgeTone> = {
@@ -153,7 +152,6 @@ const GRADE_SOURCE_TONE: Record<GradeSourceCode, BadgeTone> = {
   AUTO_OBJECTIVE_AI: 'blue',
   LOCAL_SUBJECTIVE_AI: 'blue',
   TEACHER: 'orange',
-  RECOGNITION_FAILURE: 'red',
 }
 
 const router = useRouter()
@@ -173,6 +171,7 @@ const pagination = reactive({
 const statusFilterOptions = [
   { label: '待复核', value: 'PENDING' as ReviewTaskStatusCode },
   { label: '复核中', value: 'IN_PROGRESS' as ReviewTaskStatusCode },
+  { label: '已失效', value: 'INVALIDATED' as ReviewTaskStatusCode },
 ]
 
 const columns: ColumnType<ReviewTaskItemVO>[] = [
@@ -231,6 +230,7 @@ async function loadTasks(): Promise<void> {
     const result = await listReviewTasks({
       examId: examId.value,
       status: statusFilter.value,
+      excludeArbitration: true,
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
@@ -262,9 +262,18 @@ function enterReview(record: ReviewTaskItemVO): void {
   if (!examId.value) {
     return
   }
+  if (record.status === 'INVALIDATED') {
+    void router.push({
+      name: 'TeacherExamWorkspaceReviewTaskDetail',
+      params: { examId: examId.value, taskId: record.reviewTaskId },
+      query: { source: 'review' },
+    })
+    return
+  }
   void router.push({
     name: 'TeacherExamWorkspaceReviewWorkspace',
     params: { examId: examId.value, taskId: record.reviewTaskId },
+    query: { source: 'review' },
   })
 }
 

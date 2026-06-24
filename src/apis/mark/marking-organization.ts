@@ -464,6 +464,16 @@ export interface QuestionMarkingGroupQuestionVO {
   aiScore?: number
   /** AI诊断说明 */
   aiDiagnostic?: string
+  /** 正式作答切片ID */
+  responseSliceId: string
+  /** 正式OCR识别结果ID */
+  recognitionResultId: string
+  /** 题目切片文件ID */
+  sliceFileId: string
+  /** 切片所属扫描页ID */
+  pageId: string
+  /** 正式OCR识别答案 */
+  recognizedAnswer?: string
   questionStem?: string
   questionOrder: number
 }

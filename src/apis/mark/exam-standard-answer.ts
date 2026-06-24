@@ -39,6 +39,14 @@ export interface ExamQuestionStandardAnswerOptionRequest {
   sortNo: number
 }
 
+/** 选择题正式声明选项请求 - 对应后端 ExamQuestionDeclaredOptionRequest */
+export interface ExamQuestionDeclaredOptionRequest {
+  /** 声明选项标签 */
+  optionLabel: string
+  /** 选项排序号 */
+  sortNo: number
+}
+
 /** 标准答案保存请求 - 对应 ExamStandardAnswerSaveRequest */
 export interface ExamStandardAnswerSaveRequest {
   examId: string
@@ -48,6 +56,7 @@ export interface ExamStandardAnswerSaveRequest {
    * 主观题 standardAnswer 一律可选。
    */
   standardAnswer?: string
+  declaredOptions?: ExamQuestionDeclaredOptionRequest[]
   choiceOptions?: ExamQuestionStandardAnswerOptionRequest[]
   answerExplain?: string
   comparePolicy?: ObjectiveComparePolicyCode
@@ -72,12 +81,20 @@ export interface ExamQuestionStandardAnswerOptionVO {
   sortNo: number
 }
 
+/** 选择题正式声明选项响应 - 对应后端 ExamQuestionDeclaredOptionResponse */
+export interface ExamQuestionDeclaredOptionVO {
+  optionId: string
+  optionLabel: string
+  sortNo: number
+}
+
 /** 标准答案响应 - 对应 ExamStandardAnswerResponse */
 export interface ExamStandardAnswerVO {
   standardAnswerId: string
   examId: string
   questionTemplateId: string
   standardAnswer?: string
+  declaredOptions: ExamQuestionDeclaredOptionVO[]
   choiceOptions: ExamQuestionStandardAnswerOptionVO[]
   answerExplain?: string
   comparePolicy?: ObjectiveComparePolicyCode
@@ -91,6 +108,13 @@ export interface ExamStandardAnswerVO {
 
 /** 标准答案选项合同校验，确保选择题答案选项 ID、标签和排序完整。 */
 function validateStandardAnswerOptionContract(record: ExamQuestionStandardAnswerOptionVO): void {
+  assertUserFacingText(record.optionId, STANDARD_ANSWER_DATA_ERROR)
+  assertUserFacingText(record.optionLabel, STANDARD_ANSWER_DATA_ERROR)
+  assertUserFacingFiniteNumber(record.sortNo, STANDARD_ANSWER_DATA_ERROR)
+}
+
+/** 正式声明选项合同校验，确保自动判分选项空间与标准答案展示使用同一正式口径。 */
+function validateDeclaredOptionContract(record: ExamQuestionDeclaredOptionVO): void {
   assertUserFacingText(record.optionId, STANDARD_ANSWER_DATA_ERROR)
   assertUserFacingText(record.optionLabel, STANDARD_ANSWER_DATA_ERROR)
   assertUserFacingFiniteNumber(record.sortNo, STANDARD_ANSWER_DATA_ERROR)
@@ -119,6 +143,10 @@ function validateStandardAnswerContract(
       '客观题比较策略',
     )
   }
+  if (!Array.isArray(record.declaredOptions)) {
+    throw new TypeError(STANDARD_ANSWER_DATA_ERROR)
+  }
+  record.declaredOptions.forEach(validateDeclaredOptionContract)
   if (!Array.isArray(record.choiceOptions)) {
     throw new TypeError(STANDARD_ANSWER_DATA_ERROR)
   }

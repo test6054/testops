@@ -296,7 +296,7 @@ const statusBreakdown = computed(() => {
     taskCountMap.set(item.statusCode, item.taskCount)
   })
   // 显式列出全部枚举值，避免 Object.keys + as 推断。
-  const codes: ReviewTaskStatusCode[] = ['PENDING', 'IN_PROGRESS', 'APPROVED', 'REJECTED']
+  const codes: ReviewTaskStatusCode[] = ['PENDING', 'IN_PROGRESS', 'APPROVED', 'REJECTED', 'INVALIDATED']
   return codes.map((code) => ({
     code,
     label: strictEnumLabel(STATUS_LABEL, code, '复核任务状态'),

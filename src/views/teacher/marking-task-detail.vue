@@ -207,7 +207,29 @@
                     <UiTag tone="blue" size="sm">第 {{ question.questionNo }} 题</UiTag>
                     <UiTag tone="gray" size="sm">{{ question.questionTypeMessage }}</UiTag>
                     <UiTag tone="green" size="sm">满分 {{ question.fullScore }}</UiTag>
+                    <UiButton
+                      size="sm"
+                      variant="outline"
+                      :disabled="!question.pageId"
+                      @click="focusWholeQuestionPage(question)"
+                    >
+                      定位答题页
+                    </UiButton>
                   </div>
+                  <a-typography-paragraph
+                    v-if="question.recognizedAnswer"
+                    class="whole-question-score__recognized-answer"
+                    :ellipsis="{ rows: 3, expandable: true, symbol: '展开' }"
+                  >
+                    {{ question.recognizedAnswer }}
+                  </a-typography-paragraph>
+                  <a-typography-text
+                    v-else
+                    type="secondary"
+                    class="whole-question-score__recognized-answer--empty"
+                  >
+                    正式 OCR 未识别出可展示答案
+                  </a-typography-text>
                   <a-input-number
                     v-model:value="getWholeQuestionForm(question.questionTemplateId).score"
                     :ref="(el: unknown) => setWholeQuestionScoreInputRef(el, questionIndex)"
@@ -697,6 +719,15 @@ function focusWholeQuestionScoreInput(index: number): void {
   window.requestAnimationFrame(() => {
     wholeQuestionScoreInputRefs.value[index]?.focus?.()
   })
+}
+
+function focusWholeQuestionPage(question: QuestionMarkingGroupQuestionVO): void {
+  const pageIndex = wholePages.value.findIndex((page) => page.pageId === question.pageId)
+  if (pageIndex < 0) {
+    message.error(`第 ${question.questionNo} 题未找到对应答题页`)
+    return
+  }
+  scrollToWholePage(pageIndex)
 }
 
 function handleWorkspaceKeydown(event: KeyboardEvent): void {

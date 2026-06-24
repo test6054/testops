@@ -2,7 +2,7 @@
   <div class="arbitration-page">
     <div class="arbitration-page__toolbar">
       <UiTag :tone="pendingTotal > 0 ? 'red' : 'green'" size="sm">
-        {{ pendingTotal > 0 ? `${pendingTotal} 条待仲裁` : '暂无待办' }}
+        {{ pendingTotal > 0 ? `${pendingTotal} 条待处理` : '暂无待办' }}
       </UiTag>
       <UiButton
         variant="outline"
@@ -173,9 +173,12 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
-import { storeToRefs } from 'pinia'
 import { computed, onActivated, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  listReviewTasks,
+  validateReviewTaskItemContract,
+} from '@/apis/mark/exam-review-task'
 import {
   MARKING_TASK_STATUS_LABEL,
   MARKING_TASK_STATUS_TONE,
@@ -189,7 +192,6 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -207,9 +209,8 @@ const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const currentUserId = computed(() => userStore.userInfo.userId || '')
-
-const markTaskStore = useMarkTaskStore()
-const { reviewTasks, reviewTasksLoading: loading } = storeToRefs(markTaskStore)
+const reviewTasks = ref<ReviewTaskItemVO[]>([])
+const loading = ref(false)
 const arbitrationTasks = ref<MarkingTaskVO[]>([])
 
 const pendingTotal = computed(() => reviewTasks.value.length + arbitrationTasks.value.length)
@@ -277,21 +278,65 @@ async function loadArbitrationMarkingTasks(): Promise<void> {
   )
 }
 
-async function loadTasks(): Promise<void> {
-  if (!selectedExamId.value) return
-  try {
-    await markTaskStore.loadReviewTasks({
-      examId: selectedExamId.value,
-      status: 'REJECTED',
-    })
-  } catch (error) {
-    showUserError(error, '客观题复核仲裁任务加载失败')
+async function loadQuestionArbitrationTasks(): Promise<void> {
+  if (!selectedExamId.value) {
+    reviewTasks.value = []
     return
   }
+  const examId = selectedExamId.value
   try {
+    const [pendingItems, inProgressItems] = await Promise.all([
+      readAllPages(
+        (pageNum) =>
+          listReviewTasks({
+            examId,
+            reviewType: 'QUESTION_REVIEW_ARBITRATION',
+            status: 'PENDING',
+            pageNum,
+            pageSize: 100,
+          }),
+        '题目复核仲裁任务加载失败',
+      ),
+      readAllPages(
+        (pageNum) =>
+          listReviewTasks({
+            examId,
+            reviewType: 'QUESTION_REVIEW_ARBITRATION',
+            status: 'IN_PROGRESS',
+            pageNum,
+            pageSize: 100,
+          }),
+        '题目复核仲裁任务加载失败',
+      ),
+    ])
+    const merged = new Map<string, ReviewTaskItemVO>()
+    pendingItems.forEach((item) => {
+      validateReviewTaskItemContract(item)
+      merged.set(item.reviewTaskId, item)
+    })
+    inProgressItems.forEach((item) => {
+      validateReviewTaskItemContract(item)
+      if (item.assignedTeacherUserId === currentUserId.value) {
+        merged.set(item.reviewTaskId, item)
+      }
+    })
+    reviewTasks.value = Array.from(merged.values())
+  } catch (error) {
+    reviewTasks.value = []
+    showUserError(error, '客观题复核仲裁任务加载失败')
+  }
+}
+
+async function loadTasks(): Promise<void> {
+  if (!selectedExamId.value) return
+  loading.value = true
+  try {
+    await loadQuestionArbitrationTasks()
     await loadArbitrationMarkingTasks()
   } catch (error) {
     showUserError(error, '双评仲裁任务加载失败')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -300,6 +345,7 @@ function goReviewWorkspace(record: ReviewTaskItemVO): void {
   void router.push({
     name: 'TeacherExamWorkspaceReviewWorkspace',
     params: { examId: selectedExamId.value, taskId: record.reviewTaskId },
+    query: { source: 'arbitration' },
   })
 }
 
@@ -308,6 +354,7 @@ function goReviewDetail(record: ReviewTaskItemVO): void {
   void router.push({
     name: 'TeacherExamWorkspaceReviewTaskDetail',
     params: { examId: selectedExamId.value, taskId: record.reviewTaskId },
+    query: { source: 'arbitration' },
   })
 }
 
@@ -323,7 +370,7 @@ watch(selectedExamId, (value) => {
   if (value) {
     void loadTasks()
   } else {
-    markTaskStore.clearReviewTasks()
+    reviewTasks.value = []
     arbitrationTasks.value = []
   }
 }, { immediate: true })

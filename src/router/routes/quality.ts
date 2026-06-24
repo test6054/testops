@@ -51,6 +51,13 @@ const ADMIN_GROUP = {
   menuGroupOrder: 5,
 } as const
 
+const PORTFOLIO_GROUP = {
+  menuGroup: 'quality-portfolio',
+  menuGroupTitle: '教学档案袋',
+  menuGroupIcon: 'folder',
+  menuGroupOrder: 6,
+} as const
+
 export const qualityRoutes: RouteRecordRaw[] = [
   {
     path: '/quality',
@@ -395,6 +402,33 @@ export const qualityRoutes: RouteRecordRaw[] = [
           hideInMenu: true,
           keepAlive: true,
           activeMenu: '/quality/accreditation-cockpit',
+        },
+      },
+
+      {
+        path: 'portfolio/org',
+        name: 'QualityPortfolioOrg',
+        component: () => import('@/views/portfolio/org-admin.vue'),
+        meta: {
+          title: '档案袋组织',
+          roles: ALL_ROLES,
+          icon: 'apartment',
+          hideInMenu: false,
+          keepAlive: true,
+          ...PORTFOLIO_GROUP,
+        },
+      },
+      {
+        path: 'portfolio/teachers',
+        name: 'QualityPortfolioTeachers',
+        component: () => import('@/views/portfolio/teacher-directory.vue'),
+        meta: {
+          title: '档案袋教师名册',
+          roles: ALL_ROLES,
+          icon: 'team',
+          hideInMenu: false,
+          keepAlive: true,
+          ...PORTFOLIO_GROUP,
         },
       },
 

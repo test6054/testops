@@ -588,6 +588,7 @@ import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import {
+  resolveMarkingOrganizationDetailRoute,
   resolveMarkingOrganizationIndexRoute,
   resolveMarkingOrganizationSessionsRoute,
 } from '@/utils/marking-organization-navigation'

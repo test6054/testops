@@ -37,6 +37,12 @@
 
 
     <a-spin v-else :spinning="loading" tip="正在加载任务...">
+      <div v-if="detail?.status === 'INVALIDATED'" class="task-detail-page__invalidated-banner">
+        <div class="task-detail-page__invalidated-title">当前复核任务已失效</div>
+        <div class="task-detail-page__invalidated-text">
+          原作答影像已因补扫替换失效，系统正在重新执行识别与切片，请等待新复核任务生成。
+        </div>
+      </div>
       <UiCard v-if="detail" class="info-card">
         <template #title>
           <ProfileOutlined />
@@ -186,6 +192,7 @@ const router = useRouter()
 const examId = computed(() => (route.params.examId ? String(route.params.examId) : ''))
 const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
 const hasParams = computed(() => !!examId.value && !!taskId.value)
+const taskSource = computed(() => (route.query.source === 'arbitration' ? 'arbitration' : 'review'))
 
 const detail = ref<ReviewTaskDetailVO | null>(null)
 const loading = ref(false)
@@ -244,6 +251,7 @@ function goWorkspace(): void {
   void router.push({
     name: 'TeacherExamWorkspaceReviewWorkspace',
     params: { examId: examId.value, taskId: taskId.value },
+    query: { source: taskSource.value },
   })
 }
 
@@ -280,6 +288,26 @@ watch(
 
   &__empty {
     padding: 60px 0;
+  }
+
+  &__invalidated-banner {
+    padding: 12px 16px;
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    background: var(--dp-surface-soft, #f8fafc);
+  }
+
+  &__invalidated-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__invalidated-text {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--dp-text-secondary, #475569);
   }
 
   display: flex;

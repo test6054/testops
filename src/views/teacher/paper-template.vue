@@ -492,6 +492,7 @@ import type {
   ExamMaterialLayoutModeCode,
 } from '@/apis/mark/exam'
 import type {
+  ExamQuestionDeclaredOptionRequest,
   ExamQuestionStandardAnswerOptionRequest,
   ExamStandardAnswerVO,
   ObjectiveComparePolicyCode,
@@ -503,7 +504,6 @@ import type {
   ExamQuestionTemplateVO,
 } from '@/apis/mark/exam-template'
 import type { QuestionTypeCode } from '@/apis/mark/grading-experience'
-import type { PaperMasterObjectiveOptionVO } from '@/apis/mark/paper-master'
 import type { ExamAnswerEffectiveConfigVO } from '@/apis/mark/question-analysis'
 import type { ExamTemplatePageRow } from '@/components/mark/ExamTemplatePageTable.vue'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
@@ -527,7 +527,7 @@ import {
   saveExamTemplate,
 } from '@/apis/mark/exam-template'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
-import { getPaperMaster, revokePaperMaster } from '@/apis/mark/paper-master'
+import { revokePaperMaster } from '@/apis/mark/paper-master'
 import { confirmAnswerEffective, getEffectiveAnswerConfig } from '@/apis/mark/question-analysis'
 import ExamTemplatePageTable from '@/components/mark/ExamTemplatePageTable.vue'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
@@ -567,11 +567,6 @@ interface QuestionRow {
   questionStem?: string
 }
 
-interface ObjectiveOptionRow {
-  questionTemplateId: string
-  options: PaperMasterObjectiveOptionVO[]
-}
-
 interface AnswerPreviewState {
   loading: boolean
   data: ExamStandardAnswerVO | null
@@ -603,7 +598,6 @@ const form = reactive<{ templateName: string, totalPages?: number }>({
 })
 const pages = ref<ExamTemplatePageRow[]>([])
 const questions = reactive<QuestionRow[]>([])
-const objectiveOptions = reactive<ObjectiveOptionRow[]>([])
 const expandedQuestionRowKeys = ref<string[]>([])
 const answerPreviewMap = reactive(new Map<string, AnswerPreviewState>())
 
@@ -767,7 +761,6 @@ function clearTemplate(): void {
   form.totalPages = undefined
   pages.value = []
   questions.splice(0, questions.length)
-  objectiveOptions.splice(0, objectiveOptions.length)
   clearAnswerPreviewCache()
 }
 
@@ -818,20 +811,6 @@ async function loadTemplate(): Promise<void> {
     layoutMode.value = detail.materialLayoutMode
     const tpl = await getExamTemplate(selectedExamId.value)
     await applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages, tpl.questions)
-    objectiveOptions.splice(0, objectiveOptions.length)
-    const master = await getPaperMaster(selectedExamId.value)
-    if (master.configured) {
-      master.objectiveAreas.forEach((area) => {
-        objectiveOptions.push({
-          questionTemplateId: area.questionTemplateId,
-          options: area.options.map((option) => ({
-            optionId: option.optionId,
-            optionLabel: option.optionLabel,
-            sortNo: option.sortNo,
-          })),
-        })
-      })
-    }
   } catch (error) {
     clearTemplate()
     if (!(error instanceof Error && isPaperTemplateNotConfiguredError(error))) {
@@ -1169,15 +1148,13 @@ const answerForm = reactive<{
 })
 
 /**
- * 当前题目的母版选项空间，选择题集合策略必须从这里点选，避免老师手工拼接技术格式。
+ * 当前题目的正式声明选项空间，选择题集合策略必须从这里点选，避免标准答案与自动判分口径分叉。
  */
 const answerChoiceOptions = computed(() => {
   if (!answerContext.questionTemplateId) return []
-  const optionRow = objectiveOptions.find(
-    (item) => item.questionTemplateId === answerContext.questionTemplateId,
-  )
-  if (!optionRow) return []
-  return optionRow.options
+  const previewState = answerPreviewMap.get(answerContext.questionTemplateId)
+  const declaredOptions = previewState?.data?.declaredOptions ?? []
+  return declaredOptions
     .slice()
     .sort((left, right) => left.sortNo - right.sortNo)
     .map((option) => ({
@@ -1346,16 +1323,15 @@ async function openAnswerModal(row: QuestionRow): Promise<void> {
       || currentAnswer.effectiveStatus === 'ACTIVE'
     if (currentAnswer.comparePolicy === 'CHOICE_SET') {
       answerForm.standardAnswer = ''
-      const optionRow = objectiveOptions.find(
-        (item) => item.questionTemplateId === row.questionTemplateId,
+      const declaredLabels = new Set(
+        currentAnswer.declaredOptions.map((option) => option.optionLabel),
       )
-      const declaredLabels = new Set((optionRow?.options ?? []).map((option) => option.optionLabel))
       const answerLabels = currentAnswer.choiceOptions.map((option) => option.optionLabel)
       const invalidLabel = answerLabels.find((optionLabel) => !declaredLabels.has(optionLabel))
       if (invalidLabel) {
         showUserError(
           new Error(
-            `标准答案选项“${invalidLabel}”与当前试卷客观题选项不一致，请先核对试卷母版配置`,
+            `标准答案选项“${invalidLabel}”超出题目正式声明选项空间，请先修正题目选项配置`,
           ),
           '标准答案加载失败',
         )
@@ -1386,15 +1362,20 @@ async function handleSaveAnswer(): Promise<void> {
   answerSaving.value = true
   try {
     let standardAnswer: string | undefined
+    let declaredOptions: ExamQuestionDeclaredOptionRequest[] | undefined
     let choiceOptions: ExamQuestionStandardAnswerOptionRequest[] | undefined
     if (answerContext.questionType === 'OBJECTIVE' && answerForm.comparePolicy === 'CHOICE_SET') {
-      const optionRow = objectiveOptions.find(
-        (item) => item.questionTemplateId === answerContext.questionTemplateId,
-      )
+      declaredOptions = answerChoiceOptions.value.map((option, index) => ({
+        optionLabel: option.value,
+        sortNo: index + 1,
+      }))
+      if (declaredOptions.length === 0) {
+        showUserError(new Error('当前题目尚未配置正式声明选项空间'), '标准答案保存失败')
+        return
+      }
       const selectedLabels = new Set(answerForm.choiceAnswers)
-      choiceOptions = optionRow?.options
+      choiceOptions = declaredOptions
         .filter((option) => selectedLabels.has(option.optionLabel))
-        .sort((left, right) => left.sortNo - right.sortNo)
         .map((option, index) => ({
           optionLabel: option.optionLabel,
           sortNo: index + 1,
@@ -1414,6 +1395,7 @@ async function handleSaveAnswer(): Promise<void> {
       examId: selectedExamId.value,
       questionTemplateId: answerContext.questionTemplateId,
       standardAnswer,
+      declaredOptions,
       choiceOptions,
       comparePolicy: answerForm.comparePolicy,
       answerExplain: answerForm.answerExplain?.trim() || undefined,
