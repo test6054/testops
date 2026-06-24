@@ -1,9 +1,12 @@
+import type {AgentWireJsonObject} from './scanner-agent-local-wire';
 import type {
   ExamScannerKioskContextVO,
   ExamScannerScanConfigVO,
   ScannerKioskScanMode,
 } from './scanner-kiosk'
+import { runContractGuard, throwUserFacing } from '@/utils/contract-guard'
 import {
+
   LOCAL_AGENT_WIRE_ERROR,
   requireAgentWireBoolean,
   requireAgentWireInt32,
@@ -13,11 +16,8 @@ import {
   requireAgentWireString,
   requireAgentWireStringArray,
   requireOptionalAgentWireInt32,
-  requireOptionalAgentWireString,
-  type AgentWireJsonObject,
-  type AgentWireJsonValue,
+  requireOptionalAgentWireString
 } from './scanner-agent-local-wire'
-import { runContractGuard, throwUserFacing } from '@/utils/contract-guard'
 
 const DEFAULT_AGENT_BASE_URL = 'http://127.0.0.1:18761'
 export const LOCAL_AGENT_UNAVAILABLE_ERROR = '本地扫描服务未连接，请确认一体机组件已启动'

@@ -105,7 +105,6 @@ export function useStageMachine(workflow: KioskWorkflow) {
 
   function gotoStage(stageId: KioskStageId) {
     if (stageId === currentStage.value) return
-    const ctx = workflow.kioskContext.value
     const job = workflow.currentJob.value
     const activeSession = Boolean(
       workflow.activeBackendScanSession.value

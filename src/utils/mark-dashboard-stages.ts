@@ -1,11 +1,10 @@
 import type { MarkTeacherDashboardJourneyStageSummaryItemVO, MarkTeacherDashboardOngoingExamItemVO } from '@/apis/mark/teacher-dashboard'
+import type { MarkStageKey } from '@/stores/modules/markStage'
+import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 import {
   EXAM_JOURNEY_STEPS,
   resolveJourneyKeyByStage,
-  type ExamJourneyKey,
 } from '@/constants/exam-journey'
-import type { MarkStageKey } from '@/stores/modules/markStage'
-import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 
 function resolveJourneyIndex(stageKey: MarkStageKey | undefined): number {
   if (!stageKey) return -1
@@ -83,9 +82,4 @@ export function resolveExamJourneyDotStatus(
   if (journeyIndex < completedSegments) return 'done'
   if (journeyIndex === currentIndex) return 'current'
   return 'pending'
-}
-
-export function resolveExamJourneyKey(stageKey: MarkStageKey | undefined): ExamJourneyKey | undefined {
-  if (!stageKey) return undefined
-  return resolveJourneyKeyByStage(stageKey)
 }

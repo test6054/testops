@@ -138,8 +138,8 @@ import type {
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { loadTeacherDashboardOverview } from '@/apis/mark/teacher-dashboard'
 import { EXAM_STATUS_LABEL } from '@/apis/mark/exam'
+import { loadTeacherDashboardOverview } from '@/apis/mark/teacher-dashboard'
 import MarkingOverviewAnalytics from '@/components/mark/dashboard/MarkingOverviewAnalytics.vue'
 import MarkingOverviewSignalBand from '@/components/mark/dashboard/MarkingOverviewSignalBand.vue'
 import MarkingOverviewStageRail from '@/components/mark/dashboard/MarkingOverviewStageRail.vue'
@@ -147,13 +147,13 @@ import OngoingExamCardGrid from '@/components/mark/dashboard/OngoingExamCardGrid
 import PendingTodoFeed from '@/components/mark/dashboard/PendingTodoFeed.vue'
 import PublishedExamInsightChart from '@/components/mark/dashboard/PublishedExamInsightChart.vue'
 import PublishedExamInsightTable from '@/components/mark/dashboard/PublishedExamInsightTable.vue'
-import ContextBar from '@/components/workbench/ContextBar.vue'
-import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUserStore } from '@/stores'
 import { formatSemester } from '@/types/enums/semester-enum'
 import {
@@ -248,7 +248,8 @@ async function load(options?: { rollbackFilterOnError?: boolean }) {
     overview.value = data
     committedFilter.value = { ...filter.value }
   } catch (error) {
-    if (isFilterRangeError(error) && (filter.value.academicYear || filter.value.semester)) {
+    let failure: unknown = error
+    if (isFilterRangeError(failure) && (filter.value.academicYear || filter.value.semester)) {
       try {
         const bootstrap = await loadTeacherDashboardOverview({})
         assertTenantContract(bootstrap)
@@ -269,18 +270,18 @@ async function load(options?: { rollbackFilterOnError?: boolean }) {
         committedFilter.value = { ...filter.value }
         return
       } catch (bootstrapError) {
-        error = bootstrapError
+        failure = bootstrapError
       }
     }
     if (options?.rollbackFilterOnError) {
       filter.value = { ...committedFilter.value }
     }
-    if (!(error instanceof TypeError)) {
-      loadError.value = error instanceof Error ? error.message : '阅卷概览加载失败'
-      showUserError(error, '阅卷概览加载失败')
+    if (!(failure instanceof TypeError)) {
+      loadError.value = failure instanceof Error ? failure.message : '阅卷概览加载失败'
+      showUserError(failure, '阅卷概览加载失败')
     } else {
       overview.value = null
-      contractError.value = error.message
+      contractError.value = failure.message
     }
   } finally {
     loading.value = false

@@ -109,7 +109,7 @@ import { promptModal } from '@/views/quality/_helpers'
 type ScanColorMode = ExamScannerScanConfigVO['colorMode']
 type ScanDuplexMode = ExamScannerScanConfigVO['duplexMode']
 const ACTIVE_SCAN_BATCH_STATUS: ScanBatchStatusCode = 'IN_PROGRESS'
-type DisplayScanPage = {
+interface DisplayScanPage {
   captureSeq?: number
   pageNo: number
   sheetNo: number
@@ -2676,7 +2676,6 @@ export function useKioskWorkflow() {
               handleError(error, '扫描批次收口失败')
             }
           }
-          return
         }
       } catch (error) {
         const message = getUserErrorMessage(error, '扫描任务状态刷新失败')

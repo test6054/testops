@@ -99,9 +99,9 @@
 </template>
 
 <script lang="ts" setup>
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { ExamStatusCode } from '@/apis/mark/exam'
 import type { MarkTeacherDashboardOngoingExamItemVO } from '@/apis/mark/teacher-dashboard'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'

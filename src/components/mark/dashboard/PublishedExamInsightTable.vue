@@ -42,8 +42,8 @@
 import type { TableColumnsType } from 'ant-design-vue'
 import type { MarkTeacherDashboardPublishedExamInsightItemVO } from '@/apis/mark/teacher-dashboard'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { formatSemester } from '@/types/enums/semester-enum'
 
 defineOptions({ name: 'PublishedExamInsightTable' })
