@@ -300,6 +300,7 @@ export interface PortfolioArchiveTemplateSeedResultVO {
 }
 
 export interface PortfolioTargetFieldDefinition {
+  fieldDefId?: string
   fieldCode: string
   fieldLabel: string
   fieldType?: PortfolioArchiveFieldType

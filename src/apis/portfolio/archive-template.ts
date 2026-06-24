@@ -10,8 +10,8 @@ import type {
   PortfolioArchivePublishedFieldsRequest,
   PortfolioArchivePublishedFieldsVO,
   PortfolioArchiveTemplateChangeLogVO,
-  PortfolioArchiveTemplateVersionVO,
   PortfolioArchiveTemplateSeedResultVO,
+  PortfolioArchiveTemplateVersionVO,
   PortfolioArchiveVersionActionRequest,
   PortfolioArchiveVersionMutationRequest,
 } from '@/apis/portfolio/types'
