@@ -1,10 +1,10 @@
-import type { PageResult } from '@/types'
 import type {
   PortfolioTeacherDetailVO,
   PortfolioTeacherIdentitySaveRequest,
   PortfolioTeacherPageRequest,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
+import type { PageResult } from '@/types'
 import http from '@/config/axios'
 
 const BASE = '/api/portfolio/teacher'

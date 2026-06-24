@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { TreeProps } from 'ant-design-vue'
+import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioOrgAliasSaveRequest,
   PortfolioOrgAliasVO,
+  PortfolioOrgSyncInvalidUnitVO,
+  PortfolioOrgSyncLogVO,
   PortfolioOrgTreeNodeVO,
   PortfolioOrgUnitSaveRequest,
 } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioOrgApi } from '@/apis/portfolio/org'
-import type { PortfolioOrgSyncInvalidUnitVO } from '@/apis/portfolio/types'
 import {
   PORTFOLIO_ORG_ALIAS_TARGET_TYPE_LABEL,
   PORTFOLIO_ORG_TREE_NODE_TYPE_LABEL,
@@ -23,9 +24,10 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { isPortfolioUnitNode, usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { isPortfolioUnitNode, usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
@@ -58,6 +60,7 @@ const canManageTenant = computed(() => hasTeacherTenantPermission({
 }))
 const syncing = ref(false)
 const syncDiagnostics = ref<PortfolioOrgSyncInvalidUnitVO[]>([])
+const lastSyncLog = ref<PortfolioOrgSyncLogVO | null>(null)
 const treeData = ref<TreeNode[]>([])
 const selectedNode = ref<TreeNode | null>(null)
 
@@ -98,6 +101,18 @@ function mapTree(nodes: PortfolioOrgTreeNodeVO[]): TreeNode[] {
   }))
 }
 
+async function loadLatestSync() {
+  if (!canManageTenant.value) {
+    return
+  }
+  try {
+    lastSyncLog.value = await portfolioOrgApi.syncLatest()
+  } catch (error) {
+    showUserError(error, '读取同步审计失败')
+    lastSyncLog.value = null
+  }
+}
+
 async function refreshTree() {
   await loadTree(false)
   treeData.value = mapTree(treeRoots.value)
@@ -106,6 +121,15 @@ async function refreshTree() {
     selectedNode.value = findTreeNode(treeData.value, key)
   }
 }
+
+const contextSubtitle = computed(() => {
+  const base = '主数据来自 edu-user，专业群/教研室与历史名称在本域维护'
+  if (!lastSyncLog.value) {
+    return base
+  }
+  const log = lastSyncLog.value
+  return `${base} · 上次校验 ${log.syncedAt}（院系 ${log.departmentCount} / 专业 ${log.majorCount} / 失效 ${log.invalidUnitCount}）`
+})
 
 async function handleSync() {
   syncing.value = true
@@ -117,6 +141,7 @@ async function handleSync() {
       message.warning(`挂接失效扩展组织 ${syncDiagnostics.value.length} 个，见下方诊断列表`)
     }
     await refreshTree()
+    await loadLatestSync()
   } catch (error) {
     showUserError(error, '组织校验失败')
   } finally {
@@ -220,7 +245,9 @@ async function deleteSelectedUnit() {
     message.warning('请选择专业群或教研室等扩展组织节点')
     return
   }
-  await confirmAsync('确认删除该扩展组织？')
+  if (!(await confirmAsync({ content: '确认删除该扩展组织？', type: 'error' }))) {
+    return
+  }
   try {
     await portfolioOrgApi.deleteUnit(unitId)
     message.success('已删除')
@@ -273,7 +300,9 @@ async function submitAlias() {
 }
 
 async function deleteAlias(row: PortfolioOrgAliasVO) {
-  await confirmAsync(`确认删除历史名称「${row.aliasName}」？`)
+  if (!(await confirmAsync({ content: `确认删除历史名称「${row.aliasName}」？`, type: 'error' }))) {
+    return
+  }
   try {
     await portfolioOrgApi.deleteAlias(row.id)
     message.success('已删除')
@@ -283,27 +312,38 @@ async function deleteAlias(row: PortfolioOrgAliasVO) {
   }
 }
 
-onMounted(refreshTree)
+onMounted(async () => {
+  await refreshTree()
+  await loadLatestSync()
+})
 </script>
 
 <template>
-  <StageWorkbenchShell title="组织管理" subtitle="主数据来自 edu-user，专业群/教研室与历史名称在本域维护">
-    <template #actions>
-      <UiButton v-if="canManageTenant" :loading="syncing" @click="handleSync">
-        校验主数据挂接
-      </UiButton>
-      <UiButton v-if="canManageTenant" type="primary" :disabled="!selectedNode" @click="openUnitEditor('create')">
-        新增扩展组织
-      </UiButton>
-      <UiButton v-if="canManageTenant && canManageUnit" @click="openUnitEditor('edit')">
-        编辑扩展组织
-      </UiButton>
-      <UiButton v-if="canManageTenant" :disabled="!canManageAlias" @click="openAliasEditor('create')">
-        添加历史名称
-      </UiButton>
-      <UiButton v-if="canManageTenant" danger :disabled="!canManageUnit" @click="deleteSelectedUnit">
-        删除扩展组织
-      </UiButton>
+  <StageWorkbenchShell>
+    <template #context>
+      <ContextBar
+        show-title
+        title="组织管理"
+        :subtitle="contextSubtitle"
+      >
+        <template #actions>
+          <UiButton v-if="canManageTenant" :loading="syncing" @click="handleSync">
+            校验主数据挂接
+          </UiButton>
+          <UiButton v-if="canManageTenant" variant="primary" :disabled="!selectedNode" @click="openUnitEditor('create')">
+            新增扩展组织
+          </UiButton>
+          <UiButton v-if="canManageTenant && canManageUnit" @click="openUnitEditor('edit')">
+            编辑扩展组织
+          </UiButton>
+          <UiButton v-if="canManageTenant" :disabled="!canManageAlias" @click="openAliasEditor('create')">
+            添加历史名称
+          </UiButton>
+          <UiButton v-if="canManageTenant" status="danger" :disabled="!canManageUnit" @click="deleteSelectedUnit">
+            删除扩展组织
+          </UiButton>
+        </template>
+      </ContextBar>
     </template>
     <UiCard v-if="syncDiagnostics.length" title="挂接失效诊断" class="org-admin__diagnostics">
       <ul class="org-admin__diagnostic-list">

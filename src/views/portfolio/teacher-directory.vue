@@ -150,7 +150,7 @@ async function loadPage() {
   loading.value = true
   try {
     const page = await portfolioTeacherApi.page({ ...query })
-    list.value = readPageList(page)
+    list.value = readPageList(page, '加载教师名册失败')
     total.value = readPageTotal(page)
   } catch (error) {
     showUserError(error, '加载教师名册失败')
@@ -169,9 +169,9 @@ function handleSearch() {
   loadPage()
 }
 
-function handlePageChange(page: number, pageSize: number) {
-  query.pageNum = page
-  query.pageSize = pageSize
+function handlePageChange(page: { current: number, pageSize: number }) {
+  query.pageNum = page.current
+  query.pageSize = page.pageSize
   loadPage()
 }
 
@@ -191,7 +191,7 @@ async function reloadDetail() {
   detail.value = await portfolioTeacherApi.get(detail.value.userId)
 }
 
-function openIdentityCreate(context: { userId: string; nickName?: string; departmentId?: string }) {
+function openIdentityCreate(context: { userId: string, nickName?: string, departmentId?: string }) {
   identityMode.value = 'create'
   identityEditor.teacherUserId = context.userId
   identityEditor.id = undefined
@@ -253,12 +253,15 @@ onMounted(async () => {
     <UiFilterBar v-model="filterModel" :fields="filterFields" @search="handleSearch" />
     <UiCard>
       <UiDataTable
+        v-model:current="query.pageNum"
+        v-model:page-size="query.pageSize"
+        pagination-mode="server"
         :columns="listColumns"
         :data-source="list"
         :loading="loading"
+        :total="total"
         row-key="userId"
-        :pagination="{ current: query.pageNum, pageSize: query.pageSize, total, showSizeChanger: true }"
-        @change="(p) => handlePageChange(p.current ?? 1, p.pageSize ?? 10)"
+        @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'primaryIdentityType'">
@@ -305,7 +308,7 @@ onMounted(async () => {
         </a-descriptions>
         <div class="teacher-directory__identity-header">
           <h4>扩展身份</h4>
-          <UiButton size="small" @click="openIdentityCreate({ userId: detail.userId, nickName: detail.nickName, departmentId: detail.departmentId })">
+          <UiButton size="sm" @click="openIdentityCreate({ userId: detail.userId, nickName: detail.nickName, departmentId: detail.departmentId })">
             新增身份
           </UiButton>
         </div>

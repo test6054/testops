@@ -1,5 +1,6 @@
 import type {
   PortfolioOrgAliasSaveRequest,
+  PortfolioOrgSyncLogVO,
   PortfolioOrgSyncResultVO,
   PortfolioOrgTreeNodeVO,
   PortfolioOrgTreeRequest,
@@ -13,6 +14,7 @@ export const portfolioOrgApi = {
   tree: (data: PortfolioOrgTreeRequest = {}) =>
     http.post<PortfolioOrgTreeNodeVO[]>(`${BASE}/tree`, data),
   sync: () => http.post<PortfolioOrgSyncResultVO>(`${BASE}/sync`, {}),
+  syncLatest: () => http.post<PortfolioOrgSyncLogVO | null>(`${BASE}/sync/latest`, {}),
   saveUnit: (data: PortfolioOrgUnitSaveRequest) =>
     http.post<string>(`${BASE}/save-unit`, data),
   deleteUnit: (id: string) => http.post<void>(`${BASE}/delete-unit`, { id }),
@@ -23,6 +25,7 @@ export const portfolioOrgApi = {
 
 export type {
   PortfolioOrgAliasSaveRequest,
+  PortfolioOrgSyncLogVO,
   PortfolioOrgSyncResultVO,
   PortfolioOrgTreeNodeVO,
   PortfolioOrgTreeRequest,

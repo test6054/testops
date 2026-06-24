@@ -30,10 +30,6 @@ export const PORTFOLIO_ORG_ALIAS_TARGET_TYPE_LABEL: Record<PortfolioOrgAliasTarg
   PORTFOLIO_ORG_UNIT: '扩展组织',
 }
 
-export const PORTFOLIO_ORG_ALIAS_TARGET_TYPE_OPTIONS =
-  (Object.keys(PORTFOLIO_ORG_ALIAS_TARGET_TYPE_LABEL) as PortfolioOrgAliasTargetType[])
-    .map(value => ({ value, label: PORTFOLIO_ORG_ALIAS_TARGET_TYPE_LABEL[value] }))
-
 /** 教师身份类型 - PortfolioTeacherIdentityTypeEnum */
 export type PortfolioTeacherIdentityType
   = | 'FULL_TIME'
@@ -54,8 +50,8 @@ export const PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL: Record<PortfolioTeacherIdent
   OTHER_EXTERNAL: '其他外部身份',
 }
 
-export const PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS =
-  (Object.keys(PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL) as PortfolioTeacherIdentityType[])
+export const PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS
+  = (Object.keys(PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL) as PortfolioTeacherIdentityType[])
     .map(value => ({ value, label: PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL[value] }))
 
 /** 教师身份状态 - PortfolioTeacherIdentityStatusEnum */
@@ -66,35 +62,35 @@ export const PORTFOLIO_TEACHER_IDENTITY_STATUS_LABEL: Record<PortfolioTeacherIde
   INACTIVE: '停用',
 }
 
-export const PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS =
-  (Object.keys(PORTFOLIO_TEACHER_IDENTITY_STATUS_LABEL) as PortfolioTeacherIdentityStatus[])
+export const PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS
+  = (Object.keys(PORTFOLIO_TEACHER_IDENTITY_STATUS_LABEL) as PortfolioTeacherIdentityStatus[])
     .map(value => ({ value, label: PORTFOLIO_TEACHER_IDENTITY_STATUS_LABEL[value] }))
 
-/** 组织树节点类型 - PortfolioOrgTreeNodeTypeConstants */
-export type PortfolioOrgTreeNodeType
+/** edu-user 组织主数据树节点 - PortfolioOrgTreeNodeTypeConstants */
+export type PortfolioEduUserOrgTreeNodeType
   = | 'SCHOOL'
     | 'DEPARTMENT'
     | 'MAJOR'
-    | 'MAJOR_GROUP'
-    | 'TEACHING_RESEARCH_OFFICE'
-    | 'CAMPUS'
     | 'CLASS'
 
-export const PORTFOLIO_ORG_TREE_NODE_TYPE_LABEL: Record<PortfolioOrgTreeNodeType, string> = {
+export const PORTFOLIO_EDU_USER_ORG_TREE_NODE_TYPE_LABEL: Record<PortfolioEduUserOrgTreeNodeType, string> = {
   SCHOOL: '学校',
   DEPARTMENT: '院系',
   MAJOR: '专业',
-  MAJOR_GROUP: '专业群',
-  TEACHING_RESEARCH_OFFICE: '教研室',
-  CAMPUS: '校区',
   CLASS: '班级',
 }
 
-export const PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES: PortfolioOrgTreeNodeType[] = [
-  'MAJOR_GROUP',
-  'TEACHING_RESEARCH_OFFICE',
-  'CAMPUS',
-]
+/** 合并组织树节点类型 = edu-user 主数据 + PortfolioOrgUnitTypeEnum */
+export type PortfolioOrgTreeNodeType = PortfolioEduUserOrgTreeNodeType | PortfolioOrgUnitType
+
+export const PORTFOLIO_ORG_TREE_NODE_TYPE_LABEL: Record<PortfolioOrgTreeNodeType, string> = {
+  ...PORTFOLIO_EDU_USER_ORG_TREE_NODE_TYPE_LABEL,
+  ...PORTFOLIO_ORG_UNIT_TYPE_LABEL,
+}
+
+/** 扩展组织 nodeType 列表，真源与 PortfolioOrgUnitType 一致 */
+export const PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES: PortfolioOrgUnitType[]
+  = Object.keys(PORTFOLIO_ORG_UNIT_TYPE_LABEL) as PortfolioOrgUnitType[]
 
 export interface PortfolioOrgAliasVO {
   id: string
@@ -158,6 +154,15 @@ export interface PortfolioOrgSyncResultVO {
   classCount: number
   invalidPortfolioOrgUnitIds: string[]
   invalidPortfolioOrgUnits: PortfolioOrgSyncInvalidUnitVO[]
+}
+
+export interface PortfolioOrgSyncLogVO {
+  id: string
+  syncedAt: string
+  departmentCount: number
+  majorCount: number
+  classCount: number
+  invalidUnitCount: number
 }
 
 export interface PortfolioTeacherPageRequest extends QueryDto {
