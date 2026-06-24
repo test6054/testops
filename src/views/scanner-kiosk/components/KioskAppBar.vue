@@ -38,11 +38,23 @@ const sseLedTitle = computed(() =>
 
 const refreshButtonDisabled = computed(() => workflow.loading.value)
 
+const examPillBlocked = computed(() => Boolean(workflow.switchExamBlockedReason.value))
+
+const examPillTitle = computed(() => {
+  const blocked = workflow.switchExamBlockedReason.value
+  if (blocked) return blocked
+  return examPillSub.value
+})
+
 function handleExamPillClick() {
-  if (workflow.kioskContext.value?.kioskLockEnabled && workflow.kioskContext.value?.kioskBoundExamId) {
+  if (!workflow.canSwitchExam.value) {
+    workflow.errorMessage.value = workflow.switchExamBlockedReason.value
     return
   }
-  if (stage.currentStage.value !== 'setup') stage.gotoStage('setup')
+  if (stage.currentStage.value !== 'setup') {
+    stage.gotoStage('setup')
+  }
+  workflow.openExamSwitchGate()
 }
 
 function handleRefresh() {
@@ -70,7 +82,13 @@ function handleOpenHints() {
     </div>
 
     <div class="app-bar-exam">
-      <button type="button" class="exam-pill" @click="handleExamPillClick">
+      <button
+        type="button"
+        class="exam-pill"
+        :class="{ 'exam-pill--blocked': examPillBlocked }"
+        :title="examPillTitle"
+        @click="handleExamPillClick"
+      >
         <span class="exam-pill-label">当前考试</span>
         <span class="exam-pill-value" :title="examPillSub">{{ examPillLabel }}</span>
         <span class="exam-pill-caret">▾</span>
@@ -169,6 +187,12 @@ function handleOpenHints() {
 }
 .exam-pill:hover:not(:disabled) {
   border-color: var(--kiosk-primary);
+}
+.exam-pill--blocked {
+  cursor: not-allowed;
+}
+.exam-pill--blocked:hover {
+  border-color: var(--kiosk-divider);
 }
 .exam-pill:disabled {
   cursor: not-allowed;

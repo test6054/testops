@@ -39,7 +39,7 @@ export const useQualityStore = defineStore(
     /** 当前学年（如 2025-2026） */
     const currentSchoolYear = ref<string>('')
 
-    /** 当前学期（FALL / SPRING / SUMMER 等） */
+    /** 当前学期（SemesterEnum 编码 "1"=秋季 / "2"=春季，与 edu-course 一致） */
     const currentSemester = ref<string>('')
 
     /** 当前质量评价课程 ID（供成绩导入 / 达成度触发默认回填） */

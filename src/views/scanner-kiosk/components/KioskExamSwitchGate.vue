@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 全屏考试绑定向导：工位激活后、未绑定考试时独占屏幕，对标讯飞「任务已定再扫描」。
+ * 已绑定考试后切换工位考试；与首次绑定向导分离，由顶部「当前考试」入口打开。
  */
 import type { ExamScannerKioskExamOptionVO } from '@/apis/mark/scanner-kiosk'
 import { ReloadOutlined } from '@ant-design/icons-vue'
@@ -9,15 +9,23 @@ import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow } = useKioskCtx()
 
-const visible = computed(() => workflow.needsExamBindingGate.value)
+const visible = computed(() => workflow.examSwitchGateOpen.value)
 const selectedExamId = ref<string>()
-const binding = ref(false)
+const switching = ref(false)
+
+const currentExamLabel = computed(() => {
+  const exam = workflow.kioskContext.value?.exam
+  if (!exam) return workflow.examId.value || '—'
+  return exam.examName
+})
 
 const examSelectOptions = computed(() =>
-  workflow.examOptions.value.map((opt) => ({
-    value: opt.examId,
-    label: formatExamLabel(opt),
-  })),
+  workflow.examOptions.value
+    .filter((opt) => opt.examId !== workflow.examId.value)
+    .map((opt) => ({
+      value: opt.examId,
+      label: formatExamLabel(opt),
+    })),
 )
 
 function formatExamLabel(opt: ExamScannerKioskExamOptionVO): string {
@@ -30,34 +38,41 @@ function onSearch(keyword: string) {
   workflow.onExamSelectSearch(keyword)
 }
 
-async function confirmBind() {
-  if (!selectedExamId.value || binding.value) return
-  binding.value = true
+function closeGate() {
+  workflow.closeExamSwitchGate()
+}
+
+async function confirmSwitch() {
+  if (!selectedExamId.value || switching.value) return
+  switching.value = true
   try {
     await workflow.bindKioskExam(selectedExamId.value)
+    selectedExamId.value = undefined
   } finally {
-    binding.value = false
+    switching.value = false
   }
 }
 
 watch(visible, (show) => {
-  if (!show) return
-  selectedExamId.value = undefined
+  if (!show) {
+    selectedExamId.value = undefined
+    return
+  }
   workflow.resetExamOptionFilter()
   void workflow.loadExamOptions()
-}, { immediate: true })
+})
 </script>
 
 <template>
-  <div v-if="visible" class="gate" role="dialog" aria-modal="true">
+  <div v-if="visible" class="gate" role="dialog" aria-modal="true" @click.self="closeGate">
     <div class="gate__panel">
-      <h1>绑定扫描考试</h1>
+      <h1>切换扫描考试</h1>
       <p class="gate__lead">
-        请搜索并选择本场要扫描的考试，确认后进入工作台。系统不会自动绑定列表中的第一项。
+        当前工位：<strong>{{ currentExamLabel }}</strong>。选择其他考试后将重新加载工作台上下文。
       </p>
 
       <div class="field">
-        <span class="field__label">考试</span>
+        <span class="field__label">切换到</span>
         <div class="field__row">
           <a-select
             v-model:value="selectedExamId"
@@ -81,14 +96,17 @@ watch(visible, (show) => {
         </div>
       </div>
 
-      <button
-        type="button"
-        class="primary-btn"
-        :disabled="!selectedExamId || binding || workflow.loading.value"
-        @click="confirmBind"
-      >
-        {{ binding ? '绑定中…' : '确认绑定并进入工作台' }}
-      </button>
+      <div class="gate__actions">
+        <button type="button" class="ghost-btn" @click="closeGate">取消</button>
+        <button
+          type="button"
+          class="primary-btn"
+          :disabled="!selectedExamId || switching || workflow.loading.value"
+          @click="confirmSwitch"
+        >
+          {{ switching ? '切换中…' : '确认切换' }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -97,11 +115,11 @@ watch(visible, (show) => {
 .gate {
   position: fixed;
   inset: 0;
-  z-index: calc(var(--kiosk-z-modal, 1200) - 1);
+  z-index: var(--kiosk-z-modal, 1200);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--kiosk-page-bg);
+  background: rgba(15, 23, 42, 0.45);
   padding: var(--kiosk-space-6);
 }
 
@@ -123,6 +141,10 @@ watch(visible, (show) => {
 .gate__lead {
   margin: 0 0 var(--kiosk-space-5);
   color: var(--kiosk-ink-secondary);
+}
+
+.gate__lead strong {
+  color: var(--kiosk-ink-primary);
 }
 
 .field__label {
@@ -151,17 +173,33 @@ watch(visible, (show) => {
   cursor: pointer;
 }
 
+.gate__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--kiosk-space-3);
+}
+
+.ghost-btn,
 .primary-btn {
-  width: 100%;
   height: 48px;
-  background: var(--kiosk-primary);
-  color: #fff;
-  border: none;
+  padding: 0 var(--kiosk-space-5);
   border-radius: var(--kiosk-radius-md);
   font-family: inherit;
   font-size: var(--kiosk-fz-body);
   font-weight: var(--kiosk-fw-semibold);
   cursor: pointer;
+}
+
+.ghost-btn {
+  background: var(--kiosk-surface);
+  border: 1px solid var(--kiosk-divider);
+  color: var(--kiosk-ink-secondary);
+}
+
+.primary-btn {
+  background: var(--kiosk-primary);
+  color: #fff;
+  border: none;
 }
 
 .primary-btn:disabled {

@@ -545,7 +545,7 @@
    * - listScanAttentions(examId, pageNum, pageSize, queryGroup?, attentionType?, scanBatchId?, paperInstanceId?)
  * - bindPaper(...)、batchBindPapers(...)、listExamCandidates(examId)
  *
- * attentionType 枚举：QUALITY_BLOCK / PROCESSING_BLOCK / DUPLICATE_PENDING / RECOGNITION_REVIEW / BINDING_CONFLICT
+ * attentionType 枚举：QUALITY_BLOCK / PROCESSING_BLOCK / DUPLICATE_PENDING / RECOGNITION_REVIEW / BINDING_CONFLICT / MISSING_CANDIDATE_ROSTER
  */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
@@ -1122,6 +1122,7 @@ const attentionTypeOptions: { label: string, value: ScanAttentionTypeCode }[] = 
   { label: '重复影像', value: 'DUPLICATE_PENDING' },
   { label: '识别复核', value: 'RECOGNITION_REVIEW' },
   { label: '身份绑定冲突', value: 'BINDING_CONFLICT' },
+  { label: '缺少考生名单', value: 'MISSING_CANDIDATE_ROSTER' },
 ]
 
 function scanBatchStatusLabel(batch: ExamScannerBatchVO): string {
@@ -1351,6 +1352,7 @@ const ATTENTION_TYPE_TONE: Record<ScanAttentionTypeCode, 'red' | 'orange' | 'pur
   DUPLICATE_PENDING: 'purple',
   RECOGNITION_REVIEW: 'blue',
   BINDING_CONFLICT: 'gray',
+  MISSING_CANDIDATE_ROSTER: 'orange',
 }
 
 const ATTENTION_TYPE_LABEL: Record<ScanAttentionTypeCode, string> = {
@@ -1359,6 +1361,7 @@ const ATTENTION_TYPE_LABEL: Record<ScanAttentionTypeCode, string> = {
   DUPLICATE_PENDING: '重复影像',
   RECOGNITION_REVIEW: '识别复核',
   BINDING_CONFLICT: '身份绑定冲突',
+  MISSING_CANDIDATE_ROSTER: '缺少考生名单',
 }
 
 function attentionTypeTone(type: ScanAttentionTypeCode): 'red' | 'orange' | 'purple' | 'blue' | 'gray' {
@@ -1375,6 +1378,7 @@ const SCAN_ATTENTION_SOURCE_TYPE_LABEL: Record<ScanAttentionSourceTypeCode, stri
   DUPLICATE_RESOLUTION: '重复扫描处置',
   GRADE_RESULT: '阅卷结果',
   PAPER_INSTANCE: '试卷实例',
+  IMAGE_LEDGER: '影像账本',
 }
 
 function sourceTypeLabel(type: ScanAttentionSourceTypeCode): string {
@@ -1449,6 +1453,8 @@ function scanAttentionStatusLabel(record: ScanAttentionItemVO): string {
       return strictEnumLabel(GRADE_STATUS_LABEL, record.gradeStatus, '题目阅卷状态')
     case 'BINDING_CONFLICT':
       return '待人工绑定'
+    case 'MISSING_CANDIDATE_ROSTER':
+      return '待补录名单'
     default:
       return assertNeverScanAttentionType(record.attentionType)
   }
@@ -1469,6 +1475,8 @@ function scanAttentionStatusTone(record: ScanAttentionItemVO): BadgeTone {
     case 'RECOGNITION_REVIEW':
       return strictEnumTone(GRADE_STATUS_TONE, record.gradeStatus, '题目阅卷状态')
     case 'BINDING_CONFLICT':
+      return 'orange'
+    case 'MISSING_CANDIDATE_ROSTER':
       return 'orange'
     default:
       return assertNeverScanAttentionType(record.attentionType)

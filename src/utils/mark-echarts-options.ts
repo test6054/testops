@@ -285,6 +285,119 @@ export function buildCategoryBarChartOption(
   return option
 }
 
+export interface DashboardPublishedInsightExam {
+  examId: string
+  examName: string
+  averageScore: number | null
+  passRatePercent: number | null
+}
+
+function truncateExamName(name: string, maxLength = 8): string {
+  return name.length > maxLength ? `${name.slice(0, maxLength)}…` : name
+}
+
+/** 已发布学情：均分与及格率分组柱图 */
+export function buildDashboardPublishedInsightChartOption(
+  exams: DashboardPublishedInsightExam[],
+  config: { emptyText?: string } = {},
+): EChartsCoreOption {
+  if (exams.length === 0) {
+    return emptyChartOption(config.emptyText || '暂无已发布学情')
+  }
+  const categories = exams.map(exam => truncateExamName(exam.examName))
+  const averageScores = exams.map(exam => exam.averageScore ?? '-')
+  const passRates = exams.map(exam => (exam.passRatePercent != null ? Number(exam.passRatePercent.toFixed(1)) : '-'))
+  const maxScore = Math.max(
+    ...exams.map(exam => exam.averageScore ?? 0),
+    100,
+  )
+  return {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: CallbackDataParams | CallbackDataParams[]) => {
+        const list = Array.isArray(params) ? params : [params]
+        const index = list[0]?.dataIndex ?? 0
+        const exam = exams[index]
+        if (!exam) {
+          return ''
+        }
+        const avg = exam.averageScore != null ? `${exam.averageScore}` : '—'
+        const pass = exam.passRatePercent != null ? `${exam.passRatePercent.toFixed(1)}%` : '—'
+        return `${exam.examName}<br/>平均分：${avg}<br/>及格率：${pass}`
+      },
+    },
+    legend: {
+      data: ['平均分', '及格率'],
+      bottom: 0,
+      left: 'center',
+      itemWidth: 10,
+      itemHeight: 10,
+      itemGap: 20,
+      textStyle: {
+        color: MARK_ECHARTS_PALETTE.axisLabel,
+        fontSize: 12,
+        fontFamily: DP_FONT_FAMILY_SANS,
+      },
+    },
+    grid: baseGrid({ left: 40, right: 40, top: 8, bottom: 52 }),
+    xAxis: {
+      type: 'category',
+      data: categories,
+      axisTick: { alignWithLabel: true },
+      axisLabel: {
+        ...MARK_CHART_AXIS_LABEL_STYLE,
+        fontSize: 11,
+        interval: 0,
+        rotate: categories.length > 4 ? 25 : 0,
+      },
+      axisLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.axisLine } },
+    },
+    yAxis: [
+      {
+        type: 'value',
+        name: '分',
+        min: 0,
+        max: Math.ceil(maxScore * 1.1),
+        axisLabel: MARK_CHART_AXIS_LABEL_STYLE,
+        splitLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.splitLine, type: 'dashed' } },
+      },
+      {
+        type: 'value',
+        name: '%',
+        min: 0,
+        max: 100,
+        axisLabel: MARK_CHART_AXIS_LABEL_STYLE,
+        splitLine: { show: false },
+      },
+    ],
+    series: [
+      {
+        name: '平均分',
+        type: 'bar',
+        data: averageScores,
+        barMaxWidth: 16,
+        itemStyle: {
+          color: MARK_ECHARTS_PALETTE.primary,
+          borderRadius: [3, 3, 0, 0],
+        },
+      },
+      {
+        name: '及格率',
+        type: 'bar',
+        yAxisIndex: 1,
+        data: passRates,
+        barMaxWidth: 16,
+        itemStyle: {
+          color: MARK_ECHARTS_PALETTE.success,
+          borderRadius: [3, 3, 0, 0],
+        },
+      },
+    ],
+    animation: prefersReducedMotion() ? false : undefined,
+  }
+}
+
 export interface MarkScatterChartConfig {
   xLabel?: string
   yLabel?: string

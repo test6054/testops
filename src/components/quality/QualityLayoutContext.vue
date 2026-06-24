@@ -2,6 +2,7 @@
 import type { AccreditationCockpitVO } from '@/apis/quality/accreditation'
 /**
  * 质量评价域 Layout 级上下文：培养方案范围 + 认证阶段提示。
+ * 仅在 /quality 路由下加载认证驾驶舱，避免在阅卷页误触发质量域错误提示。
  */
 import { computed, onMounted, provide, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -29,6 +30,9 @@ const cockpit = ref<AccreditationCockpitVO>()
 const cockpitLoading = ref(false)
 
 async function reloadCockpit() {
+  if (!visible.value) {
+    return
+  }
   const planId = qualityStore.currentTrainingPlanId
   if (!planId) {
     cockpit.value = undefined
@@ -55,15 +59,29 @@ function handleScopeChange() {
   void reloadCockpit()
 }
 
+watch(visible, (isVisible) => {
+  if (!isVisible) {
+    cockpit.value = undefined
+    cockpitLoading.value = false
+    return
+  }
+  void reloadCockpit()
+})
+
 watch(
   () => qualityStore.currentTrainingPlanId,
   () => {
+    if (!visible.value) {
+      return
+    }
     void reloadCockpit()
   },
 )
 
 onMounted(() => {
-  void reloadCockpit()
+  if (visible.value) {
+    void reloadCockpit()
+  }
 })
 </script>
 

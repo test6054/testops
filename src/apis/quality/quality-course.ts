@@ -52,8 +52,8 @@ export interface QualityCourseSaveRequest {
   courseName: string
   courseCategory?: string
   courseNature?: string
-  schoolYear?: string
-  semester?: string
+  schoolYear: string
+  semester: string
   teacherUserId?: string
   classId?: string
   creditHours?: number

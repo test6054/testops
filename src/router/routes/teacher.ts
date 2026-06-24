@@ -2,8 +2,8 @@
  * 考试阅卷路由（/teacher）
  *
  * L0 全局左栏：
- *   - 教师业务：考试列表、历史纸质档案；阅卷组织在考试工作台内按 examId 配置（非 L0 菜单）
- *   - SUPER_ADMIN SaaS 治理：阅卷概览 / 监管 / AI 分析 / 考试收口 / 平台配置
+ *   - 教师业务：阅卷概览（租户内统计，默认首页）、考试列表、历史纸质档案；阅卷组织在考试工作台内按 examId 配置（非 L0 菜单）
+ *   - SUPER_ADMIN SaaS 治理：监管 / AI 分析 / 考试收口 / 平台配置
  * L1：/teacher/exam-workspace/:examId/* 考试详情工作台
  */
 import type { RouteRecordRaw } from 'vue-router'
@@ -18,7 +18,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
     path: '/teacher',
     name: 'TeacherLayout',
     component: () => import('@/layout/index.vue'),
-    redirect: '/teacher/exam-list',
+    redirect: '/teacher/dashboard',
     meta: {
       title: '考试阅卷',
       roles: ALL_TEACHER_ROLES,
@@ -27,6 +27,18 @@ export const teacherRoutes: RouteRecordRaw[] = [
       hideInBreadcrumb: true,
     },
     children: [
+      {
+        path: 'dashboard',
+        name: 'TeacherMarkingOverview',
+        component: () => import('@/views/teacher/marking-overview.vue'),
+        meta: {
+          title: '阅卷概览',
+          roles: ALL_TEACHER_ROLES,
+          icon: 'dashboard',
+          hideInMenu: false,
+          keepAlive: true,
+        },
+      },
       {
         path: 'exam-list',
         name: 'TeacherExamList',
@@ -49,17 +61,6 @@ export const teacherRoutes: RouteRecordRaw[] = [
           icon: 'folder-open',
           hideInMenu: false,
           keepAlive: true,
-        },
-      },
-      {
-        path: 'dashboard',
-        name: 'AdminDashboard',
-        component: () => import('@/views/admin/dashboard.vue'),
-        meta: {
-          title: '阅卷概览',
-          roles: SUPER_ADMIN_ROLES,
-          icon: 'dashboard',
-          hideInMenu: false,
         },
       },
       {

@@ -24,6 +24,7 @@ import type { LocalScanPageStatus } from '@/apis/mark/scanner-agent-local'
  * 操作类按钮（暂停/继续/结束/重试）由 KioskLayout 的 BottomBar 处理。
  */
 import {
+  ArrowLeftOutlined,
   CaretLeftOutlined,
   CaretRightOutlined,
   ExpandOutlined,
@@ -31,7 +32,9 @@ import {
   FilterOutlined,
   MinusOutlined,
   PauseCircleOutlined,
+  PlayCircleOutlined,
   PlusOutlined,
+  ReloadOutlined,
   RedoOutlined,
   ScanOutlined,
   StepBackwardOutlined,
@@ -52,22 +55,37 @@ const hasJob = computed(() => Boolean(workflow.currentJob.value))
 const job = computed(() => workflow.currentJob.value)
 const pages = computed(() => workflow.displayPages.value)
 const canvasEmptyTitle = computed(() => {
+  if (workflow.isWaitingForPaperFeed.value) {
+    return '等待扫描仪放纸…'
+  }
   if (job.value?.status === 'SCANNING') {
     return job.value.scannedPages > 0
       ? `正在扫描（${job.value.scannedPages} 页）…`
-      : '正在扫描，请稍候…'
+      : '正在连接扫描仪…'
   }
   if (job.value?.status === 'UPLOADING' || job.value?.status === 'RETRYING') {
     return '扫描页上传中…'
   }
+  if (job.value?.status === 'FAILED') {
+    return '扫描失败'
+  }
   return '等待扫描仪送纸…'
 })
 const canvasEmptyHint = computed(() => {
+  if (workflow.isWaitingForPaperFeed.value) {
+    return '请将试卷放入进纸器（ADF），放纸后系统会自动开始扫描，无需再次点击开始。'
+  }
   if (job.value?.status === 'SCANNING') {
     return '扫描仪正在采集影像，首张完成后将自动显示预览。'
   }
   if (job.value?.status === 'UPLOADING' || job.value?.status === 'RETRYING') {
     return job.value.message || '上传完成后可在右侧缩略图查看各页。'
+  }
+  if (job.value?.status === 'FAILED') {
+    if (workflow.isPreUploadScanFailure.value) {
+      return '扫描未采集到页面，请点击底部「取消并清理」后重新开始'
+    }
+    return job.value.message || '请检查扫描仪连接与进纸器状态后重试。'
   }
   return '送纸后将自动显示首张影像，请勿关闭工作台。'
 })
@@ -75,7 +93,7 @@ const emptyScanTitle = computed(() => (workflow.activeBackendScanSession.value ?
 const emptyScanHint = computed(() =>
   workflow.activeBackendScanSession.value
     ? workflow.activeBackendScanSessionReason.value
-    : '请返回「准备扫描」开始一次扫描，或等待扫描仪送纸。',
+    : '请返回“准备扫描”点击“开始扫描”，单纯放纸不会自动创建扫描任务。',
 )
 const previewPageNo = computed({
   get: () => workflow.previewPageNo.value,
@@ -83,6 +101,12 @@ const previewPageNo = computed({
     workflow.previewPageNo.value = v
   },
 })
+const effectiveEmptyScanHint = computed(() =>
+  workflow.activeBackendScanSession.value
+    ? workflow.activeBackendScanSessionReason.value || '扫描进程仍在恢复中，请先刷新当前扫描状态。'
+    : '当前本机还没有创建扫描任务，单纯放纸不会自动生成扫描批次，请先返回“准备扫描”点击“开始扫描”。',
+)
+const hasRecoverableBackendSession = computed(() => workflow.activeBackendScanSession.value)
 
 // 视图状态：缩放 / 旋转 / 灰度（不进 workflow，仅 stage 内部）
 const ZOOM_MIN = 0.25
@@ -106,6 +130,12 @@ const currentIndex = computed(() => {
   if (!previewPageNo.value) return -1
   return pages.value.findIndex((p) => p.pageNo === previewPageNo.value)
 })
+const currentPreviewPage = computed(() =>
+  pages.value.find((p) => p.pageNo === previewPageNo.value),
+)
+const currentPreviewTitle = computed(() =>
+  currentPreviewPage.value ? workflow.scanPageDisplayTitle(currentPreviewPage.value) : '',
+)
 
 const canPrev = computed(() => currentIndex.value > 0)
 const canNext = computed(
@@ -141,6 +171,19 @@ function gotoLast() {
 function openFirstException() {
   const first = workflow.exceptionPages.value[0]
   if (first) gotoPage(first.pageNo)
+}
+
+function goBackToSetup() {
+  stage.gotoStage('setup')
+}
+
+async function refreshScanningState() {
+  await workflow.refreshAll()
+}
+
+async function restartScanFromEmptyState() {
+  if (!workflow.canStartScan.value || workflow.loading.value) return
+  await workflow.submitScanJob()
 }
 
 function clampZoom(v: number) {
@@ -325,7 +368,39 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
             <div v-if="!hasJob" class="canvas-empty">
               <ScanOutlined class="canvas-empty-icon" />
               <p>{{ emptyScanTitle }}</p>
-              <small>{{ emptyScanHint }}</small>
+              <small>{{ effectiveEmptyScanHint }}</small>
+              <div class="canvas-empty-actions">
+                <button
+                  v-if="hasRecoverableBackendSession"
+                  type="button"
+                  class="canvas-empty-btn canvas-empty-btn--primary"
+                  :disabled="workflow.loading.value"
+                  @click="refreshScanningState"
+                >
+                  <ReloadOutlined />
+                  <span>刷新扫描状态</span>
+                </button>
+                <template v-else>
+                  <button
+                    type="button"
+                    class="canvas-empty-btn"
+                    :disabled="workflow.loading.value"
+                    @click="goBackToSetup"
+                  >
+                    <ArrowLeftOutlined />
+                    <span>返回准备扫描</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="canvas-empty-btn canvas-empty-btn--primary"
+                    :disabled="!workflow.canStartScan.value || workflow.loading.value"
+                    @click="restartScanFromEmptyState"
+                  >
+                    <PlayCircleOutlined />
+                    <span>重新开始扫描</span>
+                  </button>
+                </template>
+              </div>
             </div>
             <div v-else-if="pages.length === 0" class="canvas-empty">
               <ScanOutlined class="canvas-empty-icon canvas-empty-icon--pulse" />
@@ -340,7 +415,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
               v-else
               class="canvas-image"
               :src="workflow.previewImageUrl.value"
-              :alt="`第 ${previewPageNo} 页`"
+              :alt="currentPreviewTitle"
               :style="{ transform: imageTransform, filter: imageFilter }"
               draggable="false"
               @error="workflow.onPreviewImageLoadError"
@@ -369,7 +444,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
                   <CaretLeftOutlined />
                 </button>
                 <span class="tool-info">
-                  <strong>{{ previewPageNo }}</strong>
+                  <strong>{{ currentPreviewTitle || previewPageNo }}</strong>
                   <small>/ {{ pages.length }}</small>
                 </span>
                 <button
@@ -476,7 +551,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
               }"
             >
               <button type="button" @click="gotoPage(page.pageNo)">
-                <div class="thumb-no">第 {{ page.pageNo }} 页</div>
+                <div class="thumb-no">{{ workflow.scanPageDisplayTitle(page) }}</div>
                 <div class="thumb-status">
                   <WarningFilled v-if="isPageException(page)" class="thumb-warn-icon" />
                   <span>{{ pageStatusLabel(page.status) }}</span>
@@ -751,6 +826,58 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
 .canvas-empty small {
   font-size: var(--kiosk-fz-body);
   color: var(--kiosk-ink-on-canvas-secondary);
+  max-width: 520px;
+  text-align: center;
+  line-height: var(--kiosk-lh-base);
+}
+
+.canvas-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--kiosk-space-2);
+  margin-top: var(--kiosk-space-2);
+}
+
+.canvas-empty-btn {
+  height: 36px;
+  min-width: 148px;
+  padding: 0 var(--kiosk-space-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--kiosk-space-2);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--kiosk-radius-md);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--kiosk-ink-on-canvas);
+  font-size: var(--kiosk-fz-body);
+  font-weight: var(--kiosk-fw-medium);
+  cursor: pointer;
+  transition:
+    background var(--kiosk-dur-fast) var(--kiosk-easing),
+    border-color var(--kiosk-dur-fast) var(--kiosk-easing),
+    color var(--kiosk-dur-fast) var(--kiosk-easing);
+}
+
+.canvas-empty-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.canvas-empty-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.canvas-empty-btn--primary {
+  border-color: transparent;
+  background: var(--kiosk-primary);
+  color: var(--kiosk-primary-on);
+}
+
+.canvas-empty-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--kiosk-primary) 82%, #fff 18%);
 }
 
 /* ----------- Floating tools ----------- */

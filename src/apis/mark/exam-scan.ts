@@ -63,6 +63,7 @@ export type ScanAttentionTypeCode
     | 'DUPLICATE_PENDING'
     | 'RECOGNITION_REVIEW'
     | 'BINDING_CONFLICT'
+    | 'MISSING_CANDIDATE_ROSTER'
 
 /** 扫描异常查询分组 - 对应 ScanAttentionQueryGroup */
 export type ScanAttentionQueryGroupCode = 'ABNORMAL' | 'DUPLICATE'
@@ -74,6 +75,7 @@ export type ScanAttentionSourceTypeCode
     | 'DUPLICATE_RESOLUTION'
     | 'GRADE_RESULT'
     | 'PAPER_INSTANCE'
+    | 'IMAGE_LEDGER'
 
 /** 扫描异常待办查询请求 - 对应 ScanAttentionQueryRequest */
 export interface ScanAttentionQueryRequest extends QueryDto {

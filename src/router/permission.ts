@@ -184,7 +184,7 @@ export function getDefaultRoute(userRole: string): string {
         case RoleEnum.SCH_TECH:
         case RoleEnum.CROP_ADMIN:
         case RoleEnum.CROP_USER:
-            return '/teacher/exam-list'
+            return '/teacher/dashboard'
         case RoleEnum.SCH_STU:
             return '/student/score'
         default:

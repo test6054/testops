@@ -55,7 +55,7 @@ export function useKioskMutex(workflow: KioskWorkflow) {
     const status = job?.status
 
     return {
-      switchExam: jobInflightBlocked.value,
+      switchExam: workflow.switchExamBlockedReason.value,
       switchScanner: jobInflightBlocked.value,
       switchScanMode: jobInflightBlocked.value,
       editScanSetup: jobInflightBlocked.value,
@@ -70,7 +70,9 @@ export function useKioskMutex(workflow: KioskWorkflow) {
           ? ''
           : !job
               ? '当前没有可暂停的任务'
-              : '当前任务不在采集阶段',
+              : ['READYTOUPLOAD', 'UPLOADING', 'RETRYING', 'FAILED'].includes(status || '')
+                ? '本批次已进入上传/提交阶段，不能暂停'
+                : '当前任务不在采集阶段',
       resumeJob:
         status === 'PAUSED'
           ? ''
@@ -81,13 +83,21 @@ export function useKioskMutex(workflow: KioskWorkflow) {
         ? ''
         : !job
             ? '当前没有进行中的批次'
-            : '当前任务不在采集阶段，不能结束批次',
+            : ['READYTOUPLOAD', 'UPLOADING', 'RETRYING', 'FAILED'].includes(status || '')
+              ? '本批次已进入上传/提交阶段，请使用重试上传或重试提交'
+              : '当前任务不在采集阶段，不能结束批次',
       cancelJob: workflow.canCancelJob.value
         ? ''
         : !job
             ? '当前没有可取消的任务'
-            : '当前任务已进入上传链路，不能取消',
-      retryUpload: workflow.canRetryUpload.value ? '' : '当前任务不允许重试上传',
+            : job.status === 'FAILED'
+              ? '扫描已产生页面，请使用重试上传或删除任务'
+              : '当前任务已进入上传链路，不能取消',
+      retryUpload: workflow.canRetryUpload.value
+        ? ''
+        : workflow.isPreUploadScanFailure.value
+          ? '扫描未产生页面，请取消任务后重新开始'
+          : '当前任务不允许重试上传',
       retryCommit: workflow.canRetryCommit.value ? '' : '当前任务不允许重试提交',
       removeJob: workflow.canRemoveCurrentJob.value
         ? ''

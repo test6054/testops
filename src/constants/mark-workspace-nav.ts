@@ -3,6 +3,19 @@ import type {MarkStageKey} from '@/stores/modules/markStage';
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 import { MARK_STAGE_ORDER } from '@/stores/modules/markStage'
 
+/** 九段主链标题，与后端 ExamWorkbenchStageKey 一致 */
+export const MARK_STAGE_TITLE: Record<MarkStageKey, string> = {
+  EXAM_PREP: '考试准备',
+  PAPER_TEMPLATE: '模板制卷',
+  CANDIDATE_ROSTER: '考生名册',
+  SCAN: '扫描识别',
+  MARKING_ORG: '阅卷组织',
+  TRIAL_MARKING: '试评',
+  FORMAL_MARKING: '正评',
+  SCORE_PUBLISH: '成绩发布',
+  ARCHIVE: '归档复盘',
+}
+
 /** 阶段默认子路由：StageRail / 智能入口跳转目标（SCAN 阶段请用 resolveScanStageEntryRoute 动态分流） */
 export const MARK_STAGE_DEFAULT_ROUTE: Record<MarkStageKey, string> = {
   EXAM_PREP: 'TeacherExamWorkspacePrep',

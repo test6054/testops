@@ -55,7 +55,7 @@ function resolveHomePath(): string {
     || role === RoleEnum.CROP_ADMIN
     || role === RoleEnum.CROP_USER
   ) {
-    return '/teacher/exam-list'
+    return '/teacher/dashboard'
   }
   return '/login'
 }
@@ -73,7 +73,7 @@ const backLabel = computed(() => {
     || role === RoleEnum.CROP_ADMIN
     || role === RoleEnum.CROP_USER
   ) {
-    return '返回考试工作台'
+    return '返回教学质量中心'
   }
   return '返回登录'
 })

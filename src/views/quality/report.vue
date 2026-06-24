@@ -65,6 +65,7 @@ import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -959,7 +960,12 @@ onBeforeUnmount(() => {
             </a-col>
             <a-col :span="6">
               <a-form-item label="学期" required>
-                <a-input v-model:value="editor.semester" :disabled="editorMode === 'edit'" />
+                <a-select
+                  v-model:value="editor.semester"
+                  :options="SemesterOptions"
+                  :disabled="editorMode === 'edit'"
+                  placeholder="选择学期"
+                />
               </a-form-item>
             </a-col>
           </a-row>

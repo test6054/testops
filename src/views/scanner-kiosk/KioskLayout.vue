@@ -17,6 +17,7 @@ import KioskActivationGate from './components/KioskActivationGate.vue'
 import KioskAppBar from './components/KioskAppBar.vue'
 import KioskBottomBar from './components/KioskBottomBar.vue'
 import KioskExamBindingGate from './components/KioskExamBindingGate.vue'
+import KioskExamSwitchGate from './components/KioskExamSwitchGate.vue'
 import KioskHistoryLedgerDrawer from './components/KioskHistoryLedgerDrawer.vue'
 import KioskNoticeBand from './components/KioskNoticeBand.vue'
 import KioskScanParamsDrawer from './components/KioskScanParamsDrawer.vue'
@@ -132,6 +133,7 @@ onActivated(() => {
 
     <KioskActivationGate />
     <KioskExamBindingGate />
+    <KioskExamSwitchGate />
 
     <KioskSettingsDrawer />
     <KioskScanParamsDrawer />

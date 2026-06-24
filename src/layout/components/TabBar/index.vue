@@ -63,18 +63,12 @@ const allTabBarItems: TabBarItem[] = [
     roles: [RoleEnum.SCH_STU],
   },
 
-  // 教师端菜单（移动端 TabBar：考试列表为入口，工作台内由 layout 侧栏导航）
-  {
-    path: '/teacher/exam-list',
-    label: '考试阅卷',
-    icon: DashboardOutlined,
-    roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER],
-  },
+  // 教师端菜单（移动端 TabBar：阅卷概览为入口，子页与工作台仍归属同一域）
   {
     path: '/teacher/dashboard',
     label: '考试阅卷',
     icon: DashboardOutlined,
-    roles: [RoleEnum.SUPER_ADMIN],
+    roles: [RoleEnum.SUPER_ADMIN, RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER],
   },
   {
     path: '/quality/dashboard',
@@ -101,9 +95,10 @@ const tabBarItems = computed(() => {
  * 判断当前路由是否激活
  */
 function isActive(path: string): boolean {
-  if (path === '/teacher/exam-list') {
+  if (path === '/teacher/dashboard') {
     return (
-      route.path.startsWith('/teacher/exam-list')
+      route.path.startsWith('/teacher/dashboard')
+      || route.path.startsWith('/teacher/exam-list')
       || route.path.startsWith('/teacher/exam-workspace/')
       || route.path.startsWith('/teacher/paper-archive')
     )

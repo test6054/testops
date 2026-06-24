@@ -70,17 +70,21 @@ export function useStageMachine(workflow: KioskWorkflow) {
 
   /** 系统按业务状态推导出的主链阶段（不含 history）。 */
   const autoStage = computed<KioskStageId>(() => {
-    const job = workflow.currentJob.value
+    const job = workflow.currentJob.value ?? workflow.previewScanJob.value
     const ctx = workflow.kioskContext.value
 
     if (!workflow.examId.value || !ctx) return 'setup'
-    if (ctx.mustResumeScanning || ctx.hasActiveScanSession || ctx.activeBatch) return 'scanning'
-    if (!job) return 'setup'
+    if (workflow.activeBackendScanSession.value) return 'scanning'
+    if (!job) {
+      const ledgerAttention = workflow.pageLedger.value?.attentionCount ?? 0
+      if (ledgerAttention > 0) return 'review'
+      return 'setup'
+    }
 
     if (SCANNING_JOB_STATUS.has(job.status)) return 'scanning'
 
     if (job.status === 'FAILED') return 'review'
-    if (job.status === 'CANCELLED') return 'setup'
+    if (job.status === 'CANCELLED') return 'scanning'
 
     if (job.status === 'REPORTED') {
       const batch = ctx.latestBatch
@@ -104,9 +108,7 @@ export function useStageMachine(workflow: KioskWorkflow) {
     const ctx = workflow.kioskContext.value
     const job = workflow.currentJob.value
     const activeSession = Boolean(
-      ctx?.mustResumeScanning
-      || ctx?.hasActiveScanSession
-      || ctx?.activeBatch
+      workflow.activeBackendScanSession.value
       || (job && SCANNING_JOB_STATUS.has(job.status)),
     )
     if (activeSession && stageId !== 'scanning') {

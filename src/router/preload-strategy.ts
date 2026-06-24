@@ -98,7 +98,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherPaperArchiveDetail: () => import('@/views/teacher/paper-archive/paper-archive-detail.vue'),
 
   // ── 管理员 ───────────────────────────────────────
-  AdminDashboard: () => import('@/views/admin/dashboard.vue'),
+  TeacherMarkingOverview: () => import('@/views/teacher/marking-overview.vue'),
   AdminAuditTrail: () => import('@/views/admin/audit-trail.vue'),
   AdminMarkingQuality: () => import('@/views/admin/marking-quality-dashboard.vue'),
   AdminCrossExamDashboard: () => import('@/views/admin/cross-exam-dashboard.vue'),
@@ -142,6 +142,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
 const ROLE_INITIAL_PRELOAD: Record<string, string[]> = {
   [RoleEnum.SCH_STU]: ['StudentScore', 'StudentExamHistory', 'UserMessage', 'UserProfile'],
   [RoleEnum.SCH_TECH]: [
+    'TeacherMarkingOverview',
     'TeacherExamList',
     'TeacherExamWorkspaceScanMonitor',
     'TeacherExamWorkspaceMarkingProgress',
@@ -149,6 +150,7 @@ const ROLE_INITIAL_PRELOAD: Record<string, string[]> = {
     'UserProfile',
   ],
   [RoleEnum.CROP_ADMIN]: [
+    'TeacherMarkingOverview',
     'TeacherExamList',
     'TeacherExamWorkspaceScanMonitor',
     'TeacherExamWorkspaceMarkingProgress',
@@ -156,6 +158,7 @@ const ROLE_INITIAL_PRELOAD: Record<string, string[]> = {
     'UserProfile',
   ],
   [RoleEnum.CROP_USER]: [
+    'TeacherMarkingOverview',
     'TeacherExamList',
     'TeacherExamWorkspaceScanMonitor',
     'TeacherExamWorkspaceMarkingProgress',
@@ -163,7 +166,7 @@ const ROLE_INITIAL_PRELOAD: Record<string, string[]> = {
     'UserProfile',
   ],
   [RoleEnum.SUPER_ADMIN]: [
-    'AdminDashboard',
+    'TeacherMarkingOverview',
     'AdminAuditTrail',
     'AdminMarkingQuality',
     'UserMessage',
@@ -250,16 +253,16 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
   TeacherPaperArchiveDetail: ['TeacherPaperArchiveList', 'TeacherExamWorkspaceArchivePackage'],
 
   // ── 管理员 ───────────────────────────────────────
-  AdminDashboard: ['AdminAuditTrail', 'AdminMarkingQuality', 'AdminCrossExamDashboard', 'TeacherExamList'],
-  AdminAuditTrail: ['AdminDashboard', 'AdminMarkingQuality'],
-  AdminMarkingQuality: ['AdminAuditTrail', 'AdminCrossExamDashboard', 'AdminDashboard'],
-  AdminCrossExamDashboard: ['AdminSchoolQualityDashboard', 'AdminMarkingQuality', 'AdminDashboard'],
+  TeacherMarkingOverview: ['AdminAuditTrail', 'AdminMarkingQuality', 'AdminCrossExamDashboard', 'TeacherExamList'],
+  AdminAuditTrail: ['TeacherMarkingOverview', 'AdminMarkingQuality'],
+  AdminMarkingQuality: ['AdminAuditTrail', 'AdminCrossExamDashboard', 'TeacherMarkingOverview'],
+  AdminCrossExamDashboard: ['AdminSchoolQualityDashboard', 'AdminMarkingQuality', 'TeacherMarkingOverview'],
   AdminSchoolQualityDashboard: ['AdminCrossExamDashboard', 'AdminMarkingQuality'],
   TeacherMarkingOrganizationIndex: ['TeacherMarkingOrganizationDetail', 'TeacherMarkingOrganizationSessions'],
   TeacherMarkingOrganizationDetail: ['TeacherMarkingOrganizationSessions', 'TeacherMarkingOrganizationIndex'],
   TeacherMarkingOrganizationSessions: ['TeacherMarkingOrganizationDetail', 'TeacherMarkingOrganizationIndex'],
-  AdminExamExports: ['AdminTeachingAffairsSync', 'AdminDashboard'],
-  AdminTeachingAffairsSync: ['AdminExamExports', 'AdminDashboard'],
+  AdminExamExports: ['AdminTeachingAffairsSync', 'TeacherMarkingOverview'],
+  AdminTeachingAffairsSync: ['AdminExamExports', 'TeacherMarkingOverview'],
 
   // ── 教学质量评价（quality） ───────────────────────
   QualityDashboard: ['QualityAchievement', 'QualityImprovementWorkbench', 'QualityReport', 'QualityScoreBatch'],

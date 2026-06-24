@@ -39,9 +39,16 @@ const setupEmptyHint = computed(() => {
   return '可多次送纸或一次送完；送纸后将在此列出本机批次。'
 })
 
+const scanningEmptyHint = computed(() => {
+  if (workflow.activeBackendScanSession.value) {
+    return workflow.activeBackendScanSessionReason.value || '扫描进程仍在恢复中，请先刷新当前扫描状态。'
+  }
+  return '请先回到“准备扫描”点击“开始扫描”，单纯放纸不会自动创建本机批次。'
+})
+
 const highlightBatchId = computed(() => {
   const fromJob = workflow.currentJob.value?.scanBatchId
-  const fromCtx = workflow.kioskContext.value?.activeBatch?.scanBatchId
+  const fromCtx = workflow.activeBackendBatch.value?.scanBatchId
   return fromJob || fromCtx || ''
 })
 
@@ -56,7 +63,7 @@ function openBatch(row: ExamScannerKioskSessionBatchVO) {
     return
   }
   const activeBatchId
-    = workflow.kioskContext.value?.activeBatch?.scanBatchId
+    = workflow.activeBackendBatch.value?.scanBatchId
       || workflow.currentJob.value?.scanBatchId
   if (row.status === 'IN_PROGRESS' || activeBatchId === row.scanBatchId) {
     stage.gotoStage('scanning')
@@ -116,6 +123,9 @@ function onDiscardClick(row: ExamScannerKioskSessionBatchVO, event: MouseEvent) 
 <template>
   <section class="batch-panel" :class="`batch-panel--${variant}`">
     <h3 class="batch-panel__head">本机批次</h3>
+    <p v-if="variant === 'scanning'" class="batch-panel__note">
+      以下为历史批次；本次扫描页数见顶部「已扫描」计数。
+    </p>
     <ul v-if="batches.length" class="batch-list">
       <li
         v-for="row in batches"
@@ -158,7 +168,7 @@ function onDiscardClick(row: ExamScannerKioskSessionBatchVO, event: MouseEvent) 
     <div v-else class="batch-panel__empty">
       <p>尚未创建本机批次</p>
       <small v-if="variant === 'setup'">{{ setupEmptyHint }}</small>
-      <small v-else>送纸后将自动创建本机批次</small>
+      <small v-else>{{ scanningEmptyHint }}</small>
     </div>
   </section>
 </template>
@@ -175,6 +185,13 @@ function onDiscardClick(row: ExamScannerKioskSessionBatchVO, event: MouseEvent) 
   font-size: var(--kiosk-fz-label);
   font-weight: var(--kiosk-fw-semibold);
   color: var(--kiosk-ink-secondary);
+}
+
+.batch-panel__note {
+  margin: 0 0 var(--kiosk-space-2);
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-tertiary);
+  line-height: var(--kiosk-lh-base);
 }
 
 .batch-list {

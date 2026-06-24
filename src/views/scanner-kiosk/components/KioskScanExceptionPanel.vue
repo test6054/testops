@@ -38,6 +38,8 @@ const ledgerItem = computed(() =>
   workflow.pageLedger.value?.items.find((item) => item.pageNo === props.pageNo) ?? null,
 )
 
+const pageTitle = computed(() => workflow.scanPageDisplayTitleByNo(props.pageNo))
+
 const scanBatchId = computed(
   () =>
     workflow.currentJob.value?.scanBatchId
@@ -174,7 +176,7 @@ function gotoReview() {
 <template>
   <aside v-if="open" class="exception-panel" aria-label="异常修正面板">
     <header class="exception-panel__head">
-      <h4>第 {{ pageNo }} 页 · 异常修正</h4>
+      <h4>{{ pageTitle }} · 异常修正</h4>
       <button type="button" class="exception-panel__close" title="关闭" @click="emit('close')">
         <CloseOutlined />
       </button>
@@ -183,7 +185,7 @@ function gotoReview() {
     <div v-if="workflow.previewImageUrl.value" class="exception-panel__thumb">
       <img
         :src="workflow.previewImageUrl.value"
-        :alt="`第 ${pageNo} 页`"
+        :alt="pageTitle"
         @error="workflow.onPreviewImageLoadError"
       />
     </div>

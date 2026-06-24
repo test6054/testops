@@ -144,7 +144,7 @@ export interface ExamScannerKioskBatchVO {
   diagnostic?: string
   scanStartTime?: string
   scanEndTime?: string
-  scanConfig?: ExamScannerScanConfigVO
+  scanConfig: ExamScannerScanConfigVO
   capabilitySnapshot?: ExamScannerCapabilitiesVO
 }
 
@@ -608,6 +608,7 @@ export interface ExamScannerKioskBatchHistoryItem {
   diagnostic?: string
   scanStartTime?: string
   scanEndTime?: string
+  scanConfig: ExamScannerScanConfigVO
   createTime?: string
   updateTime?: string
   eventCount?: number

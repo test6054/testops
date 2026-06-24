@@ -59,12 +59,20 @@ function modeText(): string {
   const mode = workflow.scanModeText(b.scanMode, '')
   if (b.scanMode !== 'SUPPLEMENT') return mode
   const replaceText = b.replaceTargetPage ? '替换目标页' : '追加补扫'
-  const targetText = b.targetPageNo ? `第 ${b.targetPageNo} 页` : '未指定目标页'
+  const targetText = b.targetPageNo
+    ? workflow.scanPageDisplayTitleByNoForDuplex(b.targetPageNo, b.scanConfig.duplexMode)
+    : '未指定目标页'
   return `${mode} · ${replaceText} · ${targetText}`
 }
 
 function pageStatusLabel(item: ExamScannerPageLedgerItemVO): string {
   return workflow.registrationStatusText(item.registrationStatus)
+}
+
+function pageTitle(item: ExamScannerPageLedgerItemVO): string {
+  const b = batch.value
+  if (!b) return workflow.scanPageDisplayTitleByNo(item.pageNo)
+  return workflow.scanPageDisplayTitleByNoForDuplex(item.pageNo, b.scanConfig.duplexMode)
 }
 
 function pageRowTone(
@@ -187,7 +195,7 @@ function pageRowTone(
               class="page-row"
               :class="`tone-${pageRowTone(item)}`"
             >
-              <span class="page-no">第 {{ item.pageNo }} 页</span>
+              <span class="page-no">{{ pageTitle(item) }}</span>
               <div class="page-text">
                 <strong>{{ pageStatusLabel(item) }}</strong>
                 <small v-if="item.attentionType">

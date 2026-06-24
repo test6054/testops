@@ -42,7 +42,7 @@ const failedPages = computed<ReviewItem[]>(() =>
       key: `page-${page.pageNo}`,
       pageNo: page.pageNo,
       type: 'page-failed',
-      title: `第 ${page.pageNo} 页`,
+      title: workflow.scanPageDisplayTitleByNo(page.pageNo),
       description: page.status === 'FAILED' ? '上传失败' : '页处理异常',
       detail:
         typeof page.diagnostic === 'string'
@@ -64,7 +64,7 @@ const ledgerAttentions = computed<ReviewItem[]>(() => {
       key: `ledger-${workflow.ledgerItemKey(item)}`,
       pageNo: item.pageNo,
       type: 'attention',
-      title: `第 ${item.pageNo} 页 · ${workflow.attentionTypeText(item.attentionType!)}`,
+      title: `${workflow.scanPageDisplayTitleByNo(item.pageNo)} · ${workflow.attentionTypeText(item.attentionType!)}`,
       description:
         item.attentionMessage || workflow.registrationStatusText(item.registrationStatus),
       detail: item.operatorName
@@ -91,7 +91,7 @@ const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
       key: `attention-${att.id}`,
       pageNo,
       type: 'attention',
-      title: `第 ${pageNo} 页 · ${workflow.attentionTypeText(att.attentionType)}`,
+      title: `${workflow.scanPageDisplayTitleByNo(pageNo)} · ${workflow.attentionTypeText(att.attentionType)}`,
       description: att.diagnostic || workflow.registrationStatusText(pageItem?.registrationStatus ?? 'PENDING'),
       detail: workflow.formatTime(att.updateTime),
       source: 'ledger',
@@ -124,7 +124,7 @@ const registeredPages = computed<ReviewItem[]>(() => {
         key: `registered-${workflow.ledgerItemKey(item)}`,
         pageNo: item.pageNo,
         type: 'page-registered',
-        title: `第 ${item.pageNo} 页`,
+        title: workflow.scanPageDisplayTitleByNo(item.pageNo),
         description: workflow.registrationStatusText(item.registrationStatus),
         detail: item.operatorName
           ? `操作人 ${item.operatorName} · ${workflow.formatTime(item.occurredAt)}`
@@ -145,24 +145,55 @@ const selectedItem = computed<ReviewItem | null>(() => {
   )
 })
 
+const selectedPreviewTitle = computed(() =>
+  selectedItem.value ? workflow.scanPageDisplayTitleByNo(selectedItem.value.pageNo) : '',
+)
+
 function selectItem(item: ReviewItem) {
   workflow.previewPageNo.value = item.pageNo
 }
 
+/** 本机 Agent 已扫描页（账本未返回时仍可在复核阶段浏览本地影像）。 */
+const localBrowsablePages = computed<ReviewItem[]>(() => {
+  const job = workflow.previewScanJob.value
+  if (!job) return []
+  const issuePageNos = new Set(reviewItems.value.map((item) => item.pageNo))
+  const registeredPageNos = new Set(registeredPages.value.map((item) => item.pageNo))
+  return job.pages
+    .filter((page) => page.status !== 'DELETED')
+    .filter((page) => !issuePageNos.has(page.pageNo) && !registeredPageNos.has(page.pageNo))
+    .map(
+      (page): ReviewItem => ({
+        key: `local-${page.pageNo}`,
+        pageNo: page.pageNo,
+        type: 'page-registered',
+        title: workflow.scanPageDisplayTitleByNo(page.pageNo),
+        description: page.status === 'UPLOADED' ? '本机已上传' : '本机已扫描',
+        detail: page.uploadedFileId ? `文件 ${page.uploadedFileId}` : undefined,
+        status: page.status,
+        source: 'job',
+      }),
+    )
+})
+
+const browsablePageCount = computed(
+  () => registeredPageCount.value + localBrowsablePages.value.length,
+)
+
 /** 进入复核阶段或页列表变化时，默认选中首条可浏览项 */
 watch(
-  [reviewItems, registeredPages],
-  ([issues, pages]) => {
-    if (issues.length === 0 && pages.length === 0) {
+  [reviewItems, registeredPages, localBrowsablePages],
+  ([issues, pages, localPages]) => {
+    if (issues.length === 0 && pages.length === 0 && localPages.length === 0) {
       workflow.previewPageNo.value = 0
       return
     }
     const currentPageNo = workflow.previewPageNo.value
-    const browsable = [...issues, ...pages]
+    const browsable = [...issues, ...pages, ...localPages]
     if (currentPageNo > 0 && browsable.some((item) => item.pageNo === currentPageNo)) {
       return
     }
-    workflow.previewPageNo.value = (issues[0] ?? pages[0]).pageNo
+    workflow.previewPageNo.value = (issues[0] ?? pages[0] ?? localPages[0]).pageNo
   },
   { immediate: true },
 )
@@ -176,7 +207,7 @@ function discardSelected() {
   })
 }
 
-const job = computed(() => workflow.currentJob.value)
+const job = computed(() => workflow.currentJob.value ?? workflow.previewScanJob.value)
 const batch = computed(() => workflow.kioskContext.value?.latestBatch ?? null)
 
 const totalIssues = computed(() => reviewItems.value.length)
@@ -273,12 +304,37 @@ const reviewBoundBatchId = computed(
           </li>
         </ul>
       </section>
+      <section v-if="localBrowsablePages.length > 0" class="registered-pages">
+        <header class="registered-head">
+          <h4>本机影像 ({{ localBrowsablePages.length }})</h4>
+          <small>账本未返回时仍可从本机 Agent 预览已扫描页</small>
+        </header>
+        <ul class="issue-items registered-items">
+          <li
+            v-for="item in localBrowsablePages"
+            :key="item.key"
+            class="issue-item item-registered"
+            :class="{ active: workflow.previewPageNo.value === item.pageNo }"
+          >
+            <button type="button" @click="selectItem(item)">
+              <div class="issue-item-icon">
+                <FileTextOutlined />
+              </div>
+              <div class="issue-item-text">
+                <strong>{{ item.title }}</strong>
+                <span>{{ item.description }}</span>
+                <small v-if="item.detail">{{ item.detail }}</small>
+              </div>
+            </button>
+          </li>
+        </ul>
+      </section>
     </aside>
 
     <!-- 中：大画布预览 -->
     <main class="preview-wrap">
       <div class="preview-canvas">
-        <div v-if="!job && totalIssues === 0 && registeredPageCount === 0" class="preview-empty">
+        <div v-if="!job && totalIssues === 0 && browsablePageCount === 0" class="preview-empty">
           <FileTextOutlined class="preview-empty-icon" />
           <p>暂无扫描批次</p>
           <small>请返回「准备扫描」开始一次扫描后再进行复核</small>
@@ -293,20 +349,20 @@ const reviewBoundBatchId = computed(
           <FileTextOutlined class="preview-empty-icon" />
           <p>影像未就绪</p>
           <small v-if="workflow.previewLoadError.value">{{ workflow.previewLoadError.value }}</small>
-          <small v-else>第 {{ selectedItem.pageNo }} 页尚未生成或已删除</small>
+          <small v-else>{{ selectedPreviewTitle }}尚未生成或已删除</small>
         </div>
         <img
           v-else
           class="preview-image"
           :src="workflow.previewImageUrl.value"
-          :alt="`第 ${selectedItem.pageNo} 页`"
+          :alt="selectedItem.title"
           draggable="false"
           @error="workflow.onPreviewImageLoadError"
         />
 
         <!-- 选中项浮动信息条 -->
         <div v-if="selectedItem" class="preview-banner">
-          <span class="banner-no">第 {{ selectedItem.pageNo }} 页</span>
+          <span class="banner-no">{{ selectedPreviewTitle }}</span>
           <span class="banner-title">{{ selectedItem.title }}</span>
           <span class="banner-desc">{{ selectedItem.description }}</span>
         </div>

@@ -138,7 +138,9 @@ function historyModeText(item: ExamScannerKioskBatchHistoryItem): string {
   const mode = workflow.scanModeText(item.scanMode, '')
   if (item.scanMode !== 'SUPPLEMENT') return mode
   const replaceText = item.replaceTargetPage ? '替换目标页' : '追加补扫'
-  const targetText = item.targetPageNo ? `第 ${item.targetPageNo} 页` : '未指定目标页'
+  const targetText = item.targetPageNo
+    ? workflow.scanPageDisplayTitleByNoForDuplex(item.targetPageNo, item.scanConfig.duplexMode)
+    : '未指定目标页'
   return `${mode} · ${replaceText} · ${targetText}`
 }
 

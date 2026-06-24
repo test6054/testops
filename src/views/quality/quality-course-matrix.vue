@@ -115,6 +115,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
+import { SemesterOptions, formatSemester } from '@/types/enums/semester-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const itemColumns: ColumnsType = [
@@ -728,10 +729,14 @@ async function submitCourse() {
     || !courseEditor.courseId.trim()
     || !courseEditor.courseCode.trim()
     || !courseEditor.courseName.trim()
+    || !courseEditor.schoolYear.trim()
+    || !courseEditor.semester.trim()
   ) {
-    message.error('请填写专业、培养方案、目录课程、编码、名称')
+    message.error('请填写专业、培养方案、目录课程、编码、名称、学年、学期')
     return
   }
+  courseEditor.schoolYear = courseEditor.schoolYear.trim()
+  courseEditor.semester = courseEditor.semester.trim()
   courseSubmitting.value = true
   try {
     if (courseEditorMode.value === 'create') {
@@ -1418,7 +1423,7 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
           />
           <UiTag v-if="currentCourse?.schoolYear" tone="blue">
             {{ currentCourse.schoolYear
-            }}<span v-if="currentCourse.semester">/{{ currentCourse.semester }}</span>
+            }}<span v-if="currentCourse.semester"> · {{ formatSemester(currentCourse.semester) }}</span>
           </UiTag>
           <UiTag v-if="currentCourse?.creditValue != null" tone="gray">
             {{ currentCourse.creditValue }} 学分
@@ -1700,8 +1705,12 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
             </a-form-item>
           </a-col>
           <a-col :span="6">
-            <a-form-item label="学期">
-              <a-input v-model:value="courseEditor.semester" />
+            <a-form-item label="学期" required>
+              <a-select
+                v-model:value="courseEditor.semester"
+                :options="SemesterOptions"
+                placeholder="选择学期"
+              />
             </a-form-item>
           </a-col>
         </a-row>

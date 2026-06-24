@@ -3,11 +3,25 @@ import type {
   ExamScannerScanConfigVO,
   ScannerKioskScanMode,
 } from './scanner-kiosk'
+import {
+  LOCAL_AGENT_WIRE_ERROR,
+  requireAgentWireBoolean,
+  requireAgentWireInt32,
+  requireAgentWireInt64,
+  requireAgentWireNullableString,
+  requireAgentWireObject,
+  requireAgentWireString,
+  requireAgentWireStringArray,
+  requireOptionalAgentWireInt32,
+  requireOptionalAgentWireString,
+  type AgentWireJsonObject,
+  type AgentWireJsonValue,
+} from './scanner-agent-local-wire'
 import { runContractGuard, throwUserFacing } from '@/utils/contract-guard'
 
 const DEFAULT_AGENT_BASE_URL = 'http://127.0.0.1:18761'
-const LOCAL_AGENT_UNAVAILABLE_ERROR = '本地扫描服务未连接，请确认一体机组件已启动'
-const LOCAL_AGENT_RESPONSE_ERROR = '本地扫描服务响应异常，请检查扫描服务后重试'
+export const LOCAL_AGENT_UNAVAILABLE_ERROR = '本地扫描服务未连接，请确认一体机组件已启动'
+const LOCAL_AGENT_RESPONSE_ERROR = LOCAL_AGENT_WIRE_ERROR
 const LOCAL_AGENT_REQUEST_ERROR = '本地扫描服务处理失败，请检查扫描服务后重试'
 
 type LocalAgentJsonValue
@@ -124,6 +138,8 @@ export type LocalScanPageStatus
     | 'UPLOADED'
     | 'FAILED'
     | 'DELETED'
+
+export type LocalScanPageSide = 'FRONT' | 'BACK'
 
 export interface ScannerDeviceInfo {
   localScannerId: string
@@ -263,12 +279,18 @@ export interface StartScanJobRequest {
 }
 
 export interface ScanPageInfo {
+  captureSeq: number
   pageNo: number
+  sheetNo: number
+  pageSide: LocalScanPageSide
+  pageSideLabel: string
   status: LocalScanPageStatus
-  sizeBytes: number
+  /** Agent ScanPageInfo.SizeBytes（C# long），HTTP 边界为十进制字符串 */
+  sizeBytes: string
   diagnostic?: string
   capturedAt: string
   uploadedAt?: string
+  /** Agent ScanPageInfo.UploadedFileId，浏览器边界为字符串 */
   uploadedFileId?: string
 }
 
@@ -288,6 +310,7 @@ export interface ScanJobResponse {
   /** 是否替换目标页（仅 SUPPLEMENT 模式生效） */
   replaceTargetPage: boolean
   status: LocalScanJobStatus
+  duplexMode: ExamScannerScanConfigVO['duplexMode']
   scannedPages: number
   uploadedPages: number
   reported: boolean
@@ -512,7 +535,7 @@ async function parseLocalAgentResponse(response: Response): Promise<LocalAgentJs
     if (busyError) {
       throw busyError
     }
-    throwUserFacing(LOCAL_AGENT_REQUEST_ERROR)
+    throwUserFacing(message || LOCAL_AGENT_REQUEST_ERROR)
   }
   if (!Object.hasOwn(envelope, 'data')) {
     throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
@@ -532,11 +555,8 @@ function normalizeAgentPayload<T>(action: () => T): T {
   return result
 }
 
-function requireObject(value: LocalAgentJsonValue): LocalAgentJsonObject {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return value
+function requireObject(value: LocalAgentJsonValue): AgentWireJsonObject {
+  return requireAgentWireObject(value)
 }
 
 function isLocalAgentJsonValue(value: unknown): value is LocalAgentJsonValue {
@@ -557,77 +577,7 @@ function isLocalAgentJsonValue(value: unknown): value is LocalAgentJsonValue {
   return Object.values(value).every(isLocalAgentJsonValue)
 }
 
-function requireString(value: LocalAgentJsonObject, field: string): string {
-  const fieldValue = value[field]
-  if (typeof fieldValue !== 'string') {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return fieldValue
-}
-
-function requireBoolean(value: LocalAgentJsonObject, field: string): boolean {
-  const fieldValue = value[field]
-  if (typeof fieldValue !== 'boolean') {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return fieldValue
-}
-
-function requireNumber(value: LocalAgentJsonObject, field: string): number {
-  const fieldValue = value[field]
-  if (typeof fieldValue !== 'number' || !Number.isFinite(fieldValue)) {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return fieldValue
-}
-
-function requireStringArray(value: LocalAgentJsonObject, field: string): string[] {
-  const fieldValue = value[field]
-  if (!Array.isArray(fieldValue) || fieldValue.some((item) => typeof item !== 'string')) {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return fieldValue.map((item) => {
-    if (typeof item !== 'string') {
-      throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-    }
-    return item
-  })
-}
-
-function requireOptionalString(value: LocalAgentJsonObject, field: string): string | undefined {
-  const fieldValue = value[field]
-  if (fieldValue === undefined) {
-    return undefined
-  }
-  if (typeof fieldValue !== 'string') {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return fieldValue
-}
-
-function requireOptionalNumber(value: LocalAgentJsonObject, field: string): number | undefined {
-  const fieldValue = value[field]
-  if (fieldValue === undefined) {
-    return undefined
-  }
-  if (typeof fieldValue !== 'number' || !Number.isFinite(fieldValue)) {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return fieldValue
-}
-
-function requireNullableString(value: LocalAgentJsonObject, field: string): string | null {
-  const fieldValue = value[field]
-  if (fieldValue === undefined || fieldValue === null) {
-    return null
-  }
-  if (typeof fieldValue !== 'string') {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return fieldValue
-}
-
-function requireScanMode(value: LocalAgentJsonObject, field: string): ScannerKioskScanMode {
+function requireScanMode(value: AgentWireJsonObject, field: string): ScannerKioskScanMode {
   const fieldValue = value[field]
   if (fieldValue !== 'DIRECT' && fieldValue !== 'SUPPLEMENT' && fieldValue !== 'ARCHIVE') {
     throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
@@ -635,7 +585,18 @@ function requireScanMode(value: LocalAgentJsonObject, field: string): ScannerKio
   return fieldValue
 }
 
-function requireAgentHealthStatus(value: LocalAgentJsonObject, field: string): AgentHealthStatus {
+function requireScannerDuplexMode(
+  value: AgentWireJsonObject,
+  field: string,
+): ExamScannerScanConfigVO['duplexMode'] {
+  const fieldValue = value[field]
+  if (fieldValue !== 'SIMPLEX' && fieldValue !== 'DUPLEX') {
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
+  }
+  return fieldValue
+}
+
+function requireAgentHealthStatus(value: AgentWireJsonObject, field: string): AgentHealthStatus {
   const fieldValue = value[field]
   if (fieldValue !== 'RUNNING') {
     throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
@@ -644,7 +605,7 @@ function requireAgentHealthStatus(value: LocalAgentJsonObject, field: string): A
 }
 
 function requireAgentDiagnosticStatus(
-  value: LocalAgentJsonObject,
+  value: AgentWireJsonObject,
   field: string,
 ): AgentDiagnosticStatus {
   const fieldValue = value[field]
@@ -654,7 +615,7 @@ function requireAgentDiagnosticStatus(
   return fieldValue
 }
 
-function requireScanJobStatus(value: LocalAgentJsonObject, field: string): LocalScanJobStatus {
+function requireScanJobStatus(value: AgentWireJsonObject, field: string): LocalScanJobStatus {
   const fieldValue = value[field]
   if (
     fieldValue !== 'CREATED'
@@ -672,7 +633,7 @@ function requireScanJobStatus(value: LocalAgentJsonObject, field: string): Local
   return fieldValue
 }
 
-function requireScanPageStatus(value: LocalAgentJsonObject, field: string): LocalScanPageStatus {
+function requireScanPageStatus(value: AgentWireJsonObject, field: string): LocalScanPageStatus {
   const fieldValue = value[field]
   if (
     fieldValue !== 'CAPTURED'
@@ -687,13 +648,21 @@ function requireScanPageStatus(value: LocalAgentJsonObject, field: string): Loca
   return fieldValue
 }
 
+function requireScanPageSide(value: AgentWireJsonObject, field: string): LocalScanPageSide {
+  const fieldValue = value[field]
+  if (fieldValue !== 'FRONT' && fieldValue !== 'BACK') {
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
+  }
+  return fieldValue
+}
+
 function validateLocalApiResult(value: LocalAgentJsonValue, response: Response): LocalApiResult {
   const result = requireObject(value)
   const envelope: LocalApiResult = {
-    success: requireBoolean(result, 'success'),
-    code: requireString(result, 'code'),
-    message: requireString(result, 'message'),
-    traceId: requireString(result, 'traceId'),
+    success: requireAgentWireBoolean(result, 'success'),
+    code: requireAgentWireString(result, 'code'),
+    message: requireAgentWireString(result, 'message'),
+    traceId: requireAgentWireString(result, 'traceId'),
   }
   if (Object.hasOwn(result, 'data')) {
     envelope.data = result.data
@@ -704,7 +673,7 @@ function validateLocalApiResult(value: LocalAgentJsonValue, response: Response):
   return envelope
 }
 
-function requireAgentUpdateStatus(value: LocalAgentJsonObject, field: string): AgentUpdateStatus {
+function requireAgentUpdateStatus(value: AgentWireJsonObject, field: string): AgentUpdateStatus {
   const fieldValue = value[field]
   if (
     fieldValue !== 'NONE'
@@ -725,9 +694,9 @@ function validateLocalScannerAgentInstallUpdateResponse(
 ): LocalScannerAgentInstallUpdateResponse {
   const result = requireObject(value)
   return {
-    installing: requireBoolean(result, 'installing'),
-    packageVersion: requireString(result, 'packageVersion'),
-    packageFileName: requireString(result, 'packageFileName'),
+    installing: requireAgentWireBoolean(result, 'installing'),
+    packageVersion: requireAgentWireString(result, 'packageVersion'),
+    packageFileName: requireAgentWireString(result, 'packageFileName'),
   }
 }
 
@@ -735,29 +704,29 @@ function validateAgentHealthResponse(value: LocalAgentJsonValue): AgentHealthRes
   const result = requireObject(value)
   return {
     status: requireAgentHealthStatus(result, 'status'),
-    agentVersion: requireString(result, 'agentVersion'),
-    machineCode: requireString(result, 'machineCode'),
-    bound: requireBoolean(result, 'bound'),
-    scannerConnected: requireBoolean(result, 'scannerConnected'),
-    pendingUploadJobs: requireNumber(result, 'pendingUploadJobs'),
+    agentVersion: requireAgentWireString(result, 'agentVersion'),
+    machineCode: requireAgentWireString(result, 'machineCode'),
+    bound: requireAgentWireBoolean(result, 'bound'),
+    scannerConnected: requireAgentWireBoolean(result, 'scannerConnected'),
+    pendingUploadJobs: requireAgentWireInt32(result, 'pendingUploadJobs'),
     diagnosticStatus: requireAgentDiagnosticStatus(result, 'diagnosticStatus'),
-    diagnosticMessage: requireString(result, 'diagnosticMessage'),
-    upgradeRequired: requireBoolean(result, 'upgradeRequired'),
-    minimumAgentVersion: requireString(result, 'minimumAgentVersion'),
-    latestAgentVersion: requireString(result, 'latestAgentVersion'),
-    minimumClientVersion: requireString(result, 'minimumClientVersion'),
-    latestClientVersion: requireString(result, 'latestClientVersion'),
-    scanAllowed: requireBoolean(result, 'scanAllowed'),
-    tokenResetRequired: requireBoolean(result, 'tokenResetRequired'),
-    rebindRequired: requireBoolean(result, 'rebindRequired'),
-    lastHeartbeatAt: requireNullableString(result, 'lastHeartbeatAt'),
-    updateAvailable: requireBoolean(result, 'updateAvailable'),
+    diagnosticMessage: requireAgentWireString(result, 'diagnosticMessage'),
+    upgradeRequired: requireAgentWireBoolean(result, 'upgradeRequired'),
+    minimumAgentVersion: requireAgentWireString(result, 'minimumAgentVersion'),
+    latestAgentVersion: requireAgentWireString(result, 'latestAgentVersion'),
+    minimumClientVersion: requireAgentWireString(result, 'minimumClientVersion'),
+    latestClientVersion: requireAgentWireString(result, 'latestClientVersion'),
+    scanAllowed: requireAgentWireBoolean(result, 'scanAllowed'),
+    tokenResetRequired: requireAgentWireBoolean(result, 'tokenResetRequired'),
+    rebindRequired: requireAgentWireBoolean(result, 'rebindRequired'),
+    lastHeartbeatAt: requireAgentWireNullableString(result, 'lastHeartbeatAt'),
+    updateAvailable: requireAgentWireBoolean(result, 'updateAvailable'),
     updateStatus: requireAgentUpdateStatus(result, 'updateStatus'),
-    updatePackageVersion: requireString(result, 'updatePackageVersion'),
-    updatePackageFileName: requireString(result, 'updatePackageFileName'),
-    updateDownloadedAt: requireNullableString(result, 'updateDownloadedAt'),
-    updateDiagnosticMessage: requireString(result, 'updateDiagnosticMessage'),
-    updateInstallable: requireBoolean(result, 'updateInstallable'),
+    updatePackageVersion: requireAgentWireString(result, 'updatePackageVersion'),
+    updatePackageFileName: requireAgentWireString(result, 'updatePackageFileName'),
+    updateDownloadedAt: requireAgentWireNullableString(result, 'updateDownloadedAt'),
+    updateDiagnosticMessage: requireAgentWireString(result, 'updateDiagnosticMessage'),
+    updateInstallable: requireAgentWireBoolean(result, 'updateInstallable'),
   }
 }
 
@@ -775,18 +744,18 @@ function validateScannerListResponse(value: LocalAgentJsonValue): ScannerListRes
 function validateScannerDeviceInfo(value: LocalAgentJsonValue): ScannerDeviceInfo {
   const result = requireObject(value)
   const scanner: ScannerDeviceInfo = {
-    localScannerId: requireString(result, 'localScannerId'),
-    displayName: requireString(result, 'displayName'),
-    driverType: requireString(result, 'driverType'),
-    supportsAdf: requireBoolean(result, 'supportsAdf'),
-    supportsDuplex: requireBoolean(result, 'supportsDuplex'),
-    available: requireBoolean(result, 'available'),
+    localScannerId: requireAgentWireString(result, 'localScannerId'),
+    displayName: requireAgentWireString(result, 'displayName'),
+    driverType: requireAgentWireString(result, 'driverType'),
+    supportsAdf: requireAgentWireBoolean(result, 'supportsAdf'),
+    supportsDuplex: requireAgentWireBoolean(result, 'supportsDuplex'),
+    available: requireAgentWireBoolean(result, 'available'),
   }
-  const maxDpi = requireOptionalNumber(result, 'maxDpi')
+  const maxDpi = requireOptionalAgentWireInt32(result, 'maxDpi')
   if (maxDpi !== undefined) {
     scanner.maxDpi = maxDpi
   }
-  const diagnostic = requireOptionalString(result, 'diagnostic')
+  const diagnostic = requireOptionalAgentWireString(result, 'diagnostic')
   if (diagnostic !== undefined) {
     scanner.diagnostic = diagnostic
   }
@@ -796,30 +765,30 @@ function validateScannerDeviceInfo(value: LocalAgentJsonValue): ScannerDeviceInf
 function validateAgentSetupContextResponse(value: LocalAgentJsonValue): AgentSetupContextResponse {
   const result = requireObject(value)
   const payload: AgentSetupContextResponse = {
-    defaultGatewayBaseUrl: requireString(result, 'defaultGatewayBaseUrl'),
-    bound: requireBoolean(result, 'bound'),
+    defaultGatewayBaseUrl: requireAgentWireString(result, 'defaultGatewayBaseUrl'),
+    bound: requireAgentWireBoolean(result, 'bound'),
   }
-  const scannerDeviceId = requireOptionalString(result, 'scannerDeviceId')
+  const scannerDeviceId = requireOptionalAgentWireString(result, 'scannerDeviceId')
   if (scannerDeviceId !== undefined) {
     payload.scannerDeviceId = scannerDeviceId
   }
-  const scannerStationId = requireOptionalString(result, 'scannerStationId')
+  const scannerStationId = requireOptionalAgentWireString(result, 'scannerStationId')
   if (scannerStationId !== undefined) {
     payload.scannerStationId = scannerStationId
   }
-  const deviceName = requireOptionalString(result, 'deviceName')
+  const deviceName = requireOptionalAgentWireString(result, 'deviceName')
   if (deviceName !== undefined) {
     payload.deviceName = deviceName
   }
-  const gatewayBaseUrl = requireOptionalString(result, 'gatewayBaseUrl')
+  const gatewayBaseUrl = requireOptionalAgentWireString(result, 'gatewayBaseUrl')
   if (gatewayBaseUrl !== undefined) {
     payload.gatewayBaseUrl = gatewayBaseUrl
   }
-  const activatedAt = requireOptionalString(result, 'activatedAt')
+  const activatedAt = requireOptionalAgentWireString(result, 'activatedAt')
   if (activatedAt !== undefined) {
     payload.activatedAt = activatedAt
   }
-  const preferredLocalScannerId = requireOptionalString(result, 'preferredLocalScannerId')
+  const preferredLocalScannerId = requireOptionalAgentWireString(result, 'preferredLocalScannerId')
   if (preferredLocalScannerId !== undefined) {
     payload.preferredLocalScannerId = preferredLocalScannerId
   }
@@ -829,13 +798,13 @@ function validateAgentSetupContextResponse(value: LocalAgentJsonValue): AgentSet
 function validateKioskBrowserAuthResponse(value: LocalAgentJsonValue): KioskBrowserAuthResponse {
   const result = requireObject(value)
   const payload: KioskBrowserAuthResponse = {
-    pushAuthorizationHeader: requireString(result, 'pushAuthorizationHeader'),
-    scannerDeviceId: requireString(result, 'scannerDeviceId'),
-    scannerStationId: requireString(result, 'scannerStationId'),
-    deviceName: requireString(result, 'deviceName'),
-    gatewayBaseUrl: requireString(result, 'gatewayBaseUrl'),
+    pushAuthorizationHeader: requireAgentWireString(result, 'pushAuthorizationHeader'),
+    scannerDeviceId: requireAgentWireString(result, 'scannerDeviceId'),
+    scannerStationId: requireAgentWireString(result, 'scannerStationId'),
+    deviceName: requireAgentWireString(result, 'deviceName'),
+    gatewayBaseUrl: requireAgentWireString(result, 'gatewayBaseUrl'),
   }
-  const tenantId = requireOptionalString(result, 'tenantId')
+  const tenantId = requireOptionalAgentWireString(result, 'tenantId')
   if (tenantId !== undefined) {
     payload.tenantId = tenantId
   }
@@ -847,23 +816,23 @@ function validateScannerAgentActivateResponse(
 ): ScannerAgentActivateResponse {
   const result = requireObject(value)
   const payload: ScannerAgentActivateResponse = {
-    scannerDeviceId: requireString(result, 'scannerDeviceId'),
-    scannerStationId: requireString(result, 'scannerStationId'),
-    deviceName: requireString(result, 'deviceName'),
-    gatewayBaseUrl: requireString(result, 'gatewayBaseUrl'),
-    pushPageUrl: requireString(result, 'pushPageUrl'),
-    pushCommitUrl: requireString(result, 'pushCommitUrl'),
-    pushToken: requireString(result, 'pushToken'),
-    pushAuthorizationHeader: requireString(result, 'pushAuthorizationHeader'),
-    storageUploadUrl: requireString(result, 'storageUploadUrl'),
-    storageUploadToken: requireString(result, 'storageUploadToken'),
-    storageUploadAuthorizationHeader: requireString(result, 'storageUploadAuthorizationHeader'),
-    kioskLockEnabled: requireBoolean(result, 'kioskLockEnabled'),
-    activatedAt: requireString(result, 'activatedAt'),
-    minimumAgentVersion: requireString(result, 'minimumAgentVersion'),
-    latestAgentVersion: requireString(result, 'latestAgentVersion'),
+    scannerDeviceId: requireAgentWireString(result, 'scannerDeviceId'),
+    scannerStationId: requireAgentWireString(result, 'scannerStationId'),
+    deviceName: requireAgentWireString(result, 'deviceName'),
+    gatewayBaseUrl: requireAgentWireString(result, 'gatewayBaseUrl'),
+    pushPageUrl: requireAgentWireString(result, 'pushPageUrl'),
+    pushCommitUrl: requireAgentWireString(result, 'pushCommitUrl'),
+    pushToken: requireAgentWireString(result, 'pushToken'),
+    pushAuthorizationHeader: requireAgentWireString(result, 'pushAuthorizationHeader'),
+    storageUploadUrl: requireAgentWireString(result, 'storageUploadUrl'),
+    storageUploadToken: requireAgentWireString(result, 'storageUploadToken'),
+    storageUploadAuthorizationHeader: requireAgentWireString(result, 'storageUploadAuthorizationHeader'),
+    kioskLockEnabled: requireAgentWireBoolean(result, 'kioskLockEnabled'),
+    activatedAt: requireAgentWireString(result, 'activatedAt'),
+    minimumAgentVersion: requireAgentWireString(result, 'minimumAgentVersion'),
+    latestAgentVersion: requireAgentWireString(result, 'latestAgentVersion'),
   }
-  const tenantId = requireOptionalString(result, 'tenantId')
+  const tenantId = requireOptionalAgentWireString(result, 'tenantId')
   if (tenantId !== undefined) {
     payload.tenantId = tenantId
   }
@@ -892,30 +861,31 @@ function validateScanJobResponsePayload(value: LocalAgentJsonValue): ScanJobResp
     throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   const payload: ScanJobResponse = {
-    scanJobId: requireString(result, 'scanJobId'),
-    examId: requireString(result, 'examId'),
-    declaredClassIds: requireStringArray(result, 'declaredClassIds'),
-    scannerDeviceId: requireString(result, 'scannerDeviceId'),
-    scannerStationId: requireString(result, 'scannerStationId'),
-    batchExternalNo: requireString(result, 'batchExternalNo'),
+    scanJobId: requireAgentWireString(result, 'scanJobId'),
+    examId: requireAgentWireString(result, 'examId'),
+    declaredClassIds: requireAgentWireStringArray(result, 'declaredClassIds'),
+    scannerDeviceId: requireAgentWireString(result, 'scannerDeviceId'),
+    scannerStationId: requireAgentWireString(result, 'scannerStationId'),
+    batchExternalNo: requireAgentWireString(result, 'batchExternalNo'),
     scanMode: requireScanMode(result, 'scanMode'),
     status: requireScanJobStatus(result, 'status'),
-    scannedPages: requireNumber(result, 'scannedPages'),
-    uploadedPages: requireNumber(result, 'uploadedPages'),
-    reported: requireBoolean(result, 'reported'),
-    replaceTargetPage: requireBoolean(result, 'replaceTargetPage'),
-    message: requireString(result, 'message'),
+    duplexMode: requireScannerDuplexMode(result, 'duplexMode'),
+    scannedPages: requireAgentWireInt32(result, 'scannedPages'),
+    uploadedPages: requireAgentWireInt32(result, 'uploadedPages'),
+    reported: requireAgentWireBoolean(result, 'reported'),
+    replaceTargetPage: requireAgentWireBoolean(result, 'replaceTargetPage'),
+    message: requireAgentWireString(result, 'message'),
     pages: pages.map((item) => validateScanPageInfo(item)),
   }
-  const scanBatchId = requireOptionalString(result, 'scanBatchId')
+  const scanBatchId = requireOptionalAgentWireString(result, 'scanBatchId')
   if (scanBatchId !== undefined) {
     payload.scanBatchId = scanBatchId
   }
-  const targetPageNo = requireOptionalNumber(result, 'targetPageNo')
+  const targetPageNo = requireOptionalAgentWireInt32(result, 'targetPageNo')
   if (targetPageNo !== undefined) {
     payload.targetPageNo = targetPageNo
   }
-  const supplementReason = requireOptionalString(result, 'supplementReason')
+  const supplementReason = requireOptionalAgentWireString(result, 'supplementReason')
   if (supplementReason !== undefined) {
     payload.supplementReason = supplementReason
   }
@@ -925,20 +895,24 @@ function validateScanJobResponsePayload(value: LocalAgentJsonValue): ScanJobResp
 function validateScanPageInfo(value: LocalAgentJsonValue): ScanPageInfo {
   const result = requireObject(value)
   const page: ScanPageInfo = {
-    pageNo: requireNumber(result, 'pageNo'),
+    captureSeq: requireAgentWireInt32(result, 'captureSeq'),
+    pageNo: requireAgentWireInt32(result, 'pageNo'),
+    sheetNo: requireAgentWireInt32(result, 'sheetNo'),
+    pageSide: requireScanPageSide(result, 'pageSide'),
+    pageSideLabel: requireAgentWireString(result, 'pageSideLabel'),
     status: requireScanPageStatus(result, 'status'),
-    sizeBytes: requireNumber(result, 'sizeBytes'),
-    capturedAt: requireString(result, 'capturedAt'),
+    sizeBytes: requireAgentWireInt64(result, 'sizeBytes'),
+    capturedAt: requireAgentWireString(result, 'capturedAt'),
   }
-  const diagnostic = requireOptionalString(result, 'diagnostic')
+  const diagnostic = requireOptionalAgentWireString(result, 'diagnostic')
   if (diagnostic !== undefined) {
     page.diagnostic = diagnostic
   }
-  const uploadedAt = requireOptionalString(result, 'uploadedAt')
+  const uploadedAt = requireOptionalAgentWireString(result, 'uploadedAt')
   if (uploadedAt !== undefined) {
     page.uploadedAt = uploadedAt
   }
-  const uploadedFileId = requireOptionalString(result, 'uploadedFileId')
+  const uploadedFileId = requireOptionalAgentWireString(result, 'uploadedFileId')
   if (uploadedFileId !== undefined) {
     page.uploadedFileId = uploadedFileId
   }
