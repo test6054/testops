@@ -13,8 +13,6 @@ import * as authApi from '@/apis/auth'
 import { resetAuthState } from '@/config/axios/auth-state'
 import {
   STORAGE_REFRESH_TOKEN,
-  STORAGE_REMEMBER_ME,
-  STORAGE_REMEMBERED_USERNAME,
   STORAGE_TOKEN,
   STORAGE_TOKEN_EXPIRES_AT,
 } from '@/constants/storage-keys'
@@ -24,6 +22,7 @@ import { RoleEnum } from '@/types/enums'
 import { clearToken, getToken, getValidToken, healTokenExpiresAt, setToken } from '@/utils/auth'
 import { throwUserFacing } from '@/utils/contract-guard'
 import { getDeviceId } from '@/utils/device'
+import { syncRememberedAccountOnLogout } from '@/utils/login-remember'
 import mittBus from '@/utils/mitt'
 import { useTenantStore } from './tenant'
 import { useUserStore } from './user'
@@ -33,7 +32,6 @@ export interface AccountLoginReq {
   username: string
   password: string
   captchaVerification?: string // AJ-Captcha验证码令牌
-  rememberMe?: boolean
 }
 
 export interface StudentLoginReq {
@@ -85,8 +83,6 @@ export const useAuthStore = defineStore(
     /** 后台预刷新取消信号；destroyAuth / 登出时 abort，避免登出后还有残留 retry 跑 */
     let scheduledRefreshAbort: AbortController | null = null
 
-    // 记住我功能相关
-    const rememberMe = ref<boolean>(localStorage.getItem(STORAGE_REMEMBER_ME) === 'true')
     const isLoading = ref(false)
 
     // 认证和权限相关计算属性
@@ -478,19 +474,10 @@ export const useAuthStore = defineStore(
         isLoading.value = true
         resetAuthState()
 
-        if (req.rememberMe) {
-          rememberMe.value = true
-          localStorage.setItem(STORAGE_REMEMBER_ME, 'true')
-        } else {
-          rememberMe.value = false
-          localStorage.setItem(STORAGE_REMEMBER_ME, 'false')
-        }
-
         const loginReq: LoginRequest = {
           userName: req.username,
           password: req.password,
           loginType: 'passwordLogin',
-          rememberMe: req.rememberMe || false,
           captchaVerification: req.captchaVerification,
         }
         const res = await authApi.passwordLogin(loginReq)
@@ -683,10 +670,7 @@ export const useAuthStore = defineStore(
       userStore.clearUserInfo()
       resetToken()
 
-      if (!rememberMe.value) {
-        localStorage.removeItem(STORAGE_REMEMBERED_USERNAME)
-        localStorage.removeItem(STORAGE_REMEMBER_ME)
-      }
+      syncRememberedAccountOnLogout()
 
       resetRouter()
       tenantStore.resetTenantId()
@@ -760,7 +744,6 @@ export const useAuthStore = defineStore(
     const runInitializeAuth = async () => {
       syncTokenStateFromStorage()
       const storedTokenExpiresAt = localStorage.getItem(STORAGE_TOKEN_EXPIRES_AT)
-      const storedRememberMe = localStorage.getItem(STORAGE_REMEMBER_ME)
 
       if (storedTokenExpiresAt) {
         try {
@@ -768,10 +751,6 @@ export const useAuthStore = defineStore(
         } catch {
           localStorage.removeItem(STORAGE_TOKEN_EXPIRES_AT)
         }
-      }
-
-      if (storedRememberMe) {
-        rememberMe.value = storedRememberMe === 'true'
       }
 
       if (!visibilityListenerRegistered && typeof document !== 'undefined') {
@@ -866,7 +845,6 @@ export const useAuthStore = defineStore(
       pwdExpiredShow,
       isLoading,
       refreshingToken,
-      rememberMe,
 
       isAuthenticated,
       userRole,

@@ -7,6 +7,7 @@
  *   ③ 数据与达成：数据接入 hub / 达成度
  *   ④ 改进与输出：改进闭环 / 报告 / 归档 / AI 任务
  *   ⑤ 平台管理：仅 SUPER_ADMIN（SaaS 租户级配置，展示在考试阅卷域）
+ *   ⑥ 教学档案袋：独立一级域（DualDomainSideNav 与考试阅卷、质量评价平级）
  * 教师角色仅见 ①～④ 业务分组；SUPER_ADMIN 可见全部质量评价菜单 + 平台管理
  */
 import type { RouteRecordRaw } from 'vue-router'
@@ -51,8 +52,11 @@ const ADMIN_GROUP = {
   menuGroupOrder: 5,
 } as const
 
+/** 教学档案袋：双域侧栏中与「考试阅卷」「质量评价」平级的一级域（非质量评价二级分组） */
+export const PORTFOLIO_MENU_GROUP = 'quality-portfolio'
+
 const PORTFOLIO_GROUP = {
-  menuGroup: 'quality-portfolio',
+  menuGroup: PORTFOLIO_MENU_GROUP,
   menuGroupTitle: '教学档案袋',
   menuGroupIcon: 'folder',
   menuGroupOrder: 6,

@@ -155,8 +155,9 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUserStore } from '@/stores'
-import { formatSemester } from '@/types/enums/semester-enum'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import {
+  generateAcademicYearOptions,
   getDefaultAcademicYearAndSemester,
   resolveDefaultDashboardFilter,
 } from '@/utils/academic-year'
@@ -189,15 +190,21 @@ const filter = ref<MarkTeacherDashboardQuery>({
 })
 const committedFilter = ref<MarkTeacherDashboardQuery>({ ...filter.value })
 
-const academicYearOptions = computed(() =>
-  (overview.value?.filterOptions.academicYears ?? []).map(year => ({ label: year, value: year })),
-)
-const semesterOptions = computed(() =>
-  (overview.value?.filterOptions.semesters ?? []).map(code => ({
+const academicYearOptions = computed(() => {
+  const apiYears = overview.value?.filterOptions.academicYears
+  const years = apiYears?.length ? apiYears : generateAcademicYearOptions()
+  return years.map(year => ({ label: year, value: year }))
+})
+const semesterOptions = computed(() => {
+  const apiSemesters = overview.value?.filterOptions.semesters
+  const codes = apiSemesters?.length
+    ? apiSemesters
+    : SemesterOptions.map(item => item.value)
+  return codes.map(code => ({
     label: formatSemester(code),
     value: code,
-  })),
-)
+  }))
+})
 const statusOptions = computed(() =>
   (overview.value?.filterOptions.statuses ?? []).map(status => ({
     label: examStatusLabel(status),

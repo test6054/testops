@@ -4,6 +4,7 @@
     :collapsed="!isDesktop ? false : appStore.menuCollapse"
     :marking-grouped="markingGroupedMenus"
     :quality-grouped="qualityGroupedMenus"
+    :portfolio-grouped="portfolioGroupedMenus"
     @menu-item-click-after="emit('menu-item-click-after')"
   />
   <a-menu
@@ -50,6 +51,7 @@ import { isExternal } from '@/utils/validate'
 import DualDomainSideNav from './DualDomainSideNav.vue'
 import MenuIcon from './MenuIcon.vue'
 import MenuItem from './MenuItem.vue'
+import { PORTFOLIO_MENU_GROUP } from '@/router/routes/quality'
 
 defineOptions({ name: 'AppMenu' })
 const props = withDefaults(defineProps<Props>(), {})
@@ -176,10 +178,19 @@ const markingSidebarRoutes = computed(() => buildLayoutChildren('/teacher'))
 const qualitySidebarRoutes = computed(() => buildLayoutChildren('/quality'))
 
 const qualitySidebarRoutesForMenu = computed(() => {
+  const withoutPortfolio = qualitySidebarRoutes.value.filter(
+    (item) => item.meta?.menuGroup !== PORTFOLIO_MENU_GROUP,
+  )
   if (!isSuperAdmin.value) {
-    return qualitySidebarRoutes.value
+    return withoutPortfolio
   }
-  return qualitySidebarRoutes.value.filter((item) => item.meta?.menuGroup !== QUALITY_ADMIN_MENU_GROUP)
+  return withoutPortfolio.filter((item) => item.meta?.menuGroup !== QUALITY_ADMIN_MENU_GROUP)
+})
+
+const portfolioSidebarRoutesForMenu = computed(() => {
+  return qualitySidebarRoutes.value.filter(
+    (item) => item.meta?.menuGroup === PORTFOLIO_MENU_GROUP,
+  )
 })
 
 const markingSidebarRoutesForMenu = computed(() => {
@@ -197,6 +208,10 @@ const markingSidebarRoutesForMenu = computed(() => {
 
 const markingGroupedMenus = computed(() => groupRoutes(markingSidebarRoutesForMenu.value))
 const qualityGroupedMenus = computed(() => groupRoutes(qualitySidebarRoutesForMenu.value))
+const portfolioGroupedMenus = computed(() => ({
+  ungrouped: portfolioSidebarRoutesForMenu.value,
+  groups: [] as MenuGroup[],
+}))
 
 const sidebarRoutes = computed(() => {
   if (props.menus) {
@@ -206,6 +221,7 @@ const sidebarRoutes = computed(() => {
     return [
       ...markingSidebarRoutesForMenu.value,
       ...qualitySidebarRoutesForMenu.value,
+      ...portfolioSidebarRoutesForMenu.value,
     ]
   }
   const prefix = activeLayoutPrefix.value
@@ -294,6 +310,18 @@ function findSidebarItemByKey(keyStr: string): RouteRecordRaw | undefined {
     if (found) {
       return found
     }
+  }
+
+  for (const group of portfolioGroupedMenus.value.groups) {
+    const found = searchInRoutes(group.items)
+    if (found) {
+      return found
+    }
+  }
+
+  const portfolioDirect = searchInRoutes(portfolioGroupedMenus.value.ungrouped)
+  if (portfolioDirect) {
+    return portfolioDirect
   }
 
   for (const group of qualityGroupedMenus.value.groups) {

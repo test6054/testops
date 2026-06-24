@@ -73,7 +73,7 @@
 <script lang="ts" setup>
 import { useStorage } from '@vueuse/core'
 import message from 'ant-design-vue/es/message'
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCaptchaConfig } from '@/apis/auth'
 import AjCaptcha from '@/components/AjCaptcha/index.vue'
@@ -82,10 +82,14 @@ import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiPasswordInput from '@/components/ui-guide/ui/PasswordInput.vue'
 import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiFormField from '@/components/ui-guide/ui/UiFormField.vue'
-import { STORAGE_REMEMBERED_USERNAME } from '@/constants/storage-keys'
 import { getDefaultRoute } from '@/router/permission'
 import { useAuthStore, useTenantStore, useUserStore } from '@/stores'
 import { ErrorType, getUserErrorMessage, standardizeError } from '@/utils/error-handler'
+import {
+  clearRememberedAccount,
+  migrateLegacyRememberedAccount,
+  persistRememberedAccount,
+} from '@/utils/login-remember'
 import { getSafeRedirect } from '@/utils/redirect-validator'
 
 const emit = defineEmits(['switch-to-student'])
@@ -104,9 +108,19 @@ const tenantCode = ref()
 // 错误消息
 const errorMessage = ref('')
 const form = reactive({
-  username: loginConfig.value.username,
+  username: '',
   password: '',
 })
+
+watch(
+  () => loginConfig.value.rememberMe,
+  (rememberMe) => {
+    if (!rememberMe) {
+      clearRememberedAccount()
+      loginConfig.value.username = ''
+    }
+  },
+)
 // 表单字段校验错误
 const errors = reactive({
   username: '',
@@ -194,7 +208,6 @@ const doLogin = async () => {
       username: form.username,
       password: form.password,
       captchaVerification: isCaptchaEnabled.value ? captchaVerification.value : undefined,
-      rememberMe: loginConfig.value.rememberMe,
     })
 
     // 获取完整的用户信息（确保所有字段都正确加载）
@@ -221,14 +234,11 @@ const doLogin = async () => {
       return
     }
 
-    // 处理记住我功能（同步更新两个存储位置，确保一致性）
-    const { rememberMe } = loginConfig.value
-    if (rememberMe) {
-      loginConfig.value.username = form.username
-      localStorage.setItem(STORAGE_REMEMBERED_USERNAME, form.username)
+    if (loginConfig.value.rememberMe) {
+      persistRememberedAccount(form.username.trim())
+      loginConfig.value.username = form.username.trim()
     } else {
-      loginConfig.value.username = ''
-      localStorage.removeItem(STORAGE_REMEMBERED_USERNAME)
+      clearRememberedAccount()
     }
 
     const { redirect, ...othersQuery } = router.currentRoute.value.query
@@ -261,16 +271,13 @@ const doLogin = async () => {
 }
 
 onMounted(() => {
-  // 恢复记住的用户名（兼容 STORAGE_REMEMBERED_USERNAME 和 loginConfig 两种存储）
-  const remembered = localStorage.getItem(STORAGE_REMEMBERED_USERNAME)
-  if (remembered && loginConfig.value.rememberMe) {
-    form.username = remembered
-    loginConfig.value.username = remembered
-  } else if (loginConfig.value.rememberMe && loginConfig.value.username) {
-    form.username = loginConfig.value.username
+  const config = migrateLegacyRememberedAccount()
+  loginConfig.value.rememberMe = config.rememberMe
+  loginConfig.value.username = config.username
+  if (config.rememberMe && config.username) {
+    form.username = config.username
   }
 
-  // 获取验证码配置
   fetchCaptchaConfig()
 })
 </script>

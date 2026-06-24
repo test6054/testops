@@ -14,6 +14,7 @@
       <slot name="prefix" />
     </span>
     <input
+      ref="inputRef"
       :value="displayValue"
       class="dp-input"
       :type="type"
@@ -34,9 +35,11 @@
       v-if="clearable && !readonly && !disabled && displayValue !== ''"
       type="button"
       class="dp-input__clear"
+      tabindex="-1"
+      aria-label="清空内容"
       @click="handleClear"
     >
-      ×
+      <span aria-hidden="true">×</span>
     </button>
     <span v-if="$slots.suffix" class="dp-input__affix dp-input__affix--suffix">
       <slot name="suffix" />
@@ -84,6 +87,7 @@ const emit = defineEmits<{
 }>()
 
 // 中文输入法组合状态
+const inputRef = ref<HTMLInputElement | null>(null)
 const isComposing = ref(false)
 
 const displayValue = computed(() => modelValue.value ?? '')
@@ -141,6 +145,7 @@ const handleBlur = (event: FocusEvent) => {
 const handleClear = () => {
   modelValue.value = undefined
   emit('clear')
+  inputRef.value?.focus()
 }
 </script>
 
@@ -261,6 +266,13 @@ const handleClear = () => {
 }
 
 .dp-input__clear:hover {
+  background: var(--dp-gray-200, #e5e7eb);
+  color: var(--dp-text-primary, #0f172a);
+}
+
+.dp-input__clear:focus-visible {
+  outline: 2px solid var(--dp-blue-600, #2563eb);
+  outline-offset: 1px;
   background: var(--dp-gray-200, #e5e7eb);
   color: var(--dp-text-primary, #0f172a);
 }

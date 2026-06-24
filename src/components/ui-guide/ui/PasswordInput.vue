@@ -14,6 +14,7 @@
       <slot name="prefix" />
     </span>
     <input
+      ref="inputRef"
       :value="displayValue"
       class="ui-password-input__control"
       :type="inputType"
@@ -33,6 +34,7 @@
       v-if="props.visibilityToggle && !props.disabled"
       type="button"
       class="ui-password-input__toggle"
+      tabindex="-1"
       :class="{ 'ui-password-input__toggle--active': passwordVisible }"
       :aria-label="passwordVisible ? '隐藏密码' : '显示密码'"
       :title="passwordVisible ? '隐藏密码' : '显示密码'"
@@ -71,10 +73,11 @@
       v-if="props.clearable && !props.readonly && !props.disabled && displayValue !== ''"
       type="button"
       class="ui-password-input__clear"
+      tabindex="-1"
       aria-label="清空密码"
       @click="handleClear"
     >
-      ×
+      <span aria-hidden="true">×</span>
     </button>
     <span v-if="$slots.suffix" class="ui-password-input__affix ui-password-input__affix--suffix">
       <slot name="suffix" />
@@ -125,6 +128,7 @@ const emit = defineEmits<{
 }>()
 
 const passwordVisible = ref(false)
+const inputRef = ref<HTMLInputElement | null>(null)
 
 const displayValue = computed(() => modelValue.value ?? '')
 
@@ -156,6 +160,7 @@ const handleBlur = (event: FocusEvent) => {
 const handleClear = () => {
   modelValue.value = undefined
   emit('clear')
+  inputRef.value?.focus()
 }
 
 const toggleVisibility = () => {
@@ -276,6 +281,14 @@ const toggleVisibility = () => {
 
 .ui-password-input__toggle:hover,
 .ui-password-input__clear:hover {
+  background: var(--dp-gray-200, #e5e7eb);
+  color: var(--dp-text-primary, #0f172a);
+}
+
+.ui-password-input__toggle:focus-visible,
+.ui-password-input__clear:focus-visible {
+  outline: 2px solid var(--dp-blue-600, #2563eb);
+  outline-offset: 1px;
   background: var(--dp-gray-200, #e5e7eb);
   color: var(--dp-text-primary, #0f172a);
 }

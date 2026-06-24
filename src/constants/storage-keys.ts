@@ -17,10 +17,10 @@ export const STORAGE_TOKEN_EXPIRES_AT = 'tokenExpiresAt'
 /** 用户信息（遗留 key，清除认证时需移除） */
 export const STORAGE_USER = 'user'
 
-/** 记住我标记 */
+/** @deprecated 遗留键，仅用于迁移清理；真源为 localStorage login-config */
 export const STORAGE_REMEMBER_ME = 'rememberMe'
 
-/** 记住的用户名 */
+/** @deprecated 遗留键，仅用于迁移清理；真源为 localStorage login-config */
 export const STORAGE_REMEMBERED_USERNAME = 'rememberedUsername'
 
 
