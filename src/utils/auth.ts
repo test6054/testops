@@ -11,9 +11,7 @@ const getToken = () => {
 }
 
 const hasPersistedSessionHint = (): boolean => {
-  return !!getToken()
-    || !!localStorage.getItem(STORAGE_REFRESH_TOKEN)
-    || !!localStorage.getItem(STORAGE_TOKEN_EXPIRES_AT)
+  return !!getToken() || !!localStorage.getItem(STORAGE_REFRESH_TOKEN)
 }
 
 /** 以 JWT exp 为唯一过期真源，并回写 tokenExpiresAt 修复缓存漂移 */

@@ -74,28 +74,16 @@ installVueECharts(app)
 
 app.use(pinia)
 
-// 在路由初始化之前，先初始化用户状态
+// 在路由初始化之前注册 pinia；认证恢复不阻塞首屏挂载，由路由守卫与后台 initializeAuth 承接
 const authStore = useAuthStore()
 
-// 异步初始化用户认证状态
-const initializeApp = async () => {
-  if (hasPersistedSessionHint()) {
-    try {
-      await authStore.initializeAuth()
-    } catch {
-      // 认证初始化失败，继续启动应用
-    }
-  }
-  app.use(Antd)
-  app.use(router)
+app.use(Antd)
+app.use(router)
+app.mount('#app')
 
-  app.mount('#app')
+if (hasPersistedSessionHint()) {
+  authStore.initializeAuth().catch(() => {})
 }
-
-// 启动应用
-initializeApp().catch(() => {
-  message.error('应用初始化失败，请刷新页面后重试')
-})
 
 // 全局错误处理：生产环境只展示通用文案；开发环境保留控制台堆栈便于定位渲染异常
 app.config.errorHandler = (err, _instance, info) => {

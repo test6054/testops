@@ -80,6 +80,10 @@ export const useAuthStore = defineStore(
     let refreshOperationPromise: Promise<boolean> | null = null
     /** initializeAuth 单飞，避免路由守卫并发触发多次刷新 */
     let initializeAuthPromise: Promise<void> | null = null
+    /** runInitializeAuth 单飞：initializeAuth 超时返回后后台恢复仍共用同一 Promise */
+    let runInitializeAuthPromise: Promise<void> | null = null
+    /** 首屏与路由守卫等待会话恢复的上限，避免 refresh 重试把页面卡在静态 loading */
+    const AUTH_INITIALIZATION_TIMEOUT_MS = 10000
     /** 后台预刷新取消信号；destroyAuth / 登出时 abort，避免登出后还有残留 retry 跑 */
     let scheduledRefreshAbort: AbortController | null = null
 
@@ -792,12 +796,27 @@ export const useAuthStore = defineStore(
       }
     }
 
+    const runInitializeAuthOnce = (): Promise<void> => {
+      if (!runInitializeAuthPromise) {
+        runInitializeAuthPromise = runInitializeAuth().finally(() => {
+          runInitializeAuthPromise = null
+        })
+      }
+      return runInitializeAuthPromise
+    }
+
     const initializeAuth = async () => {
       if (initializeAuthPromise) {
         return initializeAuthPromise
       }
 
-      initializeAuthPromise = runInitializeAuth()
+      initializeAuthPromise = Promise.race([
+        runInitializeAuthOnce(),
+        new Promise<void>((resolve) => {
+          setTimeout(resolve, AUTH_INITIALIZATION_TIMEOUT_MS)
+        }),
+      ])
+
       try {
         await initializeAuthPromise
       } finally {
@@ -822,6 +841,7 @@ export const useAuthStore = defineStore(
       refreshPromise.value = null
       refreshOperationPromise = null
       initializeAuthPromise = null
+      runInitializeAuthPromise = null
       if (visibilityListenerRegistered && typeof document !== 'undefined') {
         document.removeEventListener('visibilitychange', handleVisibilityChange)
         visibilityListenerRegistered = false
