@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  PortfolioArchiveCategoryTreeNodeVO,
   PortfolioAiAnalysisDetailVO,
+  PortfolioArchiveCategoryTreeNodeVO,
+  PortfolioArchiveRecordSourceType,
+  PortfolioArchiveRecordStatus,
+  PortfolioMaterialRiskLevel,
+  PortfolioReviewActionType,
   PortfolioReviewArchiveRecordDetailVO,
   PortfolioReviewLogVO,
   PortfolioReviewTaskPageRequest,
+  PortfolioReviewTaskStatus,
   PortfolioReviewTaskSummaryVO,
 } from '@/apis/portfolio/types'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import { DatePicker, Input, message } from 'ant-design-vue'
-import type { Dayjs } from 'dayjs'
+import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
+import { Input, message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioReviewApi } from '@/apis/portfolio/review'
@@ -18,16 +22,17 @@ import {
   PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL,
   PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
-  PORTFOLIO_REVIEW_ACTION_TYPE_LABEL,
-  PORTFOLIO_REVIEW_TASK_STATUS_LABEL,
-  PORTFOLIO_REVIEW_TASK_STATUS_TONE,
   PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
   PORTFOLIO_MATERIAL_RISK_LEVEL_LABEL,
   PORTFOLIO_MATERIAL_RISK_LEVEL_TONE,
+  PORTFOLIO_REVIEW_ACTION_TYPE_LABEL,
+  PORTFOLIO_REVIEW_TASK_STATUS_LABEL,
+  PORTFOLIO_REVIEW_TASK_STATUS_TONE,
   PORTFOLIO_SCHOOL_REVIEW_FLOW_CODE,
 } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -35,12 +40,60 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
+import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { ResultCode } from '@/types/enums/result-code'
+import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+
+const PORTFOLIO_REVIEW_TASK_STATUS_FILTER_CODES = [
+  'PENDING',
+  'SECOND_REVIEW',
+  'APPROVED',
+  'RETURNED',
+  'DISMISSED',
+  'CLOSED',
+] satisfies readonly PortfolioReviewTaskStatus[]
+
+function reviewTaskStatusLabel(status: PortfolioReviewTaskStatus): string {
+  return strictEnumLabel(PORTFOLIO_REVIEW_TASK_STATUS_LABEL, status, '审核任务状态')
+}
+
+function reviewTaskStatusTone(status: PortfolioReviewTaskStatus): BadgeTone {
+  return strictEnumTone(PORTFOLIO_REVIEW_TASK_STATUS_TONE, status, '审核任务状态')
+}
+
+function materialRiskLevelLabel(riskLevel: PortfolioMaterialRiskLevel): string {
+  return strictEnumLabel(PORTFOLIO_MATERIAL_RISK_LEVEL_LABEL, riskLevel, '档案材料风险等级')
+}
+
+function materialRiskLevelTone(riskLevel: PortfolioMaterialRiskLevel): BadgeTone {
+  return strictEnumTone(PORTFOLIO_MATERIAL_RISK_LEVEL_TONE, riskLevel, '档案材料风险等级')
+}
+
+function archiveRecordSourceTypeLabel(sourceType: PortfolioArchiveRecordSourceType): string {
+  return strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL, sourceType, '档案记录来源类型')
+}
+
+function archiveRecordStatusLabel(status: PortfolioArchiveRecordStatus): string {
+  return strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, status, '档案记录状态')
+}
+
+function archiveRecordStatusTone(status: PortfolioArchiveRecordStatus): BadgeTone {
+  return strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, status, '档案记录状态')
+}
+
+function reviewActionTypeLabel(actionType: PortfolioReviewActionType): string {
+  return strictEnumLabel(PORTFOLIO_REVIEW_ACTION_TYPE_LABEL, actionType, '审核操作类型')
+}
+
+function reviewTaskStatusFilterOptions(): FilterOption[] {
+  return PORTFOLIO_REVIEW_TASK_STATUS_FILTER_CODES.map(value => ({
+    value,
+    label: reviewTaskStatusLabel(value),
+  }))
+}
 
 interface ReviewFilterModel {
   departmentId?: string
@@ -140,9 +193,7 @@ const filterFields = computed<FilterField[]>(() => [
     label: '审核状态',
     allowClear: true,
     width: 140,
-    options: (Object.keys(PORTFOLIO_REVIEW_TASK_STATUS_LABEL) as PortfolioReviewTaskPageRequest['reviewStatus'][]).map(
-      value => ({ value, label: strictEnumLabel(PORTFOLIO_REVIEW_TASK_STATUS_LABEL, value) }),
-    ),
+    options: reviewTaskStatusFilterOptions(),
   },
 ])
 
@@ -165,9 +216,9 @@ const actionSubmitting = ref(false)
 const approveOpinion = ref('')
 const rejectReason = ref('')
 const dismissReason = ref('')
-const returnDeadline = ref<Dayjs | null>(null)
+const returnDeadline = ref('')
 const batchRejectReason = ref('')
-const batchReturnDeadline = ref<Dayjs | null>(null)
+const batchReturnDeadline = ref('')
 const escalateReason = ref('')
 
 const batchSelectableKeys = computed(() =>
@@ -234,7 +285,7 @@ async function openDetail(row: PortfolioReviewTaskSummaryVO) {
   approveOpinion.value = ''
   rejectReason.value = ''
   dismissReason.value = ''
-  returnDeadline.value = null
+  returnDeadline.value = ''
   escalateReason.value = ''
   detailLoading.value = true
   recordDetail.value = null
@@ -289,7 +340,7 @@ async function handleApprove() {
 }
 
 async function handleReject() {
-  if (!activeRow.value || !rejectReason.value.trim() || !returnDeadline.value) {
+  if (!activeRow.value || !rejectReason.value.trim() || !returnDeadline.value.trim()) {
     message.warning('请填写退回原因与重提期限')
     return
   }
@@ -298,7 +349,7 @@ async function handleReject() {
     await portfolioReviewApi.reject({
       reviewTaskId: activeRow.value.id,
       reason: rejectReason.value.trim(),
-      returnDeadline: returnDeadline.value.format('YYYY-MM-DD HH:mm:ss'),
+      returnDeadline: returnDeadline.value.trim(),
     })
     message.success('已退回修改')
     drawerOpen.value = false
@@ -317,7 +368,11 @@ async function handleDismiss() {
     message.warning('请填写驳回依据')
     return
   }
-  const ok = await confirmAsync('确认驳回该档案材料？驳回后记录将作废。')
+  const ok = await confirmAsync({
+    title: '确认驳回',
+    content: '确认驳回该档案材料？驳回后记录将作废。',
+    type: 'warning',
+  })
   if (!ok) {
     return
   }
@@ -364,7 +419,7 @@ async function handleBatchReject() {
     message.warning('请选择可批量退回的待审任务')
     return
   }
-  if (!batchRejectReason.value.trim() || !batchReturnDeadline.value) {
+  if (!batchRejectReason.value.trim() || !batchReturnDeadline.value.trim()) {
     message.warning('请填写批量退回原因与重提期限')
     return
   }
@@ -373,12 +428,12 @@ async function handleBatchReject() {
     const count = await portfolioReviewApi.batchReject({
       reviewTaskIds: selectedRowKeys.value,
       reason: batchRejectReason.value.trim(),
-      returnDeadline: batchReturnDeadline.value.format('YYYY-MM-DD HH:mm:ss'),
+      returnDeadline: batchReturnDeadline.value.trim(),
     })
     message.success(`已批量退回 ${count} 条`)
     selectedRowKeys.value = []
     batchRejectReason.value = ''
-    batchReturnDeadline.value = null
+    batchReturnDeadline.value = ''
     await loadPage()
   }
   catch (error) {
@@ -394,7 +449,11 @@ async function handleEscalate() {
     message.warning('请填写转复审原因')
     return
   }
-  const ok = await confirmAsync('确认将该材料转学校复审？转复审后禁止批量操作。')
+  const ok = await confirmAsync({
+    title: '确认转复审',
+    content: '确认将该材料转学校复审？转复审后禁止批量操作。',
+    type: 'warning',
+  })
   if (!ok) {
     return
   }
@@ -440,7 +499,6 @@ onMounted(async () => {
         </h3>
         <div class="review-toolbar">
           <UiButton
-            type="primary"
             :loading="batchSubmitting"
             :disabled="!selectedRowKeys.length"
             @click="handleBatchApprove"
@@ -457,10 +515,11 @@ onMounted(async () => {
         </div>
         <div v-if="selectedRowKeys.length" class="review-batch-reject">
           <Input v-model:value="batchRejectReason" placeholder="批量退回原因" />
-          <DatePicker
-            v-model:value="batchReturnDeadline"
+          <UiDatePicker
+            v-model="batchReturnDeadline"
             show-time
             format="YYYY-MM-DD HH:mm:ss"
+            value-format="YYYY-MM-DD HH:mm:ss"
             placeholder="重提期限"
             style="width: 100%"
           />
@@ -486,9 +545,9 @@ onMounted(async () => {
             <template v-else-if="column.key === 'riskLevel'">
               <UiTag
                 v-if="record.riskLevel"
-                :tone="strictEnumTone(PORTFOLIO_MATERIAL_RISK_LEVEL_TONE, record.riskLevel)"
+                :tone="materialRiskLevelTone(record.riskLevel)"
               >
-                {{ strictEnumLabel(PORTFOLIO_MATERIAL_RISK_LEVEL_LABEL, record.riskLevel) }}
+                {{ materialRiskLevelLabel(record.riskLevel) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'referenceTask'">
@@ -498,19 +557,19 @@ onMounted(async () => {
               {{ record.aiPreReviewSummary ?? '—' }}
             </template>
             <template v-else-if="column.key === 'sourceType'">
-              {{ record.sourceType ? strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL, record.sourceType) : '—' }}
+              {{ record.sourceType ? archiveRecordSourceTypeLabel(record.sourceType) : '—' }}
             </template>
             <template v-else-if="column.key === 'recordStatus'">
               <UiTag
                 v-if="record.recordStatus"
-                :tone="strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, record.recordStatus)"
+                :tone="archiveRecordStatusTone(record.recordStatus)"
               >
-                {{ strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, record.recordStatus) }}
+                {{ archiveRecordStatusLabel(record.recordStatus) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'reviewStatus'">
-              <UiTag :tone="strictEnumTone(PORTFOLIO_REVIEW_TASK_STATUS_TONE, record.reviewStatus)">
-                {{ strictEnumLabel(PORTFOLIO_REVIEW_TASK_STATUS_LABEL, record.reviewStatus) }}
+              <UiTag :tone="reviewTaskStatusTone(record.reviewStatus)">
+                {{ reviewTaskStatusLabel(record.reviewStatus) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
@@ -539,9 +598,9 @@ onMounted(async () => {
             <template v-else-if="column.key === 'riskLevel'">
               <UiTag
                 v-if="record.riskLevel"
-                :tone="strictEnumTone(PORTFOLIO_MATERIAL_RISK_LEVEL_TONE, record.riskLevel)"
+                :tone="materialRiskLevelTone(record.riskLevel)"
               >
-                {{ strictEnumLabel(PORTFOLIO_MATERIAL_RISK_LEVEL_LABEL, record.riskLevel) }}
+                {{ materialRiskLevelLabel(record.riskLevel) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'referenceTask'">
@@ -551,19 +610,19 @@ onMounted(async () => {
               {{ record.aiPreReviewSummary ?? '—' }}
             </template>
             <template v-else-if="column.key === 'sourceType'">
-              {{ record.sourceType ? strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL, record.sourceType) : '—' }}
+              {{ record.sourceType ? archiveRecordSourceTypeLabel(record.sourceType) : '—' }}
             </template>
             <template v-else-if="column.key === 'recordStatus'">
               <UiTag
                 v-if="record.recordStatus"
-                :tone="strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, record.recordStatus)"
+                :tone="archiveRecordStatusTone(record.recordStatus)"
               >
-                {{ strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, record.recordStatus) }}
+                {{ archiveRecordStatusLabel(record.recordStatus) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'reviewStatus'">
-              <UiTag :tone="strictEnumTone(PORTFOLIO_REVIEW_TASK_STATUS_TONE, record.reviewStatus)">
-                {{ strictEnumLabel(PORTFOLIO_REVIEW_TASK_STATUS_LABEL, record.reviewStatus) }}
+              <UiTag :tone="reviewTaskStatusTone(record.reviewStatus)">
+                {{ reviewTaskStatusLabel(record.reviewStatus) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
@@ -594,7 +653,7 @@ onMounted(async () => {
       <template v-if="activeRow">
         <p class="review-meta">
           {{ activeRow.teacherName }} · {{ activeRow.categoryName }} ·
-          {{ strictEnumLabel(PORTFOLIO_REVIEW_TASK_STATUS_LABEL, activeRow.reviewStatus) }}
+          {{ reviewTaskStatusLabel(activeRow.reviewStatus) }}
         </p>
         <p v-if="aiPreReview?.summary" class="review-ai-summary">
           AI 初审：{{ aiPreReview.summary }}
@@ -633,14 +692,14 @@ onMounted(async () => {
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'actionType'">
-              {{ strictEnumLabel(PORTFOLIO_REVIEW_ACTION_TYPE_LABEL, record.actionType) }}
+              {{ reviewActionTypeLabel(record.actionType) }}
             </template>
           </template>
         </UiDataTable>
         <div v-if="showReviewActions" class="review-actions">
           <Input v-model:value="approveOpinion" placeholder="通过意见（可选）" />
           <div class="review-actions__row">
-            <UiButton type="primary" :loading="actionSubmitting" @click="handleApprove">
+            <UiButton :loading="actionSubmitting" @click="handleApprove">
               通过
             </UiButton>
           </div>
@@ -651,10 +710,11 @@ onMounted(async () => {
             </UiButton>
           </template>
           <Input v-model:value="rejectReason" placeholder="退回原因" />
-          <DatePicker
-            v-model:value="returnDeadline"
+          <UiDatePicker
+            v-model="returnDeadline"
             show-time
             format="YYYY-MM-DD HH:mm:ss"
+            value-format="YYYY-MM-DD HH:mm:ss"
             placeholder="重提期限"
             style="width: 100%"
           />
@@ -662,7 +722,7 @@ onMounted(async () => {
             退回修改
           </UiButton>
           <Input v-model:value="dismissReason" placeholder="驳回依据" />
-          <UiButton danger :loading="actionSubmitting" @click="handleDismiss">
+          <UiButton status="danger" :loading="actionSubmitting" @click="handleDismiss">
             驳回
           </UiButton>
         </div>

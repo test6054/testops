@@ -2,14 +2,14 @@
 import type {
   PortfolioArchiveRecordFieldInput,
   PortfolioGapTaskDetailVO,
+  PortfolioGapTaskStatus,
 } from '@/apis/portfolio/types'
+import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
-import {
-  PORTFOLIO_GAP_TASK_STATUS_LABEL,
-} from '@/apis/portfolio/types'
+import { PORTFOLIO_GAP_TASK_STATUS_LABEL } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -17,13 +17,20 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { message } from 'ant-design-vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
+function gapTaskStatusLabel(status: PortfolioGapTaskStatus): string {
+  return strictEnumLabel(PORTFOLIO_GAP_TASK_STATUS_LABEL, status, '补采任务状态')
+}
+
+function readRouteParamString(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
 const route = useRoute()
 const router = useRouter()
-const { currentUserId, canPickTeachers, resolveDefaultTeacherId } = usePortfolioTeacherAccess()
+const { currentUserId, resolveDefaultTeacherId } = usePortfolioTeacherAccess()
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -32,7 +39,7 @@ const detail = ref<PortfolioGapTaskDetailVO | null>(null)
 const fieldValues = reactive<Record<string, string>>({})
 const evidenceRefs = reactive<Record<string, string>>({})
 
-const gapTaskId = computed(() => route.params.taskId as string)
+const gapTaskId = computed(() => readRouteParamString(route.params.taskId))
 const targetTeacherId = computed(() => {
   const queryId = typeof route.query.teacherId === 'string' ? route.query.teacherId : ''
   if (queryId) {
@@ -41,12 +48,12 @@ const targetTeacherId = computed(() => {
   return resolveDefaultTeacherId() || currentUserId.value
 })
 const teacherRequest = computed(() =>
-  targetTeacherId.value ? { teacherId: targetTeacherId.value } : {})
+  targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+)
 
 const statusLabel = computed(() =>
-  detail.value
-    ? strictEnumLabel(PORTFOLIO_GAP_TASK_STATUS_LABEL, detail.value.taskStatus)
-    : '')
+  detail.value ? gapTaskStatusLabel(detail.value.taskStatus) : '',
+)
 
 async function loadTask() {
   if (!gapTaskId.value) {
@@ -61,11 +68,9 @@ async function loadTask() {
       fieldValues[field.fieldCode] = field.currentValue ?? ''
       evidenceRefs[field.fieldCode] = ''
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载补采任务失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -74,7 +79,7 @@ function buildFieldInputs(): PortfolioArchiveRecordFieldInput[] {
   if (!detail.value) {
     return []
   }
-  return detail.value.missingFields.map(field => ({
+  return detail.value.missingFields.map((field) => ({
     fieldCode: field.fieldCode,
     fieldValue: fieldValues[field.fieldCode] ?? '',
     evidenceRef: evidenceRefs[field.fieldCode] || undefined,
@@ -95,11 +100,9 @@ async function handleSaveDraft() {
     })
     message.success('草稿已保存')
     await loadTask()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '保存草稿失败')
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -120,11 +123,9 @@ async function handleSubmit() {
       path: '/portfolio/teacher/home',
       query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
     })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '提交补采失败')
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -148,13 +149,11 @@ onMounted(() => {
       description="缺口字段补采 · 提交审核（§7.27.1 / §7.26.5）"
     >
       <template #actions>
-        <UiButton @click="goBack">
-          返回首页
-        </UiButton>
+        <UiButton @click="goBack"> 返回首页 </UiButton>
         <UiButton :loading="saving" :disabled="loading || !detail" @click="handleSaveDraft">
           保存草稿
         </UiButton>
-        <UiButton type="primary" :loading="submitting" :disabled="loading || !detail" @click="handleSubmit">
+        <UiButton :loading="submitting" :disabled="loading || !detail" @click="handleSubmit">
           提交补采
         </UiButton>
       </template>
@@ -180,10 +179,7 @@ onMounted(() => {
               :label="field.fieldLabel ?? field.fieldCode"
               :required="field.missing"
             >
-              <a-input
-                v-model:value="fieldValues[field.fieldCode]"
-                placeholder="必填"
-              />
+              <a-input v-model:value="fieldValues[field.fieldCode]" placeholder="必填" />
               <a-input
                 v-model:value="evidenceRefs[field.fieldCode]"
                 class="teacher-gap__evidence"

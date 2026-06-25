@@ -6,9 +6,9 @@ import LoadingOutlined from '@ant-design/icons-vue/LoadingOutlined'
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { isQualityEvaluationRoute } from '@/utils/portfolio-route'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
+import { isQualityEvaluationRoute } from '@/utils/portfolio-route'
 
 defineOptions({ name: 'AiTaskRunningBar' })
 

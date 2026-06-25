@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import type {
   PortfolioTeacherCompletenessVO,
-  PortfolioTeacherPortraitVO,
+  PortfolioTeacherPortraitVO, PortfolioTodoSummaryVO
 } from '@/apis/portfolio/types'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { portfolioTodoApi } from '@/apis/portfolio/todo'
-import type { PortfolioTodoSummaryVO } from '@/apis/portfolio/types'
 import {
   PORTFOLIO_COMPLETENESS_LEVEL_LABEL,
   PORTFOLIO_COMPLETENESS_LEVEL_TONE,
@@ -16,8 +15,8 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
@@ -60,12 +59,21 @@ const portraitStatItems = computed((): UiStatPanelItem[] => {
   }
   const row = portrait.value
   return [
+    { key: 'composite', label: '综合画像', value: String(row.compositeScore), unit: '分', tone: 'blue' },
     { key: 'core', label: '发展核心', value: String(row.developmentCoreScore), unit: '分' },
     { key: 'teaching', label: '教学能力', value: String(row.teachingScore), unit: '分' },
     { key: 'research', label: '科研教研', value: String(row.researchScore), unit: '分' },
     { key: 'training', label: '培训发展', value: String(row.trainingScore), unit: '分' },
     { key: 'practice', label: '企业实践', value: String(row.practiceScore), unit: '分' },
   ]
+})
+
+const portraitDataInsufficient = computed(() => {
+  if (!portrait.value) {
+    return false
+  }
+  return portrait.value.officialRecordCount === 0
+    && portrait.value.dimensions.every(item => item.readiness === 'PENDING')
 })
 
 async function loadDashboard() {
@@ -238,9 +246,9 @@ onMounted(() => {
               <div class="teacher-home__completeness-head">
                 <span class="teacher-home__percent">{{ completenessPercentText }}</span>
                 <UiTag
-                  :tone="strictEnumTone(PORTFOLIO_COMPLETENESS_LEVEL_TONE, completeness.completenessLevel)"
+                  :tone="strictEnumTone(PORTFOLIO_COMPLETENESS_LEVEL_TONE, completeness.completenessLevel, '档案完整度等级')"
                 >
-                  {{ strictEnumLabel(PORTFOLIO_COMPLETENESS_LEVEL_LABEL, completeness.completenessLevel) }}
+                  {{ strictEnumLabel(PORTFOLIO_COMPLETENESS_LEVEL_LABEL, completeness.completenessLevel, '档案完整度等级') }}
                 </UiTag>
               </div>
               <p class="teacher-home__meta">
@@ -265,7 +273,7 @@ onMounted(() => {
 
         <UiCard title="画像摘要" class="teacher-home__card">
           <template #extra>
-            <UiButton type="link" :disabled="!portrait && !portraitAbsent" @click="goPortrait">
+            <UiButton variant="ghost" size="sm" :disabled="!portrait && !portraitAbsent" @click="goPortrait">
               查看画像
             </UiButton>
           </template>
@@ -273,7 +281,7 @@ onMounted(() => {
             <UiStatPanel
               v-if="portrait"
               :items="portraitStatItems"
-              :columns="5"
+              :columns="3"
               variant="strip"
               compact
             />
@@ -282,6 +290,12 @@ onMounted(() => {
               <template v-if="portrait.computedAt">
                 · 更新于 {{ portrait.computedAt }}
               </template>
+            </p>
+            <p
+              v-if="portrait && portraitDataInsufficient"
+              class="teacher-home__onboarding"
+            >
+              画像数据不足，请先完成建档
             </p>
             <UiEmpty
               v-else-if="portraitAbsent && !loading"

@@ -17,16 +17,16 @@
 <script lang="ts" setup>
 import type { Component } from 'vue'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
+import FolderOutlined from '@ant-design/icons-vue/FolderOutlined'
 import HistoryOutlined from '@ant-design/icons-vue/HistoryOutlined'
 import MailOutlined from '@ant-design/icons-vue/MailOutlined'
 import ReconciliationOutlined from '@ant-design/icons-vue/ReconciliationOutlined'
-import FolderOutlined from '@ant-design/icons-vue/FolderOutlined'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { isQualityEvaluationRoute, PORTFOLIO_ROUTE_PREFIX } from '@/utils/portfolio-route'
 import { useDevice } from '@/hooks'
 import { useAuthStore } from '@/stores'
 import { RoleEnum } from '@/utils/permission'
+import { isQualityEvaluationRoute, PORTFOLIO_ROUTE_PREFIX } from '@/utils/portfolio-route'
 
 defineOptions({ name: 'TabBar' })
 

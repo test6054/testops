@@ -1,8 +1,26 @@
 import Modal from 'ant-design-vue/es/modal'
+import type { RouteRecordRaw } from 'vue-router'
 import { createRouter, createWebHistory } from 'vue-router'
 import { setupRouterGuard } from '@/router/guard'
-import { allRoutes } from '@/router/routes'
+import { commonRoutes, errorRoutes } from '@/router/routes/common'
+import { constantRoutes } from '@/router/routes/constant'
+import { examWorkspaceRoutes } from '@/router/routes/exam-workspace'
+import { portfolioRoutes } from '@/router/routes/portfolio'
+import { qualityRoutes } from '@/router/routes/quality'
+import { studentRoutes } from '@/router/routes/student'
+import { teacherRoutes } from '@/router/routes/teacher'
 import { setupRoutePreload } from './preload-strategy'
+
+const allRoutes: RouteRecordRaw[] = [
+  ...constantRoutes,
+  ...teacherRoutes,
+  examWorkspaceRoutes,
+  ...qualityRoutes,
+  ...portfolioRoutes,
+  ...studentRoutes,
+  ...commonRoutes,
+  ...errorRoutes,
+]
 
 function isChunkLoadError(message: string) {
   const chunkLoadPatterns = [

@@ -1,25 +1,59 @@
 <script setup lang="ts">
+import type { EChartsCoreOption } from 'echarts/core'
+import type {
+  PortfolioPortraitDimension,
+  PortfolioTeacherPortraitCohortCompareVO,
+  PortfolioTeacherPortraitIndicatorDetailVO,
+  PortfolioTeacherPortraitTrendVO,
+  PortfolioTeacherPortraitVO,
+} from '@/apis/portfolio/types'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import type { PortfolioTeacherPortraitVO } from '@/apis/portfolio/types'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
+import {
+  PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
+  PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
+  PORTFOLIO_PORTRAIT_DIMENSION_READINESS_LABEL,
+  PORTFOLIO_PORTRAIT_DIMENSION_READINESS_TONE,
+  PORTFOLIO_PORTRAIT_INDICATOR_EVIDENCE_TYPE_LABEL,
+} from '@/apis/portfolio/types'
+import MarkChart from '@/components/chart/MarkChart.vue'
+import MarkChartCard from '@/components/chart/MarkChartCard.vue'
+import UiAlert from '@/components/ui-guide/ui/Alert.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { ResultCode } from '@/types/enums/result-code'
-import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, readBusinessResultCode, showUserError } from '@/utils/error-handler'
+import {
+  buildPortraitCohortRangeChartOption,
+  buildPortraitCompositeTrendChartOption,
+  buildPortraitRadarChartOption,
+  resolveCohortHint,
+} from '@/utils/portfolio-portrait-charts'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const route = useRoute()
+const router = useRouter()
 const { currentUserId, canPickTeachers, resolveDefaultTeacherId } = usePortfolioTeacherAccess()
 
 const loading = ref(false)
+const detailLoading = ref(false)
 const portrait = ref<PortfolioTeacherPortraitVO | null>(null)
+const cohort = ref<PortfolioTeacherPortraitCohortCompareVO | null>(null)
+const trend = ref<PortfolioTeacherPortraitTrendVO | null>(null)
 const portraitAbsent = ref(false)
+const cohortError = ref('')
+const trendError = ref('')
+const detailOpen = ref(false)
+const indicatorDetail = ref<PortfolioTeacherPortraitIndicatorDetailVO | null>(null)
 
 const targetTeacherId = computed(() => {
   const queryId = typeof route.query.teacherId === 'string' ? route.query.teacherId : ''
@@ -29,13 +63,14 @@ const targetTeacherId = computed(() => {
   return resolveDefaultTeacherId() || currentUserId.value
 })
 
-const dimensionItems = computed((): UiStatPanelItem[] => {
+const compositeItems = computed((): UiStatPanelItem[] => {
   if (!portrait.value) {
     return []
   }
   const row = portrait.value
   return [
-    { key: 'core', label: '职业发展核心', value: String(row.developmentCoreScore), unit: '分', tone: 'blue' },
+    { key: 'composite', label: '综合画像分', value: String(row.compositeScore), unit: '分', tone: 'blue' },
+    { key: 'core', label: '发展核心', value: String(row.developmentCoreScore), unit: '分' },
     { key: 'teaching', label: '教学能力', value: String(row.teachingScore), unit: '分' },
     { key: 'research', label: '科研教研', value: String(row.researchScore), unit: '分' },
     { key: 'training', label: '培训发展', value: String(row.trainingScore), unit: '分' },
@@ -43,17 +78,90 @@ const dimensionItems = computed((): UiStatPanelItem[] => {
   ]
 })
 
-async function loadPortrait() {
+const portraitDataInsufficient = computed(() => {
+  if (!portrait.value) {
+    return false
+  }
+  return portrait.value.dimensions.every(item => item.readiness === 'PENDING')
+})
+
+const cohortHint = computed(() => {
+  if (!cohort.value) {
+    return ''
+  }
+  return resolveCohortHint(cohort.value.displayMode, cohort.value.sampleSize, cohort.value.cohortLabel)
+})
+
+const radarOption = computed((): EChartsCoreOption => {
+  if (!portrait.value) {
+    return {}
+  }
+  return buildPortraitRadarChartOption(portrait.value, cohort.value)
+})
+
+const cohortRangeOption = computed((): EChartsCoreOption => {
+  if (!cohort.value) {
+    return {}
+  }
+  return buildPortraitCohortRangeChartOption(cohort.value)
+})
+
+const trendOption = computed((): EChartsCoreOption => {
+  return buildPortraitCompositeTrendChartOption(trend.value?.points ?? [])
+})
+
+function buildPortraitRequest() {
+  return targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}
+}
+
+async function loadSecondaryPortraitData() {
+  if (!portrait.value) {
+    return
+  }
+  const request = buildPortraitRequest()
+  cohortError.value = ''
+  trendError.value = ''
+  const [cohortSettled, trendSettled] = await Promise.allSettled([
+    portfolioAnalysisApi.getPortraitCohortCompare(request),
+    portfolioAnalysisApi.getPortraitTrend({ ...request, limit: 12 }),
+  ])
+  if (cohortSettled.status === 'fulfilled') {
+    cohort.value = cohortSettled.value
+  }
+  else {
+    cohort.value = null
+    cohortError.value = getUserErrorMessage(cohortSettled.reason, '加载同群体对比失败')
+  }
+  if (trendSettled.status === 'fulfilled') {
+    trend.value = trendSettled.value
+  }
+  else {
+    trend.value = null
+    trendError.value = getUserErrorMessage(trendSettled.reason, '加载历史趋势失败')
+  }
+}
+
+async function loadPortraitBundle() {
   if (!targetTeacherId.value && canPickTeachers.value) {
     portraitAbsent.value = true
+    portrait.value = null
+    cohort.value = null
+    trend.value = null
+    cohortError.value = ''
+    trendError.value = ''
     return
   }
   loading.value = true
   portraitAbsent.value = false
   portrait.value = null
+  cohort.value = null
+  trend.value = null
+  cohortError.value = ''
+  trendError.value = ''
   try {
-    const request = targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}
+    const request = buildPortraitRequest()
     portrait.value = await portfolioAnalysisApi.getPortrait(request)
+    await loadSecondaryPortraitData()
   }
   catch (error) {
     if (readBusinessResultCode(error) === ResultCode.DATA_NOT_FOUND) {
@@ -68,8 +176,44 @@ async function loadPortrait() {
   }
 }
 
+async function openIndicatorDetail(dimensionCode: PortfolioPortraitDimension) {
+  detailOpen.value = true
+  indicatorDetail.value = null
+  detailLoading.value = true
+  try {
+    indicatorDetail.value = await portfolioAnalysisApi.getPortraitIndicatorDetail({
+      ...buildPortraitRequest(),
+      dimensionCode,
+    })
+  }
+  catch (error) {
+    showUserError(error, '加载指标明细失败')
+    detailOpen.value = false
+  }
+  finally {
+    detailLoading.value = false
+  }
+}
+
+function openArchiveRecord(archiveRecordId?: string) {
+  if (!archiveRecordId) {
+    return
+  }
+  void router.push({
+    path: '/portfolio/teacher-archive',
+    query: {
+      teacherId: targetTeacherId.value,
+      recordId: archiveRecordId,
+    },
+  })
+}
+
+watch(targetTeacherId, () => {
+  void loadPortraitBundle()
+})
+
 onMounted(() => {
-  void loadPortrait()
+  void loadPortraitBundle()
 })
 </script>
 
@@ -77,10 +221,10 @@ onMounted(() => {
   <StageWorkbenchShell>
     <ContextBar
       title="教师画像"
-      description="一核心四能力（§8.37）；群体对比与指标明细见需求 §24.5"
+      description="一核心四能力雷达、同院系群体区间、历史趋势与指标下钻"
     >
       <template #actions>
-        <UiButton :loading="loading" @click="loadPortrait">
+        <UiButton :loading="loading" @click="loadPortraitBundle">
           刷新
         </UiButton>
       </template>
@@ -94,29 +238,236 @@ onMounted(() => {
       <a-spin :spinning="loading">
         <UiCard v-if="portrait" title="综合画像">
           <UiStatPanel
-            :items="dimensionItems"
-            :columns="5"
+            :items="compositeItems"
+            :columns="3"
             variant="grid"
             compact
           />
+          <p class="teacher-portrait__meta">
+            加权口径：核心 30% · 教学 25% · 科研/培训/实践各 15%（§8.37）
+          </p>
           <p class="teacher-portrait__meta">
             正式档案记录 {{ portrait.officialRecordCount }} 条
             <template v-if="portrait.computedAt">
               · 最近重算 {{ portrait.computedAt }}
             </template>
+            <template v-if="portrait.lastArchiveRecordId">
+              · 触发档案 {{ portrait.lastArchiveRecordId }}
+            </template>
+          </p>
+          <p
+            v-if="portraitDataInsufficient"
+            class="teacher-portrait__hint-text"
+          >
+            画像数据不足，请先完成建档；职称同步后将更新职业发展核心分。
           </p>
         </UiCard>
 
         <UiEmpty
           v-else-if="portraitAbsent && !loading"
-          description="画像快照生成失败，请稍后刷新"
+          description="画像快照尚未生成，请先完成建档或稍后刷新"
         />
       </a-spin>
 
-      <UiCard v-if="portrait" title="待补充能力" class="teacher-portrait__pending">
-        <UiEmpty description="指标明细下钻、同群体对比与历史趋势 API 尚未实现（§17.3 / §24.5）" />
+      <div v-if="portrait" class="teacher-portrait__charts">
+        <MarkChartCard
+          title="能力雷达"
+          description="个人五维得分；有群体样本时叠加同院系中位"
+          :loading="loading"
+          chart-min-height="320"
+        >
+          <MarkChart
+            :option="radarOption"
+            height="320px"
+            aria-label="教师画像能力雷达图"
+          />
+        </MarkChartCard>
+
+        <MarkChartCard
+          title="同群体对比"
+          :description="cohortHint || '同院系已有画像快照教师的分布区间'"
+          :loading="loading"
+          chart-min-height="320"
+        >
+          <UiAlert
+            v-if="cohortError"
+            type="error"
+            class="teacher-portrait__section-alert"
+          >
+            {{ cohortError }}
+            <UiButton variant="ghost" size="sm" class="teacher-portrait__retry" @click="loadSecondaryPortraitData">
+              重试
+            </UiButton>
+          </UiAlert>
+          <UiAlert
+            v-else-if="cohort?.displayMode === 'INSUFFICIENT'"
+            type="warning"
+            class="teacher-portrait__cohort-alert"
+          >
+            {{ cohortHint }}
+          </UiAlert>
+          <UiAlert
+            v-else-if="cohort?.displayMode === 'LIMITED'"
+            type="warning"
+            class="teacher-portrait__cohort-alert"
+          >
+            {{ cohortHint }}
+          </UiAlert>
+          <MarkChart
+            v-if="!cohortError"
+            :option="cohortRangeOption"
+            height="320px"
+            aria-label="教师画像同群体区间对比图"
+          />
+        </MarkChartCard>
+      </div>
+
+      <MarkChartCard
+        v-if="portrait"
+        title="历史趋势"
+        description="综合画像分随人事职称同步、建档与档案重算写入历史；同次查询可看到最新趋势点"
+        :loading="loading"
+        chart-min-height="280"
+        class="teacher-portrait__trend"
+      >
+        <UiAlert
+          v-if="trendError"
+          type="error"
+          class="teacher-portrait__section-alert"
+        >
+          {{ trendError }}
+          <UiButton variant="ghost" size="sm" class="teacher-portrait__retry" @click="loadSecondaryPortraitData">
+            重试
+          </UiButton>
+        </UiAlert>
+        <MarkChart
+          v-else
+          :option="trendOption"
+          height="280px"
+          aria-label="教师画像综合分历史趋势图"
+        />
+      </MarkChartCard>
+
+      <UiCard v-if="portrait" title="维度明细" class="teacher-portrait__dimensions">
+        <p class="teacher-portrait__hint-text">
+          点击维度行查看得分依据与关联档案
+        </p>
+        <table class="teacher-portrait__table">
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th>得分</th>
+              <th>权重</th>
+              <th>数据来源</th>
+              <th>状态</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="row in portrait.dimensions"
+              :key="row.dimensionCode"
+              class="teacher-portrait__row"
+              tabindex="0"
+              @click="openIndicatorDetail(row.dimensionCode)"
+              @keydown.enter="openIndicatorDetail(row.dimensionCode)"
+            >
+              <td>{{ row.dimensionLabel }}</td>
+              <td>{{ row.score }}</td>
+              <td>{{ row.weightPercent }}%</td>
+              <td>{{ row.dataSource }}</td>
+              <td>
+                <UiTag
+                  :tone="strictEnumTone(PORTFOLIO_PORTRAIT_DIMENSION_READINESS_TONE, row.readiness, '画像维度就绪状态')"
+                >
+                  {{ strictEnumLabel(PORTFOLIO_PORTRAIT_DIMENSION_READINESS_LABEL, row.readiness, '画像维度就绪状态') }}
+                </UiTag>
+              </td>
+              <td class="teacher-portrait__action">
+                下钻
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </UiCard>
     </template>
+
+    <UiDrawer
+      v-model:open="detailOpen"
+      :title="indicatorDetail?.dimensionLabel ? `${indicatorDetail.dimensionLabel} · 指标下钻` : '指标下钻'"
+      width="640"
+      hide-footer
+    >
+      <a-spin :spinning="detailLoading">
+        <template v-if="indicatorDetail">
+          <dl class="teacher-portrait__detail-meta">
+            <div>
+              <dt>当前得分</dt>
+              <dd>{{ indicatorDetail.dimensionScore }}</dd>
+            </div>
+            <div>
+              <dt>数据来源</dt>
+              <dd>{{ indicatorDetail.dataSource }}</dd>
+            </div>
+            <div v-if="indicatorDetail.computedAt">
+              <dt>最近重算</dt>
+              <dd>{{ indicatorDetail.computedAt }}</dd>
+            </div>
+          </dl>
+
+          <UiEmpty
+            v-if="indicatorDetail.evidences.length === 0"
+            description="该维度暂无得分依据材料"
+          />
+
+          <table
+            v-else
+            class="teacher-portrait__table teacher-portrait__evidence-table"
+          >
+            <thead>
+              <tr>
+                <th>依据类型</th>
+                <th>摘要</th>
+                <th>分类</th>
+                <th>贡献分</th>
+                <th>状态</th>
+                <th>更新时间</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(item, index) in indicatorDetail.evidences" :key="`${item.evidenceType}-${index}`">
+                <td>
+                  {{ strictEnumLabel(PORTFOLIO_PORTRAIT_INDICATOR_EVIDENCE_TYPE_LABEL, item.evidenceType, '画像指标依据类型') }}
+                </td>
+                <td>{{ item.summary || '—' }}</td>
+                <td>{{ item.categoryName || '—' }}</td>
+                <td>{{ item.scoreContribution ?? '—' }}</td>
+                <td>
+                  <UiTag
+                    v-if="item.recordStatus"
+                    :tone="strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, item.recordStatus, '档案记录状态')"
+                  >
+                    {{ strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, item.recordStatus, '档案记录状态') }}
+                  </UiTag>
+                  <span v-else>—</span>
+                </td>
+                <td>{{ item.updateTime || '—' }}</td>
+                <td>
+                  <UiButton
+                    v-if="item.archiveRecordId"
+                    variant="ghost"
+                    @click="openArchiveRecord(item.archiveRecordId)"
+                  >
+                    查看档案
+                  </UiButton>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
+      </a-spin>
+    </UiDrawer>
   </StageWorkbenchShell>
 </template>
 
@@ -127,11 +478,106 @@ onMounted(() => {
   color: var(--dp-text-secondary, #64748b);
 }
 
-.teacher-portrait__pending {
+.teacher-portrait__hint-text {
+  margin: 0 0 var(--dp-space-3, 12px);
+  font-size: 14px;
+  color: var(--dp-text-secondary, #64748b);
+}
+
+.teacher-portrait__charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--dp-space-4, 16px);
   margin-top: var(--dp-space-4, 16px);
+}
+
+.teacher-portrait__trend {
+  margin-top: var(--dp-space-4, 16px);
+}
+
+.teacher-portrait__cohort-alert {
+  margin: 0 var(--dp-space-4, 16px) var(--dp-space-3, 12px);
+}
+
+.teacher-portrait__section-alert {
+  margin: 0 var(--dp-space-4, 16px) var(--dp-space-3, 12px);
+}
+
+.teacher-portrait__retry {
+  margin-left: var(--dp-space-2, 8px);
+}
+
+.teacher-portrait__dimensions {
+  margin-top: var(--dp-space-4, 16px);
+}
+
+.teacher-portrait__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+
+  th,
+  td {
+    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+    border-bottom: 1px solid var(--dp-border, #e5e7eb);
+    text-align: left;
+  }
+
+  th {
+    color: var(--dp-text-secondary, #64748b);
+    font-weight: 600;
+  }
+}
+
+.teacher-portrait__row {
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--ant-color-fill-quaternary, #f8fafc);
+  }
+}
+
+.teacher-portrait__action {
+  color: var(--ant-color-primary, #1677ff);
+  white-space: nowrap;
+}
+
+.teacher-portrait__detail-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--dp-space-4, 16px);
+  margin: 0 0 var(--dp-space-4, 16px);
+
+  dt {
+    margin: 0;
+    font-size: 12px;
+    color: var(--dp-text-secondary, #64748b);
+  }
+
+  dd {
+    margin: var(--dp-space-1, 4px) 0 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+}
+
+.teacher-portrait__evidence-table {
+  margin-top: var(--dp-space-2, 8px);
 }
 
 .teacher-portrait__hint {
   padding: var(--dp-space-6, 24px) 0;
+}
+
+@media (max-width: 960px) {
+  .teacher-portrait__charts {
+    grid-template-columns: 1fr;
+  }
+
+  .teacher-portrait__detail-meta {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

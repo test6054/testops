@@ -1,6 +1,6 @@
 import type {
-  PortfolioArchiveAuditFlowBindRequest,
   PortfolioArchiveAuditFlowBindingVO,
+  PortfolioArchiveAuditFlowBindRequest,
   PortfolioArchiveCategoryDeleteRequest,
   PortfolioArchiveCategoryListRequest,
   PortfolioArchiveCategorySaveRequest,

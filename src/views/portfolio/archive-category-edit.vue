@@ -4,6 +4,7 @@ import type {
   PortfolioArchiveRecordStatus,
   PortfolioTargetFieldDefinition,
 } from '@/apis/portfolio/types'
+import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
@@ -19,7 +20,6 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { message } from 'ant-design-vue'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -221,7 +221,7 @@ onMounted(() => {
         <UiButton :loading="saving" :disabled="loading" @click="handleSaveDraft">
           保存草稿
         </UiButton>
-        <UiButton type="primary" :loading="submitting" :disabled="loading" @click="handleSubmit">
+        <UiButton :loading="submitting" :disabled="loading" @click="handleSubmit">
           提交审核
         </UiButton>
       </template>
@@ -233,8 +233,8 @@ onMounted(() => {
 
     <a-spin v-else :spinning="loading">
       <p v-if="recordStatus" class="archive-category-edit__status">
-        <UiTag :tone="strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, recordStatus)">
-          {{ strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, recordStatus) }}
+        <UiTag :tone="strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, recordStatus, '档案记录状态')">
+          {{ strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, recordStatus, '档案记录状态') }}
         </UiTag>
         <span v-if="statusHint" class="archive-category-edit__status-hint">{{ statusHint }}</span>
       </p>

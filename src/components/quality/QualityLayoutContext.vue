@@ -14,8 +14,8 @@ import {
   qualityLayoutScopeProvidedKey,
 } from '@/composables/quality-layout-context'
 import { useQualityStore } from '@/stores/modules/quality'
-import { isQualityEvaluationRoute } from '@/utils/portfolio-route'
 import { showUserError } from '@/utils/error-handler'
+import { isQualityEvaluationRoute } from '@/utils/portfolio-route'
 
 defineOptions({ name: 'QualityLayoutContext' })
 

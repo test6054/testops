@@ -1,11 +1,28 @@
 /**
  * 路由权限工具函数
- * 基于 routes.ts 中的路由配置进行权限检查，避免重复配置
+ * 基于各 routes/*.ts 路由配置进行权限检查，避免重复配置
  */
 
 import type { RouteRecordRaw } from 'vue-router'
+import { commonRoutes, errorRoutes } from '@/router/routes/common'
+import { constantRoutes } from '@/router/routes/constant'
+import { examWorkspaceRoutes } from '@/router/routes/exam-workspace'
+import { portfolioRoutes } from '@/router/routes/portfolio'
+import { qualityRoutes } from '@/router/routes/quality'
+import { studentRoutes } from '@/router/routes/student'
+import { teacherRoutes } from '@/router/routes/teacher'
 import { RoleEnum } from '@/utils/permission'
-import { allRoutes } from './routes'
+
+const allRoutes: RouteRecordRaw[] = [
+  ...constantRoutes,
+  ...teacherRoutes,
+  examWorkspaceRoutes,
+  ...qualityRoutes,
+  ...portfolioRoutes,
+  ...studentRoutes,
+  ...commonRoutes,
+  ...errorRoutes,
+]
 
 /**
  * 扁平化路由记录，携带构建后的完整路径
@@ -159,10 +176,7 @@ export function hasRoutePermission(
     if (permission.requireTenantAdmin && !isTenantAdmin) {
         return false
     }
-    if (permission.requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin)) {
-        return false
-    }
-    return true
+    return !(permission.requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin));
 }
 
 /**
@@ -193,10 +207,7 @@ export function hasRouteNamePermission(
         return false
     }
     const requirePortfolioReviewer = route.meta.requirePortfolioReviewer as boolean | undefined
-    if (requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin)) {
-        return false
-    }
-    return true
+    return !(requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin));
 }
 
 /**

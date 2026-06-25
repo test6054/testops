@@ -1,13 +1,15 @@
 <script setup lang="ts">
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type { FileSystemNodeResponseDTO } from '@/apis/edu/file-management'
 import type {
+  PortfolioAiExtractTaskType,
   PortfolioAiJobTaskVO,
   PortfolioAiTaskStatus,
-  PortfolioAiExtractTaskType,
   PortfolioAiTaskType,
   PortfolioCandidateFieldVO,
+  PortfolioMaterialType,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
@@ -18,10 +20,10 @@ import { uploadFile } from '@/apis/edu/file-management'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
+  PORTFOLIO_AI_EXTRACT_TASK_TYPE_OPTIONS,
   PORTFOLIO_AI_TASK_STATUS_LABEL,
   PORTFOLIO_AI_TASK_STATUS_TONE,
   PORTFOLIO_AI_TASK_TYPE_LABEL,
-  PORTFOLIO_AI_EXTRACT_TASK_TYPE_OPTIONS,
   PORTFOLIO_CANDIDATE_CONFIRM_STATUS_LABEL,
   PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE,
   PORTFOLIO_TEMPLATE_CODE_CERTIFICATE,
@@ -36,23 +38,31 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { usePolling } from '@/composables/usePolling'
+import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { containsPortfolioPiiPlaceholder } from '@/utils/portfolio-pii-placeholder'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-const PORTFOLIO_EXTRACT_TASK_TYPES: PortfolioAiTaskType[] = [
-  'PORTFOLIO_CERTIFICATE_OCR',
-  'PORTFOLIO_DOCUMENT_PARSE',
-]
+function readRouteStringParam(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
+function resolveTeacherSelectValue(value: SelectValue): string {
+  if (value == null || Array.isArray(value)) {
+    return ''
+  }
+  return typeof value === 'object'
+    ? String(value.value)
+    : String(value)
+}
 
 const route = useRoute()
 const router = useRouter()
 const { canPickTeachers, canManageTeacherAi, resolveDefaultTeacherId } = usePortfolioTeacherAccess()
 
-const selectedTeacherId = ref<string>((route.query.teacherId as string) || '')
+const selectedTeacherId = ref<string>(readRouteStringParam(route.query.teacherId))
 const submitTaskType = ref<PortfolioAiExtractTaskType>('PORTFOLIO_CERTIFICATE_OCR')
 const uploadingMaterial = ref(false)
 const submitting = ref(false)
@@ -62,7 +72,7 @@ const tasksLoading = ref(false)
 const taskRows = ref<PortfolioAiJobTaskVO[]>([])
 const taskPageNum = ref(1)
 const taskPageTotal = ref(0)
-const activeTaskId = ref<string>((route.query.taskId as string) || '')
+const activeTaskId = ref<string>(readRouteStringParam(route.query.taskId))
 
 const candidatesLoading = ref(false)
 const candidateRows = ref<PortfolioCandidateFieldVO[]>([])
@@ -149,15 +159,18 @@ function candidateStatusTone(row: PortfolioCandidateFieldVO): BadgeTone {
   )
 }
 
-function resolveSubmitContract(taskType: PortfolioAiExtractTaskType) {
+function resolveSubmitContract(taskType: PortfolioAiExtractTaskType): {
+  materialType: PortfolioMaterialType
+  templateCode: string
+} {
   if (taskType === 'PORTFOLIO_CERTIFICATE_OCR') {
     return {
-      materialType: 'CERTIFICATE' as const,
+      materialType: 'CERTIFICATE',
       templateCode: PORTFOLIO_TEMPLATE_CODE_CERTIFICATE,
     }
   }
   return {
-    materialType: 'DOCUMENT' as const,
+    materialType: 'DOCUMENT',
     templateCode: PORTFOLIO_TEMPLATE_CODE_DOCUMENT,
   }
 }
@@ -233,7 +246,7 @@ async function loadTasks() {
       activeTaskId.value = ''
       candidateRows.value = []
     }
-    const routeTaskId = route.query.taskId as string | undefined
+    const routeTaskId = readRouteStringParam(route.query.taskId)
     if (routeTaskId && rows.some(item => item.id === routeTaskId)) {
       activeTaskId.value = routeTaskId
     }
@@ -290,8 +303,7 @@ function handleTaskPageChange(page: { current: number, pageSize: number }) {
   loadTasks()
 }
 
-async function handleTeacherChange(value: string | string[] | null) {
-  const teacherId = typeof value === 'string' ? value : ''
+async function applyTeacherChange(teacherId: string) {
   selectedTeacherId.value = teacherId
   activeTaskId.value = ''
   candidateRows.value = []
@@ -304,6 +316,10 @@ async function handleTeacherChange(value: string | string[] | null) {
     },
   })
   await loadTasks()
+}
+
+function handleTeacherChange(value: SelectValue): void {
+  void applyTeacherChange(resolveTeacherSelectValue(value))
 }
 
 async function handleMaterialUpload(options: UploadRequestOption): Promise<void> {
@@ -461,7 +477,7 @@ usePolling(async () => {
 watch(
   () => route.query.teacherId,
   (value) => {
-    const next = (value as string) || ''
+    const next = readRouteStringParam(value)
     if (next !== selectedTeacherId.value) {
       selectedTeacherId.value = next
       loadTasks()

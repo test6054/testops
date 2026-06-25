@@ -8,6 +8,7 @@ import {
   HeatmapChart,
   LineChart,
   PieChart,
+  RadarChart,
   ScatterChart,
 } from 'echarts/charts'
 import {
@@ -16,6 +17,7 @@ import {
   LegendComponent,
   MarkAreaComponent,
   MarkLineComponent,
+  RadarComponent,
   TooltipComponent,
   VisualMapComponent,
 } from 'echarts/components'
@@ -37,6 +39,7 @@ export function setupECharts(): void {
     GaugeChart,
     PieChart,
     HeatmapChart,
+    RadarChart,
     GridComponent,
     TooltipComponent,
     LegendComponent,
@@ -44,6 +47,7 @@ export function setupECharts(): void {
     MarkLineComponent,
     MarkAreaComponent,
     VisualMapComponent,
+    RadarComponent,
     LabelLayout,
     UniversalTransition,
   ])

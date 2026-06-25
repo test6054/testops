@@ -116,7 +116,7 @@ import type { RouteRecordRaw } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { isPortfolioRoute, PORTFOLIO_ROUTE_PREFIX } from '@/utils/portfolio-route'
+import { isPortfolioRoute } from '@/utils/portfolio-route'
 import { isExternal } from '@/utils/validate'
 import MenuIcon from './MenuIcon.vue'
 

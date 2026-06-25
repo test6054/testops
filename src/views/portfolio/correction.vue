@@ -1,11 +1,15 @@
 <script setup lang="ts">
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioCorrectionDetailVO,
+  PortfolioCorrectionRequestStatus,
   PortfolioCorrectionSummaryVO,
   PortfolioTargetFieldDefinition,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
@@ -21,13 +25,30 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { message } from 'ant-design-vue'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+
+function resolveSelectStringValue(value: SelectValue): string {
+  if (value == null || Array.isArray(value)) {
+    return ''
+  }
+  return typeof value === 'object'
+    ? String(value.value)
+    : String(value)
+}
+
+function correctionRequestStatusLabel(status: PortfolioCorrectionRequestStatus): string {
+  return strictEnumLabel(PORTFOLIO_CORRECTION_REQUEST_STATUS_LABEL, status, '纠错工单状态')
+}
+
+function correctionRequestStatusTone(status: PortfolioCorrectionRequestStatus): BadgeTone {
+  return strictEnumTone(PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE, status, '纠错工单状态')
+}
 
 const columns: ColumnsType = [
   { title: '分类', dataIndex: 'categoryName', key: 'categoryName', width: 120 },
@@ -154,8 +175,8 @@ async function loadCorrections() {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
-    rows.value = readPageList(page)
-    pageTotal.value = readPageTotal(page)
+    rows.value = readPageList(page, '加载纠错列表失败')
+    pageTotal.value = readPageTotal(page, '加载纠错列表失败')
   }
   catch (error) {
     showUserError(error, '加载纠错列表失败')
@@ -222,7 +243,7 @@ function handlePageChange(page: { current: number, pageSize: number }) {
   void loadCorrections()
 }
 
-async function onCategoryChange(categoryId: string) {
+async function applyCategoryChange(categoryId: string) {
   const row = categories.value.find(item => item.categoryId === categoryId)
   form.archiveRecordId = row?.officialRecordId ?? ''
   form.fieldCode = ''
@@ -230,9 +251,18 @@ async function onCategoryChange(categoryId: string) {
   await loadPublishedFields(categoryId)
 }
 
-function onFieldChange(fieldCode: string) {
+function onCategoryChange(value: SelectValue): void {
+  void applyCategoryChange(resolveSelectStringValue(value))
+}
+
+function onFieldChange(value: SelectValue): void {
+  const fieldCode = resolveSelectStringValue(value)
   const field = publishedFields.value.find(item => item.fieldCode === fieldCode)
   form.fieldLabel = field?.fieldLabel ?? ''
+}
+
+function openCorrectionDetail(row: PortfolioCorrectionSummaryVO): void {
+  void openDetail(row.id)
 }
 
 watch(targetTeacherId, () => {
@@ -301,7 +331,7 @@ onMounted(() => {
           <a-form-item label="佐证引用">
             <a-input v-model:value="form.evidenceRef" />
           </a-form-item>
-          <UiButton type="primary" :loading="submitting" @click="handleSubmit">
+          <UiButton :loading="submitting" @click="handleSubmit">
             提交纠错
           </UiButton>
         </a-form>
@@ -322,14 +352,14 @@ onMounted(() => {
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'requestStatus'">
-              <UiTag :tone="strictEnumTone(PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE, record.requestStatus)">
-                {{ strictEnumLabel(PORTFOLIO_CORRECTION_REQUEST_STATUS_LABEL, record.requestStatus) }}
+              <UiTag :tone="correctionRequestStatusTone(record.requestStatus)">
+                {{ correctionRequestStatusLabel(record.requestStatus) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiButton type="link" @click="openDetail(record.id)">
+              <UiTextAction @click="openCorrectionDetail(record)">
                 详情
-              </UiButton>
+              </UiTextAction>
             </template>
           </template>
         </UiDataTable>
@@ -344,8 +374,8 @@ onMounted(() => {
           </p>
           <p class="correction-page__detail-line">
             状态
-            <UiTag :tone="strictEnumTone(PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE, detail.requestStatus)">
-              {{ strictEnumLabel(PORTFOLIO_CORRECTION_REQUEST_STATUS_LABEL, detail.requestStatus) }}
+            <UiTag :tone="correctionRequestStatusTone(detail.requestStatus)">
+              {{ correctionRequestStatusLabel(detail.requestStatus) }}
             </UiTag>
           </p>
           <p v-if="detail.wrongValue" class="correction-page__detail-line">

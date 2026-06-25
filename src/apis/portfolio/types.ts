@@ -845,15 +845,137 @@ export interface PortfolioTeacherPortraitGetRequest {
   teacherId?: string
 }
 
+/** 一核心四能力维度 - PortfolioPortraitDimensionEnum */
+export type PortfolioPortraitDimension
+  = | 'DEVELOPMENT_CORE'
+    | 'TEACHING'
+    | 'RESEARCH'
+    | 'TRAINING'
+    | 'PRACTICE'
+
+export const PORTFOLIO_PORTRAIT_DIMENSION_LABEL: Record<PortfolioPortraitDimension, string> = {
+  DEVELOPMENT_CORE: '职业发展核心',
+  TEACHING: '教学能力',
+  RESEARCH: '科研教研',
+  TRAINING: '培训发展',
+  PRACTICE: '企业实践',
+}
+
+/** 画像维度就绪状态 - PortfolioPortraitDimensionReadinessEnum */
+export type PortfolioPortraitDimensionReadiness = 'READY' | 'PENDING'
+
+export const PORTFOLIO_PORTRAIT_DIMENSION_READINESS_LABEL: Record<PortfolioPortraitDimensionReadiness, string> = {
+  READY: '已就绪',
+  PENDING: '待补充',
+}
+
+export const PORTFOLIO_PORTRAIT_DIMENSION_READINESS_TONE: Record<PortfolioPortraitDimensionReadiness, BadgeTone> = {
+  READY: 'green',
+  PENDING: 'orange',
+}
+
+export interface PortfolioTeacherPortraitDimensionVO {
+  dimensionCode: PortfolioPortraitDimension
+  dimensionLabel: string
+  score: number
+  weightPercent: number
+  dataSource: string
+  readiness: PortfolioPortraitDimensionReadiness
+}
+
 export interface PortfolioTeacherPortraitVO {
   teacherId: string
+  compositeScore: number
   developmentCoreScore: number
   teachingScore: number
   researchScore: number
   trainingScore: number
   practiceScore: number
   officialRecordCount: number
+  lastArchiveRecordId?: string
   computedAt?: string
+  dimensions: PortfolioTeacherPortraitDimensionVO[]
+}
+
+export interface PortfolioTeacherPortraitTrendGetRequest extends PortfolioTeacherPortraitGetRequest {
+  limit?: number
+}
+
+export interface PortfolioTeacherPortraitTrendPointVO {
+  computedAt: string
+  compositeScore: number
+  developmentCoreScore: number
+  teachingScore: number
+  researchScore: number
+  trainingScore: number
+  practiceScore: number
+}
+
+export interface PortfolioTeacherPortraitTrendVO {
+  teacherId: string
+  points: PortfolioTeacherPortraitTrendPointVO[]
+}
+
+/** 同群体对比展示模式 - PortfolioPortraitCohortDisplayModeEnum */
+export type PortfolioPortraitCohortDisplayMode = 'INSUFFICIENT' | 'LIMITED' | 'FULL'
+
+export const PORTFOLIO_PORTRAIT_COHORT_DISPLAY_MODE_LABEL: Record<PortfolioPortraitCohortDisplayMode, string> = {
+  INSUFFICIENT: '样本不足',
+  LIMITED: '样本量有限',
+  FULL: '正常展示',
+}
+
+export interface PortfolioTeacherPortraitCohortDimensionVO {
+  dimensionCode: PortfolioPortraitDimension
+  dimensionLabel: string
+  personalScore: number
+  cohortAverage?: number
+  cohortMedian?: number
+  cohortPercentileLow?: number
+  cohortPercentileHigh?: number
+}
+
+export interface PortfolioTeacherPortraitCohortCompareVO {
+  teacherId: string
+  cohortLabel?: string
+  /** 已有画像快照的同院系教师数，非院系名册总人数 */
+  sampleSize: number
+  displayMode: PortfolioPortraitCohortDisplayMode
+  dimensions: PortfolioTeacherPortraitCohortDimensionVO[]
+}
+
+export interface PortfolioTeacherPortraitIndicatorDetailRequest {
+  teacherId?: string
+  dimensionCode: PortfolioPortraitDimension
+}
+
+/** 画像指标下钻依据类型 - PortfolioPortraitIndicatorEvidenceTypeEnum */
+export type PortfolioPortraitIndicatorEvidenceType = 'OFFICIAL_ARCHIVE' | 'HR_MASTER'
+
+export const PORTFOLIO_PORTRAIT_INDICATOR_EVIDENCE_TYPE_LABEL: Record<PortfolioPortraitIndicatorEvidenceType, string> = {
+  OFFICIAL_ARCHIVE: '正式档案',
+  HR_MASTER: '人事主数据',
+}
+
+export interface PortfolioTeacherPortraitIndicatorEvidenceVO {
+  evidenceType: PortfolioPortraitIndicatorEvidenceType
+  archiveRecordId?: string
+  categoryName?: string
+  categoryCode?: string
+  recordStatus?: PortfolioArchiveRecordStatus
+  scoreContribution?: number
+  summary?: string
+  updateTime?: string
+}
+
+export interface PortfolioTeacherPortraitIndicatorDetailVO {
+  teacherId: string
+  dimensionCode: PortfolioPortraitDimension
+  dimensionLabel: string
+  dimensionScore: number
+  dataSource: string
+  computedAt?: string
+  evidences: PortfolioTeacherPortraitIndicatorEvidenceVO[]
 }
 
 export interface PortfolioArchiveRecordPageRequest extends QueryDto {
@@ -1027,13 +1149,13 @@ export const PORTFOLIO_CORRECTION_REQUEST_STATUS_LABEL: Record<PortfolioCorrecti
 }
 
 export const PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE: Record<PortfolioCorrectionRequestStatus, BadgeTone> = {
-  SUBMITTED: 'info',
-  ACCEPTING: 'warning',
-  ARCHIVE_CORRECTING: 'warning',
-  SOURCE_FIXING: 'warning',
-  PENDING_VERIFY: 'info',
-  CLOSED: 'success',
-  REJECTED: 'danger',
+  SUBMITTED: 'blue',
+  ACCEPTING: 'orange',
+  ARCHIVE_CORRECTING: 'orange',
+  SOURCE_FIXING: 'orange',
+  PENDING_VERIFY: 'blue',
+  CLOSED: 'green',
+  REJECTED: 'red',
 }
 
 export interface PortfolioCorrectionSubmitRequest {

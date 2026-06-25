@@ -2,10 +2,13 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioArchiveRecordDetailVO,
+  PortfolioArchiveRecordSourceType,
+  PortfolioArchiveRecordStatus,
   PortfolioArchiveRecordSummaryVO,
   PortfolioArchiveTimelineItemVO,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
@@ -27,6 +30,18 @@ import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAcce
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+
+function archiveRecordStatusLabel(status: PortfolioArchiveRecordStatus): string {
+  return strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, status, '档案记录状态')
+}
+
+function archiveRecordStatusTone(status: PortfolioArchiveRecordStatus): BadgeTone {
+  return strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, status, '档案记录状态')
+}
+
+function archiveRecordSourceTypeLabel(sourceType: PortfolioArchiveRecordSourceType): string {
+  return strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL, sourceType, '档案记录来源类型')
+}
 
 const recordColumns: ColumnsType = [
   { title: '分类', dataIndex: 'categoryName', key: 'categoryName', width: 140 },
@@ -115,8 +130,8 @@ async function loadRecords() {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
-    records.value = readPageList(page)
-    pageTotal.value = readPageTotal(page)
+    records.value = readPageList(page, '加载档案记录失败')
+    pageTotal.value = readPageTotal(page, '加载档案记录失败')
   }
   catch (error) {
     showUserError(error, '加载档案记录失败')
@@ -226,13 +241,29 @@ async function reloadAll() {
   }
 }
 
+async function openRecordFromRouteQuery() {
+  const recordId = typeof route.query.recordId === 'string' ? route.query.recordId : ''
+  if (!recordId) {
+    return
+  }
+  await openRecordById(recordId)
+}
+
 watch(targetTeacherId, () => {
   pageNum.value = 1
   void reloadAll()
 })
 
-onMounted(() => {
-  void reloadAll()
+watch(
+  () => route.query.recordId,
+  () => {
+    void openRecordFromRouteQuery()
+  },
+)
+
+onMounted(async () => {
+  await reloadAll()
+  await openRecordFromRouteQuery()
 })
 </script>
 
@@ -273,9 +304,9 @@ onMounted(() => {
               <span class="teacher-archive__category-name">{{ item.categoryName }}</span>
               <UiTag
                 v-if="item.latestRecordStatus"
-                :tone="strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, item.latestRecordStatus)"
+                :tone="archiveRecordStatusTone(item.latestRecordStatus)"
               >
-                {{ strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, item.latestRecordStatus) }}
+                {{ archiveRecordStatusLabel(item.latestRecordStatus) }}
               </UiTag>
               <span class="teacher-archive__category-count">{{ item.recordCount }} 条</span>
             </li>
@@ -302,12 +333,12 @@ onMounted(() => {
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'recordStatus'">
-              <UiTag :tone="strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, record.recordStatus)">
-                {{ strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, record.recordStatus) }}
+              <UiTag :tone="archiveRecordStatusTone(record.recordStatus)">
+                {{ archiveRecordStatusLabel(record.recordStatus) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'sourceType'">
-              {{ strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL, record.sourceType) }}
+              {{ archiveRecordSourceTypeLabel(record.sourceType) }}
             </template>
             <template v-else-if="column.key === 'evaluationIncluded'">
               {{ record.evaluationIncluded ? '是' : '否' }}
@@ -332,12 +363,12 @@ onMounted(() => {
             >
               <p class="teacher-archive__timeline-title">
                 {{ item.categoryName }}
-                <UiTag :tone="strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, item.recordStatus)">
-                  {{ strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, item.recordStatus) }}
+                <UiTag :tone="archiveRecordStatusTone(item.recordStatus)">
+                  {{ archiveRecordStatusLabel(item.recordStatus) }}
                 </UiTag>
               </p>
               <p class="teacher-archive__timeline-meta">
-                {{ strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL, item.sourceType) }}
+                {{ archiveRecordSourceTypeLabel(item.sourceType) }}
                 · {{ item.eventTime }}
               </p>
             </li>
@@ -352,8 +383,8 @@ onMounted(() => {
         <template v-if="recordDetail">
           <p class="teacher-archive__detail-meta">
             {{ recordDetail.categoryName }}
-            · {{ strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, recordDetail.recordStatus) }}
-            · {{ strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL, recordDetail.sourceType) }}
+            · {{ archiveRecordStatusLabel(recordDetail.recordStatus) }}
+            · {{ archiveRecordSourceTypeLabel(recordDetail.sourceType) }}
           </p>
           <p class="teacher-archive__detail-meta">
             更新时间 {{ recordDetail.updateTime }}

@@ -8,6 +8,7 @@ import type {
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { UserStatusEnum} from '@/types/enums/user-status';
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -29,10 +30,10 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { getUserStatusLabel, USER_STATUS_CONFIG } from '@/types/enums/user-status'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import { UserStatusEnum, getUserStatusLabel, USER_STATUS_CONFIG } from '@/types/enums/user-status'
 
 const USER_STATUS_FILTER_OPTIONS = (Object.keys(USER_STATUS_CONFIG) as UserStatusEnum[])
   .map(value => ({ value, label: USER_STATUS_CONFIG[value].label }))
