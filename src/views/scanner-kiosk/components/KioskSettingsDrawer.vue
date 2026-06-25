@@ -202,7 +202,7 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
                 <dd>{{ latestClientVersion }}</dd>
               </div>
             </dl>
-            <small> 请联系管理员或运维下载新版本安装包；升级期间一体机会自动暂停业务。 </small>
+            <small> 下载完成后将在无进行中扫描任务时自动安装；有扫描任务时请待任务结束后再安装。 </small>
           </div>
 
           <div v-if="agentUpdateAvailable || agentUpdateInProgress || agentUpdateFailed" class="alert-block">
