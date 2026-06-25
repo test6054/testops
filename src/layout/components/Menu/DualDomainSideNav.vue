@@ -116,7 +116,7 @@ import type { RouteRecordRaw } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { PORTFOLIO_MENU_GROUP } from '@/router/routes/quality'
+import { isPortfolioRoute, PORTFOLIO_ROUTE_PREFIX } from '@/utils/portfolio-route'
 import { isExternal } from '@/utils/validate'
 import MenuIcon from './MenuIcon.vue'
 
@@ -222,11 +222,14 @@ function resolveDefaultOpenKeys(): Key[] {
     return keys
   }
 
+  if (isPortfolioRoute(route.path)) {
+    keys.push(PORTFOLIO_DOMAIN_KEY)
+    return keys
+  }
+
   if (route.path.startsWith('/quality')) {
     if (groupKey && MARKING_DOMAIN_MENU_GROUPS.has(groupKey)) {
       keys.push(MARKING_DOMAIN_KEY, groupKey)
-    } else if (groupKey === PORTFOLIO_MENU_GROUP || route.path.startsWith('/quality/portfolio')) {
-      keys.push(PORTFOLIO_DOMAIN_KEY)
     } else {
       keys.push(QUALITY_DOMAIN_KEY)
       if (groupKey) {

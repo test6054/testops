@@ -361,7 +361,7 @@ onMounted(async () => {
           block-node
           @select="onSelect"
         />
-        <UiEmpty v-else description="暂无组织数据，请先同步主数据" />
+        <UiEmpty v-else description="暂无组织数据，请联系学校管理员校验主数据挂接" />
       </UiCard>
       <UiCard title="节点详情" class="org-admin__detail">
         <template v-if="selectedRaw">

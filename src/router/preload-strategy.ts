@@ -133,6 +133,13 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   QualityAiMaskMapping: () => import('@/views/quality/ai-mask-mapping.vue'),
   QualityReport: () => import('@/views/quality/report.vue'),
   QualityArchive: () => import('@/views/quality/archive.vue'),
+
+  // ── 教学档案袋（portfolio 模块，/portfolio 独立域） ──
+  PortfolioOrgAdmin: () => import('@/views/portfolio/org-admin.vue'),
+  PortfolioTemplateAdmin: () => import('@/views/portfolio/template-admin.vue'),
+  PortfolioTeacherDirectory: () => import('@/views/portfolio/teacher-directory.vue'),
+  PortfolioAiCandidateConfirm: () => import('@/views/portfolio/ai-candidate-confirm.vue'),
+  PortfolioDepartmentReview: () => import('@/views/portfolio/department-review.vue'),
 }
 
 // ============================================================================

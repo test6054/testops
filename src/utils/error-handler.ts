@@ -65,7 +65,7 @@ export enum ErrorType {
   BUSINESS = 'BUSINESS', // 业务错误
   AI_QUOTA = 'AI_QUOTA', // AI配额错误
   SYSTEM = 'SYSTEM', // 系统错误
-  UNKNOWN = 'UNKNOWN' // 未知错误
+  UNKNOWN = 'UNKNOWN' // 无响应体或无业务码时的协议/网络异常
 }
 
 /**
@@ -127,7 +127,7 @@ const ERROR_TYPE_TITLES: Record<ErrorType, string> = {
   [ErrorType.BUSINESS]: '业务异常',
   [ErrorType.AI_QUOTA]: 'AI 资源不足',
   [ErrorType.SYSTEM]: '系统繁忙',
-  [ErrorType.UNKNOWN]: '未知错误'
+  [ErrorType.UNKNOWN]: '操作失败'
 }
 
 /**
@@ -157,11 +157,11 @@ function parseErrorType(error: HandledError): ErrorType {
   const statusCode = error.response?.status
   const businessCode = error.code ?? error.response?.data?.code
 
-  // 优先使用业务错误码（转为数值匹配，兼容字符串类型的 AxiosError.code）
+  // 优先使用业务错误码：凡后端返回 ResultCodeEnum 均按 BUSINESS 展示后端 msg
   if (businessCode != null) {
     const numCode = Number(businessCode)
-    if (!Number.isNaN(numCode) && ERROR_CODE_TYPE_MAP[numCode]) {
-      return ERROR_CODE_TYPE_MAP[numCode]
+    if (!Number.isNaN(numCode)) {
+      return ERROR_CODE_TYPE_MAP[numCode] ?? ErrorType.BUSINESS
     }
   }
 
@@ -213,6 +213,46 @@ function getResponseMessage(error: unknown): string | undefined {
   const responseData = data as Record<string, unknown>
   const backendMsg = responseData.msg ?? responseData.message
   return typeof backendMsg === 'string' && backendMsg.trim() ? backendMsg : undefined
+}
+
+/**
+ * 读取后端 ResultInfo.code（ResultCodeEnum 数值）。
+ * 有响应体时必须返回已定义业务码；无响应体时返回 undefined。
+ */
+export function readBusinessResultCode(error: unknown): number | undefined {
+  if (error == null || typeof error !== 'object') {
+    return undefined
+  }
+  const obj = error as Record<string, unknown>
+  const directCode = obj.code
+  if (typeof directCode === 'number' && Number.isFinite(directCode)) {
+    return directCode
+  }
+  if (typeof directCode === 'string' && directCode.trim()) {
+    const parsed = Number(directCode)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+  const response = obj.response
+  if (response == null || typeof response !== 'object') {
+    return undefined
+  }
+  const data = (response as Record<string, unknown>).data
+  if (data == null || typeof data !== 'object') {
+    return undefined
+  }
+  const code = (data as Record<string, unknown>).code
+  if (typeof code === 'number' && Number.isFinite(code)) {
+    return code
+  }
+  if (typeof code === 'string' && code.trim()) {
+    const parsed = Number(code)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+  return undefined
 }
 
 /**

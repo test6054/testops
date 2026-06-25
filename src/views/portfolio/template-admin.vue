@@ -18,9 +18,12 @@ import {
   PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_OPTIONS,
   PORTFOLIO_ARCHIVE_CATEGORY_STATUS_LABEL,
   PORTFOLIO_ARCHIVE_CATEGORY_STATUS_OPTIONS,
+  PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_LABEL,
   PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_OPTIONS,
+  PORTFOLIO_ARCHIVE_FIELD_TYPE_LABEL,
   PORTFOLIO_ARCHIVE_FIELD_TYPE_OPTIONS,
   PORTFOLIO_ARCHIVE_TEMPLATE_VERSION_STATUS_LABEL,
+  PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
 } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -76,6 +79,7 @@ const fields = ref<PortfolioArchiveFieldDefVO[]>([])
 const versionHistory = ref<PortfolioArchiveTemplateVersionVO[]>([])
 const changeLogs = ref<PortfolioArchiveTemplateChangeLogVO[]>([])
 const historyVisible = ref(false)
+const auditFlowCode = ref('')
 const categoryVisible = ref(false)
 const fieldVisible = ref(false)
 const publishVisible = ref(false)
@@ -248,9 +252,42 @@ async function selectCategory(node: TreeNode) {
   selectedNode.value = node
   activeVersionId.value = node.raw.draftVersionId ?? node.raw.publishedVersionId ?? null
   await loadHistory()
+  await loadAuditFlowBinding()
   if (!activeVersionId.value && versionHistory.value.length)
     activeVersionId.value = versionHistory.value[0].id
   await loadFields()
+}
+
+async function loadAuditFlowBinding() {
+  if (!selectedCategory.value) {
+    auditFlowCode.value = ''
+    return
+  }
+  try {
+    const binding = await portfolioArchiveTemplateApi.getAuditFlowBinding({
+      categoryId: selectedCategory.value.id,
+    })
+    auditFlowCode.value = binding?.auditFlowCode ?? ''
+  } catch (error) {
+    showUserError(error, '加载审核流绑定失败')
+  }
+}
+
+async function bindAuditFlow() {
+  if (!selectedCategory.value || !auditFlowCode.value.trim()) {
+    message.error('请先填写审核流编码')
+    return
+  }
+  try {
+    await portfolioArchiveTemplateApi.bindAuditFlow({
+      categoryId: selectedCategory.value.id,
+      auditFlowCode: auditFlowCode.value.trim(),
+    })
+    message.success('审核流已绑定')
+    await loadAuditFlowBinding()
+  } catch (error) {
+    showUserError(error, '绑定审核流失败')
+  }
 }
 
 async function switchVersion(versionId: PortfolioArchiveTemplateVersionVO['id']) {
@@ -679,6 +716,20 @@ onMounted(loadTree)
           <p v-else-if="activeVersion && !canEditFields" class="readonly-hint">
             当前版本只读，可查看字段；编辑请创建草稿或切换到草稿/试算版本。
           </p>
+          <div v-if="canManageTenant" class="audit-flow-row">
+            <span class="audit-flow-label">审核流</span>
+            <a-input
+              v-model:value="auditFlowCode"
+              placeholder="审核流编码"
+              style="width: 220px"
+            />
+            <UiButton size="sm" @click="bindAuditFlow">
+              绑定
+            </UiButton>
+            <UiButton size="sm" @click="auditFlowCode = PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE">
+              使用默认
+            </UiButton>
+          </div>
           <div v-if="canManageTenant" class="toolbar">
             <UiButton v-if="canViewPublished" @click="viewPublishedVersion">
               查看已发布
@@ -709,7 +760,13 @@ onMounted(loadTree)
           </div>
           <UiDataTable :columns="fieldColumns" :data-source="fields" row-key="id" :loading="loading">
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'required'">
+              <template v-if="column.key === 'fieldType'">
+                {{ strictEnumLabel(PORTFOLIO_ARCHIVE_FIELD_TYPE_LABEL, (record as PortfolioArchiveFieldDefVO).fieldType, '档案字段类型') }}
+              </template>
+              <template v-else-if="column.key === 'sourceType'">
+                {{ strictEnumLabel(PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_LABEL, (record as PortfolioArchiveFieldDefVO).sourceType, '档案字段来源') }}
+              </template>
+              <template v-else-if="column.key === 'required'">
                 {{ (record as PortfolioArchiveFieldDefVO).required ? '是' : '否' }}
               </template>
               <template v-else-if="column.key === 'readonly'">
@@ -863,6 +920,18 @@ onMounted(loadTree)
   font-size: 14px;
   color: var(--ant-color-text-secondary, #666);
 }
+.audit-flow-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.audit-flow-label {
+  color: var(--dp-text-secondary);
+  font-size: 14px;
+}
+
 .meta-row {
   display: flex;
   flex-wrap: wrap;

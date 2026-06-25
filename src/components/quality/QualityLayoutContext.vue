@@ -2,7 +2,7 @@
 import type { AccreditationCockpitVO } from '@/apis/quality/accreditation'
 /**
  * 质量评价域 Layout 级上下文：培养方案范围 + 认证阶段提示。
- * 仅在 /quality 路由下加载认证驾驶舱，避免在阅卷页误触发质量域错误提示。
+ * 仅在质量评价 /quality 路由下加载认证驾驶舱；教学档案袋 /portfolio 与阅卷页不触发。
  */
 import { computed, onMounted, provide, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -14,6 +14,7 @@ import {
   qualityLayoutScopeProvidedKey,
 } from '@/composables/quality-layout-context'
 import { useQualityStore } from '@/stores/modules/quality'
+import { isQualityEvaluationRoute } from '@/utils/portfolio-route'
 import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'QualityLayoutContext' })
@@ -24,7 +25,7 @@ const qualityStore = useQualityStore()
 const layoutScopeProvided = ref(true)
 provide(qualityLayoutScopeProvidedKey, layoutScopeProvided)
 
-const visible = computed(() => route.path.startsWith('/quality'))
+const visible = computed(() => isQualityEvaluationRoute(route.path))
 
 const cockpit = ref<AccreditationCockpitVO>()
 const cockpitLoading = ref(false)

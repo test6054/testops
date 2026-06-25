@@ -28,9 +28,14 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
+import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import { UserStatusEnum, getUserStatusLabel, USER_STATUS_CONFIG } from '@/types/enums/user-status'
+
+const USER_STATUS_FILTER_OPTIONS = (Object.keys(USER_STATUS_CONFIG) as UserStatusEnum[])
+  .map(value => ({ value, label: USER_STATUS_CONFIG[value].label }))
 
 const listColumns: ColumnsType = [
   { title: '工号', dataIndex: 'teacherNumber', key: 'teacherNumber', width: 120 },
@@ -38,6 +43,7 @@ const listColumns: ColumnsType = [
   { title: '账号', dataIndex: 'userName', key: 'userName', width: 140 },
   { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
   { title: '职称', dataIndex: 'title', key: 'title', width: 100 },
+  { title: '账号状态', key: 'userStatus', width: 100 },
   { title: '主身份', key: 'primaryIdentityType', width: 120 },
   { title: '操作', key: 'actions', width: 200, fixed: 'right' },
 ]
@@ -57,9 +63,11 @@ interface TeacherFilterModel {
   identityType?: PortfolioTeacherPageRequest['identityType']
   departmentId?: string
   portfolioOrgId?: string
+  status?: UserStatusEnum
 }
 
 const { loadTree, departmentOptions, portfolioOrgOptions } = usePortfolioOrgTree()
+const { canManageTeacherAi } = usePortfolioTeacherAccess()
 
 const filterForm = reactive<TeacherFilterModel>({
   searchText: '',
@@ -67,6 +75,7 @@ const filterForm = reactive<TeacherFilterModel>({
   identityType: undefined,
   departmentId: undefined,
   portfolioOrgId: undefined,
+  status: undefined,
 })
 
 const filterModel = computed<Record<string, unknown>>({
@@ -103,6 +112,14 @@ const filterFields = computed<FilterField[]>(() => [
     width: 150,
     options: PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS,
   },
+  {
+    key: 'status',
+    type: 'select',
+    label: '账号状态',
+    allowClear: true,
+    width: 120,
+    options: USER_STATUS_FILTER_OPTIONS,
+  },
 ])
 
 const query = reactive<PortfolioTeacherPageRequest>({
@@ -113,6 +130,7 @@ const query = reactive<PortfolioTeacherPageRequest>({
   identityType: undefined,
   departmentId: undefined,
   portfolioOrgId: undefined,
+  status: undefined,
 })
 
 const list = ref<PortfolioTeacherSummaryVO[]>([])
@@ -167,6 +185,7 @@ function handleSearch() {
   query.identityType = filterForm.identityType
   query.departmentId = filterForm.departmentId
   query.portfolioOrgId = filterForm.portfolioOrgId
+  query.status = filterForm.status
   loadPage()
 }
 
@@ -247,7 +266,21 @@ const router = useRouter()
 
 function openAiCandidateConfirm(userId: string) {
   router.push({
-    path: '/quality/portfolio/ai-candidate-confirm',
+    path: '/portfolio/ai-candidate-confirm',
+    query: { teacherId: userId },
+  })
+}
+
+function openTeacherHome(userId: string) {
+  router.push({
+    path: '/portfolio/teacher/home',
+    query: { teacherId: userId },
+  })
+}
+
+function openTeacherArchive(userId: string) {
+  router.push({
+    path: '/portfolio/teacher/archive',
     query: { teacherId: userId },
   })
 }
@@ -280,11 +313,26 @@ onMounted(async () => {
             </UiTag>
             <span v-else>—</span>
           </template>
+          <template v-else-if="column.key === 'userStatus'">
+            <span v-if="record.status">
+              {{ getUserStatusLabel(record.status as UserStatusEnum) }}
+            </span>
+            <span v-else>—</span>
+          </template>
           <template v-else-if="column.key === 'actions'">
             <UiTextAction @click="openDetail(record)">
               详情
             </UiTextAction>
-            <UiTextAction @click="openAiCandidateConfirm(record.userId)">
+            <UiTextAction @click="openTeacherHome(record.userId)">
+              首页
+            </UiTextAction>
+            <UiTextAction @click="openTeacherArchive(record.userId)">
+              档案
+            </UiTextAction>
+            <UiTextAction
+              v-if="canManageTeacherAi(record.userId, true)"
+              @click="openAiCandidateConfirm(record.userId)"
+            >
               AI 确认
             </UiTextAction>
             <UiTextAction @click="openIdentityCreate({ userId: record.userId, nickName: record.nickName, departmentId: record.departmentId })">

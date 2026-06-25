@@ -1,4 +1,6 @@
 import type {
+  PortfolioArchiveAuditFlowBindRequest,
+  PortfolioArchiveAuditFlowBindingVO,
   PortfolioArchiveCategoryDeleteRequest,
   PortfolioArchiveCategoryListRequest,
   PortfolioArchiveCategorySaveRequest,
@@ -48,4 +50,8 @@ export const portfolioArchiveTemplateApi = {
     http.post<PortfolioArchivePublishedFieldsVO>(`${BASE}/published/fields`, data),
   seedDefaultTemplates: () =>
     http.post<PortfolioArchiveTemplateSeedResultVO>(`${BASE}/seed/defaults`, {}),
+  bindAuditFlow: (data: PortfolioArchiveAuditFlowBindRequest) =>
+    http.post<void>(`${BASE}/audit-flow/bind`, data),
+  getAuditFlowBinding: (data: PortfolioArchiveVersionActionRequest) =>
+    http.post<PortfolioArchiveAuditFlowBindingVO | null>(`${BASE}/audit-flow/get`, data),
 }

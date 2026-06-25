@@ -20,8 +20,10 @@ import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import HistoryOutlined from '@ant-design/icons-vue/HistoryOutlined'
 import MailOutlined from '@ant-design/icons-vue/MailOutlined'
 import ReconciliationOutlined from '@ant-design/icons-vue/ReconciliationOutlined'
+import FolderOutlined from '@ant-design/icons-vue/FolderOutlined'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { isQualityEvaluationRoute, PORTFOLIO_ROUTE_PREFIX } from '@/utils/portfolio-route'
 import { useDevice } from '@/hooks'
 import { useAuthStore } from '@/stores'
 import { RoleEnum } from '@/utils/permission'
@@ -76,6 +78,12 @@ const allTabBarItems: TabBarItem[] = [
     icon: ReconciliationOutlined,
     roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER, RoleEnum.SUPER_ADMIN],
   },
+  {
+    path: `${PORTFOLIO_ROUTE_PREFIX}/teacher/home`,
+    label: '教学档案袋',
+    icon: FolderOutlined,
+    roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER, RoleEnum.SUPER_ADMIN],
+  },
 ]
 
 // 是否显示TabBar（仅移动端显示）
@@ -104,7 +112,10 @@ function isActive(path: string): boolean {
     )
   }
   if (path === '/quality/dashboard') {
-    return route.path.startsWith('/quality')
+    return isQualityEvaluationRoute(route.path)
+  }
+  if (path === `${PORTFOLIO_ROUTE_PREFIX}/teacher/home`) {
+    return route.path.startsWith(PORTFOLIO_ROUTE_PREFIX)
   }
   return route.path.startsWith(path)
 }

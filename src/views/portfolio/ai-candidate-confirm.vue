@@ -3,31 +3,30 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type { FileSystemNodeResponseDTO } from '@/apis/edu/file-management'
 import type {
+  PortfolioAiJobTaskVO,
+  PortfolioAiTaskStatus,
+  PortfolioAiExtractTaskType,
   PortfolioAiTaskType,
   PortfolioCandidateFieldVO,
+  PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
-import type { AiTaskVO } from '@/apis/quality/ai-task'
-import type { AiTaskStatus } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
+  PORTFOLIO_AI_TASK_STATUS_LABEL,
+  PORTFOLIO_AI_TASK_STATUS_TONE,
   PORTFOLIO_AI_TASK_TYPE_LABEL,
-  PORTFOLIO_AI_TASK_TYPE_OPTIONS,
+  PORTFOLIO_AI_EXTRACT_TASK_TYPE_OPTIONS,
   PORTFOLIO_CANDIDATE_CONFIRM_STATUS_LABEL,
   PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE,
   PORTFOLIO_TEMPLATE_CODE_CERTIFICATE,
   PORTFOLIO_TEMPLATE_CODE_DOCUMENT,
 } from '@/apis/portfolio/types'
-import { aiTaskApi } from '@/apis/quality/ai-task'
-import {
-  AI_TASK_STATUS_COLOR,
-  AI_TASK_STATUS_LABEL,
-} from '@/apis/quality/types'
-import { TeacherSelector } from '@/components/quality/selectors'
 import UiAlert from '@/components/ui-guide/ui/Alert.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -37,9 +36,10 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { usePolling } from '@/composables/usePolling'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { containsPortfolioPiiPlaceholder } from '@/utils/portfolio-pii-placeholder'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -50,24 +50,52 @@ const PORTFOLIO_EXTRACT_TASK_TYPES: PortfolioAiTaskType[] = [
 
 const route = useRoute()
 const router = useRouter()
+const { canPickTeachers, canManageTeacherAi, resolveDefaultTeacherId } = usePortfolioTeacherAccess()
 
 const selectedTeacherId = ref<string>((route.query.teacherId as string) || '')
-const submitTaskType = ref<PortfolioAiTaskType>('PORTFOLIO_CERTIFICATE_OCR')
+const submitTaskType = ref<PortfolioAiExtractTaskType>('PORTFOLIO_CERTIFICATE_OCR')
 const uploadingMaterial = ref(false)
 const submitting = ref(false)
 const uploadedMaterial = ref<FileSystemNodeResponseDTO | null>(null)
 
 const tasksLoading = ref(false)
-const taskRows = ref<AiTaskVO[]>([])
-const activeTaskId = ref<string>('')
+const taskRows = ref<PortfolioAiJobTaskVO[]>([])
+const taskPageNum = ref(1)
+const taskPageTotal = ref(0)
+const activeTaskId = ref<string>((route.query.taskId as string) || '')
 
 const candidatesLoading = ref(false)
 const candidateRows = ref<PortfolioCandidateFieldVO[]>([])
 const correctedValues = reactive<Record<string, string>>({})
 const confirmingId = ref<string>('')
+const teacherOptions = ref<PortfolioTeacherSummaryVO[]>([])
+const teacherSearchLoading = ref(false)
 
 const activeTask = computed(() =>
   taskRows.value.find(item => item.id === activeTaskId.value) ?? null)
+
+const teacherSelectOptions = computed(() =>
+  teacherOptions.value.map(item => ({
+    label: `${item.nickName ?? item.userName ?? item.userId}（${item.teacherNumber ?? '—'}）`,
+    value: item.userId,
+  })),
+)
+
+const selectedTeacherLabel = computed(() => {
+  const matched = teacherOptions.value.find(item => item.userId === selectedTeacherId.value)
+  if (matched) {
+    return `${matched.nickName ?? matched.userName ?? matched.userId}（${matched.teacherNumber ?? '—'}）`
+  }
+  return selectedTeacherId.value || '—'
+})
+
+const canOperateSelectedTeacher = computed(() =>
+  Boolean(selectedTeacherId.value
+    && canManageTeacherAi(
+      selectedTeacherId.value,
+      teacherOptions.value.some(item => item.userId === selectedTeacherId.value),
+    )),
+)
 
 const pendingTaskPolling = computed(() =>
   taskRows.value.some(item =>
@@ -93,19 +121,16 @@ const candidateColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 160, fixed: 'right' },
 ]
 
-function portfolioTaskTypeLabel(taskType: string): string {
-  if (taskType in PORTFOLIO_AI_TASK_TYPE_LABEL) {
-    return PORTFOLIO_AI_TASK_TYPE_LABEL[taskType as PortfolioAiTaskType]
-  }
-  return taskType
+function portfolioTaskTypeLabel(taskType: PortfolioAiTaskType): string {
+  return strictEnumLabel(PORTFOLIO_AI_TASK_TYPE_LABEL, taskType, '档案袋 AI 任务类型')
 }
 
-function aiTaskStatusLabel(value: AiTaskStatus): string {
-  return strictEnumLabel(AI_TASK_STATUS_LABEL, value, 'AI 任务状态')
+function portfolioAiTaskStatusLabel(value: PortfolioAiTaskStatus): string {
+  return strictEnumLabel(PORTFOLIO_AI_TASK_STATUS_LABEL, value, '档案袋 AI 任务状态')
 }
 
-function aiTaskStatusTone(value: AiTaskStatus): BadgeTone {
-  return strictEnumTone(AI_TASK_STATUS_COLOR, value, 'AI 任务状态')
+function portfolioAiTaskStatusTone(value: PortfolioAiTaskStatus): BadgeTone {
+  return strictEnumTone(PORTFOLIO_AI_TASK_STATUS_TONE, value, '档案袋 AI 任务状态')
 }
 
 function candidateStatusLabel(row: PortfolioCandidateFieldVO): string {
@@ -124,7 +149,7 @@ function candidateStatusTone(row: PortfolioCandidateFieldVO): BadgeTone {
   )
 }
 
-function resolveSubmitContract(taskType: PortfolioAiTaskType) {
+function resolveSubmitContract(taskType: PortfolioAiExtractTaskType) {
   if (taskType === 'PORTFOLIO_CERTIFICATE_OCR') {
     return {
       materialType: 'CERTIFICATE' as const,
@@ -135,10 +160,6 @@ function resolveSubmitContract(taskType: PortfolioAiTaskType) {
     materialType: 'DOCUMENT' as const,
     templateCode: PORTFOLIO_TEMPLATE_CODE_DOCUMENT,
   }
-}
-
-function isPortfolioExtractTask(task: AiTaskVO): boolean {
-  return PORTFOLIO_EXTRACT_TASK_TYPES.includes(task.taskType as PortfolioAiTaskType)
 }
 
 function rowNeedsManualFill(row: PortfolioCandidateFieldVO): boolean {
@@ -160,23 +181,54 @@ function canConfirmRow(row: PortfolioCandidateFieldVO): boolean {
   return row.confirmStatus === 'PENDING_CONFIRM'
 }
 
+async function loadTeacherOptions(keyword?: string) {
+  if (!canPickTeachers.value) {
+    return
+  }
+  teacherSearchLoading.value = true
+  try {
+    const page = await portfolioTeacherApi.page({
+      pageNum: 1,
+      pageSize: 20,
+      searchText: keyword?.trim() || undefined,
+    })
+    teacherOptions.value = readPageList(page, '加载教师名册失败')
+  } catch (error) {
+    showUserError(error, '加载教师名册失败')
+  } finally {
+    teacherSearchLoading.value = false
+  }
+}
+
 async function loadTasks() {
   if (!selectedTeacherId.value) {
     taskRows.value = []
+    taskPageTotal.value = 0
+    activeTaskId.value = ''
+    candidateRows.value = []
+    return
+  }
+  if (!canManageTeacherAi(
+    selectedTeacherId.value,
+    teacherOptions.value.some(item => item.userId === selectedTeacherId.value),
+  )) {
+    taskRows.value = []
+    taskPageTotal.value = 0
     activeTaskId.value = ''
     candidateRows.value = []
     return
   }
   tasksLoading.value = true
   try {
-    const page = await aiTaskApi.page({
-      pageNum: 1,
-      pageSize: 50,
-      businessType: 'PORTFOLIO_MATERIAL',
-      businessId: selectedTeacherId.value,
+    const page = await portfolioAiJobApi.page({
+      pageNum: taskPageNum.value,
+      pageSize: 20,
+      teacherId: selectedTeacherId.value,
+      candidateExtractOnly: true,
     })
-    const rows = readPageList(page, '加载档案袋 AI 任务失败').filter(isPortfolioExtractTask)
+    const rows = readPageList(page, '加载档案袋 AI 任务失败')
     taskRows.value = rows
+    taskPageTotal.value = readPageTotal(page, '加载档案袋 AI 任务失败')
     if (activeTaskId.value && !rows.some(item => item.id === activeTaskId.value)) {
       activeTaskId.value = ''
       candidateRows.value = []
@@ -217,7 +269,7 @@ async function loadCandidates(taskId: string) {
   }
 }
 
-async function selectTask(task: AiTaskVO) {
+async function selectTask(task: PortfolioAiJobTaskVO) {
   activeTaskId.value = task.id
   await router.replace({
     query: {
@@ -229,11 +281,21 @@ async function selectTask(task: AiTaskVO) {
   await loadCandidates(task.id)
 }
 
+async function handleTeacherSearch(keyword: string) {
+  await loadTeacherOptions(keyword)
+}
+
+function handleTaskPageChange(page: { current: number, pageSize: number }) {
+  taskPageNum.value = page.current
+  loadTasks()
+}
+
 async function handleTeacherChange(value: string | string[] | null) {
   const teacherId = typeof value === 'string' ? value : ''
   selectedTeacherId.value = teacherId
   activeTaskId.value = ''
   candidateRows.value = []
+  taskPageNum.value = 1
   await router.replace({
     query: {
       ...route.query,
@@ -253,7 +315,7 @@ async function handleMaterialUpload(options: UploadRequestOption): Promise<void>
       options.onError?.(new Error('无效的材料文件'))
       return
     }
-    const uploaded = await uploadFile(file, { businessType: 'QUALITY_AI_TASK_MATERIAL' })
+    const uploaded = await uploadFile(file, { businessType: 'PORTFOLIO_MATERIAL' })
     uploadedMaterial.value = uploaded
     message.success(`已上传材料：${uploaded.nodeName}`)
     options.onSuccess?.({})
@@ -267,6 +329,10 @@ async function handleMaterialUpload(options: UploadRequestOption): Promise<void>
 async function submitExtractTask() {
   if (!selectedTeacherId.value) {
     message.error('请先选择教师')
+    return
+  }
+  if (!canOperateSelectedTeacher.value) {
+    message.error('无权为该教师提交 AI 抽取任务')
     return
   }
   if (!uploadedMaterial.value?.id) {
@@ -287,8 +353,9 @@ async function submitExtractTask() {
     uploadedMaterial.value = null
     await loadTasks()
     if (result.taskId) {
-      activeTaskId.value = result.taskId
-      await selectTask({ id: result.taskId, status: result.status as AiTaskStatus } as AiTaskVO)
+      const detail = await portfolioAiJobApi.get(result.taskId)
+      activeTaskId.value = detail.id
+      await selectTask(detail)
     }
   } catch (error) {
     showUserError(error, '提交 AI 抽取失败')
@@ -351,19 +418,29 @@ async function confirmAllEligible() {
     message.info('没有可自动确认的字段')
     return
   }
-  for (const row of eligible) {
-    await portfolioAiJobApi.confirm({
-      candidateFieldId: row.id,
-      aiTaskId: row.aiTaskId,
-      confirmStatus: 'CONFIRMED',
-      correctedCandidateValue: rowNeedsManualFill(row)
-        ? correctedValueFor(row).trim()
-        : undefined,
-    })
-  }
-  message.success(`已确认 ${eligible.length} 个字段`)
-  if (activeTaskId.value) {
-    await loadCandidates(activeTaskId.value)
+  confirmingId.value = 'batch'
+  try {
+    for (const row of eligible) {
+      await portfolioAiJobApi.confirm({
+        candidateFieldId: row.id,
+        aiTaskId: row.aiTaskId,
+        confirmStatus: 'CONFIRMED',
+        correctedCandidateValue: rowNeedsManualFill(row)
+          ? correctedValueFor(row).trim()
+          : undefined,
+      })
+    }
+    message.success(`已确认 ${eligible.length} 个字段`)
+    if (activeTaskId.value) {
+      await loadCandidates(activeTaskId.value)
+    }
+  } catch (error) {
+    showUserError(error, '批量确认候选字段失败')
+    if (activeTaskId.value) {
+      await loadCandidates(activeTaskId.value)
+    }
+  } finally {
+    confirmingId.value = ''
   }
 }
 
@@ -393,6 +470,27 @@ watch(
 )
 
 onMounted(async () => {
+  if (!selectedTeacherId.value) {
+    const defaultTeacherId = resolveDefaultTeacherId()
+    if (defaultTeacherId) {
+      selectedTeacherId.value = defaultTeacherId
+    }
+  }
+  if (canPickTeachers.value) {
+    await loadTeacherOptions()
+  } else if (selectedTeacherId.value) {
+    try {
+      const detail = await portfolioTeacherApi.get(selectedTeacherId.value)
+      teacherOptions.value = [{
+        userId: detail.userId,
+        nickName: detail.nickName,
+        userName: detail.userName,
+        teacherNumber: detail.teacherNumber,
+      }]
+    } catch (error) {
+      showUserError(error, '加载当前教师信息失败')
+    }
+  }
   await loadTasks()
 })
 </script>
@@ -409,23 +507,31 @@ onMounted(async () => {
         </div>
         <div class="portfolio-ai-confirm__teacher">
           <span class="portfolio-ai-confirm__teacher-label">目标教师</span>
-          <TeacherSelector
-            :value="selectedTeacherId || null"
-            width="280px"
+          <a-select
+            v-if="canPickTeachers"
+            :value="selectedTeacherId || undefined"
+            show-search
+            allow-clear
             placeholder="选择需确认档案的教师"
-            @update:value="handleTeacherChange"
+            style="width: 280px"
+            :options="teacherSelectOptions"
+            :loading="teacherSearchLoading"
+            :filter-option="false"
+            @search="handleTeacherSearch"
+            @change="handleTeacherChange"
           />
+          <span v-else class="portfolio-ai-confirm__teacher-readonly">{{ selectedTeacherLabel }}</span>
         </div>
       </div>
     </template>
 
-    <UiCard v-if="selectedTeacherId" title="提交 AI 抽取" class="portfolio-ai-confirm__card">
+    <UiCard v-if="selectedTeacherId && canOperateSelectedTeacher" title="提交 AI 抽取" class="portfolio-ai-confirm__card">
       <div class="portfolio-ai-confirm__submit-grid">
         <div>
           <div class="portfolio-ai-confirm__field-label">抽取类型</div>
           <a-select
             v-model:value="submitTaskType"
-            :options="PORTFOLIO_AI_TASK_TYPE_OPTIONS"
+            :options="PORTFOLIO_AI_EXTRACT_TASK_TYPE_OPTIONS"
             style="width: 100%"
           />
         </div>
@@ -457,22 +563,32 @@ onMounted(async () => {
 
     <UiCard title="抽取任务" class="portfolio-ai-confirm__card">
       <UiEmpty v-if="!selectedTeacherId" description="请先选择教师" />
+      <UiAlert
+        v-else-if="!canOperateSelectedTeacher"
+        type="warning"
+        show-icon
+        title="无权查看或操作该教师的 AI 抽取任务"
+      />
       <UiDataTable
         v-else
+        v-model:current="taskPageNum"
         row-key="id"
+        pagination-mode="server"
         :columns="taskColumns"
         :data-source="taskRows"
         :loading="tasksLoading"
-        :pagination="false"
-        :row-class-name="(record: AiTaskVO) => record.id === activeTaskId ? 'portfolio-ai-confirm__row-active' : ''"
+        :total="taskPageTotal"
+        :page-size="20"
+        :row-class-name="(record: PortfolioAiJobTaskVO) => record.id === activeTaskId ? 'portfolio-ai-confirm__row-active' : ''"
+        @page-change="handleTaskPageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'taskType'">
             {{ portfolioTaskTypeLabel(record.taskType) }}
           </template>
           <template v-else-if="column.key === 'status'">
-            <UiTag :tone="aiTaskStatusTone(record.status)">
-              {{ aiTaskStatusLabel(record.status) }}
+            <UiTag :tone="portfolioAiTaskStatusTone(record.status)">
+              {{ portfolioAiTaskStatusLabel(record.status) }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
@@ -594,6 +710,11 @@ onMounted(async () => {
 .portfolio-ai-confirm__teacher-label {
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-sm);
+}
+
+.portfolio-ai-confirm__teacher-readonly {
+  color: var(--dp-text-primary);
+  font-size: var(--dp-font-size-md);
 }
 
 .portfolio-ai-confirm__card {

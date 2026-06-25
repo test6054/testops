@@ -43,7 +43,7 @@ import { message } from 'ant-design-vue'
 import { debounce } from 'lodash-es'
 import { computed, ref, watch } from 'vue'
 import { useDevice } from '@/hooks'
-import { PORTFOLIO_MENU_GROUP } from '@/router/routes/quality'
+import { isQualityEvaluationRoute, PORTFOLIO_ROUTE_PREFIX } from '@/utils/portfolio-route'
 import { useAppStore, useRouteStore } from '@/stores'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useQualityStore } from '@/stores/modules/quality'
@@ -73,7 +73,7 @@ const routeStore = useRouteStore()
 const authStore = useAuthStore()
 const qualityStore = useQualityStore()
 
-const ROLE_LAYOUT_PREFIXES = ['/teacher', '/student', '/quality'] as const
+const ROLE_LAYOUT_PREFIXES = ['/teacher', '/student', '/quality', PORTFOLIO_ROUTE_PREFIX] as const
 /** 质量域侧栏中的超管租户级配置分组，展示时归入考试阅卷域。 */
 const QUALITY_ADMIN_MENU_GROUP = 'quality-admin'
 
@@ -151,16 +151,19 @@ const layoutRouteSource = computed(() => {
 
 const hasMarkingDomain = computed(() => layoutRouteSource.value.some((entry) => entry.path === '/teacher'))
 const hasQualityDomain = computed(() => layoutRouteSource.value.some((entry) => entry.path === '/quality'))
+const hasPortfolioDomain = computed(() => layoutRouteSource.value.some((entry) => entry.path === PORTFOLIO_ROUTE_PREFIX))
 const isSuperAdmin = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
 
 const isDualTeacherQualityMenu = computed(() => {
   if (props.menus) {
     return false
   }
-  if (!hasMarkingDomain.value || !hasQualityDomain.value) {
+  if (!hasMarkingDomain.value || !hasQualityDomain.value || !hasPortfolioDomain.value) {
     return false
   }
-  return route.path.startsWith('/teacher') || route.path.startsWith('/quality')
+  return route.path.startsWith('/teacher')
+    || isQualityEvaluationRoute(route.path)
+    || route.path.startsWith(PORTFOLIO_ROUTE_PREFIX)
 })
 
 const activeLayoutPrefix = computed(() => {
@@ -176,21 +179,13 @@ const isRoleLayoutRoute = computed(() => {
 
 const markingSidebarRoutes = computed(() => buildLayoutChildren('/teacher'))
 const qualitySidebarRoutes = computed(() => buildLayoutChildren('/quality'))
+const portfolioSidebarRoutes = computed(() => buildLayoutChildren(PORTFOLIO_ROUTE_PREFIX))
 
 const qualitySidebarRoutesForMenu = computed(() => {
-  const withoutPortfolio = qualitySidebarRoutes.value.filter(
-    (item) => item.meta?.menuGroup !== PORTFOLIO_MENU_GROUP,
-  )
   if (!isSuperAdmin.value) {
-    return withoutPortfolio
+    return qualitySidebarRoutes.value
   }
-  return withoutPortfolio.filter((item) => item.meta?.menuGroup !== QUALITY_ADMIN_MENU_GROUP)
-})
-
-const portfolioSidebarRoutesForMenu = computed(() => {
-  return qualitySidebarRoutes.value.filter(
-    (item) => item.meta?.menuGroup === PORTFOLIO_MENU_GROUP,
-  )
+  return qualitySidebarRoutes.value.filter((item) => item.meta?.menuGroup !== QUALITY_ADMIN_MENU_GROUP)
 })
 
 const markingSidebarRoutesForMenu = computed(() => {
@@ -209,7 +204,7 @@ const markingSidebarRoutesForMenu = computed(() => {
 const markingGroupedMenus = computed(() => groupRoutes(markingSidebarRoutesForMenu.value))
 const qualityGroupedMenus = computed(() => groupRoutes(qualitySidebarRoutesForMenu.value))
 const portfolioGroupedMenus = computed(() => ({
-  ungrouped: portfolioSidebarRoutesForMenu.value,
+  ungrouped: portfolioSidebarRoutes.value,
   groups: [] as MenuGroup[],
 }))
 
@@ -221,7 +216,7 @@ const sidebarRoutes = computed(() => {
     return [
       ...markingSidebarRoutesForMenu.value,
       ...qualitySidebarRoutesForMenu.value,
-      ...portfolioSidebarRoutesForMenu.value,
+      ...portfolioSidebarRoutes.value,
     ]
   }
   const prefix = activeLayoutPrefix.value
@@ -257,7 +252,7 @@ watch(sidebarRoutes, updateStableRoutes, { immediate: true, deep: true })
 watch(
   () =>
     [
-      route.path.startsWith('/quality'),
+      isQualityEvaluationRoute(route.path),
       qualityStore.currentProgramId,
       qualityStore.currentTrainingPlanId,
     ] as const,

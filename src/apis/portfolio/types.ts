@@ -3,6 +3,7 @@
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { QueryDto } from '@/types'
+import type { UserStatusEnum } from '@/types/enums/user-status'
 
 /** 扩展组织类型 - PortfolioOrgUnitTypeEnum */
 export type PortfolioOrgUnitType
@@ -172,7 +173,7 @@ export interface PortfolioTeacherPageRequest extends QueryDto {
   title?: string
   identityType?: PortfolioTeacherIdentityType
   searchText?: string
-  status?: 'ACTIVE' | 'INACTIVE'
+  status?: UserStatusEnum
 }
 
 export interface PortfolioTeacherSummaryVO {
@@ -309,6 +310,36 @@ export interface PortfolioTargetFieldDefinition {
   required?: boolean
 }
 
+export interface PortfolioArchiveAuditFlowBindRequest {
+  categoryId: string
+  auditFlowCode: string
+}
+
+export interface PortfolioArchiveAuditFlowBindingVO {
+  categoryId: string
+  auditFlowCode: string
+}
+
+export interface PortfolioAiAskRequest {
+  teacherId: string
+  fileNodeId: string
+  userQuestion: string
+  materialId?: string
+  programId?: string
+}
+
+export interface PortfolioAiPolicyCheckRequest {
+  teacherId: string
+  policyClauseText: string
+  materialType: PortfolioMaterialType
+  fileNodeId?: string
+  materialId?: string
+  templateCode?: string
+  categoryId?: string
+  programId?: string
+  teacherProfileSummary?: string
+}
+
 export interface PortfolioArchiveCategoryListRequest {
   scope?: PortfolioArchiveCategoryScope
 }
@@ -418,16 +449,28 @@ export interface PortfolioArchivePublishedFieldsVO {
   targetFields: PortfolioTargetFieldDefinition[]
 }
 
-/** 档案袋 AI 任务类型 */
-export type PortfolioAiTaskType = 'PORTFOLIO_CERTIFICATE_OCR' | 'PORTFOLIO_DOCUMENT_PARSE'
+/** 档案袋 AI 任务类型 - 对齐 AiTaskTypeEnum 档案袋材料类 */
+export type PortfolioAiTaskType
+  = | 'PORTFOLIO_CERTIFICATE_OCR'
+    | 'PORTFOLIO_DOCUMENT_PARSE'
+    | 'PORTFOLIO_POLICY_MATCH'
+    | 'PORTFOLIO_MATERIAL_QA'
+    | 'PORTFOLIO_REPORT_GENERATE'
 
 export const PORTFOLIO_AI_TASK_TYPE_LABEL: Record<PortfolioAiTaskType, string> = {
   PORTFOLIO_CERTIFICATE_OCR: '证书证明 OCR 抽取',
   PORTFOLIO_DOCUMENT_PARSE: '文档结构化抽取',
+  PORTFOLIO_POLICY_MATCH: '政策条款匹配',
+  PORTFOLIO_MATERIAL_QA: '材料智能问数',
+  PORTFOLIO_REPORT_GENERATE: '报告初稿生成',
 }
 
-export const PORTFOLIO_AI_TASK_TYPE_OPTIONS = (Object.keys(PORTFOLIO_AI_TASK_TYPE_LABEL) as PortfolioAiTaskType[])
-  .map(value => ({ value, label: PORTFOLIO_AI_TASK_TYPE_LABEL[value] }))
+/** 候选确认链可提交的任务类型 */
+export type PortfolioAiExtractTaskType = 'PORTFOLIO_CERTIFICATE_OCR' | 'PORTFOLIO_DOCUMENT_PARSE'
+
+export const PORTFOLIO_AI_EXTRACT_TASK_TYPE_OPTIONS = (
+  ['PORTFOLIO_CERTIFICATE_OCR', 'PORTFOLIO_DOCUMENT_PARSE'] as PortfolioAiExtractTaskType[]
+).map(value => ({ value, label: PORTFOLIO_AI_TASK_TYPE_LABEL[value] }))
 
 /** 档案袋材料类型 - PortfolioMaterialTypeEnum */
 export type PortfolioMaterialType = 'CERTIFICATE' | 'DOCUMENT' | 'POLICY' | 'REPORT'
@@ -464,8 +507,14 @@ export const PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE: Record<PortfolioCandidateC
 export const PORTFOLIO_TEMPLATE_CODE_CERTIFICATE = 'CERTIFICATE'
 export const PORTFOLIO_TEMPLATE_CODE_DOCUMENT = 'DOCUMENT'
 
+/** 系统预置默认审核流编码 */
+export const PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE = 'PORTFOLIO_DEFAULT_REVIEW'
+
+/** 学校复审审核流编码（敏感材料） */
+export const PORTFOLIO_SCHOOL_REVIEW_FLOW_CODE = 'PORTFOLIO_SCHOOL_REVIEW'
+
 export interface PortfolioAiJobSubmitRequest {
-  taskType: PortfolioAiTaskType
+  taskType: PortfolioAiExtractTaskType
   teacherId: string
   materialId?: string
   fileNodeId?: string
@@ -477,8 +526,43 @@ export interface PortfolioAiJobSubmitRequest {
 
 export interface PortfolioAiJobSubmitVO {
   taskId: string
-  portfolioAiJobId: string
-  status: string
+  portfolioAiJobId?: string
+  status: PortfolioAiTaskStatus
+}
+
+/** 档案袋 AI 任务状态 - 对齐 AiTaskStatusEnum */
+export type PortfolioAiTaskStatus = 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED'
+
+export const PORTFOLIO_AI_TASK_STATUS_LABEL: Record<PortfolioAiTaskStatus, string> = {
+  PENDING: '待执行',
+  PROCESSING: '执行中',
+  SUCCEEDED: '已成功',
+  FAILED: '已失败',
+  CANCELLED: '已取消',
+}
+
+export const PORTFOLIO_AI_TASK_STATUS_TONE: Record<PortfolioAiTaskStatus, BadgeTone> = {
+  PENDING: 'gray',
+  PROCESSING: 'blue',
+  SUCCEEDED: 'green',
+  FAILED: 'red',
+  CANCELLED: 'gray',
+}
+
+/** 档案袋材料 AI 任务列表项 - 对齐后端 AiTaskVO 在 portfolio 页使用的字段 */
+export interface PortfolioAiJobTaskVO {
+  id: string
+  taskType: PortfolioAiTaskType
+  status: PortfolioAiTaskStatus
+  createTime?: string
+}
+
+export interface PortfolioAiJobPageRequest extends QueryDto {
+  teacherId?: string
+  taskType?: PortfolioAiTaskType
+  status?: PortfolioAiTaskStatus
+  /** 仅候选确认链（OCR / 文档抽取） */
+  candidateExtractOnly?: boolean
 }
 
 export interface PortfolioCandidateFieldVO {
@@ -500,4 +584,541 @@ export interface PortfolioCandidateConfirmRequest {
   aiTaskId: string
   confirmStatus: 'CONFIRMED' | 'REJECTED'
   correctedCandidateValue?: string
+}
+
+/** 审核任务状态 - PortfolioReviewTaskStatusEnum */
+export type PortfolioReviewTaskStatus = 'PENDING' | 'SECOND_REVIEW' | 'APPROVED' | 'RETURNED' | 'DISMISSED' | 'CLOSED'
+
+export const PORTFOLIO_REVIEW_TASK_STATUS_LABEL: Record<PortfolioReviewTaskStatus, string> = {
+  PENDING: '待审',
+  SECOND_REVIEW: '转复审',
+  APPROVED: '通过',
+  RETURNED: '退回',
+  DISMISSED: '驳回',
+  CLOSED: '已关闭',
+}
+
+export const PORTFOLIO_REVIEW_TASK_STATUS_TONE: Record<PortfolioReviewTaskStatus, BadgeTone> = {
+  PENDING: 'blue',
+  SECOND_REVIEW: 'purple',
+  APPROVED: 'green',
+  RETURNED: 'orange',
+  DISMISSED: 'red',
+  CLOSED: 'gray',
+}
+
+/** 材料风险等级 - PortfolioMaterialRiskLevelEnum */
+export type PortfolioMaterialRiskLevel = 'LOW' | 'SENSITIVE'
+
+export const PORTFOLIO_MATERIAL_RISK_LEVEL_LABEL: Record<PortfolioMaterialRiskLevel, string> = {
+  LOW: '低风险',
+  SENSITIVE: '敏感',
+}
+
+export const PORTFOLIO_MATERIAL_RISK_LEVEL_TONE: Record<PortfolioMaterialRiskLevel, BadgeTone> = {
+  LOW: 'green',
+  SENSITIVE: 'red',
+}
+
+/** 档案记录状态 - PortfolioArchiveRecordStatusEnum */
+export type PortfolioArchiveRecordStatus
+  = | 'DRAFT'
+    | 'PENDING_CONFIRM'
+    | 'PENDING_REVIEW'
+    | 'OFFICIAL'
+    | 'RETURNED'
+    | 'VOID'
+
+export const PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL: Record<PortfolioArchiveRecordStatus, string> = {
+  DRAFT: '草稿',
+  PENDING_CONFIRM: '待确认',
+  PENDING_REVIEW: '待审核',
+  OFFICIAL: '正式',
+  RETURNED: '退回',
+  VOID: '作废',
+}
+
+export const PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE: Record<PortfolioArchiveRecordStatus, BadgeTone> = {
+  DRAFT: 'gray',
+  PENDING_CONFIRM: 'blue',
+  PENDING_REVIEW: 'blue',
+  OFFICIAL: 'green',
+  RETURNED: 'orange',
+  VOID: 'gray',
+}
+
+/** 档案来源 - PortfolioArchiveRecordSourceTypeEnum */
+export type PortfolioArchiveRecordSourceType = 'AI_EXTRACT' | 'MANUAL' | 'IMPORT' | 'SYNC'
+
+export const PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL: Record<PortfolioArchiveRecordSourceType, string> = {
+  AI_EXTRACT: 'AI 抽取',
+  MANUAL: '手工填报',
+  IMPORT: '批量导入',
+  SYNC: '外部同步',
+}
+
+/** 审核操作类型 - PortfolioReviewActionTypeEnum */
+export type PortfolioReviewActionType = 'APPROVE' | 'BATCH_APPROVE' | 'RETURN' | 'DISMISS' | 'ESCALATE'
+
+export const PORTFOLIO_REVIEW_ACTION_TYPE_LABEL: Record<PortfolioReviewActionType, string> = {
+  APPROVE: '通过',
+  BATCH_APPROVE: '批量通过',
+  RETURN: '退回',
+  DISMISS: '驳回',
+  ESCALATE: '转复审',
+}
+
+/** AI 初审分析摘要 - PortfolioAiAnalysisSummaryVO */
+export interface PortfolioAiAnalysisSummaryVO {
+  id: string
+  aiTaskId: string
+  aiJobId?: string
+  teacherId?: string
+  fileNodeId?: string
+  analysisType?: string
+  resultTitle?: string
+  summary?: string
+  conclusionCode?: string
+  reportScene?: string
+  reportPeriodLabel?: string
+  reviewStatus?: string
+  taskStatus?: PortfolioAiTaskStatus
+  taskFailurePhase?: string
+  taskFailureReason?: string
+  modelName?: string
+  promptTokenCount?: number
+  completionTokenCount?: number
+  generatedAt?: string
+  createTime?: string
+}
+
+/** AI 初审分析详情 - PortfolioAiAnalysisDetailVO */
+export interface PortfolioAiAnalysisIssueVO {
+  issueTitle?: string
+  severity?: string
+  issueDescription?: string
+}
+
+export interface PortfolioAiAnalysisEvidenceVO {
+  evidenceTitle?: string
+  evidenceSource?: string
+  evidenceContent?: string
+}
+
+export interface PortfolioAiAnalysisSuggestionVO {
+  suggestionTitle?: string
+  priority?: string
+  suggestionContent?: string
+}
+
+export interface PortfolioAiAnalysisDetailVO extends PortfolioAiAnalysisSummaryVO {
+  policyClauseDigest?: string
+  draftMarkdown?: string
+  issueItems?: PortfolioAiAnalysisIssueVO[]
+  evidenceItems?: PortfolioAiAnalysisEvidenceVO[]
+  suggestionItems?: PortfolioAiAnalysisSuggestionVO[]
+}
+
+export interface PortfolioReviewTaskPageRequest extends QueryDto {
+  reviewStatus?: PortfolioReviewTaskStatus
+  teacherId?: string
+  categoryId?: string
+  departmentId?: string
+  auditFlowCode?: string
+}
+
+export interface PortfolioReviewTaskSummaryVO {
+  id: string
+  archiveRecordId: string
+  teacherId: string
+  teacherName?: string
+  teacherNumber?: string
+  departmentName?: string
+  categoryId: string
+  categoryName?: string
+  reviewStatus: PortfolioReviewTaskStatus
+  recordStatus?: PortfolioArchiveRecordStatus
+  sourceType?: PortfolioArchiveRecordSourceType
+  auditFlowCode?: string
+  batchApproveAllowed?: boolean
+  aiPreReviewSummary?: string
+  riskLevel?: PortfolioMaterialRiskLevel
+  referenceAiTaskId?: string
+  singleReviewRequired?: boolean
+  escalateAllowed?: boolean
+  reviewActionAllowed?: boolean
+  createTime?: string
+}
+
+export interface PortfolioReviewTaskEscalateRequest {
+  reviewTaskId: string
+  reason: string
+}
+
+export interface PortfolioReviewTaskApproveRequest {
+  reviewTaskId: string
+  opinion?: string
+}
+
+export interface PortfolioReviewTaskRejectRequest {
+  reviewTaskId: string
+  reason: string
+  returnDeadline: string
+}
+
+export interface PortfolioReviewTaskDismissRequest {
+  reviewTaskId: string
+  reason: string
+}
+
+export interface PortfolioReviewTaskBatchApproveRequest {
+  reviewTaskIds: string[]
+  opinion?: string
+}
+
+export interface PortfolioReviewTaskBatchRejectRequest {
+  reviewTaskIds: string[]
+  reason: string
+  returnDeadline: string
+}
+
+export interface PortfolioReviewLogVO {
+  id: string
+  reviewTaskId: string
+  archiveRecordId: string
+  actionType: PortfolioReviewActionType
+  opinion?: string
+  returnDeadline?: string
+  reviewerId: string
+  createTime?: string
+}
+
+export interface PortfolioReviewRecordFieldVO {
+  fieldCode: string
+  fieldLabel?: string
+  fieldValue: string
+  evidenceRef?: string
+}
+
+export interface PortfolioReviewArchiveRecordDetailVO {
+  id: string
+  teacherId: string
+  categoryId: string
+  categoryName?: string
+  recordStatus: PortfolioArchiveRecordStatus
+  sourceType: PortfolioArchiveRecordSourceType
+  aiTaskId?: string
+  fields: PortfolioReviewRecordFieldVO[]
+}
+
+/** 档案完整度分级 - PortfolioCompletenessLevelEnum */
+export type PortfolioCompletenessLevel = 'COMPLETE' | 'BASIC' | 'PENDING' | 'SEVERE'
+
+export const PORTFOLIO_COMPLETENESS_LEVEL_LABEL: Record<PortfolioCompletenessLevel, string> = {
+  COMPLETE: '完整',
+  BASIC: '基本完整',
+  PENDING: '待补充',
+  SEVERE: '严重缺失',
+}
+
+export const PORTFOLIO_COMPLETENESS_LEVEL_TONE: Record<PortfolioCompletenessLevel, BadgeTone> = {
+  COMPLETE: 'green',
+  BASIC: 'blue',
+  PENDING: 'orange',
+  SEVERE: 'red',
+}
+
+export interface PortfolioTeacherCompletenessGetRequest {
+  teacherId?: string
+}
+
+export interface PortfolioTeacherCompletenessVO {
+  teacherId: string
+  completenessPercent: number
+  completenessLevel: PortfolioCompletenessLevel
+  requiredCategoryTotal: number
+  requiredCategoryDone: number
+  computedAt?: string
+}
+
+export interface PortfolioTeacherPortraitGetRequest {
+  teacherId?: string
+}
+
+export interface PortfolioTeacherPortraitVO {
+  teacherId: string
+  developmentCoreScore: number
+  teachingScore: number
+  researchScore: number
+  trainingScore: number
+  practiceScore: number
+  officialRecordCount: number
+  computedAt?: string
+}
+
+export interface PortfolioArchiveRecordPageRequest extends QueryDto {
+  teacherId?: string
+  categoryId?: string
+  recordStatus?: PortfolioArchiveRecordStatus
+}
+
+export interface PortfolioArchiveRecordSummaryVO {
+  id: string
+  teacherId: string
+  categoryId: string
+  categoryName?: string
+  recordStatus: PortfolioArchiveRecordStatus
+  sourceType: PortfolioArchiveRecordSourceType
+  updateTime?: string
+  evaluationIncluded: boolean
+  referenceAiTaskId?: string
+  createTime?: string
+}
+
+export interface PortfolioArchiveRecordFieldVO {
+  fieldCode: string
+  fieldLabel?: string
+  fieldValue: string
+  evidenceRef?: string
+  referenceCandidateFieldId?: string
+  updateTime?: string
+  fieldCorrecting?: boolean
+}
+
+export interface PortfolioArchiveRecordDetailVO {
+  id: string
+  teacherId: string
+  categoryId: string
+  categoryName?: string
+  recordStatus: PortfolioArchiveRecordStatus
+  sourceType: PortfolioArchiveRecordSourceType
+  updateTime?: string
+  evaluationIncluded: boolean
+  referenceAiTaskId?: string
+  latestRejectReason?: string
+  fields: PortfolioArchiveRecordFieldVO[]
+}
+
+export interface PortfolioArchiveTimelineRequest {
+  teacherId?: string
+  limit?: number
+}
+
+export interface PortfolioArchiveTimelineItemVO {
+  archiveRecordId: string
+  categoryId: string
+  categoryName?: string
+  recordStatus: PortfolioArchiveRecordStatus
+  sourceType: PortfolioArchiveRecordSourceType
+  eventTime?: string
+  evaluationIncluded: boolean
+  referenceAiTaskId?: string
+}
+
+export interface PortfolioTeacherOneTableGetRequest {
+  teacherId?: string
+}
+
+export interface PortfolioTeacherOneTableCategoryVO {
+  categoryId: string
+  categoryName: string
+  parentId?: string
+  recordCount: number
+  officialRecordId?: string
+  latestRecordStatus?: PortfolioArchiveRecordStatus
+  latestUpdateTime?: string
+}
+
+export interface PortfolioTeacherOneTableVO {
+  teacherId: string
+  categories: PortfolioTeacherOneTableCategoryVO[]
+}
+
+export interface PortfolioArchiveRecordFieldInput {
+  fieldCode: string
+  fieldValue?: string
+  evidenceRef?: string
+}
+
+export interface PortfolioArchiveRecordSaveDraftRequest {
+  teacherId?: string
+  recordId?: string
+  categoryId?: string
+  fields: PortfolioArchiveRecordFieldInput[]
+}
+
+export interface PortfolioArchiveRecordSubmitRequest {
+  teacherId?: string
+  recordId?: string
+  categoryId?: string
+  fields: PortfolioArchiveRecordFieldInput[]
+}
+
+export interface PortfolioArchiveRecordWriteResultVO {
+  recordId: string
+  recordStatus: PortfolioArchiveRecordStatus
+}
+
+/** 待办类型 - PortfolioTodoTypeEnum */
+export type PortfolioTodoType
+  = | 'ARCHIVE_RETURNED'
+    | 'ARCHIVE_PENDING_CONFIRM'
+    | 'ARCHIVE_DRAFT'
+    | 'CORRECTION_REJECTED'
+    | 'CORRECTION_IN_PROGRESS'
+    | 'GAP_PENDING'
+    | 'GAP_RETURNED'
+    | 'EVALUATION_MATERIAL_CONFIRM'
+    | 'EVALUATION_RETURNED_SUPPLEMENT'
+
+export const PORTFOLIO_TODO_TYPE_LABEL: Record<PortfolioTodoType, string> = {
+  ARCHIVE_RETURNED: '审核退回',
+  ARCHIVE_PENDING_CONFIRM: '待确认档案',
+  ARCHIVE_DRAFT: '草稿待提交',
+  CORRECTION_REJECTED: '纠错驳回',
+  CORRECTION_IN_PROGRESS: '纠错处理中',
+  GAP_PENDING: '补采待处理',
+  GAP_RETURNED: '补采退回',
+  EVALUATION_MATERIAL_CONFIRM: '评价材料确认',
+  EVALUATION_RETURNED_SUPPLEMENT: '评价退回补充',
+}
+
+export interface PortfolioTodoPageRequest extends QueryDto {
+  teacherId?: string
+  todoType?: PortfolioTodoType
+}
+
+export interface PortfolioTodoCompleteRequest {
+  todoType: PortfolioTodoType
+  refId: string
+}
+
+export interface PortfolioTodoSummaryVO {
+  todoType: PortfolioTodoType
+  refId: string
+  title: string
+  summary?: string
+  dueTime?: string
+  categoryId?: string
+  categoryName?: string
+  archiveRecordId?: string
+  referenceAiTaskId?: string
+  updateTime?: string
+}
+
+/** 纠错工单状态 - PortfolioCorrectionRequestStatusEnum */
+export type PortfolioCorrectionRequestStatus
+  = | 'SUBMITTED'
+    | 'ACCEPTING'
+    | 'ARCHIVE_CORRECTING'
+    | 'SOURCE_FIXING'
+    | 'PENDING_VERIFY'
+    | 'CLOSED'
+    | 'REJECTED'
+
+export const PORTFOLIO_CORRECTION_REQUEST_STATUS_LABEL: Record<PortfolioCorrectionRequestStatus, string> = {
+  SUBMITTED: '已提交',
+  ACCEPTING: '受理中',
+  ARCHIVE_CORRECTING: '档案更正',
+  SOURCE_FIXING: '源系统整改',
+  PENDING_VERIFY: '待验证',
+  CLOSED: '已关闭',
+  REJECTED: '驳回',
+}
+
+export const PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE: Record<PortfolioCorrectionRequestStatus, BadgeTone> = {
+  SUBMITTED: 'info',
+  ACCEPTING: 'warning',
+  ARCHIVE_CORRECTING: 'warning',
+  SOURCE_FIXING: 'warning',
+  PENDING_VERIFY: 'info',
+  CLOSED: 'success',
+  REJECTED: 'danger',
+}
+
+export interface PortfolioCorrectionSubmitRequest {
+  teacherId?: string
+  archiveRecordId?: string
+  categoryId: string
+  fieldCode: string
+  fieldLabel?: string
+  wrongValue?: string
+  expectedValue?: string
+  reason: string
+  evidenceRef?: string
+}
+
+export interface PortfolioCorrectionPageRequest extends QueryDto {
+  teacherId?: string
+  requestStatus?: PortfolioCorrectionRequestStatus
+}
+
+export interface PortfolioCorrectionSummaryVO {
+  id: string
+  teacherId: string
+  archiveRecordId?: string
+  categoryId: string
+  categoryName?: string
+  fieldCode: string
+  fieldLabel?: string
+  requestStatus: PortfolioCorrectionRequestStatus
+  reason: string
+  handleOpinion?: string
+  createTime?: string
+  updateTime?: string
+}
+
+export interface PortfolioCorrectionDetailVO extends PortfolioCorrectionSummaryVO {
+  wrongValue?: string
+  expectedValue?: string
+  evidenceRef?: string
+  sourceType?: PortfolioArchiveRecordSourceType
+  handledAt?: string
+}
+
+/** 补采任务状态 - PortfolioGapTaskStatusEnum */
+export type PortfolioGapTaskStatus
+  = | 'PENDING'
+    | 'RETURNED'
+    | 'OVERDUE'
+    | 'SUBMITTED'
+    | 'REVIEWING'
+    | 'CLOSED'
+
+export const PORTFOLIO_GAP_TASK_STATUS_LABEL: Record<PortfolioGapTaskStatus, string> = {
+  PENDING: '待处理',
+  RETURNED: '已退回',
+  OVERDUE: '已逾期',
+  SUBMITTED: '已提交',
+  REVIEWING: '审核中',
+  CLOSED: '已关闭',
+}
+
+export interface PortfolioGapMissingFieldVO {
+  fieldCode: string
+  fieldLabel?: string
+  required?: boolean
+  readonly?: boolean
+  currentValue?: string
+  missing?: boolean
+}
+
+export interface PortfolioGapTaskDetailVO {
+  id: string
+  teacherId: string
+  categoryId: string
+  categoryName?: string
+  taskTitle?: string
+  taskStatus: PortfolioGapTaskStatus
+  dueTime?: string
+  returnReason?: string
+  archiveRecordId?: string
+  officialRecordId?: string
+  missingFields: PortfolioGapMissingFieldVO[]
+}
+
+export interface PortfolioGapTaskSubmitRequest {
+  gapTaskId: string
+  teacherId?: string
+  fields: PortfolioArchiveRecordFieldInput[]
 }

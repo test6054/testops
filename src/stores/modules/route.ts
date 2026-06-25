@@ -4,7 +4,7 @@ import { cloneDeep, omit } from 'lodash-es'
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import XEUtils from 'xe-utils'
-import { commonRoutes, qualityRoutes, studentRoutes, teacherRoutes } from '@/router/routes'
+import { commonRoutes, portfolioRoutes, qualityRoutes, studentRoutes, teacherRoutes } from '@/router/routes'
 import { RoleEnum } from '@/types/enums'
 import { useAuthStore } from './auth'
 import { useUserStore } from './user'
@@ -74,10 +74,10 @@ const storeSetup = (): RouteStoreState => {
 
     if (userRole === RoleEnum.SUPER_ADMIN) {
       // 超管：考试阅卷（含 SaaS 监管）+ 质量评价
-      roleRoutes = [...teacherRoutes, ...qualityRoutes, ...commonRoutes]
+      roleRoutes = [...teacherRoutes, ...qualityRoutes, ...portfolioRoutes, ...commonRoutes]
     } else if ([RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER].includes(userRole as RoleEnum)) {
-      // 教师角色：阅卷工作台 + 教学质量评价工作台（OBE 主链责任人）
-      roleRoutes = [...teacherRoutes, ...qualityRoutes, ...commonRoutes]
+      // 教师角色：阅卷工作台 + 教学质量评价 + 教学档案袋
+      roleRoutes = [...teacherRoutes, ...qualityRoutes, ...portfolioRoutes, ...commonRoutes]
     } else if (userRole === RoleEnum.SCH_STU) {
       roleRoutes = [...studentRoutes, ...commonRoutes]
     } else {
@@ -115,7 +115,21 @@ const storeSetup = (): RouteStoreState => {
         }
 
         // 检查租户管理员权限
-        return !(route.meta?.requireTenantAdmin && !userIsTenantAdmin);
+        if (route.meta?.requireTenantAdmin && !userIsTenantAdmin) {
+          return false
+        }
+
+        // 档案审核台：院系负责人 / 租户管理员 / 超管
+        if (route.meta?.requirePortfolioReviewer) {
+          if (userRole === RoleEnum.SUPER_ADMIN || userIsTenantAdmin) {
+            return true
+          }
+          if (userRole !== RoleEnum.CROP_ADMIN) {
+            return false
+          }
+        }
+
+        return true;
       })
       .map(route => {
         const filteredChildren = route.children

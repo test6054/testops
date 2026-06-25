@@ -4,7 +4,8 @@
       class="main-scroll-wrapper"
       :class="{
         'main-scroll-wrapper--wide': route.meta.layoutWide,
-        'mark-domain--quality': route.path.startsWith('/quality'),
+        'mark-domain--quality': isQualityDomain,
+        'mark-domain--portfolio': isPortfolioDomain,
       }"
     >
       <router-view v-slot="{ Component, route: childRoute }">
@@ -28,11 +29,15 @@
 
 <script lang="ts" setup>
 import type { RouteLocationNormalized } from 'vue-router'
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { isPortfolioRoute, isQualityEvaluationRoute } from '@/utils/portfolio-route'
 
 defineOptions({ name: 'LayoutMain' })
 
 const route = useRoute()
+const isQualityDomain = computed(() => isQualityEvaluationRoute(route.path))
+const isPortfolioDomain = computed(() => isPortfolioRoute(route.path))
 
 /**
  * 获取路由缓存key

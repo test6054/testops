@@ -1,11 +1,12 @@
 <script lang="ts" setup>
 /**
- * 质量评价域 AI 任务运行条：对齐导出任务中心的「进行中」提示，仅在 /quality 路由下展示。
+ * 质量评价域 AI 任务运行条：仅在质量评价 /quality 路由下展示（不含教学档案袋 /portfolio）。
  */
 import LoadingOutlined from '@ant-design/icons-vue/LoadingOutlined'
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { isQualityEvaluationRoute } from '@/utils/portfolio-route'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
 
@@ -17,7 +18,7 @@ const qualityTaskStore = useQualityTaskStore()
 const aiTaskStore = useAiTaskStore()
 const { aiTasksInFlight, aiTasksProcessing } = storeToRefs(qualityTaskStore)
 
-const isQualityRoute = computed(() => route.path.startsWith('/quality'))
+const isQualityRoute = computed(() => isQualityEvaluationRoute(route.path))
 
 const runningCount = computed(
   () => aiTasksInFlight.value.length + aiTaskStore.activePollingCount,

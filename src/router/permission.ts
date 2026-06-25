@@ -106,7 +106,11 @@ function findRouteByPath(path: string): RouteRecordRaw | undefined {
 /**
  * 根据路径获取路由权限信息
  */
-export function getRoutePermission(path: string): { roles: RoleEnum[], requireTenantAdmin?: boolean } | undefined {
+export function getRoutePermission(path: string): {
+  roles: RoleEnum[]
+  requireTenantAdmin?: boolean
+  requirePortfolioReviewer?: boolean
+} | undefined {
     const route = findRouteByPath(path)
 
     if (!route?.meta) {
@@ -115,8 +119,16 @@ export function getRoutePermission(path: string): { roles: RoleEnum[], requireTe
 
     return {
         roles: route.meta.roles as RoleEnum[] || [],
-        requireTenantAdmin: route.meta.requireTenantAdmin as boolean
+        requireTenantAdmin: route.meta.requireTenantAdmin as boolean,
+        requirePortfolioReviewer: route.meta.requirePortfolioReviewer as boolean,
     }
+}
+
+function passesPortfolioReviewerGate(userRole: string, isTenantAdmin: boolean): boolean {
+    if (userRole === RoleEnum.SUPER_ADMIN || isTenantAdmin) {
+        return true
+    }
+    return userRole === RoleEnum.CROP_ADMIN
 }
 
 /**
@@ -144,7 +156,13 @@ export function hasRoutePermission(
         return false
     }
     // 检查是否需要租户管理员权限
-    return !(permission.requireTenantAdmin && !isTenantAdmin);
+    if (permission.requireTenantAdmin && !isTenantAdmin) {
+        return false
+    }
+    if (permission.requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin)) {
+        return false
+    }
+    return true
 }
 
 /**
@@ -171,7 +189,14 @@ export function hasRouteNamePermission(
         return false
     }
     const requireTenantAdmin = route.meta.requireTenantAdmin as boolean | undefined
-    return !(requireTenantAdmin && !isTenantAdmin);
+    if (requireTenantAdmin && !isTenantAdmin) {
+        return false
+    }
+    const requirePortfolioReviewer = route.meta.requirePortfolioReviewer as boolean | undefined
+    if (requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin)) {
+        return false
+    }
+    return true
 }
 
 /**

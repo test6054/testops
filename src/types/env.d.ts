@@ -74,6 +74,8 @@ declare module 'vue-router' {
     seo?: SeoMeta
     /** 是否需要租户管理员权限 */
     requireTenantAdmin?: boolean
+    /** 是否需要档案审核台权限（院系负责人/租户管理员） */
+    requirePortfolioReviewer?: boolean
     /** 是否始终显示为子菜单（即使只有一个子路由） */
     alwaysShow?: boolean
     /** 内部标记：无可见子路由 */

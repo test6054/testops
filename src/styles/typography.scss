@@ -53,3 +53,9 @@
     line-height: var(--dp-type-quality-body-line-height);
   }
 }
+
+.main-scroll-wrapper.mark-domain--portfolio {
+  :deep(.ant-typography) {
+    line-height: var(--dp-type-quality-body-line-height);
+  }
+}
