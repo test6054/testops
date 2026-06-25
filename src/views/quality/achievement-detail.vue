@@ -451,7 +451,7 @@ onActivated(() => {
             </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="计算时间">
-            {{ result.calculatedAt }}
+            {{ result.calculatedTime }}
           </a-descriptions-item>
           <a-descriptions-item label="审核状态">
             <UiTag :tone="auditStatusColor(result.auditStatus)" size="sm">
@@ -470,7 +470,7 @@ onActivated(() => {
             </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="过期时间">
-            {{ result.staleAt || '-' }}
+            {{ result.staleTime || '-' }}
           </a-descriptions-item>
           <a-descriptions-item label="过期原因">
             {{ result.staleReason || '-' }}

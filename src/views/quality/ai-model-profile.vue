@@ -441,7 +441,7 @@ onActivated(() => {
             {{ profile.apiHost }}
           </a-descriptions-item>
           <a-descriptions-item label="上次检测时间">
-            {{ profile.lastHealthCheckAt || '尚未检测' }}
+            {{ profile.lastHealthCheckTime || '尚未检测' }}
           </a-descriptions-item>
           <a-descriptions-item label="最近检测说明" :span="2">
             {{ aiModelHealthMessageText(profile.lastHealthMessage) }}

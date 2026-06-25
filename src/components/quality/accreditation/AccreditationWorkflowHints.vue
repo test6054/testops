@@ -38,7 +38,7 @@ const hints = computed(() => {
     return list
   }
   const c = props.cycle
-  if (canRecordApplication(c) && !c.applicationRecordedAt) {
+  if (canRecordApplication(c) && !c.applicationRecordedTime) {
     list.push({ text: '登记申请书提交（手工，不对接 eqem）。', action: '去周期页', tab: 'cycle' })
   }
   if (!props.supportConfirmed) {

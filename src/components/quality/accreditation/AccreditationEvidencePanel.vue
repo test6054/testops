@@ -110,7 +110,7 @@ const evidenceMutationHint = computed(() => {
     return '请先创建并启用认证周期后再登记证据'
   }
   if (!canMutateEvidence.value) {
-    if (props.activeCycle.conclusionRegisteredAt) {
+    if (props.activeCycle.conclusionRegisteredTime) {
       return '认证结论登记后原始资料证据已冻结，仅可下载查阅'
     }
     return '当前认证阶段不允许维护原始资料证据'

@@ -747,7 +747,7 @@ defineExpose({
         {{ improvementDetailRecord.reviewRemark || '尚未复评' }}
       </a-descriptions-item>
       <a-descriptions-item label="闭环时间">
-        {{ improvementDetailRecord.closedAt || '未闭环' }}
+        {{ improvementDetailRecord.closedTime || '未闭环' }}
       </a-descriptions-item>
     </a-descriptions>
   </UiDrawer>

@@ -64,6 +64,30 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'archive-volume-search',
+        name: 'TeacherArchiveVolumeSearch',
+        component: () => import('@/views/teacher/archive-volume-search.vue'),
+        meta: {
+          title: '归档 OCR 检索',
+          roles: TEACHER_ROLES,
+          icon: 'search',
+          hideInMenu: false,
+          keepAlive: true,
+        },
+      },
+      {
+        path: 'archive-supervision-inspect',
+        name: 'TeacherArchiveSupervisionInspect',
+        component: () => import('@/views/teacher/archive-supervision-inspect.vue'),
+        meta: {
+          title: '督导抽查',
+          roles: TEACHER_ROLES,
+          icon: 'audit',
+          hideInMenu: false,
+          keepAlive: true,
+        },
+      },
+      {
         path: 'audit-trail',
         name: 'AdminAuditTrail',
         component: () => import('@/views/admin/audit-trail.vue'),

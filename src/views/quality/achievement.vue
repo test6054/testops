@@ -957,8 +957,8 @@ onActivated(async () => {
                 <UiTag :tone="resultValidityColor(record)" size="sm">
                   {{ resultValidityLabel(record) }}
                 </UiTag>
-                <span v-if="record.staleAt" class="achievement__validity-time">
-                  {{ record.staleAt }}
+                <span v-if="record.staleTime" class="achievement__validity-time">
+                  {{ record.staleTime }}
                 </span>
               </div>
             </template>

@@ -318,7 +318,7 @@ function phaseLabel(phase: AccreditationCyclePhase) {
 
 function buildMenuItems(row: AccreditationCycleVO): AccreditationCycleMenuItem[] {
   const items: AccreditationCycleMenuItem[] = []
-  if (canRecordApplication(row) && !row.applicationRecordedAt) {
+  if (canRecordApplication(row) && !row.applicationRecordedTime) {
     items.push({ key: 'application', label: '登记申请书提交' })
   }
   if (canSubmitSelfAssessment(row)) {
@@ -569,9 +569,9 @@ defineExpose({ openCreate, loadCycles })
           }}
         </dd>
         <dt>申请登记</dt>
-        <dd>{{ detailRecord.applicationRecordedAt || '—' }}</dd>
+        <dd>{{ detailRecord.applicationRecordedTime || '—' }}</dd>
         <dt>自评提交</dt>
-        <dd>{{ detailRecord.selfAssessmentSubmittedAt || '—' }}</dd>
+        <dd>{{ detailRecord.selfAssessmentSubmittedTime || '—' }}</dd>
         <dt>审阅决议</dt>
         <dd>{{ detailRecord.selfAssessmentReviewDecision || '—' }}</dd>
         <dt>审阅意见</dt>

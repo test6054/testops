@@ -57,7 +57,7 @@ const supColumns: ColumnsType = [
   { title: '标题', key: 'supTitle' },
   { title: '类型', dataIndex: 'supervisionType', key: 'supervisionType', width: 110 },
   { title: '范围', dataIndex: 'supervisionScope', key: 'supervisionScope', width: 100 },
-  { title: '督导时间', dataIndex: 'supervisedAt', key: 'supervisedAt', width: 160 },
+  { title: '督导时间', dataIndex: 'supervisedTime', key: 'supervisedTime', width: 160 },
   { title: '结论', dataIndex: 'conclusion', key: 'conclusion', width: 110 },
   { title: '操作', key: 'actions', width: 160, fixed: 'right' },
 ]
@@ -206,7 +206,7 @@ const supEditor = reactive<AuditSupervisionEditorState>({
   supervisionType: 'DAILY',
   supervisionScope: 'COURSE',
   supervisorUserId: '',
-  supervisedAt: '',
+  supervisedTime: '',
   summary: '',
   findingItems: [],
   conclusion: undefined,
@@ -321,7 +321,7 @@ function openSupCreate() {
     supervisionType: 'DAILY',
     supervisionScope: 'COURSE',
     supervisorUserId: '',
-    supervisedAt: '',
+    supervisedTime: '',
     summary: '',
     findingItems: [],
     conclusion: '',
@@ -345,7 +345,7 @@ function openSupEdit(record: AuditSupervisionVO) {
     supervisionType: record.supervisionType,
     supervisionScope: record.supervisionScope || '',
     supervisorUserId: record.supervisorUserId || '',
-    supervisedAt: record.supervisedAt || '',
+    supervisedTime: record.supervisedTime || '',
     summary: record.summary || '',
     findingItems: record.findingItems?.map((item) => ({ ...item })) || [],
     conclusion: record.conclusion || '',
@@ -390,7 +390,7 @@ async function submitSupEditor() {
       qualityCourseId: supEditor.qualityCourseId || undefined,
       supervisionScope: supEditor.supervisionScope || undefined,
       supervisorUserId: supEditor.supervisorUserId || undefined,
-      supervisedAt: supEditor.supervisedAt || undefined,
+      supervisedTime: supEditor.supervisedTime || undefined,
       summary: supEditor.summary || undefined,
       findingItems: supEditor.findingItems.map((item) => ({
         findingType: item.findingType || undefined,
@@ -589,7 +589,7 @@ defineExpose({
         </a-col>
         <a-col :span="6">
           <a-form-item label="督导时间">
-            <a-input v-model:value="supEditor.supervisedAt" placeholder="yyyy-MM-dd HH:mm:ss" />
+            <a-input v-model:value="supEditor.supervisedTime" placeholder="yyyy-MM-dd HH:mm:ss" />
           </a-form-item>
         </a-col>
       </a-row>

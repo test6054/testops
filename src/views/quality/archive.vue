@@ -557,7 +557,7 @@ const columns: ColumnsType = [
     key: 'archiveOfficeConfirmed',
     width: 110,
   },
-  { title: '归档时间', dataIndex: 'archivedAt', key: 'archivedAt', width: 170 },
+  { title: '归档时间', dataIndex: 'archivedTime', key: 'archivedTime', width: 170 },
   { title: '操作', key: 'actions', width: 280, fixed: 'right' },
 ]
 
@@ -703,7 +703,7 @@ onMounted(async () => {
               {{ record.archiveOfficeConfirmed ? '已确认' : '未确认' }}
             </UiTag>
           </template>
-          <template v-else-if="column.key === 'archivedAt'">
+          <template v-else-if="column.key === 'archivedTime'">
             {{ record.archivedTime || '尚未归档确认' }}
           </template>
           <template v-else-if="column.key === 'actions'">
@@ -1000,7 +1000,7 @@ onMounted(async () => {
           </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="归档时间">
-          {{ detailRecord.archivedAt || '尚未归档确认' }}
+          {{ detailRecord.archivedTime || '尚未归档确认' }}
         </a-descriptions-item>
         <a-descriptions-item label="备注">
           {{ detailRecord.notes || '未填写备注' }}

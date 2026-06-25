@@ -1038,11 +1038,11 @@ onBeforeUnmount(() => {
               {{ exportStatusLabel(detailRecord.exportStatus) }}
             </UiTag>
           </a-descriptions-item>
-          <a-descriptions-item v-if="detailRecord.exportStartedAt" label="导出开始">
-            {{ detailRecord.exportStartedAt }}
+          <a-descriptions-item v-if="detailRecord.exportStartedTime" label="导出开始">
+            {{ detailRecord.exportStartedTime }}
           </a-descriptions-item>
-          <a-descriptions-item v-if="detailRecord.exportFinishedAt" label="导出结束">
-            {{ detailRecord.exportFinishedAt }}
+          <a-descriptions-item v-if="detailRecord.exportFinishedTime" label="导出结束">
+            {{ detailRecord.exportFinishedTime }}
           </a-descriptions-item>
           <a-descriptions-item v-if="detailRecord.exportErrorMessage" label="导出处理说明" :span="2">
             <span class="report__export-error">

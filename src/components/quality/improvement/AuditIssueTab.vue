@@ -214,8 +214,8 @@ const issueEditor = reactive<AuditIssueSaveRequest>({
   severity: 'MINOR',
   auditRound: '',
   auditYear: '',
-  raisedBy: '',
-  raisedAt: '',
+  raisedUserId: '',
+  raisedTime: '',
 })
 const issueEditorSubmitting = ref(false)
 const issueRectificationCount = ref<Map<string, number>>(new Map())
@@ -327,8 +327,8 @@ function openIssueCreate() {
     severity: 'MINOR',
     auditRound: '',
     auditYear: new Date().getFullYear().toString(),
-    raisedBy: '',
-    raisedAt: '',
+    raisedUserId: '',
+    raisedTime: '',
   })
   issueEditorVisible.value = true
 }
@@ -354,8 +354,8 @@ function openIssueEdit(record: AuditIssueVO) {
     severity: record.severity,
     auditRound: record.auditRound || '',
     auditYear: record.auditYear || '',
-    raisedBy: record.raisedBy || '',
-    raisedAt: record.raisedAt || '',
+    raisedUserId: record.raisedUserId || '',
+    raisedTime: record.raisedTime || '',
   })
   issueEditorVisible.value = true
 }
@@ -392,8 +392,8 @@ async function submitIssueEditor() {
       issueDescription: issueEditor.issueDescription || undefined,
       auditRound: issueEditor.auditRound || undefined,
       auditYear: issueEditor.auditYear || undefined,
-      raisedBy: issueEditor.raisedBy || undefined,
-      raisedAt: issueEditor.raisedAt || undefined,
+      raisedUserId: issueEditor.raisedUserId || undefined,
+      raisedTime: issueEditor.raisedTime || undefined,
     }
     if (issueEditorMode.value === 'create') {
       await auditIssueApi.create(request)
@@ -474,7 +474,7 @@ function handleIssueAchievementResultChange(value: string | null | undefined) {
 }
 
 function handleIssueRaisedByChange(value: string | string[] | null | undefined) {
-  issueEditor.raisedBy = Array.isArray(value) ? '' : selectedId(value)
+  issueEditor.raisedUserId = Array.isArray(value) ? '' : selectedId(value)
 }
 
 defineExpose({
@@ -607,7 +607,7 @@ defineExpose({
         <a-col :span="8">
           <a-form-item label="提出人">
             <TeacherSelector
-              :value="issueEditor.raisedBy || null"
+              :value="issueEditor.raisedUserId || null"
               placeholder="选择提出人（可选）"
               @change="handleIssueRaisedByChange"
             />
@@ -615,7 +615,7 @@ defineExpose({
         </a-col>
         <a-col :span="8">
           <a-form-item label="提出时间">
-            <a-input v-model:value="issueEditor.raisedAt" placeholder="yyyy-MM-dd HH:mm:ss" />
+            <a-input v-model:value="issueEditor.raisedTime" placeholder="yyyy-MM-dd HH:mm:ss" />
           </a-form-item>
         </a-col>
       </a-row>
