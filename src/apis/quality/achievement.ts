@@ -33,56 +33,24 @@ export interface ComputeCourseGoalRequest {
   professionProfileId?: string
 }
 
-/** 毕业要求 / 观测点聚合请求 */
-export interface ComputeRequirementRequest {
+/** 达成度计算公共范围请求 - 对齐 AchievementComputeScopeRequest */
+export interface AchievementComputeScopeRequest {
   programId: string
   trainingPlanId: string
-  requirementId?: string
   gradeLevel?: string
   schoolYear?: string
   semester?: string
   professionProfileId?: string
 }
 
-/** 专业汇总请求 */
-export interface ComputeProgramRequest {
-  programId: string
-  trainingPlanId: string
-  gradeLevel?: string
-  schoolYear?: string
-  semester?: string
-  professionProfileId?: string
+/** 毕业要求 / 观测点聚合请求 */
+export interface ComputeRequirementRequest extends AchievementComputeScopeRequest {
+  requirementId?: string
 }
 
 /** 培养目标聚合请求 */
-export interface ComputeTrainingObjectiveRequest {
-  programId: string
-  trainingPlanId: string
+export interface ComputeTrainingObjectiveRequest extends AchievementComputeScopeRequest {
   trainingObjectiveId: string
-  gradeLevel?: string
-  schoolYear?: string
-  semester?: string
-  professionProfileId?: string
-}
-
-/** 课程思政聚合请求 */
-export interface ComputeCivicGoalRequest {
-  programId: string
-  trainingPlanId: string
-  gradeLevel?: string
-  schoolYear?: string
-  semester?: string
-  professionProfileId?: string
-}
-
-/** 复杂工程问题聚合请求 */
-export interface ComputeComplexEngineeringRequest {
-  programId: string
-  trainingPlanId: string
-  gradeLevel?: string
-  schoolYear?: string
-  semester?: string
-  professionProfileId?: string
 }
 
 /** 课程目标达成度计算摘要 - 严格对齐后端 CourseGoalAchievementSummaryVO */
@@ -202,13 +170,13 @@ export const achievementApi = {
     http.post<CourseGoalAchievementSummaryVO>(`${CALC}/compute-course-goal`, data),
   computeRequirement: (data: ComputeRequirementRequest) =>
     http.post<RequirementAggregateVO[]>(`${CALC}/compute-requirement`, data),
-  computeProgram: (data: ComputeProgramRequest) =>
+  computeProgram: (data: AchievementComputeScopeRequest) =>
     http.post<ProgramAchievementSummaryVO>(`${CALC}/compute-program`, data),
   computeTrainingObjective: (data: ComputeTrainingObjectiveRequest) =>
     http.post<TrainingObjectiveAchievementSummaryVO>(`${CALC}/compute-training-objective`, data),
-  computeCivicGoalAggregate: (data: ComputeCivicGoalRequest) =>
+  computeCivicGoalAggregate: (data: AchievementComputeScopeRequest) =>
     http.post<CivicGoalAchievementSummaryVO>(`${CALC}/compute-civic-goal-aggregate`, data),
-  computeComplexEngineeringAggregate: (data: ComputeComplexEngineeringRequest) =>
+  computeComplexEngineeringAggregate: (data: AchievementComputeScopeRequest) =>
     http.post<ComplexEngineeringGoalAchievementSummaryVO>(
       `${CALC}/compute-complex-engineering-aggregate`,
       data,

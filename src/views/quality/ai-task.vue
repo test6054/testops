@@ -4,9 +4,13 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type { FileSystemNodeResponseDTO } from '@/apis/edu/file-management'
 import type {
-  AiResultPriority,
-  AiResultSeverity,
+  AiResultIssueSeverity,
+  AiResultImprovementPriorityValue,
   AiResultVO,
+} from '@/apis/quality/ai-result'
+import {
+  aiResultImprovementPriorityLabel,
+  aiResultIssueSeverityLabel,
 } from '@/apis/quality/ai-result'
 /**
  * 质量评价 / AI 能力 - AI 任务与结果审计台
@@ -133,18 +137,12 @@ function manualHandlingStatusLabel(value: AiManualHandlingStatus): string {
   return strictEnumLabel(AI_MANUAL_HANDLING_STATUS_LABEL, value, 'AI 人工处理状态')
 }
 
-function aiResultSeverityLabel(value: AiResultSeverity): string {
-  if (value === 'HIGH') return '高影响'
-  if (value === 'MEDIUM') return '中影响'
-  if (value === 'LOW') return '低影响'
-  return '—'
+function aiResultSeverityLabel(value: AiResultIssueSeverity): string {
+  return aiResultIssueSeverityLabel(value)
 }
 
-function aiResultPriorityLabel(value: AiResultPriority): string {
-  if (value === 'HIGH') return '高优先级'
-  if (value === 'MEDIUM') return '中优先级'
-  if (value === 'LOW') return '低优先级'
-  return '—'
+function aiResultPriorityLabel(value: AiResultImprovementPriorityValue): string {
+  return aiResultImprovementPriorityLabel(value)
 }
 
 const qualityStore = useQualityStore()

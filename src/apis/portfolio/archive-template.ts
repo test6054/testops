@@ -10,7 +10,7 @@ import type {
   PortfolioArchiveFieldDeleteRequest,
   PortfolioArchiveFieldListRequest,
   PortfolioArchivePublishedFieldsRequest,
-  PortfolioArchivePublishedFieldsVO,
+  PortfolioPublishedTemplateSnapshot,
   PortfolioArchiveTemplateChangeLogVO,
   PortfolioArchiveTemplateSeedResultVO,
   PortfolioArchiveTemplateVersionVO,
@@ -47,7 +47,7 @@ export const portfolioArchiveTemplateApi = {
   listChangeHistory: (data: PortfolioArchiveVersionActionRequest) =>
     http.post<PortfolioArchiveTemplateChangeLogVO[]>(`${BASE}/history/change-log`, data),
   listPublishedFields: (data: PortfolioArchivePublishedFieldsRequest) =>
-    http.post<PortfolioArchivePublishedFieldsVO>(`${BASE}/published/fields`, data),
+    http.post<PortfolioPublishedTemplateSnapshot>(`${BASE}/published/fields`, data),
   seedDefaultTemplates: () =>
     http.post<PortfolioArchiveTemplateSeedResultVO>(`${BASE}/seed/defaults`, {}),
   bindAuditFlow: (data: PortfolioArchiveAuditFlowBindRequest) =>

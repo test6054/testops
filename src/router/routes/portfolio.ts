@@ -1,5 +1,5 @@
 /**
- * 教学档案袋（edu-quality portfolio 包）前端路由
+ * 教学档案袋（edu-quality 标准包）前端路由
  * 与质量评价 /quality 平级，独立 Layout 域；API 前缀 /api/portfolio/*
  */
 import type { RouteRecordRaw } from 'vue-router'

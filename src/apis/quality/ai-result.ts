@@ -1,4 +1,5 @@
 import type { AiOutputValidation } from './types'
+import { strictEnumLabel } from '@/utils/strict-enum'
 /**
  * AI 结果 API - 对齐 AiResultController。
  *
@@ -8,28 +9,85 @@ import http from '@/config/axios'
 
 const BASE = '/api/quality/ai-results'
 
-export type AiResultSeverity = 'HIGH' | 'MEDIUM' | 'LOW'
-export type AiResultPriority = 'HIGH' | 'MEDIUM' | 'LOW'
+/** AI 结果问题严重级别 - 对齐 AiResultIssueSeverityEnum */
+export type AiResultIssueSeverity = 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO'
 
-/** AI 结果问题项 - 严格对齐后端 AiResultIssueItemVO */
-export interface AiResultIssueItemVO {
-  issueTitle: string
-  issueDescription?: string
-  severity?: AiResultSeverity
+export const AI_RESULT_ISSUE_SEVERITY_LABEL: Record<AiResultIssueSeverity, string> = {
+  HIGH: '高影响',
+  MEDIUM: '中影响',
+  LOW: '低影响',
+  INFO: '提示',
 }
 
-/** AI 结果证据项 - 严格对齐后端 AiResultEvidenceItemVO */
-export interface AiResultEvidenceItemVO {
+/** AI 改进建议跟进优先级 - 对齐 AiResultImprovementPriorityEnum */
+export type AiResultImprovementPriority = 'URGENT' | 'HIGH' | 'VERIFICATION' | 'OBSERVE'
+
+export const AI_RESULT_IMPROVEMENT_PRIORITY_LABEL: Record<AiResultImprovementPriority, string> = {
+  URGENT: '紧急',
+  HIGH: '高优先级',
+  VERIFICATION: '验证',
+  OBSERVE: '观察',
+}
+
+/** 达成度诊断改进类别 - 对齐 AiResultImprovementCategoryEnum */
+export type AiResultImprovementCategory
+  = | 'TEACHING'
+    | 'ASSESSMENT'
+    | 'STUDENT_SUPPORT'
+    | 'FACULTY_PREPARATION'
+    | 'RESOURCE'
+
+export const AI_RESULT_IMPROVEMENT_CATEGORY_LABEL: Record<AiResultImprovementCategory, string> = {
+  TEACHING: '教学',
+  ASSESSMENT: '考核',
+  STUDENT_SUPPORT: '学生支持',
+  FACULTY_PREPARATION: '师资',
+  RESOURCE: '资源',
+}
+
+/** improvementItems.priority 持久化混用跟进优先级与达成度类别 */
+export type AiResultImprovementPriorityValue
+  = | AiResultImprovementPriority
+    | AiResultImprovementCategory
+
+export function aiResultIssueSeverityLabel(value: AiResultIssueSeverity): string {
+  return strictEnumLabel(AI_RESULT_ISSUE_SEVERITY_LABEL, value, 'AI 结果问题严重级别')
+}
+
+export function aiResultImprovementPriorityLabel(value: AiResultImprovementPriorityValue): string {
+  if (value in AI_RESULT_IMPROVEMENT_PRIORITY_LABEL) {
+    return strictEnumLabel(
+      AI_RESULT_IMPROVEMENT_PRIORITY_LABEL,
+      value as AiResultImprovementPriority,
+      'AI 改进跟进优先级',
+    )
+  }
+  return strictEnumLabel(
+    AI_RESULT_IMPROVEMENT_CATEGORY_LABEL,
+    value as AiResultImprovementCategory,
+    'AI 改进类别',
+  )
+}
+
+/** AI 结果问题项 - 严格对齐后端 AiResultIssueItem */
+export interface AiResultIssueItem {
+  issueTitle: string
+  issueDescription?: string
+  severity?: AiResultIssueSeverity
+}
+
+/** AI 结果证据项 - 严格对齐后端 AiResultEvidenceItem */
+export interface AiResultEvidenceItem {
   evidenceTitle: string
   evidenceSource?: string
   evidenceContent: string
 }
 
-/** AI 结果改进项 - 严格对齐后端 AiResultImprovementItemVO */
-export interface AiResultImprovementItemVO {
+/** AI 结果改进项 - 严格对齐后端 AiResultImprovementItem */
+export interface AiResultImprovementItem {
   suggestionTitle: string
   suggestionContent: string
-  priority?: AiResultPriority
+  priority?: AiResultImprovementPriorityValue
 }
 
 /** AI 结果 VO - 严格对齐后端 AiResultVO */
@@ -42,11 +100,11 @@ export interface AiResultVO {
   /** 诊断摘要 */
   summary?: string
   /** 问题清单 */
-  issueItems?: AiResultIssueItemVO[]
+  issueItems?: AiResultIssueItem[]
   /** 证据引用 */
-  evidenceItems?: AiResultEvidenceItemVO[]
+  evidenceItems?: AiResultEvidenceItem[]
   /** 改进措施 */
-  improvementItems?: AiResultImprovementItemVO[]
+  improvementItems?: AiResultImprovementItem[]
   /** 结构 / 证据 / 敏感综合校验状态 */
   outputValidation: AiOutputValidation
   /** 敏感信息校验状态：运行时取值 CLEAN / LEAK_DETECTED */
@@ -70,9 +128,9 @@ export interface AiResultSaveRequest {
   aiTaskId: string
   resultTitle: string
   summary?: string
-  issueItems?: AiResultIssueItemVO[]
-  evidenceItems?: AiResultEvidenceItemVO[]
-  improvementItems?: AiResultImprovementItemVO[]
+  issueItems?: AiResultIssueItem[]
+  evidenceItems?: AiResultEvidenceItem[]
+  improvementItems?: AiResultImprovementItem[]
   outputValidation: AiOutputValidation
   sensitiveCheckStatus?: string
   sensitiveCheckDetail?: string

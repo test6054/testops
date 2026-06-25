@@ -1,9 +1,14 @@
 /**
- * 教学档案袋 API 共享类型 - 对应 edu-quality portfolio 包
+ * 教学档案袋 API 共享类型 - 对应 edu-quality 标准包（controller/model 扁平化后）
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { QueryDto } from '@/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
+import type {
+  AiResultEvidenceItem,
+  AiResultImprovementItem,
+  AiResultIssueItem,
+} from '@/apis/quality/ai-result'
 
 /** 扩展组织类型 - PortfolioOrgUnitTypeEnum */
 export type PortfolioOrgUnitType
@@ -441,7 +446,7 @@ export interface PortfolioArchivePublishedFieldsRequest {
   templateCode?: string
 }
 
-export interface PortfolioArchivePublishedFieldsVO {
+export interface PortfolioPublishedTemplateSnapshot {
   categoryId: string
   templateCode: string
   templateVersionId: string
@@ -693,30 +698,12 @@ export interface PortfolioAiAnalysisSummaryVO {
 }
 
 /** AI 初审分析详情 - PortfolioAiAnalysisDetailVO */
-export interface PortfolioAiAnalysisIssueVO {
-  issueTitle?: string
-  severity?: string
-  issueDescription?: string
-}
-
-export interface PortfolioAiAnalysisEvidenceVO {
-  evidenceTitle?: string
-  evidenceSource?: string
-  evidenceContent?: string
-}
-
-export interface PortfolioAiAnalysisSuggestionVO {
-  suggestionTitle?: string
-  priority?: string
-  suggestionContent?: string
-}
-
 export interface PortfolioAiAnalysisDetailVO extends PortfolioAiAnalysisSummaryVO {
   policyClauseDigest?: string
   draftMarkdown?: string
-  issueItems?: PortfolioAiAnalysisIssueVO[]
-  evidenceItems?: PortfolioAiAnalysisEvidenceVO[]
-  suggestionItems?: PortfolioAiAnalysisSuggestionVO[]
+  issueItems?: AiResultIssueItem[]
+  evidenceItems?: AiResultEvidenceItem[]
+  suggestionItems?: AiResultImprovementItem[]
 }
 
 export interface PortfolioReviewTaskPageRequest extends QueryDto {
@@ -793,7 +780,7 @@ export interface PortfolioReviewLogVO {
   createTime?: string
 }
 
-export interface PortfolioReviewRecordFieldVO {
+export interface PortfolioRecordFieldCore {
   fieldCode: string
   fieldLabel?: string
   fieldValue: string
@@ -808,7 +795,7 @@ export interface PortfolioReviewArchiveRecordDetailVO {
   recordStatus: PortfolioArchiveRecordStatus
   sourceType: PortfolioArchiveRecordSourceType
   aiTaskId?: string
-  fields: PortfolioReviewRecordFieldVO[]
+  fields: PortfolioRecordFieldCore[]
 }
 
 /** 档案完整度分级 - PortfolioCompletenessLevelEnum */
@@ -998,11 +985,7 @@ export interface PortfolioArchiveRecordSummaryVO {
   createTime?: string
 }
 
-export interface PortfolioArchiveRecordFieldVO {
-  fieldCode: string
-  fieldLabel?: string
-  fieldValue: string
-  evidenceRef?: string
+export interface PortfolioArchiveRecordFieldVO extends PortfolioRecordFieldCore {
   referenceCandidateFieldId?: string
   updateTime?: string
   fieldCorrecting?: boolean
