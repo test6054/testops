@@ -85,6 +85,7 @@ import {
 } from '@/apis/mark/scanner-kiosk'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
+import { applyLedgerResponse, fetchPagedHistoryLedgerSnapshot } from '@/views/scanner-kiosk/composables/ledgerMerge'
 import { getSemesterDescription, SemesterOptions } from '@/types/enums'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
@@ -309,6 +310,7 @@ export function useKioskWorkflow() {
     ledgerError: pageLedgerError,
     ledgerLoading: pageLedgerLoading,
     refreshLedger: refreshPageLedger,
+    resetLedgerCache,
   } = useScanLiveStream({
     filter: () => ({
       examId: examId.value || undefined,
@@ -1944,7 +1946,7 @@ export function useKioskWorkflow() {
         return
       }
 
-      historyLedgerSnapshot.value = await fetchScannerPageLedger({
+      historyLedgerSnapshot.value = await fetchPagedHistoryLedgerSnapshot({
         examId: examId.value,
         scannerDeviceId: item.scannerDeviceId,
         scannerStationId: item.scannerStationId,
@@ -2930,7 +2932,8 @@ export function useKioskWorkflow() {
     (newBatchNo, oldBatchNo) => {
       if (newBatchNo === oldBatchNo) return
       if (!isActivatedForMarkApis()) return
-      refreshPageLedger().catch((error) => {
+      resetLedgerCache()
+      refreshPageLedger({ forceFull: true }).catch((error) => {
         handleError(error)
       })
     },

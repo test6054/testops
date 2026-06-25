@@ -9,12 +9,14 @@ import type { GradeStatusCode, ObjectiveResultCode } from './student-exam'
  *
  * 后端规则：
  * - 路径前缀 /api/exam/question-analysis
- * - 部分查询接口为 GET（@RequestParam），写操作为 POST
+ * - 列表查询 POST + QuestionAnalysisListQueryRequest（含 pageNum/pageSize）
+ * - 生成类接口 POST + @RequestParam
  * - 后端 Long ID 统一用 string 表达到前端
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
+import { readAllPages } from '@/utils/page-result'
 
 // ─── 题目质量分析 ─────────────────────────────────
 
@@ -79,16 +81,45 @@ export function generateAllQuestionAnalysis(
   )
 }
 
+/** 统计页自动翻页拉全量时的单页大小，与后端 PageHelper 默认上限对齐 */
+export const QUESTION_ANALYSIS_LIST_PAGE_SIZE = 500
+
 /**
- * 查询题目质量分析列表
- * GET /api/exam/question-analysis/list
+ * 题目质量分析列表查询 - 对应 QuestionAnalysisListQueryRequest
  */
-export function listQuestionAnalysis(params: {
+export interface QuestionAnalysisListQueryRequest extends QueryDto {
   examId: string
   questionTemplateId?: string
   classId?: string
-}): Promise<ExamQuestionAnalysisRecordVO[]> {
-  return http.get<ExamQuestionAnalysisRecordVO[]>('/api/exam/question-analysis/list', { params })
+}
+
+/**
+ * 分页查询题目质量分析列表
+ * POST /api/exam/question-analysis/list
+ */
+export function pageQuestionAnalysis(
+  request: QuestionAnalysisListQueryRequest,
+): Promise<PageResult<ExamQuestionAnalysisRecordVO>> {
+  return http.post<PageResult<ExamQuestionAnalysisRecordVO>>(
+    '/api/exam/question-analysis/list',
+    request,
+  )
+}
+
+/**
+ * 统计图表所需全量题目质量分析：按 PageResult 协议自动翻页直至 pages 耗尽。
+ */
+export function fetchAllQuestionAnalysisRows(
+  request: Omit<QuestionAnalysisListQueryRequest, 'pageNum' | 'pageSize'>,
+): Promise<ExamQuestionAnalysisRecordVO[]> {
+  return readAllPages(
+    (pageNum) => pageQuestionAnalysis({
+      ...request,
+      pageNum,
+      pageSize: QUESTION_ANALYSIS_LIST_PAGE_SIZE,
+    }),
+    '题目质量分析加载失败',
+  )
 }
 
 // ─── 学生错题本 ─────────────────────────────────

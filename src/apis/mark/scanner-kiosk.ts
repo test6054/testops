@@ -447,6 +447,16 @@ export interface ExamScannerPageLedgerRequest {
   scannerDeviceId: string
   scannerStationId: string
   batchExternalNo: string
+  /** 客户端缓存账本版本，与服务端一致时可 notModified */
+  ledgerVersion?: string
+  /** 强制全量；历史归档 / 批次切换首次加载 */
+  fullSnapshot?: boolean
+  /** 增量起始页更新时间（ISO），不含该时刻 */
+  sincePageUpdateTime?: string
+  /** 全量分页页码，从 1 开始 */
+  itemsPageNum?: number
+  /** 全量分页大小，上限 1000 */
+  itemsPageSize?: number
 }
 
 /**
@@ -510,6 +520,17 @@ export interface ExamScannerPageLedgerVO {
   pendingCount: number
   registeredCount: number
   attentionCount: number
+  /** 账本版本摘要，供下次条件请求 */
+  ledgerVersion?: string
+  /** 相对客户端版本未变化时 true，items / attentionItems 为空 */
+  notModified?: boolean
+  /** items 为增量或分页片段，需合并 */
+  incremental?: boolean
+  /** 批次扫描页总数 */
+  totalPageCount?: number
+  itemsPageNum?: number
+  itemsPageSize?: number
+  itemsPages?: number
 }
 
 export function fetchScannerPageLedger(

@@ -17,6 +17,11 @@ import { fetchScannerPageLedger } from '@/apis/mark/scanner-kiosk'
 import { useAuthStore } from '@/stores/modules/auth'
 import { toUserError } from '@/utils/error-handler'
 import {
+  applyLedgerResponse,
+  fetchPagedHistoryLedgerSnapshot,
+  resolveLedgerMaxPageUpdateTime,
+} from '@/views/scanner-kiosk/composables/ledgerMerge'
+import {
   hasMarkScannerStationAuth,
   resolveMarkScannerStationAuthHeaders,
 } from '@/utils/kiosk-auth'
@@ -47,7 +52,8 @@ export interface UseScanLiveStreamReturn {
   start: () => Promise<void>
   stop: () => void
   refresh: () => Promise<void>
-  refreshLedger: () => Promise<void>
+  refreshLedger: (options?: { forceFull?: boolean }) => Promise<void>
+  resetLedgerCache: () => void
 }
 
 export function useScanLiveStream(
@@ -135,7 +141,7 @@ export function useScanLiveStream(
     ready.value = false
   }
 
-  async function refreshLedger(): Promise<void> {
+  async function refreshLedger(refreshOptions?: { forceFull?: boolean }): Promise<void> {
     if (!options.ledgerFilter) {
       return
     }
@@ -153,11 +159,23 @@ export function useScanLiveStream(
     const token = ++ledgerRequestToken
     ledgerLoading.value = true
     try {
-      const vo = await fetchScannerPageLedger(filter)
+      const forceFull = refreshOptions?.forceFull === true
+      const previous = ledger.value
+      const vo = forceFull || !previous?.ledgerVersion
+        ? await fetchPagedHistoryLedgerSnapshot({
+            ...filter,
+            ledgerVersion: undefined,
+            sincePageUpdateTime: undefined,
+          })
+        : await fetchScannerPageLedger({
+            ...filter,
+            ledgerVersion: previous.ledgerVersion,
+            sincePageUpdateTime: resolveLedgerMaxPageUpdateTime(previous.items ?? []),
+          })
       if (token !== ledgerRequestToken) {
         return
       }
-      ledger.value = vo
+      ledger.value = applyLedgerResponse(previous, vo)
       ledgerError.value = null
     }
     catch (err) {
@@ -171,6 +189,13 @@ export function useScanLiveStream(
         ledgerLoading.value = false
       }
     }
+  }
+
+  function resetLedgerCache(): void {
+    ledgerRequestToken++
+    ledger.value = null
+    ledgerError.value = null
+    ledgerLoading.value = false
   }
 
   async function fetchHistory(useCursor: boolean): Promise<void> {
@@ -303,5 +328,6 @@ export function useScanLiveStream(
     stop,
     refresh,
     refreshLedger,
+    resetLedgerCache,
   }
 }
