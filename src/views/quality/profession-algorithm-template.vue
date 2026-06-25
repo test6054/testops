@@ -27,6 +27,7 @@ import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import {
   ACCREDITATION_TYPE_LABEL,
+  AGGREGATION_FUNCTION_CODES,
   AGGREGATION_FUNCTION_LABEL,
 } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -156,11 +157,10 @@ const accreditationOptions = accreditationTypes.map((value) => ({
   value,
   label: accreditationTypeLabel(value),
 }))
-const aggregationOptions = [
-  { value: 'WEIGHTED_SUM', label: '加权平均' },
-  { value: 'MINIMUM', label: '取最小值' },
-  { value: 'DIRECT_INDIRECT_WEIGHTED', label: '直接间接加权' },
-]
+const aggregationOptions = AGGREGATION_FUNCTION_CODES.map((value) => ({
+  value,
+  label: AGGREGATION_FUNCTION_LABEL[value],
+}))
 
 function isSharedTemplate(record: ProfessionAlgorithmTemplateVO) {
   return String(record.tenantId) === '0'

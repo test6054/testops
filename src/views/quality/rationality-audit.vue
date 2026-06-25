@@ -128,6 +128,7 @@ import type {
   RationalityAuditCourseLedgerOverviewVO,
   RationalityAuditSaveRequest,
 } from '@/apis/quality/rationality-audit'
+import type { AssessmentRationalityAuditStatus } from '@/apis/quality/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
 import message from 'ant-design-vue/es/message'
@@ -148,7 +149,9 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { SemesterOptions } from '@/types/enums/semester-enum'
+import { ASSESSMENT_RATIONALITY_AUDIT_STATUS_LABEL } from '@/apis/quality/types'
 import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'QualityRationalityAudit' })
 
@@ -216,12 +219,12 @@ const columns = [
   { title: '操作', key: 'actions', width: 120 },
 ]
 
-function auditStatusTone(s: string) {
+function auditStatusTone(s: AssessmentRationalityAuditStatus) {
   return s === 'APPROVED' ? 'green' : s === 'REJECTED' ? 'red' : 'orange'
 }
 
-function auditStatusLabel(s: string) {
-  return s === 'APPROVED' ? '已通过' : s === 'REJECTED' ? '已驳回' : '待审核'
+function auditStatusLabel(s: AssessmentRationalityAuditStatus) {
+  return strictEnumLabel(ASSESSMENT_RATIONALITY_AUDIT_STATUS_LABEL, s, '考核评价依据审核状态')
 }
 
 function isCourseAuditMutable(record: RationalityAuditCourseLedgerItemVO): boolean {
@@ -321,7 +324,7 @@ function openEdit(record: RationalityAuditCourseLedgerItemVO) {
   editOpen.value = true
 }
 
-async function submitAudit(status: 'APPROVED' | 'REJECTED') {
+async function submitAudit(status: Extract<AssessmentRationalityAuditStatus, 'APPROVED' | 'REJECTED'>) {
   if (!editForm.value.qualityCourseId) {
     message.error('缺少课程信息，无法提交审核')
     return

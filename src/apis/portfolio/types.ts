@@ -898,6 +898,7 @@ export interface PortfolioTeacherPortraitVO {
 }
 
 export interface PortfolioTeacherPortraitTrendGetRequest extends PortfolioTeacherPortraitGetRequest {
+  /** 返回最近快照条数，默认 12，范围 1–36 */
   limit?: number
 }
 

@@ -2,6 +2,7 @@
  * 考核评价依据合理性审核 API（CEEAA 2025强制要求）
  * 后端 Controller: AssessmentRationalityAuditController
  */
+import type { AssessmentRationalityAuditStatus } from './types'
 import http from '@/config/axios'
 
 export interface RationalityAuditCourseLedgerRequest {
@@ -16,7 +17,7 @@ export interface RationalityAuditSaveRequest {
   assessmentItemId?: string
   schoolYear?: string
   semester?: string
-  auditStatus?: string
+  auditStatus?: AssessmentRationalityAuditStatus
   auditOpinion?: string
   contentAligned?: boolean
   rubricMeasurable?: boolean
@@ -33,7 +34,7 @@ export interface RationalityAuditCourseLedgerItemVO {
   schoolYear?: string
   semester?: string
   hasAuditRecord: boolean
-  auditStatus: string
+  auditStatus: AssessmentRationalityAuditStatus
   auditorUserId?: string
   auditOpinion?: string
   auditedAt?: string

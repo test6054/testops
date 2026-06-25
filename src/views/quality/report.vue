@@ -40,6 +40,7 @@ import {
   REPORT_EXPORT_STATUS_LABEL,
   REPORT_STATUS_COLOR,
   REPORT_STATUS_LABEL,
+  REPORT_TYPE_CODES,
   REPORT_TYPE_LABEL,
 } from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
@@ -154,15 +155,10 @@ const detailVisible = ref(false)
 const detailRecord = ref<ReportVO | null>(null)
 const detailLoading = ref(false)
 
-const reportTypeOptions: Array<{ value: ReportType, label: string }> = [
-  { value: 'COURSE_ACHIEVEMENT', label: REPORT_TYPE_LABEL.COURSE_ACHIEVEMENT },
-  { value: 'PROGRAM_QUALITY', label: REPORT_TYPE_LABEL.PROGRAM_QUALITY },
-  { value: 'IMPROVEMENT', label: REPORT_TYPE_LABEL.IMPROVEMENT },
-  {
-    value: 'AUDIT_EVALUATION_RECTIFICATION',
-    label: REPORT_TYPE_LABEL.AUDIT_EVALUATION_RECTIFICATION,
-  },
-]
+const reportTypeOptions: Array<{ value: ReportType, label: string }> = REPORT_TYPE_CODES.map((value) => ({
+  value,
+  label: REPORT_TYPE_LABEL[value],
+}))
 const statusOptions: Array<{ value: ReportStatus, label: string }> = [
   { value: 'DRAFT', label: REPORT_STATUS_LABEL.DRAFT },
   { value: 'SUBMITTED', label: REPORT_STATUS_LABEL.SUBMITTED },

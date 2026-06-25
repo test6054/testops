@@ -90,6 +90,7 @@ import {
 } from '@/apis/quality/requirement-indicator'
 import { rubricItemApi } from '@/apis/quality/rubric-item'
 import {
+  AGGREGATION_FUNCTION_CODES,
   AGGREGATION_FUNCTION_LABEL,
   ASSESSMENT_ITEM_TYPE_LABEL,
   SUPPORT_LEVEL_DEFAULT_FACTOR,
@@ -1384,11 +1385,10 @@ const supportLevelOptions: { value: SupportLevel, label: string }[] = [
   { value: 'LOW', label: SUPPORT_LEVEL_LABEL.LOW },
 ]
 
-const aggregationOptions: { value: AggregationFunction, label: string }[] = [
-  { value: 'WEIGHTED_SUM', label: AGGREGATION_FUNCTION_LABEL.WEIGHTED_SUM },
-  { value: 'MINIMUM', label: AGGREGATION_FUNCTION_LABEL.MINIMUM },
-  { value: 'DIRECT_INDIRECT_WEIGHTED', label: AGGREGATION_FUNCTION_LABEL.DIRECT_INDIRECT_WEIGHTED },
-]
+const aggregationOptions: { value: AggregationFunction, label: string }[] = AGGREGATION_FUNCTION_CODES.map((value) => ({
+  value,
+  label: AGGREGATION_FUNCTION_LABEL[value],
+}))
 
 const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
   { value: 'FINAL_EXAM', label: ASSESSMENT_ITEM_TYPE_LABEL.FINAL_EXAM },

@@ -334,6 +334,14 @@ export const REPORT_TYPE_LABEL: Record<ReportType, string> = {
   AUDIT_EVALUATION_RECTIFICATION: '审核评估整改报告',
 }
 
+/** 报告类型编码全集，筛选项与后端 ReportTypeEnum 逐值对齐 */
+export const REPORT_TYPE_CODES: ReportType[] = [
+  'COURSE_ACHIEVEMENT',
+  'PROGRAM_QUALITY',
+  'IMPROVEMENT',
+  'AUDIT_EVALUATION_RECTIFICATION',
+]
+
 /** 归档业务类型 - ArchiveBusinessTypeEnum */
 export type ArchiveBusinessType
   = | 'TRAINING_PLAN'
@@ -463,6 +471,22 @@ export const AGGREGATION_FUNCTION_LABEL: Record<AggregationFunction, string> = {
   WEIGHTED_SUM: '加权平均',
   MINIMUM: '取最小值',
   DIRECT_INDIRECT_WEIGHTED: '直接间接加权',
+}
+
+/** 聚合函数编码全集，与后端 AggregationFunctionEnum 逐值对齐 */
+export const AGGREGATION_FUNCTION_CODES: AggregationFunction[] = [
+  'WEIGHTED_SUM',
+  'MINIMUM',
+  'DIRECT_INDIRECT_WEIGHTED',
+]
+
+/** 考核评价依据合理性审核状态 - AssessmentRationalityAuditStatusEnum */
+export type AssessmentRationalityAuditStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
+export const ASSESSMENT_RATIONALITY_AUDIT_STATUS_LABEL: Record<AssessmentRationalityAuditStatus, string> = {
+  PENDING: '待审核',
+  APPROVED: '已通过',
+  REJECTED: '已驳回',
 }
 
 /** 评价工作组层级 - WorkgroupLevelEnum */

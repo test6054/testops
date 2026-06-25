@@ -32,6 +32,8 @@ import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorit
 import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import {
   ACCREDITATION_TYPE_LABEL,
+  AGGREGATION_FUNCTION_CODES,
+  AGGREGATION_FUNCTION_LABEL,
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
 } from '@/apis/quality/types'
@@ -157,11 +159,10 @@ const accreditationOptions = accreditationTypes.map((value) => ({
   value,
   label: accreditationTypeLabel(value),
 }))
-const aggregationOptions = [
-  { value: 'WEIGHTED_SUM', label: '加权平均' },
-  { value: 'MINIMUM', label: '取最小值' },
-  { value: 'DIRECT_INDIRECT_WEIGHTED', label: '直接间接加权' },
-]
+const aggregationOptions = AGGREGATION_FUNCTION_CODES.map((value) => ({
+  value,
+  label: AGGREGATION_FUNCTION_LABEL[value],
+}))
 const statusOptions: ConfirmationStatus[] = ['DRAFT', 'SUBMITTED', 'CONFIRMED', 'RETURNED']
 
 const editorVisible = ref(false)
