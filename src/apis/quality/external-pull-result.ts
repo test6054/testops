@@ -19,8 +19,8 @@ export interface ExternalPullResultVO {
   previewRows?: number
   confirmedRows?: number
   confirmationStatus: ExternalPullConfirmationStatus
-  confirmedBy?: string
-  confirmedAt?: string
+  confirmedUserId?: string
+  confirmedTime?: string
   resultFileNodeId?: string
   notes?: string
   createTime?: string

@@ -41,8 +41,8 @@ export interface ScoreBatchVO {
   successRows?: number
   errorRows?: number
   errorSummary?: string
-  confirmedBy?: string
-  confirmedAt?: string
+  confirmedUserId?: string
+  confirmedTime?: string
   createTime?: string
   updateTime?: string
 }

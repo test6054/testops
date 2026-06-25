@@ -48,7 +48,7 @@ export interface ImprovementTaskVO {
   rectificationEvidenceItems?: string[]
   reviewDecision?: string
   reviewRemark?: string
-  closedAt?: string
+  closedTime?: string
   createUser?: string
   updateUser?: string
   createTime?: string

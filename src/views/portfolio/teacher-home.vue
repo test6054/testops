@@ -253,8 +253,8 @@ onMounted(() => {
               </div>
               <p class="teacher-home__meta">
                 必填分类 {{ completeness.requiredCategoryDone }} / {{ completeness.requiredCategoryTotal }}
-                <template v-if="completeness.computedAt">
-                  · 更新于 {{ completeness.computedAt }}
+                <template v-if="completeness.computedTime">
+                  · 更新于 {{ completeness.computedTime }}
                 </template>
               </p>
               <p
@@ -287,8 +287,8 @@ onMounted(() => {
             />
             <p v-if="portrait" class="teacher-home__meta">
               正式档案 {{ portrait.officialRecordCount }} 条
-              <template v-if="portrait.computedAt">
-                · 更新于 {{ portrait.computedAt }}
+              <template v-if="portrait.computedTime">
+                · 更新于 {{ portrait.computedTime }}
               </template>
             </p>
             <p

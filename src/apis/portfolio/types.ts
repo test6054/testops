@@ -1,14 +1,14 @@
+import type {
+  AiResultEvidenceItem,
+  AiResultImprovementItem,
+  AiResultIssueItem,
+} from '@/apis/quality/ai-result'
 /**
  * 教学档案袋 API 共享类型 - 对应 edu-quality 标准包（controller/model 扁平化后）
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { QueryDto } from '@/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
-import type {
-  AiResultEvidenceItem,
-  AiResultImprovementItem,
-  AiResultIssueItem,
-} from '@/apis/quality/ai-result'
 
 /** 扩展组织类型 - PortfolioOrgUnitTypeEnum */
 export type PortfolioOrgUnitType
@@ -155,7 +155,7 @@ export interface PortfolioOrgSyncInvalidUnitVO {
 }
 
 export interface PortfolioOrgSyncResultVO {
-  syncedAt: string
+  syncedTime: string
   departmentCount: number
   majorCount: number
   classCount: number
@@ -165,7 +165,7 @@ export interface PortfolioOrgSyncResultVO {
 
 export interface PortfolioOrgSyncLogVO {
   id: string
-  syncedAt: string
+  syncedTime: string
   departmentCount: number
   majorCount: number
   classCount: number
@@ -428,7 +428,7 @@ export interface PortfolioArchiveTemplateVersionVO {
   templateCode: string
   versionNo: string
   status: PortfolioArchiveTemplateVersionStatus
-  publishedAt?: string
+  publishedTime?: string
   changeSummary?: string
 }
 
@@ -693,7 +693,7 @@ export interface PortfolioAiAnalysisSummaryVO {
   modelName?: string
   promptTokenCount?: number
   completionTokenCount?: number
-  generatedAt?: string
+  generatedTime?: string
   createTime?: string
 }
 
@@ -825,7 +825,7 @@ export interface PortfolioTeacherCompletenessVO {
   completenessLevel: PortfolioCompletenessLevel
   requiredCategoryTotal: number
   requiredCategoryDone: number
-  computedAt?: string
+  computedTime?: string
 }
 
 export interface PortfolioTeacherPortraitGetRequest {
@@ -880,7 +880,7 @@ export interface PortfolioTeacherPortraitVO {
   practiceScore: number
   officialRecordCount: number
   lastArchiveRecordId?: string
-  computedAt?: string
+  computedTime?: string
   dimensions: PortfolioTeacherPortraitDimensionVO[]
 }
 
@@ -890,7 +890,7 @@ export interface PortfolioTeacherPortraitTrendGetRequest extends PortfolioTeache
 }
 
 export interface PortfolioTeacherPortraitTrendPointVO {
-  computedAt: string
+  computedTime: string
   compositeScore: number
   developmentCoreScore: number
   teachingScore: number
@@ -962,7 +962,7 @@ export interface PortfolioTeacherPortraitIndicatorDetailVO {
   dimensionLabel: string
   dimensionScore: number
   dataSource: string
-  computedAt?: string
+  computedTime?: string
   evidences: PortfolioTeacherPortraitIndicatorEvidenceVO[]
 }
 
@@ -1179,7 +1179,7 @@ export interface PortfolioCorrectionDetailVO extends PortfolioCorrectionSummaryV
   expectedValue?: string
   evidenceRef?: string
   sourceType?: PortfolioArchiveRecordSourceType
-  handledAt?: string
+  handledTime?: string
 }
 
 /** 补采任务状态 - PortfolioGapTaskStatusEnum */

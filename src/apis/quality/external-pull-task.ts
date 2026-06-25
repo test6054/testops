@@ -26,8 +26,8 @@ export interface ExternalPullTaskVO {
   maxRowCount?: number
   queryTimeoutSeconds?: number
   status: ExternalPullTaskStatus
-  startedAt?: string
-  finishedAt?: string
+  startedTime?: string
+  finishedTime?: string
   elapsedMs?: number
   returnRows?: number
   failureReason?: string

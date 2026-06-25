@@ -22,7 +22,7 @@ export interface ArchiveVO {
   retentionPolicyCode?: string
   retentionYears?: number
   digitalStatus?: string
-  archivedAt?: string
+  archivedTime?: string
   archiveOfficeConfirmed?: boolean
   notes?: string
   createUser?: string

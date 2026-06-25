@@ -42,8 +42,8 @@ export interface ProfessionAlgorithmProfileVO {
   overrideThresholdStrategy?: boolean
   overrideReason?: string
   confirmationStatus: ConfirmationStatus
-  confirmedBy?: string
-  confirmedAt?: string
+  confirmedUserId?: string
+  confirmedTime?: string
   enabled: boolean
   createTime?: string
   updateTime?: string

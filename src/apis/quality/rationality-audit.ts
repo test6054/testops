@@ -37,7 +37,7 @@ export interface RationalityAuditCourseLedgerItemVO {
   auditStatus: AssessmentRationalityAuditStatus
   auditorUserId?: string
   auditOpinion?: string
-  auditedAt?: string
+  auditedTime?: string
   contentAligned?: boolean
   rubricMeasurable?: boolean
   methodReasonable?: boolean

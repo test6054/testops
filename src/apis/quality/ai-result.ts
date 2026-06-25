@@ -1,11 +1,11 @@
 import type { AiOutputValidation } from './types'
-import { strictEnumLabel } from '@/utils/strict-enum'
 /**
  * AI 结果 API - 对齐 AiResultController。
  *
  * 后端路径：/api/quality/ai-results
  */
 import http from '@/config/axios'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const BASE = '/api/quality/ai-results'
 
@@ -118,7 +118,7 @@ export interface AiResultVO {
   /** 完成 token 数 */
   completionTokenCount?: number
   /** 生成时间 */
-  generatedAt?: string
+  generatedTime?: string
   createTime?: string
   updateTime?: string
 }
@@ -137,7 +137,7 @@ export interface AiResultSaveRequest {
   modelName: string
   promptTokenCount?: number
   completionTokenCount?: number
-  generatedAt?: string
+  generatedTime?: string
 }
 
 /** AI 结果校验状态更新请求 - 严格对齐后端 AiResultValidationUpdateRequest */

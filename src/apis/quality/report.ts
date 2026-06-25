@@ -36,16 +36,16 @@ export interface ReportVO {
   pdfFileId?: string
   excelFileId?: string
   status: ReportStatus
-  confirmedBy?: string
-  confirmedAt?: string
-  archivedBy?: string
-  archivedAt?: string
+  confirmedUserId?: string
+  confirmedTime?: string
+  archivedUserId?: string
+  archivedTime?: string
   /** 三格式导出状态机（IDLE/PENDING/PROCESSING/COMPLETED/FAILED） */
   exportStatus: ReportExportStatus
   /** 导出失败原因（FAILED 状态下由 ReportExportExecutor 回填） */
   exportErrorMessage?: string
-  exportStartedAt?: string
-  exportFinishedAt?: string
+  exportStartedTime?: string
+  exportFinishedTime?: string
   createUser?: string
   updateUser?: string
   createTime?: string

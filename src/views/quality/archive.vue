@@ -457,10 +457,10 @@ async function submitEditor() {
 }
 
 function isArchiveDestroyable(record: ArchiveVO): boolean {
-  if (!record.archivedAt || typeof record.retentionYears !== 'number') {
+  if (!record.archivedTime || typeof record.retentionYears !== 'number') {
     return false
   }
-  const archivedAt = new Date(record.archivedAt)
+  const archivedAt = new Date(record.archivedTime)
   if (Number.isNaN(archivedAt.getTime())) {
     return false
   }
@@ -704,7 +704,7 @@ onMounted(async () => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'archivedAt'">
-            {{ record.archivedAt || '尚未归档确认' }}
+            {{ record.archivedTime || '尚未归档确认' }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>

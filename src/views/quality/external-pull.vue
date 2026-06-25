@@ -410,7 +410,7 @@ const pullResultItems = computed<TaskResultItem[]>(() => {
           t.failureReason,
           '外部成绩数据接入失败，请检查数据源配置、授权状态和返回字段设置',
         ) || (t.status === 'RUNNING' ? '任务执行中' : undefined),
-      time: t.startedAt || undefined,
+      time: t.startedTime || undefined,
       actions: [{ key: 'detail', label: '详情' }],
     }))
 })
@@ -1553,13 +1553,13 @@ onMounted(async () => {
           </a-descriptions-item>
           <a-descriptions-item label="开始时间">
             {{
-              detailRecord.startedAt
+              detailRecord.startedTime
                 || (detailRecord.status === 'PENDING' ? '尚未开始执行' : '缺失开始时间')
             }}
           </a-descriptions-item>
           <a-descriptions-item label="结束时间">
             {{
-              detailRecord.finishedAt
+              detailRecord.finishedTime
                 || (detailRecord.status === 'RUNNING'
                   ? '执行中'
                   : detailRecord.status === 'PENDING'

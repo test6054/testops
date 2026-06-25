@@ -65,7 +65,7 @@ const fieldColumns: ColumnsType = [
 const historyColumns: ColumnsType = [
   { title: '版本号', dataIndex: 'versionNo', key: 'versionNo', width: 160 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
-  { title: '发布时间', dataIndex: 'publishedAt', key: 'publishedAt', width: 180 },
+  { title: '发布时间', dataIndex: 'publishedTime', key: 'publishedTime', width: 180 },
   { title: '摘要', dataIndex: 'changeSummary', key: 'changeSummary', ellipsis: true },
   { title: '操作', key: 'actions', width: 80 },
 ]

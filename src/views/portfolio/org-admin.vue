@@ -128,7 +128,7 @@ const contextSubtitle = computed(() => {
     return base
   }
   const log = lastSyncLog.value
-  return `${base} · 上次校验 ${log.syncedAt}（院系 ${log.departmentCount} / 专业 ${log.majorCount} / 失效 ${log.invalidUnitCount}）`
+  return `${base} · 上次校验 ${log.syncedTime}（院系 ${log.departmentCount} / 专业 ${log.majorCount} / 失效 ${log.invalidUnitCount}）`
 })
 
 async function handleSync() {

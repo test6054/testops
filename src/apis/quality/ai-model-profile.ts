@@ -35,7 +35,7 @@ export interface AiModelProfileVO {
   readTimeoutSecs?: number
   enabled?: boolean
   healthStatus?: AiHealthStatus
-  lastHealthCheckAt?: string
+  lastHealthCheckTime?: string
   lastHealthMessage?: string
 }
 

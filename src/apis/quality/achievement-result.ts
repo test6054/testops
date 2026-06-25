@@ -47,10 +47,10 @@ export interface AchievementResultVO {
   auditRemark?: string
   staleFlag?: boolean
   staleReason?: string
-  staleAt?: string
+  staleTime?: string
   staleSourceType?: string
   staleSourceId?: string
-  calculatedAt?: string
+  calculatedTime?: string
   createTime?: string
   updateTime?: string
 }

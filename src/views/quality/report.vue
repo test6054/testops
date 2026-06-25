@@ -1049,11 +1049,11 @@ onBeforeUnmount(() => {
               {{ reportExportFailureMessage(detailRecord.exportErrorMessage) }}
             </span>
           </a-descriptions-item>
-          <a-descriptions-item v-if="detailRecord.confirmedAt" label="确认时间">
-            {{ detailRecord.confirmedAt }}
+          <a-descriptions-item v-if="detailRecord.confirmedTime" label="确认时间">
+            {{ detailRecord.confirmedTime }}
           </a-descriptions-item>
-          <a-descriptions-item v-if="detailRecord.archivedAt" label="归档时间">
-            {{ detailRecord.archivedAt }}
+          <a-descriptions-item v-if="detailRecord.archivedTime" label="归档时间">
+            {{ detailRecord.archivedTime }}
           </a-descriptions-item>
           <a-descriptions-item label="标题" :span="2">
             {{ detailRecord.title }}

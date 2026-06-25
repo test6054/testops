@@ -59,8 +59,8 @@ export interface AiTaskVO {
   failureReason?: string
   maskMappingId?: string
   resultId?: string
-  startedAt?: string
-  finishedAt?: string
+  startedTime?: string
+  finishedTime?: string
   manualHandlingStatus: AiManualHandlingStatus
   manualHandlingRemark?: string
   createTime?: string

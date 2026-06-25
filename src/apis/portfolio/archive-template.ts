@@ -10,12 +10,12 @@ import type {
   PortfolioArchiveFieldDeleteRequest,
   PortfolioArchiveFieldListRequest,
   PortfolioArchivePublishedFieldsRequest,
-  PortfolioPublishedTemplateSnapshot,
   PortfolioArchiveTemplateChangeLogVO,
   PortfolioArchiveTemplateSeedResultVO,
   PortfolioArchiveTemplateVersionVO,
   PortfolioArchiveVersionActionRequest,
   PortfolioArchiveVersionMutationRequest,
+  PortfolioPublishedTemplateSnapshot,
 } from '@/apis/portfolio/types'
 import http from '@/config/axios'
 

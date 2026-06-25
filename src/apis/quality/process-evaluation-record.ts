@@ -22,8 +22,8 @@ export interface ProcessEvaluationRecordVO {
   sourceMode?: DataSourceMode
   validationResult?: string
   confirmationStatus: ConfirmationStatus
-  confirmedBy?: string
-  confirmedAt?: string
+  confirmedUserId?: string
+  confirmedTime?: string
   notes?: string
   createTime?: string
   updateTime?: string

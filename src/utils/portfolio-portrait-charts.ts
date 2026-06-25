@@ -16,8 +16,8 @@ import {
 
 const PORTRAIT_SCORE_MAX = 100
 
-function formatPortraitTrendLabel(computedAt: string): string {
-  const normalized = computedAt.replace('T', ' ')
+function formatPortraitTrendLabel(computedTime: string): string {
+  const normalized = computedTime.replace('T', ' ')
   if (normalized.length >= 16) {
     return normalized.slice(0, 16)
   }
@@ -197,7 +197,7 @@ export function buildPortraitCompositeTrendChartOption(
 ): EChartsCoreOption {
   const trendPoints = points.map((point, index) => ({
     key: String(index),
-    label: formatPortraitTrendLabel(point.computedAt),
+    label: formatPortraitTrendLabel(point.computedTime),
     value: Number(point.compositeScore),
   }))
   return buildTrendLineChartOption(trendPoints, {

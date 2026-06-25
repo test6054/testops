@@ -248,8 +248,8 @@ onMounted(() => {
           </p>
           <p class="teacher-portrait__meta">
             正式档案记录 {{ portrait.officialRecordCount }} 条
-            <template v-if="portrait.computedAt">
-              · 最近重算 {{ portrait.computedAt }}
+            <template v-if="portrait.computedTime">
+              · 最近重算 {{ portrait.computedTime }}
             </template>
             <template v-if="portrait.lastArchiveRecordId">
               · 触发档案 {{ portrait.lastArchiveRecordId }}
@@ -409,9 +409,9 @@ onMounted(() => {
               <dt>数据来源</dt>
               <dd>{{ indicatorDetail.dataSource }}</dd>
             </div>
-            <div v-if="indicatorDetail.computedAt">
+            <div v-if="indicatorDetail.computedTime">
               <dt>最近重算</dt>
-              <dd>{{ indicatorDetail.computedAt }}</dd>
+              <dd>{{ indicatorDetail.computedTime }}</dd>
             </div>
           </dl>
 

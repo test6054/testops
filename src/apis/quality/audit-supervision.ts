@@ -29,7 +29,7 @@ export interface AuditSupervisionVO {
   supervisionType: AuditSupervisionType
   supervisionScope?: AuditSupervisionScope
   supervisorUserId?: string
-  supervisedAt?: string
+  supervisedTime?: string
   summary?: string
   findingItems?: AuditSupervisionFindingItem[]
   conclusion?: AuditSupervisionConclusion
@@ -53,7 +53,7 @@ export interface AuditSupervisionSaveRequest {
   supervisionType: AuditSupervisionType
   supervisionScope?: AuditSupervisionScope
   supervisorUserId?: string
-  supervisedAt?: string
+  supervisedTime?: string
   summary?: string
   findingItems?: AuditSupervisionFindingItem[]
   conclusion?: AuditSupervisionConclusion

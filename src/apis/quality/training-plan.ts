@@ -22,8 +22,8 @@ export interface TrainingPlanVO {
   storageFileId?: string
   enabled: boolean
   confirmationStatus?: ConfirmationStatus
-  confirmedBy?: string
-  confirmedAt?: string
+  confirmedUserId?: string
+  confirmedTime?: string
   createTime?: string
   updateTime?: string
 }

@@ -31,12 +31,12 @@ export interface AuditRectificationVO {
   status: AuditRectificationStatus
   progressRemark?: string
   evidenceItems?: QualityAuditEvidenceItem[]
-  submittedAt?: string
-  verifiedAt?: string
-  verifiedBy?: string
+  submittedTime?: string
+  verifiedTime?: string
+  verifiedUserId?: string
   verifyDecision?: string
   verifyRemark?: string
-  closedAt?: string
+  closedTime?: string
   createUser?: string
   updateUser?: string
   createTime?: string

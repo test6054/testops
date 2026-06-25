@@ -37,9 +37,9 @@ export interface AuditIssueVO {
   auditRound?: string
   auditYear?: string
   status: AuditIssueStatus
-  raisedBy?: string
-  raisedAt?: string
-  closedAt?: string
+  raisedUserId?: string
+  raisedTime?: string
+  closedTime?: string
   createUser?: string
   updateUser?: string
   createTime?: string
@@ -61,8 +61,8 @@ export interface AuditIssueSaveRequest {
   severity: AuditIssueSeverity
   auditRound?: string
   auditYear?: string
-  raisedBy?: string
-  raisedAt?: string
+  raisedUserId?: string
+  raisedTime?: string
 }
 
 export interface AuditIssueQueryRequest extends QueryDto {

@@ -25,11 +25,11 @@ export interface IndirectEvaluationResponseVO {
   openText?: string
   validFlag?: boolean
   invalidReason?: string
-  receivedAt?: string
+  receivedTime?: string
   submissionId?: string
   respondentName?: string
   respondentContact?: string
-  submittedAt?: string
+  submittedTime?: string
   createTime?: string
   updateTime?: string
 }
@@ -49,7 +49,7 @@ export interface IndirectEvaluationResponseSaveRequest {
   openText?: string
   validFlag?: boolean
   invalidReason?: string
-  receivedAt?: string
+  receivedTime?: string
 }
 
 export interface IndirectResponseImportResult {

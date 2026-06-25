@@ -89,7 +89,7 @@ const confirmedByGoalColumns: ColumnsType = [
   { title: '学号', dataIndex: 'studentNumber', key: 'studentNumber', width: 120 },
   { title: '得分 / 换算分', key: 'scores', width: 150 },
   { title: '证据文件', key: 'evidenceFileRef', width: 120 },
-  { title: '确认时间', dataIndex: 'confirmedAt', key: 'confirmedAt', width: 160 },
+  { title: '确认时间', dataIndex: 'confirmedTime', key: 'confirmedTime', width: 160 },
 ]
 
 const qualityStore = useQualityStore()

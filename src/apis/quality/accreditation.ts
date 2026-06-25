@@ -51,12 +51,12 @@ export interface AccreditationCycleVO {
   cycleName: string
   currentPhase: AccreditationCyclePhase
   cycleStatus: AccreditationCycleStatus
-  applicationRecordedAt?: string
-  selfAssessmentSubmittedAt?: string
+  applicationRecordedTime?: string
+  selfAssessmentSubmittedTime?: string
   selfAssessmentReviewStatus?: string
   selfAssessmentReviewDecision?: SelfAssessmentReviewDecision
   selfAssessmentReviewRemark?: string
-  selfAssessmentReviewAt?: string
+  selfAssessmentReviewTime?: string
   onsiteVisitStart?: string
   onsiteVisitEnd?: string
   onsiteReportDueDate?: string
@@ -65,7 +65,7 @@ export interface AccreditationCycleVO {
   validUntil?: string
   conditionalDueDate?: string
   conclusionRemark?: string
-  conclusionRegisteredAt?: string
+  conclusionRegisteredTime?: string
   remark?: string
   createTime?: string
   updateTime?: string
@@ -168,7 +168,7 @@ export interface ProgramSupportProfileVO {
   studentDevelopmentRemark?: string
   qualityAssuranceRemark?: string
   profileStatus?: string
-  confirmedAt?: string
+  confirmedTime?: string
 }
 
 export interface OnsiteVisitPlanSaveRequest {
@@ -195,7 +195,7 @@ export interface OnsiteChecklistItemVO {
   responsibleUserId?: string
   itemStatus: OnsiteChecklistItemStatus
   evidenceArchiveId?: string
-  completedAt?: string
+  completedTime?: string
   sortOrder?: number
   remark?: string
 }
@@ -246,7 +246,7 @@ export interface AnnualEvaluationPlanCourseVO {
   courseName: string
   evaluationRequired: boolean
   evaluationCompleted: boolean
-  completedAt?: string
+  completedTime?: string
   remark?: string
 }
 
@@ -311,10 +311,10 @@ export interface AnnualReportMaterialVO {
   materialDescription?: string
   storageFileId?: string
   reportStatus: AnnualReportMaterialStatus
-  submittedAt?: string
+  submittedTime?: string
   reviewerUserId?: string
   reviewComment?: string
-  reviewedAt?: string
+  reviewedTime?: string
   createTime?: string
   updateTime?: string
 }

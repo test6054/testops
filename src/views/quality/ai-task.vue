@@ -4,13 +4,9 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type { FileSystemNodeResponseDTO } from '@/apis/edu/file-management'
 import type {
-  AiResultIssueSeverity,
   AiResultImprovementPriorityValue,
+  AiResultIssueSeverity,
   AiResultVO,
-} from '@/apis/quality/ai-result'
-import {
-  aiResultImprovementPriorityLabel,
-  aiResultIssueSeverityLabel,
 } from '@/apis/quality/ai-result'
 /**
  * 质量评价 / AI 能力 - AI 任务与结果审计台
@@ -47,7 +43,11 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
-import { aiResultApi } from '@/apis/quality/ai-result'
+import {
+  aiResultApi,
+  aiResultImprovementPriorityLabel, aiResultIssueSeverityLabel
+} from '@/apis/quality/ai-result'
+
 import { aiTaskApi } from '@/apis/quality/ai-task'
 import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
 import {
@@ -558,7 +558,7 @@ const columns: ColumnsType = [
   { title: '业务类型', dataIndex: 'businessType', key: 'businessType', width: 160 },
   { title: '业务归属', key: 'businessAnchor', width: 240 },
   { title: '失败阶段', dataIndex: 'failurePhase', key: 'failurePhase', width: 160 },
-  { title: '开始时间', dataIndex: 'startedAt', key: 'startedAt', width: 160 },
+  { title: '开始时间', dataIndex: 'startedTime', key: 'startedTime', width: 160 },
   { title: '操作', key: 'actions', width: 260, fixed: 'right' },
 ]
 
@@ -923,7 +923,7 @@ watch(
       cached.status !== detailRecord.value.status
       || cached.failurePhase !== detailRecord.value.failurePhase
       || cached.failureReason !== detailRecord.value.failureReason
-      || cached.finishedAt !== detailRecord.value.finishedAt
+      || cached.finishedTime !== detailRecord.value.finishedTime
     ) {
       detailRecord.value = { ...detailRecord.value, ...cached }
       // 达到终态后重拉一次结果 + 快照，避免抽屉中“状态已成功但 result 为空”的错误
@@ -1010,7 +1010,7 @@ const taskResultItems = computed<TaskResultItem[]>(() => {
       statusLabel: aiTaskStatusLabel(t.status),
       statusTone: t.status === 'FAILED' ? 'red' : 'blue',
       description: t.failurePhase ? '任务执行阶段异常' : undefined,
-      time: t.startedAt || undefined,
+      time: t.startedTime || undefined,
       actions:
         t.status === 'FAILED'
           ? [{ key: 'detail', label: '查看详情' }]
@@ -1289,8 +1289,8 @@ onMounted(async () => {
                 {{ record.failurePhase || '不适用' }}
               </span>
             </template>
-            <template v-else-if="column.key === 'startedAt'">
-              {{ record.startedAt || '未开始' }}
+            <template v-else-if="column.key === 'startedTime'">
+              {{ record.startedTime || '未开始' }}
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
@@ -1563,9 +1563,9 @@ onMounted(async () => {
             </a-space>
           </a-descriptions-item>
           <a-descriptions-item label="开始 / 结束">
-            {{ detailRecord.startedAt || '未开始' }} ～
+            {{ detailRecord.startedTime || '未开始' }} ～
             {{
-              detailRecord.finishedAt || (detailRecord.status === 'PROCESSING' ? '执行中' : '未结束')
+              detailRecord.finishedTime || (detailRecord.status === 'PROCESSING' ? '执行中' : '未结束')
             }}
           </a-descriptions-item>
           <a-descriptions-item label="失败阶段">
@@ -1628,7 +1628,7 @@ onMounted(async () => {
                   {{ detailResult.modelName }}
                 </a-descriptions-item>
                 <a-descriptions-item label="生成时间">
-                  {{ detailResult.generatedAt }}
+                  {{ detailResult.generatedTime }}
                 </a-descriptions-item>
                 <a-descriptions-item label="提示词用量">
                   {{ detailResult.promptTokenCount }}
