@@ -53,27 +53,28 @@ const progressPercent = computed(() => {
   return Math.min(100, Math.round((scanned / expected) * 100))
 })
 
-const scanParamSummary = computed(() => {
-  const parts: string[] = []
-  if (scanConfig.value.dpi) parts.push(`${scanConfig.value.dpi} DPI`)
-  if (scanConfig.value.colorMode) {
-    parts.push(workflow.scannerColorModeLabel(scanConfig.value.colorMode))
-  }
-  if (scanConfig.value.duplexMode) {
-    parts.push(workflow.scannerDuplexModeLabel(scanConfig.value.duplexMode))
-  }
-  return parts.length ? parts.join(' · ') : '参数未加载'
+const scanModeLabel = computed(() => workflow.scanModeText(workflow.scanMode.value, ''))
+
+const scanModeTone = computed(() => {
+  const mode = workflow.scanMode.value
+  if (mode === 'SUPPLEMENT') return 'supplement'
+  if (mode === 'ARCHIVE') return 'archive'
+  return 'direct'
 })
 
-/** 设备状态与当前扫描参数合并为一行，避免状态条与操作区视觉分裂。 */
-const statusSummaryLine = computed(() => {
-  const { tone, statusText } = readiness.value
-  if (tone === 'success') {
-    const params = scanParamSummary.value
-    return params && params !== '参数未加载' ? `${statusText} · ${params}` : statusText
+const hardwareParamItems = computed(() => {
+  const items: string[] = []
+  if (scanConfig.value.dpi) items.push(`${scanConfig.value.dpi} DPI`)
+  if (scanConfig.value.colorMode) {
+    items.push(workflow.scannerColorModeLabel(scanConfig.value.colorMode))
   }
-  return statusText
+  if (scanConfig.value.duplexMode) {
+    items.push(workflow.scannerDuplexModeLabel(scanConfig.value.duplexMode))
+  }
+  return items
 })
+
+const scanProfileReady = computed(() => hardwareParamItems.value.length > 0)
 
 const statusDetailLine = computed(() => {
   const { tone, headline, detail, statusText } = readiness.value
@@ -172,6 +173,7 @@ function buildFirstScanCalibrationDialog() {
 }
 
 async function confirmCalibrationIfNeeded(): Promise<boolean> {
+  if (workflow.scanMode.value !== 'DIRECT') return true
   if (hasCalibrationAck() || !contract.value) return true
   const dialog = buildFirstScanCalibrationDialog()
   const confirmed = await confirmAsync({
@@ -277,8 +279,30 @@ function continueActiveBatch() {
           <div class="scan-control__status">
             <span class="status-led" :class="`status-led--${readiness.tone}`" />
             <div class="scan-control__copy">
-              <p class="scan-control__line">{{ statusSummaryLine }}</p>
-              <p v-if="statusDetailLine" class="scan-control__sub">{{ statusDetailLine }}</p>
+              <p class="scan-control__headline">{{ readiness.statusText }}</p>
+              <div
+                v-if="readiness.tone === 'success' && scanProfileReady"
+                class="scan-profile"
+                aria-label="当前扫描配置"
+              >
+                <span class="scan-profile__mode" :class="`scan-profile__mode--${scanModeTone}`">
+                  {{ scanModeLabel }}
+                </span>
+                <span
+                  v-for="item in hardwareParamItems"
+                  :key="item"
+                  class="scan-profile__chip"
+                >
+                  {{ item }}
+                </span>
+              </div>
+              <p
+                v-else-if="readiness.tone === 'success'"
+                class="scan-control__sub"
+              >
+                参数未加载，请打开扫描参数
+              </p>
+              <p v-else-if="statusDetailLine" class="scan-control__sub">{{ statusDetailLine }}</p>
             </div>
           </div>
           <div class="scan-control__actions">
@@ -555,9 +579,12 @@ function continueActiveBatch() {
 
 .scan-control__copy {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--kiosk-space-2);
 }
 
-.scan-control__line {
+.scan-control__headline {
   margin: 0;
   font-size: var(--kiosk-fz-h3);
   font-weight: var(--kiosk-fw-semibold);
@@ -565,8 +592,56 @@ function continueActiveBatch() {
   line-height: var(--kiosk-lh-tight);
 }
 
+.scan-profile {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--kiosk-space-2);
+}
+
+.scan-profile__mode {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--kiosk-space-2);
+  border-radius: var(--kiosk-radius-sm);
+  font-size: var(--kiosk-fz-caption);
+  font-weight: var(--kiosk-fw-semibold);
+  line-height: 1;
+}
+
+.scan-profile__mode--direct {
+  background: var(--kiosk-primary-soft);
+  color: var(--kiosk-primary);
+}
+
+.scan-profile__mode--supplement {
+  background: var(--kiosk-warning-soft);
+  color: var(--kiosk-warning);
+}
+
+.scan-profile__mode--archive {
+  background: var(--kiosk-surface);
+  border: 1px solid var(--kiosk-divider);
+  color: var(--kiosk-ink-secondary);
+}
+
+.scan-profile__chip {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--kiosk-space-2);
+  border-radius: var(--kiosk-radius-sm);
+  background: var(--kiosk-surface);
+  border: 1px solid var(--kiosk-divider);
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-secondary);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
 .scan-control__sub {
-  margin: var(--kiosk-space-1) 0 0;
+  margin: 0;
   font-size: var(--kiosk-fz-label);
   color: var(--kiosk-ink-secondary);
   line-height: var(--kiosk-lh-base);

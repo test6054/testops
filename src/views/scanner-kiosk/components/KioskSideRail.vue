@@ -73,6 +73,13 @@ const railScanDuplex = computed(() =>
 const railScanBlankPage = computed(() =>
   activeScanConfig.value.blankPageDetectionEnabled ? '启用' : '关闭',
 )
+const railScanMode = computed(() => workflow.scanModeText(workflow.scanMode.value, ''))
+const railScanModeTone = computed(() => {
+  const mode = workflow.scanMode.value
+  if (mode === 'SUPPLEMENT') return 'supplement'
+  if (mode === 'ARCHIVE') return 'archive'
+  return 'direct'
+})
 
 const railBatchEmptyText = computed(() => {
   const count = workflow.kioskContext.value?.scanBatchCount ?? 0
@@ -135,21 +142,17 @@ function handleOpenSettings() {
 
     <article class="rail-card">
       <header class="rail-card-head">
-        <h4>当前扫描参数</h4>
+        <h4>当前扫描配置</h4>
       </header>
-      <dl class="rail-kv">
-        <div>
-          <dt>DPI</dt>
-          <dd>{{ railScanDpi }}</dd>
-        </div>
-        <div>
-          <dt>色彩</dt>
-          <dd>{{ railScanColor }}</dd>
-        </div>
-        <div>
-          <dt>单面/双面扫描</dt>
-          <dd>{{ railScanDuplex }}</dd>
-        </div>
+      <div class="rail-profile">
+        <span class="rail-profile__mode" :class="`rail-profile__mode--${railScanModeTone}`">
+          {{ railScanMode }}
+        </span>
+        <span class="rail-profile__chip">{{ railScanDpi }}</span>
+        <span class="rail-profile__chip">{{ railScanColor }}</span>
+        <span class="rail-profile__chip">{{ railScanDuplex }}</span>
+      </div>
+      <dl class="rail-kv rail-kv--compact">
         <div>
           <dt>空白页检测</dt>
           <dd>{{ railScanBlankPage }}</dd>
@@ -269,6 +272,59 @@ function handleOpenSettings() {
   color: var(--kiosk-ink-primary);
   text-align: right;
   word-break: break-all;
+}
+
+.rail-profile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kiosk-space-2);
+  margin-bottom: var(--kiosk-space-3);
+}
+
+.rail-profile__mode {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--kiosk-space-2);
+  border-radius: var(--kiosk-radius-sm);
+  font-size: var(--kiosk-fz-caption);
+  font-weight: var(--kiosk-fw-semibold);
+  line-height: 1;
+}
+
+.rail-profile__mode--direct {
+  background: var(--kiosk-primary-soft);
+  color: var(--kiosk-primary);
+}
+
+.rail-profile__mode--supplement {
+  background: var(--kiosk-warning-soft);
+  color: var(--kiosk-warning);
+}
+
+.rail-profile__mode--archive {
+  background: var(--kiosk-surface);
+  border: 1px solid var(--kiosk-divider);
+  color: var(--kiosk-ink-secondary);
+}
+
+.rail-profile__chip {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--kiosk-space-2);
+  border-radius: var(--kiosk-radius-sm);
+  background: var(--kiosk-surface-alt);
+  border: 1px solid var(--kiosk-divider);
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-secondary);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.rail-kv--compact {
+  padding-top: var(--kiosk-space-2);
+  border-top: 1px solid var(--kiosk-divider);
 }
 
 .rail-link {

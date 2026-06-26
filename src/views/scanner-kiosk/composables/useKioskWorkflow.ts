@@ -200,6 +200,8 @@ export function useKioskWorkflow() {
    * 仅在 scanMode==='SUPPLEMENT' 时有效；切到其他模式由 changeScanMode 自动重置。
    */
   const supplementReplaceTargetPage = ref(false)
+  /** 补扫选定的已绑定试卷实例 ID，batch/start 时传给后端冻结。 */
+  const supplementPaperInstanceId = ref('')
   const scanConfig = ref<ExamScannerScanConfigVO>({
     dpi: 300,
     colorMode: 'COLOR',
@@ -362,6 +364,8 @@ export function useKioskWorkflow() {
     scanners.value.find((item) => item.localScannerId === selectedScannerId.value),
   )
   const previewScanJob = computed(() => currentJob.value ?? lastPreviewScanJob.value)
+  /** 复核阶段只使用终态快照，避免扫描中的 currentJob 覆盖已结束批次的本地影像。 */
+  const reviewScanJob = computed(() => lastPreviewScanJob.value)
   const visiblePages = computed(
     () => previewScanJob.value?.pages.filter((item) => item.status !== 'DELETED') ?? [],
   )
@@ -703,12 +707,17 @@ export function useKioskWorkflow() {
         return '补扫目标页号不能为空'
       }
       if (!supplementReason.value.trim()) return '补扫原因不能为空'
+      if (!supplementPaperInstanceId.value.trim()) return '补扫必须选择已绑定试卷'
     }
     if (!kioskContext.value.device) return '考试未绑定可用扫描设备'
     if (!kioskContext.value.capabilities?.loaded) return '扫描仪能力未上报，请确认 Agent 心跳正常'
     if (!scanConfig.value.dpi) return '请选择扫描分辨率'
     return ''
   })
+  const scanModeAdvisory = computed(() => kioskContext.value?.scanModeAdvisory ?? '')
+  const supplementBoundPapers = computed<ExamScannerBoundPaperItemVO[]>(
+    () => kioskContext.value?.supplementBoundPapers ?? [],
+  )
   const canStartScan = computed(() => !scanBlockedReason.value && !loading.value)
   const canSwitchScanMode = computed(() => !currentJobBlocksWorkspace.value)
   /** 切换考试阻断原因；空字符串表示允许切换。 */
@@ -1654,6 +1663,14 @@ export function useKioskWorkflow() {
     if (activeBatch) {
       activeBatchExternalNo.value = activeBatch.batchExternalNo
       activeScanBatchId.value = activeBatch.scanBatchId
+      if (activeBatch.scanMode === 'SUPPLEMENT') {
+        supplementTargetPageNo.value = activeBatch.targetPageNo
+        supplementReason.value = activeBatch.supplementReason ?? ''
+        supplementReplaceTargetPage.value = Boolean(activeBatch.replaceTargetPage)
+        if (activeBatch.paperInstanceId) {
+          supplementPaperInstanceId.value = activeBatch.paperInstanceId
+        }
+      }
     } else {
       activeBatchExternalNo.value = ''
       activeScanBatchId.value = ''
@@ -2098,6 +2115,7 @@ export function useKioskWorkflow() {
       supplementTargetPageNo.value = undefined
       supplementReason.value = ''
       supplementReplaceTargetPage.value = false
+      supplementPaperInstanceId.value = ''
     }
     errorMessage.value = ''
     await refreshKioskContext()
@@ -2115,6 +2133,7 @@ export function useKioskWorkflow() {
     scanMode: ScannerKioskScanMode
     targetPageNo?: number
     supplementReason?: string
+    paperInstanceId?: string
     replaceTargetPage: boolean
   } | {
     ok: false
@@ -2151,11 +2170,18 @@ export function useKioskWorkflow() {
         errorMessage: '补扫任务缺少补扫原因，已阻断本地扫描启动',
       }
     }
+    if (!lifecycle.paperInstanceId?.trim()) {
+      return {
+        ok: false,
+        errorMessage: '补扫任务缺少目标试卷，已阻断本地扫描启动',
+      }
+    }
     return {
       ok: true,
       scanMode: lifecycle.scanMode,
       targetPageNo: lifecycle.targetPageNo,
       supplementReason: reason,
+      paperInstanceId: lifecycle.paperInstanceId.trim(),
       replaceTargetPage: lifecycle.replaceTargetPage,
     }
   }
@@ -2199,6 +2225,7 @@ export function useKioskWorkflow() {
         targetPageNo: isSupplement ? supplementTargetPageNo.value : undefined,
         supplementReason: isSupplement ? supplementReason.value.trim() || undefined : undefined,
         replaceTargetPage: isSupplement ? supplementReplaceTargetPage.value : false,
+        paperInstanceId: isSupplement ? supplementPaperInstanceId.value.trim() || undefined : undefined,
         scanConfig: { ...scanConfig.value },
       })
       if (!batchLifecycle.batchExternalNo) {
@@ -2279,7 +2306,7 @@ export function useKioskWorkflow() {
       await cancelScanJob(job.scanJobId)
       await closeActiveBatch(true)
       if (cleanupFailedScan) {
-        await deleteScanJob(job.scanJobId, true)
+        await deleteScanJob(job.scanJobId)
         currentJob.value = null
         activeBatchExternalNo.value = ''
         activeScanBatchId.value = ''
@@ -2487,7 +2514,7 @@ export function useKioskWorkflow() {
     }
     const confirmed = await confirmAsync({
       title: '确认删除未上报任务',
-      content: `确认删除尚未上报的扫描任务 ${job.scanJobId}？该操作会清理本地扫描任务，并关闭当前扫描工作台记录、丢弃未提交中间页。`,
+      content: `确认删除尚未上报的扫描任务 ${job.scanJobId}？该操作只清理本地扫描任务，并关闭当前扫描工作台记录。`,
       type: 'warning',
       okText: '删除',
     })
@@ -2497,8 +2524,8 @@ export function useKioskWorkflow() {
       if (getActiveBatchExternalNo()) {
         await closeActiveBatch(true)
       }
-      await deleteScanJob(job.scanJobId, true)
-      successMessage.value = '已删除本地扫描任务并关闭当前扫描工作台记录'
+      await deleteScanJob(job.scanJobId)
+      successMessage.value = '已删除本地扫描任务'
       currentJob.value = null
       await refreshKioskContext()
       await refreshPageLedger()
@@ -3042,6 +3069,7 @@ export function useKioskWorkflow() {
     boundPaperSummary,
     currentJob,
     previewScanJob,
+    reviewScanJob,
     isWaitingForPaperFeed,
     isPreUploadScanFailure,
     loading,
@@ -3055,6 +3083,9 @@ export function useKioskWorkflow() {
     supplementTargetPageNo,
     supplementReason,
     supplementReplaceTargetPage,
+    supplementPaperInstanceId,
+    scanModeAdvisory,
+    supplementBoundPapers,
     scanConfig,
     activationForm,
     examId,

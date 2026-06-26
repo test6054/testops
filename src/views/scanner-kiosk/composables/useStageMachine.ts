@@ -70,32 +70,14 @@ export function useStageMachine(workflow: KioskWorkflow) {
 
   /** 系统按业务状态推导出的主链阶段（不含 history）。 */
   const autoStage = computed<KioskStageId>(() => {
-    const job = workflow.currentJob.value ?? workflow.previewScanJob.value
+    const job = workflow.currentJob.value
     const ctx = workflow.kioskContext.value
 
     if (!workflow.examId.value || !ctx) return 'setup'
     if (workflow.activeBackendScanSession.value) return 'scanning'
-    if (!job) {
-      const ledgerAttention = workflow.pageLedger.value?.attentionCount ?? 0
-      if (ledgerAttention > 0) return 'review'
-      return 'setup'
-    }
-
-    if (SCANNING_JOB_STATUS.has(job.status)) return 'scanning'
-
-    if (job.status === 'FAILED') return 'review'
-    if (job.status === 'CANCELLED') return 'scanning'
-
-    if (job.status === 'REPORTED') {
-      const batch = ctx.latestBatch
-      if (!batch) return 'setup'
-      const attentionCount = batch.attentionItemCount ?? 0
-      const pendingUpload = batch.pendingUploadCount ?? 0
-      if (attentionCount > 0 || pendingUpload > 0) return 'review'
-      return 'setup'
-    }
-
-    return 'setup'
+    if (job) return 'scanning'
+    if (workflow.reviewScanJob.value) return 'review'
+    return 'scanning'
   })
 
   const currentStage = computed<KioskStageId>(() => {
@@ -110,6 +92,7 @@ export function useStageMachine(workflow: KioskWorkflow) {
       workflow.activeBackendScanSession.value
       || (job && SCANNING_JOB_STATUS.has(job.status)),
     )
+    if (stageId === 'review' && (Boolean(job) || !workflow.reviewScanJob.value)) return
     if (activeSession && stageId !== 'scanning') {
       const stage = ALL_KIOSK_STAGES.find((s) => s.id === 'scanning')
       if (stage && currentStage.value !== 'scanning') {
@@ -120,6 +103,7 @@ export function useStageMachine(workflow: KioskWorkflow) {
     if (autoStage.value === 'review' && stageId === 'setup') {
       return
     }
+    if (stageId === 'review' && autoStage.value !== 'review') return
     const stage = ALL_KIOSK_STAGES.find((s) => s.id === stageId)
     if (!stage) return
     router.push({ name: stage.routeName, query: route.query })

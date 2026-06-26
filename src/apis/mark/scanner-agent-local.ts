@@ -456,11 +456,10 @@ export async function retryCommit(scanJobId: string): Promise<ScanJobResponse> {
 
 /**
  * 删除尚未上报后端的 Agent 本地扫描任务。仅清理本地 metadata + 影像文件，
- * 不调用后端废弃接口；若任务已有逐页上传副作用，必须先由前端成功关闭工作台并丢弃后端 pending 页。
+ * 不调用后端废弃接口；若任务已有逐页上传副作用，必须走教师端废弃后端批次的 discard 链路。
  */
-export async function deleteScanJob(scanJobId: string, backendPendingCleared = false): Promise<boolean> {
+export async function deleteScanJob(scanJobId: string): Promise<boolean> {
   const payload = await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/delete`, {
-    backendPendingCleared,
   })
   return normalizeAgentPayload(() => validateBooleanResult(payload))
 }
