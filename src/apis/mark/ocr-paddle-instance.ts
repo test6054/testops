@@ -14,7 +14,7 @@ export interface PaddleOcrInstanceVO {
   serviceUrl: string
   deviceType: string
   healthStatus: MarkOcrHealthStatusCode
-  lastHealthCheckAt?: string
+  lastHealthCheckTime?: string
   lastHealthMessage?: string
   consecutiveFailures: number
   localAutoDeploy: boolean

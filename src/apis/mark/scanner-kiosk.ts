@@ -71,7 +71,7 @@ export interface ExamScannerKioskDeviceVO {
   pendingUploadPageCount: number
   diagnosticStatus: ScannerAgentDiagnosticStatusCode
   diagnosticMessage: string
-  lastHeartbeatAt?: string
+  lastHeartbeatTime?: string
 }
 
 export interface ExamScannerScanConfigVO {
@@ -118,13 +118,13 @@ export interface ExamScannerKioskBatchVO {
   /** 仅 SUPPLEMENT 模式有效：true=替换目标页，false=追加补扫 */
   replaceTargetPage: boolean
   /** 批次封存时间 */
-  sealedAt?: string
+  sealedTime?: string
   /** 批次封存执行人 ID */
-  sealedBy?: string
+  sealedUserId?: string
   /** 批次废弃时间 */
-  discardedAt?: string
+  discardedTime?: string
   /** 批次废弃执行人 ID */
-  discardedBy?: string
+  discardedUserId?: string
   /** 批次废弃原因 */
   discardReason?: string
   /** 批次申报页数（创建时由扫描端报送） */
@@ -399,9 +399,9 @@ export interface ExamScannerBatchLifecycleVO {
   /** close 时 Redis 中仍残留的 pending pages 数量；无残留为 0 / undefined */
   pendingPageCount?: number
   /** 批次封存时间 */
-  sealedAt?: string
+  sealedTime?: string
   /** 封存操作人 */
-  sealedBy?: string
+  sealedUserId?: string
   /** batch/start 落库的扫描批次 ID */
   scanBatchId?: string
   /** 服务端冻结的扫描参数 */
@@ -619,10 +619,10 @@ export interface ExamScannerKioskBatchHistoryItem {
   targetPageNo?: number
   supplementReason?: string
   replaceTargetPage: boolean
-  sealedAt?: string
-  sealedBy?: string
-  discardedAt?: string
-  discardedBy?: string
+  sealedTime?: string
+  sealedUserId?: string
+  discardedTime?: string
+  discardedUserId?: string
   discardReason?: string
   status: ScanBatchStatusCode
   statusMessage: string

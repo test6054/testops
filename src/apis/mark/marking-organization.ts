@@ -575,9 +575,9 @@ export interface MarkingTaskVO {
   questionType: QuestionTypeCode | null
   /** 题型文案；整卷任务为 null */
   questionTypeMessage: string | null
-  allocatedAt?: string
-  submittedAt?: string
-  recycledAt?: string
+  allocatedTime?: string
+  submittedTime?: string
+  recycledTime?: string
   recycleReason?: string
   /** 已定稿任务的逐题给分回显；非 FINALIZED 为 undefined */
   submittedQuestionScores?: MarkingTaskSubmittedQuestionScoreVO[]

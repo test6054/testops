@@ -98,6 +98,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherPaperArchiveDetail: () => import('@/views/teacher/paper-archive/paper-archive-detail.vue'),
   TeacherArchiveVolumeSearch: () => import('@/views/teacher/archive-volume-search.vue'),
   TeacherArchiveSupervisionInspect: () => import('@/views/teacher/archive-supervision-inspect.vue'),
+  TeacherArchiveEvaluationRemediation: () => import('@/views/teacher/archive-evaluation-remediation.vue'),
 
   // ── 管理员 ───────────────────────────────────────
   TeacherMarkingOverview: () => import('@/views/teacher/marking-overview.vue'),

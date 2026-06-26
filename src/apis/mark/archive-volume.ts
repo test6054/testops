@@ -267,6 +267,16 @@ export interface ArchiveRemediationTaskVO {
   closedTime?: string
 }
 
+export interface ArchiveRemediationTaskUpdateRequest {
+  taskId: string
+  taskTitle?: string
+  taskDescription?: string
+  diagnosticCode?: string
+  taskStatus?: ArchiveRemediationStatusCode
+  assigneeUserId?: string
+  dueTime?: string
+}
+
 export interface ArchiveEvaluationCampaignVO {
   campaignId: string
   campaignName: string
@@ -342,4 +352,22 @@ export function listSupervisionRemediationTasks(): Promise<ArchiveRemediationTas
 
 export function listSupervisionCampaigns(): Promise<ArchiveEvaluationCampaignVO[]> {
   return http.post<ArchiveEvaluationCampaignVO[]>('/api/mark/archive-volumes/supervision/campaign/list', {})
+}
+
+export function listEvaluationCampaigns(): Promise<ArchiveEvaluationCampaignVO[]> {
+  return http.post<ArchiveEvaluationCampaignVO[]>('/api/mark/archive-volumes/evaluation/campaign/list', {})
+}
+
+export function getRemediationTask(taskId: string): Promise<ArchiveRemediationTaskVO> {
+  return http.post<ArchiveRemediationTaskVO>('/api/mark/archive-volumes/remediation/detail', { taskId })
+}
+
+export function listRemediationTasksByCampaign(campaignId: string): Promise<ArchiveRemediationTaskVO[]> {
+  return http.post<ArchiveRemediationTaskVO[]>('/api/mark/archive-volumes/remediation/list-by-campaign', { campaignId })
+}
+
+export function updateRemediationTask(
+  request: ArchiveRemediationTaskUpdateRequest,
+): Promise<ArchiveRemediationTaskVO> {
+  return http.post<ArchiveRemediationTaskVO>('/api/mark/archive-volumes/remediation/update', request)
 }

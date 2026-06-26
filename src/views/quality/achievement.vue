@@ -734,7 +734,7 @@ async function openAuditDrawer(record: AchievementResultVO) {
       operationLabel: a.auditEvent === 'CALCULATED'
         ? auditEventLabel('CALCULATED')
         : `${auditStatusLabel(a.auditStatusFrom)} → ${auditStatusLabel(a.auditStatusTo)}`,
-      time: a.auditedAt,
+      time: a.auditedTime,
       detail: a.auditOpinion || a.returnReason || undefined,
       targetType: '达成度结果',
     }))

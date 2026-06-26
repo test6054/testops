@@ -287,17 +287,17 @@
                     :title="batchSealBlockedReason(record) || '封存批次'"
                     @click="onSealBatch(record)"
                   >
-                    {{ record.sealedAt ? '已封存' : '封存' }}
+                    {{ record.sealedTime ? '已封存' : '封存' }}
                   </UiTextAction>
                   <UiTextAction
                     tone="danger"
                     :disabled="
                       batchDiscarding === record.scanBatchId
                         || record.status === 'DISCARDED'
-                        || Boolean(record.sealedAt)
+                        || Boolean(record.sealedTime)
                     "
                     :title="
-                      record.sealedAt
+                      record.sealedTime
                         ? '批次已封存，禁止废弃；请联系扫描终审角色'
                         : record.status === 'DISCARDED'
                           ? '批次已废弃'
@@ -492,12 +492,12 @@ function goScanLiveMonitor(): void {
 }
 
 function batchStatusTone(batch: ExamScannerBatchVO): BadgeTone {
-  if (batch.sealedAt) return 'green'
+  if (batch.sealedTime) return 'green'
   return strictEnumTone(SCAN_BATCH_STATUS_TONE, batch.status, '扫描批次状态')
 }
 
 function batchStatusLabel(batch: ExamScannerBatchVO): string {
-  if (batch.sealedAt) return '已封存'
+  if (batch.sealedTime) return '已封存'
   return strictEnumLabel(SCAN_BATCH_STATUS_LABEL, batch.status, '扫描批次状态')
 }
 
@@ -941,7 +941,7 @@ async function onDiscardBatch(batch: ExamScannerBatchVO): Promise<void> {
     message.info('批次已废弃，无需重复操作')
     return
   }
-  if (batch.sealedAt) {
+  if (batch.sealedTime) {
     message.warning('批次已封存，禁止废弃；请联系扫描终审角色解封后再处置')
     return
   }

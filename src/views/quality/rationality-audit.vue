@@ -215,7 +215,7 @@ const columns = [
   { title: '台账来源', key: 'source', width: 120 },
   { title: '审核项', key: 'checks', width: 280 },
   { title: '审核意见', key: 'auditOpinion', dataIndex: 'auditOpinion', ellipsis: true },
-  { title: '审核时间', key: 'auditedAt', dataIndex: 'auditedAt', width: 160 },
+  { title: '审核时间', key: 'auditedTime', dataIndex: 'auditedTime', width: 160 },
   { title: '操作', key: 'actions', width: 120 },
 ]
 

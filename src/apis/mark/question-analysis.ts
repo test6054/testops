@@ -182,7 +182,7 @@ export interface ExamAnswerEffectiveConfigVO {
   aiReviewHintId?: string
   knowledgePointIds?: string[]
   effectiveStatus?: EffectiveStatusCode
-  confirmedBy?: string
+  confirmedUserId?: string
   confirmedTime?: string
 }
 
@@ -285,7 +285,7 @@ export interface ExamRejudgePlanVO {
   affectedQuestionRefs?: RejudgePlanQuestionRefVO[]
   affectedStudentCount?: number
   planStatus: RejudgePlanStatusCode
-  approvedBy?: string
+  approvedUserId?: string
   approvedTime?: string
   executedTime?: string
   executedCount?: number

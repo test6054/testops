@@ -129,9 +129,9 @@ export interface AbsenceRecordVO {
   absenceStatus: AbsenceStatusCode
   absenceReason: AbsenceReasonCode
   scorePolicy: AbsenceScorePolicyCode
-  confirmedBy?: string
+  confirmedUserId?: string
   confirmedTime?: string
-  revokedBy?: string
+  revokedUserId?: string
   revokedTime?: string
   revokeReason?: string
 }

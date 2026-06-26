@@ -372,7 +372,7 @@ const paddleInstanceColumns: ColumnType<PaddleOcrInstanceVO>[] = [
   { title: '健康', key: 'healthStatus', width: 100 },
   { title: '设备类型', dataIndex: 'deviceType', key: 'deviceType', width: 100 },
   { title: '服务地址', key: 'serviceUrl', width: 140 },
-  { title: '最近探活', key: 'lastHealthCheckAt', width: 170 },
+  { title: '最近探活', key: 'lastHealthCheckTime', width: 170 },
   { title: '诊断', key: 'lastHealthMessage', ellipsis: true },
 ]
 
@@ -529,7 +529,7 @@ onBeforeUnmount(() => {
               </div>
             </a-descriptions-item>
             <a-descriptions-item label="最近检查">
-              {{ currentConfig?.lastHealthCheckAt || '未检查' }}
+              {{ currentConfig?.lastHealthCheckTime || '未检查' }}
             </a-descriptions-item>
           </a-descriptions>
         </UiCard>
@@ -584,8 +584,8 @@ onBeforeUnmount(() => {
             <template v-else-if="column.key === 'serviceUrl'">
               {{ record.serviceUrl ? '识别服务地址已配置' : '识别服务地址未配置' }}
             </template>
-            <template v-else-if="column.key === 'lastHealthCheckAt'">
-              {{ record.lastHealthCheckAt || '未探活' }}
+            <template v-else-if="column.key === 'lastHealthCheckTime'">
+              {{ record.lastHealthCheckTime || '未探活' }}
             </template>
             <template v-else-if="column.key === 'lastHealthMessage'">
               <span v-if="record.lastHealthMessage">{{ ocrHealthMessageText(record.lastHealthMessage) }}</span>

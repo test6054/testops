@@ -149,8 +149,8 @@
             </span>
             <span v-else class="muted">未指派</span>
           </template>
-          <template v-else-if="column.key === 'allocatedAt'">
-            {{ formatDateTime(arbitrationTasks[index].allocatedAt) }}
+          <template v-else-if="column.key === 'allocatedTime'">
+            {{ formatDateTime(arbitrationTasks[index].allocatedTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
@@ -238,7 +238,7 @@ const markingColumns: ColumnType<MarkingTaskVO>[] = [
   { title: '轮次', key: 'reviewRound', width: 100 },
   { title: '状态', key: 'taskStatus', width: 120 },
   { title: '仲裁教师', key: 'reviewerUserId', width: 160 },
-  { title: '分配时间', key: 'allocatedAt', width: 170 },
+  { title: '分配时间', key: 'allocatedTime', width: 170 },
   { title: '操作', key: 'actions', width: 140, fixed: 'right' },
 ]
 

@@ -85,8 +85,8 @@ const recentAiTaskColumns: ColumnsType = [
   { title: '能力', dataIndex: 'taskType', key: 'taskType' },
   { title: '状态', dataIndex: 'status', key: 'status' },
   { title: '失败阶段', dataIndex: 'failurePhase', key: 'failurePhase' },
-  { title: '开始时间', dataIndex: 'startedAt', key: 'startedAt' },
-  { title: '结束时间', dataIndex: 'finishedAt', key: 'finishedAt' },
+  { title: '开始时间', dataIndex: 'startedTime', key: 'startedTime' },
+  { title: '结束时间', dataIndex: 'finishedTime', key: 'finishedTime' },
 ]
 
 const router = useRouter()
@@ -754,11 +754,11 @@ async function loadCockpitPhase() {
                   {{ aiStatusLabel(record.status) }}
                 </UiTag>
               </template>
-              <template v-else-if="column.key === 'startedAt'">
-                {{ record.startedAt }}
+              <template v-else-if="column.key === 'startedTime'">
+                {{ record.startedTime }}
               </template>
-              <template v-else-if="column.key === 'finishedAt'">
-                {{ record.finishedAt }}
+              <template v-else-if="column.key === 'finishedTime'">
+                {{ record.finishedTime }}
               </template>
               <template v-else-if="column.key === 'failurePhase'">
                 <span

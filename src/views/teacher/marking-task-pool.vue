@@ -151,11 +151,11 @@
           <template v-else-if="column.key === 'reviewRound'">
             <UiTag tone="blue" size="sm">第 {{ tasks[index].reviewRound }} 轮</UiTag>
           </template>
-          <template v-else-if="column.key === 'allocatedAt'">
-            {{ formatDateTime(tasks[index].allocatedAt) }}
+          <template v-else-if="column.key === 'allocatedTime'">
+            {{ formatDateTime(tasks[index].allocatedTime) }}
           </template>
-          <template v-else-if="column.key === 'submittedAt'">
-            {{ formatDateTime(tasks[index].submittedAt) }}
+          <template v-else-if="column.key === 'submittedTime'">
+            {{ formatDateTime(tasks[index].submittedTime) }}
           </template>
           <template v-else-if="column.key === 'score'">
             <span v-if="tasks[index].score !== undefined && tasks[index].score !== null">{{
@@ -314,8 +314,8 @@ const columns: ColumnType<MarkingTaskVO>[] = [
   { title: '轮次', key: 'reviewRound', width: 80 },
   { title: '状态', key: 'taskStatus', width: 100 },
   { title: '给分', key: 'score', width: 80 },
-  { title: '分配时间', key: 'allocatedAt', width: 170 },
-  { title: '提交时间', key: 'submittedAt', width: 170 },
+  { title: '分配时间', key: 'allocatedTime', width: 170 },
+  { title: '提交时间', key: 'submittedTime', width: 170 },
   { title: '操作', key: 'actions', width: 140, fixed: 'right' },
 ]
 

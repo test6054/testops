@@ -20,8 +20,8 @@
           <template v-if="column.key === 'reviewer'">
             {{ record.reviewerName }}
           </template>
-          <template v-else-if="column.key === 'recycledAt'">
-            {{ record.recycledAt ? formatDateTime(record.recycledAt) : '—' }}
+          <template v-else-if="column.key === 'recycledTime'">
+            {{ record.recycledTime ? formatDateTime(record.recycledTime) : '—' }}
           </template>
           <template v-else-if="column.key === 'targetReviewer'">
             <a-select
@@ -92,7 +92,7 @@ const reviewerOptionsByGroupId = computed(() => {
 const columns = [
   { title: '题组', key: 'groupName', dataIndex: 'groupName', width: 140 },
   { title: '原阅卷教师', key: 'reviewer', width: 140 },
-  { title: '回收时间', key: 'recycledAt', width: 170 },
+  { title: '回收时间', key: 'recycledTime', width: 170 },
   { title: '回收原因', key: 'recycleReason', dataIndex: 'recycleReason', ellipsis: true },
   { title: '目标教师', key: 'targetReviewer', width: 220 },
   { title: '操作', key: 'action', width: 100 },

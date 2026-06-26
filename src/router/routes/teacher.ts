@@ -88,6 +88,18 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'archive-evaluation-remediation',
+        name: 'TeacherArchiveEvaluationRemediation',
+        component: () => import('@/views/teacher/archive-evaluation-remediation.vue'),
+        meta: {
+          title: '迎评整改',
+          roles: TEACHER_ROLES,
+          icon: 'file-search',
+          hideInMenu: false,
+          keepAlive: true,
+        },
+      },
+      {
         path: 'audit-trail',
         name: 'AdminAuditTrail',
         component: () => import('@/views/admin/audit-trail.vue'),

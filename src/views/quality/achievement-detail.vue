@@ -569,7 +569,7 @@ onActivated(() => {
                 </strong>
               </p>
               <p class="achievement-detail__audit-meta">
-                {{ audit.auditorNickName || '审核人' }} · {{ audit.auditedAt }}
+                {{ audit.auditorNickName || '审核人' }} · {{ audit.auditedTime }}
               </p>
               <p v-if="audit.auditOpinion" class="achievement-detail__audit-opinion">
                 意见：{{ audit.auditOpinion }}
@@ -597,7 +597,7 @@ onActivated(() => {
                 :description="item.reviewRemark"
               />
               <template #actions>
-                <span class="achievement-detail__review-time">{{ item.reviewedAt }}</span>
+                <span class="achievement-detail__review-time">{{ item.reviewedTime }}</span>
               </template>
             </a-list-item>
           </template>

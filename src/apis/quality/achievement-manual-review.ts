@@ -15,7 +15,7 @@ export interface AchievementManualReviewVO {
   reviewerRole?: string
   decision: ManualReviewDecision
   reviewRemark?: string
-  reviewedAt: string
+  reviewedTime: string
   createTime?: string
   updateTime?: string
 }

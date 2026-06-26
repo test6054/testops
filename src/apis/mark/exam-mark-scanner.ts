@@ -96,7 +96,7 @@ export interface ExamScannerDeviceVO {
   manufacturer?: string
   model?: string
   location?: string
-  lastSeenAt?: string
+  lastSeenTime?: string
   endpointOnlineStatus?: ScannerEndpointOnlineStatusCode
   endpointMachineCode?: string
   endpointName?: string
@@ -107,7 +107,7 @@ export interface ExamScannerDeviceVO {
   pendingUploadPageCount?: number
   diagnosticStatus?: ScannerAgentDiagnosticStatusCode
   diagnosticMessage?: string
-  lastHeartbeatAt?: string
+  lastHeartbeatTime?: string
   kioskLockEnabled: boolean
   remark?: string
   createTime?: string
@@ -127,7 +127,7 @@ export interface ExamScannerActivationCodeVO {
   scannerStationId: string
   activationCode: string
   status: ScannerActivationCodeStatusCode
-  expireAt: string
+  expireTime: string
 }
 
 /** 扫描设备详情视图 - 对应 ExamScannerDeviceDetailResponse */
@@ -144,7 +144,7 @@ export interface ExamScannerDeviceActivationHandoffVO {
   scannerStationId: string
   deviceName: string
   activationCode?: string
-  expireAt?: string
+  expireTime?: string
 }
 
 /** 扫描设备 token 响应 - 对应 ExamScannerDeviceTokenResponse（历史接口，教师侧不再使用） */

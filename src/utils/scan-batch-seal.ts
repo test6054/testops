@@ -12,8 +12,8 @@ export interface BatchSealCheckItem {
  * 推导批次封存阻断原因；空字符串表示可封存。
  */
 export function batchSealBlockedReason(batch: ExamScannerBatchVO): string {
-  if (batch.sealedAt) return '批次已封存'
-  if (batch.status === 'DISCARDED' || batch.discardedAt) return '批次已废弃'
+  if (batch.sealedTime) return '批次已封存'
+  if (batch.status === 'DISCARDED' || batch.discardedTime) return '批次已废弃'
   if (batch.status === 'IN_PROGRESS') return '批次尚未完成提交'
   if (batch.status === 'BLOCKED') return '批次已阻断，请先处理异常'
   if (!batch.scannerDeviceId?.trim() || !batch.scannerStationId?.trim()) {
@@ -43,15 +43,15 @@ export function buildBatchSealChecklist(batch: ExamScannerBatchVO): BatchSealChe
   return [
     {
       key: 'not-sealed',
-      ok: !batch.sealedAt,
+      ok: !batch.sealedTime,
       label: '批次未封存',
-      detail: batch.sealedAt ? '已封存' : '可执行封存',
+      detail: batch.sealedTime ? '已封存' : '可执行封存',
     },
     {
       key: 'not-discarded',
-      ok: batch.status !== 'DISCARDED' && !batch.discardedAt,
+      ok: batch.status !== 'DISCARDED' && !batch.discardedTime,
       label: '批次未废弃',
-      detail: batch.status === 'DISCARDED' || batch.discardedAt ? '已废弃' : '状态正常',
+      detail: batch.status === 'DISCARDED' || batch.discardedTime ? '已废弃' : '状态正常',
     },
     {
       key: 'committed',

@@ -9,13 +9,17 @@ import type {
   AuditSupervisionScope,
   AuditSupervisionVO,
 } from '@/apis/quality/audit-supervision'
+import { auditSupervisionApi } from '@/apis/quality/audit-supervision'
 import type { AuditSupervisionType } from '@/apis/quality/types'
+import { AUDIT_SUPERVISION_TYPE_LABEL } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { QualitySelectorChangeValue, WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
+import type {
+  QualitySelectorChangeValue,
+  WorkbenchSignalRefreshHandler,
+} from '@/composables/quality/improvement'
+import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
 import { message } from 'ant-design-vue'
 import { reactive, ref } from 'vue'
-import { auditSupervisionApi } from '@/apis/quality/audit-supervision'
-import { AUDIT_SUPERVISION_TYPE_LABEL } from '@/apis/quality/types'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
 import {
   ArchiveSelector,
@@ -32,12 +36,12 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import {
-  refreshWorkbenchSignalsAfterMutation,
-  selectedId,
-} from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { assertQualityScopeFresh, beginQualityScopeRequest, isQualityScopeStaleError } from '@/composables/useScopeRequestGuard'
+import {
+  assertQualityScopeFresh,
+  beginQualityScopeRequest,
+  isQualityScopeStaleError,
+} from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -62,7 +66,7 @@ const supColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 160, fixed: 'right' },
 ]
 
-const supervisionTypeOptions: Array<{ value: AuditSupervisionType, label: string }> = [
+const supervisionTypeOptions: Array<{ value: AuditSupervisionType; label: string }> = [
   { value: 'DAILY', label: AUDIT_SUPERVISION_TYPE_LABEL.DAILY },
   { value: 'SPECIAL', label: AUDIT_SUPERVISION_TYPE_LABEL.SPECIAL },
   { value: 'PRE_AUDIT', label: AUDIT_SUPERVISION_TYPE_LABEL.PRE_AUDIT },
@@ -294,7 +298,7 @@ async function loadList(options?: { refreshSignals?: boolean }) {
   }
 }
 
-function handleSupPageChange(page: { current: number, pageSize: number }) {
+function handleSupPageChange(page: { current: number; pageSize: number }) {
   supQuery.pageNum = page.current
   supQuery.pageSize = page.pageSize
   loadList()
@@ -357,9 +361,9 @@ function openSupEdit(record: AuditSupervisionVO) {
 
 async function submitSupEditor() {
   if (
-    !supEditor.supervisionCode.trim()
-    || !supEditor.supervisionTitle.trim()
-    || !supEditor.supervisionType
+    !supEditor.supervisionCode.trim() ||
+    !supEditor.supervisionTitle.trim() ||
+    !supEditor.supervisionType
   ) {
     message.error('请填写编码、标题、督导类型')
     return
@@ -480,13 +484,11 @@ function createSupEvidenceReportChangeHandler(index: number) {
 }
 
 function handleSupEvidenceArchiveChange(index: number, value: QualitySelectorChangeValue) {
-  const id = Array.isArray(value) ? '' : selectedId(value)
-  supEditor.evidenceItems[index].archiveId = id
+  supEditor.evidenceItems[index].archiveId = Array.isArray(value) ? '' : selectedId(value)
 }
 
 function handleSupEvidenceReportChange(index: number, value: QualitySelectorChangeValue) {
-  const id = Array.isArray(value) ? '' : selectedId(value)
-  supEditor.evidenceItems[index].reportId = id
+  supEditor.evidenceItems[index].reportId = Array.isArray(value) ? '' : selectedId(value)
 }
 
 defineExpose({
@@ -566,7 +568,10 @@ defineExpose({
       <a-row :gutter="12">
         <a-col :span="6">
           <a-form-item label="编码" required>
-            <a-input v-model:value="supEditor.supervisionCode" :disabled="supEditorMode === 'edit'" />
+            <a-input
+              v-model:value="supEditor.supervisionCode"
+              :disabled="supEditorMode === 'edit'"
+            />
           </a-form-item>
         </a-col>
         <a-col :span="6">
@@ -728,7 +733,11 @@ defineExpose({
       <div class="iwb-tab__detail-toolbar">
         <a-button type="primary" @click="addSupervisionEvidenceItem">新增证据</a-button>
       </div>
-      <div v-for="(item, index) in supEditor.evidenceItems" :key="index" class="iwb-tab__detail-row">
+      <div
+        v-for="(item, index) in supEditor.evidenceItems"
+        :key="index"
+        class="iwb-tab__detail-row"
+      >
         <div class="iwb-tab__detail-row-head">
           <span class="iwb-tab__detail-row-title">证据 {{ index + 1 }}</span>
           <a-button danger size="small" @click="removeSupervisionEvidenceItem(index)">

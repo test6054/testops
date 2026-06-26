@@ -53,8 +53,8 @@
             <span v-if="devices[index].agentVersion">{{ devices[index].agentVersion }}</span>
             <span v-else class="text-muted">未激活</span>
           </template>
-          <template v-else-if="column.key === 'lastSeenAt'">
-            <span v-if="devices[index].lastSeenAt">{{ devices[index].lastSeenAt }}</span>
+          <template v-else-if="column.key === 'lastSeenTime'">
+            <span v-if="devices[index].lastSeenTime">{{ devices[index].lastSeenTime }}</span>
             <span v-else class="text-muted">从未通讯</span>
           </template>
           <template v-else-if="column.key === 'action'">
@@ -234,7 +234,7 @@
           {{ detailInfo.pendingUploadPageCount ?? '未上报' }}
         </a-descriptions-item>
         <a-descriptions-item label="最近心跳">
-          {{ detailInfo.lastHeartbeatAt || '从未心跳' }}
+          {{ detailInfo.lastHeartbeatTime || '从未心跳' }}
         </a-descriptions-item>
         <a-descriptions-item label="扫描组件维护说明">
           {{
@@ -247,7 +247,7 @@
           {{ detailInfo.location || '—' }}
         </a-descriptions-item>
         <a-descriptions-item label="最近通讯时间">
-          {{ detailInfo.lastSeenAt || '从未通讯' }}
+          {{ detailInfo.lastSeenTime || '从未通讯' }}
         </a-descriptions-item>
         <a-descriptions-item label="创建时间">
           {{ detailInfo.createTime || '—' }}
@@ -284,7 +284,7 @@
         <div class="activation-code-modal__meta">
           <span>扫描设备编号：{{ activationCodeInfo.scannerDeviceId }}</span>
           <span>扫描站点：{{ activationCodeInfo.scannerStationId }}</span>
-          <span>有效期至：{{ activationCodeInfo.expireAt }}</span>
+          <span>有效期至：{{ activationCodeInfo.expireTime }}</span>
         </div>
         <a-space>
           <a-button type="primary" @click="copyText(activationCodeInfo.activationCode)">
@@ -416,7 +416,7 @@ const columns = [
   { title: '状态', dataIndex: 'status', key: 'status', width: 90 },
   { title: '扫描组件', dataIndex: 'endpointOnlineStatus', key: 'endpointOnlineStatus', width: 100 },
   { title: '组件版本', dataIndex: 'agentVersion', key: 'agentVersion', width: 120 },
-  { title: '最近通讯', dataIndex: 'lastSeenAt', key: 'lastSeenAt', width: 170 },
+  { title: '最近通讯', dataIndex: 'lastSeenTime', key: 'lastSeenTime', width: 170 },
   { title: '位置', dataIndex: 'location', key: 'location', width: 160, ellipsis: true },
   { title: '操作', dataIndex: 'action', key: 'action', width: 200, fixed: 'right' as const },
 ]
@@ -680,7 +680,7 @@ function emptyToUndefined(value?: string): string | undefined {
 }
 
 function openActivationHandoff(handoff: ExamScannerDeviceActivationHandoffVO): void {
-  if (!handoff.activationCode || !handoff.expireAt) {
+  if (!handoff.activationCode || !handoff.expireTime) {
     return
   }
   activationCodeDeviceName.value = handoff.deviceName || handoff.scannerDeviceId
@@ -690,7 +690,7 @@ function openActivationHandoff(handoff: ExamScannerDeviceActivationHandoffVO): v
     scannerStationId: handoff.scannerStationId,
     activationCode: handoff.activationCode,
     status: 'UNUSED',
-    expireAt: handoff.expireAt,
+    expireTime: handoff.expireTime,
   }
   activationCodeError.value = null
   showActivationCodeModal.value = true

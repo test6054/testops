@@ -121,7 +121,7 @@ export interface ExamScoreSummaryItemVO {
   examScore?: number
   dailyScore?: number
   confirmedTime?: string
-  confirmedBy?: string
+  confirmedUserId?: string
   paperDisplay: PaperInstanceDisplayVO
 }
 

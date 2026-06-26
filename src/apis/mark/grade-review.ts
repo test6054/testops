@@ -404,7 +404,7 @@ export interface ExamGradeCorrectionRecordVO {
   reason: string
   reviewRequestId?: string
   batchPlanId?: string
-  approvedBy?: string
+  approvedUserId?: string
   effectiveTime?: string
   correctionStatus: GradeCorrectionStatusCode
   createTime: string
@@ -502,7 +502,7 @@ export interface ExamBatchGradeCorrectionPlanVO {
   /** 执行失败原因 */
   failureReason?: string
   approvalStatus: BatchCorrectionApprovalStatusCode
-  approvedBy?: string
+  approvedUserId?: string
   approvedTime?: string
   executedTime?: string
   executedCount: number

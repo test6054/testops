@@ -20,7 +20,7 @@ export interface ExternalPullAuditVO {
   operatorUserId?: string
   auditEvent: ExternalPullAuditEvent
   auditDetail?: string
-  auditedAt: string
+  auditedTime: string
   createTime?: string
   updateTime?: string
 }

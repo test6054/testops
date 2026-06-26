@@ -65,8 +65,8 @@ const columns: ColumnsType<AnnualReportMaterialVO> = [
   { title: '关联课程', dataIndex: 'qualityCourseId', key: 'qualityCourseId', width: 150 },
   { title: '文件', dataIndex: 'storageFileId', key: 'storageFileId', width: 96 },
   { title: '状态', dataIndex: 'reportStatus', key: 'reportStatus', width: 96 },
-  { title: '提交时间', dataIndex: 'submittedAt', key: 'submittedAt', width: 170 },
-  { title: '审核时间', dataIndex: 'reviewedAt', key: 'reviewedAt', width: 170 },
+  { title: '提交时间', dataIndex: 'submittedTime', key: 'submittedTime', width: 170 },
+  { title: '审核时间', dataIndex: 'reviewedTime', key: 'reviewedTime', width: 170 },
   { title: '操作', key: 'actions', width: 330, fixed: 'right' },
 ]
 

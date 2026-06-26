@@ -460,11 +460,11 @@ function isArchiveDestroyable(record: ArchiveVO): boolean {
   if (!record.archivedTime || typeof record.retentionYears !== 'number') {
     return false
   }
-  const archivedAt = new Date(record.archivedTime)
-  if (Number.isNaN(archivedAt.getTime())) {
+  const archivedTime = new Date(record.archivedTime)
+  if (Number.isNaN(archivedTime.getTime())) {
     return false
   }
-  const expireAt = new Date(archivedAt)
+  const expireAt = new Date(archivedTime)
   expireAt.setFullYear(expireAt.getFullYear() + record.retentionYears)
   return Date.now() >= expireAt.getTime()
 }

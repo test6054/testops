@@ -39,8 +39,8 @@ const attentionItems = computed(() => snapshot.value?.attentionItems ?? [])
 const headerBadgeTone = computed<'success' | 'warning' | 'danger' | 'muted'>(() => {
   const b = batch.value
   if (!b) return 'muted'
-  if (b.discardedAt || b.status === 'DISCARDED') return 'danger'
-  if (b.sealedAt) return 'success'
+  if (b.discardedTime || b.status === 'DISCARDED') return 'danger'
+  if (b.sealedTime) return 'success'
   if (b.status === 'BLOCKED') return 'warning'
   return 'muted'
 })
@@ -48,8 +48,8 @@ const headerBadgeTone = computed<'success' | 'warning' | 'danger' | 'muted'>(() 
 const headerBadgeText = computed(() => {
   const b = batch.value
   if (!b) return ''
-  if (b.discardedAt || b.status === 'DISCARDED') return '已废弃'
-  if (b.sealedAt) return '已封存'
+  if (b.discardedTime || b.status === 'DISCARDED') return '已废弃'
+  if (b.sealedTime) return '已封存'
   return b.statusMessage
 })
 
@@ -161,18 +161,18 @@ function pageRowTone(
               <dt>扫描结束</dt>
               <dd>{{ workflow.formatTime(batch.scanEndTime) }}</dd>
             </div>
-            <div v-if="batch.sealedAt">
+            <div v-if="batch.sealedTime">
               <dt>封存时间</dt>
               <dd>
-                {{ workflow.formatTime(batch.sealedAt) }}
-                <template v-if="batch.sealedBy"> · 操作人 {{ batch.sealedBy }}</template>
+                {{ workflow.formatTime(batch.sealedTime) }}
+                <template v-if="batch.sealedUserId"> · 操作人 {{ batch.sealedUserId }}</template>
               </dd>
             </div>
-            <div v-if="batch.discardedAt">
+            <div v-if="batch.discardedTime">
               <dt>废弃时间</dt>
               <dd class="danger">
-                {{ workflow.formatTime(batch.discardedAt) }}
-                <template v-if="batch.discardedBy"> · 操作人 {{ batch.discardedBy }}</template>
+                {{ workflow.formatTime(batch.discardedTime) }}
+                <template v-if="batch.discardedUserId"> · 操作人 {{ batch.discardedUserId }}</template>
               </dd>
             </div>
             <div v-if="batch.discardReason">

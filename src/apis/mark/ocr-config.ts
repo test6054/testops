@@ -8,7 +8,7 @@ export interface MarkOcrConfigVO {
   providerName?: string
   enabled: boolean
   healthStatus: MarkOcrHealthStatusCode
-  lastHealthCheckAt?: string
+  lastHealthCheckTime?: string
   lastHealthMessage?: string
 }
 

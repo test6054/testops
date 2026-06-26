@@ -1710,7 +1710,7 @@ onMounted(async () => {
               {{ audit.auditDetail }}
             </p>
             <p class="external-pull__sub-text">
-              {{ audit.auditedAt }}
+              {{ audit.auditedTime }}
             </p>
           </a-timeline-item>
         </a-timeline>

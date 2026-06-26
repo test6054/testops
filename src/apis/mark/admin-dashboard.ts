@@ -137,7 +137,7 @@ export interface IncidentRecordVO {
   summary: string
   detail?: string
   resolved?: boolean
-  resolvedBy?: string
+  resolvedUserId?: string
   resolvedTime?: string
   resolveNote?: string
   createUser?: string

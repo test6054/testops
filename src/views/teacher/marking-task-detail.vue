@@ -159,10 +159,10 @@
                 </UiTag>
               </a-descriptions-item>
               <a-descriptions-item label="分配时间">
-                {{ formatDateTime(task.allocatedAt) }}
+                {{ formatDateTime(task.allocatedTime) }}
               </a-descriptions-item>
               <a-descriptions-item label="提交时间">
-                {{ formatDateTime(task.submittedAt) }}
+                {{ formatDateTime(task.submittedTime) }}
               </a-descriptions-item>
               <a-descriptions-item
                 v-if="task.score !== undefined && task.score !== null"

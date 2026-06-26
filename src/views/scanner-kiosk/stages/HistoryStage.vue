@@ -27,8 +27,8 @@ const { workflow, ui } = useKioskCtx()
 
 const batch = computed(() => workflow.kioskContext.value?.latestBatch ?? null)
 
-const isDiscarded = computed(() => batch.value?.discardedAt || batch.value?.status === 'DISCARDED')
-const isSealed = computed(() => Boolean(batch.value?.sealedAt))
+const isDiscarded = computed(() => batch.value?.discardedTime || batch.value?.status === 'DISCARDED')
+const isSealed = computed(() => Boolean(batch.value?.sealedTime))
 const awaitingWebSeal = computed(
   () => Boolean(batch.value && !isSealed.value && !isDiscarded.value),
 )
@@ -83,24 +83,24 @@ const timeline = computed<TimelineEvent[]>(() => {
       detail: `${b.attentionItemCount} 项`,
     })
   }
-  if (b.sealedAt) {
+  if (b.sealedTime) {
     events.push({
       key: 'sealed',
       icon: LockFilled,
       tone: 'success',
       label: '批次封存',
-      time: workflow.formatTime(b.sealedAt),
-      detail: b.sealedBy ? `执行人 #${b.sealedBy}` : undefined,
+      time: workflow.formatTime(b.sealedTime),
+      detail: b.sealedUserId ? `执行人 #${b.sealedUserId}` : undefined,
     })
   }
-  if (b.discardedAt || b.status === 'DISCARDED') {
+  if (b.discardedTime || b.status === 'DISCARDED') {
     events.push({
       key: 'discarded',
       icon: CloseCircleFilled,
       tone: 'danger',
       label: '批次废弃',
-      time: workflow.formatTime(b.discardedAt),
-      detail: b.discardReason || (b.discardedBy ? `执行人 #${b.discardedBy}` : undefined),
+      time: workflow.formatTime(b.discardedTime),
+      detail: b.discardReason || (b.discardedUserId ? `执行人 #${b.discardedUserId}` : undefined),
     })
   }
   return events
@@ -122,15 +122,15 @@ function reloadHistory() {
 function historyBadgeTone(
   item: ExamScannerKioskBatchHistoryItem,
 ): 'success' | 'warning' | 'danger' | 'muted' {
-  if (item.discardedAt || item.status === 'DISCARDED') return 'danger'
-  if (item.sealedAt) return 'success'
+  if (item.discardedTime || item.status === 'DISCARDED') return 'danger'
+  if (item.sealedTime) return 'success'
   if (item.status === 'BLOCKED') return 'warning'
   return 'muted'
 }
 
 function historyBadgeText(item: ExamScannerKioskBatchHistoryItem): string {
-  if (item.discardedAt || item.status === 'DISCARDED') return '已废弃'
-  if (item.sealedAt) return '已封存'
+  if (item.discardedTime || item.status === 'DISCARDED') return '已废弃'
+  if (item.sealedTime) return '已封存'
   return item.statusMessage
 }
 
@@ -407,18 +407,18 @@ watch(
                 <dt>事件数</dt>
                 <dd>{{ item.eventCount }}</dd>
               </div>
-              <div v-if="item.sealedAt">
+              <div v-if="item.sealedTime">
                 <dt>封存时间</dt>
                 <dd>
-                  {{ workflow.formatTime(item.sealedAt) }}
-                  <template v-if="item.sealedBy"> · 操作人 {{ item.sealedBy }}</template>
+                  {{ workflow.formatTime(item.sealedTime) }}
+                  <template v-if="item.sealedUserId"> · 操作人 {{ item.sealedUserId }}</template>
                 </dd>
               </div>
-              <div v-if="item.discardedAt">
+              <div v-if="item.discardedTime">
                 <dt>废弃时间</dt>
                 <dd class="danger">
-                  {{ workflow.formatTime(item.discardedAt) }}
-                  <template v-if="item.discardedBy"> · 操作人 {{ item.discardedBy }}</template>
+                  {{ workflow.formatTime(item.discardedTime) }}
+                  <template v-if="item.discardedUserId"> · 操作人 {{ item.discardedUserId }}</template>
                 </dd>
               </div>
               <div v-if="item.discardReason" class="detail-kv-full">

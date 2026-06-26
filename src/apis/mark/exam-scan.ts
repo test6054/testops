@@ -186,14 +186,14 @@ export interface ExamScannerBatchVO {
   eventCount: number
   /** 是否替换目标页（仅 SUPPLEMENT 模式有意义） */
   replaceTargetPage: boolean
-  /** 批次封存时间（与 discardedAt 互斥） */
-  sealedAt?: string
+  /** 批次封存时间（与 discardedTime 互斥） */
+  sealedTime?: string
   /** 批次封存执行人 ID */
-  sealedBy?: string
+  sealedUserId?: string
   /** 批次废弃时间 */
-  discardedAt?: string
+  discardedTime?: string
   /** 批次废弃执行人 ID */
-  discardedBy?: string
+  discardedUserId?: string
   /** 批次废弃原因（教师可见） */
   discardReason?: string
 }

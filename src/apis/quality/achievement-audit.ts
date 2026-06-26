@@ -19,7 +19,7 @@ export interface AchievementAuditVO {
   auditOpinion?: string
   returnReason?: string
   evidenceItems?: AchievementAuditEvidenceItem[]
-  auditedAt: string
+  auditedTime: string
   createTime?: string
   updateTime?: string
 }

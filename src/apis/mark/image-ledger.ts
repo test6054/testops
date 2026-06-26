@@ -128,7 +128,7 @@ export interface ExamPaperDuplicateResolutionVO {
   selectedPaperInstanceId?: string
   resolutionStatus: DuplicateResolutionStatusCode
   resolutionReason?: string
-  resolvedBy?: string
+  resolvedUserId?: string
   resolvedTime?: string
   createTime?: string
   updateTime?: string
