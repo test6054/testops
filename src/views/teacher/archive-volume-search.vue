@@ -5,52 +5,50 @@
         <template #status>
           <UiTag tone="blue" size="sm">OCR 全文检索</UiTag>
         </template>
+        <template #actions>
+          <UiButton variant="ghost" size="sm" @click="goList">返回列表</UiButton>
+        </template>
       </ContextBar>
     </template>
 
-    <a-card :bordered="false" class="detail-table-card archive-volume-search-page__table-card">
-      <template #title>
-        <SearchOutlined />
-        <span>归档卷 OCR 检索</span>
-      </template>
+    <UiFilterBar
+      v-model="filterModel"
+      :fields="filterFields"
+      search-text="检索"
+      @search="handleSearch"
+      @reset="handleReset"
+    />
 
-      <UiFilterBar
-        v-model="filterModel"
-        :fields="filterFields"
-        search-text="检索"
-        @search="handleSearch"
-        @reset="handleReset"
-      />
-
-      <UiDataTable
-        v-model:current="pagination.pageNum"
-        v-model:page-size="pagination.pageSize"
-        :columns="columns"
-        :data-source="hits"
-        :loading="loading"
-        :total="pagination.total"
-        flat
-        row-key="materialId"
-        size="middle"
-        empty-kind="first-run"
-        empty-description="输入关键词检索 OCR 识别后的归档材料"
-        class="student-detail-table__data-table"
-        @page-change="loadHits"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'archive'">
-            <div class="link-cell">{{ record.archiveNo }}</div>
-            <div class="link-cell__sub">{{ record.archiveTitle }}</div>
-          </template>
-          <template v-else-if="column.key === 'materialType'">
-            {{ materialTypeLabel(record.materialType) }}
-          </template>
-          <template v-else-if="column.key === 'snippet'">
-            <span class="snippet">{{ record.snippet || '-' }}</span>
-          </template>
+    <UiDataTable
+      v-model:current="pagination.pageNum"
+      v-model:page-size="pagination.pageSize"
+      :columns="columns"
+      :data-source="hits"
+      :loading="loading"
+      :total="pagination.total"
+      flat
+      row-key="materialId"
+      size="middle"
+      empty-kind="first-run"
+      empty-description="输入关键词检索 OCR 识别后的归档材料"
+      class="student-detail-table__data-table"
+      @page-change="loadHits"
+    >
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'archive'">
+          <button type="button" class="link-cell" @click="goDetail(record.volumeId)">
+            {{ record.archiveNo }}
+          </button>
+          <div class="link-cell__sub">{{ record.archiveTitle }}</div>
         </template>
-      </UiDataTable>
-    </a-card>
+        <template v-else-if="column.key === 'materialType'">
+          {{ materialTypeLabel(record.materialType) }}
+        </template>
+        <template v-else-if="column.key === 'snippet'">
+          <span class="snippet">{{ record.snippet || '-' }}</span>
+        </template>
+      </template>
+    </UiDataTable>
   </StageWorkbenchShell>
 </template>
 
@@ -61,9 +59,9 @@ import type {
   ArchiveVolumeSearchHitVO,
 } from '@/apis/mark/archive-volume'
 import type { FilterField } from '@/components/ui-guide/ui/types'
-import { SearchOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ARCHIVE_MATERIAL_TYPE_LABEL,
   searchArchiveVolumes,
@@ -79,6 +77,7 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveVolumeSearch' })
 
+const router = useRouter()
 const loading = ref(false)
 const hits = ref<ArchiveVolumeSearchHitVO[]>([])
 const filterModel = reactive({ keyword: '' })
@@ -143,6 +142,14 @@ function handleReset() {
   hits.value = []
   pagination.pageNum = 1
   pagination.total = 0
+}
+
+function goDetail(volumeId: string) {
+  void router.push({ name: 'TeacherArchiveVolumeDetail', params: { volumeId } })
+}
+
+function goList() {
+  void router.push({ name: 'TeacherArchiveVolumeList' })
 }
 
 onMounted(() => {

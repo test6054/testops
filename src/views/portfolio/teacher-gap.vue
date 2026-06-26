@@ -9,6 +9,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
+import { uploadFile } from '@/apis/edu/file-management'
 import { PORTFOLIO_GAP_TASK_STATUS_LABEL } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -38,6 +39,8 @@ const saving = ref(false)
 const detail = ref<PortfolioGapTaskDetailVO | null>(null)
 const fieldValues = reactive<Record<string, string>>({})
 const evidenceRefs = reactive<Record<string, string>>({})
+const attachmentFileNodeId = ref<string>()
+const uploading = ref(false)
 
 const gapTaskId = computed(() => readRouteParamString(route.params.taskId))
 const targetTeacherId = computed(() => {
@@ -107,6 +110,22 @@ async function handleSaveDraft() {
   }
 }
 
+async function handleUploadAttachment(file: File) {
+  uploading.value = true
+  try {
+    const uploaded = await uploadFile(file, { businessType: 'PORTFOLIO_MATERIAL' })
+    attachmentFileNodeId.value = uploaded.id
+    message.success('附件已上传')
+  }
+  catch (error) {
+    showUserError(error, '附件上传失败')
+  }
+  finally {
+    uploading.value = false
+  }
+  return false
+}
+
 async function handleSubmit() {
   if (!detail.value) {
     return
@@ -116,6 +135,7 @@ async function handleSubmit() {
     await portfolioGapApi.submitTask({
       gapTaskId: detail.value.id,
       ...teacherRequest.value,
+      fileNodeId: attachmentFileNodeId.value,
       fields: buildFieldInputs(),
     })
     message.success('补采已提交审核')
@@ -173,6 +193,14 @@ onMounted(() => {
         </p>
         <UiCard v-if="detail.missingFields.length" title="必填字段补采">
           <a-form layout="vertical">
+            <a-form-item label="补交附件">
+              <a-upload :before-upload="handleUploadAttachment" :show-upload-list="false" accept=".pdf,.doc,.docx,.png,.jpg">
+                <UiButton :loading="uploading">
+                  {{ attachmentFileNodeId ? '重新上传附件' : '上传附件' }}
+                </UiButton>
+              </a-upload>
+              <span v-if="attachmentFileNodeId" class="teacher-gap__file-id">fileNodeId={{ attachmentFileNodeId }}</span>
+            </a-form-item>
             <a-form-item
               v-for="field in detail.missingFields"
               :key="field.fieldCode"
@@ -213,5 +241,11 @@ onMounted(() => {
 
 .teacher-gap__evidence {
   margin-top: var(--dp-space-2, 8px);
+}
+
+.teacher-gap__file-id {
+  margin-left: var(--dp-space-2, 8px);
+  font-size: 12px;
+  color: var(--dp-text-secondary, #64748b);
 }
 </style>

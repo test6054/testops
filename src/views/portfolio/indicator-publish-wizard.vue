@@ -1,0 +1,207 @@
+<script setup lang="ts">
+import type { PfSceneCode, PortfolioImpactIndicatorSummaryDto, PortfolioPublishImpactReportVO } from '@/apis/portfolio/indicator-types'
+import type { PortfolioIndicatorEngineReadinessVO } from '@/apis/portfolio/indicator-types'
+import { message } from 'ant-design-vue'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
+import { PF_INDICATOR_BUSINESS_REFERENCE_SCENE_LABEL, PF_SCENE_CODE_OPTIONS } from '@/apis/portfolio/indicator-types'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { showUserError } from '@/utils/error-handler'
+
+const router = useRouter()
+const sceneCode = ref<PfSceneCode>('PERFORMANCE')
+const academicYear = ref('2025-2026')
+const step = ref(1)
+const trialing = ref(false)
+const previewing = ref(false)
+const publishing = ref(false)
+const enabling = ref(false)
+const impactReportId = ref('')
+const trialPassed = ref(false)
+const readiness = ref<PortfolioIndicatorEngineReadinessVO | null>(null)
+const impactReport = ref<PortfolioPublishImpactReportVO | null>(null)
+const impactSummary = ref<PortfolioImpactIndicatorSummaryDto | null>(null)
+
+async function loadReadiness() {
+  try {
+    readiness.value = await portfolioIndicatorTenantApi.referenceStatus()
+  }
+  catch (error) {
+    showUserError(error)
+  }
+}
+
+async function enableAllIndicators() {
+  enabling.value = true
+  try {
+    const result = await portfolioIndicatorTenantApi.enableAllConfig()
+    message.success(`已启用 ${result.enabledCount} 项指标`)
+    await loadReadiness()
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    enabling.value = false
+  }
+}
+
+async function runTrial() {
+  trialing.value = true
+  try {
+    const model = await portfolioIndicatorTenantApi.trialModel({ sceneCode: sceneCode.value })
+    trialPassed.value = Boolean(model.trialPassed)
+    if (!trialPassed.value) {
+      message.error('试算未通过，无法进入影响分析')
+      return
+    }
+    step.value = 2
+    message.success('试算通过')
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    trialing.value = false
+  }
+}
+
+function parseImpactSummary(report: PortfolioPublishImpactReportVO) {
+  if (!report.indicatorSummaryJson) {
+    impactSummary.value = null
+    return
+  }
+  try {
+    impactSummary.value = JSON.parse(report.indicatorSummaryJson) as PortfolioImpactIndicatorSummaryDto
+  }
+  catch {
+    impactSummary.value = null
+  }
+}
+
+async function runImpactPreview() {
+  previewing.value = true
+  try {
+    impactReportId.value = await portfolioIndicatorTenantApi.impactPreview({ sceneCode: sceneCode.value })
+    impactReport.value = await portfolioIndicatorTenantApi.getImpactReport({ id: impactReportId.value })
+    parseImpactSummary(impactReport.value)
+    step.value = 3
+    message.success('影响分析完成')
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    previewing.value = false
+  }
+}
+
+async function publish() {
+  publishing.value = true
+  try {
+    const snapshotId = await portfolioIndicatorTenantApi.publishModel({
+      sceneCode: sceneCode.value,
+      impactReportId: impactReportId.value,
+      academicYear: academicYear.value,
+    })
+    message.success(`发布成功，快照 ID：${snapshotId}`)
+    router.push({ name: 'PortfolioIndicatorHistory' })
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    publishing.value = false
+  }
+}
+
+onMounted(loadReadiness)
+</script>
+
+<template>
+  <StageWorkbenchShell>
+    <ContextBar title="规则发布向导" subtitle="启用 → 试算 → 影响分析 → 发布" />
+    <UiCard title="指标工程贯通">
+      <div v-if="readiness" class="readiness">
+        <span>已启用 {{ readiness.enabledIndicatorCount }} / {{ readiness.platformIndicatorCount }}</span>
+        <span v-for="scene in readiness.sceneStatuses" :key="scene.referenceScene" class="scene-tag">
+          {{ PF_INDICATOR_BUSINESS_REFERENCE_SCENE_LABEL[scene.referenceScene] }}：{{ scene.referencedIndicatorCount }}
+        </span>
+      </div>
+      <UiButton variant="primary" :loading="enabling" @click="enableAllIndicators">
+        启用 T001–T100
+      </UiButton>
+    </UiCard>
+    <UiCard>
+      <a-steps :current="step - 1" size="small" style="margin-bottom: 16px">
+        <a-step title="试算" />
+        <a-step title="影响分析" />
+        <a-step title="发布" />
+      </a-steps>
+      <div class="toolbar">
+        <a-select v-model:value="sceneCode" :options="PF_SCENE_CODE_OPTIONS" style="width: 140px" />
+        <a-input v-model:value="academicYear" placeholder="学年" style="width: 140px" />
+      </div>
+      <div v-if="step === 1" class="actions">
+        <UiButton variant="primary" :loading="trialing" @click="runTrial">
+          执行试算
+        </UiButton>
+      </div>
+      <div v-else-if="step === 2" class="actions">
+        <UiButton variant="primary" :loading="previewing" @click="runImpactPreview">
+          生成影响报告
+        </UiButton>
+      </div>
+      <div v-else class="actions">
+        <p>影响报告 ID：{{ impactReportId }}</p>
+        <div v-if="impactSummary" class="impact-summary">
+          <span>新增 {{ impactSummary.addedCount ?? 0 }}</span>
+          <span>变更 {{ impactSummary.changedCount ?? 0 }}</span>
+          <span>移除 {{ impactSummary.removedCount ?? 0 }}</span>
+        </div>
+        <pre v-if="impactReport?.indicatorSummaryJson" class="impact-json">{{ impactReport.indicatorSummaryJson }}</pre>
+        <UiButton variant="primary" :loading="publishing" @click="publish">
+          确认发布
+        </UiButton>
+      </div>
+    </UiCard>
+  </StageWorkbenchShell>
+</template>
+
+<style scoped>
+.toolbar, .actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.readiness {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.scene-tag {
+  color: var(--dp-text-secondary, #64748b);
+}
+.impact-summary {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+}
+.impact-json {
+  width: 100%;
+  max-height: 160px;
+  overflow: auto;
+  margin: 8px 0;
+  padding: 8px;
+  background: var(--ant-color-fill-quaternary, #f5f5f5);
+  border-radius: 4px;
+  font-size: 12px;
+}
+</style>

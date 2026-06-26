@@ -633,6 +633,18 @@ function formatMessageType(type: NotificationTypeEnum): string {
     [NotificationTypeEnum.RESUBMIT_REQUESTED]: '重新提交申请',
     [NotificationTypeEnum.RESUBMIT_APPROVED]: '重新提交通过',
     [NotificationTypeEnum.RESUBMIT_REJECTED]: '重新提交驳回',
+    [NotificationTypeEnum.PORTFOLIO_ARCHIVE_RETURNED]: '档案审核退回',
+    [NotificationTypeEnum.PORTFOLIO_ARCHIVE_DISMISSED]: '档案审核驳回',
+    [NotificationTypeEnum.PORTFOLIO_TEACHER_ONBOARDING]: '新教师建档',
+    [NotificationTypeEnum.PORTFOLIO_GAP_TASK_PENDING]: '档案袋补采任务',
+    [NotificationTypeEnum.QUALITY_MARK_ASSESSMENT_WEIGHT_MISSING]: '质量评价考核权重缺失',
+    [NotificationTypeEnum.MARK_QUALITY_SCORE_SYNC_FAILED]: 'mark 成绩同步失败',
+    [NotificationTypeEnum.MARK_ARCHIVE_AUTO_CREATE_FAILED]: '归档卷自动建卷失败',
+    [NotificationTypeEnum.MARK_ARCHIVE_DUE_UPCOMING]: '归档时限临近',
+    [NotificationTypeEnum.MARK_ARCHIVE_DUE_OVERDUE]: '归档时限逾期',
+    [NotificationTypeEnum.MARK_ARCHIVE_RETENTION_REMINDER]: '保管到期鉴定',
+    [NotificationTypeEnum.MARK_ARCHIVE_DELAY_SUBMISSION_OVERDUE]: '延迟补交逾期',
+    [NotificationTypeEnum.MARK_ARCHIVE_ACCESS_EXPIRED]: '查阅授权到期',
   }
   return map[type]
 }

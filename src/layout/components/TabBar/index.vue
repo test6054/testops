@@ -108,7 +108,7 @@ function isActive(path: string): boolean {
       route.path.startsWith('/teacher/dashboard')
       || route.path.startsWith('/teacher/exam-list')
       || route.path.startsWith('/teacher/exam-workspace/')
-      || route.path.startsWith('/teacher/paper-archive')
+      || route.path.startsWith('/teacher/archive-volumes')
     )
   }
   if (path === '/quality/dashboard') {

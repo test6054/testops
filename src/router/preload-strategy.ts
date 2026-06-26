@@ -88,14 +88,16 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherExamWorkspaceScoreRelease: () => import('@/views/teacher/score-publish.vue'),
   TeacherExamWorkspaceScoreAbsence: () => import('@/views/teacher/absence-confirm.vue'),
   TeacherExamWorkspaceScoreAppeal: () => import('@/views/teacher/appeal-handle.vue'),
-  TeacherExamWorkspaceArchivePackage: () => import('@/views/teacher/archive/archive-list.vue'),
+  TeacherExamWorkspaceArchivePackage: () => import('@/views/teacher/archive-volume/archive-volume-exam-progress.vue'),
   TeacherExamWorkspaceArchiveStatistics: () => import('@/views/teacher/statistics.vue'),
   TeacherExamWorkspaceArchiveExports: () => import('@/views/common/exam-export-tasks.vue'),
 
   // ── 教师 ④ 历史归档详情 ───────────────────────────
-  TeacherArchiveDetail: () => import('@/views/teacher/archive/archive-detail.vue'),
-  TeacherPaperArchiveList: () => import('@/views/teacher/paper-archive/paper-archive-list.vue'),
-  TeacherPaperArchiveDetail: () => import('@/views/teacher/paper-archive/paper-archive-detail.vue'),
+  TeacherArchiveVolumeList: () => import('@/views/teacher/archive-volume/archive-volume-list.vue'),
+  TeacherArchiveVolumeDetail: () => import('@/views/teacher/archive-volume/archive-volume-detail.vue'),
+  TeacherArchiveVolumeCreateOffline: () => import('@/views/teacher/archive-volume/archive-volume-create-offline.vue'),
+  TeacherArchiveVolumeStatistics: () => import('@/views/teacher/archive-volume/archive-volume-statistics.vue'),
+  TeacherArchiveVolumeLedger: () => import('@/views/teacher/archive-volume/archive-volume-ledger.vue'),
   TeacherArchiveVolumeSearch: () => import('@/views/teacher/archive-volume-search.vue'),
   TeacherArchiveSupervisionInspect: () => import('@/views/teacher/archive-supervision-inspect.vue'),
   TeacherArchiveEvaluationRemediation: () => import('@/views/teacher/archive-evaluation-remediation.vue'),
@@ -143,6 +145,12 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   PortfolioTeacherDirectory: () => import('@/views/portfolio/teacher-directory.vue'),
   PortfolioAiCandidateConfirm: () => import('@/views/portfolio/ai-candidate-confirm.vue'),
   PortfolioDepartmentReview: () => import('@/views/portfolio/department-review.vue'),
+  PortfolioIndicatorPlatform: () => import('@/views/portfolio/indicator-platform-admin.vue'),
+  PortfolioIndicatorTenant: () => import('@/views/portfolio/indicator-tenant-admin.vue'),
+  PortfolioIndicatorEligibility: () => import('@/views/portfolio/indicator-eligibility.vue'),
+  PortfolioIndicatorPublishWizard: () => import('@/views/portfolio/indicator-publish-wizard.vue'),
+  PortfolioIndicatorHistory: () => import('@/views/portfolio/indicator-history.vue'),
+  PortfolioTeacherIndicator: () => import('@/views/portfolio/teacher-indicator.vue'),
 }
 
 // ============================================================================
@@ -258,9 +266,9 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
     'TeacherExamWorkspaceMarkingOrg',
   ],
   TeacherExamWorkspaceReviewWorkspace: ['TeacherExamWorkspaceMarkingReview', 'TeacherExamWorkspaceReviewTaskDetail'],
-  TeacherExamWorkspaceArchivePackage: ['TeacherArchiveDetail', 'TeacherPaperArchiveList'],
-  TeacherPaperArchiveList: ['TeacherPaperArchiveDetail', 'TeacherExamWorkspaceArchivePackage'],
-  TeacherPaperArchiveDetail: ['TeacherPaperArchiveList', 'TeacherExamWorkspaceArchivePackage'],
+  TeacherExamWorkspaceArchivePackage: ['TeacherExamWorkspaceArchivePackage', 'TeacherArchiveVolumeList'],
+  TeacherArchiveVolumeList: ['TeacherArchiveVolumeDetail', 'TeacherArchiveVolumeSearch'],
+  TeacherArchiveVolumeDetail: ['TeacherArchiveVolumeList'],
 
   // ── 管理员 ───────────────────────────────────────
   TeacherMarkingOverview: ['AdminAuditTrail', 'AdminMarkingQuality', 'AdminCrossExamDashboard', 'TeacherExamList'],

@@ -293,8 +293,8 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'score',
       keepAlive: true,
     }),
-    workspaceChild('archive/package', 'TeacherExamWorkspaceArchivePackage', () => import('@/views/teacher/archive/archive-list.vue'), {
-      title: '归档列表',
+    workspaceChild('archive/package', 'TeacherExamWorkspaceArchivePackage', () => import('@/views/teacher/archive-volume/archive-volume-exam-progress.vue'), {
+      title: '归档进度',
       markStageKey: 'ARCHIVE',
       journeyKey: 'archive',
       workspacePhase: 'archive',

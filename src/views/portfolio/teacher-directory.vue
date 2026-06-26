@@ -14,6 +14,10 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
+  portfolioTeacherLibraryApi,
+  portfolioTeacherSalaryApi,
+} from '@/apis/portfolio/teacher-platform'
+import {
   PORTFOLIO_TEACHER_IDENTITY_STATUS_LABEL,
   PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS,
   PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL,
@@ -44,9 +48,10 @@ const listColumns: ColumnsType = [
   { title: '账号', dataIndex: 'userName', key: 'userName', width: 140 },
   { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
   { title: '职称', dataIndex: 'title', key: 'title', width: 100 },
+  { title: '身份标签', key: 'identityTags', width: 160 },
   { title: '账号状态', key: 'userStatus', width: 100 },
   { title: '主身份', key: 'primaryIdentityType', width: 120 },
-  { title: '操作', key: 'actions', width: 200, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 240, fixed: 'right' },
 ]
 
 const identityColumns: ColumnsType = [
@@ -140,6 +145,8 @@ const loading = ref(false)
 
 const detailVisible = ref(false)
 const detail = ref<PortfolioTeacherDetailVO | null>(null)
+const salarySummary = ref('')
+const librarySummary = ref('')
 
 const identityVisible = ref(false)
 const identityMode = ref<'create' | 'edit'>('create')
@@ -200,8 +207,27 @@ async function openDetail(row: PortfolioTeacherSummaryVO) {
   try {
     detail.value = await portfolioTeacherApi.get(row.userId)
     detailVisible.value = true
+    await loadTeacherExtensions(row.userId)
   } catch (error) {
     showUserError(error, '加载教师详情失败')
+  }
+}
+
+async function loadTeacherExtensions(userId: string) {
+  salarySummary.value = ''
+  librarySummary.value = ''
+  try {
+    const salaryPage = await portfolioTeacherSalaryApi.page({ teacherUserId: userId, pageNum: 1, pageSize: 1 })
+    const latest = salaryPage.list?.[0]
+    if (latest) {
+      salarySummary.value = `${latest.salaryMonth} 基本 ${latest.baseAmountDisplay ?? '—'}`
+    }
+    const libStats = await portfolioTeacherLibraryApi.stats({ teacherUserId: userId })
+    librarySummary.value = `在借 ${libStats.activeBorrowCount} · 逾期 ${libStats.overdueCount}`
+  }
+  catch {
+    salarySummary.value = ''
+    librarySummary.value = ''
   }
 }
 
@@ -210,6 +236,7 @@ async function reloadDetail() {
     return
   }
   detail.value = await portfolioTeacherApi.get(detail.value.userId)
+  await loadTeacherExtensions(detail.value.userId)
 }
 
 function openIdentityCreate(context: { userId: string, nickName?: string, departmentId?: string }) {
@@ -286,6 +313,30 @@ function openTeacherArchive(userId: string) {
   })
 }
 
+function openOneTable(userId: string) {
+  router.push({
+    path: '/portfolio/teacher/one-table',
+    query: { teacherId: userId },
+  })
+}
+
+async function exportRoster() {
+  try {
+    const result = await portfolioTeacherApi.exportRoster({ ...query })
+    const blob = new Blob([result.csvContent], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = result.fileName
+    link.click()
+    URL.revokeObjectURL(url)
+    message.success(`已导出 ${result.rowCount} 条`)
+  }
+  catch (error) {
+    showUserError(error)
+  }
+}
+
 onMounted(async () => {
   await loadTree(false)
   await loadPage()
@@ -296,6 +347,11 @@ onMounted(async () => {
   <StageWorkbenchShell title="教师名册" subtitle="主数据来自 edu-user，产业导师等扩展身份在本域维护">
     <UiFilterBar v-model="filterModel" :fields="filterFields" @search="handleSearch" />
     <UiCard>
+      <div class="list-toolbar">
+        <UiButton @click="exportRoster">
+          导出名册
+        </UiButton>
+      </div>
       <UiDataTable
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
@@ -314,6 +370,12 @@ onMounted(async () => {
             </UiTag>
             <span v-else>—</span>
           </template>
+          <template v-else-if="column.key === 'identityTags'">
+            <UiTag v-for="tag in record.identityTags ?? []" :key="tag" tone="gray" style="margin-right: 4px">
+              {{ identityTypeLabel(tag) }}
+            </UiTag>
+            <span v-if="!(record.identityTags?.length)">—</span>
+          </template>
           <template v-else-if="column.key === 'userStatus'">
             <span v-if="record.status">
               {{ getUserStatusLabel(record.status as UserStatusEnum) }}
@@ -329,6 +391,9 @@ onMounted(async () => {
             </UiTextAction>
             <UiTextAction @click="openTeacherArchive(record.userId)">
               档案
+            </UiTextAction>
+            <UiTextAction @click="openOneTable(record.userId)">
+              一张表
             </UiTextAction>
             <UiTextAction
               v-if="canManageTeacherAi(record.userId, true)"
@@ -366,6 +431,14 @@ onMounted(async () => {
           </a-descriptions-item>
           <a-descriptions-item label="邮箱" :span="2">
             {{ detail.email ?? '—' }}
+          </a-descriptions-item>
+        </a-descriptions>
+        <a-descriptions v-if="salarySummary || librarySummary" :column="1" size="small" bordered style="margin-top: 16px">
+          <a-descriptions-item v-if="salarySummary" label="工资摘要">
+            {{ salarySummary }}
+          </a-descriptions-item>
+          <a-descriptions-item v-if="librarySummary" label="图书借阅">
+            {{ librarySummary }}
           </a-descriptions-item>
         </a-descriptions>
         <div class="teacher-directory__identity-header">
@@ -452,6 +525,9 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
+.list-toolbar {
+  margin-bottom: 12px;
+}
 .teacher-directory__identity-header {
   display: flex;
   align-items: center;

@@ -191,6 +191,7 @@ export interface PortfolioTeacherSummaryVO {
   title?: string
   status?: string
   primaryIdentityType?: PortfolioTeacherIdentityType
+  identityTags?: string[]
 }
 
 export interface PortfolioTeacherIdentityVO {
@@ -518,8 +519,9 @@ export const PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE = 'PORTFOLIO_DEFAULT_REVIEW'
 /** 学校复审审核流编码（敏感材料） */
 export const PORTFOLIO_SCHOOL_REVIEW_FLOW_CODE = 'PORTFOLIO_SCHOOL_REVIEW'
 
+/** 档案袋 AI 任务提交 - 含报告生成 */
 export interface PortfolioAiJobSubmitRequest {
-  taskType: PortfolioAiExtractTaskType
+  taskType: PortfolioAiTaskType
   teacherId: string
   materialId?: string
   fileNodeId?: string
@@ -527,7 +529,29 @@ export interface PortfolioAiJobSubmitRequest {
   templateCode?: string
   categoryId?: string
   programId?: string
+  context?: PortfolioAiJobContext
 }
+
+/** 报告生成任务上下文 */
+export interface PortfolioAiJobContext {
+  reportScene?: string
+  reportPeriodLabel?: string
+  teacherName?: string
+  teacherProfileSummary?: string
+}
+
+/** 文本分析报告场景 */
+export type PortfolioReportScene = 'PORTRAIT' | 'DEVELOPMENT_PLAN' | 'EVALUATION' | 'ANNUAL_SUMMARY'
+
+export const PORTFOLIO_REPORT_SCENE_LABEL: Record<PortfolioReportScene, string> = {
+  PORTRAIT: '教师画像分析',
+  DEVELOPMENT_PLAN: '年度规划分析',
+  EVALUATION: '多元评价分析',
+  ANNUAL_SUMMARY: '年度综合报告',
+}
+
+export const PORTFOLIO_REPORT_SCENE_OPTIONS = (Object.keys(PORTFOLIO_REPORT_SCENE_LABEL) as PortfolioReportScene[])
+  .map(value => ({ value, label: PORTFOLIO_REPORT_SCENE_LABEL[value] }))
 
 export interface PortfolioAiJobSubmitVO {
   taskId: string
@@ -970,6 +994,11 @@ export interface PortfolioArchiveRecordPageRequest extends QueryDto {
   teacherId?: string
   categoryId?: string
   recordStatus?: PortfolioArchiveRecordStatus
+  academicYear?: string
+  semester?: string
+  courseCode?: string
+  achievementType?: string
+  materialType?: string
 }
 
 export interface PortfolioArchiveRecordSummaryVO {
@@ -1226,5 +1255,6 @@ export interface PortfolioGapTaskDetailVO {
 export interface PortfolioGapTaskSubmitRequest {
   gapTaskId: string
   teacherId?: string
+  fileNodeId?: string
   fields: PortfolioArchiveRecordFieldInput[]
 }

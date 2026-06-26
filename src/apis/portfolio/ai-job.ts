@@ -1,4 +1,5 @@
 import type {
+  PortfolioAiAnalysisDetailVO,
   PortfolioAiJobPageRequest,
   PortfolioAiJobSubmitRequest,
   PortfolioAiJobSubmitVO,
@@ -21,4 +22,6 @@ export const portfolioAiJobApi = {
     http.post<PortfolioCandidateFieldVO[]>(`${BASE}/candidate/list`, { id }),
   confirm: (data: PortfolioCandidateConfirmRequest) =>
     http.post<void>(`${BASE}/confirm`, data),
+  getAnalysisByTask: (id: string) =>
+    http.post<PortfolioAiAnalysisDetailVO>(`${BASE}/analysis/task/get`, { id }),
 }

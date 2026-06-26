@@ -4,7 +4,7 @@ import type {
   PortfolioTeacherPortraitVO, PortfolioTodoSummaryVO
 } from '@/apis/portfolio/types'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { portfolioTodoApi } from '@/apis/portfolio/todo'
@@ -218,9 +218,21 @@ function goAiConfirm() {
   })
 }
 
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    void loadDashboard()
+    void loadTodos()
+  }
+}
+
 onMounted(() => {
   void loadDashboard()
   void loadTodos()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 
