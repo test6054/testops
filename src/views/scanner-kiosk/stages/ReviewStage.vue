@@ -111,7 +111,7 @@ const reviewItems = computed(() => {
   })
 })
 
-/** 鏈壒娆″凡鐧昏鐨勫叏閮ㄩ〉闈紙鍚崏绋跨焊绛夐檮鍔犻〉锛夛紝渚涘鏍搁樁娈垫祻瑙堝奖鍍忥紝涓庡紓甯稿緟鍔炲苟鍒楀睍绀恒€?*/
+/** 鏈壒娆″凡鐧昏鐨勫叏閮ㄩ〉闈紙鍚崏绋跨焊绛夐檮鍔犻〉锛夛紝渚涘鏍搁樁娈垫祻瑙堝奖鍍忥紝涓庡紓甯稿緟鍔炲苟鍒楀睍绀恒€? */
 const registeredPages = computed<ReviewItem[]>(() => {
   const ledger = workflow.pageLedger.value
   if (!ledger?.items.length) return []
@@ -154,7 +154,7 @@ function selectItem(item: ReviewItem) {
   workflow.previewPageNo.value = item.pageNo
 }
 
-/** 鏈満 Agent 宸叉壂鎻忛〉锛堣处鏈湭杩斿洖鏃朵粛鍙湪澶嶆牳闃舵娴忚鏈湴褰卞儚锛夈€?*/
+/** 鏈満 Agent 宸叉壂鎻忛〉锛堣处鏈湭杩斿洖鏃朵粛鍙湪澶嶆牳闃舵娴忚鏈湴褰卞儚锛夈€? */
 const localBrowsablePages = computed<ReviewItem[]>(() => {
   const job = workflow.reviewScanJob.value
   if (!job) return []
@@ -332,7 +332,7 @@ const reviewBoundBatchId = computed(
       </section>
     </aside>
 
-    <!-- 涓細澶х敾甯冮瑙?-->
+    <!-- 涓細澶х敾甯冮瑙? -->
     <main class="preview-wrap">
       <div class="preview-canvas">
         <div v-if="!workflow.reviewScanJob.value && totalIssues === 0 && browsablePageCount === 0" class="preview-empty">

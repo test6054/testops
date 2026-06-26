@@ -75,7 +75,6 @@ import {
   closeScannerKioskBatch,
   discardScannedPage,
   discardScannerKioskBatch,
-  fetchScannerPageLedger,
   getScannerKioskBootstrap,
   getScannerKioskContext,
   listScannerKioskBoundPapers,
@@ -85,7 +84,6 @@ import {
 } from '@/apis/mark/scanner-kiosk'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
-import { applyLedgerResponse, fetchPagedHistoryLedgerSnapshot } from '@/views/scanner-kiosk/composables/ledgerMerge'
 import { getSemesterDescription, SemesterOptions } from '@/types/enums'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
@@ -102,6 +100,7 @@ import {
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { promptModal } from '@/views/quality/_helpers'
+import { fetchPagedHistoryLedgerSnapshot } from '@/views/scanner-kiosk/composables/ledgerMerge'
 
 // ================================================================
 // 静态字典：扫描策略色彩 / 单面双面扫描文案，由 UI / SideRail 直接读取。
