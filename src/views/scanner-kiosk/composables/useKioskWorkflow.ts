@@ -38,13 +38,12 @@ import type {
   ExamScannerPageRegistrationStatus,
   ExamScannerScanConfigOptionsVO,
   ExamScannerScanConfigVO,
-  ScanAttentionTypeCode,
-  ScanBatchStatusCode,
   ScannerKioskScanMode,
 } from '@/apis/mark/scanner-kiosk'
+import type { ScanAttentionTypeCode, ScanBatchStatusCode } from '@/apis/mark/exam-scan'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { SCANNER_ENDPOINT_ONLINE_STATUS_LABEL } from '@/apis/mark/exam-mark-scanner'
+import { SCANNER_ENDPOINT_ONLINE_STATUS_LABEL, SCANNER_COLOR_MODE_LABEL, SCANNER_DUPLEX_MODE_LABEL } from '@/apis/mark/exam-mark-scanner'
 import {
   activateLocalAgent,
   AGENT_HEALTH_STATUS_LABEL,
@@ -120,17 +119,6 @@ interface DisplayScanPage {
   diagnostic?: string
   sourceFileId?: string
   uploadedFileId?: string
-}
-
-export const SCANNER_COLOR_MODE_LABEL: Record<ScanColorMode, string> = {
-  COLOR: '彩色',
-  GRAY: '灰度',
-  LINEART: '黑白',
-}
-
-export const SCANNER_DUPLEX_MODE_LABEL: Record<ScanDuplexMode, string> = {
-  SIMPLEX: '单面扫描',
-  DUPLEX: '双面扫描',
 }
 
 /** 本地扫描任务状态文案：一体机页面只展示现场操作语义，不暴露 Agent 状态编码。 */

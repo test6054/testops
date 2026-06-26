@@ -190,8 +190,8 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
 import type {
-  AnonymityModeCode,
   MarkingSessionPhaseCode,
   MarkingTaskClaimRequest,
   MarkingTaskQueryRequest,
@@ -208,8 +208,8 @@ import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ANONYMITY_MODE_LABEL } from '@/apis/mark/anonymity-mode'
 import {
-  ANONYMITY_MODE_LABEL,
   FORMAL_SESSION_STATUS_LABEL,
   MARKING_TASK_STATUS_LABEL,
   MARKING_TASK_STATUS_OPTIONS,

@@ -1,7 +1,7 @@
 <template>
   <div class="archive-volume-external-import">
     <p class="archive-volume-external-import__hint">
-      上传 CSV/Excel 批量建卷并登记材料。请先下载模板，按表头填写后上传；file_id 须为 edu-storage 已上传节点 ID。
+      上传 Excel 批量建卷并登记材料。请先下载模板，按「导入数据」表填写后上传；file_id 须为 edu-storage 已上传节点 ID。
     </p>
     <a-form layout="vertical">
       <a-form-item label="来源系统" required>
@@ -20,10 +20,10 @@
           :before-upload="handleBeforeUpload"
           :file-list="fileList"
           :max-count="1"
-          accept=".csv,.xlsx,.xls"
+          accept=".xlsx,.xls"
           @remove="handleRemoveFile"
         >
-          <UiButton size="sm">选择 CSV / Excel</UiButton>
+          <UiButton size="sm">选择 Excel</UiButton>
         </a-upload>
       </a-form-item>
     </a-form>
@@ -61,10 +61,12 @@ import {
   downloadArchiveExternalImportTemplate,
   importArchiveExternalData,
 } from '@/apis/mark/archive-volume'
-import UiAlertStrip from '@/components/ui-guide/ui/AlertStrip.vue'
+import type { UiAlertStripTone } from '@/components/ui-guide/ui/types'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiFormActions from '@/components/ui-guide/ui/FormActions.vue'
+import UiFormActions from '@/components/ui-guide/ui/UiFormActions.vue'
 import { showUserError } from '@/utils/error-handler'
+import { downloadArchiveExcelBase64 } from '@/utils/archive-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeExternalImportPanel' })
@@ -100,13 +102,7 @@ async function handleDownloadTemplate() {
   templateLoading.value = true
   try {
     const template = await downloadArchiveExternalImportTemplate()
-    const blob = new Blob([template.csvContent], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = template.fileName || 'archive-volume-import-template.csv'
-    anchor.click()
-    URL.revokeObjectURL(url)
+    downloadArchiveExcelBase64(template.fileName, template.fileContentBase64)
   }
   catch (error) {
     showUserError(error)
@@ -116,11 +112,11 @@ async function handleDownloadTemplate() {
   }
 }
 
-function resultTone(status: ArchiveImportBatchStatusCode): 'green' | 'orange' | 'red' | 'blue' {
-  if (status === 'SUCCESS') return 'green'
-  if (status === 'PARTIAL_FAILED') return 'orange'
-  if (status === 'FAILED') return 'red'
-  return 'blue'
+function resultTone(status: ArchiveImportBatchStatusCode): UiAlertStripTone {
+  if (status === 'SUCCESS') return 'success'
+  if (status === 'PARTIAL_FAILED') return 'warning'
+  if (status === 'FAILED') return 'error'
+  return 'info'
 }
 
 function resultDescription(result: ArchiveExternalImportResultVO) {

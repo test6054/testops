@@ -170,10 +170,10 @@ import {
   generateQualityAnalysis,
   listQualityAnalysis,
   SCHOOL_QUALITY_DIMENSION_LABEL,
-  SCHOOL_QUALITY_RATING_COLOR,
+  SCHOOL_QUALITY_RATING_TONE,
   SCHOOL_QUALITY_RATING_LABEL,
 } from '@/apis/mark/school-quality'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
@@ -263,7 +263,7 @@ function qualityRatingLabel(rating: SchoolQualityRatingCode): string {
 }
 
 function qualityRatingColor(rating: SchoolQualityRatingCode): BadgeTone {
-  return strictEnumTone(SCHOOL_QUALITY_RATING_COLOR, rating, '校级质量评价等级')
+  return strictEnumTone(SCHOOL_QUALITY_RATING_TONE, rating, '校级质量评价等级')
 }
 
 watch(

@@ -107,11 +107,10 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import {
-  aiAnalysisStatusColor,
-  aiAnalysisStatusLabel,
   generateTeachingImprovement,
   getLatestTeachingImprovement,
 } from '@/apis/mark/teaching-analysis'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -168,7 +167,7 @@ function analysisCreateTimeText(value: ExamTeachingAnalysisRecordVO): string {
 
 function analysisLatencyText(value: ExamTeachingAnalysisRecordVO): string {
   if (typeof value.latencyMs === 'number') return `${value.latencyMs} ms`
-  if (value.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
+  if (value.analysisStatus === 'PENDING') return '待分析，尚未生成耗时'
   if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
   return '—'
 }
@@ -178,7 +177,7 @@ function analysisTraceId(value: ExamTeachingAnalysisRecordVO): string | undefine
 }
 
 function analysisTraceText(value: ExamTeachingAnalysisRecordVO): string {
-  if (value.analysisStatus === 'PENDING') return '处理中，尚未生成追踪编号'
+  if (value.analysisStatus === 'PENDING') return '待分析，尚未生成追踪编号'
   if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
   return value.aiTraceId?.trim() || '—'
 }

@@ -98,7 +98,7 @@ import {
   closeReviewWindow,
   getReviewWindowPolicy,
   GRADE_REVIEW_REASON_TYPE_LABEL,
-  REVIEW_WINDOW_STATUS_COLOR,
+  REVIEW_WINDOW_STATUS_TONE,
   REVIEW_WINDOW_STATUS_LABEL,
   saveReviewWindowPolicy,
 } from '@/apis/mark/grade-review'
@@ -112,7 +112,7 @@ const props = defineProps<{ examId: string, reloadToken: number }>()
 const emit = defineEmits<{ (e: 'changed'): void }>()
 
 function reviewWindowStatusColor(status: ReviewWindowPolicyStatusCode): BadgeTone {
-  return strictEnumTone(REVIEW_WINDOW_STATUS_COLOR, status, '复核窗口状态')
+  return strictEnumTone(REVIEW_WINDOW_STATUS_TONE, status, '复核窗口状态')
 }
 
 function reviewWindowStatusLabel(status: ReviewWindowPolicyStatusCode): string {

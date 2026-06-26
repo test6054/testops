@@ -42,7 +42,7 @@ async function loadPage() {
       nationalOnly: query.nationalOnly || undefined,
       recordTypes: query.recordTypes,
     })
-    rows.value = readPageList(page)
+    rows.value = readPageList(page, '加载成果列表失败')
     stats.value = await portfolioDevelopmentRecordApi.achievementStats({
       levelCode: query.nationalOnly ? 'NATIONAL' : (query.levelCode || undefined),
       nationalOnly: query.nationalOnly || undefined,

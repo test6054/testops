@@ -251,9 +251,6 @@ export const KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE
 export const KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE
   = '扫描工位凭证已失效，请重新输入激活码完成绑定'
 
-/** @deprecated 使用 {@link KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE} */
-export const KIOSK_BROWSER_SESSION_LOST_MESSAGE = KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE
-
 /**
  * 从本机 Agent DeviceBinding 恢复浏览器 push_token 会话。
  * @returns 是否已具备可用 kiosk 鉴权

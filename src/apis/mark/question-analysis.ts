@@ -1,9 +1,8 @@
 import type { ObjectiveComparePolicyCode } from './exam-standard-answer'
-import type {
-  EffectiveStatusCode,
-} from './exam-template'
-import type { QuestionTypeCode } from './grading-experience'
-import type { GradeStatusCode, ObjectiveResultCode } from './student-exam'
+import type { EffectiveStatusCode } from './effective-status'
+import type { QuestionTypeCode } from './question-type'
+import type { GradeStatusCode } from './grade-status'
+import type { ObjectiveResultCode } from './objective-result'
 /**
  * 题目质量分析与重判 API - 对接 edu-mark 模块 QuestionAnalysisController
  *
@@ -238,7 +237,7 @@ export const REJUDGE_PLAN_STATUS_LABEL: Record<RejudgePlanStatusCode, string> = 
 }
 
 /** 重判计划状态徽标颜色（统一 BadgeTone） */
-export const REJUDGE_PLAN_STATUS_COLOR: Record<RejudgePlanStatusCode, BadgeTone> = {
+export const REJUDGE_PLAN_STATUS_TONE: Record<RejudgePlanStatusCode, BadgeTone> = {
   DRAFT: 'gray',
   PENDING_APPROVAL: 'orange',
   APPROVED: 'blue',

@@ -3,7 +3,7 @@ import type { ReviewTaskStatusCode } from './exam-review-task'
 /**
  * 阅卷考试进度与工作台阶段快照 API - 对接 /api/mark/exams/marking-progress 与 workbench-stage-snapshot。
  */
-import type { QuestionTypeCode } from './grading-experience'
+import type { QuestionTypeCode } from './question-type'
 import http from '@/config/axios'
 
 /** 阅卷进度响应 - 对应 MarkingProgressResponse */

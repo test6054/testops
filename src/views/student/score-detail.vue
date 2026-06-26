@@ -252,7 +252,7 @@
           <span>AI 学习报告</span>
           <UiBadge
             v-if="learningReport?.profileStatus"
-            :tone="aiAnalysisStatusTone(learningReport.profileStatus)"
+            :tone="aiAnalysisStatusColor(learningReport.profileStatus)"
           >
             {{ aiAnalysisStatusLabel(learningReport.profileStatus) }}
           </UiBadge>
@@ -383,21 +383,22 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import {
-  AI_ANALYSIS_STATUS_COLOR,
-  AI_ANALYSIS_STATUS_LABEL,
-  canSubmitReview,
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_TONE,
+} from '@/apis/mark/final-score-status'
+import { GRADE_STATUS_LABEL, GRADE_STATUS_TONE } from '@/apis/mark/grade-status'
+import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-mastery-level'
+import {
+  OBJECTIVE_RESULT_LABEL,
+  OBJECTIVE_RESULT_TONE,
+} from '@/apis/mark/objective-result'
+import {
+  canSubmitReview,
   getMyAiLearningReport,
   getMyQuestionAnswerDetail,
   getMyScoreDetail,
-  GRADE_STATUS_LABEL,
-  GRADE_STATUS_TONE,
-  MASTERY_LEVEL_LABEL,
-  MASTERY_LEVEL_TONE,
-  OBJECTIVE_RESULT_LABEL,
-  OBJECTIVE_RESULT_TONE,
 } from '@/apis/mark/student-exam'
 import MarkHeatmapSection from '@/components/chart/MarkHeatmapSection.vue'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
@@ -564,18 +565,6 @@ function getGradeStatusTone(status: StudentQuestionScoreVO['gradeStatus']): Badg
 
 function formatQuestionFinalScore(question: StudentQuestionScoreVO): string {
   return question.teacherReviewScore.toFixed(2)
-}
-
-function aiAnalysisStatusLabel(
-  status: NonNullable<Awaited<ReturnType<typeof getMyAiLearningReport>>['profileStatus']>,
-): string {
-  return strictEnumLabel(AI_ANALYSIS_STATUS_LABEL, status, 'AI 学习报告状态')
-}
-
-function aiAnalysisStatusTone(
-  status: NonNullable<Awaited<ReturnType<typeof getMyAiLearningReport>>['profileStatus']>,
-): BadgeTone {
-  return strictEnumTone(AI_ANALYSIS_STATUS_COLOR, status, 'AI 学习报告状态')
 }
 
 function formatPublishedTotalScore(item: StudentScoreDetailVO): string {

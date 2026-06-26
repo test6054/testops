@@ -28,46 +28,7 @@
 
     <a-skeleton v-if="loading" active :paragraph="{ rows: 5 }" />
 
-    <UiErrorRetryPanel
-      v-else-if="loadError"
-      :description="loadError"
-      @retry="loadVolume"
-    />
-
-    <UiEmpty
-      v-else-if="!volume && !examGate && !gateLoadError"
-      description="加载归档进度失败，请刷新重试"
-    />
-
-    <UiAlertStrip
-      v-if="gateLoadError"
-      tone="orange"
-      class="archive-volume-exam-progress__gate-error"
-      :message="gateLoadError"
-    >
-      <template #action>
-        <UiButton variant="ghost" size="sm" @click="loadVolume">重试门禁</UiButton>
-      </template>
-    </UiAlertStrip>
-
-    <template v-if="!volume && (examGate || gateLoadError)">
-      <SignalBand :metrics="signalMetrics" compact />
-      <UiCard class="archive-volume-exam-progress__steps">
-        <template #title>归档前置条件</template>
-        <ol class="progress-steps">
-          <li :class="{ done: examGate?.gateOpen }">
-            <span class="progress-steps__label">成绩发布 + 关考</span>
-            <span class="progress-steps__hint">{{ gateProgressHint }}</span>
-          </li>
-          <li>
-            <span class="progress-steps__label">系统自动创建归档卷</span>
-            <span class="progress-steps__hint">{{ emptyDescription }}</span>
-          </li>
-        </ol>
-      </UiCard>
-    </template>
-
-    <template v-else>
+    <template v-else-if="volume">
       <SignalBand :metrics="signalMetrics" compact />
 
       <UiCard class="archive-volume-exam-progress__steps">
@@ -77,7 +38,7 @@
             <span class="progress-steps__label">成绩发布 + 关考</span>
             <span class="progress-steps__hint">{{ gateProgressHint }}</span>
           </li>
-          <li :class="{ done: Boolean(volume) }">
+          <li class="done">
             <span class="progress-steps__label">系统自动创建归档卷</span>
             <span class="progress-steps__hint">{{ formatDateTime(volume.createTime) }}</span>
           </li>
@@ -103,6 +64,30 @@
         />
       </UiCard>
     </template>
+
+    <template v-else>
+      <UiEmpty
+        v-if="!examGate"
+        description="加载归档进度失败，请刷新重试"
+      />
+
+      <template v-else>
+        <SignalBand :metrics="signalMetrics" compact />
+        <UiCard class="archive-volume-exam-progress__steps">
+          <template #title>归档前置条件</template>
+          <ol class="progress-steps">
+            <li :class="{ done: examGate?.gateOpen }">
+              <span class="progress-steps__label">成绩发布 + 关考</span>
+              <span class="progress-steps__hint">{{ gateProgressHint }}</span>
+            </li>
+            <li>
+              <span class="progress-steps__label">系统自动创建归档卷</span>
+              <span class="progress-steps__hint">{{ emptyDescription }}</span>
+            </li>
+          </ol>
+        </UiCard>
+      </template>
+    </template>
   </StageWorkbenchShell>
 </template>
 
@@ -125,13 +110,16 @@ import {
   getArchiveVolumeExamGate,
   pageArchiveVolumes,
 } from '@/apis/mark/archive-volume'
-import UiAlertStrip from '@/components/ui-guide/ui/AlertStrip.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/ErrorRetryPanel.vue'
+import MarkExamStageRail from '@/components/mark/MarkExamStageRail.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
-import MarkExamStageRail from '@/components/mark/MarkExamStageRail.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -142,8 +130,6 @@ const route = useRoute()
 const router = useRouter()
 const examId = computed(() => String(route.params.examId ?? ''))
 const loading = ref(true)
-const loadError = ref('')
-const gateLoadError = ref('')
 const volume = ref<ArchiveVolumeVO | null>(null)
 const events = ref<ArchiveVolumeEventVO[]>([])
 const examGate = ref<ArchiveVolumeExamGateVO | null>(null)
@@ -169,25 +155,14 @@ const autoCreateFailedEvent = computed(() =>
 )
 
 const signalMetrics = computed<SignalMetric[]>(() => {
-  const metrics: SignalMetric[] = []
-  if (examGate.value) {
-    metrics.push({
-      key: 'gate',
-      label: '双门禁',
-      value: examGate.value.gateOpen ? '已满足' : '未满足',
-      tone: examGate.value.gateOpen ? 'green' : 'orange',
-    })
+  if (!volume.value) {
+    return examGate.value
+      ? [{ key: 'gate', label: '双门禁', value: examGate.value.gateOpen ? '已满足' : '未满足', tone: examGate.value.gateOpen ? 'green' : 'orange' }]
+      : []
   }
-  if (!volume.value) return metrics
   return [
-    ...metrics,
-    { key: 'volume', label: '卷状态', value: volumeStatusLabel(volume.value.volumeStatus) },
-    { key: 'integrity', label: '完整性', value: integrityStatusLabel(volume.value.integrityStatus) },
-    {
-      key: 'transfer',
-      label: '移交',
-      value: volume.value.transferStatus === 'APPROVED' ? '已入库' : '进行中',
-    },
+    { key: 'integrity', label: '完整性', value: integrityStatusLabel(volume.value.integrityStatus), tone: volume.value.integrityStatus === 'PASSED' ? 'green' : 'orange' },
+    { key: 'status', label: '卷状态', value: volumeStatusLabel(volume.value.volumeStatus) },
   ]
 })
 
@@ -207,15 +182,25 @@ function integrityStatusTone(code: ArchiveVolumeVO['integrityStatus']): BadgeTon
   return strictEnumTone(ARCHIVE_INTEGRITY_STATUS_TONE, code, 'integrityStatus')
 }
 
+async function loadGate() {
+  if (!examId.value) return
+  try {
+    examGate.value = await getArchiveVolumeExamGate(examId.value)
+  }
+  catch (error) {
+    showUserError(error, '加载考试双门禁失败')
+    examGate.value = null
+  }
+}
+
 async function loadVolume() {
   if (!examId.value) {
-    loadError.value = '缺少考试 ID'
+    showUserError(new Error('缺少考试 ID'), '缺少考试 ID')
     loading.value = false
     return
   }
   loading.value = true
-  loadError.value = ''
-  gateLoadError.value = ''
+  examGate.value = null
   try {
     const page = await pageArchiveVolumes({
       examId: examId.value,
@@ -234,21 +219,14 @@ async function loadVolume() {
     }
   }
   catch (error) {
-    loadError.value = error instanceof Error ? error.message : '加载归档卷失败'
+    showUserError(error, '加载归档卷失败')
     volume.value = null
     events.value = []
-    examGate.value = null
     loading.value = false
     return
   }
   loading.value = false
-  try {
-    examGate.value = await getArchiveVolumeExamGate(examId.value)
-  }
-  catch (error) {
-    gateLoadError.value = error instanceof Error ? error.message : '加载考试双门禁失败'
-    examGate.value = null
-  }
+  await loadGate()
 }
 
 function goDetail() {
@@ -273,8 +251,7 @@ onMounted(() => {
   margin: 0;
   padding: 0;
   list-style: none;
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--dp-space-3, 12px);
 }
 
@@ -283,14 +260,15 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: var(--dp-space-3, 12px);
-  padding: var(--dp-space-3, 12px);
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-control, 8px);
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
+  border: 1px solid var(--dp-border-subtle, #e2e8f0);
+  border-radius: var(--dp-radius-md, 6px);
+  background: var(--dp-surface-muted, #f8fafc);
 }
 
 .progress-steps li.done {
-  border-color: var(--ant-color-primary-border, #91caff);
-  background: var(--dp-surface-subtle, #fafafa);
+  border-color: var(--dp-border-success, #86efac);
+  background: var(--dp-surface-success-subtle, #f0fdf4);
 }
 
 .progress-steps__label {
@@ -298,7 +276,7 @@ onMounted(() => {
 }
 
 .progress-steps__hint {
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-secondary, #64748b);
   font-size: 13px;
 }
 </style>

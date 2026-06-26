@@ -11,35 +11,12 @@
  *   - ≤ 2 参数的简单查询保留 GET + @RequestParam（symmetry-mark 模块约定）
  *   - searchSimilar 因 3 参数已强制 POST + SimilarQuestionSearchRequest
  */
+import type { AiAnalysisStatusCode } from './ai-analysis-status'
+import type { QuestionTypeCode } from './question-type'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
 // ─── 状态枚举 ─────────────────────────────────
-
-/** 题目类型 - 对应后端 QuestionType */
-export type QuestionTypeCode = 'OBJECTIVE' | 'SUBJECTIVE'
-
-export const QUESTION_TYPE_LABEL: Record<QuestionTypeCode, string> = {
-  OBJECTIVE: '客观题',
-  SUBJECTIVE: '主观题',
-}
-
-/** AI 分析状态 - 对应 AiAnalysisStatus */
-export type AiAnalysisStatusCode = 'PENDING' | 'SUCCESS' | 'FAILED' | 'BLOCKED'
-
-export const AI_ANALYSIS_STATUS_LABEL: Record<AiAnalysisStatusCode, string> = {
-  PENDING: '执行中',
-  SUCCESS: '成功',
-  FAILED: '失败',
-  BLOCKED: '已阻断',
-}
-
-export const AI_ANALYSIS_STATUS_COLOR: Record<AiAnalysisStatusCode, BadgeTone> = {
-  PENDING: 'blue',
-  SUCCESS: 'green',
-  FAILED: 'red',
-  BLOCKED: 'orange',
-}
 
 /** 经验案例状态 - 对应 ExperienceCaseStatus */
 export type ExperienceCaseStatusCode = 'DRAFT' | 'CONFIRMED' | 'DEPRECATED'
@@ -50,7 +27,7 @@ export const EXPERIENCE_CASE_STATUS_LABEL: Record<ExperienceCaseStatusCode, stri
   DEPRECATED: '已废弃',
 }
 
-export const EXPERIENCE_CASE_STATUS_COLOR: Record<ExperienceCaseStatusCode, BadgeTone> = {
+export const EXPERIENCE_CASE_STATUS_TONE: Record<ExperienceCaseStatusCode, BadgeTone> = {
   DRAFT: 'gray',
   CONFIRMED: 'green',
   DEPRECATED: 'red',

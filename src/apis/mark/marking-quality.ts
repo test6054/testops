@@ -1,8 +1,8 @@
 import type { PaperInstanceDisplayVO } from '@/apis/mark/exam-score'
+import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import type {
   MarkingOrganizationStatusCode,
   QuestionMarkingGroupStatusCode,
-  QuestionTypeCode,
 } from '@/apis/mark/marking-organization'
 /**
  * 阅卷质量监控 API - 对接 edu-mark 模块 MarkingQualityController
@@ -33,7 +33,7 @@ export const REVIEWER_METRIC_STATUS_LABEL: Record<ReviewerMetricStatusCode, stri
   SUSPENDED: '已暂停',
 }
 
-export const REVIEWER_METRIC_STATUS_COLOR: Record<ReviewerMetricStatusCode, BadgeTone> = {
+export const REVIEWER_METRIC_STATUS_TONE: Record<ReviewerMetricStatusCode, BadgeTone> = {
   NORMAL: 'green',
   WARNING: 'orange',
   SUSPENDED: 'red',
@@ -49,7 +49,7 @@ export const PROGRESS_RISK_LEVEL_LABEL: Record<ProgressRiskLevelCode, string> = 
   HIGH_RISK: '高风险',
 }
 
-export const PROGRESS_RISK_LEVEL_COLOR: Record<ProgressRiskLevelCode, BadgeTone> = {
+export const PROGRESS_RISK_LEVEL_TONE: Record<ProgressRiskLevelCode, BadgeTone> = {
   NORMAL: 'green',
   LOW_RISK: 'blue',
   MEDIUM_RISK: 'orange',

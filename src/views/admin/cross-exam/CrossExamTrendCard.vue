@@ -143,14 +143,14 @@ import type { ExamSummaryVO } from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { ANALYSIS_SCOPE_TYPE_LABEL } from '@/apis/mark/analysis-scope-type'
 import {
-  ANALYSIS_SCOPE_TYPE_LABEL,
   generateClassTrend,
   generateCourseTrend,
   listTrends,
 } from '@/apis/mark/cross-exam-analysis'
 import { getExamDetail } from '@/apis/mark/exam'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -351,7 +351,7 @@ function classNameText(value: CrossExamTrendAnalysisVO): string {
 
 function latencyText(value: CrossExamTrendAnalysisVO): string {
   if (value.latencyMs != null) return `${value.latencyMs} ms`
-  if (value.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
+  if (value.analysisStatus === 'PENDING') return '待分析，尚未生成耗时'
   return '分析未完成，暂无耗时'
 }
 

@@ -112,7 +112,7 @@ async function handleSave() {
 }
 
 async function handleDelete(id: string) {
-  const ok = await confirmAsync('确认删除该评分规则？')
+  const ok = await confirmAsync({ title: '确认删除该评分规则？', type: 'error' })
   if (!ok) {
     return
   }

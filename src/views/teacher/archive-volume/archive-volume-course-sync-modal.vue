@@ -69,8 +69,8 @@
 </template>
 
 <script setup lang="ts">
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { UploadFile } from 'ant-design-vue'
+import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { ref, watch } from 'vue'
@@ -91,7 +91,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  success: []
+  "success": []
 }>()
 
 interface SyncRow {

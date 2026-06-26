@@ -668,6 +668,21 @@ function applyAccreditationRoutePrefill() {
   }
 }
 
+/** 从路由 query.taskId 深链打开 AI 任务详情抽屉。 */
+async function applyRouteTaskDeepLink() {
+  const taskId = typeof route.query.taskId === 'string' ? route.query.taskId.trim() : ''
+  if (!taskId) {
+    return
+  }
+  try {
+    const task = await aiTaskApi.detail(taskId)
+    await openDetail(task)
+  }
+  catch (error) {
+    showUserError(error, 'AI 任务详情加载失败')
+  }
+}
+
 function handleTrainingPlanChange(value: string | null) {
   submitForm.trainingPlanId = value ?? ''
 }
@@ -1095,6 +1110,7 @@ onMounted(async () => {
   }
   applyAccreditationRoutePrefill()
   await handleScopeChange()
+  await applyRouteTaskDeepLink()
 })
 </script>
 

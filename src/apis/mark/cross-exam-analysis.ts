@@ -1,4 +1,5 @@
-import type { AiAnalysisStatusCode, AnalysisScopeTypeCode } from './teaching-analysis'
+import type { AiAnalysisStatusCode } from './ai-analysis-status'
+import type { AnalysisScopeTypeCode } from './analysis-scope-type'
 
 /**
  * AI 跨考试纵向分析 API - 对接 edu-mark 模块 CrossExamAnalysisController
@@ -55,20 +56,10 @@ export const SEMESTER_GROWTH_TREND_LABEL: Record<SemesterGrowthTrendCode, string
 }
 
 /** 学期成长趋势颜色，保持成长曲线页趋势状态一致。 */
-export const SEMESTER_GROWTH_TREND_COLOR: Record<SemesterGrowthTrendCode, BadgeTone> = {
+export const SEMESTER_GROWTH_TREND_TONE: Record<SemesterGrowthTrendCode, BadgeTone> = {
   IMPROVING: 'green',
   STABLE: 'blue',
   DECLINING: 'red',
-}
-
-/** 分析范围类型文案 - 与后端 AnalysisScopeType 完整一致。 */
-export const ANALYSIS_SCOPE_TYPE_LABEL: Record<AnalysisScopeTypeCode, string> = {
-  EXAM: '考试维度',
-  CLASS: '班级维度',
-  COURSE: '课程维度',
-  QUESTION: '题目维度',
-  QUESTION_TYPE: '题型维度',
-  STUDENT: '学生个体维度',
 }
 
 /** 学期成长条目 */
@@ -97,7 +88,7 @@ export const COURSE_ACHIEVEMENT_STATUS_LABEL: Record<CourseAchievementStatusCode
 }
 
 /** 课程目标达成状态颜色，保持达成结论在分析页中的语义一致。 */
-export const COURSE_ACHIEVEMENT_STATUS_COLOR: Record<CourseAchievementStatusCode, BadgeTone> = {
+export const COURSE_ACHIEVEMENT_STATUS_TONE: Record<CourseAchievementStatusCode, BadgeTone> = {
   ACHIEVED: 'green',
   PARTIALLY: 'orange',
   NOT_ACHIEVED: 'red',

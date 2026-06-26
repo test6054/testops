@@ -10,6 +10,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
+import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { readPageList } from '@/utils/page-result'
 
 const RECORD_TABS = [
@@ -41,7 +42,7 @@ async function loadPage() {
       pageSize: 50,
       recordType: activeType.value,
     })
-    rows.value = readPageList(page)
+    rows.value = readPageList(page, '加载发展记录失败')
   }
   catch (error) {
     showUserError(error)
@@ -85,14 +86,8 @@ async function removeRecord(id: string) {
 
 async function exportCsv() {
   try {
-    const result = await portfolioDevelopmentRecordApi.exportCsv({ recordType: activeType.value })
-    const blob = new Blob([result.csvContent], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = result.fileName
-    link.click()
-    URL.revokeObjectURL(url)
+    const result = await portfolioDevelopmentRecordApi.exportExcel({ recordType: activeType.value })
+    await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   }
   catch (error) {
@@ -115,7 +110,7 @@ onMounted(loadPage)
       <UiButton
         v-for="tab in RECORD_TABS"
         :key="tab.key"
-        :variant="activeType === tab.key ? 'primary' : 'default'"
+        :variant="activeType === tab.key ? 'primary' : 'outline'"
         @click="switchTab(tab.key)"
       >
         {{ tab.label }}
@@ -141,7 +136,7 @@ onMounted(loadPage)
       <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'actions'">
-            <UiButton size="small" @click="removeRecord(record.id)">
+            <UiButton size="sm" @click="removeRecord(record.id)">
               删除
             </UiButton>
           </template>

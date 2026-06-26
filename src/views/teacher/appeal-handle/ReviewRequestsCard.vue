@@ -134,7 +134,7 @@ import {
   GRADE_REVIEW_REASON_TYPE_LABEL,
   handleReviewRequest,
   listReviewRequests,
-  REVIEW_REQUEST_STATUS_COLOR,
+  REVIEW_REQUEST_STATUS_TONE,
   REVIEW_REQUEST_STATUS_LABEL,
   REVIEW_REQUEST_STATUS_OPTIONS,
 } from '@/apis/mark/grade-review'
@@ -337,7 +337,7 @@ async function submitHandle(): Promise<void> {
 }
 
 function requestStatusColor(status: GradeReviewRequestStatusCode): BadgeTone {
-  return strictEnumTone(REVIEW_REQUEST_STATUS_COLOR, status, '复核申请状态')
+  return strictEnumTone(REVIEW_REQUEST_STATUS_TONE, status, '复核申请状态')
 }
 
 function requestStatusLabel(status: GradeReviewRequestStatusCode): string {

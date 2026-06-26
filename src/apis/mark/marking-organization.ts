@@ -1,10 +1,15 @@
 import type { AxiosResponse } from 'axios'
+import type { AnonymityModeCode } from './anonymity-mode'
 import type { QualityDecisionCode } from './exam-scan'
 import type { PaperInstanceDisplayVO } from './exam-score'
+import type { EffectiveStatusCode } from './effective-status'
+import type { QuestionTypeCode } from './question-type'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import { ANONYMITY_MODE_LABEL } from './anonymity-mode'
+import { QUESTION_TYPE_LABEL } from './question-type'
 
 /** 阅卷组织列表默认分页大小（SessionListQuery / MarkingTaskQuery 缺省时使用） */
 const MARK_ORG_LIST_PAGE_SIZE = 100
@@ -116,23 +121,6 @@ export const MARKING_SESSION_PHASE_LABEL: Record<MarkingSessionPhaseCode, string
   FORMAL: '正评',
 }
 
-/** 阅卷匿名模式编码 - 与后端 AnonymityMode enum 对齐 */
-export type AnonymityModeCode = 'ANONYMOUS' | 'NAMED'
-
-export const ANONYMITY_MODE_LABEL: Record<AnonymityModeCode, string> = {
-  ANONYMOUS: '匿名',
-  NAMED: '实名',
-}
-
-/** 阅卷匿名模式下拉选项，值必须与后端 AnonymityMode 枚举完全一致 */
-export const ANONYMITY_MODE_OPTIONS: Array<{
-  label: string
-  value: AnonymityModeCode
-}> = [
-  { value: 'ANONYMOUS', label: ANONYMITY_MODE_LABEL.ANONYMOUS },
-  { value: 'NAMED', label: ANONYMITY_MODE_LABEL.NAMED },
-]
-
 /** 任务回收 / 再分配模式编码 - 与后端 ReassignMode enum 对齐 */
 export type MarkingReassignModeCode = 'AUTO' | 'MANUAL'
 
@@ -199,16 +187,6 @@ export const MARKING_TASK_STATUS_OPTIONS: Array<{
   { value: 'RECYCLED', label: MARKING_TASK_STATUS_LABEL.RECYCLED },
 ]
 
-/** 题目类型编码 - 与后端 QuestionType enum 对齐 */
-export type QuestionTypeCode = 'OBJECTIVE' | 'SUBJECTIVE'
-
-export const QUESTION_TYPE_LABEL: Record<QuestionTypeCode, string> = {
-  OBJECTIVE: '客观题',
-  SUBJECTIVE: '主观题',
-}
-
-/** 生效状态编码 - 与后端 EffectiveStatus enum 对齐 */
-export type EffectiveStatusCode = 'DRAFT' | 'ACTIVE' | 'SUPERSEDED' | 'DISCARDED'
 /**
  * 判断后端是否返回“阅卷组织未创建”业务态。
  * 只读取稳定 code，不依赖可变错误文案。

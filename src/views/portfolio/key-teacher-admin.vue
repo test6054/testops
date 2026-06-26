@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Key } from 'ant-design-vue/es/_util/type'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioKeyTeacherRegistryVO } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
@@ -11,6 +12,7 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
+import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { readPageList } from '@/utils/page-result'
 
 const REGISTRY_TABS = [
@@ -48,7 +50,7 @@ async function loadPage() {
       pageSize: 50,
       registryType: activeType.value,
     })
-    rows.value = readPageList(page)
+    rows.value = readPageList(page, '加载骨干带头人登记失败')
   }
   catch (error) {
     showUserError(error)
@@ -99,13 +101,7 @@ async function revokeRegistry(id: string) {
 async function exportRoster() {
   try {
     const result = await portfolioKeyTeacherApi.exportRoster({ registryType: activeType.value })
-    const blob = new Blob([result.csvContent], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = result.fileName
-    link.click()
-    URL.revokeObjectURL(url)
+    await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   }
   catch (error) {
@@ -125,7 +121,7 @@ onMounted(loadPage)
   <StageWorkbenchShell>
     <ContextBar title="骨干/带头人登记" subtitle="登记即生效，支持一键导出台账" />
     <UiCard>
-      <a-tabs :active-key="activeType" @change="(k: string) => switchType(k as RegistryType)">
+      <a-tabs :active-key="activeType" @change="(k: Key) => switchType(String(k) as RegistryType)">
         <a-tab-pane v-for="tab in REGISTRY_TABS" :key="tab.key" :tab="tab.label" />
       </a-tabs>
       <div class="form-row">

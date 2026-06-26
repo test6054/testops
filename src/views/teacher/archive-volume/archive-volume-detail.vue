@@ -46,6 +46,15 @@
             完整性自检
           </UiButton>
           <UiButton
+            v-if="detail && detail.volume.volumeStatus === 'COLLECTING' && detail.volume.responsibleUserId === currentUserId && !canSubmitVolume"
+            variant="outline"
+            size="sm"
+            disabled
+            :title="submitBlockReason ?? undefined"
+          >
+            提交归档
+          </UiButton>
+          <UiButton
             v-if="canSubmitVolume"
             variant="primary"
             size="sm"
@@ -69,13 +78,15 @@
 
     <a-skeleton v-if="loading" active :paragraph="{ rows: 8 }" />
 
-    <UiErrorRetryPanel
-      v-else-if="loadError"
-      :description="loadError"
-      @retry="loadDetail"
-    />
-
     <template v-else-if="detail">
+      <UiAlertStrip
+        v-if="grantsLoadFailed"
+        tone="warning"
+        title="岗位职责加载失败"
+        description="鉴定、销毁与查阅审批操作不可用"
+        dense
+        class="archive-volume-detail__alert"
+      />
       <UiAlertStrip
         v-if="detail.volume.integrityStatus === 'UNKNOWN' || detail.volume.integrityStatus === 'FAILED'"
         tone="warning"
@@ -85,7 +96,15 @@
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
-        v-if="detail.fourPropertyStale"
+        v-if="!detail.latestFourPropertyCheck && detail.volume.volumeStatus === 'COLLECTING'"
+        tone="warning"
+        title="尚未执行四性检测"
+        description="提交归档前须完成四性检测"
+        dense
+        class="archive-volume-detail__alert"
+      />
+      <UiAlertStrip
+        v-else-if="detail.fourPropertyStale"
         tone="warning"
         title="四性结论已失效"
         description="材料或 OCR 变更后须重新执行四性检测"
@@ -93,10 +112,26 @@
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
+        v-else-if="detail.latestFourPropertyCheck && !detail.latestFourPropertyCheck.overallPassed && detail.volume.volumeStatus === 'COLLECTING'"
+        tone="warning"
+        title="四性检测未通过"
+        description="请先补正材料并重新执行四性检测"
+        dense
+        class="archive-volume-detail__alert"
+      />
+      <UiAlertStrip
+        v-if="scoreSubmitBlockReason"
+        tone="warning"
+        :title="scoreSubmitBlockReason"
+        description="成绩证明未满足提交前置条件"
+        dense
+        class="archive-volume-detail__alert"
+      />
+      <UiAlertStrip
         v-if="detail.hasBlockingRemediationForSubmit"
         tone="warning"
         title="整改任务阻断提交"
-        description="存在进行中的整改任务，须完成整改并关闭任务后再提交归档"
+        description="存在未关闭整改任务，须关闭后再提交归档"
         dense
         class="archive-volume-detail__alert"
       />
@@ -126,55 +161,70 @@
             <UiButton size="sm" variant="outline" @click="courseSyncOpen = true">课程平台同步</UiButton>
             <UiButton size="sm" variant="outline" @click="openSharedRefModal">引用合用材料</UiButton>
           </div>
-          <UiDataTable
-            pagination-mode="none"
-            :columns="materialColumns"
-            :data-source="detail.materials"
-            :show-pagination="false"
-            flat
-            row-key="materialId"
-            size="middle"
-            empty-description="暂无材料，请登记或等待系统自动聚合"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'materialType'">
-                {{ materialTypeLabel(record.materialType) }}
-              </template>
-              <template v-else-if="column.key === 'submissionStatus'">
-                <UiTag
-                  v-if="record.submissionStatus"
-                  :tone="submissionStatusTone(record.submissionStatus)"
-                  size="sm"
-                >
-                  {{ submissionStatusLabel(record.submissionStatus) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'ocrStatus'">
-                <UiTag
-                  v-if="record.ocrStatus"
-                  :tone="materialOcrStatusTone(record.ocrStatus)"
-                  size="sm"
-                >
-                  {{ materialOcrStatusLabel(record.ocrStatus) }}
-                </UiTag>
-                <span
-                  v-if="record.ocrStatus === 'FAILED' && record.ocrFailureReason"
-                  class="archive-volume-detail__ocr-failure"
-                >
-                  {{ record.ocrFailureReason }}
-                </span>
-              </template>
-              <template v-else-if="column.key === 'materialActions'">
-                <UiTextAction
-                  v-if="canRetryMaterialOcr(record)"
-                  tone="primary"
-                  @click="confirmRetryMaterialOcr(record)"
-                >
-                  重试 OCR
-                </UiTextAction>
-              </template>
-            </template>
-          </UiDataTable>
+          <div class="archive-volume-detail__catalog">
+            <aside class="archive-volume-detail__catalog-tree">
+              <a-tree
+                v-if="catalogTreeNodes.length"
+                :selected-keys="selectedCatalogKeys"
+                :tree-data="catalogTreeNodes"
+                block-node
+                default-expand-all
+                @select="onCatalogSelect"
+              />
+              <UiEmpty v-else description="暂无目录项" />
+            </aside>
+            <div class="archive-volume-detail__catalog-main">
+              <UiDataTable
+                pagination-mode="none"
+                :columns="materialColumns"
+                :data-source="filteredMaterials"
+                :show-pagination="false"
+                flat
+                row-key="materialId"
+                size="middle"
+                empty-description="该目录项下暂无材料"
+              >
+                <template #bodyCell="{ column, record }">
+                  <template v-if="column.key === 'materialType'">
+                    {{ materialTypeLabel(record.materialType) }}
+                  </template>
+                  <template v-else-if="column.key === 'submissionStatus'">
+                    <UiTag
+                      v-if="record.submissionStatus"
+                      :tone="submissionStatusTone(record.submissionStatus)"
+                      size="sm"
+                    >
+                      {{ submissionStatusLabel(record.submissionStatus) }}
+                    </UiTag>
+                  </template>
+                  <template v-else-if="column.key === 'ocrStatus'">
+                    <UiTag
+                      v-if="record.ocrStatus"
+                      :tone="materialOcrStatusTone(record.ocrStatus)"
+                      size="sm"
+                    >
+                      {{ materialOcrStatusLabel(record.ocrStatus) }}
+                    </UiTag>
+                    <span
+                      v-if="record.ocrStatus === 'FAILED' && record.ocrFailureReason"
+                      class="archive-volume-detail__ocr-failure"
+                    >
+                      {{ record.ocrFailureReason }}
+                    </span>
+                  </template>
+                  <template v-else-if="column.key === 'materialActions'">
+                    <UiTextAction
+                      v-if="canRetryMaterialOcr(record)"
+                      tone="primary"
+                      @click="confirmRetryMaterialOcr(record)"
+                    >
+                      重试 OCR
+                    </UiTextAction>
+                  </template>
+                </template>
+              </UiDataTable>
+            </div>
+          </div>
         </section>
 
         <section v-else-if="activeTab === 'integrity'" class="archive-volume-detail__panel">
@@ -207,13 +257,29 @@
               :data-source="displayedIntegrityResult.missingItems"
               :show-pagination="false"
               flat
-              row-key="materialType"
+              :row-key="missingRowKey"
               size="small"
               class="archive-volume-detail__missing-table"
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'materialType'">
-                  {{ materialTypeLabel(record.materialType) }}
+                  {{ materialTypeLabel(missingTableRow(record).materialType) }}
+                </template>
+                <template v-else-if="column.key === 'missingActions'">
+                  <UiTextAction
+                    v-if="canAllowMaterialDelay"
+                    tone="primary"
+                    @click="openDelayAllowModal(missingTableRow(record))"
+                  >
+                    延迟补交
+                  </UiTextAction>
+                  <UiTextAction
+                    v-if="canWaiveMaterialMissing"
+                    tone="primary"
+                    @click="openWaiveMissingModal(missingTableRow(record))"
+                  >
+                    缺失豁免
+                  </UiTextAction>
                 </template>
               </template>
             </UiDataTable>
@@ -224,6 +290,7 @@
             <p>完整性：{{ displayedFourProperty.integrityPassed ? '通过' : '未通过' }}</p>
             <p>可用性：{{ displayedFourProperty.usabilityPassed ? '通过' : '未通过' }}</p>
             <p v-if="detail.fourPropertyStale" class="archive-volume-detail__stale-hint">结论已失效，请重新检测</p>
+            <p v-else-if="!detail.latestFourPropertyCheck" class="archive-volume-detail__stale-hint">尚未执行四性检测</p>
           </div>
         </section>
 
@@ -244,6 +311,14 @@
               {{ scoreCompletionLabel(detail.volume.scoreCompletionStatus) }}
             </a-descriptions-item>
           </a-descriptions>
+          <div
+            v-if="detail.latestTransferRecord?.transferPackageFileId"
+            class="archive-volume-detail__actions"
+          >
+            <UiButton size="sm" @click="downloadTransferPackage">
+              下载移交包（DA/T93）
+            </UiButton>
+          </div>
           <div v-if="canReviewTransfer && detail.volume.transferStatus === 'PENDING_REVIEW'" class="archive-volume-detail__actions">
             <UiButton size="sm" :loading="approvingTransfer" @click="handleApproveTransfer">
               验收通过
@@ -303,6 +378,12 @@
                 >
                   下载材料
                 </UiTextAction>
+                <UiTextAction
+                  v-if="record.accessStatus === 'ACTIVE' && record.applicantUserId === currentUserId"
+                  @click="handleAccessPreview(record)"
+                >
+                  在线预览
+                </UiTextAction>
               </template>
             </template>
           </UiDataTable>
@@ -313,11 +394,31 @@
             <a-descriptions-item label="成绩完成">
               {{ scoreCompletionLabel(detail.volume.scoreCompletionStatus) }}
             </a-descriptions-item>
+            <a-descriptions-item label="成绩来源">
+              {{ detail.volume.scoreSource ?? '—' }}
+            </a-descriptions-item>
           </a-descriptions>
           <div v-if="canConfirmScoreCompletion" class="archive-volume-detail__toolbar">
             <UiButton size="sm" :loading="scoreConfirmSubmitting" @click="handleConfirmScoreCompletion">
               确认成绩完成
             </UiButton>
+          </div>
+          <div v-if="canSyncTeachingAffairs" class="archive-volume-detail__sync-form">
+            <h3 class="archive-volume-detail__subheading">教务成绩完成同步</h3>
+            <a-form layout="vertical" class="archive-volume-detail__sync-fields">
+              <a-form-item label="外部同步单号" required>
+                <a-input v-model:value="teachingAffairsSyncNo" placeholder="教务系统业务单号" />
+              </a-form-item>
+              <a-form-item label="来源系统" required>
+                <a-input v-model:value="teachingAffairsSourceSystem" placeholder="如 TEACHING_AFFAIRS" />
+              </a-form-item>
+              <a-form-item label="成绩证明文件 ID">
+                <a-input v-model:value="teachingAffairsProofFileId" placeholder="上传后填写 fileId" />
+              </a-form-item>
+              <UiButton size="sm" :loading="teachingAffairsSyncing" @click="handleSyncTeachingAffairs">
+                同步教务成绩完成
+              </UiButton>
+            </a-form>
           </div>
           <UiDataTable
             pagination-mode="none"
@@ -332,21 +433,6 @@
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'materialType'">
                 {{ materialTypeLabel(record.materialType) }}
-              </template>
-              <template v-else-if="column.key === 'missingActions'">
-                <UiTextAction
-                  v-if="canAllowMaterialDelay"
-                  tone="primary"
-                  @click="openDelayAllowModal(record)"
-                >
-                  延迟补交
-                </UiTextAction>
-                <UiTextAction
-                  v-if="canWaiveMaterialMissing"
-                  @click="openWaiveMissingModal(record)"
-                >
-                  缺失豁免
-                </UiTextAction>
               </template>
             </template>
           </UiDataTable>
@@ -455,6 +541,8 @@
       </UiSectionTabs>
     </template>
 
+    <UiEmpty v-else description="加载归档卷详情失败，请刷新重试" />
+
     <a-modal
       v-model:open="uploadModalOpen"
       title="登记归档材料"
@@ -538,10 +626,11 @@
         </a-form-item>
         <a-form-item v-if="appraisalForm.decision === 'RETAIN'" label="延长保管（年）">
           <a-input-number
-            v-model:value="appraisalForm.retentionExtensionYears"
+            :value="appraisalForm.retentionExtensionYears"
             :min="1"
             :disabled="appraisalForm.permanentRetention"
             style="width: 100%"
+            @update:value="syncAppraisalRetentionYears"
           />
         </a-form-item>
         <a-form-item v-if="appraisalForm.decision === 'RETAIN'">
@@ -661,6 +750,28 @@
       </a-form>
     </a-modal>
 
+    <a-modal
+      v-model:open="readPageModalOpen"
+      title="记录阅读页码"
+      :confirm-loading="readPageSubmitting"
+      ok-text="保存"
+      cancel-text="跳过"
+      @ok="submitReadPage"
+      @cancel="closeReadPageModal"
+    >
+      <a-form layout="vertical">
+        <a-form-item label="最近阅读页" required>
+          <a-input-number
+            :value="readPageForm.lastReadPage"
+            :min="1"
+            :precision="0"
+            style="width: 100%"
+            @update:value="syncReadPageFormLastReadPage"
+          />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
     <ArchiveVolumeBatchRegisterModal
       v-model:open="batchRegisterOpen"
       :volume-id="volumeId"
@@ -737,6 +848,7 @@
 </template>
 
 <script setup lang="ts">
+import type { TreeProps } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveAccessStatusCode,
@@ -746,18 +858,21 @@ import type {
   ArchiveMaterialSubmissionStatusCode,
   ArchiveMaterialTypeCode,
   ArchiveSecurityLevelCode,
+  ArchiveVolumeAccessReadPageRequest,
   ArchiveVolumeAccessRecordVO,
+  ArchiveVolumeAppraisalRequest,
   ArchiveVolumeDetailVO,
   ArchiveVolumeEventTypeCode,
   ArchiveVolumeMaterialVO,
-  type ArchiveMaterialOcrStatusCode,
 } from '@/apis/mark/archive-volume'
+import type { PaperArchiveOcrStatusCode } from '@/apis/mark/paper-archive'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { uploadFile, downloadFile } from '@/apis/edu/file-management'
+import { downloadFile, uploadFile } from '@/apis/edu/file-management'
 import {
+  allowArchiveMaterialDelay,
   approveArchiveVolumeAccess,
   approveArchiveVolumeAppraisal,
   approveArchiveVolumeDestruction,
@@ -773,8 +888,6 @@ import {
   ARCHIVE_MATERIAL_SUBMISSION_STATUS_LABEL,
   ARCHIVE_MATERIAL_SUBMISSION_STATUS_TONE,
   ARCHIVE_MATERIAL_TYPE_LABEL,
-  ARCHIVE_MATERIAL_OCR_STATUS_LABEL,
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
   ARCHIVE_SCORE_COMPLETION_STATUS_LABEL,
   ARCHIVE_SECURITY_LEVEL_LABEL,
   ARCHIVE_TRANSFER_STATUS_LABEL,
@@ -786,19 +899,18 @@ import {
   ARCHIVE_VOLUME_STATUS_TONE,
   checkArchiveVolumeFourProperty,
   checkArchiveVolumeIntegrity,
-  allowArchiveMaterialDelay,
-  waiveArchiveMaterialMissing,
-  waiveArchiveVolumeIntegrity,
   confirmArchiveVolumeDestructionSupervision,
   confirmArchiveVolumeScoreCompletion,
+  downloadArchiveAccessMaterial,
   executeArchiveVolumeDestruction,
   exportArchiveVolume,
   getArchiveVolumeDetail,
-  downloadArchiveAccessMaterial,
   listArchiveVolumeAccessRecords,
+  previewArchiveAccessMaterial,
+  recordAccessReadPage,
   recordArchiveVolumeAppraisalOpinion,
-  registerArchiveVolumeMaterial,
   registerArchiveSharedMaterialRef,
+  registerArchiveVolumeMaterial,
   rejectArchiveVolumeAccess,
   rejectArchiveVolumeAppraisal,
   rejectArchiveVolumeTransfer,
@@ -806,27 +918,35 @@ import {
   requestArchiveVolumeAppraisal,
   requestArchiveVolumeDestruction,
   submitArchiveVolume,
+  syncTeachingAffairsScoreCompletion,
   triggerArchiveVolumeMaterialOcr,
+  waiveArchiveMaterialMissing,
+  waiveArchiveVolumeIntegrity,
 } from '@/apis/mark/archive-volume'
+import {
+  PAPER_ARCHIVE_OCR_STATUS_LABEL,
+  PAPER_ARCHIVE_OCR_STATUS_TONE,
+} from '@/apis/mark/paper-archive'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
-import ArchiveVolumeBatchRegisterModal from '@/views/teacher/archive-volume/archive-volume-batch-register-modal.vue'
-import ArchiveVolumeCourseSyncModal from '@/views/teacher/archive-volume/archive-volume-course-sync-modal.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/AlertStrip.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/ErrorRetryPanel.vue'
-import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
-import { canSubmitArchiveVolumeDetail } from '@/composables/useArchiveVolumeSubmitGate'
-import { useUserStore } from '@/stores/modules/user'
+import { canSubmitArchiveVolumeDetail, describeSubmitBlockReason, isScoreSubmitReady } from '@/composables/useArchiveVolumeSubmitGate'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { formatDateTime } from '@/utils/format'
+import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { handleBlobDownload } from '@/utils/file-download'
+import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import ArchiveVolumeBatchRegisterModal from '@/views/teacher/archive-volume/archive-volume-batch-register-modal.vue'
+import ArchiveVolumeCourseSyncModal from '@/views/teacher/archive-volume/archive-volume-course-sync-modal.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeDetail' })
 
@@ -835,19 +955,17 @@ const router = useRouter()
 const volumeId = computed(() => String(route.params.volumeId ?? ''))
 const userStore = useUserStore()
 const {
-  hasDuty,
   canApproveDestruction,
   canApproveAccessForVolume,
   canManageRemediationAsCoordinator,
-  hasDutyForDepartment,
   canReviewTransfer,
   canRejectTransfer,
+  grantsLoadFailed,
   loadGrants,
 } = useArchiveDutyAccess()
 const currentUserId = computed(() => String(userStore.userInfo?.userId ?? ''))
 
 const loading = ref(true)
-const loadError = ref('')
 const detail = ref<ArchiveVolumeDetailVO | null>(null)
 const activeTab = ref('materials')
 const checkingIntegrity = ref(false)
@@ -883,6 +1001,12 @@ const rejectAccessOpen = ref(false)
 const rejectAccessSubmitting = ref(false)
 const rejectAccessComment = ref('')
 const rejectAccessRecordId = ref('')
+const readPageModalOpen = ref(false)
+const readPageSubmitting = ref(false)
+const readPageForm = reactive<ArchiveVolumeAccessReadPageRequest>({
+  accessRecordId: '',
+  lastReadPage: 1,
+})
 const superviseRegisterFile = ref<File | null>(null)
 const superviseSubmitting = ref(false)
 const uploading = ref(false)
@@ -897,6 +1021,11 @@ const SCORE_MATERIAL_TYPES = new Set<ArchiveMaterialTypeCode>([
 const integrityResult = ref<Awaited<ReturnType<typeof checkArchiveVolumeIntegrity>> | null>(null)
 const fourPropertyResult = ref<Awaited<ReturnType<typeof checkArchiveVolumeFourProperty>> | null>(null)
 const scoreConfirmSubmitting = ref(false)
+const teachingAffairsSyncing = ref(false)
+const teachingAffairsSyncNo = ref('')
+const teachingAffairsSourceSystem = ref('TEACHING_AFFAIRS')
+const teachingAffairsProofFileId = ref('')
+const selectedCatalogKeys = ref<string[]>([])
 const accessRecords = ref<ArchiveVolumeAccessRecordVO[]>([])
 
 const uploadModalOpen = ref(false)
@@ -934,9 +1063,17 @@ const rejectAppraisalReason = ref('')
 const destructionReason = ref('')
 const destructionApprovalRemark = ref('')
 const destructionApprovalDecision = ref<'APPROVED' | 'REJECTED'>('APPROVED')
-const appraisalForm = reactive({
-  decision: 'RETAIN' as 'RETAIN' | 'DESTROY',
-  retentionExtensionYears: undefined as number | undefined,
+
+interface ArchiveVolumeAppraisalFormModel {
+  decision: ArchiveVolumeAppraisalRequest['decision']
+  retentionExtensionYears: ArchiveVolumeAppraisalRequest['retentionExtensionYears']
+  permanentRetention: boolean
+  remark: string
+}
+
+const appraisalForm = reactive<ArchiveVolumeAppraisalFormModel>({
+  decision: 'RETAIN',
+  retentionExtensionYears: undefined,
   permanentRetention: false,
   remark: '',
 })
@@ -959,6 +1096,55 @@ const scoreMaterials = computed(() =>
   (detail.value?.materials ?? []).filter(item => SCORE_MATERIAL_TYPES.has(item.materialType)),
 )
 
+interface CatalogTreeNode {
+  key: string
+  title: string
+}
+
+const catalogTreeNodes = computed((): CatalogTreeNode[] => {
+  const materials = detail.value?.materials ?? []
+  const missing = detail.value?.latestIntegrityCheck?.missingItems ?? []
+  const keySet = new Map<string, string>()
+  for (const item of missing) {
+    const key = item.catalogCode || item.materialType
+    keySet.set(key, `${item.catalogCode || materialTypeLabel(item.materialType)}（缺件）`)
+  }
+  for (const material of materials) {
+    const key = material.catalogCode || material.materialType
+    if (!keySet.has(key)) {
+      keySet.set(
+        key,
+        material.catalogCode
+          ? `${material.catalogCode} · ${materialTypeLabel(material.materialType)}`
+          : materialTypeLabel(material.materialType),
+      )
+    }
+  }
+  return Array.from(keySet.entries()).map(([key, title]) => ({ key, title }))
+})
+
+watch(catalogTreeNodes, (nodes) => {
+  if (nodes.length && selectedCatalogKeys.value.length === 0) {
+    selectedCatalogKeys.value = [nodes[0].key]
+  }
+})
+
+const filteredMaterials = computed(() => {
+  const materials = detail.value?.materials ?? []
+  const key = selectedCatalogKeys.value[0]
+  if (!key) return materials
+  return materials.filter(item => (item.catalogCode || item.materialType) === key)
+})
+
+const canSyncTeachingAffairs = computed(() => {
+  const detailValue = detail.value
+  if (!detailValue?.canManageMaterials) return false
+  const volume = detailValue.volume
+  if (volume.scoreSource === 'MARK_INTERNAL') return false
+  if (volume.volumeStatus !== 'DRAFT' && volume.volumeStatus !== 'COLLECTING') return false
+  return volume.scoreCompletionStatus === 'PENDING' || volume.scoreCompletionStatus === 'NOT_REQUIRED'
+})
+
 const displayedIntegrityResult = computed(() =>
   integrityResult.value ?? detail.value?.latestIntegrityCheck ?? null,
 )
@@ -968,12 +1154,35 @@ const displayedFourProperty = computed(() =>
 )
 
 const canConfirmScoreCompletion = computed(() => {
-  const vol = detail.value?.volume
-  if (!vol) return false
+  const d = detail.value
+  if (!d?.canManageMaterials) return false
+  const vol = d.volume
   if (vol.volumeStatus !== 'DRAFT' && vol.volumeStatus !== 'COLLECTING') return false
-  if (vol.responsibleUserId !== currentUserId.value) return false
   if (vol.scoreSource !== 'TEACHING_AFFAIRS' && vol.scoreSource !== 'OFFLINE_CONFIRMED') return false
   return vol.scoreCompletionStatus === 'PENDING'
+})
+
+const submitBlockReason = computed(() => {
+  const d = detail.value
+  if (!d) return null
+  return describeSubmitBlockReason({
+    volume: d.volume,
+    currentUserId: currentUserId.value,
+    fourPropertyStale: d.fourPropertyStale,
+    fourPropertyPassed: d.latestFourPropertyCheck?.overallPassed,
+    hasBlockingRemediationForSubmit: d.hasBlockingRemediationForSubmit,
+  })
+})
+
+const scoreSubmitBlockReason = computed(() => {
+  const d = detail.value
+  if (!d || d.volume.volumeStatus !== 'COLLECTING') return null
+  if (d.volume.responsibleUserId !== currentUserId.value) return null
+  if (isScoreSubmitReady(d.volume)) return null
+  if (d.volume.scoreSource === 'MARK_INTERNAL') {
+    return '线上阅卷双门禁未满足'
+  }
+  return '成绩证明未完成'
 })
 
 const scoreMaterialColumns: ColumnsType<ArchiveVolumeMaterialVO> = [
@@ -1003,11 +1212,21 @@ const missingColumns: ColumnsType<ArchiveIntegrityMissingItemVO> = [
   { title: '操作', key: 'missingActions', width: 180 },
 ]
 
+function missingRowKey(record: unknown): string {
+  const row = record as ArchiveIntegrityMissingItemVO
+  return `${row.materialType}-${row.catalogCode ?? ''}`
+}
+
+function missingTableRow(record: unknown): ArchiveIntegrityMissingItemVO {
+  return record as ArchiveIntegrityMissingItemVO
+}
+
 const accessColumns: ColumnsType<ArchiveVolumeAccessRecordVO> = [
   { title: '状态', key: 'accessStatus', width: 100 },
   { title: '原因', dataIndex: 'accessReason' },
+  { title: '最近阅读页', dataIndex: 'lastReadPage', width: 100 },
   { title: '批准时间', key: 'approvedTime', width: 160 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '操作', key: 'actions', width: 180 },
 ]
 
 const eventColumns: ColumnsType<ArchiveVolumeDetailVO['events'][number]> = [
@@ -1064,12 +1283,12 @@ function submissionStatusTone(code: ArchiveMaterialSubmissionStatusCode): BadgeT
   return strictEnumTone(ARCHIVE_MATERIAL_SUBMISSION_STATUS_TONE, code, 'submissionStatus')
 }
 
-function materialOcrStatusLabel(code: ArchiveMaterialOcrStatusCode) {
-  return strictEnumLabel(ARCHIVE_MATERIAL_OCR_STATUS_LABEL, code, 'ocrStatus')
+function materialOcrStatusLabel(code: PaperArchiveOcrStatusCode) {
+  return strictEnumLabel(PAPER_ARCHIVE_OCR_STATUS_LABEL, code, 'ocrStatus')
 }
 
-function materialOcrStatusTone(code: ArchiveMaterialOcrStatusCode): BadgeTone {
-  return strictEnumTone(ARCHIVE_MATERIAL_OCR_STATUS_TONE, code, 'ocrStatus')
+function materialOcrStatusTone(code: PaperArchiveOcrStatusCode): BadgeTone {
+  return strictEnumTone(PAPER_ARCHIVE_OCR_STATUS_TONE, code, 'ocrStatus')
 }
 
 function canRetryMaterialOcr(material: ArchiveVolumeMaterialVO): boolean {
@@ -1124,9 +1343,11 @@ watch(shouldPollMaterialOcr, (shouldPoll, wasPolling) => {
   }
 }, { immediate: true })
 
-function canApproveAccessRecord(_record: ArchiveVolumeAccessRecordVO) {
-  if (!detail.value) return false
-  return canApproveAccessForVolume(detail.value.volume)
+function canApproveAccessRecord(record: ArchiveVolumeAccessRecordVO) {
+  return canApproveAccessForVolume({
+    departmentId: record.departmentId,
+    securityLevel: record.securityLevel,
+  })
 }
 
 function accessStatusLabel(code: ArchiveAccessStatusCode) {
@@ -1188,28 +1409,31 @@ const canAllowMaterialDelay = computed(() => {
   return canManageRemediationAsCoordinator(d.volume)
 })
 
-const canWaiveMaterialMissing = computed(() => {
-  const d = detail.value
-  if (!d) return false
-  return hasDutyForDepartment('ARCHIVE_ADMIN', d.volume.departmentId)
-})
+const canWaiveMaterialMissing = computed(() => detail.value?.canManageArchiveAdmin === true)
 
 const canWaiveIntegrity = computed(() => {
   const d = detail.value
-  if (!d) return false
+  if (!d?.canManageArchiveAdmin) return false
   if (d.volume.integrityStatus === 'WAIVED') return false
   const status = d.volume.volumeStatus
-  if (status !== 'DRAFT' && status !== 'COLLECTING') return false
-  return hasDutyForDepartment('ARCHIVE_ADMIN', d.volume.departmentId)
+  return status === 'DRAFT' || status === 'COLLECTING'
 })
 
 const canRequestAccess = computed(() => detail.value?.volume.volumeStatus === 'STORED')
 
 const canRequestAppraisal = computed(() => {
-  const status = detail.value?.volume.appraisalStatus
-  return canManageAppraisal.value && (
-    status === 'NOT_DUE' || status === 'REMINDER_SENT' || status === 'REJECTED'
-  )
+  const vol = detail.value?.volume
+  if (!vol || !canManageAppraisal.value) return false
+  const status = vol.appraisalStatus
+  if (!(status === 'NOT_DUE' || status === 'REMINDER_SENT' || status === 'REJECTED')) {
+    return false
+  }
+  if (status === 'NOT_DUE') {
+    if (vol.permanentRetention) return false
+    if (!vol.retentionUntil) return false
+    return vol.retentionUntil <= new Date().toISOString().slice(0, 10)
+  }
+  return true
 })
 
 const canApproveAppraisal = computed(() =>
@@ -1225,13 +1449,18 @@ const canRecordAppraisalOpinion = computed(() =>
 const canRequestDestruction = computed(() =>
   canManageAppraisal.value
   && detail.value?.volume.appraisalStatus === 'OPINION_RECORDED'
+  && detail.value?.appraisalDecision === 'DESTROY'
   && (detail.value?.volume.destructionStatus === 'NONE'
     || detail.value?.volume.destructionStatus === 'FAILED'),
 )
 
-const canApproveDestructionAction = computed(() =>
-  canApproveDestruction.value && detail.value?.volume.destructionStatus === 'REQUESTED',
-)
+const canApproveDestructionAction = computed(() => {
+  if (!canApproveDestruction.value || detail.value?.volume.destructionStatus !== 'REQUESTED') {
+    return false
+  }
+  const requestUserId = detail.value?.destructionRequestUserId
+  return !(requestUserId && requestUserId === currentUserId.value);
+})
 
 const canExecuteDestruction = computed(() =>
   canApproveDestruction.value
@@ -1259,7 +1488,7 @@ function destructionStepDone(step: 'request' | 'approve' | 'execute' | 'supervis
   const status = detail.value?.volume.destructionStatus
   if (!status || status === 'NONE') return false
   if (step === 'request') {
-    return status !== 'NONE'
+    return true
   }
   if (step === 'approve') {
     return status === 'APPROVED' || status === 'EXECUTING' || status === 'EXECUTED'
@@ -1274,14 +1503,13 @@ function destructionStepDone(step: 'request' | 'approve' | 'execute' | 'supervis
 
 async function loadDetail(options?: { silent?: boolean }) {
   if (!volumeId.value) {
-    loadError.value = '缺少归档卷 ID'
+    showUserError(new Error('缺少归档卷 ID'), '缺少归档卷 ID')
     loading.value = false
     return
   }
   if (!options?.silent) {
     loading.value = true
   }
-  loadError.value = ''
   try {
     detail.value = await getArchiveVolumeDetail(volumeId.value)
     fourPropertyResult.value = detail.value.latestFourPropertyCheck ?? null
@@ -1290,7 +1518,7 @@ async function loadDetail(options?: { silent?: boolean }) {
   }
   catch (error) {
     if (!options?.silent) {
-      loadError.value = error instanceof Error ? error.message : '加载归档卷详情失败'
+      showUserError(error, '加载归档卷详情失败')
       detail.value = null
     }
   }
@@ -1317,6 +1545,50 @@ async function handleConfirmScoreCompletion() {
   }
   finally {
     scoreConfirmSubmitting.value = false
+  }
+}
+
+async function handleSyncTeachingAffairs() {
+  if (!volumeId.value) return
+  const externalSyncNo = teachingAffairsSyncNo.value.trim()
+  const externalSourceSystem = teachingAffairsSourceSystem.value.trim()
+  if (!externalSyncNo || !externalSourceSystem) {
+    message.warning('请填写外部同步单号与来源系统')
+    return
+  }
+  teachingAffairsSyncing.value = true
+  try {
+    await syncTeachingAffairsScoreCompletion({
+      volumeId: volumeId.value,
+      externalSyncNo,
+      externalSourceSystem,
+      scoreCompletionStatus: 'COMPLETED',
+      scoreProofFileId: teachingAffairsProofFileId.value.trim() || undefined,
+    })
+    message.success('教务成绩完成状态已同步')
+    await loadDetail()
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    teachingAffairsSyncing.value = false
+  }
+}
+
+const onCatalogSelect: TreeProps['onSelect'] = (keys) => {
+  const next = keys?.map(String) ?? []
+  selectedCatalogKeys.value = next.length ? [next[0]] : []
+}
+
+async function downloadTransferPackage() {
+  const fileId = detail.value?.latestTransferRecord?.transferPackageFileId
+  if (!fileId) return
+  try {
+    await downloadFile({ nodeId: fileId })
+  }
+  catch (error) {
+    showUserError(error, '下载移交包失败')
   }
 }
 
@@ -1502,23 +1774,115 @@ async function handleExport() {
 }
 
 async function handleAccessDownload(record: ArchiveVolumeAccessRecordVO) {
-  if (!record.materialId) {
+  const materialId = record.materialId
+  const downloadToken = record.downloadToken
+  if (!materialId) {
     message.error('查阅记录未绑定材料，无法下载')
     return
   }
-  if (!record.downloadToken) {
+  if (!downloadToken) {
     message.error('查阅记录缺少下载令牌，请重新申请或联系审批人')
     return
   }
   await handleBlobDownload(
     () => downloadArchiveAccessMaterial({
       accessRecordId: record.accessRecordId,
-      materialId: record.materialId,
-      downloadToken: record.downloadToken,
+      materialId,
+      downloadToken,
     }),
     'archive-access-material',
     { showSuccessMessage: true, successMessage: '材料下载已开始' },
   )
+}
+
+async function handleAccessPreview(record: ArchiveVolumeAccessRecordVO) {
+  const materialId = record.materialId
+  const downloadToken = record.downloadToken
+  if (!materialId) {
+    message.error('查阅记录未绑定材料，无法预览')
+    return
+  }
+  if (!downloadToken) {
+    message.error('查阅记录缺少下载令牌，请重新申请或联系审批人')
+    return
+  }
+  try {
+    const response = await previewArchiveAccessMaterial({
+      accessRecordId: record.accessRecordId,
+      materialId,
+      downloadToken,
+    })
+    if (response.status !== 200 || !response.data || response.data.size === 0) {
+      message.error('材料暂不能预览，请稍后重试')
+      return
+    }
+    if (response.data.type === 'text/plain' || response.data.type === 'application/json') {
+      message.error('材料暂不能预览，请稍后重试')
+      return
+    }
+    const url = window.URL.createObjectURL(response.data)
+    window.open(url, '_blank', 'noopener,noreferrer')
+    readPageForm.accessRecordId = record.accessRecordId
+    readPageForm.lastReadPage = record.lastReadPage ?? 1
+    readPageModalOpen.value = true
+  }
+  catch (error) {
+    showUserError(error, '材料预览失败')
+  }
+}
+
+function resetReadPageForm() {
+  readPageForm.accessRecordId = ''
+  readPageForm.lastReadPage = 1
+}
+
+function syncReadPageFormLastReadPage(value: string | number | null | undefined) {
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 1) {
+    readPageForm.lastReadPage = value
+  }
+}
+
+function syncAppraisalRetentionYears(value: string | number | null | undefined) {
+  if (value === null || value === undefined || value === '') {
+    appraisalForm.retentionExtensionYears = undefined
+    return
+  }
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (Number.isFinite(parsed) && parsed >= 1) {
+    appraisalForm.retentionExtensionYears = parsed
+  }
+}
+
+function closeReadPageModal() {
+  resetReadPageForm()
+}
+
+async function submitReadPage() {
+  if (!readPageForm.accessRecordId) {
+    readPageModalOpen.value = false
+    return
+  }
+  if (readPageForm.lastReadPage < 1) {
+    message.warning('请输入有效页码')
+    return
+  }
+  readPageSubmitting.value = true
+  try {
+    await recordAccessReadPage({
+      accessRecordId: readPageForm.accessRecordId,
+      lastReadPage: readPageForm.lastReadPage,
+    })
+    message.success('阅读页码已保存')
+    readPageModalOpen.value = false
+    resetReadPageForm()
+    await loadAccessRecords()
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    readPageSubmitting.value = false
+  }
 }
 
 async function handleApproveTransfer() {
@@ -2005,7 +2369,7 @@ onUnmounted(() => {
 .archive-volume-detail__stale-hint {
   margin-top: 8px;
   font-size: 13px;
-  color: var(--dp-warning, #b45309);
+  color: var(--dp-orange-700, #c2410c);
 }
 
 .archive-volume-detail__alert {
@@ -2032,6 +2396,42 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--dp-space-4, 16px);
+}
+
+.archive-volume-detail__catalog {
+  display: flex;
+  gap: var(--dp-space-4, 16px);
+  align-items: flex-start;
+}
+
+.archive-volume-detail__catalog-tree {
+  width: 280px;
+  flex-shrink: 0;
+  padding: var(--dp-space-3, 12px);
+  border: 1px solid var(--dp-border, #e5e7eb);
+  border-radius: var(--dp-radius-control, 8px);
+  background: var(--ant-color-bg-container, #fff);
+}
+
+.archive-volume-detail__catalog-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.archive-volume-detail__subheading {
+  margin: 0 0 var(--dp-space-2, 8px);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.archive-volume-detail__sync-form {
+  padding: var(--dp-space-3, 12px);
+  border: 1px solid var(--dp-border, #e5e7eb);
+  border-radius: var(--dp-radius-control, 8px);
+}
+
+.archive-volume-detail__sync-fields {
+  max-width: 480px;
 }
 
 .archive-volume-detail__toolbar,

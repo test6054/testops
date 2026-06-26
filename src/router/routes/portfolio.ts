@@ -9,6 +9,15 @@ import { PORTFOLIO_ROUTE_PREFIX } from '@/utils/portfolio-route'
 const TEACHER_ROLES = [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER]
 const ALL_ROLES = [RoleEnum.SUPER_ADMIN, ...TEACHER_ROLES]
 
+/** 侧栏「发展指标」分组 */
+const INDICATOR_MENU_GROUP = 'portfolio-indicator'
+const indicatorMenuMeta = {
+  menuGroup: INDICATOR_MENU_GROUP,
+  menuGroupTitle: '发展指标',
+  menuGroupIcon: 'bar-chart',
+  menuGroupOrder: 4,
+}
+
 export const portfolioRoutes: RouteRecordRaw[] = [
   {
     path: PORTFOLIO_ROUTE_PREFIX,
@@ -175,6 +184,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'table',
           hideInMenu: false,
           keepAlive: true,
+          ...indicatorMenuMeta,
         },
       },
       {
@@ -187,6 +197,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'setting',
           hideInMenu: false,
           keepAlive: true,
+          ...indicatorMenuMeta,
         },
       },
       {
@@ -199,6 +210,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'branches',
           hideInMenu: false,
           keepAlive: true,
+          ...indicatorMenuMeta,
         },
       },
       {
@@ -211,6 +223,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'rocket',
           hideInMenu: false,
           keepAlive: false,
+          ...indicatorMenuMeta,
         },
       },
       {
@@ -223,6 +236,20 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'history',
           hideInMenu: false,
           keepAlive: true,
+          ...indicatorMenuMeta,
+        },
+      },
+      {
+        path: 'admin/indicator/ops',
+        name: 'PortfolioIndicatorOps',
+        component: () => import('@/views/portfolio/indicator-ops-admin.vue'),
+        meta: {
+          title: '计分与审计',
+          roles: ALL_ROLES,
+          icon: 'audit',
+          hideInMenu: false,
+          keepAlive: true,
+          ...indicatorMenuMeta,
         },
       },
       {
@@ -235,6 +262,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'bar-chart',
           hideInMenu: false,
           keepAlive: true,
+          ...indicatorMenuMeta,
         },
       },
       {
@@ -247,6 +275,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'link',
           hideInMenu: false,
           keepAlive: true,
+          ...indicatorMenuMeta,
         },
       },
       {
@@ -257,6 +286,19 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           title: '资格评估',
           roles: ALL_ROLES,
           icon: 'safety-certificate',
+          hideInMenu: false,
+          keepAlive: true,
+          ...indicatorMenuMeta,
+        },
+      },
+      {
+        path: 'teacher/dual-teacher-apply',
+        name: 'PortfolioDualTeacherApply',
+        component: () => import('@/views/portfolio/dual-teacher-apply.vue'),
+        meta: {
+          title: '双师认定申请',
+          roles: ALL_ROLES,
+          icon: 'form',
           hideInMenu: false,
           keepAlive: true,
         },
@@ -305,6 +347,19 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           title: '年度规划',
           roles: ALL_ROLES,
           icon: 'calendar',
+          hideInMenu: false,
+          keepAlive: true,
+        },
+      },
+      {
+        path: 'admin/development-plan-review',
+        name: 'PortfolioDevelopmentPlanReview',
+        component: () => import('@/views/portfolio/development-plan-review.vue'),
+        meta: {
+          title: '规划审核',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'audit',
           hideInMenu: false,
           keepAlive: true,
         },

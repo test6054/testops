@@ -2,12 +2,15 @@
  * 阅卷考试试卷模板 API - 对接 /api/mark/exams/template 与答题卡模板接口。
  */
 import type { AxiosResponse } from 'axios'
-import type { QuestionTypeCode } from './grading-experience'
-import type { AnonymityModeCode } from './marking-organization'
+import type { AnonymityModeCode } from './anonymity-mode'
+import type { EffectiveStatusCode } from './effective-status'
+import type { QuestionTypeCode } from './question-type'
 import http from '@/config/axios'
 import { assertUserFacingFiniteNumber, assertUserFacingText } from '@/utils/contract-guard'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import { QUESTION_TYPE_LABEL } from './grading-experience'
+import { ANONYMITY_MODE_LABEL } from './anonymity-mode'
+import { EFFECTIVE_STATUS_LABEL } from './effective-status'
+import { QUESTION_TYPE_LABEL } from './question-type'
 
 const EXAM_TEMPLATE_DATA_ERROR = '试卷模板数据异常，请刷新后重试'
 
@@ -18,23 +21,6 @@ export const PAPER_TEMPLATE_NOT_CONFIGURED_CODE = 20014
 type MarkBusinessError = Error & {
   code?: number | string
   response?: AxiosResponse<ResultInfo<null>>
-}
-
-/** 生效状态编码 - 与后端 EffectiveStatus 枚举完全一致 */
-export type EffectiveStatusCode = 'DRAFT' | 'ACTIVE' | 'SUPERSEDED' | 'DISCARDED'
-
-/** 生效状态文案 - 与后端 EffectiveStatus 枚举完全一致 */
-export const EFFECTIVE_STATUS_LABEL: Record<EffectiveStatusCode, string> = {
-  DRAFT: '草稿',
-  ACTIVE: '已生效',
-  SUPERSEDED: '已被替换',
-  DISCARDED: '已废弃',
-}
-
-/** 主观题匿名模式文案 - 与后端 AnonymityMode 枚举完全一致 */
-export const SUBJECTIVE_ANONYMITY_MODE_LABEL: Record<AnonymityModeCode, string> = {
-  ANONYMOUS: '匿名',
-  NAMED: '实名',
 }
 
 /** 页面模板项 - 对应 ExamPageTemplateRequest */
@@ -145,7 +131,7 @@ function validateExamTemplateContract(record: ExamTemplateVO): ExamTemplateVO {
   assertUserFacingText(record.templateName, EXAM_TEMPLATE_DATA_ERROR)
   assertUserFacingFiniteNumber(record.totalPages, EXAM_TEMPLATE_DATA_ERROR)
   strictEnumLabel(EFFECTIVE_STATUS_LABEL, record.status, '试卷模板生效状态')
-  strictEnumLabel(SUBJECTIVE_ANONYMITY_MODE_LABEL, record.subjectiveAnonymityMode, '主观题匿名模式')
+  strictEnumLabel(ANONYMITY_MODE_LABEL, record.subjectiveAnonymityMode, '主观题匿名模式')
   if (!Array.isArray(record.pages)) {
     throw new TypeError(EXAM_TEMPLATE_DATA_ERROR)
   }

@@ -36,6 +36,7 @@ import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { getUserStatusLabel, USER_STATUS_CONFIG } from '@/types/enums/user-status'
 import { showUserError } from '@/utils/error-handler'
+import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -323,13 +324,7 @@ function openOneTable(userId: string) {
 async function exportRoster() {
   try {
     const result = await portfolioTeacherApi.exportRoster({ ...query })
-    const blob = new Blob([result.csvContent], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = result.fileName
-    link.click()
-    URL.revokeObjectURL(url)
+    await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   }
   catch (error) {

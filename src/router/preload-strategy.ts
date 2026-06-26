@@ -97,6 +97,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherArchiveVolumeDetail: () => import('@/views/teacher/archive-volume/archive-volume-detail.vue'),
   TeacherArchiveVolumeCreateOffline: () => import('@/views/teacher/archive-volume/archive-volume-create-offline.vue'),
   TeacherArchiveVolumeStatistics: () => import('@/views/teacher/archive-volume/archive-volume-statistics.vue'),
+  TeacherArchiveVolumeAudit: () => import('@/views/teacher/archive-volume/archive-volume-audit.vue'),
   TeacherArchiveVolumeLedger: () => import('@/views/teacher/archive-volume/archive-volume-ledger.vue'),
   TeacherArchiveVolumeSearch: () => import('@/views/teacher/archive-volume-search.vue'),
   TeacherArchiveSupervisionInspect: () => import('@/views/teacher/archive-supervision-inspect.vue'),
@@ -150,6 +151,8 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   PortfolioIndicatorEligibility: () => import('@/views/portfolio/indicator-eligibility.vue'),
   PortfolioIndicatorPublishWizard: () => import('@/views/portfolio/indicator-publish-wizard.vue'),
   PortfolioIndicatorHistory: () => import('@/views/portfolio/indicator-history.vue'),
+  PortfolioIndicatorOps: () => import('@/views/portfolio/indicator-ops-admin.vue'),
+  PortfolioIndicatorDashboard: () => import('@/views/portfolio/indicator-dashboard-admin.vue'),
   PortfolioTeacherIndicator: () => import('@/views/portfolio/teacher-indicator.vue'),
 }
 

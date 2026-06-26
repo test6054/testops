@@ -4,7 +4,17 @@ export interface PortfolioArchiveBagAssembleVO {
   archivedCategoryCount: number
   missingCategoryNames: string[]
   openGapTaskCount: number
+  latestMaterialPackageExport?: PortfolioArchiveBagLatestExportVO
   preview?: PortfolioArchiveBagPreviewVO
+}
+
+export interface PortfolioArchiveBagLatestExportVO {
+  exportLogId: string
+  exportType: string
+  exportedTime: string
+  fileNodeId: string
+  rowCount: number
+  attachmentCount: number
 }
 
 export interface PortfolioArchiveBagAttachmentVO {
@@ -58,17 +68,17 @@ export interface PortfolioArchiveBagPreviewVO {
   archivedCategoryCount: number
   totalAttachmentCount: number
   totalScore?: number
+  latestMaterialPackageExport?: PortfolioArchiveBagLatestExportVO
   sections: PortfolioArchiveBagSectionVO[]
   catalogItems: PortfolioArchiveBagItemVO[]
 }
 
 export interface PortfolioArchiveBagExportResultVO {
   fileName: string
-  csvContent: string
+  fileNodeId: string
   rowCount: number
-  catalogItemCount: number
-  attachmentCount: number
-  fileNodeId?: string
+  catalogItemCount?: number
+  attachmentCount?: number
 }
 
 export interface PortfolioArchiveScoreBreakdownItemVO {

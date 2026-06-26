@@ -120,7 +120,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { GradingExperienceCaseVO, QuestionTypeCode } from '@/apis/mark/grading-experience'
+import type { GradingExperienceCaseVO } from '@/apis/mark/grading-experience'
+import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import type { ExperienceEffectivenessEvalVO } from '@/apis/mark/school-quality'
 import type { UiBarChartItem, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -129,10 +130,10 @@ import { computed, reactive, ref, watch } from 'vue'
 import {
   EXPERIENCE_CASE_STATUS_LABEL,
   listExperiences,
-  QUESTION_TYPE_LABEL,
 } from '@/apis/mark/grading-experience'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import { evaluateExperienceEffectiveness, listExperienceEvals } from '@/apis/mark/school-quality'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamSelect from '@/components/mark/AnalysisExamSelect.vue'
@@ -370,13 +371,13 @@ function experienceCaseSummaryText(item: GradingExperienceCaseVO): string {
 }
 
 function analysisLatencyText(item: ExperienceEffectivenessEvalVO): string {
-  if (item.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
+  if (item.analysisStatus === 'PENDING') return '待分析，尚未生成耗时'
   if (item.analysisStatus === 'SUCCESS') return `${requireNumber(item.latencyMs, 'latencyMs')} ms`
   return '处理失败，未生成耗时'
 }
 
 function analysisTraceText(item: ExperienceEffectivenessEvalVO): string {
-  if (item.analysisStatus === 'PENDING') return '处理中，尚未生成追踪编号'
+  if (item.analysisStatus === 'PENDING') return '待分析，尚未生成追踪编号'
   if (item.analysisStatus === 'SUCCESS') return requireText(item.aiTraceId, 'aiTraceId')
   return '处理失败，未生成追踪编号'
 }

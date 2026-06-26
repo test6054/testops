@@ -4,9 +4,9 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
 import type { ExamQuestionTemplateVO } from '@/apis/mark/exam-template'
 import type { ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
+import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
 import type {
   AllocationUnitCode,
-  AnonymityModeCode,
   AnonymousTokenPolicyCode,
   ExamAllocationPlanPreviewVO,
   ExamAllocationPlanRequest,
@@ -38,10 +38,10 @@ import {
   isPaperTemplateNotConfiguredError,
 } from '@/apis/mark/exam-template'
 import { getImageLedgerDetail, normalizeImageLedgerDetail } from '@/apis/mark/image-ledger'
+import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
 import {
   ALLOCATION_UNIT_LABEL,
   ALLOCATION_UNIT_OPTIONS,
-  ANONYMITY_MODE_OPTIONS,
   ANONYMOUS_TOKEN_POLICY_OPTIONS,
   FORMAL_SESSION_STATUS_LABEL,
   FORMAL_SESSION_STATUS_TONE,

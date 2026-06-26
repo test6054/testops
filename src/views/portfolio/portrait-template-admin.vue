@@ -1,8 +1,17 @@
 <script setup lang="ts">
 import type { PortfolioPortraitTemplateVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioPortraitTemplateApi } from '@/apis/portfolio/teacher-platform'
+import type { PortfolioPortraitLayoutWidget } from '@/utils/portrait-layout'
+import {
+  defaultPortraitLayout,
+  mergeChartConfigIntoWidgets,
+  parsePortraitLayoutJson,
+  serializePortraitChartConfig,
+  serializePortraitLayout,
+} from '@/utils/portrait-layout'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
-import { portfolioPortraitTemplateApi } from '@/apis/portfolio/teacher-platform'
+import PortfolioPortraitLayoutEditor from '@/components/portfolio/PortfolioPortraitLayoutEditor.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -12,10 +21,10 @@ import { showUserError } from '@/utils/error-handler'
 const loading = ref(false)
 const templates = ref<PortfolioPortraitTemplateVO[]>([])
 const selectedId = ref<string>()
+const layoutWidgets = ref<PortfolioPortraitLayoutWidget[]>(defaultPortraitLayout())
 const form = reactive({
   templateName: '',
   academicYear: String(new Date().getFullYear()),
-  layoutJson: '[{"widget":"radar","x":0,"y":0,"w":6,"h":4},{"widget":"timeline","x":6,"y":0,"w":6,"h":4}]',
 })
 
 async function loadList() {
@@ -26,11 +35,9 @@ async function loadList() {
       selectedId.value = templates.value[0].id
       await loadDetail(selectedId.value)
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -41,9 +48,13 @@ async function loadDetail(id: string) {
     const detail = await portfolioPortraitTemplateApi.get({ id })
     form.templateName = detail.templateName
     form.academicYear = detail.academicYear ?? form.academicYear
-    form.layoutJson = detail.layoutJson ?? form.layoutJson
-  }
-  catch (error) {
+    layoutWidgets.value = detail.layoutJson
+      ? mergeChartConfigIntoWidgets(
+          parsePortraitLayoutJson(detail.layoutJson),
+          detail.chartConfigJson,
+        )
+      : defaultPortraitLayout()
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -53,18 +64,21 @@ async function saveTemplate() {
     message.warning('请填写模板名称')
     return
   }
+  if (!layoutWidgets.value.length) {
+    message.warning('请至少添加一个布局组件')
+    return
+  }
   try {
-    const id = await portfolioPortraitTemplateApi.save({
+    selectedId.value = await portfolioPortraitTemplateApi.save({
       id: selectedId.value,
       templateName: form.templateName.trim(),
       academicYear: form.academicYear,
-      layoutJson: form.layoutJson,
+      layoutJson: serializePortraitLayout(layoutWidgets.value),
+      chartConfigJson: serializePortraitChartConfig(layoutWidgets.value),
     })
-    selectedId.value = id
     message.success('画像模板已保存')
     await loadList()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -72,7 +86,7 @@ async function saveTemplate() {
 function newTemplate() {
   selectedId.value = undefined
   form.templateName = ''
-  form.layoutJson = '[{"widget":"radar","x":0,"y":0,"w":12,"h":6}]'
+  layoutWidgets.value = defaultPortraitLayout()
 }
 
 onMounted(loadList)
@@ -80,7 +94,7 @@ onMounted(loadList)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="画像模板设置" subtitle="拖拽布局 JSON 配置" />
+    <ContextBar title="画像模板设置" subtitle="可视化布局编辑" />
     <div class="layout">
       <UiCard title="模板列表" class="list">
         <a-spin :spinning="loading">
@@ -97,19 +111,15 @@ onMounted(loadList)
             </li>
           </ul>
         </a-spin>
-        <UiButton style="margin-top: 12px" @click="newTemplate">
-          新建模板
-        </UiButton>
+        <UiButton style="margin-top: 12px" @click="newTemplate"> 新建模板 </UiButton>
       </UiCard>
       <UiCard title="布局编辑">
         <div class="form-row">
-          <input v-model="form.templateName" class="input input--wide" placeholder="模板名称">
-          <input v-model="form.academicYear" class="input" placeholder="学年">
+          <input v-model="form.templateName" class="input input--wide" placeholder="模板名称" />
+          <input v-model="form.academicYear" class="input" placeholder="学年" />
         </div>
-        <textarea v-model="form.layoutJson" class="json-editor" rows="12" />
-        <UiButton variant="primary" style="margin-top: 12px" @click="saveTemplate">
-          保存
-        </UiButton>
+        <PortfolioPortraitLayoutEditor v-model:widgets="layoutWidgets" />
+        <UiButton variant="primary" style="margin-top: 12px" @click="saveTemplate"> 保存 </UiButton>
       </UiCard>
     </div>
   </StageWorkbenchShell>
@@ -152,14 +162,6 @@ onMounted(loadList)
 }
 .input--wide {
   flex: 1;
-}
-.json-editor {
-  width: 100%;
-  font-family: ui-monospace, monospace;
-  font-size: 13px;
-  padding: 8px;
-  border: 1px solid var(--ant-color-border, #d9d9d9);
-  border-radius: 4px;
 }
 @media (max-width: 900px) {
   .layout {

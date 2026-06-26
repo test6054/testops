@@ -552,14 +552,11 @@ import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamPaperBatchBindResultVO, ExamScannerDeviceVO } from '@/apis/mark/exam-mark-scanner'
 import type {
-  DuplicateResolutionStatusCode,
   ExamScannerBatchVO,
-  QualityDecisionCode,
   ScanAttentionItemVO,
   ScanAttentionQueryGroupCode,
   ScanAttentionSourceTypeCode,
   ScanAttentionTypeCode,
-  TaskStatusCode,
 } from '@/apis/mark/exam-scan'
 import type {
   CandidateStatusCode,
@@ -567,7 +564,6 @@ import type {
 } from '@/apis/mark/exam-scope'
 import type { ExamScoreSummaryItemVO } from '@/apis/mark/exam-score'
 import type { ScanLiveEventVO } from '@/apis/mark/scan-live'
-import type { GradeStatusCode } from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField, UiSectionTabItem, UiSelectOption } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
@@ -581,17 +577,23 @@ import { batchBindPapers, isScannerDeviceOnline, listActiveScannerDevices } from
 import {
   listScanAttentions,
   pageScannerBatches,
+  QUALITY_DECISION_LABEL,
+  QUALITY_DECISION_TONE,
   SCAN_BATCH_STATUS_LABEL,
   validateScanAttentionItemContract,
 } from '@/apis/mark/exam-scan'
 import {
+  DUPLICATE_RESOLUTION_STATUS_LABEL,
+  DUPLICATE_RESOLUTION_STATUS_TONE,
+} from '@/apis/mark/duplicate-resolution-status'
+import {
   CANDIDATE_STATUS_LABEL,
   listExamCandidates,
 } from '@/apis/mark/exam-scope'
-import {
-  FINAL_SCORE_STATUS_LABEL,
-  pageExamScoreSummary,
-} from '@/apis/mark/exam-score'
+import { pageExamScoreSummary } from '@/apis/mark/exam-score'
+import { FINAL_SCORE_STATUS_LABEL } from '@/apis/mark/final-score-status'
+import { GRADE_STATUS_LABEL, GRADE_STATUS_TONE } from '@/apis/mark/grade-status'
+import { TASK_STATUS_LABEL, TASK_STATUS_TONE } from '@/apis/mark/task-status'
 import { SCAN_EVENT_STATUS_LABEL, SCAN_EVENT_STATUS_TONE } from '@/apis/mark/scan-live'
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
@@ -1387,54 +1389,6 @@ function sourceTypeLabel(type: ScanAttentionSourceTypeCode): string {
 
 function assertNeverScanAttentionType(_type: never): never {
   throw toUserError(null, '扫描异常类型无法识别，请刷新后重试')
-}
-
-const QUALITY_DECISION_LABEL: Record<QualityDecisionCode, string> = {
-  PASS: '质量通过',
-  BLOCKED: '已阻断',
-}
-
-const QUALITY_DECISION_TONE: Record<QualityDecisionCode, BadgeTone> = {
-  PASS: 'green',
-  BLOCKED: 'red',
-}
-
-const TASK_STATUS_LABEL: Record<TaskStatusCode, string> = {
-  PENDING: '待处理',
-  PROCESSING: '处理中',
-  COMPLETED: '已完成',
-  BLOCKED: '已阻断',
-  FAILED: '处理失败',
-}
-
-const TASK_STATUS_TONE: Record<TaskStatusCode, BadgeTone> = {
-  PENDING: 'orange',
-  PROCESSING: 'blue',
-  COMPLETED: 'green',
-  BLOCKED: 'red',
-  FAILED: 'red',
-}
-
-const DUPLICATE_RESOLUTION_STATUS_LABEL: Record<DuplicateResolutionStatusCode, string> = {
-  PENDING: '待处置',
-  RESOLVED: '已处置',
-}
-
-const DUPLICATE_RESOLUTION_STATUS_TONE: Record<DuplicateResolutionStatusCode, BadgeTone> = {
-  PENDING: 'orange',
-  RESOLVED: 'green',
-}
-
-const GRADE_STATUS_LABEL: Record<GradeStatusCode, string> = {
-  PENDING: '待阅卷',
-  NEED_REVIEW: '待复核',
-  CONFIRMED: '已确认',
-}
-
-const GRADE_STATUS_TONE: Record<GradeStatusCode, BadgeTone> = {
-  PENDING: 'orange',
-  NEED_REVIEW: 'blue',
-  CONFIRMED: 'green',
 }
 
 function scanAttentionStatusLabel(record: ScanAttentionItemVO): string {

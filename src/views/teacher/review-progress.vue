@@ -205,7 +205,7 @@ import {
   REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
   REVIEW_TASK_STATUS_TONE as STATUS_TONE,
 } from '@/apis/mark/exam-review-task'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkDistributionSection from '@/components/chart/MarkDistributionSection.vue'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'

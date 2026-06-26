@@ -30,7 +30,7 @@ async function loadPage() {
       pageSize: 50,
       materialType: 'CERTIFICATE',
     })
-    rows.value = readPageList(page)
+    rows.value = readPageList(page, '加载培训档案失败')
   }
   catch (error) {
     showUserError(error)

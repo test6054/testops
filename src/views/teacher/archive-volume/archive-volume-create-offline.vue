@@ -109,11 +109,13 @@ import {
   ARCHIVE_SECURITY_LEVEL_LABEL,
   createOfflineArchiveVolume,
 } from '@/apis/mark/archive-volume'
-import UiFormActions from '@/components/ui-guide/ui/FormActions.vue'
+import UiFormActions from '@/components/ui-guide/ui/UiFormActions.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeCreateOffline' })
 

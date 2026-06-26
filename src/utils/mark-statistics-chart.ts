@@ -7,7 +7,7 @@ import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis
 import type { BadgeTone, UiBarChartItem, UiScatterSeries, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import type { MarkHeatmapCell } from '@/utils/mark-echarts-options'
 import { COURSE_OBJECTIVE_DIMENSION_LABEL } from '@/apis/mark/cross-exam-analysis'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import { rateTone } from '@/utils/score-tone'
 import { strictEnumLabel } from '@/utils/strict-enum'
 

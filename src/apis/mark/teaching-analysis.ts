@@ -1,5 +1,8 @@
-import type { QuestionTypeCode } from './grading-experience'
-import type { FinalScoreStatusCode, MasteryLevelCode } from './student-exam'
+import type { AiAnalysisStatusCode } from './ai-analysis-status'
+import type { AnalysisScopeTypeCode } from './analysis-scope-type'
+import type { FinalScoreStatusCode } from './final-score-status'
+import type { MasteryLevelCode } from './student-mastery-level'
+import type { QuestionTypeCode } from './question-type'
 /**
  * AI 教学分析 API - 对接 edu-mark 模块 TeachingAnalysisController
  *
@@ -10,16 +13,9 @@ import type { FinalScoreStatusCode, MasteryLevelCode } from './student-exam'
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
-import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 /** 教学分析类型 */
 export type TeachingAnalysisTypeCode = 'TEACHING_IMPROVEMENT' | 'CLASS_WEAKNESS' | 'STUDENT_LEARNING_PROFILE'
-
-/** 分析范围类型 */
-export type AnalysisScopeTypeCode = 'EXAM' | 'CLASS' | 'COURSE' | 'QUESTION' | 'QUESTION_TYPE' | 'STUDENT'
-
-/** AI 分析状态 */
-export type AiAnalysisStatusCode = 'PENDING' | 'SUCCESS' | 'FAILED' | 'BLOCKED'
 
 /** 教学改进严重程度 */
 export type TeachingImprovementSeverityCode = 'HIGH' | 'MEDIUM' | 'LOW'
@@ -32,36 +28,10 @@ export const TEACHING_ANALYSIS_TYPE_LABEL: Record<TeachingAnalysisTypeCode, stri
 }
 
 /** 教学分析类型徽标颜色 */
-export const TEACHING_ANALYSIS_TYPE_COLOR: Record<TeachingAnalysisTypeCode, BadgeTone> = {
+export const TEACHING_ANALYSIS_TYPE_TONE: Record<TeachingAnalysisTypeCode, BadgeTone> = {
   TEACHING_IMPROVEMENT: 'blue',
   CLASS_WEAKNESS: 'orange',
   STUDENT_LEARNING_PROFILE: 'purple',
-}
-
-/** AI 分析状态文案映射 */
-export const AI_ANALYSIS_STATUS_LABEL: Record<AiAnalysisStatusCode, string> = {
-  PENDING: '处理中',
-  SUCCESS: '成功',
-  FAILED: '失败',
-  BLOCKED: '已阻断',
-}
-
-/** AI 分析状态徽标颜色 */
-export const AI_ANALYSIS_STATUS_COLOR: Record<AiAnalysisStatusCode, BadgeTone> = {
-  PENDING: 'orange',
-  SUCCESS: 'green',
-  FAILED: 'red',
-  BLOCKED: 'red',
-}
-
-/** AI 分析状态中文文案，未知状态直接暴露合同错误 */
-export function aiAnalysisStatusLabel(status: AiAnalysisStatusCode): string {
-  return strictEnumLabel(AI_ANALYSIS_STATUS_LABEL, status, 'AI 分析状态')
-}
-
-/** AI 分析状态徽标颜色，未知状态直接暴露合同错误 */
-export function aiAnalysisStatusColor(status: AiAnalysisStatusCode): BadgeTone {
-  return strictEnumTone(AI_ANALYSIS_STATUS_COLOR, status, 'AI 分析状态')
 }
 
 /** 教学改进内容条目 */

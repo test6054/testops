@@ -153,13 +153,13 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import {
-  COURSE_ACHIEVEMENT_STATUS_COLOR,
+  COURSE_ACHIEVEMENT_STATUS_TONE,
   COURSE_ACHIEVEMENT_STATUS_LABEL,
   COURSE_OBJECTIVE_DIMENSION_LABEL,
   generateAchievement,
   listAchievements,
 } from '@/apis/mark/cross-exam-analysis'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
@@ -333,7 +333,7 @@ function formatPercent(value: number): string {
 
 function latencyText(value: CourseObjectiveAchievementVO): string {
   if (value.latencyMs != null) return `${value.latencyMs} ms`
-  if (value.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
+  if (value.analysisStatus === 'PENDING') return '待分析，尚未生成耗时'
   return '分析未完成，暂无耗时'
 }
 
@@ -359,7 +359,7 @@ function achievementStatusLabel(status: CourseAchievementStatusCode): string {
 }
 
 function achievementStatusColor(status: CourseAchievementStatusCode): BadgeTone {
-  return strictEnumTone(COURSE_ACHIEVEMENT_STATUS_COLOR, status, '课程目标达成状态')
+  return strictEnumTone(COURSE_ACHIEVEMENT_STATUS_TONE, status, '课程目标达成状态')
 }
 
 function objectiveDimensionLabel(item: CourseAchievementItemVO): string {

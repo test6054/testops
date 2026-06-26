@@ -1,8 +1,0 @@
-export {default as BookOpen} from './BookOpen.vue'
-export {default as ClockIcon} from './ClockIcon.vue'
-export {default as DownloadIcon} from './DownloadIcon.vue'
-export {default as FileCheckIcon} from './FileCheckIcon.vue'
-export {default as FileText} from './FileText.vue'
-export {default as FileTextIcon} from './FileText.vue'
-export {default as PlayIcon} from './PlayIcon.vue'
-export {default as SendIcon} from './SendIcon.vue'

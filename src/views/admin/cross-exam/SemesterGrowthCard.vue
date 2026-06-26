@@ -165,15 +165,15 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { ANALYSIS_SCOPE_TYPE_LABEL } from '@/apis/mark/analysis-scope-type'
 import {
-  ANALYSIS_SCOPE_TYPE_LABEL,
   generateClassGrowth,
   listGrowth,
-  SEMESTER_GROWTH_TREND_COLOR,
+  SEMESTER_GROWTH_TREND_TONE,
   SEMESTER_GROWTH_TREND_LABEL,
 } from '@/apis/mark/cross-exam-analysis'
 import { getExamDetail } from '@/apis/mark/exam'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
@@ -399,7 +399,7 @@ function trendLabel(trend: SemesterGrowthTrendCode | undefined): string {
 }
 
 function trendColor(trend: SemesterGrowthTrendCode | undefined): BadgeTone {
-  return strictEnumTone(SEMESTER_GROWTH_TREND_COLOR, trend, '学期能力成长趋势')
+  return strictEnumTone(SEMESTER_GROWTH_TREND_TONE, trend, '学期能力成长趋势')
 }
 
 function scopeTypeLabel(scopeType: SemesterAbilityGrowthVO['scopeType']): string {
@@ -408,7 +408,7 @@ function scopeTypeLabel(scopeType: SemesterAbilityGrowthVO['scopeType']): string
 
 function latencyText(value: SemesterAbilityGrowthVO): string {
   if (value.latencyMs != null) return `${value.latencyMs} ms`
-  if (value.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
+  if (value.analysisStatus === 'PENDING') return '待分析，尚未生成耗时'
   return '分析未完成，暂无耗时'
 }
 

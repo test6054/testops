@@ -31,7 +31,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { ResultCode } from '@/types/enums/result-code'
-import { getUserErrorMessage, readBusinessResultCode, showUserError } from '@/utils/error-handler'
+import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
 import {
   buildPortraitCohortRangeChartOption,
   buildPortraitCompositeTrendChartOption,
@@ -50,8 +50,6 @@ const portrait = ref<PortfolioTeacherPortraitVO | null>(null)
 const cohort = ref<PortfolioTeacherPortraitCohortCompareVO | null>(null)
 const trend = ref<PortfolioTeacherPortraitTrendVO | null>(null)
 const portraitAbsent = ref(false)
-const cohortError = ref('')
-const trendError = ref('')
 const detailOpen = ref(false)
 const indicatorDetail = ref<PortfolioTeacherPortraitIndicatorDetailVO | null>(null)
 
@@ -119,8 +117,6 @@ async function loadSecondaryPortraitData() {
     return
   }
   const request = buildPortraitRequest()
-  cohortError.value = ''
-  trendError.value = ''
   const [cohortSettled, trendSettled] = await Promise.allSettled([
     portfolioAnalysisApi.getPortraitCohortCompare(request),
     portfolioAnalysisApi.getPortraitTrend({ ...request, limit: 12 }),
@@ -130,14 +126,14 @@ async function loadSecondaryPortraitData() {
   }
   else {
     cohort.value = null
-    cohortError.value = getUserErrorMessage(cohortSettled.reason, '加载同群体对比失败')
+    showUserError(cohortSettled.reason, '加载同群体对比失败')
   }
   if (trendSettled.status === 'fulfilled') {
     trend.value = trendSettled.value
   }
   else {
     trend.value = null
-    trendError.value = getUserErrorMessage(trendSettled.reason, '加载历史趋势失败')
+    showUserError(trendSettled.reason, '加载历史趋势失败')
   }
 }
 
@@ -147,8 +143,6 @@ async function loadPortraitBundle() {
     portrait.value = null
     cohort.value = null
     trend.value = null
-    cohortError.value = ''
-    trendError.value = ''
     return
   }
   loading.value = true
@@ -156,8 +150,6 @@ async function loadPortraitBundle() {
   portrait.value = null
   cohort.value = null
   trend.value = null
-  cohortError.value = ''
-  trendError.value = ''
   try {
     const request = buildPortraitRequest()
     portrait.value = await portfolioAnalysisApi.getPortrait(request)
@@ -290,16 +282,6 @@ onMounted(() => {
           chart-min-height="320"
         >
           <UiAlert
-            v-if="cohortError"
-            type="error"
-            class="teacher-portrait__section-alert"
-          >
-            {{ cohortError }}
-            <UiButton variant="ghost" size="sm" class="teacher-portrait__retry" @click="loadSecondaryPortraitData">
-              重试
-            </UiButton>
-          </UiAlert>
-          <UiAlert
             v-else-if="cohort?.displayMode === 'INSUFFICIENT'"
             type="warning"
             class="teacher-portrait__cohort-alert"
@@ -314,7 +296,6 @@ onMounted(() => {
             {{ cohortHint }}
           </UiAlert>
           <MarkChart
-            v-if="!cohortError"
             :option="cohortRangeOption"
             height="320px"
             aria-label="教师画像同群体区间对比图"
@@ -330,18 +311,7 @@ onMounted(() => {
         chart-min-height="280"
         class="teacher-portrait__trend"
       >
-        <UiAlert
-          v-if="trendError"
-          type="error"
-          class="teacher-portrait__section-alert"
-        >
-          {{ trendError }}
-          <UiButton variant="ghost" size="sm" class="teacher-portrait__retry" @click="loadSecondaryPortraitData">
-            重试
-          </UiButton>
-        </UiAlert>
         <MarkChart
-          v-else
           :option="trendOption"
           height="280px"
           aria-label="教师画像综合分历史趋势图"
@@ -497,14 +467,6 @@ onMounted(() => {
 
 .teacher-portrait__cohort-alert {
   margin: 0 var(--dp-space-4, 16px) var(--dp-space-3, 12px);
-}
-
-.teacher-portrait__section-alert {
-  margin: 0 var(--dp-space-4, 16px) var(--dp-space-3, 12px);
-}
-
-.teacher-portrait__retry {
-  margin-left: var(--dp-space-2, 8px);
 }
 
 .teacher-portrait__dimensions {

@@ -11,6 +11,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
+import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 
 const router = useRouter()
 const sceneCode = ref<PfSceneCode>('PERFORMANCE')
@@ -119,6 +120,20 @@ async function publish() {
   }
 }
 
+async function exportImpact() {
+  if (!impactReportId.value) {
+    return
+  }
+  try {
+    const result = await portfolioIndicatorTenantApi.exportImpactReport({ id: impactReportId.value })
+    await downloadPortfolioIndicatorExcelExport(result)
+    message.success('影响报告已导出')
+  }
+  catch (error) {
+    showUserError(error)
+  }
+}
+
 onMounted(loadReadiness)
 </script>
 
@@ -152,7 +167,10 @@ onMounted(loadReadiness)
         </UiButton>
       </div>
       <div v-else-if="step === 2" class="actions">
-        <UiButton variant="primary" :loading="previewing" @click="runImpactPreview">
+        <UiButton @click="router.push({ name: 'PortfolioIndicatorOps' })">
+          计分与审计
+        </UiButton>
+        <UiButton :loading="previewing" variant="primary" @click="runImpactPreview">
           生成影响报告
         </UiButton>
       </div>
@@ -164,8 +182,11 @@ onMounted(loadReadiness)
           <span>移除 {{ impactSummary.removedCount ?? 0 }}</span>
         </div>
         <pre v-if="impactReport?.indicatorSummaryJson" class="impact-json">{{ impactReport.indicatorSummaryJson }}</pre>
-        <UiButton variant="primary" :loading="publishing" @click="publish">
+        <UiButton :loading="publishing" @click="publish">
           确认发布
+        </UiButton>
+        <UiButton v-if="impactReportId" @click="exportImpact">
+          导出影响报告
         </UiButton>
       </div>
     </UiCard>

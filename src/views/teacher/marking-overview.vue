@@ -63,14 +63,6 @@
       :description="contractError"
     />
     <template v-else>
-      <a-alert
-        v-if="loadError"
-        type="error"
-        show-icon
-        :message="loadError"
-        class="marking-overview__alert"
-      />
-
       <a-spin :spinning="loading && !overview">
         <UiSkeletonState
           v-if="loading && !overview"
@@ -171,7 +163,6 @@ const userStore = useUserStore()
 
 const loading = ref(false)
 const contractError = ref('')
-const loadError = ref('')
 const overview = ref<MarkTeacherDashboardOverviewVO | null>(null)
 const defaultYearSemester = getDefaultAcademicYearAndSemester()
 const emptyMarkingProgressSummary: MarkTeacherDashboardMarkingProgressSummaryVO = {
@@ -248,7 +239,6 @@ function isFilterRangeError(error: unknown): boolean {
 async function load(options?: { rollbackFilterOnError?: boolean }) {
   loading.value = true
   contractError.value = ''
-  loadError.value = ''
   try {
     const data = await loadTeacherDashboardOverview({ ...filter.value })
     assertTenantContract(data)
@@ -284,7 +274,6 @@ async function load(options?: { rollbackFilterOnError?: boolean }) {
       filter.value = { ...committedFilter.value }
     }
     if (!(failure instanceof TypeError)) {
-      loadError.value = failure instanceof Error ? failure.message : '阅卷概览加载失败'
       showUserError(failure, '阅卷概览加载失败')
     } else {
       overview.value = null

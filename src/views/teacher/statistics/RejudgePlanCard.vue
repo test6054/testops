@@ -137,7 +137,7 @@ import {
   approveRejudgePlan,
   executeRejudgePlan,
   listRejudgePlans,
-  REJUDGE_PLAN_STATUS_COLOR,
+  REJUDGE_PLAN_STATUS_TONE,
   REJUDGE_PLAN_STATUS_LABEL,
   REJUDGE_PLAN_STATUS_OPTIONS,
   REJUDGE_TRIGGER_TYPE_LABEL,
@@ -356,7 +356,7 @@ function affectedQuestionSummary(row: ExamRejudgePlanVO): string {
 }
 
 function planStatusColor(code: RejudgePlanStatusCode): BadgeTone {
-  return strictEnumTone(REJUDGE_PLAN_STATUS_COLOR, code, '重判计划状态')
+  return strictEnumTone(REJUDGE_PLAN_STATUS_TONE, code, '重判计划状态')
 }
 
 function planStatusLabel(code: RejudgePlanStatusCode): string {

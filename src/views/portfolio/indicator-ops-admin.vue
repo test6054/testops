@@ -1,0 +1,464 @@
+<script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import type {
+  PortfolioEligibilityEvalLogVO,
+  PortfolioIndicatorAutoCollectResultVO,
+  PortfolioIndicatorComputeLogVO,
+  PortfolioIndicatorScoreComputeResult,
+  PortfolioPublishImpactReportVO,
+  PortfolioTenantConfigAuditLogVO,
+} from '@/apis/portfolio/indicator-types'
+import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
+import PortfolioIndicatorExplainDrawer from '@/components/portfolio/PortfolioIndicatorExplainDrawer.vue'
+import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { showUserError } from '@/utils/error-handler'
+import { defaultTemplateParams, serializeTemplateParams } from '@/utils/indicator-template-params'
+import { readPageList, readPageTotal } from '@/utils/page-result'
+import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
+
+const activeTab = ref('trial')
+const route = useRoute()
+const loading = ref(false)
+const computing = ref(false)
+const computeResult = ref<PortfolioIndicatorScoreComputeResult | null>(null)
+const explainOpen = ref(false)
+const explainText = ref('')
+const explainStructJson = ref('')
+
+const trialForm = reactive({
+  ruleType: 'LINEAR_CAP',
+  indicatorCode: 'T001',
+  rawValue: 8,
+  auditRequired: false,
+  auditApproved: true,
+})
+const trialParams = ref<PortfolioIndicatorTemplateParams>(defaultTemplateParams('LINEAR_CAP'))
+
+const snapshotForm = reactive({
+  teacherId: '',
+  snapshotId: '',
+  indicatorCode: 'T001',
+  rawValue: 8,
+  auditRequired: false,
+  auditApproved: true,
+})
+
+const diffForm = reactive({ snapshotIdA: '', snapshotIdB: '' })
+
+const computeLogs = ref<PortfolioIndicatorComputeLogVO[]>([])
+const auditLogs = ref<PortfolioTenantConfigAuditLogVO[]>([])
+const evalLogs = ref<PortfolioEligibilityEvalLogVO[]>([])
+const impactReports = ref<PortfolioPublishImpactReportVO[]>([])
+const pageQuery = reactive({ pageNum: 1, pageSize: 20 })
+const computeTotal = ref(0)
+const auditTotal = ref(0)
+const evalTotal = ref(0)
+const impactTotal = ref(0)
+const collectTeacherId = ref('')
+const collectResult = ref<PortfolioIndicatorAutoCollectResultVO | null>(null)
+const collectColumns: ColumnsType = [
+  { title: '指标', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 88 },
+  { title: '通道', dataIndex: 'channelCode', key: 'channelCode', width: 120 },
+  { title: '采集', dataIndex: 'collected', key: 'collected', width: 72 },
+  { title: '原始值', dataIndex: 'rawValue', key: 'rawValue', width: 88 },
+  { title: '说明', dataIndex: 'skipReason', key: 'skipReason' },
+]
+
+const computeColumns: ColumnsType = [
+  { title: '教师', dataIndex: 'teacherId', key: 'teacherId', width: 100 },
+  { title: '指标', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 88 },
+  { title: '得分', dataIndex: 'finalScore', key: 'finalScore', width: 80 },
+  { title: '时间', dataIndex: 'computedTime', key: 'computedTime', width: 160 },
+  { title: '操作', key: 'actions', width: 72 },
+]
+
+const auditColumns: ColumnsType = [
+  { title: '业务', dataIndex: 'bizType', key: 'bizType', width: 120 },
+  { title: '键', dataIndex: 'bizKey', key: 'bizKey', width: 120 },
+  { title: '操作', dataIndex: 'operation', key: 'operation', width: 100 },
+  { title: '时间', dataIndex: 'createTime', key: 'createTime', width: 160 },
+]
+
+const evalColumns: ColumnsType = [
+  { title: '教师', dataIndex: 'teacherId', key: 'teacherId', width: 100 },
+  { title: '规则', dataIndex: 'eligibilityCode', key: 'eligibilityCode', width: 140 },
+  { title: '结论', key: 'eligible', width: 80 },
+  { title: '时间', dataIndex: 'evaluatedTime', key: 'evaluatedTime', width: 160 },
+  { title: '操作', key: 'actions', width: 72 },
+]
+
+const impactColumns: ColumnsType = [
+  { title: '场景', dataIndex: 'sceneCode', key: 'sceneCode', width: 100 },
+  { title: '状态', dataIndex: 'reportStatus', key: 'reportStatus', width: 100 },
+  { title: '过期', dataIndex: 'expiredTime', key: 'expiredTime', width: 160 },
+  { title: 'ID', dataIndex: 'id', key: 'id' },
+  { title: '操作', key: 'actions', width: 80 },
+]
+
+function showComputeResult(result: PortfolioIndicatorScoreComputeResult) {
+  computeResult.value = result
+  explainText.value = result.explainText
+  explainStructJson.value = result.explainStructJson
+}
+
+async function runTrial() {
+  computing.value = true
+  try {
+    const result = await portfolioIndicatorTenantApi.computeTrial({
+      ...trialForm,
+      paramsJson: serializeTemplateParams(trialParams.value),
+    })
+    showComputeResult(result)
+    message.success(`试算得分 ${result.finalScore}`)
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    computing.value = false
+  }
+}
+
+async function runSnapshotCompute() {
+  computing.value = true
+  try {
+    const result = await portfolioIndicatorTenantApi.computeSnapshot({ ...snapshotForm })
+    showComputeResult(result)
+    message.success(`正式计分 ${result.finalScore}`)
+    await loadComputeLogs()
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    computing.value = false
+  }
+}
+
+async function loadComputeLogs() {
+  loading.value = true
+  try {
+    const page = await portfolioIndicatorTenantApi.pageComputeLog(pageQuery)
+    computeLogs.value = readPageList(page, '计分日志加载失败')
+    computeTotal.value = readPageTotal(page)
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+async function loadAuditLogs() {
+  loading.value = true
+  try {
+    const page = await portfolioIndicatorTenantApi.pageAuditLog(pageQuery)
+    auditLogs.value = readPageList(page, '审计日志加载失败')
+    auditTotal.value = readPageTotal(page)
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+async function loadEvalLogs() {
+  loading.value = true
+  try {
+    const page = await portfolioIndicatorTenantApi.pageEvalLog(pageQuery)
+    evalLogs.value = readPageList(page, '评估日志加载失败')
+    evalTotal.value = readPageTotal(page)
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+async function loadImpactReports() {
+  loading.value = true
+  try {
+    const page = await portfolioIndicatorTenantApi.pageImpactReport(pageQuery)
+    impactReports.value = readPageList(page, '影响报告加载失败')
+    impactTotal.value = readPageTotal(page)
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+async function openExplain(logId: string, logType: 'SCORE' | 'ELIGIBILITY', teacherId: string, text?: string) {
+  explainText.value = text ?? ''
+  explainStructJson.value = ''
+  try {
+    explainStructJson.value = await portfolioIndicatorTenantApi.getExplain({ logId, logType, teacherId })
+    explainOpen.value = true
+  }
+  catch (error) {
+    showUserError(error)
+  }
+}
+
+async function exportSnapshotDiff() {
+  if (!diffForm.snapshotIdA || !diffForm.snapshotIdB) {
+    message.warning('请填写两个快照 ID')
+    return
+  }
+  try {
+    const result = await portfolioIndicatorTenantApi.exportSnapshotDiff({
+      snapshotIdA: diffForm.snapshotIdA,
+      snapshotIdB: diffForm.snapshotIdB,
+    })
+    await downloadPortfolioIndicatorExcelExport(result)
+    message.success(`已导出 ${result.rowCount} 条差异`)
+  }
+  catch (error) {
+    showUserError(error)
+  }
+}
+
+async function exportImpact(id: string) {
+  try {
+    const result = await portfolioIndicatorTenantApi.exportImpactReport({ id })
+    await downloadPortfolioIndicatorExcelExport(result)
+    message.success('影响报告已导出')
+  }
+  catch (error) {
+    showUserError(error)
+  }
+}
+
+async function runAutoCollect() {
+  if (!collectTeacherId.value.trim()) {
+    message.warning('请填写教师 ID')
+    return
+  }
+  loading.value = true
+  try {
+    const result = await portfolioIndicatorTenantApi.autoCollect({
+      teacherId: collectTeacherId.value.trim(),
+    })
+    collectResult.value = result
+    message.success(`采集 ${result.collectedCount} 条，跳过 ${result.skippedCount} 条`)
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+function onTabChange(key: string | number) {
+  activeTab.value = String(key)
+  pageQuery.pageNum = 1
+  if (activeTab.value === 'compute-log') {
+    loadComputeLogs()
+  }
+  else if (activeTab.value === 'audit-log') {
+    loadAuditLogs()
+  }
+  else if (activeTab.value === 'eval-log') {
+    loadEvalLogs()
+  }
+  else if (activeTab.value === 'impact') {
+    loadImpactReports()
+  }
+}
+
+onMounted(() => {
+  const snapshotId = route.query.snapshotId
+  if (typeof snapshotId === 'string' && snapshotId) {
+    snapshotForm.snapshotId = snapshotId
+    activeTab.value = 'snapshot'
+  }
+  loadComputeLogs()
+})
+</script>
+
+<template>
+  <StageWorkbenchShell>
+    <ContextBar title="指标计分与审计" subtitle="试算 · 快照计分 · 日志 · 导出" />
+    <UiCard>
+      <a-tabs :active-key="activeTab" @change="onTabChange">
+        <a-tab-pane key="trial" tab="规则试算">
+          <div class="form-grid">
+            <a-input v-model:value="trialForm.ruleType" placeholder="规则类型" />
+            <a-input v-model:value="trialForm.indicatorCode" placeholder="指标编码" />
+            <a-input-number v-model:value="trialForm.rawValue" placeholder="原始值" style="width: 120px" />
+            <a-switch v-model:checked="trialForm.auditRequired" checked-children="需审核" un-checked-children="免审" />
+            <a-switch v-model:checked="trialForm.auditApproved" checked-children="已通过" un-checked-children="未通过" />
+          </div>
+          <PortfolioIndicatorTemplateParamsForm
+            :rule-type="trialForm.ruleType"
+            :params="trialParams"
+            style="margin-top: 12px"
+            @update:params="trialParams = $event"
+          />
+          <UiButton variant="primary" :loading="computing" style="margin-top: 12px" @click="runTrial">
+            执行试算
+          </UiButton>
+        </a-tab-pane>
+        <a-tab-pane key="snapshot" tab="快照计分">
+          <div class="form-grid">
+            <a-input v-model:value="snapshotForm.teacherId" placeholder="教师 ID" />
+            <a-input v-model:value="snapshotForm.snapshotId" placeholder="快照 ID" />
+            <a-input v-model:value="snapshotForm.indicatorCode" placeholder="指标编码" />
+            <a-input-number v-model:value="snapshotForm.rawValue" placeholder="原始值" style="width: 120px" />
+          </div>
+          <UiButton variant="primary" :loading="computing" style="margin-top: 12px" @click="runSnapshotCompute">
+            正式计分
+          </UiButton>
+        </a-tab-pane>
+        <a-tab-pane key="diff" tab="快照对比">
+          <div class="form-grid">
+            <a-input v-model:value="diffForm.snapshotIdA" placeholder="快照 A ID" />
+            <a-input v-model:value="diffForm.snapshotIdB" placeholder="快照 B ID" />
+            <UiButton @click="exportSnapshotDiff">
+              导出差异 CSV
+            </UiButton>
+          </div>
+        </a-tab-pane>
+        <a-tab-pane key="compute-log" tab="计分日志">
+          <UiDataTable :columns="computeColumns" :data-source="computeLogs" :loading="loading" row-key="id">
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'actions'">
+                <a @click="openExplain(record.id, 'SCORE', record.teacherId, record.explainText)">解释</a>
+              </template>
+            </template>
+          </UiDataTable>
+          <a-pagination
+            v-model:current="pageQuery.pageNum"
+            :total="computeTotal"
+            :page-size="pageQuery.pageSize"
+            style="margin-top: 12px"
+            @change="loadComputeLogs"
+          />
+        </a-tab-pane>
+        <a-tab-pane key="audit-log" tab="配置审计">
+          <UiDataTable :columns="auditColumns" :data-source="auditLogs" :loading="loading" row-key="id" />
+          <a-pagination
+            v-model:current="pageQuery.pageNum"
+            :total="auditTotal"
+            :page-size="pageQuery.pageSize"
+            style="margin-top: 12px"
+            @change="loadAuditLogs"
+          />
+        </a-tab-pane>
+        <a-tab-pane key="eval-log" tab="资格评估日志">
+          <UiDataTable :columns="evalColumns" :data-source="evalLogs" :loading="loading" row-key="id">
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'eligible'">
+                <UiTag :tone="record.eligible ? 'green' : 'red'">
+                  {{ record.eligible ? '通过' : '不通过' }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <a @click="openExplain(record.id, 'ELIGIBILITY', record.teacherId, record.explainText)">解释</a>
+              </template>
+            </template>
+          </UiDataTable>
+          <a-pagination
+            v-model:current="pageQuery.pageNum"
+            :total="evalTotal"
+            :page-size="pageQuery.pageSize"
+            style="margin-top: 12px"
+            @change="loadEvalLogs"
+          />
+        </a-tab-pane>
+        <a-tab-pane key="collect" tab="来源采集">
+          <div class="form-grid">
+            <a-input v-model:value="collectTeacherId" placeholder="教师 userId" />
+            <UiButton variant="primary" :loading="loading" @click="runAutoCollect">
+              执行自动采集
+            </UiButton>
+          </div>
+          <p v-if="collectResult" class="collect-summary">
+            成功 {{ collectResult.collectedCount }} · 跳过 {{ collectResult.skippedCount }}
+          </p>
+          <UiDataTable
+            v-if="collectResult"
+            :columns="collectColumns"
+            :data-source="collectResult.items"
+            row-key="indicatorCode"
+            style="margin-top: 12px"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'collected'">
+                <UiTag :tone="record.collected ? 'green' : 'gray'">
+                  {{ record.collected ? '是' : '否' }}
+                </UiTag>
+              </template>
+            </template>
+          </UiDataTable>
+        </a-tab-pane>
+        <a-tab-pane key="impact" tab="影响报告">
+          <UiDataTable :columns="impactColumns" :data-source="impactReports" :loading="loading" row-key="id">
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'actions'">
+                <a @click="exportImpact(record.id)">导出</a>
+              </template>
+            </template>
+          </UiDataTable>
+          <a-pagination
+            v-model:current="pageQuery.pageNum"
+            :total="impactTotal"
+            :page-size="pageQuery.pageSize"
+            style="margin-top: 12px"
+            @change="loadImpactReports"
+          />
+        </a-tab-pane>
+      </a-tabs>
+      <div v-if="computeResult" class="result-panel">
+        <p>原始分 {{ computeResult.rawScore }} → 最终分 {{ computeResult.finalScore }}</p>
+        <p v-if="computeResult.auditPending">
+          待审核
+        </p>
+        <p>{{ computeResult.explainText }}</p>
+        <UiButton @click="explainOpen = true">
+          结构化解释
+        </UiButton>
+      </div>
+    </UiCard>
+    <PortfolioIndicatorExplainDrawer
+      v-model:open="explainOpen"
+      :explain-text="explainText"
+      :explain-struct-json="explainStructJson"
+    />
+  </StageWorkbenchShell>
+</template>
+
+<style scoped>
+.form-grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  align-items: center;
+}
+.result-panel {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--ant-color-fill-quaternary, #f5f5f5);
+  border-radius: 4px;
+  font-size: 13px;
+}
+</style>

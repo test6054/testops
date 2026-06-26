@@ -546,11 +546,11 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
 import type { ExamDetailVO } from '@/apis/mark/exam'
+import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
 import type {
   AllocationPolicySaveRequest,
   AllocationPolicyVO,
   AllocationUnitCode,
-  AnonymityModeCode,
   AnonymousTokenPolicyCode,
   FormalSessionVO,
   MarkingAllocationModeCode,
@@ -571,8 +571,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { adminGetUserPage } from '@/apis/edu/admin-user'
 import { getExamDetail } from '@/apis/mark/exam'
 import { getExamTemplate } from '@/apis/mark/exam-template'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
-import { ALLOCATION_UNIT_LABEL, ANONYMITY_MODE_LABEL, ANONYMOUS_TOKEN_POLICY_LABEL, closeQuestionGroup, deleteOrganization, deleteQuestionGroup, getOrganizationById, isMarkingOrgNotCreatedError, listFormalSessions, listMarkingPolicies, MARKING_ALLOCATION_MODE_LABEL, MARKING_ORGANIZATION_STATUS_LABEL, MARKING_ORGANIZATION_STATUS_TONE, MARKING_REASSIGN_MODE_LABEL, QUESTION_GROUP_STATUS_LABEL, QUESTION_GROUP_STATUS_TONE, saveAllocationPolicy, saveQuestionGroup, saveRecyclePolicy, updateOrganization, validateFormalSessionContract, validateMarkingOrganizationContract, validateMarkingPolicyListContract } from '@/apis/mark/marking-organization'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
+import { ANONYMITY_MODE_LABEL, ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
+import { ALLOCATION_UNIT_LABEL, ANONYMOUS_TOKEN_POLICY_LABEL, closeQuestionGroup, deleteOrganization, deleteQuestionGroup, getOrganizationById, isMarkingOrgNotCreatedError, listFormalSessions, listMarkingPolicies, MARKING_ALLOCATION_MODE_LABEL, MARKING_ORGANIZATION_STATUS_LABEL, MARKING_ORGANIZATION_STATUS_TONE, MARKING_REASSIGN_MODE_LABEL, QUESTION_GROUP_STATUS_LABEL, QUESTION_GROUP_STATUS_TONE, saveAllocationPolicy, saveQuestionGroup, saveRecyclePolicy, updateOrganization, validateFormalSessionContract, validateMarkingOrganizationContract, validateMarkingPolicyListContract } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInfoGrid from '@/components/ui-guide/ui/InfoGrid.vue'
@@ -1218,11 +1219,6 @@ const ALLOCATION_MODE_OPTIONS = Object.entries(MARKING_ALLOCATION_MODE_LABEL).ma
 )
 
 const ALLOCATION_UNIT_OPTIONS = Object.entries(ALLOCATION_UNIT_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
-
-const ANONYMITY_MODE_OPTIONS = Object.entries(ANONYMITY_MODE_LABEL).map(([value, label]) => ({
   value,
   label,
 }))

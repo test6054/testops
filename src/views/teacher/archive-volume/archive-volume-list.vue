@@ -20,6 +20,14 @@
             迎评统计
           </UiButton>
           <UiButton
+            v-if="canViewStatisticsKpi"
+            variant="outline"
+            size="sm"
+            @click="goAudit"
+          >
+            审计查询
+          </UiButton>
+          <UiButton
             v-if="hasDuty('COLLEGE_COORDINATOR')"
             variant="outline"
             size="sm"
@@ -33,7 +41,7 @@
     </template>
 
     <template v-if="showSignalBand" #signal>
-      <SignalBand :metrics="signalMetrics" compact />
+      <SignalBand :metrics="signalMetrics" compact @metric-click="handleSignalMetricClick" />
     </template>
 
     <UiSectionTabs v-model="listTab" :items="visibleListTabs" compact>
@@ -44,6 +52,14 @@
       <ArchiveVolumeRemediationPanel v-else-if="listTab === 'remediation'" />
 
       <section v-else class="archive-volume-list__panel">
+        <UiAlertStrip
+          v-if="listTab === 'mine' && openRemediationTasks.length"
+          tone="warning"
+          title="待整改任务"
+          :description="`当前有 ${openRemediationTasks.length} 项开放整改任务待处理`"
+          dense
+          class="archive-volume-list__alert"
+        />
         <UiSectionTabs
           v-if="listTab === 'archive'"
           v-model="archiveSubTab"
@@ -60,14 +76,8 @@
           <UiButton size="sm" variant="outline" @click="openBatchReject">批量退回</UiButton>
         </UiBatchActionBar>
 
-        <UiErrorRetryPanel
-          v-if="grantsLoadFailed && showVolumeFilter && archiveSubTab !== 'pending-access' && archiveSubTab !== 'search'"
-          description="岗位职责加载失败，无法确定院系筛选范围"
-          @retry="initPage"
-        />
-
         <UiFilterBar
-          v-else-if="showVolumeFilter && archiveSubTab !== 'pending-access' && archiveSubTab !== 'search'"
+          v-if="showVolumeFilter && archiveSubTab !== 'pending-access' && archiveSubTab !== 'search'"
           v-model="filterModel"
           :fields="filterFields"
           search-text="查询"
@@ -75,14 +85,8 @@
           @reset="handleReset"
         />
 
-        <UiErrorRetryPanel
-          v-else-if="listLoadError && archiveSubTab !== 'pending-access' && archiveSubTab !== 'search'"
-          :description="listLoadError"
-          @retry="loadVolumes"
-        />
-
         <UiDataTable
-          v-else-if="archiveSubTab !== 'pending-access' && archiveSubTab !== 'search'"
+          v-if="archiveSubTab !== 'pending-access' && archiveSubTab !== 'search'"
           v-model:current="pagination.pageNum"
           v-model:page-size="pagination.pageSize"
           :columns="tableColumns"
@@ -162,14 +166,8 @@
           </template>
         </UiDataTable>
 
-        <UiErrorRetryPanel
-          v-else-if="archiveSubTab === 'pending-access' && pendingAccessError"
-          :description="pendingAccessError"
-          @retry="loadPendingAccess"
-        />
-
         <UiDataTable
-          v-else-if="archiveSubTab === 'pending-access'"
+          v-if="archiveSubTab === 'pending-access'"
           pagination-mode="none"
           :columns="pendingAccessColumns"
           :data-source="pendingAccessRecords"
@@ -197,7 +195,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTextAction
-                v-if="canApproveAccess"
+                v-if="canApproveAccessForVolume({ departmentId: record.departmentId, securityLevel: record.securityLevel })"
                 tone="primary"
                 @click="goDetail(record.volumeId)"
               >
@@ -258,6 +256,14 @@
             >
               验收通过
             </UiButton>
+            <UiButton
+              v-if="reviewerDetail.latestTransferRecord?.transferPackageFileId"
+              size="sm"
+              variant="outline"
+              @click="downloadReviewerTransferPackage"
+            >
+              下载移交包
+            </UiButton>
             <UiButton size="sm" variant="outline" @click="openReviewerFullDetail">打开完整详情</UiButton>
           </div>
         </template>
@@ -280,18 +286,24 @@ import type {
   ArchiveAccessStatusCode,
   ArchiveAppraisalStatusCode,
   ArchiveIntegrityStatusCode,
+  ArchiveRemediationTaskVO,
   ArchiveTransferStatusCode,
   ArchiveVolumeAccessRecordVO,
+  ArchiveVolumeDetailVO,
+  ArchiveVolumePageRequest,
   ArchiveVolumeSourceTypeCode,
   ArchiveVolumeStatusCode,
   ArchiveVolumeVO,
 } from '@/apis/mark/archive-volume'
+import type {TenantSchoolDepartmentDto} from '@/apis/quality/user-catalog';
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
+  approveArchiveVolumeTransfer,
   ARCHIVE_ACCESS_STATUS_LABEL,
   ARCHIVE_ACCESS_STATUS_TONE,
   ARCHIVE_APPRAISAL_STATUS_LABEL,
@@ -304,23 +316,25 @@ import {
   ARCHIVE_VOLUME_SOURCE_TYPE_TONE,
   ARCHIVE_VOLUME_STATUS_LABEL,
   ARCHIVE_VOLUME_STATUS_TONE,
-  approveArchiveVolumeTransfer,
   batchRejectArchiveVolumeTransfer,
   getArchiveVolumeDetail,
   getArchiveVolumeStatistics,
+  listOpenRemediationTasks,
   listPendingArchiveAccessRecords,
   pageArchiveVolumes,
   pageOverdueArchiveVolumes,
-  type ArchiveVolumeDetailVO,
+  remindArchiveDue,
 } from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
-import UiBatchActionBar from '@/components/ui-guide/ui/UiBatchActionBar.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/ErrorRetryPanel.vue'
+import { requireArrayResult } from '@/components/quality/selectors/page-contract'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
-import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiBatchActionBar from '@/components/ui-guide/ui/UiBatchActionBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -328,15 +342,14 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { canSubmitArchiveVolumeRow } from '@/composables/useArchiveVolumeSubmitGate'
 import { useUserStore } from '@/stores/modules/user'
-import ArchiveVolumeRemediationPanel from '@/views/teacher/archive-volume/archive-volume-remediation-panel.vue'
-import ArchiveVolumeExternalImportPanel from '@/views/teacher/archive-volume/archive-volume-external-import-panel.vue'
-import ArchiveVolumeSettings from '@/views/teacher/archive-volume/archive-volume-settings.vue'
-import ArchiveVolumeSupervisionPanel from '@/views/teacher/archive-volume/archive-volume-supervision-panel.vue'
-import { requireArrayResult } from '@/components/quality/selectors/page-contract'
-import { formatDateTime } from '@/utils/format'
 import { showUserError } from '@/utils/error-handler'
+import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import ArchiveVolumeExternalImportPanel from '@/views/teacher/archive-volume/archive-volume-external-import-panel.vue'
+import ArchiveVolumeRemediationPanel from '@/views/teacher/archive-volume/archive-volume-remediation-panel.vue'
+import ArchiveVolumeSettings from '@/views/teacher/archive-volume/archive-volume-settings.vue'
+import ArchiveVolumeSupervisionPanel from '@/views/teacher/archive-volume/archive-volume-supervision-panel.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeList' })
 
@@ -353,7 +366,7 @@ const {
   canViewArchiveReviewer,
   canViewSupervision,
   canManageConfig,
-  canApproveAccess,
+  canApproveAccessForVolume,
   canRejectTransfer,
   canReviewTransfer,
   canViewStatisticsKpi,
@@ -380,11 +393,10 @@ const reviewerApproving = ref(false)
 const reviewerDetail = ref<ArchiveVolumeDetailVO | null>(null)
 const reviewerVolumeId = ref('')
 const volumes = ref<ArchiveVolumeVO[]>([])
+const openRemediationTasks = ref<ArchiveRemediationTaskVO[]>([])
 const pendingAccessRecords = ref<ArchiveVolumeAccessRecordVO[]>([])
 const selectedVolumeIds = ref<string[]>([])
 const pagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
-const listLoadError = ref('')
-const pendingAccessError = ref('')
 const allDepartmentOptions = ref<Array<{ value: string, label: string }>>([])
 const kpiCollectingCount = ref<number | string>('—')
 const kpiPendingTransferCount = ref<number | string>('—')
@@ -469,7 +481,13 @@ const signalMetrics = computed<SignalMetric[]>(() => [
   { key: 'collecting', label: '待提交', value: kpiCollectingCount.value },
   { key: 'pending', label: '待验收', value: kpiPendingTransferCount.value },
   { key: 'missing', label: '缺项', value: kpiMissingCount.value },
-  { key: 'overdue', label: '逾期', value: kpiOverdueCount.value },
+  {
+    key: 'overdue',
+    label: '逾期',
+    value: kpiOverdueCount.value,
+    tone: 'red',
+    clickable: canViewCollegeBoard.value || canViewArchiveReviewer.value,
+  },
 ])
 
 const emptyDescription = computed(() => {
@@ -634,7 +652,7 @@ function shouldRemindVolume(record: ArchiveVolumeVO) {
 
 async function loadDepartments() {
   try {
-    const departments = requireArrayResult(await departmentCatalogApi.list(), '院系')
+    const departments = requireArrayResult<TenantSchoolDepartmentDto>(await departmentCatalogApi.list(), '院系')
     allDepartmentOptions.value = departments.map(item => ({
       value: item.id,
       label: item.deptName,
@@ -720,20 +738,28 @@ async function loadVolumes() {
     return
   }
   loading.value = true
-  listLoadError.value = ''
   try {
-    const request = {
-      keyword: filterModel.keyword.trim() || undefined,
-      departmentId: filterModel.departmentId,
-      academicYearSemester: filterModel.academicYearSemester.trim() || undefined,
-      sourceType: filterModel.sourceType,
-      volumeStatus: filterModel.volumeStatus,
-      integrityStatus: filterModel.integrityStatus,
-      transferStatus: filterModel.transferStatus,
-      pageNum: pagination.pageNum,
-      pageSize: pagination.pageSize,
-    }
-    if (listTab.value === 'archive') {
+    const isOverdueTab = archiveSubTab.value === 'overdue' && listTab.value === 'archive'
+    const request: ArchiveVolumePageRequest = isOverdueTab
+      ? {
+          keyword: filterModel.keyword.trim() || undefined,
+          departmentId: filterModel.departmentId,
+          academicYearSemester: filterModel.academicYearSemester.trim() || undefined,
+          pageNum: pagination.pageNum,
+          pageSize: pagination.pageSize,
+        }
+      : {
+          keyword: filterModel.keyword.trim() || undefined,
+          departmentId: filterModel.departmentId,
+          academicYearSemester: filterModel.academicYearSemester.trim() || undefined,
+          sourceType: filterModel.sourceType,
+          volumeStatus: filterModel.volumeStatus,
+          integrityStatus: filterModel.integrityStatus,
+          transferStatus: filterModel.transferStatus,
+          pageNum: pagination.pageNum,
+          pageSize: pagination.pageSize,
+        }
+    if (!isOverdueTab && listTab.value === 'archive') {
       if (archiveSubTab.value === 'pending-transfer') {
         request.transferStatus = 'PENDING_REVIEW'
       }
@@ -744,13 +770,13 @@ async function loadVolumes() {
         request.appraisalStatus = filterModel.appraisalStatus
       }
     }
-    else if (filterModel.appraisalStatus) {
+    else if (!isOverdueTab && filterModel.appraisalStatus) {
       request.appraisalStatus = filterModel.appraisalStatus
     }
     if (listTab.value === 'mine') {
       request.mineOnly = true
     }
-    const result = archiveSubTab.value === 'overdue' && listTab.value === 'archive'
+    const result = isOverdueTab
       ? await pageOverdueArchiveVolumes(request)
       : await pageArchiveVolumes(request)
     volumes.value = readPageList(result, '归档卷列表异常，请刷新后重试')
@@ -760,7 +786,7 @@ async function loadVolumes() {
     }
   }
   catch (error) {
-    listLoadError.value = error instanceof Error ? error.message : '加载归档卷列表失败'
+    showUserError(error, '加载归档卷列表失败')
     volumes.value = []
     pagination.total = 0
   }
@@ -771,12 +797,11 @@ async function loadVolumes() {
 
 async function loadPendingAccess() {
   pendingAccessLoading.value = true
-  pendingAccessError.value = ''
   try {
     pendingAccessRecords.value = await listPendingArchiveAccessRecords()
   }
   catch (error) {
-    pendingAccessError.value = error instanceof Error ? error.message : '加载待审批查阅失败'
+    showUserError(error, '加载待审批查阅失败')
     pendingAccessRecords.value = []
   }
   finally {
@@ -793,6 +818,7 @@ async function refreshAll() {
     return
   }
   await loadVolumes()
+  await loadOpenRemediationTasks()
 }
 
 async function initPage() {
@@ -919,7 +945,39 @@ async function approveTransferInDrawer() {
 }
 
 function remindVolume(record: ArchiveVolumeVO) {
-  void goDetail(record.volumeId)
+  void (async () => {
+    try {
+      await remindArchiveDue(record.volumeId)
+      message.success('催办通知已发送')
+    }
+    catch (error) {
+      showUserError(error, '催办失败')
+    }
+  })()
+}
+
+async function downloadReviewerTransferPackage() {
+  const fileId = reviewerDetail.value?.latestTransferRecord?.transferPackageFileId
+  if (!fileId) return
+  try {
+    await downloadFile({ nodeId: fileId })
+  }
+  catch (error) {
+    showUserError(error, '下载移交包失败')
+  }
+}
+
+async function loadOpenRemediationTasks() {
+  if (listTab.value !== 'mine') {
+    openRemediationTasks.value = []
+    return
+  }
+  try {
+    openRemediationTasks.value = await listOpenRemediationTasks()
+  }
+  catch {
+    openRemediationTasks.value = []
+  }
 }
 
 function goSearch() {
@@ -930,8 +988,19 @@ function goStatistics() {
   void router.push({ name: 'TeacherArchiveVolumeStatistics' })
 }
 
+function goAudit() {
+  void router.push({ name: 'TeacherArchiveVolumeAudit' })
+}
+
 function goCreateOffline() {
   void router.push({ name: 'TeacherArchiveVolumeCreateOffline' })
+}
+
+function handleSignalMetricClick(key: string) {
+  if (key !== 'overdue') return
+  if (!canViewCollegeBoard.value && !canViewArchiveReviewer.value) return
+  listTab.value = 'archive'
+  archiveSubTab.value = 'overdue'
 }
 
 watch(listTab, (tab) => {
@@ -949,6 +1018,13 @@ watch([listTab, archiveSubTab], (values, oldValues) => {
   const [, oldSubTab] = oldValues ?? []
   if (subTab === 'due-appraisal') {
     filterModel.appraisalStatus = undefined
+  }
+  if (subTab === 'overdue') {
+    filterModel.volumeStatus = undefined
+    filterModel.integrityStatus = undefined
+    filterModel.transferStatus = undefined
+    filterModel.appraisalStatus = undefined
+    filterModel.sourceType = undefined
   }
   if (subTab === 'search' && oldSubTab !== 'search') {
     goSearch()

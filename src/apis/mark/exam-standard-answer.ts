@@ -1,11 +1,11 @@
-import type { EffectiveStatusCode } from './exam-template'
+import type { EffectiveStatusCode } from './effective-status'
 /**
  * 阅卷考试标准答案 API - 对接 /api/mark/exams/standard-answer/*。
  */
 import http from '@/config/axios'
 import { assertUserFacingFiniteNumber, assertUserFacingText } from '@/utils/contract-guard'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import { EFFECTIVE_STATUS_LABEL } from './exam-template'
+import { EFFECTIVE_STATUS_LABEL } from './effective-status'
 
 const STANDARD_ANSWER_DATA_ERROR = '标准答案数据异常，请刷新后重试'
 

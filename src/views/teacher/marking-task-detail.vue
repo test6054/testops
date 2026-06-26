@@ -351,9 +351,9 @@ import type {
 } from '@/apis/mark/exam'
 import type { QualityDecisionCode } from '@/apis/mark/exam-scan'
 import type { PaperInstanceDisplayVO } from '@/apis/mark/exam-score'
+import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
 import type {
   AllocationUnitCode,
-  AnonymityModeCode,
   AnonymousRevealVO,
   MarkingQuestionScoreSubmitItem,
   MarkingQuestionViewVO,
@@ -384,9 +384,9 @@ import {
   QUALITY_DECISION_LABEL,
   QUALITY_DECISION_TONE,
 } from '@/apis/mark/exam-scan'
+import { ANONYMITY_MODE_LABEL } from '@/apis/mark/anonymity-mode'
 import {
   ALLOCATION_UNIT_LABEL,
-  ANONYMITY_MODE_LABEL,
   getMarkingQuestionView,
   getMarkingTaskDetail,
   MARKING_TASK_STATUS_LABEL as STATUS_LABEL,

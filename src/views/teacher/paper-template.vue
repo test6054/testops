@@ -503,7 +503,7 @@ import type {
   ExamQuestionTemplateRequest,
   ExamQuestionTemplateVO,
 } from '@/apis/mark/exam-template'
-import type { QuestionTypeCode } from '@/apis/mark/grading-experience'
+import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import type { ExamAnswerEffectiveConfigVO } from '@/apis/mark/question-analysis'
 import type { ExamTemplatePageRow } from '@/components/mark/ExamTemplatePageTable.vue'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
@@ -526,7 +526,7 @@ import {
   isPaperTemplateNotConfiguredError,
   saveExamTemplate,
 } from '@/apis/mark/exam-template'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import { revokePaperMaster } from '@/apis/mark/paper-master'
 import { confirmAnswerEffective, getEffectiveAnswerConfig } from '@/apis/mark/question-analysis'
 import ExamTemplatePageTable from '@/components/mark/ExamTemplatePageTable.vue'

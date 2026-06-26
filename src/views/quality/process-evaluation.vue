@@ -63,7 +63,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const nodeColumns: ColumnsType = [
@@ -284,7 +284,6 @@ async function changeNodeStatus(record: ProcessEvaluationNodeVO, target: Confirm
 
 const records = ref<ProcessEvaluationRecordVO[]>([])
 const recordsLoading = ref(false)
-const recordsError = ref<Error | null>(null)
 const recordFilterForm = reactive<{ status?: ConfirmationStatus }>({
   status: undefined,
 })
@@ -309,11 +308,9 @@ const recordFilterFields: FilterField[] = [
 async function loadRecords() {
   if (!selectedNode.value) {
     records.value = []
-    recordsError.value = null
     return
   }
   recordsLoading.value = true
-  recordsError.value = null
   try {
     const result = await processRecordApi.listByNode(
       selectedNode.value.id,
@@ -321,13 +318,13 @@ async function loadRecords() {
     )
     if (!isRecordStudentContractValid(result)) {
       records.value = []
-      recordsError.value = toUserError(null, '过程性评价数据异常，请刷新后重试')
+      showUserError(null, '过程性评价数据异常，请刷新后重试')
       return
     }
     records.value = result
   } catch (err) {
     records.value = []
-    recordsError.value = toUserError(err, '过程性评价记录加载失败')
+    showUserError(err, '过程性评价记录加载失败')
   } finally {
     recordsLoading.value = false
   }
@@ -485,7 +482,6 @@ async function handleImportFinished() {
 
 const confirmedByGoalVisible = ref(false)
 const confirmedByGoalLoading = ref(false)
-const confirmedByGoalError = ref<Error | null>(null)
 const confirmedByGoalId = ref<string>('')
 const confirmedByGoalRecords = ref<ProcessEvaluationRecordVO[]>([])
 
@@ -497,7 +493,6 @@ function openConfirmedByGoal() {
   if (!qualityStore.currentQualityCourseId) return
   confirmedByGoalId.value = ''
   confirmedByGoalRecords.value = []
-  confirmedByGoalError.value = null
   confirmedByGoalVisible.value = true
 }
 
@@ -507,7 +502,6 @@ async function queryConfirmedByGoal() {
     return
   }
   confirmedByGoalLoading.value = true
-  confirmedByGoalError.value = null
   try {
     const result = await processRecordApi.listConfirmedByCourseGoal(
       qualityStore.currentQualityCourseId,
@@ -515,13 +509,13 @@ async function queryConfirmedByGoal() {
     )
     if (!isRecordStudentContractValid(result)) {
       confirmedByGoalRecords.value = []
-      confirmedByGoalError.value = toUserError(null, '课程目标已确认记录数据异常，请刷新后重试')
+      showUserError(null, '课程目标已确认记录数据异常，请刷新后重试')
       return
     }
     confirmedByGoalRecords.value = result
   } catch (err) {
     confirmedByGoalRecords.value = []
-    confirmedByGoalError.value = toUserError(err, '课程目标已确认记录加载失败')
+    showUserError(err, '课程目标已确认记录加载失败')
   } finally {
     confirmedByGoalLoading.value = false
   }

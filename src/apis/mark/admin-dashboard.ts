@@ -8,7 +8,6 @@
  * - 通用租户/用户/系统公告/存储统计能力由 edu-practice-web-vue 提供，本文件不重复
  */
 import type { ExamStatusCode } from '@/apis/mark/exam'
-import type { FinalScoreStatusCode } from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 
 import http from '@/config/axios'
@@ -86,14 +85,6 @@ export const INCIDENT_LEVEL_LABEL: Record<IncidentLevelCode, string> = {
   INFO: '提示',
 }
 
-/** 重大事件级别徽标颜色（统一 BadgeTone） */
-export const INCIDENT_LEVEL_COLOR: Record<IncidentLevelCode, BadgeTone> = {
-  BLOCKING: 'red',
-  REVIEW_REQUIRED: 'orange',
-  WARNING: 'orange',
-  INFO: 'blue',
-}
-
 /** 重大事件级别 BadgeTone 映射（UiTag/UiBadge） */
 export const INCIDENT_LEVEL_TONE: Record<IncidentLevelCode, BadgeTone> = {
   BLOCKING: 'red',
@@ -158,9 +149,6 @@ export interface DashboardIncidentRecordVO {
   detail?: string
   createTime?: string
 }
-
-/** 用于复用学生侧成绩状态文案 */
-export type DashboardFinalScoreStatusCode = FinalScoreStatusCode
 
 /**
  * Dashboard 聚合响应 - 对应 MarkDashboardResponse

@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import type { PortfolioAiAnalysisDetailVO } from '@/apis/portfolio/types'
-import type { PortfolioReportScene } from '@/apis/portfolio/types'
-import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
+import type { PortfolioAiAnalysisDetailVO, PortfolioReportScene, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
-import { PORTFOLIO_REPORT_SCENE_OPTIONS } from '@/apis/portfolio/types'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import { PORTFOLIO_REPORT_SCENE_OPTIONS } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -31,7 +29,7 @@ function sleep(ms: number) {
 async function loadTeachers() {
   try {
     const page = await portfolioTeacherApi.page({ pageNum: 1, pageSize: 100 })
-    teachers.value = readPageList(page)
+    teachers.value = readPageList(page, '加载教师名册失败')
     if (!form.teacherId && teachers.value.length > 0) {
       form.teacherId = teachers.value[0].userId
     }
@@ -146,7 +144,7 @@ onMounted(loadTeachers)
     <UiCard v-if="reportDetail" title="报告预览">
       <div class="report-meta">
         <span>{{ reportDetail.resultTitle }}</span>
-        <UiButton size="small" @click="downloadMarkdown">
+        <UiButton size="sm" @click="downloadMarkdown">
           下载 Markdown
         </UiButton>
       </div>

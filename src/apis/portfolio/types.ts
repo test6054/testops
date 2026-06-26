@@ -843,6 +843,13 @@ export interface PortfolioTeacherCompletenessGetRequest {
   teacherId?: string
 }
 
+export interface PortfolioTeacherWorkbenchSummaryVO {
+  teacherUserId: string
+  pendingTodoCount: number
+  completenessPercent: number
+  compositeScore: number
+}
+
 export interface PortfolioTeacherCompletenessVO {
   teacherId: string
   completenessPercent: number
@@ -1105,6 +1112,10 @@ export type PortfolioTodoType
     | 'GAP_RETURNED'
     | 'EVALUATION_MATERIAL_CONFIRM'
     | 'EVALUATION_RETURNED_SUPPLEMENT'
+    | 'DEVELOPMENT_PLAN_PENDING'
+    | 'DEVELOPMENT_PLAN_REVIEW'
+    | 'DUAL_TEACHER_DRAFT'
+    | 'DUAL_TEACHER_RETURNED'
 
 export const PORTFOLIO_TODO_TYPE_LABEL: Record<PortfolioTodoType, string> = {
   ARCHIVE_RETURNED: '审核退回',
@@ -1116,6 +1127,10 @@ export const PORTFOLIO_TODO_TYPE_LABEL: Record<PortfolioTodoType, string> = {
   GAP_RETURNED: '补采退回',
   EVALUATION_MATERIAL_CONFIRM: '评价材料确认',
   EVALUATION_RETURNED_SUPPLEMENT: '评价退回补充',
+  DEVELOPMENT_PLAN_PENDING: '年度规划待提交',
+  DEVELOPMENT_PLAN_REVIEW: '年度规划待审核',
+  DUAL_TEACHER_DRAFT: '双师认定草稿',
+  DUAL_TEACHER_RETURNED: '双师认定退回',
 }
 
 export interface PortfolioTodoPageRequest extends QueryDto {

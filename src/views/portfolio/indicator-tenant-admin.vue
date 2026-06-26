@@ -1,23 +1,90 @@
 <script setup lang="ts">
-import type { PfSceneCode } from '@/apis/portfolio/indicator-types'
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import type {
+  PfSceneCode,
+  PortfolioIndustryPackVO,
+  PortfolioTenantIndicatorConfigVO,
+} from '@/apis/portfolio/indicator-types'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { portfolioIndicatorPlatformApi, portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import { PF_SCENE_CODE_LABEL, PF_SCENE_CODE_OPTIONS } from '@/apis/portfolio/indicator-types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
-import { strictEnumLabel } from '@/utils/strict-enum'
+import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 
+const router = useRouter()
+const activeTab = ref('config')
 const sceneCode = ref<PfSceneCode>('PERFORMANCE')
 const loading = ref(false)
 const saving = ref(false)
 const trialing = ref(false)
+const freezing = ref(false)
+const enabling = ref(false)
+const binding = ref(false)
+const configFilter = ref('')
+const configRows = ref<PortfolioTenantIndicatorConfigVO[]>([])
+const industryPacks = ref<PortfolioIndustryPackVO[]>([])
+const bindForm = reactive({ packCode: '', majorGroupCode: '', majorGroupName: '', enabled: true })
 const model = ref<Awaited<ReturnType<typeof portfolioIndicatorTenantApi.getModel>> | null>(null)
+const editDrawerOpen = ref(false)
+const editForm = reactive({
+  indicatorCode: '',
+  indicatorName: '',
+  enabled: true,
+  standardScore: '',
+  capScore: '',
+  applicableScenes: '',
+})
 
-const sceneLabel = computed(() => strictEnumLabel(PF_SCENE_CODE_LABEL, sceneCode.value))
+const sceneLabel = computed(() => PF_SCENE_CODE_LABEL[sceneCode.value])
+
+const filteredConfigs = computed(() => {
+  const keyword = configFilter.value.trim().toLowerCase()
+  if (!keyword) {
+    return configRows.value
+  }
+  return configRows.value.filter(row =>
+    row.indicatorCode.toLowerCase().includes(keyword)
+    || row.indicatorName.toLowerCase().includes(keyword),
+  )
+})
+
+const configColumns: ColumnsType = [
+  { title: '编码', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 88 },
+  { title: '名称', dataIndex: 'indicatorName', key: 'indicatorName' },
+  { title: '启用', key: 'enabled', width: 72 },
+  { title: '标准分', dataIndex: 'standardScore', key: 'standardScore', width: 80 },
+  { title: '封顶分', dataIndex: 'capScore', key: 'capScore', width: 80 },
+  { title: '操作', key: 'actions', width: 120 },
+]
+
+async function loadConfig() {
+  loading.value = true
+  try {
+    configRows.value = await portfolioIndicatorTenantApi.listConfig()
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+async function loadIndustryPacks() {
+  try {
+    industryPacks.value = await portfolioIndicatorPlatformApi.listIndustryPack()
+  }
+  catch (error) {
+    showUserError(error)
+  }
+}
 
 async function loadModel() {
   loading.value = true
@@ -29,6 +96,65 @@ async function loadModel() {
   }
   finally {
     loading.value = false
+  }
+}
+
+async function enableAll() {
+  enabling.value = true
+  try {
+    const result = await portfolioIndicatorTenantApi.enableAllConfig()
+    message.success(`已启用 ${result.enabledCount} 项指标`)
+    await loadConfig()
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    enabling.value = false
+  }
+}
+
+async function toggleEnabled(record: PortfolioTenantIndicatorConfigVO, enabled: boolean) {
+  try {
+    await portfolioIndicatorTenantApi.saveConfig({ indicatorCode: record.indicatorCode, enabled })
+    record.enabled = enabled
+    message.success(enabled ? '已启用' : '已停用')
+  }
+  catch (error) {
+    showUserError(error)
+    await loadConfig()
+  }
+}
+
+function openEdit(record: PortfolioTenantIndicatorConfigVO) {
+  editForm.indicatorCode = record.indicatorCode
+  editForm.indicatorName = record.indicatorName
+  editForm.enabled = record.enabled
+  editForm.standardScore = record.standardScore ?? ''
+  editForm.capScore = record.capScore ?? ''
+  editForm.applicableScenes = record.applicableScenes ?? ''
+  editDrawerOpen.value = true
+}
+
+async function saveEdit() {
+  saving.value = true
+  try {
+    await portfolioIndicatorTenantApi.saveConfig({
+      indicatorCode: editForm.indicatorCode,
+      enabled: editForm.enabled,
+      standardScore: editForm.standardScore || undefined,
+      capScore: editForm.capScore || undefined,
+      applicableScenes: editForm.applicableScenes || undefined,
+    })
+    message.success('配置已保存')
+    editDrawerOpen.value = false
+    await loadConfig()
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    saving.value = false
   }
 }
 
@@ -67,47 +193,252 @@ async function trialModel() {
   }
 }
 
-watch(sceneCode, loadModel)
-onMounted(loadModel)
+async function freezeModel() {
+  freezing.value = true
+  try {
+    await portfolioIndicatorTenantApi.freezeModel({ sceneCode: sceneCode.value })
+    message.success('场景模型已冻结')
+    await loadModel()
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    freezing.value = false
+  }
+}
+
+async function bindPack() {
+  if (!bindForm.packCode) {
+    message.warning('请选择行业包')
+    return
+  }
+  binding.value = true
+  try {
+    await portfolioIndicatorTenantApi.bindIndustryPack({
+      bindings: [{
+        packCode: bindForm.packCode,
+        majorGroupCode: bindForm.majorGroupCode || undefined,
+        majorGroupName: bindForm.majorGroupName || undefined,
+        enabled: bindForm.enabled,
+      }],
+    })
+    message.success('行业包已挂载')
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    binding.value = false
+  }
+}
+
+async function exportCatalog() {
+  try {
+    const result = await portfolioIndicatorTenantApi.exportIndicatorCatalog()
+    await downloadPortfolioIndicatorExcelExport(result)
+    message.success(`已导出 ${result.rowCount} 条`)
+  }
+  catch (error) {
+    showUserError(error)
+  }
+}
+
+function updateIndicatorWeight(indicatorCode: string, field: 'weight' | 'enabled', value: number | boolean) {
+  if (!model.value) {
+    return
+  }
+  const item = model.value.indicators.find(row => row.indicatorCode === indicatorCode)
+  if (item) {
+    if (field === 'weight') {
+      item.weight = Number(value)
+    }
+    else {
+      item.enabled = Boolean(value)
+    }
+  }
+}
+
+function handleConfigEnabledChange(record: PortfolioTenantIndicatorConfigVO, checked: boolean | string | number) {
+  void toggleEnabled(record, checked === true)
+}
+
+function handleSceneEnabledChange(indicatorCode: string, checked: boolean | string | number) {
+  updateIndicatorWeight(indicatorCode, 'enabled', checked === true)
+}
+
+function handleSceneWeightChange(indicatorCode: string, value: boolean | string | number | null) {
+  updateIndicatorWeight(indicatorCode, 'weight', typeof value === 'number' ? value : 0)
+}
+
+function onTabChange(key: string | number) {
+  activeTab.value = String(key)
+  if (activeTab.value === 'config') {
+    loadConfig()
+  }
+  else if (activeTab.value === 'scene') {
+    loadModel()
+  }
+  else if (activeTab.value === 'pack') {
+    loadIndustryPacks()
+  }
+}
+
+watch(sceneCode, () => {
+  if (activeTab.value === 'scene') {
+    loadModel()
+  }
+})
+
+onMounted(loadConfig)
 </script>
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="租户指标配置" :subtitle="`${sceneLabel} 场景权重与启停`" />
+    <ContextBar title="租户指标配置" subtitle="启停 · 场景权重 · 行业包挂载">
+      <template #actions>
+        <UiButton @click="exportCatalog">
+          导出目录
+        </UiButton>
+        <UiButton @click="router.push({ name: 'PortfolioIndicatorPublishWizard' })">
+          发布向导
+        </UiButton>
+      </template>
+    </ContextBar>
     <UiCard>
-      <div class="toolbar">
-        <a-select v-model:value="sceneCode" :options="PF_SCENE_CODE_OPTIONS" style="width: 140px" />
-        <UiButton :loading="saving" @click="saveModel">
-          保存
-        </UiButton>
-        <UiButton variant="primary" :loading="trialing" @click="trialModel">
-          试算
-        </UiButton>
-      </div>
-      <a-spin :spinning="loading">
-        <template v-if="model">
-          <p>状态：{{ model.modelStatus }} · 权重合计：{{ model.weightSum ?? '—' }} · 试算：{{ model.trialPassed ? '通过' : '未通过' }}</p>
+      <a-tabs :active-key="activeTab" @change="onTabChange">
+        <a-tab-pane key="config" tab="指标启停">
+          <div class="toolbar">
+            <a-input v-model:value="configFilter" placeholder="编码 / 名称" style="width: 180px" allow-clear />
+            <UiButton :loading="enabling" @click="enableAll">
+              批量启用 T001–T100
+            </UiButton>
+            <UiButton @click="loadConfig">
+              刷新
+            </UiButton>
+          </div>
+          <UiDataTable :columns="configColumns" :data-source="filteredConfigs" :loading="loading" row-key="indicatorCode">
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'enabled'">
+                <a-switch :checked="record.enabled" @change="(v) => handleConfigEnabledChange(record, v)" />
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <a @click="openEdit(record)">编辑</a>
+              </template>
+            </template>
+          </UiDataTable>
+        </a-tab-pane>
+        <a-tab-pane key="scene" tab="场景权重">
+          <div class="toolbar">
+            <a-select v-model:value="sceneCode" :options="PF_SCENE_CODE_OPTIONS" style="width: 140px" />
+            <UiButton :loading="saving" @click="saveModel">
+              保存
+            </UiButton>
+            <UiButton variant="primary" :loading="trialing" @click="trialModel">
+              试算
+            </UiButton>
+            <UiButton :loading="freezing" @click="freezeModel">
+              冻结
+            </UiButton>
+          </div>
+          <a-spin :spinning="loading">
+            <template v-if="model">
+              <p class="meta">
+                {{ sceneLabel }} · 状态 {{ model.modelStatus }} · 权重合计 {{ model.weightSum ?? '—' }} · 试算 {{ model.trialPassed ? '通过' : '未通过' }}
+              </p>
+              <a-table
+                size="small"
+                :pagination="false"
+                row-key="indicatorCode"
+                :data-source="model.indicators"
+                :columns="[
+                  { title: '指标编码', dataIndex: 'indicatorCode' },
+                  { title: '启用', key: 'enabled', width: 80 },
+                  { title: '权重', key: 'weight', width: 120 },
+                ]"
+              >
+                <template #bodyCell="{ column, record }">
+                  <template v-if="column.key === 'enabled'">
+                    <a-switch :checked="record.enabled" @change="(v) => handleSceneEnabledChange(record.indicatorCode, v)" />
+                  </template>
+                  <template v-else-if="column.key === 'weight'">
+                    <a-input-number
+                      :value="record.weight"
+                      :min="0"
+                      :max="100"
+                      style="width: 100px"
+                      @change="(v) => handleSceneWeightChange(record.indicatorCode, v)"
+                    />
+                  </template>
+                </template>
+              </a-table>
+            </template>
+          </a-spin>
+        </a-tab-pane>
+        <a-tab-pane key="pack" tab="行业包挂载">
+          <div class="bind-form">
+            <a-select
+              v-model:value="bindForm.packCode"
+              placeholder="选择行业包"
+              style="width: 200px"
+              :options="industryPacks.map(p => ({ value: p.packCode, label: p.packName }))"
+            />
+            <a-input v-model:value="bindForm.majorGroupCode" placeholder="专业群编码" style="width: 140px" />
+            <a-input v-model:value="bindForm.majorGroupName" placeholder="专业群名称" style="width: 160px" />
+            <a-switch v-model:checked="bindForm.enabled" checked-children="启用" un-checked-children="停用" />
+            <UiButton variant="primary" :loading="binding" @click="bindPack">
+              挂载
+            </UiButton>
+          </div>
           <a-table
             size="small"
+            row-key="id"
             :pagination="false"
-            row-key="indicatorCode"
-            :data-source="model.indicators"
+            :data-source="industryPacks"
             :columns="[
-              { title: '指标编码', dataIndex: 'indicatorCode' },
-              { title: '启用', dataIndex: 'enabled', width: 72 },
-              { title: '权重', dataIndex: 'weight', width: 100 },
+              { title: '包编码', dataIndex: 'packCode' },
+              { title: '包名称', dataIndex: 'packName' },
+              { title: '版本', dataIndex: 'packVersion', width: 88 },
+              { title: '状态', dataIndex: 'status', width: 88 },
             ]"
           />
-        </template>
-      </a-spin>
+        </a-tab-pane>
+      </a-tabs>
     </UiCard>
+    <a-drawer v-model:open="editDrawerOpen" title="编辑指标配置" width="480">
+      <p><strong>{{ editForm.indicatorCode }}</strong> {{ editForm.indicatorName }}</p>
+      <a-form layout="vertical">
+        <a-form-item label="启用">
+          <a-switch v-model:checked="editForm.enabled" />
+        </a-form-item>
+        <a-form-item label="标准分">
+          <a-input v-model:value="editForm.standardScore" />
+        </a-form-item>
+        <a-form-item label="封顶分">
+          <a-input v-model:value="editForm.capScore" />
+        </a-form-item>
+        <a-form-item label="适用场景">
+          <a-input v-model:value="editForm.applicableScenes" placeholder="如 PORTRAIT,EVALUATION" />
+        </a-form-item>
+      </a-form>
+      <UiButton variant="primary" :loading="saving" @click="saveEdit">
+        保存
+      </UiButton>
+    </a-drawer>
   </StageWorkbenchShell>
 </template>
 
 <style scoped>
-.toolbar {
+.toolbar, .bind-form {
   display: flex;
   gap: 8px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.meta {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--ant-color-text-secondary, #666);
 }
 </style>

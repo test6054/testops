@@ -304,8 +304,8 @@ import type {
   ExamScoreSummaryItemVO,
   FinalScoreBatchPublishVO,
   FinalScoreRiskOverviewVO,
-  FinalScoreStatusCode,
 } from '@/apis/mark/exam-score'
+import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
@@ -319,14 +319,16 @@ import {
 import { getPaperScore } from '@/apis/mark/exam-grade'
 import {
   batchPublishFinalScores,
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_OPTIONS,
-  FINAL_SCORE_STATUS_TONE,
   getFinalScoreRiskOverview,
   pageExamScoreSummary,
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam-score'
+import {
+  FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_OPTIONS,
+  FINAL_SCORE_STATUS_TONE,
+} from '@/apis/mark/final-score-status'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'

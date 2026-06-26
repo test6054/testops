@@ -28,15 +28,8 @@ export const ABSENCE_STATUS_LABEL: Record<AbsenceStatusCode, string> = {
   MAKEUP_ARRANGED: '已安排补考',
 }
 
-export const ABSENCE_STATUS_COLOR: Record<AbsenceStatusCode, BadgeTone> = {
-  PENDING: 'orange',
-  CONFIRMED: 'red',
-  REVOKED: 'gray',
-  MAKEUP_ARRANGED: 'blue',
-}
-
 /** 缺考状态 BadgeTone 映射（用于 UiTag/UiBadge 等 ui-guide 组件） */
-export const ABSENCE_STATUS_TONE: Record<AbsenceStatusCode, 'orange' | 'red' | 'gray' | 'blue'> = {
+export const ABSENCE_STATUS_TONE: Record<AbsenceStatusCode, BadgeTone> = {
   PENDING: 'orange',
   CONFIRMED: 'red',
   REVOKED: 'gray',

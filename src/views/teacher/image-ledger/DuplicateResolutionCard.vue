@@ -41,8 +41,10 @@ import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, ref, watch } from 'vue'
 import {
-  DUPLICATE_RESOLUTION_STATUS_COLOR,
   DUPLICATE_RESOLUTION_STATUS_LABEL,
+  DUPLICATE_RESOLUTION_STATUS_TONE,
+} from '@/apis/mark/duplicate-resolution-status'
+import {
   listPendingDuplicates,
 } from '@/apis/mark/image-ledger'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -81,7 +83,7 @@ const columns: ColumnType<ExamPaperDuplicateResolutionVO>[] = [
 
 // helper 严格 typed 接收后端 API 对象 ExamPaperDuplicateResolutionVO。
 function duplicateStatusColor(row: ExamPaperDuplicateResolutionVO): BadgeTone {
-  return strictEnumTone(DUPLICATE_RESOLUTION_STATUS_COLOR, row.resolutionStatus, '重复影像处置状态')
+  return strictEnumTone(DUPLICATE_RESOLUTION_STATUS_TONE, row.resolutionStatus, '重复影像处置状态')
 }
 
 function duplicateStatusLabel(row: ExamPaperDuplicateResolutionVO): string {

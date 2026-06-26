@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type {
   PortfolioTeacherCompletenessVO,
-  PortfolioTeacherPortraitVO, PortfolioTodoSummaryVO
+  PortfolioTeacherPortraitVO,
+  PortfolioTeacherWorkbenchSummaryVO,
+  PortfolioTodoSummaryVO,
 } from '@/apis/portfolio/types'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
@@ -34,9 +36,10 @@ const completeness = ref<PortfolioTeacherCompletenessVO | null>(null)
 const completenessAbsent = ref(false)
 const portrait = ref<PortfolioTeacherPortraitVO | null>(null)
 const portraitAbsent = ref(false)
-const loadError = ref(false)
 const todos = ref<PortfolioTodoSummaryVO[]>([])
 const todoLoading = ref(false)
+const workbenchSummary = ref<PortfolioTeacherWorkbenchSummaryVO | null>(null)
+const workbenchSummaryLoading = ref(false)
 
 const targetTeacherId = computed(() => {
   const queryId = typeof route.query.teacherId === 'string' ? route.query.teacherId : ''
@@ -83,7 +86,6 @@ async function loadDashboard() {
     return
   }
   loading.value = true
-  loadError.value = false
   completenessAbsent.value = false
   portraitAbsent.value = false
   completeness.value = null
@@ -102,7 +104,6 @@ async function loadDashboard() {
       completenessAbsent.value = true
     }
     else {
-      loadError.value = true
       showUserError(completenessResult.reason, '加载档案完整度失败')
     }
   }
@@ -114,12 +115,30 @@ async function loadDashboard() {
     if (code === ResultCode.DATA_NOT_FOUND) {
       portraitAbsent.value = true
     }
-    else if (!loadError.value) {
-      loadError.value = true
+    else {
       showUserError(portraitResult.reason, '加载画像摘要失败')
     }
   }
   loading.value = false
+}
+
+async function loadWorkbenchSummary() {
+  if (!targetTeacherId.value && canPickTeachers.value) {
+    workbenchSummary.value = null
+    return
+  }
+  workbenchSummaryLoading.value = true
+  try {
+    const request = targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}
+    workbenchSummary.value = await portfolioAnalysisApi.getWorkbenchSummary(request)
+  }
+  catch (error) {
+    workbenchSummary.value = null
+    showUserError(error, '加载工作台摘要失败')
+  }
+  finally {
+    workbenchSummaryLoading.value = false
+  }
 }
 
 async function loadTodos() {
@@ -180,6 +199,18 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     void router.push({ path: '/portfolio/teacher/archive', query })
     return
   }
+  if (item.todoType === 'DEVELOPMENT_PLAN_PENDING') {
+    void router.push({ path: '/portfolio/admin/development-plan', query: { ...query, planId: item.refId } })
+    return
+  }
+  if (item.todoType === 'DEVELOPMENT_PLAN_REVIEW') {
+    void router.push({ path: '/portfolio/admin/development-plan-review', query: { ...query, planId: item.refId } })
+    return
+  }
+  if (item.todoType === 'DUAL_TEACHER_DRAFT' || item.todoType === 'DUAL_TEACHER_RETURNED') {
+    void router.push({ path: '/portfolio/teacher/dual-teacher-apply', query })
+    return
+  }
   if (item.categoryId) {
     void router.push({
       path: `/portfolio/teacher/archive/${item.categoryId}`,
@@ -218,15 +249,24 @@ function goAiConfirm() {
   })
 }
 
+function goDualTeacherApply() {
+  void router.push({
+    path: '/portfolio/teacher/dual-teacher-apply',
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
+
 function handleVisibilityChange() {
   if (document.visibilityState === 'visible') {
     void loadDashboard()
+    void loadWorkbenchSummary()
     void loadTodos()
   }
 }
 
 onMounted(() => {
   void loadDashboard()
+  void loadWorkbenchSummary()
   void loadTodos()
   document.addEventListener('visibilitychange', handleVisibilityChange)
 })
@@ -240,7 +280,7 @@ onUnmounted(() => {
   <StageWorkbenchShell>
     <ContextBar title="教师首页" description="档案完整度与画像摘要（§17.1）">
       <template #actions>
-        <UiButton v-if="!loading" @click="() => { void loadDashboard(); void loadTodos() }">
+        <UiButton v-if="!loading" @click="() => { void loadDashboard(); void loadWorkbenchSummary(); void loadTodos() }">
           刷新
         </UiButton>
       </template>
@@ -330,11 +370,19 @@ onUnmounted(() => {
             <UiButton @click="goCorrection">
               我的纠错
             </UiButton>
+            <UiButton @click="goDualTeacherApply">
+              双师认定申请
+            </UiButton>
           </div>
         </UiCard>
 
         <UiCard title="待办聚合" class="teacher-home__card">
-          <a-spin :spinning="todoLoading">
+          <template #extra>
+            <span v-if="workbenchSummary" class="teacher-home__meta">
+              未完成 {{ workbenchSummary.pendingTodoCount }} 项
+            </span>
+          </template>
+          <a-spin :spinning="todoLoading || workbenchSummaryLoading">
             <ul v-if="todos.length" class="teacher-home__todo-list">
               <li
                 v-for="item in todos"

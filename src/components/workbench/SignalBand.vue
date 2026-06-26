@@ -1,6 +1,12 @@
 <template>
   <div class="signal-band" :class="{ 'signal-band--compact': compact }">
-    <div v-for="metric in metrics" :key="metric.key" class="signal-band__item">
+    <div
+      v-for="metric in metrics"
+      :key="metric.key"
+      class="signal-band__item"
+      :class="{ 'signal-band__item--clickable': metric.clickable }"
+      @click="metric.clickable ? emit('metric-click', metric.key) : undefined"
+    >
       <span class="signal-band__label">{{ metric.label }}</span>
       <span class="signal-band__value" :class="toneClass(metric.tone)">
         {{ metric.value }}
@@ -37,6 +43,10 @@ withDefaults(
   },
 )
 
+const emit = defineEmits<{
+  'metric-click': [key: string]
+}>()
+
 function toneClass(tone?: BadgeTone): string {
   return tone ? `signal-band__value--${tone}` : ''
 }
@@ -62,6 +72,14 @@ function trendClass(trend?: number): string {
   display: flex;
   align-items: baseline;
   gap: 6px;
+}
+
+.signal-band__item--clickable {
+  cursor: pointer;
+}
+
+.signal-band__item--clickable:hover .signal-band__value {
+  color: var(--ant-color-primary, #1677ff);
 }
 
 .signal-band__label {

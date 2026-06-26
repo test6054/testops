@@ -270,19 +270,19 @@
         />
         <div class="progress-counts">
           <UiTag tone="gray" size="sm">总数 {{ detailProgress.totalCount }}</UiTag>
-          <UiTag :tone="PASSBACK_STATUS_COLOR.PENDING" size="sm">
+          <UiTag :tone="PASSBACK_STATUS_TONE.PENDING" size="sm">
             {{ PASSBACK_STATUS_LABEL.PENDING }} {{ detailProgress.pendingCount }}
           </UiTag>
-          <UiTag :tone="PASSBACK_STATUS_COLOR.SENT" size="sm">
+          <UiTag :tone="PASSBACK_STATUS_TONE.SENT" size="sm">
             {{ PASSBACK_STATUS_LABEL.SENT }} {{ detailProgress.sentCount }}
           </UiTag>
-          <UiTag :tone="PASSBACK_STATUS_COLOR.SUCCESS" size="sm">
+          <UiTag :tone="PASSBACK_STATUS_TONE.SUCCESS" size="sm">
             {{ PASSBACK_STATUS_LABEL.SUCCESS }} {{ detailProgress.successCount }}
           </UiTag>
-          <UiTag :tone="PASSBACK_STATUS_COLOR.FAILED" size="sm">
+          <UiTag :tone="PASSBACK_STATUS_TONE.FAILED" size="sm">
             {{ PASSBACK_STATUS_LABEL.FAILED }} {{ detailProgress.failedCount }}
           </UiTag>
-          <UiTag :tone="PASSBACK_STATUS_COLOR.WITHDRAWN" size="sm">
+          <UiTag :tone="PASSBACK_STATUS_TONE.WITHDRAWN" size="sm">
             {{ PASSBACK_STATUS_LABEL.WITHDRAWN }} {{ detailProgress.withdrawnCount }}
           </UiTag>
         </div>
@@ -373,13 +373,13 @@ import {
   getPassbackProgress,
   listPassbackRecords,
   listSyncTasks,
-  PASSBACK_STATUS_COLOR,
+  PASSBACK_STATUS_TONE,
   PASSBACK_STATUS_LABEL,
-  RECONCILE_STATUS_COLOR,
+  RECONCILE_STATUS_TONE,
   RECONCILE_STATUS_LABEL,
   reconcilePassback,
   retrySyncTask,
-  SYNC_TASK_STATUS_COLOR,
+  SYNC_TASK_STATUS_TONE,
   SYNC_TASK_STATUS_LABEL,
   SYNC_TYPE_LABEL,
 } from '@/apis/mark/teaching-affairs-sync'
@@ -790,7 +790,7 @@ function syncTaskStatusLabel(status: SyncTaskStatusCode): string {
 }
 
 function syncStatusTone(status: SyncTaskStatusCode): BadgeTone {
-  return strictEnumTone(SYNC_TASK_STATUS_COLOR, status, '同步任务状态')
+  return strictEnumTone(SYNC_TASK_STATUS_TONE, status, '同步任务状态')
 }
 
 function passbackStatusLabel(status: PassbackStatusCode): string {
@@ -798,7 +798,7 @@ function passbackStatusLabel(status: PassbackStatusCode): string {
 }
 
 function passbackStatusTone(status: PassbackStatusCode): BadgeTone {
-  return strictEnumTone(PASSBACK_STATUS_COLOR, status, '回写状态')
+  return strictEnumTone(PASSBACK_STATUS_TONE, status, '回写状态')
 }
 
 function reconcileStatusLabel(status: ReconcileStatusCode): string {
@@ -806,7 +806,7 @@ function reconcileStatusLabel(status: ReconcileStatusCode): string {
 }
 
 function reconcileStatusTone(status: ReconcileStatusCode): BadgeTone {
-  return strictEnumTone(RECONCILE_STATUS_COLOR, status, '对账状态')
+  return strictEnumTone(RECONCILE_STATUS_TONE, status, '对账状态')
 }
 
 function ellipsis(text: string | undefined, len = 40): string {

@@ -10,6 +10,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
+import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { readPageList } from '@/utils/page-result'
 
 const loading = ref(false)
@@ -35,7 +36,7 @@ async function loadPage() {
   loading.value = true
   try {
     const page = await portfolioTeacherSalaryApi.page({ pageNum: 1, pageSize: 50 })
-    rows.value = readPageList(page)
+    rows.value = readPageList(page, '加载薪酬记录失败')
   }
   catch (error) {
     showUserError(error)
@@ -75,13 +76,7 @@ async function saveSalary() {
 async function exportCsv() {
   try {
     const result = await portfolioTeacherSalaryApi.export()
-    const blob = new Blob([result.csvContent], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = result.fileName
-    link.click()
-    URL.revokeObjectURL(url)
+    await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   }
   catch (error) {

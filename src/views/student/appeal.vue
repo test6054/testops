@@ -261,7 +261,8 @@ import {
   REVIEW_REQUEST_STATUS_TONE,
   submitReviewRequest,
 } from '@/apis/mark/grade-review'
-import { canSubmitReview, FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE, getMyScoreDetail, listMyExams, STUDENT_REVIEW_WINDOW_STATUS_LABEL, STUDENT_REVIEW_WINDOW_STATUS_TONE } from '@/apis/mark/student-exam'
+import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from '@/apis/mark/final-score-status'
+import { canSubmitReview, getMyScoreDetail, listMyExams, STUDENT_REVIEW_WINDOW_STATUS_LABEL, STUDENT_REVIEW_WINDOW_STATUS_TONE } from '@/apis/mark/student-exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

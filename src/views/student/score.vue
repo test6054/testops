@@ -177,9 +177,11 @@ import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import { computed, onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  canSubmitReview,
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_TONE,
+} from '@/apis/mark/final-score-status'
+import {
+  canSubmitReview,
   listMyExams,
   STUDENT_REVIEW_WINDOW_STATUS_LABEL,
   STUDENT_REVIEW_WINDOW_STATUS_TONE,

@@ -245,7 +245,7 @@ import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   approveBatchCorrectionPlan,
-  BATCH_CORRECTION_STATUS_COLOR,
+  BATCH_CORRECTION_STATUS_TONE,
   BATCH_CORRECTION_STATUS_LABEL,
   BATCH_CORRECTION_STATUS_OPTIONS,
   createBatchCorrectionPlan,
@@ -758,7 +758,7 @@ function approvalStatusLabel(row: ExamBatchGradeCorrectionPlanVO): string {
 }
 
 function approvalStatusColor(row: ExamBatchGradeCorrectionPlanVO): BadgeTone {
-  return strictEnumTone(BATCH_CORRECTION_STATUS_COLOR, row.approvalStatus, '批量更正审批状态')
+  return strictEnumTone(BATCH_CORRECTION_STATUS_TONE, row.approvalStatus, '批量更正审批状态')
 }
 
 watch(

@@ -1,52 +1,86 @@
-import type { PageResult } from '@/types'
 import type {
+  PortfolioEligibilityEvalLogVO,
   PortfolioEligibilityEvalResultDto,
+  PortfolioEligibilityEvaluateRequest,
   PortfolioEligibilityRuleSaveRequest,
   PortfolioEligibilityRuleVO,
-  PortfolioEligibilityEvaluateRequest,
+  PortfolioExplainGetRequest,
   PortfolioExportSnapshotDiffRequest,
+  PortfolioIndicatorAutoCollectResultVO,
   PortfolioIndicatorCollegeCompareVO,
+  PortfolioIndicatorComputeLogVO,
+  PortfolioIndicatorComputeTrialRequest,
+  PortfolioIndicatorExcelImportRequest,
   PortfolioIndicatorDashboardQueryRequest,
   PortfolioIndicatorDashboardSummaryVO,
+  PortfolioIndicatorDefinitionGetRequest,
+  PortfolioIndicatorDefinitionImportResultVO,
   PortfolioIndicatorDefinitionPageRequest,
-  PortfolioIndicatorDefinitionVO,
+  PortfolioIndicatorDefinitionSaveRequest,
   PortfolioIndicatorDefinitionTreeNodeVO,
-  PortfolioIndicatorExportResultVO,
+  PortfolioIndicatorDefinitionVO,
   PortfolioIndicatorEngineReadinessVO,
-  PortfolioIndicatorTenantEnableAllResultVO,
-  PortfolioIndicatorTeacherTypeCompareVO,
-  PortfolioIndicatorTrendVO,
-  PortfolioIndicatorUsageFrequencyVO,
+  PortfolioIndicatorExportResultVO,
+  PortfolioIndicatorPlatformApi,
   PortfolioIndicatorPlatformSeedResultVO,
   PortfolioIndicatorPlatformSummaryVO,
   PortfolioIndicatorReferenceStatusVO,
-  PortfolioIndicatorReferenceSceneVO,
+  PortfolioIndicatorRuleBindingSaveRequest,
+  PortfolioIndicatorRuleTemplatePageRequest,
+  PortfolioIndicatorRuleTemplateSaveRequest,
   PortfolioIndicatorRuleTemplateVO,
   PortfolioIndicatorScoreComputeResult,
+  PortfolioIndicatorSnapshotComputeRequest,
+  PortfolioIndicatorSourceMappingVO,
+  PortfolioIndicatorTeacherTypeCompareVO,
+  PortfolioIndicatorTenantApi,
+  PortfolioIndicatorTenantEnableAllResultVO,
+  PortfolioIndicatorTrendVO,
+  PortfolioIndicatorUsageFrequencyVO,
+  PortfolioIndustryPackBindRequest,
+  PortfolioIndustryPackSaveRequest,
   PortfolioIndustryPackVO,
   PortfolioPublishImpactReportVO,
   PortfolioRulePublishSnapshotVO,
   PortfolioRuleRetroactiveGetRequest,
   PortfolioSceneCodeRequest,
+  PortfolioTenantConfigAuditLogVO,
+  PortfolioTenantIndicatorConfigSaveRequest,
   PortfolioTenantIndicatorConfigVO,
   PortfolioTenantSceneModelPublishRequest,
   PortfolioTenantSceneModelSaveRequest,
   PortfolioTenantSceneModelVO,
 } from '@/apis/portfolio/indicator-types'
-import type { QueryDto } from '@/types'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
+
+export type {
+  PortfolioIndicatorExcelImportRequest,
+  PortfolioIndicatorPlatformApi,
+  PortfolioIndicatorTenantApi,
+} from '@/apis/portfolio/indicator-types'
 
 const PLATFORM = '/api/portfolio/indicator/platform'
 const TENANT = '/api/portfolio/indicator'
 const DASHBOARD = '/api/portfolio/indicator/dashboard'
 
-export const portfolioIndicatorPlatformApi = {
+export const portfolioIndicatorPlatformApi: PortfolioIndicatorPlatformApi = {
   pageDefinition: (data: PortfolioIndicatorDefinitionPageRequest) =>
     http.post<PageResult<PortfolioIndicatorDefinitionVO>>(`${PLATFORM}/definition/page`, data),
-  listTemplate: () =>
-    http.post<PortfolioIndicatorRuleTemplateVO[]>(`${PLATFORM}/template/list`, {}),
+  getDefinition: (data: PortfolioIndicatorDefinitionGetRequest) =>
+    http.post<PortfolioIndicatorDefinitionVO>(`${PLATFORM}/definition/get`, data),
+  saveDefinition: (data: PortfolioIndicatorDefinitionSaveRequest) =>
+    http.post<string>(`${PLATFORM}/definition/save`, data),
+  pageTemplate: (data: PortfolioIndicatorRuleTemplatePageRequest) =>
+    http.post<PageResult<PortfolioIndicatorRuleTemplateVO>>(`${PLATFORM}/template/page`, data),
+  saveTemplate: (data: PortfolioIndicatorRuleTemplateSaveRequest) =>
+    http.post<string>(`${PLATFORM}/template/save`, data),
+  saveBinding: (data: PortfolioIndicatorRuleBindingSaveRequest) =>
+    http.post<string>(`${PLATFORM}/binding/save`, data),
   listIndustryPack: () =>
     http.post<PortfolioIndustryPackVO[]>(`${PLATFORM}/industry-pack/list`, {}),
+  saveIndustryPack: (data: PortfolioIndustryPackSaveRequest) =>
+    http.post<string>(`${PLATFORM}/industry-pack/save`, data),
   importSeed: () =>
     http.post<PortfolioIndicatorPlatformSeedResultVO>(`${PLATFORM}/seed/import`, {}),
   definitionSummary: () =>
@@ -55,6 +89,10 @@ export const portfolioIndicatorPlatformApi = {
     http.post<PortfolioIndicatorDefinitionTreeNodeVO[]>(`${PLATFORM}/definition/tree`, {}),
   exportDefinitionTemplate: () =>
     http.post<PortfolioIndicatorExportResultVO>(`${PLATFORM}/definition/export-template`, {}),
+  importDefinitionExcel: (data: PortfolioIndicatorExcelImportRequest) =>
+    http.post<PortfolioIndicatorDefinitionImportResultVO>(`${PLATFORM}/definition/import-excel`, data),
+  listSourceMapping: () =>
+    http.post<PortfolioIndicatorSourceMappingVO[]>(`${PLATFORM}/definition/source-mapping/list`, {}),
 }
 
 export const portfolioIndicatorDashboardApi = {
@@ -70,15 +108,21 @@ export const portfolioIndicatorDashboardApi = {
     http.post<PortfolioIndicatorTeacherTypeCompareVO>(`${DASHBOARD}/teacher-type-compare`, data),
 }
 
-export const portfolioIndicatorTenantApi = {
+export const portfolioIndicatorTenantApi: PortfolioIndicatorTenantApi = {
   listConfig: () =>
     http.post<PortfolioTenantIndicatorConfigVO[]>(`${TENANT}/tenant/config/list`, {}),
+  saveConfig: (data: PortfolioTenantIndicatorConfigSaveRequest) =>
+    http.post<string>(`${TENANT}/tenant/config/save`, data),
   enableAllConfig: () =>
     http.post<PortfolioIndicatorTenantEnableAllResultVO>(`${TENANT}/tenant/config/enable-all`, {}),
+  pageAuditLog: (data: QueryDto) =>
+    http.post<PageResult<PortfolioTenantConfigAuditLogVO>>(`${TENANT}/tenant/config/audit-log/page`, data),
   referenceStatus: () =>
     http.post<PortfolioIndicatorEngineReadinessVO>(`${TENANT}/tenant/reference-status`, {}),
   listReferenceStatus: () =>
     http.post<PortfolioIndicatorReferenceStatusVO[]>(`${TENANT}/tenant/reference-status/list`, {}),
+  bindIndustryPack: (data: PortfolioIndustryPackBindRequest) =>
+    http.post<void>(`${TENANT}/industry-pack/bind`, data),
   getModel: (data: PortfolioSceneCodeRequest) =>
     http.post<PortfolioTenantSceneModelVO>(`${TENANT}/model/get`, data),
   saveModel: (data: PortfolioTenantSceneModelSaveRequest) =>
@@ -105,7 +149,9 @@ export const portfolioIndicatorTenantApi = {
     http.post<PageResult<PortfolioPublishImpactReportVO>>(`${TENANT}/publish/impact-report/page`, data),
   evaluateEligibility: (data: PortfolioEligibilityEvaluateRequest) =>
     http.post<PortfolioEligibilityEvalResultDto>(`${TENANT}/eligibility/evaluate`, data),
-  getExplain: (data: { logId: string, logType: string }) =>
+  pageEvalLog: (data: QueryDto) =>
+    http.post<PageResult<PortfolioEligibilityEvalLogVO>>(`${TENANT}/eligibility/eval-log/page`, data),
+  getExplain: (data: PortfolioExplainGetRequest) =>
     http.post<string>(`${TENANT}/explain/get`, data),
   exportIndicatorCatalog: () =>
     http.post<PortfolioIndicatorExportResultVO>(`${TENANT}/export/indicator-catalog`, {}),
@@ -113,12 +159,12 @@ export const portfolioIndicatorTenantApi = {
     http.post<PortfolioIndicatorExportResultVO>(`${TENANT}/export/snapshot-diff`, data),
   exportImpactReport: (data: { id: string }) =>
     http.post<PortfolioIndicatorExportResultVO>(`${TENANT}/export/impact-report`, data),
-  computeSnapshot: (data: {
-    snapshotId: string
-    teacherUserId: string
-    indicatorCode: string
-    rawValue: number
-    auditStatus?: string
-  }) =>
+  computeTrial: (data: PortfolioIndicatorComputeTrialRequest) =>
+    http.post<PortfolioIndicatorScoreComputeResult>(`${TENANT}/compute/trial`, data),
+  computeSnapshot: (data: PortfolioIndicatorSnapshotComputeRequest) =>
     http.post<PortfolioIndicatorScoreComputeResult>(`${TENANT}/compute/snapshot`, data),
+  pageComputeLog: (data: QueryDto) =>
+    http.post<PageResult<PortfolioIndicatorComputeLogVO>>(`${TENANT}/compute/log/page`, data),
+  autoCollect: (data: { teacherId: string }) =>
+    http.post<PortfolioIndicatorAutoCollectResultVO>(`${TENANT}/tenant/auto-collect`, data),
 }

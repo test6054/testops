@@ -1,5 +1,6 @@
-import type { QuestionTypeCode } from './grading-experience'
-import type { AiAnalysisStatusCode, AnalysisScopeTypeCode } from './teaching-analysis'
+import type { QuestionTypeCode } from './question-type'
+import type { AiAnalysisStatusCode } from './ai-analysis-status'
+import type { AnalysisScopeTypeCode } from './analysis-scope-type'
 
 /**
  * AI 错因聚类分析 API - 对接 edu-mark 模块 ErrorCauseClusterController

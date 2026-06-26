@@ -141,7 +141,7 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { getExamTemplate } from '@/apis/mark/exam-template'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import {
   fetchAllQuestionAnalysisRows,
   generateAllQuestionAnalysis,

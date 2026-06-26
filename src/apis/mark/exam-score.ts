@@ -1,56 +1,14 @@
 import type { BindingStatusCode } from './exam-binding'
 import type { CandidateStatusCode } from './exam-scope'
+import type { FinalScoreStatusCode } from './final-score-status'
 /**
  * 阅卷考试成绩汇总与最终成绩 API - 对接 /api/mark/exams/score-* 与 final-scores 接口。
  */
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 import { assertUserFacingFiniteNumber, assertUserFacingText } from '@/utils/contract-guard'
 
 const EXAM_SCORE_DATA_ERROR = '成绩数据异常，请刷新后重试'
-
-/** 与后端 FinalScoreStatus 枚举对齐（共 6 个状态） */
-export type FinalScoreStatusCode
-  = | 'PENDING'
-    | 'CALCULATED'
-    | 'CONFIRMED'
-    | 'CORRECTED'
-    | 'PUBLISHED'
-    | 'WITHDRAWN'
-
-/** 最终成绩状态文案映射 */
-export const FINAL_SCORE_STATUS_LABEL: Record<FinalScoreStatusCode, string> = {
-  PENDING: '待计算',
-  CALCULATED: '已计算',
-  CONFIRMED: '已确认',
-  CORRECTED: '已更正',
-  PUBLISHED: '已发布',
-  WITHDRAWN: '已撤回',
-}
-
-/** 最终成绩状态 BadgeTone 映射（用于 UiTag/UiBadge） */
-export const FINAL_SCORE_STATUS_TONE: Record<FinalScoreStatusCode, BadgeTone> = {
-  PENDING: 'gray',
-  CALCULATED: 'blue',
-  CONFIRMED: 'blue',
-  CORRECTED: 'orange',
-  PUBLISHED: 'green',
-  WITHDRAWN: 'red',
-}
-
-/** 最终成绩状态下拉选项，值必须与后端 FinalScoreStatus 枚举完全一致 */
-export const FINAL_SCORE_STATUS_OPTIONS: Array<{
-  label: string
-  value: FinalScoreStatusCode
-}> = [
-  { value: 'PENDING', label: FINAL_SCORE_STATUS_LABEL.PENDING },
-  { value: 'CALCULATED', label: FINAL_SCORE_STATUS_LABEL.CALCULATED },
-  { value: 'CONFIRMED', label: FINAL_SCORE_STATUS_LABEL.CONFIRMED },
-  { value: 'CORRECTED', label: FINAL_SCORE_STATUS_LABEL.CORRECTED },
-  { value: 'PUBLISHED', label: FINAL_SCORE_STATUS_LABEL.PUBLISHED },
-  { value: 'WITHDRAWN', label: FINAL_SCORE_STATUS_LABEL.WITHDRAWN },
-]
 
 /** 答卷展示基础信息 - 对应 PaperInstanceDisplayVO 公共字段 */
 interface PaperInstanceDisplayBaseVO {

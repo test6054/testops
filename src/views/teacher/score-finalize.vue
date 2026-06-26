@@ -437,8 +437,9 @@ import type { ExamPaperScoreVO, ExamQuestionScoreVO } from '@/apis/mark/exam-gra
 import type {
   ExamScoreSummaryItemVO,
   FinalScoreRiskOverviewVO,
-  FinalScoreRiskReasonCode, FinalScoreStatusCode
+  FinalScoreRiskReasonCode,
 } from '@/apis/mark/exam-score'
+import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
 import type { BadgeTone, FilterField, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import message from 'ant-design-vue/es/message'
@@ -454,15 +455,17 @@ import { getPaperScore } from '@/apis/mark/exam-grade'
 import {
   batchConfirmSafeFinalScores,
   confirmFinalScore,
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_OPTIONS,
-  FINAL_SCORE_STATUS_TONE,
   getFinalScoreRiskOverview,
   pageExamScoreSummary,
   publishFinalScore,
   saveFinalScoreRiskReview,
   withdrawFinalScore,
 } from '@/apis/mark/exam-score'
+import {
+  FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_OPTIONS,
+  FINAL_SCORE_STATUS_TONE,
+} from '@/apis/mark/final-score-status'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

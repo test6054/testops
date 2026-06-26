@@ -11,6 +11,7 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
+import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { readPageList } from '@/utils/page-result'
 
 const loading = ref(false)
@@ -55,7 +56,7 @@ async function loadPage() {
       recordDateTo: query.recordDateTo || undefined,
       categoryCode: query.categoryCode || undefined,
     })
-    rows.value = readPageList(page)
+    rows.value = readPageList(page, '加载荣誉库失败')
     stats.value = await portfolioDevelopmentRecordApi.honorStats({
       levelCode: query.levelCode || undefined,
       awardUnit: query.awardUnit || undefined,
@@ -123,13 +124,7 @@ async function exportHonor() {
       recordDateTo: query.recordDateTo || undefined,
       categoryCode: query.categoryCode || undefined,
     })
-    const blob = new Blob([result.csvContent], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = result.fileName
-    link.click()
-    URL.revokeObjectURL(url)
+    await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   }
   catch (error) {

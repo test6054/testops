@@ -27,11 +27,9 @@ import {
 import {
   BINDING_STATUS_LABEL,
 } from '@/apis/mark/exam-binding'
-import {
-  FINAL_SCORE_STATUS_LABEL,
-  pageExamScoreSummary,
-} from '@/apis/mark/exam-score'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
+import { pageExamScoreSummary } from '@/apis/mark/exam-score'
+import { FINAL_SCORE_STATUS_LABEL } from '@/apis/mark/final-score-status'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import {
   checkMarkOcrHealth,
   getCurrentMarkOcrConfig,
@@ -44,7 +42,7 @@ import {
   recognizeMarkOcr,
 } from '@/apis/mark/ocr-recognition'
 import {
-  MARK_OCR_HEALTH_STATUS_COLOR,
+  MARK_OCR_HEALTH_STATUS_TONE,
   MARK_OCR_HEALTH_STATUS_LABEL,
   MARK_OCR_PAPER_CUT_CAPABILITY,
   MARK_OCR_PROVIDER_DESCRIPTION,
@@ -59,7 +57,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useUserStore } from '@/stores/modules/user'
 import { assertUserFacing } from '@/utils/contract-guard'
-import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -91,10 +89,8 @@ const paddleInstances = ref<PaddleOcrInstanceVO[]>([])
 const paddleInstancesLoading = ref(false)
 const paperSlices = ref<MarkOcrPaperSliceVO[]>([])
 const paperSlicesLoading = ref(false)
-const paperSlicesError = ref<Error | null>(null)
 const paperCandidates = ref<ExamScoreSummaryItemVO[]>([])
 const paperCandidatesLoading = ref(false)
-const paperCandidatesError = ref<Error | null>(null)
 const paperCandidateKeyword = ref('')
 const examDetail = ref<ExamDetailVO | null>(null)
 const examDetailLoading = ref(false)
@@ -124,7 +120,7 @@ const healthStatus = computed<MarkOcrHealthStatusCode | undefined>(
 )
 const healthColor = computed(() =>
   healthStatus.value
-    ? strictEnumTone(MARK_OCR_HEALTH_STATUS_COLOR, healthStatus.value, 'OCR 健康状态')
+    ? strictEnumTone(MARK_OCR_HEALTH_STATUS_TONE, healthStatus.value, 'OCR 健康状态')
     : undefined,
 )
 const healthLabel = computed(() =>
@@ -292,12 +288,10 @@ async function loadExamDetail(examId: string): Promise<void> {
 
 async function loadPaperSlices(examId: string, paperInstanceId: string): Promise<void> {
   paperSlicesLoading.value = true
-  paperSlicesError.value = null
   try {
     paperSlices.value = await listMarkOcrPaperSlices({ examId, paperInstanceId })
   } catch (error) {
     paperSlices.value = []
-    paperSlicesError.value = toUserError(error, '正式作答切片列表加载失败')
     showUserError(error, '正式作答切片列表加载失败')
   } finally {
     paperSlicesLoading.value = false
@@ -310,7 +304,6 @@ async function loadPaperCandidates(
 ): Promise<void> {
   const normalizedKeyword = keyword.trim()
   paperCandidatesLoading.value = true
-  paperCandidatesError.value = null
   try {
     const result = await pageExamScoreSummary({
       examId,
@@ -323,7 +316,6 @@ async function loadPaperCandidates(
     )
   } catch (error) {
     paperCandidates.value = []
-    paperCandidatesError.value = toUserError(error, '卷面候选列表加载失败')
     showUserError(error, '卷面候选列表加载失败')
   } finally {
     paperCandidatesLoading.value = false
@@ -348,7 +340,6 @@ function handlePaperCandidateChange(value: SelectValue): void {
   recognizeResult.value = null
   if (!value) {
     paperSlices.value = []
-    paperSlicesError.value = null
     paperCandidateKeyword.value = ''
     if (debugForm.value.examId) {
       void loadPaperCandidates(debugForm.value.examId, '')
@@ -413,19 +404,17 @@ watch(
         loadExamDetail(examId),
         loadPaperCandidates(examId),
       ])
-    } else {
+    }     else {
       examDetail.value = null
       paperSlices.value = []
       paperCandidates.value = []
-      paperSlicesError.value = null
-      paperCandidatesError.value = null
     }
   },
   { immediate: true },
 )
 
 function paddleInstanceHealthTone(status: MarkOcrHealthStatusCode) {
-  return strictEnumTone(MARK_OCR_HEALTH_STATUS_COLOR, status, 'PaddleOCR 实例健康状态')
+  return strictEnumTone(MARK_OCR_HEALTH_STATUS_TONE, status, 'PaddleOCR 实例健康状态')
 }
 
 function paddleInstanceHealthLabel(status: MarkOcrHealthStatusCode): string {

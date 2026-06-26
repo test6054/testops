@@ -2,7 +2,7 @@ import type { AiAbilityCode } from './exam-grade'
 import type { MarkingScanPageRefVO } from './exam-scan'
 import type { PaperInstanceDisplayVO } from './exam-score'
 import type { ObjectiveComparePolicyCode } from './exam-standard-answer'
-import type { QuestionTypeCode } from './grading-experience'
+import type { QuestionTypeCode } from './question-type'
 /**
  * 阅卷考试匿名复核任务 API - 对接 /api/mark/exams/review-tasks/*。
  */
@@ -16,7 +16,7 @@ import {
 } from '@/utils/contract-guard'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { AI_ABILITY_LABEL } from './exam-grade'
-import { QUESTION_TYPE_LABEL } from './grading-experience'
+import { QUESTION_TYPE_LABEL } from './question-type'
 
 const REVIEW_TASK_DATA_ERROR = '复核任务数据异常，请刷新后重试'
 

@@ -8,10 +8,13 @@ import type {
   PortfolioTeacherPortraitTrendGetRequest,
   PortfolioTeacherPortraitTrendVO,
   PortfolioTeacherPortraitVO,
+  PortfolioTeacherWorkbenchSummaryVO,
 } from '@/apis/portfolio/types'
 import http from '@/config/axios'
 
 export const portfolioAnalysisApi = {
+  getWorkbenchSummary: (data: PortfolioTeacherCompletenessGetRequest = {}) =>
+    http.post<PortfolioTeacherWorkbenchSummaryVO>('/api/portfolio/analysis/workbench-summary/get', data),
   getCompleteness: (data: PortfolioTeacherCompletenessGetRequest = {}) =>
     http.post<PortfolioTeacherCompletenessVO>('/api/portfolio/analysis/completeness/get', data),
   getPortrait: (data: PortfolioTeacherPortraitGetRequest = {}) =>

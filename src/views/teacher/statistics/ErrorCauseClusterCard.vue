@@ -117,7 +117,7 @@ import {
   generateErrorCauseCluster,
   getLatestErrorCauseCluster,
 } from '@/apis/mark/error-cause-cluster'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -180,7 +180,7 @@ function acceptErrorCauseClusterRecord(
 
 function clusterCountText(value: ExamErrorCauseClusterVO): string {
   if (typeof value.clusterCount === 'number') return String(value.clusterCount)
-  if (value.analysisStatus === 'PENDING') return '处理中，尚未生成聚类'
+  if (value.analysisStatus === 'PENDING') return '待分析，尚未生成聚类'
   if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
   return '—'
 }
@@ -192,7 +192,7 @@ function analysisCreateTimeText(value: ExamErrorCauseClusterVO): string {
 
 function analysisLatencyText(value: ExamErrorCauseClusterVO): string {
   if (typeof value.latencyMs === 'number') return `${value.latencyMs} ms`
-  if (value.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
+  if (value.analysisStatus === 'PENDING') return '待分析，尚未生成耗时'
   if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
   return '—'
 }
@@ -202,7 +202,7 @@ function analysisTraceId(value: ExamErrorCauseClusterVO): string | undefined {
 }
 
 function analysisTraceText(value: ExamErrorCauseClusterVO): string {
-  if (value.analysisStatus === 'PENDING') return '处理中，尚未生成追踪编号'
+  if (value.analysisStatus === 'PENDING') return '待分析，尚未生成追踪编号'
   if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
   return value.aiTraceId?.trim() || '—'
 }

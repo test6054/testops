@@ -75,7 +75,7 @@ import type { ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import { computed } from 'vue'
-import { hasImageLedgerPageStats, LEDGER_STATUS_COLOR, LEDGER_STATUS_LABEL } from '@/apis/mark/image-ledger'
+import { hasImageLedgerPageStats, LEDGER_STATUS_LABEL, LEDGER_STATUS_TONE } from '@/apis/mark/image-ledger'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -103,7 +103,7 @@ const statusLabel = computed(() => {
 })
 
 const statusTone = computed(() => {
-  return strictEnumTone(LEDGER_STATUS_COLOR, props.ledger?.ledgerStatus, '影像账本状态')
+  return strictEnumTone(LEDGER_STATUS_TONE, props.ledger?.ledgerStatus, '影像账本状态')
 })
 
 const scanPercent = computed(() => {

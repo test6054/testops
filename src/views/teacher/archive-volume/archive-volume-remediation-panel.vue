@@ -37,7 +37,7 @@
         导出材料包
       </UiButton>
       <UiButton
-        v-if="hasDuty('COLLEGE_COORDINATOR')"
+        v-if="canShowCreateRemediationTask"
         size="sm"
         variant="primary"
         @click="openCreateTaskModal"
@@ -259,8 +259,8 @@ defineOptions({ name: 'ArchiveVolumeRemediationPanel' })
 const router = useRouter()
 const userStore = useUserStore()
 const {
-  hasDuty,
   isTenantWideCollegeCoordinator,
+  scopedDepartmentIds,
   canManageRemediationAsCoordinator,
   loadGrants,
 } = useArchiveDutyAccess()
@@ -322,6 +322,10 @@ const campaignOptions = computed(() =>
     label: item.campaignName,
     value: item.campaignId,
   })),
+)
+
+const canShowCreateRemediationTask = computed(() =>
+  isTenantWideCollegeCoordinator.value || scopedDepartmentIds.value.length > 0,
 )
 
 const canManageTaskAsCoordinator = computed(() =>
@@ -480,6 +484,11 @@ async function submitCreateTask() {
   }
   createTaskSubmitting.value = true
   try {
+    const volumeDetail = await getArchiveVolumeDetail(createTaskForm.volumeId.trim())
+    if (!canManageRemediationAsCoordinator(volumeDetail.volume)) {
+      message.error('缺少该卷所属院系的 COLLEGE_COORDINATOR 职责，无法创建整改任务')
+      return
+    }
     await createRemediationTask({
       campaignId: createTaskForm.campaignId,
       volumeId: createTaskForm.volumeId.trim(),

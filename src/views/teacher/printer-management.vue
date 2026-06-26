@@ -324,9 +324,9 @@ import {
   listScannerDeviceLocations,
   pageScannerDevices,
   resetScannerDevicePushToken,
-  SCANNER_DEVICE_STATUS_COLOR,
+  SCANNER_DEVICE_STATUS_TONE,
   SCANNER_DEVICE_STATUS_LABEL,
-  SCANNER_ENDPOINT_ONLINE_STATUS_COLOR,
+  SCANNER_ENDPOINT_ONLINE_STATUS_TONE,
   SCANNER_ENDPOINT_ONLINE_STATUS_LABEL,
   unbindScannerDeviceAgent,
   updateScannerDevice,
@@ -337,7 +337,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -373,7 +373,6 @@ function syncSearchForm(next: Record<string, unknown>): void {
 const showActivationCodeModal = ref(false)
 const activationCodeInfo = ref<ExamScannerActivationCodeVO | null>(null)
 const activationCodeDeviceName = ref('')
-const activationCodeError = ref<Error | null>(null)
 
 const statusOptions = [
   { value: 'ACTIVE', label: SCANNER_DEVICE_STATUS_LABEL.ACTIVE },
@@ -468,13 +467,13 @@ function statusLabelOf(status: ScannerDeviceStatusCode): string {
   return strictEnumLabel(SCANNER_DEVICE_STATUS_LABEL, status, '扫描设备状态')
 }
 function statusColorOf(status: ScannerDeviceStatusCode): BadgeTone {
-  return strictEnumTone(SCANNER_DEVICE_STATUS_COLOR, status, '扫描设备状态')
+  return strictEnumTone(SCANNER_DEVICE_STATUS_TONE, status, '扫描设备状态')
 }
 function endpointOnlineStatusLabelOf(status: ScannerEndpointOnlineStatusCode): string {
   return strictEnumLabel(SCANNER_ENDPOINT_ONLINE_STATUS_LABEL, status, '扫描端点在线状态')
 }
 function endpointOnlineStatusColorOf(status: ScannerEndpointOnlineStatusCode): BadgeTone {
-  return strictEnumTone(SCANNER_ENDPOINT_ONLINE_STATUS_COLOR, status, '扫描端点在线状态')
+  return strictEnumTone(SCANNER_ENDPOINT_ONLINE_STATUS_TONE, status, '扫描端点在线状态')
 }
 function endpointOnlineStatusDisplayLabelOf(device: ExamScannerDeviceVO): string {
   return device.endpointOnlineStatus
@@ -502,8 +501,6 @@ async function loadLocationOptions(): Promise<void> {
 
 async function loadDevices(): Promise<void> {
   loading.value = true
-  agentUnbindError.value = null
-  deviceDeleteError.value = null
   try {
     const result = await pageScannerDevices({
       pageNum: pagination.current,
@@ -550,7 +547,6 @@ function handleUiPageChange(page: { current: number, pageSize: number }): void {
 const showFormModal = ref(false)
 const formMode = ref<'create' | 'edit'>('create')
 const formSubmitting = ref(false)
-const formSubmitError = ref<Error | null>(null)
 const formRef = ref<FormInstance | null>(null)
 
 interface FormState {
@@ -593,14 +589,12 @@ function resetForm(): void {
 
 function handleCreate(): void {
   formMode.value = 'create'
-  formSubmitError.value = null
   resetForm()
   showFormModal.value = true
 }
 
 function handleEdit(record: ExamScannerDeviceVO): void {
   formMode.value = 'edit'
-  formSubmitError.value = null
   resetForm()
   Object.assign(formData, {
     id: record.id,
@@ -620,7 +614,6 @@ function handleEdit(record: ExamScannerDeviceVO): void {
 
 async function handleFormSubmit(): Promise<void> {
   await formRef.value?.validate()
-  formSubmitError.value = null
   formSubmitting.value = true
   try {
     if (formMode.value === 'create') {
@@ -666,7 +659,6 @@ async function handleFormSubmit(): Promise<void> {
       await syncAfterDeviceMutation()
     }
   } catch (error) {
-    formSubmitError.value = toUserError(error, '扫描设备保存失败')
     showUserError(error, '扫描设备保存失败')
   } finally {
     formSubmitting.value = false
@@ -692,7 +684,6 @@ function openActivationHandoff(handoff: ExamScannerDeviceActivationHandoffVO): v
     status: 'UNUSED',
     expireTime: handoff.expireTime,
   }
-  activationCodeError.value = null
   showActivationCodeModal.value = true
 }
 
@@ -727,18 +718,12 @@ async function handleCreateActivationCode(record: ExamScannerDeviceVO): Promise<
   activationCodeDeviceName.value = record.deviceName || record.scannerDeviceId || '扫描设备'
   activationCodeInfo.value = null
   showActivationCodeModal.value = true
-  activationCodeError.value = null
   try {
     activationCodeInfo.value = await createScannerActivationCode({ deviceId: record.id })
   } catch (error) {
-    activationCodeError.value = toUserError(error, '扫描组件激活码生成失败')
     showUserError(error, '扫描组件激活码生成失败')
   }
 }
-
-const agentUnbindError = ref<Error | null>(null)
-
-const deviceDeleteError = ref<Error | null>(null)
 
 function handleUnbindAgent(record: ExamScannerDeviceVO): void {
   void confirmAsync({
@@ -747,12 +732,10 @@ function handleUnbindAgent(record: ExamScannerDeviceVO): void {
     type: 'warning',
     onOk: async () => {
       try {
-        agentUnbindError.value = null
         await unbindScannerDeviceAgent(record.id)
         message.success('扫描组件已解绑')
         await syncAfterDeviceMutation()
       } catch (error) {
-        agentUnbindError.value = toUserError(error, '扫描组件解绑失败')
         showUserError(error, '扫描组件解绑失败')
       }
     },
@@ -801,12 +784,10 @@ function handleDelete(record: ExamScannerDeviceVO): void {
     type: 'error',
     onOk: async () => {
       try {
-        deviceDeleteError.value = null
         await deleteScannerDevice(record.id)
         message.success('扫描设备已删除')
         await syncAfterDeviceMutation()
       } catch (error) {
-        deviceDeleteError.value = toUserError(error, '扫描设备删除失败')
         showUserError(error, '扫描设备删除失败')
       }
     },

@@ -160,17 +160,18 @@
 </template>
 
 <script lang="ts" setup>
-import type { FinalScoreStatusCode, MasteryLevelCode } from '@/apis/mark/student-exam'
+import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
+import type { MasteryLevelCode } from '@/apis/mark/student-mastery-level'
 import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE, MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-exam'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
+import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from '@/apis/mark/final-score-status'
+import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-mastery-level'
 import {
-  aiAnalysisStatusColor,
-  aiAnalysisStatusLabel,
   generateStudentLearningProfile,
   getLatestStudentLearningProfile,
 } from '@/apis/mark/teaching-analysis'
@@ -260,7 +261,7 @@ function analysisCreateTimeText(value: ExamTeachingAnalysisRecordVO): string {
 
 function analysisLatencyText(value: ExamTeachingAnalysisRecordVO): string {
   if (typeof value.latencyMs === 'number') return `${value.latencyMs} ms`
-  if (value.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
+  if (value.analysisStatus === 'PENDING') return '待分析，尚未生成耗时'
   if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
   return '—'
 }
@@ -270,7 +271,7 @@ function analysisTraceId(value: ExamTeachingAnalysisRecordVO): string | undefine
 }
 
 function analysisTraceText(value: ExamTeachingAnalysisRecordVO): string {
-  if (value.analysisStatus === 'PENDING') return '处理中，尚未生成追踪编号'
+  if (value.analysisStatus === 'PENDING') return '待分析，尚未生成追踪编号'
   if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
   return value.aiTraceId?.trim() || '—'
 }

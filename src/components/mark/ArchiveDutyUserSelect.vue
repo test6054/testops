@@ -8,7 +8,7 @@ import type { UserDetailDto, UserListItemDto } from '@/apis/edu/admin-user'
 import { onMounted, ref, watch } from 'vue'
 import { getTenantUserDetail, getTenantUserList } from '@/apis/edu/tenant-user-management'
 import { requirePageList } from '@/components/quality/selectors/page-contract'
-import { showUserError } from '@/utils/error-handler'
+import { showUserError, toUserError } from '@/utils/error-handler'
 
 interface Props {
   value?: string | null
@@ -52,13 +52,16 @@ function mergeOptions(users: UserListItemDto[]) {
 }
 
 function toListItem(user: UserDetailDto): UserListItemDto {
+  if (!user.createTime) {
+    throw toUserError(null, '用户详情缺少创建时间')
+  }
   return {
     id: user.id,
     userName: user.userName,
     nickName: user.nickName,
     email: user.email,
     mobile: user.mobile,
-    identifierNumber: user.identifierNumber,
+    identifierNumber: user.studentNumber,
     status: user.status,
     createTime: user.createTime,
   }

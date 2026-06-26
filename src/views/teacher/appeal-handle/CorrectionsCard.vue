@@ -130,7 +130,7 @@ import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   createCorrection,
-  GRADE_CORRECTION_STATUS_COLOR,
+  GRADE_CORRECTION_STATUS_TONE,
   GRADE_CORRECTION_STATUS_LABEL,
   GRADE_CORRECTION_TYPE_LABEL,
   listCorrections,
@@ -424,7 +424,7 @@ function correctionStatusLabel(row: ExamGradeCorrectionRecordVO): string {
 }
 
 function correctionStatusColor(row: ExamGradeCorrectionRecordVO): BadgeTone {
-  return strictEnumTone(GRADE_CORRECTION_STATUS_COLOR, row.correctionStatus, '成绩更正状态')
+  return strictEnumTone(GRADE_CORRECTION_STATUS_TONE, row.correctionStatus, '成绩更正状态')
 }
 
 function reviewRequestStudentLabel(request: GradeReviewRequestItemResponse): string {

@@ -108,6 +108,18 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'archive-volumes/audit',
+        name: 'TeacherArchiveVolumeAudit',
+        component: () => import('@/views/teacher/archive-volume/archive-volume-audit.vue'),
+        meta: {
+          title: '归档审计',
+          roles: TEACHER_ROLES,
+          hideInMenu: true,
+          keepAlive: true,
+          activeMenu: '/teacher/archive-volumes',
+        },
+      },
+      {
         path: 'archive-volumes/create-offline',
         name: 'TeacherArchiveVolumeCreateOffline',
         component: () => import('@/views/teacher/archive-volume/archive-volume-create-offline.vue'),

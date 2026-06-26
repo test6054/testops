@@ -6,27 +6,19 @@ import type {
 } from '@/apis/mark/exam-mark-scanner'
 import type {
   DuplicateResolutionStatusCode,
+} from '@/apis/mark/duplicate-resolution-status'
+import type {
   QualityDecisionCode,
   ScanAttentionSourceTypeCode,
   ScanAttentionTypeCode,
-  TaskStatusCode,
+  ScanBatchStatusCode,
 } from '@/apis/mark/exam-scan'
-import type { GradeStatusCode } from '@/apis/mark/student-exam'
+import type { GradeStatusCode } from '@/apis/mark/grade-status'
+import type { TaskStatusCode } from '@/apis/mark/task-status'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
-export type {
-  DuplicateResolutionStatusCode,
-  GradeStatusCode,
-  QualityDecisionCode,
-  ScanAttentionSourceTypeCode,
-  ScanAttentionTypeCode,
-  TaskStatusCode,
-}
-export type { ScannerAgentDiagnosticStatusCode, ScannerEndpointOnlineStatusCode }
-
 export type ScannerKioskScanMode = 'DIRECT' | 'SUPPLEMENT' | 'ARCHIVE'
-export type ScanBatchStatusCode = 'IN_PROGRESS' | 'RECEIVED' | 'BLOCKED' | 'BOUND' | 'COMPLETED' | 'DISCARDED'
 export type ExamScannerLedgerDataSource = 'DATABASE' | 'REDIS_PENDING' | 'NONE'
 export type ExamScannerPageScanStatus = 'SCANNED'
 export type ExamScannerPageUploadStatus = 'UPLOADED'

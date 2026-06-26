@@ -411,11 +411,11 @@ import {
   getLatestProgress,
   listProgressSnapshots,
   listReviewerMetrics,
-  PROGRESS_RISK_LEVEL_COLOR,
+  PROGRESS_RISK_LEVEL_TONE,
   PROGRESS_RISK_LEVEL_LABEL,
   refreshReviewerMetrics,
   reprocessBatch,
-  REVIEWER_METRIC_STATUS_COLOR,
+  REVIEWER_METRIC_STATUS_TONE,
   REVIEWER_METRIC_STATUS_LABEL,
   takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
@@ -810,7 +810,7 @@ async function handleReprocess(): Promise<void> {
 
 // ─── 共用工具 ─────────────────────────────
 function metricStatusTone(status: ReviewerMetricStatusCode): BadgeTone {
-  return strictEnumTone(REVIEWER_METRIC_STATUS_COLOR, status, '阅卷员指标状态')
+  return strictEnumTone(REVIEWER_METRIC_STATUS_TONE, status, '阅卷员指标状态')
 }
 
 function metricStatusLabel(status: ReviewerMetricStatusCode): string {
@@ -818,7 +818,7 @@ function metricStatusLabel(status: ReviewerMetricStatusCode): string {
 }
 
 function riskTone(level: ProgressRiskLevelCode): BadgeTone {
-  return strictEnumTone(PROGRESS_RISK_LEVEL_COLOR, level, '进度风险等级')
+  return strictEnumTone(PROGRESS_RISK_LEVEL_TONE, level, '进度风险等级')
 }
 
 function riskLabel(level: ProgressRiskLevelCode): string {

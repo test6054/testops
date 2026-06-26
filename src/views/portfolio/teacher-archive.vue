@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { PortfolioArchiveBagAssembleVO, PortfolioArchiveBagPreviewVO, PortfolioArchiveScoreResultVO } from '@/apis/portfolio/bag-types'
 import type {
   PortfolioArchiveRecordDetailVO,
   PortfolioArchiveRecordSourceType,
@@ -8,16 +9,14 @@ import type {
   PortfolioArchiveTimelineItemVO,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
-import type { PortfolioArchiveBagAssembleVO, PortfolioArchiveBagPreviewVO } from '@/apis/portfolio/bag-types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
+import { PORTFOLIO_ARCHIVE_BAG_SOURCE_TYPE_LABEL } from '@/apis/portfolio/bag-types'
 import { portfolioArchiveBagApi } from '@/apis/portfolio/teacher-platform'
 import {
-  PORTFOLIO_ARCHIVE_BAG_SOURCE_TYPE_LABEL,
   PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL,
   PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
@@ -33,11 +32,11 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 
 function archiveRecordStatusLabel(status: PortfolioArchiveRecordStatus): string {
   return strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, status, '档案记录状态')
@@ -107,6 +106,8 @@ const recordDetail = ref<PortfolioArchiveRecordDetailVO | null>(null)
 const bagLoading = ref(false)
 const bagSummary = ref<PortfolioArchiveBagAssembleVO | null>(null)
 const bagPreview = ref<PortfolioArchiveBagPreviewVO | null>(null)
+const scoreResult = ref<PortfolioArchiveScoreResultVO | null>(null)
+const scoreLoading = ref(false)
 const exportConfirmOpen = ref(false)
 const bagFilter = ref({
   academicYear: '',
@@ -287,6 +288,29 @@ function goFieldCorrection(fieldCode: string, fieldLabel?: string, fieldValue?: 
   void router.push({ path: '/portfolio/teacher/correction', query })
 }
 
+async function refreshBagScore(silent = false) {
+  if (!canLoadTeacherArchive.value) {
+    return
+  }
+  scoreLoading.value = true
+  try {
+    scoreResult.value = await portfolioArchiveBagApi.computeScore(bagRequest.value)
+    if (!silent) {
+      message.success(`档案袋评分 ${scoreResult.value.totalScore}`)
+    }
+  }
+  catch (error) {
+    showUserError(error, '计算档案袋评分失败')
+  }
+  finally {
+    scoreLoading.value = false
+  }
+}
+
+async function computeArchiveScore() {
+  await refreshBagScore(false)
+}
+
 async function assembleBag() {
   if (!canLoadTeacherArchive.value) {
     return
@@ -297,6 +321,7 @@ async function assembleBag() {
     bagSummary.value = result
     bagPreview.value = result.preview ?? null
     message.success(`档案袋完整度 ${result.completenessPercent}%`)
+    await refreshBagScore(true)
   }
   catch (error) {
     showUserError(error, '汇聚档案袋失败')
@@ -313,6 +338,7 @@ async function previewBag() {
   bagLoading.value = true
   try {
     bagPreview.value = await portfolioArchiveBagApi.preview(bagRequest.value)
+    await refreshBagScore(true)
   }
   catch (error) {
     showUserError(error, '加载档案袋预览失败')
@@ -340,13 +366,15 @@ async function confirmExportBag() {
   try {
     const result = await portfolioArchiveBagApi.buildMaterialPackage(bagRequest.value)
     if (!result.fileNodeId) {
-      throw new Error('导出未返回 ZIP 文件 ID')
+      showUserError(new Error('导出未返回 ZIP 文件 ID'), '导出档案袋失败')
+      return
     }
     await handleDownloadFile({
       fileId: result.fileNodeId,
       fileName: result.fileName,
     })
     exportConfirmOpen.value = false
+    await previewBag()
   }
   catch (error) {
     showUserError(error, '导出档案袋失败')
@@ -359,6 +387,7 @@ async function confirmExportBag() {
 function applyBagFilter() {
   void previewBag()
   void loadRecords()
+  void refreshBagScore(true)
 }
 
 async function exportBag() {
@@ -402,6 +431,9 @@ onMounted(async () => {
   <StageWorkbenchShell>
     <ContextBar title="我的档案" description="教师一张表 · 分类档案 · 成长时间轴（§17.2）">
       <template #actions>
+        <UiButton :loading="scoreLoading" @click="computeArchiveScore">
+          档案评分
+        </UiButton>
         <UiButton :loading="bagLoading" @click="previewBag">
           结构化预览
         </UiButton>
@@ -436,11 +468,17 @@ onMounted(async () => {
       />
     </UiCard>
 
+    <UiCard v-if="scoreResult" title="档案袋评分" class="teacher-archive__bag">
+      <p>总分 {{ scoreResult.totalScore }}<template v-if="scoreResult.computedTime"> · 计算于 {{ scoreResult.computedTime }}</template></p>
+      <ul v-if="scoreResult.breakdown.length" class="teacher-archive__score-list">
+        <li v-for="item in scoreResult.breakdown" :key="item.ruleId">
+          {{ item.ruleName }}：{{ item.earnedScore }} 分 — {{ item.explainText }}
+        </li>
+      </ul>
+    </UiCard>
+
     <UiCard v-if="bagSummary" title="档案袋汇聚" class="teacher-archive__bag">
       <p>完整度 {{ bagSummary.completenessPercent }}% · 已归档 {{ bagSummary.archivedCategoryCount }} 类 · 开放补采 {{ bagSummary.openGapTaskCount }} 项</p>
-      <p v-if="bagPreview?.totalScore != null">
-        档案袋得分 {{ bagPreview.totalScore }}
-      </p>
       <p v-if="bagSummary.missingCategoryNames.length">
         缺失：{{ bagSummary.missingCategoryNames.join('、') }}
       </p>
@@ -613,6 +651,11 @@ onMounted(async () => {
       <p v-else>
         将按当前筛选条件构建 ZIP 材料包。
       </p>
+      <p v-if="bagPreview?.latestMaterialPackageExport" class="teacher-archive__latest-export">
+        上次导出 {{ bagPreview.latestMaterialPackageExport.exportedTime }}，
+        附件 {{ bagPreview.latestMaterialPackageExport.attachmentCount }} 个。
+        本次将生成新的 ZIP，不会覆盖历史导出。
+      </p>
     </a-modal>
   </StageWorkbenchShell>
 </template>
@@ -662,6 +705,12 @@ onMounted(async () => {
   list-style: none;
 }
 
+.teacher-archive__latest-export {
+  margin-top: var(--dp-space-3, 12px);
+  font-size: 14px;
+  color: var(--dp-text-secondary, #64748b);
+}
+
 .teacher-archive__timeline-item {
   padding: var(--dp-space-2, 8px) 0;
   border-bottom: 1px solid var(--ant-color-border-secondary, #f0f0f0);
@@ -695,6 +744,12 @@ onMounted(async () => {
 
 .teacher-archive__correcting-tag {
   margin-left: var(--dp-space-2, 8px);
+}
+
+.teacher-archive__score-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
 }
 
 .teacher-archive__bag,

@@ -1,54 +1,24 @@
+import type { AiAnalysisStatusCode } from './ai-analysis-status'
 import type { ExamStatusCode } from './exam'
 import type { BindingStatusCode } from './exam-binding'
-import type { QuestionTypeCode } from './grading-experience'
+import type { FinalScoreStatusCode } from './final-score-status'
+import type { GradeStatusCode } from './grade-status'
+import type { MasteryLevelCode } from './student-mastery-level'
+import type { ObjectiveResultCode } from './objective-result'
+import type { QuestionTypeCode } from './question-type'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 import { throwUserFacing } from '@/utils/contract-guard'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
-import { QUESTION_TYPE_LABEL } from './grading-experience'
+import { AI_ANALYSIS_STATUS_LABEL, AI_ANALYSIS_STATUS_TONE } from './ai-analysis-status'
+import { EXAM_STATUS_LABEL } from './exam'
+import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from './final-score-status'
+import { GRADE_STATUS_LABEL, GRADE_STATUS_TONE } from './grade-status'
+import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from './student-mastery-level'
+import { OBJECTIVE_RESULT_LABEL, OBJECTIVE_RESULT_TONE } from './objective-result'
+import { QUESTION_TYPE_LABEL } from './question-type'
 
 const STUDENT_EXAM_DATA_ERROR = '成绩数据异常，请刷新后重试'
-
-const STUDENT_EXAM_STATUS_LABEL: Record<ExamStatusCode, string> = {
-  ACTIVE: '正常',
-  CLOSED: '已关闭',
-}
-
-export type FinalScoreStatusCode
-  = | 'PENDING'
-    | 'CALCULATED'
-    | 'CONFIRMED'
-    | 'CORRECTED'
-    | 'PUBLISHED'
-    | 'WITHDRAWN'
-
-export const FINAL_SCORE_STATUS_LABEL: Record<FinalScoreStatusCode, string> = {
-  PENDING: '待计算',
-  CALCULATED: '已计算',
-  CONFIRMED: '已确认',
-  CORRECTED: '已更正',
-  PUBLISHED: '已发布',
-  WITHDRAWN: '已撤回',
-}
-
-export const FINAL_SCORE_STATUS_TONE: Record<FinalScoreStatusCode, BadgeTone> = {
-  PENDING: 'gray',
-  CALCULATED: 'blue',
-  CONFIRMED: 'blue',
-  CORRECTED: 'purple',
-  PUBLISHED: 'green',
-  WITHDRAWN: 'red',
-}
-
-/** 学生成绩状态筛选项真源 - 与 FINAL_SCORE_STATUS_LABEL 键集合一致 */
-export const FINAL_SCORE_STATUS_CODES: FinalScoreStatusCode[] = [
-  'PENDING',
-  'CALCULATED',
-  'CONFIRMED',
-  'CORRECTED',
-  'PUBLISHED',
-  'WITHDRAWN',
-]
 
 export type StudentReviewWindowStatusCode = 'DRAFT' | 'ACTIVE' | 'CLOSED'
 
@@ -62,68 +32,6 @@ export const STUDENT_REVIEW_WINDOW_STATUS_TONE: Record<StudentReviewWindowStatus
   DRAFT: 'gray',
   ACTIVE: 'orange',
   CLOSED: 'gray',
-}
-
-export type AiAnalysisStatusCode = 'PENDING' | 'SUCCESS' | 'FAILED' | 'BLOCKED'
-
-export const AI_ANALYSIS_STATUS_LABEL: Record<AiAnalysisStatusCode, string> = {
-  PENDING: '处理中',
-  SUCCESS: '成功',
-  FAILED: '失败',
-  BLOCKED: '已阻断',
-}
-
-export const AI_ANALYSIS_STATUS_COLOR: Record<AiAnalysisStatusCode, BadgeTone> = {
-  PENDING: 'orange',
-  SUCCESS: 'green',
-  FAILED: 'red',
-  BLOCKED: 'red',
-}
-
-export type GradeStatusCode = 'PENDING' | 'NEED_REVIEW' | 'CONFIRMED'
-
-export const GRADE_STATUS_LABEL: Record<GradeStatusCode, string> = {
-  PENDING: '待批改',
-  NEED_REVIEW: '待复核',
-  CONFIRMED: '已确认',
-}
-
-export const GRADE_STATUS_TONE: Record<GradeStatusCode, BadgeTone> = {
-  PENDING: 'gray',
-  NEED_REVIEW: 'orange',
-  CONFIRMED: 'green',
-}
-
-export type ObjectiveResultCode = 'CORRECT' | 'WRONG' | 'NEED_REVIEW'
-
-export const OBJECTIVE_RESULT_LABEL: Record<ObjectiveResultCode, string> = {
-  CORRECT: '正确',
-  WRONG: '错误',
-  NEED_REVIEW: '待复核',
-}
-
-export const OBJECTIVE_RESULT_TONE: Record<ObjectiveResultCode, BadgeTone> = {
-  CORRECT: 'green',
-  WRONG: 'red',
-  NEED_REVIEW: 'orange',
-}
-
-export type MasteryLevelCode = 'EXCELLENT' | 'GOOD' | 'MEDIUM' | 'WEAK' | 'CRITICAL'
-
-export const MASTERY_LEVEL_LABEL: Record<MasteryLevelCode, string> = {
-  EXCELLENT: '优秀',
-  GOOD: '良好',
-  MEDIUM: '中等',
-  WEAK: '薄弱',
-  CRITICAL: '危急',
-}
-
-export const MASTERY_LEVEL_TONE: Record<MasteryLevelCode, BadgeTone> = {
-  EXCELLENT: 'green',
-  GOOD: 'blue',
-  MEDIUM: 'blue',
-  WEAK: 'orange',
-  CRITICAL: 'red',
 }
 
 export interface StudentExamItemVO {
@@ -295,7 +203,7 @@ export function validateStudentExamItemContract(record: StudentExamItemVO): void
   requireStudentExamText(record.examNo)
   requireStudentExamText(record.examStartTime)
   requireStudentExamText(record.examEndTime)
-  strictEnumLabel(STUDENT_EXAM_STATUS_LABEL, record.examStatus, '考试状态')
+  strictEnumLabel(EXAM_STATUS_LABEL, record.examStatus, '考试状态')
   strictEnumLabel(FINAL_SCORE_STATUS_LABEL, record.finalScoreStatus, '最终成绩状态')
   strictEnumTone(FINAL_SCORE_STATUS_TONE, record.finalScoreStatus, '最终成绩状态')
   validateStudentReviewWindowContract(record)
@@ -331,7 +239,7 @@ export function validateStudentScoreDetailContract(record: StudentScoreDetailVO)
   requireStudentExamText(record.studentUserId)
   requireStudentExamText(record.studentNo)
   requireStudentExamText(record.studentName)
-  strictEnumLabel(STUDENT_EXAM_STATUS_LABEL, record.examStatus, '考试状态')
+  strictEnumLabel(EXAM_STATUS_LABEL, record.examStatus, '考试状态')
   strictEnumLabel(FINAL_SCORE_STATUS_LABEL, record.finalScoreStatus, '最终成绩状态')
   strictEnumTone(FINAL_SCORE_STATUS_TONE, record.finalScoreStatus, '最终成绩状态')
   validateStudentReviewWindowContract(record)
@@ -364,11 +272,11 @@ export function validateStudentAiLearningReportContract(record: StudentAiLearnin
   requireStudentExamText(record.examId)
   if (record.profileStatus) {
     strictEnumLabel(AI_ANALYSIS_STATUS_LABEL, record.profileStatus, 'AI学习画像状态')
-    strictEnumTone(AI_ANALYSIS_STATUS_COLOR, record.profileStatus, 'AI学习画像状态')
+    strictEnumTone(AI_ANALYSIS_STATUS_TONE, record.profileStatus, 'AI学习画像状态')
   }
   if (record.clusterStatus) {
     strictEnumLabel(AI_ANALYSIS_STATUS_LABEL, record.clusterStatus, 'AI错因聚类状态')
-    strictEnumTone(AI_ANALYSIS_STATUS_COLOR, record.clusterStatus, 'AI错因聚类状态')
+    strictEnumTone(AI_ANALYSIS_STATUS_TONE, record.clusterStatus, 'AI错因聚类状态')
   }
   record.diagnosisItems?.forEach(validateStudentAiDiagnosisContract)
   record.errorClusters?.forEach(validateStudentAiErrorClusterContract)

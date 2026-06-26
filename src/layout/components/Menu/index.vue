@@ -203,10 +203,7 @@ const markingSidebarRoutesForMenu = computed(() => {
 
 const markingGroupedMenus = computed(() => groupRoutes(markingSidebarRoutesForMenu.value))
 const qualityGroupedMenus = computed(() => groupRoutes(qualitySidebarRoutesForMenu.value))
-const portfolioGroupedMenus = computed(() => ({
-  ungrouped: portfolioSidebarRoutes.value,
-  groups: [] as MenuGroup[],
-}))
+const portfolioGroupedMenus = computed(() => groupRoutes(portfolioSidebarRoutes.value))
 
 const sidebarRoutes = computed(() => {
   if (props.menus) {

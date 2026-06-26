@@ -1,20 +1,9 @@
+import type { PaperArchiveOcrStatusCode } from './paper-archive'
 /**
  * 统一归档卷 API - 对接 edu-mark ArchiveVolumeController
  */
 import type { PageResult, QueryDto } from '@/types'
-import type { PaperArchiveOcrStatusCode } from './paper-archive'
-import {
-  PAPER_ARCHIVE_OCR_STATUS_LABEL,
-  PAPER_ARCHIVE_OCR_STATUS_TONE,
-} from './paper-archive'
 import http from '@/config/axios'
-
-/** 归档卷材料 OCR 状态，与后端 PaperArchiveOcrStatus 一致 */
-export type ArchiveMaterialOcrStatusCode = PaperArchiveOcrStatusCode
-
-export const ARCHIVE_MATERIAL_OCR_STATUS_LABEL = PAPER_ARCHIVE_OCR_STATUS_LABEL
-
-export const ARCHIVE_MATERIAL_OCR_STATUS_TONE = PAPER_ARCHIVE_OCR_STATUS_TONE
 
 export type ArchiveVolumeStatusCode
   = | 'DRAFT'
@@ -319,8 +308,14 @@ export interface ArchiveVolumeVO {
   createTime?: string
   fourPropertyStale?: boolean
   submitReady?: boolean
-  /** 是否存在 OPEN/IN_PROGRESS 整改任务，阻断提交 */
+  /** 是否存在 OPEN/IN_PROGRESS/RESUBMITTED 整改任务，阻断提交 */
   hasBlockingRemediationForSubmit?: boolean
+  /** 成绩证明是否满足提交前置条件 */
+  scoreSubmitReady?: boolean
+  /** 线上阅卷归档双门禁是否开放 */
+  examGateOpen?: boolean
+  /** 成绩证明文件 ID */
+  scoreProofFileId?: string
 }
 
 export interface ArchiveVolumeSearchHitVO {
@@ -342,13 +337,32 @@ export interface ArchiveVolumeDetailVO {
   latestFourPropertyCheck?: ArchiveFourPropertyCheckVO
   fourPropertyStale?: boolean
   hasOpenRemediationTask?: boolean
-  /** 是否存在 OPEN/IN_PROGRESS 整改任务，阻断提交 */
+  /** 是否存在 OPEN/IN_PROGRESS/RESUBMITTED 整改任务，阻断提交 */
   hasBlockingRemediationForSubmit?: boolean
+  /** 最近一次鉴定决议 */
+  appraisalDecision?: 'RETAIN' | 'DESTROY'
+  /** 最近一次销毁申请人 */
+  destructionRequestUserId?: string
   latestIntegrityCheck?: ArchiveIntegrityCheckVO
   /** 当前用户是否具备卷材料登记/补交写权限 */
   canManageMaterials?: boolean
   /** 当前用户是否具备 STORED 卷鉴定/销毁管理权限 */
   canManageAppraisal?: boolean
+  /** 当前用户是否具备该院系 ARCHIVE_ADMIN 职责 */
+  canManageArchiveAdmin?: boolean
+  /** 最近一次移交验收记录 */
+  latestTransferRecord?: ArchiveVolumeTransferRecordVO
+}
+
+export interface ArchiveVolumeTransferRecordVO {
+  transferStatus?: ArchiveTransferStatusCode
+  submitUserId?: string
+  submitTime?: string
+  reviewerUserId?: string
+  reviewedTime?: string
+  rejectReason?: string
+  /** DA/T93 移交信息包文件 ID */
+  transferPackageFileId?: string
 }
 
 export interface ArchiveVolumeMaterialVO {
@@ -363,7 +377,7 @@ export interface ArchiveVolumeMaterialVO {
   mediaType?: ArchiveMaterialMediaTypeCode
   fileFormat?: string
   submissionStatus?: ArchiveMaterialSubmissionStatusCode
-  ocrStatus?: ArchiveMaterialOcrStatusCode
+  ocrStatus?: PaperArchiveOcrStatusCode
   ocrFailureReason?: string
 }
 
@@ -644,6 +658,9 @@ export interface ArchiveVolumePageRequest extends QueryDto {
   studentNo?: string
   studentName?: string
   mineOnly?: boolean
+  integrityFailedOnly?: boolean
+  archiveOverdueOnly?: boolean
+  delaySubmissionOverdueOnly?: boolean
 }
 
 export interface ArchiveVolumeSearchRequest extends QueryDto {
@@ -734,6 +751,10 @@ export function createRemediationTask(
 
 export function listOpenRemediationTasks(): Promise<ArchiveRemediationTaskVO[]> {
   return http.post<ArchiveRemediationTaskVO[]>('/api/mark/archive-volumes/remediation/list', {})
+}
+
+export function remindArchiveDue(volumeId: string): Promise<void> {
+  return http.post<void>('/api/mark/archive-volumes/remind', { volumeId })
 }
 
 export interface ArchiveEvaluationCampaignSaveRequest {
@@ -848,7 +869,12 @@ export interface ArchiveExternalImportResultVO {
 
 export interface ArchiveExternalImportTemplateVO {
   fileName: string
-  csvContent: string
+  fileContentBase64: string
+}
+
+export interface ArchiveExcelFileVO {
+  fileName: string
+  fileContentBase64: string
 }
 
 export function importArchiveExternalData(
@@ -899,9 +925,13 @@ export interface ArchiveVolumeAccessRecordVO {
   accessReason?: string
   archiveNo?: string
   archiveTitle?: string
+  departmentId?: string
+  securityLevel?: ArchiveSecurityLevelCode
   approvedTime?: string
   expireTime?: string
   downloadToken?: string
+  /** 在线预览最近阅读页码，从 1 起计 */
+  lastReadPage?: number
 }
 
 export interface ArchiveIntegrityCheckVO {
@@ -934,6 +964,10 @@ export interface ArchiveVolumeExportVO {
   exportFileId: string
   manifestChecksum?: string
   materialCount?: number
+  /** 导出包内实际文件数 */
+  fileCount?: number
+  /** 导出包 SHA256 */
+  packageChecksumSha256?: string
 }
 
 export interface ArchiveMaterialCatalogTemplateVO {
@@ -1148,6 +1182,12 @@ export function getArchiveVolumeStatistics(
   return http.post<ArchiveVolumeStatisticsVO>('/api/mark/archive-volumes/statistics', request)
 }
 
+export function exportArchiveVolumeStatisticsExcel(
+  request: ArchiveVolumeStatisticsRequest,
+): Promise<ArchiveExcelFileVO> {
+  return http.post<ArchiveExcelFileVO>('/api/mark/archive-volumes/statistics/export', request)
+}
+
 export function exportArchiveVolume(volumeId: string): Promise<ArchiveVolumeExportVO> {
   return http.post<ArchiveVolumeExportVO>('/api/mark/archive-volumes/export', { volumeId })
 }
@@ -1246,4 +1286,165 @@ export function downloadArchiveAccessMaterial(
   request: ArchiveVolumeAccessDownloadRequest,
 ): Promise<import('@/config/axios/types').BlobDownloadResponse> {
   return http.downloadByPost('/api/mark/archive-volumes/access/download-material', request)
+}
+
+export interface ArchiveVolumeAccessPreviewRequest {
+  accessRecordId: string
+  materialId: string
+  downloadToken: string
+}
+
+export function previewArchiveAccessMaterial(
+  request: ArchiveVolumeAccessPreviewRequest,
+): Promise<import('@/config/axios/types').BlobDownloadResponse> {
+  return http.downloadByPost('/api/mark/archive-volumes/access/preview-material', request)
+}
+
+export interface ArchiveVolumeAccessReadPageRequest {
+  accessRecordId: string
+  lastReadPage: number
+}
+
+export function recordAccessReadPage(
+  request: ArchiveVolumeAccessReadPageRequest,
+): Promise<void> {
+  return http.post<void>('/api/mark/archive-volumes/access/record-read-page', request)
+}
+
+export interface ArchiveTeachingAffairsScoreSyncRequest {
+  volumeId: string
+  externalSyncNo: string
+  externalSourceSystem: string
+  scoreCompletionStatus: ArchiveScoreCompletionStatusCode
+  scoreProofFileId?: string
+}
+
+export interface ArchiveTeachingAffairsScoreSyncResponse {
+  volumeId: string
+  scoreCompletionStatus: ArchiveScoreCompletionStatusCode
+  externalSyncNo: string
+}
+
+export function syncTeachingAffairsScoreCompletion(
+  request: ArchiveTeachingAffairsScoreSyncRequest,
+): Promise<ArchiveTeachingAffairsScoreSyncResponse> {
+  return http.post<ArchiveTeachingAffairsScoreSyncResponse>(
+    '/api/mark/archive-volumes/sync/teaching-affairs/score-completion',
+    request,
+  )
+}
+
+export interface ArchiveVolumeAccessLedgerPageRequest extends QueryDto {
+  departmentId?: string
+  accessStatus?: ArchiveAccessStatusCode
+  applicantUserId?: string
+}
+
+export interface ArchiveVolumeAccessLedgerRowVO {
+  accessRecordId: string
+  volumeId: string
+  materialId?: string
+  applicantUserId?: string
+  approverUserId?: string
+  accessStatus: ArchiveAccessStatusCode
+  accessReason?: string
+  approvedTime?: string
+  expireTime?: string
+  createTime?: string
+  archiveNo?: string
+  archiveTitle?: string
+  departmentName?: string
+  lastReadPage?: number
+}
+
+export function pageAccessLedger(
+  request: ArchiveVolumeAccessLedgerPageRequest,
+): Promise<PageResult<ArchiveVolumeAccessLedgerRowVO>> {
+  return http.post<PageResult<ArchiveVolumeAccessLedgerRowVO>>(
+    '/api/mark/archive-volumes/access/ledger/page',
+    request,
+  )
+}
+
+export interface ArchiveVolumeDestructionLedgerPageRequest extends QueryDto {
+  departmentId?: string
+  keyword?: string
+}
+
+export interface ArchiveVolumeDestructionLedgerRowVO {
+  volumeId: string
+  archiveNo?: string
+  archiveTitle?: string
+  departmentId?: string
+  departmentName?: string
+  academicYear?: string
+  semester?: string
+  destructionStatus: ArchiveDestructionStatusCode
+  destructionRecordId?: string
+  requestReason?: string
+  requestUserId?: string
+  requestTime?: string
+  approverUserId?: string
+  approvalTime?: string
+  executedTime?: string
+  witnessUserId?: string
+  registerFileId?: string
+}
+
+export function pageDestructionLedger(
+  request: ArchiveVolumeDestructionLedgerPageRequest,
+): Promise<PageResult<ArchiveVolumeDestructionLedgerRowVO>> {
+  return http.post<PageResult<ArchiveVolumeDestructionLedgerRowVO>>(
+    '/api/mark/archive-volumes/destruction/ledger/page',
+    request,
+  )
+}
+
+export function exportDestructionLedgerExcel(
+  request: ArchiveVolumeDestructionLedgerPageRequest,
+): Promise<ArchiveExcelFileVO> {
+  return http.post<ArchiveExcelFileVO>('/api/mark/archive-volumes/destruction/ledger/export', request)
+}
+
+export interface ArchiveVolumeSupervisionMarkProblemRequest {
+  volumeId: string
+  problemDescription: string
+  campaignId?: string
+}
+
+export function markSupervisionProblem(
+  request: ArchiveVolumeSupervisionMarkProblemRequest,
+): Promise<ArchiveRemediationTaskVO> {
+  return http.post<ArchiveRemediationTaskVO>(
+    '/api/mark/archive-volumes/supervision/mark-problem',
+    request,
+  )
+}
+
+export interface ArchiveVolumeAuditPageRequest extends QueryDto {
+  volumeId?: string
+  eventType?: ArchiveVolumeEventTypeCode
+}
+
+export interface ArchiveVolumeAuditEventVO {
+  eventId: string
+  volumeId?: string
+  eventType?: ArchiveVolumeEventTypeCode
+  operatorUserId?: string
+  reason?: string
+  beforeStatus?: string
+  afterStatus?: string
+  traceId?: string
+  eventPayload?: string
+  createUser?: string
+  createTime?: string
+}
+
+export function pageArchiveAuditEvents(
+  request: ArchiveVolumeAuditPageRequest,
+): Promise<PageResult<ArchiveVolumeAuditEventVO>> {
+  return http.post<PageResult<ArchiveVolumeAuditEventVO>>(
+    '/api/mark/archive-volumes/audit/page',
+    request,
+  )
 }

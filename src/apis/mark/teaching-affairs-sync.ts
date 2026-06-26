@@ -64,7 +64,7 @@ export const SYNC_TASK_STATUS_LABEL: Record<SyncTaskStatusCode, string> = {
   CANCELLED: '已取消',
 }
 
-export const SYNC_TASK_STATUS_COLOR: Record<SyncTaskStatusCode, BadgeTone> = {
+export const SYNC_TASK_STATUS_TONE: Record<SyncTaskStatusCode, BadgeTone> = {
   PENDING: 'gray',
   SYNCING: 'blue',
   SUCCESS: 'green',
@@ -84,7 +84,7 @@ export const PASSBACK_STATUS_LABEL: Record<PassbackStatusCode, string> = {
   WITHDRAWN: '已撤回',
 }
 
-export const PASSBACK_STATUS_COLOR: Record<PassbackStatusCode, BadgeTone> = {
+export const PASSBACK_STATUS_TONE: Record<PassbackStatusCode, BadgeTone> = {
   PENDING: 'gray',
   SENT: 'blue',
   SUCCESS: 'green',
@@ -101,7 +101,7 @@ export const RECONCILE_STATUS_LABEL: Record<ReconcileStatusCode, string> = {
   PENDING_RECONCILE: '待对账',
 }
 
-export const RECONCILE_STATUS_COLOR: Record<ReconcileStatusCode, BadgeTone> = {
+export const RECONCILE_STATUS_TONE: Record<ReconcileStatusCode, BadgeTone> = {
   MATCHED: 'green',
   MISMATCHED: 'red',
   PENDING_RECONCILE: 'orange',

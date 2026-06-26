@@ -1,4 +1,4 @@
-import type { QuestionTypeCode } from './grading-experience'
+import type { QuestionTypeCode } from './question-type'
 /**
  * 成绩复核与更正 API - 对接 edu-mark 模块 GradeReviewController
  *
@@ -28,7 +28,7 @@ export const REVIEW_WINDOW_STATUS_LABEL: Record<ReviewWindowPolicyStatusCode, st
 }
 
 /** 复核窗口状态徽标颜色（统一 BadgeTone） */
-export const REVIEW_WINDOW_STATUS_COLOR: Record<ReviewWindowPolicyStatusCode, BadgeTone> = {
+export const REVIEW_WINDOW_STATUS_TONE: Record<ReviewWindowPolicyStatusCode, BadgeTone> = {
   DRAFT: 'gray',
   ACTIVE: 'green',
   CLOSED: 'red',
@@ -115,15 +115,6 @@ export const REVIEW_REQUEST_STATUS_LABEL: Record<GradeReviewRequestStatusCode, s
   APPROVED: '通过',
   REJECTED: '驳回',
   CORRECTED: '已更正',
-}
-
-/** 复核申请状态徽标颜色（统一 BadgeTone） */
-export const REVIEW_REQUEST_STATUS_COLOR: Record<GradeReviewRequestStatusCode, BadgeTone> = {
-  PENDING: 'orange',
-  IN_REVIEW: 'blue',
-  APPROVED: 'green',
-  REJECTED: 'red',
-  CORRECTED: 'purple',
 }
 
 /** 复核申请状态 BadgeTone 映射（用于 UiTag/UiBadge） */
@@ -368,7 +359,7 @@ export const GRADE_CORRECTION_STATUS_LABEL: Record<GradeCorrectionStatusCode, st
 }
 
 /** 更正状态徽标颜色（统一 BadgeTone，cyan→blue） */
-export const GRADE_CORRECTION_STATUS_COLOR: Record<GradeCorrectionStatusCode, BadgeTone> = {
+export const GRADE_CORRECTION_STATUS_TONE: Record<GradeCorrectionStatusCode, BadgeTone> = {
   PENDING: 'orange',
   APPROVED: 'blue',
   EXECUTED: 'green',
@@ -462,7 +453,7 @@ export const BATCH_CORRECTION_STATUS_LABEL: Record<BatchCorrectionApprovalStatus
 }
 
 /** 批量更正审批状态徽标颜色（统一 BadgeTone） */
-export const BATCH_CORRECTION_STATUS_COLOR: Record<BatchCorrectionApprovalStatusCode, BadgeTone> = {
+export const BATCH_CORRECTION_STATUS_TONE: Record<BatchCorrectionApprovalStatusCode, BadgeTone> = {
   DRAFT: 'gray',
   PENDING_APPROVAL: 'orange',
   APPROVED: 'blue',

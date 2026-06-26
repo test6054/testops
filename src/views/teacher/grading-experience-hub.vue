@@ -379,14 +379,14 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import type {
-  AiAnalysisStatusCode,
   AnswerClusterRecordVO,
   ExperienceCaseStatusCode,
   GradingExperienceCaseVO,
   QuestionSignatureVO,
-  QuestionTypeCode
 } from '@/apis/mark/grading-experience'
+import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
@@ -395,10 +395,9 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { AI_ANALYSIS_STATUS_LABEL, AI_ANALYSIS_STATUS_TONE } from '@/apis/mark/ai-analysis-status'
 import {
-  AI_ANALYSIS_STATUS_COLOR,
-  AI_ANALYSIS_STATUS_LABEL,
-  EXPERIENCE_CASE_STATUS_COLOR,
+  EXPERIENCE_CASE_STATUS_TONE,
   EXPERIENCE_CASE_STATUS_LABEL,
   extractExperience,
   generateAnswerCluster,
@@ -407,9 +406,9 @@ import {
   listExperiences,
   listExperiencesByQuestion,
   listSignatures,
-  QUESTION_TYPE_LABEL,
-  searchSimilar
+  searchSimilar,
 } from '@/apis/mark/grading-experience'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -655,11 +654,11 @@ function handleClusterFilterReset(): void {
 
 // helper 严格只接受后端枚举类型，返回与 UiTag tone 一致的 BadgeTone，零 as 断言。
 function aiStatusTone(status: AiAnalysisStatusCode): BadgeTone {
-  return strictEnumTone(AI_ANALYSIS_STATUS_COLOR, status, 'AI 分析状态')
+  return strictEnumTone(AI_ANALYSIS_STATUS_TONE, status, 'AI 分析状态')
 }
 
 function caseStatusTone(status: ExperienceCaseStatusCode): BadgeTone {
-  return strictEnumTone(EXPERIENCE_CASE_STATUS_COLOR, status, '经验案例状态')
+  return strictEnumTone(EXPERIENCE_CASE_STATUS_TONE, status, '经验案例状态')
 }
 
 function aiStatusLabel(status: AiAnalysisStatusCode): string {
@@ -683,49 +682,49 @@ function ellipsis(
 }
 
 function clusterLatencyText(item: AnswerClusterRecordVO): string {
-  if (item.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
+  if (item.analysisStatus === 'PENDING') return '待分析，尚未生成耗时'
   if (item.analysisStatus === 'SUCCESS' && item.latencyMs != null) return `${item.latencyMs} ms`
   return '处理失败，未生成耗时'
 }
 
 function clusterTraceText(item: AnswerClusterRecordVO): string {
-  if (item.analysisStatus === 'PENDING') return '处理中，尚未生成追踪编号'
+  if (item.analysisStatus === 'PENDING') return '待分析，尚未生成追踪编号'
   if (item.analysisStatus === 'SUCCESS') return item.aiTraceId ?? '—'
   return '处理失败，未生成追踪编号'
 }
 
 function clusterSummaryText(item: AnswerClusterRecordVO): string {
-  if (item.analysisStatus === 'PENDING') return 'AI 答案聚类处理中，完成后展示聚类总结'
+  if (item.analysisStatus === 'PENDING') return 'AI 答案聚类待分析，完成后展示聚类总结'
   if (item.analysisStatus === 'SUCCESS') return item.clusterSummary ?? '—'
   return aiClusterFailureMessage(item.errorMessage)
 }
 
 function clusterGroupCountText(item: AnswerClusterRecordVO): string {
-  if (item.analysisStatus === 'PENDING') return '处理中'
+  if (item.analysisStatus === 'PENDING') return '待分析'
   if (item.analysisStatus === 'SUCCESS' && item.groupCount != null) return String(item.groupCount)
   return '处理失败'
 }
 
 function experienceTraceText(item: GradingExperienceCaseVO): string {
-  if (item.analysisStatus === 'PENDING') return '处理中，尚未生成追踪编号'
+  if (item.analysisStatus === 'PENDING') return '待分析，尚未生成追踪编号'
   if (item.analysisStatus === 'SUCCESS') return item.aiTraceId ?? '—'
   return '处理失败，未生成追踪编号'
 }
 
 function experienceLatencyText(item: GradingExperienceCaseVO): string {
-  if (item.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
+  if (item.analysisStatus === 'PENDING') return '待分析，尚未生成耗时'
   if (item.analysisStatus === 'SUCCESS' && item.latencyMs != null) return `${item.latencyMs} ms`
   return '处理失败，未生成耗时'
 }
 
 function experienceSummaryText(item: GradingExperienceCaseVO): string {
-  if (item.analysisStatus === 'PENDING') return 'AI 阅卷经验提炼处理中，完成后展示经验总结'
+  if (item.analysisStatus === 'PENDING') return 'AI 阅卷经验提炼待分析，完成后展示经验总结'
   if (item.analysisStatus === 'SUCCESS') return item.experienceSummary ?? '—'
   return gradingExperienceFailureMessage(item.errorMessage)
 }
 
 function experienceApplicableScopeText(item: GradingExperienceCaseVO): string {
-  if (item.analysisStatus === 'PENDING') return '处理中，尚未生成适用边界'
+  if (item.analysisStatus === 'PENDING') return '待分析，尚未生成适用边界'
   if (item.analysisStatus === 'SUCCESS') return item.applicableScope ?? '—'
   return '处理失败，未生成适用边界'
 }

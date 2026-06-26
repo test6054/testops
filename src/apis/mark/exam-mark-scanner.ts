@@ -7,7 +7,6 @@
  * - 后端 Long ID 统一用 string 表达到前端（保持与其他模块一致）
  */
 import type { ExamStatusCode } from './exam'
-import type { ScanAttentionTypeCode } from './exam-scan'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
@@ -22,7 +21,7 @@ export const SCANNER_INTERFACE_MODE_LABEL: Record<ScannerInterfaceModeCode, stri
 }
 
 /** 接入模式徽标颜色（统一 BadgeTone） */
-export const SCANNER_INTERFACE_MODE_COLOR: Record<ScannerInterfaceModeCode, BadgeTone> = {
+export const SCANNER_INTERFACE_MODE_TONE: Record<ScannerInterfaceModeCode, BadgeTone> = {
   HTTP_PUSH: 'blue',
 }
 
@@ -40,7 +39,7 @@ export const SCANNER_DEVICE_STATUS_LABEL: Record<ScannerDeviceStatusCode, string
 }
 
 /** 设备状态颜色（统一 BadgeTone） */
-export const SCANNER_DEVICE_STATUS_COLOR: Record<ScannerDeviceStatusCode, BadgeTone> = {
+export const SCANNER_DEVICE_STATUS_TONE: Record<ScannerDeviceStatusCode, BadgeTone> = {
   ACTIVE: 'green',
   INACTIVE: 'orange',
   DISABLED: 'red',
@@ -59,7 +58,7 @@ export const SCANNER_ENDPOINT_ONLINE_STATUS_LABEL: Record<ScannerEndpointOnlineS
 }
 
 /** Agent 在线状态颜色 */
-export const SCANNER_ENDPOINT_ONLINE_STATUS_COLOR: Record<ScannerEndpointOnlineStatusCode, BadgeTone> = {
+export const SCANNER_ENDPOINT_ONLINE_STATUS_TONE: Record<ScannerEndpointOnlineStatusCode, BadgeTone> = {
   ONLINE: 'green',
   OFFLINE: 'orange',
 }
@@ -69,6 +68,19 @@ export type ScannerColorModeCode = 'COLOR' | 'GRAY' | 'LINEART'
 
 /** 双面模式 */
 export type ScannerDuplexModeCode = 'SIMPLEX' | 'DUPLEX'
+
+/** 扫描色彩模式文案 */
+export const SCANNER_COLOR_MODE_LABEL: Record<ScannerColorModeCode, string> = {
+  COLOR: '彩色',
+  GRAY: '灰度',
+  LINEART: '黑白',
+}
+
+/** 单面/双面扫描方式文案 */
+export const SCANNER_DUPLEX_MODE_LABEL: Record<ScannerDuplexModeCode, string> = {
+  SIMPLEX: '单面扫描',
+  DUPLEX: '双面扫描',
+}
 
 /** 扫描设备分页查询请求 - 对应 ExamScannerDeviceQueryRequest */
 export interface ExamScannerDeviceQueryRequest extends QueryDto {
@@ -182,10 +194,7 @@ export interface ExamScannerDeviceUpdateRequest {
   kioskLockEnabled: boolean
 }
 
-// ScanAttentionQueryRequest / ScanAttentionItemVO 定义在 @/apis/mark/exam，避免重复
-export type { ScanAttentionTypeCode }
-
-// ExamCandidateVO 定义在 @/apis/mark/exam，避免重复
+// ScanAttentionQueryRequest / ScanAttentionItemVO 定义在 @/apis/mark/exam-scan，避免重复
 
 /** 试卷身份批量绑定单项请求 - 对应 ExamPaperBatchBindItemRequest */
 export interface ExamPaperBatchBindItemRequest {

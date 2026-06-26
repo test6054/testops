@@ -1,4 +1,4 @@
-import type { QueryDto } from '@/types'
+import type { PageResult, QueryDto } from '@/types'
 
 /** 场景编码 - PfSceneCodeEnum */
 export type PfSceneCode
@@ -72,14 +72,48 @@ export interface PortfolioIndicatorRuleTemplateVO {
   status: string
 }
 
+export interface PortfolioIndicatorRuleTemplateSaveRequest {
+  id?: string
+  templateCode: string
+  templateName: string
+  ruleType: string
+  paramsJson: string
+  description?: string
+  status?: string
+}
+
+export interface PortfolioIndicatorRuleBindingSaveRequest {
+  id?: string
+  indicatorCode: string
+  templateId: string
+  bindingPriority?: number
+}
+
 export interface PortfolioIndustryPackVO {
   id: string
   packCode: string
   packName: string
-  industryType: string
-  description: string
+  packVersion?: string
+  packDefJson?: string
+  seedVersion?: string
   status: string
 }
+
+export interface PortfolioIndustryPackSaveRequest {
+  id?: string
+  packCode: string
+  packName: string
+  packVersion?: string
+  packDefJson: string
+  status?: string
+}
+
+/** 资格规则预置编码 */
+export const PF_ELIGIBILITY_PRESET_OPTIONS = [
+  { value: 'DUAL_TEACHER_APPLY', label: '双师认定申请', scene: 'DUAL_TEACHER' as PfSceneCode },
+  { value: 'ETHICS_VETO', label: '师德一票否决', scene: 'DEFAULT' as PfSceneCode },
+  { value: 'TITLE_APPLY', label: '职称申报资格', scene: 'TITLE' as PfSceneCode },
+]
 
 export interface PortfolioIndicatorPlatformSeedResultVO {
   createdIndicatorCount: number
@@ -149,7 +183,120 @@ export interface PortfolioTenantIndicatorConfigVO {
   indicatorCode: string
   indicatorName: string
   enabled: boolean
-  paramOverrideJson?: string
+  standardScore?: string
+  capScore?: string
+  paramsOverrideJson?: string
+  applicableTeacherTypes?: string
+  applicableScenes?: string
+  auditChainJson?: string
+}
+
+export interface PortfolioTenantIndicatorConfigSaveRequest {
+  indicatorCode: string
+  enabled?: boolean
+  standardScore?: string
+  capScore?: string
+  paramsOverrideJson?: string
+  applicableTeacherTypes?: string
+  applicableScenes?: string
+  auditChainJson?: string
+}
+
+export interface PortfolioIndustryPackBindItem {
+  packCode: string
+  majorGroupCode?: string
+  majorGroupName?: string
+  enabled?: boolean
+  bindConfigJson?: string
+}
+
+export interface PortfolioIndustryPackBindRequest {
+  bindings: PortfolioIndustryPackBindItem[]
+}
+
+export interface PortfolioIndicatorDefinitionGetRequest {
+  indicatorCode: string
+}
+
+export interface PortfolioIndicatorDefinitionSaveRequest {
+  id?: string
+  indicatorCode: string
+  indicatorName: string
+  levelNo?: number
+  dimensionL1Name?: string
+  dimensionL2Name?: string
+  definitionText?: string
+  defaultDataSource?: string
+  defaultRuleTemplateId?: string
+  policyAlign?: string
+  applicableTeachers?: string
+  seedVersion?: string
+  auditRequired?: boolean
+  redLineFlag?: boolean
+  sortOrder?: number
+  status?: string
+}
+
+export interface PortfolioIndicatorRuleTemplatePageRequest extends QueryDto {
+  templateCode?: string
+  ruleType?: string
+  status?: string
+}
+
+export interface PortfolioIndicatorComputeTrialRequest {
+  ruleType: string
+  indicatorCode?: string
+  paramsJson: string
+  rawValue: number
+  auditRequired?: boolean
+  auditApproved?: boolean
+}
+
+export interface PortfolioIndicatorSnapshotComputeRequest {
+  teacherId: string
+  snapshotId: string
+  indicatorCode: string
+  rawValue: number
+  auditRequired?: boolean
+  auditApproved?: boolean
+}
+
+export interface PortfolioExplainGetRequest {
+  logId: string
+  logType: 'SCORE' | 'ELIGIBILITY'
+  teacherId: string
+}
+
+export interface PortfolioIndicatorComputeLogVO {
+  id: string
+  teacherId: string
+  indicatorCode: string
+  snapshotId: string
+  rawValue: string
+  finalScore: string
+  auditRequired?: boolean
+  explainText?: string
+  computedTime?: string
+}
+
+export interface PortfolioTenantConfigAuditLogVO {
+  id: string
+  bizType: string
+  bizKey: string
+  operation: string
+  beforeJson?: string
+  afterJson?: string
+  createTime?: string
+}
+
+export interface PortfolioEligibilityEvalLogVO {
+  id: string
+  teacherId: string
+  eligibilityCode: string
+  snapshotId?: string
+  eligible?: boolean
+  explainText?: string
+  evaluatedTime?: string
 }
 
 export interface PortfolioTenantSceneIndicatorItem {
@@ -214,10 +361,68 @@ export interface PortfolioRulePublishSnapshotVO {
   snapshotSummaryJson: string
 }
 
+export interface PortfolioIndicatorDefinitionImportResultVO {
+  totalRows: number
+  successRows: number
+  failedRows: number
+  createdCount: number
+  updatedCount: number
+  errorReportJson?: string
+}
+
+export interface PortfolioIndicatorSourceMappingVO {
+  indicatorCode: string
+  indicatorName: string
+  defaultDataSource?: string
+  channelCode: string
+  channelLabel: string
+  outOfScope: boolean
+  autoCollectSupported: boolean
+}
+
+export interface PortfolioIndicatorCollectedValueVO {
+  indicatorCode: string
+  channelCode: string
+  collected: boolean
+  rawValue?: string
+  skipReason?: string
+}
+
+export interface PortfolioIndicatorAutoCollectResultVO {
+  teacherId: string
+  items: PortfolioIndicatorCollectedValueVO[]
+  collectedCount: number
+  skippedCount: number
+}
+
+export type PfEligibilityNodeType = 'LEAF' | 'AND' | 'OR' | 'NOT' | 'AUDIT_GATE'
+
+export const PF_ELIGIBILITY_NODE_TYPE_LABEL: Record<PfEligibilityNodeType, string> = {
+  LEAF: '叶子条件',
+  AND: '与',
+  OR: '或',
+  NOT: '非',
+  AUDIT_GATE: '审核门禁',
+}
+
+export const PF_ELIGIBILITY_NODE_TYPE_OPTIONS = (Object.keys(PF_ELIGIBILITY_NODE_TYPE_LABEL) as PfEligibilityNodeType[])
+  .map(value => ({ value, label: PF_ELIGIBILITY_NODE_TYPE_LABEL[value] }))
+
+export type PfEligibilityAuditStatus = 'APPROVED' | 'PENDING' | 'REJECTED'
+
+export const PF_ELIGIBILITY_AUDIT_STATUS_LABEL: Record<PfEligibilityAuditStatus, string> = {
+  APPROVED: '审核通过',
+  PENDING: '待审',
+  REJECTED: '驳回',
+}
+
+export const PF_ELIGIBILITY_AUDIT_STATUS_OPTIONS = (Object.keys(PF_ELIGIBILITY_AUDIT_STATUS_LABEL) as PfEligibilityAuditStatus[])
+  .map(value => ({ value, label: PF_ELIGIBILITY_AUDIT_STATUS_LABEL[value] }))
+
 export interface PortfolioIndicatorExportResultVO {
   fileName: string
   rowCount: number
-  csvContent: string
+  fileNodeId: string
 }
 
 export interface PortfolioEligibilityEvalResultDto {
@@ -348,4 +553,61 @@ export interface PortfolioIndicatorTeacherTypeCompareItemVO {
 
 export interface PortfolioIndicatorTeacherTypeCompareVO {
   items: PortfolioIndicatorTeacherTypeCompareItemVO[]
+}
+
+/** Excel 批量导入请求 */
+export interface PortfolioIndicatorExcelImportRequest {
+  fileName?: string
+  sourceFileId: string
+}
+
+/** 平台指标 API 契约 */
+export interface PortfolioIndicatorPlatformApi {
+  pageDefinition: (data: PortfolioIndicatorDefinitionPageRequest) => Promise<PageResult<PortfolioIndicatorDefinitionVO>>
+  getDefinition: (data: PortfolioIndicatorDefinitionGetRequest) => Promise<PortfolioIndicatorDefinitionVO>
+  saveDefinition: (data: PortfolioIndicatorDefinitionSaveRequest) => Promise<string>
+  pageTemplate: (data: PortfolioIndicatorRuleTemplatePageRequest) => Promise<PageResult<PortfolioIndicatorRuleTemplateVO>>
+  saveTemplate: (data: PortfolioIndicatorRuleTemplateSaveRequest) => Promise<string>
+  saveBinding: (data: PortfolioIndicatorRuleBindingSaveRequest) => Promise<string>
+  listIndustryPack: () => Promise<PortfolioIndustryPackVO[]>
+  saveIndustryPack: (data: PortfolioIndustryPackSaveRequest) => Promise<string>
+  importSeed: () => Promise<PortfolioIndicatorPlatformSeedResultVO>
+  definitionSummary: () => Promise<PortfolioIndicatorPlatformSummaryVO>
+  definitionTree: () => Promise<PortfolioIndicatorDefinitionTreeNodeVO[]>
+  exportDefinitionTemplate: () => Promise<PortfolioIndicatorExportResultVO>
+  importDefinitionExcel: (data: PortfolioIndicatorExcelImportRequest) => Promise<PortfolioIndicatorDefinitionImportResultVO>
+  listSourceMapping: () => Promise<PortfolioIndicatorSourceMappingVO[]>
+}
+
+/** 租户指标 API 契约 */
+export interface PortfolioIndicatorTenantApi {
+  listConfig: () => Promise<PortfolioTenantIndicatorConfigVO[]>
+  saveConfig: (data: PortfolioTenantIndicatorConfigSaveRequest) => Promise<string>
+  enableAllConfig: () => Promise<PortfolioIndicatorTenantEnableAllResultVO>
+  pageAuditLog: (data: QueryDto) => Promise<PageResult<PortfolioTenantConfigAuditLogVO>>
+  referenceStatus: () => Promise<PortfolioIndicatorEngineReadinessVO>
+  listReferenceStatus: () => Promise<PortfolioIndicatorReferenceStatusVO[]>
+  bindIndustryPack: (data: PortfolioIndustryPackBindRequest) => Promise<void>
+  getModel: (data: PortfolioSceneCodeRequest) => Promise<PortfolioTenantSceneModelVO>
+  saveModel: (data: PortfolioTenantSceneModelSaveRequest) => Promise<string>
+  trialModel: (data: PortfolioSceneCodeRequest) => Promise<PortfolioTenantSceneModelVO>
+  publishModel: (data: PortfolioTenantSceneModelPublishRequest) => Promise<string>
+  freezeModel: (data: PortfolioSceneCodeRequest) => Promise<void>
+  ruleHistory: (data: PortfolioSceneCodeRequest) => Promise<PortfolioRulePublishSnapshotVO[]>
+  retroactiveGet: (data: PortfolioRuleRetroactiveGetRequest) => Promise<PortfolioRulePublishSnapshotVO>
+  saveEligibilityRule: (data: PortfolioEligibilityRuleSaveRequest) => Promise<string>
+  getEligibilityRule: (data: { eligibilityCode: string }) => Promise<PortfolioEligibilityRuleVO>
+  impactPreview: (data: PortfolioSceneCodeRequest) => Promise<string>
+  getImpactReport: (data: { id: string }) => Promise<PortfolioPublishImpactReportVO>
+  pageImpactReport: (data: QueryDto) => Promise<PageResult<PortfolioPublishImpactReportVO>>
+  evaluateEligibility: (data: PortfolioEligibilityEvaluateRequest) => Promise<PortfolioEligibilityEvalResultDto>
+  pageEvalLog: (data: QueryDto) => Promise<PageResult<PortfolioEligibilityEvalLogVO>>
+  getExplain: (data: PortfolioExplainGetRequest) => Promise<string>
+  exportIndicatorCatalog: () => Promise<PortfolioIndicatorExportResultVO>
+  exportSnapshotDiff: (data: PortfolioExportSnapshotDiffRequest) => Promise<PortfolioIndicatorExportResultVO>
+  exportImpactReport: (data: { id: string }) => Promise<PortfolioIndicatorExportResultVO>
+  computeTrial: (data: PortfolioIndicatorComputeTrialRequest) => Promise<PortfolioIndicatorScoreComputeResult>
+  computeSnapshot: (data: PortfolioIndicatorSnapshotComputeRequest) => Promise<PortfolioIndicatorScoreComputeResult>
+  pageComputeLog: (data: QueryDto) => Promise<PageResult<PortfolioIndicatorComputeLogVO>>
+  autoCollect: (data: { teacherId: string }) => Promise<PortfolioIndicatorAutoCollectResultVO>
 }

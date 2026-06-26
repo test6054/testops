@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDeptStructureStatVO, PortfolioTeacherOneTableSummaryVO } from '@/apis/portfolio/teacher'
+import type { PortfolioTeacherIdentityType } from '@/apis/portfolio/types'
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -41,7 +42,7 @@ async function loadSummary() {
   }
 }
 
-function identityLabel(tag: string) {
+function identityLabel(tag: PortfolioTeacherIdentityType) {
   return strictEnumLabel(PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL, tag, '身份标签')
 }
 

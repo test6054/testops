@@ -1,11 +1,12 @@
+import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
 import type {
   PortfolioTeacherDetailVO,
   PortfolioTeacherIdentitySaveRequest,
+  PortfolioTeacherIdentityType,
   PortfolioTeacherPageRequest,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
-import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
 import http from '@/config/axios'
 
 export interface PortfolioTeacherOneTableSummaryVO {
@@ -14,7 +15,7 @@ export interface PortfolioTeacherOneTableSummaryVO {
   nickName?: string
   departmentName?: string
   title?: string
-  identityTags: string[]
+  identityTags: PortfolioTeacherIdentityType[]
   achievementCount?: number
   honorCount?: number
   categories: Array<{

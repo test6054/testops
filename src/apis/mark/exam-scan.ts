@@ -1,8 +1,9 @@
 import type { ExamFileRefVO } from './exam'
-import type { BindingStatusCode } from './exam-binding'
 import type { PaperInstanceDisplayVO } from './exam-score'
+import type { DuplicateResolutionStatusCode } from './duplicate-resolution-status'
 import type { ScannerKioskScanMode } from './scanner-kiosk'
-import type { GradeStatusCode } from './student-exam'
+import type { GradeStatusCode } from './grade-status'
+import type { TaskStatusCode } from './task-status'
 /**
  * 阅卷考试扫描批次与扫描异常 API - 对接 /api/mark/exams/scanner-batches/* 与 scan-attentions。
  */
@@ -50,11 +51,9 @@ export interface MarkingScanPageRefVO {
   pageImageHeight?: number
 }
 
-/** 批改处理任务状态 - 与后端 TaskStatus 枚举完全一致 */
-export type TaskStatusCode = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'BLOCKED' | 'FAILED'
+/** 批改处理任务状态 - 见 task-status.ts */
 
-/** 重复影像处置状态 - 与后端 DuplicateResolutionStatus 枚举完全一致 */
-export type DuplicateResolutionStatusCode = 'PENDING' | 'RESOLVED'
+/** 重复影像处置状态 - 见 duplicate-resolution-status.ts */
 
 /** 扫描异常待办查询请求 - 对应 ScanAttentionQueryRequest */
 export type ScanAttentionTypeCode
@@ -324,5 +323,3 @@ export function listScanAttentions(
 ): Promise<PageResult<ScanAttentionItemVO>> {
   return http.post<PageResult<ScanAttentionItemVO>>('/api/mark/exams/scan-attentions', request)
 }
-
-export type { BindingStatusCode }

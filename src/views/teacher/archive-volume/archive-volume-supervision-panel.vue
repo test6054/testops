@@ -1,6 +1,11 @@
 <template>
   <a-tabs v-model:active-key="activeTab" class="archive-supervision-panel__tabs">
     <a-tab-pane key="volumes" tab="归档卷">
+      <div class="archive-supervision-panel__problem-filters">
+        <a-checkbox v-model:checked="volumeFilter.integrityFailedOnly">缺必交项</a-checkbox>
+        <a-checkbox v-model:checked="volumeFilter.archiveOverdueOnly">归档逾期</a-checkbox>
+        <a-checkbox v-model:checked="volumeFilter.delaySubmissionOverdueOnly">补交逾期</a-checkbox>
+      </div>
       <UiFilterBar
         v-model="volumeFilter"
         :fields="volumeFilterFields"
@@ -35,6 +40,7 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTextAction @click="openDetail(record.volumeId)">详情</UiTextAction>
+            <UiTextAction @click="openMarkProblem(record.volumeId)">标记问题</UiTextAction>
           </template>
         </template>
       </UiDataTable>
@@ -122,6 +128,29 @@
       </template>
     </a-spin>
   </a-drawer>
+
+  <a-modal
+    v-model:open="markProblemOpen"
+    title="标记问题"
+    :confirm-loading="markProblemSubmitting"
+    ok-text="提交"
+    cancel-text="取消"
+    @ok="submitMarkProblem"
+  >
+    <a-form layout="vertical">
+      <a-form-item label="问题描述" required>
+        <a-textarea v-model:value="markProblemDescription" :rows="4" placeholder="描述督导发现的问题" />
+      </a-form-item>
+      <a-form-item label="评估批次">
+        <a-select
+          v-model:value="markProblemCampaignId"
+          allow-clear
+          placeholder="可选，关联评估批次"
+          :options="campaignSelectOptions"
+        />
+      </a-form-item>
+    </a-form>
+  </a-modal>
 </template>
 
 <script setup lang="ts">
@@ -139,6 +168,7 @@ import type {
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { message } from 'ant-design-vue'
 import {
   ARCHIVE_EVALUATION_CAMPAIGN_STATUS_LABEL,
   ARCHIVE_INTEGRITY_STATUS_LABEL,
@@ -151,6 +181,7 @@ import {
   getSupervisionArchiveVolumeDetail,
   listSupervisionCampaigns,
   listSupervisionRemediationTasks,
+  markSupervisionProblem,
   pageSupervisionArchiveVolumes,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -172,13 +203,24 @@ const remediationLoading = ref(false)
 const campaignLoading = ref(false)
 const detailLoading = ref(false)
 const detailOpen = ref(false)
+const markProblemOpen = ref(false)
+const markProblemSubmitting = ref(false)
+const markProblemVolumeId = ref('')
+const markProblemDescription = ref('')
+const markProblemCampaignId = ref<string | undefined>(undefined)
 const volumes = ref<ArchiveVolumeVO[]>([])
 const statistics = ref<Awaited<ReturnType<typeof getSupervisionArchiveStatistics>> | null>(null)
 const remediationTasks = ref<ArchiveRemediationTaskVO[]>([])
 const campaigns = ref<ArchiveEvaluationCampaignVO[]>([])
 const detail = ref<ArchiveVolumeDetailVO | null>(null)
 
-const volumeFilter = reactive({ keyword: '', volumeStatus: undefined as ArchiveVolumeStatusCode | undefined })
+const volumeFilter = reactive({
+  keyword: '',
+  volumeStatus: undefined as ArchiveVolumeStatusCode | undefined,
+  integrityFailedOnly: false,
+  archiveOverdueOnly: false,
+  delaySubmissionOverdueOnly: false,
+})
 const volumePagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
 const statsFilter = reactive({ academicYear: '', semester: '' })
 
@@ -190,7 +232,7 @@ const volumeColumns: ColumnsType<ArchiveVolumeVO> = [
   { title: '归档卷', key: 'archive', dataIndex: 'archiveNo', width: 240 },
   { title: '院系', key: 'departmentName', dataIndex: 'departmentName', width: 140 },
   { title: '状态', key: 'volumeStatus', dataIndex: 'volumeStatus', width: 120 },
-  { title: '操作', key: 'actions', width: 80 },
+  { title: '操作', key: 'actions', width: 140 },
 ]
 
 const deptColumns: ColumnsType<{ departmentName?: string, totalCount: number, storedCount: number, completionRate: number }> = [
@@ -244,6 +286,13 @@ const statsMetrics = computed<SignalMetric[]>(() => {
   ]
 })
 
+const campaignSelectOptions = computed(() =>
+  campaigns.value.map(item => ({
+    value: item.campaignId,
+    label: item.campaignName,
+  })),
+)
+
 function volumeStatusLabel(code: ArchiveVolumeStatusCode) {
   return strictEnumLabel(ARCHIVE_VOLUME_STATUS_LABEL, code, 'volumeStatus')
 }
@@ -270,6 +319,9 @@ async function loadVolumes() {
     const result = await pageSupervisionArchiveVolumes({
       keyword: volumeFilter.keyword.trim() || undefined,
       volumeStatus: volumeFilter.volumeStatus,
+      integrityFailedOnly: volumeFilter.integrityFailedOnly || undefined,
+      archiveOverdueOnly: volumeFilter.archiveOverdueOnly || undefined,
+      delaySubmissionOverdueOnly: volumeFilter.delaySubmissionOverdueOnly || undefined,
       pageNum: volumePagination.pageNum,
       pageSize: volumePagination.pageSize,
     })
@@ -287,6 +339,9 @@ async function loadVolumes() {
 function resetVolumeFilter() {
   volumeFilter.keyword = ''
   volumeFilter.volumeStatus = undefined
+  volumeFilter.integrityFailedOnly = false
+  volumeFilter.archiveOverdueOnly = false
+  volumeFilter.delaySubmissionOverdueOnly = false
   volumePagination.pageNum = 1
   void loadVolumes()
 }
@@ -349,6 +404,43 @@ async function openDetail(volumeId: string) {
   }
 }
 
+function openMarkProblem(volumeId: string) {
+  markProblemVolumeId.value = volumeId
+  markProblemDescription.value = ''
+  markProblemCampaignId.value = undefined
+  if (campaigns.value.length === 0) {
+    void loadCampaigns()
+  }
+  markProblemOpen.value = true
+}
+
+async function submitMarkProblem() {
+  const description = markProblemDescription.value.trim()
+  if (!description) {
+    message.warning('请填写问题描述')
+    return
+  }
+  markProblemSubmitting.value = true
+  try {
+    await markSupervisionProblem({
+      volumeId: markProblemVolumeId.value,
+      problemDescription: description,
+      campaignId: markProblemCampaignId.value,
+    })
+    message.success('问题已标记，整改任务已创建')
+    markProblemOpen.value = false
+    if (activeTab.value === 'remediation') {
+      void loadRemediation()
+    }
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    markProblemSubmitting.value = false
+  }
+}
+
 watch(activeTab, (tab) => {
   if (tab === 'statistics' && !statistics.value) void loadStatistics()
   if (tab === 'remediation' && remediationTasks.value.length === 0) void loadRemediation()
@@ -388,6 +480,13 @@ onMounted(() => {
 .section-title {
   margin: 16px 0 8px;
   font-size: 14px;
+}
+
+.archive-supervision-panel__problem-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .link-cell__sub {

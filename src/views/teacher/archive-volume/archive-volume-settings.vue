@@ -6,66 +6,59 @@
           title="职责授权"
           subtitle="配置归档职责类型、院系范围与全校授权"
         >
-          <UiErrorRetryPanel
-            v-if="dutyLoadError"
-            :description="dutyLoadError"
-            @retry="loadDutyGrants"
-          />
-          <template v-else>
-            <UiDataTable
-              pagination-mode="none"
-              :columns="dutyColumns"
-              :data-source="dutyRows"
-              :loading="dutyLoading"
-              :show-pagination="false"
-              flat
-              row-key="rowKey"
-              size="middle"
-              empty-description="暂无职责授权，请新增"
-            >
-              <template #bodyCell="{ column, index }">
-                <template v-if="column.key === 'userId'">
-                  <ArchiveDutyUserSelect v-model:value="dutyRows[index].userId" />
-                </template>
-                <template v-else-if="column.key === 'dutyType'">
-                  <a-select
-                    v-model:value="dutyRows[index].dutyType"
-                    :options="dutyTypeOptions"
-                    style="width: 100%"
-                  />
-                </template>
-                <template v-else-if="column.key === 'scopeDepartmentId'">
-                  <a-select
-                    v-model:value="dutyRows[index].scopeDepartmentId"
-                    :options="departmentOptions"
-                    :disabled="dutyRows[index].tenantWide"
-                    allow-clear
-                    placeholder="院系（可选）"
-                    show-search
-                    option-filter-prop="label"
-                    style="width: 100%"
-                  />
-                </template>
-                <template v-else-if="column.key === 'tenantWide'">
-                  <a-checkbox
-                    v-model:checked="dutyRows[index].tenantWide"
-                    @change="handleTenantWideChange(index)"
-                  >
-                    全校
-                  </a-checkbox>
-                </template>
-                <template v-else-if="column.key === 'actions'">
-                  <UiTextAction tone="danger" @click="removeDutyRow(index)">删除</UiTextAction>
-                </template>
+          <UiDataTable
+            pagination-mode="none"
+            :columns="dutyColumns"
+            :data-source="dutyRows"
+            :loading="dutyLoading"
+            :show-pagination="false"
+            flat
+            row-key="rowKey"
+            size="middle"
+            empty-description="暂无职责授权，请新增"
+          >
+            <template #bodyCell="{ column, index }">
+              <template v-if="column.key === 'userId'">
+                <ArchiveDutyUserSelect v-model:value="dutyRows[index].userId" />
               </template>
-            </UiDataTable>
-            <UiFormActions align="between">
-              <UiButton size="sm" variant="outline" @click="addDutyRow">新增授权</UiButton>
-              <UiButton size="sm" variant="primary" :loading="saving" @click="saveDutyGrants">
-                保存职责授权
-              </UiButton>
-            </UiFormActions>
-          </template>
+              <template v-else-if="column.key === 'dutyType'">
+                <a-select
+                  v-model:value="dutyRows[index].dutyType"
+                  :options="dutyTypeOptions"
+                  style="width: 100%"
+                />
+              </template>
+              <template v-else-if="column.key === 'scopeDepartmentId'">
+                <a-select
+                  v-model:value="dutyRows[index].scopeDepartmentId"
+                  :options="departmentOptions"
+                  :disabled="dutyRows[index].tenantWide"
+                  allow-clear
+                  placeholder="院系（可选）"
+                  show-search
+                  option-filter-prop="label"
+                  style="width: 100%"
+                />
+              </template>
+              <template v-else-if="column.key === 'tenantWide'">
+                <a-checkbox
+                  v-model:checked="dutyRows[index].tenantWide"
+                  @change="handleTenantWideChange(index)"
+                >
+                  全校
+                </a-checkbox>
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <UiTextAction tone="danger" @click="removeDutyRow(index)">删除</UiTextAction>
+              </template>
+            </template>
+          </UiDataTable>
+          <UiFormActions align="between">
+            <UiButton size="sm" variant="outline" @click="addDutyRow">新增授权</UiButton>
+            <UiButton size="sm" variant="primary" :loading="saving" @click="saveDutyGrants">
+              保存职责授权
+            </UiButton>
+          </UiFormActions>
         </UiFormSection>
       </UiForm>
     </section>
@@ -76,46 +69,39 @@
           title="密级策略"
           subtitle="按职责类型限制可访问的最高密级"
         >
-          <UiErrorRetryPanel
-            v-if="policyLoadError"
-            :description="policyLoadError"
-            @retry="loadPolicy"
-          />
-          <template v-else>
-            <UiDataTable
-              pagination-mode="none"
-              :columns="policyColumns"
-              :data-source="policyRows"
-              :loading="policyLoading"
-              :show-pagination="false"
-              flat
-              row-key="rowKey"
-              size="middle"
-              empty-description="暂无密级策略"
-            >
-              <template #bodyCell="{ column, index }">
-                <template v-if="column.key === 'dutyType'">
-                  <a-select v-model:value="policyRows[index].dutyType" :options="dutyTypeOptions" style="width: 100%" />
-                </template>
-                <template v-else-if="column.key === 'maxSecurityLevel'">
-                  <a-select
-                    v-model:value="policyRows[index].maxSecurityLevel"
-                    :options="securityLevelOptions"
-                    style="width: 100%"
-                  />
-                </template>
-                <template v-else-if="column.key === 'actions'">
-                  <UiTextAction tone="danger" @click="removePolicyRow(index)">删除</UiTextAction>
-                </template>
+          <UiDataTable
+            pagination-mode="none"
+            :columns="policyColumns"
+            :data-source="policyRows"
+            :loading="policyLoading"
+            :show-pagination="false"
+            flat
+            row-key="rowKey"
+            size="middle"
+            empty-description="暂无密级策略"
+          >
+            <template #bodyCell="{ column, index }">
+              <template v-if="column.key === 'dutyType'">
+                <a-select v-model:value="policyRows[index].dutyType" :options="dutyTypeOptions" style="width: 100%" />
               </template>
-            </UiDataTable>
-            <UiFormActions align="between">
-              <UiButton size="sm" variant="outline" @click="addPolicyRow">新增策略</UiButton>
-              <UiButton size="sm" variant="primary" :loading="saving" @click="saveSecurityPolicyRows">
-                保存密级策略
-              </UiButton>
-            </UiFormActions>
-          </template>
+              <template v-else-if="column.key === 'maxSecurityLevel'">
+                <a-select
+                  v-model:value="policyRows[index].maxSecurityLevel"
+                  :options="securityLevelOptions"
+                  style="width: 100%"
+                />
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <UiTextAction tone="danger" @click="removePolicyRow(index)">删除</UiTextAction>
+              </template>
+            </template>
+          </UiDataTable>
+          <UiFormActions align="between">
+            <UiButton size="sm" variant="outline" @click="addPolicyRow">新增策略</UiButton>
+            <UiButton size="sm" variant="primary" :loading="saving" @click="saveSecurityPolicyRows">
+              保存密级策略
+            </UiButton>
+          </UiFormActions>
         </UiFormSection>
       </UiForm>
     </section>
@@ -126,69 +112,62 @@
           title="目录模板"
           subtitle="维护租户材料目录项、必交规则与排序"
         >
-          <UiErrorRetryPanel
-            v-if="catalogLoadError"
-            :description="catalogLoadError"
-            @retry="loadCatalog"
-          />
-          <template v-else>
-            <UiDataTable
-              pagination-mode="none"
-              :columns="catalogColumns"
-              :data-source="catalogRows"
-              :loading="catalogLoading"
-              :show-pagination="false"
-              flat
-              row-key="rowKey"
-              size="middle"
-              empty-description="暂无目录模板项"
-            >
-              <template #bodyCell="{ column, index }">
-                <template v-if="column.key === 'examForm'">
-                  <a-select
-                    v-model:value="catalogRows[index].examForm"
-                    :options="examFormOptions"
-                    allow-clear
-                    placeholder="全部形式"
-                    style="width: 100%"
-                  />
-                </template>
-                <template v-else-if="column.key === 'materialType'">
-                  <a-select
-                    v-model:value="catalogRows[index].materialType"
-                    :options="materialTypeOptions"
-                    show-search
-                    option-filter-prop="label"
-                    style="width: 100%"
-                  />
-                </template>
-                <template v-else-if="column.key === 'catalogName'">
-                  <a-input v-model:value="catalogRows[index].catalogName" />
-                </template>
-                <template v-else-if="column.key === 'catalogCode'">
-                  <a-input v-model:value="catalogRows[index].catalogCode" />
-                </template>
-                <template v-else-if="column.key === 'requiredFlag'">
-                  <a-checkbox v-model:checked="catalogRows[index].requiredFlag">必交</a-checkbox>
-                </template>
-                <template v-else-if="column.key === 'delayAllowedFlag'">
-                  <a-checkbox v-model:checked="catalogRows[index].delayAllowedFlag">允许延迟</a-checkbox>
-                </template>
-                <template v-else-if="column.key === 'sortOrder'">
-                  <a-input-number v-model:value="catalogRows[index].sortOrder" :min="0" style="width: 100%" />
-                </template>
-                <template v-else-if="column.key === 'actions'">
-                  <UiTextAction tone="danger" @click="removeCatalogRow(index)">删除</UiTextAction>
-                </template>
+          <UiDataTable
+            pagination-mode="none"
+            :columns="catalogColumns"
+            :data-source="catalogRows"
+            :loading="catalogLoading"
+            :show-pagination="false"
+            flat
+            row-key="rowKey"
+            size="middle"
+            empty-description="暂无目录模板项"
+          >
+            <template #bodyCell="{ column, index }">
+              <template v-if="column.key === 'examForm'">
+                <a-select
+                  v-model:value="catalogRows[index].examForm"
+                  :options="examFormOptions"
+                  allow-clear
+                  placeholder="全部形式"
+                  style="width: 100%"
+                />
               </template>
-            </UiDataTable>
-            <UiFormActions align="between">
-              <UiButton size="sm" variant="outline" @click="addCatalogRow">新增目录项</UiButton>
-              <UiButton size="sm" variant="primary" :loading="saving" @click="saveCatalogRows">
-                保存目录模板
-              </UiButton>
-            </UiFormActions>
-          </template>
+              <template v-else-if="column.key === 'materialType'">
+                <a-select
+                  v-model:value="catalogRows[index].materialType"
+                  :options="materialTypeOptions"
+                  show-search
+                  option-filter-prop="label"
+                  style="width: 100%"
+                />
+              </template>
+              <template v-else-if="column.key === 'catalogName'">
+                <a-input v-model:value="catalogRows[index].catalogName" />
+              </template>
+              <template v-else-if="column.key === 'catalogCode'">
+                <a-input v-model:value="catalogRows[index].catalogCode" />
+              </template>
+              <template v-else-if="column.key === 'requiredFlag'">
+                <a-checkbox v-model:checked="catalogRows[index].requiredFlag">必交</a-checkbox>
+              </template>
+              <template v-else-if="column.key === 'delayAllowedFlag'">
+                <a-checkbox v-model:checked="catalogRows[index].delayAllowedFlag">允许延迟</a-checkbox>
+              </template>
+              <template v-else-if="column.key === 'sortOrder'">
+                <a-input-number v-model:value="catalogRows[index].sortOrder" :min="0" style="width: 100%" />
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <UiTextAction tone="danger" @click="removeCatalogRow(index)">删除</UiTextAction>
+              </template>
+            </template>
+          </UiDataTable>
+          <UiFormActions align="between">
+            <UiButton size="sm" variant="outline" @click="addCatalogRow">新增目录项</UiButton>
+            <UiButton size="sm" variant="primary" :loading="saving" @click="saveCatalogRows">
+              保存目录模板
+            </UiButton>
+          </UiFormActions>
         </UiFormSection>
       </UiForm>
     </section>
@@ -199,6 +178,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveDutyGrantItemRequest, ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
 import type { ArchiveCatalogTemplateSaveItemRequest, ArchiveMaterialTypeCode, ArchiveSecurityLevelCode } from '@/apis/mark/archive-volume'
+import type {TenantSchoolDepartmentDto} from '@/apis/quality/user-catalog';
 import { message } from 'ant-design-vue'
 import { onMounted, ref } from 'vue'
 import {
@@ -214,24 +194,23 @@ import {
   ARCHIVE_SECURITY_LEVEL_LABEL,
   listArchiveCatalogTemplate,
   saveArchiveCatalogTemplate,
-  type ArchiveExamFormCode,
 } from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
-import UiErrorRetryPanel from '@/components/ui-guide/ui/ErrorRetryPanel.vue'
+import { requireArrayResult } from '@/components/quality/selectors/page-contract'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormActions from '@/components/ui-guide/ui/UiFormActions.vue'
 import UiFormSection from '@/components/ui-guide/ui/UiFormSection.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
-import { requireArrayResult } from '@/components/quality/selectors/page-contract'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'ArchiveVolumeSettings' })
 
 type DutyRow = ArchiveDutyGrantItemRequest & { rowKey: string }
-type PolicyRow = { rowKey: string, dutyType: ArchiveDutyTypeCode, maxSecurityLevel: ArchiveSecurityLevelCode }
+interface PolicyRow { rowKey: string, dutyType: ArchiveDutyTypeCode, maxSecurityLevel: ArchiveSecurityLevelCode }
 type CatalogRow = ArchiveCatalogTemplateSaveItemRequest & { rowKey: string }
 
 const settingsTab = ref('duty')
@@ -242,9 +221,6 @@ const catalogLoading = ref(false)
 const dutyRows = ref<DutyRow[]>([])
 const policyRows = ref<PolicyRow[]>([])
 const catalogRows = ref<CatalogRow[]>([])
-const dutyLoadError = ref('')
-const policyLoadError = ref('')
-const catalogLoadError = ref('')
 const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 
 function dutyRowKey(row: DutyRow) {
@@ -337,7 +313,7 @@ function handleTenantWideChange(index: number) {
 
 async function loadDepartments() {
   try {
-    const departments = requireArrayResult(await departmentCatalogApi.list(), '院系')
+    const departments = requireArrayResult<TenantSchoolDepartmentDto>(await departmentCatalogApi.list(), '院系')
     departmentOptions.value = departments.map(item => ({
       value: item.id,
       label: item.deptName,
@@ -378,7 +354,6 @@ function removeCatalogRow(index: number) {
 
 async function loadDutyGrants() {
   dutyLoading.value = true
-  dutyLoadError.value = ''
   try {
     const grants = await listArchiveDutyGrants()
     dutyRows.value = grants.map(item => ({
@@ -390,7 +365,7 @@ async function loadDutyGrants() {
     }))
   }
   catch (error) {
-    dutyLoadError.value = error instanceof Error ? error.message : '加载职责授权失败'
+    showUserError(error, '加载职责授权失败')
     dutyRows.value = []
   }
   finally {
@@ -400,7 +375,6 @@ async function loadDutyGrants() {
 
 async function loadPolicy() {
   policyLoading.value = true
-  policyLoadError.value = ''
   try {
     const policies = await listArchiveSecurityPolicy()
     policyRows.value = policies.map(item => ({
@@ -410,7 +384,7 @@ async function loadPolicy() {
     }))
   }
   catch (error) {
-    policyLoadError.value = error instanceof Error ? error.message : '加载密级策略失败'
+    showUserError(error, '加载密级策略失败')
     policyRows.value = []
   }
   finally {
@@ -420,7 +394,6 @@ async function loadPolicy() {
 
 async function loadCatalog() {
   catalogLoading.value = true
-  catalogLoadError.value = ''
   try {
     const templates = await listArchiveCatalogTemplate()
     catalogRows.value = templates.map(item => ({
@@ -435,7 +408,7 @@ async function loadCatalog() {
     }))
   }
   catch (error) {
-    catalogLoadError.value = error instanceof Error ? error.message : '加载目录模板失败'
+    showUserError(error, '加载目录模板失败')
     catalogRows.value = []
   }
   finally {

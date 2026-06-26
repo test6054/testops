@@ -39,7 +39,7 @@ export const MARK_OCR_HEALTH_STATUS_LABEL: Record<MarkOcrHealthStatusCode, strin
   FAILED: '异常',
 }
 
-export const MARK_OCR_HEALTH_STATUS_COLOR: Record<MarkOcrHealthStatusCode, BadgeTone> = {
+export const MARK_OCR_HEALTH_STATUS_TONE: Record<MarkOcrHealthStatusCode, BadgeTone> = {
   UNKNOWN: 'gray',
   HEALTHY: 'green',
   FAILED: 'red',

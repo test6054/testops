@@ -1,16 +1,23 @@
+/**
+ * 全局类型 augmentations 唯一手写入口。
+ *
+ * 同目录其他文件：
+ * - api-types.d.ts：ResultInfo / PageResult / QueryDto 等 API 契约
+ * - components.d.ts / auto-imports.d.ts：unplugin 自动生成，勿手改
+ */
 /// <reference types="vite/client" />
 /// <reference types="vue/jsx" />
 
 export {}
 
-// Vue 单文件组件模块声明（Vite 5+ 不再内置）
+/** .ts 中 import *.vue（WebStorm / tsserver 兜底；vue-tsc 由 Volar 解析 SFC） */
 declare module '*.vue' {
   import type { DefineComponent } from 'vue'
 
   const component: DefineComponent<Record<string, unknown>, Record<string, unknown>, unknown>
+  export default component
 }
 
-/** 声明环境变量的类型 */
 declare global {
   interface ImportMetaEnv {
     readonly VITE_API_PREFIX: string
@@ -25,29 +32,20 @@ declare global {
   }
 }
 
+/**
+ * Ant Design Vue 4.x + Vue 3.5 兼容补丁：GlobalComponents 索引签名兜底。
+ * 具名组件类型由 components.d.ts 提供；上游修复后可删此段。
+ * @see https://github.com/vuejs/language-tools/issues/5161
+ */
+import type { Component } from 'vue'
 
-// Ant Design Vue 全局组件类型声明
-// antdv 4.x 未提供 GlobalComponents 声明，Volar 无法将 a-xxx 映射到组件类型
-// 导致 #overlay 等 slot 被报「无法识别的 slot name」
-declare module '@vue/runtime-core' {
+declare module 'vue' {
   interface GlobalComponents {
-    ADropdown: typeof import('ant-design-vue/es/dropdown')['default']
-    ADropdownButton: typeof import('ant-design-vue/es/dropdown')['DropdownButton']
-    ATable: typeof import('ant-design-vue/es/table')['default']
-    ATableColumn: typeof import('ant-design-vue/es/table')['TableColumn'] & {
-      new (): {
-        $slots: {
-          // eslint-disable-next-line ts/no-explicit-any -- AntDV slot 类型来自库自身定义
-          default: (props: { text: any, record: any, index: number, column: any }) => any
-        }
-      }
-    }
+    [key: string]: Component
   }
 }
 
-
 import type { RoleEnum } from '@/utils/permission'
-// Vue Router 自定义 meta 字段类型声明
 import type { SeoMeta } from '@/utils/seo'
 
 declare module 'vue-router' {
@@ -106,4 +104,3 @@ declare module 'vue-router' {
     disabled?: boolean
   }
 }
-

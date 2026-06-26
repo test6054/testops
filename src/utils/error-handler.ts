@@ -276,13 +276,6 @@ export function toUserError(error: unknown, fallback = '操作失败，请稍后
 }
 
 /**
- * 列表/页面加载失败：仅右上角 message 提示，不在主内容区渲染错误块。
- */
-export function notifyLoadFailure(error: unknown, fallback: string): void {
-  showUserError(error, fallback)
-}
-
-/**
  * 提取异步任务、导出任务、AI 分析记录中的用户可见处理说明。
  * 这类字段是持久化失败原因，默认比普通接口业务错误更保守，避免把堆栈、字段名、路径或接口合同诊断展示给用户。
  */

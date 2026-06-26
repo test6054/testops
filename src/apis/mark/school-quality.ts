@@ -1,6 +1,6 @@
 import type { AnalysisExamScopeVO, ExamStatSnapshotVO } from './cross-exam-analysis'
-import type { QuestionTypeCode } from './grading-experience'
-import type { AiAnalysisStatusCode } from './teaching-analysis'
+import type { QuestionTypeCode } from './question-type'
+import type { AiAnalysisStatusCode } from './ai-analysis-status'
 
 /**
  * AI 校级质量分析 API - 对接 edu-mark 模块 SchoolQualityAnalysisController
@@ -35,7 +35,7 @@ export const SCHOOL_QUALITY_RATING_LABEL: Record<SchoolQualityRatingCode, string
 }
 
 /** 校级质量评价颜色 */
-export const SCHOOL_QUALITY_RATING_COLOR: Record<SchoolQualityRatingCode, BadgeTone> = {
+export const SCHOOL_QUALITY_RATING_TONE: Record<SchoolQualityRatingCode, BadgeTone> = {
   EXCELLENT: 'green',
   GOOD: 'blue',
   ACCEPTABLE: 'orange',

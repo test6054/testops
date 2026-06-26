@@ -1,3 +1,5 @@
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+
 /** 双师认定申请状态 - PortfolioDualTeacherApplicationStatusEnum */
 export type PortfolioDualTeacherApplicationStatus
   = | 'DRAFT'
@@ -99,13 +101,48 @@ export const PORTFOLIO_TEACHER_RECOMMEND_RUN_STATUS_LABEL: Record<PortfolioTeach
   FAILED: '失败',
 }
 
-/** AI 任务状态（portfolio 子集）- AiTaskStatusEnum */
-export type PortfolioAiTaskStatus = 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED'
+/** 多元评价模式 - PortfolioEvaluationModeEnum */
+export type PortfolioEvaluationMode = 'BY_PERSON' | 'BY_INDICATOR'
 
-export const PORTFOLIO_AI_TASK_STATUS_LABEL: Record<PortfolioAiTaskStatus, string> = {
-  PENDING: '待处理',
-  PROCESSING: '处理中',
-  SUCCEEDED: '已完成',
-  FAILED: '已失败',
-  CANCELLED: '已取消',
+export const PORTFOLIO_EVALUATION_MODE_LABEL: Record<PortfolioEvaluationMode, string> = {
+  BY_PERSON: '以人为主',
+  BY_INDICATOR: '以指标为主',
+}
+
+/** 教师发展规划状态 - PortfolioDevelopmentPlanStatusEnum */
+export type PortfolioDevelopmentPlanStatus
+  = | 'DRAFT'
+    | 'DEPARTMENT_PENDING'
+    | 'DEPARTMENT_RETURNED'
+    | 'APPROVED'
+
+export const PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL: Record<PortfolioDevelopmentPlanStatus, string> = {
+  DRAFT: '草稿',
+  DEPARTMENT_PENDING: '待部门审核',
+  DEPARTMENT_RETURNED: '部门退回',
+  APPROVED: '审核通过',
+}
+
+export const PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE: Record<PortfolioDevelopmentPlanStatus, BadgeTone> = {
+  DRAFT: 'gray',
+  DEPARTMENT_PENDING: 'blue',
+  DEPARTMENT_RETURNED: 'orange',
+  APPROVED: 'green',
+}
+
+/** 外聘教师数据状态 - PortfolioExternalTeacherDataStatusEnum */
+export type PortfolioExternalTeacherDataStatus = 'ACTIVE' | 'INACTIVE'
+
+export const PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL: Record<PortfolioExternalTeacherDataStatus, string> = {
+  ACTIVE: '有效',
+  INACTIVE: '停用',
+}
+
+/** 外聘教师导入批次状态 - PortfolioExternalTeacherImportBatchStatusEnum */
+export type PortfolioExternalTeacherImportBatchStatus = 'PENDING' | 'COMPLETED' | 'FAILED'
+
+export const PORTFOLIO_EXTERNAL_TEACHER_IMPORT_BATCH_STATUS_LABEL: Record<PortfolioExternalTeacherImportBatchStatus, string> = {
+  PENDING: '待确认',
+  COMPLETED: '导入完成',
+  FAILED: '导入失败',
 }

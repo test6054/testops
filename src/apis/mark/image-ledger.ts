@@ -10,6 +10,7 @@
  * - 租户与操作人从 UserHold 注入，前端只传业务字段
  * - 后端 Long ID 统一用 string 表达到前端
  */
+import type { DuplicateResolutionStatusCode } from './duplicate-resolution-status'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
@@ -68,7 +69,7 @@ export const LEDGER_STATUS_LABEL: Record<LedgerStatusCode, string> = {
 }
 
 /** 账本状态徽标颜色（统一 BadgeTone） */
-export const LEDGER_STATUS_COLOR: Record<LedgerStatusCode, BadgeTone> = {
+export const LEDGER_STATUS_TONE: Record<LedgerStatusCode, BadgeTone> = {
   BALANCING: 'blue',
   BALANCED: 'green',
   INCIDENT_OPEN: 'red',
@@ -100,21 +101,6 @@ export function executeImageLedgerBalance(
 }
 
 // ─── 重复影像处置 ─────────────────────────────────────
-
-/** 重复处置状态 */
-export type DuplicateResolutionStatusCode = 'PENDING' | 'RESOLVED'
-
-/** 重复处置状态文案映射 */
-export const DUPLICATE_RESOLUTION_STATUS_LABEL: Record<DuplicateResolutionStatusCode, string> = {
-  PENDING: '待处置',
-  RESOLVED: '已处置',
-}
-
-/** 重复处置状态徽标颜色（统一 BadgeTone） */
-export const DUPLICATE_RESOLUTION_STATUS_COLOR: Record<DuplicateResolutionStatusCode, BadgeTone> = {
-  PENDING: 'orange',
-  RESOLVED: 'green',
-}
 
 /** 重复影像处置记录 - 对应 ExamPaperDuplicateResolutionVO */
 export interface ExamPaperDuplicateResolutionVO {

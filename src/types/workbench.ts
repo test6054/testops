@@ -59,6 +59,8 @@ export interface SignalMetric {
   /** 趋势：正数向上、负数向下、0 持平 */
   trend?: number
   helper?: string
+  /** 为 true 时 SignalBand 渲染为可点击项并触发 metric-click */
+  clickable?: boolean
 }
 
 // ─── 任务结果面板（TaskResultPanel）──────────────────────
