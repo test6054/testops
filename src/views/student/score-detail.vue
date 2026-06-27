@@ -422,20 +422,20 @@ import {
 import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-mastery-level'
 import MarkHeatmapSection from '@/components/chart/MarkHeatmapSection.vue'
 import ConfidentialWatermarkLayer from '@/components/mark/ConfidentialWatermarkLayer.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { useChartOption } from '@/hooks/modules/useChartOption'
 import {
   buildConfidentialWatermarkLines,
   isExamConfidentialFlag,
 } from '@/composables/useConfidentialWatermark'
+import { useChartOption } from '@/hooks/modules/useChartOption'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { buildHeatmapChartOption } from '@/utils/mark-echarts-options'

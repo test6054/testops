@@ -96,6 +96,7 @@
             :loading="questionViewLoading"
             :loaded="questionViewLoaded"
             :question-view="questionView"
+            :confidential="isExamConfidential"
           />
 
           <WholePaperGallery
@@ -400,10 +401,6 @@ import {
   validateMarkingTaskContract,
 } from '@/apis/mark/marking-organization'
 import GradingWorkspaceLayout from '@/components/mark/GradingWorkspaceLayout.vue'
-import {
-  formatExamConfidentialLabel,
-  isExamConfidentialFlag,
-} from '@/composables/useConfidentialWatermark'
 import MarkingQuestionViewCard from '@/components/mark/MarkingQuestionViewCard.vue'
 import RevealAnonymousModal from '@/components/mark/RevealAnonymousModal.vue'
 import WholePaperGallery from '@/components/mark/WholePaperGallery.vue'
@@ -411,6 +408,10 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import {
+  formatExamConfidentialLabel,
+  isExamConfidentialFlag,
+} from '@/composables/useConfidentialWatermark'
 import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useWholePaperGallery } from '@/composables/useWholePaperGallery'

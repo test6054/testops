@@ -464,11 +464,11 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   isExamConfidentialFlag,
   useExamConfidential,
 } from '@/composables/useConfidentialWatermark'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'

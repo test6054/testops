@@ -23,6 +23,7 @@
           :slice-file-id="questionView.sliceFileId"
           :source-scan-page="questionView.sourceScanPage"
           :master-paper-page="questionView.masterPaperPage"
+          :confidential="confidential"
         />
         <template v-if="questionView.standardAnswer || questionView.aiScore != null">
           <a-divider />
@@ -87,6 +88,7 @@ defineProps<{
   loading: boolean
   loaded: boolean
   questionView: MarkingQuestionViewVO | null
+  confidential?: boolean
 }>()
 </script>
 

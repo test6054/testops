@@ -88,6 +88,9 @@ function rotateRight(): void {
 function rotateLeft(): void {
   rotation.value = ((rotation.value + 270) % 360) as 0 | 90 | 180 | 270
 }
+function toggleGrayscale(): void {
+  grayscale.value = !grayscale.value
+}
 function onConfidentialContextMenu(event: MouseEvent): void {
   if (props.confidential) {
     event.preventDefault()

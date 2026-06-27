@@ -37,59 +37,56 @@
         size="middle"
         class="history-table student-detail-table__data-table"
       >
-        <template #bodyCell="{ column, index }">
+        <template #bodyCell="{ column, record: item }">
           <template v-if="column.key === 'examName'">
             <button
               type="button"
               class="link-cell"
-              :disabled="filteredExams[index].finalScoreStatus !== 'PUBLISHED'"
-              @click="goDetail(filteredExams[index].examId)"
+              :disabled="item.finalScoreStatus !== 'PUBLISHED'"
+              @click="goDetail(item.examId)"
             >
-              {{ filteredExams[index].examName }}
+              {{ item.examName }}
             </button>
-            <div v-if="filteredExams[index].examNo" class="link-cell__sub">
-              编号：{{ filteredExams[index].examNo }}
+            <div v-if="item.examNo" class="link-cell__sub">
+              编号：{{ item.examNo }}
             </div>
           </template>
           <template v-else-if="column.key === 'finalScoreStatus'">
-            <UiTag :tone="finalScoreStatusTone(filteredExams[index].finalScoreStatus)" size="sm">
-              {{ finalScoreStatusLabel(filteredExams[index].finalScoreStatus) }}
+            <UiTag :tone="finalScoreStatusTone(item.finalScoreStatus)" size="sm">
+              {{ finalScoreStatusLabel(item.finalScoreStatus) }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'finalScore'">
             <span
-              v-if="
-                filteredExams[index].finalScoreStatus === 'PUBLISHED'
-                  && filteredExams[index].finalScore != null
-              "
+              v-if="item.finalScoreStatus === 'PUBLISHED' && item.finalScore != null"
               class="score-cell"
             >
-              {{ filteredExams[index].finalScore.toFixed(2) }}
+              {{ Number(item.finalScore).toFixed(2) }}
             </span>
-            <span v-else class="muted">{{ unpublishedScoreText(filteredExams[index].finalScoreStatus) }}</span>
+            <span v-else class="muted">{{ unpublishedScoreText(item.finalScoreStatus) }}</span>
           </template>
           <template v-else-if="column.key === 'examStartTime'">
-            {{ formatDateTime(filteredExams[index].examStartTime) }}
+            {{ formatDateTime(item.examStartTime) }}
           </template>
           <template v-else-if="column.key === 'publishedTime'">
-            {{ formatDateTime(filteredExams[index].publishedTime) }}
+            {{ formatDateTime(item.publishedTime) }}
           </template>
           <template v-else-if="column.key === 'reviewWindowStatus'">
-            <UiTag :tone="reviewWindowStatusTone(filteredExams[index])" size="sm">
-              {{ reviewWindowStatusLabel(filteredExams[index]) }}
+            <UiTag :tone="reviewWindowStatusTone(item)" size="sm">
+              {{ reviewWindowStatusLabel(item) }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
               <UiTextAction
-                :disabled="filteredExams[index].finalScoreStatus !== 'PUBLISHED'"
-                @click="goDetail(filteredExams[index].examId)"
+                :disabled="item.finalScoreStatus !== 'PUBLISHED'"
+                @click="goDetail(item.examId)"
               >
                 查看详情
               </UiTextAction>
               <UiTextAction
-                :disabled="!canSubmitReview(filteredExams[index])"
-                @click="goAppeal(filteredExams[index].examId)"
+                :disabled="!canSubmitReview(item)"
+                @click="goAppeal(item.examId)"
               >
                 提交复核
               </UiTextAction>

@@ -527,7 +527,8 @@ async function parseLocalAgentResponse(response: Response): Promise<LocalAgentJs
   if (!isLocalAgentJsonValue(parsed)) {
     throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
-  const envelope = normalizeAgentPayload(() => validateLocalApiResult(parsed, response))
+  const jsonPayload = parsed
+  const envelope = normalizeAgentPayload(() => validateLocalApiResult(jsonPayload, response))
   if (!response.ok || !envelope.success) {
     const message = envelope.message
     const busyError = tryParseBusyError(message)
