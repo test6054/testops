@@ -6,13 +6,14 @@ import type {
   PortfolioArchiveScoreResultVO,
 } from '@/apis/portfolio/bag-types'
 import type {
+  PortfolioDevelopmentPlanStatus,
   PortfolioDevelopmentRecordStatus,
   PortfolioDevelopmentRecordType,
   PortfolioDualTeacherApplicationStatus,
   PortfolioEvaluationMode,
+  PortfolioEvaluationTaskStatus,
   PortfolioExternalTeacherDataStatus,
   PortfolioExternalTeacherImportBatchStatus,
-  PortfolioDevelopmentPlanStatus,
   PortfolioKeyTeacherRegistryStatus,
   PortfolioKeyTeacherRegistryType,
   PortfolioPortraitDimension,
@@ -606,9 +607,7 @@ export const portfolioPortraitTemplateApi = {
     http.post<string>('/api/portfolio/portrait-template/save', data),
 }
 
-export type { PortfolioEvaluationMode }
-
-export type PortfolioEvaluationTaskStatus = 'DRAFT' | 'PUBLISHED'
+export type { PortfolioEvaluationMode, PortfolioEvaluationTaskStatus } from '@/apis/portfolio/enums'
 
 export interface PortfolioEvaluationWorkgroupMemberOptionVO {
   userId: string

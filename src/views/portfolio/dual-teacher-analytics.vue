@@ -1,14 +1,33 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { PortfolioDualTeacherApplicationStatus } from '@/apis/portfolio/enums'
 import type { PortfolioDualTeacherAnalyticsVO } from '@/apis/portfolio/teacher-platform'
 import { onMounted, ref } from 'vue'
+import { PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL } from '@/apis/portfolio/enums'
 import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
 const stats = ref<PortfolioDualTeacherAnalyticsVO | null>(null)
+
+const statusColumns: ColumnsType = [
+  { title: '状态', dataIndex: 'applicationStatus', key: 'applicationStatus' },
+  { title: '数量', dataIndex: 'count', key: 'count', width: 88 },
+]
+
+const certLevelColumns: ColumnsType = [
+  { title: '等级', dataIndex: 'certLevel', key: 'certLevel' },
+  { title: '数量', dataIndex: 'count', key: 'count', width: 88 },
+]
+
+function applicationStatusLabel(status: PortfolioDualTeacherApplicationStatus): string {
+  return strictEnumLabel(PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL, status, '双师认定申请状态')
+}
 
 async function loadStats() {
   loading.value = true
@@ -30,7 +49,8 @@ onMounted(loadStats)
   <StageWorkbenchShell>
     <ContextBar title="双师认定分析" subtitle="申请状态分布与通过等级结构" />
     <a-spin :spinning="loading">
-      <div v-if="stats" class="grid">
+      <UiEmpty v-if="!loading && !stats" description="当前筛选无双师分析数据" />
+      <div v-else-if="stats" class="grid">
         <UiCard title="概览">
           <p>申请总数 {{ stats.totalCount }}</p>
           <p>认定通过 {{ stats.approvedCount }}</p>
@@ -41,11 +61,14 @@ onMounted(loadStats)
             :pagination="false"
             row-key="applicationStatus"
             :data-source="stats.statusCounts"
-            :columns="[
-              { title: '状态', dataIndex: 'applicationStatus', key: 'applicationStatus' },
-              { title: '数量', dataIndex: 'count', key: 'count', width: 88 },
-            ]"
-          />
+            :columns="statusColumns"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'applicationStatus'">
+                {{ applicationStatusLabel(record.applicationStatus) }}
+              </template>
+            </template>
+          </a-table>
         </UiCard>
         <UiCard title="通过等级">
           <a-table
@@ -53,10 +76,7 @@ onMounted(loadStats)
             :pagination="false"
             row-key="certLevel"
             :data-source="stats.certLevelCounts"
-            :columns="[
-              { title: '等级', dataIndex: 'certLevel', key: 'certLevel' },
-              { title: '数量', dataIndex: 'count', key: 'count', width: 88 },
-            ]"
+            :columns="certLevelColumns"
           />
         </UiCard>
       </div>

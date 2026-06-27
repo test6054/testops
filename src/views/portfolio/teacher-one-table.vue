@@ -2,21 +2,23 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDeptStructureStatVO, PortfolioTeacherOneTableSummaryVO } from '@/apis/portfolio/teacher'
 import type { PortfolioTeacherIdentityType } from '@/apis/portfolio/types'
-import { onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const route = useRoute()
 const router = useRouter()
+const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const loading = ref(false)
 const summary = ref<PortfolioTeacherOneTableSummaryVO | null>(null)
 const deptStats = ref<PortfolioDeptStructureStatVO | null>(null)
@@ -28,10 +30,16 @@ const categoryColumns: ColumnsType = [
 ]
 
 async function loadSummary() {
+  if (canPickTeachers.value && !targetTeacherId.value) {
+    summary.value = null
+    deptStats.value = null
+    return
+  }
   loading.value = true
   try {
-    const teacherId = typeof route.query.teacherId === 'string' ? route.query.teacherId : undefined
-    summary.value = await portfolioTeacherApi.getOneTableSummary({ teacherId })
+    summary.value = await portfolioTeacherApi.getOneTableSummary({
+      teacherId: targetTeacherId.value || undefined,
+    })
     deptStats.value = await portfolioTeacherApi.deptStructureStats()
   }
   catch (error) {
@@ -50,13 +58,19 @@ function openCorrection() {
   router.push('/portfolio/teacher/correction')
 }
 
-onMounted(loadSummary)
+usePortfolioScopedLoader(() => {
+  void loadSummary()
+}, () => targetTeacherId.value)
 </script>
 
 <template>
   <StageWorkbenchShell>
     <ContextBar title="教师一张表" subtitle="主数据 · 身份标签 · 档案分类 · 成果荣誉汇总" />
     <a-spin :spinning="loading">
+      <UiEmpty
+        v-if="!loading && !summary"
+        description="暂无教师一张表数据，请确认 teacherId 或稍后刷新"
+      />
       <UiCard v-if="summary" title="教师概要">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="工号">

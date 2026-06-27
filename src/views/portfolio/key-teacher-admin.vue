@@ -1,26 +1,34 @@
 <script setup lang="ts">
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type {
+  PortfolioKeyTeacherRegistryStatus,
+  PortfolioKeyTeacherRegistryType,
+} from '@/apis/portfolio/enums'
 import type { PortfolioKeyTeacherRegistryVO } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
+import {
+  PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL,
+  PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_LABEL,
+} from '@/apis/portfolio/enums'
 import { portfolioKeyTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { readPageList } from '@/utils/page-result'
+import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
-const REGISTRY_TABS = [
-  { key: 'PROGRAM_LEADER', label: '专业带头人' },
-  { key: 'KEY_TEACHER', label: '骨干教师' },
-] as const
+const REGISTRY_TABS = (Object.keys(PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_LABEL) as PortfolioKeyTeacherRegistryType[])
+  .map(key => ({ key, label: PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_LABEL[key] }))
 
-type RegistryType = typeof REGISTRY_TABS[number]['key']
+type RegistryType = PortfolioKeyTeacherRegistryType
 
 const activeType = ref<RegistryType>('PROGRAM_LEADER')
 const loading = ref(false)
@@ -41,6 +49,10 @@ const columns: ColumnsType = [
   { title: '状态', dataIndex: 'registryStatus', key: 'registryStatus', width: 88 },
   { title: '操作', key: 'actions', width: 80 },
 ]
+
+function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatus): string {
+  return strictEnumLabel(PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL, status, '骨干带头人登记状态')
+}
 
 async function loadPage() {
   loading.value = true
@@ -137,9 +149,13 @@ onMounted(loadPage)
           导出台账
         </UiButton>
       </div>
+      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无骨干教师记录" />
       <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'actions' && record.registryStatus === 'ACTIVE'">
+          <template v-if="column.key === 'registryStatus'">
+            {{ registryStatusLabel(record.registryStatus) }}
+          </template>
+          <template v-else-if="column.key === 'actions' && record.registryStatus === 'ACTIVE'">
             <UiTextAction @click="revokeRegistry(record.id)">
               作废
             </UiTextAction>

@@ -1,8 +1,8 @@
-import type { ObjectiveComparePolicyCode } from './exam-standard-answer'
 import type { EffectiveStatusCode } from './effective-status'
-import type { QuestionTypeCode } from './question-type'
+import type { ObjectiveComparePolicyCode } from './exam-standard-answer'
 import type { GradeStatusCode } from './grade-status'
 import type { ObjectiveResultCode } from './objective-result'
+import type { QuestionTypeCode } from './question-type'
 /**
  * 题目质量分析与重判 API - 对接 edu-mark 模块 QuestionAnalysisController
  *

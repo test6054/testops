@@ -8,6 +8,7 @@ import AuditRectificationTab from '@/components/quality/improvement/AuditRectifi
 import AuditSupervisionTab from '@/components/quality/improvement/AuditSupervisionTab.vue'
 import ImprovementTaskTab from '@/components/quality/improvement/ImprovementTaskTab.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useImprovementWorkbenchSignals } from '@/composables/quality/useImprovementWorkbenchSignals'
@@ -21,6 +22,7 @@ import { showUserError, toUserError } from '@/utils/error-handler'
 
 const qualityStore = useQualityStore()
 const activeTab = ref<'improvement' | 'issue' | 'rectification' | 'supervision'>('improvement')
+const loading = ref(false)
 const skipFirstActivatedLoad = ref(true)
 let scopeChangeSerial = 0
 
@@ -83,6 +85,7 @@ async function loadTabLists(): Promise<void> {
 
 async function handleScopeChange(): Promise<void> {
   const serial = ++scopeChangeSerial
+  loading.value = true
   try {
     await loadTabLists()
     if (serial !== scopeChangeSerial) {
@@ -103,6 +106,10 @@ async function handleScopeChange(): Promise<void> {
       return
     }
     handleTabLoadError(resolveWorkbenchLoadError(error, '工作台数据加载失败'))
+  } finally {
+    if (serial === scopeChangeSerial) {
+      loading.value = false
+    }
   }
 }
 
@@ -156,6 +163,12 @@ onActivated(async () => {
 
     <SignalBand :metrics="signals" compact class="iwb__signals" />
 
+    <UiEmpty
+      v-if="!loading && qualityStore.currentTrainingPlanId && activeTab === 'improvement' && !signalImprovementList.length"
+      description="当前范围无改进任务"
+      class="iwb__empty"
+    />
+
     <a-tabs v-model:active-key="activeTab" class="iwb__tabs">
       <a-tab-pane key="improvement" tab="改进任务" force-render>
         <ImprovementTaskTab
@@ -204,6 +217,10 @@ onActivated(async () => {
     background: var(--dp-surface-elevated, #f8fafc);
     border: 1px solid var(--dp-border, #e2e8f0);
     border-radius: 8px;
+  }
+
+  &__empty {
+    margin-bottom: 12px;
   }
 
   &__tabs {

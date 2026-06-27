@@ -503,8 +503,8 @@ import type {
   ExamQuestionTemplateRequest,
   ExamQuestionTemplateVO,
 } from '@/apis/mark/exam-template'
-import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import type { ExamAnswerEffectiveConfigVO } from '@/apis/mark/question-analysis'
+import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import type { ExamTemplatePageRow } from '@/components/mark/ExamTemplatePageTable.vue'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
@@ -526,9 +526,9 @@ import {
   isPaperTemplateNotConfiguredError,
   saveExamTemplate,
 } from '@/apis/mark/exam-template'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import { revokePaperMaster } from '@/apis/mark/paper-master'
 import { confirmAnswerEffective, getEffectiveAnswerConfig } from '@/apis/mark/question-analysis'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import ExamTemplatePageTable from '@/components/mark/ExamTemplatePageTable.vue'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'

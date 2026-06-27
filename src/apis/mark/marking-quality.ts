@@ -1,9 +1,9 @@
 import type { PaperInstanceDisplayVO } from '@/apis/mark/exam-score'
-import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import type {
   MarkingOrganizationStatusCode,
   QuestionMarkingGroupStatusCode,
 } from '@/apis/mark/marking-organization'
+import type { QuestionTypeCode } from '@/apis/mark/question-type'
 /**
  * 阅卷质量监控 API - 对接 edu-mark 模块 MarkingQualityController
  *

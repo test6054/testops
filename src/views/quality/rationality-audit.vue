@@ -35,7 +35,12 @@
       </UiFilterBar>
 
       <a-spin :spinning="loading">
+        <UiEmpty
+          v-if="!loading && !list.length"
+          description="当前范围无待审核项"
+        />
         <UiDataTable
+          v-else
           pagination-mode="none"
           :columns="columns"
           :data-source="list"
@@ -142,6 +147,7 @@ import { ASSESSMENT_RATIONALITY_AUDIT_STATUS_LABEL } from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'

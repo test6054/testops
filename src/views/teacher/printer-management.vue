@@ -324,10 +324,10 @@ import {
   listScannerDeviceLocations,
   pageScannerDevices,
   resetScannerDevicePushToken,
-  SCANNER_DEVICE_STATUS_TONE,
   SCANNER_DEVICE_STATUS_LABEL,
-  SCANNER_ENDPOINT_ONLINE_STATUS_TONE,
+  SCANNER_DEVICE_STATUS_TONE,
   SCANNER_ENDPOINT_ONLINE_STATUS_LABEL,
+  SCANNER_ENDPOINT_ONLINE_STATUS_TONE,
   unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'

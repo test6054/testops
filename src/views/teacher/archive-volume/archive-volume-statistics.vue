@@ -127,6 +127,7 @@ import type {
   ArchiveVolumeDestructionLedgerRowVO,
   ArchiveVolumeStatisticsVO,
 } from '@/apis/mark/archive-volume'
+import type {TenantSchoolDepartmentDto} from '@/apis/quality/user-catalog';
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -140,21 +141,21 @@ import {
   getArchiveVolumeStatistics,
   pageDestructionLedger,
 } from '@/apis/mark/archive-volume'
-import { departmentCatalogApi, type TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
+import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import { requireArrayResult } from '@/components/quality/selectors/page-contract'
-import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
-import { formatDateTime } from '@/utils/format'
-import { showUserError } from '@/utils/error-handler'
 import { downloadArchiveExcelBase64 } from '@/utils/archive-excel-export'
+import { showUserError } from '@/utils/error-handler'
+import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 

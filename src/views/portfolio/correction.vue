@@ -10,7 +10,7 @@ import type {
 } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
@@ -28,7 +28,7 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -61,7 +61,7 @@ const columns: ColumnsType = [
 
 const route = useRoute()
 const router = useRouter()
-const { currentUserId, canPickTeachers, resolveDefaultTeacherId } = usePortfolioTeacherAccess()
+const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -86,13 +86,6 @@ const form = reactive({
   evidenceRef: '',
 })
 
-const targetTeacherId = computed(() => {
-  const queryId = typeof route.query.teacherId === 'string' ? route.query.teacherId : ''
-  if (queryId) {
-    return queryId
-  }
-  return resolveDefaultTeacherId() || currentUserId.value
-})
 const teacherRequest = computed(() =>
   targetTeacherId.value ? { teacherId: targetTeacherId.value } : {})
 
@@ -265,11 +258,11 @@ function openCorrectionDetail(row: PortfolioCorrectionSummaryVO): void {
   void openDetail(row.id)
 }
 
-watch(targetTeacherId, () => {
+usePortfolioScopedLoader(() => {
   pageNum.value = 1
   void loadCategories()
   void loadCorrections()
-})
+}, () => targetTeacherId.value)
 
 watch(() => route.query, () => {
   applyRoutePrefill()
@@ -277,11 +270,6 @@ watch(() => route.query, () => {
     void loadPublishedFields(form.categoryId)
   }
 }, { deep: true })
-
-onMounted(() => {
-  void loadCategories()
-  void loadCorrections()
-})
 </script>
 
 <template>

@@ -5,6 +5,7 @@
 import { computed, provide, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import { qualityIngestEmbeddedKey } from '@/composables/quality-layout-context'
 import { useQualityStore } from '@/stores/modules/quality'
 
@@ -42,7 +43,14 @@ function handleTabChange(key: string | number) {
     <a-tabs :active-key="activeTab" class="ingest-hub-layout__tabs" @change="handleTabChange">
       <a-tab-pane v-for="item in tabs" :key="item.key" :tab="item.label" />
     </a-tabs>
-    <router-view :key="`${route.path}-${qualityStore.scopeChangeEpoch}`" />
+    <UiEmpty
+      v-if="!qualityStore.currentTrainingPlanId"
+      description="请选择培养方案后进入数据接入"
+    />
+    <router-view
+      v-else
+      :key="`${route.path}-${qualityStore.scopeChangeEpoch}`"
+    />
   </div>
 </template>
 

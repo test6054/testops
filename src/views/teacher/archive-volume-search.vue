@@ -74,6 +74,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeSearch' })
 

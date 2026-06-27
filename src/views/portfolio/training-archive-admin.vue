@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioArchiveRecordSummaryVO } from '@/apis/portfolio/types'
+import type { PortfolioArchiveRecordStatus, PortfolioArchiveRecordSummaryVO } from '@/apis/portfolio/types'
 import { onMounted, ref } from 'vue'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
 const rows = ref<PortfolioArchiveRecordSummaryVO[]>([])
@@ -21,6 +24,10 @@ const columns: ColumnsType = [
   { title: '状态', dataIndex: 'recordStatus', key: 'recordStatus', width: 88 },
   { title: '学年', dataIndex: 'academicYear', key: 'academicYear', width: 88 },
 ]
+
+function recordStatusLabel(status: PortfolioArchiveRecordStatus): string {
+  return strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, status, '档案记录状态')
+}
 
 async function loadPage() {
   loading.value = true
@@ -50,7 +57,14 @@ onMounted(loadPage)
       <UiButton @click="loadPage">
         刷新
       </UiButton>
-      <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px" />
+      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无培训档案，请调整条件或联系管理员导入" />
+      <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'recordStatus'">
+            {{ recordStatusLabel(record.recordStatus) }}
+          </template>
+        </template>
+      </UiDataTable>
     </UiCard>
   </StageWorkbenchShell>
 </template>

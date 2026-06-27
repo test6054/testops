@@ -143,6 +143,7 @@ import type { ExamSummaryVO } from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import { ANALYSIS_SCOPE_TYPE_LABEL } from '@/apis/mark/analysis-scope-type'
 import {
   generateClassTrend,
@@ -150,7 +151,6 @@ import {
   listTrends,
 } from '@/apis/mark/cross-exam-analysis'
 import { getExamDetail } from '@/apis/mark/exam'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'

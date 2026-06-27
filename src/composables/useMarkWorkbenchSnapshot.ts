@@ -42,6 +42,7 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
   }
 
   let syncPollingRef: (() => void) | null = null
+  let quietFailureCount = 0
 
   async function refreshSnapshot(options?: { quiet?: boolean }): Promise<void> {
     const id = examId()
@@ -59,6 +60,7 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
     }
     try {
       const response = await getWorkbenchStageSnapshot(id)
+      quietFailureCount = 0
       markStageStore.applySnapshot(response)
       if (shouldPollSnapshot(response)) {
         pollIntervalMs.value = Math.min(
@@ -72,7 +74,13 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
       syncPollingRef?.()
     }
     catch (err) {
-      if (!quiet) {
+      if (quiet) {
+        quietFailureCount += 1
+        if (quietFailureCount >= 2) {
+          showUserError(err, '工作台阶段快照加载失败')
+        }
+      }
+      else {
         markStageStore.reset()
         markStageStore.observeExam(id)
         markStageStore.setError('工作台阶段快照加载失败')
@@ -114,6 +122,7 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
     if (next === prev) {
       return
     }
+    quietFailureCount = 0
     pollIntervalMs.value = SNAPSHOT_POLL_BASE_MS
     void refreshSnapshot()
   }, { immediate: true })

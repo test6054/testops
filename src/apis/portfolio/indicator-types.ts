@@ -19,13 +19,106 @@ export const PF_SCENE_CODE_LABEL: Record<PfSceneCode, string> = {
 export const PF_SCENE_CODE_OPTIONS = (Object.keys(PF_SCENE_CODE_LABEL) as PfSceneCode[])
   .map(value => ({ value, label: PF_SCENE_CODE_LABEL[value] }))
 
+/** 指标与模板状态 - PfIndicatorStatusEnum */
+export type PfIndicatorStatus = 'ACTIVE' | 'INACTIVE'
+
+export const PF_INDICATOR_STATUS_LABEL: Record<PfIndicatorStatus, string> = {
+  ACTIVE: '启用',
+  INACTIVE: '停用',
+}
+
+export const PF_INDICATOR_STATUS_OPTIONS = (Object.keys(PF_INDICATOR_STATUS_LABEL) as PfIndicatorStatus[])
+  .map(value => ({ value, label: PF_INDICATOR_STATUS_LABEL[value] }))
+
+/** 指标数据来源采集通道 - PfIndicatorDataSourceChannelEnum */
+export type PfIndicatorDataSourceChannel
+  = | 'ARCHIVE_BAG'
+    | 'EVALUATION_FORM'
+    | 'DEVELOPMENT_RECORD'
+    | 'IMPORT_BATCH'
+    | 'MANUAL_ENTRY'
+    | 'INTERNAL_LEDGER'
+    | 'HR_SYSTEM'
+    | 'EDU_AFFAIRS'
+    | 'RESEARCH_SYSTEM'
+    | 'MOBILE_APP'
+
+export const PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL: Record<PfIndicatorDataSourceChannel, string> = {
+  ARCHIVE_BAG: '教学档案袋',
+  EVALUATION_FORM: '多元评价表',
+  DEVELOPMENT_RECORD: '发展档案/成果库',
+  IMPORT_BATCH: '批量导入',
+  MANUAL_ENTRY: '手工录入',
+  INTERNAL_LEDGER: '本域台账',
+  HR_SYSTEM: '人事系统',
+  EDU_AFFAIRS: '教务系统',
+  RESEARCH_SYSTEM: '科研系统',
+  MOBILE_APP: '移动 APP',
+}
+
+export const PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS = (
+  Object.keys(PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL) as PfIndicatorDataSourceChannel[]
+).map(value => ({ value, label: PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL[value] }))
+
+/** Score 规则模板类型 - PfScoreRuleTypeEnum */
+export type PfScoreRuleType
+  = | 'THRESHOLD'
+    | 'SEGMENT'
+    | 'RATIO'
+    | 'CUMULATIVE'
+    | 'CAP'
+    | 'ADD_SUB'
+    | 'WEIGHT'
+
+export const PF_SCORE_RULE_TYPE_LABEL: Record<PfScoreRuleType, string> = {
+  THRESHOLD: '阈值型',
+  SEGMENT: '分段型',
+  RATIO: '比例型',
+  CUMULATIVE: '累计型',
+  CAP: '封顶型',
+  ADD_SUB: '加减分型',
+  WEIGHT: '权重型',
+}
+
+export const PF_SCORE_RULE_TYPE_OPTIONS = (Object.keys(PF_SCORE_RULE_TYPE_LABEL) as PfScoreRuleType[])
+  .map(value => ({ value, label: PF_SCORE_RULE_TYPE_LABEL[value] }))
+
+/** 场景模型状态 - PfModelStatusEnum */
+export type PfModelStatus = 'DRAFT' | 'PUBLISHED' | 'FROZEN'
+
+export const PF_MODEL_STATUS_LABEL: Record<PfModelStatus, string> = {
+  DRAFT: '草稿',
+  PUBLISHED: '已发布',
+  FROZEN: '已冻结',
+}
+
+export const PF_MODEL_STATUS_OPTIONS = (Object.keys(PF_MODEL_STATUS_LABEL) as PfModelStatus[])
+  .map(value => ({ value, label: PF_MODEL_STATUS_LABEL[value] }))
+
+/** 发布影响分析报告状态 - PfImpactReportStatusEnum */
+export type PfImpactReportStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED'
+
+export const PF_IMPACT_REPORT_STATUS_LABEL: Record<PfImpactReportStatus, string> = {
+  PENDING: '待执行',
+  RUNNING: '执行中',
+  COMPLETED: '已完成',
+  FAILED: '失败',
+}
+
+export const PF_IMPACT_REPORT_STATUS_TONE: Record<PfImpactReportStatus, 'gray' | 'blue' | 'green' | 'red'> = {
+  PENDING: 'gray',
+  RUNNING: 'blue',
+  COMPLETED: 'green',
+  FAILED: 'red',
+}
+
 export interface PortfolioIndicatorDefinitionTreeNodeVO {
   nodeKey: string
   nodeTitle: string
   nodeType: 'DIMENSION_L1' | 'DIMENSION_L2' | 'OBSERVATION'
   indicatorCode?: string
-  defaultDataSource?: string
-  status?: string
+  defaultDataSource?: PfIndicatorDataSourceChannel
+  status?: PfIndicatorStatus
   children?: PortfolioIndicatorDefinitionTreeNodeVO[]
 }
 
@@ -40,7 +133,7 @@ export interface PortfolioIndicatorReferenceStatusVO {
   indicatorCode: string
   indicatorName: string
   tenantEnabled?: boolean
-  defaultDataSource?: string
+  defaultDataSource?: PfIndicatorDataSourceChannel
   sceneReferences: PortfolioIndicatorReferenceSceneVO[]
 }
 
@@ -52,7 +145,7 @@ export interface PortfolioIndicatorDefinitionVO {
   dimensionL1Name: string
   dimensionL2Name: string
   definitionText: string
-  defaultDataSource: string
+  defaultDataSource: PfIndicatorDataSourceChannel
   defaultRuleTemplateId?: string
   policyAlign?: string
   applicableTeachers: string
@@ -60,26 +153,26 @@ export interface PortfolioIndicatorDefinitionVO {
   auditRequired: boolean
   redLineFlag: boolean
   sortOrder: number
-  status: string
+  status: PfIndicatorStatus
 }
 
 export interface PortfolioIndicatorRuleTemplateVO {
   id: string
   templateCode: string
   templateName: string
-  ruleType: string
+  ruleType: PfScoreRuleType
   paramsJson: string
-  status: string
+  status: PfIndicatorStatus
 }
 
 export interface PortfolioIndicatorRuleTemplateSaveRequest {
   id?: string
   templateCode: string
   templateName: string
-  ruleType: string
+  ruleType: PfScoreRuleType
   paramsJson: string
   description?: string
-  status?: string
+  status?: PfIndicatorStatus
 }
 
 export interface PortfolioIndicatorRuleBindingSaveRequest {
@@ -96,7 +189,7 @@ export interface PortfolioIndustryPackVO {
   packVersion?: string
   packDefJson?: string
   seedVersion?: string
-  status: string
+  status: PfIndicatorStatus
 }
 
 export interface PortfolioIndustryPackSaveRequest {
@@ -105,7 +198,7 @@ export interface PortfolioIndustryPackSaveRequest {
   packName: string
   packVersion?: string
   packDefJson: string
-  status?: string
+  status?: PfIndicatorStatus
 }
 
 /** 资格规则预置编码 */
@@ -309,7 +402,7 @@ export interface PortfolioTenantSceneModelVO {
   id?: string
   sceneCode: PfSceneCode
   sceneName: string
-  modelStatus: string
+  modelStatus: PfModelStatus
   draftSnapshotHash?: string
   currentSnapshotId?: string
   trialPassed?: boolean
@@ -339,7 +432,7 @@ export interface PortfolioPublishImpactReportVO {
   id: string
   sceneCode: PfSceneCode
   draftSnapshotHash: string
-  reportStatus: string
+  reportStatus: PfImpactReportStatus
   indicatorSummaryJson: string
   teacherSummaryJson: string
   orgSummaryJson: string
@@ -353,7 +446,7 @@ export interface PortfolioRulePublishSnapshotVO {
   sceneCode: PfSceneCode
   versionNo: number
   snapshotVersion: string
-  modelStatus: string
+  modelStatus: PfModelStatus
   academicYear: string
   effectiveFrom: string
   effectiveTo: string

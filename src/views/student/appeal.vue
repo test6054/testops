@@ -252,6 +252,7 @@ import { message } from 'ant-design-vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
+import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from '@/apis/mark/final-score-status'
 import {
   countMyPendingReviewRequests,
   GRADE_REVIEW_REASON_TYPE_LABEL,
@@ -261,7 +262,6 @@ import {
   REVIEW_REQUEST_STATUS_TONE,
   submitReviewRequest,
 } from '@/apis/mark/grade-review'
-import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from '@/apis/mark/final-score-status'
 import { canSubmitReview, getMyScoreDetail, listMyExams, STUDENT_REVIEW_WINDOW_STATUS_LABEL, STUDENT_REVIEW_WINDOW_STATUS_TONE } from '@/apis/mark/student-exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'

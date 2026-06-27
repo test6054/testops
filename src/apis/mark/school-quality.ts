@@ -1,6 +1,6 @@
+import type { AiAnalysisStatusCode } from './ai-analysis-status'
 import type { AnalysisExamScopeVO, ExamStatSnapshotVO } from './cross-exam-analysis'
 import type { QuestionTypeCode } from './question-type'
-import type { AiAnalysisStatusCode } from './ai-analysis-status'
 
 /**
  * AI 校级质量分析 API - 对接 edu-mark 模块 SchoolQualityAnalysisController
@@ -42,9 +42,29 @@ export const SCHOOL_QUALITY_RATING_TONE: Record<SchoolQualityRatingCode, BadgeTo
   POOR: 'red',
 }
 
+/** 校级质量分项维度 - 与 AI prompt school-quality-system.st 一致 */
+export type SchoolQualityItemDimensionCode = 'TEACHING' | 'QUESTION_DESIGN' | 'SCORE_DISTRIBUTION'
+
+/** 校级质量分项维度文案 */
+export const SCHOOL_QUALITY_ITEM_DIMENSION_LABEL: Record<SchoolQualityItemDimensionCode, string> = {
+  TEACHING: '教学质量',
+  QUESTION_DESIGN: '命题质量',
+  SCORE_DISTRIBUTION: '成绩分布',
+}
+
+/** 经验维护动作 - 与 AI prompt experience-effectiveness-system.st 一致 */
+export type ExperienceRecommendationCode = 'KEEP' | 'UPDATE' | 'DEPRECATE'
+
+/** 经验维护动作文案 */
+export const EXPERIENCE_RECOMMENDATION_LABEL: Record<ExperienceRecommendationCode, string> = {
+  KEEP: '维持',
+  UPDATE: '更新',
+  DEPRECATE: '废弃',
+}
+
 /** 校级质量分析条目 */
 export interface SchoolQualityItemVO {
-  qualityDimension?: string
+  qualityDimension?: SchoolQualityItemDimensionCode
   metricName?: string
   metricValue?: number
   rating?: SchoolQualityRatingCode
@@ -92,7 +112,7 @@ export interface ExperienceEffectivenessEvalVO {
   reuseCount?: number
   driftDetected?: boolean
   driftDescription?: string
-  recommendation?: string
+  recommendation?: ExperienceRecommendationCode
   analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
   latencyMs?: number

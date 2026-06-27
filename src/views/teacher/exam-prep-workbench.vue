@@ -93,8 +93,9 @@ const draftPrintSource = ref<ExamPrintSourceModeCode | undefined>()
 async function loadMarkingProgress(examId: string): Promise<void> {
   try {
     markingProgress.value = await getMarkingProgress(examId)
-  } catch {
+  } catch (error) {
     markingProgress.value = null
+    showUserError(error, '阅卷进度加载失败')
   }
 }
 

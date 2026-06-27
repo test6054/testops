@@ -134,7 +134,7 @@
                     <UiTag :tone="masteryColor(item.masteryLevel)">
                       {{ masteryLabel(item.masteryLevel) }}
                     </UiTag>
-                    <span class="diagnosis-type">{{ item.questionType }}</span>
+                    <span v-if="item.questionType" class="diagnosis-type">{{ questionTypeLabel(item.questionType) }}</span>
                     <span class="diagnosis-rate">得分率 {{ formatRate(item.scoreRate) }}</span>
                   </div>
                   <div v-if="item.causeAnalysis" class="diagnosis-text">
@@ -171,6 +171,7 @@ import { computed, ref, watch } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from '@/apis/mark/final-score-status'
 import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-mastery-level'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import {
   generateStudentLearningProfile,
   getLatestStudentLearningProfile,
@@ -339,6 +340,10 @@ function masteryLabel(level: MasteryLevelCode): string {
 
 function masteryColor(level: MasteryLevelCode): BadgeTone {
   return strictEnumTone(MASTERY_LEVEL_TONE, level, '掌握水平')
+}
+
+function questionTypeLabel(value: NonNullable<ExamTeachingAnalysisRecordVO['diagnosisItems']>[number]['questionType']): string {
+  return strictEnumLabel(QUESTION_TYPE_LABEL, value, '题目类型')
 }
 
 watch(

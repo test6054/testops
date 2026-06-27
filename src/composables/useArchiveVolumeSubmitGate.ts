@@ -2,9 +2,9 @@ import type { ArchiveVolumeDetailVO, ArchiveVolumeVO } from '@/apis/mark/archive
 
 interface SubmitGateInput {
   volume: Pick<ArchiveVolumeVO,
-    'volumeStatus' | 'responsibleUserId' | 'integrityStatus' | 'submitReady'
-    | 'hasBlockingRemediationForSubmit' | 'scoreSubmitReady' | 'scoreSource' | 'scoreCompletionStatus'
-    | 'scoreProofFileId' | 'examGateOpen' | 'fourPropertyStale'>
+  'volumeStatus' | 'responsibleUserId' | 'integrityStatus' | 'submitReady'
+  | 'hasBlockingRemediationForSubmit' | 'scoreSubmitReady' | 'scoreSource' | 'scoreCompletionStatus'
+  | 'scoreProofFileId' | 'examGateOpen' | 'fourPropertyStale'>
   currentUserId: string
   fourPropertyStale?: boolean
   fourPropertyPassed?: boolean

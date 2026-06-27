@@ -345,65 +345,11 @@
       </a-list>
     </UiDrawer>
 
-    <a-modal
+    <ScanBatchDiscardDialog
       v-model:open="batchDiscardModalOpen"
-      title="废弃扫描批次"
-      ok-text="废弃"
-      ok-type="danger"
-      cancel-text="取消"
       :confirm-loading="Boolean(batchDiscarding)"
-      @ok="confirmDiscardBatch"
-      @cancel="closeBatchDiscardModal"
-    >
-      <a-form layout="vertical">
-        <a-form-item
-          label="废弃原因"
-          required
-          :validate-status="batchDiscardReasonError ? 'error' : undefined"
-          :help="batchDiscardReasonError"
-        >
-          <a-textarea
-            v-model:value="batchDiscardReason"
-            placeholder="请输入废弃原因（必填，1-255 字）"
-            :maxlength="255"
-            show-count
-            :rows="4"
-          />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-
-    <a-modal
-      v-model:open="batchSealModalOpen"
-      title="封存扫描批次"
-      ok-text="确认封存"
-      cancel-text="取消"
-      :confirm-loading="Boolean(batchSealing)"
-      :ok-button-props="{ disabled: !batchSealReady }"
-      @ok="confirmSealBatch"
-      @cancel="cancelSealBatch"
-    >
-      <template v-if="batchSealTarget">
-        <p class="scan-batch-page__seal-intro">
-          封存批次 <strong>{{ batchSealTarget.batchNo }}</strong> 后，扫描端将无法再向该批次追加页面。
-        </p>
-        <ul class="scan-batch-page__seal-checklist">
-          <li
-            v-for="item in batchSealChecklist"
-            :key="item.key"
-            :class="item.ok ? 'is-pass' : 'is-fail'"
-          >
-            <span class="scan-batch-page__seal-check-label">{{ item.label }}</span>
-            <span v-if="item.detail" class="scan-batch-page__seal-check-detail">{{ item.detail }}</span>
-          </li>
-        </ul>
-        <p v-if="(batchSealTarget.attentionItemCount ?? 0) > 0" class="scan-batch-page__seal-hint">
-          请先前往
-          <UiTextAction @click="openSealAttentionMonitor">扫描监控</UiTextAction>
-          处置异常后再封存。
-        </p>
-      </template>
-    </a-modal>
+      @confirm="confirmDiscardBatch"
+    />
   </div>
 </template>
 
@@ -452,6 +398,7 @@ import {
 import { discardScanJob, listScanJobs } from '@/apis/mark/scanner-agent-local'
 import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
+import ScanBatchDiscardDialog from '@/components/mark/ScanBatchDiscardDialog.vue'
 import ScanManualSupplementPanel from '@/components/mark/ScanManualSupplementPanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -461,6 +408,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
@@ -473,8 +421,8 @@ import mittBus from '@/utils/mitt'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import {
   batchSealBlockedReason,
-  buildBatchSealChecklist,
   canSealBatch,
+  formatBatchSealConfirmContent,
 } from '@/utils/scan-batch-seal'
 import { progressTone, toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -499,15 +447,6 @@ function batchStatusTone(batch: ExamScannerBatchVO): BadgeTone {
 function batchStatusLabel(batch: ExamScannerBatchVO): string {
   if (batch.sealedTime) return '已封存'
   return strictEnumLabel(SCAN_BATCH_STATUS_LABEL, batch.status, '扫描批次状态')
-}
-
-function openSealAttentionMonitor(): void {
-  if (!selectedExamId.value) return
-  batchSealModalOpen.value = false
-  void router.push({
-    name: 'TeacherExamWorkspaceScanMonitor',
-    params: { examId: selectedExamId.value },
-  })
 }
 
 const examContext = useMarkExamContext()
@@ -889,21 +828,8 @@ const batchColumns: ColumnType<ExamScannerBatchVO>[] = [
 const batchDiscarding = ref<string | null>(null)
 const batchDiscardModalOpen = ref(false)
 const batchDiscardTarget = ref<ExamScannerBatchVO | null>(null)
-const batchDiscardReason = ref('')
-const batchDiscardReasonError = ref('')
 
 const batchSealing = ref<string | null>(null)
-const batchSealModalOpen = ref(false)
-const batchSealTarget = ref<ExamScannerBatchVO | null>(null)
-
-const batchSealChecklist = computed(() =>
-  batchSealTarget.value ? buildBatchSealChecklist(batchSealTarget.value) : [],
-)
-const batchSealBlockedReasonActive = computed(() =>
-  batchSealTarget.value ? batchSealBlockedReason(batchSealTarget.value) : '',
-)
-const batchSealReady = computed(() => batchSealBlockedReasonActive.value === '')
-
 const sourceFilesDrawerOpen = ref(false)
 const sourceFilesTarget = ref<ExamScannerBatchVO | null>(null)
 const sourceFileDownloading = ref<string | null>(null)
@@ -946,72 +872,46 @@ async function onDiscardBatch(batch: ExamScannerBatchVO): Promise<void> {
     return
   }
   batchDiscardTarget.value = batch
-  batchDiscardReason.value = ''
-  batchDiscardReasonError.value = ''
   batchDiscardModalOpen.value = true
 }
 
 function onSealBatch(batch: ExamScannerBatchVO): void {
   if (!batch.scanBatchId || !canSealBatch(batch)) return
-  batchSealTarget.value = batch
-  batchSealModalOpen.value = true
+  void confirmAsync({
+    title: '封存扫描批次',
+    content: formatBatchSealConfirmContent(batch),
+    okText: '确认封存',
+    cancelText: '取消',
+    type: 'warning',
+    width: 520,
+    onOk: async () => {
+      if (!batch.scanBatchId || !canSealBatch(batch)) {
+        message.warning(batchSealBlockedReason(batch) || '当前批次不满足封存条件')
+        return false
+      }
+      batchSealing.value = batch.scanBatchId
+      try {
+        await sealScanBatchByTeacher({ scanBatchId: batch.scanBatchId })
+        message.success(`扫描批次已封存：${batch.batchNo}`)
+        await Promise.all([loadBatches(), loadProgress(), loadRecentEventsSnapshot()])
+        await syncScanWorkbenchState()
+      } catch (error) {
+        showUserError(error, '扫描批次封存失败')
+        return false
+      } finally {
+        batchSealing.value = null
+      }
+    },
+  })
 }
 
-function cancelSealBatch(): void {
-  if (batchSealing.value) return
-  batchSealModalOpen.value = false
-  batchSealTarget.value = null
-}
-
-async function confirmSealBatch(): Promise<void> {
-  const batch = batchSealTarget.value
-  if (!batch?.scanBatchId) {
-    cancelSealBatch()
-    return
-  }
-  if (!canSealBatch(batch)) {
-    message.warning(batchSealBlockedReason(batch) || '当前批次不满足封存条件')
-    return
-  }
-  batchSealing.value = batch.scanBatchId
-  try {
-    await sealScanBatchByTeacher({ scanBatchId: batch.scanBatchId })
-    message.success(`扫描批次已封存：${batch.batchNo}`)
-    batchSealModalOpen.value = false
-    batchSealTarget.value = null
-    await Promise.all([loadBatches(), loadProgress(), loadRecentEventsSnapshot()])
-    await syncScanWorkbenchState()
-  } catch (error) {
-    showUserError(error, '扫描批次封存失败')
-  } finally {
-    batchSealing.value = null
-  }
-}
-
-function closeBatchDiscardModal(): void {
-  if (batchDiscarding.value) return
-  batchDiscardModalOpen.value = false
-  batchDiscardTarget.value = null
-  batchDiscardReason.value = ''
-  batchDiscardReasonError.value = ''
-}
-
-async function confirmDiscardBatch(): Promise<void> {
+async function confirmDiscardBatch(trimmed: string): Promise<void> {
   const batch = batchDiscardTarget.value
   if (!batch?.scanBatchId) {
-    closeBatchDiscardModal()
+    batchDiscardModalOpen.value = false
+    batchDiscardTarget.value = null
     return
   }
-  const trimmed = batchDiscardReason.value.trim()
-  if (!trimmed) {
-    batchDiscardReasonError.value = '废弃原因不能为空'
-    return
-  }
-  if (trimmed.length > 255) {
-    batchDiscardReasonError.value = '废弃原因长度不能超过 255 字'
-    return
-  }
-  batchDiscardReasonError.value = ''
   batchDiscarding.value = batch.scanBatchId
   try {
     await discardScannerKioskBatch({ scanBatchId: batch.scanBatchId, discardReason: trimmed })
@@ -1031,7 +931,6 @@ async function confirmDiscardBatch(): Promise<void> {
     }
     batchDiscardModalOpen.value = false
     batchDiscardTarget.value = null
-    batchDiscardReason.value = ''
     await loadBatches()
     await loadProgress()
     await syncScanWorkbenchState()
@@ -1299,56 +1198,6 @@ onBeforeUnmount(() => {
     color: var(--ant-color-error, #ff4d4f);
     font-size: 12px;
     font-weight: 600;
-  }
-
-  &__seal-intro {
-    margin: 0 0 12px;
-    font-size: 14px;
-    line-height: 1.5;
-  }
-
-  &__seal-checklist {
-    list-style: none;
-    margin: 0 0 12px;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  &__seal-checklist > li {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 8px 10px;
-    border-radius: 6px;
-    border: 1px solid var(--dp-border, #e5e7eb);
-  }
-
-  &__seal-checklist > li.is-pass {
-    background: var(--ant-color-success-bg);
-    border-color: var(--ant-color-success-border);
-  }
-
-  &__seal-checklist > li.is-fail {
-    background: var(--ant-color-warning-bg);
-    border-color: var(--dp-yellow-200);
-  }
-
-  &__seal-check-label {
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  &__seal-check-detail {
-    font-size: 12px;
-    color: var(--dp-text-secondary, #475569);
-  }
-
-  &__seal-hint {
-    margin: 8px 0 0;
-    font-size: 13px;
-    color: var(--dp-text-secondary, #475569);
   }
 }
 

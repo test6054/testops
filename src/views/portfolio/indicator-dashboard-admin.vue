@@ -14,6 +14,7 @@ import { portfolioIndicatorDashboardApi } from '@/apis/portfolio/indicator'
 import { PF_SCENE_CODE_LABEL, PF_SCENE_CODE_OPTIONS } from '@/apis/portfolio/indicator-types'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -170,7 +171,8 @@ onMounted(loadDashboard)
     </div>
     <SignalBand v-if="summary" :metrics="signals" compact class="dashboard__signals" />
     <a-spin :spinning="loading">
-      <div class="chart-grid">
+      <UiEmpty v-if="!loading && !summary" description="当前范围无指标看板数据" />
+      <div v-else-if="summary" class="chart-grid">
         <UiCard title="一级维度分布">
           <MarkChart :option="dimensionChartOption" height="280px" aria-label="一级维度指标数量分布" />
         </UiCard>

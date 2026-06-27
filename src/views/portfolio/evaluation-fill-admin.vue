@@ -18,6 +18,7 @@ import {
 } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -314,6 +315,7 @@ onMounted(async () => {
               保存评价
             </UiButton>
           </div>
+          <UiEmpty v-if="!loading && entries.length === 0" description="当前筛选无填答记录" />
           <UiDataTable
             :columns="entryColumns"
             :data-source="entries"
@@ -334,7 +336,7 @@ onMounted(async () => {
             <span>平均分 {{ summary.averageScore }}</span>
             <span>模式 {{ evaluationModeLabel(summary.evaluationMode) }}</span>
             <UiButton :loading="exporting" @click="exportSummaryCsv">
-              导出 CSV
+              导出 Excel
             </UiButton>
           </div>
           <UiDataTable

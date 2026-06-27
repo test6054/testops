@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioDevelopmentPlanStatus } from '@/apis/portfolio/enums'
+import type { PortfolioDevelopmentPlanStatus, PortfolioDevelopmentPlanType } from '@/apis/portfolio/enums'
 import type {
   PortfolioDevelopmentPlanAchievementAttainmentItemVO,
   PortfolioDevelopmentPlanCompletionVO,
@@ -14,10 +14,12 @@ import { useRoute } from 'vue-router'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL,
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
+  PORTFOLIO_DEVELOPMENT_PLAN_TYPE_LABEL,
 } from '@/apis/portfolio/enums'
 import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -56,6 +58,10 @@ function planStatusLabel(status: PortfolioDevelopmentPlanStatus): string {
 
 function planStatusTone(status: PortfolioDevelopmentPlanStatus) {
   return strictEnumTone(PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE, status, '发展规划状态')
+}
+
+function planTypeLabel(type: PortfolioDevelopmentPlanType): string {
+  return strictEnumLabel(PORTFOLIO_DEVELOPMENT_PLAN_TYPE_LABEL, type, '发展规划类型')
 }
 
 const approvedCount = computed(() =>
@@ -196,7 +202,7 @@ onMounted(async () => {
     <ContextBar title="教师年度规划" subtitle="与工程认证 AnnualPlan 分域">
       <template v-if="showAdminStats" #actions>
         <UiButton @click="exportPlans">
-          导出 CSV
+          导出 Excel
         </UiButton>
       </template>
     </ContextBar>
@@ -224,6 +230,7 @@ onMounted(async () => {
               </UiButton>
             </div>
           </UiCard>
+          <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无发展规划" />
           <UiDataTable
             :columns="columns"
             :data-source="rows"
@@ -233,7 +240,10 @@ onMounted(async () => {
             style="margin-top: 16px"
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'planStatus'">
+              <template v-if="column.key === 'planType'">
+                {{ planTypeLabel(record.planType) }}
+              </template>
+              <template v-else-if="column.key === 'planStatus'">
                 <UiTag :tone="planStatusTone(record.planStatus)">
                   {{ planStatusLabel(record.planStatus) }}
                 </UiTag>
@@ -278,6 +288,11 @@ onMounted(async () => {
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'orgName'">
                 {{ record.orgName || '未挂接科室' }}
+              </template>
+              <template v-else-if="column.key === 'planStatus'">
+                <UiTag :tone="planStatusTone(record.planStatus)">
+                  {{ planStatusLabel(record.planStatus) }}
+                </UiTag>
               </template>
             </template>
           </UiDataTable>

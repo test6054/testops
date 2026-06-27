@@ -74,7 +74,7 @@
                   <div class="analysis-item__header">
                     <a-typography-text strong>第 {{ index + 1 }} 项</a-typography-text>
                     <span class="analysis-item__title">
-                      {{ item.causeName || item.questionType || '错因聚类' }}
+                      {{ clusterItemTitle(item) }}
                     </span>
                     <span v-if="item.affectedCount != null" class="analysis-item__metric">
                       涉及学生 {{ item.affectedCount }} 人
@@ -109,15 +109,16 @@
 </template>
 
 <script lang="ts" setup>
-import type { ExamErrorCauseClusterVO } from '@/apis/mark/error-cause-cluster'
+import type { ErrorCauseClusterItemVO, ExamErrorCauseClusterVO } from '@/apis/mark/error-cause-cluster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import {
   generateErrorCauseCluster,
   getLatestErrorCauseCluster,
 } from '@/apis/mark/error-cause-cluster'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -129,6 +130,7 @@ import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handl
 import { formatDateTime } from '@/utils/format'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import { errorCauseToBarItems } from '@/utils/mark-statistics-chart'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'ErrorCauseClusterCard' })
@@ -151,6 +153,16 @@ const { chartOption: clusterChartOption } = useChartOption(() =>
     emptyText: '暂无错因占比数据',
   }),
 )
+
+function clusterItemTitle(item: ErrorCauseClusterItemVO): string {
+  if (item.causeName?.trim()) {
+    return item.causeName
+  }
+  if (item.questionType) {
+    return strictEnumLabel(QUESTION_TYPE_LABEL, item.questionType, '题目类型')
+  }
+  return '错因聚类'
+}
 
 function analysisFailureMessage(errorMessage?: string): string {
   return getUserProcessFailureMessage(errorMessage, 'AI 错因聚类分析未完成，请稍后重新生成')

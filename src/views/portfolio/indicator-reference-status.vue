@@ -3,12 +3,19 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioIndicatorReferenceStatusVO } from '@/apis/portfolio/indicator-types'
 import { onMounted, ref } from 'vue'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
+import { PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL } from '@/apis/portfolio/indicator-types'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
+
+function dataSourceLabel(value: NonNullable<PortfolioIndicatorReferenceStatusVO['defaultDataSource']>): string {
+  return strictEnumLabel(PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL, value, '数据来源')
+}
 
 const loading = ref(false)
 const rows = ref<PortfolioIndicatorReferenceStatusVO[]>([])
@@ -41,12 +48,16 @@ onMounted(loadList)
   <StageWorkbenchShell>
     <ContextBar title="指标引用状态" subtitle="租户启停与三场景模型引用一览" />
     <UiCard>
+      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无指标引用记录" />
       <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="indicatorCode">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'tenantEnabled'">
             <UiTag :tone="record.tenantEnabled ? 'green' : 'gray'">
               {{ record.tenantEnabled ? '启用' : '未启用' }}
             </UiTag>
+          </template>
+          <template v-else-if="column.key === 'defaultDataSource'">
+            {{ record.defaultDataSource ? dataSourceLabel(record.defaultDataSource) : '—' }}
           </template>
           <template v-else-if="column.key === 'sceneReferences'">
             <UiTag v-for="scene in record.sceneReferences" :key="scene.sceneCode" tone="blue" style="margin-right: 4px">

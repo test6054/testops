@@ -16,6 +16,7 @@ import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
 import { SCALE_TYPE_LABEL } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -413,7 +414,12 @@ onActivated(() => {
         @reset="handleReset"
       />
 
+      <UiEmpty
+        v-if="!loading && total === 0"
+        description="无量表换算规则"
+      />
       <UiDataTable
+        v-else
         class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"

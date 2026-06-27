@@ -346,12 +346,12 @@
 
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
+import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
 import type {
   ExamDetailVO,
 } from '@/apis/mark/exam'
 import type { QualityDecisionCode } from '@/apis/mark/exam-scan'
 import type { PaperInstanceDisplayVO } from '@/apis/mark/exam-score'
-import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
 import type {
   AllocationUnitCode,
   AnonymousRevealVO,
@@ -373,6 +373,7 @@ import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ANONYMITY_MODE_LABEL } from '@/apis/mark/anonymity-mode'
 import {
   getExamDetail,
 } from '@/apis/mark/exam'
@@ -384,7 +385,6 @@ import {
   QUALITY_DECISION_LABEL,
   QUALITY_DECISION_TONE,
 } from '@/apis/mark/exam-scan'
-import { ANONYMITY_MODE_LABEL } from '@/apis/mark/anonymity-mode'
 import {
   ALLOCATION_UNIT_LABEL,
   getMarkingQuestionView,

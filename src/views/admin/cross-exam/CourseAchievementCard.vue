@@ -152,14 +152,14 @@ import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import {
-  COURSE_ACHIEVEMENT_STATUS_TONE,
   COURSE_ACHIEVEMENT_STATUS_LABEL,
+  COURSE_ACHIEVEMENT_STATUS_TONE,
   COURSE_OBJECTIVE_DIMENSION_LABEL,
   generateAchievement,
   listAchievements,
 } from '@/apis/mark/cross-exam-analysis'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'

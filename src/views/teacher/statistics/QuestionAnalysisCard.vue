@@ -136,19 +136,13 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionTemplateVO } from '@/apis/mark/exam-template'
-import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
+import type { ExamQuestionAnalysisRecordVO, QuestionAnalysisListQueryRequest } from '@/apis/mark/question-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { getExamTemplate } from '@/apis/mark/exam-template'
+import { fetchAllQuestionAnalysisRows, generateAllQuestionAnalysis, generateQuestionAnalysis, pageQuestionAnalysis } from '@/apis/mark/question-analysis'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
-import {
-  fetchAllQuestionAnalysisRows,
-  generateAllQuestionAnalysis,
-  generateQuestionAnalysis,
-  pageQuestionAnalysis,
-  type QuestionAnalysisListQueryRequest,
-} from '@/apis/mark/question-analysis'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkScatterSection from '@/components/chart/MarkScatterSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'

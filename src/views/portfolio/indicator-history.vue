@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  PfImpactReportStatus,
+  PfModelStatus,
   PfSceneCode,
   PortfolioPublishImpactReportVO,
   PortfolioRulePublishSnapshotVO,
@@ -9,15 +11,34 @@ import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { PF_SCENE_CODE_OPTIONS } from '@/apis/portfolio/indicator-types'
+import { PF_IMPACT_REPORT_STATUS_LABEL, PF_IMPACT_REPORT_STATUS_TONE, PF_MODEL_STATUS_LABEL, PF_SCENE_CODE_LABEL, PF_SCENE_CODE_OPTIONS } from '@/apis/portfolio/indicator-types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
-import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { readPageList, readPageTotal } from '@/utils/page-result'
+import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+
+function modelStatusLabel(value: PfModelStatus): string {
+  return strictEnumLabel(PF_MODEL_STATUS_LABEL, value, '快照状态')
+}
+
+function sceneCodeLabel(value: PfSceneCode): string {
+  return strictEnumLabel(PF_SCENE_CODE_LABEL, value, '场景编码')
+}
+
+function impactReportStatusLabel(value: PfImpactReportStatus): string {
+  return strictEnumLabel(PF_IMPACT_REPORT_STATUS_LABEL, value, '影响报告状态')
+}
+
+function impactReportStatusTone(value: PfImpactReportStatus) {
+  return strictEnumTone(PF_IMPACT_REPORT_STATUS_TONE, value, '影响报告状态')
+}
 
 const router = useRouter()
 const activeTab = ref('history')
@@ -172,9 +193,13 @@ onMounted(loadHistory)
             </UiButton>
             <a-input v-model:value="diffSnapshotIdB" placeholder="对比快照 B ID" style="width: 200px" />
           </div>
+          <UiEmpty v-if="!loading && rows.length === 0" description="暂无发布历史" />
           <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id">
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'actions'">
+              <template v-if="column.key === 'modelStatus'">
+                {{ modelStatusLabel(record.modelStatus) }}
+              </template>
+              <template v-else-if="column.key === 'actions'">
                 <a style="margin-right: 8px" @click="selectedSnapshotId = record.id; loadRetroactive()">查看</a>
                 <a style="margin-right: 8px" @click="exportDiff(record.id)">导出 diff</a>
                 <a @click="goOps(record.id)">计分</a>
@@ -186,7 +211,15 @@ onMounted(loadHistory)
         <a-tab-pane key="impact" tab="影响报告">
           <UiDataTable :columns="impactColumns" :data-source="impactRows" :loading="loading" row-key="id">
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'actions'">
+              <template v-if="column.key === 'sceneCode'">
+                {{ sceneCodeLabel(record.sceneCode) }}
+              </template>
+              <template v-else-if="column.key === 'reportStatus'">
+                <UiTag :tone="impactReportStatusTone(record.reportStatus)">
+                  {{ impactReportStatusLabel(record.reportStatus) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'actions'">
                 <a style="margin-right: 8px" @click="loadImpactDetail(record.id)">详情</a>
                 <a @click="exportImpact(record.id)">导出</a>
               </template>

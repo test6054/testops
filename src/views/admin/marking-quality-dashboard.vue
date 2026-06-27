@@ -411,12 +411,12 @@ import {
   getLatestProgress,
   listProgressSnapshots,
   listReviewerMetrics,
-  PROGRESS_RISK_LEVEL_TONE,
   PROGRESS_RISK_LEVEL_LABEL,
+  PROGRESS_RISK_LEVEL_TONE,
   refreshReviewerMetrics,
   reprocessBatch,
-  REVIEWER_METRIC_STATUS_TONE,
   REVIEWER_METRIC_STATUS_LABEL,
+  REVIEWER_METRIC_STATUS_TONE,
   takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'

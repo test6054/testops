@@ -1,12 +1,12 @@
+import type {
+  DuplicateResolutionStatusCode,
+} from '@/apis/mark/duplicate-resolution-status'
 import type { ExamFileRefVO, ExamStatusCode } from '@/apis/mark/exam'
 import type {
   ScannerAgentDiagnosticStatusCode,
   ScannerDeviceStatusCode,
   ScannerEndpointOnlineStatusCode,
 } from '@/apis/mark/exam-mark-scanner'
-import type {
-  DuplicateResolutionStatusCode,
-} from '@/apis/mark/duplicate-resolution-status'
 import type {
   QualityDecisionCode,
   ScanAttentionSourceTypeCode,

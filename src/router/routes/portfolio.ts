@@ -9,6 +9,30 @@ import { PORTFOLIO_ROUTE_PREFIX } from '@/utils/portfolio-route'
 const TEACHER_ROLES = [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER]
 const ALL_ROLES = [RoleEnum.SUPER_ADMIN, ...TEACHER_ROLES]
 
+const PORTFOLIO_TEACHER_MENU_GROUP = 'portfolio-teacher'
+const portfolioTeacherMenuMeta = {
+  menuGroup: PORTFOLIO_TEACHER_MENU_GROUP,
+  menuGroupTitle: '教师自助',
+  menuGroupIcon: 'user',
+  menuGroupOrder: 1,
+}
+
+const PORTFOLIO_ORG_MENU_GROUP = 'portfolio-org'
+const portfolioOrgMenuMeta = {
+  menuGroup: PORTFOLIO_ORG_MENU_GROUP,
+  menuGroupTitle: '组织与模板',
+  menuGroupIcon: 'apartment',
+  menuGroupOrder: 2,
+}
+
+const PORTFOLIO_DUAL_TEACHER_MENU_GROUP = 'portfolio-dual-teacher'
+const portfolioDualTeacherMenuMeta = {
+  menuGroup: PORTFOLIO_DUAL_TEACHER_MENU_GROUP,
+  menuGroupTitle: '双师管理',
+  menuGroupIcon: 'team',
+  menuGroupOrder: 3,
+}
+
 /** 侧栏「发展指标」分组 */
 const INDICATOR_MENU_GROUP = 'portfolio-indicator'
 const indicatorMenuMeta = {
@@ -16,6 +40,22 @@ const indicatorMenuMeta = {
   menuGroupTitle: '发展指标',
   menuGroupIcon: 'bar-chart',
   menuGroupOrder: 4,
+}
+
+const PORTFOLIO_EVALUATION_MENU_GROUP = 'portfolio-evaluation'
+const portfolioEvaluationMenuMeta = {
+  menuGroup: PORTFOLIO_EVALUATION_MENU_GROUP,
+  menuGroupTitle: '多元评价',
+  menuGroupIcon: 'form',
+  menuGroupOrder: 5,
+}
+
+const PORTFOLIO_RESOURCE_MENU_GROUP = 'portfolio-resource'
+const portfolioResourceMenuMeta = {
+  menuGroup: PORTFOLIO_RESOURCE_MENU_GROUP,
+  menuGroupTitle: '专项资源库',
+  menuGroupIcon: 'database',
+  menuGroupOrder: 6,
 }
 
 export const portfolioRoutes: RouteRecordRaw[] = [
@@ -41,6 +81,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'home',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioTeacherMenuMeta,
         },
       },
       {
@@ -53,6 +94,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'radar-chart',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioTeacherMenuMeta,
         },
       },
       {
@@ -87,6 +129,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'exception',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioTeacherMenuMeta,
         },
       },
       {
@@ -99,6 +142,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'profile',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioTeacherMenuMeta,
         },
       },
       {
@@ -111,6 +155,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'apartment',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioOrgMenuMeta,
         },
       },
       {
@@ -123,6 +168,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'file-protect',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioOrgMenuMeta,
         },
       },
       {
@@ -135,6 +181,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'calculator',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioOrgMenuMeta,
         },
       },
       {
@@ -147,6 +194,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'team',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioOrgMenuMeta,
         },
       },
       {
@@ -159,6 +207,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'robot',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioOrgMenuMeta,
         },
       },
       {
@@ -172,6 +221,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'audit',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioOrgMenuMeta,
         },
       },
       {
@@ -301,6 +351,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'form',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioTeacherMenuMeta,
         },
       },
       {
@@ -313,6 +364,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'audit',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioDualTeacherMenuMeta,
         },
       },
       {
@@ -325,6 +377,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'pie-chart',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioDualTeacherMenuMeta,
         },
       },
       {
@@ -337,6 +390,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'team',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioResourceMenuMeta,
         },
       },
       {
@@ -349,6 +403,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'calendar',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioResourceMenuMeta,
         },
       },
       {
@@ -362,6 +417,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'audit',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioResourceMenuMeta,
         },
       },
       {
@@ -374,6 +430,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'file-text',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioResourceMenuMeta,
         },
       },
       {
@@ -386,6 +443,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'trophy',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioResourceMenuMeta,
         },
       },
       {
@@ -398,6 +456,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'crown',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioResourceMenuMeta,
         },
       },
       {
@@ -410,6 +469,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'pay-circle',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioResourceMenuMeta,
         },
       },
       {
@@ -422,6 +482,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'read',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioResourceMenuMeta,
         },
       },
       {
@@ -434,6 +495,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'like',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioResourceMenuMeta,
         },
       },
       {
@@ -446,6 +508,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'database',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioResourceMenuMeta,
         },
       },
       {
@@ -458,6 +521,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'search',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioResourceMenuMeta,
         },
       },
       {
@@ -470,6 +534,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'layout',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioOrgMenuMeta,
         },
       },
       {
@@ -482,6 +547,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'form',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioEvaluationMenuMeta,
         },
       },
       {
@@ -494,6 +560,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'edit',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioEvaluationMenuMeta,
         },
       },
       {
@@ -506,6 +573,20 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'read',
           hideInMenu: false,
           keepAlive: true,
+          ...portfolioResourceMenuMeta,
+        },
+      },
+      {
+        path: 'teacher/one-table',
+        name: 'PortfolioTeacherOneTable',
+        component: () => import('@/views/portfolio/teacher-one-table.vue'),
+        meta: {
+          title: '教师一张表',
+          roles: ALL_ROLES,
+          icon: 'table',
+          hideInMenu: false,
+          keepAlive: true,
+          ...portfolioTeacherMenuMeta,
         },
       },
     ],

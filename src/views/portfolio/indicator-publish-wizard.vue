@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import type { PfSceneCode, PortfolioImpactIndicatorSummaryDto, PortfolioPublishImpactReportVO } from '@/apis/portfolio/indicator-types'
-import type { PortfolioIndicatorEngineReadinessVO } from '@/apis/portfolio/indicator-types'
+import type { PfSceneCode, PortfolioImpactIndicatorSummaryDto, PortfolioIndicatorEngineReadinessVO, PortfolioPublishImpactReportVO } from '@/apis/portfolio/indicator-types'
 import { message } from 'ant-design-vue'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -176,12 +175,20 @@ onMounted(loadReadiness)
       </div>
       <div v-else class="actions">
         <p>影响报告 ID：{{ impactReportId }}</p>
-        <div v-if="impactSummary" class="impact-summary">
-          <span>新增 {{ impactSummary.addedCount ?? 0 }}</span>
-          <span>变更 {{ impactSummary.changedCount ?? 0 }}</span>
-          <span>移除 {{ impactSummary.removedCount ?? 0 }}</span>
-        </div>
-        <pre v-if="impactReport?.indicatorSummaryJson" class="impact-json">{{ impactReport.indicatorSummaryJson }}</pre>
+        <UiCard v-if="impactSummary" title="影响摘要" class="impact-summary-card">
+          <div class="impact-summary">
+            <span>草稿指标 {{ impactSummary.draftIndicatorCount ?? 0 }}</span>
+            <span>已发布指标 {{ impactSummary.publishedIndicatorCount ?? 0 }}</span>
+            <span>新增 {{ impactSummary.addedCount ?? 0 }}</span>
+            <span>变更 {{ impactSummary.changedCount ?? 0 }}</span>
+            <span>移除 {{ impactSummary.removedCount ?? 0 }}</span>
+          </div>
+        </UiCard>
+        <a-collapse v-if="impactReport?.indicatorSummaryJson" ghost class="impact-json-collapse">
+          <a-collapse-panel key="raw-json" header="查看原始 JSON">
+            <pre class="impact-json">{{ impactReport.indicatorSummaryJson }}</pre>
+          </a-collapse-panel>
+        </a-collapse>
         <UiButton :loading="publishing" @click="publish">
           确认发布
         </UiButton>
@@ -210,10 +217,17 @@ onMounted(loadReadiness)
 .scene-tag {
   color: var(--dp-text-secondary, #64748b);
 }
+.impact-summary-card {
+  width: 100%;
+}
 .impact-summary {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
   font-size: 13px;
+}
+.impact-json-collapse {
+  width: 100%;
 }
 .impact-json {
   width: 100%;

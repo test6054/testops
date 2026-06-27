@@ -52,6 +52,7 @@ import type {
   ArchiveExternalImportResultVO,
   ArchiveImportBatchStatusCode,
 } from '@/apis/mark/archive-volume'
+import type { UiAlertStripTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
@@ -61,12 +62,11 @@ import {
   downloadArchiveExternalImportTemplate,
   importArchiveExternalData,
 } from '@/apis/mark/archive-volume'
-import type { UiAlertStripTone } from '@/components/ui-guide/ui/types'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiFormActions from '@/components/ui-guide/ui/UiFormActions.vue'
-import { showUserError } from '@/utils/error-handler'
 import { downloadArchiveExcelBase64 } from '@/utils/archive-excel-export'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeExternalImportPanel' })

@@ -570,6 +570,10 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
+  DUPLICATE_RESOLUTION_STATUS_LABEL,
+  DUPLICATE_RESOLUTION_STATUS_TONE,
+} from '@/apis/mark/duplicate-resolution-status'
+import {
   BINDING_STATUS_LABEL,
   bindPaper,
 } from '@/apis/mark/exam-binding'
@@ -583,19 +587,15 @@ import {
   validateScanAttentionItemContract,
 } from '@/apis/mark/exam-scan'
 import {
-  DUPLICATE_RESOLUTION_STATUS_LABEL,
-  DUPLICATE_RESOLUTION_STATUS_TONE,
-} from '@/apis/mark/duplicate-resolution-status'
-import {
   CANDIDATE_STATUS_LABEL,
   listExamCandidates,
 } from '@/apis/mark/exam-scope'
 import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import { FINAL_SCORE_STATUS_LABEL } from '@/apis/mark/final-score-status'
 import { GRADE_STATUS_LABEL, GRADE_STATUS_TONE } from '@/apis/mark/grade-status'
-import { TASK_STATUS_LABEL, TASK_STATUS_TONE } from '@/apis/mark/task-status'
 import { SCAN_EVENT_STATUS_LABEL, SCAN_EVENT_STATUS_TONE } from '@/apis/mark/scan-live'
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
+import { TASK_STATUS_LABEL, TASK_STATUS_TONE } from '@/apis/mark/task-status'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'

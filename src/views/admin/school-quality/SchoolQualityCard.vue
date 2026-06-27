@@ -125,7 +125,7 @@
                   <div class="analysis-item__header">
                     <a-typography-text strong>第 {{ index + 1 }} 项</a-typography-text>
                     <span class="analysis-item__title">
-                      {{ item.qualityDimension || item.metricName || '质量指标' }}
+                      {{ qualityItemTitle(item) }}
                     </span>
                     <UiTag v-if="item.rating" :tone="qualityRatingColor(item.rating)">
                       {{ qualityRatingLabel(item.rating) }}
@@ -160,20 +160,22 @@
 import type {
   SchoolQualityAnalysisVO,
   SchoolQualityDimensionCode,
+  SchoolQualityItemVO,
   SchoolQualityRatingCode,
 } from '@/apis/mark/school-quality'
 import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import {
   generateQualityAnalysis,
   listQualityAnalysis,
   SCHOOL_QUALITY_DIMENSION_LABEL,
+  SCHOOL_QUALITY_ITEM_DIMENSION_LABEL,
   SCHOOL_QUALITY_RATING_TONE,
   SCHOOL_QUALITY_RATING_LABEL,
 } from '@/apis/mark/school-quality'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
@@ -264,6 +266,13 @@ function qualityRatingLabel(rating: SchoolQualityRatingCode): string {
 
 function qualityRatingColor(rating: SchoolQualityRatingCode): BadgeTone {
   return strictEnumTone(SCHOOL_QUALITY_RATING_TONE, rating, '校级质量评价等级')
+}
+
+function qualityItemTitle(item: SchoolQualityItemVO): string {
+  if (item.qualityDimension) {
+    return strictEnumLabel(SCHOOL_QUALITY_ITEM_DIMENSION_LABEL, item.qualityDimension, '质量维度')
+  }
+  return item.metricName || '质量指标'
 }
 
 watch(

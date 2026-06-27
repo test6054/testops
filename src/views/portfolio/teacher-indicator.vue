@@ -8,10 +8,10 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
 
-const { currentUserId } = usePortfolioTeacherAccess()
+const { targetTeacherId } = usePortfolioPageScope()
 const evaluating = ref(false)
 const result = ref<PortfolioEligibilityEvalResultDto | null>(null)
 const explainOpen = ref(false)
@@ -36,7 +36,7 @@ async function evaluate() {
   try {
     result.value = await portfolioIndicatorTenantApi.evaluateEligibility({
       eligibilityCode: eligibilityCode.value,
-      teacherUserId: currentUserId.value,
+      teacherUserId: targetTeacherId.value,
       factJson: factJson.value,
     })
   }

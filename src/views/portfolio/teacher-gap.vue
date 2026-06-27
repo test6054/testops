@@ -5,7 +5,7 @@ import type {
   PortfolioGapTaskStatus,
 } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
@@ -17,7 +17,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -31,7 +31,7 @@ function readRouteParamString(value: unknown): string {
 
 const route = useRoute()
 const router = useRouter()
-const { currentUserId, resolveDefaultTeacherId } = usePortfolioTeacherAccess()
+const { targetTeacherId } = usePortfolioPageScope()
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -43,13 +43,6 @@ const attachmentFileNodeId = ref<string>()
 const uploading = ref(false)
 
 const gapTaskId = computed(() => readRouteParamString(route.params.taskId))
-const targetTeacherId = computed(() => {
-  const queryId = typeof route.query.teacherId === 'string' ? route.query.teacherId : ''
-  if (queryId) {
-    return queryId
-  }
-  return resolveDefaultTeacherId() || currentUserId.value
-})
 const teacherRequest = computed(() =>
   targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
 )
@@ -157,9 +150,9 @@ function goBack() {
   })
 }
 
-onMounted(() => {
+usePortfolioScopedLoader(() => {
   void loadTask()
-})
+}, () => `${targetTeacherId.value}:${gapTaskId.value}`)
 </script>
 
 <template>

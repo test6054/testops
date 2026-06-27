@@ -397,8 +397,8 @@ import message from 'ant-design-vue/es/message'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { AI_ANALYSIS_STATUS_LABEL, AI_ANALYSIS_STATUS_TONE } from '@/apis/mark/ai-analysis-status'
 import {
-  EXPERIENCE_CASE_STATUS_TONE,
   EXPERIENCE_CASE_STATUS_LABEL,
+  EXPERIENCE_CASE_STATUS_TONE,
   extractExperience,
   generateAnswerCluster,
   generateSignatures,

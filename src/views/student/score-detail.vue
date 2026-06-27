@@ -382,24 +382,24 @@ import { message } from 'ant-design-vue'
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import {
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_TONE,
 } from '@/apis/mark/final-score-status'
 import { GRADE_STATUS_LABEL, GRADE_STATUS_TONE } from '@/apis/mark/grade-status'
-import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-mastery-level'
 import {
   OBJECTIVE_RESULT_LABEL,
   OBJECTIVE_RESULT_TONE,
 } from '@/apis/mark/objective-result'
+import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
 import {
   canSubmitReview,
   getMyAiLearningReport,
   getMyQuestionAnswerDetail,
   getMyScoreDetail,
 } from '@/apis/mark/student-exam'
+import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-mastery-level'
 import MarkHeatmapSection from '@/components/chart/MarkHeatmapSection.vue'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'

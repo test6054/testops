@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
 import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
 import type { ExamQuestionTemplateVO } from '@/apis/mark/exam-template'
 import type { ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
-import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
 import type {
   AllocationUnitCode,
   AnonymousTokenPolicyCode,
@@ -27,6 +27,7 @@ import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
 import {
   getExamDetail,
 } from '@/apis/mark/exam'
@@ -38,7 +39,6 @@ import {
   isPaperTemplateNotConfiguredError,
 } from '@/apis/mark/exam-template'
 import { getImageLedgerDetail, normalizeImageLedgerDetail } from '@/apis/mark/image-ledger'
-import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
 import {
   ALLOCATION_UNIT_LABEL,
   ALLOCATION_UNIT_OPTIONS,

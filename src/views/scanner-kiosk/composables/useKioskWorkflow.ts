@@ -14,6 +14,7 @@
  */
 
 import type { LocationQueryValue } from 'vue-router'
+import type { ScanAttentionTypeCode, ScanBatchStatusCode } from '@/apis/mark/exam-scan'
 import type {
   AgentHealthResponse,
   AgentHealthStatus,
@@ -40,10 +41,9 @@ import type {
   ExamScannerScanConfigVO,
   ScannerKioskScanMode,
 } from '@/apis/mark/scanner-kiosk'
-import type { ScanAttentionTypeCode, ScanBatchStatusCode } from '@/apis/mark/exam-scan'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { SCANNER_ENDPOINT_ONLINE_STATUS_LABEL, SCANNER_COLOR_MODE_LABEL, SCANNER_DUPLEX_MODE_LABEL } from '@/apis/mark/exam-mark-scanner'
+import { SCANNER_COLOR_MODE_LABEL, SCANNER_DUPLEX_MODE_LABEL, SCANNER_ENDPOINT_ONLINE_STATUS_LABEL } from '@/apis/mark/exam-mark-scanner'
 import {
   activateLocalAgent,
   AGENT_HEALTH_STATUS_LABEL,
@@ -74,7 +74,6 @@ import {
   closeScannerKioskBatch,
   discardScannedPage,
   discardScannerKioskBatch,
-  fetchScannerPageLedger,
   getScannerKioskBootstrap,
   getScannerKioskContext,
   listScannerKioskBoundPapers,
@@ -84,7 +83,6 @@ import {
 } from '@/apis/mark/scanner-kiosk'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
-import { applyLedgerResponse, fetchPagedHistoryLedgerSnapshot } from '@/views/scanner-kiosk/composables/ledgerMerge'
 import { getSemesterDescription, SemesterOptions } from '@/types/enums'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
@@ -101,6 +99,7 @@ import {
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { promptModal } from '@/views/quality/_helpers'
+import { fetchPagedHistoryLedgerSnapshot } from '@/views/scanner-kiosk/composables/ledgerMerge'
 
 // ================================================================
 // 静态字典：扫描策略色彩 / 单面双面扫描文案，由 UI / SideRail 直接读取。
@@ -1073,7 +1072,7 @@ export function useKioskWorkflow() {
   }
 
   function isEmptyFeederNoise(message: string) {
-    return /无纸|无纸张|等待放纸|进纸器无纸|paper empty|no paper|feeder empty/i.test(message)
+    return /无纸|等待放纸|进纸器无纸|paper empty|no paper|feeder empty/i.test(message)
   }
 
   function isScanCancelNoise(message: string) {

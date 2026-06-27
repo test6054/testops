@@ -142,7 +142,9 @@ export type AiTaskType
     | 'PORTFOLIO_CERTIFICATE_OCR'
     | 'PORTFOLIO_DOCUMENT_PARSE'
     | 'PORTFOLIO_POLICY_MATCH'
+    | 'PORTFOLIO_MATERIAL_QA'
     | 'PORTFOLIO_REPORT_GENERATE'
+    | 'PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN'
 
 export const AI_TASK_TYPE_LABEL: Record<AiTaskType, string> = {
   SYLLABUS_PARSE: '课程大纲解析',
@@ -156,7 +158,9 @@ export const AI_TASK_TYPE_LABEL: Record<AiTaskType, string> = {
   PORTFOLIO_CERTIFICATE_OCR: '档案袋证书 OCR 抽取',
   PORTFOLIO_DOCUMENT_PARSE: '档案袋文档结构化抽取',
   PORTFOLIO_POLICY_MATCH: '档案袋政策条款匹配',
+  PORTFOLIO_MATERIAL_QA: '档案袋材料智能问数',
   PORTFOLIO_REPORT_GENERATE: '档案袋报告初稿生成',
+  PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN: '优秀教师推荐 AI 解释',
 }
 
 /** AI 任务业务类型 - AiTaskSubmitRequest.businessType */
@@ -201,6 +205,7 @@ export type AiManualHandlingStatus
     | 'IN_PROGRESS'
     | 'RESOLVED'
     | 'IGNORED'
+    | 'RESET_TO_PENDING'
 
 export const AI_MANUAL_HANDLING_STATUS_LABEL: Record<AiManualHandlingStatus, string> = {
   NONE: '无需干预',
@@ -208,6 +213,7 @@ export const AI_MANUAL_HANDLING_STATUS_LABEL: Record<AiManualHandlingStatus, str
   IN_PROGRESS: '处置中',
   RESOLVED: '已解决',
   IGNORED: '已忽略',
+  RESET_TO_PENDING: '已重置为待处理',
 }
 
 /** AI 模型健康状态 - edu-common AiHealthStatus */
@@ -561,18 +567,18 @@ export const AUDIT_RECTIFICATION_STATUS_COLOR: Record<AuditRectificationStatus, 
   CLOSED: 'green',
 }
 
-/** 督导复查类型 */
+/** 督导复查类型 - 与 AuditSupervisionSaveRequest.supervisionType 一致 */
 export type AuditSupervisionType
   = | 'DAILY'
     | 'SPECIAL'
-    | 'PRE_AUDIT'
-    | 'SITE_VISIT'
+    | 'ACCREDITATION_PRE'
+    | 'ACCREDITATION_AUDIT'
 
 export const AUDIT_SUPERVISION_TYPE_LABEL: Record<AuditSupervisionType, string> = {
   DAILY: '日常督导',
   SPECIAL: '专项检查',
-  PRE_AUDIT: '认证预审',
-  SITE_VISIT: '认证现场检查',
+  ACCREDITATION_PRE: '认证预审',
+  ACCREDITATION_AUDIT: '认证现场检查',
 }
 
 /** 量表类型 - ScaleTypeEnum */
@@ -711,8 +717,8 @@ export const EXTERNAL_PULL_TASK_STATUS_OPTIONS: Array<{
 
 /** 外部数据拔取审计事件 - ExternalPullAuditEventEnum */
 export type ExternalPullAuditEvent
-  = | 'SQL_SAFETY_CHECK'
-    | 'FIELD_WHITELIST_CHECK'
+  = | 'QUERY_SCOPE_CHECK'
+    | 'FIELD_SCOPE_CHECK'
     | 'MASK_PREVIEW_CHECK'
     | 'QUERY_TIMEOUT'
     | 'ROW_LIMIT_EXCEEDED'
@@ -723,8 +729,8 @@ export type ExternalPullAuditEvent
     | 'TASK_CANCELLED'
 
 export const EXTERNAL_PULL_AUDIT_EVENT_LABEL: Record<ExternalPullAuditEvent, string> = {
-  SQL_SAFETY_CHECK: 'SQL 安全检测',
-  FIELD_WHITELIST_CHECK: '字段白名单校验',
+  QUERY_SCOPE_CHECK: '查询范围检查',
+  FIELD_SCOPE_CHECK: '字段范围检查',
   MASK_PREVIEW_CHECK: '脱敏预览检查',
   QUERY_TIMEOUT: '查询超时',
   ROW_LIMIT_EXCEEDED: '返回行数超限',

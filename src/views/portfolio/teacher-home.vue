@@ -21,7 +21,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
@@ -29,7 +29,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const route = useRoute()
 const router = useRouter()
-const { currentUserId, canPickTeachers, resolveDefaultTeacherId } = usePortfolioTeacherAccess()
+const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 
 const loading = ref(false)
 const completeness = ref<PortfolioTeacherCompletenessVO | null>(null)
@@ -40,14 +40,6 @@ const todos = ref<PortfolioTodoSummaryVO[]>([])
 const todoLoading = ref(false)
 const workbenchSummary = ref<PortfolioTeacherWorkbenchSummaryVO | null>(null)
 const workbenchSummaryLoading = ref(false)
-
-const targetTeacherId = computed(() => {
-  const queryId = typeof route.query.teacherId === 'string' ? route.query.teacherId : ''
-  if (queryId) {
-    return queryId
-  }
-  return resolveDefaultTeacherId() || currentUserId.value
-})
 
 const completenessPercentText = computed(() => {
   if (!completeness.value) {
@@ -256,6 +248,13 @@ function goDualTeacherApply() {
   })
 }
 
+function goOneTable() {
+  void router.push({
+    path: '/portfolio/teacher/one-table',
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
+
 function handleVisibilityChange() {
   if (document.visibilityState === 'visible') {
     void loadDashboard()
@@ -264,10 +263,13 @@ function handleVisibilityChange() {
   }
 }
 
-onMounted(() => {
+usePortfolioScopedLoader(() => {
   void loadDashboard()
   void loadWorkbenchSummary()
   void loadTodos()
+}, () => targetTeacherId.value, { reloadOnActivated: false })
+
+onMounted(() => {
   document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
@@ -372,6 +374,9 @@ onUnmounted(() => {
             </UiButton>
             <UiButton @click="goDualTeacherApply">
               双师认定申请
+            </UiButton>
+            <UiButton @click="goOneTable">
+              教师一张表
             </UiButton>
           </div>
         </UiCard>

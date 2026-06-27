@@ -6,12 +6,13 @@ import { onMounted, reactive, ref } from 'vue'
 import { portfolioTeacherSalaryApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { readPageList } from '@/utils/page-result'
+import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
 const loading = ref(false)
 const rows = ref<PortfolioTeacherSalaryVO[]>([])
@@ -104,6 +105,7 @@ onMounted(loadPage)
           导出
         </UiButton>
       </div>
+      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无薪酬档案" />
       <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px" />
     </UiCard>
   </StageWorkbenchShell>

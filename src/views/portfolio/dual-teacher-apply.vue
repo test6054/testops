@@ -38,7 +38,9 @@ function statusLabel(status: string) {
 
 const canEdit = () => {
   const status = application.value?.applicationStatus
-  return !status || status === 'DRAFT' || status === 'COLLEGE_RETURNED' || status === 'ACADEMIC_RETURNED'
+  return (
+    !status || status === 'DRAFT' || status === 'COLLEGE_RETURNED' || status === 'ACADEMIC_RETURNED'
+  )
 }
 
 const canSubmit = () => Boolean(form.id && canEdit())
@@ -66,8 +68,7 @@ async function loadMine() {
     form.certYear = application.value.certYear ?? form.certYear
     form.enterprisePracticeDays = application.value.enterprisePracticeDays ?? 0
     attachmentFileIds.value = application.value.attachmentFileIds ?? []
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -78,18 +79,16 @@ async function handleUploadAttachment(file: File) {
     const uploaded = await uploadFile(file, { businessType: 'PORTFOLIO_MATERIAL' })
     attachmentFileIds.value = [...attachmentFileIds.value, uploaded.id]
     message.success('附件已上传')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '附件上传失败')
-  }
-  finally {
+  } finally {
     uploading.value = false
   }
   return false
 }
 
 function removeAttachment(fileId: string) {
-  attachmentFileIds.value = attachmentFileIds.value.filter(id => id !== fileId)
+  attachmentFileIds.value = attachmentFileIds.value.filter((id) => id !== fileId)
 }
 
 async function saveDraft() {
@@ -99,7 +98,7 @@ async function saveDraft() {
   }
   saving.value = true
   try {
-    const id = await portfolioDualTeacherApi.saveDraft({
+    form.id = await portfolioDualTeacherApi.saveDraft({
       id: form.id || undefined,
       teacherUserId: currentUserId.value,
       certLevel: form.certLevel.trim() || undefined,
@@ -107,14 +106,11 @@ async function saveDraft() {
       enterprisePracticeDays: form.enterprisePracticeDays || undefined,
       attachmentFileIds: attachmentFileIds.value.length ? attachmentFileIds.value : undefined,
     })
-    form.id = id
     message.success('草稿已保存')
     await loadMine()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -129,11 +125,9 @@ async function submitApplication() {
     await portfolioDualTeacherApi.submit({ id: form.id })
     message.success('已提交审核')
     await loadMine()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -157,7 +151,12 @@ onMounted(loadMine)
           <a-input v-model:value="form.certYear" :disabled="!canEdit()" />
         </a-form-item>
         <a-form-item label="企业实践天数">
-          <a-input-number v-model:value="form.enterprisePracticeDays" :disabled="!canEdit()" :min="0" style="width: 100%" />
+          <a-input-number
+            v-model:value="form.enterprisePracticeDays"
+            :disabled="!canEdit()"
+            :min="0"
+            style="width: 100%"
+          />
         </a-form-item>
         <a-form-item label="证明材料">
           <a-upload
@@ -167,9 +166,7 @@ onMounted(loadMine)
             accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
             multiple
           >
-            <UiButton :loading="uploading" :disabled="!canEdit()">
-              上传附件
-            </UiButton>
+            <UiButton :loading="uploading" :disabled="!canEdit()"> 上传附件 </UiButton>
           </a-upload>
           <ul v-if="attachmentFileIds.length" class="attachment-list">
             <li v-for="fileId in attachmentFileIds" :key="fileId">
@@ -182,7 +179,12 @@ onMounted(loadMine)
           <UiButton :loading="saving" :disabled="!canEdit()" @click="saveDraft">
             保存草稿
           </UiButton>
-          <UiButton variant="primary" :loading="submitting" :disabled="!canSubmit()" @click="submitApplication">
+          <UiButton
+            variant="primary"
+            :loading="submitting"
+            :disabled="!canSubmit()"
+            @click="submitApplication"
+          >
             提交审核
           </UiButton>
         </div>

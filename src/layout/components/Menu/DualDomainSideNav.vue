@@ -106,6 +106,27 @@
         </template>
         <span>{{ item.meta?.title }}</span>
       </a-menu-item>
+      <a-sub-menu
+        v-for="group in portfolioGrouped.groups"
+        :key="group.key"
+      >
+        <template #title>
+          <span>{{ group.title }}</span>
+        </template>
+        <template #icon>
+          <MenuIcon :icon="group.icon" />
+        </template>
+        <a-menu-item
+          v-for="item in group.items"
+          :key="item.path"
+          :disabled="item.meta?.disabled"
+        >
+          <template #icon>
+            <MenuIcon :icon="(item.meta?.icon as string) || 'folder'" />
+          </template>
+          <span>{{ item.meta?.title }}</span>
+        </a-menu-item>
+      </a-sub-menu>
     </a-sub-menu>
   </a-menu>
 </template>
@@ -182,6 +203,7 @@ function normalizeOpenKeys(keys: Key[]): Key[] {
   const next = new Set(keys.map(String))
   const markingGroupKeys = collectGroupKeySet(props.markingGrouped)
   const qualityGroupKeys = collectGroupKeySet(props.qualityGrouped)
+  const portfolioGroupKeys = collectGroupKeySet(props.portfolioGrouped)
 
   if (!next.has(MARKING_DOMAIN_KEY)) {
     for (const groupKey of markingGroupKeys) {
@@ -193,6 +215,11 @@ function normalizeOpenKeys(keys: Key[]): Key[] {
       next.delete(groupKey)
     }
   }
+  if (!next.has(PORTFOLIO_DOMAIN_KEY)) {
+    for (const groupKey of portfolioGroupKeys) {
+      next.delete(groupKey)
+    }
+  }
   for (const groupKey of markingGroupKeys) {
     if (next.has(groupKey)) {
       next.add(MARKING_DOMAIN_KEY)
@@ -201,6 +228,11 @@ function normalizeOpenKeys(keys: Key[]): Key[] {
   for (const groupKey of qualityGroupKeys) {
     if (next.has(groupKey)) {
       next.add(QUALITY_DOMAIN_KEY)
+    }
+  }
+  for (const groupKey of portfolioGroupKeys) {
+    if (next.has(groupKey)) {
+      next.add(PORTFOLIO_DOMAIN_KEY)
     }
   }
   return [...next]
@@ -224,6 +256,9 @@ function resolveDefaultOpenKeys(): Key[] {
 
   if (isPortfolioRoute(route.path)) {
     keys.push(PORTFOLIO_DOMAIN_KEY)
+    if (groupKey) {
+      keys.push(groupKey)
+    }
     return keys
   }
 

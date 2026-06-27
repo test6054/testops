@@ -60,8 +60,8 @@ import {
   ARCHIVE_VOLUME_EVENT_TYPE_LABEL,
   pageArchiveAuditEvents,
 } from '@/apis/mark/archive-volume'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'

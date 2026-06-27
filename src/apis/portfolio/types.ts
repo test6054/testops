@@ -3,12 +3,17 @@ import type {
   AiResultImprovementItem,
   AiResultIssueItem,
 } from '@/apis/quality/ai-result'
+import type { AiTaskStatus } from '@/apis/quality/types'
 /**
  * 教学档案袋 API 共享类型 - 对应 edu-quality 标准包（controller/model 扁平化后）
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { QueryDto } from '@/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
+import {
+  AI_TASK_STATUS_COLOR,
+  AI_TASK_STATUS_LABEL,
+} from '@/apis/quality/types'
 
 /** 扩展组织类型 - PortfolioOrgUnitTypeEnum */
 export type PortfolioOrgUnitType
@@ -462,6 +467,7 @@ export type PortfolioAiTaskType
     | 'PORTFOLIO_POLICY_MATCH'
     | 'PORTFOLIO_MATERIAL_QA'
     | 'PORTFOLIO_REPORT_GENERATE'
+    | 'PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN'
 
 export const PORTFOLIO_AI_TASK_TYPE_LABEL: Record<PortfolioAiTaskType, string> = {
   PORTFOLIO_CERTIFICATE_OCR: '证书证明 OCR 抽取',
@@ -469,6 +475,7 @@ export const PORTFOLIO_AI_TASK_TYPE_LABEL: Record<PortfolioAiTaskType, string> =
   PORTFOLIO_POLICY_MATCH: '政策条款匹配',
   PORTFOLIO_MATERIAL_QA: '材料智能问数',
   PORTFOLIO_REPORT_GENERATE: '报告初稿生成',
+  PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN: '优秀教师推荐 AI 解释',
 }
 
 /** 候选确认链可提交的任务类型 */
@@ -559,24 +566,12 @@ export interface PortfolioAiJobSubmitVO {
   status: PortfolioAiTaskStatus
 }
 
-/** 档案袋 AI 任务状态 - 对齐 AiTaskStatusEnum */
-export type PortfolioAiTaskStatus = 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED'
+/** 档案袋 AI 任务状态 - 对齐 AiTaskStatusEnum，复用 quality 域 label/tone */
+export type PortfolioAiTaskStatus = AiTaskStatus
 
-export const PORTFOLIO_AI_TASK_STATUS_LABEL: Record<PortfolioAiTaskStatus, string> = {
-  PENDING: '待执行',
-  PROCESSING: '执行中',
-  SUCCEEDED: '已成功',
-  FAILED: '已失败',
-  CANCELLED: '已取消',
-}
+export const PORTFOLIO_AI_TASK_STATUS_LABEL: Record<PortfolioAiTaskStatus, string> = AI_TASK_STATUS_LABEL
 
-export const PORTFOLIO_AI_TASK_STATUS_TONE: Record<PortfolioAiTaskStatus, BadgeTone> = {
-  PENDING: 'gray',
-  PROCESSING: 'blue',
-  SUCCEEDED: 'green',
-  FAILED: 'red',
-  CANCELLED: 'gray',
-}
+export const PORTFOLIO_AI_TASK_STATUS_TONE: Record<PortfolioAiTaskStatus, BadgeTone> = AI_TASK_STATUS_COLOR
 
 /** 档案袋材料 AI 任务列表项 - 对齐后端 AiTaskVO 在 portfolio 页使用的字段 */
 export interface PortfolioAiJobTaskVO {

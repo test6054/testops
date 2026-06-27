@@ -9,23 +9,24 @@ import type {
 } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
+import { uploadFile } from '@/apis/edu/file-management'
 import {
   PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL,
   PORTFOLIO_EXTERNAL_TEACHER_IMPORT_BATCH_STATUS_LABEL,
 } from '@/apis/portfolio/enums'
 import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
-import { uploadFile } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { readPageList } from '@/utils/page-result'
+import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const activeTab = ref('roster')
@@ -340,6 +341,7 @@ onMounted(async () => {
               导出台账
             </UiButton>
           </div>
+          <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无外聘教师" />
           <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id">
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'dataStatus'">

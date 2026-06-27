@@ -165,15 +165,15 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import { ANALYSIS_SCOPE_TYPE_LABEL } from '@/apis/mark/analysis-scope-type'
 import {
   generateClassGrowth,
   listGrowth,
-  SEMESTER_GROWTH_TREND_TONE,
   SEMESTER_GROWTH_TREND_LABEL,
+  SEMESTER_GROWTH_TREND_TONE,
 } from '@/apis/mark/cross-exam-analysis'
 import { getExamDetail } from '@/apis/mark/exam'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'

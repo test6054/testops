@@ -29,7 +29,6 @@ import {
 } from '@/apis/mark/exam-binding'
 import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import { FINAL_SCORE_STATUS_LABEL } from '@/apis/mark/final-score-status'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import {
   checkMarkOcrHealth,
   getCurrentMarkOcrConfig,
@@ -42,12 +41,13 @@ import {
   recognizeMarkOcr,
 } from '@/apis/mark/ocr-recognition'
 import {
-  MARK_OCR_HEALTH_STATUS_TONE,
   MARK_OCR_HEALTH_STATUS_LABEL,
+  MARK_OCR_HEALTH_STATUS_TONE,
   MARK_OCR_PAPER_CUT_CAPABILITY,
   MARK_OCR_PROVIDER_DESCRIPTION,
   MARK_OCR_PROVIDER_LABEL,
 } from '@/apis/mark/ocr-types'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -404,7 +404,7 @@ watch(
         loadExamDetail(examId),
         loadPaperCandidates(examId),
       ])
-    }     else {
+    } else {
       examDetail.value = null
       paperSlices.value = []
       paperCandidates.value = []

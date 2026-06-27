@@ -69,8 +69,8 @@ const supColumns: ColumnsType = [
 const supervisionTypeOptions: Array<{ value: AuditSupervisionType, label: string }> = [
   { value: 'DAILY', label: AUDIT_SUPERVISION_TYPE_LABEL.DAILY },
   { value: 'SPECIAL', label: AUDIT_SUPERVISION_TYPE_LABEL.SPECIAL },
-  { value: 'PRE_AUDIT', label: AUDIT_SUPERVISION_TYPE_LABEL.PRE_AUDIT },
-  { value: 'SITE_VISIT', label: AUDIT_SUPERVISION_TYPE_LABEL.SITE_VISIT },
+  { value: 'ACCREDITATION_PRE', label: AUDIT_SUPERVISION_TYPE_LABEL.ACCREDITATION_PRE },
+  { value: 'ACCREDITATION_AUDIT', label: AUDIT_SUPERVISION_TYPE_LABEL.ACCREDITATION_AUDIT },
 ]
 const supScopeOptions = [
   { value: 'COURSE', label: '课程' },

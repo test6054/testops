@@ -112,7 +112,7 @@
         </a-typography-paragraph>
 
         <a-typography-paragraph v-if="record.recommendation" class="ai-summary">
-          <strong>维护动作：</strong>{{ record.recommendation }}
+          <strong>维护动作：</strong>{{ recommendationLabel(record.recommendation) }}
         </a-typography-paragraph>
       </div>
     </a-spin>
@@ -122,7 +122,7 @@
 <script lang="ts" setup>
 import type { GradingExperienceCaseVO } from '@/apis/mark/grading-experience'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
-import type { ExperienceEffectivenessEvalVO } from '@/apis/mark/school-quality'
+import type { ExperienceEffectivenessEvalVO, ExperienceRecommendationCode } from '@/apis/mark/school-quality'
 import type { UiBarChartItem, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
@@ -132,7 +132,7 @@ import {
   listExperiences,
 } from '@/apis/mark/grading-experience'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
-import { evaluateExperienceEffectiveness, listExperienceEvals } from '@/apis/mark/school-quality'
+import { evaluateExperienceEffectiveness, EXPERIENCE_RECOMMENDATION_LABEL, listExperienceEvals } from '@/apis/mark/school-quality'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
@@ -296,6 +296,10 @@ function analysisFailureMessage(errorMessage?: string): string {
 
 function questionTypeLabel(value: QuestionTypeCode): string {
   return strictEnumLabel(QUESTION_TYPE_LABEL, value, '题目类型')
+}
+
+function recommendationLabel(value: ExperienceRecommendationCode): string {
+  return strictEnumLabel(EXPERIENCE_RECOMMENDATION_LABEL, value, '维护动作')
 }
 
 function experienceCaseStatusLabel(value: GradingExperienceCaseVO['caseStatus']): string {

@@ -1,24 +1,35 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type {
+  PortfolioDevelopmentRecordStatus,
+  PortfolioDevelopmentRecordType,
+} from '@/apis/portfolio/enums'
 import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import {
+  PORTFOLIO_DEVELOPMENT_RECORD_STATUS_LABEL,
+  PORTFOLIO_DEVELOPMENT_RECORD_TYPE_LABEL,
+} from '@/apis/portfolio/enums'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { readPageList } from '@/utils/page-result'
+import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
-const RECORD_TABS = [
-  { key: 'ACHIEVEMENT', label: '成果库' },
-  { key: 'POLICY', label: '政策文件库' },
-] as const
+const RECORD_TAB_KEYS: PortfolioDevelopmentRecordType[] = ['ACHIEVEMENT', 'POLICY']
+const RECORD_TABS = RECORD_TAB_KEYS.map(key => ({
+  key,
+  label: PORTFOLIO_DEVELOPMENT_RECORD_TYPE_LABEL[key],
+}))
 
-type RecordType = typeof RECORD_TABS[number]['key']
+type RecordType = typeof RECORD_TAB_KEYS[number]
 
 const activeType = ref<RecordType>('ACHIEVEMENT')
 const loading = ref(false)
@@ -33,6 +44,10 @@ const columns: ColumnsType = [
 ]
 
 const tabLabel = computed(() => RECORD_TABS.find(item => item.key === activeType.value)?.label ?? '')
+
+function recordStatusLabel(status: PortfolioDevelopmentRecordStatus): string {
+  return strictEnumLabel(PORTFOLIO_DEVELOPMENT_RECORD_STATUS_LABEL, status, '发展档案条目状态')
+}
 
 async function loadPage() {
   loading.value = true
@@ -84,7 +99,7 @@ async function removeRecord(id: string) {
   }
 }
 
-async function exportCsv() {
+async function exportExcel() {
   try {
     const result = await portfolioDevelopmentRecordApi.exportExcel({ recordType: activeType.value })
     await downloadPortfolioExcelExport(result)
@@ -129,13 +144,17 @@ onMounted(loadPage)
         <UiButton @click="loadPage">
           刷新
         </UiButton>
-        <UiButton @click="exportCsv">
-          导出 CSV
+        <UiButton @click="exportExcel">
+          导出 Excel
         </UiButton>
       </div>
+      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无发展记录" />
       <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'actions'">
+          <template v-if="column.key === 'recordStatus'">
+            {{ recordStatusLabel(record.recordStatus) }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
             <UiButton size="sm" @click="removeRecord(record.id)">
               删除
             </UiButton>

@@ -3,14 +3,16 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioTeacherRecommendRunMode,
   PortfolioTeacherRecommendRunStatus,
+  PortfolioTeacherRecommendScene,
 } from '@/apis/portfolio/enums'
 import type {
-  PortfolioTeacherRecommendExplainStatusVO,
   PortfolioTeacherPkCompareVO,
   PortfolioTeacherRecommendCandidateVO,
+  PortfolioTeacherRecommendExplainStatusVO,
   PortfolioTeacherRecommendRuleVO,
   PortfolioTeacherRecommendRunVO,
 } from '@/apis/portfolio/teacher-platform'
+import type { PortfolioAiTaskStatus } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -18,12 +20,13 @@ import {
   PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS,
   PORTFOLIO_TEACHER_RECOMMEND_RUN_MODE_LABEL,
   PORTFOLIO_TEACHER_RECOMMEND_RUN_STATUS_LABEL,
+  PORTFOLIO_TEACHER_RECOMMEND_SCENE_LABEL,
 } from '@/apis/portfolio/enums'
 import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
-import type { PortfolioAiTaskStatus } from '@/apis/portfolio/types'
 import { PORTFOLIO_AI_TASK_STATUS_LABEL } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -108,6 +111,10 @@ function runStatusLabel(status: string) {
     status as PortfolioTeacherRecommendRunStatus,
     '推荐运行状态',
   )
+}
+
+function sceneLabel(scene: PortfolioTeacherRecommendScene): string {
+  return strictEnumLabel(PORTFOLIO_TEACHER_RECOMMEND_SCENE_LABEL, scene, '推荐场景')
 }
 
 async function loadRules() {
@@ -292,7 +299,7 @@ onMounted(async () => {
       </div>
       <a-select v-model:value="selectedRuleId" placeholder="选择规则" style="width: 240px; margin-top: 8px">
         <a-select-option v-for="rule in rules" :key="rule.id" :value="rule.id">
-          {{ rule.ruleName }}
+          {{ rule.ruleName }}（{{ sceneLabel(rule.recommendScene) }}）
         </a-select-option>
       </a-select>
     </UiCard>
@@ -310,6 +317,7 @@ onMounted(async () => {
               刷新候选
             </UiButton>
           </div>
+          <UiEmpty v-if="!loading && candidates.length === 0" description="当前筛选无推荐记录" />
           <UiDataTable
             :columns="candidateColumns"
             :data-source="candidates"
@@ -324,6 +332,7 @@ onMounted(async () => {
           <UiButton :loading="runsLoading" @click="loadRuns">
             刷新历史
           </UiButton>
+          <UiEmpty v-if="!runsLoading && runs.length === 0" description="当前筛选无推荐记录" />
           <UiDataTable
             :columns="runColumns"
             :data-source="runs"

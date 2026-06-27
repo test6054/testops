@@ -285,7 +285,6 @@ import LockOutlined from '@ant-design/icons-vue/LockOutlined'
 import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
 import dayjs from 'dayjs'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -308,6 +307,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
@@ -1054,12 +1054,13 @@ async function handleSave(): Promise<void> {
       formModalOpen.value = false
       listTab.value = 'all'
       await reloadAll()
-      Modal.confirm({
+      void confirmAsync({
         title: '下一步：配置考生名册',
         content: '考试已创建。请选定班级并纳入考生后保存名册，否则扫描后无法完成身份绑定。',
         okText: '去配置考生',
         cancelText: '稍后再说',
-        onOk() {
+        type: 'info',
+        onOk: () => {
           void router.push({
             name: 'TeacherExamWorkspaceCandidateRoster',
             params: { examId },
@@ -1083,36 +1084,45 @@ function isExamOwner(exam: ExamWorkbenchSummaryVO): boolean {
 }
 
 function confirmClose(exam: ExamWorkbenchSummaryVO): void {
-  Modal.confirm({
+  void confirmAsync({
     title: `关闭考试 ${exam.examName}？`,
     content: '关闭后考试进入 CLOSED 状态，可进入考后归档与质量评价；关闭后不可再编辑考试主信息。',
     okText: '关闭考试',
     cancelText: '取消',
-    async onOk() {
-      await closeExam({ examId: exam.examId })
-      message.success('考试已关闭')
-      await reloadAll()
+    type: 'warning',
+    onOk: async () => {
+      try {
+        await closeExam({ examId: exam.examId })
+        message.success('考试已关闭')
+        await reloadAll()
+      } catch (error) {
+        showUserError(error, '关闭考试失败')
+      }
     },
   })
 }
 
 function confirmDelete(exam: ExamWorkbenchSummaryVO): void {
-  Modal.confirm({
+  void confirmAsync({
     title: `删除考试 ${exam.examName}？`,
     content: '已进入模板、考生、印刷、扫描或成绩流程的考试不能删除。',
     okText: '删除',
-    okType: 'danger',
     cancelText: '取消',
-    async onOk() {
-      await deleteExam({ examId: exam.examId })
-      message.success('考试已删除')
-      const scope = tabToScope(listTab.value)
-      const dataSourceRef = getDataSourceRefByScope(scope)
-      const paginationState = getPaginationByScope(scope)
-      if (dataSourceRef.value.length === 1 && (paginationState.current ?? 1) > 1) {
-        paginationState.current = (paginationState.current ?? 1) - 1
+    type: 'error',
+    onOk: async () => {
+      try {
+        await deleteExam({ examId: exam.examId })
+        message.success('考试已删除')
+        const scope = tabToScope(listTab.value)
+        const dataSourceRef = getDataSourceRefByScope(scope)
+        const paginationState = getPaginationByScope(scope)
+        if (dataSourceRef.value.length === 1 && (paginationState.current ?? 1) > 1) {
+          paginationState.current = (paginationState.current ?? 1) - 1
+        }
+        await reloadAll()
+      } catch (error) {
+        showUserError(error, '删除考试失败')
       }
-      await reloadAll()
     },
   })
 }

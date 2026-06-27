@@ -72,9 +72,11 @@
                   <div class="analysis-item__header">
                     <a-typography-text strong>第 {{ index + 1 }} 项</a-typography-text>
                     <span class="analysis-item__title">
-                      {{ item.questionType || '教学改进内容' }}
+                      {{ item.questionType ? questionTypeLabel(item.questionType) : '教学改进内容' }}
                     </span>
-                    <UiTag v-if="item.severity">{{ item.severity }}</UiTag>
+                    <UiTag v-if="item.severity" :tone="severityTone(item.severity)">
+                      {{ severityLabel(item.severity) }}
+                    </UiTag>
                   </div>
                   <a-typography-paragraph
                     v-if="item.problemDescription"
@@ -102,6 +104,7 @@
 import type {
   ExamTeachingAnalysisRecordVO,
   TeachingImprovementItemVO,
+  TeachingImprovementSeverityCode,
 } from '@/apis/mark/teaching-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
@@ -109,7 +112,10 @@ import { computed, ref, watch } from 'vue'
 import {
   generateTeachingImprovement,
   getLatestTeachingImprovement,
+  TEACHING_IMPROVEMENT_SEVERITY_LABEL,
+  TEACHING_IMPROVEMENT_SEVERITY_TONE,
 } from '@/apis/mark/teaching-analysis'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -118,6 +124,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'TeachingImprovementCard' })
@@ -133,6 +140,18 @@ const improvementItems = computed<TeachingImprovementItemVO[]>(() => {
 })
 
 const canShareRecord = computed(() => record.value?.analysisStatus === 'SUCCESS')
+
+function questionTypeLabel(value: TeachingImprovementItemVO['questionType']): string {
+  return strictEnumLabel(QUESTION_TYPE_LABEL, value, '题目类型')
+}
+
+function severityLabel(value: TeachingImprovementSeverityCode): string {
+  return strictEnumLabel(TEACHING_IMPROVEMENT_SEVERITY_LABEL, value, '严重程度')
+}
+
+function severityTone(value: TeachingImprovementSeverityCode) {
+  return strictEnumTone(TEACHING_IMPROVEMENT_SEVERITY_TONE, value, '严重程度')
+}
 
 function analysisFailureMessage(errorMessage?: string): string {
   return getUserProcessFailureMessage(errorMessage, 'AI 教学改进方案未完成，请稍后重新生成')
@@ -225,7 +244,8 @@ function buildShareText(): string {
   improvementItems.value.forEach((item, index) => {
     lines.push(
       '',
-      `第 ${index + 1} 项：${item.questionType || '教学改进内容'}`,
+      `第 ${index + 1} 项：${item.questionType ? questionTypeLabel(item.questionType) : '教学改进内容'}`,
+      `严重程度：${item.severity ? severityLabel(item.severity) : '无'}`,
       `问题：${item.problemDescription || '无'}`,
       `改进措施：${item.suggestion || '无'}`,
       `依据：${item.evidenceSummary || '无'}`,

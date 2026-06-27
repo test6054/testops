@@ -1,8 +1,8 @@
+import type { DuplicateResolutionStatusCode } from './duplicate-resolution-status'
 import type { ExamFileRefVO } from './exam'
 import type { PaperInstanceDisplayVO } from './exam-score'
-import type { DuplicateResolutionStatusCode } from './duplicate-resolution-status'
-import type { ScannerKioskScanMode } from './scanner-kiosk'
 import type { GradeStatusCode } from './grade-status'
+import type { ScannerKioskScanMode } from './scanner-kiosk'
 import type { TaskStatusCode } from './task-status'
 /**
  * 阅卷考试扫描批次与扫描异常 API - 对接 /api/mark/exams/scanner-batches/* 与 scan-attentions。

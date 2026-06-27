@@ -1,15 +1,25 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { PortfolioDevelopmentRecordType } from '@/apis/portfolio/enums'
 import type { PortfolioAchievementStatsVO, PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
 import { onMounted, reactive, ref } from 'vue'
+import { PORTFOLIO_DEVELOPMENT_RECORD_TYPE_LABEL } from '@/apis/portfolio/enums'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
+import { strictEnumLabel } from '@/utils/strict-enum'
+
+const recordTypeKeys: PortfolioDevelopmentRecordType[] = ['ACHIEVEMENT', 'HONOR', 'POLICY']
+
+function recordTypeLabel(type: PortfolioDevelopmentRecordType): string {
+  return strictEnumLabel(PORTFOLIO_DEVELOPMENT_RECORD_TYPE_LABEL, type, '发展档案条目类型')
+}
 
 const loading = ref(false)
 const rows = ref<PortfolioDevelopmentRecordVO[]>([])
@@ -20,7 +30,7 @@ const query = reactive({
   searchText: '',
   levelCode: '',
   nationalOnly: false,
-  recordTypes: ['ACHIEVEMENT', 'HONOR', 'POLICY'] as Array<'ACHIEVEMENT' | 'HONOR' | 'POLICY'>,
+  recordTypes: recordTypeKeys,
 })
 
 const columns: ColumnsType = [
@@ -76,7 +86,14 @@ onMounted(loadPage)
           查询
         </UiButton>
       </div>
-      <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" />
+      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无综合成果" />
+      <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id">
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'recordType'">
+            {{ recordTypeLabel(record.recordType) }}
+          </template>
+        </template>
+      </UiDataTable>
     </UiCard>
   </StageWorkbenchShell>
 </template>

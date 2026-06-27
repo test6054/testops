@@ -1,3 +1,4 @@
+import type { PortfolioPortraitDimension } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 
 /** 双师认定申请状态 - PortfolioDualTeacherApplicationStatusEnum */
@@ -20,21 +21,9 @@ export const PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL: Record<PortfolioDu
   REJECTED: '认定驳回',
 }
 
-/** 画像维度 - PortfolioPortraitDimensionEnum */
-export type PortfolioPortraitDimension
-  = | 'DEVELOPMENT_CORE'
-    | 'TEACHING'
-    | 'RESEARCH'
-    | 'TRAINING'
-    | 'PRACTICE'
-
-export const PORTFOLIO_PORTRAIT_DIMENSION_LABEL: Record<PortfolioPortraitDimension, string> = {
-  DEVELOPMENT_CORE: '职业发展核心',
-  TEACHING: '教学能力',
-  RESEARCH: '科研教研',
-  TRAINING: '培训发展',
-  PRACTICE: '企业实践',
-}
+/** 画像维度 - 复用 types.ts 定义 */
+export type { PortfolioPortraitDimension } from '@/apis/portfolio/types'
+export { PORTFOLIO_PORTRAIT_DIMENSION_LABEL } from '@/apis/portfolio/types'
 
 /** PK 对比默认维度集（与集成测试一致） */
 export const PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS: PortfolioPortraitDimension[] = [
@@ -107,6 +96,29 @@ export type PortfolioEvaluationMode = 'BY_PERSON' | 'BY_INDICATOR'
 export const PORTFOLIO_EVALUATION_MODE_LABEL: Record<PortfolioEvaluationMode, string> = {
   BY_PERSON: '以人为主',
   BY_INDICATOR: '以指标为主',
+}
+
+/** 多元评价任务状态 - PortfolioEvaluationTaskStatusEnum */
+export type PortfolioEvaluationTaskStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED'
+
+export const PORTFOLIO_EVALUATION_TASK_STATUS_LABEL: Record<PortfolioEvaluationTaskStatus, string> = {
+  DRAFT: '草稿',
+  PUBLISHED: '已发布',
+  CLOSED: '已关闭',
+}
+
+export const PORTFOLIO_EVALUATION_TASK_STATUS_TONE: Record<PortfolioEvaluationTaskStatus, BadgeTone> = {
+  DRAFT: 'gray',
+  PUBLISHED: 'green',
+  CLOSED: 'blue',
+}
+
+/** 教师发展规划类型 - PortfolioDevelopmentPlanTypeEnum */
+export type PortfolioDevelopmentPlanType = 'TEACHER' | 'DEPARTMENT'
+
+export const PORTFOLIO_DEVELOPMENT_PLAN_TYPE_LABEL: Record<PortfolioDevelopmentPlanType, string> = {
+  TEACHER: '教师年度规划',
+  DEPARTMENT: '部门年度规划',
 }
 
 /** 教师发展规划状态 - PortfolioDevelopmentPlanStatusEnum */

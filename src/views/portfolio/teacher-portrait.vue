@@ -8,7 +8,7 @@ import type {
   PortfolioTeacherPortraitVO,
 } from '@/apis/portfolio/types'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import {
@@ -29,7 +29,7 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
 import {
@@ -42,7 +42,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const route = useRoute()
 const router = useRouter()
-const { currentUserId, canPickTeachers, resolveDefaultTeacherId } = usePortfolioTeacherAccess()
+const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 
 const loading = ref(false)
 const detailLoading = ref(false)
@@ -52,14 +52,6 @@ const trend = ref<PortfolioTeacherPortraitTrendVO | null>(null)
 const portraitAbsent = ref(false)
 const detailOpen = ref(false)
 const indicatorDetail = ref<PortfolioTeacherPortraitIndicatorDetailVO | null>(null)
-
-const targetTeacherId = computed(() => {
-  const queryId = typeof route.query.teacherId === 'string' ? route.query.teacherId : ''
-  if (queryId) {
-    return queryId
-  }
-  return resolveDefaultTeacherId() || currentUserId.value
-})
 
 const compositeItems = computed((): UiStatPanelItem[] => {
   if (!portrait.value) {
@@ -200,13 +192,9 @@ function openArchiveRecord(archiveRecordId?: string) {
   })
 }
 
-watch(targetTeacherId, () => {
+usePortfolioScopedLoader(() => {
   void loadPortraitBundle()
-})
-
-onMounted(() => {
-  void loadPortraitBundle()
-})
+}, () => targetTeacherId.value)
 </script>
 
 <template>
@@ -282,7 +270,7 @@ onMounted(() => {
           chart-min-height="320"
         >
           <UiAlert
-            v-else-if="cohort?.displayMode === 'INSUFFICIENT'"
+            v-if="cohort?.displayMode === 'INSUFFICIENT'"
             type="warning"
             class="teacher-portrait__cohort-alert"
           >
@@ -296,6 +284,7 @@ onMounted(() => {
             {{ cohortHint }}
           </UiAlert>
           <MarkChart
+            v-else
             :option="cohortRangeOption"
             height="320px"
             aria-label="教师画像同群体区间对比图"

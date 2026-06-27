@@ -1,13 +1,23 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type {
+  PortfolioEvaluationMode,
+  PortfolioEvaluationTaskStatus,
+} from '@/apis/portfolio/enums'
 import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
 import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
+import {
+  PORTFOLIO_EVALUATION_MODE_LABEL,
+  PORTFOLIO_EVALUATION_TASK_STATUS_LABEL,
+  PORTFOLIO_EVALUATION_TASK_STATUS_TONE,
+} from '@/apis/portfolio/enums'
 import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -15,6 +25,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const loading = ref(false)
 const rows = ref<PortfolioEvaluationTaskVO[]>([])
@@ -22,12 +33,18 @@ const total = ref(0)
 const workgroups = ref<EvaluationWorkgroupVO[]>([])
 const form = reactive({
   taskName: '',
-  evaluationMode: 'BY_PERSON' as 'BY_PERSON' | 'BY_INDICATOR',
+  evaluationMode: 'BY_PERSON' as PortfolioEvaluationMode,
   workgroupId: '' as string,
   startTime: '',
   endTime: '',
 })
-const query = reactive({ pageNum: 1, pageSize: 20, taskStatus: '' as '' | 'DRAFT' | 'PUBLISHED' })
+const query = reactive({ pageNum: 1, pageSize: 20, taskStatus: '' as '' | PortfolioEvaluationTaskStatus })
+
+const evaluationModeOptions = (Object.keys(PORTFOLIO_EVALUATION_MODE_LABEL) as PortfolioEvaluationMode[])
+  .map(value => ({ value, label: PORTFOLIO_EVALUATION_MODE_LABEL[value] }))
+
+const taskStatusOptions = (Object.keys(PORTFOLIO_EVALUATION_TASK_STATUS_LABEL) as PortfolioEvaluationTaskStatus[])
+  .map(value => ({ value, label: PORTFOLIO_EVALUATION_TASK_STATUS_LABEL[value] }))
 
 const columns: ColumnsType = [
   { title: '任务名称', dataIndex: 'taskName', key: 'taskName' },
@@ -38,6 +55,18 @@ const columns: ColumnsType = [
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 160 },
   { title: '操作', key: 'actions', width: 72 },
 ]
+
+function evaluationModeLabel(mode: PortfolioEvaluationMode): string {
+  return strictEnumLabel(PORTFOLIO_EVALUATION_MODE_LABEL, mode, '多元评价模式')
+}
+
+function taskStatusLabel(status: PortfolioEvaluationTaskStatus): string {
+  return strictEnumLabel(PORTFOLIO_EVALUATION_TASK_STATUS_LABEL, status, '多元评价任务状态')
+}
+
+function taskStatusTone(status: PortfolioEvaluationTaskStatus) {
+  return strictEnumTone(PORTFOLIO_EVALUATION_TASK_STATUS_TONE, status, '多元评价任务状态')
+}
 
 function workgroupName(id?: string) {
   if (!id) {
@@ -123,7 +152,7 @@ async function publishTask(id: string) {
   }
 }
 
-async function exportCsv() {
+async function exportExcel() {
   try {
     const result = await portfolioEvaluationTaskApi.exportExcel()
     await downloadPortfolioExcelExport(result)
@@ -144,22 +173,20 @@ onMounted(async () => {
   <StageWorkbenchShell>
     <ContextBar title="多元评价任务" subtitle="以人为主 / 以指标为主 · 关联工作组 · 任务台账与导出">
       <template #actions>
-        <UiButton @click="exportCsv">
-          导出 CSV
+        <UiButton @click="exportExcel">
+          导出 Excel
         </UiButton>
       </template>
     </ContextBar>
     <UiCard>
       <div class="form-row">
         <input v-model="form.taskName" class="input input--wide" placeholder="任务名称">
-        <select v-model="form.evaluationMode" class="input">
-          <option value="BY_PERSON">
-            以人为主
-          </option>
-          <option value="BY_INDICATOR">
-            以指标为主
-          </option>
-        </select>
+        <a-select
+          v-model:value="form.evaluationMode"
+          placeholder="评价模式"
+          style="width: 120px"
+          :options="evaluationModeOptions"
+        />
         <a-select
           v-model:value="form.workgroupId"
           placeholder="评价工作组"
@@ -191,21 +218,22 @@ onMounted(async () => {
           allow-clear
           placeholder="任务状态"
           style="width: 120px"
-          :options="[
-            { value: 'DRAFT', label: '草稿' },
-            { value: 'PUBLISHED', label: '已发布' },
-          ]"
+          :options="taskStatusOptions"
           @change="loadPage"
         />
         <UiButton @click="loadPage">
           查询
         </UiButton>
       </div>
+      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无评价任务" />
       <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id">
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'taskStatus'">
-            <UiTag :tone="record.taskStatus === 'PUBLISHED' ? 'green' : 'gray'">
-              {{ record.taskStatus === 'PUBLISHED' ? '已发布' : '草稿' }}
+          <template v-if="column.key === 'evaluationMode'">
+            {{ evaluationModeLabel(record.evaluationMode) }}
+          </template>
+          <template v-else-if="column.key === 'taskStatus'">
+            <UiTag :tone="taskStatusTone(record.taskStatus)">
+              {{ taskStatusLabel(record.taskStatus) }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'workgroupId'">
@@ -218,7 +246,7 @@ onMounted(async () => {
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <a v-if="record.taskStatus !== 'PUBLISHED'" @click="publishTask(record.id)">发布</a>
+            <a v-if="record.taskStatus !== 'PUBLISHED' && record.taskStatus !== 'CLOSED'" @click="publishTask(record.id)">发布</a>
           </template>
         </template>
       </UiDataTable>

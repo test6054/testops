@@ -98,8 +98,8 @@ import {
   closeReviewWindow,
   getReviewWindowPolicy,
   GRADE_REVIEW_REASON_TYPE_LABEL,
-  REVIEW_WINDOW_STATUS_TONE,
   REVIEW_WINDOW_STATUS_LABEL,
+  REVIEW_WINDOW_STATUS_TONE,
   saveReviewWindowPolicy,
 } from '@/apis/mark/grade-review'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'

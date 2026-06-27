@@ -1,22 +1,28 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  PfSceneCode,
-  PortfolioIndustryPackVO,
-  PortfolioTenantIndicatorConfigVO,
-} from '@/apis/portfolio/indicator-types'
+import type { PfIndicatorStatus, PfModelStatus, PfSceneCode, PortfolioIndustryPackVO, PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioIndicatorPlatformApi, portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { PF_SCENE_CODE_LABEL, PF_SCENE_CODE_OPTIONS } from '@/apis/portfolio/indicator-types'
+import { PF_INDICATOR_STATUS_LABEL, PF_MODEL_STATUS_LABEL, PF_SCENE_CODE_LABEL, PF_SCENE_CODE_OPTIONS } from '@/apis/portfolio/indicator-types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
+import { strictEnumLabel } from '@/utils/strict-enum'
+
+function modelStatusLabel(value: PfModelStatus): string {
+  return strictEnumLabel(PF_MODEL_STATUS_LABEL, value, '场景模型状态')
+}
+
+function indicatorStatusLabel(value: PfIndicatorStatus): string {
+  return strictEnumLabel(PF_INDICATOR_STATUS_LABEL, value, '指标状态')
+}
 
 const router = useRouter()
 const activeTab = ref('config')
@@ -317,6 +323,7 @@ onMounted(loadConfig)
               刷新
             </UiButton>
           </div>
+          <UiEmpty v-if="!loading && filteredConfigs.length === 0" description="当前筛选无租户指标配置" />
           <UiDataTable :columns="configColumns" :data-source="filteredConfigs" :loading="loading" row-key="indicatorCode">
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'enabled'">
@@ -344,7 +351,7 @@ onMounted(loadConfig)
           <a-spin :spinning="loading">
             <template v-if="model">
               <p class="meta">
-                {{ sceneLabel }} · 状态 {{ model.modelStatus }} · 权重合计 {{ model.weightSum ?? '—' }} · 试算 {{ model.trialPassed ? '通过' : '未通过' }}
+                {{ sceneLabel }} · 状态 {{ modelStatusLabel(model.modelStatus) }} · 权重合计 {{ model.weightSum ?? '—' }} · 试算 {{ model.trialPassed ? '通过' : '未通过' }}
               </p>
               <a-table
                 size="small"
@@ -399,9 +406,15 @@ onMounted(loadConfig)
               { title: '包编码', dataIndex: 'packCode' },
               { title: '包名称', dataIndex: 'packName' },
               { title: '版本', dataIndex: 'packVersion', width: 88 },
-              { title: '状态', dataIndex: 'status', width: 88 },
+              { title: '状态', key: 'status', width: 88 },
             ]"
-          />
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'status'">
+                {{ indicatorStatusLabel(record.status) }}
+              </template>
+            </template>
+          </a-table>
         </a-tab-pane>
       </a-tabs>
     </UiCard>

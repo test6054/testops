@@ -1,5 +1,5 @@
-import type {QuestionTypeCode} from './question-type';
 import type { MarkOcrProviderTypeCode } from './ocr-types'
+import type {QuestionTypeCode} from './question-type';
 import http from '@/config/axios'
 import { assertUserFacingFiniteNumber, assertUserFacingText } from '@/utils/contract-guard'
 import { strictEnumLabel } from '@/utils/strict-enum'

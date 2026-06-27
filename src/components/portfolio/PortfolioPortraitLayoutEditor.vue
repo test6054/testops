@@ -2,22 +2,20 @@
 import type { PortfolioPortraitDimension } from '@/apis/portfolio/enums'
 import type { PortfolioPortraitLayoutWidget, PortraitWidgetType } from '@/utils/portrait-layout'
 import { computed, ref } from 'vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import {
   PORTRAIT_DIMENSION_OPTIONS,
   PORTRAIT_WIDGET_TYPE_LABEL,
 } from '@/utils/portrait-layout'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
-
-const GRID_COLS = 12
-const GRID_ROWS = 8
 
 const props = defineProps<{
   widgets: PortfolioPortraitLayoutWidget[]
 }>()
-
 const emit = defineEmits<{
   'update:widgets': [PortfolioPortraitLayoutWidget[]]
 }>()
+const GRID_COLS = 12
+const GRID_ROWS = 8
 
 const dragIndex = ref<number | null>(null)
 const selectedIndex = ref<number | null>(null)

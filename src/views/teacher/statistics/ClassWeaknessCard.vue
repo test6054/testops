@@ -86,7 +86,7 @@
                   <div class="analysis-item__header">
                     <a-typography-text strong>第 {{ index + 1 }} 项</a-typography-text>
                     <span v-if="item.questionType" class="analysis-item__title">
-                      {{ item.questionType }}
+                      {{ questionTypeLabel(item.questionType) }}
                     </span>
                     <UiTag v-if="item.rank != null">排名 {{ item.rank }}</UiTag>
                     <span v-if="item.avgScoreRate != null" class="analysis-item__metric">
@@ -132,6 +132,7 @@ import {
   generateClassWeaknessAnalysis,
   getLatestClassWeaknessAnalysis,
 } from '@/apis/mark/teaching-analysis'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -140,6 +141,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'ClassWeaknessCard' })
@@ -259,6 +261,10 @@ function handleClassSelectChange(value?: SelectValue): void {
   emit('class-change', typeof value === 'string' ? value : undefined)
   hasQueried.value = false
   record.value = null
+}
+
+function questionTypeLabel(value: ClassWeaknessItemVO['questionType']): string {
+  return strictEnumLabel(QUESTION_TYPE_LABEL, value, '题目类型')
 }
 
 function formatRate(rate: number): string {

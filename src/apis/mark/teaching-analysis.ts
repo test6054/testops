@@ -1,8 +1,8 @@
 import type { AiAnalysisStatusCode } from './ai-analysis-status'
 import type { AnalysisScopeTypeCode } from './analysis-scope-type'
 import type { FinalScoreStatusCode } from './final-score-status'
-import type { MasteryLevelCode } from './student-mastery-level'
 import type { QuestionTypeCode } from './question-type'
+import type { MasteryLevelCode } from './student-mastery-level'
 /**
  * AI 教学分析 API - 对接 edu-mark 模块 TeachingAnalysisController
  *
@@ -17,8 +17,22 @@ import http from '@/config/axios'
 /** 教学分析类型 */
 export type TeachingAnalysisTypeCode = 'TEACHING_IMPROVEMENT' | 'CLASS_WEAKNESS' | 'STUDENT_LEARNING_PROFILE'
 
-/** 教学改进严重程度 */
+/** 教学改进严重程度 - 与 TeachingImprovementSeverity 枚举一致 */
 export type TeachingImprovementSeverityCode = 'HIGH' | 'MEDIUM' | 'LOW'
+
+/** 教学改进严重程度文案 */
+export const TEACHING_IMPROVEMENT_SEVERITY_LABEL: Record<TeachingImprovementSeverityCode, string> = {
+  HIGH: '高',
+  MEDIUM: '中',
+  LOW: '低',
+}
+
+/** 教学改进严重程度徽标颜色 */
+export const TEACHING_IMPROVEMENT_SEVERITY_TONE: Record<TeachingImprovementSeverityCode, BadgeTone> = {
+  HIGH: 'red',
+  MEDIUM: 'orange',
+  LOW: 'blue',
+}
 
 /** 教学分析类型文案映射 */
 export const TEACHING_ANALYSIS_TYPE_LABEL: Record<TeachingAnalysisTypeCode, string> = {

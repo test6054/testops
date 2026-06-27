@@ -373,14 +373,14 @@ import {
   getPassbackProgress,
   listPassbackRecords,
   listSyncTasks,
-  PASSBACK_STATUS_TONE,
   PASSBACK_STATUS_LABEL,
-  RECONCILE_STATUS_TONE,
+  PASSBACK_STATUS_TONE,
   RECONCILE_STATUS_LABEL,
+  RECONCILE_STATUS_TONE,
   reconcilePassback,
   retrySyncTask,
-  SYNC_TASK_STATUS_TONE,
   SYNC_TASK_STATUS_LABEL,
+  SYNC_TASK_STATUS_TONE,
   SYNC_TYPE_LABEL,
 } from '@/apis/mark/teaching-affairs-sync'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'

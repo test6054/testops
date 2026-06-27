@@ -13,6 +13,7 @@ import {
 import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -197,7 +198,7 @@ onMounted(async () => {
     <ContextBar title="年度规划审核" subtitle="科室审核 · 通过 / 退回">
       <template v-if="canPickTeachers" #actions>
         <UiButton @click="exportPlans">
-          导出 CSV
+          导出 Excel
         </UiButton>
       </template>
     </ContextBar>
@@ -207,6 +208,7 @@ onMounted(async () => {
       @search="handleSearch"
     />
     <UiCard>
+      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无待审规划" />
       <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'planStatus'">

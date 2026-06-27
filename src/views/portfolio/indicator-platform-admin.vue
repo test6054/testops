@@ -3,6 +3,9 @@ import type { UploadFile } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { DataNode } from 'ant-design-vue/es/tree'
 import type {
+  PfIndicatorDataSourceChannel,
+  PfIndicatorStatus,
+  PfScoreRuleType,
   PortfolioIndicatorDefinitionTreeNodeVO,
   PortfolioIndicatorDefinitionVO,
   PortfolioIndicatorPlatformSummaryVO,
@@ -14,11 +17,20 @@ import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pa
 import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import { uploadFile } from '@/apis/edu/file-management'
+import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
+import {
+  PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL,
+  PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS,
+  PF_INDICATOR_STATUS_LABEL,
+  PF_INDICATOR_STATUS_OPTIONS,
+  PF_SCORE_RULE_TYPE_LABEL,
+  PF_SCORE_RULE_TYPE_OPTIONS,
+} from '@/apis/portfolio/indicator-types'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -36,6 +48,19 @@ import {
 } from '@/utils/indicator-template-params'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
+import { strictEnumLabel } from '@/utils/strict-enum'
+
+function dataSourceLabel(value: PfIndicatorDataSourceChannel): string {
+  return strictEnumLabel(PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL, value, '数据来源')
+}
+
+function indicatorStatusLabel(value: PfIndicatorStatus): string {
+  return strictEnumLabel(PF_INDICATOR_STATUS_LABEL, value, '指标状态')
+}
+
+function scoreRuleTypeLabel(value: PfScoreRuleType): string {
+  return strictEnumLabel(PF_SCORE_RULE_TYPE_LABEL, value, '规则类型')
+}
 
 const loading = ref(false)
 const seeding = ref(false)
@@ -62,17 +87,17 @@ const editForm = reactive({
   dimensionL1Name: '',
   dimensionL2Name: '',
   definitionText: '',
-  defaultDataSource: '',
+  defaultDataSource: 'MANUAL_ENTRY' as PfIndicatorDataSourceChannel,
   defaultRuleTemplateId: '',
   policyAlign: '',
   applicableTeachers: '',
   auditRequired: false,
   redLineFlag: false,
   sortOrder: 0,
-  status: 'ACTIVE',
+  status: 'ACTIVE' as PfIndicatorStatus,
 })
 const query = reactive({ pageNum: 1, pageSize: 20, indicatorCode: '', indicatorName: '' })
-const templateQuery = reactive({ pageNum: 1, pageSize: 20, templateCode: '', ruleType: '', status: '' })
+const templateQuery = reactive({ pageNum: 1, pageSize: 20, templateCode: '', ruleType: undefined as PfScoreRuleType | undefined, status: undefined as PfIndicatorStatus | undefined })
 
 const definitionColumns: ColumnsType = [
   { title: '编码', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 88 },
@@ -115,9 +140,9 @@ const templateForm = reactive({
   id: '',
   templateCode: '',
   templateName: '',
-  ruleType: 'THRESHOLD',
+  ruleType: 'THRESHOLD' as PfScoreRuleType,
   description: '',
-  status: 'ACTIVE',
+  status: 'ACTIVE' as PfIndicatorStatus,
 })
 const templateParams = ref<PortfolioIndicatorTemplateParams>(defaultTemplateParams('THRESHOLD'))
 const packForm = reactive({
@@ -125,7 +150,7 @@ const packForm = reactive({
   packCode: '',
   packName: '',
   packVersion: '1.0.0',
-  status: 'ACTIVE',
+  status: 'ACTIVE' as PfIndicatorStatus,
 })
 const packDefExistingJson = ref('{}')
 const packDefForm = reactive<PortfolioIndustryPackDefForm>({
@@ -376,7 +401,7 @@ function openNewIndicator() {
   editForm.dimensionL1Name = ''
   editForm.dimensionL2Name = ''
   editForm.definitionText = ''
-  editForm.defaultDataSource = ''
+  editForm.defaultDataSource = 'MANUAL_ENTRY'
   editForm.defaultRuleTemplateId = ''
   editForm.policyAlign = ''
   editForm.applicableTeachers = ''
@@ -570,7 +595,7 @@ onMounted(async () => {
             <template #title="{ nodeTitle, nodeType, defaultDataSource, indicatorCode, status }">
               <span>{{ nodeTitle }}</span>
               <span v-if="nodeType === 'OBSERVATION'" class="obs-meta">
-                {{ indicatorCode }} · {{ defaultDataSource }} · {{ status }}
+                {{ indicatorCode }} · {{ defaultDataSource ? dataSourceLabel(defaultDataSource) : '—' }} · {{ status ? indicatorStatusLabel(status) : '—' }}
                 <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)">详情</a>
               </span>
             </template>
@@ -590,9 +615,18 @@ onMounted(async () => {
               新建指标
             </UiButton>
           </div>
+          <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无平台指标" />
           <UiDataTable :columns="definitionColumns" :data-source="rows" :loading="loading" row-key="id">
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'actions'">
+              <template v-if="column.key === 'defaultDataSource'">
+                {{ dataSourceLabel(record.defaultDataSource) }}
+              </template>
+              <template v-else-if="column.key === 'status'">
+                <UiTag :tone="record.status === 'ACTIVE' ? 'green' : 'gray'">
+                  {{ indicatorStatusLabel(record.status) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'actions'">
                 <a @click="openDetail(record.indicatorCode)">详情</a>
                 <a style="margin-left: 8px" @click="openDetail(record.indicatorCode, true)">编辑</a>
               </template>
@@ -602,8 +636,14 @@ onMounted(async () => {
         <a-tab-pane key="template" tab="规则模板">
           <div class="toolbar">
             <a-input v-model:value="templateQuery.templateCode" placeholder="模板编码" style="width: 120px" @press-enter="loadTemplates" />
-            <a-input v-model:value="templateQuery.ruleType" placeholder="规则类型" style="width: 120px" @press-enter="loadTemplates" />
-            <a-select v-model:value="templateQuery.status" allow-clear placeholder="状态" style="width: 100px" :options="[{ value: 'ACTIVE', label: '启用' }, { value: 'INACTIVE', label: '停用' }]" />
+            <a-select
+              v-model:value="templateQuery.ruleType"
+              allow-clear
+              placeholder="规则类型"
+              style="width: 140px"
+              :options="PF_SCORE_RULE_TYPE_OPTIONS"
+            />
+            <a-select v-model:value="templateQuery.status" allow-clear placeholder="状态" style="width: 100px" :options="PF_INDICATOR_STATUS_OPTIONS" />
             <UiButton @click="loadTemplates">
               查询
             </UiButton>
@@ -613,7 +653,15 @@ onMounted(async () => {
           </div>
           <UiDataTable :columns="templateColumns" :data-source="templates" :loading="loading" row-key="id">
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'actions'">
+              <template v-if="column.key === 'ruleType'">
+                {{ scoreRuleTypeLabel(record.ruleType) }}
+              </template>
+              <template v-else-if="column.key === 'status'">
+                <UiTag :tone="record.status === 'ACTIVE' ? 'green' : 'gray'">
+                  {{ indicatorStatusLabel(record.status) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'actions'">
                 <a @click="openTemplateEdit(record)">编辑</a>
               </template>
             </template>
@@ -634,7 +682,12 @@ onMounted(async () => {
           </div>
           <UiDataTable :columns="packColumns" :data-source="industryPacks" :loading="loading" row-key="id">
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'actions'">
+              <template v-if="column.key === 'status'">
+                <UiTag :tone="record.status === 'ACTIVE' ? 'green' : 'gray'">
+                  {{ indicatorStatusLabel(record.status) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'actions'">
                 <a @click="openPackEdit(record)">编辑</a>
               </template>
             </template>
@@ -688,10 +741,10 @@ onMounted(async () => {
           <p>{{ detail.definitionText }}</p>
           <div class="detail-tags">
             <UiTag tone="blue">
-              {{ detail.defaultDataSource }}
+              {{ dataSourceLabel(detail.defaultDataSource) }}
             </UiTag>
             <UiTag :tone="detail.status === 'ACTIVE' ? 'green' : 'gray'">
-              {{ detail.status }}
+              {{ indicatorStatusLabel(detail.status) }}
             </UiTag>
             <UiTag v-if="detail.redLineFlag" tone="red">
               红线
@@ -727,7 +780,7 @@ onMounted(async () => {
             <a-textarea v-model:value="editForm.definitionText" :rows="3" />
           </a-form-item>
           <a-form-item label="数据来源">
-            <a-input v-model:value="editForm.defaultDataSource" />
+            <a-select v-model:value="editForm.defaultDataSource" :options="PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS" />
           </a-form-item>
           <a-form-item label="规则模板 ID">
             <a-input v-model:value="editForm.defaultRuleTemplateId" placeholder="绑定 Score 模板主键" />
@@ -736,7 +789,7 @@ onMounted(async () => {
             <a-input v-model:value="editForm.applicableTeachers" />
           </a-form-item>
           <a-form-item label="状态">
-            <a-select v-model:value="editForm.status" :options="[{ value: 'ACTIVE', label: '启用' }, { value: 'INACTIVE', label: '停用' }]" />
+            <a-select v-model:value="editForm.status" :options="PF_INDICATOR_STATUS_OPTIONS" />
           </a-form-item>
           <a-form-item label="红线指标">
             <a-switch v-model:checked="editForm.redLineFlag" />
@@ -764,7 +817,7 @@ onMounted(async () => {
           <a-input v-model:value="templateForm.templateName" />
         </a-form-item>
         <a-form-item label="规则类型">
-          <a-input v-model:value="templateForm.ruleType" placeholder="THRESHOLD / SEGMENT / RATIO 等" />
+          <a-select v-model:value="templateForm.ruleType" :options="PF_SCORE_RULE_TYPE_OPTIONS" />
         </a-form-item>
         <PortfolioIndicatorTemplateParamsForm
           :rule-type="templateForm.ruleType"
@@ -772,7 +825,7 @@ onMounted(async () => {
           @update:params="templateParams = $event"
         />
         <a-form-item label="状态">
-          <a-select v-model:value="templateForm.status" :options="[{ value: 'ACTIVE', label: '启用' }, { value: 'INACTIVE', label: '停用' }]" />
+          <a-select v-model:value="templateForm.status" :options="PF_INDICATOR_STATUS_OPTIONS" />
         </a-form-item>
         <UiButton variant="primary" :loading="saving" @click="saveTemplateForm">
           保存
@@ -818,7 +871,7 @@ onMounted(async () => {
           <a-textarea v-model:value="packDefForm.materialOptionalText" :rows="3" />
         </a-form-item>
         <a-form-item label="状态">
-          <a-select v-model:value="packForm.status" :options="[{ value: 'ACTIVE', label: '启用' }, { value: 'INACTIVE', label: '停用' }]" />
+          <a-select v-model:value="packForm.status" :options="PF_INDICATOR_STATUS_OPTIONS" />
         </a-form-item>
         <UiButton variant="primary" :loading="saving" @click="savePackForm">
           保存

@@ -5,7 +5,7 @@ import type {
   PortfolioTargetFieldDefinition,
 } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
@@ -19,14 +19,14 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const route = useRoute()
 const router = useRouter()
-const { currentUserId, canPickTeachers, resolveDefaultTeacherId } = usePortfolioTeacherAccess()
+const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -42,13 +42,6 @@ const evidenceRefs = reactive<Record<string, string>>({})
 const categoryId = computed(() => route.params.categoryId as string)
 const queryRecordId = computed(() =>
   typeof route.query.recordId === 'string' ? route.query.recordId : '')
-const targetTeacherId = computed(() => {
-  const queryId = typeof route.query.teacherId === 'string' ? route.query.teacherId : ''
-  if (queryId) {
-    return queryId
-  }
-  return resolveDefaultTeacherId() || currentUserId.value
-})
 const teacherRequest = computed(() =>
   targetTeacherId.value ? { teacherId: targetTeacherId.value } : {})
 
@@ -199,13 +192,9 @@ function goBack() {
   })
 }
 
-watch([categoryId, targetTeacherId, queryRecordId], () => {
+usePortfolioScopedLoader(() => {
   void loadPage()
-})
-
-onMounted(() => {
-  void loadPage()
-})
+}, () => `${targetTeacherId.value}:${categoryId.value}:${queryRecordId.value}`)
 </script>
 
 <template>

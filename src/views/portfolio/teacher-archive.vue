@@ -11,7 +11,7 @@ import type {
 } from '@/apis/portfolio/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { PORTFOLIO_ARCHIVE_BAG_SOURCE_TYPE_LABEL } from '@/apis/portfolio/bag-types'
@@ -31,7 +31,7 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
@@ -88,7 +88,7 @@ const fieldColumns: ColumnsType = [
 
 const route = useRoute()
 const router = useRouter()
-const { currentUserId, canPickTeachers, resolveDefaultTeacherId } = usePortfolioTeacherAccess()
+const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 
 const oneTableLoading = ref(false)
 const recordLoading = ref(false)
@@ -125,14 +125,6 @@ const bagRequest = computed(() => ({
   achievementType: bagFilter.value.achievementType || undefined,
   materialType: bagFilter.value.materialType || undefined,
 }))
-
-const targetTeacherId = computed(() => {
-  const queryId = typeof route.query.teacherId === 'string' ? route.query.teacherId : ''
-  if (queryId) {
-    return queryId
-  }
-  return resolveDefaultTeacherId() || currentUserId.value
-})
 
 const teacherRequest = computed(() =>
   targetTeacherId.value ? { teacherId: targetTeacherId.value } : {})
@@ -409,10 +401,11 @@ async function openRecordFromRouteQuery() {
   await openRecordById(recordId)
 }
 
-watch(targetTeacherId, () => {
+usePortfolioScopedLoader(async () => {
   pageNum.value = 1
-  void reloadAll()
-})
+  await reloadAll()
+  await openRecordFromRouteQuery()
+}, () => targetTeacherId.value)
 
 watch(
   () => route.query.recordId,
@@ -420,11 +413,6 @@ watch(
     void openRecordFromRouteQuery()
   },
 )
-
-onMounted(async () => {
-  await reloadAll()
-  await openRecordFromRouteQuery()
-})
 </script>
 
 <template>

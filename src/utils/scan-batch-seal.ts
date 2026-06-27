@@ -87,3 +87,16 @@ export function buildBatchSealChecklist(batch: ExamScannerBatchVO): BatchSealChe
     },
   ]
 }
+
+/**
+ * 封存确认文案：供 confirmAsync content 使用。
+ */
+export function formatBatchSealConfirmContent(batch: ExamScannerBatchVO): string {
+  const intro = `封存批次 ${batch.batchNo} 后，扫描端将无法再向该批次追加页面。`
+  const checklistLines = buildBatchSealChecklist(batch).map((item) => {
+    const mark = item.ok ? '✓' : '✗'
+    const detail = item.detail ? `（${item.detail}）` : ''
+    return `${mark} ${item.label}${detail}`
+  })
+  return [intro, '', '封存前检查：', ...checklistLines].join('\n')
+}

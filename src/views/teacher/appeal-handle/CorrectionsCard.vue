@@ -130,8 +130,8 @@ import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   createCorrection,
-  GRADE_CORRECTION_STATUS_TONE,
   GRADE_CORRECTION_STATUS_LABEL,
+  GRADE_CORRECTION_STATUS_TONE,
   GRADE_CORRECTION_TYPE_LABEL,
   listCorrections,
   listReviewRequests,
