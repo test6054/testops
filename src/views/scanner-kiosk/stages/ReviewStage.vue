@@ -1,12 +1,12 @@
 <script setup lang="ts">
 /**
- * Stage 3 - 复核与异常处置
+ * Stage 3 - 澶嶆牳涓庡紓甯稿缃?
  *
- * 业务定位：currentJob 存在且包含异常 / 失败页，或者上传/commit 卡住。
- * 三栏布局：
- *   左 320px  · 异常列表（FAILED 页 + attentionItems）
- *   中 flex   · 选中项大画布预览
- *   右 280px  · 操作面板（重试 / 删除 / 移除 / 刷新）+ 批次摘要
+ * 涓氬姟瀹氫綅锛歝urrentJob 瀛樺湪涓斿寘鍚紓甯?/ 澶辫触椤碉紝鎴栬€呬笂浼?commit 鍗′綇銆?
+ * 涓夋爮甯冨眬锛?
+ *   宸?320px  路 寮傚父鍒楄〃锛團AILED 椤?+ attentionItems锛?
+ *   涓?flex   路 閫変腑椤瑰ぇ鐢诲竷棰勮
+ *   鍙?280px  路 鎿嶄綔闈㈡澘锛堥噸璇?/ 鍒犻櫎 / 绉婚櫎 / 鍒锋柊锛? 鎵规鎽樿
  */
 import {
   CloseCircleFilled,
@@ -35,7 +35,7 @@ interface ReviewItem {
   localPageId?: string
 }
 
-/** 失败页（直接从 currentJob.pages 中筛选） */
+/** 澶辫触椤碉紙鐩存帴浠?currentJob.pages 涓瓫閫夛級 */
 const failedPages = computed<ReviewItem[]>(() =>
   workflow.exceptionPages.value.map(
     (page): ReviewItem => ({
@@ -54,7 +54,7 @@ const failedPages = computed<ReviewItem[]>(() =>
   ),
 )
 
-/** 账本异常待办（attentionItems + ledger 异常页） */
+/** 璐︽湰寮傚父寰呭姙锛坅ttentionItems + ledger 寮傚父椤碉級 */
 const ledgerAttentions = computed<ReviewItem[]>(() => {
   const ledger = workflow.pageLedger.value
   if (!ledger) return []
@@ -64,11 +64,11 @@ const ledgerAttentions = computed<ReviewItem[]>(() => {
       key: `ledger-${workflow.ledgerItemKey(item)}`,
       pageNo: item.pageNo,
       type: 'attention',
-      title: `${workflow.scanPageDisplayTitleByNo(item.pageNo)} · ${workflow.attentionTypeText(item.attentionType!)}`,
+      title: `${workflow.scanPageDisplayTitleByNo(item.pageNo)} 路 ${workflow.attentionTypeText(item.attentionType!)}`,
       description:
         item.attentionMessage || workflow.registrationStatusText(item.registrationStatus),
       detail: item.operatorName
-        ? `操作人 ${item.operatorName} · ${workflow.formatTime(item.occurredAt)}`
+        ? `鎿嶄綔浜?${item.operatorName} 路 ${workflow.formatTime(item.occurredAt)}`
         : workflow.formatTime(item.occurredAt),
       source: 'ledger',
       localPageId: item.localPageId,
@@ -76,7 +76,7 @@ const ledgerAttentions = computed<ReviewItem[]>(() => {
   )
 })
 
-/** 账本 attentionItems（如身份绑定冲突），与 items.attentionType 互补 */
+/** 璐︽湰 attentionItems锛堝韬唤缁戝畾鍐茬獊锛夛紝涓?items.attentionType 浜掕ˉ */
 const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
   const ledger = workflow.pageLedger.value
   if (!ledger?.attentionItems.length) return []
@@ -91,7 +91,7 @@ const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
       key: `attention-${att.id}`,
       pageNo,
       type: 'attention',
-      title: `${workflow.scanPageDisplayTitleByNo(pageNo)} · ${workflow.attentionTypeText(att.attentionType)}`,
+      title: `${workflow.scanPageDisplayTitleByNo(pageNo)} 路 ${workflow.attentionTypeText(att.attentionType)}`,
       description: att.diagnostic || workflow.registrationStatusText(pageItem?.registrationStatus ?? 'PENDING'),
       detail: workflow.formatTime(att.updateTime),
       source: 'ledger',
@@ -111,7 +111,7 @@ const reviewItems = computed(() => {
   })
 })
 
-/** 本批次已登记的全部页面（含草稿纸等附加页），供复核阶段浏览影像，与异常待办并列展示。 */
+/** 鏈壒娆″凡鐧昏鐨勫叏閮ㄩ〉闈紙鍚崏绋跨焊绛夐檮鍔犻〉锛夛紝渚涘鏍搁樁娈垫祻瑙堝奖鍍忥紝涓庡紓甯稿緟鍔炲苟鍒楀睍绀恒€? */
 const registeredPages = computed<ReviewItem[]>(() => {
   const ledger = workflow.pageLedger.value
   if (!ledger?.items.length) return []
@@ -127,7 +127,7 @@ const registeredPages = computed<ReviewItem[]>(() => {
         title: workflow.scanPageDisplayTitleByNo(item.pageNo),
         description: workflow.registrationStatusText(item.registrationStatus),
         detail: item.operatorName
-          ? `操作人 ${item.operatorName} · ${workflow.formatTime(item.occurredAt)}`
+          ? `鎿嶄綔浜?${item.operatorName} 路 ${workflow.formatTime(item.occurredAt)}`
           : workflow.formatTime(item.occurredAt),
         source: 'ledger',
         localPageId: item.localPageId,
@@ -141,6 +141,7 @@ const selectedItem = computed<ReviewItem | null>(() => {
   return (
     reviewItems.value.find((item) => item.pageNo === pageNo)
     ?? registeredPages.value.find((item) => item.pageNo === pageNo)
+    ?? localBrowsablePages.value.find((item) => item.pageNo === pageNo)
     ?? null
   )
 })
@@ -153,9 +154,9 @@ function selectItem(item: ReviewItem) {
   workflow.previewPageNo.value = item.pageNo
 }
 
-/** 本机 Agent 已扫描页（账本未返回时仍可在复核阶段浏览本地影像）。 */
+/** 鏈満 Agent 宸叉壂鎻忛〉锛堣处鏈湭杩斿洖鏃朵粛鍙湪澶嶆牳闃舵娴忚鏈湴褰卞儚锛夈€? */
 const localBrowsablePages = computed<ReviewItem[]>(() => {
-  const job = workflow.previewScanJob.value
+  const job = workflow.reviewScanJob.value
   if (!job) return []
   const issuePageNos = new Set(reviewItems.value.map((item) => item.pageNo))
   const registeredPageNos = new Set(registeredPages.value.map((item) => item.pageNo))
@@ -169,7 +170,7 @@ const localBrowsablePages = computed<ReviewItem[]>(() => {
         type: 'page-registered',
         title: workflow.scanPageDisplayTitleByNo(page.pageNo),
         description: page.status === 'UPLOADED' ? '本机已上传' : '本机已扫描',
-        detail: page.uploadedFileId ? `文件 ${page.uploadedFileId}` : undefined,
+        detail: page.uploadedFileId ? `鏂囦欢 ${page.uploadedFileId}` : undefined,
         status: page.status,
         source: 'job',
       }),
@@ -180,7 +181,7 @@ const browsablePageCount = computed(
   () => registeredPageCount.value + localBrowsablePages.value.length,
 )
 
-/** 进入复核阶段或页列表变化时，默认选中首条可浏览项 */
+/** 杩涘叆澶嶆牳闃舵鎴栭〉鍒楄〃鍙樺寲鏃讹紝榛樿閫変腑棣栨潯鍙祻瑙堥」 */
 watch(
   [reviewItems, registeredPages, localBrowsablePages],
   ([issues, pages, localPages]) => {
@@ -207,7 +208,7 @@ function discardSelected() {
   })
 }
 
-const job = computed(() => workflow.currentJob.value ?? workflow.previewScanJob.value)
+const job = computed(() => workflow.reviewScanJob.value)
 const batch = computed(() => workflow.kioskContext.value?.latestBatch ?? null)
 
 const totalIssues = computed(() => reviewItems.value.length)
@@ -224,7 +225,7 @@ const reviewBoundBatchId = computed(
 
 <template>
   <section class="review-stage">
-    <!-- 左：异常列表 -->
+    <!-- 宸︼細寮傚父鍒楄〃 -->
     <aside class="issue-list">
       <header class="issue-head">
         <div>
@@ -282,7 +283,7 @@ const reviewBoundBatchId = computed(
       <section v-if="registeredPageCount > 0" class="registered-pages">
         <header class="registered-head">
           <h4>已登记页面 ({{ registeredPageCount }})</h4>
-          <small>含答卷页与附加页（如草稿纸），均可预览</small>
+          <small>含答题页与附加页（如草稿纸），均可预览</small>
         </header>
         <ul class="issue-items registered-items">
           <li
@@ -331,13 +332,13 @@ const reviewBoundBatchId = computed(
       </section>
     </aside>
 
-    <!-- 中：大画布预览 -->
+    <!-- 涓細澶х敾甯冮瑙? -->
     <main class="preview-wrap">
       <div class="preview-canvas">
-        <div v-if="!job && totalIssues === 0 && browsablePageCount === 0" class="preview-empty">
+        <div v-if="!workflow.reviewScanJob.value && totalIssues === 0 && browsablePageCount === 0" class="preview-empty">
           <FileTextOutlined class="preview-empty-icon" />
-          <p>暂无扫描批次</p>
-          <small>请返回「准备扫描」开始一次扫描后再进行复核</small>
+          <p>批次结束后显示复核内容</p>
+          <small>当前仍在扫描中，结束批次后才能查看本地图像与复核项</small>
         </div>
         <div v-else-if="!selectedItem" class="preview-empty">
           <FileTextOutlined class="preview-empty-icon" />
@@ -355,12 +356,12 @@ const reviewBoundBatchId = computed(
           v-else
           class="preview-image"
           :src="workflow.previewImageUrl.value"
-          :alt="selectedItem.title"
+          :alt="selectedPreviewTitle"
           draggable="false"
           @error="workflow.onPreviewImageLoadError"
         />
 
-        <!-- 选中项浮动信息条 -->
+        <!-- 閫変腑椤规诞鍔ㄤ俊鎭潯 -->
         <div v-if="selectedItem" class="preview-banner">
           <span class="banner-no">{{ selectedPreviewTitle }}</span>
           <span class="banner-title">{{ selectedItem.title }}</span>
@@ -369,7 +370,7 @@ const reviewBoundBatchId = computed(
       </div>
     </main>
 
-    <!-- 右：操作面板 + 批次摘要 -->
+    <!-- 鍙筹細鎿嶄綔闈㈡澘 + 鎵规鎽樿 -->
     <aside class="actions-panel">
       <KioskBoundStudentsPanel
         variant="panel"
@@ -412,14 +413,14 @@ const reviewBoundBatchId = computed(
           :title="
             selectedItem
               ? selectedItem.source === 'ledger'
-                ? '将选中页标记为废弃，需要补扫'
+                ? '将选中项标记为废弃，需要补扫'
                 : '失败页可走重试上传，不需要废弃'
               : '请先在左侧选择待复核项'
           "
           @click="discardSelected"
         >
           <DeleteOutlined />
-          <span>废弃选中页</span>
+          <span>废弃选中项</span>
         </button>
         <button
           type="button"
@@ -475,7 +476,7 @@ const reviewBoundBatchId = computed(
   flex-shrink: 0;
 }
 
-/* ============ 左：异常列表 ============ */
+/* ============ 宸︼細寮傚父鍒楄〃 ============ */
 
 .issue-list {
   background: var(--kiosk-surface);
@@ -659,7 +660,7 @@ const reviewBoundBatchId = computed(
   color: var(--kiosk-ink-tertiary);
 }
 
-/* ============ 中：大画布预览 ============ */
+/* ============ 涓細澶х敾甯冮瑙?============ */
 
 .preview-wrap {
   display: flex;
@@ -740,7 +741,7 @@ const reviewBoundBatchId = computed(
   min-width: 0;
 }
 
-/* ============ 右：操作面板 ============ */
+/* ============ 鍙筹細鎿嶄綔闈㈡澘 ============ */
 
 .actions-panel {
   display: flex;
@@ -813,7 +814,7 @@ const reviewBoundBatchId = computed(
   background: var(--kiosk-danger-soft);
 }
 
-/* ============ 批次摘要 KV ============ */
+/* ============ 鎵规鎽樿 KV ============ */
 
 .summary-kv {
   margin: 0;
@@ -854,3 +855,4 @@ const reviewBoundBatchId = computed(
   }
 }
 </style>
+

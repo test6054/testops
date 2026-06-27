@@ -35,6 +35,42 @@ const duplexModeOptions = computed(() =>
 )
 const paramsDisabled = computed(() => !workflow.canSwitchScanMode.value || !scanConfigOptions.value)
 const isSupplement = computed(() => workflow.scanMode.value === 'SUPPLEMENT')
+const scanModeAdvisory = computed(() => workflow.scanModeAdvisory.value)
+
+const supplementPaperOptions = computed(() =>
+  workflow.supplementBoundPapers.value.map((item) => ({
+    value: item.paperInstanceId,
+    label: `${item.studentName || '—'}（${item.studentNo || '—'}）`,
+  })),
+)
+
+const contractTitleText = computed(() => {
+  if (!contract.value) return ''
+  const kind = contract.value.materialKindText || '扫描材料'
+  const layout = contract.value.materialLayoutModeText?.trim()
+  const paperStyle = contract.value.paperStyleText?.trim()
+  if (layout) return `${kind} · ${layout}`
+  if (paperStyle && paperStyle !== '未配置') return `${kind} · ${paperStyle}`
+  return kind
+})
+
+const scanModeSummary = computed(() => workflow.scanModeText(workflow.scanMode.value, ''))
+
+const scanModeTone = computed(() => {
+  const mode = workflow.scanMode.value
+  if (mode === 'SUPPLEMENT') return 'supplement'
+  if (mode === 'ARCHIVE') return 'archive'
+  return 'direct'
+})
+
+const hardwareParamPreview = computed(() => {
+  const items: string[] = []
+  const config = workflow.scanConfig.value
+  if (config.dpi) items.push(`${config.dpi} DPI`)
+  if (config.colorMode) items.push(workflow.scannerColorModeLabel(config.colorMode))
+  if (config.duplexMode) items.push(workflow.scannerDuplexModeLabel(config.duplexMode))
+  return items
+})
 
 const duplexMismatchHint = computed(() => {
   const recommended = recommendedConfig.value?.duplexMode
@@ -69,11 +105,25 @@ function applyRecommendedScanConfig() {
     <div class="drawer-body">
       <section v-if="contract" class="contract-hint">
         <p class="contract-hint__title">
-          {{ contract.materialKindText || '扫描材料' }}
-          · {{ contract.paperStyleText }}
+          {{ contractTitleText }}
         </p>
-        <p v-if="contract.materialLayoutModeText" class="contract-hint__sub">
+        <p v-if="contract.materialLayoutModeText && contract.paperStyleText" class="contract-hint__sub">
+          纸型：{{ contract.paperStyleText }}
+        </p>
+        <p v-else-if="contract.materialLayoutModeText" class="contract-hint__sub">
           制卷形态：{{ contract.materialLayoutModeText }}
+        </p>
+        <p v-if="scanConfigOptions" class="contract-hint__profile">
+          <span class="contract-hint__mode" :class="`contract-hint__mode--${scanModeTone}`">
+            {{ scanModeSummary }}
+          </span>
+          <span
+            v-for="item in hardwareParamPreview"
+            :key="item"
+            class="contract-hint__chip"
+          >
+            {{ item }}
+          </span>
         </p>
         <p v-if="scanConfigHint" class="contract-hint__sub">
           {{ scanConfigHint }}
@@ -83,6 +133,9 @@ function applyRecommendedScanConfig() {
         </p>
         <p v-if="scanConfigAdvisory" class="contract-hint__warn">
           {{ scanConfigAdvisory }}
+        </p>
+        <p v-if="scanModeAdvisory" class="contract-hint__warn">
+          {{ scanModeAdvisory }}
         </p>
         <button
           v-if="recommendedConfig"
@@ -152,6 +205,19 @@ function applyRecommendedScanConfig() {
 
       <div v-if="isSupplement" class="supp">
         <div class="field">
+          <span class="field__label">补扫试卷</span>
+          <a-select
+            v-model:value="workflow.supplementPaperInstanceId.value"
+            :options="supplementPaperOptions"
+            placeholder="选择本工位已绑定试卷"
+            :disabled="!workflow.canSwitchScanMode.value"
+            class="full"
+          />
+          <p v-if="supplementPaperOptions.length === 0" class="field__hint field__hint--muted">
+            本工位暂无已绑定试卷，请先完成首次扫描与绑定
+          </p>
+        </div>
+        <div class="field">
           <span class="field__label">目标页号</span>
           <input
             v-model.number="workflow.supplementTargetPageNo.value"
@@ -209,6 +275,55 @@ function applyRecommendedScanConfig() {
   margin: var(--kiosk-space-1) 0 0;
   font-size: var(--kiosk-fz-caption);
   color: var(--kiosk-ink-secondary);
+}
+
+.contract-hint__profile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kiosk-space-2);
+  margin: var(--kiosk-space-2) 0 0;
+}
+
+.contract-hint__mode {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--kiosk-space-2);
+  border-radius: var(--kiosk-radius-sm);
+  font-size: var(--kiosk-fz-caption);
+  font-weight: var(--kiosk-fw-semibold);
+  line-height: 1;
+}
+
+.contract-hint__mode--direct {
+  background: var(--kiosk-primary-soft);
+  color: var(--kiosk-primary);
+}
+
+.contract-hint__mode--supplement {
+  background: var(--kiosk-warning-soft);
+  color: var(--kiosk-warning);
+}
+
+.contract-hint__mode--archive {
+  background: var(--kiosk-surface);
+  border: 1px solid var(--kiosk-divider);
+  color: var(--kiosk-ink-secondary);
+}
+
+.contract-hint__chip {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--kiosk-space-2);
+  border-radius: var(--kiosk-radius-sm);
+  background: var(--kiosk-surface);
+  border: 1px solid var(--kiosk-divider);
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-secondary);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .contract-hint__warn {

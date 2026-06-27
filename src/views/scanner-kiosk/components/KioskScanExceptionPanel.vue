@@ -169,7 +169,9 @@ function retryUpload() {
 
 function gotoReview() {
   emit('close')
-  stage.gotoStage('review')
+  if (!workflow.currentJob.value) {
+    stage.gotoStage('review')
+  }
 }
 </script>
 
@@ -181,14 +183,6 @@ function gotoReview() {
         <CloseOutlined />
       </button>
     </header>
-
-    <div v-if="workflow.previewImageUrl.value" class="exception-panel__thumb">
-      <img
-        :src="workflow.previewImageUrl.value"
-        :alt="pageTitle"
-        @error="workflow.onPreviewImageLoadError"
-      />
-    </div>
 
     <p class="exception-panel__diag">{{ diagnosticText }}</p>
 

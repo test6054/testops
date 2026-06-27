@@ -109,6 +109,8 @@ export interface ExamScannerKioskBatchVO {
   supplementReason?: string
   /** 仅 SUPPLEMENT 模式有效：true=替换目标页，false=追加补扫 */
   replaceTargetPage: boolean
+  /** 补扫冻结的目标试卷实例 ID（仅 SUPPLEMENT 模式有意义） */
+  paperInstanceId?: string
   /** 批次封存时间 */
   sealedTime?: string
   /** 批次封存执行人 ID */
@@ -168,6 +170,10 @@ export interface ExamScannerKioskContextVO {
   sessionBatches?: ExamScannerKioskSessionBatchVO[]
   kioskBoundExamId?: string
   examBindingRequired?: boolean
+  /** ARCHIVE 等模式与 DIRECT 主链差异的只读说明 */
+  scanModeAdvisory?: string
+  /** 本工位可补扫的已绑定试卷（仅 SUPPLEMENT） */
+  supplementBoundPapers?: ExamScannerBoundPaperItemVO[]
 }
 
 export interface ExamScannerKioskTaskContractVO {
@@ -320,6 +326,8 @@ export interface ExamScannerBatchStartRequest {
   supplementReason?: string
   /** 仅 SUPPLEMENT 模式有效：true=替换目标页，false=追加补扫 */
   replaceTargetPage: boolean
+  /** 仅 SUPPLEMENT 模式必填：补扫目标已绑定试卷实例 ID */
+  paperInstanceId?: string
   /** 操作员在扫描前选择的参数 */
   scanConfig: ExamScannerScanConfigVO
 }
@@ -380,6 +388,8 @@ export interface ExamScannerBatchLifecycleVO {
   supplementReason?: string
   /** 是否替换目标页；仅 SUPPLEMENT 模式有意义，非补扫固定为 false */
   replaceTargetPage: boolean
+  /** 补扫目标试卷实例 ID；仅 SUPPLEMENT 模式有值 */
+  paperInstanceId?: string
   /** 工作台锚点对应的申报班级 ID（后端 List<Long> 经字符串序列化后到达前端） */
   declaredClassIds?: string[]
   /** 工作台锚点创建时间（ISO 字符串） */

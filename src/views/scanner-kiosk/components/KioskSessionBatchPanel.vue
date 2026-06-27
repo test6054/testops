@@ -55,10 +55,6 @@ const highlightBatchId = computed(() => {
 function openBatch(row: ExamScannerKioskSessionBatchVO) {
   if (props.variant === 'scanning') {
     if (row.scanBatchId === highlightBatchId.value) return
-    if (row.exceptionCount > 0) {
-      stage.gotoStage('review')
-      return
-    }
     workflow.errorMessage.value = '当前批次扫描未结束，请先结束本批次后再查看其它批次'
     return
   }
@@ -69,7 +65,6 @@ function openBatch(row: ExamScannerKioskSessionBatchVO) {
     stage.gotoStage('scanning')
     return
   }
-  if (row.exceptionCount > 0) stage.gotoStage('review')
 }
 
 async function discardSessionBatch(row: ExamScannerKioskSessionBatchVO) {
