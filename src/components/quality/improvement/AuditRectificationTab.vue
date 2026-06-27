@@ -2,22 +2,26 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { QualityAuditEvidenceItem } from '@/apis/quality/audit-evidence'
 import type { AuditIssueVO } from '@/apis/quality/audit-issue'
+import { auditIssueApi } from '@/apis/quality/audit-issue'
 import type {
   AuditRectificationQueryRequest,
   AuditRectificationSaveRequest,
   AuditRectificationVO,
 } from '@/apis/quality/audit-rectification'
-import type { AuditRectificationStatus } from '@/apis/quality/types'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { QualitySelectorChangeValue, WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
-import { message } from 'ant-design-vue'
-import { reactive, ref } from 'vue'
-import { auditIssueApi } from '@/apis/quality/audit-issue'
 import { auditRectificationApi } from '@/apis/quality/audit-rectification'
+import type { AuditRectificationStatus } from '@/apis/quality/types'
 import {
   AUDIT_RECTIFICATION_STATUS_COLOR,
   AUDIT_RECTIFICATION_STATUS_LABEL,
 } from '@/apis/quality/types'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type {
+  QualitySelectorChangeValue,
+  WorkbenchSignalRefreshHandler,
+} from '@/composables/quality/improvement'
+import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
+import { message } from 'ant-design-vue'
+import { reactive, ref } from 'vue'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
 import {
   ArchiveSelector,
@@ -30,13 +34,13 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import {
-  refreshWorkbenchSignalsAfterMutation,
-  selectedId,
-} from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
-import { assertQualityScopeFresh, beginQualityScopeRequest, isQualityScopeStaleError } from '@/composables/useScopeRequestGuard'
+import {
+  assertQualityScopeFresh,
+  beginQualityScopeRequest,
+  isQualityScopeStaleError,
+} from '@/composables/useScopeRequestGuard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -218,7 +222,7 @@ function rectIssueCode(value: string | null | undefined): string {
   return issue?.issueCode?.trim() || '—'
 }
 
-function handleRectPageChange(page: { current: number, pageSize: number }) {
+function handleRectPageChange(page: { current: number; pageSize: number }) {
   rectQuery.pageNum = page.current
   rectQuery.pageSize = page.pageSize
   loadList()
@@ -274,11 +278,11 @@ async function submitRectEditor() {
     }
   }
   if (
-    !rectEditor.auditIssueId
-    || !rectEditor.rectificationCode.trim()
-    || !rectEditor.rectificationTitle.trim()
-    || !rectEditor.ownerUserId
-    || !rectEditor.dueDate
+    !rectEditor.auditIssueId ||
+    !rectEditor.rectificationCode.trim() ||
+    !rectEditor.rectificationTitle.trim() ||
+    !rectEditor.ownerUserId ||
+    !rectEditor.dueDate
   ) {
     message.error('请填写关联问题、编码、标题、责任人、截止日期')
     return
@@ -469,13 +473,11 @@ function createRectEvidenceReportChangeHandler(index: number) {
 }
 
 function handleRectEvidenceArchiveChange(index: number, value: QualitySelectorChangeValue) {
-  const id = Array.isArray(value) ? '' : selectedId(value)
-  rectEvidenceEditor.evidenceItems[index].archiveId = id
+  rectEvidenceEditor.evidenceItems[index].archiveId = Array.isArray(value) ? '' : selectedId(value)
 }
 
 function handleRectEvidenceReportChange(index: number, value: QualitySelectorChangeValue) {
-  const id = Array.isArray(value) ? '' : selectedId(value)
-  rectEvidenceEditor.evidenceItems[index].reportId = id
+  rectEvidenceEditor.evidenceItems[index].reportId = Array.isArray(value) ? '' : selectedId(value)
 }
 
 defineExpose({

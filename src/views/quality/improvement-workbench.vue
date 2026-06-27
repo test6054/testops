@@ -97,7 +97,6 @@ async function handleScopeChange(): Promise<void> {
     }
     if (!signalsApplied) {
       handleTabLoadError(toUserError(null, '工作台指标加载失败，请稍后重试'))
-      return
     }
   } catch (error) {
     if (serial !== scopeChangeSerial) {
