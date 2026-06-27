@@ -24,6 +24,7 @@
         v-else
         ref="galleryViewportRef"
         class="whole-paper-gallery"
+        :class="{ 'whole-paper-gallery--confidential': confidential }"
         @scroll="emit('scroll', $event)"
       >
         <div
@@ -49,6 +50,7 @@
             :src="imageUrls[item.page.pageId]"
             :preview="{}"
             class="whole-paper-gallery__image"
+            @contextmenu="onConfidentialContextMenu"
           >
             <template #previewMask>点击查看原始扫描页</template>
           </a-image>
@@ -96,7 +98,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 
 defineOptions({ name: 'WholePaperGallery' })
 
-defineProps<{
+const props = defineProps<{
   examId?: string
   taskId?: string
   pages: ScannedPageRef[]
@@ -115,7 +117,14 @@ defineProps<{
   readOnly: boolean
   qualityLabel: (status: QualityDecisionCode) => string
   qualityTone: (status: QualityDecisionCode) => BadgeTone
+  confidential?: boolean
 }>()
+
+function onConfidentialContextMenu(event: MouseEvent): void {
+  if (props.confidential) {
+    event.preventDefault()
+  }
+}
 
 const emit = defineEmits<{
   (e: 'reload'): void
@@ -161,6 +170,11 @@ watch(galleryViewportRef, (element) => {
 
   &__image {
     width: 100%;
+    user-select: none;
+  }
+
+  &--confidential &__image {
+    -webkit-user-drag: none;
   }
 
   &__image-placeholder {

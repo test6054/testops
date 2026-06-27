@@ -1,4 +1,5 @@
 import type { PluginOption } from 'vite'
+import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import VueDevTools from 'vite-plugin-vue-devtools'
@@ -12,6 +13,7 @@ export default async function createVitePlugins(viteEnv: Record<string, string>,
   const _ = viteEnv
   const vitePlugins: (PluginOption | PluginOption[])[] = [
     appInfo(),
+    tailwindcss(),
     vue(),
     vueJsx(),
   ]

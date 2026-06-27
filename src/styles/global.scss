@@ -20,3 +20,6 @@
 
 // 全局字体设置已移至主题样式文件，确保在 Ant Design Vue 主题 CSS 之后加载
 @use './global/inputs';
+
+// 打印：成绩单、质量报表、涉密页默认禁印影像
+@use './global/print';

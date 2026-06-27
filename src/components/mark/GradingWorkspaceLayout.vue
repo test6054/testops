@@ -2,28 +2,86 @@
 /**
  * 批阅沉浸式布局：左侧影像/材料区 + 右侧 sticky 给分面板 + 可选顶部队列与底部操作条。
  * 配合路由 meta.layoutWide 使用，对标行业「左卷右分」批阅工作台。
+ * 涉密场次：强制平铺水印 + 顶部 UiAlertStrip。
  */
+import { computed } from 'vue'
+import ConfidentialWatermarkLayer from '@/components/mark/ConfidentialWatermarkLayer.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import {
+  buildConfidentialWatermarkLines,
+  isExamConfidentialFlag,
+} from '@/composables/useConfidentialWatermark'
+
 defineOptions({ name: 'GradingWorkspaceLayout' })
+
+const props = withDefaults(defineProps<{
+  /** 涉密统考场次；为 true 时启用强制水印与警示条 */
+  confidential?: boolean
+  /** 水印中的考试标识，如「2024 期末（EXAM-001）」 */
+  examLabel?: string
+  /** 自定义水印行；缺省时按当前登录教师信息自动生成 */
+  watermarkLines?: string[]
+}>(), {
+  confidential: false,
+  examLabel: '',
+  watermarkLines: undefined,
+})
+
+const isConfidential = computed(() => isExamConfidentialFlag(props.confidential))
+
+const resolvedWatermarkLines = computed(() => {
+  if (!isConfidential.value) {
+    return []
+  }
+  if (props.watermarkLines?.length) {
+    return props.watermarkLines
+  }
+  return buildConfidentialWatermarkLines({ examLabel: props.examLabel })
+})
 </script>
 
 <template>
-  <div class="grading-workspace">
-    <div v-if="$slots.queue" class="grading-workspace__queue">
-      <slot name="queue" />
+  <div
+    class="grading-workspace"
+    :class="{ 'grading-workspace--confidential': isConfidential }"
+  >
+    <UiAlertStrip
+      v-if="isConfidential"
+      tone="error"
+      title="涉密资料，禁止传播"
+      description="涉密页面，请勿截屏外传"
+      :closable="false"
+      dense
+      class="grading-workspace__confidential-strip"
+    />
+
+    <div
+      class="grading-workspace__shielded"
+      :class="{ 'grading-workspace__shielded--active': isConfidential }"
+    >
+      <ConfidentialWatermarkLayer
+        v-if="isConfidential"
+        :lines="resolvedWatermarkLines"
+        density="dense"
+      />
+
+      <div v-if="$slots.queue" class="grading-workspace__queue">
+        <slot name="queue" />
+      </div>
+      <div class="grading-workspace__grid">
+        <section class="grading-workspace__main">
+          <slot name="main" />
+        </section>
+        <aside v-if="$slots.aside" class="grading-workspace__aside">
+          <div class="grading-workspace__aside-inner">
+            <slot name="aside" />
+          </div>
+        </aside>
+      </div>
+      <footer v-if="$slots.footer" class="grading-workspace__footer">
+        <slot name="footer" />
+      </footer>
     </div>
-    <div class="grading-workspace__grid">
-      <section class="grading-workspace__main">
-        <slot name="main" />
-      </section>
-      <aside v-if="$slots.aside" class="grading-workspace__aside">
-        <div class="grading-workspace__aside-inner">
-          <slot name="aside" />
-        </div>
-      </aside>
-    </div>
-    <footer v-if="$slots.footer" class="grading-workspace__footer">
-      <slot name="footer" />
-    </footer>
   </div>
 </template>
 
@@ -33,6 +91,22 @@ defineOptions({ name: 'GradingWorkspaceLayout' })
   flex-direction: column;
   gap: 16px;
   width: 100%;
+
+  &__confidential-strip {
+    flex-shrink: 0;
+  }
+
+  &__shielded {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
+
+  &__shielded--active {
+    isolation: isolate;
+  }
 
   &__queue {
     display: flex;

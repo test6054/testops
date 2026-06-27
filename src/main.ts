@@ -13,6 +13,8 @@ import router from './router'
 
 import 'ant-design-vue/dist/reset.css'
 
+import '@/styles/tailwind.css'
+
 // 关键 CSS 优先加载，提升 LCP 性能
 import '@/styles/index.scss'
 
