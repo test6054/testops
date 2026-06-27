@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
-import { computed, ref, watch } from 'vue'
 import type { ExamDetailVO } from '@/apis/mark/exam'
+import { computed, ref, watch } from 'vue'
 import { getExamDetail } from '@/apis/mark/exam'
 import { useUserStore } from '@/stores'
 

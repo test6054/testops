@@ -87,7 +87,7 @@ export default defineConfig(async ({ command, mode }): Promise<UserConfig> => {
         },
       },
     },
-    plugins: await createVitePlugins(env, command === 'build'),
+    plugins: await createVitePlugins(command === 'build'),
     build: {
       chunkSizeWarningLimit: 2000,
       outDir: 'dist',
