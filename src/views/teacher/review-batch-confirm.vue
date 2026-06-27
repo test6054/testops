@@ -105,6 +105,7 @@ import type {
   GradeSourceCode,
   ReviewTaskItemVO,
 } from '@/apis/mark/exam-review-task'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
@@ -113,6 +114,8 @@ import {
   batchConfirmQuestionGrades,
 } from '@/apis/mark/exam-grade'
 import {
+  GRADE_SOURCE_LABEL,
+  GRADE_SOURCE_TONE,
   listReviewTasks,
   validateReviewTaskItemContract,
 } from '@/apis/mark/exam-review-task'
@@ -131,20 +134,6 @@ import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherReviewBatchConfirm' })
-
-const GRADE_SOURCE_LABEL: Record<GradeSourceCode, string> = {
-  AUTO_OBJECTIVE: '客观自动',
-  AUTO_OBJECTIVE_AI: '客观 AI',
-  LOCAL_SUBJECTIVE_AI: '主观 AI',
-  TEACHER: '教师',
-}
-
-const GRADE_SOURCE_TONE: Record<GradeSourceCode, 'blue' | 'green' | 'orange' | 'red' | 'gray'> = {
-  AUTO_OBJECTIVE: 'green',
-  AUTO_OBJECTIVE_AI: 'blue',
-  LOCAL_SUBJECTIVE_AI: 'blue',
-  TEACHER: 'orange',
-}
 
 const router = useRouter()
 const { selectedExamId } = useMarkExamContext()
@@ -182,7 +171,7 @@ function gradeSourceLabel(source: GradeSourceCode): string {
   return strictEnumLabel(GRADE_SOURCE_LABEL, source, '批改来源')
 }
 
-function gradeSourceTone(source: GradeSourceCode): 'blue' | 'green' | 'orange' | 'red' | 'gray' {
+function gradeSourceTone(source: GradeSourceCode): BadgeTone {
   return GRADE_SOURCE_TONE[source]
 }
 

@@ -127,13 +127,13 @@ import type { UiBarChartItem, UiStatPanelItem, UiTrendPoint } from '@/components
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import {
   EXPERIENCE_CASE_STATUS_LABEL,
   listExperiences,
 } from '@/apis/mark/grading-experience'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import { evaluateExperienceEffectiveness, EXPERIENCE_RECOMMENDATION_LABEL, listExperienceEvals } from '@/apis/mark/school-quality'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamSelect from '@/components/mark/AnalysisExamSelect.vue'

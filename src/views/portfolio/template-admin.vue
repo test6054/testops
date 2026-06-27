@@ -918,7 +918,7 @@ onMounted(loadTree)
 }
 .filter-label {
   font-size: 14px;
-  color: var(--ant-color-text-secondary, #666);
+  color: var(--ant-color-text-secondary);
 }
 .audit-flow-row {
   display: flex;
@@ -942,7 +942,7 @@ onMounted(loadTree)
 .readonly-hint {
   margin: 0 0 12px;
   font-size: 14px;
-  color: var(--ant-color-text-secondary, #666);
+  color: var(--ant-color-text-secondary);
 }
 .change-log {
   margin-top: 16px;
@@ -954,12 +954,12 @@ onMounted(loadTree)
 }
 .change-log-item {
   padding: 12px 0;
-  border-bottom: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+  border-bottom: 1px solid var(--ant-color-border-secondary);
 }
 .change-log-meta {
   margin-bottom: 8px;
   font-size: 12px;
-  color: var(--ant-color-text-secondary, #666);
+  color: var(--ant-color-text-secondary);
 }
 .diff-row {
   display: flex;
@@ -971,11 +971,11 @@ onMounted(loadTree)
 .diff-label {
   min-width: 32px;
   font-size: 12px;
-  color: var(--ant-color-text-secondary, #666);
+  color: var(--ant-color-text-secondary);
 }
 .diff-error {
   margin: 0;
   font-size: 12px;
-  color: var(--ant-color-error, #ff4d4f);
+  color: var(--ant-color-error);
 }
 </style>

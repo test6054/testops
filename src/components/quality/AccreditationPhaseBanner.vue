@@ -85,12 +85,12 @@ const showBanner = computed(() => !!props.cockpit?.activeCycle || props.loading)
 .accreditation-phase-banner__label {
   font-size: var(--dp-font-size-sm, 13px);
   font-weight: var(--dp-font-weight-title, 600);
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .accreditation-phase-banner__cycle {
   font-size: var(--dp-font-size-sm, 13px);
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .accreditation-phase-banner__hint {

@@ -611,7 +611,7 @@ onMounted(async () => {
             <UiButton @click="loadPage">
               查询
             </UiButton>
-            <UiButton variant="primary" @click="openNewIndicator">
+            <UiButton variant="outline" @click="openNewIndicator">
               新建指标
             </UiButton>
           </div>
@@ -647,7 +647,7 @@ onMounted(async () => {
             <UiButton @click="loadTemplates">
               查询
             </UiButton>
-            <UiButton variant="primary" @click="openTemplateEdit()">
+            <UiButton variant="outline" @click="openTemplateEdit()">
               新建模板
             </UiButton>
           </div>
@@ -676,7 +676,7 @@ onMounted(async () => {
         </a-tab-pane>
         <a-tab-pane key="pack" tab="行业包">
           <div class="toolbar">
-            <UiButton variant="primary" @click="openPackEdit()">
+            <UiButton variant="outline" @click="openPackEdit()">
               新建行业包
             </UiButton>
           </div>
@@ -710,7 +710,7 @@ onMounted(async () => {
             <UiButton @click="downloadTemplate">
               下载模板
             </UiButton>
-            <UiButton variant="primary" @click="confirmExcelImport">
+            <UiButton variant="outline" @click="confirmExcelImport">
               确认导入
             </UiButton>
           </div>
@@ -891,7 +891,7 @@ onMounted(async () => {
 }
 .obs-meta {
   margin-left: 8px;
-  color: var(--ant-color-text-secondary, #666);
+  color: var(--ant-color-text-secondary);
   font-size: 12px;
 }
 .detail-link {
@@ -900,11 +900,11 @@ onMounted(async () => {
 .tree-foot {
   margin-top: 8px;
   font-size: 13px;
-  color: var(--ant-color-text-secondary, #666);
+  color: var(--ant-color-text-secondary);
 }
 .meta {
   font-size: 13px;
-  color: var(--ant-color-text-secondary, #666);
+  color: var(--ant-color-text-secondary);
 }
 .detail-tags {
   display: flex;

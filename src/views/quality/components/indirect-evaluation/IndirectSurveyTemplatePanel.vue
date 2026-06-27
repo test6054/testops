@@ -1173,12 +1173,12 @@ defineExpose({
   }
 
   &__count-strong {
-    color: var(--dp-success, #16a34a);
+    color: var(--ant-color-success);
     font-weight: 500;
   }
 
   &__count-muted {
-    color: var(--dp-text-muted, #94a3b8);
+    color: var(--dp-text-muted);
   }
 
   &__config-list {

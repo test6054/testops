@@ -637,14 +637,14 @@ onActivated(() => {
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface-elevated);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
   }
 
   &__panel {
-    background: var(--dp-surface, #fff);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
     padding: 16px;
 
@@ -666,7 +666,7 @@ onActivated(() => {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__panel-meta {
@@ -691,7 +691,7 @@ onActivated(() => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__number-full {

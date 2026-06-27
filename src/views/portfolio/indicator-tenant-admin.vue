@@ -452,6 +452,6 @@ onMounted(loadConfig)
 .meta {
   margin-bottom: 12px;
   font-size: 13px;
-  color: var(--ant-color-text-secondary, #666);
+  color: var(--ant-color-text-secondary);
 }
 </style>

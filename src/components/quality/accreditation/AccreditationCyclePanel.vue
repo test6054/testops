@@ -691,8 +691,8 @@ defineExpose({ openCreate, loadCycles })
   justify-content: space-between;
   gap: 12px;
   padding: 12px 16px;
-  background: var(--dp-surface, #fff);
-  border: 1px solid var(--dp-border, #e5e7eb);
+  background: var(--dp-surface);
+  border: 1px solid var(--dp-border);
   border-radius: 4px;
 }
 .readiness-panel {

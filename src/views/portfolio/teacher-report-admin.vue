@@ -163,7 +163,7 @@ onMounted(loadTeachers)
 .hint {
   margin: 12px 0 0;
   font-size: 13px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 .report-meta {
   display: flex;
@@ -179,7 +179,7 @@ onMounted(loadTeachers)
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
-  background: var(--ant-color-fill-quaternary, #f5f5f5);
+  background: var(--ant-color-fill-quaternary);
   border-radius: 4px;
   font-size: 13px;
   line-height: 1.6;

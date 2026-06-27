@@ -120,6 +120,6 @@ onMounted(loadRule)
 .hint {
   margin: 0 0 12px;
   font-size: 13px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 </style>

@@ -5,6 +5,7 @@ import type { AuditIssueStatus } from './types'
  * 后端路径：/api/quality/audit-evaluation/issues
  * 设计文档 §7.10：问题从 OPEN -> IN_RECTIFICATION -> RECTIFIED -> VERIFIED -> CLOSED。
  */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
@@ -19,6 +20,34 @@ export type AuditIssueSource
 
 /** 审核评估问题严重度 - 对应后端 AuditIssueSeverityEnum */
 export type AuditIssueSeverity = 'MINOR' | 'MAJOR' | 'CRITICAL'
+
+/** 审核问题来源文案 */
+export const AUDIT_ISSUE_SOURCE_LABEL: Record<AuditIssueSource, string> = {
+  SELF_AUDIT: '自评自查',
+  EXPERT_AUDIT: '专家审核',
+  ACCREDITATION_AUDIT: '认证审核',
+  EXTERNAL_INSPECTION: '外部检查',
+}
+
+/** 审核问题严重度文案 */
+export const AUDIT_ISSUE_SEVERITY_LABEL: Record<AuditIssueSeverity, string> = {
+  MINOR: '轻微',
+  MAJOR: '严重',
+  CRITICAL: '重大',
+}
+
+/** 审核问题严重度徽标色调 */
+export const AUDIT_ISSUE_SEVERITY_TONE: Record<AuditIssueSeverity, BadgeTone> = {
+  MINOR: 'gray',
+  MAJOR: 'orange',
+  CRITICAL: 'red',
+}
+
+export const AUDIT_ISSUE_SOURCE_OPTIONS = (Object.keys(AUDIT_ISSUE_SOURCE_LABEL) as AuditIssueSource[])
+  .map(value => ({ value, label: AUDIT_ISSUE_SOURCE_LABEL[value] }))
+
+export const AUDIT_ISSUE_SEVERITY_OPTIONS = (Object.keys(AUDIT_ISSUE_SEVERITY_LABEL) as AuditIssueSeverity[])
+  .map(value => ({ value, label: AUDIT_ISSUE_SEVERITY_LABEL[value] }))
 
 export interface AuditIssueVO {
   id: string

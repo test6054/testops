@@ -40,6 +40,7 @@ import {
   EXTERNAL_SOURCE_TYPE_LABEL,
   EXTERNAL_SOURCE_TYPE_OPTIONS,
 } from '@/apis/quality/types'
+import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import {
   AchievementResultSelector,
   AssessmentItemSelector,
@@ -58,16 +59,15 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
-import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePolling } from '@/composables/usePolling'
+import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import { promptModal } from './_helpers'
 
 interface SourceFieldScopeEditorRow {
   key: string
@@ -907,7 +907,7 @@ async function submitTask() {
 }
 
 async function cancelTask(record: ExternalPullTaskVO) {
-  const reason = await promptModal({
+  const reason = await promptInputAsync({
     title: `取消拔取任务 ${record.taskCode}`,
     placeholder: '请填写取消原因',
     required: true,
@@ -945,7 +945,7 @@ async function confirmResult(result: ExternalPullResultVO) {
 }
 
 async function rejectResult(result: ExternalPullResultVO) {
-  const reason = await promptModal({
+  const reason = await promptInputAsync({
     title: '驳回当前拔取结果批次',
     placeholder: '请填写驳回原因',
     required: true,
@@ -989,7 +989,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <StageWorkbenchShell>
+  <QualityIngestPageShell>
     <SignalBand :metrics="signals" compact class="external-pull__signals" />
 
     <TaskResultPanel
@@ -1716,7 +1716,7 @@ onMounted(async () => {
         </a-timeline>
       </template>
     </UiDrawer>
-  </StageWorkbenchShell>
+  </QualityIngestPageShell>
 </template>
 
 <style scoped lang="scss">
@@ -1724,8 +1724,8 @@ onMounted(async () => {
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface-elevated);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
   }
 
@@ -1734,8 +1734,8 @@ onMounted(async () => {
   }
 
   &__panel {
-    background: var(--dp-surface, #fff);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 16px;
@@ -1754,11 +1754,11 @@ onMounted(async () => {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__panel-meta {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     font-size: 12px;
   }
 
@@ -1776,10 +1776,10 @@ onMounted(async () => {
   }
 
   &__entry-card {
-    border: 1px solid var(--dp-border, #e2e8f0);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
     padding: 12px;
-    background: var(--dp-surface-subtle, #f8fafc);
+    background: var(--dp-surface-subtle);
 
     &--compact {
       padding: 10px 12px;
@@ -1797,7 +1797,7 @@ onMounted(async () => {
   &__entry-title {
     font-size: 13px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__inline-action {
@@ -1812,11 +1812,11 @@ onMounted(async () => {
     margin: 16px 0 8px;
     font-size: 14px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__error-text {
-    color: var(--ant-color-error, #dc2626);
+    color: var(--ant-color-error);
   }
 
   &__detail-block,
@@ -1831,33 +1831,33 @@ onMounted(async () => {
     flex-direction: column;
     gap: 4px;
     padding: 8px 10px;
-    background: var(--dp-surface-subtle, #f8fafc);
+    background: var(--dp-surface-subtle);
     border-radius: 6px;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
     line-height: 1.6;
     word-break: break-word;
   }
 
   &__audit-event {
     margin: 0 0 4px;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__audit-line {
     margin: 0 0 2px;
     font-size: 13px;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 
   &__audit-detail {
     margin: 4px 0;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
     font-size: 13px;
   }
 
   &__sub-text {
     margin: 4px 0 0;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     font-size: 12px;
   }
 }

@@ -312,7 +312,7 @@ onMounted(async () => {
 .input {
   width: 96px;
   padding: 6px 8px;
-  border: 1px solid var(--ant-color-border, #d9d9d9);
+  border: 1px solid var(--ant-color-border);
   border-radius: 4px;
 }
 .input--wide {
@@ -321,7 +321,7 @@ onMounted(async () => {
 }
 .stats {
   font-size: 13px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 .completion-grid {
   display: flex;
@@ -330,6 +330,6 @@ onMounted(async () => {
   font-size: 14px;
 }
 :deep(.development-plan-admin__row-active) {
-  background: var(--ant-color-primary-bg, #e6f4ff);
+  background: var(--ant-color-primary-bg);
 }
 </style>

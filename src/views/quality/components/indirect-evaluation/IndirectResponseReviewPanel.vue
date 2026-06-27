@@ -623,7 +623,7 @@ defineExpose({
   &__sub-desc {
     margin-left: 4px;
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__answer-group {

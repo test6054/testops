@@ -39,11 +39,11 @@ function close() {
 
 <style scoped>
 .struct {
-  margin-top: 12px;
-  padding: 12px;
-  background: #fafafa;
-  border-radius: 4px;
-  font-size: 12px;
+  margin-top: var(--dp-space-3);
+  padding: var(--dp-space-3);
+  background: var(--dp-surface-subtle);
+  border-radius: var(--dp-radius-xs);
+  font-size: var(--dp-font-size-xs);
   overflow: auto;
 }
 </style>

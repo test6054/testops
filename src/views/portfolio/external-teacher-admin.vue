@@ -320,7 +320,7 @@ onMounted(async () => {
           >
             <UiButton>选择 Excel</UiButton>
           </a-upload>
-          <UiButton variant="primary" style="margin-top: 8px" @click="confirmImport">
+          <UiButton style="margin-top: 8px" @click="confirmImport">
             确认导入
           </UiButton>
         </UiCard>
@@ -337,7 +337,7 @@ onMounted(async () => {
             <UiButton @click="loadPage">
               刷新
             </UiButton>
-            <UiButton variant="primary" @click="exportRoster">
+            <UiButton variant="outline" @click="exportRoster">
               导出台账
             </UiButton>
           </div>
@@ -468,7 +468,7 @@ onMounted(async () => {
   margin-top: 12px;
   padding: 8px;
   font-size: 12px;
-  background: var(--ant-color-fill-quaternary, #f5f5f5);
+  background: var(--ant-color-fill-quaternary);
   border-radius: 4px;
   white-space: pre-wrap;
   word-break: break-all;

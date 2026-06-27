@@ -37,13 +37,13 @@ import {
   selectedId,
 } from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { assertQualityScopeFresh, beginQualityScopeRequest, isQualityScopeStaleError } from '@/composables/useScopeRequestGuard'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
-import { promptModal } from '@/views/quality/_helpers'
 
 defineOptions({ name: 'ImprovementTaskTab' })
 
@@ -369,7 +369,7 @@ function canEditImprovementTask(status: ImprovementTaskStatus): boolean {
 
 async function handleImprovementTransit(record: ImprovementTaskVO, to: ImprovementTaskStatus): Promise<void> {
   if (record.status === 'SUBMITTED' && (to === 'CLOSED' || to === 'RETURNED')) {
-    const reviewRemark = await promptModal({
+    const reviewRemark = await promptInputAsync({
       title: to === 'CLOSED' ? '复评通过并闭环' : '复评退回任务',
       placeholder: to === 'RETURNED' ? '退回原因（必填）' : '复评意见（可选）',
       required: to === 'RETURNED',
@@ -387,7 +387,7 @@ async function handleImprovementTransit(record: ImprovementTaskVO, to: Improveme
     await loadList({ refreshSignals: true })
     return
   }
-  const remark = await promptModal({
+  const remark = await promptInputAsync({
     title: `${improvementStatusLabel(record.status)} → ${improvementStatusLabel(to)}`,
     placeholder: to === 'SUBMITTED' ? '整改进度说明（提交时必填）' : '进度备注（可选）',
     required: false,
@@ -396,7 +396,7 @@ async function handleImprovementTransit(record: ImprovementTaskVO, to: Improveme
   if (remark === null) return
   let rectificationEvidenceItems: string[] | undefined
   if (to === 'SUBMITTED') {
-    const evidenceText = await promptModal({
+    const evidenceText = await promptInputAsync({
       title: '填写整改证据说明',
       placeholder: '每行填写一条证据，例如：已上传课程考核分析表',
       required: true,
@@ -758,7 +758,7 @@ defineExpose({
   &__evidence-list {
     margin: 0;
     padding-left: 18px;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 
   &__evidence-item {

@@ -817,7 +817,7 @@ async function loadCockpitPhase() {
   &__todo-label {
     flex: 1;
     min-width: 200px;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
     font-size: 14px;
   }
 
@@ -841,19 +841,19 @@ async function loadCockpitPhase() {
   }
 
   &__value--ok {
-    color: var(--ant-color-success, #16a34a);
+    color: var(--ant-color-success);
   }
 
   &__value--bad {
-    color: var(--ant-color-error, #dc2626);
+    color: var(--ant-color-error);
   }
 
   &__value--error {
-    color: var(--ant-color-error, #dc2626);
+    color: var(--ant-color-error);
   }
 
   &__threshold {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     margin-left: 4px;
   }
 }

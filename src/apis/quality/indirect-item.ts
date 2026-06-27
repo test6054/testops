@@ -4,12 +4,10 @@
  * 后端路径：/api/quality/indirect-items
  */
 import type { AchievementTargetType } from './types'
-import type { SurveyChoiceOptionVO, SurveyScaleLabelVO } from '@/apis/public-survey'
+import type { PublicSurveyItemType, SurveyChoiceOptionVO, SurveyScaleLabelVO } from '@/apis/public-survey'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/indirect-items'
-
-export type IndirectEvaluationItemType = 'SCALE' | 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'OPEN_TEXT'
 
 export interface IndirectEvaluationItemVO {
   id: string
@@ -21,7 +19,7 @@ export interface IndirectEvaluationItemVO {
   scaleRuleId?: string
   weight?: number
   sortOrder?: number
-  itemType: IndirectEvaluationItemType
+  itemType: PublicSurveyItemType
   scaleMin?: number
   scaleMax?: number
   scaleLabels?: SurveyScaleLabelVO[]
@@ -41,7 +39,7 @@ export interface IndirectEvaluationItemSaveRequest {
   scaleRuleId?: string
   weight?: number
   sortOrder?: number
-  itemType: IndirectEvaluationItemType
+  itemType: PublicSurveyItemType
   scaleMin?: number
   scaleMax?: number
   scaleLabels?: SurveyScaleLabelVO[]

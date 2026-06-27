@@ -2226,7 +2226,7 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
 .qcm {
   &__context-label {
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__empty {
@@ -2236,8 +2236,8 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
   &__signals {
     margin-bottom: 12px;
     padding: 14px 18px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface-elevated);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
   }
 
@@ -2264,22 +2264,22 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
 
   &__hint {
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__card {
-    background: var(--dp-surface, #fff);
+    background: var(--dp-surface);
     border-radius: 8px;
   }
 
   &__muted {
-    color: var(--dp-text-muted, #94a3b8);
+    color: var(--dp-text-muted);
   }
 
   &__file-name {
     margin-top: 8px;
     font-size: 12px;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 }
 

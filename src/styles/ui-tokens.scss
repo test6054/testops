@@ -130,6 +130,8 @@
   --dp-bg-muted: var(--ant-color-bg-layout);
   --dp-surface: var(--ant-color-bg-container);
   --dp-surface-subtle: var(--ant-color-fill-quaternary);
+  /* 与 _card.scss / 质量工作台区块对齐的别名 */
+  --dp-surface-elevated: var(--dp-surface-subtle);
   --dp-bg-control: #f3f4f6;
   --dp-bg-control-disabled: #eef2f7;
   --dp-border: #e5e7eb;

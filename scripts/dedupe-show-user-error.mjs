@@ -9,9 +9,13 @@ function walk(dir, acc = []) {
   for (const name of fs.readdirSync(dir)) {
     const p = path.join(dir, name)
     if (fs.statSync(p).isDirectory()) {
-      if (name === 'node_modules') continue
+      if (name === 'node_modules')
+        continue
       walk(p, acc)
-    } else if (/\.(vue|ts)$/.test(name)) acc.push(p)
+    }
+    else if (/\.(vue|ts)$/.test(name)) {
+      acc.push(p)
+    }
   }
   return acc
 }
@@ -26,7 +30,7 @@ for (const file of walk(root)) {
   if (next !== orig) {
     fs.writeFileSync(file, next)
     n++
-    console.log(path.relative(root, file))
+    console.warn(path.relative(root, file))
   }
 }
-console.log(`Deduped showUserError in ${n} files`)
+console.warn(`Deduped showUserError in ${n} files`)

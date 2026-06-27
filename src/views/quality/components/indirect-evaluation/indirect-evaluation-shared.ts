@@ -1,7 +1,6 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { SurveyIdentityFieldVO } from '@/apis/public-survey'
+import type { PublicSurveyItemType, SurveyIdentityFieldVO } from '@/apis/public-survey'
 import type { IndirectEvaluationFormVO } from '@/apis/quality/indirect-form'
-import type { IndirectEvaluationItemType } from '@/apis/quality/indirect-item'
 import type {
   AchievementTargetType,
   IndirectFormAccessMode,
@@ -200,7 +199,7 @@ export const respondentTypeOptions: { value: RespondentType, label: string }[] =
   },
 ]
 
-export const itemTypeOptions: { value: IndirectEvaluationItemType, label: string }[] = [
+export const itemTypeOptions: { value: PublicSurveyItemType, label: string }[] = [
   { value: 'SCALE', label: '量表题' },
   { value: 'SINGLE_CHOICE', label: '单选题' },
   { value: 'MULTI_CHOICE', label: '多选题' },

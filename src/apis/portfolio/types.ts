@@ -10,10 +10,6 @@ import type { AiTaskStatus } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { QueryDto } from '@/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
-import {
-  AI_TASK_STATUS_COLOR,
-  AI_TASK_STATUS_LABEL,
-} from '@/apis/quality/types'
 
 /** 扩展组织类型 - PortfolioOrgUnitTypeEnum */
 export type PortfolioOrgUnitType
@@ -563,28 +559,21 @@ export const PORTFOLIO_REPORT_SCENE_OPTIONS = (Object.keys(PORTFOLIO_REPORT_SCEN
 export interface PortfolioAiJobSubmitVO {
   taskId: string
   portfolioAiJobId?: string
-  status: PortfolioAiTaskStatus
+  status: AiTaskStatus
 }
-
-/** 档案袋 AI 任务状态 - 对齐 AiTaskStatusEnum，复用 quality 域 label/tone */
-export type PortfolioAiTaskStatus = AiTaskStatus
-
-export const PORTFOLIO_AI_TASK_STATUS_LABEL: Record<PortfolioAiTaskStatus, string> = AI_TASK_STATUS_LABEL
-
-export const PORTFOLIO_AI_TASK_STATUS_TONE: Record<PortfolioAiTaskStatus, BadgeTone> = AI_TASK_STATUS_COLOR
 
 /** 档案袋材料 AI 任务列表项 - 对齐后端 AiTaskVO 在 portfolio 页使用的字段 */
 export interface PortfolioAiJobTaskVO {
   id: string
   taskType: PortfolioAiTaskType
-  status: PortfolioAiTaskStatus
+  status: AiTaskStatus
   createTime?: string
 }
 
 export interface PortfolioAiJobPageRequest extends QueryDto {
   teacherId?: string
   taskType?: PortfolioAiTaskType
-  status?: PortfolioAiTaskStatus
+  status?: AiTaskStatus
   /** 仅候选确认链（OCR / 文档抽取） */
   candidateExtractOnly?: boolean
 }
@@ -706,7 +695,7 @@ export interface PortfolioAiAnalysisSummaryVO {
   reportScene?: string
   reportPeriodLabel?: string
   reviewStatus?: string
-  taskStatus?: PortfolioAiTaskStatus
+  taskStatus?: AiTaskStatus
   taskFailurePhase?: string
   taskFailureReason?: string
   modelName?: string

@@ -2,8 +2,8 @@ import type { Ref } from 'vue'
 import type { Options } from '@/hooks'
 import type { PageResult, QueryDto } from '@/types'
 import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
 import { computed, ref } from 'vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useBreakpoint, usePagination } from '@/hooks'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -140,19 +140,11 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
     if (!flag) {
       return onDelete()
     }
-    return new Promise((resolve) => {
-      Modal.confirm({
-        title: options?.title || '提示',
-        content: options?.content || '是否确定删除该条数据？',
-        maskClosable: false,
-        onOk: async () => {
-          const result = await onDelete()
-          resolve(result)
-        },
-        onCancel: () => {
-          resolve(false)
-        },
-      })
+    return confirmAsync({
+      title: options?.title || '提示',
+      content: options?.content || '是否确定删除该条数据？',
+      type: 'warning',
+      onOk: onDelete,
     })
   }
 

@@ -59,7 +59,7 @@ const results = []
 function record(id, status, detail) {
   results.push({ id, status, detail })
   const icon = status === 'PASS' ? '✓' : status === 'FAIL' ? '✗' : '○'
-  console.log(`${icon} [${status}] ${id}: ${detail}`)
+  console.warn(`${icon} [${status}] ${id}: ${detail}`)
 }
 
 async function login(page) {
@@ -110,7 +110,7 @@ async function getSidebarLabels(page) {
   const items = page.locator('.exam-sub-sidebar-nav .ant-menu-item')
   const texts = []
   for (const el of await items.all()) {
-    const t = (await el.innerText()).trim()
+    const t = (await el.textContent()).trim()
     if (t) texts.push(t)
   }
   return texts
@@ -118,7 +118,7 @@ async function getSidebarLabels(page) {
 
 async function getActiveJourneyTitle(page) {
   const active = page.locator('.ui-arrow-timeline__stage--active .ui-arrow-timeline__title')
-  if (await active.count()) return (await active.first().innerText()).trim()
+  if (await active.count()) return (await active.first().textContent()).trim()
   return ''
 }
 
@@ -126,7 +126,7 @@ async function waitWorkspaceReady(page) {
   await page.waitForTimeout(800)
   const err = page.locator('.exam-detail-layout__journey-error')
   if (await err.count()) {
-    const txt = await err.innerText()
+    const txt = await err.textContent()
     throw new Error(`阶段快照加载失败: ${txt}`)
   }
 }
@@ -254,7 +254,7 @@ async function checkExamSwitch(page, examId) {
   }
   await select.click()
   const second = page.locator('.ant-select-item-option').nth(1)
-  const secondText = await second.innerText()
+  const secondText = await second.textContent()
   await second.click()
   await page.waitForTimeout(1500)
   const url = page.url()
@@ -309,11 +309,11 @@ async function main() {
   const pass = results.filter((r) => r.status === 'PASS').length
   const fail = results.filter((r) => r.status === 'FAIL').length
   const skip = results.filter((r) => r.status === 'SKIP').length
-  console.log('\n========== 验收汇总 ==========')
-  console.log(`PASS: ${pass}  FAIL: ${fail}  SKIP: ${skip}  TOTAL: ${results.length}`)
+  console.warn('\n========== 验收汇总 ==========')
+  console.warn(`PASS: ${pass}  FAIL: ${fail}  SKIP: ${skip}  TOTAL: ${results.length}`)
   if (fail > 0) {
-    console.log('\n失败项:')
-    results.filter((r) => r.status === 'FAIL').forEach((r) => console.log(`  - ${r.id}: ${r.detail}`))
+    console.warn('\n失败项:')
+    results.filter((r) => r.status === 'FAIL').forEach((r) => console.warn(`  - ${r.id}: ${r.detail}`))
     process.exit(1)
   }
 }

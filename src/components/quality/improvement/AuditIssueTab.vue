@@ -14,7 +14,13 @@ import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improv
 import type {QualityScopeRequestToken} from '@/composables/useScopeRequestGuard';
 import { message } from 'ant-design-vue'
 import { reactive, ref } from 'vue'
-import { auditIssueApi } from '@/apis/quality/audit-issue'
+import { AUDIT_ISSUE_SEVERITY_LABEL,
+  AUDIT_ISSUE_SEVERITY_OPTIONS,
+  AUDIT_ISSUE_SEVERITY_TONE,
+  AUDIT_ISSUE_SOURCE_LABEL,
+  AUDIT_ISSUE_SOURCE_OPTIONS,
+  auditIssueApi,
+} from '@/apis/quality/audit-issue'
 import { auditRectificationApi } from '@/apis/quality/audit-rectification'
 import {
   AUDIT_ISSUE_STATUS_COLOR,
@@ -65,33 +71,6 @@ const issueColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 260, fixed: 'right' },
 ]
 
-const issueSourceOptions = [
-  { value: 'SELF_AUDIT', label: '自评自查' },
-  { value: 'EXPERT_AUDIT', label: '专家审核' },
-  { value: 'ACCREDITATION_AUDIT', label: '认证审核' },
-  { value: 'EXTERNAL_INSPECTION', label: '外部检查' },
-]
-const issueSourceLabelMap: Record<AuditIssueSource, string> = {
-  SELF_AUDIT: '自评自查',
-  EXPERT_AUDIT: '专家审核',
-  ACCREDITATION_AUDIT: '认证审核',
-  EXTERNAL_INSPECTION: '外部检查',
-}
-const severityOptions = [
-  { value: 'MINOR', label: '轻微' },
-  { value: 'MAJOR', label: '严重' },
-  { value: 'CRITICAL', label: '重大' },
-]
-const severityLabelMap: Record<AuditIssueSeverity, string> = {
-  MINOR: '轻微',
-  MAJOR: '严重',
-  CRITICAL: '重大',
-}
-const severityColorMap: Record<AuditIssueSeverity, BadgeTone> = {
-  MINOR: 'gray',
-  MAJOR: 'orange',
-  CRITICAL: 'red',
-}
 const issueStatusOptions: AuditIssueStatus[] = [
   'OPEN',
   'IN_RECTIFICATION',
@@ -109,15 +88,15 @@ function issueStatusColor(value: AuditIssueStatus): BadgeTone {
 }
 
 function issueSourceLabel(value: AuditIssueSource): string {
-  return strictEnumLabel(issueSourceLabelMap, value, '审核问题来源')
+  return strictEnumLabel(AUDIT_ISSUE_SOURCE_LABEL, value, '审核问题来源')
 }
 
 function severityLabel(value: AuditIssueSeverity): string {
-  return strictEnumLabel(severityLabelMap, value, '审核问题严重度')
+  return strictEnumLabel(AUDIT_ISSUE_SEVERITY_LABEL, value, '审核问题严重度')
 }
 
 function severityColor(value: AuditIssueSeverity): BadgeTone {
-  return strictEnumTone(severityColorMap, value, '审核问题严重度')
+  return strictEnumTone(AUDIT_ISSUE_SEVERITY_TONE, value, '审核问题严重度')
 }
 
 const issueList = ref<AuditIssueVO[]>([])
@@ -152,7 +131,7 @@ const issueFilterFields: FilterField[] = [
     placeholder: '严重度',
     allowClear: true,
     width: 120,
-    options: severityOptions,
+    options: AUDIT_ISSUE_SEVERITY_OPTIONS,
   },
   {
     key: 'status',
@@ -578,12 +557,12 @@ defineExpose({
         </a-col>
         <a-col :span="6">
           <a-form-item label="问题来源" required>
-            <a-select v-model:value="issueEditor.issueSource" :options="issueSourceOptions" />
+            <a-select v-model:value="issueEditor.issueSource" :options="AUDIT_ISSUE_SOURCE_OPTIONS" />
           </a-form-item>
         </a-col>
         <a-col :span="6">
           <a-form-item label="严重程度" required>
-            <a-select v-model:value="issueEditor.severity" :options="severityOptions" />
+            <a-select v-model:value="issueEditor.severity" :options="AUDIT_ISSUE_SEVERITY_OPTIONS" />
           </a-form-item>
         </a-col>
         <a-col :span="6">
@@ -689,7 +668,7 @@ defineExpose({
   &__sub-desc {
     margin-top: 4px;
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 }
 </style>

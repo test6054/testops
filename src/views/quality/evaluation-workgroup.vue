@@ -653,14 +653,14 @@ onActivated(() => {
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface-elevated);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
   }
 
   &__panel {
-    background: var(--dp-surface, #fff);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
     padding: 16px;
   }
@@ -678,7 +678,7 @@ onActivated(() => {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__panel-actions {
@@ -697,9 +697,9 @@ onActivated(() => {
     flex-direction: column;
     gap: 12px;
     padding: 12px;
-    border: 1px solid var(--dp-border, #e2e8f0);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
-    background: var(--dp-surface-elevated, #f8fafc);
+    background: var(--dp-surface-elevated);
   }
 
   &__member-editor-header {
@@ -713,14 +713,14 @@ onActivated(() => {
   &__member-editor-tip {
     margin: 0;
     font-size: 13px;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 
   &__member-row {
     padding: 12px;
-    border: 1px solid var(--dp-border, #e2e8f0);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
-    background: var(--dp-surface, #ffffff);
+    background: var(--dp-surface);
   }
 
   &__member-row-action {

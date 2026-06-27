@@ -1086,8 +1086,8 @@ onBeforeUnmount(() => {
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface-elevated);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
   }
 
@@ -1096,8 +1096,8 @@ onBeforeUnmount(() => {
   }
 
   &__panel {
-    background: var(--dp-surface, #fff);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
     padding: 16px;
   }
@@ -1115,7 +1115,7 @@ onBeforeUnmount(() => {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__panel-actions {
@@ -1141,11 +1141,11 @@ onBeforeUnmount(() => {
     margin: 16px 0 8px;
     font-size: 14px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__export-error {
-    color: var(--ant-color-error, #dc2626);
+    color: var(--ant-color-error);
   }
 
   &__body-preview {
@@ -1155,8 +1155,8 @@ onBeforeUnmount(() => {
     word-break: break-word;
     font-size: 13px;
     line-height: 1.7;
-    background: var(--dp-gray-50, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-gray-50);
+    border: 1px solid var(--dp-border);
     border-radius: 6px;
     max-height: 520px;
     overflow: auto;
@@ -1166,7 +1166,7 @@ onBeforeUnmount(() => {
     margin: 0;
     white-space: pre-wrap;
     word-break: break-word;
-    color: var(--ant-color-error, #dc2626);
+    color: var(--ant-color-error);
   }
 
   &__body-editor {

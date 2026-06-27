@@ -435,7 +435,7 @@ watch(selectedExamId, (next) => {
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
+    background: var(--dp-surface-elevated);
     border: 1px solid var(--dp-border, #e2e8f0);
     border-radius: 8px;
   }

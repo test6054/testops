@@ -176,11 +176,20 @@ export interface ReviewTaskDetailVO {
   evaluationCriteria?: string
 }
 
-const GRADE_SOURCE_LABEL: Record<GradeSourceCode, string> = {
-  AUTO_OBJECTIVE: '客观自动',
-  AUTO_OBJECTIVE_AI: '客观 AI',
-  LOCAL_SUBJECTIVE_AI: '主观 AI',
-  TEACHER: '教师',
+/** 批改来源中文标签 - 与后端 GradeSource.message 完全一致 */
+export const GRADE_SOURCE_LABEL: Record<GradeSourceCode, string> = {
+  AUTO_OBJECTIVE: '客观题自动判分',
+  AUTO_OBJECTIVE_AI: '客观题AI批改',
+  LOCAL_SUBJECTIVE_AI: '本地主观题AI批改',
+  TEACHER: '教师人工批改',
+}
+
+/** 批改来源徽标色调 */
+export const GRADE_SOURCE_TONE: Record<GradeSourceCode, BadgeTone> = {
+  AUTO_OBJECTIVE: 'green',
+  AUTO_OBJECTIVE_AI: 'blue',
+  LOCAL_SUBJECTIVE_AI: 'blue',
+  TEACHER: 'orange',
 }
 
 /** 复核任务列表项契约校验，供 store 与列表页在消费前显式失败。 */

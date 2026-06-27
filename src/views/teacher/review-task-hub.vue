@@ -118,6 +118,8 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
+  GRADE_SOURCE_LABEL,
+  GRADE_SOURCE_TONE,
   listReviewTasks,
   REVIEW_TASK_STATUS_LABEL,
   REVIEW_TASK_STATUS_TONE,
@@ -139,20 +141,6 @@ import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewTaskHub' })
-
-const GRADE_SOURCE_LABEL: Record<GradeSourceCode, string> = {
-  AUTO_OBJECTIVE: '客观自动',
-  AUTO_OBJECTIVE_AI: '客观 AI',
-  LOCAL_SUBJECTIVE_AI: '主观 AI',
-  TEACHER: '教师',
-}
-
-const GRADE_SOURCE_TONE: Record<GradeSourceCode, BadgeTone> = {
-  AUTO_OBJECTIVE: 'green',
-  AUTO_OBJECTIVE_AI: 'blue',
-  LOCAL_SUBJECTIVE_AI: 'blue',
-  TEACHER: 'orange',
-}
 
 const router = useRouter()
 const { examId } = useWorkspaceExamId()

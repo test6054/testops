@@ -43,6 +43,7 @@ import {
   PROCESS_NODE_TYPE_OPTIONS,
 } from '@/apis/quality/types'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
+import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   AssessmentItemSelector,
@@ -59,7 +60,6 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
-import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
@@ -641,7 +641,7 @@ function handleCourseChange(courseId: string | null) {
 </script>
 
 <template>
-  <StageWorkbenchShell>
+  <QualityIngestPageShell>
     <template #context>
       <QualityPageContextBar>
         <template #status>
@@ -1081,27 +1081,27 @@ function handleCourseChange(courseId: string | null) {
         </template>
       </UiDataTable>
     </a-modal>
-  </StageWorkbenchShell>
+  </QualityIngestPageShell>
 </template>
 
 <style scoped lang="scss">
 .pe {
   &__filter-label {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     font-size: 13px;
   }
 
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface-elevated);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
   }
 
   &__panel {
-    background: var(--dp-surface, #fff);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
     padding: 16px;
   }
@@ -1119,7 +1119,7 @@ function handleCourseChange(courseId: string | null) {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__panel-actions {
@@ -1140,7 +1140,7 @@ function handleCourseChange(courseId: string | null) {
   &__sub-desc {
     margin-top: 4px;
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__modal-toolbar {
@@ -1150,7 +1150,7 @@ function handleCourseChange(courseId: string | null) {
   &__file-name {
     margin-top: 8px;
     font-size: 12px;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 }
 

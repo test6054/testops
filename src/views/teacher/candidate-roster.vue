@@ -318,7 +318,6 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import * as XLSX from 'xlsx'
 import {
@@ -347,6 +346,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiConfirmPopover from '@/components/ui-guide/ui/UiConfirmPopover.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { ErrorType, handleError, showUserError } from '@/utils/error-handler'
@@ -982,23 +982,24 @@ async function fetchAllRosterCandidates(): Promise<ExamCandidateRosterRequest[]>
   return roster
 }
 
-function confirmSaveFullScope(): void {
+async function confirmSaveFullScope(): Promise<void> {
   if (!selectedExamId.value || !classIds.value.length) {
     message.warning('请先选择班级范围')
     return
   }
-  Modal.confirm({
+  const confirmed = await confirmAsync({
     title: '全量保存考生名册？',
     content: '将当前班级范围与全部考生一次性写入后端，覆盖增量编辑结果。扫描已开始后可能失败。',
+    type: 'warning',
     okText: '全量保存',
     cancelText: '取消',
-    async onOk() {
+    onOk: async () => {
       fullScopeSaving.value = true
       try {
         const candidates = await fetchAllRosterCandidates()
         if (!candidates.length) {
           message.error('名册为空，无法全量保存')
-          return
+          return false
         }
         await saveExamScope({
           examId: selectedExamId.value!,
@@ -1007,13 +1008,17 @@ function confirmSaveFullScope(): void {
         })
         message.success(`已全量保存 ${candidates.length} 名考生`)
         await reloadExamContext()
-      } catch (error) {
+      }
+      catch (error) {
         showUserError(error, '全量保存名册失败')
-      } finally {
+        return false
+      }
+      finally {
         fullScopeSaving.value = false
       }
     },
   })
+  void confirmed
 }
 
 function buildMergeRequest(

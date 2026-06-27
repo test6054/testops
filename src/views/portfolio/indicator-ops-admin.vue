@@ -486,7 +486,7 @@ onMounted(() => {
 .result-panel {
   margin-top: 16px;
   padding: 12px;
-  background: var(--ant-color-fill-quaternary, #f5f5f5);
+  background: var(--ant-color-fill-quaternary);
   border-radius: 4px;
   font-size: 13px;
 }

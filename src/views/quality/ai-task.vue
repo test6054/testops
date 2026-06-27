@@ -1782,8 +1782,8 @@ onMounted(async () => {
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface-elevated);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
   }
 
@@ -1792,8 +1792,8 @@ onMounted(async () => {
   }
 
   &__panel {
-    background: var(--dp-surface, #fff);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
     padding: 16px;
   }
@@ -1811,7 +1811,7 @@ onMounted(async () => {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__panel-actions {
@@ -1834,7 +1834,7 @@ onMounted(async () => {
   }
 
   &__error-text {
-    color: var(--ant-color-error, #dc2626);
+    color: var(--ant-color-error);
   }
 
   &__error-pre {
@@ -1846,14 +1846,14 @@ onMounted(async () => {
   }
 
   &__label {
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 
   &__section-title {
     margin: 12px 0 8px;
     font-size: 13px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__collapse {
@@ -1863,8 +1863,8 @@ onMounted(async () => {
   &__text-block,
   &__prompt-card,
   &__list {
-    background: var(--dp-gray-50, #f6f8fa);
-    border: 1px solid var(--dp-border, #e1e4e8);
+    background: var(--dp-gray-50);
+    border: 1px solid var(--dp-border);
     border-radius: 6px;
     padding: 10px 12px;
   }
@@ -1878,15 +1878,15 @@ onMounted(async () => {
   &__paragraph,
   &__placeholder {
     margin: 0;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
     line-height: 1.7;
     word-break: break-word;
   }
 
   &__placeholder {
     padding: 10px 12px;
-    background: var(--dp-surface-subtle, #f8fafc);
-    border: 1px dashed var(--dp-border, #e2e8f0);
+    background: var(--dp-surface-subtle);
+    border: 1px dashed var(--dp-border);
     border-radius: 6px;
   }
 
@@ -1896,7 +1896,7 @@ onMounted(async () => {
   }
 
   &__list-item {
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
     line-height: 1.7;
     word-break: break-word;
   }
@@ -1922,7 +1922,7 @@ onMounted(async () => {
   }
 
   &__prompt-state {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     font-size: 12px;
   }
 
@@ -1930,7 +1930,7 @@ onMounted(async () => {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
     font-size: 12px;
   }
 
@@ -1946,9 +1946,9 @@ onMounted(async () => {
     align-items: center;
     max-width: 360px;
     padding: 4px 8px;
-    color: var(--dp-text-secondary, #475569);
-    background: var(--dp-surface-subtle, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    color: var(--dp-text-secondary);
+    background: var(--dp-surface-subtle);
+    border: 1px solid var(--dp-border);
     border-radius: 6px;
   }
 

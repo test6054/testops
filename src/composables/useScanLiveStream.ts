@@ -17,15 +17,15 @@ import { fetchScannerPageLedger } from '@/apis/mark/scanner-kiosk'
 import { useAuthStore } from '@/stores/modules/auth'
 import { toUserError } from '@/utils/error-handler'
 import {
-  applyLedgerResponse,
-  fetchPagedHistoryLedgerSnapshot,
-  resolveLedgerMaxPageUpdateTime,
-} from '@/views/scanner-kiosk/composables/ledgerMerge'
-import {
   hasMarkScannerStationAuth,
   resolveMarkScannerStationAuthHeaders,
 } from '@/utils/kiosk-auth'
 import mittBus from '@/utils/mitt'
+import {
+  applyLedgerResponse,
+  fetchPagedHistoryLedgerSnapshot,
+  resolveLedgerMaxPageUpdateTime,
+} from '@/views/scanner-kiosk/composables/ledgerMerge'
 
 /** SSE 连接阶段：重连中不向外抛 toast 级错误 */
 export type ScanLiveConnectionPhase = 'idle' | 'connecting' | 'ready' | 'reconnecting' | 'failed'

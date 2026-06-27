@@ -82,6 +82,7 @@ import {
   startScannerKioskBatch,
 } from '@/apis/mark/scanner-kiosk'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
 import { getSemesterDescription, SemesterOptions } from '@/types/enums'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
@@ -98,7 +99,6 @@ import {
 } from '@/utils/kiosk-auth'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import { promptModal } from '@/views/quality/_helpers'
 import { fetchPagedHistoryLedgerSnapshot } from '@/views/scanner-kiosk/composables/ledgerMerge'
 
 // ================================================================
@@ -2449,7 +2449,7 @@ export function useKioskWorkflow() {
       return
     }
     if (job.reported) {
-      const reason = await promptModal({
+      const reason = await promptInputAsync({
         title: '废弃扫描任务',
         placeholder: '请输入废弃原因（必填，1-255 字）',
         required: true,
@@ -2541,7 +2541,7 @@ export function useKioskWorkflow() {
       return
     }
     const pageTitle = scanPageDisplayTitleByNo(item.pageNo)
-    const reason = await promptModal({
+    const reason = await promptInputAsync({
       title: `废弃${pageTitle}`,
       placeholder: '请输入单页废弃原因（必填，1-255 字）',
       required: true,

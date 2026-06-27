@@ -434,13 +434,13 @@ usePortfolioScopedLoader(() => {
 .teacher-portrait__meta {
   margin: var(--dp-space-4, 16px) 0 0;
   font-size: 14px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .teacher-portrait__hint-text {
   margin: 0 0 var(--dp-space-3, 12px);
   font-size: 14px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .teacher-portrait__charts {
@@ -470,12 +470,12 @@ usePortfolioScopedLoader(() => {
   th,
   td {
     padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
-    border-bottom: 1px solid var(--dp-border, #e5e7eb);
+    border-bottom: 1px solid var(--dp-border);
     text-align: left;
   }
 
   th {
-    color: var(--dp-text-secondary, #64748b);
+    color: var(--dp-text-secondary);
     font-weight: 600;
   }
 }
@@ -485,12 +485,12 @@ usePortfolioScopedLoader(() => {
 
   &:hover,
   &:focus-visible {
-    background: var(--ant-color-fill-quaternary, #f8fafc);
+    background: var(--ant-color-fill-quaternary);
   }
 }
 
 .teacher-portrait__action {
-  color: var(--ant-color-primary, #1677ff);
+  color: var(--ant-color-primary);
   white-space: nowrap;
 }
 
@@ -503,14 +503,14 @@ usePortfolioScopedLoader(() => {
   dt {
     margin: 0;
     font-size: 12px;
-    color: var(--dp-text-secondary, #64748b);
+    color: var(--dp-text-secondary);
   }
 
   dd {
     margin: var(--dp-space-1, 4px) 0 0;
     font-size: 14px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 }
 

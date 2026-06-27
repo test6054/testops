@@ -1,5 +1,13 @@
+
+shellEmulator: true
+
+trustPolicy: no-downgrade
+
 packages:
   - .
+
+overrides:
+  eslint-flat-config-utils: 3.0.1
 
 allowBuilds:
   '@parcel/watcher': true

@@ -223,13 +223,13 @@ usePortfolioScopedLoader(() => {
   gap: var(--dp-space-2, 8px);
   margin: 0 0 var(--dp-space-4, 16px);
   font-size: 14px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .teacher-gap__return {
   margin: 0 0 var(--dp-space-4, 16px);
   font-size: 14px;
-  color: var(--ant-color-warning, #d48806);
+  color: var(--ant-color-warning);
 }
 
 .teacher-gap__evidence {
@@ -239,6 +239,6 @@ usePortfolioScopedLoader(() => {
 .teacher-gap__file-id {
   margin-left: var(--dp-space-2, 8px);
   font-size: 12px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 </style>

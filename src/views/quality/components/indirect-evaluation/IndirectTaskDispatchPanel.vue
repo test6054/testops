@@ -310,7 +310,7 @@ defineExpose({
 
   &__workflow-line {
     margin: 0;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     font-size: 13px;
   }
 

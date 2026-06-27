@@ -261,7 +261,7 @@ defineExpose({ failedRows })
   }
 
   &__template-text {
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
     font-size: 13px;
   }
 
@@ -278,7 +278,7 @@ defineExpose({ failedRows })
 
   &__error-summary {
     margin-top: 4px;
-    color: var(--dp-warning, #d97706);
+    color: var(--ant-color-warning);
     font-size: 13px;
   }
 

@@ -98,14 +98,14 @@
           </template>
           <template v-else-if="column.key === 'bias'">
             <div class="score-finalize__bias-cell">
-              <UiTag :tone="biasLevelTone(classifyBias(candidates[index].finalScore))" size="sm">
-                {{ biasLevelLabel(classifyBias(candidates[index].finalScore)) }}
+              <UiTag :tone="biasLevelTone(classifyScoreBias(candidates[index].finalScore, pageScoreStats))" size="sm">
+                {{ biasLevelLabel(classifyScoreBias(candidates[index].finalScore, pageScoreStats)) }}
               </UiTag>
               <span
-                v-if="biasDelta(candidates[index].finalScore)"
+                v-if="formatScoreBiasDelta(candidates[index].finalScore, pageScoreStats)"
                 class="score-finalize__bias-delta"
               >
-                {{ biasDelta(candidates[index].finalScore) }}
+                {{ formatScoreBiasDelta(candidates[index].finalScore, pageScoreStats) }}
               </span>
             </div>
           </template>
@@ -405,7 +405,7 @@
         <div class="score-finalize__next-step-actions">
           <UiButton
             v-if="nextStep.kind === 'all-confirmed'"
-            variant="primary"
+            variant="outline"
             size="md"
             @click="handleNextStepGoPublish"
           >
@@ -413,7 +413,7 @@
           </UiButton>
           <UiButton
             v-else-if="nextStep.kind === 'continue-next' && nextStep.nextCandidate"
-            variant="primary"
+            variant="outline"
             size="md"
             @click="handleNextStepConfirmContinue"
           >
@@ -440,6 +440,7 @@ import type {
   FinalScoreRiskReasonCode,
 } from '@/apis/mark/exam-score'
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
+import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
 import type { BadgeTone, FilterField, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import message from 'ant-design-vue/es/message'
@@ -466,6 +467,13 @@ import {
   FINAL_SCORE_STATUS_OPTIONS,
   FINAL_SCORE_STATUS_TONE,
 } from '@/apis/mark/final-score-status'
+import {
+  classifyScoreBias,
+  computeScoreBiasStats,
+  formatScoreBiasDelta,
+  SCORE_BIAS_LEVEL_LABEL,
+  SCORE_BIAS_LEVEL_TONE,
+} from '@/apis/mark/score-bias'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -918,66 +926,20 @@ const candidateBuckets = computed<Record<FinalScoreStatusCode, number>>(() => {
  * 因后端为服务端分页，统计口径在视觉上限定为「当前页」，避免误导教师把页内异常当作整考试异常。
  * 当样本数 < 3 或方差为 0 时，stddev 返回 0，模板侧降级为「样本不足」展示。
  */
-const pageScoreStats = computed<{ count: number, mean: number, stddev: number }>(() => {
-  const scores = candidates.value
-    .map((c) => c.finalScore)
-    .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
-  const count = scores.length
-  if (count === 0) return { count: 0, mean: 0, stddev: 0 }
-  const mean = scores.reduce((acc, v) => acc + v, 0) / count
-  if (count < 3) return { count, mean, stddev: 0 }
-  const variance = scores.reduce((acc, v) => acc + (v - mean) ** 2, 0) / (count - 1)
-  return { count, mean, stddev: Math.sqrt(variance) }
-})
+const pageScoreStats = computed(() =>
+  computeScoreBiasStats(
+    candidates.value
+      .map((candidate) => candidate.finalScore)
+      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value)),
+  ),
+)
 
-/** 偏差类型与色调：|z| ≥ 1.5 严重偏离，|z| ≥ 1 轻度偏离，否则正常 */
-type BiasLevel = 'normal' | 'mild-high' | 'mild-low' | 'severe-high' | 'severe-low' | 'insufficient'
-
-function classifyBias(score: number | undefined): BiasLevel {
-  if (typeof score !== 'number' || !Number.isFinite(score)) return 'insufficient'
-  const { count, mean, stddev } = pageScoreStats.value
-  if (count < 3 || stddev === 0) return 'insufficient'
-  const z = (score - mean) / stddev
-  if (z >= 1.5) return 'severe-high'
-  if (z <= -1.5) return 'severe-low'
-  if (z >= 1) return 'mild-high'
-  if (z <= -1) return 'mild-low'
-  return 'normal'
+function biasLevelLabel(level: ScoreBiasLevelCode): string {
+  return strictEnumLabel(SCORE_BIAS_LEVEL_LABEL, level, '成绩偏差等级')
 }
 
-const BIAS_LEVEL_LABEL: Record<BiasLevel, string> = {
-  "normal": '≈ 正常',
-  'mild-high': '↑ 偏高',
-  'mild-low': '↓ 偏低',
-  'severe-high': '⇈ 显著偏高',
-  'severe-low': '⇊ 显著偏低',
-  "insufficient": '-',
-}
-
-const BIAS_LEVEL_TONE: Record<BiasLevel, BadgeTone> = {
-  "normal": 'gray',
-  'mild-high': 'blue',
-  'mild-low': 'orange',
-  'severe-high': 'purple',
-  'severe-low': 'red',
-  "insufficient": 'gray',
-}
-
-function biasLevelLabel(level: BiasLevel): string {
-  return strictEnumLabel(BIAS_LEVEL_LABEL, level, '成绩偏差等级')
-}
-
-function biasLevelTone(level: BiasLevel): BadgeTone {
-  return strictEnumTone(BIAS_LEVEL_TONE, level, '成绩偏差等级')
-}
-
-function biasDelta(score: number | undefined): string {
-  if (typeof score !== 'number' || !Number.isFinite(score)) return ''
-  const { count, mean, stddev } = pageScoreStats.value
-  if (count < 3 || stddev === 0) return ''
-  const delta = score - mean
-  const sign = delta > 0 ? '+' : ''
-  return `${sign}${delta.toFixed(1)} 分`
+function biasLevelTone(level: ScoreBiasLevelCode): BadgeTone {
+  return strictEnumTone(SCORE_BIAS_LEVEL_TONE, level, '成绩偏差等级')
 }
 
 function canWithdraw(record: ExamScoreSummaryItemVO): boolean {

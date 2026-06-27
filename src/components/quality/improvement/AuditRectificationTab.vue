@@ -35,11 +35,11 @@ import {
   selectedId,
 } from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { assertQualityScopeFresh, beginQualityScopeRequest, isQualityScopeStaleError } from '@/composables/useScopeRequestGuard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import { promptModal } from '@/views/quality/_helpers'
 
 defineOptions({ name: 'AuditRectificationTab' })
 
@@ -398,7 +398,7 @@ async function advanceRectProgress(
     rectEvidenceEditorVisible.value = true
     return
   }
-  const remark = await promptModal({
+  const remark = await promptInputAsync({
     title: '开始实施',
     placeholder: '请填写进展说明',
     required: false,
@@ -414,7 +414,7 @@ async function advanceRectProgress(
 }
 
 async function verifyRect(record: AuditRectificationVO, decision: 'APPROVED' | 'REJECTED') {
-  const remark = await promptModal({
+  const remark = await promptInputAsync({
     title: decision === 'APPROVED' ? '复核通过' : '复核退回',
     placeholder: '请填写复核说明',
     required: decision === 'REJECTED',
@@ -728,7 +728,7 @@ defineExpose({
   &__sub-desc {
     margin-top: 4px;
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__detail-toolbar {
@@ -740,8 +740,8 @@ defineExpose({
   &__detail-row {
     padding: 12px;
     margin-bottom: 12px;
-    background: var(--dp-surface-subtle, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface-subtle);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
   }
 
@@ -756,7 +756,7 @@ defineExpose({
   &__detail-row-title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 }
 </style>

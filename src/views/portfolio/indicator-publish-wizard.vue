@@ -146,7 +146,7 @@ onMounted(loadReadiness)
           {{ PF_INDICATOR_BUSINESS_REFERENCE_SCENE_LABEL[scene.referenceScene] }}：{{ scene.referencedIndicatorCount }}
         </span>
       </div>
-      <UiButton variant="primary" :loading="enabling" @click="enableAllIndicators">
+      <UiButton variant="outline" :loading="enabling" @click="enableAllIndicators">
         启用 T001–T100
       </UiButton>
     </UiCard>
@@ -189,7 +189,7 @@ onMounted(loadReadiness)
             <pre class="impact-json">{{ impactReport.indicatorSummaryJson }}</pre>
           </a-collapse-panel>
         </a-collapse>
-        <UiButton :loading="publishing" @click="publish">
+        <UiButton variant="primary" :loading="publishing" @click="publish">
           确认发布
         </UiButton>
         <UiButton v-if="impactReportId" @click="exportImpact">
@@ -215,7 +215,7 @@ onMounted(loadReadiness)
   font-size: 13px;
 }
 .scene-tag {
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 .impact-summary-card {
   width: 100%;
@@ -235,7 +235,7 @@ onMounted(loadReadiness)
   overflow: auto;
   margin: 8px 0;
   padding: 8px;
-  background: var(--ant-color-fill-quaternary, #f5f5f5);
+  background: var(--ant-color-fill-quaternary);
   border-radius: 4px;
   font-size: 12px;
 }

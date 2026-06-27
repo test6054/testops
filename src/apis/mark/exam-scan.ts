@@ -76,6 +76,36 @@ export type ScanAttentionSourceTypeCode
     | 'PAPER_INSTANCE'
     | 'IMAGE_LEDGER'
 
+/** 扫描异常类型文案 - 与后端 ScanAttentionType.message 完全一致 */
+export const SCAN_ATTENTION_TYPE_LABEL: Record<ScanAttentionTypeCode, string> = {
+  QUALITY_BLOCK: '质量阻断',
+  PROCESSING_BLOCK: '处理阻断',
+  DUPLICATE_PENDING: '重复影像',
+  RECOGNITION_REVIEW: '识别复核',
+  BINDING_CONFLICT: '身份绑定冲突',
+  MISSING_CANDIDATE_ROSTER: '缺少考生名单',
+}
+
+/** 扫描异常类型徽标色调 */
+export const SCAN_ATTENTION_TYPE_TONE: Record<ScanAttentionTypeCode, BadgeTone> = {
+  QUALITY_BLOCK: 'red',
+  PROCESSING_BLOCK: 'orange',
+  DUPLICATE_PENDING: 'purple',
+  RECOGNITION_REVIEW: 'blue',
+  BINDING_CONFLICT: 'gray',
+  MISSING_CANDIDATE_ROSTER: 'orange',
+}
+
+/** 扫描异常来源类型文案 - 与后端 ScanAttentionSourceType 展示约定一致 */
+export const SCAN_ATTENTION_SOURCE_TYPE_LABEL: Record<ScanAttentionSourceTypeCode, string> = {
+  SCANNED_PAGE: '扫描页',
+  PROCESSING_TASK: '处理任务',
+  DUPLICATE_RESOLUTION: '重复扫描处置',
+  GRADE_RESULT: '阅卷结果',
+  PAPER_INSTANCE: '试卷实例',
+  IMAGE_LEDGER: '影像账本',
+}
+
 /** 扫描异常待办查询请求 - 对应 ScanAttentionQueryRequest */
 export interface ScanAttentionQueryRequest extends QueryDto {
   examId: string

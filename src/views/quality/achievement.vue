@@ -71,12 +71,12 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageRail from '@/components/workbench/StageRail.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
+import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
-import { promptModal } from './_helpers'
 
 function targetTypeLabel(value: AchievementTargetType): string {
   return strictEnumLabel(ACHIEVEMENT_TARGET_TYPE_LABEL, value, '达成目标类型')
@@ -529,7 +529,7 @@ function nextStatuses(current: AchievementAuditStatus | undefined): AchievementA
 }
 
 async function handleTransit(record: AchievementResultVO, to: AchievementAuditStatus) {
-  const remark = await promptModal({
+  const remark = await promptInputAsync({
     title: `${auditStatusLabel(record.auditStatus)} -> ${auditStatusLabel(to)}`,
     placeholder: '审核备注（驳回时必填）',
     required: to === 'RETURNED',
@@ -1121,8 +1121,8 @@ onActivated(async () => {
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface-elevated);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
   }
 
@@ -1131,8 +1131,8 @@ onActivated(async () => {
   }
 
   &__panel {
-    background: var(--dp-surface, #fff);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
     padding: 16px;
   }
@@ -1150,7 +1150,7 @@ onActivated(async () => {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__panel-actions {
@@ -1192,7 +1192,7 @@ onActivated(async () => {
     margin: 16px 0 8px;
     font-size: 14px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__trigger-grid {
@@ -1209,13 +1209,13 @@ onActivated(async () => {
 
   &__trigger-step {
     padding: 12px;
-    border: 1px solid var(--dp-border, #e2e8f0);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
-    background: var(--dp-surface, #fff);
+    background: var(--dp-surface);
 
     &--blocked {
-      border-color: var(--ant-color-warning-border, #fcd34d);
-      background: var(--ant-color-warning-bg, #fffbeb);
+      border-color: var(--ant-color-warning-border);
+      background: var(--ant-color-warning-bg);
     }
   }
 
@@ -1230,45 +1230,45 @@ onActivated(async () => {
   &__trigger-step-title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__trigger-blockers {
     margin: 0 0 8px;
     padding-left: 18px;
     font-size: 12px;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
     line-height: 1.5;
   }
 
   &__readiness-hint {
     margin: 0 0 8px;
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__value--success {
-    color: var(--ant-color-success, #16a34a);
+    color: var(--ant-color-success);
     font-weight: 600;
   }
 
   &__value--error {
-    color: var(--ant-color-error, #dc2626);
+    color: var(--ant-color-error);
     font-weight: 600;
   }
 
   &__value--ok {
-    color: var(--ant-color-success, #16a34a);
+    color: var(--ant-color-success);
     font-weight: 600;
   }
 
   &__value--bad {
-    color: var(--ant-color-error, #dc2626);
+    color: var(--ant-color-error);
     font-weight: 600;
   }
 
   &__threshold {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__validity {
@@ -1280,7 +1280,7 @@ onActivated(async () => {
 
   &__validity-time {
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     line-height: 1.4;
   }
 }

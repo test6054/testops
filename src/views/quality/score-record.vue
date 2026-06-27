@@ -39,6 +39,7 @@ import {
   SCORE_BATCH_STATUS_LABEL
   
 } from '@/apis/quality/types'
+import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   ClassSelector,
@@ -54,7 +55,6 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
-import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePolling } from '@/composables/usePolling'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
@@ -589,7 +589,7 @@ function handleCourseChange(courseId: string | null) {
 </script>
 
 <template>
-  <StageWorkbenchShell>
+  <QualityIngestPageShell>
     <template #context>
       <QualityPageContextBar>
         <template #status>
@@ -924,13 +924,13 @@ function handleCourseChange(courseId: string | null) {
         </template>
       </UiDataTable>
     </UiDrawer>
-  </StageWorkbenchShell>
+  </QualityIngestPageShell>
 </template>
 
 <style scoped lang="scss">
 .score-record {
   &__context-label {
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
     font-size: 13px;
     font-weight: 500;
   }
@@ -942,8 +942,8 @@ function handleCourseChange(courseId: string | null) {
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface-elevated);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
   }
 
@@ -955,8 +955,8 @@ function handleCourseChange(courseId: string | null) {
   }
 
   &__panel {
-    background: var(--dp-surface, #fff);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
     padding: 16px;
     min-height: 320px;
@@ -973,11 +973,11 @@ function handleCourseChange(courseId: string | null) {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__panel-meta {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     font-size: 12px;
   }
 
@@ -987,7 +987,7 @@ function handleCourseChange(courseId: string | null) {
     }
 
     :deep(.is-selected) td {
-      background-color: var(--ant-color-primary-bg, #e6f4ff) !important;
+      background-color: var(--ant-color-primary-bg) !important;
     }
   }
 
@@ -1002,7 +1002,7 @@ function handleCourseChange(courseId: string | null) {
 
   &__detail-meta {
     margin-top: 4px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     font-size: 12px;
   }
 
@@ -1031,7 +1031,7 @@ function handleCourseChange(courseId: string | null) {
   }
 
   &__item-code {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     font-size: 12px;
     margin-right: 4px;
   }
@@ -1041,11 +1041,11 @@ function handleCourseChange(courseId: string | null) {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__student-number {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     font-size: 12px;
   }
 
@@ -1053,16 +1053,16 @@ function handleCourseChange(courseId: string | null) {
     display: grid;
     gap: 8px;
     padding: 10px;
-    border: 1px solid var(--dp-border, #e2e8f0);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
-    background: var(--dp-surface-elevated, #f8fafc);
+    background: var(--dp-surface-elevated);
   }
 
   &__rubrics-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
     font-size: 13px;
   }
 
@@ -1073,9 +1073,9 @@ function handleCourseChange(courseId: string | null) {
     gap: 12px;
     min-height: 42px;
     padding: 8px 10px;
-    border: 1px solid var(--dp-border, #e2e8f0);
+    border: 1px solid var(--dp-border);
     border-radius: 6px;
-    background: var(--dp-surface, #fff);
+    background: var(--dp-surface);
   }
 
   &__rubric-main {
@@ -1087,12 +1087,12 @@ function handleCourseChange(courseId: string | null) {
   }
 
   &__rubric-name {
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
     font-weight: 500;
   }
 
   &__rubric-full {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     font-size: 12px;
   }
 

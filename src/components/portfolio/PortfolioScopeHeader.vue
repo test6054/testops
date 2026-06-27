@@ -139,13 +139,13 @@ onMounted(() => {
 .portfolio-scope-header {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
 }
 
 .portfolio-scope-header__label {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--dp-text-secondary, var(--ant-color-text-secondary));
+  font-size: var(--dp-font-size-md);
+  font-weight: var(--dp-font-weight-emphasis);
+  color: var(--dp-text-secondary);
   white-space: nowrap;
 }
 

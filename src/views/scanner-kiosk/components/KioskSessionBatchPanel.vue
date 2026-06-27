@@ -7,7 +7,7 @@ import { DeleteOutlined } from '@ant-design/icons-vue'
 import { computed } from 'vue'
 import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { promptModal } from '@/views/quality/_helpers'
+import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const props = withDefaults(
@@ -63,7 +63,6 @@ function openBatch(row: ExamScannerKioskSessionBatchVO) {
       || workflow.currentJob.value?.scanBatchId
   if (row.status === 'IN_PROGRESS' || activeBatchId === row.scanBatchId) {
     stage.gotoStage('scanning')
-    return
   }
 }
 
@@ -72,7 +71,7 @@ async function discardSessionBatch(row: ExamScannerKioskSessionBatchVO) {
     workflow.errorMessage.value = '当前批次正在扫描，请先结束或暂停后再删除'
     return
   }
-  const reason = await promptModal({
+  const reason = await promptInputAsync({
     title: `删除批次 ${row.batchNo || row.batchExternalNo}`,
     placeholder: '请输入删除原因（必填，1-255 字）',
     required: true,

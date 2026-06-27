@@ -263,7 +263,7 @@ usePortfolioScopedLoader(() => {
 
 .archive-category-edit__status-hint {
   font-size: 14px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .archive-category-edit__evidence {

@@ -651,7 +651,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
   flex-direction: column;
   gap: 14px;
   padding: 18px;
-  border: 1px solid var(--dp-border, #e5e7eb);
+  border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel, 4px);
   background: var(--dp-surface-subtle);
 }
@@ -672,7 +672,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 
 .section-kicker {
   margin: 0 0 4px;
-  color: var(--dp-blue-600, #2563eb);
+  color: var(--dp-blue-600);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -680,14 +680,14 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 
 .section-title {
   margin: 0;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   font-size: 17px;
   font-weight: 600;
 }
 
 .section-desc {
   margin: 6px 0 0;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
   font-size: 13px;
 }
 
@@ -697,7 +697,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 }
 
 .draft {
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
   font-weight: 600;
 }
 
@@ -734,7 +734,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 .teacher-cell span,
 .training-date,
 .evidence-cell span {
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
   font-size: 12px;
 }
 

@@ -5,6 +5,7 @@
  */
 import type { QualityAuditEvidenceItem } from './audit-evidence'
 import type { AuditSupervisionType } from './types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
@@ -15,6 +16,38 @@ export type AuditSupervisionScope = 'COURSE' | 'PROGRAM' | 'TRAINING_PLAN' | 'CO
 
 /** 督导复查结论 - 对应后端 AuditSupervisionConclusionEnum */
 export type AuditSupervisionConclusion = 'PASS' | 'NEEDS_IMPROVEMENT' | 'FAIL'
+
+/** 督导复查范围文案 */
+export const AUDIT_SUPERVISION_SCOPE_LABEL: Record<AuditSupervisionScope, string> = {
+  COURSE: '课程',
+  PROGRAM: '专业',
+  TRAINING_PLAN: '培养方案',
+  COMPREHENSIVE: '综合',
+}
+
+/** 督导复查结论文案 */
+export const AUDIT_SUPERVISION_CONCLUSION_LABEL: Record<AuditSupervisionConclusion, string> = {
+  PASS: '通过',
+  NEEDS_IMPROVEMENT: '需改进',
+  FAIL: '不通过',
+}
+
+/** 督导复查结论徽标色调 */
+export const AUDIT_SUPERVISION_CONCLUSION_TONE: Record<AuditSupervisionConclusion, BadgeTone> = {
+  PASS: 'green',
+  NEEDS_IMPROVEMENT: 'orange',
+  FAIL: 'red',
+}
+
+export const AUDIT_SUPERVISION_SCOPE_OPTIONS = (Object.keys(AUDIT_SUPERVISION_SCOPE_LABEL) as AuditSupervisionScope[])
+  .map(value => ({ value, label: AUDIT_SUPERVISION_SCOPE_LABEL[value] }))
+
+export const AUDIT_SUPERVISION_CONCLUSION_OPTIONS = (Object.keys(AUDIT_SUPERVISION_CONCLUSION_LABEL) as AuditSupervisionConclusion[])
+  .map(value => ({
+    value,
+    label: AUDIT_SUPERVISION_CONCLUSION_LABEL[value],
+    tone: AUDIT_SUPERVISION_CONCLUSION_TONE[value],
+  }))
 
 export interface AuditSupervisionVO {
   id: string

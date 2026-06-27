@@ -22,7 +22,7 @@ function gitDiff(rel) {
   }
 }
 
-/** @returns {Array<{ op: 'add' | 'remove', brace: string, catchLine: string }>} */
+/** @returns {Array<{ op: 'add' | 'remove', brace: string, catchLine: string }>} 括号补删操作列表 */
 function parseBraceOps(diff) {
   /** @type {Array<{ op: 'add' | 'remove', brace: string, catchLine: string }>} */
   const ops = []
@@ -66,7 +66,10 @@ function walk(dir, acc = []) {
     if (fs.statSync(p).isDirectory()) {
       if (name === 'node_modules') continue
       walk(p, acc)
-    } else if (name.endsWith('.vue') || name.endsWith('.ts')) acc.push(p)
+    }
+    else if (name.endsWith('.vue') || name.endsWith('.ts')) {
+      acc.push(p)
+    }
   }
   return acc
 }
@@ -105,7 +108,7 @@ for (const abs of walk(path.join(root, 'src'))) {
   if (changed) {
     fs.writeFileSync(abs, content)
     fixed++
-    console.log(rel)
+    console.warn(rel)
   }
 }
-console.log(`Brace net-fix: ${fixed} files`)
+console.warn(`Brace net-fix: ${fixed} files`)

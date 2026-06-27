@@ -17,7 +17,13 @@ import type {
 } from '@/composables/quality/improvement'
 import { message } from 'ant-design-vue'
 import { reactive, ref } from 'vue'
-import { auditSupervisionApi } from '@/apis/quality/audit-supervision'
+import { AUDIT_SUPERVISION_CONCLUSION_LABEL,
+  AUDIT_SUPERVISION_CONCLUSION_OPTIONS,
+  AUDIT_SUPERVISION_CONCLUSION_TONE,
+  AUDIT_SUPERVISION_SCOPE_LABEL,
+  AUDIT_SUPERVISION_SCOPE_OPTIONS,
+  auditSupervisionApi,
+} from '@/apis/quality/audit-supervision'
 import { AUDIT_SUPERVISION_TYPE_LABEL } from '@/apis/quality/types'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
 import {
@@ -72,52 +78,23 @@ const supervisionTypeOptions: Array<{ value: AuditSupervisionType, label: string
   { value: 'ACCREDITATION_PRE', label: AUDIT_SUPERVISION_TYPE_LABEL.ACCREDITATION_PRE },
   { value: 'ACCREDITATION_AUDIT', label: AUDIT_SUPERVISION_TYPE_LABEL.ACCREDITATION_AUDIT },
 ]
-const supScopeOptions = [
-  { value: 'COURSE', label: '课程' },
-  { value: 'PROGRAM', label: '专业' },
-  { value: 'TRAINING_PLAN', label: '培养方案' },
-  { value: 'COMPREHENSIVE', label: '综合' },
-]
-const supScopeLabelMap: Record<AuditSupervisionScope, string> = {
-  COURSE: '课程',
-  PROGRAM: '专业',
-  TRAINING_PLAN: '培养方案',
-  COMPREHENSIVE: '综合',
-}
-const supConclusionOptions: Array<{
-  value: AuditSupervisionConclusion
-  label: string
-  color: string
-}> = [
-  { value: 'PASS', label: '通过', color: 'green' },
-  { value: 'NEEDS_IMPROVEMENT', label: '需改进', color: 'orange' },
-  { value: 'FAIL', label: '不通过', color: 'red' },
-]
-const supConclusionLabelMap: Record<AuditSupervisionConclusion, string> = {
-  PASS: '通过',
-  NEEDS_IMPROVEMENT: '需改进',
-  FAIL: '不通过',
-}
-const supConclusionColorMap: Record<AuditSupervisionConclusion, BadgeTone> = {
-  PASS: 'green',
-  NEEDS_IMPROVEMENT: 'orange',
-  FAIL: 'red',
-}
+const supScopeOptions = AUDIT_SUPERVISION_SCOPE_OPTIONS
+const supConclusionOptions = AUDIT_SUPERVISION_CONCLUSION_OPTIONS
 
 function supervisionTypeLabel(value: AuditSupervisionType): string {
   return strictEnumLabel(AUDIT_SUPERVISION_TYPE_LABEL, value, '督导类型')
 }
 
 function supervisionScopeLabel(value: AuditSupervisionScope): string {
-  return strictEnumLabel(supScopeLabelMap, value, '督导范围')
+  return strictEnumLabel(AUDIT_SUPERVISION_SCOPE_LABEL, value, '督导范围')
 }
 
 function supervisionConclusionLabel(value: AuditSupervisionConclusion): string {
-  return strictEnumLabel(supConclusionLabelMap, value, '督导结论')
+  return strictEnumLabel(AUDIT_SUPERVISION_CONCLUSION_LABEL, value, '督导结论')
 }
 
 function supervisionConclusionColor(value: AuditSupervisionConclusion): BadgeTone {
-  return strictEnumTone(supConclusionColorMap, value, '督导结论')
+  return strictEnumTone(AUDIT_SUPERVISION_CONCLUSION_TONE, value, '督导结论')
 }
 
 const supList = ref<AuditSupervisionVO[]>([])
@@ -797,11 +774,11 @@ defineExpose({
   &__sub-desc {
     margin-top: 4px;
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__muted {
-    color: var(--dp-text-muted, #94a3b8);
+    color: var(--dp-text-muted);
   }
 
   &__detail-toolbar {
@@ -813,8 +790,8 @@ defineExpose({
   &__detail-row {
     padding: 12px;
     margin-bottom: 12px;
-    background: var(--dp-surface-subtle, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface-subtle);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
   }
 
@@ -829,7 +806,7 @@ defineExpose({
   &__detail-row-title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 }
 </style>

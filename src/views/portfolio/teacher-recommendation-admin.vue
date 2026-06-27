@@ -12,7 +12,7 @@ import type {
   PortfolioTeacherRecommendRuleVO,
   PortfolioTeacherRecommendRunVO,
 } from '@/apis/portfolio/teacher-platform'
-import type { PortfolioAiTaskStatus } from '@/apis/portfolio/types'
+import type { AiTaskStatus } from '@/apis/quality/types'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -23,7 +23,7 @@ import {
   PORTFOLIO_TEACHER_RECOMMEND_SCENE_LABEL,
 } from '@/apis/portfolio/enums'
 import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
-import { PORTFOLIO_AI_TASK_STATUS_LABEL } from '@/apis/portfolio/types'
+import { AI_TASK_STATUS_LABEL } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -80,11 +80,11 @@ const explainStatus = ref<PortfolioTeacherRecommendExplainStatusVO | null>(null)
 const explainRunId = ref('')
 const router = useRouter()
 
-function aiTaskStatusLabel(status?: PortfolioAiTaskStatus): string {
+function aiTaskStatusLabel(status?: AiTaskStatus): string {
   if (!status) {
     return '未提交'
   }
-  return strictEnumLabel(PORTFOLIO_AI_TASK_STATUS_LABEL, status, 'AI 任务状态')
+  return strictEnumLabel(AI_TASK_STATUS_LABEL, status, 'AI 任务状态')
 }
 
 function openExplainAiTask() {
@@ -416,7 +416,7 @@ onMounted(async () => {
   padding: 8px;
   font-size: 13px;
   white-space: pre-wrap;
-  background: var(--ant-color-fill-quaternary, #f5f5f5);
+  background: var(--ant-color-fill-quaternary);
   border-radius: 4px;
 }
 .explain-list {
@@ -435,7 +435,7 @@ onMounted(async () => {
 .pk-col {
   min-width: 200px;
   padding: 8px;
-  border: 1px solid var(--border-color, #e8e8e8);
+  border: 1px solid var(--ant-color-border);
   border-radius: 4px;
 }
 .pk-title {

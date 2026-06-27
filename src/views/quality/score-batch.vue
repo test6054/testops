@@ -53,6 +53,7 @@ import {
   SCORE_BATCH_STATUS_COLOR,
   SCORE_BATCH_STATUS_LABEL,
 } from '@/apis/quality/types'
+import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -65,7 +66,6 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import AuditTimelineDrawer from '@/components/workbench/AuditTimelineDrawer.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageRail from '@/components/workbench/StageRail.vue'
-import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePolling } from '@/composables/usePolling'
@@ -823,7 +823,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <StageWorkbenchShell>
+  <QualityIngestPageShell>
     <template #context>
       <QualityPageContextBar>
         <template #actions>
@@ -1180,7 +1180,7 @@ onMounted(async () => {
       title="成绩批次操作审计"
       show-diff
     />
-  </StageWorkbenchShell>
+  </QualityIngestPageShell>
 </template>
 
 <style scoped lang="scss">
@@ -1208,8 +1208,8 @@ onMounted(async () => {
   &__signals {
     margin-bottom: 20px;
     padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface-elevated);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
   }
 
@@ -1220,8 +1220,8 @@ onMounted(async () => {
   &__upload {
     margin-bottom: 20px;
     padding: 20px;
-    background: var(--dp-surface, #fff);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
   }
 
@@ -1233,20 +1233,20 @@ onMounted(async () => {
     margin: 0 0 6px;
     font-size: 16px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__upload-hint {
     margin: 0;
     font-size: 13px;
-    color: var(--dp-text-secondary, #64748b);
+    color: var(--dp-text-secondary);
     line-height: 1.6;
 
     code {
       padding: 1px 6px;
       margin: 0 2px;
       font-size: 12px;
-      background: var(--dp-gray-100, #f1f5f9);
+      background: var(--dp-gray-100);
       border-radius: 4px;
     }
   }
@@ -1256,25 +1256,25 @@ onMounted(async () => {
   }
 
   &__table {
-    background: var(--dp-surface, #fff);
+    background: var(--dp-surface);
     border-radius: 8px;
   }
 
   &__sub-text {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     font-size: 12px;
   }
 
   &__num-success {
-    color: var(--ant-color-success, #16a34a);
+    color: var(--ant-color-success);
   }
 
   &__num-error {
-    color: var(--ant-color-error, #dc2626);
+    color: var(--ant-color-error);
   }
 
   &__error-msg {
-    color: var(--ant-color-error, #dc2626);
+    color: var(--ant-color-error);
   }
 
   &__preview-descriptions {

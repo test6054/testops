@@ -395,9 +395,9 @@ onActivated(() => {
   gap: 4px 8px;
   align-items: center;
   padding: 8px;
-  border: 1px solid var(--dp-border, #e5e7eb);
+  border: 1px solid var(--dp-border);
   border-radius: 4px;
-  background: var(--dp-surface, #fff);
+  background: var(--dp-surface);
   text-align: left;
   width: 100%;
 
@@ -438,7 +438,7 @@ onActivated(() => {
   align-items: center;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px dashed var(--dp-border, #e5e7eb);
+  border-top: 1px dashed var(--dp-border);
   font-size: 12px;
 }
 .acc-course-coverage__title {

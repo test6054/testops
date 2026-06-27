@@ -5,13 +5,14 @@ import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import PortfolioIndicatorExplainDrawer from '@/components/portfolio/PortfolioIndicatorExplainDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
 
-const { targetTeacherId } = usePortfolioPageScope()
+const { targetTeacherId, canPickTeachers, scopeReady } = usePortfolioPageScope()
 const evaluating = ref(false)
 const result = ref<PortfolioEligibilityEvalResultDto | null>(null)
 const explainOpen = ref(false)
@@ -32,6 +33,9 @@ const factJson = computed(() => JSON.stringify({
 }))
 
 async function evaluate() {
+  if (!targetTeacherId.value) {
+    return
+  }
   evaluating.value = true
   try {
     result.value = await portfolioIndicatorTenantApi.evaluateEligibility({
@@ -52,7 +56,11 @@ async function evaluate() {
 <template>
   <StageWorkbenchShell>
     <ContextBar title="我的资格评估" subtitle="基于 Eligibility 规则的结构化评估" />
-    <UiCard>
+    <UiEmpty
+      v-if="canPickTeachers && !scopeReady"
+      description="请从顶部教师范围选择目标教师后再评估"
+    />
+    <UiCard v-else>
       <a-form layout="vertical">
         <a-form-item label="评估类型">
           <a-select v-model:value="eligibilityCode" :options="eligibilityOptions" style="width: 240px" />
@@ -68,7 +76,12 @@ async function evaluate() {
         </a-form-item>
       </a-form>
       <div class="toolbar">
-        <UiButton variant="primary" :loading="evaluating" @click="evaluate">
+        <UiButton
+          variant="primary"
+          :loading="evaluating"
+          :disabled="!targetTeacherId"
+          @click="evaluate"
+        >
           开始评估
         </UiButton>
         <UiButton v-if="result" @click="explainOpen = true">
@@ -104,7 +117,7 @@ async function evaluate() {
 .gap-list {
   margin: 8px 0 0;
   padding-left: 20px;
-  color: var(--ant-color-text-secondary, #666);
-  font-size: 13px;
+  color: var(--dp-text-secondary);
+  font-size: var(--dp-font-size-sm);
 }
 </style>

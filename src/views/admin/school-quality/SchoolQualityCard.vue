@@ -173,8 +173,8 @@ import {
   listQualityAnalysis,
   SCHOOL_QUALITY_DIMENSION_LABEL,
   SCHOOL_QUALITY_ITEM_DIMENSION_LABEL,
-  SCHOOL_QUALITY_RATING_TONE,
   SCHOOL_QUALITY_RATING_LABEL,
+  SCHOOL_QUALITY_RATING_TONE,
 } from '@/apis/mark/school-quality'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'

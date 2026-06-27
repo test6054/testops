@@ -66,6 +66,7 @@ import {
   ARCHIVE_MATERIAL_TYPE_LABEL,
   searchArchiveVolumes,
 } from '@/apis/mark/archive-volume'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -74,7 +75,6 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeSearch' })
 

@@ -370,7 +370,7 @@ watch(activeSectionKey, () => {
 <style scoped lang="scss">
 .self-assessment-panel__hint {
   margin: 0 0 12px;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
   font-size: 13px;
 }
 
@@ -409,7 +409,7 @@ watch(activeSectionKey, () => {
 .self-assessment-panel__nav-title {
   flex: 1;
   font-size: 13px;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .self-assessment-panel__editor {
@@ -435,7 +435,7 @@ watch(activeSectionKey, () => {
   flex-direction: column;
   gap: 6px;
   font-size: 13px;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .self-assessment-panel__evidence-head {
@@ -444,7 +444,7 @@ watch(activeSectionKey, () => {
   justify-content: space-between;
   margin-bottom: 8px;
   font-size: 13px;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .self-assessment-panel__evidence-list {
@@ -465,7 +465,7 @@ watch(activeSectionKey, () => {
 .self-assessment-panel__evidence-empty {
   margin: 0;
   font-size: 13px;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .self-assessment-panel__actions {
@@ -475,7 +475,7 @@ watch(activeSectionKey, () => {
 
 .self-assessment-panel__ready {
   margin: 12px 0 0;
-  color: var(--ant-color-success, #16a34a);
+  color: var(--ant-color-success);
   font-size: 13px;
 }
 

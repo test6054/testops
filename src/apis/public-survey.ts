@@ -5,6 +5,17 @@
  */
 import http from '@/config/axios'
 
+/** 公开 / 间接评价共用题项类型 - 与后端 SCALE / SINGLE_CHOICE / MULTI_CHOICE / OPEN_TEXT 一致 */
+export type PublicSurveyItemType = 'SCALE' | 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'OPEN_TEXT'
+
+/** 公开问卷填写页题型展示文案 */
+export const PUBLIC_SURVEY_ITEM_TYPE_LABEL: Record<PublicSurveyItemType, string> = {
+  SCALE: '量表题',
+  SINGLE_CHOICE: '单选题',
+  MULTI_CHOICE: '多选题',
+  OPEN_TEXT: '填空题',
+}
+
 export interface PublicSurveyVO {
   formName: string
   description?: string
@@ -47,7 +58,7 @@ export interface PublicSurveyItemVO {
   itemToken: string
   itemCode: string
   itemText: string
-  itemType: 'SCALE' | 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'OPEN_TEXT'
+  itemType: PublicSurveyItemType
   scaleMin?: number
   scaleMax?: number
   scaleLabels?: SurveyScaleLabelVO[]

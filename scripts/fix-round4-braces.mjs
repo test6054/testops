@@ -19,10 +19,9 @@ try {
 const restorations = new Map()
 
 const fileRe = /^diff --git a\/(.+?) b\/.+$/gm
-let fileMatch
-while ((fileMatch = fileRe.exec(diff)) !== null) {
+for (const fileMatch of diff.matchAll(fileRe)) {
   const rel = fileMatch[1]
-  const start = fileMatch.index
+  const start = fileMatch.index ?? 0
   const next = diff.indexOf('\ndiff --git ', start + 1)
   const chunk = diff.slice(start, next === -1 ? diff.length : next)
   const lines = chunk.split('\n')
@@ -67,7 +66,7 @@ for (const [rel, blocks] of restorations) {
   if (changed) {
     fs.writeFileSync(abs, content)
     fixed++
-    console.log(rel)
+    console.warn(rel)
   }
 }
-console.log(`Restored braces in ${fixed} files`)
+console.warn(`Restored braces in ${fixed} files`)

@@ -673,7 +673,7 @@ watch(
 }
 
 .teacher-archive__category-item--active {
-  background: var(--ant-color-fill-quaternary, #f5f5f5);
+  background: var(--ant-color-fill-quaternary);
 }
 
 .teacher-archive__category-name {
@@ -684,7 +684,7 @@ watch(
 
 .teacher-archive__category-count {
   font-size: 12px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .teacher-archive__timeline-list {
@@ -696,17 +696,17 @@ watch(
 .teacher-archive__latest-export {
   margin-top: var(--dp-space-3, 12px);
   font-size: 14px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .teacher-archive__timeline-item {
   padding: var(--dp-space-2, 8px) 0;
-  border-bottom: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+  border-bottom: 1px solid var(--ant-color-border-secondary);
   cursor: pointer;
 }
 
 .teacher-archive__timeline-item:hover {
-  background: var(--ant-color-fill-quaternary, #f5f5f5);
+  background: var(--ant-color-fill-quaternary);
 }
 
 .teacher-archive__timeline-title {
@@ -721,13 +721,13 @@ watch(
 .teacher-archive__timeline-meta {
   margin: var(--dp-space-1, 4px) 0 0;
   font-size: 12px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .teacher-archive__detail-meta {
   margin: 0 0 var(--dp-space-2, 8px);
   font-size: 13px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .teacher-archive__correcting-tag {
@@ -769,7 +769,7 @@ watch(
 .teacher-archive__group-title {
   margin: 0 0 4px;
   font-size: 13px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .teacher-archive__preview-list {
@@ -780,7 +780,7 @@ watch(
 .teacher-archive__bag p {
   margin: 0 0 var(--dp-space-2, 8px);
   font-size: 13px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .teacher-archive__hint {

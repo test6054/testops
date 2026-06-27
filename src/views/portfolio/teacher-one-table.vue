@@ -68,8 +68,12 @@ usePortfolioScopedLoader(() => {
     <ContextBar title="教师一张表" subtitle="主数据 · 身份标签 · 档案分类 · 成果荣誉汇总" />
     <a-spin :spinning="loading">
       <UiEmpty
-        v-if="!loading && !summary"
-        description="暂无教师一张表数据，请确认 teacherId 或稍后刷新"
+        v-if="canPickTeachers && !targetTeacherId"
+        description="请从顶部教师范围选择目标教师"
+      />
+      <UiEmpty
+        v-else-if="!loading && !summary"
+        description="暂无教师一张表数据，请稍后刷新"
       />
       <UiCard v-if="summary" title="教师概要">
         <a-descriptions :column="3" size="small" bordered>

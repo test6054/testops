@@ -583,6 +583,9 @@ import {
   pageScannerBatches,
   QUALITY_DECISION_LABEL,
   QUALITY_DECISION_TONE,
+  SCAN_ATTENTION_SOURCE_TYPE_LABEL,
+  SCAN_ATTENTION_TYPE_LABEL,
+  SCAN_ATTENTION_TYPE_TONE,
   SCAN_BATCH_STATUS_LABEL,
   validateScanAttentionItemContract,
 } from '@/apis/mark/exam-scan'
@@ -1348,39 +1351,13 @@ function handlePaperCandidateFilterChange(value: SelectValue): void {
 }
 
 // ─── 类型色彩编码 ─────────────────────────────────
-const ATTENTION_TYPE_TONE: Record<ScanAttentionTypeCode, 'red' | 'orange' | 'purple' | 'blue' | 'gray'> = {
-  QUALITY_BLOCK: 'red',
-  PROCESSING_BLOCK: 'orange',
-  DUPLICATE_PENDING: 'purple',
-  RECOGNITION_REVIEW: 'blue',
-  BINDING_CONFLICT: 'gray',
-  MISSING_CANDIDATE_ROSTER: 'orange',
-}
 
-const ATTENTION_TYPE_LABEL: Record<ScanAttentionTypeCode, string> = {
-  QUALITY_BLOCK: '质量阻断',
-  PROCESSING_BLOCK: '处理阻断',
-  DUPLICATE_PENDING: '重复影像',
-  RECOGNITION_REVIEW: '识别复核',
-  BINDING_CONFLICT: '身份绑定冲突',
-  MISSING_CANDIDATE_ROSTER: '缺少考生名单',
-}
-
-function attentionTypeTone(type: ScanAttentionTypeCode): 'red' | 'orange' | 'purple' | 'blue' | 'gray' {
-  return strictEnumTone(ATTENTION_TYPE_TONE, type, '扫描异常类型')
+function attentionTypeTone(type: ScanAttentionTypeCode): BadgeTone {
+  return strictEnumTone(SCAN_ATTENTION_TYPE_TONE, type, '扫描异常类型')
 }
 
 function attentionTypeLabel(type: ScanAttentionTypeCode): string {
-  return strictEnumLabel(ATTENTION_TYPE_LABEL, type, '扫描异常类型')
-}
-
-const SCAN_ATTENTION_SOURCE_TYPE_LABEL: Record<ScanAttentionSourceTypeCode, string> = {
-  SCANNED_PAGE: '扫描页',
-  PROCESSING_TASK: '处理任务',
-  DUPLICATE_RESOLUTION: '重复扫描处置',
-  GRADE_RESULT: '阅卷结果',
-  PAPER_INSTANCE: '试卷实例',
-  IMAGE_LEDGER: '影像账本',
+  return strictEnumLabel(SCAN_ATTENTION_TYPE_LABEL, type, '扫描异常类型')
 }
 
 function sourceTypeLabel(type: ScanAttentionSourceTypeCode): string {

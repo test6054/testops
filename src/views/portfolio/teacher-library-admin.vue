@@ -118,6 +118,6 @@ onMounted(loadPage)
 }
 .stats {
   font-size: 13px;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
 }
 </style>

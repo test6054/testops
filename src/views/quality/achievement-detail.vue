@@ -60,9 +60,9 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
-import { promptModal } from './_helpers'
 
 const detailColumns: ColumnsType = [
   { title: '明细类型', dataIndex: 'detailType', key: 'detailType', width: 140 },
@@ -254,7 +254,7 @@ async function handleTransit(to: AchievementAuditStatus) {
   if (!result.value) return
   const fromStatus = result.value.auditStatus
   if (!fromStatus) return
-  const remark = await promptModal({
+  const remark = await promptInputAsync({
     title: `${auditStatusLabel(fromStatus)} → ${auditStatusLabel(to)}`,
     placeholder: '审核备注（驳回时必填）',
     required: to === 'RETURNED',
@@ -638,14 +638,14 @@ onActivated(() => {
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface-elevated);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
   }
 
   &__panel {
-    background: var(--dp-surface, #fff);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 16px;
@@ -664,11 +664,11 @@ onActivated(() => {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__panel-meta {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     font-size: 12px;
   }
 
@@ -680,7 +680,7 @@ onActivated(() => {
   }
 
   &__ref-code {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     font-size: 12px;
     margin-right: 4px;
   }
@@ -691,28 +691,28 @@ onActivated(() => {
 
   &__audit-line {
     margin: 0 0 4px;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__audit-meta {
     margin: 0 0 4px;
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__audit-opinion {
     margin: 4px 0 0;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 
   &__audit-return {
     margin: 4px 0 0;
-    color: var(--ant-color-error, #dc2626);
+    color: var(--ant-color-error);
   }
 
   &__review-time {
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 }
 

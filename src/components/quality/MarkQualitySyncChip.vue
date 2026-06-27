@@ -124,7 +124,7 @@ watch(
 }
 
 .mark-quality-sync-chip__message {
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
   font-size: 12px;
 }
 </style>

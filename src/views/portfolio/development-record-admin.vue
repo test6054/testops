@@ -179,7 +179,7 @@ onMounted(loadPage)
 }
 .input {
   padding: 6px 8px;
-  border: 1px solid var(--ant-color-border, #d9d9d9);
+  border: 1px solid var(--ant-color-border);
   border-radius: 4px;
 }
 .input--wide {

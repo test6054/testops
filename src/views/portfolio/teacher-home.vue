@@ -435,19 +435,19 @@ onUnmounted(() => {
   font-size: 32px;
   font-weight: var(--dp-font-weight-semibold, 600);
   line-height: 1.2;
-  color: var(--dp-text-primary, #1f2937);
+  color: var(--dp-text-primary);
 }
 
 .teacher-home__meta {
   margin: var(--dp-space-3, 12px) 0 0;
   font-size: 14px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .teacher-home__onboarding {
   margin: var(--dp-space-2, 8px) 0 0;
   font-size: 14px;
-  color: var(--ant-color-warning, #d48806);
+  color: var(--ant-color-warning);
 }
 
 .teacher-home__actions {
@@ -464,12 +464,12 @@ onUnmounted(() => {
 
 .teacher-home__todo-item {
   padding: var(--dp-space-2, 8px) 0;
-  border-bottom: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+  border-bottom: 1px solid var(--ant-color-border-secondary);
   cursor: pointer;
 }
 
 .teacher-home__todo-item:hover {
-  background: var(--ant-color-fill-quaternary, #f5f5f5);
+  background: var(--ant-color-fill-quaternary);
 }
 
 .teacher-home__todo-title {

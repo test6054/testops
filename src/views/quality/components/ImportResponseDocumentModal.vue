@@ -319,19 +319,19 @@ function formatBytes(bytes: number): string {
       margin: 0 0 8px;
       font-size: 16px;
       font-weight: 600;
-      color: var(--dp-text-primary, #0f172a);
+      color: var(--dp-text-primary);
     }
   }
 
   &__processing-hint {
     margin: 0 0 4px;
     font-size: 13px;
-    color: var(--dp-text-muted, #94a3b8);
+    color: var(--dp-text-muted);
   }
 
   &__poll-count {
     font-size: 12px;
-    color: var(--dp-text-muted, #94a3b8);
+    color: var(--dp-text-muted);
   }
 
   &__action-row {

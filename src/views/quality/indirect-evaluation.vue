@@ -13,10 +13,10 @@ import type { IndirectEvaluationFormVO } from '@/apis/quality/indirect-form'
 import type { IndirectEvaluationItemVO } from '@/apis/quality/indirect-item'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onActivated, onMounted, ref, watch } from 'vue'
+import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
-import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import IndirectResponseReviewPanel from './components/indirect-evaluation/IndirectResponseReviewPanel.vue'
 import IndirectSurveyTemplatePanel from './components/indirect-evaluation/IndirectSurveyTemplatePanel.vue'
@@ -131,7 +131,7 @@ onActivated(async () => {
 </script>
 
 <template>
-  <StageWorkbenchShell>
+  <QualityIngestPageShell>
     <template #context>
       <QualityPageContextBar>
         <template #actions>
@@ -170,7 +170,7 @@ onActivated(async () => {
         />
       </template>
     </IndirectSurveyTemplatePanel>
-  </StageWorkbenchShell>
+  </QualityIngestPageShell>
 </template>
 
 <style scoped lang="scss">
@@ -178,9 +178,9 @@ onActivated(async () => {
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: 8px;
+    background: var(--dp-surface-elevated);
+    border: 1px solid var(--dp-border);
+    border-radius: var(--dp-radius-panel);
   }
 }
 </style>

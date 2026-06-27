@@ -145,12 +145,12 @@ onMounted(loadList)
   font-size: 14px;
 }
 .template-item--active {
-  background: var(--ant-color-fill-quaternary, #f5f5f5);
+  background: var(--ant-color-fill-quaternary);
 }
 .meta {
   display: block;
   font-size: 12px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 .form-row {
   display: flex;
@@ -159,7 +159,7 @@ onMounted(loadList)
 }
 .input {
   padding: 6px 8px;
-  border: 1px solid var(--ant-color-border, #d9d9d9);
+  border: 1px solid var(--ant-color-border);
   border-radius: 4px;
 }
 .input--wide {

@@ -249,7 +249,7 @@ onMounted(loadHistory)
 .json-block {
   margin-top: 16px;
   padding: 12px;
-  background: #fafafa;
+  background: var(--dp-surface-subtle, var(--ant-color-fill-quaternary));
   border-radius: 4px;
   font-size: 12px;
   overflow: auto;

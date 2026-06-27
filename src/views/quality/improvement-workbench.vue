@@ -96,7 +96,8 @@ async function handleScopeChange(): Promise<void> {
       return
     }
     if (!signalsApplied) {
-      throw toUserError(null, '工作台指标加载失败，请稍后重试')
+      handleTabLoadError(toUserError(null, '工作台指标加载失败，请稍后重试'))
+      return
     }
   } catch (error) {
     if (serial !== scopeChangeSerial) {
@@ -214,8 +215,8 @@ onActivated(async () => {
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface-elevated);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
   }
 

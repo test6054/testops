@@ -21,7 +21,7 @@ import type {
   PortfolioTeacherRecommendRunStatus,
   PortfolioTeacherRecommendScene,
 } from '@/apis/portfolio/enums'
-import type { PortfolioAiTaskStatus } from '@/apis/portfolio/types'
+import type { AiTaskStatus } from '@/apis/quality/types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
@@ -533,14 +533,14 @@ export interface PortfolioTeacherRecommendExplainCandidateItemVO {
 export interface PortfolioTeacherRecommendExplainStatusVO {
   runId: string
   explainTaskId?: string
-  status?: PortfolioAiTaskStatus
+  status?: AiTaskStatus
   candidateItems?: PortfolioTeacherRecommendExplainCandidateItemVO[]
 }
 
 export interface PortfolioTeacherRecommendExplainSubmitVO {
   taskId: string
   runId: string
-  status: PortfolioAiTaskStatus
+  status: AiTaskStatus
 }
 
 export interface PortfolioTeacherPkCompareDimensionRowVO {

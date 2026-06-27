@@ -286,17 +286,11 @@
 
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue'
-import type { PublicSurveyItemVO } from '@/apis/public-survey'
+import type { PublicSurveyItemType } from '@/apis/public-survey'
 import { nextTick, ref } from 'vue'
+import { PUBLIC_SURVEY_ITEM_TYPE_LABEL } from '@/apis/public-survey'
 import { useSurveyFill } from '@/composables/useSurveyFill'
 import { strictEnumLabel } from '@/utils/strict-enum'
-
-const PUBLIC_SURVEY_ITEM_TYPE_LABEL: Record<PublicSurveyItemVO['itemType'], string> = {
-  SCALE: '量表题',
-  SINGLE_CHOICE: '单选题',
-  MULTI_CHOICE: '多选题',
-  OPEN_TEXT: '填空题',
-}
 
 const {
   loading,
@@ -344,7 +338,7 @@ function toggleMulti(itemId: string, opt: string) {
   }
 }
 
-function itemTypeLabel(type: PublicSurveyItemVO['itemType']): string {
+function itemTypeLabel(type: PublicSurveyItemType): string {
   return strictEnumLabel(PUBLIC_SURVEY_ITEM_TYPE_LABEL, type, '公开问卷题型')
 }
 
