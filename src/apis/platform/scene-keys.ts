@@ -1,0 +1,67 @@
+/** 平台文件暂存 scene */
+export const FileUploadSceneKey = {
+  QUALITY_ACCREDITATION_EVIDENCE: 'QUALITY_ACCREDITATION_EVIDENCE',
+  QUALITY_ANNUAL_REPORT_MATERIAL: 'QUALITY_ANNUAL_REPORT_MATERIAL',
+  QUALITY_TRAINING_PLAN_FILE: 'QUALITY_TRAINING_PLAN_FILE',
+  QUALITY_PROCESS_EVIDENCE: 'QUALITY_PROCESS_EVIDENCE',
+  QUALITY_AI_TASK_MATERIAL: 'QUALITY_AI_TASK_MATERIAL',
+  QUALITY_COURSE_SYLLABUS: 'QUALITY_COURSE_SYLLABUS',
+  QUALITY_ARCHIVE_FILE: 'QUALITY_ARCHIVE_FILE',
+  QUALITY_SCORE_IMPORT: 'QUALITY_SCORE_IMPORT',
+  PORTFOLIO_MATERIAL: 'PORTFOLIO_MATERIAL',
+  PORTFOLIO_EXCEL_IMPORT: 'PORTFOLIO_EXCEL_IMPORT',
+  MARK_ARCHIVE_VOLUME_MATERIAL: 'MARK_ARCHIVE_VOLUME_MATERIAL',
+  MARK_EXAM_TEMPLATE: 'MARK_EXAM_TEMPLATE',
+  MARK_APPEAL_EVIDENCE: 'MARK_APPEAL_EVIDENCE',
+  MARK_EXAM_SCAN_SOURCE: 'MARK_EXAM_SCAN_SOURCE',
+  QUALITY_INDIRECT_RESPONSE_DOC: 'QUALITY_INDIRECT_RESPONSE_DOC',
+} as const
+
+export type FileUploadSceneKey = typeof FileUploadSceneKey[keyof typeof FileUploadSceneKey]
+
+/** 平台 Excel 导入 scene */
+export const ExcelImportSceneKey = {
+  QUALITY_WORKGROUP_MEMBER: 'QUALITY_WORKGROUP_MEMBER',
+  QUALITY_PROCESS_RECORD: 'QUALITY_PROCESS_RECORD',
+  QUALITY_INDIRECT_RESPONSE: 'QUALITY_INDIRECT_RESPONSE',
+  QUALITY_SCORE_BATCH: 'QUALITY_SCORE_BATCH',
+  PORTFOLIO_EXTERNAL_TEACHER: 'PORTFOLIO_EXTERNAL_TEACHER',
+  PORTFOLIO_DUAL_TEACHER: 'PORTFOLIO_DUAL_TEACHER',
+  PORTFOLIO_INDICATOR_DEFINITION: 'PORTFOLIO_INDICATOR_DEFINITION',
+  MARK_ARCHIVE_EXTERNAL: 'MARK_ARCHIVE_EXTERNAL',
+  MARK_PAPER_ARCHIVE_HISTORY: 'MARK_PAPER_ARCHIVE_HISTORY',
+  MARK_ROSTER_EXCEL: 'MARK_ROSTER_EXCEL',
+} as const
+
+export type ExcelImportSceneKey = typeof ExcelImportSceneKey[keyof typeof ExcelImportSceneKey]
+
+const PORTFOLIO_SCENES = new Set<string>([
+  ExcelImportSceneKey.PORTFOLIO_EXTERNAL_TEACHER,
+  ExcelImportSceneKey.PORTFOLIO_DUAL_TEACHER,
+  ExcelImportSceneKey.PORTFOLIO_INDICATOR_DEFINITION,
+])
+
+const MARK_SCENES = new Set<string>([
+  ExcelImportSceneKey.MARK_ARCHIVE_EXTERNAL,
+  ExcelImportSceneKey.MARK_PAPER_ARCHIVE_HISTORY,
+  ExcelImportSceneKey.MARK_ROSTER_EXCEL,
+])
+
+/** 解析 Excel 导入 API 前缀 */
+export function resolveExcelImportApiBase(sceneKey: string): string {
+  if (PORTFOLIO_SCENES.has(sceneKey)) {
+    return '/api/portfolio/platform/excel-import'
+  }
+  if (MARK_SCENES.has(sceneKey)) {
+    return '/api/mark/platform/excel-import'
+  }
+  return '/api/quality/platform/excel-import'
+}
+
+/** Excel scene 对应的文件暂存 scene */
+export function resolveFileStageSceneForExcel(sceneKey: ExcelImportSceneKey): FileUploadSceneKey {
+  if (sceneKey.startsWith('PORTFOLIO_') || sceneKey.startsWith('MARK_')) {
+    return FileUploadSceneKey.PORTFOLIO_EXCEL_IMPORT
+  }
+  return FileUploadSceneKey.QUALITY_SCORE_IMPORT
+}

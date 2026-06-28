@@ -15,10 +15,11 @@ import type {
 } from '@/apis/mark/exam-scan'
 import type { GradeStatusCode } from '@/apis/mark/grade-status'
 import type { TaskStatusCode } from '@/apis/mark/task-status'
+import type { MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
-export type ScannerKioskScanMode = 'DIRECT' | 'SUPPLEMENT' | 'ARCHIVE'
+export type ScannerKioskScanMode = 'DIRECT' | 'SUPPLEMENT'
 export type ExamScannerLedgerDataSource = 'DATABASE' | 'REDIS_PENDING' | 'NONE'
 export type ExamScannerPageScanStatus = 'SCANNED'
 export type ExamScannerPageUploadStatus = 'UPLOADED'
@@ -64,6 +65,8 @@ export interface ExamScannerKioskDeviceVO {
   diagnosticStatus: ScannerAgentDiagnosticStatusCode
   diagnosticMessage: string
   lastHeartbeatTime?: string
+  /** 设备允许的扫描任务类型（ScanTaskKind 编码，逗号分隔） */
+  allowedTaskKinds?: string
 }
 
 export interface ExamScannerScanConfigVO {
@@ -82,6 +85,11 @@ export interface ExamScannerCapabilitiesVO {
   driverType?: string
   scannerDisplayName?: string
   scannerConnected?: boolean
+}
+
+/** 工作台上下文携带的租户 OCR 渠道快照，用于默认 providerChain 解析 */
+export interface ExamScannerKioskOcrConfigVO {
+  providerType?: MarkOcrProviderTypeCode
 }
 
 export interface ExamScannerScanConfigOptionsVO {
@@ -174,6 +182,8 @@ export interface ExamScannerKioskContextVO {
   scanModeAdvisory?: string
   /** 本工位可补扫的已绑定试卷（仅 SUPPLEMENT） */
   supplementBoundPapers?: ExamScannerBoundPaperItemVO[]
+  /** 租户 OCR 渠道快照；试卷直扫时用于默认 providerChain */
+  ocrConfig?: ExamScannerKioskOcrConfigVO
 }
 
 export interface ExamScannerKioskTaskContractVO {
@@ -333,23 +343,6 @@ export interface ExamScannerBatchStartRequest {
 }
 
 /**
- * 扫描工作台关闭批次锚点请求。
- *
- * 默认仅清理 Redis 锚点；当 discardPendingPages=true 时主动清空该锚点对应批次的 pending
- * pages 中间态。调用方需自行确保业务允许丢弃。
- */
-export interface ExamScannerBatchCloseRequest {
-  examId: string
-  scannerDeviceId: string
-  /** 扫描站点 ID，和 scannerDeviceId 共同定位唯一工作台锚点 */
-  scannerStationId: string
-  /** 当前 Agent 任务对应的批次外部号，后端用它防止误关已切换的新锚点 */
-  batchExternalNo: string
-  /** true 时主动清空 pending pages，否则保留并通过 pendingPages 诊断回执提示 */
-  discardPendingPages?: boolean
-}
-
-/**
  * 扫描工作台废弃已落库批次请求。
  *
  * scanBatchId 必须是当前租户已落库的扫描批次；废弃后批次状态变为 DISCARDED，
@@ -364,15 +357,15 @@ export interface ExamScanBatchDiscardRequest {
  * 扫描工作台批次 lifecycle 响应视图。
  *
  * <p>对齐后端 {@code com.nybc.mark.model.response.ExamScannerBatchLifecycleVO}。
- * Redis 锚点投影：start / close 端点共用此结构。锚点已不存在（关闭后或未开启）
+ * Redis 锚点投影：work-order/start / discard 端点共用此结构。锚点已不存在（discard 后或未开启）
  * 时 {@code anchorExists=false}，{@code anchorMutated} 表示本次调用是否真正改写了锚点状态
- * （幂等回放为 false）。close 端点遇到 Redis 中残留 pending pages 时通过
+ * （幂等回放为 false）。discard 端点遇到 Redis 中残留 pending pages 时通过
  * {@code pendingPageCount} 与 {@code pendingPagesDiagnostic} 反馈给调用方决定 commit 或主动丢弃。</p>
  */
 export interface ExamScannerBatchLifecycleVO {
   /** 锚点是否存在（true=Redis 锚点存在或本次新建，false=不存在或已被清理） */
   anchorExists: boolean
-  /** 本次调用是否变更了锚点状态（start 新建 / close 清理） */
+  /** 本次调用是否变更了锚点状态（start 新建 / discard 清理） */
   anchorMutated: boolean
   /** 后端签发的批次外部号；前端 push / commit 时必须使用此值 */
   batchExternalNo?: string
@@ -396,30 +389,18 @@ export interface ExamScannerBatchLifecycleVO {
   startedAt?: string
   /** 工作台锚点创建人用户 ID */
   startedBy?: string
-  /** close 残留 pending pages 时的人类可读诊断 */
+  /** discard 残留 pending pages 时的人类可读诊断 */
   pendingPagesDiagnostic?: string
-  /** close 时 Redis 中仍残留的 pending pages 数量；无残留为 0 / undefined */
+  /** discard 时 Redis 中仍残留的 pending pages 数量；无残留为 0 / undefined */
   pendingPageCount?: number
   /** 批次封存时间 */
   sealedTime?: string
   /** 封存操作人 */
   sealedUserId?: string
-  /** batch/start 落库的扫描批次 ID */
+  /** work-order/start 落库的扫描批次 ID */
   scanBatchId?: string
   /** 服务端冻结的扫描参数 */
   resolvedScanConfig?: ExamScannerScanConfigVO
-}
-
-export function startScannerKioskBatch(
-  request: ExamScannerBatchStartRequest,
-): Promise<ExamScannerBatchLifecycleVO> {
-  return http.post<ExamScannerBatchLifecycleVO>('/api/mark/scanner/kiosk/batch/start', request)
-}
-
-export function closeScannerKioskBatch(
-  request: ExamScannerBatchCloseRequest,
-): Promise<ExamScannerBatchLifecycleVO> {
-  return http.post<ExamScannerBatchLifecycleVO>('/api/mark/scanner/kiosk/batch/close', request)
 }
 
 export function discardScannerKioskBatch(request: ExamScanBatchDiscardRequest): Promise<boolean> {

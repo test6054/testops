@@ -6,7 +6,8 @@
 <script lang="ts" setup>
 import type { AiEditorOptions } from 'aieditor'
 import { AiEditor } from 'aieditor'
-import { uploadFile } from '@/apis/edu/file-management'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { createOptimizedAiEditorConfig } from '@/config/aieditor'
 
 import 'aieditor/dist/style.css'
@@ -52,9 +53,8 @@ const editorConfig = computed(() => {
     // 配置图片上传
     image: {
       allowBase64: true,
-      uploadUrl: '/api/storage/filesystem/file',
       uploader: async (file: File) => {
-        const result = await uploadFile(file, { businessType: 'editor-image' })
+        const result = await stageBusinessFile(FileUploadSceneKey.MARK_EXAM_TEMPLATE, file)
         return {
           errorCode: 0,
           data: {

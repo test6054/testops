@@ -124,6 +124,8 @@ export interface ExamScannerDeviceVO {
   remark?: string
   createTime?: string
   updateTime?: string
+  /** 设备允许的扫描任务类型（ScanTaskKind 编码，逗号分隔） */
+  allowedTaskKinds?: string
 }
 
 /** 扫描 Agent 激活码创建请求 */
@@ -179,6 +181,7 @@ export interface ExamScannerDeviceCreateRequest {
   location?: string
   remark?: string
   kioskLockEnabled: boolean
+  allowedTaskKinds?: string
 }
 
 /** 扫描设备更新请求 - 对应 ExamScannerDeviceUpdateRequest */
@@ -192,6 +195,7 @@ export interface ExamScannerDeviceUpdateRequest {
   location?: string
   remark?: string
   kioskLockEnabled: boolean
+  allowedTaskKinds?: string
 }
 
 // ScanAttentionQueryRequest / ScanAttentionItemVO 定义在 @/apis/mark/exam-scan，避免重复

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { UploadFile } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExternalTeacherDataStatus, PortfolioExternalTeacherImportBatchStatus } from '@/apis/portfolio/enums'
 import type {
@@ -8,13 +7,15 @@ import type {
   PortfolioExternalTeacherVO,
 } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
+import { computed, onMounted, reactive, ref } from 'vue'
+import type { ExcelImportRowDiagnostic } from '@/apis/platform/types'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL,
   PORTFOLIO_EXTERNAL_TEACHER_IMPORT_BATCH_STATUS_LABEL,
 } from '@/apis/portfolio/enums'
 import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
+import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -38,8 +39,7 @@ const batchRows = ref<PortfolioExternalTeacherImportBatchVO[]>([])
 const drawerOpen = ref(false)
 const batchDetailOpen = ref(false)
 const batchDetail = ref<PortfolioExternalTeacherImportBatchVO | null>(null)
-const selectedFile = ref<File | null>(null)
-const fileList = ref<UploadFile[]>([])
+const importModalOpen = ref(false)
 const dataStatusFilter = ref<PortfolioExternalTeacherDataStatus | ''>('')
 
 const form = reactive<PortfolioExternalTeacherSaveRequest>({
@@ -225,36 +225,9 @@ async function revokeRecord(id: string) {
   }
 }
 
-function handleBeforeUpload(file: File) {
-  selectedFile.value = file
-  fileList.value = [{ uid: 'import', name: file.name, status: 'done' }]
-  return false
-}
-
-function handleRemoveFile() {
-  selectedFile.value = null
-  fileList.value = []
-}
-
-async function confirmImport() {
-  if (!selectedFile.value) {
-    message.warning('请选择 Excel 文件')
-    return
-  }
-  try {
-    const node = await uploadFile(selectedFile.value, { businessType: 'PORTFOLIO_EXCEL_IMPORT' })
-    const result = await portfolioExternalTeacherApi.importConfirm({
-      fileName: selectedFile.value.name,
-      sourceFileId: String(node.id),
-    })
-    message.success(`导入成功 ${result.successRows} 条，失败 ${result.failedRows} 条`)
-    selectedFile.value = null
-    fileList.value = []
-    await Promise.all([loadPage(), loadImportBatches()])
-  }
-  catch (error) {
-    showUserError(error)
-  }
+async function handleImportSuccess() {
+  importModalOpen.value = false
+  await Promise.all([loadPage(), loadImportBatches()])
 }
 
 async function openBatchDetail(id: string) {
@@ -262,17 +235,6 @@ async function openBatchDetail(id: string) {
   batchDetail.value = null
   try {
     batchDetail.value = await portfolioExternalTeacherApi.importBatchGet({ id })
-  }
-  catch (error) {
-    showUserError(error)
-  }
-}
-
-async function downloadTemplate() {
-  try {
-    const result = await portfolioExternalTeacherApi.importTemplate()
-    await downloadPortfolioExcelExport(result)
-    message.success('模板已下载')
   }
   catch (error) {
     showUserError(error)
@@ -289,6 +251,28 @@ async function exportRoster() {
     showUserError(error)
   }
 }
+
+const batchDiagnosticColumns: ColumnsType<ExcelImportRowDiagnostic> = [
+  { title: '行号', dataIndex: 'rowIndex', key: 'rowIndex', width: 72 },
+  { title: '处理说明', dataIndex: 'invalidReason', key: 'invalidReason' },
+]
+
+const batchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() => {
+  const raw = batchDetail.value?.errorReportJson
+  if (!raw) {
+    return []
+  }
+  try {
+    const parsed = JSON.parse(raw) as Array<{ rowIndex?: number, invalidReason?: string, errorMessage?: string }>
+    return parsed.map((item, index) => ({
+      rowIndex: item.rowIndex ?? index + 1,
+      valid: false,
+      invalidReason: item.invalidReason ?? item.errorMessage ?? '导入失败',
+    }))
+  } catch {
+    return []
+  }
+})
 
 onMounted(async () => {
   await loadPage()
@@ -308,22 +292,16 @@ onMounted(async () => {
     <a-tabs v-model:active-key="activeTab">
       <a-tab-pane key="roster" tab="名册">
         <UiCard title="批量导入">
-          <UiButton style="margin-bottom: 8px" @click="downloadTemplate">
-            下载导入模板
-          </UiButton>
-          <a-upload
-            :before-upload="handleBeforeUpload"
-            :file-list="fileList"
-            :max-count="1"
-            accept=".xlsx,.xls"
-            @remove="handleRemoveFile"
-          >
-            <UiButton>选择 Excel</UiButton>
-          </a-upload>
-          <UiButton style="margin-top: 8px" @click="confirmImport">
-            确认导入
+          <UiButton @click="importModalOpen = true">
+            Excel 批量导入
           </UiButton>
         </UiCard>
+        <UiPlatformExcelImportModal
+          v-model:open="importModalOpen"
+          :scene-key="ExcelImportSceneKey.PORTFOLIO_EXTERNAL_TEACHER"
+          entity-label="外聘教师"
+          @success="handleImportSuccess"
+        />
         <UiCard>
           <div class="toolbar">
             <a-select
@@ -451,7 +429,17 @@ onMounted(async () => {
         <p v-if="batchDetail.createTime">
           创建时间 {{ batchDetail.createTime }}
         </p>
-        <pre v-if="batchDetail.errorReportJson" class="error-report">{{ batchDetail.errorReportJson }}</pre>
+        <UiDataTable
+          v-if="batchDetailDiagnostics.length"
+          pagination-mode="client"
+          :columns="batchDiagnosticColumns"
+          :data-source="batchDetailDiagnostics"
+          :show-pagination="false"
+          row-key="rowIndex"
+          size="small"
+          flat
+        />
+        <pre v-else-if="batchDetail.errorReportJson" class="error-report">{{ batchDetail.errorReportJson }}</pre>
       </template>
     </a-drawer>
   </StageWorkbenchShell>

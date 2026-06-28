@@ -35,6 +35,30 @@ export default antfu(
     ],
   },
   {
+    files: [
+      'src/views/**/*.{vue,ts}',
+      'src/components/**/*.{vue,ts}',
+      'src/apis/**/*.{vue,ts}',
+    ],
+    ignores: [
+      'src/views/**/scanner-kiosk/**',
+      'src/apis/platform/file.ts',
+    ],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [{
+          name: '@/apis/edu/file-management',
+          importNames: ['uploadFile'],
+          message: '业务页请使用 platform/file 或 UiPlatformFileField，禁止 uploadFile。',
+        }],
+      }],
+      'vue/no-restricted-component-names': ['error',
+        { name: 'a-upload', message: '请使用 UiPlatformFileField 或原生 input + platform stage，禁止 a-upload。' },
+        { name: 'a-upload-dragger', message: '请使用 UiPlatformFileField 或 UiPlatformExcelImportModal，禁止 a-upload-dragger。' },
+      ],
+    },
+  },
+  {
     rules: {
       'curly': 'off',
       'no-new': 'off',

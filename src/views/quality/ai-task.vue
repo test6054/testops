@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
-import type { FileSystemNodeResponseDTO } from '@/apis/edu/file-management'
 import type {
   AiResultImprovementPriorityValue,
   AiResultIssueSeverity,
@@ -41,14 +39,14 @@ import type {
 import { message } from 'ant-design-vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   aiResultApi,
   aiResultImprovementPriorityLabel, aiResultIssueSeverityLabel
 } from '@/apis/quality/ai-result'
-
 import { aiTaskApi } from '@/apis/quality/ai-task'
+
 import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
 import {
   AI_MANUAL_HANDLING_STATUS_LABEL,
@@ -59,6 +57,7 @@ import {
   AI_TASK_STATUS_LABEL,
   AI_TASK_TYPE_LABEL,
 } from '@/apis/quality/types'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   AchievementResultSelector,
@@ -170,8 +169,7 @@ const query = reactive<AiTaskQueryRequest>({
 
 const submitVisible = ref(false)
 const submitting = ref(false)
-const uploadingMaterial = ref(false)
-const uploadedMaterial = ref<FileSystemNodeResponseDTO | null>(null)
+const materialFileName = ref<string>()
 const submitForm = reactive<AiTaskSubmitRequest>({
   taskType: 'ACHIEVEMENT_DIAGNOSIS',
   businessType: 'ACHIEVEMENT_RESULT',
@@ -421,6 +419,19 @@ function validateAiTaskSubmit(form: AiTaskSubmitRequest): boolean {
 
 const submitDisabled = computed(() => !validateAiTaskSubmit(submitForm))
 
+/** 间接评价文档解析须用 QUALITY_INDIRECT_RESPONSE_DOC scene，其余 AI 任务用通用材料 scene。 */
+const submitMaterialSceneKey = computed(() =>
+  submitForm.taskType === 'INDIRECT_RESPONSE_DOC_PARSE'
+    ? FileUploadSceneKey.QUALITY_INDIRECT_RESPONSE_DOC
+    : FileUploadSceneKey.QUALITY_AI_TASK_MATERIAL,
+)
+
+const submitMaterialAccept = computed(() =>
+  submitForm.taskType === 'INDIRECT_RESPONSE_DOC_PARSE'
+    ? '.pdf,.docx,.txt,.jpg,.jpeg,.png,.webp,.bmp,.tiff'
+    : '.doc,.docx,.pdf,.xls,.xlsx,.txt,.md',
+)
+
 const resultSummaryLines = computed(() => {
   return (
     detailResult.value?.summary
@@ -651,7 +662,7 @@ function openSubmitPrefill(
     fileNodeId: '',
     question: '',
   })
-  uploadedMaterial.value = null
+  materialFileName.value = undefined
   submitVisible.value = true
 }
 
@@ -717,7 +728,7 @@ function handleSubmitTaskTypeChange(value: SelectValue) {
   submitForm.reportId = ''
   submitForm.fileNodeId = ''
   submitForm.question = ''
-  uploadedMaterial.value = null
+  materialFileName.value = undefined
   if (typeof value !== 'string' || Array.isArray(value)) {
     showUserError(null, '任务类型选择无效，请重新选择')
     return
@@ -759,27 +770,6 @@ function syncBusinessObjectFromAchievementResult(value: string | null): void {
 function syncBusinessObjectFromReport(value: string | null): void {
   handleReportChange(value)
   if (submitForm.businessType === 'REPORT') submitForm.businessId = value ?? ''
-}
-
-async function handleMaterialUpload(options: UploadRequestOption): Promise<void> {
-  uploadingMaterial.value = true
-  try {
-    const { file } = options
-    if (!(file instanceof File)) {
-      message.error('无效的材料文件')
-      options.onError?.(new Error('无效的材料文件'))
-      return
-    }
-    const uploaded = await uploadFile(file, { businessType: 'QUALITY_AI_TASK_MATERIAL' })
-    uploadedMaterial.value = uploaded
-    submitForm.fileNodeId = uploaded.id
-    message.success(`已上传材料：${uploaded.nodeName}`)
-    options.onSuccess?.({})
-  } catch (err) {
-    options.onError?.(err instanceof Error ? err : new Error(String(err)))
-  } finally {
-    uploadingMaterial.value = false
-  }
 }
 
 async function submitTask() {
@@ -1465,20 +1455,13 @@ onMounted(async () => {
             />
           </a-form-item>
           <a-form-item label="材料文件">
-            <div class="ai-task__material-upload">
-              <a-upload
-                :custom-request="handleMaterialUpload"
-                :show-upload-list="false"
-                accept=".doc,.docx,.pdf,.xls,.xlsx,.txt,.md"
-              >
-                <UiButton variant="outline" size="sm" :loading="uploadingMaterial">
-                  {{ uploadedMaterial ? '重新上传材料' : '上传材料' }}
-                </UiButton>
-              </a-upload>
-              <div v-if="uploadedMaterial" class="ai-task__material-file">
-                <span class="ai-task__material-name">{{ uploadedMaterial.nodeName }}</span>
-              </div>
-            </div>
+            <UiPlatformFileField
+              v-model:file-node-id="submitForm.fileNodeId"
+              v-model:file-name="materialFileName"
+              :scene-key="submitMaterialSceneKey"
+              :accept="submitMaterialAccept"
+              button-text="上传材料"
+            />
           </a-form-item>
           <a-form-item label="用户提问">
             <a-textarea

@@ -56,30 +56,22 @@
         <a-input-number v-model:value="pageDraft.pageNo" :min="1" style="width: 100%" />
       </a-form-item>
       <a-form-item label="模板文件" required>
-        <div class="exam-template-page-table__edit-file">
-          <span v-if="pageDraft.templateFileId" class="exam-template-page-table__file-name">
-            {{ pageDraft.templateFileName }}
-          </span>
-          <UiTag v-else tone="orange" size="sm">未上传</UiTag>
-          <a-upload
-            :show-upload-list="false"
-            :before-upload="handleUploadInModal"
-            accept="image/*,application/pdf"
-          >
-            <UiButton size="sm" variant="outline" :loading="pageDraft.uploading">
-              <template #icon><UploadOutlined /></template>
-              {{ pageDraft.templateFileId ? '替换' : '上传' }}
-            </UiButton>
-          </a-upload>
-          <UiButton
-            v-if="pageDraft.templateFileId"
-            size="sm"
-            variant="ghost"
-            @click="openPreview(pageDraft)"
-          >
-            预览
-          </UiButton>
-        </div>
+        <UiPlatformFileField
+          v-model:file-node-id="pageDraft.templateFileId"
+          v-model:file-name="pageDraft.templateFileName"
+          :scene-key="FileUploadSceneKey.MARK_EXAM_TEMPLATE"
+          accept="image/*,application/pdf"
+          button-text="上传"
+        />
+        <UiButton
+          v-if="pageDraft.templateFileId"
+          size="sm"
+          variant="ghost"
+          class="exam-template-page-table__preview-btn"
+          @click="openPreview(pageDraft)"
+        >
+          预览
+        </UiButton>
       </a-form-item>
       <a-row :gutter="12">
         <a-col :span="12">
@@ -132,15 +124,15 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { reactive, ref } from 'vue'
-import { getImageBlobUrl, uploadFile } from '@/apis/edu/file-management'
+import { getFileArrayBuffer, getImageBlobUrl } from '@/apis/edu/file-management'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
-import { requireUploadFileName } from '@/utils/mark-storage-file'
 
 export interface ExamTemplatePageRow {
   rowKey: string
@@ -149,7 +141,6 @@ export interface ExamTemplatePageRow {
   templateFileName?: string
   widthPx?: number
   heightPx?: number
-  uploading?: boolean
 }
 
 const pages = defineModel<ExamTemplatePageRow[]>('pages', { required: true })
@@ -183,7 +174,6 @@ const pageDraft = reactive<ExamTemplatePageRow>({
   templateFileName: undefined,
   widthPx: undefined,
   heightPx: undefined,
-  uploading: false,
 })
 
 const previewOpen = ref(false)
@@ -201,7 +191,6 @@ function resetDraft(): void {
   pageDraft.templateFileName = undefined
   pageDraft.widthPx = undefined
   pageDraft.heightPx = undefined
-  pageDraft.uploading = false
 }
 
 function openEdit(index: number): void {
@@ -217,7 +206,6 @@ function openEdit(index: number): void {
   pageDraft.templateFileName = row.templateFileName
   pageDraft.widthPx = row.widthPx
   pageDraft.heightPx = row.heightPx
-  pageDraft.uploading = false
   editOpen.value = true
 }
 
@@ -264,21 +252,6 @@ function emitRemove(index: number): void {
   emit('remove', index)
 }
 
-async function handleUploadInModal(file: File): Promise<boolean> {
-  pageDraft.uploading = true
-  try {
-    const result = await uploadFile(file, { businessType: 'mark-exam-template' })
-    pageDraft.templateFileId = result.id
-    pageDraft.templateFileName = requireUploadFileName(result, file)
-    message.success('模板文件已上传')
-  } catch (error) {
-    showUserError(error, '模板文件上传失败')
-  } finally {
-    pageDraft.uploading = false
-  }
-  return false
-}
-
 function closePreview(): void {
   previewOpen.value = false
   previewError.value = ''
@@ -321,23 +294,8 @@ async function openPreview(
   previewLoading.value = true
   previewFileName.value = row.templateFileName.trim()
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      reportPreviewFailure(null, '未登录或登录已过期，无法预览模板文件')
-      return
-    }
-    const requestUrl = new URL('/api/storage/filesystem/download', window.location.origin)
-    requestUrl.searchParams.set('nodeId', row.templateFileId)
-    const response = await fetch(requestUrl.toString(), {
-      method: 'GET',
-      credentials: 'include',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (!response.ok) {
-      reportPreviewFailure(null, '模板文件加载失败')
-      return
-    }
-    const blob = await response.blob()
+    const buffer = await getFileArrayBuffer({ nodeId: row.templateFileId })
+    const blob = new Blob([buffer])
     previewKind.value = detectPreviewKind(previewFileName.value, blob)
     if (previewKind.value === 'image') {
       previewObjectUrl = await getImageBlobUrl(row.templateFileId)

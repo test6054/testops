@@ -64,19 +64,28 @@ export const constantRoutes: RouteRecordRaw[] = [
     },
   },
   {
-    // 一体机扫描工作站：父路由挂载 KioskLayout，三阶段主链 + 独立历史页。
+    // 一体机 Hub：按设备 allowedTaskKinds 选择业务采集入口。
     path: '/scanner-kiosk',
-    name: 'ScannerKiosk',
-    component: () => import('@/views/scanner-kiosk/KioskLayout.vue'),
-    redirect: '/scanner-kiosk/setup',
+    name: 'ScannerKioskHub',
+    component: () => import('@/views/scanner-kiosk/TaskKindHub.vue'),
     meta: {
-      title: '扫描一体机',
+      title: '文档采集工作台',
+      requiresAuth: false,
+    },
+  },
+  {
+    path: '/scanner-kiosk/exam',
+    name: 'ScannerExamKiosk',
+    component: () => import('@/views/scanner-kiosk/exam/ExamKioskLayout.vue'),
+    redirect: '/scanner-kiosk/exam/setup',
+    meta: {
+      title: '考试扫描一体机',
       requiresAuth: false,
     },
     children: [
       {
         path: 'step',
-        redirect: '/scanner-kiosk/setup',
+        redirect: '/scanner-kiosk/exam/setup',
         meta: {
           title: '准备扫描',
           requiresAuth: false,
@@ -84,7 +93,7 @@ export const constantRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'setup',
-        name: 'ScannerKioskSetup',
+        name: 'ScannerExamKioskSetup',
         component: () => import('@/views/scanner-kiosk/stages/SetupStage.vue'),
         meta: {
           title: '准备扫描',
@@ -93,7 +102,7 @@ export const constantRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'scanning',
-        name: 'ScannerKioskScanning',
+        name: 'ScannerExamKioskScanning',
         component: () => import('@/views/scanner-kiosk/stages/ScanningStage.vue'),
         meta: {
           title: '扫描中',
@@ -102,7 +111,7 @@ export const constantRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'review',
-        name: 'ScannerKioskReview',
+        name: 'ScannerExamKioskReview',
         component: () => import('@/views/scanner-kiosk/stages/ReviewStage.vue'),
         meta: {
           title: '复核与异常处置',
@@ -111,7 +120,7 @@ export const constantRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'history',
-        name: 'ScannerKioskHistory',
+        name: 'ScannerExamKioskHistory',
         component: () => import('@/views/scanner-kiosk/stages/HistoryStage.vue'),
         meta: {
           title: '本机历史批次',
@@ -119,6 +128,45 @@ export const constantRoutes: RouteRecordRaw[] = [
         },
       },
     ],
+  },
+  {
+    // 兼容旧直达路径：重定向到 exam 子树
+    path: '/scanner-kiosk/setup',
+    redirect: '/scanner-kiosk/exam/setup',
+  },
+  {
+    path: '/scanner-kiosk/scanning',
+    redirect: '/scanner-kiosk/exam/scanning',
+  },
+  {
+    path: '/scanner-kiosk/review',
+    redirect: '/scanner-kiosk/exam/review',
+  },
+  {
+    path: '/scanner-kiosk/history',
+    redirect: '/scanner-kiosk/exam/history',
+  },
+  {
+    path: '/scanner-kiosk/step',
+    redirect: '/scanner-kiosk/exam/setup',
+  },
+  {
+    path: '/scanner-kiosk/archive/session',
+    name: 'ScannerArchiveSession',
+    component: () => import('@/views/scanner-kiosk/archive/ArchiveScanSession.vue'),
+    meta: {
+      title: '归档卷扫描',
+      requiresAuth: false,
+    },
+  },
+  {
+    path: '/scanner-kiosk/portfolio/session',
+    name: 'ScannerPortfolioSession',
+    component: () => import('@/views/scanner-kiosk/portfolio/PortfolioScanSession.vue'),
+    meta: {
+      title: '档案袋扫描',
+      requiresAuth: false,
+    },
   },
   {
     path: '/survey/:token',

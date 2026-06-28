@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
-import type { FileSystemNodeResponseDTO } from '@/apis/edu/file-management'
 import type {
   PortfolioAiExtractTaskType,
   PortfolioAiJobTaskVO,
@@ -15,7 +13,8 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { uploadFile } from '@/apis/edu/file-management'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
@@ -56,9 +55,9 @@ const router = useRouter()
 const { targetTeacherId, canPickTeachers, scopeReady } = usePortfolioPageScope()
 const { canManageTeacherAi } = usePortfolioTeacherAccess()
 const submitTaskType = ref<PortfolioAiExtractTaskType>('PORTFOLIO_CERTIFICATE_OCR')
-const uploadingMaterial = ref(false)
+const materialFileNodeId = ref<string>()
+const materialFileName = ref<string>()
 const submitting = ref(false)
-const uploadedMaterial = ref<FileSystemNodeResponseDTO | null>(null)
 
 const tasksLoading = ref(false)
 const taskRows = ref<PortfolioAiJobTaskVO[]>([])
@@ -149,6 +148,24 @@ function resolveSubmitContract(taskType: PortfolioAiExtractTaskType): {
     materialType: 'DOCUMENT',
     templateCode: PORTFOLIO_TEMPLATE_CODE_DOCUMENT,
   }
+}
+
+function openPortfolioScan() {
+  if (!targetTeacherId.value) {
+    message.error('请先选择教师')
+    return
+  }
+  const contract = resolveSubmitContract(submitTaskType.value)
+  void router.push({
+    path: '/scanner-kiosk/portfolio/session',
+    query: {
+      collectMode: 'AI_SUBMIT',
+      teacherId: targetTeacherId.value,
+      taskType: submitTaskType.value,
+      templateCode: contract.templateCode,
+      returnTo: route.fullPath,
+    },
+  })
 }
 
 function rowNeedsManualFill(row: PortfolioCandidateFieldVO): boolean {
@@ -275,26 +292,6 @@ function handleTaskPageChange(page: { current: number, pageSize: number }) {
   loadTasks()
 }
 
-async function handleMaterialUpload(options: UploadRequestOption): Promise<void> {
-  uploadingMaterial.value = true
-  try {
-    const { file } = options
-    if (!(file instanceof File)) {
-      message.error('无效的材料文件')
-      options.onError?.(new Error('无效的材料文件'))
-      return
-    }
-    const uploaded = await uploadFile(file, { businessType: 'PORTFOLIO_MATERIAL' })
-    uploadedMaterial.value = uploaded
-    message.success(`已上传材料：${uploaded.nodeName}`)
-    options.onSuccess?.({})
-  } catch (error) {
-    options.onError?.(error instanceof Error ? error : new Error(String(error)))
-  } finally {
-    uploadingMaterial.value = false
-  }
-}
-
 async function submitExtractTask() {
   if (!targetTeacherId.value) {
     message.error('请先选择教师')
@@ -304,7 +301,7 @@ async function submitExtractTask() {
     message.error('无权为该教师提交 AI 抽取任务')
     return
   }
-  if (!uploadedMaterial.value?.id) {
+  if (!materialFileNodeId.value) {
     message.error('请先上传材料文件')
     return
   }
@@ -314,12 +311,13 @@ async function submitExtractTask() {
     const result = await portfolioAiJobApi.submit({
       taskType: submitTaskType.value,
       teacherId: targetTeacherId.value,
-      fileNodeId: uploadedMaterial.value.id,
+      fileNodeId: materialFileNodeId.value,
       materialType: contract.materialType,
       templateCode: contract.templateCode,
     })
     message.success('已提交 AI 抽取任务')
-    uploadedMaterial.value = null
+    materialFileNodeId.value = undefined
+    materialFileName.value = undefined
     await loadTasks()
     if (result.taskId) {
       const detail = await portfolioAiJobApi.get(result.taskId)
@@ -484,23 +482,22 @@ onMounted(async () => {
         </div>
         <div>
           <div class="portfolio-ai-confirm__field-label">材料文件</div>
-          <a-upload-dragger
-            :multiple="false"
-            :show-upload-list="true"
-            :custom-request="handleMaterialUpload"
-            :disabled="uploadingMaterial"
-          >
-            <p>点击或拖拽上传 PDF / Word / 图片扫描件</p>
-            <p v-if="uploadedMaterial" class="portfolio-ai-confirm__upload-hint">
-              已选：{{ uploadedMaterial.nodeName }}
-            </p>
-          </a-upload-dragger>
+          <UiPlatformFileField
+            v-model:file-node-id="materialFileNodeId"
+            v-model:file-name="materialFileName"
+            :scene-key="FileUploadSceneKey.PORTFOLIO_MATERIAL"
+            accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+            button-text="选择材料文件"
+            tip="支持 PDF / Word / 图片扫描件"
+          />
         </div>
       </div>
       <div class="portfolio-ai-confirm__submit-actions">
+        <UiButton variant="outline" @click="openPortfolioScan">
+          一体机扫描
+        </UiButton>
         <UiButton
           :loading="submitting"
-          :disabled="uploadingMaterial"
           @click="submitExtractTask"
         >
           提交抽取任务

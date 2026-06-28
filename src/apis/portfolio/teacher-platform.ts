@@ -112,10 +112,6 @@ export const portfolioDualTeacherApi = {
   academicReject: (data: { id: string, auditOpinion?: string }) =>
     http.post<void>('/api/portfolio/dual-teacher/academic-reject', data),
   exportRoster: () => http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/dual-teacher/export-roster', {}),
-  importTemplate: () =>
-    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/dual-teacher/import-template', {}),
-  importConfirm: (data: { fileName?: string, sourceFileId: string }) =>
-    http.post<PortfolioDualTeacherImportResultVO>('/api/portfolio/dual-teacher/import-batch/confirm', data),
   analyticsStats: () => http.post<PortfolioDualTeacherAnalyticsVO>('/api/portfolio/dual-teacher/analytics/stats', {}),
 }
 
@@ -188,11 +184,6 @@ export const portfolioExternalTeacherApi = {
     http.post<string>('/api/portfolio/external-teacher/save', data),
   revoke: (data: { id: string }) =>
     http.post<void>('/api/portfolio/external-teacher/revoke', data),
-  importConfirm: (data: { fileName?: string, sourceFileId: string }) =>
-    http.post<{ batchId: string, successRows: number, failedRows: number }>(
-      '/api/portfolio/external-teacher/import-batch/confirm',
-      data,
-    ),
   importBatchPage: (data: QueryDto) =>
     http.post<PageResult<PortfolioExternalTeacherImportBatchVO>>(
       '/api/portfolio/external-teacher/import-batch/page',
@@ -205,8 +196,6 @@ export const portfolioExternalTeacherApi = {
     ),
   exportRoster: () =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/external-teacher/export-roster', {}),
-  importTemplate: () =>
-    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/external-teacher/import-template', {}),
 }
 
 export interface PortfolioDevelopmentPlanVO {

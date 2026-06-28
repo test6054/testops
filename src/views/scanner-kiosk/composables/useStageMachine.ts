@@ -26,21 +26,21 @@ export const KIOSK_STAGES: readonly KioskStageDef[] = Object.freeze([
     id: 'setup',
     label: '扫描答卷',
     description: '设备就绪 / 开始扫描',
-    routeName: 'ScannerKioskSetup',
+    routeName: 'ScannerExamKioskSetup',
     order: 0,
   },
   {
     id: 'scanning',
     label: '扫描中',
     description: '采集 / 上传 / 进度',
-    routeName: 'ScannerKioskScanning',
+    routeName: 'ScannerExamKioskScanning',
     order: 1,
   },
   {
     id: 'review',
     label: '复核',
     description: '异常处置 / 补扫',
-    routeName: 'ScannerKioskReview',
+    routeName: 'ScannerExamKioskReview',
     order: 2,
   },
 ])
@@ -49,7 +49,7 @@ export const KIOSK_HISTORY_STAGE: KioskStageDef = Object.freeze({
   id: 'history',
   label: '扫描记录',
   description: '历史批次只读浏览',
-  routeName: 'ScannerKioskHistory',
+  routeName: 'ScannerExamKioskHistory',
   order: -1,
 })
 

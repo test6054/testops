@@ -58,7 +58,6 @@ const scanModeLabel = computed(() => workflow.scanModeText(workflow.scanMode.val
 const scanModeTone = computed(() => {
   const mode = workflow.scanMode.value
   if (mode === 'SUPPLEMENT') return 'supplement'
-  if (mode === 'ARCHIVE') return 'archive'
   return 'direct'
 })
 

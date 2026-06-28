@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type {
   AccreditationCycleVO,
   AnnualReportMaterialCategory,
@@ -11,7 +10,8 @@ import type {
 } from '@/apis/quality/accreditation'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import {
   accreditationApi,
   ANNUAL_REPORT_MATERIAL_CATEGORY_LABEL,
@@ -226,19 +226,13 @@ function openEdit(record: AnnualReportMaterialVO) {
   materialDrawerOpen.value = true
 }
 
-async function uploadMaterialFile(option: UploadRequestOption) {
-  const file = option.file as File
-  try {
-    const uploaded = await uploadFile(file, { businessType: 'QUALITY_ANNUAL_REPORT_MATERIAL' })
-    form.storageFileId = uploaded.id
-    if (!form.materialName) form.materialName = file.name
-    option.onSuccess?.(uploaded)
-    message.success('年度报备材料文件已上传')
-  } catch (e) {
-    option.onError?.(e as Error)
-    showUserError(e)
+const materialFileName = ref<string>()
+
+watch(materialFileName, (name) => {
+  if (name && !form.materialName) {
+    form.materialName = name
   }
-}
+})
 
 async function submitMaterial() {
   if (!props.activeCycleId && !form.id) {
@@ -608,9 +602,12 @@ defineExpose({ loadMaterials, openCreate })
           <a-textarea v-model:value="form.materialDescription" :rows="3" />
         </a-form-item>
         <a-form-item label="材料文件" required>
-          <a-upload :custom-request="uploadMaterialFile" :max-count="1">
-            <UiButton variant="outline">选择文件</UiButton>
-          </a-upload>
+          <UiPlatformFileField
+            v-model:file-node-id="form.storageFileId"
+            v-model:file-name="materialFileName"
+            :scene-key="FileUploadSceneKey.QUALITY_ANNUAL_REPORT_MATERIAL"
+            button-text="选择文件"
+          />
           <p v-if="form.storageFileId" class="file-hint">当前 fileId：{{ form.storageFileId }}</p>
         </a-form-item>
       </a-form>

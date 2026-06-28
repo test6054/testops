@@ -119,34 +119,22 @@ export const indirectResponseApi = {
   /** 统计某题项的有效样本数（用于覆盖率计算） */
   countValidByItem: (itemId: string) =>
     http.post<number>(`${BASE}/count-valid-by-item`, { id: itemId }),
-  /** Excel 批量导入答卷 */
-  importExcel: (formId: string, file: File) => {
-    const formData = new FormData()
-    formData.append('formId', formId)
-    formData.append('file', file)
-    return http.post<IndirectResponseImportResult>(`${BASE}/import-excel`, formData)
-  },
   /**
-   * 从 PDF / DOCX / 图片中抽取答卷文本（同步）。
-   * 后端走 edu-mark 统一文档抽取服务（图片 OCR + PDF 文本 + 扫描页 OCR）。
-   * 返回结构化文本，由前端展示给教师对照上传文档手工录入答卷。
+   * 从 PDF / DOCX / 图片中同步抽取答卷文本（不写库，供对照手工录入）。
+   * 配合 ImportResponseDocumentModal「仅抽取文本」模式；批量结构化仍走 Excel。
    */
-  importDocument: (formId: string, file: File) => {
-    const formData = new FormData()
-    formData.append('formId', formId)
-    formData.append('file', file)
-    return http.post<IndirectResponseDocumentExtraction>(`${BASE}/import-document`, formData)
-  },
+  importDocument: (formId: string, sourceFileId: string) =>
+    http.post<IndirectResponseDocumentExtraction>(`${BASE}/import-document`, {
+      formId,
+      sourceFileId,
+    }),
   /**
    * AI 异步文档解析导入答卷。
-   * 上传文件 -> 创建 PENDING 状态 AI 任务 -> 立即返回 taskId。
-   * 后台异步：下载文件 -> 文本提取 -> AI 解析 -> 写入答卷草稿。
-   * 前端通过轮询 aiTaskApi.detail 跟踪进度。
+   * 前端 platform stage 后提交 sourceFileId → 创建 PENDING 状态 AI 任务 → 立即返回 taskId。
    */
-  importDocumentAi: (formId: string, file: File) => {
-    const formData = new FormData()
-    formData.append('formId', formId)
-    formData.append('file', file)
-    return http.post<AiTaskSubmitResponseVO>(`${BASE}/import-document-ai`, formData)
-  },
+  importDocumentAi: (formId: string, sourceFileId: string) =>
+    http.post<AiTaskSubmitResponseVO>(`${BASE}/import-document-ai`, {
+      formId,
+      sourceFileId,
+    }),
 }

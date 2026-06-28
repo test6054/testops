@@ -150,6 +150,16 @@
               />
             </a-form-item>
           </a-col>
+          <a-col :span="12">
+            <a-form-item name="allowedTaskKinds" label="允许任务类型">
+              <a-select
+                v-model:value="formData.allowedTaskKinds"
+                mode="multiple"
+                :options="allowedTaskKindOptions"
+                placeholder="未选时默认仅考试扫描"
+              />
+            </a-form-item>
+          </a-col>
         </a-row>
 
         <a-divider orientation="left">运维信息（可选）</a-divider>
@@ -211,6 +221,7 @@
           <UiTag :tone="!detailInfo.kioskLockEnabled ? 'orange' : 'green'">
             {{ detailInfo.kioskLockEnabled === false ? '已关闭' : '已启用' }}
           </UiTag>
+          <span v-if="detailInfo.allowedTaskKinds">任务类型：{{ detailInfo.allowedTaskKinds }}</span>
         </a-descriptions-item>
         <a-descriptions-item label="扫描组件在线状态">
           <UiTag :tone="endpointOnlineStatusDisplayColorOf(detailInfo)">
@@ -311,6 +322,7 @@ import type {
   ScannerDeviceStatusCode,
   ScannerEndpointOnlineStatusCode,
 } from '@/apis/mark/exam-mark-scanner'
+import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
@@ -543,6 +555,26 @@ function handleUiPageChange(page: { current: number, pageSize: number }): void {
   void loadDevices()
 }
 
+const allowedTaskKindOptions: Array<{ label: string, value: ScanTaskKindCode }> = [
+  { label: '考试扫描 / 补录', value: 'EXAM_MARKING' },
+  { label: '考后归档', value: 'EXAM_ARCHIVE' },
+  { label: '教师档案袋', value: 'PORTFOLIO_COLLECT' },
+]
+
+function formatAllowedTaskKinds(values: ScanTaskKindCode[]): string | undefined {
+  if (!values.length) {
+    return undefined
+  }
+  return values.join(',')
+}
+
+function parseAllowedTaskKinds(raw?: string): ScanTaskKindCode[] {
+  if (!raw?.trim()) {
+    return ['EXAM_MARKING']
+  }
+  return raw.split(',').map(item => item.trim()).filter(Boolean) as ScanTaskKindCode[]
+}
+
 // ─── 新建/编辑弹窗 ────────────────────────────────────
 const showFormModal = ref(false)
 const formMode = ref<'create' | 'edit'>('create')
@@ -561,6 +593,7 @@ interface FormState {
   location?: string
   kioskLockEnabled: boolean
   remark?: string
+  allowedTaskKinds: ScanTaskKindCode[]
 }
 
 function defaultFormState(): FormState {
@@ -571,6 +604,7 @@ function defaultFormState(): FormState {
     scannerIp: '',
     status: 'ACTIVE',
     kioskLockEnabled: true,
+    allowedTaskKinds: ['EXAM_MARKING'],
   }
 }
 
@@ -608,6 +642,7 @@ function handleEdit(record: ExamScannerDeviceVO): void {
     location: record.location ?? '',
     kioskLockEnabled: record.kioskLockEnabled,
     remark: record.remark ?? '',
+    allowedTaskKinds: parseAllowedTaskKinds(record.allowedTaskKinds),
   })
   showFormModal.value = true
 }
@@ -628,6 +663,7 @@ async function handleFormSubmit(): Promise<void> {
         location: emptyToUndefined(formData.location),
         kioskLockEnabled: formData.kioskLockEnabled,
         remark: emptyToUndefined(formData.remark),
+        allowedTaskKinds: formatAllowedTaskKinds(formData.allowedTaskKinds),
       }
       const handoff = await createScannerDevice(request)
       message.success('扫描设备创建成功')
@@ -649,6 +685,7 @@ async function handleFormSubmit(): Promise<void> {
         location: emptyToUndefined(formData.location),
         kioskLockEnabled: formData.kioskLockEnabled,
         remark: emptyToUndefined(formData.remark),
+        allowedTaskKinds: formatAllowedTaskKinds(formData.allowedTaskKinds),
       }
       const handoff = await updateScannerDevice(request)
       message.success('扫描设备已更新')

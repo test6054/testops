@@ -7,6 +7,7 @@
 
 import type { KioskWorkflow } from './useKioskWorkflow'
 import { computed } from 'vue'
+import { resolveKioskActivationGuardMessage } from '../utils/kioskActivationGuard'
 
 export interface KioskBlockedReasons {
   /** 切换考试是否被阻断（空字符串=不阻断） */
@@ -106,7 +107,10 @@ export function useKioskMutex(workflow: KioskWorkflow) {
             : workflow.removeCurrentJobTitle.value,
       discardLedgerPage: workflow.canDiscardLedgerPage.value ? '' : jobInflightBlocked.value,
 
-      activateAgent: workflow.canActivateAgent.value ? '' : jobInflightBlocked.value,
+      activateAgent: resolveKioskActivationGuardMessage({
+        health: workflow.health.value,
+        currentJobBlocksWorkspace: workflow.currentJobBlocksWorkspace.value,
+      }) || '',
     }
   })
 

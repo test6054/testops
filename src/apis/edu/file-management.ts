@@ -156,44 +156,6 @@ export interface UploadFileOptions extends UploadFileRequestDTO {
 }
 
 /**
- * 上传文件 - 对应后端 POST /api/storage/filesystem/file
- * 单文件上传，超时时间 5 分钟，支持大文件上传
- */
-export function uploadFile(file: File, options: UploadFileOptions): Promise<FileSystemNodeResponseDTO> {
-  // 检查文件对象
-  if (!file || !(file instanceof File)) {
-    throw new Error('请选择要上传的文件')
-  }
-
-  const formData = new FormData()
-  formData.append('file', file, file.name) // 明确指定文件名
-  if (options.parentId) {
-    formData.append('parentId', options.parentId)
-  }
-  if (options.businessType) {
-    formData.append('businessType', options.businessType)
-  }
-  // tenantId 和 userId 由后端从用户上下文(UserHold)自动获取，无需前端传递
-
-  return http.post<FileSystemNodeResponseDTO>('/api/storage/filesystem/file', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    },
-    timeout: 300000, // 5分钟超时，支持大文件上传
-    onUploadProgress: (progressEvent: { loaded: number, total?: number }) => {
-      if (options.onProgress && progressEvent.total) {
-        const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-        options.onProgress({
-          percent,
-          loaded: progressEvent.loaded,
-          total: progressEvent.total
-        })
-      }
-    }
-  })
-}
-
-/**
  * 获取子节点列表 - 对应后端 POST /api/storage/filesystem/children
  */
 export function getChildNodes(data: GetChildNodesRequestDTO): Promise<FileSystemNodeResponseDTO[]> {
@@ -216,6 +178,7 @@ export function renameNode(data: RenameNodeRequestDTO): Promise<FileSystemNodeRe
 
 /**
  * 批量上传文件 - 对应后端 POST /api/storage/filesystem/batch-upload
+ * 业务页请使用 platform/file 或 UiPlatformFileField。
  */
 export function batchUploadFiles(files: File[], data: UploadFileRequestDTO): Promise<BatchUploadResponseDTO> {
   const formData = new FormData()

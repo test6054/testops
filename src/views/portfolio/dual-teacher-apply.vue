@@ -3,7 +3,8 @@ import type { PortfolioDualTeacherApplicationStatus } from '@/apis/portfolio/enu
 import type { PortfolioDualTeacherApplicationVO } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
+import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL } from '@/apis/portfolio/enums'
 import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -17,9 +18,15 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 const { currentUserId } = usePortfolioTeacherAccess()
 const saving = ref(false)
 const submitting = ref(false)
+interface AttachmentItem {
+  fileNodeId: string
+  fileName: string
+}
+
+const attachmentItems = ref<AttachmentItem[]>([])
+const attachmentInputRef = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
 const application = ref<PortfolioDualTeacherApplicationVO | null>(null)
-const attachmentFileIds = ref<string[]>([])
 
 const form = reactive({
   id: '',
@@ -59,7 +66,7 @@ async function loadMine() {
     if (!mine) {
       application.value = null
       form.id = ''
-      attachmentFileIds.value = []
+      attachmentItems.value = []
       return
     }
     application.value = await portfolioDualTeacherApi.get({ id: mine.id })
@@ -67,28 +74,49 @@ async function loadMine() {
     form.certLevel = application.value.certLevel ?? ''
     form.certYear = application.value.certYear ?? form.certYear
     form.enterprisePracticeDays = application.value.enterprisePracticeDays ?? 0
-    attachmentFileIds.value = application.value.attachmentFileIds ?? []
+    attachmentItems.value = (application.value.attachmentFileIds ?? []).map((fileNodeId) => ({
+      fileNodeId,
+      fileName: fileNodeId,
+    }))
   } catch (error) {
     showUserError(error)
   }
 }
 
-async function handleUploadAttachment(file: File) {
+function openAttachmentPicker() {
+  attachmentInputRef.value?.click()
+}
+
+async function onAttachmentPick(event: Event) {
+  const input = event.target as HTMLInputElement
+  const files = input.files
+  if (!files?.length) {
+    return
+  }
   uploading.value = true
   try {
-    const uploaded = await uploadFile(file, { businessType: 'PORTFOLIO_MATERIAL' })
-    attachmentFileIds.value = [...attachmentFileIds.value, uploaded.id]
+    for (const file of Array.from(files)) {
+      const uploaded = await stageBusinessFile(FileUploadSceneKey.PORTFOLIO_MATERIAL, file)
+      attachmentItems.value = [
+        ...attachmentItems.value,
+        { fileNodeId: uploaded.id, fileName: uploaded.nodeName },
+      ]
+    }
     message.success('附件已上传')
   } catch (error) {
     showUserError(error, '附件上传失败')
   } finally {
     uploading.value = false
+    input.value = ''
   }
-  return false
 }
 
-function removeAttachment(fileId: string) {
-  attachmentFileIds.value = attachmentFileIds.value.filter((id) => id !== fileId)
+function removeAttachment(fileNodeId: string) {
+  attachmentItems.value = attachmentItems.value.filter((item) => item.fileNodeId !== fileNodeId)
+}
+
+function attachmentFileIds(): string[] {
+  return attachmentItems.value.map((item) => item.fileNodeId)
 }
 
 async function saveDraft() {
@@ -104,7 +132,7 @@ async function saveDraft() {
       certLevel: form.certLevel.trim() || undefined,
       certYear: form.certYear.trim() || undefined,
       enterprisePracticeDays: form.enterprisePracticeDays || undefined,
-      attachmentFileIds: attachmentFileIds.value.length ? attachmentFileIds.value : undefined,
+      attachmentFileIds: attachmentFileIds().length ? attachmentFileIds() : undefined,
     })
     message.success('草稿已保存')
     await loadMine()
@@ -159,19 +187,21 @@ onMounted(loadMine)
           />
         </a-form-item>
         <a-form-item label="证明材料">
-          <a-upload
-            :before-upload="handleUploadAttachment"
-            :show-upload-list="false"
-            :disabled="!canEdit()"
+          <input
+            ref="attachmentInputRef"
+            type="file"
+            class="sr-only"
             accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
             multiple
+            @change="onAttachmentPick"
           >
-            <UiButton :loading="uploading" :disabled="!canEdit()"> 上传附件 </UiButton>
-          </a-upload>
-          <ul v-if="attachmentFileIds.length" class="attachment-list">
-            <li v-for="fileId in attachmentFileIds" :key="fileId">
-              <span>{{ fileId }}</span>
-              <a v-if="canEdit()" @click="removeAttachment(fileId)">移除</a>
+          <UiButton :loading="uploading" :disabled="!canEdit()" @click="openAttachmentPicker">
+            上传附件
+          </UiButton>
+          <ul v-if="attachmentItems.length" class="attachment-list">
+            <li v-for="item in attachmentItems" :key="item.fileNodeId">
+              <span>{{ item.fileName }}</span>
+              <a v-if="canEdit()" @click="removeAttachment(item.fileNodeId)">移除</a>
             </li>
           </ul>
         </a-form-item>

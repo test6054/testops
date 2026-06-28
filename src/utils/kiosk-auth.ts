@@ -24,11 +24,12 @@ export interface MarkScannerStationAuth {
 }
 
 /**
- * 一体机 / 扫描工位链路的 HTTP 路径：允许 JWT 或 Agent 激活后的 push_token 鉴权。
+ * 一体机 / 扫描工位链路的 HTTP 路径：一体机走 Agent push_token；教师 Web 扫描看板可走 JWT。
  */
 export function isMarkScannerStationApiUrl(url: string): boolean {
   return (
     url.includes('/api/mark/scanner/kiosk/')
+    || url.includes('/api/mark/scanner/work-order/')
     || url.includes('/api/mark/sse/scan-live/')
     || url.includes('/api/mark/scan-live/')
   )
@@ -178,8 +179,8 @@ export function isScannerKioskBrowserPage(): boolean {
 /**
  * 扫描工位链路统一鉴权头。
  *
- * 业务约束：扫描一体机页面必须使用 Agent 激活后下发的 push_token，不能被浏览器里残留的教师
- * JWT 覆盖；教师端扫描看板仍优先使用教师 JWT，以保留教师租户视野和 token 续期能力。
+ * 业务约束：/scanner-kiosk/* 页面只能使用 Agent 激活后的 push_token，不得使用教师 JWT；
+ * 教师端扫描看板（非一体机页面）仍优先使用教师 JWT。
  */
 export function resolveMarkScannerStationAuthHeaders(
   extra: Record<string, string> = {},

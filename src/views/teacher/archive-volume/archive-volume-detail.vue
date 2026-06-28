@@ -243,7 +243,7 @@ import type {
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
 import {
@@ -546,6 +546,21 @@ onMounted(() => {
   resolveInitialTab()
   void loadDetail()
 })
+
+watch(
+  () => route.query.scanCommitted,
+  (value) => {
+    if (value !== '1') {
+      return
+    }
+    activeTab.value = 'materials'
+    void loadDetail({ silent: true })
+    const nextQuery = { ...route.query }
+    delete nextQuery.scanCommitted
+    void router.replace({ path: route.path, query: nextQuery })
+  },
+  { immediate: true },
+)
 </script>
 
 <style scoped>

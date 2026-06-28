@@ -59,7 +59,6 @@ const scanModeSummary = computed(() => workflow.scanModeText(workflow.scanMode.v
 const scanModeTone = computed(() => {
   const mode = workflow.scanMode.value
   if (mode === 'SUPPLEMENT') return 'supplement'
-  if (mode === 'ARCHIVE') return 'archive'
   return 'direct'
 })
 
@@ -82,10 +81,9 @@ const duplexMismatchHint = computed(() => {
 const SCAN_MODES = [
   { id: 'DIRECT' as const, label: '首次扫描' },
   { id: 'SUPPLEMENT' as const, label: '补扫' },
-  { id: 'ARCHIVE' as const, label: '历史存档' },
 ]
 
-function selectMode(mode: 'DIRECT' | 'SUPPLEMENT' | 'ARCHIVE') {
+function selectMode(mode: 'DIRECT' | 'SUPPLEMENT') {
   if (mode !== workflow.scanMode.value) workflow.changeScanMode(mode)
 }
 
@@ -163,6 +161,27 @@ function applyRecommendedScanConfig() {
             {{ mode.label }}
           </button>
         </div>
+      </div>
+
+      <div v-if="workflow.businessScene.value === 'EXAM_DIRECT_SCAN'" class="field">
+        <span class="field__label">识别链路</span>
+        <div class="seg seg--stack">
+          <button
+            v-for="option in workflow.providerChainOptions"
+            :key="option.value"
+            type="button"
+            class="seg__btn seg__btn--stack"
+            :class="{ 'seg__btn--active': workflow.providerChain.value === option.value }"
+            :disabled="paramsDisabled"
+            @click="workflow.selectProviderChain(option.value)"
+          >
+            <span class="seg__title">{{ option.label }}</span>
+            <span class="seg__desc">{{ option.description }}</span>
+          </button>
+        </div>
+        <p class="field__hint field__hint--muted">
+          当前：{{ workflow.providerChainText(workflow.providerChain.value) }}，开单后冻结
+        </p>
       </div>
 
       <div class="field">
@@ -384,6 +403,37 @@ function applyRecommendedScanConfig() {
   border-radius: calc(var(--kiosk-radius-md) - 2px);
   cursor: pointer;
   font-family: inherit;
+}
+
+.seg--stack {
+  flex-direction: column;
+}
+
+.seg__btn--stack {
+  flex: none;
+  height: auto;
+  min-height: 52px;
+  padding: var(--kiosk-space-2) var(--kiosk-space-3);
+  text-align: left;
+}
+
+.seg__title {
+  display: block;
+  font-size: var(--kiosk-fz-body);
+  font-weight: var(--kiosk-fw-semibold);
+}
+
+.seg__desc {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-secondary);
+  font-weight: var(--kiosk-fw-regular);
+}
+
+.seg__btn--active .seg__desc {
+  color: var(--kiosk-primary);
+  opacity: 0.85;
 }
 
 .seg__btn--active {

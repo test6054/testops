@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { UploadFile } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { DataNode } from 'ant-design-vue/es/tree'
 import type {
@@ -17,7 +16,9 @@ import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pa
 import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import { downloadExcelImportTemplate } from '@/apis/platform/excel-import'
+import { downloadFile } from '@/apis/edu/file-management'
 import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import {
   PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL,
@@ -28,6 +29,7 @@ import {
   PF_SCORE_RULE_TYPE_OPTIONS,
 } from '@/apis/portfolio/indicator-types'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
+import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -47,7 +49,6 @@ import {
   serializeTemplateParams,
 } from '@/utils/indicator-template-params'
 import { readPageList, readPageTotal } from '@/utils/page-result'
-import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function dataSourceLabel(value: PfIndicatorDataSourceChannel): string {
@@ -73,8 +74,7 @@ const templates = ref<PortfolioIndicatorRuleTemplateVO[]>([])
 const templateTotal = ref(0)
 const industryPacks = ref<PortfolioIndustryPackVO[]>([])
 const sourceMappings = ref<PortfolioIndicatorSourceMappingVO[]>([])
-const selectedFile = ref<File | null>(null)
-const fileList = ref<UploadFile[]>([])
+const importModalOpen = ref(false)
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const editMode = ref(false)
@@ -259,36 +259,9 @@ async function loadSourceMappings() {
   }
 }
 
-function handleBeforeUpload(file: File) {
-  selectedFile.value = file
-  fileList.value = [{ uid: 'import', name: file.name, status: 'done' }]
-  return false
-}
-
-function handleRemoveFile() {
-  selectedFile.value = null
-  fileList.value = []
-}
-
-async function confirmExcelImport() {
-  if (!selectedFile.value) {
-    message.warning('请选择 Excel 文件')
-    return
-  }
-  try {
-    const node = await uploadFile(selectedFile.value, { businessType: 'PORTFOLIO_EXCEL_IMPORT' })
-    const result = await portfolioIndicatorPlatformApi.importDefinitionExcel({
-      fileName: selectedFile.value.name,
-      sourceFileId: String(node.id),
-    })
-    message.success(`导入成功 ${result.successRows} 条（新建 ${result.createdCount}，更新 ${result.updatedCount}），失败 ${result.failedRows} 条`)
-    selectedFile.value = null
-    fileList.value = []
-    await Promise.all([loadSummary(), reloadTab()])
-  }
-  catch (error) {
-    showUserError(error)
-  }
+async function handleIndicatorImportSuccess() {
+  importModalOpen.value = false
+  await Promise.all([loadSummary(), reloadTab()])
 }
 
 async function reloadTab() {
@@ -545,8 +518,18 @@ async function importSeed() {
 
 async function downloadTemplate() {
   try {
-    const result = await portfolioIndicatorPlatformApi.exportDefinitionTemplate()
-    await downloadPortfolioIndicatorExcelExport(result)
+    const template = await downloadExcelImportTemplate({
+      sceneKey: ExcelImportSceneKey.PORTFOLIO_INDICATOR_DEFINITION,
+    })
+    const blobResponse = await downloadFile({ nodeId: String(template.fileNodeId) })
+    const url = URL.createObjectURL(blobResponse.data)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = template.fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
     message.success('模板已下载')
   }
   catch (error) {
@@ -697,23 +680,9 @@ onMounted(async () => {
           <p class="hint">
             请先下载模板，填写后上传 Excel 文件批量导入指标定义。
           </p>
-          <a-upload
-            :before-upload="handleBeforeUpload"
-            :file-list="fileList"
-            :max-count="1"
-            accept=".xlsx,.xls"
-            @remove="handleRemoveFile"
-          >
-            <UiButton>选择 Excel</UiButton>
-          </a-upload>
-          <div class="toolbar" style="margin-top: 8px">
-            <UiButton @click="downloadTemplate">
-              下载模板
-            </UiButton>
-            <UiButton variant="outline" @click="confirmExcelImport">
-              确认导入
-            </UiButton>
-          </div>
+          <UiButton @click="importModalOpen = true">
+            Excel 批量导入
+          </UiButton>
         </a-tab-pane>
         <a-tab-pane key="mapping" tab="来源映射">
           <UiDataTable :columns="mappingColumns" :data-source="sourceMappings" :loading="loading" row-key="indicatorCode">
@@ -879,6 +848,12 @@ onMounted(async () => {
       </a-form>
     </a-drawer>
   </StageWorkbenchShell>
+  <UiPlatformExcelImportModal
+    v-model:open="importModalOpen"
+    :scene-key="ExcelImportSceneKey.PORTFOLIO_INDICATOR_DEFINITION"
+    entity-label="平台指标定义"
+    @success="handleIndicatorImportSuccess"
+  />
 </template>
 
 <style scoped>

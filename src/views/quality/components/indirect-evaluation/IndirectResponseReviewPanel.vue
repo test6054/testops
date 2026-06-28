@@ -6,8 +6,10 @@ import type {
   IndirectEvaluationResponseVO,
 } from '@/apis/quality/indirect-response'
 import { message } from 'ant-design-vue'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { indirectResponseApi } from '@/apis/quality/indirect-response'
+import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import {
   ClassSelector,
   StudentSelector,
@@ -21,7 +23,6 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import ImportResponseDocumentModal from '../ImportResponseDocumentModal.vue'
-import ImportResponseExcelModal from '../ImportResponseExcelModal.vue'
 import {
   isTeacherResponseWritable,
   respondentTypeLabel,
@@ -66,6 +67,10 @@ const responseEditor = ref<IndirectEvaluationResponseSaveRequest>({
 
 const importExcelVisible = ref(false)
 const importDocumentVisible = ref(false)
+
+const importExcelContext = computed(() => ({
+  formId: props.selectedForm?.id,
+}))
 
 function handleResponseClassChange(value: string | null | undefined) {
   responseEditorClassId.value = value ?? ''
@@ -375,7 +380,7 @@ defineExpose({
           size="sm"
           @click="openImportDocument"
         >
-          PDF / Word / 图片
+          文档导入
         </UiButton>
         <UiButton
           v-if="selectedForm && isTeacherResponseWritable(selectedForm)"
@@ -601,10 +606,14 @@ defineExpose({
     </a-form>
   </a-modal>
 
-  <ImportResponseExcelModal
+  <UiPlatformExcelImportModal
     v-model:open="importExcelVisible"
-    :form-id="selectedForm?.id ?? null"
-    @imported="handleImportExcelDone"
+    :scene-key="ExcelImportSceneKey.QUALITY_INDIRECT_RESPONSE"
+    entity-label="间接评价答卷"
+    hide-template-download
+    template-hint="Excel 模板请从问卷详情页导出后填写，本弹窗仅支持上传已填好的答卷文件。"
+    :context="importExcelContext"
+    @success="handleImportExcelDone"
   />
 
   <ImportResponseDocumentModal

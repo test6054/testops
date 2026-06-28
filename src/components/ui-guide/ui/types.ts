@@ -376,20 +376,6 @@ export interface UiColumnSettingItem {
   fixed?: boolean
 }
 
-/** 附件项 */
-export interface UiAttachmentItem {
-  id: string
-  fileId?: string | number
-  name: string
-  size?: number
-  sizeText?: string
-  type?: string
-  helper?: string
-  status?: 'uploading' | 'done' | 'error'
-  statusLabel?: string
-  statusTone?: BadgeTone
-}
-
 /** 洞察问题项 */
 export interface UiInsightItem {
   key?: string

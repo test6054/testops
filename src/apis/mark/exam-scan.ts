@@ -225,6 +225,12 @@ export interface ExamScannerBatchVO {
   discardedUserId?: string
   /** 批次废弃原因（教师可见） */
   discardReason?: string
+  /** 顺序审计是否通过 */
+  orderAuditPassed?: boolean
+  /** 顺序审计时间 */
+  orderAuditTime?: string
+  /** 顺序审计异常项数量 */
+  orderAuditIssueCount?: number
 }
 
 /** 扫描批次创建响应 - 对应 ExamScannerBatchCreateResponse */
@@ -287,6 +293,57 @@ export interface ExamScannerBatchPreviewVO {
   deviceBreakdown: ExamScannerBatchDeviceBreakdownVO[]
 }
 
+/** 扫描批次顺序审计异常码 - 与后端 ScanBatchOrderAuditCode 完全一致 */
+export type ScanBatchOrderAuditCode
+  = | 'PAGE_COUNT_MISMATCH'
+    | 'SEQ_GAP'
+    | 'TEMPLATE_MISMATCH'
+    | 'SPLIT_BOUNDARY'
+    | 'LEGACY_BULK'
+    | 'DUPLEX_INCOMPLETE'
+    | 'INSTANCE_COUNT_MISMATCH'
+    | 'DIRECT_PAGE_GROUP'
+
+export const SCAN_BATCH_ORDER_AUDIT_CODE_LABEL: Record<ScanBatchOrderAuditCode, string> = {
+  PAGE_COUNT_MISMATCH: '落库页数不一致',
+  SEQ_GAP: '进纸序号不连续',
+  TEMPLATE_MISMATCH: '模板页位错误',
+  SPLIT_BOUNDARY: '切卷边界错误',
+  LEGACY_BULK: '整批单卷误登记',
+  DUPLEX_INCOMPLETE: '双面配对不完整',
+  INSTANCE_COUNT_MISMATCH: '试卷实例数不一致',
+  DIRECT_PAGE_GROUP: '页数不能整卷分组',
+}
+
+/** 扫描批次顺序审计异常项 */
+export interface ScanBatchOrderAuditIssueVO {
+  auditCode: ScanBatchOrderAuditCode
+  message: string
+  pageSeq?: number
+  templatePageNo?: number
+  paperInstanceId?: string
+}
+
+/** 扫描批次顺序审计结果 */
+export interface ScanBatchOrderAuditVO {
+  scanBatchId: string
+  examId: string
+  passed: boolean
+  auditTime?: string
+  pagesPerPaper?: number
+  declaredPageCount?: number
+  receivedPageCount?: number
+  expectedPaperInstanceCount?: number
+  actualPaperInstanceCount?: number
+  issues: ScanBatchOrderAuditIssueVO[]
+}
+
+/** 扫描批次顺序审计查询请求 */
+export interface ScanBatchOrderAuditQueryRequest {
+  examId: string
+  scanBatchId: string
+}
+
 /** 教师 Web 端封存扫描批次请求 */
 export interface ExamScannerBatchTeacherSealRequest {
   scanBatchId: string
@@ -338,6 +395,13 @@ export function sealScanBatchByTeacher(
   request: ExamScannerBatchTeacherSealRequest,
 ): Promise<boolean> {
   return http.post<boolean>('/api/mark/exams/scanner-batches/seal', request)
+}
+
+/** 查询扫描批次顺序审计结果。 */
+export function getScanBatchOrderAudit(
+  request: ScanBatchOrderAuditQueryRequest,
+): Promise<ScanBatchOrderAuditVO> {
+  return http.post<ScanBatchOrderAuditVO>('/api/mark/exams/scanner-batches/order-audit', request)
 }
 
 /** 分页查询扫描批次。 */

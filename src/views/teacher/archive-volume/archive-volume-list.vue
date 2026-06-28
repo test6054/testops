@@ -276,6 +276,7 @@
       width="560"
     >
       <ArchiveVolumeExternalImportPanel />
+      <ArchiveVolumeHistoryImportPanel class="archive-volume-list__history-import" />
     </UiDrawer>
   </StageWorkbenchShell>
 </template>
@@ -347,6 +348,7 @@ import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveVolumeExternalImportPanel from '@/views/teacher/archive-volume/archive-volume-external-import-panel.vue'
+import ArchiveVolumeHistoryImportPanel from '@/views/teacher/archive-volume/archive-volume-history-import-panel.vue'
 import ArchiveVolumeRemediationPanel from '@/views/teacher/archive-volume/archive-volume-remediation-panel.vue'
 import ArchiveVolumeSettings from '@/views/teacher/archive-volume/archive-volume-settings.vue'
 import ArchiveVolumeSupervisionPanel from '@/views/teacher/archive-volume/archive-volume-supervision-panel.vue'

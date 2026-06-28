@@ -58,6 +58,9 @@ import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import UndoOutlined from '@ant-design/icons-vue/UndoOutlined'
 import message from 'ant-design-vue/es/message'
 import { onMounted, ref, shallowRef, watch } from 'vue'
+import { getFileArrayBuffer } from '@/apis/edu/file-management'
+import { stagePlatformFile } from '@/apis/platform/file'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { showUserError } from '@/utils/error-handler'
 import 'pdfjs-dist/build/pdf.worker.mjs'
@@ -104,16 +107,7 @@ let pdfBytes: ArrayBuffer | null = null
 async function loadPdf() {
   loading.value = true
   try {
-    const token = localStorage.getItem('token')
-    // 拉取PDF bytes
-    const url = new URL('/api/storage/filesystem/download', window.location.origin)
-    url.searchParams.set('nodeId', props.pdfFileId)
-    const resp = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } })
-    if (!resp.ok) {
-      message.error('PDF加载失败')
-      return
-    }
-    pdfBytes = await resp.arrayBuffer()
+    pdfBytes = await getFileArrayBuffer({ nodeId: props.pdfFileId })
 
     // 使用pdfjs渲染
     const { getDocument } = await import('pdfjs-dist')
@@ -295,22 +289,9 @@ async function handleSave() {
     const modifiedBuffer = new ArrayBuffer(modifiedBytes.byteLength)
     new Uint8Array(modifiedBuffer).set(modifiedBytes)
     const blob = new Blob([modifiedBuffer], { type: 'application/pdf' })
-
-    // Upload to storage
-    const token = localStorage.getItem('token')
-    const formData = new FormData()
-    formData.append('file', blob, 'edited-paper.pdf')
-    const uploadResp = await fetch('/api/storage/filesystem/upload', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    })
-    if (!uploadResp.ok) {
-      message.error('上传失败')
-      return
-    }
-    const uploadResult = await uploadResp.json()
-    const newFileId = String(uploadResult?.data?.id ?? uploadResult?.data?.nodeId ?? '')
+    const file = new File([blob], 'edited-paper.pdf', { type: 'application/pdf' })
+    const staged = await stagePlatformFile(FileUploadSceneKey.MARK_EXAM_TEMPLATE, file)
+    const newFileId = staged.fileNodeId
     if (!newFileId) {
       message.error('未获取到文件ID')
       return

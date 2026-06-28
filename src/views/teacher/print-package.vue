@@ -154,7 +154,7 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { reactive, ref, watch } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
+import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
 import {
   generatePrintPackage,
   getPrintPackage,
@@ -309,24 +309,8 @@ async function previewPackagePdf(pkg: PrintPackageVO) {
   previewLoading.value = true
   previewPdfUrl.value = ''
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      message.error('未登录或登录已过期')
-      return
-    }
-    const requestUrl = new URL('/api/storage/filesystem/download', window.location.origin)
-    requestUrl.searchParams.set('nodeId', pkg.packageFileId)
-    const response = await fetch(requestUrl.toString(), {
-      method: 'GET',
-      credentials: 'include',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (!response.ok) {
-      message.error('印刷包文件加载失败')
-      return
-    }
-    const blob = await response.blob()
-    previewPdfUrl.value = URL.createObjectURL(blob)
+    const buffer = await getFileArrayBuffer({ nodeId: pkg.packageFileId })
+    previewPdfUrl.value = URL.createObjectURL(new Blob([buffer], { type: 'application/pdf' }))
   } catch (error) {
     showUserError(error, '印刷包预览加载失败')
   } finally {

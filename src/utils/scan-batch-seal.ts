@@ -25,6 +25,15 @@ export function batchSealBlockedReason(batch: ExamScannerBatchVO): string {
   if (pending > 0) return `仍有 ${pending} 页未落库`
   const attention = batch.attentionItemCount ?? 0
   if (attention > 0) return `仍有 ${attention} 项扫描异常未处置`
+  if (received > 0 && batch.orderAuditPassed !== true) {
+    if (batch.orderAuditPassed === false) {
+      const issueCount = batch.orderAuditIssueCount ?? 0
+      return issueCount > 0
+        ? `顺序审计未通过，存在 ${issueCount} 项顺序异常`
+        : '顺序审计未通过，请先补扫或废弃后再封存'
+    }
+    return '顺序审计尚未完成，请刷新后重试'
+  }
   return ''
 }
 
@@ -76,6 +85,18 @@ export function buildBatchSealChecklist(batch: ExamScannerBatchVO): BatchSealChe
       ok: attention === 0,
       label: '无未处理异常项',
       detail: attention === 0 ? '所有异常已处置' : `仍有 ${attention} 项未处理`,
+    },
+    {
+      key: 'order-audit',
+      ok: batch.orderAuditPassed === true || (received < 1 && batch.orderAuditPassed !== false),
+      label: '顺序审计通过',
+      detail: batch.orderAuditPassed === false
+        ? `未通过${batch.orderAuditIssueCount ? `（${batch.orderAuditIssueCount} 项）` : ''}`
+        : batch.orderAuditPassed === true
+          ? '固定 collate 顺序正常'
+          : received > 0
+            ? '尚未执行'
+            : '尚无落库页',
     },
     {
       key: 'has-device',

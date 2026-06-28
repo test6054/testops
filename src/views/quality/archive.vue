@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
-import type { FileSystemNodeResponseDTO } from '@/apis/edu/file-management'
 import type { AccreditationCockpitVO, AccreditationCycleVO } from '@/apis/quality/accreditation'
 /**
  * 质量评价 - 材料归档与专家包导出台
@@ -23,7 +21,8 @@ import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { accreditationApi } from '@/apis/quality/accreditation'
 import { archiveApi } from '@/apis/quality/archive'
@@ -235,8 +234,7 @@ const editor = reactive<ArchiveSaveRequest>({
 })
 const editorTrainingPlanId = ref('')
 const editorQualityCourseId = ref('')
-const uploadedArchiveFile = ref<FileSystemNodeResponseDTO | null>(null)
-const archiveFileUploading = ref(false)
+const archiveFileName = ref<string>()
 
 async function loadList() {
   loading.value = true
@@ -382,7 +380,7 @@ function openCreate() {
   })
   editorTrainingPlanId.value = qualityStore.currentTrainingPlanId || ''
   editorQualityCourseId.value = qualityStore.currentQualityCourseId || ''
-  uploadedArchiveFile.value = null
+  archiveFileName.value = undefined
   editorVisible.value = true
 }
 
@@ -405,16 +403,7 @@ async function openEdit(record: ArchiveVO) {
     })
     editorTrainingPlanId.value = qualityStore.currentTrainingPlanId || ''
     editorQualityCourseId.value = qualityStore.currentQualityCourseId || ''
-    uploadedArchiveFile.value = detail.fileId
-      ? {
-          id: detail.fileId,
-          nodeName: detail.fileName,
-          nodeType: 'FILE',
-          tenantId: '',
-          ownerId: '',
-          createTime: '',
-        }
-      : null
+    archiveFileName.value = detail.fileName || undefined
     editorVisible.value = true
   } finally {
     detailLoading.value = false
@@ -497,27 +486,6 @@ function syncEditorTrainingPlan(value: string | null) {
 
 function syncEditorCourse(value: string | null) {
   editorQualityCourseId.value = value || ''
-}
-
-async function handleArchiveFileUpload(options: UploadRequestOption): Promise<void> {
-  archiveFileUploading.value = true
-  try {
-    const { file } = options
-    if (!(file instanceof File)) {
-      message.error('无效的归档文件')
-      options.onError?.(new Error('无效的归档文件'))
-      return
-    }
-    const uploaded = await uploadFile(file, { businessType: 'QUALITY_ARCHIVE_FILE' })
-    uploadedArchiveFile.value = uploaded
-    editor.fileId = uploaded.id
-    message.success(`已上传归档文件：${uploaded.nodeName}`)
-    options.onSuccess?.({})
-  } catch (err) {
-    options.onError?.(err instanceof Error ? err : new Error(String(err)))
-  } finally {
-    archiveFileUploading.value = false
-  }
 }
 
 /* ========== 信号指标 ========== */
@@ -913,18 +881,13 @@ onMounted(async () => {
           </a-col>
           <a-col :span="12">
             <a-form-item label="归档文件" required>
-              <a-upload
-                :show-upload-list="false"
-                :custom-request="handleArchiveFileUpload"
-                :disabled="archiveFileUploading || editorMode === 'edit'"
-              >
-                <UiButton variant="outline" size="sm" :loading="archiveFileUploading">
-                  上传归档文件
-                </UiButton>
-              </a-upload>
-              <div v-if="uploadedArchiveFile" class="archive__file-name">
-                {{ uploadedArchiveFile.nodeName }}
-              </div>
+              <UiPlatformFileField
+                v-model:file-node-id="editor.fileId"
+                v-model:file-name="archiveFileName"
+                :scene-key="FileUploadSceneKey.QUALITY_ARCHIVE_FILE"
+                :disabled="editorMode === 'edit'"
+                button-text="上传归档文件"
+              />
             </a-form-item>
           </a-col>
         </a-row>

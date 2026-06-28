@@ -1,4 +1,3 @@
-import type { ImportResult } from './importing'
 import type { ConfirmationStatus, DataSourceMode } from './types'
 /**
  * 过程性评价记录 API。
@@ -63,14 +62,4 @@ export const processRecordApi = {
   /** DRAFT/SUBMITTED -> CONFIRMED */
   confirm: (id: string) =>
     http.post<void>(`${RECORD}/confirm`, { id }),
-  /** Excel 批量导入节点记录。 */
-  importExcel: (nodeId: string, file: File) => {
-    const formData = new FormData()
-    formData.append('nodeId', nodeId)
-    formData.append('file', file)
-    return http.upload<ImportResult>(`${RECORD}/import-excel`, formData)
-  },
-  /** 下载节点记录导入 Excel 模板。 */
-  downloadTemplate: () =>
-    http.download(`${RECORD}/template-download`),
 }

@@ -85,6 +85,10 @@ export interface AgentHealthResponse {
   updateDiagnosticMessage: string
   /** 更新包已下载且当前可触发自动安装 */
   updateInstallable: boolean
+  /** 是否存在仍占用工作台、应阻断重新激活的本地或服务端扫描任务 */
+  workspaceBlocked: boolean
+  /** 本地 SCANNING / PAUSED 等仍占用工作台的任务（旧 Agent 无 workspaceBlocked 时的兜底） */
+  localWorkspaceBlocked: boolean
 }
 
 export type AgentHealthStatus = 'RUNNING'
@@ -141,6 +145,21 @@ export type LocalScanPageStatus
 
 export type LocalScanPageSide = 'FRONT' | 'BACK'
 
+/** 统一文档采集业务场景；与 edu-mark DocumentBusinessScene 一致 */
+export type ScannerBusinessScene
+  = | 'EXAM_DIRECT_SCAN'
+    | 'EXAM_ARCHIVE'
+    | 'COURSE_ASSESSMENT_ARCHIVE'
+    | 'TEACHER_PORTFOLIO'
+    | 'FULLTEXT_IMPORT'
+
+/** 试卷直扫互斥识别链路；与 edu-mark DirectScanProviderChain 一致 */
+export type DirectScanProviderChain = 'BAIDU_QWEN' | 'PADDLE_LOCAL'
+
+export type ScannerOutputContainerFormat = 'PDF'
+export type ScannerPageImageFormat = 'PNG' | 'JPEG'
+export type ScannerBlankPagePolicy = 'BACK_BLANK' | 'SEPARATOR' | 'REPORT_ONLY' | 'REVIEW_REQUIRED'
+
 export interface ScannerDeviceInfo {
   localScannerId: string
   displayName: string
@@ -171,6 +190,7 @@ export interface AgentSetupContextResponse {
   gatewayBaseUrl?: string
   activatedAt?: string
   preferredLocalScannerId?: string
+  allowedTaskKinds?: string
 }
 
 /** 本机 Agent 绑定 push_token 会话，供 Kiosk 浏览器与 DeviceBinding 对齐 */
@@ -208,6 +228,7 @@ export interface ScannerAgentActivateResponse {
   activatedAt: string
   minimumAgentVersion: string
   latestAgentVersion: string
+  allowedTaskKinds?: string
 }
 
 /**
@@ -260,10 +281,24 @@ function tryParseBusyError(message: string): ScannerBusyError | null {
 export interface StartScanJobRequest {
   context: ExamScannerKioskContextVO
   localScannerId: string
-  /** 后端 /scanner/kiosk/batch/start 签发的批次外部号 */
+  /** 扫描任务类型，默认 EXAM_MARKING */
+  taskKind?: 'EXAM_MARKING' | 'EXAM_ARCHIVE' | 'PORTFOLIO_COLLECT'
+  /** 后端 work-order/start 签发的批次外部号 */
   batchExternalNo: string
-  /** 后端 /scanner/kiosk/batch/start 签发的扫描报告 ID */
+  /** 后端 work-order/start 签发的扫描报告 ID */
   reportId: string
+  /** 统一文档采集业务场景 */
+  businessScene: ScannerBusinessScene
+  /** 业务对象 ID；试卷直扫默认使用 examId */
+  businessRefId: string
+  /** 试卷直扫识别链路；非 EXAM_DIRECT_SCAN 场景不传 */
+  providerChain?: DirectScanProviderChain
+  /** 扫描产物容器格式，首期固定 PDF */
+  outputContainerFormat: ScannerOutputContainerFormat
+  /** 逐页图像格式 */
+  pageImageFormat: ScannerPageImageFormat
+  /** 空白页处置策略，禁止 SILENT_DROP */
+  blankPagePolicy: ScannerBlankPagePolicy
   expectedPages?: number
   scanMode: ScannerKioskScanMode
   targetPageNo?: number
@@ -274,7 +309,24 @@ export interface StartScanJobRequest {
    * false 表示纯追加补扫（保留旧页）。
    */
   replaceTargetPage: boolean
-  /** batch/start 响应中服务端冻结的扫描参数 */
+  /** work-order/start 响应中服务端冻结的扫描参数 */
+  resolvedScanConfig: ExamScannerScanConfigVO
+}
+
+/** EXAM_ARCHIVE / PORTFOLIO_COLLECT 文档采集开扫请求（不依赖考试 kiosk 上下文）。 */
+export interface DocumentStartScanJobRequest {
+  taskKind: 'EXAM_ARCHIVE' | 'PORTFOLIO_COLLECT'
+  localScannerId: string
+  batchExternalNo: string
+  reportId: string
+  businessScene: ScannerBusinessScene
+  businessRefId: string
+  scannerDeviceId: string
+  scannerStationId: string
+  archiveBatchMode?: 'MERGED' | 'PER_PAGE'
+  outputContainerFormat: ScannerOutputContainerFormat
+  pageImageFormat: ScannerPageImageFormat
+  blankPagePolicy: ScannerBlankPagePolicy
   resolvedScanConfig: ExamScannerScanConfigVO
 }
 
@@ -377,6 +429,15 @@ export async function installAgentUpdate(): Promise<LocalScannerAgentInstallUpda
 
 export async function startScanJob(request: StartScanJobRequest): Promise<ScanJobResponse> {
   const payload = await localAgentPost('/api/scan-jobs/start', request)
+  return normalizeAgentPayload(() => validateScanJobResponse(payload))
+}
+
+export async function startDocumentScanJob(request: DocumentStartScanJobRequest): Promise<ScanJobResponse> {
+  const payload = await localAgentPost('/api/scan-jobs/start', {
+    ...request,
+    scanMode: 'DIRECT',
+    replaceTargetPage: false,
+  })
   return normalizeAgentPayload(() => validateScanJobResponse(payload))
 }
 
@@ -578,7 +639,7 @@ function isLocalAgentJsonValue(value: unknown): value is LocalAgentJsonValue {
 
 function requireScanMode(value: AgentWireJsonObject, field: string): ScannerKioskScanMode {
   const fieldValue = value[field]
-  if (fieldValue !== 'DIRECT' && fieldValue !== 'SUPPLEMENT' && fieldValue !== 'ARCHIVE') {
+  if (fieldValue !== 'DIRECT' && fieldValue !== 'SUPPLEMENT') {
     throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return fieldValue
@@ -726,6 +787,8 @@ function validateAgentHealthResponse(value: LocalAgentJsonValue): AgentHealthRes
     updateDownloadedAt: requireAgentWireNullableString(result, 'updateDownloadedAt'),
     updateDiagnosticMessage: requireAgentWireString(result, 'updateDiagnosticMessage'),
     updateInstallable: requireAgentWireBoolean(result, 'updateInstallable'),
+    workspaceBlocked: 'workspaceBlocked' in result && result.workspaceBlocked === true,
+    localWorkspaceBlocked: 'localWorkspaceBlocked' in result && result.localWorkspaceBlocked === true,
   }
 }
 
@@ -791,6 +854,10 @@ function validateAgentSetupContextResponse(value: LocalAgentJsonValue): AgentSet
   if (preferredLocalScannerId !== undefined) {
     payload.preferredLocalScannerId = preferredLocalScannerId
   }
+  const allowedTaskKinds = requireOptionalAgentWireString(result, 'allowedTaskKinds')
+  if (allowedTaskKinds !== undefined) {
+    payload.allowedTaskKinds = allowedTaskKinds
+  }
   return payload
 }
 
@@ -834,6 +901,10 @@ function validateScannerAgentActivateResponse(
   const tenantId = requireOptionalAgentWireString(result, 'tenantId')
   if (tenantId !== undefined) {
     payload.tenantId = tenantId
+  }
+  const allowedTaskKinds = requireOptionalAgentWireString(result, 'allowedTaskKinds')
+  if (allowedTaskKinds !== undefined) {
+    payload.allowedTaskKinds = allowedTaskKinds
   }
   return payload
 }

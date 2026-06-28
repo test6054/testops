@@ -8,7 +8,7 @@
  * 主链：
  *   1. createSet 创建档案集草稿（DRAFT）
  *   2. activateSet 推进 DRAFT -> ACTIVE
- *   3. uploadItem 上传一份扫描影像（multipart），落库后入队 OCR
+ *   3. platform stage 扫描影像 → registerItem(fileId) 落库后入队 OCR
  *   4. searchItems 跨档案集 / 单档案集检索（支持 tag / OCR 文本 / 学号 / 课程过滤）
  *   5. updateSetTags / updateItemTags 全量替换 tag
  *   6. triggerItemOcr 手动触发 OCR 识别（失败重试）
@@ -217,8 +217,8 @@ export interface PaperArchiveItemVO {
 /**
  * 档案项注册请求 - 对应后端 PaperArchiveItemRegisterRequest。
  *
- * 调用约定：调用方必须先调 edu-storage 的 uploadFile() 直传扫描影像，
- * 拿到 FileSystemNodeResponseDTO.id 作为 fileId 后再调本接口。
+ * 调用约定：调用方须先经 platform file stage 暂存扫描影像，
+ * 拿到 fileNodeId 作为 fileId 后再调本接口。
  * 业务服务会反查 storage 节点 + 元数据，然后把文件 TEMP→CONFIRMED。
  */
 export interface PaperArchiveItemRegisterRequest {
@@ -294,15 +294,8 @@ export function updatePaperArchiveSetTags(
 /**
  * 注册一份纸质试卷档案项。
  *
- * 两步上传流程的第二步：调用方先使用 @/apis/edu/file-management.ts 的
- * uploadFile(file, { businessType: 'paper-archive-scan' }) 直传 edu-storage，
- * 拿到 FileSystemNodeResponseDTO.id（即 fileId）后调本接口注册。
- *
- * 业务服务会负责：
- *   1. 反查 storage 节点与元数据，校验租户一致性与 FILE 类型；
- *   2. 调 storage confirmFiles 把节点状态由 TEMP 切为 CONFIRMED；
- *   3. 落库 t_paper_archive_item，fileName/fileSize/fileHash 以 storage 真源为准；
- *   4. 若 triggerOcr 不为 false，会设置 ocr_status=PENDING 入队异步 OCR。
+ * 调用约定：须先经 platform file stage 暂存扫描影像，再携带 fileNodeId 作为 fileId 登记。
+ * 业务服务会反查 storage 节点 + 元数据，然后把文件 TEMP→CONFIRMED。
  *
  * POST /api/mark/paper-archive/items/register
  */

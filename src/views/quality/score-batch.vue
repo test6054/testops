@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 /**
  * 质量评价 - 成绩 Excel 异步导入
  *
- * 后端契约（ScoreBatchController）：
- * 1. 选择 质量评价课程 + 考核环节 + 学年 / 学期 -> 填批次编码 / 名称 -> 上传 Excel
- *    上传后调用 edu-storage 得到 sourceFileId，再调用 /api/quality/score-batches/create 注册批次
- * 2. POST /enqueue-parse 触发异步解析，状态机：PENDING -> PARSING -> PREVIEW_READY / FAILED
- * 3. PREVIEW_READY 后 POST /preview 拿到 ScoreImportPreviewVO（含 diagnostics），人工核对
- * 4. POST /validate 进入 VALIDATED，POST /confirm 进入 CONFIRMED，进入达成度计算可用来源
- * 5. PENDING / FAILED 可 POST /update-status body { id, status: 'CANCELLED' } 取消
+ * 后端契约（ScoreBatchController + platform excel-import）：
+ * 1. 选择质量评价课程 + 考核环节 + 学年/学期 → 填批次编码/名称 → UiPlatformFileField stage Excel
+ *    → submitPlatformExcelImport(QUALITY_SCORE_BATCH) 一键注册并 enqueue-parse
+ * 2. 状态机：PENDING → PARSING → PREVIEW_READY / FAILED
+ * 3. PREVIEW_READY 后 POST /preview 拿 ScoreImportPreviewVO（含 diagnostics）
+ * 4. POST /validate → VALIDATED，POST /confirm → CONFIRMED
+ * 5. PENDING / FAILED 可 POST /update-status { id, status: 'CANCELLED' } 取消
  */
 import type {
   AssessmentItemVO,
@@ -37,8 +36,8 @@ import type {
 } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
+import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   assessmentItemApi,
 } from '@/apis/quality/assessment-item'
@@ -53,6 +52,7 @@ import {
   SCORE_BATCH_STATUS_COLOR,
   SCORE_BATCH_STATUS_LABEL,
 } from '@/apis/quality/types'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -67,6 +67,7 @@ import AuditTimelineDrawer from '@/components/workbench/AuditTimelineDrawer.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageRail from '@/components/workbench/StageRail.vue'
 import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
+import { submitPlatformExcelImport } from '@/composables/platform/usePlatformExcelImport'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePolling } from '@/composables/usePolling'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
@@ -82,6 +83,8 @@ const batches = ref<ScoreBatchVO[]>([])
 const total = ref(0)
 const loading = ref(false)
 const uploading = ref(false)
+const uploadFileNodeId = ref<string>()
+const uploadFileName = ref<string>()
 
 const previewVisible = ref(false)
 const previewLoading = ref(false)
@@ -481,52 +484,45 @@ function resetQuery() {
   loadBatches()
 }
 
-async function handleUpload(options: UploadRequestOption) {
+async function submitScoreImport() {
   if (!uploadForm.qualityCourseId) {
     message.warning('请先选择质量评价课程')
-    options.onError?.(new Error('课程未选择'))
     return
   }
   if (!uploadForm.assessmentItemId) {
     message.warning('请选择或填写考核环节')
-    options.onError?.(new Error('考核环节未填写'))
     return
   }
   if (!uploadForm.batchCode.trim() || !uploadForm.batchName.trim()) {
     message.warning('请填写批次编码与名称')
-    options.onError?.(new Error('批次编码 / 名称未填写'))
+    return
+  }
+  if (!uploadFileNodeId.value) {
+    message.warning('请先选择 Excel 文件')
     return
   }
   uploading.value = true
   try {
-    const { file } = options
-    if (!(file instanceof File)) {
-      message.error('无效的成绩批次上传文件')
-      options.onError?.(new Error('无效的成绩批次上传文件'))
-      return
-    }
-    // 步骤 1：上传 Excel 到 edu-storage 拿 sourceFileId
-    const uploaded = await uploadFile(file, { businessType: 'QUALITY_SCORE_IMPORT' })
-    const sourceFileId = String(uploaded.id)
-    // 步骤 2：注册成绩批次
-    const batchId = await scoreBatchApi.create({
-      qualityCourseId: uploadForm.qualityCourseId,
-      assessmentItemId: uploadForm.assessmentItemId,
-      batchCode: uploadForm.batchCode.trim(),
-      batchName: uploadForm.batchName.trim(),
-      sourceMode: uploadForm.sourceMode,
-      sourceFileId,
-      schoolYear: uploadForm.schoolYear || undefined,
-      semester: uploadForm.semester || undefined,
+    await submitPlatformExcelImport({
+      sceneKey: ExcelImportSceneKey.QUALITY_SCORE_BATCH,
+      fileNodeId: uploadFileNodeId.value,
+      pollAsync: false,
+      context: {
+        qualityCourseId: uploadForm.qualityCourseId,
+        assessmentItemId: uploadForm.assessmentItemId,
+        batchCode: uploadForm.batchCode.trim(),
+        batchName: uploadForm.batchName.trim(),
+        sourceMode: uploadForm.sourceMode,
+        schoolYear: uploadForm.schoolYear || undefined,
+        semester: uploadForm.semester || undefined,
+      },
     })
-    // 步骤 3：触发解析
-    await scoreBatchApi.enqueueParse(batchId)
     message.success('已提交导入任务，解析完成后可预览并确认')
-    // ant-design-vue customRequest 的 onSuccess 第二参为 XMLHttpRequest，可选；本地文件 IO 流程不传 xhr。
-    options.onSuccess?.({})
+    uploadFileNodeId.value = undefined
+    uploadFileName.value = undefined
     await loadBatches()
   } catch (err) {
-    options.onError?.(err instanceof Error ? err : new Error(String(err)))
+    message.error(err instanceof Error ? err.message : String(err))
   } finally {
     uploading.value = false
   }
@@ -919,16 +915,19 @@ onMounted(async () => {
               <a-select-option value="2"> 2 </a-select-option>
             </a-select>
           </a-form-item>
-          <a-form-item>
-            <a-upload
-              name="file"
+          <a-form-item label="导入文件">
+            <UiPlatformFileField
+              v-model:file-node-id="uploadFileNodeId"
+              v-model:file-name="uploadFileName"
+              :scene-key="FileUploadSceneKey.QUALITY_SCORE_IMPORT"
               accept=".xlsx,.xls"
-              :show-upload-list="false"
-              :custom-request="handleUpload"
-              :disabled="uploading"
-            >
-              <UiButton variant="primary" :loading="uploading"> 上传 Excel </UiButton>
-            </a-upload>
+              button-text="选择 Excel"
+            />
+          </a-form-item>
+          <a-form-item>
+            <UiButton variant="primary" :loading="uploading" @click="submitScoreImport">
+              提交导入
+            </UiButton>
           </a-form-item>
         </a-form>
       </div>

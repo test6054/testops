@@ -196,17 +196,22 @@
           />
         </a-form-item>
         <a-form-item label="佐证材料（可选）">
-          <a-upload
-            :file-list="evidenceUploadList"
-            :custom-request="handleEvidenceUpload"
-            :max-count="EVIDENCE_MAX_COUNT"
+          <input
+            ref="evidenceInputRef"
+            type="file"
+            class="sr-only"
             accept=".jpg,.jpeg,.png,.webp,.pdf"
-            @remove="handleEvidenceRemove"
+            @change="onEvidencePick"
           >
-            <UiButton variant="outline" size="sm" :loading="evidenceUploading">
-              上传佐证
-            </UiButton>
-          </a-upload>
+          <UiButton variant="outline" size="sm" :loading="evidenceUploading" @click="openEvidencePicker">
+            上传佐证
+          </UiButton>
+          <ul v-if="evidenceItems.length" class="appeal-evidence-list">
+            <li v-for="item in evidenceItems" :key="item.fileNodeId">
+              <span>{{ item.fileName }}</span>
+              <UiButton variant="ghost" size="sm" @click="removeEvidence(item.fileNodeId)">移除</UiButton>
+            </li>
+          </ul>
           <div class="appeal-evidence-hint">
             支持 JPG / PNG / WEBP / PDF，最多 {{ EVIDENCE_MAX_COUNT }} 个，单个不超过 10MB。
           </div>
@@ -233,8 +238,6 @@
 </template>
 
 <script lang="ts" setup>
-import type { UploadFile } from 'ant-design-vue'
-import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type {
   GradeReviewEvidenceFileRefVO,
   GradeReviewReasonTypeCode,
@@ -251,7 +254,8 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { uploadFile } from '@/apis/edu/file-management'
+import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from '@/apis/mark/final-score-status'
 import {
   countMyPendingReviewRequests,
@@ -368,8 +372,13 @@ const form = reactive<ReviewRequestFormState>({
   questionIds: [],
 })
 
-const evidenceFileIds = ref<string[]>([])
-const evidenceUploadList = ref<UploadFile[]>([])
+interface EvidenceFileItem {
+  fileNodeId: string
+  fileName: string
+}
+
+const evidenceItems = ref<EvidenceFileItem[]>([])
+const evidenceInputRef = ref<HTMLInputElement | null>(null)
 const evidenceUploading = ref(false)
 
 // 来自 score-detail 题目级复核入口时，记录来源题号用于弹窗内提示
@@ -587,52 +596,46 @@ async function downloadEvidenceFile(file: GradeReviewEvidenceFileRefVO): Promise
 }
 
 function resetEvidenceFiles(): void {
-  evidenceFileIds.value = []
-  evidenceUploadList.value = []
+  evidenceItems.value = []
 }
 
-async function handleEvidenceUpload(options: UploadRequestOption): Promise<void> {
-  const { file } = options
-  if (!(file instanceof File)) {
-    options.onError?.(new Error('无效的佐证文件'))
+function openEvidencePicker(): void {
+  evidenceInputRef.value?.click()
+}
+
+async function onEvidencePick(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) {
     return
   }
   if (file.size > EVIDENCE_MAX_BYTES) {
     message.error('单个佐证文件不能超过 10MB')
-    options.onError?.(new Error('佐证文件过大'))
+    input.value = ''
     return
   }
-  if (evidenceFileIds.value.length >= EVIDENCE_MAX_COUNT) {
+  if (evidenceItems.value.length >= EVIDENCE_MAX_COUNT) {
     message.warning(`最多上传 ${EVIDENCE_MAX_COUNT} 个佐证文件`)
-    options.onError?.(new Error('佐证文件数量已达上限'))
+    input.value = ''
     return
   }
   evidenceUploading.value = true
   try {
-    const uploaded = await uploadFile(file, { businessType: GRADE_REVIEW_EVIDENCE_BUSINESS_TYPE })
-    evidenceFileIds.value.push(uploaded.id)
-    evidenceUploadList.value = [
-      ...evidenceUploadList.value,
-      {
-        uid: uploaded.id,
-        name: uploaded.nodeName,
-        status: 'done',
-      },
+    const uploaded = await stageBusinessFile(FileUploadSceneKey.MARK_APPEAL_EVIDENCE, file)
+    evidenceItems.value = [
+      ...evidenceItems.value,
+      { fileNodeId: uploaded.id, fileName: uploaded.nodeName },
     ]
-    options.onSuccess?.({})
   } catch (error) {
     showUserError(error, '佐证文件上传失败')
-    options.onError?.(error instanceof Error ? error : new Error(String(error)))
   } finally {
     evidenceUploading.value = false
+    input.value = ''
   }
 }
 
-function handleEvidenceRemove(file: UploadFile): boolean {
-  const fileId = file.uid
-  evidenceFileIds.value = evidenceFileIds.value.filter((id) => id !== fileId)
-  evidenceUploadList.value = evidenceUploadList.value.filter((item) => item.uid !== fileId)
-  return true
+function removeEvidence(fileNodeId: string): void {
+  evidenceItems.value = evidenceItems.value.filter((item) => item.fileNodeId !== fileNodeId)
 }
 
 function openSubmitModal() {
@@ -668,7 +671,9 @@ async function submit() {
       requestReason: form.requestReason.trim(),
       reasonType: form.reasonType,
       questionIds: form.questionIds,
-      evidenceFileIds: evidenceFileIds.value.length > 0 ? [...evidenceFileIds.value] : undefined,
+      evidenceFileIds: evidenceItems.value.length > 0
+        ? evidenceItems.value.map((item) => item.fileNodeId)
+        : undefined,
     })
     message.success('复核申请已提交')
     submitModalOpen.value = false
@@ -911,6 +916,16 @@ async function loadSelectedExamQuestions(): Promise<void> {
 
 .muted {
   color: var(--ant-color-text-tertiary);
+}
+
+.appeal-evidence-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
 }
 
 .appeal-evidence-hint {

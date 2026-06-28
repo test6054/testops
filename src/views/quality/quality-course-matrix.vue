@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { RadioChangeEvent } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type {
   AssessmentGoalWeightSaveRequest,
   AssessmentGoalWeightVO,
@@ -69,7 +68,8 @@ import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/ma
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { assessmentGoalWeightApi } from '@/apis/quality/assessment-goal-weight'
 import {
   assessmentItemApi,
@@ -618,7 +618,6 @@ const courseEditor = reactive<QualityCourseSaveRequest>({
   enabled: true,
 })
 const courseSubmitting = ref(false)
-const syllabusFileUploading = ref(false)
 const syllabusFileName = ref('')
 
 function openCourseCreate() {
@@ -657,27 +656,6 @@ function openCourseEdit() {
   Object.assign(courseEditor, currentCourse.value)
   syllabusFileName.value = currentCourse.value.syllabusFileId ? '已关联教学大纲附件' : ''
   courseEditorVisible.value = true
-}
-
-async function handleSyllabusFileUpload(options: UploadRequestOption): Promise<void> {
-  syllabusFileUploading.value = true
-  try {
-    const { file } = options
-    if (!(file instanceof File)) {
-      message.error('无效的教学大纲附件')
-      options.onError?.(new Error('无效的教学大纲附件'))
-      return
-    }
-    const uploaded = await uploadFile(file, { businessType: 'QUALITY_COURSE_SYLLABUS' })
-    courseEditor.syllabusFileId = uploaded.id
-    syllabusFileName.value = uploaded.nodeName
-    message.success(`已上传教学大纲附件：${uploaded.nodeName}`)
-    options.onSuccess?.({})
-  } catch (err) {
-    options.onError?.(err instanceof Error ? err : new Error(String(err)))
-  } finally {
-    syllabusFileUploading.value = false
-  }
 }
 
 /**
@@ -1760,18 +1738,12 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
         <a-row :gutter="12">
           <a-col :span="12">
             <a-form-item label="教学大纲附件">
-              <a-upload
-                :show-upload-list="false"
-                :custom-request="handleSyllabusFileUpload"
-                :disabled="syllabusFileUploading"
-              >
-                <UiButton variant="outline" size="sm" :loading="syllabusFileUploading">
-                  上传教学大纲附件
-                </UiButton>
-              </a-upload>
-              <div v-if="syllabusFileName" class="qcm__file-name">
-                {{ syllabusFileName }}
-              </div>
+              <UiPlatformFileField
+                v-model:file-node-id="courseEditor.syllabusFileId"
+                v-model:file-name="syllabusFileName"
+                :scene-key="FileUploadSceneKey.QUALITY_COURSE_SYLLABUS"
+                button-text="上传教学大纲附件"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="12">

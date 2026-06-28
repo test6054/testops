@@ -87,18 +87,16 @@
         <a-col :xs="24" :md="12">
           <a-form-item
             :label="form.scanMode === 'SUPPLEMENT' ? '补扫文件（单张图片）' : '扫描文件（PDF 或图片）'"
-            name="file"
+            name="sourceFileId"
             required
           >
-            <a-upload
-              :before-upload="onBeforeUpload"
-              :file-list="uploadFileList"
-              :max-count="1"
+            <UiPlatformFileField
+              v-model:file-node-id="form.sourceFileId"
+              v-model:file-name="form.sourceFileName"
+              :scene-key="FileUploadSceneKey.MARK_EXAM_SCAN_SOURCE"
               :accept="uploadAccept"
-              @remove="onRemoveUpload"
-            >
-              <UiButton variant="outline" size="sm">选择文件</UiButton>
-            </a-upload>
+              button-text="选择文件"
+            />
           </a-form-item>
         </a-col>
         <a-col v-if="form.scanMode === 'DIRECT'" :xs="24" :md="12">
@@ -131,7 +129,6 @@
 
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type { UploadFile } from 'ant-design-vue/es/upload'
 import type { ExamScannerDeviceVO } from '@/apis/mark/exam-mark-scanner'
 import type { ExamTeacherScanSupplementPrepareResponse } from '@/apis/mark/scan-source'
 import type { ExamScannerScanConfigVO, ScannerKioskScanMode } from '@/apis/mark/scanner-kiosk'
@@ -139,9 +136,10 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { uploadFile } from '@/apis/edu/file-management'
 import { getExamDetail } from '@/apis/mark/exam'
 import { prepareTeacherScanSupplement, teacherSupplementScanSource } from '@/apis/mark/scan-source'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
@@ -179,7 +177,8 @@ const form = reactive<{
   targetPageNo: number | undefined
   supplementReason: string
   replaceTargetPage: boolean
-  file: File | null
+  sourceFileId: string | undefined
+  sourceFileName: string | undefined
   startTemplatePageNo: number | undefined
   paperInstanceId: string | undefined
 }>({
@@ -188,7 +187,8 @@ const form = reactive<{
   targetPageNo: undefined,
   supplementReason: '',
   replaceTargetPage: false,
-  file: null,
+  sourceFileId: undefined,
+  sourceFileName: undefined,
   startTemplatePageNo: undefined,
   paperInstanceId: undefined,
 })
@@ -266,25 +266,14 @@ const formRules: Record<string, Rule[]> = {
       }
     },
   }],
-  file: [{
+  sourceFileId: [{
     validator: async () => {
-      if (!form.file) {
+      if (!form.sourceFileId) {
         throw new Error('请选择扫描文件')
       }
     },
   }],
 }
-
-const uploadFileList = computed<UploadFile[]>(() => {
-  if (!form.file) {
-    return []
-  }
-  return [{
-    uid: '-1',
-    name: form.file.name,
-    status: 'done',
-  }]
-})
 
 function parseDeviceKey(deviceKey: string | undefined): { scannerDeviceId: string, scannerStationId: string } | null {
   if (!deviceKey) {
@@ -336,16 +325,6 @@ async function loadPrepareContext(): Promise<void> {
   }
 }
 
-function onBeforeUpload(file: File): boolean {
-  form.file = file
-  return false
-}
-
-function onRemoveUpload(): boolean {
-  form.file = null
-  return true
-}
-
 function goScanDevices(): void {
   if (!props.examId) {
     return
@@ -373,7 +352,7 @@ async function handleSubmit(): Promise<void> {
   }
   await formRef.value?.validate()
   const device = parseDeviceKey(form.deviceKey)
-  if (!device || !form.file || !props.examId) {
+  if (!device || !form.sourceFileId || !props.examId) {
     return
   }
   if (declaredClassIds.value.length === 0) {
@@ -382,11 +361,6 @@ async function handleSubmit(): Promise<void> {
   }
   submitting.value = true
   try {
-    const node = await uploadFile(form.file, { businessType: 'exam-scan-source' })
-    if (!node?.id) {
-      message.error('扫描文件上传后未完成登记，请重新上传')
-      return
-    }
     const response = await teacherSupplementScanSource({
       examId: props.examId,
       scannerDeviceId: device.scannerDeviceId,
@@ -397,12 +371,13 @@ async function handleSubmit(): Promise<void> {
       supplementReason: form.scanMode === 'SUPPLEMENT' ? form.supplementReason.trim() : undefined,
       replaceTargetPage: form.replaceTargetPage,
       scanConfig: DEFAULT_SCAN_CONFIG,
-      sourceFileId: String(node.id),
+      sourceFileId: form.sourceFileId,
       startTemplatePageNo: form.scanMode === 'DIRECT' ? form.startTemplatePageNo ?? undefined : undefined,
       paperInstanceId: form.scanMode === 'SUPPLEMENT' ? form.paperInstanceId : undefined,
     })
     message.success(`人工补录成功，已登记 ${response.registeredPageCount} 页`)
-    form.file = null
+    form.sourceFileId = undefined
+    form.sourceFileName = undefined
     if (form.scanMode === 'SUPPLEMENT') {
       form.paperInstanceId = undefined
     }
@@ -416,8 +391,9 @@ async function handleSubmit(): Promise<void> {
 }
 
 watch(() => form.scanMode, (mode) => {
-  if (mode === 'SUPPLEMENT' && form.file?.name.toLowerCase().endsWith('.pdf')) {
-    form.file = null
+  if (mode === 'SUPPLEMENT' && form.sourceFileName?.toLowerCase().endsWith('.pdf')) {
+    form.sourceFileId = undefined
+    form.sourceFileName = undefined
   }
   form.paperInstanceId = undefined
 })

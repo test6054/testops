@@ -77,7 +77,6 @@ const railScanMode = computed(() => workflow.scanModeText(workflow.scanMode.valu
 const railScanModeTone = computed(() => {
   const mode = workflow.scanMode.value
   if (mode === 'SUPPLEMENT') return 'supplement'
-  if (mode === 'ARCHIVE') return 'archive'
   return 'direct'
 })
 

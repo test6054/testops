@@ -28,7 +28,8 @@ import {
   WORKGROUP_LEVEL_LABEL,
   WORKGROUP_LEVEL_OPTIONS,
 } from '@/apis/quality/types'
-import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
+import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { ProgramSelector, TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -391,16 +392,9 @@ function openMembersDrawer(record: EvaluationWorkgroupVO) {
   membersDrawerVisible.value = true
 }
 
-function importTemplateApi() {
-  return evaluationWorkgroupApi.downloadMembersTemplate()
-}
-
-function importUploadApi(file: File) {
-  if (!importTargetWorkgroup.value) {
-    return Promise.reject(new Error('未选定工作组'))
-  }
-  return evaluationWorkgroupApi.importMembersExcel(importTargetWorkgroup.value.id, file)
-}
+const importContext = computed(() => ({
+  workgroupId: importTargetWorkgroup.value?.id,
+}))
 
 async function handleImportFinished() {
   await loadList()
@@ -602,18 +596,16 @@ onActivated(() => {
     </a-modal>
 
     <!-- Excel 批量导入成员 -->
-    <QualityImportPanel
+    <UiPlatformExcelImportModal
       v-model:open="importVisible"
-      :title="`Excel 导入工作组成员（${importTargetWorkgroup?.workgroupName || ''}）`"
-      accept=".xlsx,.xls"
-      accept-hint="支持 .xlsx / .xls 格式"
-      description-title="模板说明"
-      description="Excel 列顺序：工号 | 姓名 | 角色（CONVENER / MEMBER / EXTERNAL_EXPERT，留空默认 MEMBER） | 备注。前两列必填。导入后将覆盖该工作组现有成员。"
-      template-button-label="下载工作组成员模板"
-      template-file-name="工作组成员导入模板.xlsx"
-      :template-api="importTemplateApi"
-      :upload-api="importUploadApi"
-      @imported="handleImportFinished"
+      :scene-key="ExcelImportSceneKey.QUALITY_WORKGROUP_MEMBER"
+      entity-label="工作组成员"
+      :context="importContext"
+      :requirements="[
+        'Excel 列顺序：工号 | 姓名 | 角色（CONVENER / MEMBER / EXTERNAL_EXPERT，留空默认 MEMBER） | 备注',
+        '前两列必填。导入后将覆盖该工作组现有成员。',
+      ]"
+      @success="handleImportFinished"
     />
 
     <!-- 查看成员清单 -->

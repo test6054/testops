@@ -168,9 +168,12 @@
           <ArchiveDutyUserSelect v-model:value="superviseForm.witnessUserId" />
         </a-form-item>
         <a-form-item label="监销登记文件">
-          <a-upload :before-upload="onBeforeSuperviseUpload" :max-count="1" @remove="onRemoveSuperviseUpload">
-            <UiButton size="sm">选择文件</UiButton>
-          </a-upload>
+          <UiPlatformFileField
+            v-model:file-node-id="superviseForm.registerFileId"
+            v-model:file-name="superviseRegisterFileName"
+            :scene-key="FileUploadSceneKey.MARK_ARCHIVE_VOLUME_MATERIAL"
+            button-text="选择文件"
+          />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -188,7 +191,8 @@ import type {
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import {
   approveArchiveVolumeAppraisal,
   approveArchiveVolumeDestruction,
@@ -229,7 +233,7 @@ const appraisalSubmitting = ref(false)
 const destructionSubmitting = ref(false)
 const rejectAppraisalSubmitting = ref(false)
 const destructionApprovalSubmitting = ref(false)
-const superviseRegisterFile = ref<File | null>(null)
+const superviseRegisterFileName = ref<string>()
 const superviseSubmitting = ref(false)
 const appraisalModalOpen = ref(false)
 const destructionModalOpen = ref(false)
@@ -473,19 +477,8 @@ function startDestructionPollIfNeeded() {
 function openSuperviseModal() {
   superviseForm.witnessUserId = ''
   superviseForm.registerFileId = ''
-  superviseRegisterFile.value = null
+  superviseRegisterFileName.value = undefined
   superviseModalOpen.value = true
-}
-
-function onBeforeSuperviseUpload(file: File) {
-  superviseRegisterFile.value = file
-  return false
-}
-
-function onRemoveSuperviseUpload() {
-  superviseRegisterFile.value = null
-  superviseForm.registerFileId = ''
-  return true
 }
 
 async function submitSupervise() {
@@ -495,15 +488,7 @@ async function submitSupervise() {
   }
   superviseSubmitting.value = true
   try {
-    let registerFileId = superviseForm.registerFileId.trim() || undefined
-    if (superviseRegisterFile.value) {
-      const node = await uploadFile(superviseRegisterFile.value, { businessType: 'archive-destruction-supervise' })
-      if (!node?.id) {
-        message.error('监销登记文件上传失败')
-        return
-      }
-      registerFileId = String(node.id)
-    }
+    const registerFileId = superviseForm.registerFileId.trim() || undefined
     await confirmArchiveVolumeDestructionSupervision({
       volumeId: props.volumeId,
       witnessUserId: superviseForm.witnessUserId.trim(),

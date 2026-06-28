@@ -75,49 +75,6 @@ export interface ExamCandidatePreviewRequest {
   candidates: ExamCandidateRosterRequest[]
 }
 
-/** 考生名册导入动作 */
-export type ExamCandidateImportAction = 'EXISTING_STUDENT' | 'CREATE_STUDENT'
-
-/** 考生名册导入预览行 */
-export interface ExamCandidateImportRowRequest {
-  rowNo: number
-  departmentName?: string
-  className: string
-  studentNo: string
-  studentName: string
-}
-
-/** 考生名册导入预览请求 */
-export interface ExamCandidateImportPreviewRequest {
-  examId: string
-  classIds?: string[]
-  rows: ExamCandidateImportRowRequest[]
-}
-
-/** 考生名册导入预览行结果 */
-export interface ExamCandidateImportRowResponse {
-  rowNo: number
-  departmentName?: string
-  className: string
-  studentNo: string
-  studentName?: string
-  classId?: string
-  studentUserId?: string
-  resolvedStudentNo?: string
-  resolvedStudentName?: string
-  resolvedClassName?: string
-  importAction?: ExamCandidateImportAction
-  valid: boolean
-  errorMessage?: string
-}
-
-/** 考生名册导入预览结果 */
-export interface ExamCandidateImportPreviewResponse {
-  rows: ExamCandidateImportRowResponse[]
-  validCount: number
-  errorCount: number
-}
-
 /** 名册班级学生分页 */
 export interface ExamClassStudentsPageRequest {
   examId: string
@@ -211,27 +168,7 @@ export function listExamClassOptions(examId: string): Promise<ExamClassOptionVO[
 export function previewExamCandidates(
   request: ExamCandidatePreviewRequest,
 ): Promise<ExamCandidateVO[]> {
-  return http.post<ExamCandidateVO[]>('/api/mark/exams/scope/candidates/preview', request)
-}
-
-/** 预览考生名册导入结果。 */
-export function previewExamCandidateImport(
-  request: ExamCandidateImportPreviewRequest,
-): Promise<ExamCandidateImportPreviewResponse> {
-  return http.post<ExamCandidateImportPreviewResponse>(
-    '/api/mark/exams/scope/candidates/import-preview',
-    request,
-  )
-}
-
-/** 提交考生名册导入结果。 */
-export function commitExamCandidateImport(
-  request: ExamCandidateImportPreviewRequest,
-): Promise<ExamCandidateImportPreviewResponse> {
-  return http.post<ExamCandidateImportPreviewResponse>(
-    '/api/mark/exams/scope/candidates/import-commit',
-    request,
-  )
+  return http    .post<ExamCandidateVO[]>('/api/mark/exams/scope/candidates/preview', request)
 }
 
 /** 分页查询名册班级学生。 */

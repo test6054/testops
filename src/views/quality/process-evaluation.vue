@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type {
   ProcessEvaluationNodeSaveRequest,
   ProcessEvaluationNodeVO,
@@ -30,7 +29,7 @@ import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
+import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   processNodeApi,
 } from '@/apis/quality/process-evaluation'
@@ -42,7 +41,8 @@ import {
   PROCESS_NODE_TYPE_LABEL,
   PROCESS_NODE_TYPE_OPTIONS,
 } from '@/apis/quality/types'
-import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
+import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
@@ -343,7 +343,6 @@ const recordEditor = ref<ProcessEvaluationRecordSaveRequest>({
   sourceMode: 'MANUAL_CONFIRMATION',
   notes: '',
 })
-const evidenceFileUploading = ref(false)
 const evidenceFileName = ref('')
 
 function handleRecordStudentChange(value: string | null): void {
@@ -381,27 +380,6 @@ function openRecordEdit(record: ProcessEvaluationRecordVO) {
   recordEditor.value = { ...record }
   evidenceFileName.value = record.evidenceFileId ? '已关联证据文件' : ''
   recordEditorVisible.value = true
-}
-
-async function handleEvidenceFileUpload(options: UploadRequestOption): Promise<void> {
-  evidenceFileUploading.value = true
-  try {
-    const { file } = options
-    if (!(file instanceof File)) {
-      message.error('无效的证据文件')
-      options.onError?.(new Error('无效的证据文件'))
-      return
-    }
-    const uploaded = await uploadFile(file, { businessType: 'QUALITY_PROCESS_EVIDENCE' })
-    recordEditor.value.evidenceFileId = uploaded.id
-    evidenceFileName.value = uploaded.nodeName
-    message.success(`已上传证据文件：${uploaded.nodeName}`)
-    options.onSuccess?.({})
-  } catch (err) {
-    options.onError?.(err instanceof Error ? err : new Error(String(err)))
-  } finally {
-    evidenceFileUploading.value = false
-  }
 }
 
 async function submitRecord() {
@@ -454,6 +432,10 @@ async function deleteRecord(record: ProcessEvaluationRecordVO) {
 
 const importExcelVisible = ref(false)
 
+const importRecordContext = computed(() => ({
+  nodeId: selectedNode.value?.id,
+}))
+
 function openImportExcel() {
   if (!selectedNode.value) return
   if (selectedNode.value.confirmationStatus !== 'CONFIRMED') {
@@ -461,17 +443,6 @@ function openImportExcel() {
     return
   }
   importExcelVisible.value = true
-}
-
-function importTemplateApi() {
-  return processRecordApi.downloadTemplate()
-}
-
-function importUploadApi(file: File) {
-  if (!selectedNode.value) {
-    return Promise.reject(new Error('未选定节点'))
-  }
-  return processRecordApi.importExcel(selectedNode.value.id, file)
 }
 
 async function handleImportFinished() {
@@ -994,18 +965,13 @@ function handleCourseChange(courseId: string | null) {
           </a-col>
         </a-row>
         <a-form-item label="证据文件">
-          <a-upload
-            :show-upload-list="false"
-            :custom-request="handleEvidenceFileUpload"
-            :disabled="evidenceFileUploading"
-          >
-            <UiButton variant="outline" size="sm" :loading="evidenceFileUploading">
-              上传证据文件
-            </UiButton>
-          </a-upload>
-          <div v-if="evidenceFileName" class="pe__file-name">
-            {{ evidenceFileName }}
-          </div>
+          <UiPlatformFileField
+            v-model:file-node-id="recordEditor.evidenceFileId"
+            v-model:file-name="evidenceFileName"
+            :scene-key="FileUploadSceneKey.QUALITY_PROCESS_EVIDENCE"
+            accept=".pdf,.doc,.docx,.png,.jpg"
+            button-text="上传证据文件"
+          />
         </a-form-item>
         <a-form-item label="备注">
           <a-textarea v-model:value="recordEditor.notes" :rows="3" />
@@ -1014,18 +980,16 @@ function handleCourseChange(courseId: string | null) {
     </a-modal>
 
     <!-- Excel 批量导入节点记录 -->
-    <QualityImportPanel
+    <UiPlatformExcelImportModal
       v-model:open="importExcelVisible"
-      :title="`Excel 导入节点记录（${selectedNode?.nodeName || ''}）`"
-      accept=".xlsx,.xls"
-      accept-hint="支持 .xlsx / .xls 格式"
-      description-title="模板说明"
-      description="Excel 列顺序：学号 | 姓名（可选） | 得分 | 换算得分（可选 0-1） | 备注（可选）。学号和得分必填；行级校验失败的行不会入库，可在导入完成后下载错误清单修订后重传。"
-      template-button-label="下载节点记录模板"
-      template-file-name="过程性评价记录导入模板.xlsx"
-      :template-api="importTemplateApi"
-      :upload-api="importUploadApi"
-      @imported="handleImportFinished"
+      :scene-key="ExcelImportSceneKey.QUALITY_PROCESS_RECORD"
+      entity-label="过程性评价记录"
+      :context="importRecordContext"
+      :requirements="[
+        'Excel 列顺序：学号 | 姓名（可选） | 得分 | 换算得分（可选 0-1） | 备注（可选）',
+        '学号和得分必填；失败行不会入库。',
+      ]"
+      @success="handleImportFinished"
     />
 
     <!-- 按课程目标查已确认记录 -->

@@ -113,6 +113,7 @@ import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { getFileArrayBuffer } from '@/apis/edu/file-management'
 import {
   getExamTemplate,
   isPaperTemplateNotConfiguredError,
@@ -205,16 +206,8 @@ async function handleSheetGenerate() {
       subjectNames: names.length > 0 ? names : undefined,
       subjectLines: lines.length > 0 ? lines : undefined,
     })
-    const token = localStorage.getItem('token')
-    if (token) {
-      const url = new URL('/api/storage/filesystem/download', window.location.origin)
-      url.searchParams.set('nodeId', fileId)
-      const resp = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } })
-      if (resp.ok) {
-        const blob = await resp.blob()
-        window.open(URL.createObjectURL(blob), '_blank')
-      }
-    }
+    const buffer = await getFileArrayBuffer({ nodeId: fileId })
+    window.open(URL.createObjectURL(new Blob([buffer], { type: 'application/pdf' })), '_blank')
     message.success('标准答题卡已生成，新窗口预览中')
     sheetGenerateModalOpen.value = false
   } catch (error) {

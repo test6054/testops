@@ -87,10 +87,6 @@ export const portfolioIndicatorPlatformApi: PortfolioIndicatorPlatformApi = {
     http.post<PortfolioIndicatorPlatformSummaryVO>(`${PLATFORM}/definition/summary`, {}),
   definitionTree: () =>
     http.post<PortfolioIndicatorDefinitionTreeNodeVO[]>(`${PLATFORM}/definition/tree`, {}),
-  exportDefinitionTemplate: () =>
-    http.post<PortfolioIndicatorExportResultVO>(`${PLATFORM}/definition/export-template`, {}),
-  importDefinitionExcel: (data: PortfolioIndicatorExcelImportRequest) =>
-    http.post<PortfolioIndicatorDefinitionImportResultVO>(`${PLATFORM}/definition/import-excel`, data),
   listSourceMapping: () =>
     http.post<PortfolioIndicatorSourceMappingVO[]>(`${PLATFORM}/definition/source-mapping/list`, {}),
 }

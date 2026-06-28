@@ -2,6 +2,7 @@
   <div class="archive-volume-material-table">
     <div v-if="canRegisterMaterial" class="archive-volume-material-table__toolbar">
       <UiButton size="sm" @click="openUploadModal">登记材料</UiButton>
+      <UiButton size="sm" variant="outline" @click="openArchiveScan">一体机扫描</UiButton>
       <UiButton size="sm" variant="outline" @click="batchRegisterOpen = true">批量登记</UiButton>
       <UiButton size="sm" variant="outline" @click="courseSyncOpen = true">课程平台同步</UiButton>
       <UiButton size="sm" variant="outline" @click="openSharedRefModal">引用合用材料</UiButton>
@@ -85,9 +86,12 @@
           <a-input v-model:value="uploadForm.makeupRound" placeholder="如 补考1" />
         </a-form-item>
         <a-form-item label="扫描文件" required>
-          <a-upload :before-upload="onBeforeUpload" :max-count="1" @remove="onRemoveUpload">
-            <UiButton size="sm">选择文件</UiButton>
-          </a-upload>
+          <UiPlatformFileField
+            v-model:file-node-id="uploadForm.fileNodeId"
+            v-model:file-name="uploadForm.fileName"
+            :scene-key="FileUploadSceneKey.MARK_ARCHIVE_VOLUME_MATERIAL"
+            button-text="选择文件"
+          />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -145,7 +149,9 @@ import type { PaperArchiveOcrStatusCode } from '@/apis/mark/paper-archive'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
+import { useRoute, useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import {
   ARCHIVE_MATERIAL_SUBMISSION_STATUS_LABEL,
   ARCHIVE_MATERIAL_SUBMISSION_STATUS_TONE,
@@ -182,6 +188,8 @@ const emit = defineEmits<{
   'ocr-completed-stale': []
 }>()
 
+const route = useRoute()
+const router = useRouter()
 const batchRegisterOpen = ref(false)
 const courseSyncOpen = ref(false)
 const uploading = ref(false)
@@ -191,7 +199,8 @@ const sharedRefSubmitting = ref(false)
 
 const uploadForm = reactive({
   materialType: undefined as ArchiveMaterialTypeCode | undefined,
-  file: null as File | null,
+  fileNodeId: undefined as string | undefined,
+  fileName: undefined as string | undefined,
   studentNo: '',
   studentName: '',
   retakeFlag: false,
@@ -315,12 +324,46 @@ onUnmounted(() => {
 
 function openUploadModal() {
   uploadForm.materialType = undefined
-  uploadForm.file = null
+  uploadForm.fileNodeId = undefined
+  uploadForm.fileName = undefined
   uploadForm.studentNo = ''
   uploadForm.studentName = ''
   uploadForm.retakeFlag = false
   uploadForm.makeupRound = ''
   uploadModalOpen.value = true
+}
+
+function resolveArchiveScanQuery(): Record<string, string> | null {
+  const key = props.selectedCatalogKeys[0]
+  if (!key) {
+    return null
+  }
+  const query: Record<string, string> = {
+    volumeId: props.volumeId,
+    returnTo: route.fullPath,
+  }
+  if (key in ARCHIVE_MATERIAL_TYPE_LABEL) {
+    query.materialType = key
+    return query
+  }
+  const material = props.detail.materials.find(item => item.catalogCode === key)
+  const missing = props.detail.latestIntegrityCheck?.missingItems?.find(item => item.catalogCode === key)
+  const resolvedMaterialType = material?.materialType ?? missing?.materialType
+  if (!resolvedMaterialType) {
+    return null
+  }
+  query.catalogCode = key
+  query.materialType = resolvedMaterialType
+  return query
+}
+
+function openArchiveScan() {
+  const query = resolveArchiveScanQuery()
+  if (!query) {
+    message.warning('请先在左侧目录选择可登记的材料项')
+    return
+  }
+  void router.push({ path: '/scanner-kiosk/archive/session', query })
 }
 
 function openSharedRefModal() {
@@ -331,35 +374,20 @@ function openSharedRefModal() {
   sharedRefModalOpen.value = true
 }
 
-function onBeforeUpload(file: File) {
-  uploadForm.file = file
-  return false
-}
-
-function onRemoveUpload() {
-  uploadForm.file = null
-  return true
-}
-
 async function submitMaterial() {
-  if (!uploadForm.materialType || !uploadForm.file) {
+  if (!uploadForm.materialType || !uploadForm.fileNodeId) {
     message.warning('请选择材料类型和文件')
     return
   }
   uploading.value = true
   try {
-    const node = await uploadFile(uploadForm.file, { businessType: 'archive-volume-material' })
-    if (!node?.id) {
-      message.error('文件上传失败')
-      return
-    }
-    const ext = uploadForm.file.name.includes('.')
-      ? uploadForm.file.name.split('.').pop() ?? 'bin'
+    const ext = uploadForm.fileName?.includes('.')
+      ? uploadForm.fileName.split('.').pop() ?? 'bin'
       : 'bin'
     await registerArchiveVolumeMaterial({
       volumeId: props.volumeId,
       materialType: uploadForm.materialType,
-      fileId: String(node.id),
+      fileId: uploadForm.fileNodeId,
       mediaType: 'ELECTRONIC',
       fileFormat: ext,
       sortRule: uploadForm.retakeFlag ? 'STUDENT_NO' : 'CATALOG_ORDER',

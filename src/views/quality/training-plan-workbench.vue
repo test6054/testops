@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 /**
  * 培养方案体系工作台 - 4-in-1 综合工作台
  *
@@ -56,7 +55,8 @@ import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/ma
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import {
@@ -495,7 +495,6 @@ const planEditor = reactive<TrainingPlanSaveRequest>({
   enabled: true,
 })
 const planSubmitting = ref(false)
-const planFileUploading = ref(false)
 const planFileName = ref('')
 
 function openPlanCreate() {
@@ -561,27 +560,6 @@ async function submitPlan() {
     await loadCurrentPlan()
   } finally {
     planSubmitting.value = false
-  }
-}
-
-async function handlePlanFileUpload(options: UploadRequestOption): Promise<void> {
-  planFileUploading.value = true
-  try {
-    const { file } = options
-    if (!(file instanceof File)) {
-      message.error('无效的培养方案附件')
-      options.onError?.(new Error('无效的培养方案附件'))
-      return
-    }
-    const uploaded = await uploadFile(file, { businessType: 'QUALITY_TRAINING_PLAN_FILE' })
-    planEditor.storageFileId = uploaded.id
-    planFileName.value = uploaded.nodeName
-    message.success(`已上传培养方案附件：${uploaded.nodeName}`)
-    options.onSuccess?.({})
-  } catch (err) {
-    options.onError?.(err instanceof Error ? err : new Error(String(err)))
-  } finally {
-    planFileUploading.value = false
   }
 }
 
@@ -1597,18 +1575,12 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
           <a-textarea v-model:value="planEditor.description" :rows="4" />
         </a-form-item>
         <a-form-item label="方案附件">
-          <a-upload
-            :show-upload-list="false"
-            :custom-request="handlePlanFileUpload"
-            :disabled="planFileUploading"
-          >
-            <UiButton variant="outline" size="sm" :loading="planFileUploading">
-              上传方案附件
-            </UiButton>
-          </a-upload>
-          <div v-if="planFileName" class="training-plan__file-name">
-            {{ planFileName }}
-          </div>
+          <UiPlatformFileField
+            v-model:file-node-id="planEditor.storageFileId"
+            v-model:file-name="planFileName"
+            :scene-key="FileUploadSceneKey.QUALITY_TRAINING_PLAN_FILE"
+            button-text="上传方案附件"
+          />
         </a-form-item>
       </a-form>
     </UiDrawer>

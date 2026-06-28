@@ -867,24 +867,9 @@ export interface ArchiveExternalImportResultVO {
   failureCount: number
 }
 
-export interface ArchiveExternalImportTemplateVO {
-  fileName: string
-  fileContentBase64: string
-}
-
 export interface ArchiveExcelFileVO {
   fileName: string
   fileContentBase64: string
-}
-
-export function importArchiveExternalData(
-  request: ArchiveExternalImportRequest,
-): Promise<ArchiveExternalImportResultVO> {
-  return http.post<ArchiveExternalImportResultVO>('/api/mark/archive-volumes/external/import', request)
-}
-
-export function downloadArchiveExternalImportTemplate(): Promise<ArchiveExternalImportTemplateVO> {
-  return http.post<ArchiveExternalImportTemplateVO>('/api/mark/archive-volumes/external/import-template', {})
 }
 
 export interface ArchiveCoursePlatformSyncRequest {

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type {
   AccreditationCockpitVO,
   AccreditationCycleVO,
@@ -11,7 +10,8 @@ import type {
 import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import {
   ACCREDITATION_EVIDENCE_ANCHOR_LABEL,
   ACCREDITATION_EVIDENCE_CATEGORY_LABEL,
@@ -243,19 +243,13 @@ function openEvidenceEdit(record: AccreditationEvidenceVO) {
   evidenceOpen.value = true
 }
 
-async function uploadEvidenceFile(option: UploadRequestOption) {
-  const file = option.file as File
-  try {
-    const uploaded = await uploadFile(file, { businessType: 'QUALITY_ACCREDITATION_EVIDENCE' })
-    evidenceForm.storageFileId = uploaded.id
-    if (!evidenceForm.evidenceTitle) evidenceForm.evidenceTitle = file.name
-    option.onSuccess?.(uploaded)
-    message.success('文件已上传')
-  } catch (e) {
-    option.onError?.(e as Error)
-    showUserError(e)
+const evidenceFileName = ref<string>()
+
+watch(evidenceFileName, (name) => {
+  if (name && !evidenceForm.evidenceTitle) {
+    evidenceForm.evidenceTitle = name
   }
-}
+})
 
 async function submitEvidence() {
   if (!evidenceForm.storageFileId) {
@@ -517,9 +511,12 @@ defineExpose({ loadEvidences })
           :label="evidenceForm.id ? '证据文件（重新上传可替换）' : '证据文件'"
           :required="!evidenceForm.id"
         >
-          <a-upload :custom-request="uploadEvidenceFile" :max-count="1">
-            <UiButton variant="outline">选择文件</UiButton>
-          </a-upload>
+          <UiPlatformFileField
+            v-model:file-node-id="evidenceForm.storageFileId"
+            v-model:file-name="evidenceFileName"
+            :scene-key="FileUploadSceneKey.QUALITY_ACCREDITATION_EVIDENCE"
+            button-text="选择文件"
+          />
           <p v-if="evidenceForm.id && evidenceForm.storageFileId" class="file-hint">
             当前 fileId：{{ evidenceForm.storageFileId }}
           </p>

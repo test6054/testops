@@ -1,0 +1,28 @@
+/* Tailwind utility layer for mark-vue. Preflight disabled — Ant Design reset.css owns base styles. */
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme {
+  /* Bridge --dp-* spacing tokens (defined in ui-tokens.scss, loaded before this file). */
+  --spacing-dp-1: var(--dp-space-1);
+  --spacing-dp-2: var(--dp-space-2);
+  --spacing-dp-3: var(--dp-space-3);
+  --spacing-dp-4: var(--dp-space-4);
+  --spacing-dp-5: var(--dp-space-5);
+  --spacing-dp-6: var(--dp-space-6);
+  --spacing-dp-8: var(--dp-space-8);
+  --spacing-dp-10: var(--dp-space-10);
+
+  /* Bridge Ant Design Vue CSS variables (compat-style, no raw Tailwind palette). */
+  --color-ant-primary: var(--ant-color-primary);
+  --color-ant-text: var(--ant-color-text);
+  --color-ant-text-secondary: var(--ant-color-text-secondary);
+  --color-ant-border: var(--ant-color-border);
+  --color-ant-bg-container: var(--ant-color-bg-container);
+  --color-ant-bg-layout: var(--ant-color-bg-layout);
+  --color-ant-error: var(--ant-color-error);
+  --color-ant-success: var(--ant-color-success);
+  --color-ant-warning: var(--ant-color-warning);
+}

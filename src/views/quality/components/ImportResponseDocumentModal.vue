@@ -1,39 +1,56 @@
 <template>
   <a-modal
     v-model:open="visible"
-    title="AI 文档解析导入答卷"
+    title="文档导入答卷"
     :width="780"
     :footer="null"
-    :mask-closable="!isPolling"
+    :mask-closable="!isBusy"
     @cancel="handleClose"
   >
-    <!-- ① 上传区：选择文件 + 提交 -->
     <template v-if="phase === 'upload'">
-      <a-upload-dragger :before-upload="beforeUpload" :show-upload-list="false" :accept="ACCEPT">
-        <p class="ant-upload-drag-icon">
-          <InboxOutlined />
-        </p>
-        <p class="ant-upload-text">点击或拖拽文件到此处</p>
-        <p class="ant-upload-hint">
-          支持 .pdf / .docx / .txt / .jpg / .jpeg / .png / .webp / .bmp / .tiff
-        </p>
-      </a-upload-dragger>
+      <UiAlertStrip
+        tone="info"
+        title="批量结构化导入优先使用 Excel；文档支持 AI 自动解析或抽取文本后手工录入。"
+        dense
+        class="ird__intro"
+      />
+      <div class="ird__upload-zone">
+        <UiPlatformFileField
+          v-model:file-node-id="sourceFileId"
+          v-model:file-name="sourceFileName"
+          v-model:file-size="sourceFileSize"
+          :scene-key="FileUploadSceneKey.QUALITY_INDIRECT_RESPONSE_DOC"
+          :accept="ACCEPT"
+          button-text="选择文件"
+          tip="支持 .pdf / .docx / .txt / .jpg / .jpeg / .png / .webp / .bmp / .tiff"
+        />
+      </div>
 
-      <div v-if="selectedFile" class="ird__selected-file">
-        <span>已选择：{{ selectedFile.name }}（{{ formatBytes(selectedFile.size) }}）</span>
-        <UiButton
-          variant="primary"
-          size="sm"
-          :loading="uploading"
-          class="ird__upload-button"
-          @click="handleSubmitAiParse"
-        >
-          开始 AI 解析
-        </UiButton>
+      <div v-if="sourceFileId" class="ird__selected-file">
+        <span class="ird__file-label">已选择：{{ sourceFileName }}（{{ formatBytes(sourceFileSize ?? 0) }}）</span>
+        <div class="ird__action-row ird__action-row--upload">
+          <UiButton
+            variant="outline"
+            size="sm"
+            :loading="extracting"
+            :disabled="uploading"
+            @click="handleSubmitManualExtract"
+          >
+            仅抽取文本
+          </UiButton>
+          <UiButton
+            variant="primary"
+            size="sm"
+            :loading="uploading"
+            :disabled="extracting"
+            @click="handleSubmitAiParse"
+          >
+            AI 自动解析
+          </UiButton>
+        </div>
       </div>
     </template>
 
-    <!-- ② 处理中：轮询 AI 任务状态 -->
     <template v-if="phase === 'processing'">
       <div class="ird__processing">
         <a-spin size="large" />
@@ -52,7 +69,25 @@
       </div>
     </template>
 
-    <!-- ③ 成功 -->
+    <template v-if="phase === 'extracted'">
+      <UiAlertStrip
+        tone="info"
+        title="文本已抽取，不会自动写入答卷"
+        :description="extractAlertDescription"
+        dense
+        class="ird__intro"
+      />
+      <div v-if="extractWarnings.length" class="ird__warnings">
+        <p v-for="(line, index) in extractWarnings" :key="index" class="ird__warning-line">{{ line }}</p>
+      </div>
+      <pre v-if="extractDisplayText" class="ird__extract-text">{{ extractDisplayText }}</pre>
+      <UiEmpty v-else description="未能从文档中抽取可读文本，请检查扫描清晰度或改用 Excel 导入。" />
+      <div class="ird__action-row">
+        <UiButton variant="ghost" size="sm" @click="resetToUpload"> 重新选择文件 </UiButton>
+        <UiButton variant="primary" size="sm" @click="handleClose"> 关闭并对照录入 </UiButton>
+      </div>
+    </template>
+
     <template v-if="phase === 'succeeded'">
       <a-result
         status="success"
@@ -67,11 +102,19 @@
       </div>
     </template>
 
-    <!-- ④ 失败 -->
     <template v-if="phase === 'failed'">
       <a-result status="error" title="AI 文档解析失败" :sub-title="failureReason" />
-      <div class="ird__action-row">
+      <div class="ird__action-row ird__action-row--failed">
         <UiButton variant="ghost" size="sm" @click="resetToUpload"> 重新上传 </UiButton>
+        <UiButton
+          v-if="sourceFileId"
+          variant="outline"
+          size="sm"
+          :loading="extracting"
+          @click="handleSubmitManualExtract"
+        >
+          改为仅抽取文本
+        </UiButton>
         <UiButton variant="primary" size="sm" @click="handleClose"> 关闭 </UiButton>
       </div>
     </template>
@@ -79,32 +122,23 @@
 </template>
 
 <script setup lang="ts">
+import type { IndirectResponseDocumentExtraction } from '@/apis/quality/indirect-response'
 import type { AiTaskStatus } from '@/apis/quality/types'
-import { InboxOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import {
-  aiTaskApi,
-} from '@/apis/quality/ai-task'
-import {
-  indirectResponseApi,
-} from '@/apis/quality/indirect-response'
-import {
-  AI_TASK_STATUS_COLOR,
-  AI_TASK_STATUS_LABEL,
-} from '@/apis/quality/types'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { aiTaskApi } from '@/apis/quality/ai-task'
+import { indirectResponseApi } from '@/apis/quality/indirect-response'
+import { AI_TASK_STATUS_COLOR, AI_TASK_STATUS_LABEL } from '@/apis/quality/types'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { usePolling } from '@/composables/usePolling'
-import { getUserProcessFailureMessage } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-/**
- * 间接评价答卷 AI 文档解析面板：
- * 上传 → 提交异步 AI 任务 → 轮询状态 → 完成/失败反馈。
- *
- * 生命周期：upload → processing → succeeded | failed
- */
 const props = defineProps<{
   open: boolean
   formId: string | null
@@ -120,7 +154,7 @@ const POLL_INTERVAL_MS = 3000
 const MAX_POLL_COUNT = 120
 const MAX_POLL_FAILURE_COUNT = 3
 
-type Phase = 'upload' | 'processing' | 'succeeded' | 'failed'
+type Phase = 'upload' | 'processing' | 'extracted' | 'succeeded' | 'failed'
 
 const visible = computed({
   get: () => props.open,
@@ -128,8 +162,14 @@ const visible = computed({
 })
 
 const phase = ref<Phase>('upload')
-const selectedFile = ref<File | null>(null)
+const sourceFileId = ref<string | undefined>()
+const sourceFileName = ref<string | undefined>()
+const sourceFileSize = ref<number | undefined>()
 const uploading = ref(false)
+const extracting = ref(false)
+const extractDisplayText = ref('')
+const extractFileName = ref('')
+const extractWarnings = ref<string[]>([])
 const currentTaskId = ref<string | null>(null)
 const currentTaskStatus = ref<AiTaskStatus>('PENDING')
 const failureReason = ref<string | null>(null)
@@ -147,7 +187,13 @@ const taskPolling = usePolling(
   },
 )
 
-const isPolling = computed(() => phase.value === 'processing')
+const isBusy = computed(() => phase.value === 'processing' || extracting.value)
+
+const extractAlertDescription = computed(() =>
+  extractFileName.value
+    ? `请对照《${extractFileName.value}》抽取结果，在答卷列表中使用「新增答卷」逐条录入。`
+    : '请对照下方抽取结果，在答卷列表中使用「新增答卷」逐条录入。',
+)
 
 const statusLabel = computed(() => {
   const s = currentTaskStatus.value
@@ -165,6 +211,26 @@ function aiDocumentParseFailureText(messageText?: string | null): string {
   )
 }
 
+/** 将 edu-mark 抽取结果转为弹窗展示文本：优先 fullText，否则按页拼接。 */
+function buildExtractDisplayText(result: IndirectResponseDocumentExtraction): string {
+  const fullText = result.extraction.fullText?.trim()
+  if (fullText) {
+    return fullText
+  }
+  const pages = result.extraction.pages ?? []
+  if (pages.length === 0) {
+    return ''
+  }
+  return pages
+    .slice()
+    .sort((left, right) => (left.pageIndex ?? 0) - (right.pageIndex ?? 0))
+    .map((page) => {
+      const label = page.pageIndex != null ? `第 ${page.pageIndex + 1} 页` : '未编号页'
+      return `${label}\n${page.text ?? ''}`
+    })
+    .join('\n\n')
+}
+
 watch(
   () => props.open,
   (v) => {
@@ -179,16 +245,13 @@ onBeforeUnmount(() => {
   taskPolling.pause()
 })
 
-function beforeUpload(file: File): boolean {
-  selectedFile.value = file
-  return false
-}
-
 async function handleSubmitAiParse() {
-  if (!selectedFile.value || !props.formId) return
+  if (!sourceFileId.value || !props.formId) {
+    return
+  }
   uploading.value = true
   try {
-    const result = await indirectResponseApi.importDocumentAi(props.formId, selectedFile.value)
+    const result = await indirectResponseApi.importDocumentAi(props.formId, sourceFileId.value)
     currentTaskId.value = result.taskId
     currentTaskStatus.value = 'PENDING'
     phase.value = 'processing'
@@ -197,8 +260,30 @@ async function handleSubmitAiParse() {
     message.info('AI 解析任务已提交，正在后台处理…')
     taskPolling.resume()
     taskPolling.syncPolling()
+  } catch (error) {
+    showUserError(error, 'AI 文档解析任务提交失败')
   } finally {
     uploading.value = false
+  }
+}
+
+async function handleSubmitManualExtract() {
+  if (!sourceFileId.value || !props.formId) {
+    return
+  }
+  extracting.value = true
+  try {
+    const result = await indirectResponseApi.importDocument(props.formId, sourceFileId.value)
+    extractFileName.value = result.fileName
+    extractDisplayText.value = buildExtractDisplayText(result)
+    extractWarnings.value = result.extraction.diagnostic?.warningMessages ?? []
+    phase.value = 'extracted'
+    stopPolling()
+    failureReason.value = null
+  } catch (error) {
+    showUserError(error, '文档文本抽取失败')
+  } finally {
+    extracting.value = false
   }
 }
 
@@ -207,7 +292,9 @@ function stopPolling(): void {
 }
 
 async function pollTaskStatus() {
-  if (!currentTaskId.value) return
+  if (!currentTaskId.value) {
+    return
+  }
   pollCount.value++
 
   if (pollCount.value > MAX_POLL_COUNT) {
@@ -247,8 +334,14 @@ async function pollTaskStatus() {
 
 function resetState() {
   phase.value = 'upload'
-  selectedFile.value = null
+  sourceFileId.value = undefined
+  sourceFileName.value = undefined
+  sourceFileSize.value = undefined
   uploading.value = false
+  extracting.value = false
+  extractDisplayText.value = ''
+  extractFileName.value = ''
+  extractWarnings.value = []
   currentTaskId.value = null
   currentTaskStatus.value = 'PENDING'
   failureReason.value = null
@@ -280,28 +373,26 @@ function formatBytes(bytes: number): string {
 
 <style scoped lang="scss">
 .ird {
-  &__alert {
-    margin-bottom: 12px;
+  &__intro {
+    margin-bottom: var(--dp-space-4);
+  }
 
-    p {
-      margin: 0 0 4px;
-      line-height: 1.6;
-
-      &:last-child {
-        margin-bottom: 0;
-      }
-    }
+  &__upload-zone {
+    padding: 24px 16px;
+    border: 1px dashed var(--ant-color-border);
+    border-radius: var(--dp-radius-panel);
+    background: var(--dp-surface-subtle);
   }
 
   &__selected-file {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: 12px;
+    margin-top: var(--dp-space-3);
   }
 
-  &__upload-button {
-    margin-left: auto;
+  &__file-label {
+    display: block;
+    margin-bottom: var(--dp-space-3);
+    font-size: 14px;
+    color: var(--dp-text-secondary);
   }
 
   &__processing {
@@ -334,12 +425,43 @@ function formatBytes(bytes: number): string {
     color: var(--dp-text-muted);
   }
 
+  &__warnings {
+    margin-bottom: var(--dp-space-3);
+  }
+
+  &__warning-line {
+    margin: 0 0 4px;
+    font-size: 13px;
+    color: var(--dp-text-secondary);
+  }
+
+  &__extract-text {
+    max-height: 360px;
+    margin: 0;
+    padding: var(--dp-space-3);
+    overflow: auto;
+    border: 1px solid var(--dp-border-subtle);
+    border-radius: var(--dp-radius-control);
+    background: var(--ant-color-bg-container);
+    font-family: var(--dp-font-family);
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--dp-text-primary);
+  }
+
   &__action-row {
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
-    margin-top: 12px;
+    margin-top: var(--dp-space-3);
+
+    &--upload,
+    &--failed {
+      flex-wrap: wrap;
+    }
   }
 }
 </style>

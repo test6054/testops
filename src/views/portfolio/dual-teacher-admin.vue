@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import type { UploadFile } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDualTeacherApplicationStatus } from '@/apis/portfolio/enums'
 import type { PortfolioDualTeacherApplicationVO } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, ref } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL } from '@/apis/portfolio/enums'
 import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
+import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -30,8 +30,7 @@ function statusLabel(status: string) {
 
 const loading = ref(false)
 const rows = ref<PortfolioDualTeacherApplicationVO[]>([])
-const selectedFile = ref<File | null>(null)
-const fileList = ref<UploadFile[]>([])
+const importModalOpen = ref(false)
 
 const columns: ColumnsType = [
   { title: '申请单号', dataIndex: 'applicationNo', key: 'applicationNo' },
@@ -96,47 +95,9 @@ async function exportRoster() {
   }
 }
 
-async function downloadImportTemplate() {
-  try {
-    const result = await portfolioDualTeacherApi.importTemplate()
-    await downloadPortfolioExcelExport(result)
-    message.success('导入模板已下载')
-  }
-  catch (error) {
-    showUserError(error)
-  }
-}
-
-function handleBeforeUpload(file: File) {
-  selectedFile.value = file
-  fileList.value = [{ uid: 'import', name: file.name, status: 'done' }]
-  return false
-}
-
-function handleRemoveFile() {
-  selectedFile.value = null
-  fileList.value = []
-}
-
-async function confirmImport() {
-  if (!selectedFile.value) {
-    message.warning('请选择 Excel 文件')
-    return
-  }
-  try {
-    const node = await uploadFile(selectedFile.value, { businessType: 'PORTFOLIO_EXCEL_IMPORT' })
-    const result = await portfolioDualTeacherApi.importConfirm({
-      fileName: selectedFile.value.name,
-      sourceFileId: String(node.id),
-    })
-    message.success(`导入成功 ${result.successRows} 条，失败 ${result.failedRows} 条`)
-    selectedFile.value = null
-    fileList.value = []
-    await loadPage()
-  }
-  catch (error) {
-    showUserError(error)
-  }
+async function handleImportSuccess() {
+  importModalOpen.value = false
+  await loadPage()
 }
 
 onMounted(loadPage)
@@ -146,22 +107,16 @@ onMounted(loadPage)
   <StageWorkbenchShell>
     <ContextBar title="双师认定台账" subtitle="院审→教务终审 · 历史数据 Excel 批量导入" />
     <UiCard title="历史数据导入">
-      <UiButton style="margin-bottom: 8px" @click="downloadImportTemplate">
-        下载导入模板
-      </UiButton>
-      <a-upload
-        :before-upload="handleBeforeUpload"
-        :file-list="fileList"
-        :max-count="1"
-        accept=".xlsx,.xls"
-        @remove="handleRemoveFile"
-      >
-        <UiButton>选择 Excel</UiButton>
-      </a-upload>
-      <UiButton variant="primary" style="margin-top: 8px" @click="confirmImport">
-        确认导入
+      <UiButton @click="importModalOpen = true">
+        Excel 批量导入
       </UiButton>
     </UiCard>
+    <UiPlatformExcelImportModal
+      v-model:open="importModalOpen"
+      :scene-key="ExcelImportSceneKey.PORTFOLIO_DUAL_TEACHER"
+      entity-label="双师认定历史数据"
+      @success="handleImportSuccess"
+    />
     <UiCard>
       <div class="toolbar">
         <UiButton @click="loadPage">

@@ -20,14 +20,14 @@
         />
       </a-form-item>
       <a-form-item label="待登记文件" required>
-        <a-upload
+        <UiButton size="sm" variant="outline" @click="openFilePicker">添加文件</UiButton>
+        <input
+          ref="fileInputRef"
+          type="file"
           multiple
-          :before-upload="handleBeforeUpload"
-          :file-list="uploadFiles"
-          @remove="handleRemove"
+          class="sr-only"
+          @change="handleFilesSelected"
         >
-          <UiButton size="sm">添加文件</UiButton>
-        </a-upload>
       </a-form-item>
     </a-form>
     <UiDataTable
@@ -50,7 +50,10 @@
           />
         </template>
         <template v-else-if="column.key === 'fileName'">
-          {{ record.file.name }}
+          {{ record.fileName }}
+        </template>
+        <template v-else-if="column.key === 'actions'">
+          <UiTextAction tone="danger" @click="removeRow(record.uid)">移除</UiTextAction>
         </template>
       </template>
     </UiDataTable>
@@ -58,18 +61,19 @@
 </template>
 
 <script setup lang="ts">
-import type { UploadFile } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_MATERIAL_TYPE_LABEL,
   batchRegisterArchiveVolumeMaterials,
 } from '@/apis/mark/archive-volume'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
@@ -85,13 +89,14 @@ const emit = defineEmits<{
 interface BatchRow {
   uid: string
   file: File
+  fileName: string
   materialType?: ArchiveMaterialTypeCode
 }
 
 const submitting = ref(false)
 const defaultMaterialType = ref<ArchiveMaterialTypeCode>()
 const rows = ref<BatchRow[]>([])
-const uploadFiles = ref<UploadFile[]>([])
+const fileInputRef = ref<HTMLInputElement | null>(null)
 
 const materialTypeOptions = Object.entries(ARCHIVE_MATERIAL_TYPE_LABEL).map(([value, label]) => ({
   value,
@@ -101,30 +106,42 @@ const materialTypeOptions = Object.entries(ARCHIVE_MATERIAL_TYPE_LABEL).map(([va
 const columns: ColumnsType<BatchRow> = [
   { title: '文件名', key: 'fileName' },
   { title: '材料类型', key: 'materialType', width: 220 },
+  { title: '操作', key: 'actions', width: 72 },
 ]
 
 watch(() => props.open, (visible) => {
   if (!visible) {
     rows.value = []
-    uploadFiles.value = []
     defaultMaterialType.value = undefined
+    if (fileInputRef.value) {
+      fileInputRef.value.value = ''
+    }
   }
 })
 
-function handleBeforeUpload(file: File) {
-  const uid = `${Date.now()}-${file.name}`
-  rows.value.push({
-    uid,
-    file,
-    materialType: defaultMaterialType.value,
-  })
-  uploadFiles.value.push({ uid, name: file.name, status: 'done' })
-  return false
+function openFilePicker() {
+  fileInputRef.value?.click()
 }
 
-function handleRemove(file: UploadFile) {
-  rows.value = rows.value.filter(item => item.uid !== file.uid)
-  uploadFiles.value = uploadFiles.value.filter(item => item.uid !== file.uid)
+function handleFilesSelected(event: Event) {
+  const input = event.target as HTMLInputElement
+  const files = input.files
+  if (!files?.length) {
+    return
+  }
+  for (const file of Array.from(files)) {
+    rows.value.push({
+      uid: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2, 8)}`,
+      file,
+      fileName: file.name,
+      materialType: defaultMaterialType.value,
+    })
+  }
+  input.value = ''
+}
+
+function removeRow(uid: string) {
+  rows.value = rows.value.filter(item => item.uid !== uid)
 }
 
 function resolveFileFormat(fileName: string): string {
@@ -141,7 +158,7 @@ async function handleSubmit() {
   }
   for (const row of rows.value) {
     if (!row.materialType) {
-      message.warning(`请为 ${row.file.name} 选择材料类型`)
+      message.warning(`请为 ${row.fileName} 选择材料类型`)
       return
     }
   }
@@ -149,13 +166,13 @@ async function handleSubmit() {
   try {
     const materials = []
     for (const row of rows.value) {
-      const node = await uploadFile(row.file, { businessType: 'archive-volume-material' })
+      const node = await stageBusinessFile(FileUploadSceneKey.MARK_ARCHIVE_VOLUME_MATERIAL, row.file)
       materials.push({
         volumeId: props.volumeId,
         materialType: row.materialType as ArchiveMaterialTypeCode,
         fileId: String(node.id),
         mediaType: 'ELECTRONIC' as const,
-        fileFormat: resolveFileFormat(row.file.name),
+        fileFormat: resolveFileFormat(row.fileName),
         sortRule: 'CATALOG_ORDER' as const,
         electronicOriginalStatus: 'SCANNED' as const,
         triggerOcr: true,

@@ -13,8 +13,11 @@ import router from './router'
 
 import 'ant-design-vue/dist/reset.css'
 
-// 关键 CSS 优先加载，提升 LCP 性能
+// Design tokens and global SCSS (load before Tailwind theme bridges)
 import '@/styles/index.scss'
+
+// Tailwind utilities (layout/spacing only; no preflight — see tailwind.css)
+import '@/styles/tailwind.css'
 
 // 反馈层样式必须晚于 Ant Design reset，覆盖 message 内联居中
 import '@/styles/global/_feedback-placement.scss'

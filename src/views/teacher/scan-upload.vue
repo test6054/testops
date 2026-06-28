@@ -222,7 +222,14 @@
             </UiButton>
           </template>
 
-
+          <UiAlertStrip
+            v-if="failedOrderAuditCount > 0"
+            tone="error"
+            :closable="false"
+            dense
+            title="存在顺序审计未通过的批次，封存已阻断"
+            :description="`当前页 ${failedOrderAuditCount} 个批次需补扫或废弃后再封存`"
+          />
 
           <UiDataTable
             v-model:current="batchQuery.pageNum"
@@ -274,8 +281,31 @@
                 </UiTag>
                 <span v-else class="muted">0</span>
               </template>
+              <template v-else-if="column.key === 'orderAudit'">
+                <UiTag
+                  v-if="record.orderAuditPassed === false"
+                  tone="red"
+                  size="sm"
+                >
+                  {{ record.orderAuditIssueCount ?? 0 }} 项异常
+                </UiTag>
+                <UiTag
+                  v-else-if="record.orderAuditPassed === true"
+                  tone="green"
+                  size="sm"
+                >
+                  通过
+                </UiTag>
+                <span v-else class="muted">待审计</span>
+              </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
+                  <UiTextAction
+                    v-if="record.orderAuditPassed === false"
+                    @click="openOrderAuditDrawer(record)"
+                  >
+                    顺序诊断
+                  </UiTextAction>
                   <UiTextAction
                     :disabled="!record.sourceFileCount"
                     @click="openBatchSourceFiles(record)"
@@ -345,6 +375,30 @@
       </a-list>
     </UiDrawer>
 
+    <UiDrawer
+      v-model:open="orderAuditDrawerOpen"
+      :title="orderAuditDrawerTitle"
+      width="640"
+      hide-footer
+    >
+      <UiEmpty
+        v-if="!orderAuditLoading && !orderAuditDetail?.issues?.length"
+        description="暂无顺序审计异常"
+      />
+      <UiDataTable
+        v-else
+        pagination-mode="none"
+        :columns="orderAuditIssueColumns"
+        :data-source="orderAuditDetail?.issues ?? []"
+        :loading="orderAuditLoading"
+        :show-pagination="false"
+        flat
+        :total="orderAuditDetail?.issues?.length ?? 0"
+        row-key="message"
+        size="small"
+      />
+    </UiDrawer>
+
     <ScanBatchDiscardDialog
       v-model:open="batchDiscardModalOpen"
       :confirm-loading="Boolean(batchDiscarding)"
@@ -367,6 +421,8 @@ import type {
   ExamScannerBatchPreviewVO,
   ExamScannerBatchQueryRequest,
   ExamScannerBatchVO,
+  ScanBatchOrderAuditIssueVO,
+  ScanBatchOrderAuditVO,
 } from '@/apis/mark/exam-scan'
 import type { ScanLiveEventVO } from '@/apis/mark/scan-live'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
@@ -384,8 +440,10 @@ import {
 import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import {
   createScanBatchByCondition,
+  getScanBatchOrderAudit,
   pageScannerBatches,
   previewScanBatchAggregation,
+  SCAN_BATCH_ORDER_AUDIT_CODE_LABEL,
   SCAN_BATCH_STATUS_LABEL,
   SCAN_BATCH_STATUS_TONE,
   sealScanBatchByTeacher,
@@ -400,6 +458,7 @@ import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import ScanBatchDiscardDialog from '@/components/mark/ScanBatchDiscardDialog.vue'
 import ScanManualSupplementPanel from '@/components/mark/ScanManualSupplementPanel.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -818,8 +877,62 @@ const batchColumns: ColumnType<ExamScannerBatchVO>[] = [
   { title: '页数', dataIndex: 'pageCount', key: 'pageCount', width: 70 },
   { title: '落库进度', key: 'pageProgress', width: 100 },
   { title: '异常', key: 'attentionCount', width: 80 },
-  { title: '操作', key: 'actions', width: 280, fixed: 'right' as const },
+  { title: '顺序', key: 'orderAudit', width: 100, align: 'center' as const },
+  { title: '操作', key: 'actions', width: 320, fixed: 'right' as const },
 ]
+
+const failedOrderAuditCount = computed(() =>
+  batches.value.filter(batch => batch.orderAuditPassed === false).length,
+)
+
+const orderAuditDrawerOpen = ref(false)
+const orderAuditLoading = ref(false)
+const orderAuditDetail = ref<ScanBatchOrderAuditVO | null>(null)
+const orderAuditTarget = ref<ExamScannerBatchVO | null>(null)
+
+const orderAuditDrawerTitle = computed(() => {
+  const batch = orderAuditTarget.value
+  if (!batch) return '批次顺序诊断'
+  return `批次顺序诊断 · ${batch.batchNo}`
+})
+
+const orderAuditIssueColumns: ColumnType<ScanBatchOrderAuditIssueVO>[] = [
+  {
+    title: '异常码',
+    key: 'auditCode',
+    width: 140,
+    align: 'center',
+    customRender: ({ record }) =>
+      strictEnumLabel(SCAN_BATCH_ORDER_AUDIT_CODE_LABEL, record.auditCode, '顺序审计异常码'),
+  },
+  { title: '说明', dataIndex: 'message', key: 'message', ellipsis: true },
+  { title: '进纸序', dataIndex: 'pageSeq', key: 'pageSeq', width: 72, align: 'right' as const },
+  {
+    title: '模板页',
+    dataIndex: 'templatePageNo',
+    key: 'templatePageNo',
+    width: 72,
+    align: 'right' as const,
+  },
+]
+
+async function openOrderAuditDrawer(batch: ExamScannerBatchVO): Promise<void> {
+  if (!batch.scanBatchId || !selectedExamId.value) return
+  orderAuditTarget.value = batch
+  orderAuditDrawerOpen.value = true
+  orderAuditLoading.value = true
+  orderAuditDetail.value = null
+  try {
+    orderAuditDetail.value = await getScanBatchOrderAudit({
+      examId: selectedExamId.value,
+      scanBatchId: batch.scanBatchId,
+    })
+  } catch (error) {
+    showUserError(error, '加载顺序诊断失败')
+  } finally {
+    orderAuditLoading.value = false
+  }
+}
 
 /**
  * 教师在扫描审阅场景对扫描批次发起废弃。

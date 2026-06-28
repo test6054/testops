@@ -112,13 +112,13 @@
           />
         </a-form-item>
         <a-form-item label="母版 PDF">
-          <a-upload :before-upload="handleBeforeUpload" :show-upload-list="false" accept=".pdf">
-            <UiButton size="sm" :loading="uploading">
-              <template #icon><UploadOutlined /></template>
-              {{ form.masterFileId ? '重新上传' : '上传 PDF' }}
-            </UiButton>
-          </a-upload>
-          <span v-if="uploadedFileName" class="uploaded-hint">{{ uploadedFileName }}</span>
+          <UiPlatformFileField
+            v-model:file-node-id="form.masterFileId"
+            v-model:file-name="uploadedFileName"
+            :scene-key="FileUploadSceneKey.MARK_EXAM_TEMPLATE"
+            accept=".pdf,application/pdf"
+            button-text="上传 PDF"
+          />
           <UiButton
             v-if="form.masterFileId"
             size="sm"
@@ -423,11 +423,12 @@ import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getFileArrayBuffer, uploadFile } from '@/apis/edu/file-management'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
+import { getFileArrayBuffer } from '@/apis/edu/file-management'
 import { getExamDetail } from '@/apis/mark/exam'
 import { getExamTemplate } from '@/apis/mark/exam-template'
 import {
@@ -463,7 +464,6 @@ const loading = ref(false)
 const saving = ref(false)
 const revoking = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
-const uploading = ref(false)
 const uploadedFileName = ref('')
 const masterData = ref<PaperMasterVO | null>(null)
 const examDetail = ref<ExamDetailVO | null>(null)
@@ -802,25 +802,6 @@ function clearForm() {
   identitySeq = 0
   objectiveSeq = 0
   masterData.value = null
-}
-
-async function handleBeforeUpload(file: File) {
-  if (file.type !== 'application/pdf') {
-    message.error('只能上传 PDF 文件')
-    return false
-  }
-  uploading.value = true
-  try {
-    const res = await uploadFile(file, { businessType: 'EXAM_PAPER_MASTER' })
-    form.masterFileId = res.id
-    uploadedFileName.value = file.name
-    message.success('上传成功')
-  } catch (error) {
-    showUserError(error, '母版 PDF 上传失败，请稍后重试')
-  } finally {
-    uploading.value = false
-  }
-  return false
 }
 
 // ─── 生成标准试卷 ──────────────────────────────────────────────────

@@ -6,9 +6,9 @@ import type { DataSourceMode, ScoreBatchStatus } from './types'
  * 字段严格对齐 ScoreBatchVO / ScoreBatchSaveRequest / ScoreBatchQueryRequest /
  *   ScoreBatchStatusUpdateRequest / ScoreImportPreviewVO / ScoreImportRowDiagnostic。
  *
- * 主链：先 edu-storage 上传 Excel 得到 sourceFileId → 注册批次 (/create) →
- *        触发解析 (/enqueue-parse) → 状态 PARSING → PREVIEW_READY →
- *        校验 (/validate) → 确认 (/confirm)；PENDING / FAILED 可取消 (/update-status)
+ * Excel 导入主链：platform stage(QUALITY_SCORE_IMPORT) → platform excel-import(QUALITY_SCORE_BATCH)
+ * → Handler 内 create + enqueueParse → 状态 PARSING → PREVIEW_READY → validate → confirm。
+ * 列表页 preview/validate/confirm/enqueueParse 仍走本模块 REST。
  */
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
@@ -110,7 +110,7 @@ export const scoreBatchApi = {
   detail: (id: string) => http.post<ScoreBatchVO>(`${BASE}/detail`, { id }),
   preview: (id: string) => http.post<ScoreImportPreviewVO>(`${BASE}/preview`, { id }),
   /**
-   * 注册成绩批次。前端流程：先调 edu-storage 上传 Excel 得到 sourceFileId，再调本接口注册。
+   * 注册成绩批次（platform Excel 导入由 ScoreBatchExcelImportSceneHandler 内部调用，页面不直调）。
    */
   create: (data: ScoreBatchSaveRequest) => http.post<string>(`${BASE}/create`, data),
   update: (data: ScoreBatchSaveRequest) => http.post<void>(`${BASE}/update`, data),

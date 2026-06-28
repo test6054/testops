@@ -7,7 +7,8 @@ import type {
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { uploadFile } from '@/apis/edu/file-management'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
 import { PORTFOLIO_GAP_TASK_STATUS_LABEL } from '@/apis/portfolio/types'
@@ -40,7 +41,7 @@ const detail = ref<PortfolioGapTaskDetailVO | null>(null)
 const fieldValues = reactive<Record<string, string>>({})
 const evidenceRefs = reactive<Record<string, string>>({})
 const attachmentFileNodeId = ref<string>()
-const uploading = ref(false)
+const attachmentFileName = ref<string>()
 
 const gapTaskId = computed(() => readRouteParamString(route.params.taskId))
 const teacherRequest = computed(() =>
@@ -103,22 +104,6 @@ async function handleSaveDraft() {
   }
 }
 
-async function handleUploadAttachment(file: File) {
-  uploading.value = true
-  try {
-    const uploaded = await uploadFile(file, { businessType: 'PORTFOLIO_MATERIAL' })
-    attachmentFileNodeId.value = uploaded.id
-    message.success('附件已上传')
-  }
-  catch (error) {
-    showUserError(error, '附件上传失败')
-  }
-  finally {
-    uploading.value = false
-  }
-  return false
-}
-
 async function handleSubmit() {
   if (!detail.value) {
     return
@@ -147,6 +132,23 @@ function goBack() {
   void router.push({
     path: '/portfolio/teacher/home',
     query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
+
+function openPortfolioGapScan() {
+  if (!detail.value || !targetTeacherId.value) {
+    message.warning('补采任务或教师信息未就绪')
+    return
+  }
+  void router.push({
+    path: '/scanner-kiosk/portfolio/session',
+    query: {
+      collectMode: 'GAP_ATTACHMENT',
+      teacherId: targetTeacherId.value,
+      gapTaskId: detail.value.id,
+      categoryId: detail.value.categoryId,
+      returnTo: route.fullPath,
+    },
   })
 }
 
@@ -187,12 +189,16 @@ usePortfolioScopedLoader(() => {
         <UiCard v-if="detail.missingFields.length" title="必填字段补采">
           <a-form layout="vertical">
             <a-form-item label="补交附件">
-              <a-upload :before-upload="handleUploadAttachment" :show-upload-list="false" accept=".pdf,.doc,.docx,.png,.jpg">
-                <UiButton :loading="uploading">
-                  {{ attachmentFileNodeId ? '重新上传附件' : '上传附件' }}
-                </UiButton>
-              </a-upload>
-              <span v-if="attachmentFileNodeId" class="teacher-gap__file-id">fileNodeId={{ attachmentFileNodeId }}</span>
+              <UiPlatformFileField
+                v-model:file-node-id="attachmentFileNodeId"
+                v-model:file-name="attachmentFileName"
+                :scene-key="FileUploadSceneKey.PORTFOLIO_MATERIAL"
+                accept=".pdf,.doc,.docx,.png,.jpg"
+                button-text="上传附件"
+              />
+              <UiButton class="teacher-gap__scan-btn" variant="outline" @click="openPortfolioGapScan">
+                一体机扫描
+              </UiButton>
             </a-form-item>
             <a-form-item
               v-for="field in detail.missingFields"

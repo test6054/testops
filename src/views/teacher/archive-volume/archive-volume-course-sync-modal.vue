@@ -26,6 +26,12 @@
     <div class="archive-volume-course-sync__toolbar">
       <UiButton size="sm" variant="outline" @click="addRow">添加材料行</UiButton>
     </div>
+    <input
+      ref="rowFileInputRef"
+      type="file"
+      class="sr-only"
+      @change="onRowFileChange"
+    >
     <UiDataTable
       pagination-mode="none"
       :columns="columns"
@@ -48,14 +54,17 @@
           <a-input v-model:value="rows[index].catalogCode" placeholder="目录编码" />
         </template>
         <template v-else-if="column.key === 'file'">
-          <a-upload
-            :before-upload="(file: File) => handleRowFile(index, file)"
-            :file-list="rows[index].fileList"
-            :max-count="1"
-            @remove="() => clearRowFile(index)"
+          <span v-if="rows[index].fileName" class="archive-volume-course-sync__file-name">
+            {{ rows[index].fileName }}
+          </span>
+          <UiButton
+            size="sm"
+            variant="outline"
+            :loading="rows[index].uploading"
+            @click="openRowFilePicker(index)"
           >
-            <UiButton size="sm">选择文件</UiButton>
-          </a-upload>
+            {{ rows[index].fileId ? '重新选择' : '选择文件' }}
+          </UiButton>
         </template>
         <template v-else-if="column.key === 'studentNo'">
           <a-input v-model:value="rows[index].studentNo" placeholder="可选" />
@@ -69,12 +78,12 @@
 </template>
 
 <script setup lang="ts">
-import type { UploadFile } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
+import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   ARCHIVE_MATERIAL_TYPE_LABEL,
   syncArchiveCoursePlatform,
@@ -98,8 +107,9 @@ interface SyncRow {
   uid: string
   materialType?: ArchiveMaterialTypeCode
   catalogCode: string
-  file: File | null
-  fileList: UploadFile[]
+  fileId?: string
+  fileName?: string
+  uploading?: boolean
   studentNo: string
 }
 
@@ -109,6 +119,8 @@ const form = ref({
   idempotencyKey: '',
 })
 const rows = ref<SyncRow[]>([])
+const rowFileInputRef = ref<HTMLInputElement | null>(null)
+const activeRowIndex = ref<number | null>(null)
 
 const materialTypeOptions = Object.entries(ARCHIVE_MATERIAL_TYPE_LABEL).map(([value, label]) => ({
   value,
@@ -118,7 +130,7 @@ const materialTypeOptions = Object.entries(ARCHIVE_MATERIAL_TYPE_LABEL).map(([va
 const columns: ColumnsType<SyncRow> = [
   { title: '材料类型', key: 'materialType', width: 180 },
   { title: '目录编码', key: 'catalogCode', width: 120 },
-  { title: '文件', key: 'file', width: 160 },
+  { title: '文件', key: 'file', width: 200 },
   { title: '学号', key: 'studentNo', width: 120 },
   { title: '操作', key: 'actions', width: 80 },
 ]
@@ -134,6 +146,7 @@ watch(() => props.open, (visible) => {
     rows.value = []
     form.value.sourceSystem = 'COURSE_PLATFORM'
     form.value.idempotencyKey = ''
+    activeRowIndex.value = null
   }
 })
 
@@ -141,8 +154,6 @@ function addRow() {
   rows.value.push({
     uid: `${Date.now()}-${rows.value.length}`,
     catalogCode: '',
-    file: null,
-    fileList: [],
     studentNo: '',
   })
 }
@@ -151,15 +162,35 @@ function removeRow(index: number) {
   rows.value.splice(index, 1)
 }
 
-function handleRowFile(index: number, file: File) {
-  rows.value[index].file = file
-  rows.value[index].fileList = [{ uid: rows.value[index].uid, name: file.name, status: 'done' }]
-  return false
+function openRowFilePicker(index: number) {
+  activeRowIndex.value = index
+  rowFileInputRef.value?.click()
 }
 
-function clearRowFile(index: number) {
-  rows.value[index].file = null
-  rows.value[index].fileList = []
+async function onRowFileChange(event: Event) {
+  const index = activeRowIndex.value
+  if (index === null) {
+    return
+  }
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) {
+    return
+  }
+  rows.value[index].uploading = true
+  try {
+    const node = await stageBusinessFile(FileUploadSceneKey.MARK_ARCHIVE_VOLUME_MATERIAL, file)
+    rows.value[index].fileId = String(node.id)
+    rows.value[index].fileName = node.nodeName
+  }
+  catch (error) {
+    showUserError(error, '文件上传失败')
+  }
+  finally {
+    rows.value[index].uploading = false
+    input.value = ''
+    activeRowIndex.value = null
+  }
 }
 
 function resolveFileFormat(fileName: string): string {
@@ -187,30 +218,26 @@ async function handleSubmit() {
       message.warning('每行须选择材料类型')
       return
     }
-    if (!row.file) {
+    if (!row.fileId) {
       message.warning('每行须上传文件')
       return
     }
   }
   submitting.value = true
   try {
-    const materials = []
-    for (const row of rows.value) {
-      const node = await uploadFile(row.file as File, { businessType: 'archive-volume-material' })
-      materials.push({
-        volumeId: props.volumeId,
-        materialType: row.materialType as ArchiveMaterialTypeCode,
-        catalogCode: row.catalogCode.trim() || undefined,
-        requiredFlag: true,
-        fileId: String(node.id),
-        mediaType: 'ELECTRONIC' as const,
-        fileFormat: resolveFileFormat((row.file as File).name),
-        sortRule: row.studentNo.trim() ? 'STUDENT_NO' as const : 'CATALOG_ORDER' as const,
-        electronicOriginalStatus: 'SCANNED' as const,
-        studentNo: row.studentNo.trim() || undefined,
-        triggerOcr: false,
-      })
-    }
+    const materials = rows.value.map((row) => ({
+      volumeId: props.volumeId,
+      materialType: row.materialType as ArchiveMaterialTypeCode,
+      catalogCode: row.catalogCode.trim() || undefined,
+      requiredFlag: true,
+      fileId: row.fileId as string,
+      mediaType: 'ELECTRONIC' as const,
+      fileFormat: resolveFileFormat(row.fileName ?? ''),
+      sortRule: row.studentNo.trim() ? 'STUDENT_NO' as const : 'CATALOG_ORDER' as const,
+      electronicOriginalStatus: 'SCANNED' as const,
+      studentNo: row.studentNo.trim() || undefined,
+      triggerOcr: false,
+    }))
     await syncArchiveCoursePlatform({
       idempotencyKey: form.value.idempotencyKey.trim(),
       volumeId: props.volumeId,
@@ -233,5 +260,16 @@ async function handleSubmit() {
 <style scoped>
 .archive-volume-course-sync__toolbar {
   margin-bottom: 8px;
+}
+
+.archive-volume-course-sync__file-name {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--dp-text-secondary);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

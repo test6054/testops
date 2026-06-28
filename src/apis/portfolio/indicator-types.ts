@@ -667,8 +667,6 @@ export interface PortfolioIndicatorPlatformApi {
   importSeed: () => Promise<PortfolioIndicatorPlatformSeedResultVO>
   definitionSummary: () => Promise<PortfolioIndicatorPlatformSummaryVO>
   definitionTree: () => Promise<PortfolioIndicatorDefinitionTreeNodeVO[]>
-  exportDefinitionTemplate: () => Promise<PortfolioIndicatorExportResultVO>
-  importDefinitionExcel: (data: PortfolioIndicatorExcelImportRequest) => Promise<PortfolioIndicatorDefinitionImportResultVO>
   listSourceMapping: () => Promise<PortfolioIndicatorSourceMappingVO[]>
 }
 
