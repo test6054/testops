@@ -82,15 +82,15 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { ref, watch } from 'vue'
-import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   ARCHIVE_MATERIAL_TYPE_LABEL,
   syncArchiveCoursePlatform,
 } from '@/apis/mark/archive-volume'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{

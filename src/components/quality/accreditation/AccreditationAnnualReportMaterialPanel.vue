@@ -11,13 +11,13 @@ import type {
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import {
   accreditationApi,
   ANNUAL_REPORT_MATERIAL_CATEGORY_LABEL,
   ANNUAL_REPORT_MATERIAL_STATUS_LABEL,
   ANNUAL_REPORT_MATERIAL_STATUS_TONE,
 } from '@/apis/quality/accreditation'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { CourseSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

@@ -4,20 +4,19 @@ import type {
   ScanWorkOrderArchiveContextVO,
   ScanWorkOrderLifecycleVO,
 } from '@/apis/mark/scanner-work-order'
+import { computed, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import { ARCHIVE_MATERIAL_TYPE_LABEL } from '@/apis/mark/archive-volume'
+import { getAgentSetupContext } from '@/apis/mark/scanner-agent-local'
 import {
   getScanWorkOrderContext,
   startScanWorkOrder,
 } from '@/apis/mark/scanner-work-order'
-import { getAgentSetupContext } from '@/apis/mark/scanner-agent-local'
-import { ARCHIVE_MATERIAL_TYPE_LABEL } from '@/apis/mark/archive-volume'
-import { computed, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export function useArchiveScanSession() {
   const route = useRoute()
-  const router = useRouter()
   const loading = ref(false)
   const lifecycle = ref<ScanWorkOrderLifecycleVO | null>(null)
   const archiveContext = ref<ScanWorkOrderArchiveContextVO | null>(null)
@@ -55,6 +54,16 @@ export function useArchiveScanSession() {
         batchExternalNo: lifecycle.value?.batchExternalNo,
       })
       archiveContext.value = context.archiveContext ?? null
+      const batchNo = context.activeBatchExternalNo ?? context.archiveContext?.activeBatchExternalNo
+      const status = context.activeWorkOrderStatus ?? context.archiveContext?.activeWorkOrderStatus
+      if (batchNo && status === 'IN_PROGRESS') {
+        lifecycle.value = {
+          workOrderId: context.activeWorkOrderId ?? context.archiveContext?.activeWorkOrderId,
+          batchExternalNo: batchNo,
+          status,
+          taskKind: 'EXAM_ARCHIVE',
+        }
+      }
     }
     catch (error) {
       showUserError(error, '加载归档扫描上下文失败')
@@ -75,6 +84,9 @@ export function useArchiveScanSession() {
     loading.value = true
     try {
       const setup = await getAgentSetupContext()
+      if (!setup.bound || !setup.scannerDeviceId || !setup.scannerStationId) {
+        throw new Error('扫描设备未绑定，请先激活一体机')
+      }
       lifecycle.value = await startScanWorkOrder({
         taskKind: 'EXAM_ARCHIVE',
         volumeId: volumeId.value,

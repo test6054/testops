@@ -100,6 +100,8 @@ export interface StudentScoreDetailVO {
   reviewWindowOpenTime?: string
   reviewWindowCloseTime?: string
   reviewWindowStatus: StudentReviewWindowStatusCode
+  /** 涉密 / 统考涉密场次 */
+  confidential?: boolean
 }
 
 export interface StudentAiDiagnosisItemVO {

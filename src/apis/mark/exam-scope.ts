@@ -168,7 +168,7 @@ export function listExamClassOptions(examId: string): Promise<ExamClassOptionVO[
 export function previewExamCandidates(
   request: ExamCandidatePreviewRequest,
 ): Promise<ExamCandidateVO[]> {
-  return http    .post<ExamCandidateVO[]>('/api/mark/exams/scope/candidates/preview', request)
+  return http.post<ExamCandidateVO[]>('/api/mark/exams/scope/candidates/preview', request)
 }
 
 /** 分页查询名册班级学生。 */

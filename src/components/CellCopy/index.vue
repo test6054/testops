@@ -1,15 +1,13 @@
 <template>
-  <a-space :size="2">
-    <a-typography-paragraph
-      :ellipsis="{
-        rows: 1,
-        tooltip: true,
-      }"
-    >
-      {{ content }}
-    </a-typography-paragraph>
-    <a-typography-paragraph :copy-text="content" copyable />
-  </a-space>
+  <a-typography-paragraph
+    :ellipsis="{
+      rows: 1,
+      tooltip: true,
+    }"
+    :copyable="{ text: content }"
+  >
+    {{ content }}
+  </a-typography-paragraph>
 </template>
 
 <script lang="ts" setup>

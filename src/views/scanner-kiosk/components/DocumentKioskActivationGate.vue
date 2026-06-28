@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import type { useKioskDeviceActivation } from '../composables/useKioskDeviceActivation'
+import { useKioskDeviceActivation } from '../composables/useKioskDeviceActivation'
 import KioskDeviceActivationPanel from './KioskDeviceActivationPanel.vue'
 
 defineProps<{
-  activation: ReturnType<typeof useKioskDeviceActivation>
   submitLoading?: boolean
   canActivate?: boolean
 }>()
@@ -11,13 +10,14 @@ defineProps<{
 const emit = defineEmits<{
   submit: []
 }>()
+
+const activation = useKioskDeviceActivation()
 </script>
 
 <template>
   <div v-if="activation.needsActivationGate.value" class="gate" role="dialog" aria-modal="true">
     <div class="gate__panel">
       <KioskDeviceActivationPanel
-        :activation="activation"
         compact
         :can-activate="canActivate ?? true"
         :submit-loading="submitLoading"

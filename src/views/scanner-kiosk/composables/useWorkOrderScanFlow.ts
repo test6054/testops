@@ -1,15 +1,16 @@
 import type {
-  ArchiveScanBatchModeCode,
-  ScanTaskKindCode,
-  ScanWorkOrderDiscardRequest,
-  ScanWorkOrderLifecycleVO,
-} from '@/apis/mark/scanner-work-order'
-import type {
   DocumentStartScanJobRequest,
   ScanJobResponse,
   ScannerBusinessScene,
 } from '@/apis/mark/scanner-agent-local'
 import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
+import type {
+  ArchiveScanBatchModeCode,
+  ScanTaskKindCode,
+  ScanWorkOrderDiscardRequest,
+  ScanWorkOrderLifecycleVO,
+} from '@/apis/mark/scanner-work-order'
+import { computed, onBeforeUnmount, ref, type Ref } from 'vue'
 import {
   cancelScanJob,
   deleteScanJob,
@@ -24,7 +25,6 @@ import {
 import { commitScanWorkOrder, discardScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { getUserErrorMessage } from '@/utils/error-handler'
-import { computed, onBeforeUnmount, ref, type Ref } from 'vue'
 
 const DEFAULT_OUTPUT_CONTAINER_FORMAT = 'PDF' as const
 const DEFAULT_PAGE_IMAGE_FORMAT = 'PNG' as const
@@ -45,6 +45,11 @@ export interface WorkOrderScanFlowOptions {
 
 /**
  * 归档 / 档案袋 work-order 开单后的 Agent 扫描、上传、commit 与 discard 主链。
+ *
+ * commit 重试分工：
+ * - 有 local scan job 时：统一走 Agent retryCommit（组装 container/sourceFileIds）。
+ * - 档案袋工单 COMMITTING/FAILED 且无 local job：走浏览器 commitScanWorkOrder 读 DB 快照续做 quality（后端 PortfolioScanWorkOrderCommitHandler）。
+ * - 考试卷 / 归档卷：无浏览器 commit 兜底，commit 失败仅 Agent 侧重试。
  */
 export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   const lifecycle = options.lifecycle ?? ref<ScanWorkOrderLifecycleVO | null>(null)
@@ -99,6 +104,9 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   })
 
   const canRetryWorkOrderCommit = computed(() => {
+    if (options.taskKind !== 'PORTFOLIO_COLLECT') {
+      return false
+    }
     const status = lifecycle.value?.status
     return Boolean(lifecycle.value?.batchExternalNo)
       && (status === 'COMMITTING' || status === 'FAILED')
@@ -204,7 +212,11 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     startPolling(currentJob.value.scanJobId)
   }
 
+  /** 档案袋 quality 失败后无 local job 时，凭工单 DB 快照续做 commit（非考试/归档路径）。 */
   async function retryWorkOrderCommit() {
+    if (options.taskKind !== 'PORTFOLIO_COLLECT') {
+      return
+    }
     if (!lifecycle.value?.batchExternalNo || !canRetryWorkOrderCommit.value) return
     loading.value = true
     errorMessage.value = ''

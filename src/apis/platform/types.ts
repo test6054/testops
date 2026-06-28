@@ -1,5 +1,6 @@
 /**
  * 平台文件 / Excel 导入 API 类型（与 edu-common 契约一致）。
+ * Excel 批量导入真源契约；业务域 apis/* 不重复定义 import Request/Result。
  */
 export type ExcelImportExecutionMode = 'SYNC' | 'ASYNC'
 
@@ -49,6 +50,10 @@ export interface ExcelImportResult {
   /** true 表示 preview 阶段尚未 commit */
   previewOnly?: boolean
   rosterPreviewRows?: ExcelImportRosterPreviewRow[]
+  /** upsert 类 scene 填充：新建记录数 */
+  createdCount?: number
+  /** upsert 类 scene 填充：更新记录数 */
+  updatedCount?: number
 }
 
 export interface PlatformFileStageVO {

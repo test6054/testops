@@ -1,5 +1,6 @@
 import type { PageResult, QueryDto } from '@/types'
 
+/** 指标域 CRUD / 计算 / 导出契约。Excel 上传与批量导入走 @/apis/platform（UiPlatformExcelImportModal + ExcelImportSceneKey）。 */
 /** 场景编码 - PfSceneCodeEnum */
 export type PfSceneCode
   = | 'DEFAULT'
@@ -454,15 +455,6 @@ export interface PortfolioRulePublishSnapshotVO {
   snapshotSummaryJson: string
 }
 
-export interface PortfolioIndicatorDefinitionImportResultVO {
-  totalRows: number
-  successRows: number
-  failedRows: number
-  createdCount: number
-  updatedCount: number
-  errorReportJson?: string
-}
-
 export interface PortfolioIndicatorSourceMappingVO {
   indicatorCode: string
   indicatorName: string
@@ -646,12 +638,6 @@ export interface PortfolioIndicatorTeacherTypeCompareItemVO {
 
 export interface PortfolioIndicatorTeacherTypeCompareVO {
   items: PortfolioIndicatorTeacherTypeCompareItemVO[]
-}
-
-/** Excel 批量导入请求 */
-export interface PortfolioIndicatorExcelImportRequest {
-  fileName?: string
-  sourceFileId: string
 }
 
 /** 平台指标 API 契约 */

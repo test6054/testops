@@ -14,8 +14,8 @@ import type {
   ScanBatchStatusCode,
 } from '@/apis/mark/exam-scan'
 import type { GradeStatusCode } from '@/apis/mark/grade-status'
-import type { TaskStatusCode } from '@/apis/mark/task-status'
 import type { MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
+import type { TaskStatusCode } from '@/apis/mark/task-status'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 

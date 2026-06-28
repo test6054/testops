@@ -3,11 +3,11 @@ import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { FileSearchOutlined, FolderOpenOutlined, ScanOutlined } from '@ant-design/icons-vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { getUserErrorMessage } from '@/utils/error-handler'
 import KioskDeviceActivationPanel from './components/KioskDeviceActivationPanel.vue'
 import { useKioskDeviceActivation } from './composables/useKioskDeviceActivation'
 import { resolveActivationGuardMessage } from './utils/kioskActivationGuard'
 import { parseAllowedTaskKinds } from './utils/parseAllowedTaskKinds'
-import { getUserErrorMessage } from '@/utils/error-handler'
 
 interface TaskKindCard {
   kind: ScanTaskKindCode
@@ -144,7 +144,6 @@ onMounted(() => {
 
     <KioskDeviceActivationPanel
       v-else-if="deviceActivation.needsActivationGate.value"
-      :activation="deviceActivation"
       :can-activate="canActivateOnHub"
       :submit-loading="deviceActivation.loading.value"
       show-manual-cancel

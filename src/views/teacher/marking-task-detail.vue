@@ -85,13 +85,18 @@
 
 
 
-      <GradingWorkspaceLayout v-if="task">
+      <GradingWorkspaceLayout
+        v-if="task"
+        :confidential="isExamConfidential"
+        :exam-label="examConfidentialLabel"
+      >
         <template #main>
           <MarkingQuestionViewCard
             :show-whole-paper-placeholder="usesWholePaperWorkspace"
             :loading="questionViewLoading"
             :loaded="questionViewLoaded"
             :question-view="questionView"
+            :confidential="isExamConfidential"
           />
 
           <WholePaperGallery
@@ -114,6 +119,7 @@
             :read-only="isReadOnly"
             :quality-label="scanPageQualityLabel"
             :quality-tone="scanPageQualityTone"
+            :confidential="isExamConfidential"
             @reload="reloadWholePaperView"
             @scroll="handleWholePageGalleryScroll"
             @viewport-ready="handleGalleryViewportReady"
@@ -402,6 +408,10 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import {
+  formatExamConfidentialLabel,
+  isExamConfidentialFlag,
+} from '@/composables/useConfidentialWatermark'
 import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useWholePaperGallery } from '@/composables/useWholePaperGallery'
@@ -447,6 +457,8 @@ const taskId = computed(() => (route.params.taskId ? String(route.params.taskId)
 
 const task = ref<MarkingTaskVO | null>(null)
 const examDetail = ref<ExamDetailVO | null>(null)
+const isExamConfidential = computed(() => isExamConfidentialFlag(examDetail.value?.confidential))
+const examConfidentialLabel = computed(() => formatExamConfidentialLabel(examDetail.value))
 const { isExamOwner } = useExamOwnerPermission(examDetail)
 const loading = ref(false)
 

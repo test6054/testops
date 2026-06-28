@@ -117,6 +117,8 @@
         <div class="platform-excel-import-modal__summary-stats">
           <span>总计 {{ result?.totalRows ?? 0 }}</span>
           <span class="is-success">成功 {{ result?.successRows ?? 0 }}</span>
+          <span v-if="result?.createdCount != null" class="is-success">新建 {{ result.createdCount }}</span>
+          <span v-if="result?.updatedCount != null">更新 {{ result.updatedCount }}</span>
           <span class="is-fail">失败 {{ result?.errorRows ?? 0 }}</span>
         </div>
       </div>
@@ -142,30 +144,30 @@
 
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { ExcelImportSceneKeyValue } from '@/apis/platform/scene-keys'
 import type {
   ExcelImportResult,
   ExcelImportRosterPreviewRow,
   ExcelImportRowDiagnostic,
 } from '@/apis/platform/types'
-import type { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { FileOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
-import { downloadExcelImportTemplate, submitExcelImport } from '@/apis/platform/excel-import'
-import { resolveFileStageSceneForExcel } from '@/apis/platform/scene-keys'
-import { stagePlatformFile } from '@/apis/platform/file'
 import { downloadFile } from '@/apis/edu/file-management'
+import { downloadExcelImportTemplate, submitExcelImport } from '@/apis/platform/excel-import'
+import { stagePlatformFile } from '@/apis/platform/file'
+import { resolveFileStageSceneForExcel } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import { getUserErrorMessage, getUserProcessFailureMessage } from '@/utils/error-handler'
 import { formatFileSize } from '@/utils/format'
-import { getUserProcessFailureMessage } from '@/utils/error-handler'
 
 type ImportPhase = 'upload' | 'preview' | 'result'
 
 const props = defineProps<{
   open: boolean
-  sceneKey: ExcelImportSceneKey
+  sceneKey: ExcelImportSceneKeyValue
   entityLabel: string
   context?: Record<string, unknown>
   requirements?: string[]
@@ -331,7 +333,7 @@ async function stageSelectedFile(file: File) {
   } catch (error) {
     stagedFile.value = null
     stagedFileNodeId.value = null
-    message.error(getUserProcessFailureMessage(error, '文件暂存失败'))
+    message.error(getUserErrorMessage(error, '文件暂存失败'))
   } finally {
     submitting.value = false
   }
@@ -357,7 +359,7 @@ async function handleDownloadTemplate() {
     const blobResponse = await downloadFile({ nodeId: String(template.fileNodeId) })
     triggerBrowserDownload(blobResponse.data, template.fileName)
   } catch (error) {
-    message.error(getUserProcessFailureMessage(error, '模板下载失败'))
+    message.error(getUserErrorMessage(error, '模板下载失败'))
   } finally {
     templateLoading.value = false
   }
@@ -426,7 +428,7 @@ async function handleOk() {
       message.warning(`导入完成：成功 ${importResult.successRows ?? 0} 条，失败 ${importResult.errorRows ?? 0} 条`)
     }
   } catch (error) {
-    message.error(getUserProcessFailureMessage(error, phase.value === 'preview' ? '导入考生名册失败' : '导入失败'))
+    message.error(getUserErrorMessage(error, phase.value === 'preview' ? '导入考生名册失败' : '导入失败'))
   } finally {
     submitting.value = false
   }

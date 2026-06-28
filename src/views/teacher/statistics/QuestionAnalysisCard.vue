@@ -91,41 +91,37 @@
             清除题目筛选
           </UiButton>
         </template>
-        <template #bodyCell="{ column, index }">
+        <template #bodyCell="{ column, record: item }">
           <template v-if="column.key === 'question'">
             <div class="question-analysis-card__question-cell">
               <div class="question-analysis-card__question-title">
-                题{{ tableRows[index].questionNo }} · {{ questionTypeLabel(tableRows[index].questionType) }} ·
-                {{ fmtNum(tableRows[index].fullScore) }} 分
+                题{{ item.questionNo }} · {{ questionTypeLabel(item.questionType) }} ·
+                {{ fmtNum(item.fullScore) }} 分
               </div>
-              <div v-if="tableRows[index].questionStem" class="question-analysis-card__question-stem">
-                {{
-                  tableRows[index].questionStem.length > 36
-                    ? `${tableRows[index].questionStem.slice(0, 36)}...`
-                    : tableRows[index].questionStem
-                }}
+              <div v-if="item.questionStem" class="question-analysis-card__question-stem">
+                {{ formatQuestionStemPreview(item.questionStem) }}
               </div>
             </div>
           </template>
           <template v-else-if="column.key === 'difficultyIndex'">
-            {{ fmtNum(tableRows[index].difficultyIndex) }}
+            {{ fmtNum(item.difficultyIndex) }}
           </template>
           <template v-else-if="column.key === 'discriminationIndex'">
-            {{ fmtNum(tableRows[index].discriminationIndex) }}
+            {{ fmtNum(item.discriminationIndex) }}
           </template>
           <template v-else-if="column.key === 'avgScore'">
-            {{ fmtNum(tableRows[index].avgScore) }} / {{ fmtNum(tableRows[index].fullScore) }}
+            {{ fmtNum(item.avgScore) }} / {{ fmtNum(item.fullScore) }}
           </template>
           <template v-else-if="column.key === 'correctRatio'">
-            <a-typography-text :type="getCorrectRatioType(tableRows[index])">
-              {{ correctRatio(tableRows[index]) }}
+            <a-typography-text :type="getCorrectRatioType(item)">
+              {{ correctRatio(item) }}
             </a-typography-text>
           </template>
           <template v-else-if="column.key === 'snapshotTime'">
-            {{ formatDateTime(tableRows[index].snapshotTime) }}
+            {{ formatDateTime(item.snapshotTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiTextAction @click="handleGenerateOne(tableRows[index].questionTemplateId)">重新生成</UiTextAction>
+            <UiTextAction @click="handleGenerateOne(item.questionTemplateId)">重新生成</UiTextAction>
           </template>
         </template>
       </UiDataTable>
@@ -360,6 +356,11 @@ function acceptQuestionAnalysisRows(
 function fmtNum(v?: number): string {
   if (v == null) return '-'
   return Number(v).toFixed(2)
+}
+
+/** 表格题干预览：超长截断，空值由调用方 v-if 控制不展示。 */
+function formatQuestionStemPreview(stem: string): string {
+  return stem.length > 36 ? `${stem.slice(0, 36)}...` : stem
 }
 
 function correctRatio(r: ExamQuestionAnalysisRecordVO): string {

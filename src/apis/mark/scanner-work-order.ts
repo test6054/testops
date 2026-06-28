@@ -1,6 +1,5 @@
-import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
-import type { ExamScannerPageUploadResponse } from '@/apis/mark/scanner-kiosk'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
+import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
 import http from '@/config/axios'
 
 export type ScanTaskKindCode = 'EXAM_MARKING' | 'EXAM_ARCHIVE' | 'PORTFOLIO_COLLECT'
@@ -64,6 +63,7 @@ export interface ScanWorkOrderLifecycleVO {
   pendingPagesDiagnostic?: string
   committedAiJobId?: string
   committedFileNodeId?: string
+  archiveBatchMode?: ArchiveScanBatchModeCode
 }
 
 export interface ScanWorkOrderPortfolioContextVO {
@@ -132,6 +132,14 @@ export interface ScanWorkOrderDiscardRequest {
   discardPendingPages: boolean
 }
 
+/** 考试扫描开单：taskKind 由 startExamScanWorkOrder 注入。 */
+export type ExamScanWorkOrderStartRequest = Omit<ScanWorkOrderStartRequest, 'taskKind'>
+
+/** 考试扫描 discard：taskKind 由 discardExamScanWorkOrder 注入，examId 关闭 kiosk 锚点必填。 */
+export type ExamScanWorkOrderDiscardRequest = Omit<ScanWorkOrderDiscardRequest, 'taskKind'> & {
+  examId: string
+}
+
 export interface ScanWorkOrderContextRequest {
   taskKind: ScanTaskKindCode
   scannerDeviceId: string
@@ -172,15 +180,13 @@ export function getScanWorkOrderContext(
 }
 
 export function startExamScanWorkOrder(
-  request: ScanWorkOrderStartRequest,
+  request: ExamScanWorkOrderStartRequest,
 ): Promise<ScanWorkOrderLifecycleVO> {
   return startScanWorkOrder({ ...request, taskKind: 'EXAM_MARKING' })
 }
 
 export function discardExamScanWorkOrder(
-  request: ScanWorkOrderDiscardRequest,
+  request: ExamScanWorkOrderDiscardRequest,
 ): Promise<ScanWorkOrderLifecycleVO> {
   return discardScanWorkOrder({ ...request, taskKind: 'EXAM_MARKING' })
 }
-
-export type { ExamScannerPageUploadResponse }

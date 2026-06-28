@@ -40,6 +40,16 @@
     />
 
     <template v-else-if="detail">
+      <UiAlertStrip
+        v-if="isExamConfidential"
+        tone="error"
+        title="涉密资料，禁止传播"
+        description="涉密页面，请勿截屏外传"
+        :closable="false"
+        dense
+        class="score-detail__confidential-strip"
+      />
+
       <div v-if="detail.finalScoreStatus === 'PUBLISHED'" class="score-detail__layout">
         <UiCard class="score-detail__sheet-card">
           <template #title>
@@ -124,13 +134,23 @@
                   v-if="!currentDetail.sliceFileId"
                   description="暂无数据"
                 />
-                <div v-else class="answer-panel__slice">
+                <div
+                  v-else
+                  class="answer-panel__slice confidential-shield"
+                  :class="{ 'confidential-shield--active': isExamConfidential }"
+                >
+                  <ConfidentialWatermarkLayer
+                    v-if="isExamConfidential"
+                    :lines="confidentialWatermarkLines"
+                    density="dense"
+                  />
                   <a-spin :spinning="sliceLoading" tip="加载切片中...">
                     <a-image
                       v-if="sliceImageUrl"
                       :src="sliceImageUrl"
                       :preview="{}"
                       class="answer-panel__slice-img"
+                      @contextmenu="onConfidentialContextMenu"
                     >
                       <template #previewMask>点击放大查看</template>
                     </a-image>
@@ -401,14 +421,20 @@ import {
 } from '@/apis/mark/student-exam'
 import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-mastery-level'
 import MarkHeatmapSection from '@/components/chart/MarkHeatmapSection.vue'
+import ConfidentialWatermarkLayer from '@/components/mark/ConfidentialWatermarkLayer.vue'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import {
+  buildConfidentialWatermarkLines,
+  isExamConfidentialFlag,
+} from '@/composables/useConfidentialWatermark'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
@@ -423,6 +449,26 @@ const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const detail = ref<StudentScoreDetailVO | null>(null)
+const isExamConfidential = computed(() => isExamConfidentialFlag(detail.value?.confidential))
+const confidentialWatermarkLines = computed(() => {
+  if (!isExamConfidential.value || !detail.value) {
+    return []
+  }
+  return buildConfidentialWatermarkLines({
+    examLabel: `${detail.value.examName}（${detail.value.examNo}）`,
+    viewer: {
+      displayName: detail.value.studentName,
+      identifierLabel: '学号',
+      identifierValue: detail.value.studentNo,
+    },
+  })
+})
+
+function onConfidentialContextMenu(event: MouseEvent): void {
+  if (isExamConfidential.value) {
+    event.preventDefault()
+  }
+}
 
 const detailQuestions = computed<StudentQuestionScoreVO[]>(() => detail.value?.questions ?? [])
 
@@ -852,6 +898,10 @@ onBeforeUnmount(() => {
     padding: 48px 0;
   }
 
+  &__confidential-strip {
+    margin-bottom: 16px;
+  }
+
   &__hint {
     color: var(--dp-text-muted, #64748b);
   }
@@ -895,6 +945,7 @@ onBeforeUnmount(() => {
   }
 
   &__slice {
+    position: relative;
     border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
     border-radius: 6px;
     padding: 8px;
@@ -947,6 +998,10 @@ onBeforeUnmount(() => {
     display: flex;
     justify-content: flex-end;
   }
+}
+
+.confidential-shield--active {
+  user-select: none;
 }
 
 .profile-block {

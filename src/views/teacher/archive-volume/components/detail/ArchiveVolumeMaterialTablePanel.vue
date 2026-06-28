@@ -47,6 +47,13 @@
         </template>
         <template v-else-if="column.key === 'materialActions'">
           <UiTextAction
+            v-if="canViewMaterialOcr(record)"
+            tone="primary"
+            @click="openMaterialOcrDetail(record)"
+          >
+            查看 OCR
+          </UiTextAction>
+          <UiTextAction
             v-if="canRetryMaterialOcr(record)"
             tone="primary"
             @click="confirmRetryMaterialOcr(record)"
@@ -134,6 +141,10 @@
       :volume-id="volumeId"
       @success="emitRefreshed"
     />
+    <ArchiveVolumeMaterialOcrDetailModal
+      v-model:open="ocrDetailOpen"
+      :material-id="ocrDetailMaterialId"
+    />
   </div>
 </template>
 
@@ -173,6 +184,7 @@ import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveVolumeBatchRegisterModal from '@/views/teacher/archive-volume/archive-volume-batch-register-modal.vue'
 import ArchiveVolumeCourseSyncModal from '@/views/teacher/archive-volume/archive-volume-course-sync-modal.vue'
+import ArchiveVolumeMaterialOcrDetailModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailModal.vue'
 
 defineOptions({ name: 'ArchiveVolumeMaterialTablePanel' })
 
@@ -196,6 +208,8 @@ const uploading = ref(false)
 const uploadModalOpen = ref(false)
 const sharedRefModalOpen = ref(false)
 const sharedRefSubmitting = ref(false)
+const ocrDetailOpen = ref(false)
+const ocrDetailMaterialId = ref<string>()
 
 const uploadForm = reactive({
   materialType: undefined as ArchiveMaterialTypeCode | undefined,
@@ -229,7 +243,7 @@ const materialColumns: ColumnsType<ArchiveVolumeMaterialVO> = [
   { title: '学号', dataIndex: 'studentNo', width: 120 },
   { title: '提交状态', key: 'submissionStatus', width: 120 },
   { title: 'OCR 状态', key: 'ocrStatus', width: 160 },
-  { title: '操作', key: 'materialActions', width: 100 },
+  { title: '操作', key: 'materialActions', width: 160 },
 ]
 
 const filteredMaterials = computed(() => {
@@ -261,6 +275,15 @@ function materialOcrStatusTone(code: PaperArchiveOcrStatusCode): BadgeTone {
 
 function canRetryMaterialOcr(material: ArchiveVolumeMaterialVO): boolean {
   return material.ocrStatus === 'FAILED' && Boolean(material.fileId)
+}
+
+function canViewMaterialOcr(material: ArchiveVolumeMaterialVO): boolean {
+  return material.ocrStatus === 'COMPLETED' || material.ocrStatus === 'FAILED' || material.ocrStatus === 'RUNNING'
+}
+
+function openMaterialOcrDetail(material: ArchiveVolumeMaterialVO): void {
+  ocrDetailMaterialId.value = material.materialId
+  ocrDetailOpen.value = true
 }
 
 function emitRefreshed(options?: { silent?: boolean }) {

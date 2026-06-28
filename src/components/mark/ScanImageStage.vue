@@ -34,6 +34,8 @@ const props = defineProps<{
   emptyText?: string
   /** 画布最小高度（px），默认 420 */
   minHeight?: number
+  /** 涉密场次：禁用右键与文本选择 */
+  confidential?: boolean
 }>()
 
 const ZOOM_MIN = 0.5
@@ -89,6 +91,11 @@ function rotateLeft(): void {
 function toggleGrayscale(): void {
   grayscale.value = !grayscale.value
 }
+function onConfidentialContextMenu(event: MouseEvent): void {
+  if (props.confidential) {
+    event.preventDefault()
+  }
+}
 
 function onCanvasPointerDown(event: PointerEvent): void {
   if (!canPan.value) {
@@ -138,18 +145,23 @@ watch(
 </script>
 
 <template>
-  <div class="scan-stage">
+  <div
+    class="scan-stage"
+    :class="{ 'scan-stage--confidential': props.confidential }"
+  >
     <div
       class="scan-stage__canvas"
       :class="{
         'scan-stage__canvas--pan': canPan,
         'scan-stage__canvas--panning': isPanning,
+        'scan-stage__canvas--confidential': props.confidential,
       }"
       :style="{ minHeight: canvasMinHeight }"
       @pointerdown="onCanvasPointerDown"
       @pointermove="onCanvasPointerMove"
       @pointerup="endCanvasPan"
       @pointercancel="endCanvasPan"
+      @contextmenu="onConfidentialContextMenu"
     >
       <div v-if="!src" class="scan-stage__empty">
         {{ emptyText || '暂无影像' }}
@@ -161,6 +173,7 @@ watch(
           :alt="caption || '扫描影像'"
           :style="{ transform: imageTransform, filter: imageFilter }"
           draggable="false"
+          @contextmenu="onConfidentialContextMenu"
         >
         <div
           v-if="roi"
@@ -247,6 +260,10 @@ watch(
   max-height: calc(100% - 32px);
 }
 
+.scan-stage__canvas--confidential {
+  user-select: none;
+}
+
 .scan-stage__image {
   display: block;
   max-width: 100%;
@@ -258,6 +275,10 @@ watch(
   transition:
     transform var(--dp-duration-fast, 150ms) ease,
     filter var(--dp-duration-fast, 150ms) ease;
+}
+
+.scan-stage__canvas--confidential .scan-stage__image {
+  -webkit-user-drag: none;
 }
 
 .scan-stage__canvas--panning .scan-stage__image {

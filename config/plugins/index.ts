@@ -9,8 +9,7 @@ import createAutoImport from './auto-import'
 import createComponents from './components'
 import configCompressPlugin from './compress'
 
-export default async function createVitePlugins(viteEnv: Record<string, string>, isBuild = false) {
-  const _ = viteEnv
+export default async function createVitePlugins(isBuild = false) {
   const vitePlugins: (PluginOption | PluginOption[])[] = [
     appInfo(),
     tailwindcss(),

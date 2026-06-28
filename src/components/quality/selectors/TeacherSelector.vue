@@ -72,6 +72,31 @@ function teacherDisplayName(opt: TeacherUserInfoDto): string {
   return opt.nickName
 }
 
+/** 将 a-select 的 SelectValue 收敛为本选择器的 string | string[] | null 合同 */
+function selectValueToTeacherIds(val: SelectValue): string | string[] | null {
+  if (val == null || val === '') {
+    return null
+  }
+  if (Array.isArray(val)) {
+    const ids: string[] = []
+    for (const item of val) {
+      if (typeof item === 'string') {
+        ids.push(item)
+      } else if (typeof item === 'number') {
+        ids.push(String(item))
+      }
+    }
+    return ids
+  }
+  if (typeof val === 'string') {
+    return val
+  }
+  if (typeof val === 'number') {
+    return String(val)
+  }
+  return null
+}
+
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 function handleSearch(val: string) {
   searchText.value = val
@@ -80,11 +105,7 @@ function handleSearch(val: string) {
 }
 
 function handleChange(val: SelectValue) {
-  const next: string | string[] | null = Array.isArray(val)
-    ? val.filter((item): item is string => typeof item === 'string')
-    : typeof val === 'string'
-      ? val
-      : null
+  const next = selectValueToTeacherIds(val)
   internalValue.value = next ?? undefined
   const option = Array.isArray(next)
     ? options.value.filter((o) => next.includes(o.id))

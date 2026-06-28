@@ -14,7 +14,6 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
@@ -29,6 +28,7 @@ import {
   AI_TASK_STATUS_COLOR,
   AI_TASK_STATUS_LABEL,
 } from '@/apis/quality/types'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiAlert from '@/components/ui-guide/ui/Alert.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'

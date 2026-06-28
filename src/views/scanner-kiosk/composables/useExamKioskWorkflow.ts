@@ -15,8 +15,8 @@
 
 import type { LocationQueryValue } from 'vue-router'
 import type { ScanAttentionTypeCode, ScanBatchStatusCode } from '@/apis/mark/exam-scan'
+import type { MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
 import type {
-  AgentHealthResponse,
   AgentHealthStatus,
   AgentUpdateStatus,
   DirectScanProviderChain,
@@ -28,7 +28,6 @@ import type {
   ScannerDeviceInfo,
   ScannerListResponse,
 } from '@/apis/mark/scanner-agent-local'
-import type { MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
 import type {
   ExamScannerBoundPaperItemVO,
   ExamScannerKioskBatchHistoryItem,
@@ -43,6 +42,7 @@ import type {
   ExamScannerScanConfigVO,
   ScannerKioskScanMode,
 } from '@/apis/mark/scanner-kiosk'
+import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { SCANNER_COLOR_MODE_LABEL, SCANNER_DUPLEX_MODE_LABEL, SCANNER_ENDPOINT_ONLINE_STATUS_LABEL } from '@/apis/mark/exam-mark-scanner'
@@ -83,7 +83,6 @@ import {
   discardExamScanWorkOrder,
   startExamScanWorkOrder,
 } from '@/apis/mark/scanner-work-order'
-import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
@@ -148,7 +147,7 @@ const DEFAULT_PAGE_IMAGE_FORMAT = 'PNG' as const
 const DEFAULT_BLANK_PAGE_POLICY = 'BACK_BLANK' as const
 
 /** scanMode 到统一文档采集场景的默认映射 */
-function resolveBusinessSceneFromScanMode(mode: ScannerKioskScanMode): ScannerBusinessScene {
+function resolveBusinessSceneFromScanMode(): ScannerBusinessScene {
   return 'EXAM_DIRECT_SCAN'
 }
 
@@ -868,11 +867,6 @@ export function useExamKioskWorkflow() {
       detail: '设备就绪，可以开始本批次扫描。',
     }
   })
-
-  /** Agent 已绑定时即可访问 edu-mark；浏览器 push_token 由 recoverKioskBrowserSession 自动同步。 */
-  function hasActiveKioskActivation(): boolean {
-    return hasActiveDeviceActivation()
-  }
 
   async function ensureKioskBrowserAuthSynced(): Promise<boolean> {
     return recoverKioskBrowserSession()
@@ -2056,7 +2050,7 @@ export function useExamKioskWorkflow() {
       return
     }
     scanMode.value = mode
-    businessScene.value = resolveBusinessSceneFromScanMode(mode)
+    businessScene.value = resolveBusinessSceneFromScanMode()
     if (mode !== 'SUPPLEMENT') {
       supplementTargetPageNo.value = undefined
       supplementReason.value = ''
@@ -2125,6 +2119,12 @@ export function useExamKioskWorkflow() {
         errorMessage: '补扫任务缺少目标试卷，已阻断本地扫描启动',
       }
     }
+    if (lifecycle.replaceTargetPage == null) {
+      return {
+        ok: false,
+        errorMessage: '补扫任务缺少替换策略，已阻断本地扫描启动',
+      }
+    }
     return {
       ok: true,
       scanMode: lifecycle.examScanMode,
@@ -2166,7 +2166,6 @@ export function useExamKioskWorkflow() {
         return
       }
       const batchLifecycle = await startExamScanWorkOrder({
-        taskKind: 'EXAM_MARKING',
         examId: examId.value,
         scannerDeviceId,
         scannerStationId,

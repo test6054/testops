@@ -54,7 +54,7 @@ function resultTone(status: ArchiveImportBatchStatusCode): UiAlertStripTone {
   if (status === 'PARTIAL_FAILED') {
     return 'warning'
   }
-  return 'danger'
+  return 'error'
 }
 
 function resultDescription(result: ArchiveExternalImportResultVO): string {
@@ -83,7 +83,7 @@ function handleImportSuccess(result: ExcelImportResult): void {
     failureCount: result.errorRows ?? 0,
   }
   lastFailureSummaries.value = (result.diagnostics ?? [])
-    .filter(row => row.valid === false)
+    .filter(row => !row.valid)
     .map(row => `第 ${row.rowIndex} 行：${row.invalidReason ?? '导入失败'}`)
 }
 </script>

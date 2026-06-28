@@ -1,4 +1,4 @@
-/** 平台文件暂存 scene */
+/** 平台文件暂存 scene（与 edu-common FileUploadSceneKey 枚举逐值对齐，运行时真源） */
 export const FileUploadSceneKey = {
   QUALITY_ACCREDITATION_EVIDENCE: 'QUALITY_ACCREDITATION_EVIDENCE',
   QUALITY_ANNUAL_REPORT_MATERIAL: 'QUALITY_ANNUAL_REPORT_MATERIAL',
@@ -17,9 +17,9 @@ export const FileUploadSceneKey = {
   QUALITY_INDIRECT_RESPONSE_DOC: 'QUALITY_INDIRECT_RESPONSE_DOC',
 } as const
 
-export type FileUploadSceneKey = typeof FileUploadSceneKey[keyof typeof FileUploadSceneKey]
+export type FileUploadSceneKeyValue = (typeof FileUploadSceneKey)[keyof typeof FileUploadSceneKey]
 
-/** 平台 Excel 导入 scene */
+/** 平台 Excel 导入 scene（与 edu-common ExcelImportSceneKey 枚举逐值对齐，运行时真源） */
 export const ExcelImportSceneKey = {
   QUALITY_WORKGROUP_MEMBER: 'QUALITY_WORKGROUP_MEMBER',
   QUALITY_PROCESS_RECORD: 'QUALITY_PROCESS_RECORD',
@@ -33,7 +33,7 @@ export const ExcelImportSceneKey = {
   MARK_ROSTER_EXCEL: 'MARK_ROSTER_EXCEL',
 } as const
 
-export type ExcelImportSceneKey = typeof ExcelImportSceneKey[keyof typeof ExcelImportSceneKey]
+export type ExcelImportSceneKeyValue = (typeof ExcelImportSceneKey)[keyof typeof ExcelImportSceneKey]
 
 const PORTFOLIO_SCENES = new Set<string>([
   ExcelImportSceneKey.PORTFOLIO_EXTERNAL_TEACHER,
@@ -59,7 +59,7 @@ export function resolveExcelImportApiBase(sceneKey: string): string {
 }
 
 /** Excel scene 对应的文件暂存 scene */
-export function resolveFileStageSceneForExcel(sceneKey: ExcelImportSceneKey): FileUploadSceneKey {
+export function resolveFileStageSceneForExcel(sceneKey: ExcelImportSceneKeyValue): FileUploadSceneKeyValue {
   if (sceneKey.startsWith('PORTFOLIO_') || sceneKey.startsWith('MARK_')) {
     return FileUploadSceneKey.PORTFOLIO_EXCEL_IMPORT
   }

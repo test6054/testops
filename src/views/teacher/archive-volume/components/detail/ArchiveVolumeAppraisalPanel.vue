@@ -191,8 +191,6 @@ import type {
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import {
   approveArchiveVolumeAppraisal,
   approveArchiveVolumeDestruction,
@@ -208,7 +206,9 @@ import {
   requestArchiveVolumeAppraisal,
   requestArchiveVolumeDestruction,
 } from '@/apis/mark/archive-volume'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'

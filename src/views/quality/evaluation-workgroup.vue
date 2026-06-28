@@ -20,6 +20,7 @@ import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   evaluationWorkgroupApi,
   WORKGROUP_MEMBER_ROLE_LABEL,
@@ -29,7 +30,6 @@ import {
   WORKGROUP_LEVEL_OPTIONS,
 } from '@/apis/quality/types'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { ProgramSelector, TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'

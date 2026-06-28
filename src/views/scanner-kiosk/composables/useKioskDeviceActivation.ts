@@ -1,22 +1,22 @@
 import type { AgentHealthResponse, AgentSetupContextResponse } from '@/apis/mark/scanner-agent-local'
+import { computed, ref } from 'vue'
 import {
-  LOCAL_AGENT_UNAVAILABLE_ERROR,
-  LocalAgentUnavailableError,
   activateLocalAgent,
   getAgentHealth,
   getAgentSetupContext,
+  LOCAL_AGENT_UNAVAILABLE_ERROR,
+  LocalAgentUnavailableError,
 } from '@/apis/mark/scanner-agent-local'
+import { getUserErrorMessage } from '@/utils/error-handler'
 import {
-  KIOSK_BROWSER_SESSION_SYNC_MESSAGE,
   clearKioskAuthSession,
   getKioskBindingProfile,
   hasMarkScannerKioskAuth,
+  KIOSK_BROWSER_SESSION_SYNC_MESSAGE,
   needsKioskBrowserSessionSync,
   recoverKioskBrowserSessionFromAgent,
   saveKioskAuthSession,
 } from '@/utils/kiosk-auth'
-import { getUserErrorMessage } from '@/utils/error-handler'
-import { computed, ref } from 'vue'
 
 const gatewayBaseUrlEnv = import.meta.env.VITE_SCANNER_GATEWAY_BASE_URL
 const defaultGatewayFromEnv
@@ -339,7 +339,6 @@ function createKioskDeviceActivation() {
     hasActiveDeviceActivation,
     isActivatedForMarkApis,
     markLocalAgentDisconnected,
-    clearStaleKioskSessionWhenUnbound,
     refreshDeviceActivationState,
     activateDevice,
     syncActivationFormFromAgent,
@@ -347,5 +346,3 @@ function createKioskDeviceActivation() {
     closeManualActivation,
   }
 }
-
-export type KioskDeviceActivation = ReturnType<typeof useKioskDeviceActivation>

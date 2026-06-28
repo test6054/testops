@@ -89,7 +89,6 @@ function goBack() {
 <template>
   <div class="archive-scan-session">
     <DocumentKioskActivationGate
-      :activation="bootstrap.activation"
       :can-activate="bootstrap.canActivateAgent.value"
       :submit-loading="bootstrap.loading.value"
       @submit="bootstrap.activateAgent"
@@ -139,35 +138,35 @@ function goBack() {
         </UiButton>
         <UiButton
           v-if="scanFlow.isScanning.value"
-          variant="secondary"
+          variant="outline"
           @click="scanFlow.pauseCurrentJob()"
         >
           暂停
         </UiButton>
         <UiButton
           v-if="scanFlow.currentJob.value?.status === 'PAUSED'"
-          variant="secondary"
+          variant="outline"
           @click="scanFlow.resumeCurrentJob()"
         >
           继续
         </UiButton>
         <UiButton
           v-if="scanFlow.canRetryUpload.value"
-          variant="secondary"
+          variant="outline"
           @click="scanFlow.retryCurrentUpload()"
         >
           重试上传
         </UiButton>
         <UiButton
           v-if="scanFlow.canRetryCommit.value"
-          variant="secondary"
+          variant="outline"
           @click="scanFlow.retryCurrentCommit()"
         >
           重试提交
         </UiButton>
         <UiButton
           v-if="scanFlow.canDiscard.value"
-          variant="danger"
+          variant="destructive"
           :loading="scanFlow.loading.value"
           @click="scanFlow.discardCurrentSession()"
         >

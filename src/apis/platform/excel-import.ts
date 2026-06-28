@@ -5,8 +5,8 @@ import type {
   ExcelImportTemplateRequest,
   ExcelImportTemplateVO,
 } from './types'
-import { resolveExcelImportApiBase } from './scene-keys'
 import http from '@/config/axios'
+import { resolveExcelImportApiBase } from './scene-keys'
 
 export function downloadExcelImportTemplate(
   request: ExcelImportTemplateRequest,

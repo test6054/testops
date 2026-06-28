@@ -36,7 +36,11 @@
         </div>
       </div>
       <!-- B-7 流水线进度：当前任务在同题复核队列中的位次 -->
-      <GradingWorkspaceLayout v-if="detail">
+      <GradingWorkspaceLayout
+        v-if="detail"
+        :confidential="isExamConfidential"
+        :exam-label="examConfidentialLabel"
+      >
         <template #queue>
           <div v-if="queueTotal > 0 && currentQueueIndex > 0" class="review-workspace__queue-progress">
             <div class="review-workspace__queue-progress-meta">
@@ -102,6 +106,7 @@
               :slice-file-id="detail?.sliceFileId"
               :source-scan-page="detail?.sourceScanPage"
               :master-paper-page="detail?.masterPaperPage"
+              :confidential="isExamConfidential"
             />
           </UiCard>
 
@@ -459,6 +464,10 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import {
+  isExamConfidentialFlag,
+  useExamConfidential,
+} from '@/composables/useConfidentialWatermark'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
@@ -496,6 +505,9 @@ const { refreshSnapshot } = useWorkspaceExamId()
 const userStore = useUserStore()
 
 const examId = computed(() => (route.params.examId ? String(route.params.examId) : ''))
+const { confidential: examConfidentialRef, examLabel: examConfidentialLabelRef } = useExamConfidential(examId)
+const isExamConfidential = computed(() => isExamConfidentialFlag(examConfidentialRef.value))
+const examConfidentialLabel = computed(() => examConfidentialLabelRef.value)
 const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
 const taskSource = computed(() => (route.query.source === 'arbitration' ? 'arbitration' : 'review'))
 /** 当前登录阅卷教师 ID，用于约束队列里可继续接手的 IN_PROGRESS 任务。 */

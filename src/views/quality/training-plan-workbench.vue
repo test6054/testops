@@ -56,7 +56,6 @@ import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import {
@@ -73,6 +72,7 @@ import {
   CIVIC_DIMENSION_LABEL,
   CONFIRMATION_STATUS_LABEL,
 } from '@/apis/quality/types'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import ProgramEvaluationProfileSelector from '@/components/quality/selectors/ProgramEvaluationProfileSelector.vue'
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'

@@ -1109,6 +1109,48 @@ export function triggerArchiveVolumeMaterialOcr(materialId: string): Promise<Arc
   })
 }
 
+export type DocumentOcrPageResultStatusCode = 'COMPLETED' | 'SKIPPED' | 'FAILED'
+
+export type DocumentOcrTaskStatusCode = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED'
+
+export const DOCUMENT_OCR_PAGE_RESULT_STATUS_LABEL: Record<DocumentOcrPageResultStatusCode, string> = {
+  COMPLETED: '已完成',
+  SKIPPED: '已跳过',
+  FAILED: '失败',
+}
+
+export interface DocumentOcrPageDetailVO {
+  pageResultId?: string
+  pageId?: string
+  pageNo?: number
+  status?: DocumentOcrPageResultStatusCode
+  recognizedText?: string
+  blockJson?: string
+  diagnostic?: string
+  engineTraceId?: string
+}
+
+export interface DocumentMaterialOcrDetailVO {
+  materialId?: string
+  ingestionSessionId?: string
+  ocrTaskId?: string
+  bindingId?: string
+  businessScene?: string
+  bindingStatus?: string
+  pageRange?: string
+  taskStatus?: DocumentOcrTaskStatusCode
+  taskDiagnostic?: string
+  ocrProvider?: string
+  fullText?: string
+  pages?: DocumentOcrPageDetailVO[]
+}
+
+export function getArchiveMaterialDocumentOcrDetail(materialId: string): Promise<DocumentMaterialOcrDetailVO | null> {
+  return http.post<DocumentMaterialOcrDetailVO | null>('/api/mark/archive-volumes/materials/document-ocr/detail', {
+    materialId,
+  })
+}
+
 export function checkArchiveVolumeIntegrity(volumeId: string): Promise<ArchiveIntegrityCheckVO> {
   return http.post<ArchiveIntegrityCheckVO>('/api/mark/archive-volumes/integrity/check', { volumeId })
 }

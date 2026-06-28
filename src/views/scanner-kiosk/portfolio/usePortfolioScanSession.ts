@@ -3,13 +3,13 @@ import type {
   ScanWorkOrderLifecycleVO,
   ScanWorkOrderPortfolioContextVO,
 } from '@/apis/mark/scanner-work-order'
+import { computed, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import { getAgentSetupContext } from '@/apis/mark/scanner-agent-local'
 import {
   getScanWorkOrderContext,
   startScanWorkOrder,
 } from '@/apis/mark/scanner-work-order'
-import { getAgentSetupContext } from '@/apis/mark/scanner-agent-local'
-import { computed, ref } from 'vue'
-import { useRoute } from 'vue-router'
 import { showUserError } from '@/utils/error-handler'
 
 export function usePortfolioScanSession() {

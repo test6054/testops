@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { ThunderboltFilled } from '@ant-design/icons-vue'
 import { computed } from 'vue'
-import type { useKioskDeviceActivation } from '../composables/useKioskDeviceActivation'
+import { useKioskDeviceActivation } from '../composables/useKioskDeviceActivation'
 
 const props = withDefaults(
   defineProps<{
-    activation: ReturnType<typeof useKioskDeviceActivation>
     compact?: boolean
     canActivate?: boolean
     submitLoading?: boolean
@@ -22,14 +21,16 @@ const emit = defineEmits<{
   submit: []
 }>()
 
+const activation = useKioskDeviceActivation()
+
 const formDisabled = computed(
   () => props.submitLoading
     || !props.canActivate
-    || !props.activation.localAgentReachable.value,
+    || !activation.localAgentReachable.value,
 )
 
 const agentOfflineHint = computed(() =>
-  !props.activation.localAgentReachable.value
+  !activation.localAgentReachable.value
     ? '请先启动本机扫描服务后再完成激活；激活码可先填写，服务就绪后提交。'
     : '',
 )

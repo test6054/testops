@@ -1,8 +1,8 @@
 import type { ScannerDeviceInfo } from '@/apis/mark/scanner-agent-local'
-import { listLocalScanners } from '@/apis/mark/scanner-agent-local'
 import { computed, ref } from 'vue'
-import { useKioskDeviceActivation } from './useKioskDeviceActivation'
+import { listLocalScanners } from '@/apis/mark/scanner-agent-local'
 import { isAgentWorkspaceBlocked, resolveActivationGuardMessage } from '../utils/kioskActivationGuard'
+import { useKioskDeviceActivation } from './useKioskDeviceActivation'
 
 /**
  * 归档 / 档案袋文档采集：设备激活（全局单例）+ 本机扫描仪枚举。

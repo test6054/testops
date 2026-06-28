@@ -97,6 +97,8 @@ export interface WorkbenchStageSnapshotVO {
   trialSessionActive: boolean
   formalSessionActive: boolean
   archiveClosed: boolean
+  /** 涉密 / 统考涉密场次 */
+  confidential?: boolean
 }
 
 /** 批量阅卷进度响应 */

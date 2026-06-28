@@ -25,17 +25,17 @@
 </template>
 
 <script setup lang="ts">
-import type { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import type { FileUploadSceneKeyValue } from '@/apis/platform/scene-keys'
 import { FileOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, ref } from 'vue'
 import { stagePlatformFile } from '@/apis/platform/file'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { formatFileSize } from '@/utils/format'
-import { getUserProcessFailureMessage } from '@/utils/error-handler'
+import { getUserErrorMessage } from '@/utils/error-handler'
 
 const props = withDefaults(defineProps<{
-  sceneKey: FileUploadSceneKey
+  sceneKey: FileUploadSceneKeyValue
   accept?: string
   buttonText?: string
   tip?: string
@@ -74,7 +74,7 @@ async function onFileChange(event: Event) {
     fileName.value = staged.fileName
     fileSize.value = staged.fileSize
   } catch (error) {
-    message.error(getUserProcessFailureMessage(error, '文件上传失败'))
+    message.error(getUserErrorMessage(error, '文件上传失败'))
   } finally {
     uploading.value = false
     if (inputRef.value) {

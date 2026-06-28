@@ -21,9 +21,8 @@ import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { accreditationApi } from '@/apis/quality/accreditation'
 import { archiveApi } from '@/apis/quality/archive'
 import {
@@ -31,6 +30,7 @@ import {
   ARCHIVE_BUSINESS_TYPE_LABEL,
   EXPERT_PACKAGE_TYPE_LABEL,
 } from '@/apis/quality/types'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   AchievementResultSelector,

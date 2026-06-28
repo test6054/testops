@@ -1,0 +1,63 @@
+/* 打印样式：成绩单、教学质量报表、评估导出预览 */
+
+@media print {
+  .no-print,
+  .layout-sidebar,
+  .layout-header,
+  .exam-detail-layout__header,
+  .tab-bar,
+  .ui-batch-action-bar,
+  .operations-cell {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  .print-root {
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+  }
+
+  .ui-data-table,
+  table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  .ui-card,
+  .ant-card,
+  .ui-data-table,
+  table,
+  .print-root {
+    box-shadow: none !important;
+  }
+
+  /* 涉密页面默认禁止打印影像；路由显式允许时使用 .allow-print */
+  .grading-workspace--confidential:not(.allow-print) .grading-workspace__shielded,
+  .confidential-shield:not(.allow-print),
+  .scan-stage--confidential:not(.allow-print) .scan-stage__image,
+  .whole-paper-gallery--confidential:not(.allow-print) .whole-paper-gallery__image {
+    visibility: hidden !important;
+  }
+
+  .grading-workspace--confidential:not(.allow-print)::after {
+    content: '涉密资料，禁止打印';
+    display: block;
+    padding: 24px 0;
+    text-align: center;
+    font-size: 16px;
+    color: #000;
+  }
+}

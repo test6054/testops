@@ -426,8 +426,6 @@ import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { getFileArrayBuffer } from '@/apis/edu/file-management'
 import { getExamDetail } from '@/apis/mark/exam'
 import { getExamTemplate } from '@/apis/mark/exam-template'
@@ -438,7 +436,9 @@ import {
   revokePaperMaster,
   savePaperMaster,
 } from '@/apis/mark/paper-master'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import PdfAnnotationEditor from '@/components/mark/PdfAnnotationEditor.vue'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

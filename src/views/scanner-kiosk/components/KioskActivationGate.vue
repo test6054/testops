@@ -3,8 +3,8 @@
  * 全屏设备激活向导：未激活 / rebindRequired / tokenResetRequired / 主动重新激活时独占屏幕。
  */
 import { computed } from 'vue'
-import KioskDeviceActivationPanel from './KioskDeviceActivationPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
+import KioskDeviceActivationPanel from './KioskDeviceActivationPanel.vue'
 
 const { workflow } = useKioskCtx()
 const activation = workflow.deviceActivation
@@ -24,7 +24,6 @@ function handleActivated() {
   <div v-if="visible" class="gate" role="dialog" aria-modal="true">
     <div class="gate__panel">
       <KioskDeviceActivationPanel
-        :activation="activation"
         compact
         :can-activate="canActivate"
         :submit-loading="loading"

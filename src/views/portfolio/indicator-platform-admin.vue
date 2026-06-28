@@ -17,8 +17,6 @@ import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-templat
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { downloadExcelImportTemplate } from '@/apis/platform/excel-import'
-import { downloadFile } from '@/apis/edu/file-management'
 import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import {
   PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL,
@@ -28,8 +26,8 @@ import {
   PF_SCORE_RULE_TYPE_LABEL,
   PF_SCORE_RULE_TYPE_OPTIONS,
 } from '@/apis/portfolio/indicator-types'
-import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
+import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -516,27 +514,6 @@ async function importSeed() {
   }
 }
 
-async function downloadTemplate() {
-  try {
-    const template = await downloadExcelImportTemplate({
-      sceneKey: ExcelImportSceneKey.PORTFOLIO_INDICATOR_DEFINITION,
-    })
-    const blobResponse = await downloadFile({ nodeId: String(template.fileNodeId) })
-    const url = URL.createObjectURL(blobResponse.data)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = template.fileName
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    message.success('模板已下载')
-  }
-  catch (error) {
-    showUserError(error)
-  }
-}
-
 function onTabChange(key: string | number) {
   activeTab.value = String(key)
   reloadTab()
@@ -551,9 +528,6 @@ onMounted(async () => {
   <StageWorkbenchShell>
     <ContextBar title="平台指标资产" subtitle="T001–T100 三级结构 · 规则模板 · 行业包">
       <template #actions>
-        <UiButton @click="downloadTemplate">
-          下载导入模板
-        </UiButton>
         <UiButton variant="primary" :loading="seeding" @click="importSeed">
           导入全量种子
         </UiButton>

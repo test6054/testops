@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { ExcelImportRowDiagnostic } from '@/apis/platform/types'
 import type { PortfolioExternalTeacherDataStatus, PortfolioExternalTeacherImportBatchStatus } from '@/apis/portfolio/enums'
 import type {
   PortfolioExternalTeacherImportBatchVO,
@@ -8,7 +9,6 @@ import type {
 } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import type { ExcelImportRowDiagnostic } from '@/apis/platform/types'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL,

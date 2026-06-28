@@ -1,3 +1,7 @@
+/**
+ * 指标域 HTTP 客户端（非文件上传）。
+ * Excel 批量导入见 @/apis/platform/excel-import + UiPlatformExcelImportModal。
+ */
 import type {
   PortfolioEligibilityEvalLogVO,
   PortfolioEligibilityEvalResultDto,
@@ -13,13 +17,11 @@ import type {
   PortfolioIndicatorDashboardQueryRequest,
   PortfolioIndicatorDashboardSummaryVO,
   PortfolioIndicatorDefinitionGetRequest,
-  PortfolioIndicatorDefinitionImportResultVO,
   PortfolioIndicatorDefinitionPageRequest,
   PortfolioIndicatorDefinitionSaveRequest,
   PortfolioIndicatorDefinitionTreeNodeVO,
   PortfolioIndicatorDefinitionVO,
   PortfolioIndicatorEngineReadinessVO,
-  PortfolioIndicatorExcelImportRequest,
   PortfolioIndicatorExportResultVO,
   PortfolioIndicatorPlatformApi,
   PortfolioIndicatorPlatformSeedResultVO,
@@ -55,7 +57,6 @@ import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 export type {
-  PortfolioIndicatorExcelImportRequest,
   PortfolioIndicatorPlatformApi,
   PortfolioIndicatorTenantApi,
 } from '@/apis/portfolio/indicator-types'

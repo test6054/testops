@@ -17,6 +17,7 @@ const props = defineProps<{
   sourceScanPage?: MarkingScanPageRefVO | null
   /** ANSWER_SHEET 模式下的试卷母版页引用（含fileId和ROI） */
   masterPaperPage?: MarkingScanPageRefVO | null
+  confidential?: boolean
 }>()
 
 type ViewTab = 'slice' | 'source' | 'master'
@@ -173,6 +174,7 @@ onBeforeUnmount(releaseImages)
           <ScanImageStage
             v-if="sliceImageUrl"
             :src="sliceImageUrl"
+            :confidential="props.confidential"
             empty-text="切片图片加载失败"
           />
           <UiEmpty v-else-if="!loading" description="暂无数据" />
@@ -185,6 +187,7 @@ onBeforeUnmount(releaseImages)
           <ScanImageStage
             v-if="sourceImageUrl"
             :src="sourceImageUrl"
+            :confidential="props.confidential"
             empty-text="原始扫描页加载失败"
           />
           <UiEmpty v-else-if="!loading" description="暂无数据" />
@@ -199,6 +202,7 @@ onBeforeUnmount(releaseImages)
             v-if="masterImageUrl"
             :src="masterImageUrl"
             :roi="masterRoiStyle"
+            :confidential="props.confidential"
             empty-text="母版页加载失败"
           />
           <UiEmpty v-else-if="!loading" description="暂无数据" />

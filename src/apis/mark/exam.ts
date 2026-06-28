@@ -176,6 +176,8 @@ export interface ExamDetailVO {
   prepAdvisoryReasons: string[]
   /** 准备硬阻断项（仅制卷形态与整卷印刷来源等扫描主链前置） */
   prepBlockingReasons: string[]
+  /** 涉密 / 统考涉密场次；为 true 时前端启用强制水印与警示条 */
+  confidential?: boolean
 }
 
 /** 保存制卷形态请求 - 对应 ExamMaterialLayoutSaveRequest */

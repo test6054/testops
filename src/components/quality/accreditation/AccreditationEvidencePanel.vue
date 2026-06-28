@@ -11,7 +11,6 @@ import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import {
   ACCREDITATION_EVIDENCE_ANCHOR_LABEL,
   ACCREDITATION_EVIDENCE_CATEGORY_LABEL,
@@ -20,6 +19,7 @@ import {
 import { archiveApi } from '@/apis/quality/archive'
 import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import { qualityCourseApi } from '@/apis/quality/quality-course'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { CourseSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
