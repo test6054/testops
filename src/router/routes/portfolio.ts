@@ -8,6 +8,7 @@ import { PORTFOLIO_ROUTE_PREFIX } from '@/utils/portfolio-route'
 
 const TEACHER_ROLES = [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER]
 const ALL_ROLES = [RoleEnum.SUPER_ADMIN, ...TEACHER_ROLES]
+const PORTFOLIO_ADMIN_ROLES = [RoleEnum.SUPER_ADMIN, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER]
 
 const PORTFOLIO_TEACHER_MENU_GROUP = 'portfolio-teacher'
 const portfolioTeacherMenuMeta = {
@@ -295,7 +296,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/indicator-ops-admin.vue'),
         meta: {
           title: '计分与审计',
-          roles: ALL_ROLES,
+          roles: PORTFOLIO_ADMIN_ROLES,
           icon: 'audit',
           hideInMenu: false,
           keepAlive: true,
@@ -360,7 +361,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/dual-teacher-admin.vue'),
         meta: {
           title: '双师认定',
-          roles: ALL_ROLES,
+          roles: PORTFOLIO_ADMIN_ROLES,
           icon: 'audit',
           hideInMenu: false,
           keepAlive: true,
@@ -373,7 +374,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/dual-teacher-analytics.vue'),
         meta: {
           title: '双师分析',
-          roles: ALL_ROLES,
+          roles: PORTFOLIO_ADMIN_ROLES,
           icon: 'pie-chart',
           hideInMenu: false,
           keepAlive: true,
@@ -386,7 +387,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/external-teacher-admin.vue'),
         meta: {
           title: '外聘教师',
-          roles: ALL_ROLES,
+          roles: PORTFOLIO_ADMIN_ROLES,
           icon: 'team',
           hideInMenu: false,
           keepAlive: true,
@@ -543,7 +544,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/evaluation-task-admin.vue'),
         meta: {
           title: '多元评价',
-          roles: ALL_ROLES,
+          roles: PORTFOLIO_ADMIN_ROLES,
           icon: 'form',
           hideInMenu: false,
           keepAlive: true,

@@ -111,6 +111,8 @@ export const portfolioDualTeacherApi = {
     http.post<void>('/api/portfolio/dual-teacher/academic-approve', data),
   academicReject: (data: { id: string, auditOpinion?: string }) =>
     http.post<void>('/api/portfolio/dual-teacher/academic-reject', data),
+  academicReturn: (data: { id: string, auditOpinion?: string }) =>
+    http.post<void>('/api/portfolio/dual-teacher/academic-return', data),
   exportRoster: () => http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/dual-teacher/export-roster', {}),
   analyticsStats: () => http.post<PortfolioDualTeacherAnalyticsVO>('/api/portfolio/dual-teacher/analytics/stats', {}),
 }
