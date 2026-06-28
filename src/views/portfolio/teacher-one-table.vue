@@ -2,6 +2,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDeptStructureStatVO, PortfolioTeacherOneTableSummaryVO } from '@/apis/portfolio/teacher'
 import type { PortfolioTeacherIdentityType } from '@/apis/portfolio/types'
+import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
@@ -15,11 +16,13 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
+import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const loading = ref(false)
+const exporting = ref(false)
 const summary = ref<PortfolioTeacherOneTableSummaryVO | null>(null)
 const deptStats = ref<PortfolioDeptStructureStatVO | null>(null)
 
@@ -58,6 +61,27 @@ function openCorrection() {
   router.push('/portfolio/teacher/correction')
 }
 
+async function exportOneTable() {
+  if (canPickTeachers.value && !targetTeacherId.value) {
+    message.warning('请先选择目标教师')
+    return
+  }
+  exporting.value = true
+  try {
+    const result = await portfolioTeacherApi.exportOneTable({
+      teacherId: targetTeacherId.value || undefined,
+    })
+    await downloadPortfolioExcelExport(result)
+    message.success(`已导出 ${result.rowCount} 行`)
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    exporting.value = false
+  }
+}
+
 usePortfolioScopedLoader(() => {
   void loadSummary()
 }, () => targetTeacherId.value)
@@ -65,7 +89,13 @@ usePortfolioScopedLoader(() => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="教师一张表" subtitle="主数据 · 身份标签 · 档案分类 · 成果荣誉汇总" />
+    <ContextBar title="教师一张表" subtitle="主数据 · 身份标签 · 档案分类 · 成果荣誉汇总">
+      <template #actions>
+        <UiButton :loading="exporting" :disabled="canPickTeachers && !targetTeacherId" @click="exportOneTable">
+          导出一张表
+        </UiButton>
+      </template>
+    </ContextBar>
     <a-spin :spinning="loading">
       <UiEmpty
         v-if="canPickTeachers && !targetTeacherId"
@@ -76,6 +106,11 @@ usePortfolioScopedLoader(() => {
         description="暂无教师一张表数据，请稍后刷新"
       />
       <UiCard v-if="summary" title="教师概要">
+        <div v-if="summary.correctionPending" class="correction-badge">
+          <UiTag tone="orange">
+            纠错待处理
+          </UiTag>
+        </div>
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="工号">
             {{ summary.teacherNumber ?? '—' }}
@@ -108,6 +143,17 @@ usePortfolioScopedLoader(() => {
           </UiButton>
         </div>
       </UiCard>
+      <UiCard
+        v-if="summary?.recentChangeSummary?.length"
+        title="近期变更"
+        style="margin-top: 16px"
+      >
+        <ul class="change-list">
+          <li v-for="(item, index) in summary.recentChangeSummary" :key="index">
+            {{ item }}
+          </li>
+        </ul>
+      </UiCard>
       <UiCard v-if="summary" title="档案分类汇总" style="margin-top: 16px">
         <UiDataTable :columns="categoryColumns" :data-source="summary.categories" row-key="categoryId" :pagination="false" />
       </UiCard>
@@ -133,6 +179,15 @@ usePortfolioScopedLoader(() => {
 <style scoped>
 .actions {
   margin-top: 12px;
+}
+.correction-badge {
+  margin-bottom: 8px;
+}
+.change-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.6;
 }
 .dept-total {
   margin: 0 0 8px;

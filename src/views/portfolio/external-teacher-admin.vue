@@ -5,11 +5,12 @@ import type { PortfolioExternalTeacherDataStatus, PortfolioExternalTeacherImport
 import type {
   PortfolioExternalTeacherImportBatchVO,
   PortfolioExternalTeacherSaveRequest,
+  PortfolioExternalTeacherStatsVO,
   PortfolioExternalTeacherVO,
 } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL,
   PORTFOLIO_EXTERNAL_TEACHER_IMPORT_BATCH_STATUS_LABEL,
@@ -25,6 +26,7 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
@@ -32,15 +34,29 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 const activeTab = ref('roster')
 const loading = ref(false)
+const statsLoading = ref(false)
 const batchLoading = ref(false)
 const saving = ref(false)
 const rows = ref<PortfolioExternalTeacherVO[]>([])
+const stats = ref<PortfolioExternalTeacherStatsVO | null>(null)
 const batchRows = ref<PortfolioExternalTeacherImportBatchVO[]>([])
 const drawerOpen = ref(false)
 const batchDetailOpen = ref(false)
 const batchDetail = ref<PortfolioExternalTeacherImportBatchVO | null>(null)
 const importModalOpen = ref(false)
 const dataStatusFilter = ref<PortfolioExternalTeacherDataStatus | ''>('')
+const teachSubjectFilter = ref('')
+const teacherSourceFilter = ref('')
+const contractStatusFilter = ref('')
+
+interface AttachmentItem {
+  fileNodeId: string
+  fileName: string
+}
+
+const attachmentItems = ref<AttachmentItem[]>([])
+const attachmentInputRef = ref<HTMLInputElement>()
+const uploadingAttachment = ref(false)
 
 const form = reactive<PortfolioExternalTeacherSaveRequest>({
   id: undefined,
@@ -59,6 +75,10 @@ const form = reactive<PortfolioExternalTeacherSaveRequest>({
   trialScore: '',
   industryExperience: '',
   contractStatus: '',
+  contactPhone: '',
+  contactEmail: '',
+  hireStartDate: undefined,
+  hireEndDate: undefined,
   dataStatus: 'ACTIVE',
 })
 
@@ -115,7 +135,50 @@ function resetForm() {
   form.trialScore = ''
   form.industryExperience = ''
   form.contractStatus = ''
+  form.contactPhone = ''
+  form.contactEmail = ''
+  form.hireStartDate = undefined
+  form.hireEndDate = undefined
   form.dataStatus = 'ACTIVE'
+  attachmentItems.value = []
+}
+
+function attachmentFileIds(): string[] {
+  return attachmentItems.value.map(item => item.fileNodeId)
+}
+
+function openAttachmentPicker() {
+  attachmentInputRef.value?.click()
+}
+
+async function onAttachmentPick(event: Event) {
+  const input = event.target as HTMLInputElement
+  const files = input.files
+  if (!files?.length) {
+    return
+  }
+  uploadingAttachment.value = true
+  try {
+    for (const file of Array.from(files)) {
+      const uploaded = await stageBusinessFile(FileUploadSceneKey.PORTFOLIO_MATERIAL, file)
+      attachmentItems.value = [
+        ...attachmentItems.value,
+        { fileNodeId: uploaded.id, fileName: uploaded.nodeName },
+      ]
+    }
+    message.success('附件已上传')
+  }
+  catch (error) {
+    showUserError(error, '附件上传失败')
+  }
+  finally {
+    uploadingAttachment.value = false
+    input.value = ''
+  }
+}
+
+function removeAttachment(fileNodeId: string) {
+  attachmentItems.value = attachmentItems.value.filter(item => item.fileNodeId !== fileNodeId)
 }
 
 async function loadPage() {
@@ -125,6 +188,9 @@ async function loadPage() {
       pageNum: 1,
       pageSize: 50,
       dataStatus: dataStatusFilter.value || undefined,
+      teachSubject: teachSubjectFilter.value.trim() || undefined,
+      teacherSource: teacherSourceFilter.value.trim() || undefined,
+      contractStatus: contractStatusFilter.value.trim() || undefined,
     })
     rows.value = readPageList(page, '加载外聘教师失败')
   }
@@ -133,6 +199,19 @@ async function loadPage() {
   }
   finally {
     loading.value = false
+  }
+}
+
+async function loadStats() {
+  statsLoading.value = true
+  try {
+    stats.value = await portfolioExternalTeacherApi.stats()
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    statsLoading.value = false
   }
 }
 
@@ -176,7 +255,15 @@ async function openEdit(id: string) {
     form.trialScore = detail.trialScore ?? ''
     form.industryExperience = detail.industryExperience ?? ''
     form.contractStatus = detail.contractStatus ?? ''
+    form.contactPhone = detail.contactPhone ?? ''
+    form.contactEmail = detail.contactEmail ?? ''
+    form.hireStartDate = detail.hireStartDate
+    form.hireEndDate = detail.hireEndDate
     form.dataStatus = detail.dataStatus
+    attachmentItems.value = (detail.attachmentFileIds ?? []).map(fileNodeId => ({
+      fileNodeId,
+      fileName: fileNodeId,
+    }))
   }
   catch (error) {
     showUserError(error)
@@ -193,6 +280,7 @@ async function saveRecord() {
     await portfolioExternalTeacherApi.save({
       ...form,
       fullName: form.fullName.trim(),
+      attachmentFileIds: attachmentFileIds().length ? attachmentFileIds() : undefined,
     })
     message.success('外聘教师已保存')
     drawerOpen.value = false
@@ -276,6 +364,7 @@ const batchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() => {
 
 onMounted(async () => {
   await loadPage()
+  await loadStats()
   await loadImportBatches()
 })
 </script>
@@ -312,6 +401,27 @@ onMounted(async () => {
               :options="dataStatusOptions"
               @change="loadPage"
             />
+            <a-input
+              v-model:value="teachSubjectFilter"
+              allow-clear
+              placeholder="任教科目"
+              style="width: 120px"
+              @press-enter="loadPage"
+            />
+            <a-input
+              v-model:value="teacherSourceFilter"
+              allow-clear
+              placeholder="教师来源"
+              style="width: 120px"
+              @press-enter="loadPage"
+            />
+            <a-input
+              v-model:value="contractStatusFilter"
+              allow-clear
+              placeholder="合同状态"
+              style="width: 120px"
+              @press-enter="loadPage"
+            />
             <UiButton @click="loadPage">
               刷新
             </UiButton>
@@ -337,6 +447,44 @@ onMounted(async () => {
               </template>
             </template>
           </UiDataTable>
+        </UiCard>
+      </a-tab-pane>
+      <a-tab-pane key="stats" tab="统计">
+        <UiCard>
+          <UiButton :loading="statsLoading" @click="loadStats">
+            刷新统计
+          </UiButton>
+          <a-spin :spinning="statsLoading">
+            <div v-if="stats" class="stats-grid">
+              <div>
+                <h4>合同状态分布</h4>
+                <a-table
+                  size="small"
+                  :pagination="false"
+                  row-key="dimensionCode"
+                  :data-source="stats.contractStatusCounts"
+                  :columns="[
+                    { title: '合同状态', dataIndex: 'dimensionCode', key: 'dimensionCode' },
+                    { title: '人数', dataIndex: 'count', key: 'count', width: 72 },
+                  ]"
+                />
+              </div>
+              <div>
+                <h4>教师来源分布</h4>
+                <a-table
+                  size="small"
+                  :pagination="false"
+                  row-key="dimensionCode"
+                  :data-source="stats.teacherSourceCounts"
+                  :columns="[
+                    { title: '教师来源', dataIndex: 'dimensionCode', key: 'dimensionCode' },
+                    { title: '人数', dataIndex: 'count', key: 'count', width: 72 },
+                  ]"
+                />
+              </div>
+            </div>
+            <UiEmpty v-else-if="!statsLoading" description="暂无统计数据" />
+          </a-spin>
         </UiCard>
       </a-tab-pane>
       <a-tab-pane key="import-batch" tab="导入批次">
@@ -412,8 +560,34 @@ onMounted(async () => {
         <a-form-item label="合同状态">
           <a-input v-model:value="form.contractStatus" />
         </a-form-item>
+        <a-form-item label="联系电话">
+          <a-input v-model:value="form.contactPhone" />
+        </a-form-item>
+        <a-form-item label="联系邮箱">
+          <a-input v-model:value="form.contactEmail" />
+        </a-form-item>
+        <a-form-item label="聘期开始">
+          <a-date-picker v-model:value="form.hireStartDate" value-format="YYYY-MM-DD" style="width: 100%" />
+        </a-form-item>
+        <a-form-item label="聘期结束">
+          <a-date-picker v-model:value="form.hireEndDate" value-format="YYYY-MM-DD" style="width: 100%" />
+        </a-form-item>
         <a-form-item label="数据状态">
           <a-select v-model:value="form.dataStatus" :options="dataStatusOptions" />
+        </a-form-item>
+        <a-form-item label="附件材料">
+          <input ref="attachmentInputRef" type="file" multiple class="sr-only" @change="onAttachmentPick">
+          <UiButton :loading="uploadingAttachment" @click="openAttachmentPicker">
+            上传附件
+          </UiButton>
+          <ul v-if="attachmentItems.length" class="attachment-list">
+            <li v-for="item in attachmentItems" :key="item.fileNodeId">
+              {{ item.fileName }}
+              <UiTextAction @click="removeAttachment(item.fileNodeId)">
+                移除
+              </UiTextAction>
+            </li>
+          </ul>
         </a-form-item>
         <UiButton variant="primary" :loading="saving" @click="saveRecord">
           保存
@@ -451,6 +625,17 @@ onMounted(async () => {
   gap: 8px;
   align-items: center;
   margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+.stats-grid h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
 }
 .error-report {
   margin-top: 12px;
@@ -460,5 +645,16 @@ onMounted(async () => {
   border-radius: 4px;
   white-space: pre-wrap;
   word-break: break-all;
+}
+.attachment-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.attachment-list li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
 }
 </style>

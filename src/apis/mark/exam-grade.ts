@@ -129,7 +129,7 @@ export interface SubjectiveGradeSuggestionResultVO {
   riskFlags?: SubjectiveAiRiskFlagVO[]
 }
 
-/** AI 能力编码 - 17B 文档定义；首次整卷 AI / 教师异议单题 AI 复评 */
+/** AI 能力编码 - docs/17 §整卷 AI 与单题复评；首次整卷 AI / 教师异议单题 AI 复评 */
 export type AiAbilityCode = 'PAPER_GRADE_SUGGESTION' | 'SUBJECTIVE_GRADE_SUGGESTION'
 
 /** AI 能力编码 -> 来源中文文案 */

@@ -310,6 +310,8 @@ export interface ArchiveVolumeVO {
   submitReady?: boolean
   /** 是否存在 OPEN/IN_PROGRESS/RESUBMITTED 整改任务，阻断提交 */
   hasBlockingRemediationForSubmit?: boolean
+  /** 是否存在未关闭整改任务 */
+  hasOpenRemediationTask?: boolean
   /** 成绩证明是否满足提交前置条件 */
   scoreSubmitReady?: boolean
   /** 线上阅卷归档双门禁是否开放 */
@@ -352,6 +354,8 @@ export interface ArchiveVolumeDetailVO {
   canManageArchiveAdmin?: boolean
   /** 最近一次移交验收记录 */
   latestTransferRecord?: ArchiveVolumeTransferRecordVO
+  /** 当前用户待处理整改任务 */
+  viewerRemediationTask?: ArchiveRemediationTaskVO
 }
 
 export interface ArchiveVolumeTransferRecordVO {
@@ -615,6 +619,7 @@ export interface ArchiveRemediationTaskVO {
   diagnosticCode?: string
   taskStatus: ArchiveRemediationStatusCode
   assigneeUserId?: string
+  assigneeNickName?: string
   dueTime?: string
   closedTime?: string
 }

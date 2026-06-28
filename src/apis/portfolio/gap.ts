@@ -1,7 +1,11 @@
 import type {
   PortfolioGapTaskDetailVO,
+  PortfolioGapTaskPageRequest,
   PortfolioGapTaskSubmitRequest,
+  PortfolioGapTaskSummaryVO,
+  PortfolioGapUrgeRequest,
 } from '@/apis/portfolio/types'
+import type { PageResult } from '@/types'
 import http from '@/config/axios'
 
 const BASE = '/api/portfolio/gap'
@@ -11,4 +15,8 @@ export const portfolioGapApi = {
     http.post<PortfolioGapTaskDetailVO>(`${BASE}/task/get`, { id: gapTaskId }),
   submitTask: (data: PortfolioGapTaskSubmitRequest) =>
     http.post<PortfolioGapTaskDetailVO>(`${BASE}/task/submit`, data),
+  pageTasks: (data: PortfolioGapTaskPageRequest = { pageNum: 1, pageSize: 20 }) =>
+    http.post<PageResult<PortfolioGapTaskSummaryVO>>(`${BASE}/task/page`, data),
+  urgeTask: (data: PortfolioGapUrgeRequest) =>
+    http.post<void>(`${BASE}/urge`, data),
 }

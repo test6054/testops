@@ -11,6 +11,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -24,6 +25,7 @@ function recordTypeLabel(type: PortfolioDevelopmentRecordType): string {
 const loading = ref(false)
 const rows = ref<PortfolioDevelopmentRecordVO[]>([])
 const stats = ref<PortfolioAchievementStatsVO | null>(null)
+const { hydrateTeacherLabels, teacherLabel } = usePortfolioTeacherSearch()
 const query = reactive({
   pageNum: 1,
   pageSize: 20,
@@ -38,7 +40,7 @@ const columns: ColumnsType = [
   { title: '标题', dataIndex: 'recordTitle', key: 'recordTitle' },
   { title: '级别', dataIndex: 'levelCode', key: 'levelCode', width: 88 },
   { title: '日期', dataIndex: 'recordDate', key: 'recordDate', width: 110 },
-  { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 100 },
+  { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
 ]
 
 async function loadPage() {
@@ -53,6 +55,9 @@ async function loadPage() {
       recordTypes: query.recordTypes,
     })
     rows.value = readPageList(page, '加载成果列表失败')
+    await hydrateTeacherLabels(
+      rows.value.map(row => row.teacherUserId).filter((id): id is string => Boolean(id)),
+    )
     stats.value = await portfolioDevelopmentRecordApi.achievementStats({
       levelCode: query.nationalOnly ? 'NATIONAL' : (query.levelCode || undefined),
       nationalOnly: query.nationalOnly || undefined,
@@ -91,6 +96,9 @@ onMounted(loadPage)
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'recordType'">
             {{ recordTypeLabel(record.recordType) }}
+          </template>
+          <template v-else-if="column.key === 'teacherUserId'">
+            {{ teacherLabel(record.teacherUserId) }}
           </template>
         </template>
       </UiDataTable>

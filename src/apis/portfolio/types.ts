@@ -10,6 +10,7 @@ import type { AiTaskStatus } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { QueryDto } from '@/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
+import type { PortfolioEvaluationTaskStatus } from '@/apis/portfolio/enums'
 
 /** 扩展组织类型 - PortfolioOrgUnitTypeEnum */
 export type PortfolioOrgUnitType
@@ -42,6 +43,7 @@ export const PORTFOLIO_ORG_ALIAS_TARGET_TYPE_LABEL: Record<PortfolioOrgAliasTarg
 export type PortfolioTeacherIdentityType
   = | 'FULL_TIME'
     | 'PART_TIME'
+    | 'DOUBLE_DUTY'
     | 'INDUSTRY_MENTOR'
     | 'ENTERPRISE_PART_TIME'
     | 'SKILL_MASTER'
@@ -51,6 +53,7 @@ export type PortfolioTeacherIdentityType
 export const PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL: Record<PortfolioTeacherIdentityType, string> = {
   FULL_TIME: '专任教师',
   PART_TIME: '兼职教师',
+  DOUBLE_DUTY: '双肩挑教师',
   INDUSTRY_MENTOR: '产业导师',
   ENTERPRISE_PART_TIME: '企业兼职教师',
   SKILL_MASTER: '技能大师',
@@ -118,6 +121,9 @@ export interface PortfolioOrgTreeNodeVO {
   anchorDepartmentId?: string
   anchorMajorId?: string
   portfolioOrgId?: string
+  leaderUserId?: string
+  leaderUserName?: string
+  leaderTeacherNo?: string
   aliases?: PortfolioOrgAliasVO[]
   children?: PortfolioOrgTreeNodeVO[]
 }
@@ -137,6 +143,7 @@ export interface PortfolioOrgUnitSaveRequest {
   anchorMajorId?: string
   sortOrder?: number
   status?: string
+  leaderUserId?: string
 }
 
 export interface PortfolioOrgAliasSaveRequest {
@@ -1190,6 +1197,7 @@ export interface PortfolioCorrectionPageRequest extends QueryDto {
 export interface PortfolioCorrectionSummaryVO {
   id: string
   teacherId: string
+  teacherName?: string
   archiveRecordId?: string
   categoryId: string
   categoryName?: string
@@ -1256,4 +1264,350 @@ export interface PortfolioGapTaskSubmitRequest {
   teacherId?: string
   fileNodeId?: string
   fields: PortfolioArchiveRecordFieldInput[]
+}
+
+export interface PortfolioGapTaskSummaryVO {
+  id: string
+  teacherId: string
+  categoryId: string
+  categoryName?: string
+  taskTitle?: string
+  taskStatus: PortfolioGapTaskStatus
+  returnReason?: string
+  dueTime?: string
+  updateTime?: string
+}
+
+export interface PortfolioGapTaskPageRequest extends QueryDto {
+  teacherId?: string
+  departmentId?: string
+  taskStatus?: PortfolioGapTaskStatus
+  openOnly?: boolean
+}
+
+export interface PortfolioGapUrgeRequest {
+  gapTaskId: string
+}
+
+/** 纠错管理动作 - PortfolioCorrectionHandleActionEnum */
+export type PortfolioCorrectionHandleAction
+  = | 'ACCEPT'
+    | 'REJECT'
+    | 'MARK_ARCHIVE_CORRECTING'
+    | 'MARK_SOURCE_FIXING'
+    | 'MARK_PENDING_VERIFY'
+    | 'CLOSE'
+
+export interface PortfolioCorrectionHandleRequest {
+  correctionRequestId: string
+  action: PortfolioCorrectionHandleAction
+  handleOpinion?: string
+}
+
+/** 评价教师通知状态 - PortfolioEvaluationTeacherNoticeStatusEnum */
+export type PortfolioEvaluationTeacherNoticeStatus
+  = | 'MATERIAL_CONFIRM'
+    | 'RETURNED_SUPPLEMENT'
+    | 'CONFIRMED'
+
+export const PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_LABEL: Record<PortfolioEvaluationTeacherNoticeStatus, string> = {
+  MATERIAL_CONFIRM: '材料待确认',
+  RETURNED_SUPPLEMENT: '退回补充',
+  CONFIRMED: '已确认',
+}
+
+export const PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE: Record<PortfolioEvaluationTeacherNoticeStatus, BadgeTone> = {
+  MATERIAL_CONFIRM: 'blue',
+  RETURNED_SUPPLEMENT: 'orange',
+  CONFIRMED: 'green',
+}
+
+export interface PortfolioEvaluationTeacherNoticeVO {
+  id: string
+  teacherId: string
+  evaluationTaskId: string
+  taskTitle?: string
+  noticeStatus: PortfolioEvaluationTeacherNoticeStatus
+  returnReason?: string
+  dueTime?: string
+  updateTime?: string
+}
+
+export interface PortfolioEvaluationTeacherNoticePageRequest extends QueryDto {
+  teacherId?: string
+  noticeStatus?: PortfolioEvaluationTeacherNoticeStatus
+}
+
+export interface PortfolioEvaluationTeacherNoticeConfirmRequest {
+  noticeId: string
+}
+
+export interface PortfolioEvaluationTeacherNoticeReturnRequest {
+  noticeId: string
+  returnReason: string
+  dueTime?: string
+}
+
+export interface PortfolioEvaluationMaterialPreviewRequest {
+  evaluationTaskId: string
+  teacherId?: string
+}
+
+export interface PortfolioEvaluationMaterialCategoryItemVO {
+  categoryId: string
+  categoryName?: string
+  completed?: boolean
+}
+
+export interface PortfolioEvaluationMaterialPreviewVO {
+  evaluationTaskId: string
+  taskName?: string
+  taskStatus?: string
+  startTime?: string
+  endTime?: string
+  noticeId?: string
+  completenessPercent?: string
+  requiredCategoryDone?: number
+  requiredCategoryTotal?: number
+  categories?: PortfolioEvaluationMaterialCategoryItemVO[]
+}
+
+/** 评价公示状态 - PortfolioEvaluationPublicityStatusEnum */
+export type PortfolioEvaluationPublicityStatus = 'OPEN' | 'CLOSED'
+
+export const PORTFOLIO_EVALUATION_PUBLICITY_STATUS_LABEL: Record<PortfolioEvaluationPublicityStatus, string> = {
+  OPEN: '公示中',
+  CLOSED: '已结束',
+}
+
+export const PORTFOLIO_EVALUATION_PUBLICITY_STATUS_TONE: Record<PortfolioEvaluationPublicityStatus, BadgeTone> = {
+  OPEN: 'blue',
+  CLOSED: 'gray',
+}
+
+/** 评价异议状态 - PortfolioEvaluationObjectionStatusEnum */
+export type PortfolioEvaluationObjectionStatus = 'SUBMITTED' | 'UPHELD' | 'REJECTED' | 'CLOSED'
+
+export const PORTFOLIO_EVALUATION_OBJECTION_STATUS_LABEL: Record<PortfolioEvaluationObjectionStatus, string> = {
+  SUBMITTED: '已提交',
+  UPHELD: '异议成立',
+  REJECTED: '异议驳回',
+  CLOSED: '已关闭',
+}
+
+export const PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE: Record<PortfolioEvaluationObjectionStatus, BadgeTone> = {
+  SUBMITTED: 'blue',
+  UPHELD: 'green',
+  REJECTED: 'red',
+  CLOSED: 'gray',
+}
+
+export interface PortfolioEvaluationPublicityPageRequest extends QueryDto {
+  evaluationTaskId?: string
+  teacherId?: string
+}
+
+export interface PortfolioEvaluationPublicityListItemVO {
+  publicityId: string
+  evaluationTaskId: string
+  taskName?: string
+  taskStatus?: PortfolioEvaluationTaskStatus
+  publicityTitle?: string
+  publicityStatus: PortfolioEvaluationPublicityStatus
+  startTime?: string
+  endTime?: string
+  teacherId?: string
+  teacherName?: string
+  canSubmitObjection?: boolean
+  objectionStatus?: PortfolioEvaluationObjectionStatus
+  objectionId?: string
+  objectionType?: PortfolioEvaluationObjectionType
+  objectionReason?: string
+  evidenceRef?: string
+  handleOpinion?: string
+  handleAction?: PortfolioEvaluationObjectionHandleAction
+}
+
+/** 评价异议类型 - PortfolioEvaluationObjectionTypeEnum */
+export type PortfolioEvaluationObjectionType
+  = | 'RESULT_DISPUTE'
+    | 'SCORE_DISPUTE'
+    | 'MATERIAL_DISPUTE'
+    | 'OTHER'
+
+export const PORTFOLIO_EVALUATION_OBJECTION_TYPE_LABEL: Record<PortfolioEvaluationObjectionType, string> = {
+  RESULT_DISPUTE: '结果争议',
+  SCORE_DISPUTE: '分值争议',
+  MATERIAL_DISPUTE: '材料依据争议',
+  OTHER: '其他',
+}
+
+/** 评价异议复核动作 - PortfolioEvaluationObjectionHandleActionEnum */
+export type PortfolioEvaluationObjectionHandleAction = 'MAINTAIN' | 'CORRECT' | 'REVOKE' | 'RE_REVIEW'
+
+export const PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_LABEL: Record<
+  PortfolioEvaluationObjectionHandleAction,
+  string
+> = {
+  MAINTAIN: '维持原结果',
+  CORRECT: '修正评价结果',
+  REVOKE: '撤销评价结论',
+  RE_REVIEW: '重新评审',
+}
+
+export const PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE: Record<
+  PortfolioEvaluationObjectionHandleAction,
+  BadgeTone
+> = {
+  MAINTAIN: 'gray',
+  CORRECT: 'green',
+  REVOKE: 'orange',
+  RE_REVIEW: 'blue',
+}
+
+export interface PortfolioEvaluationObjectionPageRequest extends QueryDto {
+  evaluationTaskId?: string
+  teacherId?: string
+  objectionStatus?: PortfolioEvaluationObjectionStatus
+}
+
+export interface PortfolioEvaluationObjectionSummaryVO {
+  objectionId: string
+  evaluationTaskId: string
+  taskName?: string
+  publicityId: string
+  publicityTitle?: string
+  teacherId: string
+  teacherName?: string
+  objectionType: PortfolioEvaluationObjectionType
+  objectionReason?: string
+  evidenceRef?: string
+  objectionStatus: PortfolioEvaluationObjectionStatus
+  handleAction?: PortfolioEvaluationObjectionHandleAction
+  handleOpinion?: string
+  handlerUserId?: string
+  handledTime?: string
+  createTime?: string
+}
+
+export interface PortfolioEvaluationObjectionHandleRequest {
+  objectionId: string
+  action: PortfolioEvaluationObjectionHandleAction
+  handleOpinion?: string
+  correctedScore?: number
+}
+
+export interface PortfolioEvaluationResultSummaryRequest {
+  evaluationTaskId: string
+  teacherId?: string
+}
+
+export interface PortfolioEvaluationTeacherResultEntryVO {
+  indicatorCode?: string
+  score?: number
+  commentText?: string
+  evaluatorUserId?: string
+}
+
+export interface PortfolioEvaluationTeacherResultSummaryVO {
+  evaluationTaskId: string
+  taskName?: string
+  teacherId: string
+  teacherName?: string
+  entryCount?: number
+  averageScore?: number
+  completenessPercent?: number
+  requiredCategoryDone?: number
+  requiredCategoryTotal?: number
+  materialCategories?: PortfolioEvaluationMaterialCategoryItemVO[]
+  entries?: PortfolioEvaluationTeacherResultEntryVO[]
+}
+
+export interface PortfolioEvaluationPublicityPublishRequest {
+  evaluationTaskId: string
+  publicityTitle: string
+  startTime: string
+  endTime: string
+}
+
+export interface PortfolioEvaluationObjectionSubmitRequest {
+  evaluationTaskId: string
+  publicityId: string
+  objectionType: PortfolioEvaluationObjectionType
+  objectionReason: string
+  evidenceRef?: string
+}
+
+/** 评价任务推进动作 - PortfolioEvaluationTaskAdvanceActionEnum */
+export type PortfolioEvaluationTaskAdvanceAction
+  = | 'START_PRELIMINARY_REVIEW'
+    | 'START_SCHOOL_REVIEW'
+    | 'START_EXPERT_REVIEW'
+    | 'START_RESULT_SUMMARY'
+    | 'START_PUBLICITY'
+    | 'START_OBJECTION_HANDLING'
+    | 'ARCHIVE'
+    | 'SUSPEND'
+    | 'RESUME'
+    | 'VOID'
+    | 'CLOSE'
+
+export interface PortfolioEvaluationTaskAdvanceRequest {
+  taskId: string
+  action: PortfolioEvaluationTaskAdvanceAction
+}
+
+/** 材料库条目状态 */
+export type PortfolioMaterialStatus = 'ACTIVE'
+
+export const PORTFOLIO_MATERIAL_STATUS_LABEL: Record<PortfolioMaterialStatus, string> = {
+  ACTIVE: '有效',
+}
+
+export const PORTFOLIO_MATERIAL_STATUS_TONE: Record<PortfolioMaterialStatus, BadgeTone> = {
+  ACTIVE: 'green',
+}
+
+export interface PortfolioMaterialVO {
+  id: string
+  teacherId: string
+  materialType: PortfolioMaterialType
+  materialTitle?: string
+  fileNodeId?: string
+  categoryCode?: string
+  status?: PortfolioMaterialStatus
+  ocrStatus?: string
+  ocrFinishedTime?: string
+  ocrFailureReason?: string
+  providerChain?: string
+}
+
+export interface PortfolioMaterialSearchRequest extends QueryDto {
+  keyword: string
+  teacherId?: string
+  materialType?: PortfolioMaterialType
+}
+
+export interface PortfolioMaterialSearchResponse {
+  materialId: string
+  teacherId: string
+  materialType: PortfolioMaterialType
+  materialTitle?: string
+  fileNodeId?: string
+  snippet?: string
+}
+
+export interface PortfolioMaterialPageRequest extends QueryDto {
+  teacherId?: string
+  materialType?: PortfolioMaterialType
+  status?: PortfolioMaterialStatus
+}
+
+export interface PortfolioMaterialSaveRequest {
+  id?: string
+  teacherId?: string
+  materialType: PortfolioMaterialType
+  materialTitle: string
+  fileNodeId: string
+  categoryCode?: string
 }

@@ -188,7 +188,10 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (item.todoType === 'EVALUATION_MATERIAL_CONFIRM' || item.todoType === 'EVALUATION_RETURNED_SUPPLEMENT') {
-    void router.push({ path: '/portfolio/teacher/archive', query })
+    void router.push({
+      path: '/portfolio/teacher/evaluation',
+      query: { ...query, noticeId: item.refId },
+    })
     return
   }
   if (item.todoType === 'DEVELOPMENT_PLAN_PENDING') {

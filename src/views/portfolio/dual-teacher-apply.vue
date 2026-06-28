@@ -45,12 +45,16 @@ function statusLabel(status: string) {
 
 const canEdit = () => {
   const status = application.value?.applicationStatus
-  return (
-    !status || status === 'DRAFT' || status === 'COLLEGE_RETURNED' || status === 'ACADEMIC_RETURNED'
-  )
+  if (!status) {
+    return true
+  }
+  if (status === 'REJECTED') {
+    return !form.id
+  }
+  return status === 'DRAFT' || status === 'COLLEGE_RETURNED' || status === 'ACADEMIC_RETURNED'
 }
 
-const canSubmit = () => Boolean(form.id && canEdit())
+const canSubmit = () => canEdit()
 
 async function loadMine() {
   if (!currentUserId.value) {
@@ -70,6 +74,14 @@ async function loadMine() {
       return
     }
     application.value = await portfolioDualTeacherApi.get({ id: mine.id })
+    if (application.value.applicationStatus === 'REJECTED') {
+      form.id = ''
+      form.certLevel = application.value.certLevel ?? ''
+      form.certYear = application.value.certYear ?? form.certYear
+      form.enterprisePracticeDays = application.value.enterprisePracticeDays ?? 0
+      attachmentItems.value = []
+      return
+    }
     form.id = application.value.id
     form.certLevel = application.value.certLevel ?? ''
     form.certYear = application.value.certYear ?? form.certYear
@@ -119,6 +131,24 @@ function attachmentFileIds(): string[] {
   return attachmentItems.value.map((item) => item.fileNodeId)
 }
 
+function buildDraftPayload() {
+  if (!currentUserId.value) {
+    throw new Error('未获取当前用户')
+  }
+  return {
+    id: form.id || undefined,
+    teacherUserId: currentUserId.value,
+    certLevel: form.certLevel.trim() || undefined,
+    certYear: form.certYear.trim() || undefined,
+    enterprisePracticeDays: form.enterprisePracticeDays ?? undefined,
+    attachmentFileIds: attachmentFileIds().length ? attachmentFileIds() : undefined,
+  }
+}
+
+async function persistDraft() {
+  form.id = await portfolioDualTeacherApi.saveDraft(buildDraftPayload())
+}
+
 async function saveDraft() {
   if (!currentUserId.value) {
     message.warning('未获取当前用户')
@@ -126,14 +156,7 @@ async function saveDraft() {
   }
   saving.value = true
   try {
-    form.id = await portfolioDualTeacherApi.saveDraft({
-      id: form.id || undefined,
-      teacherUserId: currentUserId.value,
-      certLevel: form.certLevel.trim() || undefined,
-      certYear: form.certYear.trim() || undefined,
-      enterprisePracticeDays: form.enterprisePracticeDays || undefined,
-      attachmentFileIds: attachmentFileIds().length ? attachmentFileIds() : undefined,
-    })
+    await persistDraft()
     message.success('草稿已保存')
     await loadMine()
   } catch (error) {
@@ -144,12 +167,17 @@ async function saveDraft() {
 }
 
 async function submitApplication() {
-  if (!form.id) {
-    message.warning('请先保存草稿')
+  if (!currentUserId.value) {
+    message.warning('未获取当前用户')
+    return
+  }
+  if (!canEdit()) {
+    message.warning('当前状态不可提交')
     return
   }
   submitting.value = true
   try {
+    await persistDraft()
     await portfolioDualTeacherApi.submit({ id: form.id })
     message.success('已提交审核')
     await loadMine()

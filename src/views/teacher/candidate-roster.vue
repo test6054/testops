@@ -7,7 +7,7 @@
     <UiCard class="info-card">
       <template #title>
         <TeamOutlined />
-        <span>班级范围</span>
+        <span>考试范围</span>
         <UiTag v-if="rosterLocked" tone="orange" size="sm">扫描已开始</UiTag>
         <UiTag v-else-if="classScopeReadOnly" tone="gray" size="sm">只读</UiTag>
       </template>
@@ -15,7 +15,7 @@
         <UiTag v-for="item in scopedClassTags" :key="item.classId" tone="blue" size="sm">
           {{ item.className }}
         </UiTag>
-        <span v-if="!scopedClassTags.length" class="roster-class-tags__empty">尚未配置班级范围</span>
+        <span v-if="!scopedClassTags.length" class="roster-class-tags__empty">尚未配置参考班级</span>
       </div>
       <a-select
         v-else
@@ -30,6 +30,26 @@
         class="info-card__class-select"
       />
     </UiCard>
+
+    <UiAlertStrip
+      v-if="showInferredClassScopeNotice"
+      tone="warning"
+      title="参考班级尚未保存"
+      description="当前班级来自名册或已绑定卷推断，扫描、导出与归档将使用这些班级；建议保存为正式参考班级。"
+      dense
+    >
+      <template #actions>
+        <UiButton
+          variant="primary"
+          size="sm"
+          :loading="persistClassScopeSaving"
+          :disabled="classScopeReadOnly"
+          @click="persistInferredClassScope"
+        >
+          保存为参考班级
+        </UiButton>
+      </template>
+    </UiAlertStrip>
 
     <a-card :bordered="false" class="detail-table-card info-card roster-page__table-card">
       <template #title>
@@ -215,6 +235,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiConfirmPopover from '@/components/ui-guide/ui/UiConfirmPopover.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
@@ -234,6 +255,7 @@ const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const classIds = ref<string[]>([])
+const classScopePersisted = ref(true)
 const examClassRefs = ref<ExamClassRefVO[]>([])
 const classSelectOptions = ref<Array<{ label: string, value: string }>>([])
 const classOptionsLoading = ref(false)
@@ -250,6 +272,7 @@ const tableCandidates = ref<CandidateRow[]>([])
 const rosterStudentUserIds = ref<string[]>([])
 const contextLoading = ref(false)
 const fullScopeSaving = ref(false)
+const persistClassScopeSaving = ref(false)
 const tableLoading = ref(false)
 const removingStudentUserId = ref<string | null>(null)
 const singleAddSubmitting = ref(false)
@@ -282,6 +305,10 @@ const singleAddStudentUserId = ref<string | null>(null)
 const singleAddStudent = ref<UserDto | null>(null)
 
 const classScopeReadOnly = computed(() => rosterLocked.value || rosterWriteForbidden.value)
+
+const showInferredClassScopeNotice = computed(() =>
+  !classScopeReadOnly.value && !classScopePersisted.value && classIds.value.length > 0,
+)
 
 const scopedClassTags = computed(() =>
   buildScopedClassTags(classIds.value, examClassRefs.value, classSelectOptions.value),
@@ -456,7 +483,8 @@ async function loadExamContext(): Promise<void> {
     examClassRefs.value = [...(detail.classRefs ?? [])]
     candidateTotal.value = detail.candidateCount ?? 0
     classIds.value = [...(detail.classIds ?? [])]
-    lastSavedClassIds.value = [...classIds.value]
+    classScopePersisted.value = detail.classScopePersisted === true
+    lastSavedClassIds.value = classScopePersisted.value ? [...classIds.value] : []
     await loadClassOptionsForExam(examId)
     if (seq !== loadContextSeq) {
       return
@@ -477,6 +505,28 @@ async function loadExamContext(): Promise<void> {
       classScopeHydrating.value = false
       contextLoading.value = false
     }
+  }
+}
+
+async function persistInferredClassScope(): Promise<void> {
+  if (!selectedExamId.value || !classIds.value.length || classScopeReadOnly.value) {
+    return
+  }
+  persistClassScopeSaving.value = true
+  try {
+    await saveExamClassScope({
+      examId: selectedExamId.value,
+      classIds: [...classIds.value],
+    })
+    classScopePersisted.value = true
+    lastSavedClassIds.value = [...classIds.value]
+    message.success('参考班级已保存')
+  }
+  catch (error) {
+    showUserError(error, '保存参考班级失败')
+  }
+  finally {
+    persistClassScopeSaving.value = false
   }
 }
 
@@ -718,6 +768,7 @@ watch(classIds, (ids) => {
     })
       .then(async () => {
         lastSavedClassIds.value = [...ids]
+        classScopePersisted.value = true
         examClassRefs.value = ids.map((classId) => {
           const existing = examClassRefs.value.find((item) => item.classId === classId)
           const option = classSelectOptions.value.find((item) => item.value === classId)

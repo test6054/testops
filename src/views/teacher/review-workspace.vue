@@ -842,7 +842,7 @@ const gradeFormRules: Record<string, Rule[]> = {
 const submitting = ref(false)
 const rejecting = ref(false)
 
-// 单题 AI 复评状态：17B 文档设定仅在教师异议阶段允许调用，服务端守门 CONFIRMED 不可复评
+// 单题 AI 复评状态：docs/17 §整卷 AI 与单题复评；仅在教师异议阶段允许调用，服务端守门 CONFIRMED 不可复评
 const rescoring = ref(false)
 
 /** 是否可以调用单题 AI 复评，需同时满足：存在 gradeResultId、状态为 PENDING/IN_PROGRESS、未提交中 */

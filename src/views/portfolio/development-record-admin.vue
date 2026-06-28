@@ -12,12 +12,15 @@ import {
   PORTFOLIO_DEVELOPMENT_RECORD_TYPE_LABEL,
 } from '@/apis/portfolio/enums'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
@@ -33,20 +36,44 @@ type RecordType = typeof RECORD_TAB_KEYS[number]
 
 const activeType = ref<RecordType>('ACHIEVEMENT')
 const loading = ref(false)
+const importModalOpen = ref(false)
 const rows = ref<PortfolioDevelopmentRecordVO[]>([])
-const form = reactive({ recordTitle: '', descriptionText: '' })
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } = usePortfolioTeacherSearch()
+const form = reactive({
+  recordTitle: '',
+  descriptionText: '',
+  teacherUserId: '' as string,
+})
 
-const columns: ColumnsType = [
-  { title: '标题', dataIndex: 'recordTitle', key: 'recordTitle' },
-  { title: '分类', dataIndex: 'categoryCode', key: 'categoryCode', width: 120 },
-  { title: '状态', dataIndex: 'recordStatus', key: 'recordStatus', width: 88 },
-  { title: '操作', key: 'actions', width: 120 },
-]
+const requiresTeacher = computed(() => activeType.value === 'ACHIEVEMENT')
+
+const columns = computed<ColumnsType>(() => {
+  const base: ColumnsType = [
+    { title: '标题', dataIndex: 'recordTitle', key: 'recordTitle' },
+  ]
+  if (requiresTeacher.value) {
+    base.push({ title: '所属教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 })
+  }
+  base.push(
+    { title: '分类', dataIndex: 'categoryCode', key: 'categoryCode', width: 120 },
+    { title: '状态', dataIndex: 'recordStatus', key: 'recordStatus', width: 88 },
+    { title: '操作', key: 'actions', width: 120 },
+  )
+  return base
+})
 
 const tabLabel = computed(() => RECORD_TABS.find(item => item.key === activeType.value)?.label ?? '')
 
+const importContext = computed(() => ({ defaultRecordType: activeType.value }))
+
 function recordStatusLabel(status: PortfolioDevelopmentRecordStatus): string {
   return strictEnumLabel(PORTFOLIO_DEVELOPMENT_RECORD_STATUS_LABEL, status, '发展档案条目状态')
+}
+
+function resetForm() {
+  form.recordTitle = ''
+  form.descriptionText = ''
+  form.teacherUserId = ''
 }
 
 async function loadPage() {
@@ -58,6 +85,10 @@ async function loadPage() {
       recordType: activeType.value,
     })
     rows.value = readPageList(page, '加载发展记录失败')
+    const userIds = rows.value
+      .map(row => row.teacherUserId)
+      .filter((id): id is string => Boolean(id))
+    await hydrateTeacherLabels([...new Set(userIds)])
   }
   catch (error) {
     showUserError(error)
@@ -72,15 +103,19 @@ async function saveRecord() {
     message.warning('请填写标题')
     return
   }
+  if (requiresTeacher.value && !form.teacherUserId) {
+    message.warning('成果条目须选择所属教师')
+    return
+  }
   try {
     await portfolioDevelopmentRecordApi.save({
       recordType: activeType.value,
       recordTitle: form.recordTitle.trim(),
       descriptionText: form.descriptionText.trim() || undefined,
+      teacherUserId: requiresTeacher.value ? form.teacherUserId : undefined,
     })
     message.success('已保存')
-    form.recordTitle = ''
-    form.descriptionText = ''
+    resetForm()
     await loadPage()
   }
   catch (error) {
@@ -112,6 +147,7 @@ async function exportExcel() {
 
 function switchTab(type: RecordType) {
   activeType.value = type
+  resetForm()
   void loadPage()
 }
 
@@ -134,6 +170,17 @@ onMounted(loadPage)
     <UiCard title="新增条目">
       <div class="form-row">
         <input v-model="form.recordTitle" class="input input--wide" placeholder="标题">
+        <a-select
+          v-if="requiresTeacher"
+          v-model:value="form.teacherUserId"
+          show-search
+          allow-clear
+          placeholder="搜索教师姓名或工号"
+          class="input input--teacher"
+          :filter-option="false"
+          :options="teacherOptions"
+          @search="searchTeachers"
+        />
         <UiButton variant="primary" @click="saveRecord">
           保存
         </UiButton>
@@ -144,6 +191,9 @@ onMounted(loadPage)
         <UiButton @click="loadPage">
           刷新
         </UiButton>
+        <UiButton @click="importModalOpen = true">
+          批量导入
+        </UiButton>
         <UiButton @click="exportExcel">
           导出 Excel
         </UiButton>
@@ -151,7 +201,10 @@ onMounted(loadPage)
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无发展记录" />
       <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'recordStatus'">
+          <template v-if="column.key === 'teacherUserId'">
+            {{ teacherLabel(record.teacherUserId) }}
+          </template>
+          <template v-else-if="column.key === 'recordStatus'">
             {{ recordStatusLabel(record.recordStatus) }}
           </template>
           <template v-else-if="column.key === 'actions'">
@@ -162,6 +215,13 @@ onMounted(loadPage)
         </template>
       </UiDataTable>
     </UiCard>
+    <UiPlatformExcelImportModal
+      v-model:open="importModalOpen"
+      entity-label="发展档案"
+      :scene-key="ExcelImportSceneKey.PORTFOLIO_DEVELOPMENT_RECORD"
+      :context="importContext"
+      @success="loadPage"
+    />
   </StageWorkbenchShell>
 </template>
 
@@ -184,6 +244,10 @@ onMounted(loadPage)
 }
 .input--wide {
   flex: 1;
+  min-width: 200px;
+}
+.input--teacher {
+  width: 240px;
   min-width: 200px;
 }
 </style>

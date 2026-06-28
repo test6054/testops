@@ -4,6 +4,8 @@ import type { PortfolioDevelopmentRecordVO, PortfolioHonorStatsVO } from '@/apis
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -11,11 +13,13 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
 const loading = ref(false)
+const importModalOpen = ref(false)
 const rows = ref<PortfolioDevelopmentRecordVO[]>([])
 const stats = ref<PortfolioHonorStatsVO | null>(null)
 const query = reactive({
@@ -34,13 +38,20 @@ const form = reactive({
   categoryCode: '',
   descriptionText: '',
 })
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } = usePortfolioTeacherSearch()
+
+const honorImportContext = { defaultRecordType: 'HONOR' }
+const honorImportRequirements = [
+  'recordType 须为 HONOR（模板已预填）',
+  'teacherUserId 必填，须为租户内真实教师',
+]
 
 const columns: ColumnsType = [
   { title: '标题', dataIndex: 'recordTitle', key: 'recordTitle' },
   { title: '等级', dataIndex: 'levelCode', key: 'levelCode', width: 88 },
   { title: '授予单位', dataIndex: 'awardUnit', key: 'awardUnit', width: 140 },
   { title: '日期', dataIndex: 'recordDate', key: 'recordDate', width: 110 },
-  { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 100 },
+  { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
   { title: '操作', key: 'actions', width: 80 },
 ]
 
@@ -58,6 +69,10 @@ async function loadPage() {
       categoryCode: query.categoryCode || undefined,
     })
     rows.value = readPageList(page, '加载荣誉库失败')
+    const userIds = rows.value
+      .map(row => row.teacherUserId)
+      .filter((id): id is string => Boolean(id))
+    await hydrateTeacherLabels([...new Set(userIds)])
     stats.value = await portfolioDevelopmentRecordApi.honorStats({
       levelCode: query.levelCode || undefined,
       awardUnit: query.awardUnit || undefined,
@@ -79,11 +94,15 @@ async function saveRecord() {
     message.warning('请填写荣誉标题')
     return
   }
+  if (!form.teacherUserId) {
+    message.warning('荣誉条目须选择所属教师')
+    return
+  }
   try {
     await portfolioDevelopmentRecordApi.save({
       recordType: 'HONOR',
       recordTitle: form.recordTitle.trim(),
-      teacherUserId: form.teacherUserId.trim() || undefined,
+      teacherUserId: form.teacherUserId,
       levelCode: form.levelCode.trim() || undefined,
       awardUnit: form.awardUnit.trim() || undefined,
       recordDate: form.recordDate || undefined,
@@ -160,10 +179,22 @@ onMounted(loadPage)
         <UiButton @click="exportHonor">
           导出
         </UiButton>
+        <UiButton @click="importModalOpen = true">
+          批量导入
+        </UiButton>
       </div>
       <div class="form-row">
         <a-input v-model:value="form.recordTitle" placeholder="荣誉标题" style="width: 180px" />
-        <a-input v-model:value="form.teacherUserId" placeholder="教师 ID" style="width: 120px" />
+        <a-select
+          v-model:value="form.teacherUserId"
+          show-search
+          allow-clear
+          placeholder="搜索教师姓名或工号"
+          style="width: 220px"
+          :filter-option="false"
+          :options="teacherOptions"
+          @search="searchTeachers"
+        />
         <a-input v-model:value="form.levelCode" placeholder="等级" style="width: 88px" />
         <a-input v-model:value="form.awardUnit" placeholder="授予单位" style="width: 140px" />
         <a-date-picker v-model:value="form.recordDate" value-format="YYYY-MM-DD" placeholder="日期" />
@@ -174,7 +205,10 @@ onMounted(loadPage)
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无荣誉记录，请调整条件或新建" />
       <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'actions'">
+          <template v-if="column.key === 'teacherUserId'">
+            {{ teacherLabel(record.teacherUserId) }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
             <UiTextAction @click="removeRecord(record.id)">
               删除
             </UiTextAction>
@@ -182,6 +216,14 @@ onMounted(loadPage)
         </template>
       </UiDataTable>
     </UiCard>
+    <UiPlatformExcelImportModal
+      v-model:open="importModalOpen"
+      :scene-key="ExcelImportSceneKey.PORTFOLIO_DEVELOPMENT_RECORD"
+      entity-label="荣誉库"
+      :context="honorImportContext"
+      :requirements="honorImportRequirements"
+      @success="loadPage"
+    />
   </StageWorkbenchShell>
 </template>
 

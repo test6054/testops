@@ -364,6 +364,7 @@ function resolveArchiveScanQuery(): Record<string, string> | null {
   const query: Record<string, string> = {
     volumeId: props.volumeId,
     returnTo: route.fullPath,
+    batchMode: 'PER_PAGE',
   }
   if (key in ARCHIVE_MATERIAL_TYPE_LABEL) {
     query.materialType = key
