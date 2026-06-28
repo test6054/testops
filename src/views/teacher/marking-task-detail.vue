@@ -413,9 +413,9 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import {
+  buildConfidentialWatermarkLines,
   formatExamConfidentialLabel,
   isExamConfidentialFlag,
-  buildConfidentialWatermarkLines,
 } from '@/composables/useConfidentialWatermark'
 import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'

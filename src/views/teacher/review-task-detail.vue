@@ -170,11 +170,11 @@ import {
   REVIEW_TASK_STATUS_TONE,
 } from '@/apis/mark/exam-review-task'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { useExamConfidential } from '@/composables/useConfidentialWatermark'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'

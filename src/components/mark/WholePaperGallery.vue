@@ -132,6 +132,12 @@ const props = withDefaults(defineProps<{
   viewerWatermark: true,
 })
 
+const emit = defineEmits<{
+  (e: 'reload'): void
+  (e: 'scroll', event: Event): void
+  (e: 'update:pageAnnotation', pageId: string, value: string): void
+  (e: 'viewport-ready', element: HTMLElement | null): void
+}>()
 const resolvedWatermarkLines = computed(() => {
   if (!props.viewerWatermark) {
     return []
@@ -143,13 +149,6 @@ const resolvedWatermarkLines = computed(() => {
 })
 const watermarkDensity = computed(() => (props.confidential ? 'dense' : 'normal'))
 const imagePreview = computed(() => (props.confidential ? false : {}))
-
-const emit = defineEmits<{
-  (e: 'reload'): void
-  (e: 'scroll', event: Event): void
-  (e: 'update:pageAnnotation', pageId: string, value: string): void
-  (e: 'viewport-ready', element: HTMLElement | null): void
-}>()
 
 function onConfidentialContextMenu(event: MouseEvent): void {
   if (props.confidential) {

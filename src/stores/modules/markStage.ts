@@ -3,12 +3,12 @@
  */
 import type { WorkbenchStageSnapshotVO } from '@/apis/mark/exam-progress'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
 import {
   formatExamConfidentialLabel,
   isExamConfidentialFlag,
 } from '@/composables/useConfidentialWatermark'
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
 
 export type MarkStageKey
   = | 'EXAM_PREP'

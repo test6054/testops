@@ -130,7 +130,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import message from 'ant-design-vue/es/message'
-import { reactive, ref, computed } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { getFileArrayBuffer, getImageBlobUrl } from '@/apis/edu/file-management'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import ScanImageStage from '@/components/mark/ScanImageStage.vue'
