@@ -3,6 +3,10 @@
  */
 import type { WorkbenchStageSnapshotVO } from '@/apis/mark/exam-progress'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
+import {
+  formatExamConfidentialLabel,
+  isExamConfidentialFlag,
+} from '@/composables/useConfidentialWatermark'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
@@ -92,6 +96,8 @@ export const useMarkStageStore = defineStore('markStage', () => {
 
   const prepAdvisoryReasons = computed(() => snapshot.value?.prepAdvisoryReasons ?? [])
   const prepBlockingReasons = computed(() => snapshot.value?.prepBlockingReasons ?? [])
+  const isExamConfidential = computed(() => isExamConfidentialFlag(snapshot.value?.confidential))
+  const examConfidentialLabel = computed(() => formatExamConfidentialLabel(snapshot.value))
 
   const selectedExamLabel = computed(() => {
     const meta = selectedExamMeta.value
@@ -139,6 +145,8 @@ export const useMarkStageStore = defineStore('markStage', () => {
     suggestedStageKey,
     prepAdvisoryReasons,
     prepBlockingReasons,
+    isExamConfidential,
+    examConfidentialLabel,
     selectedExamLabel,
     observeExam,
     applySnapshot,

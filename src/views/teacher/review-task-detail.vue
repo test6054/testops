@@ -37,6 +37,15 @@
 
 
     <a-spin v-else :spinning="loading" tip="正在加载任务...">
+      <UiAlertStrip
+        v-if="isExamConfidential"
+        tone="error"
+        title="涉密资料，禁止传播"
+        description="涉密页面，请勿截屏外传"
+        :closable="false"
+        dense
+        class="task-detail-page__confidential-strip"
+      />
       <div v-if="detail?.status === 'INVALIDATED'" class="task-detail-page__invalidated-banner">
         <div class="task-detail-page__invalidated-title">当前复核任务已失效</div>
         <div class="task-detail-page__invalidated-text">
@@ -83,6 +92,10 @@
               v-else
               :slice-file-id="detail?.sliceFileId"
               :source-scan-page="detail?.sourceScanPage"
+              :master-paper-page="detail?.masterPaperPage"
+              :confidential="isExamConfidential"
+              :exam-label="examConfidentialLabel"
+              :watermark-lines="watermarkLines"
             />
           </UiCard>
 
@@ -157,10 +170,12 @@ import {
   REVIEW_TASK_STATUS_TONE,
 } from '@/apis/mark/exam-review-task'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import { useExamConfidential } from '@/composables/useConfidentialWatermark'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages } from '@/utils/page-result'
@@ -190,6 +205,13 @@ const route = useRoute()
 const router = useRouter()
 
 const examId = computed(() => (route.params.examId ? String(route.params.examId) : ''))
+const {
+  confidential: examConfidentialRef,
+  examLabel: examConfidentialLabelRef,
+  watermarkLines,
+} = useExamConfidential(examId)
+const isExamConfidential = computed(() => examConfidentialRef.value)
+const examConfidentialLabel = computed(() => examConfidentialLabelRef.value)
 const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
 const hasParams = computed(() => !!examId.value && !!taskId.value)
 const taskSource = computed(() => (route.query.source === 'arbitration' ? 'arbitration' : 'review'))
@@ -288,6 +310,10 @@ watch(
 
   &__empty {
     padding: 60px 0;
+  }
+
+  &__confidential-strip {
+    margin-bottom: 16px;
   }
 
   &__invalidated-banner {

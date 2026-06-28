@@ -97,6 +97,8 @@
             :loaded="questionViewLoaded"
             :question-view="questionView"
             :confidential="isExamConfidential"
+            :exam-label="examConfidentialLabel"
+            :watermark-lines="examWatermarkLines"
           />
 
           <WholePaperGallery
@@ -120,6 +122,8 @@
             :quality-label="scanPageQualityLabel"
             :quality-tone="scanPageQualityTone"
             :confidential="isExamConfidential"
+            :exam-label="examConfidentialLabel"
+            :watermark-lines="examWatermarkLines"
             @reload="reloadWholePaperView"
             @scroll="handleWholePageGalleryScroll"
             @viewport-ready="handleGalleryViewportReady"
@@ -411,6 +415,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import {
   formatExamConfidentialLabel,
   isExamConfidentialFlag,
+  buildConfidentialWatermarkLines,
 } from '@/composables/useConfidentialWatermark'
 import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
@@ -459,6 +464,9 @@ const task = ref<MarkingTaskVO | null>(null)
 const examDetail = ref<ExamDetailVO | null>(null)
 const isExamConfidential = computed(() => isExamConfidentialFlag(examDetail.value?.confidential))
 const examConfidentialLabel = computed(() => formatExamConfidentialLabel(examDetail.value))
+const examWatermarkLines = computed(() =>
+  buildConfidentialWatermarkLines({ examLabel: examConfidentialLabel.value }),
+)
 const { isExamOwner } = useExamOwnerPermission(examDetail)
 const loading = ref(false)
 

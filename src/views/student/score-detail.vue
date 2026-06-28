@@ -134,29 +134,17 @@
                   v-if="!currentDetail.sliceFileId"
                   description="暂无数据"
                 />
-                <div
-                  v-else
-                  class="answer-panel__slice confidential-shield"
-                  :class="{ 'confidential-shield--active': isExamConfidential }"
-                >
-                  <ConfidentialWatermarkLayer
-                    v-if="isExamConfidential"
-                    :lines="confidentialWatermarkLines"
-                    density="dense"
+                <a-spin :spinning="sliceLoading" tip="加载切片中...">
+                  <ScanImageStage
+                    v-if="sliceImageUrl"
+                    :src="sliceImageUrl"
+                    :confidential="isExamConfidential"
+                    :watermark-lines="sliceWatermarkLines"
+                    :min-height="320"
+                    empty-text="暂无数据"
                   />
-                  <a-spin :spinning="sliceLoading" tip="加载切片中...">
-                    <a-image
-                      v-if="sliceImageUrl"
-                      :src="sliceImageUrl"
-                      :preview="{}"
-                      class="answer-panel__slice-img"
-                      @contextmenu="onConfidentialContextMenu"
-                    >
-                      <template #previewMask>点击放大查看</template>
-                    </a-image>
-                    <UiEmpty v-else-if="!sliceLoading" description="暂无数据" />
-                  </a-spin>
-                </div>
+                  <UiEmpty v-else-if="!sliceLoading" description="暂无数据" />
+                </a-spin>
               </section>
 
               <section class="answer-panel__section">
@@ -421,7 +409,7 @@ import {
 } from '@/apis/mark/student-exam'
 import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-mastery-level'
 import MarkHeatmapSection from '@/components/chart/MarkHeatmapSection.vue'
-import ConfidentialWatermarkLayer from '@/components/mark/ConfidentialWatermarkLayer.vue'
+import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -450,8 +438,8 @@ const router = useRouter()
 const loading = ref(false)
 const detail = ref<StudentScoreDetailVO | null>(null)
 const isExamConfidential = computed(() => isExamConfidentialFlag(detail.value?.confidential))
-const confidentialWatermarkLines = computed(() => {
-  if (!isExamConfidential.value || !detail.value) {
+const sliceWatermarkLines = computed(() => {
+  if (!detail.value || !sliceImageUrl.value) {
     return []
   }
   return buildConfidentialWatermarkLines({
@@ -463,12 +451,6 @@ const confidentialWatermarkLines = computed(() => {
     },
   })
 })
-
-function onConfidentialContextMenu(event: MouseEvent): void {
-  if (isExamConfidential.value) {
-    event.preventDefault()
-  }
-}
 
 const detailQuestions = computed<StudentQuestionScoreVO[]>(() => detail.value?.questions ?? [])
 

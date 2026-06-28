@@ -313,13 +313,16 @@
                 :paragraph="{ rows: 3 }"
                 class="scan-monitor__identity-skeleton"
               />
-              <div v-else-if="bindIdentitySliceImageUrl" class="scan-monitor__identity-image-wrap">
-                <img
-                  :src="bindIdentitySliceImageUrl"
-                  alt="手写身份区切片"
-                  class="scan-monitor__identity-image"
-                >
-              </div>
+              <ScanImageStage
+                v-else-if="bindIdentitySliceImageUrl"
+                :src="bindIdentitySliceImageUrl"
+                :confidential="isExamConfidential"
+                :exam-label="examConfidentialLabel"
+                :watermark-lines="watermarkLines"
+                :min-height="220"
+                caption="手写身份区切片"
+                empty-text="暂无数据"
+              />
               <UiEmpty
                 v-else
                 description="暂无数据"
@@ -334,13 +337,16 @@
                 :paragraph="{ rows: 3 }"
                 class="scan-monitor__identity-skeleton"
               />
-              <div v-else-if="bindSourcePageImageUrl" class="scan-monitor__identity-image-wrap">
-                <img
-                  :src="bindSourcePageImageUrl"
-                  alt="原始扫描页"
-                  class="scan-monitor__identity-image"
-                >
-              </div>
+              <ScanImageStage
+                v-else-if="bindSourcePageImageUrl"
+                :src="bindSourcePageImageUrl"
+                :confidential="isExamConfidential"
+                :exam-label="examConfidentialLabel"
+                :watermark-lines="watermarkLines"
+                :min-height="220"
+                caption="原始扫描页"
+                empty-text="暂无数据"
+              />
               <UiEmpty
                 v-else
                 description="暂无数据"
@@ -600,6 +606,7 @@ import { SCAN_EVENT_STATUS_LABEL, SCAN_EVENT_STATUS_TONE } from '@/apis/mark/sca
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
 import { TASK_STATUS_LABEL, TASK_STATUS_TONE } from '@/apis/mark/task-status'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
+import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -613,6 +620,7 @@ import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
@@ -635,6 +643,11 @@ const {
   selectedExamId,
 } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
+const {
+  isExamConfidential,
+  examConfidentialLabel,
+  watermarkLines,
+} = useWorkspaceConfidentialContext()
 
 /** 扫描链写操作后同步 StageRail 与本页数据。 */
 async function syncScanWorkbenchState(): Promise<void> {

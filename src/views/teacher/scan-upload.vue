@@ -470,6 +470,7 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
@@ -511,6 +512,7 @@ function batchStatusLabel(batch: ExamScannerBatchVO): string {
 const examContext = useMarkExamContext()
 const { selectedExamId } = examContext
 const { refreshSnapshot } = useWorkspaceExamId()
+const { isExamConfidential } = useWorkspaceConfidentialContext()
 
 /** 扫描链写操作后同步 StageRail 与本页进度。 */
 async function syncScanWorkbenchState(): Promise<void> {
@@ -963,6 +965,18 @@ function openBatchSourceFiles(batch: ExamScannerBatchVO): void {
 }
 
 async function downloadBatchSourceFile(file: ExamFileRefVO): Promise<void> {
+  if (isExamConfidential.value) {
+    const confirmed = await confirmAsync({
+      title: '下载涉密扫描原件',
+      content: '该考试为涉密场次，下载扫描原件将留存操作记录。确认继续下载？',
+      type: 'error',
+      okText: '确认下载',
+      cancelText: '取消',
+    })
+    if (!confirmed) {
+      return
+    }
+  }
   sourceFileDownloading.value = file.fileId
   try {
     await handleDownloadFile({

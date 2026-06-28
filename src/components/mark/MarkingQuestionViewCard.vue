@@ -24,6 +24,8 @@
           :source-scan-page="questionView.sourceScanPage"
           :master-paper-page="questionView.masterPaperPage"
           :confidential="confidential"
+          :exam-label="examLabel"
+          :watermark-lines="watermarkLines"
         />
         <template v-if="questionView.standardAnswer || questionView.aiScore != null">
           <a-divider />
@@ -89,6 +91,8 @@ defineProps<{
   loaded: boolean
   questionView: MarkingQuestionViewVO | null
   confidential?: boolean
+  examLabel?: string
+  watermarkLines?: string[]
 }>()
 </script>
 

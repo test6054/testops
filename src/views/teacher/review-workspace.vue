@@ -107,6 +107,8 @@
               :source-scan-page="detail?.sourceScanPage"
               :master-paper-page="detail?.masterPaperPage"
               :confidential="isExamConfidential"
+              :exam-label="examConfidentialLabel"
+              :watermark-lines="watermarkLines"
             />
           </UiCard>
 
@@ -505,7 +507,7 @@ const { refreshSnapshot } = useWorkspaceExamId()
 const userStore = useUserStore()
 
 const examId = computed(() => (route.params.examId ? String(route.params.examId) : ''))
-const { confidential: examConfidentialRef, examLabel: examConfidentialLabelRef } = useExamConfidential(examId)
+const { confidential: examConfidentialRef, examLabel: examConfidentialLabelRef, watermarkLines } = useExamConfidential(examId)
 const isExamConfidential = computed(() => isExamConfidentialFlag(examConfidentialRef.value))
 const examConfidentialLabel = computed(() => examConfidentialLabelRef.value)
 const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))

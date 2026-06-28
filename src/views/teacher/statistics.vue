@@ -127,6 +127,8 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import mittBus from '@/utils/mitt'
 import ClassWeaknessCard from './statistics/ClassWeaknessCard.vue'
 import ErrorCauseClusterCard from './statistics/ErrorCauseClusterCard.vue'
@@ -140,6 +142,7 @@ defineOptions({ name: 'TeacherStatistics' })
 
 const { selectedExamId, selectedExam } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
+const { isExamConfidential } = useWorkspaceConfidentialContext()
 const currentExamId = computed(() => selectedExamId.value || '')
 
 // B-12 联动：考试切换后统一加载考生名册，派生班级 / 学生选项交给子卡片，避免教师手输 ID
@@ -233,7 +236,19 @@ async function onRejudgePlanChanged(): Promise<void> {
   await refreshSnapshot()
 }
 
-function exportTeachingLecture(): void {
+async function exportTeachingLecture(): Promise<void> {
+  if (isExamConfidential.value) {
+    const confirmed = await confirmAsync({
+      title: '导出涉密考试讲评材料',
+      content: '该考试为涉密场次，导出讲评讲义可能包含成绩与作答分析。确认继续导出？',
+      type: 'error',
+      okText: '确认导出',
+      cancelText: '取消',
+    })
+    if (!confirmed) {
+      return
+    }
+  }
   teachingImprovementRef.value?.exportRecordText()
 }
 

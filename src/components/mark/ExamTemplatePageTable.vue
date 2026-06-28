@@ -101,12 +101,17 @@
         {{ previewError }}
       </div>
       <template v-else-if="previewUrl">
-        <img
+        <div
           v-if="previewKind === 'image'"
-          :src="previewUrl"
-          :alt="previewFileName"
-          class="exam-template-page-table__preview-image"
-        />
+          class="exam-template-page-table__preview-image-wrap"
+        >
+          <ScanImageStage
+            :src="previewUrl"
+            :watermark-lines="templatePreviewWatermarkLines"
+            :min-height="360"
+            :caption="previewFileName"
+          />
+        </div>
         <iframe
           v-else-if="previewKind === 'pdf'"
           :src="previewUrl"
@@ -125,13 +130,15 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import message from 'ant-design-vue/es/message'
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed } from 'vue'
 import { getFileArrayBuffer, getImageBlobUrl } from '@/apis/edu/file-management'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import { buildConfidentialWatermarkLines } from '@/composables/useConfidentialWatermark'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 
 export interface ExamTemplatePageRow {
@@ -183,6 +190,8 @@ const previewUrl = ref('')
 const previewKind = ref<'image' | 'pdf' | 'other'>('image')
 const previewFileName = ref('')
 let previewObjectUrl: string | null = null
+
+const templatePreviewWatermarkLines = computed(() => buildConfidentialWatermarkLines())
 
 function resetDraft(): void {
   pageDraft.rowKey = ''

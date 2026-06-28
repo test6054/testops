@@ -79,6 +79,15 @@
               dense
               class="exam-detail-layout__prep-blocking"
             />
+            <UiAlertStrip
+              v-if="isExamConfidential && !isImmersiveWorkspace"
+              tone="error"
+              title="涉密资料，禁止传播"
+              description="涉密页面，请勿截屏外传"
+              :closable="false"
+              dense
+              class="exam-detail-layout__confidential-strip"
+            />
             <UiEmpty
               v-if="isImmersiveWorkspace && !isDesktopMarkingViewport"
               description="批阅与复核需在较宽屏幕操作，请使用桌面端（宽度 ≥ 1024px）"
@@ -148,6 +157,7 @@ import { useExamJourneySteps } from '@/composables/useExamJourneySteps'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { provideMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
 import { useMarkWorkbenchSnapshot } from '@/composables/useMarkWorkbenchSnapshot'
+import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
 import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
 import {
   findExamWorkspaceMenuItem,
@@ -235,6 +245,8 @@ const {
   prepBlockingReasons,
   refreshSnapshot,
 } = useMarkWorkbenchSnapshot(() => examId.value)
+
+const { isExamConfidential } = useWorkspaceConfidentialContext()
 
 const { journeyStages, activeJourneyKey } = useExamJourneySteps(orderedStages)
 
@@ -484,7 +496,8 @@ watch(isImmersiveWorkspace, (immersive) => {
     }
   }
 
-  &__prep-blocking {
+  &__prep-blocking,
+  &__confidential-strip {
     margin-bottom: 16px;
   }
 

@@ -14,6 +14,8 @@ import {
   UndoOutlined,
 } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
+import ConfidentialWatermarkLayer from '@/components/mark/ConfidentialWatermarkLayer.vue'
+import { buildConfidentialWatermarkLines } from '@/composables/useConfidentialWatermark'
 
 /** 母版题目区域 ROI（百分比定位，已由父级换算） */
 interface RoiStyle {
@@ -23,7 +25,7 @@ interface RoiStyle {
   height: string
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   /** 当前影像 blob URL；为空时显示空态 */
   src?: string
   /** 影像标题/页码说明 */
@@ -34,9 +36,29 @@ const props = defineProps<{
   emptyText?: string
   /** 画布最小高度（px），默认 420 */
   minHeight?: number
-  /** 涉密场次：禁用右键与文本选择 */
+  /** 涉密场次：禁用右键与文本选择，水印密度提升 */
   confidential?: boolean
-}>()
+  /** 水印中的考试标识 */
+  examLabel?: string
+  /** 自定义水印行；缺省时按当前登录用户 + examLabel 生成 */
+  watermarkLines?: string[]
+  /** 是否在卷面影像上叠操作者水印（默认开启，用于试卷/扫描页追溯） */
+  viewerWatermark?: boolean
+}>(), {
+  viewerWatermark: true,
+})
+
+const showViewerWatermark = computed(() => props.viewerWatermark && Boolean(props.src))
+const resolvedWatermarkLines = computed(() => {
+  if (!showViewerWatermark.value) {
+    return []
+  }
+  if (props.watermarkLines?.length) {
+    return props.watermarkLines
+  }
+  return buildConfidentialWatermarkLines({ examLabel: props.examLabel })
+})
+const watermarkDensity = computed(() => (props.confidential ? 'dense' : 'normal'))
 
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 4
@@ -167,6 +189,11 @@ watch(
         {{ emptyText || '暂无影像' }}
       </div>
       <div v-else class="scan-stage__paper-wrap">
+        <ConfidentialWatermarkLayer
+          v-if="showViewerWatermark"
+          :lines="resolvedWatermarkLines"
+          :density="watermarkDensity"
+        />
         <img
           class="scan-stage__image"
           :src="src"
@@ -258,6 +285,7 @@ watch(
   display: inline-block;
   max-width: calc(100% - 32px);
   max-height: calc(100% - 32px);
+  isolation: isolate;
 }
 
 .scan-stage__canvas--confidential {

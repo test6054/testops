@@ -27,6 +27,11 @@
         :class="{ 'whole-paper-gallery--confidential': confidential }"
         @scroll="emit('scroll', $event)"
       >
+        <ConfidentialWatermarkLayer
+          v-if="resolvedWatermarkLines.length > 0"
+          :lines="resolvedWatermarkLines"
+          :density="watermarkDensity"
+        />
         <div
           v-if="topSpacerHeight > 0"
           class="whole-paper-gallery__spacer"
@@ -48,7 +53,7 @@
           <a-image
             v-if="imageUrls[item.page.pageId]"
             :src="imageUrls[item.page.pageId]"
-            :preview="{}"
+            :preview="imagePreview"
             class="whole-paper-gallery__image"
             @contextmenu="onConfidentialContextMenu"
           >
@@ -90,15 +95,17 @@ import type { ScannedPageRef } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { VisibleWholePage } from '@/composables/useWholePaperGallery'
 import { FileImageOutlined, ReloadOutlined } from '@ant-design/icons-vue'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import ConfidentialWatermarkLayer from '@/components/mark/ConfidentialWatermarkLayer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import { buildConfidentialWatermarkLines } from '@/composables/useConfidentialWatermark'
 
 defineOptions({ name: 'WholePaperGallery' })
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   examId?: string
   taskId?: string
   pages: ScannedPageRef[]
@@ -118,7 +125,24 @@ const props = defineProps<{
   qualityLabel: (status: QualityDecisionCode) => string
   qualityTone: (status: QualityDecisionCode) => BadgeTone
   confidential?: boolean
-}>()
+  examLabel?: string
+  watermarkLines?: string[]
+  viewerWatermark?: boolean
+}>(), {
+  viewerWatermark: true,
+})
+
+const resolvedWatermarkLines = computed(() => {
+  if (!props.viewerWatermark) {
+    return []
+  }
+  if (props.watermarkLines?.length) {
+    return props.watermarkLines
+  }
+  return buildConfidentialWatermarkLines({ examLabel: props.examLabel })
+})
+const watermarkDensity = computed(() => (props.confidential ? 'dense' : 'normal'))
+const imagePreview = computed(() => (props.confidential ? false : {}))
 
 const emit = defineEmits<{
   (e: 'reload'): void
@@ -142,8 +166,10 @@ watch(galleryViewportRef, (element) => {
 
 <style lang="scss" scoped>
 .whole-paper-gallery {
+  position: relative;
   max-height: min(72vh, 960px);
   overflow-y: auto;
+  isolation: isolate;
 
   &__spacer {
     width: 100%;
