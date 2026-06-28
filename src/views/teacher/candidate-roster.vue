@@ -483,7 +483,7 @@ async function loadExamContext(): Promise<void> {
     examClassRefs.value = [...(detail.classRefs ?? [])]
     candidateTotal.value = detail.candidateCount ?? 0
     classIds.value = [...(detail.classIds ?? [])]
-    classScopePersisted.value = detail.classScopePersisted === true
+    classScopePersisted.value = detail.classScopePersisted
     lastSavedClassIds.value = classScopePersisted.value ? [...classIds.value] : []
     await loadClassOptionsForExam(examId)
     if (seq !== loadContextSeq) {

@@ -59,7 +59,7 @@
       empty-description="请选择评估批次查看整改任务"
     >
       <template #bodyCell="{ column, record }">
-        <template v-else-if="column.key === 'taskStatus'">
+        <template v-if="column.key === 'taskStatus'">
           <UiTag :tone="remediationStatusTone(record.taskStatus)" size="sm">
             {{ remediationStatusLabel(record.taskStatus) }}
           </UiTag>
@@ -268,8 +268,8 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { useUserStore } from '@/stores/modules/user'
-import { showUserError } from '@/utils/error-handler'
 import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeRemediationPanel' })

@@ -1,3 +1,4 @@
+import type { PortfolioEvaluationTaskStatus } from '@/apis/portfolio/enums'
 import type {
   AiResultEvidenceItem,
   AiResultImprovementItem,
@@ -10,7 +11,6 @@ import type { AiTaskStatus } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { QueryDto } from '@/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
-import type { PortfolioEvaluationTaskStatus } from '@/apis/portfolio/enums'
 
 /** 扩展组织类型 - PortfolioOrgUnitTypeEnum */
 export type PortfolioOrgUnitType

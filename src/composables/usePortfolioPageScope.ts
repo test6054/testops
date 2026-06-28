@@ -2,8 +2,8 @@ import { computed, inject, onActivated, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioLayoutScopeProvidedKey } from '@/composables/portfolio-layout-context'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { usePortfolioStore } from '@/stores/modules/portfolio'
 import { useAuthStore } from '@/stores/modules/auth'
+import { usePortfolioStore } from '@/stores/modules/portfolio'
 import { RoleEnum } from '@/utils/permission'
 
 /** 解析当前页应使用的目标教师 ID（store > query > 本人默认） */

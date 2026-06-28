@@ -161,8 +161,6 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import {
   ARCHIVE_MATERIAL_SUBMISSION_STATUS_LABEL,
   ARCHIVE_MATERIAL_SUBMISSION_STATUS_TONE,
@@ -175,6 +173,8 @@ import {
   PAPER_ARCHIVE_OCR_STATUS_LABEL,
   PAPER_ARCHIVE_OCR_STATUS_TONE,
 } from '@/apis/mark/paper-archive'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'

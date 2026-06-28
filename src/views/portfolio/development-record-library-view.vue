@@ -1,18 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  PortfolioDevelopmentRecordStatus,
-  PortfolioDevelopmentRecordType,
-} from '@/apis/portfolio/enums'
+import type { PortfolioDevelopmentRecordStatus, PortfolioDevelopmentRecordType } from '@/apis/portfolio/enums'
 import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import {
-  PORTFOLIO_DEVELOPMENT_RECORD_STATUS_LABEL,
-  PORTFOLIO_DEVELOPMENT_RECORD_TYPE_LABEL,
-} from '@/apis/portfolio/enums'
+import { PORTFOLIO_DEVELOPMENT_RECORD_STATUS_LABEL } from '@/apis/portfolio/enums'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -26,26 +20,31 @@ import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const RECORD_TAB_KEYS: PortfolioDevelopmentRecordType[] = ['ACHIEVEMENT', 'POLICY']
-const RECORD_TABS = RECORD_TAB_KEYS.map(key => ({
-  key,
-  label: PORTFOLIO_DEVELOPMENT_RECORD_TYPE_LABEL[key],
-}))
+const props = defineProps<{
+  title: string
+  subtitle: string
+  recordType: PortfolioDevelopmentRecordType
+  categoryCode?: string
+  levelCode?: string
+  nationalOnly?: boolean
+  readonly?: boolean
+}>()
 
-type RecordType = typeof RECORD_TAB_KEYS[number]
-
-const activeType = ref<RecordType>('ACHIEVEMENT')
 const loading = ref(false)
 const importModalOpen = ref(false)
 const rows = ref<PortfolioDevelopmentRecordVO[]>([])
+const form = reactive({ recordTitle: '', descriptionText: '', teacherUserId: '' })
 const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } = usePortfolioTeacherSearch()
-const form = reactive({
-  recordTitle: '',
-  descriptionText: '',
-  teacherUserId: '' as string,
-})
 
-const requiresTeacher = computed(() => activeType.value === 'ACHIEVEMENT')
+const requiresTeacher = computed(() => props.recordType === 'ACHIEVEMENT')
+const showEditor = computed(() => !props.readonly)
+
+const importContext = computed(() => ({
+  defaultRecordType: props.recordType,
+  ...(props.categoryCode ? { defaultCategoryCode: props.categoryCode } : {}),
+  ...(props.levelCode ? { defaultLevelCode: props.levelCode } : {}),
+  ...(props.nationalOnly ? { defaultLevelCode: 'NATIONAL' } : {}),
+}))
 
 const columns = computed<ColumnsType>(() => {
   const base: ColumnsType = [
@@ -56,15 +55,12 @@ const columns = computed<ColumnsType>(() => {
   }
   base.push(
     { title: '分类', dataIndex: 'categoryCode', key: 'categoryCode', width: 120 },
+    { title: '级别', dataIndex: 'levelCode', key: 'levelCode', width: 88 },
     { title: '状态', dataIndex: 'recordStatus', key: 'recordStatus', width: 88 },
     { title: '操作', key: 'actions', width: 120 },
   )
   return base
 })
-
-const tabLabel = computed(() => RECORD_TABS.find(item => item.key === activeType.value)?.label ?? '')
-
-const importContext = computed(() => ({ defaultRecordType: activeType.value }))
 
 function recordStatusLabel(status: PortfolioDevelopmentRecordStatus): string {
   return strictEnumLabel(PORTFOLIO_DEVELOPMENT_RECORD_STATUS_LABEL, status, '发展档案条目状态')
@@ -82,13 +78,17 @@ async function loadPage() {
     const page = await portfolioDevelopmentRecordApi.page({
       pageNum: 1,
       pageSize: 50,
-      recordType: activeType.value,
+      recordType: props.recordType,
+      categoryCode: props.categoryCode,
+      levelCode: props.levelCode ?? (props.nationalOnly ? 'NATIONAL' : undefined),
     })
     rows.value = readPageList(page, '加载发展记录失败')
-    const userIds = rows.value
-      .map(row => row.teacherUserId)
-      .filter((id): id is string => Boolean(id))
-    await hydrateTeacherLabels([...new Set(userIds)])
+    if (requiresTeacher.value) {
+      const userIds = rows.value
+        .map(row => row.teacherUserId)
+        .filter((id): id is string => Boolean(id))
+      await hydrateTeacherLabels([...new Set(userIds)])
+    }
   }
   catch (error) {
     showUserError(error)
@@ -109,8 +109,10 @@ async function saveRecord() {
   }
   try {
     await portfolioDevelopmentRecordApi.save({
-      recordType: activeType.value,
+      recordType: props.recordType,
       recordTitle: form.recordTitle.trim(),
+      categoryCode: props.categoryCode,
+      levelCode: props.levelCode,
       descriptionText: form.descriptionText.trim() || undefined,
       teacherUserId: requiresTeacher.value ? form.teacherUserId : undefined,
     })
@@ -136,7 +138,12 @@ async function removeRecord(id: string) {
 
 async function exportExcel() {
   try {
-    const result = await portfolioDevelopmentRecordApi.exportExcel({ recordType: activeType.value })
+    const result = await portfolioDevelopmentRecordApi.exportExcel({
+      recordType: props.recordType,
+      categoryCode: props.categoryCode,
+      levelCode: props.levelCode ?? (props.nationalOnly ? 'NATIONAL' : undefined),
+      nationalOnly: props.nationalOnly,
+    })
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   }
@@ -145,29 +152,13 @@ async function exportExcel() {
   }
 }
 
-function switchTab(type: RecordType) {
-  activeType.value = type
-  resetForm()
-  void loadPage()
-}
-
 onMounted(loadPage)
 </script>
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar :title="tabLabel" subtitle="成果库 / 荣誉库 / 政策文件库" />
-    <div class="tabs">
-      <UiButton
-        v-for="tab in RECORD_TABS"
-        :key="tab.key"
-        :variant="activeType === tab.key ? 'primary' : 'outline'"
-        @click="switchTab(tab.key)"
-      >
-        {{ tab.label }}
-      </UiButton>
-    </div>
-    <UiCard title="新增条目">
+    <ContextBar :title="title" :subtitle="subtitle" />
+    <UiCard v-if="showEditor" title="新增条目">
       <div class="form-row">
         <input v-model="form.recordTitle" class="input input--wide" placeholder="标题">
         <a-select
@@ -191,7 +182,7 @@ onMounted(loadPage)
         <UiButton @click="loadPage">
           刷新
         </UiButton>
-        <UiButton @click="importModalOpen = true">
+        <UiButton v-if="showEditor" @click="importModalOpen = true">
           批量导入
         </UiButton>
         <UiButton @click="exportExcel">
@@ -208,7 +199,7 @@ onMounted(loadPage)
             {{ recordStatusLabel(record.recordStatus) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton size="sm" @click="removeRecord(record.id)">
+            <UiButton v-if="showEditor" size="sm" @click="removeRecord(record.id)">
               删除
             </UiButton>
           </template>
@@ -216,6 +207,7 @@ onMounted(loadPage)
       </UiDataTable>
     </UiCard>
     <UiPlatformExcelImportModal
+      v-if="showEditor"
       v-model:open="importModalOpen"
       entity-label="发展档案"
       :scene-key="ExcelImportSceneKey.PORTFOLIO_DEVELOPMENT_RECORD"
@@ -226,11 +218,6 @@ onMounted(loadPage)
 </template>
 
 <style scoped>
-.tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-}
 .form-row,
 .toolbar {
   display: flex;

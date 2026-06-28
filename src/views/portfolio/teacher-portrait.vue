@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { EChartsCoreOption } from 'echarts/core'
+import type { PortfolioDevelopmentPlanCompletionVO } from '@/apis/portfolio/teacher-platform'
 import type {
   PortfolioPortraitDimension,
   PortfolioTeacherPortraitCohortCompareVO,
@@ -12,7 +13,6 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
-import type { PortfolioDevelopmentPlanCompletionVO } from '@/apis/portfolio/teacher-platform'
 import {
   PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,

@@ -1,0 +1,386 @@
+<script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type {
+  PortfolioMaterialSaveRequest,
+  PortfolioMaterialSearchResponse,
+  PortfolioMaterialStatus,
+  PortfolioMaterialType,
+  PortfolioMaterialVO,
+} from '@/apis/portfolio/types'
+import type { PaperArchiveOcrStatusCode } from '@/apis/mark/paper-archive'
+import { Input, message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import {
+  PAPER_ARCHIVE_OCR_STATUS_LABEL,
+  PAPER_ARCHIVE_OCR_STATUS_TONE,
+} from '@/apis/mark/paper-archive'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioMaterialApi } from '@/apis/portfolio/material'
+import {
+  PORTFOLIO_MATERIAL_STATUS_LABEL,
+  PORTFOLIO_MATERIAL_STATUS_TONE,
+  PORTFOLIO_MATERIAL_TYPE_LABEL,
+} from '@/apis/portfolio/types'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
+import { showUserError } from '@/utils/error-handler'
+import { readPageList, readPageTotal } from '@/utils/page-result'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+
+interface MaterialFilterModel {
+  materialType?: PortfolioMaterialType
+  status?: PortfolioMaterialStatus
+}
+
+function materialTypeLabel(type: PortfolioMaterialType): string {
+  return strictEnumLabel(PORTFOLIO_MATERIAL_TYPE_LABEL, type, '材料类型')
+}
+
+function materialStatusLabel(status: PortfolioMaterialStatus): string {
+  return strictEnumLabel(PORTFOLIO_MATERIAL_STATUS_LABEL, status, '材料状态')
+}
+
+function materialStatusTone(status: PortfolioMaterialStatus) {
+  return strictEnumTone(PORTFOLIO_MATERIAL_STATUS_TONE, status, '材料状态')
+}
+
+function ocrStatusLabel(status: PaperArchiveOcrStatusCode): string {
+  return strictEnumLabel(PAPER_ARCHIVE_OCR_STATUS_LABEL, status, 'OCR 状态')
+}
+
+function ocrStatusTone(status: PaperArchiveOcrStatusCode) {
+  return strictEnumTone(PAPER_ARCHIVE_OCR_STATUS_TONE, status, 'OCR 状态')
+}
+
+function isOcrStatusCode(value: string | undefined): value is PaperArchiveOcrStatusCode {
+  return !!value && Object.hasOwn(PAPER_ARCHIVE_OCR_STATUS_LABEL, value)
+}
+
+const materialTypeOptions = (Object.keys(PORTFOLIO_MATERIAL_TYPE_LABEL) as PortfolioMaterialType[])
+  .map(value => ({ value, label: materialTypeLabel(value) }))
+
+const materialStatusOptions = (Object.keys(PORTFOLIO_MATERIAL_STATUS_LABEL) as PortfolioMaterialStatus[])
+  .map(value => ({ value, label: materialStatusLabel(value) }))
+
+const filterFields: FilterField[] = [
+  { key: 'materialType', label: '材料类型', type: 'select', options: materialTypeOptions },
+  { key: 'status', label: '状态', type: 'select', options: materialStatusOptions },
+]
+
+const listColumns: ColumnsType<PortfolioMaterialVO> = [
+  { title: '标题', dataIndex: 'materialTitle', key: 'materialTitle' },
+  { title: '类型', key: 'materialType', width: 120 },
+  { title: '分类编码', dataIndex: 'categoryCode', key: 'categoryCode', width: 120 },
+  { title: '状态', key: 'status', width: 100 },
+  { title: 'OCR', key: 'ocrStatus', width: 100 },
+  { title: '操作', key: 'actions', width: 140, fixed: 'right' },
+]
+
+const searchColumns: ColumnsType<PortfolioMaterialSearchResponse> = [
+  { title: '标题', dataIndex: 'materialTitle', key: 'materialTitle' },
+  { title: '类型', key: 'materialType', width: 120 },
+  { title: '命中摘要', dataIndex: 'snippet', key: 'snippet' },
+]
+
+const { targetTeacherId } = usePortfolioPageScope()
+const loading = ref(false)
+const saving = ref(false)
+const searchLoading = ref(false)
+const rows = ref<PortfolioMaterialVO[]>([])
+const searchRows = ref<PortfolioMaterialSearchResponse[]>([])
+const pageNum = ref(1)
+const pageSize = ref(10)
+const pageTotal = ref(0)
+const searchPageNum = ref(1)
+const searchPageSize = ref(10)
+const searchPageTotal = ref(0)
+const filterModel = ref<MaterialFilterModel>({})
+const searchKeyword = ref('')
+const formModalOpen = ref(false)
+const editingId = ref<string>()
+const form = reactive<PortfolioMaterialSaveRequest>({
+  materialType: 'DOCUMENT',
+  materialTitle: '',
+  fileNodeId: '',
+  categoryCode: '',
+})
+const attachmentFileName = ref<string>()
+
+const modalTitle = computed(() => editingId.value ? '编辑材料' : '登记材料')
+const showSearchResults = computed(() => searchKeyword.value.trim().length > 0)
+
+async function loadPage() {
+  loading.value = true
+  try {
+    const page = await portfolioMaterialApi.page({
+      ...(targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}),
+      materialType: filterModel.value.materialType,
+      status: filterModel.value.status,
+      pageNum: pageNum.value,
+      pageSize: pageSize.value,
+    })
+    rows.value = readPageList(page, '加载材料库失败')
+    pageTotal.value = readPageTotal(page)
+  }
+  catch (error) {
+    showUserError(error, '加载材料库失败')
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+async function searchOcr() {
+  const keyword = searchKeyword.value.trim()
+  if (!keyword) {
+    searchRows.value = []
+    searchPageTotal.value = 0
+    return
+  }
+  searchLoading.value = true
+  try {
+    const page = await portfolioMaterialApi.searchOcr({
+      keyword,
+      ...(targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}),
+      materialType: filterModel.value.materialType,
+      pageNum: searchPageNum.value,
+      pageSize: searchPageSize.value,
+    })
+    searchRows.value = readPageList(page, 'OCR 检索失败')
+    searchPageTotal.value = readPageTotal(page)
+  }
+  catch (error) {
+    showUserError(error, 'OCR 检索失败')
+  }
+  finally {
+    searchLoading.value = false
+  }
+}
+
+function handleSearch() {
+  pageNum.value = 1
+  searchPageNum.value = 1
+  void loadPage()
+  if (searchKeyword.value.trim()) {
+    void searchOcr()
+  }
+}
+
+function openCreateModal() {
+  editingId.value = undefined
+  form.materialType = 'DOCUMENT'
+  form.materialTitle = ''
+  form.fileNodeId = ''
+  form.categoryCode = ''
+  attachmentFileName.value = undefined
+  formModalOpen.value = true
+}
+
+function openEditModal(row: PortfolioMaterialVO) {
+  editingId.value = row.id
+  form.materialType = row.materialType
+  form.materialTitle = row.materialTitle ?? ''
+  form.fileNodeId = row.fileNodeId ?? ''
+  form.categoryCode = row.categoryCode ?? ''
+  attachmentFileName.value = row.materialTitle
+  formModalOpen.value = true
+}
+
+async function submitForm() {
+  if (!form.materialTitle.trim()) {
+    message.warning('请填写材料标题')
+    return
+  }
+  if (!form.fileNodeId) {
+    message.warning('请上传材料文件')
+    return
+  }
+  saving.value = true
+  try {
+    await portfolioMaterialApi.save({
+      ...(editingId.value ? { id: editingId.value } : {}),
+      ...(targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}),
+      materialType: form.materialType,
+      materialTitle: form.materialTitle.trim(),
+      fileNodeId: form.fileNodeId,
+      categoryCode: form.categoryCode?.trim() || undefined,
+    })
+    message.success(editingId.value ? '材料已更新' : '材料已登记')
+    formModalOpen.value = false
+    await loadPage()
+  }
+  catch (error) {
+    showUserError(error, '保存材料失败')
+  }
+  finally {
+    saving.value = false
+  }
+}
+
+async function deleteMaterial(row: PortfolioMaterialVO) {
+  const confirmed = await confirmAsync({
+    title: '删除材料',
+    content: `确认删除「${row.materialTitle ?? row.id}」？`,
+    type: 'error',
+  })
+  if (!confirmed) {
+    return
+  }
+  try {
+    await portfolioMaterialApi.delete(row.id)
+    message.success('材料已删除')
+    await loadPage()
+  }
+  catch (error) {
+    showUserError(error, '删除材料失败')
+  }
+}
+
+usePortfolioScopedLoader(() => {
+  pageNum.value = 1
+  void loadPage()
+}, () => targetTeacherId.value)
+</script>
+
+<template>
+  <StageWorkbenchShell>
+    <ContextBar title="材料库" description="教师佐证材料登记、OCR 检索与复用">
+      <template #actions>
+        <UiButton variant="primary" @click="openCreateModal">
+          登记材料
+        </UiButton>
+        <UiButton :loading="loading" @click="() => void loadPage()">
+          刷新
+        </UiButton>
+      </template>
+    </ContextBar>
+
+    <UiFilterBar v-model="filterModel" :fields="filterFields" @search="handleSearch">
+      <template #extra>
+        <Input.Search
+          v-model:value="searchKeyword"
+          allow-clear
+          placeholder="OCR 全文检索"
+          @search="handleSearch"
+        />
+      </template>
+    </UiFilterBar>
+
+    <UiCard :title="showSearchResults ? 'OCR 检索结果' : '材料列表'">
+      <UiDataTable
+        v-if="showSearchResults && (searchRows.length || searchLoading)"
+        v-model:current="searchPageNum"
+        v-model:page-size="searchPageSize"
+        pagination-mode="server"
+        :columns="searchColumns"
+        :data-source="searchRows"
+        :loading="searchLoading"
+        :total="searchPageTotal"
+        row-key="materialId"
+        @page-change="() => void searchOcr()"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'materialType'">
+            {{ materialTypeLabel(record.materialType) }}
+          </template>
+        </template>
+      </UiDataTable>
+      <UiDataTable
+        v-else-if="rows.length || loading"
+        v-model:current="pageNum"
+        v-model:page-size="pageSize"
+        pagination-mode="server"
+        :columns="listColumns"
+        :data-source="rows"
+        :loading="loading"
+        :total="pageTotal"
+        row-key="id"
+        @page-change="() => void loadPage()"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'materialType'">
+            {{ materialTypeLabel(record.materialType) }}
+          </template>
+          <template v-else-if="column.key === 'status'">
+            <UiTag v-if="record.status" :tone="materialStatusTone(record.status)">
+              {{ materialStatusLabel(record.status) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'ocrStatus'">
+            <UiTag
+              v-if="isOcrStatusCode(record.ocrStatus)"
+              :tone="ocrStatusTone(record.ocrStatus)"
+            >
+              {{ ocrStatusLabel(record.ocrStatus) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell">
+              <button type="button" class="op-link" @click="openEditModal(record)">
+                编辑
+              </button>
+              <button type="button" class="op-link op-link--danger" @click="() => void deleteMaterial(record)">
+                删除
+              </button>
+            </div>
+          </template>
+        </template>
+      </UiDataTable>
+      <UiEmpty v-else :description="showSearchResults ? '未命中 OCR 结果' : '暂无材料'" />
+    </UiCard>
+
+    <a-modal
+      v-model:open="formModalOpen"
+      :title="modalTitle"
+      ok-text="保存"
+      cancel-text="取消"
+      :confirm-loading="saving"
+      @ok="() => void submitForm()"
+    >
+      <Input
+        v-model:value="form.materialTitle"
+        class="teacher-materials__field"
+        placeholder="材料标题"
+      />
+      <a-select
+        v-model:value="form.materialType"
+        class="teacher-materials__field teacher-materials__select"
+        :options="materialTypeOptions"
+        placeholder="材料类型"
+      />
+      <Input
+        v-model:value="form.categoryCode"
+        class="teacher-materials__field"
+        placeholder="关联分类编码（可选）"
+      />
+      <UiPlatformFileField
+        v-model:file-node-id="form.fileNodeId"
+        v-model:file-name="attachmentFileName"
+        :scene-key="FileUploadSceneKey.PORTFOLIO_MATERIAL"
+        label="材料文件"
+      />
+    </a-modal>
+  </StageWorkbenchShell>
+</template>
+
+<style scoped lang="scss">
+.teacher-materials__field {
+  display: block;
+  width: 100%;
+  margin-bottom: var(--dp-space-3, 12px);
+}
+
+.teacher-materials__select {
+  width: 100%;
+}
+</style>

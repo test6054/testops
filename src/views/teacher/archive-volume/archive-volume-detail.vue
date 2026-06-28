@@ -301,35 +301,15 @@
 <script setup lang="ts">
 import type {
   ArchiveAppraisalStatusCode,
-  ArchiveVolumeAccessRecordVO,
-  ArchiveVolumeDetailVO,
+  ArchiveRemediationStatusCode,
+  ArchiveRemediationTaskVO, ArchiveVolumeAccessRecordVO, ArchiveVolumeDetailVO
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
-import {
-  ARCHIVE_APPRAISAL_STATUS_LABEL,
-  ARCHIVE_APPRAISAL_STATUS_TONE,
-  ARCHIVE_INTEGRITY_STATUS_LABEL,
-  ARCHIVE_INTEGRITY_STATUS_TONE,
-  ARCHIVE_REMEDIATION_STATUS_LABEL,
-  ARCHIVE_TRANSFER_STATUS_LABEL,
-  ARCHIVE_TRANSFER_STATUS_TONE,
-  ARCHIVE_VOLUME_SOURCE_TYPE_LABEL,
-  ARCHIVE_VOLUME_SOURCE_TYPE_TONE,
-  ARCHIVE_VOLUME_STATUS_LABEL,
-  ARCHIVE_VOLUME_STATUS_TONE,
-  checkArchiveVolumeIntegrity,
-  exportArchiveVolume,
-  getArchiveVolumeDetail,
-  getRemediationTask,
-  submitArchiveVolume,
-  updateRemediationTask,
-  type ArchiveRemediationStatusCode,
-  type ArchiveRemediationTaskVO,
-} from '@/apis/mark/archive-volume'
+import { ARCHIVE_APPRAISAL_STATUS_LABEL, ARCHIVE_APPRAISAL_STATUS_TONE, ARCHIVE_INTEGRITY_STATUS_LABEL, ARCHIVE_INTEGRITY_STATUS_TONE, ARCHIVE_REMEDIATION_STATUS_LABEL, ARCHIVE_TRANSFER_STATUS_LABEL, ARCHIVE_TRANSFER_STATUS_TONE, ARCHIVE_VOLUME_SOURCE_TYPE_LABEL, ARCHIVE_VOLUME_SOURCE_TYPE_TONE, ARCHIVE_VOLUME_STATUS_LABEL, ARCHIVE_VOLUME_STATUS_TONE, checkArchiveVolumeIntegrity, exportArchiveVolume, getArchiveVolumeDetail, getRemediationTask, submitArchiveVolume, updateRemediationTask } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -340,8 +320,8 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { canSubmitArchiveVolumeDetail, describeSubmitBlockReason, isScoreSubmitReady } from '@/composables/useArchiveVolumeSubmitGate'
 import { useUserStore } from '@/stores/modules/user'
-import { showUserError } from '@/utils/error-handler'
 import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveVolumeAccessPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeAccessPanel.vue'
