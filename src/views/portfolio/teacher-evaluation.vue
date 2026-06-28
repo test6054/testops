@@ -91,9 +91,6 @@ const selectedNoticeId = ref('')
 const pageNum = ref(1)
 const pageSize = ref(10)
 const pageTotal = ref(0)
-const publicityPageNum = ref(1)
-const publicityPageSize = ref(10)
-const publicityPageTotal = ref(0)
 const objectionModalOpen = ref(false)
 const objectionTarget = ref<PortfolioEvaluationPublicityListItemVO | null>(null)
 const objectionForm = reactive({
@@ -180,13 +177,10 @@ async function loadNotices() {
 async function loadPublicity() {
   publicityLoading.value = true
   try {
-    const page = await portfolioEvaluationPublicityApi.pagePublicity({
-      ...(targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}),
-      pageNum: publicityPageNum.value,
-      pageSize: publicityPageSize.value,
-    })
-    publicityRows.value = readPageList(page, '加载评价公示失败')
-    publicityPageTotal.value = readPageTotal(page)
+    const rows = await portfolioEvaluationPublicityApi.listPublicity(
+      targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+    )
+    publicityRows.value = rows
     const firstRow = publicityRows.value[0]
     if (firstRow) {
       await loadResultSummary(firstRow.evaluationTaskId)
@@ -302,7 +296,6 @@ function goArchive() {
 
 usePortfolioScopedLoader(() => {
   pageNum.value = 1
-  publicityPageNum.value = 1
   void loadNotices()
   void loadPublicity()
 }, () => targetTeacherId.value)
@@ -393,15 +386,10 @@ usePortfolioScopedLoader(() => {
     <UiCard title="评价公示" class="teacher-evaluation__block">
       <UiDataTable
         v-if="publicityRows.length || publicityLoading"
-        v-model:current="publicityPageNum"
-        v-model:page-size="publicityPageSize"
-        pagination-mode="server"
         :columns="publicityColumns"
         :data-source="publicityRows"
         :loading="publicityLoading"
-        :total="publicityPageTotal"
         :row-key="publicityRowKey"
-        @page-change="() => void loadPublicity()"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'publicityStatus'">

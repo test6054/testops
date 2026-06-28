@@ -1402,7 +1402,7 @@ export const PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE: Record<PortfolioEvaluat
   CLOSED: 'gray',
 }
 
-export interface PortfolioEvaluationPublicityPageRequest extends QueryDto {
+export interface PortfolioEvaluationPublicityListRequest {
   evaluationTaskId?: string
   teacherId?: string
 }

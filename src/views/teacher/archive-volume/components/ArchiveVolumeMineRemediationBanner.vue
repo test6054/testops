@@ -70,12 +70,12 @@
 </template>
 
 <script lang="ts" setup>
+import type {ArchiveRemediationStatusCode, ArchiveRemediationTaskVO} from '@/apis/mark/archive-volume';
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed } from 'vue'
 import {
   ARCHIVE_REMEDIATION_STATUS_LABEL
 } from '@/apis/mark/archive-volume'
-import type {ArchiveRemediationStatusCode, ArchiveRemediationTaskVO} from '@/apis/mark/archive-volume';
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'

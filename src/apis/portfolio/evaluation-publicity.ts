@@ -5,7 +5,7 @@ import type {
   PortfolioEvaluationObjectionSubmitRequest,
   PortfolioEvaluationObjectionSummaryVO,
   PortfolioEvaluationPublicityListItemVO,
-  PortfolioEvaluationPublicityPageRequest,
+  PortfolioEvaluationPublicityListRequest,
   PortfolioEvaluationPublicityPublishRequest,
   PortfolioEvaluationResultSummaryRequest,
   PortfolioEvaluationTaskAdvanceRequest,
@@ -17,8 +17,8 @@ import http from '@/config/axios'
 const BASE = '/api/portfolio/evaluation'
 
 export const portfolioEvaluationPublicityApi = {
-  pagePublicity: (data: PortfolioEvaluationPublicityPageRequest = { pageNum: 1, pageSize: 20 }) =>
-    http.post<PageResult<PortfolioEvaluationPublicityListItemVO>>(`${BASE}/publicity/list`, data),
+  listPublicity: (data: PortfolioEvaluationPublicityListRequest = {}) =>
+    http.post<PortfolioEvaluationPublicityListItemVO[]>(`${BASE}/publicity/list`, data),
   publishPublicity: (data: PortfolioEvaluationPublicityPublishRequest) =>
     http.post<string>(`${BASE}/publicity/publish`, data),
   submitObjection: (data: PortfolioEvaluationObjectionSubmitRequest) =>
