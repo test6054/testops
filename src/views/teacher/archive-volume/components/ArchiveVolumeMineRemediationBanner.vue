@@ -70,17 +70,16 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { computed } from 'vue'
 import {
-  ARCHIVE_REMEDIATION_STATUS_LABEL,
-  type ArchiveRemediationStatusCode,
-  type ArchiveRemediationTaskVO,
+  ARCHIVE_REMEDIATION_STATUS_LABEL
 } from '@/apis/mark/archive-volume'
+import type {ArchiveRemediationStatusCode, ArchiveRemediationTaskVO} from '@/apis/mark/archive-volume';
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 

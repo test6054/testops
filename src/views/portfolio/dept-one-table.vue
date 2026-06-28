@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioDeptOneTableSummaryVO, PortfolioDeptOneTableTeacherRowVO } from '@/apis/portfolio/teacher'
 import type { PortfolioDevelopmentPlanStatus } from '@/apis/portfolio/enums'
+import type { PortfolioDeptOneTableSummaryVO, PortfolioDeptOneTableTeacherRowVO } from '@/apis/portfolio/teacher'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL, PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE } from '@/apis/portfolio/enums'

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { PaperArchiveOcrStatusCode } from '@/apis/mark/paper-archive'
 import type {
   PortfolioMaterialSaveRequest,
   PortfolioMaterialSearchResponse,
@@ -8,7 +8,7 @@ import type {
   PortfolioMaterialType,
   PortfolioMaterialVO,
 } from '@/apis/portfolio/types'
-import type { PaperArchiveOcrStatusCode } from '@/apis/mark/paper-archive'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import { Input, message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import {

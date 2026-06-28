@@ -10,7 +10,7 @@ import type {
   PortfolioEvaluationTeacherNoticeVO,
   PortfolioEvaluationTeacherResultSummaryVO,
 } from '@/apis/portfolio/types'
-import { Input, Select, message } from 'ant-design-vue'
+import { Input, message, Select } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -27,12 +27,12 @@ import {
   PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_LABEL,
   PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE,
 } from '@/apis/portfolio/types'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
@@ -141,10 +141,7 @@ function canViewerSubmitObjection(record: PortfolioEvaluationPublicityListItemVO
   if (!record.canSubmitObjection) {
     return false
   }
-  if (canPickTeachers.value && targetTeacherId.value && targetTeacherId.value !== currentUserId.value) {
-    return false
-  }
-  return true
+  return !(canPickTeachers.value && targetTeacherId.value && targetTeacherId.value !== currentUserId.value);
 }
 
 function publicityRowKey(record: unknown): string {

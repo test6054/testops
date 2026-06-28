@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioDualTeacherApplicationStatus } from '@/apis/portfolio/enums'
-import type { PortfolioDualTeacherAnalyticsVO } from '@/apis/portfolio/teacher-platform'
-import type { PortfolioDoubleDutyAnalyticsVO } from '@/apis/portfolio/teacher-platform'
+import type { PortfolioDualTeacherApplicationStatus, PortfolioKeyTeacherRegistryStatus } from '@/apis/portfolio/enums'
 import type { PortfolioDeptStructureStatVO } from '@/apis/portfolio/teacher'
-import type { PortfolioExternalTeacherStatsVO } from '@/apis/portfolio/teacher-platform'
+import type { PortfolioDoubleDutyAnalyticsVO, PortfolioDualTeacherAnalyticsVO, PortfolioExternalTeacherStatsVO } from '@/apis/portfolio/teacher-platform'
 import { onMounted, ref } from 'vue'
 import { PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL, PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL } from '@/apis/portfolio/enums'
-import type { PortfolioKeyTeacherRegistryStatus } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   portfolioDoubleDutyApi,

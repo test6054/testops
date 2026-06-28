@@ -1,3 +1,4 @@
+import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
 import type {
   PortfolioEvaluationObjectionHandleRequest,
   PortfolioEvaluationObjectionPageRequest,
@@ -10,7 +11,6 @@ import type {
   PortfolioEvaluationTaskAdvanceRequest,
   PortfolioEvaluationTeacherResultSummaryVO,
 } from '@/apis/portfolio/types'
-import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
 import type { PageResult } from '@/types'
 import http from '@/config/axios'
 
