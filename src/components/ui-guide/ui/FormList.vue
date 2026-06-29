@@ -233,7 +233,7 @@ const moveItem = (index: number, offset: number) => {
 
 .dp-form-list__card {
   border: 1px solid var(--ant-color-border, var(--dp-border, #e5e7eb));
-  border-radius: var(--dp-radius-lg, 8px);
+  border-radius: var(--dp-radius-panel, 8px);
   background: linear-gradient(
     180deg,
     var(--ant-color-primary-bg, var(--dp-surface-subtle, #f8fafc)) 0%,
@@ -263,7 +263,7 @@ const moveItem = (index: number, offset: number) => {
 .dp-form-list__badge {
   width: 28px;
   height: 28px;
-  border-radius: var(--dp-radius-md, var(--dp-radius-control-inner, 4px));
+  border-radius: var(--dp-radius-panel, var(--dp-radius-control-inner, 4px));
   background: var(--ant-color-primary-bg, var(--dp-surface-subtle, #f8fafc));
   color: var(--ant-color-primary-active, var(--dp-blue-700, #1d4ed8));
   font-weight: 700;
@@ -292,7 +292,7 @@ const moveItem = (index: number, offset: number) => {
 
 .dp-form-list__empty {
   border: 1px dashed var(--ant-color-border, var(--dp-border, #e5e7eb));
-  border-radius: var(--dp-radius-lg, 8px);
+  border-radius: var(--dp-radius-panel, 8px);
   background: var(--ant-color-fill-tertiary, var(--dp-gray-50, #f8fafc));
   padding: 16px;
 }
@@ -301,7 +301,7 @@ const moveItem = (index: number, offset: number) => {
   width: 100%;
   border-style: dashed;
   border-color: var(--ant-color-border, currentColor);
-  border-radius: var(--dp-radius-lg, 8px);
+  border-radius: var(--dp-radius-panel, 8px);
   background: linear-gradient(
     90deg,
     var(--ant-color-primary-bg, var(--dp-surface-subtle, #f8fafc)) 0%,

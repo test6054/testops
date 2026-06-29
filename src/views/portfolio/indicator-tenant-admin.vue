@@ -301,16 +301,18 @@ onMounted(loadConfig)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="租户指标配置" subtitle="启停 · 场景权重 · 行业包挂载">
-      <template #actions>
-        <UiButton @click="exportCatalog">
-          导出目录
-        </UiButton>
-        <UiButton @click="router.push({ name: 'PortfolioIndicatorPublishWizard' })">
-          发布向导
-        </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar show-title layout="workbench" title="租户指标配置">
+        <template #actions>
+          <UiButton @click="exportCatalog">
+            导出目录
+          </UiButton>
+          <UiButton @click="router.push({ name: 'PortfolioIndicatorPublishWizard' })">
+            发布向导
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
     <UiCard>
       <a-tabs :active-key="activeTab" @change="onTabChange">
         <a-tab-pane key="config" tab="指标启停">

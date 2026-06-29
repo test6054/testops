@@ -157,7 +157,9 @@ onMounted(loadPage)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="荣誉库" subtitle="荣誉综合查询、统计与导出" />
+    <template #context>
+  <ContextBar show-title layout="workbench" title="荣誉库" />
+</template>
     <UiCard>
       <div v-if="stats" class="stats">
         <span v-for="item in stats.levelCounts" :key="item.levelCode">

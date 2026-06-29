@@ -115,7 +115,7 @@ defineExpose({ reload: loadOptions })
       :value="opt.id"
       :label="`${opt.objectiveCode} · ${opt.objectiveName}`"
     >
-      <span class="text-xs text-gray-500 mr-1">{{ opt.objectiveCode }}</span>
+      <span class="dp-selector-option-code">{{ opt.objectiveCode }}</span>
       {{ opt.objectiveName }}
     </a-select-option>
   </a-select>

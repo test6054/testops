@@ -1,6 +1,6 @@
 <template>
   <div class="marking-overview-analytics">
-    <UiCard title="旅程阶段分布" :description="scopeHint">
+    <UiCard title="旅程阶段分布" :description="scopeHint" bordered compact>
       <MarkBarSection
         title="各阶段考试数"
         :hint="scopeHint"
@@ -12,7 +12,7 @@
       />
     </UiCard>
 
-    <UiCard title="筛选域阅卷进度" :description="scopeHint">
+    <UiCard title="筛选域阅卷进度" :description="scopeHint" bordered compact>
       <MarkBarSection
         title="阅卷进度汇总"
         :hint="scopeHint"
@@ -24,7 +24,7 @@
       />
     </UiCard>
 
-    <UiCard title="待办类型构成" :description="scopeHint">
+    <UiCard title="待办类型构成" :description="scopeHint" bordered compact>
       <MarkBarSection
         title="待办类型分布"
         :hint="scopeHint"

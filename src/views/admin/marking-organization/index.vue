@@ -1,7 +1,9 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        title="阅卷组织"
+      >
         <template #status>
           <MarkExamSelect
             v-if="!isExamWorkspaceRoute"
@@ -547,11 +549,7 @@ onMounted(async () => {
   }
 
   &__signals {
-    margin-bottom: 0;
-    padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: 8px;
+    margin-bottom: 12px;
   }
 
   &__panel {

@@ -1,15 +1,5 @@
 /**
  * 批改经验沉淀 API - 对接 edu-mark 模块 GradingExperienceController
- *
- * 业务能力（按照 docs/17 §K6）：
- *   1. 题目签名 - generateSignatures / listSignatures / searchSimilar
- *   2. AI 经验提取 - extractExperience / listExperiences / listExperiencesByQuestion
- *   3. AI 答案聚类 - generateAnswerCluster / getLatestAnswerCluster
- *
- * 后端规则（注意混合方法）：
- *   - 写操作（generate / extract）走 POST，复杂查询走 POST + DTO
- *   - ≤ 2 参数的简单查询保留 GET + @RequestParam（symmetry-mark 模块约定）
- *   - searchSimilar 因 3 参数已强制 POST + SimilarQuestionSearchRequest
  */
 import type { AiAnalysisStatusCode } from './ai-analysis-status'
 import type { QuestionTypeCode } from './question-type'
@@ -41,6 +31,17 @@ export interface SimilarQuestionSearchRequest {
   questionTemplateId: string
   /** 最大返回条数，默认 10 */
   limit?: number
+}
+
+/** 考试详情查询 - 对应 ExamDetailQueryRequest */
+export interface ExamDetailQueryRequest {
+  examId: string
+}
+
+/** 考试 + 题目模板范围 - 对应 ExamQuestionScopeQueryRequest */
+export interface ExamQuestionScopeQueryRequest {
+  examId: string
+  questionTemplateId: string
 }
 
 /** 题目签名 VO - 对应 QuestionSignatureResponse */
@@ -117,35 +118,20 @@ export interface AnswerClusterRecordVO {
   createTime?: string
 }
 
-// ─── 题目签名 API ─────────────────────────────────
-
-/**
- * 为考试所有题目生成签名（写操作）
- * POST /api/exam/grading-experience/signature/generate?examId=
- */
 export function generateSignatures(examId: string): Promise<QuestionSignatureVO[]> {
   return http.post<QuestionSignatureVO[]>(
     '/api/exam/grading-experience/signature/generate',
-    null,
-    { params: { examId } },
+    { examId } satisfies ExamDetailQueryRequest,
   )
 }
 
-/**
- * 查询指定考试的题目签名列表（≤ 2 参数 GET 保留）
- * GET /api/exam/grading-experience/signature/list?examId=
- */
 export function listSignatures(examId: string): Promise<QuestionSignatureVO[]> {
-  return http.get<QuestionSignatureVO[]>(
+  return http.post<QuestionSignatureVO[]>(
     '/api/exam/grading-experience/signature/list',
-    { params: { examId } },
+    { examId } satisfies ExamDetailQueryRequest,
   )
 }
 
-/**
- * 检索跨考试相似题（3 参数已转 POST + DTO）
- * POST /api/exam/grading-experience/signature/similar
- */
 export function searchSimilar(
   request: SimilarQuestionSearchRequest,
 ): Promise<QuestionSignatureVO[]> {
@@ -155,75 +141,49 @@ export function searchSimilar(
   )
 }
 
-// ─── AI 经验提取 API ─────────────────────────────────
-
-/**
- * AI 提取批改经验（写操作 + AI 调用）
- * POST /api/exam/grading-experience/experience/extract?examId=&questionTemplateId=
- */
 export function extractExperience(
   examId: string,
   questionTemplateId: string,
 ): Promise<GradingExperienceCaseVO> {
   return http.post<GradingExperienceCaseVO>(
     '/api/exam/grading-experience/experience/extract',
-    null,
-    { params: { examId, questionTemplateId } },
+    { examId, questionTemplateId } satisfies ExamQuestionScopeQueryRequest,
   )
 }
 
-/**
- * 查询考试维度的所有经验案例
- * GET /api/exam/grading-experience/experience/list?examId=
- */
 export function listExperiences(examId: string): Promise<GradingExperienceCaseVO[]> {
-  return http.get<GradingExperienceCaseVO[]>(
+  return http.post<GradingExperienceCaseVO[]>(
     '/api/exam/grading-experience/experience/list',
-    { params: { examId } },
+    { examId } satisfies ExamDetailQueryRequest,
   )
 }
 
-/**
- * 查询指定题目的经验案例列表（按时间倒序）
- * GET /api/exam/grading-experience/experience/by-question?examId=&questionTemplateId=
- */
 export function listExperiencesByQuestion(
   examId: string,
   questionTemplateId: string,
 ): Promise<GradingExperienceCaseVO[]> {
-  return http.get<GradingExperienceCaseVO[]>(
+  return http.post<GradingExperienceCaseVO[]>(
     '/api/exam/grading-experience/experience/by-question',
-    { params: { examId, questionTemplateId } },
+    { examId, questionTemplateId } satisfies ExamQuestionScopeQueryRequest,
   )
 }
 
-// ─── AI 答案聚类 API ─────────────────────────────────
-
-/**
- * AI 对指定题目执行答案聚类（写操作 + AI 调用）
- * POST /api/exam/grading-experience/answer-cluster/generate?examId=&questionTemplateId=
- */
 export function generateAnswerCluster(
   examId: string,
   questionTemplateId: string,
 ): Promise<AnswerClusterRecordVO> {
   return http.post<AnswerClusterRecordVO>(
     '/api/exam/grading-experience/answer-cluster/generate',
-    null,
-    { params: { examId, questionTemplateId } },
+    { examId, questionTemplateId } satisfies ExamQuestionScopeQueryRequest,
   )
 }
 
-/**
- * 查询指定题目最新的答案聚类结果
- * GET /api/exam/grading-experience/answer-cluster/latest?examId=&questionTemplateId=
- */
 export function getLatestAnswerCluster(
   examId: string,
   questionTemplateId: string,
 ): Promise<AnswerClusterRecordVO | null> {
-  return http.get<AnswerClusterRecordVO | null>(
+  return http.post<AnswerClusterRecordVO | null>(
     '/api/exam/grading-experience/answer-cluster/latest',
-    { params: { examId, questionTemplateId } },
+    { examId, questionTemplateId } satisfies ExamQuestionScopeQueryRequest,
   )
 }

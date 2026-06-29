@@ -49,7 +49,7 @@ const resolvedTone = computed<BadgeTone>(() => (props.empty ? 'gray' : props.ton
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  border-radius: var(--dp-radius-sm, 6px);
+  border-radius: var(--dp-radius-control-inner, 6px);
   border: 1px solid transparent;
   color: var(--tag-text);
   font-family: var(--dp-font-family), sans-serif;
@@ -126,7 +126,7 @@ const resolvedTone = computed<BadgeTone>(() => (props.empty ? 'gray' : props.ton
 }
 
 .ui-tag--purple {
-  --tag-text: var(--dp-purple-700, #7c3aed);
+  --tag-text: var(--dp-purple-700, var(--dp-purple-500, #722ed1));
   --tag-bg: var(--dp-purple-50, #f5f3ff);
   --tag-border: var(--dp-purple-200, #ddd6fe);
 }

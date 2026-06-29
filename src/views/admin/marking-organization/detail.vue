@@ -1,7 +1,11 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="organization ? organizationExamLabel : '阅卷组织详情'"
+      >
         <template #status>
           <UiTag
             v-if="organization"
@@ -1265,7 +1269,6 @@ async function submitAllocation(): Promise<void> {
       batchSize: policyForm.batchSize,
       loadLimit: policyForm.loadLimit,
       anonymousTokenPolicy: policyForm.anonymousTokenPolicy,
-      dualReviewEnabled: false,
     }
     await saveAllocationPolicy(request)
     message.success('分配策略已保存')
@@ -1385,7 +1388,7 @@ watch(
   margin-top: 12px;
   padding: 12px 16px;
   border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-lg, 8px);
+  border-radius: var(--dp-radius-panel, 8px);
   background: var(--dp-surface, #fff);
 }
 

@@ -47,7 +47,9 @@ onMounted(loadStats)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="双师认定分析" subtitle="申请状态分布与通过等级结构" />
+    <template #context>
+  <ContextBar show-title layout="workbench" title="双师认定分析" />
+</template>
     <a-spin :spinning="loading">
       <UiEmpty v-if="!loading && !stats" description="当前筛选无双师分析数据" />
       <div v-else-if="stats" class="grid">

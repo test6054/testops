@@ -8,15 +8,10 @@
   >
     <div v-if="!collapsed" class="exam-sub-sidebar__exam-switch">
       <ExamSidebarExamSwitch
-        :selected-exam-id="selectedExamId"
-        :exam-options="examOptions"
-        :selector-loading="selectorLoading"
         :exam-display-name="examDisplayName"
         :exam-display-no="examDisplayNo"
         :exam-status-label="examStatusLabel"
         :exam-status-tone="examStatusTone"
-        @exam-change="(value) => emit('exam-change', value)"
-        @exam-search="(keyword) => emit('exam-search', keyword)"
       />
     </div>
 
@@ -39,7 +34,6 @@
         <ExamSubSidebarNav
           :active-journey-key="activeJourneyKey"
           :active-menu-key="activeMenuKey"
-          :ordered-stages="orderedStages"
           :collapsed="collapsed"
           :menu-icon-map="menuIconMap"
           @menu-click="(key) => emit('menu-click', key)"
@@ -61,14 +55,12 @@
 </template>
 
 <script lang="ts" setup>
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { Component } from 'vue'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { WorkbenchStage } from '@/types/workbench'
-import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
 import MenuFoldOutlined from '@ant-design/icons-vue/MenuFoldOutlined'
 import MenuUnfoldOutlined from '@ant-design/icons-vue/MenuUnfoldOutlined'
 import ExamJourneySidebarNav from '@/components/workbench/ExamJourneySidebarNav.vue'
@@ -82,9 +74,6 @@ defineOptions({
 defineProps<{
   examStatusLabel: string
   examStatusTone: BadgeTone | undefined
-  selectedExamId: string
-  examOptions: MarkExamSelectOption[]
-  selectorLoading?: boolean
   examDisplayName?: string
   examDisplayNo?: string
   activeMenuKey: string
@@ -92,7 +81,6 @@ defineProps<{
   journeyStages: WorkbenchStage[]
   suggestedStageKey?: MarkStageKey | null
   journeyLoading?: boolean
-  orderedStages: WorkbenchStage[]
   collapsed: boolean
   mobileOpen: boolean
   menuIconMap: Record<ExamWorkspaceMenuKey, Component>
@@ -102,8 +90,6 @@ const emit = defineEmits<{
   (e: 'menu-click', key: string): void
   (e: 'journey-select', key: string): void
   (e: 'overview-select'): void
-  (e: 'exam-change', value: SelectValue): void
-  (e: 'exam-search', keyword: string): void
   (e: 'toggle-collapse'): void
 }>()
 </script>
@@ -123,7 +109,7 @@ const emit = defineEmits<{
   }
 
   &__exam-switch {
-    padding: 12px 12px 8px;
+    padding: 16px 16px 12px;
     flex-shrink: 0;
   }
 
@@ -174,7 +160,7 @@ const emit = defineEmits<{
     width: 28px;
     height: 28px;
     border: none;
-    border-radius: var(--dp-radius-md);
+    border-radius: var(--dp-radius-panel);
     background: transparent;
     color: var(--ant-color-text-tertiary);
     cursor: pointer;

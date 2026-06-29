@@ -27,7 +27,7 @@ withDefaults(defineProps<{
 .ui-info-grid {
   display: grid;
   border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-lg);
+  border-radius: var(--dp-radius-panel);
   overflow: hidden;
 
   &--2col {

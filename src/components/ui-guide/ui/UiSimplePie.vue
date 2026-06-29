@@ -46,7 +46,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   items: () => [],
   size: 'md',
-  colors: () => ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'],
+  colors: () => ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', 'var(--dp-purple-500, #722ed1)', '#06b6d4', '#ec4899'],
   showLegend: true,
 })
 

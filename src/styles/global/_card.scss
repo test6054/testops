@@ -4,7 +4,7 @@
 :global(.overview-stat-card),
 :global(.stat-card.dp-statcard) {
   border: 1px solid var(--ant-color-border) !important;
-  border-radius: var(--dp-radius-lg) !important;
+  border-radius: var(--dp-radius-panel) !important;
   background: var(--ant-color-bg-container) !important;
   box-shadow: var(--dp-shadow-card);
   transition: border-color var(--dp-duration-fast) ease;
@@ -25,7 +25,7 @@
 :global(.stats-row .stat-card .stat-icon-wrapper) {
   width: 40px;
   height: 40px;
-  border-radius: var(--dp-radius-lg);
+  border-radius: var(--dp-radius-panel);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -65,7 +65,7 @@
 
 // 渐变卡片
 .gradient-card {
-  border-radius: var(--dp-radius-md);
+  border-radius: var(--dp-radius-panel);
   border: 1px solid var(--ant-color-border-secondary);
 
   & > .ant-card-head {
@@ -76,7 +76,7 @@
   .item {
     align-items: center;
     display: flex;
-    margin-bottom: 20px;
+    margin-bottom: var(--dp-space-5);
 
     .icon-wrapper {
       align-items: center;
@@ -90,19 +90,19 @@
 
     .info {
       flex: 1 1;
-      margin: 0 16px;
+      margin: 0 var(--dp-space-4);
 
       &-top {
-        margin-bottom: 4px;
+        margin-bottom: var(--dp-space-1);
 
         .label {
           font-weight: 500;
           line-height: 22px;
-          margin-right: 12px;
+          margin-right: var(--dp-space-3);
         }
 
         .bind {
-          font-size: 12px;
+          font-size: var(--dp-font-size-xs);
           font-weight: 500;
           line-height: 20px;
         }
@@ -110,7 +110,7 @@
 
       &-desc {
         color: var(--ant-color-text-tertiary);
-        font-size: 12px;
+        font-size: var(--dp-font-size-xs);
         font-weight: 400;
         line-height: 20px;
 
@@ -138,20 +138,20 @@
 
   .detail {
     display: flex;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     justify-content: flex-start;
-    margin: -5px 0 0 64px;
+    margin: calc(-1 * var(--dp-space-1) + 1px) 0 0 var(--dp-space-16);
 
     .sub-text-wrapper {
       width: 100%;
       border-left: 2px solid var(--ant-color-fill);
-      padding-left: 12px;
+      padding-left: var(--dp-space-3);
 
       .sub-text {
         color: var(--ant-color-text-secondary);
         font-weight: 400;
         line-height: 20px;
-        margin-bottom: 8px;
+        margin-bottom: var(--dp-space-2);
 
         &-value {
           background: var(--ant-color-fill-quaternary);
@@ -162,7 +162,7 @@
       }
 
       .ant-typography-link.link {
-        font-size: 12px;
+        font-size: var(--dp-font-size-xs);
         padding: 0;
       }
     }

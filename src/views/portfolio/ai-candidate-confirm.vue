@@ -489,19 +489,16 @@ onMounted(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="portfolio-ai-confirm__context">
-        <div>
-          <h1 class="portfolio-ai-confirm__title">AI 候选字段确认</h1>
-          <p class="portfolio-ai-confirm__desc">
-            上传材料触发 OCR / 文档抽取后，在此逐项确认或补全候选字段；含脱敏占位符的字段须人工补全后方可确认入档。
-          </p>
-        </div>
-      </div>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="AI 候选字段确认"
+      />
     </template>
 
     <UiEmpty
       v-if="canPickTeachers && !scopeReady"
-      description="请先在页顶选择目标教师，再提交 AI 抽取或确认候选字段"
+      description="请先在页顶选择目标教师"
     />
 
     <UiCard v-else-if="targetTeacherId && canOperateSelectedTeacher" title="提交 AI 抽取" class="portfolio-ai-confirm__card">

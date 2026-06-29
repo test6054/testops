@@ -1,7 +1,9 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        title="考试历史"
+      >
         <template #status>
           <UiTag tone="blue" size="sm">{{ exams.length }} 场</UiTag>
           <UiTag v-if="publishedCount > 0" tone="green" size="sm">
@@ -17,7 +19,7 @@
         <span>考试列表</span>
       </template>
 
-      <UiFilterBar
+      <UiFilterBar variant="plain"
         v-model="historyFilterForm"
         :fields="historyFilterFields"
         search-text="查询"

@@ -1,7 +1,10 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        show-title
+        title="课程考核归档卷"
+      >
         <template #status>
           <UiTag tone="blue" size="sm">课程考核归档卷</UiTag>
           <UiTag tone="gray" size="sm">{{ tabLabel }}</UiTag>
@@ -56,9 +59,7 @@
           v-if="listTab === 'mine'"
           :tasks="openRemediationTasks"
           :loading="remediationLoading"
-          :error-message="remediationLoadError"
           class="archive-volume-list__alert"
-          @retry="loadOpenRemediationTasks"
           @go="goRemediationVolume"
         />
         <UiSectionTabs
@@ -81,6 +82,8 @@
           v-if="showVolumeFilter && archiveSubTab !== 'pending-access' && archiveSubTab !== 'search'"
           v-model="filterModel"
           :fields="filterFields"
+          variant="panel"
+          show-labels
           search-text="查询"
           @search="handleSearch"
           @reset="handleReset"
@@ -357,7 +360,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { canSubmitArchiveVolumeRow } from '@/composables/useArchiveVolumeSubmitGate'
 import { useUserStore } from '@/stores/modules/user'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -412,7 +415,6 @@ const reviewerVolumeId = ref('')
 const volumes = ref<ArchiveVolumeVO[]>([])
 const openRemediationTasks = ref<ArchiveRemediationTaskVO[]>([])
 const remediationLoading = ref(false)
-const remediationLoadError = ref<string | null>(null)
 const openRemediationVolumeIdSet = computed(() =>
   new Set(openRemediationTasks.value.map(task => task.volumeId)),
 )
@@ -1040,18 +1042,15 @@ async function downloadReviewerTransferPackage() {
 async function loadOpenRemediationTasks() {
   if (listTab.value !== 'mine') {
     openRemediationTasks.value = []
-    remediationLoadError.value = null
     remediationLoading.value = false
     return
   }
   remediationLoading.value = true
-  remediationLoadError.value = null
   try {
     openRemediationTasks.value = await listOpenRemediationTasks()
   }
   catch (error) {
     openRemediationTasks.value = []
-    remediationLoadError.value = getUserErrorMessage(error, '加载待整改任务失败')
     showUserError(error, '加载待整改任务失败')
   }
   finally {

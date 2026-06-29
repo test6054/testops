@@ -132,9 +132,9 @@ defineExpose({ reload: loadOptions })
       :value="opt.id"
       :label="`${opt.formCode} · ${opt.formName}`"
     >
-      <span class="text-xs text-gray-500 mr-1">{{ opt.formCode }}</span>
+      <span class="dp-selector-option-code">{{ opt.formCode }}</span>
       {{ opt.formName }}
-      <span v-if="opt.formType" class="text-gray-400 ml-1">· {{ formTypeLabel(opt.formType) }}</span>
+      <span v-if="opt.formType" class="dp-selector-option-meta">· {{ formTypeLabel(opt.formType) }}</span>
     </a-select-option>
   </a-select>
 </template>

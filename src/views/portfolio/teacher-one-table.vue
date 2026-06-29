@@ -23,6 +23,7 @@ const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const loading = ref(false)
 const exporting = ref(false)
+const loadFailed = ref(false)
 const summary = ref<PortfolioTeacherOneTableSummaryVO | null>(null)
 const deptStats = ref<PortfolioDeptStructureStatVO | null>(null)
 
@@ -39,6 +40,7 @@ async function loadSummary() {
     return
   }
   loading.value = true
+  loadFailed.value = false
   try {
     summary.value = await portfolioTeacherApi.getOneTableSummary({
       teacherId: targetTeacherId.value || undefined,
@@ -46,6 +48,7 @@ async function loadSummary() {
     deptStats.value = await portfolioTeacherApi.deptStructureStats()
   }
   catch (error) {
+    loadFailed.value = true
     showUserError(error)
   }
   finally {
@@ -89,21 +92,27 @@ usePortfolioScopedLoader(() => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="教师一张表" subtitle="主数据 · 身份标签 · 档案分类 · 成果荣誉汇总">
-      <template #actions>
-        <UiButton :loading="exporting" :disabled="canPickTeachers && !targetTeacherId" @click="exportOneTable">
-          导出一张表
-        </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar show-title layout="workbench" title="教师一张表">
+        <template #actions>
+          <UiButton :loading="exporting" :disabled="canPickTeachers && !targetTeacherId" @click="exportOneTable">
+            导出一张表
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
     <a-spin :spinning="loading">
       <UiEmpty
         v-if="canPickTeachers && !targetTeacherId"
         description="请从顶部教师范围选择目标教师"
       />
       <UiEmpty
+        v-else-if="loadFailed && !loading"
+        description="加载教师一张表失败"
+      />
+      <UiEmpty
         v-else-if="!loading && !summary"
-        description="暂无教师一张表数据，请稍后刷新"
+        description="暂无教师一张表数据"
       />
       <UiCard v-if="summary" title="教师概要">
         <div v-if="summary.correctionPending" class="correction-badge">

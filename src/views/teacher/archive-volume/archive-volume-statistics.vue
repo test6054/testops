@@ -1,7 +1,10 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        show-title
+        title="迎评统计"
+      >
         <template #status>
           <UiTag tone="blue" size="sm">迎评统计</UiTag>
         </template>
@@ -16,6 +19,8 @@
         <UiFilterBar
           v-model="filterModel"
           :fields="filterFields"
+          variant="panel"
+          show-labels
           search-text="查询"
           @search="loadStatistics"
           @reset="handleReset"
@@ -74,6 +79,8 @@
         <UiFilterBar
           v-model="destructionFilterModel"
           :fields="destructionFilterFields"
+          variant="panel"
+          show-labels
           search-text="查询"
           @search="loadDestructionLedger"
           @reset="handleDestructionReset"

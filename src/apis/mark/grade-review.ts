@@ -75,27 +75,15 @@ export function saveReviewWindowPolicy(
  * GET /api/exam/grade-review/window/get?examId=
  */
 export function getReviewWindowPolicy(examId: string): Promise<ExamReviewWindowPolicyVO | null> {
-  return http.get<ExamReviewWindowPolicyVO | null>('/api/exam/grade-review/window/get', {
-    params: { examId },
-  })
+  return http.post<ExamReviewWindowPolicyVO | null>('/api/exam/grade-review/window/get', { examId })
 }
 
-/**
- * 激活复核窗口
- * POST /api/exam/grade-review/window/activate?examId=
- */
 export function activateReviewWindow(examId: string): Promise<void> {
-  return http.post<void>(
-    `/api/exam/grade-review/window/activate?examId=${encodeURIComponent(examId)}`,
-  )
+  return http.post<void>('/api/exam/grade-review/window/activate', { examId })
 }
 
-/**
- * 关闭复核窗口
- * POST /api/exam/grade-review/window/close?examId=
- */
 export function closeReviewWindow(examId: string): Promise<void> {
-  return http.post<void>(`/api/exam/grade-review/window/close?examId=${encodeURIComponent(examId)}`)
+  return http.post<void>('/api/exam/grade-review/window/close', { examId })
 }
 
 // ─── 复核申请 ─────────────────────────────────
@@ -314,17 +302,11 @@ export function listMyReviewRequests(
  * GET /api/exam/grade-review/request/student-pending-count
  */
 export function countMyPendingReviewRequests(): Promise<number> {
-  return http.get<number>('/api/exam/grade-review/request/student-pending-count')
+  return http.post<number>('/api/exam/grade-review/request/student-pending-count', {})
 }
 
-/**
- * 查询复核处理汇总
- * GET /api/exam/grade-review/summary?examId=
- */
 export function getReviewSummary(examId: string): Promise<GradeReviewSummaryVO> {
-  return http.get<GradeReviewSummaryVO>('/api/exam/grade-review/summary', {
-    params: { examId },
-  })
+  return http.post<GradeReviewSummaryVO>('/api/exam/grade-review/summary', { examId })
 }
 
 /**

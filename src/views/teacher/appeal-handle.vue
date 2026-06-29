@@ -1,7 +1,10 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        show-title
+        title="成绩复核与更正"
+      >
         <template #status>
           <UiTag v-if="pendingCount > 0" tone="orange" size="sm">
             待处理复核 {{ pendingCount }}

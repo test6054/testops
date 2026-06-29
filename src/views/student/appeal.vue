@@ -791,7 +791,7 @@ async function loadSelectedExamQuestions(): Promise<void> {
   gap: 14px;
   padding: 14px 16px;
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 6px);
+  border-radius: var(--dp-radius-panel, 6px);
   cursor: pointer;
   background: #fff;
   transition:
@@ -947,7 +947,7 @@ async function loadSelectedExamQuestions(): Promise<void> {
   gap: 10px;
   padding: 10px 12px;
   background: var(--ant-color-fill-quaternary);
-  border-radius: var(--dp-radius-sm, 6px);
+  border-radius: var(--dp-radius-control-inner, 6px);
 
   &__score {
     margin-left: auto;

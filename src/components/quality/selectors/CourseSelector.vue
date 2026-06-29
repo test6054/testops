@@ -109,9 +109,9 @@ defineExpose({ reload: loadOptions })
       :value="opt.id"
       :label="`${opt.courseCode} · ${opt.courseName}`"
     >
-      <span class="text-xs text-gray-500 mr-1">{{ opt.courseCode }}</span>
+      <span class="dp-selector-option-code">{{ opt.courseCode }}</span>
       {{ opt.courseName }}
-      <span v-if="opt.schoolYear" class="text-gray-400 ml-1">
+      <span v-if="opt.schoolYear" class="dp-selector-option-meta">
         ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span>)
       </span>
     </a-select-option>

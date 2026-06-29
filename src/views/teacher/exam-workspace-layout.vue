@@ -11,16 +11,27 @@
         <img alt="logo" class="exam-detail-layout__logo-img" src="/logo.svg" />
         <span class="exam-detail-layout__logo-title">{{ appTitle }}</span>
       </div>
-      <UiButton
-        v-if="examId && !isImmersiveWorkspace"
-        class="exam-detail-layout__menu-toggle"
-        variant="outline"
-        size="sm"
-        @click="mobileNavOpen = true"
-      >
-        <template #icon><MenuOutlined /></template>
-        <span class="exam-detail-layout__menu-toggle-text">{{ mobileNavLabel }}</span>
-      </UiButton>
+      <div v-if="examId" class="exam-detail-layout__header-toolbar">
+        <UiButton
+          v-if="!isImmersiveWorkspace"
+          class="exam-detail-layout__menu-toggle"
+          variant="outline"
+          size="sm"
+          @click="mobileNavOpen = true"
+        >
+          <template #icon><MenuOutlined /></template>
+          <span class="exam-detail-layout__menu-toggle-text">{{ mobileNavLabel }}</span>
+        </UiButton>
+        <div class="exam-detail-layout__header-switcher">
+          <ExamSwitcher
+            :selected-exam-id="examId"
+            :options="examSwitcherOptions"
+            :loading="examSelectorLoading"
+            @change="onExamSwitch"
+            @search="onExamSearch"
+          />
+        </div>
+      </div>
       <div class="exam-detail-layout__header-gap" />
       <HeaderRightBar class="exam-detail-layout__header-right" />
     </header>
@@ -35,22 +46,16 @@
         v-if="examId && !isImmersiveWorkspace"
         :exam-status-label="examStatusLabel"
         :exam-status-tone="examStatusTone"
+        :exam-display-name="snapshot?.examName"
+        :exam-display-no="snapshot?.examNo"
         :active-menu-key="activeMenuKey"
         :active-journey-key="activeJourneyKey"
         :journey-stages="journeyStages"
         :suggested-stage-key="suggestedStageKey"
         :journey-loading="loading && !snapshot"
-        :ordered-stages="orderedStages"
         :collapsed="sidebarCollapsed"
         :mobile-open="mobileNavOpen"
         :menu-icon-map="menuIconMap"
-        :selected-exam-id="examId"
-        :exam-options="examOptions"
-        :selector-loading="examSelectorLoading"
-        :exam-display-name="snapshot?.examName"
-        :exam-display-no="snapshot?.examNo"
-        @exam-change="onExamSwitch"
-        @exam-search="onExamSearch"
         @menu-click="onMenuClick"
         @journey-select="(key) => onJourneySelect(key as ExamJourneyKey)"
         @overview-select="onOverviewSelect"
@@ -153,6 +158,8 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import ExamSubSidebar from '@/components/workbench/ExamSubSidebar.vue'
+import ExamSwitcher from '@/components/workbench/ExamSwitcher.vue'
+import type { ExamSwitcherOption } from '@/components/workbench/ExamSwitcher.vue'
 import { useExamJourneySteps } from '@/composables/useExamJourneySteps'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { provideMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
@@ -165,6 +172,7 @@ import {
 } from '@/constants/exam-workspace-menu'
 import HeaderRightBar from '@/layout/components/HeaderRightBar/index.vue'
 import { useAppStore } from '@/stores/modules/app'
+import { formatMarkExamOptionLabel } from '@/utils/mark-exam-option'
 import { navigateToJourneyStep } from '@/utils/mark-stage-navigation'
 
 defineOptions({ name: 'ExamWorkspaceLayout' })
@@ -223,6 +231,7 @@ const isImmersiveWorkspace = computed(() => route.meta.layoutWide === true)
 const isLayoutWide = isImmersiveWorkspace
 
 const {
+  exams,
   examOptions,
   loading: selectorLoading,
   searching: selectorSearching,
@@ -283,6 +292,41 @@ const examStatusTone = computed(() => {
     return undefined
   }
   return EXAM_STATUS_TONE[status]
+})
+
+function toExamSwitcherOption(exam: {
+  examId: string
+  examName: string
+  examNo?: string
+  status?: keyof typeof EXAM_STATUS_LABEL
+  examStatus?: keyof typeof EXAM_STATUS_LABEL
+}): ExamSwitcherOption {
+  const status = exam.examStatus ?? exam.status
+  return {
+    value: exam.examId,
+    label: formatMarkExamOptionLabel({
+      examName: exam.examName,
+      examNo: exam.examNo ?? '',
+    }),
+    statusLabel: status ? EXAM_STATUS_LABEL[status] : undefined,
+    statusTone: status ? EXAM_STATUS_TONE[status] : undefined,
+  }
+}
+
+const examSwitcherOptions = computed<ExamSwitcherOption[]>(() => {
+  const merged = new Map<string, ExamSwitcherOption>()
+  for (const item of exams.value) {
+    merged.set(item.examId, toExamSwitcherOption(item))
+  }
+  if (snapshot.value) {
+    merged.set(snapshot.value.examId, toExamSwitcherOption(snapshot.value))
+  }
+  for (const item of examOptions.value) {
+    if (!merged.has(item.value)) {
+      merged.set(item.value, { ...item })
+    }
+  }
+  return Array.from(merged.values())
 })
 
 function goExamList(): void {
@@ -408,34 +452,43 @@ watch(isImmersiveWorkspace, (immersive) => {
 
   &__header {
     --sidebar-width: 260px;
-    display: flex;
+    display: grid;
+    grid-template-columns: var(--sidebar-width) auto minmax(0, 1fr) auto;
     align-items: center;
     height: 56px;
-    padding: 0 16px;
+    padding: 0 24px 0 0;
     background: var(--ant-color-bg-container);
     border-bottom: 1px solid var(--ant-color-border-secondary);
     flex-shrink: 0;
-    gap: 16px;
+    overflow: visible;
 
     &--collapsed {
       --sidebar-width: 64px;
+
+      .exam-detail-layout__logo-title {
+        display: none;
+      }
     }
 
     &--immersive {
       --sidebar-width: auto;
+      grid-template-columns: auto auto minmax(0, 1fr) auto;
 
       .exam-detail-layout__logo {
         width: auto;
+        padding-left: 16px;
       }
     }
   }
 
   &__logo {
+    grid-column: 1;
     display: flex;
     align-items: center;
     gap: 8px;
     width: var(--sidebar-width);
     flex-shrink: 0;
+    padding-left: 24px;
     cursor: pointer;
     min-width: 0;
   }
@@ -455,8 +508,24 @@ watch(isImmersiveWorkspace, (immersive) => {
     white-space: nowrap;
   }
 
+  &__header-toolbar {
+    grid-column: 2;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &__header-switcher {
+    width: 320px;
+    max-width: 360px;
+    min-width: 0;
+    flex-shrink: 0;
+  }
+
   &__menu-toggle {
     display: none;
+    flex-shrink: 0;
   }
 
   &__backdrop {
@@ -464,7 +533,15 @@ watch(isImmersiveWorkspace, (immersive) => {
   }
 
   &__header-gap {
-    flex: 1;
+    grid-column: 3;
+    min-width: 0;
+  }
+
+  &__header-right {
+    grid-column: 4;
+    margin-left: 16px;
+    flex-shrink: 0;
+    min-width: 0;
   }
 
   &__body {
@@ -513,8 +590,39 @@ watch(isImmersiveWorkspace, (immersive) => {
   }
 
   @media (max-width: 768px) {
+    &__header {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      padding: 0 16px;
+    }
+
+    &__logo {
+      grid-column: 1;
+      width: auto;
+      padding-left: 0;
+    }
+
     &__logo-title {
       display: none;
+    }
+
+    &__header-toolbar {
+      grid-column: 2;
+      min-width: 0;
+    }
+
+    &__header-switcher {
+      width: auto;
+      max-width: none;
+      flex: 1;
+    }
+
+    &__header-gap {
+      display: none;
+    }
+
+    &__header-right {
+      grid-column: 3;
+      margin-left: 8px;
     }
 
     &__menu-toggle {

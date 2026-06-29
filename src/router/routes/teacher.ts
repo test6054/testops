@@ -52,6 +52,17 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'exam-create',
+        name: 'TeacherExamCreate',
+        component: () => import('@/views/teacher/exam-create/exam-create.vue'),
+        meta: {
+          title: '新建考试',
+          roles: TEACHER_ROLES,
+          hideInMenu: true,
+          activeMenu: '/teacher/exam-list',
+        },
+      },
+      {
         path: 'paper-archive-list',
         redirect: {
           name: 'TeacherArchiveVolumeList',

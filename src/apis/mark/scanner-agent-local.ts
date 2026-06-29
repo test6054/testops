@@ -190,7 +190,6 @@ export interface AgentSetupContextResponse {
   gatewayBaseUrl?: string
   activatedAt?: string
   preferredLocalScannerId?: string
-  allowedTaskKinds?: string
 }
 
 /** 本机 Agent 绑定 push_token 会话，供 Kiosk 浏览器与 DeviceBinding 对齐 */
@@ -228,7 +227,6 @@ export interface ScannerAgentActivateResponse {
   activatedAt: string
   minimumAgentVersion: string
   latestAgentVersion: string
-  allowedTaskKinds?: string
 }
 
 /**
@@ -855,10 +853,6 @@ function validateAgentSetupContextResponse(value: LocalAgentJsonValue): AgentSet
   if (preferredLocalScannerId !== undefined) {
     payload.preferredLocalScannerId = preferredLocalScannerId
   }
-  const allowedTaskKinds = requireOptionalAgentWireString(result, 'allowedTaskKinds')
-  if (allowedTaskKinds !== undefined) {
-    payload.allowedTaskKinds = allowedTaskKinds
-  }
   return payload
 }
 
@@ -902,10 +896,6 @@ function validateScannerAgentActivateResponse(
   const tenantId = requireOptionalAgentWireString(result, 'tenantId')
   if (tenantId !== undefined) {
     payload.tenantId = tenantId
-  }
-  const allowedTaskKinds = requireOptionalAgentWireString(result, 'allowedTaskKinds')
-  if (allowedTaskKinds !== undefined) {
-    payload.allowedTaskKinds = allowedTaskKinds
   }
   return payload
 }

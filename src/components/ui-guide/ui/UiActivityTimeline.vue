@@ -278,7 +278,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
 }
 
 .ui-activity-timeline__dot--blue {
-  background: var(--dp-blue-500, #3b82f6);
+  background: var(--dp-blue-500);
 }
 
 .ui-activity-timeline__dot--orange {

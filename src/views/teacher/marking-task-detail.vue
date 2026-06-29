@@ -9,7 +9,6 @@
         <UiTag v-if="task" :tone="taskStatusTone(task.taskStatus)" size="sm">
           {{ taskStatusLabel(task.taskStatus) }}
         </UiTag>
-        <UiTag v-if="task" tone="blue" size="sm">第 {{ task.reviewRound }} 轮</UiTag>
         <template v-if="task">
           <UiTag tone="purple" size="sm">{{ anonymityModeLabel(task.anonymityMode) }}</UiTag>
           <UiTag tone="gray" size="sm">{{ allocationUnitLabel(task.taskUnit) }}</UiTag>
@@ -159,9 +158,6 @@
               </a-descriptions-item>
               <a-descriptions-item label="匿名模式">
                 {{ anonymityModeLabel(task.anonymityMode) }}
-              </a-descriptions-item>
-              <a-descriptions-item label="评阅轮次">
-                第 {{ task.reviewRound }} 轮
               </a-descriptions-item>
               <a-descriptions-item label="任务状态">
                 <UiTag :tone="taskStatusTone(task.taskStatus)" size="sm">
@@ -979,7 +975,7 @@ onBeforeUnmount(() => {
     gap: 12px;
     padding: 12px 16px;
     border: 1px solid var(--ant-color-border-secondary);
-    border-radius: var(--dp-radius-md);
+    border-radius: var(--dp-radius-panel);
     background: var(--ant-color-bg-container);
   }
 
@@ -1105,7 +1101,7 @@ onBeforeUnmount(() => {
     margin: 0 0 8px;
     padding: 8px;
     border: 1px solid var(--dp-border-subtle, #e2e8f0);
-    border-radius: var(--dp-radius-control, 8px);
+    border-radius: var(--dp-radius-panel);
     background: var(--dp-surface-subtle, #f8fafc);
   }
 

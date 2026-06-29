@@ -120,9 +120,9 @@ defineExpose({ reload: loadOptions })
       :value="opt.id"
       :label="`${opt.rectificationCode} · ${opt.rectificationTitle}`"
     >
-      <span class="text-xs text-gray-500 mr-1">{{ opt.rectificationCode }}</span>
+      <span class="dp-selector-option-code">{{ opt.rectificationCode }}</span>
       {{ opt.rectificationTitle }}
-      <UiTag :tone="auditRectificationStatusColor(opt.status)" class="ml-1">
+      <UiTag :tone="auditRectificationStatusColor(opt.status)" class="dp-selector-option-tag-gap">
         {{ auditRectificationStatusLabel(opt.status) }}
       </UiTag>
     </a-select-option>

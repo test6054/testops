@@ -132,7 +132,13 @@ onMounted(loadRules)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="档案评分规则" subtitle="完整度 / 分类 / 成果计分规则维护（§4 档案评分规则管理）" />
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="档案评分规则"
+      />
+    </template>
     <UiCard>
       <div class="toolbar">
         <UiButton @click="loadRules">

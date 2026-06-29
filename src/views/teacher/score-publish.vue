@@ -9,10 +9,8 @@
     </div>
 
     <template v-if="selectedExamId">
-      <UiStatPanel
-        :items="statMetrics"
-        :columns="3"
-        variant="grid"
+      <SignalBand
+        :metrics="publishSignalMetrics"
         compact
         class="score-publish__signals"
       />
@@ -335,13 +333,14 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
+import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScorePublish' })
@@ -684,6 +683,8 @@ const statMetrics = computed(() => {
   ]
 })
 
+const publishSignalMetrics = computed(() => toSignalMetrics(statMetrics.value))
+
 // ─── 状态机按钮 ─────────────────────────────
 function canPublish(record: ExamScoreSummaryItemVO): boolean {
   if (!record.paperInstanceId) return false
@@ -887,7 +888,7 @@ watch(selectedExamId, (value) => {
     overflow-y: auto;
     margin-top: 8px;
     border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: var(--dp-radius-md, 6px);
+    border-radius: var(--dp-radius-panel, 6px);
     background: var(--dp-surface, #fff);
   }
 

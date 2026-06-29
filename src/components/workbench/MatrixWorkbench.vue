@@ -60,49 +60,55 @@
             <th
               class="matrix-workbench__th matrix-workbench__th--row"
               :style="rowHeaderStyle"
-              @click="handleRowClick(row)"
             >
-              <div class="matrix-workbench__row-label">{{ row.label }}</div>
-              <div v-if="row.hint" class="matrix-workbench__row-hint">{{ row.hint }}</div>
-              <div
-                v-if="row.badge"
-                class="matrix-workbench__row-badge"
-                :class="toneClass(row.badgeTone)"
-              >
-                {{ row.badge }}
-              </div>
-              <div v-if="row.warning" class="matrix-workbench__row-warning">
-                {{ row.warning }}
-              </div>
+              <button type="button" class="matrix-workbench__hit" @click="handleRowClick(row)">
+                <div class="matrix-workbench__row-label">{{ row.label }}</div>
+                <div v-if="row.hint" class="matrix-workbench__row-hint">{{ row.hint }}</div>
+                <div
+                  v-if="row.badge"
+                  class="matrix-workbench__row-badge"
+                  :class="toneClass(row.badgeTone)"
+                >
+                  {{ row.badge }}
+                </div>
+                <div v-if="row.warning" class="matrix-workbench__row-warning">
+                  {{ row.warning }}
+                </div>
+              </button>
             </th>
             <td
               v-for="col in cols"
               :key="col.key"
               class="matrix-workbench__cell"
               :class="cellClass(getCell(row.key, col.key))"
-              :title="getCell(row.key, col.key)?.warning || ''"
-              @click="handleCellClick(row, col)"
             >
-              <template v-if="getCell(row.key, col.key)">
-                <div class="matrix-workbench__cell-primary">
-                  {{ getCell(row.key, col.key)?.primary }}
-                </div>
-                <div
-                  v-if="getCell(row.key, col.key)?.secondary"
-                  class="matrix-workbench__cell-secondary"
-                >
-                  {{ getCell(row.key, col.key)?.secondary }}
-                </div>
-                <span
-                  v-if="getCell(row.key, col.key)?.warning"
-                  class="matrix-workbench__cell-warning"
-                >
-                  !
-                </span>
-              </template>
-              <template v-else>
-                <span class="matrix-workbench__cell-empty">＋</span>
-              </template>
+              <button
+                type="button"
+                class="matrix-workbench__hit"
+                :title="getCell(row.key, col.key)?.warning || ''"
+                @click="handleCellClick(row, col)"
+              >
+                <template v-if="getCell(row.key, col.key)">
+                  <div class="matrix-workbench__cell-primary">
+                    {{ getCell(row.key, col.key)?.primary }}
+                  </div>
+                  <div
+                    v-if="getCell(row.key, col.key)?.secondary"
+                    class="matrix-workbench__cell-secondary"
+                  >
+                    {{ getCell(row.key, col.key)?.secondary }}
+                  </div>
+                  <span
+                    v-if="getCell(row.key, col.key)?.warning"
+                    class="matrix-workbench__cell-warning"
+                  >
+                    !
+                  </span>
+                </template>
+                <template v-else>
+                  <span class="matrix-workbench__cell-empty">＋</span>
+                </template>
+              </button>
             </td>
             <td
               v-if="showRowSummary"
@@ -336,8 +342,31 @@ function handleRowClick(row: MatrixRow) {
   z-index: 1;
   background: var(--dp-surface-elevated, #f8fafc);
   font-weight: 600;
-  cursor: pointer;
   text-align: left;
+}
+
+.matrix-workbench__hit {
+  display: block;
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.matrix-workbench__hit:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--dp-focus-ring, rgba(22, 119, 255, 0.18));
+}
+
+.matrix-workbench__hit:hover {
+  background: var(--dp-surface-elevated, #f1f5f9);
 }
 
 .matrix-workbench__th--row-header {
@@ -400,14 +429,19 @@ function handleRowClick(row: MatrixRow) {
 }
 
 .matrix-workbench__cell {
-  cursor: pointer;
   text-align: center;
   position: relative;
-  transition: background 0.15s ease;
+  padding: 0;
+  vertical-align: top;
 }
 
-.matrix-workbench__cell:hover {
-  background: var(--dp-surface-elevated, #f1f5f9);
+.matrix-workbench__cell--summary .matrix-workbench__hit,
+.matrix-workbench__cell--summary {
+  cursor: default;
+}
+
+.matrix-workbench__cell--summary .matrix-workbench__hit:hover {
+  background: transparent;
 }
 
 .matrix-workbench__cell--summary {
@@ -438,10 +472,6 @@ function handleRowClick(row: MatrixRow) {
 
 .matrix-workbench__cell--empty-state {
   background: var(--dp-surface, #fff);
-}
-
-.matrix-workbench__cell--empty-state:hover {
-  background: var(--dp-surface-elevated, #f1f5f9);
 }
 
 .matrix-workbench__cell-warning {

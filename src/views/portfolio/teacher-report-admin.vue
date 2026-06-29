@@ -113,7 +113,9 @@ onMounted(loadTeachers)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="文本分析报告" subtitle="PORTFOLIO_REPORT_GENERATE" />
+    <template #context>
+  <ContextBar show-title layout="workbench" title="文本分析报告" />
+</template>
     <UiCard title="生成参数">
       <div class="toolbar">
         <a-select

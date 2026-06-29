@@ -193,7 +193,9 @@ onMounted(loadMine)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="双师认定申请" subtitle="草稿保存 · 提交院审" />
+    <template #context>
+  <ContextBar show-title layout="workbench" title="双师认定申请" />
+</template>
     <UiCard>
       <div v-if="application" class="status-bar">
         <span>申请单号 {{ application.applicationNo }}</span>

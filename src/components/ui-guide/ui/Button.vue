@@ -109,7 +109,7 @@ const onClick = (evt: MouseEvent) => {
     border-color 0.2s ease,
     box-shadow 0.2s ease,
     transform 0.2s ease;
-  font-family: var(--dp-font-family, 'Inter'), 'PingFang SC', sans-serif;
+  font-family: var(--dp-font-family);
   white-space: nowrap;
   user-select: none;
 }

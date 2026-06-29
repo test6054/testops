@@ -12,9 +12,6 @@
       <p class="d-survey__status-title">无法加载问卷</p>
       <p class="d-survey__status-text">{{ errorMessage }}</p>
       <p class="d-survey__status-hint">请检查链接是否正确，或联系问卷发布者</p>
-      <button type="button" class="d-survey__btn d-survey__btn--submit" @click="loadSurvey">
-        重新加载
-      </button>
     </div>
 
     <!-- 提交成功 -->

@@ -1,7 +1,10 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        show-title
+        title="OCR 全文检索"
+      >
         <template #status>
           <UiTag tone="blue" size="sm">OCR 全文检索</UiTag>
         </template>
@@ -14,6 +17,8 @@
     <UiFilterBar
       v-model="filterModel"
       :fields="filterFields"
+      variant="panel"
+      show-labels
       search-text="检索"
       @search="handleSearch"
       @reset="handleReset"

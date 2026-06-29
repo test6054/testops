@@ -1067,7 +1067,7 @@ onMounted(async () => {
         </UiButton>
       </template>
 
-      <UiFilterBar
+      <UiFilterBar variant="plain"
         v-model="taskFilterModel"
         :fields="taskFilterFields"
         @search="handleTaskSearch"
@@ -1722,11 +1722,7 @@ onMounted(async () => {
 <style scoped lang="scss">
 .external-pull {
   &__signals {
-    margin-bottom: 16px;
-    padding: 16px 20px;
-    background: var(--dp-surface-elevated);
-    border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    margin-bottom: 12px;
   }
 
   &__result-panel {

@@ -1,7 +1,9 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        title="教务同步"
+      >
         <template #status>
           <MarkExamSelect
             :selected-exam-id="selectedExamId"
@@ -53,7 +55,7 @@
           <span>同步任务</span>
         </template>
 
-        <UiFilterBar
+        <UiFilterBar variant="plain"
           v-model="syncFilterForm"
           :fields="syncFilterFields"
           search-text="查询"
@@ -142,7 +144,7 @@
           <span>回写记录</span>
         </template>
 
-        <UiFilterBar
+        <UiFilterBar variant="plain"
           v-model="passbackFilterForm"
           :fields="passbackFilterFields"
           search-text="查询"

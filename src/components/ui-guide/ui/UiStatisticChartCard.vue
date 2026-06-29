@@ -269,7 +269,7 @@ const sideStyle = computed(() => ({
 }
 
 .ui-statistic-chart-card__stat-dot--purple {
-  background: #7c3aed;
+  background: var(--dp-purple-500, #722ed1);
 }
 
 .ui-statistic-chart-card__stat-label {

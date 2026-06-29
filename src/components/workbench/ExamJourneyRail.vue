@@ -3,6 +3,7 @@
     <StageRail
       :stages="stages"
       :active-key="activeKey"
+      variant="arrow"
       compact
       allow-pending-select
       @select="handleSelect"
@@ -43,9 +44,9 @@ function handleSelect(stage: WorkbenchStage): void {
 <style lang="scss" scoped>
 .exam-journey-rail {
   flex-shrink: 0;
-  padding: 12px 16px;
+  padding: var(--dp-space-3) var(--dp-space-4);
   overflow-x: auto;
-  background: var(--ant-color-bg-container);
-  border-bottom: 1px solid var(--ant-color-border-secondary);
+  background: var(--dp-surface);
+  border-bottom: 1px solid var(--dp-border);
 }
 </style>

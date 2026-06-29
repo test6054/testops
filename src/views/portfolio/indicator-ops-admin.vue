@@ -311,7 +311,9 @@ onMounted(() => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="指标计分与审计" subtitle="试算 · 快照计分 · 日志 · 导出" />
+    <template #context>
+  <ContextBar show-title layout="workbench" title="指标计分与审计" />
+</template>
     <UiCard>
       <a-tabs :active-key="activeTab" @change="onTabChange">
         <a-tab-pane key="trial" tab="规则试算">

@@ -5,7 +5,7 @@ import type {
   PortfolioTeacherWorkbenchSummaryVO,
   PortfolioTodoSummaryVO,
 } from '@/apis/portfolio/types'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
@@ -18,7 +18,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
@@ -48,7 +48,7 @@ const completenessPercentText = computed(() => {
   return `${completeness.value.completenessPercent}%`
 })
 
-const portraitStatItems = computed((): UiStatPanelItem[] => {
+const portraitStatItems = computed((): SignalMetric[] => {
   if (!portrait.value) {
     return []
   }
@@ -283,13 +283,15 @@ onUnmounted(() => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="教师首页" description="档案完整度与画像摘要（§17.1）">
-      <template #actions>
-        <UiButton v-if="!loading" @click="() => { void loadDashboard(); void loadWorkbenchSummary(); void loadTodos() }">
-          刷新
-        </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar show-title layout="workbench" title="教师首页">
+        <template #actions>
+          <UiButton v-if="!loading" @click="() => { void loadDashboard(); void loadWorkbenchSummary(); void loadTodos() }">
+            刷新
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
 
     <div v-if="canPickTeachers && !targetTeacherId" class="teacher-home__hint">
       <UiEmpty description="请从教师名册选择目标教师，或在 URL 携带 teacherId 参数" />
@@ -323,7 +325,7 @@ onUnmounted(() => {
             </template>
             <UiEmpty
               v-else-if="completenessAbsent && !loading"
-              description="完整度重算失败，请稍后刷新"
+              description="尚未生成档案完整度"
             />
           </a-spin>
         </UiCard>
@@ -335,11 +337,10 @@ onUnmounted(() => {
             </UiButton>
           </template>
           <a-spin :spinning="loading">
-            <UiStatPanel
+            <SignalBand
               v-if="portrait"
-              :items="portraitStatItems"
-              :columns="3"
-              variant="strip"
+              :metrics="portraitStatItems"
+              variant="inline"
               compact
             />
             <p v-if="portrait" class="teacher-home__meta">
@@ -356,7 +357,7 @@ onUnmounted(() => {
             </p>
             <UiEmpty
               v-else-if="portraitAbsent && !loading"
-              description="画像快照生成失败，请稍后刷新"
+              description="尚未生成画像快照"
             />
           </a-spin>
         </UiCard>

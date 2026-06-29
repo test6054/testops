@@ -2082,7 +2082,7 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
                 allow-clear
               >
                 <a-select-option v-for="g in courseGoals" :key="g.id" :value="g.id">
-                  <span class="text-xs text-gray-500 mr-1">{{ g.goalCode }}</span>
+                  <span class="dp-selector-option-code">{{ g.goalCode }}</span>
                   {{ g.goalName }}
                 </a-select-option>
               </a-select>
@@ -2207,10 +2207,6 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
 
   &__signals {
     margin-bottom: 12px;
-    padding: 14px 18px;
-    background: var(--dp-surface-elevated);
-    border: 1px solid var(--dp-border);
-    border-radius: 8px;
   }
 
   &__tabs {

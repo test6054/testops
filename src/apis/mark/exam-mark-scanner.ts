@@ -124,8 +124,6 @@ export interface ExamScannerDeviceVO {
   remark?: string
   createTime?: string
   updateTime?: string
-  /** 设备允许的扫描任务类型（ScanTaskKind 编码，逗号分隔） */
-  allowedTaskKinds?: string
 }
 
 /** 扫描 Agent 激活码创建请求 */
@@ -181,7 +179,6 @@ export interface ExamScannerDeviceCreateRequest {
   location?: string
   remark?: string
   kioskLockEnabled: boolean
-  allowedTaskKinds?: string
 }
 
 /** 扫描设备更新请求 - 对应 ExamScannerDeviceUpdateRequest */
@@ -195,7 +192,6 @@ export interface ExamScannerDeviceUpdateRequest {
   location?: string
   remark?: string
   kioskLockEnabled: boolean
-  allowedTaskKinds?: string
 }
 
 // ScanAttentionQueryRequest / ScanAttentionItemVO 定义在 @/apis/mark/exam-scan，避免重复
@@ -372,9 +368,9 @@ export function pageMarkExams(
 
 const ACTIVE_SCANNER_DEVICE_PAGE_SIZE = 100
 
-/** 扫描 Agent 端点在线，或扫描组件已连接，视为当前可监控设备。 */
+/** 扫描 Agent 端点在线（最近心跳在服务端超时窗口内）；scannerConnected 仅表示物理扫描仪连接，不能替代端点在线。 */
 export function isScannerDeviceOnline(device: ExamScannerDeviceVO): boolean {
-  return device.endpointOnlineStatus === 'ONLINE' || device.scannerConnected === true
+  return device.endpointOnlineStatus === 'ONLINE'
 }
 
 /** 分页拉取当前租户全部 ACTIVE 扫描设备。 */

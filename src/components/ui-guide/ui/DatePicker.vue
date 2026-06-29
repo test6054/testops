@@ -151,7 +151,7 @@ const handleOpenChange = (open: boolean) => {
   background-color: var(--dp-bg-control, #f3f4f6);
   font-size: 14px;
   color: var(--dp-text-primary, #0f172a);
-  font-family: var(--dp-font-family, 'Inter'), 'PingFang SC', sans-serif;
+  font-family: var(--dp-font-family);
   box-shadow: none;
   transition:
     border-color 0.2s ease,
@@ -184,7 +184,7 @@ const handleOpenChange = (open: boolean) => {
   background-color: transparent;
   color: var(--dp-text-primary, #0f172a);
   font-size: 14px;
-  font-family: var(--dp-font-family, 'Inter'), 'PingFang SC', sans-serif;
+  font-family: var(--dp-font-family);
 }
 
 .ui-date-picker :deep(.ant-picker-input > input::placeholder) {
@@ -225,7 +225,7 @@ const handleOpenChange = (open: boolean) => {
 .ui-date-picker-dropdown {
   border-radius: var(--dp-radius-overlay, 4px) !important;
   box-shadow: var(--dp-shadow-dropdown, 0 18px 40px rgba(15, 23, 42, 0.12)) !important;
-  font-family: var(--dp-font-family, 'Inter'), 'PingFang SC', sans-serif !important;
+  font-family: var(--dp-font-family) !important;
   overflow: hidden !important;
   padding: 6px !important;
 }
@@ -235,7 +235,7 @@ const handleOpenChange = (open: boolean) => {
 }
 
 .ui-date-picker-dropdown .ant-picker-header {
-  font-family: var(--dp-font-family, 'Inter'), 'PingFang SC', sans-serif !important;
+  font-family: var(--dp-font-family) !important;
   font-weight: 600 !important;
   color: var(--dp-text-primary, #0f172a) !important;
 }
@@ -247,14 +247,14 @@ const handleOpenChange = (open: boolean) => {
 }
 
 .ui-date-picker-dropdown .ant-picker-content th {
-  font-family: var(--dp-font-family, 'Inter'), 'PingFang SC', sans-serif !important;
+  font-family: var(--dp-font-family) !important;
   font-size: 13px !important;
   font-weight: 500 !important;
   color: var(--dp-text-muted, #6b7280) !important;
 }
 
 .ui-date-picker-dropdown .ant-picker-cell-inner {
-  font-family: var(--dp-font-family, 'Inter'), 'PingFang SC', sans-serif !important;
+  font-family: var(--dp-font-family) !important;
   font-size: 14px !important;
   color: var(--dp-text-primary, #0f172a) !important;
   border-radius: var(--dp-radius-control-inner, 4px) !important;
@@ -285,7 +285,7 @@ const handleOpenChange = (open: boolean) => {
 }
 
 .ui-date-picker-dropdown .ant-picker-ranges .ant-picker-ok .ant-btn-primary {
-  font-family: var(--dp-font-family, 'Inter'), 'PingFang SC', sans-serif !important;
+  font-family: var(--dp-font-family) !important;
   font-size: 13px !important;
   font-weight: 500 !important;
   background-color: var(--dp-blue-600, #2563eb) !important;

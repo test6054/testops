@@ -1,5 +1,9 @@
 <template>
-  <div class="dp-advanced-filter dp-filter-bar" v-bind="$attrs">
+  <div
+    class="dp-advanced-filter dp-filter-bar"
+    :class="`dp-filter-bar--${variant}`"
+    v-bind="$attrs"
+  >
     <slot />
 
     <template v-for="field in fields" :key="field.key">
@@ -131,12 +135,15 @@ const {
   resetText = '重置',
   actionsAlign = 'start',
   showLabels = false,
+  variant = 'plain',
 } = defineProps<{
   fields?: FilterField[]
   searchText?: string
   resetText?: string
   actionsAlign?: 'start' | 'end'
   showLabels?: boolean
+  /** panel：工作台筛选壳；plain：卡片内嵌无壳（默认） */
+  variant?: 'panel' | 'plain'
 }>()
 
 const emit = defineEmits<{
@@ -320,15 +327,24 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
 
 <style scoped>
 .dp-filter-bar {
-  border: none;
-  border-bottom: 1px solid var(--dp-border, #e5e7eb); /* 只保留底部边框 */
-  border-radius: 0;
-  background: transparent;
-  padding: 14px 0; /* 左右padding去掉 */
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 12px;
+  gap: var(--dp-space-3, 12px);
+}
+
+.dp-filter-bar--panel {
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+  padding: var(--dp-space-3) var(--dp-space-4);
+}
+
+.dp-filter-bar--plain {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
 }
 
 .dp-filter-bar__field {

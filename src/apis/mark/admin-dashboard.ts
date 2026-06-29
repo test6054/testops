@@ -207,13 +207,9 @@ export function validateDashboardOverview(data: MarkDashboardOverviewVO): MarkDa
   return data
 }
 
-/**
- * 加载阅卷管理员 Dashboard 概览。
- * GET /api/mark/admin/dashboard/overview?recentLimit=
- */
 export async function loadDashboardOverview(recentLimit = 5): Promise<MarkDashboardOverviewVO> {
-  const data = await http.get<MarkDashboardOverviewVO>('/api/mark/admin/dashboard/overview', {
-    params: { recentLimit },
+  const data = await http.post<MarkDashboardOverviewVO>('/api/mark/admin/dashboard/overview', {
+    recentLimit,
   })
   return validateDashboardOverview(data)
 }

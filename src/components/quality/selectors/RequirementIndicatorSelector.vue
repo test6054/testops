@@ -110,9 +110,9 @@ defineExpose({ reload: loadOptions })
       :value="opt.id"
       :label="`${opt.indicatorCode} · ${opt.indicatorName}`"
     >
-      <span class="text-xs text-gray-500 mr-1">{{ opt.indicatorCode }}</span>
+      <span class="dp-selector-option-code">{{ opt.indicatorCode }}</span>
       {{ opt.indicatorName }}
-      <span v-if="opt.requirementWeight != null" class="text-gray-400 ml-1">
+      <span v-if="opt.requirementWeight != null" class="dp-selector-option-meta">
         (权重 {{ (opt.requirementWeight * 100).toFixed(0) }}%)
       </span>
     </a-select-option>

@@ -32,10 +32,10 @@ defineOptions({
 .stage-workbench-shell {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-5, 20px);
   width: 100%;
   padding: 0;
-  background: var(--ant-color-bg-container);
+  background: transparent;
 }
 
 .stage-workbench-shell__context {

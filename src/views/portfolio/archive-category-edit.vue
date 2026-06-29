@@ -208,10 +208,12 @@ usePortfolioScopedLoader(() => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar
-      :title="categoryName ? `${categoryName} · 分类填报` : '分类填报'"
-      description="手工填报 · 保存草稿 · 提交审核（§17.2）"
-    >
+    <template #context>
+      <ContextBar
+        show-title
+        layout="workbench"
+        :title="categoryName ? `${categoryName} · 分类填报` : '分类填报'"
+      >
       <template #actions>
         <UiButton @click="goBack">
           返回档案
@@ -224,7 +226,7 @@ usePortfolioScopedLoader(() => {
         </UiButton>
       </template>
     </ContextBar>
-
+    </template>
     <div v-if="canPickTeachers && !targetTeacherId" class="archive-category-edit__hint">
       <UiEmpty description="请从教师名册选择目标教师" />
     </div>

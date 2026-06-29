@@ -1,49 +1,72 @@
 <script setup lang="ts">
 import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
-import { FileSearchOutlined, FolderOpenOutlined, ScanOutlined } from '@ant-design/icons-vue'
+import type { SignalMetric } from '@/types/workbench'
+import {
+  ArrowRightOutlined,
+  FileSearchOutlined,
+  FolderOpenOutlined,
+  ReloadOutlined,
+  ScanOutlined,
+} from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import KioskDeviceActivationPanel from './components/KioskDeviceActivationPanel.vue'
 import { useKioskDeviceActivation } from './composables/useKioskDeviceActivation'
 import { resolveActivationGuardMessage } from './utils/kioskActivationGuard'
-import { parseAllowedTaskKinds } from './utils/parseAllowedTaskKinds'
 
 interface TaskKindCard {
   kind: ScanTaskKindCode
   title: string
   description: string
   route: string
+  deeplinkOnly?: boolean
+  deeplinkHint: string
 }
 
-const TASK_KIND_CARDS: TaskKindCard[] = [
-  {
-    kind: 'EXAM_MARKING',
-    title: '考试扫描 / 补录',
-    description: '考后答卷直扫、补扫与识别绑定',
-    route: '/scanner-kiosk/exam/setup',
-  },
+const EXAM_CARD: TaskKindCard = {
+  kind: 'EXAM_MARKING',
+  title: '考试扫描 / 补录',
+  description: '考后答卷直扫、补扫与识别绑定，进入后选择考试并开始扫描批次。',
+  route: '/scanner-kiosk/exam/setup',
+  deeplinkHint: '',
+}
+
+const DEEPLINK_CARDS: TaskKindCard[] = [
   {
     kind: 'EXAM_ARCHIVE',
     title: '考后归档',
-    description: '从归档卷详情深链进入；须携带 volumeId、materialType',
+    description: '归档卷材料扫描登记',
     route: '/scanner-kiosk/archive/session',
+    deeplinkOnly: true,
+    deeplinkHint: '考后归档须从归档卷详情页「一体机扫描」深链进入（须携带 volumeId、materialType 等参数）',
   },
   {
     kind: 'PORTFOLIO_COLLECT',
     title: '教师档案袋',
-    description: '从 AI 候选 / 补采任务深链进入',
+    description: '教学档案袋材料补采',
     route: '/scanner-kiosk/portfolio/session',
+    deeplinkOnly: true,
+    deeplinkHint: '档案袋采集须从 AI 候选确认或补采任务页深链进入（须携带 teacherId、collectMode 等参数）',
   },
 ]
 
 const router = useRouter()
 const deviceActivation = useKioskDeviceActivation()
-const allowedTaskKinds = ref<ScanTaskKindCode[]>([])
 const hubLoading = ref(true)
 const hubErrorMessage = ref('')
 
 const canActivateOnHub = computed(() => !resolveActivationGuardMessage(deviceActivation.health.value))
+
+const endpointLabel = computed(() => {
+  const name = deviceActivation.setup.value?.deviceName?.trim()
+    || deviceActivation.activationForm.value.endpointName.trim()
+  return name || '未命名工位'
+})
 
 const showAgentOfflineHint = computed(() =>
   !hubLoading.value
@@ -55,19 +78,85 @@ const showAgentOfflineHint = computed(() =>
 const showTaskKindCards = computed(() =>
   deviceActivation.localAgentReachable.value
   && deviceActivation.isDeviceBound.value
-  && !deviceActivation.needsActivationGate.value
-  && allowedTaskKinds.value.length > 0,
+  && !deviceActivation.needsActivationGate.value,
 )
 
-const showAllowedTaskKindsPending = computed(() =>
-  deviceActivation.localAgentReachable.value
-  && deviceActivation.isDeviceBound.value
-  && !deviceActivation.needsActivationGate.value
-  && allowedTaskKinds.value.length === 0,
-)
+const contextSubtitle = computed(() => {
+  if (hubLoading.value || deviceActivation.loading.value) {
+    return '正在读取本机 Agent 与工位状态…'
+  }
+  if (hubErrorMessage.value) {
+    return '工位状态读取失败，请重试或检查本机扫描服务'
+  }
+  if (deviceActivation.needsActivationGate.value) {
+    return deviceActivation.deviceReadiness.value.detail
+  }
+  if (showAgentOfflineHint.value) {
+    return '本地扫描服务暂时不可用；服务恢复后会自动重连，无需重新激活'
+  }
+  if (showTaskKindCards.value) {
+    return '本机工位已就绪，请选择业务采集类型'
+  }
+  return '完成一次激活后，考试 / 归档 / 档案袋共用同一工位凭证'
+})
 
-const visibleCards = computed(() =>
-  TASK_KIND_CARDS.filter(card => allowedTaskKinds.value.includes(card.kind)),
+const hubSignals = computed<SignalMetric[]>(() => {
+  const health = deviceActivation.health.value
+  const agentOnline = deviceActivation.localAgentReachable.value
+  const bound = deviceActivation.isDeviceBound.value && !deviceActivation.needsActivationGate.value
+
+  let scanValue = '—'
+  let scanTone: SignalMetric['tone'] = 'gray'
+  if (!agentOnline) {
+    scanValue = '不可用'
+    scanTone = 'gray'
+  }
+  else if (!bound) {
+    scanValue = '待激活'
+    scanTone = 'orange'
+  }
+  else if (health?.scannerConnected && health.scanAllowed) {
+    scanValue = '就绪'
+    scanTone = 'green'
+  }
+  else if (health?.scannerConnected) {
+    scanValue = '受限'
+    scanTone = 'orange'
+  }
+  else {
+    scanValue = '未连接'
+    scanTone = 'orange'
+  }
+
+  return [
+    {
+      key: 'agent',
+      label: 'Agent 服务',
+      value: agentOnline ? '在线' : '离线',
+      tone: agentOnline ? 'green' : 'red',
+      helper: agentOnline ? `v${health?.agentVersion ?? '—'}` : '请先启动本机扫描服务',
+    },
+    {
+      key: 'binding',
+      label: '工位绑定',
+      value: bound ? '已激活' : '待激活',
+      tone: bound ? 'green' : 'orange',
+      helper: bound ? endpointLabel.value : '输入激活码完成一次绑定',
+    },
+    {
+      key: 'scan',
+      label: '扫描就绪',
+      value: scanValue,
+      tone: scanTone,
+      helper: health?.scannerConnected ? '扫描仪已连接' : '请检查扫描仪连接',
+    },
+  ]
+})
+
+const showSignalBand = computed(() =>
+  !hubLoading.value
+  && !hubErrorMessage.value
+  && !deviceActivation.needsActivationGate.value,
 )
 
 async function loadHubState() {
@@ -75,16 +164,9 @@ async function loadHubState() {
   hubErrorMessage.value = ''
   try {
     await deviceActivation.refreshDeviceActivationState()
-    if (!deviceActivation.isDeviceBound.value) {
-      allowedTaskKinds.value = []
-      return
-    }
-    const setup = deviceActivation.setup.value
-    allowedTaskKinds.value = parseAllowedTaskKinds(setup?.allowedTaskKinds)
   }
   catch (error) {
     hubErrorMessage.value = getUserErrorMessage(error)
-    allowedTaskKinds.value = []
   }
   finally {
     hubLoading.value = false
@@ -101,12 +183,8 @@ async function handleHubActivate() {
 }
 
 function enterCard(card: TaskKindCard) {
-  if (card.kind === 'EXAM_ARCHIVE') {
-    hubErrorMessage.value = '考后归档须从归档卷详情页「一体机扫描」深链进入（须携带 volumeId、materialType 等参数）'
-    return
-  }
-  if (card.kind === 'PORTFOLIO_COLLECT') {
-    hubErrorMessage.value = '档案袋采集须从 AI 候选确认或补采任务页深链进入（须携带 teacherId、collectMode 等参数）'
+  if (card.deeplinkOnly) {
+    message.info(card.deeplinkHint)
     return
   }
   router.push(card.route)
@@ -125,125 +203,143 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="hub">
-    <header class="hub__header">
-      <h1>文档采集工作台</h1>
-      <p v-if="deviceActivation.isDeviceBound.value && deviceActivation.localAgentReachable.value">
-        本机工位已激活，请选择设备已授权的业务采集类型
-      </p>
-      <p v-else-if="showAgentOfflineHint">
-        本地扫描服务暂时不可用；服务恢复后会自动重连，无需重新激活
-      </p>
-      <p v-else>
-        设备激活与业务类型无关：完成一次激活后，考试 / 归档 / 档案袋共用同一工位凭证
-      </p>
+  <div class="hub-shell">
+    <header class="hub-shell__bar">
+      <div class="hub-shell__brand">
+        <span class="hub-shell__mark" />
+        <div class="hub-shell__brand-text">
+          <strong>文档采集工作台</strong>
+          <span>一体机 · 扫描工位</span>
+        </div>
+      </div>
+      <div class="hub-shell__station">
+        <span
+          class="hub-shell__led"
+          :class="{ 'hub-shell__led--on': deviceActivation.localAgentReachable.value }"
+        />
+        <div>
+          <div class="hub-shell__station-label">当前工位</div>
+          <div class="hub-shell__station-name">{{ endpointLabel }}</div>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="hub-shell__refresh"
+        title="刷新工位状态"
+        :disabled="hubLoading || deviceActivation.loading.value"
+        @click="loadHubState"
+      >
+        <ReloadOutlined />
+      </button>
     </header>
 
-    <p v-if="hubErrorMessage" class="hub__error">{{ hubErrorMessage }}</p>
-    <p v-else-if="hubLoading || deviceActivation.loading.value" class="hub__hint">正在读取本机 Agent 状态…</p>
-
-    <KioskDeviceActivationPanel
-      v-else-if="deviceActivation.needsActivationGate.value"
-      :can-activate="canActivateOnHub"
-      :submit-loading="deviceActivation.loading.value"
-      show-manual-cancel
-      @submit="handleHubActivate"
-    />
-
-    <template v-else-if="showTaskKindCards">
-      <div class="hub__grid">
-        <button
-          v-for="card in visibleCards"
-          :key="card.kind"
-          type="button"
-          class="hub__card"
-          @click="enterCard(card)"
+    <main class="hub-shell__main">
+      <div class="hub-shell__panel">
+        <ContextBar
+          class="hub-shell__context"
+          layout="workbench"
+          show-title
+          title="选择采集类型"
+          :subtitle="contextSubtitle"
         >
-          <component :is="cardIcon(card.kind)" class="hub__icon" />
-          <span class="hub__title">{{ card.title }}</span>
-          <span class="hub__desc">{{ card.description }}</span>
-        </button>
-      </div>
-    </template>
+          <template v-if="showTaskKindCards" #status>
+            <UiTag tone="green" size="sm">工位已激活</UiTag>
+          </template>
+        </ContextBar>
 
-    <p v-else-if="showAllowedTaskKindsPending" class="hub__hint">
-      正在同步设备授权的业务类型；若长时间为空，请在教务平台扫描设备管理中配置 allowedTaskKinds。
-    </p>
+        <SignalBand
+          v-if="showSignalBand"
+          class="hub-shell__signal"
+          :metrics="hubSignals"
+          variant="panel"
+        />
+
+        <a-result
+          v-if="hubErrorMessage"
+          status="error"
+          title="工位状态读取失败"
+          :sub-title="hubErrorMessage"
+        >
+          <template #extra>
+            <button type="button" class="hub-shell__cta" @click="loadHubState">
+              重试
+            </button>
+          </template>
+        </a-result>
+
+        <div v-else-if="hubLoading || deviceActivation.loading.value" class="hub-shell__state">
+          <a-skeleton active :paragraph="{ rows: 5 }" />
+        </div>
+
+        <KioskDeviceActivationPanel
+          v-else-if="deviceActivation.needsActivationGate.value"
+          :can-activate="canActivateOnHub"
+          :submit-loading="deviceActivation.loading.value"
+          show-manual-cancel
+          @submit="handleHubActivate"
+        />
+
+        <section v-else-if="showAgentOfflineHint" class="hub-shell__state">
+          <p class="hub-shell__state-title">本地扫描服务暂时不可用</p>
+          <p class="hub-shell__state-detail">
+            工位凭证仍有效；Agent 恢复后会自动重连。请先检查本机扫描服务是否已启动。
+          </p>
+          <button type="button" class="hub-shell__cta" @click="loadHubState">
+            重新检测
+          </button>
+        </section>
+
+        <template v-else-if="showTaskKindCards">
+          <p class="hub-shell__section-label">业务入口</p>
+          <section class="hub-entries" aria-label="业务采集入口">
+            <button
+              type="button"
+              class="hub-entry hub-entry--primary"
+              @click="enterCard(EXAM_CARD)"
+            >
+              <div class="hub-entry__top">
+                <span class="hub-entry__icon"><ScanOutlined /></span>
+                <div class="hub-entry__meta">
+                  <span class="hub-entry__title">{{ EXAM_CARD.title }}</span>
+                  <UiTag tone="blue" size="sm">可直接进入</UiTag>
+                </div>
+              </div>
+              <p class="hub-entry__desc">{{ EXAM_CARD.description }}</p>
+              <div class="hub-entry__foot">
+                <span class="hub-entry__go">
+                  进入工作台
+                  <ArrowRightOutlined />
+                </span>
+              </div>
+            </button>
+
+            <button
+              v-for="card in DEEPLINK_CARDS"
+              :key="card.kind"
+              type="button"
+              class="hub-entry hub-entry--deeplink"
+              @click="enterCard(card)"
+            >
+              <div class="hub-entry__top">
+                <span class="hub-entry__icon"><component :is="cardIcon(card.kind)" /></span>
+                <div class="hub-entry__meta">
+                  <span class="hub-entry__title">{{ card.title }}</span>
+                  <UiTag tone="gray" size="sm">须深链</UiTag>
+                </div>
+              </div>
+              <p class="hub-entry__desc">{{ card.description }}</p>
+              <div class="hub-entry__foot">
+                <span class="hub-entry__hint">从业务页深链进入</span>
+              </div>
+            </button>
+          </section>
+        </template>
+      </div>
+    </main>
   </div>
 </template>
 
-<style scoped>
+<style>
 @import './styles/tokens.css';
-
-.hub {
-  min-height: 100vh;
-  padding: 32px 24px;
-  background: var(--kiosk-bg);
-  color: var(--kiosk-text);
-}
-
-.hub__header h1 {
-  margin: 0 0 8px;
-  font-size: 24px;
-  font-weight: 600;
-}
-
-.hub__header p {
-  margin: 0;
-  color: var(--kiosk-text-secondary);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.hub__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px;
-  margin-top: 24px;
-}
-
-.hub__card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 20px 16px;
-  border: 1px solid var(--kiosk-border);
-  border-radius: 6px;
-  background: var(--kiosk-surface);
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.hub__card:hover {
-  border-color: var(--kiosk-accent);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
-}
-
-.hub__icon {
-  font-size: 22px;
-  color: var(--kiosk-accent);
-}
-
-.hub__title {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.hub__desc {
-  font-size: 13px;
-  color: var(--kiosk-text-secondary);
-  line-height: 1.5;
-}
-
-.hub__hint,
-.hub__error {
-  margin-top: 24px;
-  font-size: 14px;
-}
-
-.hub__error {
-  color: var(--kiosk-danger);
-}
+@import './styles/hub-shell.scss';
 </style>

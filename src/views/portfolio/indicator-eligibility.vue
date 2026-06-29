@@ -86,7 +86,9 @@ onMounted(loadRule)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="资格规则编辑" subtitle="Eligibility 可视化合取树 · 三套预置场景" />
+    <template #context>
+  <ContextBar show-title layout="workbench" title="资格规则编辑" />
+</template>
     <UiCard>
       <div class="toolbar">
         <a-select v-model:value="eligibilityCode" :options="presetOptions" style="width: 200px" @change="onPresetPick" />

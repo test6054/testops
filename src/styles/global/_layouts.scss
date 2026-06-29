@@ -170,7 +170,7 @@
   .ant-table-column-title {
     &::before {
       content: '*';
-      color: red;
+      color: var(--ant-color-error);
       padding-right: 2px;
     }
   }

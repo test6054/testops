@@ -526,13 +526,15 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="平台指标资产" subtitle="T001–T100 三级结构 · 规则模板 · 行业包">
-      <template #actions>
-        <UiButton variant="primary" :loading="seeding" @click="importSeed">
-          导入全量种子
-        </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar show-title layout="workbench" title="平台指标资产">
+        <template #actions>
+          <UiButton variant="primary" :loading="seeding" @click="importSeed">
+            导入全量种子
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
     <a-alert
       v-if="summary"
       :type="summary.t001T100Ready ? 'success' : 'warning'"

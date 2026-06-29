@@ -115,7 +115,7 @@ defineExpose({ reload: loadOptions })
       :value="opt.id"
       :label="`${opt.requirementCode} · ${opt.requirementName}`"
     >
-      <span class="text-xs text-gray-500 mr-1">{{ opt.requirementCode }}</span>
+      <span class="dp-selector-option-code">{{ opt.requirementCode }}</span>
       {{ opt.requirementName }}
     </a-select-option>
   </a-select>

@@ -53,7 +53,11 @@ const selectValue = computed(() => {
     popup-class-name="ui-select-dropdown"
     @change="emit('change', $event)"
     @search="emit('search', $event)"
-  />
+  >
+    <template v-if="$slots.option" #option="slotProps">
+      <slot name="option" v-bind="slotProps" />
+    </template>
+  </a-select>
 </template>
 
 <style scoped lang="scss">

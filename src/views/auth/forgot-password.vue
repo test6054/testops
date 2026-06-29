@@ -437,11 +437,11 @@ onUnmounted(() => {
 
 .step-dot--done .step-dot__num {
   background: var(--dp-green-50, #f0fdf4);
-  color: var(--dp-green-600, #16a34a);
+  color: var(--dp-green-600);
 }
 
 .step-dot--done .step-dot__label {
-  color: var(--dp-green-600, #16a34a);
+  color: var(--dp-green-600);
 }
 
 // ─── 步骤表单 ───
@@ -541,7 +541,7 @@ onUnmounted(() => {
 .success-block {
   text-align: center;
   padding: 16px 0;
-  color: var(--dp-green-600, #16a34a);
+  color: var(--dp-green-600);
 
   h3 {
     margin: 14px 0 6px;

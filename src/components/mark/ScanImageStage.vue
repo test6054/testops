@@ -332,7 +332,7 @@ watch(
   padding: 6px 10px;
   background: var(--scan-toolbar-bg);
   border: 1px solid var(--scan-toolbar-border);
-  border-radius: var(--dp-radius-control, 8px);
+  border-radius: var(--dp-radius-panel);
   box-shadow: var(--dp-shadow-sm, 0 2px 8px rgba(15, 23, 42, 0.06));
   backdrop-filter: blur(6px);
 }
@@ -358,7 +358,7 @@ watch(
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: var(--dp-radius-sm, 4px);
+  border-radius: var(--dp-radius-control-inner, 4px);
   color: var(--dp-text-secondary, #475569);
   font-size: 14px;
   cursor: pointer;
@@ -371,6 +371,10 @@ watch(
 .scan-stage__btn:disabled {
   cursor: not-allowed;
   opacity: 0.4;
+}
+.scan-stage__btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 .scan-stage__btn--toggle.scan-stage__btn--active {
   background: var(--ant-color-primary, #1677ff);

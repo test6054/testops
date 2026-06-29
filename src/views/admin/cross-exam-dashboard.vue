@@ -1,7 +1,9 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        title="跨考试分析"
+      >
         <template #status>
           <DrilldownBreadcrumb :levels="drilldownLevels" @navigate="handleDrillNavigate" />
           <ClassSelector

@@ -744,7 +744,7 @@ function handleCourseChange(courseId: string | null) {
             </a-space>
           </template>
 
-          <UiFilterBar
+          <UiFilterBar variant="plain"
             v-model="recordFilterForm"
             :fields="recordFilterFields"
             show-labels
@@ -1056,11 +1056,7 @@ function handleCourseChange(courseId: string | null) {
   }
 
   &__signals {
-    margin-bottom: 16px;
-    padding: 16px 20px;
-    background: var(--dp-surface-elevated);
-    border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    margin-bottom: 12px;
   }
 
   &__panel {

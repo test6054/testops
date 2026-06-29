@@ -6,11 +6,7 @@
  *      / retrySyncTask / cancelSyncTask
  *   2. 成绩回写记录与对账 - listPassbackRecords / reconcilePassback
  *
- * 端点说明：
- *   - createSyncTask（POST + DTO）/ listPassbackRecords（POST + DTO，2026-05-14 已 GET→POST 整改）
- *   - listSyncTasks 保留 GET（≤ 2 参数符合约定）
- *   - executeGradePassback / retrySyncTask / cancelSyncTask / reconcilePassback
- *     是 syncTaskId 单参数 POST，使用 query 形式
+ * 端点说明：查询与写操作均使用 POST + JSON body（IdRequest / QueryRequest DTO）。
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
@@ -187,44 +183,23 @@ export function createSyncTask(request: SyncTaskCreateRequest): Promise<SyncTask
   return http.post<SyncTaskVO>('/api/exam/teaching-affairs/sync-task/create', request)
 }
 
-/**
- * 查询同步任务列表（≤ 2 参数 GET 保留）
- * GET /api/exam/teaching-affairs/sync-task/list?examId=&taskStatus=
- */
 export function listSyncTasks(examId: string, taskStatus?: SyncTaskStatusCode): Promise<SyncTaskVO[]> {
-  return http.get<SyncTaskVO[]>('/api/exam/teaching-affairs/sync-task/list', {
-    params: { examId, taskStatus },
+  return http.post<SyncTaskVO[]>('/api/exam/teaching-affairs/sync-task/list', {
+    examId,
+    taskStatus,
   })
 }
 
-/**
- * 执行成绩回写
- * POST /api/exam/teaching-affairs/sync-task/execute?syncTaskId=
- */
 export function executeGradePassback(syncTaskId: string): Promise<void> {
-  return http.post<void>('/api/exam/teaching-affairs/sync-task/execute', null, {
-    params: { syncTaskId },
-  })
+  return http.post<void>('/api/exam/teaching-affairs/sync-task/execute', { id: syncTaskId })
 }
 
-/**
- * 重试失败 / 部分成功的同步任务
- * POST /api/exam/teaching-affairs/sync-task/retry?syncTaskId=
- */
 export function retrySyncTask(syncTaskId: string): Promise<void> {
-  return http.post<void>('/api/exam/teaching-affairs/sync-task/retry', null, {
-    params: { syncTaskId },
-  })
+  return http.post<void>('/api/exam/teaching-affairs/sync-task/retry', { id: syncTaskId })
 }
 
-/**
- * 取消未完成的同步任务
- * POST /api/exam/teaching-affairs/sync-task/cancel?syncTaskId=
- */
 export function cancelSyncTask(syncTaskId: string): Promise<void> {
-  return http.post<void>('/api/exam/teaching-affairs/sync-task/cancel', null, {
-    params: { syncTaskId },
-  })
+  return http.post<void>('/api/exam/teaching-affairs/sync-task/cancel', { id: syncTaskId })
 }
 
 /**
@@ -240,17 +215,11 @@ export function listPassbackRecords(request: PassbackRecordQueryRequest): Promis
  * POST /api/exam/teaching-affairs/passback/reconcile?syncTaskId=
  */
 export function reconcilePassback(syncTaskId: string): Promise<void> {
-  return http.post<void>('/api/exam/teaching-affairs/passback/reconcile', null, {
-    params: { syncTaskId },
-  })
+  return http.post<void>('/api/exam/teaching-affairs/passback/reconcile', { id: syncTaskId })
 }
 
-/**
- * 查询回写进度汇总（同步任务下各 PassbackStatus 的记录计数）
- * GET /api/exam/teaching-affairs/passback/progress?syncTaskId=
- */
 export function getPassbackProgress(syncTaskId: string): Promise<PassbackProgressVO> {
-  return http.get<PassbackProgressVO>('/api/exam/teaching-affairs/passback/progress', {
-    params: { syncTaskId },
+  return http.post<PassbackProgressVO>('/api/exam/teaching-affairs/passback/progress', {
+    id: syncTaskId,
   })
 }

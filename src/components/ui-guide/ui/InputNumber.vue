@@ -128,7 +128,7 @@ function handleChange(value: string | number | null) {
 
 .ui-input-number :deep(.ant-input-number-input) {
   color: var(--dp-text-primary, #0f172a) !important;
-  font-family: var(--dp-font-family, 'Inter', 'PingFang SC', sans-serif) !important;
+  font-family: var(--dp-font-family) !important;
 }
 
 .ui-input-number :deep(.ant-input-number-input::placeholder) {

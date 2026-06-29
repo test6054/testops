@@ -1,7 +1,11 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="消息中心"
+      >
         <template #status>
           <UiTag tone="blue" size="sm">站内信 + 系统公告</UiTag>
           <UiTag v-if="unreadTotal > 0" tone="red" size="sm">未读 {{ unreadTotal }}</UiTag>
@@ -737,7 +741,7 @@ onActivated(() => {
   :deep(.ant-list-item) {
     padding: 14px 16px;
     border: 1px solid var(--ant-color-border-secondary);
-    border-radius: var(--dp-radius-md, 6px);
+    border-radius: var(--dp-radius-panel, 6px);
     margin-bottom: 10px;
     transition:
       border-color 0.2s ease,

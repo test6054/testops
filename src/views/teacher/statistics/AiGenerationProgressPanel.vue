@@ -136,7 +136,7 @@ onBeforeUnmount(stopTimer)
   min-height: 34px;
   padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
   border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-control, 8px);
+  border-radius: var(--dp-radius-panel);
   background: var(--dp-surface, #fff);
   color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
   font-size: var(--dp-font-size-sm, 13px);

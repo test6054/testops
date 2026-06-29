@@ -127,9 +127,9 @@ defineExpose({ reload: loadOptions })
       :value="opt.id"
       :label="`${opt.issueCode} · ${opt.issueTitle}`"
     >
-      <span class="text-xs text-gray-500 mr-1">{{ opt.issueCode }}</span>
+      <span class="dp-selector-option-code">{{ opt.issueCode }}</span>
       {{ opt.issueTitle }}
-      <UiTag :tone="auditIssueStatusColor(opt.status)" class="ml-1">
+      <UiTag :tone="auditIssueStatusColor(opt.status)" class="dp-selector-option-tag-gap">
         {{ auditIssueStatusLabel(opt.status) }}
       </UiTag>
     </a-select-option>

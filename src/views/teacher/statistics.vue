@@ -438,7 +438,7 @@ onBeforeUnmount(() => {
     :deep(.stats-card .score-dist__metrics) {
       padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
       background: var(--dp-surface-subtle);
-      border-radius: var(--dp-radius-sm, 4px);
+      border-radius: var(--dp-radius-control-inner, 4px);
     }
 
     :deep(.stats-card .score-dist__chart-wrap),
@@ -446,7 +446,7 @@ onBeforeUnmount(() => {
     :deep(.stats-card .ai-chart) {
       padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
       border: 1px solid var(--dp-border, #e2e8f0);
-      border-radius: var(--dp-radius-md, 6px);
+      border-radius: var(--dp-radius-panel, 6px);
       background: var(--dp-surface, #fff);
     }
 

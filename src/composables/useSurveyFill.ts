@@ -137,7 +137,8 @@ export function useSurveyFill() {
       survey.value = await publicSurveyApi.getSurvey(token)
     } catch (err) {
       if (!(err instanceof Error)) throw err
-      errorMessage.value = getUserErrorMessage(err, '问卷加载失败，请稍后重试')
+      showUserError(err, '问卷加载失败')
+      errorMessage.value = getUserErrorMessage(err, '问卷加载失败')
     } finally {
       loading.value = false
     }

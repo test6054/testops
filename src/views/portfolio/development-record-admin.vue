@@ -156,7 +156,13 @@ onMounted(loadPage)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar :title="tabLabel" subtitle="成果库 / 荣誉库 / 政策文件库" />
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="tabLabel"
+      />
+    </template>
     <div class="tabs">
       <UiButton
         v-for="tab in RECORD_TABS"

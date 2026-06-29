@@ -7,7 +7,7 @@
       @click="onMenuClick"
     >
       <template v-for="group in menuGroups" :key="group.key">
-        <a-menu-item-group v-if="!collapsed" :title="groupMenuTitle(group)">
+        <a-menu-item-group v-if="!collapsed" :title="group.title">
           <a-menu-item v-for="item in group.items" :key="item.key">
             <template #icon>
               <component :is="menuIconMap[item.key]" />
@@ -31,15 +31,9 @@
 import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
 import type { Component } from 'vue'
 import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
-import type { ExamWorkspaceMenuGroup, ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
-import type { WorkbenchStage } from '@/types/workbench'
+import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
 import { computed } from 'vue'
 import { getMenuGroupsForJourney } from '@/constants/exam-workspace-menu'
-import {
-  resolveWorkspaceStage,
-  WORKSPACE_STAGE_STATUS_LABEL,
-} from '@/constants/mark-workspace-nav'
-import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({
   name: 'ExamSubSidebarNav',
@@ -48,7 +42,6 @@ defineOptions({
 const props = defineProps<{
   activeJourneyKey: ExamWorkspaceJourneyKey
   activeMenuKey: string
-  orderedStages: WorkbenchStage[]
   collapsed: boolean
   menuIconMap: Record<ExamWorkspaceMenuKey, Component>
 }>()
@@ -58,21 +51,6 @@ const emit = defineEmits<{
 }>()
 
 const menuGroups = computed(() => getMenuGroupsForJourney(props.activeJourneyKey))
-
-/** 子组标题附带聚合阶段状态文案 */
-function groupMenuTitle(group: ExamWorkspaceMenuGroup): string {
-  const primaryStageKey = group.stageKeys[0]
-  if (!primaryStageKey) {
-    return group.title
-  }
-  const stage = resolveWorkspaceStage(props.orderedStages, primaryStageKey)
-  if (!stage) {
-    return group.title
-  }
-  const statusLabel = stage.statusText
-    || strictEnumLabel(WORKSPACE_STAGE_STATUS_LABEL, stage.status, '工作台阶段状态')
-  return `${group.title} · ${statusLabel}`
-}
 
 function onMenuClick(info: MenuInfo): void {
   emit('menu-click', String(info.key))
@@ -93,7 +71,7 @@ function onMenuClick(info: MenuInfo): void {
   }
 
   :deep(.ant-menu-item) {
-    border-radius: var(--dp-radius-md);
+    border-radius: var(--dp-radius-panel);
     font-weight: 500;
   }
 

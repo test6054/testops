@@ -12,9 +12,6 @@
       <p class="m-survey__status-title">无法加载问卷</p>
       <p class="m-survey__status-text">{{ errorMessage }}</p>
       <p class="m-survey__status-hint">请检查链接是否正确，或联系问卷发布者</p>
-      <button type="button" class="m-survey__btn m-survey__btn--retry" @click="loadSurvey">
-        重新加载
-      </button>
     </div>
 
     <!-- 提交成功 -->

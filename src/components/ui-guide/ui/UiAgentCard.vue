@@ -136,7 +136,7 @@ const emit = defineEmits<{
   flex-shrink: 0;
   border-radius: var(--dp-radius-panel, 4px);
   background: rgba(255, 255, 255, 0.9);
-  color: #7c3aed;
+  color: var(--dp-purple-500, #722ed1);
   font-size: 16px;
   font-weight: 800;
   border: 1px solid rgba(255, 255, 255, 0.82);

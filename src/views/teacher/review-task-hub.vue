@@ -1,41 +1,48 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
-        <template #status>
-          <UiTag tone="blue" size="sm">
-            共 {{ pagination.total }} 条
-          </UiTag>
-          <UiTag v-if="statusFilter" :tone="statusFilterTone" size="sm">
-            {{ statusFilterLabel }}
-          </UiTag>
-        </template>
-        <template #actions>
-          <UiButton variant="outline" size="sm" @click="goBatchConfirm">
-            批量复核确认
-          </UiButton>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadTasks">
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="复核任务"
+      >
+        <template #toolbar>
+          <UiFilterBar
+            v-if="examId"
+            v-model="filterModel"
+            :fields="statusFilterFields"
+            variant="panel"
+            show-labels
+            search-text="查询"
+            actions-align="end"
+            @search="onFilterChange"
+            @reset="resetStatusFilter"
+          >
+            <template #actions>
+              <UiButton variant="outline" size="sm" @click="goBatchConfirm">
+                批量复核确认
+              </UiButton>
+              <UiButton variant="outline" size="sm" :loading="loading" @click="loadTasks">
+                <template #icon><ReloadOutlined /></template>
+                刷新
+              </UiButton>
+            </template>
+          </UiFilterBar>
         </template>
       </ContextBar>
     </template>
 
+    <template v-if="examId" #signal>
+      <SignalBand
+        :metrics="hubSignalMetrics"
+        compact
+        @metric-click="handleHubSignalClick"
+      />
+    </template>
+
     <UiEmpty v-if="!examId" description="缺少考试上下文，请从考试列表进入" />
 
-
-    <UiCard v-else>
-      <div class="review-task-hub__filters">
-        <span class="review-task-hub__filter-label">任务状态</span>
-        <a-select
-          v-model:value="statusFilter"
-          :options="statusFilterOptions"
-          size="small"
-          style="width: 160px"
-          @change="onFilterChange"
-        />
-      </div>
+    <UiCard v-else bordered>
       <UiEmpty
         v-if="!loading && rows.length === 0"
         description="当前筛选下暂无复核任务"
@@ -113,7 +120,8 @@ import type {
   ReviewTaskStatusCode,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -129,10 +137,12 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
@@ -144,7 +154,7 @@ defineOptions({ name: 'ReviewTaskHub' })
 
 const router = useRouter()
 const { examId } = useWorkspaceExamId()
-const { refreshing: workbenchRefreshing } = useMarkWorkbenchContext()
+const { refreshing: workbenchRefreshing, snapshot } = useMarkWorkbenchContext()
 
 const loading = ref(false)
 const rows = ref<ReviewTaskItemVO[]>([])
@@ -162,6 +172,76 @@ const statusFilterOptions = [
   { label: '已失效', value: 'INVALIDATED' as ReviewTaskStatusCode },
 ]
 
+const statusFilterFields: FilterField[] = [
+  {
+    key: 'status',
+    type: 'select',
+    label: '任务状态',
+    placeholder: '任务状态',
+    width: 160,
+    minWidth: 160,
+    options: statusFilterOptions,
+  },
+]
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => ({ status: statusFilter.value }),
+  set: (value) => {
+    statusFilter.value = value.status as ReviewTaskStatusCode
+  },
+})
+
+const hubSignalMetrics = computed((): SignalMetric[] => {
+  const progress = snapshot.value?.markingProgress
+  const pending = progress?.pendingReviewTaskCount ?? 0
+  const inProgress = progress?.inProgressReviewTaskCount ?? 0
+  return [
+    {
+      key: 'filtered',
+      label: '筛选结果',
+      value: pagination.total,
+      unit: '条',
+      tone: 'blue',
+      helper: statusFilterLabel.value,
+    },
+    {
+      key: 'pending',
+      label: '待复核',
+      value: pending,
+      unit: '条',
+      tone: pending > 0 ? 'orange' : 'green',
+      clickable: pending > 0,
+      helper: pending > 0 ? '点击切换待复核' : '暂无待复核',
+    },
+    {
+      key: 'in-progress',
+      label: '复核中',
+      value: inProgress,
+      unit: '条',
+      tone: inProgress > 0 ? 'blue' : 'gray',
+      clickable: inProgress > 0,
+      helper: inProgress > 0 ? '点击切换复核中' : '暂无进行中',
+    },
+  ]
+})
+
+function handleHubSignalClick(key: string): void {
+  if (key === 'pending' && (snapshot.value?.markingProgress?.pendingReviewTaskCount ?? 0) > 0) {
+    statusFilter.value = 'PENDING'
+    onFilterChange()
+    return
+  }
+  if (key === 'in-progress' && (snapshot.value?.markingProgress?.inProgressReviewTaskCount ?? 0) > 0) {
+    statusFilter.value = 'IN_PROGRESS'
+    onFilterChange()
+  }
+}
+
+function resetStatusFilter(): void {
+  statusFilter.value = 'PENDING'
+  onFilterChange()
+}
+
 const columns: ColumnType<ReviewTaskItemVO>[] = [
   { title: '答卷', key: 'paper', width: 200 },
   { title: '题号', key: 'question', width: 88 },
@@ -175,8 +255,6 @@ const columns: ColumnType<ReviewTaskItemVO>[] = [
 ]
 
 const statusFilterLabel = computed(() => reviewStatusLabel(statusFilter.value))
-
-const statusFilterTone = computed((): BadgeTone => reviewStatusTone(statusFilter.value))
 
 function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
   return strictEnumTone(REVIEW_TASK_STATUS_TONE, value, '复核任务状态')
@@ -301,18 +379,6 @@ watch(workbenchRefreshing, (isRefreshing, wasRefreshing) => {
 <style lang="scss" scoped>
 .review-task-hub__empty {
   padding: 40px 0;
-}
-
-.review-task-hub__filters {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.review-task-hub__filter-label {
-  font-size: 13px;
-  color: var(--ant-color-text-secondary);
 }
 
 .review-task-hub__paper-cell {

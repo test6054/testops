@@ -1,5 +1,5 @@
 // 实训详情列表：操作列与工具栏按钮（与 edu-practice-web-vue StudentDetailTable 一致）
-// 全局样式（由 index.scss 引入），供阅卷端列表页复用
+// 全局样式（由 index.scss 引入），供阅卷端列表页复�?
 
 .table-actions {
   display: flex;
@@ -17,8 +17,8 @@
   max-width: 100%;
 }
 
-// 表格行内操作：与 edu-practice-web-vue / Ant Design Pro / SAP Fiori tertiary 一致
-// 正文色 + hover 主色；主操作常驻主色；危险操作 hover 变红。不用实心按钮，避免与列表正文抢视觉。
+// 表格行内操作：与 edu-practice-web-vue / Ant Design Pro / SAP Fiori tertiary 一�?
+// 正文�?+ hover 主色；主操作常驻主色；危险操�?hover 变红。不用实心按钮，避免与列表正文抢视觉�?
 .op-link {
   display: inline-flex;
   align-items: center;
@@ -171,7 +171,7 @@
 }
 
 .detail-table-card {
-  border-radius: var(--dp-radius-lg);
+  border-radius: var(--dp-radius-panel);
   border: 1px solid var(--ant-color-border-secondary);
   box-shadow: none;
 

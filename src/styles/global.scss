@@ -23,3 +23,9 @@
 
 // 打印：成绩单、质量报表、涉密页默认禁印影像
 @use './global/print';
+
+// 工作台原型壳层（ContextBar / SignalBand / FilterBar）
+@use './global/workbench';
+
+// 键盘 focus-visible baseline（workbench / mark 原生控件）
+@use './global/focus';

@@ -1,11 +1,14 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="个人资料"
+        :subtitle="userInfo.userName"
+      >
         <template #status>
-          <span class="profile-page__title">{{ displayName }}</span>
           <UiTag tone="blue" size="sm">{{ roleLabel }}</UiTag>
-          <UiTag tone="gray" size="sm">{{ userInfo.userName }}</UiTag>
           <UiTag v-if="tenantName" tone="gray" size="sm">{{ tenantName }}</UiTag>
         </template>
         <template #actions>
@@ -329,7 +332,7 @@ onActivated(() => {
   gap: 12px;
   padding: 12px 14px;
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 6px);
+  border-radius: var(--dp-radius-panel, 6px);
 
   &__main {
     flex: 1;
@@ -357,7 +360,7 @@ onActivated(() => {
   padding: 12px 14px;
   background: var(--ant-color-fill-quaternary);
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 6px);
+  border-radius: var(--dp-radius-panel, 6px);
   cursor: pointer;
   text-align: left;
   font-size: 14px;

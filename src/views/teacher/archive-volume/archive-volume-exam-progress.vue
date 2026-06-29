@@ -73,8 +73,12 @@
 
     <template v-else>
       <UiEmpty
-        v-if="!examGate"
-        description="加载归档进度失败，请刷新重试"
+        v-if="volumeLoadFailed"
+        description="加载归档卷失败"
+      />
+      <UiEmpty
+        v-else-if="gateLoadFailed"
+        description="加载考试双门禁失败"
       />
 
       <template v-else>
@@ -136,6 +140,8 @@ const route = useRoute()
 const router = useRouter()
 const examId = computed(() => String(route.params.examId ?? ''))
 const loading = ref(true)
+const volumeLoadFailed = ref(false)
+const gateLoadFailed = ref(false)
 const volume = ref<ArchiveVolumeVO | null>(null)
 const events = ref<ArchiveVolumeEventVO[]>([])
 const examGate = ref<ArchiveVolumeExamGateVO | null>(null)
@@ -159,7 +165,7 @@ const gateProgressHint = computed(() => {
 const emptyDescription = computed(() => {
   const gate = examGate.value
   if (gate?.gateOpen) {
-    return '双门禁已满足，归档卷尚未生成，请稍后刷新或联系管理员排查自动建卷'
+    return '双门禁已满足，归档卷尚未生成，请联系管理员排查自动建卷'
   }
   if (gate?.allScoresPublished && (gate.gradablePaperCount ?? 0) <= 0 && !gate.examClosed) {
     return '本场考试无可评阅试卷，关考后系统将自动创建归档卷'
@@ -219,6 +225,7 @@ async function loadGate() {
   catch (error) {
     showUserError(error, '加载考试双门禁失败')
     examGate.value = null
+    gateLoadFailed.value = true
   }
 }
 
@@ -229,6 +236,8 @@ async function loadVolume() {
     return
   }
   loading.value = true
+  volumeLoadFailed.value = false
+  gateLoadFailed.value = false
   examGate.value = null
   try {
     const page = await pageArchiveVolumes({
@@ -251,6 +260,7 @@ async function loadVolume() {
     showUserError(error, '加载归档卷失败')
     volume.value = null
     events.value = []
+    volumeLoadFailed.value = true
     loading.value = false
     return
   }
@@ -299,7 +309,7 @@ onMounted(() => {
   gap: var(--dp-space-3, 12px);
   padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
   border: 1px solid var(--dp-border-subtle, #e2e8f0);
-  border-radius: var(--dp-radius-md, 6px);
+  border-radius: var(--dp-radius-panel, 6px);
   background: var(--dp-surface-muted, #f8fafc);
 }
 

@@ -182,7 +182,7 @@ const toggleVisibility = () => {
     border-color 0.2s ease,
     box-shadow 0.2s ease,
     background-color 0.2s ease;
-  font-family: var(--dp-font-family, 'Inter'), 'PingFang SC', sans-serif;
+  font-family: var(--dp-font-family);
   box-sizing: border-box;
 }
 

@@ -8,20 +8,6 @@
     class="archive-volume-mine-remediation-banner"
   />
   <UiAlertStrip
-    v-else-if="errorMessage"
-    tone="error"
-    title="待整改任务加载失败"
-    :description="errorMessage"
-    dense
-    class="archive-volume-mine-remediation-banner"
-  >
-    <template #actions>
-      <UiButton size="sm" variant="outline" :loading="loading" @click="emit('retry')">
-        重试
-      </UiButton>
-    </template>
-  </UiAlertStrip>
-  <UiAlertStrip
     v-else-if="tasks.length === 1"
     tone="warning"
     title="待整改任务"
@@ -88,11 +74,9 @@ defineOptions({ name: 'ArchiveVolumeMineRemediationBanner' })
 const props = defineProps<{
   tasks: ArchiveRemediationTaskVO[]
   loading: boolean
-  errorMessage: string | null
 }>()
 
 const emit = defineEmits<{
-  retry: []
   go: [task: ArchiveRemediationTaskVO]
 }>()
 

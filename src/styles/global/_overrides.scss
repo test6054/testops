@@ -25,7 +25,7 @@
   }
 }
 
-// ─── Tabs 现代化 ───
+// ─── Tabs 现代�?───
 .ant-tabs {
   .ant-tabs-tab {
     padding: 10px 16px !important;
@@ -51,10 +51,10 @@
   }
 }
 
-// ─── Drawer 现代化 ───
+// ─── Drawer 现代�?───
 .ant-drawer-content-wrapper {
   .ant-drawer-content {
-    border-radius: var(--dp-radius-lg, 8px) 0 0 var(--dp-radius-lg, 8px);
+    border-radius: var(--dp-radius-panel, 8px) 0 0 var(--dp-radius-panel, 8px);
   }
 
   .ant-drawer-header {
@@ -63,7 +63,7 @@
   }
 
   .ant-drawer-title {
-    font-size: 16px !important;
+    font-size: var(--dp-font-size-lg) !important;
     font-weight: 600 !important;
     color: var(--dp-text-primary, #0f172a) !important;
   }
@@ -82,17 +82,17 @@
   background-color: rgba(15, 23, 42, 0.4) !important;
 }
 
-// ─── Dropdown 通用现代化 ───
+// ─── Dropdown 通用现代�?───
 .ant-dropdown {
   .ant-dropdown-menu {
     padding: 6px !important;
-    border-radius: var(--dp-radius-md, 6px) !important;
+    border-radius: var(--dp-radius-panel, 6px) !important;
     box-shadow: var(--dp-shadow-md) !important;
     border: 1px solid var(--dp-border, #f1f5f9);
 
     .ant-dropdown-menu-item {
       padding: 8px 12px !important;
-      border-radius: var(--dp-radius-sm, 4px) !important;
+      border-radius: var(--dp-radius-control-inner, 4px) !important;
       font-size: 14px;
       color: var(--dp-text-primary, #0f172a);
       transition: all 0.15s ease;
@@ -111,10 +111,10 @@
   }
 }
 
-// ─── Popover / Popconfirm 现代化 ───
+// ─── Popover / Popconfirm 现代�?───
 .ant-popover {
   .ant-popover-inner {
-    border-radius: var(--dp-radius-md, 6px) !important;
+    border-radius: var(--dp-radius-panel, 6px) !important;
     box-shadow: var(--dp-shadow-md) !important;
     padding: 16px 20px !important;
     border: 1px solid var(--dp-border, #f1f5f9);
@@ -141,10 +141,10 @@
   }
 }
 
-// ─── Notification / Message 现代化 ───
+// ─── Notification / Message 现代�?───
 .ant-notification {
   .ant-notification-notice {
-    border-radius: var(--dp-radius-md, 6px) !important;
+    border-radius: var(--dp-radius-panel, 6px) !important;
     box-shadow: var(--dp-shadow-md) !important;
     border: 1px solid var(--dp-border, #f1f5f9);
     padding: 16px 20px !important;
@@ -156,7 +156,7 @@
   }
 }
 
-// 全局反馈：Message 容器带内联 left:50% + translateX(-50%)，须显式覆盖 physical left/right
+// 全局反馈：Message 容器带内�?left:50% + translateX(-50%)，须显式覆盖 physical left/right
 .ant-message {
   left: auto !important;
   right: 24px !important;
@@ -195,7 +195,7 @@
     line-height: var(--dp-type-sidebar-line-height, 20px) !important;
     font-size: var(--dp-type-sidebar-size, 14px) !important;
     font-weight: var(--dp-type-sidebar-weight, 500) !important;
-    border-radius: var(--dp-radius-md, 6px) !important;
+    border-radius: var(--dp-radius-panel, 6px) !important;
     color: var(--dp-text-secondary, #475569);
     transition: all 0.15s ease;
 
@@ -223,7 +223,7 @@
       line-height: var(--dp-type-sidebar-line-height, 20px) !important;
       font-size: var(--dp-type-sidebar-size, 14px) !important;
       font-weight: var(--dp-type-sidebar-weight-active, 600) !important;
-      border-radius: var(--dp-radius-sm, 4px) !important;
+      border-radius: var(--dp-radius-control-inner, 4px) !important;
       color: var(--dp-text-secondary, #475569);
       transition: all 0.15s ease;
 
@@ -256,14 +256,14 @@
 // 侧边栏菜单弹出层（折叠态下拉）
 .ant-menu-submenu-popup {
   .ant-menu {
-    border-radius: var(--dp-radius-md, 6px) !important;
+    border-radius: var(--dp-radius-panel, 6px) !important;
     box-shadow: var(--dp-shadow-md) !important;
     padding: 6px !important;
     border: 1px solid var(--dp-border, #f1f5f9);
   }
 
   .ant-menu-item {
-    border-radius: var(--dp-radius-md, 6px) !important;
+    border-radius: var(--dp-radius-panel, 6px) !important;
     margin: 2px 0 !important;
     transition: all 0.15s ease;
 

@@ -147,7 +147,7 @@ function handleChange(value: Key) {
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--dp-border, #e2e8f0);
-  border-radius: var(--dp-radius-md, 8px);
+  border-radius: var(--dp-radius-panel, 8px);
   background: var(--dp-gray-50, #f8fafc);
 }
 
@@ -157,7 +157,7 @@ function handleChange(value: Key) {
   gap: 8px;
   padding: 7px 14px;
   border: 0;
-  border-radius: calc(var(--dp-radius-md, 8px) - 2px);
+  border-radius: calc(var(--dp-radius-panel, 8px) - 2px);
   background: transparent;
   color: var(--dp-text-secondary, #64748b);
   font-size: 14px;
@@ -245,7 +245,7 @@ function handleChange(value: Key) {
 }
 
 .ui-section-tabs__count--active-tab.ui-section-tabs__count--green {
-  background: var(--dp-green-600, #16a34a);
+  background: var(--dp-green-600);
   color: #fff;
 }
 

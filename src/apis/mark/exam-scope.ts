@@ -34,6 +34,10 @@ export interface ExamCandidateVO {
   studentNo: string
   studentName: string
   status: CandidateStatusCode
+  /** 是否允许从名册移除 */
+  removable?: boolean
+  /** 不可移除原因 */
+  removalBlockReason?: string
 }
 
 /** 考试范围全量保存请求 - 对应 ExamScopeSaveRequest */

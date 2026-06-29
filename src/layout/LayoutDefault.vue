@@ -71,7 +71,7 @@ onMounted(() => {
   color: var(--ant-color-white);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
-  border-radius: var(--dp-radius-md);
+  border-radius: var(--dp-radius-panel);
   text-decoration: none;
   transition: top var(--dp-duration-fast) ease;
 

@@ -8,10 +8,8 @@
       />
     </div>
 
-    <UiStatPanel
-      :items="statMetrics"
-      :columns="3"
-      variant="grid"
+    <SignalBand
+      :metrics="statMetrics"
       compact
       class="score-finalize__signals"
     />
@@ -46,6 +44,8 @@
       <UiFilterBar
         v-model="scoreFilterModel"
         :fields="scoreFilterFields"
+        variant="panel"
+        show-labels
         search-text="查询"
         @search="handleSearch"
         @reset="handleReset"
@@ -441,7 +441,7 @@ import type {
 } from '@/apis/mark/exam-score'
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
 import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
-import type { BadgeTone, FilterField, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
@@ -482,7 +482,8 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiActivityTimeline from '@/components/ui-guide/ui/UiActivityTimeline.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import type { SignalMetric } from '@/types/workbench'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
@@ -855,7 +856,7 @@ async function handleBatchConfirmSafe(): Promise<void> {
   }
 }
 
-const statMetrics = computed<UiStatPanelItem[]>(() => {
+const statMetrics = computed((): SignalMetric[] => {
   const overview = riskOverview.value
   const total = overview?.totalCandidateCount ?? 0
   const pending = overview?.pendingCount ?? 0
@@ -1452,10 +1453,6 @@ watch(selectedExamId, (value) => {
 .score-finalize {
   &__signals {
     margin-bottom: 12px;
-    padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: 8px;
   }
 
   &__guide {

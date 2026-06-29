@@ -143,36 +143,25 @@ export function listQualityAnalysis(params: {
   analysisDimension: SchoolQualityDimensionCode
   semesterCode?: string
 }): Promise<SchoolQualityAnalysisVO[]> {
-  return http.get<SchoolQualityAnalysisVO[]>(
+  return http.post<SchoolQualityAnalysisVO[]>(
     '/api/exam/school-quality/analysis/list',
-    { params },
+    params,
   )
 }
 
-/**
- * 评估经验案例的有效性
- * POST /api/exam/school-quality/experience-eval/generate?experienceCaseId=&evalExamId=
- */
 export function evaluateExperienceEffectiveness(params: {
   experienceCaseId: string
   evalExamId: string
 }): Promise<ExperienceEffectivenessEvalVO> {
-  const search = new URLSearchParams({
-    experienceCaseId: params.experienceCaseId,
-    evalExamId: params.evalExamId,
-  }).toString()
   return http.post<ExperienceEffectivenessEvalVO>(
-    `/api/exam/school-quality/experience-eval/generate?${search}`,
+    '/api/exam/school-quality/experience-eval/generate',
+    params,
   )
 }
 
-/**
- * 查询经验有效性评估历史列表
- * GET /api/exam/school-quality/experience-eval/list?experienceCaseId=
- */
 export function listExperienceEvals(experienceCaseId: string): Promise<ExperienceEffectivenessEvalVO[]> {
-  return http.get<ExperienceEffectivenessEvalVO[]>(
+  return http.post<ExperienceEffectivenessEvalVO[]>(
     '/api/exam/school-quality/experience-eval/list',
-    { params: { experienceCaseId } },
+    { id: experienceCaseId },
   )
 }

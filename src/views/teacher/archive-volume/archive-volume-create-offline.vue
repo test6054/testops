@@ -1,7 +1,10 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        show-title
+        title="线下纯归档建卷"
+      >
         <template #status>
           <UiTag tone="blue" size="sm">线下纯归档建卷</UiTag>
         </template>

@@ -1,7 +1,9 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        :title="detail?.examName || '成绩明细'"
+      >
         <template #status>
           <UiTag v-if="detail?.finalScoreStatus" :tone="finalScoreStatusTone(detail)" size="sm">
             {{ finalScoreStatusLabel(detail) }}

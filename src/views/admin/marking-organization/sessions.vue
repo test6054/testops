@@ -1,7 +1,11 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar :subtitle="organizationExamLabel">
+      <ContextBar
+        show-title
+        title="阅卷会话"
+        :subtitle="organizationExamLabel"
+      >
         <template #status>
           <a-select
             v-model:value="filterGroupId"
@@ -374,10 +378,6 @@ watch(() => [organizationId.value, routeExamId.value] as const, () => {
 
   &__signals {
     margin-bottom: 12px;
-    padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: 8px;
   }
 
   &__empty {

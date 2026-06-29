@@ -269,7 +269,7 @@ const handleClick = (evt: MouseEvent) => {
 }
 
 .ui-metric-card--purple {
-  --metric-text: #7c3aed;
+  --metric-text: var(--dp-purple-500, #722ed1);
   --metric-icon-bg: #f5f3ff;
   --metric-icon-border: rgba(221, 214, 254, 0.9);
 }

@@ -47,11 +47,10 @@
                   </p>
                 </MarkGaugeBlock>
               </div>
-              <UiStatPanel
-                :items="overviewStatItems"
-                :columns="2"
-                variant="grid"
+              <SignalBand
+                :metrics="overviewSignalMetrics"
                 compact
+                variant="inline"
               />
             </div>
           </UiCard>
@@ -69,17 +68,15 @@
                 :option="statusDistributionOption"
                 :aria-label="statusDistributionAriaLabel"
               />
-              <UiStatPanel
-                :items="statusStatItems"
-                :columns="4"
-                variant="grid"
+              <SignalBand
+                :metrics="statusSignalMetrics"
                 compact
+                variant="inline"
               />
-              <UiStatPanel
-                :items="auxStatItems"
-                :columns="2"
-                variant="strip"
+              <SignalBand
+                :metrics="auxSignalMetrics"
                 compact
+                variant="inline"
                 class="status-card__aux"
               />
             </div>
@@ -215,7 +212,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
@@ -231,7 +228,8 @@ import { reviewProgressToBarItems, reviewProgressToHeatmapCells } from '@/utils/
 import { toneToColor } from '@/utils/score-tone'
 import {
   toDistributionSegments,
-  toShareStatPanelItems,
+  toShareSignalMetrics,
+  toSignalMetrics,
 } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -345,9 +343,13 @@ const statusDistributionAriaLabel = computed(() => {
   return `复核任务状态分布，共 ${totalTaskCount.value} 项，${parts.join('，')}`
 })
 
-const statusStatItems = computed(() =>
-  toShareStatPanelItems(statusBreakdown.value, totalTaskCount.value, '暂无复核任务'),
+const overviewSignalMetrics = computed(() => toSignalMetrics(overviewStatItems.value))
+
+const statusSignalMetrics = computed(() =>
+  toShareSignalMetrics(statusBreakdown.value, totalTaskCount.value, '暂无复核任务'),
 )
+
+const auxSignalMetrics = computed(() => toSignalMetrics(auxStatItems.value))
 
 const auxStatItems = computed((): UiStatPanelItem[] => {
   if (!progress.value) return []
@@ -553,7 +555,7 @@ onActivated(() => {
 .question-cell--highlight {
   outline: 2px solid var(--ant-color-primary);
   outline-offset: 2px;
-  border-radius: var(--dp-radius-sm, 4px);
+  border-radius: var(--dp-radius-control-inner, 4px);
 }
 
 .progress-page__chart-canvas {

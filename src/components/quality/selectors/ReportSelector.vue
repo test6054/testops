@@ -123,8 +123,8 @@ defineExpose({ reload: loadOptions })
   >
     <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.title">
       {{ opt.title }}
-      <span v-if="opt.reportType" class="text-gray-400 ml-1">· {{ reportTypeLabel(opt.reportType) }}</span>
-      <span v-if="opt.schoolYear" class="text-gray-400 ml-1">
+      <span v-if="opt.reportType" class="dp-selector-option-meta">· {{ reportTypeLabel(opt.reportType) }}</span>
+      <span v-if="opt.schoolYear" class="dp-selector-option-meta">
         ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span>)
       </span>
     </a-select-option>

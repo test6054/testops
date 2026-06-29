@@ -19,9 +19,6 @@ import '@/styles/index.scss'
 // Tailwind utilities (layout/spacing only; no preflight — see tailwind.css)
 import '@/styles/tailwind.css'
 
-// 反馈层样式必须晚于 Ant Design reset，覆盖 message 内联居中
-import '@/styles/global/_feedback-placement.scss'
-
 // Polyfill: Array.prototype.at (ES2022) — 解决旧版浏览器兼容性问题
 /* eslint-disable no-extend-native */
 if (!Array.prototype.at) {

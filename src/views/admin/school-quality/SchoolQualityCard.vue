@@ -54,11 +54,10 @@
         description="暂无数据"
       />
       <div v-else-if="record" class="ai-record">
-        <UiStatPanel
-          :items="qualityMetrics"
-          :columns="3"
-          variant="strip"
+        <SignalBand
+          :metrics="qualitySignalMetrics"
           compact
+          variant="inline"
         />
 
         <a-descriptions :column="3" compact bordered>
@@ -184,7 +183,7 @@ import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
@@ -193,6 +192,7 @@ import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { examStatSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
 import { scoreTone } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 
 defineOptions({ name: 'SchoolQualityCard' })
 
@@ -259,6 +259,8 @@ const qualityMetrics = computed((): UiStatPanelItem[] => {
     },
   ]
 })
+
+const qualitySignalMetrics = computed(() => toSignalMetrics(qualityMetrics.value))
 
 function qualityRatingLabel(rating: SchoolQualityRatingCode): string {
   return strictEnumLabel(SCHOOL_QUALITY_RATING_LABEL, rating, '校级质量评价等级')
@@ -364,7 +366,7 @@ async function handleGenerate(): Promise<void> {
 .ai-chart {
   padding: 12px 16px;
   border: 1px solid var(--dp-border, #e2e8f0);
-  border-radius: var(--dp-radius-md, 6px);
+  border-radius: var(--dp-radius-panel, 6px);
   background: var(--dp-surface, #fff);
 }
 .ai-chart__meta {

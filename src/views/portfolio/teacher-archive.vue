@@ -417,37 +417,39 @@ watch(
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="我的档案" description="教师一张表 · 分类档案 · 成长时间轴（§17.2）">
-      <template #actions>
-        <UiButton :loading="scoreLoading" @click="computeArchiveScore">
-          档案评分
-        </UiButton>
-        <UiButton :loading="bagLoading" @click="previewBag">
-          结构化预览
-        </UiButton>
-        <UiButton :loading="bagLoading" @click="assembleBag">
-          汇聚预览
-        </UiButton>
-        <UiButton :loading="bagLoading" variant="primary" @click="exportBag">
-          导出材料包
-        </UiButton>
-        <UiButton @click="goCorrection">
-          我的纠错
-        </UiButton>
-        <UiButton
-          v-if="selectedCategoryId"
-          @click="goCategoryEdit(selectedCategoryId)"
-        >
-          分类填报
-        </UiButton>
-        <UiButton :loading="oneTableLoading || recordLoading || timelineLoading" @click="reloadAll">
-          刷新
-        </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar show-title layout="workbench" title="我的档案">
+        <template #actions>
+          <UiButton :loading="scoreLoading" @click="computeArchiveScore">
+            档案评分
+          </UiButton>
+          <UiButton :loading="bagLoading" @click="previewBag">
+            结构化预览
+          </UiButton>
+          <UiButton :loading="bagLoading" @click="assembleBag">
+            汇聚预览
+          </UiButton>
+          <UiButton :loading="bagLoading" variant="primary" @click="exportBag">
+            导出材料包
+          </UiButton>
+          <UiButton @click="goCorrection">
+            我的纠错
+          </UiButton>
+          <UiButton
+            v-if="selectedCategoryId"
+            @click="goCategoryEdit(selectedCategoryId)"
+          >
+            分类填报
+          </UiButton>
+          <UiButton :loading="oneTableLoading || recordLoading || timelineLoading" @click="reloadAll">
+            刷新
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
 
     <UiCard title="档案袋筛选" class="teacher-archive__bag-filter">
-      <UiFilterBar
+      <UiFilterBar variant="plain"
         v-model="bagFilter"
         :fields="bagFilterFields"
         show-labels

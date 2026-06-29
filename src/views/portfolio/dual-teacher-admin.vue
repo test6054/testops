@@ -161,7 +161,9 @@ onMounted(loadPage)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="双师认定台账" subtitle="院审冻结认定依据 → 教务终审只读快照 · 须先发布 DUAL_TEACHER 规则" />
+    <template #context>
+      <ContextBar show-title layout="workbench" title="双师认定台账" />
+    </template>
     <UiCard title="历史数据导入">
       <UiButton v-if="canExport" @click="importModalOpen = true">
         Excel 批量导入

@@ -1,7 +1,11 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="审计追踪"
+      >
         <template #status>
           <MarkExamSelect
             :selected-exam-id="selectedExamId"
@@ -647,7 +651,7 @@ onActivated(() => {
   margin-bottom: 12px;
   padding: 12px 16px;
   background: var(--ant-color-fill-quaternary);
-  border-radius: var(--dp-radius-md, 6px);
+  border-radius: var(--dp-radius-panel, 6px);
 }
 
 .audit-table {

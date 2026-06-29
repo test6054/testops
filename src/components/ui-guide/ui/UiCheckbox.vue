@@ -55,7 +55,7 @@ const inGroup = inject(uiCheckboxGroupKey, undefined) === true
   color: var(--dp-text-primary, #0f172a);
   font-size: 14px;
   line-height: 1.6;
-  font-family: var(--dp-font-family, 'Inter', 'PingFang SC', sans-serif);
+  font-family: var(--dp-font-family);
 }
 
 .ui-checkbox :deep(.ant-checkbox) {

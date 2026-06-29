@@ -275,7 +275,7 @@ const handleItemClick = (item: UiRankListItem) => {
 .ui-rank-list-card__rank--purple,
 .ui-rank-list-card__avatar--purple {
   background: #f5f3ff;
-  color: #7c3aed;
+  color: var(--dp-purple-500, #722ed1);
 }
 
 .ui-rank-list-card__rank--gray,

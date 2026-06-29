@@ -1,7 +1,10 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        show-title
+        title="批量复核确认"
+      >
         <template #status>
           <UiTag tone="blue" size="sm">
             待复核 {{ pagination.total }} 条

@@ -55,7 +55,9 @@ async function evaluate() {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="我的资格评估" subtitle="基于 Eligibility 规则的结构化评估" />
+    <template #context>
+  <ContextBar show-title layout="workbench" title="我的资格评估" />
+</template>
     <UiEmpty
       v-if="canPickTeachers && !scopeReady"
       description="请从顶部教师范围选择目标教师后再评估"

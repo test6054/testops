@@ -36,11 +36,10 @@
         description="暂无数据"
       />
       <div v-else-if="record" class="ai-record">
-        <UiStatPanel
-          :items="achievementMetrics"
-          :columns="3"
-          variant="strip"
+        <SignalBand
+          :metrics="achievementSignalMetrics"
           compact
+          variant="inline"
         />
 
         <a-descriptions :column="3" compact bordered>
@@ -167,7 +166,7 @@ import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
 import { assertUserFacing } from '@/utils/contract-guard'
@@ -180,6 +179,7 @@ import {
 } from '@/utils/mark-statistics-chart'
 import { rateTone } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 
 defineOptions({ name: 'CourseAchievementCard' })
 
@@ -262,6 +262,8 @@ const achievementMetrics = computed((): UiStatPanelItem[] => {
     },
   ]
 })
+
+const achievementSignalMetrics = computed(() => toSignalMetrics(achievementMetrics.value))
 
 const selectedCourseIds = computed(() =>
   Array.from(new Set(selectedExams.value.map((exam) => exam.courseId).filter(Boolean))),
@@ -394,7 +396,7 @@ function objectiveDimensionLabel(item: CourseAchievementItemVO): string {
 .ai-chart {
   padding: 12px 16px;
   border: 1px solid var(--dp-border, #e2e8f0);
-  border-radius: var(--dp-radius-md, 6px);
+  border-radius: var(--dp-radius-panel, 6px);
   background: var(--dp-surface, #fff);
 }
 .ai-chart__meta {

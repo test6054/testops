@@ -10,6 +10,10 @@ export interface CandidateRow {
   studentName?: string
   classId: string
   className?: string
+  /** 是否允许从名册移除 */
+  removable?: boolean
+  /** 不可移除原因 */
+  removalBlockReason?: string
 }
 
 export interface CandidateDraft {
@@ -18,4 +22,6 @@ export interface CandidateDraft {
   studentName?: string
   classId: string
   className?: string
+  removable?: boolean
+  removalBlockReason?: string
 }

@@ -1,12 +1,5 @@
 <template>
   <div class="marking-task-pool-page">
-    <div class="marking-task-pool-page__toolbar">
-      <UiTag tone="blue" size="sm">我的任务 {{ tasks.length }}</UiTag>
-      <UiTag v-if="inProgressCount > 0" tone="orange" size="sm">
-        阅卷中 {{ inProgressCount }}
-      </UiTag>
-    </div>
-
     <UiCard class="claim-card">
       <template #title>
         <ThunderboltOutlined />
@@ -62,12 +55,9 @@
       </a-spin>
     </UiCard>
 
-    <!-- PR-ISSUE-1: 任务完成度统计面板 -->
-    <UiStatPanel
+    <SignalBand
       v-if="tasks.length > 0"
-      :items="taskStats"
-      :columns="4"
-      variant="strip"
+      :metrics="taskSignalMetrics"
       compact
       class="marking-task-pool-page__stats"
     />
@@ -81,6 +71,8 @@
       <UiFilterBar
         v-model="filterModel"
         :fields="taskFilterFields"
+        variant="panel"
+        show-labels
         search-text="查询"
         @search="loadTasks"
         @reset="resetFilter"
@@ -148,9 +140,6 @@
               {{ taskStatusLabel(tasks[index].taskStatus) }}
             </UiTag>
           </template>
-          <template v-else-if="column.key === 'reviewRound'">
-            <UiTag tone="blue" size="sm">第 {{ tasks[index].reviewRound }} 轮</UiTag>
-          </template>
           <template v-else-if="column.key === 'allocatedTime'">
             {{ formatDateTime(tasks[index].allocatedTime) }}
           </template>
@@ -200,6 +189,7 @@ import type {
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
@@ -222,7 +212,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
@@ -296,12 +286,22 @@ const inProgressCount = computed(
     ).length,
 )
 
-/** PR-ISSUE-1: 任务完成度统计 */
-const taskStats = computed(() => [
-  { label: '我的任务', value: tasks.value.length, tone: 'blue' as BadgeTone },
-  { label: '待处理', value: tasks.value.filter((t) => t.taskStatus === 'ALLOCATED').length, tone: 'gray' as BadgeTone },
-  { label: '阅卷中', value: inProgressCount.value, tone: 'orange' as BadgeTone },
-  { label: '已完成', value: tasks.value.filter((t) => t.taskStatus === 'SUBMITTED' || t.taskStatus === 'FINALIZED').length, tone: 'green' as BadgeTone },
+/** 任务完成度 KPI */
+const taskSignalMetrics = computed((): SignalMetric[] => [
+  { key: 'total', label: '我的任务', value: tasks.value.length, tone: 'blue' },
+  {
+    key: 'allocated',
+    label: '待处理',
+    value: tasks.value.filter((t) => t.taskStatus === 'ALLOCATED').length,
+    tone: 'gray',
+  },
+  { key: 'inProgress', label: '阅卷中', value: inProgressCount.value, tone: 'orange' },
+  {
+    key: 'done',
+    label: '已完成',
+    value: tasks.value.filter((t) => t.taskStatus === 'SUBMITTED' || t.taskStatus === 'FINALIZED').length,
+    tone: 'green',
+  },
 ])
 
 const columns: ColumnType<MarkingTaskVO>[] = [
@@ -311,7 +311,6 @@ const columns: ColumnType<MarkingTaskVO>[] = [
   { title: '题组', key: 'groupName', width: 150 },
   { title: '阅卷教师', key: 'reviewerName', width: 120 },
   { title: '正评会话', key: 'session', width: 150 },
-  { title: '轮次', key: 'reviewRound', width: 80 },
   { title: '状态', key: 'taskStatus', width: 100 },
   { title: '给分', key: 'score', width: 80 },
   { title: '分配时间', key: 'allocatedTime', width: 170 },

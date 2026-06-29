@@ -1,7 +1,10 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        show-title
+        title="阅卷经验库"
+      >
         <template #status>
           <UiTag v-if="signatures.length > 0" tone="blue" size="sm">
             签名 {{ signatures.length }}
@@ -104,6 +107,8 @@
           <UiFilterBar
             :model-value="experienceFilterForm"
             :fields="experienceFilterFields"
+            variant="plain"
+            show-labels
             search-text="查询"
             @update:model-value="syncExperienceFilterForm"
             @search="loadExperiences"
@@ -181,6 +186,8 @@
           <UiFilterBar
             :model-value="clusterFilterForm"
             :fields="clusterFilterFields"
+            variant="plain"
+            show-labels
             search-text="查询最新"
             @update:model-value="syncClusterFilterForm"
             @search="loadLatestCluster"

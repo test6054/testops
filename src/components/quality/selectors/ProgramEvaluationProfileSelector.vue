@@ -124,11 +124,11 @@ defineExpose({ reload: loadOptions })
       :label="`${opt.programName} · ${accreditationTypeLabel(opt.accreditationType)}`"
     >
       <span>{{ opt.programName }}</span>
-      <span class="text-gray-400 ml-1">
+      <span class="dp-selector-option-meta">
         ·
         {{ accreditationTypeLabel(opt.accreditationType) }}
       </span>
-      <span class="text-gray-400 ml-1">
+      <span class="dp-selector-option-meta">
         ·
         {{ evaluationMethodLabel(opt.evaluationMethod) }}
       </span>

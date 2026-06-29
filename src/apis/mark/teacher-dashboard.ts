@@ -330,12 +330,10 @@ export function validateTeacherDashboardOverview(data: MarkTeacherDashboardOverv
   return data
 }
 
-/** GET /api/mark/teacher/dashboard/overview */
+/** POST /api/mark/teacher/dashboard/overview */
 export async function loadTeacherDashboardOverview(
   query: MarkTeacherDashboardQuery = {},
 ): Promise<MarkTeacherDashboardOverviewVO> {
-  const data = await http.get<MarkTeacherDashboardOverviewVO>('/api/mark/teacher/dashboard/overview', {
-    params: query,
-  })
+  const data = await http.post<MarkTeacherDashboardOverviewVO>('/api/mark/teacher/dashboard/overview', query)
   return validateTeacherDashboardOverview(data)
 }

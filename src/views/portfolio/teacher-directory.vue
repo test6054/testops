@@ -339,8 +339,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <StageWorkbenchShell title="教师名册" subtitle="主数据来自 edu-user，产业导师等扩展身份在本域维护">
-    <UiFilterBar v-model="filterModel" :fields="filterFields" @search="handleSearch" />
+  <StageWorkbenchShell>
+    <template #context>
+      <ContextBar layout="workbench" show-title title="教师名册" />
+    </template>
+    <UiFilterBar variant="plain" v-model="filterModel" :fields="filterFields" @search="handleSearch" />
     <UiCard>
       <div class="list-toolbar">
         <UiButton @click="exportRoster">

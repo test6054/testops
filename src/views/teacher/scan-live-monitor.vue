@@ -41,10 +41,8 @@
         </div>
       </header>
       <div class="scan-monitor__overview">
-        <UiStatPanel
-          :items="statPanelMetrics"
-          :columns="4"
-          variant="grid"
+        <SignalBand
+          :metrics="scanMonitorSignalMetrics"
           compact
           class="scan-monitor__stats"
         />
@@ -616,12 +614,12 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
+import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds, formatTimeOfDay } from '@/utils/format'
@@ -630,6 +628,7 @@ import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
 import mittBus from '@/utils/mitt'
 import { readArrayResponse, readPageList, readPageTotal } from '@/utils/page-result'
 import { toneToColor } from '@/utils/score-tone'
+import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanLiveMonitor' })
@@ -674,6 +673,8 @@ const filterForm = reactive<{
 
 const scannerDevices = ref<ExamScannerDeviceVO[]>([])
 const scannerDevicesLoading = ref(false)
+const SCANNER_DEVICE_POLL_INTERVAL_MS = 60_000
+let scannerDevicePollTimer: ReturnType<typeof setInterval> | null = null
 
 const connectedDevices = computed(() => scannerDevices.value.filter(isScannerDeviceOnline))
 
@@ -1097,7 +1098,11 @@ async function loadConnectedScannerDevices(): Promise<void> {
       filterForm.monitorDeviceId = nextDeviceId
       return
     }
-    await refreshScanLive()
+    if (selectedMonitorDevice.value) {
+      await refreshScanLive()
+    } else {
+      stopScanLive()
+    }
   } catch (error) {
     scannerDevices.value = []
     filterForm.monitorDeviceId = ''
@@ -1105,6 +1110,23 @@ async function loadConnectedScannerDevices(): Promise<void> {
     showUserError(error, '在线扫描仪加载失败')
   } finally {
     scannerDevicesLoading.value = false
+  }
+}
+
+function startScannerDevicePolling(): void {
+  stopScannerDevicePolling()
+  scannerDevicePollTimer = setInterval(() => {
+    if (!selectedExamId.value || activeTab.value !== 'normal') {
+      return
+    }
+    void loadConnectedScannerDevices()
+  }, SCANNER_DEVICE_POLL_INTERVAL_MS)
+}
+
+function stopScannerDevicePolling(): void {
+  if (scannerDevicePollTimer) {
+    clearInterval(scannerDevicePollTimer)
+    scannerDevicePollTimer = null
   }
 }
 
@@ -1444,7 +1466,7 @@ const statPanelMetrics = computed(() => [
     label: '重复影像',
     value: duplicateAttentionTotal.value,
     unit: '条',
-    tone: duplicateAttentionTotal.value > 0 ? ('purple' as const) : ('green' as const),
+    tone: duplicateAttentionTotal.value > 0 ? ('orange' as const) : ('green' as const),
   },
   {
     label: '连接状态',
@@ -1453,6 +1475,8 @@ const statPanelMetrics = computed(() => [
     tone: connectionTone.value,
   },
 ])
+
+const scanMonitorSignalMetrics = computed(() => toSignalMetrics(statPanelMetrics.value))
 
 function resetFilter(): void {
   normalFilterApplied.keyword = ''
@@ -2010,12 +2034,24 @@ watch(selectedExamId, (value) => {
     void loadPaperCandidates()
     void loadAttentions()
     void loadConnectedScannerDevices()
+    startScannerDevicePolling()
   } else {
     stopScanLive()
+    stopScannerDevicePolling()
     scannerDevices.value = []
     attentions.value = []
   }
 }, { immediate: true })
+
+watch(selectedMonitorDevice, (device) => {
+  if (!selectedExamId.value || activeTab.value !== 'normal') {
+    return
+  }
+  if (filterForm.monitorDeviceId && !device) {
+    filterForm.monitorDeviceId = ''
+    stopScanLive()
+  }
+})
 
 watch(() => filterForm.monitorDeviceId, (deviceId, previousDeviceId) => {
   if (!selectedExamId.value || activeTab.value !== 'normal') return
@@ -2037,9 +2073,12 @@ watch(activeTab, (value) => {
     filterForm.attentionType = ''
   }
   if (value === 'normal') {
+    startScannerDevicePolling()
     void loadConnectedScannerDevices()
     return
   }
+  stopScannerDevicePolling()
+  stopScanLive()
   void loadAttentions()
 })
 
@@ -2066,6 +2105,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   mittBus.off('scan-workbench:refresh', onWorkbenchRefresh)
+  stopScannerDevicePolling()
   stopScanLive()
   releaseBindIdentitySliceImage()
   releaseBindSourcePageImage()
@@ -2170,7 +2210,7 @@ onBeforeUnmount(() => {
     margin-top: 16px;
     padding: 16px;
     border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: var(--dp-radius-md, 8px);
+    border-radius: var(--dp-radius-panel, 8px);
     background: var(--dp-surface, #fff);
   }
 

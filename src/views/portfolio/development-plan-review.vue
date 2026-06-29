@@ -195,14 +195,16 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="年度规划审核" subtitle="科室审核 · 通过 / 退回">
-      <template v-if="canPickTeachers" #actions>
-        <UiButton @click="exportPlans">
-          导出 Excel
-        </UiButton>
-      </template>
-    </ContextBar>
-    <UiFilterBar
+    <template #context>
+      <ContextBar show-title layout="workbench" title="年度规划审核">
+        <template v-if="canPickTeachers" #actions>
+          <UiButton @click="exportPlans">
+            导出 Excel
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
+    <UiFilterBar variant="plain"
       v-model="filterModel"
       :fields="filterFields"
       @search="handleSearch"

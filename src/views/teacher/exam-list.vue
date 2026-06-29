@@ -1,12 +1,48 @@
 <template>
   <StageWorkbenchShell>
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="考试列表"
+      >
+        <template #toolbar>
+          <UiFilterBar
+            v-model="filterModel"
+            :fields="filterFields"
+            variant="panel"
+            show-labels
+            search-text="查询"
+            actions-align="end"
+            @search="handleSearch"
+            @reset="handleReset"
+          >
+            <template #field-dateRange>
+              <a-range-picker
+                v-model:value="filterForm.dateRange"
+                style="width: 260px"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                :placeholder="['开始日期', '结束日期']"
+                allow-clear
+              />
+            </template>
+            <template #actions>
+              <UiButton size="sm" @click="goCreateExam">
+                <template #icon><PlusOutlined /></template>
+                新建考试
+              </UiButton>
+            </template>
+          </UiFilterBar>
+        </template>
+      </ContextBar>
+    </template>
+
     <template #signal>
-      <UiStatPanel
-        :items="summaryStatItems"
-        :columns="4"
-        variant="strip"
+      <SignalBand
+        :metrics="summarySignalMetrics"
         compact
-        class="exam-list-page__signals"
+        @metric-click="handleSummaryMetricClick"
       />
     </template>
 
@@ -17,33 +53,6 @@
       class="exam-list-page__tabs"
     >
       <section class="exam-list-page__tab-panel">
-        <div v-if="listTab === 'all'" class="exam-list-page__table-toolbar">
-          <UiButton size="sm" @click="openCreateModal">
-            <template #icon><PlusOutlined /></template>
-            新建考试
-          </UiButton>
-        </div>
-
-        <UiFilterBar
-          v-model="filterModel"
-          :fields="filterFields"
-          search-text="查询"
-          actions-align="end"
-          @search="handleSearch"
-          @reset="handleReset"
-        >
-          <template #field-dateRange>
-            <a-range-picker
-              v-model:value="filterForm.dateRange"
-              style="width: 260px"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD HH:mm:ss"
-              :placeholder="['开始日期', '结束日期']"
-              allow-clear
-            />
-          </template>
-        </UiFilterBar>
-
         <UiEmpty
           v-if="listTab === 'priority' && !priorityLoading && priorityPagination.total === 0"
           description="暂无优先推进的考试"
@@ -126,12 +135,23 @@
               <span v-else class="muted">0</span>
             </template>
             <template v-else-if="column.key === 'examWindow'">
-              <span v-if="record.examStartTime || record.examEndTime">
-                {{ formatDateTime(record.examStartTime) }}
-                <span class="time-divider">~</span>
-                {{ formatDateTime(record.examEndTime) }}
-              </span>
-              <span v-else class="muted">未设置</span>
+              <template v-for="windowCell in [buildExamWindowCell(record)]" :key="`${record.examId}-window`">
+                <span
+                  v-if="windowCell"
+                  class="exam-list-page__exam-window"
+                  :title="windowCell.full"
+                >
+                  <span class="exam-list-page__exam-window-range">{{ windowCell.compact }}</span>
+                  <span
+                    v-if="windowCell.phase"
+                    class="exam-list-page__exam-window-phase"
+                    :class="windowCell.phase.modifier"
+                  >
+                    {{ windowCell.phase.label }}
+                  </span>
+                </span>
+                <span v-else class="muted">未设置</span>
+              </template>
             </template>
             <template v-else-if="column.key === 'createTime'">
               {{ formatDateTime(record.createTime) }}
@@ -173,7 +193,7 @@
   <!-- 考试维护弹窗 -->
   <a-modal
     v-model:open="formModalOpen"
-    :title="isEditMode ? '编辑考试' : '新建考试'"
+    :title="'编辑考试'"
     :confirm-loading="saving"
     :destroy-on-close="true"
     :mask-closable="false"
@@ -224,13 +244,8 @@
           :placeholder="['开始时间', '结束时间']"
         />
       </a-form-item>
-      <a-form-item label="阅卷策略（可选）" name="gradingStrategy">
-        <a-select
-          v-model:value="examForm.gradingStrategy"
-          placeholder="选择阅卷策略，留空使用租户默认"
-          allow-clear
-          :options="gradingStrategyOptions"
-        />
+      <a-form-item label="阅卷策略" name="gradingStrategy">
+        <a-input :value="GRADING_STRATEGY_LABEL.SINGLE" disabled />
       </a-form-item>
       <a-form-item label="成绩构成" name="scoreCompositionMode">
         <a-radio-group v-model:value="examForm.scoreCompositionMode">
@@ -278,11 +293,8 @@ import type {
   ExamWorkbenchSummaryVO,
   GradingStrategyCode,
 } from '@/apis/mark/exam'
-import type { BadgeTone, FilterField, UiSectionTabItem, UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
-import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
-import LockOutlined from '@ant-design/icons-vue/LockOutlined'
-import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
+import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
@@ -290,8 +302,8 @@ import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   closeExam,
-  createExam,
   deleteExam,
+  EXAM_STATUS_FILTER_OPTIONS,
   EXAM_STATUS_LABEL,
   EXAM_STATUS_TONE,
   GRADING_STRATEGY_LABEL,
@@ -305,15 +317,23 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import { generateAcademicYearOptions, getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import { showUserError } from '@/utils/error-handler'
-import { formatDateTime } from '@/utils/format'
+import {
+  formatDateTime,
+  formatExamWindowCompactRange,
+  formatExamWindowFullRange,
+  formatExamWindowPhaseLabel,
+  resolveExamWindowPhase,
+} from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { resolveScanStageEntryRoute } from '@/utils/resolve-scan-stage-entry'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -351,10 +371,11 @@ interface ExamListFilterForm {
 }
 
 function createDefaultFilterForm(): ExamListFilterForm {
+  const defaults = getDefaultAcademicYearAndSemester()
   return {
-    status: undefined,
-    academicYear: '',
-    semester: undefined,
+    status: 'ACTIVE',
+    academicYear: defaults.academicYear,
+    semester: defaults.semester,
     keyword: '',
     dateRange: undefined,
   }
@@ -378,37 +399,41 @@ const filterModel = computed<Record<string, unknown>>({
   set: (value) => { Object.assign(filterForm, value) },
 })
 
-const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
-  { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
-  { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
-]
-const filterFields: FilterField[] = [
-  {
-    key: 'status',
-    type: 'select',
-    placeholder: '全部状态',
-    allowClear: true,
-    width: 140,
-    minWidth: 140,
-    options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
-  },
+const statusOptions = EXAM_STATUS_FILTER_OPTIONS
+const academicYearOptions = computed(() =>
+  generateAcademicYearOptions().map(year => ({ label: year, value: year })),
+)
+const filterFields = computed<FilterField[]>(() => [
   {
     key: 'academicYear',
-    type: 'input',
-    placeholder: '2024-2025',
+    label: '学年',
+    type: 'select',
+    placeholder: '全部学年',
     allowClear: true,
     width: 150,
     minWidth: 150,
-    triggerSearchOnChange: false,
+    options: academicYearOptions.value,
   },
   {
     key: 'semester',
+    label: '学期',
     type: 'select',
     placeholder: '全部学期',
     allowClear: true,
     width: 140,
     minWidth: 140,
     options: SemesterOptions.map((item) => ({ label: item.label, value: item.value })),
+  },
+  {
+    key: 'status',
+    label: '状态',
+    type: 'select',
+    placeholder: '全部状态',
+    allowClear: true,
+    width: 140,
+    minWidth: 140,
+    defaultValue: 'ACTIVE',
+    options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
   },
   {
     key: 'keyword',
@@ -421,12 +446,13 @@ const filterFields: FilterField[] = [
     triggerSearchOnChange: false,
   },
   { key: 'dateRange', type: 'custom', width: 260, minWidth: 260, maxWidth: 320 },
-]
+])
 
-const gradingStrategyOptions = Object.entries(GRADING_STRATEGY_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+watch(() => filterForm.academicYear, (academicYear) => {
+  if (!academicYear?.trim()) {
+    filterForm.semester = undefined
+  }
+})
 
 type ExamScoreCompositionMode = 'EXAM_ONLY' | 'EXAM_WITH_DAILY'
 
@@ -444,30 +470,30 @@ const ongoingBadgeTotal = ref(0)
 const allBadgeTotal = ref(0)
 
 const allTabColumns: ColumnType<ExamWorkbenchSummaryVO>[] = [
-  { title: '考试名称', dataIndex: 'examName', key: 'examName', ellipsis: true, width: 240, fixed: 'left' },
+  { title: '考试名称', dataIndex: 'examName', key: 'examName', ellipsis: true, width: 360, fixed: 'left' },
   { title: '学年学期', key: 'academicTerm', width: 180, fixed: 'left' },
   { title: '状态', key: 'status', width: 100 },
   { title: '阅卷进度', key: 'progress', width: 120 },
-  { title: '考试时间', key: 'examWindow', width: 280 },
+  { title: '考试时间', key: 'examWindow', width: 160 },
   { title: '创建时间', key: 'createTime', width: 180 },
   { title: '操作', key: 'actions', width: 220, fixed: 'right' },
 ]
 
 const workbenchTabColumns: ColumnType<ExamWorkbenchSummaryVO>[] = [
-  { title: '考试名称', dataIndex: 'examName', key: 'examName', ellipsis: true, width: 220, fixed: 'left' },
+  { title: '考试名称', dataIndex: 'examName', key: 'examName', ellipsis: true, width: 300, fixed: 'left' },
   { title: '学年学期', key: 'academicTerm', width: 160, fixed: 'left' },
   { title: '状态', key: 'status', width: 88 },
   { title: '阅卷进度', key: 'progress', width: 108 },
   { title: '待确认题数', key: 'pendingConfirm', width: 108 },
   { title: '扫描异常', key: 'scanAttention', width: 96 },
   { title: '进行中批阅', key: 'openMarking', width: 108 },
-  { title: '考试时间', key: 'examWindow', width: 240 },
+  { title: '考试时间', key: 'examWindow', width: 160 },
   { title: '创建时间', key: 'createTime', width: 168 },
   { title: '操作', key: 'actions', width: 220, fixed: 'right' },
 ]
 
 const ongoingTabColumns: ColumnType<ExamWorkbenchSummaryVO>[] = [
-  { title: '考试名称', dataIndex: 'examName', key: 'examName', ellipsis: true, width: 220, fixed: 'left' },
+  { title: '考试名称', dataIndex: 'examName', key: 'examName', ellipsis: true, width: 300, fixed: 'left' },
   { title: '学年学期', key: 'academicTerm', width: 160, fixed: 'left' },
   { title: '状态', key: 'status', width: 88 },
   { title: '参与角色', key: 'role', width: 88 },
@@ -475,7 +501,7 @@ const ongoingTabColumns: ColumnType<ExamWorkbenchSummaryVO>[] = [
   { title: '待确认题数', key: 'pendingConfirm', width: 108 },
   { title: '扫描异常', key: 'scanAttention', width: 96 },
   { title: '进行中批阅', key: 'openMarking', width: 108 },
-  { title: '考试时间', key: 'examWindow', width: 240 },
+  { title: '考试时间', key: 'examWindow', width: 160 },
   { title: '创建时间', key: 'createTime', width: 168 },
   { title: '操作', key: 'actions', width: 220, fixed: 'right' },
 ]
@@ -549,7 +575,7 @@ watch(listTab, (tab) => {
   void loadTabData(tabToScope(tab))
 })
 
-const summaryStatItems = computed<UiStatPanelItem[]>(() => {
+const summarySignalMetrics = computed((): SignalMetric[] => {
   const dash = '—'
   const filteredTotal = currentPagination.value.total ?? 0
   return [
@@ -559,7 +585,7 @@ const summaryStatItems = computed<UiStatPanelItem[]>(() => {
       value: filteredTotal,
       unit: '场',
       tone: 'blue',
-      icon: FilterOutlined,
+      helper: '当前列表范围',
     },
     {
       key: 'active',
@@ -567,7 +593,8 @@ const summaryStatItems = computed<UiStatPanelItem[]>(() => {
       value: statusTotalsFailed.value ? dash : activeTotal.value,
       unit: '场',
       tone: 'green',
-      icon: PlayCircleOutlined,
+      clickable: true,
+      helper: '点击查看进行中',
     },
     {
       key: 'closed',
@@ -575,18 +602,29 @@ const summaryStatItems = computed<UiStatPanelItem[]>(() => {
       value: statusTotalsFailed.value ? dash : closedTotal.value,
       unit: '场',
       tone: 'gray',
-      icon: LockOutlined,
+      helper: '全部 Tab 可筛选',
     },
     {
       key: 'stale',
       label: '待推进',
       value: staleExamCount.value,
       unit: '场',
-      tone: (staleExamCount.value > 0 ? 'orange' : 'gray') as BadgeTone,
-      icon: ClockCircleOutlined,
+      tone: staleExamCount.value > 0 ? 'orange' : 'gray',
+      clickable: staleExamCount.value > 0,
+      helper: staleExamCount.value > 0 ? '点击查看优先推进' : '暂无待推进',
     },
   ]
 })
+
+function handleSummaryMetricClick(key: string): void {
+  if (key === 'active') {
+    listTab.value = 'ongoing'
+    return
+  }
+  if (key === 'stale' && staleExamCount.value > 0) {
+    listTab.value = 'priority'
+  }
+}
 
 /** 从列表行内嵌进度字段提取待确认题数、扫描异常与进行中批阅任务数。 */
 function resolveExamProgressSnapshot(exam: ExamWorkbenchSummaryVO): {
@@ -801,6 +839,28 @@ function formatAcademicTerm(exam: ExamWorkbenchSummaryVO): string {
   return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
 }
 
+/** 列表考试时间窗单元格：紧凑区间 + 相对阶段 + hover 完整时间。 */
+function buildExamWindowCell(exam: ExamWorkbenchSummaryVO): {
+  compact: string
+  full: string
+  phase: { modifier: string, label: string } | null
+} | null {
+  if (!exam.examStartTime && !exam.examEndTime) {
+    return null
+  }
+  const phase = resolveExamWindowPhase(exam.examStartTime, exam.examEndTime)
+  return {
+    compact: formatExamWindowCompactRange(exam.examStartTime, exam.examEndTime),
+    full: formatExamWindowFullRange(exam.examStartTime, exam.examEndTime),
+    phase: phase
+      ? {
+          modifier: `exam-list-page__exam-window-phase--${phase}`,
+          label: formatExamWindowPhaseLabel(exam.examStartTime, exam.examEndTime),
+        }
+      : null,
+  }
+}
+
 /**
  * 根据考试当前进度，智能跳转到最优操作入口。
  *
@@ -879,7 +939,6 @@ const staleExamCount = computed<number>(() => {
 const formModalOpen = ref(false)
 const saving = ref(false)
 const editingExamId = ref<string | null>(null)
-const isEditMode = computed(() => !!editingExamId.value)
 const formRef = ref<FormInstance>()
 const examForm = reactive<{
   courseId: string | null
@@ -888,7 +947,7 @@ const examForm = reactive<{
   academicYear?: string
   semester?: string
   examWindow?: [string, string]
-  gradingStrategy?: GradingStrategyCode
+  gradingStrategy: GradingStrategyCode
   scoreCompositionMode: ExamScoreCompositionMode
   dailyScoreFull?: number
   remark?: string
@@ -899,7 +958,7 @@ const examForm = reactive<{
   academicYear: '',
   semester: undefined,
   examWindow: undefined,
-  gradingStrategy: undefined,
+  gradingStrategy: 'SINGLE',
   scoreCompositionMode: 'EXAM_ONLY',
   dailyScoreFull: undefined,
   remark: '',
@@ -980,16 +1039,15 @@ function resetExamForm(): void {
   examForm.academicYear = ''
   examForm.semester = undefined
   examForm.examWindow = undefined
-  examForm.gradingStrategy = undefined
+  examForm.gradingStrategy = 'SINGLE'
   examForm.scoreCompositionMode = 'EXAM_ONLY'
   examForm.dailyScoreFull = undefined
   examForm.remark = ''
   formRef.value?.clearValidate()
 }
 
-function openCreateModal(): void {
-  resetExamForm()
-  formModalOpen.value = true
+function goCreateExam(): void {
+  void router.push({ name: 'TeacherExamCreate' })
 }
 
 function openEditModal(exam: ExamWorkbenchSummaryVO): void {
@@ -1002,7 +1060,6 @@ function openEditModal(exam: ExamWorkbenchSummaryVO): void {
   examForm.semester = exam.semester
   examForm.examWindow
     = exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
-  examForm.gradingStrategy = exam.gradingStrategy
   examForm.scoreCompositionMode = exam.dailyScoreFull != null ? 'EXAM_WITH_DAILY' : 'EXAM_ONLY'
   examForm.dailyScoreFull = exam.dailyScoreFull ?? undefined
   examForm.remark = exam.remark ?? ''
@@ -1023,7 +1080,7 @@ function buildExamRequest(): ExamCreateRequest | null {
     semester: examForm.semester,
     examStartTime: startTime,
     examEndTime: endTime,
-    gradingStrategy: examForm.gradingStrategy,
+    gradingStrategy: 'SINGLE',
     dailyScoreFull: examForm.scoreCompositionMode === 'EXAM_WITH_DAILY'
       ? examForm.dailyScoreFull
       : null,
@@ -1044,32 +1101,11 @@ async function handleSave(): Promise<void> {
     if (!request) {
       return
     }
-    if (editingExamId.value) {
-      await updateExam({ examId: editingExamId.value, ...request })
-      message.success('考试已更新')
-    } else {
-      const examId = await createExam(request)
-      message.success('考试已创建')
-      allPagination.current = 1
-      formModalOpen.value = false
-      listTab.value = 'all'
-      await reloadAll()
-      void confirmAsync({
-        title: '下一步：配置考生名册',
-        content: '考试已创建。请选定班级并纳入考生后保存名册，否则扫描后无法完成身份绑定。',
-        okText: '去配置考生',
-        cancelText: '稍后再说',
-        type: 'info',
-        onOk: () => {
-          void router.push({
-            name: 'TeacherExamWorkspaceCandidateRoster',
-            params: { examId },
-            query: { setup: '1' },
-          })
-        },
-      })
+    if (!editingExamId.value) {
       return
     }
+    await updateExam({ examId: editingExamId.value, ...request })
+    message.success('考试已更新')
     formModalOpen.value = false
     await reloadAll()
   } catch (error) {
@@ -1195,9 +1231,29 @@ onActivated(() => {
   background: var(--dp-gray-50, #f8fafc) !important;
 }
 
-.time-divider {
-  margin: 0 4px;
+.exam-list-page__exam-window {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.4;
+}
+
+.exam-list-page__exam-window-range {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.exam-list-page__exam-window-phase {
+  font-size: 12px;
   color: var(--ant-color-text-tertiary);
+}
+
+.exam-list-page__exam-window-phase--upcoming {
+  color: var(--ant-color-warning);
+}
+
+.exam-list-page__exam-window-phase--ongoing {
+  color: #52c41a;
 }
 
 .muted {

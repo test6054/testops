@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar subtitle="CEEAA 2025强制要求：每门课程须经考核评价依据合理性审核">
+      <QualityPageContextBar show-title title="考核评价依据合理性审核">
         <template #status>
           <UiTag tone="blue" size="sm">覆盖率 {{ coverageRate }}%</UiTag>
           <UiTag :tone="coverageRate >= 100 ? 'green' : 'orange'" size="sm">
@@ -17,7 +17,7 @@
         <span>考核评价依据合理性审核</span>
       </template>
 
-      <UiFilterBar
+      <UiFilterBar variant="plain"
         v-model="filterModel"
         :fields="filterFields"
         @search="handleSearch"

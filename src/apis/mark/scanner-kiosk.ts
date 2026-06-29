@@ -65,8 +65,6 @@ export interface ExamScannerKioskDeviceVO {
   diagnosticStatus: ScannerAgentDiagnosticStatusCode
   diagnosticMessage: string
   lastHeartbeatTime?: string
-  /** 设备允许的扫描任务类型（ScanTaskKind 编码，逗号分隔） */
-  allowedTaskKinds?: string
 }
 
 export interface ExamScannerScanConfigVO {

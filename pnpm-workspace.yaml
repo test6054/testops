@@ -8,6 +8,54 @@ packages:
 
 overrides:
   eslint-flat-config-utils: 3.0.1
+  undici-types: 6.19.2
+  semver: 7.7.2
+  # aieditor 会解析到 2.27.x，但该线自 2.27.0 起无 npm provenance，pnpm no-downgrade 会拦截。
+  # 2.26.1 为 2.x 末版带 provenance 的安全线，与 aieditor ^2.26.1 兼容。
+  '@tiptap/core': 2.26.1
+  '@tiptap/pm': 2.26.1
+  '@tiptap/starter-kit': 2.26.1
+  '@tiptap/suggestion': 2.26.1
+  '@tiptap/extension-blockquote': 2.26.1
+  '@tiptap/extension-bold': 2.26.1
+  '@tiptap/extension-bubble-menu': 2.26.1
+  '@tiptap/extension-bullet-list': 2.26.1
+  '@tiptap/extension-character-count': 2.26.1
+  '@tiptap/extension-code': 2.26.1
+  '@tiptap/extension-code-block': 2.26.1
+  '@tiptap/extension-code-block-lowlight': 2.26.1
+  '@tiptap/extension-color': 2.26.1
+  '@tiptap/extension-document': 2.26.1
+  '@tiptap/extension-dropcursor': 2.26.1
+  '@tiptap/extension-font-family': 2.26.1
+  '@tiptap/extension-gapcursor': 2.26.1
+  '@tiptap/extension-hard-break': 2.26.1
+  '@tiptap/extension-heading': 2.26.1
+  '@tiptap/extension-highlight': 2.26.1
+  '@tiptap/extension-history': 2.26.1
+  '@tiptap/extension-horizontal-rule': 2.26.1
+  '@tiptap/extension-image': 2.26.1
+  '@tiptap/extension-italic': 2.26.1
+  '@tiptap/extension-link': 2.26.1
+  '@tiptap/extension-list-item': 2.26.1
+  '@tiptap/extension-list-keymap': 2.26.1
+  '@tiptap/extension-mention': 2.26.1
+  '@tiptap/extension-ordered-list': 2.26.1
+  '@tiptap/extension-paragraph': 2.26.1
+  '@tiptap/extension-placeholder': 2.26.1
+  '@tiptap/extension-strike': 2.26.1
+  '@tiptap/extension-subscript': 2.26.1
+  '@tiptap/extension-superscript': 2.26.1
+  '@tiptap/extension-table': 2.26.1
+  '@tiptap/extension-table-cell': 2.26.1
+  '@tiptap/extension-table-header': 2.26.1
+  '@tiptap/extension-table-row': 2.26.1
+  '@tiptap/extension-task-item': 2.26.1
+  '@tiptap/extension-task-list': 2.26.1
+  '@tiptap/extension-text': 2.26.1
+  '@tiptap/extension-text-align': 2.26.1
+  '@tiptap/extension-text-style': 2.26.1
+  '@tiptap/extension-underline': 2.26.1
 
 allowBuilds:
   '@parcel/watcher': true

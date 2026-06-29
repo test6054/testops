@@ -275,8 +275,8 @@ function examStatusLabel(status: ExamStatusCode): string {
   return strictEnumLabel(EXAM_STATUS_LABEL, status, '考试状态')
 }
 
-function gradingStrategyLabel(strategy?: GradingStrategyCode): string {
-  return strategy ? strictEnumLabel(GRADING_STRATEGY_LABEL, strategy, '批改策略') : '租户默认'
+function gradingStrategyLabel(strategy: GradingStrategyCode): string {
+  return strictEnumLabel(GRADING_STRATEGY_LABEL, strategy, '批改策略')
 }
 
 function scoreCompositionLabel(exam: ExamDetailVO): string {
@@ -365,7 +365,7 @@ onActivated(() => {
     padding: 12px 16px;
     background: var(--ant-color-bg-container);
     border: 1px solid var(--ant-color-border-secondary);
-    border-radius: var(--dp-radius-md, 6px);
+    border-radius: var(--dp-radius-panel, 6px);
   }
 
   &__cta {
@@ -452,7 +452,7 @@ onActivated(() => {
   padding: 12px 14px;
   background: var(--ant-color-fill-quaternary);
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 6px);
+  border-radius: var(--dp-radius-panel, 6px);
   cursor: pointer;
   text-align: left;
   font-size: 14px;

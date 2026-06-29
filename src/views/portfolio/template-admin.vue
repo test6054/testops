@@ -644,13 +644,14 @@ onMounted(loadTree)
 </script>
 
 <template>
-  <StageWorkbenchShell title="档案模板配置">
-    <ContextBar
-      title="档案模板"
-      :description="canManageTenant
-        ? '分类、字段与发布版本管理；AI 字段字典来自已发布版本。'
-        : '只读查看适用模板说明与字段字典；如需调整请联系学校管理员。'"
-    />
+  <StageWorkbenchShell>
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="档案模板"
+      />
+    </template>
     <div class="template-layout">
       <UiCard class="tree-panel" title="档案分类">
         <div class="toolbar scope-filter">

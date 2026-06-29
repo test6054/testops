@@ -224,7 +224,7 @@ const handleActionClick = (item: UiActivityFeedItem, action: UiNoticeAction) => 
 }
 
 .ui-activity-feed__avatar--purple {
-  background: #7c3aed;
+  background: var(--dp-purple-500, #722ed1);
 }
 
 .ui-activity-feed__main {

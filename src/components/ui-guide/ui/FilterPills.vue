@@ -166,7 +166,7 @@ const toggleExpanded = () => {
   color: var(--ant-color-text, #1f2937);
   font-size: 15px;
   font-weight: 600;
-  font-family: var(--dp-font-family, 'Inter'), 'PingFang SC', sans-serif;
+  font-family: var(--dp-font-family);
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
@@ -237,7 +237,7 @@ const toggleExpanded = () => {
   color: var(--dp-text-secondary, #475569);
   font-size: 14px;
   font-weight: 600;
-  font-family: var(--dp-font-family, 'Inter'), 'PingFang SC', sans-serif;
+  font-family: var(--dp-font-family);
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;

@@ -46,7 +46,7 @@ const props = withDefaults(defineProps<{
 
 .ui-descriptions :deep(.ant-descriptions-view) {
   overflow: hidden;
-  border-radius: var(--dp-radius-xl, 10px);
+  border-radius: var(--dp-radius-panel, 10px);
   border: 1px solid var(--dp-border, #e5e7eb);
 }
 

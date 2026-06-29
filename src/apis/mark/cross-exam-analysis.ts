@@ -173,25 +173,13 @@ export interface CourseObjectiveAchievementVO {
   createTime: string
 }
 
-/**
- * 按后端 List<Long> 参数格式序列化多个 examId
- * Spring 接收 `examIds=1&examIds=2` 形式
- */
-function buildExamIdsParam(examIds: string[]): string {
-  return examIds.map((id) => `examIds=${encodeURIComponent(id)}`).join('&')
-}
-
-/**
- * 生成课程维度的跨考试趋势分析
- * POST /api/exam/cross-exam-analysis/trend/course?courseId=&examIds=&examIds=
- */
 export function generateCourseTrend(params: {
   courseId: string
   examIds: string[]
 }): Promise<CrossExamTrendAnalysisVO> {
-  const search = `courseId=${encodeURIComponent(params.courseId)}&${buildExamIdsParam(params.examIds)}`
   return http.post<CrossExamTrendAnalysisVO>(
-    `/api/exam/cross-exam-analysis/trend/course?${search}`,
+    '/api/exam/cross-exam-analysis/trend/course',
+    params,
   )
 }
 
@@ -218,9 +206,9 @@ export function listTrends(params: {
   scopeType: 'COURSE' | 'CLASS'
   courseId?: string
 }): Promise<CrossExamTrendAnalysisVO[]> {
-  return http.get<CrossExamTrendAnalysisVO[]>(
+  return http.post<CrossExamTrendAnalysisVO[]>(
     '/api/exam/cross-exam-analysis/trend/list',
-    { params },
+    params,
   )
 }
 
@@ -249,9 +237,9 @@ export function listGrowth(params: {
   scopeType: AnalysisScopeTypeCode
   scopeId?: string
 }): Promise<SemesterAbilityGrowthVO[]> {
-  return http.get<SemesterAbilityGrowthVO[]>(
+  return http.post<SemesterAbilityGrowthVO[]>(
     '/api/exam/cross-exam-analysis/growth/list',
-    { params },
+    params,
   )
 }
 
@@ -277,8 +265,8 @@ export function generateAchievement(params: {
 export function listAchievements(params: {
   courseId: string
 }): Promise<CourseObjectiveAchievementVO[]> {
-  return http.get<CourseObjectiveAchievementVO[]>(
+  return http.post<CourseObjectiveAchievementVO[]>(
     '/api/exam/cross-exam-analysis/achievement/list',
-    { params },
+    params,
   )
 }

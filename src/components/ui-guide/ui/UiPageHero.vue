@@ -219,7 +219,7 @@ const hasStats = computed(() => {
 }
 
 .ui-page-hero__stat-value--purple {
-  color: #7c3aed;
+  color: var(--dp-purple-500, #722ed1);
 }
 
 .ui-page-hero__side {

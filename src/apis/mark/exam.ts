@@ -5,6 +5,7 @@
  * 后端对象分别由同目录具体 API 文件承接。
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { ExamCandidateRosterRequest, ExamCandidateVO } from '@/apis/mark/exam-scope'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
@@ -23,14 +24,24 @@ export const EXAM_STATUS_TONE: Record<ExamStatusCode, BadgeTone> = {
   CLOSED: 'gray',
 }
 
+/** 考试状态筛选项（Select 专用，首屏即带中文 label，不依赖接口 filterOptions） */
+export const EXAM_STATUS_FILTER_OPTIONS: Array<{ label: string, value: ExamStatusCode }> = [
+  { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
+  { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
+]
+
 /** 批改策略编码 */
-export type GradingStrategyCode = 'SINGLE' | 'DOUBLE_BLIND'
+export type GradingStrategyCode = 'SINGLE'
 
 /** 批改策略文案 */
 export const GRADING_STRATEGY_LABEL: Record<GradingStrategyCode, string> = {
   SINGLE: '单评',
-  DOUBLE_BLIND: '双评盲审',
 }
+
+/** 批改策略选项（普通期末考试固定单评） */
+export const GRADING_STRATEGY_FILTER_OPTIONS: Array<{ label: string, value: GradingStrategyCode }> = [
+  { label: GRADING_STRATEGY_LABEL.SINGLE, value: 'SINGLE' },
+]
 
 /** 制卷形态 - 对应 ExamMaterialLayoutMode */
 export type ExamMaterialLayoutModeCode = 'ANSWER_SHEET' | 'FULL_PAPER'
@@ -78,7 +89,7 @@ export interface ExamSummaryVO {
   statusMessage: string
   examStartTime?: string
   examEndTime?: string
-  gradingStrategy?: GradingStrategyCode
+  gradingStrategy: GradingStrategyCode
   remark?: string
   /** 创建人用户ID - 对应后端 ExamSummaryResponse.createUser */
   createUser: string
@@ -131,7 +142,7 @@ export interface ExamDetailVO {
   statusMessage: string
   examStartTime?: string
   examEndTime?: string
-  gradingStrategy?: GradingStrategyCode
+  gradingStrategy: GradingStrategyCode
   remark?: string
   /** 创建人用户ID - 对应后端 ExamDetailResponse.createUser */
   createUser: string
@@ -180,6 +191,10 @@ export interface ExamDetailVO {
   prepBlockingReasons: string[]
   /** 涉密 / 统考涉密场次；为 true 时前端启用强制水印与警示条 */
   confidential?: boolean
+  /** 名册纳入方式；创建时未配置名册则为 undefined */
+  rosterScopeMode?: ExamRosterScopeMode
+  /** 名册纳入方式展示名称 */
+  rosterScopeModeMessage?: string
 }
 
 /** 保存制卷形态请求 - 对应 ExamMaterialLayoutSaveRequest */
@@ -209,7 +224,7 @@ export interface ExamCreateRequest {
   /** 考试结束时间 */
   examEndTime: string
   /** 批改策略编码 */
-  gradingStrategy?: GradingStrategyCode
+  gradingStrategy: GradingStrategyCode
   remark?: string
   /**
    * 平时成绩满分；为空表示本场考试仅计入考试成绩（期末笔试分），
@@ -235,6 +250,59 @@ export interface ExamCloseRequest {
   examId: string
 }
 
+/** 创建考试时的阅卷队伍配置 - 对应 ExamMarkingTeamCreateRequest */
+export interface ExamMarkingTeamCreateRequest {
+  chiefExaminerUserId: string
+  anonymousMode: boolean
+  reviewerUserIds: string[]
+  remark?: string
+}
+
+/** 名册纳入方式：整班纳入（正考）或按人勾选（补考/部分考生） */
+export type ExamRosterScopeMode = 'BY_CLASS' | 'BY_STUDENT'
+
+export const EXAM_ROSTER_SCOPE_MODE_LABEL: Record<ExamRosterScopeMode, string> = {
+  BY_CLASS: '正考（整班纳入）',
+  BY_STUDENT: '补考/部分考生（按人勾选）',
+}
+
+/** 创建考试时的考生名册配置 - 对应 ExamRosterCreateRequest */
+export interface ExamRosterCreateRequest {
+  scopeMode: ExamRosterScopeMode
+  classIds: string[]
+  candidates: ExamCandidateRosterRequest[]
+}
+
+/** 创建考试前名册预览请求 - 对应 ExamCreateRosterPreviewRequest */
+export interface ExamCreateRosterPreviewRequest {
+  scopeMode: ExamRosterScopeMode
+  classIds: string[]
+  candidates?: ExamCandidateRosterRequest[]
+}
+
+/** 创建考试前名册预览响应 - 对应 ExamCreateRosterPreviewResponse */
+export interface ExamCreateRosterPreviewResponse {
+  scopeMode: ExamRosterScopeMode
+  classIds: string[]
+  candidates: ExamCandidateVO[]
+  candidateCount: number
+}
+
+/** 创建考试打包请求 - 对应 ExamCreateBundleRequest */
+export interface ExamCreateBundleRequest {
+  exam: ExamCreateRequest
+  markingTeam: ExamMarkingTeamCreateRequest
+  roster?: ExamRosterCreateRequest
+}
+
+/** 创建考试打包响应 - 对应 ExamCreateBundleResponse */
+export interface ExamCreateBundleResponse {
+  examId: string
+  organizationId: string
+  organizationStatus: string
+  reviewerCount: number
+}
+
 /** 分页查询考试列表。 */
 export function pageExams(request: ExamPageQueryRequest): Promise<PageResult<ExamSummaryVO>> {
   return http.post<PageResult<ExamSummaryVO>>('/api/mark/exams/page', request)
@@ -257,9 +325,16 @@ export function saveMaterialLayout(request: ExamMaterialLayoutSaveRequest): Prom
   return http.post<boolean>('/api/mark/exams/material-layout/save', request)
 }
 
-/** 创建考试主记录，返回新考试ID。 */
-export function createExam(request: ExamCreateRequest): Promise<string> {
-  return http.post<string>('/api/mark/exams/create', request)
+/** 创建考试并初始化阅卷组织。 */
+export function createExamBundle(request: ExamCreateBundleRequest): Promise<ExamCreateBundleResponse> {
+  return http.post<ExamCreateBundleResponse>('/api/mark/exams/create-bundle', request)
+}
+
+/** 创建考试前预览名册（edu-user 真源）。 */
+export function previewCreateExamRoster(
+  request: ExamCreateRosterPreviewRequest,
+): Promise<ExamCreateRosterPreviewResponse> {
+  return http.post<ExamCreateRosterPreviewResponse>('/api/mark/exams/create-roster-preview', request)
 }
 
 /** 更新考试主信息。 */

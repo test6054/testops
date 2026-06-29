@@ -118,10 +118,10 @@ defineExpose({ reload: loadOptions })
       :value="opt.id"
       :label="`${opt.itemCode} · ${opt.itemName}`"
     >
-      <span class="text-xs text-gray-500 mr-1">{{ opt.itemCode }}</span>
+      <span class="dp-selector-option-code">{{ opt.itemCode }}</span>
       {{ opt.itemName }}
-      <UiTag v-if="opt.isProcessOriented" tone="green" class="ml-1">过程</UiTag>
-      <span class="text-gray-400 ml-1">满分 {{ opt.fullScore }}</span>
+      <UiTag v-if="opt.isProcessOriented" tone="green" class="dp-selector-option-tag-gap">过程</UiTag>
+      <span class="dp-selector-option-meta">满分 {{ opt.fullScore }}</span>
     </a-select-option>
   </a-select>
 </template>

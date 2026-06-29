@@ -4,6 +4,15 @@ import http from '@/config/axios'
 
 export type ScanTaskKindCode = 'EXAM_MARKING' | 'EXAM_ARCHIVE' | 'PORTFOLIO_COLLECT'
 export type ScanWorkOrderStatusCode = 'IN_PROGRESS' | 'COMMITTING' | 'FAILED' | 'COMMITTED' | 'DISCARDED'
+
+/** 扫描工单生命周期状态展示文案 */
+export const SCAN_WORK_ORDER_STATUS_LABEL: Record<ScanWorkOrderStatusCode, string> = {
+  IN_PROGRESS: '扫描中',
+  COMMITTING: '提交中',
+  FAILED: '失败',
+  COMMITTED: '已提交',
+  DISCARDED: '已作废',
+}
 export type ArchiveScanBatchModeCode = 'MERGED' | 'PER_PAGE'
 export type PortfolioCollectModeCode = 'AI_SUBMIT' | 'GAP_ATTACHMENT'
 

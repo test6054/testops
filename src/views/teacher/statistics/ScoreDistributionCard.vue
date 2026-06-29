@@ -26,10 +26,8 @@
       description="暂无数据"
     />
     <div v-else-if="distribution" class="score-dist">
-      <UiStatPanel
-        :items="distributionMetrics"
-        :columns="4"
-        variant="strip"
+      <SignalBand
+        :metrics="distributionMetrics"
         compact
         class="score-dist__metrics"
       />
@@ -50,7 +48,7 @@
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamScoreDistributionVO } from '@/apis/mark/exam-score'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref, watch } from 'vue'
@@ -59,7 +57,7 @@ import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError } from '@/utils/error-handler'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
@@ -104,7 +102,7 @@ const histogramChartAriaLabel = computed(() => {
   return `五级分数分布，共 ${count} 个分数段`
 })
 
-const distributionMetrics = computed((): UiStatPanelItem[] => {
+const distributionMetrics = computed((): SignalMetric[] => {
   if (!distribution.value) return []
   const data = distribution.value
   return [

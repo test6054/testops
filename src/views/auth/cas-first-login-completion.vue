@@ -35,12 +35,11 @@
         state="error"
         title="补录信息加载失败"
         :description="pageErrorMessage"
-        helper="可重试当前补录请求；若问题持续，请重新发起统一认证登录。"
+        helper="请返回登录页重新发起统一认证登录。"
         compact
       >
         <template #actions>
-          <UiButton variant="outline" :loading="loading" @click="initialize">重新加载</UiButton>
-          <UiButton variant="ghost" @click="goLogin">返回登录页</UiButton>
+          <UiButton variant="outline" @click="goLogin">返回登录页</UiButton>
         </template>
       </UiStateBlock>
 
@@ -192,6 +191,7 @@ import { getDefaultRoute } from '@/router/permission'
 import { useAuthStore, useUserStore } from '@/stores'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CasFirstLoginCompletion' })
 
@@ -258,7 +258,10 @@ const missingFields = computed<CasCompletionField[]>(() => {
 
 const roleLabel = computed(() => {
   const roleKey = context.value?.lockedRoleKey ?? ''
-  return ROLE_LABEL_MAP[roleKey] || roleKey || '未识别'
+  if (!roleKey) {
+    return ''
+  }
+  return strictEnumLabel(ROLE_LABEL_MAP, roleKey, 'CAS 锁定角色')
 })
 
 const classOptions = computed<UiSelectOption[]>(() => {

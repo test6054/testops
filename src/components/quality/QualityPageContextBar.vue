@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /**
  * 质量评价页 ContextBar：Layout 已注入范围选择器时仅展示标题与操作区。
+ * subtitle 默认省略；动态范围优先 #status。
  */
 import { computed, useSlots } from 'vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'

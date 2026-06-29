@@ -46,7 +46,9 @@ onMounted(loadList)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="指标引用状态" subtitle="租户启停与三场景模型引用一览" />
+    <template #context>
+  <ContextBar show-title layout="workbench" title="指标引用状态" />
+</template>
     <UiCard>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无指标引用记录" />
       <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="indicatorCode">

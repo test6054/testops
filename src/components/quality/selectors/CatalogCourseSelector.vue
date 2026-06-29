@@ -92,9 +92,9 @@ defineExpose({ reload: loadOptions })
     @change="handleChange"
   >
     <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.courseName">
-      <span v-if="opt.courseCode" class="text-xs text-gray-500 mr-1">{{ opt.courseCode }}</span>
+      <span v-if="opt.courseCode" class="dp-selector-option-code">{{ opt.courseCode }}</span>
       {{ opt.courseName }}
-      <span v-if="opt.majorCategoryName" class="text-gray-400 ml-1">{{
+      <span v-if="opt.majorCategoryName" class="dp-selector-option-meta">{{
         opt.majorCategoryName
       }}</span>
     </a-select-option>

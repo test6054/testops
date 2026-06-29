@@ -132,7 +132,7 @@ const progressColor = computed(() => {
     case 'red':
       return '#dc2626'
     case 'purple':
-      return '#7c3aed'
+      return 'var(--dp-purple-500, #722ed1)'
     case 'yellow':
       return '#ca8a04'
     case 'gray':
@@ -204,7 +204,7 @@ const progressColor = computed(() => {
 }
 
 .ui-progress-monitor-card__dot--purple {
-  background: #7c3aed;
+  background: var(--dp-purple-500, #722ed1);
 }
 
 .ui-progress-monitor-card__time,

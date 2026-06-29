@@ -51,7 +51,7 @@
 :root {
   --dp-font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei',
     'Helvetica Neue', Helvetica, Arial, sans-serif;
-  --font-family-code: 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', 'Courier New', monospace;
+  --dp-font-family-code: 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', 'Courier New', monospace;
 
   --dp-font-size-xs: 12px;
   --dp-font-size-sm: 13px;
@@ -138,15 +138,12 @@
   --dp-border-strong: #d0d5dd;
   --dp-border-hover: var(--ant-color-primary-border-hover);
 
+  /* 圆角仅两档语义：控件 4px、面板/容器 8px；禁止 sm/md/lg/xl 尺度别名 */
   --dp-radius-xs: 4px;
-  --dp-radius-control: 8px;
+  --dp-radius-control: 4px;
   --dp-radius-control-inner: 4px;
   --dp-radius-panel: 8px;
   --dp-radius-overlay: 8px;
-  --dp-radius-sm: 4px;
-  --dp-radius-md: 8px;
-  --dp-radius-lg: 8px;
-  --dp-radius-xl: 8px;
   --dp-radius-full: 999px;
 
   --dp-control-height-sm: 32px;
@@ -190,6 +187,7 @@
   --dp-blue-50: var(--ant-color-primary-bg);
   --dp-blue-100: var(--ant-color-primary-bg-hover);
   --dp-blue-200: var(--ant-color-primary-border);
+  --dp-blue-500: var(--ant-color-primary);
   --dp-blue-600: var(--ant-color-primary);
   --dp-blue-700: var(--ant-color-primary-active);
 
@@ -198,17 +196,20 @@
   --dp-green-200: var(--ant-color-success-border);
   --dp-green-300: #86efac;
   --dp-green-500: var(--ant-color-success);
+  --dp-green-600: #389e0d;
   --dp-green-700: #15803d;
 
   --dp-orange-50: #fff7ed;
   --dp-orange-200: #fed7aa;
   --dp-orange-500: var(--ant-color-warning);
+  --dp-orange-600: #d48806;
   --dp-orange-700: #c2410c;
 
   --dp-red-50: var(--ant-color-error-bg);
   --dp-red-100: var(--ant-color-error-bg-hover);
   --dp-red-200: var(--ant-color-error-border);
   --dp-red-500: var(--ant-color-error);
+  --dp-red-600: #cf1322;
   --dp-red-700: #b91c1c;
 
   --dp-yellow-50: #fefce8;

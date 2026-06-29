@@ -68,7 +68,7 @@ const handleShowSizeChange = (page: number, size: number) => {
   align-items: center;
   gap: 4px;
   color: var(--dp-text-secondary, #475569);
-  font-family: var(--dp-font-family, 'Inter'), 'PingFang SC', sans-serif;
+  font-family: var(--dp-font-family);
 }
 
 .ui-pagination :deep(.ant-pagination-item),

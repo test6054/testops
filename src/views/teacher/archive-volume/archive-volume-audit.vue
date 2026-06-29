@@ -1,12 +1,17 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar title="归档审计事件" subtitle="租户级归档卷操作流水查询" />
+      <ContextBar
+        show-title
+        title="归档审计事件"
+      />
     </template>
 
     <UiFilterBar
       v-model="filterModel"
       :fields="filterFields"
+      variant="panel"
+      show-labels
       search-text="查询"
       @search="handleSearch"
       @reset="handleReset"

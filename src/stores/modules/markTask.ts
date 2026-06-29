@@ -163,7 +163,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
   /**
    * 仅清空复核任务列表（不影响 tasks / claimContextByExam）。
    *
-   * 用于 review-assignment / review-arbitration 等页面在切换 examId
+   * 用于 review-arbitration 等页面在切换 examId
    * 或考试选择器清空时，通过 action 替代组件侧直接改写 ref，
    * 维持 Pinia 单向数据流。
    */

@@ -56,8 +56,10 @@ export interface SignalMetric {
   value: string | number
   unit?: string
   tone?: BadgeTone
-  /** 趋势：正数向上、负数向下、0 持平 */
+  /** 趋势百分比；正数上升、负数下降。颜色极性由 SignalBand.trendPolarity 决定 */
   trend?: number
+  /** 单指标趋势极性，覆盖 SignalBand 默认值；negative=上升为 adverse */
+  trendPolarity?: 'negative' | 'positive'
   helper?: string
   /** 为 true 时 SignalBand 渲染为可点击项并触发 metric-click */
   clickable?: boolean

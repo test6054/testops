@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { SCAN_WORK_ORDER_STATUS_LABEL } from '@/apis/mark/scanner-work-order'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import DocumentKioskActivationGate from '../components/DocumentKioskActivationGate.vue'
 import { useDocumentKioskBootstrap } from '../composables/useDocumentKioskBootstrap'
 import { useWorkOrderScanFlow } from '../composables/useWorkOrderScanFlow'
@@ -36,6 +38,14 @@ const canStart = computed(() =>
   ),
 )
 const jobMessage = computed(() => scanFlow.currentJob.value?.message ?? '')
+
+const lifecycleStatusLabel = computed(() => {
+  const status = scanFlow.lifecycle.value?.status
+  if (!status) {
+    return '—'
+  }
+  return strictEnumLabel(SCAN_WORK_ORDER_STATUS_LABEL, status, '扫描工单状态')
+})
 
 onMounted(async () => {
   if (!session.collectMode.value || !session.teacherId.value) {
@@ -202,7 +212,7 @@ function goBack() {
 
     <p v-if="scanFlow.lifecycle.value?.batchExternalNo" class="portfolio-scan-session__hint">
       工单 {{ scanFlow.lifecycle.value.batchExternalNo }}；
-      状态 {{ scanFlow.lifecycle.value.status ?? '未知' }}；
+      状态 {{ lifecycleStatusLabel }}；
       {{ scanFlow.currentJob.value?.status ?? '等待 Agent' }}；
       已扫 {{ scanFlow.currentJob.value?.scannedPages ?? 0 }} 页
       <span v-if="scanFlow.lifecycle.value.diagnostic"> — {{ scanFlow.lifecycle.value.diagnostic }}</span>

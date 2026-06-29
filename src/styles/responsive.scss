@@ -42,7 +42,7 @@ $screen-xl-min: 1441px;
 
   // 弹窗全屏显示
   .ant-modal {
-    max-width: calc(100vw - 32px) !important;
+    max-width: calc(100vw - var(--dp-space-8)) !important;
   }
 
   // 抽屉从底部弹出
@@ -62,8 +62,8 @@ $screen-xl-min: 1441px;
   // 网格列数减少
   .ant-row {
     &[class*='gutter-'] {
-      margin-left: -8px;
-      margin-right: -8px;
+      margin-left: calc(-1 * var(--dp-space-2));
+      margin-right: calc(-1 * var(--dp-space-2));
     }
   }
 }
@@ -84,16 +84,16 @@ $screen-xl-min: 1441px;
 .container-responsive {
   width: 100%;
   margin: 0 auto;
-  padding: 0 16px;
+  padding: 0 var(--dp-space-4);
 
   @media (min-width: $screen-sm-min) {
     max-width: 750px;
-    padding: 0 20px;
+    padding: 0 var(--dp-space-5);
   }
 
   @media (min-width: $screen-md-min) {
     max-width: 970px;
-    padding: 0 24px;
+    padding: 0 var(--dp-space-6);
   }
 
   @media (min-width: $screen-lg-min) {
@@ -107,27 +107,27 @@ $screen-xl-min: 1441px;
 
 // 响应式间距
 .padding-responsive {
-  padding: 12px;
+  padding: var(--dp-space-3);
 
   @media (min-width: $screen-sm-min) {
-    padding: 16px;
+    padding: var(--dp-space-4);
   }
 
   @media (min-width: $screen-md-min) {
-    padding: 20px;
+    padding: var(--dp-space-5);
   }
 
   @media (min-width: $screen-lg-min) {
-    padding: 24px;
+    padding: var(--dp-space-6);
   }
 }
 
 // 响应式字体
 .text-responsive {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 
   @media (max-width: $screen-xs-max) {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   @media (min-width: $screen-lg-min) {
@@ -140,7 +140,7 @@ $screen-xl-min: 1441px;
 @media (max-width: $screen-xs-max) {
   .ant-btn {
     min-height: 40px;
-    padding: 8px 16px;
+    padding: var(--dp-space-2) var(--dp-space-4);
   }
 
   .ant-input {
@@ -160,10 +160,10 @@ $screen-xl-min: 1441px;
 
 @supports (padding: env(safe-area-inset-bottom)) {
   .safe-area-bottom {
-    padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
+    padding-bottom: calc(env(safe-area-inset-bottom) + var(--dp-space-4));
   }
 
   .safe-area-top {
-    padding-top: calc(env(safe-area-inset-top) + 16px);
+    padding-top: calc(env(safe-area-inset-top) + var(--dp-space-4));
   }
 }

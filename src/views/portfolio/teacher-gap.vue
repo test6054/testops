@@ -192,10 +192,12 @@ watch(
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar
-      :title="detail?.taskTitle ?? '补采任务'"
-      description="缺口字段补采 · 提交审核（§7.27.1 / §7.26.5）"
-    >
+    <template #context>
+      <ContextBar
+        show-title
+        layout="workbench"
+        :title="detail?.taskTitle ?? '补采任务'"
+      >
       <template #actions>
         <UiButton @click="goBack"> 返回首页 </UiButton>
         <UiButton :loading="saving" :disabled="loading || !detail" @click="handleSaveDraft">
@@ -206,7 +208,7 @@ watch(
         </UiButton>
       </template>
     </ContextBar>
-
+    </template>
     <a-spin :spinning="loading">
       <template v-if="detail">
         <p class="teacher-gap__meta">

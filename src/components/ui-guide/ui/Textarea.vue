@@ -84,7 +84,7 @@ const resolvedStatus = computed<UiFieldStatus>(() => props.error ? 'error' : pro
   background: var(--dp-bg-control, #f3f4f6) !important;
   box-shadow: none !important;
   color: var(--dp-text-primary, #0f172a) !important;
-  font-family: var(--dp-font-family, 'Inter', 'PingFang SC', sans-serif) !important;
+  font-family: var(--dp-font-family) !important;
   line-height: 1.6 !important;
   resize: vertical !important;
   transition:

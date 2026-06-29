@@ -9,7 +9,8 @@ import type {
   ExamPrintSourceModeCode,
 } from '@/apis/mark/exam'
 import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
-import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import type { WorkbenchStageStatus } from '@/types/workbench'
 import type {PrepStepCard} from '@/utils/exam-prep-step-ui';
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -35,7 +36,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
@@ -177,33 +178,40 @@ function prepStepButtonVariant(step: PrepStepCard): 'primary' | 'outline' {
 
 const blockingReasons = computed(() => detail.value?.prepBlockingReasons ?? [])
 
-const statMetrics = computed((): UiStatPanelItem[] => {
+const statMetrics = computed((): SignalMetric[] => {
   const d = detail.value
   if (!d) return []
   const completed = prepSteps.value.filter((s) => s.status === 'completed').length
-  const items: UiStatPanelItem[] = [
+  const items: SignalMetric[] = [
     {
+      key: 'prepProgress',
       label: '准备进度',
       value: `${completed} / ${prepSteps.value.length}`,
       tone: (completed === prepSteps.value.length ? 'green' : 'blue') as BadgeTone,
     },
     {
+      key: 'blocking',
       label: '硬阻断',
       value: blockingReasons.value.length,
       unit: '项',
       tone: (blockingReasons.value.length > 0 ? 'orange' : 'green') as BadgeTone,
     },
-  ]
-  items.push(
-    { label: '考生数', value: d.candidateCount, unit: '人', tone: 'blue' },
     {
+      key: 'candidateCount',
+      label: '考生数',
+      value: d.candidateCount,
+      unit: '人',
+      tone: 'blue',
+    },
+    {
+      key: 'layoutMode',
       label: '制卷形态',
       value: d.materialLayoutMode
         ? strictEnumLabel(EXAM_MATERIAL_LAYOUT_MODE_LABEL, d.materialLayoutMode, '制卷形态')
         : '未选择',
       tone: 'gray',
     },
-  )
+  ]
   return items
 })
 
@@ -315,10 +323,8 @@ watch(selectedExamId, (next) => {
       </UiCard>
 
       <template v-if="detail?.materialLayoutMode">
-        <UiStatPanel
-          :items="statMetrics"
-          :columns="5"
-          variant="grid"
+        <SignalBand
+          :metrics="statMetrics"
           compact
           class="exam-prep__signals"
         />
@@ -434,10 +440,6 @@ watch(selectedExamId, (next) => {
   }
   &__signals {
     margin-bottom: 16px;
-    padding: 16px 20px;
-    background: var(--dp-surface-elevated);
-    border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: 8px;
   }
   &__cards {
     display: grid;

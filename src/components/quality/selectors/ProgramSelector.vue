@@ -88,7 +88,7 @@ defineExpose({ reload: loadOptions })
       :label="opt.majorCategoryName"
     >
       {{ opt.majorCategoryName }}
-      <span v-if="opt.courseCount != null" class="text-gray-400 ml-1">({{ opt.courseCount }} 课)</span>
+      <span v-if="opt.courseCount != null" class="dp-selector-option-meta">({{ opt.courseCount }} 课)</span>
     </a-select-option>
   </a-select>
 </template>

@@ -67,7 +67,7 @@ type StatusType = 'gray' | 'blue' | 'orange' | 'yellow' | 'green' | 'red' | stri
   gap: 12px;
   background: var(--dp-surface, #fff);
   border: 1.5px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-lg, 4px);
+  border-radius: var(--dp-radius-panel, 4px);
   padding: 16px 20px;
   transition: all 0.2s ease;
   box-shadow: var(--dp-shadow-card, 0 1px 3px rgba(0, 0, 0, 0.06));
@@ -83,7 +83,7 @@ type StatusType = 'gray' | 'blue' | 'orange' | 'yellow' | 'green' | 'red' | stri
 
   // 选中状态
   &--selected {
-    border-color: var(--dp-blue-500, #3b82f6);
+    border-color: var(--dp-blue-500);
     background: var(--dp-blue-50, #eff6ff);
     box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
   }
@@ -113,7 +113,7 @@ type StatusType = 'gray' | 'blue' | 'orange' | 'yellow' | 'green' | 'red' | stri
     border-color: var(--dp-blue-200, #bfdbfe);
     &:hover { border-color: var(--dp-blue-400, #60a5fa); }
     &.ui-task-card--selected {
-      border-color: var(--dp-blue-500, #3b82f6);
+      border-color: var(--dp-blue-500);
       background: var(--dp-blue-50, #eff6ff);
     }
   }

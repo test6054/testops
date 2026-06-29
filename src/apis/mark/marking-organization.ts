@@ -201,8 +201,10 @@ export function isMarkingOrgNotCreatedError(error: MarkBusinessError): boolean {
 /** 创建阅卷组织请求 - 对应后端 OrganizationCreateRequest */
 export interface OrganizationCreateRequest {
   examId: string
-  anonymousMode?: boolean
+  anonymousMode: boolean
   remark?: string
+  /** 初始评阅教师用户ID列表；创建考试打包接口传入，须包含考试主考 */
+  reviewerUserIds?: string[]
 }
 
 /** 阅卷组织查询请求 - 对应后端 OrganizationQueryRequest */
@@ -218,7 +220,7 @@ export interface OrganizationQueryByIdRequest {
 /** 更新阅卷组织主信息请求 - 对应后端 OrganizationUpdateRequest */
 export interface OrganizationUpdateRequest {
   organizationId: string
-  anonymousMode?: boolean
+  anonymousMode: boolean
   remark?: string
 }
 
@@ -250,14 +252,6 @@ export interface ExamAllocationPlanRequest {
   anonymousTokenPolicy: AnonymousTokenPolicyCode
   /** 随机题目抽样数量 */
   randomQuestionSampleSize?: number
-  /** 是否开启整卷双评 */
-  dualReviewEnabled: boolean
-  /** 仲裁分差阈值 */
-  arbitrationScoreThreshold?: number
-  /** 仲裁分差比例阈值 */
-  arbitrationRatioThreshold?: number
-  /** 仲裁教师用户ID */
-  arbitratorUserId?: string
   remark?: string
 }
 
@@ -300,14 +294,6 @@ export interface AllocationPolicySaveRequest {
   priorityRule?: string
   /** 随机题目抽样数量 */
   randomQuestionSampleSize?: number
-  /** 是否开启整卷双评 */
-  dualReviewEnabled: boolean
-  /** 仲裁分差阈值 */
-  arbitrationScoreThreshold?: number
-  /** 仲裁分差比例阈值 */
-  arbitrationRatioThreshold?: number
-  /** 仲裁教师用户ID */
-  arbitratorUserId?: string
 }
 
 /** 保存任务回收策略请求 - 对应后端 RecyclePolicySaveRequest */
@@ -335,10 +321,6 @@ export interface AllocationPolicyVO {
   anonymousTokenPolicy: AnonymousTokenPolicyCode
   priorityRule?: string
   randomQuestionSampleSize?: number
-  dualReviewEnabled: boolean
-  arbitrationScoreThreshold?: number
-  arbitrationRatioThreshold?: number
-  arbitratorUserId?: string
 }
 
 /** 任务回收策略查询响应 - 对应后端 RecyclePolicyResponse */
@@ -418,7 +400,6 @@ export interface MarkingTaskQueryRequest extends QueryDto {
   sessionId?: string
   reviewerUserId?: string
   taskStatus?: MarkingTaskStatusCode
-  reviewRound?: number
 }
 
 // ─── 响应模型类型 ───────────────────────────────────────────
@@ -539,8 +520,6 @@ export interface MarkingTaskVO {
   taskUnit: AllocationUnitCode
   anonymityMode: AnonymityModeCode
   taskStatus: MarkingTaskStatusCode
-  /** 评阅轮次（试评轮次 / 正评轮次） */
-  reviewRound: number
   score?: string | number
   annotationNote?: string
   /** 匿名令牌值；匿名模式为真实令牌，实名模式为 null */

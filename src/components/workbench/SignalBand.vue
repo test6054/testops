@@ -1,26 +1,36 @@
 <template>
-  <div class="signal-band" :class="{ 'signal-band--compact': compact }">
-    <div
+  <div
+    class="signal-band"
+    :class="{
+      'signal-band--compact': compact,
+      'signal-band--panel': variant === 'panel',
+    }"
+  >
+    <component
+      :is="metric.clickable ? 'button' : 'div'"
       v-for="metric in metrics"
       :key="metric.key"
+      :type="metric.clickable ? 'button' : undefined"
       class="signal-band__item"
       :class="{ 'signal-band__item--clickable': metric.clickable }"
       @click="metric.clickable ? emit('metric-click', metric.key) : undefined"
     >
       <span class="signal-band__label">{{ metric.label }}</span>
-      <span class="signal-band__value" :class="toneClass(metric.tone)">
-        {{ metric.value }}
-        <span v-if="metric.unit" class="signal-band__unit">{{ metric.unit }}</span>
-      </span>
-      <span
-        v-if="metric.trend !== undefined && metric.trend !== 0"
-        class="signal-band__trend"
-        :class="trendClass(metric.trend)"
-      >
-        {{ metric.trend > 0 ? '↑' : '↓' }}{{ Math.abs(metric.trend) }}%
-      </span>
+      <div class="signal-band__value-row">
+        <span class="signal-band__value" :class="toneClass(metric.tone)">
+          {{ metric.value }}
+          <span v-if="metric.unit" class="signal-band__unit">{{ metric.unit }}</span>
+        </span>
+        <span
+          v-if="metric.trend !== undefined && metric.trend !== 0"
+          class="signal-band__trend"
+          :class="trendClass(metric)"
+        >
+          {{ metric.trend > 0 ? '?' : '?' }}{{ Math.abs(metric.trend) }}%
+        </span>
+      </div>
       <span v-if="metric.helper" class="signal-band__helper">{{ metric.helper }}</span>
-    </div>
+    </component>
   </div>
 </template>
 
@@ -32,14 +42,27 @@ defineOptions({
   name: 'SignalBand',
 })
 
-withDefaults(
+type TrendPolarity = 'negative' | 'positive'
+
+const props = withDefaults(
   defineProps<{
     metrics?: SignalMetric[]
     compact?: boolean
+    /** inline?????????panel????????? KPI ?? */
+    variant?: 'inline' | 'panel'
+    /**
+     * ???????? negative??
+     * - negative??? = adverse?error ????? = favorable?success ??????????/????
+     * - positive??? = favorable??? = adverse???????/????
+     * ?????? SignalMetric.trendPolarity ??
+     */
+    trendPolarity?: TrendPolarity
   }>(),
   {
     metrics: () => [],
     compact: false,
+    variant: 'panel',
+    trendPolarity: 'negative',
   },
 )
 
@@ -51,9 +74,14 @@ function toneClass(tone?: BadgeTone): string {
   return tone ? `signal-band__value--${tone}` : ''
 }
 
-function trendClass(trend?: number): string {
+/** ???? trend ????? adverse / favorable ??? */
+function trendClass(metric: SignalMetric): string {
+  const trend = metric.trend
   if (!trend) return ''
-  return trend > 0 ? 'signal-band__trend--up' : 'signal-band__trend--down'
+  const polarity = metric.trendPolarity ?? props.trendPolarity
+  const isUp = trend > 0
+  const isAdverse = polarity === 'negative' ? isUp : !isUp
+  return isAdverse ? 'signal-band__trend--adverse' : 'signal-band__trend--favorable'
 }
 </script>
 
@@ -61,17 +89,79 @@ function trendClass(trend?: number): string {
 .signal-band {
   display: flex;
   flex-wrap: wrap;
-  gap: 24px;
+  gap: var(--dp-space-6);
 }
 
 .signal-band--compact {
-  gap: 16px;
+  gap: var(--dp-space-4);
+}
+
+.signal-band--panel {
+  flex-wrap: nowrap;
+  gap: 1px;
+  padding: 0;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-border);
+  overflow-x: auto;
+}
+
+.signal-band--panel.signal-band--compact .signal-band__item {
+  padding: var(--dp-space-3) var(--dp-space-4);
 }
 
 .signal-band__item {
   display: flex;
   align-items: baseline;
   gap: 6px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+}
+
+.signal-band__item--clickable:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
+  border-radius: var(--dp-radius-control-inner);
+}
+
+.signal-band__value-row {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.signal-band--panel .signal-band__item {
+  flex: 1;
+  min-width: 120px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--dp-space-4) var(--dp-space-5);
+  background: var(--dp-surface);
+  transition: background var(--dp-duration-normal) ease;
+}
+
+.signal-band--panel .signal-band__item--clickable:hover {
+  background: var(--dp-gray-50);
+}
+
+.signal-band--panel .signal-band__value-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.signal-band--panel .signal-band__label {
+  font-weight: var(--dp-type-label-weight);
+}
+
+.signal-band--panel .signal-band__helper {
+  margin-top: 2px;
 }
 
 .signal-band__item--clickable {
@@ -79,79 +169,78 @@ function trendClass(trend?: number): string {
 }
 
 .signal-band__item--clickable:hover .signal-band__value {
-  color: var(--ant-color-primary, #1677ff);
+  color: var(--ant-color-primary);
 }
 
 .signal-band__label {
-  font-size: var(--dp-type-hint-size, 12px);
-  line-height: var(--dp-type-hint-line-height, 18px);
-  color: var(--dp-text-muted, #64748b);
+  font-size: var(--dp-type-hint-size);
+  line-height: var(--dp-type-hint-line-height);
+  color: var(--dp-text-muted);
 }
 
 .signal-band__value {
   font-size: 20px;
-  font-weight: var(--dp-font-weight-metric, 600);
-  color: var(--dp-text-primary, #0f172a);
+  font-weight: var(--dp-font-weight-metric);
+  color: var(--dp-text-primary);
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
 
 .signal-band--compact .signal-band__value {
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
 }
 
 .signal-band__unit {
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--dp-text-muted, #64748b);
+  font-size: var(--dp-font-size-xs);
+  font-weight: var(--dp-font-weight-body);
+  color: var(--dp-text-muted);
 }
 
 .signal-band__trend {
-  font-size: var(--dp-type-hint-size, 12px);
-  font-weight: var(--dp-type-sidebar-weight-active, 600);
+  font-size: var(--dp-type-hint-size);
+  font-weight: var(--dp-type-sidebar-weight-active);
   font-variant-numeric: tabular-nums;
 }
 
-.signal-band__trend--up {
-  color: var(--ant-color-error, #ef4444);
+.signal-band__trend--adverse {
+  color: var(--ant-color-error);
 }
 
-.signal-band__trend--down {
-  color: var(--ant-color-success, #22c55e);
+.signal-band__trend--favorable {
+  color: var(--ant-color-success);
 }
 
 .signal-band__helper {
-  font-size: var(--dp-type-hint-size, 12px);
-  line-height: var(--dp-type-hint-line-height, 18px);
-  color: var(--dp-text-muted, #94a3b8);
+  font-size: var(--dp-type-hint-size);
+  line-height: var(--dp-type-hint-line-height);
+  color: var(--dp-text-muted);
 }
 
-/* Tone 色调 */
 .signal-band__value--green {
-  color: var(--ant-color-success, #16a34a);
+  color: var(--ant-color-success);
 }
 
 .signal-band__value--red {
-  color: var(--ant-color-error, #dc2626);
+  color: var(--ant-color-error);
 }
 
 .signal-band__value--orange {
-  color: var(--ant-color-warning, #ea580c);
+  color: var(--ant-color-warning);
 }
 
 .signal-band__value--blue {
-  color: var(--ant-color-primary, #2563eb);
+  color: var(--ant-color-primary);
 }
 
 .signal-band__value--purple {
-  color: #7c3aed;
+  color: var(--dp-purple-500);
 }
 
 .signal-band__value--yellow {
-  color: #ca8a04;
+  color: var(--dp-yellow-700);
 }
 
 .signal-band__value--gray {
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 </style>

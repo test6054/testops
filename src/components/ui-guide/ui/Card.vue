@@ -71,7 +71,7 @@ const hasHeader = computed(
 .dp-card {
   background-color: var(--dp-surface, #fff);
   border: 1px solid var(--dp-card-border, transparent);
-  border-radius: var(--dp-radius-lg, 8px);
+  border-radius: var(--dp-radius-panel, 8px);
   box-shadow: var(--dp-shadow-card);
   transition:
     border-color 0.15s ease,

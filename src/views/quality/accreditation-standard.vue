@@ -309,7 +309,7 @@ onActivated(() => {
         <UiButton variant="primary" size="sm" @click="openCreate">新建认证标准</UiButton>
       </template>
 
-      <UiFilterBar
+      <UiFilterBar variant="plain"
         v-model="filterModel"
         :fields="filterFields"
         show-labels
@@ -418,11 +418,7 @@ onActivated(() => {
 <style scoped lang="scss">
 .as {
   &__signals {
-    margin-bottom: 16px;
-    padding: 16px 20px;
-    background: var(--dp-surface-elevated);
-    border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    margin-bottom: 12px;
   }
 
   &__panel {

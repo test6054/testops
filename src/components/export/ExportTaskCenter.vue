@@ -12,6 +12,7 @@
     <div class="task-center">
       <!-- 工具栏和筛选 -->
       <UiFilterBar
+        variant="plain"
         v-model="filterModel"
         :fields="filterFields"
         @search="handleSearch"

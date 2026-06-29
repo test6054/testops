@@ -223,7 +223,7 @@ onBeforeUnmount(() => {
   background: var(--ant-color-fill-tertiary);
   margin: 0 -8px;
   padding: 12px 8px;
-  border-radius: var(--dp-radius-md);
+  border-radius: var(--dp-radius-panel);
 }
 
 .dp-pending-content {

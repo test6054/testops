@@ -152,10 +152,14 @@ onMounted(loadDashboard)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar
-      title="指标看板"
-      :subtitle="sceneCode ? `${PF_SCENE_CODE_LABEL[sceneCode]} 场景统计` : '全场景指标资产与使用分析'"
-    />
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="指标看板"
+        :subtitle="sceneCode ? `${PF_SCENE_CODE_LABEL[sceneCode]} 统计` : ''"
+      />
+    </template>
     <div class="toolbar">
       <a-select
         v-model:value="sceneCode"
@@ -169,7 +173,9 @@ onMounted(loadDashboard)
         刷新
       </a-button>
     </div>
-    <SignalBand v-if="summary" :metrics="signals" compact class="dashboard__signals" />
+    <template #signal>
+      <SignalBand v-if="summary" :metrics="signals" compact />
+    </template>
     <a-spin :spinning="loading">
       <UiEmpty v-if="!loading && !summary" description="当前范围无指标看板数据" />
       <div v-else-if="summary" class="chart-grid">

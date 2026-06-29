@@ -265,7 +265,7 @@ onBeforeUnmount(() => {
 .ui-log-viewer__pre {
   display: block;
   padding: 0 14px;
-  font-family: var(--font-family-code);
+  font-family: var(--dp-font-family-code);
   font-size: 12px;
   line-height: 1.8;
 }

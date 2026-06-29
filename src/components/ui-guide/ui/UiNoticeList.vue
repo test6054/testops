@@ -211,7 +211,7 @@ const handleActionClick = (item: UiNoticeItem, action: UiNoticeAction) => {
   height: 8px;
   flex-shrink: 0;
   border-radius: 999px;
-  background: var(--dp-blue-500, #3b82f6);
+  background: var(--dp-blue-500);
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
 }
 

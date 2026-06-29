@@ -274,13 +274,15 @@ watch(() => route.query, () => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="我的纠错" description="发起纠错并跟踪处理状态（§17.2）">
-      <template #actions>
-        <UiButton @click="router.push({ path: '/portfolio/teacher/archive', query: teacherRequest })">
-          返回档案
-        </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar show-title layout="workbench" title="我的纠错">
+        <template #actions>
+          <UiButton @click="router.push({ path: '/portfolio/teacher/archive', query: teacherRequest })">
+            返回档案
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
 
     <div v-if="canPickTeachers && !targetTeacherId" class="correction-page__hint">
       <UiEmpty description="请从教师名册选择目标教师" />

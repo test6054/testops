@@ -112,93 +112,62 @@ export interface ExamTeachingAnalysisRecordVO {
   createTime?: string
 }
 
-/**
- * 生成教学改进方案
- * POST /api/exam/teaching-analysis/improvement/generate?examId=&classId=
- */
 export function generateTeachingImprovement(
   examId: string,
   classId?: string,
 ): Promise<ExamTeachingAnalysisRecordVO> {
-  const search = new URLSearchParams({ examId })
-  if (classId) search.set('classId', classId)
   return http.post<ExamTeachingAnalysisRecordVO>(
-    `/api/exam/teaching-analysis/improvement/generate?${search}`,
+    '/api/exam/teaching-analysis/improvement/generate',
+    { examId, classId },
   )
 }
 
-/**
- * 查询最新教学改进方案
- * GET /api/exam/teaching-analysis/improvement/latest
- */
 export function getLatestTeachingImprovement(
   examId: string,
   classId?: string,
 ): Promise<ExamTeachingAnalysisRecordVO | null> {
-  return http.get<ExamTeachingAnalysisRecordVO | null>(
+  return http.post<ExamTeachingAnalysisRecordVO | null>(
     '/api/exam/teaching-analysis/improvement/latest',
-    { params: { examId, classId } },
+    { examId, classId },
   )
 }
 
-/**
- * 生成班级薄弱题型分析
- * POST /api/exam/teaching-analysis/class-weakness/generate?examId=&classId=
- */
 export function generateClassWeaknessAnalysis(params: {
   examId: string
   classId: string
 }): Promise<ExamTeachingAnalysisRecordVO> {
-  const search = new URLSearchParams({
-    examId: params.examId,
-    classId: params.classId,
-  }).toString()
   return http.post<ExamTeachingAnalysisRecordVO>(
-    `/api/exam/teaching-analysis/class-weakness/generate?${search}`,
+    '/api/exam/teaching-analysis/class-weakness/generate',
+    params,
   )
 }
 
-/**
- * 查询最新班级薄弱题型分析
- * GET /api/exam/teaching-analysis/class-weakness/latest
- */
 export function getLatestClassWeaknessAnalysis(params: {
   examId: string
   classId: string
 }): Promise<ExamTeachingAnalysisRecordVO | null> {
-  return http.get<ExamTeachingAnalysisRecordVO | null>(
+  return http.post<ExamTeachingAnalysisRecordVO | null>(
     '/api/exam/teaching-analysis/class-weakness/latest',
-    { params },
+    params,
   )
 }
 
-/**
- * 生成学生个体学情分析
- * POST /api/exam/teaching-analysis/student-profile/generate?examId=&studentUserId=
- */
 export function generateStudentLearningProfile(params: {
   examId: string
   studentUserId: string
 }): Promise<ExamTeachingAnalysisRecordVO> {
-  const search = new URLSearchParams({
-    examId: params.examId,
-    studentUserId: params.studentUserId,
-  }).toString()
   return http.post<ExamTeachingAnalysisRecordVO>(
-    `/api/exam/teaching-analysis/student-profile/generate?${search}`,
+    '/api/exam/teaching-analysis/student-profile/generate',
+    params,
   )
 }
 
-/**
- * 查询最新学生个体学情分析
- * GET /api/exam/teaching-analysis/student-profile/latest
- */
 export function getLatestStudentLearningProfile(params: {
   examId: string
   studentUserId: string
 }): Promise<ExamTeachingAnalysisRecordVO | null> {
-  return http.get<ExamTeachingAnalysisRecordVO | null>(
+  return http.post<ExamTeachingAnalysisRecordVO | null>(
     '/api/exam/teaching-analysis/student-profile/latest',
-    { params },
+    params,
   )
 }

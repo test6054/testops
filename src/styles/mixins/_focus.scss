@@ -1,0 +1,5 @@
+// 键盘 focus-visible 环：与 UiButton / frontend-design-mark 交互契约一致
+@mixin dp-focus-visible-ring {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(22, 119, 255, 0.18));
+}

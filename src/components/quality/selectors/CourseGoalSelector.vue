@@ -111,10 +111,10 @@ defineExpose({ reload: loadOptions })
       :value="opt.id"
       :label="`${opt.goalCode} · ${opt.goalName}`"
     >
-      <span class="text-xs text-gray-500 mr-1">{{ opt.goalCode }}</span>
+      <span class="dp-selector-option-code">{{ opt.goalCode }}</span>
       {{ opt.goalName }}
-      <UiTag v-if="opt.civicObjectiveFlag" tone="purple" class="ml-1">思政</UiTag>
-      <UiTag v-if="opt.aiLiteracyFlag" tone="blue" class="ml-1">AI 素养</UiTag>
+      <UiTag v-if="opt.civicObjectiveFlag" tone="purple" class="dp-selector-option-tag-gap">思政</UiTag>
+      <UiTag v-if="opt.aiLiteracyFlag" tone="blue" class="dp-selector-option-tag-gap">AI 素养</UiTag>
     </a-select-option>
   </a-select>
 </template>

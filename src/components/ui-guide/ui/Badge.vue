@@ -129,9 +129,9 @@ type BadgeVariant = 'solid' | 'outline' | 'soft'
 }
 
 .ui-badge--purple {
-  --badge-text: var(--dp-purple-700, #7c3aed);
+  --badge-text: var(--dp-purple-700, var(--dp-purple-500, #722ed1));
   --badge-bg: var(--dp-purple-50, #f5f3ff);
   --badge-border: var(--dp-purple-200, #ddd6fe);
-  --badge-solid-bg: var(--dp-purple-700, #7c3aed);
+  --badge-solid-bg: var(--dp-purple-700, var(--dp-purple-500, #722ed1));
 }
 </style>

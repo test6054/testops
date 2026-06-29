@@ -146,12 +146,11 @@ async function refreshTree() {
 }
 
 const contextSubtitle = computed(() => {
-  const base = '主数据来自 edu-user，专业群/教研室与历史名称在本域维护'
-  if (!lastSyncLog.value) {
-    return base
-  }
   const log = lastSyncLog.value
-  return `${base} · 上次校验 ${log.syncedTime}（院系 ${log.departmentCount} / 专业 ${log.majorCount} / 失效 ${log.invalidUnitCount}）`
+  if (!log) {
+    return ''
+  }
+  return `上次校验 ${log.syncedTime} · 院系 ${log.departmentCount} / 专业 ${log.majorCount}`
 })
 
 async function handleSync() {
@@ -349,7 +348,7 @@ onMounted(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
+      <ContextBar layout="workbench"
         show-title
         title="组织管理"
         :subtitle="contextSubtitle"

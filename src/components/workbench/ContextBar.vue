@@ -1,34 +1,32 @@
 <script lang="ts" setup>
+import { computed } from 'vue'
 /**
- * 工作台上下文条
- *
- * 用途：统一各业务页面 StageWorkbenchShell #context 槽内的双栏头部布局，
- * 替代各页面手写的 `__context-info` + `__context-actions` 重复结构。
- *
- * 结构：
- *   左侧：title + 可选 subtitle + 可选 status 槽（业务状态标签 / 上下文徽章）
- *   右侧：actions 槽（刷新、新建、导出等业务操作按钮）
- *
- * 不引入业务语义，仅约束视觉节奏与 BEM 命名。
+ * 工作台上下文条：页标题 + #status 标签 + 操作/筛选区。
+ * 默认只展示 title；subtitle 仅用于少量动态范围（学年学期、当前考试名等），禁止功能罗列说明。
  */
 defineOptions({ name: 'ContextBar' })
 
-withDefaults(defineProps<{
-  /** 默认不展示：路由面包屑已表达页面名 */
+const props = withDefaults(defineProps<{
+  /** 显式开启标题；未传时若 title 非空也会展示 */
   showTitle?: boolean
   title?: string
   subtitle?: string
+  /** stack：标题在上、操作在下；workbench：原型横向标题 + 工具区 */
+  layout?: 'stack' | 'workbench'
 }>(), {
   showTitle: false,
   title: '',
   subtitle: '',
+  layout: 'stack',
 })
+
+const displayTitle = computed(() => props.showTitle || Boolean(props.title))
 </script>
 
 <template>
-  <div class="context-bar">
+  <div class="context-bar" :class="`context-bar--${layout}`">
     <div class="context-bar__info">
-      <h2 v-if="showTitle && title" class="context-bar__title">
+      <h2 v-if="displayTitle && title" class="context-bar__title">
         {{ title }}
       </h2>
       <p v-if="subtitle" class="context-bar__subtitle">
@@ -41,7 +39,10 @@ withDefaults(defineProps<{
         <slot name="info" />
       </div>
     </div>
-    <div v-if="$slots.actions" class="context-bar__actions">
+    <div v-if="$slots.toolbar" class="context-bar__toolbar">
+      <slot name="toolbar" />
+    </div>
+    <div v-else-if="$slots.actions" class="context-bar__actions">
       <slot name="actions" />
     </div>
   </div>
@@ -52,30 +53,42 @@ withDefaults(defineProps<{
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--dp-space-4, 16px);
   flex-wrap: wrap;
+
+  &--workbench {
+    align-items: center;
+    flex-wrap: nowrap;
+    margin-bottom: var(--dp-space-5, 20px);
+  }
 
   &__info {
     flex: 1;
     min-width: 240px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
+  }
+
+  &--workbench &__info {
+    flex: 0 1 auto;
+    min-width: 200px;
   }
 
   &__title {
     margin: 0;
     font-size: var(--dp-type-h1-size, 18px);
-    line-height: var(--dp-type-h1-line-height, 26px);
+    line-height: var(--dp-type-h1-lh, 26px);
     font-weight: var(--dp-type-h1-weight, 600);
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary, rgba(0, 0, 0, 0.88));
+    letter-spacing: -0.01em;
   }
 
   &__subtitle {
     margin: 0;
-    font-size: var(--dp-type-context-size, 13px);
-    line-height: var(--dp-type-context-line-height, 18px);
-    color: var(--dp-text-muted, #64748b);
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
   }
 
   &__status {
@@ -90,12 +103,30 @@ withDefaults(defineProps<{
     margin-top: 4px;
   }
 
-  &__actions {
+  &__actions,
+  &__toolbar {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
     flex-shrink: 0;
+  }
+
+  &--workbench &__toolbar {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 960px) {
+  .context-bar--workbench {
+    flex-wrap: wrap;
+  }
+
+  .context-bar--workbench .context-bar__toolbar {
+    width: 100%;
+    justify-content: stretch;
   }
 }
 </style>

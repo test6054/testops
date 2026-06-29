@@ -46,6 +46,120 @@ export function formatDate(value: DateLike, fallback: string = DASH_PLACEHOLDER)
   return formatWithDayjs(value, 'YYYY-MM-DD', fallback)
 }
 
+/** 考试时间窗相对阶段：未开始 / 进行中 / 已结束。 */
+export type ExamWindowPhase = 'upcoming' | 'ongoing' | 'ended'
+
+/**
+ * 解析考试时间窗相对阶段；起止时间任一无效时返回 null。
+ */
+export function resolveExamWindowPhase(
+  start: DateLike,
+  end: DateLike,
+  now: dayjs.Dayjs = dayjs(),
+): ExamWindowPhase | null {
+  const startAt = dayjs(start)
+  const endAt = dayjs(end)
+  if (!startAt.isValid() || !endAt.isValid()) {
+    return null
+  }
+  if (now.isBefore(startAt)) {
+    return 'upcoming'
+  }
+  if (now.isAfter(endAt)) {
+    return 'ended'
+  }
+  return 'ongoing'
+}
+
+/**
+ * 考试时间窗相对阶段文案：如「3 天后开始」「进行中」「已结束」。
+ */
+export function formatExamWindowPhaseLabel(
+  start: DateLike,
+  end: DateLike,
+  now: dayjs.Dayjs = dayjs(),
+): string {
+  const phase = resolveExamWindowPhase(start, end, now)
+  if (!phase) {
+    return DASH_PLACEHOLDER
+  }
+  if (phase === 'ongoing') {
+    return '进行中'
+  }
+  if (phase === 'ended') {
+    return '已结束'
+  }
+  const startAt = dayjs(start)
+  const diffMinutes = startAt.diff(now, 'minute')
+  if (diffMinutes <= 60) {
+    return '即将开始'
+  }
+  const diffHours = startAt.diff(now, 'hour')
+  if (diffHours < 24) {
+    return `${diffHours} 小时后开始`
+  }
+  const diffDays = startAt.startOf('day').diff(now.startOf('day'), 'day')
+  if (diffDays === 1) {
+    return '明天开始'
+  }
+  if (diffDays === 0) {
+    return `今天 ${startAt.format('HH:mm')} 开始`
+  }
+  return `${diffDays} 天后开始`
+}
+
+/**
+ * 紧凑格式化考试时间窗：同天 MM/DD HH:mm-HH:mm；跨天同月省略结束侧月份；跨年补年份。
+ */
+export function formatExamWindowCompactRange(
+  start: DateLike,
+  end: DateLike,
+  fallback: string = DASH_PLACEHOLDER,
+): string {
+  const startAt = dayjs(start)
+  const endAt = dayjs(end)
+  if (!startAt.isValid() && !endAt.isValid()) {
+    return fallback
+  }
+  if (startAt.isValid() && !endAt.isValid()) {
+    return `${startAt.format('MM/DD HH:mm')} 起`
+  }
+  if (!startAt.isValid() && endAt.isValid()) {
+    return `${endAt.format('MM/DD HH:mm')} 止`
+  }
+  const formatClock = (value: dayjs.Dayjs): string => value.format('HH:mm')
+  if (startAt.isSame(endAt, 'day')) {
+    return `${startAt.format('MM/DD')} ${formatClock(startAt)}-${formatClock(endAt)}`
+  }
+  if (startAt.isSame(endAt, 'month')) {
+    return `${startAt.format('MM/DD')} ${formatClock(startAt)}-${endAt.format('DD')} ${formatClock(endAt)}`
+  }
+  if (startAt.isSame(endAt, 'year')) {
+    return `${startAt.format('MM/DD')} ${formatClock(startAt)}-${endAt.format('MM/DD')} ${formatClock(endAt)}`
+  }
+  return `${startAt.format('YYYY/MM/DD')} ${formatClock(startAt)}-${endAt.format('YYYY/MM/DD')} ${formatClock(endAt)}`
+}
+
+/** 完整考试时间窗，用于列表 hover 提示。 */
+export function formatExamWindowFullRange(
+  start: DateLike,
+  end: DateLike,
+  fallback: string = DASH_PLACEHOLDER,
+): string {
+  const startAt = dayjs(start)
+  const endAt = dayjs(end)
+  if (!startAt.isValid() && !endAt.isValid()) {
+    return fallback
+  }
+  if (startAt.isValid() && endAt.isValid()) {
+    return `${formatDateTime(start)} ~ ${formatDateTime(end)}`
+  }
+  if (startAt.isValid()) {
+    return `${formatDateTime(start)} 起`
+  }
+  return `${formatDateTime(end)} 止`
+}
+
 /**
  * 格式化为一天内的时间：HH:mm:ss。
  *

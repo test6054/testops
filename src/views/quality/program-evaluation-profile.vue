@@ -355,7 +355,7 @@ onActivated(() => {
         <UiButton size="sm" @click="openCreate">新建评价口径</UiButton>
       </template>
 
-      <UiFilterBar
+      <UiFilterBar variant="plain"
         v-model="listFilterForm"
         :fields="filterFields"
         show-labels
@@ -568,11 +568,7 @@ onActivated(() => {
   }
 
   &__signals {
-    margin-bottom: 16px;
-    padding: 16px 20px;
-    background: var(--dp-surface-elevated);
-    border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    margin-bottom: 12px;
   }
 
   &__panel {

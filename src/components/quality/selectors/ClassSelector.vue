@@ -97,8 +97,8 @@ defineExpose({ reload: loadOptions })
   >
     <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.className">
       {{ opt.className }}
-      <span v-if="opt.majorName" class="text-gray-400 ml-1">({{ opt.majorName }})</span>
-      <span v-if="opt.studentCount != null" class="text-gray-400 ml-1">{{ opt.studentCount }} 人</span>
+      <span v-if="opt.majorName" class="dp-selector-option-meta">({{ opt.majorName }})</span>
+      <span v-if="opt.studentCount != null" class="dp-selector-option-meta">{{ opt.studentCount }} 人</span>
     </a-select-option>
   </a-select>
 </template>

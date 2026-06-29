@@ -163,7 +163,7 @@ const hasHeader = computed(() => {
 .ui-statistic-summary-grid__dot--green { background: #16a34a; }
 .ui-statistic-summary-grid__dot--yellow { background: #ca8a04; }
 .ui-statistic-summary-grid__dot--red { background: #dc2626; }
-.ui-statistic-summary-grid__dot--purple { background: #7c3aed; }
+.ui-statistic-summary-grid__dot--purple { background: var(--dp-purple-500, #722ed1); }
 
 .ui-statistic-summary-grid__value-row {
   display: flex;

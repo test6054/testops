@@ -176,11 +176,7 @@ onActivated(async () => {
 <style scoped lang="scss">
 .ie {
   &__signals {
-    margin-bottom: 16px;
-    padding: 16px 20px;
-    background: var(--dp-surface-elevated);
-    border: 1px solid var(--dp-border);
-    border-radius: var(--dp-radius-panel);
+    margin-bottom: 12px;
   }
 }
 </style>

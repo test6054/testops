@@ -125,7 +125,7 @@ const handleOk = () => {
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: var(--dp-radius-sm, 6px);
+  border-radius: var(--dp-radius-control-inner, 6px);
   background: transparent;
   color: var(--dp-text-secondary, #475569);
   cursor: pointer;

@@ -622,6 +622,10 @@ async function loadCockpitPhase() {
       </QualityPageContextBar>
     </template>
 
+    <template v-if="trainingPlanId" #rail>
+      <StageRail :stages="stages" @select="handleStageSelect" />
+    </template>
+
     <UiEmpty
       v-if="!trainingPlanId"
       description="请选择培养方案"
@@ -629,7 +633,6 @@ async function loadCockpitPhase() {
     />
 
     <template v-else>
-      <StageRail :stages="stages" class="quality-dashboard__stages" @select="handleStageSelect" />
       <UiCard v-if="dashboardTodos.length" class="quality-dashboard__todo-card" title="待办事项">
         <ul class="quality-dashboard__todo-list">
           <li v-for="item in dashboardTodos" :key="item.key" class="quality-dashboard__todo-item">
@@ -788,11 +791,7 @@ async function loadCockpitPhase() {
   }
 
   &__empty {
-    margin-top: 32px;
-  }
-
-  &__stages {
-    margin-bottom: 16px;
+    margin-top: var(--dp-space-8);
   }
 
   &__todo-card {

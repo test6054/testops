@@ -1,7 +1,10 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        show-title
+        :title="detail?.volume.archiveTitle || detail?.volume.archiveNo || '归档卷详情'"
+      >
         <template #status>
           <UiTag tone="blue" size="sm">{{ detail?.volume.archiveNo }}</UiTag>
           <UiTag
@@ -294,7 +297,7 @@
       </UiSectionTabs>
     </template>
 
-    <UiEmpty v-else description="加载归档卷详情失败，请刷新重试" />
+    <UiEmpty v-else description="加载归档卷详情失败" />
   </StageWorkbenchShell>
 </template>
 

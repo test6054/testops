@@ -64,7 +64,7 @@ export const constantRoutes: RouteRecordRaw[] = [
     },
   },
   {
-    // 一体机 Hub：按设备 allowedTaskKinds 选择业务采集入口。
+    // 一体机 Hub：激活后选择业务采集入口。
     path: '/scanner-kiosk',
     name: 'ScannerKioskHub',
     component: () => import('@/views/scanner-kiosk/TaskKindHub.vue'),

@@ -1,8 +1,9 @@
 <template>
   <div class="ui-arrow-timeline" :class="{ 'ui-arrow-timeline--compact': compact }">
-    <div
+    <button
       v-for="(stage, index) in normalizedStages"
       :key="stage.key"
+      type="button"
       class="ui-arrow-timeline__stage"
       :class="[
         `ui-arrow-timeline__stage--${stage.status}`,
@@ -11,7 +12,8 @@
         { 'ui-arrow-timeline__stage--last': index === normalizedStages.length - 1 },
         { 'ui-arrow-timeline__stage--disabled': !allowPendingSelect && stage.status === 'pending' },
       ]"
-      @click="(allowPendingSelect || stage.status !== 'pending') && handleStageClick(stage)"
+      :disabled="!allowPendingSelect && stage.status === 'pending'"
+      @click="handleStageClick(stage)"
     >
       <div class="ui-arrow-timeline__chevron">
         <svg class="ui-arrow-timeline__shape" viewBox="0 0 200 80" preserveAspectRatio="none">
@@ -78,7 +80,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </button>
   </div>
 </template>
 
@@ -119,6 +121,7 @@ const normalizedStages = computed(() => {
 })
 
 function handleStageClick(stage: UiArrowTimelineStage) {
+  if (!props.allowPendingSelect && stage.status === 'pending') return
   emit('select', stage)
 }
 </script>
@@ -134,8 +137,20 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 .ui-arrow-timeline__stage {
   flex: 1;
   min-width: 120px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: inherit;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: transform var(--dp-duration-fast, 150ms) ease;
+}
+
+.ui-arrow-timeline__stage:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
+  z-index: 2;
+  position: relative;
 }
 
 .ui-arrow-timeline__stage:hover:not(.ui-arrow-timeline__stage--disabled) {

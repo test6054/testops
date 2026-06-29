@@ -1,7 +1,7 @@
 :global(.dp-assign-section) {
   padding: 16px;
   border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-lg);
+  border-radius: var(--dp-radius-panel);
   background: var(--ant-color-bg-container);
   box-shadow: var(--dp-shadow-card);
   display: flex;
@@ -20,7 +20,7 @@
 
 :global(.dp-assign-table) {
   background: var(--ant-color-bg-container);
-  border-radius: var(--dp-radius-md);
+  border-radius: var(--dp-radius-panel);
   border: 1px solid var(--dp-border, #e5e7eb);
   overflow: hidden;
 }

@@ -52,12 +52,18 @@ onMounted(loadPage)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="教师培训档案" subtitle="证书证明类档案汇总（对接人事/教务 externalpull）" />
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="教师培训档案"
+      />
+    </template>
     <UiCard>
       <UiButton @click="loadPage">
         刷新
       </UiButton>
-      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无培训档案，请调整条件或联系管理员导入" />
+      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无培训档案" />
       <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'recordStatus'">

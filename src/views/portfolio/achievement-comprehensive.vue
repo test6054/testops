@@ -76,7 +76,13 @@ onMounted(loadPage)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="成果综合查询" subtitle="跨成果/荣誉/政策库检索 · 国家级筛选 · 成果统计" />
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="成果综合查询"
+      />
+    </template>
     <UiCard v-if="stats" title="成果统计">
       <p>成果总数 {{ stats.totalCount }} · 国家级 {{ stats.nationalCount }}</p>
     </UiCard>

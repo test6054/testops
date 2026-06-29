@@ -93,7 +93,9 @@ onMounted(loadPage)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="教师工资" subtitle="受控字段展示，非本人查看脱敏" />
+    <template #context>
+  <ContextBar show-title layout="workbench" title="教师工资" />
+</template>
     <UiCard>
       <div class="form-row">
         <a-select

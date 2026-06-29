@@ -246,7 +246,7 @@ const logo = computed(() => appStore.getLogo())
       display: flex;
       z-index: 999;
       box-shadow: var(--dp-shadow-card);
-      border-radius: var(--dp-radius-lg);
+      border-radius: var(--dp-radius-panel);
       overflow: hidden;
     }
   }

@@ -420,7 +420,7 @@ onActivated(() => {
         <UiButton variant="primary" size="sm" @click="openCreate">新建模板</UiButton>
       </template>
 
-      <UiFilterBar
+      <UiFilterBar variant="plain"
         v-model="filterModel"
         :fields="filterFields"
         @search="handleSearch"
@@ -756,11 +756,7 @@ onActivated(() => {
 <style scoped lang="scss">
 .pat {
   &__signals {
-    margin-bottom: 16px;
-    padding: 16px 20px;
-    background: var(--dp-surface-elevated);
-    border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    margin-bottom: 12px;
   }
 
   &__panel {

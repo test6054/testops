@@ -142,7 +142,7 @@ defineExpose({ reload: loadOptions })
       :label="studentDisplayName(opt)"
     >
       {{ studentDisplayName(opt) }}
-      <span v-if="opt.studentNumber" class="text-gray-400 ml-1 text-xs">({{ opt.studentNumber }})</span>
+      <span v-if="opt.studentNumber" class="dp-selector-option-meta">({{ opt.studentNumber }})</span>
     </a-select-option>
   </a-select>
 </template>

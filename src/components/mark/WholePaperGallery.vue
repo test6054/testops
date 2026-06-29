@@ -182,7 +182,7 @@ watch(galleryViewportRef, (element) => {
     &--active {
       outline: 2px solid var(--ant-color-primary-border);
       outline-offset: 4px;
-      border-radius: var(--dp-radius-sm, 4px);
+      border-radius: var(--dp-radius-control-inner, 4px);
     }
   }
 
@@ -210,7 +210,7 @@ watch(galleryViewportRef, (element) => {
     gap: 8px;
     min-height: 240px;
     background: var(--ant-color-fill-quaternary);
-    border-radius: var(--dp-radius-sm, 4px);
+    border-radius: var(--dp-radius-control-inner, 4px);
   }
 
   &__annotation {

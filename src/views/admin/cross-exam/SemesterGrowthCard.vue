@@ -457,7 +457,7 @@ function growthValueText(value: number | undefined): string {
 .ai-chart {
   padding: 12px 16px;
   border: 1px solid var(--dp-border, #e2e8f0);
-  border-radius: var(--dp-radius-md, 6px);
+  border-radius: var(--dp-radius-panel, 6px);
   background: var(--dp-surface, #fff);
 }
 .ai-chart__meta {

@@ -25,35 +25,28 @@
 
       <div v-if="!collapsed" class="exam-journey-sidebar-nav__section-label">考试旅程</div>
 
-      <a-tooltip
+      <button
         v-for="(stage, index) in journeyStages"
         :key="stage.key"
-        :title="journeyTooltip(stage)"
-        placement="right"
+        type="button"
+        class="exam-journey-sidebar-nav__item"
+        :class="{
+          'exam-journey-sidebar-nav__item--active': activeJourneyKey === stage.key,
+          'exam-journey-sidebar-nav__item--suggested': suggestedJourneyKey === stage.key,
+        }"
+        :title="collapsed ? stage.title : undefined"
+        @click="emit('select', stage.key as ExamJourneyKey)"
       >
-        <button
-          type="button"
-          class="exam-journey-sidebar-nav__item"
-          :class="{
-            'exam-journey-sidebar-nav__item--active': activeJourneyKey === stage.key,
-            'exam-journey-sidebar-nav__item--suggested': suggestedJourneyKey === stage.key,
-          }"
-          @click="emit('select', stage.key as ExamJourneyKey)"
-        >
-          <span
-            class="exam-journey-sidebar-nav__index"
-            :class="statusClass(stage.status)"
-          >{{ index + 1 }}</span>
-          <span v-if="!collapsed" class="exam-journey-sidebar-nav__body">
-            <span class="exam-journey-sidebar-nav__title">{{ stage.title }}</span>
-            <span v-if="stage.statusText" class="exam-journey-sidebar-nav__hint">{{ stage.statusText }}</span>
-          </span>
-          <span
-            v-if="!collapsed && suggestedJourneyKey === stage.key"
-            class="exam-journey-sidebar-nav__badge"
-          >建议</span>
-        </button>
-      </a-tooltip>
+        <span
+          class="exam-journey-sidebar-nav__index"
+          :class="statusClass(stage.status)"
+        >{{ index + 1 }}</span>
+        <span v-if="!collapsed" class="exam-journey-sidebar-nav__title">{{ stage.title }}</span>
+        <span
+          v-if="!collapsed && suggestedJourneyKey === stage.key"
+          class="exam-journey-sidebar-nav__badge"
+        >建议</span>
+      </button>
     </template>
   </nav>
 </template>
@@ -93,13 +86,6 @@ const suggestedJourneyKey = computed<ExamJourneyKey | null>(() => {
 function statusClass(status: WorkbenchStageStatus): string {
   return `exam-journey-sidebar-nav__index--${status}`
 }
-
-function journeyTooltip(stage: WorkbenchStage): string {
-  if (stage.statusText) {
-    return `${stage.title}：${stage.statusText}`
-  }
-  return stage.title
-}
 </script>
 
 <style lang="scss" scoped>
@@ -132,12 +118,12 @@ function journeyTooltip(stage: WorkbenchStage): string {
 
   &__item {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 10px;
     width: 100%;
     padding: 8px 10px;
     border: none;
-    border-radius: var(--dp-radius-md, 6px);
+    border-radius: var(--dp-radius-panel, 6px);
     background: transparent;
     cursor: pointer;
     text-align: left;
@@ -213,27 +199,12 @@ function journeyTooltip(stage: WorkbenchStage): string {
     }
   }
 
-  &__body {
+  &__title {
     flex: 1;
     min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  &__title {
     font-size: 13px;
     line-height: 1.4;
     color: var(--ant-color-text);
-  }
-
-  &__hint {
-    font-size: 11px;
-    line-height: 1.3;
-    color: var(--ant-color-text-tertiary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   &__badge {

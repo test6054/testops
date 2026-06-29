@@ -296,7 +296,7 @@ watch(
     gap: 12px;
     padding: 12px 16px;
     border: 1px solid var(--ant-color-border-secondary);
-    border-radius: var(--dp-radius-md);
+    border-radius: var(--dp-radius-panel);
     background: var(--ant-color-bg-container);
   }
 
@@ -360,7 +360,7 @@ watch(
   align-items: center;
   justify-content: center;
   background: var(--ant-color-fill-quaternary);
-  border-radius: var(--dp-radius-md, 6px);
+  border-radius: var(--dp-radius-panel, 6px);
   padding: 16px;
 }
 
@@ -379,7 +379,7 @@ watch(
   color: var(--ant-color-text);
   background: var(--ant-color-fill-quaternary);
   padding: 12px;
-  border-radius: var(--dp-radius-md, 6px);
+  border-radius: var(--dp-radius-panel, 6px);
 }
 
 .annotation-meta {

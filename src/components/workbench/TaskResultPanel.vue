@@ -17,22 +17,23 @@
         v-for="item in items"
         :key="item.id"
         class="task-result-panel__item"
-        @click="handleItemClick(item)"
       >
-        <div class="task-result-panel__item-main">
-          <span class="task-result-panel__item-title">{{ item.title }}</span>
-          <span
-            class="task-result-panel__item-badge"
-            :class="`task-result-panel__item-badge--${item.statusTone}`"
-          >{{ item.statusLabel }}</span>
-        </div>
-        <div v-if="item.description" class="task-result-panel__item-desc">
-          {{ item.description }}
-        </div>
-        <div class="task-result-panel__item-meta">
-          <span v-if="item.time" class="task-result-panel__item-time">{{ item.time }}</span>
-          <span v-if="item.meta" class="task-result-panel__item-extra">{{ item.meta }}</span>
-        </div>
+        <button type="button" class="task-result-panel__item-trigger" @click="handleItemClick(item)">
+          <div class="task-result-panel__item-main">
+            <span class="task-result-panel__item-title">{{ item.title }}</span>
+            <span
+              class="task-result-panel__item-badge"
+              :class="`task-result-panel__item-badge--${item.statusTone}`"
+            >{{ item.statusLabel }}</span>
+          </div>
+          <div v-if="item.description" class="task-result-panel__item-desc">
+            {{ item.description }}
+          </div>
+          <div class="task-result-panel__item-meta">
+            <span v-if="item.time" class="task-result-panel__item-time">{{ item.time }}</span>
+            <span v-if="item.meta" class="task-result-panel__item-extra">{{ item.meta }}</span>
+          </div>
+        </button>
         <div v-if="item.actions && item.actions.length" class="task-result-panel__item-actions">
           <button
             v-for="action in item.actions"
@@ -120,13 +121,29 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 }
 
 .task-result-panel__item {
+  padding: 0;
+}
+
+.task-result-panel__item-trigger {
+  display: block;
+  width: 100%;
+  margin: 0;
   padding: 10px 16px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
-.task-result-panel__item:hover {
+.task-result-panel__item-trigger:hover {
   background: var(--dp-hover-bg, #f8fafc);
+}
+
+.task-result-panel__item-trigger:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--dp-focus-ring, rgba(22, 119, 255, 0.18));
 }
 
 .task-result-panel__item + .task-result-panel__item {
@@ -215,7 +232,8 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 .task-result-panel__item-actions {
   display: flex;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 0;
+  padding: 0 16px 10px;
 }
 
 .task-result-panel__action {
@@ -228,6 +246,11 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
   border-radius: var(--dp-radius-control-inner, 4px);
   cursor: pointer;
   transition: all 0.15s ease;
+}
+
+.task-result-panel__action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(22, 119, 255, 0.18));
 }
 
 .task-result-panel__action:hover:not(:disabled) {

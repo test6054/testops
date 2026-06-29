@@ -204,7 +204,7 @@ const getDisplayValue = (item: UiDescriptionItem) => {
 }
 
 .ui-description-grid__value--purple {
-  color: var(--dp-purple-700, #7c3aed);
+  color: var(--dp-purple-700, var(--dp-purple-500, #722ed1));
 }
 
 .ui-description-grid__helper {

@@ -1,26 +1,28 @@
 <template>
   <div class="absence-page">
-    <div class="absence-page__toolbar">
-      <UiButton
-        size="sm"
-        :loading="reconciling"
-        @click="handleReconcile(false)"
-      >
-        <template #icon><SyncOutlined /></template>
-        出勤核对
-      </UiButton>
-      <UiButton
-        size="sm"
-        variant="outline"
-        :loading="reconciling"
-        @click="handleReconcile(true)"
-      >
-        <template #icon><PlusOutlined /></template>
-        核对并新建待确认记录
-      </UiButton>
-    </div>
-
-    <a-card title="出勤核对摘要" :bordered="false" size="small">
+    <UiCard class="absence-page__summary-card">
+      <template #title>出勤核对摘要</template>
+      <template #extra>
+        <a-space>
+          <UiButton
+            size="sm"
+            :loading="reconciling"
+            @click="handleReconcile(false)"
+          >
+            <template #icon><SyncOutlined /></template>
+            出勤核对
+          </UiButton>
+          <UiButton
+            size="sm"
+            variant="outline"
+            :loading="reconciling"
+            @click="handleReconcile(true)"
+          >
+            <template #icon><PlusOutlined /></template>
+            核对并新建待确认记录
+          </UiButton>
+        </a-space>
+      </template>
       <UiEmpty v-if="!reconcileVO" description="暂无数据" />
       <div v-else class="absence-page__summary">
         <div class="absence-page__summary-ring">
@@ -28,15 +30,13 @@
             v-bind="attendanceGaugeBlockProps"
           />
         </div>
-        <UiStatPanel
-          :items="reconcileMetrics"
-          :columns="4"
-          variant="grid"
+        <SignalBand
+          :metrics="reconcileSignalMetrics"
           compact
           class="absence-page__summary-stats"
         />
       </div>
-    </a-card>
+    </UiCard>
 
     <UiCard v-if="reconcileVO && absentStudents.length" class="info-card">
       <template #title>
@@ -77,6 +77,7 @@
       <UiFilterBar
         v-model="recordFilterForm"
         :fields="recordFilterFields"
+        variant="panel"
         show-labels
         search-text="查询"
         @search="handleRecordFilterSearch"
@@ -205,6 +206,7 @@ import type {
   AttendanceReconcileVO,
 } from '@/apis/mark/absence'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
 import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
@@ -228,7 +230,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
@@ -327,30 +329,34 @@ const attendanceGaugeBlockProps = computed(() => ({
   layout: 'stacked' as const,
 }))
 
-const reconcileMetrics = computed(() => [
+const reconcileSignalMetrics = computed((): SignalMetric[] => [
   {
+    key: 'expected',
     label: '应考人数',
     value: reconcileVO.value?.expectedCount ?? 0,
     unit: '人',
-    tone: 'blue' as const,
+    tone: 'blue',
   },
   {
+    key: 'attended',
     label: '已绑定试卷',
     value: reconcileVO.value?.attendedCount ?? 0,
     unit: '人',
-    tone: 'green' as const,
+    tone: 'green',
   },
   {
+    key: 'absent',
     label: '缺考人数',
     value: reconcileVO.value?.absentCount ?? 0,
     unit: '人',
-    tone: (reconcileVO.value?.absentCount ?? 0) > 0 ? ('orange' as const) : ('green' as const),
+    tone: (reconcileVO.value?.absentCount ?? 0) > 0 ? 'orange' : 'green',
   },
   {
+    key: 'pending',
     label: '本次新建待确认记录',
     value: reconcileVO.value?.createdPendingCount ?? 0,
     unit: '条',
-    tone: (reconcileVO.value?.createdPendingCount ?? 0) > 0 ? ('blue' as const) : ('gray' as const),
+    tone: (reconcileVO.value?.createdPendingCount ?? 0) > 0 ? 'blue' : 'gray',
   },
 ])
 
@@ -608,13 +614,6 @@ function handleRecordFilterReset() {
   gap: 16px;
   min-width: 0;
 
-  &__toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-  }
-
   &__summary {
     display: flex;
     align-items: center;
@@ -628,6 +627,12 @@ function handleRecordFilterReset() {
   &__summary-stats {
     flex: 1;
     min-width: 0;
+    align-self: stretch;
+    display: flex;
+
+    :deep(.signal-band) {
+      width: 100%;
+    }
   }
 }
 </style>

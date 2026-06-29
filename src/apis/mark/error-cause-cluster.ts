@@ -1,15 +1,6 @@
 import type { AiAnalysisStatusCode } from './ai-analysis-status'
 import type { AnalysisScopeTypeCode } from './analysis-scope-type'
 import type { QuestionTypeCode } from './question-type'
-
-/**
- * AI 错因聚类分析 API - 对接 edu-mark 模块 ErrorCauseClusterController
- *
- * 后端规则：
- * - 路径前缀 /api/exam/error-cause-cluster
- * - 写操作（生成）为 POST + @RequestParam，查询为 GET
- * - 后端 Long ID 统一用 string 表达到前端
- */
 import http from '@/config/axios'
 
 /** 错因聚类条目 */
@@ -40,31 +31,22 @@ export interface ExamErrorCauseClusterVO {
   createTime?: string
 }
 
-/**
- * 生成错因聚类分析
- * POST /api/exam/error-cause-cluster/generate?examId=&classId=
- */
 export function generateErrorCauseCluster(
   examId: string,
   classId?: string,
 ): Promise<ExamErrorCauseClusterVO> {
-  const search = new URLSearchParams({ examId })
-  if (classId) search.set('classId', classId)
   return http.post<ExamErrorCauseClusterVO>(
-    `/api/exam/error-cause-cluster/generate?${search}`,
+    '/api/exam/error-cause-cluster/generate',
+    { examId, classId },
   )
 }
 
-/**
- * 查询最新错因聚类分析
- * GET /api/exam/error-cause-cluster/latest?examId=&classId=
- */
 export function getLatestErrorCauseCluster(
   examId: string,
   classId?: string,
 ): Promise<ExamErrorCauseClusterVO | null> {
-  return http.get<ExamErrorCauseClusterVO | null>(
+  return http.post<ExamErrorCauseClusterVO | null>(
     '/api/exam/error-cause-cluster/latest',
-    { params: { examId, classId } },
+    { examId, classId },
   )
 }

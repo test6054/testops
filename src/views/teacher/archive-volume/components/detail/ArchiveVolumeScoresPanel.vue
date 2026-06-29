@@ -181,7 +181,7 @@ async function handleSyncTeachingAffairs() {
 .archive-volume-scores-panel__sync-form {
   padding: var(--dp-space-3, 12px);
   border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-control, 8px);
+  border-radius: var(--dp-radius-panel);
 }
 
 .archive-volume-scores-panel__sync-fields {

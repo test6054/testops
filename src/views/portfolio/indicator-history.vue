@@ -175,13 +175,15 @@ onMounted(loadHistory)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="规则快照与影响报告" subtitle="F6 · 历史版本 · retroactive · 影响分析">
-      <template #actions>
-        <UiButton @click="router.push({ name: 'PortfolioIndicatorOps' })">
-          计分与审计
-        </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar show-title layout="workbench" title="规则快照与影响报告">
+        <template #actions>
+          <UiButton @click="router.push({ name: 'PortfolioIndicatorOps' })">
+            计分与审计
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
     <UiCard>
       <a-tabs :active-key="activeTab" @change="onTabChange">
         <a-tab-pane key="history" tab="快照历史">

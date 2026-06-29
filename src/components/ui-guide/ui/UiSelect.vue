@@ -204,7 +204,7 @@ const antSize = computed<SizeType>(() => {
     min-height: 36px !important;
     border-radius: var(--dp-radius-control-inner, 4px) !important;
     color: var(--dp-text-primary, #0f172a) !important;
-    font-family: var(--dp-font-family, 'Inter', 'PingFang SC', sans-serif) !important;
+    font-family: var(--dp-font-family) !important;
   }
 
   .ant-select-item-option-active:not(.ant-select-item-option-disabled) {

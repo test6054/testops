@@ -29,9 +29,7 @@ export interface MarkOcrConfigHealthCheckVO {
 }
 
 export function getCurrentMarkOcrConfig(tenantId?: string): Promise<MarkOcrConfigVO> {
-  return http.get<MarkOcrConfigVO>('/api/mark/ocr/config/current', {
-    params: tenantId ? { tenantId } : undefined,
-  })
+  return http.post<MarkOcrConfigVO>('/api/mark/ocr/config/current', { tenantId })
 }
 
 export function saveMarkOcrConfig(request: MarkOcrConfigSaveRequest): Promise<string> {

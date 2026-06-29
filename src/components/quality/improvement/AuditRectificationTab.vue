@@ -491,7 +491,7 @@ defineExpose({
       <UiButton variant="primary" size="sm" @click="openRectCreate">新建整改任务</UiButton>
     </template>
 
-    <UiFilterBar
+    <UiFilterBar variant="plain"
       v-model="rectFilterForm"
       :fields="rectFilterFields"
       show-labels

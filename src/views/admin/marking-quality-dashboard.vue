@@ -1,7 +1,9 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        title="阅卷质量看板"
+      >
         <template #status>
           <MarkExamSelect
             :selected-exam-id="selectedExamId"
@@ -196,7 +198,7 @@
               </UiButton>
             </template>
 
-            <UiFilterBar
+            <UiFilterBar variant="plain"
               v-model="reviewerFilterForm"
               :fields="reviewerFilterFields"
               search-text="查询"
@@ -1007,10 +1009,6 @@ onActivated(() => {
 .quality-dashboard {
   &__signals {
     margin-bottom: 12px;
-    padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: 8px;
   }
 
   &__tabs {

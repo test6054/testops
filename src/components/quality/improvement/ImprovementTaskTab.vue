@@ -487,7 +487,7 @@ defineExpose({
       </UiButton>
     </template>
 
-    <UiFilterBar
+    <UiFilterBar variant="plain"
       v-model="improvementFilterForm"
       :fields="improvementFilterFields"
       show-labels

@@ -5,7 +5,7 @@
       <UiTag tone="blue" size="sm">全考试治理</UiTag>
     </template>
 
-    <UiFilterBar
+    <UiFilterBar variant="plain"
       v-model="filterModel"
       :fields="filterFields"
       search-text="查询"

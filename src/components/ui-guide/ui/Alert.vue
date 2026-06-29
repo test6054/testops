@@ -57,7 +57,7 @@ const iconComponent = computed(() => {
   align-items: flex-start;
   border: 1px solid var(--alert-border);
   background: var(--alert-bg);
-  border-radius: var(--dp-radius-lg, 4px);
+  border-radius: var(--dp-radius-panel, 4px);
   padding: 14px 16px;
   color: var(--dp-text-primary, #0f172a);
 }

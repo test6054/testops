@@ -376,7 +376,9 @@ onActivated(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        :title="result?.targetLabel || '达成度结果详情'"
+      >
         <template #status>
           <UiButton variant="outline" size="sm" @click="router.back()">返回</UiButton>
           <UiTag v-if="result" :tone="auditStatusColor(result.auditStatus)" size="sm">
@@ -636,11 +638,7 @@ onActivated(() => {
   }
 
   &__signals {
-    margin-bottom: 16px;
-    padding: 16px 20px;
-    background: var(--dp-surface-elevated);
-    border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    margin-bottom: 12px;
   }
 
   &__panel {

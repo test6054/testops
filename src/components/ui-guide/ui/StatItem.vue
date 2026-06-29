@@ -65,7 +65,7 @@ const descClass = computed(() => {
   gap: 6px;
   padding: 12px 16px;
   background: var(--dp-gray-50, #f8fafc);
-  border-radius: var(--dp-radius-md, 4px);
+  border-radius: var(--dp-radius-panel, 4px);
   border: 1px solid var(--dp-border, #e5e7eb);
   transition: all 0.15s ease;
   min-width: 0;
@@ -97,15 +97,15 @@ const descClass = computed(() => {
     }
 
     &--success {
-      color: var(--dp-green-600, #16a34a);
+      color: var(--dp-green-600);
     }
 
     &--danger {
-      color: var(--dp-red-600, #dc2626);
+      color: var(--dp-red-600);
     }
 
     &--warning {
-      color: var(--dp-orange-600, #ea580c);
+      color: var(--dp-orange-600);
     }
   }
 
@@ -115,7 +115,7 @@ const descClass = computed(() => {
     line-height: 1.2;
 
     &--danger {
-      color: var(--dp-red-600, #dc2626);
+      color: var(--dp-red-600);
       font-weight: 500;
     }
   }
@@ -138,7 +138,7 @@ const descClass = computed(() => {
     }
 
     &--blue {
-      background: var(--dp-blue-500, #3b82f6);
+      background: var(--dp-blue-500);
     }
 
     &--orange {

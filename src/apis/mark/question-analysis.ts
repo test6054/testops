@@ -48,35 +48,21 @@ export interface ExamQuestionAnalysisRecordVO {
   updateTime?: string
 }
 
-/**
- * 生成单题质量分析
- * POST /api/exam/question-analysis/generate?examId=&questionTemplateId=
- */
 export function generateQuestionAnalysis(params: {
   examId: string
   questionTemplateId: string
   classId?: string
 }): Promise<ExamQuestionAnalysisRecordVO> {
-  const search = new URLSearchParams({
-    examId: params.examId,
-    questionTemplateId: params.questionTemplateId,
-  })
-  if (params.classId) search.set('classId', params.classId)
-  return http.post<ExamQuestionAnalysisRecordVO>(`/api/exam/question-analysis/generate?${search}`)
+  return http.post<ExamQuestionAnalysisRecordVO>('/api/exam/question-analysis/generate', params)
 }
 
-/**
- * 批量生成所有题目质量分析
- * POST /api/exam/question-analysis/generate-all?examId=
- */
 export function generateAllQuestionAnalysis(
   examId: string,
   classId?: string,
 ): Promise<ExamQuestionAnalysisRecordVO[]> {
-  const search = new URLSearchParams({ examId })
-  if (classId) search.set('classId', classId)
   return http.post<ExamQuestionAnalysisRecordVO[]>(
-    `/api/exam/question-analysis/generate-all?${search}`,
+    '/api/exam/question-analysis/generate-all',
+    { examId, classId },
   )
 }
 
@@ -198,17 +184,13 @@ export function confirmAnswerEffective(
   )
 }
 
-/**
- * 查询题目当前生效的答案配置
- * GET /api/exam/question-analysis/answer-effective/get
- */
 export function getEffectiveAnswerConfig(params: {
   examId: string
   questionTemplateId: string
 }): Promise<ExamAnswerEffectiveConfigVO | null> {
-  return http.get<ExamAnswerEffectiveConfigVO | null>(
+  return http.post<ExamAnswerEffectiveConfigVO | null>(
     '/api/exam/question-analysis/answer-effective/get',
-    { params },
+    params,
   )
 }
 

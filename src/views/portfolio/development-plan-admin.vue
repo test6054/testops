@@ -440,13 +440,15 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="教师年度规划" subtitle="与工程认证 AnnualPlan 分域">
-      <template v-if="showAdminStats" #actions>
-        <UiButton @click="exportPlans">
-          导出 Excel
-        </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar show-title layout="workbench" title="教师年度规划">
+        <template v-if="showAdminStats" #actions>
+          <UiButton @click="exportPlans">
+            导出 Excel
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
     <UiCard>
       <div class="toolbar">
         <input v-model="form.planYear" class="input" placeholder="年度">

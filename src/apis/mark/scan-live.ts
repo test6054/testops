@@ -158,6 +158,7 @@ export function subscribeScanLive(
   }
 
   let retryWithFreshToken = false
+  let jwtAuthRetried = false
   let currentAuthSource: MarkScannerStationAuthSource | null = null
 
   /**
@@ -205,8 +206,15 @@ export function subscribeScanLive(
       }
       if (response.status === 401 || response.status === 403) {
         if (currentAuthSource === 'jwt') {
-          retryWithFreshToken = true
-          throw new Error('扫描实时连接暂时不可用，正在尝试重连')
+          if (!jwtAuthRetried) {
+            jwtAuthRetried = true
+            retryWithFreshToken = true
+            throw new Error('扫描实时连接暂时不可用，正在尝试重连')
+          }
+          const authErr = new ScanLiveFatalAuthError(KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE)
+          handler.onError?.(authErr)
+          controller.abort()
+          throw authErr
         }
         if (currentAuthSource === 'kiosk') {
           const refreshed = await handler.onKioskAuthRefreshRequired?.()

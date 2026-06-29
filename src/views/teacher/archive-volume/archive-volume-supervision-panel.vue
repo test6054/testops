@@ -9,6 +9,8 @@
       <UiFilterBar
         v-model="volumeFilter"
         :fields="volumeFilterFields"
+        variant="panel"
+        show-labels
         search-text="查询"
         @search="loadVolumes"
         @reset="resetVolumeFilter"

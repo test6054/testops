@@ -256,7 +256,7 @@ const handleClick = (evt: MouseEvent) => {
 }
 
 .ui-entity-card--purple {
-  --entity-accent: #7c3aed;
+  --entity-accent: var(--dp-purple-500, #722ed1);
   --entity-cover-bg: #f5f3ff;
 }
 

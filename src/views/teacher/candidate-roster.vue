@@ -8,7 +8,7 @@
       <template #title>
         <TeamOutlined />
         <span>考试范围</span>
-        <UiTag v-if="rosterLocked" tone="orange" size="sm">扫描已开始</UiTag>
+        <UiTag v-if="rosterLocked" tone="orange" size="sm">已有扫描</UiTag>
         <UiTag v-else-if="classScopeReadOnly" tone="gray" size="sm">只读</UiTag>
       </template>
       <div v-if="classScopeReadOnly" class="roster-class-tags">
@@ -88,6 +88,7 @@
       </template>
 
       <UiFilterBar
+        variant="plain"
         :model-value="rosterFilterForm"
         :fields="rosterFilterFields"
         search-text="查询"
@@ -124,20 +125,27 @@
               {{ (record as CandidateRow).className }}
             </span>
           </template>
-          <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiConfirmPopover
-                v-if="!classScopeReadOnly"
-                title="确认移除该考生？"
-                description="移除后需重新加入名册。"
-                danger
-                @confirm="removeCandidate((record as CandidateRow).studentUserId)"
-              >
-                <UiTextAction tone="danger">移除</UiTextAction>
-              </UiConfirmPopover>
-              <span v-else class="muted">—</span>
-            </div>
-          </template>
+            <template v-else-if="column.key === 'actions'">
+              <div class="operations-cell" @click.stop>
+                <UiConfirmPopover
+                  v-if="canRemoveCandidate(record as CandidateRow)"
+                  title="确认移除该考生？"
+                  description="移除后需重新加入名册。"
+                  danger
+                  @confirm="removeCandidate((record as CandidateRow).studentUserId)"
+                >
+                  <UiTextAction tone="danger">移除</UiTextAction>
+                </UiConfirmPopover>
+                <span
+                  v-else-if="(record as CandidateRow).removable === false"
+                  class="muted"
+                  :title="(record as CandidateRow).removalBlockReason"
+                >
+                  不可移除
+                </span>
+                <span v-else class="muted">—</span>
+              </div>
+            </template>
         </template>
       </UiDataTable>
     </a-card>
@@ -304,7 +312,7 @@ const singleAddClassId = ref<string | undefined>(undefined)
 const singleAddStudentUserId = ref<string | null>(null)
 const singleAddStudent = ref<UserDto | null>(null)
 
-const classScopeReadOnly = computed(() => rosterLocked.value || rosterWriteForbidden.value)
+const classScopeReadOnly = computed(() => rosterWriteForbidden.value)
 
 const showInferredClassScopeNotice = computed(() =>
   !classScopeReadOnly.value && !classScopePersisted.value && classIds.value.length > 0,
@@ -433,6 +441,8 @@ async function loadCandidatePage(): Promise<void> {
           studentUserId: item.studentUserId,
           classId: item.classId ?? '',
           className: item.className,
+          removable: item.removable,
+          removalBlockReason: item.removalBlockReason,
         },
         item.candidateRosterId,
       ),
@@ -728,6 +738,13 @@ async function handleSingleAddSubmit(): Promise<void> {
   } finally {
     singleAddSubmitting.value = false
   }
+}
+
+function canRemoveCandidate(record: CandidateRow): boolean {
+  if (classScopeReadOnly.value) {
+    return false
+  }
+  return record.removable !== false
 }
 
 async function removeCandidate(studentUserId: string): Promise<void> {

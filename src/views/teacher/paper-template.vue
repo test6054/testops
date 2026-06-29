@@ -1539,7 +1539,7 @@ watch(selectedExamId, (value) => {
     padding: 12px;
     background: var(--dp-surface, #fff);
     border: 1px solid var(--dp-border, #e5e7eb);
-    border-radius: var(--dp-radius-control, 8px);
+    border-radius: var(--dp-radius-panel);
 
     &--answer {
       min-width: 0;

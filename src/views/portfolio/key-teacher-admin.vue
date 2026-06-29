@@ -134,7 +134,13 @@ onMounted(loadPage)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="骨干/带头人登记" subtitle="登记即生效，支持一键导出台账" />
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="骨干/带头人登记"
+      />
+    </template>
     <UiCard>
       <a-tabs :active-key="activeType" @change="(k: Key) => switchType(String(k) as RegistryType)">
         <a-tab-pane v-for="tab in REGISTRY_TABS" :key="tab.key" :tab="tab.label" />

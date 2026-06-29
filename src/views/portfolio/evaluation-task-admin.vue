@@ -171,13 +171,15 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="多元评价任务" subtitle="以人为主 / 以指标为主 · 关联工作组 · 任务台账与导出">
-      <template #actions>
-        <UiButton @click="exportExcel">
-          导出 Excel
-        </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar show-title layout="workbench" title="多元评价任务">
+        <template #actions>
+          <UiButton @click="exportExcel">
+            导出 Excel
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
     <UiCard>
       <div class="form-row">
         <input v-model="form.taskName" class="input input--wide" placeholder="任务名称">

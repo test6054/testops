@@ -391,9 +391,9 @@
               仅提交
             </UiButton>
             <UiButton
+              v-if="canReject"
               variant="outline"
               size="md"
-              :disabled="!canConfirm || !detail.gradeResultId"
               :loading="rejecting"
               @click="openRejectConfirm"
             >
@@ -556,6 +556,12 @@ const canSubmit = computed(() => !!examId.value && !!taskId.value)
 const canConfirm = computed(() => {
   const status = detail.value?.status
   return status === 'PENDING' || status === 'IN_PROGRESS'
+})
+
+/** 仅首次复核任务可驳回升级仲裁；仲裁任务本身不可再次驳回。 */
+const canReject = computed(() => {
+  if (!canConfirm.value || !detail.value?.gradeResultId) return false
+  return detail.value.reviewType !== 'QUESTION_REVIEW_ARBITRATION'
 })
 
 // ─── 批注列表 ─────────────────────────────
@@ -1295,7 +1301,7 @@ onBeforeUnmount(() => {
     align-items: center;
     justify-content: center;
     background: var(--dp-surface-soft, #f8fafc);
-    border-radius: var(--dp-radius-md, 6px);
+    border-radius: var(--dp-radius-panel, 6px);
     padding: 16px;
   }
 
@@ -1314,7 +1320,7 @@ onBeforeUnmount(() => {
     color: var(--dp-text-primary, #0f172a);
     background: var(--dp-surface-soft, #f8fafc);
     padding: 12px;
-    border-radius: var(--dp-radius-md, 6px);
+    border-radius: var(--dp-radius-panel, 6px);
   }
 
   &__alert {

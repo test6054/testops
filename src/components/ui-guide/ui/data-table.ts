@@ -143,7 +143,6 @@ const RESPONSIVE_HIDE_BELOW_MD_KEYS = new Set([
   'anonymityMode',
   'groupName',
   'session',
-  'reviewRound',
   'reviewerName',
   'reviewerUserId',
   'assignedTeacherUserId',

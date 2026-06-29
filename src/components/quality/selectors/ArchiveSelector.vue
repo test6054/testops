@@ -108,9 +108,9 @@ defineExpose({ reload: loadOptions })
     @change="handleChange"
   >
     <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.archiveCode">
-      <span class="text-xs text-gray-500 mr-1">{{ opt.archiveCode }}</span>
+      <span class="dp-selector-option-code">{{ opt.archiveCode }}</span>
       <span v-if="opt.fileName">{{ opt.fileName }}</span>
-      <span v-if="opt.businessType" class="text-gray-400 ml-1">
+      <span v-if="opt.businessType" class="dp-selector-option-meta">
         · {{ archiveBusinessTypeLabel(opt.businessType) }}
       </span>
     </a-select-option>

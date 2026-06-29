@@ -8,7 +8,7 @@ import type {
   PortfolioTeacherPortraitTrendVO,
   PortfolioTeacherPortraitVO,
 } from '@/apis/portfolio/types'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
@@ -28,7 +28,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
@@ -57,7 +57,7 @@ const indicatorDetail = ref<PortfolioTeacherPortraitIndicatorDetailVO | null>(nu
 const planCompletion = ref<PortfolioDevelopmentPlanCompletionVO | null>(null)
 const planYear = String(new Date().getFullYear())
 
-const compositeItems = computed((): UiStatPanelItem[] => {
+const compositeItems = computed((): SignalMetric[] => {
   if (!portrait.value) {
     return []
   }
@@ -215,17 +215,19 @@ usePortfolioScopedLoader(() => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar
-      title="教师画像"
-      description="一核心四能力雷达、同院系群体区间、历史趋势与指标下钻"
-    >
-      <template #actions>
-        <UiButton :loading="loading" @click="loadPortraitBundle">
-          刷新
-        </UiButton>
-      </template>
-    </ContextBar>
-
+    <template #context>
+      <ContextBar
+        show-title
+        layout="workbench"
+        title="教师画像"
+      >
+        <template #actions>
+          <UiButton :loading="loading" @click="loadPortraitBundle">
+            刷新
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
     <div v-if="canPickTeachers && !targetTeacherId" class="teacher-portrait__hint">
       <UiEmpty description="请从教师名册选择目标教师，或在 URL 携带 teacherId 参数" />
     </div>
@@ -233,14 +235,12 @@ usePortfolioScopedLoader(() => {
     <template v-else>
       <a-spin :spinning="loading">
         <UiCard v-if="portrait" title="综合画像">
-          <UiStatPanel
-            :items="compositeItems"
-            :columns="3"
-            variant="grid"
+          <SignalBand
+            :metrics="compositeItems"
             compact
           />
           <p class="teacher-portrait__meta">
-            加权口径：核心 30% · 教学 25% · 科研/培训/实践各 15%（§8.37）
+            加权：核心 30% · 教学 25% · 科研/培训/实践各 15%
           </p>
           <p class="teacher-portrait__meta">
             正式档案记录 {{ portrait.officialRecordCount }} 条
@@ -255,7 +255,7 @@ usePortfolioScopedLoader(() => {
             v-if="portraitDataInsufficient"
             class="teacher-portrait__hint-text"
           >
-            画像数据不足，请先完成建档；职称同步后将更新职业发展核心分。
+            画像数据不足，请先完成建档
           </p>
         </UiCard>
 
@@ -281,14 +281,13 @@ usePortfolioScopedLoader(() => {
 
         <UiEmpty
           v-else-if="portraitAbsent && !loading"
-          description="画像快照尚未生成，请先完成建档或稍后刷新"
+          description="尚未生成画像快照"
         />
       </a-spin>
 
       <div v-if="portrait" class="teacher-portrait__charts">
         <MarkChartCard
           title="能力雷达"
-          description="个人五维得分；有群体样本时叠加同院系中位"
           :loading="loading"
           chart-min-height="320"
         >
@@ -301,7 +300,6 @@ usePortfolioScopedLoader(() => {
 
         <MarkChartCard
           title="同群体对比"
-          :description="cohortHint || '同院系已有画像快照教师的分布区间'"
           :loading="loading"
           chart-min-height="320"
         >
@@ -331,7 +329,6 @@ usePortfolioScopedLoader(() => {
       <MarkChartCard
         v-if="portrait"
         title="历史趋势"
-        description="综合画像分随人事职称同步、建档与档案重算写入历史；同次查询可看到最新趋势点"
         :loading="loading"
         chart-min-height="280"
         class="teacher-portrait__trend"

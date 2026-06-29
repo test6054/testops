@@ -483,8 +483,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <StageWorkbenchShell title="院系审核台" subtitle="待审档案材料审核、退回与留痕">
-    <UiFilterBar
+  <StageWorkbenchShell>
+    <template #context>
+      <ContextBar layout="workbench" show-title title="院系审核台" />
+    </template>
+    <UiFilterBar variant="plain"
       v-model="filterModel"
       :fields="filterFields"
       @search="handleSearch"

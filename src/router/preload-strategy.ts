@@ -57,6 +57,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
 
   // ── 教师 ① 考试列表 + 工作台 ────────────────────────
   TeacherExamList: () => import('@/views/teacher/exam-list.vue'),
+  TeacherExamCreate: () => import('@/views/teacher/exam-create/exam-create.vue'),
   TeacherExamWorkspace: () => import('@/views/teacher/exam-workspace-layout.vue'),
   TeacherExamWorkspaceOverview: () => import('@/views/teacher/exam-detail.vue'),
   TeacherExamWorkspacePrep: () => import('@/views/teacher/exam-prep-workbench.vue'),
@@ -73,7 +74,6 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherExamWorkspaceMarkingOrg: () => import('@/views/admin/marking-organization/index.vue'),
   TeacherExamWorkspaceMarkingOrgDetail: () => import('@/views/admin/marking-organization/detail.vue'),
   TeacherExamWorkspaceMarkingOrgSessions: () => import('@/views/admin/marking-organization/sessions.vue'),
-  TeacherExamWorkspaceReviewAssignment: () => import('@/views/teacher/review-assignment.vue'),
   TeacherExamWorkspaceTrialTaskPool: () => import('@/views/teacher/marking-task-pool.vue'),
   TeacherExamWorkspaceTrialProgress: () => import('@/views/teacher/review-progress.vue'),
   TeacherExamWorkspaceMarkingTaskPool: () => import('@/views/teacher/marking-task-pool.vue'),
@@ -216,6 +216,7 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
 
   // ── ① 考试列表 + 工作台 ───────────────────────────
   TeacherExamList: [
+    'TeacherExamCreate',
     'TeacherExamWorkspaceOverview',
     'TeacherExamWorkspacePrep',
     'TeacherExamWorkspaceScanMonitor',
@@ -258,7 +259,6 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
   TeacherExamWorkspaceMarkingOrg: [
     'TeacherExamWorkspaceMarkingOrgDetail',
     'TeacherExamWorkspaceMarkingOrgSessions',
-    'TeacherExamWorkspaceReviewAssignment',
   ],
   TeacherExamWorkspaceMarkingOrgDetail: [
     'TeacherExamWorkspaceMarkingOrgSessions',

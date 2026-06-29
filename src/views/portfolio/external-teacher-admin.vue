@@ -371,13 +371,15 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="外聘教师台账" subtitle="单条维护 · 模板导入 · 台账导出">
-      <template #actions>
-        <UiButton variant="primary" @click="openCreate">
-          新增外聘教师
-        </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar show-title layout="workbench" title="外聘教师台账">
+        <template #actions>
+          <UiButton variant="primary" @click="openCreate">
+            新增外聘教师
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
     <a-tabs v-model:active-key="activeTab">
       <a-tab-pane key="roster" tab="名册">
         <UiCard title="批量导入">

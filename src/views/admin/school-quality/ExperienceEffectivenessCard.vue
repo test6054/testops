@@ -40,11 +40,9 @@
         description="暂无数据"
       />
       <div v-else-if="record" class="ai-record">
-        <UiStatPanel
+        <SignalBand
           v-if="record.analysisStatus === 'SUCCESS'"
-          :items="effectivenessMetrics"
-          :columns="3"
-          variant="strip"
+          :metrics="effectivenessMetrics"
           compact
         />
 
@@ -123,7 +121,8 @@
 import type { GradingExperienceCaseVO } from '@/apis/mark/grading-experience'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import type { ExperienceEffectivenessEvalVO, ExperienceRecommendationCode } from '@/apis/mark/school-quality'
-import type { UiBarChartItem, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import type { UiBarChartItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
@@ -140,7 +139,7 @@ import AnalysisExamSelect from '@/components/mark/AnalysisExamSelect.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { runContractGuard } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
@@ -180,7 +179,7 @@ const experienceOptions = computed(() =>
     })),
 )
 
-const effectivenessMetrics = computed((): UiStatPanelItem[] => {
+const effectivenessMetrics = computed((): SignalMetric[] => {
   if (!record.value || record.value.analysisStatus !== 'SUCCESS') return []
   const data = record.value
   return [

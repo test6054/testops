@@ -89,7 +89,9 @@ onMounted(loadPage)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="图书借阅" subtitle="在借与逾期统计" />
+    <template #context>
+  <ContextBar show-title layout="workbench" title="图书借阅" />
+</template>
     <UiCard>
       <div v-if="stats" class="stats">
         在借 {{ stats.activeBorrowCount }} 册 · 逾期 {{ stats.overdueCount }} 册

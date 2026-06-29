@@ -31,7 +31,7 @@ export interface KioskDeviceActivateOptions {
 let sharedKioskDeviceActivation: ReturnType<typeof createKioskDeviceActivation> | null = null
 
 /**
- * 一体机设备级激活真源（单例）：一次 push_token 绑定，考试 / 归档 / 档案袋共用；与 allowedTaskKinds 授权分离。
+ * 一体机设备级激活真源（单例）：一次 push_token 绑定，考试 / 归档 / 档案袋共用同一工位凭证。
  */
 export function useKioskDeviceActivation() {
   if (!sharedKioskDeviceActivation) {
@@ -125,7 +125,7 @@ function createKioskDeviceActivation() {
     }
     return {
       headline: '设备已激活',
-      detail: '本机工位已绑定，可按设备授权的业务类型开始采集。',
+      detail: '本机工位已绑定，考试扫描、考后归档、档案袋采集共用同一 push_token。',
     }
   })
 

@@ -1284,7 +1284,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
               >
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'requirement'">
-                    <span class="text-xs text-gray-500 mr-1">
+                    <span class="dp-selector-option-code">
                       {{
                         requirements.find((r) => r.id === record.graduationRequirementId)
                           ?.requirementCode
@@ -1478,7 +1478,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   <template #bodyCell="{ column, record }">
                     <template v-if="column.key === 'standardItem'">
                       <span v-if="standardMap.get(record.standardId)">
-                        <span class="text-xs text-gray-500 mr-1">
+                        <span class="dp-selector-option-code">
                           {{ standardMap.get(record.standardId)?.standardCode }}
                         </span>
                         {{ standardMap.get(record.standardId)?.standardName }}
@@ -1631,7 +1631,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
             :disabled="objMappingEditorMode === 'edit'"
           >
             <a-select-option v-for="r in requirements" :key="r.id" :value="r.id">
-              <span class="text-xs text-gray-500 mr-1">{{ r.requirementCode }}</span>
+              <span class="dp-selector-option-code">{{ r.requirementCode }}</span>
               {{ r.requirementName }}
             </a-select-option>
           </a-select>
@@ -1817,7 +1817,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
         <a-form-item label="标准条目" required>
           <a-select v-model:value="stdEditor.standardId" placeholder="选择已启用的认证标准">
             <a-select-option v-for="s in standardOptions" :key="s.id" :value="s.id">
-              <span class="text-xs text-gray-500 mr-1">{{ s.standardCode }}</span>
+              <span class="dp-selector-option-code">{{ s.standardCode }}</span>
               {{ s.standardName }}
             </a-select-option>
           </a-select>
@@ -1851,10 +1851,6 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 
   &__signals {
     margin-bottom: 12px;
-    padding: 14px 18px;
-    background: var(--dp-surface-elevated);
-    border: 1px solid var(--dp-border);
-    border-radius: 8px;
   }
 
   &__tabs {

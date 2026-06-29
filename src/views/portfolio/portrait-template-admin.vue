@@ -95,7 +95,9 @@ onMounted(loadList)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="画像模板设置" subtitle="可视化布局编辑" />
+    <template #context>
+      <ContextBar show-title layout="workbench" title="画像模板设置" />
+    </template>
     <div class="layout">
       <UiCard title="模板列表" class="list">
         <a-spin :spinning="loading">

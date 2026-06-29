@@ -1,7 +1,10 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        show-title
+        title="查阅台账"
+      >
         <template #status>
           <UiTag tone="blue" size="sm">查阅台账</UiTag>
         </template>
@@ -16,6 +19,8 @@
         <UiFilterBar
           v-model="volumeFilterModel"
           :fields="volumeFilterFields"
+          variant="panel"
+          show-labels
           search-text="定位归档卷"
           @search="locateVolume"
           @reset="handleVolumeReset"
@@ -64,6 +69,8 @@
         <UiFilterBar
           v-model="tenantFilterModel"
           :fields="tenantFilterFields"
+          variant="panel"
+          show-labels
           search-text="查询"
           @search="loadTenantLedger"
           @reset="handleTenantReset"

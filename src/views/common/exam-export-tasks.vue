@@ -1,7 +1,9 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        title="导出任务"
+      >
         <template #status>
           <MarkExamSelect
             v-if="!isExamWorkspaceRoute"
@@ -43,7 +45,7 @@
           创建导出任务
         </UiButton>
       </template>
-      <UiFilterBar
+      <UiFilterBar variant="plain"
         :model-value="exportFilterForm"
         :fields="exportFilterFields"
         search-text="查询"

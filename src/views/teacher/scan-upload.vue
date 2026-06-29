@@ -10,10 +10,8 @@
       <section v-if="progress" class="scan-batch-page__progress-overview">
         <h2 class="scan-batch-page__section-title">扫描进度概览</h2>
         <div class="scan-batch-page__progress-row">
-          <UiStatPanel
-            :items="progressMetrics"
-            :columns="4"
-            variant="grid"
+          <SignalBand
+            :metrics="progressMetrics"
             compact
             class="scan-batch-page__progress-panel"
           />
@@ -196,7 +194,7 @@
           <!-- 预览结果 -->
           <a-divider class="divider" />
           <div v-if="previewLoaded" class="preview-section">
-            <UiStatPanel :items="previewMetrics" :columns="4" variant="strip" compact />
+            <SignalBand :metrics="previewMetrics" variant="inline" compact />
             <UiDataTable
               pagination-mode="none"
               class="student-detail-table__data-table event-table"
@@ -465,7 +463,8 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import type { SignalMetric } from '@/types/workbench'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
@@ -586,28 +585,31 @@ async function loadProgress(): Promise<void> {
   }
 }
 
-const progressMetrics = computed(() => {
+const progressMetrics = computed((): SignalMetric[] => {
   const current = progress.value
   const scanAttention = current ? current.scanAttentionCount : 0
   return [
-    { label: '已创建批次', value: batchTotal.value, unit: '个', tone: 'blue' as const },
+    { key: 'batches', label: '已创建批次', value: batchTotal.value, unit: '个', tone: 'blue' },
     {
+      key: 'pendingEvents',
       label: '待聚合事件',
       value: livePendingEventTotal.value,
       unit: '条',
-      tone: livePendingEventTotal.value > 0 ? ('orange' as const) : ('green' as const),
+      tone: livePendingEventTotal.value > 0 ? 'orange' : 'green',
     },
     {
+      key: 'openTasks',
       label: '待处理任务',
       value: current ? current.openProcessingTaskCount : 0,
       unit: '条',
-      tone: hasOpenTasks.value ? ('red' as const) : ('green' as const),
+      tone: hasOpenTasks.value ? 'red' : 'green',
     },
     {
+      key: 'scanAttention',
       label: '扫描异常',
       value: scanAttention,
       unit: '条',
-      tone: scanAttention > 0 ? ('red' as const) : ('green' as const),
+      tone: scanAttention > 0 ? 'red' : 'green',
     },
   ]
 })
@@ -655,29 +657,32 @@ const paperBindingHint = computed<string>(() => {
   return '绑定率偏低，请优先处理扫描异常与冲突卷'
 })
 
-const previewMetrics = computed(() => {
+const previewMetrics = computed((): SignalMetric[] => {
   const data = previewData.value
   if (!data) return []
   return [
     {
+      key: 'events',
       label: '待聚合事件',
       value: data.eventCount,
       unit: '条',
-      tone: data.eventCount > 0 ? ('orange' as const) : ('gray' as const),
+      tone: data.eventCount > 0 ? 'orange' : 'gray',
     },
     {
+      key: 'files',
       label: '覆盖文件数',
       value: data.fileCount,
       unit: '份',
-      tone: 'blue' as const,
+      tone: 'blue',
     },
     {
+      key: 'pages',
       label: '累计页数',
       value: data.pageCount,
       unit: '页',
-      tone: 'blue' as const,
+      tone: 'blue',
     },
-    { label: '时间跨度', value: previewTimeSpan.value, tone: 'gray' as const },
+    { key: 'timeSpan', label: '时间跨度', value: previewTimeSpan.value, tone: 'gray' },
   ]
 })
 
@@ -1233,20 +1238,11 @@ onBeforeUnmount(() => {
 
   &__progress-panel {
     min-width: 0;
-    height: 100%;
+    align-self: stretch;
+    display: flex;
 
-    :deep(.ui-stat-panel) {
-      height: 100%;
-    }
-
-    :deep(.ui-stat-panel__list) {
-      align-items: stretch;
-      height: 100%;
-    }
-
-    :deep(.ui-metric-card) {
-      height: 100%;
-      align-items: center;
+    :deep(.signal-band) {
+      width: 100%;
     }
   }
 

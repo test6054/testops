@@ -1,0 +1,19 @@
+// quality 选择器下拉项辅助文案（横�?token 类，非页面套壳）
+
+.dp-selector-option-code {
+  margin-right: var(--dp-space-1, 4px);
+  font-size: var(--dp-type-hint-size, 12px);
+  line-height: var(--dp-type-hint-line-height);
+  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+}
+
+.dp-selector-option-meta {
+  margin-left: var(--dp-space-1, 4px);
+  font-size: var(--dp-type-hint-size, 12px);
+  line-height: var(--dp-type-hint-line-height);
+  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+}
+
+.dp-selector-option-tag-gap {
+  margin-left: var(--dp-space-1, 4px);
+}

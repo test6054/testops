@@ -303,7 +303,7 @@ export function validateStudentQuestionAnswerDetailContract(
 }
 
 export function listMyExams(): Promise<StudentExamItemVO[]> {
-  return http.get<StudentExamItemVO[]>('/api/mark/student/exams/list').then((records) => {
+  return http.post<StudentExamItemVO[]>('/api/mark/student/exams/list', {}).then((records) => {
     records.forEach(validateStudentExamItemContract)
     return records
   })
@@ -311,9 +311,7 @@ export function listMyExams(): Promise<StudentExamItemVO[]> {
 
 export function getMyScoreDetail(examId: string): Promise<StudentScoreDetailVO> {
   return http
-    .get<StudentScoreDetailVO>('/api/mark/student/exams/score-detail', {
-      params: { examId },
-    })
+    .post<StudentScoreDetailVO>('/api/mark/student/exams/score-detail', { examId })
     .then((record) => {
       validateStudentScoreDetailContract(record)
       return record
@@ -322,9 +320,7 @@ export function getMyScoreDetail(examId: string): Promise<StudentScoreDetailVO> 
 
 export function getMyAiLearningReport(examId: string): Promise<StudentAiLearningReportVO> {
   return http
-    .get<StudentAiLearningReportVO>('/api/mark/student/exams/ai-learning-report', {
-      params: { examId },
-    })
+    .post<StudentAiLearningReportVO>('/api/mark/student/exams/ai-learning-report', { examId })
     .then((record) => {
       validateStudentAiLearningReportContract(record)
       return record

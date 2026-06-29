@@ -46,26 +46,19 @@
         </div>
       </div>
 
-      <!-- KPI 分组 1：影像收录 -->
-      <UiStatPanel title="影像收录" :items="scanMetrics" :columns="4" variant="grid" compact />
-
-      <!-- KPI 分组 2：试卷重构与绑定 -->
-      <UiStatPanel
-        title="试卷重构与绑定"
-        :items="bindMetrics"
-        :columns="3"
-        variant="grid"
-        compact
-      />
-
-      <!-- KPI 分组 3：偏差与异常 -->
-      <UiStatPanel
-        title="偏差与异常"
-        :items="deviationMetrics"
-        :columns="3"
-        variant="grid"
-        compact
-      />
+      <!-- KPI 分组 -->
+      <section class="ledger-summary__group">
+        <h3 class="ledger-summary__group-title">影像收录</h3>
+        <SignalBand :metrics="scanSignalMetrics" compact />
+      </section>
+      <section class="ledger-summary__group">
+        <h3 class="ledger-summary__group-title">试卷重构与绑定</h3>
+        <SignalBand :metrics="bindSignalMetrics" compact />
+      </section>
+      <section class="ledger-summary__group">
+        <h3 class="ledger-summary__group-title">偏差与异常</h3>
+        <SignalBand :metrics="deviationSignalMetrics" compact />
+      </section>
     </div>
   </a-spin>
 </template>
@@ -81,7 +74,8 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiProgressBarNew from '@/components/ui-guide/ui/UiProgressBar.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import type { SignalMetric } from '@/types/workbench'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -89,6 +83,7 @@ import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
 import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
 import { toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 
 defineOptions({ name: 'LedgerSummaryCard' })
 const props = defineProps<{
@@ -165,86 +160,95 @@ function ledgerDiagnosticText(diagnostic?: string): string {
   )
 }
 
-const scanMetrics = computed(() => {
+const scanSignalMetrics = computed((): SignalMetric[] => {
   const ledger = props.ledger
   if (!ledger) return []
-  return [
+  return toSignalMetrics([
     {
+      key: 'expectedCandidates',
       label: '应考人数',
       value: formatLedgerMetric(ledger.expectedCandidateCount),
       unit: '人',
-      tone: 'blue' as const,
+      tone: 'blue',
     },
     {
+      key: 'expectedPages',
       label: '应有页数',
       value: formatLedgerMetric(ledger.expectedPageCount),
       unit: '页',
-      tone: 'blue' as const,
+      tone: 'blue',
     },
     {
+      key: 'scannedPages',
       label: '已扫描页',
       value: formatLedgerMetric(ledger.scannedPageCount),
       unit: '页',
-      tone: scanPercent.value >= 100 ? ('green' as const) : ('orange' as const),
+      tone: scanPercent.value >= 100 ? 'green' : 'orange',
     },
     {
+      key: 'scanPercent',
       label: '扫描完成率',
       value: `${scanPercent.value}`,
       unit: '%',
-      tone: scanPercent.value >= 100 ? ('green' as const) : ('blue' as const),
+      tone: scanPercent.value >= 100 ? 'green' : 'blue',
     },
-  ]
+  ])
 })
 
-const bindMetrics = computed(() => {
+const bindSignalMetrics = computed((): SignalMetric[] => {
   const ledger = props.ledger
   if (!ledger) return []
-  return [
+  return toSignalMetrics([
     {
+      key: 'reconstructed',
       label: '已重构试卷',
       value: formatLedgerMetric(ledger.reconstructedPaperCount),
       unit: '份',
-      tone: 'blue' as const,
+      tone: 'blue',
     },
     {
+      key: 'bound',
       label: '已绑定试卷',
       value: formatLedgerMetric(ledger.boundPaperCount),
       unit: '份',
-      tone: 'green' as const,
+      tone: 'green',
     },
     {
+      key: 'missingCandidate',
       label: '未匹配考生',
       value: formatLedgerMetric(ledger.missingCandidateCount),
       unit: '人',
       tone: typeof ledger.missingCandidateCount === 'number' && ledger.missingCandidateCount > 0
-        ? ('red' as const)
-        : ('green' as const),
+        ? 'red'
+        : 'green',
     },
-  ]
+  ])
 })
 
-const deviationMetrics = computed(() => {
+const deviationSignalMetrics = computed((): SignalMetric[] => {
   const ledger = props.ledger
   if (!ledger) return []
-  return [
+  return toSignalMetrics([
     {
+      key: 'duplicatePages',
       label: '重复影像页',
       value: formatLedgerMetric(ledger.duplicatePageCount),
       unit: '页',
       tone: typeof ledger.duplicatePageCount === 'number' && ledger.duplicatePageCount > 0
-        ? ('orange' as const)
-        : ('green' as const),
+        ? 'orange'
+        : 'green',
     },
     {
+      key: 'pendingDuplicate',
       label: '待处置重复',
       value: formatLedgerMetric(ledger.pendingDuplicateCount),
       unit: '条',
       tone: typeof ledger.pendingDuplicateCount === 'number' && ledger.pendingDuplicateCount > 0
-        ? ('red' as const)
-        : ('green' as const),
+        ? 'red'
+        : 'green',
     },
-    { label: '账本编号', value: ledger.ledgerId, tone: 'gray' as const },
-  ]
+    { key: 'ledgerId', label: '账本编号', value: ledger.ledgerId, tone: 'gray' },
+  ])
 })
 </script>
 
@@ -306,5 +310,12 @@ const deviationMetrics = computed(() => {
 
 .ledger-summary__hero-right {
   flex-shrink: 0;
+}
+
+.ledger-summary__group-title {
+  margin: 0 0 8px;
+  font-size: var(--dp-type-table-head-size, 14px);
+  font-weight: var(--dp-type-table-head-weight, 600);
+  color: var(--dp-text-primary, rgba(0, 0, 0, 0.88));
 }
 </style>

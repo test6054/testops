@@ -36,7 +36,7 @@ export interface PaddleOcrInstanceRegisterRequest {
  * 健康实例排在前面。
  */
 export function listPaddleOcrInstances(): Promise<PaddleOcrInstanceVO[]> {
-  return http.get<PaddleOcrInstanceVO[]>('/api/mark/ocr/paddle/instance/list')
+  return http.post<PaddleOcrInstanceVO[]>('/api/mark/ocr/paddle/instance/list', {})
 }
 
 /** 注册 PaddleOCR 服务实例。 */

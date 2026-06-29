@@ -6,109 +6,93 @@
       :key="exam.examId"
       class="ongoing-exam-card"
       :class="{ 'ongoing-exam-card--blocking': (exam.blockingTodoCount ?? 0) > 0 }"
+      tabindex="0"
+      role="button"
+      @click="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
+      @keydown.enter="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
     >
-      <button
-        type="button"
-        class="ongoing-exam-card__body"
-        @click="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
-      >
-        <div class="ongoing-exam-card__head">
-          <div class="ongoing-exam-card__title-block">
-            <strong class="ongoing-exam-card__name">{{ exam.examName }}</strong>
-            <span class="ongoing-exam-card__sub">
-              <template v-if="exam.examNo">编号 {{ exam.examNo }}</template>
-              <template v-if="exam.examNo && formatAcademicTerm(exam)"> · </template>
-              <template v-if="formatAcademicTerm(exam)">{{ formatAcademicTerm(exam) }}</template>
-            </span>
-          </div>
-          <UiTag :tone="examStatusTone(exam.status)" size="sm">
-            {{ examStatusLabel(exam.status) }}
-          </UiTag>
+      <div class="ongoing-exam-card__header">
+        <div class="ongoing-exam-card__title-block">
+          <div class="ongoing-exam-card__name">{{ exam.examName }}</div>
+          <div v-if="examMeta(exam)" class="ongoing-exam-card__meta">{{ examMeta(exam) }}</div>
         </div>
+        <UiTag :tone="stageTagTone(exam.currentStageKey)" size="sm">
+          {{ stageTagLabel(exam) }}
+        </UiTag>
+      </div>
 
-        <div class="ongoing-exam-card__stage-rail" aria-hidden="true">
-          <span
-            v-for="(step, index) in journeySteps"
-            :key="step.key"
-            class="ongoing-exam-card__stage-dot"
-            :class="`ongoing-exam-card__stage-dot--${resolveExamJourneyDotStatus(exam, index)}`"
-            :title="step.title"
+      <div class="ongoing-exam-card__progress">
+        <div class="ongoing-exam-card__progress-track">
+          <div
+            class="ongoing-exam-card__progress-fill"
+            :class="progressFillClass(exam.progressPercent ?? 0)"
+            :style="{ width: `${Math.min(exam.progressPercent ?? 0, 100)}%` }"
           />
         </div>
-
-        <div class="ongoing-exam-card__stage-line">
-          <span class="ongoing-exam-card__stage-title">{{ exam.currentStageTitle || '待进入主链' }}</span>
-          <span class="ongoing-exam-card__progress-text">{{ exam.progressPercent ?? 0 }}%</span>
+        <div class="ongoing-exam-card__progress-label">
+          <span>{{ progressFractionLabel(exam) }}</span>
+          <span>{{ exam.progressPercent ?? 0 }}%</span>
         </div>
-        <a-progress
-          :percent="exam.progressPercent ?? 0"
-          :show-info="false"
-          size="small"
-          class="ongoing-exam-card__progress"
-        />
+      </div>
 
-        <div class="ongoing-exam-card__metrics">
-          <div class="ongoing-exam-card__metric">
-            <span class="ongoing-exam-card__metric-label">考生</span>
-            <span class="ongoing-exam-card__metric-value">{{ exam.candidateCount ?? 0 }}</span>
-          </div>
-          <div class="ongoing-exam-card__metric">
-            <span class="ongoing-exam-card__metric-label">扫描关注</span>
-            <span
-              class="ongoing-exam-card__metric-value"
-              :class="{ 'ongoing-exam-card__metric-value--alert': (exam.scanAttentionCount ?? 0) > 0 }"
-            >
-              {{ exam.scanAttentionCount ?? 0 }}
-            </span>
-          </div>
-          <div class="ongoing-exam-card__metric">
-            <span class="ongoing-exam-card__metric-label">待复核</span>
-            <span
-              class="ongoing-exam-card__metric-value"
-              :class="{ 'ongoing-exam-card__metric-value--warn': (exam.pendingReviewTaskCount ?? 0) > 0 }"
-            >
-              {{ exam.pendingReviewTaskCount ?? 0 }}
-            </span>
-          </div>
-          <div class="ongoing-exam-card__metric">
-            <span class="ongoing-exam-card__metric-label">待确认题</span>
-            <span
-              class="ongoing-exam-card__metric-value"
-              :class="{ 'ongoing-exam-card__metric-value--warn': (exam.pendingGradeCount ?? 0) > 0 }"
-            >
-              {{ exam.pendingGradeCount ?? 0 }}
-            </span>
-          </div>
+      <div class="ongoing-exam-card__stats">
+        <div class="ongoing-exam-card__stat">
+          <span class="ongoing-exam-card__stat-label">考生数</span>
+          <span class="ongoing-exam-card__stat-value">{{ formatCount(exam.candidateCount) }}</span>
         </div>
-      </button>
+        <div class="ongoing-exam-card__stat">
+          <span class="ongoing-exam-card__stat-label">扫描关注</span>
+          <span
+            class="ongoing-exam-card__stat-value"
+            :class="{ 'ongoing-exam-card__stat-value--alert': (exam.scanAttentionCount ?? 0) > 0 }"
+          >
+            {{ formatCount(exam.scanAttentionCount) }}
+          </span>
+        </div>
+        <div class="ongoing-exam-card__stat">
+          <span class="ongoing-exam-card__stat-label">待复核</span>
+          <span
+            class="ongoing-exam-card__stat-value"
+            :class="{ 'ongoing-exam-card__stat-value--warn': (exam.pendingReviewTaskCount ?? 0) > 0 }"
+          >
+            {{ formatCount(exam.pendingReviewTaskCount) }}
+          </span>
+        </div>
+        <div class="ongoing-exam-card__stat">
+          <span class="ongoing-exam-card__stat-label">待确认题</span>
+          <span
+            class="ongoing-exam-card__stat-value"
+            :class="{ 'ongoing-exam-card__stat-value--warn': (exam.pendingGradeCount ?? 0) > 0 }"
+          >
+            {{ formatCount(exam.pendingGradeCount) }}
+          </span>
+        </div>
+      </div>
 
-      <footer v-if="exam.pendingTodos?.length" class="ongoing-exam-card__footer">
-        <button
-          v-for="(todo, index) in exam.pendingTodos"
-          :key="`${todo.todoType}-${index}`"
-          type="button"
-          class="ongoing-exam-card__todo"
-          @click="emitNavigate(todo.workspacePath, todo.examId ?? exam.examId)"
+      <footer class="ongoing-exam-card__footer">
+        <UiTag v-if="formatAcademicTerm(exam)" tone="gray" size="sm">
+          {{ formatAcademicTerm(exam) }}
+        </UiTag>
+        <UiButton
+          size="sm"
+          class="ongoing-exam-card__enter"
+          @click.stop="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
         >
-          {{ todo.label }}
-          <UiTag v-if="todo.blocking" tone="red" size="sm">阻断</UiTag>
-        </button>
+          进入考试
+        </UiButton>
       </footer>
     </article>
   </div>
 </template>
 
 <script lang="ts" setup>
-import type { ExamStatusCode } from '@/apis/mark/exam'
 import type { MarkTeacherDashboardOngoingExamItemVO } from '@/apis/mark/teacher-dashboard'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
+import type { MarkStageKey } from '@/stores/modules/markStage'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
 import { formatSemester } from '@/types/enums/semester-enum'
-import { resolveExamJourneyDotStatus } from '@/utils/mark-dashboard-stages'
-import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'OngoingExamCardGrid' })
 
@@ -120,66 +104,98 @@ const emit = defineEmits<{
   navigate: [routeName: string | undefined, examId: string | undefined]
 }>()
 
-const journeySteps = EXAM_JOURNEY_STEPS
-
 function emitNavigate(routeName: string | undefined, examId: string | undefined) {
   emit('navigate', routeName, examId)
 }
 
-function examStatusLabel(status: ExamStatusCode): string {
-  return strictEnumLabel(EXAM_STATUS_LABEL, status, '考试状态')
-}
-
-function examStatusTone(status: ExamStatusCode): BadgeTone {
-  return strictEnumTone(EXAM_STATUS_TONE, status, '考试状态')
+function formatCount(value: number | undefined): string {
+  return (value ?? 0).toLocaleString('zh-CN')
 }
 
 function formatAcademicTerm(exam: MarkTeacherDashboardOngoingExamItemVO): string {
   if (!exam.academicYear && !exam.semester) return ''
   return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
 }
+
+function examMeta(exam: MarkTeacherDashboardOngoingExamItemVO): string {
+  const parts: string[] = []
+  if (exam.examNo) parts.push(exam.examNo)
+  const term = formatAcademicTerm(exam)
+  if (term && !exam.examNo) parts.push(term)
+  return parts.join(' · ')
+}
+
+function stageTagLabel(exam: MarkTeacherDashboardOngoingExamItemVO): string {
+  return exam.currentStageTitle || '待进入主链'
+}
+
+function stageTagTone(stageKey: MarkStageKey | undefined): BadgeTone {
+  switch (stageKey) {
+    case 'SCAN':
+      return 'orange'
+    case 'MARKING_ORG':
+    case 'TRIAL_MARKING':
+    case 'FORMAL_MARKING':
+      return 'blue'
+    case 'SCORE_PUBLISH':
+      return 'green'
+    default:
+      return 'gray'
+  }
+}
+
+function progressFractionLabel(exam: MarkTeacherDashboardOngoingExamItemVO): string {
+  const total = exam.candidateCount ?? 0
+  if (total <= 0) return exam.currentStageTitle || '进度'
+  const published = exam.publishedScoreCount ?? 0
+  return `${published.toLocaleString('zh-CN')} / ${total.toLocaleString('zh-CN')} 份`
+}
+
+function progressFillClass(progress: number): string {
+  if (progress >= 100) return 'ongoing-exam-card__progress-fill--success'
+  if (progress < 40) return 'ongoing-exam-card__progress-fill--warning'
+  return ''
+}
 </script>
 
 <style scoped>
 .ongoing-exam-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--dp-space-4);
 }
 
 .ongoing-exam-card {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: 8px;
-  background: var(--ant-color-bg-container);
-  overflow: hidden;
+  padding: var(--dp-space-5);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+  cursor: pointer;
+  transition: border-color var(--dp-duration-normal) ease, box-shadow var(--dp-duration-normal) ease;
+}
+
+.ongoing-exam-card:hover {
+  border-color: var(--dp-blue-200);
+  box-shadow: var(--dp-shadow-card-hover, 0 2px 8px rgba(0, 0, 0, 0.06));
+}
+
+.ongoing-exam-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 
 .ongoing-exam-card--blocking {
   border-color: var(--ant-color-error-border);
 }
 
-.ongoing-exam-card__body {
-  display: block;
-  width: 100%;
-  padding: 14px;
-  border: none;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-}
-
-.ongoing-exam-card__body:hover {
-  background: var(--ant-color-fill-quaternary);
-}
-
-.ongoing-exam-card__head {
+.ongoing-exam-card__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: var(--dp-space-2);
+  margin-bottom: var(--dp-space-3);
 }
 
 .ongoing-exam-card__title-block {
@@ -187,115 +203,104 @@ function formatAcademicTerm(exam: MarkTeacherDashboardOngoingExamItemVO): string
 }
 
 .ongoing-exam-card__name {
-  display: block;
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.ongoing-exam-card__sub {
-  display: block;
-  margin-top: 2px;
-  font-size: 12px;
-  color: var(--ant-color-text-secondary);
-}
-
-.ongoing-exam-card__stage-rail {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 8px;
-}
-
-.ongoing-exam-card__stage-dot {
-  flex: 1;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--ant-color-fill-secondary);
-}
-
-.ongoing-exam-card__stage-dot--done {
-  background: var(--ant-color-success);
-}
-
-.ongoing-exam-card__stage-dot--current {
-  background: var(--ant-color-primary);
-}
-
-.ongoing-exam-card__stage-line {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 6px;
-  font-size: 12px;
-  color: var(--ant-color-text-secondary);
-}
-
-.ongoing-exam-card__progress-text {
-  font-variant-numeric: tabular-nums;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--ant-color-text);
+  line-height: 22px;
+  color: var(--dp-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.ongoing-exam-card__meta {
+  margin-top: 2px;
+  font-size: var(--dp-type-hint-size);
+  color: var(--dp-text-muted);
 }
 
 .ongoing-exam-card__progress {
-  margin-bottom: 12px;
+  margin: var(--dp-space-3) 0;
 }
 
-.ongoing-exam-card__metrics {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+.ongoing-exam-card__progress-track {
+  height: 6px;
+  border-radius: var(--dp-radius-full);
+  background: var(--dp-gray-200);
+  overflow: hidden;
 }
 
-.ongoing-exam-card__metric {
-  padding: 6px 8px;
-  border-radius: 4px;
-  background: var(--ant-color-fill-quaternary);
-  text-align: center;
+.ongoing-exam-card__progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--dp-blue-500);
+  transition: width var(--dp-duration-slow) ease;
 }
 
-.ongoing-exam-card__metric-label {
-  display: block;
-  font-size: 11px;
-  color: var(--ant-color-text-secondary);
+.ongoing-exam-card__progress-fill--success {
+  background: var(--dp-green-500);
 }
 
-.ongoing-exam-card__metric-value {
-  display: block;
-  margin-top: 2px;
-  font-size: 14px;
-  font-weight: 600;
+.ongoing-exam-card__progress-fill--warning {
+  background: var(--dp-orange-500);
+}
+
+.ongoing-exam-card__progress-label {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: var(--dp-type-hint-size);
+  color: var(--dp-text-muted);
   font-variant-numeric: tabular-nums;
 }
 
-.ongoing-exam-card__metric-value--alert {
+.ongoing-exam-card__stats {
+  display: flex;
+  gap: var(--dp-space-4);
+  margin-top: var(--dp-space-3);
+  padding-top: var(--dp-space-3);
+  border-top: 1px solid var(--dp-border);
+}
+
+.ongoing-exam-card__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ongoing-exam-card__stat-label {
+  font-size: 11px;
+  color: var(--dp-text-muted);
+}
+
+.ongoing-exam-card__stat-value {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--dp-text-primary);
+}
+
+.ongoing-exam-card__stat-value--alert {
   color: var(--ant-color-error);
 }
 
-.ongoing-exam-card__metric-value--warn {
+.ongoing-exam-card__stat-value--warn {
   color: var(--ant-color-warning);
 }
 
 .ongoing-exam-card__footer {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 0 14px 12px;
-  border-top: 1px dashed var(--ant-color-border-secondary);
-}
-
-.ongoing-exam-card__todo {
-  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: 4px;
-  background: var(--ant-color-bg-container);
-  font-size: 12px;
-  cursor: pointer;
+  justify-content: space-between;
+  gap: var(--dp-space-2);
+  margin-top: var(--dp-space-3);
 }
 
-.ongoing-exam-card__todo:hover {
-  border-color: var(--ant-color-primary);
-  color: var(--ant-color-primary);
+.ongoing-exam-card__enter {
+  margin-left: auto;
+}
+
+@media (max-width: 991px) {
+  .ongoing-exam-card-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

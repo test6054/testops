@@ -193,16 +193,16 @@ defineExpose({ reload: loadOptions })
       :label="labelOf(opt)"
     >
       {{ labelOf(opt) }}
-      <span v-if="opt.qualityCourseId" class="text-gray-400 ml-1">
+      <span v-if="opt.qualityCourseId" class="dp-selector-option-meta">
         · {{ qualityCourseText(opt) }}
       </span>
-      <span v-if="opt.schoolYear" class="text-gray-400 ml-1">
+      <span v-if="opt.schoolYear" class="dp-selector-option-meta">
         ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span>)
       </span>
       <AuditStatusTag
         v-if="opt.auditStatus"
         :color="auditStatusColor(opt.auditStatus)"
-        class="ml-1"
+        class="dp-selector-option-tag-gap"
       >
         {{ auditStatusLabel(opt.auditStatus) }}
       </AuditStatusTag>

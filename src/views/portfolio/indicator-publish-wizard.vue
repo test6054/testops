@@ -143,7 +143,9 @@ onMounted(loadReadiness)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="规则发布向导" subtitle="启用 → 试算 → 影响分析 → 发布" />
+    <template #context>
+  <ContextBar show-title layout="workbench" title="规则发布向导" />
+</template>
     <UiCard title="指标工程贯通">
       <div v-if="readiness" class="readiness">
         <span>已启用 {{ readiness.enabledIndicatorCount }} / {{ readiness.platformIndicatorCount }}</span>

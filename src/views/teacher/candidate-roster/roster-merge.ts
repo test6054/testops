@@ -10,5 +10,7 @@ export function toCandidateRow(draft: CandidateDraft, candidateRosterId?: string
     studentName: draft.studentName?.trim() || undefined,
     classId: draft.classId.trim(),
     className: draft.className?.trim() || undefined,
+    removable: draft.removable,
+    removalBlockReason: draft.removalBlockReason,
   }
 }

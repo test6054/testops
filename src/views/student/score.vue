@@ -1,11 +1,14 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="我的成绩"
+      >
         <template #status>
-          <UiTag tone="blue" size="sm">{{ exams.length }} 场考试</UiTag>
-          <UiTag v-if="publishedCount > 0" tone="green" size="sm">
-            已发布 {{ publishedCount }}
+          <UiTag v-if="reviewOpenCount > 0" tone="orange" size="sm">
+            复核开放 {{ reviewOpenCount }} 场
           </UiTag>
         </template>
         <template #actions>
@@ -14,6 +17,14 @@
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+
+    <template #signal>
+      <SignalBand
+        v-if="!loading"
+        :metrics="summarySignalMetrics"
+        compact
+      />
     </template>
 
     <a-skeleton v-if="loading" active :paragraph="{ rows: 4 }" />
@@ -83,11 +94,9 @@
       </UiCard>
 
       <!-- D-6 个性化洞察（基于 exams 已加载数据派生，零额外 RPC） -->
-      <UiStatPanel
+      <SignalBand
         v-if="insightItems.length > 0"
-        :items="insightItems"
-        :columns="3"
-        variant="grid"
+        :metrics="insightSignalMetrics"
         compact
         class="student-score__insights"
       />
@@ -191,9 +200,10 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -358,6 +368,34 @@ const insightItems = computed(() => {
   return items
 })
 
+const summarySignalMetrics = computed(() =>
+  toSignalMetrics([
+    {
+      key: 'total',
+      label: '考试总数',
+      value: exams.value.length,
+      unit: '场',
+      tone: 'blue',
+    },
+    {
+      key: 'published',
+      label: '已发布',
+      value: publishedCount.value,
+      unit: '场',
+      tone: publishedCount.value > 0 ? 'green' : 'gray',
+    },
+    {
+      key: 'review-open',
+      label: '复核开放',
+      value: reviewOpenCount.value,
+      unit: '场',
+      tone: reviewOpenCount.value > 0 ? 'orange' : 'gray',
+    },
+  ]),
+)
+
+const insightSignalMetrics = computed(() => toSignalMetrics(insightItems.value))
+
 async function loadExams() {
   loading.value = true
   try {
@@ -446,7 +484,7 @@ onActivated(loadExams)
     /* 与全站其他卡片视觉对齐：用纯色浅绿底 + 1px 边框，去除 135deg 渐变 */
     background: var(--dp-green-50, #f0fdf4);
     border: 1px solid var(--dp-green-200, #bbf7d0);
-    border-radius: var(--dp-radius-md, 6px);
+    border-radius: var(--dp-radius-panel, 6px);
 
     .score-label {
       font-size: 12px;

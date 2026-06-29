@@ -142,6 +142,6 @@ const handleClick = (evt: MouseEvent) => {
 
 .ui-assistant-entry-card--purple .ui-assistant-entry-card__icon {
   background: #f5f3ff;
-  color: #7c3aed;
+  color: var(--dp-purple-500, #722ed1);
 }
 </style>
