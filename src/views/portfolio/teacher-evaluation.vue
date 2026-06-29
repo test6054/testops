@@ -10,12 +10,6 @@ import type {
   PortfolioEvaluationTeacherNoticeVO,
   PortfolioEvaluationTeacherResultSummaryVO,
 } from '@/apis/portfolio/types'
-import { Input, message, Select } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
-import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_LABEL,
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
@@ -27,6 +21,12 @@ import {
   PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_LABEL,
   PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE,
 } from '@/apis/portfolio/types'
+import { Input, message, Select } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
+import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -35,7 +35,10 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
+import {
+  usePortfolioPageScope,
+  usePortfolioScopedLoader,
+} from '@/composables/usePortfolioPageScope'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -49,7 +52,9 @@ function noticeStatusTone(status: PortfolioEvaluationTeacherNoticeStatus) {
   return strictEnumTone(PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE, status, '评价通知状态')
 }
 
-function publicityStatusLabel(status: PortfolioEvaluationPublicityListItemVO['publicityStatus']): string {
+function publicityStatusLabel(
+  status: PortfolioEvaluationPublicityListItemVO['publicityStatus'],
+): string {
   return strictEnumLabel(PORTFOLIO_EVALUATION_PUBLICITY_STATUS_LABEL, status, '评价公示状态')
 }
 
@@ -57,20 +62,32 @@ function publicityStatusTone(status: PortfolioEvaluationPublicityListItemVO['pub
   return strictEnumTone(PORTFOLIO_EVALUATION_PUBLICITY_STATUS_TONE, status, '评价公示状态')
 }
 
-function objectionStatusLabel(status: NonNullable<PortfolioEvaluationPublicityListItemVO['objectionStatus']>): string {
+function objectionStatusLabel(
+  status: NonNullable<PortfolioEvaluationPublicityListItemVO['objectionStatus']>,
+): string {
   return strictEnumLabel(PORTFOLIO_EVALUATION_OBJECTION_STATUS_LABEL, status, '评价异议状态')
 }
 
-function objectionStatusTone(status: NonNullable<PortfolioEvaluationPublicityListItemVO['objectionStatus']>) {
+function objectionStatusTone(
+  status: NonNullable<PortfolioEvaluationPublicityListItemVO['objectionStatus']>,
+) {
   return strictEnumTone(PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE, status, '评价异议状态')
 }
 
 function handleActionLabel(action: PortfolioEvaluationObjectionHandleAction): string {
-  return strictEnumLabel(PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_LABEL, action, '评价异议复核动作')
+  return strictEnumLabel(
+    PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_LABEL,
+    action,
+    '评价异议复核动作',
+  )
 }
 
 function handleActionTone(action: PortfolioEvaluationObjectionHandleAction) {
-  return strictEnumTone(PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE, action, '评价异议复核动作')
+  return strictEnumTone(
+    PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
+    action,
+    '评价异议复核动作',
+  )
 }
 
 const route = useRoute()
@@ -100,11 +117,12 @@ const objectionForm = reactive({
 const objectionEvidenceFileNodeId = ref('')
 const objectionEvidenceFileName = ref('')
 
-const objectionTypeOptions = (Object.keys(PORTFOLIO_EVALUATION_OBJECTION_TYPE_LABEL) as PortfolioEvaluationObjectionType[])
-  .map(value => ({ value, label: PORTFOLIO_EVALUATION_OBJECTION_TYPE_LABEL[value] }))
+const objectionTypeOptions = (
+  Object.keys(PORTFOLIO_EVALUATION_OBJECTION_TYPE_LABEL) as PortfolioEvaluationObjectionType[]
+).map((value) => ({ value, label: PORTFOLIO_EVALUATION_OBJECTION_TYPE_LABEL[value] }))
 
-const selectedNotice = computed(() =>
-  notices.value.find(item => item.id === selectedNoticeId.value) ?? null,
+const selectedNotice = computed(
+  () => notices.value.find((item) => item.id === selectedNoticeId.value) ?? null,
 )
 
 const noticeColumns: ColumnsType<PortfolioEvaluationTeacherNoticeVO> = [
@@ -128,7 +146,9 @@ const publicityColumns: ColumnsType<PortfolioEvaluationPublicityListItemVO> = [
   { title: '操作', key: 'actions', width: 180, fixed: 'right' },
 ]
 
-const resultColumns: ColumnsType<NonNullable<PortfolioEvaluationTeacherResultSummaryVO['entries']>[number]> = [
+const resultColumns: ColumnsType<
+  NonNullable<PortfolioEvaluationTeacherResultSummaryVO['entries']>[number]
+> = [
   { title: '指标编码', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 120 },
   { title: '得分', dataIndex: 'score', key: 'score', width: 90, align: 'right' },
   { title: '评语', dataIndex: 'commentText', key: 'commentText' },
@@ -138,7 +158,11 @@ function canViewerSubmitObjection(record: PortfolioEvaluationPublicityListItemVO
   if (!record.canSubmitObjection) {
     return false
   }
-  return !(canPickTeachers.value && targetTeacherId.value && targetTeacherId.value !== currentUserId.value);
+  return !(
+    canPickTeachers.value &&
+    targetTeacherId.value &&
+    targetTeacherId.value !== currentUserId.value
+  )
 }
 
 function publicityRowKey(record: unknown): string {
@@ -159,17 +183,15 @@ async function loadNotices() {
     pageTotal.value = readPageTotal(page)
     const routeNoticeId = typeof route.query.noticeId === 'string' ? route.query.noticeId : ''
     const matched = routeNoticeId
-      ? notices.value.find(item => item.id === routeNoticeId)
+      ? notices.value.find((item) => item.id === routeNoticeId)
       : notices.value[0]
     selectedNoticeId.value = matched?.id ?? notices.value[0]?.id ?? ''
     if (selectedNoticeId.value) {
       await loadPreview(selectedNoticeId.value)
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载评价待办失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -177,22 +199,18 @@ async function loadNotices() {
 async function loadPublicity() {
   publicityLoading.value = true
   try {
-    const rows = await portfolioEvaluationPublicityApi.listPublicity(
+    publicityRows.value = await portfolioEvaluationPublicityApi.listPublicity(
       targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
     )
-    publicityRows.value = rows
     const firstRow = publicityRows.value[0]
     if (firstRow) {
       await loadResultSummary(firstRow.evaluationTaskId)
-    }
-    else {
+    } else {
       resultSummary.value = null
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载评价公示失败')
-  }
-  finally {
+  } finally {
     publicityLoading.value = false
   }
 }
@@ -204,18 +222,16 @@ async function loadResultSummary(evaluationTaskId: string) {
       evaluationTaskId,
       ...(targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}),
     })
-  }
-  catch (error) {
+  } catch (error) {
     resultSummary.value = null
     showUserError(error, '加载评价结果失败')
-  }
-  finally {
+  } finally {
     resultLoading.value = false
   }
 }
 
 async function loadPreview(noticeId: string) {
-  const notice = notices.value.find(item => item.id === noticeId)
+  const notice = notices.value.find((item) => item.id === noticeId)
   if (!notice) {
     preview.value = null
     return
@@ -236,11 +252,9 @@ async function confirmSelected() {
     await portfolioEvaluationNoticeApi.confirmMaterial({ noticeId: selectedNotice.value.id })
     message.success('材料已确认')
     await loadNotices()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '确认材料失败')
-  }
-  finally {
+  } finally {
     confirming.value = false
   }
 }
@@ -278,11 +292,9 @@ async function submitObjection() {
     if (objectionTarget.value) {
       await loadResultSummary(objectionTarget.value.evaluationTaskId)
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '提交异议失败')
-  }
-  finally {
+  } finally {
     submittingObjection.value = false
   }
 }
@@ -294,21 +306,30 @@ function goArchive() {
   })
 }
 
-usePortfolioScopedLoader(() => {
-  pageNum.value = 1
-  void loadNotices()
-  void loadPublicity()
-}, () => targetTeacherId.value)
+usePortfolioScopedLoader(
+  () => {
+    pageNum.value = 1
+    void loadNotices()
+    void loadPublicity()
+  },
+  () => targetTeacherId.value,
+)
 </script>
 
 <template>
   <StageWorkbenchShell>
     <ContextBar title="我的评价" description="参评材料确认、完整度预览与结果公示">
       <template #actions>
-        <UiButton variant="ghost" @click="goArchive">
-          查看档案
-        </UiButton>
-        <UiButton :loading="loading || publicityLoading" @click="() => { void loadNotices(); void loadPublicity() }">
+        <UiButton variant="ghost" @click="goArchive"> 查看档案 </UiButton>
+        <UiButton
+          :loading="loading || publicityLoading"
+          @click="
+            () => {
+              void loadNotices()
+              void loadPublicity()
+            }
+          "
+        >
           刷新
         </UiButton>
       </template>
@@ -343,7 +364,12 @@ usePortfolioScopedLoader(() => {
                 type="button"
                 class="op-link op-link--primary"
                 :disabled="confirming && selectedNoticeId === record.id"
-                @click="() => { selectedNoticeId = record.id; void confirmSelected() }"
+                @click="
+                  () => {
+                    selectedNoticeId = record.id
+                    void confirmSelected()
+                  }
+                "
               >
                 确认材料
               </button>
@@ -356,13 +382,10 @@ usePortfolioScopedLoader(() => {
 
     <UiCard v-if="preview" title="材料清单预览" class="teacher-evaluation__block">
       <p class="teacher-evaluation__meta">
-        任务：{{ preview.taskName }}
-        · 完整度 {{ preview.completenessPercent }}%
-        · 必填分类 {{ preview.requiredCategoryDone }} / {{ preview.requiredCategoryTotal }}
+        任务：{{ preview.taskName }} · 完整度 {{ preview.completenessPercent }}% · 必填分类
+        {{ preview.requiredCategoryDone }} / {{ preview.requiredCategoryTotal }}
       </p>
-      <p v-if="preview.endTime" class="teacher-evaluation__meta">
-        评价截止 {{ preview.endTime }}
-      </p>
+      <p v-if="preview.endTime" class="teacher-evaluation__meta">评价截止 {{ preview.endTime }}</p>
       <UiDataTable
         v-if="preview.categories?.length"
         row-key="categoryId"
@@ -409,7 +432,10 @@ usePortfolioScopedLoader(() => {
                 {{ record.handleOpinion }}
               </p>
             </template>
-            <UiTag v-else-if="record.objectionStatus" :tone="objectionStatusTone(record.objectionStatus)">
+            <UiTag
+              v-else-if="record.objectionStatus"
+              :tone="objectionStatusTone(record.objectionStatus)"
+            >
               {{ objectionStatusLabel(record.objectionStatus) }}
             </UiTag>
             <span v-else>—</span>
@@ -439,12 +465,15 @@ usePortfolioScopedLoader(() => {
       <UiEmpty v-else description="暂无公示" />
     </UiCard>
 
-    <UiCard v-if="resultSummary || resultLoading" title="评价结果与依据" class="teacher-evaluation__block">
+    <UiCard
+      v-if="resultSummary || resultLoading"
+      title="评价结果与依据"
+      class="teacher-evaluation__block"
+    >
       <a-spin :spinning="resultLoading">
         <template v-if="resultSummary">
           <p class="teacher-evaluation__meta">
-            任务：{{ resultSummary.taskName }}
-            · 条目 {{ resultSummary.entryCount ?? 0 }} 条
+            任务：{{ resultSummary.taskName }} · 条目 {{ resultSummary.entryCount ?? 0 }} 条
             <template v-if="resultSummary.averageScore != null">
               · 平均分 {{ resultSummary.averageScore }}
             </template>
@@ -452,7 +481,8 @@ usePortfolioScopedLoader(() => {
               · 完整度 {{ resultSummary.completenessPercent }}%
             </template>
             <template v-if="resultSummary.requiredCategoryTotal != null">
-              · 必填分类 {{ resultSummary.requiredCategoryDone }} / {{ resultSummary.requiredCategoryTotal }}
+              · 必填分类 {{ resultSummary.requiredCategoryDone }} /
+              {{ resultSummary.requiredCategoryTotal }}
             </template>
           </p>
           <UiDataTable
