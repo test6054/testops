@@ -64,8 +64,11 @@
             {{ remediationStatusLabel(record.taskStatus) }}
           </UiTag>
         </template>
+        <template v-else-if="column.key === 'assigneeNickName'">
+          {{ remediationAssigneeLabel(record) }}
+        </template>
         <template v-else-if="column.key === 'volumeId'">
-          <UiTextAction @click="goVolumeDetail(record.volumeId)">{{ record.volumeId }}</UiTextAction>
+          <UiTextAction @click="goVolumeDetail(record.volumeId, record.taskId)">{{ record.volumeId }}</UiTextAction>
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTextAction @click="openTask(record.taskId)">详情</UiTextAction>
@@ -85,12 +88,17 @@
           <a-descriptions bordered size="small" :column="1" class="detail-desc">
             <a-descriptions-item label="标题">{{ taskDetail.taskTitle }}</a-descriptions-item>
             <a-descriptions-item label="卷 ID">
-              <UiTextAction @click="goVolumeDetail(taskDetail.volumeId)">{{ taskDetail.volumeId }}</UiTextAction>
+              <UiTextAction @click="goVolumeDetail(taskDetail.volumeId, taskDetail.taskId)">
+                {{ taskDetail.volumeId }}
+              </UiTextAction>
             </a-descriptions-item>
             <a-descriptions-item label="状态">
               {{ remediationStatusLabel(taskDetail.taskStatus) }}
             </a-descriptions-item>
-            <a-descriptions-item label="责任人">{{ taskDetail.assigneeUserId || '—' }}</a-descriptions-item>
+            <a-descriptions-item label="责任人">{{ remediationAssigneeLabel(taskDetail) }}</a-descriptions-item>
+            <a-descriptions-item v-if="canManageTaskAsCoordinator && taskDetail.taskStatus !== 'CLOSED'" label="改派责任人">
+              <ArchiveDutyUserSelect v-model:value="editAssigneeUserId" />
+            </a-descriptions-item>
             <a-descriptions-item label="诊断码">{{ taskDetail.diagnosticCode || '—' }}</a-descriptions-item>
             <a-descriptions-item label="说明">{{ taskDetail.taskDescription || '—' }}</a-descriptions-item>
             <a-descriptions-item label="截止">{{ taskDetail.dueTime || '—' }}</a-descriptions-item>
@@ -98,6 +106,15 @@
           </a-descriptions>
           <div v-if="taskDetail.taskStatus !== 'CLOSED'" class="task-actions">
             <template v-if="canManageTaskAsCoordinator">
+              <UiButton
+                v-if="canSaveAssigneeReassign"
+                size="sm"
+                variant="outline"
+                :loading="reassigning"
+                @click="reassignAssignee"
+              >
+                保存改派
+              </UiButton>
               <template v-if="taskDetail.taskStatus === 'OPEN'">
                 <UiButton size="sm" :loading="updating" @click="advanceStatus('IN_PROGRESS')">开始处理</UiButton>
                 <UiButton size="sm" variant="outline" :loading="updating" @click="advanceStatus('CLOSED')">关闭</UiButton>
@@ -251,6 +268,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { useUserStore } from '@/stores/modules/user'
+import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -269,6 +287,8 @@ const campaignLoading = ref(false)
 const taskLoading = ref(false)
 const detailLoading = ref(false)
 const updating = ref(false)
+const reassigning = ref(false)
+const editAssigneeUserId = ref<string | undefined>(undefined)
 const exporting = ref(false)
 const campaignSaving = ref(false)
 const createTaskSubmitting = ref(false)
@@ -338,11 +358,18 @@ const isCurrentAssignee = computed(() =>
   taskDetail.value?.assigneeUserId === userStore.userInfo.userId,
 )
 
+const canSaveAssigneeReassign = computed(() => {
+  const task = taskDetail.value
+  if (!task || task.taskStatus === 'CLOSED') return false
+  if (!editAssigneeUserId.value) return false
+  return editAssigneeUserId.value !== task.assigneeUserId
+})
+
 const taskColumns: ColumnsType<ArchiveRemediationTaskVO> = [
   { title: '任务', dataIndex: 'taskTitle', key: 'taskTitle' },
   { title: '卷 ID', dataIndex: 'volumeId', key: 'volumeId', width: 100 },
   { title: '状态', key: 'taskStatus', dataIndex: 'taskStatus', width: 110 },
-  { title: '责任人', dataIndex: 'assigneeUserId', key: 'assigneeUserId', width: 100 },
+  { title: '责任人', key: 'assigneeNickName', dataIndex: 'assigneeNickName', width: 120 },
   { title: '操作', key: 'actions', width: 80 },
 ]
 
@@ -357,8 +384,15 @@ function remediationStatusTone(code: ArchiveRemediationStatusCode): BadgeTone {
   return 'orange'
 }
 
-function goVolumeDetail(volumeId: string) {
-  void router.push({ name: 'TeacherArchiveVolumeDetail', params: { volumeId } })
+function goVolumeDetail(volumeId: string, remediationTaskId?: string) {
+  void router.push({
+    name: 'TeacherArchiveVolumeDetail',
+    params: { volumeId },
+    query: {
+      tab: 'materials',
+      ...(remediationTaskId ? { remediationTaskId } : {}),
+    },
+  })
 }
 
 async function loadCampaigns() {
@@ -520,6 +554,7 @@ async function openTask(taskId: string) {
   taskVolumeDepartmentId.value = undefined
   try {
     taskDetail.value = await getRemediationTask(taskId)
+    editAssigneeUserId.value = taskDetail.value.assigneeUserId
     const volumeDetail = await getArchiveVolumeDetail(taskDetail.value.volumeId)
     taskVolumeDepartmentId.value = volumeDetail.volume.departmentId
   }
@@ -529,6 +564,26 @@ async function openTask(taskId: string) {
   }
   finally {
     detailLoading.value = false
+  }
+}
+
+async function reassignAssignee() {
+  if (!selectedTaskId.value || !editAssigneeUserId.value) return
+  reassigning.value = true
+  try {
+    taskDetail.value = await updateRemediationTask({
+      taskId: selectedTaskId.value,
+      assigneeUserId: editAssigneeUserId.value,
+    })
+    editAssigneeUserId.value = taskDetail.value.assigneeUserId
+    message.success('责任人已改派')
+    await loadTasks()
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    reassigning.value = false
   }
 }
 

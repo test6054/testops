@@ -285,6 +285,9 @@ async function load(options?: { rollbackFilterOnError?: boolean }) {
 }
 
 function handleFilterChange() {
+  if (!filter.value.academicYear) {
+    filter.value.semester = undefined
+  }
   void load({ rollbackFilterOnError: true })
 }
 

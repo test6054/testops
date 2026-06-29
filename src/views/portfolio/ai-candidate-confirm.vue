@@ -11,7 +11,7 @@ import type {
 import type { AiTaskStatus } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
@@ -69,6 +69,7 @@ const candidatesLoading = ref(false)
 const candidateRows = ref<PortfolioCandidateFieldVO[]>([])
 const correctedValues = reactive<Record<string, string>>({})
 const confirmingId = ref<string>('')
+const loadGeneration = ref(0)
 const teacherOptions = ref<PortfolioTeacherSummaryVO[]>([])
 const teacherSearchLoading = ref(false)
 const activeTask = computed(() =>
@@ -224,6 +225,7 @@ async function loadTasks() {
     candidateRows.value = []
     return
   }
+  const generation = ++loadGeneration.value
   tasksLoading.value = true
   try {
     const page = await portfolioAiJobApi.page({
@@ -232,6 +234,9 @@ async function loadTasks() {
       teacherId: targetTeacherId.value,
       candidateExtractOnly: true,
     })
+    if (generation !== loadGeneration.value) {
+      return
+    }
     const rows = readPageList(page, '加载档案袋 AI 任务失败')
     taskRows.value = rows
     taskPageTotal.value = readPageTotal(page, '加载档案袋 AI 任务失败')
@@ -244,24 +249,34 @@ async function loadTasks() {
       activeTaskId.value = routeTaskId
     }
     if (activeTaskId.value) {
-      await loadCandidates(activeTaskId.value)
+      await loadCandidates(activeTaskId.value, generation)
     }
   } catch (error) {
-    showUserError(error, '加载档案袋 AI 任务失败')
+    if (generation === loadGeneration.value) {
+      showUserError(error, '加载档案袋 AI 任务失败')
+    }
   } finally {
-    tasksLoading.value = false
+    if (generation === loadGeneration.value) {
+      tasksLoading.value = false
+    }
   }
 }
 
-async function loadCandidates(taskId: string) {
+async function loadCandidates(taskId: string, parentGeneration?: number) {
+  const generation = parentGeneration ?? ++loadGeneration.value
   const task = taskRows.value.find(item => item.id === taskId)
   if (!task || task.status !== 'SUCCEEDED') {
-    candidateRows.value = []
+    if (generation === loadGeneration.value) {
+      candidateRows.value = []
+    }
     return
   }
   candidatesLoading.value = true
   try {
     const rows = await portfolioAiJobApi.listCandidates(taskId) ?? []
+    if (generation !== loadGeneration.value) {
+      return
+    }
     candidateRows.value = rows
     for (const row of rows) {
       if (!correctedValues[row.id]) {
@@ -269,9 +284,13 @@ async function loadCandidates(taskId: string) {
       }
     }
   } catch (error) {
-    showUserError(error, '加载候选字段失败')
+    if (generation === loadGeneration.value) {
+      showUserError(error, '加载候选字段失败')
+    }
   } finally {
-    candidatesLoading.value = false
+    if (generation === loadGeneration.value) {
+      candidatesLoading.value = false
+    }
   }
 }
 
@@ -431,6 +450,20 @@ usePortfolioScopedLoader(async () => {
   await loadTasks()
 }, () => targetTeacherId.value)
 
+watch(
+  () => route.query.scanCommitted,
+  async (value) => {
+    if (value !== '1') {
+      return
+    }
+    const nextQuery = { ...route.query }
+    delete nextQuery.scanCommitted
+    await router.replace({ path: route.path, query: nextQuery })
+    await loadTasks()
+  },
+  { immediate: true },
+)
+
 onMounted(async () => {
   if (canPickTeachers.value) {
     await loadTeacherOptions()
@@ -449,6 +482,7 @@ onMounted(async () => {
       showUserError(error, '加载当前教师信息失败')
     }
   }
+  await loadTasks()
 })
 </script>
 

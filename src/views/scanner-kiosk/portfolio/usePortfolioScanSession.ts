@@ -45,7 +45,10 @@ export function usePortfolioScanSession() {
     try {
       const setup = await getAgentSetupContext()
       if (!setup.bound || !setup.scannerDeviceId || !setup.scannerStationId) {
-        portfolioContext.value = null
+        portfolioContext.value = {
+          scanAllowed: false,
+          blockReason: '请先激活扫描 Agent',
+        }
         return
       }
       const context = await getScanWorkOrderContext({

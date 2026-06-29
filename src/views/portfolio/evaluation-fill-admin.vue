@@ -11,7 +11,7 @@ import type {
 } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { PORTFOLIO_EVALUATION_MODE_LABEL } from '@/apis/portfolio/enums'
+import { PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES, PORTFOLIO_EVALUATION_MODE_LABEL } from '@/apis/portfolio/enums'
 import {
   portfolioEvaluationEntryApi,
   portfolioEvaluationTaskApi,
@@ -20,6 +20,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -47,6 +48,37 @@ const fillForm = reactive({
 
 const selectedTask = computed(() => tasks.value.find(item => item.id === selectedTaskId.value))
 const isByIndicator = computed(() => selectedTask.value?.evaluationMode === 'BY_INDICATOR')
+const fillWindowBlockedReason = computed(() => {
+  const task = selectedTask.value
+  if (!task?.startTime || !task?.endTime) {
+    return '评价任务未配置完整时间窗，暂不可填报'
+  }
+  const now = Date.now()
+  const start = Date.parse(task.startTime)
+  const end = Date.parse(task.endTime)
+  if (Number.isNaN(start) || Number.isNaN(end)) {
+    return '评价任务时间窗格式无效，暂不可填报'
+  }
+  if (now < start) {
+    return `评价尚未开始（${task.startTime} 起）`
+  }
+  if (now > end) {
+    return `评价已结束（截止 ${task.endTime}）`
+  }
+  return ''
+})
+const canSaveEntry = computed(() => !fillWindowBlockedReason.value)
+
+const taskSummaryItems = computed(() => {
+  if (!summary.value) {
+    return []
+  }
+  return [
+    { key: 'entries', label: '填报条目', value: String(summary.value.entryCount), tone: 'blue' as const },
+    { key: 'avg', label: '平均分', value: summary.value.averageScore, unit: '分' },
+    { key: 'mode', label: '评价模式', value: evaluationModeLabel(summary.value.evaluationMode) },
+  ]
+})
 
 const entryColumns: ColumnsType<PortfolioEvaluationEntryVO> = [
   { title: '被评教师', dataIndex: 'subjectTeacherUserId', key: 'subjectTeacherUserId', width: 100 },
@@ -93,17 +125,27 @@ function subjectTeacherLabel(teacherUserId: string): string {
   return option ? `${option.fullName} (${teacherUserId})` : teacherUserId
 }
 
+const selectableTasks = computed(() => {
+  if (activeTab.value === 'fill') {
+    return tasks.value.filter(item => item.taskStatus === 'PUBLISHED')
+  }
+  return tasks.value.filter(item => PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES.includes(item.taskStatus))
+})
+
 async function loadTasks() {
   loading.value = true
   try {
     const page = await portfolioEvaluationTaskApi.page({
       pageNum: 1,
       pageSize: 100,
-      taskStatus: 'PUBLISHED',
     })
     tasks.value = readPageList(page, '加载评价任务失败')
-    if (!selectedTaskId.value && tasks.value.length) {
-      selectedTaskId.value = tasks.value[0].id
+    const pool = selectableTasks.value
+    if (!selectedTaskId.value && pool.length) {
+      selectedTaskId.value = pool[0].id
+    }
+    else if (selectedTaskId.value && !pool.some(item => item.id === selectedTaskId.value)) {
+      selectedTaskId.value = pool[0]?.id ?? ''
     }
   }
   catch (error) {
@@ -126,6 +168,7 @@ async function loadFillContext() {
     const context = await portfolioEvaluationTaskApi.fillContext({ id: selectedTaskId.value })
     subjectTeacherOptions.value = context.subjectTeacherOptions
     indicatorOptions.value = context.indicatorOptions
+    fillForm.subjectTeacherUserId = ''
     fillForm.indicatorCode = ''
   }
   catch (error) {
@@ -175,6 +218,10 @@ async function loadSummary() {
 async function saveEntry() {
   if (!selectedTaskId.value) {
     message.warning('请选择已发布任务')
+    return
+  }
+  if (!canSaveEntry.value) {
+    message.warning(fillWindowBlockedReason.value || '当前不可填报')
     return
   }
   if (!fillForm.subjectTeacherUserId.trim() || !fillForm.score.trim()) {
@@ -228,15 +275,17 @@ async function exportSummaryCsv() {
 
 watch(selectedTaskId, async () => {
   await loadFillContext()
+  await loadSummary()
   if (activeTab.value === 'fill') {
     void loadEntries()
-  }
-  else {
-    void loadSummary()
   }
 })
 
 watch(activeTab, (tab) => {
+  const pool = selectableTasks.value
+  if (selectedTaskId.value && !pool.some(item => item.id === selectedTaskId.value)) {
+    selectedTaskId.value = pool[0]?.id ?? ''
+  }
   if (tab === 'summary') {
     void loadSummary()
   }
@@ -249,6 +298,7 @@ onMounted(async () => {
   await loadTasks()
   if (selectedTaskId.value) {
     await loadFillContext()
+    await loadSummary()
     await loadEntries()
   }
 })
@@ -265,14 +315,23 @@ onMounted(async () => {
           style="width: 280px"
           :loading="loading"
         >
-          <a-select-option v-for="task in tasks" :key="task.id" :value="task.id">
+          <a-select-option v-for="task in selectableTasks" :key="task.id" :value="task.id">
             {{ task.taskName }}（{{ evaluationModeLabel(task.evaluationMode) }}）
           </a-select-option>
         </a-select>
         <UiButton @click="loadTasks">
           刷新任务
         </UiButton>
+        <span v-if="fillWindowBlockedReason" class="fill-window-hint">{{ fillWindowBlockedReason }}</span>
       </div>
+      <UiStatPanel
+        v-if="summary && selectedTaskId"
+        :items="taskSummaryItems"
+        :columns="3"
+        variant="grid"
+        compact
+        style="margin-bottom: 16px"
+      />
       <a-tabs v-model:active-key="activeTab">
         <a-tab-pane key="fill" tab="在线填报">
           <div class="form-grid">
@@ -311,7 +370,7 @@ onMounted(async () => {
             </a-select>
             <a-input v-model:value="fillForm.score" placeholder="得分" style="width: 100px" />
             <a-input v-model:value="fillForm.commentText" placeholder="评语" style="flex: 1" />
-            <UiButton variant="primary" :loading="saving" @click="saveEntry">
+            <UiButton variant="primary" :loading="saving" :disabled="!canSaveEntry" @click="saveEntry">
               保存评价
             </UiButton>
           </div>
@@ -345,7 +404,13 @@ onMounted(async () => {
             :loading="loading"
             :row-key="summaryRowKey"
             :pagination="false"
-          />
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'subjectTeacherUserId'">
+                {{ subjectTeacherLabel(record.subjectTeacherUserId ?? '') }}
+              </template>
+            </template>
+          </UiDataTable>
         </a-tab-pane>
       </a-tabs>
     </UiCard>
@@ -365,6 +430,10 @@ onMounted(async () => {
   gap: 16px;
   align-items: center;
   margin-bottom: 12px;
+  font-size: 14px;
+}
+.fill-window-hint {
+  color: var(--dp-text-muted, #666);
   font-size: 14px;
 }
 </style>

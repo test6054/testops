@@ -36,8 +36,7 @@ export function isScoreSubmitReady(
   if (volume.scoreSubmitReady === true) return true
   if (volume.scoreSubmitReady === false) return false
   if (volume.scoreSource === 'MARK_INTERNAL') {
-    if (volume.examGateOpen === false) return false
-    return volume.examGateOpen === true || volume.examGateOpen === undefined
+    return volume.examGateOpen === true
   }
   if (volume.scoreSource === 'TEACHING_AFFAIRS' || volume.scoreSource === 'OFFLINE_CONFIRMED') {
     if (volume.scoreCompletionStatus === 'COMPLETED' || volume.scoreCompletionStatus === 'VERIFIED') {

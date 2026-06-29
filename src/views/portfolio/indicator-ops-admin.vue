@@ -66,8 +66,6 @@ const snapshotForm = reactive({
   snapshotId: '',
   indicatorCode: 'T001',
   rawValue: 8,
-  auditRequired: false,
-  auditApproved: true,
 })
 
 const diffForm = reactive({ snapshotIdA: '', snapshotIdB: '' })
@@ -335,6 +333,9 @@ onMounted(() => {
           </UiButton>
         </a-tab-pane>
         <a-tab-pane key="snapshot" tab="快照计分">
+          <p class="snapshot-hint">
+            审核状态由服务端档案与审核事实决定，正式计分不接受客户端 audit 覆盖。
+          </p>
           <div class="form-grid">
             <a-input v-model:value="snapshotForm.teacherId" placeholder="教师 ID" />
             <a-input v-model:value="snapshotForm.snapshotId" placeholder="快照 ID" />

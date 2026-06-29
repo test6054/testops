@@ -1,5 +1,6 @@
 /**
- * 学年学期默认计算，与 edu-practice-web-vue practice-create.vue 保持一致（7 月为分界点）。
+ * 学年学期默认计算，与后端 AcademicYearUtils 一致：
+ * 9月1日起为新学年；3-8月为春季学期，9月-次年2月为秋季学期。
  */
 import { SemesterCode } from '@/types/enums/semester-enum'
 
@@ -8,30 +9,24 @@ export interface AcademicYearSemester {
   semester: string
 }
 
-/** 根据当前时间计算默认学年学期（7 月为分界点） */
+/** 根据当前时间计算默认学年学期（与后端 AcademicYearUtils 一致） */
 export function getDefaultAcademicYearAndSemester(): AcademicYearSemester {
   const now = new Date()
   const year = now.getFullYear()
   const month = now.getMonth() + 1
 
-  if (month >= 7) {
-    return {
-      academicYear: `${year}-${year + 1}`,
-      semester: SemesterCode.AUTUMN,
-    }
-  }
-  return {
-    academicYear: `${year - 1}-${year}`,
-    semester: SemesterCode.SPRING,
-  }
+  const academicYear = month >= 9 ? `${year}-${year + 1}` : `${year - 1}-${year}`
+  const semester = month >= 3 && month <= 8 ? SemesterCode.SPRING : SemesterCode.AUTUMN
+
+  return { academicYear, semester }
 }
 
-/** 生成学年选项（基准年前后各 2 年，7 月为基准年分界） */
+/** 生成学年选项（基准年前后各 2 年，9 月为基准年分界） */
 export function generateAcademicYearOptions(): string[] {
   const now = new Date()
-  const currentYear = now.getFullYear()
+  const year = now.getFullYear()
   const month = now.getMonth() + 1
-  const baseYear = month >= 7 ? currentYear : currentYear - 1
+  const baseYear = month >= 9 ? year : year - 1
   const options: string[] = []
   for (let i = -2; i <= 2; i++) {
     const startYear = baseYear + i

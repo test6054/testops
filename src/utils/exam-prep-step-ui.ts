@@ -37,9 +37,13 @@ function resolvePrepStepDescription(step: ExamWorkbenchPrepStepVO, detail: ExamD
           : '无需系统印刷'
       }`
     case 'candidateRoster':
-      return detail.candidateCount > 0
-        ? `已绑定 ${detail.candidateCount} 名考生 / ${detail.classIds.length} 个班级范围`
-        : '导入考生名册，缺失学生用户会在导入提交时创建为租户学生账号'
+      if (detail.candidateCount > 0) {
+        const scopeHint = detail.classScopePersisted
+          ? `${detail.classIds.length} 个参考班级`
+          : `${detail.classIds.length} 个班级（名册推断，尚未保存参考班级）`
+        return `已绑定 ${detail.candidateCount} 名考生 / ${scopeHint}`
+      }
+      return '导入考生名册，缺失学生用户会在导入提交时创建为租户学生账号'
     case 'paperTemplate': {
       const hasQuestions = detail.questionCount > 0
       if (!hasQuestions) {

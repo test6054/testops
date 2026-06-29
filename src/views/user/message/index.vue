@@ -276,6 +276,7 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import { storeToRefs } from 'pinia'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   confirmReadAnnouncement,
   getInboxMessages,
@@ -302,6 +303,8 @@ import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 
 defineOptions({ name: 'UserMessage' })
+
+const router = useRouter()
 
 type ToneCode = 'gray' | 'blue' | 'green' | 'orange' | 'red' | 'purple'
 
@@ -469,6 +472,14 @@ const messageDetailLoading = ref(false)
 const activeMessage = ref<InboxMessageListItemDTO | null>(null)
 
 async function openMessageDetail(item: InboxMessageListItemDTO) {
+  if (item.metadata?.jumpUrl) {
+    if (!item.isRead) {
+      item.isRead = true
+      await markMessageReadInternal([item.id])
+    }
+    goJump(item.metadata.jumpUrl)
+    return
+  }
   activeMessage.value = item
   messageDrawerOpen.value = true
   messageDetailLoading.value = true
@@ -637,6 +648,12 @@ function formatMessageType(type: NotificationTypeEnum): string {
     [NotificationTypeEnum.PORTFOLIO_ARCHIVE_DISMISSED]: '档案审核驳回',
     [NotificationTypeEnum.PORTFOLIO_TEACHER_ONBOARDING]: '新教师建档',
     [NotificationTypeEnum.PORTFOLIO_GAP_TASK_PENDING]: '档案袋补采任务',
+    [NotificationTypeEnum.PORTFOLIO_EVALUATION_MATERIAL_CONFIRM]: '评价材料确认',
+    [NotificationTypeEnum.PORTFOLIO_EVALUATION_RETURNED_SUPPLEMENT]: '评价材料退回',
+    [NotificationTypeEnum.PORTFOLIO_EVALUATION_MATERIAL_CONFIRMED]: '评价材料已确认',
+    [NotificationTypeEnum.PORTFOLIO_EVALUATION_PUBLICITY]: '评价结果公示',
+    [NotificationTypeEnum.PORTFOLIO_EVALUATION_OBJECTION]: '评价异议受理',
+    [NotificationTypeEnum.PORTFOLIO_EVALUATION_OBJECTION_HANDLED]: '评价异议复核结论',
     [NotificationTypeEnum.QUALITY_MARK_ASSESSMENT_WEIGHT_MISSING]: '质量评价考核权重缺失',
     [NotificationTypeEnum.MARK_QUALITY_SCORE_SYNC_FAILED]: 'mark 成绩同步失败',
     [NotificationTypeEnum.MARK_ARCHIVE_AUTO_CREATE_FAILED]: '归档卷自动建卷失败',
@@ -645,6 +662,8 @@ function formatMessageType(type: NotificationTypeEnum): string {
     [NotificationTypeEnum.MARK_ARCHIVE_RETENTION_REMINDER]: '保管到期鉴定',
     [NotificationTypeEnum.MARK_ARCHIVE_DELAY_SUBMISSION_OVERDUE]: '延迟补交逾期',
     [NotificationTypeEnum.MARK_ARCHIVE_ACCESS_EXPIRED]: '查阅授权到期',
+    [NotificationTypeEnum.MARK_ARCHIVE_REMEDIATION_ASSIGNED]: '归档卷整改指派',
+    [NotificationTypeEnum.MARK_ARCHIVE_REMEDIATION_RESUBMITTED]: '归档卷整改已重提',
   }
   return map[type]
 }
@@ -662,9 +681,9 @@ function goJump(url?: string) {
   if (!url) return
   if (/^https?:\/\//i.test(url)) {
     window.open(url, '_blank')
-  } else {
-    window.location.assign(url)
+    return
   }
+  void router.push(url)
 }
 
 // ─── 编排 ──────────────────────────────────

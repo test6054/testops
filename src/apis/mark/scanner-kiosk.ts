@@ -178,7 +178,7 @@ export interface ExamScannerKioskContextVO {
   sessionBatches?: ExamScannerKioskSessionBatchVO[]
   kioskBoundExamId?: string
   examBindingRequired?: boolean
-  /** ARCHIVE 等模式与 DIRECT 主链差异的只读说明 */
+  /** 扫描子模式产品说明（SUPPLEMENT 时有值） */
   scanModeAdvisory?: string
   /** 本工位可补扫的已绑定试卷（仅 SUPPLEMENT） */
   supplementBoundPapers?: ExamScannerBoundPaperItemVO[]

@@ -20,6 +20,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
@@ -40,9 +41,10 @@ const form = reactive({
   appointYear: '',
   dutyScope: '',
 })
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } = usePortfolioTeacherSearch()
 
 const columns: ColumnsType = [
-  { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 100 },
+  { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
   { title: '专业', dataIndex: 'specialtyName', key: 'specialtyName' },
   { title: '专业群', dataIndex: 'majorGroupName', key: 'majorGroupName', width: 120 },
   { title: '聘任年份', dataIndex: 'appointYear', key: 'appointYear', width: 96 },
@@ -63,6 +65,7 @@ async function loadPage() {
       registryType: activeType.value,
     })
     rows.value = readPageList(page, '加载骨干带头人登记失败')
+    await hydrateTeacherLabels(rows.value.map(row => row.teacherUserId ?? ''))
   }
   catch (error) {
     showUserError(error)
@@ -73,13 +76,13 @@ async function loadPage() {
 }
 
 async function saveRegistry() {
-  if (!form.teacherUserId.trim()) {
-    message.warning('请填写教师用户 ID')
+  if (!form.teacherUserId) {
+    message.warning('请选择教师')
     return
   }
   try {
     await portfolioKeyTeacherApi.save({
-      teacherUserId: form.teacherUserId.trim(),
+      teacherUserId: form.teacherUserId,
       registryType: activeType.value,
       specialtyName: form.specialtyName.trim() || undefined,
       majorGroupName: form.majorGroupName.trim() || undefined,
@@ -137,7 +140,16 @@ onMounted(loadPage)
         <a-tab-pane v-for="tab in REGISTRY_TABS" :key="tab.key" :tab="tab.label" />
       </a-tabs>
       <div class="form-row">
-        <a-input v-model:value="form.teacherUserId" placeholder="教师用户 ID" style="width: 140px" />
+        <a-select
+          v-model:value="form.teacherUserId"
+          show-search
+          allow-clear
+          placeholder="搜索教师姓名或工号"
+          style="width: 220px"
+          :filter-option="false"
+          :options="teacherOptions"
+          @search="searchTeachers"
+        />
         <a-input v-model:value="form.specialtyName" placeholder="专业" style="width: 140px" />
         <a-input v-model:value="form.majorGroupName" placeholder="专业群" style="width: 140px" />
         <a-input v-model:value="form.appointYear" placeholder="聘任年份" style="width: 100px" />
@@ -152,7 +164,10 @@ onMounted(loadPage)
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无骨干教师记录" />
       <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'registryStatus'">
+          <template v-if="column.key === 'teacherUserId'">
+            {{ teacherLabel(record.teacherUserId) }}
+          </template>
+          <template v-else-if="column.key === 'registryStatus'">
             {{ registryStatusLabel(record.registryStatus) }}
           </template>
           <template v-else-if="column.key === 'actions' && record.registryStatus === 'ACTIVE'">

@@ -99,17 +99,59 @@ export const PORTFOLIO_EVALUATION_MODE_LABEL: Record<PortfolioEvaluationMode, st
 }
 
 /** 多元评价任务状态 - PortfolioEvaluationTaskStatusEnum */
-export type PortfolioEvaluationTaskStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED'
+export type PortfolioEvaluationTaskStatus
+  = | 'DRAFT'
+    | 'PUBLISHED'
+    | 'PRELIMINARY_REVIEW'
+    | 'SCHOOL_REVIEW'
+    | 'EXPERT_REVIEW'
+    | 'RESULT_SUMMARY'
+    | 'PUBLICITY'
+    | 'OBJECTION_HANDLING'
+    | 'ARCHIVED'
+    | 'SUSPENDED'
+    | 'VOID'
+    | 'CLOSED'
+
+export const PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES: PortfolioEvaluationTaskStatus[] = [
+  'PUBLISHED',
+  'PRELIMINARY_REVIEW',
+  'SCHOOL_REVIEW',
+  'EXPERT_REVIEW',
+  'RESULT_SUMMARY',
+  'PUBLICITY',
+  'OBJECTION_HANDLING',
+  'ARCHIVED',
+  'SUSPENDED',
+]
 
 export const PORTFOLIO_EVALUATION_TASK_STATUS_LABEL: Record<PortfolioEvaluationTaskStatus, string> = {
   DRAFT: '草稿',
   PUBLISHED: '已发布',
+  PRELIMINARY_REVIEW: '资格初审中',
+  SCHOOL_REVIEW: '学校复审中',
+  EXPERT_REVIEW: '专家评审中',
+  RESULT_SUMMARY: '结果汇总中',
+  PUBLICITY: '公示中',
+  OBJECTION_HANDLING: '异议处理中',
+  ARCHIVED: '已归档',
+  SUSPENDED: '已暂停',
+  VOID: '已作废',
   CLOSED: '已关闭',
 }
 
 export const PORTFOLIO_EVALUATION_TASK_STATUS_TONE: Record<PortfolioEvaluationTaskStatus, BadgeTone> = {
   DRAFT: 'gray',
   PUBLISHED: 'green',
+  PRELIMINARY_REVIEW: 'blue',
+  SCHOOL_REVIEW: 'blue',
+  EXPERT_REVIEW: 'blue',
+  RESULT_SUMMARY: 'orange',
+  PUBLICITY: 'orange',
+  OBJECTION_HANDLING: 'orange',
+  ARCHIVED: 'green',
+  SUSPENDED: 'gray',
+  VOID: 'red',
   CLOSED: 'blue',
 }
 
@@ -127,12 +169,14 @@ export type PortfolioDevelopmentPlanStatus
     | 'DEPARTMENT_PENDING'
     | 'DEPARTMENT_RETURNED'
     | 'APPROVED'
+    | 'HISTORICAL'
 
 export const PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL: Record<PortfolioDevelopmentPlanStatus, string> = {
   DRAFT: '草稿',
   DEPARTMENT_PENDING: '待部门审核',
   DEPARTMENT_RETURNED: '部门退回',
   APPROVED: '审核通过',
+  HISTORICAL: '历史只读',
 }
 
 export const PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE: Record<PortfolioDevelopmentPlanStatus, BadgeTone> = {
@@ -140,6 +184,22 @@ export const PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE: Record<PortfolioDevelopment
   DEPARTMENT_PENDING: 'blue',
   DEPARTMENT_RETURNED: 'orange',
   APPROVED: 'green',
+  HISTORICAL: 'gray',
+}
+
+/** 发展规划明细项状态 - PortfolioDevelopmentPlanItemStatusEnum */
+export type PortfolioDevelopmentPlanItemStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
+
+export const PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL: Record<PortfolioDevelopmentPlanItemStatus, string> = {
+  NOT_STARTED: '未开始',
+  IN_PROGRESS: '进行中',
+  COMPLETED: '已完成',
+}
+
+export const PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_TONE: Record<PortfolioDevelopmentPlanItemStatus, BadgeTone> = {
+  NOT_STARTED: 'gray',
+  IN_PROGRESS: 'blue',
+  COMPLETED: 'green',
 }
 
 /** 外聘教师数据状态 - PortfolioExternalTeacherDataStatusEnum */
@@ -154,6 +214,15 @@ export const PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL: Record<PortfolioExter
 export type PortfolioExternalTeacherImportBatchStatus = 'PENDING' | 'COMPLETED' | 'FAILED'
 
 export const PORTFOLIO_EXTERNAL_TEACHER_IMPORT_BATCH_STATUS_LABEL: Record<PortfolioExternalTeacherImportBatchStatus, string> = {
+  PENDING: '待确认',
+  COMPLETED: '导入完成',
+  FAILED: '导入失败',
+}
+
+/** 历史规划导入批次状态 - PortfolioDevelopmentPlanHistoryImportBatchStatusEnum */
+export type PortfolioDevelopmentPlanHistoryImportBatchStatus = 'PENDING' | 'COMPLETED' | 'FAILED'
+
+export const PORTFOLIO_DEVELOPMENT_PLAN_HISTORY_IMPORT_BATCH_STATUS_LABEL: Record<PortfolioDevelopmentPlanHistoryImportBatchStatus, string> = {
   PENDING: '待确认',
   COMPLETED: '导入完成',
   FAILED: '导入失败',

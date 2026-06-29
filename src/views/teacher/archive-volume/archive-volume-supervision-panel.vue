@@ -37,6 +37,14 @@
             <UiTag :tone="volumeStatusTone(record.volumeStatus)" size="sm">
               {{ volumeStatusLabel(record.volumeStatus) }}
             </UiTag>
+            <UiTag
+              v-if="record.hasOpenRemediationTask"
+              tone="orange"
+              size="sm"
+              class="archive-supervision-panel__remediation-tag"
+            >
+              待整改
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTextAction @click="openDetail(record.volumeId)">详情</UiTextAction>
@@ -79,7 +87,24 @@
         row-key="taskId"
         size="middle"
         class="student-detail-table__data-table"
-      />
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'taskStatus'">
+            <UiTag :tone="remediationStatusTone(record.taskStatus)" size="sm">
+              {{ remediationStatusLabel(record.taskStatus) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'assigneeNickName'">
+            {{ remediationAssigneeLabel(record) }}
+          </template>
+          <template v-else-if="column.key === 'volumeId'">
+            <UiTextAction @click="goRemediationVolume(record)">{{ record.volumeId }}</UiTextAction>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <UiTextAction @click="goRemediationVolume(record)">去处理</UiTextAction>
+          </template>
+        </template>
+      </UiDataTable>
     </a-tab-pane>
 
     <a-tab-pane key="campaign" tab="评估批次">
@@ -169,6 +194,7 @@ import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ARCHIVE_EVALUATION_CAMPAIGN_STATUS_LABEL,
   ARCHIVE_INTEGRITY_STATUS_LABEL,
@@ -190,12 +216,14 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
+import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeSupervisionPanel' })
 
+const router = useRouter()
 const activeTab = ref('volumes')
 const volumeLoading = ref(false)
 const statsLoading = ref(false)
@@ -245,14 +273,9 @@ const deptColumns: ColumnsType<{ departmentName?: string, totalCount: number, st
 const remediationColumns: ColumnsType<ArchiveRemediationTaskVO> = [
   { title: '任务', dataIndex: 'taskTitle', key: 'taskTitle' },
   { title: '卷 ID', dataIndex: 'volumeId', key: 'volumeId', width: 100 },
-  {
-    title: '状态',
-    key: 'taskStatus',
-    dataIndex: 'taskStatus',
-    width: 100,
-    customRender: ({ record }) =>
-      strictEnumLabel(ARCHIVE_REMEDIATION_STATUS_LABEL, record.taskStatus, 'taskStatus'),
-  },
+  { title: '状态', key: 'taskStatus', dataIndex: 'taskStatus', width: 100 },
+  { title: '责任人', key: 'assigneeNickName', dataIndex: 'assigneeNickName', width: 120 },
+  { title: '操作', key: 'actions', width: 88 },
 ]
 
 const campaignColumns: ColumnsType<ArchiveEvaluationCampaignVO> = [
@@ -311,6 +334,25 @@ function sourceTypeLabel(code: ArchiveVolumeSourceTypeCode) {
 
 function materialTypeLabel(code: ArchiveMaterialTypeCode) {
   return strictEnumLabel(ARCHIVE_MATERIAL_TYPE_LABEL, code, 'materialType')
+}
+
+function remediationStatusLabel(code: ArchiveRemediationTaskVO['taskStatus']) {
+  return strictEnumLabel(ARCHIVE_REMEDIATION_STATUS_LABEL, code, 'taskStatus')
+}
+
+function remediationStatusTone(code: ArchiveRemediationTaskVO['taskStatus']): BadgeTone {
+  if (code === 'CLOSED') return 'gray'
+  if (code === 'RESUBMITTED') return 'green'
+  if (code === 'IN_PROGRESS') return 'blue'
+  return 'orange'
+}
+
+function goRemediationVolume(task: ArchiveRemediationTaskVO) {
+  void router.push({
+    name: 'TeacherArchiveVolumeDetail',
+    params: { volumeId: task.volumeId },
+    query: { tab: 'materials', remediationTaskId: task.taskId },
+  })
 }
 
 async function loadVolumes() {
@@ -453,6 +495,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.archive-supervision-panel__remediation-tag {
+  margin-left: var(--dp-space-1, 4px);
+}
+
 .archive-supervision-panel__stats-toolbar {
   display: flex;
   gap: 8px;

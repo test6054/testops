@@ -12,6 +12,7 @@ import type {
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioOrgApi } from '@/apis/portfolio/org'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   PORTFOLIO_ORG_ALIAS_TARGET_TYPE_LABEL,
   PORTFOLIO_ORG_TREE_NODE_TYPE_LABEL,
@@ -31,6 +32,7 @@ import { isPortfolioUnitNode, usePortfolioOrgTree } from '@/composables/usePortf
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
+import { readPageList } from '@/utils/page-result'
 import { hasTeacherTenantPermission } from '@/utils/permission'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -66,12 +68,14 @@ const selectedNode = ref<TreeNode | null>(null)
 
 const unitVisible = ref(false)
 const unitMode = ref<'create' | 'edit'>('create')
+const teacherOptions = ref<Array<{ value: string, label: string }>>([])
 const unitEditor = reactive<PortfolioOrgUnitSaveRequest>({
   orgType: 'TEACHING_RESEARCH_OFFICE',
   orgName: '',
   orgCode: '',
   sortOrder: 0,
   status: 'ACTIVE',
+  leaderUserId: '',
 })
 
 const aliasVisible = ref(false)
@@ -93,12 +97,31 @@ function nodeTypeLabel(nodeType?: string) {
 function mapTree(nodes: PortfolioOrgTreeNodeVO[]): TreeNode[] {
   return nodes.map(node => ({
     key: node.portfolioOrgId ?? node.id,
-    title: node.code ? `${node.name} (${node.code})` : node.name,
+    title: node.leaderUserName
+      ? `${node.code ? `${node.name} (${node.code})` : node.name} · 负责人 ${node.leaderUserName}`
+      : (node.code ? `${node.name} (${node.code})` : node.name),
     nodeType: node.nodeType,
     portfolioOrgId: node.portfolioOrgId,
     raw: node,
     children: node.children?.length ? mapTree(node.children) : undefined,
   }))
+}
+
+async function searchTeachers(keyword: string) {
+  const text = keyword.trim()
+  if (!text) {
+    return
+  }
+  try {
+    const page = await portfolioTeacherApi.page({ pageNum: 1, pageSize: 20, searchText: text })
+    teacherOptions.value = readPageList(page, '搜索教师失败').map(item => ({
+      value: item.userId,
+      label: `${item.nickName ?? item.teacherNumber ?? item.userId}${item.teacherNumber ? ` · ${item.teacherNumber}` : ''}`,
+    }))
+  }
+  catch (error) {
+    showUserError(error)
+  }
 }
 
 async function loadLatestSync() {
@@ -211,6 +234,7 @@ function openUnitEditor(mode: 'create' | 'edit') {
     unitEditor.anchorMajorId = node.anchorMajorId
     unitEditor.sortOrder = 0
     unitEditor.status = 'ACTIVE'
+    unitEditor.leaderUserId = node.leaderUserId ?? ''
   } else {
     unitEditor.id = undefined
     unitEditor.orgType = 'TEACHING_RESEARCH_OFFICE'
@@ -224,13 +248,17 @@ function openUnitEditor(mode: 'create' | 'edit') {
       : selectedRaw.value?.anchorMajorId
     unitEditor.sortOrder = 0
     unitEditor.status = 'ACTIVE'
+    unitEditor.leaderUserId = ''
   }
   unitVisible.value = true
 }
 
 async function submitUnit() {
   try {
-    await portfolioOrgApi.saveUnit({ ...unitEditor })
+    await portfolioOrgApi.saveUnit({
+      ...unitEditor,
+      leaderUserId: unitEditor.leaderUserId?.trim() || undefined,
+    })
     message.success(unitMode.value === 'edit' ? '扩展组织已更新' : '扩展组织已创建')
     unitVisible.value = false
     await refreshTree()
@@ -372,6 +400,7 @@ onMounted(async () => {
             <div v-if="selectedRaw.anchorDepartmentId"><dt>挂接院系</dt><dd>{{ selectedRaw.anchorDepartmentId }}</dd></div>
             <div v-if="selectedRaw.anchorMajorId"><dt>挂接专业</dt><dd>{{ selectedRaw.anchorMajorId }}</dd></div>
             <div v-if="selectedRaw.portfolioOrgId"><dt>扩展组织 ID</dt><dd>{{ selectedRaw.portfolioOrgId }}</dd></div>
+            <div v-if="selectedRaw.leaderUserId"><dt>负责人</dt><dd>{{ selectedRaw.leaderUserName ? `${selectedRaw.leaderUserName}${selectedRaw.leaderTeacherNo ? ` · ${selectedRaw.leaderTeacherNo}` : ''}` : selectedRaw.leaderUserId }}</dd></div>
           </dl>
           <UiDataTable
             title="历史名称"
@@ -425,6 +454,17 @@ onMounted(async () => {
         </a-form-item>
         <a-form-item v-if="unitEditor.anchorMajorId" label="挂接专业">
           <a-input :value="unitEditor.anchorMajorId" disabled />
+        </a-form-item>
+        <a-form-item label="负责人">
+          <a-select
+            v-model:value="unitEditor.leaderUserId"
+            show-search
+            allow-clear
+            placeholder="搜索教师姓名或工号"
+            :filter-option="false"
+            :options="teacherOptions"
+            @search="searchTeachers"
+          />
         </a-form-item>
       </a-form>
     </a-modal>

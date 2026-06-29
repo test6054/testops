@@ -59,9 +59,15 @@
           v-if="autoCreateFailedEvent"
           tone="error"
           title="自动建卷失败"
-          :description="autoCreateFailedEvent.reason || '请查看事件诊断并联系管理员'"
+          :description="autoCreateFailedDescription"
           dense
-        />
+        >
+          <template v-if="autoCreateFailedNeedsClassScope" #actions>
+            <UiButton variant="primary" size="sm" @click="goCandidateRoster">
+              前往考生名册
+            </UiButton>
+          </template>
+        </UiAlertStrip>
       </UiCard>
     </template>
 
@@ -138,20 +144,43 @@ const gateProgressHint = computed(() => {
   const gate = examGate.value
   if (!gate) return '—'
   if (gate.gateOpen) return '已完成'
+  if (gate.allScoresPublished && !gate.examClosed) {
+    return (gate.gradablePaperCount ?? 0) <= 0
+      ? '无可评阅试卷，关考后将自动创建归档卷'
+      : '成绩已全部发布，待关考'
+  }
   if (!gate.examClosed) return '考试未关考'
-  if ((gate.gradablePaperCount ?? 0) <= 0) return '无可评阅试卷'
+  if (gate.allScoresPublished) {
+    return (gate.gradablePaperCount ?? 0) <= 0 ? '无可评阅试卷，成绩门禁已满足' : '成绩已全部发布'
+  }
   return `成绩发布 ${gate.publishedScoreCount ?? 0}/${gate.gradablePaperCount ?? 0}`
 })
 
 const emptyDescription = computed(() => {
-  if (examGate.value?.gateOpen) {
+  const gate = examGate.value
+  if (gate?.gateOpen) {
     return '双门禁已满足，归档卷尚未生成，请稍后刷新或联系管理员排查自动建卷'
+  }
+  if (gate?.allScoresPublished && (gate.gradablePaperCount ?? 0) <= 0 && !gate.examClosed) {
+    return '本场考试无可评阅试卷，关考后系统将自动创建归档卷'
   }
   return '本场考试尚未生成归档卷，请确认考试已关考且全部可评阅试卷成绩已发布'
 })
 
 const autoCreateFailedEvent = computed(() =>
   events.value.find(item => item.eventType === 'AUTO_CREATE_FAILED'),
+)
+
+const autoCreateFailedDescription = computed(() => {
+  const reason = autoCreateFailedEvent.value?.reason ?? ''
+  if (reason.includes('跨院系')) {
+    return '参考班级跨院系，无法自动创建单一归档卷。请按院系拆分参考班级，保存后重新触发自动建卷。'
+  }
+  return reason || '请查看事件诊断并联系管理员'
+})
+
+const autoCreateFailedNeedsClassScope = computed(() =>
+  (autoCreateFailedEvent.value?.reason ?? '').includes('跨院系'),
 )
 
 const signalMetrics = computed<SignalMetric[]>(() => {
@@ -234,6 +263,14 @@ function goDetail() {
   void router.push({
     name: 'TeacherArchiveVolumeDetail',
     params: { volumeId: volume.value.volumeId },
+  })
+}
+
+function goCandidateRoster() {
+  if (!examId.value) return
+  void router.push({
+    name: 'TeacherExamWorkspaceCandidateRoster',
+    params: { examId: examId.value },
   })
 }
 

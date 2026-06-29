@@ -109,19 +109,28 @@
             <UiCard class="info-card">
               <template #title>
                 <TeamOutlined />
-                <span>班级范围</span>
+                <span>考试范围</span>
               </template>
-              <UiEmpty v-if="!detail.classRefs.length" description="尚未设置班级范围" />
-              <div v-else class="class-list">
-                <UiTag
-                  v-for="classRef in detail.classRefs"
-                  :key="classRef.classId"
-                  tone="blue"
-                  size="sm"
-                >
-                  {{ classRef.className }}
-                </UiTag>
-              </div>
+              <UiEmpty v-if="!detail.classRefs.length" description="尚未设置参考班级" />
+              <template v-else>
+                <UiAlertStrip
+                  v-if="!detail.classScopePersisted"
+                  tone="warning"
+                  title="参考班级尚未保存"
+                  description="当前展示班级来自名册或已绑定卷推断，请前往考生名册保存为正式参考班级。"
+                  dense
+                />
+                <div class="class-list">
+                  <UiTag
+                    v-for="classRef in detail.classRefs"
+                    :key="classRef.classId"
+                    tone="blue"
+                    size="sm"
+                  >
+                    {{ classRef.className }}
+                  </UiTag>
+                </div>
+              </template>
               <a-divider />
               <UiButton size="sm" variant="outline" block @click="goRoster">管理考生名册</UiButton>
             </UiCard>
@@ -180,6 +189,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import ExamJourneyRail from '@/components/workbench/ExamJourneyRail.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useExamJourneySteps } from '@/composables/useExamJourneySteps'

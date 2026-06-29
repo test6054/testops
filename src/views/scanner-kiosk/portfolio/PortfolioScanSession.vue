@@ -64,6 +64,10 @@ watch(
     const [path, search = ''] = session.returnTo.value.split('?')
     const params = new URLSearchParams(search)
     params.set('scanCommitted', '1')
+    const fileNodeId = scanFlow.lifecycle.value?.committedFileNodeId
+    if (fileNodeId) {
+      params.set('scanFileNodeId', fileNodeId)
+    }
     void router.replace(`${path}?${params.toString()}`)
   },
 )

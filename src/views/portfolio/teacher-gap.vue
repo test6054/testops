@@ -5,7 +5,7 @@ import type {
   PortfolioGapTaskStatus,
 } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
@@ -52,12 +52,24 @@ const statusLabel = computed(() =>
   detail.value ? gapTaskStatusLabel(detail.value.taskStatus) : '',
 )
 
+function resetFormState() {
+  for (const key of Object.keys(fieldValues)) {
+    delete fieldValues[key]
+  }
+  for (const key of Object.keys(evidenceRefs)) {
+    delete evidenceRefs[key]
+  }
+  attachmentFileNodeId.value = undefined
+  attachmentFileName.value = undefined
+}
+
 async function loadTask() {
   if (!gapTaskId.value) {
     return
   }
   loading.value = true
   detail.value = null
+  resetFormState()
   try {
     const task = await portfolioGapApi.getTask(gapTaskId.value)
     detail.value = task
@@ -155,6 +167,27 @@ function openPortfolioGapScan() {
 usePortfolioScopedLoader(() => {
   void loadTask()
 }, () => `${targetTeacherId.value}:${gapTaskId.value}`)
+
+watch(
+  () => route.query.scanCommitted,
+  async (value) => {
+    if (value !== '1') {
+      return
+    }
+    const fileNodeId = typeof route.query.scanFileNodeId === 'string'
+      ? route.query.scanFileNodeId
+      : ''
+    const nextQuery = { ...route.query }
+    delete nextQuery.scanCommitted
+    delete nextQuery.scanFileNodeId
+    void router.replace({ path: route.path, query: nextQuery })
+    await loadTask()
+    if (fileNodeId) {
+      attachmentFileNodeId.value = fileNodeId
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

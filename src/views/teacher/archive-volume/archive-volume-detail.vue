@@ -128,21 +128,84 @@
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
-        v-if="detail.hasBlockingRemediationForSubmit"
+        v-if="showRemediationWorkflowStrip"
         tone="warning"
-        title="整改任务阻断提交"
-        description="存在未关闭整改任务，须关闭后再提交归档"
-        dense
-        class="archive-volume-detail__alert"
-      />
-      <UiAlertStrip
-        v-else-if="detail.hasOpenRemediationTask"
-        tone="info"
         title="迎评整改进行中"
-        description="当前卷存在未关闭整改任务，可登记补正材料"
+        :description="remediationOpenDescription"
         dense
         class="archive-volume-detail__alert"
-      />
+      >
+        <template v-if="focusedRemediationTask" #meta>
+          <UiTag :tone="remediationStatusTone(focusedRemediationTask.taskStatus)" size="sm">
+            {{ remediationStatusLabel(focusedRemediationTask.taskStatus) }}
+          </UiTag>
+          <span
+            v-if="focusedRemediationAssigneeLabel"
+            class="archive-volume-detail__remediation-assignee"
+          >
+            责任人 {{ focusedRemediationAssigneeLabel }}
+          </span>
+        </template>
+        <template #actions>
+          <UiButton size="sm" variant="primary" @click="activeTab = 'materials'">
+            登记补正材料
+          </UiButton>
+          <UiButton
+            v-if="canAdvanceRemediation && focusedRemediationTask?.taskStatus === 'OPEN'"
+            size="sm"
+            variant="outline"
+            :loading="remediationUpdating"
+            @click="advanceRemediation('IN_PROGRESS')"
+          >
+            开始处理
+          </UiButton>
+          <UiButton
+            v-if="canAdvanceRemediation && focusedRemediationTask?.taskStatus === 'IN_PROGRESS'"
+            size="sm"
+            variant="outline"
+            :loading="remediationUpdating"
+            @click="advanceRemediation('RESUBMITTED')"
+          >
+            标记已重提
+          </UiButton>
+          <UiButton
+            v-if="canManageCoordinatorRemediation && focusedRemediationTask?.taskStatus === 'OPEN'"
+            size="sm"
+            variant="outline"
+            :loading="remediationUpdating"
+            @click="advanceRemediation('IN_PROGRESS')"
+          >
+            开始处理
+          </UiButton>
+          <UiButton
+            v-if="canManageCoordinatorRemediation && focusedRemediationTask?.taskStatus === 'IN_PROGRESS'"
+            size="sm"
+            variant="outline"
+            :loading="remediationUpdating"
+            @click="advanceRemediation('RESUBMITTED')"
+          >
+            标记已重提
+          </UiButton>
+          <UiButton
+            v-if="canManageCoordinatorRemediation && focusedRemediationTask?.taskStatus === 'RESUBMITTED'"
+            size="sm"
+            variant="outline"
+            :loading="remediationUpdating"
+            @click="advanceRemediation('CLOSED')"
+          >
+            复检关闭
+          </UiButton>
+          <UiButton
+            v-if="canManageCoordinatorRemediation && (focusedRemediationTask?.taskStatus === 'OPEN' || focusedRemediationTask?.taskStatus === 'IN_PROGRESS')"
+            size="sm"
+            variant="ghost"
+            :loading="remediationUpdating"
+            @click="advanceRemediation('CLOSED')"
+          >
+            关闭
+          </UiButton>
+        </template>
+      </UiAlertStrip>
 
       <div class="archive-volume-detail__head">
         <h1 class="archive-volume-detail__title">{{ detail.volume.archiveTitle }}</h1>
@@ -238,30 +301,15 @@
 <script setup lang="ts">
 import type {
   ArchiveAppraisalStatusCode,
-  ArchiveVolumeAccessRecordVO,
-  ArchiveVolumeDetailVO,
+  ArchiveRemediationStatusCode,
+  ArchiveRemediationTaskVO, ArchiveVolumeAccessRecordVO, ArchiveVolumeDetailVO
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
-import {
-  ARCHIVE_APPRAISAL_STATUS_LABEL,
-  ARCHIVE_APPRAISAL_STATUS_TONE,
-  ARCHIVE_INTEGRITY_STATUS_LABEL,
-  ARCHIVE_INTEGRITY_STATUS_TONE,
-  ARCHIVE_TRANSFER_STATUS_LABEL,
-  ARCHIVE_TRANSFER_STATUS_TONE,
-  ARCHIVE_VOLUME_SOURCE_TYPE_LABEL,
-  ARCHIVE_VOLUME_SOURCE_TYPE_TONE,
-  ARCHIVE_VOLUME_STATUS_LABEL,
-  ARCHIVE_VOLUME_STATUS_TONE,
-  checkArchiveVolumeIntegrity,
-  exportArchiveVolume,
-  getArchiveVolumeDetail,
-  submitArchiveVolume,
-} from '@/apis/mark/archive-volume'
+import { ARCHIVE_APPRAISAL_STATUS_LABEL, ARCHIVE_APPRAISAL_STATUS_TONE, ARCHIVE_INTEGRITY_STATUS_LABEL, ARCHIVE_INTEGRITY_STATUS_TONE, ARCHIVE_REMEDIATION_STATUS_LABEL, ARCHIVE_TRANSFER_STATUS_LABEL, ARCHIVE_TRANSFER_STATUS_TONE, ARCHIVE_VOLUME_SOURCE_TYPE_LABEL, ARCHIVE_VOLUME_SOURCE_TYPE_TONE, ARCHIVE_VOLUME_STATUS_LABEL, ARCHIVE_VOLUME_STATUS_TONE, checkArchiveVolumeIntegrity, exportArchiveVolume, getArchiveVolumeDetail, getRemediationTask, submitArchiveVolume, updateRemediationTask } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -272,7 +320,9 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { canSubmitArchiveVolumeDetail, describeSubmitBlockReason, isScoreSubmitReady } from '@/composables/useArchiveVolumeSubmitGate'
 import { useUserStore } from '@/stores/modules/user'
+import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
 import { showUserError } from '@/utils/error-handler'
+import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveVolumeAccessPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeAccessPanel.vue'
 import ArchiveVolumeAppraisalPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeAppraisalPanel.vue'
@@ -302,11 +352,13 @@ const currentUserId = computed(() => String(userStore.userInfo?.userId ?? ''))
 
 const loading = ref(true)
 const detail = ref<ArchiveVolumeDetailVO | null>(null)
+const focusedRemediationTask = ref<ArchiveRemediationTaskVO | null>(null)
 const activeTab = ref('materials')
 const checkingIntegrity = ref(false)
 const selectedCatalogKeys = ref<string[]>([])
 const submitting = ref(false)
 const exporting = ref(false)
+const remediationUpdating = ref(false)
 
 const integrityResult = ref<Awaited<ReturnType<typeof checkArchiveVolumeIntegrity>> | null>(null)
 const fourPropertyResult = ref<ArchiveVolumeDetailVO['latestFourPropertyCheck']>(undefined)
@@ -369,6 +421,62 @@ const scoreSubmitBlockReason = computed(() => {
   }
   return '成绩证明未完成'
 })
+
+const showRemediationWorkflowStrip = computed(() => detail.value?.hasOpenRemediationTask === true)
+
+const focusedRemediationAssigneeLabel = computed(() => {
+  const task = focusedRemediationTask.value
+  if (!task?.assigneeUserId) {
+    return null
+  }
+  if (task.assigneeUserId === currentUserId.value) {
+    return null
+  }
+  return remediationAssigneeLabel(task)
+})
+
+const remediationOpenDescription = computed(() => {
+  const task = focusedRemediationTask.value
+  const d = detail.value
+  if (task) {
+    if (task.taskStatus === 'RESUBMITTED' && task.assigneeUserId === currentUserId.value) {
+      return '材料已重提，等待院系协调人复检关闭'
+    }
+    const parts: string[] = []
+    if (task.taskDescription?.trim()) {
+      parts.push(task.taskDescription.trim())
+    }
+    else {
+      parts.push(task.taskTitle)
+    }
+    if (task.dueTime) {
+      parts.push(`截止 ${formatDateTime(task.dueTime)}`)
+    }
+    if (d?.hasBlockingRemediationForSubmit
+      && d.volume.volumeStatus === 'COLLECTING'
+      && d.volume.responsibleUserId === currentUserId.value) {
+      parts.push('须关闭整改任务后再提交归档')
+    }
+    return parts.join(' · ')
+  }
+  if (d?.hasBlockingRemediationForSubmit
+    && d.volume.volumeStatus === 'COLLECTING'
+    && d.volume.responsibleUserId === currentUserId.value) {
+    return '存在未关闭整改任务，须关闭后再提交归档'
+  }
+  return '当前卷存在未关闭整改任务，可登记补正材料'
+})
+
+function remediationStatusLabel(code: ArchiveRemediationStatusCode) {
+  return strictEnumLabel(ARCHIVE_REMEDIATION_STATUS_LABEL, code, 'taskStatus')
+}
+
+function remediationStatusTone(code: ArchiveRemediationStatusCode): BadgeTone {
+  if (code === 'CLOSED') return 'gray'
+  if (code === 'RESUBMITTED') return 'green'
+  if (code === 'IN_PROGRESS') return 'blue'
+  return 'orange'
+}
 
 function volumeStatusLabel(code: ArchiveVolumeDetailVO['volume']['volumeStatus']) {
   return strictEnumLabel(ARCHIVE_VOLUME_STATUS_LABEL, code, 'volumeStatus')
@@ -436,6 +544,20 @@ const canRegisterMaterial = computed(() => {
   return status === 'DRAFT' || status === 'COLLECTING'
 })
 
+const canAdvanceRemediation = computed(() => {
+  const task = focusedRemediationTask.value
+  if (!task || task.taskStatus === 'CLOSED' || task.taskStatus === 'RESUBMITTED') return false
+  return task.assigneeUserId === currentUserId.value
+})
+
+const canManageCoordinatorRemediation = computed(() => {
+  const d = detail.value
+  const task = focusedRemediationTask.value
+  if (!d?.hasOpenRemediationTask || !task || task.taskStatus === 'CLOSED') return false
+  if (task.assigneeUserId === currentUserId.value) return false
+  return canManageRemediationAsCoordinator(d.volume)
+})
+
 const canAllowMaterialDelay = computed(() => {
   const d = detail.value
   if (!d) return false
@@ -467,6 +589,7 @@ async function loadDetail(options?: { silent?: boolean }) {
     detail.value = await getArchiveVolumeDetail(volumeId.value)
     fourPropertyResult.value = detail.value.latestFourPropertyCheck
     integrityResult.value = detail.value.latestIntegrityCheck ?? null
+    syncFocusedRemediationTaskFromDetail()
   }
   catch (error) {
     if (!options?.silent) {
@@ -541,11 +664,61 @@ function resolveInitialTab() {
   }
 }
 
+function syncFocusedRemediationTaskFromDetail() {
+  const raw = route.query.remediationTaskId
+  if (typeof raw === 'string' && raw) {
+    return
+  }
+  focusedRemediationTask.value = detail.value?.viewerRemediationTask ?? null
+}
+
+async function loadFocusedRemediationTask() {
+  const raw = route.query.remediationTaskId
+  if (typeof raw !== 'string' || !raw) {
+    syncFocusedRemediationTaskFromDetail()
+    return
+  }
+  try {
+    focusedRemediationTask.value = await getRemediationTask(raw)
+  }
+  catch (error) {
+    focusedRemediationTask.value = detail.value?.viewerRemediationTask ?? null
+    showUserError(error, '加载整改任务失败')
+  }
+}
+
+async function advanceRemediation(taskStatus: ArchiveRemediationStatusCode) {
+  const task = focusedRemediationTask.value
+  if (!task?.taskId) return
+  remediationUpdating.value = true
+  try {
+    focusedRemediationTask.value = await updateRemediationTask({
+      taskId: task.taskId,
+      taskStatus,
+    })
+    message.success('整改任务已更新')
+    await loadDetail({ silent: true })
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    remediationUpdating.value = false
+  }
+}
+
 onMounted(() => {
   void loadGrants()
   resolveInitialTab()
-  void loadDetail()
+  void loadDetail().then(() => loadFocusedRemediationTask())
 })
+
+watch(
+  () => route.query.remediationTaskId,
+  () => {
+    void loadFocusedRemediationTask()
+  },
+)
 
 watch(
   () => route.query.scanCommitted,
@@ -566,6 +739,11 @@ watch(
 <style scoped>
 .archive-volume-detail__alert {
   margin-bottom: var(--dp-space-4, 16px);
+}
+
+.archive-volume-detail__remediation-assignee {
+  color: var(--dp-text-secondary, #64748b);
+  font-size: 13px;
 }
 
 .archive-volume-detail__head {

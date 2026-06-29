@@ -71,6 +71,16 @@ async function applyRecordDetail(id: string) {
   }
 }
 
+function resetFormState() {
+  recordId.value = undefined
+  for (const key of Object.keys(fieldValues)) {
+    delete fieldValues[key]
+  }
+  for (const key of Object.keys(evidenceRefs)) {
+    delete evidenceRefs[key]
+  }
+}
+
 async function loadPage() {
   if (!categoryId.value || (canPickTeachers.value && !targetTeacherId.value)) {
     return
@@ -78,6 +88,7 @@ async function loadPage() {
   loading.value = true
   recordStatus.value = undefined
   latestRejectReason.value = undefined
+  resetFormState()
   try {
     const published = await portfolioArchiveTemplateApi.listPublishedFields({
       categoryId: categoryId.value,
@@ -90,10 +101,8 @@ async function loadPage() {
       categoryName.value = categoryRow.categoryName
     }
     for (const field of published.targetFields) {
-      if (!(field.fieldCode in fieldValues)) {
-        fieldValues[field.fieldCode] = ''
-        evidenceRefs[field.fieldCode] = ''
-      }
+      fieldValues[field.fieldCode] = ''
+      evidenceRefs[field.fieldCode] = ''
     }
     if (queryRecordId.value) {
       await applyRecordDetail(queryRecordId.value)

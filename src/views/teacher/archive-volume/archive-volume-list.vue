@@ -12,7 +12,7 @@
           </UiButton>
           <UiButton variant="outline" size="sm" @click="goSearch">全文检索</UiButton>
           <UiButton
-            v-if="listTab === 'college' || listTab === 'archive'"
+            v-if="canViewStatisticsKpi && (listTab === 'college' || listTab === 'archive')"
             variant="outline"
             size="sm"
             @click="goStatistics"
@@ -52,13 +52,14 @@
       <ArchiveVolumeRemediationPanel v-else-if="listTab === 'remediation'" />
 
       <section v-else class="archive-volume-list__panel">
-        <UiAlertStrip
-          v-if="listTab === 'mine' && openRemediationTasks.length"
-          tone="warning"
-          title="待整改任务"
-          :description="`当前有 ${openRemediationTasks.length} 项开放整改任务待处理`"
-          dense
+        <ArchiveVolumeMineRemediationBanner
+          v-if="listTab === 'mine'"
+          :tasks="openRemediationTasks"
+          :loading="remediationLoading"
+          :error-message="remediationLoadError"
           class="archive-volume-list__alert"
+          @retry="loadOpenRemediationTasks"
+          @go="goRemediationVolume"
         />
         <UiSectionTabs
           v-if="listTab === 'archive'"
@@ -135,6 +136,13 @@
                 >
                   {{ appraisalStatusLabel(record.appraisalStatus) }}
                 </UiTag>
+                <UiTag
+                  v-if="record.hasOpenRemediationTask"
+                  tone="orange"
+                  size="sm"
+                >
+                  待整改
+                </UiTag>
               </div>
             </template>
             <template v-else-if="column.key === 'archiveDueTime'">
@@ -143,6 +151,13 @@
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
                 <UiTextAction tone="primary" @click="goDetail(record.volumeId)">详情</UiTextAction>
+                <UiTextAction
+                  v-if="listTab === 'mine' && hasOpenRemediationForVolume(record.volumeId)"
+                  tone="primary"
+                  @click="goRemediationVolumeByVolumeId(record.volumeId)"
+                >
+                  去整改
+                </UiTextAction>
                 <UiTextAction
                   v-if="canSubmitVolumeRow(record) && listTab === 'mine'"
                   @click="goDetail(record.volumeId)"
@@ -331,7 +346,6 @@ import { requireArrayResult } from '@/components/quality/selectors/page-contract
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiBatchActionBar from '@/components/ui-guide/ui/UiBatchActionBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
@@ -343,7 +357,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { canSubmitArchiveVolumeRow } from '@/composables/useArchiveVolumeSubmitGate'
 import { useUserStore } from '@/stores/modules/user'
-import { showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -352,6 +366,7 @@ import ArchiveVolumeHistoryImportPanel from '@/views/teacher/archive-volume/arch
 import ArchiveVolumeRemediationPanel from '@/views/teacher/archive-volume/archive-volume-remediation-panel.vue'
 import ArchiveVolumeSettings from '@/views/teacher/archive-volume/archive-volume-settings.vue'
 import ArchiveVolumeSupervisionPanel from '@/views/teacher/archive-volume/archive-volume-supervision-panel.vue'
+import ArchiveVolumeMineRemediationBanner from '@/views/teacher/archive-volume/components/ArchiveVolumeMineRemediationBanner.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeList' })
 
@@ -396,6 +411,11 @@ const reviewerDetail = ref<ArchiveVolumeDetailVO | null>(null)
 const reviewerVolumeId = ref('')
 const volumes = ref<ArchiveVolumeVO[]>([])
 const openRemediationTasks = ref<ArchiveRemediationTaskVO[]>([])
+const remediationLoading = ref(false)
+const remediationLoadError = ref<string | null>(null)
+const openRemediationVolumeIdSet = computed(() =>
+  new Set(openRemediationTasks.value.map(task => task.volumeId)),
+)
 const pendingAccessRecords = ref<ArchiveVolumeAccessRecordVO[]>([])
 const selectedVolumeIds = ref<string[]>([])
 const pagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
@@ -457,7 +477,8 @@ const tabLabel = computed(() =>
 )
 
 const showSignalBand = computed(() =>
-  canViewStatisticsKpi.value && (listTab.value === 'college' || listTab.value === 'archive'),
+  (canViewStatisticsKpi.value && (listTab.value === 'college' || listTab.value === 'archive'))
+  || listTab.value === 'mine',
 )
 
 const appraisalFilterDisabled = computed(() =>
@@ -479,18 +500,33 @@ const departmentFilterDisabled = computed(() =>
   listTab.value !== 'mine' && listScopedDepartmentIds.value.length === 1,
 )
 
-const signalMetrics = computed<SignalMetric[]>(() => [
-  { key: 'collecting', label: '待提交', value: kpiCollectingCount.value },
-  { key: 'pending', label: '待验收', value: kpiPendingTransferCount.value },
-  { key: 'missing', label: '缺项', value: kpiMissingCount.value },
-  {
-    key: 'overdue',
-    label: '逾期',
-    value: kpiOverdueCount.value,
-    tone: 'red',
-    clickable: canViewCollegeBoard.value || canViewArchiveReviewer.value,
-  },
-])
+const signalMetrics = computed<SignalMetric[]>(() => {
+  if (listTab.value === 'mine') {
+    const count = openRemediationTasks.value.length
+    if (count <= 0) {
+      return []
+    }
+    return [{
+      key: 'remediation',
+      label: '待整改',
+      value: count,
+      tone: 'orange',
+      clickable: true,
+    }]
+  }
+  return [
+    { key: 'collecting', label: '待提交', value: kpiCollectingCount.value },
+    { key: 'pending', label: '待验收', value: kpiPendingTransferCount.value },
+    { key: 'missing', label: '缺项', value: kpiMissingCount.value },
+    {
+      key: 'overdue',
+      label: '逾期',
+      value: kpiOverdueCount.value,
+      tone: 'red',
+      clickable: canViewCollegeBoard.value || canViewArchiveReviewer.value,
+    },
+  ]
+})
 
 const emptyDescription = computed(() => {
   if (listTab.value === 'mine') {
@@ -682,6 +718,7 @@ function applyScopedDepartmentDefault() {
 
 async function loadSignalKpis() {
   if (!showSignalBand.value) return
+  if (listTab.value === 'mine') return
   try {
     const statsRequest: { departmentId?: string } = {}
     const scopeIds = listTab.value === 'college'
@@ -696,7 +733,10 @@ async function loadSignalKpis() {
       (sum, item) => sum + item.missingVolumeCount,
       0,
     )
-    const pageBase = listTab.value === 'mine' ? { mineOnly: true } : {}
+    const pageBase: { departmentId?: string } = {}
+    if (statsRequest.departmentId) {
+      pageBase.departmentId = statsRequest.departmentId
+    }
     const [collectingResult, pendingResult] = await Promise.all([
       pageArchiveVolumes({ ...pageBase, volumeStatus: 'COLLECTING', pageNum: 1, pageSize: 1 }),
       pageArchiveVolumes({ ...pageBase, transferStatus: 'PENDING_REVIEW', pageNum: 1, pageSize: 1 }),
@@ -897,6 +937,34 @@ function goDetail(volumeId: string) {
   })
 }
 
+function hasOpenRemediationForVolume(volumeId: string) {
+  if (openRemediationVolumeIdSet.value.has(volumeId)) {
+    return true
+  }
+  return volumes.value.some(item => item.volumeId === volumeId && item.hasOpenRemediationTask === true)
+}
+
+function goRemediationVolume(task: ArchiveRemediationTaskVO) {
+  void router.push({
+    name: 'TeacherArchiveVolumeDetail',
+    params: { volumeId: task.volumeId },
+    query: { tab: 'materials', remediationTaskId: task.taskId },
+  })
+}
+
+function goRemediationVolumeByVolumeId(volumeId: string) {
+  const task = openRemediationTasks.value.find(item => item.volumeId === volumeId)
+  if (task) {
+    goRemediationVolume(task)
+    return
+  }
+  void router.push({
+    name: 'TeacherArchiveVolumeDetail',
+    params: { volumeId },
+    query: { tab: 'materials' },
+  })
+}
+
 async function openReviewerDrawer(volumeId: string) {
   reviewerVolumeId.value = volumeId
   reviewerDrawerOpen.value = true
@@ -972,13 +1040,22 @@ async function downloadReviewerTransferPackage() {
 async function loadOpenRemediationTasks() {
   if (listTab.value !== 'mine') {
     openRemediationTasks.value = []
+    remediationLoadError.value = null
+    remediationLoading.value = false
     return
   }
+  remediationLoading.value = true
+  remediationLoadError.value = null
   try {
     openRemediationTasks.value = await listOpenRemediationTasks()
   }
-  catch {
+  catch (error) {
     openRemediationTasks.value = []
+    remediationLoadError.value = getUserErrorMessage(error, '加载待整改任务失败')
+    showUserError(error, '加载待整改任务失败')
+  }
+  finally {
+    remediationLoading.value = false
   }
 }
 
@@ -999,6 +1076,13 @@ function goCreateOffline() {
 }
 
 function handleSignalMetricClick(key: string) {
+  if (key === 'remediation') {
+    const task = openRemediationTasks.value[0]
+    if (task) {
+      goRemediationVolume(task)
+    }
+    return
+  }
   if (key !== 'overdue') return
   if (!canViewCollegeBoard.value && !canViewArchiveReviewer.value) return
   listTab.value = 'archive'
@@ -1016,7 +1100,7 @@ watch(listTab, (tab) => {
 
 watch([listTab, archiveSubTab], (values, oldValues) => {
   applyScopedDepartmentDefault()
-  const [, subTab] = values
+  const [tab, subTab] = values
   const [, oldSubTab] = oldValues ?? []
   if (subTab === 'due-appraisal') {
     filterModel.appraisalStatus = undefined
@@ -1035,7 +1119,10 @@ watch([listTab, archiveSubTab], (values, oldValues) => {
   }
   pagination.pageNum = 1
   selectedVolumeIds.value = []
-  if (listTab.value === 'mine' || listTab.value === 'college' || listTab.value === 'archive') {
+  if (tab === 'mine') {
+    void loadOpenRemediationTasks()
+  }
+  if (tab === 'mine' || tab === 'college' || tab === 'archive') {
     void loadVolumes()
   }
 })
@@ -1052,6 +1139,9 @@ onMounted(async () => {
   applySourceTypeFromQuery()
   if (grantsLoadFailed.value) {
     return
+  }
+  if (listTab.value === 'mine') {
+    await loadOpenRemediationTasks()
   }
   if (listTab.value === 'mine' || listTab.value === 'college' || listTab.value === 'archive') {
     await loadVolumes()

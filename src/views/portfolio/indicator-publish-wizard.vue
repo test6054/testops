@@ -70,16 +70,18 @@ async function runTrial() {
   }
 }
 
-function parseImpactSummary(report: PortfolioPublishImpactReportVO) {
+function parseImpactSummary(report: PortfolioPublishImpactReportVO): boolean {
   if (!report.indicatorSummaryJson) {
     impactSummary.value = null
-    return
+    return false
   }
   try {
     impactSummary.value = JSON.parse(report.indicatorSummaryJson) as PortfolioImpactIndicatorSummaryDto
+    return true
   }
   catch {
     impactSummary.value = null
+    return false
   }
 }
 
@@ -88,7 +90,10 @@ async function runImpactPreview() {
   try {
     impactReportId.value = await portfolioIndicatorTenantApi.impactPreview({ sceneCode: sceneCode.value })
     impactReport.value = await portfolioIndicatorTenantApi.getImpactReport({ id: impactReportId.value })
-    parseImpactSummary(impactReport.value)
+    if (!parseImpactSummary(impactReport.value)) {
+      message.error('影响分析摘要解析失败，请重新生成影响分析')
+      return
+    }
     step.value = 3
     message.success('影响分析完成')
   }

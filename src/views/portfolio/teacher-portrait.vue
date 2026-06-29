@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { EChartsCoreOption } from 'echarts/core'
+import type { PortfolioDevelopmentPlanCompletionVO } from '@/apis/portfolio/teacher-platform'
 import type {
   PortfolioPortraitDimension,
   PortfolioTeacherPortraitCohortCompareVO,
@@ -11,6 +12,7 @@ import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import {
   PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
@@ -52,6 +54,8 @@ const trend = ref<PortfolioTeacherPortraitTrendVO | null>(null)
 const portraitAbsent = ref(false)
 const detailOpen = ref(false)
 const indicatorDetail = ref<PortfolioTeacherPortraitIndicatorDetailVO | null>(null)
+const planCompletion = ref<PortfolioDevelopmentPlanCompletionVO | null>(null)
+const planYear = String(new Date().getFullYear())
 
 const compositeItems = computed((): UiStatPanelItem[] => {
   if (!portrait.value) {
@@ -104,6 +108,15 @@ function buildPortraitRequest() {
   return targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}
 }
 
+async function loadPlanCompletion() {
+  try {
+    planCompletion.value = await portfolioDevelopmentPlanApi.completionAnalysis({ planYear })
+  }
+  catch {
+    planCompletion.value = null
+  }
+}
+
 async function loadSecondaryPortraitData() {
   if (!portrait.value) {
     return
@@ -112,6 +125,7 @@ async function loadSecondaryPortraitData() {
   const [cohortSettled, trendSettled] = await Promise.allSettled([
     portfolioAnalysisApi.getPortraitCohortCompare(request),
     portfolioAnalysisApi.getPortraitTrend({ ...request, limit: 12 }),
+    loadPlanCompletion(),
   ])
   if (cohortSettled.status === 'fulfilled') {
     cohort.value = cohortSettled.value
@@ -135,6 +149,7 @@ async function loadPortraitBundle() {
     portrait.value = null
     cohort.value = null
     trend.value = null
+    planCompletion.value = null
     return
   }
   loading.value = true
@@ -142,6 +157,7 @@ async function loadPortraitBundle() {
   portrait.value = null
   cohort.value = null
   trend.value = null
+  planCompletion.value = null
   try {
     const request = buildPortraitRequest()
     portrait.value = await portfolioAnalysisApi.getPortrait(request)
@@ -184,7 +200,7 @@ function openArchiveRecord(archiveRecordId?: string) {
     return
   }
   void router.push({
-    path: '/portfolio/teacher-archive',
+    path: '/portfolio/teacher/archive',
     query: {
       teacherId: targetTeacherId.value,
       recordId: archiveRecordId,
@@ -241,6 +257,26 @@ usePortfolioScopedLoader(() => {
           >
             画像数据不足，请先完成建档；职称同步后将更新职业发展核心分。
           </p>
+        </UiCard>
+
+        <UiCard v-if="planCompletion" title="年度规划完成度" style="margin-top: 16px">
+          <UiStatPanel
+            :items="[
+              { key: 'year', label: '统计年度', value: planCompletion.planYear },
+              { key: 'total', label: '规划总数', value: String(planCompletion.totalPlanCount) },
+              { key: 'approved', label: '已通过', value: String(planCompletion.approvedPlanCount), tone: 'green' },
+              { key: 'pending', label: '待审', value: String(planCompletion.pendingPlanCount), tone: 'blue' },
+              { key: 'returned', label: '退回', value: String(planCompletion.returnedPlanCount), tone: 'orange' },
+              { key: 'rate', label: '审批完成率', value: planCompletion.completionRatePercent, unit: '%', tone: 'blue' },
+              { key: 'itemTotal', label: '明细项总数', value: String(planCompletion.totalPlanItemCount) },
+              { key: 'itemDone', label: '已完成明细', value: String(planCompletion.completedPlanItemCount), tone: 'green' },
+              { key: 'itemRate', label: '明细完成率', value: planCompletion.planItemCompletionRatePercent, unit: '%', tone: 'blue' },
+              { key: 'itemAvg', label: '平均完成度', value: planCompletion.averageItemCompletionPercent, unit: '%' },
+            ]"
+            :columns="3"
+            variant="grid"
+            compact
+          />
         </UiCard>
 
         <UiEmpty

@@ -141,6 +141,8 @@ export interface ExamDetailVO {
   dailyScoreFull?: number
   /** 班级范围ID集合 */
   classIds: string[]
+  /** 参考班级是否已写入 t_exam_class_scope */
+  classScopePersisted: boolean
   /**
    * 班级范围引用集合（classId + className），与 classIds 一一对应、顺序一致。
    * 由后端通过 edu-user 班级服务批量回填，前端列表/标签直接消费 className。
