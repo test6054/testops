@@ -18,6 +18,7 @@ import {
   SCAN_DISPATCH_TICKET_STATUS_LABEL,
 } from '@/apis/mark/scanner-dispatch'
 import { SCAN_WORK_ORDER_STATUS_LABEL } from '@/apis/mark/scanner-work-order'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'

@@ -1733,7 +1733,7 @@ export interface ArchiveScanBatchSnapshotPageRequest extends QueryDto {
 interface ArchiveScanBatchSnapshotPageResponse {
   volumeId?: string
   batches?: ArchiveScanBatchSnapshotRawItemVO[]
-  total?: number
+  total?: string
   pageNum?: number
   pageSize?: number
 }
@@ -1789,11 +1789,19 @@ export async function pageArchiveScanBatchSnapshots(
     '/api/mark/archive-volumes/scan-batch-snapshots/page',
     request,
   )
+  const pageNum = raw.pageNum ?? request.pageNum ?? 1
+  const pageSize = raw.pageSize ?? request.pageSize ?? 10
+  const totalText = raw.total ?? '0'
+  const totalCount = Number(totalText)
+  const pages = Number.isFinite(totalCount) && totalCount > 0 && pageSize > 0
+    ? Math.ceil(totalCount / pageSize)
+    : 0
   return {
     list: (raw.batches ?? []).map(mapScanBatchSnapshotItem),
-    total: raw.total ?? 0,
-    pageNum: raw.pageNum,
-    pageSize: raw.pageSize,
+    total: totalText,
+    pageNum,
+    pageSize,
+    pages,
   }
 }
 

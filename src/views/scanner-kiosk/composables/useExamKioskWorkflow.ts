@@ -2781,7 +2781,7 @@ export function useExamKioskWorkflow() {
         previewPageNo.value = firstBrowsablePage.pageNo
       }
       const pageRegisterBlockMessage = job.pageRegisterBlocked
-        ? workflow.scannerDiagnosticText(job.pageRegisterDiagnostic || job.message)
+        ? scannerDiagnosticText(job.pageRegisterDiagnostic || job.message)
         : resolvePageRegisterBlockMessage()
       if (pageRegisterBlockMessage) {
         errorMessage.value = `批次已上传，但自动页登记被阻断：${pageRegisterBlockMessage}。请在复核页查看异常，或联系阅卷管理员在 PC 端处理。`

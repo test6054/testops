@@ -11,10 +11,10 @@ import type {
 import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, WorkbenchStageStatus } from '@/types/workbench'
-
-import type {PrepStepCard} from '@/utils/exam-prep-step-ui';
+import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
+
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FilePdfOutlined from '@ant-design/icons-vue/FilePdfOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
@@ -179,7 +179,7 @@ const statMetrics = computed((): SignalMetric[] => {
   const d = detail.value
   if (!d) return []
   const completed = prepSteps.value.filter((s) => s.status === 'completed').length
-  const items: SignalMetric[] = [
+  return [
     {
       key: 'prepProgress',
       label: '准备进度',
@@ -209,7 +209,6 @@ const statMetrics = computed((): SignalMetric[] => {
       tone: 'gray',
     },
   ]
-  return items
 })
 
 function goPrepStep(step: PrepStepCard) {
@@ -226,36 +225,36 @@ const prepReady = computed(() => {
 function goNextStep(target: 'scan' | 'review'): void {
   if (!selectedExamId.value) return
   if (target === 'scan') {
-    void router.push({ name: 'TeacherExamWorkspaceScanBatches', params: { examId: selectedExamId.value } })
+    void router.push({
+      name: 'TeacherExamWorkspaceScanBatches',
+      params: { examId: selectedExamId.value },
+    })
   } else {
-    void router.push({ name: 'TeacherExamWorkspaceReviewBatchConfirm', params: { examId: selectedExamId.value } })
+    void router.push({
+      name: 'TeacherExamWorkspaceReviewBatchConfirm',
+      params: { examId: selectedExamId.value },
+    })
   }
 }
 
-watch(selectedExamId, (next) => {
-  if (next) {
-    void loadDetail(next)
-  } else {
-    detail.value = null
-  }
-}, { immediate: true })
+watch(
+  selectedExamId,
+  (next) => {
+    if (next) {
+      void loadDetail(next)
+    } else {
+      detail.value = null
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
-  <UiEmpty
-    v-if="!selectedExamId"
-    description="请选择考试"
-    class="exam-prep__empty"
-  />
-
-
+  <UiEmpty v-if="!selectedExamId" description="请选择考试" class="exam-prep__empty" />
 
   <template v-else>
-    <UiLoadFailure
-      v-if="loadError"
-      title="考试准备信息加载失败"
-      :description="loadError"
-    />
+    <UiLoadFailure v-if="loadError" title="考试准备信息加载失败" :description="loadError" />
 
     <a-spin v-else :spinning="detailLoading">
       <UiCard class="exam-prep__mode-card">
@@ -317,20 +316,14 @@ watch(selectedExamId, (next) => {
             </span>
           </button>
         </div>
-        <p v-if="layoutModeLocked" class="exam-prep__mode-hint">
-          已开印或已扫描，制卷形态不可修改
-        </p>
+        <p v-if="layoutModeLocked" class="exam-prep__mode-hint">已开印或已扫描，制卷形态不可修改</p>
         <p v-else-if="!detail?.materialLayoutMode" class="exam-prep__mode-hint">
           建议先完成制卷形态、模板与名册准备；缺项会直接增加扫描识别、身份绑定和后续批改的人工处理风险
         </p>
       </UiCard>
 
       <template v-if="detail?.materialLayoutMode">
-        <SignalBand
-          :metrics="statMetrics"
-          compact
-          class="exam-prep__signals"
-        />
+        <SignalBand :metrics="statMetrics" compact class="exam-prep__signals" />
         <section class="exam-prep__cards">
           <UiCard
             v-for="step in prepSteps"
@@ -345,11 +338,7 @@ watch(selectedExamId, (next) => {
             </template>
             <p class="exam-prep__desc">{{ step.description }}</p>
             <a-space>
-              <UiButton
-                :variant="prepStepButtonVariant(step)"
-                size="sm"
-                @click="goPrepStep(step)"
-              >
+              <UiButton :variant="prepStepButtonVariant(step)" size="sm" @click="goPrepStep(step)">
                 {{ step.primaryAction }}
               </UiButton>
               <UiTag v-if="step.advisoryReason" tone="orange" size="sm">
@@ -409,7 +398,9 @@ watch(selectedExamId, (next) => {
     border: 1px solid var(--dp-border, #e2e8f0);
     border-radius: 8px;
     cursor: pointer;
-    transition: border-color 0.2s ease, background-color 0.2s ease;
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
 
     &:hover:not(:disabled) {
       border-color: var(--ant-color-primary, #2563eb);

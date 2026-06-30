@@ -19,11 +19,7 @@
           placeholder="选择考试性质"
         />
       </a-form-item>
-      <a-form-item
-        v-if="showSourceExamField"
-        label="原考试"
-        name="sourceExamId"
-      >
+      <a-form-item v-if="showSourceExamField" label="原考试" name="sourceExamId">
         <a-select
           v-model:value="examForm.sourceExamId"
           :options="sourceExamOptions"
@@ -81,17 +77,12 @@
         <a-input :value="GRADING_STRATEGY_LABEL.SINGLE" disabled />
       </a-form-item>
       <a-form-item label="成绩构成" name="scoreCompositionMode">
-        <a-radio-group
-          v-model:value="examForm.scoreCompositionMode"
-          :disabled="makeupScoreLocked"
-        >
+        <a-radio-group v-model:value="examForm.scoreCompositionMode" :disabled="makeupScoreLocked">
           <a-radio value="EXAM_ONLY">仅计入考试成绩（期末笔试）</a-radio>
           <a-radio value="EXAM_WITH_DAILY">期末考试 + 平时成绩合成</a-radio>
         </a-radio-group>
         <div class="exam-create-form__hint">
-          <template v-if="makeupScoreLocked">
-            补考仅计入卷面实际分，且合成后封顶 60 分。
-          </template>
+          <template v-if="makeupScoreLocked"> 补考仅计入卷面实际分，且合成后封顶 60 分。 </template>
           <template v-else>
             平时成绩指出勤、作业、课堂表现等；选择合成后，成绩确认时需为每位考生录入平时分。
           </template>
@@ -183,8 +174,7 @@ function handleCourseChange(courseId: string | null, option?: CourseListVO): voi
 }
 
 function formatSourceExamLabel(exam: ExamSummaryVO): string {
-  const name = exam.examNo ? `${exam.examName}（${exam.examNo}）` : exam.examName
-  return name
+  return exam.examNo ? `${exam.examName}（${exam.examNo}）` : exam.examName
 }
 
 function isRegularSourceExam(exam: ExamSummaryVO): boolean {

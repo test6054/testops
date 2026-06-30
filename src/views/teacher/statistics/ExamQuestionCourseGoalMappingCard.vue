@@ -84,9 +84,9 @@ import {
 } from '@/apis/mark/exam-question-course-goal-mapping'
 import { fetchAllQuestionAnalysisRows } from '@/apis/mark/question-analysis'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiDataTable from '@/components/ui-guide/ui/DataTable.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiTextAction from '@/components/ui-guide/ui/TextAction.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 
@@ -115,7 +115,7 @@ const questions = ref<ExamQuestionAnalysisRecordVO[]>([])
 const rows = ref<MappingRow[]>([])
 
 const goalOptions = computed(() =>
-  courseGoals.value.map(goal => ({
+  courseGoals.value.map((goal) => ({
     value: goal.goalId,
     label: `${goal.goalCode} ${goal.goalName}`,
   })),
@@ -134,7 +134,7 @@ function buildRows() {
   for (const item of mappings.value) {
     mappingByQuestion.set(item.questionTemplateId, item)
   }
-  rows.value = questions.value.map(question => {
+  rows.value = questions.value.map((question) => {
     const mapped = mappingByQuestion.get(question.questionTemplateId)
     return {
       questionTemplateId: question.questionTemplateId,
@@ -168,11 +168,9 @@ async function loadData() {
     mappings.value = mappingList
     questions.value = questionList
     buildRows()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载试题-课程目标映射失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -184,21 +182,18 @@ async function saveRow(row: MappingRow) {
   }
   row.saving = true
   try {
-    const id = await saveExamQuestionCourseGoalMapping({
+    row.mappingId = await saveExamQuestionCourseGoalMapping({
       id: row.mappingId,
       examId: props.examId,
       questionTemplateId: row.questionTemplateId,
       qualityCourseGoalId: row.qualityCourseGoalId,
       weight: row.weight,
     })
-    row.mappingId = id
     message.success('映射已保存')
     await loadData()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '保存映射失败')
-  }
-  finally {
+  } finally {
     row.saving = false
   }
 }
@@ -215,18 +210,18 @@ async function deleteRow(row: MappingRow) {
     await deleteExamQuestionCourseGoalMapping({ id: row.mappingId })
     message.success('映射已清除')
     await loadData()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '清除映射失败')
-  }
-  finally {
+  } finally {
     row.deleting = false
   }
 }
 
 watch(
-  () => [props.examId, props.reloadToken] as const,
-  () => { loadData() },
+  () => [props.examId, props.reloadToken],
+  () => {
+    loadData()
+  },
   { immediate: true },
 )
 </script>

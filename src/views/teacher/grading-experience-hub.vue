@@ -383,7 +383,7 @@
     </a-list>
     <template #footer>
       <a-space v-if="canConfirmExperience || canDeprecateExperience">
-        <UiButton v-if="canConfirmExperience" type="primary" :loading="confirmingExperience" @click="handleConfirmExperience">
+        <UiButton v-if="canConfirmExperience" :loading="confirmingExperience" @click="handleConfirmExperience">
           确认沉淀
         </UiButton>
         <UiButton
