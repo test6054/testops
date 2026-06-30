@@ -236,15 +236,15 @@ const onClick = (evt: MouseEvent) => {
   cursor: not-allowed;
   opacity: 1;
   box-shadow: none;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-disabled);
   border-color: var(--dp-border, #e5e7eb);
-  background-color: var(--dp-gray-100, #f3f4f6);
+  background-color: var(--dp-bg-button-disabled);
 }
 
 .dp-btn--primary:disabled {
-  color: #f8fafc;
-  background: #bfdbfe;
-  border-color: #bfdbfe;
+  color: var(--ant-color-white);
+  background: var(--ant-color-primary-border);
+  border-color: var(--ant-color-primary-border);
 }
 
 .dp-btn--destructive:disabled {

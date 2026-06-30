@@ -10,12 +10,18 @@ import type {
   PortfolioPublishImpactReportVO,
   PortfolioTenantConfigAuditLogVO,
 } from '@/apis/portfolio/indicator-types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
 import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { PF_IMPACT_REPORT_STATUS_LABEL, PF_IMPACT_REPORT_STATUS_TONE, PF_SCENE_CODE_LABEL } from '@/apis/portfolio/indicator-types'
+import {
+  PF_IMPACT_REPORT_STATUS_LABEL,
+  PF_IMPACT_REPORT_STATUS_TONE,
+  PF_SCENE_CODE_LABEL,
+  PF_SCORE_RULE_TYPE_OPTIONS,
+} from '@/apis/portfolio/indicator-types'
 import PortfolioIndicatorExplainDrawer from '@/components/portfolio/PortfolioIndicatorExplainDrawer.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -39,7 +45,7 @@ function impactReportStatusLabel(value: PfImpactReportStatus): string {
   return strictEnumLabel(PF_IMPACT_REPORT_STATUS_LABEL, value, '影响报告状态')
 }
 
-function impactReportStatusTone(value: PfImpactReportStatus) {
+function impactReportStatusTone(value: PfImpactReportStatus): BadgeTone {
   return strictEnumTone(PF_IMPACT_REPORT_STATUS_TONE, value, '影响报告状态')
 }
 
@@ -53,13 +59,17 @@ const explainText = ref('')
 const explainStructJson = ref('')
 
 const trialForm = reactive({
-  ruleType: 'LINEAR_CAP',
+  ruleType: 'THRESHOLD',
   indicatorCode: 'T001',
   rawValue: 8,
   auditRequired: false,
   auditApproved: true,
 })
-const trialParams = ref<PortfolioIndicatorTemplateParams>(defaultTemplateParams('LINEAR_CAP'))
+const trialParams = ref<PortfolioIndicatorTemplateParams>(defaultTemplateParams('THRESHOLD'))
+
+watch(() => trialForm.ruleType, (ruleType) => {
+  trialParams.value = defaultTemplateParams(ruleType)
+})
 
 const snapshotForm = reactive({
   teacherId: '',
@@ -312,13 +322,18 @@ onMounted(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-  <ContextBar show-title layout="workbench" title="指标计分与审计" />
-</template>
+      <ContextBar show-title layout="workbench" title="指标计分与审计" />
+    </template>
     <UiCard>
       <a-tabs :active-key="activeTab" @change="onTabChange">
         <a-tab-pane key="trial" tab="规则试算">
           <div class="form-grid">
-            <a-input v-model:value="trialForm.ruleType" placeholder="规则类型" />
+            <a-select
+              v-model:value="trialForm.ruleType"
+              :options="PF_SCORE_RULE_TYPE_OPTIONS"
+              placeholder="规则类型"
+              style="width: 160px"
+            />
             <a-input v-model:value="trialForm.indicatorCode" placeholder="指标编码" />
             <a-input-number v-model:value="trialForm.rawValue" placeholder="原始值" style="width: 120px" />
             <a-switch v-model:checked="trialForm.auditRequired" checked-children="需审核" un-checked-children="免审" />

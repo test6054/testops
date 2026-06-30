@@ -26,7 +26,7 @@
           class="signal-band__trend"
           :class="trendClass(metric)"
         >
-          {{ metric.trend > 0 ? '?' : '?' }}{{ Math.abs(metric.trend) }}%
+          {{ metric.trend > 0 ? '↑' : '↓' }}{{ Math.abs(metric.trend) }}%
         </span>
       </div>
       <span v-if="metric.helper" class="signal-band__helper">{{ metric.helper }}</span>
@@ -36,27 +36,18 @@
 
 <script lang="ts" setup>
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
+import type { SignalMetric, SignalMetricTrendPolarity } from '@/types/workbench'
 
 defineOptions({
   name: 'SignalBand',
 })
 
-type TrendPolarity = 'negative' | 'positive'
-
 const props = withDefaults(
   defineProps<{
     metrics?: SignalMetric[]
     compact?: boolean
-    /** inline?????????panel????????? KPI ?? */
     variant?: 'inline' | 'panel'
-    /**
-     * ???????? negative??
-     * - negative??? = adverse?error ????? = favorable?success ??????????/????
-     * - positive??? = favorable??? = adverse???????/????
-     * ?????? SignalMetric.trendPolarity ??
-     */
-    trendPolarity?: TrendPolarity
+    trendPolarity?: SignalMetricTrendPolarity
   }>(),
   {
     metrics: () => [],
@@ -74,11 +65,13 @@ function toneClass(tone?: BadgeTone): string {
   return tone ? `signal-band__value--${tone}` : ''
 }
 
-/** ???? trend ????? adverse / favorable ??? */
 function trendClass(metric: SignalMetric): string {
   const trend = metric.trend
   if (!trend) return ''
   const polarity = metric.trendPolarity ?? props.trendPolarity
+  if (polarity === 'neutral') {
+    return 'signal-band__trend--neutral'
+  }
   const isUp = trend > 0
   const isAdverse = polarity === 'negative' ? isUp : !isUp
   return isAdverse ? 'signal-band__trend--adverse' : 'signal-band__trend--favorable'
@@ -208,6 +201,10 @@ function trendClass(metric: SignalMetric): string {
 
 .signal-band__trend--favorable {
   color: var(--ant-color-success);
+}
+
+.signal-band__trend--neutral {
+  color: var(--ant-color-primary);
 }
 
 .signal-band__helper {

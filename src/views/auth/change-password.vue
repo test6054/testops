@@ -505,7 +505,7 @@ onActivated(() => {
   border-radius: var(--dp-radius-xs);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .change-pwd-body {
     flex-direction: column;
   }

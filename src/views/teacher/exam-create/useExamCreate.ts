@@ -1,76 +1,48 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type {
+  ExamCreateBasicForm,
+  ExamCreateMarkingTeamForm,
+  ExamCreateRosterForm,
+  ExamCreateSectionKey,
+  ExamRosterScopeMode,
+} from './exam-create-context'
+import type {
   ExamCreateBundleRequest,
   ExamCreateRequest,
+  ExamKindCode,
   ExamRosterCreateRequest,
-  ExamRosterScopeMode,
-  GradingStrategyCode,
+  ExamScorePolicyCode,
 } from '@/apis/mark/exam'
-import { EXAM_ROSTER_SCOPE_MODE_LABEL } from '@/apis/mark/exam'
+import type { ExamCandidateRosterRequest, ExamCandidateVO } from '@/apis/mark/exam-scope'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { createExamBundle } from '@/apis/mark/exam'
-import type { ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
+import { createExamBundle, examKindRequiresSource, previewCreateExamRoster } from '@/apis/mark/exam'
 import { useUserStore } from '@/stores/modules/user'
 import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import { showUserError } from '@/utils/error-handler'
-import { mergeCandidateRows } from './candidate-tree-utils'
+import { EXAM_CREATE_SECTION_ORDER } from './exam-create-context'
+import { mergePreviewCandidates, requirePreviewCandidates } from './exam-create-roster'
 
-export type ExamScoreCompositionMode = 'EXAM_ONLY' | 'EXAM_WITH_DAILY'
-
-export type ExamCreateSectionKey =
-  | 'exam-create-basic'
-  | 'exam-create-marking-team'
-  | 'exam-create-candidates'
-  | 'exam-create-confirm'
-
-const EXAM_CREATE_SECTION_ORDER: ExamCreateSectionKey[] = [
-  'exam-create-basic',
-  'exam-create-marking-team',
-  'exam-create-candidates',
-  'exam-create-confirm',
-]
-
-export type { ExamRosterScopeMode }
-export { EXAM_ROSTER_SCOPE_MODE_LABEL }
-
-export interface ExamBasicForm {
-  courseId: string | null
-  courseName: string
-  examName: string
-  examNo: string
-  academicYear: string
-  semester?: string
-  examWindow?: [string, string]
-  gradingStrategy: GradingStrategyCode
-  scoreCompositionMode: ExamScoreCompositionMode
-  dailyScoreFull?: number
-  remark?: string
-}
-
-export interface ExamMarkingTeamForm {
-  chiefExaminerUserId: string | null
-  chiefExaminerNickName: string
-  anonymousMode: boolean
-  reviewerUserIds: string[]
-  reviewerNickNames: string[]
-  remark?: string
-}
-
-export interface ExamCreateCandidateRow {
-  studentUserId: string
-  classId: string
-  className: string
-  studentNo: string
-  studentName: string
-}
-
-export interface ExamRosterForm {
-  scopeMode: ExamRosterScopeMode
-  classIds: string[]
-  candidates: ExamCreateCandidateRow[]
-}
+export type {
+  ExamCreateBasicForm,
+  ExamCreateMarkingTeamForm,
+  ExamCreateRosterForm,
+  ExamCreateSectionKey,
+  ExamRosterScopeMode,
+  ExamScoreCompositionMode,
+} from './exam-create-context'
+export {
+  EXAM_CREATE_SECTION_ORDER,
+  EXAM_ROSTER_SCOPE_MODE_LABEL,
+  examCreateBasicFormKey,
+  examCreateMarkingTeamFormKey,
+  examCreateRosterFormKey,
+  isExamCreateSectionKey,
+  useInjectedExamCreateBasicForm,
+  useInjectedExamCreateMarkingTeamForm,
+  useInjectedExamCreateRosterForm,
+} from './exam-create-context'
 
 export function useExamCreate() {
   const router = useRouter()
@@ -82,8 +54,10 @@ export function useExamCreate() {
   const basicFormRef = ref<FormInstance>()
   const markingTeamFormRef = ref<FormInstance>()
   const rosterFormRef = ref<FormInstance>()
+  /** 整班纳入 preview 请求进行中；提交前须等待完成，避免携带过期考生快照。 */
+  const rosterPreviewSyncing = ref(false)
 
-  const examForm = reactive<ExamBasicForm>({
+  const examForm = reactive<ExamCreateBasicForm>({
     courseId: null,
     courseName: '',
     examName: '',
@@ -94,10 +68,15 @@ export function useExamCreate() {
     gradingStrategy: 'SINGLE',
     scoreCompositionMode: 'EXAM_ONLY',
     dailyScoreFull: undefined,
+    confidential: false,
+    examKind: 'REGULAR',
+    sourceExamId: undefined,
+    sourceExamName: undefined,
+    scorePolicy: undefined,
     remark: '',
   })
 
-  const markingTeamForm = reactive<ExamMarkingTeamForm>({
+  const markingTeamForm = reactive<ExamCreateMarkingTeamForm>({
     chiefExaminerUserId: null,
     chiefExaminerNickName: '',
     anonymousMode: true,
@@ -106,7 +85,7 @@ export function useExamCreate() {
     remark: '',
   })
 
-  const rosterForm = reactive<ExamRosterForm>({
+  const rosterForm = reactive<ExamCreateRosterForm>({
     scopeMode: 'BY_CLASS',
     classIds: [],
     candidates: [],
@@ -114,6 +93,18 @@ export function useExamCreate() {
 
   const basicRules: Record<string, Rule[]> = {
     courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
+    examKind: [{ required: true, message: '请选择考试性质', trigger: 'change' }],
+    sourceExamId: [
+      {
+        validator: async (): Promise<void> => {
+          if (!examKindRequiresSource(examForm.examKind)) return
+          if (!examForm.sourceExamId) {
+            throw new Error('请选择原考试')
+          }
+        },
+        trigger: 'change',
+      },
+    ],
     examName: [
       { required: true, message: '请输入考试名称', trigger: 'blur' },
       { max: 100, message: '考试名称最多 100 个字符', trigger: 'blur' },
@@ -167,6 +158,7 @@ export function useExamCreate() {
     dailyScoreFull: [
       {
         validator: async (): Promise<void> => {
+          if (examForm.examKind === 'MAKEUP') return
           if (examForm.scoreCompositionMode !== 'EXAM_WITH_DAILY') return
           const value = examForm.dailyScoreFull
           if (value == null || value <= 0) {
@@ -239,7 +231,9 @@ export function useExamCreate() {
         validator: async (): Promise<void> => {
           if (rosterForm.candidates.length === 0) return
           const classSet = new Set(rosterForm.classIds)
-          const invalid = rosterForm.candidates.find(row => !classSet.has(row.classId))
+          const invalid = rosterForm.candidates.find(
+            candidate => !candidate.classId || !classSet.has(candidate.classId),
+          )
           if (invalid) {
             throw new Error('存在考生班级不在参考班级范围内')
           }
@@ -261,6 +255,10 @@ export function useExamCreate() {
     if (!chiefId) return
     if (!markingTeamForm.reviewerUserIds.includes(chiefId)) {
       markingTeamForm.reviewerUserIds = [chiefId, ...markingTeamForm.reviewerUserIds]
+    }
+    const chiefName = markingTeamForm.chiefExaminerNickName?.trim()
+    if (chiefName && !markingTeamForm.reviewerNickNames.includes(chiefName)) {
+      markingTeamForm.reviewerNickNames = [chiefName, ...markingTeamForm.reviewerNickNames]
     }
   }
 
@@ -285,22 +283,24 @@ export function useExamCreate() {
     rosterForm.candidates = []
   }
 
-  function replaceCandidates(rows: ExamCreateCandidateRow[]): void {
-    rosterForm.candidates = rows
-  }
-
-  function addCandidates(rows: ExamCreateCandidateRow[]): void {
-    rosterForm.candidates = mergeCandidateRows(rosterForm.candidates, rows)
+  function addCandidates(candidates: ExamCandidateVO[]): void {
+    rosterForm.candidates = mergePreviewCandidates(rosterForm.candidates, candidates)
     const classSet = new Set(rosterForm.classIds)
-    for (const row of rows) {
-      classSet.add(row.classId)
+    for (const candidate of candidates) {
+      if (candidate.classId) {
+        classSet.add(candidate.classId)
+      }
     }
     rosterForm.classIds = [...classSet]
   }
 
-  function syncClassScopeCandidates(rows: ExamCreateCandidateRow[], classIds: string[]): void {
+  function setRosterPreviewSyncing(syncing: boolean): void {
+    rosterPreviewSyncing.value = syncing
+  }
+
+  function syncClassScopeCandidates(candidates: ExamCandidateVO[], classIds: string[]): void {
     rosterForm.classIds = [...classIds]
-    rosterForm.candidates = rows
+    rosterForm.candidates = candidates
   }
 
   function removeCandidate(studentUserId: string): void {
@@ -311,7 +311,9 @@ export function useExamCreate() {
   function pruneCandidatesToClassScope(): void {
     if (rosterForm.scopeMode !== 'BY_STUDENT') return
     const allowedClassIds = new Set(rosterForm.classIds)
-    rosterForm.candidates = rosterForm.candidates.filter(row => allowedClassIds.has(row.classId))
+    rosterForm.candidates = rosterForm.candidates.filter(
+      candidate => candidate.classId != null && allowedClassIds.has(candidate.classId),
+    )
   }
 
   function validateRosterContractInline(): string | null {
@@ -322,16 +324,26 @@ export function useExamCreate() {
       return '请选择参考班级'
     }
     const classSet = new Set(rosterForm.classIds)
-    if (rosterForm.candidates.some(row => !classSet.has(row.classId))) {
+    if (rosterForm.candidates.some(candidate => !candidate.classId || !classSet.has(candidate.classId))) {
       return '存在考生班级不在参考班级范围内'
     }
     return null
   }
 
+  function resolveSubmitScorePolicy(): ExamScorePolicyCode {
+    if (examForm.examKind === 'REGULAR') {
+      return examForm.scoreCompositionMode === 'EXAM_WITH_DAILY' ? 'FULL' : 'ACTUAL_ONLY'
+    }
+    if (examForm.examKind === 'RETAKE') {
+      return 'ACTUAL_ONLY'
+    }
+    return 'MAKEUP_CAP60'
+  }
+
   function buildExamRequest(): ExamCreateRequest | null {
     const [startTime, endTime] = examForm.examWindow ?? []
     if (!examForm.courseId || !startTime || !endTime) {
-      message.error('请完善考务信息')
+      void message.error('请完善考务信息')
       return null
     }
     return {
@@ -343,9 +355,14 @@ export function useExamCreate() {
       examStartTime: startTime,
       examEndTime: endTime,
       gradingStrategy: 'SINGLE',
-      dailyScoreFull: examForm.scoreCompositionMode === 'EXAM_WITH_DAILY'
+      examKind: examForm.examKind,
+      sourceExamId: examForm.sourceExamId,
+      scorePolicy: resolveSubmitScorePolicy(),
+      dailyScoreFull: examForm.examKind === 'REGULAR'
+        && examForm.scoreCompositionMode === 'EXAM_WITH_DAILY'
         ? examForm.dailyScoreFull
         : null,
+      confidential: examForm.confidential,
       remark: examForm.remark?.trim() || undefined,
     }
   }
@@ -354,10 +371,15 @@ export function useExamCreate() {
     if (rosterForm.candidates.length === 0) {
       return undefined
     }
-    const candidates: ExamCandidateRosterRequest[] = rosterForm.candidates.map(row => ({
-      classId: row.classId,
-      studentUserId: row.studentUserId,
-    }))
+    const candidates: ExamCandidateRosterRequest[] = rosterForm.candidates.map((candidate) => {
+      if (!candidate.classId) {
+        throw new Error('存在缺少班级的考生预览')
+      }
+      return {
+        classId: candidate.classId,
+        studentUserId: candidate.studentUserId,
+      }
+    })
     return {
       scopeMode: rosterForm.scopeMode,
       classIds: [...rosterForm.classIds],
@@ -369,7 +391,14 @@ export function useExamCreate() {
     const exam = buildExamRequest()
     if (!exam) return null
     if (!markingTeamForm.chiefExaminerUserId || !markingTeamForm.chiefExaminerNickName) {
-      message.error('请选择主考教师')
+      void message.error('请选择主考教师')
+      return null
+    }
+    let roster: ExamRosterCreateRequest | undefined
+    try {
+      roster = buildRosterRequest()
+    } catch (error) {
+      void message.error(error instanceof Error ? error.message : '考生名册不完整')
       return null
     }
     return {
@@ -380,7 +409,7 @@ export function useExamCreate() {
         reviewerUserIds: [...markingTeamForm.reviewerUserIds],
         remark: markingTeamForm.remark?.trim() || undefined,
       },
-      roster: buildRosterRequest(),
+      roster,
     }
   }
 
@@ -406,12 +435,16 @@ export function useExamCreate() {
   }
 
   async function validateRosterStep(): Promise<boolean> {
+    if (rosterPreviewSyncing.value) {
+      void message.error('名册预览加载中，请稍候再提交')
+      return false
+    }
     if (
       rosterForm.scopeMode === 'BY_CLASS'
       && rosterForm.classIds.length > 0
       && rosterForm.candidates.length === 0
     ) {
-      message.error('整班纳入须包含所选班级的全部学生')
+      void message.error('整班纳入须包含所选班级的全部学生')
       return false
     }
     if (
@@ -419,17 +452,17 @@ export function useExamCreate() {
       && rosterForm.classIds.length > 0
       && rosterForm.candidates.length === 0
     ) {
-      message.error('请通过「按学生选择」纳入补考或部分考生')
+      void message.error('请通过「按学生选择」纳入补考或部分考生')
       return false
     }
     const inlineError = validateRosterContractInline()
     if (inlineError) {
-      message.error(inlineError)
+      void message.error(inlineError)
       return false
     }
     if (rosterForm.candidates.length === 0) return true
     if (!rosterFormRef.value) {
-      message.error('考生范围表单尚未就绪，请稍后重试')
+      void message.error('考生范围表单尚未就绪，请稍后重试')
       return false
     }
     try {
@@ -446,7 +479,7 @@ export function useExamCreate() {
       const sectionKey = EXAM_CREATE_SECTION_ORDER[i]
       if (sectionKey === 'exam-create-basic') {
         if (!(await validateBasicStep())) {
-          message.warning('请先完善考务信息')
+          void message.warning('请先完善考务信息')
           activeSection.value = sectionKey
           return false
         }
@@ -454,7 +487,7 @@ export function useExamCreate() {
       }
       if (sectionKey === 'exam-create-marking-team') {
         if (!(await validateMarkingTeamStep())) {
-          message.warning('请先完善阅卷队伍')
+          void message.warning('请先完善阅卷队伍')
           activeSection.value = sectionKey
           return false
         }
@@ -489,8 +522,32 @@ export function useExamCreate() {
     return true
   }
 
+  async function refreshByClassRosterBeforeSubmit(): Promise<boolean> {
+    if (rosterForm.scopeMode !== 'BY_CLASS' || rosterForm.classIds.length === 0) {
+      return true
+    }
+    if (rosterForm.candidates.length === 0) {
+      return true
+    }
+    try {
+      const preview = await previewCreateExamRoster({
+        scopeMode: 'BY_CLASS',
+        classIds: [...rosterForm.classIds],
+      })
+      rosterForm.candidates = requirePreviewCandidates(preview.candidates)
+      return true
+    } catch (error) {
+      showUserError(error, '提交前名册预览失败，请重新选择参考班级')
+      return false
+    }
+  }
+
   async function handleCreateExam(): Promise<void> {
     if (!(await validateAllSteps())) return
+    if (!(await refreshByClassRosterBeforeSubmit())) {
+      activeSection.value = 'exam-create-candidates'
+      return
+    }
     const request = buildBundleRequest()
     if (!request) return
     submitting.value = true
@@ -531,6 +588,26 @@ export function useExamCreate() {
   })
 
   watch(
+    () => examForm.examKind,
+    (examKind: ExamKindCode) => {
+      if (examKind === 'MAKEUP') {
+        rosterForm.scopeMode = 'BY_STUDENT'
+        rosterForm.classIds = []
+        rosterForm.candidates = []
+      }
+    },
+  )
+
+  watch(
+    () => examForm.academicYear,
+    (academicYear) => {
+      if (!academicYear?.trim()) {
+        examForm.semester = undefined
+      }
+    },
+  )
+
+  watch(
     () => rosterForm.classIds,
     () => pruneCandidatesToClassScope(),
     { deep: true },
@@ -551,18 +628,15 @@ export function useExamCreate() {
     submitting,
     showSuccessModal,
     createdExamId,
+    rosterPreviewSyncing,
     setChiefExaminer,
     setCourseSelection,
     setReviewerNickNames,
     changeScopeMode,
-    replaceCandidates,
+    setRosterPreviewSyncing,
     syncClassScopeCandidates,
-    ensureChiefInReviewers,
     addCandidates,
     removeCandidate,
-    validateBasicStep,
-    validateMarkingTeamStep,
-    validateRosterStep,
     validateStepsBeforeSection,
     handleCreateExam,
     handleGoBack,

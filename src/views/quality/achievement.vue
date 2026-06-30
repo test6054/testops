@@ -34,6 +34,7 @@ import type {
   WorkbenchStageStatus,
 } from '@/types/workbench'
 import { message } from 'ant-design-vue'
+import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -43,6 +44,7 @@ import {
   achievementAuditApi,
 } from '@/apis/quality/achievement-audit'
 import { achievementResultApi } from '@/apis/quality/achievement-result'
+import { ExportBusinessType } from '@/apis/edu/export'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -71,10 +73,12 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageRail from '@/components/workbench/StageRail.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
+import { useQualityTableExport } from '@/composables/useQualityTableExport'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError } from '@/utils/error-handler'
+import { formatScore } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
@@ -130,6 +134,7 @@ const list = ref<AchievementResultVO[]>([])
 const total = ref(0)
 const loading = ref(false)
 const triggerLoading = ref<string>('')
+const { exporting: achievementExporting, exportExcel: exportAchievementExcel } = useQualityTableExport()
 
 const query = reactive<AchievementResultQueryRequest>({
   pageNum: 1,
@@ -346,8 +351,22 @@ const columns: ColumnsType = [
   { title: '关联课程', key: 'qualityCourse', width: 180 },
   { title: '关联班级', key: 'className', width: 140 },
   { title: '学年 / 学期', key: 'period', width: 120 },
-  { title: '达成值 / 阈值', key: 'achievementValue', width: 160 },
-  { title: '样本（有效 / 总量）', key: 'sample', width: 120 },
+  {
+    title: '达成值 / 阈值',
+    key: 'achievementValue',
+    width: 160,
+    sorter: (a: AchievementResultVO, b: AchievementResultVO) => {
+      const av = a.finalValue ?? Number.NEGATIVE_INFINITY
+      const bv = b.finalValue ?? Number.NEGATIVE_INFINITY
+      return av - bv
+    },
+  },
+  {
+    title: '样本（有效 / 总量）',
+    key: 'sample',
+    width: 120,
+    sorter: (a: AchievementResultVO, b: AchievementResultVO) => a.sampleValid - b.sampleValid,
+  },
   { title: '达成结论', dataIndex: 'achievementStatus', key: 'achievementStatus', width: 120 },
   { title: '结果有效性', key: 'validity', width: 150 },
   { title: '审核', dataIndex: 'auditStatus', key: 'auditStatus', width: 110 },
@@ -364,6 +383,26 @@ function resetQuery() {
   query.schoolYear = ''
   query.semester = ''
   loadList()
+}
+
+function handleExportAchievement(): void {
+  if (trainingPlanRequired.value) {
+    return
+  }
+  void exportAchievementExcel({
+    businessType: ExportBusinessType.QUALITY_ACHIEVEMENT_RESULT_EXPORT,
+    bizName: '达成度结果',
+    queryParams: {
+      trainingPlanId: qualityStore.currentTrainingPlanId,
+      targetType: query.targetType || undefined,
+      auditStatus: query.auditStatus || undefined,
+      achievementStatus: query.achievementStatus || undefined,
+      qualityCourseId: query.qualityCourseId || undefined,
+      classId: query.classId || undefined,
+      schoolYear: query.schoolYear || undefined,
+      semester: query.semester || undefined,
+    },
+  })
 }
 
 /**
@@ -593,23 +632,25 @@ const signals = computed<SignalMetric[]>(() => {
   const achieved = list.value.filter((r) => r.achievementStatus === 'ACHIEVED').length
   const stale = list.value.filter((r) => isResultStale(r)).length
   return [
-    { key: 'total', label: '本页结果', value: list.value.length, tone: 'blue' },
-    { key: 'achieved', label: '已达成', value: achieved, tone: achieved > 0 ? 'green' : 'gray' },
-    { key: 'partial', label: '部分达成', value: partial, tone: partial > 0 ? 'orange' : 'gray' },
+    { key: 'total', label: '本页结果', value: list.value.length, tone: 'blue', trendPolarity: 'neutral' },
+    { key: 'achieved', label: '已达成', value: achieved, tone: achieved > 0 ? 'green' : 'gray', trendPolarity: 'positive' },
+    { key: 'partial', label: '部分达成', value: partial, tone: partial > 0 ? 'orange' : 'gray', trendPolarity: 'negative' },
     {
       key: 'not-achieved',
       label: '未达成',
       value: notAchieved,
       tone: notAchieved > 0 ? 'red' : 'gray',
+      trendPolarity: 'negative',
     },
     {
       key: 'pending-audit',
       label: '待提交',
       value: b.DRAFT + b.CALCULATED,
       tone: b.DRAFT + b.CALCULATED > 0 ? 'orange' : 'gray',
+      trendPolarity: 'negative',
     },
-    { key: 'stale', label: '已过期', value: stale, tone: stale > 0 ? 'red' : 'gray' },
-    { key: 'returned', label: '已驳回', value: b.RETURNED, tone: b.RETURNED > 0 ? 'red' : 'gray' },
+    { key: 'stale', label: '已过期', value: stale, tone: stale > 0 ? 'red' : 'gray', trendPolarity: 'negative' },
+    { key: 'returned', label: '已驳回', value: b.RETURNED, tone: b.RETURNED > 0 ? 'red' : 'gray', trendPolarity: 'negative' },
   ]
 })
 
@@ -707,7 +748,20 @@ async function handleRecomputeRecord(record: AchievementResultVO) {
 }
 
 function formatValue(value?: number) {
-  return value == null ? '-' : value.toFixed(3)
+  return formatScore(value, 'achievement', '-')
+}
+
+/** 达成值处于阈值 95%–100% 区间时标记「临近临界」 */
+function isNearCriticalThreshold(record: AchievementResultVO): boolean {
+  if (record.finalValue == null || record.thresholdValue == null) {
+    return false
+  }
+  const threshold = Number(record.thresholdValue)
+  const finalValue = Number(record.finalValue)
+  if (!Number.isFinite(threshold) || !Number.isFinite(finalValue) || threshold <= 0) {
+    return false
+  }
+  return finalValue >= threshold * 0.95 && finalValue < threshold
 }
 
 function goDetail(record: AchievementResultVO) {
@@ -866,12 +920,25 @@ onActivated(async () => {
       <UiCard class="detail-table-card achievement__table-card">
         <template #title>达成度结果</template>
         <template #extra>
-          <UiButton size="sm" :disabled="trainingPlanRequired" @click="openTriggerDrawer">
-            触发达成度计算
-          </UiButton>
+          <a-space>
+            <UiButton
+              variant="outline"
+              size="sm"
+              :loading="achievementExporting"
+              :disabled="trainingPlanRequired"
+              @click="handleExportAchievement"
+            >
+              <template #icon><DownloadOutlined /></template>
+              导出 Excel
+            </UiButton>
+            <UiButton size="sm" :disabled="trainingPlanRequired" @click="openTriggerDrawer">
+              触发达成度计算
+            </UiButton>
+          </a-space>
         </template>
 
-        <UiFilterBar variant="plain"
+        <UiFilterBar
+          variant="plain"
           v-model="filterModel"
           :fields="filterFields"
           show-labels
@@ -931,18 +998,25 @@ onActivated(async () => {
               {{ record.schoolYear }} / {{ record.semester }}
             </template>
             <template v-else-if="column.key === 'achievementValue'">
-              <span
-                class="achievement__value"
-                :class="[
-                  record.finalValue !== null
-                    && record.thresholdValue !== null
-                    && record.finalValue >= record.thresholdValue
-                    ? 'achievement__value--ok'
-                    : 'achievement__value--bad',
-                ]"
-              >{{ formatValue(record.finalValue) }}</span>
-              <span class="achievement__threshold">
-                / {{ formatValue(record.thresholdValue) }}</span>
+              <div class="achievement__achievement-cell">
+                <span>
+                  <span
+                    class="achievement__value"
+                    :class="[
+                      record.finalValue !== null
+                        && record.thresholdValue !== null
+                        && record.finalValue >= record.thresholdValue
+                        ? 'achievement__value--ok'
+                        : 'achievement__value--bad',
+                    ]"
+                  >{{ formatValue(record.finalValue) }}</span>
+                  <span class="achievement__threshold">
+                    / {{ formatValue(record.thresholdValue) }}</span>
+                </span>
+                <UiTag v-if="isNearCriticalThreshold(record)" tone="orange" size="sm">
+                  临近临界
+                </UiTag>
+              </div>
             </template>
             <template v-else-if="column.key === 'sample'">
               {{ record.sampleValid }} / {{ record.sampleTotal }}
@@ -1265,6 +1339,13 @@ onActivated(async () => {
 
   &__threshold {
     color: var(--dp-text-muted);
+  }
+
+  &__achievement-cell {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--dp-space-1, 4px);
   }
 
   &__validity {

@@ -17,7 +17,10 @@
       </UiButton>
     </template>
     <UiEmpty v-if="!loaded && !loading" description="正在加载扫描页…" />
-    <UiEmpty v-else-if="error" description="暂无数据" />
+    <UiEmpty
+      v-else-if="error"
+      :description="scanPagesErrorText"
+    />
     <a-spin v-else :spinning="loading" tip="加载扫描页中...">
       <UiEmpty v-if="loaded && pages.length === 0" description="暂无数据" />
       <div
@@ -76,7 +79,7 @@
             class="whole-paper-gallery__annotation"
             placeholder="页面级批注，可选"
             show-count
-            @update:value="(value: string) => emit('update:pageAnnotation', item.page.pageId, value)"
+            @update:value="(value: string) => emit('update:page-annotation', item.page.pageId, value)"
           />
         </div>
         <div
@@ -102,6 +105,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { buildConfidentialWatermarkLines } from '@/composables/useConfidentialWatermark'
+import { getUserProcessFailureMessage } from '@/utils/error-handler'
 
 defineOptions({ name: 'WholePaperGallery' })
 
@@ -135,7 +139,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   (e: 'reload'): void
   (e: 'scroll', event: Event): void
-  (e: 'update:pageAnnotation', pageId: string, value: string): void
+  (e: 'update:page-annotation', pageId: string, value: string): void
   (e: 'viewport-ready', element: HTMLElement | null): void
 }>()
 const resolvedWatermarkLines = computed(() => {
@@ -148,6 +152,9 @@ const resolvedWatermarkLines = computed(() => {
   return buildConfidentialWatermarkLines({ examLabel: props.examLabel })
 })
 const watermarkDensity = computed(() => (props.confidential ? 'dense' : 'normal'))
+const scanPagesErrorText = computed(() =>
+  getUserProcessFailureMessage(props.error?.message, '扫描页加载失败，请刷新后重试'),
+)
 const imagePreview = computed(() => (props.confidential ? false : {}))
 
 function onConfidentialContextMenu(event: MouseEvent): void {

@@ -43,3 +43,18 @@ export function examSummaryFromDetail(detail: ExamDetailVO): ExamSummaryVO {
     createTime: detail.createTime,
   }
 }
+
+/** 工作台 snapshot meta 转列表项，仅用于 Select 标签占位；完整字段仍走详情接口 */
+export function examSummaryFromMeta(
+  meta: Pick<ExamSummaryVO, 'examId' | 'examName' | 'examNo'>,
+): ExamSummaryVO {
+  return {
+    examId: meta.examId,
+    examName: meta.examName,
+    examNo: meta.examNo,
+    status: 'ACTIVE',
+    statusMessage: '',
+    gradingStrategy: 'SINGLE',
+    createUser: '',
+  }
+}

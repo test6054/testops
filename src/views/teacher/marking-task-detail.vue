@@ -9,32 +9,65 @@
         <UiTag v-if="task" :tone="taskStatusTone(task.taskStatus)" size="sm">
           {{ taskStatusLabel(task.taskStatus) }}
         </UiTag>
-        <template v-if="task">
-          <UiTag tone="purple" size="sm">{{ anonymityModeLabel(task.anonymityMode) }}</UiTag>
-          <UiTag tone="gray" size="sm">{{ allocationUnitLabel(task.taskUnit) }}</UiTag>
-          <UiTag tone="gray" size="sm">{{ task.paperDisplay.primaryText }}</UiTag>
-          <UiTag v-if="task.paperDisplay.secondaryText" tone="blue" size="sm">
-            {{ task.paperDisplay.secondaryText }}
-          </UiTag>
-          <UiTag v-if="isReadOnly" tone="green" size="sm">已定稿 · 只读查看</UiTag>
-        </template>
-        <template v-if="task?.anonymousToken">
-          <UiTag v-if="revealedIdentity" tone="orange" size="sm">
-            {{ revealedIdentity.studentName }}（{{ revealedIdentity.studentNo }}）
-          </UiTag>
-          <UiButton
-            v-if="!revealedIdentity && isExamOwner"
-            variant="outline"
-            size="sm"
-            @click="openRevealDialog"
+        <template v-if="task?.anonymousToken && !revealedIdentity">
+          <a-tooltip
+            v-if="!isExamOwner"
+            title="当前为匿名阅卷模式，仅考试主考老师可解匿名查看学生身份"
           >
-            <template #icon><UnlockOutlined /></template>
-            解匿名
-          </UiButton>
-          <a-tooltip v-else-if="!revealedIdentity && !isExamOwner" title="当前为匿名阅卷模式，仅考试主考老师可解匿名查看学生身份">
             <UiTag tone="purple" size="sm">匿名保护中</UiTag>
           </a-tooltip>
+          <UiTag v-else tone="purple" size="sm">匿名保护中</UiTag>
         </template>
+        <UiPopoverPanel
+          v-if="task"
+          title="任务摘要"
+          :trigger="['click']"
+          placement="bottomLeft"
+          :max-width="320"
+          compact
+        >
+          <UiButton variant="outline" size="sm">
+            <template #icon><InfoCircleOutlined /></template>
+            任务摘要
+          </UiButton>
+          <template #content>
+            <dl class="marking-task-detail-page__summary-list">
+              <div class="marking-task-detail-page__summary-item">
+                <dt>匿名模式</dt>
+                <dd>{{ anonymityModeLabel(task.anonymityMode) }}</dd>
+              </div>
+              <div class="marking-task-detail-page__summary-item">
+                <dt>批阅单元</dt>
+                <dd>{{ allocationUnitLabel(task.taskUnit) }}</dd>
+              </div>
+              <div class="marking-task-detail-page__summary-item">
+                <dt>答卷</dt>
+                <dd>{{ task.paperDisplay.primaryText }}</dd>
+              </div>
+              <div v-if="task.paperDisplay.secondaryText" class="marking-task-detail-page__summary-item">
+                <dt>答卷补充</dt>
+                <dd>{{ task.paperDisplay.secondaryText }}</dd>
+              </div>
+              <div v-if="isReadOnly" class="marking-task-detail-page__summary-item">
+                <dt>查看模式</dt>
+                <dd>已定稿 · 只读查看</dd>
+              </div>
+              <div v-if="revealedIdentity" class="marking-task-detail-page__summary-item">
+                <dt>解匿名身份</dt>
+                <dd>{{ revealedIdentity.studentName }}（{{ revealedIdentity.studentNo }}）</dd>
+              </div>
+            </dl>
+          </template>
+          <template
+            v-if="task.anonymousToken && !revealedIdentity && isExamOwner"
+            #footer
+          >
+            <UiButton size="sm" variant="outline" @click="openRevealDialog">
+              <template #icon><UnlockOutlined /></template>
+              解匿名
+            </UiButton>
+          </template>
+        </UiPopoverPanel>
       </div>
       <div class="marking-task-detail-page__toolbar-actions">
         <template v-if="batchProgress">
@@ -204,90 +237,122 @@
                   v-if="wholeQuestions.length === 0"
                   description="暂无数据"
                 />
-                <div
-                  v-for="(question, questionIndex) in wholeQuestions"
-                  :key="question.questionTemplateId"
-                  class="whole-question-score"
+                <a-collapse
+                  v-else
+                  v-model:active-key="expandedWholeQuestionKey"
+                  accordion
+                  class="whole-question-accordion"
+                  expand-icon-position="end"
                 >
-                  <div class="whole-question-score__header">
-                    <UiTag tone="blue" size="sm">第 {{ question.questionNo }} 题</UiTag>
-                    <UiTag tone="gray" size="sm">{{ question.questionTypeMessage }}</UiTag>
-                    <UiTag tone="green" size="sm">满分 {{ question.fullScore }}</UiTag>
-                    <UiButton
-                      size="sm"
-                      variant="outline"
-                      :disabled="!question.pageId"
-                      @click="focusWholeQuestionPage(question)"
-                    >
-                      定位答题页
-                    </UiButton>
-                  </div>
-                  <a-typography-paragraph
-                    v-if="question.recognizedAnswer"
-                    class="whole-question-score__recognized-answer"
-                    :ellipsis="{ rows: 3, expandable: true, symbol: '展开' }"
+                  <a-collapse-panel
+                    v-for="(question, questionIndex) in wholeQuestions"
+                    :key="question.questionTemplateId"
                   >
-                    {{ question.recognizedAnswer }}
-                  </a-typography-paragraph>
-                  <a-typography-text
-                    v-else
-                    type="secondary"
-                    class="whole-question-score__recognized-answer--empty"
-                  >
-                    正式 OCR 未识别出可展示答案
-                  </a-typography-text>
-                  <a-input-number
-                    v-model:value="getWholeQuestionForm(question.questionTemplateId).score"
-                    :ref="(el: unknown) => setWholeQuestionScoreInputRef(el, questionIndex)"
-                    :min="0"
-                    :max="question.fullScore"
-                    :step="0.5"
-                    :disabled="isReadOnly"
-                    style="width: 100%; margin-bottom: 8px"
-                    placeholder="本题给分"
-                    @keydown.enter.prevent="handleWholeQuestionScoreEnter(questionIndex)"
-                  />
-                  <div v-if="question.aiScore != null" class="whole-question-score__ai">
-                    <div class="whole-question-score__ai-text">
-                      <span>AI 建议分：</span>
-                      <strong>{{ question.aiScore }}</strong>
-                      <span>/ {{ question.fullScore }}</span>
-                    </div>
-                    <a-space size="small" wrap>
-                      <UiButton
-                        size="sm"
-                        variant="outline"
-                        :disabled="isReadOnly"
-                        @click="fillWholeQuestionAiScore(question)"
-                      >
-                        填入 AI 分
-                      </UiButton>
-                      <UiButton
-                        size="sm"
-                        variant="primary"
-                        :disabled="isReadOnly || submitting || !canSubmit"
-                        @click="acceptWholeQuestionAiScore(question, questionIndex)"
-                      >
-                        {{ questionIndex === wholeQuestions.length - 1 ? '采纳并提交' : '采纳并继续' }}
-                      </UiButton>
-                    </a-space>
+                    <template #header>
+                      <div class="whole-question-score__header">
+                        <UiTag tone="blue" size="sm">第 {{ question.questionNo }} 题</UiTag>
+                        <UiTag tone="gray" size="sm">{{ question.questionTypeMessage }}</UiTag>
+                        <UiTag tone="green" size="sm">满分 {{ question.fullScore }}</UiTag>
+                        <UiTag
+                          v-if="isWholeQuestionScored(question.questionTemplateId)"
+                          tone="green"
+                          size="sm"
+                        >
+                          已给 {{ getWholeQuestionForm(question.questionTemplateId).score }} 分
+                        </UiTag>
+                        <UiTag v-else tone="orange" size="sm">待评分</UiTag>
+                        <UiButton
+                          size="sm"
+                          variant="outline"
+                          :disabled="!question.pageId"
+                          @click.stop="focusWholeQuestionPage(question)"
+                        >
+                          定位答题页
+                        </UiButton>
+                      </div>
+                    </template>
                     <a-typography-paragraph
-                      v-if="question.aiDiagnostic"
-                      class="whole-question-score__ai-diagnostic"
-                      :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
+                      v-if="question.recognizedAnswer"
+                      class="whole-question-score__recognized-answer"
+                      :ellipsis="{ rows: 3, expandable: true, symbol: '展开' }"
                     >
-                      {{ question.aiDiagnostic }}
+                      {{ question.recognizedAnswer }}
                     </a-typography-paragraph>
-                  </div>
-                  <a-textarea
-                    v-model:value="getWholeQuestionForm(question.questionTemplateId).annotationText"
-                    :rows="3"
-                    :maxlength="1000"
-                    :disabled="isReadOnly"
-                    placeholder="题目批注，可选"
-                    show-count
-                  />
-                </div>
+                    <a-typography-text
+                      v-else
+                      type="secondary"
+                      class="whole-question-score__recognized-answer--empty"
+                    >
+                      正式 OCR 未识别出可展示答案
+                    </a-typography-text>
+                    <a-input-number
+                      v-model:value="getWholeQuestionForm(question.questionTemplateId).score"
+                      :ref="(el: unknown) => setWholeQuestionScoreInputRef(el, questionIndex)"
+                      :min="0"
+                      :max="question.fullScore"
+                      :step="0.5"
+                      :disabled="isReadOnly"
+                      style="width: 100%; margin-bottom: 8px"
+                      placeholder="本题给分"
+                      @keydown.enter.prevent="handleWholeQuestionScoreEnter(questionIndex)"
+                    />
+                    <div v-if="question.aiScore != null" class="whole-question-score__ai">
+                      <div class="whole-question-score__ai-text">
+                        <span>AI 建议分：</span>
+                        <strong>{{ question.aiScore }}</strong>
+                        <span>/ {{ question.fullScore }}</span>
+                      </div>
+                      <a-space size="small" wrap>
+                        <UiButton
+                          size="sm"
+                          variant="outline"
+                          :disabled="isReadOnly"
+                          @click="fillWholeQuestionAiScore(question)"
+                        >
+                          填入 AI 分
+                        </UiButton>
+                        <UiButton
+                          size="sm"
+                          variant="primary"
+                          :disabled="isReadOnly || submitting || !canSubmit"
+                          @click="acceptWholeQuestionAiScore(question, questionIndex)"
+                        >
+                          {{ questionIndex === wholeQuestions.length - 1 ? '采纳并提交' : '采纳并继续' }}
+                        </UiButton>
+                        <UiButton
+                          size="sm"
+                          variant="outline"
+                          :disabled="!canRescoreWholeQuestion(question)"
+                          :loading="rescoringGradeResultId === question.gradeResultId"
+                          @click="openRescoreConfirmForWholeQuestion(question)"
+                        >
+                          重新 AI 复评
+                        </UiButton>
+                      </a-space>
+                      <a-typography-paragraph
+                        v-if="question.aiDiagnostic"
+                        class="whole-question-score__ai-diagnostic"
+                        :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
+                      >
+                        {{ question.aiDiagnostic }}
+                      </a-typography-paragraph>
+                    </div>
+                    <div v-else-if="isWholeQuestionAiScorePending(question)" class="whole-question-score__ai-pending">
+                      <a-typography-text type="secondary">AI 评分加载中...</a-typography-text>
+                    </div>
+                    <a-textarea
+                      v-model:value="getWholeQuestionForm(question.questionTemplateId).annotationText"
+                      :rows="3"
+                      :maxlength="1000"
+                      :disabled="isReadOnly"
+                      placeholder="题目批注，可选"
+                      show-count
+                    />
+                  </a-collapse-panel>
+                </a-collapse>
+                <p v-if="usesWholePaperWorkspace" class="marking-task-detail-page__keyboard-hint">
+                  Enter 确认本题并展开下一题 · PageUp/PageDown 翻页 · J/K 切换任务
+                </p>
               </template>
               <a-form-item v-else label="教师给分" name="score" required>
                 <a-input-number
@@ -303,7 +368,14 @@
                 <!-- FIX-10: 快捷给分 -->
                 <a-space size="small" style="margin-top: 8px">
                   <UiButton size="sm" variant="outline" :disabled="isReadOnly" @click="form.score = questionView?.fullScore">满分</UiButton>
-                  <UiButton size="sm" variant="outline" :disabled="isReadOnly" @click="form.score = Math.round((questionView?.fullScore ?? 0) / 2 * 10) / 10">半分</UiButton>
+                  <UiButton
+                    size="sm"
+                    variant="outline"
+                    :disabled="isReadOnly"
+                    @click="form.score = calcHalfScore(questionView?.fullScore)"
+                  >
+                    {{ questionViewHalfScoreLabel }}
+                  </UiButton>
                   <UiButton size="sm" variant="outline" :disabled="isReadOnly" @click="form.score = 0">零分</UiButton>
                   <UiButton v-if="questionView?.aiScore != null" size="sm" variant="outline" :disabled="isReadOnly" @click="form.score = questionView.aiScore">填入 AI 分</UiButton>
                   <UiButton
@@ -314,6 +386,31 @@
                     @click="acceptAiScoreAndSubmit"
                   >
                     采纳并提交
+                  </UiButton>
+                  <UiButton
+                    v-else-if="isQuestionViewAiScorePending"
+                    size="sm"
+                    variant="outline"
+                    disabled
+                  >
+                    AI 评分加载中...
+                  </UiButton>
+                  <UiButton
+                    size="sm"
+                    variant="outline"
+                    :disabled="!canRescoreQuestionView"
+                    :loading="rescoringGradeResultId === questionView?.gradeResultId"
+                    @click="openRescoreConfirmForQuestionView"
+                  >
+                    重新 AI 复评
+                  </UiButton>
+                  <UiButton
+                    size="sm"
+                    variant="ghost"
+                    :disabled="!questionView?.gradeResultId"
+                    @click="openExecutionsDrawerForQuestionView"
+                  >
+                    AI 历史
                   </UiButton>
                 </a-space>
                 <p v-if="!usesWholePaperWorkspace" class="marking-task-detail-page__keyboard-hint">
@@ -347,6 +444,38 @@
       :task-id="task.id"
       @revealed="handleAnonymousRevealed"
     />
+
+    <a-drawer
+      v-model:open="executionsDrawerOpen"
+      title="本题 AI 历次执行记录"
+      width="720"
+      placement="right"
+      destroy-on-close
+    >
+      <a-spin :spinning="executionsLoading" tip="加载 AI 历史...">
+        <UiEmpty v-if="!executionsLoading && aiExecutions.length === 0" description="暂无数据" />
+        <a-timeline v-else>
+          <a-timeline-item
+            v-for="(item, index) in aiExecutions"
+            :key="`${item.traceId}-${index}`"
+            :color="aiExecutionTimelineColor(item.status)"
+          >
+            <div class="marking-task-detail-page__execution-item">
+              <div class="marking-task-detail-page__execution-head">
+                <UiTag :tone="aiExecutionStatusTone(item.status)" size="sm">
+                  {{ aiExecutionStatusLabel(item.status) }}
+                </UiTag>
+                <UiTag :tone="aiAbilityTone(item.abilityCode)" size="sm">
+                  {{ aiAbilityLabel(item.abilityCode) }}
+                </UiTag>
+                <span class="muted">{{ item.createTime }}</span>
+              </div>
+              <div v-if="item.diagnostic" class="muted">{{ item.diagnostic }}</div>
+            </div>
+          </a-timeline-item>
+        </a-timeline>
+      </a-spin>
+    </a-drawer>
   </div>
 </template>
 
@@ -370,6 +499,7 @@ import type {
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
+import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import LeftOutlined from '@ant-design/icons-vue/LeftOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -377,7 +507,7 @@ import RightOutlined from '@ant-design/icons-vue/RightOutlined'
 import UnlockOutlined from '@ant-design/icons-vue/UnlockOutlined'
 import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ANONYMITY_MODE_LABEL } from '@/apis/mark/anonymity-mode'
 import {
@@ -387,6 +517,17 @@ import {
   listAnnotations,
   validateAnnotationContract,
 } from '@/apis/mark/exam-annotation'
+import {
+  AI_ABILITY_LABEL,
+  AI_ABILITY_TONE,
+  AI_EXECUTION_STATUS_LABEL,
+  AI_EXECUTION_STATUS_TONE,
+  listAiExecutionsForQuestion,
+  rescoreQuestionByAi,
+  type AiAbilityCode,
+  type AiExecutionStatusCode,
+  type ExamQuestionAiExecutionItemVO,
+} from '@/apis/mark/exam-grade'
 import {
   QUALITY_DECISION_LABEL,
   QUALITY_DECISION_TONE,
@@ -407,6 +548,7 @@ import WholePaperGallery from '@/components/mark/WholePaperGallery.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiPopoverPanel from '@/components/ui-guide/ui/UiPopoverPanel.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import {
   buildConfidentialWatermarkLines,
@@ -414,20 +556,22 @@ import {
   isExamConfidentialFlag,
 } from '@/composables/useConfidentialWatermark'
 import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
-import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useWorkspaceExamId, MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { useWholePaperGallery } from '@/composables/useWholePaperGallery'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
-import { showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { formatDateTime } from '@/utils/format'
 import { isGradingEnterInputTarget, isGradingKeyboardInputTarget } from '@/utils/grading-keyboard'
 import { readAllPages } from '@/utils/page-result'
-import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamWorkspaceMarkingTaskDetail' })
 
 const SUBMITTED_PAGE_ANNOTATION_PAGE_SIZE = 100
 const route = useRoute()
+const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 const { refreshSnapshot } = useWorkspaceExamId()
 
 function taskStatusTone(status: MarkingTaskStatusCode): BadgeTone {
@@ -608,6 +752,7 @@ async function loadTask(): Promise<void> {
     }
     if (usesWholePaperWorkspace.value) {
       await openWholePaperView()
+      syncWholeQuestionAccordion()
       if (isWholePaperTask.value && detail.taskStatus === 'FINALIZED') {
         await loadSubmittedPageAnnotations()
       }
@@ -678,6 +823,153 @@ async function reloadQuestionView(): Promise<void> {
   await openQuestionView()
 }
 
+/** 按满分折半给分，保留一位小数，与 input-number step=0.5 一致 */
+function calcHalfScore(fullScore: number | undefined | null): number {
+  return Math.round((fullScore ?? 0) / 2 * 10) / 10
+}
+
+const questionViewHalfScoreLabel = computed(() => `半分 (${calcHalfScore(questionView.value?.fullScore)})`)
+
+/** 题目级视图是否预期会有 AI 建议分：主观题或客观题 AI 评分策略 */
+function expectsQuestionViewAiScore(view: MarkingQuestionViewVO | null | undefined): boolean {
+  if (!view || view.aiScore != null) return false
+  if (view.questionType === 'SUBJECTIVE') return true
+  return view.comparePolicy === 'AI_GRADE'
+}
+
+/** AI 尚未返回建议分且无失败诊断时，视为仍在加载 */
+const isQuestionViewAiScorePending = computed(() => {
+  const view = questionView.value
+  if (!expectsQuestionViewAiScore(view)) return false
+  return !view?.aiDiagnostic
+})
+
+function isWholeQuestionAiScorePending(question: QuestionMarkingGroupQuestionVO): boolean {
+  if (question.aiScore != null) return false
+  if (question.questionType !== 'SUBJECTIVE') return false
+  return !question.aiDiagnostic
+}
+
+const rescoringGradeResultId = ref<string | null>(null)
+const executionsDrawerOpen = ref(false)
+const executionsLoading = ref(false)
+const aiExecutions = ref<ExamQuestionAiExecutionItemVO[]>([])
+const executionsGradeResultId = ref<string | null>(null)
+
+const canRescoreQuestionView = computed(() => {
+  if (isReadOnly.value || submitting.value || rescoringGradeResultId.value) return false
+  return !!questionView.value?.gradeResultId && !!task.value?.examId
+})
+
+function canRescoreWholeQuestion(question: QuestionMarkingGroupQuestionVO): boolean {
+  if (isReadOnly.value || submitting.value) return false
+  if (!question.gradeResultId || !task.value?.examId) return false
+  return question.questionType === 'SUBJECTIVE'
+}
+
+function aiRescoreDiagnosticText(diagnostic?: string): string {
+  return getUserErrorMessage(
+    { message: diagnostic },
+    'AI 复评暂未生成可采纳评分，请按题目评分细则继续人工给分',
+  )
+}
+
+function openRescoreConfirmForQuestionView(): void {
+  if (!canRescoreQuestionView.value || !task.value?.examId || !questionView.value?.gradeResultId) return
+  void confirmAsync({
+    title: '重新生成单题 AI 复评？',
+    content: '系统会重新生成单题 AI 复评结果，不会直接写入教师给分。',
+    type: 'info',
+    okText: '生成 AI 复评',
+    cancelText: '取消',
+    onOk: () => doRescoreByAi(task.value!.examId, questionView.value!.gradeResultId!, reloadQuestionView),
+  })
+}
+
+function openRescoreConfirmForWholeQuestion(question: QuestionMarkingGroupQuestionVO): void {
+  if (!canRescoreWholeQuestion(question) || !task.value?.examId || !question.gradeResultId) return
+  void confirmAsync({
+    title: `重新生成第 ${question.questionNo} 题 AI 复评？`,
+    content: '系统会重新生成单题 AI 复评结果，不会直接写入教师给分。',
+    type: 'info',
+    okText: '生成 AI 复评',
+    cancelText: '取消',
+    onOk: () => doRescoreByAi(task.value!.examId, question.gradeResultId!, reloadWholePaperView),
+  })
+}
+
+async function doRescoreByAi(
+  examId: string,
+  gradeResultId: string,
+  refresh: () => Promise<void>,
+): Promise<void> {
+  rescoringGradeResultId.value = gradeResultId
+  try {
+    const result = await rescoreQuestionByAi({ examId, gradeResultId })
+    if (Boolean(result.scored) && result.aiScore != null) {
+      message.success(`AI 复评完成，AI 评分 ${result.aiScore} 分`)
+    } else {
+      message.warning(aiRescoreDiagnosticText(result.diagnostic))
+    }
+    await refresh()
+    if (executionsDrawerOpen.value && executionsGradeResultId.value === gradeResultId) {
+      await loadAiExecutions(gradeResultId)
+    }
+  } catch (error) {
+    showUserError(error, 'AI 复评调用失败')
+  } finally {
+    rescoringGradeResultId.value = null
+  }
+}
+
+function openExecutionsDrawerForQuestionView(): void {
+  const gradeResultId = questionView.value?.gradeResultId
+  if (!gradeResultId) return
+  executionsGradeResultId.value = gradeResultId
+  executionsDrawerOpen.value = true
+  void loadAiExecutions(gradeResultId)
+}
+
+async function loadAiExecutions(gradeResultId: string): Promise<void> {
+  if (!task.value?.examId) return
+  executionsLoading.value = true
+  try {
+    aiExecutions.value = await listAiExecutionsForQuestion({
+      examId: task.value.examId,
+      gradeResultId,
+    })
+    aiExecutions.value.forEach((record) => {
+      strictEnumLabel(AI_ABILITY_LABEL, record.abilityCode, 'AI 能力编码')
+      strictEnumLabel(AI_EXECUTION_STATUS_LABEL, record.status, 'AI 执行状态')
+    })
+  } catch (error) {
+    showUserError(error, 'AI 复评历史加载失败')
+    aiExecutions.value = []
+  } finally {
+    executionsLoading.value = false
+  }
+}
+
+function aiAbilityLabel(code: AiAbilityCode): string {
+  return strictEnumLabel(AI_ABILITY_LABEL, code, 'AI 能力编码')
+}
+
+function aiAbilityTone(code: AiAbilityCode) {
+  return strictEnumTone(AI_ABILITY_TONE, code, 'AI 能力编码')
+}
+
+function aiExecutionStatusLabel(status: AiExecutionStatusCode): string {
+  return strictEnumLabel(AI_EXECUTION_STATUS_LABEL, status, 'AI 执行状态')
+}
+
+function aiExecutionStatusTone(status: AiExecutionStatusCode) {
+  return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, 'AI 执行状态')
+}
+
+function aiExecutionTimelineColor(status: AiExecutionStatusCode): string {
+  return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, 'AI 执行状态')
+}
+
 // ─── P1.5 整卷视图（composable + 子组件）─────────────────
 const wholePaper = useWholePaperGallery({
   getExamId: () => task.value?.examId,
@@ -712,6 +1004,39 @@ const {
 
 const scoreInputRef = ref<{ focus?: () => void } | null>(null)
 const wholeQuestionScoreInputRefs = ref<Array<{ focus?: () => void } | null>>([])
+const expandedWholeQuestionKey = ref<string>('')
+
+function isWholeQuestionScored(questionTemplateId: string): boolean {
+  const score = getWholeQuestionForm(questionTemplateId).score
+  return score !== undefined && score !== null
+}
+
+/** 默认展开第一道未评分题；若均已评分则展开最后一题。 */
+function resolveDefaultExpandedQuestionKey(): string {
+  const firstUnscored = wholeQuestions.value.find(
+    (question) => !isWholeQuestionScored(question.questionTemplateId),
+  )
+  if (firstUnscored) {
+    return firstUnscored.questionTemplateId
+  }
+  const lastQuestion = wholeQuestions.value[wholeQuestions.value.length - 1]
+  return lastQuestion?.questionTemplateId ?? ''
+}
+
+function syncWholeQuestionAccordion(): void {
+  if (!usesWholePaperWorkspace.value || wholeQuestions.value.length === 0) {
+    expandedWholeQuestionKey.value = ''
+    return
+  }
+  expandedWholeQuestionKey.value = resolveDefaultExpandedQuestionKey()
+}
+
+function expandWholeQuestion(index: number): void {
+  const question = wholeQuestions.value[index]
+  if (question) {
+    expandedWholeQuestionKey.value = question.questionTemplateId
+  }
+}
 
 function setWholeQuestionScoreInputRef(el: unknown, index: number): void {
   wholeQuestionScoreInputRefs.value[index] = (el as { focus?: () => void } | null) ?? null
@@ -724,7 +1049,11 @@ function handleGalleryViewportReady(element: HTMLElement | null): void {
 function focusPrimaryScoreInput(): void {
   window.requestAnimationFrame(() => {
     if (usesWholePaperWorkspace.value) {
-      focusWholeQuestionScoreInput(0)
+      syncWholeQuestionAccordion()
+      const index = wholeQuestions.value.findIndex(
+        (question) => question.questionTemplateId === expandedWholeQuestionKey.value,
+      )
+      focusWholeQuestionScoreInput(index >= 0 ? index : 0)
       return
     }
     scoreInputRef.value?.focus?.()
@@ -732,6 +1061,7 @@ function focusPrimaryScoreInput(): void {
 }
 
 function focusWholeQuestionScoreInput(index: number): void {
+  expandWholeQuestion(index)
   window.requestAnimationFrame(() => {
     wholeQuestionScoreInputRefs.value[index]?.focus?.()
   })
@@ -799,6 +1129,13 @@ function handleWorkspaceKeydown(event: KeyboardEvent): void {
 
 function handleWholeQuestionScoreEnter(questionIndex: number): void {
   if (submitting.value || !canSubmit.value) return
+  const question = wholeQuestions.value[questionIndex]
+  if (!question) return
+  const questionForm = getWholeQuestionForm(question.questionTemplateId)
+  if (questionForm.score === undefined || questionForm.score === null) {
+    message.warning(`请先填写第 ${question.questionNo} 题给分`)
+    return
+  }
   if (questionIndex < wholeQuestions.value.length - 1) {
     focusWholeQuestionScoreInput(questionIndex + 1)
     return
@@ -938,6 +1275,35 @@ async function acceptAiScoreAndSubmit(): Promise<void> {
   await submit()
 }
 
+/** 阅卷表单存在未提交草稿时，通知工作台布局拦截离开 */
+const hasGradingDraft = computed(() => {
+  if (!canSubmit.value || isReadOnly.value) {
+    return false
+  }
+  if (usesWholePaperWorkspace.value) {
+    const hasQuestionDraft = wholeQuestions.value.some((question) => {
+      const questionForm = getWholeQuestionForm(question.questionTemplateId)
+      return (questionForm.score !== undefined && questionForm.score !== null)
+        || (questionForm.annotationText?.trim() ?? '') !== ''
+    })
+    if (hasQuestionDraft) {
+      return true
+    }
+    return Object.values(wholePageAnnotationForms).some((text) => text.trim() !== '')
+  }
+  return form.score !== undefined
+    || (form.annotationNote?.trim() ?? '') !== ''
+})
+
+watch(hasGradingDraft, (dirty) => {
+  if (!workbenchContext?.workspaceUnsavedHint) {
+    return
+  }
+  workbenchContext.workspaceUnsavedHint.value = dirty
+    ? '当前阅卷评分尚未提交，离开工作台将丢失未保存内容'
+    : null
+}, { immediate: true })
+
 watch(taskId, () => {
   // 切题时清空上一题的表单状态，避免误带入下一题
   form.score = undefined
@@ -950,6 +1316,7 @@ watch(taskId, () => {
   questionViewLoading.value = false
   resetWholePaperState()
   wholeQuestionScoreInputRefs.value = []
+  expandedWholeQuestionKey.value = ''
   clearRevealedIdentity()
   revealOpen.value = false
   void loadTask()
@@ -962,6 +1329,9 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleWorkspaceKeydown)
   clearRevealedIdentity()
+  if (workbenchContext?.workspaceUnsavedHint) {
+    workbenchContext.workspaceUnsavedHint.value = null
+  }
 })
 </script>
 
@@ -993,6 +1363,36 @@ onBeforeUnmount(() => {
     color: var(--dp-text-secondary, #475569);
     padding: 0 4px;
     white-space: nowrap;
+  }
+
+  &__summary-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+  }
+
+  &__summary-item {
+    display: grid;
+    grid-template-columns: 72px 1fr;
+    gap: 8px;
+    align-items: start;
+    margin: 0;
+
+    dt {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--dp-text-muted, #64748b);
+    }
+
+    dd {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--dp-text-primary, #0f172a);
+      word-break: break-word;
+    }
   }
 
   &__keyboard-hint {
@@ -1081,16 +1481,54 @@ onBeforeUnmount(() => {
   }
 }
 
-.whole-question-score {
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--dp-border-subtle, #e2e8f0);
+.whole-question-accordion {
+  border: 1px solid var(--dp-border-subtle, #e2e8f0);
+  border-radius: var(--dp-radius-panel, 8px);
+  background: var(--ant-color-bg-container, #fff);
+  overflow: hidden;
 
+  :deep(.ant-collapse-item) {
+    border-bottom: 1px solid var(--dp-border-subtle, #e2e8f0) !important;
+  }
+
+  :deep(.ant-collapse-item:last-child) {
+    border-bottom: none !important;
+  }
+
+  :deep(.ant-collapse-header) {
+    align-items: flex-start !important;
+    padding: 12px 16px !important;
+    background: var(--ant-color-bg-container, #fff) !important;
+  }
+
+  :deep(.ant-collapse-header:hover) {
+    background: var(--dp-surface-subtle, #f8fafc) !important;
+  }
+
+  :deep(.ant-collapse-expand-icon) {
+    color: var(--dp-text-secondary, #475569) !important;
+  }
+
+  :deep(.ant-collapse-content-box) {
+    padding: 0 16px 16px !important;
+  }
+}
+
+.whole-question-score {
   &__header {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     align-items: center;
+    width: 100%;
+  }
+
+  &__recognized-answer {
+    margin-bottom: 8px;
+  }
+
+  &__recognized-answer--empty {
+    display: block;
     margin-bottom: 8px;
   }
 
@@ -1121,6 +1559,11 @@ onBeforeUnmount(() => {
   &__ai-diagnostic {
     margin-bottom: 0;
     color: var(--dp-text-secondary, #475569);
+    font-size: var(--dp-font-size-sm, 13px);
+  }
+
+  &__ai-pending {
+    margin-bottom: 8px;
     font-size: var(--dp-font-size-sm, 13px);
   }
 }

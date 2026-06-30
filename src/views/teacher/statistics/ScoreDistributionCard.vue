@@ -34,7 +34,7 @@
 
       <MarkBarSection
         title="五级分数分布"
-        :hint="`按百分制换算分段（满分 ${distribution.fullScore}，及格线 ${distribution.passScore}）`"
+        :hint="histogramChartHint"
         :item-count="histogramBarItems.length"
         :option="histogramChartOption"
         height="300px"
@@ -48,8 +48,8 @@
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamScoreDistributionVO } from '@/apis/mark/exam-score'
-import type { SignalMetric } from '@/types/workbench'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
+import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref, watch } from 'vue'
 import { getExamScoreDistribution } from '@/apis/mark/exam-score'
@@ -61,6 +61,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError } from '@/utils/error-handler'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
+import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { scoreHistogramToBarItems } from '@/utils/mark-statistics-chart'
 
 defineOptions({ name: 'ScoreDistributionCard' })
@@ -86,11 +87,24 @@ const histogramBarItems = computed(() => {
   })
 })
 
+const histogramChartHint = computed(() => {
+  const dist = distribution.value
+  const staticHint = dist
+    ? `按百分制换算分段（满分 ${dist.fullScore}，及格线 ${dist.passScore}）`
+    : undefined
+  if (dist && dist.participantCount > 0) {
+    const passRate = Math.round((dist.passCount * 100) / dist.participantCount)
+    return `${dist.participantCount} 人中 ${dist.passCount} 人及格（${passRate}%）`
+  }
+  return mergeChartHint(staticHint, buildBarChartInsight(histogramBarItems.value, { valueUnit: ' 人' }))
+})
+
 const { chartOption: histogramChartOption } = useChartOption(() =>
   buildCategoryBarChartOption(histogramBarItems.value, {
     orientation: 'vertical',
     yAxisName: '人数',
     emptyText: '暂无分数段数据',
+    innerCountLabel: true,
   }),
 )
 

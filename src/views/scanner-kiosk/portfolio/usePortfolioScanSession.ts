@@ -31,6 +31,7 @@ export function usePortfolioScanSession() {
   const categoryId = computed(() => String(route.query.categoryId ?? ''))
   const archiveRecordId = computed(() => String(route.query.archiveRecordId ?? ''))
   const gapTaskId = computed(() => String(route.query.gapTaskId ?? ''))
+  const dispatchTicketId = computed(() => String(route.query.dispatchTicketId ?? ''))
   const returnTo = computed(() => String(route.query.returnTo ?? ''))
 
   const collectModeLabel = computed(() =>
@@ -38,6 +39,9 @@ export function usePortfolioScanSession() {
   )
 
   async function loadContext() {
+    if (!dispatchTicketId.value) {
+      throw new Error('缺少派单 ticketId，请从 Hub 或派单页进入')
+    }
     if (!collectMode.value || !teacherId.value) {
       throw new Error('缺少 collectMode 或 teacherId')
     }
@@ -87,6 +91,9 @@ export function usePortfolioScanSession() {
   }
 
   async function startSession() {
+    if (!dispatchTicketId.value) {
+      throw new Error('缺少派单 ticketId，请从 Hub 或派单页进入')
+    }
     if (!collectMode.value || !teacherId.value) {
       throw new Error('缺少采集模式或教师 ID')
     }
@@ -105,6 +112,7 @@ export function usePortfolioScanSession() {
         taskType: taskType.value || undefined,
         templateCode: templateCode.value || undefined,
         archiveRecordId: archiveRecordId.value || undefined,
+        dispatchTicketId: dispatchTicketId.value,
         scannerDeviceId: setup.scannerDeviceId!,
         scannerStationId: setup.scannerStationId!,
         scanConfig: {
@@ -134,6 +142,7 @@ export function usePortfolioScanSession() {
     categoryId,
     archiveRecordId,
     gapTaskId,
+    dispatchTicketId,
     returnTo,
     loadContext,
     startSession,

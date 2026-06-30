@@ -246,7 +246,7 @@ const openExportTaskCenter = () => {
 }
 
 // 响应式设计
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .tenant-info {
     display: none; // 小屏幕隐藏租户信息
   }

@@ -256,6 +256,7 @@ const taskBusinessTypeMap: Record<AiTaskType, AiTaskBusinessType> = {
   PORTFOLIO_POLICY_MATCH: 'PORTFOLIO_MATERIAL',
   PORTFOLIO_REPORT_GENERATE: 'PORTFOLIO_EVALUATION',
   PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN: 'PORTFOLIO_EVALUATION',
+  PORTFOLIO_COCKPIT_ASK: 'PORTFOLIO_EVALUATION',
   PROGRAM_REPORT_GENERATE: 'REPORT',
   SYLLABUS_PARSE: 'QUALITY_COURSE',
   TRAINING_PLAN_PARSE: 'TRAINING_PLAN',
@@ -1149,7 +1150,8 @@ onMounted(async () => {
           <UiButton size="sm" @click="openSubmit">提交任务</UiButton>
         </template>
 
-        <UiFilterBar variant="plain"
+        <UiFilterBar
+          variant="plain"
           v-model="filterModel"
           :fields="filterFields"
           show-labels

@@ -1,0 +1,19 @@
+// 与 src/constants/breakpoints.ts 保持数值同步
+
+$layout-mobile-max: 767px;
+$layout-desktop-min: 768px;
+
+$ant-grid-sm: 576px;
+$ant-grid-md: 768px;
+$ant-grid-lg: 992px;
+$ant-grid-xl: 1200px;
+$ant-grid-xxl: 1600px;
+
+$screen-xs-max: $layout-mobile-max;
+$screen-sm-min: $layout-desktop-min;
+$screen-sm-max: 1024px;
+$screen-md-min: 1025px;
+$screen-md-max: 1280px;
+$screen-lg-min: 1281px;
+$screen-lg-max: 1440px;
+$screen-xl-min: 1441px;

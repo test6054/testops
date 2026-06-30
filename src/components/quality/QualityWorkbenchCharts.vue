@@ -20,6 +20,7 @@ import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
 import { computed } from 'vue'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
+import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 
 defineOptions({ name: 'QualityWorkbenchCharts' })
 
@@ -59,6 +60,7 @@ function resolveOption(group: QualityChartGroup): EChartsCoreOption {
     orientation: 'vertical',
     yAxisName: '数量',
     emptyText: '暂无统计数据',
+    dataZoom: true,
   })
   optionCache.set(signature, option)
   if (optionCache.size > 48) {
@@ -78,7 +80,7 @@ const sectionViews = computed<ChartSectionView[]>(() =>
   visibleGroups.value.map((group) => ({
     key: group.key,
     title: group.title,
-    hint: group.hint,
+    hint: mergeChartHint(group.hint, buildBarChartInsight(group.items)),
     height: group.height,
     items: group.items,
     option: resolveOption(group),

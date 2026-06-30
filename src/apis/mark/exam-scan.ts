@@ -411,6 +411,31 @@ export function pageScannerBatches(
   return http.post<PageResult<ExamScannerBatchVO>>('/api/mark/exams/scanner-batches/page', request)
 }
 
+/** 扫描批次自动页登记重试请求 - 对应 ExamScanBatchPageRegisterRetryRequest */
+export interface ExamScanBatchPageRegisterRetryRequest {
+  examId: string
+  scanBatchId: string
+}
+
+/** 扫描批次自动页登记重试响应 - 对应 ExamScanBatchPageRegisterRetryResponse */
+export interface ExamScanBatchPageRegisterRetryResponse {
+  examId?: string
+  scanBatchId?: string
+  batchStatus?: ScanBatchStatusCode
+  pageRegisterBlocked?: boolean
+  pageRegisterDiagnostic?: string
+}
+
+/** 重试页登记阻断批次的自动页登记。 */
+export function retryScanBatchPageRegister(
+  request: ExamScanBatchPageRegisterRetryRequest,
+): Promise<ExamScanBatchPageRegisterRetryResponse> {
+  return http.post<ExamScanBatchPageRegisterRetryResponse>(
+    '/api/mark/exams/scanner-batches/page-register/retry',
+    request,
+  )
+}
+
 /** 查询扫描异常待办列表。 */
 export function listScanAttentions(
   request: ScanAttentionQueryRequest,

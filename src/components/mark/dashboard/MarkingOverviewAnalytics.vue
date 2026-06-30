@@ -3,7 +3,7 @@
     <UiCard title="旅程阶段分布" :description="scopeHint" bordered compact>
       <MarkBarSection
         title="各阶段考试数"
-        :hint="scopeHint"
+        :hint="journeyStageHint"
         :item-count="journeyStageItems.length"
         :option="journeyStageOption"
         height="220px"
@@ -15,7 +15,7 @@
     <UiCard title="筛选域阅卷进度" :description="scopeHint" bordered compact>
       <MarkBarSection
         title="阅卷进度汇总"
-        :hint="scopeHint"
+        :hint="markingProgressHint"
         :item-count="markingProgressItems.length"
         :option="markingProgressOption"
         height="220px"
@@ -27,7 +27,7 @@
     <UiCard title="待办类型构成" :description="scopeHint" bordered compact>
       <MarkBarSection
         title="待办类型分布"
-        :hint="scopeHint"
+        :hint="todoTypeHint"
         :item-count="todoTypeItems.length"
         :option="todoTypeOption"
         height="200px"
@@ -55,6 +55,7 @@ import {
   filterScopeHint,
 } from '@/utils/mark-dashboard-charts'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
+import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 
 defineOptions({ name: 'MarkingOverviewAnalytics' })
 
@@ -77,6 +78,21 @@ const journeyStageItems = computed(() => {
 const markingProgressItems = computed(() => buildMarkingProgressChartItems(props.markingProgressSummary))
 
 const todoTypeItems = computed(() => buildTodoTypeChartItems(props.todoTypeSummary))
+
+const journeyStageHint = computed(() => mergeChartHint(
+  scopeHint.value,
+  buildBarChartInsight(journeyStageItems.value, { valueUnit: ' 场' }),
+))
+
+const markingProgressHint = computed(() => mergeChartHint(
+  scopeHint.value,
+  buildBarChartInsight(markingProgressItems.value, { valueUnit: ' 项' }),
+))
+
+const todoTypeHint = computed(() => mergeChartHint(
+  scopeHint.value,
+  buildBarChartInsight(todoTypeItems.value, { valueUnit: ' 项' }),
+))
 
 const journeyStageOption = computed((): EChartsCoreOption => buildCategoryBarChartOption(
   journeyStageItems.value,

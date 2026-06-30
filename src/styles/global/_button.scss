@@ -53,9 +53,9 @@
 :global(.dp-btn:disabled) {
   cursor: not-allowed;
   box-shadow: none;
-  color: var(--ant-color-text-quaternary);
+  color: var(--dp-text-disabled);
   border-color: var(--ant-color-border-secondary);
-  background-color: var(--ant-color-fill-tertiary);
+  background-color: var(--dp-bg-button-disabled);
 }
 
 :global(.dp-btn--primary:disabled) {
@@ -99,9 +99,9 @@
 :global(.ant-btn.dp-btn.dp-btn--outline:disabled) {
   cursor: not-allowed;
   box-shadow: none;
-  color: var(--ant-color-text-quaternary);
+  color: var(--dp-text-disabled);
   border-color: var(--ant-color-border-secondary);
-  background-color: var(--ant-color-fill-tertiary);
+  background-color: var(--dp-bg-button-disabled);
 }
 
 :global(.ant-btn.dp-btn.dp-btn--primary:disabled) {

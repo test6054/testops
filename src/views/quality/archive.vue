@@ -1,15 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AccreditationCockpitVO, AccreditationCycleVO } from '@/apis/quality/accreditation'
-/**
- * 质量评价 - 材料归档与专家包导出台
- *
- * 后端契约（ArchiveController）：
- * - POST /quality/archives/page 分页查询
- * - POST /quality/archives/detail 详情
- * - POST /quality/archives/create / update / delete 手工台帐补登
- * - POST /quality/archives/export-expert-package 专家材料包同步导出，返回 archiveId
- */
 import type {
   ArchiveQueryRequest,
   ArchiveSaveRequest,
@@ -620,7 +611,8 @@ onMounted(async () => {
     <UiCard class="detail-table-card archive__table-card">
       <template #title>归档列表</template>
 
-      <UiFilterBar variant="plain"
+      <UiFilterBar
+        variant="plain"
         v-model="filterModel"
         :fields="filterFields"
         show-labels

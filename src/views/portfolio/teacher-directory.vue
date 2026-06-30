@@ -247,7 +247,7 @@ function openIdentityCreate(context: { userId: string, nickName?: string, depart
   identityEditor.identityType = 'INDUSTRY_MENTOR'
   identityEditor.identityStatus = 'ACTIVE'
   identityEditor.appointmentNo = ''
-  identityEditor.displayName = context.nickName ?? ''
+  identityEditor.displayName = context.nickName!
   identityEditor.enterpriseName = ''
   identityEditor.anchorDepartmentId = context.departmentId
   identityEditor.anchorPortfolioOrgId = undefined
@@ -413,7 +413,7 @@ onMounted(async () => {
             {{ detail.teacherNumber ?? '—' }}
           </a-descriptions-item>
           <a-descriptions-item label="姓名">
-            {{ detail.nickName ?? '—' }}
+            {{ detail.nickName }}
           </a-descriptions-item>
           <a-descriptions-item label="账号">
             {{ detail.userName ?? '—' }}

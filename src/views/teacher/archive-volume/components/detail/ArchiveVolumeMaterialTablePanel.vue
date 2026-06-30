@@ -2,11 +2,42 @@
   <div class="archive-volume-material-table">
     <div v-if="canRegisterMaterial" class="archive-volume-material-table__toolbar">
       <UiButton size="sm" @click="openUploadModal">登记材料</UiButton>
+      <UiButton
+        v-if="canGenerateExamReports"
+        size="sm"
+        variant="outline"
+        :loading="generatingExamAnalysis"
+        @click="handleGenerateExamAnalysis"
+      >
+        生成试卷分析
+      </UiButton>
+      <UiButton
+        v-if="canGenerateExamReports"
+        size="sm"
+        variant="outline"
+        :loading="generatingCourseObjective"
+        @click="handleGenerateCourseObjective"
+      >
+        生成达成度报告
+      </UiButton>
       <UiButton size="sm" variant="outline" @click="openArchiveScan">一体机扫描</UiButton>
       <UiButton size="sm" variant="outline" @click="batchRegisterOpen = true">批量登记</UiButton>
       <UiButton size="sm" variant="outline" @click="courseSyncOpen = true">课程平台同步</UiButton>
       <UiButton size="sm" variant="outline" @click="openSharedRefModal">引用合用材料</UiButton>
     </div>
+    <p
+      v-if="canGenerateExamReports && courseObjectiveMappingHint"
+      class="archive-volume-material-table__mapping-hint"
+    >
+      {{ courseObjectiveMappingHint }}
+      <RouterLink
+        v-if="courseObjectiveMappingPath"
+        :to="courseObjectiveMappingPath"
+        class="archive-volume-material-table__mapping-link"
+      >
+        前往考试统计维护映射
+      </RouterLink>
+    </p>
     <UiDataTable
       pagination-mode="none"
       :columns="materialColumns"
@@ -145,6 +176,20 @@
       v-model:open="ocrDetailOpen"
       :material-id="ocrDetailMaterialId"
     />
+    <ScanDispatchDialog
+      v-model:open="scanDispatchOpen"
+      :volume-id="volumeId"
+      :catalog-code="scanDispatchQuery?.catalogCode"
+      :material-type="scanDispatchMaterialType"
+      :archive-batch-mode="scanDispatchQuery?.batchMode"
+      :archive-title="detail.volume.archiveTitle"
+      @created="handleDispatchCreated"
+    />
+    <ScanDispatchResultDialog
+      v-model:open="scanDispatchResultOpen"
+      :volume-id="volumeId"
+      :payload="scanDispatchResult"
+    />
   </div>
 </template>
 
@@ -158,13 +203,16 @@ import type {
 } from '@/apis/mark/archive-volume'
 import type { PaperArchiveOcrStatusCode } from '@/apis/mark/paper-archive'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type {ScanDispatchResultPayload} from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue';
 import { message } from 'ant-design-vue'
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import {
   ARCHIVE_MATERIAL_SUBMISSION_STATUS_LABEL,
   ARCHIVE_MATERIAL_SUBMISSION_STATUS_TONE,
   ARCHIVE_MATERIAL_TYPE_LABEL,
+  generateArchiveVolumeCourseObjectiveReport,
+  generateArchiveVolumeExamAnalysisReport,
   registerArchiveSharedMaterialRef,
   registerArchiveVolumeMaterial,
   triggerArchiveVolumeMaterialOcr,
@@ -185,6 +233,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveVolumeBatchRegisterModal from '@/views/teacher/archive-volume/archive-volume-batch-register-modal.vue'
 import ArchiveVolumeCourseSyncModal from '@/views/teacher/archive-volume/archive-volume-course-sync-modal.vue'
 import ArchiveVolumeMaterialOcrDetailModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailModal.vue'
+import ScanDispatchDialog from '@/views/teacher/archive-volume/components/ScanDispatchDialog.vue'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 defineOptions({ name: 'ArchiveVolumeMaterialTablePanel' })
 
@@ -201,15 +251,31 @@ const emit = defineEmits<{
 }>()
 
 const route = useRoute()
-const router = useRouter()
 const batchRegisterOpen = ref(false)
 const courseSyncOpen = ref(false)
 const uploading = ref(false)
+const generatingExamAnalysis = ref(false)
+const generatingCourseObjective = ref(false)
 const uploadModalOpen = ref(false)
 const sharedRefModalOpen = ref(false)
 const sharedRefSubmitting = ref(false)
 const ocrDetailOpen = ref(false)
 const ocrDetailMaterialId = ref<string>()
+const scanDispatchOpen = ref(false)
+const scanDispatchResultOpen = ref(false)
+const scanDispatchQuery = ref<Record<string, string> | null>(null)
+const scanDispatchResult = ref<ScanDispatchResultPayload | null>(null)
+
+const scanDispatchMaterialType = computed(() => {
+  const value = scanDispatchQuery.value?.materialType
+  if (!value) {
+    return undefined
+  }
+  if (value in ARCHIVE_MATERIAL_TYPE_LABEL) {
+    return value as ArchiveMaterialTypeCode
+  }
+  return undefined
+})
 
 const uploadForm = reactive({
   materialType: undefined as ArchiveMaterialTypeCode | undefined,
@@ -252,6 +318,64 @@ const filteredMaterials = computed(() => {
   if (!key) return materials
   return materials.filter(item => (item.catalogCode || item.materialType) === key)
 })
+
+const canGenerateExamReports = computed(() => Boolean(props.detail.volume?.examId))
+
+const courseObjectiveMappingPath = computed(() => {
+  const examId = props.detail.volume?.examId
+  if (!examId) return null
+  return `/teacher/exams/${examId}/archive/statistics`
+})
+
+const courseObjectiveMappingHint = computed(() => {
+  if (props.detail.courseObjectiveReportReady === true) return null
+  const total = props.detail.courseObjectiveTotalQuestionCount
+  const mapped = props.detail.courseObjectiveMappedQuestionCount
+  const goalTotal = props.detail.courseObjectiveTotalGoalCount
+  const goalCovered = props.detail.courseObjectiveCoveredGoalCount
+  if (total != null && mapped != null && total > 0 && mapped >= total
+      && goalTotal != null && goalCovered != null && goalTotal > 0 && goalCovered < goalTotal) {
+    return `quality 课程目标覆盖 ${goalCovered}/${goalTotal} 未完成，须确保每个课程目标至少映射一题后再生成达成度报告。`
+  }
+  if (total == null || mapped == null) {
+    return '生成课程目标达成报告前，须先在考试统计页完成全部试题的课程目标映射，并覆盖全部 quality 课程目标。'
+  }
+  return `试题-课程目标映射 ${mapped}/${total} 未完成，生成达成度报告前须补全全部映射并覆盖每个 quality 课程目标。`
+})
+
+async function handleGenerateExamAnalysis(): Promise<void> {
+  generatingExamAnalysis.value = true
+  try {
+    await generateArchiveVolumeExamAnalysisReport(props.volumeId)
+    message.success('试卷分析报告已生成并登记')
+    emitRefreshed()
+  }
+  catch (error) {
+    showUserError(error, '生成试卷分析报告失败')
+  }
+  finally {
+    generatingExamAnalysis.value = false
+  }
+}
+
+async function handleGenerateCourseObjective(): Promise<void> {
+  if (props.detail.courseObjectiveReportReady === false) {
+    message.warning(courseObjectiveMappingHint.value ?? '请先完成试题-课程目标映射')
+    return
+  }
+  generatingCourseObjective.value = true
+  try {
+    await generateArchiveVolumeCourseObjectiveReport(props.volumeId)
+    message.success('课程目标达成报告已生成并登记')
+    emitRefreshed()
+  }
+  catch (error) {
+    showUserError(error, '生成课程目标达成报告失败')
+  }
+  finally {
+    generatingCourseObjective.value = false
+  }
+}
 
 function materialTypeLabel(code: ArchiveMaterialTypeCode) {
   return strictEnumLabel(ARCHIVE_MATERIAL_TYPE_LABEL, code, 'materialType')
@@ -387,7 +511,13 @@ function openArchiveScan() {
     message.warning('请先在左侧目录选择可登记的材料项')
     return
   }
-  void router.push({ path: '/scanner-kiosk/archive/session', query })
+  scanDispatchQuery.value = query
+  scanDispatchOpen.value = true
+}
+
+function handleDispatchCreated(payload: ScanDispatchResultPayload) {
+  scanDispatchResult.value = payload
+  scanDispatchResultOpen.value = true
 }
 
 function openSharedRefModal() {
@@ -481,5 +611,15 @@ async function submitSharedRef() {
   margin-top: 4px;
   font-size: 12px;
   color: var(--dp-text-muted, #6b7280);
+}
+
+.archive-volume-material-table__mapping-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--dp-text-secondary, #595959);
+}
+
+.archive-volume-material-table__mapping-link {
+  margin-left: 8px;
 }
 </style>

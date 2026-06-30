@@ -1,3 +1,4 @@
+import type { ExamScannerKioskContextVO } from '@/apis/mark/scanner-kiosk'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
 import http from '@/config/axios'
@@ -32,6 +33,7 @@ export interface ScanWorkOrderStartRequest {
   catalogCode?: string
   materialType?: ArchiveMaterialTypeCode
   archiveBatchMode?: ArchiveScanBatchModeCode
+  dispatchTicketId?: string
   collectMode?: PortfolioCollectModeCode
   teacherId?: string
   gapTaskId?: string
@@ -68,6 +70,8 @@ export interface ScanWorkOrderLifecycleVO {
   pageCount?: number
   fileHash?: string
   diagnostic?: string
+  pageRegisterBlocked?: boolean
+  pageRegisterDiagnostic?: string
   pendingPageCount?: number
   pendingPagesDiagnostic?: string
   committedAiJobId?: string
@@ -112,6 +116,7 @@ export interface ScanWorkOrderContextVO {
   activeWorkOrderId?: string
   activeWorkOrderStatus?: ScanWorkOrderStatusCode
   activeBatchExternalNo?: string
+  examKioskContext?: ExamScannerKioskContextVO
   archiveContext?: ScanWorkOrderArchiveContextVO
   portfolioContext?: ScanWorkOrderPortfolioContextVO
 }
@@ -153,6 +158,8 @@ export interface ScanWorkOrderContextRequest {
   taskKind: ScanTaskKindCode
   scannerDeviceId: string
   scannerStationId: string
+  examId?: string
+  examScanMode?: 'DIRECT' | 'SUPPLEMENT'
   volumeId?: string
   batchExternalNo?: string
   collectMode?: PortfolioCollectModeCode

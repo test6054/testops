@@ -279,7 +279,7 @@ const isLineDone = (status?: UiProgressStepItem['status']) => {
   width: min(240px, 100%);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ui-progress-step-list__head,
   .ui-progress-step-list__footer {
     flex-direction: column;

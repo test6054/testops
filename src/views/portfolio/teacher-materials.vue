@@ -11,6 +11,7 @@ import type {
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import { Input, message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   PAPER_ARCHIVE_OCR_STATUS_LABEL,
   PAPER_ARCHIVE_OCR_STATUS_TONE,
@@ -36,6 +37,9 @@ import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/u
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+
+const router = useRouter()
+const { targetTeacherId } = usePortfolioPageScope()
 
 interface MaterialFilterModel {
   materialType?: PortfolioMaterialType
@@ -83,7 +87,7 @@ const listColumns: ColumnsType<PortfolioMaterialVO> = [
   { title: '分类编码', dataIndex: 'categoryCode', key: 'categoryCode', width: 120 },
   { title: '状态', key: 'status', width: 100 },
   { title: 'OCR', key: 'ocrStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 140, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 220, fixed: 'right' },
 ]
 
 const searchColumns: ColumnsType<PortfolioMaterialSearchResponse> = [
@@ -92,7 +96,6 @@ const searchColumns: ColumnsType<PortfolioMaterialSearchResponse> = [
   { title: '命中摘要', dataIndex: 'snippet', key: 'snippet' },
 ]
 
-const { targetTeacherId } = usePortfolioPageScope()
 const loading = ref(false)
 const saving = ref(false)
 const searchLoading = ref(false)
@@ -246,6 +249,45 @@ async function deleteMaterial(row: PortfolioMaterialVO) {
   }
 }
 
+function openAiOrchestration(row: PortfolioMaterialVO, tab: 'ask' | 'policy' = 'ask') {
+  if (!row.fileNodeId) {
+    message.warning('材料未关联文件')
+    return
+  }
+  const teacherId = targetTeacherId.value ?? row.teacherId
+  if (!teacherId) {
+    message.warning('请先选择教师')
+    return
+  }
+  void router.push({
+    path: '/portfolio/ai-orchestration',
+    query: {
+      teacherId,
+      materialId: row.id,
+      tab,
+    },
+  })
+}
+
+function openAiExtract(row: PortfolioMaterialVO) {
+  if (!row.fileNodeId) {
+    message.warning('材料未关联文件')
+    return
+  }
+  const teacherId = targetTeacherId.value ?? row.teacherId
+  if (!teacherId) {
+    message.warning('请先选择教师')
+    return
+  }
+  void router.push({
+    path: '/portfolio/ai-candidate-confirm',
+    query: {
+      teacherId,
+      materialId: row.id,
+    },
+  })
+}
+
 usePortfolioScopedLoader(() => {
   pageNum.value = 1
   void loadPage()
@@ -326,6 +368,15 @@ usePortfolioScopedLoader(() => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell">
+              <button type="button" class="op-link" @click="openAiExtract(record)">
+                AI 抽取
+              </button>
+              <button type="button" class="op-link" @click="openAiOrchestration(record, 'ask')">
+                智能问数
+              </button>
+              <button type="button" class="op-link" @click="openAiOrchestration(record, 'policy')">
+                政策核验
+              </button>
               <button type="button" class="op-link" @click="openEditModal(record)">
                 编辑
               </button>

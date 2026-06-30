@@ -29,3 +29,6 @@
 
 // 键盘 focus-visible baseline（workbench / mark 原生控件）
 @use './global/focus';
+
+// 减少动态效果：装饰性动画与 shimmer
+@use './global/reduced-motion';

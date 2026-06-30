@@ -35,7 +35,9 @@ import type {
   WorkbenchStage,
 } from '@/types/workbench'
 import { message } from 'ant-design-vue'
+import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { ExportBusinessType } from '@/apis/edu/export'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
@@ -68,6 +70,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageRail from '@/components/workbench/StageRail.vue'
 import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
 import { submitPlatformExcelImport } from '@/composables/platform/usePlatformExcelImport'
+import { useQualityTableExport } from '@/composables/useQualityTableExport'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePolling } from '@/composables/usePolling'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
@@ -82,6 +85,7 @@ const qualityStore = useQualityStore()
 const batches = ref<ScoreBatchVO[]>([])
 const total = ref(0)
 const loading = ref(false)
+const { exporting: scoreBatchExporting, exportExcel: exportScoreBatchExcel } = useQualityTableExport()
 const uploading = ref(false)
 const uploadFileNodeId = ref<string>()
 const uploadFileName = ref<string>()
@@ -201,6 +205,25 @@ function handleSearch() {
 
 function handleReset() {
   resetQuery()
+}
+
+function handleExportScoreBatch(): void {
+  if (!qualityStore.currentTrainingPlanId) {
+    message.warning('请先选择培养方案')
+    return
+  }
+  void exportScoreBatchExcel({
+    businessType: ExportBusinessType.QUALITY_SCORE_BATCH_EXPORT,
+    bizName: '成绩批次',
+    queryParams: {
+      trainingPlanId: qualityStore.currentTrainingPlanId,
+      qualityCourseId: query.qualityCourseId || undefined,
+      assessmentItemId: query.assessmentItemId || undefined,
+      status: query.status || undefined,
+      sourceMode: query.sourceMode || undefined,
+      keyword: query.keyword || undefined,
+    },
+  })
 }
 
 function statusLabel(value: ScoreBatchStatus): string {
@@ -934,8 +957,20 @@ onMounted(async () => {
 
       <UiCard class="detail-table-card score-batch__table-card">
         <template #title>成绩批次</template>
+        <template #extra>
+          <UiButton
+            variant="outline"
+            size="sm"
+            :loading="scoreBatchExporting"
+            @click="handleExportScoreBatch"
+          >
+            <template #icon><DownloadOutlined /></template>
+            导出 Excel
+          </UiButton>
+        </template>
 
-        <UiFilterBar variant="plain"
+        <UiFilterBar
+          variant="plain"
           v-model="filterModel"
           :fields="filterFields"
           show-labels

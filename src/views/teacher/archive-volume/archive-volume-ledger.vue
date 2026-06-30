@@ -14,7 +14,13 @@
       </ContextBar>
     </template>
 
-    <a-tabs v-model:active-key="ledgerTab" class="archive-volume-ledger__tabs">
+    <UiLoadFailure
+      v-if="loadError"
+      title="加载查阅台账失败"
+      :description="loadError"
+    />
+
+    <a-tabs v-else v-model:active-key="ledgerTab" class="archive-volume-ledger__tabs">
       <a-tab-pane key="volume" tab="单卷台账">
         <UiFilterBar
           v-model="volumeFilterModel"
@@ -130,10 +136,12 @@ import { requireArrayResult } from '@/components/quality/selectors/page-contract
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -141,6 +149,8 @@ import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveVolumeLedger' })
+
+const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
 
 const router = useRouter()
 const {
@@ -281,9 +291,10 @@ async function loadTenantLedger() {
     })
     tenantRows.value = readPageList(result, '查阅利用台账异常')
     tenantPagination.total = readPageTotal(result)
+    clearLoadFailure()
   }
   catch (error) {
-    showUserError(error)
+    captureLoadFailure(error, '加载查阅台账失败')
   }
   finally {
     tenantLoading.value = false

@@ -6,10 +6,12 @@
     </header>
     <MarkChart
       v-if="ready"
+      ref="markChartRef"
       :option="option"
       :height="height"
       :aria-label="resolvedAriaLabel"
       class="mark-scatter-section__canvas"
+      @brush-selected="(params) => emit('brush-selected', params)"
     />
     <div v-else class="mark-scatter-section__empty">
       <UiEmpty size="sm" :description="emptyDescription" />
@@ -19,12 +21,25 @@
 
 <script lang="ts" setup>
 import type { EChartsCoreOption } from 'echarts/core'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import { MARK_CHART_EMPTY } from '@/utils/mark-chart-accessibility'
 import MarkChart from './MarkChart.vue'
 
 defineOptions({ name: 'MarkScatterSection' })
+
+const emit = defineEmits<{
+  (e: 'brush-selected', params: unknown): void
+}>()
+
+const markChartRef = ref<InstanceType<typeof MarkChart> | null>(null)
+
+/** 清除 ECharts brush 选区，与下方题目清单联动 */
+function clearBrush(): void {
+  markChartRef.value?.getInstance()?.dispatchAction({ type: 'brush', command: 'clear', areas: [] })
+}
+
+defineExpose({ clearBrush })
 
 const props = withDefaults(defineProps<{
   title: string

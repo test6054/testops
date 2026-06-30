@@ -30,6 +30,8 @@ export function isMarkScannerStationApiUrl(url: string): boolean {
   return (
     url.includes('/api/mark/scanner/kiosk/')
     || url.includes('/api/mark/scanner/work-order/')
+    || url.includes('/api/mark/scanner/dispatch/')
+    || url.includes('/api/mark/scanner/exception/')
     || url.includes('/api/mark/sse/scan-live/')
     || url.includes('/api/mark/scan-live/')
   )

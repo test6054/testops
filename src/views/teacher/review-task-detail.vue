@@ -73,6 +73,24 @@
             </span>
             <span v-else class="muted">-</span>
           </a-descriptions-item>
+          <a-descriptions-item label="AI 来源">
+            <UiTag v-if="currentAiSourceLabel" :tone="currentAiSourceTone" size="sm">
+              {{ currentAiSourceLabel }}
+            </UiTag>
+            <span v-else class="muted">-</span>
+          </a-descriptions-item>
+          <a-descriptions-item label="处理追踪编号">
+            <a-typography-text v-if="detail.aiTraceId" copyable>{{ detail.aiTraceId }}</a-typography-text>
+            <span v-else class="muted">-</span>
+          </a-descriptions-item>
+          <a-descriptions-item label="AI 限流">
+            <UiTag v-if="detail.aiLimited" tone="orange" size="sm">限流/阻断</UiTag>
+            <span v-else class="muted">否</span>
+          </a-descriptions-item>
+          <a-descriptions-item label="评分细则" :span="3">
+            <a-typography-text v-if="detail.evaluationCriteria" :content="detail.evaluationCriteria" />
+            <span v-else class="muted">-</span>
+          </a-descriptions-item>
           <a-descriptions-item label="评语" :span="3">
             <a-typography-text v-if="detail.commentText" :content="detail.commentText" />
             <span v-else class="muted">-</span>
@@ -112,6 +130,32 @@
             <template #title>
               <RobotOutlined />
               <span>AI 评分说明</span>
+              <UiTag v-if="currentAiSourceLabel" :tone="currentAiSourceTone" size="sm">
+                {{ currentAiSourceLabel }}
+              </UiTag>
+              <UiTag v-if="detail?.aiLimited" tone="orange" size="sm">AI 限流/阻断</UiTag>
+            </template>
+            <template #extra>
+              <a-space>
+                <UiButton
+                  size="sm"
+                  variant="ghost"
+                  :disabled="!detail?.gradeResultId"
+                  :loading="executionsLoading"
+                  @click="openExecutionsDrawer"
+                >
+                  查看 AI 历史
+                </UiButton>
+                <UiButton
+                  size="sm"
+                  variant="outline"
+                  :disabled="!canRescoreByAi"
+                  :loading="rescoring"
+                  @click="openRescoreConfirm"
+                >
+                  重新 AI 复评
+                </UiButton>
+              </a-space>
             </template>
             <UiEmpty v-if="!detail?.aiDiagnostic" description="暂无数据" />
             <div v-else class="text-block">{{ aiReviewDiagnosticText(detail.aiDiagnostic) }}</div>
@@ -143,6 +187,34 @@
         </a-col>
       </a-row>
     </a-spin>
+
+    <a-drawer
+      v-model:open="executionsDrawerOpen"
+      title="本题 AI 历次执行记录"
+      width="720"
+      placement="right"
+      destroy-on-close
+    >
+      <a-spin :spinning="executionsLoading" tip="加载 AI 历史...">
+        <UiEmpty v-if="!executionsLoading && aiExecutions.length === 0" description="暂无数据" />
+        <a-timeline v-else>
+          <a-timeline-item
+            v-for="(item, index) in aiExecutions"
+            :key="`${item.traceId}-${index}`"
+            :color="timelineColor(item.status)"
+          >
+            <div class="task-detail-page__execution-item">
+              <div class="task-detail-page__execution-head">
+                <UiTag :tone="statusTone(item.status)" size="sm">{{ statusLabel(item.status) }}</UiTag>
+                <UiTag :tone="abilityTone(item.abilityCode)" size="sm">{{ abilityLabel(item.abilityCode) }}</UiTag>
+                <span class="muted">{{ item.createTime }}</span>
+              </div>
+              <div v-if="item.diagnostic" class="muted">{{ item.diagnostic }}</div>
+            </div>
+          </a-timeline-item>
+        </a-timeline>
+      </a-spin>
+    </a-drawer>
   </div>
 </template>
 
@@ -158,12 +230,24 @@ import PictureOutlined from '@ant-design/icons-vue/PictureOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
+import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   listAnnotations,
   validateAnnotationContract,
 } from '@/apis/mark/exam-annotation'
+import {
+  AI_ABILITY_LABEL,
+  AI_ABILITY_TONE,
+  AI_EXECUTION_STATUS_LABEL,
+  AI_EXECUTION_STATUS_TONE,
+  listAiExecutionsForQuestion,
+  rescoreQuestionByAi,
+  type AiAbilityCode,
+  type AiExecutionStatusCode,
+  type ExamQuestionAiExecutionItemVO,
+} from '@/apis/mark/exam-grade'
 import {
   getReviewTaskDetail,
   REVIEW_TASK_STATUS_LABEL,
@@ -175,6 +259,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useExamConfidential } from '@/composables/useConfidentialWatermark'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -218,6 +303,116 @@ const taskSource = computed(() => (route.query.source === 'arbitration' ? 'arbit
 
 const detail = ref<ReviewTaskDetailVO | null>(null)
 const loading = ref(false)
+const rescoring = ref(false)
+const executionsDrawerOpen = ref(false)
+const executionsLoading = ref(false)
+const aiExecutions = ref<ExamQuestionAiExecutionItemVO[]>([])
+
+const currentAiSourceLabel = computed(() => {
+  const abilityCode = detail.value?.aiAbilityCode
+  if (!abilityCode) return ''
+  return strictEnumLabel(AI_ABILITY_LABEL, abilityCode, 'AI 能力编码')
+})
+
+const currentAiSourceTone = computed<BadgeTone>(() => {
+  const abilityCode = detail.value?.aiAbilityCode
+  if (!abilityCode) return 'gray'
+  return strictEnumTone(AI_ABILITY_TONE, abilityCode, 'AI 能力编码')
+})
+
+const canRescoreByAi = computed(() => {
+  if (rescoring.value || loading.value || !detail.value?.gradeResultId) return false
+  return detail.value.status === 'PENDING' || detail.value.status === 'IN_PROGRESS'
+})
+
+function executionDiagnosticText(diagnostic?: string): string {
+  return getUserErrorMessage(
+    { message: diagnostic },
+    'AI 复评暂未生成可采纳评分，请按题目评分细则继续人工复核',
+  )
+}
+
+function openRescoreConfirm(): void {
+  if (!canRescoreByAi.value) return
+  void confirmAsync({
+    title: '重新生成单题 AI 复评？',
+    content: '系统会重新生成单题 AI 复评结果，不会直接写入教师复核评分。',
+    type: 'info',
+    okText: '生成 AI 复评',
+    cancelText: '取消',
+    onOk: () => doRescoreByAi(),
+  })
+}
+
+async function doRescoreByAi(): Promise<void> {
+  if (!canRescoreByAi.value || !examId.value || !detail.value) return
+  rescoring.value = true
+  try {
+    const result = await rescoreQuestionByAi({
+      examId: examId.value,
+      gradeResultId: detail.value.gradeResultId,
+    })
+    if (Boolean(result.scored) && result.aiScore != null) {
+      message.success(`AI 复评完成，AI 评分 ${result.aiScore} 分`)
+    } else {
+      message.warning(executionDiagnosticText(result.diagnostic))
+    }
+    await loadTask()
+    if (executionsDrawerOpen.value) {
+      await loadAiExecutions()
+    }
+  } catch (error) {
+    showUserError(error, 'AI 复评调用失败')
+  } finally {
+    rescoring.value = false
+  }
+}
+
+function openExecutionsDrawer(): void {
+  if (!detail.value?.gradeResultId) return
+  executionsDrawerOpen.value = true
+  void loadAiExecutions()
+}
+
+async function loadAiExecutions(): Promise<void> {
+  if (!examId.value || !detail.value) return
+  executionsLoading.value = true
+  try {
+    aiExecutions.value = await listAiExecutionsForQuestion({
+      examId: examId.value,
+      gradeResultId: detail.value.gradeResultId,
+    })
+    aiExecutions.value.forEach((record) => {
+      strictEnumLabel(AI_ABILITY_LABEL, record.abilityCode, 'AI 能力编码')
+      strictEnumLabel(AI_EXECUTION_STATUS_LABEL, record.status, 'AI 执行状态')
+    })
+  } catch (error) {
+    showUserError(error, 'AI 复评历史加载失败')
+    aiExecutions.value = []
+  } finally {
+    executionsLoading.value = false
+  }
+}
+
+function abilityLabel(code: AiAbilityCode): string {
+  return strictEnumLabel(AI_ABILITY_LABEL, code, 'AI 能力编码')
+}
+
+function abilityTone(code: AiAbilityCode): BadgeTone {
+  return strictEnumTone(AI_ABILITY_TONE, code, 'AI 能力编码')
+}
+
+function statusLabel(status: AiExecutionStatusCode): string {
+  return strictEnumLabel(AI_EXECUTION_STATUS_LABEL, status, 'AI 执行状态')
+}
+
+function statusTone(status: AiExecutionStatusCode): BadgeTone {
+  return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, 'AI 执行状态')
+}
+
+function timelineColor(status: AiExecutionStatusCode): string {
+  return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, 'AI 执行状态')
+}
 
 const labelStyle: CSSProperties = { color: 'var(--ant-color-text-tertiary)', width: '100px' }
 
@@ -334,6 +529,14 @@ watch(
     font-size: 12px;
     line-height: 1.6;
     color: var(--dp-text-secondary, #475569);
+  }
+
+  &__execution-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
   }
 
   display: flex;

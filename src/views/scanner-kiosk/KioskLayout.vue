@@ -223,6 +223,15 @@ onActivated(() => {
   opacity: 0;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .stage-fade-enter-active,
+  .stage-fade-leave-active,
+  .bottom-bar-slide-enter-active,
+  .bottom-bar-slide-leave-active {
+    transition: none !important;
+  }
+}
+
 /* ===================== Responsive ===================== */
 
 @media (max-width: 1280px) {

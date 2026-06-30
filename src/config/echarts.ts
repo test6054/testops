@@ -12,12 +12,14 @@ import {
   ScatterChart,
 } from 'echarts/charts'
 import {
+  BrushComponent,
   DataZoomComponent,
   GridComponent,
   LegendComponent,
   MarkAreaComponent,
   MarkLineComponent,
   RadarComponent,
+  ToolboxComponent,
   TooltipComponent,
   VisualMapComponent,
 } from 'echarts/components'
@@ -43,6 +45,8 @@ export function setupECharts(): void {
     GridComponent,
     TooltipComponent,
     LegendComponent,
+    BrushComponent,
+    ToolboxComponent,
     DataZoomComponent,
     MarkLineComponent,
     MarkAreaComponent,

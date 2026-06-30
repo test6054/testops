@@ -490,7 +490,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ui-activity-timeline__group-header {
     flex-wrap: wrap;
   }

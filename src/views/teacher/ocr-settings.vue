@@ -691,7 +691,7 @@ onBeforeUnmount(() => {
   gap: 16px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ocr-grid {
     grid-template-columns: 1fr;
   }

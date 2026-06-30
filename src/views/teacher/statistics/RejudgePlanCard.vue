@@ -5,20 +5,19 @@
       <UiTag tone="blue" size="sm">全考试治理</UiTag>
     </template>
 
-    <UiFilterBar variant="plain"
+    <UiFilterBar
       v-model="filterModel"
       :fields="filterFields"
+      variant="plain"
       search-text="查询"
       @search="handleSearch"
       @reset="handleFilterReset"
     />
 
-
-
     <UiDataTable
-      class="student-detail-table__data-table"
       v-model:current="pagination.current"
       v-model:page-size="pagination.pageSize"
+      class="student-detail-table__data-table"
       :columns="columns"
       :data-source="rows"
       :loading="loading"

@@ -45,72 +45,81 @@
           创建导出任务
         </UiButton>
       </template>
-      <UiFilterBar variant="plain"
-        :model-value="exportFilterForm"
+      <UiAlertStrip
+        v-if="activeTaskFilterAutoSync"
+        tone="warning"
+        title="进行中导出任务已同步到列表"
+        :description="activeTaskFilterAutoSyncText"
+        dense
+        class="export-page__active-sync-strip"
+        @close="activeTaskFilterAutoSync = false"
+      />
+
+      <UiFilterBar
+        v-model="exportFilterForm"
         :fields="exportFilterFields"
+        variant="plain"
         search-text="查询"
-        @update:model-value="syncExportFilterForm"
         @search="handleTaskFilterSearch"
         @reset="handleTaskFilterReset"
       />
 
-
-
       <UiDataTable
-        class="student-detail-table__data-table"
-        :columns="columns"
-        :data-source="filteredTasks"
-        :loading="loading"
         v-model:current="taskPagination.pageNum"
         v-model:page-size="taskPagination.pageSize"
+        pagination-mode="server"
+        class="student-detail-table__data-table"
+        :columns="columns"
+        :data-source="tasks"
+        :loading="loading"
         :total="taskPagination.total"
         flat
         row-key="taskId"
         size="middle"
         @page-change="handleTaskPageChange"
       >
-        <template #bodyCell="{ column, index }">
+        <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'exportType'">
-            {{ exportTypeLabel(filteredTasks[index].exportType) }}
+            {{ exportTypeLabel(record.exportType) }}
           </template>
           <template v-else-if="column.key === 'exportScope'">
-            {{ exportScopeLabel(filteredTasks[index].exportScope) }}
+            {{ exportScopeLabel(record.exportScope) }}
           </template>
           <template v-else-if="column.key === 'scopeSummary'">
-            {{ filteredTasks[index].scopeSummary }}
+            {{ record.scopeSummary }}
           </template>
           <template v-else-if="column.key === 'taskStatus'">
-            <UiTag :tone="statusTone(filteredTasks[index].taskStatus)" size="sm">
-              {{ exportStatusLabel(filteredTasks[index].taskStatus) }}
+            <UiTag :tone="statusTone(record.taskStatus)" size="sm">
+              {{ exportStatusLabel(record.taskStatus) }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'fileSize'">
-            {{ exportTaskFileSizeText(filteredTasks[index]) }}
+            {{ exportTaskFileSizeText(record) }}
           </template>
           <template v-else-if="column.key === 'errorMessage'">
             <a-tooltip
-              v-if="exportTaskFailureMessageText(filteredTasks[index])"
-              :title="exportTaskFailureMessageText(filteredTasks[index])"
+              v-if="exportTaskFailureMessageText(record)"
+              :title="exportTaskFailureMessageText(record)"
             >
               <span class="error-text">{{
-                clippedExportTaskFailureMessage(filteredTasks[index])
+                clippedExportTaskFailureMessage(record)
               }}</span>
             </a-tooltip>
             <span v-else class="hint-text">{{
-              exportTaskProcessingText(filteredTasks[index])
+              exportTaskProcessingText(record)
             }}</span>
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
               <UiTextAction
-                v-if="canDownloadExportTask(filteredTasks[index])"
+                v-if="canDownloadExportTask(record)"
                 tone="primary"
-                :disabled="downloadingId === filteredTasks[index].taskId"
-                @click="handleDownload(filteredTasks[index])"
+                :disabled="downloadingId === record.taskId"
+                @click="handleDownload(record)"
               >
                 下载
               </UiTextAction>
-              <UiTextAction @click="openDetailDrawer(filteredTasks[index])">详情</UiTextAction>
+              <UiTextAction @click="openDetailDrawer(record)">详情</UiTextAction>
             </div>
           </template>
         </template>
@@ -251,7 +260,9 @@ import type {
   ExportScopeCode,
   ExportScopeItemVO,
   ExportTaskCompletedVO,
+  ExportTaskQueryRequest,
   ExportTaskStatusCode,
+  ExportTaskStatusSummaryVO,
   ExportTaskVO,
   ExportTypeCode,
 } from '@/apis/mark/exam-export'
@@ -272,10 +283,12 @@ import {
   EXPORT_TYPE_CODES,
   EXPORT_TYPE_LABEL,
   getExportTask,
+  getExportTaskStatusSummary,
   listExportTasks,
 } from '@/apis/mark/exam-export'
 import { getExamTemplate } from '@/apis/mark/exam-template'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -335,8 +348,20 @@ const exportFilterForm = reactive<{
   typeFilter: undefined,
 })
 
-function syncExportFilterForm(next: Record<string, unknown>): void {
-  Object.assign(exportFilterForm, next)
+const counts = reactive({
+  total: 0,
+  pending: 0,
+  generating: 0,
+  completed: 0,
+  failed: 0,
+})
+
+function resetStatusCounts(): void {
+  counts.total = 0
+  counts.pending = 0
+  counts.generating = 0
+  counts.completed = 0
+  counts.failed = 0
 }
 
 const exportFilterFields: FilterField[] = [
@@ -364,29 +389,157 @@ const exportFilterFields: FilterField[] = [
   },
 ]
 
-const filteredTasks = computed(() =>
-  tasks.value.filter(
-    (t) =>
-      (!exportFilterForm.statusFilter || t.taskStatus === exportFilterForm.statusFilter)
-      && (!exportFilterForm.typeFilter || t.exportType === exportFilterForm.typeFilter),
-  ),
-)
+const activeTaskFilterAutoSync = ref(false)
+
+const activeTaskFilterAutoSyncText = computed(() => {
+  const parts: string[] = []
+  if (counts.pending > 0) {
+    parts.push(`待执行 ${counts.pending}`)
+  }
+  if (counts.generating > 0) {
+    parts.push(`生成中 ${counts.generating}`)
+  }
+  const progressText = parts.length > 0 ? parts.join('，') : '进行中'
+  return `原筛选条件会隐藏进行中的任务，已自动取消以便跟踪进度（${progressText}）`
+})
+
+function buildExportTaskListRequest(pageNum = taskPagination.pageNum): ExportTaskQueryRequest | null {
+  if (!selectedExamId.value) {
+    return null
+  }
+  return {
+    examId: selectedExamId.value,
+    pageNum,
+    pageSize: taskPagination.pageSize,
+    ...(exportFilterForm.statusFilter ? { taskStatus: exportFilterForm.statusFilter } : {}),
+    ...(exportFilterForm.typeFilter ? { exportType: exportFilterForm.typeFilter } : {}),
+  }
+}
+
+/** 当前状态筛选是否会挡住待执行 / 生成中任务。 */
+function activeTasksHiddenByStatusFilter(): boolean {
+  const statusFilter = exportFilterForm.statusFilter
+  if (!statusFilter) {
+    return false
+  }
+  if (counts.pending > 0 && statusFilter !== 'PENDING') {
+    return true
+  }
+  if (counts.generating > 0 && statusFilter !== 'GENERATING') {
+    return true
+  }
+  return false
+}
+
+function listHasActiveExportTask(taskList: ExportTaskVO[]): boolean {
+  return taskList.some((task) => task.taskStatus === 'PENDING' || task.taskStatus === 'GENERATING')
+}
+
+/** 无筛选时若全局仍有进行中任务但当前页看不到，应回到第 1 页。 */
+function shouldReloadFirstPageForActiveTasks(taskList: ExportTaskVO[]): boolean {
+  if (counts.pending === 0 && counts.generating === 0) {
+    return false
+  }
+  if (exportFilterForm.statusFilter || exportFilterForm.typeFilter) {
+    return false
+  }
+  if (taskPagination.pageNum === 1) {
+    return false
+  }
+  return !listHasActiveExportTask(taskList)
+}
+
+/** 类型筛选是否会挡住当前进行中的导出任务。 */
+async function typeFilterHidesActiveTasks(examId: string): Promise<boolean> {
+  const typeFilter = exportFilterForm.typeFilter
+  if (!typeFilter || (counts.pending === 0 && counts.generating === 0)) {
+    return false
+  }
+  const probeStatuses: ExportTaskStatusCode[] = []
+  if (counts.pending > 0) {
+    probeStatuses.push('PENDING')
+  }
+  if (counts.generating > 0) {
+    probeStatuses.push('GENERATING')
+  }
+  for (const taskStatus of probeStatuses) {
+    const page = await listExportTasks({
+      examId,
+      pageNum: 1,
+      pageSize: 20,
+      taskStatus,
+    })
+    const activeTasks = readPageList(page, '导出任务加载失败，请稍后重试')
+    if (activeTasks.some((task) => task.exportType !== typeFilter)) {
+      return true
+    }
+  }
+  return false
+}
+
+/** 全局仍有进行中任务时，自动解除会挡住它们的筛选条件。 */
+async function reconcileExportFiltersForActiveTasks(examId: string): Promise<void> {
+  if (counts.pending === 0 && counts.generating === 0) {
+    return
+  }
+  let changed = false
+  if (activeTasksHiddenByStatusFilter()) {
+    exportFilterForm.statusFilter = undefined
+    changed = true
+  }
+  if (exportFilterForm.typeFilter && await typeFilterHidesActiveTasks(examId)) {
+    exportFilterForm.typeFilter = undefined
+    changed = true
+  }
+  if (changed) {
+    taskPagination.pageNum = 1
+    activeTaskFilterAutoSync.value = true
+  }
+}
+
+function applyStatusSummary(summary: ExportTaskStatusSummaryVO): void {
+  const totalCount = Number(summary.totalCount)
+  const pendingCount = Number(summary.pendingCount)
+  const generatingCount = Number(summary.generatingCount)
+  const completedCount = Number(summary.completedCount)
+  const failedCount = Number(summary.failedCount)
+  if (![totalCount, pendingCount, generatingCount, completedCount, failedCount].every(Number.isFinite)) {
+    throw new Error('导出任务状态汇总字段非法')
+  }
+  counts.total = totalCount
+  counts.pending = pendingCount
+  counts.generating = generatingCount
+  counts.completed = completedCount
+  counts.failed = failedCount
+}
+
+async function loadStatusCounts(examId: string): Promise<void> {
+  try {
+    applyStatusSummary(await getExportTaskStatusSummary(examId))
+  } catch {
+    resetStatusCounts()
+  }
+}
 
 function handleTaskFilterSearch(): void {
+  activeTaskFilterAutoSync.value = false
   taskPagination.pageNum = 1
+  void loadTasks()
 }
 
 function handleTaskFilterReset(): void {
+  activeTaskFilterAutoSync.value = false
+  exportFilterForm.statusFilter = undefined
+  exportFilterForm.typeFilter = undefined
   taskPagination.pageNum = 1
+  void loadTasks()
 }
 
-const counts = computed(() => ({
-  total: tasks.value.length,
-  pending: tasks.value.filter((t) => t.taskStatus === 'PENDING').length,
-  generating: tasks.value.filter((t) => t.taskStatus === 'GENERATING').length,
-  completed: tasks.value.filter((t) => t.taskStatus === 'COMPLETED').length,
-  failed: tasks.value.filter((t) => t.taskStatus === 'FAILED').length,
-}))
+function handleTaskPageChange(page: { current: number, pageSize: number }): void {
+  taskPagination.pageNum = page.current
+  taskPagination.pageSize = page.pageSize
+  void loadTasks()
+}
 
 const columns: ColumnType<ExportTaskVO>[] = [
   { title: '类型', key: 'exportType', width: 120 },
@@ -479,9 +632,12 @@ function canDownloadExportTask(task: ExportTaskVO): task is ExportTaskCompletedV
 }
 
 async function loadTasks(options?: { quiet?: boolean }): Promise<void> {
-  if (!selectedExamId.value) {
+  const examId = selectedExamId.value
+  if (!examId) {
     tasks.value = []
     taskPagination.total = 0
+    resetStatusCounts()
+    activeTaskFilterAutoSync.value = false
     syncExportPolling()
     return
   }
@@ -489,20 +645,34 @@ async function loadTasks(options?: { quiet?: boolean }): Promise<void> {
     loading.value = true
   }
   try {
-    const page = await listExportTasks({
-      examId: selectedExamId.value,
-      pageNum: taskPagination.pageNum,
-      pageSize: taskPagination.pageSize,
-    })
-    tasks.value = readPageList(page, '导出任务加载失败，请稍后重试')
-    taskPagination.pageNum = page.pageNum
-    taskPagination.pageSize = page.pageSize
+    await loadStatusCounts(examId)
+    if (counts.pending === 0 && counts.generating === 0) {
+      activeTaskFilterAutoSync.value = false
+    }
+    await reconcileExportFiltersForActiveTasks(examId)
+    const request = buildExportTaskListRequest()
+    if (!request) {
+      return
+    }
+    let page = await listExportTasks(request)
+    let taskList = readPageList(page, '导出任务加载失败，请稍后重试')
+    if (shouldReloadFirstPageForActiveTasks(taskList)) {
+      taskPagination.pageNum = 1
+      const firstPageRequest = buildExportTaskListRequest(1)
+      if (firstPageRequest) {
+        page = await listExportTasks(firstPageRequest)
+        taskList = readPageList(page, '导出任务加载失败，请稍后重试')
+      }
+    }
+    tasks.value = taskList
     taskPagination.total = readPageTotal(page, '导出任务加载失败，请稍后重试')
     await refreshOpenDetailIfNeeded()
     syncExportPolling()
   } catch (error) {
-    showUserError(error, '导出任务加载失败')
     if (!options?.quiet) {
+      tasks.value = []
+      taskPagination.total = 0
+      resetStatusCounts()
       showUserError(error, '导出任务加载失败')
     }
   } finally {
@@ -515,9 +685,7 @@ async function loadTasks(options?: { quiet?: boolean }): Promise<void> {
 let exportPollTimer: ReturnType<typeof setInterval> | null = null
 
 function syncExportPolling(): void {
-  const shouldPoll = tasks.value.some(
-    (task) => task.taskStatus === 'PENDING' || task.taskStatus === 'GENERATING',
-  )
+  const shouldPoll = counts.pending > 0 || counts.generating > 0
   if (shouldPoll && !exportPollTimer) {
     exportPollTimer = setInterval(() => {
       void loadTasks({ quiet: true })
@@ -544,21 +712,8 @@ async function refreshOpenDetailIfNeeded(): Promise<void> {
   }
 }
 
-function handleTaskPageChange(page: { current: number, pageSize: number }): void {
-  taskPagination.pageNum = page.current
-  taskPagination.pageSize = page.pageSize
-  void loadTasks()
-}
-
 function handleExamChange(value: SelectValue): void {
   onExamChange(value)
-  if (selectedExamId.value) {
-    taskPagination.pageNum = 1
-    void loadTasks()
-  } else {
-    tasks.value = []
-    taskPagination.total = 0
-  }
 }
 
 // ─── 创建导出 Modal ─────────────────────────────
@@ -651,6 +806,10 @@ async function handleCreate(): Promise<void> {
     }
     message.success('已创建导出任务，系统正在生成文件')
     createModalOpen.value = false
+    activeTaskFilterAutoSync.value = false
+    exportFilterForm.statusFilter = undefined
+    exportFilterForm.typeFilter = undefined
+    taskPagination.pageNum = 1
     await loadTasks()
     await refreshSnapshot()
   } catch (error) {
@@ -736,8 +895,9 @@ async function handleDownload(record: ExportTaskVO): Promise<void> {
 watch(
   selectedExamId,
   (value) => {
+    activeTaskFilterAutoSync.value = false
+    taskPagination.pageNum = 1
     if (value) {
-      taskPagination.pageNum = 1
       void loadTasks()
     } else {
       tasks.value = []
@@ -784,6 +944,10 @@ onBeforeUnmount(() => {
 
   &__empty {
     padding: 60px 0;
+  }
+
+  &__active-sync-strip {
+    margin-bottom: 16px;
   }
 
   display: flex;

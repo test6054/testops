@@ -182,7 +182,7 @@ const emit = defineEmits<{
   gap: 10px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ui-resource-card__cover,
   .ui-resource-card__footer-actions {
     flex-direction: column;

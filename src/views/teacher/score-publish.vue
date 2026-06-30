@@ -9,6 +9,14 @@
     </div>
 
     <template v-if="selectedExamId">
+      <ExamArchiveGateBanner
+        ref="gateBannerRef"
+        :exam-id="selectedExamId"
+        compact
+        show-class-progress-table
+        @go-close-exam="goExamListForClose"
+        @loaded="onExamArchiveGateLoaded"
+      />
       <SignalBand
         :metrics="publishSignalMetrics"
         compact
@@ -39,7 +47,15 @@
           @reset="handleReset"
         />
 
-
+        <div v-if="showIncompleteClassChip" class="score-publish__class-chips">
+          <UiButton
+            :variant="scoreFilterForm.unpublishedBoundOnly ? 'primary' : 'outline'"
+            size="sm"
+            @click="toggleIncompleteClassFilter"
+          >
+            仅看未齐班级
+          </UiButton>
+        </div>
 
         <UiDataTable
           v-model:current="pagination.current"
@@ -294,6 +310,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
+import type { ArchiveVolumeExamGateVO } from '@/apis/mark/archive-volume'
 import type {
   ExamDetailVO,
 } from '@/apis/mark/exam'
@@ -305,6 +322,7 @@ import type {
 } from '@/apis/mark/exam-score'
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
 import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { StatMetricLike } from '@/utils/stat-metric-helpers'
 import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
@@ -327,14 +345,15 @@ import {
   FINAL_SCORE_STATUS_OPTIONS,
   FINAL_SCORE_STATUS_TONE,
 } from '@/apis/mark/final-score-status'
+import ExamArchiveGateBanner from '@/components/archive-volume/ExamArchiveGateBanner.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import SignalBand from '@/components/workbench/SignalBand.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
@@ -358,10 +377,16 @@ const statusOptions = FINAL_SCORE_STATUS_OPTIONS
 const scoreFilterForm = reactive<{
   keyword: string
   statusFilter?: FinalScoreStatusCode
+  classId?: string
+  unpublishedBoundOnly: boolean
 }>({
   keyword: '',
   statusFilter: undefined,
+  classId: undefined,
+  unpublishedBoundOnly: false,
 })
+
+const examArchiveGate = ref<ArchiveVolumeExamGateVO | null>(null)
 
 const scoreFilterModel = computed<Record<string, unknown>>({
   get: () => scoreFilterForm as Record<string, unknown>,
@@ -370,28 +395,72 @@ const scoreFilterModel = computed<Record<string, unknown>>({
   },
 })
 
-const scoreFilterFields: FilterField[] = [
-  {
-    key: 'keyword',
-    type: 'input',
-    placeholder: '按学号 / 姓名搜索',
-    allowClear: true,
-    width: 240,
-    inputPrefixIcon: 'search',
-    triggerSearchOnChange: false,
-  },
-  {
-    key: 'statusFilter',
-    type: 'select',
-    placeholder: '按最终状态过滤',
-    allowClear: true,
-    width: 200,
-    options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
-  },
-]
+const scoreFilterFields = computed<FilterField[]>(() => {
+  const classOptions = (examArchiveGate.value?.classPublishProgress ?? [])
+    .map(item => ({
+      label: item.className?.trim() || (item.classId ? `班级 ${item.classId}` : '未分班'),
+      value: item.classId,
+    }))
+  const fields: FilterField[] = [
+    {
+      key: 'keyword',
+      type: 'input',
+      placeholder: '按学号 / 姓名搜索',
+      allowClear: true,
+      width: 240,
+      inputPrefixIcon: 'search',
+      triggerSearchOnChange: false,
+    },
+    {
+      key: 'statusFilter',
+      type: 'select',
+      placeholder: '按最终状态过滤',
+      allowClear: true,
+      width: 200,
+      options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
+    },
+  ]
+  if (classOptions.length > 0) {
+    fields.push({
+      key: 'classId',
+      type: 'select',
+      placeholder: '按班级过滤',
+      allowClear: true,
+      width: 200,
+      options: classOptions,
+    })
+  }
+  return fields
+})
+
+const showIncompleteClassChip = computed(() =>
+  (examArchiveGate.value?.unpublishedBoundPaperCount ?? 0) > 0,
+)
 
 const router = useRouter()
 const route = useRoute()
+const gateBannerRef = ref<InstanceType<typeof ExamArchiveGateBanner> | null>(null)
+
+async function refreshArchiveGate(): Promise<void> {
+  await gateBannerRef.value?.refresh()
+}
+
+function onExamArchiveGateLoaded(gate: ArchiveVolumeExamGateVO): void {
+  examArchiveGate.value = gate
+}
+
+function toggleIncompleteClassFilter(): void {
+  scoreFilterForm.unpublishedBoundOnly = !scoreFilterForm.unpublishedBoundOnly
+  if (scoreFilterForm.unpublishedBoundOnly) {
+    scoreFilterForm.classId = undefined
+  }
+  pagination.current = 1
+  void loadCandidates()
+}
+
+function goExamListForClose(): void {
+  void router.push({ name: 'TeacherExamList' })
+}
 
 const scoreReleaseStepOptions = [
   { label: '① 成绩确认', value: 'confirm' },
@@ -473,6 +542,8 @@ async function loadCandidates(): Promise<void> {
       examId: selectedExamId.value,
       keyword: scoreFilterForm.keyword.trim() || undefined,
       finalScoreStatus: scoreFilterForm.statusFilter,
+      classId: scoreFilterForm.classId,
+      unpublishedBoundOnly: scoreFilterForm.unpublishedBoundOnly || undefined,
       pageNum: pagination.current ?? 1,
       pageSize: pagination.pageSize ?? 20,
     })
@@ -554,6 +625,10 @@ function handleSearch(): void {
 }
 
 function handleReset(): void {
+  scoreFilterForm.keyword = ''
+  scoreFilterForm.statusFilter = undefined
+  scoreFilterForm.classId = undefined
+  scoreFilterForm.unpublishedBoundOnly = false
   pagination.current = 1
   void loadCandidates()
 }
@@ -625,7 +700,7 @@ async function runBulkPublish(): Promise<void> {
         `全场发布完成：成功 ${bulkResult.value.successCount} 条，失败 ${bulkResult.value.failureCount} 条，请查看明细`,
       )
     }
-    await Promise.all([loadCandidates(), loadFinalScoreOverview()])
+    await Promise.all([loadCandidates(), loadFinalScoreOverview(), refreshArchiveGate()])
     try {
       await refreshSnapshot()
     } catch {
@@ -642,45 +717,58 @@ async function runBulkPublish(): Promise<void> {
 
 const statMetrics = computed(() => {
   const overview = finalScoreOverview.value
+  const gate = examArchiveGate.value
   const total = overview?.totalCandidateCount ?? pagination.total ?? 0
   const publishable = publishableOverviewCount.value
   const published = overview?.publishedCount ?? 0
   const corrected = overview?.correctedCount ?? 0
   const withdrawn = overview?.withdrawnCount ?? 0
   const unconfirmed = overview ? overview.pendingCount + overview.calculatedCount : 0
-  return [
-    { label: '考生总数', value: total, unit: '人', tone: 'blue' as const },
+  const unpublishedBound = gate?.unpublishedBoundPaperCount
+  const metrics: StatMetricLike[] = [
+    { label: '考生总数', value: total, unit: '人', tone: 'blue' },
     {
       label: '可发布',
       value: publishable,
       unit: '人',
-      tone: (publishable > 0 ? 'orange' : 'gray') as 'orange' | 'gray',
+      tone: publishable > 0 ? 'orange' : 'gray',
     },
     {
       label: '已发布',
       value: published,
       unit: '人',
-      tone: (published > 0 ? 'green' : 'gray') as 'green' | 'gray',
+      tone: published > 0 ? 'green' : 'gray',
     },
+  ]
+  if (unpublishedBound != null) {
+    metrics.push({
+      label: '绑定卷未发布',
+      value: unpublishedBound,
+      unit: '份',
+      tone: unpublishedBound > 0 ? 'orange' : 'green',
+    })
+  }
+  metrics.push(
     {
       label: '已订正',
       value: corrected,
       unit: '人',
-      tone: (corrected > 0 ? 'purple' : 'gray') as 'purple' | 'gray',
+      tone: corrected > 0 ? 'purple' : 'gray',
     },
     {
       label: '已撤回',
       value: withdrawn,
       unit: '人',
-      tone: (withdrawn > 0 ? 'red' : 'gray') as 'red' | 'gray',
+      tone: withdrawn > 0 ? 'red' : 'gray',
     },
     {
       label: '未确认',
       value: unconfirmed,
       unit: '人',
-      tone: 'gray' as const,
+      tone: 'gray',
     },
-  ]
+  )
+  return metrics
 })
 
 const publishSignalMetrics = computed(() => toSignalMetrics(statMetrics.value))
@@ -712,7 +800,7 @@ async function handlePublish(record: ExamScoreSummaryItemVO): Promise<void> {
       paperInstanceId: record.paperInstanceId,
     })
     message.success('成绩已发布，学生通知已下发')
-    await Promise.all([loadCandidates(), loadFinalScoreOverview()])
+    await Promise.all([loadCandidates(), loadFinalScoreOverview(), refreshArchiveGate()])
     try {
       await refreshSnapshot()
     } catch {
@@ -751,7 +839,7 @@ async function handleWithdraw(): Promise<void> {
     })
     message.success('成绩已撤回')
     withdrawOpen.value = false
-    await Promise.all([loadCandidates(), loadFinalScoreOverview()])
+    await Promise.all([loadCandidates(), loadFinalScoreOverview(), refreshArchiveGate()])
     try {
       await refreshSnapshot()
     } catch {
@@ -850,6 +938,13 @@ watch(selectedExamId, (value) => {
 
   &__table-card {
     margin-top: 8px;
+  }
+
+  &__class-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 12px;
   }
 
   &__table {

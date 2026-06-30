@@ -26,10 +26,19 @@ const dualTeacherCert = ref(true)
 const ethicsApproved = ref(true)
 const teachingYears = ref(3)
 
-const factJson = computed(() => JSON.stringify({
-  dualTeacherCert: String(dualTeacherCert.value),
-  ethicsAuditStatus: ethicsApproved.value ? 'APPROVED' : 'PENDING',
-  teachingYears: teachingYears.value,
+const evaluateRequest = computed(() => ({
+  teacherId: targetTeacherId.value,
+  eligibilityCode: eligibilityCode.value,
+  fieldValues: [
+    { fieldKey: 'dualTeacherCertificate', actualValue: String(dualTeacherCert.value) },
+    { fieldKey: 'teachingYears', actualValue: String(teachingYears.value) },
+  ],
+  auditStatuses: [
+    {
+      fieldKey: 'ethicsAudit',
+      auditStatus: ethicsApproved.value ? 'APPROVED' : 'PENDING',
+    },
+  ],
 }))
 
 async function evaluate() {
@@ -38,11 +47,7 @@ async function evaluate() {
   }
   evaluating.value = true
   try {
-    result.value = await portfolioIndicatorTenantApi.evaluateEligibility({
-      eligibilityCode: eligibilityCode.value,
-      teacherUserId: targetTeacherId.value,
-      factJson: factJson.value,
-    })
+    result.value = await portfolioIndicatorTenantApi.evaluateEligibility(evaluateRequest.value)
   }
   catch (error) {
     showUserError(error)
@@ -56,8 +61,8 @@ async function evaluate() {
 <template>
   <StageWorkbenchShell>
     <template #context>
-  <ContextBar show-title layout="workbench" title="我的资格评估" />
-</template>
+      <ContextBar show-title layout="workbench" title="我的资格评估" />
+    </template>
     <UiEmpty
       v-if="canPickTeachers && !scopeReady"
       description="请从顶部教师范围选择目标教师后再评估"

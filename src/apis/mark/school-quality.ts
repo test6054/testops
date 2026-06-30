@@ -95,6 +95,22 @@ export interface SchoolQualityAnalysisVO {
   createTime?: string
 }
 
+/** 经验有效性评估脱敏样本 */
+export interface ExperienceEffectivenessEvalEvidenceVO {
+  anonymousId?: string
+  anonymousClassLabel?: string
+  questionNo?: string
+  questionType?: QuestionTypeCode
+  fullScore?: number
+  standardAnswer?: string
+  answerExplain?: string
+  recognizedAnswer?: string
+  teacherReviewScore?: number
+  aiScore?: number
+  objectiveResult?: string
+  commentText?: string
+}
+
 /** 经验有效性评估记录 - 对应 ExperienceEffectivenessEval */
 export interface ExperienceEffectivenessEvalVO {
   id: string
@@ -108,11 +124,13 @@ export interface ExperienceEffectivenessEvalVO {
   questionType: QuestionTypeCode
   aiTraceId?: string
   evalSummary?: string
+  detailedAnalysis?: string
   consistencyRate?: number
   reuseCount?: number
   driftDetected?: boolean
   driftDescription?: string
   recommendation?: ExperienceRecommendationCode
+  evidenceItems?: ExperienceEffectivenessEvalEvidenceVO[]
   analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
   latencyMs?: number
@@ -141,6 +159,7 @@ export function generateQualityAnalysis(params: {
  */
 export function listQualityAnalysis(params: {
   analysisDimension: SchoolQualityDimensionCode
+  dimensionId?: string
   semesterCode?: string
 }): Promise<SchoolQualityAnalysisVO[]> {
   return http.post<SchoolQualityAnalysisVO[]>(

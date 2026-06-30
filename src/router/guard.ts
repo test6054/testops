@@ -2,6 +2,7 @@ import type { Router } from 'vue-router'
 import type { RoleEnum } from '@/utils/permission'
 import type { SeoMeta } from '@/utils/seo'
 import NProgress from 'nprogress'
+import { prefersReducedMotion } from '@/utils/motion-preference'
 import { getDefaultRoute, hasRoutePermission, requiresAuth } from '@/router/permission'
 import { useAuthStore, useRouteStore, useUserStore } from '@/stores'
 import { getValidToken } from '@/utils/auth'
@@ -14,9 +15,9 @@ import 'nprogress/nprogress.css'
 
 NProgress.configure({
   easing: 'ease', // 动画方式
-  speed: 500, // 递增进度条的速度
+  speed: prefersReducedMotion() ? 0 : 500, // 递增进度条的速度
   showSpinner: false, // 是否显示圆圈加载
-  trickleSpeed: 200, // 自动递增间隔
+  trickleSpeed: prefersReducedMotion() ? 0 : 200, // 自动递增间隔
   minimum: 0.3, // 初始化时的最小百分比
 })
 

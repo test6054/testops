@@ -7,6 +7,7 @@ import type {
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
@@ -37,6 +38,7 @@ const { targetTeacherId } = usePortfolioPageScope()
 const loading = ref(false)
 const submitting = ref(false)
 const saving = ref(false)
+const scanOpening = ref(false)
 const detail = ref<PortfolioGapTaskDetailVO | null>(null)
 const fieldValues = reactive<Record<string, string>>({})
 const evidenceRefs = reactive<Record<string, string>>({})
@@ -147,21 +149,34 @@ function goBack() {
   })
 }
 
-function openPortfolioGapScan() {
+async function openPortfolioGapScan() {
   if (!detail.value || !targetTeacherId.value) {
     message.warning('补采任务或教师信息未就绪')
     return
   }
-  void router.push({
-    path: '/scanner-kiosk/portfolio/session',
-    query: {
+  scanOpening.value = true
+  try {
+    const created = await createScanDispatch({
+      taskKind: 'PORTFOLIO_COLLECT',
       collectMode: 'GAP_ATTACHMENT',
       teacherId: targetTeacherId.value,
       gapTaskId: detail.value.id,
       categoryId: detail.value.categoryId,
-      returnTo: route.fullPath,
-    },
-  })
+    })
+    if (!created.ticket?.ticketId) {
+      throw new Error('创建档案袋派单失败')
+    }
+    void router.push({
+      path: `/scanner-kiosk/dispatch/${created.ticket.ticketId}`,
+      query: { returnTo: route.fullPath },
+    })
+  }
+  catch (error) {
+    showUserError(error, '创建档案袋扫描派单失败')
+  }
+  finally {
+    scanOpening.value = false
+  }
 }
 
 usePortfolioScopedLoader(() => {
@@ -198,16 +213,16 @@ watch(
         layout="workbench"
         :title="detail?.taskTitle ?? '补采任务'"
       >
-      <template #actions>
-        <UiButton @click="goBack"> 返回首页 </UiButton>
-        <UiButton :loading="saving" :disabled="loading || !detail" @click="handleSaveDraft">
-          保存草稿
-        </UiButton>
-        <UiButton :loading="submitting" :disabled="loading || !detail" @click="handleSubmit">
-          提交补采
-        </UiButton>
-      </template>
-    </ContextBar>
+        <template #actions>
+          <UiButton @click="goBack"> 返回首页 </UiButton>
+          <UiButton :loading="saving" :disabled="loading || !detail" @click="handleSaveDraft">
+            保存草稿
+          </UiButton>
+          <UiButton :loading="submitting" :disabled="loading || !detail" @click="handleSubmit">
+            提交补采
+          </UiButton>
+        </template>
+      </ContextBar>
     </template>
     <a-spin :spinning="loading">
       <template v-if="detail">
@@ -231,7 +246,7 @@ watch(
                 accept=".pdf,.doc,.docx,.png,.jpg"
                 button-text="上传附件"
               />
-              <UiButton class="teacher-gap__scan-btn" variant="outline" @click="openPortfolioGapScan">
+              <UiButton class="teacher-gap__scan-btn" variant="outline" :loading="scanOpening" @click="openPortfolioGapScan">
                 一体机扫描
               </UiButton>
             </a-form-item>

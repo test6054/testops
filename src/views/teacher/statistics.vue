@@ -60,11 +60,20 @@
             :roster-loading="rosterLoading"
             @class-change="handleClassChange"
           />
+          <PaperQualityCard
+            :exam-id="currentExamId"
+            :reload-token="paperQualityToken"
+            :class-id="activeClassId"
+          />
           <QuestionAnalysisCard
             :exam-id="currentExamId"
             :reload-token="qaToken"
             :class-id="activeClassId"
-            @generated="reloadRejudge"
+            @generated="onQuestionAnalysisGenerated"
+          />
+          <ExamQuestionCourseGoalMappingCard
+            :exam-id="currentExamId"
+            :reload-token="goalMappingToken"
           />
           <RejudgePlanCard
             :exam-id="currentExamId"
@@ -131,7 +140,9 @@ import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
 import mittBus from '@/utils/mitt'
 import ClassWeaknessCard from './statistics/ClassWeaknessCard.vue'
+import ExamQuestionCourseGoalMappingCard from './statistics/ExamQuestionCourseGoalMappingCard.vue'
 import ErrorCauseClusterCard from './statistics/ErrorCauseClusterCard.vue'
+import PaperQualityCard from './statistics/PaperQualityCard.vue'
 import QuestionAnalysisCard from './statistics/QuestionAnalysisCard.vue'
 import RejudgePlanCard from './statistics/RejudgePlanCard.vue'
 import ScoreDistributionCard from './statistics/ScoreDistributionCard.vue'
@@ -154,7 +165,9 @@ const {
 } = useMarkExamRoster()
 
 const qaToken = ref(0)
+const goalMappingToken = ref(0)
 const scoreDistToken = ref(0)
+const paperQualityToken = ref(0)
 const rejudgeToken = ref(0)
 const improvementToken = ref(0)
 const weaknessToken = ref(0)
@@ -219,7 +232,9 @@ function reloadAll(): void {
     void loadRoster(currentExamId.value)
   }
   scoreDistToken.value += 1
+  paperQualityToken.value += 1
   qaToken.value += 1
+  goalMappingToken.value += 1
   rejudgeToken.value += 1
   improvementToken.value += 1
   weaknessToken.value += 1
@@ -229,6 +244,11 @@ function reloadAll(): void {
 
 function reloadRejudge(): void {
   rejudgeToken.value += 1
+}
+
+function onQuestionAnalysisGenerated(): void {
+  reloadRejudge()
+  goalMappingToken.value += 1
 }
 
 async function onRejudgePlanChanged(): Promise<void> {

@@ -1,23 +1,24 @@
 <template>
-  <div class="exam-create-page">
-    <div class="page-header">
-      <div class="page-header__left">
-        <UiButton variant="ghost" size="sm" @click="ec.handleGoBack">
-          <template #icon><ArrowLeftOutlined /></template>
-          返回
-        </UiButton>
-        <h1 class="page-header__title">新建考试</h1>
-      </div>
-      <UiButton
-        variant="primary"
-        :loading="ec.submitting.value"
-        :disabled="ec.submitting.value"
-        @click="handleSubmit"
-      >
-        <template v-if="!ec.submitting.value" #icon><SaveOutlined /></template>
-        {{ ec.submitting.value ? '创建中…' : '创建考试' }}
-      </UiButton>
-    </div>
+  <StageWorkbenchShell>
+    <template #context>
+      <ContextBar layout="workbench" show-title title="新建考试">
+        <template #actions>
+          <UiButton variant="ghost" size="sm" @click="ec.handleGoBack">
+            <template #icon><ArrowLeftOutlined /></template>
+            返回
+          </UiButton>
+          <UiButton
+            variant="primary"
+            :loading="ec.submitting.value"
+            :disabled="ec.submitting.value || ec.rosterPreviewSyncing.value"
+            @click="handleSubmit"
+          >
+            <template v-if="!ec.submitting.value" #icon><SaveOutlined /></template>
+            {{ ec.submitting.value ? '创建中…' : '创建考试' }}
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
 
     <div class="create-layout">
       <aside class="create-layout__aside">
@@ -33,32 +34,26 @@
       <div class="create-layout__main">
         <a-spin :spinning="ec.submitting.value" tip="正在创建…">
           <BasicSettingsStep
-            :exam-form="ec.examForm"
             :basic-rules="ec.basicRules"
             @course-change="ec.setCourseSelection"
             @update:basic-form-ref="ec.basicFormRef.value = $event"
           />
           <MarkingTeamStep
-            :marking-team-form="ec.markingTeamForm"
             :marking-team-rules="ec.markingTeamRules"
             @chief-change="ec.setChiefExaminer"
             @reviewers-change="ec.setReviewerNickNames"
             @update:marking-team-form-ref="ec.markingTeamFormRef.value = $event"
           />
           <CandidateScopeStep
-            :roster-form="ec.rosterForm"
             :roster-rules="ec.rosterRules"
             @change-scope-mode="ec.changeScopeMode"
             @sync-class-scope="ec.syncClassScopeCandidates"
+            @roster-preview-syncing="ec.setRosterPreviewSyncing"
             @add-candidates="ec.addCandidates"
             @remove-candidate="ec.removeCandidate"
             @update:roster-form-ref="ec.rosterFormRef.value = $event"
           />
-          <ConfirmStep
-            :exam-form="ec.examForm"
-            :marking-team-form="ec.markingTeamForm"
-            :roster-form="ec.rosterForm"
-          />
+          <ConfirmStep />
         </a-spin>
       </div>
     </div>
@@ -75,23 +70,34 @@
       @ok="ec.handleViewWorkspace"
       @cancel="ec.handleBackToList"
     />
-  </div>
+  </StageWorkbenchShell>
 </template>
 
 <script setup lang="ts">
 import ArrowLeftOutlined from '@ant-design/icons-vue/ArrowLeftOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, provide, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiConfirmModal from '@/components/ui-guide/ui/ConfirmModal.vue'
 import UiSidebarNav from '@/components/ui-guide/ui/UiSidebarNav.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import BasicSettingsStep from './BasicSettingsStep.vue'
 import CandidateScopeStep from './CandidateScopeStep.vue'
 import ConfirmStep from './ConfirmStep.vue'
+import {
+  examCreateBasicFormKey,
+  examCreateMarkingTeamFormKey,
+  examCreateRosterFormKey,
+  isExamCreateSectionKey,
+} from './exam-create-context'
 import MarkingTeamStep from './MarkingTeamStep.vue'
 import { useExamCreate } from './useExamCreate'
 
 const ec = useExamCreate()
+provide(examCreateBasicFormKey, ec.examForm)
+provide(examCreateMarkingTeamFormKey, ec.markingTeamForm)
+provide(examCreateRosterFormKey, ec.rosterForm)
 const scrollContainerRef = ref<HTMLElement | null>(null)
 
 function findScrollContainer(): HTMLElement | null {
@@ -99,9 +105,9 @@ function findScrollContainer(): HTMLElement | null {
 }
 
 async function scrollToSection(sectionId: string): Promise<void> {
-  const target = sectionId as typeof ec.activeSection.value
-  if (!(await ec.validateStepsBeforeSection(target))) return
-  ec.activeSection.value = target
+  if (!isExamCreateSectionKey(sectionId)) return
+  if (!(await ec.validateStepsBeforeSection(sectionId))) return
+  ec.activeSection.value = sectionId
   const el = document.getElementById(sectionId)
   const container = scrollContainerRef.value
   if (!el || !container) return
@@ -119,11 +125,17 @@ function handleScroll(): void {
   for (let i = sections.length - 1; i >= 0; i--) {
     const el = document.getElementById(sections[i])
     if (el && el.getBoundingClientRect().top <= threshold) {
-      ec.activeSection.value = sections[i] as typeof ec.activeSection.value
+      const sectionKey = sections[i]
+      if (isExamCreateSectionKey(sectionKey)) {
+        ec.activeSection.value = sectionKey
+      }
       return
     }
   }
-  ec.activeSection.value = sections[0] as typeof ec.activeSection.value
+  const firstSectionKey = sections[0]
+  if (isExamCreateSectionKey(firstSectionKey)) {
+    ec.activeSection.value = firstSectionKey
+  }
 }
 
 async function handleSubmit(): Promise<void> {
@@ -141,46 +153,12 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" scoped>
-.exam-create-page {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
-  padding: 0;
-  box-sizing: border-box;
-  background: var(--ant-color-bg-container, #fff);
-}
-
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 24px;
-  background: var(--ant-color-bg-container, #fff);
-  border-bottom: 1px solid var(--dp-border, #e5e7eb);
-  flex-shrink: 0;
-
-  &__left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--dp-text-primary, #0f172a);
-  }
-}
-
 .create-layout {
-  flex: 1;
   display: grid;
   grid-template-columns: 160px minmax(0, 1fr);
   gap: 16px;
   align-items: stretch;
-  padding: 16px 24px 60px;
+  padding: 0 0 60px;
 
   &__aside {
     position: relative;

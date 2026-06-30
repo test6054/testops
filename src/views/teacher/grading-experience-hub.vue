@@ -381,6 +381,22 @@
         </a-list-item>
       </template>
     </a-list>
+    <template #footer>
+      <a-space v-if="canConfirmExperience || canDeprecateExperience">
+        <UiButton v-if="canConfirmExperience" type="primary" :loading="confirmingExperience" @click="handleConfirmExperience">
+          确认沉淀
+        </UiButton>
+        <UiButton
+          v-if="canDeprecateExperience"
+          variant="outline"
+          status="danger"
+          :loading="deprecatingExperience"
+          @click="handleDeprecateExperience"
+        >
+          废弃案例
+        </UiButton>
+      </a-space>
+    </template>
   </a-drawer>
 </template>
 
@@ -401,11 +417,14 @@ import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { AI_ANALYSIS_STATUS_LABEL, AI_ANALYSIS_STATUS_TONE } from '@/apis/mark/ai-analysis-status'
 import {
   EXPERIENCE_CASE_STATUS_LABEL,
   EXPERIENCE_CASE_STATUS_TONE,
+  confirmExperienceCase,
+  deprecateExperienceCase,
   extractExperience,
   generateAnswerCluster,
   generateSignatures,
@@ -603,6 +622,59 @@ async function handleExtract(): Promise<void> {
 
 const experienceDrawerOpen = ref(false)
 const detailExperience = ref<GradingExperienceCaseVO | null>(null)
+const confirmingExperience = ref(false)
+const deprecatingExperience = ref(false)
+
+const canConfirmExperience = computed(() =>
+  detailExperience.value?.caseStatus === 'DRAFT'
+  && detailExperience.value?.analysisStatus === 'SUCCESS'
+  && Boolean(detailExperience.value?.id),
+)
+
+const canDeprecateExperience = computed(() =>
+  detailExperience.value?.caseStatus === 'CONFIRMED'
+  && detailExperience.value?.analysisStatus === 'SUCCESS'
+  && Boolean(detailExperience.value?.id),
+)
+
+async function handleConfirmExperience(): Promise<void> {
+  const caseId = detailExperience.value?.id
+  if (!caseId) return
+  confirmingExperience.value = true
+  try {
+    detailExperience.value = await confirmExperienceCase(caseId)
+    message.success('经验案例已确认，可用于有效性评估')
+    await loadExperiences()
+  } catch (error) {
+    showUserError(error, '经验案例确认失败')
+  } finally {
+    confirmingExperience.value = false
+  }
+}
+
+function handleDeprecateExperience(): void {
+  const caseId = detailExperience.value?.id
+  if (!caseId) return
+  Modal.confirm({
+    title: '确认废弃经验案例',
+    content: '废弃后不可再用于有效性评估，历史评估记录仍保留。确认废弃？',
+    okText: '废弃',
+    okType: 'danger',
+    cancelText: '取消',
+    onOk: async () => {
+      deprecatingExperience.value = true
+      try {
+        detailExperience.value = await deprecateExperienceCase(caseId)
+        message.success('经验案例已废弃')
+        await loadExperiences()
+      } catch (error) {
+        showUserError(error, '经验案例废弃失败')
+      } finally {
+        deprecatingExperience.value = false
+      }
+    },
+  })
+}
 
 function openExperienceDrawer(record: GradingExperienceCaseVO): void {
   detailExperience.value = record

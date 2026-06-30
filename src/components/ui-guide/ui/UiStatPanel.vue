@@ -143,7 +143,7 @@ const hasHeader = computed(() => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ui-stat-panel--grid .ui-stat-panel__list,
   .ui-stat-panel--compact .ui-stat-panel__list,
   .ui-stat-panel--strip .ui-stat-panel__list {

@@ -2,6 +2,7 @@
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import theme from 'ant-design-vue/es/theme'
 import { onBeforeUnmount, watch } from 'vue'
+import UiErrorBoundary from '@/components/UiErrorBoundary.vue'
 import GlobalPromptInputDialog from '@/components/quality/GlobalPromptInputDialog.vue'
 import GlobalConfirmDialog from '@/components/workbench/GlobalConfirmDialog.vue'
 import { useAppStore, useUserStore } from '@/stores'
@@ -66,9 +67,13 @@ appStore?.initSiteConfig?.()
       :zindex="9999"
       class="admin-ui-main"
     >
-      <router-view />
+      <UiErrorBoundary>
+        <router-view />
+      </UiErrorBoundary>
     </a-watermark>
-    <router-view v-else />
+    <UiErrorBoundary v-else>
+      <router-view />
+    </UiErrorBoundary>
     <GlobalConfirmDialog />
     <GlobalPromptInputDialog />
   </a-config-provider>

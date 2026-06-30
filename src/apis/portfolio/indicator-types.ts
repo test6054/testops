@@ -554,10 +554,22 @@ export interface PortfolioEligibilityRuleSaveRequest {
   ruleTreeJson: string
 }
 
+export interface PortfolioEligibilityFieldValueItem {
+  fieldKey: string
+  actualValue: string
+}
+
+export interface PortfolioEligibilityAuditStatusItem {
+  fieldKey: string
+  auditStatus: string
+}
+
 export interface PortfolioEligibilityEvaluateRequest {
+  teacherId: string
   eligibilityCode: string
-  teacherUserId: string
-  factJson: string
+  snapshotId?: string
+  fieldValues?: PortfolioEligibilityFieldValueItem[]
+  auditStatuses?: PortfolioEligibilityAuditStatusItem[]
 }
 
 export interface PortfolioExportSnapshotDiffRequest {

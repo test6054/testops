@@ -1,220 +1,208 @@
 <template>
-  <div class="exam-workspace-overview">
-    <a-spin :spinning="loading">
-      <UiEmpty
-        v-if="!loading && !detail"
-        description="暂无数据"
-        class="exam-workspace-overview__empty"
-      />
+  <StageWorkbenchShell>
+    <UiLoadFailure
+      v-if="loadError"
+      title="考试概览加载失败"
+      :description="loadError"
+    />
 
-      <template v-if="detail">
-        <SignalBand :metrics="signalMetrics" compact class="exam-workspace-overview__signals" />
+    <a-skeleton v-else-if="pageLoading" active :paragraph="{ rows: 8 }" />
 
-        <UiCard v-if="suggestedStage" class="exam-workspace-overview__cta">
-          <div class="exam-workspace-overview__cta-body">
-            <div>
-              <p class="exam-workspace-overview__cta-label">建议下一步</p>
-              <h3 class="exam-workspace-overview__cta-title">{{ suggestedStage.title }}</h3>
-              <p v-if="suggestedStage.statusText" class="exam-workspace-overview__cta-hint">
-                {{ suggestedStage.statusText }}
-              </p>
+    <UiEmpty
+      v-else-if="!detail"
+      description="暂无考试数据"
+      class="exam-overview__empty"
+    />
+
+    <a-row v-else :gutter="16">
+      <a-col :xs="24" :lg="16">
+        <UiCard class="exam-overview__card">
+          <template #title>
+            <ProfileOutlined />
+            <span>考试信息</span>
+          </template>
+          <a-descriptions :column="descriptionColumn" :label-style="labelStyle">
+            <a-descriptions-item label="考试名称">
+              <span class="exam-overview__name-row">
+                {{ detail.examName }}
+                <UiTag
+                  v-if="detail.examKind"
+                  :tone="examKindTone(detail.examKind)"
+                  size="sm"
+                >
+                  {{ examKindLabel(detail) }}
+                </UiTag>
+              </span>
+            </a-descriptions-item>
+            <a-descriptions-item label="考务编号">{{ detail.examNo }}</a-descriptions-item>
+            <a-descriptions-item v-if="detail.courseName" label="课程">
+              {{ detail.courseName }}
+            </a-descriptions-item>
+            <a-descriptions-item v-if="detail.departmentName" label="院系">
+              {{ detail.departmentName }}
+            </a-descriptions-item>
+            <a-descriptions-item label="学年学期">
+              {{ formatAcademicTerm(detail) || '未设置' }}
+            </a-descriptions-item>
+            <a-descriptions-item label="状态">
+              <UiTag :tone="examStatusTone(detail.status)" size="sm">
+                {{ examStatusLabel(detail.status) }}
+              </UiTag>
+            </a-descriptions-item>
+            <a-descriptions-item label="参考人数">
+              {{ detail.candidateCount }} 人 · {{ detail.questionCount }} 题
+            </a-descriptions-item>
+            <a-descriptions-item v-if="detail.createUserNickName" label="创建人">
+              {{ detail.createUserNickName }}
+            </a-descriptions-item>
+            <a-descriptions-item label="考试时间" :span="descriptionColumn">
+              {{ formatDateTime(detail.examStartTime) }} — {{ formatDateTime(detail.examEndTime) }}
+            </a-descriptions-item>
+          </a-descriptions>
+        </UiCard>
+
+        <UiCard class="exam-overview__card">
+          <template #title>
+            <ContainerOutlined />
+            <span>准备步骤</span>
+          </template>
+          <UiEmpty
+            v-if="prepSteps.length === 0"
+            description="暂无准备诊断步骤"
+          >
+            <template #action>
+              <UiButton size="sm" @click="goPrepWorkbench">前往考试准备</UiButton>
+            </template>
+          </UiEmpty>
+          <div v-else class="exam-overview__prep-list">
+            <div
+              v-for="step in prepSteps"
+              :key="step.key"
+              class="exam-overview__prep-item"
+            >
+              <div class="exam-overview__prep-head">
+                <span class="exam-overview__prep-title">{{ step.title }}</span>
+                <UiBadge :tone="prepStepTone(step.status)">{{ step.statusText }}</UiBadge>
+              </div>
+              <p class="exam-overview__prep-desc">{{ step.description }}</p>
+              <UiButton
+                size="sm"
+                :variant="step.status === 'completed' ? 'outline' : 'primary'"
+                @click="goPrepStep(step)"
+              >
+                {{ step.primaryAction }}
+              </UiButton>
             </div>
-            <UiButton variant="primary" @click="goSuggestedStage">
+          </div>
+        </UiCard>
+      </a-col>
+
+      <a-col :xs="24" :lg="8">
+        <UiCard class="exam-overview__card">
+          <template #title>
+            <DashboardOutlined />
+            <span>批阅进度</span>
+          </template>
+          <UiEmpty v-if="!markingProgress" description="暂无批阅进度数据" />
+          <template v-else>
+            <MarkGaugeBlock v-bind="confirmedGaugeBlockProps">
+              <div class="mark-gauge-block__formula">
+                <strong>{{ markingProgress.confirmedQuestionGradeCount }}</strong>
+                <span class="muted"> / {{ markingProgress.totalQuestionGradeCount }} 题次</span>
+              </div>
+            </MarkGaugeBlock>
+            <ul v-if="reviewSummaryItems.length > 0" class="exam-overview__review-list">
+              <li v-for="item in reviewSummaryItems" :key="item.key">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.count }}</strong>
+              </li>
+            </ul>
+          </template>
+        </UiCard>
+
+        <UiCard class="exam-overview__card">
+          <template #title>
+            <AppstoreOutlined />
+            <span>快捷入口</span>
+          </template>
+          <div class="exam-overview__shortcuts">
+            <UiButton
+              v-if="suggestedStage"
+              variant="primary"
+              block
+              @click="goSuggestedStage"
+            >
               前往{{ suggestedStage.title }}
             </UiButton>
+            <UiButton variant="outline" block @click="goPrepWorkbench">考试准备</UiButton>
+            <UiButton variant="outline" block @click="goMarkingProgress">进度看板</UiButton>
+            <UiButton variant="outline" block @click="goRoster">考生名册</UiButton>
           </div>
         </UiCard>
-
-        <UiCard class="exam-workspace-overview__journey-card">
-          <template #title>
-            <FundOutlined />
-            <span>六步进度</span>
-          </template>
-          <ExamJourneyRail
-            :stages="journeyStages"
-            active-key=""
-            @select="onJourneySelect"
-          />
-        </UiCard>
-
-        <div class="exam-workspace-overview__toolbar">
-          <div class="exam-workspace-overview__status">
-            <UiTag :tone="examStatusTone(detail.status)" size="sm">
-              {{ examStatusLabel(detail.status) }}
-            </UiTag>
-            <UiTag v-if="detail.examNo" tone="gray" size="sm">编号 {{ detail.examNo }}</UiTag>
-            <UiTag tone="blue" size="sm">
-              {{ detail.candidateCount }} 人 · {{ detail.questionCount }} 题
-            </UiTag>
-          </div>
-        </div>
-
-        <a-row :gutter="16">
-          <a-col :xs="24" :lg="16">
-            <UiCard class="info-card">
-              <template #title>
-                <ProfileOutlined />
-                <span>基本信息</span>
-              </template>
-              <a-descriptions :column="descriptionColumn" :label-style="labelStyle">
-                <a-descriptions-item label="考试名称">{{ detail.examName }}</a-descriptions-item>
-                <a-descriptions-item label="考务编号">{{ detail.examNo }}</a-descriptions-item>
-                <a-descriptions-item label="学年学期">
-                  {{ formatAcademicTerm(detail) || '未设置' }}
-                </a-descriptions-item>
-                <a-descriptions-item label="状态">
-                  <UiTag :tone="examStatusTone(detail.status)" size="sm">
-                    {{ examStatusLabel(detail.status) }}
-                  </UiTag>
-                </a-descriptions-item>
-                <a-descriptions-item label="批改策略">
-                  {{ gradingStrategyLabel(detail.gradingStrategy) }}
-                </a-descriptions-item>
-                <a-descriptions-item label="成绩构成">
-                  {{ scoreCompositionLabel(detail) }}
-                </a-descriptions-item>
-                <a-descriptions-item label="开始时间">
-                  {{ formatDateTime(detail.examStartTime) }}
-                </a-descriptions-item>
-                <a-descriptions-item label="结束时间">
-                  {{ formatDateTime(detail.examEndTime) }}
-                </a-descriptions-item>
-                <a-descriptions-item label="备注" :span="descriptionColumn">
-                  {{ detail.remark || '未填写考试备注' }}
-                </a-descriptions-item>
-              </a-descriptions>
-            </UiCard>
-
-            <UiCard class="info-card">
-              <template #title>
-                <FileOutlined />
-                <span>试卷模板</span>
-                <UiBadge :tone="detail.templateId ? 'green' : 'orange'">
-                  {{ detail.templateId ? '已配置' : '未配置' }}
-                </UiBadge>
-              </template>
-              <UiEmpty v-if="!detail.templateId" description="暂无数据">
-                <UiButton size="sm" @click="goPaperTemplate">前往配置</UiButton>
-              </UiEmpty>
-              <a-descriptions v-else :column="descriptionColumn" :label-style="labelStyle">
-                <a-descriptions-item label="模板名称">{{ detail.templateName }}</a-descriptions-item>
-                <a-descriptions-item label="总页数">{{ detail.totalPages }}</a-descriptions-item>
-                <a-descriptions-item label="题目数量">{{ detail.questionCount }}</a-descriptions-item>
-                <a-descriptions-item label="答案数量">{{ detail.answerCount }}</a-descriptions-item>
-              </a-descriptions>
-            </UiCard>
-          </a-col>
-
-          <a-col :xs="24" :lg="8">
-            <UiCard class="info-card">
-              <template #title>
-                <TeamOutlined />
-                <span>考试范围</span>
-              </template>
-              <UiEmpty v-if="!detail.classRefs.length" description="尚未设置参考班级" />
-              <template v-else>
-                <UiAlertStrip
-                  v-if="!detail.classScopePersisted"
-                  tone="warning"
-                  title="参考班级尚未保存"
-                  description="当前展示班级来自名册或已绑定卷推断，请前往考生名册保存为正式参考班级。"
-                  dense
-                />
-                <div class="class-list">
-                  <UiTag
-                    v-for="classRef in detail.classRefs"
-                    :key="classRef.classId"
-                    tone="blue"
-                    size="sm"
-                  >
-                    {{ classRef.className }}
-                  </UiTag>
-                </div>
-              </template>
-              <a-divider />
-              <UiButton size="sm" variant="outline" block @click="goRoster">管理考生名册</UiButton>
-            </UiCard>
-
-            <UiCard class="info-card">
-              <template #title>
-                <AppstoreOutlined />
-                <span>常用入口</span>
-              </template>
-              <div class="shortcut-list">
-                <button type="button" class="shortcut-btn" @click="goPaperTemplate">
-                  <FileOutlined />
-                  <span>试卷模板</span>
-                </button>
-                <button type="button" class="shortcut-btn" @click="goAnswerSheetTemplate">
-                  <FormOutlined />
-                  <span>答题卡模板</span>
-                </button>
-                <button type="button" class="shortcut-btn" @click="goRoster">
-                  <TeamOutlined />
-                  <span>考生名册</span>
-                </button>
-              </div>
-            </UiCard>
-          </a-col>
-        </a-row>
-      </template>
-    </a-spin>
-  </div>
+      </a-col>
+    </a-row>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
+import type { EChartsCoreOption } from 'echarts/core'
 import type { CSSProperties } from 'vue'
-import type { ExamDetailVO, ExamStatusCode, GradingStrategyCode } from '@/apis/mark/exam'
+import type { ExamDetailVO, ExamStatusCode } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { ExamJourneyKey } from '@/constants/exam-journey'
-import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
+import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
+import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
 import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
-import FileOutlined from '@ant-design/icons-vue/FileOutlined'
-import FormOutlined from '@ant-design/icons-vue/FormOutlined'
-import FundOutlined from '@ant-design/icons-vue/FundOutlined'
+import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
+import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import { useBreakpoints } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  EXAM_STATUS_LABEL,
-  EXAM_STATUS_TONE,
-  getExamDetail,
-  GRADING_STRATEGY_LABEL,
-} from '@/apis/mark/exam'
+import { EXAM_KIND_LABEL, EXAM_KIND_TONE, EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
+import { REVIEW_TASK_STATUS_LABEL } from '@/apis/mark/exam-review-task'
+import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import ExamJourneyRail from '@/components/workbench/ExamJourneyRail.vue'
-import SignalBand from '@/components/workbench/SignalBand.vue'
-import { useExamJourneySteps } from '@/composables/useExamJourneySteps'
-import { useMarkExamContext } from '@/composables/useMarkExamContext'
-import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { useMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
+import { useChartOption } from '@/hooks/modules/useChartOption'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { formatSemester } from '@/types/enums/semester-enum'
-import { showUserError } from '@/utils/error-handler'
+import { buildPrepStepCards } from '@/utils/exam-prep-step-ui'
 import { formatDateTime } from '@/utils/format'
-import { navigateToJourneyStep, navigateToMarkStage } from '@/utils/mark-stage-navigation'
-import mittBus from '@/utils/mitt'
+import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
+import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
+import { navigateToMarkStage } from '@/utils/mark-stage-navigation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamWorkspaceOverview' })
 
 const router = useRouter()
-const { selectedExamId: examIdRef } = useMarkExamContext()
-const { refreshSnapshot } = useWorkspaceExamId()
-const markStageStore = useMarkStageStore()
-const { orderedStages, suggestedStageKey, snapshot } = storeToRefs(markStageStore)
-const { journeyStages } = useExamJourneySteps(orderedStages)
+const {
+  examId,
+  examDetail,
+  examDetailLoading,
+  examDetailError,
+  markingProgress,
+  snapshot,
+  loading: snapshotLoading,
+  refreshChrome,
+} = useMarkWorkbenchContext()
 
-const examId = computed<string>(() => examIdRef.value ?? '')
-const detail = ref<ExamDetailVO | null>(null)
-const loading = ref(false)
+const markStageStore = useMarkStageStore()
+const { suggestedStageKey, orderedStages } = storeToRefs(markStageStore)
+
+const detail = computed(() => examDetail?.value ?? null)
+const loadError = computed(() => examDetailError?.value ?? null)
+const pageLoading = computed(() =>
+  (snapshotLoading.value && !snapshot.value)
+  || (examDetailLoading?.value === true && !detail.value),
+)
 
 const breakpoints = useBreakpoints({ sm: 576 })
 const descriptionColumn = computed(() => (breakpoints.greaterOrEqual('sm').value ? 2 : 1))
@@ -228,43 +216,63 @@ const suggestedStage = computed<WorkbenchStage | null>(() => {
   return orderedStages.value.find((stage) => stage.key === key) ?? null
 })
 
-const signalMetrics = computed<SignalMetric[]>(() => {
-  const progress = snapshot.value?.markingProgress
-  if (!progress) {
+const prepSteps = computed<PrepStepCard[]>(() => {
+  const d = detail.value
+  const backendSteps = snapshot.value?.prepSteps
+  if (!d || !backendSteps?.length) {
     return []
   }
-  const gradeRate = progress.totalQuestionGradeCount > 0
-    ? Math.round((progress.confirmedQuestionGradeCount / progress.totalQuestionGradeCount) * 100)
-    : 0
-  const pendingTasks = progress.pendingReviewTaskCount + progress.inProgressReviewTaskCount
-  return [
-    {
-      key: 'gradable',
-      label: '可阅卷卷面',
-      value: progress.gradablePaperCount,
-      unit: `/${progress.paperCount}`,
-      tone: progress.gradablePaperCount < progress.paperCount ? 'orange' : 'green',
-    },
-    {
-      key: 'scan-attention',
-      label: '扫描待处理',
-      value: progress.scanAttentionCount,
-      tone: progress.scanAttentionCount > 0 ? 'orange' : 'green',
-    },
-    {
-      key: 'review-tasks',
-      label: '复核任务',
-      value: pendingTasks,
-      tone: pendingTasks > 0 ? 'blue' : 'gray',
-    },
-    {
-      key: 'grade-rate',
-      label: '批阅完成率',
-      value: gradeRate,
-      unit: '%',
-      tone: gradeRate >= 100 ? 'green' : gradeRate > 0 ? 'blue' : 'gray',
-    },
-  ]
+  return buildPrepStepCards(backendSteps, d)
+})
+
+const confirmedPercent = computed(() => {
+  const progress = markingProgress?.value
+  if (!progress || progress.totalQuestionGradeCount <= 0) {
+    return 0
+  }
+  return Math.round((progress.confirmedQuestionGradeCount / progress.totalQuestionGradeCount) * 100)
+})
+
+const confirmedRingColor = computed(() => (confirmedPercent.value >= 100 ? '#52c41a' : '#1677ff'))
+
+const { chartOption: confirmedGaugeOption } = useChartOption(() =>
+  buildGaugeChartOption(confirmedPercent.value, {
+    label: '批阅完成率',
+    color: confirmedRingColor.value,
+    size: 'md',
+  }),
+)
+
+const confirmedGaugeAriaLabel = computed(() => {
+  const progress = markingProgress?.value
+  const detail = progress
+    ? `已确认 ${progress.confirmedQuestionGradeCount} / ${progress.totalQuestionGradeCount} 题次`
+    : undefined
+  return formatGaugeAriaLabel('批阅完成率', confirmedPercent.value, detail)
+})
+
+const confirmedGaugeBlockProps = computed((): {
+  option: EChartsCoreOption
+  ariaLabel: string
+  layout: 'stacked'
+} => ({
+  option: confirmedGaugeOption.value,
+  ariaLabel: confirmedGaugeAriaLabel.value,
+  layout: 'stacked',
+}))
+
+const reviewSummaryItems = computed(() => {
+  const list = markingProgress?.value?.reviewTaskStatusSummaryList
+  if (!list?.length) {
+    return []
+  }
+  return list
+    .filter((item) => item.taskCount > 0)
+    .map((item) => ({
+      key: item.statusCode,
+      label: strictEnumLabel(REVIEW_TASK_STATUS_LABEL, item.statusCode, '复核任务状态'),
+      count: item.taskCount,
+    }))
 })
 
 function examStatusTone(status: ExamStatusCode): BadgeTone {
@@ -275,43 +283,43 @@ function examStatusLabel(status: ExamStatusCode): string {
   return strictEnumLabel(EXAM_STATUS_LABEL, status, '考试状态')
 }
 
-function gradingStrategyLabel(strategy: GradingStrategyCode): string {
-  return strictEnumLabel(GRADING_STRATEGY_LABEL, strategy, '批改策略')
+function examKindTone(examKind: ExamDetailVO['examKind']): BadgeTone {
+  return strictEnumTone(EXAM_KIND_TONE, examKind, '考试性质')
 }
 
-function scoreCompositionLabel(exam: ExamDetailVO): string {
-  if (exam.dailyScoreFull != null) {
-    return `期末考试 + 平时成绩（平时满分 ${exam.dailyScoreFull} 分）`
+function examKindLabel(exam: ExamDetailVO): string {
+  if (exam.examKindMessage?.trim()) {
+    return exam.examKindMessage.trim()
   }
-  return '仅计入考试成绩'
+  return strictEnumLabel(EXAM_KIND_LABEL, exam.examKind, '考试性质')
 }
 
 function formatAcademicTerm(exam: ExamDetailVO): string {
   return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
 }
 
-async function loadDetail(): Promise<void> {
-  if (!examId.value) {
-    detail.value = null
-    return
+function prepStepTone(status: WorkbenchStageStatus): BadgeTone {
+  const map: Record<WorkbenchStageStatus, BadgeTone> = {
+    pending: 'gray',
+    active: 'blue',
+    completed: 'green',
+    warning: 'orange',
+    error: 'red',
+    blocked: 'red',
   }
-  loading.value = true
-  try {
-    detail.value = await getExamDetail(examId.value)
-  } catch (error) {
-    detail.value = null
-    showUserError(error, '考试详情加载失败')
-  } finally {
-    loading.value = false
-  }
+  return map[status]
 }
 
-function goPaperTemplate(): void {
-  void router.push({ name: 'TeacherExamWorkspacePaperTemplate', params: { examId: examId.value } })
+function goPrepStep(step: PrepStepCard): void {
+  void router.push({ name: step.routeName, params: { examId: examId.value } })
 }
 
-function goAnswerSheetTemplate(): void {
-  void router.push({ name: 'TeacherExamWorkspaceAnswerSheet', params: { examId: examId.value } })
+function goPrepWorkbench(): void {
+  void router.push({ name: 'TeacherExamWorkspacePrep', params: { examId: examId.value } })
+}
+
+function goMarkingProgress(): void {
+  void router.push({ name: 'TeacherExamWorkspaceMarkingProgress', params: { examId: examId.value } })
 }
 
 function goRoster(): void {
@@ -324,146 +332,89 @@ function goSuggestedStage(): void {
     return
   }
   navigateToMarkStage(router, key, examId.value, {
-    scanAttentionCount: snapshot.value?.markingProgress?.scanAttentionCount,
+    scanAttentionCount: markingProgress?.value?.scanAttentionCount,
   })
 }
-
-function onJourneySelect(journeyKey: ExamJourneyKey): void {
-  if (!examId.value) {
-    return
-  }
-  navigateToJourneyStep(router, journeyKey, examId.value, {
-    scanAttentionCount: snapshot.value?.markingProgress?.scanAttentionCount,
-  })
-}
-
-watch(examId, () => {
-  void loadDetail()
-})
-
-onMounted(() => {
-  mittBus.on('exam-workbench:refresh', loadDetail)
-  void loadDetail()
-})
-
-onBeforeUnmount(() => {
-  mittBus.off('exam-workbench:refresh', loadDetail)
-})
 
 onActivated(() => {
-  if (examId.value) {
-    void loadDetail()
-    void refreshSnapshot()
+  if (examId.value && refreshChrome) {
+    void refreshChrome()
   }
 })
 </script>
 
 <style lang="scss" scoped>
-.exam-workspace-overview {
-  &__signals {
-    margin-bottom: 16px;
-    padding: 12px 16px;
-    background: var(--ant-color-bg-container);
-    border: 1px solid var(--ant-color-border-secondary);
-    border-radius: var(--dp-radius-panel, 6px);
+.exam-overview {
+  &__empty {
+    padding: 48px 0;
   }
 
-  &__cta {
-    margin-bottom: 16px;
-  }
-
-  &__cta-body {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__cta-label {
-    margin: 0 0 4px;
-    font-size: 12px;
-    color: var(--ant-color-text-tertiary);
-  }
-
-  &__cta-title {
-    margin: 0 0 4px;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--ant-color-text);
-  }
-
-  &__cta-hint {
-    margin: 0;
-    font-size: 13px;
-    color: var(--ant-color-text-secondary);
-  }
-
-  &__journey-card {
-    margin-bottom: 16px;
-  }
-
-  &__toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-
-  &__status,
-  &__actions {
-    display: flex;
+  &__name-row {
+    display: inline-flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
   }
 
-  &__empty {
-    padding: 48px 0;
+  &__card {
+    margin-bottom: 16px;
   }
-}
 
-.info-card {
-  margin-bottom: 16px;
-
-  &:last-child {
-    margin-bottom: 0;
+  &__prep-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
-}
 
-.class-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
+  &__prep-item {
+    padding: 12px;
+    border: 1px solid var(--ant-color-border-secondary);
+    border-radius: var(--dp-radius-panel, 8px);
+  }
 
-.shortcut-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+  &__prep-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
 
-.shortcut-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  background: var(--ant-color-fill-quaternary);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-panel, 6px);
-  cursor: pointer;
-  text-align: left;
-  font-size: 14px;
-  color: var(--ant-color-text);
-  transition:
-    border-color 0.2s ease,
-    background 0.2s ease;
+  &__prep-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ant-color-text);
+  }
 
-  &:hover {
-    border-color: var(--ant-color-primary-border);
-    background: var(--dp-blue-50);
+  &__prep-desc {
+    margin: 0 0 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ant-color-text-secondary);
+  }
+
+  &__review-list {
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 13px;
+      border-bottom: 1px solid var(--ant-color-border-secondary);
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+  }
+
+  &__shortcuts {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 }
 </style>

@@ -17,6 +17,7 @@
       :aria-label="resolvedAriaLabel"
       tabindex="0"
       @click="handleChartClick"
+      @brushSelected="handleBrushSelected"
     />
     <figcaption class="mark-chart-host__sr">
       {{ resolvedAriaLabel }}
@@ -52,6 +53,7 @@ const props = withDefaults(defineProps<{
 })
 const emit = defineEmits<{
   (e: 'chart-click', params: unknown): void
+  (e: 'brush-selected', params: unknown): void
 }>()
 type MarkChartVariant = 'default' | 'gauge' | 'distribution' | 'compact'
 type MarkChartGaugeSize = 'sm' | 'md' | 'lg'
@@ -60,6 +62,10 @@ const vChartRef = ref<InstanceType<typeof VChart> | null>(null)
 
 function handleChartClick(params: unknown): void {
   emit('chart-click', params)
+}
+
+function handleBrushSelected(params: unknown): void {
+  emit('brush-selected', params)
 }
 
 const loadingOptions = {

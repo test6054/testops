@@ -309,7 +309,8 @@ onActivated(() => {
         <UiButton variant="primary" size="sm" @click="openCreate">新建认证标准</UiButton>
       </template>
 
-      <UiFilterBar variant="plain"
+      <UiFilterBar
+        variant="plain"
         v-model="filterModel"
         :fields="filterFields"
         show-labels

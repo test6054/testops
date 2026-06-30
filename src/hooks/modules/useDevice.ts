@@ -1,16 +1,14 @@
 import {useWindowSize} from '@vueuse/core'
 import {computed} from 'vue'
+import { LAYOUT_DESKTOP_MIN } from '@/constants/breakpoints'
 
 /**
- * 响应式布局容器固定宽度
- *
- * 大屏（>=1200px）
- * 中屏（>=992px）
- * 小屏（>=768px）
+ * 响应式 layout shell：移动 TabBar vs 桌面 Asider。
+ * 断点与 Ant Design md(768) 对齐，见 constants/breakpoints.ts。
  */
 export function useDevice() {
     const {width} = useWindowSize()
-    const isDesktop = computed(() => width.value > 571)
+    const isDesktop = computed(() => width.value >= LAYOUT_DESKTOP_MIN)
     const isMobile = computed(() => !isDesktop.value)
 
     return {isMobile, isDesktop}

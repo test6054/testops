@@ -49,6 +49,14 @@
             完整性自检
           </UiButton>
           <UiButton
+            v-if="showSelfCheckButton"
+            variant="outline"
+            size="sm"
+            @click="selfCheckModalOpen = true"
+          >
+            提交前自查
+          </UiButton>
+          <UiButton
             v-if="detail && detail.volume.volumeStatus === 'COLLECTING' && detail.volume.responsibleUserId === currentUserId && !canSubmitVolume"
             variant="outline"
             size="sm"
@@ -80,6 +88,12 @@
     </template>
 
     <a-skeleton v-if="loading" active :paragraph="{ rows: 8 }" />
+
+    <UiLoadFailure
+      v-else-if="loadError"
+      title="加载归档卷详情失败"
+      :description="loadError"
+    />
 
     <template v-else-if="detail">
       <UiAlertStrip
@@ -291,13 +305,40 @@
         />
 
         <ArchiveVolumeEventsPanel
-          v-else
+          v-else-if="activeTab === 'events'"
           :events="detail.events"
         />
+
+        <section v-else-if="activeTab === 'storage'" class="archive-volume-detail__panel">
+          <ArchiveVolumePhysicalLocationPanel
+            :volume-id="volumeId"
+            :detail="detail"
+            :can-edit="canEditPhysicalLocation"
+            @refreshed="loadDetail"
+          />
+        </section>
+
+        <section v-else-if="activeTab === 'scan-batches'" class="archive-volume-detail__panel">
+          <ArchiveScanBatchSnapshotPanel :volume-id="volumeId" />
+        </section>
+
+        <section v-else-if="activeTab === 'scan-review'" class="archive-volume-detail__panel">
+          <ArchiveScanBatchReviewPanel
+            :volume-id="volumeId"
+            :can-review="canReviewScanBatches"
+            @refreshed="loadDetail"
+          />
+        </section>
       </UiSectionTabs>
     </template>
 
     <UiEmpty v-else description="加载归档卷详情失败" />
+
+    <ArchiveVolumeSubmitChecklistModal
+      v-model:open="selfCheckModalOpen"
+      :volume-id="volumeId"
+      @confirmed="loadDetail"
+    />
   </StageWorkbenchShell>
 </template>
 
@@ -312,15 +353,17 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
-import { ARCHIVE_APPRAISAL_STATUS_LABEL, ARCHIVE_APPRAISAL_STATUS_TONE, ARCHIVE_INTEGRITY_STATUS_LABEL, ARCHIVE_INTEGRITY_STATUS_TONE, ARCHIVE_REMEDIATION_STATUS_LABEL, ARCHIVE_TRANSFER_STATUS_LABEL, ARCHIVE_TRANSFER_STATUS_TONE, ARCHIVE_VOLUME_SOURCE_TYPE_LABEL, ARCHIVE_VOLUME_SOURCE_TYPE_TONE, ARCHIVE_VOLUME_STATUS_LABEL, ARCHIVE_VOLUME_STATUS_TONE, checkArchiveVolumeIntegrity, exportArchiveVolume, getArchiveVolumeDetail, getRemediationTask, submitArchiveVolume, updateRemediationTask } from '@/apis/mark/archive-volume'
+import { ARCHIVE_APPRAISAL_STATUS_LABEL, ARCHIVE_APPRAISAL_STATUS_TONE, ARCHIVE_INTEGRITY_STATUS_LABEL, ARCHIVE_INTEGRITY_STATUS_TONE, ARCHIVE_REMEDIATION_STATUS_LABEL, ARCHIVE_REMEDIATION_STATUS_TONE, ARCHIVE_TRANSFER_STATUS_LABEL, ARCHIVE_TRANSFER_STATUS_TONE, ARCHIVE_VOLUME_SOURCE_TYPE_LABEL, ARCHIVE_VOLUME_SOURCE_TYPE_TONE, ARCHIVE_VOLUME_STATUS_LABEL, ARCHIVE_VOLUME_STATUS_TONE, checkArchiveVolumeIntegrity, exportArchiveVolume, getArchiveVolumeDetail, getRemediationTask, submitArchiveVolume, updateRemediationTask } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
+import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { canSubmitArchiveVolumeDetail, describeSubmitBlockReason, isScoreSubmitReady } from '@/composables/useArchiveVolumeSubmitGate'
 import { useUserStore } from '@/stores/modules/user'
 import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
@@ -335,8 +378,14 @@ import ArchiveVolumeMaterialTablePanel from '@/views/teacher/archive-volume/comp
 import ArchiveVolumeMaterialTreePanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTreePanel.vue'
 import ArchiveVolumeScoresPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeScoresPanel.vue'
 import ArchiveVolumeTransferPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeTransferPanel.vue'
+import ArchiveVolumePhysicalLocationPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumePhysicalLocationPanel.vue'
+import ArchiveScanBatchSnapshotPanel from '@/views/teacher/archive-volume/components/detail/ArchiveScanBatchSnapshotPanel.vue'
+import ArchiveScanBatchReviewPanel from '@/views/teacher/archive-volume/components/detail/ArchiveScanBatchReviewPanel.vue'
+import ArchiveVolumeSubmitChecklistModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitChecklistModal.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeDetail' })
+
+const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
 
 const route = useRoute()
 const router = useRouter()
@@ -361,6 +410,7 @@ const checkingIntegrity = ref(false)
 const selectedCatalogKeys = ref<string[]>([])
 const submitting = ref(false)
 const exporting = ref(false)
+const selfCheckModalOpen = ref(false)
 const remediationUpdating = ref(false)
 
 const integrityResult = ref<Awaited<ReturnType<typeof checkArchiveVolumeIntegrity>> | null>(null)
@@ -370,6 +420,9 @@ const sectionTabs = [
   { key: 'materials', label: '材料目录' },
   { key: 'scores', label: '成绩证明' },
   { key: 'integrity', label: '完整性/四性' },
+  { key: 'storage', label: '档案柜位' },
+  { key: 'scan-batches', label: '扫描批次' },
+  { key: 'scan-review', label: '混扫复核' },
   { key: 'transfer', label: '移交验收' },
   { key: 'access', label: '查阅' },
   { key: 'appraisal', label: '鉴定销毁' },
@@ -475,10 +528,7 @@ function remediationStatusLabel(code: ArchiveRemediationStatusCode) {
 }
 
 function remediationStatusTone(code: ArchiveRemediationStatusCode): BadgeTone {
-  if (code === 'CLOSED') return 'gray'
-  if (code === 'RESUBMITTED') return 'green'
-  if (code === 'IN_PROGRESS') return 'blue'
-  return 'orange'
+  return strictEnumTone(ARCHIVE_REMEDIATION_STATUS_TONE, code, 'taskStatus')
 }
 
 function volumeStatusLabel(code: ArchiveVolumeDetailVO['volume']['volumeStatus']) {
@@ -534,6 +584,14 @@ const canSubmitVolume = computed(() =>
   detail.value ? canSubmitArchiveVolumeDetail(detail.value, currentUserId.value) : false,
 )
 
+const showSelfCheckButton = computed(() => {
+  const d = detail.value
+  if (!d) return false
+  if (d.volume.volumeStatus !== 'COLLECTING') return false
+  if (d.volume.responsibleUserId !== currentUserId.value) return false
+  return d.volume.requireSelfCheckConfirm === true
+})
+
 const canExportManifest = computed(() => {
   const status = detail.value?.volume.volumeStatus
   return status === 'SUBMITTED' || status === 'STORED'
@@ -546,6 +604,14 @@ const canRegisterMaterial = computed(() => {
   const status = d.volume.volumeStatus
   return status === 'DRAFT' || status === 'COLLECTING'
 })
+
+const canEditPhysicalLocation = computed(() => {
+  const d = detail.value
+  if (!d?.canManageMaterials) return false
+  return d.volume.volumeStatus === 'COLLECTING'
+})
+
+const canReviewScanBatches = computed(() => detail.value?.canManageMaterials === true)
 
 const canAdvanceRemediation = computed(() => {
   const task = focusedRemediationTask.value
@@ -593,10 +659,11 @@ async function loadDetail(options?: { silent?: boolean }) {
     fourPropertyResult.value = detail.value.latestFourPropertyCheck
     integrityResult.value = detail.value.latestIntegrityCheck ?? null
     syncFocusedRemediationTaskFromDetail()
+    clearLoadFailure()
   }
   catch (error) {
     if (!options?.silent) {
-      showUserError(error, '加载归档卷详情失败')
+      captureLoadFailure(error, '加载归档卷详情失败')
       detail.value = null
     }
   }
@@ -623,6 +690,11 @@ async function runIntegrityCheck() {
 }
 
 async function handleSubmit() {
+  const d = detail.value
+  if (d?.volume.requireSelfCheckConfirm && !d.volume.selfCheckConfirmed) {
+    selfCheckModalOpen.value = true
+    return
+  }
   submitting.value = true
   try {
     await submitArchiveVolume({ volumeId: volumeId.value })

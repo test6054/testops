@@ -1602,7 +1602,7 @@ watch(selectedExamId, (value) => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .question-expand__layout {
     grid-template-columns: 1fr;
   }

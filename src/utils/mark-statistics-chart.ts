@@ -9,6 +9,7 @@ import type { MarkHeatmapCell } from '@/utils/mark-echarts-options'
 import { COURSE_OBJECTIVE_DIMENSION_LABEL } from '@/apis/mark/cross-exam-analysis'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import { rateTone } from '@/utils/score-tone'
+import { formatScore, formatScorePercent } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** UiScatterChart 区段色：canvas/SVG 不解析 CSS 变量，故用十六进制单一真源，取值与 --dp/--ant 主题色对齐 */
@@ -37,7 +38,7 @@ function toPercent(value: number | undefined): number | null {
 
 function formatPercentText(value: number | undefined): string {
   const percent = toPercent(value)
-  return percent == null ? '—' : `${percent.toFixed(1)}%`
+  return percent == null ? '—' : formatScorePercent(percent, '—')
 }
 
 /** 考试统计快照 → UiTrendChart 点位：纵轴为得分率百分制 */
@@ -146,7 +147,7 @@ export function correctRatioToBarItems(
     return {
       key: row.questionTemplateId,
       label: `题${row.questionNo}`,
-      value: Number(ratio.toFixed(1)),
+      value: Number(formatScore(ratio, 'percent')),
       tone,
       helper: `已批 ${row.totalCount} 人`,
     }
@@ -165,9 +166,9 @@ export function errorCauseToBarItems(
       return {
         key: item.causeName || item.questionType || `cause-${index}`,
         label: truncateLabel(item.causeName || item.questionType || '错因', 10),
-        value: Number(percent.toFixed(1)),
+        value: Number(formatScore(percent, 'percent')),
         tone: 'blue' satisfies BadgeTone,
-        helper: `${percent.toFixed(1)}%`,
+        helper: formatScorePercent(percent, '—'),
       }
     })
 }
@@ -201,7 +202,7 @@ export function buildQuestionQualityScatterSeries(
       weight: row.totalCount,
       label: `题${row.questionNo} · ${questionType}`,
       helper: [
-        `难度系数 ${difficulty.toFixed(2)} · 区分度 ${discrimination.toFixed(2)}`,
+        `难度系数 ${formatScore(difficulty, 'achievement')} · 区分度 ${formatScore(discrimination, 'achievement')}`,
         `已批 ${row.totalCount} 人`,
       ].join(' · '),
     }
@@ -278,7 +279,7 @@ export function progressSnapshotsToTrendPoints(records: ProgressMonitorRecordVO[
   return records.map((record, index) => ({
     key: record.id || `snapshot-${index}`,
     label: formatSnapshotLabel(record.snapshotTime, index),
-    value: Number(record.completionRate.toFixed(2)),
+    value: Number(formatScore(record.completionRate, 'percent')),
   }))
 }
 

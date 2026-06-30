@@ -93,7 +93,7 @@
         <MarkTrendSection
           v-if="record"
           title="学期考试得分走势"
-          hint="按考试时间序列展示得分率"
+          :hint="examTrendHint"
           :point-count="examStatTrendPoints.length"
           :option="examTrendChartOption"
           height="280px"
@@ -104,7 +104,7 @@
         <MarkBarSection
           v-if="record"
           title="能力点起止对比"
-          hint="各能力维度结束值，悬停查看起止对照"
+          :hint="growthBarHint"
           :item-count="growthBarItems.length"
           :option="growthBarChartOption"
           height="280px"
@@ -188,6 +188,11 @@ import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handl
 import { formatDateTime } from '@/utils/format'
 import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import {
+  buildBarChartInsight,
+  buildTrendChartInsight,
+  mergeChartHint,
+} from '@/utils/mark-chart-insights'
+import {
   examStatSnapshotsToTrendPoints,
   growthItemsToBarItems,
 } from '@/utils/mark-statistics-chart'
@@ -228,6 +233,16 @@ const examStatTrendPoints = computed(() =>
 const growthBarItems = computed(() =>
   growthItemsToBarItems(record.value?.growthItems ?? []),
 )
+
+const examTrendHint = computed(() => mergeChartHint(
+  '按考试时间序列展示得分率',
+  buildTrendChartInsight(examStatTrendPoints.value),
+))
+
+const growthBarHint = computed(() => mergeChartHint(
+  '各能力维度结束值，悬停查看起止对照',
+  buildBarChartInsight(growthBarItems.value),
+))
 
 const examTrendLastValue = computed(() => {
   const points = examStatTrendPoints.value

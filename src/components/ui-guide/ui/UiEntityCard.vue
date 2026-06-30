@@ -260,7 +260,7 @@ const handleClick = (evt: MouseEvent) => {
   --entity-cover-bg: #f5f3ff;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ui-entity-card__top,
   .ui-entity-card__footer {
     flex-direction: column;

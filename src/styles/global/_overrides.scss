@@ -25,7 +25,7 @@
   }
 }
 
-// ─── Tabs 现代�?───
+// ─── Tabs 现代化 ───
 .ant-tabs {
   .ant-tabs-tab {
     padding: 10px 16px !important;
@@ -51,7 +51,7 @@
   }
 }
 
-// ─── Drawer 现代�?───
+// ─── Drawer 现代化 ───
 .ant-drawer-content-wrapper {
   .ant-drawer-content {
     border-radius: var(--dp-radius-panel, 8px) 0 0 var(--dp-radius-panel, 8px);
@@ -82,7 +82,7 @@
   background-color: rgba(15, 23, 42, 0.4) !important;
 }
 
-// ─── Dropdown 通用现代�?───
+// ─── Dropdown 通用现代化 ───
 .ant-dropdown {
   .ant-dropdown-menu {
     padding: 6px !important;
@@ -111,7 +111,7 @@
   }
 }
 
-// ─── Popover / Popconfirm 现代�?───
+// ─── Popover / Popconfirm 现代化 ───
 .ant-popover {
   .ant-popover-inner {
     border-radius: var(--dp-radius-panel, 6px) !important;
@@ -141,7 +141,7 @@
   }
 }
 
-// ─── Notification / Message 现代�?───
+// ─── Notification / Message 现代化 ───
 .ant-notification {
   .ant-notification-notice {
     border-radius: var(--dp-radius-panel, 6px) !important;
@@ -156,7 +156,7 @@
   }
 }
 
-// 全局反馈：Message 容器带内�?left:50% + translateX(-50%)，须显式覆盖 physical left/right
+// 全局反馈：Message 容器带内置 left:50% + translateX(-50%)，须显式覆盖 physical left/right
 .ant-message {
   left: auto !important;
   right: 24px !important;

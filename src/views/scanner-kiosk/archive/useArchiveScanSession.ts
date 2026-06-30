@@ -1,4 +1,5 @@
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
+import type { ScanDispatchArchiveSnapshotVO } from '@/apis/mark/scanner-dispatch'
 import type {
   ArchiveScanBatchModeCode,
   ScanWorkOrderArchiveContextVO,
@@ -8,6 +9,7 @@ import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ARCHIVE_MATERIAL_TYPE_LABEL } from '@/apis/mark/archive-volume'
 import { getAgentSetupContext } from '@/apis/mark/scanner-agent-local'
+import { previewScanDispatch } from '@/apis/mark/scanner-dispatch'
 import {
   getScanWorkOrderContext,
   startScanWorkOrder,
@@ -20,14 +22,25 @@ export function useArchiveScanSession() {
   const loading = ref(false)
   const lifecycle = ref<ScanWorkOrderLifecycleVO | null>(null)
   const archiveContext = ref<ScanWorkOrderArchiveContextVO | null>(null)
+  const dispatchSnapshot = ref<ScanDispatchArchiveSnapshotVO | null>(null)
+  const dispatchTraceLabelCode = ref('')
 
   const volumeId = computed(() => String(route.query.volumeId ?? ''))
   const catalogCode = computed(() => String(route.query.catalogCode ?? ''))
   const materialType = computed(() => route.query.materialType as ArchiveMaterialTypeCode | undefined)
   const returnTo = computed(() => String(route.query.returnTo ?? ''))
-  const batchMode = computed<ArchiveScanBatchModeCode>(() =>
-    route.query.batchMode === 'PER_PAGE' ? 'PER_PAGE' : 'MERGED',
-  )
+  const dispatchTicketId = computed(() => String(route.query.dispatchTicketId ?? ''))
+  const batchMode = computed<ArchiveScanBatchModeCode>(() => {
+    const queryMode = route.query.batchMode
+    if (queryMode === 'PER_PAGE' || queryMode === 'MERGED') {
+      return queryMode
+    }
+    const snapshotMode = route.query.archiveBatchMode
+    if (snapshotMode === 'PER_PAGE' || snapshotMode === 'MERGED') {
+      return snapshotMode
+    }
+    return 'MERGED'
+  })
 
   const materialTypeLabel = computed(() =>
     materialType.value
@@ -35,12 +48,30 @@ export function useArchiveScanSession() {
       : '未指定',
   )
 
+  async function loadDispatchSnapshot() {
+    if (!dispatchTicketId.value) {
+      dispatchSnapshot.value = null
+      dispatchTraceLabelCode.value = ''
+      return
+    }
+    try {
+      const ticket = await previewScanDispatch({ ticketId: dispatchTicketId.value })
+      dispatchSnapshot.value = ticket.archiveSnapshot ?? null
+      dispatchTraceLabelCode.value = ticket.traceLabelCode ?? ''
+    }
+    catch {
+      dispatchSnapshot.value = null
+      dispatchTraceLabelCode.value = ''
+    }
+  }
+
   async function loadContext() {
     if (!volumeId.value) {
       throw new Error('缺少 volumeId')
     }
     loading.value = true
     try {
+      await loadDispatchSnapshot()
       const setup = await getAgentSetupContext()
       if (!setup.bound || !setup.scannerDeviceId || !setup.scannerStationId) {
         archiveContext.value = null
@@ -93,6 +124,7 @@ export function useArchiveScanSession() {
         catalogCode: catalogCode.value || undefined,
         materialType: materialType.value,
         archiveBatchMode: batchMode.value,
+        dispatchTicketId: dispatchTicketId.value || undefined,
         scannerDeviceId: setup.scannerDeviceId,
         scannerStationId: setup.scannerStationId,
         scanConfig: {
@@ -114,11 +146,14 @@ export function useArchiveScanSession() {
     loading,
     lifecycle,
     archiveContext,
+    dispatchSnapshot,
+    dispatchTraceLabelCode,
     volumeId,
     catalogCode,
     materialType,
     materialTypeLabel,
     returnTo,
+    dispatchTicketId,
     batchMode,
     loadContext,
     startSession,

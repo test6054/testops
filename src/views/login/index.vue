@@ -568,7 +568,7 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .login-page {
     padding: 20px 16px 24px;
   }

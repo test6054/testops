@@ -9,6 +9,7 @@ import type {
 import {
   buildTrendLineChartOption,
   emptyChartOption,
+  finalizeMarkChartOption,
   MARK_CHART_AXIS_LABEL_STYLE,
   MARK_ECHARTS_PALETTE,
   resolveThemeColor,
@@ -69,7 +70,7 @@ export function buildPortraitRadarChartOption(
       data: [{ value: cohortMedianValues, name: '群体中位' }],
     })
   }
-  return {
+  return finalizeMarkChartOption({
     color: [MARK_ECHARTS_PALETTE.primary, MARK_ECHARTS_PALETTE.warning],
     legend: showCohortMedian
       ? {
@@ -91,7 +92,7 @@ export function buildPortraitRadarChartOption(
       axisLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.axisLine } },
     },
     series,
-  }
+  })
 }
 
 /** 同群体 P25–P75 区间对比：仅展示分布区间，不展示名次 */
@@ -117,7 +118,7 @@ export function buildPortraitCohortRangeChartOption(
   const bandColor = resolveThemeColor('--ant-color-warning-bg', 'rgba(245, 158, 11, 0.28)')
   const medianColor = MARK_ECHARTS_PALETTE.warning
 
-  return {
+  return finalizeMarkChartOption({
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
@@ -189,7 +190,7 @@ export function buildPortraitCohortRangeChartOption(
         data: personalValues.map((value, index) => [value, index]),
       },
     ],
-  }
+  })
 }
 
 export function buildPortraitCompositeTrendChartOption(

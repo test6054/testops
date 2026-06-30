@@ -64,6 +64,7 @@
             <div class="status-card__body">
               <MarkDistributionSection
                 title="复核任务状态分布"
+                :hint="statusDistributionHint"
                 :total="totalTaskCount"
                 :option="statusDistributionOption"
                 :aria-label="statusDistributionAriaLabel"
@@ -93,7 +94,7 @@
         <MarkHeatmapSection
           v-if="questionHeatmapCells.length"
           title="题号确认率热力图"
-          hint="颜色越深表示该题复核确认率越高，点击题格可定位表格行"
+          :hint="questionHeatmapHint"
           :cell-count="questionHeatmapCells.length"
           :option="questionHeatmapOption"
           :height="questionHeatmapHeight"
@@ -104,7 +105,7 @@
 
         <MarkBarSection
           title="按题号已通过任务数"
-          hint="柱高表示已通过复核任务数"
+          :hint="reviewProgressBarHint"
           :item-count="reviewProgressBarItems.length"
           :option="reviewProgressChartOption"
           height="300px"
@@ -173,6 +174,65 @@
           </template>
         </UiDataTable>
       </UiCard>
+
+      <UiCard class="processing-card">
+        <template #title>
+          <RobotOutlined />
+          <span>批改处理任务</span>
+        </template>
+        <template #extra>
+          <a-select
+            v-model:value="processingTaskTypeFilter"
+            allow-clear
+            placeholder="任务类型"
+            size="small"
+            style="width: 160px"
+            :options="processingTaskTypeOptions"
+            @change="reloadProcessingTasks"
+          />
+        </template>
+        <UiDataTable
+          pagination-mode="server"
+          :columns="processingTaskColumns"
+          :data-source="processingTasks"
+          :loading="processingTasksLoading"
+          :total="processingTaskTotal"
+          :page-num="processingTaskPageNum"
+          :page-size="processingTaskPageSize"
+          row-key="id"
+          size="middle"
+          flat
+          @page-change="handleProcessingTaskPageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'taskType'">
+              <UiTag :tone="processingTaskTypeTone(record.taskType)" size="sm">
+                {{ processingTaskTypeLabel(record.taskType) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'status'">
+              <UiTag :tone="processingTaskStatusTone(record.status)" size="sm">
+                {{ processingTaskStatusLabel(record.status) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'diagnostic'">
+              <span v-if="record.diagnostic" class="processing-card__diagnostic">{{ record.diagnostic }}</span>
+              <span v-else class="muted">-</span>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiButton
+                v-if="canRetryPaperGrade(record)"
+                size="sm"
+                variant="outline"
+                :loading="retryingPaperInstanceId === record.paperInstanceId"
+                @click="retryPaperGradeForTask(record)"
+              >
+                重试整卷 AI
+              </UiButton>
+            </template>
+          </template>
+        </UiDataTable>
+      </UiCard>
     </template>
     <a-spin v-else :spinning="loading" tip="正在加载复核进度...">
       <UiEmpty description="暂无数据" class="progress-page__empty" />
@@ -193,8 +253,15 @@ import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
-import { computed, onActivated, ref, watch } from 'vue'
+import message from 'ant-design-vue/es/message'
+import { computed, inject, onActivated, ref, watch } from 'vue'
+import {
+  pageExamProcessingTasks,
+  retryPaperGradeSuggestion,
+  type ExamProcessingTaskItemVO,
+} from '@/apis/mark/exam-processing-task'
 import {
   getMarkingProgress,
 } from '@/apis/mark/exam-progress'
@@ -203,6 +270,12 @@ import {
   REVIEW_TASK_STATUS_TONE as STATUS_TONE,
 } from '@/apis/mark/exam-review-task'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
+import {
+  PROCESSING_TASK_TYPE_LABEL,
+  PROCESSING_TASK_TYPE_TONE,
+  type ProcessingTaskTypeCode,
+} from '@/apis/mark/task-type'
+import { TASK_STATUS_LABEL, TASK_STATUS_TONE, type TaskStatusCode } from '@/apis/mark/task-status'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkDistributionSection from '@/components/chart/MarkDistributionSection.vue'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
@@ -214,7 +287,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
-import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { MARK_WORKBENCH_CONTEXT_KEY, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError } from '@/utils/error-handler'
 import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
@@ -224,6 +297,12 @@ import {
   buildGaugeChartOption,
   buildHeatmapChartOption,
 } from '@/utils/mark-echarts-options'
+import {
+  buildBarChartInsight,
+  buildDistributionChartInsight,
+  buildHeatmapChartInsight,
+  mergeChartHint,
+} from '@/utils/mark-chart-insights'
 import { reviewProgressToBarItems, reviewProgressToHeatmapCells } from '@/utils/mark-statistics-chart'
 import { toneToColor } from '@/utils/score-tone'
 import {
@@ -236,13 +315,115 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherReviewProgress' })
 
 const { selectedExamId } = useMarkExamContext()
-const { refreshSnapshot } = useWorkspaceExamId()
+const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 
 const successColor = toneToColor('green')
 const primaryColor = toneToColor('blue')
 
 const progress = ref<MarkingProgressVO | null>(null)
 const loading = ref(false)
+
+const processingTasks = ref<ExamProcessingTaskItemVO[]>([])
+const processingTasksLoading = ref(false)
+const processingTaskTotal = ref(0)
+const processingTaskPageNum = ref(1)
+const processingTaskPageSize = ref(10)
+const processingTaskTypeFilter = ref<ProcessingTaskTypeCode | undefined>(undefined)
+const retryingPaperInstanceId = ref<string | null>(null)
+
+const processingTaskTypeOptions = computed(() =>
+  (Object.keys(PROCESSING_TASK_TYPE_LABEL) as ProcessingTaskTypeCode[]).map((value) => ({
+    value,
+    label: PROCESSING_TASK_TYPE_LABEL[value],
+  })),
+)
+
+function processingTaskTypeLabel(value: ProcessingTaskTypeCode): string {
+  return strictEnumLabel(PROCESSING_TASK_TYPE_LABEL, value, '处理任务类型')
+}
+
+function processingTaskTypeTone(value: ProcessingTaskTypeCode) {
+  return strictEnumTone(PROCESSING_TASK_TYPE_TONE, value, '处理任务类型')
+}
+
+function processingTaskStatusLabel(value: TaskStatusCode): string {
+  return strictEnumLabel(TASK_STATUS_LABEL, value, '处理任务状态')
+}
+
+function processingTaskStatusTone(value: TaskStatusCode) {
+  return strictEnumTone(TASK_STATUS_TONE, value, '处理任务状态')
+}
+
+function canRetryPaperGrade(record: ExamProcessingTaskItemVO): boolean {
+  if (!record.paperInstanceId) return false
+  if (record.taskType !== 'SUBJECTIVE_AI_REVIEW') return false
+  return record.status === 'FAILED' || record.status === 'BLOCKED' || record.status === 'PROCESSING'
+}
+
+async function loadProcessingTasks(): Promise<void> {
+  if (!selectedExamId.value) return
+  processingTasksLoading.value = true
+  try {
+    const result = await pageExamProcessingTasks({
+      examId: selectedExamId.value,
+      taskType: processingTaskTypeFilter.value,
+      pageNum: processingTaskPageNum.value,
+      pageSize: processingTaskPageSize.value,
+    })
+    processingTasks.value = result.list ?? []
+    processingTaskTotal.value = result.total ?? 0
+  } catch (error) {
+    showUserError(error, '批改处理任务加载失败')
+  } finally {
+    processingTasksLoading.value = false
+  }
+}
+
+function reloadProcessingTasks(): void {
+  processingTaskPageNum.value = 1
+  void loadProcessingTasks()
+}
+
+function handleProcessingTaskPageChange(pageEvent: { current: number, pageSize: number }): void {
+  processingTaskPageNum.value = pageEvent.current
+  processingTaskPageSize.value = pageEvent.pageSize
+  void loadProcessingTasks()
+}
+
+async function retryPaperGradeForTask(record: ExamProcessingTaskItemVO): Promise<void> {
+  if (!selectedExamId.value || !record.paperInstanceId) return
+  retryingPaperInstanceId.value = record.paperInstanceId
+  try {
+    await retryPaperGradeSuggestion({
+      examId: selectedExamId.value,
+      paperInstanceId: record.paperInstanceId,
+    })
+    message.success('整卷 AI 重试已受理')
+    await loadProcessingTasks()
+  } catch (error) {
+    showUserError(error, '整卷 AI 重试失败')
+  } finally {
+    retryingPaperInstanceId.value = null
+  }
+}
+
+const processingTaskColumns: ColumnType<ExamProcessingTaskItemVO>[] = [
+  { title: '类型', dataIndex: 'taskType', key: 'taskType', width: 140 },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
+  { title: '试卷实例', dataIndex: 'paperInstanceId', key: 'paperInstanceId', width: 120 },
+  { title: '题目模板', dataIndex: 'questionTemplateId', key: 'questionTemplateId', width: 120 },
+  { title: '诊断', dataIndex: 'diagnostic', key: 'diagnostic' },
+  { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 160 },
+  { title: '操作', key: 'actions', width: 120 },
+]
+
+const contextProgress = computed(
+  () => workbenchContext?.markingProgress?.value ?? workbenchContext?.snapshot.value?.markingProgress ?? null,
+)
+
+watch(contextProgress, (value) => {
+  progress.value = value
+}, { immediate: true })
 
 const confirmedPercent = computed(() => {
   if (!progress.value) return 0
@@ -304,6 +485,8 @@ const statusBreakdown = computed(() => {
 })
 
 const statusDistributionSegments = computed(() => toDistributionSegments(statusBreakdown.value))
+
+const statusDistributionHint = computed(() => buildDistributionChartInsight(statusDistributionSegments.value))
 
 const { chartOption: confirmedGaugeOption } = useChartOption(() =>
   buildGaugeChartOption(confirmedPercent.value, {
@@ -375,7 +558,17 @@ const questionRows = computed<ReviewQuestionProgressItemVO[]>(
   () => progress.value?.reviewQuestionProgressList ?? [],
 )
 const reviewProgressBarItems = computed(() => reviewProgressToBarItems(questionRows.value))
+
+const reviewProgressBarHint = computed(() => mergeChartHint(
+  '柱高表示已通过复核任务数',
+  buildBarChartInsight(reviewProgressBarItems.value, { valueUnit: ' 项' }),
+))
 const questionHeatmapCells = computed(() => reviewProgressToHeatmapCells(questionRows.value))
+
+const questionHeatmapHint = computed(() => mergeChartHint(
+  '颜色越深表示该题复核确认率越高，点击题格可定位表格行',
+  buildHeatmapChartInsight(questionHeatmapCells.value),
+))
 
 const questionHeatmapHeight = computed(() => {
   const count = questionHeatmapCells.value.length
@@ -438,7 +631,12 @@ async function loadAll(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
   try {
-    progress.value = await getMarkingProgress(selectedExamId.value)
+    if (workbenchContext?.refreshChrome) {
+      await workbenchContext.refreshChrome()
+    } else {
+      progress.value = await getMarkingProgress(selectedExamId.value)
+    }
+    await loadProcessingTasks()
   } catch (error) {
     showUserError(error, '复核进度加载失败')
   } finally {
@@ -447,17 +645,19 @@ async function loadAll(): Promise<void> {
 }
 
 watch(selectedExamId, (value) => {
-  if (value) {
-    void loadAll()
-  } else {
+  if (!value) {
     progress.value = null
+    processingTasks.value = []
+    processingTaskTotal.value = 0
+    return
   }
+  processingTaskPageNum.value = 1
+  void loadProcessingTasks()
 }, { immediate: true })
 
 onActivated(() => {
   if (selectedExamId.value) {
     void loadAll()
-    void refreshSnapshot()
   }
 })
 </script>
@@ -538,6 +738,15 @@ onActivated(() => {
 
 .question-card {
   height: 100%;
+}
+
+.processing-card__diagnostic {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.5;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .question-table {

@@ -222,6 +222,7 @@
             <MarkTrendSection
               v-if="!historicalLoading"
               title=""
+              :hint="historicalTrendHint"
               :point-count="historicalTrendPoints.length"
               :option="historicalTrendChartOption"
               height="220px"
@@ -442,6 +443,7 @@ import type {
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
 import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
 import type { BadgeTone, FilterField, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
@@ -482,9 +484,8 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiActivityTimeline from '@/components/ui-guide/ui/UiActivityTimeline.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import SignalBand from '@/components/workbench/SignalBand.vue'
-import type { SignalMetric } from '@/types/workbench'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
@@ -492,6 +493,7 @@ import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
 import { formatTrendAriaLabel, MARK_CHART_EMPTY } from '@/utils/mark-chart-accessibility'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
+import { buildTrendChartInsight } from '@/utils/mark-chart-insights'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -1152,6 +1154,11 @@ const historicalTrendPoints = computed<UiTrendPoint[]>(() => {
     value: p.finalScore,
   }))
 })
+
+const historicalTrendHint = computed(() => buildTrendChartInsight(
+  historicalTrendPoints.value,
+  { valueUnit: ' 分' },
+))
 
 const { chartOption: historicalTrendChartOption } = useChartOption(() =>
   buildTrendLineChartOption(historicalTrendPoints.value, {

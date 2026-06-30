@@ -2,18 +2,19 @@ import type {ColProps} from 'ant-design-vue'
 import type {ComputedRef} from 'vue';
 import {useBreakpoints} from '@vueuse/core'
 import {computed } from 'vue'
+import { ANT_GRID_MIN } from '@/constants/breakpoints'
 
 type ColBreakpoint = Pick<ColProps, 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl'>
 type Breakpoint = keyof ColBreakpoint
 
 export function useBreakpoint() {
     const breakpoints = useBreakpoints({
-        xs: 576, // <576
-        sm: 576, // >= 576
-        md: 768, // >=768
-        lg: 992, // >=992
-        xl: 1200, // >=1200
-        xxl: 1600, // >=1600
+        xs: 0,
+        sm: ANT_GRID_MIN.sm,
+        md: ANT_GRID_MIN.md,
+        lg: ANT_GRID_MIN.lg,
+        xl: ANT_GRID_MIN.xl,
+        xxl: ANT_GRID_MIN.xxl,
     })
 
     const arr = breakpoints.current() as ComputedRef<Breakpoint[]>

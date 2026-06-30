@@ -27,6 +27,12 @@
       >
         编辑批次
       </UiButton>
+      <p
+        v-if="isTenantWideCollegeCoordinator && selectedCampaignId"
+        class="archive-volume-remediation-panel__export-hint"
+      >
+        导出范围：{{ ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT }}
+      </p>
       <UiButton
         v-if="isTenantWideCollegeCoordinator && selectedCampaignId"
         size="sm"
@@ -34,7 +40,16 @@
         :loading="exporting"
         @click="handleExportCampaign"
       >
-        导出材料包
+        导出 manifest
+      </UiButton>
+      <UiButton
+        v-if="isTenantWideCollegeCoordinator && selectedCampaignId"
+        size="sm"
+        variant="outline"
+        :loading="exportingArchive"
+        @click="handleExportArchiveCampaign"
+      >
+        导出四级目录包
       </UiButton>
       <UiButton
         v-if="canShowCreateRemediationTask"
@@ -251,9 +266,11 @@ import { useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_EVALUATION_CAMPAIGN_STATUS_LABEL,
+  ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
   ARCHIVE_REMEDIATION_STATUS_LABEL,
   createRemediationTask,
   exportEvaluationPackage,
+  exportEvaluationArchivePackage,
   getArchiveVolumeDetail,
   getRemediationTask,
   listEvaluationCampaigns,
@@ -290,6 +307,7 @@ const updating = ref(false)
 const reassigning = ref(false)
 const editAssigneeUserId = ref<string | undefined>(undefined)
 const exporting = ref(false)
+const exportingArchive = ref(false)
 const campaignSaving = ref(false)
 const createTaskSubmitting = ref(false)
 const detailOpen = ref(false)
@@ -482,13 +500,33 @@ async function handleExportCampaign() {
       return
     }
     await downloadFile({ nodeId: result.exportFileId })
-    message.success(`评估材料包已导出，共 ${result.volumeCount ?? 0} 卷`)
+    message.success(`评估 manifest 已导出，共 ${result.volumeCount ?? 0} 卷（${ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT}）`)
   }
   catch (error) {
     showUserError(error)
   }
   finally {
     exporting.value = false
+  }
+}
+
+async function handleExportArchiveCampaign() {
+  if (!selectedCampaignId.value) return
+  exportingArchive.value = true
+  try {
+    const result = await exportEvaluationArchivePackage(selectedCampaignId.value)
+    if (!result.exportFileId) {
+      message.error('导出未返回文件 ID')
+      return
+    }
+    await downloadFile({ nodeId: result.exportFileId })
+    message.success(`四级目录包已导出，共 ${result.volumeCount ?? 0} 卷（${ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT}）`)
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    exportingArchive.value = false
   }
 }
 
@@ -618,6 +656,14 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
+}
+
+.archive-volume-remediation-panel__export-hint {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+  color: var(--dp-text-secondary);
+  line-height: 1.5;
 }
 
 .detail-desc {

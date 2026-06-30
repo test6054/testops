@@ -169,7 +169,7 @@ export const MARKING_TASK_STATUS_TONE: Record<
   'gray' | 'blue' | 'orange' | 'green' | 'red'
 > = {
   ALLOCATED: 'blue',
-  IN_PROGRESS: 'orange',
+  IN_PROGRESS: 'blue',
   SUBMITTED: 'green',
   FINALIZED: 'green',
   RECYCLED: 'gray',
@@ -415,6 +415,8 @@ export interface QuestionGroupReviewerVO {
 export interface QuestionMarkingGroupQuestionVO {
   groupId: string | null
   questionTemplateId: string
+  /** 题目批改结果 ID，供单题 AI 复评使用 */
+  gradeResultId?: string
   questionNo: string
   questionType: QuestionTypeCode
   questionTypeMessage: string
@@ -938,12 +940,10 @@ export function calibrateTrialSession(request: TrialSessionCalibrateRequest): Pr
 
 /**
  * 启动试评会话（CAS 守门 TRIAL_CREATED → TRIAL_ASSIGNED）。
- * POST /api/mark/organization/trial/start?sessionId=
+ * POST /api/mark/organization/trial/start
  */
 export function startTrialSession(sessionId: string): Promise<boolean> {
-  return http.post<boolean>(
-    `/api/mark/organization/trial/start?sessionId=${encodeURIComponent(sessionId)}`,
-  )
+  return http.post<boolean>('/api/mark/organization/trial/start', { id: sessionId })
 }
 
 /**
@@ -980,22 +980,18 @@ export function createFormalSession(request: FormalSessionCreateRequest): Promis
 
 /**
  * 启动正评会话（CAS 守门 SESSION_CREATED → SESSION_ACTIVE）。
- * POST /api/mark/organization/formal/start?sessionId=
+ * POST /api/mark/organization/formal/start
  */
 export function startFormalSession(sessionId: string): Promise<boolean> {
-  return http.post<boolean>(
-    `/api/mark/organization/formal/start?sessionId=${encodeURIComponent(sessionId)}`,
-  )
+  return http.post<boolean>('/api/mark/organization/formal/start', { id: sessionId })
 }
 
 /**
  * 完成正评会话（CAS 守门 SESSION_ACTIVE → SESSION_COMPLETED）。
- * POST /api/mark/organization/formal/complete?sessionId=
+ * POST /api/mark/organization/formal/complete
  */
 export function completeFormalSession(sessionId: string): Promise<boolean> {
-  return http.post<boolean>(
-    `/api/mark/organization/formal/complete?sessionId=${encodeURIComponent(sessionId)}`,
-  )
+  return http.post<boolean>('/api/mark/organization/formal/complete', { id: sessionId })
 }
 
 /**
@@ -1187,6 +1183,8 @@ export interface MarkingQuestionViewVO {
   /** 匿名 token 值；匿名模式为真实令牌，实名模式为 null */
   anonymousToken: string | null
   questionTemplateId: string
+  /** 题目批改结果 ID，供单题 AI 复评使用 */
+  gradeResultId?: string
   questionNo: string
   questionType: QuestionTypeCode
   questionTypeMessage: string
@@ -1319,12 +1317,10 @@ export function pauseFormalSession(request: SessionLifecycleActionRequest): Prom
 
 /**
  * 恢复正评会话（SESSION_PAUSED → SESSION_ACTIVE）。
- * POST /api/mark/organization/formal/resume?sessionId=
+ * POST /api/mark/organization/formal/resume
  */
 export function resumeFormalSession(sessionId: string): Promise<boolean> {
-  return http.post<boolean>(
-    `/api/mark/organization/formal/resume?sessionId=${encodeURIComponent(sessionId)}`,
-  )
+  return http.post<boolean>('/api/mark/organization/formal/resume', { id: sessionId })
 }
 
 /**
@@ -1348,21 +1344,17 @@ export function closeTrialSession(request: SessionLifecycleActionRequest): Promi
 /**
  * 软删除草稿态正评会话（仅 SESSION_CREATED 可删）。
  * 已启动 / 暂停 / 完成的会话不可删除，必须使用 closeFormalSession 归档。
- * POST /api/mark/organization/formal/delete?sessionId=
+ * POST /api/mark/organization/formal/delete
  */
 export function deleteFormalSession(sessionId: string): Promise<boolean> {
-  return http.post<boolean>(
-    `/api/mark/organization/formal/delete?sessionId=${encodeURIComponent(sessionId)}`,
-  )
+  return http.post<boolean>('/api/mark/organization/formal/delete', { id: sessionId })
 }
 
 /**
  * 软删除草稿态试评会话（仅 TRIAL_CREATED 可删）。
  * 已分配样本 / 已提交 / 已校准的会话不可删除，必须使用 closeTrialSession 归档。
- * POST /api/mark/organization/trial/delete?sessionId=
+ * POST /api/mark/organization/trial/delete
  */
 export function deleteTrialSession(sessionId: string): Promise<boolean> {
-  return http.post<boolean>(
-    `/api/mark/organization/trial/delete?sessionId=${encodeURIComponent(sessionId)}`,
-  )
+  return http.post<boolean>('/api/mark/organization/trial/delete', { id: sessionId })
 }

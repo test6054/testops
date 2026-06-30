@@ -171,7 +171,7 @@ const emit = defineEmits<{
     }
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     position: fixed;
     z-index: 200;
     top: 56px;

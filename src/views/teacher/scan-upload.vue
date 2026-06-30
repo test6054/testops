@@ -305,6 +305,13 @@
                     顺序诊断
                   </UiTextAction>
                   <UiTextAction
+                    v-if="record.status === 'BLOCKED'"
+                    :disabled="batchPageRegisterRetrying === record.scanBatchId"
+                    @click="onRetryPageRegister(record)"
+                  >
+                    重试页登记
+                  </UiTextAction>
+                  <UiTextAction
                     :disabled="!record.sourceFileCount"
                     @click="openBatchSourceFiles(record)"
                   >
@@ -424,13 +431,14 @@ import type {
 } from '@/apis/mark/exam-scan'
 import type { ScanLiveEventVO } from '@/apis/mark/scan-live'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import DesktopOutlined from '@ant-design/icons-vue/DesktopOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import UnorderedListOutlined from '@ant-design/icons-vue/UnorderedListOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   isScannerDeviceOnline,
   listActiveScannerDevices
@@ -441,6 +449,7 @@ import {
   getScanBatchOrderAudit,
   pageScannerBatches,
   previewScanBatchAggregation,
+  retryScanBatchPageRegister,
   SCAN_BATCH_ORDER_AUDIT_CODE_LABEL,
   SCAN_BATCH_STATUS_LABEL,
   SCAN_BATCH_STATUS_TONE,
@@ -463,9 +472,8 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import SignalBand from '@/components/workbench/SignalBand.vue'
-import type { SignalMetric } from '@/types/workbench'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
@@ -489,6 +497,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherScanUploadBatches' })
 
 const router = useRouter()
+const route = useRoute()
 
 function goScanLiveMonitor(): void {
   if (!selectedExamId.value) return
@@ -528,10 +537,6 @@ async function onManualSupplementSuccess(): Promise<void> {
 const progress = ref<MarkingProgressVO | null>(null)
 const progressLoading = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
-const hasOpenTasks = computed(() => {
-  const current = progress.value
-  return current ? current.openProcessingTaskCount > 0 : false
-})
 const liveEvents = ref<ScanLiveEventVO[]>([])
 const recentEventsLoading = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
@@ -585,34 +590,16 @@ async function loadProgress(): Promise<void> {
   }
 }
 
-const progressMetrics = computed((): SignalMetric[] => {
-  const current = progress.value
-  const scanAttention = current ? current.scanAttentionCount : 0
-  return [
-    { key: 'batches', label: '已创建批次', value: batchTotal.value, unit: '个', tone: 'blue' },
-    {
-      key: 'pendingEvents',
-      label: '待聚合事件',
-      value: livePendingEventTotal.value,
-      unit: '条',
-      tone: livePendingEventTotal.value > 0 ? 'orange' : 'green',
-    },
-    {
-      key: 'openTasks',
-      label: '待处理任务',
-      value: current ? current.openProcessingTaskCount : 0,
-      unit: '条',
-      tone: hasOpenTasks.value ? 'red' : 'green',
-    },
-    {
-      key: 'scanAttention',
-      label: '扫描异常',
-      value: scanAttention,
-      unit: '条',
-      tone: scanAttention > 0 ? 'red' : 'green',
-    },
-  ]
-})
+const progressMetrics = computed((): SignalMetric[] => [
+  { key: 'batches', label: '已创建批次', value: batchTotal.value, unit: '个', tone: 'blue' },
+  {
+    key: 'pendingEvents',
+    label: '待聚合事件',
+    value: livePendingEventTotal.value,
+    unit: '条',
+    tone: livePendingEventTotal.value > 0 ? 'orange' : 'green',
+  },
+])
 
 // ─── D-8 卷面绑定率环 ────────────────────────────────
 // 绑定率 = gradablePaperCount（已绑定到学生的卷面）/ paperCount（扫描入库总卷面）
@@ -946,8 +933,36 @@ async function openOrderAuditDrawer(batch: ExamScannerBatchVO): Promise<void> {
  * 已 sealed/已 DISCARDED 的批次禁用入口；其余状态二次确认 + 必填理由后调用扫描工作台废弃接口。
  */
 const batchDiscarding = ref<string | null>(null)
+const batchPageRegisterRetrying = ref<string | null>(null)
 const batchDiscardModalOpen = ref(false)
 const batchDiscardTarget = ref<ExamScannerBatchVO | null>(null)
+
+async function onRetryPageRegister(batch: ExamScannerBatchVO): Promise<void> {
+  if (!batch.scanBatchId || !selectedExamId.value || batch.status !== 'BLOCKED') {
+    return
+  }
+  batchPageRegisterRetrying.value = batch.scanBatchId
+  try {
+    const response = await retryScanBatchPageRegister({
+      examId: selectedExamId.value,
+      scanBatchId: batch.scanBatchId,
+    })
+    if (response.pageRegisterBlocked) {
+      message.warning(response.pageRegisterDiagnostic ?? '页登记仍被阻断')
+    }
+    else {
+      message.success('页登记重试成功')
+    }
+    await loadAllForExam()
+    await syncScanWorkbenchState()
+  }
+  catch (error) {
+    showUserError(error, '页登记重试失败')
+  }
+  finally {
+    batchPageRegisterRetrying.value = null
+  }
+}
 
 const batchSealing = ref<string | null>(null)
 const sourceFilesDrawerOpen = ref(false)

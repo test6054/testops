@@ -10,8 +10,8 @@ import type {
 } from '@/apis/mark/exam'
 import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import type { WorkbenchStageStatus } from '@/types/workbench'
+import type { SignalMetric, WorkbenchStageStatus } from '@/types/workbench'
+
 import type {PrepStepCard} from '@/utils/exam-prep-step-ui';
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
@@ -36,14 +36,19 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
+import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
+import { WORKSPACE_STAGE_STATUS_TONE } from '@/constants/mark-workspace-nav'
 import { showUserError } from '@/utils/error-handler'
 import { buildPrepStepCards } from '@/utils/exam-prep-step-ui'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamPrepWorkbench' })
+
+const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
 
 const ICON_MAP: Record<string, Component> = {
   materialLayout: ContainerOutlined,
@@ -54,13 +59,8 @@ const ICON_MAP: Record<string, Component> = {
   printPackage: ContainerOutlined,
 }
 
-const TONE_MAP: Record<WorkbenchStageStatus, BadgeTone> = {
-  pending: 'gray',
-  active: 'blue',
-  completed: 'green',
-  warning: 'orange',
-  error: 'red',
-  blocked: 'red',
+function resolveTone(status: WorkbenchStageStatus): BadgeTone {
+  return strictEnumTone(WORKSPACE_STAGE_STATUS_TONE, status, '考试准备阶段状态')
 }
 
 const layoutModeOptions = (
@@ -73,10 +73,6 @@ const printSourceOptions = (
 
 function resolveIcon(key: string): Component {
   return ICON_MAP[key] ?? ProfileOutlined
-}
-
-function resolveTone(status: WorkbenchStageStatus): BadgeTone {
-  return strictEnumTone(TONE_MAP, status, '考试准备阶段状态')
 }
 
 const router = useRouter()
@@ -112,10 +108,11 @@ async function loadDetail(examId: string | undefined) {
     detail.value = examDetail
     draftLayoutMode.value = detail.value.materialLayoutMode
     draftPrintSource.value = detail.value.printSourceMode
+    clearLoadFailure()
   } catch (error) {
     detail.value = null
     markingProgress.value = null
-    showUserError(error, '考试准备信息加载失败')
+    captureLoadFailure(error, '考试准备信息加载失败')
   } finally {
     detailLoading.value = false
   }
@@ -254,7 +251,13 @@ watch(selectedExamId, (next) => {
 
 
   <template v-else>
-    <a-spin :spinning="detailLoading">
+    <UiLoadFailure
+      v-if="loadError"
+      title="考试准备信息加载失败"
+      :description="loadError"
+    />
+
+    <a-spin v-else :spinning="detailLoading">
       <UiCard class="exam-prep__mode-card">
         <template #title>制卷形态</template>
         <a-form layout="inline">

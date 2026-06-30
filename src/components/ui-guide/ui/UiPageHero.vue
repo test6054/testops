@@ -247,7 +247,7 @@ const hasStats = computed(() => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ui-page-hero {
     padding: 20px;
   }

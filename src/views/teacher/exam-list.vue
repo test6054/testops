@@ -5,6 +5,7 @@
         layout="workbench"
         show-title
         title="考试列表"
+        subtitle="参与角色：绿色主考、蓝色评阅、灰色管理视图"
       >
         <template #toolbar>
           <UiFilterBar
@@ -46,7 +47,14 @@
       />
     </template>
 
+    <UiLoadFailure
+      v-if="loadError"
+      title="考试列表加载失败"
+      :description="loadError"
+    />
+
     <UiSectionTabs
+      v-else
       v-model="listTab"
       :items="examListTabs"
       compact
@@ -79,7 +87,16 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'examName'">
-              <span class="exam-list-page__exam-name">{{ record.examName }}</span>
+              <div class="exam-list-page__exam-name-row">
+                <span class="exam-list-page__exam-name">{{ record.examName }}</span>
+                <UiTag
+                  v-if="record.examKind"
+                  :tone="examKindTone(record)"
+                  size="sm"
+                >
+                  {{ examKindLabel(record) }}
+                </UiTag>
+              </div>
               <div v-if="record.examNo" class="exam-list-page__exam-no">编号：{{ record.examNo }}</div>
             </template>
             <template v-else-if="column.key === 'academicTerm'">
@@ -195,11 +212,13 @@
     v-model:open="formModalOpen"
     :title="'编辑考试'"
     :confirm-loading="saving"
+    :ok-button-props="{ disabled: editDetailLoading }"
     :destroy-on-close="true"
     :mask-closable="false"
     width="560px"
     @ok="handleSave"
   >
+    <a-spin :spinning="editDetailLoading" tip="加载考试详情…">
     <a-form ref="formRef" :model="examForm" :rules="examFormRules" layout="vertical">
       <a-form-item label="课程" name="courseId">
         <CatalogCourseSelector
@@ -279,7 +298,11 @@
           show-count
         />
       </a-form-item>
+      <a-form-item label="涉密场次" name="confidential">
+        <a-switch v-model:checked="examForm.confidential" :disabled="editDetailLoading" />
+      </a-form-item>
     </a-form>
+    </a-spin>
   </a-modal>
 </template>
 
@@ -288,7 +311,10 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type {
   ExamCreateRequest,
+  ExamKindCode,
+  ExamScorePolicyCode,
   ExamListScopeCode,
+  ExamPageQueryRequest,
   ExamStatusCode,
   ExamWorkbenchSummaryVO,
   GradingStrategyCode,
@@ -297,22 +323,27 @@ import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-g
 import type { SignalMetric } from '@/types/workbench'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   closeExam,
+  countExamWorkbenchScopes,
   deleteExam,
+  EXAM_KIND_LABEL,
+  EXAM_KIND_TONE,
   EXAM_STATUS_FILTER_OPTIONS,
   EXAM_STATUS_LABEL,
   EXAM_STATUS_TONE,
   GRADING_STRATEGY_LABEL,
+  getExamDetail,
   pageExamWorkbench,
   updateExam,
 } from '@/apis/mark/exam'
+import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -320,7 +351,12 @@ import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import {
+  buildCloseExamBlockedContent,
+  buildCloseExamReadyContent,
+} from '@/composables/useExamArchiveGateHint'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
@@ -335,12 +371,16 @@ import {
   resolveExamWindowPhase,
 } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
+import { readExamListDeepLinkQuery } from '@/utils/exam-list-navigation'
 import { resolveScanStageEntryRoute } from '@/utils/resolve-scan-stage-entry'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamList' })
 
+const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
+
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const userStore = useUserStore()
 
@@ -468,6 +508,7 @@ const allPagination = reactive<TablePaginationConfig>(createPaginationState())
 const priorityBadgeTotal = ref(0)
 const ongoingBadgeTotal = ref(0)
 const allBadgeTotal = ref(0)
+const stalePushTotal = ref(0)
 
 const allTabColumns: ColumnType<ExamWorkbenchSummaryVO>[] = [
   { title: '考试名称', dataIndex: 'examName', key: 'examName', ellipsis: true, width: 360, fixed: 'left' },
@@ -509,6 +550,30 @@ const ongoingTabColumns: ColumnType<ExamWorkbenchSummaryVO>[] = [
 type ExamListTabKey = 'priority' | 'ongoing' | 'all'
 
 const listTab = ref<ExamListTabKey>('priority')
+
+/** 路由深链写入 Tab 时抑制 watch 重复拉数。 */
+let suppressListTabWatch = false
+
+function applyExamListDeepLinkFromRoute(): void {
+  const deepLink = readExamListDeepLinkQuery(route.query)
+  suppressListTabWatch = true
+  try {
+    if (deepLink.tab) {
+      listTab.value = deepLink.tab
+    }
+    if (deepLink.academicYear !== undefined) {
+      filterForm.academicYear = deepLink.academicYear
+    }
+    if (deepLink.semester !== undefined) {
+      filterForm.semester = deepLink.semester
+    }
+    if (deepLink.status !== undefined) {
+      filterForm.status = deepLink.status
+    }
+  } finally {
+    suppressListTabWatch = false
+  }
+}
 
 const tableColumns = computed<ColumnType<ExamWorkbenchSummaryVO>[]>(() => {
   if (listTab.value === 'all') {
@@ -571,8 +636,9 @@ const examListTabs = computed<UiSectionTabItem[]>(() => [
   },
 ])
 
-watch(listTab, (tab) => {
-  void loadTabData(tabToScope(tab))
+watch(listTab, () => {
+  if (suppressListTabWatch) return
+  void reloadListAndCounts()
 })
 
 const summarySignalMetrics = computed((): SignalMetric[] => {
@@ -590,11 +656,11 @@ const summarySignalMetrics = computed((): SignalMetric[] => {
     {
       key: 'active',
       label: '进行中',
-      value: statusTotalsFailed.value ? dash : activeTotal.value,
+      value: statusTotalsFailed.value ? dash : ongoingBadgeTotal.value,
       unit: '场',
       tone: 'green',
       clickable: true,
-      helper: '点击查看进行中',
+      helper: 'ACTIVE 考试，点击查看进行中 Tab',
     },
     {
       key: 'closed',
@@ -607,22 +673,32 @@ const summarySignalMetrics = computed((): SignalMetric[] => {
     {
       key: 'stale',
       label: '待推进',
-      value: staleExamCount.value,
+      value: statusTotalsFailed.value ? dash : stalePushTotal.value,
       unit: '场',
-      tone: staleExamCount.value > 0 ? 'orange' : 'gray',
-      clickable: staleExamCount.value > 0,
-      helper: staleExamCount.value > 0 ? '点击查看优先推进' : '暂无待推进',
+      tone: stalePushTotal.value > 0 ? 'orange' : 'gray',
+      clickable: !statusTotalsFailed.value && stalePushTotal.value > 0,
+      helper: statusTotalsFailed.value
+        ? '计数暂不可用'
+        : stalePushTotal.value > 0
+          ? '创建超过 30 天且仍进行中，点击查看'
+          : '暂无待推进',
     },
   ]
 })
 
 function handleSummaryMetricClick(key: string): void {
   if (key === 'active') {
+    if (filterForm.status === 'CLOSED') {
+      filterForm.status = undefined
+    }
     listTab.value = 'ongoing'
     return
   }
-  if (key === 'stale' && staleExamCount.value > 0) {
-    listTab.value = 'priority'
+  if (key === 'stale' && !statusTotalsFailed.value && stalePushTotal.value > 0) {
+    if (filterForm.status === 'CLOSED') {
+      filterForm.status = undefined
+    }
+    listTab.value = 'ongoing'
   }
 }
 
@@ -712,14 +788,17 @@ function getLoadingRefByScope(scope: ExamListScopeCode): typeof priorityLoading 
   return allLoading
 }
 
-function getBadgeTotalRefByScope(scope: ExamListScopeCode): typeof priorityBadgeTotal {
-  if (scope === 'PRIORITY') {
-    return priorityBadgeTotal
+function buildScopeCountQuery(): ExamPageQueryRequest {
+  const [startTime, endTime] = filterForm.dateRange ?? []
+  return {
+    status: filterForm.status,
+    academicYear: filterForm.academicYear?.trim() || undefined,
+    semester: filterForm.semester,
+    keyword: filterForm.keyword?.trim() || undefined,
+    startTime: startTime || undefined,
+    endTime: endTime || undefined,
+    createUserId: isAdminView.value ? null : userStore.userInfo.userId || undefined,
   }
-  if (scope === 'ONGOING') {
-    return ongoingBadgeTotal
-  }
-  return allBadgeTotal
 }
 
 function buildWorkbenchQuery(
@@ -742,11 +821,23 @@ function buildWorkbenchQuery(
   }
 }
 
+function syncTabBadgeFromPagination(scope: ExamListScopeCode): void {
+  const total = getPaginationByScope(scope).total ?? 0
+  if (scope === 'PRIORITY') {
+    priorityBadgeTotal.value = total
+    return
+  }
+  if (scope === 'ONGOING') {
+    ongoingBadgeTotal.value = total
+    return
+  }
+  allBadgeTotal.value = total
+}
+
 async function loadTabData(scope: ExamListScopeCode): Promise<void> {
   const paginationState = getPaginationByScope(scope)
   const dataSourceRef = getDataSourceRefByScope(scope)
   const loadingRef = getLoadingRefByScope(scope)
-  const badgeRef = getBadgeTotalRefByScope(scope)
   loadingRef.value = true
   try {
     const result = await pageExamWorkbench(buildWorkbenchQuery(
@@ -756,39 +847,35 @@ async function loadTabData(scope: ExamListScopeCode): Promise<void> {
     ))
     dataSourceRef.value = readPageList(result, '考试列表加载失败，请稍后重试')
     paginationState.total = readPageTotal(result)
-    badgeRef.value = readPageTotal(result)
     if (result.pageNum != null) {
       paginationState.current = result.pageNum
     }
     if (result.pageSize != null) {
       paginationState.pageSize = result.pageSize
     }
+    syncTabBadgeFromPagination(scope)
+    clearLoadFailure()
   } catch (error) {
-    showUserError(error, '考试列表加载失败')
+    captureLoadFailure(error, '考试列表加载失败')
     dataSourceRef.value = []
     paginationState.total = 0
-    badgeRef.value = 0
   } finally {
     loadingRef.value = false
   }
 }
 
-async function loadTabBadgeTotal(scope: ExamListScopeCode): Promise<void> {
-  const badgeRef = getBadgeTotalRefByScope(scope)
+async function loadWorkbenchScopeCounts(): Promise<void> {
+  statusTotalsFailed.value = false
   try {
-    const result = await pageExamWorkbench(buildWorkbenchQuery(scope, 1, 1))
-    badgeRef.value = readPageTotal(result, '考试列表计数加载失败')
+    const counts = await countExamWorkbenchScopes(buildScopeCountQuery())
+    priorityBadgeTotal.value = counts.priorityCount
+    ongoingBadgeTotal.value = counts.ongoingCount
+    allBadgeTotal.value = counts.allCount
+    closedTotal.value = counts.closedCount
+    stalePushTotal.value = counts.stalePushCount
   } catch {
-    badgeRef.value = 0
+    statusTotalsFailed.value = true
   }
-}
-
-async function refreshAllTabBadges(): Promise<void> {
-  await Promise.all([
-    loadTabBadgeTotal('PRIORITY'),
-    loadTabBadgeTotal('ONGOING'),
-    loadTabBadgeTotal('ALL'),
-  ])
 }
 
 function resetCurrentTabPagination(): void {
@@ -797,15 +884,13 @@ function resetCurrentTabPagination(): void {
 
 function handleSearch(): void {
   resetCurrentTabPagination()
-  void loadTabData(tabToScope(listTab.value))
-  void refreshAllTabBadges()
+  void reloadListAndCounts()
 }
 
 function handleReset(): void {
   Object.assign(filterForm, createDefaultFilterForm())
   resetCurrentTabPagination()
-  void loadTabData(tabToScope(listTab.value))
-  void refreshAllTabBadges()
+  void reloadListAndCounts()
 }
 
 function handleUiPageChange(page: { current: number, pageSize: number }): void {
@@ -832,6 +917,17 @@ function examStatusTone(exam: ExamWorkbenchSummaryVO): BadgeTone {
 
 function examStatusLabel(exam: ExamWorkbenchSummaryVO): string {
   return strictEnumLabel(EXAM_STATUS_LABEL, exam.status, '考试状态')
+}
+
+function examKindTone(exam: ExamWorkbenchSummaryVO): BadgeTone {
+  return strictEnumTone(EXAM_KIND_TONE, exam.examKind, '考试性质')
+}
+
+function examKindLabel(exam: ExamWorkbenchSummaryVO): string {
+  if (exam.examKindMessage?.trim()) {
+    return exam.examKindMessage.trim()
+  }
+  return strictEnumLabel(EXAM_KIND_LABEL, exam.examKind, '考试性质')
 }
 
 function formatAcademicTerm(exam: ExamWorkbenchSummaryVO): string {
@@ -900,43 +996,12 @@ function goSmartExamEntry(exam: ExamWorkbenchSummaryVO): void {
   void router.push({ name: 'TeacherExamWorkspaceScoreSummary', params: { examId } })
 }
 
-// ─── KPI 概览：单独维护进行中 / 已关闭的全量计数 ─────────────────
-const activeTotal = ref<number>(0)
+// ─── KPI 概览：workbench-scope-counts 返回 CLOSED；Signal「进行中」与 Tab 共用 ongoingCount ─
 const closedTotal = ref<number>(0)
 const statusTotalsFailed = ref(false)
 
-async function loadStatusTotals(): Promise<void> {
-  statusTotalsFailed.value = false
-  try {
-    const [activeResult, closedResult] = await Promise.all([
-      pageExamWorkbench({
-        ...buildWorkbenchQuery('ALL', 1, 1),
-        status: 'ACTIVE',
-      }),
-      pageExamWorkbench({
-        ...buildWorkbenchQuery('ALL', 1, 1),
-        status: 'CLOSED',
-      }),
-    ])
-    activeTotal.value = readPageTotal(activeResult, '考试状态计数加载失败')
-    closedTotal.value = readPageTotal(closedResult, '考试状态计数加载失败')
-  } catch {
-    statusTotalsFailed.value = true
-    activeTotal.value = 0
-    closedTotal.value = 0
-  }
-}
-
-// 当前 Tab 当前页中创建超过 7 天且仍 ACTIVE 的考试数（推进风险信号，仅本页采样）
-const staleExamCount = computed<number>(() => {
-  const threshold = dayjs().subtract(7, 'day')
-  return currentDataSource.value.filter((item) => {
-    if (item.status !== 'ACTIVE' || !item.createTime) return false
-    return dayjs(item.createTime).isBefore(threshold)
-  }).length
-})
-
 const formModalOpen = ref(false)
+const editDetailLoading = ref(false)
 const saving = ref(false)
 const editingExamId = ref<string | null>(null)
 const formRef = ref<FormInstance>()
@@ -950,6 +1015,10 @@ const examForm = reactive<{
   gradingStrategy: GradingStrategyCode
   scoreCompositionMode: ExamScoreCompositionMode
   dailyScoreFull?: number
+  confidential: boolean
+  examKind: ExamKindCode
+  sourceExamId?: string
+  scorePolicy?: ExamScorePolicyCode
   remark?: string
 }>({
   courseId: null,
@@ -961,6 +1030,10 @@ const examForm = reactive<{
   gradingStrategy: 'SINGLE',
   scoreCompositionMode: 'EXAM_ONLY',
   dailyScoreFull: undefined,
+  confidential: false,
+  examKind: 'REGULAR',
+  sourceExamId: undefined,
+  scorePolicy: undefined,
   remark: '',
 })
 
@@ -1033,6 +1106,7 @@ const examFormRules: Record<string, Rule[]> = {
 
 function resetExamForm(): void {
   editingExamId.value = null
+  editDetailLoading.value = false
   examForm.courseId = null
   examForm.examName = ''
   examForm.examNo = ''
@@ -1042,6 +1116,10 @@ function resetExamForm(): void {
   examForm.gradingStrategy = 'SINGLE'
   examForm.scoreCompositionMode = 'EXAM_ONLY'
   examForm.dailyScoreFull = undefined
+  examForm.confidential = false
+  examForm.examKind = 'REGULAR'
+  examForm.sourceExamId = undefined
+  examForm.scorePolicy = undefined
   examForm.remark = ''
   formRef.value?.clearValidate()
 }
@@ -1050,7 +1128,7 @@ function goCreateExam(): void {
   void router.push({ name: 'TeacherExamCreate' })
 }
 
-function openEditModal(exam: ExamWorkbenchSummaryVO): void {
+async function openEditModal(exam: ExamWorkbenchSummaryVO): Promise<void> {
   resetExamForm()
   editingExamId.value = exam.examId
   examForm.courseId = exam.courseId ?? null
@@ -1062,8 +1140,28 @@ function openEditModal(exam: ExamWorkbenchSummaryVO): void {
     = exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
   examForm.scoreCompositionMode = exam.dailyScoreFull != null ? 'EXAM_WITH_DAILY' : 'EXAM_ONLY'
   examForm.dailyScoreFull = exam.dailyScoreFull ?? undefined
+  examForm.examKind = exam.examKind ?? 'REGULAR'
+  examForm.sourceExamId = exam.sourceExamId
+  examForm.scorePolicy = exam.scorePolicy
   examForm.remark = exam.remark ?? ''
+  editDetailLoading.value = true
   formModalOpen.value = true
+  try {
+    const detail = await getExamDetail(exam.examId)
+    if (editingExamId.value !== exam.examId) return
+    examForm.confidential = detail.confidential === true
+    examForm.examKind = detail.examKind ?? examForm.examKind
+    examForm.sourceExamId = detail.sourceExamId
+    examForm.scorePolicy = detail.scorePolicy
+  } catch (error) {
+    formModalOpen.value = false
+    editingExamId.value = null
+    showUserError(error, '考试详情加载失败')
+  } finally {
+    if (editingExamId.value === exam.examId) {
+      editDetailLoading.value = false
+    }
+  }
 }
 
 function buildExamRequest(): ExamCreateRequest | null {
@@ -1081,14 +1179,22 @@ function buildExamRequest(): ExamCreateRequest | null {
     examStartTime: startTime,
     examEndTime: endTime,
     gradingStrategy: 'SINGLE',
+    examKind: examForm.examKind,
+    sourceExamId: examForm.sourceExamId,
+    scorePolicy: examForm.scorePolicy,
     dailyScoreFull: examForm.scoreCompositionMode === 'EXAM_WITH_DAILY'
       ? examForm.dailyScoreFull
       : null,
+    confidential: examForm.confidential,
     remark: examForm.remark?.trim() || undefined,
   }
 }
 
 async function handleSave(): Promise<void> {
+  if (editDetailLoading.value) {
+    message.warning('考试详情加载中，请稍候再保存')
+    return
+  }
   if (!formRef.value) return
   try {
     await formRef.value.validate()
@@ -1120,22 +1226,49 @@ function isExamOwner(exam: ExamWorkbenchSummaryVO): boolean {
 }
 
 function confirmClose(exam: ExamWorkbenchSummaryVO): void {
-  void confirmAsync({
-    title: `关闭考试 ${exam.examName}？`,
-    content: '关闭后考试进入 CLOSED 状态，可进入考后归档与质量评价；关闭后不可再编辑考试主信息。',
-    okText: '关闭考试',
-    cancelText: '取消',
-    type: 'warning',
-    onOk: async () => {
-      try {
-        await closeExam({ examId: exam.examId })
-        message.success('考试已关闭')
-        await reloadAll()
-      } catch (error) {
-        showUserError(error, '关闭考试失败')
+  void (async () => {
+    try {
+      const gate = await getArchiveVolumeExamGate(exam.examId)
+      if ((gate.unpublishedBoundPaperCount ?? 0) > 0) {
+        void confirmAsync({
+          title: '尚不能关考',
+          content: buildCloseExamBlockedContent(gate),
+          okText: '前往成绩发布',
+          cancelText: '知道了',
+          type: 'warning',
+          onOk: async () => {
+            await router.push({
+              name: 'TeacherExamWorkspaceScoreRelease',
+              params: { examId: exam.examId },
+            })
+          },
+        })
+        return
       }
-    },
-  })
+      void confirmAsync({
+        title: `关闭考试 ${exam.examName}？`,
+        content: gate.allScoresPublished
+          ? buildCloseExamReadyContent(gate)
+          : '关闭后考试进入 CLOSED 状态，可进入考后归档与质量评价；关闭后不可再编辑考试主信息。',
+        okText: '关闭考试',
+        cancelText: '取消',
+        type: 'warning',
+        onOk: async () => {
+          try {
+            await closeExam({ examId: exam.examId })
+            message.success('考试已关闭')
+            await reloadAll()
+          }
+          catch (error) {
+            showUserError(error, '关闭考试失败')
+          }
+        },
+      })
+    }
+    catch (error) {
+      showUserError(error, '加载关考前置条件失败')
+    }
+  })()
 }
 
 function confirmDelete(exam: ExamWorkbenchSummaryVO): void {
@@ -1163,19 +1296,19 @@ function confirmDelete(exam: ExamWorkbenchSummaryVO): void {
   })
 }
 
-async function reloadAll(): Promise<void> {
+async function reloadListAndCounts(): Promise<void> {
   await Promise.all([
     loadTabData(tabToScope(listTab.value)),
-    refreshAllTabBadges(),
-    loadStatusTotals(),
+    loadWorkbenchScopeCounts(),
   ])
 }
 
-onMounted(() => {
-  void reloadAll()
-})
+async function reloadAll(): Promise<void> {
+  await reloadListAndCounts()
+}
 
 onActivated(() => {
+  applyExamListDeepLinkFromRoute()
   void reloadAll()
 })
 </script>
@@ -1208,6 +1341,13 @@ onActivated(() => {
 
 .exam-list-page__progress-text {
   font-size: 13px;
+}
+
+.exam-list-page__exam-name-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .exam-list-page__exam-name {

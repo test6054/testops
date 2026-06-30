@@ -307,8 +307,8 @@ onMounted(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-  <ContextBar show-title layout="workbench" title="多元评价填报" />
-</template>
+      <ContextBar show-title layout="workbench" title="多元评价填报" />
+    </template>
     <UiCard>
       <div class="toolbar">
         <a-select

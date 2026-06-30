@@ -254,7 +254,7 @@ const handleActionClick = (item: UiSimpleListItem, action: UiNoticeAction) => {
   gap: 12px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ui-simple-list__item {
     flex-direction: column;
   }

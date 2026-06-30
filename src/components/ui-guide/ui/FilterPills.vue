@@ -259,7 +259,7 @@ const toggleExpanded = () => {
 }
 
 /* 响应式适配 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .dp-filter-pills {
     flex-direction: column;
   }

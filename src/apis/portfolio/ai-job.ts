@@ -1,5 +1,7 @@
 import type {
   PortfolioAiAnalysisDetailVO,
+  PortfolioAiAnalysisPageRequest,
+  PortfolioAiAnalysisSummaryVO,
   PortfolioAiJobPageRequest,
   PortfolioAiJobSubmitRequest,
   PortfolioAiJobSubmitVO,
@@ -9,6 +11,7 @@ import type {
 } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
 import http from '@/config/axios'
+import { assertPortfolioAiAnalysisDetailVO, assertPortfolioAiAnalysisSummaryVO } from '@/utils/portfolio-ai-analysis-contract'
 
 const BASE = '/api/portfolio/ai/job'
 
@@ -22,6 +25,16 @@ export const portfolioAiJobApi = {
     http.post<PortfolioCandidateFieldVO[]>(`${BASE}/candidate/list`, { id }),
   confirm: (data: PortfolioCandidateConfirmRequest) =>
     http.post<void>(`${BASE}/confirm`, data),
-  getAnalysisByTask: (id: string) =>
-    http.post<PortfolioAiAnalysisDetailVO>(`${BASE}/analysis/task/get`, { id }),
+  getAnalysisByTask: async (id: string) => {
+    const detail = await http.post<PortfolioAiAnalysisDetailVO>(`${BASE}/analysis/task/get`, { id })
+    assertPortfolioAiAnalysisDetailVO(detail)
+    return detail
+  },
+  pageAnalysis: async (data: PortfolioAiAnalysisPageRequest) => {
+    const page = await http.post<PageResult<PortfolioAiAnalysisSummaryVO>>(`${BASE}/analysis/page`, data)
+    for (const row of page.list ?? []) {
+      assertPortfolioAiAnalysisSummaryVO(row)
+    }
+    return page
+  },
 }

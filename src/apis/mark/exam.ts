@@ -1,3 +1,4 @@
+import type { ExamCandidateRosterRequest, ExamCandidateVO, ExamClassOptionVO } from '@/apis/mark/exam-scope'
 /**
  * 阅卷考试主记录 API - 对接 edu-mark 模块 ExamMarkController 的考试主对象接口。
  *
@@ -5,7 +6,6 @@
  * 后端对象分别由同目录具体 API 文件承接。
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { ExamCandidateRosterRequest, ExamCandidateVO } from '@/apis/mark/exam-scope'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
@@ -42,6 +42,63 @@ export const GRADING_STRATEGY_LABEL: Record<GradingStrategyCode, string> = {
 export const GRADING_STRATEGY_FILTER_OPTIONS: Array<{ label: string, value: GradingStrategyCode }> = [
   { label: GRADING_STRATEGY_LABEL.SINGLE, value: 'SINGLE' },
 ]
+
+/** 考试性质编码 - 对应后端 ExamKind 枚举 */
+export type ExamKindCode = 'REGULAR' | 'MAKEUP' | 'RETAKE' | 'REEXAM' | 'DEFERRED'
+
+/** 考试性质文案映射 */
+export const EXAM_KIND_LABEL: Record<ExamKindCode, string> = {
+  REGULAR: '正考',
+  MAKEUP: '补考',
+  RETAKE: '重修',
+  REEXAM: '重考',
+  DEFERRED: '缓考',
+}
+
+/** 考试性质 BadgeTone 映射 */
+export const EXAM_KIND_TONE: Record<ExamKindCode, BadgeTone> = {
+  REGULAR: 'blue',
+  MAKEUP: 'orange',
+  RETAKE: 'purple',
+  REEXAM: 'red',
+  DEFERRED: 'gray',
+}
+
+/** 考试性质筛选项 */
+export const EXAM_KIND_FILTER_OPTIONS: Array<{ label: string, value: ExamKindCode }> = [
+  { label: EXAM_KIND_LABEL.REGULAR, value: 'REGULAR' },
+  { label: EXAM_KIND_LABEL.MAKEUP, value: 'MAKEUP' },
+  { label: EXAM_KIND_LABEL.RETAKE, value: 'RETAKE' },
+  { label: EXAM_KIND_LABEL.REEXAM, value: 'REEXAM' },
+  { label: EXAM_KIND_LABEL.DEFERRED, value: 'DEFERRED' },
+]
+
+/** 需关联原正考的考试性质 */
+export const EXAM_KIND_REQUIRES_SOURCE: ExamKindCode[] = ['MAKEUP', 'RETAKE', 'REEXAM', 'DEFERRED']
+
+/** 判断考试性质是否须选择原考试 */
+export function examKindRequiresSource(examKind: ExamKindCode): boolean {
+  return EXAM_KIND_REQUIRES_SOURCE.includes(examKind)
+}
+
+/** 成绩合成策略编码 - 对应后端 ExamScorePolicy 枚举 */
+export type ExamScorePolicyCode = 'FULL' | 'DAILY_PLUS_PAPER' | 'MAKEUP_CAP60' | 'ACTUAL_ONLY'
+
+/** 成绩合成策略文案映射 */
+export const EXAM_SCORE_POLICY_LABEL: Record<ExamScorePolicyCode, string> = {
+  FULL: '卷面加日常',
+  DAILY_PLUS_PAPER: '卷面加日常',
+  MAKEUP_CAP60: '补考封顶60分',
+  ACTUAL_ONLY: '仅卷面实际分',
+}
+
+/** 成绩合成策略 BadgeTone 映射 */
+export const EXAM_SCORE_POLICY_TONE: Record<ExamScorePolicyCode, BadgeTone> = {
+  FULL: 'blue',
+  DAILY_PLUS_PAPER: 'blue',
+  MAKEUP_CAP60: 'orange',
+  ACTUAL_ONLY: 'gray',
+}
 
 /** 制卷形态 - 对应 ExamMaterialLayoutMode */
 export type ExamMaterialLayoutModeCode = 'ANSWER_SHEET' | 'FULL_PAPER'
@@ -96,6 +153,14 @@ export interface ExamSummaryVO {
   createTime?: string
   /** 日常成绩满分；为空表示本场考试不纳入日常成绩 */
   dailyScoreFull?: number
+  /** 考试性质 */
+  examKind?: ExamKindCode
+  /** 考试性质展示名称 */
+  examKindMessage?: string
+  /** 原期末考试 ID */
+  sourceExamId?: string
+  /** 成绩合成策略 */
+  scorePolicy?: ExamScorePolicyCode
 }
 
 /** 考试工作台列表范围 - 对应 ExamListScope */
@@ -105,6 +170,17 @@ export type ExamListScopeCode = 'ALL' | 'ONGOING' | 'PRIORITY'
 export interface ExamWorkbenchPageQueryRequest extends ExamPageQueryRequest {
   /** 列表范围 */
   listScope: ExamListScopeCode
+}
+
+/** 考试工作台范围计数 - 对应 ExamWorkbenchScopeCountResponse */
+export interface ExamWorkbenchScopeCountVO {
+  priorityCount: number
+  ongoingCount: number
+  allCount: number
+  activeCount: number
+  closedCount: number
+  /** 待推进 Signal：ACTIVE 且创建超过 30 天 */
+  stalePushCount: number
 }
 
 /** 考试工作台列表项 - 对应 ExamWorkbenchSummaryResponse */
@@ -134,6 +210,10 @@ export interface ExamFileRefVO {
 export interface ExamDetailVO {
   examId: string
   courseId?: string
+  /** 课程名称 - 对应 ExamDetailResponse.courseName */
+  courseName?: string
+  /** 院系名称 - 对应 ExamDetailResponse.departmentName（edu-user 院系树） */
+  departmentName?: string
   examName: string
   examNo: string
   academicYear?: string
@@ -146,6 +226,8 @@ export interface ExamDetailVO {
   remark?: string
   /** 创建人用户ID - 对应后端 ExamDetailResponse.createUser */
   createUser: string
+  /** 创建人昵称 - 对应 ExamDetailResponse.createUserNickName */
+  createUserNickName?: string
   createTime?: string
   updateTime?: string
   /** 日常成绩满分；为空表示本场考试不纳入日常成绩 */
@@ -154,6 +236,8 @@ export interface ExamDetailVO {
   classIds: string[]
   /** 参考班级是否已写入 t_exam_class_scope */
   classScopePersisted: boolean
+  /** 关考后自动建卷失败时，是否允许修正参考班级并重触发建卷 */
+  archiveAutoCreateClassScopeRecoveryAllowed?: boolean
   /**
    * 班级范围引用集合（classId + className），与 classIds 一一对应、顺序一致。
    * 由后端通过 edu-user 班级服务批量回填，前端列表/标签直接消费 className。
@@ -195,6 +279,14 @@ export interface ExamDetailVO {
   rosterScopeMode?: ExamRosterScopeMode
   /** 名册纳入方式展示名称 */
   rosterScopeModeMessage?: string
+  /** 考试性质 */
+  examKind?: ExamKindCode
+  /** 考试性质展示名称 */
+  examKindMessage?: string
+  /** 原期末考试 ID */
+  sourceExamId?: string
+  /** 成绩合成策略 */
+  scorePolicy?: ExamScorePolicyCode
 }
 
 /** 保存制卷形态请求 - 对应 ExamMaterialLayoutSaveRequest */
@@ -231,6 +323,14 @@ export interface ExamCreateRequest {
    * 成绩确认时不采集平时分。有值时表示课程总评=考试分+平时分，确认时需录入平时分。
    */
   dailyScoreFull?: number | null
+  /** 是否涉密考试场次 */
+  confidential?: boolean
+  /** 考试性质（必填） */
+  examKind: ExamKindCode
+  /** 原期末考试 ID；补考/缓考/重考/重修必填 */
+  sourceExamId?: string
+  /** 成绩合成策略；未传时由后端按考试性质推导 */
+  scorePolicy?: ExamScorePolicyCode
 }
 
 /** 更新考试请求 - 对应 ExamUpdateRequest */
@@ -315,6 +415,13 @@ export function pageExamWorkbench(
   return http.post<PageResult<ExamWorkbenchSummaryVO>>('/api/mark/exams/workbench-page', request)
 }
 
+/** 聚合统计考试工作台三 Tab 与 ACTIVE/CLOSED 概览计数。 */
+export function countExamWorkbenchScopes(
+  request: ExamPageQueryRequest,
+): Promise<ExamWorkbenchScopeCountVO> {
+  return http.post<ExamWorkbenchScopeCountVO>('/api/mark/exams/workbench-scope-counts', request)
+}
+
 /** 查询考试详情。 */
 export function getExamDetail(examId: string): Promise<ExamDetailVO> {
   return http.post<ExamDetailVO>('/api/mark/exams/detail', { examId })
@@ -337,6 +444,11 @@ export function previewCreateExamRoster(
   return http.post<ExamCreateRosterPreviewResponse>('/api/mark/exams/create-roster-preview', request)
 }
 
+/** 创建考试前查询教师授课班级选项。 */
+export function listCreateExamClassOptions(): Promise<ExamClassOptionVO[]> {
+  return http.post<ExamClassOptionVO[]>('/api/mark/exams/create-class-options', {})
+}
+
 /** 更新考试主信息。 */
 export function updateExam(request: ExamUpdateRequest): Promise<boolean> {
   return http.post<boolean>('/api/mark/exams/update', request)
@@ -350,4 +462,25 @@ export function deleteExam(request: ExamDeleteRequest): Promise<boolean> {
 /** 归档关闭考试（状态 ACTIVE -> CLOSED）。 */
 export function closeExam(request: ExamCloseRequest): Promise<boolean> {
   return http.post<boolean>('/api/mark/exams/close', request)
+}
+
+/** DISTINCT 学期查询请求 - 对应 ExamDistinctTermQueryRequest */
+export interface ExamDistinctTermQueryRequest {
+  courseId?: string
+  createUserId?: string | null
+}
+
+/** DISTINCT 学期项 - 对应 ExamDistinctTermItemResponse */
+export interface ExamDistinctTermItemVO {
+  /** 考试发生学期编码，如 2024-2025-1 */
+  examTermCode: string
+  academicYear?: string
+  semester?: string
+}
+
+/** 查询租户内 DISTINCT 考试学期列表，按学期编码倒序。 */
+export function listDistinctExamTerms(
+  request: ExamDistinctTermQueryRequest = {},
+): Promise<ExamDistinctTermItemVO[]> {
+  return http.post<ExamDistinctTermItemVO[]>('/api/exam/distinct-terms', request)
 }

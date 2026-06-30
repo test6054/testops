@@ -61,6 +61,7 @@
         <a-input v-model:value="statsFilter.academicYear" placeholder="学年 如 2024-2025" style="width: 160px" />
         <a-input v-model:value="statsFilter.semester" placeholder="学期 1/2" style="width: 100px" />
         <UiButton size="sm" @click="loadStatistics">刷新统计</UiButton>
+        <UiButton size="sm" variant="outline" @click="goReadinessMatrix">四学期矩阵</UiButton>
       </div>
       <a-spin :spinning="statsLoading">
         <SignalBand v-if="statistics" :metrics="statsMetrics" compact class="archive-supervision-panel__signal" />
@@ -110,6 +111,42 @@
     </a-tab-pane>
 
     <a-tab-pane key="campaign" tab="评估批次">
+      <div class="archive-supervision-panel__campaign-toolbar">
+        <a-select
+          v-model:value="exportCampaignId"
+          :loading="campaignLoading"
+          :options="campaignSelectOptions"
+          allow-clear
+          placeholder="选择评估批次"
+          style="width: 280px"
+        />
+        <template v-if="isTenantWideCollegeCoordinator">
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="!exportCampaignId"
+            :loading="exportingManifest"
+            @click="handleExportManifest"
+          >
+            导出 manifest
+          </UiButton>
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="!exportCampaignId"
+            :loading="exportingArchive"
+            @click="handleExportArchive"
+          >
+            导出四级目录包
+          </UiButton>
+        </template>
+      </div>
+      <p
+        v-if="isTenantWideCollegeCoordinator && exportCampaignId"
+        class="archive-supervision-panel__export-hint"
+      >
+        导出范围：{{ ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT }}
+      </p>
       <UiDataTable
         pagination-mode="none"
         :columns="campaignColumns"
@@ -197,6 +234,7 @@ import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_EVALUATION_CAMPAIGN_STATUS_LABEL,
   ARCHIVE_INTEGRITY_STATUS_LABEL,
@@ -205,6 +243,9 @@ import {
   ARCHIVE_VOLUME_SOURCE_TYPE_LABEL,
   ARCHIVE_VOLUME_STATUS_LABEL,
   ARCHIVE_VOLUME_STATUS_TONE,
+  exportEvaluationArchivePackage,
+  exportEvaluationPackage,
+  ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
   getSupervisionArchiveStatistics,
   getSupervisionArchiveVolumeDetail,
   listSupervisionCampaigns,
@@ -218,6 +259,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
+import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -226,6 +268,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'ArchiveVolumeSupervisionPanel' })
 
 const router = useRouter()
+const { isTenantWideCollegeCoordinator, loadGrants } = useArchiveDutyAccess()
 const activeTab = ref('volumes')
 const volumeLoading = ref(false)
 const statsLoading = ref(false)
@@ -238,6 +281,9 @@ const markProblemSubmitting = ref(false)
 const markProblemVolumeId = ref('')
 const markProblemDescription = ref('')
 const markProblemCampaignId = ref<string | undefined>(undefined)
+const exportCampaignId = ref<string>()
+const exportingManifest = ref(false)
+const exportingArchive = ref(false)
 const volumes = ref<ArchiveVolumeVO[]>([])
 const statistics = ref<Awaited<ReturnType<typeof getSupervisionArchiveStatistics>> | null>(null)
 const remediationTasks = ref<ArchiveRemediationTaskVO[]>([])
@@ -355,6 +401,50 @@ function goRemediationVolume(task: ArchiveRemediationTaskVO) {
     params: { volumeId: task.volumeId },
     query: { tab: 'materials', remediationTaskId: task.taskId },
   })
+}
+
+function goReadinessMatrix() {
+  void router.push({ name: 'TeacherArchiveVolumeReadinessMatrix' })
+}
+
+async function handleExportManifest() {
+  if (!exportCampaignId.value) return
+  exportingManifest.value = true
+  try {
+    const result = await exportEvaluationPackage(exportCampaignId.value)
+    if (!result.exportFileId) {
+      message.error('导出未返回文件 ID')
+      return
+    }
+    await downloadFile({ nodeId: result.exportFileId })
+    message.success(`评估 manifest 已导出，共 ${result.volumeCount ?? 0} 卷（${ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT}）`)
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    exportingManifest.value = false
+  }
+}
+
+async function handleExportArchive() {
+  if (!exportCampaignId.value) return
+  exportingArchive.value = true
+  try {
+    const result = await exportEvaluationArchivePackage(exportCampaignId.value)
+    if (!result.exportFileId) {
+      message.error('导出未返回文件 ID')
+      return
+    }
+    await downloadFile({ nodeId: result.exportFileId })
+    message.success(`四级目录包已导出，共 ${result.volumeCount ?? 0} 卷（${ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT}）`)
+  }
+  catch (error) {
+    showUserError(error)
+  }
+  finally {
+    exportingArchive.value = false
+  }
 }
 
 async function loadVolumes() {
@@ -491,7 +581,14 @@ watch(activeTab, (tab) => {
   if (tab === 'campaign' && campaigns.value.length === 0) void loadCampaigns()
 })
 
+watch(campaigns, (items) => {
+  if (!exportCampaignId.value && items.length > 0) {
+    exportCampaignId.value = items[0].campaignId
+  }
+})
+
 onMounted(() => {
+  void loadGrants()
   void loadVolumes()
 })
 </script>
@@ -505,6 +602,20 @@ onMounted(() => {
   display: flex;
   gap: 8px;
   margin-bottom: 16px;
+}
+
+.archive-supervision-panel__campaign-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.archive-supervision-panel__export-hint {
+  margin: -8px 0 16px;
+  font-size: 13px;
+  color: var(--dp-text-secondary);
+  line-height: 1.5;
 }
 
 .archive-supervision-panel__signal {

@@ -3,24 +3,25 @@
  * 移动端适配与断点管理
  */
 
+@use './breakpoints' as bp;
 
 // 移动端（手机）
-$screen-xs-max: 768px;
+$screen-xs-max: bp.$screen-xs-max;
 
 // 平板
-$screen-sm-min: 769px;
-$screen-sm-max: 1024px;
+$screen-sm-min: bp.$screen-sm-min;
+$screen-sm-max: bp.$screen-sm-max;
 
 // 笔记本
-$screen-md-min: 1025px;
-$screen-md-max: 1280px;
+$screen-md-min: bp.$screen-md-min;
+$screen-md-max: bp.$screen-md-max;
 
 // 桌面
-$screen-lg-min: 1281px;
-$screen-lg-max: 1440px;
+$screen-lg-min: bp.$screen-lg-min;
+$screen-lg-max: bp.$screen-lg-max;
 
 // 大屏桌面
-$screen-xl-min: 1441px;
+$screen-xl-min: bp.$screen-xl-min;
 
 
 // 移动端通用样式

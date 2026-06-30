@@ -84,7 +84,7 @@
           <MarkHeatmapSection
             v-else
             title="得分率热力图"
-            hint="颜色表示得分率，点击题格查看详情"
+            :hint="scoreHeatmapHint"
             :cell-count="scoreHeatmapCells.length"
             :option="scoreHeatmapOption"
             :height="scoreHeatmapHeight"
@@ -429,6 +429,7 @@ import { useChartOption } from '@/hooks/modules/useChartOption'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { buildHeatmapChartOption } from '@/utils/mark-echarts-options'
+import { buildHeatmapChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { scoreSheetToHeatmapCells } from '@/utils/mark-statistics-chart'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -515,6 +516,11 @@ const scoreHeatmapCells = computed(() =>
     })),
   ),
 )
+
+const scoreHeatmapHint = computed(() => mergeChartHint(
+  '颜色表示得分率，点击题格查看详情',
+  buildHeatmapChartInsight(scoreHeatmapCells.value),
+))
 
 const scoreHeatmapHeight = computed(() => {
   const count = scoreHeatmapCells.value.length

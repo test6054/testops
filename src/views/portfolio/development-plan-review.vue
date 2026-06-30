@@ -204,7 +204,8 @@ onMounted(async () => {
         </template>
       </ContextBar>
     </template>
-    <UiFilterBar variant="plain"
+    <UiFilterBar
+      variant="plain"
       v-model="filterModel"
       :fields="filterFields"
       @search="handleSearch"

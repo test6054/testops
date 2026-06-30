@@ -49,7 +49,7 @@
         <div v-if="record.analysisStatus === 'SUCCESS'" class="ai-record__charts">
           <MarkBarSection
             title="当前评估指标"
-            hint="一致性率与复用次数"
+            :hint="effectivenessBarHint"
             :item-count="effectivenessBarItems.length"
             :option="effectivenessBarOption"
             height="220px"
@@ -57,7 +57,7 @@
           />
           <MarkTrendSection
             title="一致性率历史走势"
-            hint="同一经验案例历次评估记录"
+            :hint="effectivenessTrendHint"
             :point-count="effectivenessTrendPoints.length"
             :option="effectivenessTrendOption"
             height="220px"
@@ -105,6 +105,10 @@
           <strong>评估摘要：</strong>{{ record.evalSummary }}
         </a-typography-paragraph>
 
+        <a-typography-paragraph v-if="record.detailedAnalysis" class="ai-summary">
+          <strong>详细分析：</strong>{{ record.detailedAnalysis }}
+        </a-typography-paragraph>
+
         <a-typography-paragraph v-if="record.driftDescription" class="ai-summary">
           <strong>漂移说明：</strong>{{ record.driftDescription }}
         </a-typography-paragraph>
@@ -112,15 +116,38 @@
         <a-typography-paragraph v-if="record.recommendation" class="ai-summary">
           <strong>维护动作：</strong>{{ recommendationLabel(record.recommendation) }}
         </a-typography-paragraph>
+
+        <div v-if="record.analysisStatus === 'SUCCESS'" class="ai-evidence">
+          <div class="ai-evidence__header">
+            <strong>评估脱敏样本</strong>
+            <span class="text-muted">共 {{ evidenceRows.length }} 条，供复核 AI 一致性依据</span>
+          </div>
+          <a-table
+            v-if="evidenceRows.length"
+            size="small"
+            bordered
+            :columns="evidenceColumns"
+            :data-source="evidenceRows"
+            :pagination="false"
+            :scroll="{ x: 1200 }"
+            row-key="rowKey"
+          />
+          <UiEmpty v-else description="评估考试无同题型作答样本" />
+        </div>
       </div>
     </a-spin>
   </UiCard>
 </template>
 
 <script lang="ts" setup>
+import type { ColumnType } from 'ant-design-vue/es/table'
 import type { GradingExperienceCaseVO } from '@/apis/mark/grading-experience'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
-import type { ExperienceEffectivenessEvalVO, ExperienceRecommendationCode } from '@/apis/mark/school-quality'
+import type {
+  ExperienceEffectivenessEvalEvidenceVO,
+  ExperienceEffectivenessEvalVO,
+  ExperienceRecommendationCode,
+} from '@/apis/mark/school-quality'
 import type { UiBarChartItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -145,6 +172,11 @@ import { runContractGuard } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
+import {
+  buildBarChartInsight,
+  buildTrendChartInsight,
+  mergeChartHint,
+} from '@/utils/mark-chart-insights'
 import { rateTone } from '@/utils/score-tone'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -166,7 +198,8 @@ const generating = ref(false)
 
 const experienceOptions = computed(() =>
   experiences.value
-    .filter((item): item is GradingExperienceCaseVO & { id: string } => Boolean(item.id))
+    .filter((item): item is GradingExperienceCaseVO & { id: string } =>
+      Boolean(item.id) && item.caseStatus === 'CONFIRMED' && item.analysisStatus === 'SUCCESS')
     .map((item) => ({
       label: [
         questionTypeLabel(item.questionType),
@@ -268,6 +301,16 @@ const effectivenessTrendPoints = computed((): UiTrendPoint[] => {
   })
 })
 
+const effectivenessBarHint = computed(() => mergeChartHint(
+  '一致性率与复用次数',
+  buildBarChartInsight(effectivenessBarItems.value),
+))
+
+const effectivenessTrendHint = computed(() => mergeChartHint(
+  '同一经验案例历次评估记录',
+  buildTrendChartInsight(effectivenessTrendPoints.value),
+))
+
 const effectivenessTrendLastValue = computed(() => {
   const points = effectivenessTrendPoints.value
   if (points.length === 0) return null
@@ -288,6 +331,75 @@ const effectivenessTrendAriaLabel = computed(() => {
   if (count < 2) return '一致性率历史走势，至少需要两次成功评估'
   return `一致性率历史走势，共 ${count} 次评估`
 })
+
+interface EvidenceTableRow extends ExperienceEffectivenessEvalEvidenceVO {
+  rowKey: string
+  scoreDiffText: string
+}
+
+const evidenceRows = computed((): EvidenceTableRow[] => {
+  const items = record.value?.evidenceItems
+  if (!items?.length) return []
+  return items.map((item, index) => ({
+    ...item,
+    rowKey: `${item.anonymousId ?? 'sample'}-${item.questionNo ?? index}`,
+    scoreDiffText: formatScoreDiff(item.aiScore, item.teacherReviewScore),
+  }))
+})
+
+const evidenceColumns: ColumnType<EvidenceTableRow>[] = [
+  { title: '脱敏学生', dataIndex: 'anonymousId', key: 'anonymousId', width: 100 },
+  { title: '班级', dataIndex: 'anonymousClassLabel', key: 'anonymousClassLabel', width: 88 },
+  { title: '题号', dataIndex: 'questionNo', key: 'questionNo', width: 72 },
+  {
+    title: '题型',
+    key: 'questionType',
+    width: 88,
+    customRender: ({ record: row }) => (row.questionType ? questionTypeLabel(row.questionType) : '—'),
+  },
+  {
+    title: '识别作答',
+    dataIndex: 'recognizedAnswer',
+    key: 'recognizedAnswer',
+    ellipsis: true,
+    width: 180,
+  },
+  {
+    title: 'AI 分',
+    key: 'aiScore',
+    width: 72,
+    align: 'right',
+    customRender: ({ record: row }) => formatScoreCell(row.aiScore),
+  },
+  {
+    title: '教师分',
+    key: 'teacherReviewScore',
+    width: 72,
+    align: 'right',
+    customRender: ({ record: row }) => formatScoreCell(row.teacherReviewScore),
+  },
+  { title: '分差', dataIndex: 'scoreDiffText', key: 'scoreDiffText', width: 72, align: 'right' },
+  {
+    title: '评语',
+    dataIndex: 'commentText',
+    key: 'commentText',
+    ellipsis: true,
+    width: 160,
+  },
+]
+
+function formatScoreCell(value?: number): string {
+  if (value == null || !Number.isFinite(Number(value))) return '—'
+  return String(Number(value))
+}
+
+function formatScoreDiff(aiScore?: number, teacherScore?: number): string {
+  if (aiScore == null || teacherScore == null) return '—'
+  if (!Number.isFinite(Number(aiScore)) || !Number.isFinite(Number(teacherScore))) return '—'
+  const diff = Number(aiScore) - Number(teacherScore)
+  if (diff === 0) return '0'
+  return diff > 0 ? `+${diff}` : String(diff)
+}
 
 function analysisFailureMessage(errorMessage?: string): string {
   return getUserProcessFailureMessage(errorMessage, 'AI 经验案例有效性评估未完成，请稍后重新评估')
@@ -338,11 +450,27 @@ function acceptExperienceEffectivenessRecord(
       requireText(item.evalExamName, 'evalExamName')
       requireText(item.experienceSummary, 'experienceSummary')
       requireText(item.evalSummary, 'evalSummary')
+      requireText(item.detailedAnalysis, 'detailedAnalysis')
       requireText(item.aiTraceId, 'aiTraceId')
-      requireNumber(item.consistencyRate, 'consistencyRate')
-      requireNumber(item.reuseCount, 'reuseCount')
+      if (item.consistencyRate != null) {
+        requireNumber(item.consistencyRate, 'consistencyRate')
+        if (!item.evidenceItems?.length) {
+          throw toUserError(null, '经验有效性评估含样本时缺少脱敏证据行')
+        }
+      }
+      if (item.evidenceItems?.length) {
+        for (const evidence of item.evidenceItems) {
+          if (evidence.questionType) {
+            questionTypeLabel(evidence.questionType)
+          }
+        }
+      }
+      requireNumber(item.reuseCount ?? 0, 'reuseCount')
       requireNumber(item.latencyMs, 'latencyMs')
       requireBoolean(item.driftDetected, 'driftDetected')
+      if (item.recommendation) {
+        recommendationLabel(item.recommendation)
+      }
     } else if (item.analysisStatus === 'FAILED' || item.analysisStatus === 'BLOCKED') {
       requireText(item.errorMessage, 'errorMessage')
     }
@@ -411,6 +539,15 @@ async function handleGenerate(): Promise<void> {
     message.warning('经验案例和评估所用考试都必填')
     return
   }
+  const selectedCase = experiences.value.find((item) => item.id === experienceCaseId)
+  if (!selectedCase || selectedCase.caseStatus !== 'CONFIRMED') {
+    message.warning('请先在阅卷经验库确认该经验案例后再评估有效性')
+    return
+  }
+  if (selectedCase.sourceExamId === evalExamId) {
+    message.warning('评估所用考试不能与经验来源考试相同')
+    return
+  }
   generating.value = true
   try {
     record.value = acceptExperienceEffectivenessRecord(
@@ -466,6 +603,16 @@ watch(() => form.sourceExamId, handleSourceExamChange)
 }
 .ai-summary {
   margin: 0;
+}
+.ai-evidence {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ai-evidence__header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 .text-muted {
   color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));

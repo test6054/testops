@@ -209,7 +209,7 @@ const hasHeader = computed(() => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ui-statistic-summary-grid__list {
     grid-template-columns: 1fr !important;
   }

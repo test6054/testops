@@ -168,6 +168,20 @@ export function listExperiencesByQuestion(
   )
 }
 
+export function confirmExperienceCase(experienceCaseId: string): Promise<GradingExperienceCaseVO> {
+  return http.post<GradingExperienceCaseVO>(
+    '/api/exam/grading-experience/experience/confirm',
+    { id: experienceCaseId },
+  )
+}
+
+export function deprecateExperienceCase(experienceCaseId: string): Promise<GradingExperienceCaseVO> {
+  return http.post<GradingExperienceCaseVO>(
+    '/api/exam/grading-experience/experience/deprecate',
+    { id: experienceCaseId },
+  )
+}
+
 export function generateAnswerCluster(
   examId: string,
   questionTemplateId: string,

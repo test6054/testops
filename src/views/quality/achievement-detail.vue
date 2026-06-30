@@ -571,7 +571,7 @@ onActivated(() => {
                 </strong>
               </p>
               <p class="achievement-detail__audit-meta">
-                {{ audit.auditorNickName || '审核人' }} · {{ audit.auditedTime }}
+                {{ audit.auditorNickName }} · {{ audit.auditedTime }}
               </p>
               <p v-if="audit.auditOpinion" class="achievement-detail__audit-opinion">
                 意见：{{ audit.auditOpinion }}
@@ -595,7 +595,7 @@ onActivated(() => {
           <template #renderItem="{ item }">
             <a-list-item>
               <a-list-item-meta
-                :title="`${manualReviewDecisionLabel(item.decision)} · ${item.reviewerNickName || '复核人'}`"
+                :title="`${manualReviewDecisionLabel(item.decision)} · ${item.reviewerNickName}`"
                 :description="item.reviewRemark"
               />
               <template #actions>

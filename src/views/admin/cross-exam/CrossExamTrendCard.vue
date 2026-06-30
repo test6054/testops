@@ -87,7 +87,7 @@
         <MarkTrendSection
           v-if="record"
           title="考试得分趋势"
-          hint="多考试得分率走势"
+          :hint="examTrendHint"
           :point-count="examStatTrendPoints.length"
           :option="examTrendChartOption"
           height="320px"
@@ -161,6 +161,7 @@ import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
+import { buildTrendChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { examStatSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -197,6 +198,11 @@ const trendItems = computed(() => record.value?.trendItems ?? [])
 const examStatTrendPoints = computed(() =>
   examStatSnapshotsToTrendPoints(record.value?.examStatSnapshots ?? []),
 )
+
+const examTrendHint = computed(() => mergeChartHint(
+  '多考试得分率走势',
+  buildTrendChartInsight(examStatTrendPoints.value),
+))
 
 const examTrendLastValue = computed(() => {
   const points = examStatTrendPoints.value

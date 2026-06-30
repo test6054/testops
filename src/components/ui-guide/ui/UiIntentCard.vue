@@ -283,7 +283,7 @@ const statusLabel = computed(() => {
   border-top: 1px solid var(--dp-border, #e5e7eb);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ui-intent-card__header {
     flex-direction: column;
     align-items: flex-start;

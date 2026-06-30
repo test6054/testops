@@ -66,6 +66,7 @@
 <script lang="ts" setup>
 import type { ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import { computed } from 'vue'
 import { hasImageLedgerPageStats, LEDGER_STATUS_LABEL, LEDGER_STATUS_TONE } from '@/apis/mark/image-ledger'
@@ -75,15 +76,14 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiProgressBarNew from '@/components/ui-guide/ui/UiProgressBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
-import type { SignalMetric } from '@/types/workbench'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
 import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
 import { toneToColor } from '@/utils/score-tone'
-import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { toSignalMetrics } from '@/utils/stat-metric-helpers'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'LedgerSummaryCard' })
 const props = defineProps<{

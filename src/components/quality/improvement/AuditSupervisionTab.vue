@@ -479,7 +479,8 @@ defineExpose({
       <UiButton variant="primary" size="sm" @click="openSupCreate">新建督导记录</UiButton>
     </template>
 
-    <UiFilterBar variant="plain"
+    <UiFilterBar
+      variant="plain"
       v-model="supFilterForm"
       :fields="supFilterFields"
       show-labels

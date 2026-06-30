@@ -10,6 +10,60 @@ import dayjs from 'dayjs'
 /** 空值占位符（与 Ant Design Vue 列表默认一致） */
 export const DASH_PLACEHOLDER = '-'
 
+/**
+ * 成绩/指标展示精度上下文。
+ * - score：原始分数，1 位小数
+ * - fullScore：满分上限，整数
+ * - percent：百分比数值，1 位小数（不含 % 后缀）
+ * - achievement：达成度等指标，3 位小数
+ * - count：人数/次数等计数，整数
+ */
+export type ScoreFormatContext = 'score' | 'fullScore' | 'percent' | 'achievement' | 'count'
+
+const SCORE_FORMAT_DECIMALS: Record<ScoreFormatContext, number> = {
+  score: 1,
+  fullScore: 0,
+  percent: 1,
+  achievement: 3,
+  count: 0,
+}
+
+/**
+ * 统一格式化分数、百分比、达成度与计数值展示。
+ */
+export function formatScore(
+  value: number | string | null | undefined,
+  context: ScoreFormatContext = 'score',
+  fallback: string = DASH_PLACEHOLDER,
+): string {
+  if (value === null || value === undefined || value === '') {
+    return fallback
+  }
+  const num = Number(value)
+  if (!Number.isFinite(num)) {
+    return fallback
+  }
+  if (context === 'count' || context === 'fullScore') {
+    return String(Math.round(num))
+  }
+  return num.toFixed(SCORE_FORMAT_DECIMALS[context])
+}
+
+/** 格式化为带 % 后缀的百分比文案 */
+export function formatScorePercent(
+  value: number | string | null | undefined,
+  fallback: string = DASH_PLACEHOLDER,
+): string {
+  if (value === null || value === undefined || value === '') {
+    return fallback
+  }
+  const num = Number(value)
+  if (!Number.isFinite(num)) {
+    return fallback
+  }
+  return `${formatScore(num, 'percent')}%`
+}
+
 type DateLike = string | number | Date | null | undefined
 
 /**
@@ -167,6 +221,31 @@ export function formatExamWindowFullRange(
  */
 export function formatTimeOfDay(value: DateLike, fallback: string = DASH_PLACEHOLDER): string {
   return formatWithDayjs(value, 'HH:mm:ss', fallback)
+}
+
+/**
+ * 任务池会话下拉等场景的紧凑时间：24 小时内展示相对时间，更早则 MM/DD HH:mm。
+ */
+export function formatSessionOptionTime(value: DateLike, now: dayjs.Dayjs = dayjs()): string {
+  if (value === null || value === undefined || value === '') {
+    return DASH_PLACEHOLDER
+  }
+  const date = dayjs(value)
+  if (!date.isValid()) {
+    return DASH_PLACEHOLDER
+  }
+  const diffMinutes = now.diff(date, 'minute')
+  if (diffMinutes < 1) {
+    return '刚刚'
+  }
+  if (diffMinutes < 60) {
+    return `${diffMinutes} 分钟前`
+  }
+  const diffHours = now.diff(date, 'hour')
+  if (diffHours < 24) {
+    return `${diffHours} 小时前`
+  }
+  return date.format('MM/DD HH:mm')
 }
 
 /**

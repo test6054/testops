@@ -207,7 +207,7 @@ const progressColor = computed(() => {
   color: var(--dp-text-secondary, #475569);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ui-workflow-status-bar__head {
     flex-direction: column;
     align-items: flex-start;

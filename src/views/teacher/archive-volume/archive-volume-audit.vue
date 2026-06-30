@@ -7,7 +7,14 @@
       />
     </template>
 
+    <UiLoadFailure
+      v-if="loadError"
+      title="加载审计事件失败"
+      :description="loadError"
+    />
+
     <UiFilterBar
+      v-else
       v-model="filterModel"
       :fields="filterFields"
       variant="panel"
@@ -18,6 +25,7 @@
     />
 
     <UiDataTable
+      v-if="!loadError"
       v-model:current="pagination.pageNum"
       v-model:page-size="pagination.pageSize"
       :columns="columns"
@@ -66,15 +74,19 @@ import {
   pageArchiveAuditEvents,
 } from '@/apis/mark/archive-volume'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveVolumeAudit' })
+
+const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
 
 const router = useRouter()
 const loading = ref(false)
@@ -121,9 +133,10 @@ async function loadEvents() {
     })
     events.value = readPageList(result, '审计事件列表异常')
     pagination.total = readPageTotal(result)
+    clearLoadFailure()
   }
   catch (error) {
-    showUserError(error)
+    captureLoadFailure(error, '加载审计事件失败')
   }
   finally {
     loading.value = false

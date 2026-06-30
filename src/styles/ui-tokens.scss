@@ -134,6 +134,7 @@
   --dp-surface-elevated: var(--dp-surface-subtle);
   --dp-bg-control: #f3f4f6;
   --dp-bg-control-disabled: #eef2f7;
+  --dp-bg-button-disabled: #ebebeb;
   --dp-border: #e5e7eb;
   --dp-border-strong: #d0d5dd;
   --dp-border-hover: var(--ant-color-primary-border-hover);
@@ -176,6 +177,7 @@
   --dp-text-primary: var(--ant-color-text);
   --dp-text-secondary: var(--ant-color-text-secondary);
   --dp-text-muted: var(--ant-color-text-tertiary);
+  --dp-text-disabled: rgba(0, 0, 0, 0.38);
 
   --dp-gray-50: #f8fafc;
   --dp-gray-100: #f3f4f6;

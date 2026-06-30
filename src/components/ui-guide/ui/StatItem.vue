@@ -165,7 +165,7 @@ const descClass = computed(() => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ui-stat-item {
     min-width: 100%;
   }

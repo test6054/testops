@@ -41,7 +41,7 @@ const isPortfolioDomain = computed(() => isPortfolioRoute(route.path))
 
 /**
  * 获取路由缓存key
- * 某些特殊路由需要根据参数区分实例
+ * 某些特殊路由需要根据参数区分实�?
  */
 const getRouteKey = (route: RouteLocationNormalized) => {
   // 课程内容视图根据课程ID区分，忽略sectionId变化
@@ -56,7 +56,7 @@ const getRouteKey = (route: RouteLocationNormalized) => {
   if (route.name === 'TaskWorkspace') {
     return `${route.path}_${route.params.id || route.query.taskId || ''}`
   }
-  // 用户详情页根据用户ID区分，确保每次ID变化都重新加载
+  // 用户详情页根据用户ID区分，确保每次ID变化都重新加�?
   if (route.name === 'AdminUserDetail') {
     return `AdminUserDetail_${route.params.id}`
   }
@@ -64,7 +64,7 @@ const getRouteKey = (route: RouteLocationNormalized) => {
   return route.path
 }
 
-/** 与路由 meta.keepAlive 对齐：仅显式 true 时缓存（quality / teacher 列表页） */
+/** 与路�?meta.keepAlive 对齐：仅显式 true 时缓存（quality / teacher 列表页） */
 function shouldCacheRoute(childRoute: RouteLocationNormalized): boolean {
   if (childRoute.meta.noCache === true) {
     return false
@@ -85,7 +85,7 @@ function shouldCacheRoute(childRoute: RouteLocationNormalized): boolean {
   background: var(--ant-color-bg-container);
 }
 
-// 滚动包装层 - 负责滚动，覆盖整个宽度
+// 滚动包装�?- 负责滚动，覆盖整个宽�?
 .main-scroll-wrapper {
   width: 100%;
   height: 100%;
@@ -130,7 +130,7 @@ function shouldCacheRoute(childRoute: RouteLocationNormalized): boolean {
   }
 
   // 移动端适配
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     padding: 12px;
 
     // 为底部TabBar留出空间
@@ -140,7 +140,7 @@ function shouldCacheRoute(childRoute: RouteLocationNormalized): boolean {
   }
 
   // 平板适配
-  @media (min-width: 769px) and (max-width: 1024px) {
+  @media (min-width: 768px) and (max-width: 1024px) {
     padding: 16px;
   }
 }

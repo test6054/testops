@@ -35,18 +35,19 @@ const duplexModeOptions = computed(() =>
 )
 const paramsDisabled = computed(() => !workflow.canSwitchScanMode.value || !scanConfigOptions.value)
 const isSupplement = computed(() => workflow.scanMode.value === 'SUPPLEMENT')
+const scanMaterialAdvisory = computed(() => workflow.scanMaterialAdvisory.value)
 const scanModeAdvisory = computed(() => workflow.scanModeAdvisory.value)
 
 const supplementPaperOptions = computed(() =>
   workflow.supplementBoundPapers.value.map((item) => ({
     value: item.paperInstanceId,
-    label: `${item.studentName || '—'}（${item.studentNo || '—'}）`,
+    label: `${item.studentName}（${item.studentNo}）`,
   })),
 )
 
 const contractTitleText = computed(() => {
   if (!contract.value) return ''
-  const kind = contract.value.materialKindText || '扫描材料'
+  const kind = workflow.materialKindLabel.value
   const layout = contract.value.materialLayoutModeText?.trim()
   const paperStyle = contract.value.paperStyleText?.trim()
   if (layout) return `${kind} · ${layout}`
@@ -126,8 +127,8 @@ function applyRecommendedScanConfig() {
         <p v-if="scanConfigHint" class="contract-hint__sub">
           {{ scanConfigHint }}
         </p>
-        <p v-if="contract.scanMaterialAdvisory" class="contract-hint__warn">
-          {{ contract.scanMaterialAdvisory }}
+        <p v-if="scanMaterialAdvisory" class="contract-hint__warn">
+          {{ scanMaterialAdvisory }}
         </p>
         <p v-if="scanConfigAdvisory" class="contract-hint__warn">
           {{ scanConfigAdvisory }}

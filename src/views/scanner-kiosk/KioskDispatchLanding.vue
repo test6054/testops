@@ -1,0 +1,250 @@
+<script setup lang="ts">
+import { computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { SCAN_DISPATCH_TICKET_STATUS_LABEL } from '@/apis/mark/scanner-dispatch'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import CognitiveConfirmModal from './components/CognitiveConfirmModal.vue'
+import DocumentKioskActivationGate from './components/DocumentKioskActivationGate.vue'
+import { useDispatchSession } from './core/useDispatchSession'
+
+const router = useRouter()
+const session = useDispatchSession()
+
+const ticketStatus = computed(() => session.ticket.value?.status)
+const isTerminalStatus = computed(() =>
+  ticketStatus.value === 'DONE'
+  || ticketStatus.value === 'EXPIRED'
+  || ticketStatus.value === 'CANCELLED',
+)
+const terminalHint = computed(() => {
+  if (ticketStatus.value === 'DONE') {
+    return '本派单已完成，无需再次扫描。'
+  }
+  if (ticketStatus.value === 'EXPIRED') {
+    return '派单已过期，请返回队列处理其他任务。'
+  }
+  if (ticketStatus.value === 'CANCELLED') {
+    return '派单已取消，请返回队列。'
+  }
+  return ''
+})
+const canContinueScan = computed(() =>
+  ticketStatus.value === 'PROCESSING'
+  && Boolean(session.ticket.value?.workOrderId),
+)
+
+onMounted(async () => {
+  await session.bootstrap.initBootstrap()
+  if (session.bootstrap.activation.isActivatedForMarkApis()) {
+    await session.loadTicket()
+    if (session.ticket.value?.status === 'PROCESSING') {
+      session.startProcessingHeartbeat()
+    }
+  }
+})
+
+watch(
+  () => session.bootstrap.activation.isActivatedForMarkApis(),
+  activated => {
+    if (activated) {
+      void session.loadTicket()
+    }
+  },
+)
+
+function goQueue() {
+  void router.push('/scanner-kiosk/queue')
+}
+
+function goHub() {
+  void router.push('/scanner-kiosk')
+}
+</script>
+
+<template>
+  <div class="dispatch-landing">
+    <DocumentKioskActivationGate
+      :can-activate="session.bootstrap.canActivateAgent.value"
+      :submit-loading="session.bootstrap.loading.value"
+      @submit="session.bootstrap.activateAgent"
+    />
+    <header class="dispatch-landing__head">
+      <div>
+        <h1>派单任务</h1>
+        <UiTag v-if="ticketStatus" tone="blue" size="sm">
+          {{ SCAN_DISPATCH_TICKET_STATUS_LABEL[ticketStatus] }}
+        </UiTag>
+      </div>
+      <div class="dispatch-landing__head-actions">
+        <UiButton size="sm" variant="ghost" @click="goHub">回 Hub</UiButton>
+        <UiButton size="sm" variant="ghost" @click="goQueue">返回队列</UiButton>
+      </div>
+    </header>
+    <p v-if="session.errorMessage.value" class="dispatch-landing__error">{{ session.errorMessage.value }}</p>
+    <p v-if="session.lease.leaseLost.value" class="dispatch-landing__error">派单租约已失效，请返回队列重新领取。</p>
+    <a-skeleton v-if="session.loading.value" active :paragraph="{ rows: 5 }" />
+    <section v-else-if="session.ticket.value?.portfolioSnapshot" class="dispatch-landing__panel">
+      <h2>教师档案袋 · {{ session.ticket.value.portfolioSnapshot.collectMode === 'GAP_ATTACHMENT' ? '补采附件' : 'AI 候选提交' }}</h2>
+      <p v-if="session.ticket.value.portfolioSnapshot.teacherName">
+        教师 {{ session.ticket.value.portfolioSnapshot.teacherName }}
+      </p>
+      <p v-else-if="session.ticket.value.portfolioSnapshot.teacherId">
+        教师 ID {{ session.ticket.value.portfolioSnapshot.teacherId }}
+      </p>
+      <p v-if="session.ticket.value.portfolioSnapshot.gapTaskTitle">
+        补采任务 {{ session.ticket.value.portfolioSnapshot.gapTaskTitle }}
+      </p>
+      <p v-if="session.ticket.value.portfolioSnapshot.categoryName">
+        分类 {{ session.ticket.value.portfolioSnapshot.categoryName }}
+      </p>
+      <p v-if="session.ticket.value.traceLabelCode">追溯码 {{ session.ticket.value.traceLabelCode }}</p>
+      <p v-if="session.isPreviewMode">预览模式 · 不占设备锁</p>
+      <p v-else-if="isTerminalStatus" class="dispatch-landing__hint">{{ terminalHint }}</p>
+      <div v-if="isTerminalStatus" class="dispatch-landing__actions">
+        <UiButton variant="primary" @click="goQueue">返回队列</UiButton>
+        <UiButton variant="outline" @click="goHub">回 Hub</UiButton>
+      </div>
+      <div v-else-if="ticketStatus === 'SUSPENDED'" class="dispatch-landing__actions">
+        <UiButton variant="primary" @click="goQueue">返回队列</UiButton>
+        <UiButton :disabled="session.actionLoading.value" @click="session.resumeTicket()">
+          恢复任务
+        </UiButton>
+      </div>
+      <div v-else-if="!session.isPreviewMode" class="dispatch-landing__actions">
+        <UiButton
+          v-if="ticketStatus === 'PENDING'"
+          :disabled="session.actionLoading.value || !session.canClaimTicket.value"
+          @click="session.claimTicket()"
+        >
+          领取任务
+        </UiButton>
+        <UiButton
+          v-if="canContinueScan"
+          variant="primary"
+          :disabled="session.actionLoading.value"
+          @click="session.continueScanSession()"
+        >
+          继续扫描
+        </UiButton>
+        <UiButton
+          v-if="ticketStatus === 'PROCESSING'"
+          variant="outline"
+          :disabled="session.actionLoading.value"
+          @click="session.suspendTicket()"
+        >
+          挂起
+        </UiButton>
+        <UiButton
+          v-if="ticketStatus === 'PROCESSING'"
+          :disabled="session.actionLoading.value || !session.canClaimTicket.value"
+          @click="session.cognitive.requestConfirm(session.ticket.value!)"
+        >
+          认知确认
+        </UiButton>
+      </div>
+    </section>
+    <section v-else-if="session.ticket.value?.archiveSnapshot" class="dispatch-landing__panel">
+      <h2>{{ session.ticket.value.archiveSnapshot.archiveTitle }}</h2>
+      <p>柜位 {{ session.ticket.value.archiveSnapshot.physicalStorageLocation }}</p>
+      <p v-if="session.ticket.value.traceLabelCode">追溯码 {{ session.ticket.value.traceLabelCode }}</p>
+      <p v-if="session.isPreviewMode">预览模式 · 不占设备锁</p>
+      <p v-else-if="isTerminalStatus" class="dispatch-landing__hint">{{ terminalHint }}</p>
+      <div v-if="isTerminalStatus" class="dispatch-landing__actions">
+        <UiButton variant="primary" @click="goQueue">返回队列</UiButton>
+        <UiButton variant="outline" @click="goHub">回 Hub</UiButton>
+      </div>
+      <div v-else-if="ticketStatus === 'SUSPENDED'" class="dispatch-landing__actions">
+        <UiButton variant="primary" @click="goQueue">返回队列</UiButton>
+        <UiButton :disabled="session.actionLoading.value" @click="session.resumeTicket()">
+          恢复任务
+        </UiButton>
+      </div>
+      <div v-else-if="!session.isPreviewMode" class="dispatch-landing__actions">
+        <UiButton
+          v-if="ticketStatus === 'PENDING'"
+          :disabled="session.actionLoading.value || !session.canClaimTicket.value"
+          @click="session.claimTicket()"
+        >
+          领取任务
+        </UiButton>
+        <UiButton
+          v-if="canContinueScan"
+          variant="primary"
+          :disabled="session.actionLoading.value"
+          @click="session.continueScanSession()"
+        >
+          继续扫描
+        </UiButton>
+        <UiButton
+          v-if="ticketStatus === 'PROCESSING'"
+          variant="outline"
+          :disabled="session.actionLoading.value"
+          @click="session.suspendTicket()"
+        >
+          挂起
+        </UiButton>
+        <UiButton
+          v-if="ticketStatus === 'PROCESSING'"
+          :disabled="session.actionLoading.value || !session.canClaimTicket.value"
+          @click="session.cognitive.requestConfirm(session.ticket.value!)"
+        >
+          认知确认
+        </UiButton>
+      </div>
+    </section>
+    <CognitiveConfirmModal
+      v-model:open="session.cognitive.confirmOpen.value"
+      :ticket="session.cognitive.pendingTicket.value"
+      :loading="session.actionLoading.value"
+      @confirm="session.confirmOpen()"
+      @cancel="session.cognitive.clearConfirm()"
+    />
+  </div>
+</template>
+
+<style scoped>
+.dispatch-landing {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+.dispatch-landing__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.dispatch-landing__head h1 {
+  margin: 0 12px 0 0;
+  display: inline;
+  font-size: 22px;
+}
+.dispatch-landing__head-actions {
+  display: flex;
+  gap: 8px;
+}
+.dispatch-landing__error {
+  color: #cf1322;
+}
+.dispatch-landing__hint {
+  margin: 12px 0 0;
+  color: var(--nybc-text-secondary, #8c8c8c);
+}
+.dispatch-landing__panel {
+  border: 1px solid var(--nybc-border, #e8e8e8);
+  border-radius: 6px;
+  padding: 16px;
+}
+.dispatch-landing__panel h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+.dispatch-landing__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+</style>

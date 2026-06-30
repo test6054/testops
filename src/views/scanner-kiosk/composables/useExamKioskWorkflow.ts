@@ -43,6 +43,11 @@ import type {
   ScannerKioskScanMode,
 } from '@/apis/mark/scanner-kiosk'
 import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
+import {
+  kioskMaterialKindLabel,
+  kioskScanModeAdvisory,
+  resolveKioskScanMaterialAdvisory,
+} from '@/utils/scanner-kiosk-ui'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { SCANNER_COLOR_MODE_LABEL, SCANNER_DUPLEX_MODE_LABEL, SCANNER_ENDPOINT_ONLINE_STATUS_LABEL } from '@/apis/mark/exam-mark-scanner'
@@ -733,7 +738,11 @@ export function useExamKioskWorkflow() {
     if (!scanConfig.value.dpi) return '请选择扫描分辨率'
     return ''
   })
-  const scanModeAdvisory = computed(() => kioskContext.value?.scanModeAdvisory ?? '')
+  const scanModeAdvisory = computed(() => kioskScanModeAdvisory(scanMode.value))
+  const materialKindLabel = computed(() =>
+    kioskMaterialKindLabel(kioskContext.value?.taskContract?.materialLayoutMode))
+  const scanMaterialAdvisory = computed(() =>
+    resolveKioskScanMaterialAdvisory(kioskContext.value?.taskContract))
   const supplementBoundPapers = computed<ExamScannerBoundPaperItemVO[]>(
     () => kioskContext.value?.supplementBoundPapers ?? [],
   )
@@ -1052,6 +1061,23 @@ export function useExamKioskWorkflow() {
       { message: diagnostic },
       '扫描处理异常，请按异常类型重新扫描、补扫或联系阅卷管理员处理',
     )
+  }
+
+  /** 从页级账本读取页登记阻断提示，供 commit 成功后向现场操作员显式告警。 */
+  function resolvePageRegisterBlockMessage(): string | null {
+    const ledger = pageLedger.value
+    if (!ledger) {
+      return null
+    }
+    const attention = ledger.attentionItems.find(item => item.attentionType === 'PROCESSING_BLOCK')
+    if (attention?.diagnostic) {
+      return scannerDiagnosticText(attention.diagnostic)
+    }
+    const blockedPage = ledger.items.find(item => item.attentionType === 'PROCESSING_BLOCK')
+    if (blockedPage?.attentionMessage) {
+      return scannerDiagnosticText(blockedPage.attentionMessage)
+    }
+    return null
   }
 
   function ledgerItemKey(item: { pageNo: number, sha256?: string, localPageId?: string }) {
@@ -2751,7 +2777,16 @@ export function useExamKioskWorkflow() {
       if (firstBrowsablePage) {
         previewPageNo.value = firstBrowsablePage.pageNo
       }
-      successMessage.value = KIOSK_BATCH_SUBMITTED_HINT
+      const pageRegisterBlockMessage = job.pageRegisterBlocked
+        ? workflow.scannerDiagnosticText(job.pageRegisterDiagnostic || job.message)
+        : resolvePageRegisterBlockMessage()
+      if (pageRegisterBlockMessage) {
+        errorMessage.value = `批次已上传，但自动页登记被阻断：${pageRegisterBlockMessage}。请在复核页查看异常，或联系阅卷管理员在 PC 端处理。`
+        successMessage.value = ''
+      }
+      else {
+        successMessage.value = KIOSK_BATCH_SUBMITTED_HINT
+      }
       return
     }
     if (job.status === 'CANCELLED') {
@@ -3034,6 +3069,8 @@ export function useExamKioskWorkflow() {
     supplementReplaceTargetPage,
     supplementPaperInstanceId,
     scanModeAdvisory,
+    materialKindLabel,
+    scanMaterialAdvisory,
     supplementBoundPapers,
     scanConfig,
     activationForm,

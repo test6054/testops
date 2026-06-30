@@ -5,6 +5,14 @@
     </header>
     <dl class="exam-create-summary">
       <div class="exam-create-summary__row">
+        <dt>考试性质</dt>
+        <dd>{{ examKindText }}</dd>
+      </div>
+      <div v-if="examForm.sourceExamId" class="exam-create-summary__row">
+        <dt>原考试</dt>
+        <dd>{{ examForm.sourceExamName || examForm.sourceExamId }}</dd>
+      </div>
+      <div class="exam-create-summary__row">
         <dt>课程</dt>
         <dd>{{ examForm.courseName || '—' }}</dd>
       </div>
@@ -31,6 +39,10 @@
       <div class="exam-create-summary__row">
         <dt>成绩构成</dt>
         <dd>{{ scoreCompositionText }}</dd>
+      </div>
+      <div class="exam-create-summary__row">
+        <dt>涉密场次</dt>
+        <dd>{{ examForm.confidential ? '是（强制水印）' : '否' }}</dd>
       </div>
       <div class="exam-create-summary__row">
         <dt>主考教师</dt>
@@ -64,55 +76,59 @@
 </template>
 
 <script setup lang="ts">
-import type { ExamBasicForm, ExamMarkingTeamForm, ExamRosterForm } from './useExamCreate'
-import { EXAM_ROSTER_SCOPE_MODE_LABEL } from './useExamCreate'
 import { computed } from 'vue'
-import { GRADING_STRATEGY_LABEL } from '@/apis/mark/exam'
+import { EXAM_KIND_LABEL, GRADING_STRATEGY_LABEL } from '@/apis/mark/exam'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { formatDateTime } from '@/utils/format'
+import {
+  EXAM_ROSTER_SCOPE_MODE_LABEL,
+  useInjectedExamCreateBasicForm,
+  useInjectedExamCreateMarkingTeamForm,
+  useInjectedExamCreateRosterForm,
+} from './exam-create-context'
 
-const props = defineProps<{
-  examForm: ExamBasicForm
-  markingTeamForm: ExamMarkingTeamForm
-  rosterForm: ExamRosterForm
-}>()
+const examForm = useInjectedExamCreateBasicForm()
+const markingTeamForm = useInjectedExamCreateMarkingTeamForm()
+const rosterForm = useInjectedExamCreateRosterForm()
+
+const examKindText = computed(() => EXAM_KIND_LABEL[examForm.examKind])
 
 const academicTermText = computed(() => {
-  const year = props.examForm.academicYear?.trim()
-  const semester = props.examForm.semester
+  const year = examForm.academicYear?.trim()
+  const semester = examForm.semester
   if (!year && !semester) return '未设置'
   if (!year || !semester) return '学年学期不完整'
   return `${year} ${formatSemester(semester)}`
 })
 
 const examWindowText = computed(() => {
-  const [start, end] = props.examForm.examWindow ?? []
+  const [start, end] = examForm.examWindow ?? []
   if (!start || !end) return '未设置'
   return `${formatDateTime(start)} ~ ${formatDateTime(end)}`
 })
 
 const scoreCompositionText = computed(() => {
-  if (props.examForm.scoreCompositionMode === 'EXAM_WITH_DAILY') {
-    const full = props.examForm.dailyScoreFull
+  if (examForm.scoreCompositionMode === 'EXAM_WITH_DAILY') {
+    const full = examForm.dailyScoreFull
     return full != null ? `考试 + 平时（满分 ${full}）` : '考试 + 平时'
   }
   return '仅考试成绩'
 })
 
 const selectionModeText = computed(() => {
-  if (!props.rosterForm.candidates.length) {
+  if (!rosterForm.candidates.length) {
     return '创建后补录'
   }
-  return EXAM_ROSTER_SCOPE_MODE_LABEL[props.rosterForm.scopeMode]
+  return EXAM_ROSTER_SCOPE_MODE_LABEL[rosterForm.scopeMode]
 })
 
 const reviewerText = computed(() => {
-  const names = props.markingTeamForm.reviewerNickNames.filter(Boolean)
+  const names = markingTeamForm.reviewerNickNames.filter(Boolean)
   if (names.length) {
     return names.join('、')
   }
-  if (props.markingTeamForm.reviewerUserIds.length) {
-    return `${props.markingTeamForm.reviewerUserIds.length} 人`
+  if (markingTeamForm.reviewerUserIds.length) {
+    return `${markingTeamForm.reviewerUserIds.length} 人`
   }
   return '—'
 })

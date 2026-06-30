@@ -96,6 +96,16 @@ function handleLink(item: RouteLocationMatched) {
   transform: translateX(10px);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .breadcrumb-enter-active {
+    transition: none !important;
+  }
+
+  .breadcrumb-item-title {
+    transition: none !important;
+  }
+}
+
 :deep(.ant-breadcrumb-item) {
   padding: 0;
   display: flex;

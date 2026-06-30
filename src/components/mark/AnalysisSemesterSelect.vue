@@ -1,12 +1,9 @@
 <script setup lang="ts">
-import type { ExamSummaryVO } from '@/apis/mark/exam'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { onMounted, ref } from 'vue'
-import { pageExams } from '@/apis/mark/exam'
-import { pickDefaultSemesterCode } from '@/composables/useCrossExamDefaultScope'
-import { getSemesterDescription } from '@/types/enums/semester-enum'
+import { formatAcademicTermCode, getSemesterDescription } from '@/types/enums/semester-enum'
+import { listDistinctExamTerms } from '@/apis/mark/exam'
 import { showUserError } from '@/utils/error-handler'
-import { readAllPages } from '@/utils/page-result'
 
 defineOptions({ name: 'AnalysisSemesterSelect' })
 
@@ -26,38 +23,33 @@ const props = withDefaults(
   },
 )
 
-const ANALYSIS_SEMESTER_EXAM_PAGE_SIZE = 100
-
 const loading = ref(false)
 const semesterOptions = ref<{ label: string, value: string }[]>([])
 const defaultScopeApplied = ref(false)
 
-/** 加载考试中的学年学期范围，供 AI 分析卡片按业务周期选择。 */
+function formatTermLabel(item: { examTermCode: string, academicYear?: string, semester?: string }): string {
+  if (item.academicYear && item.semester) {
+    return `${item.academicYear} · ${getSemesterDescription(item.semester)}`
+  }
+  return formatAcademicTermCode(item.examTermCode)
+}
+
+/** 加载 DISTINCT 考试学期列表，供 AI 分析卡片按业务周期选择。 */
 async function loadSemesterOptions(): Promise<void> {
   loading.value = true
   try {
-    const termMap = new Map<string, string>()
-    const exams = await readAllPages(
-      (pageNum) => pageExams({
-        pageNum,
-        pageSize: ANALYSIS_SEMESTER_EXAM_PAGE_SIZE,
-      }),
-      '考试列表加载失败，请稍后重试',
-    )
-    exams.forEach((exam: ExamSummaryVO) => {
-      if (!exam.academicYear || !exam.semester) return
-      const value = `${exam.academicYear}-${exam.semester}`
-      termMap.set(value, `${exam.academicYear} · ${getSemesterDescription(exam.semester)}`)
-    })
-    semesterOptions.value = Array.from(termMap.entries())
-      .map(([value, label]) => ({ label, value }))
-      .sort((left, right) => right.value.localeCompare(left.value))
+    const terms = await listDistinctExamTerms()
+    semesterOptions.value = terms.map((item) => ({
+      value: item.examTermCode,
+      label: formatTermLabel(item),
+    }))
     if (
       !defaultScopeApplied.value
       && props.defaultRecentSemesterCount > 0
       && !selectedSemesterCode.value
     ) {
-      const defaultCode = pickDefaultSemesterCode(exams, props.defaultRecentSemesterCount)
+      const defaultCode = semesterOptions.value
+        .slice(0, props.defaultRecentSemesterCount)[0]?.value
       if (defaultCode) {
         selectedSemesterCode.value = defaultCode
         defaultScopeApplied.value = true

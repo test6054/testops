@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import DocumentKioskActivationGate from '../components/DocumentKioskActivationGate.vue'
 import { useDocumentKioskBootstrap } from '../composables/useDocumentKioskBootstrap'
 import { useWorkOrderScanFlow } from '../composables/useWorkOrderScanFlow'
+import { useLeaseHeartbeat } from '../core/useLeaseHeartbeat'
 import { useArchiveScanSession } from './useArchiveScanSession'
 
 const router = useRouter()
 const session = useArchiveScanSession()
 const bootstrap = useDocumentKioskBootstrap()
+const lease = useLeaseHeartbeat()
 const scanFlow = useWorkOrderScanFlow({
   taskKind: 'EXAM_ARCHIVE',
   businessScene: 'EXAM_ARCHIVE',
@@ -32,10 +35,28 @@ const canStart = computed(() =>
     && session.materialType.value
     && bootstrap.selectedScannerId.value
     && session.archiveContext.value != null
-    && session.archiveContext.value.canRegisterMaterial === true,
+    && session.archiveContext.value.canRegisterMaterial === true
+    && !lease.leaseLost.value,
   ),
 )
+const leaseLostMessage = '派单租约已失效，扫描会话可能已被中断，请返回队列'
 const jobMessage = computed(() => scanFlow.currentJob.value?.message ?? '')
+const physicalStorageLocation = computed(() =>
+  session.dispatchSnapshot.value?.physicalStorageLocation ?? '',
+)
+const traceLabelCode = computed(() => session.dispatchTraceLabelCode.value)
+
+function handleLeaseLost() {
+  message.warning(leaseLostMessage)
+}
+
+function returnToDispatchQueue(scanCommitted: boolean) {
+  lease.stopHeartbeat()
+  void router.replace({
+    path: '/scanner-kiosk/queue',
+    query: scanCommitted ? { scanCommitted: '1' } : undefined,
+  })
+}
 
 onMounted(async () => {
   if (!session.volumeId.value) {
@@ -58,15 +79,50 @@ watch(
 )
 
 watch(
+  () => [session.dispatchTicketId.value, bootstrap.setup.value?.scannerDeviceId, bootstrap.setup.value?.scannerStationId] as const,
+  ([ticketId, deviceId, stationId]) => {
+    if (ticketId && deviceId && stationId) {
+      lease.startHeartbeat(ticketId, deviceId, stationId, { onLeaseLost: handleLeaseLost })
+      return
+    }
+    lease.stopHeartbeat()
+  },
+  { immediate: true },
+)
+
+onUnmounted(() => {
+  lease.stopHeartbeat()
+})
+
+watch(
   () => scanFlow.isReported.value,
   reported => {
-    if (reported && session.returnTo.value) {
+    if (!reported) {
+      return
+    }
+    if (session.returnTo.value) {
+      lease.stopHeartbeat()
       const [path, search = ''] = session.returnTo.value.split('?')
       const params = new URLSearchParams(search)
       params.set('scanCommitted', '1')
       params.set('tab', 'materials')
       void router.replace(`${path}?${params.toString()}`)
+      return
     }
+    if (session.dispatchTicketId.value) {
+      returnToDispatchQueue(true)
+    }
+  },
+)
+
+watch(
+  () => scanFlow.lifecycle.value?.status,
+  status => {
+    if (status !== 'DISCARDED' || !session.dispatchTicketId.value) {
+      return
+    }
+    message.info('已放弃，派单已释放')
+    returnToDispatchQueue(false)
   },
 )
 
@@ -78,6 +134,10 @@ async function handleStart() {
 }
 
 function goBack() {
+  if (session.dispatchTicketId.value) {
+    returnToDispatchQueue(false)
+    return
+  }
   if (session.returnTo.value) {
     void router.replace(session.returnTo.value)
     return
@@ -101,6 +161,8 @@ function goBack() {
     <section v-if="session.archiveContext.value" class="archive-scan-session__summary">
       <p>卷号：{{ session.archiveContext.value.archiveNo }}</p>
       <p>卷名：{{ session.archiveContext.value.archiveTitle }}</p>
+      <p v-if="physicalStorageLocation">柜位：{{ physicalStorageLocation }}</p>
+      <p v-if="traceLabelCode">追溯码：{{ traceLabelCode }}</p>
       <p>目录编码：{{ session.catalogCode.value || '卷级收材' }}</p>
       <p>材料类型：{{ session.materialTypeLabel.value }}</p>
       <p>批次模式：{{ session.batchMode.value === 'PER_PAGE' ? '逐页登记' : '合并 PDF' }}</p>
@@ -181,6 +243,7 @@ function goBack() {
       已扫 {{ scanFlow.currentJob.value?.scannedPages ?? 0 }} 页
       <span v-if="jobMessage"> — {{ jobMessage }}</span>
     </p>
+    <p v-if="lease.leaseLost.value" class="archive-scan-session__error">{{ leaseLostMessage }}</p>
     <p v-if="scanFlow.errorMessage.value" class="archive-scan-session__error">{{ scanFlow.errorMessage.value }}</p>
     <p v-if="scanFlow.successMessage.value" class="archive-scan-session__success">{{ scanFlow.successMessage.value }}</p>
   </div>

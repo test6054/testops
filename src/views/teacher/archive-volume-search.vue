@@ -14,7 +14,14 @@
       </ContextBar>
     </template>
 
+    <UiLoadFailure
+      v-if="loadError"
+      title="OCR 检索失败"
+      :description="loadError"
+    />
+
     <UiFilterBar
+      v-else
       v-model="filterModel"
       :fields="filterFields"
       variant="panel"
@@ -25,6 +32,7 @@
     />
 
     <UiDataTable
+      v-if="!loadError"
       v-model:current="pagination.pageNum"
       v-model:page-size="pagination.pageSize"
       :columns="columns"
@@ -73,15 +81,19 @@ import {
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveVolumeSearch' })
+
+const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
 
 const router = useRouter()
 const loading = ref(false)
@@ -125,9 +137,10 @@ async function loadHits() {
     })
     hits.value = readPageList(result, 'OCR 检索结果异常，请刷新后重试')
     pagination.total = readPageTotal(result)
+    clearLoadFailure()
   }
   catch (error) {
-    showUserError(error)
+    captureLoadFailure(error, 'OCR 检索失败')
   }
   finally {
     loading.value = false

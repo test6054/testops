@@ -258,7 +258,7 @@ function handleEditorConvenerChange(
     return
   }
   const userCode = option.teacherNumber?.trim() || option.userName?.trim()
-  const userName = option.nickName?.trim() || option.userName?.trim()
+  const userName = option.nickName.trim()
   if (!userCode || !userName) {
     message.error('召集人缺少工号或姓名，无法写入成员清单')
     return

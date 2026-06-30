@@ -13,6 +13,7 @@ import type {
 } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
 import http from '@/config/axios'
+import { assertPortfolioAiAnalysisDetailVO } from '@/utils/portfolio-ai-analysis-contract'
 
 const BASE = '/api/portfolio/review'
 
@@ -35,6 +36,9 @@ export const portfolioReviewApi = {
     http.post<PortfolioReviewLogVO[]>(`${BASE}/log/list`, { id: reviewTaskId }),
   getArchiveRecord: (archiveRecordId: string) =>
     http.post<PortfolioReviewArchiveRecordDetailVO>(`${BASE}/archive-record/get`, { id: archiveRecordId }),
-  getAiPreReview: (reviewTaskId: string) =>
-    http.post<PortfolioAiAnalysisDetailVO>(`${BASE}/ai-pre-review/get`, { id: reviewTaskId }),
+  getAiPreReview: async (reviewTaskId: string) => {
+    const detail = await http.post<PortfolioAiAnalysisDetailVO>(`${BASE}/ai-pre-review/get`, { id: reviewTaskId })
+    assertPortfolioAiAnalysisDetailVO(detail)
+    return detail
+  },
 }

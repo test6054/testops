@@ -501,7 +501,8 @@ onActivated(() => {
         <UiButton variant="primary" size="sm" @click="openCreate">新建实例</UiButton>
       </template>
 
-      <UiFilterBar variant="plain"
+      <UiFilterBar
+        variant="plain"
         v-model="filterModel"
         :fields="filterFields"
         @search="handleSearch"

@@ -297,7 +297,7 @@ const handleClick = (evt: MouseEvent) => {
   font-size: 12px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ui-metric-card {
     padding: 14px 16px;
   }

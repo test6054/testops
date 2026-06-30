@@ -14,7 +14,13 @@
       </ContextBar>
     </template>
 
-    <a-tabs v-model:active-key="statsTab" class="archive-volume-statistics__tabs">
+    <UiLoadFailure
+      v-if="loadError"
+      title="加载迎评统计失败"
+      :description="loadError"
+    />
+
+    <a-tabs v-else v-model:active-key="statsTab" class="archive-volume-statistics__tabs">
       <a-tab-pane key="overview" tab="迎评统计">
         <UiFilterBar
           v-model="filterModel"
@@ -154,11 +160,13 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { downloadArchiveExcelBase64 } from '@/utils/archive-excel-export'
 import { showUserError } from '@/utils/error-handler'
@@ -167,6 +175,8 @@ import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveVolumeStatistics' })
+
+const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
 
 const router = useRouter()
 const {
@@ -303,9 +313,10 @@ async function loadStatistics() {
       semester: filterModel.semester.trim() || undefined,
       departmentId: filterModel.departmentId,
     })
+    clearLoadFailure()
   }
   catch (error) {
-    showUserError(error)
+    captureLoadFailure(error, '加载迎评统计失败')
   }
   finally {
     loading.value = false

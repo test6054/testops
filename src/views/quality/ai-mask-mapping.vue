@@ -204,7 +204,8 @@ onActivated(() => {
     <UiCard class="detail-table-card ai-mask__main-card">
       <template #title>脱敏映射审计</template>
 
-      <UiFilterBar variant="plain"
+      <UiFilterBar
+        variant="plain"
         v-model="filterModel"
         :fields="filterFields"
         show-labels

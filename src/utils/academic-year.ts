@@ -6,7 +6,7 @@ import { SemesterCode } from '@/types/enums/semester-enum'
 
 export interface AcademicYearSemester {
   academicYear: string
-  semester: string
+  semester: SemesterCode
 }
 
 /** 根据当前时间计算默认学年学期（与后端 AcademicYearUtils 一致） */
@@ -37,17 +37,20 @@ export function generateAcademicYearOptions(): string[] {
 
 export interface DashboardFilterOptions {
   academicYears: string[]
-  semesters: string[]
+  semesters: SemesterCode[]
 }
 
 /** 在租户筛选项范围内解析默认学年学期；不在库内时返回空字段 */
-export function resolveDefaultDashboardFilter(options: DashboardFilterOptions): AcademicYearSemester {
+export function resolveDefaultDashboardFilter(options: DashboardFilterOptions): {
+  academicYear?: string
+  semester?: SemesterCode
+} {
   const defaults = getDefaultAcademicYearAndSemester()
   const academicYear = options.academicYears.includes(defaults.academicYear)
     ? defaults.academicYear
-    : ''
+    : undefined
   const semester = academicYear && options.semesters.includes(defaults.semester)
     ? defaults.semester
-    : ''
+    : undefined
   return { academicYear, semester }
 }

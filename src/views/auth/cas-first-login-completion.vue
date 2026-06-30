@@ -52,7 +52,7 @@
           <div class="cas-completion__summary-item">
             <span class="cas-completion__summary-label">姓名</span>
             <span class="cas-completion__summary-value">
-              {{ context?.prefillData?.nickName || '未提供' }}
+              {{ context?.prefillData?.nickName }}
             </span>
           </div>
           <div class="cas-completion__summary-item">

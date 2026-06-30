@@ -748,7 +748,8 @@ onBeforeUnmount(() => {
           <UiButton size="sm" @click="openCreate">新建报告</UiButton>
         </template>
 
-        <UiFilterBar variant="plain"
+        <UiFilterBar
+          variant="plain"
           v-model="filterModel"
           :fields="filterFields"
           show-labels

@@ -589,7 +589,7 @@ watch(isImmersiveWorkspace, (immersive) => {
     padding: 60px 0;
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     &__header {
       grid-template-columns: auto minmax(0, 1fr) auto;
       padding: 0 16px;

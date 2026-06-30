@@ -1067,7 +1067,8 @@ onMounted(async () => {
         </UiButton>
       </template>
 
-      <UiFilterBar variant="plain"
+      <UiFilterBar
+        variant="plain"
         v-model="taskFilterModel"
         :fields="taskFilterFields"
         @search="handleTaskSearch"

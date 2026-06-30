@@ -487,7 +487,8 @@ onMounted(async () => {
     <template #context>
       <ContextBar layout="workbench" show-title title="院系审核台" />
     </template>
-    <UiFilterBar variant="plain"
+    <UiFilterBar
+      variant="plain"
       v-model="filterModel"
       :fields="filterFields"
       @search="handleSearch"
@@ -543,7 +544,7 @@ onMounted(async () => {
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'teacher'">
-              {{ record.teacherName ?? '—' }}
+              {{ record.teacherName }}
             </template>
             <template v-else-if="column.key === 'riskLevel'">
               <UiTag
@@ -596,7 +597,7 @@ onMounted(async () => {
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'teacher'">
-              {{ record.teacherName ?? '—' }}
+              {{ record.teacherName }}
             </template>
             <template v-else-if="column.key === 'riskLevel'">
               <UiTag

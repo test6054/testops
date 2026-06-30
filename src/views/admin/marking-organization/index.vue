@@ -58,7 +58,13 @@
 
 
     <a-spin v-else :spinning="loading" tip="加载组织中...">
-      <SignalBand v-if="organization" :metrics="signalMetrics" compact class="org-index__signals" />
+      <SignalBand
+        v-if="signalMetrics.length > 0"
+        :metrics="signalMetrics"
+        compact
+        class="org-index__signals"
+        @metric-click="handleOrgSignalClick"
+      />
 
       <a-card v-if="organization" :bordered="false" class="detail-table-card org-index__overview-card">
         <a-alert
@@ -242,7 +248,7 @@ import type { SignalMetric } from '@/types/workbench'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, inject, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   createOrganization,
@@ -264,7 +270,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
-import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { MARK_WORKBENCH_CONTEXT_KEY, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import {
@@ -291,6 +297,7 @@ const {
   init: initExamSelector,
 } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
+const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 
 const organization = ref<MarkingOrganizationVO | null>(null)
 const examCreateUserId = computed(() => selectedExam.value?.createUser)
@@ -337,24 +344,42 @@ async function loadOrganization(): Promise<void> {
 
 const signalMetrics = computed<SignalMetric[]>(() => {
   const org = organization.value
-  if (!org) return []
-  const groupCount = org.groups.length
-  return [
-    { key: 'groups', label: '题组数', value: groupCount, tone: groupCount > 0 ? 'blue' : 'orange' },
-    {
-      key: 'anonymous',
-      label: '匿名阅卷',
-      value: org.anonymousMode ? '已启用' : '关闭',
-      tone: org.anonymousMode ? 'green' : 'gray',
-    },
-    {
-      key: 'status',
-      label: '组织状态',
-      value: strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, org.organizationStatus, '阅卷组织状态'),
-      tone: strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, org.organizationStatus, '阅卷组织状态'),
-    },
-  ]
+  if (org) {
+    const groupCount = org.groups.length
+    return [
+      { key: 'groups', label: '题组数', value: groupCount, tone: groupCount > 0 ? 'blue' : 'orange' },
+      {
+        key: 'anonymous',
+        label: '匿名阅卷',
+        value: org.anonymousMode ? '已启用' : '关闭',
+        tone: org.anonymousMode ? 'green' : 'gray',
+      },
+      {
+        key: 'status',
+        label: '组织状态',
+        value: strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, org.organizationStatus, '阅卷组织状态'),
+        tone: strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, org.organizationStatus, '阅卷组织状态'),
+      },
+    ]
+  }
+  const snapshot = workbenchContext?.snapshot.value
+  if (snapshot && snapshot.markingOrgConfigured === false) {
+    return [{
+      key: 'org-pending',
+      label: '阅卷设置',
+      value: '待配置',
+      tone: 'orange',
+      clickable: canManageExamOwner.value,
+    }]
+  }
+  return []
 })
+
+function handleOrgSignalClick(key: string): void {
+  if (key === 'org-pending' && canManageExamOwner.value) {
+    openCreateDrawer()
+  }
+}
 
 const createDrawerOpen = ref(false)
 const creating = ref(false)
@@ -622,7 +647,7 @@ onMounted(async () => {
   }
 
   &__hint {
-    color: var(--dp-text-disabled, #94a3b8);
+    color: var(--dp-text-disabled);
   }
 
   &__switch-hint {

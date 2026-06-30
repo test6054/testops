@@ -137,7 +137,7 @@ void loadPage()
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherName'">
-            {{ record.teacherName ?? record.teacherId }}
+            {{ record.teacherName }}
           </template>
           <template v-else-if="column.key === 'requestStatus'">
             <UiTag :tone="statusTone(record.requestStatus)">
@@ -212,7 +212,7 @@ void loadPage()
       width="420"
     >
       <p v-if="rejectTarget" class="correction-admin__reject-meta">
-        {{ rejectTarget.teacherName ?? rejectTarget.teacherId }} · {{ rejectTarget.fieldLabel ?? rejectTarget.fieldCode }}
+        {{ rejectTarget.teacherName }} · {{ rejectTarget.fieldLabel ?? rejectTarget.fieldCode }}
       </p>
       <Input.TextArea
         v-model:value="rejectForm.handleOpinion"

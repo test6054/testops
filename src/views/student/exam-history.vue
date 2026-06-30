@@ -19,13 +19,12 @@
         <span>考试列表</span>
       </template>
 
-      <UiFilterBar variant="plain"
+      <UiFilterBar
         v-model="historyFilterForm"
         :fields="historyFilterFields"
+        variant="plain"
         search-text="查询"
       />
-
-
 
       <UiDataTable
         pagination-mode="client"
@@ -212,6 +211,7 @@ async function loadExams() {
     validatePublishedExamContracts(loadedExams)
     exams.value = loadedExams
   } catch (error) {
+    exams.value = []
     showUserError(error, '考试列表加载失败')
   } finally {
     loading.value = false

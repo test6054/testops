@@ -1,5 +1,10 @@
+import type { PortfolioTeacherDetailVO, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import { ref } from 'vue'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import {
+  formatPortfolioTeacherDetailSelectLabel,
+  toPortfolioTeacherSelectOption,
+} from '@/utils/portfolio-teacher-display'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
 
@@ -10,12 +15,20 @@ export function usePortfolioTeacherSearch() {
   const teacherOptions = ref<Array<{ value: string, label: string }>>([])
   const teacherLabelById = ref(new Map<string, string>())
 
-  function formatTeacherLabel(userId: string, nickName?: string, teacherNumber?: string): string {
-    return `${nickName ?? teacherNumber ?? userId}${teacherNumber ? ` · ${teacherNumber}` : ''}`
+  function rememberTeacherSummaryOption(teacher: PortfolioTeacherSummaryVO): void {
+    const option = toPortfolioTeacherSelectOption(teacher)
+    if (!option) {
+      return
+    }
+    teacherLabelById.value.set(option.value, option.label)
   }
 
-  function rememberTeacherOption(userId: string, label: string) {
-    teacherLabelById.value.set(userId, label)
+  function rememberTeacherDetailLabel(teacher: PortfolioTeacherDetailVO): void {
+    const label = formatPortfolioTeacherDetailSelectLabel(teacher)
+    if (!label) {
+      return
+    }
+    teacherLabelById.value.set(teacher.userId, label)
   }
 
   async function searchTeachers(keyword: string) {
@@ -25,10 +38,10 @@ export function usePortfolioTeacherSearch() {
     }
     try {
       const page = await portfolioTeacherApi.page({ pageNum: 1, pageSize: 20, searchText: text })
-      teacherOptions.value = readPageList(page, '搜索教师失败').map((item) => {
-        const label = formatTeacherLabel(item.userId, item.nickName, item.teacherNumber)
-        rememberTeacherOption(item.userId, label)
-        return { value: item.userId, label }
+      teacherOptions.value = readPageList(page, '搜索教师失败').flatMap((teacher) => {
+        rememberTeacherSummaryOption(teacher)
+        const option = toPortfolioTeacherSelectOption(teacher)
+        return option ? [option] : []
       })
     }
     catch (error) {
@@ -43,25 +56,34 @@ export function usePortfolioTeacherSearch() {
       }
       try {
         const detail = await portfolioTeacherApi.get(userId)
-        rememberTeacherOption(userId, formatTeacherLabel(userId, detail.nickName, detail.teacherNumber))
+        rememberTeacherDetailLabel(detail)
       }
       catch {
-        rememberTeacherOption(userId, userId)
+        // 教师详情未加载成功时不写入姓名兜底
       }
     }
+  }
+
+  function rememberTeacherSelectLabel(userId: string, label: string) {
+    teacherLabelById.value.set(userId, label)
   }
 
   function teacherLabel(userId?: string): string {
     if (!userId) {
       return '—'
     }
-    return teacherLabelById.value.get(userId) ?? userId
+    const label = teacherLabelById.value.get(userId)
+    if (!label) {
+      return '—'
+    }
+    return label
   }
 
   return {
     teacherOptions,
     searchTeachers,
     hydrateTeacherLabels,
+    rememberTeacherSelectLabel,
     teacherLabel,
   }
 }

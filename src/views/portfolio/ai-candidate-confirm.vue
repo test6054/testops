@@ -13,8 +13,10 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
+import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   PORTFOLIO_AI_EXTRACT_TASK_TYPE_OPTIONS,
@@ -57,7 +59,11 @@ const { canManageTeacherAi } = usePortfolioTeacherAccess()
 const submitTaskType = ref<PortfolioAiExtractTaskType>('PORTFOLIO_CERTIFICATE_OCR')
 const materialFileNodeId = ref<string>()
 const materialFileName = ref<string>()
+const registeredMaterialId = ref<string>()
+const registeredMaterialFileNodeId = ref<string>()
+const selectedTeacherProgramId = ref<string>()
 const submitting = ref(false)
+const scanOpening = ref(false)
 
 const tasksLoading = ref(false)
 const taskRows = ref<PortfolioAiJobTaskVO[]>([])
@@ -135,6 +141,36 @@ function candidateStatusTone(row: PortfolioCandidateFieldVO): BadgeTone {
   )
 }
 
+function resolveTaskTypeFromMaterialType(materialType: PortfolioMaterialType): PortfolioAiExtractTaskType {
+  return materialType === 'CERTIFICATE' ? 'PORTFOLIO_CERTIFICATE_OCR' : 'PORTFOLIO_DOCUMENT_PARSE'
+}
+
+async function loadRegisteredMaterial(materialId: string) {
+  try {
+    const material = await portfolioMaterialApi.get(materialId)
+    if (!targetTeacherId.value) {
+      message.error('请先选择教师')
+      return
+    }
+    if (material.teacherId !== targetTeacherId.value) {
+      message.error('材料所属教师与当前页教师不一致')
+      return
+    }
+    if (!material.fileNodeId) {
+      message.error('材料未关联文件，无法提交 AI 抽取')
+      return
+    }
+    registeredMaterialId.value = material.id
+    registeredMaterialFileNodeId.value = material.fileNodeId
+    materialFileNodeId.value = material.fileNodeId
+    materialFileName.value = material.materialTitle ?? material.fileNodeId
+    submitTaskType.value = resolveTaskTypeFromMaterialType(material.materialType)
+  }
+  catch (error) {
+    showUserError(error, '加载材料库记录失败')
+  }
+}
+
 function resolveSubmitContract(taskType: PortfolioAiExtractTaskType): {
   materialType: PortfolioMaterialType
   templateCode: string
@@ -151,22 +187,36 @@ function resolveSubmitContract(taskType: PortfolioAiExtractTaskType): {
   }
 }
 
-function openPortfolioScan() {
+async function openPortfolioScan() {
   if (!targetTeacherId.value) {
     message.error('请先选择教师')
     return
   }
   const contract = resolveSubmitContract(submitTaskType.value)
-  void router.push({
-    path: '/scanner-kiosk/portfolio/session',
-    query: {
+  scanOpening.value = true
+  try {
+    const created = await createScanDispatch({
+      taskKind: 'PORTFOLIO_COLLECT',
       collectMode: 'AI_SUBMIT',
       teacherId: targetTeacherId.value,
       taskType: submitTaskType.value,
       templateCode: contract.templateCode,
-      returnTo: route.fullPath,
-    },
-  })
+      archiveRecordId: registeredMaterialId.value || undefined,
+    })
+    if (!created.ticket?.ticketId) {
+      throw new Error('创建档案袋派单失败')
+    }
+    void router.push({
+      path: `/scanner-kiosk/dispatch/${created.ticket.ticketId}`,
+      query: { returnTo: route.fullPath },
+    })
+  }
+  catch (error) {
+    showUserError(error, '创建档案袋扫描派单失败')
+  }
+  finally {
+    scanOpening.value = false
+  }
 }
 
 function rowNeedsManualFill(row: PortfolioCandidateFieldVO): boolean {
@@ -311,6 +361,19 @@ function handleTaskPageChange(page: { current: number, pageSize: number }) {
   loadTasks()
 }
 
+async function loadSelectedTeacherProgramId() {
+  selectedTeacherProgramId.value = undefined
+  if (!targetTeacherId.value) {
+    return
+  }
+  try {
+    const detail = await portfolioTeacherApi.get(targetTeacherId.value)
+    selectedTeacherProgramId.value = detail.programId
+  } catch (error) {
+    showUserError(error, '加载教师专业信息失败')
+  }
+}
+
 async function submitExtractTask() {
   if (!targetTeacherId.value) {
     message.error('请先选择教师')
@@ -324,19 +387,39 @@ async function submitExtractTask() {
     message.error('请先上传材料文件')
     return
   }
+  if (!selectedTeacherProgramId.value) {
+    message.error('当前教师未关联专业，无法提交 AI 抽取任务')
+    return
+  }
   submitting.value = true
   try {
     const contract = resolveSubmitContract(submitTaskType.value)
+    let materialId = registeredMaterialId.value
+    if (!materialId) {
+      const materialTitle = materialFileName.value?.trim()
+        || `AI抽取-${contract.templateCode}`
+      materialId = await portfolioMaterialApi.save({
+        teacherId: targetTeacherId.value,
+        materialType: contract.materialType,
+        materialTitle,
+        fileNodeId: materialFileNodeId.value,
+        categoryCode: contract.templateCode,
+      })
+    }
     const result = await portfolioAiJobApi.submit({
       taskType: submitTaskType.value,
       teacherId: targetTeacherId.value,
+      materialId,
       fileNodeId: materialFileNodeId.value,
       materialType: contract.materialType,
       templateCode: contract.templateCode,
+      programId: selectedTeacherProgramId.value,
     })
     message.success('已提交 AI 抽取任务')
     materialFileNodeId.value = undefined
     materialFileName.value = undefined
+    registeredMaterialId.value = undefined
+    registeredMaterialFileNodeId.value = undefined
     await loadTasks()
     if (result.taskId) {
       const detail = await portfolioAiJobApi.get(result.taskId)
@@ -447,8 +530,22 @@ usePolling(async () => {
 usePortfolioScopedLoader(async () => {
   activeTaskId.value = readRouteStringParam(route.query.taskId)
   candidateRows.value = []
+  await loadSelectedTeacherProgramId()
+  const routeMaterialId = readRouteStringParam(route.query.materialId)
+  if (routeMaterialId) {
+    await loadRegisteredMaterial(routeMaterialId)
+  }
   await loadTasks()
 }, () => targetTeacherId.value)
+
+watch(materialFileNodeId, (value) => {
+  if (registeredMaterialId.value
+    && registeredMaterialFileNodeId.value
+    && value !== registeredMaterialFileNodeId.value) {
+    registeredMaterialId.value = undefined
+    registeredMaterialFileNodeId.value = undefined
+  }
+})
 
 watch(
   () => route.query.scanCommitted,
@@ -524,7 +621,7 @@ onMounted(async () => {
         </div>
       </div>
       <div class="portfolio-ai-confirm__submit-actions">
-        <UiButton variant="outline" @click="openPortfolioScan">
+        <UiButton variant="outline" :loading="scanOpening" @click="openPortfolioScan">
           一体机扫描
         </UiButton>
         <UiButton

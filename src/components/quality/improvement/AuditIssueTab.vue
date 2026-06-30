@@ -467,7 +467,8 @@ defineExpose({
       <UiButton variant="primary" size="sm" @click="openIssueCreate">登记问题</UiButton>
     </template>
 
-    <UiFilterBar variant="plain"
+    <UiFilterBar
+      variant="plain"
       v-model="issueFilterForm"
       :fields="issueFilterFields"
       show-labels

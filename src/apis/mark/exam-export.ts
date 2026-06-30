@@ -109,6 +109,19 @@ export interface ExportCreateResponse {
 /** 导出任务查询请求 - 对应 ExportTaskQueryRequest */
 export interface ExportTaskQueryRequest extends QueryDto {
   examId: string
+  /** 任务状态筛选，不传表示全部 */
+  taskStatus?: ExportTaskStatusCode
+  /** 导出类型筛选，不传表示全部 */
+  exportType?: ExportTypeCode
+}
+
+/** 导出任务状态汇总 - 对应 ExportTaskStatusSummaryResponse */
+export interface ExportTaskStatusSummaryVO {
+  totalCount: string
+  pendingCount: string
+  generatingCount: string
+  completedCount: string
+  failedCount: string
 }
 
 /** 导出任务详情请求 - 对应 ExportDetailRequest */
@@ -202,6 +215,14 @@ export function createExportTask(request: ExportCreateRequest): Promise<ExportCr
  */
 export function listExportTasks(request: ExportTaskQueryRequest): Promise<PageResult<ExportTaskVO>> {
   return http.post<PageResult<ExportTaskVO>>('/api/mark/exams/export/list', request)
+}
+
+/**
+ * 查询单场考试导出任务状态汇总
+ * POST /api/mark/exams/export/status-summary
+ */
+export function getExportTaskStatusSummary(examId: string): Promise<ExportTaskStatusSummaryVO> {
+  return http.post<ExportTaskStatusSummaryVO>('/api/mark/exams/export/status-summary', { examId })
 }
 
 /**

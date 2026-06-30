@@ -10,6 +10,8 @@ import {
   CANDIDATE_STATUS_LABEL,
   listExamCandidates
 } from '@/apis/mark/exam-scope'
+import { TASK_STATUS_LABEL } from '@/apis/mark/task-status'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const props = defineProps<{
@@ -55,6 +57,19 @@ const paperInstanceId = computed(() => {
   if (!ledger || !localPageId) return undefined
   const hit = ledger.attentionItems.find((item) => item.pageId === localPageId)
   return hit?.paperInstanceId
+})
+
+const attentionItem = computed(() => {
+  const ledger = workflow.pageLedger.value
+  const localPageId = ledgerItem.value?.localPageId
+  if (!ledger || !localPageId) return undefined
+  return ledger.attentionItems.find((item) => item.pageId === localPageId)
+})
+
+const processingStatusText = computed(() => {
+  const status = attentionItem.value?.processingStatus
+  if (!status) return ''
+  return strictEnumLabel(TASK_STATUS_LABEL, status, '处理任务状态')
 })
 
 const canBindCandidate = computed(
@@ -189,6 +204,7 @@ function gotoReview() {
     <div v-if="ledgerItem?.attentionType" class="exception-panel__meta">
       <span>{{ workflow.attentionTypeText(ledgerItem.attentionType) }}</span>
       <small>{{ workflow.registrationStatusText(ledgerItem.registrationStatus) }}</small>
+      <small v-if="processingStatusText">处理任务：{{ processingStatusText }}</small>
     </div>
 
     <div v-if="canBindCandidate" class="exception-panel__form">

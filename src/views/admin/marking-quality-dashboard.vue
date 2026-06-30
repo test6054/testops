@@ -156,7 +156,7 @@
             <div v-if="progress" class="quality-dashboard__charts">
               <MarkTrendSection
                 title="完成率走势"
-                hint="基于历史进度快照，悬停查看各时点完成率"
+                :hint="progressTrendHint"
                 :point-count="progressTrendPoints.length"
                 :option="progressTrendOption"
                 height="260px"
@@ -166,7 +166,7 @@
               />
               <MarkBarSection
                 title="当前任务状态分布"
-                hint="最新快照各状态任务量"
+                :hint="progressTaskBarHint"
                 :item-count="progressTaskBarItems.length"
                 :option="progressTaskBarOption"
                 height="260px"
@@ -198,7 +198,8 @@
               </UiButton>
             </template>
 
-            <UiFilterBar variant="plain"
+            <UiFilterBar
+              variant="plain"
               v-model="reviewerFilterForm"
               :fields="reviewerFilterFields"
               search-text="查询"
@@ -438,7 +439,13 @@ import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError } from '@/utils/error-handler'
 import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
+import {
+  buildBarChartInsight,
+  buildTrendChartInsight,
+  mergeChartHint,
+} from '@/utils/mark-chart-insights'
 import { progressSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
+import { computeTrendPointDelta } from '@/utils/stat-metric-helpers'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -533,17 +540,6 @@ const scannerBatchOptions = computed<DefaultOptionType[]>(() =>
   })),
 )
 
-const selectedScopeLabel = computed(() => {
-  const examOption = examOptions.value.find((option) => option.value === selectedExamId.value)
-  const organizationOption = organizationOptions.value.find(
-    (option) => option.value === selectedOrganizationId.value,
-  )
-  const groupOption = groupOptions.value.find((option) => option.value === selectedGroupId.value)
-  return [examOption?.label, organizationOption?.label, groupOption?.label ?? '组织级']
-    .filter(Boolean)
-    .join(' / ')
-})
-
 // ─── 进度监控 ─────────────────────────────────
 
 const progress = ref<ProgressMonitorRecordVO | null>(null)
@@ -553,6 +549,11 @@ const snapshotting = ref(false)
 const progressRiskItems = computed<ProgressRiskItemVO[]>(() => progress.value?.riskItems ?? [])
 
 const progressTrendPoints = computed(() => progressSnapshotsToTrendPoints(progressHistory.value))
+
+const progressTrendHint = computed(() => mergeChartHint(
+  '基于历史进度快照，悬停查看各时点完成率',
+  buildTrendChartInsight(progressTrendPoints.value),
+))
 
 const progressTrendLastValue = computed(() => {
   const points = progressTrendPoints.value
@@ -589,6 +590,11 @@ const progressTaskBarItems = computed((): UiBarChartItem[] => {
   ]
   return items.filter((item) => item.value > 0)
 })
+
+const progressTaskBarHint = computed(() => mergeChartHint(
+  '最新快照各状态任务量',
+  buildBarChartInsight(progressTaskBarItems.value, { valueUnit: ' 项' }),
+))
 
 const { chartOption: progressTaskBarOption } = useChartOption(() =>
   buildCategoryBarChartOption(progressTaskBarItems.value, {
@@ -847,42 +853,51 @@ const signalMetrics = computed<SignalMetric[]>(() => {
   const inProgressCount = p?.inProgressTasks ?? 0
   const finalizedCount = p?.finalizedTasks ?? 0
 
+  const completionTrend = computeTrendPointDelta(progressTrendPoints.value)
+
   return [
     {
       key: 'completion',
       label: '完成率',
       value: completionRate,
       tone: p?.riskLevel ? riskTone(p.riskLevel) : 'gray',
+      trend: completionTrend,
+      trendPolarity: 'positive',
     },
     {
       key: 'inProgress',
       label: '进行中',
       value: inProgressCount,
       tone: inProgressCount > 0 ? 'blue' : 'gray',
+      trendPolarity: 'neutral',
     },
     {
       key: 'finalized',
       label: '已定稿',
       value: finalizedCount,
       tone: finalizedCount > 0 ? 'green' : 'gray',
+      trendPolarity: 'positive',
     },
     {
       key: 'recycled',
       label: '已回收',
       value: recycledCount,
       tone: recycledCount > 0 ? 'orange' : 'gray',
+      trendPolarity: 'negative',
     },
     {
       key: 'warning',
       label: '教师预警',
       value: reviewerWarning,
       tone: reviewerWarning > 0 ? 'orange' : 'gray',
+      trendPolarity: 'negative',
     },
     {
       key: 'suspended',
       label: '教师暂停',
       value: reviewerSuspended,
       tone: reviewerSuspended > 0 ? 'red' : 'gray',
+      trendPolarity: 'negative',
     },
   ]
 })

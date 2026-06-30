@@ -8,17 +8,31 @@
     >
       <template v-for="group in menuGroups" :key="group.key">
         <a-menu-item-group v-if="!collapsed" :title="group.title">
-          <a-menu-item v-for="item in group.items" :key="item.key">
+          <a-menu-item
+            v-for="item in group.items"
+            :key="item.key"
+          >
             <template #icon>
-              <component :is="menuIconMap[item.key]" />
+              <ExamSubSidebarMenuIcon
+                :icon="menuIconMap[item.key]"
+                :label="item.label"
+                :collapsed="collapsed"
+              />
             </template>
             {{ item.label }}
           </a-menu-item>
         </a-menu-item-group>
         <template v-else>
-          <a-menu-item v-for="item in group.items" :key="item.key">
+          <a-menu-item
+            v-for="item in group.items"
+            :key="item.key"
+          >
             <template #icon>
-              <component :is="menuIconMap[item.key]" />
+              <ExamSubSidebarMenuIcon
+                :icon="menuIconMap[item.key]"
+                :label="item.label"
+                :collapsed="collapsed"
+              />
             </template>
           </a-menu-item>
         </template>
@@ -33,6 +47,7 @@ import type { Component } from 'vue'
 import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
 import { computed } from 'vue'
+import ExamSubSidebarMenuIcon from '@/components/workbench/ExamSubSidebarMenuIcon.vue'
 import { getMenuGroupsForJourney } from '@/constants/exam-workspace-menu'
 
 defineOptions({
@@ -77,6 +92,14 @@ function onMenuClick(info: MenuInfo): void {
 
   :deep(.ant-menu-item-selected) {
     background: var(--ant-color-primary-bg);
+  }
+
+  :deep(.ant-menu-inline-collapsed) {
+    width: 100%;
+  }
+
+  :deep(.ant-menu-inline-collapsed > .ant-menu-item) {
+    padding-inline: calc(50% - 14px);
   }
 }
 </style>

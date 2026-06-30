@@ -93,7 +93,7 @@ const onClick = (event: MouseEvent) => {
 
 .ui-text-action.is-disabled,
 .ui-text-action:disabled {
-  color: var(--ant-color-text-quaternary);
+  color: var(--dp-text-disabled);
   cursor: not-allowed;
   pointer-events: none;
 }

@@ -17,9 +17,10 @@
         <span>考核评价依据合理性审核</span>
       </template>
 
-      <UiFilterBar variant="plain"
+      <UiFilterBar
         v-model="filterModel"
         :fields="filterFields"
+        variant="plain"
         @search="handleSearch"
         @reset="handleReset"
       >
@@ -258,6 +259,14 @@ async function loadList() {
     overview.value = response.overview
     list.value = response.items
   } catch (e: unknown) {
+    list.value = []
+    overview.value = {
+      totalCourseCount: 0,
+      auditedCourseCount: 0,
+      approvedCourseCount: 0,
+      pendingCourseCount: 0,
+      coverageRate: 0,
+    }
     showUserError(e, '加载审核列表失败')
   } finally {
     loading.value = false

@@ -744,7 +744,8 @@ function handleCourseChange(courseId: string | null) {
             </a-space>
           </template>
 
-          <UiFilterBar variant="plain"
+          <UiFilterBar
+            variant="plain"
             v-model="recordFilterForm"
             :fields="recordFilterFields"
             show-labels

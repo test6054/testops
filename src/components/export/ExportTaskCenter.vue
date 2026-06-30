@@ -415,6 +415,9 @@ const businessTypeMap: Record<ExportBusinessType, string> = {
   [ExportBusinessType.STUDENT_GRADES]: '学生成绩导出',
   [ExportBusinessType.COMPETENCY_MAPPING_MATRIX]: '能力映射矩阵导出',
   [ExportBusinessType.COMPETENCY_ACHIEVEMENT_REPORT]: '达成度报告导出',
+  [ExportBusinessType.QUALITY_ACHIEVEMENT_RESULT_EXPORT]: '质量评价达成度结果导出',
+  [ExportBusinessType.QUALITY_SCORE_BATCH_EXPORT]: '质量评价成绩批次导出',
+  [ExportBusinessType.QUALITY_SCORE_RECORD_EXPORT]: '质量评价成绩明细导出',
 }
 
 const businessTypeLabel = (type: ExportBusinessType) => businessTypeMap[type]

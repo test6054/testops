@@ -1,0 +1,52 @@
+import type { ExamCandidateRosterRequest, ExamCandidateVO } from '@/apis/mark/exam-scope'
+
+/** 班级学生树抽屉勾选结果，与 ClassStudentTreeSelectorDrawer confirm 事件一致。 */
+export interface ClassStudentDrawerSelectionInfo {
+  id: string
+  name: string
+  classId?: string
+  className?: string
+  studentNumber?: string
+}
+
+/** 校验 preview API 返回的 ExamCandidateVO 是否具备名册展示与提交所需字段。 */
+export function requirePreviewCandidates(candidates: ExamCandidateVO[]): ExamCandidateVO[] {
+  for (const candidate of candidates) {
+    if (!candidate.classId) {
+      throw new Error('名册预览返回缺少班级信息')
+    }
+  }
+  return candidates
+}
+
+/** 合并 preview 返回的 ExamCandidateVO，按 studentUserId 去重。 */
+export function mergePreviewCandidates(
+  existing: ExamCandidateVO[],
+  incoming: ExamCandidateVO[],
+): ExamCandidateVO[] {
+  const map = new Map<string, ExamCandidateVO>()
+  for (const candidate of existing) {
+    map.set(candidate.studentUserId, candidate)
+  }
+  for (const candidate of incoming) {
+    map.set(candidate.studentUserId, candidate)
+  }
+  return [...map.values()]
+}
+
+/** 将抽屉勾选学生转为 create-roster-preview 所需的 ExamCandidateRosterRequest；缺字段时返回 null。 */
+export function buildRosterRequestsFromDrawerSelection(
+  studentsInfo: ClassStudentDrawerSelectionInfo[],
+): ExamCandidateRosterRequest[] | null {
+  const requests: ExamCandidateRosterRequest[] = []
+  for (const item of studentsInfo) {
+    if (!item.classId || !item.name) {
+      return null
+    }
+    requests.push({
+      classId: item.classId,
+      studentUserId: item.id,
+    })
+  }
+  return requests
+}

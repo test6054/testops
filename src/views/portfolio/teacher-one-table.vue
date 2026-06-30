@@ -125,7 +125,7 @@ usePortfolioScopedLoader(() => {
             {{ summary.teacherNumber ?? '—' }}
           </a-descriptions-item>
           <a-descriptions-item label="姓名">
-            {{ summary.nickName ?? '—' }}
+            {{ summary.nickName }}
           </a-descriptions-item>
           <a-descriptions-item label="院系">
             {{ summary.departmentName ?? '—' }}

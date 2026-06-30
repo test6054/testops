@@ -47,7 +47,13 @@
       <SignalBand :metrics="signalMetrics" compact @metric-click="handleSignalMetricClick" />
     </template>
 
-    <UiSectionTabs v-model="listTab" :items="visibleListTabs" compact>
+    <UiLoadFailure
+      v-if="loadError"
+      title="加载归档卷列表失败"
+      :description="loadError"
+    />
+
+    <UiSectionTabs v-else v-model="listTab" :items="visibleListTabs" compact>
       <ArchiveVolumeSettings v-if="listTab === 'settings'" />
 
       <ArchiveVolumeSupervisionPanel v-else-if="listTab === 'supervision'" />
@@ -204,7 +210,7 @@
               <div v-if="record.archiveTitle" class="link-cell__sub">{{ record.archiveTitle }}</div>
             </template>
             <template v-else-if="column.key === 'applicant'">
-              <span>{{ record.applicantNickName || record.applicantIdentifier || '—' }}</span>
+              <span>{{ record.applicantNickName }}</span>
             </template>
             <template v-else-if="column.key === 'accessStatus'">
               <UiTag :tone="accessStatusTone(record.accessStatus)" size="sm">
@@ -353,11 +359,13 @@ import UiBatchActionBar from '@/components/ui-guide/ui/UiBatchActionBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
+import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { canSubmitArchiveVolumeRow } from '@/composables/useArchiveVolumeSubmitGate'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
@@ -372,6 +380,8 @@ import ArchiveVolumeSupervisionPanel from '@/views/teacher/archive-volume/archiv
 import ArchiveVolumeMineRemediationBanner from '@/views/teacher/archive-volume/components/ArchiveVolumeMineRemediationBanner.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeList' })
+
+const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
 
 type ListTabKey = 'mine' | 'college' | 'archive' | 'supervision' | 'remediation' | 'settings'
 type ArchiveSubTabKey = 'pending-transfer' | 'pending-access' | 'due-appraisal' | 'overdue' | 'search'
@@ -828,9 +838,10 @@ async function loadVolumes() {
     if (showSignalBand.value) {
       void loadSignalKpis()
     }
+    clearLoadFailure()
   }
   catch (error) {
-    showUserError(error, '加载归档卷列表失败')
+    captureLoadFailure(error, '加载归档卷列表失败')
     volumes.value = []
     pagination.total = 0
   }

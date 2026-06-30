@@ -95,6 +95,26 @@
           </template>
         </template>
       </UiDataTable>
+      <a-list
+        v-if="batchFailures.length"
+        size="small"
+        :data-source="batchFailures"
+        class="batch-confirm__failures"
+      >
+        <template #renderItem="{ item }">
+          <a-list-item>
+            <a-list-item-meta>
+              <template #title>
+                成绩记录 {{ item.gradeResultId }}
+              </template>
+              <template #description>
+                <UiTag tone="red" size="sm">{{ item.code }}</UiTag>
+                {{ item.message }}
+              </template>
+            </a-list-item-meta>
+          </a-list-item>
+        </template>
+      </a-list>
     </UiCard>
   </StageWorkbenchShell>
 </template>
@@ -102,6 +122,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
+  ExamGradeBatchConfirmFailureItem,
   ExamGradeBatchConfirmResponse,
 } from '@/apis/mark/exam-grade'
 import type {
@@ -145,6 +166,7 @@ const { refreshing: workbenchRefreshing } = useMarkWorkbenchContext()
 
 const loading = ref(false)
 const submitting = ref(false)
+const batchFailures = ref<ExamGradeBatchConfirmFailureItem[]>([])
 const rows = ref<ReviewTaskItemVO[]>([])
 const scoreDraftMap = reactive<Record<string, number>>({})
 const selectedRowKeys = ref<string[]>([])
@@ -274,9 +296,11 @@ async function submitBatch(): Promise<void> {
       examId: selectedExamId.value,
       items,
     })
+    batchFailures.value = response.failures ?? []
     if (response.failureCount > 0) {
-      message.warning(`成功 ${response.successCount} 条，失败 ${response.failureCount} 条`)
+      message.warning(`成功 ${response.successCount} 条，失败 ${response.failureCount} 条，请查看下方失败明细`)
     } else {
+      batchFailures.value = []
       message.success(`已确认 ${response.successCount} 条复核得分`)
     }
     selectedRowKeys.value = []
@@ -328,5 +352,9 @@ watch(workbenchRefreshing, (isRefreshing, wasRefreshing) => {
   margin-left: 4px;
   color: var(--dp-text-secondary, #64748b);
   font-size: 12px;
+}
+
+.batch-confirm__failures {
+  margin-top: 16px;
 }
 </style>

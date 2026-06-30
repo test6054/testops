@@ -467,7 +467,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 }
 
 /* ===== 响应式 ===== */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ui-arrow-timeline {
     flex-direction: column;
     gap: 6px;

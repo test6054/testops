@@ -254,7 +254,7 @@ type StatusType = 'gray' | 'blue' | 'orange' | 'yellow' | 'green' | 'red' | stri
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ui-task-card {
     padding: 12px 16px;
   }

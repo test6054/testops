@@ -38,11 +38,6 @@ defineOptions({
   name: 'ExamSwitcher',
 })
 
-export interface ExamSwitcherOption extends MarkExamSelectOption {
-  statusLabel?: string
-  statusTone?: BadgeTone
-}
-
 const props = withDefaults(
   defineProps<{
     selectedExamId?: string
@@ -59,6 +54,11 @@ const emit = defineEmits<{
   (e: 'change', value: SelectValue): void
   (e: 'search', keyword: string): void
 }>()
+
+export interface ExamSwitcherOption extends MarkExamSelectOption {
+  statusLabel?: string
+  statusTone?: BadgeTone
+}
 
 const selectOptions = computed<ExamSwitcherOption[]>(() => props.options)
 </script>

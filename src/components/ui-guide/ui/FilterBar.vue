@@ -147,9 +147,8 @@ const {
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: Record<string, unknown>): void
-  (e: 'search', value: Record<string, unknown>): void
-  (e: 'reset', value: Record<string, unknown>): void
+  search: [value: Record<string, unknown>]
+  reset: [value: Record<string, unknown>]
 }>()
 
 const defaultModel = computed(() => {
@@ -165,7 +164,7 @@ const updateField = (key: string, value: unknown, field?: FilterField) => {
     ...modelValue.value,
     [key]: normalizedValue,
   }
-  emit('update:modelValue', nextModel)
+  modelValue.value = nextModel
 
   if (shouldTriggerSearchOnChange(field)) {
     queueMicrotask(() => triggerSearch(nextModel))
@@ -186,7 +185,7 @@ const triggerSearch = (nextModel: Record<string, unknown> = modelValue.value) =>
 
 const triggerReset = () => {
   const nextModel = { ...defaultModel.value }
-  emit('update:modelValue', nextModel)
+  modelValue.value = nextModel
   emit('reset', nextModel)
 }
 
@@ -204,7 +203,7 @@ const handleInputClear = (key: string) => {
     ...modelValue.value,
     [key]: '',
   }
-  emit('update:modelValue', nextModel)
+  modelValue.value = nextModel
   queueMicrotask(() => triggerSearch(nextModel))
 }
 

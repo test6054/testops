@@ -107,7 +107,7 @@
         <MarkTrendSection
           v-if="record"
           title="参与考试得分走势"
-          hint="多考试对比：得分率走势"
+          :hint="examTrendHint"
           :point-count="examStatTrendPoints.length"
           :option="examTrendChartOption"
           height="320px"
@@ -189,10 +189,11 @@ import { formatAcademicTermCode } from '@/types/enums/semester-enum'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
+import { buildTrendChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { examStatSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
 import { scoreTone } from '@/utils/score-tone'
+import { toSignalMetrics, computeTrendPointDelta } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 
 defineOptions({ name: 'SchoolQualityCard' })
 
@@ -217,6 +218,11 @@ const qualityItems = computed(() => record.value?.qualityItems ?? [])
 const examStatTrendPoints = computed(() =>
   examStatSnapshotsToTrendPoints(record.value?.examStatSnapshots ?? []),
 )
+
+const examTrendHint = computed(() => mergeChartHint(
+  '多考试对比：得分率走势',
+  buildTrendChartInsight(examStatTrendPoints.value),
+))
 
 const examTrendLastValue = computed(() => {
   const points = examStatTrendPoints.value
@@ -260,7 +266,14 @@ const qualityMetrics = computed((): UiStatPanelItem[] => {
   ]
 })
 
-const qualitySignalMetrics = computed(() => toSignalMetrics(qualityMetrics.value))
+const qualitySignalMetrics = computed(() => {
+  const scoreRateTrend = computeTrendPointDelta(examStatTrendPoints.value)
+  return toSignalMetrics(qualityMetrics.value).map((metric) => (
+    metric.key === 'teachingQualityScore'
+      ? { ...metric, trend: scoreRateTrend, trendPolarity: 'positive' as const }
+      : metric
+  ))
+})
 
 function qualityRatingLabel(rating: SchoolQualityRatingCode): string {
   return strictEnumLabel(SCHOOL_QUALITY_RATING_LABEL, rating, '校级质量评价等级')
@@ -296,10 +309,19 @@ function schoolQualityDimensionLabel(value: SchoolQualityDimensionCode): string 
 }
 
 async function reload(): Promise<void> {
+  if (form.analysisDimension === 'COURSE' && !form.dimensionId) {
+    message.warning('请选择课程')
+    return
+  }
+  if (form.analysisDimension === 'CLASS' && !form.dimensionId) {
+    message.warning('请选择班级')
+    return
+  }
   loading.value = true
   try {
     const list = await listQualityAnalysis({
       analysisDimension: form.analysisDimension,
+      dimensionId: form.dimensionId || undefined,
       semesterCode: form.semesterCode || undefined,
     })
     record.value = list[0] ?? null

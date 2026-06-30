@@ -244,7 +244,7 @@ void loadPage()
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherName'">
-            {{ record.teacherName ?? record.teacherId }}
+            {{ record.teacherName }}
           </template>
           <template v-else-if="column.key === 'objectionType'">
             {{ strictEnumLabel(PORTFOLIO_EVALUATION_OBJECTION_TYPE_LABEL, record.objectionType, '评价异议类型') }}
@@ -297,7 +297,7 @@ void loadPage()
       width="420"
     >
       <p v-if="reviewTarget" class="department-objection__meta">
-        {{ reviewTarget.teacherName ?? reviewTarget.teacherId }} · {{ reviewTarget.taskName }}
+        {{ reviewTarget.teacherName }} · {{ reviewTarget.taskName }}
       </p>
       <Select
         v-model:value="reviewForm.action"

@@ -10,13 +10,15 @@ import { throwUserFacing } from '@/utils/contract-guard'
 
 /**
  * 学期代码枚举
- * 注意：后端返回的是字符串类型 "1" 或 "2"
+ * 注意：后端返回的是字符串类型 "1"、"2" 或 "3"
  */
 export enum SemesterCode {
   /** 秋季学期 */
   AUTUMN = '1',
   /** 春季学期 */
   SPRING = '2',
+  /** 夏季短学期 */
+  SUMMER = '3',
 }
 
 /**
@@ -25,6 +27,7 @@ export enum SemesterCode {
 export const SemesterDescription: Record<string, string> = {
   [SemesterCode.AUTUMN]: '秋季学期',
   [SemesterCode.SPRING]: '春季学期',
+  [SemesterCode.SUMMER]: '夏季短学期',
 }
 
 /**
@@ -33,12 +36,13 @@ export const SemesterDescription: Record<string, string> = {
 export const SemesterOptions: Array<{ value: SemesterCode, label: string }> = [
   { value: SemesterCode.AUTUMN, label: SemesterDescription[SemesterCode.AUTUMN] },
   { value: SemesterCode.SPRING, label: SemesterDescription[SemesterCode.SPRING] },
+  { value: SemesterCode.SUMMER, label: SemesterDescription[SemesterCode.SUMMER] },
 ]
 
 /**
  * 根据学期代码获取描述文本
  *
- * @param code 学期代码 "1" 或 "2"
+ * @param code 学期代码 "1"、"2" 或 "3"
  * @returns 学期描述文本；空值返回空串，未知码显式失败
  */
 export function getSemesterDescription(code: string | null | undefined): string {
@@ -58,13 +62,15 @@ export function getSemesterDescription(code: string | null | undefined): string 
  * @param code 学期代码
  * @returns 是否为有效的学期代码
  */
-export function isValidSemesterCode(code: string | null | undefined): boolean {
-  return code === SemesterCode.AUTUMN || code === SemesterCode.SPRING
+export function isValidSemesterCode(code: string | null | undefined): code is SemesterCode {
+  return code === SemesterCode.AUTUMN
+    || code === SemesterCode.SPRING
+    || code === SemesterCode.SUMMER
 }
 
 /**
  * 学期代码格式化：
- * - 已知码（"1" / "2"）返回对应描述
+ * - 已知码（"1" / "2" / "3"）返回对应描述
  * - 可选字段为空时返回空串
  * - 未知码显式失败
  *
@@ -82,7 +88,7 @@ export function formatSemester(value: string | null | undefined): string {
  */
 export function formatAcademicTermCode(value: string | null | undefined): string {
   if (value === null || value === undefined || value === '') return ''
-  const match = value.match(/^(.+)-([12])$/)
+  const match = value.match(/^(.+)-([123])$/)
   if (!match) {
     return value
   }

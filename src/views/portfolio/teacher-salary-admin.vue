@@ -94,8 +94,8 @@ onMounted(loadPage)
 <template>
   <StageWorkbenchShell>
     <template #context>
-  <ContextBar show-title layout="workbench" title="教师工资" />
-</template>
+      <ContextBar show-title layout="workbench" title="教师工资" />
+    </template>
     <UiCard>
       <div class="form-row">
         <a-select

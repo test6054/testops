@@ -3,6 +3,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import type { CallbackDataParams } from 'echarts/types/dist/shared'
 import type { BadgeTone, UiBarChartItem, UiDistributionSegment, UiScatterSeries, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import { prefersReducedMotion } from '@/utils/mark-chart-accessibility'
+import { formatScore, formatScorePercent } from '@/utils/format'
 import { SCATTER_ZONE_COLORS } from '@/utils/mark-statistics-chart'
 
 const DP_FONT_FAMILY_SANS = '-apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif'
@@ -78,7 +79,58 @@ function baseGrid(extra?: GridComponentOption): GridComponentOption {
   }
 }
 
-export interface MarkTrendChartConfig {
+/** 图表导出工具栏：MarkChartCard 等报告场景默认开启，仪表盘内嵌 gauge/分布条默认关闭 */
+export interface MarkChartToolboxConfig {
+  showToolbox?: boolean
+}
+
+function resolveGridTop(grid: GridComponentOption | GridComponentOption[] | undefined, minTop: number): GridComponentOption | GridComponentOption[] | undefined {
+  if (Array.isArray(grid)) {
+    return grid.map((item, index) => (
+      index === 0
+        ? { ...item, top: Math.max(Number(item.top) || 0, minTop) }
+        : item
+    ))
+  }
+  if (grid) {
+    return { ...grid, top: Math.max(Number(grid.top) || 0, minTop) }
+  }
+  return baseGrid({ top: minTop })
+}
+
+/** 为可导出图表统一挂载 saveAsImage 工具栏 */
+export function finalizeMarkChartOption(
+  option: EChartsCoreOption,
+  config: MarkChartToolboxConfig = {},
+): EChartsCoreOption {
+  const showToolbox = config.showToolbox ?? true
+  if (!showToolbox || !option.series) {
+    return option
+  }
+  const seriesList = Array.isArray(option.series) ? option.series : [option.series]
+  if (seriesList.length === 0) {
+    return option
+  }
+  return {
+    ...option,
+    toolbox: {
+      right: 12,
+      top: 0,
+      itemSize: 14,
+      feature: {
+        saveAsImage: {
+          title: '保存图片',
+          pixelRatio: 2,
+        },
+      },
+    },
+    grid: option.grid
+      ? resolveGridTop(option.grid as GridComponentOption | GridComponentOption[] | undefined, 36)
+      : option.grid,
+  }
+}
+
+export interface MarkTrendChartConfig extends MarkChartToolboxConfig {
   yAxisName?: string
   yMax?: number
   area?: boolean
@@ -101,7 +153,7 @@ export function buildTrendLineChartOption(
     : -1
   const lineColor = resolveThemeColor('--ant-color-primary', MARK_ECHARTS_PALETTE.primary)
 
-  return {
+  return finalizeMarkChartOption({
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'line' },
@@ -112,8 +164,8 @@ export function buildTrendLineChartOption(
         const point = points[index]
         if (!point) return ''
         const delta = index > 0 ? values[index] - values[index - 1] : null
-        const deltaText = delta == null ? '' : `<br/>较上一场 ${delta >= 0 ? '+' : ''}${delta.toFixed(1)}`
-        return `${point.label}<br/>${config.yAxisName || '数值'}：${values[index]?.toFixed?.(1) ?? values[index]}${deltaText}`
+        const deltaText = delta == null ? '' : `<br/>较上一场 ${delta >= 0 ? '+' : ''}${formatScore(delta, 'score')}`
+        return `${point.label}<br/>${config.yAxisName || '数值'}：${formatScore(values[index], 'score')}${deltaText}`
       },
     },
     grid: baseGrid({ bottom: 48 }),
@@ -174,16 +226,19 @@ export function buildTrendLineChartOption(
         })),
       },
     ],
-  }
+  }, config)
 }
 
-export interface MarkBarChartConfig {
+export interface MarkBarChartConfig extends MarkChartToolboxConfig {
   orientation?: 'vertical' | 'horizontal'
   maxValue?: number
   yAxisName?: string
   xAxisName?: string
   unit?: string
   dataZoom?: boolean
+  /** 柱体内嵌人数与占比标签，如「12人 (24%)」 */
+  innerCountLabel?: boolean
+  innerCountLabelUnit?: string
   markLines?: Array<{ value: number, name: string, color?: string }>
   emptyText?: string
 }
@@ -206,6 +261,11 @@ export function buildCategoryBarChartOption(
     itemStyle: { color: item.color || toneToChartColor(item.tone) },
   }))
   const unit = config.unit || ''
+  const innerCountLabel = config.innerCountLabel === true
+  const innerCountLabelUnit = config.innerCountLabelUnit || '人'
+  const innerCountTotal = innerCountLabel
+    ? items.reduce((sum, item) => sum + Math.max(0, Number(item.value)), 0)
+    : 0
   const markLineData = (config.markLines || []).map((line) => ({
     name: line.name,
     yAxis: orientation === 'vertical' ? line.value : undefined,
@@ -260,12 +320,28 @@ export function buildCategoryBarChartOption(
         data: values,
         barMaxWidth: orientation === 'vertical' ? 32 : 22,
         itemStyle: { borderRadius: orientation === 'vertical' ? [4, 4, 0, 0] : [0, 4, 4, 0] },
+        label: innerCountLabel && innerCountTotal > 0
+          ? {
+              show: true,
+              position: orientation === 'vertical' ? 'inside' : 'right',
+              color: '#fff',
+              fontSize: 11,
+              formatter: (param: CallbackDataParams) => {
+                const value = Number(param.value)
+                if (value <= 0) {
+                  return ''
+                }
+                const percent = formatScore((value * 100) / innerCountTotal, 'percent')
+                return `${formatScore(value, 'count')}${innerCountLabelUnit} (${percent}%)`
+              },
+            }
+          : undefined,
         markLine: markLineData.length ? { symbol: 'none', data: markLineData, silent: true } : undefined,
       },
     ],
   }
 
-  if (config.dataZoom && categories.length > 12) {
+  if (config.dataZoom && categories.length > 8) {
     option.dataZoom = [
       {
         type: 'slider',
@@ -282,7 +358,7 @@ export function buildCategoryBarChartOption(
     option.grid = baseGrid({ bottom: 72 })
   }
 
-  return option
+  return finalizeMarkChartOption(option, config)
 }
 
 export interface DashboardPublishedInsightExam {
@@ -292,26 +368,33 @@ export interface DashboardPublishedInsightExam {
   passRatePercent: number | null
 }
 
-function truncateExamName(name: string, maxLength = 8): string {
-  return name.length > maxLength ? `${name.slice(0, maxLength)}…` : name
+/** 图表 X 轴考试名：保留首尾关键信息，完整名称见 tooltip */
+export function truncateExamName(name: string): string {
+  const text = name.trim()
+  if (text.length <= 8) {
+    return text
+  }
+  return `${text.slice(0, 4)}…${text.slice(-2)}`
 }
 
 /** 已发布学情：均分与及格率分组柱图 */
 export function buildDashboardPublishedInsightChartOption(
   exams: DashboardPublishedInsightExam[],
-  config: { emptyText?: string } = {},
+  config: MarkChartToolboxConfig & { emptyText?: string } = {},
 ): EChartsCoreOption {
   if (exams.length === 0) {
     return emptyChartOption(config.emptyText || '暂无已发布学情')
   }
   const categories = exams.map(exam => truncateExamName(exam.examName))
   const averageScores = exams.map(exam => exam.averageScore ?? '-')
-  const passRates = exams.map(exam => (exam.passRatePercent != null ? Number(exam.passRatePercent.toFixed(1)) : '-'))
+  const passRates = exams.map(exam => (
+    exam.passRatePercent != null ? Number(formatScore(exam.passRatePercent, 'percent')) : '-'
+  ))
   const maxScore = Math.max(
     ...exams.map(exam => exam.averageScore ?? 0),
     100,
   )
-  return {
+  return finalizeMarkChartOption({
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
@@ -322,8 +405,8 @@ export function buildDashboardPublishedInsightChartOption(
         if (!exam) {
           return ''
         }
-        const avg = exam.averageScore != null ? `${exam.averageScore}` : '—'
-        const pass = exam.passRatePercent != null ? `${exam.passRatePercent.toFixed(1)}%` : '—'
+        const avg = exam.averageScore != null ? formatScore(exam.averageScore, 'score') : '—'
+        const pass = exam.passRatePercent != null ? formatScorePercent(exam.passRatePercent, '—') : '—'
         return `${exam.examName}<br/>平均分：${avg}<br/>及格率：${pass}`
       },
     },
@@ -349,7 +432,7 @@ export function buildDashboardPublishedInsightChartOption(
         ...MARK_CHART_AXIS_LABEL_STYLE,
         fontSize: 11,
         interval: 0,
-        rotate: categories.length > 4 ? 25 : 0,
+        rotate: categories.length > 4 ? 30 : 0,
       },
       axisLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.axisLine } },
     },
@@ -395,14 +478,16 @@ export function buildDashboardPublishedInsightChartOption(
       },
     ],
     animation: prefersReducedMotion() ? false : undefined,
-  }
+  }, config)
 }
 
-export interface MarkScatterChartConfig {
+export interface MarkScatterChartConfig extends MarkChartToolboxConfig {
   xLabel?: string
   yLabel?: string
   showIdealZone?: boolean
   emptyText?: string
+  /** 启用矩形/套索框选，配合 brushSelected 事件列出选中题目 */
+  brush?: boolean
 }
 
 /** 难度-区分度散点图 */
@@ -429,6 +514,7 @@ export function buildScatterChartOption(
       label: point.label,
       helper: point.helper,
       weight: point.weight,
+      key: point.key,
     })),
     markArea: config.showIdealZone && index === 0
       ? {
@@ -439,24 +525,48 @@ export function buildScatterChartOption(
       : undefined,
   }))
 
-  return {
+  const brushEnabled = config.brush === true
+  return finalizeMarkChartOption({
     tooltip: {
       trigger: 'item',
       formatter: (param: CallbackDataParams) => {
         const data = param.data as { label?: string, helper?: string, value?: [number, number] }
         if (!data?.value) return ''
         const label = data.label || param.seriesName || ''
-        return `${label}<br/>难度 ${data.value[0].toFixed(2)} · 区分度 ${data.value[1].toFixed(2)}${data.helper ? `<br/>${data.helper}` : ''}`
+        return `${label}<br/>难度 ${formatScore(data.value[0], 'achievement')} · 区分度 ${formatScore(data.value[1], 'achievement')}${data.helper ? `<br/>${data.helper}` : ''}`
       },
     },
     legend: {
-      top: 0,
+      top: brushEnabled ? 28 : 0,
       left: 0,
       itemWidth: 10,
       itemHeight: 10,
       textStyle: { color: MARK_ECHARTS_PALETTE.axisLabel, fontSize: 12 },
     },
-    grid: baseGrid({ top: 40 }),
+    toolbox: brushEnabled
+      ? {
+          show: true,
+          right: 8,
+          top: 0,
+          itemSize: 14,
+          feature: {
+            brush: {
+              type: ['rect', 'polygon', 'clear'],
+              title: { rect: '矩形选区', polygon: '套索选区', clear: '清除选区' },
+            },
+          },
+        }
+      : undefined,
+    brush: brushEnabled
+      ? {
+          toolbox: ['rect', 'polygon', 'clear'],
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          brushLink: 'all',
+          outOfBrush: { colorAlpha: 0.12 },
+        }
+      : undefined,
+    grid: baseGrid({ top: brushEnabled ? 68 : 40 }),
     xAxis: {
       type: 'value',
       name: config.xLabel || '难度系数',
@@ -476,10 +586,10 @@ export function buildScatterChartOption(
       splitLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.splitLine } },
     },
     series: scatterSeries,
-  }
+  }, config)
 }
 
-export interface MarkGaugeChartConfig {
+export interface MarkGaugeChartConfig extends MarkChartToolboxConfig {
   label?: string
   color?: string
   emptyText?: string
@@ -503,7 +613,7 @@ export function buildGaugeChartOption(
   const sizeKey = config.size || 'md'
   const sizeSpec = GAUGE_SIZE_MAP[sizeKey]
   const animate = config.reduceMotion === false ? true : !prefersReducedMotion()
-  return {
+  return finalizeMarkChartOption({
     series: [
       {
         type: 'gauge',
@@ -543,25 +653,25 @@ export function buildGaugeChartOption(
         },
       },
     ],
-  }
+  }, { showToolbox: config.showToolbox ?? false })
 }
 
 /** 状态分布条：复核任务四态占比 */
 export function buildDistributionBarChartOption(
   segments: UiDistributionSegment[],
-  config: { emptyText?: string } = {},
+  config: MarkChartToolboxConfig & { emptyText?: string } = {},
 ): EChartsCoreOption {
   const total = segments.reduce((sum, segment) => sum + Math.max(0, segment.value), 0)
   if (total <= 0) {
     return emptyChartOption(config.emptyText || '暂无分布数据')
   }
-  return {
+  return finalizeMarkChartOption({
     tooltip: {
       trigger: 'item',
       formatter: (param: CallbackDataParams) => {
         const value = Number(param.value)
-        const percent = ((value * 100) / total).toFixed(0)
-        return `${param.seriesName}<br/>${value} · ${percent}%`
+        const percent = formatScore((value * 100) / total, 'percent')
+        return `${param.seriesName}<br/>${formatScore(value, 'count')} · ${percent}%`
       },
     },
     legend: {
@@ -584,9 +694,20 @@ export function buildDistributionBarChartOption(
         color: toneToChartColor(segment.tone),
         borderRadius: 4,
       },
+      label: {
+        show: segment.value > 0,
+        position: 'inside',
+        color: '#fff',
+        fontSize: 11,
+        formatter: (param: CallbackDataParams) => {
+          const value = Number(param.value)
+          const percent = formatScore((value * 100) / total, 'percent')
+          return `${formatScore(value, 'count')}人 (${percent}%)`
+        },
+      },
       data: [segment.value],
     })),
-  }
+  }, { showToolbox: config.showToolbox ?? false })
 }
 
 /** 热力图单元格：题号矩阵、答题卡网格等一维进度/得分展示 */
@@ -596,7 +717,7 @@ export interface MarkHeatmapCell {
   value: number
 }
 
-export interface MarkHeatmapChartConfig {
+export interface MarkHeatmapChartConfig extends MarkChartToolboxConfig {
   rowLabel?: string
   min?: number
   max?: number
@@ -654,7 +775,7 @@ export function buildHeatmapChartOption(
       }
     })
     : data
-  return {
+  return finalizeMarkChartOption({
     tooltip: {
       position: 'top',
       formatter: (param: CallbackDataParams) => {
@@ -663,7 +784,7 @@ export function buildHeatmapChartOption(
         const index = Number(raw[0])
         const cell = cells[index]
         if (!cell) return ''
-        return `${cell.label}<br/>${Math.round(cell.value)}${suffix}`
+        return `${cell.label}<br/>${formatScore(cell.value, 'count')}${suffix}`
       },
     },
     grid: {
@@ -719,7 +840,7 @@ export function buildHeatmapChartOption(
             const raw = resolveHeatmapDataValue(param.value)
             if (!raw) return ''
             const index = Number(raw[0])
-            return String(Math.round(cells[index]?.value ?? 0))
+            return formatScore(cells[index]?.value ?? 0, 'count')
           },
           fontSize: 10,
           color: MARK_ECHARTS_PALETTE.text,
@@ -733,5 +854,5 @@ export function buildHeatmapChartOption(
         },
       },
     ],
-  }
+  }, config)
 }

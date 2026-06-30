@@ -12,7 +12,6 @@ import type {
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioOrgApi } from '@/apis/portfolio/org'
-import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   PORTFOLIO_ORG_ALIAS_TARGET_TYPE_LABEL,
   PORTFOLIO_ORG_TREE_NODE_TYPE_LABEL,
@@ -29,10 +28,10 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { isPortfolioUnitNode, usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
+import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { hasTeacherTenantPermission } from '@/utils/permission'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -54,6 +53,7 @@ const aliasColumns: ColumnsType = [
 ]
 
 const { loading, treeRoots, loadTree } = usePortfolioOrgTree()
+const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 const authStore = useAuthStore()
 const userStore = useUserStore()
 const canManageTenant = computed(() => hasTeacherTenantPermission({
@@ -68,7 +68,6 @@ const selectedNode = ref<TreeNode | null>(null)
 
 const unitVisible = ref(false)
 const unitMode = ref<'create' | 'edit'>('create')
-const teacherOptions = ref<Array<{ value: string, label: string }>>([])
 const unitEditor = reactive<PortfolioOrgUnitSaveRequest>({
   orgType: 'TEACHING_RESEARCH_OFFICE',
   orgName: '',
@@ -105,23 +104,6 @@ function mapTree(nodes: PortfolioOrgTreeNodeVO[]): TreeNode[] {
     raw: node,
     children: node.children?.length ? mapTree(node.children) : undefined,
   }))
-}
-
-async function searchTeachers(keyword: string) {
-  const text = keyword.trim()
-  if (!text) {
-    return
-  }
-  try {
-    const page = await portfolioTeacherApi.page({ pageNum: 1, pageSize: 20, searchText: text })
-    teacherOptions.value = readPageList(page, '搜索教师失败').map(item => ({
-      value: item.userId,
-      label: `${item.nickName ?? item.teacherNumber ?? item.userId}${item.teacherNumber ? ` · ${item.teacherNumber}` : ''}`,
-    }))
-  }
-  catch (error) {
-    showUserError(error)
-  }
 }
 
 async function loadLatestSync() {
@@ -348,7 +330,8 @@ onMounted(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench"
+      <ContextBar
+        layout="workbench"
         show-title
         title="组织管理"
         :subtitle="contextSubtitle"
@@ -399,7 +382,7 @@ onMounted(async () => {
             <div v-if="selectedRaw.anchorDepartmentId"><dt>挂接院系</dt><dd>{{ selectedRaw.anchorDepartmentId }}</dd></div>
             <div v-if="selectedRaw.anchorMajorId"><dt>挂接专业</dt><dd>{{ selectedRaw.anchorMajorId }}</dd></div>
             <div v-if="selectedRaw.portfolioOrgId"><dt>扩展组织 ID</dt><dd>{{ selectedRaw.portfolioOrgId }}</dd></div>
-            <div v-if="selectedRaw.leaderUserId"><dt>负责人</dt><dd>{{ selectedRaw.leaderUserName ? `${selectedRaw.leaderUserName}${selectedRaw.leaderTeacherNo ? ` · ${selectedRaw.leaderTeacherNo}` : ''}` : selectedRaw.leaderUserId }}</dd></div>
+            <div v-if="selectedRaw.leaderUserId"><dt>负责人</dt><dd>{{ selectedRaw.leaderTeacherNo ? `${selectedRaw.leaderUserName} · ${selectedRaw.leaderTeacherNo}` : selectedRaw.leaderUserName }}</dd></div>
           </dl>
           <UiDataTable
             title="历史名称"

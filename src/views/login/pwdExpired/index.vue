@@ -206,7 +206,7 @@ const logo = computed(() => appStore.getLogo())
   }
 }
 
-@media screen and (min-width: 571px) {
+@media screen and (min-width: 768px) {
   .h5 {
     display: none !important;
   }

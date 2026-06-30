@@ -20,6 +20,7 @@ import { RoleEnum } from '@/types/enums'
 import { showUserError } from '@/utils/error-handler'
 import {
   examSummaryFromDetail,
+  examSummaryFromMeta,
   toMarkExamSelectOption,
 } from '@/utils/mark-exam-option'
 import { readPageList } from '@/utils/page-result'
@@ -213,14 +214,7 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
 
     const meta = markStageStore.selectedExamMeta
     if (meta?.examId === examId && markStageStore.selectedExamLabel) {
-      pinnedExam.value = {
-        examId: meta.examId,
-        examName: meta.examName,
-        examNo: meta.examNo,
-        status: 'ACTIVE',
-        statusMessage: '',
-        createUser: '',
-      }
+      pinnedExam.value = examSummaryFromMeta(meta)
       return
     }
 

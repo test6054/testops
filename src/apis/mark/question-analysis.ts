@@ -321,3 +321,23 @@ export function approveRejudgePlan(request: RejudgePlanDecisionRequest): Promise
 export function executeRejudgePlan(request: RejudgePlanExecuteRequest): Promise<void> {
   return http.post<void>('/api/exam/question-analysis/rejudge-plan/execute', request)
 }
+
+// ─── 整卷测量学质量 ─────────────────────────────────
+
+/** 整卷质量分析 - 对应 ExamPaperAnalysisResponse */
+export interface ExamPaperAnalysisVO {
+  examId: string
+  classId?: string
+  difficultyIndex?: number
+  discriminationIndex?: number
+  cronbachAlpha?: number | null
+  participantCount?: number
+}
+
+/** 查询整卷难度、区分度与 Cronbach α */
+export function getExamPaperAnalysis(params: {
+  examId: string
+  classId?: string
+}): Promise<ExamPaperAnalysisVO> {
+  return http.post<ExamPaperAnalysisVO>('/api/exam/question-analysis/paper/get', params)
+}

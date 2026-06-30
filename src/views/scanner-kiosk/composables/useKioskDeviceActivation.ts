@@ -7,6 +7,7 @@ import {
   LOCAL_AGENT_UNAVAILABLE_ERROR,
   LocalAgentUnavailableError,
 } from '@/apis/mark/scanner-agent-local'
+import { bindScannerOperator } from '@/apis/mark/scanner-operator-bind'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import {
   clearKioskAuthSession,
@@ -51,6 +52,7 @@ function createKioskDeviceActivation() {
   const activationForm = ref({
     activationCode: '',
     endpointName: '',
+    boundOperatorUserId: '',
     gatewayBaseUrl: defaultGatewayFromEnv,
   })
 
@@ -304,6 +306,14 @@ function createKioskDeviceActivation() {
         ...activation,
         endpointName: request.endpointName,
       })
+      const boundOperatorUserId = activationForm.value.boundOperatorUserId.trim()
+      if (boundOperatorUserId) {
+        await bindScannerOperator({
+          scannerDeviceId: activation.scannerDeviceId,
+          scannerStationId: activation.scannerStationId,
+          boundOperatorUserId,
+        })
+      }
       activationForm.value.activationCode = ''
       manualActivationGateOpen.value = false
       await refreshDeviceActivationState()

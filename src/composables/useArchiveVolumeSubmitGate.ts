@@ -4,7 +4,8 @@ interface SubmitGateInput {
   volume: Pick<ArchiveVolumeVO,
   'volumeStatus' | 'responsibleUserId' | 'integrityStatus' | 'submitReady'
   | 'hasBlockingRemediationForSubmit' | 'scoreSubmitReady' | 'scoreSource' | 'scoreCompletionStatus'
-  | 'scoreProofFileId' | 'examGateOpen' | 'fourPropertyStale'>
+  | 'scoreProofFileId' | 'examGateOpen' | 'fourPropertyStale'
+  | 'requireSelfCheckConfirm' | 'selfCheckConfirmed' | 'signOffReady'>
   currentUserId: string
   fourPropertyStale?: boolean
   fourPropertyPassed?: boolean
@@ -70,6 +71,12 @@ export function describeSubmitBlockReason(input: SubmitGateInput): string | null
       return '线上阅卷双门禁未满足，暂不可提交'
     }
     return '成绩证明未完成，请先确认成绩或上传证明文件'
+  }
+  if (volume.requireSelfCheckConfirm && !volume.selfCheckConfirmed) {
+    return '请先完成提交前自查确认'
+  }
+  if (volume.requireSelfCheckConfirm && volume.signOffReady === false) {
+    return '签字核查项未全部确认'
   }
   return null
 }

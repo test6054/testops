@@ -1,9 +1,13 @@
+import { formatScore } from '@/utils/format'
+import { prefersReducedMotion } from '@/utils/motion-preference'
+
+export { prefersReducedMotion }
+
 /** 趋势图最少点位：少于该值展示空态说明，不渲染折线 */
 export const MARK_TREND_MIN_POINTS = 2
 
 /** mark-vue 图表空态与无障碍文案真源 */
-export const MARK_CHART_EMPTY = {
-  trendNeedMoreExams: '至少需要 2 场考试才能展示走势',
+export const MARK_CHART_EMPTY = {  trendNeedMoreExams: '至少需要 2 场考试才能展示走势',
   trendSingleExam: '本课程仅有当前 1 场考试，暂无纵向趋势可对照',
   trendNoHistory: '该学生在本课程暂无可对照的历次成绩',
   barNoData: '暂无柱状图数据',
@@ -40,14 +44,6 @@ export function formatTrendAriaLabel(
   if (lastValue == null || Number.isNaN(lastValue)) {
     return `${safeTitle}，共 ${pointCount} 个数据点`
   }
-  const valueText = Number.isInteger(lastValue) ? String(lastValue) : lastValue.toFixed(1)
+  const valueText = formatScore(lastValue, Number.isInteger(lastValue) ? 'count' : 'score')
   return `${safeTitle}，共 ${pointCount} 个数据点，最近值为 ${valueText}${unit}`
-}
-
-/** 是否启用减弱动效（系统偏好） */
-export function prefersReducedMotion(): boolean {
-  if (typeof window === 'undefined') {
-    return false
-  }
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }

@@ -173,7 +173,7 @@ onBeforeUnmount(stopTimer)
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ai-generation-progress__copy,
   .ai-generation-progress__steps {
     display: flex;

@@ -466,7 +466,7 @@ function handleRowClick(row: MatrixRow) {
 }
 
 .matrix-workbench__cell-empty {
-  color: var(--dp-text-disabled, #94a3b8);
+  color: var(--dp-text-disabled);
   font-size: 14px;
 }
 

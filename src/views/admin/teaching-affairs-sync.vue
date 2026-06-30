@@ -55,15 +55,14 @@
           <span>同步任务</span>
         </template>
 
-        <UiFilterBar variant="plain"
+        <UiFilterBar
           v-model="syncFilterForm"
           :fields="syncFilterFields"
+          variant="plain"
           search-text="查询"
           @search="loadSyncTasks"
           @reset="handleSyncFilterReset"
         />
-
-
 
         <UiDataTable
           pagination-mode="client"
@@ -106,7 +105,7 @@
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
                 <UiTextAction
-                  v-if="canExecute(syncTasks[index].taskStatus)"
+                  v-if="canExecute(syncTasks[index])"
                   tone="primary"
                   :disabled="actionLoadingId === syncTasks[index].id"
                   @click="handleExecute(syncTasks[index])"
@@ -144,23 +143,22 @@
           <span>回写记录</span>
         </template>
 
-        <UiFilterBar variant="plain"
+        <UiFilterBar
           v-model="passbackFilterForm"
           :fields="passbackFilterFields"
+          variant="plain"
           search-text="查询"
           @search="reloadPassbackRecordsFromFirstPage"
           @reset="handlePassbackFilterReset"
         />
 
-
-
         <UiDataTable
+          v-model:current="passbackPagination.pageNum"
+          v-model:page-size="passbackPagination.pageSize"
           class="student-detail-table__data-table"
           :columns="passbackColumns"
           :data-source="passbackRecords"
           :loading="passbackLoading"
-          v-model:current="passbackPagination.pageNum"
-          v-model:page-size="passbackPagination.pageSize"
           :total="passbackPagination.total"
           @page-change="handlePassbackPageChange"
           flat
@@ -460,8 +458,8 @@ async function loadSyncTasks(options?: { quiet?: boolean }): Promise<void> {
   try {
     syncTasks.value = await listSyncTasks(selectedExamId.value, syncFilterForm.status)
   } catch (error) {
-    showUserError(error, '教务同步任务加载失败')
     if (!options?.quiet) {
+      syncTasks.value = []
       showUserError(error, '教务同步任务加载失败')
     }
   } finally {
@@ -512,8 +510,9 @@ function handleSyncFilterReset(): void {
   void loadSyncTasks()
 }
 
-function canExecute(status: SyncTaskStatusCode): boolean {
-  return status === 'PENDING'
+function canExecute(record: SyncTaskVO): boolean {
+  // 后端 executeGradePassback 仅允许首次 PENDING 且无回写记录；重试后任务虽回到 PENDING 但记录已存在
+  return record.taskStatus === 'PENDING' && record.retryCount === 0
 }
 
 function canRetry(status: SyncTaskStatusCode): boolean {
@@ -748,8 +747,9 @@ async function loadPassbackRecords(options?: { quiet?: boolean }): Promise<void>
     passbackPagination.pageSize = page.pageSize
     passbackPagination.total = readPageTotal(page, '教务回写记录加载失败，请稍后重试')
   } catch (error) {
-    showUserError(error, '教务回写记录加载失败')
     if (!options?.quiet) {
+      passbackRecords.value = []
+      passbackPagination.total = 0
       showUserError(error, '教务回写记录加载失败')
     }
   } finally {
@@ -828,13 +828,6 @@ async function loadAll(): Promise<void> {
 
 function handleExamChange(value: SelectValue): void {
   onExamChange(value)
-  syncTasks.value = []
-  passbackRecords.value = []
-  passbackPagination.pageNum = 1
-  passbackPagination.total = 0
-  if (selectedExamId.value) {
-    void loadAll()
-  }
 }
 
 // B-8: selectedExamId 由 useMarkExamSelector 与 URL 双向同步

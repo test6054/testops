@@ -25,19 +25,43 @@
 
     <div class="question-analysis-card">
       <MarkScatterSection
+        ref="scatterSectionRef"
         title="难度-区分度分布"
-        hint="理想区间：难度 0.3-0.8 且 区分度 ≥ 0.4；点击图例可隐藏对应区段。"
+        :hint="scatterChartHint"
         :point-count="scatterPointCount"
         :option="scatterChartOption"
         height="300px"
         :aria-label="scatterChartAriaLabel"
         :visible="!chartLoading"
         class="question-analysis-card__chart"
+        @brush-selected="handleScatterBrushSelected"
       />
+
+      <section
+        v-if="brushSelectedRows.length > 0"
+        class="question-analysis-card__brush-list"
+      >
+        <header class="question-analysis-card__brush-head">
+          <strong>框选区域题目（{{ brushSelectedRows.length }}）</strong>
+          <UiTextAction @click="clearBrushSelection">清除选区</UiTextAction>
+        </header>
+        <ul class="question-analysis-card__brush-items">
+          <li
+            v-for="item in brushSelectedRows"
+            :key="item.questionTemplateId"
+            class="question-analysis-card__brush-item"
+          >
+            <span>题{{ item.questionNo }} · {{ questionTypeLabel(item.questionType) }}</span>
+            <span class="question-analysis-card__brush-meta">
+              难度 {{ fmtNum(item.difficultyIndex) }} · 区分度 {{ fmtNum(item.discriminationIndex) }}
+            </span>
+          </li>
+        </ul>
+      </section>
 
       <MarkBarSection
         title="各题正确率"
-        hint="按题号展示已批阅学生的正确率"
+        :hint="correctRatioChartHint"
         :item-count="correctRatioBarItems.length"
         :option="correctRatioChartOption"
         height="300px"
@@ -151,6 +175,11 @@ import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildCategoryBarChartOption, buildScatterChartOption } from '@/utils/mark-echarts-options'
 import {
+  buildBarChartInsight,
+  buildScatterChartInsight,
+  mergeChartHint,
+} from '@/utils/mark-chart-insights'
+import {
   buildQuestionQualityScatterSeries,
   correctRatioToBarItems,
 } from '@/utils/mark-statistics-chart'
@@ -178,6 +207,19 @@ const generationSummary = ref('')
 const tablePageNum = ref(1)
 const tablePageSize = ref(20)
 const tableTotal = ref(0)
+const brushSelectedRows = ref<ExamQuestionAnalysisRecordVO[]>([])
+const scatterSectionRef = ref<InstanceType<typeof MarkScatterSection> | null>(null)
+
+interface ScatterBrushSelectedBatch {
+  selected?: Array<{
+    seriesIndex?: number
+    dataIndex?: number[]
+  }>
+}
+
+interface ScatterBrushSelectedEvent {
+  batch?: ScatterBrushSelectedBatch[]
+}
 
 const tableEmptyKind = computed(() => {
   return selectedQuestionTemplateId.value ? 'no-result' : 'first-run'
@@ -218,6 +260,7 @@ function buildListQueryBase(): Omit<QuestionAnalysisListQueryRequest, 'pageNum' 
 async function loadChartRows(): Promise<void> {
   if (!props.examId) {
     chartRows.value = []
+    brushSelectedRows.value = []
     return
   }
   chartLoading.value = true
@@ -226,6 +269,7 @@ async function loadChartRows(): Promise<void> {
     chartRows.value = acceptQuestionAnalysisRows(records)
   } catch (e) {
     chartRows.value = []
+    brushSelectedRows.value = []
     showUserError(e, '题目质量分析图表加载失败')
   } finally {
     chartLoading.value = false
@@ -389,14 +433,53 @@ const scatterPointCount = computed(() =>
 )
 const correctRatioBarItems = computed(() => correctRatioToBarItems(chartRows.value))
 
+const scatterChartHint = computed(() => mergeChartHint(
+  '理想区间：难度 0.3-0.8 且 区分度 ≥ 0.4；可使用右上角工具框选题目查看清单。',
+  buildScatterChartInsight(questionQualityScatterSeries.value),
+))
+
+const correctRatioChartHint = computed(() => mergeChartHint(
+  '按题号展示已批阅学生的正确率',
+  buildBarChartInsight(correctRatioBarItems.value, { passLine: 60, passLineLabel: '及格线' }),
+))
+
 const { chartOption: scatterChartOption } = useChartOption(() =>
   buildScatterChartOption(questionQualityScatterSeries.value, {
     xLabel: '难度系数',
     yLabel: '区分度',
     showIdealZone: true,
+    brush: true,
     emptyText: '暂无难度-区分度数据',
   }),
 )
+
+function handleScatterBrushSelected(params: unknown): void {
+  const payload = params as ScatterBrushSelectedEvent
+  const selected = payload.batch?.[0]?.selected ?? []
+  const hasSelection = selected.some(item => (item.dataIndex?.length ?? 0) > 0)
+  if (!hasSelection) {
+    brushSelectedRows.value = []
+    return
+  }
+  const visibleSeries = questionQualityScatterSeries.value.filter(series => series.points.length > 0)
+  const selectedQuestionIds = new Set<string>()
+  for (const item of selected) {
+    const series = visibleSeries[item.seriesIndex ?? -1]
+    if (!series) continue
+    for (const dataIndex of item.dataIndex ?? []) {
+      const point = series.points[dataIndex]
+      if (point?.key) {
+        selectedQuestionIds.add(point.key)
+      }
+    }
+  }
+  brushSelectedRows.value = chartRows.value.filter(row => selectedQuestionIds.has(row.questionTemplateId))
+}
+
+function clearBrushSelection(): void {
+  brushSelectedRows.value = []
+  scatterSectionRef.value?.clearBrush()
+}
 
 const { chartOption: correctRatioChartOption } = useChartOption(() =>
   buildCategoryBarChartOption(correctRatioBarItems.value, {
@@ -461,6 +544,45 @@ watch(
   &__generation-summary {
     margin: 0;
     color: var(--dp-text-secondary, rgba(0, 0, 0, 0.75));
+  }
+
+  &__brush-list {
+    margin-top: var(--dp-space-3, 12px);
+    padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: var(--dp-radius-panel, 8px);
+    background: var(--dp-surface-subtle, #f8fafc);
+  }
+
+  &__brush-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--dp-space-3, 12px);
+    margin-bottom: var(--dp-space-2, 8px);
+    font-size: 14px;
+  }
+
+  &__brush-items {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--dp-space-2, 8px);
+  }
+
+  &__brush-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--dp-space-3, 12px);
+    font-size: 13px;
+  }
+
+  &__brush-meta {
+    color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
+    white-space: nowrap;
   }
 }
 </style>

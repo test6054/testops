@@ -28,7 +28,7 @@ const form = reactive({
   appointYear: '',
   dutyScope: '',
 })
-const { teacherOptions, searchTeachers, teacherLabel } = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 
 const columns: ColumnsType = [
   { title: '教师', key: 'teacher', width: 120 },
@@ -138,7 +138,7 @@ onMounted(loadPage)
       <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacher'">
-            {{ record.teacherName ?? teacherLabel(record.teacherUserId) }}
+            {{ record.teacherName }}
             <span v-if="record.departmentName" class="dept-hint">{{ record.departmentName }}</span>
           </template>
           <template v-else-if="column.key === 'registryStatus'">

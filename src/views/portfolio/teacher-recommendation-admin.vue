@@ -285,8 +285,8 @@ onMounted(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-  <ContextBar show-title layout="workbench" title="优秀教师推荐" />
-</template>
+      <ContextBar show-title layout="workbench" title="优秀教师推荐" />
+    </template>
     <UiCard title="规则配置">
       <div class="form-row">
         <a-input v-model:value="ruleForm.ruleName" placeholder="规则名称" style="width: 160px" />

@@ -89,7 +89,7 @@ const troubleshootingLine = computed(() => {
   return troubleshooting
 })
 
-const materialKindLabel = computed(() => contract.value?.materialKindText || '扫描材料')
+const materialKindLabel = computed(() => workflow.materialKindLabel.value)
 
 const templateReviewLinkText = computed(() => {
   const mode = contract.value?.materialLayoutMode
@@ -98,7 +98,7 @@ const templateReviewLinkText = computed(() => {
   return '制卷核对 →'
 })
 
-const scanMaterialAdvisory = computed(() => contract.value?.scanMaterialAdvisory?.trim() || '')
+const scanMaterialAdvisory = computed(() => workflow.scanMaterialAdvisory.value)
 
 const scanConfigAdvisory = computed(
   () => workflow.kioskContext.value?.scanConfigOptions?.scanConfigAdvisory?.trim() || '',
@@ -138,7 +138,7 @@ function openTemplateReview() {
 function buildFirstScanCalibrationDialog() {
   const mode = contract.value?.materialLayoutMode
   const paperStyle = contract.value?.paperStyleText || '未配置'
-  const kind = contract.value?.materialKindText || '扫描材料'
+  const kind = materialKindLabel.value
   if (mode === 'FULL_PAPER') {
     return {
       title: '试卷首次扫描核对',

@@ -3,8 +3,10 @@
  */
 import type { ExamStatusCode } from '@/apis/mark/exam'
 import type { MarkStageKey } from '@/stores/modules/markStage'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 
 import http from '@/config/axios'
+import { isValidSemesterCode } from '@/types/enums/semester-enum'
 
 export type MarkTeacherDashboardTodoTypeCode
   = | 'SCAN_ATTENTION'
@@ -25,14 +27,14 @@ export type MarkTeacherDashboardJourneyKeyCode
 export interface MarkTeacherDashboardFilterContextVO {
   tenantId: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   status?: ExamStatusCode
   filteredExamCount: number
 }
 
 export interface MarkTeacherDashboardFilterOptionsVO {
   academicYears: string[]
-  semesters: string[]
+  semesters: SemesterCode[]
   statuses: ExamStatusCode[]
 }
 
@@ -80,7 +82,7 @@ export interface MarkTeacherDashboardOngoingExamItemVO {
   examName: string
   examNo: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   status: ExamStatusCode
   candidateCount?: number
   currentStageKey?: MarkStageKey
@@ -102,7 +104,7 @@ export interface MarkTeacherDashboardPublishedExamInsightItemVO {
   examId: string
   examName: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   participantCount: number
   averageScore?: string
   maxScore?: string
@@ -126,7 +128,7 @@ export interface MarkTeacherDashboardOverviewVO {
 
 export interface MarkTeacherDashboardQuery {
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   status?: ExamStatusCode
   ongoingLimit?: number
   publishedInsightLimit?: number
@@ -146,6 +148,28 @@ function assertRequiredString(value: unknown, field: string): string {
     throw new TypeError(`阅卷概览响应缺少合法字段：${field}`)
   }
   return value
+}
+
+function assertOptionalSemesterCode(value: unknown, field: string): SemesterCode | undefined {
+  if (value === null || value === undefined || value === '') {
+    return undefined
+  }
+  if (typeof value !== 'string' || !isValidSemesterCode(value)) {
+    throw new TypeError(`阅卷概览响应缺少合法字段：${field}`)
+  }
+  return value
+}
+
+function assertSemesterCodeList(values: unknown, field: string): SemesterCode[] {
+  if (!Array.isArray(values)) {
+    throw new TypeError(`阅卷概览响应缺少合法字段：${field}`)
+  }
+  return values.map((item, index) => {
+    if (typeof item !== 'string' || !isValidSemesterCode(item)) {
+      throw new TypeError(`阅卷概览响应缺少合法字段：${field}[${index}]`)
+    }
+    return item
+  })
 }
 
 const TODO_TYPE_CODES: MarkTeacherDashboardTodoTypeCode[] = [
@@ -210,6 +234,7 @@ function validateOngoingExamItem(
   assertRequiredString(exam.examName, `ongoingExams[${index}].examName`)
   assertRequiredString(exam.examNo, `ongoingExams[${index}].examNo`)
   assertRequiredString(exam.status, `ongoingExams[${index}].status`)
+  exam.semester = assertOptionalSemesterCode(exam.semester, `ongoingExams[${index}].semester`)
   if (exam.pendingTodos != null) {
     exam.pendingTodos.forEach((todo, todoIndex) => {
       validatePendingTodoItem(todo, todoIndex)
@@ -229,6 +254,7 @@ function validatePublishedInsightItem(
   assertRequiredString(insight.examId, `publishedExamInsights[${index}].examId`)
   assertRequiredString(insight.examName, `publishedExamInsights[${index}].examName`)
   assertCount(insight.participantCount, `publishedExamInsights[${index}].participantCount`)
+  insight.semester = assertOptionalSemesterCode(insight.semester, `publishedExamInsights[${index}].semester`)
   if (insight.passRate != null && insight.passRate !== '') {
     const passRate = Number(insight.passRate)
     if (!Number.isFinite(passRate) || passRate < 0 || passRate > 1) {
@@ -249,6 +275,7 @@ export function validateTeacherDashboardOverview(data: MarkTeacherDashboardOverv
   }
   assertRequiredString(filterContext.tenantId, 'filterContext.tenantId')
   assertCount(filterContext.filteredExamCount, 'filterContext.filteredExamCount')
+  filterContext.semester = assertOptionalSemesterCode(filterContext.semester, 'filterContext.semester')
 
   const filterOptions = data.filterOptions
   if (!filterOptions) {
@@ -257,9 +284,7 @@ export function validateTeacherDashboardOverview(data: MarkTeacherDashboardOverv
   if (!Array.isArray(filterOptions.academicYears)) {
     throw new TypeError('阅卷概览响应缺少 filterOptions.academicYears')
   }
-  if (!Array.isArray(filterOptions.semesters)) {
-    throw new TypeError('阅卷概览响应缺少 filterOptions.semesters')
-  }
+  filterOptions.semesters = assertSemesterCodeList(filterOptions.semesters, 'filterOptions.semesters')
   if (!Array.isArray(filterOptions.statuses)) {
     throw new TypeError('阅卷概览响应缺少 filterOptions.statuses')
   }
@@ -336,4 +361,54 @@ export async function loadTeacherDashboardOverview(
 ): Promise<MarkTeacherDashboardOverviewVO> {
   const data = await http.post<MarkTeacherDashboardOverviewVO>('/api/mark/teacher/dashboard/overview', query)
   return validateTeacherDashboardOverview(data)
+}
+
+let inflightOverviewRequest: Promise<MarkTeacherDashboardOverviewVO> | null = null
+let inflightOverviewQueryKey = ''
+
+function buildOverviewQueryKey(query: MarkTeacherDashboardQuery): string {
+  return JSON.stringify({
+    academicYear: query.academicYear ?? '',
+    semester: query.semester ?? '',
+    status: query.status ?? '',
+    ongoingLimit: query.ongoingLimit ?? '',
+    publishedInsightLimit: query.publishedInsightLimit ?? '',
+    todoLimit: query.todoLimit ?? '',
+  })
+}
+
+/** 同屏多段加载共用一次 overview 请求；后端分段契约就绪后可替换为独立 endpoint。 */
+function loadTeacherDashboardOverviewOnce(
+  query: MarkTeacherDashboardQuery = {},
+): Promise<MarkTeacherDashboardOverviewVO> {
+  const queryKey = buildOverviewQueryKey(query)
+  if (!inflightOverviewRequest || inflightOverviewQueryKey !== queryKey) {
+    inflightOverviewQueryKey = queryKey
+    inflightOverviewRequest = loadTeacherDashboardOverview(query).finally(() => {
+      inflightOverviewRequest = null
+      inflightOverviewQueryKey = ''
+    })
+  }
+  return inflightOverviewRequest
+}
+
+/** 信号带分段：KPI、筛选上下文与进度汇总。 */
+export async function loadTeacherDashboardSignalSection(
+  query: MarkTeacherDashboardQuery = {},
+): Promise<MarkTeacherDashboardOverviewVO> {
+  return loadTeacherDashboardOverviewOnce(query)
+}
+
+/** 考试卡片分段：进行中考试与已发布学情。 */
+export async function loadTeacherDashboardExamsSection(
+  query: MarkTeacherDashboardQuery = {},
+): Promise<MarkTeacherDashboardOverviewVO> {
+  return loadTeacherDashboardOverviewOnce(query)
+}
+
+/** 待办分段：租户级待办 TopN。 */
+export async function loadTeacherDashboardTodosSection(
+  query: MarkTeacherDashboardQuery = {},
+): Promise<MarkTeacherDashboardOverviewVO> {
+  return loadTeacherDashboardOverviewOnce(query)
 }

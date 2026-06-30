@@ -83,8 +83,13 @@ export const useMarkTaskStore = defineStore('markTask', () => {
 
   /* ---------- Actions ---------- */
 
-  async function loadTasks(request: MarkingTaskQueryRequest): Promise<MarkingTaskVO[]> {
-    tasksLoading.value = true
+  async function loadTasks(
+    request: MarkingTaskQueryRequest,
+    options?: { silent?: boolean },
+  ): Promise<MarkingTaskVO[]> {
+    if (!options?.silent) {
+      tasksLoading.value = true
+    }
     try {
       const loaded = await listMarkingTasks(request)
       loaded.forEach(validateMarkingTaskContract)
@@ -92,7 +97,9 @@ export const useMarkTaskStore = defineStore('markTask', () => {
       tasksLoadedExamId.value = request.examId
       return tasks.value
     } finally {
-      tasksLoading.value = false
+      if (!options?.silent) {
+        tasksLoading.value = false
+      }
     }
   }
 

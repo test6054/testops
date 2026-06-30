@@ -152,7 +152,7 @@ const bodyStyle = computed(() => ({
   border-top: 1px solid var(--dp-border, #e5e7eb);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ui-chat-shell__header {
     flex-direction: column;
   }

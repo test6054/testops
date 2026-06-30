@@ -1,3 +1,4 @@
+import type { ArchiveMaterialTypeCode, ArchiveVolumeStatusCode } from '@/apis/mark/archive-volume'
 import type {
   DuplicateResolutionStatusCode,
 } from '@/apis/mark/duplicate-resolution-status'
@@ -8,6 +9,8 @@ import type {
   ScannerEndpointOnlineStatusCode,
 } from '@/apis/mark/exam-mark-scanner'
 import type {
+  ExamScanBatchPageRegisterRetryRequest,
+  ExamScanBatchPageRegisterRetryResponse,
   QualityDecisionCode,
   ScanAttentionSourceTypeCode,
   ScanAttentionTypeCode,
@@ -15,7 +18,10 @@ import type {
 } from '@/apis/mark/exam-scan'
 import type { GradeStatusCode } from '@/apis/mark/grade-status'
 import type { MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
+import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
+import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import type { TaskStatusCode } from '@/apis/mark/task-status'
+import type { PortfolioGapTaskStatus } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
@@ -176,8 +182,6 @@ export interface ExamScannerKioskContextVO {
   sessionBatches?: ExamScannerKioskSessionBatchVO[]
   kioskBoundExamId?: string
   examBindingRequired?: boolean
-  /** 扫描子模式产品说明（SUPPLEMENT 时有值） */
-  scanModeAdvisory?: string
   /** 本工位可补扫的已绑定试卷（仅 SUPPLEMENT） */
   supplementBoundPapers?: ExamScannerBoundPaperItemVO[]
   /** 租户 OCR 渠道快照；试卷直扫时用于默认 providerChain */
@@ -200,12 +204,8 @@ export interface ExamScannerKioskTaskContractVO {
   /** 制卷形态：ANSWER_SHEET / FULL_PAPER */
   materialLayoutMode?: 'ANSWER_SHEET' | 'FULL_PAPER'
   materialLayoutModeText?: string
-  /** 扫描材料类型：答卷页 / 试卷 / 未配置 */
-  materialKindText?: string
   /** 单份应扫页数 */
   pagesPerSheet?: number
-  /** 制卷或模板未完备时的登记提醒 */
-  scanMaterialAdvisory?: string
 }
 
 export interface ExamScannerKioskSessionBatchVO {
@@ -621,6 +621,106 @@ export async function pageScannerKioskBatchHistory(
 ): Promise<PageResult<ExamScannerKioskBatchHistoryItem>> {
   return http.post<PageResult<ExamScannerKioskBatchHistoryItem>>(
     '/api/mark/scanner/kiosk/batch/list',
+    request,
+  )
+}
+
+// ============================================================================
+// 工位自主待办：归档卷 / 档案袋 gap / 临时派单
+// ============================================================================
+
+/** 工位只读归档卷列表项，对齐 ScannerKioskArchiveVolumeItemVO，不含成绩字段 */
+export interface ScannerKioskArchiveVolumeItemVO {
+  volumeId: string
+  campusId?: string
+  departmentId?: string
+  departmentName?: string
+  teachingClassName?: string
+  archiveNo: string
+  archiveTitle: string
+  volumeStatus: ArchiveVolumeStatusCode
+  physicalStorageLocation?: string
+  physicalLocationNote?: string
+}
+
+export interface ScannerKioskArchiveVolumePageRequest extends QueryDto {
+  keyword?: string
+}
+
+export interface ScannerKioskPortfolioGapTaskPageRequest extends QueryDto {
+  keyword?: string
+  openOnly?: boolean
+}
+
+/** 工位档案袋 gap 摘要，对齐 quality internal 分页项 */
+export interface ScannerKioskPortfolioGapTaskSummaryVO {
+  id: string
+  teacherId: string
+  categoryId: string
+  categoryName?: string
+  taskTitle?: string
+  taskStatus: PortfolioGapTaskStatus
+  returnReason?: string
+  dueTime?: string
+  updateTime?: string
+}
+
+export interface ScanDispatchAdhocTicketCreateRequest {
+  taskKind: ScanTaskKindCode
+  volumeId?: string
+  scannerDeviceId: string
+  scannerStationId: string
+  physicalStorageLocation?: string
+  physicalLocationNote?: string
+  catalogCode?: string
+  materialType?: ArchiveMaterialTypeCode
+  archiveBatchMode?: string
+  teacherId?: string
+  collectMode?: 'AI_SUBMIT' | 'GAP_ATTACHMENT'
+  gapTaskId?: string
+  categoryId?: string
+  taskType?: string
+  templateCode?: string
+  archiveRecordId?: string
+}
+
+export interface ScanDispatchAdhocTicketCreateResponse {
+  ticket?: ScanDispatchTicketVO
+}
+
+export function pageKioskArchiveVolumes(
+  request: ScannerKioskArchiveVolumePageRequest,
+): Promise<PageResult<ScannerKioskArchiveVolumeItemVO>> {
+  return http.post<PageResult<ScannerKioskArchiveVolumeItemVO>>(
+    '/api/mark/scanner/kiosk/archive-volumes/page',
+    request,
+  )
+}
+
+export function pageKioskPortfolioGapTasks(
+  request: ScannerKioskPortfolioGapTaskPageRequest,
+): Promise<PageResult<ScannerKioskPortfolioGapTaskSummaryVO>> {
+  return http.post<PageResult<ScannerKioskPortfolioGapTaskSummaryVO>>(
+    '/api/mark/scanner/kiosk/portfolio/gap-tasks/page',
+    request,
+  )
+}
+
+export function createAdhocDispatchTicket(
+  request: ScanDispatchAdhocTicketCreateRequest,
+): Promise<ScanDispatchAdhocTicketCreateResponse> {
+  return http.post<ScanDispatchAdhocTicketCreateResponse>(
+    '/api/mark/scanner/kiosk/adhoc-ticket/create',
+    request,
+  )
+}
+
+/** 工位重试页登记阻断批次的自动页登记。 */
+export function retryKioskScanBatchPageRegister(
+  request: ExamScanBatchPageRegisterRetryRequest,
+): Promise<ExamScanBatchPageRegisterRetryResponse> {
+  return http.post<ExamScanBatchPageRegisterRetryResponse>(
+    '/api/mark/scanner/kiosk/scan-batch/page-register/retry',
     request,
   )
 }

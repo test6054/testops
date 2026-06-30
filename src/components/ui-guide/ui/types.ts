@@ -88,6 +88,9 @@ export interface FilterPillOption {
   disabled?: boolean
 }
 
+/** UiFilterPills v-model 值：单选为 string | number | null，多选为 string | number 数组 */
+export type FilterPillModelValue = string | number | null | Array<string | number>
+
 /** 下拉操作项 */
 export interface UiDropdownActionItem {
   key: string

@@ -49,6 +49,9 @@ export const WORKBENCH_STAGE_TO_TIMELINE: Record<WorkbenchStageStatus, UiArrowTi
 
 // ─── 信号指标带（SignalBand）────────────────────────────
 
+/** 趋势箭头颜色极性：positive=上升为好，negative=上升为坏，neutral=中性蓝 */
+export type SignalMetricTrendPolarity = 'positive' | 'negative' | 'neutral'
+
 /** 信号指标项 */
 export interface SignalMetric {
   key: string
@@ -56,10 +59,10 @@ export interface SignalMetric {
   value: string | number
   unit?: string
   tone?: BadgeTone
-  /** 趋势百分比；正数上升、负数下降。颜色极性由 SignalBand.trendPolarity 决定 */
+  /** 趋势百分比；正数上升、负数下降。颜色极性由 trendPolarity 或 SignalBand 默认值决定 */
   trend?: number
-  /** 单指标趋势极性，覆盖 SignalBand 默认值；negative=上升为 adverse */
-  trendPolarity?: 'negative' | 'positive'
+  /** 单指标趋势极性，覆盖 SignalBand 默认值 */
+  trendPolarity?: SignalMetricTrendPolarity
   helper?: string
   /** 为 true 时 SignalBand 渲染为可点击项并触发 metric-click */
   clickable?: boolean

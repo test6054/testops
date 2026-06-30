@@ -23,7 +23,9 @@ import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
+import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { ExportBusinessType } from '@/apis/edu/export'
 import {
   assessmentItemApi,
 } from '@/apis/quality/assessment-item'
@@ -58,9 +60,11 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePolling } from '@/composables/usePolling'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { useQualityTableExport } from '@/composables/useQualityTableExport'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
+import { formatScore } from '@/utils/format'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -111,6 +115,7 @@ const qualityStore = useQualityStore()
 const batches = ref<ScoreBatchVO[]>([])
 const batchesLoading = ref(false)
 const selectedBatch = ref<ScoreBatchVO | null>(null)
+const { exporting: scoreRecordExporting, exportExcel: exportScoreRecordExcel } = useQualityTableExport()
 
 const isBatchRecordEditable = computed(() => {
   if (!selectedBatch.value) return false
@@ -240,10 +245,14 @@ const filterFields: FilterField[] = [
   },
 ]
 
+function resolveValidFlagFilter(): boolean | undefined {
+  if (filterForm.validFlag === 'true') return true
+  if (filterForm.validFlag === 'false') return false
+  return undefined
+}
+
 function syncFilterToView() {
-  if (filterForm.validFlag === 'true') validFilter.value = true
-  else if (filterForm.validFlag === 'false') validFilter.value = false
-  else validFilter.value = undefined
+  validFilter.value = resolveValidFlagFilter()
 }
 
 function handleSearch() {
@@ -253,6 +262,22 @@ function handleSearch() {
 function handleReset() {
   filterForm.validFlag = undefined
   syncFilterToView()
+}
+
+function handleExportScoreRecords(): void {
+  if (!selectedBatch.value) {
+    message.warning('请先选择成绩批次')
+    return
+  }
+  syncFilterToView()
+  void exportScoreRecordExcel({
+    businessType: ExportBusinessType.QUALITY_SCORE_RECORD_EXPORT,
+    bizName: `成绩明细-${selectedBatch.value.batchName}`,
+    queryParams: {
+      batchId: selectedBatch.value.id,
+      validFlag: resolveValidFlagFilter(),
+    },
+  })
 }
 
 const filteredRecords = computed(() => {
@@ -298,12 +323,12 @@ const signals = computed<SignalMetric[]>(() => {
   }, 0)
   const ratio = totalFull > 0 ? Math.round((totalScore / totalFull) * 100) : 0
   return [
-    { key: 'total', label: '当前明细', value: list.length, tone: 'blue' },
-    { key: 'valid', label: '有效', value: valid, tone: 'green' },
-    { key: 'invalid', label: '无效', value: invalid, tone: invalid > 0 ? 'orange' : 'gray' },
-    { key: 'errored', label: '异常', value: errored, tone: errored > 0 ? 'red' : 'gray' },
-    { key: 'ratio', label: '平均得分率', value: `${ratio}%`, tone: 'blue' },
-    { key: 'batches', label: '批次总数', value: batches.value.length, tone: 'gray' },
+    { key: 'total', label: '当前明细', value: list.length, tone: 'blue', trendPolarity: 'neutral' },
+    { key: 'valid', label: '有效', value: valid, tone: 'green', trendPolarity: 'positive' },
+    { key: 'invalid', label: '无效', value: invalid, tone: invalid > 0 ? 'orange' : 'gray', trendPolarity: 'negative' },
+    { key: 'errored', label: '异常', value: errored, tone: errored > 0 ? 'red' : 'gray', trendPolarity: 'negative' },
+    { key: 'ratio', label: '平均得分率', value: `${ratio}%`, tone: 'blue', trendPolarity: 'positive' },
+    { key: 'batches', label: '批次总数', value: batches.value.length, tone: 'gray', trendPolarity: 'neutral' },
   ]
 })
 
@@ -385,8 +410,13 @@ function handleEditorClassChange(value: string | null): void {
 
 function handleEditorStudentChange(value: string | null, option?: UserDto): void {
   editor.value.studentUserId = value ?? ''
-  editor.value.studentNumber = option?.studentNumber ?? ''
-  editor.value.studentName = option?.nickName ?? ''
+  if (!option) {
+    editor.value.studentNumber = ''
+    editor.value.studentName = ''
+    return
+  }
+  editor.value.studentNumber = option.studentNumber
+  editor.value.studentName = option.nickName
 }
 
 async function openCreate() {
@@ -667,6 +697,15 @@ function handleCourseChange(courseId: string | null) {
           <template v-else #title>成绩明细</template>
           <template v-if="selectedBatch" #extra>
             <a-space>
+              <UiButton
+                variant="outline"
+                size="sm"
+                :loading="scoreRecordExporting"
+                @click="handleExportScoreRecords"
+              >
+                <template #icon><DownloadOutlined /></template>
+                导出 Excel
+              </UiButton>
               <UiTextAction @click="openValidByItem">按考核环节查有效</UiTextAction>
               <router-link
                 v-if="isBatchRecordEditable"
@@ -692,7 +731,8 @@ function handleCourseChange(courseId: string | null) {
             class="score-record__empty"
           />
           <template v-else>
-            <UiFilterBar variant="plain"
+            <UiFilterBar
+              variant="plain"
               v-model="filterModel"
               :fields="filterFields"
               @search="handleSearch"
@@ -725,8 +765,8 @@ function handleCourseChange(courseId: string | null) {
                   {{ record.assessmentItemName }}
                 </template>
                 <template v-else-if="column.key === 'score'">
-                  {{ record.score.toFixed(1) }} /
-                  {{ record.fullScore.toFixed(0) }}
+                  {{ formatScore(record.score, 'score') }} /
+                  {{ formatScore(record.fullScore, 'fullScore') }}
                 </template>
                 <template v-else-if="column.key === 'recordStatus'">
                   <a-space size="small">
@@ -797,7 +837,7 @@ function handleCourseChange(courseId: string | null) {
           <a-col :span="8">
             <a-form-item label="学生信息">
               <div class="score-record__student-info">
-                <span>{{ editor.studentName || '未选择学生' }}</span>
+                <span>{{ editor.studentName }}</span>
                 <span v-if="editor.studentNumber" class="score-record__student-number">
                   {{ editor.studentNumber }}
                 </span>
@@ -822,7 +862,7 @@ function handleCourseChange(courseId: string | null) {
             <div v-if="editorRubrics.length" class="score-record__rubrics">
               <div class="score-record__rubrics-head">
                 <span>评分项</span>
-                <strong>合计 {{ editorRubricTotal.toFixed(1) }}</strong>
+                <strong>合计 {{ formatScore(editorRubricTotal, 'score') }}</strong>
               </div>
               <div
                 v-for="(rubric, index) in editorRubrics"
@@ -918,8 +958,8 @@ function handleCourseChange(courseId: string | null) {
             {{ record.batchName }}
           </template>
           <template v-else-if="column.key === 'score'">
-            {{ record.score.toFixed(1) }} /
-            {{ record.fullScore.toFixed(0) }}
+            {{ formatScore(record.score, 'score') }} /
+            {{ formatScore(record.fullScore, 'fullScore') }}
           </template>
         </template>
       </UiDataTable>

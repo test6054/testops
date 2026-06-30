@@ -365,6 +365,9 @@ export interface ScanJobResponse {
   uploadedPages: number
   reported: boolean
   message: string
+  /** Agent commit 后：自动页登记是否被阻断 */
+  pageRegisterBlocked?: boolean
+  pageRegisterDiagnostic?: string
   pages: ScanPageInfo[]
 }
 
@@ -949,6 +952,13 @@ function validateScanJobResponsePayload(value: LocalAgentJsonValue): ScanJobResp
   const supplementReason = requireOptionalAgentWireString(result, 'supplementReason')
   if (supplementReason !== undefined) {
     payload.supplementReason = supplementReason
+  }
+  if (result.pageRegisterBlocked === true) {
+    payload.pageRegisterBlocked = true
+    const pageRegisterDiagnostic = requireOptionalAgentWireString(result, 'pageRegisterDiagnostic')
+    if (pageRegisterDiagnostic !== undefined) {
+      payload.pageRegisterDiagnostic = pageRegisterDiagnostic
+    }
   }
   return payload
 }

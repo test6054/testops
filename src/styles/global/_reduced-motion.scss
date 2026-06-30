@@ -1,0 +1,22 @@
+@media (prefers-reduced-motion: reduce) {
+  @for $i from 0 through 12 {
+    .animated-fade-up-#{$i} {
+      animation: none !important;
+    }
+  }
+
+  .ui-skeleton-state__bar,
+  .ui-skeleton-state__avatar {
+    animation: none !important;
+  }
+
+  .ant-skeleton.ant-skeleton-active .ant-skeleton-title,
+  .ant-skeleton.ant-skeleton-active .ant-skeleton-paragraph > li {
+    animation: none !important;
+  }
+
+  #nprogress .bar,
+  #nprogress .peg {
+    transition: none !important;
+  }
+}

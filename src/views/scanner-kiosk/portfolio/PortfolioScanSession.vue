@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { SCAN_WORK_ORDER_STATUS_LABEL } from '@/apis/mark/scanner-work-order'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -7,11 +8,13 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 import DocumentKioskActivationGate from '../components/DocumentKioskActivationGate.vue'
 import { useDocumentKioskBootstrap } from '../composables/useDocumentKioskBootstrap'
 import { useWorkOrderScanFlow } from '../composables/useWorkOrderScanFlow'
+import { useLeaseHeartbeat } from '../core/useLeaseHeartbeat'
 import { usePortfolioScanSession } from './usePortfolioScanSession'
 
 const router = useRouter()
 const session = usePortfolioScanSession()
 const bootstrap = useDocumentKioskBootstrap()
+const lease = useLeaseHeartbeat()
 const scanFlow = useWorkOrderScanFlow({
   taskKind: 'PORTFOLIO_COLLECT',
   businessScene: 'TEACHER_PORTFOLIO',
@@ -34,9 +37,12 @@ const canStart = computed(() =>
     && session.teacherId.value
     && bootstrap.selectedScannerId.value
     && session.portfolioContext.value != null
-    && session.portfolioContext.value.scanAllowed === true,
+    && session.portfolioContext.value.scanAllowed === true
+    && !lease.leaseLost.value,
   ),
 )
+const leaseLostMessage = '派单租约已失效，扫描会话可能已被中断，请返回队列'
+const completedNavigated = ref(false)
 const jobMessage = computed(() => scanFlow.currentJob.value?.message ?? '')
 
 const lifecycleStatusLabel = computed(() => {
@@ -47,7 +53,45 @@ const lifecycleStatusLabel = computed(() => {
   return strictEnumLabel(SCAN_WORK_ORDER_STATUS_LABEL, status, '扫描工单状态')
 })
 
+function handleLeaseLost() {
+  message.warning(leaseLostMessage)
+}
+
+function returnToDispatchQueue(scanCommitted: boolean) {
+  lease.stopHeartbeat()
+  void router.replace({
+    path: '/scanner-kiosk/queue',
+    query: scanCommitted ? { scanCommitted: '1' } : undefined,
+  })
+}
+
+function handleScanCompleted() {
+  if (completedNavigated.value) {
+    return
+  }
+  completedNavigated.value = true
+  if (session.returnTo.value) {
+    lease.stopHeartbeat()
+    const [path, search = ''] = session.returnTo.value.split('?')
+    const params = new URLSearchParams(search)
+    params.set('scanCommitted', '1')
+    const fileNodeId = scanFlow.lifecycle.value?.committedFileNodeId
+    if (fileNodeId) {
+      params.set('scanFileNodeId', fileNodeId)
+    }
+    void router.replace(`${path}?${params.toString()}`)
+    return
+  }
+  if (session.dispatchTicketId.value) {
+    returnToDispatchQueue(true)
+  }
+}
+
 onMounted(async () => {
+  if (!session.dispatchTicketId.value) {
+    void router.replace('/scanner-kiosk')
+    return
+  }
   if (!session.collectMode.value || !session.teacherId.value) {
     void router.replace('/scanner-kiosk')
     return
@@ -68,17 +112,38 @@ watch(
 )
 
 watch(
-  () => scanFlow.isReported.value,
-  reported => {
-    if (!reported || !session.returnTo.value) return
-    const [path, search = ''] = session.returnTo.value.split('?')
-    const params = new URLSearchParams(search)
-    params.set('scanCommitted', '1')
-    const fileNodeId = scanFlow.lifecycle.value?.committedFileNodeId
-    if (fileNodeId) {
-      params.set('scanFileNodeId', fileNodeId)
+  () => [session.dispatchTicketId.value, bootstrap.setup.value?.scannerDeviceId, bootstrap.setup.value?.scannerStationId] as const,
+  ([ticketId, deviceId, stationId]) => {
+    if (ticketId && deviceId && stationId) {
+      lease.startHeartbeat(ticketId, deviceId, stationId, { onLeaseLost: handleLeaseLost })
+      return
     }
-    void router.replace(`${path}?${params.toString()}`)
+    lease.stopHeartbeat()
+  },
+  { immediate: true },
+)
+
+onUnmounted(() => {
+  lease.stopHeartbeat()
+})
+
+watch(
+  () => scanFlow.isReported.value || scanFlow.lifecycle.value?.status === 'COMMITTED',
+  completed => {
+    if (completed) {
+      handleScanCompleted()
+    }
+  },
+)
+
+watch(
+  () => scanFlow.lifecycle.value?.status,
+  status => {
+    if (status !== 'DISCARDED' || !session.dispatchTicketId.value) {
+      return
+    }
+    message.info('已放弃，派单已释放')
+    returnToDispatchQueue(false)
   },
 )
 
@@ -90,6 +155,10 @@ async function handleStart() {
 }
 
 function goBack() {
+  if (session.dispatchTicketId.value) {
+    returnToDispatchQueue(false)
+    return
+  }
   if (session.returnTo.value) {
     void router.replace(session.returnTo.value)
     return
@@ -109,6 +178,8 @@ function goBack() {
       <h1 class="portfolio-scan-session__title">档案袋一体机扫描</h1>
       <UiButton size="sm" variant="ghost" @click="goBack">返回</UiButton>
     </header>
+
+    <p v-if="lease.leaseLost.value" class="portfolio-scan-session__error">{{ leaseLostMessage }}</p>
 
     <section v-if="session.portfolioContext.value" class="portfolio-scan-session__summary">
       <p>采集模式：{{ session.collectModeLabel.value }}</p>

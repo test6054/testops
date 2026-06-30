@@ -449,7 +449,8 @@ watch(
     </template>
 
     <UiCard title="档案袋筛选" class="teacher-archive__bag-filter">
-      <UiFilterBar variant="plain"
+      <UiFilterBar
+        variant="plain"
         v-model="bagFilter"
         :fields="bagFilterFields"
         show-labels

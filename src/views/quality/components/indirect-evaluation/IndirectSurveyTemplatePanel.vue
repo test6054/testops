@@ -658,7 +658,8 @@ defineExpose({
       <UiButton size="sm" @click="openFormCreate">新建问卷</UiButton>
     </template>
 
-    <UiFilterBar variant="plain"
+    <UiFilterBar
+      variant="plain"
       v-model="formFilterModel"
       :fields="formFilterFields"
       @search="handleFormSearch"

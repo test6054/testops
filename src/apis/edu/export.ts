@@ -14,6 +14,12 @@ export enum ExportBusinessType {
   COMPETENCY_MAPPING_MATRIX = 'competency_mapping_matrix',
   /** 达成度报告PDF导出 */
   COMPETENCY_ACHIEVEMENT_REPORT = 'competency_achievement_report',
+  /** 质量评价达成度结果导出 */
+  QUALITY_ACHIEVEMENT_RESULT_EXPORT = 'quality_achievement_result_export',
+  /** 质量评价成绩批次导出 */
+  QUALITY_SCORE_BATCH_EXPORT = 'quality_score_batch_export',
+  /** 质量评价成绩明细导出 */
+  QUALITY_SCORE_RECORD_EXPORT = 'quality_score_record_export',
 }
 
 /**
@@ -42,6 +48,8 @@ export interface ExportJobCreateRequest {
   bizName?: string
   /** 业务关键字（用于文件命名） */
   businessKey?: string
+  /** 业务查询参数（JSON 字符串，传递给业务服务） */
+  queryParams?: string
 }
 
 export interface ExportJobStatusVO {

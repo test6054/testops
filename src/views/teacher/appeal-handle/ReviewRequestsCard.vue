@@ -1,6 +1,7 @@
 <template>
   <section class="appeal-section">
-    <UiFilterBar variant="plain"
+    <UiFilterBar
+      variant="plain"
       v-model="filterModel"
       :fields="filterFields"
       search-text="查询"

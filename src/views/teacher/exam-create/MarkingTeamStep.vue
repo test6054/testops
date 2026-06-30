@@ -42,12 +42,11 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import type { ExamMarkingTeamForm } from './useExamCreate'
 import { onMounted, ref, watch } from 'vue'
 import { TeacherSelector } from '@/components/quality/selectors'
+import { useInjectedExamCreateMarkingTeamForm } from './exam-create-context'
 
 defineProps<{
-  markingTeamForm: ExamMarkingTeamForm
   markingTeamRules: Record<string, Rule[]>
 }>()
 
@@ -56,6 +55,7 @@ const emit = defineEmits<{
   'chief-change': [userId: string | null, nickName: string]
   'reviewers-change': [nickNames: string[]]
 }>()
+const markingTeamForm = useInjectedExamCreateMarkingTeamForm()
 
 const formRef = ref<FormInstance>()
 

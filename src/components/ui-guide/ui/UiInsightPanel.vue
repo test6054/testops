@@ -501,7 +501,7 @@ const getToneLabel = (tone?: BadgeTone) => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ui-insight-panel__summary-card {
     grid-template-columns: minmax(0, 1fr);
   }

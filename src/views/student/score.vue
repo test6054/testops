@@ -203,10 +203,10 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError } from '@/utils/error-handler'
-import { formatDateTime } from '@/utils/format'
+import { formatDateTime, formatScore } from '@/utils/format'
+import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'StudentScore' })
@@ -301,7 +301,7 @@ const insightItems = computed(() => {
   // 趋势卡：仅在至少 2 次发布后展示
   if (scoreTrend.value) {
     const diff = scoreTrend.value.diff
-    const absDiff = Math.abs(diff).toFixed(2)
+    const absDiff = formatScore(Math.abs(diff), 'score')
     if (diff > 0) {
       items.push({
         key: 'trend',
@@ -426,7 +426,7 @@ function requirePublishedScore(item: StudentExamItemVO): number {
 }
 
 function formatPublishedScore(item: StudentExamItemVO): string {
-  return requirePublishedScore(item).toFixed(2)
+  return formatScore(requirePublishedScore(item), 'score')
 }
 
 function requirePublishedTime(item: StudentExamItemVO): string {

@@ -1,3 +1,4 @@
+import type {Ref} from 'vue';
 import type {
   DocumentStartScanJobRequest,
   ScanJobResponse,
@@ -10,7 +11,7 @@ import type {
   ScanWorkOrderDiscardRequest,
   ScanWorkOrderLifecycleVO,
 } from '@/apis/mark/scanner-work-order'
-import { computed, onBeforeUnmount, ref, type Ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import {
   cancelScanJob,
   deleteScanJob,

@@ -1,9 +1,4 @@
 import type { PortfolioEvaluationTaskStatus } from '@/apis/portfolio/enums'
-import type {
-  AiResultEvidenceItem,
-  AiResultImprovementItem,
-  AiResultIssueItem,
-} from '@/apis/quality/ai-result'
 import type { AiTaskStatus } from '@/apis/quality/types'
 /**
  * 教学档案袋 API 共享类型 - 对应 edu-quality 标准包（controller/model 扁平化后）
@@ -226,6 +221,8 @@ export interface PortfolioTeacherDetailVO {
   mobile?: string
   departmentId?: string
   departmentName?: string
+  /** 专业 ID（后端由学术档案 majorId 归并，档案袋 AI 提交 programId 同源） */
+  programId?: string
   title?: string
   schoolId?: string
   schoolName?: string
@@ -338,7 +335,8 @@ export interface PortfolioAiAskRequest {
   teacherId: string
   fileNodeId: string
   userQuestion: string
-  materialId?: string
+  materialId: string
+  materialType: PortfolioMaterialType
   programId?: string
 }
 
@@ -347,11 +345,112 @@ export interface PortfolioAiPolicyCheckRequest {
   policyClauseText: string
   materialType: PortfolioMaterialType
   fileNodeId?: string
+  /** 带 fileNodeId 的政策核验须传已登记材料 materialId */
   materialId?: string
   templateCode?: string
   categoryId?: string
   programId?: string
   teacherProfileSummary?: string
+}
+
+/** 驾驶舱指标问数 - PortfolioAiCockpitAskRequest */
+export interface PortfolioAiCockpitAskRequest {
+  departmentId?: string
+  userQuestion: string
+}
+
+/** 教学档案袋 AI 分析类型 - PortfolioAiAnalysisTypeEnum */
+export type PortfolioAiAnalysisType = 'POLICY_MATCH' | 'MATERIAL_QA' | 'COCKPIT_ASK' | 'REPORT_GENERATE'
+
+export const PORTFOLIO_AI_ANALYSIS_TYPE_LABEL: Record<PortfolioAiAnalysisType, string> = {
+  POLICY_MATCH: '政策条款匹配',
+  MATERIAL_QA: '材料智能问数',
+  COCKPIT_ASK: '驾驶舱指标问数',
+  REPORT_GENERATE: '报告初稿生成',
+}
+
+/** AI 分析审核状态 - PortfolioAiAnalysisReviewStatusEnum */
+export type PortfolioAiAnalysisReviewStatus = 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED'
+
+export const PORTFOLIO_AI_ANALYSIS_REVIEW_STATUS_LABEL: Record<PortfolioAiAnalysisReviewStatus, string> = {
+  PENDING_REVIEW: '待复核',
+  APPROVED: '已通过',
+  REJECTED: '已驳回',
+}
+
+/** AI 分析问题条目 - PortfolioAiAnalysisIssueVO */
+export interface PortfolioAiAnalysisIssueItem {
+  issueTitle: string
+  issueDescription?: string
+  severity?: string
+}
+
+/** AI 分析证据条目 - PortfolioAiAnalysisEvidenceVO */
+export interface PortfolioAiAnalysisEvidenceItem {
+  evidenceTitle: string
+  evidenceSource?: string
+  evidenceContent: string
+}
+
+/** AI 分析建议条目 - PortfolioAiAnalysisSuggestionVO */
+export interface PortfolioAiAnalysisSuggestionItem {
+  suggestionTitle: string
+  suggestionContent: string
+  priority?: string
+}
+
+/** 政策匹配结论 - PortfolioPolicyMatchConclusionEnum */
+export type PortfolioPolicyMatchConclusion = 'MATCHED' | 'PARTIAL' | 'NOT_MATCHED' | 'INSUFFICIENT_EVIDENCE'
+
+export const PORTFOLIO_POLICY_MATCH_CONCLUSION_LABEL: Record<PortfolioPolicyMatchConclusion, string> = {
+  MATCHED: '已匹配',
+  PARTIAL: '部分匹配',
+  NOT_MATCHED: '不匹配',
+  INSUFFICIENT_EVIDENCE: '证据不足',
+}
+
+export const PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE: Record<PortfolioPolicyMatchConclusion, BadgeTone> = {
+  MATCHED: 'green',
+  PARTIAL: 'blue',
+  NOT_MATCHED: 'orange',
+  INSUFFICIENT_EVIDENCE: 'gray',
+}
+
+/** 驾驶舱 KPI 汇总 - PortfolioCockpitSummaryVO */
+export interface PortfolioCockpitSummaryVO {
+  departmentId?: string
+  departmentName?: string
+  teacherCount?: number
+  dualTeacherCount?: number
+  keyTeacherCount?: number
+  achievementTotalCount?: number
+  honorTotalCount?: number
+  tenantEnabledIndicatorCount?: number
+}
+
+/** 驾驶舱问数教师行 - PortfolioCockpitAskTeacherRow */
+export interface PortfolioCockpitAskTeacherRow {
+  teacherUserId?: string
+  teacherNumber?: string
+  nickName?: string
+  departmentName?: string
+  metricValue?: string
+  metricCode?: string
+}
+
+/** 驾驶舱问数结构化结果 - PortfolioCockpitAskResultPayload */
+export interface PortfolioCockpitAskResultPayload {
+  queryPlan?: {
+    planType?: string
+    indicatorCode?: string
+    operator?: string
+    threshold?: number
+    refusalReason?: string
+    narrativeSummary?: string
+  }
+  teacherRows?: PortfolioCockpitAskTeacherRow[]
+  indicatorRefs?: string[]
+  drillLinks?: string[]
 }
 
 export interface PortfolioArchiveCategoryListRequest {
@@ -469,6 +568,7 @@ export type PortfolioAiTaskType
     | 'PORTFOLIO_DOCUMENT_PARSE'
     | 'PORTFOLIO_POLICY_MATCH'
     | 'PORTFOLIO_MATERIAL_QA'
+    | 'PORTFOLIO_COCKPIT_ASK'
     | 'PORTFOLIO_REPORT_GENERATE'
     | 'PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN'
 
@@ -477,6 +577,7 @@ export const PORTFOLIO_AI_TASK_TYPE_LABEL: Record<PortfolioAiTaskType, string> =
   PORTFOLIO_DOCUMENT_PARSE: '文档结构化抽取',
   PORTFOLIO_POLICY_MATCH: '政策条款匹配',
   PORTFOLIO_MATERIAL_QA: '材料智能问数',
+  PORTFOLIO_COCKPIT_ASK: '驾驶舱指标问数',
   PORTFOLIO_REPORT_GENERATE: '报告初稿生成',
   PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN: '优秀教师推荐 AI 解释',
 }
@@ -529,7 +630,7 @@ export const PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE = 'PORTFOLIO_DEFAULT_REVIEW'
 /** 学校复审审核流编码（敏感材料） */
 export const PORTFOLIO_SCHOOL_REVIEW_FLOW_CODE = 'PORTFOLIO_SCHOOL_REVIEW'
 
-/** 档案袋 AI 任务提交 - 含报告生成 */
+/** 档案袋 AI 任务提交 - 含报告生成；OCR/文档抽取须先登记材料库并传 materialId */
 export interface PortfolioAiJobSubmitRequest {
   taskType: PortfolioAiTaskType
   teacherId: string
@@ -695,13 +796,13 @@ export interface PortfolioAiAnalysisSummaryVO {
   aiJobId?: string
   teacherId?: string
   fileNodeId?: string
-  analysisType?: string
-  resultTitle?: string
-  summary?: string
+  analysisType: PortfolioAiAnalysisType
+  resultTitle: string
+  summary: string
   conclusionCode?: string
   reportScene?: string
   reportPeriodLabel?: string
-  reviewStatus?: string
+  reviewStatus: PortfolioAiAnalysisReviewStatus
   taskStatus?: AiTaskStatus
   taskFailurePhase?: string
   taskFailureReason?: string
@@ -716,9 +817,20 @@ export interface PortfolioAiAnalysisSummaryVO {
 export interface PortfolioAiAnalysisDetailVO extends PortfolioAiAnalysisSummaryVO {
   policyClauseDigest?: string
   draftMarkdown?: string
-  issueItems?: AiResultIssueItem[]
-  evidenceItems?: AiResultEvidenceItem[]
-  suggestionItems?: AiResultImprovementItem[]
+  issueItems: PortfolioAiAnalysisIssueItem[]
+  evidenceItems: PortfolioAiAnalysisEvidenceItem[]
+  suggestionItems: PortfolioAiAnalysisSuggestionItem[]
+}
+
+/** 教学档案袋 AI 分析结果分页 - PortfolioAiAnalysisPageRequest */
+export interface PortfolioAiAnalysisPageRequest extends QueryDto {
+  teacherId?: string
+  analysisType?: PortfolioAiAnalysisType
+  reviewStatus?: PortfolioAiAnalysisReviewStatus
+  taskStatus?: AiTaskStatus
+  searchText?: string
+  /** 驾驶舱问数院系 scope；仅 COCKPIT_ASK 时生效 */
+  departmentId?: string
 }
 
 export interface PortfolioReviewTaskPageRequest extends QueryDto {

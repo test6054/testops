@@ -97,6 +97,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherArchiveVolumeDetail: () => import('@/views/teacher/archive-volume/archive-volume-detail.vue'),
   TeacherArchiveVolumeCreateOffline: () => import('@/views/teacher/archive-volume/archive-volume-create-offline.vue'),
   TeacherArchiveVolumeStatistics: () => import('@/views/teacher/archive-volume/archive-volume-statistics.vue'),
+  TeacherArchiveVolumeReadinessMatrix: () => import('@/views/teacher/archive-volume/archive-volume-readiness-matrix.vue'),
   TeacherArchiveVolumeAudit: () => import('@/views/teacher/archive-volume/archive-volume-audit.vue'),
   TeacherArchiveVolumeLedger: () => import('@/views/teacher/archive-volume/archive-volume-ledger.vue'),
   TeacherArchiveVolumeSearch: () => import('@/views/teacher/archive-volume-search.vue'),
@@ -145,6 +146,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   PortfolioTemplateAdmin: () => import('@/views/portfolio/template-admin.vue'),
   PortfolioTeacherDirectory: () => import('@/views/portfolio/teacher-directory.vue'),
   PortfolioAiCandidateConfirm: () => import('@/views/portfolio/ai-candidate-confirm.vue'),
+  PortfolioAiOrchestration: () => import('@/views/portfolio/ai-orchestration.vue'),
   PortfolioDepartmentReview: () => import('@/views/portfolio/department-review.vue'),
   PortfolioIndicatorPlatform: () => import('@/views/portfolio/indicator-platform-admin.vue'),
   PortfolioIndicatorTenant: () => import('@/views/portfolio/indicator-tenant-admin.vue'),
@@ -153,6 +155,8 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   PortfolioIndicatorHistory: () => import('@/views/portfolio/indicator-history.vue'),
   PortfolioIndicatorOps: () => import('@/views/portfolio/indicator-ops-admin.vue'),
   PortfolioIndicatorDashboard: () => import('@/views/portfolio/indicator-dashboard-admin.vue'),
+  PortfolioDepartmentCockpit: () => import('@/views/portfolio/department-cockpit.vue'),
+  PortfolioSchoolCockpit: () => import('@/views/portfolio/school-cockpit.vue'),
   PortfolioTeacherIndicator: () => import('@/views/portfolio/teacher-indicator.vue'),
 }
 

@@ -9,6 +9,7 @@
         <TeamOutlined />
         <span>考试范围</span>
         <UiTag v-if="rosterLocked" tone="orange" size="sm">已有扫描</UiTag>
+        <UiTag v-else-if="archiveClassScopeRecoveryAllowed" tone="orange" size="sm">关考后可修正</UiTag>
         <UiTag v-else-if="classScopeReadOnly" tone="gray" size="sm">只读</UiTag>
       </template>
       <div v-if="classScopeReadOnly" class="roster-class-tags">
@@ -51,12 +52,20 @@
       </template>
     </UiAlertStrip>
 
+    <UiAlertStrip
+      v-if="archiveClassScopeRecoveryAllowed"
+      tone="warning"
+      title="自动建卷失败，可修正参考班级"
+      description="关考后不可增删考生，仅可修正参考班级。保存后系统将自动重触发建卷。"
+      dense
+    />
+
     <a-card :bordered="false" class="detail-table-card info-card roster-page__table-card">
       <template #title>
         <UserOutlined />
         <span>考生名册</span>
       </template>
-      <template v-if="!classScopeReadOnly" #extra>
+      <template v-if="candidateRosterWriteAllowed" #extra>
         <a-space>
           <UiButton
             size="sm"
@@ -113,39 +122,39 @@
         bordered
         @page-change="handlePageChange"
       >
-        <template #bodyCell="{ column, record }">
+        <template #bodyCell="{ column, index }">
           <template v-if="column.key === 'student'">
             <div class="roster-student">
-              <span class="roster-student__name">{{ (record as CandidateRow).studentName }}</span>
-              <span class="roster-student__no">{{ (record as CandidateRow).studentNo }}</span>
+              <span class="roster-student__name">{{ tableCandidates[index].studentName }}</span>
+              <span class="roster-student__no">{{ tableCandidates[index].studentNo }}</span>
             </div>
           </template>
           <template v-else-if="column.key === 'className'">
             <span class="roster-cell roster-cell--muted">
-              {{ (record as CandidateRow).className }}
+              {{ tableCandidates[index].className }}
             </span>
           </template>
-            <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiConfirmPopover
-                  v-if="canRemoveCandidate(record as CandidateRow)"
-                  title="确认移除该考生？"
-                  description="移除后需重新加入名册。"
-                  danger
-                  @confirm="removeCandidate((record as CandidateRow).studentUserId)"
-                >
-                  <UiTextAction tone="danger">移除</UiTextAction>
-                </UiConfirmPopover>
-                <span
-                  v-else-if="(record as CandidateRow).removable === false"
-                  class="muted"
-                  :title="(record as CandidateRow).removalBlockReason"
-                >
-                  不可移除
-                </span>
-                <span v-else class="muted">—</span>
-              </div>
-            </template>
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <UiConfirmPopover
+                v-if="canRemoveCandidate(tableCandidates[index])"
+                title="确认移除该考生？"
+                description="移除后需重新加入名册。"
+                danger
+                @confirm="removeCandidate(tableCandidates[index].studentUserId)"
+              >
+                <UiTextAction tone="danger">移除</UiTextAction>
+              </UiConfirmPopover>
+              <span
+                v-else-if="!tableCandidates[index].removable"
+                class="muted"
+                :title="tableCandidates[index].removalBlockReason"
+              >
+                不可移除
+              </span>
+              <span v-else class="muted">—</span>
+            </div>
+          </template>
         </template>
       </UiDataTable>
     </a-card>
@@ -220,6 +229,7 @@ import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   getExamDetail,
 } from '@/apis/mark/exam'
@@ -261,9 +271,12 @@ const ROSTER_CANDIDATE_EXPORT_PAGE_SIZE = 100
 
 const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
+const router = useRouter()
 
 const classIds = ref<string[]>([])
 const classScopePersisted = ref(true)
+const examStatus = ref<'ACTIVE' | 'CLOSED' | null>(null)
+const archiveClassScopeRecoveryAllowed = ref(false)
 const examClassRefs = ref<ExamClassRefVO[]>([])
 const classSelectOptions = ref<Array<{ label: string, value: string }>>([])
 const classOptionsLoading = ref(false)
@@ -312,7 +325,21 @@ const singleAddClassId = ref<string | undefined>(undefined)
 const singleAddStudentUserId = ref<string | null>(null)
 const singleAddStudent = ref<UserDto | null>(null)
 
-const classScopeReadOnly = computed(() => rosterWriteForbidden.value)
+const classScopeReadOnly = computed(() => {
+  if (rosterWriteForbidden.value) {
+    return true
+  }
+  if (examStatus.value === 'CLOSED') {
+    return !archiveClassScopeRecoveryAllowed.value
+  }
+  return false
+})
+
+const candidateRosterWriteAllowed = computed(() =>
+  examStatus.value !== 'CLOSED'
+  && !classScopeReadOnly.value
+  && !rosterLocked.value,
+)
 
 const showInferredClassScopeNotice = computed(() =>
   !classScopeReadOnly.value && !classScopePersisted.value && classIds.value.length > 0,
@@ -490,6 +517,8 @@ async function loadExamContext(): Promise<void> {
       return
     }
     rosterLocked.value = locked
+    examStatus.value = detail.status
+    archiveClassScopeRecoveryAllowed.value = detail.archiveAutoCreateClassScopeRecoveryAllowed === true
     examClassRefs.value = [...(detail.classRefs ?? [])]
     candidateTotal.value = detail.candidateCount ?? 0
     classIds.value = [...(detail.classIds ?? [])]
@@ -741,7 +770,7 @@ async function handleSingleAddSubmit(): Promise<void> {
 }
 
 function canRemoveCandidate(record: CandidateRow): boolean {
-  if (classScopeReadOnly.value) {
+  if (!candidateRosterWriteAllowed.value) {
     return false
   }
   return record.removable !== false
@@ -786,6 +815,14 @@ watch(classIds, (ids) => {
       .then(async () => {
         lastSavedClassIds.value = [...ids]
         classScopePersisted.value = true
+        if (archiveClassScopeRecoveryAllowed.value) {
+          message.success('班级范围已保存，系统正在重新触发自动建卷')
+          void router.push({
+            name: 'TeacherExamWorkspaceArchivePackage',
+            params: { examId: selectedExamId.value! },
+            query: { autoCreatePoll: '1' },
+          })
+        }
         examClassRefs.value = ids.map((classId) => {
           const existing = examClassRefs.value.find((item) => item.classId === classId)
           const option = classSelectOptions.value.find((item) => item.value === classId)

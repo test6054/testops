@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PortfolioAiAnalysisDetailVO, PortfolioReportScene, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { PORTFOLIO_REPORT_SCENE_OPTIONS } from '@/apis/portfolio/types'
@@ -10,6 +10,10 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
+import {
+  portfolioTeacherSelectOptionsFromSummaries,
+  resolvePortfolioTeacherDisplayName,
+} from '@/utils/portfolio-teacher-display'
 import { readPageList } from '@/utils/page-result'
 
 const loading = ref(false)
@@ -22,6 +26,8 @@ const form = reactive({
   reportPeriodLabel: `${new Date().getFullYear()} 年度`,
 })
 
+const teacherSelectOptions = computed(() => portfolioTeacherSelectOptionsFromSummaries(teachers.value))
+
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
@@ -30,8 +36,11 @@ async function loadTeachers() {
   try {
     const page = await portfolioTeacherApi.page({ pageNum: 1, pageSize: 100 })
     teachers.value = readPageList(page, '加载教师名册失败')
-    if (!form.teacherId && teachers.value.length > 0) {
-      form.teacherId = teachers.value[0].userId
+    if (!form.teacherId) {
+      const firstOption = portfolioTeacherSelectOptionsFromSummaries(teachers.value)[0]
+      if (firstOption) {
+        form.teacherId = firstOption.value
+      }
     }
   }
   catch (error) {
@@ -39,9 +48,16 @@ async function loadTeachers() {
   }
 }
 
-function selectedTeacherName() {
+function selectedTeacherName(): string {
   const teacher = teachers.value.find(item => item.userId === form.teacherId)
-  return teacher?.nickName || teacher?.userName || form.teacherId
+  if (!teacher) {
+    throw new Error('所选教师不存在')
+  }
+  const displayName = resolvePortfolioTeacherDisplayName(teacher)
+  if (!displayName) {
+    throw new Error('所选教师缺少可展示姓名')
+  }
+  return displayName
 }
 
 async function pollAnalysis(taskId: string) {
@@ -114,16 +130,13 @@ onMounted(loadTeachers)
 <template>
   <StageWorkbenchShell>
     <template #context>
-  <ContextBar show-title layout="workbench" title="文本分析报告" />
-</template>
+      <ContextBar show-title layout="workbench" title="文本分析报告" />
+    </template>
     <UiCard title="生成参数">
       <div class="toolbar">
         <a-select
           v-model:value="form.teacherId"
-          :options="teachers.map(item => ({
-            value: item.userId,
-            label: item.nickName || item.userName || item.userId,
-          }))"
+          :options="teacherSelectOptions"
           placeholder="选择教师"
           style="width: 180px"
           show-search

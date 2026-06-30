@@ -58,6 +58,10 @@ export interface ExamScoreSummaryQueryRequest extends QueryDto {
   finalScoreStatus?: FinalScoreStatusCode
   /** 学号或姓名关键词（模糊匹配） */
   keyword?: string
+  /** 参考班级 ID */
+  classId?: string
+  /** 仅查询已绑定但未发布最终成绩的试卷 */
+  unpublishedBoundOnly?: boolean
 }
 
 /** 考试成绩汇总项 - 对应 ExamScoreSummaryItemResponse */

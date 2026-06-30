@@ -169,6 +169,24 @@ export const constantRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/scanner-kiosk/queue',
+    name: 'ScannerKioskDispatchQueue',
+    component: () => import('@/views/scanner-kiosk/KioskDispatchQueue.vue'),
+    meta: {
+      title: '扫描待办队列',
+      requiresAuth: false,
+    },
+  },
+  {
+    path: '/scanner-kiosk/dispatch/:ticketId',
+    name: 'ScannerKioskDispatchLanding',
+    component: () => import('@/views/scanner-kiosk/KioskDispatchLanding.vue'),
+    meta: {
+      title: '派单任务',
+      requiresAuth: false,
+    },
+  },
+  {
     path: '/survey/:token',
     name: 'PublicSurvey',
     component: () => import('@/views/public/survey-fill.vue'),

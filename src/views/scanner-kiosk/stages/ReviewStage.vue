@@ -18,6 +18,9 @@ import {
   WarningFilled,
 } from '@ant-design/icons-vue'
 import { computed, watch } from 'vue'
+import { TASK_STATUS_LABEL } from '@/apis/mark/task-status'
+import type { TaskStatusCode } from '@/apis/mark/task-status'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
@@ -31,6 +34,7 @@ interface ReviewItem {
   description: string
   detail?: string
   status?: string
+  processingStatus?: TaskStatusCode
   source: 'job' | 'ledger'
   localPageId?: string
 }
@@ -70,6 +74,7 @@ const ledgerAttentions = computed<ReviewItem[]>(() => {
       detail: item.operatorName
         ? `鎿嶄綔浜?${item.operatorName} 路 ${workflow.formatTime(item.occurredAt)}`
         : workflow.formatTime(item.occurredAt),
+      processingStatus: ledger.attentionItems.find((att) => att.pageId === item.localPageId)?.processingStatus,
       source: 'ledger',
       localPageId: item.localPageId,
     }),
@@ -94,12 +99,18 @@ const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
       title: `${workflow.scanPageDisplayTitleByNo(pageNo)} 路 ${workflow.attentionTypeText(att.attentionType)}`,
       description: att.diagnostic || workflow.registrationStatusText(pageItem?.registrationStatus ?? 'PENDING'),
       detail: workflow.formatTime(att.updateTime),
+      processingStatus: att.processingStatus,
       source: 'ledger',
       localPageId: att.pageId,
     })
   }
   return items
 })
+
+function processingStatusLabel(status?: TaskStatusCode) {
+  if (!status) return ''
+  return strictEnumLabel(TASK_STATUS_LABEL, status, '处理任务状态')
+}
 
 const reviewItems = computed(() => {
   const merged = [...failedPages.value, ...ledgerAttentions.value, ...ledgerAttentionTodos.value]
@@ -274,6 +285,7 @@ const reviewBoundBatchId = computed(
             <div class="issue-item-text">
               <strong>{{ item.title }}</strong>
               <span>{{ item.description }}</span>
+              <small v-if="item.processingStatus">处理任务：{{ processingStatusLabel(item.processingStatus) }}</small>
               <small v-if="item.detail">{{ item.detail }}</small>
             </div>
           </button>

@@ -59,7 +59,7 @@
         <MarkBarSection
           v-if="record"
           title="错因占比分布"
-          hint="悬停查看各错因占比与说明"
+          :hint="clusterChartHint"
           :item-count="clusterBarItems.length"
           :option="clusterChartOption"
           height="300px"
@@ -129,6 +129,7 @@ import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
+import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { errorCauseToBarItems } from '@/utils/mark-statistics-chart'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
@@ -143,6 +144,11 @@ const generating = ref(false)
 
 const clusterItems = computed(() => record.value?.clusterItems ?? [])
 const clusterBarItems = computed(() => errorCauseToBarItems(record.value?.clusterItems ?? []))
+
+const clusterChartHint = computed(() => mergeChartHint(
+  '悬停查看各错因占比与说明',
+  buildBarChartInsight(clusterBarItems.value),
+))
 
 const { chartOption: clusterChartOption } = useChartOption(() =>
   buildCategoryBarChartOption(clusterBarItems.value, {

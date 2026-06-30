@@ -355,7 +355,7 @@ const handleItemClick = (item: UiRankListItem) => {
   border-top: 1px solid var(--dp-border, #e5e7eb);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ui-rank-list-card__item {
     grid-template-columns: 40px minmax(0, 1fr);
   }

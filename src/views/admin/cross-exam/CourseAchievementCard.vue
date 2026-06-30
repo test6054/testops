@@ -84,6 +84,7 @@
         <MarkTrendSection
           v-if="record"
           title="参与考试得分走势"
+          :hint="examTrendHint"
           :point-count="examStatTrendPoints.length"
           :option="examTrendChartOption"
           height="280px"
@@ -94,7 +95,7 @@
         <MarkBarSection
           v-if="record"
           title="分目标达成率"
-          hint="悬停查看各目标达成率与说明"
+          :hint="achievementBarHint"
           :item-count="achievementBarItems.length"
           :option="achievementBarChartOption"
           height="280px"
@@ -174,12 +175,17 @@ import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handl
 import { formatDateTime } from '@/utils/format'
 import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import {
+  buildBarChartInsight,
+  buildTrendChartInsight,
+  mergeChartHint,
+} from '@/utils/mark-chart-insights'
+import {
   achievementItemsToBarItems,
   examStatSnapshotsToTrendPoints,
 } from '@/utils/mark-statistics-chart'
 import { rateTone } from '@/utils/score-tone'
+import { toSignalMetrics, computeTrendPointDelta } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 
 defineOptions({ name: 'CourseAchievementCard' })
 
@@ -209,6 +215,13 @@ const examStatTrendPoints = computed(() =>
 const achievementBarItems = computed(() =>
   achievementItemsToBarItems(record.value?.achievementItems ?? []),
 )
+
+const examTrendHint = computed(() => buildTrendChartInsight(examStatTrendPoints.value))
+
+const achievementBarHint = computed(() => mergeChartHint(
+  '悬停查看各目标达成率与说明',
+  buildBarChartInsight(achievementBarItems.value, { passLine: 60, passLineLabel: '达标线' }),
+))
 
 const examTrendLastValue = computed(() => {
   const points = examStatTrendPoints.value
@@ -263,7 +276,14 @@ const achievementMetrics = computed((): UiStatPanelItem[] => {
   ]
 })
 
-const achievementSignalMetrics = computed(() => toSignalMetrics(achievementMetrics.value))
+const achievementSignalMetrics = computed(() => {
+  const scoreRateTrend = computeTrendPointDelta(examStatTrendPoints.value)
+  return toSignalMetrics(achievementMetrics.value).map((metric) => (
+    metric.key === 'overallAchievementRate'
+      ? { ...metric, trend: scoreRateTrend, trendPolarity: 'positive' as const }
+      : metric
+  ))
+})
 
 const selectedCourseIds = computed(() =>
   Array.from(new Set(selectedExams.value.map((exam) => exam.courseId).filter(Boolean))),

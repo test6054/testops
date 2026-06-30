@@ -355,7 +355,8 @@ onActivated(() => {
         <UiButton size="sm" @click="openCreate">新建评价口径</UiButton>
       </template>
 
-      <UiFilterBar variant="plain"
+      <UiFilterBar
+        variant="plain"
         v-model="listFilterForm"
         :fields="filterFields"
         show-labels

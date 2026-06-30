@@ -186,6 +186,13 @@ const hasHeader = computed(() => {
   100% { background-position: 0 50%; }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .ui-skeleton-state__bar,
+  .ui-skeleton-state__avatar {
+    animation: none !important;
+  }
+}
+
 @media (max-width: 900px) {
   .ui-skeleton-state__cards {
     grid-template-columns: 1fr;

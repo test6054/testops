@@ -336,11 +336,11 @@ onMounted(() => {
 
       // 禁用状态
       &.disabled {
-        color: var(--ant-color-text-quaternary);
+        color: var(--dp-text-disabled);
         cursor: not-allowed;
 
         &:hover {
-          color: var(--ant-color-text-quaternary);
+          color: var(--dp-text-disabled);
         }
       }
     }

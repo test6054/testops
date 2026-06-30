@@ -90,8 +90,8 @@ onMounted(loadPage)
 <template>
   <StageWorkbenchShell>
     <template #context>
-  <ContextBar show-title layout="workbench" title="图书借阅" />
-</template>
+      <ContextBar show-title layout="workbench" title="图书借阅" />
+    </template>
     <UiCard>
       <div v-if="stats" class="stats">
         在借 {{ stats.activeBorrowCount }} 册 · 逾期 {{ stats.overdueCount }} 册

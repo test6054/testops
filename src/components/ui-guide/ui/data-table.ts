@@ -23,6 +23,9 @@
  * - 操作列在 compact 视口下改为纵向堆叠，触控目标 ≥44px。
  */
 import type { ColumnsType, ColumnType, TableProps } from 'ant-design-vue/es/table'
+import { UI_DATA_TABLE_VIEWPORT } from '@/constants/breakpoints'
+
+export { UI_DATA_TABLE_VIEWPORT }
 
 /** 分页模式：server 走后端分页；client 组件内切片；none 不展示分页栏 */
 export type UiDataTablePaginationMode = 'server' | 'client' | 'none'
@@ -81,11 +84,6 @@ export const UI_DATA_TABLE_EMPTY_PRESETS: Record<UiDataTableEmptyKind, UiDataTab
     description: '请调整筛选条件后重试。',
   },
 }
-
-export const UI_DATA_TABLE_VIEWPORT = {
-  md: 768,
-  lg: 992,
-} as const
 
 /** 推断时始终保留的主列 key */
 const RESPONSIVE_ALWAYS_VISIBLE_KEYS = new Set([

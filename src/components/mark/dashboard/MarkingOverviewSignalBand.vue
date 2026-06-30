@@ -42,8 +42,8 @@ const metrics = computed<SignalMetric[]>(() => {
 
   const pendingExceptionCount = progress
     ? (progress.scanAttentionCount ?? 0)
-      + (progress.pendingReviewTaskCount ?? 0)
-      + (progress.pendingGradeCount ?? 0)
+    + (progress.pendingReviewTaskCount ?? 0)
+    + (progress.pendingGradeCount ?? 0)
     : dash
 
   return [
@@ -67,6 +67,7 @@ const metrics = computed<SignalMetric[]>(() => {
       value: progress ? markingPercent : dash,
       unit: progress ? '%' : undefined,
       helper: totalQuestions > 0 ? `共 ${totalQuestions.toLocaleString('zh-CN')} 题` : '暂无题目',
+      trendPolarity: 'positive',
     },
     {
       key: 'exceptions',
@@ -75,6 +76,7 @@ const metrics = computed<SignalMetric[]>(() => {
       unit: progress ? '项' : undefined,
       tone: typeof pendingExceptionCount === 'number' && pendingExceptionCount > 0 ? 'red' : 'gray',
       helper: typeof pendingExceptionCount === 'number' && pendingExceptionCount > 0 ? '需关注' : '暂无积压',
+      trendPolarity: 'negative',
     },
     {
       key: 'unpublished',
@@ -83,6 +85,7 @@ const metrics = computed<SignalMetric[]>(() => {
       unit: m ? '份' : undefined,
       tone: (m?.confirmedUnpublishedScoreCount ?? 0) > 0 ? 'orange' : 'gray',
       helper: (m?.confirmedUnpublishedScoreCount ?? 0) > 0 ? '已确认未发布' : '暂无待发布',
+      trendPolarity: 'negative',
     },
   ]
 })

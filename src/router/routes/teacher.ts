@@ -12,6 +12,7 @@ import { RoleEnum } from '@/utils/permission'
 const TEACHER_ROLES = [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER]
 const ALL_TEACHER_ROLES = [RoleEnum.SUPER_ADMIN, ...TEACHER_ROLES]
 const SUPER_ADMIN_ROLES = [RoleEnum.SUPER_ADMIN]
+const SCANNER_ADMIN_ROLES = [RoleEnum.CROP_ADMIN, RoleEnum.SUPER_ADMIN]
 
 export const teacherRoutes: RouteRecordRaw[] = [
   {
@@ -107,6 +108,18 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'archive-volumes/readiness',
+        name: 'TeacherArchiveVolumeReadinessMatrix',
+        component: () => import('@/views/teacher/archive-volume/archive-volume-readiness-matrix.vue'),
+        meta: {
+          title: '迎评就绪度矩阵',
+          roles: TEACHER_ROLES,
+          hideInMenu: true,
+          keepAlive: true,
+          activeMenu: '/teacher/archive-volumes',
+        },
+      },
+      {
         path: 'archive-volumes/ledger',
         name: 'TeacherArchiveVolumeLedger',
         component: () => import('@/views/teacher/archive-volume/archive-volume-ledger.vue'),
@@ -152,6 +165,66 @@ export const teacherRoutes: RouteRecordRaw[] = [
           hideInMenu: true,
           noCache: true,
           activeMenu: '/teacher/archive-volumes',
+        },
+      },
+      {
+        path: 'scanner-exception-dashboard',
+        name: 'TeacherScannerExceptionDashboard',
+        component: () => import('@/views/teacher/scanner-exception-dashboard.vue'),
+        meta: {
+          title: '扫描异常看板',
+          roles: TEACHER_ROLES,
+          icon: 'warning',
+          hideInMenu: false,
+          keepAlive: true,
+        },
+      },
+      {
+        path: 'scanner-operation-logs',
+        name: 'TeacherScannerOperationLogs',
+        component: () => import('@/views/teacher/scanner-operation-logs.vue'),
+        meta: {
+          title: '扫描操作日志',
+          roles: TEACHER_ROLES,
+          icon: 'file-text',
+          hideInMenu: false,
+          keepAlive: true,
+        },
+      },
+      {
+        path: 'scanner-ops',
+        name: 'TeacherScannerOpsDashboard',
+        component: () => import('@/views/teacher/scanner-ops/ScannerOpsDashboard.vue'),
+        meta: {
+          title: '扫描运营看板',
+          roles: TEACHER_ROLES,
+          icon: 'bar-chart',
+          hideInMenu: false,
+          keepAlive: true,
+        },
+      },
+      {
+        path: 'scanner-agent-releases',
+        name: 'TeacherScannerAgentReleases',
+        component: () => import('@/views/teacher/scanner-agent-releases.vue'),
+        meta: {
+          title: 'Agent 版本发布',
+          roles: SCANNER_ADMIN_ROLES,
+          icon: 'cloud-upload',
+          hideInMenu: false,
+          keepAlive: true,
+        },
+      },
+      {
+        path: 'scanner-operator-grants',
+        name: 'TeacherScannerOperatorGrants',
+        component: () => import('@/views/teacher/scanner-operator-grants.vue'),
+        meta: {
+          title: '扫描员授权',
+          roles: TEACHER_ROLES,
+          icon: 'team',
+          hideInMenu: false,
+          keepAlive: true,
         },
       },
       {
