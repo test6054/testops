@@ -59,7 +59,6 @@
         <a-select
           v-model:value="examForm.semester"
           placeholder="选择学期"
-          allow-clear
           :options="SemesterOptions"
         />
       </a-form-item>

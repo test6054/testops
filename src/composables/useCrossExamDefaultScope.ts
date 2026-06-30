@@ -10,7 +10,7 @@ export function pickExamIdsFromRecentSemesters(
   const semesterCodes = new Set<string>()
   exams.forEach((exam) => {
     if (exam.academicYear && exam.semester) {
-      semesterCodes.add(`${exam.academicYear}-${exam.semester}`)
+      semesterCodes.add(`${exam.academicYear}_${exam.semester}`)
     }
   })
 
@@ -24,7 +24,7 @@ export function pickExamIdsFromRecentSemesters(
   return exams
     .filter((exam) => {
       if (!exam.academicYear || !exam.semester) return false
-      return recentSet.has(`${exam.academicYear}-${exam.semester}`)
+      return recentSet.has(`${exam.academicYear}_${exam.semester}`)
     })
     .map((exam) => exam.examId)
 }
@@ -39,7 +39,7 @@ export function pickDefaultSemesterCode(
   const semesterCodes = new Set<string>()
   exams.forEach((exam) => {
     if (exam.academicYear && exam.semester) {
-      semesterCodes.add(`${exam.academicYear}-${exam.semester}`)
+      semesterCodes.add(`${exam.academicYear}_${exam.semester}`)
     }
   })
 

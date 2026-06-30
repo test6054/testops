@@ -170,6 +170,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
+import { parseAcademicYearSemesterValue } from '@/utils/academic-year'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -335,11 +336,18 @@ async function handleGenerate(): Promise<void> {
   }
   generating.value = true
   try {
-    const generated = await generateAchievement({
-      courseId,
-      semesterCode: form.semesterCode || undefined,
-      examIds,
-    })
+    const achievementParams: {
+      courseId: string
+      examIds: string[]
+      academicYear?: string
+      semester?: string
+    } = { courseId, examIds }
+    if (form.semesterCode) {
+      const parsed = parseAcademicYearSemesterValue(form.semesterCode)
+      achievementParams.academicYear = parsed.academicYear
+      achievementParams.semester = parsed.semester
+    }
+    const generated = await generateAchievement(achievementParams)
     acceptCourseAchievementRecord(generated)
     message.success('已生成达成度分析')
   } catch (e) {

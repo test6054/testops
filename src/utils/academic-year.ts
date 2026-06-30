@@ -1,6 +1,5 @@
 /**
- * 学年学期默认计算，与后端 AcademicYearUtils 一致：
- * 9月1日起为新学年；3-8月为春季学期，9月-次年2月为秋季学期。
+ * 学年学期默认计算：9 月起为新学年；3–8 月为春季，其余为秋季。
  */
 import { SemesterCode } from '@/types/enums/semester-enum'
 
@@ -9,7 +8,7 @@ export interface AcademicYearSemester {
   semester: SemesterCode
 }
 
-/** 根据当前时间计算默认学年学期（与后端 AcademicYearUtils 一致） */
+/** 根据当前时间计算默认学年学期 */
 export function getDefaultAcademicYearAndSemester(): AcademicYearSemester {
   const now = new Date()
   const year = now.getFullYear()
@@ -49,8 +48,27 @@ export function resolveDefaultDashboardFilter(options: DashboardFilterOptions): 
   const academicYear = options.academicYears.includes(defaults.academicYear)
     ? defaults.academicYear
     : undefined
-  const semester = academicYear && options.semesters.includes(defaults.semester)
-    ? defaults.semester
-    : undefined
+  return { academicYear, semester }
+}
+
+/** 学年学期 Select 值，仅 UI 边界使用：YYYY-YYYY_学期 */
+export function formatAcademicYearSemesterValue(academicYear: string, semester: SemesterCode): string {
+  return `${academicYear}_${semester}`
+}
+
+/** 解析学年学期 Select 值 */
+export function parseAcademicYearSemesterValue(value: string): AcademicYearSemester {
+  const separatorIndex = value.lastIndexOf('_')
+  if (separatorIndex <= 0 || separatorIndex >= value.length - 1) {
+    throw new Error('学年学期格式须为 YYYY-YYYY_学期编码')
+  }
+  const academicYear = value.substring(0, separatorIndex)
+  const semester = value.substring(separatorIndex + 1) as SemesterCode
+  if (!/^(\d{4})-(\d{4})$/.test(academicYear)) {
+    throw new Error('学年格式须为 YYYY-YYYY')
+  }
+  if (semester !== SemesterCode.AUTUMN && semester !== SemesterCode.SPRING) {
+    throw new Error('学期取值仅支持 1 或 2')
+  }
   return { academicYear, semester }
 }

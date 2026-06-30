@@ -183,6 +183,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
+import { parseAcademicYearSemesterValue } from '@/utils/academic-year'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -352,10 +353,13 @@ async function reload(): Promise<void> {
     message.warning('请选择班级')
     return
   }
+  const { academicYear: teachingAcademicYear, semester: teachingSemester } =
+    parseAcademicYearSemesterValue(form.semesterCode)
   loading.value = true
   try {
     const list = await listGrowth({
-      semesterCode: form.semesterCode,
+      teachingAcademicYear,
+      teachingSemester,
       scopeType: 'CLASS',
       scopeId: form.classId,
     })
@@ -395,7 +399,15 @@ async function handleGenerate(): Promise<void> {
   }
   generating.value = true
   try {
-    const generated = await generateClassGrowth({ semesterCode, courseId, classId, examIds })
+    const { academicYear: teachingAcademicYear, semester: teachingSemester } =
+      parseAcademicYearSemesterValue(semesterCode)
+    const generated = await generateClassGrowth({
+      teachingAcademicYear,
+      teachingSemester,
+      courseId,
+      classId,
+      examIds,
+    })
     acceptSemesterGrowthRecord(generated)
     message.success('已生成成长曲线')
   } catch (e) {

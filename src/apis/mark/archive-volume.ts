@@ -691,7 +691,8 @@ export interface ArchiveVolumePageRequest extends QueryDto {
   departmentId?: string
   courseId?: string
   examId?: string
-  academicYearSemester?: string
+  academicYear?: string
+  semester?: string
   sourceType?: ArchiveVolumeSourceTypeCode
   volumeStatus?: ArchiveVolumeStatusCode
   integrityStatus?: ArchiveIntegrityStatusCode
@@ -838,19 +839,20 @@ export function exportEvaluationArchivePackage(campaignId: string): Promise<Arch
 }
 
 export interface ArchiveReadinessMatrixRequest {
-  endSemesterCode: string
+  endAcademicYear: string
+  endSemester: string
   termCount?: number
   departmentId?: string
 }
 
 export interface ArchiveReadinessTermColumnVO {
-  termCode: string
   academicYear: string
   semester: string
 }
 
 export interface ArchiveReadinessCellVO {
-  termCode: string
+  academicYear: string
+  semester: string
   totalVolumeCount: number
   collectingCount: number
   submittedCount: number
@@ -869,7 +871,8 @@ export interface ArchiveReadinessMatrixRowVO {
 }
 
 export interface ArchiveReadinessMatrixVO {
-  endSemesterCode: string
+  endAcademicYear: string
+  endSemester: string
   termCount: number
   termColumns: ArchiveReadinessTermColumnVO[]
   rows: ArchiveReadinessMatrixRowVO[]

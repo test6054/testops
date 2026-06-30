@@ -301,12 +301,11 @@ export interface ExamCreateRequest {
   /** 课程ID */
   courseId: string
   /**
-   * 学年，如 '2024-2025'。与 semester 必须同时填写或同时留空，
-   * 由后端 Service 联动校验。
+   * 学年，如 '2024-2025'
    */
-  academicYear?: string
-  /** 学期：1=秋季学期，2=春季学期。与 academicYear 必须同时填写或同时留空。 */
-  semester?: string
+  academicYear: string
+  /** 学期：1=秋季学期，2=春季学期 */
+  semester: string
   /** 考试名称（必填） */
   examName: string
   /** 考试编号（必填） */
@@ -472,10 +471,8 @@ export interface ExamDistinctTermQueryRequest {
 
 /** DISTINCT 学期项 - 对应 ExamDistinctTermItemResponse */
 export interface ExamDistinctTermItemVO {
-  /** 考试发生学期编码，如 2024-2025-1 */
-  examTermCode: string
-  academicYear?: string
-  semester?: string
+  academicYear: string
+  semester: string
 }
 
 /** 查询租户内 DISTINCT 考试学期列表，按学期编码倒序。 */

@@ -57,13 +57,14 @@ export function useExamCreate() {
   /** 整班纳入 preview 请求进行中；提交前须等待完成，避免携带过期考生快照。 */
   const rosterPreviewSyncing = ref(false)
 
+  const defaultTerm = getDefaultAcademicYearAndSemester()
   const examForm = reactive<ExamCreateBasicForm>({
     courseId: null,
     courseName: '',
     examName: '',
     examNo: '',
-    academicYear: '',
-    semester: undefined,
+    academicYear: defaultTerm.academicYear,
+    semester: defaultTerm.semester,
     examWindow: undefined,
     gradingStrategy: 'SINGLE',
     scoreCompositionMode: 'EXAM_ONLY',
@@ -114,12 +115,12 @@ export function useExamCreate() {
       { max: 64, message: '考务编号最多 64 个字符', trigger: 'blur' },
     ],
     academicYear: [
+      { required: true, message: '请输入学年', trigger: 'blur' },
       {
-        validator: async (): Promise<void> => {
-          const academicYear = examForm.academicYear?.trim()
-          if (!academicYear && !examForm.semester) return
-          if (!academicYear || !examForm.semester) {
-            throw new Error('学年与学期必须同时填写或同时留空')
+        validator: async (_rule, value: string): Promise<void> => {
+          const academicYear = value?.trim()
+          if (!academicYear) {
+            throw new Error('请输入学年')
           }
           const match = /^(\d{4})-(\d{4})$/.exec(academicYear)
           if (!match || Number(match[2]) !== Number(match[1]) + 1) {
@@ -130,16 +131,7 @@ export function useExamCreate() {
       },
     ],
     semester: [
-      {
-        validator: async (): Promise<void> => {
-          const academicYear = examForm.academicYear?.trim()
-          if (!academicYear && !examForm.semester) return
-          if (!academicYear || !examForm.semester) {
-            throw new Error('学年与学期必须同时填写或同时留空')
-          }
-        },
-        trigger: 'change',
-      },
+      { required: true, message: '请选择学期', trigger: 'change' },
     ],
     examWindow: [
       {
@@ -342,7 +334,8 @@ export function useExamCreate() {
 
   function buildExamRequest(): ExamCreateRequest | null {
     const [startTime, endTime] = examForm.examWindow ?? []
-    if (!examForm.courseId || !startTime || !endTime) {
+    const academicYear = examForm.academicYear?.trim()
+    if (!examForm.courseId || !startTime || !endTime || !academicYear || !examForm.semester) {
       void message.error('请完善考务信息')
       return null
     }
@@ -350,7 +343,7 @@ export function useExamCreate() {
       courseId: examForm.courseId,
       examName: examForm.examName.trim(),
       examNo: examForm.examNo.trim(),
-      academicYear: examForm.academicYear?.trim() || undefined,
+      academicYear,
       semester: examForm.semester,
       examStartTime: startTime,
       examEndTime: endTime,
@@ -594,15 +587,6 @@ export function useExamCreate() {
         rosterForm.scopeMode = 'BY_STUDENT'
         rosterForm.classIds = []
         rosterForm.candidates = []
-      }
-    },
-  )
-
-  watch(
-    () => examForm.academicYear,
-    (academicYear) => {
-      if (!academicYear?.trim()) {
-        examForm.semester = undefined
       }
     },
   )

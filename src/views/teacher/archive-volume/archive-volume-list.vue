@@ -369,6 +369,7 @@ import { canSubmitArchiveVolumeRow } from '@/composables/useArchiveVolumeSubmitG
 import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
+import { parseAcademicYearSemesterValue } from '@/utils/academic-year'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -780,6 +781,13 @@ function resolveListTabFromQuery(): ListTabKey {
   return 'mine'
 }
 
+function resolvePeriodFilter(): Pick<ArchiveVolumePageRequest, 'academicYear' | 'semester'> {
+  const raw = filterModel.academicYearSemester.trim()
+  if (!raw) return {}
+  const { academicYear, semester } = parseAcademicYearSemesterValue(raw)
+  return { academicYear, semester }
+}
+
 async function loadVolumes() {
   if (!showVolumeFilter.value) return
   if (grantsLoadFailed.value) return
@@ -794,18 +802,19 @@ async function loadVolumes() {
   loading.value = true
   try {
     const isOverdueTab = archiveSubTab.value === 'overdue' && listTab.value === 'archive'
+    const periodFilter = resolvePeriodFilter()
     const request: ArchiveVolumePageRequest = isOverdueTab
       ? {
           keyword: filterModel.keyword.trim() || undefined,
           departmentId: filterModel.departmentId,
-          academicYearSemester: filterModel.academicYearSemester.trim() || undefined,
+          ...periodFilter,
           pageNum: pagination.pageNum,
           pageSize: pagination.pageSize,
         }
       : {
           keyword: filterModel.keyword.trim() || undefined,
           departmentId: filterModel.departmentId,
-          academicYearSemester: filterModel.academicYearSemester.trim() || undefined,
+          ...periodFilter,
           sourceType: filterModel.sourceType,
           volumeStatus: filterModel.volumeStatus,
           integrityStatus: filterModel.integrityStatus,

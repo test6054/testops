@@ -81,17 +81,16 @@ export function formatSemester(value: string | null | undefined): string {
 }
 
 /**
- * 格式化 AI 分析场景使用的学年学期选择值。
- * 后端存储值由考试学年和学期组成，例如 2025-2026-2。
- *
- * @param value 学年学期选择值
+ * 格式化学年学期筛选项展示文本，值格式 YYYY-YYYY_学期。
  */
 export function formatAcademicTermCode(value: string | null | undefined): string {
   if (value === null || value === undefined || value === '') return ''
-  const match = value.match(/^(.+)-([123])$/)
-  if (!match) {
+  const separatorIndex = value.lastIndexOf('_')
+  if (separatorIndex <= 0 || separatorIndex >= value.length - 1) {
     return value
   }
-  const semesterLabel = getSemesterDescription(match[2])
-  return `${match[1]} · ${semesterLabel}`
+  const academicYear = value.substring(0, separatorIndex)
+  const semester = value.substring(separatorIndex + 1)
+  const semesterLabel = getSemesterDescription(semester)
+  return `${academicYear} · ${semesterLabel}`
 }

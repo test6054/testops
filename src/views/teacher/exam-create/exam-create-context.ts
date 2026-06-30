@@ -32,7 +32,7 @@ export interface ExamCreateBasicForm {
   examName: string
   examNo: string
   academicYear: string
-  semester?: SemesterCode
+  semester: SemesterCode
   examWindow?: [string, string]
   gradingStrategy: GradingStrategyCode
   scoreCompositionMode: ExamScoreCompositionMode

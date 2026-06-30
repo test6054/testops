@@ -20,7 +20,7 @@
     <section v-else class="archive-readiness-matrix">
       <div class="archive-readiness-matrix__toolbar">
         <AnalysisSemesterSelect
-          v-model="filterModel.endSemesterCode"
+          v-model="filterModel.endAcademicYearSemester"
           placeholder="请选择截止学期"
           :allow-clear="false"
           :default-recent-semester-count="4"
@@ -81,14 +81,15 @@ import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getSupervisionReadinessMatrix } from '@/apis/mark/archive-volume'
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
-import ContextBar from '@/components/workbench/ContextBar.vue'
-import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import ContextBar from '@/components/mark/ContextBar.vue'
+import StageWorkbenchShell from '@/components/mark/StageWorkbenchShell.vue'
+import UiButton from '@/components/ui/UiButton.vue'
+import UiDataTable from '@/components/ui/UiDataTable.vue'
+import UiEmpty from '@/components/ui/UiEmpty.vue'
+import UiLoadFailure from '@/components/ui/UiLoadFailure.vue'
+import UiTag from '@/components/ui/UiTag.vue'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
+import { parseAcademicYearSemesterValue } from '@/utils/academic-year'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'ArchiveVolumeReadinessMatrix' })
@@ -99,7 +100,7 @@ const loadError = ref('')
 const matrix = ref<ArchiveReadinessMatrixVO | null>(null)
 
 const filterModel = reactive({
-  endSemesterCode: '',
+  endAcademicYearSemester: '',
   termCount: 4,
 })
 
@@ -116,6 +117,10 @@ interface ReadinessTableRow {
   [termKey: string]: string | ArchiveReadinessCellVO | undefined
 }
 
+function termColumnKey(term: ArchiveReadinessTermColumnVO) {
+  return `${term.academicYear}_${term.semester}`
+}
+
 const tableColumns = computed<ColumnsType<ReadinessTableRow>>(() => {
   const columns: ColumnsType<ReadinessTableRow> = [
     { title: '院系', dataIndex: 'departmentName', key: 'departmentName', width: 140, fixed: 'left' },
@@ -124,7 +129,7 @@ const tableColumns = computed<ColumnsType<ReadinessTableRow>>(() => {
   for (const term of matrix.value?.termColumns ?? []) {
     columns.push({
       title: formatTermColumnTitle(term),
-      key: termKey(term.termCode),
+      key: termKey(termColumnKey(term)),
       width: 132,
     })
   }
@@ -140,7 +145,7 @@ const tableRows = computed<ReadinessTableRow[]>(() => {
       courseName: row.courseName ?? '—',
     }
     for (const cell of row.cells) {
-      tableRow[termKey(cell.termCode)] = cell
+      tableRow[termKey(termColumnKey(cell))] = cell
     }
     return tableRow
   })
@@ -148,12 +153,12 @@ const tableRows = computed<ReadinessTableRow[]>(() => {
 
 const tableScrollX = computed(() => 320 + (matrix.value?.termColumns.length ?? 0) * 132)
 
-function termKey(termCode: string) {
-  return `term-${termCode}`
+function termKey(columnKey: string) {
+  return `term-${columnKey}`
 }
 
 function formatTermColumnTitle(term: ArchiveReadinessTermColumnVO) {
-  return formatAcademicTermCode(term.termCode)
+  return formatAcademicTermCode(`${term.academicYear}_${term.semester}`)
 }
 
 function formatRate(value?: number) {
@@ -171,15 +176,17 @@ function goList() {
 }
 
 async function loadMatrix() {
-  if (!filterModel.endSemesterCode) {
+  if (!filterModel.endAcademicYearSemester) {
     matrix.value = null
     return
   }
   loading.value = true
   loadError.value = ''
   try {
+    const { academicYear, semester } = parseAcademicYearSemesterValue(filterModel.endAcademicYearSemester)
     matrix.value = await getSupervisionReadinessMatrix({
-      endSemesterCode: filterModel.endSemesterCode,
+      endAcademicYear: academicYear,
+      endSemester: semester,
       termCount: filterModel.termCount,
     })
   }

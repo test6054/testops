@@ -2,7 +2,8 @@
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { onMounted, ref } from 'vue'
 import { listDistinctExamTerms } from '@/apis/mark/exam'
-import { formatAcademicTermCode, getSemesterDescription } from '@/types/enums/semester-enum'
+import { getSemesterDescription } from '@/types/enums/semester-enum'
+import { formatAcademicYearSemesterValue } from '@/utils/academic-year'
 import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'AnalysisSemesterSelect' })
@@ -27,20 +28,17 @@ const loading = ref(false)
 const semesterOptions = ref<{ label: string, value: string }[]>([])
 const defaultScopeApplied = ref(false)
 
-function formatTermLabel(item: { examTermCode: string, academicYear?: string, semester?: string }): string {
-  if (item.academicYear && item.semester) {
-    return `${item.academicYear} · ${getSemesterDescription(item.semester)}`
-  }
-  return formatAcademicTermCode(item.examTermCode)
+function formatTermLabel(item: { academicYear: string, semester: string }): string {
+  return `${item.academicYear} · ${getSemesterDescription(item.semester)}`
 }
 
-/** 加载 DISTINCT 考试学期列表，供 AI 分析卡片按业务周期选择。 */
+/** 加载 DISTINCT 考试学年学期列表，供 AI 分析卡片按业务周期选择。 */
 async function loadSemesterOptions(): Promise<void> {
   loading.value = true
   try {
     const terms = await listDistinctExamTerms()
     semesterOptions.value = terms.map((item) => ({
-      value: item.examTermCode,
+      value: formatAcademicYearSemesterValue(item.academicYear, item.semester),
       label: formatTermLabel(item),
     }))
     if (

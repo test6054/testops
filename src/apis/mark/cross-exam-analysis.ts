@@ -217,7 +217,8 @@ export function listTrends(params: {
  * POST /api/exam/cross-exam-analysis/growth/class
  */
 export function generateClassGrowth(params: {
-  semesterCode: string
+  teachingAcademicYear: string
+  teachingSemester: string
   courseId: string
   classId: string
   examIds: string[]
@@ -233,7 +234,8 @@ export function generateClassGrowth(params: {
  * GET /api/exam/cross-exam-analysis/growth/list
  */
 export function listGrowth(params: {
-  semesterCode: string
+  teachingAcademicYear: string
+  teachingSemester: string
   scopeType: AnalysisScopeTypeCode
   scopeId?: string
 }): Promise<SemesterAbilityGrowthVO[]> {
@@ -249,7 +251,8 @@ export function listGrowth(params: {
  */
 export function generateAchievement(params: {
   courseId: string
-  semesterCode?: string
+  academicYear?: string
+  semester?: string
   examIds: string[]
 }): Promise<CourseObjectiveAchievementVO> {
   return http.post<CourseObjectiveAchievementVO>(
