@@ -353,8 +353,8 @@ async function reload(): Promise<void> {
     message.warning('请选择班级')
     return
   }
-  const { academicYear: teachingAcademicYear, semester: teachingSemester } =
-    parseAcademicYearSemesterValue(form.semesterCode)
+  const { academicYear: teachingAcademicYear, semester: teachingSemester }
+    = parseAcademicYearSemesterValue(form.semesterCode)
   loading.value = true
   try {
     const list = await listGrowth({
@@ -399,8 +399,8 @@ async function handleGenerate(): Promise<void> {
   }
   generating.value = true
   try {
-    const { academicYear: teachingAcademicYear, semester: teachingSemester } =
-      parseAcademicYearSemesterValue(semesterCode)
+    const { academicYear: teachingAcademicYear, semester: teachingSemester }
+      = parseAcademicYearSemesterValue(semesterCode)
     const generated = await generateClassGrowth({
       teachingAcademicYear,
       teachingSemester,

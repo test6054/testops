@@ -425,10 +425,7 @@ function activeTasksHiddenByStatusFilter(): boolean {
   if (counts.pending > 0 && statusFilter !== 'PENDING') {
     return true
   }
-  if (counts.generating > 0 && statusFilter !== 'GENERATING') {
-    return true
-  }
-  return false
+  return counts.generating > 0 && statusFilter !== 'GENERATING';
 }
 
 function listHasActiveExportTask(taskList: ExportTaskVO[]): boolean {
