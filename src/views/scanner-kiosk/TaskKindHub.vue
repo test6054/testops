@@ -74,6 +74,7 @@ const archivePickOpen = ref(false)
 const portfolioPickOpen = ref(false)
 const queueSummaryLoading = ref(false)
 const queueSummary = ref<ScanDispatchQueueSummaryVO | null>(null)
+const queueSummaryError = ref('')
 const QUEUE_SUMMARY_POLL_MS = 30_000
 let queueSummaryTimer: ReturnType<typeof setInterval> | undefined
 
@@ -273,14 +274,16 @@ async function loadQueueSummary() {
     return
   }
   queueSummaryLoading.value = true
+  queueSummaryError.value = ''
   try {
     queueSummary.value = await loadScanDispatchQueueSummary({
       scannerDeviceId: scannerDeviceId.value || undefined,
       scannerStationId: scannerStationId.value || undefined,
     })
   }
-  catch {
+  catch (error) {
     queueSummary.value = null
+    queueSummaryError.value = getUserErrorMessage(error)
   }
   finally {
     queueSummaryLoading.value = false
@@ -436,6 +439,15 @@ onUnmounted(() => {
             <div class="hub-signal__sub">{{ signal.sub }}</div>
           </component>
         </div>
+
+        <UiAlertStrip
+          v-if="queueSummaryError"
+          tone="warning"
+          title="待办队列摘要加载失败"
+          :description="queueSummaryError"
+          dense
+          class="hub-shell__failed-alert"
+        />
 
         <UiAlertStrip
           v-if="showFailedAlert"

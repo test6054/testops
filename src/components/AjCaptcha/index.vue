@@ -118,13 +118,13 @@ import { checkCaptcha, getCaptcha } from '@/apis/auth'
 import { aesEncrypt } from '@/utils/crypto'
 import { getUserErrorMessage } from '@/utils/error-handler'
 
+const visible = defineModel<boolean>({ default: false })
+
 const props = defineProps<{
-  modelValue: boolean
   captchaType?: 'blockPuzzle' | 'clickWord'
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
   (e: 'success', captchaVerification: string): void
   (e: 'fail'): void
 }>()
@@ -142,10 +142,6 @@ interface CaptchaData {
 }
 
 // 状态
-const visible = computed({
-  get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val),
-})
 const loading = ref(false)
 const verifying = ref(false)
 const verifySuccess = ref(false)

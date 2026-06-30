@@ -19,15 +19,13 @@
 </template>
 
 <script lang="ts" setup>
-import type { Component, InjectionKey, Ref } from 'vue'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, inject } from 'vue'
+import type { Component } from 'vue'
 import type { RouteLocationNormalized } from 'vue-router'
+import { computed, inject } from 'vue'
 import ExamWorkspacePageShell from '@/components/workbench/ExamWorkspacePageShell.vue'
-import { useExamWorkspaceChromeContext } from '@/composables/useMarkWorkbenchContext'
 import { useExamWorkspacePage } from '@/composables/useExamWorkspacePage'
-
-export const EXAM_WORKSPACE_PAGE_METRICS_KEY: InjectionKey<Ref<SignalMetric[]>> = Symbol('examWorkspacePageMetrics')
+import { useExamWorkspaceChromeContext } from '@/composables/useMarkWorkbenchContext'
+import { EXAM_WORKSPACE_PAGE_METRICS_KEY } from '@/constants/exam-workspace-page-metrics'
 
 const props = defineProps<{
   childRoute: RouteLocationNormalized

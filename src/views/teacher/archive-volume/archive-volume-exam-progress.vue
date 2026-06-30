@@ -126,14 +126,14 @@
         <UiCard v-if="healthyVolumes.length > 0" class="archive-volume-exam-progress__steps">
           <template #title>已创建归档卷</template>
           <UiDataTable
-          pagination-mode="none"
-          :columns="volumeColumns"
-          :data-source="healthyVolumes"
-          :show-pagination="false"
-          flat
-          row-key="volumeId"
-          size="middle"
-        >
+            pagination-mode="none"
+            :columns="volumeColumns"
+            :data-source="healthyVolumes"
+            :show-pagination="false"
+            flat
+            row-key="volumeId"
+            size="middle"
+          >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'integrityStatus'">
                 <UiTag :tone="integrityStatusTone(record.integrityStatus)" size="sm">
@@ -158,17 +158,17 @@
           <ol class="progress-steps">
             <li :class="{ done: examGate?.gateOpen }">
               <span class="progress-steps__label">成绩发布 + 关考</span>
-            <span class="progress-steps__hint">{{ gateProgressHint }}</span>
-          </li>
-          <li v-if="incompleteClasses.length > 0" class="progress-steps__class-list">
-            <span class="progress-steps__label">按班进度</span>
-            <ul class="progress-steps__classes">
-              <li v-for="item in incompleteClasses" :key="item.classId">
-                {{ item.className }}：尚有 {{ item.unpublishedBoundPaperCount }} 份未发布
-              </li>
-            </ul>
-          </li>
-          <li :class="{ failed: hasAutoCreateFailure, pending: polling && !hasAutoCreateFailure }">
+              <span class="progress-steps__hint">{{ gateProgressHint }}</span>
+            </li>
+            <li v-if="incompleteClasses.length > 0" class="progress-steps__class-list">
+              <span class="progress-steps__label">按班进度</span>
+              <ul class="progress-steps__classes">
+                <li v-for="item in incompleteClasses" :key="item.classId">
+                  {{ item.className }}：尚有 {{ item.unpublishedBoundPaperCount }} 份未发布
+                </li>
+              </ul>
+            </li>
+            <li :class="{ failed: hasAutoCreateFailure, pending: polling && !hasAutoCreateFailure }">
               <span class="progress-steps__label">系统自动创建归档卷</span>
               <span class="progress-steps__hint">{{ autoCreateStepHint }}</span>
             </li>
@@ -242,6 +242,7 @@ import type {
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -254,7 +255,6 @@ import {
   pageArchiveVolumes,
   retryArchiveVolumeAutoCreate,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
 import MarkExamStageRail from '@/components/mark/MarkExamStageRail.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'

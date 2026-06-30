@@ -142,8 +142,8 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { CourseListVO } from '@/apis/quality/user-catalog'
 import type { ExamKindCode, ExamSummaryVO } from '@/apis/mark/exam'
+import type { CourseListVO } from '@/apis/quality/user-catalog'
 import { computed, onMounted, ref, watch } from 'vue'
 import {
   EXAM_KIND_FILTER_OPTIONS,

@@ -1,12 +1,12 @@
 import type { PortfolioTeacherDetailVO, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import { ref } from 'vue'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import { showUserError } from '@/utils/error-handler'
+import { readPageList } from '@/utils/page-result'
 import {
   formatPortfolioTeacherDetailSelectLabel,
   toPortfolioTeacherSelectOption,
 } from '@/utils/portfolio-teacher-display'
-import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 
 /**
  * portfolio 管理台教师远程搜索与姓名缓存；供成果库/荣誉库等表单绑定 teacherUserId。

@@ -173,18 +173,18 @@ import { formatAcademicTermCode } from '@/types/enums/semester-enum'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import {
   buildBarChartInsight,
   buildTrendChartInsight,
   mergeChartHint,
 } from '@/utils/mark-chart-insights'
+import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import {
   achievementItemsToBarItems,
   examStatSnapshotsToTrendPoints,
 } from '@/utils/mark-statistics-chart'
 import { rateTone } from '@/utils/score-tone'
-import { toSignalMetrics, computeTrendPointDelta } from '@/utils/stat-metric-helpers'
+import { computeTrendPointDelta, toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CourseAchievementCard' })

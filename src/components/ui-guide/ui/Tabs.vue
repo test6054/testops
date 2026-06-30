@@ -1,7 +1,7 @@
 <template>
   <div ref="tabsRoot" class="ui-tabs" :class="[`ui-tabs--${props.variant}`]">
     <a-tabs
-      :active-key="props.activeKey"
+      :active-key="activeKey"
       :type="props.variant === 'pill' ? 'line' : props.variant"
       :size="props.size"
       :animated="props.animated"
@@ -35,15 +35,15 @@ defineOptions({
   inheritAttrs: false,
 })
 
+const activeKey = defineModel<Key>('activeKey')
+
 const props = withDefaults(defineProps<{
-  activeKey?: Key
   items?: UiTabItem[]
   variant?: 'line' | 'card' | 'pill'
   size?: 'small' | 'middle' | 'large'
   animated?: boolean
   centered?: boolean
 }>(), {
-  activeKey: undefined,
   items: () => [],
   variant: 'line',
   size: 'middle',
@@ -52,7 +52,6 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{
-  (e: 'update:activeKey', value: Key): void
   (e: 'change', value: Key): void
 }>()
 
@@ -63,7 +62,7 @@ const getPopupContainer = (triggerNode?: HTMLElement) => {
 }
 
 const handleUpdate = (value: Key) => {
-  emit('update:activeKey', value)
+  activeKey.value = value
 }
 
 const handleChange = (value: Key) => {

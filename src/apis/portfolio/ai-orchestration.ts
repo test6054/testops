@@ -1,8 +1,8 @@
 import type {
   PortfolioAiAskRequest,
+  PortfolioAiCockpitAskRequest,
   PortfolioAiJobSubmitVO,
   PortfolioAiPolicyCheckRequest,
-  PortfolioAiCockpitAskRequest,
 } from '@/apis/portfolio/types'
 import http from '@/config/axios'
 

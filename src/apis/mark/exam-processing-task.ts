@@ -1,5 +1,5 @@
-import type { ProcessingTaskTypeCode } from './task-type'
 import type { TaskStatusCode } from './task-status'
+import type { ProcessingTaskTypeCode } from './task-type'
 import type { PageResult } from '@/types'
 import http from '@/config/axios'
 

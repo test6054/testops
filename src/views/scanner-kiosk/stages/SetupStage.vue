@@ -100,6 +100,7 @@ const templateReviewLinkText = computed(() => {
 })
 
 const scanMaterialAdvisory = computed(() => workflow.scanMaterialAdvisory.value)
+const classScopeAdvisory = computed(() => workflow.classScopeAdvisory.value)
 
 const scanConfigAdvisory = computed(
   () => workflow.kioskContext.value?.scanConfigOptions?.scanConfigAdvisory?.trim() || '',
@@ -342,8 +343,9 @@ function continueActiveBatch() {
         <div v-if="troubleshootingLine" class="scan-control__trouble">
           <p>{{ troubleshootingLine }}</p>
         </div>
-        <div v-if="scanMaterialAdvisory || scanConfigAdvisory" class="scan-control__advisory">
+        <div v-if="scanMaterialAdvisory || classScopeAdvisory || scanConfigAdvisory" class="scan-control__advisory">
           <p v-if="scanMaterialAdvisory">{{ scanMaterialAdvisory }}</p>
+          <p v-if="classScopeAdvisory">{{ classScopeAdvisory }}</p>
           <p v-if="scanConfigAdvisory">{{ scanConfigAdvisory }}</p>
         </div>
       </div>

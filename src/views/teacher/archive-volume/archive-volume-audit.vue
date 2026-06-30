@@ -74,12 +74,11 @@ import {
   pageArchiveAuditEvents,
 } from '@/apis/mark/archive-volume'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
-import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
-import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'

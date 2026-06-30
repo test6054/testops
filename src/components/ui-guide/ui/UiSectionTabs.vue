@@ -65,12 +65,13 @@ defineOptions({
   inheritAttrs: false,
 })
 
+const modelValue = defineModel<Key>({ default: '' })
+
 const props = withDefaults(defineProps<{
   title?: string
   description?: string
   eyebrow?: string
   items?: UiSectionTabItem[]
-  modelValue?: Key
   compact?: boolean
   divided?: boolean
 }>(), {
@@ -78,13 +79,11 @@ const props = withDefaults(defineProps<{
   description: '',
   eyebrow: '',
   items: () => [],
-  modelValue: '',
   compact: false,
   divided: false,
 })
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: Key): void
   (e: 'change', value: Key): void
 }>()
 
@@ -95,8 +94,8 @@ const hasHeader = computed(() => {
 })
 
 const mergedActiveKey = computed(() => {
-  if (props.modelValue)
-    return props.modelValue
+  if (modelValue.value)
+    return modelValue.value
   return props.items[0]?.key || ''
 })
 
@@ -117,7 +116,7 @@ function countClass(item: UiSectionTabItem): string[] {
 }
 
 function handleChange(value: Key) {
-  emit('update:modelValue', value)
+  modelValue.value = value
   emit('change', value)
 }
 </script>

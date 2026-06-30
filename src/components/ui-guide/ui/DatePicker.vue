@@ -46,9 +46,10 @@ defineOptions({
   inheritAttrs: false,
 })
 
+const modelValue = defineModel<string>()
+
 const props = withDefaults(
   defineProps<{
-    modelValue?: string
     placeholder?: string
     allowClear?: boolean
     disabled?: boolean
@@ -75,7 +76,6 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: string | undefined): void
   (e: 'change', value: string | undefined, dateString: string): void
   (e: 'open-change', open: boolean): void
 }>()
@@ -93,9 +93,9 @@ interface DisabledTimeResult {
 
 /** a-date-picker 设置 valueFormat 后，value 类型为 string */
 const pickerValue = computed<string>({
-  get: () => props.modelValue ?? '',
+  get: () => modelValue.value ?? '',
   set: (val: string) => {
-    emit('update:modelValue', val === '' ? undefined : val)
+    modelValue.value = val === '' ? undefined : val
   },
 })
 

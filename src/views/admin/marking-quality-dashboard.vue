@@ -438,15 +438,15 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError } from '@/utils/error-handler'
-import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import {
   buildBarChartInsight,
   buildTrendChartInsight,
   mergeChartHint,
 } from '@/utils/mark-chart-insights'
+import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { progressSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
-import { computeTrendPointDelta } from '@/utils/stat-metric-helpers'
 import { readAllPages } from '@/utils/page-result'
+import { computeTrendPointDelta } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminMarkingQualityDashboard' })

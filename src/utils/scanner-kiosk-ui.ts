@@ -13,12 +13,22 @@ export function kioskMaterialKindLabel(mode?: ExamMaterialLayoutModeCode): strin
   return strictEnumLabel(KIOSK_SCAN_MATERIAL_KIND_LABEL, mode, '扫描材料类型')
 }
 
-export const KIOSK_SUPPLEMENT_SCAN_MODE_ADVISORY =
-  '补扫每次仅登记单页，须选择本工位已绑定试卷、指定目标页号并填写补扫原因；'
-  + '开启「替换目标页」时旧扫描页失效并重新识别。'
+export const KIOSK_SUPPLEMENT_SCAN_MODE_ADVISORY
+  = '补扫每次仅登记单页，须选择本工位已绑定试卷、指定目标页号并填写补扫原因；'
+    + '开启「替换目标页」时旧扫描页失效并重新识别。'
 
 export function kioskScanModeAdvisory(mode: ScannerKioskScanMode): string {
   return mode === 'SUPPLEMENT' ? KIOSK_SUPPLEMENT_SCAN_MODE_ADVISORY : ''
+}
+
+/**
+ * 参考班级或名册未配置时的软提醒；不阻断直扫登记。
+ */
+export function resolveKioskClassScopeAdvisory(classIds?: readonly string[]): string {
+  if (!classIds || classIds.length === 0) {
+    return '考试尚未配置参考班级或名册，已按直扫登记；后续请在 Web 端补配班级与考生名册以完成身份绑定'
+  }
+  return ''
 }
 
 /**

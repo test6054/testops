@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { onMounted, ref } from 'vue'
-import { formatAcademicTermCode, getSemesterDescription } from '@/types/enums/semester-enum'
 import { listDistinctExamTerms } from '@/apis/mark/exam'
+import { formatAcademicTermCode, getSemesterDescription } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'AnalysisSemesterSelect' })
@@ -49,7 +49,8 @@ async function loadSemesterOptions(): Promise<void> {
       && !selectedSemesterCode.value
     ) {
       const defaultCode = semesterOptions.value
-        .slice(0, props.defaultRecentSemesterCount)[0]?.value
+        .slice(0, props.defaultRecentSemesterCount)[0]
+?.value
       if (defaultCode) {
         selectedSemesterCode.value = defaultCode
         defaultScopeApplied.value = true

@@ -28,19 +28,6 @@ import MarkChart from './MarkChart.vue'
 
 defineOptions({ name: 'MarkScatterSection' })
 
-const emit = defineEmits<{
-  (e: 'brush-selected', params: unknown): void
-}>()
-
-const markChartRef = ref<InstanceType<typeof MarkChart> | null>(null)
-
-/** 清除 ECharts brush 选区，与下方题目清单联动 */
-function clearBrush(): void {
-  markChartRef.value?.getInstance()?.dispatchAction({ type: 'brush', command: 'clear', areas: [] })
-}
-
-defineExpose({ clearBrush })
-
 const props = withDefaults(defineProps<{
   title: string
   hint?: string
@@ -58,6 +45,12 @@ const props = withDefaults(defineProps<{
   visible: true,
 })
 
+const emit = defineEmits<{
+  (e: 'brush-selected', params: unknown): void
+}>()
+
+const markChartRef = ref<InstanceType<typeof MarkChart> | null>(null)
+
 const ready = computed(() => props.pointCount > 0)
 
 const resolvedAriaLabel = computed(() => {
@@ -66,4 +59,11 @@ const resolvedAriaLabel = computed(() => {
   }
   return `${props.title}，${props.pointCount > 0 ? `共 ${props.pointCount} 题` : '暂无数据'}`
 })
+
+/** 清除 ECharts brush 选区，与下方题目清单联动 */
+function clearBrush(): void {
+  markChartRef.value?.getInstance()?.dispatchAction({ type: 'brush', command: 'clear', areas: [] })
+}
+
+defineExpose({ clearBrush })
 </script>

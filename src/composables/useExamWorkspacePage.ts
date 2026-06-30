@@ -1,9 +1,9 @@
 import type { ComputedRef } from 'vue'
+import type { ExamJourneyKey } from '@/constants/exam-journey'
+import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { SignalMetric } from '@/types/workbench'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import type { MarkStageKey } from '@/stores/modules/markStage'
-import type { ExamJourneyKey } from '@/constants/exam-journey'
 import { useMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
 import { buildExamWorkspacePageMetrics } from '@/utils/exam-workspace-page-metrics'
 

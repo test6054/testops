@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import {
-  confirmArchiveVolumeSelfCheck,
-  previewArchiveVolumeSubmitChecklist,
-  type ArchiveVolumeSelfCheckConfirmRequest,
-  type ArchiveVolumeSignOffRoleCode,
-  type ArchiveVolumeSubmitChecklistVO,
-} from '@/apis/mark/archive-volume'
-import { showUserError } from '@/utils/error-handler'
+import type {ArchiveVolumeSelfCheckConfirmRequest, ArchiveVolumeSignOffRoleCode, ArchiveVolumeSubmitChecklistVO} from '@/apis/mark/archive-volume';
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
+import {
+  
+  
+  
+  confirmArchiveVolumeSelfCheck,
+  previewArchiveVolumeSubmitChecklist
+} from '@/apis/mark/archive-volume'
+import { showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
   open: boolean
@@ -17,7 +18,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  confirmed: []
+  "confirmed": []
 }>()
 
 const loading = ref(false)

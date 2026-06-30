@@ -334,7 +334,7 @@ const courseObjectiveMappingHint = computed(() => {
   const goalTotal = props.detail.courseObjectiveTotalGoalCount
   const goalCovered = props.detail.courseObjectiveCoveredGoalCount
   if (total != null && mapped != null && total > 0 && mapped >= total
-      && goalTotal != null && goalCovered != null && goalTotal > 0 && goalCovered < goalTotal) {
+    && goalTotal != null && goalCovered != null && goalTotal > 0 && goalCovered < goalTotal) {
     return `quality 课程目标覆盖 ${goalCovered}/${goalTotal} 未完成，须确保每个课程目标至少映射一题后再生成达成度报告。`
   }
   if (total == null || mapped == null) {

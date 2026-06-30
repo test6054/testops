@@ -485,6 +485,7 @@ import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
 import type {
   ExamDetailVO,
 } from '@/apis/mark/exam'
+import type {AiAbilityCode, AiExecutionStatusCode, ExamQuestionAiExecutionItemVO} from '@/apis/mark/exam-grade';
 import type { QualityDecisionCode } from '@/apis/mark/exam-scan'
 import type { PaperInstanceDisplayVO } from '@/apis/mark/exam-score'
 import type {
@@ -522,11 +523,11 @@ import {
   AI_ABILITY_TONE,
   AI_EXECUTION_STATUS_LABEL,
   AI_EXECUTION_STATUS_TONE,
+  
+  
+  
   listAiExecutionsForQuestion,
-  rescoreQuestionByAi,
-  type AiAbilityCode,
-  type AiExecutionStatusCode,
-  type ExamQuestionAiExecutionItemVO,
+  rescoreQuestionByAi
 } from '@/apis/mark/exam-grade'
 import {
   QUALITY_DECISION_LABEL,
@@ -548,24 +549,24 @@ import WholePaperGallery from '@/components/mark/WholePaperGallery.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiPopoverPanel from '@/components/ui-guide/ui/UiPopoverPanel.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiPopoverPanel from '@/components/ui-guide/ui/UiPopoverPanel.vue'
 import {
   buildConfidentialWatermarkLines,
   formatExamConfidentialLabel,
   isExamConfidentialFlag,
 } from '@/composables/useConfidentialWatermark'
-import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useWorkspaceExamId, MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
+import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
+import { MARK_WORKBENCH_CONTEXT_KEY, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useWholePaperGallery } from '@/composables/useWholePaperGallery'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
-import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { formatDateTime } from '@/utils/format'
 import { isGradingEnterInputTarget, isGradingKeyboardInputTarget } from '@/utils/grading-keyboard'
 import { readAllPages } from '@/utils/page-result'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamWorkspaceMarkingTaskDetail' })
 

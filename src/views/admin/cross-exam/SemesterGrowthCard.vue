@@ -186,12 +186,12 @@ import { formatAcademicTermCode } from '@/types/enums/semester-enum'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import {
   buildBarChartInsight,
   buildTrendChartInsight,
   mergeChartHint,
 } from '@/utils/mark-chart-insights'
+import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import {
   examStatSnapshotsToTrendPoints,
   growthItemsToBarItems,

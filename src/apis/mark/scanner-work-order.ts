@@ -1,6 +1,6 @@
-import type { ExamScannerKioskContextVO } from '@/apis/mark/scanner-kiosk'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
-import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
+import type { ExamScannerKioskContextVO, ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
+
 import http from '@/config/axios'
 
 export type ScanTaskKindCode = 'EXAM_MARKING' | 'EXAM_ARCHIVE' | 'PORTFOLIO_COLLECT'

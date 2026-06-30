@@ -1,10 +1,10 @@
 import type { PaperArchiveOcrStatusCode } from './paper-archive'
+import type { ScanWorkOrderStatusCode } from '@/apis/mark/scanner-work-order'
 /**
  * 统一归档卷 API - 对接 edu-mark ArchiveVolumeController
  */
 import type { ArchiveAutoCreateFailureCategory } from '@/constants/archive-auto-create-failure-category'
 import type { PageResult, QueryDto } from '@/types'
-import type { ScanWorkOrderStatusCode } from '@/apis/mark/scanner-work-order'
 import http from '@/config/axios'
 
 export type ArchiveVolumeStatusCode
@@ -826,8 +826,8 @@ export interface ArchiveEvaluationExportVO {
 }
 
 /** 评估材料包导出范围说明（与后端 resolveCampaignExportVolumeIds 一致） */
-export const ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT =
-  '含本批次学年学期内已提交/已入库/收集中卷（整改任务关联的收集中卷已包含在内；不含线上阅卷自动建卷失败诊断卷）'
+export const ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT
+  = '含本批次学年学期内已提交/已入库/收集中卷（整改任务关联的收集中卷已包含在内；不含线上阅卷自动建卷失败诊断卷）'
 
 export function exportEvaluationPackage(campaignId: string): Promise<ArchiveEvaluationExportVO> {
   return http.post<ArchiveEvaluationExportVO>('/api/mark/archive-volumes/evaluation/export', { campaignId })

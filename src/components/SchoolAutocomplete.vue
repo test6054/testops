@@ -18,6 +18,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { LabeledValue } from 'ant-design-vue/es/select'
 import { computed, ref, watch } from 'vue'
 import schoolsData from '@/assets/data/schools.json'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
@@ -29,51 +30,87 @@ export interface SchoolItem {
   letter: string
 }
 
-const props = withDefaults(
-  defineProps<{
-    modelValue?: string
-    placeholder?: string
-    allowClear?: boolean
-    disabled?: boolean
-    maxResults?: number
-  }>(),
-  {
-    modelValue: '',
-    placeholder: '请输入学校名称',
-    allowClear: true,
-    disabled: false,
-    maxResults: 50, // Limit results for performance
-  },
-)
+interface SchoolJsonRecord {
+  id: number
+  name: string
+  province: string
+  letter: string
+}
+
+const modelValue = defineModel<string>({ default: '' })
+
+const {
+  placeholder = '请输入学校名称',
+  allowClear = true,
+  disabled = false,
+  maxResults = 50,
+} = defineProps<{
+  placeholder?: string
+  allowClear?: boolean
+  disabled?: boolean
+  maxResults?: number
+}>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: string): void
   (e: 'select', school: SchoolItem): void
   (e: 'clear'): void
 }>()
 
-// Data initialization（静态学校数据中的 id 统一转为 string）
-const schools = ref<SchoolItem[]>(
-  (schoolsData as Array<{ id: number, name: string, province: string, letter: string }>).map(
-    (s) => ({ ...s, id: String(s.id) }),
-  ),
-)
-const inputValue = ref(props.modelValue)
-const searchKeyword = ref('')
-// Sync with parent v-model
-watch(
-  () => props.modelValue,
-  (newVal) => {
-    if (newVal !== inputValue.value) {
-      inputValue.value = newVal
-    }
-  },
-)
+function isSchoolJsonRecord(record: unknown): record is SchoolJsonRecord {
+  if (typeof record !== 'object' || record === null) {
+    return false
+  }
+  if (!('id' in record) || !('name' in record) || !('province' in record) || !('letter' in record)) {
+    return false
+  }
+  return typeof record.id === 'number'
+    && typeof record.name === 'string'
+    && typeof record.province === 'string'
+    && typeof record.letter === 'string'
+}
 
-// Filter logic - 不依赖 isOpen，避免循环依赖
+function mapSchoolRecords(raw: unknown): SchoolItem[] {
+  if (!Array.isArray(raw)) {
+    return []
+  }
+  const items: SchoolItem[] = []
+  for (const entry of raw) {
+    if (!isSchoolJsonRecord(entry)) {
+      continue
+    }
+    items.push({
+      id: String(entry.id),
+      name: entry.name,
+      province: entry.province,
+      letter: entry.letter,
+    })
+  }
+  return items
+}
+
+function resolveSelectValue(value: string | number | LabeledValue): string {
+  if (typeof value === 'object' && value !== null && 'value' in value) {
+    return String(value.value)
+  }
+  return String(value)
+}
+
+const schools = ref<SchoolItem[]>(mapSchoolRecords(schoolsData))
+const inputValue = ref(modelValue.value)
+const searchKeyword = ref('')
+
+watch(modelValue, (newVal) => {
+  if (newVal !== inputValue.value) {
+    inputValue.value = newVal
+  }
+})
+
+watch(inputValue, (newVal) => {
+  modelValue.value = newVal
+})
+
 const filteredSchools = computed(() => {
   const keyword = searchKeyword.value.trim().toLowerCase()
-
   const results: { value: string, label: string }[] = []
 
   for (const school of schools.value) {
@@ -83,7 +120,7 @@ const filteredSchools = computed(() => {
         label: school.province ? `${school.name} · ${school.province}` : school.name,
       })
 
-      if (results.length >= props.maxResults) {
+      if (results.length >= maxResults) {
         break
       }
     }
@@ -92,30 +129,24 @@ const filteredSchools = computed(() => {
   return results
 })
 
-// Search handler
 const handleSearch = (value: string) => {
   searchKeyword.value = value
   inputValue.value = value
-  emit('update:modelValue', value)
 }
 
-// Select handler
-const handleSelect = (value: string | number | import('ant-design-vue/es/select').LabeledValue) => {
-  const strValue = String(typeof value === 'object' ? value.value : value)
+const handleSelect = (value: string | number | LabeledValue) => {
+  const strValue = resolveSelectValue(value)
   inputValue.value = strValue
-  emit('update:modelValue', strValue)
 
-  const school = schools.value.find((s) => s.name === strValue)
+  const school = schools.value.find(s => s.name === strValue)
   if (school) {
     emit('select', school)
   }
 }
 
-// Clear handler
 const handleClear = () => {
   inputValue.value = ''
   searchKeyword.value = ''
-  emit('update:modelValue', '')
   emit('clear')
 }
 </script>

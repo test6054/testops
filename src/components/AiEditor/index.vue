@@ -14,43 +14,43 @@ import 'aieditor/dist/style.css'
 
 defineOptions({ name: 'AiEditor' })
 
-const props = withDefaults(defineProps<Props>(), {
+const modelValue = defineModel<string>({ required: true })
+
+const props = withDefaults(defineProps<{
+  editable?: boolean
+  placeholder?: string
+  options?: Partial<AiEditorOptions>
+}>(), {
   editable: true,
   placeholder: '请输入内容',
 })
 
-const emit = defineEmits<{
-  'update:modelValue': [value: string]
-}>()
-
-interface Props {
-  /** 编辑器内容 */
-  modelValue: string
-  /** 是否可编辑，默认为true */
-  editable?: boolean
-  /** 占位符文本 */
-  placeholder?: string
-  /** 自定义编辑器配置 */
-  options?: Partial<AiEditorOptions>
+function readUploadSrc(response: unknown): string {
+  if (typeof response !== 'object' || response === null || !('data' in response)) {
+    return ''
+  }
+  const payload = response.data
+  if (typeof payload !== 'object' || payload === null || !('src' in payload)) {
+    return ''
+  }
+  const src = payload.src
+  return typeof src === 'string' ? src : ''
 }
 
 const divRef = ref<HTMLElement>()
 const aieditor = shallowRef<AiEditor | null>(null)
 
-// 编辑器配置（固定使用浅色主题）
-const editorConfig = computed(() => {
+const editorConfig = computed((): Partial<AiEditorOptions> => {
   const baseConfig = createOptimizedAiEditorConfig({
     element: divRef.value,
     theme: 'light',
     placeholder: props.placeholder,
-    content: props.modelValue,
+    content: modelValue.value,
     editable: props.editable,
     draggable: false,
-    // 配置 AI 功能
     ai: {
       bubblePanelEnable: true,
     },
-    // 配置图片上传
     image: {
       allowBase64: true,
       uploader: async (file: File) => {
@@ -64,35 +64,35 @@ const editorConfig = computed(() => {
         }
       },
       uploaderEvent: {
-        onSuccess: (_file: File, response: unknown) => {
-          const res = response as { data?: { src?: string } }
-          return res?.data?.src || ''
-        },
+        onSuccess: (_file: File, response: unknown) => readUploadSrc(response),
         onError: (_file: File, _err: unknown) => {},
       },
     },
     onChange: props.editable
       ? (editor: AiEditor) => {
-          emit('update:modelValue', editor.getHtml())
+          modelValue.value = editor.getHtml()
         }
       : undefined,
   })
 
-  // 合并自定义配置
-  return { ...baseConfig, ...props.options } as AiEditorOptions
+  return { ...baseConfig, ...props.options }
 })
 
-// 初始化编辑器
 const init = () => {
-  if (!divRef.value) return
+  const element = divRef.value
+  if (!element) {
+    return
+  }
 
   aieditor.value?.destroy()
-  aieditor.value = new AiEditor(editorConfig.value)
+  aieditor.value = new AiEditor({
+    ...editorConfig.value,
+    element,
+  })
 }
 
-// 监听内容变化
 watch(
-  () => props.modelValue,
+  () => modelValue.value,
   (value) => {
     if (value !== aieditor.value?.getHtml()) {
       aieditor.value?.setContent(value || '')
@@ -100,7 +100,6 @@ watch(
   },
 )
 
-// 监听可编辑状态变化
 watch(
   () => props.editable,
   () => {
@@ -110,19 +109,16 @@ watch(
   },
 )
 
-// 挂载阶段
 onMounted(() => {
   nextTick(() => {
     init()
   })
 })
 
-// 销毁阶段
 onUnmounted(() => {
   aieditor.value?.destroy()
 })
 
-// 暴露编辑器实例方法
 defineExpose({
   getEditor: () => aieditor.value,
   getHtml: () => aieditor.value?.getHtml() || '',
@@ -137,7 +133,6 @@ defineExpose({
   width: 100%;
   box-sizing: border-box;
 
-  // AiEditor 内部样式覆盖
   :deep(.aie-container) {
     border: 1px solid var(--ant-color-border-secondary) !important;
     border-radius: var(--dp-radius-xs);
@@ -146,13 +141,11 @@ defineExpose({
     flex-direction: column;
   }
 
-  // 工具栏样式
   :deep(.aie-container-header) {
     border-bottom: 1px solid var(--ant-color-border-secondary);
     background: var(--ant-color-fill-quaternary);
   }
 
-  // 内容区域
   :deep(.aie-container-main) {
     flex: 1;
     overflow: auto;

@@ -222,7 +222,7 @@ watch(() => props.departmentId, () => {
     <section v-if="indicatorRefs.length" class="cockpit-ask__section">
       <h4 class="cockpit-ask__section-title">指标口径</h4>
       <ul class="cockpit-ask__list">
-        <li v-for="(ref, index) in indicatorRefs" :key="`ref-${index}`">{{ ref }}</li>
+        <li v-for="(indicatorRef, index) in indicatorRefs" :key="`ref-${index}`">{{ indicatorRef }}</li>
       </ul>
     </section>
     <section v-if="drillLinks.length" class="cockpit-ask__section">

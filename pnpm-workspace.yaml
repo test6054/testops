@@ -7,15 +7,9 @@ packages:
   - .
 
 overrides:
-  eslint-flat-config-utils: 3.0.1
-  undici-types: 6.19.2
-  semver: 7.7.2
   # aieditor 会解析到 2.27.x，但该线自 2.27.0 起无 npm provenance，pnpm no-downgrade 会拦截。
   # 2.26.1 为 2.x 末版带 provenance 的安全线，与 aieditor ^2.26.1 兼容。
   '@tiptap/core': 2.26.1
-  '@tiptap/pm': 2.26.1
-  '@tiptap/starter-kit': 2.26.1
-  '@tiptap/suggestion': 2.26.1
   '@tiptap/extension-blockquote': 2.26.1
   '@tiptap/extension-bold': 2.26.1
   '@tiptap/extension-bubble-menu': 2.26.1
@@ -57,6 +51,12 @@ overrides:
   '@tiptap/extension-text-style': 2.26.1
   '@tiptap/extension-underline': 2.26.1
 
+  '@tiptap/pm': 2.26.1
+  '@tiptap/starter-kit': 2.26.1
+  '@tiptap/suggestion': 2.26.1
+  eslint-flat-config-utils: 3.0.1
+  semver: 7.7.2
+  undici-types: 6.19.2
 allowBuilds:
   '@parcel/watcher': true
   '@vue-office/docx': true

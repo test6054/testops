@@ -52,17 +52,17 @@
 
 <script lang="ts" setup>
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { storeToRefs } from 'pinia'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamJourneyRail from '@/components/workbench/ExamJourneyRail.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { useExamJourneySteps } from '@/composables/useExamJourneySteps'
 import {
   useExamWorkspaceChromeContext,
   useMarkWorkbenchContext,
 } from '@/composables/useMarkWorkbenchContext'
-import { storeToRefs } from 'pinia'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 
 defineOptions({ name: 'ExamWorkspaceChrome' })

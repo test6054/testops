@@ -180,9 +180,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
 
-// Props
 interface Props {
-  modelValue?: boolean
   /** 抽屉标题 */
   title?: string
   /** 实践ID（用于过滤已添加的学生） */
@@ -201,8 +199,11 @@ interface Props {
   confirmLoading?: boolean
 }
 
+defineOptions({ name: 'ClassStudentTreeSelectorDrawer' })
+
+const visible = defineModel<boolean>({ default: false })
+
 const props = withDefaults(defineProps<Props>(), {
-  modelValue: false,
   title: '选择学生',
   initialSelectedStudentIds: () => [],
   excludedStudentIds: () => [],
@@ -213,7 +214,6 @@ const props = withDefaults(defineProps<Props>(), {
 
 // Emits
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
   (
     e: 'confirm',
     data: {
@@ -230,11 +230,6 @@ const emit = defineEmits<{
 }>()
 
 // 响应式数据
-const visible = computed({
-  get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val),
-})
-
 const loading = ref(false)
 const searchKey = ref('')
 const treeData = ref<ClassStudentTreeNode[]>([])

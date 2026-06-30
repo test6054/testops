@@ -173,12 +173,12 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { buildCategoryBarChartOption, buildScatterChartOption } from '@/utils/mark-echarts-options'
 import {
   buildBarChartInsight,
   buildScatterChartInsight,
   mergeChartHint,
 } from '@/utils/mark-chart-insights'
+import { buildCategoryBarChartOption, buildScatterChartOption } from '@/utils/mark-echarts-options'
 import {
   buildQuestionQualityScatterSeries,
   correctRatioToBarItems,

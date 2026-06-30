@@ -60,8 +60,8 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError } from '@/utils/error-handler'
-import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
+import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import { scoreHistogramToBarItems } from '@/utils/mark-statistics-chart'
 
 defineOptions({ name: 'ScoreDistributionCard' })

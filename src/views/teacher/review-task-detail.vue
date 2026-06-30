@@ -221,6 +221,7 @@
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
 import type { AnnotationVO } from '@/apis/mark/exam-annotation'
+import type {AiAbilityCode, AiExecutionStatusCode, ExamQuestionAiExecutionItemVO} from '@/apis/mark/exam-grade';
 import type { ReviewTaskDetailVO, ReviewTaskStatusCode } from '@/apis/mark/exam-review-task'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
@@ -242,11 +243,11 @@ import {
   AI_ABILITY_TONE,
   AI_EXECUTION_STATUS_LABEL,
   AI_EXECUTION_STATUS_TONE,
+  
+  
+  
   listAiExecutionsForQuestion,
-  rescoreQuestionByAi,
-  type AiAbilityCode,
-  type AiExecutionStatusCode,
-  type ExamQuestionAiExecutionItemVO,
+  rescoreQuestionByAi
 } from '@/apis/mark/exam-grade'
 import {
   getReviewTaskDetail,
@@ -259,8 +260,8 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useExamConfidential } from '@/composables/useConfidentialWatermark'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages } from '@/utils/page-result'

@@ -56,20 +56,19 @@ defineOptions({
   name: 'UiColumnSettingPopover',
 })
 
+const modelValue = defineModel<string[]>({ default: () => [] })
+
 const props = withDefaults(defineProps<{
   columns?: UiColumnSettingItem[]
-  modelValue?: string[]
   width?: number
   saveHandler?: (columns: string[]) => Promise<void>
 }>(), {
   columns: () => [],
-  modelValue: () => [],
   width: 280,
   saveHandler: undefined,
 })
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: string[]): void
   (e: 'save', value: string[]): void
   (e: 'reset', value: string[]): void
 }>()
@@ -93,7 +92,7 @@ const getOrderedResult = () => {
 const syncFromModelValue = () => {
   const currentKeySet = new Set(props.columns.map(item => item.key))
   const fixedKeySet = new Set(props.columns.filter(item => item.fixed).map(item => item.key))
-  const validKeys = props.modelValue.filter(key => currentKeySet.has(key))
+  const validKeys = modelValue.value.filter(key => currentKeySet.has(key))
 
   if (!validKeys.length) {
     localChecked.value = new Set(getDefaultCheckedKeys())
@@ -124,7 +123,7 @@ const handleColumnCheckedChange = (key: string) => {
 const handleReset = () => {
   const result = props.columns.map(item => item.key)
   localChecked.value = new Set(getDefaultCheckedKeys())
-  emit('update:modelValue', result)
+  modelValue.value = result
   emit('reset', result)
 }
 
@@ -132,7 +131,7 @@ const handleSave = async () => {
   const result = getOrderedResult()
   saving.value = true
   try {
-    emit('update:modelValue', result)
+    modelValue.value = result
     emit('save', result)
     if (props.saveHandler)
       await props.saveHandler(result)

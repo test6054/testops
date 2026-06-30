@@ -83,12 +83,13 @@ defineOptions({
   inheritAttrs: false,
 })
 
+const modelValue = defineModel<string>({ default: '' })
+
 const props = withDefaults(defineProps<{
   title?: string
   description?: string
   eyebrow?: string
   items?: UiMilestoneItem[]
-  modelValue?: string
   compact?: boolean
   divided?: boolean
 }>(), {
@@ -96,13 +97,11 @@ const props = withDefaults(defineProps<{
   description: '',
   eyebrow: '',
   items: () => [],
-  modelValue: '',
   compact: false,
   divided: false,
 })
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: string): void
   (e: 'select', value: string): void
 }>()
 
@@ -121,7 +120,7 @@ const normalizedItems = computed(() => {
 })
 
 const currentActiveKey = computed(() => {
-  return props.modelValue || normalizedItems.value.find(item => item.status === 'active')?.key || normalizedItems.value[0]?.key || ''
+  return modelValue.value || normalizedItems.value.find(item => item.status === 'active')?.key || normalizedItems.value[0]?.key || ''
 })
 
 const railStyle = computed(() => {
@@ -169,7 +168,7 @@ function isNextLineDone(index: number) {
 }
 
 function handleSelect(key: string) {
-  emit('update:modelValue', key)
+  modelValue.value = key
   emit('select', key)
 }
 </script>

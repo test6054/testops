@@ -48,6 +48,7 @@ import type {
 import { computed } from 'vue'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import {
   buildJourneyStageChartItems,
   buildMarkingProgressChartItems,
@@ -55,7 +56,6 @@ import {
   filterScopeHint,
 } from '@/utils/mark-dashboard-charts'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
-import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 
 defineOptions({ name: 'MarkingOverviewAnalytics' })
 

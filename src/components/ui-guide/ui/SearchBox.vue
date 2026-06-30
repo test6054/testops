@@ -43,7 +43,6 @@ const {
 const emit = defineEmits<{
   (e: 'search', value: string): void
   (e: 'clear'): void
-  (e: 'update:modelValue', value: string | undefined): void
 }>()
 
 // 本地值，用于双向绑定（解决中文输入问题）
@@ -57,8 +56,6 @@ watch(modelValue, (val) => {
 // 同步本地值到外部
 watch(localValue, (val, oldVal) => {
   modelValue.value = val
-  emit('update:modelValue', val)
-  // 检测清除操作
   if (val === '' && oldVal) {
     emit('clear')
   }

@@ -19,8 +19,8 @@ import type { EChartsCoreOption } from 'echarts/core'
 import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
 import { computed } from 'vue'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
-import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
+import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 
 defineOptions({ name: 'QualityWorkbenchCharts' })
 

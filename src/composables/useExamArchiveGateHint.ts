@@ -1,5 +1,6 @@
+import type {Ref} from 'vue';
 import type { ArchiveVolumeExamGateVO } from '@/apis/mark/archive-volume'
-import { computed, type Ref } from 'vue'
+import { computed } from 'vue'
 
 export interface ExamArchiveGateHintState {
   gateProgressHint: string

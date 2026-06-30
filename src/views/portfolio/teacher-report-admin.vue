@@ -10,11 +10,11 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
+import { readPageList } from '@/utils/page-result'
 import {
   portfolioTeacherSelectOptionsFromSummaries,
   resolvePortfolioTeacherDisplayName,
 } from '@/utils/portfolio-teacher-display'
-import { readPageList } from '@/utils/page-result'
 
 const loading = ref(false)
 const polling = ref(false)

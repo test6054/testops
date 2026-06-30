@@ -31,8 +31,14 @@ import { message } from 'ant-design-vue'
 import { computed, ref } from 'vue'
 import { stagePlatformFile } from '@/apis/platform/file'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import { formatFileSize } from '@/utils/format'
 import { getUserErrorMessage } from '@/utils/error-handler'
+import { formatFileSize } from '@/utils/format'
+
+const fileNodeId = defineModel<string | undefined>('fileNodeId')
+
+const fileName = defineModel<string | undefined>('fileName')
+
+const fileSize = defineModel<number | undefined>('fileSize')
 
 const props = withDefaults(defineProps<{
   sceneKey: FileUploadSceneKeyValue
@@ -47,10 +53,6 @@ const props = withDefaults(defineProps<{
   disabled: false,
   removable: true,
 })
-
-const fileNodeId = defineModel<string | undefined>('fileNodeId')
-const fileName = defineModel<string | undefined>('fileName')
-const fileSize = defineModel<number | undefined>('fileSize')
 
 const inputRef = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)

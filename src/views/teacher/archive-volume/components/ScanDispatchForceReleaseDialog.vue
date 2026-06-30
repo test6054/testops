@@ -12,7 +12,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  released: []
+  "released": []
 }>()
 
 const submitting = ref(false)

@@ -33,10 +33,11 @@ import type {
   WorkbenchStage,
   WorkbenchStageStatus,
 } from '@/types/workbench'
-import { message } from 'ant-design-vue'
 import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
+import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ExportBusinessType } from '@/apis/edu/export'
 import {
   achievementApi,
 } from '@/apis/quality/achievement'
@@ -44,7 +45,6 @@ import {
   achievementAuditApi,
 } from '@/apis/quality/achievement-audit'
 import { achievementResultApi } from '@/apis/quality/achievement-result'
-import { ExportBusinessType } from '@/apis/edu/export'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -73,9 +73,9 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageRail from '@/components/workbench/StageRail.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
-import { useQualityTableExport } from '@/composables/useQualityTableExport'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { useQualityTableExport } from '@/composables/useQualityTableExport'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError } from '@/utils/error-handler'
 import { formatScore } from '@/utils/format'

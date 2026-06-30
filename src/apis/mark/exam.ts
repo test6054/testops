@@ -271,7 +271,7 @@ export interface ExamDetailVO {
   printPackageCount?: number
   /** 准备建议项（提示能力缺口，不阻断扫描） */
   prepAdvisoryReasons: string[]
-  /** 准备硬阻断项（仅制卷形态与整卷印刷来源等扫描主链前置） */
+  /** 准备硬阻断项（当前为空列表；扫描登记不依赖制卷形态硬阻断） */
   prepBlockingReasons: string[]
   /** 涉密 / 统考涉密场次；为 true 时前端启用强制水印与警示条 */
   confidential?: boolean

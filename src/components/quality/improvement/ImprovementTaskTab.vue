@@ -487,7 +487,8 @@ defineExpose({
       </UiButton>
     </template>
 
-    <UiFilterBar variant="plain"
+    <UiFilterBar
+      variant="plain"
 
 
 

@@ -54,7 +54,7 @@ withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{
-  navigate: [routeName: string | undefined, examId: string | undefined]
+  "navigate": [routeName: string | undefined, examId: string | undefined]
   'empty-action': []
 }>()
 

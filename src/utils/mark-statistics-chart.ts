@@ -8,8 +8,8 @@ import type { BadgeTone, UiBarChartItem, UiScatterSeries, UiTrendPoint } from '@
 import type { MarkHeatmapCell } from '@/utils/mark-echarts-options'
 import { COURSE_OBJECTIVE_DIMENSION_LABEL } from '@/apis/mark/cross-exam-analysis'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
-import { rateTone } from '@/utils/score-tone'
 import { formatScore, formatScorePercent } from '@/utils/format'
+import { rateTone } from '@/utils/score-tone'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** UiScatterChart 区段色：canvas/SVG 不解析 CSS 变量，故用十六进制单一真源，取值与 --dp/--ant 主题色对齐 */

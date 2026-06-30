@@ -8,9 +8,9 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import PortfolioCockpitAskPanel from '@/views/portfolio/components/PortfolioCockpitAskPanel.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { showUserError } from '@/utils/error-handler'
+import PortfolioCockpitAskPanel from '@/views/portfolio/components/PortfolioCockpitAskPanel.vue'
 
 const { loadTree, departmentOptions: loadDepartmentOptions } = usePortfolioOrgTree()
 const departmentOptions = computed(() => loadDepartmentOptions())

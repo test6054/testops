@@ -22,8 +22,8 @@ import type {ScoreBatchStatus} from '@/apis/quality/types';
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
 import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
+import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ExportBusinessType } from '@/apis/edu/export'
 import {

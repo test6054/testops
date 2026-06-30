@@ -152,23 +152,7 @@
               <span v-else class="muted">0</span>
             </template>
             <template v-else-if="column.key === 'examWindow'">
-              <template v-for="windowCell in [buildExamWindowCell(record)]" :key="`${record.examId}-window`">
-                <span
-                  v-if="windowCell"
-                  class="exam-list-page__exam-window"
-                  :title="windowCell.full"
-                >
-                  <span class="exam-list-page__exam-window-range">{{ windowCell.compact }}</span>
-                  <span
-                    v-if="windowCell.phase"
-                    class="exam-list-page__exam-window-phase"
-                    :class="windowCell.phase.modifier"
-                  >
-                    {{ windowCell.phase.label }}
-                  </span>
-                </span>
-                <span v-else class="muted">未设置</span>
-              </template>
+              <ExamListExamWindowCell :exam="record" />
             </template>
             <template v-else-if="column.key === 'createTime'">
               {{ formatDateTime(record.createTime) }}
@@ -210,7 +194,7 @@
   <!-- 考试维护弹窗 -->
   <a-modal
     v-model:open="formModalOpen"
-    :title="'编辑考试'"
+    title="编辑考试"
     :confirm-loading="saving"
     :ok-button-props="{ disabled: editDetailLoading }"
     :destroy-on-close="true"
@@ -219,89 +203,89 @@
     @ok="handleSave"
   >
     <a-spin :spinning="editDetailLoading" tip="加载考试详情…">
-    <a-form ref="formRef" :model="examForm" :rules="examFormRules" layout="vertical">
-      <a-form-item label="课程" name="courseId">
-        <CatalogCourseSelector
-          v-model:value="examForm.courseId"
-          placeholder="选择课程"
-          :allow-clear="false"
-        />
-      </a-form-item>
-      <a-form-item label="考试名称" name="examName">
-        <a-input
-          v-model:value="examForm.examName"
-          placeholder="例如：2026 春《工程制图》期末"
-          :maxlength="100"
-          show-count
-        />
-      </a-form-item>
-      <a-form-item label="考务编号" name="examNo">
-        <a-input
-          v-model:value="examForm.examNo"
-          placeholder="教务系统编号或自定义编号"
-          :maxlength="64"
-        />
-      </a-form-item>
-      <a-form-item label="学年" name="academicYear">
-        <a-input v-model:value="examForm.academicYear" placeholder="2024-2025" :maxlength="9" />
-      </a-form-item>
-      <a-form-item label="学期" name="semester">
-        <a-select
-          v-model:value="examForm.semester"
-          placeholder="选择学期"
-          allow-clear
-          :options="SemesterOptions"
-        />
-      </a-form-item>
-      <a-form-item label="考试时间窗" name="examWindow">
-        <a-range-picker
-          v-model:value="examForm.examWindow"
-          style="width: 100%"
-          show-time
-          format="YYYY-MM-DD HH:mm"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          :placeholder="['开始时间', '结束时间']"
-        />
-      </a-form-item>
-      <a-form-item label="阅卷策略" name="gradingStrategy">
-        <a-input :value="GRADING_STRATEGY_LABEL.SINGLE" disabled />
-      </a-form-item>
-      <a-form-item label="成绩构成" name="scoreCompositionMode">
-        <a-radio-group v-model:value="examForm.scoreCompositionMode">
-          <a-radio value="EXAM_ONLY">仅计入考试成绩（期末笔试）</a-radio>
-          <a-radio value="EXAM_WITH_DAILY">期末考试 + 平时成绩合成</a-radio>
-        </a-radio-group>
-        <div class="exam-list-form__composition-hint">
-          平时成绩指出勤、作业、课堂表现等；选择合成后，成绩确认时需为每位考生录入平时分，总成绩=考试分+平时分。
-        </div>
-      </a-form-item>
-      <a-form-item
-        v-if="examForm.scoreCompositionMode === 'EXAM_WITH_DAILY'"
-        label="平时成绩满分"
-        name="dailyScoreFull"
-      >
-        <a-input-number
-          v-model:value="examForm.dailyScoreFull"
-          :min="0.01"
-          :max="1000"
-          :precision="2"
-          style="width: 100%"
-          placeholder="例如 30（与培养方案中平时分满分一致）"
-        />
-      </a-form-item>
-      <a-form-item label="备注" name="remark">
-        <a-textarea
-          v-model:value="examForm.remark"
-          :rows="3"
-          placeholder="可填写考试用途、班级范围说明等"
-          :maxlength="500"
-          show-count
-        />
-      </a-form-item>
-      <a-form-item label="涉密场次" name="confidential">
-        <a-switch v-model:checked="examForm.confidential" :disabled="editDetailLoading" />
-      </a-form-item>
-    </a-form>
+      <a-form ref="formRef" :model="examForm" :rules="examFormRules" layout="vertical">
+        <a-form-item label="课程" name="courseId">
+          <CatalogCourseSelector
+            v-model:value="examForm.courseId"
+            placeholder="选择课程"
+            :allow-clear="false"
+          />
+        </a-form-item>
+        <a-form-item label="考试名称" name="examName">
+          <a-input
+            v-model:value="examForm.examName"
+            placeholder="例如：2026 春《工程制图》期末"
+            :maxlength="100"
+            show-count
+          />
+        </a-form-item>
+        <a-form-item label="考务编号" name="examNo">
+          <a-input
+            v-model:value="examForm.examNo"
+            placeholder="教务系统编号或自定义编号"
+            :maxlength="64"
+          />
+        </a-form-item>
+        <a-form-item label="学年" name="academicYear">
+          <a-input v-model:value="examForm.academicYear" placeholder="2024-2025" :maxlength="9" />
+        </a-form-item>
+        <a-form-item label="学期" name="semester">
+          <a-select
+            v-model:value="examForm.semester"
+            placeholder="选择学期"
+            allow-clear
+            :options="SemesterOptions"
+          />
+        </a-form-item>
+        <a-form-item label="考试时间窗" name="examWindow">
+          <a-range-picker
+            v-model:value="examForm.examWindow"
+            style="width: 100%"
+            show-time
+            format="YYYY-MM-DD HH:mm"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            :placeholder="['开始时间', '结束时间']"
+          />
+        </a-form-item>
+        <a-form-item label="阅卷策略" name="gradingStrategy">
+          <a-input :value="GRADING_STRATEGY_LABEL.SINGLE" disabled />
+        </a-form-item>
+        <a-form-item label="成绩构成" name="scoreCompositionMode">
+          <a-radio-group v-model:value="examForm.scoreCompositionMode">
+            <a-radio value="EXAM_ONLY">仅计入考试成绩（期末笔试）</a-radio>
+            <a-radio value="EXAM_WITH_DAILY">期末考试 + 平时成绩合成</a-radio>
+          </a-radio-group>
+          <div class="exam-list-form__composition-hint">
+            平时成绩指出勤、作业、课堂表现等；选择合成后，成绩确认时需为每位考生录入平时分，总成绩=考试分+平时分。
+          </div>
+        </a-form-item>
+        <a-form-item
+          v-if="examForm.scoreCompositionMode === 'EXAM_WITH_DAILY'"
+          label="平时成绩满分"
+          name="dailyScoreFull"
+        >
+          <a-input-number
+            v-model:value="examForm.dailyScoreFull"
+            :min="0.01"
+            :max="1000"
+            :precision="2"
+            style="width: 100%"
+            placeholder="例如 30（与培养方案中平时分满分一致）"
+          />
+        </a-form-item>
+        <a-form-item label="备注" name="remark">
+          <a-textarea
+            v-model:value="examForm.remark"
+            :rows="3"
+            placeholder="可填写考试用途、班级范围说明等"
+            :maxlength="500"
+            show-count
+          />
+        </a-form-item>
+        <a-form-item label="涉密场次" name="confidential">
+          <a-switch v-model:checked="examForm.confidential" :disabled="editDetailLoading" />
+        </a-form-item>
+      </a-form>
     </a-spin>
   </a-modal>
 </template>
@@ -312,9 +296,9 @@ import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type {
   ExamCreateRequest,
   ExamKindCode,
-  ExamScorePolicyCode,
   ExamListScopeCode,
   ExamPageQueryRequest,
+  ExamScorePolicyCode,
   ExamStatusCode,
   ExamWorkbenchSummaryVO,
   GradingStrategyCode,
@@ -325,6 +309,7 @@ import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import {
   closeExam,
   countExamWorkbenchScopes,
@@ -334,46 +319,42 @@ import {
   EXAM_STATUS_FILTER_OPTIONS,
   EXAM_STATUS_LABEL,
   EXAM_STATUS_TONE,
-  GRADING_STRATEGY_LABEL,
   getExamDetail,
+  GRADING_STRATEGY_LABEL,
   pageExamWorkbench,
   updateExam,
 } from '@/apis/mark/exam'
-import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   buildCloseExamBlockedContent,
   buildCloseExamReadyContent,
 } from '@/composables/useExamArchiveGateHint'
+import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearOptions, getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import { showUserError } from '@/utils/error-handler'
+import { readExamListDeepLinkQuery } from '@/utils/exam-list-navigation'
 import {
   formatDateTime,
-  formatExamWindowCompactRange,
-  formatExamWindowFullRange,
-  formatExamWindowPhaseLabel,
-  resolveExamWindowPhase,
 } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
-import { readExamListDeepLinkQuery } from '@/utils/exam-list-navigation'
 import { resolveScanStageEntryRoute } from '@/utils/resolve-scan-stage-entry'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import ExamListExamWindowCell from '@/views/teacher/components/ExamListExamWindowCell.vue'
 
 defineOptions({ name: 'TeacherExamList' })
 
@@ -933,28 +914,6 @@ function examKindLabel(exam: ExamWorkbenchSummaryVO): string {
 function formatAcademicTerm(exam: ExamWorkbenchSummaryVO): string {
   if (!exam.academicYear && !exam.semester) return ''
   return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
-}
-
-/** 列表考试时间窗单元格：紧凑区间 + 相对阶段 + hover 完整时间。 */
-function buildExamWindowCell(exam: ExamWorkbenchSummaryVO): {
-  compact: string
-  full: string
-  phase: { modifier: string, label: string } | null
-} | null {
-  if (!exam.examStartTime && !exam.examEndTime) {
-    return null
-  }
-  const phase = resolveExamWindowPhase(exam.examStartTime, exam.examEndTime)
-  return {
-    compact: formatExamWindowCompactRange(exam.examStartTime, exam.examEndTime),
-    full: formatExamWindowFullRange(exam.examStartTime, exam.examEndTime),
-    phase: phase
-      ? {
-          modifier: `exam-list-page__exam-window-phase--${phase}`,
-          label: formatExamWindowPhaseLabel(exam.examStartTime, exam.examEndTime),
-        }
-      : null,
-  }
 }
 
 /**

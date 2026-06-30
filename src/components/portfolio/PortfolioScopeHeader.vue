@@ -10,8 +10,8 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { usePortfolioStore } from '@/stores/modules/portfolio'
 import { showUserError } from '@/utils/error-handler'
-import { resolvePortfolioTeacherDisplayName } from '@/utils/portfolio-teacher-display'
 import { readPageList } from '@/utils/page-result'
+import { resolvePortfolioTeacherDisplayName } from '@/utils/portfolio-teacher-display'
 
 defineOptions({ name: 'PortfolioScopeHeader' })
 

@@ -188,7 +188,7 @@ const statMetrics = computed((): SignalMetric[] => {
     },
     {
       key: 'blocking',
-      label: '硬阻断',
+      label: '扫描硬阻断',
       value: blockingReasons.value.length,
       unit: '项',
       tone: (blockingReasons.value.length > 0 ? 'orange' : 'green') as BadgeTone,
@@ -362,10 +362,10 @@ watch(selectedExamId, (next) => {
           <UiCard class="exam-prep__next-step-card">
             <template #title>
               <CheckCircleOutlined />
-              <span>关键准备项已完成</span>
+              <span>可以开始扫描登记</span>
             </template>
             <p class="exam-prep__next-step-desc">
-              制卷形态与整卷印刷来源等扫描主链前置已就绪，可以开始扫描试卷或进入阅卷；名册、母版、印刷包等待完善项不阻断扫描登记。
+              扫描登记不依赖名册、母版、印刷包等完善项；缺项会增加识别与身份绑定的人工处理量，建议后续在准备步骤中补全。
             </p>
             <a-space>
               <UiButton variant="primary" @click="goNextStep('scan')">

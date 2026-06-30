@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TaskStatusCode } from '@/apis/mark/task-status'
 /**
  * Stage 3 - 澶嶆牳涓庡紓甯稿缃?
  *
@@ -19,7 +20,6 @@ import {
 } from '@ant-design/icons-vue'
 import { computed, watch } from 'vue'
 import { TASK_STATUS_LABEL } from '@/apis/mark/task-status'
-import type { TaskStatusCode } from '@/apis/mark/task-status'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'

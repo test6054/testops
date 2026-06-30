@@ -43,11 +43,6 @@ import type {
   ScannerKioskScanMode,
 } from '@/apis/mark/scanner-kiosk'
 import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
-import {
-  kioskMaterialKindLabel,
-  kioskScanModeAdvisory,
-  resolveKioskScanMaterialAdvisory,
-} from '@/utils/scanner-kiosk-ui'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { SCANNER_COLOR_MODE_LABEL, SCANNER_DUPLEX_MODE_LABEL, SCANNER_ENDPOINT_ONLINE_STATUS_LABEL } from '@/apis/mark/exam-mark-scanner'
@@ -104,6 +99,12 @@ import {
   recoverKioskBrowserSessionFromAgent,
 } from '@/utils/kiosk-auth'
 import { readPageList, readPageTotal } from '@/utils/page-result'
+import {
+  kioskMaterialKindLabel,
+  kioskScanModeAdvisory,
+  resolveKioskClassScopeAdvisory,
+  resolveKioskScanMaterialAdvisory,
+} from '@/utils/scanner-kiosk-ui'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { fetchPagedHistoryLedgerSnapshot } from '@/views/scanner-kiosk/composables/ledgerMerge'
 import { useKioskDeviceActivation } from '@/views/scanner-kiosk/composables/useKioskDeviceActivation'
@@ -743,6 +744,8 @@ export function useExamKioskWorkflow() {
     kioskMaterialKindLabel(kioskContext.value?.taskContract?.materialLayoutMode))
   const scanMaterialAdvisory = computed(() =>
     resolveKioskScanMaterialAdvisory(kioskContext.value?.taskContract))
+  const classScopeAdvisory = computed(() =>
+    resolveKioskClassScopeAdvisory(kioskContext.value?.classIds))
   const supplementBoundPapers = computed<ExamScannerBoundPaperItemVO[]>(
     () => kioskContext.value?.supplementBoundPapers ?? [],
   )
@@ -865,7 +868,7 @@ export function useExamKioskWorkflow() {
       return {
         tone: 'warning',
         statusText: '暂不可开始扫描',
-        headline: '扫描前置条件未满足',
+        headline: scanBlockedReason.value,
         detail: scanBlockedReason.value,
       }
     }
@@ -3071,6 +3074,7 @@ export function useExamKioskWorkflow() {
     scanModeAdvisory,
     materialKindLabel,
     scanMaterialAdvisory,
+    classScopeAdvisory,
     supplementBoundPapers,
     scanConfig,
     activationForm,

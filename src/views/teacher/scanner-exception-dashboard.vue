@@ -6,27 +6,27 @@ import type {
   ScannerExceptionDashboardVO,
   SuspectedMixedBatchItemVO,
 } from '@/apis/mark/scanner-dispatch'
+import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { retryScanBatchPageRegister } from '@/apis/mark/exam-scan'
 import {
   loadScannerExceptionDashboard,
   SCAN_BATCH_QUALITY_FLAG_LABEL,
   SCAN_DISPATCH_TICKET_STATUS_LABEL,
 } from '@/apis/mark/scanner-dispatch'
-import { retryScanBatchPageRegister } from '@/apis/mark/exam-scan'
-import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { SCAN_WORK_ORDER_STATUS_LABEL } from '@/apis/mark/scanner-work-order'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import { message } from 'ant-design-vue'
 import ScanDispatchForceReleaseDialog from '@/views/teacher/archive-volume/components/ScanDispatchForceReleaseDialog.vue'
 
 defineOptions({ name: 'ScannerExceptionDashboard' })

@@ -52,7 +52,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { FilterPillOption } from './types'
+import type { FilterPillModelValue, FilterPillOption } from './types'
 import { computed, ref } from 'vue'
 
 defineOptions({
@@ -60,9 +60,10 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<Props>(), {
+const modelValue = defineModel<FilterPillModelValue>()
+
+const props = withDefaults(defineProps<Omit<Props, 'modelValue'>>(), {
   options: () => [],
-  modelValue: undefined,
   multiple: false,
   collapsible: true,
   vertical: false,
@@ -73,13 +74,12 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: string | number | null | (string | number)[]): void
-  (e: 'change', value: string | number | null | (string | number)[]): void
+  (e: 'change', value: FilterPillModelValue): void
 }>()
 
 interface Props {
   options?: FilterPillOption[]
-  modelValue?: string | number | null | (string | number)[]
+  modelValue?: FilterPillModelValue
   multiple?: boolean
   collapsible?: boolean
   vertical?: boolean
@@ -92,34 +92,44 @@ interface Props {
 const expanded = ref(false)
 const visibleOverflow = computed(() => props.options.length > props.maxVisibleItems)
 
+function isMultipleSelection(value: FilterPillModelValue | undefined): value is Array<string | number> {
+  return Array.isArray(value)
+}
+
 const isSelected = (value: string | number | null): boolean => {
   if (props.multiple) {
-    return Array.isArray(props.modelValue) && props.modelValue.includes(value as string | number)
+    if (!isMultipleSelection(modelValue.value)) {
+      return false
+    }
+    if (value === null) {
+      return false
+    }
+    return modelValue.value.includes(value)
   }
-  return props.modelValue === value
+  return modelValue.value === value
 }
 
 const handleSelect = (value: string | number | null) => {
-  let newValue: string | number | null | (string | number)[]
+  let newValue: FilterPillModelValue
 
   if (props.multiple) {
-    const currentValues = Array.isArray(props.modelValue) ? [...props.modelValue] : []
-    const index = currentValues.indexOf(value as string | number)
+    const currentValues = isMultipleSelection(modelValue.value) ? [...modelValue.value] : []
+    const index = currentValues.findIndex(item => item === value)
 
     if (index > -1) {
       currentValues.splice(index, 1)
-    } else {
-      currentValues.push(value as string | number)
+    } else if (value !== null) {
+      currentValues.push(value)
     }
 
     newValue = currentValues
   } else {
-    newValue = props.modelValue === value
+    newValue = modelValue.value === value
       ? (props.allowDeselect ? null : value)
       : value
   }
 
-  emit('update:modelValue', newValue)
+  modelValue.value = newValue
   emit('change', newValue)
 }
 

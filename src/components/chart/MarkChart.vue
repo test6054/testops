@@ -17,7 +17,7 @@
       :aria-label="resolvedAriaLabel"
       tabindex="0"
       @click="handleChartClick"
-      @brushSelected="handleBrushSelected"
+      @brush-selected="handleBrushSelected"
     />
     <figcaption class="mark-chart-host__sr">
       {{ resolvedAriaLabel }}

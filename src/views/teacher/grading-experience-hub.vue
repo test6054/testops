@@ -421,10 +421,10 @@ import Modal from 'ant-design-vue/es/modal'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { AI_ANALYSIS_STATUS_LABEL, AI_ANALYSIS_STATUS_TONE } from '@/apis/mark/ai-analysis-status'
 import {
-  EXPERIENCE_CASE_STATUS_LABEL,
-  EXPERIENCE_CASE_STATUS_TONE,
   confirmExperienceCase,
   deprecateExperienceCase,
+  EXPERIENCE_CASE_STATUS_LABEL,
+  EXPERIENCE_CASE_STATUS_TONE,
   extractExperience,
   generateAnswerCluster,
   generateSignatures,

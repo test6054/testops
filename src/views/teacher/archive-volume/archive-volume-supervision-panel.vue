@@ -237,6 +237,7 @@ import { useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_EVALUATION_CAMPAIGN_STATUS_LABEL,
+  ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
   ARCHIVE_INTEGRITY_STATUS_LABEL,
   ARCHIVE_MATERIAL_TYPE_LABEL,
   ARCHIVE_REMEDIATION_STATUS_LABEL,
@@ -245,7 +246,6 @@ import {
   ARCHIVE_VOLUME_STATUS_TONE,
   exportEvaluationArchivePackage,
   exportEvaluationPackage,
-  ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
   getSupervisionArchiveStatistics,
   getSupervisionArchiveVolumeDetail,
   listSupervisionCampaigns,

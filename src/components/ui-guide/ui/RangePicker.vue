@@ -42,13 +42,21 @@ import type { UiComponentSize, UiFieldStatus } from './types'
 import { computed } from 'vue'
 import { resolvePopupContainer } from './popup-container'
 
+type RangeValue = [string, string] | undefined
+type PickerRangeValue = [string, string] | [Dayjs, Dayjs] | undefined
+type PickerRangeChangeValue = PickerRangeValue | null
+type RangeTimePickerProps = Omit<SharedTimeProps<Dayjs>, 'defaultValue'> & {
+  defaultValue?: Dayjs[]
+}
+
 defineOptions({
   name: 'UiRangePicker',
   inheritAttrs: false,
 })
 
+const modelValue = defineModel<RangeValue>()
+
 const props = withDefaults(defineProps<{
-  modelValue?: RangeValue
   placeholder?: [string, string]
   allowClear?: boolean
   disabled?: boolean
@@ -59,8 +67,7 @@ const props = withDefaults(defineProps<{
   size?: UiComponentSize | SizeType
   status?: UiFieldStatus
 }>(), {
-  modelValue: undefined,
-  placeholder: () => ['开始日期', '结束日期'] as [string, string],
+  placeholder: (): [string, string] => ['开始日期', '结束日期'],
   allowClear: true,
   disabled: false,
   format: 'YYYY-MM-DD',
@@ -71,22 +78,15 @@ const props = withDefaults(defineProps<{
   status: 'default',
 })
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: RangeValue): void
   (e: 'change', value: RangeValue, dateString: [string, string]): void
   (e: 'open-change', open: boolean): void
 }>()
-type RangeValue = [string, string] | undefined
-type PickerRangeValue = [string, string] | [Dayjs, Dayjs] | undefined
-type PickerRangeChangeValue = PickerRangeValue | null
-type RangeTimePickerProps = Omit<SharedTimeProps<Dayjs>, 'defaultValue'> & {
-  defaultValue?: Dayjs[]
-}
 
 const pickerValue = computed<PickerRangeValue>(() => {
-  if (!props.modelValue) {
+  if (!modelValue.value) {
     return undefined
   }
-  return [props.modelValue[0], props.modelValue[1]]
+  return [modelValue.value[0], modelValue.value[1]]
 })
 
 const resolvedShowTime = computed<boolean | RangeTimePickerProps | undefined>(() => {
@@ -119,10 +119,10 @@ const antSize = computed<SizeType>(() => {
 
 const handleValueUpdate = (value: PickerRangeChangeValue) => {
   if (!Array.isArray(value) || value.length !== 2 || !value[0] || !value[1]) {
-    emit('update:modelValue', undefined)
+    modelValue.value = undefined
     return
   }
-  emit('update:modelValue', [String(value[0]), String(value[1])])
+  modelValue.value = [String(value[0]), String(value[1])]
 }
 
 const handleChange = (_value: PickerRangeChangeValue, dateString: [string, string]) => {

@@ -1,11 +1,11 @@
-export type ArchiveAutoCreateFailureCategory =
-  | 'CROSS_DEPARTMENT'
-  | 'DEPARTMENT_MISSING'
-  | 'CLASS_INFO_UNAVAILABLE'
-  | 'AGGREGATE_FAILED'
-  | 'EXISTING_STUB_BLOCKS'
-  | 'GATE_DEFERRED'
-  | 'UNKNOWN'
+export type ArchiveAutoCreateFailureCategory
+  = | 'CROSS_DEPARTMENT'
+    | 'DEPARTMENT_MISSING'
+    | 'CLASS_INFO_UNAVAILABLE'
+    | 'AGGREGATE_FAILED'
+    | 'EXISTING_STUB_BLOCKS'
+    | 'GATE_DEFERRED'
+    | 'UNKNOWN'
 
 export const ARCHIVE_AUTO_CREATE_FAILURE_CATEGORY_LABEL = {
   CROSS_DEPARTMENT: '参考班级跨院系',

@@ -188,11 +188,11 @@ import { useChartOption } from '@/hooks/modules/useChartOption'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { buildTrendChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
+import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { examStatSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
 import { scoreTone } from '@/utils/score-tone'
-import { toSignalMetrics, computeTrendPointDelta } from '@/utils/stat-metric-helpers'
+import { computeTrendPointDelta, toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'SchoolQualityCard' })
