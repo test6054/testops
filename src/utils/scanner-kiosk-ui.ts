@@ -22,7 +22,7 @@ export function kioskScanModeAdvisory(mode: ScannerKioskScanMode): string {
 }
 
 /**
- * 制卷或模板未完备时的软提醒；整卷未选印刷来源由后端 blockReason 硬阻断，不在此重复。
+ * 制卷或模板未完备时的软提醒；不阻断扫描，仅提示 Web 端后续补配。
  */
 export function resolveKioskScanMaterialAdvisory(contract?: ExamScannerKioskTaskContractVO | null): string {
   if (!contract) return ''

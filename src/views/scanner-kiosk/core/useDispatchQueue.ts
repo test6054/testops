@@ -1,4 +1,5 @@
 import type { ScanDispatchTicketStatusCode, ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
+import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { computed, ref } from 'vue'
 import { pageScanDispatchTickets } from '@/apis/mark/scanner-dispatch'
 import { getUserErrorMessage } from '@/utils/error-handler'
@@ -27,6 +28,7 @@ export function useDispatchQueue() {
   const statusFilter = ref<DispatchQueueStatusFilter>('ALL')
   const scannerDeviceId = ref('')
   const scannerStationId = ref('')
+  const taskKind = ref<ScanTaskKindCode | undefined>()
 
   const pendingCount = computed(() =>
     tickets.value.filter(item => item.status === 'PENDING').length,
@@ -41,6 +43,7 @@ export function useDispatchQueue() {
         pageNum: pageNum.value,
         pageSize: pageSize.value,
         statusList: STATUS_FILTER_MAP[filter],
+        taskKind: taskKind.value,
         scannerDeviceId: scannerDeviceId.value || undefined,
         scannerStationId: scannerStationId.value || undefined,
         failureOnly: filter === 'FAILED' ? true : undefined,
@@ -69,6 +72,11 @@ export function useDispatchQueue() {
     pageNum.value = 1
   }
 
+  function setTaskKindFilter(kind?: ScanTaskKindCode) {
+    taskKind.value = kind
+    pageNum.value = 1
+  }
+
   return {
     loading,
     errorMessage,
@@ -77,9 +85,11 @@ export function useDispatchQueue() {
     pageSize,
     total,
     statusFilter,
+    taskKind,
     pendingCount,
     loadQueue,
     setStationFilter,
     setStatusFilter,
+    setTaskKindFilter,
   }
 }

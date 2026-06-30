@@ -76,10 +76,11 @@ const hardwareParamItems = computed(() => {
 const scanProfileReady = computed(() => hardwareParamItems.value.length > 0)
 
 const statusDetailLine = computed(() => {
-  const { tone, headline, detail, statusText } = readiness.value
+  const { tone, detail, headline, statusText } = readiness.value
   if (tone === 'success') return ''
+  if (detail) return detail
   if (headline && headline !== statusText) return headline
-  return detail || ''
+  return ''
 })
 
 const troubleshootingLine = computed(() => {

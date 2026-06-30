@@ -1,184 +1,113 @@
 <script setup lang="ts">
 import type { ScanDispatchQueueSummaryVO } from '@/apis/mark/scanner-dispatch'
 import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
-import type { SignalMetric } from '@/types/workbench'
 
 import {
-
-  ArrowRightOutlined,
-
-  FileSearchOutlined,
-
-  FolderOpenOutlined,
-
   ReloadOutlined,
-
   ScanOutlined,
-
 } from '@ant-design/icons-vue'
-
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-
 import { useRouter } from 'vue-router'
-
 import { loadScanDispatchQueueSummary } from '@/apis/mark/scanner-dispatch'
-
-import UiButton from '@/components/ui-guide/ui/Button.vue'
-
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
-
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-
-import ContextBar from '@/components/workbench/ContextBar.vue'
-
-import SignalBand from '@/components/workbench/SignalBand.vue'
-
 import { getUserErrorMessage } from '@/utils/error-handler'
-
 import KioskArchivePickPanel from './components/KioskArchivePickPanel.vue'
 import KioskDeviceActivationPanel from './components/KioskDeviceActivationPanel.vue'
-
 import KioskPortfolioGapPickPanel from './components/KioskPortfolioGapPickPanel.vue'
-
 import { useKioskDeviceActivation } from './composables/useKioskDeviceActivation'
-
 import { resolveActivationGuardMessage } from './utils/kioskActivationGuard'
 
-
-
 interface TaskKindCard {
-
   kind: ScanTaskKindCode
-
   title: string
-
   description: string
-
   route: string
-
   deeplinkOnly?: boolean
-
-  deeplinkHint: string
-
+  tagText: string
+  tagGreen?: boolean
+  ctaText: string
 }
 
-
+interface HubSignalItem {
+  key: string
+  label: string
+  value: string
+  sub: string
+  ledTone: 'green' | 'blue' | 'orange' | 'red' | 'gray'
+  clickable?: boolean
+}
 
 const EXAM_CARD: TaskKindCard = {
-
   kind: 'EXAM_MARKING',
-
   title: '考试扫描 / 补录',
-
   description: '考后答卷直扫、补扫与识别绑定，进入后选择考试并开始扫描批次。',
-
   route: '/scanner-kiosk/exam/setup',
-
-  deeplinkHint: '',
-
+  tagText: '可直接进入',
+  tagGreen: true,
+  ctaText: '进入工作台',
 }
 
-
-
 const DEEPLINK_CARDS: TaskKindCard[] = [
-
   {
-
     kind: 'EXAM_ARCHIVE',
-
     title: '考后归档',
-
     description: '查看 PC 派单推送的归档卷待办，或临时选择收集中卷开单扫描。',
-
     route: '/scanner-kiosk/queue',
-
-    deeplinkHint: '进入待办队列',
-
+    tagText: '待办队列',
+    ctaText: '进入队列',
   },
-
   {
-
     kind: 'PORTFOLIO_COLLECT',
-
     title: '教师档案袋',
-
     description: '查看授权范围内开放的补采待办，或从 PC 档案袋页创建派单后进入工位扫描。',
-
     route: '/scanner-kiosk/queue',
-
-    deeplinkHint: '进入待办队列',
-
+    tagText: '待办队列',
+    ctaText: '进入队列',
   },
-
 ]
 
-
-
 const router = useRouter()
-
 const deviceActivation = useKioskDeviceActivation()
-
 const hubLoading = ref(true)
-
 const hubErrorMessage = ref('')
-
 const archivePickOpen = ref(false)
 const portfolioPickOpen = ref(false)
-
 const queueSummaryLoading = ref(false)
-
 const queueSummary = ref<ScanDispatchQueueSummaryVO | null>(null)
-
 const QUEUE_SUMMARY_POLL_MS = 30_000
 let queueSummaryTimer: ReturnType<typeof setInterval> | undefined
 
-
-
 const canActivateOnHub = computed(() => !resolveActivationGuardMessage(deviceActivation.health.value))
-
-
-
 const scannerDeviceId = computed(() => deviceActivation.setup.value?.scannerDeviceId ?? '')
-
 const scannerStationId = computed(() => deviceActivation.setup.value?.scannerStationId ?? '')
-
-
 
 const endpointLabel = computed(() => {
   const name = deviceActivation.setup.value?.deviceName?.trim()
-
     || deviceActivation.activationForm.value.endpointName.trim()
-
   return name || '未命名工位'
 })
 
+const agentVersionLabel = computed(() => {
+  const version = deviceActivation.health.value?.agentVersion?.trim()
+  return version ? `v${version}` : 'v—'
+})
 
+const stationLedTone = computed<'green' | 'gray'>(() =>
+  deviceActivation.localAgentReachable.value ? 'green' : 'gray',
+)
 
 const showAgentOfflineHint = computed(() =>
-
   !hubLoading.value
-
   && !deviceActivation.loading.value
-
   && !deviceActivation.localAgentReachable.value
-
   && (deviceActivation.isDeviceBound.value || !deviceActivation.needsActivationGate.value),
-
 )
-
-
 
 const showTaskKindCards = computed(() =>
-
   deviceActivation.localAgentReachable.value
-
   && deviceActivation.isDeviceBound.value
-
   && !deviceActivation.needsActivationGate.value,
-
 )
-
-
 
 const showFailedAlert = computed(() =>
   showTaskKindCards.value
@@ -187,134 +116,90 @@ const showFailedAlert = computed(() =>
     || (queueSummary.value?.committingWorkOrderCount ?? 0) > 0),
 )
 
-
-
 const contextSubtitle = computed(() => {
   if (hubLoading.value || deviceActivation.loading.value) {
     return '正在读取本机 Agent 与工位状态…'
   }
-
   if (hubErrorMessage.value) {
     return '工位状态读取失败，请重试或检查本机扫描服务'
   }
-
   if (deviceActivation.needsActivationGate.value) {
     return deviceActivation.deviceReadiness.value.detail
   }
-
   if (showAgentOfflineHint.value) {
     return '本地扫描服务暂时不可用；服务恢复后会自动重连，无需重新激活'
   }
-
   if (showTaskKindCards.value) {
-    return '本机工位已就绪，请选择业务采集类型'
+    return '设备已就绪，选择业务入口开始工作'
   }
-
   return '完成一次激活后，考试 / 归档 / 档案袋共用同一工位凭证'
 })
 
-
-
-const hubSignals = computed<SignalMetric[]>(() => {
+const hubSignals = computed<HubSignalItem[]>(() => {
   const health = deviceActivation.health.value
-
   const agentOnline = deviceActivation.localAgentReachable.value
-
   const bound = deviceActivation.isDeviceBound.value && !deviceActivation.needsActivationGate.value
 
-
-
   let scanValue: string
-
-  let scanTone: SignalMetric['tone']
-
+  let scanLed: HubSignalItem['ledTone']
+  let scanSub: string
   if (!agentOnline) {
     scanValue = '不可用'
-
-    scanTone = 'gray'
+    scanLed = 'gray'
+    scanSub = '请先启动本机扫描服务'
   }
-
   else if (!bound) {
     scanValue = '待激活'
-
-    scanTone = 'orange'
+    scanLed = 'orange'
+    scanSub = '输入激活码完成一次绑定'
   }
-
   else if (health?.scannerConnected && health.scanAllowed) {
     scanValue = '就绪'
-
-    scanTone = 'green'
+    scanLed = 'green'
+    scanSub = '扫描仪已连接'
   }
-
   else if (health?.scannerConnected) {
     scanValue = '受限'
-
-    scanTone = 'orange'
+    scanLed = 'orange'
+    scanSub = '扫描仪已连接'
   }
-
   else {
     scanValue = '未连接'
-
-    scanTone = 'orange'
+    scanLed = 'orange'
+    scanSub = '请检查扫描仪连接'
   }
 
-
-
-  const metrics: SignalMetric[] = [
-
+  const metrics: HubSignalItem[] = [
     {
-
       key: 'agent',
-
       label: 'Agent 服务',
-
-      value: agentOnline ? '在线' : '离线',
-
-      tone: agentOnline ? 'green' : 'red',
-
-      helper: agentOnline ? `v${health?.agentVersion ?? '—'}` : '请先启动本机扫描服务',
-
+      value: agentOnline ? '正常' : '离线',
+      ledTone: agentOnline ? 'green' : 'red',
+      sub: agentOnline ? '本地代理已连接' : '请先启动本机扫描服务',
     },
-
     {
-
       key: 'binding',
-
       label: '工位绑定',
-
-      value: bound ? '已激活' : '待激活',
-
-      tone: bound ? 'green' : 'orange',
-
-      helper: bound ? endpointLabel.value : '输入激活码完成一次绑定',
-
+      value: bound ? '已绑定' : '待激活',
+      ledTone: bound ? 'green' : 'orange',
+      sub: bound ? endpointLabel.value : '输入激活码完成一次绑定',
     },
-
     {
-
       key: 'scan',
-
       label: '扫描就绪',
-
       value: scanValue,
-
-      tone: scanTone,
-
-      helper: health?.scannerConnected ? '扫描仪已连接' : '请检查扫描仪连接',
-
+      ledTone: scanLed,
+      sub: scanSub,
     },
-
   ]
-
-
 
   if (bound && (queueSummary.value?.pendingCount ?? 0) > 0) {
     metrics.push({
       key: 'pending',
-      label: '待处理派单',
+      label: '待办队列',
       value: String(queueSummary.value?.pendingCount ?? 0),
-      tone: 'blue',
-      helper: '点击查看待处理队列',
+      ledTone: 'blue',
+      sub: '待处理工单',
       clickable: true,
     })
   }
@@ -322,10 +207,10 @@ const hubSignals = computed<SignalMetric[]>(() => {
   if (bound && (queueSummary.value?.processingCount ?? 0) > 0) {
     metrics.push({
       key: 'processing',
-      label: '处理中派单',
+      label: '处理中',
       value: String(queueSummary.value?.processingCount ?? 0),
-      tone: 'green',
-      helper: '点击查看处理中队列',
+      ledTone: 'blue',
+      sub: '正在扫描',
       clickable: true,
     })
   }
@@ -335,8 +220,8 @@ const hubSignals = computed<SignalMetric[]>(() => {
       key: 'failed',
       label: '失败待办',
       value: String(queueSummary.value?.failedTicketCount ?? 0),
-      tone: 'red',
-      helper: '点击查看失败派单',
+      ledTone: 'red',
+      sub: '点击查看失败派单',
       clickable: true,
     })
   }
@@ -346,8 +231,8 @@ const hubSignals = computed<SignalMetric[]>(() => {
       key: 'suspended',
       label: '挂起派单',
       value: String(queueSummary.value?.suspendedCount ?? 0),
-      tone: 'orange',
-      helper: '点击查看挂起队列',
+      ledTone: 'orange',
+      sub: '点击查看挂起队列',
       clickable: true,
     })
   }
@@ -357,8 +242,8 @@ const hubSignals = computed<SignalMetric[]>(() => {
       key: 'committing',
       label: '合成中',
       value: String(queueSummary.value?.committingWorkOrderCount ?? 0),
-      tone: 'orange',
-      helper: '归档/档案袋异步提交中，请稍候刷新',
+      ledTone: 'orange',
+      sub: '归档/档案袋异步提交中',
     })
   }
 
@@ -367,8 +252,8 @@ const hubSignals = computed<SignalMetric[]>(() => {
       key: 'mixed',
       label: '疑似混扫',
       value: String(queueSummary.value?.suspectedMixedCount ?? 0),
-      tone: 'orange',
-      helper: 'PC 异常看板查看混扫批次',
+      ledTone: 'orange',
+      sub: 'PC 异常看板查看混扫批次',
       clickable: true,
     })
   }
@@ -376,26 +261,17 @@ const hubSignals = computed<SignalMetric[]>(() => {
   return metrics
 })
 
-
-
 const showSignalBand = computed(() =>
-
   !hubLoading.value
-
   && !hubErrorMessage.value
-
   && !deviceActivation.needsActivationGate.value,
-
 )
-
-
 
 async function loadQueueSummary() {
   if (!deviceActivation.isDeviceBound.value) {
     queueSummary.value = null
     return
   }
-
   queueSummaryLoading.value = true
   try {
     queueSummary.value = await loadScanDispatchQueueSummary({
@@ -449,50 +325,37 @@ function handleMetricClick(key: string) {
 
 async function loadHubState() {
   hubLoading.value = true
-
   hubErrorMessage.value = ''
-
   try {
     await deviceActivation.refreshDeviceActivationState()
-
     await loadQueueSummary()
     startQueueSummaryPolling()
   }
-
   catch (error) {
     hubErrorMessage.value = getUserErrorMessage(error)
   }
-
   finally {
     hubLoading.value = false
   }
 }
 
-
-
 async function handleHubActivate() {
   const ok = await deviceActivation.activateDevice({
-
     guard: () => resolveActivationGuardMessage(deviceActivation.health.value),
-
   })
-
   if (ok) {
     await loadHubState()
   }
 }
 
-
-
 function enterCard(card: TaskKindCard) {
-  if (card.deeplinkOnly) {
+  if (card.deeplinkOnly) return
+  if (card.kind === 'EXAM_ARCHIVE' || card.kind === 'PORTFOLIO_COLLECT') {
+    void router.push({ path: card.route, query: { taskKind: card.kind } })
     return
   }
-
   void router.push(card.route)
 }
-
-
 
 function openArchivePick() {
   archivePickOpen.value = true
@@ -502,21 +365,8 @@ function openPortfolioPick() {
   portfolioPickOpen.value = true
 }
 
-
-
-function cardIcon(kind: ScanTaskKindCode) {
-  if (kind === 'EXAM_MARKING') return ScanOutlined
-
-  if (kind === 'EXAM_ARCHIVE') return FolderOpenOutlined
-
-  return FileSearchOutlined
-}
-
-
-
 onMounted(() => {
   void deviceActivation.syncActivationFormFromAgent()
-
   void loadHubState()
 })
 
@@ -525,114 +375,81 @@ onUnmounted(() => {
 })
 </script>
 
-
-
 <template>
   <div class="hub-shell">
     <header class="hub-shell__bar">
       <div class="hub-shell__brand">
-        <span class="hub-shell__mark" />
-
+        <div class="hub-shell__logo" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <rect x="2" y="2" width="24" height="24" rx="6" fill="var(--kiosk-primary)" />
+            <path d="M8 10h12M8 14h8M8 18h10" stroke="white" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </div>
         <div class="hub-shell__brand-text">
-          <strong>文档采集工作台</strong>
-
-          <span>一体机 · 扫描工位</span>
+          <span class="hub-shell__brand-title">文档采集工作台</span>
+          <span class="hub-shell__brand-version">一体机 · 扫描工位 · {{ agentVersionLabel }}</span>
         </div>
       </div>
 
       <div class="hub-shell__station">
-        <span
-
-          class="hub-shell__led"
-
-          :class="{ 'hub-shell__led--on': deviceActivation.localAgentReachable.value }"
-        />
-
-        <div>
-          <div class="hub-shell__station-label">当前工位</div>
-
-          <div class="hub-shell__station-name">{{ endpointLabel }}</div>
-        </div>
+        <span class="hub-led hub-led--sm" :class="`hub-led--${stationLedTone}`" />
+        <span class="hub-shell__station-label">当前工位</span>
+        <span class="hub-shell__station-name">{{ endpointLabel }}</span>
       </div>
 
       <button
-
         type="button"
-
         class="hub-shell__refresh"
-
         title="刷新工位状态"
-
         :disabled="hubLoading || deviceActivation.loading.value"
-
         @click="loadHubState"
       >
         <ReloadOutlined />
       </button>
     </header>
 
-
-
     <main class="hub-shell__main">
       <div class="hub-shell__panel">
-        <ContextBar
+        <div class="hub-context">
+          <div>
+            <div class="hub-context__title">选择采集类型</div>
+            <div class="hub-context__sub">{{ contextSubtitle }}</div>
+          </div>
+          <span v-if="showTaskKindCards" class="hub-context__tag">工位已激活</span>
+        </div>
 
-          class="hub-shell__context"
-
-          layout="workbench"
-
-          show-title
-
-          title="选择采集类型"
-
-          :subtitle="contextSubtitle"
-        >
-          <template v-if="showTaskKindCards" #status>
-            <UiTag tone="green" size="sm">工位已激活</UiTag>
-          </template>
-        </ContextBar>
-
-
-
-        <SignalBand
-
-          v-if="showSignalBand"
-
-          class="hub-shell__signal"
-
-          :metrics="hubSignals"
-
-          variant="panel"
-          @metric-click="handleMetricClick"
-        />
-
-
+        <div v-if="showSignalBand" class="hub-signal-band">
+          <component
+            :is="signal.clickable ? 'button' : 'div'"
+            v-for="signal in hubSignals"
+            :key="signal.key"
+            :type="signal.clickable ? 'button' : undefined"
+            class="hub-signal"
+            :class="{ 'hub-signal--clickable': signal.clickable }"
+            @click="signal.clickable ? handleMetricClick(signal.key) : undefined"
+          >
+            <div class="hub-signal__label">{{ signal.label }}</div>
+            <div class="hub-signal__value-row">
+              <span class="hub-led hub-led--sm" :class="`hub-led--${signal.ledTone}`" />
+              <span class="hub-signal__value">{{ signal.value }}</span>
+            </div>
+            <div class="hub-signal__sub">{{ signal.sub }}</div>
+          </component>
+        </div>
 
         <UiAlertStrip
-
           v-if="showFailedAlert"
-
           tone="error"
-
           title="存在失败待办"
-
           :description="`失败派单 ${queueSummary?.failedTicketCount ?? 0} 条，合成中 ${queueSummary?.committingWorkOrderCount ?? 0} 条；可点击上方指标进入队列或 PC 异常看板`"
-
           dense
-
           class="hub-shell__failed-alert"
         />
 
-
-
         <a-result
-
           v-if="hubErrorMessage"
-
           status="error"
-
           title="工位状态读取失败"
-
           :sub-title="hubErrorMessage"
         >
           <template #extra>
@@ -642,214 +459,143 @@ onUnmounted(() => {
           </template>
         </a-result>
 
-
-
         <div v-else-if="hubLoading || deviceActivation.loading.value" class="hub-shell__state">
           <a-skeleton active :paragraph="{ rows: 5 }" />
         </div>
 
-
-
         <KioskDeviceActivationPanel
-
           v-else-if="deviceActivation.needsActivationGate.value"
-
           :can-activate="canActivateOnHub"
-
           :submit-loading="deviceActivation.loading.value"
-
           show-manual-cancel
-
           @submit="handleHubActivate"
         />
 
-
-
         <section v-else-if="showAgentOfflineHint" class="hub-shell__state">
           <p class="hub-shell__state-title">本地扫描服务暂时不可用</p>
-
           <p class="hub-shell__state-detail">
             工位凭证仍有效；Agent 恢复后会自动重连。请先检查本机扫描服务是否已启动。
           </p>
-
           <button type="button" class="hub-shell__cta" @click="loadHubState">
             重新检测
           </button>
         </section>
 
-
-
         <template v-else-if="showTaskKindCards">
           <p class="hub-shell__section-label">业务入口</p>
 
           <section class="hub-entries" aria-label="业务采集入口">
-            <button
-
-              type="button"
-
-              class="hub-entry hub-entry--primary"
-
-              @click="enterCard(EXAM_CARD)"
-            >
-              <div class="hub-entry__top">
-                <span class="hub-entry__icon"><ScanOutlined /></span>
-
-                <div class="hub-entry__meta">
-                  <span class="hub-entry__title">{{ EXAM_CARD.title }}</span>
-
-                  <UiTag tone="blue" size="sm">可直接进入</UiTag>
-                </div>
+            <button type="button" class="hub-entry" @click="enterCard(EXAM_CARD)">
+              <div class="hub-entry__icon">
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                  <rect x="4" y="4" width="32" height="32" rx="8" fill="var(--kiosk-primary)" opacity="0.12" />
+                  <path d="M12 14h16M12 20h16M12 26h10" stroke="var(--kiosk-primary)" stroke-width="2.5" stroke-linecap="round" />
+                  <rect x="8" y="8" width="24" height="24" rx="4" stroke="var(--kiosk-primary)" stroke-width="2" fill="none" />
+                </svg>
               </div>
-
-              <p class="hub-entry__desc">{{ EXAM_CARD.description }}</p>
-
-              <div class="hub-entry__foot">
-                <span class="hub-entry__go">
-
-                  进入工作台
-
-                  <ArrowRightOutlined />
-
+              <div class="hub-entry__body">
+                <div class="hub-entry__title-row">
+                  <span class="hub-entry__title">{{ EXAM_CARD.title }}</span>
+                  <span class="hub-entry__tag hub-entry__tag--green">{{ EXAM_CARD.tagText }}</span>
+                </div>
+                <p class="hub-entry__desc">{{ EXAM_CARD.description }}</p>
+                <span class="hub-entry__cta">
+                  {{ EXAM_CARD.ctaText }}
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
                 </span>
               </div>
             </button>
 
-
-
-            <div
-
-              v-for="card in DEEPLINK_CARDS"
-
-              :key="card.kind"
-
-              class="hub-entry-wrap"
-            >
-              <button
-
-                type="button"
-
-                class="hub-entry"
-
-                :class="card.deeplinkOnly ? 'hub-entry--deeplink hub-entry--placeholder' : 'hub-entry--primary'"
-
-                :disabled="card.deeplinkOnly"
-
-                @click="enterCard(card)"
+            <div class="hub-entry-wrap">
+              <div
+                v-for="card in DEEPLINK_CARDS"
+                :key="card.kind"
+                class="hub-entry-block"
               >
-                <div class="hub-entry__top">
-                  <span class="hub-entry__icon"><component :is="cardIcon(card.kind)" /></span>
-
-                  <div class="hub-entry__meta">
-                    <span class="hub-entry__title">{{ card.title }}</span>
-
-                    <UiTag :tone="card.deeplinkOnly ? 'gray' : 'blue'" size="sm">
-                      {{ card.deeplinkOnly ? 'PC 深链' : '待办队列' }}
-                    </UiTag>
+                <button type="button" class="hub-entry" @click="enterCard(card)">
+                  <div class="hub-entry__icon">
+                    <svg
+                      v-if="card.kind === 'EXAM_ARCHIVE'"
+                      width="40"
+                      height="40"
+                      viewBox="0 0 40 40"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <rect x="4" y="4" width="32" height="32" rx="8" fill="var(--kiosk-primary)" opacity="0.12" />
+                      <path d="M10 14l4-4h12a2 2 0 012 2v16a2 2 0 01-2 2H14a2 2 0 01-2-2V14z" stroke="var(--kiosk-primary)" stroke-width="2" fill="none" />
+                      <path d="M10 14h4v-4" stroke="var(--kiosk-primary)" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                    <svg
+                      v-else
+                      width="40"
+                      height="40"
+                      viewBox="0 0 40 40"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <rect x="4" y="4" width="32" height="32" rx="8" fill="var(--kiosk-primary)" opacity="0.12" />
+                      <circle cx="20" cy="16" r="4" stroke="var(--kiosk-primary)" stroke-width="2" fill="none" />
+                      <path d="M12 28a8 8 0 0116 0" stroke="var(--kiosk-primary)" stroke-width="2" stroke-linecap="round" fill="none" />
+                      <rect x="22" y="10" width="8" height="10" rx="1" stroke="var(--kiosk-primary)" stroke-width="1.5" fill="none" />
+                      <path d="M25 14h2M25 16h2" stroke="var(--kiosk-primary)" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
                   </div>
-                </div>
-
-                <p class="hub-entry__desc">{{ card.description }}</p>
-
-                <div class="hub-entry__foot">
-                  <span v-if="card.deeplinkOnly" class="hub-entry__hint">{{ card.deeplinkHint }}</span>
-
-                  <span v-else class="hub-entry__go">
-
-                    进入队列
-
-                    <ArrowRightOutlined />
-
-                  </span>
-                </div>
-              </button>
-
-              <UiButton
-
-                v-if="card.kind === 'EXAM_ARCHIVE'"
-
-                class="hub-entry-wrap__adhoc"
-
-                size="sm"
-
-                variant="outline"
-
-                @click="openArchivePick"
-              >
-                临时扫描
-              </UiButton>
-              <UiButton
-
-                v-if="card.kind === 'PORTFOLIO_COLLECT'"
-
-                class="hub-entry-wrap__adhoc"
-
-                size="sm"
-
-                variant="outline"
-
-                @click="openPortfolioPick"
-              >
-                临时扫描
-              </UiButton>
+                  <div class="hub-entry__body">
+                    <div class="hub-entry__title-row">
+                      <span class="hub-entry__title">{{ card.title }}</span>
+                      <span class="hub-entry__tag">{{ card.tagText }}</span>
+                    </div>
+                    <p class="hub-entry__desc">{{ card.description }}</p>
+                    <span class="hub-entry__cta">
+                      {{ card.ctaText }}
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </span>
+                  </div>
+                </button>
+                <button
+                  v-if="card.kind === 'EXAM_ARCHIVE'"
+                  type="button"
+                  class="hub-entry__temp-btn"
+                  @click="openArchivePick"
+                >
+                  <ScanOutlined />
+                  临时扫描
+                </button>
+                <button
+                  v-if="card.kind === 'PORTFOLIO_COLLECT'"
+                  type="button"
+                  class="hub-entry__temp-btn"
+                  @click="openPortfolioPick"
+                >
+                  <ScanOutlined />
+                  临时扫描
+                </button>
+              </div>
             </div>
           </section>
         </template>
       </div>
     </main>
 
-
-
     <KioskArchivePickPanel
-
       v-model:open="archivePickOpen"
-
       :scanner-device-id="scannerDeviceId"
-
       :scanner-station-id="scannerStationId"
     />
     <KioskPortfolioGapPickPanel
-
       v-model:open="portfolioPickOpen"
-
       :scanner-device-id="scannerDeviceId"
-
       :scanner-station-id="scannerStationId"
     />
   </div>
 </template>
 
-
-
 <style>
 @import './styles/tokens.css';
-
 @import './styles/hub-shell.scss';
 </style>
-
-
-
-<style scoped>
-.hub-shell__failed-alert {
-
-  margin-bottom: 12px;
-
-}
-
-.hub-entry-wrap {
-
-  display: flex;
-
-  flex-direction: column;
-
-  gap: 8px;
-
-}
-
-.hub-entry-wrap__adhoc {
-
-  align-self: flex-start;
-
-}
-</style>
-
-

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { DispatchQueueStatusFilter } from './core/useDispatchQueue'
+import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { message } from 'ant-design-vue'
-import { onMounted, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { SCAN_DISPATCH_TICKET_STATUS_LABEL } from '@/apis/mark/scanner-dispatch'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -23,6 +24,26 @@ const statusTabs: { key: DispatchQueueStatusFilter, label: string }[] = [
   { key: 'FAILED', label: '失败' },
 ]
 
+const TASK_KIND_LABEL: Record<Extract<ScanTaskKindCode, 'EXAM_ARCHIVE' | 'PORTFOLIO_COLLECT'>, string> = {
+  EXAM_ARCHIVE: '考后归档',
+  PORTFOLIO_COLLECT: '教师档案袋',
+}
+
+function resolveTaskKindFilter(value: unknown): ScanTaskKindCode | undefined {
+  if (value === 'EXAM_ARCHIVE' || value === 'PORTFOLIO_COLLECT') {
+    return value
+  }
+  return undefined
+}
+
+const queueScopeLabel = computed(() => {
+  const kind = queue.taskKind.value
+  if (kind === 'EXAM_ARCHIVE' || kind === 'PORTFOLIO_COLLECT') {
+    return TASK_KIND_LABEL[kind]
+  }
+  return '归档卷 / 档案袋'
+})
+
 onMounted(async () => {
   await bootstrap.initBootstrap()
   if (bootstrap.setup.value?.scannerDeviceId && bootstrap.setup.value.scannerStationId) {
@@ -35,6 +56,7 @@ onMounted(async () => {
   if (tab === 'FAILED' || tab === 'SUSPENDED' || tab === 'PROCESSING' || tab === 'PENDING' || tab === 'ALL') {
     queue.setStatusFilter(tab)
   }
+  queue.setTaskKindFilter(resolveTaskKindFilter(route.query.taskKind))
   if (bootstrap.activation.isActivatedForMarkApis()) {
     await queue.loadQueue()
   }
@@ -83,7 +105,7 @@ async function changeStatusFilter(filter: DispatchQueueStatusFilter) {
     <header class="dispatch-queue__head">
       <div>
         <h1>待办队列</h1>
-        <p>手动选单 · 归档卷 / 档案袋派单</p>
+        <p>手动选单 · {{ queueScopeLabel }}</p>
       </div>
       <div class="dispatch-queue__head-actions">
         <UiButton size="sm" variant="ghost" @click="goHub">回 Hub</UiButton>
