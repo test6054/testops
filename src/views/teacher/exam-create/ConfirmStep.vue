@@ -87,8 +87,8 @@
 <script setup lang="ts">
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import { computed } from 'vue'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { EXAM_KIND_LABEL, GRADING_STRATEGY_LABEL } from '@/apis/mark/exam'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { formatDateTime } from '@/utils/format'
 import {

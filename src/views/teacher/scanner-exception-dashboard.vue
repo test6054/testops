@@ -395,84 +395,84 @@ watch(
 
     <div class="scanner-exception-dashboard__filters">
       <UiButton size="sm" :variant="itemKindFilter === undefined ? 'primary' : 'outline'" @click="filterByKind(undefined)">
-          全部
-        </UiButton>
-        <UiButton size="sm" :variant="itemKindFilter === 'TICKET' ? 'primary' : 'outline'" @click="filterByKind('TICKET')">
-          派单
-        </UiButton>
-        <UiButton size="sm" :variant="itemKindFilter === 'WORK_ORDER' ? 'primary' : 'outline'" @click="filterByKind('WORK_ORDER')">
-          工单
-        </UiButton>
-        <UiButton size="sm" :variant="itemKindFilter === 'MIXED_BATCH' ? 'primary' : 'outline'" @click="filterByKind('MIXED_BATCH')">
-          混扫
-        </UiButton>
-        <UiButton size="sm" :variant="itemKindFilter === 'PAGE_REGISTER_BLOCKED' ? 'primary' : 'outline'" @click="filterByKind('PAGE_REGISTER_BLOCKED')">
-          页登记阻断
-        </UiButton>
+        全部
+      </UiButton>
+      <UiButton size="sm" :variant="itemKindFilter === 'TICKET' ? 'primary' : 'outline'" @click="filterByKind('TICKET')">
+        派单
+      </UiButton>
+      <UiButton size="sm" :variant="itemKindFilter === 'WORK_ORDER' ? 'primary' : 'outline'" @click="filterByKind('WORK_ORDER')">
+        工单
+      </UiButton>
+      <UiButton size="sm" :variant="itemKindFilter === 'MIXED_BATCH' ? 'primary' : 'outline'" @click="filterByKind('MIXED_BATCH')">
+        混扫
+      </UiButton>
+      <UiButton size="sm" :variant="itemKindFilter === 'PAGE_REGISTER_BLOCKED' ? 'primary' : 'outline'" @click="filterByKind('PAGE_REGISTER_BLOCKED')">
+        页登记阻断
+      </UiButton>
     </div>
 
     <UiDataTable
-        pagination-mode="none"
-        :columns="columns"
-        :data-source="filteredRows"
-        :loading="loading"
-        :show-pagination="false"
-        row-key="rowKey"
-        size="middle"
-        flat
-        empty-description="暂无异常记录"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'itemKind'">
-            <UiTag tone="blue" size="sm">{{ itemKindLabel(record.itemKind) }}</UiTag>
-          </template>
-          <template v-else-if="column.key === 'identifier'">
-            {{ rowIdentifier(record) }}
-          </template>
-          <template v-else-if="column.key === 'status'">
-            {{ statusLabel(record) }}
-          </template>
-          <template v-else-if="column.key === 'detail'">
-            {{ rowDetail(record) }}
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <div class="scanner-exception-dashboard__actions">
-              <UiTextAction
-                v-if="record.itemKind === 'TICKET' && record.ticketId"
-                tone="primary"
-                @click="openWorkOrderTarget(record)"
-              >
-                查看派单
-              </UiTextAction>
-              <UiTextAction
-                v-if="record.itemKind === 'WORK_ORDER' || record.itemKind === 'MIXED_BATCH' || record.itemKind === 'PAGE_REGISTER_BLOCKED'"
-                tone="primary"
-                @click="openWorkOrderTarget(record)"
-              >
-                前往处理
-              </UiTextAction>
-              <UiTextAction
-                v-if="record.itemKind === 'PAGE_REGISTER_BLOCKED' && record.scanBatchId && record.examId"
-                tone="primary"
-                :disabled="pageRegisterRetryingKey === record.rowKey"
-                @click="retryPageRegister(record)"
-              >
-                重试页登记
-              </UiTextAction>
-              <UiTextAction @click="openOperationLogs(record)">
-                操作日志
-              </UiTextAction>
-              <UiTextAction
-                v-if="record.itemKind === 'TICKET' && record.ticketId"
-                tone="danger"
-                @click="openForceRelease(record)"
-              >
-                强制解锁
-              </UiTextAction>
-            </div>
-          </template>
+      pagination-mode="none"
+      :columns="columns"
+      :data-source="filteredRows"
+      :loading="loading"
+      :show-pagination="false"
+      row-key="rowKey"
+      size="middle"
+      flat
+      empty-description="暂无异常记录"
+    >
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'itemKind'">
+          <UiTag tone="blue" size="sm">{{ itemKindLabel(record.itemKind) }}</UiTag>
         </template>
-      </UiDataTable>
+        <template v-else-if="column.key === 'identifier'">
+          {{ rowIdentifier(record) }}
+        </template>
+        <template v-else-if="column.key === 'status'">
+          {{ statusLabel(record) }}
+        </template>
+        <template v-else-if="column.key === 'detail'">
+          {{ rowDetail(record) }}
+        </template>
+        <template v-else-if="column.key === 'actions'">
+          <div class="scanner-exception-dashboard__actions">
+            <UiTextAction
+              v-if="record.itemKind === 'TICKET' && record.ticketId"
+              tone="primary"
+              @click="openWorkOrderTarget(record)"
+            >
+              查看派单
+            </UiTextAction>
+            <UiTextAction
+              v-if="record.itemKind === 'WORK_ORDER' || record.itemKind === 'MIXED_BATCH' || record.itemKind === 'PAGE_REGISTER_BLOCKED'"
+              tone="primary"
+              @click="openWorkOrderTarget(record)"
+            >
+              前往处理
+            </UiTextAction>
+            <UiTextAction
+              v-if="record.itemKind === 'PAGE_REGISTER_BLOCKED' && record.scanBatchId && record.examId"
+              tone="primary"
+              :disabled="pageRegisterRetryingKey === record.rowKey"
+              @click="retryPageRegister(record)"
+            >
+              重试页登记
+            </UiTextAction>
+            <UiTextAction @click="openOperationLogs(record)">
+              操作日志
+            </UiTextAction>
+            <UiTextAction
+              v-if="record.itemKind === 'TICKET' && record.ticketId"
+              tone="danger"
+              @click="openForceRelease(record)"
+            >
+              强制解锁
+            </UiTextAction>
+          </div>
+        </template>
+      </template>
+    </UiDataTable>
 
     <ScanDispatchForceReleaseDialog
       v-model:open="forceReleaseOpen"

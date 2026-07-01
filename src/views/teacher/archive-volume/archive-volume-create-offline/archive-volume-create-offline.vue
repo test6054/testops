@@ -59,14 +59,14 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiSidebarNav from '@/components/ui-guide/ui/UiSidebarNav.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import ArchiveConfigStep from './ArchiveConfigStep.vue'
-import BasicInfoStep from './BasicInfoStep.vue'
-import ConfirmStep from './ConfirmStep.vue'
 import {
   archiveVolumeCreateBasicFormKey,
   archiveVolumeCreateConfigFormKey,
   isArchiveVolumeCreateSectionKey,
 } from './archive-volume-create-context'
+import ArchiveConfigStep from './ArchiveConfigStep.vue'
+import BasicInfoStep from './BasicInfoStep.vue'
+import ConfirmStep from './ConfirmStep.vue'
 import { useArchiveVolumeCreateOffline } from './useArchiveVolumeCreateOffline'
 
 defineOptions({ name: 'TeacherArchiveVolumeCreateOffline' })

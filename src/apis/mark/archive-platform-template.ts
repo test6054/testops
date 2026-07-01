@@ -1,5 +1,5 @@
-import type { ArchiveExamFormCode, ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import type { ArchiveTemplateScopeCode } from '@/apis/mark/archive-template-scope'
+import type { ArchiveExamFormCode, ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import http from '@/config/axios'
 
 export interface ArchivePlatformTemplateSetVO {

@@ -6,6 +6,7 @@ import type {
   ArchivePlatformTemplateSetVO,
 } from '@/apis/mark/archive-platform-template'
 import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
+import type {ArchiveTemplateMaterialEditRow, ArchiveTemplateSelfCheckEditRow} from '@/views/teacher/archive-volume/components/ArchiveTemplateSetEditorDrawer.vue';
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
@@ -18,6 +19,7 @@ import {
   archiveTemplateScopeLabel,
   archiveTemplateScopeTone,
 } from '@/apis/mark/archive-template-scope'
+import { ARCHIVE_EXAM_FORM_LABEL } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -29,12 +31,8 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useAuthStore } from '@/stores/modules/auth'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import ArchiveTemplateSetEditorDrawer, {
-  type ArchiveTemplateMaterialEditRow,
-  type ArchiveTemplateSelfCheckEditRow,
-} from '@/views/teacher/archive-volume/components/ArchiveTemplateSetEditorDrawer.vue'
+import ArchiveTemplateSetEditorDrawer from '@/views/teacher/archive-volume/components/ArchiveTemplateSetEditorDrawer.vue'
 import ArchiveVolumeTemplateSetsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeTemplateSetsPanel.vue'
-import { ARCHIVE_EXAM_FORM_LABEL } from '@/apis/mark/archive-volume'
 
 defineOptions({ name: 'ArchivePlatformTemplateAdminPage' })
 

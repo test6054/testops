@@ -22,48 +22,48 @@
 
     <a-form ref="formRef" :model="rosterForm" :rules="rosterRules" layout="vertical" class="exam-create-form__body">
       <div class="exam-create-form__grid exam-create-form__grid--single">
-      <a-form-item label="纳入方式" name="scopeMode">
-        <a-segmented
-          :value="rosterForm.scopeMode"
-          :options="scopeModeOptions"
-          block
-          @change="handleScopeModeChange"
-        />
-      </a-form-item>
-      <a-form-item label="院系" required>
-        <a-select
-          v-model:value="departmentId"
-          placeholder="请选择院系"
-          :options="departmentOptions"
-          :loading="departmentLoading"
-          show-search
-          option-filter-prop="label"
-          allow-clear
-          style="width: 100%"
-        />
-      </a-form-item>
-      <a-form-item label="参考班级" name="classIds">
-        <a-select
-          v-model:value="rosterForm.classIds"
-          mode="multiple"
-          :placeholder="departmentId ? '选择参考班级（可多选）' : '请先选择院系'"
-          :options="classSelectOptions"
-          :loading="classOptionsLoading"
-          :disabled="!departmentId"
-          show-search
-          option-filter-prop="label"
-          allow-clear
-          style="width: 100%"
-        />
-        <div class="exam-create-form__hint">
-          <template v-if="rosterForm.scopeMode === 'BY_CLASS'">
-            正考场景：按院系选择班级后自动纳入该班全部在籍学生；可切换院系继续添加班级。
-          </template>
-          <template v-else>
-            补考或部分考生：按院系选择班级后自动列出在籍学生，可移除不参加本场考试的学生，或通过「按学生选择」追加。
-          </template>
-        </div>
-      </a-form-item>
+        <a-form-item label="纳入方式" name="scopeMode">
+          <a-segmented
+            :value="rosterForm.scopeMode"
+            :options="scopeModeOptions"
+            block
+            @change="handleScopeModeChange"
+          />
+        </a-form-item>
+        <a-form-item label="院系" required>
+          <a-select
+            v-model:value="departmentId"
+            placeholder="请选择院系"
+            :options="departmentOptions"
+            :loading="departmentLoading"
+            show-search
+            option-filter-prop="label"
+            allow-clear
+            style="width: 100%"
+          />
+        </a-form-item>
+        <a-form-item label="参考班级" name="classIds">
+          <a-select
+            v-model:value="rosterForm.classIds"
+            mode="multiple"
+            :placeholder="departmentId ? '选择参考班级（可多选）' : '请先选择院系'"
+            :options="classSelectOptions"
+            :loading="classOptionsLoading"
+            :disabled="!departmentId"
+            show-search
+            option-filter-prop="label"
+            allow-clear
+            style="width: 100%"
+          />
+          <div class="exam-create-form__hint">
+            <template v-if="rosterForm.scopeMode === 'BY_CLASS'">
+              正考场景：按院系选择班级后自动纳入该班全部在籍学生；可切换院系继续添加班级。
+            </template>
+            <template v-else>
+              补考或部分考生：按院系选择班级后自动列出在籍学生，可移除不参加本场考试的学生，或通过「按学生选择」追加。
+            </template>
+          </div>
+        </a-form-item>
       </div>
     </a-form>
 

@@ -136,51 +136,51 @@ onMounted(() => {
     </template>
 
     <UiFilterBar
-        variant="plain"
-        :model-value="filters"
-        :fields="filterFields"
-        search-text="查询"
-        @update:model-value="Object.assign(filters, $event)"
-        @search="handleSearch"
-        @reset="handleResetSearch"
-      />
+      variant="plain"
+      :model-value="filters"
+      :fields="filterFields"
+      search-text="查询"
+      @update:model-value="Object.assign(filters, $event)"
+      @search="handleSearch"
+      @reset="handleResetSearch"
+    />
 
-      <UiDataTable
-        v-model:current="pagination.current"
-        v-model:page-size="pagination.pageSize"
-        pagination-mode="server"
-        :columns="columns"
-        :data-source="logs"
-        :loading="loading"
-        :total="pagination.total"
-        row-key="logId"
-        flat
-        empty-description="暂无操作日志"
-        @page-change="handlePageChange"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'createTime'">
-            {{ record.createTime ? formatDateTime(record.createTime) : '—' }}
-          </template>
-          <template v-else-if="column.key === 'action'">
-            {{ actionLabel(record.action) }}
-          </template>
-          <template v-else-if="column.key === 'ticketId'">
-            {{ record.ticketId ?? '—' }}
-          </template>
-          <template v-else-if="column.key === 'workOrderId'">
-            {{ record.workOrderId ?? '—' }}
-          </template>
-          <template v-else-if="column.key === 'scannerStationId'">
-            {{ record.scannerStationId ?? '—' }}
-          </template>
-          <template v-else-if="column.key === 'operatorUserId'">
-            {{ record.operatorUserId ?? '—' }}
-          </template>
-          <template v-else-if="column.key === 'detailJson'">
-            {{ record.detailJson ?? '—' }}
-          </template>
+    <UiDataTable
+      v-model:current="pagination.current"
+      v-model:page-size="pagination.pageSize"
+      pagination-mode="server"
+      :columns="columns"
+      :data-source="logs"
+      :loading="loading"
+      :total="pagination.total"
+      row-key="logId"
+      flat
+      empty-description="暂无操作日志"
+      @page-change="handlePageChange"
+    >
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'createTime'">
+          {{ record.createTime ? formatDateTime(record.createTime) : '—' }}
         </template>
-      </UiDataTable>
+        <template v-else-if="column.key === 'action'">
+          {{ actionLabel(record.action) }}
+        </template>
+        <template v-else-if="column.key === 'ticketId'">
+          {{ record.ticketId ?? '—' }}
+        </template>
+        <template v-else-if="column.key === 'workOrderId'">
+          {{ record.workOrderId ?? '—' }}
+        </template>
+        <template v-else-if="column.key === 'scannerStationId'">
+          {{ record.scannerStationId ?? '—' }}
+        </template>
+        <template v-else-if="column.key === 'operatorUserId'">
+          {{ record.operatorUserId ?? '—' }}
+        </template>
+        <template v-else-if="column.key === 'detailJson'">
+          {{ record.detailJson ?? '—' }}
+        </template>
+      </template>
+    </UiDataTable>
   </StageWorkbenchShell>
 </template>

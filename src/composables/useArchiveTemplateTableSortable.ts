@@ -1,4 +1,5 @@
-import { nextTick, onBeforeUnmount, ref, watch, type Ref } from 'vue'
+import type {Ref} from 'vue';
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useDraggable } from 'vue-draggable-plus'
 
 export const ARCHIVE_TEMPLATE_DRAG_HANDLE = '.archive-template-editor__drag-handle'

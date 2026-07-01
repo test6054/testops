@@ -1,4 +1,3 @@
-import type { RouteLocationNormalizedLoaded } from 'vue-router'
 
 /** 教学档案袋前端路由前缀（与质量评价 /quality 平级） */
 export const PORTFOLIO_ROUTE_PREFIX = '/portfolio'

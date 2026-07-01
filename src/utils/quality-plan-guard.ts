@@ -1,6 +1,6 @@
 import type { RouteRecordNormalized } from 'vue-router'
-import { message } from 'ant-design-vue'
 import type { QualityGate } from '@/constants/quality-scope-profile'
+import { message } from 'ant-design-vue'
 import { useQualityStore } from '@/stores/modules/quality'
 
 /** 路由链是否要求培养方案已确认（仅 qualityGate） */

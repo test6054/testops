@@ -258,13 +258,14 @@ import type {
   ExamClassRefVO,
   ExamRosterScopeMode,
 } from '@/apis/mark/exam'
+import type {
+  ExamCandidateRosterRequest,
+} from '@/apis/mark/exam-scope'
 import {
   EXAM_ROSTER_SCOPE_MODE_LABEL,
   getExamDetail,
 } from '@/apis/mark/exam'
-import type {
-  ExamCandidateRosterRequest,
-} from '@/apis/mark/exam-scope'
+import { pageScannerBatches } from '@/apis/mark/exam-scan'
 import {
   listExamCandidates,
   mergeExamCandidates,
@@ -274,7 +275,6 @@ import {
   saveExamClassScope,
   saveExamScope,
 } from '@/apis/mark/exam-scope'
-import { pageScannerBatches } from '@/apis/mark/exam-scan'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSelectorDrawer.vue'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'

@@ -78,9 +78,9 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  templateChange: [code: string | null, name: string, examForm?: ArchiveExamFormCode]
-  responsibleChange: [userId: string | null, nickName: string]
-  'update:configFormRef': [form: FormInstance | undefined]
+  'template-change': [code: string | null, name: string, examForm?: ArchiveExamFormCode]
+  'responsible-change': [userId: string | null, nickName: string]
+  'update:config-form-ref': [form: FormInstance | undefined]
 }>()
 
 const configForm = useInjectedArchiveVolumeCreateConfigForm()
@@ -103,7 +103,7 @@ const securityLevelOptions = Object.entries(ARCHIVE_SECURITY_LEVEL_LABEL).map(([
 
 function handleTemplateChange(value: string) {
   const selected = props.templateSetOptions.find(item => item.value === value)
-  emit('templateChange', value, selected?.label ?? value, selected?.examForm)
+  emit('template-change', value, selected?.label ?? value, selected?.examForm)
 }
 
 function handleResponsibleChange(
@@ -112,11 +112,11 @@ function handleResponsibleChange(
 ): void {
   const teacher = Array.isArray(option) ? option[0] : option
   const userId = typeof value === 'string' ? value : null
-  emit('responsibleChange', userId, teacher?.nickName?.trim() ?? '')
+  emit('responsible-change', userId, teacher?.nickName?.trim() ?? '')
 }
 
 watch(formRef, (form) => {
-  emit('update:configFormRef', form)
+  emit('update:config-form-ref', form)
 }, { immediate: true })
 </script>
 

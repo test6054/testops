@@ -2,11 +2,11 @@
  * 教师阅卷概览 API - 对接 MarkTeacherDashboardController
  */
 import type { ExamStatusCode } from '@/apis/mark/exam'
-import type { MarkStageKey } from '@/stores/modules/markStage'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-
-import http from '@/config/axios'
 import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
+import type { MarkStageKey } from '@/stores/modules/markStage'
+
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import http from '@/config/axios'
 import { isValidSemesterCode } from '@/types/enums/semester-enum'
 
 export type MarkTeacherDashboardTodoTypeCode

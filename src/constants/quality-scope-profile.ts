@@ -18,9 +18,9 @@ export type QualityStoreScopeField
     | 'currentQualityCourseId'
 
 export const DEFAULT_SCOPE_WATCH_FIELDS: Record<QualityScopeProfile, QualityStoreScopeField[]> = {
-  none: [],
-  program: ['currentProgramId'],
-  plan: ['currentProgramId', 'currentTrainingPlanId'],
+  "none": [],
+  "program": ['currentProgramId'],
+  "plan": ['currentProgramId', 'currentTrainingPlanId'],
   'plan-period': [
     'currentProgramId',
     'currentTrainingPlanId',
@@ -34,7 +34,7 @@ export const DEFAULT_SCOPE_WATCH_FIELDS: Record<QualityScopeProfile, QualityStor
     'currentSemester',
     'currentQualityCourseId',
   ],
-  accreditation: ['currentProgramId', 'currentTrainingPlanId'],
+  "accreditation": ['currentProgramId', 'currentTrainingPlanId'],
 }
 
 /** 含 plan 维度的 profile，用于 qualityGate 契约校验 */

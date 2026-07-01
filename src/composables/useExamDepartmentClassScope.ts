@@ -1,12 +1,13 @@
 import type { Ref } from 'vue'
 import type { ClassInfoDto } from '@/apis/edu/class'
+import type {TenantSchoolDepartmentDto} from '@/apis/quality/user-catalog';
 import type { ClassSelectOption } from '@/views/teacher/candidate-roster/class-scope'
 import { computed, ref, watch } from 'vue'
 import { getClassesByDepartment } from '@/apis/edu/class'
-import { departmentCatalogApi, type TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
+import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import { requireArrayResult } from '@/components/quality/selectors/page-contract'
-import { mergeClassSelectOptions } from '@/views/teacher/candidate-roster/class-scope'
 import { showUserError } from '@/utils/error-handler'
+import { mergeClassSelectOptions } from '@/views/teacher/candidate-roster/class-scope'
 
 export interface ExamDepartmentClassScopeSeed {
   classId: string

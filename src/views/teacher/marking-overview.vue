@@ -56,91 +56,91 @@
     </template>
 
     <div class="marking-overview__content-grid">
-        <UiCard title="进行中的考试" :description="ongoingCardHint" bordered>
-          <template #extra>
-            <UiButton variant="outline" size="sm" @click="goExamList">
-              查看全部
-            </UiButton>
-          </template>
+      <UiCard title="进行中的考试" :description="ongoingCardHint" bordered>
+        <template #extra>
+          <UiButton variant="outline" size="sm" @click="goExamList">
+            查看全部
+          </UiButton>
+        </template>
+        <UiSkeletonState
+          v-if="examsLoading"
+          variant="card"
+          :card-count="3"
+          compact
+        />
+        <OngoingExamCardGrid
+          v-else
+          :exams="overview?.ongoingExams ?? []"
+          @navigate="goExamWorkspace"
+        />
+      </UiCard>
+      <UiCard
+        title="待处理事项"
+        :description="pendingTodoHint"
+        bordered
+      >
+        <template #extra>
+          <UiButton variant="ghost" size="sm" @click="goPriorityExamList">
+            查看优先推进
+          </UiButton>
+        </template>
+        <UiSkeletonState
+          v-if="todosLoading"
+          variant="list"
+          :rows="5"
+          compact
+        />
+        <PendingTodoFeed
+          v-else
+          :todos="overview?.pendingTodos ?? []"
+          empty-action-label="查看优先推进"
+          @navigate="goExamWorkspace"
+          @empty-action="goPriorityExamList"
+        />
+      </UiCard>
+    </div>
+
+    <a-row :gutter="20" class="marking-overview__analytics-row">
+      <a-col :span="24">
+        <UiSkeletonState
+          v-if="examsLoading"
+          variant="card"
+          :card-count="3"
+          compact
+        />
+        <MarkingOverviewAnalytics
+          v-else
+          :journey-stage-summary="overview?.journeyStageSummary ?? []"
+          :marking-progress-summary="overview?.markingProgressSummary ?? emptyMarkingProgressSummary"
+          :todo-type-summary="overview?.todoTypeSummary ?? []"
+          :filtered-exam-count="overview?.filterContext.filteredExamCount ?? 0"
+        />
+      </a-col>
+    </a-row>
+
+    <a-row :gutter="20" class="marking-overview__bottom-row">
+      <a-col :span="24">
+        <UiCard title="已发布学情" description="已发布成绩考试学情摘要" bordered>
           <UiSkeletonState
             v-if="examsLoading"
-            variant="card"
-            :card-count="3"
+            variant="table"
+            :rows="4"
+            :columns="5"
             compact
           />
-          <OngoingExamCardGrid
-            v-else
-            :exams="overview?.ongoingExams ?? []"
-            @navigate="goExamWorkspace"
-          />
-        </UiCard>
-        <UiCard
-          title="待处理事项"
-          :description="pendingTodoHint"
-          bordered
-        >
-          <template #extra>
-            <UiButton variant="ghost" size="sm" @click="goPriorityExamList">
-              查看优先推进
-            </UiButton>
-          </template>
-          <UiSkeletonState
-            v-if="todosLoading"
-            variant="list"
-            :rows="5"
-            compact
-          />
-          <PendingTodoFeed
-            v-else
-            :todos="overview?.pendingTodos ?? []"
-            empty-action-label="查看优先推进"
-            @navigate="goExamWorkspace"
-            @empty-action="goPriorityExamList"
-          />
-        </UiCard>
-      </div>
-
-      <a-row :gutter="20" class="marking-overview__analytics-row">
-        <a-col :span="24">
-          <UiSkeletonState
-            v-if="examsLoading"
-            variant="card"
-            :card-count="3"
-            compact
-          />
-          <MarkingOverviewAnalytics
-            v-else
-            :journey-stage-summary="overview?.journeyStageSummary ?? []"
-            :marking-progress-summary="overview?.markingProgressSummary ?? emptyMarkingProgressSummary"
-            :todo-type-summary="overview?.todoTypeSummary ?? []"
-            :filtered-exam-count="overview?.filterContext.filteredExamCount ?? 0"
-          />
-        </a-col>
-      </a-row>
-
-      <a-row :gutter="20" class="marking-overview__bottom-row">
-        <a-col :span="24">
-          <UiCard title="已发布学情" description="已发布成绩考试学情摘要" bordered>
-            <UiSkeletonState
-              v-if="examsLoading"
-              variant="table"
-              :rows="4"
-              :columns="5"
-              compact
+          <template v-else>
+            <PublishedExamInsightChart
+              :insights="overview?.publishedExamInsights ?? []"
             />
-            <template v-else>
-              <PublishedExamInsightChart
-                :insights="overview?.publishedExamInsights ?? []"
-              />
-              <PublishedExamInsightTable
-                :insights="overview?.publishedExamInsights ?? []"
-                class="marking-overview__insight-table"
-                @statistics="goArchiveStatistics"
-              />
-            </template>
-          </UiCard>
-        </a-col>
-      </a-row>
+            <PublishedExamInsightTable
+              :insights="overview?.publishedExamInsights ?? []"
+              class="marking-overview__insight-table"
+              @statistics="goArchiveStatistics"
+            />
+          </template>
+        </UiCard>
+      </a-col>
+    </a-row>
   </StageWorkbenchShell>
 </template>
 
@@ -158,7 +158,6 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { EXAM_STATUS_FILTER_OPTIONS } from '@/apis/mark/exam'
 import {
-  loadTeacherDashboardOverview,
   loadTeacherDashboardOverviewOnce,
 } from '@/apis/mark/teacher-dashboard'
 import MarkingOverviewAnalytics from '@/components/mark/dashboard/MarkingOverviewAnalytics.vue'
@@ -175,13 +174,13 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUserStore } from '@/stores'
-import { showUserError } from '@/utils/error-handler'
 import { formatSemester, isValidSemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
 import {
   generateAcademicYearOptions,
   getDefaultAcademicYearAndSemester,
   resolveDefaultDashboardFilter,
 } from '@/utils/academic-year'
+import { showUserError } from '@/utils/error-handler'
 import { buildExamListRoute } from '@/utils/exam-list-navigation'
 
 defineOptions({ name: 'TeacherMarkingOverview' })

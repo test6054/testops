@@ -112,7 +112,6 @@ async function redirectToDetailIfConfigured(): Promise<void> {
         delete query.setupTab
       }
       await router.replace(typeof target === 'string' ? target : { ...target, query })
-      return
     }
   } catch (error) {
     showUserError(error, '阅卷组织加载失败')

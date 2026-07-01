@@ -12,6 +12,38 @@ import ArchiveTemplateSortableTableShell from '@/views/teacher/archive-volume/co
 
 defineOptions({ name: 'ArchiveTemplateSetEditorDrawer' })
 
+const materialRowsModel = defineModel<ArchiveTemplateMaterialEditRow[]>('materialRows', { required: true })
+
+const selfCheckRowsModel = defineModel<ArchiveTemplateSelfCheckEditRow[]>('selfCheckRows', { required: true })
+
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    title: string
+    loading?: boolean
+    saving?: boolean
+    mode: 'platform' | 'tenant'
+    materialRows: ArchiveTemplateMaterialEditRow[]
+    selfCheckRows: ArchiveTemplateSelfCheckEditRow[]
+    /** 租户模式：材料项分组映射（来自 fork 源平台模板） */
+    categoryGroupMap?: Map<string, string>
+    emptyDescription?: string
+    saveLabel?: string
+  }>(),
+  {
+    loading: false,
+    saving: false,
+    emptyDescription: '暂无材料项与自查项',
+    saveLabel: '保存',
+  },
+)
+
+const emit = defineEmits<{
+  'update:open': [value: boolean]
+  "save": []
+  "cancel": []
+}>()
+
 /** 归档模板材料编辑行（平台 / 租户共用） */
 export interface ArchiveTemplateMaterialEditRow {
   rowKey: string
@@ -42,39 +74,8 @@ interface MaterialGroupTab {
   items: ArchiveTemplateMaterialEditRow[]
 }
 
-const props = withDefaults(
-  defineProps<{
-    open: boolean
-    title: string
-    loading?: boolean
-    saving?: boolean
-    mode: 'platform' | 'tenant'
-    materialRows: ArchiveTemplateMaterialEditRow[]
-    selfCheckRows: ArchiveTemplateSelfCheckEditRow[]
-    /** 租户模式：材料项分组映射（来自 fork 源平台模板） */
-    categoryGroupMap?: Map<string, string>
-    emptyDescription?: string
-    saveLabel?: string
-  }>(),
-  {
-    loading: false,
-    saving: false,
-    emptyDescription: '暂无材料项与自查项',
-    saveLabel: '保存',
-  },
-)
-
-const emit = defineEmits<{
-  'update:open': [value: boolean]
-  save: []
-  cancel: []
-}>()
-
 const MATERIAL_GROUP_FALLBACK = '材料目录'
 const EDITOR_TAB_SELF_CHECK = 'self-check'
-
-const materialRowsModel = defineModel<ArchiveTemplateMaterialEditRow[]>('materialRows', { required: true })
-const selfCheckRowsModel = defineModel<ArchiveTemplateSelfCheckEditRow[]>('selfCheckRows', { required: true })
 
 const editorActiveTab = ref<string>(EDITOR_TAB_SELF_CHECK)
 const materialGroupLists = ref<Record<string, ArchiveTemplateMaterialEditRow[]>>({})

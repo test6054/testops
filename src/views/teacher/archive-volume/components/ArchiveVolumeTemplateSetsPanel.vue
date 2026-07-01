@@ -11,103 +11,103 @@
     <a-tabs v-model:active-key="activeScopeTab" class="archive-template-sets-panel__tabs">
       <a-tab-pane key="PLATFORM" tab="平台模板（只读）">
         <UiFormSection>
-      <UiDataTable
-        pagination-mode="none"
-        :columns="platformColumns"
-        :data-source="platformSets"
-        :loading="templateSetsLoading"
-        :show-pagination="false"
-        flat
-        row-key="templateSetCode"
-        size="middle"
-        empty-description="暂无平台模板套"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'templateScope'">
-            <UiTag :tone="archiveTemplateScopeTone(record.templateScope)" size="sm">
-              {{ archiveTemplateScopeLabel(record.templateScope) }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'examForm'">
-            {{ examFormLabel(record.examForm) }}
-          </template>
-          <template v-else-if="column.key === 'releaseTag'">
-            <UiTag v-if="record.releaseTag" tone="blue" size="sm">{{ record.releaseTag }}</UiTag>
-            <span v-else>—</span>
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <UiTextAction tone="primary" @click="openPlatformTemplate(record)">
-              {{ findTenantSetByPlatformSource(record.templateSetCode) ? '编辑' : '预览' }}
-            </UiTextAction>
-            <UiTextAction
-              v-if="canManageConfig && !findTenantSetByPlatformSource(record.templateSetCode)"
-              tone="primary"
-              @click="openCopyModal(record)"
-            >
-              复制到本校
-            </UiTextAction>
-          </template>
-        </template>
-      </UiDataTable>
-      <UiFormActions v-if="canManageConfig" align="between">
-        <div class="archive-template-sets-panel__copy-all">
-          <span class="archive-template-sets-panel__copy-all-label">目标前缀</span>
-          <a-input
-            v-model:value="copyAllPrefix"
-            placeholder="如 DEFAULT_"
-            style="width: 160px"
-            :disabled="copyAllLoading"
-          />
-          <a-checkbox v-model:checked="copyAllOverride">覆盖已存在</a-checkbox>
-        </div>
-        <UiButton size="sm" variant="primary" :loading="copyAllLoading" @click="submitCopyAll">
-          一键复制全部模板
-        </UiButton>
-      </UiFormActions>
+          <UiDataTable
+            pagination-mode="none"
+            :columns="platformColumns"
+            :data-source="platformSets"
+            :loading="templateSetsLoading"
+            :show-pagination="false"
+            flat
+            row-key="templateSetCode"
+            size="middle"
+            empty-description="暂无平台模板套"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'templateScope'">
+                <UiTag :tone="archiveTemplateScopeTone(record.templateScope)" size="sm">
+                  {{ archiveTemplateScopeLabel(record.templateScope) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'examForm'">
+                {{ examFormLabel(record.examForm) }}
+              </template>
+              <template v-else-if="column.key === 'releaseTag'">
+                <UiTag v-if="record.releaseTag" tone="blue" size="sm">{{ record.releaseTag }}</UiTag>
+                <span v-else>—</span>
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <UiTextAction tone="primary" @click="openPlatformTemplate(record)">
+                  {{ findTenantSetByPlatformSource(record.templateSetCode) ? '编辑' : '预览' }}
+                </UiTextAction>
+                <UiTextAction
+                  v-if="canManageConfig && !findTenantSetByPlatformSource(record.templateSetCode)"
+                  tone="primary"
+                  @click="openCopyModal(record)"
+                >
+                  复制到本校
+                </UiTextAction>
+              </template>
+            </template>
+          </UiDataTable>
+          <UiFormActions v-if="canManageConfig" align="between">
+            <div class="archive-template-sets-panel__copy-all">
+              <span class="archive-template-sets-panel__copy-all-label">目标前缀</span>
+              <a-input
+                v-model:value="copyAllPrefix"
+                placeholder="如 DEFAULT_"
+                style="width: 160px"
+                :disabled="copyAllLoading"
+              />
+              <a-checkbox v-model:checked="copyAllOverride">覆盖已存在</a-checkbox>
+            </div>
+            <UiButton size="sm" variant="primary" :loading="copyAllLoading" @click="submitCopyAll">
+              一键复制全部模板
+            </UiButton>
+          </UiFormActions>
         </UiFormSection>
       </a-tab-pane>
 
       <a-tab-pane key="TENANT" tab="本校模板（可维护）">
         <UiFormSection>
-      <UiDataTable
-        pagination-mode="none"
-        :columns="tenantColumns"
-        :data-source="tenantSets"
-        :loading="templateSetsLoading"
-        :show-pagination="false"
-        flat
-        row-key="templateSetCode"
-        size="middle"
-        empty-description="尚未复制任何模板集，请从平台模板复制"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'templateScope'">
-            <UiTag :tone="archiveTemplateScopeTone(record.templateScope)" size="sm">
-              {{ archiveTemplateScopeLabel(record.templateScope) }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'examForm'">
-            {{ examFormLabel(record.examForm) }}
-          </template>
-          <template v-else-if="column.key === 'release'">
-            <span v-if="record.forkSourceReleaseTag" class="archive-template-sets-panel__release">
-              {{ record.forkSourceReleaseTag }}
-            </span>
-            <span v-else>—</span>
-            <UiTag v-if="canResyncTenantSet(record)" tone="orange" size="sm">可重新同步</UiTag>
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <UiTextAction v-if="canManageConfig" tone="primary" @click.stop="openEditDrawer(record.templateSetCode)">编辑</UiTextAction>
-            <UiTextAction
-              v-if="canManageConfig && canResyncTenantSet(record)"
-              tone="primary"
-              @click.stop="openResyncModal(record)"
-            >
-              重新同步
-            </UiTextAction>
-          </template>
-        </template>
-      </UiDataTable>
+          <UiDataTable
+            pagination-mode="none"
+            :columns="tenantColumns"
+            :data-source="tenantSets"
+            :loading="templateSetsLoading"
+            :show-pagination="false"
+            flat
+            row-key="templateSetCode"
+            size="middle"
+            empty-description="尚未复制任何模板集，请从平台模板复制"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'templateScope'">
+                <UiTag :tone="archiveTemplateScopeTone(record.templateScope)" size="sm">
+                  {{ archiveTemplateScopeLabel(record.templateScope) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'examForm'">
+                {{ examFormLabel(record.examForm) }}
+              </template>
+              <template v-else-if="column.key === 'release'">
+                <span v-if="record.forkSourceReleaseTag" class="archive-template-sets-panel__release">
+                  {{ record.forkSourceReleaseTag }}
+                </span>
+                <span v-else>—</span>
+                <UiTag v-if="canResyncTenantSet(record)" tone="orange" size="sm">可重新同步</UiTag>
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <UiTextAction v-if="canManageConfig" tone="primary" @click.stop="openEditDrawer(record.templateSetCode)">编辑</UiTextAction>
+                <UiTextAction
+                  v-if="canManageConfig && canResyncTenantSet(record)"
+                  tone="primary"
+                  @click.stop="openResyncModal(record)"
+                >
+                  重新同步
+                </UiTextAction>
+              </template>
+            </template>
+          </UiDataTable>
         </UiFormSection>
       </a-tab-pane>
     </a-tabs>
@@ -243,13 +243,11 @@ import type {
   ArchiveTenantTemplateSetVO,
 } from '@/apis/mark/archive-platform-template'
 import type { ArchiveTemplateScopeCode } from '@/apis/mark/archive-template-scope'
-import {
-  archiveTemplateScopeLabel,
-  archiveTemplateScopeTone,
-} from '@/apis/mark/archive-template-scope'
 import type {
   ArchiveExamFormCode,
 } from '@/apis/mark/archive-volume'
+import type {ArchiveTemplateMaterialEditRow, ArchiveTemplateSelfCheckEditRow} from '@/views/teacher/archive-volume/components/ArchiveTemplateSetEditorDrawer.vue';
+import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   copyAllArchivePlatformTemplatesToTenant,
@@ -260,7 +258,10 @@ import {
   resyncArchiveTenantTemplateSet,
   saveArchiveTenantTemplateSet,
 } from '@/apis/mark/archive-platform-template'
-import { message } from 'ant-design-vue'
+import {
+  archiveTemplateScopeLabel,
+  archiveTemplateScopeTone,
+} from '@/apis/mark/archive-template-scope'
 import {
   ARCHIVE_EXAM_FORM_LABEL,
 } from '@/apis/mark/archive-volume'
@@ -274,10 +275,7 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import ArchiveTemplateSetEditorDrawer, {
-  type ArchiveTemplateMaterialEditRow,
-  type ArchiveTemplateSelfCheckEditRow,
-} from '@/views/teacher/archive-volume/components/ArchiveTemplateSetEditorDrawer.vue'
+import ArchiveTemplateSetEditorDrawer from '@/views/teacher/archive-volume/components/ArchiveTemplateSetEditorDrawer.vue'
 
 defineOptions({ name: 'ArchiveVolumeTemplateSetsPanel' })
 

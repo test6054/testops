@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="T extends Record<string, unknown>">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import { nextTick, onBeforeUnmount, ref, watch, type Ref } from 'vue'
+import { ref, watch } from 'vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { useArchiveTemplateTableSortable } from '@/composables/useArchiveTemplateTableSortable'
 

@@ -78,9 +78,10 @@
 </template>
 
 <script setup lang="ts">
+import type {ExamCreateSectionKey} from './exam-create-context';
 import ArrowLeftOutlined from '@ant-design/icons-vue/ArrowLeftOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import { onBeforeUnmount, onMounted, provide, ref, nextTick } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, provide, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiConfirmModal from '@/components/ui-guide/ui/ConfirmModal.vue'
 import UiSidebarNav from '@/components/ui-guide/ui/UiSidebarNav.vue'
@@ -93,8 +94,8 @@ import {
   examCreateBasicFormKey,
   examCreateMarkingTeamFormKey,
   examCreateRosterFormKey,
-  isExamCreateSectionKey,
-  type ExamCreateSectionKey,
+  
+  isExamCreateSectionKey
 } from './exam-create-context'
 import MarkingTeamStep from './MarkingTeamStep.vue'
 import { useExamCreate } from './useExamCreate'

@@ -9,10 +9,10 @@ import { useRouter } from 'vue-router'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
 import { MARK_STAGE_TITLE } from '@/constants/mark-workspace-nav'
 import { formatSemester } from '@/types/enums/semester-enum'
+import { showUserError } from '@/utils/error-handler'
 import { buildExamWorkspaceSignalMetrics } from '@/utils/exam-workspace-signal-metrics'
 import { navigateToJourneyStep, navigateToMarkStage } from '@/utils/mark-stage-navigation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import { showUserError } from '@/utils/error-handler'
 
 export interface UseExamWorkspaceChromeOptions {
   examId: ComputedRef<string>

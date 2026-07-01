@@ -10,10 +10,10 @@ import { isAuthRequestFailure, isTransientRequestError } from '@/utils/error-han
 import { prefersReducedMotion } from '@/utils/motion-preference'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
 import { isValidRole } from '@/utils/permission'
-import { applySeoMeta } from '@/utils/seo'
-import { getRoutePreloadManager } from './preload-strategy'
 import { isQualityEvaluationRoute } from '@/utils/portfolio-route'
 import { ensureQualityPlanConfirmedForNavigation } from '@/utils/quality-plan-guard'
+import { applySeoMeta } from '@/utils/seo'
+import { getRoutePreloadManager } from './preload-strategy'
 import 'nprogress/nprogress.css'
 
 NProgress.configure({

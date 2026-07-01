@@ -129,19 +129,19 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamScannerDeviceVO } from '@/apis/mark/exam-mark-scanner'
+import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
 import type {
   ExamScannerBatchQueryRequest,
   ExamScannerBatchVO,
   ExamScannerBatchWorkbenchSummaryVO,
   ScanBatchStatusCode,
 } from '@/apis/mark/exam-scan'
-import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
-import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { listActiveScannerDevices } from '@/apis/mark/exam-mark-scanner'
+import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import {
   getScannerBatchWorkbenchSummary,
   pageScannerBatches,

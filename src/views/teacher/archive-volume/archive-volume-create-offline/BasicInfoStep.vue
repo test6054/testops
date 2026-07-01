@@ -93,10 +93,10 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
-  courseChange: [courseId: string | null, courseName: string]
-  departmentChange: [departmentId: string | null, departmentName: string]
-  teachingClassChange: [classId: string | null, className: string, departmentId?: string, departmentName?: string]
-  'update:basicFormRef': [form: FormInstance | undefined]
+  'course-change': [courseId: string | null, courseName: string]
+  'department-change': [departmentId: string | null, departmentName: string]
+  'teaching-class-change': [classId: string | null, className: string, departmentId?: string, departmentName?: string]
+  'update:basic-form-ref': [form: FormInstance | undefined]
 }>()
 
 const basicForm = useInjectedArchiveVolumeCreateBasicForm()
@@ -122,7 +122,7 @@ const relatedExamPlaceholder = computed(() => {
 
 function handleCourseChange(courseId: string | null, option?: CourseListVO) {
   clearRelatedExamSelection()
-  emit('courseChange', courseId, option?.courseName?.trim() ?? '')
+  emit('course-change', courseId, option?.courseName?.trim() ?? '')
   void loadRelatedExamOptions()
 }
 
@@ -131,12 +131,12 @@ function handleDepartmentChange(value: string | undefined) {
   const selected = departmentId
     ? departmentOptions.value.find(item => item.value === departmentId)
     : undefined
-  emit('departmentChange', departmentId, selected?.label ?? '')
+  emit('department-change', departmentId, selected?.label ?? '')
 }
 
 function handleClassChange(classId: string | null, option?: ClassInfoDto) {
   emit(
-    'teachingClassChange',
+    'teaching-class-change',
     classId,
     option?.className?.trim() ?? '',
     option?.departmentId,
@@ -237,7 +237,7 @@ watch(
 )
 
 watch(formRef, (form) => {
-  emit('update:basicFormRef', form)
+  emit('update:basic-form-ref', form)
 }, { immediate: true })
 
 onMounted(() => {
