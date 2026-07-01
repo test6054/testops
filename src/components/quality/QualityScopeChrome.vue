@@ -7,12 +7,17 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { CONFIRMATION_STATUS_COLOR, CONFIRMATION_STATUS_LABEL } from '@/apis/quality/types'
-import { CourseSelector, ProgramSelector, TrainingPlanSelector } from '@/components/quality/selectors'
+import {
+  CourseSelector,
+  ProgramSelector,
+  TrainingPlanSelector,
+} from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { useQualityScopeProfile } from '@/composables/useQualityScopeProfile'
 import { SEMESTER_OPTIONS } from '@/constants/quality-scope-profile'
 import { useQualityStore } from '@/stores/modules/quality'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'QualityScopeChrome' })
@@ -28,23 +33,20 @@ const { scopeProfile } = useQualityScopeProfile()
 const programId = computed(() => qualityStore.currentProgramId || null)
 const trainingPlanId = computed(() => qualityStore.currentTrainingPlanId || null)
 
-const showProgram = computed(
-  () => scopeProfile.value !== 'none',
-)
+const showProgram = computed(() => scopeProfile.value !== 'none')
 const showPlan = computed(
-  () => scopeProfile.value === 'plan'
-    || scopeProfile.value === 'plan-period'
-    || scopeProfile.value === 'plan-course'
-    || scopeProfile.value === 'accreditation',
+  () =>
+    scopeProfile.value === 'plan' ||
+    scopeProfile.value === 'plan-period' ||
+    scopeProfile.value === 'plan-course' ||
+    scopeProfile.value === 'accreditation',
 )
 const showPeriod = computed(
   () => scopeProfile.value === 'plan-period' || scopeProfile.value === 'plan-course',
 )
 const showCourse = computed(() => scopeProfile.value === 'plan-course')
 
-const needsPlanSelection = computed(
-  () => showPlan.value && !trainingPlanId.value,
-)
+const needsPlanSelection = computed(() => showPlan.value && !trainingPlanId.value)
 
 const planConfirmationLabel = computed(() => {
   if (!qualityStore.currentPlan?.confirmationStatus) {
@@ -76,8 +78,7 @@ async function restorePersistedScope(): Promise<void> {
     if (qualityStore.currentProgramId && qualityStore.currentTrainingPlanId) {
       await qualityStore.loadTrainingPlanOptions()
     }
-  }
-  catch {
+  } catch {
     // 由业务页展示空态 / 错误
   }
 }
@@ -85,8 +86,7 @@ async function restorePersistedScope(): Promise<void> {
 function handleProgramChange(value: string | null): void {
   if (value) {
     qualityStore.setProgram(value)
-  }
-  else {
+  } else {
     qualityStore.reset()
   }
   emit('change')
@@ -102,8 +102,8 @@ function handleSchoolYearChange(value: string): void {
   emit('change')
 }
 
-function handleSemesterChange(value: string): void {
-  qualityStore.setSchoolPeriod(undefined, value)
+function handleSemesterChange(value: SemesterCode | undefined): void {
+  qualityStore.setSchoolPeriod(undefined, value ?? '')
   emit('change')
 }
 
@@ -140,9 +140,7 @@ onMounted(() => {
     />
     <template v-if="needsPlanSelection">
       <span class="quality-scope-chrome__hint">请选择培养方案</span>
-      <UiButton variant="outline" size="sm" @click="goSelectPlan">
-        去培养方案工作台
-      </UiButton>
+      <UiButton variant="outline" size="sm" @click="goSelectPlan"> 去培养方案工作台 </UiButton>
     </template>
     <template v-else>
       <a-input
@@ -160,7 +158,9 @@ onMounted(() => {
         class="quality-scope-chrome__select quality-scope-chrome__select--semester"
         allow-clear
         :options="[...SEMESTER_OPTIONS]"
-        @update:value="(v) => handleSemesterChange(typeof v === 'string' ? v : '')"
+        @update:value="
+          (v) => handleSemesterChange(typeof v === 'string' ? (v as SemesterCode) : undefined)
+        "
       />
       <CourseSelector
         v-if="showCourse"
@@ -176,11 +176,7 @@ onMounted(() => {
       <UiTag v-if="qualityStore.currentPlan" tone="blue" size="sm">
         {{ qualityStore.currentPlan.planCode }} · {{ qualityStore.currentPlan.planName }}
       </UiTag>
-      <UiTag
-        v-if="showPlan && planConfirmationLabel"
-        :tone="planConfirmationTone"
-        size="sm"
-      >
+      <UiTag v-if="showPlan && planConfirmationLabel" :tone="planConfirmationTone" size="sm">
         {{ planConfirmationLabel }}
       </UiTag>
     </template>

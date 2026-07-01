@@ -33,6 +33,7 @@
     "dompurify": "^3.4.11",
     "echarts": "^6.1.0",
     "jwt-decode": "^4.0.0",
+    "konva": "^10.3.0",
     "lodash-es": "^4.17.23",
     "mitt": "^3.0.1",
     "nprogress": "^0.2.0",
@@ -44,6 +45,7 @@
     "vue-demi": "^0.14.10",
     "vue-draggable-plus": "^0.6.1",
     "vue-echarts": "^8.0.1",
+    "vue-konva": "^3.4.0",
     "vue-router": "^5.1.0",
     "xe-utils": "^4.0.10"
   },

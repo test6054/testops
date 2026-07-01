@@ -1,7 +1,5 @@
 import type { ArchiveMaterialTypeCode, ArchiveVolumeStatusCode } from '@/apis/mark/archive-volume'
-import type {
-  DuplicateResolutionStatusCode,
-} from '@/apis/mark/duplicate-resolution-status'
+import type { DuplicateResolutionStatusCode } from '@/apis/mark/duplicate-resolution-status'
 import type { ExamFileRefVO, ExamStatusCode } from '@/apis/mark/exam'
 import type {
   ScannerAgentDiagnosticStatusCode,
@@ -23,6 +21,7 @@ import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import type { TaskStatusCode } from '@/apis/mark/task-status'
 import type { PortfolioGapTaskStatus } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
 export type ScannerKioskScanMode = 'DIRECT' | 'SUPPLEMENT'
@@ -30,11 +29,8 @@ export type ExamScannerLedgerDataSource = 'DATABASE' | 'REDIS_PENDING' | 'NONE'
 export type ExamScannerPageScanStatus = 'SCANNED'
 export type ExamScannerPageUploadStatus = 'UPLOADED'
 export type ExamScannerPageServerReceiveStatus = 'RECEIVED'
-export type ExamScannerPageRegistrationStatus
-  = | 'REGISTERED'
-    | 'PENDING'
-    | 'DISCARDED'
-    | 'SUPERSEDED'
+export type ExamScannerPageRegistrationStatus =
+  'REGISTERED' | 'PENDING' | 'DISCARDED' | 'SUPERSEDED'
 
 export interface ExamScannerKioskContextRequest {
   examId: string
@@ -50,7 +46,7 @@ export interface ExamScannerKioskExamVO {
   /** 学年，如 '2024-2025' */
   academicYear?: string
   /** 学期，'1'=秋季学期, '2'=春季学期 */
-  semester?: string
+  semester?: SemesterCode
   examNo: string
   status: ExamStatusCode
   statusMessage: string
@@ -273,7 +269,7 @@ export interface ExamScannerKioskExamOptionRequest extends QueryDto {
   /** 学年过滤，例如 '2024-2025' */
   academicYear?: string
   /** 学期过滤，'1'=秋季学期，'2'=春季学期 */
-  semester?: string
+  semester?: SemesterCode
   /** 班级 ID 过滤；不为空时仅返回 t_exam_class_scope 命中该班级的考试 */
   classId?: string
 }
@@ -292,7 +288,7 @@ export interface ExamScannerKioskExamOptionVO {
   /** 学年，如 '2024-2025' */
   academicYear?: string
   /** 学期，'1'=秋季学期，'2'=春季学期 */
-  semester?: string
+  semester?: SemesterCode
   examStartTime?: string
   examEndTime?: string
   classIds: string[]

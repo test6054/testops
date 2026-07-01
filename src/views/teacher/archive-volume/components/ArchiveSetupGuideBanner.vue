@@ -9,8 +9,8 @@
   />
   <UiAlertStrip
     v-else-if="readiness && readiness.overallReady !== true"
-    tone="info"
-    title="归档初始配置建议"
+    tone="warning"
+    title="归档启用未完成"
     dense
     class="archive-setup-guide-banner"
   >
@@ -18,7 +18,7 @@
       <li v-for="item in missingItems" :key="item">{{ item }}</li>
     </ul>
     <p v-else class="archive-setup-guide-banner__hint">
-      以下配置可提升归档流程完整度，不影响教师建卷与日常使用。
+      请完成归档模块角色、模板集与学院责任人配置后再使用列表。
     </p>
     <template v-if="actionLinks.length > 0" #actions>
       <UiButton

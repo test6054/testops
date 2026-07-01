@@ -36,10 +36,7 @@
       </UiFilterBar>
 
       <a-spin :spinning="loading">
-        <UiEmpty
-          v-if="!loading && !list.length"
-          description="当前范围无待审核项"
-        />
+        <UiEmpty v-if="!loading && !list.length" description="当前范围无待审核项" />
         <UiDataTable
           v-else
           pagination-mode="none"
@@ -53,7 +50,9 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'auditStatus'">
-              <UiTag :tone="auditStatusTone(record.auditStatus)" size="sm">{{ auditStatusLabel(record.auditStatus) }}</UiTag>
+              <UiTag :tone="auditStatusTone(record.auditStatus)" size="sm">{{
+                auditStatusLabel(record.auditStatus)
+              }}</UiTag>
             </template>
             <template v-else-if="column.key === 'courseName'">
               <div class="course-cell">
@@ -111,7 +110,9 @@
       <template #footer>
         <a-space>
           <UiButton variant="outline" @click="editOpen = false">取消</UiButton>
-          <UiButton status="danger" :loading="editing" @click="submitAudit('REJECTED')">驳回</UiButton>
+          <UiButton status="danger" :loading="editing" @click="submitAudit('REJECTED')"
+            >驳回</UiButton
+          >
           <UiButton
             variant="primary"
             :loading="editing"
@@ -134,17 +135,17 @@ import type {
   RationalityAuditCourseLedgerOverviewVO,
   RationalityAuditSaveRequest,
 } from '@/apis/quality/rationality-audit'
-import type { AssessmentRationalityAuditStatus } from '@/apis/quality/types'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import {
   createRationalityAudit,
   getRationalityAuditCourseLedger,
   updateRationalityAudit,
 } from '@/apis/quality/rationality-audit'
+import type { AssessmentRationalityAuditStatus } from '@/apis/quality/types'
 import { ASSESSMENT_RATIONALITY_AUDIT_STATUS_LABEL } from '@/apis/quality/types'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -156,6 +157,7 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -174,7 +176,7 @@ interface RationalityAuditEditForm {
 
 interface RationalityAuditFilterModel {
   schoolYear: string
-  semester: string
+  semester: SemesterCode | ''
 }
 
 const loading = ref(false)
@@ -298,7 +300,11 @@ function handleScopeChange(): void {
   }
 }
 
-useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false, reloadOnActivated: false })
+useQualityScopedLoader(handleScopeChange, {
+  watchScope: true,
+  immediate: false,
+  reloadOnActivated: false,
+})
 
 onMounted(async () => {
   if (!filterForm.schoolYear && qualityStore.currentSchoolYear) {
@@ -333,16 +339,18 @@ function openEdit(record: RationalityAuditCourseLedgerItemVO) {
   editOpen.value = true
 }
 
-async function submitAudit(status: Extract<AssessmentRationalityAuditStatus, 'APPROVED' | 'REJECTED'>) {
+async function submitAudit(
+  status: Extract<AssessmentRationalityAuditStatus, 'APPROVED' | 'REJECTED'>,
+) {
   if (!editForm.value.qualityCourseId) {
     message.error('缺少课程信息，无法提交审核')
     return
   }
   if (
-    status === 'APPROVED'
-    && (!editForm.value.contentAligned
-      || !editForm.value.rubricMeasurable
-      || !editForm.value.methodReasonable)
+    status === 'APPROVED' &&
+    (!editForm.value.contentAligned ||
+      !editForm.value.rubricMeasurable ||
+      !editForm.value.methodReasonable)
   ) {
     message.error('审核通过必须同时满足三项合理性检查')
     return

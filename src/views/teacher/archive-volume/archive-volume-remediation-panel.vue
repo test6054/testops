@@ -83,7 +83,9 @@
           {{ remediationAssigneeLabel(record) }}
         </template>
         <template v-else-if="column.key === 'volumeId'">
-          <UiTextAction @click="goVolumeDetail(record.volumeId, record.taskId)">{{ record.volumeId }}</UiTextAction>
+          <UiTextAction @click="goVolumeDetail(record.volumeId, record.taskId)">{{
+            record.volumeId
+          }}</UiTextAction>
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTextAction @click="openTask(record.taskId)">详情</UiTextAction>
@@ -110,14 +112,25 @@
             <a-descriptions-item label="状态">
               {{ remediationStatusLabel(taskDetail.taskStatus) }}
             </a-descriptions-item>
-            <a-descriptions-item label="责任人">{{ remediationAssigneeLabel(taskDetail) }}</a-descriptions-item>
-            <a-descriptions-item v-if="canManageTaskAsCoordinator && taskDetail.taskStatus !== 'CLOSED'" label="改派责任人">
+            <a-descriptions-item label="责任人">{{
+              remediationAssigneeLabel(taskDetail)
+            }}</a-descriptions-item>
+            <a-descriptions-item
+              v-if="canManageTaskAsCoordinator && taskDetail.taskStatus !== 'CLOSED'"
+              label="改派责任人"
+            >
               <ArchiveDutyUserSelect v-model:value="editAssigneeUserId" />
             </a-descriptions-item>
-            <a-descriptions-item label="诊断码">{{ taskDetail.diagnosticCode || '—' }}</a-descriptions-item>
-            <a-descriptions-item label="说明">{{ taskDetail.taskDescription || '—' }}</a-descriptions-item>
+            <a-descriptions-item label="诊断码">{{
+              taskDetail.diagnosticCode || '—'
+            }}</a-descriptions-item>
+            <a-descriptions-item label="说明">{{
+              taskDetail.taskDescription || '—'
+            }}</a-descriptions-item>
             <a-descriptions-item label="截止">{{ taskDetail.dueTime || '—' }}</a-descriptions-item>
-            <a-descriptions-item label="关闭">{{ taskDetail.closedTime || '—' }}</a-descriptions-item>
+            <a-descriptions-item label="关闭">{{
+              taskDetail.closedTime || '—'
+            }}</a-descriptions-item>
           </a-descriptions>
           <div v-if="taskDetail.taskStatus !== 'CLOSED'" class="task-actions">
             <template v-if="canManageTaskAsCoordinator">
@@ -131,15 +144,37 @@
                 保存改派
               </UiButton>
               <template v-if="taskDetail.taskStatus === 'OPEN'">
-                <UiButton size="sm" :loading="updating" @click="advanceStatus('IN_PROGRESS')">开始处理</UiButton>
-                <UiButton size="sm" variant="outline" :loading="updating" @click="advanceStatus('CLOSED')">关闭</UiButton>
+                <UiButton size="sm" :loading="updating" @click="advanceStatus('IN_PROGRESS')"
+                  >开始处理</UiButton
+                >
+                <UiButton
+                  size="sm"
+                  variant="outline"
+                  :loading="updating"
+                  @click="advanceStatus('CLOSED')"
+                  >关闭</UiButton
+                >
               </template>
               <template v-else-if="taskDetail.taskStatus === 'IN_PROGRESS'">
-                <UiButton size="sm" :loading="updating" @click="advanceStatus('RESUBMITTED')">标记已重提</UiButton>
-                <UiButton size="sm" variant="outline" :loading="updating" @click="advanceStatus('CLOSED')">关闭</UiButton>
+                <UiButton size="sm" :loading="updating" @click="advanceStatus('RESUBMITTED')"
+                  >标记已重提</UiButton
+                >
+                <UiButton
+                  size="sm"
+                  variant="outline"
+                  :loading="updating"
+                  @click="advanceStatus('CLOSED')"
+                  >关闭</UiButton
+                >
               </template>
               <template v-else-if="taskDetail.taskStatus === 'RESUBMITTED'">
-                <UiButton size="sm" variant="outline" :loading="updating" @click="advanceStatus('CLOSED')">复检关闭</UiButton>
+                <UiButton
+                  size="sm"
+                  variant="outline"
+                  :loading="updating"
+                  @click="advanceStatus('CLOSED')"
+                  >复检关闭</UiButton
+                >
               </template>
             </template>
             <template v-else-if="isCurrentAssignee">
@@ -185,22 +220,41 @@
           </a-col>
           <a-col :span="12">
             <a-form-item label="学期">
-              <a-select v-model:value="campaignForm.semester" :options="semesterOptions" allow-clear style="width: 100%" />
+              <a-select
+                v-model:value="campaignForm.semester"
+                :options="semesterOptions"
+                allow-clear
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
         </a-row>
         <a-form-item label="状态" required>
-          <a-select v-model:value="campaignForm.campaignStatus" :options="campaignStatusOptions" style="width: 100%" />
+          <a-select
+            v-model:value="campaignForm.campaignStatus"
+            :options="campaignStatusOptions"
+            style="width: 100%"
+          />
         </a-form-item>
         <a-row :gutter="12">
           <a-col :span="12">
             <a-form-item label="开始时间">
-              <a-date-picker v-model:value="campaignForm.startTime" show-time value-format="YYYY-MM-DD HH:mm:ss" style="width: 100%" />
+              <a-date-picker
+                v-model:value="campaignForm.startTime"
+                show-time
+                value-format="YYYY-MM-DD HH:mm:ss"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="结束时间">
-              <a-date-picker v-model:value="campaignForm.endTime" show-time value-format="YYYY-MM-DD HH:mm:ss" style="width: 100%" />
+              <a-date-picker
+                v-model:value="campaignForm.endTime"
+                show-time
+                value-format="YYYY-MM-DD HH:mm:ss"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -244,7 +298,12 @@
           <ArchiveDutyUserSelect v-model:value="createTaskForm.assigneeUserId" />
         </a-form-item>
         <a-form-item label="截止时间">
-          <a-date-picker v-model:value="createTaskForm.dueTime" show-time value-format="YYYY-MM-DD HH:mm:ss" style="width: 100%" />
+          <a-date-picker
+            v-model:value="createTaskForm.dueTime"
+            show-time
+            value-format="YYYY-MM-DD HH:mm:ss"
+            style="width: 100%"
+          />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -259,11 +318,6 @@ import type {
   ArchiveRemediationStatusCode,
   ArchiveRemediationTaskVO,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_EVALUATION_CAMPAIGN_STATUS_LABEL,
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
@@ -278,6 +332,11 @@ import {
   saveEvaluationCampaign,
   updateRemediationTask,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -287,6 +346,8 @@ import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { useUserStore } from '@/stores/modules/user'
 import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
 import { showUserError } from '@/utils/error-handler'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeRemediationPanel' })
@@ -320,21 +381,20 @@ const taskVolumeDepartmentId = ref<string>()
 const selectedCampaignId = ref<string>()
 const selectedTaskId = ref('')
 
-const semesterOptions = [
-  { value: '1', label: '第 1 学期' },
-  { value: '2', label: '第 2 学期' },
-]
+const semesterOptions = SemesterOptions
 
-const campaignStatusOptions = Object.entries(ARCHIVE_EVALUATION_CAMPAIGN_STATUS_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const campaignStatusOptions = Object.entries(ARCHIVE_EVALUATION_CAMPAIGN_STATUS_LABEL).map(
+  ([value, label]) => ({
+    value,
+    label,
+  }),
+)
 
 const campaignForm = reactive({
   campaignId: undefined as string | undefined,
   campaignName: '',
   academicYear: '',
-  semester: undefined as string | undefined,
+  semester: undefined as SemesterCode | undefined,
   campaignStatus: 'ACTIVE' as ArchiveEvaluationCampaignStatusCode,
   startTime: undefined as string | undefined,
   endTime: undefined as string | undefined,
@@ -352,18 +412,18 @@ const createTaskForm = reactive({
 })
 
 const selectedCampaign = computed(() =>
-  campaigns.value.find(item => item.campaignId === selectedCampaignId.value),
+  campaigns.value.find((item) => item.campaignId === selectedCampaignId.value),
 )
 
 const campaignOptions = computed(() =>
-  campaigns.value.map(item => ({
+  campaigns.value.map((item) => ({
     label: item.campaignName,
     value: item.campaignId,
   })),
 )
 
-const canShowCreateRemediationTask = computed(() =>
-  isTenantWideCollegeCoordinator.value || scopedDepartmentIds.value.length > 0,
+const canShowCreateRemediationTask = computed(
+  () => isTenantWideCollegeCoordinator.value || scopedDepartmentIds.value.length > 0,
 )
 
 const canManageTaskAsCoordinator = computed(() =>
@@ -372,8 +432,8 @@ const canManageTaskAsCoordinator = computed(() =>
     : false,
 )
 
-const isCurrentAssignee = computed(() =>
-  taskDetail.value?.assigneeUserId === userStore.userInfo.userId,
+const isCurrentAssignee = computed(
+  () => taskDetail.value?.assigneeUserId === userStore.userInfo.userId,
 )
 
 const canSaveAssigneeReassign = computed(() => {
@@ -421,11 +481,9 @@ async function loadCampaigns() {
       selectedCampaignId.value = campaigns.value[0].campaignId
       await loadTasks()
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     campaignLoading.value = false
   }
 }
@@ -438,11 +496,9 @@ async function loadTasks() {
   taskLoading.value = true
   try {
     tasks.value = await listRemediationTasksByCampaign(selectedCampaignId.value)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     taskLoading.value = false
   }
 }
@@ -481,11 +537,9 @@ async function submitCampaign() {
     await loadCampaigns()
     selectedCampaignId.value = saved.campaignId
     await loadTasks()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     campaignSaving.value = false
   }
 }
@@ -500,12 +554,12 @@ async function handleExportCampaign() {
       return
     }
     await downloadFile({ nodeId: result.exportFileId })
-    message.success(`评估 manifest 已导出，共 ${result.volumeCount ?? 0} 卷（${ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT}）`)
-  }
-  catch (error) {
+    message.success(
+      `评估 manifest 已导出，共 ${result.volumeCount ?? 0} 卷（${ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT}）`,
+    )
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     exporting.value = false
   }
 }
@@ -520,12 +574,12 @@ async function handleExportArchiveCampaign() {
       return
     }
     await downloadFile({ nodeId: result.exportFileId })
-    message.success(`四级目录包已导出，共 ${result.volumeCount ?? 0} 卷（${ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT}）`)
-  }
-  catch (error) {
+    message.success(
+      `四级目录包已导出，共 ${result.volumeCount ?? 0} 卷（${ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT}）`,
+    )
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     exportingArchive.value = false
   }
 }
@@ -576,11 +630,9 @@ async function submitCreateTask() {
       selectedCampaignId.value = createTaskForm.campaignId
     }
     await loadTasks()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     createTaskSubmitting.value = false
   }
 }
@@ -595,12 +647,10 @@ async function openTask(taskId: string) {
     editAssigneeUserId.value = taskDetail.value.assigneeUserId
     const volumeDetail = await getArchiveVolumeDetail(taskDetail.value.volumeId)
     taskVolumeDepartmentId.value = volumeDetail.volume.departmentId
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
     detailOpen.value = false
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
@@ -616,11 +666,9 @@ async function reassignAssignee() {
     editAssigneeUserId.value = taskDetail.value.assigneeUserId
     message.success('责任人已改派')
     await loadTasks()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     reassigning.value = false
   }
 }
@@ -635,11 +683,9 @@ async function advanceStatus(taskStatus: ArchiveRemediationStatusCode) {
     })
     message.success('整改任务已更新')
     await loadTasks()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     updating.value = false
   }
 }

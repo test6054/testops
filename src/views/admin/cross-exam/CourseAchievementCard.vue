@@ -31,16 +31,9 @@
     </div>
 
     <a-spin :spinning="loading || generating">
-      <UiEmpty
-        v-if="!loading && !generating && !record"
-        description="暂无数据"
-      />
+      <UiEmpty v-if="!loading && !generating && !record" description="暂无数据" />
       <div v-else-if="record" class="ai-record">
-        <SignalBand
-          :metrics="achievementSignalMetrics"
-          compact
-          variant="inline"
-        />
+        <SignalBand :metrics="achievementSignalMetrics" compact variant="inline" />
 
         <a-descriptions :column="3" compact bordered>
           <a-descriptions-item label="状态">
@@ -147,12 +140,6 @@ import type {
   CourseAchievementStatusCode,
   CourseObjectiveAchievementVO,
 } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
-import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import {
   COURSE_ACHIEVEMENT_STATUS_LABEL,
   COURSE_ACHIEVEMENT_STATUS_TONE,
@@ -160,6 +147,12 @@ import {
   generateAchievement,
   listAchievements,
 } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref } from 'vue'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
@@ -169,6 +162,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
 import { parseAcademicYearSemesterValue } from '@/utils/academic-year'
 import { assertUserFacing } from '@/utils/contract-guard'
@@ -179,7 +173,10 @@ import {
   buildTrendChartInsight,
   mergeChartHint,
 } from '@/utils/mark-chart-insights'
-import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
+import {
+  buildCategoryBarChartOption,
+  buildTrendLineChartOption,
+} from '@/utils/mark-echarts-options'
 import {
   achievementItemsToBarItems,
   examStatSnapshotsToTrendPoints,
@@ -219,10 +216,12 @@ const achievementBarItems = computed(() =>
 
 const examTrendHint = computed(() => buildTrendChartInsight(examStatTrendPoints.value))
 
-const achievementBarHint = computed(() => mergeChartHint(
-  '悬停查看各目标达成率与说明',
-  buildBarChartInsight(achievementBarItems.value, { passLine: 60, passLineLabel: '达标线' }),
-))
+const achievementBarHint = computed(() =>
+  mergeChartHint(
+    '悬停查看各目标达成率与说明',
+    buildBarChartInsight(achievementBarItems.value, { passLine: 60, passLineLabel: '达标线' }),
+  ),
+)
 
 const examTrendLastValue = computed(() => {
   const points = examStatTrendPoints.value
@@ -279,11 +278,11 @@ const achievementMetrics = computed((): UiStatPanelItem[] => {
 
 const achievementSignalMetrics = computed(() => {
   const scoreRateTrend = computeTrendPointDelta(examStatTrendPoints.value)
-  return toSignalMetrics(achievementMetrics.value).map((metric) => (
+  return toSignalMetrics(achievementMetrics.value).map((metric) =>
     metric.key === 'overallAchievementRate'
       ? { ...metric, trend: scoreRateTrend, trendPolarity: 'positive' as const }
-      : metric
-  ))
+      : metric,
+  )
 })
 
 const selectedCourseIds = computed(() =>
@@ -340,7 +339,7 @@ async function handleGenerate(): Promise<void> {
       courseId: string
       examIds: string[]
       academicYear?: string
-      semester?: string
+      semester?: SemesterCode
     } = { courseId, examIds }
     if (form.semesterCode) {
       const parsed = parseAcademicYearSemesterValue(form.semesterCode)

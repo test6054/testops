@@ -53,37 +53,25 @@
           {{ materialTypeLabel(record.materialType) }}
         </template>
         <template v-else-if="column.key === 'submissionStatus'">
-          <span
-            v-if="record.submissionStatus"
-            class="archive-volume-material-table__status"
-          >
+          <span v-if="record.submissionStatus" class="archive-volume-material-table__status">
             <span
               class="archive-volume-material-table__status-icon"
               :class="`archive-volume-material-table__status-icon--${submissionStatusTone(record.submissionStatus)}`"
               aria-hidden="true"
             />
-            <UiTag
-              :tone="submissionStatusTone(record.submissionStatus)"
-              size="sm"
-            >
+            <UiTag :tone="submissionStatusTone(record.submissionStatus)" size="sm">
               {{ submissionStatusLabel(record.submissionStatus) }}
             </UiTag>
           </span>
         </template>
         <template v-else-if="column.key === 'ocrStatus'">
-          <span
-            v-if="record.ocrStatus"
-            class="archive-volume-material-table__status"
-          >
+          <span v-if="record.ocrStatus" class="archive-volume-material-table__status">
             <span
               class="archive-volume-material-table__status-icon"
               :class="`archive-volume-material-table__status-icon--${materialOcrStatusTone(record.ocrStatus)}`"
               aria-hidden="true"
             />
-            <UiTag
-              :tone="materialOcrStatusTone(record.ocrStatus)"
-              size="sm"
-            >
+            <UiTag :tone="materialOcrStatusTone(record.ocrStatus)" size="sm">
               {{ materialOcrStatusLabel(record.ocrStatus) }}
             </UiTag>
           </span>
@@ -169,7 +157,10 @@
           />
         </a-form-item>
         <a-form-item label="目标卷 ID" required>
-          <a-input v-model:value="sharedRefForm.targetVolumeId" placeholder="合用材料所在归档卷 ID" />
+          <a-input
+            v-model:value="sharedRefForm.targetVolumeId"
+            placeholder="合用材料所在归档卷 ID"
+          />
         </a-form-item>
         <a-form-item label="目标材料 ID" required>
           <a-input v-model:value="sharedRefForm.targetMaterialId" placeholder="目标材料 ID" />
@@ -219,12 +210,6 @@ import type {
   ArchiveVolumeDetailVO,
   ArchiveVolumeMaterialVO,
 } from '@/apis/mark/archive-volume'
-import type { PaperArchiveOcrStatusCode } from '@/apis/mark/paper-archive'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type {ScanDispatchResultPayload} from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue';
-import { message } from 'ant-design-vue'
-import { computed, onUnmounted, reactive, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
 import {
   ARCHIVE_MATERIAL_SUBMISSION_STATUS_LABEL,
   ARCHIVE_MATERIAL_SUBMISSION_STATUS_TONE,
@@ -235,10 +220,17 @@ import {
   registerArchiveVolumeMaterial,
   triggerArchiveVolumeMaterialOcr,
 } from '@/apis/mark/archive-volume'
+import type { PaperArchiveOcrStatusCode } from '@/apis/mark/paper-archive'
 import {
   PAPER_ARCHIVE_OCR_STATUS_LABEL,
   PAPER_ARCHIVE_OCR_STATUS_TONE,
 } from '@/apis/mark/paper-archive'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
+import { message } from 'ant-design-vue'
+import { computed, onUnmounted, reactive, ref, watch } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -252,7 +244,6 @@ import ArchiveVolumeBatchRegisterModal from '@/views/teacher/archive-volume/arch
 import ArchiveVolumeCourseSyncModal from '@/views/teacher/archive-volume/archive-volume-course-sync-modal.vue'
 import ArchiveVolumeMaterialOcrDetailModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailModal.vue'
 import ScanDispatchDialog from '@/views/teacher/archive-volume/components/ScanDispatchDialog.vue'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 defineOptions({ name: 'ArchiveVolumeMaterialTablePanel' })
 
@@ -264,7 +255,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "refreshed": [options?: { silent?: boolean }]
+  refreshed: [options?: { silent?: boolean }]
   'ocr-completed-stale': []
 }>()
 
@@ -334,13 +325,17 @@ const filteredMaterials = computed(() => {
   const materials = props.detail.materials ?? []
   const key = props.selectedCatalogKeys[0]
   if (!key) return materials
-  return materials.filter(item => (item.catalogCode || item.materialType) === key)
+  return materials.filter((item) => (item.catalogCode || item.materialType) === key)
 })
 
-const canGenerateExamReports = computed(() => Boolean(props.detail.volume?.examId))
+const effectiveExamId = computed(
+  () => props.detail.volume?.examId ?? props.detail.volume?.relatedExamId,
+)
+
+const canGenerateExamReports = computed(() => Boolean(effectiveExamId.value))
 
 const courseObjectiveMappingPath = computed(() => {
-  const examId = props.detail.volume?.examId
+  const examId = effectiveExamId.value
   if (!examId) return null
   return `/teacher/exams/${examId}/archive/statistics`
 })
@@ -351,8 +346,16 @@ const courseObjectiveMappingHint = computed(() => {
   const mapped = props.detail.courseObjectiveMappedQuestionCount
   const goalTotal = props.detail.courseObjectiveTotalGoalCount
   const goalCovered = props.detail.courseObjectiveCoveredGoalCount
-  if (total != null && mapped != null && total > 0 && mapped >= total
-    && goalTotal != null && goalCovered != null && goalTotal > 0 && goalCovered < goalTotal) {
+  if (
+    total != null &&
+    mapped != null &&
+    total > 0 &&
+    mapped >= total &&
+    goalTotal != null &&
+    goalCovered != null &&
+    goalTotal > 0 &&
+    goalCovered < goalTotal
+  ) {
     return `quality 课程目标覆盖 ${goalCovered}/${goalTotal} 未完成，须确保每个课程目标至少映射一题后再生成达成度报告。`
   }
   if (total == null || mapped == null) {
@@ -367,11 +370,9 @@ async function handleGenerateExamAnalysis(): Promise<void> {
     await generateArchiveVolumeExamAnalysisReport(props.volumeId)
     message.success('试卷分析报告已生成并登记')
     emitRefreshed()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '生成试卷分析报告失败')
-  }
-  finally {
+  } finally {
     generatingExamAnalysis.value = false
   }
 }
@@ -386,11 +387,9 @@ async function handleGenerateCourseObjective(): Promise<void> {
     await generateArchiveVolumeCourseObjectiveReport(props.volumeId)
     message.success('课程目标达成报告已生成并登记')
     emitRefreshed()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '生成课程目标达成报告失败')
-  }
-  finally {
+  } finally {
     generatingCourseObjective.value = false
   }
 }
@@ -420,7 +419,11 @@ function canRetryMaterialOcr(material: ArchiveVolumeMaterialVO): boolean {
 }
 
 function canViewMaterialOcr(material: ArchiveVolumeMaterialVO): boolean {
-  return material.ocrStatus === 'COMPLETED' || material.ocrStatus === 'FAILED' || material.ocrStatus === 'RUNNING'
+  return (
+    material.ocrStatus === 'COMPLETED' ||
+    material.ocrStatus === 'FAILED' ||
+    material.ocrStatus === 'RUNNING'
+  )
 }
 
 function openMaterialOcrDetail(material: ArchiveVolumeMaterialVO): void {
@@ -444,8 +447,7 @@ function confirmRetryMaterialOcr(material: ArchiveVolumeMaterialVO): void {
         await triggerArchiveVolumeMaterialOcr(material.materialId)
         message.success('已入队，等待识别')
         emitRefreshed()
-      }
-      catch (error) {
+      } catch (error) {
         showUserError(error, 'OCR 重试提交失败')
       }
     },
@@ -456,29 +458,32 @@ let materialOcrPollTimer: ReturnType<typeof setInterval> | null = null
 
 const shouldPollMaterialOcr = computed(() =>
   (props.detail.materials ?? []).some(
-    item => item.ocrStatus === 'PENDING' || item.ocrStatus === 'RUNNING',
+    (item) => item.ocrStatus === 'PENDING' || item.ocrStatus === 'RUNNING',
   ),
 )
 
-watch(shouldPollMaterialOcr, (shouldPoll, wasPolling) => {
-  if (shouldPoll && !materialOcrPollTimer) {
-    materialOcrPollTimer = setInterval(() => {
-      emitRefreshed({ silent: true })
-    }, 5000)
-  }
-  else if (!shouldPoll && materialOcrPollTimer) {
-    clearInterval(materialOcrPollTimer)
-    materialOcrPollTimer = null
-  }
-  if (wasPolling && !shouldPoll) {
-    void (async () => {
-      emitRefreshed({ silent: true })
-      if (props.detail.fourPropertyStale) {
-        emit('ocr-completed-stale')
-      }
-    })()
-  }
-}, { immediate: true })
+watch(
+  shouldPollMaterialOcr,
+  (shouldPoll, wasPolling) => {
+    if (shouldPoll && !materialOcrPollTimer) {
+      materialOcrPollTimer = setInterval(() => {
+        emitRefreshed({ silent: true })
+      }, 5000)
+    } else if (!shouldPoll && materialOcrPollTimer) {
+      clearInterval(materialOcrPollTimer)
+      materialOcrPollTimer = null
+    }
+    if (wasPolling && !shouldPoll) {
+      void (async () => {
+        emitRefreshed({ silent: true })
+        if (props.detail.fourPropertyStale) {
+          emit('ocr-completed-stale')
+        }
+      })()
+    }
+  },
+  { immediate: true },
+)
 
 onUnmounted(() => {
   if (materialOcrPollTimer) {
@@ -512,8 +517,10 @@ function resolveArchiveScanQuery(): Record<string, string> | null {
     query.materialType = key
     return query
   }
-  const material = props.detail.materials.find(item => item.catalogCode === key)
-  const missing = props.detail.latestIntegrityCheck?.missingItems?.find(item => item.catalogCode === key)
+  const material = props.detail.materials.find((item) => item.catalogCode === key)
+  const missing = props.detail.latestIntegrityCheck?.missingItems?.find(
+    (item) => item.catalogCode === key,
+  )
   const resolvedMaterialType = material?.materialType ?? missing?.materialType
   if (!resolvedMaterialType) {
     return null
@@ -553,15 +560,11 @@ async function submitMaterial() {
   }
   uploading.value = true
   try {
-    const ext = uploadForm.fileName?.includes('.')
-      ? uploadForm.fileName.split('.').pop() ?? 'bin'
-      : 'bin'
     await registerArchiveVolumeMaterial({
       volumeId: props.volumeId,
       materialType: uploadForm.materialType,
       fileId: uploadForm.fileNodeId,
       mediaType: 'ELECTRONIC',
-      fileFormat: ext,
       sortRule: uploadForm.retakeFlag ? 'STUDENT_NO' : 'CATALOG_ORDER',
       electronicOriginalStatus: 'SCANNED',
       studentNo: uploadForm.studentNo.trim() || undefined,
@@ -573,11 +576,9 @@ async function submitMaterial() {
     message.success('材料登记成功')
     uploadModalOpen.value = false
     emitRefreshed()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     uploading.value = false
   }
 }
@@ -599,11 +600,9 @@ async function submitSharedRef() {
     message.success('合用材料引用已保存')
     sharedRefModalOpen.value = false
     emitRefreshed()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     sharedRefSubmitting.value = false
   }
 }

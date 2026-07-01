@@ -1,12 +1,10 @@
 <template>
-  <a-drawer
-    :open="open"
-    title="跨学年进度对比"
-    width="560"
-    @close="close"
-  >
+  <a-drawer :open="open" title="跨学年进度对比" width="560" @close="close">
     <a-spin :spinning="loading">
-      <p v-if="cockpit?.completenessDeltaVsPreviousYear !== undefined" class="portfolio-progress-compare__delta">
+      <p
+        v-if="cockpit?.completenessDeltaVsPreviousYear !== undefined"
+        class="portfolio-progress-compare__delta"
+      >
         较上学年完整度变化：
         <strong>{{ formatDelta(cockpit.completenessDeltaVsPreviousYear) }}</strong>
       </p>
@@ -21,7 +19,9 @@
             <span class="portfolio-progress-compare__percent">{{ row.completenessPercent }}%</span>
           </div>
           <p class="portfolio-progress-compare__meta">
-            待审 {{ row.pendingReviewCount ?? 0 }} 条 · 退回 {{ row.returnedCount ?? 0 }} 条 · 补采 {{ row.openGapCount ?? 0 }} 项
+            待审 {{ row.pendingReviewCount ?? 0 }} 条 · 退回 {{ row.returnedCount ?? 0 }} 条 ·
+            {{ row.academicYear === cockpit?.currentAcademicYear ? '补采' : '缺口' }}
+            {{ row.openGapCount ?? 0 }} 项
           </p>
           <div v-if="row.topGapCategoryNames?.length" class="portfolio-progress-compare__gaps">
             <span class="portfolio-progress-compare__gaps-label">TOP 缺口分类</span>
@@ -77,21 +77,31 @@ async function loadCockpit() {
   loading.value = true
   try {
     cockpit.value = await portfolioAnalysisApi.getProgressCockpit({ teacherId: props.teacherId })
-  }
-  catch (error) {
+  } catch (error) {
     cockpit.value = null
     showUserError(error, '加载进度对比失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
-watch(() => props.open, (open) => {
-  if (open) {
-    void loadCockpit()
-  }
-})
+watch(
+  () => props.open,
+  (open) => {
+    if (open) {
+      void loadCockpit()
+    }
+  },
+)
+
+watch(
+  () => props.teacherId,
+  () => {
+    if (props.open) {
+      void loadCockpit()
+    }
+  },
+)
 </script>
 
 <style scoped lang="scss">

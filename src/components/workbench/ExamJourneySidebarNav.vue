@@ -32,32 +32,35 @@
         class="exam-journey-sidebar-nav__item"
         :class="{
           'exam-journey-sidebar-nav__item--active': activeJourneyKey === stage.key,
-          'exam-journey-sidebar-nav__item--suggested': suggestedJourneyKey === stage.key,
+          'exam-journey-sidebar-nav__item--suggested': showSuggestionBadge(
+            stage.key as ExamJourneyKey,
+          ),
         }"
         :title="collapsed ? stage.title : undefined"
         @click="emit('select', stage.key as ExamJourneyKey)"
       >
-        <span
-          class="exam-journey-sidebar-nav__index"
-          :class="statusClass(stage.status)"
-        >{{ index + 1 }}</span>
+        <span class="exam-journey-sidebar-nav__index" :class="statusClass(stage.status)">{{
+          index + 1
+        }}</span>
         <span v-if="!collapsed" class="exam-journey-sidebar-nav__title">{{ stage.title }}</span>
         <span
-          v-if="!collapsed && suggestedJourneyKey === stage.key"
+          v-if="!collapsed && showSuggestionBadge(stage.key as ExamJourneyKey)"
           class="exam-journey-sidebar-nav__badge"
-        >建议</span>
+          >下一步</span
+        >
       </button>
     </template>
   </nav>
 </template>
 
 <script lang="ts" setup>
-import type { ExamJourneyKey } from '@/constants/exam-journey'
+import type { ExamJourneyKey, ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
+import { resolveJourneyKeyByStage } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import { computed } from 'vue'
-import { resolveJourneyKeyByStage } from '@/constants/exam-journey'
+import { shouldShowJourneySuggestion } from '@/constants/mark-workspace-nav'
 
 defineOptions({
   name: 'ExamJourneySidebarNav',
@@ -82,6 +85,16 @@ const suggestedJourneyKey = computed<ExamJourneyKey | null>(() => {
   }
   return resolveJourneyKeyByStage(props.suggestedStageKey)
 })
+
+function showSuggestionBadge(journeyKey: ExamJourneyKey): boolean {
+  if (suggestedJourneyKey.value !== journeyKey) {
+    return false
+  }
+  return shouldShowJourneySuggestion(
+    props.activeJourneyKey as ExamWorkspaceJourneyKey,
+    props.suggestedStageKey,
+  )
+}
 
 function statusClass(status: WorkbenchStageStatus): string {
   return `exam-journey-sidebar-nav__index--${status}`

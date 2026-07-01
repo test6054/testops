@@ -1,20 +1,27 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PublicSurveyItemType, SurveyIdentityFieldVO } from '@/apis/public-survey'
+import {
+  INDIRECT_EVALUATION_ITEM_TYPE_OPTIONS,
+  IndirectEvaluationItemType,
+} from '@/types/enums/indirect-evaluation-item-type-enum'
 import type { IndirectEvaluationFormVO } from '@/apis/quality/indirect-form'
 import type {
   AchievementTargetType,
   IndirectFormAccessMode,
   IndirectFormStatus,
   IndirectFormType,
-  RespondentType,
 } from '@/apis/quality/types'
 import {
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   INDIRECT_FORM_ACCESS_MODE_LABEL,
   INDIRECT_FORM_STATUS_LABEL,
   INDIRECT_FORM_TYPE_LABEL,
-  RESPONDENT_TYPE_LABEL,
 } from '@/apis/quality/types'
+import {
+  formatRespondentType,
+  MANUAL_RESPONDENT_TYPE_OPTIONS,
+  RespondentType,
+} from '@/types/enums/respondent-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export const ITEM_CONFIG_ERROR = '题项配置不完整，请检查后重试'
@@ -32,6 +39,7 @@ export const formColumns: ColumnsType = [
 
 export const itemColumns: ColumnsType = [
   { title: '编码', dataIndex: 'itemCode', key: 'itemCode', width: 100 },
+  { title: '题型', dataIndex: 'itemType', key: 'itemType', width: 88 },
   { title: '题面', dataIndex: 'itemText', key: 'itemText' },
   { title: '权重', dataIndex: 'weight', key: 'weight', width: 70 },
   { title: '有效样本', key: 'validCount', width: 100 },
@@ -42,6 +50,7 @@ export const responseColumns: ColumnsType = [
   { title: '应答人', dataIndex: 'respondentType', key: 'respondentType', width: 100 },
   { title: '答案', dataIndex: 'answerSummary', key: 'answerSummary', width: 180 },
   { title: '换算分', dataIndex: 'convertedScore', key: 'convertedScore', width: 80 },
+  { title: '换算状态', key: 'conversionStatus', width: 88 },
   { title: '开放回答', dataIndex: 'openText', key: 'openText' },
   { title: '有效', dataIndex: 'validFlag', key: 'validFlag', width: 70 },
   { title: '操作', key: 'actions', width: 160, fixed: 'right' },
@@ -52,7 +61,7 @@ export function targetTypeLabel(value: AchievementTargetType): string {
 }
 
 export function respondentTypeLabel(value: RespondentType): string {
-  return strictEnumLabel(RESPONDENT_TYPE_LABEL, value, '应答人类型')
+  return formatRespondentType(value)
 }
 
 export function formTypeLabel(value: IndirectFormType): string {
@@ -66,7 +75,9 @@ export function formStatusLabel(value: IndirectFormStatus | undefined): string {
   return strictEnumLabel(INDIRECT_FORM_STATUS_LABEL, value, '间接评价问卷状态')
 }
 
-export function formStatusTone(value: IndirectFormStatus | undefined): 'gray' | 'green' | 'orange' | 'blue' {
+export function formStatusTone(
+  value: IndirectFormStatus | undefined,
+): 'gray' | 'green' | 'orange' | 'blue' {
   const status = value ?? 'DRAFT'
   if (status === 'PUBLISHED') return 'green'
   if (status === 'CLOSED') return 'orange'
@@ -79,13 +90,17 @@ export function canPublishForm(record: IndirectEvaluationFormVO): boolean {
   return status === 'DRAFT' || status === 'CLOSED'
 }
 
-export function isFormStructureMutable(record: IndirectEvaluationFormVO | null | undefined): boolean {
+export function isFormStructureMutable(
+  record: IndirectEvaluationFormVO | null | undefined,
+): boolean {
   if (!record) return false
   const status = record.status ?? 'DRAFT'
   return status === 'DRAFT' || status === 'CLOSED'
 }
 
-export function isTeacherResponseWritable(record: IndirectEvaluationFormVO | null | undefined): boolean {
+export function isTeacherResponseWritable(
+  record: IndirectEvaluationFormVO | null | undefined,
+): boolean {
   if (!record) return false
   const status = record.status ?? 'DRAFT'
   return status === 'DRAFT' || status === 'PUBLISHED'
@@ -110,7 +125,7 @@ export const DEFAULT_IDENTITY_FIELDS: SurveyIdentityFieldVO[] = [
   { fieldKey: 'CONTACT', fieldLabel: '联系方式', fieldType: 'TEXT', required: false },
 ]
 
-export const accessModeOptions: { value: IndirectFormAccessMode, label: string }[] = [
+export const accessModeOptions: { value: IndirectFormAccessMode; label: string }[] = [
   {
     value: 'PUBLIC_LINK',
     label: strictEnumLabel(INDIRECT_FORM_ACCESS_MODE_LABEL, 'PUBLIC_LINK', '问卷访问模式'),
@@ -125,7 +140,7 @@ export const accessModeOptions: { value: IndirectFormAccessMode, label: string }
   },
 ]
 
-export const formTypeOptions: { value: IndirectFormType, label: string }[] = [
+export const formTypeOptions: { value: IndirectFormType; label: string }[] = [
   {
     value: 'STUDENT_SELF',
     label: strictEnumLabel(INDIRECT_FORM_TYPE_LABEL, 'STUDENT_SELF', '间接评价问卷类型'),
@@ -152,7 +167,7 @@ export const formTypeOptions: { value: IndirectFormType, label: string }[] = [
   },
 ]
 
-export const targetTypeOptions: { value: AchievementTargetType, label: string }[] = [
+export const targetTypeOptions: { value: AchievementTargetType; label: string }[] = [
   {
     value: 'COURSE_GOAL',
     label: strictEnumLabel(ACHIEVEMENT_TARGET_TYPE_LABEL, 'COURSE_GOAL', '达成目标类型'),
@@ -187,21 +202,33 @@ export const targetTypeOptions: { value: AchievementTargetType, label: string }[
   },
 ]
 
-export const respondentTypeOptions: { value: RespondentType, label: string }[] = [
-  { value: 'STUDENT', label: strictEnumLabel(RESPONDENT_TYPE_LABEL, 'STUDENT', '应答人类型') },
-  { value: 'GRADUATE', label: strictEnumLabel(RESPONDENT_TYPE_LABEL, 'GRADUATE', '应答人类型') },
-  { value: 'EMPLOYER', label: strictEnumLabel(RESPONDENT_TYPE_LABEL, 'EMPLOYER', '应答人类型') },
-  { value: 'TEACHER', label: strictEnumLabel(RESPONDENT_TYPE_LABEL, 'TEACHER', '应答人类型') },
-  { value: 'EXPERT', label: strictEnumLabel(RESPONDENT_TYPE_LABEL, 'EXPERT', '应答人类型') },
-  {
-    value: 'SUPERVISOR',
-    label: strictEnumLabel(RESPONDENT_TYPE_LABEL, 'SUPERVISOR', '应答人类型'),
-  },
-]
+export const respondentTypeOptions = MANUAL_RESPONDENT_TYPE_OPTIONS
 
-export const itemTypeOptions: { value: PublicSurveyItemType, label: string }[] = [
-  { value: 'SCALE', label: '量表题' },
-  { value: 'SINGLE_CHOICE', label: '单选题' },
-  { value: 'MULTI_CHOICE', label: '多选题' },
-  { value: 'OPEN_TEXT', label: '开放文本' },
-]
+export const itemTypeOptions = INDIRECT_EVALUATION_ITEM_TYPE_OPTIONS
+
+export function isScaleItemType(itemType: PublicSurveyItemType | undefined): boolean {
+  return itemType === IndirectEvaluationItemType.SCALE
+}
+
+export function isSingleChoiceItemType(itemType: PublicSurveyItemType | undefined): boolean {
+  return itemType === IndirectEvaluationItemType.SINGLE_CHOICE
+}
+
+export function isMultiChoiceItemType(itemType: PublicSurveyItemType | undefined): boolean {
+  return itemType === IndirectEvaluationItemType.MULTI_CHOICE
+}
+
+export function isOpenTextItemType(itemType: PublicSurveyItemType | undefined): boolean {
+  return itemType === IndirectEvaluationItemType.OPEN_TEXT
+}
+
+/** 选择 / 开放题须教师录入换算分后才纳入间接达成度均值 */
+export function requiresTeacherScoreConversion(
+  itemType: PublicSurveyItemType | undefined,
+): boolean {
+  return (
+    isSingleChoiceItemType(itemType) ||
+    isMultiChoiceItemType(itemType) ||
+    isOpenTextItemType(itemType)
+  )
+}

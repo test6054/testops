@@ -60,6 +60,13 @@
     </template>
 
     <div class="archive-volume-list__root">
+      <ArchiveSetupGuideBanner
+        v-if="setupReadinessLoading || setupBlocking"
+        :readiness="setupReadiness"
+        :loading="setupReadinessLoading"
+        class="archive-volume-list__setup-banner"
+      />
+
       <UiSectionTabs
         v-if="showRoleTabs"
         v-model="listTab"
@@ -115,6 +122,21 @@
             :options="volumeScopeOptions"
             @change="handleVolumeScopeChange"
           />
+        </div>
+
+        <div
+          v-if="visibleScenarioPresets.length > 0 && !setupBlocking"
+          class="archive-volume-list__scenario-row"
+        >
+          <UiButton
+            v-for="preset in visibleScenarioPresets"
+            :key="preset.key"
+            size="sm"
+            :variant="activeScenario === preset.key ? 'primary' : 'outline'"
+            @click="handleScenarioSelect(preset.key)"
+          >
+            {{ preset.label }}
+          </UiButton>
         </div>
 
         <ArchiveVolumeMineRemediationBanner
@@ -188,9 +210,9 @@
                 <UiTextAction tone="primary" @click="goDetail(record.volumeId)">详情</UiTextAction>
                 <UiTextAction
                   v-if="
-                    listTab === 'mine'
-                      && volumeScope === 'mine'
-                      && hasOpenRemediationForVolume(record.volumeId)
+                    listTab === 'mine' &&
+                    volumeScope === 'mine' &&
+                    hasOpenRemediationForVolume(record.volumeId)
                   "
                   tone="primary"
                   @click="goRemediationVolumeByVolumeId(record.volumeId)"
@@ -338,6 +360,7 @@
 <script setup lang="ts">
 import type { ColumnsType, TableProps } from 'ant-design-vue/es/table'
 import type { LocationQueryRaw } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type {
   ArchiveAccessStatusCode,
   ArchiveAppraisalStatusCode,
@@ -351,14 +374,6 @@ import type {
   ArchiveVolumeStatusCode,
   ArchiveVolumeVO,
 } from '@/apis/mark/archive-volume'
-import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   approveArchiveVolumeTransfer,
   ARCHIVE_ACCESS_STATUS_LABEL,
@@ -382,7 +397,15 @@ import {
   pageOverdueArchiveVolumes,
   remindArchiveDue,
 } from '@/apis/mark/archive-volume'
+import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import { requireArrayResult } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -396,9 +419,13 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
+import { useArchiveTenantSetupReadiness } from '@/composables/useArchiveTenantSetupReadiness'
+import {
+  type ArchiveVolumeScenarioKey,
+  useArchiveVolumeFilterPresets,
+} from '@/composables/useArchiveVolumeFilterPresets'
 import { canSubmitArchiveVolumeRow } from '@/composables/useArchiveVolumeSubmitGate'
 import { useUserStore } from '@/stores/modules/user'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import {
   generateAcademicYearOptions,
   getDefaultAcademicYearAndSemester,
@@ -412,6 +439,7 @@ import ArchiveVolumeHistoryImportPanel from '@/views/teacher/archive-volume/arch
 import ArchiveVolumeRemediationPanel from '@/views/teacher/archive-volume/archive-volume-remediation-panel.vue'
 import ArchiveVolumeSupervisionPanel from '@/views/teacher/archive-volume/archive-volume-supervision-panel.vue'
 import ArchiveVolumeMineRemediationBanner from '@/views/teacher/archive-volume/components/ArchiveVolumeMineRemediationBanner.vue'
+import ArchiveSetupGuideBanner from '@/views/teacher/archive-volume/components/ArchiveSetupGuideBanner.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeList' })
 
@@ -422,6 +450,32 @@ type VolumeScopeKey = 'all' | 'mine'
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+
+const {
+  readinessLoading: setupReadinessLoading,
+  readiness: setupReadiness,
+  loadReadiness: loadSetupReadiness,
+  overallReady: isSetupOverallReady,
+} = useArchiveTenantSetupReadiness()
+
+const setupBlocking = computed(() => !isSetupOverallReady() && setupReadiness.value != null)
+
+function resolveScenarioListTab(): 'mine' | 'college' | 'archive' {
+  if (listTab.value === 'college' || listTab.value === 'archive') {
+    return listTab.value
+  }
+  return 'mine'
+}
+
+const {
+  activeScenario,
+  visiblePresets: visibleScenarioPresets,
+  selectScenario,
+  clearScenario,
+  buildScenarioRequest,
+  filterScenarioRows,
+} = useArchiveVolumeFilterPresets(() => resolveScenarioListTab())
+
 const {
   grantsLoadFailed,
   canViewCollegeBoard,
@@ -463,7 +517,7 @@ const openRemediationVolumeIdSet = computed(
 const pendingAccessRecords = ref<ArchiveVolumeAccessRecordVO[]>([])
 const selectedVolumeIds = ref<string[]>([])
 const pagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
-const allDepartmentOptions = ref<Array<{ value: string, label: string }>>([])
+const allDepartmentOptions = ref<Array<{ value: string; label: string }>>([])
 const kpiCollectingCount = ref<number | string>('—')
 const kpiPendingTransferCount = ref<number | string>('—')
 const kpiMissingCount = ref<number | string>('—')
@@ -496,7 +550,7 @@ const filterModel = computed<Record<string, unknown>>({
 })
 
 const visibleListTabs = computed(() => {
-  const tabs: Array<{ key: ListTabKey, label: string }> = [{ key: 'mine', label: '归档卷' }]
+  const tabs: Array<{ key: ListTabKey; label: string }> = [{ key: 'mine', label: '归档卷' }]
   if (canViewCollegeBoard.value) {
     tabs.push({ key: 'college', label: '院系看板' })
   }
@@ -531,7 +585,7 @@ const showVolumeListPanel = computed(
 )
 
 const archiveSubTabs = computed(() => {
-  const tabs: Array<{ key: ArchiveSubTabKey, label: string }> = [
+  const tabs: Array<{ key: ArchiveSubTabKey; label: string }> = [
     { key: 'pending-transfer', label: '待验收移交' },
   ]
   if (hasDuty('ARCHIVE_ADMIN') || hasDuty('TRANSFER_REVIEWER')) {
@@ -893,8 +947,8 @@ function applyScopedDepartmentDefault() {
     return
   }
   if (
-    filterForm.departmentId
-    && !visibleDepartmentOptions.value.some((item) => item.value === filterForm.departmentId)
+    filterForm.departmentId &&
+    !visibleDepartmentOptions.value.some((item) => item.value === filterForm.departmentId)
   ) {
     filterForm.departmentId = undefined
   }
@@ -905,8 +959,8 @@ async function loadSignalKpis() {
   if (listTab.value === 'mine') return
   try {
     const statsRequest: { departmentId?: string } = {}
-    const scopeIds
-      = listTab.value === 'college' ? scopedDepartmentIds.value : listScopedDepartmentIds.value
+    const scopeIds =
+      listTab.value === 'college' ? scopedDepartmentIds.value : listScopedDepartmentIds.value
     if (scopeIds.length === 1) {
       statsRequest.departmentId = scopeIds[0]
     }
@@ -997,6 +1051,7 @@ function buildVolumeFilterRequest(): ArchiveVolumePageRequest {
     appraisalStatus: filterForm.appraisalStatus,
     integrityFailedOnly: filterExtras.integrityFailedOnly || undefined,
     archiveOverdueOnly: filterExtras.archiveOverdueOnly || undefined,
+    ...buildScenarioRequest(),
   }
   if (listTab.value === 'mine' && volumeScope.value === 'mine') {
     request.mineOnly = true
@@ -1030,6 +1085,11 @@ async function loadMineSummaryKpis() {
 }
 
 async function loadVolumes() {
+  if (setupBlocking.value) {
+    volumes.value = []
+    pagination.total = 0
+    return
+  }
   if (!showVolumeFilter.value) return
   if (grantsLoadFailed.value) return
   if (listTab.value === 'archive' && archiveSubTab.value === 'pending-access') {
@@ -1071,7 +1131,7 @@ async function loadVolumes() {
     const result = isOverdueTab
       ? await pageOverdueArchiveVolumes(request)
       : await pageArchiveVolumes(request)
-    volumes.value = readPageList(result, '归档卷列表异常，请刷新后重试')
+    volumes.value = filterScenarioRows(readPageList(result, '归档卷列表异常，请刷新后重试'))
     pagination.total = readPageTotal(result)
     if (listTab.value === 'mine') {
       void loadMineSummaryKpis()
@@ -1107,12 +1167,20 @@ async function initPage() {
   await loadDepartments()
 }
 
+function handleScenarioSelect(key: ArchiveVolumeScenarioKey) {
+  selectScenario(key)
+  pagination.pageNum = 1
+  selectedVolumeIds.value = []
+  void loadVolumes()
+}
+
 function handleSearch() {
   pagination.pageNum = 1
   void loadVolumes()
 }
 
 function handleReset() {
+  clearScenario()
   filterForm.keyword = ''
   filterForm.departmentId = departmentFilterDisabled.value
     ? listScopedDepartmentIds.value[0]
@@ -1364,6 +1432,7 @@ watch(volumeScope, (scope) => {
 })
 
 watch([listTab, archiveSubTab], (values) => {
+  clearScenario()
   applyScopedDepartmentDefault()
   const [tab, subTab] = values
   if (tab !== 'mine') {
@@ -1402,10 +1471,18 @@ onMounted(async () => {
   if (grantsLoadFailed.value) {
     return
   }
+  await loadSetupReadiness()
+  if (setupBlocking.value && setupReadiness.value?.historicalVolumeExists !== true) {
+    void router.replace({
+      path: '/teacher/archive-volumes',
+      query: { tab: 'settings', settingsTab: 'templateSets' },
+    })
+    return
+  }
   if (listTab.value === 'mine' && volumeScope.value === 'mine') {
     await loadOpenRemediationTasks()
   }
-  if (showVolumeListPanel.value) {
+  if (showVolumeListPanel.value && !setupBlocking.value) {
     await loadVolumes()
     if (listTab.value !== 'mine' && showSignalBand.value) {
       await loadSignalKpis()
@@ -1419,6 +1496,16 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: var(--dp-space-4, 16px);
+}
+
+.archive-volume-list__scenario-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2, 8px);
+}
+
+.archive-volume-list__setup-banner {
+  margin-bottom: 0;
 }
 
 .archive-volume-list__role-tabs :deep(.ui-section-tabs__content) {

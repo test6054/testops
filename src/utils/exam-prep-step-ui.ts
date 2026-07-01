@@ -1,7 +1,7 @@
 import type { ExamDetailVO } from '@/apis/mark/exam'
+import { EXAM_MATERIAL_LAYOUT_MODE_LABEL, EXAM_PRINT_SOURCE_MODE_LABEL } from '@/apis/mark/exam'
 import type { ExamWorkbenchPrepStepVO } from '@/apis/mark/exam-progress'
 import type { WorkbenchStageStatus } from '@/types/workbench'
-import { EXAM_MATERIAL_LAYOUT_MODE_LABEL, EXAM_PRINT_SOURCE_MODE_LABEL } from '@/apis/mark/exam'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** 考试准备页步骤卡片：后端诊断步骤 + 前端路由与操作文案 */
@@ -19,9 +19,8 @@ export interface PrepStepCard {
 const PREP_STEP_ROUTES: Record<string, string> = {
   materialLayout: 'TeacherExamWorkspacePrep',
   candidateRoster: 'TeacherExamWorkspaceCandidateRoster',
-  paperTemplate: 'TeacherExamWorkspacePaperTemplate',
-  answerSheet: 'TeacherExamWorkspaceAnswerSheet',
-  paperMaster: 'TeacherExamWorkspacePaperMaster',
+  paperTemplate: 'TeacherExamWorkspaceLayoutDesigner',
+  layoutDesign: 'TeacherExamWorkspaceLayoutDesigner',
   printPackage: 'TeacherExamWorkspacePrintPackage',
 }
 
@@ -59,21 +58,23 @@ function resolvePrepStepDescription(step: ExamWorkbenchPrepStepVO, detail: ExamD
       }
       return `已录入 ${detail.questionCount} 道题，标准答案 ${detail.answerCount}/${detail.questionCount}`
     }
-    case 'answerSheet':
-      return detail.pageTemplateReady === true
-        ? `已配置 ${detail.totalPages ?? 0} 页扫描底图`
-        : '上传答卷页文件，供扫描对齐与坐标缩放'
-    case 'paperMaster': {
-      const masterReady = detail.masterConfigured === true && detail.masterRegionReady === true
-      const pageSynced = detail.pageTemplateReady === true
-      if (masterReady && pageSynced) {
-        return `母版「${detail.masterName ?? ''}」已就绪，${detail.totalPages ?? 0} 页已同步`
+    case 'layoutDesign':
+      if (detail.materialLayoutMode === 'ANSWER_SHEET') {
+        return detail.pageTemplateReady === true
+          ? `已配置 ${detail.totalPages ?? 0} 页扫描底图`
+          : '上传答卷页并完成制卷设计，供扫描对齐与坐标缩放'
       }
-      if (masterReady) {
-        return '母版已上传，请确认身份区 / 客观填涂区并等待拆页同步'
+      {
+        const masterReady = detail.masterConfigured === true && detail.masterRegionReady === true
+        const pageSynced = detail.pageTemplateReady === true
+        if (masterReady && pageSynced) {
+          return `制卷设计「${detail.masterName ?? ''}」已就绪，${detail.totalPages ?? 0} 页已同步`
+        }
+        if (masterReady) {
+          return '整卷 PDF 已上传，请确认身份区 / 客观填涂区并等待拆页同步'
+        }
+        return '上传整卷 PDF 并完成制卷设计，配置身份区与客观题填涂区'
       }
-      return '上传整卷 PDF，配置身份区与客观题填涂区'
-    }
     case 'printPackage':
       return (detail.printPackageCount ?? 0) > 0
         ? `已生成 ${detail.printPackageCount} 个印刷包`
@@ -99,12 +100,8 @@ function resolvePrimaryAction(step: ExamWorkbenchPrepStepVO, detail: ExamDetailV
       if (answersComplete && subjectivePending) return '配置主观题区域'
       return '补录标准答案'
     }
-    case 'answerSheet':
-      return completed ? '查看 / 调整' : '配置答卷页'
-    case 'paperMaster': {
-      const masterReady = detail.masterConfigured === true && detail.masterRegionReady === true
-      return masterReady ? '查看 / 调整' : '配置母版'
-    }
+    case 'layoutDesign':
+      return completed ? '打开制卷设计器' : '配置制卷设计'
     case 'printPackage':
       return completed ? '查看 / 调整' : '生成印刷包'
     default:

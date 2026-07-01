@@ -4,7 +4,9 @@
       <div class="archive-supervision-panel__problem-filters">
         <a-checkbox v-model:checked="volumeFilterForm.integrityFailedOnly">缺必交项</a-checkbox>
         <a-checkbox v-model:checked="volumeFilterForm.archiveOverdueOnly">归档逾期</a-checkbox>
-        <a-checkbox v-model:checked="volumeFilterForm.delaySubmissionOverdueOnly">补交逾期</a-checkbox>
+        <a-checkbox v-model:checked="volumeFilterForm.delaySubmissionOverdueOnly"
+          >补交逾期</a-checkbox
+        >
       </div>
       <UiFilterBar
         v-model="volumeFilter"
@@ -58,13 +60,28 @@
 
     <a-tab-pane key="statistics" tab="统计">
       <div class="archive-supervision-panel__stats-toolbar">
-        <a-input v-model:value="statsFilter.academicYear" placeholder="学年 如 2024-2025" style="width: 160px" />
-        <a-input v-model:value="statsFilter.semester" placeholder="学期 1/2" style="width: 100px" />
+        <a-input
+          v-model:value="statsFilter.academicYear"
+          placeholder="学年 如 2024-2025"
+          style="width: 160px"
+        />
+        <a-select
+          v-model:value="statsFilter.semester"
+          :options="SemesterOptions"
+          placeholder="学期"
+          allow-clear
+          style="width: 120px"
+        />
         <UiButton size="sm" @click="loadStatistics">刷新统计</UiButton>
         <UiButton size="sm" variant="outline" @click="goReadinessMatrix">四学期矩阵</UiButton>
       </div>
       <a-spin :spinning="statsLoading">
-        <SignalBand v-if="statistics" :metrics="statsMetrics" compact class="archive-supervision-panel__signal" />
+        <SignalBand
+          v-if="statistics"
+          :metrics="statsMetrics"
+          compact
+          class="archive-supervision-panel__signal"
+        />
         <UiDataTable
           v-if="statistics?.departmentCompletions?.length"
           pagination-mode="none"
@@ -161,7 +178,12 @@
     </a-tab-pane>
   </a-tabs>
 
-  <a-drawer v-model:open="detailOpen" title="归档卷详情（只读）" width="640" :destroy-on-close="true">
+  <a-drawer
+    v-model:open="detailOpen"
+    title="归档卷详情（只读）"
+    width="640"
+    :destroy-on-close="true"
+  >
     <a-spin :spinning="detailLoading">
       <template v-if="detail">
         <div class="detail-head">
@@ -203,7 +225,11 @@
   >
     <a-form layout="vertical">
       <a-form-item label="问题描述" required>
-        <a-textarea v-model:value="markProblemDescription" :rows="4" placeholder="描述督导发现的问题" />
+        <a-textarea
+          v-model:value="markProblemDescription"
+          :rows="4"
+          placeholder="描述督导发现的问题"
+        />
       </a-form-item>
       <a-form-item label="评估批次">
         <a-select
@@ -229,12 +255,6 @@ import type {
   ArchiveVolumeStatusCode,
   ArchiveVolumeVO,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_EVALUATION_CAMPAIGN_STATUS_LABEL,
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
@@ -253,6 +273,12 @@ import {
   markSupervisionProblem,
   pageSupervisionArchiveVolumes,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -262,6 +288,8 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
 import { showUserError } from '@/utils/error-handler'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -304,7 +332,10 @@ const volumeFilter = computed<Record<string, unknown>>({
   },
 })
 const volumePagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
-const statsFilter = reactive({ academicYear: '', semester: '' })
+const statsFilter = reactive({
+  academicYear: '',
+  semester: undefined as SemesterCode | undefined,
+})
 
 const volumeFilterFields: FilterField[] = [
   { key: 'keyword', label: '关键词', type: 'input', placeholder: '档案号/标题' },
@@ -317,7 +348,12 @@ const volumeColumns: ColumnsType<ArchiveVolumeVO> = [
   { title: '操作', key: 'actions', width: 140 },
 ]
 
-const deptColumns: ColumnsType<{ departmentName?: string, totalCount: number, storedCount: number, completionRate: number }> = [
+const deptColumns: ColumnsType<{
+  departmentName?: string
+  totalCount: number
+  storedCount: number
+  completionRate: number
+}> = [
   { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
   { title: '总数', dataIndex: 'totalCount', key: 'totalCount', width: 80 },
   { title: '已入库', dataIndex: 'storedCount', key: 'storedCount', width: 80 },
@@ -341,7 +377,11 @@ const campaignColumns: ColumnsType<ArchiveEvaluationCampaignVO> = [
     dataIndex: 'campaignStatus',
     width: 100,
     customRender: ({ record }) =>
-      strictEnumLabel(ARCHIVE_EVALUATION_CAMPAIGN_STATUS_LABEL, record.campaignStatus, 'campaignStatus'),
+      strictEnumLabel(
+        ARCHIVE_EVALUATION_CAMPAIGN_STATUS_LABEL,
+        record.campaignStatus,
+        'campaignStatus',
+      ),
   },
 ]
 
@@ -364,7 +404,7 @@ const statsMetrics = computed<SignalMetric[]>(() => {
 })
 
 const campaignSelectOptions = computed(() =>
-  campaigns.value.map(item => ({
+  campaigns.value.map((item) => ({
     value: item.campaignId,
     label: item.campaignName,
   })),
@@ -423,12 +463,12 @@ async function handleExportManifest() {
       return
     }
     await downloadFile({ nodeId: result.exportFileId })
-    message.success(`评估 manifest 已导出，共 ${result.volumeCount ?? 0} 卷（${ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT}）`)
-  }
-  catch (error) {
+    message.success(
+      `评估 manifest 已导出，共 ${result.volumeCount ?? 0} 卷（${ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT}）`,
+    )
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     exportingManifest.value = false
   }
 }
@@ -443,12 +483,12 @@ async function handleExportArchive() {
       return
     }
     await downloadFile({ nodeId: result.exportFileId })
-    message.success(`四级目录包已导出，共 ${result.volumeCount ?? 0} 卷（${ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT}）`)
-  }
-  catch (error) {
+    message.success(
+      `四级目录包已导出，共 ${result.volumeCount ?? 0} 卷（${ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT}）`,
+    )
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     exportingArchive.value = false
   }
 }
@@ -467,11 +507,9 @@ async function loadVolumes() {
     })
     volumes.value = readPageList(result, '督导归档卷列表异常，请刷新后重试')
     volumePagination.total = readPageTotal(result)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     volumeLoading.value = false
   }
 }
@@ -491,13 +529,11 @@ async function loadStatistics() {
   try {
     statistics.value = await getSupervisionArchiveStatistics({
       academicYear: statsFilter.academicYear.trim() || undefined,
-      semester: statsFilter.semester.trim() || undefined,
+      semester: statsFilter.semester || undefined,
     })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     statsLoading.value = false
   }
 }
@@ -506,11 +542,9 @@ async function loadRemediation() {
   remediationLoading.value = true
   try {
     remediationTasks.value = await listSupervisionRemediationTasks()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     remediationLoading.value = false
   }
 }
@@ -519,11 +553,9 @@ async function loadCampaigns() {
   campaignLoading.value = true
   try {
     campaigns.value = await listSupervisionCampaigns()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     campaignLoading.value = false
   }
 }
@@ -534,12 +566,10 @@ async function openDetail(volumeId: string) {
   detail.value = null
   try {
     detail.value = await getSupervisionArchiveVolumeDetail(volumeId)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
     detailOpen.value = false
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
@@ -572,11 +602,9 @@ async function submitMarkProblem() {
     if (activeTab.value === 'remediation') {
       void loadRemediation()
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     markProblemSubmitting.value = false
   }
 }

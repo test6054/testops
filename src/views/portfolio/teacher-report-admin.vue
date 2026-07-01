@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import type { PortfolioAiAnalysisDetailVO, PortfolioReportScene, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
+import type {
+  PortfolioAiAnalysisDetailVO,
+  PortfolioReportScene,
+  PortfolioTeacherSummaryVO,
+} from '@/apis/portfolio/types'
+import { PORTFOLIO_REPORT_SCENE_OPTIONS } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import { PORTFOLIO_REPORT_SCENE_OPTIONS } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -16,6 +21,11 @@ import {
   resolvePortfolioTeacherDisplayName,
 } from '@/utils/portfolio-teacher-display'
 
+function readRouteStringParam(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
+const route = useRoute()
 const loading = ref(false)
 const polling = ref(false)
 const teachers = ref<PortfolioTeacherSummaryVO[]>([])
@@ -26,10 +36,12 @@ const form = reactive({
   reportPeriodLabel: `${new Date().getFullYear()} 年度`,
 })
 
-const teacherSelectOptions = computed(() => portfolioTeacherSelectOptionsFromSummaries(teachers.value))
+const teacherSelectOptions = computed(() =>
+  portfolioTeacherSelectOptionsFromSummaries(teachers.value),
+)
 
 function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 async function loadTeachers() {
@@ -42,14 +54,13 @@ async function loadTeachers() {
         form.teacherId = firstOption.value
       }
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
 
 function selectedTeacherName(): string {
-  const teacher = teachers.value.find(item => item.userId === form.teacherId)
+  const teacher = teachers.value.find((item) => item.userId === form.teacherId)
   if (!teacher) {
     throw new Error('所选教师不存在')
   }
@@ -100,11 +111,9 @@ async function submitReport() {
     message.info('报告生成任务已提交，正在等待结果…')
     reportDetail.value = await pollAnalysis(submitResult.taskId)
     message.success('报告生成完成')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
     polling.value = false
   }
@@ -124,7 +133,25 @@ function downloadMarkdown() {
   URL.revokeObjectURL(url)
 }
 
-onMounted(loadTeachers)
+async function bootstrapPage() {
+  await loadTeachers()
+  const taskId = readRouteStringParam(route.query.taskId)
+  if (!taskId) {
+    return
+  }
+  polling.value = true
+  try {
+    reportDetail.value = await pollAnalysis(taskId)
+  } catch (error) {
+    showUserError(error)
+  } finally {
+    polling.value = false
+  }
+}
+
+onMounted(() => {
+  void bootstrapPage()
+})
 </script>
 
 <template>
@@ -147,21 +174,21 @@ onMounted(loadTeachers)
           :options="PORTFOLIO_REPORT_SCENE_OPTIONS"
           style="width: 160px"
         />
-        <a-input v-model:value="form.reportPeriodLabel" placeholder="报告周期" style="width: 160px" />
+        <a-input
+          v-model:value="form.reportPeriodLabel"
+          placeholder="报告周期"
+          style="width: 160px"
+        />
         <UiButton variant="primary" :loading="loading" @click="submitReport">
           提交 AI 生成
         </UiButton>
       </div>
-      <p v-if="polling" class="hint">
-        任务执行中，请稍候…
-      </p>
+      <p v-if="polling" class="hint">任务执行中，请稍候…</p>
     </UiCard>
     <UiCard v-if="reportDetail" title="报告预览">
       <div class="report-meta">
         <span>{{ reportDetail.resultTitle }}</span>
-        <UiButton size="sm" @click="downloadMarkdown">
-          下载 Markdown
-        </UiButton>
+        <UiButton size="sm" @click="downloadMarkdown"> 下载 Markdown </UiButton>
       </div>
       <pre class="markdown">{{ reportDetail.draftMarkdown }}</pre>
     </UiCard>

@@ -255,6 +255,18 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     },
   },
   {
+    path: 'improvement-tasks/:improvementTaskId',
+    redirect: (to) => ({
+      name: 'QualityImprovementWorkbench',
+      query: {
+        improvementTaskId: String(to.params.improvementTaskId ?? ''),
+      },
+    }),
+    meta: {
+      hideInMenu: true,
+    },
+  },
+  {
     path: 'report',
     name: 'QualityReport',
     component: () => import('@/views/quality/report.vue'),

@@ -1,4 +1,5 @@
 import type { PublicSurveyItemVO, PublicSurveyVO } from '@/apis/public-survey'
+import { publicSurveyApi } from '@/apis/public-survey'
 import { message } from 'ant-design-vue'
 /**
  * 公开问卷填写共享逻辑。
@@ -6,8 +7,12 @@ import { message } from 'ant-design-vue'
  */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { publicSurveyApi } from '@/apis/public-survey'
+import {
+  IndirectEvaluationItemType,
+  isIndirectEvaluationItemType,
+} from '@/types/enums/indirect-evaluation-item-type-enum'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { throwUserFacing } from '@/utils/contract-guard'
 
 export function useSurveyFill() {
   const route = useRoute()
@@ -43,19 +48,19 @@ export function useSurveyFill() {
   })
 
   function isItemAnswered(item: PublicSurveyItemVO): boolean {
-    if (item.itemType === 'SCALE') {
+    if (item.itemType === IndirectEvaluationItemType.SCALE) {
       return scaleAnswers[item.itemToken] != null
     }
-    if (item.itemType === 'SINGLE_CHOICE') {
+    if (item.itemType === IndirectEvaluationItemType.SINGLE_CHOICE) {
       return !!singleChoiceAnswers[item.itemToken]
     }
-    if (item.itemType === 'MULTI_CHOICE') {
+    if (item.itemType === IndirectEvaluationItemType.MULTI_CHOICE) {
       return multiAnswers[item.itemToken] && multiAnswers[item.itemToken].length > 0
     }
-    if (item.itemType === 'OPEN_TEXT') {
+    if (item.itemType === IndirectEvaluationItemType.OPEN_TEXT) {
       return !!(openTexts[item.itemToken] && openTexts[item.itemToken].trim())
     }
-    return false
+    throwUserFacing('问卷题项配置异常，请联系发布方')
   }
 
   function getScaleOptions(item: PublicSurveyItemVO) {
@@ -103,15 +108,17 @@ export function useSurveyFill() {
         let multipleChoiceValues: string[] | undefined
         let openText: string | undefined
 
-        if (item.itemType === 'SCALE') {
+        if (item.itemType === IndirectEvaluationItemType.SCALE) {
           scaleValue = scaleAnswers[item.itemToken]
-        } else if (item.itemType === 'SINGLE_CHOICE') {
+        } else if (item.itemType === IndirectEvaluationItemType.SINGLE_CHOICE) {
           singleChoiceValue = singleChoiceAnswers[item.itemToken]
-        } else if (item.itemType === 'MULTI_CHOICE') {
+        } else if (item.itemType === IndirectEvaluationItemType.MULTI_CHOICE) {
           const selected = multiAnswers[item.itemToken]
           multipleChoiceValues = selected && selected.length > 0 ? [...selected] : undefined
-        } else if (item.itemType === 'OPEN_TEXT') {
+        } else if (item.itemType === IndirectEvaluationItemType.OPEN_TEXT) {
           openText = openTexts[item.itemToken]
+        } else {
+          throwUserFacing('问卷题项配置异常，请联系发布方')
         }
 
         return {
@@ -124,10 +131,10 @@ export function useSurveyFill() {
       })
       .filter(
         (answer) =>
-          answer.scaleValue != null
-          || !!answer.singleChoiceValue
-          || !!answer.multipleChoiceValues?.length
-          || !!answer.openText?.trim(),
+          answer.scaleValue != null ||
+          !!answer.singleChoiceValue ||
+          !!answer.multipleChoiceValues?.length ||
+          !!answer.openText?.trim(),
       )
   }
 
@@ -135,6 +142,11 @@ export function useSurveyFill() {
     loading.value = true
     try {
       survey.value = await publicSurveyApi.getSurvey(token)
+      for (const item of survey.value.items) {
+        if (!isIndirectEvaluationItemType(item.itemType)) {
+          throwUserFacing('问卷题项配置异常，请联系发布方')
+        }
+      }
     } catch (err) {
       if (!(err instanceof Error)) throw err
       showUserError(err, '问卷加载失败')

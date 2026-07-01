@@ -5,17 +5,20 @@ import type {
   ImprovementTaskSaveRequest,
   ImprovementTaskVO,
 } from '@/apis/quality/improvement-task'
+import { improvementTaskApi } from '@/apis/quality/improvement-task'
 import type { ImprovementTaskStatus } from '@/apis/quality/types'
+import { IMPROVEMENT_TASK_STATUS_COLOR, IMPROVEMENT_TASK_STATUS_LABEL } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
-import { message } from 'ant-design-vue'
-import { reactive, ref } from 'vue'
-import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
-import { improvementTaskApi } from '@/apis/quality/improvement-task'
 import {
-  IMPROVEMENT_TASK_STATUS_COLOR,
-  IMPROVEMENT_TASK_STATUS_LABEL,
-} from '@/apis/quality/types'
+  normalizeTextareaLineItems,
+  refreshWorkbenchSignalsAfterMutation,
+  selectedId,
+} from '@/composables/quality/improvement'
+import { message } from 'ant-design-vue'
+import { reactive, ref, watch } from 'vue'
+import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
+import { aiTaskApi } from '@/apis/quality/ai-task'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
 import {
   AchievementResultSelector,
@@ -31,14 +34,13 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import {
-  normalizeTextareaLineItems,
-  refreshWorkbenchSignalsAfterMutation,
-  selectedId,
-} from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
-import { assertQualityScopeFresh, beginQualityScopeRequest, isQualityScopeStaleError } from '@/composables/useScopeRequestGuard'
+import {
+  assertQualityScopeFresh,
+  beginQualityScopeRequest,
+  isQualityScopeStaleError,
+} from '@/composables/useScopeRequestGuard'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
@@ -79,7 +81,7 @@ const improvementQuery = reactive<ImprovementTaskQueryRequest>({
   keyword: '',
 })
 
-const improvementStatusOptions: Array<{ value: ImprovementTaskStatus, label: string }> = [
+const improvementStatusOptions: Array<{ value: ImprovementTaskStatus; label: string }> = [
   { value: 'OPEN', label: IMPROVEMENT_TASK_STATUS_LABEL.OPEN },
   { value: 'IN_PROGRESS', label: IMPROVEMENT_TASK_STATUS_LABEL.IN_PROGRESS },
   { value: 'SUBMITTED', label: IMPROVEMENT_TASK_STATUS_LABEL.SUBMITTED },
@@ -139,6 +141,7 @@ const improvementEditor = reactive<ImprovementTaskSaveRequest>({
   dueDate: '',
 })
 const improvementEditorSubmitting = ref(false)
+const submitAiSuggestionDraft = ref(false)
 const improvementDetailVisible = ref(false)
 const improvementDetailRecord = ref<ImprovementTaskVO | null>(null)
 const improvementDetailLoading = ref(false)
@@ -173,7 +176,7 @@ function handleImprovementFilterSearch(): void {
   void loadList()
 }
 
-function handleImprovementPageChange(page: { current: number, pageSize: number }): void {
+function handleImprovementPageChange(page: { current: number; pageSize: number }): void {
   improvementQuery.pageNum = page.current
   improvementQuery.pageSize = page.pageSize
   void loadList()
@@ -198,6 +201,15 @@ function handleImprovementProgramChange(value: string | null | undefined): void 
   improvementEditor.qualityCourseId = ''
   improvementEditor.achievementResultId = ''
 }
+
+watch(
+  () => improvementEditor.achievementResultId,
+  (value) => {
+    if (!value) {
+      submitAiSuggestionDraft.value = false
+    }
+  },
+)
 
 function handleImprovementCourseChange(value: string | null | undefined): void {
   improvementEditor.qualityCourseId = selectedId(value)
@@ -238,7 +250,11 @@ async function loadList(options?: { refreshSignals?: boolean }): Promise<void> {
     improvementQuery.pageNum = page.pageNum
     improvementQuery.pageSize = page.pageSize
     improvementTotal.value = readPageTotal(page, '持续改进任务加载失败，请稍后重试')
-    if (improvementList.value.length === 0 && improvementTotal.value > 0 && improvementQuery.pageNum > 1) {
+    if (
+      improvementList.value.length === 0 &&
+      improvementTotal.value > 0 &&
+      improvementQuery.pageNum > 1
+    ) {
       improvementQuery.pageNum -= 1
       await loadList(options)
       return
@@ -266,6 +282,7 @@ async function loadList(options?: { refreshSignals?: boolean }): Promise<void> {
 
 function openImprovementCreate(): void {
   improvementEditorMode.value = 'create'
+  submitAiSuggestionDraft.value = false
   Object.assign(improvementEditor, {
     id: undefined,
     taskCode: '',
@@ -308,6 +325,30 @@ function openImprovementEdit(record: ImprovementTaskVO): void {
   improvementEditorVisible.value = true
 }
 
+async function sleep(ms: number): Promise<void> {
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
+
+/** 创建勾选路径：异步 AI 入队后按 improvementTaskId(reportId) 轮询任务并启动 Store 轮询。 */
+async function startPollingImprovementAiTask(improvementTaskId: string): Promise<void> {
+  for (let attempt = 0; attempt < 15; attempt += 1) {
+    const result = await aiTaskApi.page({
+      taskType: 'IMPROVEMENT_SUGGESTION_GENERATE',
+      reportId: improvementTaskId,
+      pageNum: 1,
+      pageSize: 1,
+    })
+    const task = readPageList(result, '查询改进草稿 AI 任务失败')[0]
+    if (task?.id) {
+      aiTaskStore.startPolling(task.id)
+      return
+    }
+    await sleep(2000)
+  }
+}
+
 async function submitImprovementEditor(): Promise<void> {
   if (improvementEditorMode.value === 'edit' && improvementEditor.id) {
     const current = improvementList.value.find((item) => item.id === improvementEditor.id)
@@ -317,14 +358,22 @@ async function submitImprovementEditor(): Promise<void> {
     }
   }
   if (
-    !improvementEditor.taskTitle.trim()
-    || !improvementEditor.problemSummary.trim()
-    || !improvementEditor.proposedAction.trim()
-    || !improvementEditor.programId
-    || !improvementEditor.ownerUserId
-    || !improvementEditor.dueDate
+    !improvementEditor.taskTitle.trim() ||
+    !improvementEditor.problemSummary.trim() ||
+    !improvementEditor.proposedAction.trim() ||
+    !improvementEditor.programId ||
+    !improvementEditor.ownerUserId ||
+    !improvementEditor.dueDate
   ) {
     message.error('请填写标题、问题概述、改进措施、专业、负责人和截止日期')
+    return
+  }
+  if (
+    improvementEditorMode.value === 'create' &&
+    submitAiSuggestionDraft.value &&
+    !improvementEditor.achievementResultId
+  ) {
+    message.error('生成 AI 改进草稿需要先关联达成度计算结果')
     return
   }
   improvementEditorSubmitting.value = true
@@ -346,8 +395,16 @@ async function submitImprovementEditor(): Promise<void> {
       dueDate: improvementEditor.dueDate,
     }
     if (improvementEditorMode.value === 'create') {
-      await improvementTaskApi.create(request)
-      message.success('改进任务已创建')
+      const improvementTaskId = await improvementTaskApi.create({
+        ...request,
+        submitAiSuggestionDraft: submitAiSuggestionDraft.value || undefined,
+      })
+      if (submitAiSuggestionDraft.value && improvementTaskId) {
+        message.success('改进任务已创建，AI 改进草稿已排队生成')
+        void startPollingImprovementAiTask(String(improvementTaskId))
+      } else {
+        message.success('改进任务已创建')
+      }
     } else {
       await improvementTaskApi.update(request)
       message.success('已保存修改')
@@ -367,7 +424,10 @@ function canEditImprovementTask(status: ImprovementTaskStatus): boolean {
   return status === 'OPEN' || status === 'RETURNED'
 }
 
-async function handleImprovementTransit(record: ImprovementTaskVO, to: ImprovementTaskStatus): Promise<void> {
+async function handleImprovementTransit(
+  record: ImprovementTaskVO,
+  to: ImprovementTaskStatus,
+): Promise<void> {
   if (record.status === 'SUBMITTED' && (to === 'CLOSED' || to === 'RETURNED')) {
     const reviewRemark = await promptInputAsync({
       title: to === 'CLOSED' ? '复评通过并闭环' : '复评退回任务',
@@ -436,6 +496,7 @@ async function handleImprovementAiSuggestion(record: ImprovementTaskVO): Promise
         programId: record.programId,
         qualityCourseId: record.qualityCourseId,
         achievementResultId,
+        reportId: record.id,
       })
       message.success('已提交 AI 改进草稿任务')
       if (res.taskId) aiTaskStore.startPolling(res.taskId)
@@ -466,16 +527,31 @@ async function openImprovementDetail(record: ImprovementTaskVO): Promise<void> {
   }
 }
 
+/** 通知深链：打开指定改进任务详情，可选启动 AI 任务轮询。 */
+async function openByDeepLink(payload: {
+  improvementTaskId: string
+  aiTaskId?: string
+}): Promise<void> {
+  improvementDetailVisible.value = true
+  improvementDetailLoading.value = true
+  try {
+    improvementDetailRecord.value = await improvementTaskApi.detail(payload.improvementTaskId)
+  } finally {
+    improvementDetailLoading.value = false
+  }
+  if (payload.aiTaskId) {
+    aiTaskStore.startPolling(payload.aiTaskId)
+  }
+}
+
 defineExpose({
   loadList,
+  openByDeepLink,
 })
 </script>
 
 <template>
-  <ImprovementWorkbenchPanel
-    title="改进任务台账"
-    :empty="!qualityStore.currentTrainingPlanId"
-  >
+  <ImprovementWorkbenchPanel title="改进任务台账" :empty="!qualityStore.currentTrainingPlanId">
     <template #extra>
       <UiButton
         variant="primary"
@@ -489,21 +565,6 @@ defineExpose({
 
     <UiFilterBar
       variant="plain"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
       v-model="improvementFilterForm"
       :fields="improvementFilterFields"
       show-labels
@@ -697,6 +758,17 @@ defineExpose({
           placeholder="具体改进动作"
         />
       </a-form-item>
+      <a-form-item v-if="improvementEditorMode === 'create'" label="AI 辅助">
+        <a-checkbox
+          v-model:checked="submitAiSuggestionDraft"
+          :disabled="!improvementEditor.achievementResultId"
+        >
+          创建后同步生成 AI 改进建议草稿
+        </a-checkbox>
+        <p v-if="!improvementEditor.achievementResultId" class="iwb-tab__ai-hint">
+          需先关联达成度计算结果
+        </p>
+      </a-form-item>
     </a-form>
   </UiDrawer>
 
@@ -779,6 +851,12 @@ defineExpose({
 
   &__evidence-item {
     margin-bottom: 4px;
+  }
+
+  &__ai-hint {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--dp-text-tertiary);
   }
 }
 </style>

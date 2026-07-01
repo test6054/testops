@@ -5,16 +5,12 @@ import type {
   IndirectEvaluationResponseSaveRequest,
   IndirectEvaluationResponseVO,
 } from '@/apis/quality/indirect-response'
+import { indirectResponseApi } from '@/apis/quality/indirect-response'
 import { message } from 'ant-design-vue'
 import { computed, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { indirectResponseApi } from '@/apis/quality/indirect-response'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
-import {
-  ClassSelector,
-  StudentSelector,
-  TeacherSelector,
-} from '@/components/quality/selectors'
+import { ClassSelector, StudentSelector, TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -24,11 +20,19 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import ImportResponseDocumentModal from '../ImportResponseDocumentModal.vue'
 import {
+  isIndirectEvaluationItemType,
+  isMultiChoiceItemType,
+  isOpenTextItemType,
+  isScaleItemType,
+  isSingleChoiceItemType,
+  isSystemCollectedRespondentType,
   isTeacherResponseWritable,
+  requiresTeacherScoreConversion,
   respondentTypeLabel,
   respondentTypeOptions,
   responseColumns,
 } from './indirect-evaluation-shared'
+import { RespondentType } from '@/types/enums/respondent-type-enum'
 
 const props = defineProps<{
   selectedForm: IndirectEvaluationFormVO | null
@@ -41,9 +45,39 @@ const emit = defineEmits<{
 
 const responses = ref<IndirectEvaluationResponseVO[]>([])
 const responsesLoading = ref(false)
+const conversionFilter = ref<'all' | 'pending' | 'scored'>('all')
+
+const pendingResponseCount = computed(
+  () => responses.value.filter((record) => record.conversionPending).length,
+)
+
+const filteredResponses = computed(() => {
+  if (conversionFilter.value === 'pending') {
+    return responses.value.filter((record) => record.conversionPending === true)
+  }
+  if (conversionFilter.value === 'scored') {
+    return responses.value.filter((record) => isScoredResponse(record))
+  }
+  return responses.value
+})
+
+/** 已换算：有效且（量表有分/换算分，或选择开放题已录换算分） */
+function isScoredResponse(record: IndirectEvaluationResponseVO): boolean {
+  if (!record.validFlag) return false
+  if (record.conversionPending) return false
+  if (requiresTeacherScoreConversion(props.selectedItem?.itemType)) {
+    return record.convertedScore != null
+  }
+  return record.convertedScore != null || record.scaleValue != null
+}
+
+const showConversionWorkflow = computed(() =>
+  requiresTeacherScoreConversion(props.selectedItem?.itemType),
+)
 
 const responseEditorVisible = ref(false)
 const responseEditorMode = ref<'create' | 'edit'>('create')
+const clearConvertedScore = ref(false)
 const responseMultiChoiceValues = ref<string[]>([])
 const responseEditorClassId = ref('')
 const responseIdentityName = ref('')
@@ -52,7 +86,7 @@ const responseIdentityContact = ref('')
 const responseEditor = ref<IndirectEvaluationResponseSaveRequest>({
   formId: '',
   itemId: '',
-  respondentType: 'STUDENT',
+  respondentType: RespondentType.STUDENT,
   respondentId: '',
   scaleValue: undefined,
   singleChoiceValue: '',
@@ -118,6 +152,7 @@ function openResponseCreate() {
     return
   }
   responseEditorMode.value = 'create'
+  clearConvertedScore.value = false
   responseMultiChoiceValues.value = []
   responseEditorClassId.value = ''
   responseIdentityName.value = ''
@@ -126,7 +161,7 @@ function openResponseCreate() {
   responseEditor.value = {
     formId: props.selectedForm.id,
     itemId: props.selectedItem.id,
-    respondentType: 'STUDENT',
+    respondentType: RespondentType.STUDENT,
     respondentId: '',
     scaleValue: undefined,
     singleChoiceValue: '',
@@ -147,15 +182,16 @@ function openResponseEdit(record: IndirectEvaluationResponseVO) {
     return
   }
   responseEditorMode.value = 'edit'
-  responseMultiChoiceValues.value
-    = record.multipleChoiceValues?.map((option) => option.optionValue) ?? []
+  clearConvertedScore.value = false
+  responseMultiChoiceValues.value =
+    record.multipleChoiceValues?.map((option) => option.optionValue) ?? []
   responseEditorClassId.value = ''
-  responseIdentityName.value
-    = record.identityValues?.find((item) => item.fieldKey === 'NAME')?.fieldValue ?? ''
-  responseIdentityOrganization.value
-    = record.identityValues?.find((item) => item.fieldKey === 'ORGANIZATION')?.fieldValue ?? ''
-  responseIdentityContact.value
-    = record.identityValues?.find((item) => item.fieldKey === 'CONTACT')?.fieldValue ?? ''
+  responseIdentityName.value =
+    record.identityValues?.find((item) => item.fieldKey === 'NAME')?.fieldValue ?? ''
+  responseIdentityOrganization.value =
+    record.identityValues?.find((item) => item.fieldKey === 'ORGANIZATION')?.fieldValue ?? ''
+  responseIdentityContact.value =
+    record.identityValues?.find((item) => item.fieldKey === 'CONTACT')?.fieldValue ?? ''
   responseEditor.value = {
     ...record,
     multipleChoiceValues: record.multipleChoiceValues?.map((option) => ({ ...option })) ?? [],
@@ -185,6 +221,11 @@ function selectedItemChoiceOptions() {
   return props.selectedItem?.choiceOptions ?? []
 }
 
+function selectedItemTypeKnown(): boolean {
+  const itemType = props.selectedItem?.itemType
+  return itemType !== undefined && itemType !== null && isIndirectEvaluationItemType(itemType)
+}
+
 /** 校验应答人身份与题型答案后提交答卷 */
 async function submitResponse() {
   const v = responseEditor.value
@@ -193,16 +234,19 @@ async function submitResponse() {
     return
   }
   if (
-    (v.respondentType === 'STUDENT'
-      || v.respondentType === 'TEACHER'
-      || v.respondentType === 'EXPERT'
-      || v.respondentType === 'SUPERVISOR')
-    && !v.respondentId?.trim()
+    (v.respondentType === RespondentType.STUDENT ||
+      v.respondentType === RespondentType.TEACHER ||
+      v.respondentType === RespondentType.EXPERT ||
+      v.respondentType === RespondentType.SUPERVISOR) &&
+    !v.respondentId?.trim()
   ) {
     message.error('请选择应答人')
     return
   }
-  if (v.respondentType === 'GRADUATE' || v.respondentType === 'EMPLOYER') {
+  if (
+    v.respondentType === RespondentType.GRADUATE ||
+    v.respondentType === RespondentType.EMPLOYER
+  ) {
     if (!responseIdentityName.value.trim()) {
       message.error('请填写应答人姓名')
       return
@@ -220,30 +264,34 @@ async function submitResponse() {
     message.warning('请先选择题项')
     return
   }
-  if (props.selectedItem.itemType === 'SCALE' && v.scaleValue == null) {
+  if (!selectedItemTypeKnown()) {
+    message.error('当前题项题型无效，无法保存答卷')
+    return
+  }
+  if (isScaleItemType(props.selectedItem.itemType) && v.scaleValue == null) {
     message.error('请填写量表分值')
     return
   }
-  if (props.selectedItem.itemType === 'SINGLE_CHOICE' && !v.singleChoiceValue?.trim()) {
+  if (isSingleChoiceItemType(props.selectedItem.itemType) && !v.singleChoiceValue?.trim()) {
     message.error('请选择单选答案')
     return
   }
   if (
-    props.selectedItem.itemType === 'MULTI_CHOICE'
-    && responseMultiChoiceValues.value.length === 0
+    isMultiChoiceItemType(props.selectedItem.itemType) &&
+    responseMultiChoiceValues.value.length === 0
   ) {
     message.error('请至少选择一个多选答案')
     return
   }
   if (
-    props.selectedItem.itemType === 'OPEN_TEXT'
-    && props.selectedItem.required
-    && !v.openText?.trim()
+    isOpenTextItemType(props.selectedItem.itemType) &&
+    props.selectedItem.required &&
+    !v.openText?.trim()
   ) {
     message.error('请填写开放回答')
     return
   }
-  if (props.selectedItem.itemType === 'SCALE') {
+  if (isScaleItemType(props.selectedItem.itemType)) {
     const scaleLabel = selectedItemScaleOptions().find(
       (option) => option.scaleValue === v.scaleValue,
     )?.label
@@ -251,7 +299,7 @@ async function submitResponse() {
     v.multipleChoiceValues = []
     v.openText = ''
     v.answerSummary = scaleLabel ?? (v.scaleValue == null ? '' : `${v.scaleValue}分`)
-  } else if (props.selectedItem.itemType === 'SINGLE_CHOICE') {
+  } else if (isSingleChoiceItemType(props.selectedItem.itemType)) {
     const selectedOption = selectedItemChoiceOptions().find(
       (option) => option.optionValue === v.singleChoiceValue,
     )
@@ -259,7 +307,7 @@ async function submitResponse() {
     v.multipleChoiceValues = []
     v.openText = ''
     v.answerSummary = selectedOption?.optionLabel ?? v.singleChoiceValue ?? ''
-  } else if (props.selectedItem.itemType === 'MULTI_CHOICE') {
+  } else if (isMultiChoiceItemType(props.selectedItem.itemType)) {
     v.scaleValue = undefined
     v.singleChoiceValue = ''
     v.openText = ''
@@ -267,12 +315,30 @@ async function submitResponse() {
       responseMultiChoiceValues.value.includes(option.optionValue),
     )
     v.answerSummary = v.multipleChoiceValues.map((option) => option.optionLabel).join(' | ')
-  } else {
+  } else if (isOpenTextItemType(props.selectedItem.itemType)) {
     v.scaleValue = undefined
     v.singleChoiceValue = ''
     v.multipleChoiceValues = []
     v.answerSummary = ''
     v.openText = v.openText?.trim() ?? ''
+  } else {
+    message.error('当前题项题型无效，无法保存答卷')
+    return
+  }
+  if (
+    showConversionWorkflow.value &&
+    responseEditor.value.validFlag &&
+    responseEditor.value.convertedScore == null &&
+    !clearConvertedScore.value
+  ) {
+    message.error('选择/开放题有效答卷须录入换算分')
+    return
+  }
+  if (clearConvertedScore.value) {
+    v.clearConvertedScore = true
+    v.convertedScore = undefined
+  } else {
+    v.clearConvertedScore = undefined
   }
   if (responseEditorMode.value === 'create') await indirectResponseApi.create(v)
   else await indirectResponseApi.update(v)
@@ -366,6 +432,15 @@ defineExpose({
     </template>
     <template #extra>
       <a-space>
+        <a-segmented
+          v-if="showConversionWorkflow"
+          v-model:value="conversionFilter"
+          :options="[
+            { label: '全部', value: 'all' },
+            { label: '待换算', value: 'pending' },
+            { label: '已换算', value: 'scored' },
+          ]"
+        />
         <UiButton
           v-if="selectedForm && isTeacherResponseWritable(selectedForm)"
           variant="outline"
@@ -393,16 +468,24 @@ defineExpose({
       </a-space>
     </template>
 
+    <a-alert
+      v-if="showConversionWorkflow && pendingResponseCount > 0"
+      type="warning"
+      show-icon
+      class="ie__pending-alert"
+      :message="`有 ${pendingResponseCount} 份答卷待录入换算分，录入后才会纳入间接达成度均值`"
+    />
+
     <UiDataTable
       pagination-mode="client"
       class="student-detail-table__data-table"
       :columns="responseColumns"
-      :data-source="responses"
+      :data-source="filteredResponses"
       :loading="responsesLoading"
       row-key="id"
       size="middle"
       :page-size="10"
-      :total="responses.length"
+      :total="filteredResponses.length"
       flat
     >
       <template #bodyCell="{ column, record }">
@@ -410,27 +493,36 @@ defineExpose({
           {{ respondentTypeLabel(record.respondentType) }}
         </template>
         <template v-else-if="column.key === 'answerSummary'">
-          <span v-if="selectedItem?.itemType === 'SCALE'">
+          <span v-if="isScaleItemType(selectedItem?.itemType)">
             {{ responseScaleAnswerText(record) }}
           </span>
-          <span v-else-if="selectedItem?.itemType === 'SINGLE_CHOICE'">
+          <span v-else-if="isSingleChoiceItemType(selectedItem?.itemType)">
             {{ responseSingleChoiceAnswerText(record) }}
           </span>
-          <span v-else-if="selectedItem?.itemType === 'MULTI_CHOICE'">
+          <span v-else-if="isMultiChoiceItemType(selectedItem?.itemType)">
             {{ responseChoiceValues(record) }}
           </span>
-          <span v-else class="ie__sub-desc">
+          <span v-else-if="isOpenTextItemType(selectedItem?.itemType)">
             {{ responseOpenText(record) }}
           </span>
+          <span v-else class="ie__sub-desc ie__sub-desc--error"> 题项题型无效 </span>
         </template>
         <template v-else-if="column.key === 'convertedScore'">
-          {{ record.convertedScore == null ? '-' : record.convertedScore.toFixed(2) }}
+          <span :class="record.conversionPending ? 'ie__sub-desc ie__sub-desc--warn' : ''">
+            {{ record.convertedScore == null ? '-' : record.convertedScore.toFixed(2) }}
+          </span>
+        </template>
+        <template v-else-if="column.key === 'conversionStatus'">
+          <UiTag v-if="record.conversionPending" tone="orange">待换算</UiTag>
+          <UiTag v-else-if="showConversionWorkflow && record.validFlag" tone="green">已换算</UiTag>
+          <span v-else class="ie__sub-desc">—</span>
         </template>
         <template v-else-if="column.key === 'openText'">
           <span class="ie__sub-desc">{{ responseOpenText(record) }}</span>
         </template>
         <template v-else-if="column.key === 'validFlag'">
-          <UiTag :tone="record.validFlag ? 'green' : 'red'">
+          <UiTag v-if="record.validFlag === null" tone="orange">待确认</UiTag>
+          <UiTag v-else :tone="record.validFlag ? 'green' : 'red'">
             {{ record.validFlag ? '有效' : '无效' }}
           </UiTag>
         </template>
@@ -458,14 +550,24 @@ defineExpose({
       <a-row :gutter="12">
         <a-col :span="12">
           <a-form-item label="应答人类型" required>
+            <span
+              v-if="
+                isSystemCollectedRespondentType(responseEditor.respondentType) ||
+                responseEditor.respondentType === RespondentType.AI_DRAFT
+              "
+              class="ie__sub-desc"
+            >
+              {{ respondentTypeLabel(responseEditor.respondentType) }}
+            </span>
             <a-select
+              v-else
               v-model:value="responseEditor.respondentType"
               :options="respondentTypeOptions"
               @change="handleResponseRespondentTypeChange"
             />
           </a-form-item>
         </a-col>
-        <a-col v-if="responseEditor.respondentType === 'STUDENT'" :span="12">
+        <a-col v-if="responseEditor.respondentType === RespondentType.STUDENT" :span="12">
           <a-form-item label="班级" required>
             <ClassSelector
               :value="responseEditorClassId || null"
@@ -476,9 +578,9 @@ defineExpose({
         </a-col>
         <a-col
           v-else-if="
-            responseEditor.respondentType === 'TEACHER'
-              || responseEditor.respondentType === 'EXPERT'
-              || responseEditor.respondentType === 'SUPERVISOR'
+            responseEditor.respondentType === RespondentType.TEACHER ||
+            responseEditor.respondentType === RespondentType.EXPERT ||
+            responseEditor.respondentType === RespondentType.SUPERVISOR
           "
           :span="12"
         >
@@ -491,7 +593,11 @@ defineExpose({
           </a-form-item>
         </a-col>
       </a-row>
-      <a-form-item v-if="responseEditor.respondentType === 'STUDENT'" label="应答学生" required>
+      <a-form-item
+        v-if="responseEditor.respondentType === RespondentType.STUDENT"
+        label="应答学生"
+        required
+      >
         <StudentSelector
           :class-id="responseEditorClassId"
           :value="responseEditor.respondentId || null"
@@ -501,8 +607,8 @@ defineExpose({
       </a-form-item>
       <a-row
         v-if="
-          responseEditor.respondentType === 'GRADUATE'
-            || responseEditor.respondentType === 'EMPLOYER'
+          responseEditor.respondentType === RespondentType.GRADUATE ||
+          responseEditor.respondentType === RespondentType.EMPLOYER
         "
         :gutter="12"
       >
@@ -526,7 +632,7 @@ defineExpose({
         <a-col :span="12">
           <a-form-item label="答案" required>
             <a-radio-group
-              v-if="selectedItem?.itemType === 'SCALE'"
+              v-if="isScaleItemType(selectedItem?.itemType)"
               v-model:value="responseEditor.scaleValue"
               class="ie__answer-group"
             >
@@ -539,7 +645,7 @@ defineExpose({
               </a-radio>
             </a-radio-group>
             <a-radio-group
-              v-else-if="selectedItem?.itemType === 'SINGLE_CHOICE'"
+              v-else-if="isSingleChoiceItemType(selectedItem?.itemType)"
               v-model:value="responseEditor.singleChoiceValue"
               class="ie__answer-group"
             >
@@ -552,7 +658,7 @@ defineExpose({
               </a-radio>
             </a-radio-group>
             <a-checkbox-group
-              v-else-if="selectedItem?.itemType === 'MULTI_CHOICE'"
+              v-else-if="isMultiChoiceItemType(selectedItem?.itemType)"
               v-model:value="responseMultiChoiceValues"
               class="ie__answer-group"
             >
@@ -569,22 +675,39 @@ defineExpose({
               </a-row>
             </a-checkbox-group>
             <a-textarea
-              v-else
+              v-else-if="isOpenTextItemType(selectedItem?.itemType)"
               v-model:value="responseEditor.openText"
               :rows="3"
               placeholder="填写开放回答"
             />
+            <a-alert v-else type="error" message="题项题型无效，无法录入答卷" show-icon />
           </a-form-item>
         </a-col>
         <a-col :span="12">
-          <a-form-item label="换算分（0~1）">
+          <a-form-item
+            label="换算分（0~1）"
+            :required="showConversionWorkflow && responseEditor.validFlag && !clearConvertedScore"
+          >
             <a-input-number
               v-model:value="responseEditor.convertedScore"
               :min="0"
               :max="1"
               :step="0.01"
+              :disabled="clearConvertedScore"
               style="width: 100%"
+              placeholder="选择/开放题须录入后才纳入达成度"
             />
+            <a-checkbox
+              v-if="
+                responseEditorMode === 'edit' &&
+                showConversionWorkflow &&
+                responseEditor.convertedScore != null
+              "
+              v-model:checked="clearConvertedScore"
+              class="ie__clear-score"
+            >
+              清空换算分（改回待换算）
+            </a-checkbox>
           </a-form-item>
         </a-col>
       </a-row>
@@ -633,6 +756,23 @@ defineExpose({
     margin-left: 4px;
     font-size: 12px;
     color: var(--dp-text-muted);
+
+    &--error {
+      color: var(--dp-danger);
+    }
+
+    &--warn {
+      color: var(--dp-warning);
+      font-weight: 500;
+    }
+  }
+
+  &__pending-alert {
+    margin-bottom: 12px;
+  }
+
+  &__clear-score {
+    margin-top: 8px;
   }
 
   &__answer-group {

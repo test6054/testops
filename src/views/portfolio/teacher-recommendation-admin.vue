@@ -5,6 +5,12 @@ import type {
   PortfolioTeacherRecommendRunStatus,
   PortfolioTeacherRecommendScene,
 } from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS,
+  PORTFOLIO_TEACHER_RECOMMEND_RUN_MODE_LABEL,
+  PORTFOLIO_TEACHER_RECOMMEND_RUN_STATUS_LABEL,
+  PORTFOLIO_TEACHER_RECOMMEND_SCENE_LABEL,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioTeacherPkCompareVO,
   PortfolioTeacherRecommendCandidateVO,
@@ -12,18 +18,13 @@ import type {
   PortfolioTeacherRecommendRuleVO,
   PortfolioTeacherRecommendRunVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
 import type { AiTaskStatus } from '@/apis/quality/types'
+import { AI_TASK_STATUS_LABEL } from '@/apis/quality/types'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS,
-  PORTFOLIO_TEACHER_RECOMMEND_RUN_MODE_LABEL,
-  PORTFOLIO_TEACHER_RECOMMEND_RUN_STATUS_LABEL,
-  PORTFOLIO_TEACHER_RECOMMEND_SCENE_LABEL,
-} from '@/apis/portfolio/enums'
-import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
-import { AI_TASK_STATUS_LABEL } from '@/apis/quality/types'
+import { useRoute, useRouter } from 'vue-router'
+import { aiTaskApi } from '@/apis/quality/ai-task'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -33,6 +34,10 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
+
+function readRouteStringParam(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
 
 const activeTab = ref('execute')
 const rules = ref<PortfolioTeacherRecommendRuleVO[]>([])
@@ -78,6 +83,7 @@ const explainDrawerOpen = ref(false)
 const explainLoading = ref(false)
 const explainStatus = ref<PortfolioTeacherRecommendExplainStatusVO | null>(null)
 const explainRunId = ref('')
+const route = useRoute()
 const router = useRouter()
 
 function aiTaskStatusLabel(status?: AiTaskStatus): string {
@@ -92,9 +98,37 @@ function openExplainAiTask() {
     return
   }
   void router.push({
-    name: 'QualityAiTask',
-    query: { taskId: explainStatus.value.explainTaskId },
+    path: '/portfolio/admin/teacher-recommendation',
+    query: {
+      ...(explainRunId.value ? { runId: explainRunId.value } : {}),
+      taskId: explainStatus.value.explainTaskId,
+    },
   })
+  explainDrawerOpen.value = true
+}
+
+/** 消费通知深链 runId / taskId，定位推荐运行并打开 AI 解释抽屉。 */
+async function applyRouteDeepLink() {
+  const runId = readRouteStringParam(route.query.runId)
+  if (runId) {
+    viewRunCandidates(runId)
+    await loadExplainStatus(runId)
+    return
+  }
+  const taskId = readRouteStringParam(route.query.taskId)
+  if (!taskId) {
+    return
+  }
+  try {
+    const task = await aiTaskApi.detail(taskId)
+    if (!task.businessId) {
+      throw new Error('推荐解释任务缺少运行 ID')
+    }
+    viewRunCandidates(task.businessId)
+    await loadExplainStatus(task.businessId)
+  } catch (error) {
+    showUserError(error, '推荐解释深链加载失败')
+  }
 }
 
 function runModeLabel(mode: string) {
@@ -123,8 +157,7 @@ async function loadRules() {
     if (!selectedRuleId.value && rules.value.length > 0) {
       selectedRuleId.value = rules.value[0].id
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -147,8 +180,7 @@ async function saveRule() {
     message.success('规则已保存')
     ruleForm.ruleName = ''
     await loadRules()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -165,11 +197,9 @@ async function executeRuleRun() {
     })
     message.success('规则推荐已完成')
     await loadCandidates()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -187,11 +217,9 @@ async function executeAiExplain() {
     await portfolioTeacherRecommendationApi.explainSubmit({ runId: lastRunId.value })
     message.success('规则执行完成，AI 解释任务已提交')
     await loadCandidates()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -205,11 +233,9 @@ async function loadRuns() {
       pageSize: 50,
     })
     runs.value = readPageList(page, '加载执行历史失败')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     runsLoading.value = false
   }
 }
@@ -227,11 +253,9 @@ async function loadExplainStatus(runId: string) {
   explainStatus.value = null
   try {
     explainStatus.value = await portfolioTeacherRecommendationApi.explainStatus({ runId })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     explainLoading.value = false
   }
 }
@@ -247,14 +271,16 @@ async function loadCandidates() {
       pageSize: 50,
     })
     candidates.value = readPageList(page, '加载推荐候选失败')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
 
 async function runPkCompare() {
-  const ids = pkForm.teacherUserIds.split(/[,，\s]+/).map(s => s.trim()).filter(Boolean)
+  const ids = pkForm.teacherUserIds
+    .split(/[,，\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
   if (ids.length < 2 || ids.length > 5) {
     message.warning('请选择 2–5 名教师用户 ID')
     return
@@ -264,8 +290,7 @@ async function runPkCompare() {
       teacherUserIds: ids,
       dimensionCodes: PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS,
     })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -279,6 +304,7 @@ watch(selectedRuleId, () => {
 onMounted(async () => {
   await loadRules()
   await loadRuns()
+  await applyRouteDeepLink()
 })
 </script>
 
@@ -291,15 +317,20 @@ onMounted(async () => {
       <div class="form-row">
         <a-input v-model:value="ruleForm.ruleName" placeholder="规则名称" style="width: 160px" />
         <a-input-number v-model:value="ruleForm.minHonorCount" :min="0" placeholder="最低荣誉数" />
-        <a-checkbox v-model:checked="ruleForm.requireDualTeacher">
-          要求双师
-        </a-checkbox>
-        <a-input-number v-model:value="ruleForm.topLimit" :min="1" :max="50" placeholder="候选上限" />
-        <UiButton variant="primary" @click="saveRule">
-          保存规则
-        </UiButton>
+        <a-checkbox v-model:checked="ruleForm.requireDualTeacher"> 要求双师 </a-checkbox>
+        <a-input-number
+          v-model:value="ruleForm.topLimit"
+          :min="1"
+          :max="50"
+          placeholder="候选上限"
+        />
+        <UiButton variant="primary" @click="saveRule"> 保存规则 </UiButton>
       </div>
-      <a-select v-model:value="selectedRuleId" placeholder="选择规则" style="width: 240px; margin-top: 8px">
+      <a-select
+        v-model:value="selectedRuleId"
+        placeholder="选择规则"
+        style="width: 240px; margin-top: 8px"
+      >
         <a-select-option v-for="rule in rules" :key="rule.id" :value="rule.id">
           {{ rule.ruleName }}（{{ sceneLabel(rule.recommendScene) }}）
         </a-select-option>
@@ -309,15 +340,11 @@ onMounted(async () => {
       <a-tab-pane key="execute" tab="执行推荐">
         <UiCard>
           <div class="form-row">
-            <UiButton :loading="loading" @click="executeRuleRun">
-              规则推荐
-            </UiButton>
+            <UiButton :loading="loading" @click="executeRuleRun"> 规则推荐 </UiButton>
             <UiButton variant="primary" :loading="loading" @click="executeAiExplain">
               规则执行 → AI 解释
             </UiButton>
-            <UiButton @click="loadCandidates">
-              刷新候选
-            </UiButton>
+            <UiButton @click="loadCandidates"> 刷新候选 </UiButton>
           </div>
           <UiEmpty v-if="!loading && candidates.length === 0" description="当前筛选无推荐记录" />
           <UiDataTable
@@ -331,9 +358,7 @@ onMounted(async () => {
       </a-tab-pane>
       <a-tab-pane key="runs" tab="执行历史">
         <UiCard>
-          <UiButton :loading="runsLoading" @click="loadRuns">
-            刷新历史
-          </UiButton>
+          <UiButton :loading="runsLoading" @click="loadRuns"> 刷新历史 </UiButton>
           <UiEmpty v-if="!runsLoading && runs.length === 0" description="当前筛选无推荐记录" />
           <UiDataTable
             :columns="runColumns"
@@ -362,16 +387,16 @@ onMounted(async () => {
     </a-tabs>
     <UiCard title="PK 多维对比" style="margin-top: 16px">
       <div class="form-row">
-        <a-input v-model:value="pkForm.teacherUserIds" placeholder="教师 ID，逗号分隔（2–5人）" style="width: 360px" />
-        <UiButton @click="runPkCompare">
-          对比
-        </UiButton>
+        <a-input
+          v-model:value="pkForm.teacherUserIds"
+          placeholder="教师 ID，逗号分隔（2–5人）"
+          style="width: 360px"
+        />
+        <UiButton @click="runPkCompare"> 对比 </UiButton>
       </div>
       <div v-if="pkResult" class="pk-grid">
         <div v-for="teacher in pkResult.teachers" :key="teacher.teacherUserId" class="pk-col">
-          <div class="pk-title">
-            教师 {{ teacher.teacherUserId }}
-          </div>
+          <div class="pk-title">教师 {{ teacher.teacherUserId }}</div>
           <div v-for="row in teacher.dimensionRows" :key="row.dimensionCode" class="pk-row">
             {{ row.dimensionLabel }}：{{ row.dimensionScore }}
           </div>
@@ -388,12 +413,8 @@ onMounted(async () => {
               打开 AI 任务中心
             </UiButton>
           </p>
-          <p v-else>
-            尚未提交 AI 解释任务
-          </p>
-          <p v-if="explainStatus.status">
-            状态 {{ aiTaskStatusLabel(explainStatus.status) }}
-          </p>
+          <p v-else>尚未提交 AI 解释任务</p>
+          <p v-if="explainStatus.status">状态 {{ aiTaskStatusLabel(explainStatus.status) }}</p>
           <ul v-if="explainStatus.candidateItems?.length" class="explain-list">
             <li v-for="item in explainStatus.candidateItems" :key="item.teacherUserId">
               <strong>教师 {{ item.teacherUserId }}</strong>

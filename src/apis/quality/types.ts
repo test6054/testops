@@ -795,6 +795,14 @@ export const CONFIRMATION_STATUS_LABEL: Record<ConfirmationStatus, string> = {
   RETURNED: '已退回',
 }
 
+/** 过程性评价节点/记录共用确认状态流转表，与后端 ConfirmationStatusEnum.canTransitTo 一致 */
+export const CONFIRMATION_STATUS_TRANSIT_MAP: Record<ConfirmationStatus, ConfirmationStatus[]> = {
+  DRAFT: ['SUBMITTED'],
+  SUBMITTED: ['CONFIRMED', 'RETURNED'],
+  RETURNED: ['DRAFT', 'SUBMITTED'],
+  CONFIRMED: [],
+}
+
 export const CONFIRMATION_STATUS_COLOR: Record<ConfirmationStatus, BadgeTone> = {
   DRAFT: 'gray',
   SUBMITTED: 'blue',
@@ -858,22 +866,14 @@ export const PROCESS_NODE_TYPE_OPTIONS: Array<{
 ]
 
 /** 间接评价应答人类型 - 对应 RespondentTypeEnum */
-export type RespondentType
-  = | 'STUDENT'
-    | 'GRADUATE'
-    | 'EMPLOYER'
-    | 'TEACHER'
-    | 'EXPERT'
-    | 'SUPERVISOR'
-
-export const RESPONDENT_TYPE_LABEL: Record<RespondentType, string> = {
-  STUDENT: '在校学生',
-  GRADUATE: '毕业生',
-  EMPLOYER: '用人单位',
-  TEACHER: '任课教师',
-  EXPERT: '校外专家',
-  SUPERVISOR: '教学督导',
-}
+export {
+  formatRespondentType,
+  isRespondentType,
+  isSystemCollectedRespondentType,
+  MANUAL_RESPONDENT_TYPE_OPTIONS,
+  RespondentType,
+  RESPONDENT_TYPE_LABEL,
+} from '@/types/enums/respondent-type-enum'
 
 /** 间接评价问卷类型 - 对应 IndirectFormTypeEnum */
 export type IndirectFormType

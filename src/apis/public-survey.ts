@@ -3,18 +3,17 @@
  *
  * 后端路径：/api/public/survey/:token
  */
+import type { IndirectEvaluationItemType } from '@/types/enums/indirect-evaluation-item-type-enum'
+import {
+  formatPublicSurveyItemType,
+  PUBLIC_SURVEY_ITEM_TYPE_LABEL
+} from '@/types/enums/indirect-evaluation-item-type-enum'
 import http from '@/config/axios'
 
-/** 公开 / 间接评价共用题项类型 - 与后端 SCALE / SINGLE_CHOICE / MULTI_CHOICE / OPEN_TEXT 一致 */
-export type PublicSurveyItemType = 'SCALE' | 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'OPEN_TEXT'
+/** 公开 / 间接评价共用题项类型 */
+export type PublicSurveyItemType = IndirectEvaluationItemType
 
-/** 公开问卷填写页题型展示文案 */
-export const PUBLIC_SURVEY_ITEM_TYPE_LABEL: Record<PublicSurveyItemType, string> = {
-  SCALE: '量表题',
-  SINGLE_CHOICE: '单选题',
-  MULTI_CHOICE: '多选题',
-  OPEN_TEXT: '填空题',
-}
+export { formatPublicSurveyItemType, PUBLIC_SURVEY_ITEM_TYPE_LABEL }
 
 export interface PublicSurveyVO {
   formName: string

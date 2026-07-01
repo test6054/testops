@@ -1,0 +1,106 @@
+<script setup lang="ts">
+import { MinusOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+
+const props = withDefaults(
+  defineProps<{
+    zoom: number
+    showGrid: boolean
+    showSafeMargin: boolean
+    snapGridMm: number
+    readOnly?: boolean
+  }>(),
+  {
+    readOnly: false,
+  },
+)
+
+const emit = defineEmits<{
+  'update:zoom': [value: number]
+  'update:show-grid': [value: boolean]
+  'update:show-safe-margin': [value: boolean]
+  'update:snap-grid-mm': [value: number]
+}>()
+
+const ZOOM_MIN = 0.5
+const ZOOM_MAX = 2
+const ZOOM_STEP = 0.1
+
+function clampZoom(value: number): number {
+  return Math.min(Math.max(Math.round(value * 100) / 100, ZOOM_MIN), ZOOM_MAX)
+}
+
+function zoomIn(): void {
+  emit('update:zoom', clampZoom(props.zoom + ZOOM_STEP))
+}
+
+function zoomOut(): void {
+  emit('update:zoom', clampZoom(props.zoom - ZOOM_STEP))
+}
+
+function toggleGrid(): void {
+  emit('update:show-grid', !props.showGrid)
+}
+
+function toggleSafeMargin(): void {
+  emit('update:show-safe-margin', !props.showSafeMargin)
+}
+
+function onSnapChange(value: number | string): void {
+  emit('update:snap-grid-mm', Number(value) || 0)
+}
+</script>
+
+<template>
+  <div class="layout-canvas-toolbar">
+    <div class="layout-canvas-toolbar__group">
+      <UiButton size="sm" variant="outline" @click="zoomOut">
+        <template #icon><MinusOutlined /></template>
+      </UiButton>
+      <span class="layout-canvas-toolbar__zoom">{{ Math.round(zoom * 100) }}%</span>
+      <UiButton size="sm" variant="outline" @click="zoomIn">
+        <template #icon><PlusOutlined /></template>
+      </UiButton>
+    </div>
+    <div class="layout-canvas-toolbar__group">
+      <a-checkbox :checked="showGrid" @change="toggleGrid">对齐网格</a-checkbox>
+      <a-checkbox :checked="showSafeMargin" @change="toggleSafeMargin">安全边距</a-checkbox>
+      <a-select
+        v-if="!readOnly"
+        :value="snapGridMm"
+        size="small"
+        style="width: 108px"
+        :options="[
+          { value: 0, label: '无吸附' },
+          { value: 1, label: '1mm 吸附' },
+          { value: 5, label: '5mm 吸附' },
+        ]"
+        @change="onSnapChange"
+      />
+    </div>
+  </div>
+</template>
+
+<style scoped lang="scss">
+.layout-canvas-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+
+  &__group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__zoom {
+    min-width: 44px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--dp-text-secondary);
+  }
+}
+</style>

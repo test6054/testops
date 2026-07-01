@@ -1,3 +1,5 @@
+import type { SemesterCode } from '@/types/enums/semester-enum'
+
 export interface PortfolioArchiveBagAssembleVO {
   teacherId: string
   completenessPercent: number
@@ -25,7 +27,10 @@ export interface PortfolioArchiveBagAttachmentVO {
 
 export type PortfolioArchiveBagSourceType = 'ARCHIVE' | 'ACHIEVEMENT' | 'MATERIAL'
 
-export const PORTFOLIO_ARCHIVE_BAG_SOURCE_TYPE_LABEL: Record<PortfolioArchiveBagSourceType, string> = {
+export const PORTFOLIO_ARCHIVE_BAG_SOURCE_TYPE_LABEL: Record<
+  PortfolioArchiveBagSourceType,
+  string
+> = {
   ARCHIVE: '正式档案',
   ACHIEVEMENT: '成果库',
   MATERIAL: '材料库',
@@ -40,14 +45,15 @@ export interface PortfolioArchiveBagItemVO {
   title: string
   categoryName?: string
   courseName?: string
-  semester?: string
+  semester?: SemesterCode
   academicYear?: string
   courseCode?: string
   attachmentCount: number
   attachments: PortfolioArchiveBagAttachmentVO[]
 }
 
-export type PortfolioArchiveBagSectionType = 'BY_CATEGORY' | 'BY_SEMESTER' | 'BY_COURSE' | 'BY_ACHIEVEMENT'
+export type PortfolioArchiveBagSectionType =
+  'BY_CATEGORY' | 'BY_SEMESTER' | 'BY_COURSE' | 'BY_ACHIEVEMENT'
 
 export interface PortfolioArchiveBagSectionGroupVO {
   groupTitle: string
@@ -99,7 +105,7 @@ export interface PortfolioArchiveScoreResultVO {
 export interface PortfolioArchiveBagFilterRequest {
   teacherId?: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   courseCode?: string
   achievementType?: string
   materialType?: string

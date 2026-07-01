@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { Dayjs } from 'dayjs'
+import dayjs from 'dayjs'
 import type {
   IndirectEvaluationFormPublishRequest,
   IndirectEvaluationFormVO,
   IndirectEvaluationProgressVO,
   IndirectEvaluationStatisticsVO,
 } from '@/apis/quality/indirect-form'
+import { indirectFormApi } from '@/apis/quality/indirect-form'
 import type { IndirectFormAccessMode, IndirectFormStatus } from '@/apis/quality/types'
 import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
-import { reactive, ref } from 'vue'
-import { indirectFormApi } from '@/apis/quality/indirect-form'
+import { reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -54,6 +54,8 @@ const publishResultUrl = ref('')
 const progressDrawerVisible = ref(false)
 const progressLoading = ref(false)
 const progressData = ref<IndirectEvaluationProgressVO | null>(null)
+const workflowProgress = ref<IndirectEvaluationProgressVO | null>(null)
+const workflowProgressLoading = ref(false)
 
 const statisticsDrawerVisible = ref(false)
 const statisticsLoading = ref(false)
@@ -89,7 +91,7 @@ async function submitPublish() {
   }
   publishEditor.startTime = publishTimeRange.value[0].format('YYYY-MM-DD HH:mm:ss')
   publishEditor.endTime = publishTimeRange.value[1].format('YYYY-MM-DD HH:mm:ss')
-  if (!publishEditor.allowAnonymous && (!publishEditor.requireIdentityFields?.length)) {
+  if (!publishEditor.allowAnonymous && !publishEditor.requireIdentityFields?.length) {
     message.error('非匿名问卷必须配置身份字段')
     return
   }
@@ -97,13 +99,16 @@ async function submitPublish() {
   try {
     const result = await indirectFormApi.publish({
       ...publishEditor,
-      requireIdentityFields: publishEditor.allowAnonymous ? [] : publishEditor.requireIdentityFields,
+      requireIdentityFields: publishEditor.allowAnonymous
+        ? []
+        : publishEditor.requireIdentityFields,
     })
     publishResultUrl.value = result.publicUrl.startsWith('http')
       ? result.publicUrl
       : buildPublicSurveyUrl(result.accessToken)
     message.success('问卷已发布')
     emit('forms-reloaded', publishTargetForm.value.id)
+    void loadWorkflowProgress(publishTargetForm.value.id)
   } catch (error) {
     showUserError(error, '问卷发布失败')
   } finally {
@@ -121,9 +126,33 @@ async function handleCloseForm(record: IndirectEvaluationFormVO) {
       await indirectFormApi.close(record.id)
       message.success('问卷已关闭')
       emit('forms-reloaded', record.id)
+      void loadWorkflowProgress(record.id)
     },
   })
 }
+
+/** 加载问卷运行态进度摘要，供卡片角标与进度抽屉复用 */
+async function loadWorkflowProgress(formId: string) {
+  workflowProgressLoading.value = true
+  try {
+    workflowProgress.value = await indirectFormApi.progress(formId)
+  } catch {
+    workflowProgress.value = null
+  } finally {
+    workflowProgressLoading.value = false
+  }
+}
+
+watch(
+  () => props.selectedForm,
+  (form) => {
+    workflowProgress.value = null
+    if (form && canShowWorkflowInsights(form)) {
+      void loadWorkflowProgress(form.id)
+    }
+  },
+  { immediate: true },
+)
 
 /** 加载并展示问卷填写进度 */
 async function openProgressDrawer(record: IndirectEvaluationFormVO) {
@@ -132,6 +161,7 @@ async function openProgressDrawer(record: IndirectEvaluationFormVO) {
   progressData.value = null
   try {
     progressData.value = await indirectFormApi.progress(record.id)
+    workflowProgress.value = progressData.value
   } catch (error) {
     showUserError(error, '问卷进度加载失败')
     progressDrawerVisible.value = false
@@ -180,10 +210,7 @@ defineExpose({
 </script>
 
 <template>
-  <UiCard
-    v-if="selectedForm && canShowWorkflowInsights(selectedForm)"
-    class="ie__workflow-card"
-  >
+  <UiCard v-if="selectedForm && canShowWorkflowInsights(selectedForm)" class="ie__workflow-card">
     <template #title>问卷运行态</template>
     <template #extra>
       <div class="ie__panel-actions">
@@ -215,6 +242,18 @@ defineExpose({
       状态：{{ formStatusLabel(selectedForm.status) }}
       <span v-if="selectedForm.startTime"> · 开始 {{ selectedForm.startTime }}</span>
       <span v-if="selectedForm.endTime"> · 截止 {{ selectedForm.endTime }}</span>
+      <span v-if="workflowProgressLoading"> · 进度加载中…</span>
+      <template v-else-if="workflowProgress">
+        <span v-if="workflowProgress.responseCollectionRate != null">
+          · 样本回收率 {{ workflowProgress.responseCollectionRate }}%
+        </span>
+        <span
+          v-if="(workflowProgress.pendingConversionCount ?? 0) > 0"
+          class="ie__workflow-pending"
+        >
+          · 待换算 {{ workflowProgress.pendingConversionCount }} 份
+        </span>
+      </template>
     </p>
   </UiCard>
 
@@ -264,10 +303,35 @@ defineExpose({
       <template v-if="progressData">
         <p>问卷：{{ progressData.formName }}</p>
         <p>状态：{{ formStatusLabel(progressData.status as IndirectFormStatus | undefined) }}</p>
-        <p>提交份数：{{ progressData.submissionCount }} / 有效 {{ progressData.validCount }}</p>
-        <p v-if="progressData.expectedSample">期望样本：{{ progressData.expectedSample }}</p>
+        <p>
+          填答份数：{{ progressData.submissionCount }} / 有效批次 {{ progressData.validCount }}
+          <span v-if="progressData.expectedSample"
+            >（预期 {{ progressData.expectedSample }} 份）</span
+          >
+        </p>
         <p v-if="progressData.completionRate != null">
-          完成率：{{ progressData.completionRate }}%
+          填答完成率：{{ progressData.completionRate }}%
+        </p>
+        <p v-if="progressData.receivedResponseCount != null">
+          有效回收答卷：{{ progressData.receivedResponseCount }}
+          <span v-if="progressData.expectedResponseCount">
+            / {{ progressData.expectedResponseCount }}
+          </span>
+        </p>
+        <p v-if="progressData.responseCollectionRate != null">
+          样本回收率：{{ progressData.responseCollectionRate }}%（与间接达成度覆盖率口径一致）
+        </p>
+        <p
+          v-if="
+            (progressData.scoredResponseCount ?? 0) > 0 ||
+            (progressData.pendingConversionCount ?? 0) > 0
+          "
+        >
+          已换算 {{ progressData.scoredResponseCount ?? 0 }} · 待换算
+          {{ progressData.pendingConversionCount ?? 0 }}
+          <span v-if="(progressData.pendingConversionCount ?? 0) > 0"
+            >（选择/开放题须教师录入换算分）</span
+          >
         </p>
       </template>
     </a-spin>
@@ -277,9 +341,15 @@ defineExpose({
     <a-spin :spinning="statisticsLoading">
       <template v-if="statisticsData">
         <p>
-          总样本：{{ statisticsData.overallSampleCount }}
+          有效回收答卷：{{ statisticsData.overallSampleCount }}
+          <span v-if="(statisticsData.overallScoredCount ?? 0) > 0">
+            · 已换算 {{ statisticsData.overallScoredCount }}
+          </span>
+          <span v-if="(statisticsData.pendingConversionCount ?? 0) > 0">
+            · 待换算 {{ statisticsData.pendingConversionCount }}
+          </span>
           <span v-if="statisticsData.overallScore != null">
-            · 综合换算分 {{ statisticsData.overallScore }}
+            · 总体换算分 {{ statisticsData.overallScore }}（已换算答卷简单均值，与达成度一致）
           </span>
         </p>
         <UiDataTable
@@ -287,7 +357,14 @@ defineExpose({
           :columns="[
             { title: '题项', dataIndex: 'itemCode', key: 'itemCode', width: 100 },
             { title: '题干', dataIndex: 'itemText', key: 'itemText' },
-            { title: '有效样本', dataIndex: 'validCount', key: 'validCount', width: 100 },
+            { title: '有效样本', dataIndex: 'validCount', key: 'validCount', width: 88 },
+            { title: '已换算', dataIndex: 'scoredCount', key: 'scoredCount', width: 72 },
+            {
+              title: '待换算',
+              dataIndex: 'pendingConversionCount',
+              key: 'pendingConversionCount',
+              width: 72,
+            },
             { title: '均值', dataIndex: 'mean', key: 'mean', width: 80 },
             { title: '换算分', dataIndex: 'convertedScore', key: 'convertedScore', width: 90 },
           ]"
@@ -312,6 +389,11 @@ defineExpose({
     margin: 0;
     color: var(--dp-text-muted);
     font-size: 13px;
+  }
+
+  &__workflow-pending {
+    color: var(--dp-warning, #d48806);
+    font-weight: 500;
   }
 
   &__panel-actions {

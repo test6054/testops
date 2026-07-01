@@ -74,6 +74,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       journeyKey: 'prep',
       workspacePhase: 'prep',
       keepAlive: false,
+      hasWorkbenchShell: true,
     }),
     workspaceChild('print-package', 'TeacherExamWorkspacePrintPackage', () => import('@/views/teacher/print-package.vue'), {
       title: '印刷包管理',
@@ -82,26 +83,13 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'prep',
       keepAlive: true,
     }),
-    workspaceChild('paper-template', 'TeacherExamWorkspacePaperTemplate', () => import('@/views/teacher/paper-template.vue'), {
-      title: '试卷题目',
+    workspaceChild('layout-designer', 'TeacherExamWorkspaceLayoutDesigner', () => import('@/views/teacher/exam-layout-designer.vue'), {
+      title: '制卷设计',
       markStageKey: 'PAPER_TEMPLATE',
       journeyKey: 'prep',
-      workspacePhase: 'paper-template',
+      workspacePhase: 'layout-designer',
       keepAlive: true,
-    }),
-    workspaceChild('paper-template/answer-sheet', 'TeacherExamWorkspaceAnswerSheet', () => import('@/views/teacher/answer-sheet-template.vue'), {
-      title: '答卷页模板',
-      markStageKey: 'PAPER_TEMPLATE',
-      journeyKey: 'prep',
-      workspacePhase: 'paper-template',
-      keepAlive: true,
-    }),
-    workspaceChild('paper-template/master', 'TeacherExamWorkspacePaperMaster', () => import('@/views/teacher/paper-master.vue'), {
-      title: '试卷母版',
-      markStageKey: 'PAPER_TEMPLATE',
-      journeyKey: 'prep',
-      workspacePhase: 'paper-template',
-      keepAlive: true,
+      hasWorkbenchShell: true,
     }),
     workspaceChild('candidate-roster', 'TeacherExamWorkspaceCandidateRoster', () => import('@/views/teacher/candidate-roster.vue'), {
       title: '考生名册',

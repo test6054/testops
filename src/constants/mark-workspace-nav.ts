@@ -1,7 +1,10 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type {MarkStageKey} from '@/stores/modules/markStage';
-import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
+import type { ExamJourneyKey, ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
+import { resolveJourneyKeyByStage } from '@/constants/exam-journey'
+import type { MarkStageKey } from '@/stores/modules/markStage'
 import { MARK_STAGE_ORDER } from '@/stores/modules/markStage'
+import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
+import { resolveJourneyIndex } from '@/utils/exam-workspace-entry-gates'
 
 /** 九段主链标题，与后端 ExamWorkbenchStageKey 一致 */
 export const MARK_STAGE_TITLE: Record<MarkStageKey, string> = {
@@ -19,7 +22,7 @@ export const MARK_STAGE_TITLE: Record<MarkStageKey, string> = {
 /** 阶段默认子路由：StageRail / 智能入口跳转目标（SCAN 阶段请用 resolveScanStageEntryRoute 动态分流） */
 export const MARK_STAGE_DEFAULT_ROUTE: Record<MarkStageKey, string> = {
   EXAM_PREP: 'TeacherExamWorkspacePrep',
-  PAPER_TEMPLATE: 'TeacherExamWorkspacePaperTemplate',
+  PAPER_TEMPLATE: 'TeacherExamWorkspaceLayoutDesigner',
   CANDIDATE_ROSTER: 'TeacherExamWorkspaceCandidateRoster',
   SCAN: 'TeacherExamWorkspaceScanBatches',
   MARKING_ORG: 'TeacherExamWorkspaceMarkingOrg',
@@ -68,12 +71,38 @@ export function shouldShowStageSuggestionBanner(
   if (activeStageKey === suggestedStageKey) {
     return false
   }
+  const activeJourney = resolveJourneyKeyByStage(activeStageKey)
+  const suggestedJourney = resolveJourneyKeyByStage(suggestedStageKey)
+  if (activeJourney === suggestedJourney) {
+    return false
+  }
   const activeIndex = MARK_STAGE_ORDER.indexOf(activeStageKey)
   const suggestedIndex = MARK_STAGE_ORDER.indexOf(suggestedStageKey)
   if (activeIndex < 0 || suggestedIndex < 0) {
     throw new Error(`无法比较阶段序：${activeStageKey} / ${suggestedStageKey}`)
   }
-  // 仅在"建议阶段在当前阶段之后"时显示（往前走）
-  // 不显示"前面的阶段未完成"的建议
+  return suggestedIndex > activeIndex
+}
+
+/**
+ * 侧栏旅程「下一步」badge 是否展示：仅当建议阶段所属旅程严格位于当前旅程之后。
+ * 当前旅程内待完善（如准备 2/4）不打 badge，由步骤卡片 warning 表达。
+ */
+export function shouldShowJourneySuggestion(
+  activeJourneyKey: ExamWorkspaceJourneyKey,
+  suggestedStageKey: MarkStageKey | null | undefined,
+): boolean {
+  if (!suggestedStageKey || activeJourneyKey === 'overview') {
+    return suggestedStageKey != null && activeJourneyKey === 'overview'
+  }
+  const suggestedJourney = resolveJourneyKeyByStage(suggestedStageKey)
+  if (activeJourneyKey === suggestedJourney) {
+    return false
+  }
+  const activeIndex = resolveJourneyIndex(activeJourneyKey as ExamJourneyKey)
+  const suggestedIndex = resolveJourneyIndex(suggestedJourney)
+  if (activeIndex < 0 || suggestedIndex < 0) {
+    throw new Error(`无法比较旅程序：${activeJourneyKey} / ${suggestedJourney}`)
+  }
   return suggestedIndex > activeIndex
 }

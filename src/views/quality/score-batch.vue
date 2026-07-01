@@ -11,21 +11,22 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 4. POST /validate → VALIDATED，POST /confirm → CONFIRMED
  * 5. PENDING / FAILED 可 POST /update-status { id, status: 'CANCELLED' } 取消
  */
-import type {
-  AssessmentItemVO,
-} from '@/apis/quality/assessment-item'
-import type {
-  QualityCourseVO,
-} from '@/apis/quality/quality-course'
+import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
+import type { QualityCourseVO } from '@/apis/quality/quality-course'
+import { qualityCourseApi } from '@/apis/quality/quality-course'
 import type {
   ScoreBatchQueryRequest,
   ScoreBatchSaveRequest,
   ScoreBatchVO,
   ScoreImportRowDiagnostic,
 } from '@/apis/quality/score-batch'
-import type {
-  DataSourceMode,
-  ScoreBatchStatus,
+import { scoreBatchApi } from '@/apis/quality/score-batch'
+import type { DataSourceMode, ScoreBatchStatus } from '@/apis/quality/types'
+import {
+  DATA_SOURCE_MODE_LABEL,
+  SCORE_BATCH_STATUS_COLOR,
+  SCORE_BATCH_STATUS_LABEL,
 } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type {
@@ -40,20 +41,6 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ExportBusinessType } from '@/apis/edu/export'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import {
-  assessmentItemApi,
-} from '@/apis/quality/assessment-item'
-import {
-  qualityCourseApi,
-} from '@/apis/quality/quality-course'
-import {
-  scoreBatchApi,
-} from '@/apis/quality/score-batch'
-import {
-  DATA_SOURCE_MODE_LABEL,
-  SCORE_BATCH_STATUS_COLOR,
-  SCORE_BATCH_STATUS_LABEL,
-} from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
@@ -76,6 +63,7 @@ import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityTableExport } from '@/composables/useQualityTableExport'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -85,7 +73,8 @@ const qualityStore = useQualityStore()
 const batches = ref<ScoreBatchVO[]>([])
 const total = ref(0)
 const loading = ref(false)
-const { exporting: scoreBatchExporting, exportExcel: exportScoreBatchExcel } = useQualityTableExport()
+const { exporting: scoreBatchExporting, exportExcel: exportScoreBatchExcel } =
+  useQualityTableExport()
 const uploading = ref(false)
 const uploadFileNodeId = ref<string>()
 const uploadFileName = ref<string>()
@@ -145,7 +134,7 @@ const uploadForm = reactive<ScoreBatchSaveRequest & { fileName?: string }>({
   batchName: '',
   sourceMode: 'EXCEL_IMPORT',
   schoolYear: qualityStore.currentSchoolYear,
-  semester: qualityStore.currentSemester,
+  semester: qualityStore.currentSemester || undefined,
   fileName: '',
 })
 
@@ -242,9 +231,9 @@ function hasGeneratedRowStatistics(
   record: Pick<ScoreBatchVO, 'totalRows' | 'successRows' | 'errorRows'> | ScoreImportPreviewSummary,
 ): boolean {
   return (
-    record.totalRows !== undefined
-    && record.successRows !== undefined
-    && record.errorRows !== undefined
+    record.totalRows !== undefined &&
+    record.successRows !== undefined &&
+    record.errorRows !== undefined
   )
 }
 
@@ -280,7 +269,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const stageOrder: Array<{ key: ScoreBatchStatus, title: string }> = [
+  const stageOrder: Array<{ key: ScoreBatchStatus; title: string }> = [
     { key: 'PENDING', title: '待处理' },
     { key: 'PARSING', title: '解析中' },
     { key: 'PREVIEW_READY', title: '预览就绪' },
@@ -313,7 +302,6 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
-
 const courseSelectOptions = computed(() =>
   courseOptions.value.map((item) => ({
     value: item.id,
@@ -341,12 +329,13 @@ async function loadCourses() {
     return
   }
   courseOptions.value = await readAllPages(
-    (pageNum) => qualityCourseApi.page({
-      pageNum,
-      pageSize: 100,
-      trainingPlanId: qualityStore.currentTrainingPlanId,
-      enabled: true,
-    }),
+    (pageNum) =>
+      qualityCourseApi.page({
+        pageNum,
+        pageSize: 100,
+        trainingPlanId: qualityStore.currentTrainingPlanId,
+        enabled: true,
+      }),
     '质量评价课程加载失败，请稍后重试',
   )
 }
@@ -421,16 +410,13 @@ async function loadBatches() {
   }
 }
 
-const batchPolling = usePolling(
-  () => loadBatchesQuietly(),
-  {
-    getOptions: () => ({
-      intervalMs: 3000,
-      when: batches.value.some((batch) => batch.status === 'PARSING'),
-    }),
-    pauseWhenDocumentHidden: true,
-  },
-)
+const batchPolling = usePolling(() => loadBatchesQuietly(), {
+  getOptions: () => ({
+    intervalMs: 3000,
+    when: batches.value.some((batch) => batch.status === 'PARSING'),
+  }),
+  pauseWhenDocumentHidden: true,
+})
 
 async function loadBatchesQuietly(): Promise<void> {
   if (!qualityStore.currentTrainingPlanId || loading.value) {
@@ -467,7 +453,7 @@ async function handleScopeChange(): Promise<void> {
 
 useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false })
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadBatches()
@@ -563,9 +549,9 @@ async function openPreview(record: ScoreBatchVO) {
     const preview = await scoreBatchApi.preview(record.id)
     for (const diagnostic of preview.diagnostics) {
       if (
-        diagnostic.valid === false
-        && diagnostic.errorMessages.length === 0
-        && diagnostic.errorCodes.length === 0
+        diagnostic.valid === false &&
+        diagnostic.errorMessages.length === 0 &&
+        diagnostic.errorCodes.length === 0
       ) {
         message.error('成绩预览结果异常，请重新导入后再试')
         return
@@ -659,7 +645,7 @@ const editor = reactive<ScoreBatchSaveRequest>({
   sourceFileId: undefined,
   externalPullTaskId: undefined,
   schoolYear: '',
-  semester: '',
+  semester: undefined,
 })
 const editorAssessmentItems = ref<AssessmentItemVO[]>([])
 
@@ -680,7 +666,7 @@ async function openEdit(record: ScoreBatchVO) {
   editor.sourceFileId = record.sourceFileId
   editor.externalPullTaskId = record.externalPullTaskId
   editor.schoolYear = record.schoolYear || ''
-  editor.semester = record.semester || ''
+  editor.semester = record.semester
   editorAssessmentItems.value = await assessmentItemApi.listByCourse(record.qualityCourseId)
   editorVisible.value = true
 }
@@ -701,7 +687,7 @@ async function submitEditor() {
       batchCode: editor.batchCode.trim(),
       batchName: editor.batchName.trim(),
       schoolYear: editor.schoolYear?.trim() || undefined,
-      semester: editor.semester?.trim() || undefined,
+      semester: editor.semester || undefined,
     })
     message.success('批次已更新')
     editorVisible.value = false
@@ -763,7 +749,7 @@ const batchResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleBatchResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
+function handleBatchResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
   const record = batches.value.find((b) => b.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'preview') openPreview(record)
 }
@@ -786,9 +772,11 @@ async function handleDelete(record: ScoreBatchVO) {
 }
 
 function canValidate(record: ScoreBatchVO) {
-  return record.status === 'PREVIEW_READY'
-    && (record.errorRows ?? 0) === 0
-    && (record.successRows ?? 0) > 0
+  return (
+    record.status === 'PREVIEW_READY' &&
+    (record.errorRows ?? 0) === 0 &&
+    (record.successRows ?? 0) > 0
+  )
 }
 function canConfirm(status: ScoreBatchStatus) {
   return status === 'VALIDATED'
@@ -920,7 +908,11 @@ onMounted(async () => {
             />
           </a-form-item>
           <a-form-item label="接入模式">
-            <a-input :value="sourceModeLabel('EXCEL_IMPORT')" disabled class="score-batch__filter score-batch__filter--lg" />
+            <a-input
+              :value="sourceModeLabel('EXCEL_IMPORT')"
+              disabled
+              class="score-batch__filter score-batch__filter--lg"
+            />
           </a-form-item>
           <a-form-item label="学年">
             <a-input
@@ -932,11 +924,11 @@ onMounted(async () => {
           <a-form-item label="学期">
             <a-select
               v-model:value="uploadForm.semester"
+              :options="SemesterOptions"
+              placeholder="学期"
+              allow-clear
               class="score-batch__filter score-batch__filter--xxs"
-            >
-              <a-select-option value="1"> 1 </a-select-option>
-              <a-select-option value="2"> 2 </a-select-option>
-            </a-select>
+            />
           </a-form-item>
           <a-form-item label="导入文件">
             <UiPlatformFileField
@@ -1006,16 +998,16 @@ onMounted(async () => {
             </template>
             <template
               v-else-if="
-                column.key === 'schoolYear'
-                  || column.key === 'semester'
-                  || column.key === 'createTime'
+                column.key === 'schoolYear' ||
+                column.key === 'semester' ||
+                column.key === 'createTime'
               "
             >
               <template v-if="column.key === 'schoolYear'">
                 {{ record.schoolYear }}
               </template>
               <template v-else-if="column.key === 'semester'">
-                {{ record.semester }}
+                {{ formatSemester(record.semester) }}
               </template>
               <template v-else>
                 {{ record.createTime }}
@@ -1043,19 +1035,41 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
-                <UiTextAction v-if="canPreview(record.status)" @click="openPreview(record)">预览</UiTextAction>
-                <UiTextAction v-if="canValidate(record)" @click="handleValidate(record)">校验</UiTextAction>
-                <UiTextAction v-if="canConfirm(record.status)" tone="primary" @click="handleConfirm(record)">
+                <UiTextAction v-if="canPreview(record.status)" @click="openPreview(record)"
+                  >预览</UiTextAction
+                >
+                <UiTextAction v-if="canValidate(record)" @click="handleValidate(record)"
+                  >校验</UiTextAction
+                >
+                <UiTextAction
+                  v-if="canConfirm(record.status)"
+                  tone="primary"
+                  @click="handleConfirm(record)"
+                >
                   确认
                 </UiTextAction>
-                <UiTextAction v-if="canReParse(record.status)" tone="primary" @click="handleReParse(record)">
+                <UiTextAction
+                  v-if="canReParse(record.status)"
+                  tone="primary"
+                  @click="handleReParse(record)"
+                >
                   重新解析
                 </UiTextAction>
-                <UiTextAction v-if="canEdit(record.status)" @click="openEdit(record)">编辑</UiTextAction>
-                <UiTextAction v-if="canCancel(record.status)" tone="danger" @click="handleCancel(record)">
+                <UiTextAction v-if="canEdit(record.status)" @click="openEdit(record)"
+                  >编辑</UiTextAction
+                >
+                <UiTextAction
+                  v-if="canCancel(record.status)"
+                  tone="danger"
+                  @click="handleCancel(record)"
+                >
                   取消
                 </UiTextAction>
-                <UiTextAction v-if="canDelete(record.status)" tone="danger" @click="handleDelete(record)">
+                <UiTextAction
+                  v-if="canDelete(record.status)"
+                  tone="danger"
+                  @click="handleDelete(record)"
+                >
                   删除
                 </UiTextAction>
                 <UiTextAction @click="openAuditDrawer(record)">审计</UiTextAction>
@@ -1095,7 +1109,10 @@ onMounted(async () => {
           <span v-else class="score-batch__sub-text">解析失败，未生成行统计</span>
         </a-descriptions-item>
       </a-descriptions>
-      <p v-if="previewSummary.errorSummary" class="score-batch__error-msg score-batch__preview-error">
+      <p
+        v-if="previewSummary.errorSummary"
+        class="score-batch__error-msg score-batch__preview-error"
+      >
         {{ previewSummary.errorSummary }}
       </p>
       <UiDataTable
@@ -1197,10 +1214,12 @@ onMounted(async () => {
           </a-col>
           <a-col :span="12">
             <a-form-item label="学期">
-              <a-select v-model:value="editor.semester">
-                <a-select-option value="1"> 1 </a-select-option>
-                <a-select-option value="2"> 2 </a-select-option>
-              </a-select>
+              <a-select
+                v-model:value="editor.semester"
+                :options="SemesterOptions"
+                placeholder="学期"
+                allow-clear
+              />
             </a-form-item>
           </a-col>
         </a-row>

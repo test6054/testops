@@ -1,10 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        show-title
-        title="迎评统计"
-      >
+      <ContextBar show-title title="迎评统计">
         <template #status>
           <UiTag tone="blue" size="sm">迎评统计</UiTag>
         </template>
@@ -27,7 +24,12 @@
         />
 
         <div v-if="statistics" class="archive-volume-statistics__export">
-          <UiButton variant="outline" size="sm" :loading="exportOverviewLoading" @click="exportOverviewExcel">
+          <UiButton
+            variant="outline"
+            size="sm"
+            :loading="exportOverviewLoading"
+            @click="exportOverviewExcel"
+          >
             导出 Excel 台账
           </UiButton>
         </div>
@@ -87,7 +89,12 @@
         />
 
         <div v-if="destructionRows.length" class="archive-volume-statistics__export">
-          <UiButton variant="outline" size="sm" :loading="exportDestructionLoading" @click="exportDestructionExcel">
+          <UiButton
+            variant="outline"
+            size="sm"
+            :loading="exportDestructionLoading"
+            @click="exportDestructionExcel"
+          >
             导出 Excel 清册
           </UiButton>
         </div>
@@ -134,11 +141,6 @@ import type {
   ArchiveVolumeDestructionLedgerRowVO,
   ArchiveVolumeStatisticsVO,
 } from '@/apis/mark/archive-volume'
-import type {TenantSchoolDepartmentDto} from '@/apis/quality/user-catalog';
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ARCHIVE_DESTRUCTION_STATUS_LABEL,
   ARCHIVE_DESTRUCTION_STATUS_TONE,
@@ -148,7 +150,12 @@ import {
   getArchiveVolumeStatistics,
   pageDestructionLedger,
 } from '@/apis/mark/archive-volume'
+import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { requireArrayResult } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -162,6 +169,8 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { downloadArchiveExcelBase64 } from '@/utils/archive-excel-export'
 import { showUserError } from '@/utils/error-handler'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -169,12 +178,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherArchiveVolumeStatistics' })
 
 const router = useRouter()
-const {
-  grantsLoadFailed,
-  listScopedDepartmentIds,
-  filterListDepartmentOptions,
-  loadGrants,
-} = useArchiveDutyAccess()
+const { grantsLoadFailed, listScopedDepartmentIds, filterListDepartmentOptions, loadGrants } =
+  useArchiveDutyAccess()
 
 const statsTab = ref('overview')
 const loading = ref(false)
@@ -183,11 +188,11 @@ const exportDestructionLoading = ref(false)
 const destructionLoading = ref(false)
 const statistics = ref<ArchiveVolumeStatisticsVO | null>(null)
 const destructionRows = ref<ArchiveVolumeDestructionLedgerRowVO[]>([])
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
 
 const filterForm = reactive({
   academicYear: '',
-  semester: '',
+  semester: undefined as SemesterCode | undefined,
   departmentId: undefined as string | undefined,
 })
 const filterModel = computed<Record<string, unknown>>({
@@ -210,17 +215,20 @@ const destructionFilterModel = computed<Record<string, unknown>>({
 
 const destructionPagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
 
-const scopedDepartmentOptions = computed(() =>
-  filterListDepartmentOptions(departmentOptions.value),
-)
+const scopedDepartmentOptions = computed(() => filterListDepartmentOptions(departmentOptions.value))
 
-const departmentFilterDisabled = computed(() =>
-  listScopedDepartmentIds.value.length === 1,
-)
+const departmentFilterDisabled = computed(() => listScopedDepartmentIds.value.length === 1)
 
 const filterFields = computed<FilterField[]>(() => [
   { key: 'academicYear', label: '学年', type: 'input', placeholder: '2024-2025' },
-  { key: 'semester', label: '学期', type: 'input', placeholder: '1 / 2' },
+  {
+    key: 'semester',
+    label: '学期',
+    type: 'select',
+    placeholder: '全部学期',
+    allowClear: true,
+    options: SemesterOptions.map((item) => ({ label: item.label, value: item.value })),
+  },
   {
     key: 'departmentId',
     label: '学院',
@@ -295,14 +303,16 @@ function applyScopedDepartmentDefault() {
 
 async function loadDepartments() {
   try {
-    const departments = requireArrayResult<TenantSchoolDepartmentDto>(await departmentCatalogApi.list(), '院系')
-    departmentOptions.value = departments.map(item => ({
+    const departments = requireArrayResult<TenantSchoolDepartmentDto>(
+      await departmentCatalogApi.list(),
+      '院系',
+    )
+    departmentOptions.value = departments.map((item) => ({
       value: item.id,
       label: item.deptName,
     }))
     applyScopedDepartmentDefault()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -312,14 +322,12 @@ async function loadStatistics() {
   try {
     statistics.value = await getArchiveVolumeStatistics({
       academicYear: filterForm.academicYear.trim() || undefined,
-      semester: filterForm.semester.trim() || undefined,
+      semester: filterForm.semester || undefined,
       departmentId: filterForm.departmentId,
     })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载迎评统计失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -335,18 +343,16 @@ async function loadDestructionLedger() {
     })
     destructionRows.value = readPageList(result, '销毁清册台账异常')
     destructionPagination.total = readPageTotal(result)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     destructionLoading.value = false
   }
 }
 
 function handleReset() {
   filterForm.academicYear = ''
-  filterForm.semester = ''
+  filterForm.semester = undefined
   filterForm.departmentId = departmentFilterDisabled.value
     ? listScopedDepartmentIds.value[0]
     : undefined
@@ -372,15 +378,13 @@ async function exportOverviewExcel() {
   try {
     const result = await exportArchiveVolumeStatisticsExcel({
       academicYear: filterForm.academicYear.trim() || undefined,
-      semester: filterForm.semester.trim() || undefined,
+      semester: filterForm.semester || undefined,
       departmentId: filterForm.departmentId,
     })
     downloadArchiveExcelBase64(result.fileName, result.fileContentBase64)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     exportOverviewLoading.value = false
   }
 }
@@ -395,11 +399,9 @@ async function exportDestructionExcel() {
       pageSize: destructionPagination.pageSize,
     })
     downloadArchiveExcelBase64(result.fileName, result.fileContentBase64)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     exportDestructionLoading.value = false
   }
 }

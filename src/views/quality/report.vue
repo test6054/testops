@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  ReportQueryRequest,
-  ReportSaveRequest,
-  ReportVO,
-} from '@/apis/quality/report'
+import type { ReportQueryRequest, ReportSaveRequest, ReportVO } from '@/apis/quality/report'
+import { reportApi } from '@/apis/quality/report'
 /**
  * 质量评价 - 报告生成与确认台
  *
@@ -14,10 +11,14 @@ import type {
  * 3. SUBMITTED / CONFIRMED / ARCHIVED 状态可触发 Word / PDF / Excel 异步三格式导出
  * 4. 导出 exportStatus IDLE -> PENDING -> PROCESSING -> COMPLETED / FAILED，前端轮询 5s/次。
  */
-import type {
-  ReportExportStatus,
-  ReportStatus,
-  ReportType,
+import type { ReportExportStatus, ReportStatus, ReportType } from '@/apis/quality/types'
+import {
+  REPORT_EXPORT_STATUS_COLOR,
+  REPORT_EXPORT_STATUS_LABEL,
+  REPORT_STATUS_COLOR,
+  REPORT_STATUS_LABEL,
+  REPORT_TYPE_CODES,
+  REPORT_TYPE_LABEL,
 } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type {
@@ -32,17 +33,6 @@ import { message } from 'ant-design-vue'
 import Modal from 'ant-design-vue/es/modal'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
-import {
-  reportApi,
-} from '@/apis/quality/report'
-import {
-  REPORT_EXPORT_STATUS_COLOR,
-  REPORT_EXPORT_STATUS_LABEL,
-  REPORT_STATUS_COLOR,
-  REPORT_STATUS_LABEL,
-  REPORT_TYPE_CODES,
-  REPORT_TYPE_LABEL,
-} from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   AchievementResultSelector,
@@ -66,7 +56,7 @@ import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
-import { SemesterOptions } from '@/types/enums/semester-enum'
+import { formatSemester, SemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -111,7 +101,7 @@ const query = reactive<ReportQueryRequest>({
   reportType: undefined,
   qualityCourseId: '',
   schoolYear: '',
-  semester: '',
+  semester: undefined,
   status: undefined,
   keyword: '',
 })
@@ -126,7 +116,7 @@ const editor = reactive<ReportSaveRequest>({
   achievementResultId: '',
   title: '',
   schoolYear: '',
-  semester: '',
+  semester: SemesterCode.AUTUMN,
   bodyContent: '',
 })
 const submitting = ref(false)
@@ -155,11 +145,13 @@ const detailVisible = ref(false)
 const detailRecord = ref<ReportVO | null>(null)
 const detailLoading = ref(false)
 
-const reportTypeOptions: Array<{ value: ReportType, label: string }> = REPORT_TYPE_CODES.map((value) => ({
-  value,
-  label: REPORT_TYPE_LABEL[value],
-}))
-const statusOptions: Array<{ value: ReportStatus, label: string }> = [
+const reportTypeOptions: Array<{ value: ReportType; label: string }> = REPORT_TYPE_CODES.map(
+  (value) => ({
+    value,
+    label: REPORT_TYPE_LABEL[value],
+  }),
+)
+const statusOptions: Array<{ value: ReportStatus; label: string }> = [
   { value: 'DRAFT', label: REPORT_STATUS_LABEL.DRAFT },
   { value: 'SUBMITTED', label: REPORT_STATUS_LABEL.SUBMITTED },
   { value: 'CONFIRMED', label: REPORT_STATUS_LABEL.CONFIRMED },
@@ -272,9 +264,13 @@ async function handleScopeChange(): Promise<void> {
   await loadList()
 }
 
-useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false, reloadOnActivated: false })
+useQualityScopedLoader(handleScopeChange, {
+  watchScope: true,
+  immediate: false,
+  reloadOnActivated: false,
+})
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -297,7 +293,7 @@ function resetQuery() {
     reportType: undefined,
     qualityCourseId: '',
     schoolYear: '',
-    semester: '',
+    semester: undefined,
     status: undefined,
     keyword: '',
   })
@@ -315,7 +311,7 @@ function openCreate() {
     achievementResultId: '',
     title: '',
     schoolYear: qualityStore.currentSchoolYear || '',
-    semester: qualityStore.currentSemester || '',
+    semester: qualityStore.currentSemester || SemesterCode.AUTUMN,
     bodyContent: '',
   })
   editorVisible.value = true
@@ -339,7 +335,7 @@ async function openEdit(record: ReportVO) {
       achievementResultId: detail.achievementResultId || '',
       title: detail.title,
       schoolYear: detail.schoolYear || '',
-      semester: detail.semester || '',
+      semester: detail.semester,
       bodyContent: detail.bodyContent || '',
     })
     editorVisible.value = true
@@ -525,11 +521,8 @@ function resumeExportPollingForList() {
 }
 
 async function downloadReportExportFile(record: ReportVO, kind: 'word' | 'pdf' | 'excel') {
-  const fileId = kind === 'word'
-    ? record.wordFileId
-    : kind === 'pdf'
-      ? record.pdfFileId
-      : record.excelFileId
+  const fileId =
+    kind === 'word' ? record.wordFileId : kind === 'pdf' ? record.pdfFileId : record.excelFileId
   if (!fileId) {
     message.warning('该格式文件尚未生成')
     return
@@ -585,7 +578,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: ReportStatus, title: string }> = [
+  const order: Array<{ key: ReportStatus; title: string }> = [
     { key: 'DRAFT', title: '草稿' },
     { key: 'SUBMITTED', title: '待确认' },
     { key: 'CONFIRMED', title: '已确认' },
@@ -641,7 +634,6 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
-
 const auditDrawerOpen = ref(false)
 const auditEvents = ref<AuditTimelineEvent[]>([])
 const auditLoading = ref(false)
@@ -692,7 +684,7 @@ const reportResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleReportResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
+function handleReportResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
   const record = list.value.find((r) => r.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'detail') openDetail(record)
 }
@@ -793,7 +785,8 @@ onBeforeUnmount(() => {
               {{ record.achievementResultLabel }}
             </template>
             <template v-else-if="column.key === 'period'">
-              {{ record.schoolYear }} / {{ record.semester }}
+              {{ record.schoolYear
+              }}<span v-if="record.semester"> / {{ formatSemester(record.semester) }}</span>
             </template>
             <template v-else-if="column.key === 'status'">
               <UiTag :tone="reportStatusColor(record.status)" size="sm">
@@ -839,10 +832,7 @@ onBeforeUnmount(() => {
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
                 <UiTextAction @click="openDetail(record)">详情</UiTextAction>
-                <UiTextAction
-                  :disabled="!canEditReport(record.status)"
-                  @click="openEdit(record)"
-                >
+                <UiTextAction :disabled="!canEditReport(record.status)" @click="openEdit(record)">
                   编辑
                 </UiTextAction>
                 <UiTextAction
@@ -854,13 +844,23 @@ onBeforeUnmount(() => {
                   -> {{ reportStatusLabel(to) }}
                 </UiTextAction>
                 <UiTextAction
-                  v-if="record.status === 'SUBMITTED' || record.status === 'CONFIRMED' || record.status === 'ARCHIVED'"
-                  :disabled="isExportInFlight(record.exportStatus) || pollingExportIds.has(record.id)"
+                  v-if="
+                    record.status === 'SUBMITTED' ||
+                    record.status === 'CONFIRMED' ||
+                    record.status === 'ARCHIVED'
+                  "
+                  :disabled="
+                    isExportInFlight(record.exportStatus) || pollingExportIds.has(record.id)
+                  "
                   @click="handleExport(record)"
                 >
                   导出三格式
                 </UiTextAction>
-                <UiTextAction v-if="record.status === 'DRAFT'" tone="danger" @click="handleDelete(record)">
+                <UiTextAction
+                  v-if="record.status === 'DRAFT'"
+                  tone="danger"
+                  @click="handleDelete(record)"
+                >
                   删除
                 </UiTextAction>
                 <UiTextAction @click="openAuditDrawer(record)">审计</UiTextAction>
@@ -1005,7 +1005,10 @@ onBeforeUnmount(() => {
             </span>
           </a-descriptions-item>
           <a-descriptions-item label="学年 / 学期">
-            {{ detailRecord.schoolYear }} / {{ detailRecord.semester }}
+            {{ detailRecord.schoolYear
+            }}<span v-if="detailRecord.semester">
+              / {{ formatSemester(detailRecord.semester) }}</span
+            >
           </a-descriptions-item>
           <a-descriptions-item label="Word 文件">
             <UiTextAction
@@ -1045,7 +1048,11 @@ onBeforeUnmount(() => {
           <a-descriptions-item v-if="detailRecord.exportFinishedTime" label="导出结束">
             {{ detailRecord.exportFinishedTime }}
           </a-descriptions-item>
-          <a-descriptions-item v-if="detailRecord.exportErrorMessage" label="导出处理说明" :span="2">
+          <a-descriptions-item
+            v-if="detailRecord.exportErrorMessage"
+            label="导出处理说明"
+            :span="2"
+          >
             <span class="report__export-error">
               {{ reportExportFailureMessage(detailRecord.exportErrorMessage) }}
             </span>

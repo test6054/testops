@@ -5,14 +5,11 @@ import type { ScanWorkOrderStatusCode } from '@/apis/mark/scanner-work-order'
  */
 import type { ArchiveAutoCreateFailureCategory } from '@/constants/archive-auto-create-failure-category'
 import type { PageResult, QueryDto } from '@/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
-export type ArchiveVolumeStatusCode
-  = | 'DRAFT'
-    | 'COLLECTING'
-    | 'SUBMITTED'
-    | 'STORED'
-    | 'ARCHIVED_DESTROYED'
+export type ArchiveVolumeStatusCode =
+  'DRAFT' | 'COLLECTING' | 'SUBMITTED' | 'STORED' | 'ARCHIVED_DESTROYED'
 
 export const ARCHIVE_VOLUME_STATUS_LABEL: Record<ArchiveVolumeStatusCode, string> = {
   DRAFT: '草稿',
@@ -33,10 +30,7 @@ export const ARCHIVE_VOLUME_STATUS_TONE: Record<
   ARCHIVED_DESTROYED: 'purple',
 }
 
-export type ArchiveVolumeSourceTypeCode
-  = | 'ONLINE_MARKING'
-    | 'OFFLINE_MARKED'
-    | 'HISTORY_IMPORT'
+export type ArchiveVolumeSourceTypeCode = 'ONLINE_MARKING' | 'OFFLINE_MARKED' | 'HISTORY_IMPORT'
 
 export const ARCHIVE_VOLUME_SOURCE_TYPE_LABEL: Record<ArchiveVolumeSourceTypeCode, string> = {
   ONLINE_MARKING: '线上阅卷',
@@ -44,12 +38,7 @@ export const ARCHIVE_VOLUME_SOURCE_TYPE_LABEL: Record<ArchiveVolumeSourceTypeCod
   HISTORY_IMPORT: '历史补录',
 }
 
-export type ArchiveIntegrityStatusCode
-  = | 'UNKNOWN'
-    | 'CHECKING'
-    | 'PASSED'
-    | 'FAILED'
-    | 'WAIVED'
+export type ArchiveIntegrityStatusCode = 'UNKNOWN' | 'CHECKING' | 'PASSED' | 'FAILED' | 'WAIVED'
 
 export const ARCHIVE_INTEGRITY_STATUS_LABEL: Record<ArchiveIntegrityStatusCode, string> = {
   UNKNOWN: '未检查',
@@ -79,11 +68,7 @@ export const ARCHIVE_VOLUME_SOURCE_TYPE_TONE: Record<
   HISTORY_IMPORT: 'gray',
 }
 
-export type ArchiveTransferStatusCode
-  = | 'NOT_SUBMITTED'
-    | 'PENDING_REVIEW'
-    | 'APPROVED'
-    | 'REJECTED'
+export type ArchiveTransferStatusCode = 'NOT_SUBMITTED' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED'
 
 export const ARCHIVE_TRANSFER_STATUS_LABEL: Record<ArchiveTransferStatusCode, string> = {
   NOT_SUBMITTED: '未提交',
@@ -102,13 +87,8 @@ export const ARCHIVE_TRANSFER_STATUS_TONE: Record<
   REJECTED: 'red',
 }
 
-export type ArchiveAppraisalStatusCode
-  = | 'NOT_DUE'
-    | 'REMINDER_SENT'
-    | 'REQUESTED'
-    | 'APPROVED'
-    | 'REJECTED'
-    | 'OPINION_RECORDED'
+export type ArchiveAppraisalStatusCode =
+  'NOT_DUE' | 'REMINDER_SENT' | 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'OPINION_RECORDED'
 
 export const ARCHIVE_APPRAISAL_STATUS_LABEL: Record<ArchiveAppraisalStatusCode, string> = {
   NOT_DUE: '未到期',
@@ -131,15 +111,15 @@ export const ARCHIVE_APPRAISAL_STATUS_TONE: Record<
   OPINION_RECORDED: 'purple',
 }
 
-export type ArchiveDestructionStatusCode
-  = | 'NONE'
-    | 'REQUESTED'
-    | 'APPROVED'
-    | 'EXECUTING'
-    | 'EXECUTED'
-    | 'FAILED'
-    | 'SUPERVISED'
-    | 'LEDGER_ARCHIVED'
+export type ArchiveDestructionStatusCode =
+  | 'NONE'
+  | 'REQUESTED'
+  | 'APPROVED'
+  | 'EXECUTING'
+  | 'EXECUTED'
+  | 'FAILED'
+  | 'SUPERVISED'
+  | 'LEDGER_ARCHIVED'
 
 export const ARCHIVE_DESTRUCTION_STATUS_LABEL: Record<ArchiveDestructionStatusCode, string> = {
   NONE: '无',
@@ -166,61 +146,60 @@ export const ARCHIVE_DESTRUCTION_STATUS_TONE: Record<
   LEDGER_ARCHIVED: 'gray',
 }
 
-export type ArchiveScoreCompletionStatusCode
-  = | 'PENDING'
-    | 'COMPLETED'
-    | 'VERIFIED'
-    | 'NOT_REQUIRED'
+export type ArchiveScoreCompletionStatusCode = 'PENDING' | 'COMPLETED' | 'VERIFIED' | 'NOT_REQUIRED'
 
-export const ARCHIVE_SCORE_COMPLETION_STATUS_LABEL: Record<ArchiveScoreCompletionStatusCode, string> = {
+export const ARCHIVE_SCORE_COMPLETION_STATUS_LABEL: Record<
+  ArchiveScoreCompletionStatusCode,
+  string
+> = {
   PENDING: '待确认',
   COMPLETED: '已完成',
   VERIFIED: '已核验',
   NOT_REQUIRED: '无需确认',
 }
 
-export type ArchiveMaterialTypeCode
-  = | 'VOLUME_COVER'
-    | 'VOLUME_CATALOG'
-    | 'TEACHING_SYLLABUS'
-    | 'ASSESSMENT_SYLLABUS'
-    | 'TEACHING_SCHEDULE'
-    | 'EXAM_PROPOSAL_REVIEW'
-    | 'EXAM_PAPER_APPROVAL'
-    | 'EXAM_SPECIFICATION'
-    | 'QUESTION_BANK_PLAN'
-    | 'BLANK_EXAM_PAPER_A'
-    | 'BLANK_EXAM_PAPER_B'
-    | 'RESERVE_EXAM_PAPER'
-    | 'MAKEUP_EXAM_PAPER'
-    | 'ANSWER_RUBRIC_A'
-    | 'ANSWER_RUBRIC_B'
-    | 'ANSWER_RUBRIC_RESERVE'
-    | 'ANSWER_RUBRIC_MAKEUP'
-    | 'COURSE_GRADING_BASIS'
-    | 'GRADING_INSTRUCTION'
-    | 'EXAM_FORM_CHANGE'
-    | 'STUDENT_LEARNING_RECORD'
-    | 'EXAM_VENUE_RECORD'
-    | 'INVIGILATION_RECORD'
-    | 'ATTENDANCE_SHEET'
-    | 'PATROL_RECORD'
-    | 'TRANSCRIPT'
-    | 'ITEMIZED_SCORE'
-    | 'EXAM_ANALYSIS'
-    | 'COURSE_OBJECTIVE_REPORT'
-    | 'TRAINING_OBJECTIVE_REPORT'
-    | 'PROCESS_ASSESSMENT'
-    | 'STUDENT_EXAM_PAPER'
-    | 'ANSWER_SHEET'
-    | 'OPTICAL_DISC'
-    | 'PAPERLESS_EXAM_RESULT'
-    | 'AUDIO_VIDEO'
-    | 'THESIS'
-    | 'WORK'
-    | 'LAB_PRACTICE'
-    | 'SELF_CHECK_FORM'
-    | 'TEACHING_SUMMARY'
+export type ArchiveMaterialTypeCode =
+  | 'VOLUME_COVER'
+  | 'VOLUME_CATALOG'
+  | 'TEACHING_SYLLABUS'
+  | 'ASSESSMENT_SYLLABUS'
+  | 'TEACHING_SCHEDULE'
+  | 'EXAM_PROPOSAL_REVIEW'
+  | 'EXAM_PAPER_APPROVAL'
+  | 'EXAM_SPECIFICATION'
+  | 'QUESTION_BANK_PLAN'
+  | 'BLANK_EXAM_PAPER_A'
+  | 'BLANK_EXAM_PAPER_B'
+  | 'RESERVE_EXAM_PAPER'
+  | 'MAKEUP_EXAM_PAPER'
+  | 'ANSWER_RUBRIC_A'
+  | 'ANSWER_RUBRIC_B'
+  | 'ANSWER_RUBRIC_RESERVE'
+  | 'ANSWER_RUBRIC_MAKEUP'
+  | 'COURSE_GRADING_BASIS'
+  | 'GRADING_INSTRUCTION'
+  | 'EXAM_FORM_CHANGE'
+  | 'STUDENT_LEARNING_RECORD'
+  | 'EXAM_VENUE_RECORD'
+  | 'INVIGILATION_RECORD'
+  | 'ATTENDANCE_SHEET'
+  | 'PATROL_RECORD'
+  | 'TRANSCRIPT'
+  | 'ITEMIZED_SCORE'
+  | 'EXAM_ANALYSIS'
+  | 'COURSE_OBJECTIVE_REPORT'
+  | 'TRAINING_OBJECTIVE_REPORT'
+  | 'PROCESS_ASSESSMENT'
+  | 'STUDENT_EXAM_PAPER'
+  | 'ANSWER_SHEET'
+  | 'OPTICAL_DISC'
+  | 'PAPERLESS_EXAM_RESULT'
+  | 'AUDIO_VIDEO'
+  | 'THESIS'
+  | 'WORK'
+  | 'LAB_PRACTICE'
+  | 'SELF_CHECK_FORM'
+  | 'TEACHING_SUMMARY'
 
 export const ARCHIVE_MATERIAL_TYPE_LABEL: Record<ArchiveMaterialTypeCode, string> = {
   VOLUME_COVER: '卷封面',
@@ -266,11 +245,7 @@ export const ARCHIVE_MATERIAL_TYPE_LABEL: Record<ArchiveMaterialTypeCode, string
   TEACHING_SUMMARY: '教学一览表/课程教学总结',
 }
 
-export type ArchiveRemediationStatusCode
-  = | 'OPEN'
-    | 'IN_PROGRESS'
-    | 'RESUBMITTED'
-    | 'CLOSED'
+export type ArchiveRemediationStatusCode = 'OPEN' | 'IN_PROGRESS' | 'RESUBMITTED' | 'CLOSED'
 
 export const ARCHIVE_REMEDIATION_STATUS_LABEL: Record<ArchiveRemediationStatusCode, string> = {
   OPEN: '待处理',
@@ -279,7 +254,10 @@ export const ARCHIVE_REMEDIATION_STATUS_LABEL: Record<ArchiveRemediationStatusCo
   CLOSED: '已关闭',
 }
 
-export const ARCHIVE_REMEDIATION_STATUS_TONE: Record<ArchiveRemediationStatusCode, 'gray' | 'blue' | 'orange' | 'green'> = {
+export const ARCHIVE_REMEDIATION_STATUS_TONE: Record<
+  ArchiveRemediationStatusCode,
+  'gray' | 'blue' | 'orange' | 'green'
+> = {
   OPEN: 'orange',
   IN_PROGRESS: 'blue',
   RESUBMITTED: 'green',
@@ -288,7 +266,10 @@ export const ARCHIVE_REMEDIATION_STATUS_TONE: Record<ArchiveRemediationStatusCod
 
 export type ArchiveEvaluationCampaignStatusCode = 'ACTIVE' | 'CLOSED'
 
-export const ARCHIVE_EVALUATION_CAMPAIGN_STATUS_LABEL: Record<ArchiveEvaluationCampaignStatusCode, string> = {
+export const ARCHIVE_EVALUATION_CAMPAIGN_STATUS_LABEL: Record<
+  ArchiveEvaluationCampaignStatusCode,
+  string
+> = {
   ACTIVE: '进行中',
   CLOSED: '已关闭',
 }
@@ -306,7 +287,7 @@ export interface ArchiveVolumeVO {
   departmentName?: string
   teachingClassName?: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   templateSetCode?: string
   sourceType: ArchiveVolumeSourceTypeCode
   volumeStatus: ArchiveVolumeStatusCode
@@ -351,6 +332,8 @@ export interface ArchiveVolumeVO {
   physicalCabinet?: string
   /** 结构化库位：层/格位 */
   physicalSlot?: string
+  /** 当前用户在卷上的业务角色 */
+  volumeRole?: ArchiveVolumeRoleCode
 }
 
 export interface ArchiveVolumeSearchHitVO {
@@ -365,11 +348,7 @@ export interface ArchiveVolumeSearchHitVO {
   studentName?: string
 }
 
-export type ArchiveVolumeRoleCode
-  = | 'OWNER'
-    | 'CONTRIBUTOR'
-    | 'REVIEWER'
-    | 'READONLY'
+export type ArchiveVolumeRoleCode = 'OWNER' | 'CONTRIBUTOR' | 'REVIEWER' | 'READONLY'
 
 export const ARCHIVE_VOLUME_ROLE_LABEL: Record<ArchiveVolumeRoleCode, string> = {
   OWNER: '归档责任人',
@@ -378,10 +357,7 @@ export const ARCHIVE_VOLUME_ROLE_LABEL: Record<ArchiveVolumeRoleCode, string> = 
   READONLY: '只读',
 }
 
-export type ArchiveCatalogStatusCode
-  = | 'NOT_STARTED'
-    | 'DRAFT'
-    | 'CONFIRMED'
+export type ArchiveCatalogStatusCode = 'NOT_STARTED' | 'DRAFT' | 'CONFIRMED'
 
 export const ARCHIVE_CATALOG_STATUS_LABEL: Record<ArchiveCatalogStatusCode, string> = {
   NOT_STARTED: '未开始',
@@ -398,10 +374,7 @@ export const ARCHIVE_CATALOG_STATUS_TONE: Record<
   CONFIRMED: 'green',
 }
 
-export type ArchiveSelfCheckStatusCode
-  = | 'NOT_STARTED'
-    | 'IN_PROGRESS'
-    | 'COMPLETED'
+export type ArchiveSelfCheckStatusCode = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
 
 export const ARCHIVE_SELF_CHECK_STATUS_LABEL: Record<ArchiveSelfCheckStatusCode, string> = {
   NOT_STARTED: '未开始',
@@ -426,12 +399,8 @@ export interface ArchiveVolumeSubmitProgressVO {
   submitReady?: boolean
 }
 
-export type ArchiveVolumeWizardStepKey
-  = | 'materials'
-    | 'integrity'
-    | 'catalog'
-    | 'selfCheck'
-    | 'submit'
+export type ArchiveVolumeWizardStepKey =
+  'materials' | 'integrity' | 'catalog' | 'selfCheck' | 'submit'
 
 export interface ArchiveVolumeDetailVO {
   volume: ArchiveVolumeVO
@@ -504,14 +473,13 @@ export interface ArchiveVolumeMaterialVO {
   ocrFailureReason?: string
 }
 
-export type ArchiveMaterialSubmissionStatusCode
-  = | 'MISSING'
-    | 'SUBMITTED'
-    | 'DELAY_ALLOWED'
-    | 'OVERDUE'
-    | 'WAIVED_WITH_REASON'
+export type ArchiveMaterialSubmissionStatusCode =
+  'MISSING' | 'SUBMITTED' | 'DELAY_ALLOWED' | 'OVERDUE' | 'WAIVED_WITH_REASON'
 
-export const ARCHIVE_MATERIAL_SUBMISSION_STATUS_LABEL: Record<ArchiveMaterialSubmissionStatusCode, string> = {
+export const ARCHIVE_MATERIAL_SUBMISSION_STATUS_LABEL: Record<
+  ArchiveMaterialSubmissionStatusCode,
+  string
+> = {
   MISSING: '缺件',
   SUBMITTED: '已提交',
   DELAY_ALLOWED: '允许延迟补交',
@@ -530,50 +498,46 @@ export const ARCHIVE_MATERIAL_SUBMISSION_STATUS_TONE: Record<
   WAIVED_WITH_REASON: 'purple',
 }
 
-export type ArchiveMaterialMediaTypeCode
-  = | 'PAPER'
-    | 'ELECTRONIC'
-    | 'AUDIO_VIDEO'
-    | 'OPTICAL_DISC'
-    | 'MIXED'
+export type ArchiveMaterialMediaTypeCode =
+  'PAPER' | 'ELECTRONIC' | 'AUDIO_VIDEO' | 'OPTICAL_DISC' | 'MIXED'
 
-export type ArchiveVolumeEventTypeCode
-  = | 'VOLUME_CREATED'
-    | 'VOLUME_AUTO_CREATED'
-    | 'AUTO_CREATE_FAILED'
-    | 'MATERIAL_REGISTERED'
-    | 'IMPORT_BATCH'
-    | 'INTERNAL_AGGREGATE'
-    | 'INTEGRITY_CHECKED'
-    | 'SCORE_CONFIRMED'
-    | 'SUBMITTED'
-    | 'TRANSFER_APPROVED'
-    | 'TRANSFER_REJECTED'
-    | 'FOUR_PROPERTY_CHECKED'
-    | 'ACCESS_REQUESTED'
-    | 'ACCESS_APPROVED'
-    | 'ACCESS_REJECTED'
-    | 'ACCESS_EXPIRED'
-    | 'APPRAISAL_REQUESTED'
-    | 'APPRAISAL_APPROVED'
-    | 'APPRAISAL_REJECTED'
-    | 'APPRAISAL_OPINION_RECORDED'
-    | 'DESTRUCTION_REQUESTED'
-    | 'DESTRUCTION_APPROVED'
-    | 'RETENTION_REMINDER'
-    | 'ARCHIVE_DUE_UPCOMING'
-    | 'ARCHIVE_DUE_REMINDER'
-    | 'DELAY_SUBMISSION_OVERDUE'
-    | 'DESTRUCTION_EXECUTION_STARTED'
-    | 'DESTRUCTION_EXECUTED'
-    | 'DESTRUCTION_SUPERVISED'
-    | 'DESTRUCTION_FAILED'
-    | 'REMEDIATION_ASSIGNED'
-    | 'REMEDIATION_CLOSED'
-    | 'APPRAISAL_RESET_ON_RECOLLECT'
-    | 'DESTRUCTION_RESET_ON_RECOLLECT'
-    | 'VOLUME_RECOLLECTING'
-    | 'SELF_CHECK_CONFIRMED'
+export type ArchiveVolumeEventTypeCode =
+  | 'VOLUME_CREATED'
+  | 'VOLUME_AUTO_CREATED'
+  | 'AUTO_CREATE_FAILED'
+  | 'MATERIAL_REGISTERED'
+  | 'IMPORT_BATCH'
+  | 'INTERNAL_AGGREGATE'
+  | 'INTEGRITY_CHECKED'
+  | 'SCORE_CONFIRMED'
+  | 'SUBMITTED'
+  | 'TRANSFER_APPROVED'
+  | 'TRANSFER_REJECTED'
+  | 'FOUR_PROPERTY_CHECKED'
+  | 'ACCESS_REQUESTED'
+  | 'ACCESS_APPROVED'
+  | 'ACCESS_REJECTED'
+  | 'ACCESS_EXPIRED'
+  | 'APPRAISAL_REQUESTED'
+  | 'APPRAISAL_APPROVED'
+  | 'APPRAISAL_REJECTED'
+  | 'APPRAISAL_OPINION_RECORDED'
+  | 'DESTRUCTION_REQUESTED'
+  | 'DESTRUCTION_APPROVED'
+  | 'RETENTION_REMINDER'
+  | 'ARCHIVE_DUE_UPCOMING'
+  | 'ARCHIVE_DUE_REMINDER'
+  | 'DELAY_SUBMISSION_OVERDUE'
+  | 'DESTRUCTION_EXECUTION_STARTED'
+  | 'DESTRUCTION_EXECUTED'
+  | 'DESTRUCTION_SUPERVISED'
+  | 'DESTRUCTION_FAILED'
+  | 'REMEDIATION_ASSIGNED'
+  | 'REMEDIATION_CLOSED'
+  | 'APPRAISAL_RESET_ON_RECOLLECT'
+  | 'DESTRUCTION_RESET_ON_RECOLLECT'
+  | 'VOLUME_RECOLLECTING'
+  | 'SELF_CHECK_CONFIRMED'
 
 export const ARCHIVE_VOLUME_EVENT_TYPE_LABEL: Record<ArchiveVolumeEventTypeCode, string> = {
   VOLUME_CREATED: '建卷',
@@ -614,13 +578,8 @@ export const ARCHIVE_VOLUME_EVENT_TYPE_LABEL: Record<ArchiveVolumeEventTypeCode,
   SELF_CHECK_CONFIRMED: '教师自查确认',
 }
 
-export type ArchiveAccessStatusCode
-  = | 'PENDING'
-    | 'APPROVED'
-    | 'REJECTED'
-    | 'ACTIVE'
-    | 'EXPIRED'
-    | 'CLOSED'
+export type ArchiveAccessStatusCode =
+  'PENDING' | 'APPROVED' | 'REJECTED' | 'ACTIVE' | 'EXPIRED' | 'CLOSED'
 
 export const ARCHIVE_ACCESS_STATUS_LABEL: Record<ArchiveAccessStatusCode, string> = {
   PENDING: '待审批',
@@ -643,11 +602,8 @@ export const ARCHIVE_ACCESS_STATUS_TONE: Record<
   CLOSED: 'gray',
 }
 
-export type ArchiveScoreSourceCode
-  = | 'MARK_INTERNAL'
-    | 'TEACHING_AFFAIRS'
-    | 'OFFLINE_CONFIRMED'
-    | 'NOT_REQUIRED'
+export type ArchiveScoreSourceCode =
+  'MARK_INTERNAL' | 'TEACHING_AFFAIRS' | 'OFFLINE_CONFIRMED' | 'NOT_REQUIRED'
 
 export const ARCHIVE_SCORE_SOURCE_LABEL: Record<ArchiveScoreSourceCode, string> = {
   MARK_INTERNAL: 'mark 内部成绩',
@@ -656,11 +612,7 @@ export const ARCHIVE_SCORE_SOURCE_LABEL: Record<ArchiveScoreSourceCode, string> 
   NOT_REQUIRED: '无需成绩',
 }
 
-export type ArchiveSecurityLevelCode
-  = | 'PUBLIC'
-    | 'INTERNAL'
-    | 'RESTRICTED'
-    | 'CONFIDENTIAL'
+export type ArchiveSecurityLevelCode = 'PUBLIC' | 'INTERNAL' | 'RESTRICTED' | 'CONFIDENTIAL'
 
 export const ARCHIVE_SECURITY_LEVEL_LABEL: Record<ArchiveSecurityLevelCode, string> = {
   PUBLIC: '公开',
@@ -669,14 +621,8 @@ export const ARCHIVE_SECURITY_LEVEL_LABEL: Record<ArchiveSecurityLevelCode, stri
   CONFIDENTIAL: '机密',
 }
 
-export type ArchiveExamFormCode
-  = | 'WRITTEN_EXAM'
-    | 'INSPECTION'
-    | 'EXPERIMENT'
-    | 'THESIS'
-    | 'WORK'
-    | 'DEFENSE'
-    | 'PAPERLESS'
+export type ArchiveExamFormCode =
+  'WRITTEN_EXAM' | 'INSPECTION' | 'EXPERIMENT' | 'THESIS' | 'WORK' | 'DEFENSE' | 'PAPERLESS'
 
 export const ARCHIVE_EXAM_FORM_LABEL: Record<ArchiveExamFormCode, string> = {
   WRITTEN_EXAM: '笔试',
@@ -688,19 +634,10 @@ export const ARCHIVE_EXAM_FORM_LABEL: Record<ArchiveExamFormCode, string> = {
   PAPERLESS: '无纸化',
 }
 
-export type ArchiveMaterialSortRuleCode
-  = | 'STUDENT_NO'
-    | 'STUDENT_NAME'
-    | 'CLASS_NAME'
-    | 'SEAT_NO'
-    | 'MANUAL_SEQUENCE'
-    | 'CATALOG_ORDER'
+export type ArchiveMaterialSortRuleCode =
+  'STUDENT_NO' | 'STUDENT_NAME' | 'CLASS_NAME' | 'SEAT_NO' | 'MANUAL_SEQUENCE' | 'CATALOG_ORDER'
 
-export type ArchiveElectronicOriginalStatusCode
-  = | 'ORIGINAL'
-    | 'COPY'
-    | 'SCANNED'
-    | 'UNKNOWN'
+export type ArchiveElectronicOriginalStatusCode = 'ORIGINAL' | 'COPY' | 'SCANNED' | 'UNKNOWN'
 
 export interface ArchiveVolumeEventVO {
   eventId: string
@@ -759,7 +696,7 @@ export interface ArchiveEvaluationCampaignVO {
   campaignId: string
   campaignName: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   campaignStatus: ArchiveEvaluationCampaignStatusCode
   startTime?: string
   endTime?: string
@@ -772,7 +709,7 @@ export interface ArchiveVolumePageRequest extends QueryDto {
   courseId?: string
   examId?: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   sourceType?: ArchiveVolumeSourceTypeCode
   volumeStatus?: ArchiveVolumeStatusCode
   integrityStatus?: ArchiveIntegrityStatusCode
@@ -798,7 +735,7 @@ export interface ArchiveVolumeSearchRequest extends QueryDto {
 
 export interface ArchiveVolumeStatisticsRequest {
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   departmentId?: string
 }
 
@@ -811,7 +748,10 @@ export function pageArchiveVolumes(
 export function searchArchiveVolumes(
   request: ArchiveVolumeSearchRequest,
 ): Promise<PageResult<ArchiveVolumeSearchHitVO>> {
-  return http.post<PageResult<ArchiveVolumeSearchHitVO>>('/api/mark/archive-volumes/search', request)
+  return http.post<PageResult<ArchiveVolumeSearchHitVO>>(
+    '/api/mark/archive-volumes/search',
+    request,
+  )
 }
 
 export function getArchiveVolumeDetail(volumeId: string): Promise<ArchiveVolumeDetailVO> {
@@ -821,43 +761,72 @@ export function getArchiveVolumeDetail(volumeId: string): Promise<ArchiveVolumeD
 export function pageSupervisionArchiveVolumes(
   request: ArchiveVolumePageRequest,
 ): Promise<PageResult<ArchiveVolumeVO>> {
-  return http.post<PageResult<ArchiveVolumeVO>>('/api/mark/archive-volumes/supervision/volumes/page', request)
+  return http.post<PageResult<ArchiveVolumeVO>>(
+    '/api/mark/archive-volumes/supervision/volumes/page',
+    request,
+  )
 }
 
-export function getSupervisionArchiveVolumeDetail(volumeId: string): Promise<ArchiveVolumeDetailVO> {
-  return http.post<ArchiveVolumeDetailVO>('/api/mark/archive-volumes/supervision/volumes/detail', { volumeId })
+export function getSupervisionArchiveVolumeDetail(
+  volumeId: string,
+): Promise<ArchiveVolumeDetailVO> {
+  return http.post<ArchiveVolumeDetailVO>('/api/mark/archive-volumes/supervision/volumes/detail', {
+    volumeId,
+  })
 }
 
 export function getSupervisionArchiveStatistics(
   request: ArchiveVolumeStatisticsRequest,
 ): Promise<ArchiveVolumeStatisticsVO> {
-  return http.post<ArchiveVolumeStatisticsVO>('/api/mark/archive-volumes/supervision/statistics', request)
+  return http.post<ArchiveVolumeStatisticsVO>(
+    '/api/mark/archive-volumes/supervision/statistics',
+    request,
+  )
 }
 
 export function listSupervisionRemediationTasks(): Promise<ArchiveRemediationTaskVO[]> {
-  return http.post<ArchiveRemediationTaskVO[]>('/api/mark/archive-volumes/supervision/remediation/list', {})
+  return http.post<ArchiveRemediationTaskVO[]>(
+    '/api/mark/archive-volumes/supervision/remediation/list',
+    {},
+  )
 }
 
 export function listSupervisionCampaigns(): Promise<ArchiveEvaluationCampaignVO[]> {
-  return http.post<ArchiveEvaluationCampaignVO[]>('/api/mark/archive-volumes/supervision/campaign/list', {})
+  return http.post<ArchiveEvaluationCampaignVO[]>(
+    '/api/mark/archive-volumes/supervision/campaign/list',
+    {},
+  )
 }
 
 export function listEvaluationCampaigns(): Promise<ArchiveEvaluationCampaignVO[]> {
-  return http.post<ArchiveEvaluationCampaignVO[]>('/api/mark/archive-volumes/evaluation/campaign/list', {})
+  return http.post<ArchiveEvaluationCampaignVO[]>(
+    '/api/mark/archive-volumes/evaluation/campaign/list',
+    {},
+  )
 }
 
 export function getRemediationTask(taskId: string): Promise<ArchiveRemediationTaskVO> {
-  return http.post<ArchiveRemediationTaskVO>('/api/mark/archive-volumes/remediation/detail', { taskId })
+  return http.post<ArchiveRemediationTaskVO>('/api/mark/archive-volumes/remediation/detail', {
+    taskId,
+  })
 }
 
-export function listRemediationTasksByCampaign(campaignId: string): Promise<ArchiveRemediationTaskVO[]> {
-  return http.post<ArchiveRemediationTaskVO[]>('/api/mark/archive-volumes/remediation/list-by-campaign', { campaignId })
+export function listRemediationTasksByCampaign(
+  campaignId: string,
+): Promise<ArchiveRemediationTaskVO[]> {
+  return http.post<ArchiveRemediationTaskVO[]>(
+    '/api/mark/archive-volumes/remediation/list-by-campaign',
+    { campaignId },
+  )
 }
 
 export function updateRemediationTask(
   request: ArchiveRemediationTaskUpdateRequest,
 ): Promise<ArchiveRemediationTaskVO> {
-  return http.post<ArchiveRemediationTaskVO>('/api/mark/archive-volumes/remediation/update', request)
+  return http.post<ArchiveRemediationTaskVO>(
+    '/api/mark/archive-volumes/remediation/update',
+    request,
+  )
 }
 
 export interface ArchiveRemediationTaskCreateRequest {
@@ -873,7 +842,10 @@ export interface ArchiveRemediationTaskCreateRequest {
 export function createRemediationTask(
   request: ArchiveRemediationTaskCreateRequest,
 ): Promise<ArchiveRemediationTaskVO> {
-  return http.post<ArchiveRemediationTaskVO>('/api/mark/archive-volumes/remediation/create', request)
+  return http.post<ArchiveRemediationTaskVO>(
+    '/api/mark/archive-volumes/remediation/create',
+    request,
+  )
 }
 
 export function listOpenRemediationTasks(): Promise<ArchiveRemediationTaskVO[]> {
@@ -888,7 +860,7 @@ export interface ArchiveEvaluationCampaignSaveRequest {
   campaignId?: string
   campaignName: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   campaignStatus: ArchiveEvaluationCampaignStatusCode
   startTime?: string
   endTime?: string
@@ -898,7 +870,10 @@ export interface ArchiveEvaluationCampaignSaveRequest {
 export function saveEvaluationCampaign(
   request: ArchiveEvaluationCampaignSaveRequest,
 ): Promise<ArchiveEvaluationCampaignVO> {
-  return http.post<ArchiveEvaluationCampaignVO>('/api/mark/archive-volumes/evaluation/campaign/save', request)
+  return http.post<ArchiveEvaluationCampaignVO>(
+    '/api/mark/archive-volumes/evaluation/campaign/save',
+    request,
+  )
 }
 
 export interface ArchiveEvaluationExportVO {
@@ -907,32 +882,39 @@ export interface ArchiveEvaluationExportVO {
 }
 
 /** 评估材料包导出范围说明（与后端 resolveCampaignExportVolumeIds 一致） */
-export const ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT
-  = '含本批次学年学期内已提交/已入库/收集中卷（整改任务关联的收集中卷已包含在内；不含线上阅卷自动建卷失败诊断卷）'
+export const ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT =
+  '含本批次学年学期内已提交/已入库/收集中卷（整改任务关联的收集中卷已包含在内；不含线上阅卷自动建卷失败诊断卷）'
 
 export function exportEvaluationPackage(campaignId: string): Promise<ArchiveEvaluationExportVO> {
-  return http.post<ArchiveEvaluationExportVO>('/api/mark/archive-volumes/evaluation/export', { campaignId })
+  return http.post<ArchiveEvaluationExportVO>('/api/mark/archive-volumes/evaluation/export', {
+    campaignId,
+  })
 }
 
-export function exportEvaluationArchivePackage(campaignId: string): Promise<ArchiveEvaluationExportVO> {
-  return http.post<ArchiveEvaluationExportVO>('/api/mark/archive-volumes/evaluation/export-archive', { campaignId })
+export function exportEvaluationArchivePackage(
+  campaignId: string,
+): Promise<ArchiveEvaluationExportVO> {
+  return http.post<ArchiveEvaluationExportVO>(
+    '/api/mark/archive-volumes/evaluation/export-archive',
+    { campaignId },
+  )
 }
 
 export interface ArchiveReadinessMatrixRequest {
   endAcademicYear: string
-  endSemester: string
+  endSemester: SemesterCode
   termCount?: number
   departmentId?: string
 }
 
 export interface ArchiveReadinessTermColumnVO {
   academicYear: string
-  semester: string
+  semester: SemesterCode
 }
 
 export interface ArchiveReadinessCellVO {
   academicYear: string
-  semester: string
+  semester: SemesterCode
   totalVolumeCount: number
   collectingCount: number
   submittedCount: number
@@ -952,7 +934,7 @@ export interface ArchiveReadinessMatrixRowVO {
 
 export interface ArchiveReadinessMatrixVO {
   endAcademicYear: string
-  endSemester: string
+  endSemester: SemesterCode
   termCount: number
   termColumns: ArchiveReadinessTermColumnVO[]
   rows: ArchiveReadinessMatrixRowVO[]
@@ -961,7 +943,10 @@ export interface ArchiveReadinessMatrixVO {
 export function getSupervisionReadinessMatrix(
   request: ArchiveReadinessMatrixRequest,
 ): Promise<ArchiveReadinessMatrixVO> {
-  return http.post<ArchiveReadinessMatrixVO>('/api/mark/archive-volumes/supervision/readiness-matrix', request)
+  return http.post<ArchiveReadinessMatrixVO>(
+    '/api/mark/archive-volumes/supervision/readiness-matrix',
+    request,
+  )
 }
 
 export interface ArchiveVolumeMaterialBatchRegisterRequest {
@@ -972,14 +957,24 @@ export interface ArchiveVolumeMaterialBatchRegisterRequest {
 export function batchRegisterArchiveVolumeMaterials(
   request: ArchiveVolumeMaterialBatchRegisterRequest,
 ): Promise<ArchiveVolumeMaterialVO[]> {
-  return http.post<ArchiveVolumeMaterialVO[]>('/api/mark/archive-volumes/materials/batch-register', request)
+  return http.post<ArchiveVolumeMaterialVO[]>(
+    '/api/mark/archive-volumes/materials/batch-register',
+    request,
+  )
 }
 
-export function generateArchiveVolumeExamAnalysisReport(volumeId: string): Promise<ArchiveVolumeMaterialVO> {
-  return http.post<ArchiveVolumeMaterialVO>('/api/mark/archive-volumes/materials/generate/exam-analysis', { volumeId })
+export function generateArchiveVolumeExamAnalysisReport(
+  volumeId: string,
+): Promise<ArchiveVolumeMaterialVO> {
+  return http.post<ArchiveVolumeMaterialVO>(
+    '/api/mark/archive-volumes/materials/generate/exam-analysis',
+    { volumeId },
+  )
 }
 
-export function generateArchiveVolumeCourseObjectiveReport(volumeId: string): Promise<ArchiveVolumeMaterialVO> {
+export function generateArchiveVolumeCourseObjectiveReport(
+  volumeId: string,
+): Promise<ArchiveVolumeMaterialVO> {
   return http.post<ArchiveVolumeMaterialVO>(
     '/api/mark/archive-volumes/materials/generate/course-objective-report',
     { volumeId },
@@ -998,7 +993,10 @@ export interface ArchiveVolumeMaterialDelayAllowRequest {
 export function allowArchiveMaterialDelay(
   request: ArchiveVolumeMaterialDelayAllowRequest,
 ): Promise<ArchiveVolumeMaterialVO> {
-  return http.post<ArchiveVolumeMaterialVO>('/api/mark/archive-volumes/materials/allow-delay', request)
+  return http.post<ArchiveVolumeMaterialVO>(
+    '/api/mark/archive-volumes/materials/allow-delay',
+    request,
+  )
 }
 
 export interface ArchiveVolumeIntegrityWaiveRequest {
@@ -1022,7 +1020,10 @@ export interface ArchiveVolumeMaterialWaiveRequest {
 export function waiveArchiveMaterialMissing(
   request: ArchiveVolumeMaterialWaiveRequest,
 ): Promise<ArchiveVolumeMaterialVO> {
-  return http.post<ArchiveVolumeMaterialVO>('/api/mark/archive-volumes/materials/waive-missing', request)
+  return http.post<ArchiveVolumeMaterialVO>(
+    '/api/mark/archive-volumes/materials/waive-missing',
+    request,
+  )
 }
 
 export type ArchiveExternalImportTypeCode = 'VOLUME_MATERIAL'
@@ -1031,11 +1032,7 @@ export const ARCHIVE_EXTERNAL_IMPORT_TYPE_LABEL: Record<ArchiveExternalImportTyp
   VOLUME_MATERIAL: '归档卷材料批量导入',
 }
 
-export type ArchiveImportBatchStatusCode
-  = | 'PROCESSING'
-    | 'SUCCESS'
-    | 'PARTIAL_FAILED'
-    | 'FAILED'
+export type ArchiveImportBatchStatusCode = 'PROCESSING' | 'SUCCESS' | 'PARTIAL_FAILED' | 'FAILED'
 
 export const ARCHIVE_IMPORT_BATCH_STATUS_LABEL: Record<ArchiveImportBatchStatusCode, string> = {
   PROCESSING: '处理中',
@@ -1074,7 +1071,10 @@ export interface ArchiveCoursePlatformSyncRequest {
 export function syncArchiveCoursePlatform(
   request: ArchiveCoursePlatformSyncRequest,
 ): Promise<ArchiveVolumeMaterialVO[]> {
-  return http.post<ArchiveVolumeMaterialVO[]>('/api/mark/archive-volumes/sync/course-platform', request)
+  return http.post<ArchiveVolumeMaterialVO[]>(
+    '/api/mark/archive-volumes/sync/course-platform',
+    request,
+  )
 }
 
 export interface ArchiveVolumeExamGateVO {
@@ -1110,7 +1110,9 @@ export interface ArchiveVolumeExamClassPublishProgressVO {
 }
 
 export function getArchiveVolumeExamGate(examId: string): Promise<ArchiveVolumeExamGateVO> {
-  return http.post<ArchiveVolumeExamGateVO>('/api/mark/archive-volumes/exam/archive-gate', { examId })
+  return http.post<ArchiveVolumeExamGateVO>('/api/mark/archive-volumes/exam/archive-gate', {
+    examId,
+  })
 }
 
 export function retryArchiveVolumeAutoCreate(examId: string): Promise<void> {
@@ -1192,7 +1194,7 @@ export interface OfflineMarkedArchiveCreateRequest {
   departmentName?: string
   teachingClassName?: string
   academicYear: string
-  semester: string
+  semester: SemesterCode
   relatedExamId?: string
   examForm?: ArchiveExamFormCode
   templateSetCode: string
@@ -1214,7 +1216,7 @@ export interface ArchiveVolumeMaterialRegisterRequest {
   requiredFlag?: boolean
   fileId: string
   mediaType: ArchiveMaterialMediaTypeCode
-  fileFormat: string
+  fileFormat?: string
   sortRule: ArchiveMaterialSortRuleCode
   sortKey?: string
   electronicOriginalStatus: ArchiveElectronicOriginalStatusCode
@@ -1309,7 +1311,9 @@ export interface ArchiveScoreCompletionConfirmRequest {
   scoreProofFileId?: string
 }
 
-export function createOfflineArchiveVolume(request: OfflineMarkedArchiveCreateRequest): Promise<string> {
+export function createOfflineArchiveVolume(
+  request: OfflineMarkedArchiveCreateRequest,
+): Promise<string> {
   return http.post<string>('/api/mark/archive-volumes/offline/create', request)
 }
 
@@ -1323,7 +1327,9 @@ export interface ArchiveVolumeMaterialOcrTriggerRequest {
   materialId: string
 }
 
-export function triggerArchiveVolumeMaterialOcr(materialId: string): Promise<ArchiveVolumeMaterialVO> {
+export function triggerArchiveVolumeMaterialOcr(
+  materialId: string,
+): Promise<ArchiveVolumeMaterialVO> {
   return http.post<ArchiveVolumeMaterialVO>('/api/mark/archive-volumes/materials/ocr/trigger', {
     materialId,
   })
@@ -1333,7 +1339,10 @@ export type DocumentOcrPageResultStatusCode = 'COMPLETED' | 'SKIPPED' | 'FAILED'
 
 export type DocumentOcrTaskStatusCode = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED'
 
-export const DOCUMENT_OCR_PAGE_RESULT_STATUS_LABEL: Record<DocumentOcrPageResultStatusCode, string> = {
+export const DOCUMENT_OCR_PAGE_RESULT_STATUS_LABEL: Record<
+  DocumentOcrPageResultStatusCode,
+  string
+> = {
   COMPLETED: '已完成',
   SKIPPED: '已跳过',
   FAILED: '失败',
@@ -1365,26 +1374,33 @@ export interface DocumentMaterialOcrDetailVO {
   pages?: DocumentOcrPageDetailVO[]
 }
 
-export function getArchiveMaterialDocumentOcrDetail(materialId: string): Promise<DocumentMaterialOcrDetailVO | null> {
-  return http.post<DocumentMaterialOcrDetailVO | null>('/api/mark/archive-volumes/materials/document-ocr/detail', {
-    materialId,
-  })
+export function getArchiveMaterialDocumentOcrDetail(
+  materialId: string,
+): Promise<DocumentMaterialOcrDetailVO | null> {
+  return http.post<DocumentMaterialOcrDetailVO | null>(
+    '/api/mark/archive-volumes/materials/document-ocr/detail',
+    {
+      materialId,
+    },
+  )
 }
 
 export function checkArchiveVolumeIntegrity(volumeId: string): Promise<ArchiveIntegrityCheckVO> {
-  return http.post<ArchiveIntegrityCheckVO>('/api/mark/archive-volumes/integrity/check', { volumeId })
+  return http.post<ArchiveIntegrityCheckVO>('/api/mark/archive-volumes/integrity/check', {
+    volumeId,
+  })
 }
 
-export function checkArchiveVolumeFourProperty(volumeId: string): Promise<ArchiveFourPropertyCheckVO> {
-  return http.post<ArchiveFourPropertyCheckVO>('/api/mark/archive-volumes/four-property/check', { volumeId })
+export function checkArchiveVolumeFourProperty(
+  volumeId: string,
+): Promise<ArchiveFourPropertyCheckVO> {
+  return http.post<ArchiveFourPropertyCheckVO>('/api/mark/archive-volumes/four-property/check', {
+    volumeId,
+  })
 }
 
-export type ArchiveVolumeSignOffRoleCode
-  = | 'PROPOSER'
-    | 'REVIEWER'
-    | 'GRADER'
-    | 'SCORER'
-    | 'RECHECKER'
+export type ArchiveVolumeSignOffRoleCode =
+  'PROPOSER' | 'REVIEWER' | 'GRADER' | 'SCORER' | 'RECHECKER'
 
 export interface ArchiveVolumeSignOffItemVO {
   role: ArchiveVolumeSignOffRoleCode
@@ -1393,12 +1409,8 @@ export interface ArchiveVolumeSignOffItemVO {
   signatoryName?: string
 }
 
-export type ArchiveVolumeSubmitChecklistActionTypeCode
-  = | 'OPEN_TAB'
-    | 'RUN_CHECK'
-    | 'OPEN_CATALOG'
-    | 'OPEN_SELF_CHECK'
-    | 'OPEN_EXAM_WORKSPACE'
+export type ArchiveVolumeSubmitChecklistActionTypeCode =
+  'OPEN_TAB' | 'RUN_CHECK' | 'OPEN_CATALOG' | 'OPEN_SELF_CHECK' | 'OPEN_EXAM_WORKSPACE'
 
 export interface ArchiveVolumeSubmitChecklistItemVO {
   dimension: string
@@ -1503,8 +1515,13 @@ export interface ArchiveVolumeSelfCheckConfirmRequest {
   reason?: string
 }
 
-export function previewArchiveVolumeSubmitChecklist(volumeId: string): Promise<ArchiveVolumeSubmitChecklistVO> {
-  return http.post<ArchiveVolumeSubmitChecklistVO>('/api/mark/archive-volumes/submit/checklist/preview', { volumeId })
+export function previewArchiveVolumeSubmitChecklist(
+  volumeId: string,
+): Promise<ArchiveVolumeSubmitChecklistVO> {
+  return http.post<ArchiveVolumeSubmitChecklistVO>(
+    '/api/mark/archive-volumes/submit/checklist/preview',
+    { volumeId },
+  )
 }
 
 export function confirmArchiveVolumeSelfCheck(
@@ -1517,8 +1534,12 @@ export function getArchiveVolumeCatalog(volumeId: string): Promise<ArchiveVolume
   return http.post<ArchiveVolumeCatalogVO>('/api/mark/archive-volumes/catalog/get', { volumeId })
 }
 
-export function generateArchiveVolumeCatalogDraft(volumeId: string): Promise<ArchiveVolumeCatalogVO> {
-  return http.post<ArchiveVolumeCatalogVO>('/api/mark/archive-volumes/catalog/generate-draft', { volumeId })
+export function generateArchiveVolumeCatalogDraft(
+  volumeId: string,
+): Promise<ArchiveVolumeCatalogVO> {
+  return http.post<ArchiveVolumeCatalogVO>('/api/mark/archive-volumes/catalog/generate-draft', {
+    volumeId,
+  })
 }
 
 export function saveArchiveVolumeCatalog(
@@ -1528,25 +1549,43 @@ export function saveArchiveVolumeCatalog(
 }
 
 export function confirmArchiveVolumeCatalog(volumeId: string): Promise<ArchiveVolumeCatalogVO> {
-  return http.post<ArchiveVolumeCatalogVO>('/api/mark/archive-volumes/catalog/confirm', { volumeId })
+  return http.post<ArchiveVolumeCatalogVO>('/api/mark/archive-volumes/catalog/confirm', {
+    volumeId,
+  })
 }
 
-export function exportArchiveVolumeCatalog(volumeId: string): Promise<ArchiveVolumeCatalogExportVO> {
-  return http.post<ArchiveVolumeCatalogExportVO>('/api/mark/archive-volumes/catalog/export', { volumeId })
+export function exportArchiveVolumeCatalog(
+  volumeId: string,
+): Promise<ArchiveVolumeCatalogExportVO> {
+  return http.post<ArchiveVolumeCatalogExportVO>('/api/mark/archive-volumes/catalog/export', {
+    volumeId,
+  })
 }
 
-export function listArchiveVolumeSelfCheckItems(volumeId: string): Promise<ArchiveVolumeSelfCheckListVO> {
-  return http.post<ArchiveVolumeSelfCheckListVO>('/api/mark/archive-volumes/self-check/items/list', { volumeId })
+export function listArchiveVolumeSelfCheckItems(
+  volumeId: string,
+): Promise<ArchiveVolumeSelfCheckListVO> {
+  return http.post<ArchiveVolumeSelfCheckListVO>(
+    '/api/mark/archive-volumes/self-check/items/list',
+    { volumeId },
+  )
 }
 
 export function checkArchiveVolumeSelfCheckItem(
   request: ArchiveVolumeSelfCheckItemCheckRequest,
 ): Promise<ArchiveVolumeSelfCheckListVO> {
-  return http.post<ArchiveVolumeSelfCheckListVO>('/api/mark/archive-volumes/self-check/items/check', request)
+  return http.post<ArchiveVolumeSelfCheckListVO>(
+    '/api/mark/archive-volumes/self-check/items/check',
+    request,
+  )
 }
 
-export function exportArchiveVolumeSelfCheck(volumeId: string): Promise<ArchiveVolumeSelfCheckExportVO> {
-  return http.post<ArchiveVolumeSelfCheckExportVO>('/api/mark/archive-volumes/self-check/export', { volumeId })
+export function exportArchiveVolumeSelfCheck(
+  volumeId: string,
+): Promise<ArchiveVolumeSelfCheckExportVO> {
+  return http.post<ArchiveVolumeSelfCheckExportVO>('/api/mark/archive-volumes/self-check/export', {
+    volumeId,
+  })
 }
 
 export function submitArchiveVolume(request: ArchiveVolumeSubmitRequest): Promise<ArchiveVolumeVO> {
@@ -1583,8 +1622,12 @@ export function rejectArchiveVolumeAccess(
   return http.post<ArchiveVolumeAccessRecordVO>('/api/mark/archive-volumes/access/reject', request)
 }
 
-export function listArchiveVolumeAccessRecords(volumeId: string): Promise<ArchiveVolumeAccessRecordVO[]> {
-  return http.post<ArchiveVolumeAccessRecordVO[]>('/api/mark/archive-volumes/access/records', { volumeId })
+export function listArchiveVolumeAccessRecords(
+  volumeId: string,
+): Promise<ArchiveVolumeAccessRecordVO[]> {
+  return http.post<ArchiveVolumeAccessRecordVO[]>('/api/mark/archive-volumes/access/records', {
+    volumeId,
+  })
 }
 
 export function pageOverdueArchiveVolumes(
@@ -1610,7 +1653,10 @@ export function exportArchiveVolume(volumeId: string): Promise<ArchiveVolumeExpo
 }
 
 export function listArchiveCatalogTemplate(): Promise<ArchiveMaterialCatalogTemplateVO[]> {
-  return http.post<ArchiveMaterialCatalogTemplateVO[]>('/api/mark/archive-volumes/catalog-template/list', {})
+  return http.post<ArchiveMaterialCatalogTemplateVO[]>(
+    '/api/mark/archive-volumes/catalog-template/list',
+    {},
+  )
 }
 
 export function requestArchiveVolumeAppraisal(volumeId: string): Promise<ArchiveVolumeVO> {
@@ -1674,7 +1720,10 @@ export function saveArchiveCatalogTemplate(
 }
 
 export function listPendingArchiveAccessRecords(): Promise<ArchiveVolumeAccessRecordVO[]> {
-  return http.post<ArchiveVolumeAccessRecordVO[]>('/api/mark/archive-volumes/access/pending/list', {})
+  return http.post<ArchiveVolumeAccessRecordVO[]>(
+    '/api/mark/archive-volumes/access/pending/list',
+    {},
+  )
 }
 
 export type ArchiveSharedMaterialRefTypeCode = 'UNIFIED_EXAM_PUBLIC' | 'MERGED_CLASS_SHARED'
@@ -1722,9 +1771,7 @@ export interface ArchiveVolumeAccessReadPageRequest {
   lastReadPage: number
 }
 
-export function recordAccessReadPage(
-  request: ArchiveVolumeAccessReadPageRequest,
-): Promise<void> {
+export function recordAccessReadPage(request: ArchiveVolumeAccessReadPageRequest): Promise<void> {
   return http.post<void>('/api/mark/archive-volumes/access/record-read-page', request)
 }
 
@@ -1795,7 +1842,7 @@ export interface ArchiveVolumeDestructionLedgerRowVO {
   departmentId?: string
   departmentName?: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   destructionStatus: ArchiveDestructionStatusCode
   destructionRecordId?: string
   requestReason?: string
@@ -1820,7 +1867,10 @@ export function pageDestructionLedger(
 export function exportDestructionLedgerExcel(
   request: ArchiveVolumeDestructionLedgerPageRequest,
 ): Promise<ArchiveExcelFileVO> {
-  return http.post<ArchiveExcelFileVO>('/api/mark/archive-volumes/destruction/ledger/export', request)
+  return http.post<ArchiveExcelFileVO>(
+    '/api/mark/archive-volumes/destruction/ledger/export',
+    request,
+  )
 }
 
 export interface ArchiveVolumeSupervisionMarkProblemRequest {
@@ -1964,7 +2014,9 @@ export interface ArchiveScanBatchSnapshotItemVO {
   diagnostic?: string
 }
 
-function mapScanBatchSnapshotItem(raw: ArchiveScanBatchSnapshotRawItemVO): ArchiveScanBatchSnapshotItemVO {
+function mapScanBatchSnapshotItem(
+  raw: ArchiveScanBatchSnapshotRawItemVO,
+): ArchiveScanBatchSnapshotItemVO {
   return {
     workOrderId: raw.sourceBatchId ?? '',
     batchExternalNo: raw.batchExternalNo,
@@ -1990,9 +2042,10 @@ export async function pageArchiveScanBatchSnapshots(
   const pageSize = raw.pageSize ?? request.pageSize ?? 10
   const totalText = raw.total ?? '0'
   const totalCount = Number(totalText)
-  const pages = Number.isFinite(totalCount) && totalCount > 0 && pageSize > 0
-    ? Math.ceil(totalCount / pageSize)
-    : 0
+  const pages =
+    Number.isFinite(totalCount) && totalCount > 0 && pageSize > 0
+      ? Math.ceil(totalCount / pageSize)
+      : 0
   return {
     list: (raw.batches ?? []).map(mapScanBatchSnapshotItem),
     total: totalText,
@@ -2013,7 +2066,7 @@ export function batchRetryArchiveScanBatches(
 ): Promise<void> {
   return http.post<void>('/api/mark/archive-volumes/scan-batch-snapshots/batch-retry', {
     volumeId: request.volumeId,
-    workOrderIds: request.workOrderIds.map(id => Number(id)),
+    workOrderIds: request.workOrderIds.map((id) => Number(id)),
     actionReason: request.actionReason,
   })
 }
@@ -2023,7 +2076,7 @@ export function batchDiscardArchiveScanBatches(
 ): Promise<void> {
   return http.post<void>('/api/mark/archive-volumes/scan-batch-snapshots/batch-discard', {
     volumeId: request.volumeId,
-    workOrderIds: request.workOrderIds.map(id => Number(id)),
+    workOrderIds: request.workOrderIds.map((id) => Number(id)),
     actionReason: request.actionReason,
   })
 }

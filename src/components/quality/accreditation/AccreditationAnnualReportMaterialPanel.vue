@@ -8,15 +8,15 @@ import type {
   AnnualReportMaterialStatus,
   AnnualReportMaterialVO,
 } from '@/apis/quality/accreditation'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   accreditationApi,
   ANNUAL_REPORT_MATERIAL_CATEGORY_LABEL,
   ANNUAL_REPORT_MATERIAL_STATUS_LABEL,
   ANNUAL_REPORT_MATERIAL_STATUS_TONE,
 } from '@/apis/quality/accreditation'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { CourseSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -43,13 +43,13 @@ const props = defineProps<{
 
 const emit = defineEmits<{ refresh: [] }>()
 
-const MATERIAL_CATEGORY_OPTIONS: { label: string, value: AnnualReportMaterialCategory }[]
-  = Object.entries(ANNUAL_REPORT_MATERIAL_CATEGORY_LABEL).map(([value, label]) => ({
+const MATERIAL_CATEGORY_OPTIONS: { label: string; value: AnnualReportMaterialCategory }[] =
+  Object.entries(ANNUAL_REPORT_MATERIAL_CATEGORY_LABEL).map(([value, label]) => ({
     label,
     value: value as AnnualReportMaterialCategory,
   }))
 
-const MATERIAL_STATUS_OPTIONS: { label: string, value: AnnualReportMaterialStatus }[] = [
+const MATERIAL_STATUS_OPTIONS: { label: string; value: AnnualReportMaterialStatus }[] = [
   { label: '草稿', value: 'DRAFT' },
   { label: '已提交', value: 'SUBMITTED' },
   { label: '已通过', value: 'APPROVED' },
@@ -121,13 +121,17 @@ const annualMaterialPhaseHint = computed(() => annualReportMaterialPhaseHint(pro
 const canMutateMaterial = computed(() => canMutateAnnualReportMaterial(props.activeCycle))
 
 function canEdit(record: AnnualReportMaterialVO) {
-  return canMutateMaterial.value
-    && (record.reportStatus === 'DRAFT' || record.reportStatus === 'REJECTED')
+  return (
+    canMutateMaterial.value &&
+    (record.reportStatus === 'DRAFT' || record.reportStatus === 'REJECTED')
+  )
 }
 
 function canSubmit(record: AnnualReportMaterialVO) {
-  return canMutateMaterial.value
-    && (record.reportStatus === 'DRAFT' || record.reportStatus === 'REJECTED')
+  return (
+    canMutateMaterial.value &&
+    (record.reportStatus === 'DRAFT' || record.reportStatus === 'REJECTED')
+  )
 }
 
 function canReview(record: AnnualReportMaterialVO) {
@@ -140,10 +144,10 @@ function isCourseEvaluationMaterial(category?: AnnualReportMaterialCategory) {
 
 function formatQualityCourse(record: AnnualReportMaterialVO) {
   if (!record.qualityCourseId) {
-    return '未关联课程'
+    return ''
   }
   if (!record.qualityCourseCode || !record.qualityCourseName) {
-    return '课程信息缺失'
+    return ''
   }
   return `${record.qualityCourseCode} ${record.qualityCourseName}`
 }
@@ -381,7 +385,7 @@ function resetFilters() {
   loadMaterials()
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   query.pageNum = pageEvent.current
   query.pageSize = pageEvent.pageSize
   loadMaterials()
@@ -513,7 +517,12 @@ defineExpose({ loadMaterials, openCreate })
           <UiButton v-if="canEdit(record)" size="sm" variant="outline" @click="openEdit(record)">
             编辑
           </UiButton>
-          <UiButton v-if="canSubmit(record)" size="sm" variant="primary" @click="submitForReview(record)">
+          <UiButton
+            v-if="canSubmit(record)"
+            size="sm"
+            variant="primary"
+            @click="submitForReview(record)"
+          >
             提交
           </UiButton>
           <UiButton

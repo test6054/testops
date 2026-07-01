@@ -4,43 +4,40 @@ import type {
   ProcessEvaluationNodeSaveRequest,
   ProcessEvaluationNodeVO,
 } from '@/apis/quality/process-evaluation'
+import { processNodeApi } from '@/apis/quality/process-evaluation'
 import type {
   ProcessEvaluationRecordSaveRequest,
   ProcessEvaluationRecordVO,
 } from '@/apis/quality/process-evaluation-record'
+import { processRecordApi } from '@/apis/quality/process-evaluation-record'
 /**
  * 过程性评价节点配置 + 节点记录管理
  *
  * 上下文：当前培养方案 → 当前质量评价课程 → 列出该课程的过程性评价节点
  * 后端：
  * - /api/quality/process-nodes     节点 CRUD + 状态流转
- * - /api/quality/process-records   记录 CRUD + 批量 + 确认
+ * - /api/quality/process-records   记录 CRUD + 状态流转 + 确认
  *
  * 规则：
  * - 节点必须 CONFIRMED 才允许录入记录
- * - 记录 CONFIRMED 后禁止修改/删除
+ * - 记录 DRAFT/RETURNED 可编辑，SUBMITTED/CONFIRMED 锁定
+ * - 记录确认状态机与节点对称：DRAFT→SUBMITTED→CONFIRMED/RETURNED
  * - 已确认记录才进入达成度计算
  */
-import type {
-  ConfirmationStatus,
-  ProcessNodeType,
-} from '@/apis/quality/types'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, ref, watch } from 'vue'
-import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import {
-  processNodeApi,
-} from '@/apis/quality/process-evaluation'
-import { processRecordApi } from '@/apis/quality/process-evaluation-record'
+import type { ConfirmationStatus, ProcessNodeType } from '@/apis/quality/types'
 import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
+  CONFIRMATION_STATUS_TRANSIT_MAP,
   DATA_SOURCE_MODE_LABEL,
   PROCESS_NODE_TYPE_LABEL,
   PROCESS_NODE_TYPE_OPTIONS,
 } from '@/apis/quality/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message, Modal } from 'ant-design-vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
+import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
@@ -63,6 +60,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -102,23 +100,16 @@ function confirmationStatusColor(value: ConfirmationStatus): BadgeTone {
   return strictEnumTone(CONFIRMATION_STATUS_COLOR, value, '确认状态')
 }
 
-const nodeStatusTransitMap: Record<ConfirmationStatus, ConfirmationStatus[]> = {
-  DRAFT: ['SUBMITTED'],
-  SUBMITTED: ['CONFIRMED', 'RETURNED'],
-  RETURNED: ['DRAFT', 'SUBMITTED'],
-  CONFIRMED: [],
-}
-
-function allowedNodeTransitions(current: ConfirmationStatus): ConfirmationStatus[] {
-  return nodeStatusTransitMap[current] ?? []
+function allowedConfirmationTransitions(current: ConfirmationStatus): ConfirmationStatus[] {
+  return CONFIRMATION_STATUS_TRANSIT_MAP[current] ?? []
 }
 
 function isNodeMutable(node: ProcessEvaluationNodeVO): boolean {
   return node.confirmationStatus !== 'CONFIRMED'
 }
 
-function canConfirmProcessRecord(record: ProcessEvaluationRecordVO): boolean {
-  return record.confirmationStatus === 'DRAFT' || record.confirmationStatus === 'SUBMITTED'
+function isRecordMutable(record: ProcessEvaluationRecordVO): boolean {
+  return record.confirmationStatus === 'DRAFT' || record.confirmationStatus === 'RETURNED'
 }
 
 function processNodeTypeLabel(value: ProcessNodeType): string {
@@ -130,8 +121,8 @@ function dataSourceModeLabel(record: ProcessEvaluationRecordVO): string {
 }
 
 function studentDisplay(record: ProcessEvaluationRecordVO): string {
-  if (!record.studentUserId) return '未关联学生'
-  return record.studentName?.trim() || '—'
+  if (!record.studentUserId) return ''
+  return record.studentName?.trim() ?? ''
 }
 
 function isRecordStudentContractValid(items: ProcessEvaluationRecordVO[]): boolean {
@@ -171,7 +162,11 @@ async function handleScopeChange(): Promise<void> {
   }
 }
 
-useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false, reloadOnActivated: false })
+useQualityScopedLoader(handleScopeChange, {
+  watchScope: true,
+  immediate: false,
+  reloadOnActivated: false,
+})
 
 /* ========== 节点编辑 ========== */
 
@@ -183,7 +178,7 @@ const nodeEditor = ref<ProcessEvaluationNodeSaveRequest>({
   nodeName: '',
   nodeType: 'CLASS_INTERACTION',
   evidenceType: '',
-  semester: '',
+  semester: undefined,
   weight: 0.2,
   fullScore: 100,
   coverageRequired: 0.8,
@@ -214,7 +209,7 @@ function openNodeCreate() {
     nodeName: '',
     nodeType: 'CLASS_INTERACTION',
     evidenceType: '',
-    semester: qualityStore.currentSemester || '',
+    semester: qualityStore.currentSemester || undefined,
     weight: 0.2,
     fullScore: 100,
     coverageRequired: 0.8,
@@ -240,7 +235,7 @@ async function submitNode() {
     return
   }
   if (nodeEditorMode.value === 'edit' && nodeEditor.value.id) {
-    const existed = nodes.value.find(item => item.id === nodeEditor.value.id)
+    const existed = nodes.value.find((item) => item.id === nodeEditor.value.id)
     if (existed && !isNodeMutable(existed)) {
       message.warning('节点已确认，禁止编辑')
       return
@@ -271,8 +266,10 @@ async function handleNodeDelete(record: ProcessEvaluationNodeVO) {
 }
 
 async function changeNodeStatus(record: ProcessEvaluationNodeVO, target: ConfirmationStatus) {
-  if (!allowedNodeTransitions(record.confirmationStatus).includes(target)) {
-    message.warning(`禁止由 ${confirmationStatusLabel(record.confirmationStatus)} 流转到 ${confirmationStatusLabel(target)}`)
+  if (!allowedConfirmationTransitions(record.confirmationStatus).includes(target)) {
+    message.warning(
+      `禁止由 ${confirmationStatusLabel(record.confirmationStatus)} 流转到 ${confirmationStatusLabel(target)}`,
+    )
     return
   }
   await processNodeApi.updateConfirmationStatus(record.id, target)
@@ -312,10 +309,7 @@ async function loadRecords() {
   }
   recordsLoading.value = true
   try {
-    const result = await processRecordApi.listByNode(
-      selectedNode.value.id,
-      recordFilterForm.status,
-    )
+    const result = await processRecordApi.listByNode(selectedNode.value.id, recordFilterForm.status)
     if (!isRecordStudentContractValid(result)) {
       records.value = []
       showUserError(null, '过程性评价数据异常，请刷新后重试')
@@ -372,8 +366,8 @@ function openRecordCreate() {
 }
 
 function openRecordEdit(record: ProcessEvaluationRecordVO) {
-  if (record.confirmationStatus === 'CONFIRMED') {
-    message.warning('已确认的记录不可修改')
+  if (!isRecordMutable(record)) {
+    message.warning('已提交或已确认的记录不可修改')
     return
   }
   recordEditorMode.value = 'edit'
@@ -389,9 +383,9 @@ async function submitRecord() {
     return
   }
   if (recordEditorMode.value === 'edit' && recordEditor.value.id) {
-    const existed = records.value.find(item => item.id === recordEditor.value.id)
-    if (existed && existed.confirmationStatus === 'CONFIRMED') {
-      message.warning('记录已确认，禁止编辑')
+    const existed = records.value.find((item) => item.id === recordEditor.value.id)
+    if (existed && !isRecordMutable(existed)) {
+      message.warning('记录已提交或已确认，禁止编辑')
       return
     }
   }
@@ -402,19 +396,21 @@ async function submitRecord() {
   await loadRecords()
 }
 
-async function confirmRecord(record: ProcessEvaluationRecordVO) {
-  if (!canConfirmProcessRecord(record)) {
-    message.warning('仅起草或已提交状态的记录允许确认')
+async function changeRecordStatus(record: ProcessEvaluationRecordVO, target: ConfirmationStatus) {
+  if (!allowedConfirmationTransitions(record.confirmationStatus).includes(target)) {
+    message.warning(
+      `禁止由 ${confirmationStatusLabel(record.confirmationStatus)} 流转到 ${confirmationStatusLabel(target)}`,
+    )
     return
   }
-  await processRecordApi.confirm(record.id)
-  message.success('记录已确认')
+  await processRecordApi.updateConfirmationStatus(record.id, target)
+  message.success(`已切换到 ${confirmationStatusLabel(target)}`)
   await loadRecords()
 }
 
 async function deleteRecord(record: ProcessEvaluationRecordVO) {
-  if (record.confirmationStatus === 'CONFIRMED') {
-    message.warning('已确认的记录不可删除')
+  if (!isRecordMutable(record)) {
+    message.warning('已提交或已确认的记录不可删除')
     return
   }
   void confirmAsync({
@@ -431,15 +427,36 @@ async function deleteRecord(record: ProcessEvaluationRecordVO) {
 /* ========== 节点记录 Excel 导入（同步） ========== */
 
 const importExcelVisible = ref(false)
+const importConfirmationStatus = ref<ConfirmationStatus>('SUBMITTED')
+
+const importConfirmationStatusOptions: { label: string; value: ConfirmationStatus }[] = [
+  { label: CONFIRMATION_STATUS_LABEL.DRAFT, value: 'DRAFT' },
+  { label: CONFIRMATION_STATUS_LABEL.SUBMITTED, value: 'SUBMITTED' },
+  { label: CONFIRMATION_STATUS_LABEL.CONFIRMED, value: 'CONFIRMED' },
+]
 
 const importRecordContext = computed(() => ({
   nodeId: selectedNode.value?.id,
+  confirmationStatus: importConfirmationStatus.value,
 }))
 
 function openImportExcel() {
   if (!selectedNode.value) return
   if (selectedNode.value.confirmationStatus !== 'CONFIRMED') {
     message.warning('节点未确认，无法导入数据')
+    return
+  }
+  if (importConfirmationStatus.value === 'CONFIRMED') {
+    Modal.confirm({
+      title: '以「已确认」状态导入',
+      content:
+        '导入后记录立即锁定且不可退回修改，将直接进入达成度计算。请确认 Excel 数据已核对无误。',
+      okText: '继续导入',
+      cancelText: '取消',
+      onOk: () => {
+        importExcelVisible.value = true
+      },
+    })
     return
   }
   importExcelVisible.value = true
@@ -568,7 +585,6 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
-
 /* ========== 上下文联动 ========== */
 
 watch(
@@ -680,13 +696,19 @@ function handleCourseChange(courseId: string | null) {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
-                  <UiTextAction v-if="isNodeMutable(record)" @click.stop="openNodeEdit(record)">编辑</UiTextAction>
-                  <a-dropdown v-if="allowedNodeTransitions(record.confirmationStatus).length">
+                  <UiTextAction v-if="isNodeMutable(record)" @click.stop="openNodeEdit(record)"
+                    >编辑</UiTextAction
+                  >
+                  <a-dropdown
+                    v-if="allowedConfirmationTransitions(record.confirmationStatus).length"
+                  >
                     <UiTextAction tone="primary" @click.stop.prevent>状态</UiTextAction>
                     <template #overlay>
                       <a-menu>
                         <a-menu-item
-                          v-for="target in allowedNodeTransitions(record.confirmationStatus)"
+                          v-for="target in allowedConfirmationTransitions(
+                            record.confirmationStatus,
+                          )"
                           :key="target"
                           @click.stop="changeNodeStatus(record, target)"
                         >
@@ -724,6 +746,14 @@ function handleCourseChange(courseId: string | null) {
               >
                 录入记录
               </UiButton>
+              <span class="pe__import-status-label">导入状态</span>
+              <a-select
+                v-model:value="importConfirmationStatus"
+                :options="importConfirmationStatusOptions"
+                :disabled="selectedNode.confirmationStatus !== 'CONFIRMED'"
+                size="small"
+                style="width: 112px"
+              />
               <UiButton
                 variant="outline"
                 size="sm"
@@ -780,21 +810,29 @@ function handleCourseChange(courseId: string | null) {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
-                  <UiTextAction
-                    v-if="record.confirmationStatus !== 'CONFIRMED'"
-                    @click="openRecordEdit(record)"
-                  >
+                  <UiTextAction v-if="isRecordMutable(record)" @click="openRecordEdit(record)">
                     编辑
                   </UiTextAction>
-                  <UiTextAction
-                    v-if="canConfirmProcessRecord(record)"
-                    tone="primary"
-                    @click="confirmRecord(record)"
+                  <a-dropdown
+                    v-if="allowedConfirmationTransitions(record.confirmationStatus).length"
                   >
-                    确认
-                  </UiTextAction>
+                    <UiTextAction tone="primary" @click.stop.prevent>状态</UiTextAction>
+                    <template #overlay>
+                      <a-menu>
+                        <a-menu-item
+                          v-for="target in allowedConfirmationTransitions(
+                            record.confirmationStatus,
+                          )"
+                          :key="target"
+                          @click.stop="changeRecordStatus(record, target)"
+                        >
+                          {{ confirmationStatusLabel(target) }}
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
                   <UiTextAction
-                    v-if="record.confirmationStatus !== 'CONFIRMED'"
+                    v-if="isRecordMutable(record)"
                     tone="danger"
                     @click="deleteRecord(record)"
                   >
@@ -829,7 +867,12 @@ function handleCourseChange(courseId: string | null) {
           </a-col>
           <a-col :span="8">
             <a-form-item label="学期">
-              <a-input v-model:value="nodeEditor.semester" />
+              <a-select
+                v-model:value="nodeEditor.semester"
+                :options="SemesterOptions"
+                placeholder="学期"
+                allow-clear
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -982,6 +1025,8 @@ function handleCourseChange(courseId: string | null) {
       :context="importRecordContext"
       :requirements="[
         'Excel 列顺序：学号 | 姓名（可选） | 得分 | 换算得分（可选 0-1） | 备注（可选）',
+        '导入状态可在工具栏选择：起草 / 已提交 / 已确认；选「已确认」可直接进入达成度计算。',
+        '选「已提交」导入后记录锁定，须先将状态改为「已退回」才能改分或删除。',
         '学号和得分必填；失败行不会入库。',
       ]"
       @success="handleImportFinished"
@@ -1100,6 +1145,11 @@ function handleCourseChange(courseId: string | null) {
 
   &__modal-toolbar {
     margin-bottom: 12px;
+  }
+
+  &__import-status-label {
+    font-size: 12px;
+    color: var(--dp-text-secondary);
   }
 
   &__file-name {

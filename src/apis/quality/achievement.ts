@@ -16,6 +16,7 @@ import type {
  * - ./achievement-audit       (achievementAuditApi / achievementManualReviewApi)
  * - ./achievement-detail      (achievementDetailApi)
  */
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
 const CALC = '/api/quality/achievement'
@@ -27,7 +28,7 @@ export interface ComputeCourseGoalRequest {
   qualityCourseId: string
   courseGoalId: string
   schoolYear?: string
-  semester?: string
+  semester?: SemesterCode
   classId?: string
   evaluationMethod?: EvaluationMethod
   professionProfileId?: string
@@ -39,7 +40,7 @@ export interface AchievementComputeScopeRequest {
   trainingPlanId: string
   gradeLevel?: string
   schoolYear?: string
-  semester?: string
+  semester?: SemesterCode
   professionProfileId?: string
 }
 
@@ -150,7 +151,7 @@ export interface AchievementComputeReadinessRequest {
   courseGoalId?: string
   trainingObjectiveId?: string
   schoolYear?: string
-  semester?: string
+  semester?: SemesterCode
 }
 
 /** 计算就绪项 - 严格对齐 AchievementComputeReadinessItemVO */
@@ -181,5 +182,4 @@ export const achievementApi = {
       `${CALC}/compute-complex-engineering-aggregate`,
       data,
     ),
-
 }

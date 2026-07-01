@@ -1,15 +1,19 @@
 import type { ComputedRef, Ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { ExamDetailVO } from '@/apis/mark/exam'
+import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
 import type { MarkingProgressVO, WorkbenchStageSnapshotVO } from '@/apis/mark/exam-progress'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
-import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
 import { MARK_STAGE_TITLE } from '@/constants/mark-workspace-nav'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
+import {
+  resolveNextActionRouteName,
+  resolvePrimaryEnabledNextAction,
+} from '@/utils/exam-workspace-entry-gates'
 import { buildExamWorkspaceSignalMetrics } from '@/utils/exam-workspace-signal-metrics'
 import { navigateToJourneyStep, navigateToMarkStage } from '@/utils/mark-stage-navigation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -35,7 +39,9 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
     () => options.snapshot.value?.markingProgress ?? null,
   )
 
-  const contextTitle = computed(() => options.snapshot.value?.examName ?? examDetail.value?.examName ?? '')
+  const contextTitle = computed(
+    () => options.snapshot.value?.examName ?? examDetail.value?.examName ?? '',
+  )
 
   const contextSubtitle = computed(() => {
     const detail = examDetail.value
@@ -55,7 +61,9 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
       parts.push(detail.createUserNickName)
     }
     if (detail?.academicYear || detail?.semester) {
-      const term = [detail.academicYear, formatSemester(detail.semester)].filter(Boolean).join(' · ')
+      const term = [detail.academicYear, formatSemester(detail.semester)]
+        .filter(Boolean)
+        .join(' · ')
       if (term) {
         parts.push(term)
       }
@@ -79,7 +87,14 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
     return strictEnumTone(EXAM_STATUS_TONE, status, '考试状态')
   })
 
-  const primaryActionLabel = computed(() => {
+  const primaryNextAction = computed(() =>
+    resolvePrimaryEnabledNextAction(
+      options.snapshot.value?.nextActions,
+      options.suggestedStageKey.value,
+    ),
+  )
+
+  const suggestedStageActionLabel = computed(() => {
     const key = options.suggestedStageKey.value
     if (!key) {
       return ''
@@ -87,9 +102,52 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
     return `前往${MARK_STAGE_TITLE[key]}`
   })
 
-  const showPrimaryAction = computed(() => Boolean(options.suggestedStageKey.value && options.examId.value))
+  const primaryActionLabel = computed(() => {
+    const action = primaryNextAction.value
+    if (action) {
+      return action.label
+    }
+    const key = options.suggestedStageKey.value
+    if (!key) {
+      return ''
+    }
+    return `前往${MARK_STAGE_TITLE[key]}`
+  })
+
+  const showPrimaryAction = computed(() => {
+    if (options.activeJourneyKey.value === 'prep') {
+      return false
+    }
+    return (
+      Boolean(primaryNextAction.value) ||
+      Boolean(options.suggestedStageKey.value && options.examId.value)
+    )
+  })
+
+  function goSuggestedStageByKey(): void {
+    const key = options.suggestedStageKey.value
+    if (!key || !options.examId.value) {
+      return
+    }
+    navigateToMarkStage(router, key, options.examId.value, {
+      scanAttentionCount: markingProgress.value?.scanAttentionCount,
+    })
+  }
 
   function goSuggestedStage(): void {
+    const action = primaryNextAction.value
+    if (action && options.examId.value) {
+      const routeName = resolveNextActionRouteName(
+        action.actionKey,
+        options.examId.value,
+        markingProgress.value?.scanAttentionCount,
+      )
+      void router.push({
+        name: routeName,
+        params: { examId: options.examId.value },
+      })
+      return
+    }
     const key = options.suggestedStageKey.value
     if (!key || !options.examId.value) {
       return
@@ -173,9 +231,13 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
     await Promise.all([options.refreshSnapshot(), loadExamDetail()])
   }
 
-  watch(options.examId, () => {
-    void loadExamDetail()
-  }, { immediate: true })
+  watch(
+    options.examId,
+    () => {
+      void loadExamDetail()
+    },
+    { immediate: true },
+  )
 
   return {
     examDetail,
@@ -186,9 +248,11 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
     examStatusLabel,
     examStatusTone,
     primaryActionLabel,
+    suggestedStageActionLabel,
     showPrimaryAction,
     examSignalMetrics,
     goSuggestedStage,
+    goSuggestedStageByKey,
     onJourneySelect,
     navigateMetric,
     loadExamDetail,

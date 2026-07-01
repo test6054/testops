@@ -4,16 +4,16 @@ import type {
   PortfolioTeacherWorkbenchSummaryVO,
   PortfolioTodoSummaryVO,
 } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_COMPLETENESS_LEVEL_LABEL,
+  PORTFOLIO_COMPLETENESS_LEVEL_TONE,
+} from '@/apis/portfolio/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { portfolioTodoApi } from '@/apis/portfolio/todo'
-import {
-  PORTFOLIO_COMPLETENESS_LEVEL_LABEL,
-  PORTFOLIO_COMPLETENESS_LEVEL_TONE,
-} from '@/apis/portfolio/types'
 import PortfolioProgressCockpitBand from '@/components/portfolio/PortfolioProgressCockpitBand.vue'
 import PortfolioProgressCompareDrawer from '@/components/portfolio/PortfolioProgressCompareDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -23,7 +23,10 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
+import {
+  usePortfolioPageScope,
+  usePortfolioScopedLoader,
+} from '@/composables/usePortfolioPageScope'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
@@ -41,6 +44,7 @@ const todoLoading = ref(false)
 const workbenchSummary = ref<PortfolioTeacherWorkbenchSummaryVO | null>(null)
 const workbenchSummaryLoading = ref(false)
 const compareDrawerOpen = ref(false)
+const cockpitBandRef = ref<InstanceType<typeof PortfolioProgressCockpitBand> | null>(null)
 
 const completenessPercentText = computed(() => {
   if (!workbenchSummary.value) {
@@ -55,7 +59,13 @@ const portraitStatItems = computed((): SignalMetric[] => {
   }
   const row = portrait.value
   return [
-    { key: 'composite', label: '综合画像', value: String(row.compositeScore), unit: '分', tone: 'blue' },
+    {
+      key: 'composite',
+      label: '综合画像',
+      value: String(row.compositeScore),
+      unit: '分',
+      tone: 'blue',
+    },
     { key: 'core', label: '发展核心', value: String(row.developmentCoreScore), unit: '分' },
     { key: 'teaching', label: '教学能力', value: String(row.teachingScore), unit: '分' },
     { key: 'research', label: '科研教研', value: String(row.researchScore), unit: '分' },
@@ -68,8 +78,10 @@ const portraitDataInsufficient = computed(() => {
   if (!portrait.value) {
     return false
   }
-  return portrait.value.officialRecordCount === 0
-    && portrait.value.dimensions.every(item => item.readiness === 'PENDING')
+  return (
+    portrait.value.officialRecordCount === 0 &&
+    portrait.value.dimensions.every((item) => item.readiness === 'PENDING')
+  )
 })
 
 async function loadDashboard() {
@@ -83,17 +95,14 @@ async function loadDashboard() {
   const request = targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}
   try {
     portrait.value = await portfolioAnalysisApi.getPortrait(request)
-  }
-  catch (error) {
+  } catch (error) {
     const code = readBusinessResultCode(error)
     if (code === ResultCode.DATA_NOT_FOUND) {
       portraitAbsent.value = true
-    }
-    else {
+    } else {
       showUserError(error, '加载画像摘要失败')
     }
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -107,12 +116,10 @@ async function loadWorkbenchSummary() {
   try {
     const request = targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}
     workbenchSummary.value = await portfolioAnalysisApi.getWorkbenchSummary(request)
-  }
-  catch (error) {
+  } catch (error) {
     workbenchSummary.value = null
     showUserError(error, '加载工作台摘要失败')
-  }
-  finally {
+  } finally {
     workbenchSummaryLoading.value = false
   }
 }
@@ -130,27 +137,27 @@ async function loadTodos() {
       pageSize: 20,
     })
     todos.value = readPageList(page, '加载待办失败')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载待办失败')
-  }
-  finally {
+  } finally {
     todoLoading.value = false
   }
 }
 
 function openTodo(item: PortfolioTodoSummaryVO) {
-  const query: Record<string, string> = targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}
-  if (item.archiveRecordId
-    && (item.todoType === 'ARCHIVE_RETURNED' || item.todoType === 'ARCHIVE_DRAFT')) {
+  const query: Record<string, string> = targetTeacherId.value
+    ? { teacherId: targetTeacherId.value }
+    : {}
+  if (
+    item.archiveRecordId &&
+    (item.todoType === 'ARCHIVE_RETURNED' || item.todoType === 'ARCHIVE_DRAFT')
+  ) {
     query.recordId = item.archiveRecordId
   }
   if (item.todoType === 'ARCHIVE_PENDING_CONFIRM') {
     void router.push({
       path: '/portfolio/teacher/intake',
-      query: item.referenceAiTaskId
-        ? { ...query, taskId: item.referenceAiTaskId }
-        : query,
+      query: item.referenceAiTaskId ? { ...query, taskId: item.referenceAiTaskId } : query,
     })
     return
   }
@@ -171,7 +178,10 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     })
     return
   }
-  if (item.todoType === 'EVALUATION_MATERIAL_CONFIRM' || item.todoType === 'EVALUATION_RETURNED_SUPPLEMENT') {
+  if (
+    item.todoType === 'EVALUATION_MATERIAL_CONFIRM' ||
+    item.todoType === 'EVALUATION_RETURNED_SUPPLEMENT'
+  ) {
     void router.push({
       path: '/portfolio/teacher/evaluation',
       query: { ...query, noticeId: item.refId },
@@ -179,11 +189,17 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (item.todoType === 'DEVELOPMENT_PLAN_PENDING') {
-    void router.push({ path: '/portfolio/admin/development-plan', query: { ...query, planId: item.refId } })
+    void router.push({
+      path: '/portfolio/admin/development-plan',
+      query: { ...query, planId: item.refId },
+    })
     return
   }
   if (item.todoType === 'DEVELOPMENT_PLAN_REVIEW') {
-    void router.push({ path: '/portfolio/admin/development-plan-review', query: { ...query, planId: item.refId } })
+    void router.push({
+      path: '/portfolio/admin/development-plan-review',
+      query: { ...query, planId: item.refId },
+    })
     return
   }
   if (item.todoType === 'DUAL_TEACHER_DRAFT' || item.todoType === 'DUAL_TEACHER_RETURNED') {
@@ -215,7 +231,9 @@ function goPortrait() {
 }
 
 function handleCockpitMetricClick(key: string, context?: { academicYear?: string }) {
-  const query: Record<string, string> = targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}
+  const query: Record<string, string> = targetTeacherId.value
+    ? { teacherId: targetTeacherId.value }
+    : {}
   const academicYear = context?.academicYear
   if (academicYear) {
     query.academicYear = academicYear
@@ -243,8 +261,9 @@ function handleCockpitMetricClick(key: string, context?: { academicYear?: string
     return
   }
   if (key === 'openGap') {
-    const gapTodo = todos.value.find(item =>
-      item.todoType === 'GAP_PENDING' || item.todoType === 'GAP_RETURNED')
+    const gapTodo = todos.value.find(
+      (item) => item.todoType === 'GAP_PENDING' || item.todoType === 'GAP_RETURNED',
+    )
     if (gapTodo) {
       openTodo(gapTodo)
       return
@@ -281,19 +300,20 @@ function goOneTable() {
   })
 }
 
-function handleVisibilityChange() {
-  if (document.visibilityState === 'visible') {
-    void loadDashboard()
-    void loadWorkbenchSummary()
-    void loadTodos()
-  }
-}
-
-usePortfolioScopedLoader(() => {
+function reloadHomeData() {
   void loadDashboard()
   void loadWorkbenchSummary()
   void loadTodos()
-}, () => targetTeacherId.value, { reloadOnActivated: false })
+  cockpitBandRef.value?.reload()
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    reloadHomeData()
+  }
+}
+
+usePortfolioScopedLoader(reloadHomeData, () => targetTeacherId.value, { reloadOnActivated: true })
 
 onMounted(() => {
   document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -309,15 +329,14 @@ onUnmounted(() => {
     <template #context>
       <ContextBar show-title layout="workbench" title="教师首页">
         <template #actions>
-          <UiButton v-if="!loading" @click="() => { void loadDashboard(); void loadWorkbenchSummary(); void loadTodos() }">
-            刷新
-          </UiButton>
+          <UiButton v-if="!loading" @click="reloadHomeData"> 刷新 </UiButton>
         </template>
       </ContextBar>
     </template>
 
     <template v-if="!(canPickTeachers && !targetTeacherId)" #signal>
       <PortfolioProgressCockpitBand
+        ref="cockpitBandRef"
         :teacher-id="targetTeacherId"
         @metric-click="handleCockpitMetricClick"
       />
@@ -328,87 +347,87 @@ onUnmounted(() => {
     </div>
 
     <div v-else class="teacher-home__grid">
-      <UiCard :title="workbenchSummary?.currentAcademicYear ? `${workbenchSummary.currentAcademicYear} 档案完整度` : '档案完整度'" class="teacher-home__card">
+      <UiCard
+        :title="
+          workbenchSummary?.currentAcademicYear
+            ? `${workbenchSummary.currentAcademicYear} 档案完整度`
+            : '档案完整度'
+        "
+        class="teacher-home__card"
+      >
         <a-spin :spinning="workbenchSummaryLoading">
           <template v-if="workbenchSummary">
             <div class="teacher-home__completeness-head">
               <span class="teacher-home__percent">{{ completenessPercentText }}</span>
               <UiTag
                 v-if="workbenchSummary.completenessLevel"
-                :tone="strictEnumTone(PORTFOLIO_COMPLETENESS_LEVEL_TONE, workbenchSummary.completenessLevel, '档案完整度等级')"
+                :tone="
+                  strictEnumTone(
+                    PORTFOLIO_COMPLETENESS_LEVEL_TONE,
+                    workbenchSummary.completenessLevel,
+                    '档案完整度等级',
+                  )
+                "
               >
-                {{ strictEnumLabel(PORTFOLIO_COMPLETENESS_LEVEL_LABEL, workbenchSummary.completenessLevel, '档案完整度等级') }}
+                {{
+                  strictEnumLabel(
+                    PORTFOLIO_COMPLETENESS_LEVEL_LABEL,
+                    workbenchSummary.completenessLevel,
+                    '档案完整度等级',
+                  )
+                }}
               </UiTag>
             </div>
             <p class="teacher-home__meta">
-              必填分类 {{ workbenchSummary.requiredCategoryDone ?? 0 }} / {{ workbenchSummary.requiredCategoryTotal ?? 0 }}
+              必填分类 {{ workbenchSummary.requiredCategoryDone ?? 0 }} /
+              {{ workbenchSummary.requiredCategoryTotal ?? 0 }}
             </p>
             <p
-              v-if="workbenchSummary.completenessPercent === 0 && (workbenchSummary.requiredCategoryDone ?? 0) === 0"
+              v-if="
+                workbenchSummary.completenessPercent === 0 &&
+                (workbenchSummary.requiredCategoryDone ?? 0) === 0
+              "
               class="teacher-home__onboarding"
             >
               数据不足，请先完成建档
             </p>
           </template>
-          <UiEmpty
-            v-else-if="!workbenchSummaryLoading"
-            description="尚未生成档案完整度"
-          />
+          <UiEmpty v-else-if="!workbenchSummaryLoading" description="尚未生成档案完整度" />
         </a-spin>
       </UiCard>
 
       <UiCard title="画像摘要" class="teacher-home__card">
         <template #extra>
-          <UiButton variant="ghost" size="sm" :disabled="!portrait && !portraitAbsent" @click="goPortrait">
+          <UiButton
+            variant="ghost"
+            size="sm"
+            :disabled="!portrait && !portraitAbsent"
+            @click="goPortrait"
+          >
             查看画像
           </UiButton>
         </template>
         <a-spin :spinning="loading">
-          <SignalBand
-            v-if="portrait"
-            :metrics="portraitStatItems"
-            variant="inline"
-            compact
-          />
+          <SignalBand v-if="portrait" :metrics="portraitStatItems" variant="inline" compact />
           <p v-if="portrait" class="teacher-home__meta">
             正式档案 {{ portrait.officialRecordCount }} 条
-            <template v-if="portrait.computedTime">
-              · 更新于 {{ portrait.computedTime }}
-            </template>
+            <template v-if="portrait.computedTime"> · 更新于 {{ portrait.computedTime }} </template>
           </p>
-          <p
-            v-if="portrait && portraitDataInsufficient"
-            class="teacher-home__onboarding"
-          >
+          <p v-if="portrait && portraitDataInsufficient" class="teacher-home__onboarding">
             画像数据不足，请先完成建档
           </p>
-          <UiEmpty
-            v-else-if="portraitAbsent && !loading"
-            description="尚未生成画像快照"
-          />
+          <UiEmpty v-else-if="portraitAbsent && !loading" description="尚未生成画像快照" />
         </a-spin>
       </UiCard>
 
       <UiCard title="快捷入口" class="teacher-home__card teacher-home__card--actions">
         <div class="teacher-home__actions">
-          <UiButton @click="goIntake">
-            材料采集
-          </UiButton>
-          <UiButton @click="goArchive">
-            我的档案
-          </UiButton>
-          <UiButton @click="goPortrait">
-            教师画像
-          </UiButton>
-          <UiButton @click="goCorrection">
-            我的纠错
-          </UiButton>
-          <UiButton @click="goDualTeacherApply">
-            双师认定申请
-          </UiButton>
-          <UiButton @click="goOneTable">
-            教师一张表
-          </UiButton>
+          <UiButton @click="goIntake"> 材料采集 </UiButton>
+          <UiButton @click="goArchive"> 我的档案 </UiButton>
+          <UiButton @click="goPortrait"> 教师画像 </UiButton>
+          <UiButton @click="goCorrection"> 我的纠错 </UiButton>
+          <UiButton @click="goDualTeacherApply"> 双师认定申请 </UiButton>
+          <UiButton @click="goOneTable"> 教师一张表 </UiButton>
         </div>
       </UiCard>
 
@@ -432,9 +451,7 @@ onUnmounted(() => {
               <p v-if="item.summary" class="teacher-home__meta">
                 {{ item.summary }}
               </p>
-              <p v-if="item.dueTime" class="teacher-home__meta">
-                截止 {{ item.dueTime }}
-              </p>
+              <p v-if="item.dueTime" class="teacher-home__meta">截止 {{ item.dueTime }}</p>
             </li>
           </ul>
           <UiEmpty v-else description="暂无待办" />
@@ -442,10 +459,7 @@ onUnmounted(() => {
       </UiCard>
     </div>
   </StageWorkbenchShell>
-  <PortfolioProgressCompareDrawer
-    v-model:open="compareDrawerOpen"
-    :teacher-id="targetTeacherId"
-  />
+  <PortfolioProgressCompareDrawer v-model:open="compareDrawerOpen" :teacher-id="targetTeacherId" />
 </template>
 
 <style scoped lang="scss">

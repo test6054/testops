@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioArchiveBagAssembleVO, PortfolioArchiveBagPreviewVO, PortfolioArchiveScoreResultVO } from '@/apis/portfolio/bag-types'
+import type {
+  PortfolioArchiveBagAssembleVO,
+  PortfolioArchiveBagPreviewVO,
+  PortfolioArchiveScoreResultVO,
+} from '@/apis/portfolio/bag-types'
+import { PORTFOLIO_ARCHIVE_BAG_SOURCE_TYPE_LABEL } from '@/apis/portfolio/bag-types'
 import type {
   PortfolioArchiveRecordDetailVO,
   PortfolioArchiveRecordSourceType,
@@ -9,18 +14,17 @@ import type {
   PortfolioArchiveTimelineItemVO,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { portfolioArchiveApi } from '@/apis/portfolio/archive'
-import { PORTFOLIO_ARCHIVE_BAG_SOURCE_TYPE_LABEL } from '@/apis/portfolio/bag-types'
-import { portfolioArchiveBagApi } from '@/apis/portfolio/teacher-platform'
 import {
   PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL,
   PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
 } from '@/apis/portfolio/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { portfolioArchiveApi } from '@/apis/portfolio/archive'
+import { portfolioArchiveBagApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -31,7 +35,11 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
+import {
+  usePortfolioPageScope,
+  usePortfolioScopedLoader,
+} from '@/composables/usePortfolioPageScope'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
@@ -50,7 +58,9 @@ function archiveRecordSourceTypeLabel(sourceType: PortfolioArchiveRecordSourceTy
   return strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL, sourceType, '档案记录来源类型')
 }
 
-function bagSourceTypeLabel(sourceType: PortfolioArchiveBagPreviewVO['catalogItems'][number]['sourceType']): string {
+function bagSourceTypeLabel(
+  sourceType: PortfolioArchiveBagPreviewVO['catalogItems'][number]['sourceType'],
+): string {
   return strictEnumLabel(PORTFOLIO_ARCHIVE_BAG_SOURCE_TYPE_LABEL, sourceType, '档案袋来源类型')
 }
 
@@ -63,7 +73,7 @@ const bagFilterFields: FilterField[] = [
     placeholder: '选择学期',
     allowClear: true,
     width: 140,
-    options: SemesterOptions.map(item => ({ label: item.label, value: item.value })),
+    options: SemesterOptions.map((item) => ({ label: item.label, value: item.value })),
   },
   { key: 'courseCode', label: '课程编码', placeholder: '课程编码', width: 140 },
   { key: 'achievementType', label: '成果类型', placeholder: '成果类型', width: 140 },
@@ -109,7 +119,13 @@ const bagPreview = ref<PortfolioArchiveBagPreviewVO | null>(null)
 const scoreResult = ref<PortfolioArchiveScoreResultVO | null>(null)
 const scoreLoading = ref(false)
 const exportConfirmOpen = ref(false)
-const bagFilter = ref({
+const bagFilter = ref<{
+  academicYear: string
+  semester: SemesterCode | ''
+  courseCode: string
+  achievementType: string
+  materialType: string
+}>({
   academicYear: '',
   semester: '',
   courseCode: '',
@@ -127,13 +143,16 @@ const bagRequest = computed(() => ({
 }))
 
 const teacherRequest = computed(() =>
-  targetTeacherId.value ? { teacherId: targetTeacherId.value } : {})
+  targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+)
 
 const selectedCategory = computed(() =>
-  categories.value.find(item => item.categoryId === selectedCategoryId.value))
+  categories.value.find((item) => item.categoryId === selectedCategoryId.value),
+)
 
-const canLoadTeacherArchive = computed(() =>
-  Boolean(targetTeacherId.value) || !canPickTeachers.value)
+const canLoadTeacherArchive = computed(
+  () => Boolean(targetTeacherId.value) || !canPickTeachers.value,
+)
 
 async function loadOneTable() {
   if (!canLoadTeacherArchive.value) {
@@ -145,14 +164,12 @@ async function loadOneTable() {
   try {
     const vo = await portfolioArchiveApi.getOneTable(teacherRequest.value)
     categories.value = vo.categories
-    if (!categories.value.some(item => item.categoryId === selectedCategoryId.value)) {
+    if (!categories.value.some((item) => item.categoryId === selectedCategoryId.value)) {
       selectedCategoryId.value = categories.value[0]?.categoryId
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载教师一张表失败')
-  }
-  finally {
+  } finally {
     oneTableLoading.value = false
   }
 }
@@ -178,11 +195,9 @@ async function loadRecords() {
     })
     records.value = readPageList(page, '加载档案记录失败')
     pageTotal.value = readPageTotal(page, '加载档案记录失败')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载档案记录失败')
-  }
-  finally {
+  } finally {
     recordLoading.value = false
   }
 }
@@ -198,11 +213,9 @@ async function loadTimeline() {
       ...teacherRequest.value,
       limit: 30,
     })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载成长时间轴失败')
-  }
-  finally {
+  } finally {
     timelineLoading.value = false
   }
 }
@@ -213,11 +226,9 @@ async function openRecordById(recordId: string) {
   detailLoading.value = true
   try {
     recordDetail.value = await portfolioArchiveApi.getRecord(recordId)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载档案详情失败')
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
@@ -239,7 +250,7 @@ function selectCategory(categoryId: string) {
   void loadRecords()
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadRecords()
@@ -290,11 +301,9 @@ async function refreshBagScore(silent = false) {
     if (!silent) {
       message.success(`档案袋评分 ${scoreResult.value.totalScore}`)
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '计算档案袋评分失败')
-  }
-  finally {
+  } finally {
     scoreLoading.value = false
   }
 }
@@ -314,11 +323,9 @@ async function assembleBag() {
     bagPreview.value = result.preview ?? null
     message.success(`档案袋完整度 ${result.completenessPercent}%`)
     await refreshBagScore(true)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '汇聚档案袋失败')
-  }
-  finally {
+  } finally {
     bagLoading.value = false
   }
 }
@@ -331,11 +338,9 @@ async function previewBag() {
   try {
     bagPreview.value = await portfolioArchiveBagApi.preview(bagRequest.value)
     await refreshBagScore(true)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载档案袋预览失败')
-  }
-  finally {
+  } finally {
     bagLoading.value = false
   }
 }
@@ -367,11 +372,9 @@ async function confirmExportBag() {
     })
     exportConfirmOpen.value = false
     await previewBag()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '导出档案袋失败')
-  }
-  finally {
+  } finally {
     bagLoading.value = false
   }
 }
@@ -401,11 +404,14 @@ async function openRecordFromRouteQuery() {
   await openRecordById(recordId)
 }
 
-usePortfolioScopedLoader(async () => {
-  pageNum.value = 1
-  await reloadAll()
-  await openRecordFromRouteQuery()
-}, () => targetTeacherId.value)
+usePortfolioScopedLoader(
+  async () => {
+    pageNum.value = 1
+    await reloadAll()
+    await openRecordFromRouteQuery()
+  },
+  () => targetTeacherId.value,
+)
 
 watch(
   () => route.query.recordId,
@@ -420,28 +426,20 @@ watch(
     <template #context>
       <ContextBar show-title layout="workbench" title="我的档案">
         <template #actions>
-          <UiButton :loading="scoreLoading" @click="computeArchiveScore">
-            档案评分
-          </UiButton>
-          <UiButton :loading="bagLoading" @click="previewBag">
-            结构化预览
-          </UiButton>
-          <UiButton :loading="bagLoading" @click="assembleBag">
-            汇聚预览
-          </UiButton>
+          <UiButton :loading="scoreLoading" @click="computeArchiveScore"> 档案评分 </UiButton>
+          <UiButton :loading="bagLoading" @click="previewBag"> 结构化预览 </UiButton>
+          <UiButton :loading="bagLoading" @click="assembleBag"> 汇聚预览 </UiButton>
           <UiButton :loading="bagLoading" variant="primary" @click="exportBag">
             导出材料包
           </UiButton>
-          <UiButton @click="goCorrection">
-            我的纠错
-          </UiButton>
-          <UiButton
-            v-if="selectedCategoryId"
-            @click="goCategoryEdit(selectedCategoryId)"
-          >
+          <UiButton @click="goCorrection"> 我的纠错 </UiButton>
+          <UiButton v-if="selectedCategoryId" @click="goCategoryEdit(selectedCategoryId)">
             分类填报
           </UiButton>
-          <UiButton :loading="oneTableLoading || recordLoading || timelineLoading" @click="reloadAll">
+          <UiButton
+            :loading="oneTableLoading || recordLoading || timelineLoading"
+            @click="reloadAll"
+          >
             刷新
           </UiButton>
         </template>
@@ -460,7 +458,12 @@ watch(
     </UiCard>
 
     <UiCard v-if="scoreResult" title="档案袋评分" class="teacher-archive__bag">
-      <p>总分 {{ scoreResult.totalScore }}<template v-if="scoreResult.computedTime"> · 计算于 {{ scoreResult.computedTime }}</template></p>
+      <p>
+        总分 {{ scoreResult.totalScore
+        }}<template v-if="scoreResult.computedTime">
+          · 计算于 {{ scoreResult.computedTime }}</template
+        >
+      </p>
       <ul v-if="scoreResult.breakdown.length" class="teacher-archive__score-list">
         <li v-for="item in scoreResult.breakdown" :key="item.ruleId">
           {{ item.ruleName }}：{{ item.earnedScore }} 分 — {{ item.explainText }}
@@ -469,22 +472,39 @@ watch(
     </UiCard>
 
     <UiCard v-if="bagSummary" title="档案袋汇聚" class="teacher-archive__bag">
-      <p>完整度 {{ bagSummary.completenessPercent }}% · 已归档 {{ bagSummary.archivedCategoryCount }} 类 · 开放补采 {{ bagSummary.openGapTaskCount }} 项</p>
+      <p>
+        完整度 {{ bagSummary.completenessPercent }}% · 已归档
+        {{ bagSummary.archivedCategoryCount }} 类 · 开放补采 {{ bagSummary.openGapTaskCount }} 项
+      </p>
       <p v-if="bagSummary.missingCategoryNames.length">
         缺失：{{ bagSummary.missingCategoryNames.join('、') }}
       </p>
     </UiCard>
 
     <UiCard v-if="bagPreview" title="结构化预览" class="teacher-archive__bag-preview">
-      <p>附件 {{ bagPreview.totalAttachmentCount }} 个 · 目录 {{ bagPreview.catalogItems.length }} 条</p>
+      <p>
+        附件 {{ bagPreview.totalAttachmentCount }} 个 · 目录 {{ bagPreview.catalogItems.length }} 条
+      </p>
       <div v-if="bagPreview.sections.length" class="teacher-archive__section-tree">
-        <section v-for="section in bagPreview.sections" :key="section.sectionType" class="teacher-archive__section">
+        <section
+          v-for="section in bagPreview.sections"
+          :key="section.sectionType"
+          class="teacher-archive__section"
+        >
           <h4 class="teacher-archive__section-title">{{ section.sectionTitle }}</h4>
-          <div v-for="group in section.groups" :key="`${section.sectionType}-${group.groupTitle}`" class="teacher-archive__group">
+          <div
+            v-for="group in section.groups"
+            :key="`${section.sectionType}-${group.groupTitle}`"
+            class="teacher-archive__group"
+          >
             <p class="teacher-archive__group-title">{{ group.groupTitle }}</p>
             <ul v-if="group.items.length" class="teacher-archive__preview-list">
-              <li v-for="item in group.items" :key="`${item.sourceType}-${item.recordId}-${item.title}`">
-                {{ item.title }}（{{ bagSourceTypeLabel(item.sourceType) }}）· {{ item.attachmentCount }} 附件
+              <li
+                v-for="item in group.items"
+                :key="`${item.sourceType}-${item.recordId}-${item.title}`"
+              >
+                {{ item.title }}（{{ bagSourceTypeLabel(item.sourceType) }}）·
+                {{ item.attachmentCount }} 附件
               </li>
             </ul>
             <UiEmpty v-else description="该分组暂无条目" />
@@ -506,7 +526,9 @@ watch(
               v-for="item in categories"
               :key="item.categoryId"
               class="teacher-archive__category-item"
-              :class="{ 'teacher-archive__category-item--active': item.categoryId === selectedCategoryId }"
+              :class="{
+                'teacher-archive__category-item--active': item.categoryId === selectedCategoryId,
+              }"
               @click="selectCategory(item.categoryId)"
             >
               <span class="teacher-archive__category-name">{{ item.categoryName }}</span>
@@ -552,9 +574,7 @@ watch(
               {{ record.evaluationIncluded ? '是' : '否' }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction @click="openRecord(record)">
-                详情
-              </UiTextAction>
+              <UiTextAction @click="openRecord(record)"> 详情 </UiTextAction>
             </template>
           </template>
         </UiDataTable>
@@ -591,12 +611,12 @@ watch(
         <template v-if="recordDetail">
           <p class="teacher-archive__detail-meta">
             {{ recordDetail.categoryName }}
-            · {{ archiveRecordStatusLabel(recordDetail.recordStatus) }}
-            · {{ archiveRecordSourceTypeLabel(recordDetail.sourceType) }}
+            · {{ archiveRecordStatusLabel(recordDetail.recordStatus) }} ·
+            {{ archiveRecordSourceTypeLabel(recordDetail.sourceType) }}
           </p>
           <p class="teacher-archive__detail-meta">
-            更新时间 {{ recordDetail.updateTime }}
-            · 参与评价 {{ recordDetail.evaluationIncluded ? '是' : '否' }}
+            更新时间 {{ recordDetail.updateTime }} · 参与评价
+            {{ recordDetail.evaluationIncluded ? '是' : '否' }}
             <template v-if="recordDetail.referenceAiTaskId">
               · AI 任务 {{ recordDetail.referenceAiTaskId }}
             </template>
@@ -612,12 +632,18 @@ watch(
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'fieldLabel'">
                 <span>{{ record.fieldLabel ?? record.fieldCode }}</span>
-                <UiTag v-if="record.fieldCorrecting" tone="orange" class="teacher-archive__correcting-tag">
+                <UiTag
+                  v-if="record.fieldCorrecting"
+                  tone="orange"
+                  class="teacher-archive__correcting-tag"
+                >
                   更正中
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiTextAction @click="goFieldCorrection(record.fieldCode, record.fieldLabel, record.fieldValue)">
+                <UiTextAction
+                  @click="goFieldCorrection(record.fieldCode, record.fieldLabel, record.fieldValue)"
+                >
                   发起纠错
                 </UiTextAction>
               </template>
@@ -637,15 +663,14 @@ watch(
       @ok="confirmExportBag"
     >
       <p v-if="bagPreview">
-        将导出 {{ bagPreview.totalAttachmentCount }} 个附件，目录 {{ bagPreview.catalogItems.length }} 条。
+        将导出 {{ bagPreview.totalAttachmentCount }} 个附件，目录
+        {{ bagPreview.catalogItems.length }} 条。
       </p>
-      <p v-else>
-        将按当前筛选条件构建 ZIP 材料包。
-      </p>
+      <p v-else>将按当前筛选条件构建 ZIP 材料包。</p>
       <p v-if="bagPreview?.latestMaterialPackageExport" class="teacher-archive__latest-export">
-        上次导出 {{ bagPreview.latestMaterialPackageExport.exportedTime }}，
-        附件 {{ bagPreview.latestMaterialPackageExport.attachmentCount }} 个。
-        本次将生成新的 ZIP，不会覆盖历史导出。
+        上次导出 {{ bagPreview.latestMaterialPackageExport.exportedTime }}， 附件
+        {{ bagPreview.latestMaterialPackageExport.attachmentCount }} 个。 本次将生成新的
+        ZIP，不会覆盖历史导出。
       </p>
     </a-modal>
   </StageWorkbenchShell>

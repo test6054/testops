@@ -10,6 +10,7 @@ import type {
  * 后端路径：/api/quality/achievement-results
  */
 import type { PageResult, QueryDto } from '@/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/achievement-results'
@@ -29,7 +30,7 @@ export interface AchievementResultVO {
   qualityCourseCode: string
   qualityCourseName: string
   schoolYear: string
-  semester: string
+  semester: SemesterCode
   gradeLevel?: string
   classId?: string
   className: string
@@ -64,7 +65,7 @@ export interface AchievementResultQueryRequest extends QueryDto {
   qualityCourseId?: string
   classId?: string
   schoolYear?: string
-  semester?: string
+  semester?: SemesterCode
   auditStatus?: AchievementAuditStatus
   achievementStatus?: AchievementStatus
 }

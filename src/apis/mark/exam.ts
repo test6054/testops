@@ -8,8 +8,8 @@ import type { ExamCandidateRosterRequest, ExamCandidateVO } from '@/apis/mark/ex
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import http from '@/config/axios'
 import { isValidSemesterCode } from '@/types/enums/semester-enum'
+import http from '@/config/axios'
 
 /** 考试状态编码 - 对应后端 ExamStatus 枚举（仅保留批改链有意义的状态） */
 export type ExamStatusCode = 'ACTIVE' | 'CLOSED'
@@ -131,7 +131,7 @@ export interface ExamPageQueryRequest extends QueryDto {
   /** 学年，如 '2024-2025' */
   academicYear?: string
   /** 学期：1=秋季学期，2=春季学期 */
-  semester?: string
+  semester?: SemesterCode
   /** 名称关键词（模糊匹配 exam_name / exam_no） */
   keyword?: string
 }
@@ -143,7 +143,7 @@ export interface ExamSummaryVO {
   examName: string
   examNo: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   status: ExamStatusCode
   statusMessage: string
   examStartTime?: string
@@ -194,6 +194,7 @@ export interface ExamWorkbenchSummaryVO extends ExamSummaryVO {
   inProgressReviewTaskCount: number
   openProcessingTaskCount: number
   scanAttentionCount: number
+  needReviewGradeResultCount: number
 }
 
 /** 考试范围班级引用 - 对应 ExamClassRefVO */
@@ -223,7 +224,7 @@ export interface ExamDetailVO {
   examName: string
   examNo: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   status: ExamStatusCode
   statusMessage: string
   examStartTime?: string
@@ -311,7 +312,7 @@ export interface ExamCreateRequest {
    */
   academicYear: string
   /** 学期：1=秋季学期，2=春季学期 */
-  semester: string
+  semester: SemesterCode
   /** 考试名称（必填） */
   examName: string
   /** 考试编号（必填） */
@@ -347,7 +348,7 @@ export interface ExamUpdateRequest {
   /** 学年；与 semester 须同时填写或同时留空 */
   academicYear?: string
   /** 学期；与 academicYear 须同时填写或同时留空 */
-  semester?: string
+  semester?: SemesterCode
   /** 考试名称 */
   examName: string
   /** 考试编号 */

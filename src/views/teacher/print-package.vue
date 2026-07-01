@@ -9,11 +9,7 @@
     </UiButton>
   </div>
 
-  <UiEmpty
-    v-if="!selectedExamId"
-    description="请选择考试"
-    class="print-package-page__empty"
-  />
+  <UiEmpty v-if="!selectedExamId" description="请选择考试" class="print-package-page__empty" />
 
   <UiCard v-else class="print-package-page__list-card">
     <UiDataTable
@@ -149,12 +145,7 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { PrintPackageItemVO, PrintPackageVO } from '@/apis/mark/paper-master'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref, watch } from 'vue'
-import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
+import type { PrintPackageItemVO, PrintPackageVO } from '@/apis/mark/print-package'
 import {
   generatePrintPackage,
   getPrintPackage,
@@ -162,7 +153,12 @@ import {
   pagePrintPackages,
   PRINT_PACKAGE_STATUS_LABEL,
   PRINT_PACKAGE_STATUS_TONE,
-} from '@/apis/mark/paper-master'
+} from '@/apis/mark/print-package'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { reactive, ref, watch } from 'vue'
+import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -219,7 +215,7 @@ async function loadPackageList() {
   }
 }
 
-function handlePackagePageChange(pageEvent: { current: number, pageSize: number }): void {
+function handlePackagePageChange(pageEvent: { current: number; pageSize: number }): void {
   pagination.pageNum = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   loadPackageList()

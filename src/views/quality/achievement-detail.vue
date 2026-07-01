@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  AchievementAuditVO,
-} from '@/apis/quality/achievement-audit'
+import type { AchievementAuditVO } from '@/apis/quality/achievement-audit'
+import { achievementAuditApi } from '@/apis/quality/achievement-audit'
 import type { AchievementDetailVO } from '@/apis/quality/achievement-detail'
+import { achievementDetailApi } from '@/apis/quality/achievement-detail'
 import type { AchievementManualReviewVO } from '@/apis/quality/achievement-manual-review'
-import type {
-  AchievementResultVO,
-} from '@/apis/quality/achievement-result'
+import { achievementManualReviewApi } from '@/apis/quality/achievement-manual-review'
+import type { AchievementResultVO } from '@/apis/quality/achievement-result'
+import { achievementResultApi } from '@/apis/quality/achievement-result'
 /**
  * 质量评价 - 达成度详情
  *
@@ -26,22 +26,6 @@ import type {
   AchievementTargetType,
   ManualReviewDecision,
 } from '@/apis/quality/types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import {
-  achievementApi,
-} from '@/apis/quality/achievement'
-import {
-  achievementAuditApi,
-} from '@/apis/quality/achievement-audit'
-import {
-  achievementDetailApi,
-} from '@/apis/quality/achievement-detail'
-import { achievementManualReviewApi } from '@/apis/quality/achievement-manual-review'
-import { achievementResultApi } from '@/apis/quality/achievement-result'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -51,6 +35,12 @@ import {
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   MANUAL_REVIEW_DECISION_LABEL,
 } from '@/apis/quality/types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { achievementApi } from '@/apis/quality/achievement'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -62,6 +52,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { formatSemester } from '@/types/enums/semester-enum'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
 const detailColumns: ColumnsType = [
@@ -78,9 +69,12 @@ const route = useRoute()
 const router = useRouter()
 
 /** 全局 scope 切换时返回列表，避免详情与当前培养方案/课程错位 */
-useQualityScopedLoader(() => {
-  void router.push({ name: 'QualityAchievement' })
-}, { watchScope: true, immediate: false, reloadOnActivated: false })
+useQualityScopedLoader(
+  () => {
+    void router.push({ name: 'QualityAchievement' })
+  },
+  { watchScope: true, immediate: false, reloadOnActivated: false },
+)
 
 const resultId = computed(() => String(route.params.resultId || ''))
 
@@ -89,7 +83,7 @@ const details = ref<AchievementDetailVO[]>([])
 const audits = ref<AchievementAuditVO[]>([])
 const reviews = ref<AchievementManualReviewVO[]>([])
 const loading = ref(false)
-const reviewForm = reactive<{ decision: ManualReviewDecision, reviewRemark: string }>({
+const reviewForm = reactive<{ decision: ManualReviewDecision; reviewRemark: string }>({
   decision: 'CONFIRMED',
   reviewRemark: '',
 })
@@ -166,10 +160,12 @@ const targetTypeToComputeKind: Partial<Record<AchievementTargetType, string>> = 
 
 function canRecomputeResult(value: AchievementResultVO | null): boolean {
   if (!value) return false
-  return value.auditStatus === 'RETURNED'
-    || isResultStale(value)
-    || value.auditStatus === 'DRAFT'
-    || value.auditStatus === 'CALCULATED'
+  return (
+    value.auditStatus === 'RETURNED' ||
+    isResultStale(value) ||
+    value.auditStatus === 'DRAFT' ||
+    value.auditStatus === 'CALCULATED'
+  )
 }
 
 function canSubmitManualReview(value: AchievementResultVO | null): boolean {
@@ -345,7 +341,6 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
-
 const reviewVisible = ref(false)
 
 function openReviewDrawer() {
@@ -362,9 +357,13 @@ async function submitReviewAndClose() {
   reviewVisible.value = false
 }
 
-watch(resultId, () => {
-  void loadAll()
-}, { immediate: true })
+watch(
+  resultId,
+  () => {
+    void loadAll()
+  },
+  { immediate: true },
+)
 
 onActivated(() => {
   if (resultId.value) {
@@ -376,9 +375,7 @@ onActivated(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        :title="result?.targetLabel || '达成度结果详情'"
-      >
+      <ContextBar :title="result?.targetLabel || '达成度结果详情'">
         <template #status>
           <UiButton variant="outline" size="sm" @click="router.back()">返回</UiButton>
           <UiTag v-if="result" :tone="auditStatusColor(result.auditStatus)" size="sm">
@@ -417,11 +414,7 @@ onActivated(() => {
       </ContextBar>
     </template>
 
-    <UiEmpty
-      v-if="!result && !loading"
-      description="暂无数据"
-      class="achievement-detail__empty"
-    />
+    <UiEmpty v-if="!result && !loading" description="暂无数据" class="achievement-detail__empty" />
 
     <template v-else-if="result">
       <SignalBand :metrics="signals" compact class="achievement-detail__signals" />
@@ -445,7 +438,8 @@ onActivated(() => {
             {{ result.qualityCourseCode }} {{ result.qualityCourseName }}
           </a-descriptions-item>
           <a-descriptions-item label="学年 / 学期">
-            {{ result.schoolYear }} / {{ result.semester }}
+            {{ result.schoolYear
+            }}<span v-if="result.semester"> / {{ formatSemester(result.semester) }}</span>
           </a-descriptions-item>
           <a-descriptions-item label="达成结论">
             <UiTag :tone="achievementStatusColor(result.achievementStatus)" size="sm">
@@ -496,11 +490,7 @@ onActivated(() => {
       <div class="achievement-detail__layout">
         <UiCard class="achievement-detail__detail-card">
           <template #title>计算明细</template>
-          <UiEmpty
-            v-if="!details.length && !loading"
-            description="暂无数据"
-            size="sm"
-          />
+          <UiEmpty v-if="!details.length && !loading" description="暂无数据" size="sm" />
           <UiDataTable
             pagination-mode="none"
             class="student-detail-table__data-table"
@@ -541,7 +531,10 @@ onActivated(() => {
                 }}
               </template>
               <template v-else-if="column.key === 'sampleValid'">
-                {{ record.sampleValid }} / {{ record.sampleTotal }}
+                <div>{{ record.sampleValid }} / {{ record.sampleTotal }}</div>
+                <p v-if="record.excludedSampleReason" class="achievement-detail__evidence-gap">
+                  {{ record.excludedSampleReason }}
+                </p>
               </template>
             </template>
           </UiDataTable>
@@ -549,11 +542,7 @@ onActivated(() => {
 
         <UiCard class="achievement-detail__audit-card">
           <template #title>审核责任链流水</template>
-          <UiEmpty
-            v-if="!audits.length && !loading"
-            description="暂无数据"
-            size="sm"
-          />
+          <UiEmpty v-if="!audits.length && !loading" description="暂无数据" size="sm" />
           <a-timeline v-else class="achievement-detail__timeline">
             <a-timeline-item
               v-for="audit in audits"
@@ -586,11 +575,7 @@ onActivated(() => {
 
       <UiCard class="achievement-detail__review-card">
         <template #title>人工复核记录</template>
-        <UiEmpty
-          v-if="!reviews.length"
-          description="暂无数据"
-          size="sm"
-        />
+        <UiEmpty v-if="!reviews.length" description="暂无数据" size="sm" />
         <a-list v-else :data-source="reviews" item-layout="horizontal">
           <template #renderItem="{ item }">
             <a-list-item>
@@ -681,6 +666,13 @@ onActivated(() => {
     color: var(--dp-text-muted);
     font-size: 12px;
     margin-right: 4px;
+  }
+
+  &__evidence-gap {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--dp-warning);
+    line-height: 1.4;
   }
 
   &__timeline {

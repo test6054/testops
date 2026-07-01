@@ -26,12 +26,7 @@
     <div class="archive-volume-course-sync__toolbar">
       <UiButton size="sm" variant="outline" @click="addRow">添加材料行</UiButton>
     </div>
-    <input
-      ref="rowFileInputRef"
-      type="file"
-      class="sr-only"
-      @change="onRowFileChange"
-    >
+    <input ref="rowFileInputRef" type="file" class="sr-only" @change="onRowFileChange" />
     <UiDataTable
       pagination-mode="none"
       :columns="columns"
@@ -80,12 +75,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
+import { ARCHIVE_MATERIAL_TYPE_LABEL, syncArchiveCoursePlatform } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { ref, watch } from 'vue'
-import {
-  ARCHIVE_MATERIAL_TYPE_LABEL,
-  syncArchiveCoursePlatform,
-} from '@/apis/mark/archive-volume'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -100,7 +92,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "success": []
+  success: []
 }>()
 
 interface SyncRow {
@@ -135,20 +127,22 @@ const columns: ColumnsType<SyncRow> = [
   { title: '操作', key: 'actions', width: 80 },
 ]
 
-watch(() => props.open, (visible) => {
-  if (visible) {
-    form.value.idempotencyKey = `CPS-${props.volumeId}-${Date.now()}`
-    if (rows.value.length === 0) {
-      addRow()
+watch(
+  () => props.open,
+  (visible) => {
+    if (visible) {
+      form.value.idempotencyKey = `CPS-${props.volumeId}-${Date.now()}`
+      if (rows.value.length === 0) {
+        addRow()
+      }
+    } else {
+      rows.value = []
+      form.value.sourceSystem = 'COURSE_PLATFORM'
+      form.value.idempotencyKey = ''
+      activeRowIndex.value = null
     }
-  }
-  else {
-    rows.value = []
-    form.value.sourceSystem = 'COURSE_PLATFORM'
-    form.value.idempotencyKey = ''
-    activeRowIndex.value = null
-  }
-})
+  },
+)
 
 function addRow() {
   rows.value.push({
@@ -182,21 +176,13 @@ async function onRowFileChange(event: Event) {
     const node = await stageBusinessFile(FileUploadSceneKey.MARK_ARCHIVE_VOLUME_MATERIAL, file)
     rows.value[index].fileId = String(node.id)
     rows.value[index].fileName = node.nodeName
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '文件上传失败')
-  }
-  finally {
+  } finally {
     rows.value[index].uploading = false
     input.value = ''
     activeRowIndex.value = null
   }
-}
-
-function resolveFileFormat(fileName: string): string {
-  const dot = fileName.lastIndexOf('.')
-  if (dot < 0) return 'UNKNOWN'
-  return fileName.slice(dot + 1).toUpperCase()
 }
 
 async function handleSubmit() {
@@ -232,8 +218,7 @@ async function handleSubmit() {
       requiredFlag: true,
       fileId: row.fileId as string,
       mediaType: 'ELECTRONIC' as const,
-      fileFormat: resolveFileFormat(row.fileName ?? ''),
-      sortRule: row.studentNo.trim() ? 'STUDENT_NO' as const : 'CATALOG_ORDER' as const,
+      sortRule: row.studentNo.trim() ? ('STUDENT_NO' as const) : ('CATALOG_ORDER' as const),
       electronicOriginalStatus: 'SCANNED' as const,
       studentNo: row.studentNo.trim() || undefined,
       triggerOcr: false,
@@ -247,11 +232,9 @@ async function handleSubmit() {
     message.success(`已同步 ${materials.length} 份材料`)
     emit('update:open', false)
     emit('success')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }

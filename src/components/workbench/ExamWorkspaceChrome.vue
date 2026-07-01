@@ -1,30 +1,22 @@
 <template>
-  <div
-    v-if="loading && !snapshot"
-    class="exam-workspace-chrome exam-workspace-chrome--loading"
-  >
+  <div v-if="loading && !snapshot" class="exam-workspace-chrome exam-workspace-chrome--loading">
     <a-skeleton active :title="{ width: '40%' }" :paragraph="{ rows: 1, width: '60%' }" />
-    <a-skeleton active :title="false" :paragraph="{ rows: 1 }" class="exam-workspace-chrome__rail-skeleton" />
+    <a-skeleton
+      active
+      :title="false"
+      :paragraph="{ rows: 1 }"
+      class="exam-workspace-chrome__rail-skeleton"
+    />
   </div>
   <div v-else-if="snapshot" class="exam-workspace-chrome">
-    <ContextBar
-      layout="workbench"
-      show-title
-      :title="contextTitle"
-      :subtitle="contextSubtitle"
-    >
+    <ContextBar layout="workbench" show-title :title="displayTitle" :subtitle="contextSubtitle">
       <template #status>
         <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
           {{ examStatusLabel }}
         </UiTag>
       </template>
       <template #actions>
-        <UiButton
-          v-if="showPrimaryAction"
-          variant="primary"
-          size="sm"
-          @click="goSuggestedStage"
-        >
+        <UiButton v-if="showPrimaryAction" variant="primary" size="sm" @click="goSuggestedStage">
           {{ primaryActionLabel }}
         </UiButton>
         <UiButton variant="outline" size="sm" :loading="refreshing" @click="handleRefresh">
@@ -35,13 +27,14 @@
     </ContextBar>
 
     <ExamJourneyRail
+      v-if="showJourneyRail"
       :stages="journeyStages"
       :active-key="activeJourneyKey === 'overview' ? '' : activeJourneyKey"
       @select="onJourneySelect"
     />
 
     <SignalBand
-      v-if="examSignalMetrics.length > 0"
+      v-if="showSignalBand && examSignalMetrics.length > 0"
       :metrics="examSignalMetrics"
       compact
       class="exam-workspace-chrome__signal"
@@ -51,6 +44,7 @@
 </template>
 
 <script lang="ts" setup>
+import { computed } from 'vue'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { storeToRefs } from 'pinia'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -66,6 +60,22 @@ import {
 import { useMarkStageStore } from '@/stores/modules/markStage'
 
 defineOptions({ name: 'ExamWorkspaceChrome' })
+
+const props = withDefaults(
+  defineProps<{
+    /** 子页标题；未传时使用考试名称 */
+    pageTitle?: string
+    /** 侧栏已展示六段旅程时置 false，避免重复 JourneyRail */
+    showJourneyRail?: boolean
+    /** 子页自带 SignalBand 时置 false */
+    showSignalBand?: boolean
+  }>(),
+  {
+    pageTitle: '',
+    showJourneyRail: false,
+    showSignalBand: true,
+  },
+)
 
 const { snapshot, loading, refreshing } = useMarkWorkbenchContext()
 const markStageStore = useMarkStageStore()
@@ -85,6 +95,8 @@ const {
   navigateMetric,
   refreshChrome,
 } = useExamWorkspaceChromeContext()
+
+const displayTitle = computed(() => props.pageTitle || contextTitle)
 
 function handleRefresh(): void {
   void refreshChrome()

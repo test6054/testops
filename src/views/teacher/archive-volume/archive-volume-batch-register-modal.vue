@@ -27,7 +27,7 @@
           multiple
           class="sr-only"
           @change="handleFilesSelected"
-        >
+        />
       </a-form-item>
     </a-form>
     <UiDataTable
@@ -63,12 +63,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { ref, watch } from 'vue'
 import {
   ARCHIVE_MATERIAL_TYPE_LABEL,
   batchRegisterArchiveVolumeMaterials,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -83,7 +83,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "success": []
+  success: []
 }>()
 
 interface BatchRow {
@@ -109,15 +109,18 @@ const columns: ColumnsType<BatchRow> = [
   { title: '操作', key: 'actions', width: 72 },
 ]
 
-watch(() => props.open, (visible) => {
-  if (!visible) {
-    rows.value = []
-    defaultMaterialType.value = undefined
-    if (fileInputRef.value) {
-      fileInputRef.value.value = ''
+watch(
+  () => props.open,
+  (visible) => {
+    if (!visible) {
+      rows.value = []
+      defaultMaterialType.value = undefined
+      if (fileInputRef.value) {
+        fileInputRef.value.value = ''
+      }
     }
-  }
-})
+  },
+)
 
 function openFilePicker() {
   fileInputRef.value?.click()
@@ -141,13 +144,7 @@ function handleFilesSelected(event: Event) {
 }
 
 function removeRow(uid: string) {
-  rows.value = rows.value.filter(item => item.uid !== uid)
-}
-
-function resolveFileFormat(fileName: string): string {
-  const dot = fileName.lastIndexOf('.')
-  if (dot < 0) return 'UNKNOWN'
-  return fileName.slice(dot + 1).toUpperCase()
+  rows.value = rows.value.filter((item) => item.uid !== uid)
 }
 
 async function handleSubmit() {
@@ -166,13 +163,15 @@ async function handleSubmit() {
   try {
     const materials = []
     for (const row of rows.value) {
-      const node = await stageBusinessFile(FileUploadSceneKey.MARK_ARCHIVE_VOLUME_MATERIAL, row.file)
+      const node = await stageBusinessFile(
+        FileUploadSceneKey.MARK_ARCHIVE_VOLUME_MATERIAL,
+        row.file,
+      )
       materials.push({
         volumeId: props.volumeId,
         materialType: row.materialType as ArchiveMaterialTypeCode,
         fileId: String(node.id),
         mediaType: 'ELECTRONIC' as const,
-        fileFormat: resolveFileFormat(row.fileName),
         sortRule: 'CATALOG_ORDER' as const,
         electronicOriginalStatus: 'SCANNED' as const,
         triggerOcr: true,
@@ -185,11 +184,9 @@ async function handleSubmit() {
     message.success(`已登记 ${materials.length} 份材料`)
     emit('update:open', false)
     emit('success')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }

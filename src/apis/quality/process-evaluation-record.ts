@@ -45,21 +45,19 @@ export interface ProcessEvaluationRecordSaveRequest {
 
 export const processRecordApi = {
   listByNode: (nodeId: string, confirmationStatus?: ConfirmationStatus) =>
-    http.post<ProcessEvaluationRecordVO[]>(`${RECORD}/list-by-node`, { nodeId, confirmationStatus }),
+    http.post<ProcessEvaluationRecordVO[]>(`${RECORD}/list-by-node`, {
+      nodeId,
+      confirmationStatus,
+    }),
   listConfirmedByCourseGoal: (qualityCourseId: string, courseGoalId: string) =>
     http.post<ProcessEvaluationRecordVO[]>(`${RECORD}/list-confirmed-by-course-goal`, {
       qualityCourseId,
       courseGoalId,
     }),
-  detail: (id: string) =>
-    http.post<ProcessEvaluationRecordVO>(`${RECORD}/detail`, { id }),
-  create: (data: ProcessEvaluationRecordSaveRequest) =>
-    http.post<string>(`${RECORD}/create`, data),
-  update: (data: ProcessEvaluationRecordSaveRequest) =>
-    http.post<void>(`${RECORD}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${RECORD}/delete`, { id }),
-  /** DRAFT/SUBMITTED -> CONFIRMED */
-  confirm: (id: string) =>
-    http.post<void>(`${RECORD}/confirm`, { id }),
+  detail: (id: string) => http.post<ProcessEvaluationRecordVO>(`${RECORD}/detail`, { id }),
+  create: (data: ProcessEvaluationRecordSaveRequest) => http.post<string>(`${RECORD}/create`, data),
+  update: (data: ProcessEvaluationRecordSaveRequest) => http.post<void>(`${RECORD}/update`, data),
+  delete: (id: string) => http.post<void>(`${RECORD}/delete`, { id }),
+  updateConfirmationStatus: (id: string, confirmationStatus: ConfirmationStatus) =>
+    http.post<void>(`${RECORD}/update-confirmation-status`, { id, confirmationStatus }),
 }

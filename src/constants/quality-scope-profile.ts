@@ -1,3 +1,5 @@
+import { SemesterOptions } from '@/types/enums/semester-enum'
+
 /** 质量评价页上下文维度（路由 meta.scopeProfile） */
 export type QualityScopeProfile
   = | 'none'
@@ -53,8 +55,4 @@ export function scopeProfileNeedsPlan(profile: QualityScopeProfile): boolean {
   return PLAN_DIMENSION_PROFILES.includes(profile)
 }
 
-export const SEMESTER_OPTIONS = [
-  { value: '1', label: '秋季学期' },
-  { value: '2', label: '春季学期' },
-  { value: '3', label: '夏季短学期' },
-] as const
+export const SEMESTER_OPTIONS = SemesterOptions

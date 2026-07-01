@@ -84,15 +84,24 @@ export interface IndirectEvaluationProgressVO {
   status: string
   submissionCount: number
   validCount: number
+  itemCount?: number
+  receivedResponseCount?: number
+  expectedResponseCount?: number
+  scoredResponseCount?: number
+  pendingConversionCount?: number
   expectedSample?: number
   completionRate?: number
+  responseCollectionRate?: number
   startTime?: string
   endTime?: string
 }
 
 export interface IndirectEvaluationStatisticsVO {
+  /** 有效回收答卷总数，与 progress.receivedResponseCount 口径一致 */
   overallSampleCount: number
   overallScore?: number
+  overallScoredCount?: number
+  pendingConversionCount?: number
   items: IndirectEvaluationItemStatistics[]
 }
 
@@ -100,10 +109,12 @@ export interface IndirectEvaluationItemStatistics {
   itemId: string
   itemCode: string
   itemText: string
-  targetType: string
+  targetType: AchievementTargetType
   targetId: string
   sampleCount: number
   validCount: number
+  scoredCount?: number
+  pendingConversionCount?: number
   mean?: number
   median?: number
   stdDev?: number

@@ -10,6 +10,7 @@
  * 设计：先选问卷 → 显示题项 → 选题项查看答卷
  */
 import type { IndirectEvaluationFormVO } from '@/apis/quality/indirect-form'
+import { indirectFormApi } from '@/apis/quality/indirect-form'
 import type { IndirectEvaluationItemVO } from '@/apis/quality/indirect-item'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onActivated, onMounted, ref, watch } from 'vue'
@@ -31,20 +32,59 @@ const responsePanelRef = ref<InstanceType<typeof IndirectResponseReviewPanel>>()
 
 const formsLoading = computed(() => surveyPanelRef.value?.formsLoading ?? false)
 
+const progressSummary = ref({
+  submissionCount: 0,
+  expectedSample: 0,
+  receivedResponseCount: 0,
+  expectedResponseCount: 0,
+  pendingConversionCount: 0,
+})
+
+/** 按启用问卷聚合 progress，与达成度覆盖率 / 样本回收率口径一致 */
+async function refreshProgressSummary(): Promise<void> {
+  const forms = surveyPanelRef.value?.forms ?? []
+  let submissionCount = 0
+  let expectedSample = 0
+  let receivedResponseCount = 0
+  let expectedResponseCount = 0
+  let pendingConversionCount = 0
+  for (const form of forms) {
+    if (!form.enabled) continue
+    const progress = await indirectFormApi.progress(form.id)
+    submissionCount += progress.submissionCount ?? 0
+    expectedSample += progress.expectedSample ?? 0
+    receivedResponseCount += progress.receivedResponseCount ?? 0
+    expectedResponseCount += progress.expectedResponseCount ?? 0
+    pendingConversionCount += progress.pendingConversionCount ?? 0
+  }
+  progressSummary.value = {
+    submissionCount,
+    expectedSample,
+    receivedResponseCount,
+    expectedResponseCount,
+    pendingConversionCount,
+  }
+}
+
 const signals = computed<SignalMetric[]>(() => {
   const forms = surveyPanelRef.value?.forms ?? []
   const items = surveyPanelRef.value?.items ?? []
-  const validCountMap = surveyPanelRef.value?.validCountMap ?? new Map<string, number>()
   const responses = responsePanelRef.value?.responses ?? []
+  const summary = progressSummary.value
 
   const enabledForms = forms.filter((f) => f.enabled).length
   const totalItems = items.length
-  const totalValid = Array.from(validCountMap.values()).reduce((sum, n) => sum + n, 0)
-  const expectedSampleSum = forms.reduce((sum, f) => sum + (f.expectedSample ?? 0), 0)
-  const validResponses = responses.filter((r) => r.validFlag).length
-  const invalidResponses = responses.filter((r) => !r.validFlag).length
-  const sampleRatio
-    = expectedSampleSum > 0 ? Number((totalValid / expectedSampleSum).toFixed(2)) : 0
+  const completionRate =
+    summary.expectedSample > 0
+      ? Number((summary.submissionCount / summary.expectedSample).toFixed(2))
+      : 0
+  const collectionRate =
+    summary.expectedResponseCount > 0
+      ? Number((summary.receivedResponseCount / summary.expectedResponseCount).toFixed(2))
+      : 0
+  const validResponses = responses.filter((r) => r.validFlag === true).length
+  const pendingConfirmResponses = responses.filter((r) => r.validFlag == null).length
+  const invalidResponses = responses.filter((r) => r.validFlag === false).length
 
   return [
     { key: 'forms-total', label: '问卷总数', value: forms.length, tone: 'blue' },
@@ -56,22 +96,40 @@ const signals = computed<SignalMetric[]>(() => {
     },
     { key: 'items-total', label: '题项总数', value: totalItems, tone: 'blue' },
     {
-      key: 'valid-total',
-      label: '有效样本',
-      value: totalValid,
-      tone: totalValid > 0 ? 'green' : 'gray',
+      key: 'received-total',
+      label: '有效回收答卷',
+      value: summary.receivedResponseCount,
+      tone: summary.receivedResponseCount > 0 ? 'green' : 'gray',
     },
     {
-      key: 'sample-ratio',
-      label: '样本达成率',
-      value: sampleRatio,
-      tone: sampleRatio >= 1 ? 'green' : sampleRatio > 0 ? 'orange' : 'gray',
+      key: 'completion-rate',
+      label: '填答完成率',
+      value: completionRate,
+      tone: completionRate >= 1 ? 'green' : completionRate > 0 ? 'orange' : 'gray',
+    },
+    {
+      key: 'collection-rate',
+      label: '样本回收率',
+      value: collectionRate,
+      tone: collectionRate >= 1 ? 'green' : collectionRate > 0 ? 'orange' : 'gray',
+    },
+    {
+      key: 'pending-conversion',
+      label: '待换算答卷',
+      value: summary.pendingConversionCount,
+      tone: summary.pendingConversionCount > 0 ? 'orange' : 'gray',
     },
     {
       key: 'responses-valid',
       label: '当前题项有效',
       value: validResponses,
       tone: validResponses > 0 ? 'green' : 'gray',
+    },
+    {
+      key: 'responses-pending',
+      label: '当前题项待确认',
+      value: pendingConfirmResponses,
+      tone: pendingConfirmResponses > 0 ? 'orange' : 'gray',
     },
     {
       key: 'responses-invalid',
@@ -89,6 +147,7 @@ async function handleScopeChange(): Promise<void> {
 /** 培养方案作用域变更后按序刷新问卷、题项与答卷 */
 async function reloadIndirectWorkbench(): Promise<void> {
   await surveyPanelRef.value?.loadForms()
+  await refreshProgressSummary()
   if (selectedForm.value) {
     await surveyPanelRef.value?.loadItems()
     await surveyPanelRef.value?.refreshValidCounts()
@@ -98,14 +157,20 @@ async function reloadIndirectWorkbench(): Promise<void> {
   }
 }
 
-useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false, reloadOnActivated: false })
+useQualityScopedLoader(handleScopeChange, {
+  watchScope: true,
+  immediate: false,
+  reloadOnActivated: false,
+})
 
 async function onFormsReloaded(formId?: string) {
   await surveyPanelRef.value?.reloadFormsAndSync(formId)
+  await refreshProgressSummary()
 }
 
 async function onImportDone() {
   await surveyPanelRef.value?.refreshValidCounts()
+  await refreshProgressSummary()
 }
 
 watch(selectedForm, async () => {

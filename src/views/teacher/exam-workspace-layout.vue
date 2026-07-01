@@ -77,7 +77,9 @@
 
           <a-spin v-else :spinning="loading && !snapshot">
             <UiAlertStrip
-              v-if="prepBlockingReasons.length > 0 && !isImmersiveWorkspace"
+              v-if="
+                prepBlockingReasons.length > 0 && !isImmersiveWorkspace && !isPrepSelfManagedPage
+              "
               tone="warning"
               title="考试准备硬阻断"
               :description="prepBlockingReasons.join('；')"
@@ -93,6 +95,30 @@
               dense
               class="exam-detail-layout__confidential-strip"
             />
+            <UiAlertStrip
+              v-if="showStageSuggestionBanner && !isImmersiveWorkspace"
+              tone="info"
+              :title="stageSuggestionTitle"
+              :description="stageSuggestionDescription"
+              dense
+              class="exam-detail-layout__stage-suggestion"
+            >
+              <template #actions>
+                <UiButton
+                  size="sm"
+                  variant="primary"
+                  @click="workspaceChrome.goSuggestedStageByKey"
+                >
+                  {{ workspaceChrome.suggestedStageActionLabel }}
+                </UiButton>
+              </template>
+            </UiAlertStrip>
+            <ExamWorkspaceChrome
+              v-if="showWorkspaceChrome"
+              :page-title="workspacePageTitle"
+              :show-journey-rail="false"
+              :show-signal-band="false"
+            />
             <UiEmpty
               v-if="isImmersiveWorkspace && !isDesktopMarkingViewport"
               description="批阅与复核需在较宽屏幕操作，请使用桌面端（宽度 ≥ 1024px）"
@@ -103,16 +129,9 @@
             <router-view v-else v-slot="{ Component: ViewComponent, route: childRoute }">
               <template v-if="ViewComponent">
                 <keep-alive v-if="shouldCacheWorkspaceRoute(childRoute)">
-                  <component
-                    :is="ViewComponent"
-                    :key="getWorkspaceRouteKey(childRoute)"
-                  />
+                  <component :is="ViewComponent" :key="getWorkspaceRouteKey(childRoute)" />
                 </keep-alive>
-                <component
-                  v-else
-                  :is="ViewComponent"
-                  :key="getWorkspaceRouteKey(childRoute)"
-                />
+                <component v-else :is="ViewComponent" :key="getWorkspaceRouteKey(childRoute)" />
               </template>
             </router-view>
           </a-spin>
@@ -125,10 +144,18 @@
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { Component } from 'vue'
+import { computed, provide, ref, watch } from 'vue'
 import type { RouteLocationNormalized } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type { ExamSwitcherOption } from '@/components/workbench/ExamSwitcher.vue'
+import ExamSwitcher from '@/components/workbench/ExamSwitcher.vue'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
+import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
+import {
+  findExamWorkspaceMenuItem,
+  resolveExamWorkspaceMenuKey,
+} from '@/constants/exam-workspace-menu'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
 import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
@@ -141,9 +168,7 @@ import DesktopOutlined from '@ant-design/icons-vue/DesktopOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import ExportOutlined from '@ant-design/icons-vue/ExportOutlined'
 import FileProtectOutlined from '@ant-design/icons-vue/FileProtectOutlined'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import FolderOutlined from '@ant-design/icons-vue/FolderOutlined'
-import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import FundOutlined from '@ant-design/icons-vue/FundOutlined'
 import HighlightOutlined from '@ant-design/icons-vue/HighlightOutlined'
 import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
@@ -155,26 +180,24 @@ import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import { useBreakpoints } from '@vueuse/core'
-import { computed, provide, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import ExamSubSidebar from '@/components/workbench/ExamSubSidebar.vue'
-import ExamSwitcher from '@/components/workbench/ExamSwitcher.vue'
+import ExamWorkspaceChrome from '@/components/workbench/ExamWorkspaceChrome.vue'
 import { useExamJourneySteps } from '@/composables/useExamJourneySteps'
 import { useExamWorkspaceChrome } from '@/composables/useExamWorkspaceChrome'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
-import { EXAM_WORKSPACE_CHROME_KEY, provideMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
+import {
+  EXAM_WORKSPACE_CHROME_KEY,
+  provideMarkWorkbenchContext,
+} from '@/composables/useMarkWorkbenchContext'
 import { useMarkWorkbenchSnapshot } from '@/composables/useMarkWorkbenchSnapshot'
 import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
-import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
-import {
-  findExamWorkspaceMenuItem,
-  resolveExamWorkspaceMenuKey,
-} from '@/constants/exam-workspace-menu'
+import { MARK_STAGE_TITLE, shouldShowStageSuggestionBanner } from '@/constants/mark-workspace-nav'
 import HeaderRightBar from '@/layout/components/HeaderRightBar/index.vue'
+import type { MarkStageKey } from '@/stores/modules/markStage'
 import { useAppStore } from '@/stores/modules/app'
 import { formatMarkExamOptionLabel } from '@/utils/mark-exam-option'
 import { navigateToJourneyStep } from '@/utils/mark-stage-navigation'
@@ -182,11 +205,9 @@ import { navigateToJourneyStep } from '@/utils/mark-stage-navigation'
 defineOptions({ name: 'ExamWorkspaceLayout' })
 
 const menuIconMap: Record<ExamWorkspaceMenuKey, Component> = {
-  'overview': DashboardOutlined,
-  'prep': ContainerOutlined,
-  'paper-template': ProfileOutlined,
-  'answer-sheet': FormOutlined,
-  'paper-master': FileSearchOutlined,
+  overview: DashboardOutlined,
+  prep: ContainerOutlined,
+  'layout-designer': ProfileOutlined,
   'candidate-roster': TeamOutlined,
   'print-package': PrinterOutlined,
   'scan-batches': CloudUploadOutlined,
@@ -237,6 +258,16 @@ const examId = computed(() => String(route.params.examId ?? ''))
 const isImmersiveWorkspace = computed(() => route.meta.layoutWide === true)
 const isLayoutWide = isImmersiveWorkspace
 
+const showWorkspaceChrome = computed(
+  () =>
+    Boolean(examId.value) && !isImmersiveWorkspace.value && route.meta.hasWorkbenchShell !== true,
+)
+
+const workspacePageTitle = computed(() => {
+  const title = route.meta.title
+  return typeof title === 'string' ? title : ''
+})
+
 const {
   exams,
   examOptions,
@@ -248,9 +279,9 @@ const {
   init: initExamSelector,
 } = useMarkExamSelector({ syncUrl: false })
 
-const examSelectorLoading = computed(() => (
-  selectorLoading.value || selectorSearching.value || selectorResolvingPinned.value
-))
+const examSelectorLoading = computed(
+  () => selectorLoading.value || selectorSearching.value || selectorResolvingPinned.value,
+)
 
 const {
   snapshot,
@@ -265,6 +296,11 @@ const {
 const { isExamConfidential } = useWorkspaceConfidentialContext()
 
 const { journeyStages, activeJourneyKey } = useExamJourneySteps(orderedStages)
+
+/** 准备旅程子页自带 ContextBar / 步骤卡，layout 不再重复硬阻断条 */
+const isPrepSelfManagedPage = computed(
+  () => activeJourneyKey.value === 'prep' && route.meta.hasWorkbenchShell === true,
+)
 
 const workspaceChrome = useExamWorkspaceChrome({
   examId,
@@ -289,7 +325,40 @@ provideMarkWorkbenchContext({
   refreshChrome: workspaceChrome.refreshChrome,
 })
 
-const activeMenuKey = computed(() => resolveExamWorkspaceMenuKey(route.name ? String(route.name) : undefined))
+const activeMenuKey = computed(() =>
+  resolveExamWorkspaceMenuKey(route.name ? String(route.name) : undefined),
+)
+
+const activeMarkStageKey = computed<MarkStageKey | null>(() => {
+  const key = route.meta.markStageKey
+  return typeof key === 'string' ? (key as MarkStageKey) : null
+})
+
+const showStageSuggestionBanner = computed(() => {
+  const suggested = suggestedStageKey.value
+  const active = activeMarkStageKey.value
+  if (!suggested || !active) {
+    return false
+  }
+  return shouldShowStageSuggestionBanner(active, suggested)
+})
+
+const stageSuggestionTitle = computed(() => {
+  const key = suggestedStageKey.value
+  if (!key) {
+    return ''
+  }
+  return `建议下一步：${MARK_STAGE_TITLE[key]}`
+})
+
+const stageSuggestionDescription = computed(() => {
+  const key = suggestedStageKey.value
+  if (!key) {
+    return ''
+  }
+  const stage = snapshot.value?.stages.find((item) => item.key === key)
+  return stage?.hint ?? '主链仍有待推进阶段，可继续向前处理。'
+})
 
 const mobileNavLabel = computed(() => {
   if (activeJourneyKey.value === 'overview') {
@@ -446,15 +515,19 @@ function getWorkspaceRouteKey(childRoute: RouteLocationNormalized): string {
 }
 
 const initialized = ref(false)
-watch(examId, async (id) => {
-  if (!initialized.value) {
-    await initExamSelector()
-    initialized.value = true
-  }
-  if (id) {
-    await syncPinnedExam(id)
-  }
-}, { immediate: true })
+watch(
+  examId,
+  async (id) => {
+    if (!initialized.value) {
+      await initExamSelector()
+      initialized.value = true
+    }
+    if (id) {
+      await syncPinnedExam(id)
+    }
+  },
+  { immediate: true },
+)
 
 watch(isImmersiveWorkspace, (immersive) => {
   if (immersive) {
@@ -595,7 +668,8 @@ watch(isImmersiveWorkspace, (immersive) => {
   }
 
   &__prep-blocking,
-  &__confidential-strip {
+  &__confidential-strip,
+  &__stage-suggestion {
     margin-bottom: 16px;
   }
 

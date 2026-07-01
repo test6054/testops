@@ -6,6 +6,11 @@ import type {
   PortfolioPolicyMatchConclusion,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_AI_ANALYSIS_TYPE_LABEL,
+  PORTFOLIO_POLICY_MATCH_CONCLUSION_LABEL,
+  PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE,
+} from '@/apis/portfolio/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -14,18 +19,16 @@ import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import { portfolioAiOrchestrationApi } from '@/apis/portfolio/ai-orchestration'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import {
-  PORTFOLIO_AI_ANALYSIS_TYPE_LABEL,
-  PORTFOLIO_POLICY_MATCH_CONCLUSION_LABEL,
-  PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE,
-} from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
+import {
+  usePortfolioPageScope,
+  usePortfolioScopedLoader,
+} from '@/composables/usePortfolioPageScope'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
@@ -40,7 +43,9 @@ const route = useRoute()
 const { targetTeacherId, scopeReady } = usePortfolioPageScope()
 const { canManageTeacherAi } = usePortfolioTeacherAccess()
 
-const activeTab = ref<'ask' | 'policy'>(readRouteStringParam(route.query.tab) === 'policy' ? 'policy' : 'ask')
+const activeTab = ref<'ask' | 'policy'>(
+  readRouteStringParam(route.query.tab) === 'policy' ? 'policy' : 'ask',
+)
 const loading = ref(false)
 const polling = ref(false)
 const selectedTeacherProgramId = ref<string>()
@@ -62,16 +67,24 @@ const policyForm = reactive({
 })
 
 const canOperate = computed(() =>
-  Boolean(targetTeacherId.value
-    && canManageTeacherAi(
+  Boolean(
+    targetTeacherId.value &&
+    canManageTeacherAi(
       targetTeacherId.value,
-      teacherOptions.value.some(item => item.userId === targetTeacherId.value),
-    )))
+      teacherOptions.value.some((item) => item.userId === targetTeacherId.value),
+    ),
+  ),
+)
 
 const analysisTypeLabel = computed(() =>
   analysisDetail.value
-    ? strictEnumLabel(PORTFOLIO_AI_ANALYSIS_TYPE_LABEL, analysisDetail.value.analysisType, 'AI 分析类型')
-    : '')
+    ? strictEnumLabel(
+        PORTFOLIO_AI_ANALYSIS_TYPE_LABEL,
+        analysisDetail.value.analysisType,
+        'AI 分析类型',
+      )
+    : '',
+)
 
 const policyConclusionLabel = computed(() => {
   const code = analysisDetail.value?.conclusionCode
@@ -107,7 +120,7 @@ const supportedOrchestrationAnalysis = computed(() => {
 })
 
 function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 async function loadTeacherProgram() {
@@ -122,8 +135,7 @@ async function loadTeacherProgram() {
       pageSize: 100,
     })
     teacherOptions.value = readPageList(page, '加载教师名册失败')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载教师专业信息失败')
   }
 }
@@ -147,8 +159,7 @@ async function loadRegisteredMaterial(materialId: string) {
     materialFileNodeId.value = material.fileNodeId
     materialFileName.value = material.materialTitle ?? material.fileNodeId
     materialType.value = material.materialType
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载材料失败')
   }
 }
@@ -171,6 +182,22 @@ async function ensureMaterialRegistered(): Promise<string> {
   return materialId
 }
 
+function applyOrchestrationAnalysisDetail(detail: PortfolioAiAnalysisDetailVO) {
+  if (detail.analysisType === 'POLICY_MATCH') {
+    activeTab.value = 'policy'
+    assertPortfolioAiAnalysisType(detail, 'POLICY_MATCH')
+  } else if (detail.analysisType === 'MATERIAL_QA') {
+    activeTab.value = 'ask'
+    assertPortfolioAiAnalysisType(detail, 'MATERIAL_QA')
+  } else {
+    throw new Error('该 AI 任务不属于智能问数或政策核验')
+  }
+  analysisDetail.value = detail
+  if (detail.fileNodeId) {
+    materialFileNodeId.value = detail.fileNodeId
+  }
+}
+
 async function pollAnalysis(taskId: string) {
   polling.value = true
   try {
@@ -178,8 +205,7 @@ async function pollAnalysis(taskId: string) {
       const task = await portfolioAiJobApi.get(taskId)
       if (task.status === 'SUCCEEDED') {
         const detail = await portfolioAiJobApi.getAnalysisByTask(taskId)
-        assertPortfolioAiAnalysisType(detail, activeTab.value === 'policy' ? 'POLICY_MATCH' : 'MATERIAL_QA')
-        analysisDetail.value = detail
+        applyOrchestrationAnalysisDetail(detail)
         return
       }
       if (task.status === 'FAILED' || task.status === 'CANCELLED') {
@@ -188,8 +214,7 @@ async function pollAnalysis(taskId: string) {
       await sleep(2000)
     }
     throw new Error('AI 任务超时，请稍后在任务列表查看')
-  }
-  finally {
+  } finally {
     polling.value = false
   }
 }
@@ -226,11 +251,9 @@ async function submitAsk() {
     message.info('问数任务已提交，正在等待结果…')
     await pollAnalysis(submitResult.taskId)
     message.success('问数完成')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '提交智能问数失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -273,11 +296,9 @@ async function submitPolicyCheck() {
     message.info('政策核验任务已提交，正在等待结果…')
     await pollAnalysis(submitResult.taskId)
     message.success('政策核验完成')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '提交政策核验失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -293,13 +314,29 @@ watch(
   { immediate: true },
 )
 
-usePortfolioScopedLoader(() => {
-  void loadTeacherProgram()
-  const materialId = readRouteStringParam(route.query.materialId)
-  if (materialId) {
-    void loadRegisteredMaterial(materialId)
-  }
-}, () => targetTeacherId.value)
+watch(
+  () => [readRouteStringParam(route.query.taskId), scopeReady.value] as const,
+  ([taskId, ready]) => {
+    if (!taskId || !ready) {
+      return
+    }
+    void pollAnalysis(taskId).catch((error) => {
+      showUserError(error, '加载 AI 分析结果失败')
+    })
+  },
+  { immediate: true },
+)
+
+usePortfolioScopedLoader(
+  () => {
+    void loadTeacherProgram()
+    const materialId = readRouteStringParam(route.query.materialId)
+    if (materialId) {
+      void loadRegisteredMaterial(materialId)
+    }
+  },
+  () => targetTeacherId.value,
+)
 
 onMounted(() => {
   if (scopeReady.value) {
@@ -310,7 +347,10 @@ onMounted(() => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="AI 智能问数与政策核验" description="材料须先登记材料库，再提交 ask / policy-check 编排任务" />
+    <ContextBar
+      title="AI 智能问数与政策核验"
+      description="材料须先登记材料库，再提交 ask / policy-check 编排任务"
+    />
     <UiCard title="材料上下文">
       <a-select
         v-model:value="materialType"
@@ -336,7 +376,10 @@ onMounted(() => {
         <UiButton :variant="activeTab === 'ask' ? 'primary' : 'outline'" @click="activeTab = 'ask'">
           材料智能问数
         </UiButton>
-        <UiButton :variant="activeTab === 'policy' ? 'primary' : 'outline'" @click="activeTab = 'policy'">
+        <UiButton
+          :variant="activeTab === 'policy' ? 'primary' : 'outline'"
+          @click="activeTab = 'policy'"
+        >
           政策专项核验
         </UiButton>
       </div>
@@ -368,10 +411,14 @@ onMounted(() => {
         placeholder="教师档案摘要（可选）"
       />
       <label class="ai-orchestration__checkbox">
-        <input v-model="policyForm.attachMaterial" type="checkbox">
+        <input v-model="policyForm.attachMaterial" type="checkbox" />
         附带材料文件作为佐证
       </label>
-      <UiButton variant="primary" :loading="loading || polling" @click="() => void submitPolicyCheck()">
+      <UiButton
+        variant="primary"
+        :loading="loading || polling"
+        @click="() => void submitPolicyCheck()"
+      >
         提交核验
       </UiButton>
     </UiCard>
@@ -380,9 +427,7 @@ onMounted(() => {
       <p class="ai-orchestration__title">
         {{ analysisDetail.resultTitle }}
       </p>
-      <p class="ai-orchestration__meta">
-        类型：{{ analysisTypeLabel }}
-      </p>
+      <p class="ai-orchestration__meta">类型：{{ analysisTypeLabel }}</p>
 
       <template v-if="supportedOrchestrationAnalysis && isAnalysisType('MATERIAL_QA')">
         <p v-if="analysisDetail.reportScene" class="ai-orchestration__meta">

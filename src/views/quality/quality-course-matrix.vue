@@ -1,39 +1,31 @@
 <script setup lang="ts">
 import type { RadioChangeEvent } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   AssessmentGoalWeightSaveRequest,
   AssessmentGoalWeightVO,
 } from '@/apis/quality/assessment-goal-weight'
-import type {
-  AssessmentItemSaveRequest,
-  AssessmentItemVO,
-} from '@/apis/quality/assessment-item'
-import type {
-  CourseGoalSaveRequest,
-  CourseGoalVO,
-} from '@/apis/quality/course-goal'
-import type {
-  CourseGoalAssessmentRuleSaveRequest,
-} from '@/apis/quality/course-goal-assessment-rule'
+import { assessmentGoalWeightApi } from '@/apis/quality/assessment-goal-weight'
+import type { AssessmentItemSaveRequest, AssessmentItemVO } from '@/apis/quality/assessment-item'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
+import type { CourseGoalSaveRequest, CourseGoalVO } from '@/apis/quality/course-goal'
+import { courseGoalApi } from '@/apis/quality/course-goal'
+import type { CourseGoalAssessmentRuleSaveRequest } from '@/apis/quality/course-goal-assessment-rule'
+import { courseGoalAssessmentRuleApi } from '@/apis/quality/course-goal-assessment-rule'
 import type {
   CourseGoalRequirementSaveRequest,
   CourseGoalRequirementVO,
 } from '@/apis/quality/course-goal-requirement'
-import type {
-  GraduationRequirementVO,
-} from '@/apis/quality/graduation-requirement'
-import type {
-  QualityCourseSaveRequest,
-  QualityCourseVO,
-} from '@/apis/quality/quality-course'
-import type {
-  RequirementIndicatorVO,
-} from '@/apis/quality/requirement-indicator'
-import type {
-  RubricItemSaveRequest,
-  RubricItemVO,
-} from '@/apis/quality/rubric-item'
+import { courseGoalRequirementApi } from '@/apis/quality/course-goal-requirement'
+import type { GraduationRequirementVO } from '@/apis/quality/graduation-requirement'
+import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
+import type { QualityCourseSaveRequest, QualityCourseVO } from '@/apis/quality/quality-course'
+import { qualityCourseApi } from '@/apis/quality/quality-course'
+import type { RequirementIndicatorVO } from '@/apis/quality/requirement-indicator'
+import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
+import type { RubricItemSaveRequest, RubricItemVO } from '@/apis/quality/rubric-item'
+import { rubricItemApi } from '@/apis/quality/rubric-item'
 /**
  * 质量评价课程 - 支撑矩阵工作台（3-in-1）
  *
@@ -58,36 +50,7 @@ import type {
  *   - 考核 → 课程目标 weight：同一考核内权重和必须 = 1
  *   - Rubric 满分加总 = (item, goal) 的 fullScore
  */
-import type {
-  AggregationFunction,
-  AssessmentItemType,
-  SupportLevel,
-} from '@/apis/quality/types'
-import type { CourseListVO } from '@/apis/quality/user-catalog'
-import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { assessmentGoalWeightApi } from '@/apis/quality/assessment-goal-weight'
-import {
-  assessmentItemApi,
-} from '@/apis/quality/assessment-item'
-import {
-  courseGoalApi,
-} from '@/apis/quality/course-goal'
-import { courseGoalAssessmentRuleApi } from '@/apis/quality/course-goal-assessment-rule'
-import { courseGoalRequirementApi } from '@/apis/quality/course-goal-requirement'
-import {
-  graduationRequirementApi,
-} from '@/apis/quality/graduation-requirement'
-import {
-  qualityCourseApi,
-} from '@/apis/quality/quality-course'
-import {
-  requirementIndicatorApi,
-} from '@/apis/quality/requirement-indicator'
-import { rubricItemApi } from '@/apis/quality/rubric-item'
+import type { AggregationFunction, AssessmentItemType, SupportLevel } from '@/apis/quality/types'
 import {
   AGGREGATION_FUNCTION_CODES,
   AGGREGATION_FUNCTION_LABEL,
@@ -95,6 +58,11 @@ import {
   SUPPORT_LEVEL_DEFAULT_FACTOR,
   SUPPORT_LEVEL_LABEL,
 } from '@/apis/quality/types'
+import type { CourseListVO } from '@/apis/quality/user-catalog'
+import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
@@ -116,7 +84,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import { formatSemester, SemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const itemColumns: ColumnsType = [
@@ -276,9 +244,7 @@ async function loadAssessmentItems() {
   }
   assessmentItemsLoading.value = true
   try {
-    const items = await assessmentItemApi.listByCourse(
-      qualityStore.currentQualityCourseId,
-    )
+    const items = await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId)
     if (scope.isStale()) {
       return
     }
@@ -464,7 +430,6 @@ const signals = computed<SignalMetric[]>(() => [
   },
 ])
 
-
 /* ========== 矩阵 1：课程目标 × 毕业要求/观测点 ========== */
 
 interface SupportColMeta {
@@ -532,8 +497,8 @@ const supportMatrixCells = computed<MatrixCell[]>(() => {
         ? `R::${support.requirementId}`
         : null
     if (!colKey) continue
-    const tone: MatrixCell['tone']
-      = support.supportLevel === 'HIGH'
+    const tone: MatrixCell['tone'] =
+      support.supportLevel === 'HIGH'
         ? 'red'
         : support.supportLevel === 'MEDIUM'
           ? 'orange'
@@ -608,7 +573,7 @@ const courseEditor = reactive<QualityCourseSaveRequest>({
   courseCategory: '',
   courseNature: '',
   schoolYear: '',
-  semester: '',
+  semester: SemesterCode.AUTUMN,
   teacherUserId: '',
   classId: '',
   creditHours: undefined,
@@ -637,7 +602,7 @@ function openCourseCreate() {
     courseCategory: '',
     courseNature: '',
     schoolYear: qualityStore.currentSchoolYear || '',
-    semester: qualityStore.currentSemester || '',
+    semester: qualityStore.currentSemester || SemesterCode.AUTUMN,
     teacherUserId: '',
     classId: '',
     creditHours: undefined,
@@ -703,19 +668,18 @@ async function submitCourse() {
   if (courseEditorMode.value === 'edit' && !guardCourseMatrixEditable('编辑课程')) return
   if (courseEditorMode.value === 'create' && !guardCourseMatrixEditable('新建课程')) return
   if (
-    !courseEditor.programId.trim()
-    || !courseEditor.trainingPlanId.trim()
-    || !courseEditor.courseId.trim()
-    || !courseEditor.courseCode.trim()
-    || !courseEditor.courseName.trim()
-    || !courseEditor.schoolYear.trim()
-    || !courseEditor.semester.trim()
+    !courseEditor.programId.trim() ||
+    !courseEditor.trainingPlanId.trim() ||
+    !courseEditor.courseId.trim() ||
+    !courseEditor.courseCode.trim() ||
+    !courseEditor.courseName.trim() ||
+    !courseEditor.schoolYear.trim() ||
+    !courseEditor.semester
   ) {
     message.error('请填写专业、培养方案、目录课程、编码、名称、学年、学期')
     return
   }
   courseEditor.schoolYear = courseEditor.schoolYear.trim()
-  courseEditor.semester = courseEditor.semester.trim()
   courseSubmitting.value = true
   try {
     if (courseEditorMode.value === 'create') {
@@ -911,9 +875,9 @@ async function submitSupport() {
     return
   }
   if (
-    supportEditor.supportWeight == null
-    || supportEditor.supportWeight <= 0
-    || supportEditor.supportWeight > 1
+    supportEditor.supportWeight == null ||
+    supportEditor.supportWeight <= 0 ||
+    supportEditor.supportWeight > 1
   ) {
     message.error('权重必须在 (0, 1] 之间')
     return
@@ -961,11 +925,11 @@ function handleSupportCellClick(cellEvent: {
   const goalSupports = supportsOfGoal(cellEvent.row.key)
   const matched = goalSupports.find(
     (s) =>
-      (colMeta.indicatorId && s.indicatorId === colMeta.indicatorId)
-      || (colMeta.reqId
-        && !colMeta.indicatorId
-        && s.requirementId === colMeta.reqId
-        && !s.indicatorId),
+      (colMeta.indicatorId && s.indicatorId === colMeta.indicatorId) ||
+      (colMeta.reqId &&
+        !colMeta.indicatorId &&
+        s.requirementId === colMeta.reqId &&
+        !s.indicatorId),
   )
   if (matched) openSupportEdit(matched)
   else openSupportCreate(cellEvent.row.key, cellEvent.col.key)
@@ -1231,9 +1195,9 @@ function openRubricEdit(record: RubricItemVO) {
 async function submitRubric() {
   if (!guardCourseMatrixEditable('保存 Rubric')) return
   if (
-    !rubricEditor.rubricName.trim()
-    || rubricEditor.fullScore == null
-    || rubricEditor.fullScore <= 0
+    !rubricEditor.rubricName.trim() ||
+    rubricEditor.fullScore == null ||
+    rubricEditor.fullScore <= 0
   ) {
     message.error('请填写名称与满分')
     return
@@ -1357,18 +1321,19 @@ onMounted(async () => {
 
 /* ========== 字典 ========== */
 
-const supportLevelOptions: { value: SupportLevel, label: string }[] = [
+const supportLevelOptions: { value: SupportLevel; label: string }[] = [
   { value: 'HIGH', label: SUPPORT_LEVEL_LABEL.HIGH },
   { value: 'MEDIUM', label: SUPPORT_LEVEL_LABEL.MEDIUM },
   { value: 'LOW', label: SUPPORT_LEVEL_LABEL.LOW },
 ]
 
-const aggregationOptions: { value: AggregationFunction, label: string }[] = AGGREGATION_FUNCTION_CODES.map((value) => ({
-  value,
-  label: AGGREGATION_FUNCTION_LABEL[value],
-}))
+const aggregationOptions: { value: AggregationFunction; label: string }[] =
+  AGGREGATION_FUNCTION_CODES.map((value) => ({
+    value,
+    label: AGGREGATION_FUNCTION_LABEL[value],
+  }))
 
-const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
+const itemTypeOptions: { value: AssessmentItemType; label: string }[] = [
   { value: 'FINAL_EXAM', label: ASSESSMENT_ITEM_TYPE_LABEL.FINAL_EXAM },
   { value: 'HOMEWORK', label: ASSESSMENT_ITEM_TYPE_LABEL.HOMEWORK },
   { value: 'EXPERIMENT', label: ASSESSMENT_ITEM_TYPE_LABEL.EXPERIMENT },
@@ -1401,7 +1366,9 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
           />
           <UiTag v-if="currentCourse?.schoolYear" tone="blue">
             {{ currentCourse.schoolYear
-            }}<span v-if="currentCourse.semester"> · {{ formatSemester(currentCourse.semester) }}</span>
+            }}<span v-if="currentCourse.semester">
+              · {{ formatSemester(currentCourse.semester) }}</span
+            >
           </UiTag>
           <UiTag v-if="currentCourse?.creditValue != null" tone="gray">
             {{ currentCourse.creditValue }} 学分
@@ -1585,12 +1552,13 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
                   <UiTag v-if="record.complexEngineeringFlag" tone="orange"> 复杂工程 </UiTag>
                   <span
                     v-if="
-                      !record.civicObjectiveFlag
-                        && !record.aiLiteracyFlag
-                        && !record.complexEngineeringFlag
+                      !record.civicObjectiveFlag &&
+                      !record.aiLiteracyFlag &&
+                      !record.complexEngineeringFlag
                     "
                     class="qcm__muted"
-                  >-</span>
+                    >-</span
+                  >
                 </a-space>
               </template>
               <template v-else-if="column.key === 'actions'">

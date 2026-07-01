@@ -1,3 +1,4 @@
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
 /** edu-mark 考试质量同步状态 */
@@ -22,7 +23,7 @@ export interface MarkExamSyncStatusRequest {
   examId: string
   courseId: string
   academicYear: string
-  semester: string
+  semester: SemesterCode
 }
 
 export interface MarkExamSyncStatusVO {

@@ -39,12 +39,7 @@
       />
     </template>
 
-    <UiSectionTabs
-      v-model="listTab"
-      :items="examListTabs"
-      compact
-      class="exam-list-page__tabs"
-    >
+    <UiSectionTabs v-model="listTab" :items="examListTabs" compact class="exam-list-page__tabs">
       <section class="exam-list-page__tab-panel">
         <UiEmpty
           v-if="listTab === 'priority' && !priorityLoading && priorityPagination.total === 0"
@@ -74,15 +69,13 @@
             <template v-if="column.key === 'examName'">
               <div class="exam-list-page__exam-name-row">
                 <span class="exam-list-page__exam-name">{{ record.examName }}</span>
-                <UiTag
-                  v-if="record.examKind"
-                  :tone="examKindTone(record)"
-                  size="sm"
-                >
+                <UiTag v-if="record.examKind" :tone="examKindTone(record)" size="sm">
                   {{ examKindLabel(record) }}
                 </UiTag>
               </div>
-              <div v-if="record.examNo" class="exam-list-page__exam-no">编号：{{ record.examNo }}</div>
+              <div v-if="record.examNo" class="exam-list-page__exam-no">
+                编号：{{ record.examNo }}
+              </div>
             </template>
             <template v-else-if="column.key === 'academicTerm'">
               <span v-if="formatAcademicTerm(record)">
@@ -107,31 +100,19 @@
               <span v-else class="muted">—</span>
             </template>
             <template v-else-if="column.key === 'pendingConfirm'">
-              <UiTag
-                v-if="getPendingConfirmCount(record) > 0"
-                tone="orange"
-                size="sm"
-              >
+              <UiTag v-if="getPendingConfirmCount(record) > 0" tone="orange" size="sm">
                 {{ getPendingConfirmCount(record) }} 题
               </UiTag>
               <span v-else class="muted">0</span>
             </template>
             <template v-else-if="column.key === 'scanAttention'">
-              <UiTag
-                v-if="getScanAttentionCount(record) > 0"
-                tone="red"
-                size="sm"
-              >
+              <UiTag v-if="getScanAttentionCount(record) > 0" tone="red" size="sm">
                 {{ getScanAttentionCount(record) }} 条
               </UiTag>
               <span v-else class="muted">0</span>
             </template>
             <template v-else-if="column.key === 'openMarking'">
-              <UiTag
-                v-if="getOpenMarkingCount(record) > 0"
-                tone="blue"
-                size="sm"
-              >
+              <UiTag v-if="getOpenMarkingCount(record) > 0" tone="blue" size="sm">
                 {{ getOpenMarkingCount(record) }} 份
               </UiTag>
               <span v-else class="muted">0</span>
@@ -154,16 +135,18 @@
                 </button>
                 <template v-if="record.status !== 'CLOSED'">
                   <span class="operations-cell__sep" aria-hidden="true" />
-                  <button type="button" class="op-link" @click="openEditModal(record)">
-                    编辑
-                  </button>
+                  <button type="button" class="op-link" @click="openEditModal(record)">编辑</button>
                   <template v-if="isExamOwner(record)">
                     <span class="operations-cell__sep" aria-hidden="true" />
                     <button type="button" class="op-link" @click="confirmClose(record)">
                       关闭
                     </button>
                     <span class="operations-cell__sep" aria-hidden="true" />
-                    <button type="button" class="op-link op-link--danger" @click="confirmDelete(record)">
+                    <button
+                      type="button"
+                      class="op-link op-link--danger"
+                      @click="confirmDelete(record)"
+                    >
                       删除
                     </button>
                   </template>
@@ -288,13 +271,6 @@ import type {
   ExamWorkbenchSummaryVO,
   GradingStrategyCode,
 } from '@/apis/mark/exam'
-import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import {
   closeExam,
   countExamWorkbenchScopes,
@@ -309,6 +285,13 @@ import {
   pageExamWorkbench,
   updateExam,
 } from '@/apis/mark/exam'
+import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -326,14 +309,19 @@ import {
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import { generateAcademicYearOptions, getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
+import { formatSemester, SemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
+import {
+  generateAcademicYearOptions,
+  getDefaultAcademicYearAndSemester,
+} from '@/utils/academic-year'
 import { showUserError } from '@/utils/error-handler'
 import { readExamListDeepLinkQuery } from '@/utils/exam-list-navigation'
-import {
-  formatDateTime,
-} from '@/utils/format'
+import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
+import {
+  countBlockingScanAttention,
+  resolveSmartExamEntryRouteName,
+} from '@/utils/exam-workspace-entry-gates'
 import { resolveScanStageEntryRoute } from '@/utils/resolve-scan-stage-entry'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ExamListExamWindowCell from '@/views/teacher/components/ExamListExamWindowCell.vue'
@@ -366,7 +354,7 @@ const isAdminView = computed(() => {
 interface ExamListFilterForm {
   status?: ExamStatusCode
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   keyword?: string
   dateRange?: [string, string]
 }
@@ -397,12 +385,14 @@ const filterForm = reactive<ExamListFilterForm>(createDefaultFilterForm())
 
 const filterModel = computed<Record<string, unknown>>({
   get: () => filterForm as Record<string, unknown>,
-  set: (value) => { Object.assign(filterForm, value) },
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
 })
 
 const statusOptions = EXAM_STATUS_FILTER_OPTIONS
 const academicYearOptions = computed(() =>
-  generateAcademicYearOptions().map(year => ({ label: year, value: year })),
+  generateAcademicYearOptions().map((year) => ({ label: year, value: year })),
 )
 const filterFields = computed<FilterField[]>(() => [
   {
@@ -449,11 +439,14 @@ const filterFields = computed<FilterField[]>(() => [
   { key: 'dateRange', type: 'custom', width: 260, minWidth: 260, maxWidth: 320 },
 ])
 
-watch(() => filterForm.academicYear, (academicYear) => {
-  if (!academicYear?.trim()) {
-    filterForm.semester = undefined
-  }
-})
+watch(
+  () => filterForm.academicYear,
+  (academicYear) => {
+    if (!academicYear?.trim()) {
+      filterForm.semester = undefined
+    }
+  },
+)
 
 type ExamScoreCompositionMode = 'EXAM_ONLY' | 'EXAM_WITH_DAILY'
 
@@ -472,7 +465,14 @@ const allBadgeTotal = ref(0)
 const stalePushTotal = ref(0)
 
 const allTabColumns: ColumnType<ExamWorkbenchSummaryVO>[] = [
-  { title: '考试名称', dataIndex: 'examName', key: 'examName', ellipsis: true, width: 360, fixed: 'left' },
+  {
+    title: '考试名称',
+    dataIndex: 'examName',
+    key: 'examName',
+    ellipsis: true,
+    width: 360,
+    fixed: 'left',
+  },
   { title: '学年学期', key: 'academicTerm', width: 180, fixed: 'left' },
   { title: '状态', key: 'status', width: 100 },
   { title: '阅卷进度', key: 'progress', width: 120 },
@@ -482,7 +482,14 @@ const allTabColumns: ColumnType<ExamWorkbenchSummaryVO>[] = [
 ]
 
 const workbenchTabColumns: ColumnType<ExamWorkbenchSummaryVO>[] = [
-  { title: '考试名称', dataIndex: 'examName', key: 'examName', ellipsis: true, width: 300, fixed: 'left' },
+  {
+    title: '考试名称',
+    dataIndex: 'examName',
+    key: 'examName',
+    ellipsis: true,
+    width: 300,
+    fixed: 'left',
+  },
   { title: '学年学期', key: 'academicTerm', width: 160, fixed: 'left' },
   { title: '状态', key: 'status', width: 88 },
   { title: '阅卷进度', key: 'progress', width: 108 },
@@ -495,7 +502,14 @@ const workbenchTabColumns: ColumnType<ExamWorkbenchSummaryVO>[] = [
 ]
 
 const ongoingTabColumns: ColumnType<ExamWorkbenchSummaryVO>[] = [
-  { title: '考试名称', dataIndex: 'examName', key: 'examName', ellipsis: true, width: 300, fixed: 'left' },
+  {
+    title: '考试名称',
+    dataIndex: 'examName',
+    key: 'examName',
+    ellipsis: true,
+    width: 300,
+    fixed: 'left',
+  },
   { title: '学年学期', key: 'academicTerm', width: 160, fixed: 'left' },
   { title: '状态', key: 'status', width: 88 },
   { title: '参与角色', key: 'role', width: 88 },
@@ -818,11 +832,9 @@ async function loadTabData(scope: ExamListScopeCode): Promise<void> {
   const loadingRef = getLoadingRefByScope(scope)
   loadingRef.value = true
   try {
-    const result = await pageExamWorkbench(buildWorkbenchQuery(
-      scope,
-      paginationState.current ?? 1,
-      paginationState.pageSize ?? 10,
-    ))
+    const result = await pageExamWorkbench(
+      buildWorkbenchQuery(scope, paginationState.current ?? 1, paginationState.pageSize ?? 10),
+    )
     dataSourceRef.value = readPageList(result, '考试列表加载失败，请稍后重试')
     paginationState.total = readPageTotal(result)
     if (result.pageNum != null) {
@@ -870,7 +882,7 @@ function handleReset(): void {
   void reloadListAndCounts()
 }
 
-function handleUiPageChange(page: { current: number, pageSize: number }): void {
+function handleUiPageChange(page: { current: number; pageSize: number }): void {
   const scope = tabToScope(listTab.value)
   const paginationState = getPaginationByScope(scope)
   paginationState.current = page.current
@@ -920,35 +932,18 @@ function formatAcademicTerm(exam: ExamWorkbenchSummaryVO): string {
  */
 function goSmartExamEntry(exam: ExamWorkbenchSummaryVO): void {
   const examId = exam.examId
-  if (exam.status === 'CLOSED') {
-    void router.push({ name: 'TeacherExamWorkspaceOverview', params: { examId } })
+  const blockingScanAttention = countBlockingScanAttention(
+    exam.scanAttentionCount,
+    exam.needReviewGradeResultCount,
+  )
+  if (blockingScanAttention > 0) {
+    void router.push(
+      resolveScanStageEntryRoute(examId, { scanAttentionCount: blockingScanAttention }),
+    )
     return
   }
-  if (exam.scanAttentionCount > 0) {
-    void router.push(resolveScanStageEntryRoute(examId, { scanAttentionCount: exam.scanAttentionCount }))
-    return
-  }
-  if (exam.totalQuestionGradeCount <= 0) {
-    if (exam.questionCount <= 0) {
-      void router.push({ name: 'TeacherExamWorkspacePrep', params: { examId } })
-    } else {
-      void router.push(resolveScanStageEntryRoute(examId, { scanAttentionCount: 0 }))
-    }
-    return
-  }
-  if (exam.pendingReviewTaskCount > 0 || exam.inProgressReviewTaskCount > 0) {
-    void router.push({ name: 'TeacherExamWorkspaceReviewBatchConfirm', params: { examId } })
-    return
-  }
-  if (exam.openProcessingTaskCount > 0) {
-    void router.push({ name: 'TeacherExamWorkspaceMarkingTaskPool', params: { examId } })
-    return
-  }
-  if (Math.max(0, exam.totalQuestionGradeCount - exam.confirmedQuestionGradeCount) > 0) {
-    void router.push({ name: 'TeacherExamWorkspaceMarkingTaskPool', params: { examId } })
-    return
-  }
-  void router.push({ name: 'TeacherExamWorkspaceScoreSummary', params: { examId } })
+  const routeName = resolveSmartExamEntryRouteName(exam)
+  void router.push({ name: routeName, params: { examId } })
 }
 
 // ─── KPI 概览：workbench-scope-counts 返回 CLOSED；Signal「进行中」与 Tab 共用 ongoingCount ─
@@ -965,7 +960,7 @@ const examForm = reactive<{
   examName: string
   examNo: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   examWindow?: [string, string]
   gradingStrategy: GradingStrategyCode
   scoreCompositionMode: ExamScoreCompositionMode
@@ -1091,8 +1086,8 @@ async function openEditModal(exam: ExamWorkbenchSummaryVO): Promise<void> {
   examForm.examNo = exam.examNo
   examForm.academicYear = exam.academicYear ?? ''
   examForm.semester = exam.semester
-  examForm.examWindow
-    = exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
+  examForm.examWindow =
+    exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
   examForm.scoreCompositionMode = exam.dailyScoreFull != null ? 'EXAM_WITH_DAILY' : 'EXAM_ONLY'
   examForm.dailyScoreFull = exam.dailyScoreFull ?? undefined
   examForm.examKind = exam.examKind ?? 'REGULAR'
@@ -1136,9 +1131,8 @@ function buildExamUpdateRequest(): ExamUpdateRequest | null {
     examStartTime: startTime,
     examEndTime: endTime,
     gradingStrategy: 'SINGLE',
-    dailyScoreFull: examForm.scoreCompositionMode === 'EXAM_WITH_DAILY'
-      ? examForm.dailyScoreFull
-      : null,
+    dailyScoreFull:
+      examForm.scoreCompositionMode === 'EXAM_WITH_DAILY' ? examForm.dailyScoreFull : null,
     confidential: examForm.confidential,
     remark: examForm.remark?.trim() || undefined,
   }
@@ -1209,14 +1203,12 @@ function confirmClose(exam: ExamWorkbenchSummaryVO): void {
             await closeExam({ examId: exam.examId })
             message.success('考试已关闭')
             await reloadAll()
-          }
-          catch (error) {
+          } catch (error) {
             showUserError(error, '关闭考试失败')
           }
         },
       })
-    }
-    catch (error) {
+    } catch (error) {
       showUserError(error, '加载关考前置条件失败')
     }
   })()

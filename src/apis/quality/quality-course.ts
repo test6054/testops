@@ -4,6 +4,7 @@
  * 后端路径: /api/quality/courses
  */
 import type { PageResult, QueryDto } from '@/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/courses'
@@ -19,7 +20,7 @@ export interface QualityCourseVO {
   courseCategory?: string
   courseNature?: string
   schoolYear?: string
-  semester?: string
+  semester?: SemesterCode
   teacherUserId?: string
   classId?: string
   creditHours?: number
@@ -35,7 +36,7 @@ export interface QualityCourseQueryRequest extends QueryDto {
   trainingPlanId?: string
   programId?: string
   schoolYear?: string
-  semester?: string
+  semester?: SemesterCode
   teacherUserId?: string
   classId?: string
   enabled?: boolean
@@ -53,7 +54,7 @@ export interface QualityCourseSaveRequest {
   courseCategory?: string
   courseNature?: string
   schoolYear: string
-  semester: string
+  semester: SemesterCode
   teacherUserId?: string
   classId?: string
   creditHours?: number

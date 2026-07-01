@@ -3,12 +3,13 @@
  * 后端 Controller: AssessmentRationalityAuditController
  */
 import type { AssessmentRationalityAuditStatus } from './types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
 export interface RationalityAuditCourseLedgerRequest {
   trainingPlanId: string
   schoolYear: string
-  semester: string
+  semester: SemesterCode
 }
 
 export interface RationalityAuditSaveRequest {
@@ -16,7 +17,7 @@ export interface RationalityAuditSaveRequest {
   qualityCourseId: string
   assessmentItemId?: string
   schoolYear?: string
-  semester?: string
+  semester?: SemesterCode
   auditStatus?: AssessmentRationalityAuditStatus
   auditOpinion?: string
   contentAligned?: boolean
@@ -32,7 +33,7 @@ export interface RationalityAuditCourseLedgerItemVO {
   courseCode?: string
   courseName: string
   schoolYear?: string
-  semester?: string
+  semester?: SemesterCode
   hasAuditRecord: boolean
   auditStatus: AssessmentRationalityAuditStatus
   auditorUserId?: string

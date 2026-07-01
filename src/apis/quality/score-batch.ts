@@ -11,6 +11,7 @@ import type { DataSourceMode, ScoreBatchStatus } from './types'
  * 列表页 preview/validate/confirm/enqueueParse 仍走本模块 REST。
  */
 import type { PageResult, QueryDto } from '@/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/score-batches'
@@ -35,7 +36,7 @@ export interface ScoreBatchVO {
   sourceFileId?: string
   externalPullTaskId?: string
   schoolYear?: string
-  semester?: string
+  semester?: SemesterCode
   status: ScoreBatchStatus
   totalRows?: number
   successRows?: number
@@ -92,7 +93,7 @@ export interface ScoreBatchSaveRequest {
   sourceFileId?: string
   externalPullTaskId?: string
   schoolYear?: string
-  semester?: string
+  semester?: SemesterCode
 }
 
 /** 取消请求 - 前端仅用于 PENDING / FAILED → CANCELLED */

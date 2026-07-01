@@ -3,6 +3,7 @@ import type { ConfirmationStatus, ProcessNodeType } from './types'
  * 过程性评价节点 API。
  * 后端对象：ProcessEvaluationNodeController /api/quality/process-nodes。
  */
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
 const NODE = '/api/quality/process-nodes'
@@ -17,7 +18,7 @@ export interface ProcessEvaluationNodeVO {
   nodeName: string
   nodeType: ProcessNodeType
   evidenceType?: string
-  semester?: string
+  semester?: SemesterCode
   weight?: number
   fullScore?: number
   coverageRequired?: number
@@ -37,7 +38,7 @@ export interface ProcessEvaluationNodeSaveRequest {
   nodeName: string
   nodeType: ProcessNodeType
   evidenceType?: string
-  semester?: string
+  semester?: SemesterCode
   weight?: number
   fullScore?: number
   coverageRequired?: number
@@ -47,14 +48,10 @@ export interface ProcessEvaluationNodeSaveRequest {
 export const processNodeApi = {
   listByCourse: (qualityCourseId: string) =>
     http.post<ProcessEvaluationNodeVO[]>(`${NODE}/list-by-course`, { id: qualityCourseId }),
-  detail: (id: string) =>
-    http.post<ProcessEvaluationNodeVO>(`${NODE}/detail`, { id }),
-  create: (data: ProcessEvaluationNodeSaveRequest) =>
-    http.post<string>(`${NODE}/create`, data),
-  update: (data: ProcessEvaluationNodeSaveRequest) =>
-    http.post<void>(`${NODE}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${NODE}/delete`, { id }),
+  detail: (id: string) => http.post<ProcessEvaluationNodeVO>(`${NODE}/detail`, { id }),
+  create: (data: ProcessEvaluationNodeSaveRequest) => http.post<string>(`${NODE}/create`, data),
+  update: (data: ProcessEvaluationNodeSaveRequest) => http.post<void>(`${NODE}/update`, data),
+  delete: (id: string) => http.post<void>(`${NODE}/delete`, { id }),
   /** 更新节点确认状态 DRAFT/SUBMITTED/CONFIRMED/RETURNED */
   updateConfirmationStatus: (id: string, confirmationStatus: ConfirmationStatus) =>
     http.post<void>(`${NODE}/update-confirmation-status`, { id, confirmationStatus }),

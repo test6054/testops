@@ -1,17 +1,13 @@
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { ConfirmationStatus } from './types'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/workbench'
 
 export type ObeJourneyStepStatus = 'pending' | 'active' | 'completed'
 
-export type ObeJourneyStepKey
-  = | 'config'
-    | 'plan'
-    | 'data'
-    | 'calc'
-    | 'audit'
-    | 'improve'
-    | 'archive'
+export type ObeJourneyStepKey =
+  'config' | 'plan' | 'data' | 'calc' | 'audit' | 'improve' | 'archive'
 
 export interface ObeJourneyStepVO {
   stepKey: ObeJourneyStepKey
@@ -24,7 +20,7 @@ export interface ObeJourneyStepVO {
 export interface ObeJourneySummaryVO {
   programId?: string
   trainingPlanId?: string
-  confirmationStatus?: string
+  confirmationStatus?: ConfirmationStatus
   achievementTotal?: number
   achievementCalculated?: number
   achievementSubmitted?: number
@@ -39,7 +35,7 @@ export interface ObeJourneySummaryVO {
 export interface ObeJourneySummaryRequest {
   trainingPlanId: string
   schoolYear?: string
-  semester?: string
+  semester?: SemesterCode
 }
 
 export const workbenchApi = {

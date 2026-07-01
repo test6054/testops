@@ -60,10 +60,10 @@ export function generateAllQuestionAnalysis(
   examId: string,
   classId?: string,
 ): Promise<ExamQuestionAnalysisRecordVO[]> {
-  return http.post<ExamQuestionAnalysisRecordVO[]>(
-    '/api/exam/question-analysis/generate-all',
-    { examId, classId },
-  )
+  return http.post<ExamQuestionAnalysisRecordVO[]>('/api/exam/question-analysis/generate-all', {
+    examId,
+    classId,
+  })
 }
 
 /** 统计页自动翻页拉全量时的单页大小，与后端 PageHelper 默认上限对齐 */
@@ -98,11 +98,12 @@ export function fetchAllQuestionAnalysisRows(
   request: Omit<QuestionAnalysisListQueryRequest, 'pageNum' | 'pageSize'>,
 ): Promise<ExamQuestionAnalysisRecordVO[]> {
   return readAllPages(
-    (pageNum) => pageQuestionAnalysis({
-      ...request,
-      pageNum,
-      pageSize: QUESTION_ANALYSIS_LIST_PAGE_SIZE,
-    }),
+    (pageNum) =>
+      pageQuestionAnalysis({
+        ...request,
+        pageNum,
+        pageSize: QUESTION_ANALYSIS_LIST_PAGE_SIZE,
+      }),
     '题目质量分析加载失败',
   )
 }
@@ -197,13 +198,8 @@ export function getEffectiveAnswerConfig(params: {
 // ─── 重判计划 ─────────────────────────────────
 
 /** 重判计划状态 */
-export type RejudgePlanStatusCode
-  = | 'DRAFT'
-    | 'PENDING_APPROVAL'
-    | 'APPROVED'
-    | 'EXECUTING'
-    | 'COMPLETED'
-    | 'REJECTED'
+export type RejudgePlanStatusCode =
+  'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'EXECUTING' | 'COMPLETED' | 'REJECTED'
 
 /** 重判触发类型 */
 export type RejudgeTriggerTypeCode = 'ANSWER_CHANGE' | 'POLICY_CHANGE' | 'SYSTEM_ERROR'
@@ -328,10 +324,11 @@ export function executeRejudgePlan(request: RejudgePlanExecuteRequest): Promise<
 export interface ExamPaperAnalysisVO {
   examId: string
   classId?: string
-  difficultyIndex?: number
-  discriminationIndex?: number
+  paperDifficultyIndex?: number
+  paperDiscriminationIndex?: number
   cronbachAlpha?: number | null
-  participantCount?: number
+  reliabilitySampleCount?: number
+  snapshotTime?: string
 }
 
 /** 查询整卷难度、区分度与 Cronbach α */

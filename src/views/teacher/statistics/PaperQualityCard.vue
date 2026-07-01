@@ -8,32 +8,22 @@
       </UiButton>
     </template>
 
-    <p class="paper-quality-card__note">
-      「信度」指测量学 Cronbach α，非档案四性检测。
-    </p>
+    <p class="paper-quality-card__note">「信度」指测量学 Cronbach α，非档案四性检测。</p>
 
     <a-skeleton v-if="loading" active :paragraph="{ rows: 3 }" />
 
-    <UiEmpty
-      v-else-if="!analysis"
-      description="暂无整卷质量数据"
-    />
+    <UiEmpty v-else-if="!analysis" description="暂无整卷质量数据" />
 
-    <SignalBand
-      v-else
-      :metrics="qualityMetrics"
-      compact
-      class="paper-quality-card__metrics"
-    />
+    <SignalBand v-else :metrics="qualityMetrics" compact class="paper-quality-card__metrics" />
   </UiCard>
 </template>
 
 <script lang="ts" setup>
 import type { ExamPaperAnalysisVO } from '@/apis/mark/question-analysis'
+import { getExamPaperAnalysis } from '@/apis/mark/question-analysis'
 import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref, watch } from 'vue'
-import { getExamPaperAnalysis } from '@/apis/mark/question-analysis'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -59,29 +49,30 @@ function formatMetricValue(value: number | null | undefined, digits = 3): string
 const qualityMetrics = computed((): SignalMetric[] => {
   if (!analysis.value) return []
   const data = analysis.value
-  const alphaMetric: SignalMetric = data.cronbachAlpha == null
-    ? {
-        key: 'cronbachAlpha',
-        label: 'Cronbach α',
-        value: '样本不足（<30），无法计算信度',
-        tone: 'gray',
-      }
-    : {
-        key: 'cronbachAlpha',
-        label: 'Cronbach α',
-        value: formatMetricValue(data.cronbachAlpha, 3),
-        tone: 'blue',
-      }
+  const alphaMetric: SignalMetric =
+    data.cronbachAlpha == null
+      ? {
+          key: 'cronbachAlpha',
+          label: 'Cronbach α',
+          value: '样本不足（<30），无法计算信度',
+          tone: 'gray',
+        }
+      : {
+          key: 'cronbachAlpha',
+          label: 'Cronbach α',
+          value: formatMetricValue(data.cronbachAlpha, 3),
+          tone: 'blue',
+        }
   return [
     {
-      key: 'difficultyIndex',
+      key: 'paperDifficultyIndex',
       label: '整卷难度',
-      value: formatMetricValue(data.difficultyIndex),
+      value: formatMetricValue(data.paperDifficultyIndex),
     },
     {
-      key: 'discriminationIndex',
+      key: 'paperDiscriminationIndex',
       label: '整卷区分度',
-      value: formatMetricValue(data.discriminationIndex),
+      value: formatMetricValue(data.paperDiscriminationIndex),
     },
     alphaMetric,
   ]

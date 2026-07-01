@@ -21,6 +21,8 @@ export interface MarkingProgressVO {
   inProgressReviewTaskCount: number
   openProcessingTaskCount: number
   scanAttentionCount: number
+  /** 待教师复核的批改结果数（grade_status = NEED_REVIEW） */
+  needReviewGradeResultCount: number
   reviewTaskStatusSummaryList: ReviewTaskStatusSummaryVO[]
   reviewQuestionProgressList: ReviewQuestionProgressItemVO[]
 }
@@ -44,25 +46,20 @@ export interface ReviewQuestionProgressItemVO {
 }
 
 /** 考试工作台阶段键 - 对应 ExamWorkbenchStageKey */
-export type ExamWorkbenchStageKeyCode
-  = | 'EXAM_PREP'
-    | 'PAPER_TEMPLATE'
-    | 'CANDIDATE_ROSTER'
-    | 'SCAN'
-    | 'MARKING_ORG'
-    | 'TRIAL_MARKING'
-    | 'FORMAL_MARKING'
-    | 'SCORE_PUBLISH'
-    | 'ARCHIVE'
+export type ExamWorkbenchStageKeyCode =
+  | 'EXAM_PREP'
+  | 'PAPER_TEMPLATE'
+  | 'CANDIDATE_ROSTER'
+  | 'SCAN'
+  | 'MARKING_ORG'
+  | 'TRIAL_MARKING'
+  | 'FORMAL_MARKING'
+  | 'SCORE_PUBLISH'
+  | 'ARCHIVE'
 
 /** 工作台阶段状态 - 对应 ExamWorkbenchStageStatus */
-export type WorkbenchStageStatusCode
-  = | 'pending'
-    | 'active'
-    | 'completed'
-    | 'warning'
-    | 'error'
-    | 'blocked'
+export type WorkbenchStageStatusCode =
+  'pending' | 'active' | 'completed' | 'warning' | 'error' | 'blocked'
 
 /** 考试工作台阶段项 - 对应 ExamWorkbenchStageItemResponse */
 export interface ExamWorkbenchStageItemVO {
@@ -79,6 +76,18 @@ export interface ExamWorkbenchPrepStepVO {
   status: WorkbenchStageStatusCode
   statusText: string
   advisoryReason?: string
+}
+
+/** 工作台下一步动作键 - 对应 ExamWorkbenchNextActionKey */
+export type WorkbenchNextActionKeyCode = 'START_SCAN' | 'ENTER_REVIEW' | 'ENTER_MARKING'
+
+/** 工作台下一步动作 - 对应 ExamWorkbenchNextActionResponse */
+export interface WorkbenchNextActionVO {
+  actionKey: WorkbenchNextActionKeyCode
+  label: string
+  enabled: boolean
+  disabledReason?: string
+  targetStageKey: ExamWorkbenchStageKeyCode
 }
 
 /** 考试工作台阶段快照 - 对应 ExamWorkbenchStageSnapshotResponse */
@@ -99,6 +108,7 @@ export interface WorkbenchStageSnapshotVO {
   archiveClosed: boolean
   /** 涉密 / 统考涉密场次 */
   confidential?: boolean
+  nextActions: WorkbenchNextActionVO[]
 }
 
 /** 批量阅卷进度响应 */

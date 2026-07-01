@@ -138,16 +138,14 @@ export interface ArchivePlatformTemplateSetSaveRequest {
 }
 
 /** 模板材料编辑行：平台 / 租户 SaveRequest 合同字段 + 表格 rowKey */
-export type ArchiveTemplateMaterialEditRow = ArchivePlatformTemplateMaterialItemRequest
-  & ArchiveTenantTemplateMaterialItemRequest
-  & {
+export type ArchiveTemplateMaterialEditRow = ArchivePlatformTemplateMaterialItemRequest &
+  ArchiveTenantTemplateMaterialItemRequest & {
     rowKey: string
   }
 
 /** 模板自查项编辑行：平台 sortOrder / 租户 itemOrder 与 SaveRequest 一致 + 表格 rowKey */
-export type ArchiveTemplateSelfCheckEditRow = ArchivePlatformTemplateSelfCheckItemRequest
-  & ArchiveTenantTemplateSelfCheckItemRequest
-  & {
+export type ArchiveTemplateSelfCheckEditRow = ArchivePlatformTemplateSelfCheckItemRequest &
+  ArchiveTenantTemplateSelfCheckItemRequest & {
     rowKey: string
   }
 
@@ -170,18 +168,25 @@ export interface ArchiveTenantSetupReadinessVO {
   templatesReady?: boolean
   dutiesReady?: boolean
   overallReady?: boolean
+  historicalVolumeExists?: boolean
   missingItems?: string[]
   actionLinks?: ArchiveSetupActionLinkVO[]
 }
 
 export function listArchivePlatformTemplateSets(): Promise<ArchivePlatformTemplateSetVO[]> {
-  return http.post<ArchivePlatformTemplateSetVO[]>('/api/mark/archive-volumes/platform-template/list-sets', {})
+  return http.post<ArchivePlatformTemplateSetVO[]>(
+    '/api/mark/archive-volumes/platform-template/list-sets',
+    {},
+  )
 }
 
 export function previewArchivePlatformTemplateSet(
   request: ArchivePlatformTemplatePreviewRequest,
 ): Promise<ArchivePlatformTemplatePreviewVO> {
-  return http.post<ArchivePlatformTemplatePreviewVO>('/api/mark/archive-volumes/platform-template/preview', request)
+  return http.post<ArchivePlatformTemplatePreviewVO>(
+    '/api/mark/archive-volumes/platform-template/preview',
+    request,
+  )
 }
 
 export function copyArchivePlatformTemplateToTenant(
@@ -203,13 +208,19 @@ export function resyncArchiveTenantTemplateSet(
 }
 
 export function listArchiveTenantTemplateSets(): Promise<ArchiveTenantTemplateSetVO[]> {
-  return http.post<ArchiveTenantTemplateSetVO[]>('/api/mark/archive-volumes/tenant/template-set/list', {})
+  return http.post<ArchiveTenantTemplateSetVO[]>(
+    '/api/mark/archive-volumes/tenant/template-set/list',
+    {},
+  )
 }
 
 export function getArchiveTenantTemplateSetDetail(
   request: ArchiveTenantTemplateSetQueryRequest,
 ): Promise<ArchiveTenantTemplateSetVO> {
-  return http.post<ArchiveTenantTemplateSetVO>('/api/mark/archive-volumes/tenant/template-set/detail', request)
+  return http.post<ArchiveTenantTemplateSetVO>(
+    '/api/mark/archive-volumes/tenant/template-set/detail',
+    request,
+  )
 }
 
 export function saveArchiveTenantTemplateSet(
@@ -232,5 +243,8 @@ export function initializeArchivePlatformTemplateDefaults(): Promise<ArchivePlat
 }
 
 export function getArchiveTenantSetupReadiness(): Promise<ArchiveTenantSetupReadinessVO> {
-  return http.post<ArchiveTenantSetupReadinessVO>('/api/mark/archive-volumes/tenant/setup-readiness', {})
+  return http.post<ArchiveTenantSetupReadinessVO>(
+    '/api/mark/archive-volumes/tenant/setup-readiness',
+    {},
+  )
 }

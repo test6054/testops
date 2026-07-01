@@ -14,6 +14,7 @@
  */
 
 import type { LocationQueryValue } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type { ScanAttentionTypeCode, ScanBatchStatusCode } from '@/apis/mark/exam-scan'
 import type { MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
 import type {
@@ -26,26 +27,8 @@ import type {
   ScanJobResponse,
   ScannerBusinessScene,
   ScannerDeviceInfo,
-  ScannerListResponse,
+  ScannerListResponse
 } from '@/apis/mark/scanner-agent-local'
-import type {
-  ExamScannerBoundPaperItemVO,
-  ExamScannerKioskBatchHistoryItem,
-  ExamScannerKioskBatchHistoryRequest,
-  ExamScannerKioskContextVO,
-  ExamScannerKioskExamOptionRequest,
-  ExamScannerKioskExamOptionVO,
-  ExamScannerLedgerDataSource,
-  ExamScannerPageLedgerVO,
-  ExamScannerPageRegistrationStatus,
-  ExamScannerScanConfigOptionsVO,
-  ExamScannerScanConfigVO,
-  ScannerKioskScanMode,
-} from '@/apis/mark/scanner-kiosk'
-import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { SCANNER_COLOR_MODE_LABEL, SCANNER_DUPLEX_MODE_LABEL, SCANNER_ENDPOINT_ONLINE_STATUS_LABEL } from '@/apis/mark/exam-mark-scanner'
 import {
   AGENT_HEALTH_STATUS_LABEL,
   AGENT_UPDATE_STATUS_LABEL,
@@ -67,8 +50,22 @@ import {
   retryUpload,
   ScannerBusyError,
   setPreferredLocalScanner,
-  startScanJob,
+  startScanJob
 } from '@/apis/mark/scanner-agent-local'
+import type {
+  ExamScannerBoundPaperItemVO,
+  ExamScannerKioskBatchHistoryItem,
+  ExamScannerKioskBatchHistoryRequest,
+  ExamScannerKioskContextVO,
+  ExamScannerKioskExamOptionRequest,
+  ExamScannerKioskExamOptionVO,
+  ExamScannerLedgerDataSource,
+  ExamScannerPageLedgerVO,
+  ExamScannerPageRegistrationStatus,
+  ExamScannerScanConfigOptionsVO,
+  ExamScannerScanConfigVO,
+  ScannerKioskScanMode
+} from '@/apis/mark/scanner-kiosk'
 import {
   bindScannerKioskExam,
   discardScannedPage,
@@ -77,16 +74,20 @@ import {
   getScannerKioskContext,
   listScannerKioskBoundPapers,
   pageScannerKioskBatchHistory,
-  pageScannerKioskExamOptions,
+  pageScannerKioskExamOptions
 } from '@/apis/mark/scanner-kiosk'
+import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
+import { discardExamScanWorkOrder, startExamScanWorkOrder } from '@/apis/mark/scanner-work-order'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
-  discardExamScanWorkOrder,
-  startExamScanWorkOrder,
-} from '@/apis/mark/scanner-work-order'
+  SCANNER_COLOR_MODE_LABEL,
+  SCANNER_DUPLEX_MODE_LABEL,
+  SCANNER_ENDPOINT_ONLINE_STATUS_LABEL
+} from '@/apis/mark/exam-mark-scanner'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
-import { getSemesterDescription, SemesterOptions } from '@/types/enums'
+import { getSemesterDescription, SemesterCode, SemesterOptions } from '@/types/enums'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import {
@@ -96,21 +97,21 @@ import {
   KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE,
   KIOSK_BROWSER_SESSION_SYNC_MESSAGE,
   needsKioskBrowserSessionSync,
-  recoverKioskBrowserSessionFromAgent,
+  recoverKioskBrowserSessionFromAgent
 } from '@/utils/kiosk-auth'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import {
   kioskMaterialKindLabel,
   kioskScanModeAdvisory,
   resolveKioskClassScopeAdvisory,
-  resolveKioskScanMaterialAdvisory,
+  resolveKioskScanMaterialAdvisory
 } from '@/utils/scanner-kiosk-ui'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { fetchPagedHistoryLedgerSnapshot } from '@/views/scanner-kiosk/composables/ledgerMerge'
 import { useKioskDeviceActivation } from '@/views/scanner-kiosk/composables/useKioskDeviceActivation'
 import {
   isAgentWorkspaceBlocked,
-  resolveKioskActivationGuardMessage,
+  resolveKioskActivationGuardMessage
 } from '@/views/scanner-kiosk/utils/kioskActivationGuard'
 
 // ================================================================
@@ -265,7 +266,7 @@ export function useExamKioskWorkflow() {
   const examOptionFilter = reactive<{
     keyword: string
     academicYear: string
-    semester?: '1' | '2'
+    semester?: SemesterCode
     classId?: string
     pageNum: number
     pageSize: number

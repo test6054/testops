@@ -6,12 +6,17 @@ import type {
   AiResultIssueSeverity,
   AiResultVO,
 } from '@/apis/quality/ai-result'
+import {
+  aiResultApi,
+  aiResultImprovementPriorityLabel,
+  aiResultIssueSeverityLabel,
+} from '@/apis/quality/ai-result'
 /**
  * 质量评价 / AI 能力 - AI 任务与结果审计台
  *
  * 后端契约（AiTaskController + AiResultController）：
  * - 列表 AiTaskQueryRequest：按能力 / 状态 / 业务类型 / 业务 ID / 操作人 / 业务锚点筛选
- * - 提交 AiTaskSubmitRequest：按能力填必填项（ACHIEVEMENT_DIAGNOSIS -> achievementResultId；SYLLABUS_PARSE / TRAINING_PLAN_PARSE / MATERIAL_QA -> fileNodeId）
+ * - 提交 AiTaskSubmitRequest：仅 OBE 主链能力；教学档案袋 AI 在 /portfolio 域提交
  * - 状态机 PENDING -> PROCESSING -> SUCCEEDED / FAILED / CANCELLED，失败可 /run-now重跑
  * - 结果 updateValidation 可调 PASSED / WARN / REJECTED
  */
@@ -20,13 +25,24 @@ import type {
   AiTaskQueryRequest,
   AiTaskVO,
 } from '@/apis/quality/ai-task'
+import { aiTaskApi } from '@/apis/quality/ai-task'
 import type { AiTaskSubmitRequest } from '@/apis/quality/ai-task-trigger'
+import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
 import type {
   AiManualHandlingStatus,
   AiOutputValidation,
   AiTaskBusinessType,
   AiTaskStatus,
   AiTaskType,
+} from '@/apis/quality/types'
+import {
+  AI_MANUAL_HANDLING_STATUS_LABEL,
+  AI_OUTPUT_VALIDATION_COLOR,
+  AI_OUTPUT_VALIDATION_LABEL,
+  AI_TASK_BUSINESS_TYPE_LABEL,
+  AI_TASK_STATUS_COLOR,
+  AI_TASK_STATUS_LABEL,
+  AI_TASK_TYPE_LABEL,
 } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type {
@@ -41,22 +57,6 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import {
-  aiResultApi,
-  aiResultImprovementPriorityLabel, aiResultIssueSeverityLabel
-} from '@/apis/quality/ai-result'
-import { aiTaskApi } from '@/apis/quality/ai-task'
-
-import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
-import {
-  AI_MANUAL_HANDLING_STATUS_LABEL,
-  AI_OUTPUT_VALIDATION_COLOR,
-  AI_OUTPUT_VALIDATION_LABEL,
-  AI_TASK_BUSINESS_TYPE_LABEL,
-  AI_TASK_STATUS_COLOR,
-  AI_TASK_STATUS_LABEL,
-  AI_TASK_TYPE_LABEL,
-} from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
@@ -207,35 +207,46 @@ const auditDrawerOpen = ref(false)
 const auditEvents = ref<AuditTimelineEvent[]>([])
 const auditLoading = ref(false)
 
-const taskTypeOptions: Array<{ value: AiTaskType, label: string }> = [
-  { value: 'SYLLABUS_PARSE', label: AI_TASK_TYPE_LABEL.SYLLABUS_PARSE },
-  { value: 'TRAINING_PLAN_PARSE', label: AI_TASK_TYPE_LABEL.TRAINING_PLAN_PARSE },
-  { value: 'ACHIEVEMENT_DIAGNOSIS', label: AI_TASK_TYPE_LABEL.ACHIEVEMENT_DIAGNOSIS },
-  { value: 'COURSE_REPORT_GENERATE', label: AI_TASK_TYPE_LABEL.COURSE_REPORT_GENERATE },
-  { value: 'PROGRAM_REPORT_GENERATE', label: AI_TASK_TYPE_LABEL.PROGRAM_REPORT_GENERATE },
-  {
-    value: 'IMPROVEMENT_SUGGESTION_GENERATE',
-    label: AI_TASK_TYPE_LABEL.IMPROVEMENT_SUGGESTION_GENERATE,
-  },
-  { value: 'MATERIAL_QA', label: AI_TASK_TYPE_LABEL.MATERIAL_QA },
-  {
-    value: 'INDIRECT_RESPONSE_DOC_PARSE',
-    label: AI_TASK_TYPE_LABEL.INDIRECT_RESPONSE_DOC_PARSE,
-  },
-  { value: 'PORTFOLIO_MATERIAL_QA', label: AI_TASK_TYPE_LABEL.PORTFOLIO_MATERIAL_QA },
-  {
-    value: 'PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN',
-    label: AI_TASK_TYPE_LABEL.PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN,
-  },
-]
-const statusOptions: Array<{ value: AiTaskStatus, label: string }> = [
+const OBE_AI_TASK_TYPES = [
+  'SYLLABUS_PARSE',
+  'TRAINING_PLAN_PARSE',
+  'ACHIEVEMENT_DIAGNOSIS',
+  'COURSE_REPORT_GENERATE',
+  'PROGRAM_REPORT_GENERATE',
+  'IMPROVEMENT_SUGGESTION_GENERATE',
+  'MATERIAL_QA',
+  'INDIRECT_RESPONSE_DOC_PARSE',
+] as const satisfies readonly AiTaskType[]
+
+const PORTFOLIO_AI_TASK_TYPES = [
+  'PORTFOLIO_CERTIFICATE_OCR',
+  'PORTFOLIO_DOCUMENT_PARSE',
+  'PORTFOLIO_POLICY_MATCH',
+  'PORTFOLIO_MATERIAL_QA',
+  'PORTFOLIO_REPORT_GENERATE',
+  'PORTFOLIO_COCKPIT_ASK',
+  'PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN',
+] as const satisfies readonly AiTaskType[]
+
+function mapTaskTypeOptions(
+  types: readonly AiTaskType[],
+): Array<{ value: AiTaskType; label: string }> {
+  return types.map((value) => ({ value, label: AI_TASK_TYPE_LABEL[value] }))
+}
+
+/** OBE 主链可提交能力 */
+const submitTaskTypeOptions = mapTaskTypeOptions(OBE_AI_TASK_TYPES)
+
+/** 审计台筛选能力（含教学档案袋，只读审计不在此页提交） */
+const auditTaskTypeOptions = mapTaskTypeOptions([...OBE_AI_TASK_TYPES, ...PORTFOLIO_AI_TASK_TYPES])
+const statusOptions: Array<{ value: AiTaskStatus; label: string }> = [
   { value: 'PENDING', label: AI_TASK_STATUS_LABEL.PENDING },
   { value: 'PROCESSING', label: AI_TASK_STATUS_LABEL.PROCESSING },
   { value: 'SUCCEEDED', label: AI_TASK_STATUS_LABEL.SUCCEEDED },
   { value: 'FAILED', label: AI_TASK_STATUS_LABEL.FAILED },
   { value: 'CANCELLED', label: AI_TASK_STATUS_LABEL.CANCELLED },
 ]
-const businessTypeOptions: { value: AiTaskBusinessType, label: string }[] = [
+const businessTypeOptions: { value: AiTaskBusinessType; label: string }[] = [
   { value: 'ACHIEVEMENT_RESULT', label: AI_TASK_BUSINESS_TYPE_LABEL.ACHIEVEMENT_RESULT },
   { value: 'QUALITY_COURSE', label: AI_TASK_BUSINESS_TYPE_LABEL.QUALITY_COURSE },
   { value: 'TRAINING_PLAN', label: AI_TASK_BUSINESS_TYPE_LABEL.TRAINING_PLAN },
@@ -261,12 +272,12 @@ const taskBusinessTypeMap: Record<AiTaskType, AiTaskBusinessType> = {
   SYLLABUS_PARSE: 'QUALITY_COURSE',
   TRAINING_PLAN_PARSE: 'TRAINING_PLAN',
 }
-const validationOptions: { value: AiOutputValidation, label: string, color: string }[] = [
+const validationOptions: { value: AiOutputValidation; label: string; color: string }[] = [
   { value: 'PASSED', label: '通过（接受）', color: 'green' },
   { value: 'WARN', label: '警告（需人工审核）', color: 'orange' },
   { value: 'REJECTED', label: '退回（拒绝）', color: 'red' },
 ]
-const manualHandlingOptions: { value: AiManualHandlingStatus, label: string }[] = [
+const manualHandlingOptions: { value: AiManualHandlingStatus; label: string }[] = [
   { value: 'NONE', label: AI_MANUAL_HANDLING_STATUS_LABEL.NONE },
   { value: 'PENDING', label: AI_MANUAL_HANDLING_STATUS_LABEL.PENDING },
   { value: 'IN_PROGRESS', label: AI_MANUAL_HANDLING_STATUS_LABEL.IN_PROGRESS },
@@ -290,7 +301,7 @@ const filterFields = computed<FilterField[]>(() => {
       placeholder: '能力',
       allowClear: true,
       width: 180,
-      options: taskTypeOptions,
+      options: auditTaskTypeOptions,
     },
     {
       key: 'status',
@@ -369,47 +380,47 @@ function validateAiTaskSubmit(form: AiTaskSubmitRequest): boolean {
     case 'ACHIEVEMENT_DIAGNOSIS':
     case 'IMPROVEMENT_SUGGESTION_GENERATE':
       return (
-        form.businessType === 'ACHIEVEMENT_RESULT'
-        && !!form.achievementResultId?.trim()
-        && businessId === form.achievementResultId.trim()
+        form.businessType === 'ACHIEVEMENT_RESULT' &&
+        !!form.achievementResultId?.trim() &&
+        businessId === form.achievementResultId.trim()
       )
     case 'COURSE_REPORT_GENERATE':
       return (
-        form.businessType === 'REPORT'
-        && !!form.qualityCourseId?.trim()
-        && !!form.reportId?.trim()
-        && businessId === form.reportId.trim()
+        form.businessType === 'REPORT' &&
+        !!form.qualityCourseId?.trim() &&
+        !!form.reportId?.trim() &&
+        businessId === form.reportId.trim()
       )
     case 'PROGRAM_REPORT_GENERATE':
       return (
-        form.businessType === 'REPORT'
-        && !!form.programId?.trim()
-        && !!form.trainingPlanId?.trim()
-        && !!form.reportId?.trim()
-        && businessId === form.reportId.trim()
+        form.businessType === 'REPORT' &&
+        !!form.programId?.trim() &&
+        !!form.trainingPlanId?.trim() &&
+        !!form.reportId?.trim() &&
+        businessId === form.reportId.trim()
       )
     case 'SYLLABUS_PARSE':
       return (
-        form.businessType === 'QUALITY_COURSE'
-        && !!form.fileNodeId?.trim()
-        && !!form.qualityCourseId?.trim()
-        && businessId === form.qualityCourseId.trim()
+        form.businessType === 'QUALITY_COURSE' &&
+        !!form.fileNodeId?.trim() &&
+        !!form.qualityCourseId?.trim() &&
+        businessId === form.qualityCourseId.trim()
       )
     case 'TRAINING_PLAN_PARSE':
       return (
-        form.businessType === 'TRAINING_PLAN'
-        && !!form.fileNodeId?.trim()
-        && !!form.programId?.trim()
-        && !!form.trainingPlanId?.trim()
-        && businessId === form.trainingPlanId.trim()
+        form.businessType === 'TRAINING_PLAN' &&
+        !!form.fileNodeId?.trim() &&
+        !!form.programId?.trim() &&
+        !!form.trainingPlanId?.trim() &&
+        businessId === form.trainingPlanId.trim()
       )
     case 'MATERIAL_QA':
       return (
-        form.businessType === 'QUALITY_COURSE'
-        && !!form.qualityCourseId?.trim()
-        && businessId === form.qualityCourseId.trim()
-        && !!form.fileNodeId?.trim()
-        && !!form.question?.trim()
+        form.businessType === 'QUALITY_COURSE' &&
+        !!form.qualityCourseId?.trim() &&
+        businessId === form.qualityCourseId.trim() &&
+        !!form.fileNodeId?.trim() &&
+        !!form.question?.trim()
       )
     case 'INDIRECT_RESPONSE_DOC_PARSE':
       return form.businessType === 'INDIRECT_FORM' && !!form.fileNodeId?.trim()
@@ -504,18 +515,15 @@ function syncAiTaskStorePolling(): void {
   }
 }
 
-const listPolling = usePolling(
-  () => loadListQuietly(),
-  {
-    getOptions: () => ({
-      intervalMs: 3000,
-      when: list.value.some(
-        (record) => record.status === 'PENDING' || record.status === 'PROCESSING',
-      ),
-    }),
-    pauseWhenDocumentHidden: true,
-  },
-)
+const listPolling = usePolling(() => loadListQuietly(), {
+  getOptions: () => ({
+    intervalMs: 3000,
+    when: list.value.some(
+      (record) => record.status === 'PENDING' || record.status === 'PROCESSING',
+    ),
+  }),
+  pauseWhenDocumentHidden: true,
+})
 
 function syncListPolling(): void {
   syncAiTaskStorePolling()
@@ -567,7 +575,7 @@ async function handleScopeChange(): Promise<void> {
 
 useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false })
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -645,10 +653,10 @@ function handleQueryReportChange(value: string | null): void {
 
 function openSubmitPrefill(
   taskType?: AiTaskType,
-  scope?: { programId?: string, trainingPlanId?: string },
+  scope?: { programId?: string; trainingPlanId?: string },
 ) {
-  const resolvedType
-    = taskType && taskTypeOptions.some((o) => o.value === taskType)
+  const resolvedType =
+    taskType && submitTaskTypeOptions.some((o) => o.value === taskType)
       ? taskType
       : 'ACHIEVEMENT_DIAGNOSIS'
   Object.assign(submitForm, {
@@ -673,18 +681,24 @@ function openSubmit() {
 
 function applyAccreditationRoutePrefill() {
   const taskTypeRaw = route.query.taskType
-  if (typeof taskTypeRaw !== 'string' || !taskTypeOptions.some((o) => o.value === taskTypeRaw)) {
+  if (
+    typeof taskTypeRaw !== 'string' ||
+    !auditTaskTypeOptions.some((o) => o.value === taskTypeRaw)
+  ) {
     return
   }
   const programId = typeof route.query.programId === 'string' ? route.query.programId : undefined
-  const trainingPlanId
-    = typeof route.query.trainingPlanId === 'string' ? route.query.trainingPlanId : undefined
+  const trainingPlanId =
+    typeof route.query.trainingPlanId === 'string' ? route.query.trainingPlanId : undefined
   if (programId) qualityStore.setProgram(programId)
   if (trainingPlanId) qualityStore.setTrainingPlan(trainingPlanId)
   query.taskType = taskTypeRaw as AiTaskType
   query.trainingPlanId = trainingPlanId || qualityStore.currentTrainingPlanId || ''
   query.programId = programId || qualityStore.currentProgramId || ''
-  if (route.query.openSubmit === '1') {
+  if (
+    route.query.openSubmit === '1' &&
+    submitTaskTypeOptions.some((option) => option.value === taskTypeRaw)
+  ) {
     openSubmitPrefill(taskTypeRaw as AiTaskType, { programId, trainingPlanId })
   }
 }
@@ -698,8 +712,7 @@ async function applyRouteTaskDeepLink() {
   try {
     const task = await aiTaskApi.detail(taskId)
     await openDetail(task)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, 'AI 任务详情加载失败')
   }
 }
@@ -734,7 +747,7 @@ function handleSubmitTaskTypeChange(value: SelectValue) {
     showUserError(null, '任务类型选择无效，请重新选择')
     return
   }
-  if (!taskTypeOptions.some((option) => option.value === value)) {
+  if (!submitTaskTypeOptions.some((option) => option.value === value)) {
     showUserError(null, '任务类型选择无效，请重新选择')
     return
   }
@@ -935,10 +948,10 @@ watch(
     if (cached.id !== detailRecord.value.id) return
     // 仅在状态变化时赋值，避免不必要的引用改变
     if (
-      cached.status !== detailRecord.value.status
-      || cached.failurePhase !== detailRecord.value.failurePhase
-      || cached.failureReason !== detailRecord.value.failureReason
-      || cached.finishedTime !== detailRecord.value.finishedTime
+      cached.status !== detailRecord.value.status ||
+      cached.failurePhase !== detailRecord.value.failurePhase ||
+      cached.failureReason !== detailRecord.value.failureReason ||
+      cached.finishedTime !== detailRecord.value.finishedTime
     ) {
       detailRecord.value = { ...detailRecord.value, ...cached }
       // 达到终态后重拉一次结果 + 快照，避免抽屉中“状态已成功但 result 为空”的错误
@@ -951,7 +964,7 @@ watch(
             }
           })
           .catch((error) => {
-    showUserError(error, 'AI 任务详情加载失败')
+            showUserError(error, 'AI 任务详情加载失败')
           })
       }
     }
@@ -1033,7 +1046,7 @@ const taskResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleTaskResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
+function handleTaskResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
   const record = list.value.find((t) => t.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'detail') openDetail(record)
 }
@@ -1056,7 +1069,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: AiTaskStatus, title: string, completed?: boolean }> = [
+  const order: Array<{ key: AiTaskStatus; title: string; completed?: boolean }> = [
     { key: 'PENDING', title: '待处理' },
     { key: 'PROCESSING', title: '运行中' },
     { key: 'SUCCEEDED', title: '成功', completed: true },
@@ -1100,7 +1113,6 @@ const signals = computed<SignalMetric[]>(() => {
     { key: 'overall', label: '总任务', value: total.value, tone: 'gray' },
   ]
 })
-
 
 onMounted(async () => {
   applyAccreditationRoutePrefill()
@@ -1200,6 +1212,20 @@ onMounted(async () => {
               placeholder="业务对象"
               :width="180"
               @change="handleQueryBusinessObjectChange"
+            />
+            <TeacherSelector
+              v-else-if="query.businessType === 'PORTFOLIO_MATERIAL'"
+              :value="query.businessId || null"
+              placeholder="教师用户 ID"
+              :width="180"
+              @change="handleQueryBusinessObjectChange"
+            />
+            <a-input
+              v-else-if="query.businessType === 'PORTFOLIO_EVALUATION'"
+              :value="query.businessId || ''"
+              placeholder="评价运行/院系 ID"
+              allow-clear
+              @update:value="handleQueryBusinessObjectChange"
             />
           </template>
           <template #field-operatorUserId>
@@ -1352,7 +1378,7 @@ onMounted(async () => {
           <a-form-item label="能力" required>
             <a-select
               :value="submitForm.taskType"
-              :options="taskTypeOptions"
+              :options="submitTaskTypeOptions"
               @change="handleSubmitTaskTypeChange"
             />
           </a-form-item>
@@ -1570,7 +1596,8 @@ onMounted(async () => {
           <a-descriptions-item label="开始 / 结束">
             {{ detailRecord.startedTime || '未开始' }} ～
             {{
-              detailRecord.finishedTime || (detailRecord.status === 'PROCESSING' ? '执行中' : '未结束')
+              detailRecord.finishedTime ||
+              (detailRecord.status === 'PROCESSING' ? '执行中' : '未结束')
             }}
           </a-descriptions-item>
           <a-descriptions-item label="失败阶段">
@@ -1588,9 +1615,9 @@ onMounted(async () => {
               {{
                 detailRecord.failureReason
                   ? getUserProcessFailureMessage(
-                    detailRecord.failureReason,
-                    'AI 分析未完成，请稍后重试或联系管理员查看任务处理情况',
-                  )
+                      detailRecord.failureReason,
+                      'AI 分析未完成，请稍后重试或联系管理员查看任务处理情况',
+                    )
                   : '无未完成说明'
               }}
             </span>
@@ -1602,7 +1629,10 @@ onMounted(async () => {
           <a-descriptions-item label="脱敏映射">
             <a-space>
               <span>{{ detailRecord.maskMappingId ? '已生成脱敏映射' : '未生成脱敏映射' }}</span>
-              <UiTextAction v-if="detailRecord.maskMappingId" @click="gotoMaskAudit(detailRecord.id)">
+              <UiTextAction
+                v-if="detailRecord.maskMappingId"
+                @click="gotoMaskAudit(detailRecord.id)"
+              >
                 查看脱敏审计
               </UiTextAction>
             </a-space>
@@ -1625,7 +1655,10 @@ onMounted(async () => {
                   </UiTag>
                 </a-descriptions-item>
                 <a-descriptions-item label="敏感检测">
-                  <UiTag :tone="sensitiveCheckStatusColor(detailResult.sensitiveCheckStatus)" size="sm">
+                  <UiTag
+                    :tone="sensitiveCheckStatusColor(detailResult.sensitiveCheckStatus)"
+                    size="sm"
+                  >
                     {{ sensitiveCheckStatusLabel(detailResult.sensitiveCheckStatus) }}
                   </UiTag>
                 </a-descriptions-item>

@@ -6,18 +6,17 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AchievementResultVO } from '@/apis/quality/achievement-result'
-import type {
-  AchievementAuditStatus,
-  AchievementTargetType,
-} from '@/apis/quality/types'
-import { Tag } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import { achievementResultApi } from '@/apis/quality/achievement-result'
+import type { AchievementAuditStatus, AchievementTargetType } from '@/apis/quality/types'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
   ACHIEVEMENT_TARGET_TYPE_LABEL,
 } from '@/apis/quality/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester } from '@/types/enums/semester-enum'
+import { Tag } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { requireAllPages } from './page-contract'
@@ -31,7 +30,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: AchievementResultVO]
+  change: [value: string | null, option?: AchievementResultVO]
 }>()
 
 const AuditStatusTag = Tag
@@ -45,7 +44,7 @@ interface Props {
   classId?: string | null
   programId?: string | null
   schoolYear?: string | null
-  semester?: string | null
+  semester?: SemesterCode | null
   placeholder?: string
   allowClear?: boolean
   disabled?: boolean
@@ -83,18 +82,19 @@ async function loadOptions() {
   loading.value = true
   try {
     options.value = await requireAllPages(
-      (pageNum) => achievementResultApi.page({
-        pageNum,
-        pageSize: 100,
-        targetType: props.targetType,
-        auditStatus: props.auditStatus,
-        trainingPlanId: props.trainingPlanId || undefined,
-        qualityCourseId: props.qualityCourseId || undefined,
-        classId: props.classId || undefined,
-        programId: props.programId || undefined,
-        schoolYear: props.schoolYear || undefined,
-        semester: props.semester || undefined,
-      }),
+      (pageNum) =>
+        achievementResultApi.page({
+          pageNum,
+          pageSize: 100,
+          targetType: props.targetType,
+          auditStatus: props.auditStatus,
+          trainingPlanId: props.trainingPlanId || undefined,
+          qualityCourseId: props.qualityCourseId || undefined,
+          classId: props.classId || undefined,
+          programId: props.programId || undefined,
+          schoolYear: props.schoolYear || undefined,
+          semester: props.semester || undefined,
+        }),
       '达成度结果',
     )
   } catch (e) {
@@ -122,7 +122,7 @@ const filteredOptions = computed(() => {
       opt.qualityCourseName,
       opt.className,
       opt.schoolYear,
-      opt.semester,
+      opt.semester != null ? formatSemester(opt.semester) : null,
       targetTypeLabel,
     ].some((v) => v != null && String(v).toLowerCase().includes(lower))
   })
@@ -197,7 +197,8 @@ defineExpose({ reload: loadOptions })
         · {{ qualityCourseText(opt) }}
       </span>
       <span v-if="opt.schoolYear" class="dp-selector-option-meta">
-        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span>)
+        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ formatSemester(opt.semester) }}</span
+        >)
       </span>
       <AuditStatusTag
         v-if="opt.auditStatus"

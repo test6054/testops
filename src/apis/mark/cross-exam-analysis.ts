@@ -10,6 +10,7 @@ import type { AnalysisScopeTypeCode } from './analysis-scope-type'
  * - 后端 Long ID 统一用 string 表达到前端
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
 /** 考试维度统计快照 - 对应 ExamStatSnapshot */
@@ -177,10 +178,7 @@ export function generateCourseTrend(params: {
   courseId: string
   examIds: string[]
 }): Promise<CrossExamTrendAnalysisVO> {
-  return http.post<CrossExamTrendAnalysisVO>(
-    '/api/exam/cross-exam-analysis/trend/course',
-    params,
-  )
+  return http.post<CrossExamTrendAnalysisVO>('/api/exam/cross-exam-analysis/trend/course', params)
 }
 
 /**
@@ -192,10 +190,7 @@ export function generateClassTrend(params: {
   classId: string
   examIds: string[]
 }): Promise<CrossExamTrendAnalysisVO> {
-  return http.post<CrossExamTrendAnalysisVO>(
-    '/api/exam/cross-exam-analysis/trend/class',
-    params,
-  )
+  return http.post<CrossExamTrendAnalysisVO>('/api/exam/cross-exam-analysis/trend/class', params)
 }
 
 /**
@@ -206,10 +201,7 @@ export function listTrends(params: {
   scopeType: 'COURSE' | 'CLASS'
   courseId?: string
 }): Promise<CrossExamTrendAnalysisVO[]> {
-  return http.post<CrossExamTrendAnalysisVO[]>(
-    '/api/exam/cross-exam-analysis/trend/list',
-    params,
-  )
+  return http.post<CrossExamTrendAnalysisVO[]>('/api/exam/cross-exam-analysis/trend/list', params)
 }
 
 /**
@@ -218,16 +210,13 @@ export function listTrends(params: {
  */
 export function generateClassGrowth(params: {
   teachingAcademicYear: string
-  teachingSemester: string
+  teachingSemester: SemesterCode
   courseId: string
   classId: string
   examIds?: string[]
   autoSelectExams?: boolean
 }): Promise<SemesterAbilityGrowthVO> {
-  return http.post<SemesterAbilityGrowthVO>(
-    '/api/exam/cross-exam-analysis/growth/class',
-    params,
-  )
+  return http.post<SemesterAbilityGrowthVO>('/api/exam/cross-exam-analysis/growth/class', params)
 }
 
 /**
@@ -236,14 +225,11 @@ export function generateClassGrowth(params: {
  */
 export function listGrowth(params: {
   teachingAcademicYear: string
-  teachingSemester: string
+  teachingSemester: SemesterCode
   scopeType: AnalysisScopeTypeCode
   scopeId?: string
 }): Promise<SemesterAbilityGrowthVO[]> {
-  return http.post<SemesterAbilityGrowthVO[]>(
-    '/api/exam/cross-exam-analysis/growth/list',
-    params,
-  )
+  return http.post<SemesterAbilityGrowthVO[]>('/api/exam/cross-exam-analysis/growth/list', params)
 }
 
 /**
@@ -253,7 +239,7 @@ export function listGrowth(params: {
 export function generateAchievement(params: {
   courseId: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   examIds: string[]
 }): Promise<CourseObjectiveAchievementVO> {
   return http.post<CourseObjectiveAchievementVO>(

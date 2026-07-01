@@ -3,6 +3,7 @@
  * 持续改进与审核闭环工作台（4-in-1）
  */
 import { nextTick, onActivated, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import AuditIssueTab from '@/components/quality/improvement/AuditIssueTab.vue'
 import AuditRectificationTab from '@/components/quality/improvement/AuditRectificationTab.vue'
 import AuditSupervisionTab from '@/components/quality/improvement/AuditSupervisionTab.vue'
@@ -14,13 +15,12 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useImprovementWorkbenchSignals } from '@/composables/quality/useImprovementWorkbenchSignals'
 import { useImprovementWorkbenchSignalSources } from '@/composables/quality/useImprovementWorkbenchSignalSources'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
-import {
-  isQualityScopeStaleError,
-} from '@/composables/useScopeRequestGuard'
+import { isQualityScopeStaleError } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
 
 const qualityStore = useQualityStore()
+const route = useRoute()
 const activeTab = ref<'improvement' | 'issue' | 'rectification' | 'supervision'>('improvement')
 const loading = ref(false)
 const skipFirstActivatedLoad = ref(true)
@@ -28,6 +28,7 @@ let scopeChangeSerial = 0
 
 interface TabLoadExpose {
   loadList: () => Promise<void>
+  openByDeepLink?: (payload: { improvementTaskId: string; aiTaskId?: string }) => Promise<void>
 }
 
 const improvementTaskTabRef = ref<TabLoadExpose | null>(null)
@@ -35,13 +36,8 @@ const auditIssueTabRef = ref<TabLoadExpose | null>(null)
 const auditRectificationTabRef = ref<TabLoadExpose | null>(null)
 const auditSupervisionTabRef = ref<TabLoadExpose | null>(null)
 
-const {
-  signalImprovementList,
-  signalIssueList,
-  signalRectList,
-  signalSupList,
-  loadSignalSources,
-} = useImprovementWorkbenchSignalSources()
+const { signalImprovementList, signalIssueList, signalRectList, signalSupList, loadSignalSources } =
+  useImprovementWorkbenchSignalSources()
 
 /** Tab 加载失败时仅 toast 提示；忽略 onLoadError(null)，避免并行 load 互相覆盖。 */
 function handleTabLoadError(error: Error | null): void {
@@ -83,6 +79,19 @@ async function loadTabLists(): Promise<void> {
   ])
 }
 
+async function consumeImprovementDeepLink(): Promise<void> {
+  const improvementTaskId =
+    typeof route.query.improvementTaskId === 'string' ? route.query.improvementTaskId.trim() : ''
+  if (!improvementTaskId) {
+    return
+  }
+  activeTab.value = 'improvement'
+  await nextTick()
+  const aiTaskId =
+    typeof route.query.aiTaskId === 'string' ? route.query.aiTaskId.trim() : undefined
+  await improvementTaskTabRef.value?.openByDeepLink?.({ improvementTaskId, aiTaskId })
+}
+
 async function handleScopeChange(): Promise<void> {
   const serial = ++scopeChangeSerial
   loading.value = true
@@ -98,6 +107,7 @@ async function handleScopeChange(): Promise<void> {
     if (!signalsApplied) {
       handleTabLoadError(toUserError(null, '工作台指标加载失败，请稍后重试'))
     }
+    await consumeImprovementDeepLink()
   } catch (error) {
     if (serial !== scopeChangeSerial) {
       return
@@ -127,6 +137,13 @@ watch(activeTab, async (tab) => {
   }
 })
 
+watch(
+  () => [route.query.improvementTaskId, route.query.aiTaskId] as const,
+  () => {
+    void consumeImprovementDeepLink()
+  },
+)
+
 useQualityScopedLoader(handleScopeChange, {
   watchScope: true,
   immediate: false,
@@ -152,12 +169,15 @@ onActivated(async () => {
       <QualityPageContextBar />
     </template>
 
-
-
     <SignalBand :metrics="signals" compact class="iwb__signals" />
 
     <UiEmpty
-      v-if="!loading && qualityStore.currentTrainingPlanId && activeTab === 'improvement' && !signalImprovementList.length"
+      v-if="
+        !loading &&
+        qualityStore.currentTrainingPlanId &&
+        activeTab === 'improvement' &&
+        !signalImprovementList.length
+      "
       description="当前范围无改进任务"
       class="iwb__empty"
     />

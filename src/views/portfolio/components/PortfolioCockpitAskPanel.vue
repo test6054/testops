@@ -21,6 +21,8 @@ import { parsePortfolioCockpitAskPayload } from '@/utils/portfolio-cockpit-paylo
 
 const props = defineProps<{
   departmentId?: string
+  /** 通知深链携带的 AI 任务 ID，用于自动加载问数结果 */
+  initialTaskId?: string
 }>()
 
 const router = useRouter()
@@ -47,7 +49,9 @@ const historyColumns: ColumnsType = [
   { title: '操作', key: 'action', width: 72 },
 ]
 
-const teacherRows = computed<PortfolioCockpitAskTeacherRow[]>(() => askPayload.value?.teacherRows ?? [])
+const teacherRows = computed<PortfolioCockpitAskTeacherRow[]>(
+  () => askPayload.value?.teacherRows ?? [],
+)
 
 function teacherRowKey(record: unknown): string {
   const row = record as PortfolioCockpitAskTeacherRow
@@ -72,7 +76,7 @@ function navigateDrillLink(link: string) {
 }
 
 function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function applyAnalysisDetail(detail: PortfolioAiAnalysisDetailVO) {
@@ -91,11 +95,9 @@ async function loadHistory() {
       departmentId: props.departmentId,
     })
     historyRows.value = readPageList(page, '加载驾驶舱问数历史失败')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载驾驶舱问数历史失败')
-  }
-  finally {
+  } finally {
     historyLoading.value = false
   }
 }
@@ -108,11 +110,9 @@ async function openHistoryRow(row: PortfolioAiAnalysisSummaryVO) {
   try {
     const detail = await portfolioAiJobApi.getAnalysisByTask(row.aiTaskId)
     applyAnalysisDetail(detail)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载问数结果失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -134,8 +134,7 @@ async function pollAnalysis(taskId: string) {
       await sleep(2000)
     }
     throw new Error('AI 任务超时，请稍后在问数历史中查看')
-  }
-  finally {
+  } finally {
     polling.value = false
   }
 }
@@ -157,22 +156,56 @@ async function submitAsk() {
     message.info('问数任务已提交，正在等待结果…')
     await pollAnalysis(submitResult.taskId)
     message.success('问数完成')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '提交驾驶舱问数失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
 onMounted(() => {
   void loadHistory()
+  if (props.initialTaskId) {
+    void openTaskResult(props.initialTaskId)
+  }
 })
 
-watch(() => props.departmentId, () => {
-  void loadHistory()
-})
+watch(
+  () => props.departmentId,
+  () => {
+    void loadHistory()
+  },
+)
+
+watch(
+  () => props.initialTaskId,
+  (taskId) => {
+    if (taskId) {
+      void openTaskResult(taskId)
+    }
+  },
+)
+
+/** 按通知深链 taskId 加载问数结果；任务未完成时轮询直至成功或失败。 */
+async function openTaskResult(taskId: string) {
+  loading.value = true
+  try {
+    const task = await portfolioAiJobApi.get(taskId)
+    if (task.status === 'SUCCEEDED') {
+      const detail = await portfolioAiJobApi.getAnalysisByTask(taskId)
+      applyAnalysisDetail(detail)
+      return
+    }
+    if (task.status === 'FAILED' || task.status === 'CANCELLED') {
+      throw new Error(`AI 任务失败：${task.status}`)
+    }
+    await pollAnalysis(taskId)
+  } catch (error) {
+    showUserError(error, '加载问数结果失败')
+  } finally {
+    loading.value = false
+  }
+}
 </script>
 
 <template>
@@ -199,7 +232,11 @@ watch(() => props.departmentId, () => {
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'action'">
-          <a class="cockpit-ask__link" @click="() => void openHistoryRow(record as PortfolioAiAnalysisSummaryVO)">查看</a>
+          <a
+            class="cockpit-ask__link"
+            @click="() => void openHistoryRow(record as PortfolioAiAnalysisSummaryVO)"
+            >查看</a
+          >
         </template>
       </template>
     </UiDataTable>
@@ -222,7 +259,9 @@ watch(() => props.departmentId, () => {
     <section v-if="indicatorRefs.length" class="cockpit-ask__section">
       <h4 class="cockpit-ask__section-title">指标口径</h4>
       <ul class="cockpit-ask__list">
-        <li v-for="(indicatorRef, index) in indicatorRefs" :key="`ref-${index}`">{{ indicatorRef }}</li>
+        <li v-for="(indicatorRef, index) in indicatorRefs" :key="`ref-${index}`">
+          {{ indicatorRef }}
+        </li>
       </ul>
     </section>
     <section v-if="drillLinks.length" class="cockpit-ask__section">
@@ -233,12 +272,7 @@ watch(() => props.departmentId, () => {
         </li>
       </ul>
     </section>
-    <a-result
-      v-if="refusalReason"
-      status="warning"
-      title="问数未执行"
-      :sub-title="refusalReason"
-    />
+    <a-result v-if="refusalReason" status="warning" title="问数未执行" :sub-title="refusalReason" />
     <UiDataTable
       v-else
       :row-key="teacherRowKey"

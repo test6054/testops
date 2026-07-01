@@ -167,7 +167,10 @@
             <h2 class="m-survey__q-text">{{ currentItem?.itemText }}</h2>
 
             <!-- 量表题 -->
-            <div v-if="currentItem?.itemType === 'SCALE'" class="m-survey__scale">
+            <div
+              v-if="currentItem?.itemType === IndirectEvaluationItemType.SCALE"
+              class="m-survey__scale"
+            >
               <div class="m-survey__scale-labels">
                 <span>{{ scaleOptions[0]?.label || '' }}</span>
                 <span>{{ scaleOptions[scaleOptions.length - 1]?.label || '' }}</span>
@@ -189,7 +192,10 @@
             </div>
 
             <!-- 单选题 -->
-            <div v-else-if="currentItem?.itemType === 'SINGLE_CHOICE'" class="m-survey__choices">
+            <div
+              v-else-if="currentItem?.itemType === IndirectEvaluationItemType.SINGLE_CHOICE"
+              class="m-survey__choices"
+            >
               <button
                 v-for="(opt, oi) in choiceOptions"
                 :key="opt.optionValue"
@@ -224,7 +230,10 @@
             </div>
 
             <!-- 多选题 -->
-            <div v-else-if="currentItem?.itemType === 'MULTI_CHOICE'" class="m-survey__choices">
+            <div
+              v-else-if="currentItem?.itemType === IndirectEvaluationItemType.MULTI_CHOICE"
+              class="m-survey__choices"
+            >
               <button
                 v-for="(opt, oi) in choiceOptions"
                 :key="opt.optionValue"
@@ -261,7 +270,10 @@
             </div>
 
             <!-- 开放文本 -->
-            <div v-else-if="currentItem?.itemType === 'OPEN_TEXT'" class="m-survey__open">
+            <div
+              v-else-if="currentItem?.itemType === IndirectEvaluationItemType.OPEN_TEXT"
+              class="m-survey__open"
+            >
               <textarea
                 v-model="openTexts[currentItem.itemToken]"
                 class="m-survey__textarea"
@@ -303,11 +315,11 @@
 
 <script setup lang="ts">
 import type { PublicSurveyItemType } from '@/apis/public-survey'
+import { formatPublicSurveyItemType } from '@/apis/public-survey'
 import { message } from 'ant-design-vue'
 import { computed, ref } from 'vue'
-import { PUBLIC_SURVEY_ITEM_TYPE_LABEL } from '@/apis/public-survey'
 import { useSurveyFill } from '@/composables/useSurveyFill'
-import { strictEnumLabel } from '@/utils/strict-enum'
+import { IndirectEvaluationItemType } from '@/types/enums/indirect-evaluation-item-type-enum'
 
 const {
   loading,
@@ -388,7 +400,7 @@ function toggleMulti(itemId: string, opt: string) {
 }
 
 function itemTypeLabel(type: PublicSurveyItemType): string {
-  return strictEnumLabel(PUBLIC_SURVEY_ITEM_TYPE_LABEL, type, '公开问卷题型')
+  return formatPublicSurveyItemType(type)
 }
 
 async function handleSubmit() {
@@ -718,7 +730,7 @@ async function handleSubmit() {
   }
 
   &::placeholder {
-  color: var(--survey-text-placeholder);
+    color: var(--survey-text-placeholder);
   }
 }
 
@@ -916,7 +928,7 @@ async function handleSubmit() {
   }
 
   &::placeholder {
-  color: var(--survey-text-placeholder);
+    color: var(--survey-text-placeholder);
   }
 }
 

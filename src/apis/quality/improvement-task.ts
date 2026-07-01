@@ -7,9 +7,8 @@ import type { ImprovementTaskStatus } from './types'
  *   ImprovementTaskQueryRequest / ImprovementTaskStatusUpdateRequest /
  *   ImprovementTaskCloseRequest。
  *
- * 注意：AI 改进措施生成走 /api/quality/ai-task/submit，businessType=ACHIEVEMENT_RESULT，
- * achievementResultId 为任务锚点。
- * 本文件不再封装 trigger-ai-suggestion，由前端在 AI 任务中心或本页直接提交。
+ * 注意：创建时可传 submitAiSuggestionDraft=true 同步提交 AI 改进草稿；
+ * 已创建任务也可通过 AI 任务中心或本页「AI 改进」手动提交。
  */
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
@@ -80,8 +79,8 @@ export interface ImprovementTaskSaveRequest {
   proposedAction: string
   ownerUserId: string
   ownerRole?: string
-  /** yyyy-MM-dd */
-  dueDate: string
+  /** 创建时同步提交 AI 改进建议草稿 */
+  submitAiSuggestionDraft?: boolean
 }
 
 /** 状态流转 - 严格对齐后端 ImprovementTaskStatusUpdateRequest */

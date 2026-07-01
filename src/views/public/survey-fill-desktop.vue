@@ -48,7 +48,9 @@
         <div class="d-survey__progress">
           <div class="d-survey__progress-bar" :style="{ width: `${progressPercent}%` }" />
         </div>
-        <span class="d-survey__progress-label">已完成 {{ answeredCount }}/{{ totalCount }} 题（{{ progressPercent }}%）</span>
+        <span class="d-survey__progress-label"
+          >已完成 {{ answeredCount }}/{{ totalCount }} 题（{{ progressPercent }}%）</span
+        >
       </div>
 
       <!-- 内容区 -->
@@ -157,7 +159,10 @@
               </div>
 
               <!-- 量表题 -->
-              <div v-if="item.itemType === 'SCALE'" class="d-survey__scale">
+              <div
+                v-if="item.itemType === IndirectEvaluationItemType.SCALE"
+                class="d-survey__scale"
+              >
                 <div class="d-survey__scale-labels">
                   <span>{{ getScaleOptions(item)[0]?.label || '' }}</span>
                   <span>{{ getScaleOptions(item).at(-1)?.label || '' }}</span>
@@ -178,7 +183,10 @@
               </div>
 
               <!-- 单选题 -->
-              <div v-else-if="item.itemType === 'SINGLE_CHOICE'" class="d-survey__choices">
+              <div
+                v-else-if="item.itemType === IndirectEvaluationItemType.SINGLE_CHOICE"
+                class="d-survey__choices"
+              >
                 <button
                   v-for="(opt, oi) in choiceOptionsOf(item)"
                   :key="opt.optionValue"
@@ -213,7 +221,10 @@
               </div>
 
               <!-- 多选题 -->
-              <div v-else-if="item.itemType === 'MULTI_CHOICE'" class="d-survey__choices">
+              <div
+                v-else-if="item.itemType === IndirectEvaluationItemType.MULTI_CHOICE"
+                class="d-survey__choices"
+              >
                 <button
                   v-for="(opt, oi) in choiceOptionsOf(item)"
                   :key="opt.optionValue"
@@ -250,7 +261,10 @@
               </div>
 
               <!-- 开放文本 -->
-              <div v-else-if="item.itemType === 'OPEN_TEXT'" class="d-survey__open">
+              <div
+                v-else-if="item.itemType === IndirectEvaluationItemType.OPEN_TEXT"
+                class="d-survey__open"
+              >
                 <textarea
                   v-model="openTexts[item.itemToken]"
                   class="d-survey__textarea"
@@ -283,11 +297,11 @@
 
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue'
-import type { PublicSurveyItemType } from '@/apis/public-survey'
 import { nextTick, ref } from 'vue'
-import { PUBLIC_SURVEY_ITEM_TYPE_LABEL } from '@/apis/public-survey'
+import type { PublicSurveyItemType } from '@/apis/public-survey'
+import { formatPublicSurveyItemType } from '@/apis/public-survey'
 import { useSurveyFill } from '@/composables/useSurveyFill'
-import { strictEnumLabel } from '@/utils/strict-enum'
+import { IndirectEvaluationItemType } from '@/types/enums/indirect-evaluation-item-type-enum'
 
 const {
   loading,
@@ -308,9 +322,9 @@ const {
   getScaleOptions,
   choiceOptionsOf,
   findFirstUnansweredRequired,
-    submitSurvey,
-    loadSurvey,
-  } = useSurveyFill()
+  submitSurvey,
+  loadSurvey,
+} = useSurveyFill()
 
 const itemRefs = ref<(HTMLElement | null)[]>([])
 const shakingIndex = ref(-1)
@@ -336,7 +350,7 @@ function toggleMulti(itemId: string, opt: string) {
 }
 
 function itemTypeLabel(type: PublicSurveyItemType): string {
-  return strictEnumLabel(PUBLIC_SURVEY_ITEM_TYPE_LABEL, type, '公开问卷题型')
+  return formatPublicSurveyItemType(type)
 }
 
 async function handleSubmit() {

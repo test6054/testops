@@ -4,19 +4,19 @@ import type {
   IndirectEvaluationFormSaveRequest,
   IndirectEvaluationFormVO,
 } from '@/apis/quality/indirect-form'
+import { indirectFormApi } from '@/apis/quality/indirect-form'
 import type {
   IndirectEvaluationItemSaveRequest,
   IndirectEvaluationItemVO,
 } from '@/apis/quality/indirect-item'
+import { indirectItemApi } from '@/apis/quality/indirect-item'
 import type { ScaleConversionRuleVO } from '@/apis/quality/scale-conversion-rule'
+import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
 import type { AchievementTargetType, IndirectFormType } from '@/apis/quality/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
-import { indirectFormApi } from '@/apis/quality/indirect-form'
-import { indirectItemApi } from '@/apis/quality/indirect-item'
 import { indirectResponseApi } from '@/apis/quality/indirect-response'
-import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
 import {
   CourseGoalSelector,
   CourseSelector,
@@ -47,22 +47,32 @@ import {
   formTypeLabel,
   formTypeOptions,
   isFormStructureMutable,
+  isMultiChoiceItemType,
+  isOpenTextItemType,
+  isScaleItemType,
+  isSingleChoiceItemType,
   ITEM_CONFIG_ERROR,
   itemColumns,
   itemTypeOptions,
+  requiresTeacherScoreConversion,
   SCALE_CONVERSION_RULE_OPTION_PAGE_SIZE,
   targetTypeLabel,
   targetTypeOptions,
 } from './indirect-evaluation-shared'
+import {
+  formatIndirectEvaluationItemType,
+  IndirectEvaluationItemType,
+  isIndirectEvaluationItemType,
+} from '@/types/enums/indirect-evaluation-item-type-enum'
 
 const selectedForm = defineModel<IndirectEvaluationFormVO | null>('selectedForm', { default: null })
 const selectedItem = defineModel<IndirectEvaluationItemVO | null>('selectedItem', { default: null })
 
 const emit = defineEmits<{
-  "publish": [record: IndirectEvaluationFormVO]
-  "close": [record: IndirectEvaluationFormVO]
-  "progress": [record: IndirectEvaluationFormVO]
-  "statistics": [record: IndirectEvaluationFormVO]
+  publish: [record: IndirectEvaluationFormVO]
+  close: [record: IndirectEvaluationFormVO]
+  progress: [record: IndirectEvaluationFormVO]
+  statistics: [record: IndirectEvaluationFormVO]
   'copy-link': [record: IndirectEvaluationFormVO]
   'form-deleted': [formId: string]
 }>()
@@ -128,6 +138,7 @@ const itemsLoading = ref(false)
 const scaleRules = ref<ScaleConversionRuleVO[]>([])
 
 const validCountMap = ref<Map<string, number>>(new Map())
+const pendingCountMap = ref<Map<string, number>>(new Map())
 const validCountLoading = ref(false)
 
 const formEditorVisible = ref(false)
@@ -155,7 +166,7 @@ const itemEditor = ref<IndirectEvaluationItemSaveRequest>({
   scaleRuleId: undefined,
   weight: 1,
   sortOrder: 0,
-  itemType: 'SCALE',
+  itemType: IndirectEvaluationItemType.SCALE,
   scaleMin: 1,
   scaleMax: 5,
   scaleLabels: [
@@ -179,9 +190,9 @@ function handleFormTargetTypeChange() {
   formEditorTrainingPlanId.value = ''
   formEditorGraduationRequirementId.value = ''
   if (
-    formEditor.targetType === 'PROGRAM_SUMMARY'
-    || formEditor.targetType === 'CIVIC_GOAL_AGGREGATE'
-    || formEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+    formEditor.targetType === 'PROGRAM_SUMMARY' ||
+    formEditor.targetType === 'CIVIC_GOAL_AGGREGATE' ||
+    formEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
   ) {
     formEditor.targetId = formEditor.programId || ''
   }
@@ -213,9 +224,9 @@ function handleFormProgramChange(value: string | null | undefined) {
   formEditorTrainingPlanId.value = ''
   formEditorGraduationRequirementId.value = ''
   if (
-    formEditor.targetType === 'PROGRAM_SUMMARY'
-    || formEditor.targetType === 'CIVIC_GOAL_AGGREGATE'
-    || formEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+    formEditor.targetType === 'PROGRAM_SUMMARY' ||
+    formEditor.targetType === 'CIVIC_GOAL_AGGREGATE' ||
+    formEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
   ) {
     formEditor.targetId = id
   } else if (formEditor.targetType !== 'COURSE_GOAL') {
@@ -229,9 +240,9 @@ function handleItemTargetTypeChange() {
   itemEditorTrainingPlanId.value = ''
   itemEditorGraduationRequirementId.value = ''
   if (
-    itemEditor.value.targetType === 'PROGRAM_SUMMARY'
-    || itemEditor.value.targetType === 'CIVIC_GOAL_AGGREGATE'
-    || itemEditor.value.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+    itemEditor.value.targetType === 'PROGRAM_SUMMARY' ||
+    itemEditor.value.targetType === 'CIVIC_GOAL_AGGREGATE' ||
+    itemEditor.value.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
   ) {
     itemEditor.value.targetId = formEditor.programId || qualityStore.currentProgramId
   }
@@ -265,9 +276,9 @@ function handleItemProgramChange(value: string | null | undefined) {
   itemEditorTrainingPlanId.value = ''
   itemEditorGraduationRequirementId.value = ''
   if (
-    itemEditor.value.targetType === 'PROGRAM_SUMMARY'
-    || itemEditor.value.targetType === 'CIVIC_GOAL_AGGREGATE'
-    || itemEditor.value.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+    itemEditor.value.targetType === 'PROGRAM_SUMMARY' ||
+    itemEditor.value.targetType === 'CIVIC_GOAL_AGGREGATE' ||
+    itemEditor.value.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
   ) {
     itemEditor.value.targetId = value ?? ''
   } else if (itemEditor.value.targetType !== 'COURSE_GOAL') {
@@ -384,7 +395,7 @@ async function handleFormDelete(record: IndirectEvaluationFormVO) {
   })
 }
 
-function handleFormPageChange(page: { current: number, pageSize: number }) {
+function handleFormPageChange(page: { current: number; pageSize: number }) {
   formQuery.pageNum = page.current
   formQuery.pageSize = page.pageSize
   loadForms()
@@ -399,6 +410,9 @@ async function loadItems() {
   itemsLoading.value = true
   try {
     items.value = await indirectItemApi.listByForm(selectedForm.value.id)
+  } catch (err) {
+    items.value = []
+    showUserError(err, '题项列表加载失败')
   } finally {
     itemsLoading.value = false
   }
@@ -406,11 +420,12 @@ async function loadItems() {
 
 async function loadScaleRules() {
   scaleRules.value = await readAllPages(
-    (pageNum) => scaleConversionRuleApi.page({
-      pageNum,
-      pageSize: SCALE_CONVERSION_RULE_OPTION_PAGE_SIZE,
-      enabled: true,
-    }),
+    (pageNum) =>
+      scaleConversionRuleApi.page({
+        pageNum,
+        pageSize: SCALE_CONVERSION_RULE_OPTION_PAGE_SIZE,
+        enabled: true,
+      }),
     '量表换算规则列表加载失败，请稍后重试',
   )
 }
@@ -456,12 +471,19 @@ function assertEditableItemContract(record: IndirectEvaluationItemVO) {
   if (record.required == null) {
     throwUserFacing(ITEM_CONFIG_ERROR)
   }
-  if (record.itemType === 'SCALE') {
+  if (!isIndirectEvaluationItemType(record.itemType)) {
+    throwUserFacing(ITEM_CONFIG_ERROR)
+  }
+  if (isScaleItemType(record.itemType)) {
     assertScaleLabelsComplete(record)
     return
   }
-  if (record.itemType === 'SINGLE_CHOICE' || record.itemType === 'MULTI_CHOICE') {
+  if (isSingleChoiceItemType(record.itemType) || isMultiChoiceItemType(record.itemType)) {
     assertChoiceOptionsComplete(record)
+    return
+  }
+  if (!isOpenTextItemType(record.itemType)) {
+    throwUserFacing(ITEM_CONFIG_ERROR)
   }
 }
 
@@ -471,10 +493,10 @@ function openItemCreate() {
     return
   }
   itemEditorMode.value = 'create'
-  itemEditorQualityCourseId.value
-    = formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
-  itemEditorTrainingPlanId.value
-    = formEditorTrainingPlanId.value || qualityStore.currentTrainingPlanId
+  itemEditorQualityCourseId.value =
+    formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
+  itemEditorTrainingPlanId.value =
+    formEditorTrainingPlanId.value || qualityStore.currentTrainingPlanId
   itemEditorGraduationRequirementId.value = formEditorGraduationRequirementId.value
   itemEditor.value = {
     formId: selectedForm.value.id,
@@ -485,7 +507,7 @@ function openItemCreate() {
     scaleRuleId: undefined,
     weight: 1,
     sortOrder: (items.value.length + 1) * 10,
-    itemType: 'SCALE',
+    itemType: IndirectEvaluationItemType.SCALE,
     scaleMin: 1,
     scaleMax: 5,
     scaleLabels: defaultScaleLabels(1, 5),
@@ -502,10 +524,10 @@ function openItemEdit(record: IndirectEvaluationItemVO) {
   }
   assertEditableItemContract(record)
   itemEditorMode.value = 'edit'
-  itemEditorQualityCourseId.value
-    = formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
-  itemEditorTrainingPlanId.value
-    = formEditorTrainingPlanId.value || qualityStore.currentTrainingPlanId
+  itemEditorQualityCourseId.value =
+    formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
+  itemEditorTrainingPlanId.value =
+    formEditorTrainingPlanId.value || qualityStore.currentTrainingPlanId
   itemEditorGraduationRequirementId.value = ''
   itemEditor.value = {
     ...record,
@@ -552,18 +574,18 @@ async function submitItem() {
     message.error('请填写编码和题面')
     return
   }
-  if (v.itemType === 'SCALE') {
+  if (isScaleItemType(v.itemType)) {
     if (v.scaleMin == null || v.scaleMax == null || v.scaleMin >= v.scaleMax) {
       message.error('量表最大值必须大于最小值')
       return
     }
     syncScaleLabels()
     v.choiceOptions = []
-  } else if (v.itemType === 'SINGLE_CHOICE' || v.itemType === 'MULTI_CHOICE') {
+  } else if (isSingleChoiceItemType(v.itemType) || isMultiChoiceItemType(v.itemType)) {
     const options = v.choiceOptions ?? []
     if (
-      options.length < 2
-      || options.some((option) => !option.optionValue.trim() || !option.optionLabel.trim())
+      options.length < 2 ||
+      options.some((option) => !option.optionValue.trim() || !option.optionLabel.trim())
     ) {
       message.error('选择题至少配置 2 个完整选项')
       return
@@ -576,11 +598,14 @@ async function submitItem() {
     v.scaleMin = undefined
     v.scaleMax = undefined
     v.scaleLabels = []
-  } else if (v.itemType === 'OPEN_TEXT') {
+  } else if (isOpenTextItemType(v.itemType)) {
     v.scaleMin = undefined
     v.scaleMax = undefined
     v.scaleLabels = []
     v.choiceOptions = []
+  } else {
+    message.error('题项题型无效，请重新选择')
+    return
   }
   if (itemEditorMode.value === 'create') await indirectItemApi.create(v)
   else await indirectItemApi.update(v)
@@ -606,28 +631,39 @@ async function deleteItem(record: IndirectEvaluationItemVO) {
   })
 }
 
-function validCountText(itemId: string): string {
-  const count = validCountMap.value.get(itemId)
+function validCountText(item: IndirectEvaluationItemVO): string {
+  const count = validCountMap.value.get(item.id)
   if (count === undefined) {
     if (validCountLoading.value) return '加载中'
     return '—'
   }
+  if (!requiresTeacherScoreConversion(item.itemType)) {
+    return String(count)
+  }
+  const pending = pendingCountMap.value.get(item.id) ?? 0
+  if (pending > 0) {
+    return `${count} · 待换算 ${pending}`
+  }
   return String(count)
 }
 
-/** 并行统计各题项有效答卷数 */
+/** 并行统计各题项有效答卷数与待换算数 */
 async function refreshValidCounts() {
   if (!items.value.length) return
   validCountLoading.value = true
   try {
     const results = await Promise.all(
-      items.value.map((item) =>
-        indirectResponseApi
-          .countValidByItem(item.id)
-          .then((count): [string, number] => [item.id, count]),
-      ),
+      items.value.map(async (item) => {
+        const validCount = await indirectResponseApi.countValidByItem(item.id)
+        let pendingCount = 0
+        if (requiresTeacherScoreConversion(item.itemType)) {
+          pendingCount = await indirectResponseApi.countPendingConversionByItem(item.id)
+        }
+        return { itemId: item.id, validCount, pendingCount }
+      }),
     )
-    validCountMap.value = new Map(results)
+    validCountMap.value = new Map(results.map((row) => [row.itemId, row.validCount]))
+    pendingCountMap.value = new Map(results.map((row) => [row.itemId, row.pendingCount]))
   } finally {
     validCountLoading.value = false
   }
@@ -781,18 +817,23 @@ defineExpose({
           "
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'weight'">
+            <template v-if="column.key === 'itemType'">
+              {{ formatIndirectEvaluationItemType(record.itemType) }}
+            </template>
+            <template v-else-if="column.key === 'weight'">
               {{ record.weight.toFixed(2) }}
             </template>
             <template v-else-if="column.key === 'validCount'">
               <span
                 :class="
-                  (validCountMap.get(record.id) ?? 0) > 0
-                    ? 'ie__count-strong'
-                    : 'ie__count-muted'
+                  (pendingCountMap.get(record.id) ?? 0) > 0
+                    ? 'ie__count-warn'
+                    : (validCountMap.get(record.id) ?? 0) > 0
+                      ? 'ie__count-strong'
+                      : 'ie__count-muted'
                 "
               >
-                {{ validCountText(record.id) }}
+                {{ validCountText(record) }}
               </span>
             </template>
             <template v-else-if="column.key === 'actions'">
@@ -853,10 +894,10 @@ defineExpose({
         </a-col>
         <a-col
           v-if="
-            formEditor.targetType === 'COURSE_GOAL'
-              || formEditor.targetType === 'GRADUATION_REQUIREMENT'
-              || formEditor.targetType === 'REQUIREMENT_INDICATOR'
-              || formEditor.targetType === 'TRAINING_OBJECTIVE'
+            formEditor.targetType === 'COURSE_GOAL' ||
+            formEditor.targetType === 'GRADUATION_REQUIREMENT' ||
+            formEditor.targetType === 'REQUIREMENT_INDICATOR' ||
+            formEditor.targetType === 'TRAINING_OBJECTIVE'
           "
           :span="8"
         >
@@ -883,9 +924,9 @@ defineExpose({
         <a-col :span="8">
           <a-form-item
             :label="
-              formEditor.targetType === 'PROGRAM_SUMMARY'
-                || formEditor.targetType === 'CIVIC_GOAL_AGGREGATE'
-                || formEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+              formEditor.targetType === 'PROGRAM_SUMMARY' ||
+              formEditor.targetType === 'CIVIC_GOAL_AGGREGATE' ||
+              formEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
                 ? '所属专业'
                 : '目标对象'
             "
@@ -937,9 +978,9 @@ defineExpose({
         </a-col>
         <a-col
           v-if="
-            formEditor.targetType !== 'PROGRAM_SUMMARY'
-              && formEditor.targetType !== 'CIVIC_GOAL_AGGREGATE'
-              && formEditor.targetType !== 'COMPLEX_ENGINEERING_AGGREGATE'
+            formEditor.targetType !== 'PROGRAM_SUMMARY' &&
+            formEditor.targetType !== 'CIVIC_GOAL_AGGREGATE' &&
+            formEditor.targetType !== 'COMPLEX_ENGINEERING_AGGREGATE'
           "
           :span="8"
         >
@@ -1026,9 +1067,9 @@ defineExpose({
             />
             <ProgramSelector
               v-else-if="
-                itemEditor.targetType === 'PROGRAM_SUMMARY'
-                  || itemEditor.targetType === 'CIVIC_GOAL_AGGREGATE'
-                  || itemEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+                itemEditor.targetType === 'PROGRAM_SUMMARY' ||
+                itemEditor.targetType === 'CIVIC_GOAL_AGGREGATE' ||
+                itemEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
               "
               :value="itemEditor.targetId || null"
               placeholder="选择专业"
@@ -1046,10 +1087,10 @@ defineExpose({
       </a-row>
       <a-form-item
         v-if="
-          itemEditor.targetType === 'COURSE_GOAL'
-            || itemEditor.targetType === 'GRADUATION_REQUIREMENT'
-            || itemEditor.targetType === 'REQUIREMENT_INDICATOR'
-            || itemEditor.targetType === 'TRAINING_OBJECTIVE'
+          itemEditor.targetType === 'COURSE_GOAL' ||
+          itemEditor.targetType === 'GRADUATION_REQUIREMENT' ||
+          itemEditor.targetType === 'REQUIREMENT_INDICATOR' ||
+          itemEditor.targetType === 'TRAINING_OBJECTIVE'
         "
         label="目标对象"
         required
@@ -1109,7 +1150,7 @@ defineExpose({
           </a-select-option>
         </a-select>
       </a-form-item>
-      <template v-if="itemEditor.itemType === 'SCALE'">
+      <template v-if="isScaleItemType(itemEditor.itemType)">
         <a-row :gutter="12">
           <a-col :span="12">
             <a-form-item label="量表最小值" required>
@@ -1146,7 +1187,9 @@ defineExpose({
         </a-form-item>
       </template>
       <a-form-item
-        v-if="itemEditor.itemType === 'SINGLE_CHOICE' || itemEditor.itemType === 'MULTI_CHOICE'"
+        v-if="
+          isSingleChoiceItemType(itemEditor.itemType) || isMultiChoiceItemType(itemEditor.itemType)
+        "
         label="选项配置"
         required
       >
@@ -1175,6 +1218,11 @@ defineExpose({
 
   &__count-strong {
     color: var(--ant-color-success);
+    font-weight: 500;
+  }
+
+  &__count-warn {
+    color: var(--dp-warning);
     font-weight: 500;
   }
 

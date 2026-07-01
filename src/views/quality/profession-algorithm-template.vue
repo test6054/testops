@@ -7,29 +7,24 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 含义：认证标准 → 专业算法模板（艺术设计、财经、法学、农学等）→ 专业实例 三层结构中的第 2 层；
  *      平台维护，专业负责人在创建实例时基于模板继承字段。
  */
-import type {
-  AccreditationStandardVO,
-} from '@/apis/quality/accreditation-standard'
+import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   ProfessionAlgorithmTemplateQueryRequest,
   ProfessionAlgorithmTemplateSaveRequest,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality/profession-algorithm-template'
-import type {
-  AccreditationType,
-  AggregationFunction,
-} from '@/apis/quality/types'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
+import type { AccreditationType, AggregationFunction } from '@/apis/quality/types'
 import {
   ACCREDITATION_TYPE_LABEL,
   AGGREGATION_FUNCTION_CODES,
   AGGREGATION_FUNCTION_LABEL,
 } from '@/apis/quality/types'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -187,7 +182,6 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
-
 function assignEditor(
   record: ProfessionAlgorithmTemplateVO,
   id: string | undefined,
@@ -221,11 +215,12 @@ function assignEditor(
 
 async function loadStandards() {
   standards.value = await readAllPages(
-    (pageNum) => accreditationStandardApi.page({
-      pageNum,
-      pageSize: ACCREDITATION_STANDARD_OPTION_PAGE_SIZE,
-      enabled: true,
-    }),
+    (pageNum) =>
+      accreditationStandardApi.page({
+        pageNum,
+        pageSize: ACCREDITATION_STANDARD_OPTION_PAGE_SIZE,
+        enabled: true,
+      }),
     '认证标准列表加载失败，请稍后重试',
   )
 }
@@ -250,7 +245,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -423,10 +418,7 @@ onActivated(() => {
         @reset="handleReset"
       />
 
-      <UiEmpty
-        v-if="!loading && total === 0"
-        description="无算法模板"
-      />
+      <UiEmpty v-if="!loading && total === 0" description="无算法模板" />
       <UiDataTable
         v-else
         class="student-detail-table__data-table"
@@ -472,7 +464,11 @@ onActivated(() => {
               <UiTextAction v-if="!isSharedTemplate(record)" @click="openEdit(record)">
                 编辑
               </UiTextAction>
-              <UiTextAction v-if="!isSharedTemplate(record)" tone="danger" @click="handleDelete(record)">
+              <UiTextAction
+                v-if="!isSharedTemplate(record)"
+                tone="danger"
+                @click="handleDelete(record)"
+              >
                 删除
               </UiTextAction>
             </div>
@@ -686,13 +682,13 @@ onActivated(() => {
             {{ accreditationTypeLabel(detailRecord.accreditationType) }}
           </a-descriptions-item>
           <a-descriptions-item label="学科分类">
-            {{ detailRecord.disciplineCategory || '未限定学科门类' }}
+            {{ detailRecord.disciplineCategory }}
           </a-descriptions-item>
           <a-descriptions-item label="标准年份">
-            {{ detailRecord.standardYear || '未配置标准年份' }}
+            {{ detailRecord.standardYear }}
           </a-descriptions-item>
           <a-descriptions-item label="关联认证标准">
-            {{ detailRecord.standardId ? '已关联认证标准' : '未关联认证标准' }}
+            {{ detailRecord.standardId }}
           </a-descriptions-item>
           <a-descriptions-item label="课程目标聚合">
             {{ aggregationFunctionLabel(detailRecord.courseGoalAggregation) }}
@@ -729,7 +725,7 @@ onActivated(() => {
             </a-space>
           </a-descriptions-item>
           <a-descriptions-item label="描述" :span="2">
-            {{ detailRecord.description || '未填写模板说明' }}
+            {{ detailRecord.description }}
           </a-descriptions-item>
         </a-descriptions>
 

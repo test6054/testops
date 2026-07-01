@@ -61,9 +61,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherExamWorkspace: () => import('@/views/teacher/exam-workspace-layout.vue'),
   TeacherExamWorkspaceOverview: () => import('@/views/teacher/exam-detail.vue'),
   TeacherExamWorkspacePrep: () => import('@/views/teacher/exam-prep-workbench.vue'),
-  TeacherExamWorkspacePaperTemplate: () => import('@/views/teacher/paper-template.vue'),
-  TeacherExamWorkspaceAnswerSheet: () => import('@/views/teacher/answer-sheet-template.vue'),
-  TeacherExamWorkspacePaperMaster: () => import('@/views/teacher/paper-master.vue'),
+  TeacherExamWorkspaceLayoutDesigner: () => import('@/views/teacher/exam-layout-designer.vue'),
   TeacherExamWorkspaceCandidateRoster: () => import('@/views/teacher/candidate-roster.vue'),
   TeacherExamWorkspacePrintPackage: () => import('@/views/teacher/print-package.vue'),
   TeacherExamWorkspaceScanBatches: () => import('@/views/teacher/scan-batch-workbench.vue'),
@@ -232,7 +230,7 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
     'TeacherExamWorkspaceScoreSummary',
   ],
   TeacherExamWorkspacePrep: [
-    'TeacherExamWorkspacePaperTemplate',
+    'TeacherExamWorkspaceLayoutDesigner',
     'TeacherExamWorkspaceCandidateRoster',
     'TeacherExamWorkspaceScanBatches',
   ],
@@ -263,7 +261,7 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
   TeacherExamWorkspaceOverview: [
     'TeacherExamList',
     'TeacherExamWorkspacePrep',
-    'TeacherExamWorkspacePaperTemplate',
+    'TeacherExamWorkspaceLayoutDesigner',
     'TeacherExamWorkspaceCandidateRoster',
   ],
   TeacherExamWorkspaceMarkingTaskDetail: ['TeacherExamWorkspaceMarkingTaskPool'],

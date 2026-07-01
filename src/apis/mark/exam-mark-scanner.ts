@@ -9,6 +9,7 @@
 import type { ExamStatusCode } from './exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 
@@ -337,7 +338,7 @@ export interface MarkExamSummaryVO {
   examName: string
   examNo: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   status: ExamStatusCode
   statusMessage: string
   examStartTime?: string
@@ -351,7 +352,7 @@ export interface MarkExamPageQueryRequest extends QueryDto {
   courseId?: string
   status?: ExamStatusCode
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   createUserId?: string | null
   keyword?: string
 }

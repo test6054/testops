@@ -9,6 +9,7 @@ import type { ReportExportStatus, ReportStatus, ReportType } from './types'
  * /export 返回 void，文件 ID 由后端写库后通过 /detail 拿回 wordFileId/pdfFileId/excelFileId。
  */
 import type { PageResult, QueryDto } from '@/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/reports'
@@ -30,7 +31,7 @@ export interface ReportVO {
   achievementResultLabel: string
   title: string
   schoolYear: string
-  semester: string
+  semester: SemesterCode
   bodyContent?: string
   wordFileId?: string
   pdfFileId?: string
@@ -60,7 +61,7 @@ export interface ReportQueryRequest extends QueryDto {
   qualityCourseId?: string
   achievementResultId?: string
   schoolYear?: string
-  semester?: string
+  semester?: SemesterCode
   status?: ReportStatus
   keyword?: string
 }
@@ -75,7 +76,7 @@ export interface ReportSaveRequest {
   achievementResultId?: string
   title: string
   schoolYear: string
-  semester: string
+  semester: SemesterCode
   bodyContent?: string
   wordFileId?: string
   pdfFileId?: string

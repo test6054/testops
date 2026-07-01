@@ -4,8 +4,8 @@
  * 后端路径：/api/quality/indirect-responses
  */
 import type { AiTaskSubmitResponseVO } from './ai-task-trigger'
-import type { RespondentType } from './types'
 import type { SurveyChoiceOptionVO, SurveyRespondentIdentityItemVO } from '@/apis/public-survey'
+import { RespondentType } from '@/types/enums/respondent-type-enum'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/indirect-responses'
@@ -23,8 +23,9 @@ export interface IndirectEvaluationResponseVO {
   identityValues?: SurveyRespondentIdentityItemVO[]
   convertedScore?: number
   openText?: string
-  validFlag?: boolean
+  validFlag?: boolean | null
   invalidReason?: string
+  conversionPending?: boolean
   receivedTime?: string
   submissionId?: string
   respondentName?: string
@@ -46,8 +47,9 @@ export interface IndirectEvaluationResponseSaveRequest {
   multipleChoiceValues?: SurveyChoiceOptionVO[]
   identityValues?: SurveyRespondentIdentityItemVO[]
   convertedScore?: number
+  clearConvertedScore?: boolean
   openText?: string
-  validFlag?: boolean
+  validFlag?: boolean | null
   invalidReason?: string
   receivedTime?: string
 }
@@ -119,6 +121,8 @@ export const indirectResponseApi = {
   /** 统计某题项的有效样本数（用于覆盖率计算） */
   countValidByItem: (itemId: string) =>
     http.post<number>(`${BASE}/count-valid-by-item`, { id: itemId }),
+  countPendingConversionByItem: (itemId: string) =>
+    http.post<number>(`${BASE}/count-pending-conversion-by-item`, { id: itemId }),
   /**
    * 从 PDF / DOCX / 图片中同步抽取答卷文本（不写库，供对照手工录入）。
    * 配合 ImportResponseDocumentModal「仅抽取文本」模式；批量结构化仍走 Excel。
@@ -132,9 +136,11 @@ export const indirectResponseApi = {
    * AI 异步文档解析导入答卷。
    * 前端 platform stage 后提交 sourceFileId → 创建 PENDING 状态 AI 任务 → 立即返回 taskId。
    */
-  importDocumentAi: (formId: string, sourceFileId: string) =>
+    importDocumentAi: (formId: string, sourceFileId: string) =>
     http.post<AiTaskSubmitResponseVO>(`${BASE}/import-document-ai`, {
       formId,
       sourceFileId,
     }),
 }
+
+export { RespondentType } from '@/types/enums/respondent-type-enum'
