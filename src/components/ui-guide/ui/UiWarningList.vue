@@ -116,7 +116,7 @@ const severityLabel: Partial<Record<NonNullable<WarningListItem['severity']>, st
 }
 
 const getSeverityStyle = (severity?: string) => {
-  const styles: Record<string, { color: string; background: string }> = {
+  const styles: Record<string, { color: string, background: string }> = {
     high: { color: 'var(--ant-color-error)', background: 'var(--ant-color-error-bg)' },
     medium: { color: 'var(--ant-color-warning)', background: 'var(--ant-color-warning-bg)' },
     low: { color: 'var(--ant-color-success)', background: 'var(--ant-color-success-bg)' },

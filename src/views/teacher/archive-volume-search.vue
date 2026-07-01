@@ -57,11 +57,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialTypeCode, ArchiveVolumeSearchHitVO } from '@/apis/mark/archive-volume'
-import { ARCHIVE_MATERIAL_TYPE_LABEL, searchArchiveVolumes } from '@/apis/mark/archive-volume'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ARCHIVE_MATERIAL_TYPE_LABEL, searchArchiveVolumes } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'

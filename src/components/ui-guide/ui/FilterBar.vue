@@ -223,8 +223,8 @@ const normalizeOptionValue = (value: unknown): UiOptionValue => {
 
 const getFieldStyle = (field: FilterField) => {
   const style: Record<string, string> = {}
-  const widthPx =
-    field.width !== undefined
+  const widthPx
+    = field.width !== undefined
       ? typeof field.width === 'number'
         ? field.width
         : Number.parseFloat(String(field.width))
@@ -297,8 +297,8 @@ const normalizeFieldValue = (value: unknown, field?: FilterField) => {
     return ''
   }
   if (
-    value === '' &&
-    (field?.type === 'select' || field?.type === 'date' || field?.type === 'year')
+    value === ''
+    && (field?.type === 'select' || field?.type === 'date' || field?.type === 'year')
   ) {
     return undefined
   }

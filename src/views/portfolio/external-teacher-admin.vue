@@ -5,20 +5,20 @@ import type {
   PortfolioExternalTeacherDataStatus,
   PortfolioExternalTeacherImportBatchStatus,
 } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL,
-  PORTFOLIO_EXTERNAL_TEACHER_IMPORT_BATCH_STATUS_LABEL,
-} from '@/apis/portfolio/enums'
 import type {
   PortfolioExternalTeacherImportBatchVO,
   PortfolioExternalTeacherSaveRequest,
   PortfolioExternalTeacherStatsVO,
   PortfolioExternalTeacherVO,
 } from '@/apis/portfolio/teacher-platform'
-import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import {
+  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL,
+  PORTFOLIO_EXTERNAL_TEACHER_IMPORT_BATCH_STATUS_LABEL,
+} from '@/apis/portfolio/enums'
+import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'

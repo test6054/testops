@@ -4,9 +4,9 @@ import type {
   PortfolioArchiveRecordStatus,
   PortfolioArchiveRecordSummaryVO,
 } from '@/apis/portfolio/types'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL } from '@/apis/portfolio/types'
 import { onMounted, ref } from 'vue'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

@@ -4,23 +4,23 @@ import type {
   PortfolioDualTeacherApplicationStatus,
   PortfolioKeyTeacherRegistryStatus,
 } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL,
-  PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL,
-} from '@/apis/portfolio/enums'
 import type { PortfolioDeptStructureStatVO } from '@/apis/portfolio/teacher'
-import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import type {
   PortfolioDoubleDutyAnalyticsVO,
   PortfolioDualTeacherAnalyticsVO,
   PortfolioExternalTeacherStatsVO,
 } from '@/apis/portfolio/teacher-platform'
+import { onMounted, ref } from 'vue'
+import {
+  PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL,
+  PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL,
+} from '@/apis/portfolio/enums'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   portfolioDoubleDutyApi,
   portfolioDualTeacherApi,
   portfolioExternalTeacherApi,
 } from '@/apis/portfolio/teacher-platform'
-import { onMounted, ref } from 'vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'

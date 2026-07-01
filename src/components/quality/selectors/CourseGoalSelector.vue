@@ -6,8 +6,8 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { CourseGoalVO } from '@/apis/quality/course-goal'
-import { courseGoalApi } from '@/apis/quality/course-goal'
 import { computed, onMounted, ref, watch } from 'vue'
+import { courseGoalApi } from '@/apis/quality/course-goal'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
@@ -30,7 +30,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: CourseGoalVO]
+  "change": [value: string | null, option?: CourseGoalVO]
 }>()
 
 const options = ref<CourseGoalVO[]>([])
@@ -113,12 +113,12 @@ defineExpose({ reload: loadOptions })
     >
       <span class="dp-selector-option-code">{{ opt.goalCode }}</span>
       {{ opt.goalName }}
-      <UiTag v-if="opt.civicObjectiveFlag" tone="purple" class="dp-selector-option-tag-gap"
-        >思政</UiTag
-      >
-      <UiTag v-if="opt.aiLiteracyFlag" tone="blue" class="dp-selector-option-tag-gap"
-        >AI 素养</UiTag
-      >
+      <UiTag v-if="opt.civicObjectiveFlag" tone="purple" class="dp-selector-option-tag-gap">
+        思政
+      </UiTag>
+      <UiTag v-if="opt.aiLiteracyFlag" tone="blue" class="dp-selector-option-tag-gap">
+        AI 素养
+      </UiTag>
     </a-select-option>
   </a-select>
 </template>

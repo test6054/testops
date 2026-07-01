@@ -136,18 +136,18 @@
 
 <script lang="ts" setup>
 import type { CrossExamTrendAnalysisVO } from '@/apis/mark/cross-exam-analysis'
-import {
-  generateClassTrend,
-  generateCourseTrend,
-  listTrends,
-} from '@/apis/mark/cross-exam-analysis'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import { getExamDetail } from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import { ANALYSIS_SCOPE_TYPE_LABEL } from '@/apis/mark/analysis-scope-type'
+import {
+  generateClassTrend,
+  generateCourseTrend,
+  listTrends,
+} from '@/apis/mark/cross-exam-analysis'
+import { getExamDetail } from '@/apis/mark/exam'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -186,7 +186,7 @@ const form = reactive({
 
 const record = ref<CrossExamTrendAnalysisVO | null>(null)
 const selectedExams = ref<ExamSummaryVO[]>([])
-const classOptions = ref<{ label: string; value: string }[]>([])
+const classOptions = ref<{ label: string, value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
 const generating = ref(false)
@@ -265,7 +265,7 @@ watch(scopeMode, (mode) => {
   classOptions.value = []
   Promise.all(examIds.map((examId) => getExamDetail(examId)))
     .then((details) => {
-      const classCount = new Map<string, { className: string; count: number }>()
+      const classCount = new Map<string, { className: string, count: number }>()
       for (const detail of details) {
         for (const classRef of detail.classRefs) {
           const current = classCount.get(classRef.classId)
@@ -303,7 +303,7 @@ watch(
     classLoading.value = true
     try {
       const details = await Promise.all(examIds.map((examId) => getExamDetail(examId)))
-      const classCount = new Map<string, { className: string; count: number }>()
+      const classCount = new Map<string, { className: string, count: number }>()
       for (const detail of details) {
         for (const classRef of detail.classRefs) {
           const current = classCount.get(classRef.classId)
@@ -420,8 +420,8 @@ async function handleGenerate(): Promise<void> {
   }
   generating.value = true
   try {
-    const generated =
-      scopeMode.value === 'COURSE'
+    const generated
+      = scopeMode.value === 'COURSE'
         ? await generateCourseTrend({ courseId, examIds })
         : await generateClassTrend({ courseId, classId: form.classId, examIds })
     acceptCrossExamTrendRecord(generated)

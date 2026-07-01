@@ -1,22 +1,11 @@
 import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
-import { ANONYMITY_MODE_LABEL } from '@/apis/mark/anonymity-mode'
 import type { ExamDetailVO } from '@/apis/mark/exam'
-import { getExamDetail } from '@/apis/mark/exam'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   ExamQuestionAiExecutionItemVO,
 } from '@/apis/mark/exam-grade'
-import {
-  AI_ABILITY_LABEL,
-  AI_ABILITY_TONE,
-  AI_EXECUTION_STATUS_LABEL,
-  AI_EXECUTION_STATUS_TONE,
-  listAiExecutionsForQuestion,
-  rescoreQuestionByAi,
-} from '@/apis/mark/exam-grade'
 import type { QualityDecisionCode } from '@/apis/mark/exam-scan'
-import { QUALITY_DECISION_LABEL, QUALITY_DECISION_TONE } from '@/apis/mark/exam-scan'
 import type { PaperInstanceDisplayVO } from '@/apis/mark/exam-score'
 import type {
   AllocationUnitCode,
@@ -27,6 +16,23 @@ import type {
   MarkingTaskVO,
   QuestionMarkingGroupQuestionVO,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { storeToRefs } from 'pinia'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { ANONYMITY_MODE_LABEL } from '@/apis/mark/anonymity-mode'
+import { getExamDetail } from '@/apis/mark/exam'
+import { listAnnotations, validateAnnotationContract } from '@/apis/mark/exam-annotation'
+import {
+  AI_ABILITY_LABEL,
+  AI_ABILITY_TONE,
+  AI_EXECUTION_STATUS_LABEL,
+  AI_EXECUTION_STATUS_TONE,
+  listAiExecutionsForQuestion,
+  rescoreQuestionByAi,
+} from '@/apis/mark/exam-grade'
+import { QUALITY_DECISION_LABEL, QUALITY_DECISION_TONE } from '@/apis/mark/exam-scan'
 import {
   ALLOCATION_UNIT_LABEL,
   getMarkingQuestionView,
@@ -35,12 +41,6 @@ import {
   MARKING_TASK_STATUS_TONE as STATUS_TONE,
   validateMarkingTaskContract,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { storeToRefs } from 'pinia'
-import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { listAnnotations, validateAnnotationContract } from '@/apis/mark/exam-annotation'
 import { MARKING_WITHDRAW_TOAST_MS } from '@/apis/mark/marking-withdraw'
 import {
   buildConfidentialWatermarkLines,
@@ -109,8 +109,8 @@ export function useMarkingTaskDetailState() {
   const markTaskStore = useMarkTaskStore()
   const userStore = useUserStore()
   const { tasks: batchTasks } = storeToRefs(markTaskStore)
-  const { latestWithdrawable, recentList, canWithdrawEntry, withdrawEntry, withdrawLatest } =
-    useMarkingRecentSubmit()
+  const { latestWithdrawable, recentList, canWithdrawEntry, withdrawEntry, withdrawLatest }
+    = useMarkingRecentSubmit()
 
   const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
   const tenantId = computed(() => tenantStore.tenantId ?? '')
@@ -122,7 +122,7 @@ export function useMarkingTaskDetailState() {
   const sessionPausedAlert = ref(false)
   const withdrawToastVisible = ref(false)
   let withdrawToastTimer: ReturnType<typeof setTimeout> | null = null
-  const form = reactive<{ score?: number; annotationNote?: string }>({
+  const form = reactive<{ score?: number, annotationNote?: string }>({
     score: undefined,
     annotationNote: '',
   })
@@ -138,9 +138,9 @@ export function useMarkingTaskDetailState() {
   const isWholePaperTask = computed(() => task.value?.taskUnit === 'WHOLE_PAPER')
   const usesWholePaperWorkspace = computed(
     () =>
-      task.value?.taskUnit === 'WHOLE_PAPER' ||
-      task.value?.taskUnit === 'SELECTED_QUESTIONS' ||
-      task.value?.taskUnit === 'RANDOM_QUESTIONS',
+      task.value?.taskUnit === 'WHOLE_PAPER'
+      || task.value?.taskUnit === 'SELECTED_QUESTIONS'
+      || task.value?.taskUnit === 'RANDOM_QUESTIONS',
   )
   const canSubmit = computed(() => {
     if (taskRecycledBlocked.value) return false

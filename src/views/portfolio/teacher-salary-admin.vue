@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherSalaryVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioTeacherSalaryApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
+import { portfolioTeacherSalaryApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -24,8 +24,8 @@ const form = reactive({
   performanceAmount: '',
   allowanceAmount: '',
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
-  usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
+  = usePortfolioTeacherSearch()
 
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },

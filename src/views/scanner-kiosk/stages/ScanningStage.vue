@@ -125,7 +125,7 @@ const imageTransform = computed(
 )
 const imageFilter = computed(() => (grayscale.value ? 'grayscale(1)' : 'none'))
 
-const isPageException = (page: { status: string; diagnostic?: string }) =>
+const isPageException = (page: { status: string, diagnostic?: string }) =>
   page.status === 'FAILED' || Boolean(page.diagnostic)
 
 const currentIndex = computed(() => {

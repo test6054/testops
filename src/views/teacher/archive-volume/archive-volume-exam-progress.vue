@@ -8,9 +8,11 @@
           <UiTag v-else-if="showCompleteProgress && isMultiVolumeExam" tone="gray" size="sm">
             {{ autoCreateVolumeProgressHint }}
           </UiTag>
-          <UiTag v-else-if="primaryHealthyVolume" tone="gray" size="sm">{{
-            primaryHealthyVolume.archiveNo
-          }}</UiTag>
+          <UiTag v-else-if="primaryHealthyVolume" tone="gray" size="sm">
+            {{
+              primaryHealthyVolume.archiveNo
+            }}
+          </UiTag>
         </template>
         <template #actions>
           <UiButton variant="ghost" size="sm" :loading="loading" @click="loadVolume">
@@ -250,6 +252,11 @@ import type {
   ArchiveVolumeExamGateVO,
   ArchiveVolumeVO,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ARCHIVE_INTEGRITY_STATUS_LABEL,
   ARCHIVE_INTEGRITY_STATUS_TONE,
@@ -260,11 +267,6 @@ import {
   pageArchiveVolumes,
   retryArchiveVolumeAutoCreate,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import MarkExamStageRail from '@/components/mark/MarkExamStageRail.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -359,23 +361,23 @@ const autoCreateFailedEvent = computed(() =>
 const autoCreateFailedNeedsClassScope = computed(() => {
   const category = examGate.value?.autoCreateFailureCategory
   return (
-    category != null &&
-    isArchiveAutoCreateFailureCategory(category) &&
-    CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES.has(category)
+    category != null
+    && isArchiveAutoCreateFailureCategory(category)
+    && CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES.has(category)
   )
 })
 
 const hasAutoCreateFailure = computed(
   () =>
-    examGate.value?.autoCreateFailureStubPresent === true ||
-    autoCreateFailedEvent.value != null ||
-    examGate.value?.autoCreatePendingStatus === 'MANUAL_REQUIRED',
+    examGate.value?.autoCreateFailureStubPresent === true
+    || autoCreateFailedEvent.value != null
+    || examGate.value?.autoCreatePendingStatus === 'MANUAL_REQUIRED',
 )
 
 const showRetryAutoCreate = computed(
   () =>
-    examGate.value?.archiveAutoCreateRetryAllowed === true &&
-    !autoCreateFailedNeedsClassScope.value,
+    examGate.value?.archiveAutoCreateRetryAllowed === true
+    && !autoCreateFailedNeedsClassScope.value,
 )
 
 const showNonOwnerHint = computed(() => {
@@ -387,9 +389,9 @@ const showNonOwnerHint = computed(() => {
     return false
   }
   return (
-    hasAutoCreateFailure.value ||
-    gate.autoCreatePendingStatus === 'MANUAL_REQUIRED' ||
-    (gate.gateOpen === true && !gate.autoCreateFailureStubPresent)
+    hasAutoCreateFailure.value
+    || gate.autoCreatePendingStatus === 'MANUAL_REQUIRED'
+    || (gate.gateOpen === true && !gate.autoCreateFailureStubPresent)
   )
 })
 

@@ -3,6 +3,9 @@ import type {
   ArchiveVolumeCatalogLineVO,
   ArchiveVolumeCatalogVO
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, ref } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   confirmArchiveVolumeCatalog,
   exportArchiveVolumeCatalog,
@@ -10,9 +13,6 @@ import {
   getArchiveVolumeCatalog,
   saveArchiveVolumeCatalog
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, ref } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import { showUserError } from '@/utils/error-handler'
 
 /**

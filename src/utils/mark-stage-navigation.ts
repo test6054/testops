@@ -1,7 +1,7 @@
 import type { Router } from 'vue-router'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
-import { resolveJourneyDefaultRoute } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
+import { resolveJourneyDefaultRoute } from '@/constants/exam-journey'
 import { MARK_STAGE_DEFAULT_ROUTE } from '@/constants/mark-workspace-nav'
 import { resolveScanStageEntryRoute } from '@/utils/resolve-scan-stage-entry'
 

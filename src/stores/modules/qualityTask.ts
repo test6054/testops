@@ -20,13 +20,13 @@
  * 不持久化：在飞状态完全后端持有。
  */
 import type { AiTaskVO } from '@/apis/quality/ai-task'
-import { aiTaskApi } from '@/apis/quality/ai-task'
 import type { ImprovementTaskVO } from '@/apis/quality/improvement-task'
-import { improvementTaskApi } from '@/apis/quality/improvement-task'
 import type { ReportVO } from '@/apis/quality/report'
-import { reportApi } from '@/apis/quality/report'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { aiTaskApi } from '@/apis/quality/ai-task'
+import { improvementTaskApi } from '@/apis/quality/improvement-task'
+import { reportApi } from '@/apis/quality/report'
 
 const DEFAULT_TOP_N = 50
 

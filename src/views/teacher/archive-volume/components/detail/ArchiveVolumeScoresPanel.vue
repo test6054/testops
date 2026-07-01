@@ -61,14 +61,14 @@ import type {
   ArchiveVolumeDetailVO,
   ArchiveVolumeMaterialVO,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, ref } from 'vue'
 import {
   ARCHIVE_MATERIAL_TYPE_LABEL,
   ARCHIVE_SCORE_COMPLETION_STATUS_LABEL,
   confirmArchiveVolumeScoreCompletion,
   syncTeachingAffairsScoreCompletion,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { showUserError } from '@/utils/error-handler'

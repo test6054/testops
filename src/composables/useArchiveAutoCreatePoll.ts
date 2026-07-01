@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
-import { onUnmounted, ref } from 'vue'
 import type { ArchiveVolumeExamGateVO } from '@/apis/mark/archive-volume'
+import { onUnmounted, ref } from 'vue'
 import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import {
   CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES,
@@ -21,8 +21,8 @@ function isPollFailed(gate: ArchiveVolumeExamGateVO): boolean {
     return false
   }
   if (
-    gate.autoCreateFailureStubPresent === true &&
-    gate.autoCreatePendingStatus === 'MANUAL_REQUIRED'
+    gate.autoCreateFailureStubPresent === true
+    && gate.autoCreatePendingStatus === 'MANUAL_REQUIRED'
   ) {
     return true
   }

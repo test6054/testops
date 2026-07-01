@@ -6,14 +6,14 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AuditRectificationVO } from '@/apis/quality/audit-rectification'
-import { auditRectificationApi } from '@/apis/quality/audit-rectification'
 import type { AuditRectificationStatus } from '@/apis/quality/types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { onMounted, ref, watch } from 'vue'
+import { auditRectificationApi } from '@/apis/quality/audit-rectification'
 import {
   AUDIT_RECTIFICATION_STATUS_COLOR,
   AUDIT_RECTIFICATION_STATUS_LABEL,
 } from '@/apis/quality/types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { onMounted, ref, watch } from 'vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -39,7 +39,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: AuditRectificationVO]
+  "change": [value: string | null, option?: AuditRectificationVO]
 }>()
 
 const options = ref<AuditRectificationVO[]>([])

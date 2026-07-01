@@ -157,10 +157,10 @@ const sliderLeft = ref(0)
 const isDragging = ref(false)
 const startX = ref(0)
 const startTime = ref(0)
-const moveTrack = ref<Array<{ x: number; y: number; t: number }>>([])
+const moveTrack = ref<Array<{ x: number, y: number, t: number }>>([])
 
 // 点选相关
-const clickPoints = ref<Array<{ x: number; y: number }>>([])
+const clickPoints = ref<Array<{ x: number, y: number }>>([])
 
 // 计算属性
 const sliderClass = computed(() => ({

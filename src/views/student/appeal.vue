@@ -54,12 +54,16 @@
           <div class="exam-pick-item__main">
             <div class="exam-pick-item__title-row">
               <h3 class="exam-pick-item__title">{{ exam.examName }}</h3>
-              <UiTag :tone="finalScoreStatusTone(exam)" size="sm">{{
-                finalScoreStatusLabel(exam)
-              }}</UiTag>
-              <UiTag :tone="reviewWindowStatusTone(exam)" size="sm">{{
-                reviewWindowStatusLabel(exam)
-              }}</UiTag>
+              <UiTag :tone="finalScoreStatusTone(exam)" size="sm">
+                {{
+                  finalScoreStatusLabel(exam)
+                }}
+              </UiTag>
+              <UiTag :tone="reviewWindowStatusTone(exam)" size="sm">
+                {{
+                  reviewWindowStatusLabel(exam)
+                }}
+              </UiTag>
             </div>
             <div class="exam-pick-item__meta">
               <span class="meta-item">编号：{{ exam.examNo }}</span>
@@ -213,9 +217,9 @@
           <ul v-if="evidenceItems.length" class="appeal-evidence-list">
             <li v-for="item in evidenceItems" :key="item.fileNodeId">
               <span>{{ item.fileName }}</span>
-              <UiButton variant="ghost" size="sm" @click="removeEvidence(item.fileNodeId)"
-                >移除</UiButton
-              >
+              <UiButton variant="ghost" size="sm" @click="removeEvidence(item.fileNodeId)">
+                移除
+              </UiButton>
             </li>
           </ul>
           <div class="appeal-evidence-hint">
@@ -250,23 +254,7 @@ import type {
   GradeReviewRequestStatusCode,
   StudentGradeReviewRequestItemVO,
 } from '@/apis/mark/grade-review'
-import {
-  countMyPendingReviewRequests,
-  GRADE_REVIEW_REASON_TYPE_LABEL,
-  GRADE_REVIEW_REASON_TYPE_OPTIONS,
-  listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_LABEL,
-  REVIEW_REQUEST_STATUS_TONE,
-  submitReviewRequest,
-} from '@/apis/mark/grade-review'
 import type { StudentExamItemVO, StudentQuestionScoreVO } from '@/apis/mark/student-exam'
-import {
-  canSubmitReview,
-  getMyScoreDetail,
-  listMyExams,
-  STUDENT_REVIEW_WINDOW_STATUS_LABEL,
-  STUDENT_REVIEW_WINDOW_STATUS_TONE,
-} from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
@@ -277,6 +265,22 @@ import { message } from 'ant-design-vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from '@/apis/mark/final-score-status'
+import {
+  countMyPendingReviewRequests,
+  GRADE_REVIEW_REASON_TYPE_LABEL,
+  GRADE_REVIEW_REASON_TYPE_OPTIONS,
+  listMyReviewRequests,
+  REVIEW_REQUEST_STATUS_LABEL,
+  REVIEW_REQUEST_STATUS_TONE,
+  submitReviewRequest,
+} from '@/apis/mark/grade-review'
+import {
+  canSubmitReview,
+  getMyScoreDetail,
+  listMyExams,
+  STUDENT_REVIEW_WINDOW_STATUS_LABEL,
+  STUDENT_REVIEW_WINDOW_STATUS_TONE,
+} from '@/apis/mark/student-exam'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -323,7 +327,7 @@ const sourceQuestionId = ref<string | undefined>(undefined)
 
 const reasonTypeOptions = GRADE_REVIEW_REASON_TYPE_OPTIONS
 
-const statusOptions: Array<{ value: GradeReviewRequestStatusCode; label: string }> = [
+const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }> = [
   { value: 'PENDING', label: '待处理' },
   { value: 'IN_REVIEW', label: '处理中' },
   { value: 'APPROVED', label: '通过' },
@@ -517,9 +521,9 @@ async function loadRequests() {
     requestPagination.current = result.pageNum ?? requestPagination.current
     requestPagination.pageSize = result.pageSize ?? requestPagination.pageSize
     if (
-      requests.value.length === 0 &&
-      requestPagination.total > 0 &&
-      requestPagination.current > 1
+      requests.value.length === 0
+      && requestPagination.total > 0
+      && requestPagination.current > 1
     ) {
       requestPagination.current -= 1
       await Promise.all([loadRequests(), loadPendingRequestCount()])
@@ -533,7 +537,7 @@ async function loadRequests() {
   }
 }
 
-function handleRequestPageChange(pageInfo: { current: number; pageSize: number }): void {
+function handleRequestPageChange(pageInfo: { current: number, pageSize: number }): void {
   requestPagination.current = pageInfo.current
   requestPagination.pageSize = pageInfo.pageSize
   void loadRequests()

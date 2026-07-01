@@ -10,6 +10,12 @@ import type {
   PortfolioEvaluationTeacherNoticeVO,
   PortfolioEvaluationTeacherResultSummaryVO,
 } from '@/apis/portfolio/types'
+import { Input, message, Select } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
+import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_LABEL,
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
@@ -21,12 +27,6 @@ import {
   PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_LABEL,
   PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE,
 } from '@/apis/portfolio/types'
-import { Input, message, Select } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
-import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -159,9 +159,9 @@ function canViewerSubmitObjection(record: PortfolioEvaluationPublicityListItemVO
     return false
   }
   return !(
-    canPickTeachers.value &&
-    targetTeacherId.value &&
-    targetTeacherId.value !== currentUserId.value
+    canPickTeachers.value
+    && targetTeacherId.value
+    && targetTeacherId.value !== currentUserId.value
   )
 }
 

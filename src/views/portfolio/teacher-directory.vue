@@ -7,15 +7,8 @@ import type {
   PortfolioTeacherPageRequest,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
-import {
-  PORTFOLIO_TEACHER_IDENTITY_STATUS_LABEL,
-  PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS,
-  PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL,
-  PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS,
-} from '@/apis/portfolio/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
-import { getUserStatusLabel, USER_STATUS_CONFIG } from '@/types/enums/user-status'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -24,6 +17,12 @@ import {
   portfolioTeacherLibraryApi,
   portfolioTeacherSalaryApi,
 } from '@/apis/portfolio/teacher-platform'
+import {
+  PORTFOLIO_TEACHER_IDENTITY_STATUS_LABEL,
+  PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS,
+  PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL,
+  PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS,
+} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -35,6 +34,7 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { getUserStatusLabel, USER_STATUS_CONFIG } from '@/types/enums/user-status'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
@@ -207,7 +207,7 @@ function handleSearch() {
   loadPage()
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadPage()
@@ -252,7 +252,7 @@ async function reloadDetail() {
   await loadTeacherExtensions(detail.value.userId)
 }
 
-function openIdentityCreate(context: { userId: string; nickName?: string; departmentId?: string }) {
+function openIdentityCreate(context: { userId: string, nickName?: string, departmentId?: string }) {
   identityMode.value = 'create'
   identityEditor.teacherUserId = context.userId
   identityEditor.id = undefined

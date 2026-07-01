@@ -20,8 +20,8 @@
 
 <script lang="ts" setup>
 import type { Component } from 'vue'
-import { computed, inject } from 'vue'
 import type { RouteLocationNormalized } from 'vue-router'
+import { computed, inject } from 'vue'
 import ExamWorkspacePageShell from '@/components/workbench/ExamWorkspacePageShell.vue'
 import { useExamWorkspacePage } from '@/composables/useExamWorkspacePage'
 import { useExamWorkspaceChromeContext } from '@/composables/useMarkWorkbenchContext'

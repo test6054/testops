@@ -173,8 +173,8 @@ function pageRowTone(
               <dd class="danger">
                 {{ workflow.formatTime(batch.discardedTime) }}
                 <template v-if="batch.discardedUserId">
-                  · 操作人 {{ batch.discardedUserId }}</template
-                >
+                  · 操作人 {{ batch.discardedUserId }}
+                </template>
               </dd>
             </div>
             <div v-if="batch.discardReason">
@@ -207,8 +207,7 @@ function pageRowTone(
                 <small v-else-if="item.operatorName">
                   操作人 {{ item.operatorName }}
                   <template v-if="item.occurredAt">
-                    · {{ workflow.formatTime(item.occurredAt) }}</template
-                  >
+                    · {{ workflow.formatTime(item.occurredAt) }}</template>
                 </small>
               </div>
               <WarningFilled v-if="item.attentionType" class="page-warn" />

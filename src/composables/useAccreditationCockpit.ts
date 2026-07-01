@@ -1,6 +1,6 @@
 import type { AccreditationCockpitVO } from '@/apis/quality/accreditation'
-import { accreditationApi } from '@/apis/quality/accreditation'
 import { computed, ref, watch } from 'vue'
+import { accreditationApi } from '@/apis/quality/accreditation'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError } from '@/utils/error-handler'
 

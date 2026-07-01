@@ -1,9 +1,9 @@
 import type { TenantConfigDto } from '@/apis/edu/tenant-config'
-import { getTenantConfig } from '@/apis/edu/tenant-config'
 import type { TenantInfo } from '@/apis/edu/tenant-management'
-import { getTenantDetail } from '@/apis/edu/tenant-management'
 import { defineStore } from 'pinia'
 import { computed, reactive, ref } from 'vue'
+import { getTenantConfig } from '@/apis/edu/tenant-config'
+import { getTenantDetail } from '@/apis/edu/tenant-management'
 import { STORAGE_TENANT_ID } from '@/constants/storage-keys'
 import { TenantStatusEnum } from '@/types/enums'
 

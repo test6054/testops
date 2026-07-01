@@ -7,23 +7,23 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 配置某专业采用的认证标准、评价方法、评价周期、样本范围、责任链与归档策略。
  */
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   ProgramEvaluationProfileQueryRequest,
   ProgramEvaluationProfileSaveRequest,
   ProgramEvaluationProfileVO,
 } from '@/apis/quality/program-evaluation-profile'
-import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
 import type { AccreditationType, EvaluationCycle, EvaluationMethod } from '@/apis/quality/types'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
+import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
 import {
   ACCREDITATION_TYPE_LABEL,
   EVALUATION_CYCLE_LABEL,
   EVALUATION_METHOD_LABEL,
 } from '@/apis/quality/types'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { ProgramSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -121,7 +121,7 @@ const evaluationMethodOptions = evaluationMethods.map((value) => ({
   label: strictEnumLabel(EVALUATION_METHOD_LABEL, value, '评价方法'),
 }))
 
-const evaluationCycleOptions: Array<{ value: EvaluationCycle; label: string }> = [
+const evaluationCycleOptions: Array<{ value: EvaluationCycle, label: string }> = [
   { value: 'SEMESTER', label: EVALUATION_CYCLE_LABEL.SEMESTER },
   { value: 'YEAR', label: EVALUATION_CYCLE_LABEL.YEAR },
   { value: 'BIENNIAL', label: EVALUATION_CYCLE_LABEL.BIENNIAL },
@@ -233,7 +233,7 @@ async function loadDicts() {
   )
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()

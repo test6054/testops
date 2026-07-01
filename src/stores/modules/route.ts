@@ -1,8 +1,8 @@
 import type { Ref } from 'vue'
-import { ref, watch } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { cloneDeep, omit } from 'lodash-es'
 import { defineStore } from 'pinia'
+import { ref, watch } from 'vue'
 import XEUtils from 'xe-utils'
 import { commonRoutes } from '@/router/routes/common'
 import { portfolioRoutes } from '@/router/routes/portfolio'
@@ -170,13 +170,13 @@ const storeSetup = (): RouteStoreState => {
     const step1 = routes.filter((route) => {
       // 过滤掉基础路由（登录、注册等）和错误页面
       if (
-        route.path === '/' ||
-        route.path === '/login' ||
-        route.path === '/register' ||
-        route.path === '/forgot-password' ||
-        route.path === '/403' ||
-        route.path === '/404' ||
-        route.path.includes('pathMatch')
+        route.path === '/'
+        || route.path === '/login'
+        || route.path === '/register'
+        || route.path === '/forgot-password'
+        || route.path === '/403'
+        || route.path === '/404'
+        || route.path.includes('pathMatch')
       ) {
         return false
       }

@@ -136,10 +136,10 @@ const defaultModel = computed(() => {
       return acc
     }
     if (
-      field.type === 'select' ||
-      field.type === 'date' ||
-      field.type === 'year' ||
-      field.type === 'custom'
+      field.type === 'select'
+      || field.type === 'date'
+      || field.type === 'year'
+      || field.type === 'custom'
     ) {
       acc[field.key] = undefined
       return acc

@@ -4,12 +4,12 @@ import type {
   ArchiveVolumeSignOffRoleCode,
   ArchiveVolumeSubmitChecklistVO,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, ref, watch } from 'vue'
 import {
   confirmArchiveVolumeSelfCheck,
   previewArchiveVolumeSubmitChecklist,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
@@ -19,7 +19,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  confirmed: []
+  "confirmed": []
 }>()
 
 const loading = ref(false)
@@ -29,7 +29,7 @@ const materialCompleteConfirmed = ref(false)
 const gradingNormConfirmed = ref(false)
 const reason = ref('')
 const signOffState = ref<
-  Record<ArchiveVolumeSignOffRoleCode, { confirmed: boolean; signatoryName: string }>
+  Record<ArchiveVolumeSignOffRoleCode, { confirmed: boolean, signatoryName: string }>
 >({
   PROPOSER: { confirmed: false, signatoryName: '' },
   REVIEWER: { confirmed: false, signatoryName: '' },
@@ -151,18 +151,18 @@ async function handleConfirm() {
         <li v-for="(item, index) in blockingItems" :key="index">{{ item.message }}</li>
       </ul>
       <a-checkbox v-model:checked="materialCompleteConfirmed">材料齐全性已核对</a-checkbox>
-      <a-checkbox v-model:checked="gradingNormConfirmed" class="submit-checklist-modal__check"
-        >阅卷规范性已核对</a-checkbox
-      >
+      <a-checkbox v-model:checked="gradingNormConfirmed" class="submit-checklist-modal__check">
+        阅卷规范性已核对
+      </a-checkbox>
       <div class="submit-checklist-modal__signoff">
         <div
           v-for="item in checklist.signOffItems"
           :key="item.role"
           class="submit-checklist-modal__signoff-row"
         >
-          <a-checkbox v-model:checked="signOffState[item.role].confirmed"
-            >{{ item.roleLabel }}签字齐全</a-checkbox
-          >
+          <a-checkbox v-model:checked="signOffState[item.role].confirmed">
+            {{ item.roleLabel }}签字齐全
+          </a-checkbox>
           <a-input
             v-model:value="signOffState[item.role].signatoryName"
             placeholder="签字人姓名"

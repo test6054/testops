@@ -4,12 +4,12 @@ import type {
   PortfolioDevelopmentRecordStatus,
   PortfolioDevelopmentRecordType,
 } from '@/apis/portfolio/enums'
-import { PORTFOLIO_DEVELOPMENT_RECORD_STATUS_LABEL } from '@/apis/portfolio/enums'
 import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import { PORTFOLIO_DEVELOPMENT_RECORD_STATUS_LABEL } from '@/apis/portfolio/enums'
+import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -37,8 +37,8 @@ const loading = ref(false)
 const importModalOpen = ref(false)
 const rows = ref<PortfolioDevelopmentRecordVO[]>([])
 const form = reactive({ recordTitle: '', descriptionText: '', teacherUserId: '' })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
-  usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
+  = usePortfolioTeacherSearch()
 
 const requiresTeacher = computed(() => props.recordType === 'ACHIEVEMENT')
 const showEditor = computed(() => !props.readonly)

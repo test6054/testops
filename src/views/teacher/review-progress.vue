@@ -226,21 +226,10 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamProcessingTaskItemVO } from '@/apis/mark/exam-processing-task'
-import {
-  pageExamProcessingTasks,
-  retryPaperGradeSuggestion,
-} from '@/apis/mark/exam-processing-task'
 import type { MarkingProgressVO, ReviewQuestionProgressItemVO } from '@/apis/mark/exam-progress'
-import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import type { ReviewTaskStatusCode } from '@/apis/mark/exam-review-task'
-import {
-  REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
-  REVIEW_TASK_STATUS_TONE as STATUS_TONE,
-} from '@/apis/mark/exam-review-task'
 import type { TaskStatusCode } from '@/apis/mark/task-status'
-import { TASK_STATUS_LABEL, TASK_STATUS_TONE } from '@/apis/mark/task-status'
 import type { ProcessingTaskTypeCode } from '@/apis/mark/task-type'
-import { PROCESSING_TASK_TYPE_LABEL, PROCESSING_TASK_TYPE_TONE } from '@/apis/mark/task-type'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
@@ -249,7 +238,18 @@ import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, inject, onActivated, ref, watch } from 'vue'
+import {
+  pageExamProcessingTasks,
+  retryPaperGradeSuggestion,
+} from '@/apis/mark/exam-processing-task'
+import { getMarkingProgress } from '@/apis/mark/exam-progress'
+import {
+  REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
+  REVIEW_TASK_STATUS_TONE as STATUS_TONE,
+} from '@/apis/mark/exam-review-task'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
+import { TASK_STATUS_LABEL, TASK_STATUS_TONE } from '@/apis/mark/task-status'
+import { PROCESSING_TASK_TYPE_LABEL, PROCESSING_TASK_TYPE_TONE } from '@/apis/mark/task-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkDistributionSection from '@/components/chart/MarkDistributionSection.vue'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
@@ -362,7 +362,7 @@ function reloadProcessingTasks(): void {
   void loadProcessingTasks()
 }
 
-function handleProcessingTaskPageChange(pageEvent: { current: number; pageSize: number }): void {
+function handleProcessingTaskPageChange(pageEvent: { current: number, pageSize: number }): void {
   processingTaskPageNum.value = pageEvent.current
   processingTaskPageSize.value = pageEvent.pageSize
   void loadProcessingTasks()
@@ -397,9 +397,9 @@ const processingTaskColumns: ColumnType<ExamProcessingTaskItemVO>[] = [
 
 const contextProgress = computed(
   () =>
-    workbenchContext?.markingProgress?.value ??
-    workbenchContext?.snapshot.value?.markingProgress ??
-    null,
+    workbenchContext?.markingProgress?.value
+    ?? workbenchContext?.snapshot.value?.markingProgress
+    ?? null,
 )
 
 watch(

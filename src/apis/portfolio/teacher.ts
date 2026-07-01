@@ -89,9 +89,9 @@ export const portfolioTeacherApi = {
     http.post<PortfolioArchiveBagExportResultVO>(`${BASE}/export-roster`, data),
   deptStructureStats: () =>
     http.post<PortfolioDeptStructureStatVO>(`${BASE}/dept-structure/stats`, {}),
-  getDeptOneTableSummary: (data: { departmentId: string; planYear?: string }) =>
+  getDeptOneTableSummary: (data: { departmentId: string, planYear?: string }) =>
     http.post<PortfolioDeptOneTableSummaryVO>(`${BASE}/dept-one-table/summary/get`, data),
-  exportDeptOneTable: (data: { departmentId: string; planYear?: string }) =>
+  exportDeptOneTable: (data: { departmentId: string, planYear?: string }) =>
     http.post<PortfolioArchiveBagExportResultVO>(`${BASE}/dept-one-table/export`, data),
   pageDeptOneTableTeachers: (data: {
     departmentId: string

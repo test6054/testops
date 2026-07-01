@@ -107,17 +107,17 @@ import type {
   TeachingImprovementItemVO,
   TeachingImprovementSeverityCode,
 } from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import {
   generateTeachingImprovement,
   getLatestTeachingImprovement,
   TEACHING_IMPROVEMENT_SEVERITY_LABEL,
   TEACHING_IMPROVEMENT_SEVERITY_TONE,
 } from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -130,7 +130,7 @@ import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'TeachingImprovementCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number; classId?: string }>()
+const props = defineProps<{ examId: string, reloadToken: number, classId?: string }>()
 
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)

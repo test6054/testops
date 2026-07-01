@@ -19,8 +19,8 @@ import type {
   ArchiveMaterialTypeCode,
   ArchiveVolumeMaterialVO,
 } from '@/apis/mark/archive-volume'
-import { ARCHIVE_MATERIAL_TYPE_LABEL } from '@/apis/mark/archive-volume'
 import { computed, watch } from 'vue'
+import { ARCHIVE_MATERIAL_TYPE_LABEL } from '@/apis/mark/archive-volume'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import { strictEnumLabel } from '@/utils/strict-enum'
 

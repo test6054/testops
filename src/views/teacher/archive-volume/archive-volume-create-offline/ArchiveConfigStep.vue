@@ -68,20 +68,20 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
+import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import { computed, ref, watch } from 'vue'
 import {
   ARCHIVE_EXAM_FORM_LABEL,
   ARCHIVE_SCORE_SOURCE_LABEL,
   ARCHIVE_SECURITY_LEVEL_LABEL,
 } from '@/apis/mark/archive-volume'
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { computed, ref, watch } from 'vue'
 import { TeacherSelector } from '@/components/quality/selectors'
 import { useInjectedArchiveVolumeCreateConfigForm } from './archive-volume-create-context'
 import { nullableStringToSelectValue, selectValueToNullableString } from './select-value-bridge'
 
 const props = defineProps<{
   configRules: Record<string, Rule[]>
-  templateSetOptions: Array<{ value: string; label: string; examForm?: ArchiveExamFormCode }>
+  templateSetOptions: Array<{ value: string, label: string, examForm?: ArchiveExamFormCode }>
   templateLoading: boolean
 }>()
 

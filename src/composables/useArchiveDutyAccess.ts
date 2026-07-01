@@ -3,9 +3,9 @@ import type {
   ArchiveDutyTypeCode,
   ArchiveSecurityPolicyVO,
 } from '@/apis/mark/archive-config'
-import { listArchiveSecurityPolicy, listMyArchiveDutyGrants } from '@/apis/mark/archive-config'
 import type { ArchiveSecurityLevelCode } from '@/apis/mark/archive-volume'
 import { computed, ref } from 'vue'
+import { listArchiveSecurityPolicy, listMyArchiveDutyGrants } from '@/apis/mark/archive-config'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 
@@ -117,8 +117,8 @@ export function useArchiveDutyAccess() {
   }
 
   function filterListDepartmentOptions(
-    all: Array<{ value: string; label: string }>,
-  ): Array<{ value: string; label: string }> {
+    all: Array<{ value: string, label: string }>,
+  ): Array<{ value: string, label: string }> {
     const scopeIds = listScopedDepartmentIds.value
     if (scopeIds.length === 0) {
       return all

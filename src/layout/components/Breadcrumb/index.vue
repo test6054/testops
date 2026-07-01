@@ -16,8 +16,8 @@
 
 <script lang="ts" setup>
 import type { Component } from 'vue'
-import { computed } from 'vue'
 import HomeOutlined from '@ant-design/icons-vue/HomeOutlined'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 defineOptions({ name: 'Breadcrumb' })

@@ -48,7 +48,7 @@ const props = withDefaults(
     maxlength?: number
     showCount?: boolean
     showWordLimit?: boolean
-    autoSize?: boolean | { minRows?: number; maxRows?: number }
+    autoSize?: boolean | { minRows?: number, maxRows?: number }
     size?: UiComponentSize
     status?: UiFieldStatus
   }>(),

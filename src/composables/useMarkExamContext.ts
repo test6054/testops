@@ -1,14 +1,14 @@
 import type { InjectionKey } from 'vue'
-import { computed, inject, provide, ref, watch } from 'vue'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import { getExamDetail } from '@/apis/mark/exam'
 import type { MarkExamSelectorOptions } from '@/composables/useMarkExamSelector'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
-import { examSummaryFromDetail, toMarkExamSelectOption } from '@/utils/mark-exam-option'
+import { computed, inject, provide, ref, watch } from 'vue'
+import { getExamDetail } from '@/apis/mark/exam'
+import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { showUserError } from '@/utils/error-handler'
+import { examSummaryFromDetail, toMarkExamSelectOption } from '@/utils/mark-exam-option'
 
 export type MarkExamContext = ReturnType<typeof useMarkExamSelector>
 

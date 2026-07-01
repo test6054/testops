@@ -15,58 +15,58 @@ import http from '@/config/axios'
 // ─── 操作类型 / 目标类型枚举 ─────────────────────────
 
 /** 审计目标类型（与后端 AuditTargetType JSON 编码完全对齐） */
-export type AuditTargetTypeCode =
-  | 'EXAM'
-  | 'EXAM_QUESTION_GRADE_RESULT'
-  | 'EXAM_FINAL_SCORE'
-  | 'ABSENCE_RECORD'
-  | 'GRADE_REVIEW_REQUEST'
-  | 'GRADE_CORRECTION'
-  | 'MARKING_TASK'
-  | 'EXAM_PAPER_INSTANCE'
-  | 'SCAN_BATCH'
-  | 'SYNC_TASK'
-  | 'PASSBACK_RECORD'
-  | 'EXAM_EXPORT_TASK'
-  | 'EXAM_ARCHIVE_PACKAGE'
+export type AuditTargetTypeCode
+  = | 'EXAM'
+    | 'EXAM_QUESTION_GRADE_RESULT'
+    | 'EXAM_FINAL_SCORE'
+    | 'ABSENCE_RECORD'
+    | 'GRADE_REVIEW_REQUEST'
+    | 'GRADE_CORRECTION'
+    | 'MARKING_TASK'
+    | 'EXAM_PAPER_INSTANCE'
+    | 'SCAN_BATCH'
+    | 'SYNC_TASK'
+    | 'PASSBACK_RECORD'
+    | 'EXAM_EXPORT_TASK'
+    | 'EXAM_ARCHIVE_PACKAGE'
 
 /** 审计操作类型（与后端 OperationType 对齐） */
-export type OperationTypeCode =
-  | 'SCORE_CHANGE'
-  | 'SCORE_CONFIRM'
-  | 'SCORE_PUBLISH'
-  | 'SCORE_WITHDRAW'
-  | 'REVIEW_REQUEST_HANDLE'
-  | 'GRADE_CORRECTION_CREATE'
-  | 'QUALITY_OVERRIDE'
-  | 'ABSENCE_CONFIRM'
-  | 'ABSENCE_REVOKE'
-  | 'ABSENCE_RECONCILE'
-  | 'DUPLICATE_RESOLVE'
-  | 'BINDING_CONFIRM'
-  | 'DEANONYMIZE'
-  | 'REPAIR_SUBMIT'
-  | 'SPOT_CHECK_ABNORMAL'
-  | 'BATCH_REPROCESS'
-  | 'GRADE_PASSBACK_EXECUTE'
-  | 'GRADE_PASSBACK_RECONCILE'
-  | 'GRADE_PASSBACK_CALLBACK'
-  | 'SYNC_TASK_RETRY'
-  | 'SYNC_TASK_CANCEL'
-  | 'EXPORT_CREATE'
-  | 'EXPORT_START'
-  | 'EXPORT_COMPLETE'
-  | 'EXPORT_FAIL'
-  | 'ARCHIVE_CREATE'
-  | 'ARCHIVE_PACKAGE_START'
-  | 'ARCHIVE_PACKAGE_COMPLETE'
-  | 'ARCHIVE_PACKAGE_FAIL'
-  | 'ARCHIVE_APPRAISAL_REQUEST'
-  | 'ARCHIVE_APPRAISAL_DECIDE'
-  | 'ARCHIVE_RETENTION_EXTEND'
-  | 'ARCHIVE_DESTRUCTION_REQUEST'
-  | 'ARCHIVE_DESTRUCTION_APPROVE'
-  | 'ARCHIVE_DESTROY'
+export type OperationTypeCode
+  = | 'SCORE_CHANGE'
+    | 'SCORE_CONFIRM'
+    | 'SCORE_PUBLISH'
+    | 'SCORE_WITHDRAW'
+    | 'REVIEW_REQUEST_HANDLE'
+    | 'GRADE_CORRECTION_CREATE'
+    | 'QUALITY_OVERRIDE'
+    | 'ABSENCE_CONFIRM'
+    | 'ABSENCE_REVOKE'
+    | 'ABSENCE_RECONCILE'
+    | 'DUPLICATE_RESOLVE'
+    | 'BINDING_CONFIRM'
+    | 'DEANONYMIZE'
+    | 'REPAIR_SUBMIT'
+    | 'SPOT_CHECK_ABNORMAL'
+    | 'BATCH_REPROCESS'
+    | 'GRADE_PASSBACK_EXECUTE'
+    | 'GRADE_PASSBACK_RECONCILE'
+    | 'GRADE_PASSBACK_CALLBACK'
+    | 'SYNC_TASK_RETRY'
+    | 'SYNC_TASK_CANCEL'
+    | 'EXPORT_CREATE'
+    | 'EXPORT_START'
+    | 'EXPORT_COMPLETE'
+    | 'EXPORT_FAIL'
+    | 'ARCHIVE_CREATE'
+    | 'ARCHIVE_PACKAGE_START'
+    | 'ARCHIVE_PACKAGE_COMPLETE'
+    | 'ARCHIVE_PACKAGE_FAIL'
+    | 'ARCHIVE_APPRAISAL_REQUEST'
+    | 'ARCHIVE_APPRAISAL_DECIDE'
+    | 'ARCHIVE_RETENTION_EXTEND'
+    | 'ARCHIVE_DESTRUCTION_REQUEST'
+    | 'ARCHIVE_DESTRUCTION_APPROVE'
+    | 'ARCHIVE_DESTROY'
 
 /** 审计操作类型中文文案 */
 export const OPERATION_TYPE_LABEL: Record<OperationTypeCode, string> = {
@@ -108,7 +108,7 @@ export const OPERATION_TYPE_LABEL: Record<OperationTypeCode, string> = {
 }
 
 /** 审计操作类型下拉选项，值来源必须与 OperationTypeCode 完全一致 */
-export const OPERATION_TYPE_OPTIONS: Array<{ label: string; value: OperationTypeCode }> = [
+export const OPERATION_TYPE_OPTIONS: Array<{ label: string, value: OperationTypeCode }> = [
   { value: 'SCORE_CHANGE', label: OPERATION_TYPE_LABEL.SCORE_CHANGE },
   { value: 'SCORE_CONFIRM', label: OPERATION_TYPE_LABEL.SCORE_CONFIRM },
   { value: 'SCORE_PUBLISH', label: OPERATION_TYPE_LABEL.SCORE_PUBLISH },
@@ -208,12 +208,12 @@ export interface DiagnosticSampleQueryRequest extends QueryDto {
 }
 
 /** 诊断样本类型 */
-export type DiagnosticSampleTypeCode =
-  'OCR_CONFLICT' | 'IQA_EDGE' | 'AI_DRIFT' | 'BINDING_AMBIGUOUS'
+export type DiagnosticSampleTypeCode
+  = 'OCR_CONFLICT' | 'IQA_EDGE' | 'AI_DRIFT' | 'BINDING_AMBIGUOUS'
 
 /** 诊断样本来源类型 */
-export type DiagnosticSourceTypeCode =
-  'SCANNED_PAGE' | 'RESPONSE_SLICE' | 'GRADE_RESULT' | 'RECOGNITION_RESULT'
+export type DiagnosticSourceTypeCode
+  = 'SCANNED_PAGE' | 'RESPONSE_SLICE' | 'GRADE_RESULT' | 'RECOGNITION_RESULT'
 
 /** 诊断样本文案 */
 export const DIAGNOSTIC_SAMPLE_TYPE_LABEL: Record<DiagnosticSampleTypeCode, string> = {

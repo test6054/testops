@@ -1,8 +1,6 @@
 import type { Router } from 'vue-router'
 import type { RoleEnum } from '@/utils/permission'
-import { isValidRole } from '@/utils/permission'
 import type { SeoMeta } from '@/utils/seo'
-import { applySeoMeta } from '@/utils/seo'
 import NProgress from 'nprogress'
 import { runPortfolioTeacherReadinessGuard } from '@/router/guards/portfolio-teacher-readiness'
 import { getDefaultRoute, hasRoutePermission, requiresAuth } from '@/router/permission'
@@ -11,8 +9,10 @@ import { getValidToken } from '@/utils/auth'
 import { isAuthRequestFailure, isTransientRequestError } from '@/utils/error-handler'
 import { prefersReducedMotion } from '@/utils/motion-preference'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
+import { isValidRole } from '@/utils/permission'
 import { isQualityEvaluationRoute } from '@/utils/portfolio-route'
 import { ensureQualityPlanConfirmedForNavigation } from '@/utils/quality-plan-guard'
+import { applySeoMeta } from '@/utils/seo'
 import { getRoutePreloadManager } from './preload-strategy'
 import 'nprogress/nprogress.css'
 
@@ -160,9 +160,9 @@ export const setupRouterGuard = (router: Router) => {
       return getDefaultRoute(authStore.userRole)
     }
 
-    const needsSecurityRefresh =
-      to.path !== '/change-password' &&
-      (!userStore.userInfo.forcePasswordChange || !userStore.userInfo.currentLoginProviderType)
+    const needsSecurityRefresh
+      = to.path !== '/change-password'
+        && (!userStore.userInfo.forcePasswordChange || !userStore.userInfo.currentLoginProviderType)
 
     if (needsSecurityRefresh) {
       try {

@@ -65,10 +65,10 @@
 <script lang="ts" setup>
 import type { UiArrowTimelineStage } from '@/components/ui-guide/ui/types'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
-import { WORKBENCH_STAGE_TO_TIMELINE } from '@/types/workbench'
 import CheckOutlined from '@ant-design/icons-vue/CheckOutlined'
 import { computed } from 'vue'
 import UiArrowTimeline from '@/components/ui-guide/ui/UiArrowTimeline.vue'
+import { WORKBENCH_STAGE_TO_TIMELINE } from '@/types/workbench'
 
 defineOptions({
   name: 'StageRail',

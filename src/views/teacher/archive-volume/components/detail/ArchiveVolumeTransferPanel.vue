@@ -55,15 +55,15 @@
 
 <script setup lang="ts">
 import type { ArchiveVolumeDetailVO } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { ref } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   approveArchiveVolumeTransfer,
   ARCHIVE_SCORE_COMPLETION_STATUS_LABEL,
   ARCHIVE_TRANSFER_STATUS_LABEL,
   rejectArchiveVolumeTransfer,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { ref } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { showUserError } from '@/utils/error-handler'

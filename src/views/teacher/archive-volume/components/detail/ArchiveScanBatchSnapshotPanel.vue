@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ArchiveScanBatchSnapshotItemVO } from '@/apis/mark/archive-volume'
+import { onMounted, ref } from 'vue'
 import {
   pageArchiveScanBatchSnapshots,
   SCAN_BATCH_QUALITY_FLAG_LABEL,
   SCAN_BATCH_QUALITY_FLAG_TONE,
 } from '@/apis/mark/archive-volume'
-import { onMounted, ref } from 'vue'
 import { SCAN_WORK_ORDER_STATUS_LABEL } from '@/apis/mark/scanner-work-order'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -62,7 +62,7 @@ async function loadRows() {
   }
 }
 
-function handlePageChange(pageEvent: { current: number; pageSize: number }) {
+function handlePageChange(pageEvent: { current: number, pageSize: number }) {
   pageNum.value = pageEvent.current
   pageSize.value = pageEvent.pageSize
   void loadRows()

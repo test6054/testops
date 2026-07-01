@@ -110,6 +110,11 @@ import type {
   ArchiveVolumeAccessRecordVO,
   ArchiveVolumeVO,
 } from '@/apis/mark/archive-volume'
+import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ARCHIVE_ACCESS_STATUS_LABEL,
   ARCHIVE_ACCESS_STATUS_TONE,
@@ -117,12 +122,7 @@ import {
   pageAccessLedger,
   pageArchiveVolumes,
 } from '@/apis/mark/archive-volume'
-import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { requireArrayResult } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -140,8 +140,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherArchiveVolumeLedger' })
 
 const router = useRouter()
-const { grantsLoadFailed, listScopedDepartmentIds, filterListDepartmentOptions, loadGrants } =
-  useArchiveDutyAccess()
+const { grantsLoadFailed, listScopedDepartmentIds, filterListDepartmentOptions, loadGrants }
+  = useArchiveDutyAccess()
 
 const ledgerTab = ref('volume')
 const volumeLoading = ref(false)
@@ -150,7 +150,7 @@ const selectedVolumeId = ref('')
 const selectedArchiveNo = ref('')
 const accessRecords = ref<ArchiveVolumeAccessRecordVO[]>([])
 const tenantRows = ref<ArchiveVolumeAccessLedgerRowVO[]>([])
-const departmentOptions = ref<Array<{ value: string; label: string }>>([])
+const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 
 const volumeFilterForm = reactive({ keyword: '' })
 const volumeFilterModel = computed<Record<string, unknown>>({

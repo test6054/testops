@@ -5,13 +5,13 @@ import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 
 export type ArchiveVolumeListTabKey = 'mine' | 'college' | 'archive'
 
-export type ArchiveVolumeScenarioKey =
-  | 'collecting-materials'
-  | 'catalog-pending'
-  | 'submit-ready'
-  | 'remediation-open'
-  | 'pending-review'
-  | 'term-not-stored'
+export type ArchiveVolumeScenarioKey
+  = | 'collecting-materials'
+    | 'catalog-pending'
+    | 'submit-ready'
+    | 'remediation-open'
+    | 'pending-review'
+    | 'term-not-stored'
 
 export interface ArchiveVolumeFilterPreset {
   key: ArchiveVolumeScenarioKey
@@ -48,10 +48,10 @@ const ARCHIVE_VOLUME_FILTER_PRESETS: ArchiveVolumeFilterPreset[] = [
       integrityStatus: 'PASSED',
     }),
     matchRow: (row) =>
-      row.volumeStatus === 'COLLECTING' &&
-      (row.integrityStatus === 'PASSED' || row.integrityStatus === 'WAIVED') &&
-      row.submitReady !== true &&
-      row.hasOpenRemediationTask !== true,
+      row.volumeStatus === 'COLLECTING'
+      && (row.integrityStatus === 'PASSED' || row.integrityStatus === 'WAIVED')
+      && row.submitReady !== true
+      && row.hasOpenRemediationTask !== true,
   },
   {
     key: 'submit-ready',

@@ -245,9 +245,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
-import { ANONYMITY_MODE_LABEL } from '@/apis/mark/anonymity-mode'
 import type { ExamStatusCode } from '@/apis/mark/exam'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import type {
   FormalSessionVO,
   MarkingSessionPhaseCode,
@@ -257,15 +255,6 @@ import type {
   MarkingTaskVO,
   TeacherClaimContextVO,
   TrialSessionVO,
-} from '@/apis/mark/marking-organization'
-import {
-  FORMAL_SESSION_STATUS_LABEL,
-  getMarkingQuestionView,
-  getOrganization,
-  MARKING_TASK_STATUS_LABEL,
-  MARKING_TASK_STATUS_OPTIONS,
-  MARKING_TASK_STATUS_TONE,
-  TRIAL_SESSION_STATUS_LABEL,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -277,6 +266,17 @@ import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ANONYMITY_MODE_LABEL } from '@/apis/mark/anonymity-mode'
+import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
+import {
+  FORMAL_SESSION_STATUS_LABEL,
+  getMarkingQuestionView,
+  getOrganization,
+  MARKING_TASK_STATUS_LABEL,
+  MARKING_TASK_STATUS_OPTIONS,
+  MARKING_TASK_STATUS_TONE,
+  TRIAL_SESSION_STATUS_LABEL,
+} from '@/apis/mark/marking-organization'
 import MarkingBatchScoreDrawer from '@/components/mark/MarkingBatchScoreDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -384,7 +384,7 @@ const batchFullScore = ref(0)
 const batchGroupId = ref('')
 const sessionPausedAlert = ref(false)
 const isGroupLeader = ref(false)
-const groupLeaderProgress = ref<{ pendingCount?: number; submittedCount?: number } | null>(null)
+const groupLeaderProgress = ref<{ pendingCount?: number, submittedCount?: number } | null>(null)
 
 const selectedTasks = computed(() =>
   tasks.value.filter((task) => selectedRowKeys.value.includes(task.id)),
@@ -407,8 +407,8 @@ function handleSelectionChange(keys: (string | number)[]): void {
     clearBatchSelection()
     return
   }
-  const anchor =
-    batchSelectionAnchor.value ?? tasks.value.find((task) => task.id === typedKeys[0]) ?? null
+  const anchor
+    = batchSelectionAnchor.value ?? tasks.value.find((task) => task.id === typedKeys[0]) ?? null
   if (!anchor || !isBatchSelectable(anchor)) {
     clearBatchSelection()
     return
@@ -511,9 +511,9 @@ const groupLeaderStream = useMarkingTaskStream({
     }
     // exam Topic 事件携带单 session 计数，须回源 claimContext 做 exam 级聚合
     if (
-      event.eventType === 'SESSION_PROGRESS' ||
-      event.eventType === 'SESSION_PAUSED' ||
-      event.eventType === 'SESSION_RESUMED'
+      event.eventType === 'SESSION_PROGRESS'
+      || event.eventType === 'SESSION_PAUSED'
+      || event.eventType === 'SESSION_RESUMED'
     ) {
       void loadClaimContext()
     }

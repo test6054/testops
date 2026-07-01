@@ -127,16 +127,16 @@ import type {
   ClassWeaknessItemVO,
   ExamTeachingAnalysisRecordVO,
 } from '@/apis/mark/teaching-analysis'
-import {
-  generateClassWeaknessAnalysis,
-  getLatestClassWeaknessAnalysis,
-} from '@/apis/mark/teaching-analysis'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
+import {
+  generateClassWeaknessAnalysis,
+  getLatestClassWeaknessAnalysis,
+} from '@/apis/mark/teaching-analysis'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

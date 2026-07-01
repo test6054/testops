@@ -6,8 +6,8 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import { computed, onMounted, ref, watch } from 'vue'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
@@ -33,7 +33,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: AssessmentItemVO]
+  "change": [value: string | null, option?: AssessmentItemVO]
 }>()
 
 const options = ref<AssessmentItemVO[]>([])
@@ -120,9 +120,9 @@ defineExpose({ reload: loadOptions })
     >
       <span class="dp-selector-option-code">{{ opt.itemCode }}</span>
       {{ opt.itemName }}
-      <UiTag v-if="opt.isProcessOriented" tone="green" class="dp-selector-option-tag-gap"
-        >过程</UiTag
-      >
+      <UiTag v-if="opt.isProcessOriented" tone="green" class="dp-selector-option-tag-gap">
+        过程
+      </UiTag>
       <span class="dp-selector-option-meta">满分 {{ opt.fullScore }}</span>
     </a-select-option>
   </a-select>

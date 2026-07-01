@@ -30,7 +30,7 @@ export async function resolveStorageNodeNames(nodeIds: string[]): Promise<Map<st
 }
 
 export async function hydrateTemplatePageFileNames(
-  rows: Array<{ templateFileId?: string; templateFileName?: string }>,
+  rows: Array<{ templateFileId?: string, templateFileName?: string }>,
 ): Promise<void> {
   const pendingIds = rows
     .filter((row) => row.templateFileId && !row.templateFileName?.trim())

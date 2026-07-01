@@ -41,11 +41,11 @@
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamScoreDistributionVO } from '@/apis/mark/exam-score'
-import { getExamScoreDistribution } from '@/apis/mark/exam-score'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref, watch } from 'vue'
+import { getExamScoreDistribution } from '@/apis/mark/exam-score'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'

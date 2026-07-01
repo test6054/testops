@@ -12,6 +12,12 @@ import type {
   PortfolioIndicatorSourceMappingVO,
   PortfolioIndustryPackVO,
 } from '@/apis/portfolio/indicator-types'
+import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
+import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import {
   PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL,
   PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS,
@@ -20,22 +26,6 @@ import {
   PF_SCORE_RULE_TYPE_LABEL,
   PF_SCORE_RULE_TYPE_OPTIONS,
 } from '@/apis/portfolio/indicator-types'
-import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
-import {
-  buildNewIndustryPackDefJson,
-  mergeIndustryPackDefJson,
-  parseIndustryPackDefJson,
-} from '@/utils/indicator-industry-pack-def'
-import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import {
-  defaultTemplateParams,
-  parseTemplateParamsJson,
-  serializeTemplateParams,
-} from '@/utils/indicator-template-params'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -46,6 +36,16 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
+import {
+  buildNewIndustryPackDefJson,
+  mergeIndustryPackDefJson,
+  parseIndustryPackDefJson,
+} from '@/utils/indicator-industry-pack-def'
+import {
+  defaultTemplateParams,
+  parseTemplateParamsJson,
+  serializeTemplateParams,
+} from '@/utils/indicator-template-params'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -548,9 +548,7 @@ onMounted(async () => {
                 {{ indicatorCode }} ·
                 {{ defaultDataSource ? dataSourceLabel(defaultDataSource) : '—' }} ·
                 {{ status ? indicatorStatusLabel(status) : '—' }}
-                <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)"
-                  >详情</a
-                >
+                <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)">详情</a>
               </span>
             </template>
           </a-tree>

@@ -1,26 +1,26 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AccreditationCockpitVO, AccreditationCycleVO } from '@/apis/quality/accreditation'
-import { accreditationApi } from '@/apis/quality/accreditation'
 import type {
   ArchiveQueryRequest,
   ArchiveSaveRequest,
   ArchiveVO,
   ExpertPackageExportRequest,
 } from '@/apis/quality/archive'
-import { archiveApi } from '@/apis/quality/archive'
 import type { ArchiveBusinessType } from '@/apis/quality/types'
-import {
-  ARCHIVE_BUSINESS_TYPE_CODES,
-  ARCHIVE_BUSINESS_TYPE_LABEL,
-  EXPERT_PACKAGE_TYPE_LABEL,
-} from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { accreditationApi } from '@/apis/quality/accreditation'
+import { archiveApi } from '@/apis/quality/archive'
+import {
+  ARCHIVE_BUSINESS_TYPE_CODES,
+  ARCHIVE_BUSINESS_TYPE_LABEL,
+  EXPERT_PACKAGE_TYPE_LABEL,
+} from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
@@ -284,7 +284,7 @@ async function handleScopeChange(): Promise<void> {
 
 useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false })
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -721,8 +721,9 @@ onMounted(async () => {
                 v-if="isArchiveDestroyable(record)"
                 tone="danger"
                 @click="handleDelete(record)"
-                >删除</UiTextAction
               >
+                删除
+              </UiTextAction>
               <span v-else class="archive-page__locked-hint">保管期内</span>
               <UiTextAction @click="openAuditDrawer(record)">审计</UiTextAction>
             </div>

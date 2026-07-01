@@ -6,8 +6,8 @@
 
 <script lang="ts" setup>
 import type { StatusVariant } from '@/utils/status-style'
-import { STATUS_VARIANT_STYLES } from '@/utils/status-style'
 import { computed } from 'vue'
+import { STATUS_VARIANT_STYLES } from '@/utils/status-style'
 
 const props = withDefaults(
   defineProps<{

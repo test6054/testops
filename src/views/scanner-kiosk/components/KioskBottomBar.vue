@@ -51,8 +51,8 @@ const exitTitle = computed(() => {
     return mutex.reasonOf('removeJob') || workflow.removeCurrentJobTitle.value
   }
   return (
-    mutex.reasonOf('cancelJob') ||
-    (workflow.isPreUploadScanFailure.value ? '清理失败的扫描任务并返回准备扫描' : '取消当前任务')
+    mutex.reasonOf('cancelJob')
+    || (workflow.isPreUploadScanFailure.value ? '清理失败的扫描任务并返回准备扫描' : '取消当前任务')
   )
 })
 
@@ -174,12 +174,8 @@ function handleExitAction() {
       </button>
     </div>
     <div class="bottom-counters">
-      <span
-        >已上传 <b>{{ counterUploaded }}</b></span
-      >
-      <span class="warn"
-        >异常 <b>{{ counterException }}</b></span
-      >
+      <span>已上传 <b>{{ counterUploaded }}</b></span>
+      <span class="warn">异常 <b>{{ counterException }}</b></span>
     </div>
   </footer>
 </template>

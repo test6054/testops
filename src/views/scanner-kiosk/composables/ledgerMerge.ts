@@ -81,9 +81,9 @@ export function applyLedgerResponse(
     }
   }
   if (
-    previous &&
-    incoming.attentionItems.length === 0 &&
-    incoming.attentionCount === previous.attentionCount
+    previous
+    && incoming.attentionItems.length === 0
+    && incoming.attentionCount === previous.attentionCount
   ) {
     return {
       ...incoming,

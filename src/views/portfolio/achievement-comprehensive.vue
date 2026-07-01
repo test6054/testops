@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentRecordType } from '@/apis/portfolio/enums'
-import { PORTFOLIO_DEVELOPMENT_RECORD_TYPE_LABEL } from '@/apis/portfolio/enums'
 import type {
   PortfolioAchievementStatsVO,
   PortfolioDevelopmentRecordVO,
 } from '@/apis/portfolio/teacher-platform'
-import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import { onMounted, reactive, ref } from 'vue'
+import { PORTFOLIO_DEVELOPMENT_RECORD_TYPE_LABEL } from '@/apis/portfolio/enums'
+import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

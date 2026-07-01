@@ -1,14 +1,14 @@
 import type { InjectionKey } from 'vue'
-import { inject } from 'vue'
 import type {
   ArchiveExamFormCode,
   ArchiveScoreSourceCode,
   ArchiveSecurityLevelCode,
 } from '@/apis/mark/archive-volume'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import { inject } from 'vue'
 
-export type ArchiveVolumeCreateSectionKey =
-  'archive-create-basic' | 'archive-create-config' | 'archive-create-confirm'
+export type ArchiveVolumeCreateSectionKey
+  = 'archive-create-basic' | 'archive-create-config' | 'archive-create-confirm'
 
 export const ARCHIVE_VOLUME_CREATE_SECTION_ORDER: ArchiveVolumeCreateSectionKey[] = [
   'archive-create-basic',

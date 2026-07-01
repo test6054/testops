@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { DispatchQueueStatusFilter } from './core/useDispatchQueue'
-import { useDispatchQueue } from './core/useDispatchQueue'
 import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, watch } from 'vue'
@@ -10,13 +9,14 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import DocumentKioskActivationGate from './components/DocumentKioskActivationGate.vue'
 import { useDocumentKioskBootstrap } from './composables/useDocumentKioskBootstrap'
+import { useDispatchQueue } from './core/useDispatchQueue'
 
 const router = useRouter()
 const route = useRoute()
 const queue = useDispatchQueue()
 const bootstrap = useDocumentKioskBootstrap()
 
-const statusTabs: { key: DispatchQueueStatusFilter; label: string }[] = [
+const statusTabs: { key: DispatchQueueStatusFilter, label: string }[] = [
   { key: 'ALL', label: '全部' },
   { key: 'PENDING', label: '待处理' },
   { key: 'PROCESSING', label: '处理中' },
@@ -57,11 +57,11 @@ onMounted(async () => {
   }
   const tab = route.query.tab
   if (
-    tab === 'FAILED' ||
-    tab === 'SUSPENDED' ||
-    tab === 'PROCESSING' ||
-    tab === 'PENDING' ||
-    tab === 'ALL'
+    tab === 'FAILED'
+    || tab === 'SUSPENDED'
+    || tab === 'PROCESSING'
+    || tab === 'PENDING'
+    || tab === 'ALL'
   ) {
     queue.setStatusFilter(tab)
   }
@@ -149,9 +149,9 @@ async function changeStatusFilter(filter: DispatchQueueStatusFilter) {
           <div class="dispatch-queue__item-top">
             <strong v-if="item.taskKind === 'PORTFOLIO_COLLECT'">
               {{
-                item.portfolioSnapshot?.gapTaskTitle ||
-                item.portfolioSnapshot?.teacherName ||
-                '档案袋派单'
+                item.portfolioSnapshot?.gapTaskTitle
+                  || item.portfolioSnapshot?.teacherName
+                  || '档案袋派单'
               }}
             </strong>
             <strong v-else>{{ item.archiveSnapshot?.archiveTitle || '归档卷派单' }}</strong>
@@ -164,8 +164,7 @@ async function changeStatusFilter(filter: DispatchQueueStatusFilter) {
               item.portfolioSnapshot?.collectMode === 'GAP_ATTACHMENT' ? '补采附件' : 'AI 候选提交'
             }}
             <span v-if="item.portfolioSnapshot?.categoryName">
-              · {{ item.portfolioSnapshot.categoryName }}</span
-            >
+              · {{ item.portfolioSnapshot.categoryName }}</span>
           </p>
           <p v-else>柜位 {{ item.archiveSnapshot?.physicalStorageLocation || '—' }}</p>
           <p class="dispatch-queue__meta">{{ item.traceLabelCode }}</p>

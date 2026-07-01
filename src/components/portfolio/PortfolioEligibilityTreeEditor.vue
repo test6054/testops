@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { PfEligibilityRuleTreeNodeDto } from '@/apis/portfolio/indicator-types'
+import { computed } from 'vue'
 import {
   PF_ELIGIBILITY_AUDIT_STATUS_OPTIONS,
   PF_ELIGIBILITY_NODE_TYPE_OPTIONS,
 } from '@/apis/portfolio/indicator-types'
-import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 
 defineOptions({ name: 'PortfolioEligibilityTreeEditor' })
@@ -17,7 +17,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:node': [node: PfEligibilityRuleTreeNodeDto]
-  remove: []
+  "remove": []
 }>()
 
 const depth = computed(() => props.depth ?? 0)

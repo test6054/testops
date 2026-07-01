@@ -5,14 +5,14 @@ import type {
   PortfolioKeyTeacherRegistryStatus,
   PortfolioKeyTeacherRegistryType,
 } from '@/apis/portfolio/enums'
+import type { PortfolioKeyTeacherRegistryVO } from '@/apis/portfolio/teacher-platform'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL,
   PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_LABEL,
 } from '@/apis/portfolio/enums'
-import type { PortfolioKeyTeacherRegistryVO } from '@/apis/portfolio/teacher-platform'
 import { portfolioKeyTeacherApi } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -42,8 +42,8 @@ const form = reactive({
   appointYear: '',
   dutyScope: '',
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
-  usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
+  = usePortfolioTeacherSearch()
 
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },

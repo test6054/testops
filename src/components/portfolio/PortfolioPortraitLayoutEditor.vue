@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { PortfolioPortraitDimension } from '@/apis/portfolio/enums'
 import type { PortfolioPortraitLayoutWidget, PortraitWidgetType } from '@/utils/portrait-layout'
-import { PORTRAIT_DIMENSION_OPTIONS, PORTRAIT_WIDGET_TYPE_LABEL } from '@/utils/portrait-layout'
 import { computed, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import { PORTRAIT_DIMENSION_OPTIONS, PORTRAIT_WIDGET_TYPE_LABEL } from '@/utils/portrait-layout'
 
 const props = defineProps<{
   widgets: PortfolioPortraitLayoutWidget[]
@@ -22,7 +22,7 @@ const widgetOptions = (Object.keys(PORTRAIT_WIDGET_TYPE_LABEL) as PortraitWidget
 )
 
 const canvasCells = computed(() => {
-  const cells: Array<{ col: number; row: number; key: string }> = []
+  const cells: Array<{ col: number, row: number, key: string }> = []
   for (let row = 0; row < GRID_ROWS; row += 1) {
     for (let col = 0; col < GRID_COLS; col += 1) {
       cells.push({ col, row, key: `${col}-${row}` })

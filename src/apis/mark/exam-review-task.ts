@@ -1,10 +1,8 @@
 import type { AiAbilityCode } from './exam-grade'
-import { AI_ABILITY_LABEL } from './exam-grade'
 import type { MarkingScanPageRefVO } from './exam-scan'
 import type { PaperInstanceDisplayVO } from './exam-score'
 import type { ObjectiveComparePolicyCode } from './exam-standard-answer'
 import type { QuestionTypeCode } from './question-type'
-import { QUESTION_TYPE_LABEL } from './question-type'
 /**
  * 阅卷考试匿名复核任务 API - 对接 /api/mark/exams/review-tasks/*。
  */
@@ -17,6 +15,8 @@ import {
   assertUserFacingText,
 } from '@/utils/contract-guard'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import { AI_ABILITY_LABEL } from './exam-grade'
+import { QUESTION_TYPE_LABEL } from './question-type'
 
 const REVIEW_TASK_DATA_ERROR = '复核任务数据异常，请刷新后重试'
 
@@ -35,16 +35,16 @@ export interface ReviewTaskQueryRequest extends QueryDto {
 }
 
 /** 复核任务类型编码 - 与后端 com.nybc.edu.common.enums.TaskType 一一对齐。 */
-export type ReviewTaskTypeCode =
-  | 'OBJECTIVE_AUTO_REVIEW'
-  | 'OBJECTIVE_AI_REVIEW'
-  | 'SUBJECTIVE_AI_REVIEW'
-  | 'QUESTION_REVIEW_ARBITRATION'
+export type ReviewTaskTypeCode
+  = | 'OBJECTIVE_AUTO_REVIEW'
+    | 'OBJECTIVE_AI_REVIEW'
+    | 'SUBJECTIVE_AI_REVIEW'
+    | 'QUESTION_REVIEW_ARBITRATION'
 
 /** 复核任务类型中文标签与颜色，便于前端 tag 渲染 */
 export const REVIEW_TASK_TYPE_META: Record<
   ReviewTaskTypeCode,
-  { label: string; color: 'blue' | 'green' | 'purple' }
+  { label: string, color: 'blue' | 'green' | 'purple' }
 > = {
   OBJECTIVE_AUTO_REVIEW: { label: '客观题（硬比对）', color: 'green' },
   OBJECTIVE_AI_REVIEW: { label: '客观题（AI 评分）', color: 'blue' },
@@ -60,12 +60,12 @@ const REVIEW_TASK_TYPE_LABEL: Record<ReviewTaskTypeCode, string> = {
 }
 
 /** 批改来源编码 - 与后端 com.nybc.edu.common.enums.GradeSource 一一对齐。 */
-export type GradeSourceCode =
-  'AUTO_OBJECTIVE' | 'AUTO_OBJECTIVE_AI' | 'LOCAL_SUBJECTIVE_AI' | 'TEACHER'
+export type GradeSourceCode
+  = 'AUTO_OBJECTIVE' | 'AUTO_OBJECTIVE_AI' | 'LOCAL_SUBJECTIVE_AI' | 'TEACHER'
 
 /** 复核任务状态编码 - 与后端 ReviewTaskStatus 枚举对齐 */
-export type ReviewTaskStatusCode =
-  'PENDING' | 'IN_PROGRESS' | 'APPROVED' | 'REJECTED' | 'INVALIDATED'
+export type ReviewTaskStatusCode
+  = 'PENDING' | 'IN_PROGRESS' | 'APPROVED' | 'REJECTED' | 'INVALIDATED'
 
 /** 复核任务状态中文标签 */
 export const REVIEW_TASK_STATUS_LABEL: Record<ReviewTaskStatusCode, string> = {

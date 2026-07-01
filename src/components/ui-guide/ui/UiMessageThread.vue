@@ -76,8 +76,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import { computed } from 'vue'
 import type { UiThreadMessage } from './types'
+import { computed } from 'vue'
 import UiBadge from './Badge.vue'
 import UiEmpty from './Empty.vue'
 import UiTag from './Tag.vue'

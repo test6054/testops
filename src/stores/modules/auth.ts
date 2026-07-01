@@ -5,11 +5,11 @@ import type {
   PhoneLoginRequest,
   StudentLoginRequest,
 } from '@/apis/auth'
-import * as authApi from '@/apis/auth'
 import type { RefreshTokenResponse } from '@/types/auth'
 import { jwtDecode } from 'jwt-decode'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import * as authApi from '@/apis/auth'
 import { clearAllGradingDrafts } from '@/composables/useGradingDraftPersist'
 import { resetAuthState } from '@/config/axios/auth-state'
 import {
@@ -244,12 +244,12 @@ export const useAuthStore = defineStore(
       }
 
       const parsedExpiresAt = storedTokenExpiresAt ? Number.parseInt(storedTokenExpiresAt) : null
-      const normalizedExpiresAt =
-        parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt) ? parsedExpiresAt : null
-      const hasChanged =
-        token.value !== storedToken ||
-        refreshToken.value !== storedRefreshToken ||
-        tokenExpiresAt.value !== normalizedExpiresAt
+      const normalizedExpiresAt
+        = parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt) ? parsedExpiresAt : null
+      const hasChanged
+        = token.value !== storedToken
+          || refreshToken.value !== storedRefreshToken
+          || tokenExpiresAt.value !== normalizedExpiresAt
 
       if (!hasChanged) {
         return false
@@ -519,7 +519,7 @@ export const useAuthStore = defineStore(
       }
     }
 
-    const phoneLoginMethod = async (req: { phone: string; captcha: string }) => {
+    const phoneLoginMethod = async (req: { phone: string, captcha: string }) => {
       try {
         isLoading.value = true
         const phoneLoginReq: PhoneLoginRequest = {
@@ -554,7 +554,7 @@ export const useAuthStore = defineStore(
      * 邮箱验证码登录
      * 登录后需调用方通过 userStore.getInfo() 获取完整用户信息
      */
-    const emailLogin = async (req: { email: string; captcha: string }) => {
+    const emailLogin = async (req: { email: string, captcha: string }) => {
       try {
         isLoading.value = true
         const loginReq: LoginRequest = {
@@ -737,10 +737,10 @@ export const useAuthStore = defineStore(
     const handleStorageChange = (event: StorageEvent) => {
       if (event.storageArea !== localStorage) return
       if (
-        event.key !== null &&
-        event.key !== STORAGE_TOKEN &&
-        event.key !== STORAGE_REFRESH_TOKEN &&
-        event.key !== STORAGE_TOKEN_EXPIRES_AT
+        event.key !== null
+        && event.key !== STORAGE_TOKEN
+        && event.key !== STORAGE_REFRESH_TOKEN
+        && event.key !== STORAGE_TOKEN_EXPIRES_AT
       ) {
         return
       }

@@ -79,9 +79,9 @@
           :status="errors.email ? 'error' : 'default'"
         />
       </UiFormField>
-      <UiButton type="submit" variant="primary" size="lg" block :loading="loading"
-        >发送验证码</UiButton
-      >
+      <UiButton type="submit" variant="primary" size="lg" block :loading="loading">
+        发送验证码
+      </UiButton>
     </form>
 
     <!-- 步骤2：验证码 -->
@@ -116,14 +116,12 @@
           <span class="countdown-text">{{
             countdown > 0 ? `${countdown}秒后可重新发送` : ''
           }}</span>
-          <a :class="{ disabled: countdown > 0 }" @click="countdown <= 0 && resendCode()"
-            >重新发送</a
-          >
+          <a :class="{ disabled: countdown > 0 }" @click="countdown <= 0 && resendCode()">重新发送</a>
         </div>
         <div class="step-buttons">
-          <UiButton type="submit" variant="primary" size="lg" block :loading="loading"
-            >验证</UiButton
-          >
+          <UiButton type="submit" variant="primary" size="lg" block :loading="loading">
+            验证
+          </UiButton>
           <UiButton size="lg" block @click="goToPreviousStep">上一步</UiButton>
         </div>
       </form>
@@ -161,9 +159,9 @@
       </div>
 
       <div class="step-buttons">
-        <UiButton type="submit" variant="primary" size="lg" block :loading="loading"
-          >重置密码</UiButton
-        >
+        <UiButton type="submit" variant="primary" size="lg" block :loading="loading">
+          重置密码
+        </UiButton>
         <UiButton size="lg" block @click="goToPreviousStep">上一步</UiButton>
       </div>
     </form>
@@ -358,8 +356,8 @@ const maskEmail = (email: string) => {
   if (!email) return ''
   const [username, domain] = email.split('@')
   if (!username || !domain) return email
-  const maskedUsername =
-    username.length > 2 ? username.substring(0, 2) + '*'.repeat(username.length - 2) : username
+  const maskedUsername
+    = username.length > 2 ? username.substring(0, 2) + '*'.repeat(username.length - 2) : username
   return `${maskedUsername}@${domain}`
 }
 

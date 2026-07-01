@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
-import { forceReleaseScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
+import { forceReleaseScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
@@ -12,7 +12,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  released: []
+  "released": []
 }>()
 
 const submitting = ref(false)

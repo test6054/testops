@@ -315,6 +315,11 @@ import type {
   ScannerDeviceStatusCode,
   ScannerEndpointOnlineStatusCode,
 } from '@/apis/mark/exam-mark-scanner'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import AQrcode from 'ant-design-vue/es/qrcode'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   createScannerActivationCode,
   createScannerDevice,
@@ -330,11 +335,6 @@ import {
   unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import AQrcode from 'ant-design-vue/es/qrcode'
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -374,7 +374,7 @@ const pagination = reactive({
   pageSize: 20,
   total: 0,
 })
-const locationOptions = ref<Array<{ label: string; value: string }>>([])
+const locationOptions = ref<Array<{ label: string, value: string }>>([])
 
 function syncSearchForm(next: Record<string, unknown>): void {
   Object.assign(searchForm, next)
@@ -546,7 +546,7 @@ function handleResetSearch(): void {
   void loadDevices()
 }
 
-function handleUiPageChange(page: { current: number; pageSize: number }): void {
+function handleUiPageChange(page: { current: number, pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadDevices()

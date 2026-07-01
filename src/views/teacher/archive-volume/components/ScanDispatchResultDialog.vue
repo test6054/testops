@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { ScanDispatchTicketStatusCode } from '@/apis/mark/scanner-dispatch'
+import { message } from 'ant-design-vue'
+import AQrcode from 'ant-design-vue/es/qrcode'
+import { computed, ref, watch } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   cancelScanDispatch,
   pageScanDispatchTickets,
   SCAN_DISPATCH_TICKET_STATUS_LABEL,
 } from '@/apis/mark/scanner-dispatch'
-import { message } from 'ant-design-vue'
-import AQrcode from 'ant-design-vue/es/qrcode'
-import { computed, ref, watch } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -30,7 +30,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  cancelled: []
+  "cancelled": []
 }>()
 
 const cancelling = ref(false)
@@ -151,12 +151,12 @@ async function handleCancel() {
       <p class="scan-dispatch-result__url">{{ payload.kioskUrl }}</p>
       <p v-if="previewUrl" class="scan-dispatch-result__preview">预览链接：{{ previewUrl }}</p>
       <div class="scan-dispatch-result__actions">
-        <UiButton size="sm" variant="primary" @click="copyText(payload.kioskUrl)"
-          >复制分机 URL</UiButton
-        >
-        <UiButton v-if="previewUrl" size="sm" variant="outline" @click="copyText(previewUrl)"
-          >复制预览链接</UiButton
-        >
+        <UiButton size="sm" variant="primary" @click="copyText(payload.kioskUrl)">
+          复制分机 URL
+        </UiButton>
+        <UiButton v-if="previewUrl" size="sm" variant="outline" @click="copyText(previewUrl)">
+          复制预览链接
+        </UiButton>
         <UiButton
           v-if="payload.traceLabelFileId"
           size="sm"

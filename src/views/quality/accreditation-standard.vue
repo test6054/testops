@@ -12,13 +12,13 @@ import type {
   AccreditationStandardSummaryVO,
   AccreditationStandardVO,
 } from '@/apis/quality/accreditation-standard'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type { AccreditationType } from '@/apis/quality/types'
-import { ACCREDITATION_TYPE_LABEL } from '@/apis/quality/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
+import { ACCREDITATION_TYPE_LABEL } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -178,7 +178,7 @@ async function loadPageData() {
   await Promise.all([loadList(), loadSummary()])
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -186,8 +186,8 @@ function handlePageChange(page: { current: number; pageSize: number }) {
 
 function syncFilterToQuery() {
   query.accreditationType = filterModel.value.accreditationType
-  query.enabled =
-    filterModel.value.enabled === 'enabled'
+  query.enabled
+    = filterModel.value.enabled === 'enabled'
       ? true
       : filterModel.value.enabled === 'disabled'
         ? false

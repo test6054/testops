@@ -1,10 +1,17 @@
 import type { Ref } from 'vue'
-import { computed, onBeforeUnmount, ref } from 'vue'
 import type {
   DocumentStartScanJobRequest,
   ScanJobResponse,
   ScannerBusinessScene,
 } from '@/apis/mark/scanner-agent-local'
+import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
+import type {
+  ArchiveScanBatchModeCode,
+  ScanTaskKindCode,
+  ScanWorkOrderDiscardRequest,
+  ScanWorkOrderLifecycleVO,
+} from '@/apis/mark/scanner-work-order'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import {
   cancelScanJob,
   deleteScanJob,
@@ -16,13 +23,6 @@ import {
   retryUpload,
   startDocumentScanJob,
 } from '@/apis/mark/scanner-agent-local'
-import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
-import type {
-  ArchiveScanBatchModeCode,
-  ScanTaskKindCode,
-  ScanWorkOrderDiscardRequest,
-  ScanWorkOrderLifecycleVO,
-} from '@/apis/mark/scanner-work-order'
 import { commitScanWorkOrder, discardScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { getUserErrorMessage } from '@/utils/error-handler'
@@ -65,9 +65,9 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   )
   const isUploading = computed(
     () =>
-      currentJob.value?.status === 'UPLOADING' ||
-      currentJob.value?.status === 'RETRYING' ||
-      currentJob.value?.status === 'READYTOUPLOAD',
+      currentJob.value?.status === 'UPLOADING'
+      || currentJob.value?.status === 'RETRYING'
+      || currentJob.value?.status === 'READYTOUPLOAD',
   )
   const isReported = computed(
     () => currentJob.value?.reported === true || currentJob.value?.status === 'REPORTED',
@@ -94,11 +94,11 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     if (!job || job.reported) return false
     const status = job.status
     if (
-      status === 'SCANNING' ||
-      status === 'PAUSED' ||
-      status === 'UPLOADING' ||
-      status === 'CANCELLED' ||
-      status === 'REPORTED'
+      status === 'SCANNING'
+      || status === 'PAUSED'
+      || status === 'UPLOADING'
+      || status === 'CANCELLED'
+      || status === 'REPORTED'
     ) {
       return false
     }

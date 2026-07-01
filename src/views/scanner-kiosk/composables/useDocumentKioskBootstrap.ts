@@ -1,6 +1,6 @@
 import type { ScannerDeviceInfo } from '@/apis/mark/scanner-agent-local'
-import { listLocalScanners } from '@/apis/mark/scanner-agent-local'
 import { computed, ref } from 'vue'
+import { listLocalScanners } from '@/apis/mark/scanner-agent-local'
 import { isAgentWorkspaceBlocked, resolveActivationGuardMessage } from '../utils/kioskActivationGuard'
 import { useKioskDeviceActivation } from './useKioskDeviceActivation'
 

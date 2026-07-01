@@ -187,7 +187,6 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExportJobQueryRequest, ExportJobStatusVO } from '@/apis/edu/export'
-import { ExportBusinessType } from '@/apis/edu/export'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
 import CheckCircleFilled from '@ant-design/icons-vue/CheckCircleFilled'
@@ -202,6 +201,7 @@ import LoadingOutlined from '@ant-design/icons-vue/LoadingOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { ExportBusinessType } from '@/apis/edu/export'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -266,7 +266,7 @@ const filterFields: FilterField[] = [
 ]
 
 // 分页变化处理
-function handleExportTablePageChange(pageEvent: { current: number; pageSize: number }): void {
+function handleExportTablePageChange(pageEvent: { current: number, pageSize: number }): void {
   exportTaskStore.fetchTasks({ pageNum: pageEvent.current, pageSize: pageEvent.pageSize })
 }
 
@@ -389,7 +389,7 @@ onMounted(() => {
   }
 })
 
-const statusMap: Record<AsyncTaskStatusEnum, { label: string; color: BadgeTone }> = {
+const statusMap: Record<AsyncTaskStatusEnum, { label: string, color: BadgeTone }> = {
   [AsyncTaskStatusEnum.PENDING]: { label: '排队中', color: 'blue' },
   [AsyncTaskStatusEnum.PROCESSING]: { label: '处理中', color: 'orange' },
   [AsyncTaskStatusEnum.COMPLETED]: { label: '已完成', color: 'green' },

@@ -16,9 +16,11 @@
             :key="`${page.pageNo}-${page.pageResultId}`"
             :tab="`第 ${page.pageNo} 页`"
           >
-            <UiTag size="sm" :tone="pageStatusTone(page.status)">{{
-              pageStatusLabel(page.status)
-            }}</UiTag>
+            <UiTag size="sm" :tone="pageStatusTone(page.status)">
+              {{
+                pageStatusLabel(page.status)
+              }}
+            </UiTag>
             <p v-if="page.diagnostic" class="archive-ocr-detail__page-diagnostic">
               {{ page.diagnostic }}
             </p>
@@ -43,12 +45,12 @@ import type {
   DocumentOcrPageResultStatusCode,
   DocumentOcrTaskStatusCode,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { ref, watch } from 'vue'
 import {
   DOCUMENT_OCR_PAGE_RESULT_STATUS_LABEL,
   getArchiveMaterialDocumentOcrDetail,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { ref, watch } from 'vue'
 import { PAPER_ARCHIVE_OCR_STATUS_LABEL } from '@/apis/mark/paper-archive'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'

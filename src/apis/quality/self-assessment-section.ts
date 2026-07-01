@@ -3,15 +3,15 @@ import http from '@/config/axios'
 
 const BASE = '/api/quality/accreditation/self-assessment-sections'
 
-export type SelfAssessmentSectionKey =
-  | 'STUDENT'
-  | 'TRAINING_OBJECTIVE'
-  | 'GRADUATION_REQUIREMENT'
-  | 'CONTINUOUS_IMPROVEMENT'
-  | 'CURRICULUM'
-  | 'FACULTY'
-  | 'SUPPORT'
-  | 'ATTACHMENT'
+export type SelfAssessmentSectionKey
+  = | 'STUDENT'
+    | 'TRAINING_OBJECTIVE'
+    | 'GRADUATION_REQUIREMENT'
+    | 'CONTINUOUS_IMPROVEMENT'
+    | 'CURRICULUM'
+    | 'FACULTY'
+    | 'SUPPORT'
+    | 'ATTACHMENT'
 
 export type SelfAssessmentSectionContentStatus = 'DRAFT' | 'READY'
 

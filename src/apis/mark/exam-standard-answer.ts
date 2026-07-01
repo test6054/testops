@@ -1,19 +1,19 @@
 import type { EffectiveStatusCode } from './effective-status'
-import { EFFECTIVE_STATUS_LABEL } from './effective-status'
 /**
  * 阅卷考试标准答案 API - 对接 /api/mark/exams/standard-answer/*。
  */
 import http from '@/config/axios'
 import { assertUserFacingFiniteNumber, assertUserFacingText } from '@/utils/contract-guard'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import { EFFECTIVE_STATUS_LABEL } from './effective-status'
 
 const STANDARD_ANSWER_DATA_ERROR = '标准答案数据异常，请刷新后重试'
 
 /**
  * 客观题比较策略编码 - 与后端 com.nybc.edu.common.enums.ObjectiveComparePolicy 一一对齐。
  */
-export type ObjectiveComparePolicyCode =
-  'EXACT_NORMALIZED' | 'CHOICE_SET' | 'REGEX' | 'NUMERIC_TOLERANCE' | 'AI_GRADE'
+export type ObjectiveComparePolicyCode
+  = 'EXACT_NORMALIZED' | 'CHOICE_SET' | 'REGEX' | 'NUMERIC_TOLERANCE' | 'AI_GRADE'
 
 /** 客观题比较策略选项，供前端 a-select 渲染 */
 export const OBJECTIVE_COMPARE_POLICY_OPTIONS: Array<{

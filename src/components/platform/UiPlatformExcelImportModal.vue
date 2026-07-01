@@ -13,9 +13,7 @@
   >
     <div v-if="phase === 'upload'" class="platform-excel-import-modal__upload">
       <div v-if="!props.hideTemplateDownload" class="platform-excel-import-modal__template">
-        <span class="platform-excel-import-modal__template-text"
-          >请先下载模板，按格式填写后上传</span
-        >
+        <span class="platform-excel-import-modal__template-text">请先下载模板，按格式填写后上传</span>
         <UiButton
           variant="outline"
           size="sm"
@@ -43,9 +41,7 @@
       >
         <UploadOutlined class="platform-excel-import-modal__dropzone-icon" />
         <p class="platform-excel-import-modal__dropzone-hint">
-          拖拽文件到此处，或<span class="platform-excel-import-modal__dropzone-link"
-            >点击选择文件</span
-          >
+          拖拽文件到此处，或<span class="platform-excel-import-modal__dropzone-link">点击选择文件</span>
         </p>
         <p class="platform-excel-import-modal__dropzone-desc">
           支持 .xlsx、.xls，单文件不超过 30MB
@@ -130,9 +126,7 @@
         <div class="platform-excel-import-modal__summary-stats">
           <span>总计 {{ result?.totalRows ?? 0 }}</span>
           <span class="is-success">成功 {{ result?.successRows ?? 0 }}</span>
-          <span v-if="result?.createdCount != null" class="is-success"
-            >新建 {{ result.createdCount }}</span
-          >
+          <span v-if="result?.createdCount != null" class="is-success">新建 {{ result.createdCount }}</span>
           <span v-if="result?.updatedCount != null">更新 {{ result.updatedCount }}</span>
           <span class="is-fail">失败 {{ result?.errorRows ?? 0 }}</span>
         </div>
@@ -160,7 +154,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExcelImportSceneKeyValue } from '@/apis/platform/scene-keys'
-import { resolveFileStageSceneForExcel } from '@/apis/platform/scene-keys'
 import type {
   ExcelImportResult,
   ExcelImportRosterPreviewRow,
@@ -172,6 +165,7 @@ import { computed, ref, watch } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
 import { downloadExcelImportTemplate, submitExcelImport } from '@/apis/platform/excel-import'
 import { stagePlatformFile } from '@/apis/platform/file'
+import { resolveFileStageSceneForExcel } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'

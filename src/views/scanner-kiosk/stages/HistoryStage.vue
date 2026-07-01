@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { computed, ref, watch } from 'vue'
 import type { ExamScannerKioskBatchHistoryItem } from '@/apis/mark/scanner-kiosk'
 /**
  * 本机历史批次（只读）
@@ -20,6 +19,7 @@ import {
   ReloadOutlined,
   SafetyCertificateFilled,
 } from '@ant-design/icons-vue'
+import { computed, ref, watch } from 'vue'
 import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
@@ -322,9 +322,9 @@ watch(
           type="button"
           class="time-clear"
           :disabled="
-            workflow.batchHistoryLoading.value ||
-            (!workflow.batchHistoryFilter.scanStartTimeFrom &&
-              !workflow.batchHistoryFilter.scanStartTimeTo)
+            workflow.batchHistoryLoading.value
+              || (!workflow.batchHistoryFilter.scanStartTimeFrom
+                && !workflow.batchHistoryFilter.scanStartTimeTo)
           "
           @click="workflow.clearBatchHistoryTimeRange"
         >
@@ -418,8 +418,8 @@ watch(
                 <dd class="danger">
                   {{ workflow.formatTime(item.discardedTime) }}
                   <template v-if="item.discardedUserId">
-                    · 操作人 {{ item.discardedUserId }}</template
-                  >
+                    · 操作人 {{ item.discardedUserId }}
+                  </template>
                 </dd>
               </div>
               <div v-if="item.discardReason" class="detail-kv-full">
@@ -465,8 +465,8 @@ watch(
           type="button"
           class="pager-btn"
           :disabled="
-            workflow.batchHistoryFilter.pageNum >= historyTotalPages ||
-            workflow.batchHistoryLoading.value
+            workflow.batchHistoryFilter.pageNum >= historyTotalPages
+              || workflow.batchHistoryLoading.value
           "
           @click="workflow.changeBatchHistoryPage(workflow.batchHistoryFilter.pageNum + 1)"
         >

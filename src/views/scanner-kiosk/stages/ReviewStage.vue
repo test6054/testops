@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { TaskStatusCode } from '@/apis/mark/task-status'
-import { TASK_STATUS_LABEL } from '@/apis/mark/task-status'
 /**
  * Stage 3 - 澶嶆牳涓庡紓甯稿缃?
  *
@@ -20,6 +19,7 @@ import {
   WarningFilled,
 } from '@ant-design/icons-vue'
 import { computed, watch } from 'vue'
+import { TASK_STATUS_LABEL } from '@/apis/mark/task-status'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
@@ -94,8 +94,8 @@ const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
       type: 'attention',
       title: `${workflow.scanPageDisplayTitleByNo(pageNo)} 路 ${workflow.attentionTypeText(att.attentionType)}`,
       description:
-        att.diagnostic ||
-        workflow.registrationStatusText(pageItem?.registrationStatus ?? 'PENDING'),
+        att.diagnostic
+        || workflow.registrationStatusText(pageItem?.registrationStatus ?? 'PENDING'),
       detail: workflow.formatTime(att.updateTime),
       processingStatus: att.processingStatus,
       source: 'ledger',
@@ -148,10 +148,10 @@ const selectedItem = computed<ReviewItem | null>(() => {
   if (!workflow.previewPageNo.value) return null
   const pageNo = workflow.previewPageNo.value
   return (
-    reviewItems.value.find((item) => item.pageNo === pageNo) ??
-    registeredPages.value.find((item) => item.pageNo === pageNo) ??
-    localBrowsablePages.value.find((item) => item.pageNo === pageNo) ??
-    null
+    reviewItems.value.find((item) => item.pageNo === pageNo)
+    ?? registeredPages.value.find((item) => item.pageNo === pageNo)
+    ?? localBrowsablePages.value.find((item) => item.pageNo === pageNo)
+    ?? null
   )
 })
 
@@ -266,7 +266,7 @@ const reviewBoundBatchId = computed(
           :key="item.key"
           class="issue-item"
           :class="{
-            active: workflow.previewPageNo.value === item.pageNo,
+            'active': workflow.previewPageNo.value === item.pageNo,
             'item-failed': item.type === 'page-failed',
             'item-attention': item.type === 'attention',
           }"
@@ -279,9 +279,7 @@ const reviewBoundBatchId = computed(
             <div class="issue-item-text">
               <strong>{{ item.title }}</strong>
               <span>{{ item.description }}</span>
-              <small v-if="item.processingStatus"
-                >处理任务：{{ processingStatusLabel(item.processingStatus) }}</small
-              >
+              <small v-if="item.processingStatus">处理任务：{{ processingStatusLabel(item.processingStatus) }}</small>
               <small v-if="item.detail">{{ item.detail }}</small>
             </div>
           </button>
@@ -419,9 +417,9 @@ const reviewBoundBatchId = computed(
           type="button"
           class="op-btn op-btn--danger"
           :disabled="
-            !selectedItem ||
-            selectedItem.source !== 'ledger' ||
-            !workflow.canDiscardLedgerPage.value
+            !selectedItem
+              || selectedItem.source !== 'ledger'
+              || !workflow.canDiscardLedgerPage.value
           "
           :title="
             selectedItem

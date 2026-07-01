@@ -7,6 +7,10 @@ import type {
   PortfolioPublishImpactReportVO,
   PortfolioRulePublishSnapshotVO,
 } from '@/apis/portfolio/indicator-types'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PF_IMPACT_REPORT_STATUS_LABEL,
   PF_IMPACT_REPORT_STATUS_TONE,
@@ -14,10 +18,6 @@ import {
   PF_SCENE_CODE_LABEL,
   PF_SCENE_CODE_OPTIONS,
 } from '@/apis/portfolio/indicator-types'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -213,8 +213,7 @@ onMounted(loadHistory)
                     selectedSnapshotId = record.id
                     loadRetroactive()
                   "
-                  >查看</a
-                >
+                >查看</a>
                 <a style="margin-right: 8px" @click="exportDiff(record.id)">导出 diff</a>
                 <a @click="goOps(record.id)">计分</a>
               </template>

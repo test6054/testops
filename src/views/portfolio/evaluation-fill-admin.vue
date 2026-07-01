@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationMode } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
-  PORTFOLIO_EVALUATION_MODE_LABEL,
-} from '@/apis/portfolio/enums'
 import type {
   PortfolioEvaluationEntrySummaryItemVO,
   PortfolioEvaluationEntrySummaryVO,
@@ -13,12 +9,16 @@ import type {
   PortfolioEvaluationSubjectTeacherOptionVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import {
+  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
+  PORTFOLIO_EVALUATION_MODE_LABEL,
+} from '@/apis/portfolio/enums'
 import {
   portfolioEvaluationEntryApi,
   portfolioEvaluationTaskApi,
 } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

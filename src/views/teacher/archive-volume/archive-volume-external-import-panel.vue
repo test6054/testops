@@ -52,13 +52,13 @@ import type {
   ArchiveExternalImportResultVO,
   ArchiveImportBatchStatusCode,
 } from '@/apis/mark/archive-volume'
+import type { ExcelImportResult } from '@/apis/platform/types'
+import type { UiAlertStripTone } from '@/components/ui-guide/ui/types'
+import { computed, ref } from 'vue'
 import {
   ARCHIVE_EXTERNAL_IMPORT_TYPE_LABEL,
   ARCHIVE_IMPORT_BATCH_STATUS_LABEL,
 } from '@/apis/mark/archive-volume'
-import type { ExcelImportResult } from '@/apis/platform/types'
-import type { UiAlertStripTone } from '@/components/ui-guide/ui/types'
-import { computed, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'

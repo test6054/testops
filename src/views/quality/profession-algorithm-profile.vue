@@ -9,16 +9,20 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 只有 CONFIRMED + enabled 的实例进入达成度计算。
  */
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   ProfessionAlgorithmProfileQueryRequest,
   ProfessionAlgorithmProfileSaveRequest,
   ProfessionAlgorithmProfileVO,
 } from '@/apis/quality/profession-algorithm-profile'
-import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorithm-profile'
 import type { ProfessionAlgorithmTemplateVO } from '@/apis/quality/profession-algorithm-template'
-import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import type { AccreditationType, ConfirmationStatus } from '@/apis/quality/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
+import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorithm-profile'
+import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import {
   ACCREDITATION_TYPE_LABEL,
   AGGREGATION_FUNCTION_CODES,
@@ -26,10 +30,6 @@ import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
 } from '@/apis/quality/types'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { ProgramSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -322,18 +322,18 @@ function openEdit(record: ProfessionAlgorithmProfileVO) {
 
 async function submitEditor() {
   if (
-    !editor.profileCode.trim() ||
-    !editor.profileName.trim() ||
-    !editor.templateId ||
-    !editor.programId
+    !editor.profileCode.trim()
+    || !editor.profileName.trim()
+    || !editor.templateId
+    || !editor.programId
   ) {
     message.error('请填写编码、名称、模板、专业')
     return
   }
-  const hasOverride =
-    editor.overrideAggregationStrategy ||
-    editor.overrideWeightStrategy ||
-    editor.overrideThresholdStrategy
+  const hasOverride
+    = editor.overrideAggregationStrategy
+      || editor.overrideWeightStrategy
+      || editor.overrideThresholdStrategy
   if (hasOverride && !editor.overrideReason?.trim()) {
     message.error('存在模板策略调整时必须填写覆盖原因')
     return
@@ -392,7 +392,7 @@ async function handleDelete(record: ProfessionAlgorithmProfileVO) {
   })
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -553,9 +553,9 @@ onActivated(() => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <UiTextAction v-if="canEditProfile(record)" @click="openEdit(record)"
-                >编辑</UiTextAction
-              >
+              <UiTextAction v-if="canEditProfile(record)" @click="openEdit(record)">
+                编辑
+              </UiTextAction>
               <UiTextAction
                 v-if="
                   record.confirmationStatus === 'DRAFT' || record.confirmationStatus === 'RETURNED'

@@ -4,8 +4,8 @@ import type { ExamScannerKioskContextVO, ExamScannerScanConfigVO } from '@/apis/
 import http from '@/config/axios'
 
 export type ScanTaskKindCode = 'EXAM_MARKING' | 'EXAM_ARCHIVE' | 'PORTFOLIO_COLLECT'
-export type ScanWorkOrderStatusCode =
-  'IN_PROGRESS' | 'COMMITTING' | 'FAILED' | 'COMMITTED' | 'DISCARDED'
+export type ScanWorkOrderStatusCode
+  = 'IN_PROGRESS' | 'COMMITTING' | 'FAILED' | 'COMMITTED' | 'DISCARDED'
 
 /** 扫描工单生命周期状态展示文案 */
 export const SCAN_WORK_ORDER_STATUS_LABEL: Record<ScanWorkOrderStatusCode, string> = {

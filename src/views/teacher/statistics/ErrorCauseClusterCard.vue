@@ -114,14 +114,14 @@ import type {
   ErrorCauseClusterItemVO,
   ExamErrorCauseClusterVO,
 } from '@/apis/mark/error-cause-cluster'
-import {
-  generateErrorCauseCluster,
-  getLatestErrorCauseCluster,
-} from '@/apis/mark/error-cause-cluster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
+import {
+  generateErrorCauseCluster,
+  getLatestErrorCauseCluster,
+} from '@/apis/mark/error-cause-cluster'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -140,7 +140,7 @@ import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'ErrorCauseClusterCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number; classId?: string }>()
+const props = defineProps<{ examId: string, reloadToken: number, classId?: string }>()
 
 const record = ref<ExamErrorCauseClusterVO | null>(null)
 const loading = ref(false)

@@ -4,9 +4,9 @@ import type {
   PortfolioTeacherLibraryBorrowStatsVO,
   PortfolioTeacherLibraryBorrowVO,
 } from '@/apis/portfolio/teacher-platform'
-import { portfolioTeacherLibraryApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
+import { portfolioTeacherLibraryApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -26,8 +26,8 @@ const form = reactive({
   bookTitle: '',
   bookIsbn: '',
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
-  usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
+  = usePortfolioTeacherSearch()
 
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },

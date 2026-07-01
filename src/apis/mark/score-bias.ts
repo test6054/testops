@@ -4,8 +4,8 @@
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 
-export type ScoreBiasLevelCode =
-  'normal' | 'mild-high' | 'mild-low' | 'severe-high' | 'severe-low' | 'insufficient'
+export type ScoreBiasLevelCode
+  = 'normal' | 'mild-high' | 'mild-low' | 'severe-high' | 'severe-low' | 'insufficient'
 
 /** 当前页成绩样本统计，供偏差档位与 Δ 分计算 */
 export interface ScoreBiasStats {

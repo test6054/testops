@@ -4,7 +4,6 @@ import type {
   PortfolioGapTaskDetailVO,
   PortfolioGapTaskStatus,
 } from '@/apis/portfolio/types'
-import { PORTFOLIO_GAP_TASK_STATUS_LABEL } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -12,6 +11,7 @@ import { createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
+import { PORTFOLIO_GAP_TASK_STATUS_LABEL } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -193,8 +193,8 @@ watch(
     if (value !== '1') {
       return
     }
-    const fileNodeId =
-      typeof route.query.scanFileNodeId === 'string' ? route.query.scanFileNodeId : ''
+    const fileNodeId
+      = typeof route.query.scanFileNodeId === 'string' ? route.query.scanFileNodeId : ''
     const nextQuery = { ...route.query }
     delete nextQuery.scanCommitted
     delete nextQuery.scanFileNodeId

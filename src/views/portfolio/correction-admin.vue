@@ -5,13 +5,13 @@ import type {
   PortfolioCorrectionRequestStatus,
   PortfolioCorrectionSummaryVO,
 } from '@/apis/portfolio/types'
+import { Input, message } from 'ant-design-vue'
+import { reactive, ref } from 'vue'
+import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
 import {
   PORTFOLIO_CORRECTION_REQUEST_STATUS_LABEL,
   PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
 } from '@/apis/portfolio/types'
-import { Input, message } from 'ant-design-vue'
-import { reactive, ref } from 'vue'
-import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -190,8 +190,8 @@ void loadPage()
               </button>
               <button
                 v-if="
-                  record.requestStatus === 'PENDING_VERIFY' ||
-                  record.requestStatus === 'ARCHIVE_CORRECTING'
+                  record.requestStatus === 'PENDING_VERIFY'
+                    || record.requestStatus === 'ARCHIVE_CORRECTING'
                 "
                 type="button"
                 class="op-link op-link--primary"

@@ -82,9 +82,9 @@
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
               <UiTextAction @click="goReviewDetail(reviewTasks[index])">详情</UiTextAction>
-              <UiTextAction tone="primary" @click="goReviewWorkspace(reviewTasks[index])"
-                >进入仲裁处理</UiTextAction
-              >
+              <UiTextAction tone="primary" @click="goReviewWorkspace(reviewTasks[index])">
+                进入仲裁处理
+              </UiTextAction>
             </div>
           </template>
         </template>
@@ -96,13 +96,13 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ReviewTaskItemVO } from '@/apis/mark/exam-review-task'
-import { listReviewTasks, validateReviewTaskItemContract } from '@/apis/mark/exam-review-task'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import { computed, onActivated, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { listReviewTasks, validateReviewTaskItemContract } from '@/apis/mark/exam-review-task'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'

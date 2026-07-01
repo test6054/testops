@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDualTeacherApplicationStatus } from '@/apis/portfolio/enums'
-import { PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL } from '@/apis/portfolio/enums'
 import type { PortfolioDualTeacherAnalyticsVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import { onMounted, ref } from 'vue'
+import { PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL } from '@/apis/portfolio/enums'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'

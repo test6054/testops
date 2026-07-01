@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioGapTaskStatus, PortfolioGapTaskSummaryVO } from '@/apis/portfolio/types'
-import { PORTFOLIO_GAP_TASK_STATUS_LABEL } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
+import { PORTFOLIO_GAP_TASK_STATUS_LABEL } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

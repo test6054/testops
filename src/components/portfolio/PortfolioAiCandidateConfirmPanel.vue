@@ -75,15 +75,15 @@
 <script lang="ts" setup>
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCandidateFieldVO } from '@/apis/portfolio/types'
-import {
-  PORTFOLIO_CANDIDATE_CONFIRM_STATUS_LABEL,
-  PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE,
-} from '@/apis/portfolio/types'
 import type { AiTaskStatus } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
+import {
+  PORTFOLIO_CANDIDATE_CONFIRM_STATUS_LABEL,
+  PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE,
+} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

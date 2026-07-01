@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { CandidateStatusCode, ExamCandidateVO } from '@/apis/mark/exam-scope'
-import { CANDIDATE_STATUS_LABEL, listExamCandidates } from '@/apis/mark/exam-scope'
 /**
  * 扫描中异常修正面板：边扫边处理，占用缩略图列（非遮罩叠加）。
  */
 import { CloseOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
 import { bindPaper } from '@/apis/mark/exam-binding'
+import { CANDIDATE_STATUS_LABEL, listExamCandidates } from '@/apis/mark/exam-scope'
 import { TASK_STATUS_LABEL } from '@/apis/mark/task-status'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { useKioskCtx } from '../composables/kioskInjection'
@@ -41,10 +41,10 @@ const pageTitle = computed(() => workflow.scanPageDisplayTitleByNo(props.pageNo)
 
 const scanBatchId = computed(
   () =>
-    workflow.currentJob.value?.scanBatchId ||
-    workflow.pageLedger.value?.scanBatchId ||
-    workflow.boundPaperScanBatchId.value ||
-    '',
+    workflow.currentJob.value?.scanBatchId
+    || workflow.pageLedger.value?.scanBatchId
+    || workflow.boundPaperScanBatchId.value
+    || '',
 )
 
 /** 仅通过页级 localPageId 与 attentionItems.pageId 精确关联，禁止回退到首个 paperInstanceId。 */

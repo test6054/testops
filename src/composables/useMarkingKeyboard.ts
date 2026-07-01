@@ -1,7 +1,7 @@
 import type { Ref } from 'vue'
-import { onBeforeUnmount, onMounted } from 'vue'
 import type { QuestionMarkingGroupQuestionVO } from '@/apis/mark/marking-organization'
 import type { WholeQuestionForm } from '@/composables/useWholePaperGallery'
+import { onBeforeUnmount, onMounted } from 'vue'
 import { isGradingEnterInputTarget, isGradingKeyboardInputTarget } from '@/utils/grading-keyboard'
 
 export interface UseMarkingKeyboardOptions {
@@ -46,11 +46,12 @@ export function useMarkingKeyboard(options: UseMarkingKeyboardOptions) {
     if (event.metaKey || event.ctrlKey || event.altKey || event.isComposing) return
     if (event.key === 'Enter') {
       if (
-        options.submitting.value ||
-        !options.canSubmit.value ||
-        isGradingEnterInputTarget(event.target)
-      )
+        options.submitting.value
+        || !options.canSubmit.value
+        || isGradingEnterInputTarget(event.target)
+      ) {
         return
+}
       event.preventDefault()
       void options.submit()
       return

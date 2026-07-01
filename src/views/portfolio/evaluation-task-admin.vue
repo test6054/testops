@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationMode, PortfolioEvaluationTaskStatus } from '@/apis/portfolio/enums'
+import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
+import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_EVALUATION_MODE_LABEL,
   PORTFOLIO_EVALUATION_TASK_STATUS_LABEL,
   PORTFOLIO_EVALUATION_TASK_STATUS_TONE,
 } from '@/apis/portfolio/enums'
-import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
 import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
-import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
 import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -238,8 +238,7 @@ onMounted(async () => {
             <a
               v-if="record.taskStatus !== 'PUBLISHED' && record.taskStatus !== 'CLOSED'"
               @click="publishTask(record.id)"
-              >发布</a
-            >
+            >发布</a>
           </template>
         </template>
       </UiDataTable>

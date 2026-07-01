@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { TreeProps } from 'ant-design-vue'
-import { message } from 'ant-design-vue'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
@@ -13,6 +12,9 @@ import type {
   PortfolioArchiveTemplateDiffSummary,
   PortfolioArchiveTemplateVersionVO,
 } from '@/apis/portfolio/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import {
   PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_OPTIONS,
   PORTFOLIO_ARCHIVE_CATEGORY_STATUS_LABEL,
@@ -24,8 +26,6 @@ import {
   PORTFOLIO_ARCHIVE_TEMPLATE_VERSION_STATUS_LABEL,
   PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
 } from '@/apis/portfolio/types'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -137,7 +137,7 @@ const activeVersion = computed(
 
 const versionOptions = computed(() =>
   versionHistory.value.map(
-    (item): { value: PortfolioArchiveTemplateVersionVO['id']; label: string } => ({
+    (item): { value: PortfolioArchiveTemplateVersionVO['id'], label: string } => ({
       value: item.id,
       label: `${item.versionNo} (${strictEnumLabel(PORTFOLIO_ARCHIVE_TEMPLATE_VERSION_STATUS_LABEL, item.status, '模板版本状态')})`,
     }),
@@ -176,7 +176,7 @@ const parsedChangeLogs = computed(() =>
 )
 
 function flattenCategoryOptions(nodes: TreeNode[], excludeId?: string) {
-  const options: { value: string; label: string }[] = []
+  const options: { value: string, label: string }[] = []
   for (const node of nodes) {
     if (excludeId && node.key === excludeId) continue
     options.push({ value: node.key, label: node.title })
@@ -322,8 +322,8 @@ async function loadFields() {
     return
   }
   try {
-    fields.value =
-      (await portfolioArchiveTemplateApi.listFieldDefs({
+    fields.value
+      = (await portfolioArchiveTemplateApi.listFieldDefs({
         templateVersionId: activeVersionId.value,
       })) ?? []
   } catch (error) {
@@ -339,8 +339,8 @@ async function loadHistory() {
   }
   try {
     const categoryId = selectedCategory.value.id
-    versionHistory.value =
-      (await portfolioArchiveTemplateApi.listVersionHistory({ categoryId })) ?? []
+    versionHistory.value
+      = (await portfolioArchiveTemplateApi.listVersionHistory({ categoryId })) ?? []
     changeLogs.value = (await portfolioArchiveTemplateApi.listChangeHistory({ categoryId })) ?? []
   } catch (error) {
     showUserError(error, '加载版本历史失败')
@@ -397,8 +397,9 @@ async function deactivateCategory() {
     !(await confirmAsync({
       content: `确认停用分类「${selectedCategory.value.categoryName}」？停用后 AI 将无法解析该分类。`,
     }))
-  )
+  ) {
     return
+}
   try {
     await portfolioArchiveTemplateApi.saveCategory({
       id: selectedCategory.value.id,
@@ -423,8 +424,9 @@ async function deleteCategory() {
     !(await confirmAsync({
       content: `确认删除分类「${selectedCategory.value.categoryName}」？存在子分类时无法删除。`,
     }))
-  )
+  ) {
     return
+}
   try {
     await portfolioArchiveTemplateApi.deleteCategory({ categoryId: selectedCategory.value.id })
     message.success('分类已删除')
@@ -464,8 +466,9 @@ async function runSeedDefaults() {
     !(await confirmAsync({
       content: '将初始化 CERTIFICATE / DOCUMENT 默认分类与已发布字段，已存在的跳过。',
     }))
-  )
+  ) {
     return
+}
   seeding.value = true
   try {
     const result = await portfolioArchiveTemplateApi.seedDefaultTemplates()
@@ -704,13 +707,15 @@ onMounted(async () => {
         <template v-if="selectedCategory">
           <div class="meta-row">
             <UiTag>{{ selectedCategory.categoryCode }}</UiTag>
-            <UiTag>{{
-              strictEnumLabel(
-                PORTFOLIO_ARCHIVE_CATEGORY_STATUS_LABEL,
-                selectedCategory.status,
-                '分类状态',
-              )
-            }}</UiTag>
+            <UiTag>
+              {{
+                strictEnumLabel(
+                  PORTFOLIO_ARCHIVE_CATEGORY_STATUS_LABEL,
+                  selectedCategory.status,
+                  '分类状态',
+                )
+              }}
+            </UiTag>
             <UiTag tone="blue"> 当前版本：{{ versionStatusLabel }} </UiTag>
             <a-select
               v-if="versionOptions.length"

@@ -6,10 +6,10 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ArchiveVO } from '@/apis/quality/archive'
-import { archiveApi } from '@/apis/quality/archive'
 import type { ArchiveBusinessType } from '@/apis/quality/types'
-import { ARCHIVE_BUSINESS_TYPE_LABEL } from '@/apis/quality/types'
 import { onMounted, ref, watch } from 'vue'
+import { archiveApi } from '@/apis/quality/archive'
+import { ARCHIVE_BUSINESS_TYPE_LABEL } from '@/apis/quality/types'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { requireAllPages } from './page-contract'
@@ -36,7 +36,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: ArchiveVO]
+  "change": [value: string | null, option?: ArchiveVO]
 }>()
 
 const options = ref<ArchiveVO[]>([])

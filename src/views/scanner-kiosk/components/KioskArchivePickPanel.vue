@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { ScannerKioskArchiveVolumeItemVO } from '@/apis/mark/scanner-kiosk'
-import { createAdhocDispatchTicket, pageKioskArchiveVolumes } from '@/apis/mark/scanner-kiosk'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ARCHIVE_VOLUME_STATUS_LABEL, ARCHIVE_VOLUME_STATUS_TONE } from '@/apis/mark/archive-volume'
+import { createAdhocDispatchTicket, pageKioskArchiveVolumes } from '@/apis/mark/scanner-kiosk'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -79,7 +79,7 @@ async function loadVolumes() {
   }
 }
 
-function handlePageChange(pageEvent: { current: number; pageSize: number }) {
+function handlePageChange(pageEvent: { current: number, pageSize: number }) {
   pageNum.value = pageEvent.current
   pageSize.value = pageEvent.pageSize
   void loadVolumes()

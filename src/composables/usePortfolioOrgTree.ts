@@ -1,7 +1,7 @@
 import type { PortfolioOrgTreeNodeVO, PortfolioOrgUnitType } from '@/apis/portfolio/types'
-import { PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES } from '@/apis/portfolio/types'
 import { ref } from 'vue'
 import { portfolioOrgApi } from '@/apis/portfolio/org'
+import { PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES } from '@/apis/portfolio/types'
 import { showUserError } from '@/utils/error-handler'
 
 export interface PortfolioOrgFlatOption {
@@ -41,8 +41,8 @@ export function flattenPortfolioOrgOptions(
   const result: PortfolioOrgFlatOption[] = []
   walkTree(roots, (node, label) => {
     if (
-      node.portfolioOrgId &&
-      PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES.includes(node.nodeType as PortfolioOrgUnitType)
+      node.portfolioOrgId
+      && PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES.includes(node.nodeType as PortfolioOrgUnitType)
     ) {
       result.push({ value: node.portfolioOrgId, label })
     }

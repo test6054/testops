@@ -240,6 +240,10 @@ import type {
   GradeReviewQuestionRefVO,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   approveBatchCorrectionPlan,
   BATCH_CORRECTION_STATUS_LABEL,
@@ -252,10 +256,6 @@ import {
   listReviewRequests,
   submitBatchCorrectionPlan,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -267,7 +267,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'BatchCorrectionPlansCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 const emit = defineEmits<{ (e: 'changed'): void }>()
 
 const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 100
@@ -289,7 +289,7 @@ const pagination = reactive({
   total: 0,
 })
 
-const filterForm = reactive<{ status?: BatchCorrectionApprovalStatusCode; keyword: string }>({
+const filterForm = reactive<{ status?: BatchCorrectionApprovalStatusCode, keyword: string }>({
   keyword: '',
 })
 
@@ -375,8 +375,8 @@ const itemReviewRequestOptions = computed(() =>
   approvedReviewRequests.value
     .filter(
       (request) =>
-        form.correctionType === 'TOTAL_SCORE' ||
-        request.questionRefs.some(
+        form.correctionType === 'TOTAL_SCORE'
+        || request.questionRefs.some(
           (question) => question.questionTemplateId === form.questionTemplateId,
         ),
     )
@@ -443,7 +443,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -559,8 +559,8 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
       return null
     }
     if (
-      form.correctionType === 'SINGLE_QUESTION' &&
-      !request.questionRefs.some(
+      form.correctionType === 'SINGLE_QUESTION'
+      && !request.questionRefs.some(
         (question) => question.questionTemplateId === form.questionTemplateId,
       )
     ) {

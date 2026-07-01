@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioKeyTeacherRegistryStatus } from '@/apis/portfolio/enums'
-import { PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL } from '@/apis/portfolio/enums'
 import type { PortfolioDoubleDutyRegistryVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioDoubleDutyApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
+import { PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL } from '@/apis/portfolio/enums'
+import { portfolioDoubleDutyApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

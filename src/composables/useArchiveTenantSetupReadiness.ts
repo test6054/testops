@@ -1,6 +1,6 @@
 import type { ArchiveTenantSetupReadinessVO } from '@/apis/mark/archive-platform-template'
-import { getArchiveTenantSetupReadiness } from '@/apis/mark/archive-platform-template'
 import { ref } from 'vue'
+import { getArchiveTenantSetupReadiness } from '@/apis/mark/archive-platform-template'
 import { showUserError } from '@/utils/error-handler'
 
 export function useArchiveTenantSetupReadiness() {

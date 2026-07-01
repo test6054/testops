@@ -6,18 +6,18 @@ import type {
   PortfolioEvaluationComprehensiveTeacherRowVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
-import {
-  portfolioEvaluationEntryApi,
-  portfolioEvaluationTaskApi,
-} from '@/apis/portfolio/teacher-platform'
 import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
-import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
   PORTFOLIO_EVALUATION_MODE_LABEL,
 } from '@/apis/portfolio/enums'
+import {
+  portfolioEvaluationEntryApi,
+  portfolioEvaluationTaskApi,
+} from '@/apis/portfolio/teacher-platform'
+import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -170,8 +170,8 @@ async function exportAnalysis() {
   }
   exporting.value = true
   try {
-    const result =
-      await portfolioEvaluationEntryApi.exportComprehensiveAnalysis(buildAnalysisParams())
+    const result
+      = await portfolioEvaluationEntryApi.exportComprehensiveAnalysis(buildAnalysisParams())
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条填报`)
   } catch (error) {

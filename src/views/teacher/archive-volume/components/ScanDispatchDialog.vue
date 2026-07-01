@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import type { ScanDispatchTicketStatusCode } from '@/apis/mark/scanner-dispatch'
-import { createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
+import { createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
@@ -17,7 +17,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  created: [
+  "created": [
     payload: {
       ticketId: string
       kioskUrl: string

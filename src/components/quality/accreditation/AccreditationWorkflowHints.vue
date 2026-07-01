@@ -28,7 +28,7 @@ const emit = defineEmits<{
 }>()
 
 const hints = computed(() => {
-  const list: { text: string; action?: string; tab?: string }[] = []
+  const list: { text: string, action?: string, tab?: string }[] = []
   if (!props.cycle) {
     list.push({
       text: '尚未建立认证周期，请先新建并登记申请书提交。',
@@ -99,7 +99,7 @@ const hints = computed(() => {
   return list
 })
 
-function onHint(item: { action?: string; tab?: string }) {
+function onHint(item: { action?: string, tab?: string }) {
   if (item.tab) emit('go-tab', item.tab)
   if (item.action === '生成自评报告') emit('go-ai-report')
   if (item.action === '去归档') emit('go-archive')

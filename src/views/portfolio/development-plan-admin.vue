@@ -7,13 +7,6 @@ import type {
   PortfolioDevelopmentPlanStatus,
   PortfolioDevelopmentPlanType,
 } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_DEVELOPMENT_PLAN_HISTORY_IMPORT_BATCH_STATUS_LABEL,
-  PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL,
-  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL,
-  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
-  PORTFOLIO_DEVELOPMENT_PLAN_TYPE_LABEL,
-} from '@/apis/portfolio/enums'
 import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
 import type {
   PortfolioDevelopmentPlanAchievementAttainmentItemVO,
@@ -25,12 +18,19 @@ import type {
   PortfolioDevelopmentPlanVO,
   PortfolioDevelopmentPlanYearStatVO,
 } from '@/apis/portfolio/teacher-platform'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import {
+  PORTFOLIO_DEVELOPMENT_PLAN_HISTORY_IMPORT_BATCH_STATUS_LABEL,
+  PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL,
+  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL,
+  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
+  PORTFOLIO_DEVELOPMENT_PLAN_TYPE_LABEL,
+} from '@/apis/portfolio/enums'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -111,7 +111,7 @@ const historyBatchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() =>
     return []
   }
   try {
-    const parsed = JSON.parse(raw) as Array<{ rowIndex?: number; message?: string }>
+    const parsed = JSON.parse(raw) as Array<{ rowIndex?: number, message?: string }>
     return parsed.map((item, index) => ({
       rowIndex: item.rowIndex ?? index + 1,
       valid: false,
@@ -466,9 +466,7 @@ onMounted(async () => {
       <div class="toolbar">
         <input v-model="form.planYear" class="input" placeholder="年度" />
         <UiButton @click="loadPage"> 刷新 </UiButton>
-        <span v-if="showAdminStats" class="stats"
-          >{{ form.planYear }} 年已通过 {{ approvedCount }} 项</span
-        >
+        <span v-if="showAdminStats" class="stats">{{ form.planYear }} 年已通过 {{ approvedCount }} 项</span>
       </div>
       <a-tabs v-model:active-key="activeTab">
         <a-tab-pane key="plans" tab="规划管理">
@@ -625,11 +623,9 @@ onMounted(async () => {
             <span>待审 {{ completion.pendingPlanCount }}</span>
             <span>退回 {{ completion.returnedPlanCount }}</span>
             <span>审批完成率 {{ completion.completionRatePercent }}%</span>
-            <span
-              >明细项 {{ completion.completedPlanItemCount }}/{{
-                completion.totalPlanItemCount
-              }}</span
-            >
+            <span>明细项 {{ completion.completedPlanItemCount }}/{{
+              completion.totalPlanItemCount
+            }}</span>
             <span>明细完成率 {{ completion.planItemCompletionRatePercent }}%</span>
             <span>平均完成度 {{ completion.averageItemCompletionPercent }}%</span>
           </div>

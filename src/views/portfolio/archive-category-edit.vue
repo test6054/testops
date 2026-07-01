@@ -4,15 +4,15 @@ import type {
   PortfolioArchiveRecordStatus,
   PortfolioTargetFieldDefinition,
 } from '@/apis/portfolio/types'
-import {
-  PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
-  PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
-} from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
+import {
+  PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
+  PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
+} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

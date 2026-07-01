@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { Key } from 'ant-design-vue/es/table/interface'
 import type { ArchiveScanBatchSnapshotItemVO } from '@/apis/mark/archive-volume'
+import { message, Modal } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
 import {
   batchDiscardArchiveScanBatches,
   batchRetryArchiveScanBatches,
@@ -8,8 +10,6 @@ import {
   SCAN_BATCH_QUALITY_FLAG_LABEL,
   SCAN_BATCH_QUALITY_FLAG_TONE,
 } from '@/apis/mark/archive-volume'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
 import { SCAN_WORK_ORDER_STATUS_LABEL } from '@/apis/mark/scanner-work-order'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -86,7 +86,7 @@ async function loadRows() {
   }
 }
 
-function handlePageChange(pageEvent: { current: number; pageSize: number }) {
+function handlePageChange(pageEvent: { current: number, pageSize: number }) {
   pageNum.value = pageEvent.current
   pageSize.value = pageEvent.pageSize
   void loadRows()

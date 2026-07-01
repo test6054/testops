@@ -9,9 +9,9 @@
 
 <script setup lang="ts">
 import type { ArchiveVolumeDetailVO, ArchiveVolumeEventTypeCode } from '@/apis/mark/archive-volume'
-import { ARCHIVE_VOLUME_EVENT_TYPE_LABEL } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed } from 'vue'
+import { ARCHIVE_VOLUME_EVENT_TYPE_LABEL } from '@/apis/mark/archive-volume'
 import UiActivityTimeline from '@/components/ui-guide/ui/UiActivityTimeline.vue'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'

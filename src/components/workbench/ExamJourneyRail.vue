@@ -13,9 +13,9 @@
 
 <script lang="ts" setup>
 import type { ExamJourneyKey } from '@/constants/exam-journey'
-import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
 import type { WorkbenchStage } from '@/types/workbench'
 import StageRail from '@/components/workbench/StageRail.vue'
+import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
 
 defineOptions({
   name: 'ExamJourneyRail',

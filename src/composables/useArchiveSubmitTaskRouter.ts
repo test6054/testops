@@ -3,17 +3,17 @@ import type {
   ArchiveVolumeWizardStepKey,
 } from '@/apis/mark/archive-volume'
 
-export type ArchiveVolumeExpertTabKey =
-  | 'materials'
-  | 'scores'
-  | 'integrity'
-  | 'storage'
-  | 'scan-batches'
-  | 'scan-review'
-  | 'transfer'
-  | 'access'
-  | 'appraisal'
-  | 'events'
+export type ArchiveVolumeExpertTabKey
+  = | 'materials'
+    | 'scores'
+    | 'integrity'
+    | 'storage'
+    | 'scan-batches'
+    | 'scan-review'
+    | 'transfer'
+    | 'access'
+    | 'appraisal'
+    | 'events'
 
 export interface ArchiveSubmitTaskRouteTarget {
   wizardStep: ArchiveVolumeWizardStepKey

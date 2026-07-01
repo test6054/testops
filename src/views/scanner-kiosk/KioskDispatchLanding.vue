@@ -14,9 +14,9 @@ const session = useDispatchSession()
 const ticketStatus = computed(() => session.ticket.value?.status)
 const isTerminalStatus = computed(
   () =>
-    ticketStatus.value === 'DONE' ||
-    ticketStatus.value === 'EXPIRED' ||
-    ticketStatus.value === 'CANCELLED',
+    ticketStatus.value === 'DONE'
+    || ticketStatus.value === 'EXPIRED'
+    || ticketStatus.value === 'CANCELLED',
 )
 const terminalHint = computed(() => {
   if (ticketStatus.value === 'DONE') {

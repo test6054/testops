@@ -8,17 +8,17 @@ import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
  * - URL / Store 预选考试若不在当前页，通过详情接口补全标签，避免 Select 展示裸 ID
  */
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
-import { examSummaryFromDetail, examSummaryFromMeta, toMarkExamSelectOption } from '@/utils/mark-exam-option'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
 import { showUserError } from '@/utils/error-handler'
+import { examSummaryFromDetail, examSummaryFromMeta, toMarkExamSelectOption } from '@/utils/mark-exam-option'
 import { readPageList } from '@/utils/page-result'
 
 /** 下拉默认展示条数（与后端分页一致，不做全量 readAllPages） */

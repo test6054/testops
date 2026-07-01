@@ -1,9 +1,5 @@
 <script setup lang="ts">
 import type { PortfolioTeacherJourneyKey } from '@/constants/portfolio-teacher-journey'
-import {
-  PORTFOLIO_TEACHER_JOURNEY_STEPS,
-  resolvePortfolioJourneyDefaultRoute,
-} from '@/constants/portfolio-teacher-journey'
 import type { WorkbenchStage } from '@/types/workbench'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -12,6 +8,10 @@ import PortfolioTeacherOnboardingWizard from '@/components/portfolio/PortfolioTe
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
+import {
+  PORTFOLIO_TEACHER_JOURNEY_STEPS,
+  resolvePortfolioJourneyDefaultRoute,
+} from '@/constants/portfolio-teacher-journey'
 
 const route = useRoute()
 const router = useRouter()

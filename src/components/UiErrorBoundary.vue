@@ -39,10 +39,10 @@ function resolveHomePath(): string {
     return '/student/score'
   }
   if (
-    role === RoleEnum.SUPER_ADMIN ||
-    role === RoleEnum.SCH_TECH ||
-    role === RoleEnum.CROP_ADMIN ||
-    role === RoleEnum.CROP_USER
+    role === RoleEnum.SUPER_ADMIN
+    || role === RoleEnum.SCH_TECH
+    || role === RoleEnum.CROP_ADMIN
+    || role === RoleEnum.CROP_USER
   ) {
     return '/teacher/dashboard'
   }
@@ -55,10 +55,10 @@ const backLabel = computed(() => {
     return '返回我的成绩'
   }
   if (
-    role === RoleEnum.SUPER_ADMIN ||
-    role === RoleEnum.SCH_TECH ||
-    role === RoleEnum.CROP_ADMIN ||
-    role === RoleEnum.CROP_USER
+    role === RoleEnum.SUPER_ADMIN
+    || role === RoleEnum.SCH_TECH
+    || role === RoleEnum.CROP_ADMIN
+    || role === RoleEnum.CROP_USER
   ) {
     return '返回教学质量中心'
   }

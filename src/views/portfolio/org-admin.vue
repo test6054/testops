@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { TreeProps } from 'ant-design-vue'
-import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioOrgAliasSaveRequest,
@@ -10,14 +9,15 @@ import type {
   PortfolioOrgTreeNodeVO,
   PortfolioOrgUnitSaveRequest,
 } from '@/apis/portfolio/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { portfolioOrgApi } from '@/apis/portfolio/org'
 import {
   PORTFOLIO_ORG_ALIAS_TARGET_TYPE_LABEL,
   PORTFOLIO_ORG_TREE_NODE_TYPE_LABEL,
   PORTFOLIO_ORG_UNIT_TYPE_OPTIONS,
   PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES,
 } from '@/apis/portfolio/types'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioOrgApi } from '@/apis/portfolio/org'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -215,8 +215,8 @@ function openUnitEditor(mode: 'create' | 'edit') {
     unitEditor.orgName = node.name
     unitEditor.orgCode = node.code
     if (
-      node.parentNodeType &&
-      PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES.includes(
+      node.parentNodeType
+      && PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES.includes(
         node.parentNodeType as (typeof PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES)[number],
       )
     ) {
@@ -235,11 +235,11 @@ function openUnitEditor(mode: 'create' | 'edit') {
     unitEditor.orgName = ''
     unitEditor.orgCode = ''
     unitEditor.parentPortfolioOrgId = selectedNode.value?.portfolioOrgId
-    unitEditor.anchorDepartmentId =
-      selectedRaw.value?.anchorDepartmentId ??
-      (selectedRaw.value?.nodeType === 'DEPARTMENT' ? selectedRaw.value.id : undefined)
-    unitEditor.anchorMajorId =
-      selectedRaw.value?.nodeType === 'MAJOR'
+    unitEditor.anchorDepartmentId
+      = selectedRaw.value?.anchorDepartmentId
+        ?? (selectedRaw.value?.nodeType === 'DEPARTMENT' ? selectedRaw.value.id : undefined)
+    unitEditor.anchorMajorId
+      = selectedRaw.value?.nodeType === 'MAJOR'
         ? selectedRaw.value.id
         : selectedRaw.value?.anchorMajorId
     unitEditor.sortOrder = 0

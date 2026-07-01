@@ -7,19 +7,19 @@ import type {
   AccreditationCycleVO,
   AccreditationEvidenceVO,
 } from '@/apis/quality/accreditation'
-import { accreditationApi } from '@/apis/quality/accreditation'
 import type {
   SelfAssessmentSectionEvidenceRefItem,
   SelfAssessmentSectionKey,
   SelfAssessmentSectionVO,
 } from '@/apis/quality/self-assessment-section'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { accreditationApi } from '@/apis/quality/accreditation'
 import {
   SELF_ASSESSMENT_SECTION_CONTENT_STATUS_LABEL,
   SELF_ASSESSMENT_SECTION_CONTENT_STATUS_TONE,
   selfAssessmentSectionApi,
 } from '@/apis/quality/self-assessment-section'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

@@ -12,8 +12,8 @@ import http from '@/config/axios'
 const BASE = '/api/quality/audit-evaluation/issues'
 
 /** 审核评估问题来源 - 对应后端 AuditIssueSourceEnum */
-export type AuditIssueSource =
-  'SELF_AUDIT' | 'EXPERT_AUDIT' | 'ACCREDITATION_AUDIT' | 'EXTERNAL_INSPECTION'
+export type AuditIssueSource
+  = 'SELF_AUDIT' | 'EXPERT_AUDIT' | 'ACCREDITATION_AUDIT' | 'EXTERNAL_INSPECTION'
 
 /** 审核评估问题严重度 - 对应后端 AuditIssueSeverityEnum */
 export type AuditIssueSeverity = 'MINOR' | 'MAJOR' | 'CRITICAL'

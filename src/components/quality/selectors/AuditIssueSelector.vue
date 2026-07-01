@@ -6,11 +6,11 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AuditIssueVO } from '@/apis/quality/audit-issue'
-import { auditIssueApi } from '@/apis/quality/audit-issue'
 import type { AuditIssueStatus } from '@/apis/quality/types'
-import { AUDIT_ISSUE_STATUS_COLOR, AUDIT_ISSUE_STATUS_LABEL } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { onMounted, ref, watch } from 'vue'
+import { auditIssueApi } from '@/apis/quality/audit-issue'
+import { AUDIT_ISSUE_STATUS_COLOR, AUDIT_ISSUE_STATUS_LABEL } from '@/apis/quality/types'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -38,7 +38,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: AuditIssueVO]
+  "change": [value: string | null, option?: AuditIssueVO]
 }>()
 
 const options = ref<AuditIssueVO[]>([])

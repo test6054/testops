@@ -69,8 +69,8 @@ const normalizedSteps = computed(() => {
     ...step,
     key: step.key || `step-${index}`,
     status:
-      step.status ||
-      (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
+      step.status
+      || (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
   }))
 })
 

@@ -61,18 +61,18 @@ function isSchoolJsonRecord(record: unknown): record is SchoolJsonRecord {
     return false
   }
   if (
-    !('id' in record) ||
-    !('name' in record) ||
-    !('province' in record) ||
-    !('letter' in record)
+    !('id' in record)
+    || !('name' in record)
+    || !('province' in record)
+    || !('letter' in record)
   ) {
     return false
   }
   return (
-    typeof record.id === 'number' &&
-    typeof record.name === 'string' &&
-    typeof record.province === 'string' &&
-    typeof record.letter === 'string'
+    typeof record.id === 'number'
+    && typeof record.name === 'string'
+    && typeof record.province === 'string'
+    && typeof record.letter === 'string'
   )
 }
 
@@ -118,7 +118,7 @@ watch(inputValue, (newVal) => {
 
 const filteredSchools = computed(() => {
   const keyword = searchKeyword.value.trim().toLowerCase()
-  const results: { value: string; label: string }[] = []
+  const results: { value: string, label: string }[] = []
 
   for (const school of schools.value) {
     if (!keyword || (school.name && school.name.toLowerCase().includes(keyword))) {

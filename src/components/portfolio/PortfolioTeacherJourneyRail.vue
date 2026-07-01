@@ -13,9 +13,9 @@
 
 <script lang="ts" setup>
 import type { PortfolioTeacherJourneyKey } from '@/constants/portfolio-teacher-journey'
-import { PORTFOLIO_TEACHER_JOURNEY_STEPS } from '@/constants/portfolio-teacher-journey'
 import type { WorkbenchStage } from '@/types/workbench'
 import StageRail from '@/components/workbench/StageRail.vue'
+import { PORTFOLIO_TEACHER_JOURNEY_STEPS } from '@/constants/portfolio-teacher-journey'
 
 defineOptions({
   name: 'PortfolioTeacherJourneyRail',

@@ -129,9 +129,9 @@ const props = withDefaults(
   },
 )
 
-type TimelineTag =
-  | string
-  | {
+type TimelineTag
+  = | string
+    | {
       label: string
       tone?: BadgeTone
       variant?: 'soft' | 'outline'

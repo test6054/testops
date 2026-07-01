@@ -4,12 +4,12 @@ import type {
   PortfolioDeptStructureStatVO,
   PortfolioTeacherOneTableSummaryVO,
 } from '@/apis/portfolio/teacher'
-import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import type { PortfolioTeacherIdentityType } from '@/apis/portfolio/types'
-import { PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import { PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

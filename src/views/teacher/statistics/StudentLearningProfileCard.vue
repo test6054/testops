@@ -170,21 +170,21 @@
 
 <script lang="ts" setup>
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
-import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from '@/apis/mark/final-score-status'
 import type { MasteryLevelCode } from '@/apis/mark/student-mastery-level'
-import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-mastery-level'
 import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
-import {
-  generateStudentLearningProfile,
-  getLatestStudentLearningProfile,
-} from '@/apis/mark/teaching-analysis'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
+import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from '@/apis/mark/final-score-status'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
+import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-mastery-level'
+import {
+  generateStudentLearningProfile,
+  getLatestStudentLearningProfile,
+} from '@/apis/mark/teaching-analysis'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -371,8 +371,8 @@ watch(
   (next) => {
     // 考试名册变化后，如果当前选中学生不在范围内，重置选择避免跨考试串号
     if (
-      selectedStudentUserId.value &&
-      !next.some((opt) => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value
+      && !next.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false
@@ -386,8 +386,8 @@ watch(
   () => {
     // 班级联动变化时，如果当前学生不在新班级范围内，需重置选择
     if (
-      selectedStudentUserId.value &&
-      !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value
+      && !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false

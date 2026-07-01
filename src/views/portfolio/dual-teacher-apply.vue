@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { PortfolioDualTeacherApplicationStatus } from '@/apis/portfolio/enums'
-import { PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL } from '@/apis/portfolio/enums'
 import type { PortfolioDualTeacherApplicationVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL } from '@/apis/portfolio/enums'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'

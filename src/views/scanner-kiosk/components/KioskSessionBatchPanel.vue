@@ -3,9 +3,9 @@
  * 本机会话批次列表（Setup / Scanning 共用，对标讯飞左栏批次）。
  */
 import type { ExamScannerKioskSessionBatchVO } from '@/apis/mark/scanner-kiosk'
-import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import { DeleteOutlined } from '@ant-design/icons-vue'
 import { computed } from 'vue'
+import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useKioskCtx } from '../composables/kioskInjection'
@@ -60,8 +60,8 @@ function openBatch(row: ExamScannerKioskSessionBatchVO) {
     workflow.errorMessage.value = '当前批次扫描未结束，请先结束本批次后再查看其它批次'
     return
   }
-  const activeBatchId =
-    workflow.activeBackendBatch.value?.scanBatchId || workflow.currentJob.value?.scanBatchId
+  const activeBatchId
+    = workflow.activeBackendBatch.value?.scanBatchId || workflow.currentJob.value?.scanBatchId
   if (row.status === 'IN_PROGRESS' || activeBatchId === row.scanBatchId) {
     stage.gotoStage('scanning')
   }
@@ -134,9 +134,9 @@ function onDiscardClick(row: ExamScannerKioskSessionBatchVO, event: MouseEvent) 
           type="button"
           class="batch-row__main"
           :title="
-            variant === 'scanning' &&
-            row.scanBatchId !== highlightBatchId &&
-            row.exceptionCount === 0
+            variant === 'scanning'
+              && row.scanBatchId !== highlightBatchId
+              && row.exceptionCount === 0
               ? '当前批次扫描未结束'
               : undefined
           "
@@ -145,9 +145,7 @@ function onDiscardClick(row: ExamScannerKioskSessionBatchVO, event: MouseEvent) 
           <span class="batch-row__no">{{ row.batchNo || row.batchExternalNo }}</span>
           <span class="batch-row__counts">
             扫 {{ row.scannedCount }}
-            <span v-if="row.exceptionCount > 0" class="batch-row__exc"
-              >异 {{ row.exceptionCount }}</span
-            >
+            <span v-if="row.exceptionCount > 0" class="batch-row__exc">异 {{ row.exceptionCount }}</span>
             传 {{ row.uploadedCount }}
           </span>
           <span class="batch-row__time">{{ workflow.formatTime(row.scanStartTime) }}</span>

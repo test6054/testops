@@ -63,15 +63,15 @@
 
 <script lang="ts" setup>
 import type { ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
+import { computed } from 'vue'
 import {
   hasImageLedgerPageStats,
   LEDGER_STATUS_LABEL,
   LEDGER_STATUS_TONE,
 } from '@/apis/mark/image-ledger'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
-import { computed } from 'vue'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -128,8 +128,8 @@ function formatLedgerMetric(value: number | null | undefined): string | number {
 
 /** 扫描完成率环色：100% 完成绿 / ≥60% 推进蓝 / 其余推进橙 */
 const scanRingColor = computed(() => {
-  const tone: BadgeTone =
-    scanPercent.value >= 100 ? 'green' : scanPercent.value >= 60 ? 'blue' : 'orange'
+  const tone: BadgeTone
+    = scanPercent.value >= 100 ? 'green' : scanPercent.value >= 60 ? 'blue' : 'orange'
   return toneToColor(tone)
 })
 
@@ -143,8 +143,8 @@ const { chartOption: scanGaugeOption } = useChartOption(() =>
 
 const scanGaugeAriaLabel = computed(() => {
   const ledger = props.ledger
-  const detail =
-    ledger && hasImageLedgerPageStats(ledger)
+  const detail
+    = ledger && hasImageLedgerPageStats(ledger)
       ? `已扫 ${ledger.scannedPageCount} / ${ledger.expectedPageCount} 页`
       : scanProgressLabel.value
   return formatGaugeAriaLabel('扫描进度', scanPercent.value, detail)

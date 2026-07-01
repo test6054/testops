@@ -155,6 +155,11 @@ import type {
   SchoolQualityItemVO,
   SchoolQualityRatingCode,
 } from '@/apis/mark/school-quality'
+import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import {
   generateQualityAnalysis,
   listQualityAnalysis,
@@ -163,11 +168,6 @@ import {
   SCHOOL_QUALITY_RATING_LABEL,
   SCHOOL_QUALITY_RATING_TONE,
 } from '@/apis/mark/school-quality'
-import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'

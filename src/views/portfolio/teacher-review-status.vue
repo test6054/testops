@@ -1,15 +1,11 @@
 <script setup lang="ts">
 import type { PortfolioArchiveRecordStatus } from '@/apis/portfolio/types'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL } from '@/apis/portfolio/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { PortfolioTeacherJourneyKey } from '@/constants/portfolio-teacher-journey'
-import {
-  PORTFOLIO_TEACHER_JOURNEY_STEPS,
-  resolvePortfolioJourneyDefaultRoute,
-} from '@/constants/portfolio-teacher-journey'
 import type { WorkbenchStage } from '@/types/workbench'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL } from '@/apis/portfolio/types'
 import PortfolioTeacherJourneyRail from '@/components/portfolio/PortfolioTeacherJourneyRail.vue'
 import PortfolioTeacherReviewStatusTable from '@/components/portfolio/PortfolioTeacherReviewStatusTable.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -17,6 +13,10 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
+import {
+  PORTFOLIO_TEACHER_JOURNEY_STEPS,
+  resolvePortfolioJourneyDefaultRoute,
+} from '@/constants/portfolio-teacher-journey'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const route = useRoute()
@@ -86,8 +86,8 @@ function readRecordStatusFromQuery(value: unknown): PortfolioArchiveRecordStatus
 }
 
 function syncFiltersFromRoute() {
-  const academicYear =
-    typeof route.query.academicYear === 'string' ? route.query.academicYear.trim() : ''
+  const academicYear
+    = typeof route.query.academicYear === 'string' ? route.query.academicYear.trim() : ''
   filterForm.academicYear = academicYear || undefined
   filterForm.recordStatus = readRecordStatusFromQuery(route.query.recordStatus)
 }

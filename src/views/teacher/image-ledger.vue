@@ -29,13 +29,13 @@
 
 <script lang="ts" setup>
 import type { ExamPaperDuplicateResolutionVO, ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
+import message from 'ant-design-vue/es/message'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   executeImageLedgerBalance,
   getImageLedgerDetail,
   normalizeImageLedgerDetail,
 } from '@/apis/mark/image-ledger'
-import message from 'ant-design-vue/es/message'
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'

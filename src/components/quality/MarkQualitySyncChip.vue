@@ -4,13 +4,13 @@
  */
 import type { ExamSummaryVO } from '@/apis/mark/exam'
 import type { MarkExamSyncStatusVO } from '@/apis/quality/mark-exam-sync'
+import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   MARK_EXAM_QUALITY_SYNC_STATUS_LABEL,
   MARK_EXAM_QUALITY_SYNC_STATUS_TONE,
   markExamSyncApi,
 } from '@/apis/quality/mark-exam-sync'
-import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'

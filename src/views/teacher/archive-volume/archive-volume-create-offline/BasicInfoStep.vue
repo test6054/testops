@@ -90,10 +90,10 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ClassInfoDto } from '@/apis/edu/class'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import { pageExams } from '@/apis/mark/exam'
 import type { CourseListVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
-import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import { computed, onMounted, ref, watch } from 'vue'
+import { pageExams } from '@/apis/mark/exam'
+import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import { requireArrayResult } from '@/components/quality/selectors/page-contract'
@@ -137,9 +137,9 @@ const relatedExamIdSelectValue = computed({
   },
 })
 const departmentLoading = ref(false)
-const departmentOptions = ref<Array<{ value: string; label: string }>>([])
+const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 const relatedExamLoading = ref(false)
-const relatedExamOptions = ref<Array<{ value: string; label: string }>>([])
+const relatedExamOptions = ref<Array<{ value: string, label: string }>>([])
 
 const RELATED_EXAM_PAGE_SIZE = 50
 let relatedExamSearchTimer: ReturnType<typeof setTimeout> | undefined

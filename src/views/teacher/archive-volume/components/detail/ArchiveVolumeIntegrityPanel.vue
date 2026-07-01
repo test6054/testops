@@ -153,6 +153,9 @@ import type {
   ArchiveMaterialTypeCode,
   ArchiveVolumeDetailVO,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { reactive, ref } from 'vue'
 import {
   allowArchiveMaterialDelay,
   ARCHIVE_INTEGRITY_STATUS_LABEL,
@@ -163,9 +166,6 @@ import {
   waiveArchiveMaterialMissing,
   waiveArchiveVolumeIntegrity,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { reactive, ref } from 'vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -188,7 +188,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  refreshed: []
+  "refreshed": []
   'integrity-checked': [result: Awaited<ReturnType<typeof checkArchiveVolumeIntegrity>>]
   'four-property-checked': [result: Awaited<ReturnType<typeof checkArchiveVolumeFourProperty>>]
   'run-integrity-check': []

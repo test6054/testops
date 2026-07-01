@@ -157,7 +157,7 @@ const stepTitle = computed(() => {
 
 function mapTreeNodes(
   nodes: PortfolioArchiveCategoryTreeNodeVO[],
-): Array<{ key: string; title: string; children?: ReturnType<typeof mapTreeNodes> }> {
+): Array<{ key: string, title: string, children?: ReturnType<typeof mapTreeNodes> }> {
   return nodes.map((node) => ({
     key: node.id,
     title: node.categoryName,

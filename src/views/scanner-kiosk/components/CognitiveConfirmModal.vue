@@ -12,8 +12,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  confirm: []
-  cancel: []
+  "confirm": []
+  "cancel": []
 }>()
 
 const previewUrl = ref('')

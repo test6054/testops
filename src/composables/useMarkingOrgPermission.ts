@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
-import { computed } from 'vue'
 import type { MarkingOrganizationVO } from '@/apis/mark/marking-organization'
+import { computed } from 'vue'
 import { useUserStore } from '@/stores/modules/user'
 
 /** 阅卷组织权限：与后端 ExamMarkPermissionService.isExamOwner 对齐，仅考试主考老师可写。 */

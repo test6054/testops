@@ -50,9 +50,7 @@
                 当前第 {{ currentQueueIndex }} 份，剩余
                 {{ Math.max(0, queueTotal - currentQueueIndex) }} 份待复核
               </span>
-              <span class="review-workspace__keyboard-hint"
-                >J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span
-              >
+              <span class="review-workspace__keyboard-hint">J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span>
             </div>
             <a-progress
               :percent="queueProgressPercent"
@@ -421,13 +419,29 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnnotationVO } from '@/apis/mark/exam-annotation'
-import { listAnnotations, validateAnnotationContract } from '@/apis/mark/exam-annotation'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   AiProviderTypeCode,
   ExamQuestionAiExecutionItemVO,
 } from '@/apis/mark/exam-grade'
+import type {
+  ReviewTaskDetailVO,
+  ReviewTaskItemVO,
+  ReviewTaskStatusCode,
+} from '@/apis/mark/exam-review-task'
+import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
+import EditOutlined from '@ant-design/icons-vue/EditOutlined'
+import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
+import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
+import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { listAnnotations, validateAnnotationContract } from '@/apis/mark/exam-annotation'
 import {
   AI_ABILITY_LABEL,
   AI_ABILITY_TONE,
@@ -439,11 +453,6 @@ import {
   rejectQuestionGrade,
   rescoreQuestionByAi,
 } from '@/apis/mark/exam-grade'
-import type {
-  ReviewTaskDetailVO,
-  ReviewTaskItemVO,
-  ReviewTaskStatusCode,
-} from '@/apis/mark/exam-review-task'
 import {
   claimReviewTask,
   getReviewTaskDetail,
@@ -451,18 +460,7 @@ import {
   REVIEW_TASK_STATUS_LABEL,
   REVIEW_TASK_STATUS_TONE,
 } from '@/apis/mark/exam-review-task'
-import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
 import { OBJECTIVE_COMPARE_POLICY_OPTIONS } from '@/apis/mark/exam-standard-answer'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
-import EditOutlined from '@ant-design/icons-vue/EditOutlined'
-import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
-import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
-import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import GradingWorkspaceLayout from '@/components/mark/GradingWorkspaceLayout.vue'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -605,10 +603,10 @@ const reviewQueue = ref<ReviewTaskItemVO[]>([])
  */
 async function loadReviewQueue(): Promise<void> {
   if (
-    !examId.value ||
-    !detail.value?.questionTemplateId ||
-    !detail.value.reviewType ||
-    !detail.value.gradeSource
+    !examId.value
+    || !detail.value?.questionTemplateId
+    || !detail.value.reviewType
+    || !detail.value.gradeSource
   ) {
     reviewQueue.value = []
     return
@@ -776,9 +774,9 @@ async function loadTask(): Promise<void> {
     await Promise.all([loadAnnotations(), loadReviewQueue()])
     // 默认填充 AI 评分（仅当表单空时；避免覆盖教师正在编辑的值）
     if (
-      gradeForm.teacherReviewScore === undefined &&
-      detail.value?.aiScore !== undefined &&
-      detail.value?.aiScore !== null
+      gradeForm.teacherReviewScore === undefined
+      && detail.value?.aiScore !== undefined
+      && detail.value?.aiScore !== null
     ) {
       gradeForm.teacherReviewScore = detail.value.aiScore
     }
@@ -1061,8 +1059,8 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
   }
   const fullScore = detail.value.fullScore
   const teacherReviewScore = gradeForm.teacherReviewScore
-  const ratio =
-    fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
+  const ratio
+    = fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
       ? `${Math.round((teacherReviewScore / fullScore) * 100)}%`
       : '-'
   // 取下一份模式下额外提示队列剩余信息，让教师清楚复核会继续

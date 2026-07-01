@@ -4,15 +4,15 @@ import type {
   PortfolioDevelopmentRecordStatus,
   PortfolioDevelopmentRecordType,
 } from '@/apis/portfolio/enums'
+import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_DEVELOPMENT_RECORD_STATUS_LABEL,
   PORTFOLIO_DEVELOPMENT_RECORD_TYPE_LABEL,
 } from '@/apis/portfolio/enums'
-import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -38,8 +38,8 @@ const activeType = ref<RecordType>('ACHIEVEMENT')
 const loading = ref(false)
 const importModalOpen = ref(false)
 const rows = ref<PortfolioDevelopmentRecordVO[]>([])
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
-  usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
+  = usePortfolioTeacherSearch()
 const form = reactive({
   recordTitle: '',
   descriptionText: '',

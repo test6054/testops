@@ -102,9 +102,9 @@
 
 <script lang="ts" setup>
 import type { SsoConfigResponse } from '@/apis/sso'
-import { getCasLoginUrl, getSsoConfig } from '@/apis/sso'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { getCasLoginUrl, getSsoConfig } from '@/apis/sso'
 import loginHeroVisual from '@/assets/login/login-hero-visual.svg'
 import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
@@ -124,7 +124,7 @@ const appStore = useAppStore()
 
 const isSubdomain = ref(false)
 const activeTab = ref('1')
-const studentPrefill = ref<{ studentNo: string; password: string }>({ studentNo: '', password: '' })
+const studentPrefill = ref<{ studentNo: string, password: string }>({ studentNo: '', password: '' })
 
 const ssoConfig = ref<SsoConfigResponse | null>(null)
 const casEnabled = computed(() => ssoConfig.value?.casEnabled ?? false)
@@ -134,7 +134,7 @@ const isCasCallback = ref(false)
 const copyright = computed(() => appStore.getCopyright())
 
 const loginTabItems = computed(() => {
-  const items: { value: string; label: string }[] = [
+  const items: { value: string, label: string }[] = [
     { value: '1', label: '账号登录' },
     { value: '2', label: '学号登录' },
   ]
@@ -144,7 +144,7 @@ const loginTabItems = computed(() => {
   return items
 })
 
-function switchToStudentTab(val: { studentNo: string; password: string }) {
+function switchToStudentTab(val: { studentNo: string, password: string }) {
   activeTab.value = '2'
   studentPrefill.value = {
     studentNo: val.studentNo,

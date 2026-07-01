@@ -39,9 +39,9 @@ const submitReady = computed(() => props.progress?.submitReady === true)
         <span class="archive-volume-submit-progress-band__label">当前步骤</span>
         <strong class="archive-volume-submit-progress-band__step">{{ currentLabel }}</strong>
         <UiTag v-if="submitReady" tone="green" size="sm">可提交</UiTag>
-        <UiTag v-else-if="pendingCount > 0" tone="orange" size="sm"
-          >还有 {{ pendingCount }} 项</UiTag
-        >
+        <UiTag v-else-if="pendingCount > 0" tone="orange" size="sm">
+          还有 {{ pendingCount }} 项
+        </UiTag>
       </div>
       <UiTextAction v-if="pendingCount > 0" @click="expanded = !expanded">
         {{ expanded ? '收起待办' : '展开待办' }}

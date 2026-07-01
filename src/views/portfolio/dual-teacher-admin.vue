@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDualTeacherApplicationStatus } from '@/apis/portfolio/enums'
-import { PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL } from '@/apis/portfolio/enums'
 import type {
   PortfolioDualTeacherApplicationVO,
   PortfolioDualTeacherEligibilityFreezeVO,
 } from '@/apis/portfolio/teacher-platform'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import { message, Modal } from 'ant-design-vue'
 import { computed, onMounted, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import { PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL } from '@/apis/portfolio/enums'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -206,9 +206,9 @@ onMounted(loadPage)
           <template v-else-if="column.key === 'actions'">
             <UiTextAction
               v-if="
-                record.applicationStatus === 'DRAFT' ||
-                record.applicationStatus === 'COLLEGE_RETURNED' ||
-                record.applicationStatus === 'ACADEMIC_RETURNED'
+                record.applicationStatus === 'DRAFT'
+                  || record.applicationStatus === 'COLLEGE_RETURNED'
+                  || record.applicationStatus === 'ACADEMIC_RETURNED'
               "
               @click="runWorkflow('submit', record.id)"
             >

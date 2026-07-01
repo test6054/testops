@@ -1,16 +1,16 @@
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
-import { ARCHIVE_MATERIAL_TYPE_LABEL } from '@/apis/mark/archive-volume'
 import type { ScanDispatchArchiveSnapshotVO } from '@/apis/mark/scanner-dispatch'
-import { previewScanDispatch } from '@/apis/mark/scanner-dispatch'
 import type {
   ArchiveScanBatchModeCode,
   ScanWorkOrderArchiveContextVO,
   ScanWorkOrderLifecycleVO,
 } from '@/apis/mark/scanner-work-order'
-import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { ARCHIVE_MATERIAL_TYPE_LABEL } from '@/apis/mark/archive-volume'
 import { getAgentSetupContext } from '@/apis/mark/scanner-agent-local'
+import { previewScanDispatch } from '@/apis/mark/scanner-dispatch'
+import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 

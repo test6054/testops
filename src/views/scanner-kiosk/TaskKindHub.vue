@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ScanDispatchQueueSummaryVO } from '@/apis/mark/scanner-dispatch'
-import { loadScanDispatchQueueSummary } from '@/apis/mark/scanner-dispatch'
 import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
-
 import { ReloadOutlined, ScanOutlined } from '@ant-design/icons-vue'
+
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { loadScanDispatchQueueSummary } from '@/apis/mark/scanner-dispatch'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import KioskArchivePickPanel from './components/KioskArchivePickPanel.vue'
@@ -82,9 +82,9 @@ const scannerDeviceId = computed(() => deviceActivation.setup.value?.scannerDevi
 const scannerStationId = computed(() => deviceActivation.setup.value?.scannerStationId ?? '')
 
 const endpointLabel = computed(() => {
-  const name =
-    deviceActivation.setup.value?.deviceName?.trim() ||
-    deviceActivation.activationForm.value.endpointName.trim()
+  const name
+    = deviceActivation.setup.value?.deviceName?.trim()
+      || deviceActivation.activationForm.value.endpointName.trim()
   return name || '未命名工位'
 })
 
@@ -99,25 +99,25 @@ const stationLedTone = computed<'green' | 'gray'>(() =>
 
 const showAgentOfflineHint = computed(
   () =>
-    !hubLoading.value &&
-    !deviceActivation.loading.value &&
-    !deviceActivation.localAgentReachable.value &&
-    (deviceActivation.isDeviceBound.value || !deviceActivation.needsActivationGate.value),
+    !hubLoading.value
+    && !deviceActivation.loading.value
+    && !deviceActivation.localAgentReachable.value
+    && (deviceActivation.isDeviceBound.value || !deviceActivation.needsActivationGate.value),
 )
 
 const showTaskKindCards = computed(
   () =>
-    deviceActivation.localAgentReachable.value &&
-    deviceActivation.isDeviceBound.value &&
-    !deviceActivation.needsActivationGate.value,
+    deviceActivation.localAgentReachable.value
+    && deviceActivation.isDeviceBound.value
+    && !deviceActivation.needsActivationGate.value,
 )
 
 const showFailedAlert = computed(
   () =>
-    showTaskKindCards.value &&
-    !queueSummaryLoading.value &&
-    ((queueSummary.value?.failedTicketCount ?? 0) > 0 ||
-      (queueSummary.value?.committingWorkOrderCount ?? 0) > 0),
+    showTaskKindCards.value
+    && !queueSummaryLoading.value
+    && ((queueSummary.value?.failedTicketCount ?? 0) > 0
+      || (queueSummary.value?.committingWorkOrderCount ?? 0) > 0),
 )
 
 const contextSubtitle = computed(() => {

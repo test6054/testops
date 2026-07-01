@@ -39,19 +39,19 @@ import UiButton from './Button.vue'
 import UiPopoverPanel from './UiPopoverPanel.vue'
 
 type PopoverTrigger = 'hover' | 'focus' | 'click' | 'contextmenu'
-type PopoverPlacement =
-  | 'topLeft'
-  | 'top'
-  | 'topRight'
-  | 'leftTop'
-  | 'left'
-  | 'leftBottom'
-  | 'rightTop'
-  | 'right'
-  | 'rightBottom'
-  | 'bottomLeft'
-  | 'bottom'
-  | 'bottomRight'
+type PopoverPlacement
+  = | 'topLeft'
+    | 'top'
+    | 'topRight'
+    | 'leftTop'
+    | 'left'
+    | 'leftBottom'
+    | 'rightTop'
+    | 'right'
+    | 'rightBottom'
+    | 'bottomLeft'
+    | 'bottom'
+    | 'bottomRight'
 
 defineOptions({
   name: 'UiConfirmPopover',

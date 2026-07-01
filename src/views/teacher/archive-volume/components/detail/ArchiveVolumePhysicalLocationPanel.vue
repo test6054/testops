@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ArchivePhysicalLocationVO, ArchiveVolumeDetailVO } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import {
   listArchivePhysicalLocationHistory,
   updateArchiveVolumePhysicalLocation,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { showUserError } from '@/utils/error-handler'
 

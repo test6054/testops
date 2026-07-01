@@ -14,7 +14,6 @@
  */
 
 import type { LocationQueryValue } from 'vue-router'
-import { useRoute, useRouter } from 'vue-router'
 import type { ScanAttentionTypeCode, ScanBatchStatusCode } from '@/apis/mark/exam-scan'
 import type { MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
 import type {
@@ -29,6 +28,29 @@ import type {
   ScannerDeviceInfo,
   ScannerListResponse,
 } from '@/apis/mark/scanner-agent-local'
+import type {
+  ExamScannerBoundPaperItemVO,
+  ExamScannerKioskBatchHistoryItem,
+  ExamScannerKioskBatchHistoryRequest,
+  ExamScannerKioskContextVO,
+  ExamScannerKioskExamOptionRequest,
+  ExamScannerKioskExamOptionVO,
+  ExamScannerLedgerDataSource,
+  ExamScannerPageLedgerVO,
+  ExamScannerPageRegistrationStatus,
+  ExamScannerScanConfigOptionsVO,
+  ExamScannerScanConfigVO,
+  ScannerKioskScanMode,
+} from '@/apis/mark/scanner-kiosk'
+import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
+import type { SemesterCode } from '@/types/enums'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  SCANNER_COLOR_MODE_LABEL,
+  SCANNER_DUPLEX_MODE_LABEL,
+  SCANNER_ENDPOINT_ONLINE_STATUS_LABEL,
+} from '@/apis/mark/exam-mark-scanner'
 import {
   AGENT_HEALTH_STATUS_LABEL,
   AGENT_UPDATE_STATUS_LABEL,
@@ -52,20 +74,6 @@ import {
   setPreferredLocalScanner,
   startScanJob,
 } from '@/apis/mark/scanner-agent-local'
-import type {
-  ExamScannerBoundPaperItemVO,
-  ExamScannerKioskBatchHistoryItem,
-  ExamScannerKioskBatchHistoryRequest,
-  ExamScannerKioskContextVO,
-  ExamScannerKioskExamOptionRequest,
-  ExamScannerKioskExamOptionVO,
-  ExamScannerLedgerDataSource,
-  ExamScannerPageLedgerVO,
-  ExamScannerPageRegistrationStatus,
-  ExamScannerScanConfigOptionsVO,
-  ExamScannerScanConfigVO,
-  ScannerKioskScanMode,
-} from '@/apis/mark/scanner-kiosk'
 import {
   bindScannerKioskExam,
   discardScannedPage,
@@ -76,19 +84,11 @@ import {
   pageScannerKioskBatchHistory,
   pageScannerKioskExamOptions,
 } from '@/apis/mark/scanner-kiosk'
-import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
 import { discardExamScanWorkOrder, startExamScanWorkOrder } from '@/apis/mark/scanner-work-order'
-import type { SemesterCode } from '@/types/enums'
-import { getSemesterDescription, SemesterOptions } from '@/types/enums'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import {
-  SCANNER_COLOR_MODE_LABEL,
-  SCANNER_DUPLEX_MODE_LABEL,
-  SCANNER_ENDPOINT_ONLINE_STATUS_LABEL,
-} from '@/apis/mark/exam-mark-scanner'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
+import { getSemesterDescription, SemesterOptions } from '@/types/enums'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import {

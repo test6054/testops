@@ -94,22 +94,22 @@
 
 <script lang="ts" setup>
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
+import type { StudentExamItemVO } from '@/apis/mark/student-exam'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   FINAL_SCORE_STATUS_CODES,
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_TONE,
 } from '@/apis/mark/final-score-status'
-import type { StudentExamItemVO } from '@/apis/mark/student-exam'
 import {
   canSubmitReview,
   listMyExams,
   STUDENT_REVIEW_WINDOW_STATUS_LABEL,
   STUDENT_REVIEW_WINDOW_STATUS_TONE,
 } from '@/apis/mark/student-exam'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -179,8 +179,8 @@ const columns = [
 const filteredExams = computed<StudentExamItemVO[]>(() => {
   return exams.value.filter((item) => {
     if (
-      historyFilterForm.statusFilter &&
-      item.finalScoreStatus !== historyFilterForm.statusFilter
+      historyFilterForm.statusFilter
+      && item.finalScoreStatus !== historyFilterForm.statusFilter
     ) {
       return false
     }

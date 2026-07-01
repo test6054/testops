@@ -9,19 +9,14 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * - /api/quality/score-batches: page（按 qualityCourseId 拉批次列表）
  */
 import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import type { RubricItemVO } from '@/apis/quality/rubric-item'
-import { rubricItemApi } from '@/apis/quality/rubric-item'
 import type { ScoreBatchVO } from '@/apis/quality/score-batch'
-import { scoreBatchApi } from '@/apis/quality/score-batch'
 import type {
   ScoreRecordRubricScoreRequest,
   ScoreRecordSaveRequest,
   ScoreRecordVO,
 } from '@/apis/quality/score-record'
-import { scoreRecordApi } from '@/apis/quality/score-record'
 import type { ScoreBatchStatus } from '@/apis/quality/types'
-import { SCORE_BATCH_STATUS_COLOR, SCORE_BATCH_STATUS_LABEL } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
@@ -29,6 +24,11 @@ import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ExportBusinessType } from '@/apis/edu/export'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
+import { rubricItemApi } from '@/apis/quality/rubric-item'
+import { scoreBatchApi } from '@/apis/quality/score-batch'
+import { scoreRecordApi } from '@/apis/quality/score-record'
+import { SCORE_BATCH_STATUS_COLOR, SCORE_BATCH_STATUS_LABEL } from '@/apis/quality/types'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import { ClassSelector, CourseSelector, StudentSelector } from '@/components/quality/selectors'
@@ -99,8 +99,8 @@ const qualityStore = useQualityStore()
 const batches = ref<ScoreBatchVO[]>([])
 const batchesLoading = ref(false)
 const selectedBatch = ref<ScoreBatchVO | null>(null)
-const { exporting: scoreRecordExporting, exportExcel: exportScoreRecordExcel } =
-  useQualityTableExport()
+const { exporting: scoreRecordExporting, exportExcel: exportScoreRecordExcel }
+  = useQualityTableExport()
 
 const isBatchRecordEditable = computed(() => {
   if (!selectedBatch.value) return false
@@ -154,8 +154,8 @@ const batchStatusPolling = usePolling(() => refreshBatchesQuietly(), {
   getOptions: () => ({
     intervalMs: 3000,
     when:
-      batches.value.some((batch) => batch.status === 'PARSING') ||
-      selectedBatch.value?.status === 'PARSING',
+      batches.value.some((batch) => batch.status === 'PARSING')
+      || selectedBatch.value?.status === 'PARSING',
   }),
   pauseWhenDocumentHidden: true,
 })

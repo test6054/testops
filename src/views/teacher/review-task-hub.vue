@@ -125,6 +125,11 @@ import type {
   ReviewTaskStatusCode,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   GRADE_SOURCE_LABEL,
   GRADE_SOURCE_TONE,
@@ -134,11 +139,6 @@ import {
   REVIEW_TASK_TYPE_META,
   validateReviewTaskItemContract,
 } from '@/apis/mark/exam-review-task'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -237,8 +237,8 @@ function handleHubSignalClick(key: string): void {
     return
   }
   if (
-    key === 'in-progress' &&
-    (snapshot.value?.markingProgress?.inProgressReviewTaskCount ?? 0) > 0
+    key === 'in-progress'
+    && (snapshot.value?.markingProgress?.inProgressReviewTaskCount ?? 0) > 0
   ) {
     statusFilter.value = 'IN_PROGRESS'
     onFilterChange()
@@ -321,7 +321,7 @@ async function loadTasks(): Promise<void> {
   }
 }
 
-function onPageChange(page: { current: number; pageSize: number }): void {
+function onPageChange(page: { current: number, pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadTasks()

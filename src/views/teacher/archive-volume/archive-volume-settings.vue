@@ -147,9 +147,9 @@
                 <a-checkbox v-model:checked="catalogRows[index].requiredFlag">必交</a-checkbox>
               </template>
               <template v-else-if="column.key === 'delayAllowedFlag'">
-                <a-checkbox v-model:checked="catalogRows[index].delayAllowedFlag"
-                  >允许延迟</a-checkbox
-                >
+                <a-checkbox v-model:checked="catalogRows[index].delayAllowedFlag">
+                  允许延迟
+                </a-checkbox>
               </template>
               <template v-else-if="column.key === 'sortOrder'">
                 <a-input-number
@@ -178,6 +178,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveDutyGrantItemRequest, ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
+import type {
+  ArchiveCatalogTemplateSaveItemRequest,
+  ArchiveMaterialTypeCode,
+  ArchiveSecurityLevelCode,
+} from '@/apis/mark/archive-volume'
+import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
+import { message } from 'ant-design-vue'
+import { onMounted, ref, watch } from 'vue'
 import {
   ARCHIVE_DUTY_TYPE_LABEL,
   listArchiveDutyGrants,
@@ -185,11 +193,6 @@ import {
   saveArchiveDutyGrants,
   saveArchiveSecurityPolicy,
 } from '@/apis/mark/archive-config'
-import type {
-  ArchiveCatalogTemplateSaveItemRequest,
-  ArchiveMaterialTypeCode,
-  ArchiveSecurityLevelCode,
-} from '@/apis/mark/archive-volume'
 import {
   ARCHIVE_EXAM_FORM_LABEL,
   ARCHIVE_MATERIAL_TYPE_LABEL,
@@ -197,10 +200,7 @@ import {
   listArchiveCatalogTemplate,
   saveArchiveCatalogTemplate,
 } from '@/apis/mark/archive-volume'
-import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
-import { message } from 'ant-design-vue'
-import { onMounted, ref, watch } from 'vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import { requireArrayResult } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -234,7 +234,7 @@ const catalogLoading = ref(false)
 const dutyRows = ref<DutyRow[]>([])
 const policyRows = ref<PolicyRow[]>([])
 const catalogRows = ref<CatalogRow[]>([])
-const departmentOptions = ref<Array<{ value: string; label: string }>>([])
+const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 
 function dutyRowKey(row: DutyRow) {
   const scope = row.tenantWide ? 'tenant' : (row.scopeDepartmentId ?? 'none')
