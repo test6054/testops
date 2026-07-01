@@ -33,7 +33,7 @@
         </a-form-item>
         <a-form-item label="院系" name="departmentId">
           <a-select
-            v-model:value="basicForm.departmentId"
+            v-model:value="departmentIdSelectValue"
             :options="departmentOptions"
             :loading="departmentLoading"
             placeholder="请选择院系"
@@ -54,7 +54,7 @@
         </a-form-item>
         <a-form-item label="关联考试">
           <a-select
-            v-model:value="basicForm.relatedExamId"
+            v-model:value="relatedExamIdSelectValue"
             :options="relatedExamOptions"
             :loading="relatedExamLoading"
             :disabled="!canLoadRelatedExams"
@@ -87,6 +87,7 @@ import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
 import { useInjectedArchiveVolumeCreateBasicForm } from './archive-volume-create-context'
+import { nullableStringToSelectValue, selectValueToNullableString } from './select-value-bridge'
 
 defineProps<{
   basicRules: Record<string, Rule[]>
@@ -102,6 +103,20 @@ const emit = defineEmits<{
 const basicForm = useInjectedArchiveVolumeCreateBasicForm()
 const formRef = ref<FormInstance>()
 const semesterOptions = SemesterOptions
+
+const departmentIdSelectValue = computed({
+  get: () => nullableStringToSelectValue(basicForm.departmentId),
+  set: (value: SelectValue) => {
+    basicForm.departmentId = selectValueToNullableString(value)
+  },
+})
+
+const relatedExamIdSelectValue = computed({
+  get: () => nullableStringToSelectValue(basicForm.relatedExamId),
+  set: (value: SelectValue) => {
+    basicForm.relatedExamId = selectValueToNullableString(value)
+  },
+})
 const departmentLoading = ref(false)
 const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 const relatedExamLoading = ref(false)
@@ -126,8 +141,9 @@ function handleCourseChange(courseId: string | null, option?: CourseListVO) {
   void loadRelatedExamOptions()
 }
 
-function handleDepartmentChange(value: string | undefined) {
-  const departmentId = value ?? null
+function handleDepartmentChange(value: SelectValue): void {
+  const departmentId = selectValueToNullableString(value)
+  basicForm.departmentId = departmentId
   const selected = departmentId
     ? departmentOptions.value.find(item => item.value === departmentId)
     : undefined
@@ -199,7 +215,7 @@ function handleRelatedExamSearch(keyword: string): void {
 }
 
 function handleRelatedExamChange(value: SelectValue): void {
-  const examId = typeof value === 'string' ? value : null
+  const examId = selectValueToNullableString(value)
   basicForm.relatedExamId = examId
   const selected = examId
     ? relatedExamOptions.value.find(item => item.value === examId)

@@ -369,6 +369,13 @@ export async function loadTeacherDashboardOverview(
   return validateTeacherDashboardOverview(data)
 }
 
+/** 静默拉取概览：筛选回退 bootstrap 用，不触发全局错误 toast。 */
+export function loadTeacherDashboardOverviewSilent(
+  query: MarkTeacherDashboardQuery = {},
+): Promise<MarkTeacherDashboardOverviewVO> {
+  return loadTeacherDashboardOverview(query, { showErrorMessage: false })
+}
+
 let inflightOverviewRequest: Promise<MarkTeacherDashboardOverviewVO> | null = null
 let inflightOverviewQueryKey = ''
 

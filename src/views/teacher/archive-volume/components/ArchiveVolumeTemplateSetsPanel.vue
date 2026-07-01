@@ -240,13 +240,12 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchivePlatformMaterialItemVO,
   ArchivePlatformTemplatePreviewVO,
-  ArchiveTenantTemplateSetVO,
+  ArchiveTemplateMaterialEditRow, ArchiveTemplateSelfCheckEditRow, ArchiveTenantTemplateSetVO
 } from '@/apis/mark/archive-platform-template'
 import type { ArchiveTemplateScopeCode } from '@/apis/mark/archive-template-scope'
 import type {
   ArchiveExamFormCode,
 } from '@/apis/mark/archive-volume'
-import type {ArchiveTemplateMaterialEditRow, ArchiveTemplateSelfCheckEditRow} from '@/views/teacher/archive-volume/components/ArchiveTemplateSetEditorDrawer.vue';
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {

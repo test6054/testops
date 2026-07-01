@@ -1,4 +1,4 @@
-import type { RouteLocationRaw } from 'vue-router'
+import type { RouteLocationNamedRaw } from 'vue-router'
 
 /** 教师档案袋主链旅程键 */
 export type PortfolioTeacherJourneyKey = 'overview' | 'learn' | 'collect' | 'archive' | 'review'
@@ -24,7 +24,7 @@ export function isPortfolioTeacherJourneyKey(value: unknown): value is Portfolio
   return typeof value === 'string' && JOURNEY_KEY_SET.has(value)
 }
 
-export function resolvePortfolioJourneyDefaultRoute(journeyKey: PortfolioTeacherJourneyKey): RouteLocationRaw {
+export function resolvePortfolioJourneyDefaultRoute(journeyKey: PortfolioTeacherJourneyKey): RouteLocationNamedRaw {
   const step = PORTFOLIO_TEACHER_JOURNEY_STEPS.find(item => item.key === journeyKey)
   if (!step) {
     throw new Error(`未知档案袋旅程键：${journeyKey}`)

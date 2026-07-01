@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
 import type { ArchiveVolumeDetailVO, ArchiveVolumeRoleCode } from '@/apis/mark/archive-volume'
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ARCHIVE_VOLUME_ROLE_LABEL } from '@/apis/mark/archive-volume'
 import { canSubmitArchiveVolumeDetail } from '@/composables/useArchiveVolumeSubmitGate'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -92,7 +92,7 @@ export function useArchiveVolumeDetailScope(
     }
   })
 
-  return {
+  return reactive({
     viewMode,
     effectiveViewMode,
     wizardEligible,
@@ -110,5 +110,5 @@ export function useArchiveVolumeDetailScope(
     canRunIntegrityCheck,
     switchToExpertMode,
     switchToWizardMode,
-  }
+  })
 }

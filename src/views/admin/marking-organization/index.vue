@@ -256,7 +256,9 @@ import {
   getOrganization,
   MARKING_ORGANIZATION_STATUS_LABEL,
   MARKING_ORGANIZATION_STATUS_TONE,
+  requireMarkingOrganizationId,
   updateOrganization,
+  validateMarkingOrganizationContract,
 } from '@/apis/mark/marking-organization'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -475,7 +477,7 @@ async function submitUpdate(): Promise<void> {
   updating.value = true
   try {
     const request: OrganizationUpdateRequest = {
-      organizationId: organization.value.id,
+      organizationId: requireMarkingOrganizationId(organization.value),
       anonymousMode: editForm.anonymousMode,
       remark: editForm.remark?.trim() || undefined,
     }
@@ -497,7 +499,7 @@ async function submitDelete(): Promise<void> {
   if (!organization.value) return
   deleting.value = true
   try {
-    await deleteOrganization({ organizationId: organization.value.id })
+    await deleteOrganization({ organizationId: requireMarkingOrganizationId(organization.value) })
     organization.value = null
     message.success('阅卷组织已删除')
     await refreshSnapshot()
@@ -513,7 +515,7 @@ async function submitDelete(): Promise<void> {
  */
 function buildDetailRoute(tab?: string): RouteLocationRaw {
   const target = resolveMarkingOrganizationDetailRoute(
-    organization.value!.id,
+    requireMarkingOrganizationId(organization.value!),
     isExamWorkspaceRoute.value ? selectedExamId.value : undefined,
   )
   if (typeof target === 'string') {
@@ -538,7 +540,7 @@ function goDetailTab(tab: string): void {
 function goSessions(): void {
   if (!organization.value) return
   void router.push(resolveMarkingOrganizationSessionsRoute(
-    organization.value.id,
+    requireMarkingOrganizationId(organization.value),
     isExamWorkspaceRoute.value ? selectedExamId.value : undefined,
   ))
 }

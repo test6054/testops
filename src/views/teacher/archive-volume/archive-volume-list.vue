@@ -123,14 +123,6 @@
             @reset="handleReset"
           >
             <template #actions>
-              <UiButton
-                v-if="listTab === 'mine'"
-                size="sm"
-                variant="outline"
-                @click="goCreateOffline"
-              >
-                新建
-              </UiButton>
               <UiButton size="sm" @click="handleSearch">
                 查询
               </UiButton>
@@ -369,6 +361,7 @@
 
 <script setup lang="ts">
 import type { ColumnsType, TableProps } from 'ant-design-vue/es/table'
+import type { LocationQueryRaw } from 'vue-router'
 import type {
   ArchiveAccessStatusCode,
   ArchiveAppraisalStatusCode,
@@ -936,7 +929,7 @@ function stripScopeQueryFromRoute() {
   if (route.query.scope === undefined) {
     return
   }
-  const nextQuery = { ...route.query }
+  const nextQuery: LocationQueryRaw = { ...route.query }
   delete nextQuery.scope
   void router.replace({ query: nextQuery })
 }
@@ -1349,7 +1342,7 @@ function handleSignalMetricClick(key: string) {
 }
 
 watch(listTab, (tab) => {
-  const nextQuery = { ...route.query, tab }
+  const nextQuery: LocationQueryRaw = { ...route.query, tab }
   delete nextQuery.scope
   void router.replace({ query: nextQuery })
 })

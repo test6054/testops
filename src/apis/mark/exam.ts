@@ -7,7 +7,9 @@ import type { ExamCandidateRosterRequest, ExamCandidateVO } from '@/apis/mark/ex
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
+import { isValidSemesterCode } from '@/types/enums/semester-enum'
 
 /** 考试状态编码 - 对应后端 ExamStatus 枚举（仅保留批改链有意义的状态） */
 export type ExamStatusCode = 'ACTIVE' | 'CLOSED'
@@ -336,10 +338,30 @@ export interface ExamCreateRequest {
   scorePolicy?: ExamScorePolicyCode
 }
 
-/** 更新考试请求 - 对应 ExamUpdateRequest */
-export interface ExamUpdateRequest extends ExamCreateRequest {
+/** 更新考试主信息请求 - 对应 ExamUpdateRequest（学年/学期可留空，由后端沿用当前考试值） */
+export interface ExamUpdateRequest {
   /** 考试ID */
   examId: string
+  /** 课程ID */
+  courseId: string
+  /** 学年；与 semester 须同时填写或同时留空 */
+  academicYear?: string
+  /** 学期；与 academicYear 须同时填写或同时留空 */
+  semester?: string
+  /** 考试名称 */
+  examName: string
+  /** 考试编号 */
+  examNo: string
+  /** 考试开始时间 */
+  examStartTime: string
+  /** 考试结束时间 */
+  examEndTime: string
+  /** 批改策略编码 */
+  gradingStrategy: GradingStrategyCode
+  remark?: string
+  dailyScoreFull?: number | null
+  /** 是否涉密考试场次 */
+  confidential?: boolean
 }
 
 /** 删除考试请求 - 对应 ExamDeleteRequest */
@@ -473,12 +495,37 @@ export interface ExamDistinctTermQueryRequest {
 /** DISTINCT 学期项 - 对应 ExamDistinctTermItemResponse */
 export interface ExamDistinctTermItemVO {
   academicYear: string
-  semester: string
+  /** 考试发生学期：1 秋季、2 春季（与后端 SemesterEnum 一致） */
+  semester: SemesterCode
+}
+
+function assertDistinctTermItem(item: unknown, index: number): ExamDistinctTermItemVO {
+  if (!item || typeof item !== 'object') {
+    throw new TypeError(`distinct-terms 响应缺少合法项：[${index}]`)
+  }
+  const row = item as Record<string, unknown>
+  const academicYear = row.academicYear
+  const semester = row.semester
+  if (typeof academicYear !== 'string' || !academicYear.trim()) {
+    throw new TypeError(`distinct-terms 响应缺少合法字段：academicYear[${index}]`)
+  }
+  if (typeof semester !== 'string' || !isValidSemesterCode(semester)) {
+    throw new TypeError(`distinct-terms 响应缺少合法字段：semester[${index}]`)
+  }
+  return {
+    academicYear: academicYear.trim(),
+    semester,
+  }
 }
 
 /** 查询租户内 DISTINCT 考试学期列表，按学期编码倒序。 */
 export function listDistinctExamTerms(
   request: ExamDistinctTermQueryRequest = {},
 ): Promise<ExamDistinctTermItemVO[]> {
-  return http.post<ExamDistinctTermItemVO[]>('/api/exam/distinct-terms', request)
+  return http.post<ExamDistinctTermItemVO[]>('/api/exam/distinct-terms', request).then((rows) => {
+    if (!Array.isArray(rows)) {
+      throw new TypeError('distinct-terms 响应须为数组')
+    }
+    return rows.map((item, index) => assertDistinctTermItem(item, index))
+  })
 }

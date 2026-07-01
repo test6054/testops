@@ -8,7 +8,7 @@
       <div class="archive-create-form__grid">
         <a-form-item label="目录模板套" name="templateSetCode" class="archive-create-form__full">
           <a-select
-            v-model:value="configForm.templateSetCode"
+            v-model:value="templateSetCodeSelectValue"
             :options="templateSetOptions"
             :loading="templateLoading"
             placeholder="选择模板套"
@@ -60,9 +60,10 @@
 
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   ARCHIVE_EXAM_FORM_LABEL,
   ARCHIVE_SCORE_SOURCE_LABEL,
@@ -70,6 +71,7 @@ import {
 } from '@/apis/mark/archive-volume'
 import { TeacherSelector } from '@/components/quality/selectors'
 import { useInjectedArchiveVolumeCreateConfigForm } from './archive-volume-create-context'
+import { nullableStringToSelectValue, selectValueToNullableString } from './select-value-bridge'
 
 const props = defineProps<{
   configRules: Record<string, Rule[]>
@@ -86,6 +88,13 @@ const emit = defineEmits<{
 const configForm = useInjectedArchiveVolumeCreateConfigForm()
 const formRef = ref<FormInstance>()
 
+const templateSetCodeSelectValue = computed({
+  get: () => nullableStringToSelectValue(configForm.templateSetCode),
+  set: (value: SelectValue) => {
+    configForm.templateSetCode = selectValueToNullableString(value)
+  },
+})
+
 const examFormOptions = Object.entries(ARCHIVE_EXAM_FORM_LABEL).map(([value, label]) => ({
   value,
   label,
@@ -101,9 +110,15 @@ const securityLevelOptions = Object.entries(ARCHIVE_SECURITY_LEVEL_LABEL).map(([
   label,
 }))
 
-function handleTemplateChange(value: string) {
-  const selected = props.templateSetOptions.find(item => item.value === value)
-  emit('template-change', value, selected?.label ?? value, selected?.examForm)
+function handleTemplateChange(value: SelectValue): void {
+  const code = selectValueToNullableString(value)
+  configForm.templateSetCode = code
+  if (!code) {
+    emit('template-change', null, '', undefined)
+    return
+  }
+  const selected = props.templateSetOptions.find(item => item.value === code)
+  emit('template-change', code, selected?.label ?? code, selected?.examForm)
 }
 
 function handleResponsibleChange(

@@ -340,11 +340,11 @@
             <div v-else class="archive-volume-detail__submit-summary">
               <p>
                 目录状态：
-                {{ detail.catalogStatus ? strictEnumLabel(ARCHIVE_CATALOG_STATUS_LABEL, detail.catalogStatus, 'catalogStatus') : '未开始' }}
+                {{ detail.catalogStatus ? catalogStatusLabel(detail.catalogStatus) : '未开始' }}
               </p>
               <p>
                 自查状态：
-                {{ detail.selfCheckStatus ? strictEnumLabel(ARCHIVE_SELF_CHECK_STATUS_LABEL, detail.selfCheckStatus, 'selfCheckStatus') : '未开始' }}
+                {{ detail.selfCheckStatus ? selfCheckStatusLabel(detail.selfCheckStatus) : '未开始' }}
               </p>
               <p v-if="detail.latestTransferRecord?.transferPackageFileId">
                 移交清单已生成
@@ -466,8 +466,10 @@
 <script setup lang="ts">
 import type {
   ArchiveAppraisalStatusCode,
+  ArchiveCatalogStatusCode,
   ArchiveRemediationStatusCode,
   ArchiveRemediationTaskVO,
+  ArchiveSelfCheckStatusCode,
   ArchiveVolumeAccessRecordVO,
   ArchiveVolumeDetailVO,
   ArchiveVolumeSubmitChecklistItemVO,
@@ -478,7 +480,7 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
-import { ARCHIVE_APPRAISAL_STATUS_LABEL, ARCHIVE_APPRAISAL_STATUS_TONE, ARCHIVE_INTEGRITY_STATUS_LABEL, ARCHIVE_INTEGRITY_STATUS_TONE, ARCHIVE_REMEDIATION_STATUS_LABEL, ARCHIVE_REMEDIATION_STATUS_TONE, ARCHIVE_TRANSFER_STATUS_LABEL, ARCHIVE_TRANSFER_STATUS_TONE, ARCHIVE_VOLUME_SOURCE_TYPE_LABEL, ARCHIVE_VOLUME_SOURCE_TYPE_TONE, ARCHIVE_VOLUME_STATUS_LABEL, ARCHIVE_VOLUME_STATUS_TONE, checkArchiveVolumeIntegrity, exportArchiveVolume, getArchiveVolumeDetail,
+import { ARCHIVE_APPRAISAL_STATUS_LABEL, ARCHIVE_APPRAISAL_STATUS_TONE, ARCHIVE_CATALOG_STATUS_LABEL, ARCHIVE_INTEGRITY_STATUS_LABEL, ARCHIVE_INTEGRITY_STATUS_TONE, ARCHIVE_REMEDIATION_STATUS_LABEL, ARCHIVE_REMEDIATION_STATUS_TONE, ARCHIVE_SELF_CHECK_STATUS_LABEL, ARCHIVE_TRANSFER_STATUS_LABEL, ARCHIVE_TRANSFER_STATUS_TONE, ARCHIVE_VOLUME_SOURCE_TYPE_LABEL, ARCHIVE_VOLUME_SOURCE_TYPE_TONE, ARCHIVE_VOLUME_STATUS_LABEL, ARCHIVE_VOLUME_STATUS_TONE, checkArchiveVolumeIntegrity, exportArchiveVolume, getArchiveVolumeDetail,
   getRemediationTask,
   previewArchiveVolumeSubmitChecklist,
   submitArchiveVolume,
@@ -713,6 +715,14 @@ function appraisalStatusTone(code: ArchiveAppraisalStatusCode): BadgeTone {
   return strictEnumTone(ARCHIVE_APPRAISAL_STATUS_TONE, code, 'appraisalStatus')
 }
 
+function catalogStatusLabel(code: ArchiveCatalogStatusCode) {
+  return strictEnumLabel(ARCHIVE_CATALOG_STATUS_LABEL, code, 'catalogStatus')
+}
+
+function selfCheckStatusLabel(code: ArchiveSelfCheckStatusCode) {
+  return strictEnumLabel(ARCHIVE_SELF_CHECK_STATUS_LABEL, code, 'selfCheckStatus')
+}
+
 const canManageAppraisal = computed(() => detail.value?.canManageAppraisal === true)
 
 async function loadSubmitChecklist() {
@@ -738,7 +748,7 @@ function syncWizardStepFromProgress() {
 
 function handleTaskNavigate(item: ArchiveVolumeSubmitChecklistItemVO) {
   const target = resolveSubmitTaskTarget(item)
-  if (detailScope.effectiveViewMode.value === 'wizard') {
+  if (detailScope.effectiveViewMode === 'wizard') {
     activeWizardStep.value = target.wizardStep
     return
   }

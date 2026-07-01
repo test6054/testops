@@ -13,8 +13,8 @@ export interface ArchiveTemplateDragReorderOptions<TMaterial> {
  * 归档模板材料 / 自查项排序字段维护：与 Sortable 拖拽配合写回主列表。
  */
 export function useArchiveTemplateDragReorder<
-  TMaterial extends Record<string, unknown>,
-  TSelfCheck extends Record<string, unknown>,
+  TMaterial extends object,
+  TSelfCheck extends object,
 >(
   materialRows: Ref<TMaterial[]>,
   selfCheckRows: Ref<TSelfCheck[]>,
@@ -23,7 +23,7 @@ export function useArchiveTemplateDragReorder<
   const materialOrderField = (options.materialOrderField ?? 'sortOrder') as keyof TMaterial
   const selfCheckOrderField = (options.selfCheckOrderField ?? 'sortOrder') as keyof TSelfCheck
 
-  function writeOrder<T extends Record<string, unknown>>(row: T, field: keyof T, order: number): T {
+  function writeOrder<T extends object>(row: T, field: keyof T, order: number): T {
     return { ...row, [field]: order }
   }
 

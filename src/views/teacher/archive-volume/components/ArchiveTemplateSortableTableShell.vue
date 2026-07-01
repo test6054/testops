@@ -1,4 +1,4 @@
-<script setup lang="ts" generic="T extends Record<string, unknown>">
+<script setup lang="ts" generic="T extends object">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import { ref, watch } from 'vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'

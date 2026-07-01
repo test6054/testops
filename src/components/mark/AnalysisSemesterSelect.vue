@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type {ExamDistinctTermItemVO} from '@/apis/mark/exam';
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { onMounted, ref } from 'vue'
 import { listDistinctExamTerms } from '@/apis/mark/exam'
@@ -28,7 +29,7 @@ const loading = ref(false)
 const semesterOptions = ref<{ label: string, value: string }[]>([])
 const defaultScopeApplied = ref(false)
 
-function formatTermLabel(item: { academicYear: string, semester: string }): string {
+function formatTermLabel(item: ExamDistinctTermItemVO): string {
   return `${item.academicYear} · ${getSemesterDescription(item.semester)}`
 }
 

@@ -114,6 +114,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
@@ -207,15 +208,27 @@ const stageLabel = computed(() => {
   )
 })
 
-const stageTone = computed(() => {
+/** BadgeTone 与 UiAlertStrip 四色语义不一致，展示前映射到 alert strip 合同。 */
+const BADGE_TONE_TO_ALERT_STRIP: Record<BadgeTone, UiAlertStripTone> = {
+  gray: 'info',
+  blue: 'info',
+  green: 'success',
+  red: 'error',
+  orange: 'warning',
+  yellow: 'warning',
+  purple: 'info',
+}
+
+const stageTone = computed((): UiAlertStripTone => {
   if (!status.value?.stage) {
     return 'info'
   }
-  return strictEnumTone(
+  const badgeTone = strictEnumTone(
     PORTFOLIO_MATERIAL_INTAKE_STAGE_TONE,
     status.value.stage,
     '材料采集阶段',
   )
+  return BADGE_TONE_TO_ALERT_STRIP[badgeTone]
 })
 
 const signalMetrics = computed((): SignalMetric[] => {

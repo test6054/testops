@@ -168,7 +168,7 @@
 <script setup lang="ts">
 import type { DataNode } from 'ant-design-vue/es/vc-tree/interface'
 import type { CheckInfo } from 'ant-design-vue/es/vc-tree/props'
-import type { ClassStudentTreeNode } from '@/apis/edu/class'
+import type { ClassStudentTreeConfirmPayload, ClassStudentTreeNode } from '@/apis/edu/class'
 import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
@@ -214,19 +214,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 // Emits
 const emit = defineEmits<{
-  (
-    e: 'confirm',
-    data: {
-      students: string[]
-      studentsInfo: Array<{
-        id: string
-        name: string
-        classId?: string
-        className?: string
-        studentNumber?: string
-      }>
-    },
-  ): void
+  (e: 'confirm', data: ClassStudentTreeConfirmPayload): void
 }>()
 
 // 响应式数据

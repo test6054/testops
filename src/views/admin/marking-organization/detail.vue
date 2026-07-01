@@ -576,7 +576,7 @@ import { adminGetUserPage } from '@/apis/edu/admin-user'
 import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
 import { getExamDetail } from '@/apis/mark/exam'
 import { getExamTemplate } from '@/apis/mark/exam-template'
-import { ALLOCATION_UNIT_LABEL, ANONYMOUS_TOKEN_POLICY_LABEL, closeQuestionGroup, deleteOrganization, deleteQuestionGroup, getOrganizationById, listFormalSessions, listMarkingPolicies, MARKING_ALLOCATION_MODE_LABEL, MARKING_ORGANIZATION_STATUS_LABEL, MARKING_ORGANIZATION_STATUS_TONE, MARKING_REASSIGN_MODE_LABEL, QUESTION_GROUP_STATUS_LABEL, QUESTION_GROUP_STATUS_TONE, saveAllocationPolicy, saveQuestionGroup, saveRecyclePolicy, updateOrganization, validateFormalSessionContract, validateMarkingPolicyListContract } from '@/apis/mark/marking-organization'
+import { ALLOCATION_UNIT_LABEL, ANONYMOUS_TOKEN_POLICY_LABEL, closeQuestionGroup, deleteOrganization, deleteQuestionGroup, getOrganizationById, listFormalSessions, listMarkingPolicies, MARKING_ALLOCATION_MODE_LABEL, MARKING_ORGANIZATION_STATUS_LABEL, MARKING_ORGANIZATION_STATUS_TONE, MARKING_REASSIGN_MODE_LABEL, QUESTION_GROUP_STATUS_LABEL, QUESTION_GROUP_STATUS_TONE, requireMarkingOrganizationId, saveAllocationPolicy, saveQuestionGroup, saveRecyclePolicy, updateOrganization, validateFormalSessionContract, validateMarkingOrganizationContract, validateMarkingPolicyListContract } from '@/apis/mark/marking-organization'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -776,7 +776,10 @@ async function alignWorkspaceRouteExamId(nextOrganization: MarkingOrganizationVO
     return true
   }
   await router.replace(
-    resolveMarkingOrganizationDetailRoute(nextOrganization.id, nextOrganization.examId),
+    resolveMarkingOrganizationDetailRoute(
+      requireMarkingOrganizationId(nextOrganization),
+      nextOrganization.examId,
+    ),
   )
   return false
 }
@@ -1082,7 +1085,7 @@ async function submitUpdate(): Promise<void> {
   updating.value = true
   try {
     const request: OrganizationUpdateRequest = {
-      organizationId: organization.value.id,
+      organizationId: requireMarkingOrganizationId(organization.value),
       anonymousMode: editForm.anonymousMode,
       remark: editForm.remark?.trim() || undefined,
     }
@@ -1104,7 +1107,7 @@ async function submitDelete(): Promise<void> {
   if (!organization.value) return
   deleting.value = true
   try {
-    await deleteOrganization({ organizationId: organization.value.id })
+    await deleteOrganization({ organizationId: requireMarkingOrganizationId(organization.value) })
     await refreshSnapshot()
     message.success('阅卷组织已删除')
     await router.push(resolveMarkingOrganizationIndexRoute(activeExamId.value || undefined))

@@ -715,6 +715,12 @@ export function validateMarkingOrganizationContract(record: MarkingOrganizationV
   validateConfiguredMarkingOrganization(record)
 }
 
+/** 读取已配置阅卷组织的组织 ID；configured 为 true 但 id 缺失时拒绝继续。 */
+export function requireMarkingOrganizationId(record: MarkingOrganizationVO): string {
+  assertUserFacingText(record.id, MARKING_ORG_DATA_ERROR)
+  return record.id
+}
+
 /**
  * 校验试评会话合同枚举，确保会话列表展示前合同已通过。
  */

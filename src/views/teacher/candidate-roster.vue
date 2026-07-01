@@ -1,15 +1,15 @@
 <template>
   <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="roster-page__empty" />
 
-
-
   <a-spin v-else :spinning="contextLoading">
     <UiCard class="exam-scope-card">
       <template #title>
         <TeamOutlined />
         <span>考试范围</span>
         <UiTag v-if="rosterLocked" tone="orange" size="sm">已有扫描</UiTag>
-        <UiTag v-else-if="archiveClassScopeRecoveryAllowed" tone="orange" size="sm">关考后可修正</UiTag>
+        <UiTag v-else-if="archiveClassScopeRecoveryAllowed" tone="orange" size="sm">
+          关考后可修正
+        </UiTag>
         <UiTag v-else-if="classScopeReadOnly" tone="gray" size="sm">只读</UiTag>
       </template>
       <template v-if="canAddClassScope" #extra>
@@ -117,8 +117,6 @@
         @search="handleRosterSearch"
         @reset="handleRosterReset"
       />
-
-
 
       <UiDataTable
         v-model:current="pagination.current"
@@ -254,17 +252,19 @@
 <script lang="ts" setup>
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { CandidateRow } from './candidate-roster/types'
-import type {
-  ExamClassRefVO,
-  ExamRosterScopeMode,
-} from '@/apis/mark/exam'
-import type {
-  ExamCandidateRosterRequest,
-} from '@/apis/mark/exam-scope'
-import {
-  EXAM_ROSTER_SCOPE_MODE_LABEL,
-  getExamDetail,
-} from '@/apis/mark/exam'
+import type { ClassStudentTreeConfirmPayload } from '@/apis/edu/class'
+import type { ExamClassRefVO, ExamRosterScopeMode } from '@/apis/mark/exam'
+import type { ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { UserDto } from '@/types/api-types.d'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
+import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
+import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
+import UserOutlined from '@ant-design/icons-vue/UserOutlined'
+import message from 'ant-design-vue/es/message'
+import { useRouter } from 'vue-router'
+import { EXAM_ROSTER_SCOPE_MODE_LABEL, getExamDetail } from '@/apis/mark/exam'
 import { pageScannerBatches } from '@/apis/mark/exam-scan'
 import {
   listExamCandidates,
@@ -295,7 +295,11 @@ import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { ErrorType, handleError, showUserError } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { buildScopedClassTags } from './candidate-roster/class-scope'
-import { toCandidateRow } from './candidate-roster/roster-merge'
+import {
+  buildExamCandidateMergeRequests,
+  candidateRowFromExamCandidate,
+  examCandidateRosterRequestFromUser,
+} from './candidate-roster/roster-merge'
 
 defineOptions({ name: 'TeacherCandidateRoster' })
 
@@ -321,20 +325,18 @@ let classScopeSaveTimer: ReturnType<typeof setTimeout> | null = null
 let loadContextSeq = 0
 let loadTableSeq = 0
 
-const {
-  departmentId,
-  classOptionsLoading,
-  classSelectOptions,
-  loadClassesForDepartment,
-} = useExamDepartmentClassScope({
-  selectedClassIds: classIds,
-  seedOptions: computed(() => examClassRefs.value.flatMap((item) => {
-    if (!item.classId || !item.className) {
-      return []
-    }
-    return [{ classId: item.classId, className: item.className }]
-  })),
-})
+const { departmentId, classOptionsLoading, classSelectOptions, loadClassesForDepartment }
+  = useExamDepartmentClassScope({
+    selectedClassIds: classIds,
+    seedOptions: computed(() =>
+      examClassRefs.value.flatMap((item) => {
+        if (!item.classId || !item.className) {
+          return []
+        }
+        return [{ classId: item.classId, className: item.className }]
+      }),
+    ),
+  })
 
 const tableCandidates = ref<CandidateRow[]>([])
 const rosterStudentUserIds = ref<string[]>([])
@@ -385,10 +387,8 @@ const classScopeReadOnly = computed(() => {
   return false
 })
 
-const candidateRosterWriteAllowed = computed(() =>
-  examStatus.value !== 'CLOSED'
-  && !classScopeReadOnly.value
-  && !rosterLocked.value,
+const candidateRosterWriteAllowed = computed(
+  () => examStatus.value !== 'CLOSED' && !classScopeReadOnly.value && !rosterLocked.value,
 )
 
 const allowsManualCandidateEdit = computed(() => rosterScopeMode.value !== 'BY_CLASS')
@@ -403,11 +403,11 @@ const rosterScopeModeDisplay = computed(() => {
 const canAddClassScope = computed(() => !classScopeReadOnly.value && !!departmentId.value)
 
 const addableClassOptions = computed(() =>
-  classSelectOptions.value.filter(item => !classIds.value.includes(item.value)),
+  classSelectOptions.value.filter((item) => !classIds.value.includes(item.value)),
 )
 
-const showInferredClassScopeNotice = computed(() =>
-  !classScopeReadOnly.value && !classScopePersisted.value && classIds.value.length > 0,
+const showInferredClassScopeNotice = computed(
+  () => !classScopeReadOnly.value && !classScopePersisted.value && classIds.value.length > 0,
 )
 
 const scopedClassTags = computed(() =>
@@ -523,8 +523,7 @@ async function handleAddClassSubmit(): Promise<void> {
   try {
     classIds.value = [...new Set([...classIds.value, ...pendingAddClassIds.value])]
     addClassModalOpen.value = false
-  }
-  finally {
+  } finally {
     addClassSubmitting.value = false
   }
 }
@@ -552,20 +551,7 @@ async function loadCandidatePage(): Promise<void> {
     if (seq !== loadTableSeq) {
       return
     }
-    tableCandidates.value = readPageList(result, '考生列表加载失败').map((item) =>
-      toCandidateRow(
-        {
-          studentNo: item.studentNo,
-          studentName: item.studentName,
-          studentUserId: item.studentUserId,
-          classId: item.classId ?? '',
-          className: item.className,
-          removable: item.removable,
-          removalBlockReason: item.removalBlockReason,
-        },
-        item.candidateRosterId,
-      ),
-    )
+    tableCandidates.value = readPageList(result, '考生列表加载失败').map(candidateRowFromExamCandidate)
     pagination.total = readPageTotal(result)
     if (result.pageNum != null) {
       pagination.current = result.pageNum
@@ -611,7 +597,8 @@ async function loadExamContext(): Promise<void> {
     rosterLocked.value = locked
     examStatus.value = detail.status
     rosterScopeMode.value = detail.rosterScopeMode
-    archiveClassScopeRecoveryAllowed.value = detail.archiveAutoCreateClassScopeRecoveryAllowed === true
+    archiveClassScopeRecoveryAllowed.value
+      = detail.archiveAutoCreateClassScopeRecoveryAllowed === true
     examClassRefs.value = [...(detail.classRefs ?? [])]
     candidateTotal.value = detail.candidateCount ?? 0
     classIds.value = [...new Set(detail.classIds ?? [])]
@@ -650,11 +637,9 @@ async function persistInferredClassScope(): Promise<void> {
     classScopePersisted.value = true
     lastSavedClassIds.value = [...classIds.value]
     message.success('参考班级已保存')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '保存参考班级失败')
-  }
-  finally {
+  } finally {
     persistClassScopeSaving.value = false
   }
 }
@@ -713,21 +698,22 @@ async function fetchAllRosterCandidates(): Promise<ExamCandidateRosterRequest[]>
     return []
   }
   const pages = await readAllPages(
-    (pageNum) => pageExamCandidates({
-      examId,
-      pageNum,
-      pageSize: ROSTER_CANDIDATE_EXPORT_PAGE_SIZE,
-    }),
+    (pageNum) =>
+      pageExamCandidates({
+        examId,
+        pageNum,
+        pageSize: ROSTER_CANDIDATE_EXPORT_PAGE_SIZE,
+      }),
     '考生名册加载失败',
   )
   const roster: ExamCandidateRosterRequest[] = []
   for (const item of pages) {
-      const classId = String(item.classId ?? '').trim()
-      const studentUserId = String(item.studentUserId ?? '').trim()
-      if (!classId || !studentUserId) {
-        continue
-      }
-      roster.push({ classId, studentUserId })
+    const classId = String(item.classId ?? '').trim()
+    const studentUserId = String(item.studentUserId ?? '').trim()
+    if (!classId || !studentUserId) {
+      continue
+    }
+    roster.push({ classId, studentUserId })
   }
   return roster
 }
@@ -759,12 +745,10 @@ async function confirmSaveFullScope(): Promise<void> {
         })
         message.success(`已全量保存 ${candidates.length} 名考生`)
         await reloadExamContext()
-      }
-      catch (error) {
+      } catch (error) {
         showUserError(error, '全量保存名册失败')
         return false
-      }
-      finally {
+      } finally {
         fullScopeSaving.value = false
       }
     },
@@ -772,36 +756,14 @@ async function confirmSaveFullScope(): Promise<void> {
   void confirmed
 }
 
-function buildMergeRequest(
-  rows: Array<{ id: string, classId?: string }>,
-): ExamCandidateRosterRequest[] {
-  const existing = new Set(rosterStudentUserIds.value)
-  const request: ExamCandidateRosterRequest[] = []
-  for (const row of rows) {
-    const studentUserId = row.id.trim()
-    const classId = String(row.classId ?? '').trim()
-    if (!studentUserId || !classId || existing.has(studentUserId)) {
-      continue
-    }
-    request.push({ studentUserId, classId })
-  }
-  return request
-}
-
-async function handleStudentsSelected(selection: {
-  students: string[]
-  studentsInfo: Array<{
-    id: string
-    name: string
-    classId?: string
-    className?: string
-    studentNumber?: string
-  }>
-}): Promise<void> {
+async function handleStudentsSelected(selection: ClassStudentTreeConfirmPayload): Promise<void> {
   if (!selectedExamId.value) {
     return
   }
-  const mergeRequest = buildMergeRequest(selection.studentsInfo)
+  const mergeRequest = buildExamCandidateMergeRequests(
+    selection.studentsInfo,
+    rosterStudentUserIds.value,
+  )
   if (!mergeRequest.length) {
     message.warning('所选学生均已在名册中或缺少班级信息')
     return
@@ -849,7 +811,9 @@ async function handleSingleAddSubmit(): Promise<void> {
   }
   singleAddSubmitting.value = true
   try {
-    await mergeCandidatesWithPreview([{ classId: singleAddClassId.value, studentUserId }])
+    await mergeCandidatesWithPreview([
+      examCandidateRosterRequestFromUser(singleAddClassId.value, student),
+    ])
     message.success('已加入名册')
     singleAddOpen.value = false
     await reloadExamContext()
@@ -935,31 +899,35 @@ watch(classIds, (ids) => {
   }, 400)
 })
 
-watch(selectedExamId, (value) => {
-  if (classScopeSaveTimer) {
-    clearTimeout(classScopeSaveTimer)
-    classScopeSaveTimer = null
-  }
-  rosterLocked.value = false
-  rosterWriteForbidden.value = false
-  rosterFilterForm.keyword = ''
-  rosterFilterForm.classId = undefined
-  pagination.current = 1
-  if (value) {
-    void loadExamContext().then(() => loadCandidatePage())
-  } else {
-    classIds.value = []
-    examClassRefs.value = []
-    lastSavedClassIds.value = []
-    tableCandidates.value = []
-    rosterStudentUserIds.value = []
-    rosterScopeMode.value = undefined
-    referenceDepartmentName.value = undefined
-    departmentId.value = undefined
-    candidateTotal.value = 0
-    pagination.total = 0
-  }
-}, { immediate: true })
+watch(
+  selectedExamId,
+  (value) => {
+    if (classScopeSaveTimer) {
+      clearTimeout(classScopeSaveTimer)
+      classScopeSaveTimer = null
+    }
+    rosterLocked.value = false
+    rosterWriteForbidden.value = false
+    rosterFilterForm.keyword = ''
+    rosterFilterForm.classId = undefined
+    pagination.current = 1
+    if (value) {
+      void loadExamContext().then(() => loadCandidatePage())
+    } else {
+      classIds.value = []
+      examClassRefs.value = []
+      lastSavedClassIds.value = []
+      tableCandidates.value = []
+      rosterStudentUserIds.value = []
+      rosterScopeMode.value = undefined
+      referenceDepartmentName.value = undefined
+      departmentId.value = undefined
+      candidateTotal.value = 0
+      pagination.total = 0
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <style lang="scss" scoped>

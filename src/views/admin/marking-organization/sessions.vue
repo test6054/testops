@@ -112,6 +112,7 @@ import {
   listTrialSessions,
   MARKING_ORGANIZATION_STATUS_LABEL,
   MARKING_ORGANIZATION_STATUS_TONE,
+  requireMarkingOrganizationId,
   validateFormalSessionContract,
   validateMarkingOrganizationContract,
   validateTrialSessionContract,
@@ -213,7 +214,10 @@ async function alignWorkspaceRouteExamId(nextOrganization: MarkingOrganizationVO
     return true
   }
   await router.replace(
-    resolveMarkingOrganizationSessionsRoute(nextOrganization.id, nextOrganization.examId),
+    resolveMarkingOrganizationSessionsRoute(
+      requireMarkingOrganizationId(nextOrganization),
+      nextOrganization.examId,
+    ),
   )
   return false
 }

@@ -279,12 +279,12 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type {
-  ExamCreateRequest,
   ExamKindCode,
   ExamListScopeCode,
   ExamPageQueryRequest,
   ExamScorePolicyCode,
   ExamStatusCode,
+  ExamUpdateRequest,
   ExamWorkbenchSummaryVO,
   GradingStrategyCode,
 } from '@/apis/mark/exam'
@@ -1119,24 +1119,23 @@ async function openEditModal(exam: ExamWorkbenchSummaryVO): Promise<void> {
   }
 }
 
-function buildExamRequest(): ExamCreateRequest | null {
+function buildExamUpdateRequest(): ExamUpdateRequest | null {
   const [startTime, endTime] = examForm.examWindow ?? []
-  if (!examForm.courseId || !startTime || !endTime) {
+  if (!examForm.courseId || !startTime || !endTime || !editingExamId.value) {
     message.error('请选择考试课程与考试时间')
     return null
   }
+  const academicYear = examForm.academicYear?.trim()
   return {
+    examId: editingExamId.value,
     courseId: examForm.courseId,
     examName: examForm.examName.trim(),
     examNo: examForm.examNo.trim(),
-    academicYear: examForm.academicYear?.trim() || undefined,
-    semester: examForm.semester,
+    academicYear: academicYear || undefined,
+    semester: examForm.semester || undefined,
     examStartTime: startTime,
     examEndTime: endTime,
     gradingStrategy: 'SINGLE',
-    examKind: examForm.examKind,
-    sourceExamId: examForm.sourceExamId,
-    scorePolicy: examForm.scorePolicy,
     dailyScoreFull: examForm.scoreCompositionMode === 'EXAM_WITH_DAILY'
       ? examForm.dailyScoreFull
       : null,
@@ -1158,14 +1157,11 @@ async function handleSave(): Promise<void> {
   }
   saving.value = true
   try {
-    const request = buildExamRequest()
+    const request = buildExamUpdateRequest()
     if (!request) {
       return
     }
-    if (!editingExamId.value) {
-      return
-    }
-    await updateExam({ examId: editingExamId.value, ...request })
+    await updateExam(request)
     message.success('考试已更新')
     formModalOpen.value = false
     await reloadAll()

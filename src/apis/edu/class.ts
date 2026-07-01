@@ -116,6 +116,26 @@ export interface ClassStudentTreeNode {
   children?: ClassStudentTreeNode[]
 }
 
+/** 班级学生树确认选中学生 - ClassStudentTreeSelectorDrawer confirm.studentsInfo 项；id 为后端学生用户 ID */
+export interface ClassStudentTreeSelectedStudentVO {
+  /** 租户学生用户 ID */
+  id: string
+  /** 学生姓名 */
+  name: string
+  /** 班级 ID */
+  classId?: string
+  /** 班级名称 */
+  className?: string
+  /** 学号 */
+  studentNumber?: string
+}
+
+/** 班级学生树确认载荷 */
+export interface ClassStudentTreeConfirmPayload {
+  students: string[]
+  studentsInfo: ClassStudentTreeSelectedStudentVO[]
+}
+
 
 /**
  * 创建新班级

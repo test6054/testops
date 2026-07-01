@@ -4,7 +4,7 @@
   已选值回显：POST /api/admin/teachers/batch-details
 -->
 <script setup lang="ts">
-import type { SelectValue } from 'ant-design-vue/es/select'
+import type { LabeledValue, SelectValue } from 'ant-design-vue/es/select'
 import type { TeacherDetailsDto, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import { onMounted, ref, watch } from 'vue'
 import { teacherCatalogApi } from '@/apis/quality/user-catalog'
@@ -41,6 +41,13 @@ const internalValue = ref<string | string[] | undefined>(normalizeSelectValue(pr
 function normalizeTeacherUserId(value: string | number | null | undefined): string | null {
   if (value == null || value === '') return null
   return String(value)
+}
+
+function selectOptionValueToTeacherId(value: string | number | LabeledValue): string | null {
+  if (typeof value === 'object' && value !== null && 'value' in value) {
+    return normalizeTeacherUserId(value.value)
+  }
+  return normalizeTeacherUserId(value)
 }
 
 function normalizeSelectValue(value: string | string[] | null | undefined): string | string[] | null {
@@ -156,10 +163,13 @@ function selectValueToTeacherIds(val: SelectValue): string | string[] | null {
   if (Array.isArray(val)) {
     const ids: string[] = []
     for (const item of val) {
-      const normalized = normalizeTeacherUserId(typeof item === 'number' ? item : item)
+      const normalized = selectOptionValueToTeacherId(item)
       if (normalized) ids.push(normalized)
     }
     return ids
+  }
+  if (typeof val === 'object' && val !== null && 'value' in val) {
+    return selectOptionValueToTeacherId(val)
   }
   return normalizeTeacherUserId(typeof val === 'number' ? val : val)
 }

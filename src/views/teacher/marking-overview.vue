@@ -159,6 +159,7 @@ import { useRouter } from 'vue-router'
 import { EXAM_STATUS_FILTER_OPTIONS } from '@/apis/mark/exam'
 import {
   loadTeacherDashboardOverviewOnce,
+  loadTeacherDashboardOverviewSilent,
 } from '@/apis/mark/teacher-dashboard'
 import MarkingOverviewAnalytics from '@/components/mark/dashboard/MarkingOverviewAnalytics.vue'
 import MarkingOverviewSignalBand from '@/components/mark/dashboard/MarkingOverviewSignalBand.vue'
@@ -382,14 +383,13 @@ async function loadOverviewWithFallback(
   query: MarkTeacherDashboardQuery,
   options?: { rollbackFilterOnError?: boolean },
 ): Promise<MarkTeacherDashboardOverviewVO> {
-  const silentConfig = { showErrorMessage: false }
   try {
     const data = await loadTeacherDashboardOverviewOnce({ ...query })
     assertTenantContract(data)
     return data
   } catch (error) {
     if (isFilterRangeError(error) && (query.academicYear || query.semester)) {
-      const bootstrap = await loadTeacherDashboardOverviewOnce({}, silentConfig)
+      const bootstrap = await loadTeacherDashboardOverviewSilent({})
       assertTenantContract(bootstrap)
       const reconciled = resolveDefaultDashboardFilter(bootstrap.filterOptions)
       filter.value = {

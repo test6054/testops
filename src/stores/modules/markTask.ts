@@ -1,9 +1,7 @@
-import type { ReviewTaskItemVO, ReviewTaskQueryRequest } from '@/apis/mark/exam-review-task'
 import type {
   MarkingSessionPhaseCode,
   MarkingTaskClaimRequest,
   MarkingTaskQueryRequest,
-  MarkingTaskStatusCode,
   MarkingTaskVO,
   TeacherClaimContextQueryRequest,
   TeacherClaimContextVO,
@@ -11,58 +9,37 @@ import type {
 /**
  * 阅卷任务 Store
  *
- * 业务边界：跨阅卷主链页面共享当前用户在指定考试下的阅卷任务与复核任务。
+ * 业务边界：跨阅卷主链页面共享当前用户在指定考试下的阅卷任务。
  *
  * 后端契约：
  * - POST /api/mark/organization/task/list           — 阅卷任务列表
  * - POST /api/mark/organization/task/claim          — 教师领取任务
  * - POST /api/mark/organization/task/claim-context  — 教师领取上下文（活跃题组 + 当前正评会话）
- * - POST /api/mark/exams/review-tasks               — 匿名批阅 / 复核任务列表
- * - POST /api/mark/exams/review-tasks/claim         — 复核任务领取
  *
- * 数据范围：
- * - tasks 仅当前用户在 examId+sessionId+groupId 的任务（按业务页面参数加载）
- * - reviewTasks 仅当前用户的复核队列
+ * 复核任务（review-tasks）各页面筛选/合并逻辑不同，由页面本地 state + listReviewTasks 直连，
+ * 不进入本 store，避免与 review-arbitration / review-workspace 等页内合同分叉。
+ *
+ * 数据范围：tasks 仅当前用户在 examId+sessionId+groupId 的任务（按业务页面参数加载）
  *
  * 不持久化：任务状态对实时性敏感，每次进入页面需重新拉取。
  */
 import type { MarkingTaskStreamEventVO } from '@/apis/mark/marking-task-stream'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { listReviewTasks, validateReviewTaskItemContract } from '@/apis/mark/exam-review-task'
 import {
   claimMarkingTasks,
   getTeacherClaimContext,
   listMarkingTasks,
-  MARKING_TASK_STATUS_LABEL,
   validateMarkingTaskContract,
   validateTeacherClaimContextContract,
 } from '@/apis/mark/marking-organization'
 import { validateMarkingTaskStreamEvent } from '@/apis/mark/marking-task-stream'
-import { readAllPages } from '@/utils/page-result'
-import { strictEnumLabel } from '@/utils/strict-enum'
 
 export const useMarkTaskStore = defineStore('markTask', () => {
   /** 当前用户在指定考试下的阅卷任务（按 examId 隔离） */
   const tasks = ref<MarkingTaskVO[]>([])
   const tasksLoading = ref(false)
   const tasksLoadedExamId = ref<string>('')
-
-  /** 当前用户在指定考试下的复核任务（按 examId 隔离） */
-  const reviewTasks = ref<ReviewTaskItemVO[]>([])
-  const reviewTasksLoading = ref(false)
-  const reviewLoadedExamId = ref<string>('')
-  /**
-   * 复核任务分页元数据。后端 QueryDto 要求 pageNum/pageSize 必填（@NotNull）。
-   * store 内部为不显式传分页的调用方兜底默认值，避免页面崩；
-   * pagination 暴露给消费侧用于检查截断或显示分页 UI。
-   */
-  const REVIEW_TASKS_DEFAULT_PAGE_SIZE = 100
-  const reviewTasksPagination = ref<{ pageNum: number, pageSize: number, total: number }>({
-    pageNum: 1,
-    pageSize: 0,
-    total: 0,
-  })
 
   /** 教师领取上下文：活跃题组 + 当前会话；按 examId + markingPhase 隔离 */
   const claimContextByExam = ref<Map<string, TeacherClaimContextVO>>(new Map())
@@ -80,10 +57,6 @@ export const useMarkTaskStore = defineStore('markTask', () => {
 
   const submittedTasks = computed(() =>
     tasks.value.filter((t) => t.taskStatus === 'SUBMITTED' || t.taskStatus === 'FINALIZED'),
-  )
-
-  const pendingReviewTasks = computed(() =>
-    reviewTasks.value.filter((t) => t.status === 'PENDING' || t.status === 'IN_PROGRESS'),
   )
 
   /* ---------- Actions ---------- */
@@ -137,32 +110,8 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     return claimContextByExam.value.get(claimContextKey(examId, markingPhase)) ?? null
   }
 
-  async function loadReviewTasks(request: ReviewTaskQueryRequest): Promise<ReviewTaskItemVO[]> {
-    reviewTasksLoading.value = true
-    try {
-      const pageSize = request.pageSize ?? REVIEW_TASKS_DEFAULT_PAGE_SIZE
-      reviewTasks.value = await readAllPages(
-        (pageNum) => listReviewTasks({
-          ...request,
-          pageNum,
-          pageSize,
-        }),
-        '复核任务列表加载失败，请稍后重试',
-      )
-      reviewTasks.value.forEach(validateReviewTaskItemContract)
-      reviewTasksPagination.value = {
-        pageNum: 1,
-        pageSize: reviewTasks.value.length,
-        total: reviewTasks.value.length,
-      }
-      reviewLoadedExamId.value = request.examId
-      return reviewTasks.value
-    } finally {
-      reviewTasksLoading.value = false
-    }
-  }
   /**
-   * 仅清空阅卷任务列表（不影响 reviewTasks / claimContextByExam）。
+   * 仅清空阅卷任务列表（不影响 claimContextByExam）。
    *
    * 用于「考试选择器切到空」等场景：页面通过 action 维持单向数据流，
    * 避免组件内部直接修改 storeToRefs 解开后的 ref（Pinia 反模式）。
@@ -172,56 +121,28 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     tasksLoadedExamId.value = ''
   }
 
-  /**
-   * 仅清空复核任务列表（不影响 tasks / claimContextByExam）。
-   *
-   * 用于 review-arbitration 等页面在切换 examId
-   * 或考试选择器清空时，通过 action 替代组件侧直接改写 ref，
-   * 维持 Pinia 单向数据流。
-   */
-  function clearReviewTasks(): void {
-    reviewTasks.value = []
-    reviewLoadedExamId.value = ''
-    reviewTasksPagination.value = { pageNum: 1, pageSize: 0, total: 0 }
-  }
-
   function reset(): void {
     tasks.value = []
-    reviewTasks.value = []
     claimContextByExam.value = new Map()
     tasksLoadedExamId.value = ''
-    reviewLoadedExamId.value = ''
-    reviewTasksPagination.value = { pageNum: 1, pageSize: 0, total: 0 }
   }
 
   /**
-   * 应用阅卷任务 SSE 事件；未知任务或缺少本地行时返回 reload 供页面 silent 拉全量。
+   * 应用阅卷任务 SSE 事件；任务态变更须 reload，会话级事件由页面层处理。
    */
   function applyStreamEvent(event: MarkingTaskStreamEventVO): 'reload' | 'none' {
     validateMarkingTaskStreamEvent(event)
-    // 回收后任务可能已转派他人，局部 patch taskStatus 会误留「待领取」行（AUTO 回收时 SSE 带 ALLOCATED）
-    if (event.eventType === 'TASK_RECYCLED') {
-      return 'reload'
-    }
-    // 提交/撤回会改写 score/submittedTime，仅 patch taskStatus 不足
-    if (event.eventType === 'TASK_SUBMITTED' || event.eventType === 'TASK_WITHDRAWN') {
-      return 'reload'
-    }
-    if (event.taskId && event.taskStatus) {
-      strictEnumLabel(MARKING_TASK_STATUS_LABEL, event.taskStatus, '阅卷任务状态')
-      const idx = tasks.value.findIndex((task) => task.id === event.taskId)
-      if (idx >= 0) {
-        tasks.value[idx] = { ...tasks.value[idx], taskStatus: event.taskStatus as MarkingTaskStatusCode }
+    switch (event.eventType) {
+      case 'TASK_RECYCLED':
+      case 'TASK_SUBMITTED':
+      case 'TASK_WITHDRAWN':
+      case 'TASK_ALLOCATED':
+        return 'reload'
+      case 'SESSION_PAUSED':
+      case 'SESSION_RESUMED':
+      case 'SESSION_PROGRESS':
         return 'none'
-      }
     }
-    if (
-      event.eventType === 'TASK_ALLOCATED'
-      || event.eventType === 'TASK_RECYCLED'
-    ) {
-      return 'reload'
-    }
-    return 'none'
   }
 
   function upsertTask(task: MarkingTaskVO): void {
@@ -239,26 +160,19 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     tasks,
     tasksLoading,
     tasksLoadedExamId,
-    reviewTasks,
-    reviewTasksLoading,
-    reviewTasksPagination,
-    reviewLoadedExamId,
     claimContextByExam,
     claimContextLoading,
 
     // computed
     inProgressTasks,
     submittedTasks,
-    pendingReviewTasks,
 
     // actions
     loadTasks,
     claimTasks,
     loadClaimContext,
     getClaimContext,
-    loadReviewTasks,
     clearTasks,
-    clearReviewTasks,
     reset,
     applyStreamEvent,
     upsertTask,

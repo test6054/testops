@@ -450,20 +450,20 @@ function batchTableCustomRow(record: ExamScannerBatchVO) {
   }
 }
 
-function handleMetricClick(metric: SignalMetric): void {
-  if (metric.key === 'blocked') {
+function handleMetricClick(key: string): void {
+  if (key === 'blocked') {
     statusTab.value = 'BLOCKED'
     batchQuery.pageNum = 1
     void loadBatches()
     return
   }
-  if (metric.key === 'inProgress') {
+  if (key === 'inProgress') {
     statusTab.value = 'IN_PROGRESS'
     batchQuery.pageNum = 1
     void loadBatches()
     return
   }
-  if (metric.key === 'bindingRate') {
+  if (key === 'bindingRate') {
     goScanMonitor()
   }
 }

@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type {
+  ArchiveTemplateMaterialEditRow,
+  ArchiveTemplateSelfCheckEditRow,
+} from '@/apis/mark/archive-platform-template'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import MenuOutlined from '@ant-design/icons-vue/MenuOutlined'
 import { computed, ref, watch } from 'vue'
@@ -44,28 +48,7 @@ const emit = defineEmits<{
   "cancel": []
 }>()
 
-/** 归档模板材料编辑行（平台 / 租户共用） */
-export interface ArchiveTemplateMaterialEditRow {
-  rowKey: string
-  materialType: ArchiveMaterialTypeCode
-  catalogCode?: string
-  catalogName: string
-  requiredFlag: boolean
-  sortOrder?: number
-  /** 平台模板可编辑分组 */
-  categoryGroup?: string
-  /** 租户模板允许延迟提交 */
-  delayAllowedFlag?: boolean
-}
-
-/** 归档模板自查项编辑行（平台 sortOrder / 租户 itemOrder） */
-export interface ArchiveTemplateSelfCheckEditRow {
-  rowKey: string
-  itemText: string
-  requiredFlag: boolean
-  sortOrder?: number
-  itemOrder?: number
-}
+const MATERIAL_GROUP_FALLBACK = '材料目录'
 
 interface MaterialGroupTab {
   tabKey: string
@@ -74,7 +57,6 @@ interface MaterialGroupTab {
   items: ArchiveTemplateMaterialEditRow[]
 }
 
-const MATERIAL_GROUP_FALLBACK = '材料目录'
 const EDITOR_TAB_SELF_CHECK = 'self-check'
 
 const editorActiveTab = ref<string>(EDITOR_TAB_SELF_CHECK)
