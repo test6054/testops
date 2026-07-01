@@ -42,8 +42,8 @@ function canActAsSubmitOwner(input: SubmitGateInput): boolean {
  */
 export function canSubmitArchiveVolume(input: SubmitGateInput): boolean {
   const { volume, fourPropertyStale, fourPropertyPassed } = input
-  const blockingRemediation =
-    input.hasBlockingRemediationForSubmit ?? volume.hasBlockingRemediationForSubmit
+  const blockingRemediation
+    = input.hasBlockingRemediationForSubmit ?? volume.hasBlockingRemediationForSubmit
   if (volume.volumeStatus !== 'COLLECTING') return false
   if (blockingRemediation) return false
   if (!canActAsSubmitOwner(input)) return false
@@ -73,8 +73,8 @@ export function isScoreSubmitReady(
   }
   if (volume.scoreSource === 'TEACHING_AFFAIRS' || volume.scoreSource === 'OFFLINE_CONFIRMED') {
     if (
-      volume.scoreCompletionStatus === 'COMPLETED' ||
-      volume.scoreCompletionStatus === 'VERIFIED'
+      volume.scoreCompletionStatus === 'COMPLETED'
+      || volume.scoreCompletionStatus === 'VERIFIED'
     ) {
       return true
     }

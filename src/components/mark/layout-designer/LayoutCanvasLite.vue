@@ -10,7 +10,7 @@ defineProps<{
 
 const emit = defineEmits<{
   'focus-block': [block: ExamLayoutBlockDto | null]
-  patch: [document: ExamLayoutDocument]
+  "patch": [document: ExamLayoutDocument]
 }>()
 </script>
 

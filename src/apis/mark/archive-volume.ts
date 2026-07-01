@@ -8,8 +8,8 @@ import type { PageResult, QueryDto } from '@/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
-export type ArchiveVolumeStatusCode =
-  'DRAFT' | 'COLLECTING' | 'SUBMITTED' | 'STORED' | 'ARCHIVED_DESTROYED'
+export type ArchiveVolumeStatusCode
+  = 'DRAFT' | 'COLLECTING' | 'SUBMITTED' | 'STORED' | 'ARCHIVED_DESTROYED'
 
 export const ARCHIVE_VOLUME_STATUS_LABEL: Record<ArchiveVolumeStatusCode, string> = {
   DRAFT: '草稿',
@@ -87,8 +87,8 @@ export const ARCHIVE_TRANSFER_STATUS_TONE: Record<
   REJECTED: 'red',
 }
 
-export type ArchiveAppraisalStatusCode =
-  'NOT_DUE' | 'REMINDER_SENT' | 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'OPINION_RECORDED'
+export type ArchiveAppraisalStatusCode
+  = 'NOT_DUE' | 'REMINDER_SENT' | 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'OPINION_RECORDED'
 
 export const ARCHIVE_APPRAISAL_STATUS_LABEL: Record<ArchiveAppraisalStatusCode, string> = {
   NOT_DUE: '未到期',
@@ -111,15 +111,15 @@ export const ARCHIVE_APPRAISAL_STATUS_TONE: Record<
   OPINION_RECORDED: 'purple',
 }
 
-export type ArchiveDestructionStatusCode =
-  | 'NONE'
-  | 'REQUESTED'
-  | 'APPROVED'
-  | 'EXECUTING'
-  | 'EXECUTED'
-  | 'FAILED'
-  | 'SUPERVISED'
-  | 'LEDGER_ARCHIVED'
+export type ArchiveDestructionStatusCode
+  = | 'NONE'
+    | 'REQUESTED'
+    | 'APPROVED'
+    | 'EXECUTING'
+    | 'EXECUTED'
+    | 'FAILED'
+    | 'SUPERVISED'
+    | 'LEDGER_ARCHIVED'
 
 export const ARCHIVE_DESTRUCTION_STATUS_LABEL: Record<ArchiveDestructionStatusCode, string> = {
   NONE: '无',
@@ -158,48 +158,48 @@ export const ARCHIVE_SCORE_COMPLETION_STATUS_LABEL: Record<
   NOT_REQUIRED: '无需确认',
 }
 
-export type ArchiveMaterialTypeCode =
-  | 'VOLUME_COVER'
-  | 'VOLUME_CATALOG'
-  | 'TEACHING_SYLLABUS'
-  | 'ASSESSMENT_SYLLABUS'
-  | 'TEACHING_SCHEDULE'
-  | 'EXAM_PROPOSAL_REVIEW'
-  | 'EXAM_PAPER_APPROVAL'
-  | 'EXAM_SPECIFICATION'
-  | 'QUESTION_BANK_PLAN'
-  | 'BLANK_EXAM_PAPER_A'
-  | 'BLANK_EXAM_PAPER_B'
-  | 'RESERVE_EXAM_PAPER'
-  | 'MAKEUP_EXAM_PAPER'
-  | 'ANSWER_RUBRIC_A'
-  | 'ANSWER_RUBRIC_B'
-  | 'ANSWER_RUBRIC_RESERVE'
-  | 'ANSWER_RUBRIC_MAKEUP'
-  | 'COURSE_GRADING_BASIS'
-  | 'GRADING_INSTRUCTION'
-  | 'EXAM_FORM_CHANGE'
-  | 'STUDENT_LEARNING_RECORD'
-  | 'EXAM_VENUE_RECORD'
-  | 'INVIGILATION_RECORD'
-  | 'ATTENDANCE_SHEET'
-  | 'PATROL_RECORD'
-  | 'TRANSCRIPT'
-  | 'ITEMIZED_SCORE'
-  | 'EXAM_ANALYSIS'
-  | 'COURSE_OBJECTIVE_REPORT'
-  | 'TRAINING_OBJECTIVE_REPORT'
-  | 'PROCESS_ASSESSMENT'
-  | 'STUDENT_EXAM_PAPER'
-  | 'ANSWER_SHEET'
-  | 'OPTICAL_DISC'
-  | 'PAPERLESS_EXAM_RESULT'
-  | 'AUDIO_VIDEO'
-  | 'THESIS'
-  | 'WORK'
-  | 'LAB_PRACTICE'
-  | 'SELF_CHECK_FORM'
-  | 'TEACHING_SUMMARY'
+export type ArchiveMaterialTypeCode
+  = | 'VOLUME_COVER'
+    | 'VOLUME_CATALOG'
+    | 'TEACHING_SYLLABUS'
+    | 'ASSESSMENT_SYLLABUS'
+    | 'TEACHING_SCHEDULE'
+    | 'EXAM_PROPOSAL_REVIEW'
+    | 'EXAM_PAPER_APPROVAL'
+    | 'EXAM_SPECIFICATION'
+    | 'QUESTION_BANK_PLAN'
+    | 'BLANK_EXAM_PAPER_A'
+    | 'BLANK_EXAM_PAPER_B'
+    | 'RESERVE_EXAM_PAPER'
+    | 'MAKEUP_EXAM_PAPER'
+    | 'ANSWER_RUBRIC_A'
+    | 'ANSWER_RUBRIC_B'
+    | 'ANSWER_RUBRIC_RESERVE'
+    | 'ANSWER_RUBRIC_MAKEUP'
+    | 'COURSE_GRADING_BASIS'
+    | 'GRADING_INSTRUCTION'
+    | 'EXAM_FORM_CHANGE'
+    | 'STUDENT_LEARNING_RECORD'
+    | 'EXAM_VENUE_RECORD'
+    | 'INVIGILATION_RECORD'
+    | 'ATTENDANCE_SHEET'
+    | 'PATROL_RECORD'
+    | 'TRANSCRIPT'
+    | 'ITEMIZED_SCORE'
+    | 'EXAM_ANALYSIS'
+    | 'COURSE_OBJECTIVE_REPORT'
+    | 'TRAINING_OBJECTIVE_REPORT'
+    | 'PROCESS_ASSESSMENT'
+    | 'STUDENT_EXAM_PAPER'
+    | 'ANSWER_SHEET'
+    | 'OPTICAL_DISC'
+    | 'PAPERLESS_EXAM_RESULT'
+    | 'AUDIO_VIDEO'
+    | 'THESIS'
+    | 'WORK'
+    | 'LAB_PRACTICE'
+    | 'SELF_CHECK_FORM'
+    | 'TEACHING_SUMMARY'
 
 export const ARCHIVE_MATERIAL_TYPE_LABEL: Record<ArchiveMaterialTypeCode, string> = {
   VOLUME_COVER: '卷封面',
@@ -399,8 +399,8 @@ export interface ArchiveVolumeSubmitProgressVO {
   submitReady?: boolean
 }
 
-export type ArchiveVolumeWizardStepKey =
-  'materials' | 'integrity' | 'catalog' | 'selfCheck' | 'submit'
+export type ArchiveVolumeWizardStepKey
+  = 'materials' | 'integrity' | 'catalog' | 'selfCheck' | 'submit'
 
 export interface ArchiveVolumeDetailVO {
   volume: ArchiveVolumeVO
@@ -473,8 +473,8 @@ export interface ArchiveVolumeMaterialVO {
   ocrFailureReason?: string
 }
 
-export type ArchiveMaterialSubmissionStatusCode =
-  'MISSING' | 'SUBMITTED' | 'DELAY_ALLOWED' | 'OVERDUE' | 'WAIVED_WITH_REASON'
+export type ArchiveMaterialSubmissionStatusCode
+  = 'MISSING' | 'SUBMITTED' | 'DELAY_ALLOWED' | 'OVERDUE' | 'WAIVED_WITH_REASON'
 
 export const ARCHIVE_MATERIAL_SUBMISSION_STATUS_LABEL: Record<
   ArchiveMaterialSubmissionStatusCode,
@@ -498,46 +498,46 @@ export const ARCHIVE_MATERIAL_SUBMISSION_STATUS_TONE: Record<
   WAIVED_WITH_REASON: 'purple',
 }
 
-export type ArchiveMaterialMediaTypeCode =
-  'PAPER' | 'ELECTRONIC' | 'AUDIO_VIDEO' | 'OPTICAL_DISC' | 'MIXED'
+export type ArchiveMaterialMediaTypeCode
+  = 'PAPER' | 'ELECTRONIC' | 'AUDIO_VIDEO' | 'OPTICAL_DISC' | 'MIXED'
 
-export type ArchiveVolumeEventTypeCode =
-  | 'VOLUME_CREATED'
-  | 'VOLUME_AUTO_CREATED'
-  | 'AUTO_CREATE_FAILED'
-  | 'MATERIAL_REGISTERED'
-  | 'IMPORT_BATCH'
-  | 'INTERNAL_AGGREGATE'
-  | 'INTEGRITY_CHECKED'
-  | 'SCORE_CONFIRMED'
-  | 'SUBMITTED'
-  | 'TRANSFER_APPROVED'
-  | 'TRANSFER_REJECTED'
-  | 'FOUR_PROPERTY_CHECKED'
-  | 'ACCESS_REQUESTED'
-  | 'ACCESS_APPROVED'
-  | 'ACCESS_REJECTED'
-  | 'ACCESS_EXPIRED'
-  | 'APPRAISAL_REQUESTED'
-  | 'APPRAISAL_APPROVED'
-  | 'APPRAISAL_REJECTED'
-  | 'APPRAISAL_OPINION_RECORDED'
-  | 'DESTRUCTION_REQUESTED'
-  | 'DESTRUCTION_APPROVED'
-  | 'RETENTION_REMINDER'
-  | 'ARCHIVE_DUE_UPCOMING'
-  | 'ARCHIVE_DUE_REMINDER'
-  | 'DELAY_SUBMISSION_OVERDUE'
-  | 'DESTRUCTION_EXECUTION_STARTED'
-  | 'DESTRUCTION_EXECUTED'
-  | 'DESTRUCTION_SUPERVISED'
-  | 'DESTRUCTION_FAILED'
-  | 'REMEDIATION_ASSIGNED'
-  | 'REMEDIATION_CLOSED'
-  | 'APPRAISAL_RESET_ON_RECOLLECT'
-  | 'DESTRUCTION_RESET_ON_RECOLLECT'
-  | 'VOLUME_RECOLLECTING'
-  | 'SELF_CHECK_CONFIRMED'
+export type ArchiveVolumeEventTypeCode
+  = | 'VOLUME_CREATED'
+    | 'VOLUME_AUTO_CREATED'
+    | 'AUTO_CREATE_FAILED'
+    | 'MATERIAL_REGISTERED'
+    | 'IMPORT_BATCH'
+    | 'INTERNAL_AGGREGATE'
+    | 'INTEGRITY_CHECKED'
+    | 'SCORE_CONFIRMED'
+    | 'SUBMITTED'
+    | 'TRANSFER_APPROVED'
+    | 'TRANSFER_REJECTED'
+    | 'FOUR_PROPERTY_CHECKED'
+    | 'ACCESS_REQUESTED'
+    | 'ACCESS_APPROVED'
+    | 'ACCESS_REJECTED'
+    | 'ACCESS_EXPIRED'
+    | 'APPRAISAL_REQUESTED'
+    | 'APPRAISAL_APPROVED'
+    | 'APPRAISAL_REJECTED'
+    | 'APPRAISAL_OPINION_RECORDED'
+    | 'DESTRUCTION_REQUESTED'
+    | 'DESTRUCTION_APPROVED'
+    | 'RETENTION_REMINDER'
+    | 'ARCHIVE_DUE_UPCOMING'
+    | 'ARCHIVE_DUE_REMINDER'
+    | 'DELAY_SUBMISSION_OVERDUE'
+    | 'DESTRUCTION_EXECUTION_STARTED'
+    | 'DESTRUCTION_EXECUTED'
+    | 'DESTRUCTION_SUPERVISED'
+    | 'DESTRUCTION_FAILED'
+    | 'REMEDIATION_ASSIGNED'
+    | 'REMEDIATION_CLOSED'
+    | 'APPRAISAL_RESET_ON_RECOLLECT'
+    | 'DESTRUCTION_RESET_ON_RECOLLECT'
+    | 'VOLUME_RECOLLECTING'
+    | 'SELF_CHECK_CONFIRMED'
 
 export const ARCHIVE_VOLUME_EVENT_TYPE_LABEL: Record<ArchiveVolumeEventTypeCode, string> = {
   VOLUME_CREATED: '建卷',
@@ -578,8 +578,8 @@ export const ARCHIVE_VOLUME_EVENT_TYPE_LABEL: Record<ArchiveVolumeEventTypeCode,
   SELF_CHECK_CONFIRMED: '教师自查确认',
 }
 
-export type ArchiveAccessStatusCode =
-  'PENDING' | 'APPROVED' | 'REJECTED' | 'ACTIVE' | 'EXPIRED' | 'CLOSED'
+export type ArchiveAccessStatusCode
+  = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ACTIVE' | 'EXPIRED' | 'CLOSED'
 
 export const ARCHIVE_ACCESS_STATUS_LABEL: Record<ArchiveAccessStatusCode, string> = {
   PENDING: '待审批',
@@ -602,8 +602,8 @@ export const ARCHIVE_ACCESS_STATUS_TONE: Record<
   CLOSED: 'gray',
 }
 
-export type ArchiveScoreSourceCode =
-  'MARK_INTERNAL' | 'TEACHING_AFFAIRS' | 'OFFLINE_CONFIRMED' | 'NOT_REQUIRED'
+export type ArchiveScoreSourceCode
+  = 'MARK_INTERNAL' | 'TEACHING_AFFAIRS' | 'OFFLINE_CONFIRMED' | 'NOT_REQUIRED'
 
 export const ARCHIVE_SCORE_SOURCE_LABEL: Record<ArchiveScoreSourceCode, string> = {
   MARK_INTERNAL: 'mark 内部成绩',
@@ -621,8 +621,8 @@ export const ARCHIVE_SECURITY_LEVEL_LABEL: Record<ArchiveSecurityLevelCode, stri
   CONFIDENTIAL: '机密',
 }
 
-export type ArchiveExamFormCode =
-  'WRITTEN_EXAM' | 'INSPECTION' | 'EXPERIMENT' | 'THESIS' | 'WORK' | 'DEFENSE' | 'PAPERLESS'
+export type ArchiveExamFormCode
+  = 'WRITTEN_EXAM' | 'INSPECTION' | 'EXPERIMENT' | 'THESIS' | 'WORK' | 'DEFENSE' | 'PAPERLESS'
 
 export const ARCHIVE_EXAM_FORM_LABEL: Record<ArchiveExamFormCode, string> = {
   WRITTEN_EXAM: '笔试',
@@ -634,8 +634,8 @@ export const ARCHIVE_EXAM_FORM_LABEL: Record<ArchiveExamFormCode, string> = {
   PAPERLESS: '无纸化',
 }
 
-export type ArchiveMaterialSortRuleCode =
-  'STUDENT_NO' | 'STUDENT_NAME' | 'CLASS_NAME' | 'SEAT_NO' | 'MANUAL_SEQUENCE' | 'CATALOG_ORDER'
+export type ArchiveMaterialSortRuleCode
+  = 'STUDENT_NO' | 'STUDENT_NAME' | 'CLASS_NAME' | 'SEAT_NO' | 'MANUAL_SEQUENCE' | 'CATALOG_ORDER'
 
 export type ArchiveElectronicOriginalStatusCode = 'ORIGINAL' | 'COPY' | 'SCANNED' | 'UNKNOWN'
 
@@ -882,8 +882,8 @@ export interface ArchiveEvaluationExportVO {
 }
 
 /** 评估材料包导出范围说明（与后端 resolveCampaignExportVolumeIds 一致） */
-export const ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT =
-  '含本批次学年学期内已提交/已入库/收集中卷（整改任务关联的收集中卷已包含在内；不含线上阅卷自动建卷失败诊断卷）'
+export const ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT
+  = '含本批次学年学期内已提交/已入库/收集中卷（整改任务关联的收集中卷已包含在内；不含线上阅卷自动建卷失败诊断卷）'
 
 export function exportEvaluationPackage(campaignId: string): Promise<ArchiveEvaluationExportVO> {
   return http.post<ArchiveEvaluationExportVO>('/api/mark/archive-volumes/evaluation/export', {
@@ -1399,8 +1399,8 @@ export function checkArchiveVolumeFourProperty(
   })
 }
 
-export type ArchiveVolumeSignOffRoleCode =
-  'PROPOSER' | 'REVIEWER' | 'GRADER' | 'SCORER' | 'RECHECKER'
+export type ArchiveVolumeSignOffRoleCode
+  = 'PROPOSER' | 'REVIEWER' | 'GRADER' | 'SCORER' | 'RECHECKER'
 
 export interface ArchiveVolumeSignOffItemVO {
   role: ArchiveVolumeSignOffRoleCode
@@ -1409,8 +1409,8 @@ export interface ArchiveVolumeSignOffItemVO {
   signatoryName?: string
 }
 
-export type ArchiveVolumeSubmitChecklistActionTypeCode =
-  'OPEN_TAB' | 'RUN_CHECK' | 'OPEN_CATALOG' | 'OPEN_SELF_CHECK' | 'OPEN_EXAM_WORKSPACE'
+export type ArchiveVolumeSubmitChecklistActionTypeCode
+  = 'OPEN_TAB' | 'RUN_CHECK' | 'OPEN_CATALOG' | 'OPEN_SELF_CHECK' | 'OPEN_EXAM_WORKSPACE'
 
 export interface ArchiveVolumeSubmitChecklistItemVO {
   dimension: string
@@ -2042,8 +2042,8 @@ export async function pageArchiveScanBatchSnapshots(
   const pageSize = raw.pageSize ?? request.pageSize ?? 10
   const totalText = raw.total ?? '0'
   const totalCount = Number(totalText)
-  const pages =
-    Number.isFinite(totalCount) && totalCount > 0 && pageSize > 0
+  const pages
+    = Number.isFinite(totalCount) && totalCount > 0 && pageSize > 0
       ? Math.ceil(totalCount / pageSize)
       : 0
   return {

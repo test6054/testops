@@ -140,6 +140,13 @@ import type {
   CourseAchievementStatusCode,
   CourseObjectiveAchievementVO,
 } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref } from 'vue'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import {
   COURSE_ACHIEVEMENT_STATUS_LABEL,
   COURSE_ACHIEVEMENT_STATUS_TONE,
@@ -147,14 +154,6 @@ import {
   generateAchievement,
   listAchievements,
 } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
-import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatAcademicTermCode } from '@/types/enums/semester-enum'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
@@ -164,6 +163,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
+import { formatAcademicTermCode } from '@/types/enums/semester-enum'
 import { parseAcademicYearSemesterValue } from '@/utils/academic-year'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'

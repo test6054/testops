@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
-import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import { message } from 'ant-design-vue'
 import { computed, ref } from 'vue'
+import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -25,7 +25,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'generate-sheet': [paperSpec: string]
   'auto-detect': [sourcePdfFileId: string]
-  patch: [document: ExamLayoutDocument]
+  "patch": [document: ExamLayoutDocument]
 }>()
 
 const sourcePdfFileId = ref(props.document?.sourcePdfFileId ?? '')

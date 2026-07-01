@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type Konva from 'konva'
 import type { ComponentPublicInstance } from 'vue'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { Image as KonvaImage, Layer, Line, Rect, Stage, Text, Transformer } from 'vue-konva'
 import LayoutCanvasToolbar from '@/components/mark/layout-designer/LayoutCanvasToolbar.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -35,7 +35,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'focus-block': [block: ExamLayoutBlockDto | null]
-  patch: [document: ExamLayoutDocument]
+  "patch": [document: ExamLayoutDocument]
 }>()
 
 const { loading: rasterLoading, errorMessage: rasterError, loadPageRaster } = useLayoutPageRaster()
@@ -112,12 +112,12 @@ const safeMarginConfig = computed(() => {
   if (!page.value || !showSafeMargin.value) {
     return null
   }
-  const marginX =
-    mmToPx(safeMarginMm.value, page.value.naturalWidthPx) *
-    (stageSize.value.width / page.value.naturalWidthPx)
-  const marginY =
-    mmToPx(safeMarginMm.value, page.value.naturalHeightPx) *
-    (stageSize.value.height / page.value.naturalHeightPx)
+  const marginX
+    = mmToPx(safeMarginMm.value, page.value.naturalWidthPx)
+      * (stageSize.value.width / page.value.naturalWidthPx)
+  const marginY
+    = mmToPx(safeMarginMm.value, page.value.naturalHeightPx)
+      * (stageSize.value.height / page.value.naturalHeightPx)
   return {
     x: marginX,
     y: marginY,
@@ -134,7 +134,7 @@ const gridLines = computed(() => {
   if (!page.value || !showGrid.value) {
     return []
   }
-  const lines: Array<{ points: number[]; key: string }> = []
+  const lines: Array<{ points: number[], key: string }> = []
   const stepMm = 10
   const stepX = (stepMm / 210) * stageSize.value.width
   const stepY = (stepMm / 210) * stageSize.value.height

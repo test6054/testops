@@ -1,13 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AchievementAuditVO } from '@/apis/quality/achievement-audit'
-import { achievementAuditApi } from '@/apis/quality/achievement-audit'
 import type { AchievementDetailVO } from '@/apis/quality/achievement-detail'
-import { achievementDetailApi } from '@/apis/quality/achievement-detail'
 import type { AchievementManualReviewVO } from '@/apis/quality/achievement-manual-review'
-import { achievementManualReviewApi } from '@/apis/quality/achievement-manual-review'
 import type { AchievementResultVO } from '@/apis/quality/achievement-result'
-import { achievementResultApi } from '@/apis/quality/achievement-result'
 /**
  * 质量评价 - 达成度详情
  *
@@ -26,6 +22,16 @@ import type {
   AchievementTargetType,
   ManualReviewDecision,
 } from '@/apis/quality/types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { achievementApi } from '@/apis/quality/achievement'
+import { achievementAuditApi } from '@/apis/quality/achievement-audit'
+import { achievementDetailApi } from '@/apis/quality/achievement-detail'
+import { achievementManualReviewApi } from '@/apis/quality/achievement-manual-review'
+import { achievementResultApi } from '@/apis/quality/achievement-result'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -35,12 +41,6 @@ import {
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   MANUAL_REVIEW_DECISION_LABEL,
 } from '@/apis/quality/types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { achievementApi } from '@/apis/quality/achievement'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -83,7 +83,7 @@ const details = ref<AchievementDetailVO[]>([])
 const audits = ref<AchievementAuditVO[]>([])
 const reviews = ref<AchievementManualReviewVO[]>([])
 const loading = ref(false)
-const reviewForm = reactive<{ decision: ManualReviewDecision; reviewRemark: string }>({
+const reviewForm = reactive<{ decision: ManualReviewDecision, reviewRemark: string }>({
   decision: 'CONFIRMED',
   reviewRemark: '',
 })
@@ -161,10 +161,10 @@ const targetTypeToComputeKind: Partial<Record<AchievementTargetType, string>> = 
 function canRecomputeResult(value: AchievementResultVO | null): boolean {
   if (!value) return false
   return (
-    value.auditStatus === 'RETURNED' ||
-    isResultStale(value) ||
-    value.auditStatus === 'DRAFT' ||
-    value.auditStatus === 'CALCULATED'
+    value.auditStatus === 'RETURNED'
+    || isResultStale(value)
+    || value.auditStatus === 'DRAFT'
+    || value.auditStatus === 'CALCULATED'
   )
 }
 

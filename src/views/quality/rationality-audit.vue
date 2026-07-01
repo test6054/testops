@@ -135,19 +135,18 @@ import type {
   RationalityAuditCourseLedgerOverviewVO,
   RationalityAuditSaveRequest,
 } from '@/apis/quality/rationality-audit'
+import type { AssessmentRationalityAuditStatus } from '@/apis/quality/types'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import {
   createRationalityAudit,
   getRationalityAuditCourseLedger,
   updateRationalityAudit,
 } from '@/apis/quality/rationality-audit'
-import type { AssessmentRationalityAuditStatus } from '@/apis/quality/types'
 import { ASSESSMENT_RATIONALITY_AUDIT_STATUS_LABEL } from '@/apis/quality/types'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { isValidSemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
-import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -159,6 +158,7 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
+import { isValidSemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -346,11 +346,15 @@ async function submitAudit(
     message.error('缺少课程信息，无法提交审核')
     return
   }
+  if (!filterForm.schoolYear || !filterForm.semester) {
+    message.error('请先选择学年和学期')
+    return
+  }
   if (
-    status === 'APPROVED' &&
-    (!editForm.value.contentAligned ||
-      !editForm.value.rubricMeasurable ||
-      !editForm.value.methodReasonable)
+    status === 'APPROVED'
+    && (!editForm.value.contentAligned
+      || !editForm.value.rubricMeasurable
+      || !editForm.value.methodReasonable)
   ) {
     message.error('审核通过必须同时满足三项合理性检查')
     return

@@ -6,11 +6,6 @@ import type {
   AiResultIssueSeverity,
   AiResultVO,
 } from '@/apis/quality/ai-result'
-import {
-  aiResultApi,
-  aiResultImprovementPriorityLabel,
-  aiResultIssueSeverityLabel,
-} from '@/apis/quality/ai-result'
 /**
  * 质量评价 / AI 能力 - AI 任务与结果审计台
  *
@@ -25,24 +20,13 @@ import type {
   AiTaskQueryRequest,
   AiTaskVO,
 } from '@/apis/quality/ai-task'
-import { aiTaskApi } from '@/apis/quality/ai-task'
 import type { AiTaskSubmitRequest } from '@/apis/quality/ai-task-trigger'
-import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
 import type {
   AiManualHandlingStatus,
   AiOutputValidation,
   AiTaskBusinessType,
   AiTaskStatus,
   AiTaskType,
-} from '@/apis/quality/types'
-import {
-  AI_MANUAL_HANDLING_STATUS_LABEL,
-  AI_OUTPUT_VALIDATION_COLOR,
-  AI_OUTPUT_VALIDATION_LABEL,
-  AI_TASK_BUSINESS_TYPE_LABEL,
-  AI_TASK_STATUS_COLOR,
-  AI_TASK_STATUS_LABEL,
-  AI_TASK_TYPE_LABEL,
 } from '@/apis/quality/types'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
@@ -58,6 +42,22 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import {
+  aiResultApi,
+  aiResultImprovementPriorityLabel,
+  aiResultIssueSeverityLabel,
+} from '@/apis/quality/ai-result'
+import { aiTaskApi } from '@/apis/quality/ai-task'
+import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
+import {
+  AI_MANUAL_HANDLING_STATUS_LABEL,
+  AI_OUTPUT_VALIDATION_COLOR,
+  AI_OUTPUT_VALIDATION_LABEL,
+  AI_TASK_BUSINESS_TYPE_LABEL,
+  AI_TASK_STATUS_COLOR,
+  AI_TASK_STATUS_LABEL,
+  AI_TASK_TYPE_LABEL,
+} from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
@@ -231,7 +231,7 @@ const PORTFOLIO_AI_TASK_TYPES = [
 
 function mapTaskTypeOptions(
   types: readonly AiTaskType[],
-): Array<{ value: AiTaskType; label: string }> {
+): Array<{ value: AiTaskType, label: string }> {
   return types.map((value) => ({ value, label: AI_TASK_TYPE_LABEL[value] }))
 }
 
@@ -240,14 +240,14 @@ const submitTaskTypeOptions = mapTaskTypeOptions(OBE_AI_TASK_TYPES)
 
 /** 审计台筛选能力（含教学档案袋，只读审计不在此页提交） */
 const auditTaskTypeOptions = mapTaskTypeOptions([...OBE_AI_TASK_TYPES, ...PORTFOLIO_AI_TASK_TYPES])
-const statusOptions: Array<{ value: AiTaskStatus; label: string }> = [
+const statusOptions: Array<{ value: AiTaskStatus, label: string }> = [
   { value: 'PENDING', label: AI_TASK_STATUS_LABEL.PENDING },
   { value: 'PROCESSING', label: AI_TASK_STATUS_LABEL.PROCESSING },
   { value: 'SUCCEEDED', label: AI_TASK_STATUS_LABEL.SUCCEEDED },
   { value: 'FAILED', label: AI_TASK_STATUS_LABEL.FAILED },
   { value: 'CANCELLED', label: AI_TASK_STATUS_LABEL.CANCELLED },
 ]
-const businessTypeOptions: { value: AiTaskBusinessType; label: string }[] = [
+const businessTypeOptions: { value: AiTaskBusinessType, label: string }[] = [
   { value: 'ACHIEVEMENT_RESULT', label: AI_TASK_BUSINESS_TYPE_LABEL.ACHIEVEMENT_RESULT },
   { value: 'QUALITY_COURSE', label: AI_TASK_BUSINESS_TYPE_LABEL.QUALITY_COURSE },
   { value: 'TRAINING_PLAN', label: AI_TASK_BUSINESS_TYPE_LABEL.TRAINING_PLAN },
@@ -273,12 +273,12 @@ const taskBusinessTypeMap: Record<AiTaskType, AiTaskBusinessType> = {
   SYLLABUS_PARSE: 'QUALITY_COURSE',
   TRAINING_PLAN_PARSE: 'TRAINING_PLAN',
 }
-const validationOptions: { value: AiOutputValidation; label: string; color: string }[] = [
+const validationOptions: { value: AiOutputValidation, label: string, color: string }[] = [
   { value: 'PASSED', label: '通过（接受）', color: 'green' },
   { value: 'WARN', label: '警告（需人工审核）', color: 'orange' },
   { value: 'REJECTED', label: '退回（拒绝）', color: 'red' },
 ]
-const manualHandlingOptions: { value: AiManualHandlingStatus; label: string }[] = [
+const manualHandlingOptions: { value: AiManualHandlingStatus, label: string }[] = [
   { value: 'NONE', label: AI_MANUAL_HANDLING_STATUS_LABEL.NONE },
   { value: 'PENDING', label: AI_MANUAL_HANDLING_STATUS_LABEL.PENDING },
   { value: 'IN_PROGRESS', label: AI_MANUAL_HANDLING_STATUS_LABEL.IN_PROGRESS },
@@ -381,47 +381,47 @@ function validateAiTaskSubmit(form: AiTaskSubmitRequest): boolean {
     case 'ACHIEVEMENT_DIAGNOSIS':
     case 'IMPROVEMENT_SUGGESTION_GENERATE':
       return (
-        form.businessType === 'ACHIEVEMENT_RESULT' &&
-        !!form.achievementResultId?.trim() &&
-        businessId === form.achievementResultId.trim()
+        form.businessType === 'ACHIEVEMENT_RESULT'
+        && !!form.achievementResultId?.trim()
+        && businessId === form.achievementResultId.trim()
       )
     case 'COURSE_REPORT_GENERATE':
       return (
-        form.businessType === 'REPORT' &&
-        !!form.qualityCourseId?.trim() &&
-        !!form.reportId?.trim() &&
-        businessId === form.reportId.trim()
+        form.businessType === 'REPORT'
+        && !!form.qualityCourseId?.trim()
+        && !!form.reportId?.trim()
+        && businessId === form.reportId.trim()
       )
     case 'PROGRAM_REPORT_GENERATE':
       return (
-        form.businessType === 'REPORT' &&
-        !!form.programId?.trim() &&
-        !!form.trainingPlanId?.trim() &&
-        !!form.reportId?.trim() &&
-        businessId === form.reportId.trim()
+        form.businessType === 'REPORT'
+        && !!form.programId?.trim()
+        && !!form.trainingPlanId?.trim()
+        && !!form.reportId?.trim()
+        && businessId === form.reportId.trim()
       )
     case 'SYLLABUS_PARSE':
       return (
-        form.businessType === 'QUALITY_COURSE' &&
-        !!form.fileNodeId?.trim() &&
-        !!form.qualityCourseId?.trim() &&
-        businessId === form.qualityCourseId.trim()
+        form.businessType === 'QUALITY_COURSE'
+        && !!form.fileNodeId?.trim()
+        && !!form.qualityCourseId?.trim()
+        && businessId === form.qualityCourseId.trim()
       )
     case 'TRAINING_PLAN_PARSE':
       return (
-        form.businessType === 'TRAINING_PLAN' &&
-        !!form.fileNodeId?.trim() &&
-        !!form.programId?.trim() &&
-        !!form.trainingPlanId?.trim() &&
-        businessId === form.trainingPlanId.trim()
+        form.businessType === 'TRAINING_PLAN'
+        && !!form.fileNodeId?.trim()
+        && !!form.programId?.trim()
+        && !!form.trainingPlanId?.trim()
+        && businessId === form.trainingPlanId.trim()
       )
     case 'MATERIAL_QA':
       return (
-        form.businessType === 'QUALITY_COURSE' &&
-        !!form.qualityCourseId?.trim() &&
-        businessId === form.qualityCourseId.trim() &&
-        !!form.fileNodeId?.trim() &&
-        !!form.question?.trim()
+        form.businessType === 'QUALITY_COURSE'
+        && !!form.qualityCourseId?.trim()
+        && businessId === form.qualityCourseId.trim()
+        && !!form.fileNodeId?.trim()
+        && !!form.question?.trim()
       )
     case 'INDIRECT_RESPONSE_DOC_PARSE':
       return form.businessType === 'INDIRECT_FORM' && !!form.fileNodeId?.trim()
@@ -576,7 +576,7 @@ async function handleScopeChange(): Promise<void> {
 
 useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false })
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -662,10 +662,10 @@ function handleQueryReportChange(value: string | null): void {
 
 function openSubmitPrefill(
   taskType?: AiTaskType,
-  scope?: { programId?: string; trainingPlanId?: string },
+  scope?: { programId?: string, trainingPlanId?: string },
 ) {
-  const resolvedType =
-    taskType && submitTaskTypeOptions.some((o) => o.value === taskType)
+  const resolvedType
+    = taskType && submitTaskTypeOptions.some((o) => o.value === taskType)
       ? taskType
       : 'ACHIEVEMENT_DIAGNOSIS'
   Object.assign(submitForm, {
@@ -691,22 +691,22 @@ function openSubmit() {
 function applyAccreditationRoutePrefill() {
   const taskTypeRaw = route.query.taskType
   if (
-    typeof taskTypeRaw !== 'string' ||
-    !auditTaskTypeOptions.some((o) => o.value === taskTypeRaw)
+    typeof taskTypeRaw !== 'string'
+    || !auditTaskTypeOptions.some((o) => o.value === taskTypeRaw)
   ) {
     return
   }
   const programId = typeof route.query.programId === 'string' ? route.query.programId : undefined
-  const trainingPlanId =
-    typeof route.query.trainingPlanId === 'string' ? route.query.trainingPlanId : undefined
+  const trainingPlanId
+    = typeof route.query.trainingPlanId === 'string' ? route.query.trainingPlanId : undefined
   if (programId) qualityStore.setProgram(programId)
   if (trainingPlanId) qualityStore.setTrainingPlan(trainingPlanId)
   query.taskType = taskTypeRaw as AiTaskType
   query.trainingPlanId = trainingPlanId || qualityStore.currentTrainingPlanId || ''
   query.programId = programId || qualityStore.currentProgramId || ''
   if (
-    route.query.openSubmit === '1' &&
-    submitTaskTypeOptions.some((option) => option.value === taskTypeRaw)
+    route.query.openSubmit === '1'
+    && submitTaskTypeOptions.some((option) => option.value === taskTypeRaw)
   ) {
     openSubmitPrefill(taskTypeRaw as AiTaskType, { programId, trainingPlanId })
   }
@@ -957,10 +957,10 @@ watch(
     if (cached.id !== detailRecord.value.id) return
     // 仅在状态变化时赋值，避免不必要的引用改变
     if (
-      cached.status !== detailRecord.value.status ||
-      cached.failurePhase !== detailRecord.value.failurePhase ||
-      cached.failureReason !== detailRecord.value.failureReason ||
-      cached.finishedTime !== detailRecord.value.finishedTime
+      cached.status !== detailRecord.value.status
+      || cached.failurePhase !== detailRecord.value.failurePhase
+      || cached.failureReason !== detailRecord.value.failureReason
+      || cached.finishedTime !== detailRecord.value.finishedTime
     ) {
       detailRecord.value = { ...detailRecord.value, ...cached }
       // 达到终态后重拉一次结果 + 快照，避免抽屉中“状态已成功但 result 为空”的错误
@@ -1055,7 +1055,7 @@ const taskResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleTaskResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
+function handleTaskResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
   const record = list.value.find((t) => t.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'detail') openDetail(record)
 }
@@ -1078,7 +1078,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: AiTaskStatus; title: string; completed?: boolean }> = [
+  const order: Array<{ key: AiTaskStatus, title: string, completed?: boolean }> = [
     { key: 'PENDING', title: '待处理' },
     { key: 'PROCESSING', title: '运行中' },
     { key: 'SUCCEEDED', title: '成功', completed: true },
@@ -1605,8 +1605,8 @@ onMounted(async () => {
           <a-descriptions-item label="开始 / 结束">
             {{ detailRecord.startedTime || '未开始' }} ～
             {{
-              detailRecord.finishedTime ||
-              (detailRecord.status === 'PROCESSING' ? '执行中' : '未结束')
+              detailRecord.finishedTime
+                || (detailRecord.status === 'PROCESSING' ? '执行中' : '未结束')
             }}
           </a-descriptions-item>
           <a-descriptions-item label="失败阶段">
@@ -1624,9 +1624,9 @@ onMounted(async () => {
               {{
                 detailRecord.failureReason
                   ? getUserProcessFailureMessage(
-                      detailRecord.failureReason,
-                      'AI 分析未完成，请稍后重试或联系管理员查看任务处理情况',
-                    )
+                    detailRecord.failureReason,
+                    'AI 分析未完成，请稍后重试或联系管理员查看任务处理情况',
+                  )
                   : '无未完成说明'
               }}
             </span>

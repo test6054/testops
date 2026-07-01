@@ -1,7 +1,7 @@
 import type { ExamDetailVO } from '@/apis/mark/exam'
-import { EXAM_MATERIAL_LAYOUT_MODE_LABEL, EXAM_PRINT_SOURCE_MODE_LABEL } from '@/apis/mark/exam'
 import type { ExamWorkbenchPrepStepVO } from '@/apis/mark/exam-progress'
 import type { WorkbenchStageStatus } from '@/types/workbench'
+import { EXAM_MATERIAL_LAYOUT_MODE_LABEL, EXAM_PRINT_SOURCE_MODE_LABEL } from '@/apis/mark/exam'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** 考试准备页步骤卡片：后端诊断步骤 + 前端路由与操作文案 */

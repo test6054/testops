@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, inject, onMounted, ref } from 'vue'
 import {
   autoDetectExamLayout,
   generateExamLayoutSheet,
@@ -7,9 +10,6 @@ import {
   previewExamLayoutDesign,
   saveExamLayoutDesign,
 } from '@/apis/mark/exam-layout-design'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, inject, onMounted, ref } from 'vue'
 import LayoutBlockLayerPanel from '@/components/mark/layout-designer/LayoutBlockLayerPanel.vue'
 import LayoutCanvas from '@/components/mark/layout-designer/LayoutCanvas.vue'
 import LayoutEntryGateway from '@/components/mark/layout-designer/LayoutEntryGateway.vue'

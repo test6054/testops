@@ -7,21 +7,21 @@ import type {
   IndirectFormStatus,
   IndirectFormType,
 } from '@/apis/quality/types'
+import type { RespondentType } from '@/types/enums/respondent-type-enum'
 import {
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   INDIRECT_FORM_ACCESS_MODE_LABEL,
   INDIRECT_FORM_STATUS_LABEL,
   INDIRECT_FORM_TYPE_LABEL,
 } from '@/apis/quality/types'
-import type { RespondentType } from '@/types/enums/respondent-type-enum'
-import {
-  formatRespondentType,
-  MANUAL_RESPONDENT_TYPE_OPTIONS,
-} from '@/types/enums/respondent-type-enum'
 import {
   INDIRECT_EVALUATION_ITEM_TYPE_OPTIONS,
   IndirectEvaluationItemType,
 } from '@/types/enums/indirect-evaluation-item-type-enum'
+import {
+  formatRespondentType,
+  MANUAL_RESPONDENT_TYPE_OPTIONS,
+} from '@/types/enums/respondent-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export const ITEM_CONFIG_ERROR = '题项配置不完整，请检查后重试'
@@ -125,7 +125,7 @@ export const DEFAULT_IDENTITY_FIELDS: SurveyIdentityFieldVO[] = [
   { fieldKey: 'CONTACT', fieldLabel: '联系方式', fieldType: 'TEXT', required: false },
 ]
 
-export const accessModeOptions: { value: IndirectFormAccessMode; label: string }[] = [
+export const accessModeOptions: { value: IndirectFormAccessMode, label: string }[] = [
   {
     value: 'PUBLIC_LINK',
     label: strictEnumLabel(INDIRECT_FORM_ACCESS_MODE_LABEL, 'PUBLIC_LINK', '问卷访问模式'),
@@ -140,7 +140,7 @@ export const accessModeOptions: { value: IndirectFormAccessMode; label: string }
   },
 ]
 
-export const formTypeOptions: { value: IndirectFormType; label: string }[] = [
+export const formTypeOptions: { value: IndirectFormType, label: string }[] = [
   {
     value: 'STUDENT_SELF',
     label: strictEnumLabel(INDIRECT_FORM_TYPE_LABEL, 'STUDENT_SELF', '间接评价问卷类型'),
@@ -167,7 +167,7 @@ export const formTypeOptions: { value: IndirectFormType; label: string }[] = [
   },
 ]
 
-export const targetTypeOptions: { value: AchievementTargetType; label: string }[] = [
+export const targetTypeOptions: { value: AchievementTargetType, label: string }[] = [
   {
     value: 'COURSE_GOAL',
     label: strictEnumLabel(ACHIEVEMENT_TARGET_TYPE_LABEL, 'COURSE_GOAL', '达成目标类型'),
@@ -227,8 +227,8 @@ export function requiresTeacherScoreConversion(
   itemType: PublicSurveyItemType | undefined,
 ): boolean {
   return (
-    isSingleChoiceItemType(itemType) ||
-    isMultiChoiceItemType(itemType) ||
-    isOpenTextItemType(itemType)
+    isSingleChoiceItemType(itemType)
+    || isMultiChoiceItemType(itemType)
+    || isOpenTextItemType(itemType)
   )
 }

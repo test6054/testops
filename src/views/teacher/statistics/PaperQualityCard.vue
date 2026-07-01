@@ -20,10 +20,10 @@
 
 <script lang="ts" setup>
 import type { ExamPaperAnalysisVO } from '@/apis/mark/question-analysis'
-import { getExamPaperAnalysis } from '@/apis/mark/question-analysis'
 import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref, watch } from 'vue'
+import { getExamPaperAnalysis } from '@/apis/mark/question-analysis'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -49,8 +49,8 @@ function formatMetricValue(value: number | null | undefined, digits = 3): string
 const qualityMetrics = computed((): SignalMetric[] => {
   if (!analysis.value) return []
   const data = analysis.value
-  const alphaMetric: SignalMetric =
-    data.cronbachAlpha == null
+  const alphaMetric: SignalMetric
+    = data.cronbachAlpha == null
       ? {
           key: 'cronbachAlpha',
           label: 'Cronbach α',

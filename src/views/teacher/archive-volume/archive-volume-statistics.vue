@@ -141,6 +141,12 @@ import type {
   ArchiveVolumeDestructionLedgerRowVO,
   ArchiveVolumeStatisticsVO,
 } from '@/apis/mark/archive-volume'
+import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ARCHIVE_DESTRUCTION_STATUS_LABEL,
   ARCHIVE_DESTRUCTION_STATUS_TONE,
@@ -150,14 +156,7 @@ import {
   getArchiveVolumeStatistics,
   pageDestructionLedger,
 } from '@/apis/mark/archive-volume'
-import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { SemesterOptions } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { requireArrayResult } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -169,6 +168,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { downloadArchiveExcelBase64 } from '@/utils/archive-excel-export'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -178,8 +178,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherArchiveVolumeStatistics' })
 
 const router = useRouter()
-const { grantsLoadFailed, listScopedDepartmentIds, filterListDepartmentOptions, loadGrants } =
-  useArchiveDutyAccess()
+const { grantsLoadFailed, listScopedDepartmentIds, filterListDepartmentOptions, loadGrants }
+  = useArchiveDutyAccess()
 
 const statsTab = ref('overview')
 const loading = ref(false)
@@ -188,7 +188,7 @@ const exportDestructionLoading = ref(false)
 const destructionLoading = ref(false)
 const statistics = ref<ArchiveVolumeStatisticsVO | null>(null)
 const destructionRows = ref<ArchiveVolumeDestructionLedgerRowVO[]>([])
-const departmentOptions = ref<Array<{ value: string; label: string }>>([])
+const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 
 const filterForm = reactive({
   academicYear: '',

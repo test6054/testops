@@ -11,16 +11,16 @@
  * - 持久化只保存少量"用户选择"字段，目录缓存只放内存。
  */
 import type { GraduationRequirementVO } from '@/apis/quality/graduation-requirement'
-import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import type { QualityCourseVO } from '@/apis/quality/quality-course'
-import { qualityCourseApi } from '@/apis/quality/quality-course'
 import type { TrainingPlanVO } from '@/apis/quality/training-plan'
-import { trainingPlanApi } from '@/apis/quality/training-plan'
 import type { MajorCategoryVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
-import { departmentCatalogApi, majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
+import { qualityCourseApi } from '@/apis/quality/quality-course'
+import { trainingPlanApi } from '@/apis/quality/training-plan'
+import { departmentCatalogApi, majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
 import { readAllPages } from '@/utils/page-result'
 
 export const useQualityStore = defineStore(

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ReportQueryRequest, ReportSaveRequest, ReportVO } from '@/apis/quality/report'
-import { reportApi } from '@/apis/quality/report'
 /**
  * 质量评价 - 报告生成与确认台
  *
@@ -12,14 +11,6 @@ import { reportApi } from '@/apis/quality/report'
  * 4. 导出 exportStatus IDLE -> PENDING -> PROCESSING -> COMPLETED / FAILED，前端轮询 5s/次。
  */
 import type { ReportExportStatus, ReportStatus, ReportType } from '@/apis/quality/types'
-import {
-  REPORT_EXPORT_STATUS_COLOR,
-  REPORT_EXPORT_STATUS_LABEL,
-  REPORT_STATUS_COLOR,
-  REPORT_STATUS_LABEL,
-  REPORT_TYPE_CODES,
-  REPORT_TYPE_LABEL,
-} from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
@@ -33,6 +24,15 @@ import { message } from 'ant-design-vue'
 import Modal from 'ant-design-vue/es/modal'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
+import { reportApi } from '@/apis/quality/report'
+import {
+  REPORT_EXPORT_STATUS_COLOR,
+  REPORT_EXPORT_STATUS_LABEL,
+  REPORT_STATUS_COLOR,
+  REPORT_STATUS_LABEL,
+  REPORT_TYPE_CODES,
+  REPORT_TYPE_LABEL,
+} from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   AchievementResultSelector,
@@ -145,13 +145,13 @@ const detailVisible = ref(false)
 const detailRecord = ref<ReportVO | null>(null)
 const detailLoading = ref(false)
 
-const reportTypeOptions: Array<{ value: ReportType; label: string }> = REPORT_TYPE_CODES.map(
+const reportTypeOptions: Array<{ value: ReportType, label: string }> = REPORT_TYPE_CODES.map(
   (value) => ({
     value,
     label: REPORT_TYPE_LABEL[value],
   }),
 )
-const statusOptions: Array<{ value: ReportStatus; label: string }> = [
+const statusOptions: Array<{ value: ReportStatus, label: string }> = [
   { value: 'DRAFT', label: REPORT_STATUS_LABEL.DRAFT },
   { value: 'SUBMITTED', label: REPORT_STATUS_LABEL.SUBMITTED },
   { value: 'CONFIRMED', label: REPORT_STATUS_LABEL.CONFIRMED },
@@ -270,7 +270,7 @@ useQualityScopedLoader(handleScopeChange, {
   reloadOnActivated: false,
 })
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -521,8 +521,8 @@ function resumeExportPollingForList() {
 }
 
 async function downloadReportExportFile(record: ReportVO, kind: 'word' | 'pdf' | 'excel') {
-  const fileId =
-    kind === 'word' ? record.wordFileId : kind === 'pdf' ? record.pdfFileId : record.excelFileId
+  const fileId
+    = kind === 'word' ? record.wordFileId : kind === 'pdf' ? record.pdfFileId : record.excelFileId
   if (!fileId) {
     message.warning('该格式文件尚未生成')
     return
@@ -578,7 +578,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: ReportStatus; title: string }> = [
+  const order: Array<{ key: ReportStatus, title: string }> = [
     { key: 'DRAFT', title: '草稿' },
     { key: 'SUBMITTED', title: '待确认' },
     { key: 'CONFIRMED', title: '已确认' },
@@ -684,7 +684,7 @@ const reportResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleReportResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
+function handleReportResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
   const record = list.value.find((r) => r.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'detail') openDetail(record)
 }
@@ -845,9 +845,9 @@ onBeforeUnmount(() => {
                 </UiTextAction>
                 <UiTextAction
                   v-if="
-                    record.status === 'SUBMITTED' ||
-                    record.status === 'CONFIRMED' ||
-                    record.status === 'ARCHIVED'
+                    record.status === 'SUBMITTED'
+                      || record.status === 'CONFIRMED'
+                      || record.status === 'ARCHIVED'
                   "
                   :disabled="
                     isExportInFlight(record.exportStatus) || pollingExportIds.has(record.id)
@@ -1007,8 +1007,7 @@ onBeforeUnmount(() => {
           <a-descriptions-item label="学年 / 学期">
             {{ detailRecord.schoolYear
             }}<span v-if="detailRecord.semester">
-              / {{ formatSemester(detailRecord.semester) }}</span
-            >
+              / {{ formatSemester(detailRecord.semester) }}</span>
           </a-descriptions-item>
           <a-descriptions-item label="Word 文件">
             <UiTextAction

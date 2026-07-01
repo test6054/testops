@@ -4,12 +4,10 @@ import type {
   ProcessEvaluationNodeSaveRequest,
   ProcessEvaluationNodeVO,
 } from '@/apis/quality/process-evaluation'
-import { processNodeApi } from '@/apis/quality/process-evaluation'
 import type {
   ProcessEvaluationRecordSaveRequest,
   ProcessEvaluationRecordVO,
 } from '@/apis/quality/process-evaluation-record'
-import { processRecordApi } from '@/apis/quality/process-evaluation-record'
 /**
  * 过程性评价节点配置 + 节点记录管理
  *
@@ -25,6 +23,13 @@ import { processRecordApi } from '@/apis/quality/process-evaluation-record'
  * - 已确认记录才进入达成度计算
  */
 import type { ConfirmationStatus, ProcessNodeType } from '@/apis/quality/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message, Modal } from 'ant-design-vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
+import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { processNodeApi } from '@/apis/quality/process-evaluation'
+import { processRecordApi } from '@/apis/quality/process-evaluation-record'
 import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
@@ -33,11 +38,6 @@ import {
   PROCESS_NODE_TYPE_LABEL,
   PROCESS_NODE_TYPE_OPTIONS,
 } from '@/apis/quality/types'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onActivated, onMounted, ref, watch } from 'vue'
-import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
@@ -429,7 +429,7 @@ async function deleteRecord(record: ProcessEvaluationRecordVO) {
 const importExcelVisible = ref(false)
 const importConfirmationStatus = ref<ConfirmationStatus>('SUBMITTED')
 
-const importConfirmationStatusOptions: { label: string; value: ConfirmationStatus }[] = [
+const importConfirmationStatusOptions: { label: string, value: ConfirmationStatus }[] = [
   { label: CONFIRMATION_STATUS_LABEL.DRAFT, value: 'DRAFT' },
   { label: CONFIRMATION_STATUS_LABEL.SUBMITTED, value: 'SUBMITTED' },
   { label: CONFIRMATION_STATUS_LABEL.CONFIRMED, value: 'CONFIRMED' },

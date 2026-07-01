@@ -138,14 +138,14 @@ export interface ArchivePlatformTemplateSetSaveRequest {
 }
 
 /** 模板材料编辑行：平台 / 租户 SaveRequest 合同字段 + 表格 rowKey */
-export type ArchiveTemplateMaterialEditRow = ArchivePlatformTemplateMaterialItemRequest &
-  ArchiveTenantTemplateMaterialItemRequest & {
+export type ArchiveTemplateMaterialEditRow = ArchivePlatformTemplateMaterialItemRequest
+  & ArchiveTenantTemplateMaterialItemRequest & {
     rowKey: string
   }
 
 /** 模板自查项编辑行：平台 sortOrder / 租户 itemOrder 与 SaveRequest 一致 + 表格 rowKey */
-export type ArchiveTemplateSelfCheckEditRow = ArchivePlatformTemplateSelfCheckItemRequest &
-  ArchiveTenantTemplateSelfCheckItemRequest & {
+export type ArchiveTemplateSelfCheckEditRow = ArchivePlatformTemplateSelfCheckItemRequest
+  & ArchiveTenantTemplateSelfCheckItemRequest & {
     rowKey: string
   }
 

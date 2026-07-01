@@ -1,9 +1,9 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { ExamJourneyKey, ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
-import { resolveJourneyKeyByStage } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
-import { MARK_STAGE_ORDER } from '@/stores/modules/markStage'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
+import { resolveJourneyKeyByStage } from '@/constants/exam-journey'
+import { MARK_STAGE_ORDER } from '@/stores/modules/markStage'
 import { resolveJourneyIndex } from '@/utils/exam-workspace-entry-gates'
 
 /** 九段主链标题，与后端 ExamWorkbenchStageKey 一致 */

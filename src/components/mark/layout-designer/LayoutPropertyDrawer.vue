@@ -2,9 +2,9 @@
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
 import type { ExamLayoutBlockTypeCode } from '@/utils/exam-layout-designer'
-import { EXAM_LAYOUT_BLOCK_TYPE, EXAM_LAYOUT_BLOCK_TYPE_LABEL } from '@/utils/exam-layout-designer'
 import { computed } from 'vue'
 import { throwUserFacing } from '@/utils/contract-guard'
+import { EXAM_LAYOUT_BLOCK_TYPE, EXAM_LAYOUT_BLOCK_TYPE_LABEL } from '@/utils/exam-layout-designer'
 
 const props = defineProps<{
   document: ExamLayoutDocument | null

@@ -271,6 +271,14 @@ import type {
   ExamWorkbenchSummaryVO,
   GradingStrategyCode,
 } from '@/apis/mark/exam'
+import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import {
   closeExam,
   countExamWorkbenchScopes,
@@ -285,15 +293,6 @@ import {
   pageExamWorkbench,
   updateExam,
 } from '@/apis/mark/exam'
-import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -311,6 +310,7 @@ import {
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import {
   generateAcademicYearOptions,
   getDefaultAcademicYearAndSemester,
@@ -883,7 +883,7 @@ function handleReset(): void {
   void reloadListAndCounts()
 }
 
-function handleUiPageChange(page: { current: number; pageSize: number }): void {
+function handleUiPageChange(page: { current: number, pageSize: number }): void {
   const scope = tabToScope(listTab.value)
   const paginationState = getPaginationByScope(scope)
   paginationState.current = page.current
@@ -1087,8 +1087,8 @@ async function openEditModal(exam: ExamWorkbenchSummaryVO): Promise<void> {
   examForm.examNo = exam.examNo
   examForm.academicYear = exam.academicYear ?? ''
   examForm.semester = exam.semester
-  examForm.examWindow =
-    exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
+  examForm.examWindow
+    = exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
   examForm.scoreCompositionMode = exam.dailyScoreFull != null ? 'EXAM_WITH_DAILY' : 'EXAM_ONLY'
   examForm.dailyScoreFull = exam.dailyScoreFull ?? undefined
   examForm.examKind = exam.examKind ?? 'REGULAR'

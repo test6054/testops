@@ -323,5 +323,5 @@ export function findExamWorkspaceMenuItem(menuKey: string): ExamWorkspaceMenuIte
 }
 
 /** 所有菜单项 key，供侧栏图标映射使用 */
-export type ExamWorkspaceMenuKey =
-  (typeof EXAM_WORKSPACE_MENU_GROUPS)[number]['items'][number]['key']
+export type ExamWorkspaceMenuKey
+  = (typeof EXAM_WORKSPACE_MENU_GROUPS)[number]['items'][number]['key']

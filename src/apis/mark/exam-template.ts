@@ -2,14 +2,14 @@
  * 考试制卷摘要查询 API — 对接 POST /api/mark/exams/template（layout 域只读摘要）。
  */
 import type { AnonymityModeCode } from './anonymity-mode'
-import { ANONYMITY_MODE_LABEL } from './anonymity-mode'
 import type { EffectiveStatusCode } from './effective-status'
-import { EFFECTIVE_STATUS_LABEL } from './effective-status'
 import type { QuestionTypeCode } from './question-type'
-import { QUESTION_TYPE_LABEL } from './question-type'
 import http from '@/config/axios'
 import { assertUserFacingFiniteNumber, assertUserFacingText } from '@/utils/contract-guard'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import { ANONYMITY_MODE_LABEL } from './anonymity-mode'
+import { EFFECTIVE_STATUS_LABEL } from './effective-status'
+import { QUESTION_TYPE_LABEL } from './question-type'
 
 const EXAM_TEMPLATE_DATA_ERROR = '试卷模板数据异常，请刷新后重试'
 

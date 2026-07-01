@@ -5,12 +5,6 @@ import type {
   PortfolioTeacherRecommendRunStatus,
   PortfolioTeacherRecommendScene,
 } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS,
-  PORTFOLIO_TEACHER_RECOMMEND_RUN_MODE_LABEL,
-  PORTFOLIO_TEACHER_RECOMMEND_RUN_STATUS_LABEL,
-  PORTFOLIO_TEACHER_RECOMMEND_SCENE_LABEL,
-} from '@/apis/portfolio/enums'
 import type {
   PortfolioTeacherPkCompareVO,
   PortfolioTeacherRecommendCandidateVO,
@@ -18,13 +12,19 @@ import type {
   PortfolioTeacherRecommendRuleVO,
   PortfolioTeacherRecommendRunVO,
 } from '@/apis/portfolio/teacher-platform'
-import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
 import type { AiTaskStatus } from '@/apis/quality/types'
-import { AI_TASK_STATUS_LABEL } from '@/apis/quality/types'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS,
+  PORTFOLIO_TEACHER_RECOMMEND_RUN_MODE_LABEL,
+  PORTFOLIO_TEACHER_RECOMMEND_RUN_STATUS_LABEL,
+  PORTFOLIO_TEACHER_RECOMMEND_SCENE_LABEL,
+} from '@/apis/portfolio/enums'
+import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
 import { aiTaskApi } from '@/apis/quality/ai-task'
+import { AI_TASK_STATUS_LABEL } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

@@ -6,8 +6,8 @@ const BASE = '/api/quality/workbench'
 
 export type ObeJourneyStepStatus = 'pending' | 'active' | 'completed'
 
-export type ObeJourneyStepKey =
-  'config' | 'plan' | 'data' | 'calc' | 'audit' | 'improve' | 'archive'
+export type ObeJourneyStepKey
+  = 'config' | 'plan' | 'data' | 'calc' | 'audit' | 'improve' | 'archive'
 
 export interface ObeJourneyStepVO {
   stepKey: ObeJourneyStepKey

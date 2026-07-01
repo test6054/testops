@@ -10,10 +10,10 @@
  * 设计：先选问卷 → 显示题项 → 选题项查看答卷
  */
 import type { IndirectEvaluationFormVO } from '@/apis/quality/indirect-form'
-import { indirectFormApi } from '@/apis/quality/indirect-form'
 import type { IndirectEvaluationItemVO } from '@/apis/quality/indirect-item'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onActivated, onMounted, ref, watch } from 'vue'
+import { indirectFormApi } from '@/apis/quality/indirect-form'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -74,12 +74,12 @@ const signals = computed<SignalMetric[]>(() => {
 
   const enabledForms = forms.filter((f) => f.enabled).length
   const totalItems = items.length
-  const completionRate =
-    summary.expectedSample > 0
+  const completionRate
+    = summary.expectedSample > 0
       ? Number((summary.submissionCount / summary.expectedSample).toFixed(2))
       : 0
-  const collectionRate =
-    summary.expectedResponseCount > 0
+  const collectionRate
+    = summary.expectedResponseCount > 0
       ? Number((summary.receivedResponseCount / summary.expectedResponseCount).toFixed(2))
       : 0
   const validResponses = responses.filter((r) => r.validFlag === true).length

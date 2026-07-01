@@ -235,8 +235,7 @@ async function openTaskResult(taskId: string) {
           <a
             class="cockpit-ask__link"
             @click="() => void openHistoryRow(record as PortfolioAiAnalysisSummaryVO)"
-            >查看</a
-          >
+          >查看</a>
         </template>
       </template>
     </UiDataTable>

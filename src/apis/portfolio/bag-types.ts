@@ -52,8 +52,8 @@ export interface PortfolioArchiveBagItemVO {
   attachments: PortfolioArchiveBagAttachmentVO[]
 }
 
-export type PortfolioArchiveBagSectionType =
-  'BY_CATEGORY' | 'BY_SEMESTER' | 'BY_COURSE' | 'BY_ACHIEVEMENT'
+export type PortfolioArchiveBagSectionType
+  = 'BY_CATEGORY' | 'BY_SEMESTER' | 'BY_COURSE' | 'BY_ACHIEVEMENT'
 
 export interface PortfolioArchiveBagSectionGroupVO {
   groupTitle: string

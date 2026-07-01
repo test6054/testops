@@ -210,9 +210,9 @@
                 <UiTextAction tone="primary" @click="goDetail(record.volumeId)">详情</UiTextAction>
                 <UiTextAction
                   v-if="
-                    listTab === 'mine' &&
-                    volumeScope === 'mine' &&
-                    hasOpenRemediationForVolume(record.volumeId)
+                    listTab === 'mine'
+                      && volumeScope === 'mine'
+                      && hasOpenRemediationForVolume(record.volumeId)
                   "
                   tone="primary"
                   @click="goRemediationVolumeByVolumeId(record.volumeId)"
@@ -360,7 +360,6 @@
 <script setup lang="ts">
 import type { ColumnsType, TableProps } from 'ant-design-vue/es/table'
 import type { LocationQueryRaw } from 'vue-router'
-import { useRoute, useRouter } from 'vue-router'
 import type {
   ArchiveAccessStatusCode,
   ArchiveAppraisalStatusCode,
@@ -374,6 +373,15 @@ import type {
   ArchiveVolumeStatusCode,
   ArchiveVolumeVO,
 } from '@/apis/mark/archive-volume'
+import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { ArchiveVolumeScenarioKey } from '@/composables/useArchiveVolumeFilterPresets'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   approveArchiveVolumeTransfer,
   ARCHIVE_ACCESS_STATUS_LABEL,
@@ -397,17 +405,7 @@ import {
   pageOverdueArchiveVolumes,
   remindArchiveDue,
 } from '@/apis/mark/archive-volume'
-import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { ArchiveVolumeScenarioKey } from '@/composables/useArchiveVolumeFilterPresets'
-import { useArchiveVolumeFilterPresets } from '@/composables/useArchiveVolumeFilterPresets'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import { requireArrayResult } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -422,8 +420,10 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { useArchiveTenantSetupReadiness } from '@/composables/useArchiveTenantSetupReadiness'
+import { useArchiveVolumeFilterPresets } from '@/composables/useArchiveVolumeFilterPresets'
 import { canSubmitArchiveVolumeRow } from '@/composables/useArchiveVolumeSubmitGate'
 import { useUserStore } from '@/stores/modules/user'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import {
   generateAcademicYearOptions,
   getDefaultAcademicYearAndSemester,
@@ -515,7 +515,7 @@ const openRemediationVolumeIdSet = computed(
 const pendingAccessRecords = ref<ArchiveVolumeAccessRecordVO[]>([])
 const selectedVolumeIds = ref<string[]>([])
 const pagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
-const allDepartmentOptions = ref<Array<{ value: string; label: string }>>([])
+const allDepartmentOptions = ref<Array<{ value: string, label: string }>>([])
 const kpiCollectingCount = ref<number | string>('—')
 const kpiPendingTransferCount = ref<number | string>('—')
 const kpiMissingCount = ref<number | string>('—')
@@ -548,7 +548,7 @@ const filterModel = computed<Record<string, unknown>>({
 })
 
 const visibleListTabs = computed(() => {
-  const tabs: Array<{ key: ListTabKey; label: string }> = [{ key: 'mine', label: '归档卷' }]
+  const tabs: Array<{ key: ListTabKey, label: string }> = [{ key: 'mine', label: '归档卷' }]
   if (canViewCollegeBoard.value) {
     tabs.push({ key: 'college', label: '院系看板' })
   }
@@ -583,7 +583,7 @@ const showVolumeListPanel = computed(
 )
 
 const archiveSubTabs = computed(() => {
-  const tabs: Array<{ key: ArchiveSubTabKey; label: string }> = [
+  const tabs: Array<{ key: ArchiveSubTabKey, label: string }> = [
     { key: 'pending-transfer', label: '待验收移交' },
   ]
   if (hasDuty('ARCHIVE_ADMIN') || hasDuty('TRANSFER_REVIEWER')) {
@@ -945,8 +945,8 @@ function applyScopedDepartmentDefault() {
     return
   }
   if (
-    filterForm.departmentId &&
-    !visibleDepartmentOptions.value.some((item) => item.value === filterForm.departmentId)
+    filterForm.departmentId
+    && !visibleDepartmentOptions.value.some((item) => item.value === filterForm.departmentId)
   ) {
     filterForm.departmentId = undefined
   }
@@ -957,8 +957,8 @@ async function loadSignalKpis() {
   if (listTab.value === 'mine') return
   try {
     const statsRequest: { departmentId?: string } = {}
-    const scopeIds =
-      listTab.value === 'college' ? scopedDepartmentIds.value : listScopedDepartmentIds.value
+    const scopeIds
+      = listTab.value === 'college' ? scopedDepartmentIds.value : listScopedDepartmentIds.value
     if (scopeIds.length === 1) {
       statsRequest.departmentId = scopeIds[0]
     }

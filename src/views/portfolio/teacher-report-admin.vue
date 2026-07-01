@@ -4,12 +4,12 @@ import type {
   PortfolioReportScene,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
-import { PORTFOLIO_REPORT_SCENE_OPTIONS } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import { PORTFOLIO_REPORT_SCENE_OPTIONS } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'

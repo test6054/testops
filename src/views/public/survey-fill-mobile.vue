@@ -315,9 +315,9 @@
 
 <script setup lang="ts">
 import type { PublicSurveyItemType } from '@/apis/public-survey'
-import { formatPublicSurveyItemType } from '@/apis/public-survey'
 import { message } from 'ant-design-vue'
 import { computed, ref } from 'vue'
+import { formatPublicSurveyItemType } from '@/apis/public-survey'
 import { useSurveyFill } from '@/composables/useSurveyFill'
 import { IndirectEvaluationItemType } from '@/types/enums/indirect-evaluation-item-type-enum'
 

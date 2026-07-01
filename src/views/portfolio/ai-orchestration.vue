@@ -6,11 +6,6 @@ import type {
   PortfolioPolicyMatchConclusion,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
-import {
-  PORTFOLIO_AI_ANALYSIS_TYPE_LABEL,
-  PORTFOLIO_POLICY_MATCH_CONCLUSION_LABEL,
-  PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE,
-} from '@/apis/portfolio/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -19,6 +14,11 @@ import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import { portfolioAiOrchestrationApi } from '@/apis/portfolio/ai-orchestration'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import {
+  PORTFOLIO_AI_ANALYSIS_TYPE_LABEL,
+  PORTFOLIO_POLICY_MATCH_CONCLUSION_LABEL,
+  PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE,
+} from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -68,8 +68,8 @@ const policyForm = reactive({
 
 const canOperate = computed(() =>
   Boolean(
-    targetTeacherId.value &&
-    canManageTeacherAi(
+    targetTeacherId.value
+    && canManageTeacherAi(
       targetTeacherId.value,
       teacherOptions.value.some((item) => item.userId === targetTeacherId.value),
     ),

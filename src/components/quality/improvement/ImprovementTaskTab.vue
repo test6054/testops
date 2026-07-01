@@ -5,20 +5,15 @@ import type {
   ImprovementTaskSaveRequest,
   ImprovementTaskVO,
 } from '@/apis/quality/improvement-task'
-import { improvementTaskApi } from '@/apis/quality/improvement-task'
 import type { ImprovementTaskStatus } from '@/apis/quality/types'
-import { IMPROVEMENT_TASK_STATUS_COLOR, IMPROVEMENT_TASK_STATUS_LABEL } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
-import {
-  normalizeTextareaLineItems,
-  refreshWorkbenchSignalsAfterMutation,
-  selectedId,
-} from '@/composables/quality/improvement'
 import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
 import { aiTaskApi } from '@/apis/quality/ai-task'
 import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
+import { improvementTaskApi } from '@/apis/quality/improvement-task'
+import { IMPROVEMENT_TASK_STATUS_COLOR, IMPROVEMENT_TASK_STATUS_LABEL } from '@/apis/quality/types'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
 import {
   AchievementResultSelector,
@@ -34,6 +29,11 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import {
+  normalizeTextareaLineItems,
+  refreshWorkbenchSignalsAfterMutation,
+  selectedId,
+} from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import {
@@ -81,7 +81,7 @@ const improvementQuery = reactive<ImprovementTaskQueryRequest>({
   keyword: '',
 })
 
-const improvementStatusOptions: Array<{ value: ImprovementTaskStatus; label: string }> = [
+const improvementStatusOptions: Array<{ value: ImprovementTaskStatus, label: string }> = [
   { value: 'OPEN', label: IMPROVEMENT_TASK_STATUS_LABEL.OPEN },
   { value: 'IN_PROGRESS', label: IMPROVEMENT_TASK_STATUS_LABEL.IN_PROGRESS },
   { value: 'SUBMITTED', label: IMPROVEMENT_TASK_STATUS_LABEL.SUBMITTED },
@@ -176,7 +176,7 @@ function handleImprovementFilterSearch(): void {
   void loadList()
 }
 
-function handleImprovementPageChange(page: { current: number; pageSize: number }): void {
+function handleImprovementPageChange(page: { current: number, pageSize: number }): void {
   improvementQuery.pageNum = page.current
   improvementQuery.pageSize = page.pageSize
   void loadList()
@@ -251,9 +251,9 @@ async function loadList(options?: { refreshSignals?: boolean }): Promise<void> {
     improvementQuery.pageSize = page.pageSize
     improvementTotal.value = readPageTotal(page, '持续改进任务加载失败，请稍后重试')
     if (
-      improvementList.value.length === 0 &&
-      improvementTotal.value > 0 &&
-      improvementQuery.pageNum > 1
+      improvementList.value.length === 0
+      && improvementTotal.value > 0
+      && improvementQuery.pageNum > 1
     ) {
       improvementQuery.pageNum -= 1
       await loadList(options)
@@ -358,20 +358,20 @@ async function submitImprovementEditor(): Promise<void> {
     }
   }
   if (
-    !improvementEditor.taskTitle.trim() ||
-    !improvementEditor.problemSummary.trim() ||
-    !improvementEditor.proposedAction.trim() ||
-    !improvementEditor.programId ||
-    !improvementEditor.ownerUserId ||
-    !improvementEditor.dueDate
+    !improvementEditor.taskTitle.trim()
+    || !improvementEditor.problemSummary.trim()
+    || !improvementEditor.proposedAction.trim()
+    || !improvementEditor.programId
+    || !improvementEditor.ownerUserId
+    || !improvementEditor.dueDate
   ) {
     message.error('请填写标题、问题概述、改进措施、专业、负责人和截止日期')
     return
   }
   if (
-    improvementEditorMode.value === 'create' &&
-    submitAiSuggestionDraft.value &&
-    !improvementEditor.achievementResultId
+    improvementEditorMode.value === 'create'
+    && submitAiSuggestionDraft.value
+    && !improvementEditor.achievementResultId
   ) {
     message.error('生成 AI 改进草稿需要先关联达成度计算结果')
     return

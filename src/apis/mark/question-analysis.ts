@@ -198,8 +198,8 @@ export function getEffectiveAnswerConfig(params: {
 // ─── 重判计划 ─────────────────────────────────
 
 /** 重判计划状态 */
-export type RejudgePlanStatusCode =
-  'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'EXECUTING' | 'COMPLETED' | 'REJECTED'
+export type RejudgePlanStatusCode
+  = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'EXECUTING' | 'COMPLETED' | 'REJECTED'
 
 /** 重判触发类型 */
 export type RejudgeTriggerTypeCode = 'ANSWER_CHANGE' | 'POLICY_CHANGE' | 'SYSTEM_ERROR'

@@ -3,17 +3,14 @@
  * 考试准备聚合工作台：步骤流水线为唯一信息面，ContextBar 仅保留一个主操作。
  */
 import type { Component } from 'vue'
-import { computed, inject, ref, watch } from 'vue'
 import type {
   ExamDetailVO,
   ExamMaterialLayoutModeCode,
   ExamPrintSourceModeCode,
 } from '@/apis/mark/exam'
-import { EXAM_PRINT_SOURCE_MODE_LABEL, getExamDetail, saveMaterialLayout } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { WorkbenchStageStatus } from '@/types/workbench'
 import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
-import { buildPrepStepCards } from '@/utils/exam-prep-step-ui'
 import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FilePdfOutlined from '@ant-design/icons-vue/FilePdfOutlined'
@@ -21,7 +18,9 @@ import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import message from 'ant-design-vue/es/message'
+import { computed, inject, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { EXAM_PRINT_SOURCE_MODE_LABEL, getExamDetail, saveMaterialLayout } from '@/apis/mark/exam'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -34,6 +33,7 @@ import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { WORKSPACE_STAGE_STATUS_TONE } from '@/constants/mark-workspace-nav'
 import { showUserError } from '@/utils/error-handler'
+import { buildPrepStepCards } from '@/utils/exam-prep-step-ui'
 import {
   canEnterReviewBatch,
   canStartScanRegistration,
@@ -90,8 +90,8 @@ const scanEntryEnabled = computed(() =>
 )
 const scanEntryDisabledReason = computed(
   () =>
-    resolveNextActionDisabledReason(nextActions.value, 'START_SCAN') ??
-    prepBlockingReasons.value[0],
+    resolveNextActionDisabledReason(nextActions.value, 'START_SCAN')
+    ?? prepBlockingReasons.value[0],
 )
 const reviewEntryEnabled = computed(() =>
   canEnterReviewBatch(nextActions.value, markingProgress.value),
@@ -146,7 +146,7 @@ function prepStepButtonVariant(step: PrepStepCard): 'primary' | 'outline' {
   return firstPendingPrepStep.value?.key === step.key ? 'primary' : 'outline'
 }
 
-const prepStatusTag = computed((): { tone: BadgeTone; label: string } => {
+const prepStatusTag = computed((): { tone: BadgeTone, label: string } => {
   if (prepBlockingReasons.value.length > 0) {
     return { tone: 'orange', label: '扫描未解锁' }
   }
@@ -216,8 +216,8 @@ const layoutDirty = computed(() => {
   const d = detail.value
   if (!d) return false
   return (
-    draftLayoutMode.value !== d.materialLayoutMode ||
-    (draftLayoutMode.value === 'FULL_PAPER' && draftPrintSource.value !== d.printSourceMode)
+    draftLayoutMode.value !== d.materialLayoutMode
+    || (draftLayoutMode.value === 'FULL_PAPER' && draftPrintSource.value !== d.printSourceMode)
   )
 })
 
@@ -308,8 +308,8 @@ watch(
           </UiButton>
           <a-tooltip
             :title="
-              contextPrimaryAction?.tooltip ??
-              (contextPrimaryAction?.disabled ? scanEntryDisabledReason : undefined)
+              contextPrimaryAction?.tooltip
+                ?? (contextPrimaryAction?.disabled ? scanEntryDisabledReason : undefined)
             "
           >
             <UiButton

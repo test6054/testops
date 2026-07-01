@@ -146,6 +146,11 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { PrintPackageItemVO, PrintPackageVO } from '@/apis/mark/print-package'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { reactive, ref, watch } from 'vue'
+import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
 import {
   generatePrintPackage,
   getPrintPackage,
@@ -154,11 +159,6 @@ import {
   PRINT_PACKAGE_STATUS_LABEL,
   PRINT_PACKAGE_STATUS_TONE,
 } from '@/apis/mark/print-package'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref, watch } from 'vue'
-import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -215,7 +215,7 @@ async function loadPackageList() {
   }
 }
 
-function handlePackagePageChange(pageEvent: { current: number; pageSize: number }): void {
+function handlePackagePageChange(pageEvent: { current: number, pageSize: number }): void {
   pagination.pageNum = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   loadPackageList()

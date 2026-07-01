@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
 import type { ExamLayoutBlockTypeCode } from '@/utils/exam-layout-designer'
+import { computed } from 'vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import {
   blocksOnPage,
   createDefaultBlock,
   EXAM_LAYOUT_BLOCK_TYPE,
   resolveBlockTypeLabel,
 } from '@/utils/exam-layout-designer'
-import { computed } from 'vue'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
 
 const props = defineProps<{
   document: ExamLayoutDocument | null
@@ -18,7 +18,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'focus-block': [block: ExamLayoutBlockDto | null]
-  patch: [document: ExamLayoutDocument]
+  "patch": [document: ExamLayoutDocument]
 }>()
 
 const pageBlocks = computed(() => blocksOnPage(props.document, props.pageNo))

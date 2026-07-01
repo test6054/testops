@@ -72,8 +72,8 @@ onMounted(async () => {
   await loadTree()
   const queryDepartmentId = readRouteStringParam(route.query.departmentId)
   if (
-    queryDepartmentId &&
-    departmentOptions.value.some((option) => option.value === queryDepartmentId)
+    queryDepartmentId
+    && departmentOptions.value.some((option) => option.value === queryDepartmentId)
   ) {
     departmentId.value = queryDepartmentId
     return

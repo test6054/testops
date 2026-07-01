@@ -6,12 +6,12 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ReportVO } from '@/apis/quality/report'
-import { reportApi } from '@/apis/quality/report'
 import type { ReportStatus, ReportType } from '@/apis/quality/types'
-import { REPORT_TYPE_LABEL } from '@/apis/quality/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatSemester } from '@/types/enums/semester-enum'
 import { onMounted, ref, watch } from 'vue'
+import { reportApi } from '@/apis/quality/report'
+import { REPORT_TYPE_LABEL } from '@/apis/quality/types'
+import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { requireAllPages } from './page-contract'
@@ -40,7 +40,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: ReportVO]
+  "change": [value: string | null, option?: ReportVO]
 }>()
 
 const options = ref<ReportVO[]>([])
@@ -125,12 +125,9 @@ defineExpose({ reload: loadOptions })
   >
     <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.title">
       {{ opt.title }}
-      <span v-if="opt.reportType" class="dp-selector-option-meta"
-        >· {{ reportTypeLabel(opt.reportType) }}</span
-      >
+      <span v-if="opt.reportType" class="dp-selector-option-meta">· {{ reportTypeLabel(opt.reportType) }}</span>
       <span v-if="opt.schoolYear" class="dp-selector-option-meta">
-        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ formatSemester(opt.semester) }}</span
-        >)
+        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ formatSemester(opt.semester) }}</span>)
       </span>
     </a-select-option>
   </a-select>

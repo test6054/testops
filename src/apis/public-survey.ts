@@ -4,11 +4,11 @@
  * 后端路径：/api/public/survey/:token
  */
 import type { IndirectEvaluationItemType } from '@/types/enums/indirect-evaluation-item-type-enum'
+import http from '@/config/axios'
 import {
   formatPublicSurveyItemType,
   PUBLIC_SURVEY_ITEM_TYPE_LABEL
 } from '@/types/enums/indirect-evaluation-item-type-enum'
-import http from '@/config/axios'
 
 /** 公开 / 间接评价共用题项类型 */
 export type PublicSurveyItemType = IndirectEvaluationItemType

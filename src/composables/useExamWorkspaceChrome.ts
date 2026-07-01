@@ -1,12 +1,12 @@
 import type { ComputedRef, Ref } from 'vue'
-import { computed, ref, watch } from 'vue'
 import type { ExamDetailVO } from '@/apis/mark/exam'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
 import type { MarkingProgressVO, WorkbenchStageSnapshotVO } from '@/apis/mark/exam-progress'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
 import { MARK_STAGE_TITLE } from '@/constants/mark-workspace-nav'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
@@ -119,8 +119,8 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
       return false
     }
     return (
-      Boolean(primaryNextAction.value) ||
-      Boolean(options.suggestedStageKey.value && options.examId.value)
+      Boolean(primaryNextAction.value)
+      || Boolean(options.suggestedStageKey.value && options.examId.value)
     )
   })
 
@@ -255,7 +255,6 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
     goSuggestedStageByKey,
     onJourneySelect,
     navigateMetric,
-    loadExamDetail,
     refreshChrome,
   }
 }
