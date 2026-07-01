@@ -5,14 +5,14 @@ import type {
   PortfolioKeyTeacherRegistryStatus,
   PortfolioKeyTeacherRegistryType,
 } from '@/apis/portfolio/enums'
-import type { PortfolioKeyTeacherRegistryVO } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL,
   PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_LABEL,
 } from '@/apis/portfolio/enums'
+import type { PortfolioKeyTeacherRegistryVO } from '@/apis/portfolio/teacher-platform'
 import { portfolioKeyTeacherApi } from '@/apis/portfolio/teacher-platform'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -26,8 +26,9 @@ import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const REGISTRY_TABS = (Object.keys(PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_LABEL) as PortfolioKeyTeacherRegistryType[])
-  .map(key => ({ key, label: PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_LABEL[key] }))
+const REGISTRY_TABS = (
+  Object.keys(PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_LABEL) as PortfolioKeyTeacherRegistryType[]
+).map((key) => ({ key, label: PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_LABEL[key] }))
 
 type RegistryType = PortfolioKeyTeacherRegistryType
 
@@ -41,7 +42,8 @@ const form = reactive({
   appointYear: '',
   dutyScope: '',
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
 
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
@@ -65,12 +67,10 @@ async function loadPage() {
       registryType: activeType.value,
     })
     rows.value = readPageList(page, '加载骨干带头人登记失败')
-    await hydrateTeacherLabels(rows.value.map(row => row.teacherUserId ?? ''))
-  }
-  catch (error) {
+    await hydrateTeacherLabels(rows.value.map((row) => row.teacherUserId ?? ''))
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -96,8 +96,7 @@ async function saveRegistry() {
     form.appointYear = ''
     form.dutyScope = ''
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -107,8 +106,7 @@ async function revokeRegistry(id: string) {
     await portfolioKeyTeacherApi.revoke({ id })
     message.success('已作废')
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -118,8 +116,7 @@ async function exportRoster() {
     const result = await portfolioKeyTeacherApi.exportRoster({ registryType: activeType.value })
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -135,11 +132,7 @@ onMounted(loadPage)
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        title="骨干/带头人登记"
-      />
+      <ContextBar layout="workbench" show-title title="骨干/带头人登记" />
     </template>
     <UiCard>
       <a-tabs :active-key="activeType" @change="(k: Key) => switchType(String(k) as RegistryType)">
@@ -160,15 +153,17 @@ onMounted(loadPage)
         <a-input v-model:value="form.majorGroupName" placeholder="专业群" style="width: 140px" />
         <a-input v-model:value="form.appointYear" placeholder="聘任年份" style="width: 100px" />
         <a-input v-model:value="form.dutyScope" placeholder="职责范围" style="width: 180px" />
-        <UiButton variant="primary" @click="saveRegistry">
-          登记
-        </UiButton>
-        <UiButton @click="exportRoster">
-          导出台账
-        </UiButton>
+        <UiButton variant="primary" @click="saveRegistry"> 登记 </UiButton>
+        <UiButton @click="exportRoster"> 导出台账 </UiButton>
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无骨干教师记录" />
-      <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
+      <UiDataTable
+        :columns="columns"
+        :data-source="rows"
+        :loading="loading"
+        row-key="id"
+        style="margin-top: 16px"
+      >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
             {{ teacherLabel(record.teacherUserId) }}
@@ -177,9 +172,7 @@ onMounted(loadPage)
             {{ registryStatusLabel(record.registryStatus) }}
           </template>
           <template v-else-if="column.key === 'actions' && record.registryStatus === 'ACTIVE'">
-            <UiTextAction @click="revokeRegistry(record.id)">
-              作废
-            </UiTextAction>
+            <UiTextAction @click="revokeRegistry(record.id)"> 作废 </UiTextAction>
           </template>
         </template>
       </UiDataTable>

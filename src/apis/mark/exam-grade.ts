@@ -1,7 +1,9 @@
 import type { FinalScoreStatusCode } from './final-score-status'
+import { FINAL_SCORE_STATUS_LABEL } from './final-score-status'
 import type { GradeStatusCode } from './grade-status'
 import type { ObjectiveResultCode } from './objective-result'
 import type { QuestionTypeCode } from './question-type'
+import { QUESTION_TYPE_LABEL } from './question-type'
 /**
  * 阅卷考试题目评分确认与 AI 复评 API - 对接 /api/mark/exams/question-grades/*。
  */
@@ -9,8 +11,6 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 import { assertUserFacingFiniteNumber, assertUserFacingText } from '@/utils/contract-guard'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import { FINAL_SCORE_STATUS_LABEL } from './final-score-status'
-import { QUESTION_TYPE_LABEL } from './question-type'
 
 const EXAM_SCORE_DATA_ERROR = '成绩数据异常，请刷新后重试'
 

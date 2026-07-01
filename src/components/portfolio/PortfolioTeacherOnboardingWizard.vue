@@ -80,21 +80,13 @@
       </UiCard>
 
       <div class="portfolio-onboarding-wizard__actions">
-        <UiButton variant="ghost" @click="handleDismiss">
-          稍后继续
-        </UiButton>
-        <UiButton v-if="currentStep > 1" variant="outline" @click="prevStep">
-          上一步
-        </UiButton>
+        <UiButton variant="ghost" @click="handleDismiss"> 稍后继续 </UiButton>
+        <UiButton v-if="currentStep > 1" variant="outline" @click="prevStep"> 上一步 </UiButton>
         <UiButton v-if="currentStep === 4 && templateReady" variant="outline" @click="goDemoIntake">
           示范采集
         </UiButton>
-        <UiButton v-if="currentStep < 5" @click="nextStep">
-          下一步
-        </UiButton>
-        <UiButton v-else :loading="completing" @click="handleComplete">
-          完成引导
-        </UiButton>
+        <UiButton v-if="currentStep < 5" @click="nextStep"> 下一步 </UiButton>
+        <UiButton v-else :loading="completing" @click="handleComplete"> 完成引导 </UiButton>
       </div>
     </template>
   </div>
@@ -163,8 +155,10 @@ const stepTitle = computed(() => {
   return `步骤 ${currentStep.value} · ${titles[currentStep.value - 1]}`
 })
 
-function mapTreeNodes(nodes: PortfolioArchiveCategoryTreeNodeVO[]): Array<{ key: string, title: string, children?: ReturnType<typeof mapTreeNodes> }> {
-  return nodes.map(node => ({
+function mapTreeNodes(
+  nodes: PortfolioArchiveCategoryTreeNodeVO[],
+): Array<{ key: string; title: string; children?: ReturnType<typeof mapTreeNodes> }> {
+  return nodes.map((node) => ({
     key: node.id,
     title: node.categoryName,
     children: node.children?.length ? mapTreeNodes(node.children) : undefined,
@@ -175,7 +169,8 @@ const interactiveTreeData = computed(() => mapTreeNodes(categoryTree.value))
 const reviewTreeData = computed(() => mapTreeNodes(reviewContent.value?.categoryTree ?? []))
 
 const teacherRequest = computed(() =>
-  targetTeacherId.value ? { teacherId: targetTeacherId.value } : {})
+  targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+)
 
 async function loadState() {
   loading.value = true
@@ -187,11 +182,9 @@ async function loadState() {
     if (completedReadonly.value) {
       await loadReviewContent()
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载引导状态失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -199,17 +192,15 @@ async function loadState() {
 async function loadReviewContent() {
   try {
     reviewContent.value = await portfolioOnboardingApi.getReviewContent(teacherRequest.value)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载引导回顾内容失败')
   }
 }
 
 async function loadCategoryTree() {
   try {
-    categoryTree.value = await portfolioArchiveTemplateApi.listCategoryTree() ?? []
-  }
-  catch (error) {
+    categoryTree.value = (await portfolioArchiveTemplateApi.listCategoryTree()) ?? []
+  } catch (error) {
     showUserError(error, '加载档案分类树失败')
   }
 }
@@ -217,8 +208,7 @@ async function loadCategoryTree() {
 async function loadReadiness() {
   try {
     readiness.value = await portfolioArchiveTemplateApi.getTeacherReadiness()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载模板就绪状态失败')
   }
 }
@@ -231,8 +221,7 @@ async function loadPreviewFields(categoryId: string) {
   try {
     const published = await portfolioArchiveTemplateApi.listPublishedFields({ categoryId })
     previewFields.value = published.targetFields
-  }
-  catch (error) {
+  } catch (error) {
     previewFields.value = []
     showUserError(error, '加载字段规格失败')
   }
@@ -265,8 +254,7 @@ async function handleDismiss() {
       path: '/portfolio/teacher/home',
       query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
     })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '保存稍后继续失败')
   }
 }
@@ -281,11 +269,9 @@ async function handleComplete() {
       path: '/portfolio/teacher/home',
       query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
     })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '完成引导失败')
-  }
-  finally {
+  } finally {
     completing.value = false
   }
 }
@@ -305,7 +291,12 @@ watch(previewCategoryId, (value) => {
 })
 
 watch(
-  () => [props.readonlyMode, props.blockedByTemplate, props.blockedByReadiness, targetTeacherId.value],
+  () => [
+    props.readonlyMode,
+    props.blockedByTemplate,
+    props.blockedByReadiness,
+    targetTeacherId.value,
+  ],
   () => {
     if (props.readonlyMode || props.blockedByTemplate || props.blockedByReadiness) {
       if (props.readonlyMode) {

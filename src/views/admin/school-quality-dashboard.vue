@@ -1,9 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        title="校级质量分析"
-      >
+      <ContextBar title="校级质量分析">
         <template #status>
           <UiTag tone="orange" size="sm">教学 / 命题 / 阅卷</UiTag>
         </template>

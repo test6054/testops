@@ -36,18 +36,21 @@ defineOptions({
   name: 'UiPageHeader',
 })
 
-const props = withDefaults(defineProps<{
-  title: string
-  subtitle?: string
-  showBack?: boolean
-  backText?: string
-  divided?: boolean
-}>(), {
-  subtitle: '',
-  showBack: false,
-  backText: '返回',
-  divided: false,
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    subtitle?: string
+    showBack?: boolean
+    backText?: string
+    divided?: boolean
+  }>(),
+  {
+    subtitle: '',
+    showBack: false,
+    backText: '返回',
+    divided: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'back'): void

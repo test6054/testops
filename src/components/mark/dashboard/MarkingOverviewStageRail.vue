@@ -45,7 +45,7 @@ const stages = computed<WorkbenchStage[]>(() => {
 })
 
 const activeStageKey = computed(() => {
-  const active = stages.value.find(stage => stage.status === 'active')
+  const active = stages.value.find((stage) => stage.status === 'active')
   return active?.key ?? ''
 })
 </script>

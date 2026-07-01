@@ -6,8 +6,8 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { TrainingObjectiveVO } from '@/apis/quality/training-objective'
-import { computed, onMounted, ref, watch } from 'vue'
 import { trainingObjectiveApi } from '@/apis/quality/training-objective'
+import { computed, onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
 
@@ -29,7 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: TrainingObjectiveVO]
+  change: [value: string | null, option?: TrainingObjectiveVO]
 }>()
 
 const options = ref<TrainingObjectiveVO[]>([])

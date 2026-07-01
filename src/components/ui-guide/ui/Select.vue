@@ -23,20 +23,23 @@ defineOptions({
 
 const modelValue = defineModel<UiOptionValue | undefined>()
 
-const props = withDefaults(defineProps<{
-  options: UiSelectOption[]
-  placeholder?: string
-  allowClear?: boolean
-  allowSearch?: boolean
-  filterOption?: boolean
-  disabled?: boolean
-  loading?: boolean
-}>(), {
-  placeholder: '请选择',
-  allowClear: true,
-  allowSearch: false,
-  filterOption: true,
-  disabled: false,
-  loading: false,
-})
+const props = withDefaults(
+  defineProps<{
+    options: UiSelectOption[]
+    placeholder?: string
+    allowClear?: boolean
+    allowSearch?: boolean
+    filterOption?: boolean
+    disabled?: boolean
+    loading?: boolean
+  }>(),
+  {
+    placeholder: '请选择',
+    allowClear: true,
+    allowSearch: false,
+    filterOption: true,
+    disabled: false,
+    loading: false,
+  },
+)
 </script>

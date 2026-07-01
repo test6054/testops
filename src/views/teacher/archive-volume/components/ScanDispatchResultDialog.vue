@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { ScanDispatchTicketStatusCode } from '@/apis/mark/scanner-dispatch'
-import { message } from 'ant-design-vue'
-import AQrcode from 'ant-design-vue/es/qrcode'
-import { computed, ref, watch } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   cancelScanDispatch,
   pageScanDispatchTickets,
   SCAN_DISPATCH_TICKET_STATUS_LABEL,
 } from '@/apis/mark/scanner-dispatch'
+import { message } from 'ant-design-vue'
+import AQrcode from 'ant-design-vue/es/qrcode'
+import { computed, ref, watch } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -30,7 +30,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "cancelled": []
+  cancelled: []
 }>()
 
 const cancelling = ref(false)
@@ -46,12 +46,12 @@ const otherPendingTickets = computed(() => {
   if (!currentTicketId) {
     return pendingTickets.value
   }
-  return pendingTickets.value.filter(item => item.ticketId !== currentTicketId)
+  return pendingTickets.value.filter((item) => item.ticketId !== currentTicketId)
 })
 
 watch(
   () => props.open,
-  open => {
+  (open) => {
     if (open && props.volumeId) {
       void loadPendingTickets()
     }
@@ -69,8 +69,8 @@ async function loadPendingTickets() {
     })
     const items = readPageList(page, '派单列表加载失败')
     pendingTickets.value = items
-      .filter(item => item.ticketId)
-      .map(item => ({
+      .filter((item) => item.ticketId)
+      .map((item) => ({
         ticketId: item.ticketId!,
         kioskUrl: item.kioskDispatchUrl
           ? `${window.location.origin}${item.kioskDispatchUrl}`
@@ -79,8 +79,7 @@ async function loadPendingTickets() {
         traceLabelCode: item.traceLabelCode,
         status: item.status,
       }))
-  }
-  catch {
+  } catch {
     pendingTickets.value = []
   }
 }
@@ -89,8 +88,7 @@ async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text)
     message.success('已复制')
-  }
-  catch {
+  } catch {
     message.error('复制失败，请手动选择复制')
   }
 }
@@ -103,11 +101,9 @@ async function downloadTraceLabel() {
   downloading.value = true
   try {
     await downloadFile({ nodeId: fileId })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '追溯标签下载失败')
-  }
-  finally {
+  } finally {
     downloading.value = false
   }
 }
@@ -122,11 +118,9 @@ async function handleCancel() {
     message.success('派单已取消')
     emit('cancelled')
     emit('update:open', false)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     cancelling.value = false
   }
 }
@@ -157,8 +151,12 @@ async function handleCancel() {
       <p class="scan-dispatch-result__url">{{ payload.kioskUrl }}</p>
       <p v-if="previewUrl" class="scan-dispatch-result__preview">预览链接：{{ previewUrl }}</p>
       <div class="scan-dispatch-result__actions">
-        <UiButton size="sm" variant="primary" @click="copyText(payload.kioskUrl)">复制分机 URL</UiButton>
-        <UiButton v-if="previewUrl" size="sm" variant="outline" @click="copyText(previewUrl)">复制预览链接</UiButton>
+        <UiButton size="sm" variant="primary" @click="copyText(payload.kioskUrl)"
+          >复制分机 URL</UiButton
+        >
+        <UiButton v-if="previewUrl" size="sm" variant="outline" @click="copyText(previewUrl)"
+          >复制预览链接</UiButton
+        >
         <UiButton
           v-if="payload.traceLabelFileId"
           size="sm"

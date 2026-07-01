@@ -11,9 +11,7 @@ const activation = workflow.deviceActivation
 
 const visible = computed(() => workflow.needsActivationGate.value)
 const canActivate = computed(() => workflow.canActivateAgent.value)
-const loading = computed(
-  () => workflow.loading.value || activation.loading.value,
-)
+const loading = computed(() => workflow.loading.value || activation.loading.value)
 
 function handleActivated() {
   void workflow.activateAgent()

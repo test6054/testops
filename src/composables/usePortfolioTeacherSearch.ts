@@ -5,7 +5,7 @@ import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
 import {
   formatPortfolioTeacherDetailSelectLabel,
-  toPortfolioTeacherSelectOption,
+  toPortfolioTeacherSelectOption
 } from '@/utils/portfolio-teacher-display'
 
 /**

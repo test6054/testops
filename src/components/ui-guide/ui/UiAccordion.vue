@@ -38,10 +38,7 @@
                   {{ item.badgeLabel }}
                 </UiTag>
               </div>
-              <div
-                v-if="item.description || item.helper"
-                class="ui-accordion__description"
-              >
+              <div v-if="item.description || item.helper" class="ui-accordion__description">
                 {{ item.description || item.helper }}
               </div>
             </div>
@@ -74,21 +71,24 @@ defineOptions({
 
 const activeKeys = defineModel<string[] | string | number[] | number | undefined>('activeKeys')
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  items?: UiAccordionItem[]
-  accordion?: boolean
-  compact?: boolean
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  items: () => [],
-  accordion: false,
-  compact: false,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    items?: UiAccordionItem[]
+    accordion?: boolean
+    compact?: boolean
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    items: () => [],
+    accordion: false,
+    compact: false,
+  },
+)
 
 const slots = useSlots()
 

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import type { ScanDispatchTicketStatusCode } from '@/apis/mark/scanner-dispatch'
+import { createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
-import { createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
@@ -17,13 +17,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "created": [payload: {
-    ticketId: string
-    kioskUrl: string
-    traceLabelFileId?: string
-    traceLabelCode?: string
-    status?: ScanDispatchTicketStatusCode
-  }]
+  created: [
+    payload: {
+      ticketId: string
+      kioskUrl: string
+      traceLabelFileId?: string
+      traceLabelCode?: string
+      status?: ScanDispatchTicketStatusCode
+    },
+  ]
 }>()
 
 const submitting = ref(false)
@@ -42,7 +44,7 @@ const kioskBaseUrl = computed(() => {
 
 watch(
   () => props.open,
-  open => {
+  (open) => {
     if (open) {
       form.physicalStorageLocation = ''
       form.physicalLocationNote = ''
@@ -87,11 +89,9 @@ async function handleSubmit() {
       status: ticket.status,
     })
     emit('update:open', false)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -120,7 +120,9 @@ async function handleSubmit() {
         <a-checkbox v-model:checked="form.generateTraceLabel">生成追溯标签 PDF</a-checkbox>
       </a-form-item>
     </a-form>
-    <p class="scan-dispatch-dialog__note">工位通过分机 URL / QR 进入，不使用同浏览器 router.push。</p>
+    <p class="scan-dispatch-dialog__note">
+      工位通过分机 URL / QR 进入，不使用同浏览器 router.push。
+    </p>
   </a-modal>
 </template>
 

@@ -18,18 +18,10 @@
 
     <template #meta>
       <slot name="meta">
-        <UiTag
-          v-if="props.deliverableCount !== undefined"
-          tone="gray"
-          variant="outline"
-        >
+        <UiTag v-if="props.deliverableCount !== undefined" tone="gray" variant="outline">
           {{ props.deliverableCount }} 个交付物
         </UiTag>
-        <UiTag
-          v-if="props.periodLabel"
-          tone="gray"
-          variant="outline"
-        >
+        <UiTag v-if="props.periodLabel" tone="gray" variant="outline">
           {{ props.periodLabel }}
         </UiTag>
       </slot>
@@ -59,20 +51,23 @@ defineOptions({ name: 'UiStageEditorShell' })
 
 const openModel = defineModel<boolean>('open', { default: true })
 
-const props = withDefaults(defineProps<{
-  title: string
-  subtitle?: string
-  deliverableCount?: number
-  periodLabel?: string
-  collapsible?: boolean
-  togglePosition?: 'left' | 'right'
-}>(), {
-  subtitle: '',
-  deliverableCount: undefined,
-  periodLabel: '',
-  collapsible: true,
-  togglePosition: 'right',
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    subtitle?: string
+    deliverableCount?: number
+    periodLabel?: string
+    collapsible?: boolean
+    togglePosition?: 'left' | 'right'
+  }>(),
+  {
+    subtitle: '',
+    deliverableCount: undefined,
+    periodLabel: '',
+    collapsible: true,
+    togglePosition: 'right',
+  },
+)
 
 const emit = defineEmits<{
   (e: 'toggle', value: boolean): void

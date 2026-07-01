@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TreeProps } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioOrgAliasSaveRequest,
@@ -9,15 +10,14 @@ import type {
   PortfolioOrgTreeNodeVO,
   PortfolioOrgUnitSaveRequest,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioOrgApi } from '@/apis/portfolio/org'
 import {
   PORTFOLIO_ORG_ALIAS_TARGET_TYPE_LABEL,
   PORTFOLIO_ORG_TREE_NODE_TYPE_LABEL,
   PORTFOLIO_ORG_UNIT_TYPE_OPTIONS,
   PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES,
 } from '@/apis/portfolio/types'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { portfolioOrgApi } from '@/apis/portfolio/org'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -56,10 +56,12 @@ const { loading, treeRoots, loadTree } = usePortfolioOrgTree()
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 const authStore = useAuthStore()
 const userStore = useUserStore()
-const canManageTenant = computed(() => hasTeacherTenantPermission({
-  roleKey: authStore.userRole,
-  isTenantAdmin: userStore.isTenantAdmin,
-}))
+const canManageTenant = computed(() =>
+  hasTeacherTenantPermission({
+    roleKey: authStore.userRole,
+    isTenantAdmin: userStore.isTenantAdmin,
+  }),
+)
 const syncing = ref(false)
 const syncDiagnostics = ref<PortfolioOrgSyncInvalidUnitVO[]>([])
 const lastSyncLog = ref<PortfolioOrgSyncLogVO | null>(null)
@@ -90,15 +92,21 @@ function nodeTypeLabel(nodeType?: string) {
   if (!nodeType) {
     return '—'
   }
-  return strictEnumLabel(PORTFOLIO_ORG_TREE_NODE_TYPE_LABEL, nodeType as keyof typeof PORTFOLIO_ORG_TREE_NODE_TYPE_LABEL, '组织节点类型')
+  return strictEnumLabel(
+    PORTFOLIO_ORG_TREE_NODE_TYPE_LABEL,
+    nodeType as keyof typeof PORTFOLIO_ORG_TREE_NODE_TYPE_LABEL,
+    '组织节点类型',
+  )
 }
 
 function mapTree(nodes: PortfolioOrgTreeNodeVO[]): TreeNode[] {
-  return nodes.map(node => ({
+  return nodes.map((node) => ({
     key: node.portfolioOrgId ?? node.id,
     title: node.leaderUserName
       ? `${node.code ? `${node.name} (${node.code})` : node.name} · 负责人 ${node.leaderUserName}`
-      : (node.code ? `${node.name} (${node.code})` : node.name),
+      : node.code
+        ? `${node.name} (${node.code})`
+        : node.name,
     nodeType: node.nodeType,
     portfolioOrgId: node.portfolioOrgId,
     raw: node,
@@ -180,12 +188,12 @@ const canManageAlias = computed(() => {
   if (!node) {
     return false
   }
-  return node.nodeType === 'DEPARTMENT'
-    || node.nodeType === 'MAJOR'
-    || Boolean(node.portfolioOrgId)
+  return node.nodeType === 'DEPARTMENT' || node.nodeType === 'MAJOR' || Boolean(node.portfolioOrgId)
 })
 
-function resolveAliasTarget(node: PortfolioOrgTreeNodeVO): Pick<PortfolioOrgAliasSaveRequest, 'targetType' | 'targetId'> | null {
+function resolveAliasTarget(
+  node: PortfolioOrgTreeNodeVO,
+): Pick<PortfolioOrgAliasSaveRequest, 'targetType' | 'targetId'> | null {
   if (node.nodeType === 'DEPARTMENT') {
     return { targetType: 'EDU_USER_DEPARTMENT', targetId: node.id }
   }
@@ -206,7 +214,12 @@ function openUnitEditor(mode: 'create' | 'edit') {
     unitEditor.orgType = node.nodeType as PortfolioOrgUnitSaveRequest['orgType']
     unitEditor.orgName = node.name
     unitEditor.orgCode = node.code
-    if (node.parentNodeType && PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES.includes(node.parentNodeType as typeof PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES[number])) {
+    if (
+      node.parentNodeType &&
+      PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES.includes(
+        node.parentNodeType as (typeof PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES)[number],
+      )
+    ) {
       unitEditor.parentPortfolioOrgId = node.parentId
     } else {
       unitEditor.parentPortfolioOrgId = undefined
@@ -222,11 +235,13 @@ function openUnitEditor(mode: 'create' | 'edit') {
     unitEditor.orgName = ''
     unitEditor.orgCode = ''
     unitEditor.parentPortfolioOrgId = selectedNode.value?.portfolioOrgId
-    unitEditor.anchorDepartmentId = selectedRaw.value?.anchorDepartmentId
-      ?? (selectedRaw.value?.nodeType === 'DEPARTMENT' ? selectedRaw.value.id : undefined)
-    unitEditor.anchorMajorId = selectedRaw.value?.nodeType === 'MAJOR'
-      ? selectedRaw.value.id
-      : selectedRaw.value?.anchorMajorId
+    unitEditor.anchorDepartmentId =
+      selectedRaw.value?.anchorDepartmentId ??
+      (selectedRaw.value?.nodeType === 'DEPARTMENT' ? selectedRaw.value.id : undefined)
+    unitEditor.anchorMajorId =
+      selectedRaw.value?.nodeType === 'MAJOR'
+        ? selectedRaw.value.id
+        : selectedRaw.value?.anchorMajorId
     unitEditor.sortOrder = 0
     unitEditor.status = 'ACTIVE'
     unitEditor.leaderUserId = ''
@@ -330,26 +345,35 @@ onMounted(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        title="组织管理"
-        :subtitle="contextSubtitle"
-      >
+      <ContextBar layout="workbench" show-title title="组织管理" :subtitle="contextSubtitle">
         <template #actions>
           <UiButton v-if="canManageTenant" :loading="syncing" @click="handleSync">
             校验主数据挂接
           </UiButton>
-          <UiButton v-if="canManageTenant" variant="primary" :disabled="!selectedNode" @click="openUnitEditor('create')">
+          <UiButton
+            v-if="canManageTenant"
+            variant="primary"
+            :disabled="!selectedNode"
+            @click="openUnitEditor('create')"
+          >
             新增扩展组织
           </UiButton>
           <UiButton v-if="canManageTenant && canManageUnit" @click="openUnitEditor('edit')">
             编辑扩展组织
           </UiButton>
-          <UiButton v-if="canManageTenant" :disabled="!canManageAlias" @click="openAliasEditor('create')">
+          <UiButton
+            v-if="canManageTenant"
+            :disabled="!canManageAlias"
+            @click="openAliasEditor('create')"
+          >
             添加历史名称
           </UiButton>
-          <UiButton v-if="canManageTenant" status="danger" :disabled="!canManageUnit" @click="deleteSelectedUnit">
+          <UiButton
+            v-if="canManageTenant"
+            status="danger"
+            :disabled="!canManageUnit"
+            @click="deleteSelectedUnit"
+          >
             删除扩展组织
           </UiButton>
         </template>
@@ -376,13 +400,42 @@ onMounted(async () => {
       <UiCard title="节点详情" class="org-admin__detail">
         <template v-if="selectedRaw">
           <dl class="org-admin__meta">
-            <div><dt>名称</dt><dd>{{ selectedRaw.name }}</dd></div>
-            <div><dt>类型</dt><dd><UiTag tone="blue">{{ nodeTypeLabel(selectedRaw.nodeType) }}</UiTag></dd></div>
-            <div v-if="selectedRaw.code"><dt>编码</dt><dd>{{ selectedRaw.code }}</dd></div>
-            <div v-if="selectedRaw.anchorDepartmentId"><dt>挂接院系</dt><dd>{{ selectedRaw.anchorDepartmentId }}</dd></div>
-            <div v-if="selectedRaw.anchorMajorId"><dt>挂接专业</dt><dd>{{ selectedRaw.anchorMajorId }}</dd></div>
-            <div v-if="selectedRaw.portfolioOrgId"><dt>扩展组织 ID</dt><dd>{{ selectedRaw.portfolioOrgId }}</dd></div>
-            <div v-if="selectedRaw.leaderUserId"><dt>负责人</dt><dd>{{ selectedRaw.leaderTeacherNo ? `${selectedRaw.leaderUserName} · ${selectedRaw.leaderTeacherNo}` : selectedRaw.leaderUserName }}</dd></div>
+            <div>
+              <dt>名称</dt>
+              <dd>{{ selectedRaw.name }}</dd>
+            </div>
+            <div>
+              <dt>类型</dt>
+              <dd>
+                <UiTag tone="blue">{{ nodeTypeLabel(selectedRaw.nodeType) }}</UiTag>
+              </dd>
+            </div>
+            <div v-if="selectedRaw.code">
+              <dt>编码</dt>
+              <dd>{{ selectedRaw.code }}</dd>
+            </div>
+            <div v-if="selectedRaw.anchorDepartmentId">
+              <dt>挂接院系</dt>
+              <dd>{{ selectedRaw.anchorDepartmentId }}</dd>
+            </div>
+            <div v-if="selectedRaw.anchorMajorId">
+              <dt>挂接专业</dt>
+              <dd>{{ selectedRaw.anchorMajorId }}</dd>
+            </div>
+            <div v-if="selectedRaw.portfolioOrgId">
+              <dt>扩展组织 ID</dt>
+              <dd>{{ selectedRaw.portfolioOrgId }}</dd>
+            </div>
+            <div v-if="selectedRaw.leaderUserId">
+              <dt>负责人</dt>
+              <dd>
+                {{
+                  selectedRaw.leaderTeacherNo
+                    ? `${selectedRaw.leaderUserName} · ${selectedRaw.leaderTeacherNo}`
+                    : selectedRaw.leaderUserName
+                }}
+              </dd>
+            </div>
           </dl>
           <UiDataTable
             title="历史名称"
@@ -395,12 +448,8 @@ onMounted(async () => {
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'actions'">
                 <template v-if="canManageTenant">
-                  <UiTextAction @click="openAliasEditor('edit', record)">
-                    编辑
-                  </UiTextAction>
-                  <UiTextAction @click="deleteAlias(record)">
-                    删除
-                  </UiTextAction>
+                  <UiTextAction @click="openAliasEditor('edit', record)"> 编辑 </UiTextAction>
+                  <UiTextAction @click="deleteAlias(record)"> 删除 </UiTextAction>
                 </template>
               </template>
             </template>
@@ -458,7 +507,13 @@ onMounted(async () => {
       <a-form layout="vertical">
         <a-form-item label="目标类型">
           <a-input
-            :value="strictEnumLabel(PORTFOLIO_ORG_ALIAS_TARGET_TYPE_LABEL, aliasEditor.targetType, 'alias 目标类型')"
+            :value="
+              strictEnumLabel(
+                PORTFOLIO_ORG_ALIAS_TARGET_TYPE_LABEL,
+                aliasEditor.targetType,
+                'alias 目标类型',
+              )
+            "
             disabled
           />
         </a-form-item>

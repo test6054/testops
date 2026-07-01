@@ -1,6 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router'
-import Modal from 'ant-design-vue/es/modal'
 import { createRouter, createWebHistory } from 'vue-router'
+import Modal from 'ant-design-vue/es/modal'
 import { setupRouterGuard } from '@/router/guard'
 import { commonRoutes, errorRoutes } from '@/router/routes/common'
 import { constantRoutes } from '@/router/routes/constant'

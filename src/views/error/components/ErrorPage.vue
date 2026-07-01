@@ -50,11 +50,7 @@ function resolveHomePath(): string {
   if (role === RoleEnum.SUPER_ADMIN) {
     return '/teacher/dashboard'
   }
-  if (
-    role === RoleEnum.SCH_TECH
-    || role === RoleEnum.CROP_ADMIN
-    || role === RoleEnum.CROP_USER
-  ) {
+  if (role === RoleEnum.SCH_TECH || role === RoleEnum.CROP_ADMIN || role === RoleEnum.CROP_USER) {
     return '/teacher/dashboard'
   }
   return '/login'
@@ -68,11 +64,7 @@ const backLabel = computed(() => {
   if (role === RoleEnum.SUPER_ADMIN) {
     return '返回教学质量中心'
   }
-  if (
-    role === RoleEnum.SCH_TECH
-    || role === RoleEnum.CROP_ADMIN
-    || role === RoleEnum.CROP_USER
-  ) {
+  if (role === RoleEnum.SCH_TECH || role === RoleEnum.CROP_ADMIN || role === RoleEnum.CROP_USER) {
     return '返回教学质量中心'
   }
   return '返回登录'

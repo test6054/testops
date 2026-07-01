@@ -38,15 +38,14 @@ declare global {
  * @see https://github.com/vuejs/language-tools/issues/5161
  */
 import type { Component } from 'vue'
+import type { RoleEnum } from '@/utils/permission'
+import type { SeoMeta } from '@/utils/seo'
 
 declare module 'vue' {
   interface GlobalComponents {
     [key: string]: Component
   }
 }
-
-import type { RoleEnum } from '@/utils/permission'
-import type { SeoMeta } from '@/utils/seo'
 
 declare module 'vue-router' {
   interface RouteMeta {

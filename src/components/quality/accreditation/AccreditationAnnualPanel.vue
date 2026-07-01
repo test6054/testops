@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { AnnualEvaluationPlanSaveRequest, AnnualEvaluationPlanVO } from '@/apis/quality/accreditation'
+import type {
+  AnnualEvaluationPlanSaveRequest,
+  AnnualEvaluationPlanVO,
+} from '@/apis/quality/accreditation'
+import { accreditationApi } from '@/apis/quality/accreditation'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
-import { accreditationApi } from '@/apis/quality/accreditation'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -277,14 +280,10 @@ defineExpose({ openCreate, loadPlans })
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'required'">
-            {{
-              record.evaluationRequired ? '是' : '否'
-            }}
+            {{ record.evaluationRequired ? '是' : '否' }}
           </template>
           <template v-else-if="column.key === 'completed'">
-            {{
-              record.evaluationCompleted ? '是' : '否'
-            }}
+            {{ record.evaluationCompleted ? '是' : '否' }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiButton

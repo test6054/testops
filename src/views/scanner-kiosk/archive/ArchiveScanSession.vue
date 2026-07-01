@@ -31,18 +31,18 @@ const scanFlow = useWorkOrderScanFlow({
 
 const canStart = computed(() =>
   Boolean(
-    session.volumeId.value
-    && session.materialType.value
-    && bootstrap.selectedScannerId.value
-    && session.archiveContext.value != null
-    && session.archiveContext.value.canRegisterMaterial === true
-    && !lease.leaseLost.value,
+    session.volumeId.value &&
+    session.materialType.value &&
+    bootstrap.selectedScannerId.value &&
+    session.archiveContext.value != null &&
+    session.archiveContext.value.canRegisterMaterial === true &&
+    !lease.leaseLost.value,
   ),
 )
 const leaseLostMessage = '派单租约已失效，扫描会话可能已被中断，请返回队列'
 const jobMessage = computed(() => scanFlow.currentJob.value?.message ?? '')
-const physicalStorageLocation = computed(() =>
-  session.dispatchSnapshot.value?.physicalStorageLocation ?? '',
+const physicalStorageLocation = computed(
+  () => session.dispatchSnapshot.value?.physicalStorageLocation ?? '',
 )
 const traceLabelCode = computed(() => session.dispatchTraceLabelCode.value)
 
@@ -71,7 +71,7 @@ onMounted(async () => {
 
 watch(
   () => bootstrap.activation.isActivatedForMarkApis(),
-  activated => {
+  (activated) => {
     if (activated) {
       void session.loadContext()
     }
@@ -79,7 +79,12 @@ watch(
 )
 
 watch(
-  () => [session.dispatchTicketId.value, bootstrap.setup.value?.scannerDeviceId, bootstrap.setup.value?.scannerStationId] as const,
+  () =>
+    [
+      session.dispatchTicketId.value,
+      bootstrap.setup.value?.scannerDeviceId,
+      bootstrap.setup.value?.scannerStationId,
+    ] as const,
   ([ticketId, deviceId, stationId]) => {
     if (ticketId && deviceId && stationId) {
       lease.startHeartbeat(ticketId, deviceId, stationId, { onLeaseLost: handleLeaseLost })
@@ -96,7 +101,7 @@ onUnmounted(() => {
 
 watch(
   () => scanFlow.isReported.value,
-  reported => {
+  (reported) => {
     if (!reported) {
       return
     }
@@ -117,7 +122,7 @@ watch(
 
 watch(
   () => scanFlow.lifecycle.value?.status,
-  status => {
+  (status) => {
     if (status !== 'DISCARDED' || !session.dispatchTicketId.value) {
       return
     }
@@ -172,7 +177,11 @@ function goBack() {
       <label>
         扫描仪
         <select v-model="bootstrap.selectedScannerId.value" class="archive-scan-session__select">
-          <option v-for="scanner in bootstrap.scanners.value" :key="scanner.localScannerId" :value="scanner.localScannerId">
+          <option
+            v-for="scanner in bootstrap.scanners.value"
+            :key="scanner.localScannerId"
+            :value="scanner.localScannerId"
+          >
             {{ scanner.displayName }}
           </option>
         </select>
@@ -238,14 +247,18 @@ function goBack() {
     </section>
 
     <p v-if="scanFlow.lifecycle.value?.batchExternalNo" class="archive-scan-session__hint">
-      工单 {{ scanFlow.lifecycle.value.batchExternalNo }}；
-      状态 {{ scanFlow.currentJob.value?.status ?? '等待 Agent' }}；
-      已扫 {{ scanFlow.currentJob.value?.scannedPages ?? 0 }} 页
+      工单 {{ scanFlow.lifecycle.value.batchExternalNo }}； 状态
+      {{ scanFlow.currentJob.value?.status ?? '等待 Agent' }}； 已扫
+      {{ scanFlow.currentJob.value?.scannedPages ?? 0 }} 页
       <span v-if="jobMessage"> — {{ jobMessage }}</span>
     </p>
     <p v-if="lease.leaseLost.value" class="archive-scan-session__error">{{ leaseLostMessage }}</p>
-    <p v-if="scanFlow.errorMessage.value" class="archive-scan-session__error">{{ scanFlow.errorMessage.value }}</p>
-    <p v-if="scanFlow.successMessage.value" class="archive-scan-session__success">{{ scanFlow.successMessage.value }}</p>
+    <p v-if="scanFlow.errorMessage.value" class="archive-scan-session__error">
+      {{ scanFlow.errorMessage.value }}
+    </p>
+    <p v-if="scanFlow.successMessage.value" class="archive-scan-session__success">
+      {{ scanFlow.successMessage.value }}
+    </p>
   </div>
 </template>
 

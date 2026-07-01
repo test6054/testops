@@ -125,7 +125,10 @@
                 {{ question.aiDiagnostic }}
               </a-typography-paragraph>
             </div>
-            <div v-else-if="isWholeQuestionAiScorePending(question)" class="marking-score-panel__ai-pending">
+            <div
+              v-else-if="isWholeQuestionAiScorePending(question)"
+              class="marking-score-panel__ai-pending"
+            >
               <a-typography-text type="secondary">AI 评分加载中...</a-typography-text>
             </div>
             <a-textarea
@@ -171,7 +174,12 @@
           >
             {{ questionViewHalfScoreLabel }}
           </UiButton>
-          <UiButton size="sm" variant="outline" :disabled="isReadOnly" @click="emit('quick-zero-score')">
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="isReadOnly"
+            @click="emit('quick-zero-score')"
+          >
             零分
           </UiButton>
           <UiButton
@@ -192,12 +200,7 @@
           >
             采纳并提交
           </UiButton>
-          <UiButton
-            v-else-if="isQuestionViewAiScorePending"
-            size="sm"
-            variant="outline"
-            disabled
-          >
+          <UiButton v-else-if="isQuestionViewAiScorePending" size="sm" variant="outline" disabled>
             AI 评分加载中...
           </UiButton>
           <UiButton
@@ -218,7 +221,10 @@
             AI 历史
           </UiButton>
         </a-space>
-        <div v-if="!isReadOnly && canSubmit && questionView?.fullScore != null" class="marking-score-panel__quick-digits">
+        <div
+          v-if="!isReadOnly && canSubmit && questionView?.fullScore != null"
+          class="marking-score-panel__quick-digits"
+        >
           <UiButton
             v-for="digit in quickDigitScores(questionView.fullScore)"
             :key="digit"
@@ -255,7 +261,10 @@
 
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type { MarkingQuestionViewVO, QuestionMarkingGroupQuestionVO } from '@/apis/mark/marking-organization'
+import type {
+  MarkingQuestionViewVO,
+  QuestionMarkingGroupQuestionVO,
+} from '@/apis/mark/marking-organization'
 import type { WholeQuestionForm } from '@/composables/useWholePaperGallery'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import { ref, watch } from 'vue'
@@ -269,7 +278,9 @@ defineOptions({ name: 'MarkingScorePanel' })
 const scoreModel = defineModel<number | undefined>('score')
 const annotationNoteModel = defineModel<string | undefined>('annotationNote')
 
-const expandedWholeQuestionKeyModel = defineModel<string>('expandedWholeQuestionKey', { required: true })
+const expandedWholeQuestionKeyModel = defineModel<string>('expandedWholeQuestionKey', {
+  required: true,
+})
 
 const props = defineProps<{
   bindFormRef?: (el: FormInstance | null) => void

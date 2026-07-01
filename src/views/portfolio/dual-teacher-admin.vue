@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDualTeacherApplicationStatus } from '@/apis/portfolio/enums'
-import type { PortfolioDualTeacherApplicationVO, PortfolioDualTeacherEligibilityFreezeVO } from '@/apis/portfolio/teacher-platform'
+import { PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL } from '@/apis/portfolio/enums'
+import type {
+  PortfolioDualTeacherApplicationVO,
+  PortfolioDualTeacherEligibilityFreezeVO,
+} from '@/apis/portfolio/teacher-platform'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import { message, Modal } from 'ant-design-vue'
 import { computed, onMounted, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL } from '@/apis/portfolio/enums'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -28,10 +31,12 @@ const authStore = useAuthStore()
 const userStore = useUserStore()
 const collegeEligibilityById = ref<Record<string, PortfolioDualTeacherEligibilityFreezeVO>>({})
 const canCollegeReview = computed(() => authStore.userRole === RoleEnum.CROP_ADMIN)
-const canAcademicReview = computed(() => hasTeacherTenantPermission({
-  roleKey: authStore.userRole,
-  isTenantAdmin: userStore.isTenantAdmin,
-}))
+const canAcademicReview = computed(() =>
+  hasTeacherTenantPermission({
+    roleKey: authStore.userRole,
+    isTenantAdmin: userStore.isTenantAdmin,
+  }),
+)
 const canExport = computed(() => canAcademicReview.value)
 
 function statusLabel(status: string) {
@@ -52,7 +57,12 @@ const columns: ColumnsType = [
   { title: '状态', dataIndex: 'applicationStatus', key: 'applicationStatus', width: 120 },
   { title: '等级', dataIndex: 'certLevel', key: 'certLevel', width: 80 },
   { title: '认定年度', dataIndex: 'certYear', key: 'certYear', width: 88 },
-  { title: '实践天数', dataIndex: 'enterprisePracticeDays', key: 'enterprisePracticeDays', width: 88 },
+  {
+    title: '实践天数',
+    dataIndex: 'enterprisePracticeDays',
+    key: 'enterprisePracticeDays',
+    width: 88,
+  },
   { title: '认定资格', key: 'eligibilityFreeze', width: 120 },
   { title: '操作', key: 'actions', width: 260 },
 ]
@@ -62,11 +72,9 @@ async function loadPage() {
   try {
     const page = await portfolioDualTeacherApi.page({ pageNum: 1, pageSize: 50 })
     rows.value = readPageList(page, '加载双师申请失败')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -76,8 +84,7 @@ async function previewEligibility(id: string) {
     const preview = await portfolioDualTeacherApi.previewEligibilityGate({ id })
     collegeEligibilityById.value = { ...collegeEligibilityById.value, [id]: preview }
     showEligibilityPreviewModal(preview)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -90,9 +97,7 @@ function canCollegeApprove(record: PortfolioDualTeacherApplicationVO): boolean {
 }
 
 function showEligibilityPreviewModal(preview: PortfolioDualTeacherEligibilityFreezeVO) {
-  const gapText = preview.gapItems?.length
-    ? preview.gapItems.join('；')
-    : '无缺口项'
+  const gapText = preview.gapItems?.length ? preview.gapItems.join('；') : '无缺口项'
   Modal.info({
     title: preview.eligible ? '认定资格：满足' : '认定资格：未满足',
     content: `${preview.explainText ?? ''}\n缺口：${gapText}`,
@@ -110,32 +115,32 @@ function canAcademicApprove(record: PortfolioDualTeacherApplicationVO): boolean 
 }
 
 async function runWorkflow(
-  action: 'submit' | 'collegeApprove' | 'collegeReturn' | 'academicApprove' | 'academicReturn' | 'academicReject',
+  action:
+    | 'submit'
+    | 'collegeApprove'
+    | 'collegeReturn'
+    | 'academicApprove'
+    | 'academicReturn'
+    | 'academicReject',
   id: string,
 ) {
   try {
     if (action === 'submit') {
       await portfolioDualTeacherApi.submit({ id })
-    }
-    else if (action === 'collegeApprove') {
+    } else if (action === 'collegeApprove') {
       await portfolioDualTeacherApi.collegeApprove({ id })
-    }
-    else if (action === 'collegeReturn') {
+    } else if (action === 'collegeReturn') {
       await portfolioDualTeacherApi.collegeReturn({ id })
-    }
-    else if (action === 'academicApprove') {
+    } else if (action === 'academicApprove') {
       await portfolioDualTeacherApi.academicApprove({ id })
-    }
-    else if (action === 'academicReturn') {
+    } else if (action === 'academicReturn') {
       await portfolioDualTeacherApi.academicReturn({ id })
-    }
-    else {
+    } else {
       await portfolioDualTeacherApi.academicReject({ id })
     }
     message.success('操作成功')
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -145,8 +150,7 @@ async function exportRoster() {
     const result = await portfolioDualTeacherApi.exportRoster()
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -165,9 +169,7 @@ onMounted(loadPage)
       <ContextBar show-title layout="workbench" title="双师认定台账" />
     </template>
     <UiCard title="历史数据导入">
-      <UiButton v-if="canExport" @click="importModalOpen = true">
-        Excel 批量导入
-      </UiButton>
+      <UiButton v-if="canExport" @click="importModalOpen = true"> Excel 批量导入 </UiButton>
     </UiCard>
     <UiPlatformExcelImportModal
       v-model:open="importModalOpen"
@@ -177,15 +179,17 @@ onMounted(loadPage)
     />
     <UiCard>
       <div class="toolbar">
-        <UiButton @click="loadPage">
-          刷新
-        </UiButton>
-        <UiButton variant="primary" v-if="canExport" @click="exportRoster">
-          导出台账
-        </UiButton>
+        <UiButton @click="loadPage"> 刷新 </UiButton>
+        <UiButton variant="primary" v-if="canExport" @click="exportRoster"> 导出台账 </UiButton>
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无双师认定记录" />
-      <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
+      <UiDataTable
+        :columns="columns"
+        :data-source="rows"
+        :loading="loading"
+        row-key="id"
+        style="margin-top: 16px"
+      >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'applicationStatus'">
             {{ statusLabel(record.applicationStatus) }}
@@ -200,25 +204,50 @@ onMounted(loadPage)
             <span v-else-if="record.applicationStatus === 'COLLEGE_PENDING'">待院审冻结</span>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiTextAction v-if="record.applicationStatus === 'DRAFT' || record.applicationStatus === 'COLLEGE_RETURNED' || record.applicationStatus === 'ACADEMIC_RETURNED'" @click="runWorkflow('submit', record.id)">
+            <UiTextAction
+              v-if="
+                record.applicationStatus === 'DRAFT' ||
+                record.applicationStatus === 'COLLEGE_RETURNED' ||
+                record.applicationStatus === 'ACADEMIC_RETURNED'
+              "
+              @click="runWorkflow('submit', record.id)"
+            >
               提交
             </UiTextAction>
-            <UiTextAction v-if="canCollegeReview && record.applicationStatus === 'COLLEGE_PENDING'" @click="previewEligibility(record.id)">
+            <UiTextAction
+              v-if="canCollegeReview && record.applicationStatus === 'COLLEGE_PENDING'"
+              @click="previewEligibility(record.id)"
+            >
               预览资格
             </UiTextAction>
-            <UiTextAction v-if="canCollegeReview && canCollegeApprove(record)" @click="runWorkflow('collegeApprove', record.id)">
+            <UiTextAction
+              v-if="canCollegeReview && canCollegeApprove(record)"
+              @click="runWorkflow('collegeApprove', record.id)"
+            >
               院审通过
             </UiTextAction>
-            <UiTextAction v-if="canCollegeReview && record.applicationStatus === 'COLLEGE_PENDING'" @click="runWorkflow('collegeReturn', record.id)">
+            <UiTextAction
+              v-if="canCollegeReview && record.applicationStatus === 'COLLEGE_PENDING'"
+              @click="runWorkflow('collegeReturn', record.id)"
+            >
               院审退回
             </UiTextAction>
-            <UiTextAction v-if="canAcademicReview && canAcademicApprove(record)" @click="runWorkflow('academicApprove', record.id)">
+            <UiTextAction
+              v-if="canAcademicReview && canAcademicApprove(record)"
+              @click="runWorkflow('academicApprove', record.id)"
+            >
               教务通过
             </UiTextAction>
-            <UiTextAction v-if="canAcademicReview && record.applicationStatus === 'ACADEMIC_PENDING'" @click="runWorkflow('academicReturn', record.id)">
+            <UiTextAction
+              v-if="canAcademicReview && record.applicationStatus === 'ACADEMIC_PENDING'"
+              @click="runWorkflow('academicReturn', record.id)"
+            >
               教务退回
             </UiTextAction>
-            <UiTextAction v-if="canAcademicReview && record.applicationStatus === 'ACADEMIC_PENDING'" @click="runWorkflow('academicReject', record.id)">
+            <UiTextAction
+              v-if="canAcademicReview && record.applicationStatus === 'ACADEMIC_PENDING'"
+              @click="runWorkflow('academicReject', record.id)"
+            >
               教务驳回
             </UiTextAction>
           </template>

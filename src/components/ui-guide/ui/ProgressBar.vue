@@ -6,9 +6,7 @@
         :style="{ width: `${clampedPercent}%`, backgroundColor: computedColor }"
       />
     </div>
-    <span v-if="showText" class="ui-progress-bar__text">
-      {{ clampedPercent }}%
-    </span>
+    <span v-if="showText" class="ui-progress-bar__text"> {{ clampedPercent }}% </span>
   </div>
 </template>
 
@@ -19,22 +17,25 @@
  */
 import { computed } from 'vue'
 
-const props = withDefaults(defineProps<{
-  /** 进度百分比 (0-100) */
-  percent: number
-  /** 尺寸 */
-  size?: 'small' | 'medium' | 'large'
-  /** 是否显示百分比文字 */
-  showText?: boolean
-  /** 自定义颜色，不传则根据进度自动计算 */
-  color?: string
-  /** 轨道颜色 */
-  trackColor?: string
-}>(), {
-  size: 'medium',
-  showText: true,
-  trackColor: 'var(--ant-color-fill-tertiary)'
-})
+const props = withDefaults(
+  defineProps<{
+    /** 进度百分比 (0-100) */
+    percent: number
+    /** 尺寸 */
+    size?: 'small' | 'medium' | 'large'
+    /** 是否显示百分比文字 */
+    showText?: boolean
+    /** 自定义颜色，不传则根据进度自动计算 */
+    color?: string
+    /** 轨道颜色 */
+    trackColor?: string
+  }>(),
+  {
+    size: 'medium',
+    showText: true,
+    trackColor: 'var(--ant-color-fill-tertiary)',
+  },
+)
 
 /** 限制百分比在 0-100 之间 */
 const clampedPercent = computed(() => {
@@ -66,7 +67,9 @@ const computedColor = computed(() => {
   &__fill {
     height: 100%;
     border-radius: var(--dp-radius-xs);
-    transition: width 0.3s ease, background-color 0.3s ease;
+    transition:
+      width 0.3s ease,
+      background-color 0.3s ease;
   }
 
   &__text {

@@ -21,14 +21,18 @@
       :style="{ '--ui-skeleton-columns': String(props.columns) }"
     >
       <div class="ui-skeleton-state__table-row ui-skeleton-state__table-row--head">
-        <span v-for="index in props.columns" :key="`head-${index}`" class="ui-skeleton-state__bar" />
+        <span
+          v-for="index in props.columns"
+          :key="`head-${index}`"
+          class="ui-skeleton-state__bar"
+        />
       </div>
-      <div
-        v-for="row in props.rows"
-        :key="`row-${row}`"
-        class="ui-skeleton-state__table-row"
-      >
-        <span v-for="index in props.columns" :key="`${row}-${index}`" class="ui-skeleton-state__bar" />
+      <div v-for="row in props.rows" :key="`row-${row}`" class="ui-skeleton-state__table-row">
+        <span
+          v-for="index in props.columns"
+          :key="`${row}-${index}`"
+          class="ui-skeleton-state__bar"
+        />
       </div>
     </div>
 
@@ -46,11 +50,7 @@
     </div>
 
     <div v-else class="ui-skeleton-state__list">
-      <article
-        v-for="row in props.rows"
-        :key="`item-${row}`"
-        class="ui-skeleton-state__item"
-      >
+      <article v-for="row in props.rows" :key="`item-${row}`" class="ui-skeleton-state__item">
         <span v-if="props.avatar" class="ui-skeleton-state__avatar" />
         <div class="ui-skeleton-state__content">
           <span class="ui-skeleton-state__bar ui-skeleton-state__bar--lg" />
@@ -71,27 +71,30 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  variant?: 'list' | 'card' | 'table'
-  rows?: number
-  columns?: number
-  cardCount?: number
-  avatar?: boolean
-  compact?: boolean
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  variant: 'list',
-  rows: 4,
-  columns: 4,
-  cardCount: 3,
-  avatar: false,
-  compact: false,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    variant?: 'list' | 'card' | 'table'
+    rows?: number
+    columns?: number
+    cardCount?: number
+    avatar?: boolean
+    compact?: boolean
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    variant: 'list',
+    rows: 4,
+    columns: 4,
+    cardCount: 3,
+    avatar: false,
+    compact: false,
+  },
+)
 
 const slots = useSlots()
 
@@ -162,9 +165,15 @@ const hasHeader = computed(() => {
   animation: ui-skeleton-shimmer 1.6s ease infinite;
 }
 
-.ui-skeleton-state__bar--lg { width: 60%; }
-.ui-skeleton-state__bar--md { width: 82%; }
-.ui-skeleton-state__bar--sm { width: 38%; }
+.ui-skeleton-state__bar--lg {
+  width: 60%;
+}
+.ui-skeleton-state__bar--md {
+  width: 82%;
+}
+.ui-skeleton-state__bar--sm {
+  width: 38%;
+}
 
 .ui-skeleton-state__table {
   display: grid;
@@ -182,8 +191,12 @@ const hasHeader = computed(() => {
 }
 
 @keyframes ui-skeleton-shimmer {
-  0% { background-position: 100% 50%; }
-  100% { background-position: 0 50%; }
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,7 +1,7 @@
 import type { ExportBusinessType } from '@/apis/edu/export'
+import { createExportJob } from '@/apis/edu/export'
 import message from 'ant-design-vue/es/message'
 import { ref } from 'vue'
-import { createExportJob } from '@/apis/edu/export'
 import { useExportTaskStore } from '@/stores/exportTask'
 import { ExportFormatEnum } from '@/types/enums'
 import { showUserError } from '@/utils/error-handler'
@@ -28,11 +28,9 @@ export function useQualityTableExport() {
       })
       message.success('导出任务已创建，请在导出任务中心查看进度')
       exportTaskStore.openCenter()
-    }
-    catch (error) {
+    } catch (error) {
       showUserError(error, '创建导出任务失败')
-    }
-    finally {
+    } finally {
       exporting.value = false
     }
   }

@@ -1,12 +1,12 @@
 import type { ArchiveVolumeSelfCheckItemVO, ArchiveVolumeSelfCheckListVO } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, ref } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   checkArchiveVolumeSelfCheckItem,
   exportArchiveVolumeSelfCheck,
-  listArchiveVolumeSelfCheckItems,
+  listArchiveVolumeSelfCheckItems
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, ref } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import { showUserError } from '@/utils/error-handler'
 
 /**

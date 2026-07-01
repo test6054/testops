@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import type {ArchiveVolumeSelfCheckConfirmRequest, ArchiveVolumeSignOffRoleCode, ArchiveVolumeSubmitChecklistVO} from '@/apis/mark/archive-volume';
+import type {
+  ArchiveVolumeSelfCheckConfirmRequest,
+  ArchiveVolumeSignOffRoleCode,
+  ArchiveVolumeSubmitChecklistVO,
+} from '@/apis/mark/archive-volume'
+import {
+  confirmArchiveVolumeSelfCheck,
+  previewArchiveVolumeSubmitChecklist,
+} from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
-import {
-  
-  
-  
-  confirmArchiveVolumeSelfCheck,
-  previewArchiveVolumeSubmitChecklist
-} from '@/apis/mark/archive-volume'
 import { showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
@@ -18,7 +19,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "confirmed": []
+  confirmed: []
 }>()
 
 const loading = ref(false)
@@ -27,7 +28,9 @@ const checklist = ref<ArchiveVolumeSubmitChecklistVO | null>(null)
 const materialCompleteConfirmed = ref(false)
 const gradingNormConfirmed = ref(false)
 const reason = ref('')
-const signOffState = ref<Record<ArchiveVolumeSignOffRoleCode, { confirmed: boolean, signatoryName: string }>>({
+const signOffState = ref<
+  Record<ArchiveVolumeSignOffRoleCode, { confirmed: boolean; signatoryName: string }>
+>({
   PROPOSER: { confirmed: false, signatoryName: '' },
   REVIEWER: { confirmed: false, signatoryName: '' },
   GRADER: { confirmed: false, signatoryName: '' },
@@ -35,12 +38,14 @@ const signOffState = ref<Record<ArchiveVolumeSignOffRoleCode, { confirmed: boole
   RECHECKER: { confirmed: false, signatoryName: '' },
 })
 
-const blockingItems = computed(() => checklist.value?.blockingItems?.filter(item => !item.passed) ?? [])
+const blockingItems = computed(
+  () => checklist.value?.blockingItems?.filter((item) => !item.passed) ?? [],
+)
 
 const formSignOffReady = computed(() => {
   const items = checklist.value?.signOffItems ?? []
   if (items.length === 0) return true
-  return items.every(item => signOffState.value[item.role].confirmed)
+  return items.every((item) => signOffState.value[item.role].confirmed)
 })
 
 const canConfirm = computed(() => {
@@ -51,21 +56,22 @@ const canConfirm = computed(() => {
   return formSignOffReady.value
 })
 
-watch(() => props.open, async (open) => {
-  if (!open) return
-  loading.value = true
-  try {
-    checklist.value = await previewArchiveVolumeSubmitChecklist(props.volumeId)
-    resetFormFromChecklist(checklist.value)
-  }
-  catch (error) {
-    showUserError(error)
-    emit('update:open', false)
-  }
-  finally {
-    loading.value = false
-  }
-})
+watch(
+  () => props.open,
+  async (open) => {
+    if (!open) return
+    loading.value = true
+    try {
+      checklist.value = await previewArchiveVolumeSubmitChecklist(props.volumeId)
+      resetFormFromChecklist(checklist.value)
+    } catch (error) {
+      showUserError(error)
+      emit('update:open', false)
+    } finally {
+      loading.value = false
+    }
+  },
+)
 
 function resetFormFromChecklist(data: ArchiveVolumeSubmitChecklistVO) {
   materialCompleteConfirmed.value = false
@@ -98,11 +104,13 @@ async function handleConfirm() {
     materialCompleteConfirmed: materialCompleteConfirmed.value,
     gradingNormConfirmed: gradingNormConfirmed.value,
     reason: reason.value.trim() || undefined,
-    signOffItems: (Object.keys(signOffState.value) as ArchiveVolumeSignOffRoleCode[]).map(role => ({
-      role,
-      confirmed: signOffState.value[role].confirmed,
-      signatoryName: signOffState.value[role].signatoryName.trim() || undefined,
-    })),
+    signOffItems: (Object.keys(signOffState.value) as ArchiveVolumeSignOffRoleCode[]).map(
+      (role) => ({
+        role,
+        confirmed: signOffState.value[role].confirmed,
+        signatoryName: signOffState.value[role].signatoryName.trim() || undefined,
+      }),
+    ),
   }
   submitting.value = true
   try {
@@ -110,11 +118,9 @@ async function handleConfirm() {
     message.success('自查确认已保存')
     emit('confirmed')
     close()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -145,10 +151,18 @@ async function handleConfirm() {
         <li v-for="(item, index) in blockingItems" :key="index">{{ item.message }}</li>
       </ul>
       <a-checkbox v-model:checked="materialCompleteConfirmed">材料齐全性已核对</a-checkbox>
-      <a-checkbox v-model:checked="gradingNormConfirmed" class="submit-checklist-modal__check">阅卷规范性已核对</a-checkbox>
+      <a-checkbox v-model:checked="gradingNormConfirmed" class="submit-checklist-modal__check"
+        >阅卷规范性已核对</a-checkbox
+      >
       <div class="submit-checklist-modal__signoff">
-        <div v-for="item in checklist.signOffItems" :key="item.role" class="submit-checklist-modal__signoff-row">
-          <a-checkbox v-model:checked="signOffState[item.role].confirmed">{{ item.roleLabel }}签字齐全</a-checkbox>
+        <div
+          v-for="item in checklist.signOffItems"
+          :key="item.role"
+          class="submit-checklist-modal__signoff-row"
+        >
+          <a-checkbox v-model:checked="signOffState[item.role].confirmed"
+            >{{ item.roleLabel }}签字齐全</a-checkbox
+          >
           <a-input
             v-model:value="signOffState[item.role].signatoryName"
             placeholder="签字人姓名"

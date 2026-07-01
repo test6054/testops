@@ -17,7 +17,10 @@
       </template>
     </UiPanelHeader>
 
-    <div v-if="$slots.default || props.items.length || props.note" class="ui-selector-header-extra__body">
+    <div
+      v-if="$slots.default || props.items.length || props.note"
+      class="ui-selector-header-extra__body"
+    >
       <slot />
 
       <div v-if="props.items.length" class="ui-selector-header-extra__list">
@@ -28,7 +31,9 @@
         >
           <div class="ui-selector-header-extra__item-label">{{ item.label }}</div>
           <div v-if="item.value" class="ui-selector-header-extra__item-value">{{ item.value }}</div>
-          <div v-if="item.helper" class="ui-selector-header-extra__item-helper">{{ item.helper }}</div>
+          <div v-if="item.helper" class="ui-selector-header-extra__item-helper">
+            {{ item.helper }}
+          </div>
         </article>
       </div>
 
@@ -47,23 +52,26 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  items?: UiSelectorExtraItem[]
-  note?: string
-  compact?: boolean
-  divided?: boolean
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  items: () => [],
-  note: '',
-  compact: false,
-  divided: true,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    items?: UiSelectorExtraItem[]
+    note?: string
+    compact?: boolean
+    divided?: boolean
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    items: () => [],
+    note: '',
+    compact: false,
+    divided: true,
+  },
+)
 
 const slots = useSlots()
 

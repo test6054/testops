@@ -14,18 +14,10 @@
 
     <template #meta>
       <slot name="meta">
-        <UiTag
-          v-if="props.typeLabel"
-          :tone="props.typeTone"
-          variant="outline"
-        >
+        <UiTag v-if="props.typeLabel" :tone="props.typeTone" variant="outline">
           {{ props.typeLabel }}
         </UiTag>
-        <UiTag
-          v-if="props.formatSummary"
-          tone="gray"
-          variant="outline"
-        >
+        <UiTag v-if="props.formatSummary" tone="gray" variant="outline">
           {{ props.formatSummary }}
         </UiTag>
       </slot>
@@ -33,13 +25,7 @@
 
     <template #actions>
       <slot name="actions" />
-      <UiActionLink
-        v-if="props.removable"
-        danger
-        @click="emit('remove')"
-      >
-        删除
-      </UiActionLink>
+      <UiActionLink v-if="props.removable" danger @click="emit('remove')"> 删除 </UiActionLink>
     </template>
 
     <slot />
@@ -60,24 +46,27 @@ defineOptions({ name: 'UiDeliverableItemEditor' })
 
 const openModel = defineModel<boolean>('open', { default: true })
 
-const props = withDefaults(defineProps<{
-  title: string
-  subtitle?: string
-  typeLabel?: string
-  typeTone?: BadgeTone
-  formatSummary?: string
-  collapsible?: boolean
-  removable?: boolean
-  togglePosition?: 'left' | 'right'
-}>(), {
-  subtitle: '',
-  typeLabel: '',
-  typeTone: 'blue',
-  formatSummary: '',
-  collapsible: true,
-  removable: false,
-  togglePosition: 'right',
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    subtitle?: string
+    typeLabel?: string
+    typeTone?: BadgeTone
+    formatSummary?: string
+    collapsible?: boolean
+    removable?: boolean
+    togglePosition?: 'left' | 'right'
+  }>(),
+  {
+    subtitle: '',
+    typeLabel: '',
+    typeTone: 'blue',
+    formatSummary: '',
+    collapsible: true,
+    removable: false,
+    togglePosition: 'right',
+  },
+)
 
 const emit = defineEmits<{
   (e: 'toggle', value: boolean): void

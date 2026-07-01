@@ -1,9 +1,4 @@
-import type {
-  AiManualHandlingStatus,
-  AiTaskBusinessType,
-  AiTaskStatus,
-  AiTaskType,
-} from './types'
+import type { AiManualHandlingStatus, AiTaskBusinessType, AiTaskStatus, AiTaskType } from './types'
 /**
  * AI 异步任务主表 API
  *

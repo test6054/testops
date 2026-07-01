@@ -1,8 +1,8 @@
 import type { Ref } from 'vue'
+import { ref, watch } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { cloneDeep, omit } from 'lodash-es'
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
 import XEUtils from 'xe-utils'
 import { commonRoutes } from '@/router/routes/common'
 import { portfolioRoutes } from '@/router/routes/portfolio'
@@ -29,7 +29,9 @@ export const flatMultiLevelRoutes = (routes: RouteRecordRaw[]) => {
 
     return {
       ...route,
-      children: XEUtils.toTreeArray(route.children).map((item) => omit(item, 'children')) as RouteRecordRaw[],
+      children: XEUtils.toTreeArray(route.children).map((item) =>
+        omit(item, 'children'),
+      ) as RouteRecordRaw[],
     }
   })
 }
@@ -63,7 +65,7 @@ const storeSetup = (): RouteStoreState => {
       if (oldValue !== newValue && routes.value.length > 0) {
         generateMenus().catch(() => {})
       }
-    }
+    },
   )
 
   // 生成菜单数据 - 基于用户权限过滤菜单
@@ -79,7 +81,9 @@ const storeSetup = (): RouteStoreState => {
     if (userRole === RoleEnum.SUPER_ADMIN) {
       // 超管：考试阅卷（含 SaaS 监管）+ 质量评价
       roleRoutes = [...teacherRoutes, ...qualityRoutes, ...portfolioRoutes, ...commonRoutes]
-    } else if ([RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER].includes(userRole as RoleEnum)) {
+    } else if (
+      [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER].includes(userRole as RoleEnum)
+    ) {
       // 教师角色：阅卷工作台 + 教学质量评价 + 教学档案袋
       roleRoutes = [...teacherRoutes, ...qualityRoutes, ...portfolioRoutes, ...commonRoutes]
     } else if (userRole === RoleEnum.SCH_STU) {
@@ -101,10 +105,10 @@ const storeSetup = (): RouteStoreState => {
   const filterRoutesByPermission = (
     routes: RouteRecordRaw[],
     userRole: string,
-    userIsTenantAdmin: boolean
+    userIsTenantAdmin: boolean,
   ): RouteRecordRaw[] => {
     return routes
-      .filter(route => {
+      .filter((route) => {
         if (userRole === RoleEnum.SUPER_ADMIN) {
           return true
         }
@@ -133,9 +137,9 @@ const storeSetup = (): RouteStoreState => {
           }
         }
 
-        return true;
+        return true
       })
-      .map(route => {
+      .map((route) => {
         const filteredChildren = route.children
           ? filterRoutesByPermission(route.children, userRole, userIsTenantAdmin)
           : undefined
@@ -150,9 +154,9 @@ const storeSetup = (): RouteStoreState => {
 
         return result
       })
-      .filter(route => {
+      .filter((route) => {
         // 如果有子路由，确保至少有一个子路由可访问
-        return !(route.children && route.children.length === 0);
+        return !(route.children && route.children.length === 0)
       })
   }
 
@@ -163,11 +167,17 @@ const storeSetup = (): RouteStoreState => {
 
   // 过滤菜单路由
   const filterMenuRoutes = (routes: RouteRecordRaw[]): RouteRecordRaw[] => {
-    const step1 = routes.filter(route => {
+    const step1 = routes.filter((route) => {
       // 过滤掉基础路由（登录、注册等）和错误页面
-      if (route.path === '/' || route.path === '/login' || route.path === '/register'
-        || route.path === '/forgot-password' || route.path === '/403' || route.path === '/404'
-        || route.path.includes('pathMatch')) {
+      if (
+        route.path === '/' ||
+        route.path === '/login' ||
+        route.path === '/register' ||
+        route.path === '/forgot-password' ||
+        route.path === '/403' ||
+        route.path === '/404' ||
+        route.path.includes('pathMatch')
+      ) {
         return false
       }
 
@@ -175,7 +185,7 @@ const storeSetup = (): RouteStoreState => {
       return isSidebarMenuRoute(route)
     })
 
-    const step2 = step1.map(route => {
+    const step2 = step1.map((route) => {
       const filteredChildren = route.children ? filterMenuRoutes(route.children) : undefined
       const result: RouteRecordRaw = {
         ...route,
@@ -188,9 +198,9 @@ const storeSetup = (): RouteStoreState => {
       return result
     })
 
-    return step2.filter(route => {
+    return step2.filter((route) => {
       // 如果有子路由，确保至少有一个子路由在菜单中显示
-      return !(route.children && route.children.length === 0);
+      return !(route.children && route.children.length === 0)
     })
   }
 

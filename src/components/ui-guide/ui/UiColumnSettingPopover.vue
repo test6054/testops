@@ -17,11 +17,7 @@
 
     <template #content>
       <div class="ui-column-setting-popover__body">
-        <div
-          v-for="item in props.columns"
-          :key="item.key"
-          class="ui-column-setting-popover__item"
-        >
+        <div v-for="item in props.columns" :key="item.key" class="ui-column-setting-popover__item">
           <UiCheckbox
             :model-value="isChecked(item.key) || !!item.fixed"
             :disabled="item.fixed"
@@ -58,15 +54,18 @@ defineOptions({
 
 const modelValue = defineModel<string[]>({ default: () => [] })
 
-const props = withDefaults(defineProps<{
-  columns?: UiColumnSettingItem[]
-  width?: number
-  saveHandler?: (columns: string[]) => Promise<void>
-}>(), {
-  columns: () => [],
-  width: 280,
-  saveHandler: undefined,
-})
+const props = withDefaults(
+  defineProps<{
+    columns?: UiColumnSettingItem[]
+    width?: number
+    saveHandler?: (columns: string[]) => Promise<void>
+  }>(),
+  {
+    columns: () => [],
+    width: 280,
+    saveHandler: undefined,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'save', value: string[]): void
@@ -80,39 +79,36 @@ const localChecked = ref<Set<string>>(new Set())
 const isChecked = (key: string) => localChecked.value.has(key)
 
 const getDefaultCheckedKeys = () => {
-  return props.columns.filter(item => !item.fixed).map(item => item.key)
+  return props.columns.filter((item) => !item.fixed).map((item) => item.key)
 }
 
 const getOrderedResult = () => {
   return props.columns
-    .filter(item => item.fixed || localChecked.value.has(item.key))
-    .map(item => item.key)
+    .filter((item) => item.fixed || localChecked.value.has(item.key))
+    .map((item) => item.key)
 }
 
 const syncFromModelValue = () => {
-  const currentKeySet = new Set(props.columns.map(item => item.key))
-  const fixedKeySet = new Set(props.columns.filter(item => item.fixed).map(item => item.key))
-  const validKeys = modelValue.value.filter(key => currentKeySet.has(key))
+  const currentKeySet = new Set(props.columns.map((item) => item.key))
+  const fixedKeySet = new Set(props.columns.filter((item) => item.fixed).map((item) => item.key))
+  const validKeys = modelValue.value.filter((key) => currentKeySet.has(key))
 
   if (!validKeys.length) {
     localChecked.value = new Set(getDefaultCheckedKeys())
     return
   }
 
-  localChecked.value = new Set(validKeys.filter(key => !fixedKeySet.has(key)))
+  localChecked.value = new Set(validKeys.filter((key) => !fixedKeySet.has(key)))
 }
 
 watch(open, (value) => {
-  if (value)
-    syncFromModelValue()
+  if (value) syncFromModelValue()
 })
 
 const handleToggle = (key: string, checked: boolean) => {
   const next = new Set(localChecked.value)
-  if (checked)
-    next.add(key)
-  else
-    next.delete(key)
+  if (checked) next.add(key)
+  else next.delete(key)
   localChecked.value = next
 }
 
@@ -121,7 +117,7 @@ const handleColumnCheckedChange = (key: string) => {
 }
 
 const handleReset = () => {
-  const result = props.columns.map(item => item.key)
+  const result = props.columns.map((item) => item.key)
   localChecked.value = new Set(getDefaultCheckedKeys())
   modelValue.value = result
   emit('reset', result)
@@ -133,8 +129,7 @@ const handleSave = async () => {
   try {
     modelValue.value = result
     emit('save', result)
-    if (props.saveHandler)
-      await props.saveHandler(result)
+    if (props.saveHandler) await props.saveHandler(result)
     open.value = false
   } finally {
     saving.value = false

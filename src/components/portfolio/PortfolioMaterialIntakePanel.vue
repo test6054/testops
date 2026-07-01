@@ -131,8 +131,8 @@ import {
   usePortfolioIntake,
 } from '@/composables/usePortfolioIntake'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
-import { showUserError } from '@/utils/error-handler'
 import { SemesterOptions } from '@/types/enums/semester-enum'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'PortfolioMaterialIntakePanel' })

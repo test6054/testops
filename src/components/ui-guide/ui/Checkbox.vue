@@ -21,13 +21,16 @@ defineOptions({
 
 const modelValue = defineModel<boolean>({ default: false })
 
-const props = withDefaults(defineProps<{
-  value?: UiOptionValue
-  disabled?: boolean
-  indeterminate?: boolean
-}>(), {
-  value: undefined,
-  disabled: false,
-  indeterminate: false,
-})
+const props = withDefaults(
+  defineProps<{
+    value?: UiOptionValue
+    disabled?: boolean
+    indeterminate?: boolean
+  }>(),
+  {
+    value: undefined,
+    disabled: false,
+    indeterminate: false,
+  },
+)
 </script>

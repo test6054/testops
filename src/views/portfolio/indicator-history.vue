@@ -7,11 +7,17 @@ import type {
   PortfolioPublishImpactReportVO,
   PortfolioRulePublishSnapshotVO,
 } from '@/apis/portfolio/indicator-types'
+import {
+  PF_IMPACT_REPORT_STATUS_LABEL,
+  PF_IMPACT_REPORT_STATUS_TONE,
+  PF_MODEL_STATUS_LABEL,
+  PF_SCENE_CODE_LABEL,
+  PF_SCENE_CODE_OPTIONS,
+} from '@/apis/portfolio/indicator-types'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { PF_IMPACT_REPORT_STATUS_LABEL, PF_IMPACT_REPORT_STATUS_TONE, PF_MODEL_STATUS_LABEL, PF_SCENE_CODE_LABEL, PF_SCENE_CODE_OPTIONS } from '@/apis/portfolio/indicator-types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -74,11 +80,9 @@ async function loadHistory() {
   loading.value = true
   try {
     rows.value = await portfolioIndicatorTenantApi.ruleHistory({ sceneCode: sceneCode.value })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -89,11 +93,9 @@ async function loadImpactReports() {
     const page = await portfolioIndicatorTenantApi.pageImpactReport(impactQuery)
     impactRows.value = readPageList(page, '影响报告加载失败')
     impactTotal.value = readPageTotal(page)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -107,8 +109,7 @@ async function loadRetroactive() {
       sceneCode: sceneCode.value,
       snapshotId: selectedSnapshotId.value,
     })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -116,8 +117,7 @@ async function loadRetroactive() {
 async function loadImpactDetail(id: string) {
   try {
     impactDetail.value = await portfolioIndicatorTenantApi.getImpactReport({ id })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -134,8 +134,7 @@ async function exportDiff(snapshotIdA: string) {
     })
     await downloadPortfolioIndicatorExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条差异`)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -145,8 +144,7 @@ async function exportImpact(id: string) {
     const result = await portfolioIndicatorTenantApi.exportImpactReport({ id })
     await downloadPortfolioIndicatorExcelExport(result)
     message.success('影响报告已导出')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -159,8 +157,7 @@ function onTabChange(key: string | number) {
   activeTab.value = String(key)
   if (activeTab.value === 'impact') {
     loadImpactReports()
-  }
-  else {
+  } else {
     loadHistory()
   }
 }
@@ -178,9 +175,7 @@ onMounted(loadHistory)
     <template #context>
       <ContextBar show-title layout="workbench" title="规则快照与影响报告">
         <template #actions>
-          <UiButton @click="router.push({ name: 'PortfolioIndicatorOps' })">
-            计分与审计
-          </UiButton>
+          <UiButton @click="router.push({ name: 'PortfolioIndicatorOps' })"> 计分与审计 </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -188,12 +183,22 @@ onMounted(loadHistory)
       <a-tabs :active-key="activeTab" @change="onTabChange">
         <a-tab-pane key="history" tab="快照历史">
           <div class="toolbar">
-            <a-select v-model:value="sceneCode" :options="PF_SCENE_CODE_OPTIONS" style="width: 140px" />
-            <a-input v-model:value="selectedSnapshotId" placeholder="快照 ID" style="width: 200px" />
-            <UiButton @click="loadRetroactive">
-              retroactive 查询
-            </UiButton>
-            <a-input v-model:value="diffSnapshotIdB" placeholder="对比快照 B ID" style="width: 200px" />
+            <a-select
+              v-model:value="sceneCode"
+              :options="PF_SCENE_CODE_OPTIONS"
+              style="width: 140px"
+            />
+            <a-input
+              v-model:value="selectedSnapshotId"
+              placeholder="快照 ID"
+              style="width: 200px"
+            />
+            <UiButton @click="loadRetroactive"> retroactive 查询 </UiButton>
+            <a-input
+              v-model:value="diffSnapshotIdB"
+              placeholder="对比快照 B ID"
+              style="width: 200px"
+            />
           </div>
           <UiEmpty v-if="!loading && rows.length === 0" description="暂无发布历史" />
           <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id">
@@ -202,7 +207,14 @@ onMounted(loadHistory)
                 {{ modelStatusLabel(record.modelStatus) }}
               </template>
               <template v-else-if="column.key === 'actions'">
-                <a style="margin-right: 8px" @click="selectedSnapshotId = record.id; loadRetroactive()">查看</a>
+                <a
+                  style="margin-right: 8px"
+                  @click="
+                    selectedSnapshotId = record.id
+                    loadRetroactive()
+                  "
+                  >查看</a
+                >
                 <a style="margin-right: 8px" @click="exportDiff(record.id)">导出 diff</a>
                 <a @click="goOps(record.id)">计分</a>
               </template>
@@ -211,7 +223,12 @@ onMounted(loadHistory)
           <pre v-if="retroactive" class="json-block">{{ retroactive.snapshotSummaryJson }}</pre>
         </a-tab-pane>
         <a-tab-pane key="impact" tab="影响报告">
-          <UiDataTable :columns="impactColumns" :data-source="impactRows" :loading="loading" row-key="id">
+          <UiDataTable
+            :columns="impactColumns"
+            :data-source="impactRows"
+            :loading="loading"
+            row-key="id"
+          >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'sceneCode'">
                 {{ sceneCodeLabel(record.sceneCode) }}

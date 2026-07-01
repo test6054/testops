@@ -29,8 +29,8 @@ function stepClass(step: ObeJourneyStepVO): string {
 function goStep(step: ObeJourneyStepVO): void {
   if (!step.routeName) return
   if (
-    PLAN_CONFIRMED_ROUTE_NAMES.has(step.routeName)
-    && qualityStore.currentPlan?.confirmationStatus !== 'CONFIRMED'
+    PLAN_CONFIRMED_ROUTE_NAMES.has(step.routeName) &&
+    qualityStore.currentPlan?.confirmationStatus !== 'CONFIRMED'
   ) {
     void router.push({ name: 'QualityTrainingPlanWorkbench' })
     return
@@ -44,11 +44,7 @@ function goStep(step: ObeJourneyStepVO): void {
 </script>
 
 <template>
-  <nav
-    v-if="steps.length"
-    class="quality-obe-journey-strip"
-    aria-label="OBE 评价阶段"
-  >
+  <nav v-if="steps.length" class="quality-obe-journey-strip" aria-label="OBE 评价阶段">
     <button
       v-for="step in steps"
       :key="step.stepKey"

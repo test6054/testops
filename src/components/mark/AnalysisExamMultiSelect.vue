@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ExamSummaryVO } from '@/apis/mark/exam'
+import { pageExams } from '@/apis/mark/exam'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { onMounted, ref } from 'vue'
-import { pageExams } from '@/apis/mark/exam'
 import { pickExamIdsFromRecentSemesters } from '@/composables/useCrossExamDefaultScope'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
@@ -32,7 +32,7 @@ const ANALYSIS_EXAM_MULTI_OPTION_PAGE_SIZE = 50
 
 const loading = ref(false)
 const exams = ref<ExamSummaryVO[]>([])
-const examOptions = ref<{ label: string, value: string }[]>([])
+const examOptions = ref<{ label: string; value: string }[]>([])
 const defaultScopeApplied = ref(false)
 
 /** 加载当前租户考试范围，供 AI 分析卡片选择参与分析的考试实体。 */
@@ -53,10 +53,10 @@ async function loadExamOptions(keyword?: string): Promise<void> {
       value: exam.examId,
     }))
     if (
-      !defaultScopeApplied.value
-      && !keyword?.trim()
-      && props.defaultRecentSemesterCount > 0
-      && selectedExamIds.value.length === 0
+      !defaultScopeApplied.value &&
+      !keyword?.trim() &&
+      props.defaultRecentSemesterCount > 0 &&
+      selectedExamIds.value.length === 0
     ) {
       const defaults = pickExamIdsFromRecentSemesters(exams.value, props.defaultRecentSemesterCount)
       if (defaults.length > 0) {
@@ -110,7 +110,11 @@ onMounted(loadExamOptions)
       max-tag-count="responsive"
       @search="handleExamSearch"
       @change="emitSelectedExamsChange"
-      @dropdown-visible-change="(open: boolean) => { if (open) void loadExamOptions() }"
+      @dropdown-visible-change="
+        (open: boolean) => {
+          if (open) void loadExamOptions()
+        }
+      "
     />
     <a-button
       class="analysis-exam-select__reload"

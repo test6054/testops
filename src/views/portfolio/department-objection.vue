@@ -6,10 +6,6 @@ import type {
   PortfolioEvaluationObjectionSummaryVO,
   PortfolioEvaluationObjectionType,
 } from '@/apis/portfolio/types'
-import { Input, InputNumber, message, Select } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_LABEL,
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
@@ -17,6 +13,10 @@ import {
   PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
   PORTFOLIO_EVALUATION_OBJECTION_TYPE_LABEL,
 } from '@/apis/portfolio/types'
+import { Input, InputNumber, message, Select } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -47,18 +47,29 @@ function statusTone(status: PortfolioEvaluationObjectionStatus) {
 }
 
 function actionLabel(action: PortfolioEvaluationObjectionHandleAction): string {
-  return strictEnumLabel(PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_LABEL, action, '评价异议复核动作')
+  return strictEnumLabel(
+    PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_LABEL,
+    action,
+    '评价异议复核动作',
+  )
 }
 
 function actionTone(action: PortfolioEvaluationObjectionHandleAction) {
-  return strictEnumTone(PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE, action, '评价异议复核动作')
+  return strictEnumTone(
+    PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
+    action,
+    '评价异议复核动作',
+  )
 }
 
 function requiresDangerConfirm(action: PortfolioEvaluationObjectionHandleAction): boolean {
   return action === 'REVOKE' || action === 'RE_REVIEW'
 }
 
-const STATUS_FILTER_OPTIONS: Array<{ value: '' | PortfolioEvaluationObjectionStatus, label: string }> = [
+const STATUS_FILTER_OPTIONS: Array<{
+  value: '' | PortfolioEvaluationObjectionStatus
+  label: string
+}> = [
   { value: 'SUBMITTED', label: '待复核' },
   { value: '', label: '全部记录' },
   { value: 'UPHELD', label: '已成立' },
@@ -89,7 +100,9 @@ const reviewForm = reactive({
   correctedScore: undefined as number | undefined,
 })
 
-const evaluationTaskId = ref(typeof route.query.evaluationTaskId === 'string' ? route.query.evaluationTaskId : '')
+const evaluationTaskId = ref(
+  typeof route.query.evaluationTaskId === 'string' ? route.query.evaluationTaskId : '',
+)
 const objectionStatusFilter = ref<'' | PortfolioEvaluationObjectionStatus>('SUBMITTED')
 
 const showCorrectedScore = computed(() => {
@@ -129,11 +142,9 @@ async function loadPage() {
     })
     rows.value = readPageList(page, '加载公示异议失败')
     pageTotal.value = readPageTotal(page)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载公示异议失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -144,7 +155,9 @@ async function submitReview() {
   }
   const opinion = reviewForm.handleOpinion.trim()
   if (requiresOpinion(reviewForm.action) && !opinion) {
-    message.warning(reviewForm.action === 'MAINTAIN' ? '维持原结果须填写复核意见' : '重新评审须填写复核说明')
+    message.warning(
+      reviewForm.action === 'MAINTAIN' ? '维持原结果须填写复核意见' : '重新评审须填写复核说明',
+    )
     return
   }
   if (showCorrectedScore.value && reviewForm.correctedScore == null) {
@@ -155,9 +168,10 @@ async function submitReview() {
     const confirmed = await confirmAsync({
       type: 'error',
       title: reviewForm.action === 'REVOKE' ? '确认撤销评价结论？' : '确认退回重新评审？',
-      content: reviewForm.action === 'REVOKE'
-        ? '将软删该教师当前评价条目并重算画像，操作不可自动恢复。'
-        : '将关闭公示、软删评价条目并回退任务至专家评审，需重新组织评审。',
+      content:
+        reviewForm.action === 'REVOKE'
+          ? '将软删该教师当前评价条目并重算画像，操作不可自动恢复。'
+          : '将关闭公示、软删评价条目并回退任务至专家评审，需重新组织评审。',
       okText: '确认提交',
     })
     if (!confirmed) {
@@ -179,11 +193,9 @@ async function submitReview() {
     reviewForm.handleOpinion = ''
     reviewForm.correctedScore = undefined
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '复核异议失败')
-  }
-  finally {
+  } finally {
     handlingId.value = ''
   }
 }
@@ -223,9 +235,7 @@ void loadPage()
           :options="STATUS_FILTER_OPTIONS"
           @change="onStatusFilterChange"
         />
-        <UiButton :loading="loading" @click="() => void loadPage()">
-          刷新
-        </UiButton>
+        <UiButton :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
       </template>
     </ContextBar>
 
@@ -247,7 +257,13 @@ void loadPage()
             {{ record.teacherName }}
           </template>
           <template v-else-if="column.key === 'objectionType'">
-            {{ strictEnumLabel(PORTFOLIO_EVALUATION_OBJECTION_TYPE_LABEL, record.objectionType, '评价异议类型') }}
+            {{
+              strictEnumLabel(
+                PORTFOLIO_EVALUATION_OBJECTION_TYPE_LABEL,
+                record.objectionType,
+                '评价异议类型',
+              )
+            }}
           </template>
           <template v-else-if="column.key === 'objectionStatus'">
             <UiTag :tone="statusTone(record.objectionStatus)">
@@ -288,21 +304,20 @@ void loadPage()
           </template>
         </template>
       </UiDataTable>
-      <UiEmpty v-else :description="objectionStatusFilter === 'SUBMITTED' ? '暂无待复核异议' : '暂无异议记录'" />
+      <UiEmpty
+        v-else
+        :description="objectionStatusFilter === 'SUBMITTED' ? '暂无待复核异议' : '暂无异议记录'"
+      />
     </UiCard>
 
-    <UiDrawer
-      v-model:open="reviewDrawerOpen"
-      title="异议复核"
-      width="420"
-    >
+    <UiDrawer v-model:open="reviewDrawerOpen" title="异议复核" width="420">
       <p v-if="reviewTarget" class="department-objection__meta">
         {{ reviewTarget.teacherName }} · {{ reviewTarget.taskName }}
       </p>
       <Select
         v-model:value="reviewForm.action"
         class="department-objection__field"
-        :options="HANDLE_ACTION_OPTIONS.map(value => ({ value, label: actionLabel(value) }))"
+        :options="HANDLE_ACTION_OPTIONS.map((value) => ({ value, label: actionLabel(value) }))"
         placeholder="复核结论"
       />
       <InputNumber
@@ -321,9 +336,7 @@ void loadPage()
         :placeholder="requiresOpinion(reviewForm.action) ? '请填写复核意见' : '复核意见（选填）'"
       />
       <template #footer>
-        <UiButton variant="ghost" @click="reviewDrawerOpen = false">
-          取消
-        </UiButton>
+        <UiButton variant="ghost" @click="reviewDrawerOpen = false"> 取消 </UiButton>
         <UiButton
           variant="primary"
           :loading="handlingId === reviewTarget?.objectionId"

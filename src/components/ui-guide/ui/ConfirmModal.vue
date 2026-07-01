@@ -28,30 +28,33 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  open: boolean
-  type?: ModalType
-  title?: string
-  content?: string
-  width?: number
-  okText?: string
-  cancelText?: string
-  hideCancel?: boolean
-  closable?: boolean
-  maskClosable?: boolean
-  confirmLoading?: boolean
-}>(), {
-  type: 'warning',
-  title: '提示',
-  content: '',
-  width: 440,
-  okText: '确认',
-  cancelText: '取消',
-  hideCancel: false,
-  closable: true,
-  maskClosable: true,
-  confirmLoading: false,
-})
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    type?: ModalType
+    title?: string
+    content?: string
+    width?: number
+    okText?: string
+    cancelText?: string
+    hideCancel?: boolean
+    closable?: boolean
+    maskClosable?: boolean
+    confirmLoading?: boolean
+  }>(),
+  {
+    type: 'warning',
+    title: '提示',
+    content: '',
+    width: 440,
+    okText: '确认',
+    cancelText: '取消',
+    hideCancel: false,
+    closable: true,
+    maskClosable: true,
+    confirmLoading: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void

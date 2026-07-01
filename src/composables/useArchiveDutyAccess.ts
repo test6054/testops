@@ -1,7 +1,11 @@
-import type { ArchiveDutyGrantVO, ArchiveDutyTypeCode, ArchiveSecurityPolicyVO } from '@/apis/mark/archive-config'
+import type {
+  ArchiveDutyGrantVO,
+  ArchiveDutyTypeCode,
+  ArchiveSecurityPolicyVO,
+} from '@/apis/mark/archive-config'
+import { listArchiveSecurityPolicy, listMyArchiveDutyGrants } from '@/apis/mark/archive-config'
 import type { ArchiveSecurityLevelCode } from '@/apis/mark/archive-volume'
 import { computed, ref } from 'vue'
-import { listArchiveSecurityPolicy, listMyArchiveDutyGrants } from '@/apis/mark/archive-config'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 
@@ -22,18 +26,20 @@ export function useArchiveDutyAccess() {
   const grants = ref<ArchiveDutyGrantVO[]>([])
   const securityPolicies = ref<ArchiveSecurityPolicyVO[]>([])
 
-  const dutyTypes = computed(() => new Set(grants.value.map(item => item.dutyType)))
+  const dutyTypes = computed(() => new Set(grants.value.map((item) => item.dutyType)))
 
   function resolveScopedDepartmentIdsForDutyTypes(types: ArchiveDutyTypeCode[]): string[] {
-    const relevant = grants.value.filter(item => types.includes(item.dutyType))
-    if (relevant.some(item => item.tenantWide)) {
+    const relevant = grants.value.filter((item) => types.includes(item.dutyType))
+    if (relevant.some((item) => item.tenantWide)) {
       return []
     }
-    return [...new Set(
-      relevant
-        .filter(item => item.scopeDepartmentId)
-        .map(item => item.scopeDepartmentId as string),
-    )]
+    return [
+      ...new Set(
+        relevant
+          .filter((item) => item.scopeDepartmentId)
+          .map((item) => item.scopeDepartmentId as string),
+      ),
+    ]
   }
 
   const scopedDepartmentIds = computed(() =>
@@ -42,20 +48,24 @@ export function useArchiveDutyAccess() {
 
   /** 与后端 resolveListDepartmentScope 一致：任一 tenantWide 职责则不限院系，否则汇总全部 scopeDepartmentId */
   const listScopedDepartmentIds = computed(() => {
-    if (grants.value.some(item => item.tenantWide)) {
+    if (grants.value.some((item) => item.tenantWide)) {
       return [] as string[]
     }
-    return [...new Set(
-      grants.value
-        .filter(item => item.scopeDepartmentId)
-        .map(item => item.scopeDepartmentId as string),
-    )]
+    return [
+      ...new Set(
+        grants.value
+          .filter((item) => item.scopeDepartmentId)
+          .map((item) => item.scopeDepartmentId as string),
+      ),
+    ]
   })
 
   const isTenantAdmin = computed(() => userStore.isTenantAdmin === true)
 
   const isTenantWideCollegeCoordinator = computed(() =>
-    grants.value.some(item => item.dutyType === 'COLLEGE_COORDINATOR' && item.tenantWide === true),
+    grants.value.some(
+      (item) => item.dutyType === 'COLLEGE_COORDINATOR' && item.tenantWide === true,
+    ),
   )
 
   function hasDuty(type: ArchiveDutyTypeCode): boolean {
@@ -63,19 +73,19 @@ export function useArchiveDutyAccess() {
   }
 
   function hasDutyForDepartment(dutyType: ArchiveDutyTypeCode, departmentId?: string): boolean {
-    if (grants.value.some(item => item.dutyType === dutyType && item.tenantWide)) {
+    if (grants.value.some((item) => item.dutyType === dutyType && item.tenantWide)) {
       return true
     }
     if (!departmentId) {
       return false
     }
-    return grants.value.some(item =>
-      item.dutyType === dutyType && item.scopeDepartmentId === departmentId,
+    return grants.value.some(
+      (item) => item.dutyType === dutyType && item.scopeDepartmentId === departmentId,
     )
   }
 
   function maxSecurityLevelForDuty(dutyType: ArchiveDutyTypeCode): ArchiveSecurityLevelCode | null {
-    const policy = securityPolicies.value.find(item => item.dutyType === dutyType)
+    const policy = securityPolicies.value.find((item) => item.dutyType === dutyType)
     return policy?.maxSecurityLevel ?? null
   }
 
@@ -106,23 +116,31 @@ export function useArchiveDutyAccess() {
     return hasDutyForDepartment('COLLEGE_COORDINATOR', volume.departmentId)
   }
 
-  function filterListDepartmentOptions(all: Array<{ value: string, label: string }>): Array<{ value: string, label: string }> {
+  function filterListDepartmentOptions(
+    all: Array<{ value: string; label: string }>,
+  ): Array<{ value: string; label: string }> {
     const scopeIds = listScopedDepartmentIds.value
     if (scopeIds.length === 0) {
       return all
     }
-    return all.filter(item => scopeIds.includes(item.value))
+    return all.filter((item) => scopeIds.includes(item.value))
   }
 
   const canViewCollegeBoard = computed(() => hasDuty('COLLEGE_COORDINATOR'))
-  const canViewArchiveReviewer = computed(() => hasDuty('TRANSFER_REVIEWER') || hasDuty('ARCHIVE_ADMIN'))
+  const canViewArchiveReviewer = computed(
+    () => hasDuty('TRANSFER_REVIEWER') || hasDuty('ARCHIVE_ADMIN'),
+  )
   const canViewSupervision = computed(() => hasDuty('SUPERVISION_INSPECTOR'))
   const canApproveDestruction = computed(() => hasDuty('DESTRUCTION_APPROVER'))
   const canApproveAccess = computed(() => hasDuty('ARCHIVE_ADMIN') || hasDuty('TRANSFER_REVIEWER'))
   const canReviewTransfer = computed(() => hasDuty('TRANSFER_REVIEWER') || hasDuty('ARCHIVE_ADMIN'))
-  const canRejectTransfer = computed(() =>
-    hasDuty('TRANSFER_REVIEWER') || hasDuty('COLLEGE_COORDINATOR') || hasDuty('ARCHIVE_ADMIN'))
-  const canViewStatisticsKpi = computed(() => hasDuty('COLLEGE_COORDINATOR') || hasDuty('ARCHIVE_ADMIN'))
+  const canRejectTransfer = computed(
+    () =>
+      hasDuty('TRANSFER_REVIEWER') || hasDuty('COLLEGE_COORDINATOR') || hasDuty('ARCHIVE_ADMIN'),
+  )
+  const canViewStatisticsKpi = computed(
+    () => hasDuty('COLLEGE_COORDINATOR') || hasDuty('ARCHIVE_ADMIN'),
+  )
   const canManageConfig = computed(() => isTenantAdmin.value)
 
   async function loadGrants() {
@@ -135,12 +153,10 @@ export function useArchiveDutyAccess() {
       ])
       grants.value = grantList
       securityPolicies.value = policyList
-    }
-    catch (error) {
+    } catch (error) {
       showUserError(error)
       grantsLoadFailed.value = true
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }

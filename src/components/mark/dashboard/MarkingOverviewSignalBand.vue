@@ -15,14 +15,17 @@ import { formatSemester } from '@/types/enums/semester-enum'
 
 defineOptions({ name: 'MarkingOverviewSignalBand' })
 
-const props = withDefaults(defineProps<{
-  filterContext?: MarkTeacherDashboardFilterContextVO
-  signalMetrics?: MarkTeacherDashboardSignalMetricsVO
-  markingProgressSummary?: MarkTeacherDashboardMarkingProgressSummaryVO
-  placeholder?: boolean
-}>(), {
-  placeholder: false,
-})
+const props = withDefaults(
+  defineProps<{
+    filterContext?: MarkTeacherDashboardFilterContextVO
+    signalMetrics?: MarkTeacherDashboardSignalMetricsVO
+    markingProgressSummary?: MarkTeacherDashboardMarkingProgressSummaryVO
+    placeholder?: boolean
+  }>(),
+  {
+    placeholder: false,
+  },
+)
 
 const metrics = computed<SignalMetric[]>(() => {
   const dash = props.placeholder ? '—' : 0
@@ -36,14 +39,13 @@ const metrics = computed<SignalMetric[]>(() => {
 
   const totalQuestions = progress?.totalQuestionGradeCount ?? 0
   const confirmedQuestions = progress?.confirmedQuestionGradeCount ?? 0
-  const markingPercent = totalQuestions > 0
-    ? Math.round((confirmedQuestions / totalQuestions) * 1000) / 10
-    : 0
+  const markingPercent =
+    totalQuestions > 0 ? Math.round((confirmedQuestions / totalQuestions) * 1000) / 10 : 0
 
   const pendingExceptionCount = progress
-    ? (progress.scanAttentionCount ?? 0)
-    + (progress.pendingReviewTaskCount ?? 0)
-    + (progress.pendingGradeCount ?? 0)
+    ? (progress.scanAttentionCount ?? 0) +
+      (progress.pendingReviewTaskCount ?? 0) +
+      (progress.pendingGradeCount ?? 0)
     : dash
 
   return [
@@ -75,7 +77,10 @@ const metrics = computed<SignalMetric[]>(() => {
       value: pendingExceptionCount,
       unit: progress ? '项' : undefined,
       tone: typeof pendingExceptionCount === 'number' && pendingExceptionCount > 0 ? 'red' : 'gray',
-      helper: typeof pendingExceptionCount === 'number' && pendingExceptionCount > 0 ? '需关注' : '暂无积压',
+      helper:
+        typeof pendingExceptionCount === 'number' && pendingExceptionCount > 0
+          ? '需关注'
+          : '暂无积压',
       trendPolarity: 'negative',
     },
     {

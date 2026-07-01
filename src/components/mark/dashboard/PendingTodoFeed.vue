@@ -43,18 +43,21 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 
 defineOptions({ name: 'PendingTodoFeed' })
 
-withDefaults(defineProps<{
-  todos: MarkTeacherDashboardPendingTodoItemVO[]
-  /** 空态说明，默认面向教师待处理语义。 */
-  emptyDescription?: string
-  /** 空态主操作文案；传入时在空态展示跳转按钮。 */
-  emptyActionLabel?: string
-}>(), {
-  emptyDescription: '当前筛选下暂无待处理事项',
-})
+withDefaults(
+  defineProps<{
+    todos: MarkTeacherDashboardPendingTodoItemVO[]
+    /** 空态说明，默认面向教师待处理语义。 */
+    emptyDescription?: string
+    /** 空态主操作文案；传入时在空态展示跳转按钮。 */
+    emptyActionLabel?: string
+  }>(),
+  {
+    emptyDescription: '当前筛选下暂无待处理事项',
+  },
+)
 
 const emit = defineEmits<{
-  "navigate": [routeName: string | undefined, examId: string | undefined]
+  navigate: [routeName: string | undefined, examId: string | undefined]
   'empty-action': []
 }>()
 

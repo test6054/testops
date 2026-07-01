@@ -50,10 +50,10 @@ const exitTitle = computed(() => {
   if (showRemoveInsteadOfCancel.value) {
     return mutex.reasonOf('removeJob') || workflow.removeCurrentJobTitle.value
   }
-  return mutex.reasonOf('cancelJob')
-    || (workflow.isPreUploadScanFailure.value
-      ? '清理失败的扫描任务并返回准备扫描'
-      : '取消当前任务')
+  return (
+    mutex.reasonOf('cancelJob') ||
+    (workflow.isPreUploadScanFailure.value ? '清理失败的扫描任务并返回准备扫描' : '取消当前任务')
+  )
 })
 
 const showResumeInsteadOfPause = computed(() => workflow.currentJob.value?.status === 'PAUSED')
@@ -67,7 +67,11 @@ const endBatchMetrics = computed(() => {
   const pending = Math.max(0, scanned - (job.uploadedPages ?? 0))
   return [
     { label: '已扫', value: String(scanned), tone: 'default' },
-    { label: '应扫页', value: expected != null && expected > 0 ? String(expected) : '—', tone: 'muted' },
+    {
+      label: '应扫页',
+      value: expected != null && expected > 0 ? String(expected) : '—',
+      tone: 'muted',
+    },
     { label: '待上传', value: String(pending), tone: pending > 0 ? 'warn' : 'default' },
   ]
 })
@@ -170,8 +174,12 @@ function handleExitAction() {
       </button>
     </div>
     <div class="bottom-counters">
-      <span>已上传 <b>{{ counterUploaded }}</b></span>
-      <span class="warn">异常 <b>{{ counterException }}</b></span>
+      <span
+        >已上传 <b>{{ counterUploaded }}</b></span
+      >
+      <span class="warn"
+        >异常 <b>{{ counterException }}</b></span
+      >
     </div>
   </footer>
 </template>

@@ -44,29 +44,32 @@ defineOptions({
 
 const modelValue = defineModel<number | undefined>({ default: undefined })
 
-const props = withDefaults(defineProps<{
-  min?: number
-  max?: number
-  step?: number
-  precision?: number
-  placeholder?: string
-  disabled?: boolean
-  readonly?: boolean
-  controls?: boolean
-  size?: UiComponentSize
-  status?: UiFieldStatus
-}>(), {
-  min: undefined,
-  max: undefined,
-  step: 1,
-  precision: undefined,
-  placeholder: '',
-  disabled: false,
-  readonly: false,
-  controls: true,
-  size: 'md',
-  status: 'default',
-})
+const props = withDefaults(
+  defineProps<{
+    min?: number
+    max?: number
+    step?: number
+    precision?: number
+    placeholder?: string
+    disabled?: boolean
+    readonly?: boolean
+    controls?: boolean
+    size?: UiComponentSize
+    status?: UiFieldStatus
+  }>(),
+  {
+    min: undefined,
+    max: undefined,
+    step: 1,
+    precision: undefined,
+    placeholder: '',
+    disabled: false,
+    readonly: false,
+    controls: true,
+    size: 'md',
+    status: 'default',
+  },
+)
 
 const emit = defineEmits<{
   (e: 'change', value: number | undefined): void
@@ -84,8 +87,7 @@ const antSize = computed<SizeType>(() => {
 })
 
 function normalizeValue(value: string | number | null | undefined) {
-  if (value === null || value === undefined || value === '')
-    return undefined
+  if (value === null || value === undefined || value === '') return undefined
 
   const numberValue = typeof value === 'number' ? value : Number(value)
   return Number.isNaN(numberValue) ? undefined : numberValue

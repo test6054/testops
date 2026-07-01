@@ -9,17 +9,17 @@ import type {
   AccreditationCycleVO,
   SelfAssessmentReviewDecisionRequest,
 } from '@/apis/quality/accreditation'
-import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
-import { DownOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   ACCREDITATION_CONCLUSION_LABEL,
   ACCREDITATION_CYCLE_PHASE_LABEL,
   ACCREDITATION_CYCLE_STATUS_LABEL,
   accreditationApi,
 } from '@/apis/quality/accreditation'
+import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
 import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
+import { DownOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -45,7 +45,7 @@ const props = defineProps<{
   cockpit?: AccreditationCockpitVO
 }>()
 
-const emit = defineEmits<{ "refresh": [], 'go-ai-report': [] }>()
+const emit = defineEmits<{ refresh: []; 'go-ai-report': [] }>()
 
 type AccreditationCycleMenuAction = 'application' | 'self' | 'review' | 'conclusion' | 'delete'
 
@@ -82,7 +82,10 @@ const form = reactive<AccreditationCycleSaveRequest>({
 })
 
 const reviewForm = reactive<
-  Pick<SelfAssessmentReviewDecisionRequest, 'reviewDecision' | 'reviewRemark' | 'supplementDeadline'>
+  Pick<
+    SelfAssessmentReviewDecisionRequest,
+    'reviewDecision' | 'reviewRemark' | 'supplementDeadline'
+  >
 >({
   reviewDecision: 'ACCEPTED',
   reviewRemark: '',
@@ -109,7 +112,7 @@ const canEditSelfAssessment = computed(() => canEditSelfAssessmentSection(active
 const conclusionReadinessItems = computed(() => props.cockpit?.conclusionReadinessItems || [])
 
 const blockedConclusionItems = computed(() =>
-  conclusionReadinessItems.value.filter(item => !item.ready),
+  conclusionReadinessItems.value.filter((item) => !item.ready),
 )
 
 const deadlineHints = computed(() => {
@@ -388,10 +391,14 @@ async function handleCycleMenuClick(row: AccreditationCycleVO, event: MenuInfo) 
   }
 }
 
-watch(() => props.trainingPlanId, () => {
-  void loadCycles()
-  void loadStandards()
-}, { immediate: true })
+watch(
+  () => props.trainingPlanId,
+  () => {
+    void loadCycles()
+    void loadStandards()
+  },
+  { immediate: true },
+)
 
 defineExpose({ openCreate, loadCycles })
 </script>
@@ -427,7 +434,9 @@ defineExpose({ openCreate, loadCycles })
       <div class="readiness-header">
         <strong>结论登记前置条件</strong>
         <span class="muted">
-          {{ blockedConclusionItems.length ? `阻断 ${blockedConclusionItems.length} 项` : '全部就绪' }}
+          {{
+            blockedConclusionItems.length ? `阻断 ${blockedConclusionItems.length} 项` : '全部就绪'
+          }}
         </span>
       </div>
       <div class="readiness-grid">
@@ -523,8 +532,8 @@ defineExpose({ openCreate, loadCycles })
         <a-form-item v-else-if="form.accreditationStandardId" label="绑定认证标准">
           <a-input
             :value="
-              standards.find((item) => item.id === form.accreditationStandardId)?.standardName
-                || form.accreditationStandardId
+              standards.find((item) => item.id === form.accreditationStandardId)?.standardName ||
+              form.accreditationStandardId
             "
             disabled
           />
@@ -581,10 +590,10 @@ defineExpose({ openCreate, loadCycles })
           {{
             detailRecord.conclusionType
               ? strictEnumLabel(
-                ACCREDITATION_CONCLUSION_LABEL,
-                detailRecord.conclusionType,
-                '认证结论类型',
-              )
+                  ACCREDITATION_CONCLUSION_LABEL,
+                  detailRecord.conclusionType,
+                  '认证结论类型',
+                )
               : '—'
           }}
         </dd>
@@ -642,11 +651,7 @@ defineExpose({ openCreate, loadCycles })
             <a-select-option value="NOT_PASS">不通过</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item
-          v-if="conclusionForm.conclusionType !== 'NOT_PASS'"
-          label="有效期起"
-          required
-        >
+        <a-form-item v-if="conclusionForm.conclusionType !== 'NOT_PASS'" label="有效期起" required>
           <a-date-picker
             v-model:value="conclusionForm.validFrom"
             value-format="YYYY-MM-DD"

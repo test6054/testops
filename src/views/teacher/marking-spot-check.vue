@@ -19,8 +19,6 @@
         </UiBadge>
       </template>
 
-
-
       <UiDataTable
         pagination-mode="client"
         class="student-detail-table__data-table"
@@ -70,7 +68,9 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <UiTextAction tone="primary" @click="openHandleModal(pendingItems[index])">处理结论</UiTextAction>
+              <UiTextAction tone="primary" @click="openHandleModal(pendingItems[index])"
+                >处理结论</UiTextAction
+              >
             </div>
           </template>
         </template>
@@ -159,17 +159,17 @@ import type {
   MyPendingSpotCheckStatusCode,
   SpotCheckConclusionCode,
 } from '@/apis/mark/marking-quality'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import AimOutlined from '@ant-design/icons-vue/AimOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   handleSpotCheck,
   listMyPendingSpotChecks,
   SPOT_CHECK_STATUS_LABEL,
   SPOT_CHECK_STATUS_TONE,
 } from '@/apis/mark/marking-quality'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import AimOutlined from '@ant-design/icons-vue/AimOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -195,11 +195,12 @@ async function loadList(): Promise<void> {
   loading.value = true
   try {
     pendingItems.value = await readAllPages(
-      (pageNum) => listMyPendingSpotChecks({
-        examId: selectedExamId.value || undefined,
-        pageNum,
-        pageSize: 100,
-      }),
+      (pageNum) =>
+        listMyPendingSpotChecks({
+          examId: selectedExamId.value || undefined,
+          pageNum,
+          pageSize: 100,
+        }),
       '待处理阅卷抽检加载失败，请稍后重试',
     )
   } catch (error) {

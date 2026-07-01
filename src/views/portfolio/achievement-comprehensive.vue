@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentRecordType } from '@/apis/portfolio/enums'
-import type { PortfolioAchievementStatsVO, PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
-import { onMounted, reactive, ref } from 'vue'
 import { PORTFOLIO_DEVELOPMENT_RECORD_TYPE_LABEL } from '@/apis/portfolio/enums'
+import type {
+  PortfolioAchievementStatsVO,
+  PortfolioDevelopmentRecordVO,
+} from '@/apis/portfolio/teacher-platform'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
+import { onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -50,23 +53,21 @@ async function loadPage() {
       pageNum: query.pageNum,
       pageSize: query.pageSize,
       searchText: query.searchText || undefined,
-      levelCode: query.nationalOnly ? 'NATIONAL' : (query.levelCode || undefined),
+      levelCode: query.nationalOnly ? 'NATIONAL' : query.levelCode || undefined,
       nationalOnly: query.nationalOnly || undefined,
       recordTypes: query.recordTypes,
     })
     rows.value = readPageList(page, '加载成果列表失败')
     await hydrateTeacherLabels(
-      rows.value.map(row => row.teacherUserId).filter((id): id is string => Boolean(id)),
+      rows.value.map((row) => row.teacherUserId).filter((id): id is string => Boolean(id)),
     )
     stats.value = await portfolioDevelopmentRecordApi.achievementStats({
-      levelCode: query.nationalOnly ? 'NATIONAL' : (query.levelCode || undefined),
+      levelCode: query.nationalOnly ? 'NATIONAL' : query.levelCode || undefined,
       nationalOnly: query.nationalOnly || undefined,
     })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -77,25 +78,28 @@ onMounted(loadPage)
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        title="成果综合查询"
-      />
+      <ContextBar layout="workbench" show-title title="成果综合查询" />
     </template>
     <UiCard v-if="stats" title="成果统计">
       <p>成果总数 {{ stats.totalCount }} · 国家级 {{ stats.nationalCount }}</p>
     </UiCard>
     <UiCard style="margin-top: 16px">
       <div class="toolbar">
-        <a-input v-model:value="query.searchText" placeholder="标题关键词" style="width: 180px" @press-enter="loadPage" />
-        <a-input v-model:value="query.levelCode" placeholder="级别编码" style="width: 120px" :disabled="query.nationalOnly" @press-enter="loadPage" />
-        <a-checkbox v-model:checked="query.nationalOnly">
-          仅国家级
-        </a-checkbox>
-        <UiButton variant="primary" @click="loadPage">
-          查询
-        </UiButton>
+        <a-input
+          v-model:value="query.searchText"
+          placeholder="标题关键词"
+          style="width: 180px"
+          @press-enter="loadPage"
+        />
+        <a-input
+          v-model:value="query.levelCode"
+          placeholder="级别编码"
+          style="width: 120px"
+          :disabled="query.nationalOnly"
+          @press-enter="loadPage"
+        />
+        <a-checkbox v-model:checked="query.nationalOnly"> 仅国家级 </a-checkbox>
+        <UiButton variant="primary" @click="loadPage"> 查询 </UiButton>
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无综合成果" />
       <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id">

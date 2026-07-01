@@ -1,5 +1,5 @@
-import {useWindowSize} from '@vueuse/core'
-import {computed} from 'vue'
+import { useWindowSize } from '@vueuse/core'
+import { computed } from 'vue'
 import { LAYOUT_DESKTOP_MIN } from '@/constants/breakpoints'
 
 /**

@@ -8,7 +8,9 @@
           <UiTag v-else-if="showCompleteProgress && isMultiVolumeExam" tone="gray" size="sm">
             {{ autoCreateVolumeProgressHint }}
           </UiTag>
-          <UiTag v-else-if="primaryHealthyVolume" tone="gray" size="sm">{{ primaryHealthyVolume.archiveNo }}</UiTag>
+          <UiTag v-else-if="primaryHealthyVolume" tone="gray" size="sm">{{
+            primaryHealthyVolume.archiveNo
+          }}</UiTag>
         </template>
         <template #actions>
           <UiButton variant="ghost" size="sm" :loading="loading" @click="loadVolume">
@@ -86,7 +88,9 @@
           </li>
           <li class="done">
             <span class="progress-steps__label">系统自动创建归档卷</span>
-            <span class="progress-steps__hint">{{ formatDateTime(primaryHealthyVolume.createTime) }}</span>
+            <span class="progress-steps__hint">{{
+              formatDateTime(primaryHealthyVolume.createTime)
+            }}</span>
           </li>
           <li :class="{ done: primaryHealthyVolume.integrityStatus === 'PASSED' }">
             <span class="progress-steps__label">材料聚合 / 完整性</span>
@@ -105,14 +109,8 @@
     </template>
 
     <template v-else>
-      <UiEmpty
-        v-if="volumeLoadFailed"
-        description="加载归档卷失败"
-      />
-      <UiEmpty
-        v-else-if="gateLoadFailed"
-        description="加载考试双门禁失败"
-      />
+      <UiEmpty v-if="volumeLoadFailed" description="加载归档卷失败" />
+      <UiEmpty v-else-if="gateLoadFailed" description="加载考试双门禁失败" />
 
       <template v-else>
         <SignalBand :metrics="signalMetrics" compact />
@@ -168,7 +166,9 @@
                 </li>
               </ul>
             </li>
-            <li :class="{ failed: hasAutoCreateFailure, pending: polling && !hasAutoCreateFailure }">
+            <li
+              :class="{ failed: hasAutoCreateFailure, pending: polling && !hasAutoCreateFailure }"
+            >
               <span class="progress-steps__label">系统自动创建归档卷</span>
               <span class="progress-steps__hint">{{ autoCreateStepHint }}</span>
             </li>
@@ -203,7 +203,12 @@
               </UiButton>
             </template>
             <template v-else-if="showRetryAutoCreate" #actions>
-              <UiButton variant="primary" size="sm" :loading="retrying || polling" @click="retryAutoCreate">
+              <UiButton
+                variant="primary"
+                size="sm"
+                :loading="retrying || polling"
+                @click="retryAutoCreate"
+              >
                 重新触发自动建卷
               </UiButton>
             </template>
@@ -216,7 +221,12 @@
             dense
           >
             <template #actions>
-              <UiButton variant="primary" size="sm" :loading="retrying || polling" @click="retryAutoCreate">
+              <UiButton
+                variant="primary"
+                size="sm"
+                :loading="retrying || polling"
+                @click="retryAutoCreate"
+              >
                 重新触发自动建卷
               </UiButton>
             </template>
@@ -240,11 +250,6 @@ import type {
   ArchiveVolumeExamGateVO,
   ArchiveVolumeVO,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   ARCHIVE_INTEGRITY_STATUS_LABEL,
   ARCHIVE_INTEGRITY_STATUS_TONE,
@@ -255,6 +260,11 @@ import {
   pageArchiveVolumes,
   retryArchiveVolumeAutoCreate,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import MarkExamStageRail from '@/components/mark/MarkExamStageRail.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -303,14 +313,16 @@ function isAutoCreateFailureStub(vol: ArchiveVolumeVO): boolean {
 
 const primaryHealthyVolume = computed(() => healthyVolumes.value[0] ?? null)
 
-const expectedAutoCreateVolumeCount = computed(() => examGate.value?.expectedAutoCreateVolumeCount ?? null)
-
-const isMultiVolumeExam = computed(() =>
-  (expectedAutoCreateVolumeCount.value ?? 0) > 1 || healthyVolumes.value.length > 1,
+const expectedAutoCreateVolumeCount = computed(
+  () => examGate.value?.expectedAutoCreateVolumeCount ?? null,
 )
 
-const showCompleteProgress = computed(() =>
-  examGate.value?.autoCreateFullyHealthy === true && healthyVolumes.value.length > 0,
+const isMultiVolumeExam = computed(
+  () => (expectedAutoCreateVolumeCount.value ?? 0) > 1 || healthyVolumes.value.length > 1,
+)
+
+const showCompleteProgress = computed(
+  () => examGate.value?.autoCreateFullyHealthy === true && healthyVolumes.value.length > 0,
 )
 
 const autoCreateVolumeProgressHint = computed(() => {
@@ -319,8 +331,8 @@ const autoCreateVolumeProgressHint = computed(() => {
   return `${healthy}/${expected} 院系卷`
 })
 
-const hasPartialAutoCreateProgress = computed(() =>
-  healthyVolumes.value.length > 0 && examGate.value?.autoCreateFullyHealthy !== true,
+const hasPartialAutoCreateProgress = computed(
+  () => healthyVolumes.value.length > 0 && examGate.value?.autoCreateFullyHealthy !== true,
 )
 
 const partialAutoCreateDescription = computed(() => {
@@ -341,25 +353,29 @@ const volumeColumns = [
 ]
 
 const autoCreateFailedEvent = computed(() =>
-  events.value.find(item => item.eventType === 'AUTO_CREATE_FAILED'),
+  events.value.find((item) => item.eventType === 'AUTO_CREATE_FAILED'),
 )
 
 const autoCreateFailedNeedsClassScope = computed(() => {
   const category = examGate.value?.autoCreateFailureCategory
-  return category != null
-    && isArchiveAutoCreateFailureCategory(category)
-    && CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES.has(category)
+  return (
+    category != null &&
+    isArchiveAutoCreateFailureCategory(category) &&
+    CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES.has(category)
+  )
 })
 
-const hasAutoCreateFailure = computed(() =>
-  examGate.value?.autoCreateFailureStubPresent === true
-  || autoCreateFailedEvent.value != null
-  || examGate.value?.autoCreatePendingStatus === 'MANUAL_REQUIRED',
+const hasAutoCreateFailure = computed(
+  () =>
+    examGate.value?.autoCreateFailureStubPresent === true ||
+    autoCreateFailedEvent.value != null ||
+    examGate.value?.autoCreatePendingStatus === 'MANUAL_REQUIRED',
 )
 
-const showRetryAutoCreate = computed(() =>
-  examGate.value?.archiveAutoCreateRetryAllowed === true
-  && !autoCreateFailedNeedsClassScope.value,
+const showRetryAutoCreate = computed(
+  () =>
+    examGate.value?.archiveAutoCreateRetryAllowed === true &&
+    !autoCreateFailedNeedsClassScope.value,
 )
 
 const showNonOwnerHint = computed(() => {
@@ -370,9 +386,11 @@ const showNonOwnerHint = computed(() => {
   if (gate.archiveAutoCreateRetryAllowed === true) {
     return false
   }
-  return hasAutoCreateFailure.value
-    || gate.autoCreatePendingStatus === 'MANUAL_REQUIRED'
-    || (gate.gateOpen === true && !gate.autoCreateFailureStubPresent)
+  return (
+    hasAutoCreateFailure.value ||
+    gate.autoCreatePendingStatus === 'MANUAL_REQUIRED' ||
+    (gate.gateOpen === true && !gate.autoCreateFailureStubPresent)
+  )
 })
 
 const autoCreateStepHint = computed(() => {
@@ -380,7 +398,9 @@ const autoCreateStepHint = computed(() => {
     return '系统正在创建归档卷…'
   }
   if (hasAutoCreateFailure.value) {
-    return examGate.value?.autoCreateLastError || autoCreateFailedEvent.value?.reason || '自动建卷失败'
+    return (
+      examGate.value?.autoCreateLastError || autoCreateFailedEvent.value?.reason || '自动建卷失败'
+    )
   }
   return emptyDescription.value
 })
@@ -432,19 +452,50 @@ const signalMetrics = computed<SignalMetric[]>(() => {
   const gate = examGate.value
   if (!showCompleteProgress.value) {
     if (hasPartialAutoCreateProgress.value) {
-      return [{ key: 'partial', label: '建卷进度', value: autoCreateVolumeProgressHint.value, tone: 'orange' }]
+      return [
+        {
+          key: 'partial',
+          label: '建卷进度',
+          value: autoCreateVolumeProgressHint.value,
+          tone: 'orange',
+        },
+      ]
     }
     return gate
-      ? [{ key: 'gate', label: '双门禁', value: gate.gateOpen ? '已满足' : '未满足', tone: gate.gateOpen ? 'green' : 'orange' }]
+      ? [
+          {
+            key: 'gate',
+            label: '双门禁',
+            value: gate.gateOpen ? '已满足' : '未满足',
+            tone: gate.gateOpen ? 'green' : 'orange',
+          },
+        ]
       : []
   }
   if (isMultiVolumeExam.value) {
-    const allIntegrityPassed = healthyVolumes.value.every(item => item.integrityStatus === 'PASSED')
-    const allStored = healthyVolumes.value.every(item => item.volumeStatus === 'STORED')
+    const allIntegrityPassed = healthyVolumes.value.every(
+      (item) => item.integrityStatus === 'PASSED',
+    )
+    const allStored = healthyVolumes.value.every((item) => item.volumeStatus === 'STORED')
     return [
-      { key: 'progress', label: '建卷进度', value: autoCreateVolumeProgressHint.value, tone: 'green' },
-      { key: 'integrity', label: '完整性', value: allIntegrityPassed ? '全部通过' : '待补齐', tone: allIntegrityPassed ? 'green' : 'orange' },
-      { key: 'status', label: '入库', value: allStored ? '全部入库' : '进行中', tone: allStored ? 'green' : 'orange' },
+      {
+        key: 'progress',
+        label: '建卷进度',
+        value: autoCreateVolumeProgressHint.value,
+        tone: 'green',
+      },
+      {
+        key: 'integrity',
+        label: '完整性',
+        value: allIntegrityPassed ? '全部通过' : '待补齐',
+        tone: allIntegrityPassed ? 'green' : 'orange',
+      },
+      {
+        key: 'status',
+        label: '入库',
+        value: allStored ? '全部入库' : '进行中',
+        tone: allStored ? 'green' : 'orange',
+      },
     ]
   }
   const vol = primaryHealthyVolume.value
@@ -452,7 +503,12 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     return []
   }
   return [
-    { key: 'integrity', label: '完整性', value: integrityStatusLabel(vol.integrityStatus), tone: vol.integrityStatus === 'PASSED' ? 'green' : 'orange' },
+    {
+      key: 'integrity',
+      label: '完整性',
+      value: integrityStatusLabel(vol.integrityStatus),
+      tone: vol.integrityStatus === 'PASSED' ? 'green' : 'orange',
+    },
     { key: 'status', label: '卷状态', value: volumeStatusLabel(vol.volumeStatus) },
   ]
 })
@@ -477,8 +533,7 @@ async function loadGate() {
   if (!examId.value) return
   try {
     examGate.value = await getArchiveVolumeExamGate(examId.value)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载考试双门禁失败')
     examGate.value = null
     gateLoadFailed.value = true
@@ -503,17 +558,15 @@ async function loadVolume() {
       pageSize: EXAM_ARCHIVE_VOLUME_PAGE_SIZE,
     })
     const list = readPageList(page, '归档卷查询异常')
-    healthyVolumes.value = list.filter(item => !isAutoCreateFailureStub(item))
-    const stubRow = list.find(item => isAutoCreateFailureStub(item))
+    healthyVolumes.value = list.filter((item) => !isAutoCreateFailureStub(item))
+    const stubRow = list.find((item) => isAutoCreateFailureStub(item))
     if (stubRow) {
       const detail = await getArchiveVolumeDetail(stubRow.volumeId)
       events.value = detail.events
-    }
-    else {
+    } else {
       events.value = []
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载归档卷失败')
     healthyVolumes.value = []
     events.value = []
@@ -566,11 +619,9 @@ async function retryAutoCreate() {
     await retryArchiveVolumeAutoCreate(examId.value)
     message.success('已重新触发自动建卷')
     await startAutoCreatePoll()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '重新触发自动建卷失败')
-  }
-  finally {
+  } finally {
     retrying.value = false
   }
 }

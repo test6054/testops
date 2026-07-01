@@ -49,15 +49,16 @@ const evidenceCount = ref(0)
 
 const cyclePanelRef = ref<InstanceType<typeof AccreditationCyclePanel>>()
 const annualPanelRef = ref<InstanceType<typeof AccreditationAnnualPanel>>()
-const annualReportMaterialPanelRef
-  = ref<InstanceType<typeof AccreditationAnnualReportMaterialPanel>>()
+const annualReportMaterialPanelRef =
+  ref<InstanceType<typeof AccreditationAnnualReportMaterialPanel>>()
 const onsitePanelRef = ref<InstanceType<typeof AccreditationOnsitePanel>>()
 const supportPanelRef = ref<InstanceType<typeof AccreditationSupportPanel>>()
 const evidencePanelRef = ref<InstanceType<typeof AccreditationEvidencePanel>>()
 
 function readinessReady(itemKey: string): boolean {
   return (
-    cockpit.value?.conclusionReadinessItems?.find((item) => item.itemKey === itemKey)?.ready === true
+    cockpit.value?.conclusionReadinessItems?.find((item) => item.itemKey === itemKey)?.ready ===
+    true
   )
 }
 
@@ -69,32 +70,33 @@ const ceeaa2024CheckItems = computed(() => {
       key: '4.1-student',
       label: '4.1 学生·思政引领',
       desc: '学生管理制度中应体现思政引领和品德培养措施',
-      passed: readinessReady('SELF_ASSESSMENT_ACCEPTED') && readinessReady('SUPPORT_PROFILE_CONFIRMED'),
+      passed:
+        readinessReady('SELF_ASSESSMENT_ACCEPTED') && readinessReady('SUPPORT_PROFILE_CONFIRMED'),
     },
     {
       key: '4.2-objective',
       label: '4.2 培养目标·为党育人',
       desc: '培养目标应符合"为党育人、为国育才"总要求',
       passed:
-        readinessReady('GRADUATION_REQUIREMENT_READY')
-        && readinessReady('PROGRAM_QUALITY_REPORT_READY'),
+        readinessReady('GRADUATION_REQUIREMENT_READY') &&
+        readinessReady('PROGRAM_QUALITY_REPORT_READY'),
     },
     {
       key: '4.3-graduate',
       label: '4.3 毕业要求·工程报国',
       desc: '毕业要求应包含工程伦理和职业规范（含工程报国意识）',
       passed:
-        readinessReady('GRADUATION_REQUIREMENT_READY')
-        && readinessReady('ACHIEVEMENT_RESULT_READY'),
+        readinessReady('GRADUATION_REQUIREMENT_READY') &&
+        readinessReady('ACHIEVEMENT_RESULT_READY'),
     },
     {
       key: '4.4-curriculum',
       label: '4.4 课程体系·价值导向',
       desc: '课程设置和教学实施应体现正确的价值导向',
       passed:
-        readinessReady('ENABLED_QUALITY_COURSE_READY')
-        && readinessReady('COURSE_GOAL_READY')
-        && readinessReady('SUPPORT_MATRIX_READY'),
+        readinessReady('ENABLED_QUALITY_COURSE_READY') &&
+        readinessReady('COURSE_GOAL_READY') &&
+        readinessReady('SUPPORT_MATRIX_READY'),
     },
     {
       key: '4.5-faculty',
@@ -113,16 +115,14 @@ const ceeaa2024CheckItems = computed(() => {
       label: '4.7 持续改进·达成度闭环',
       desc: '"评价→分析→改进→再评价"闭环机制',
       passed:
-        readinessReady('ACHIEVEMENT_RESULT_READY')
-        && readinessReady('IMPROVEMENT_TASK_CLOSED')
-        && c?.annualReportMaterialsReady === true,
+        readinessReady('ACHIEVEMENT_RESULT_READY') &&
+        readinessReady('IMPROVEMENT_TASK_CLOSED') &&
+        c?.annualReportMaterialsReady === true,
     },
   ]
 })
 
-const canCreateCycle = computed(
-  () => hasScope.value && activeCycle.value?.cycleStatus !== 'ACTIVE',
-)
+const canCreateCycle = computed(() => hasScope.value && activeCycle.value?.cycleStatus !== 'ACTIVE')
 
 const signalMetrics = computed(() => {
   const base = metrics.value
@@ -202,7 +202,12 @@ onActivated(() => {
           >
             刷新
           </UiButton>
-          <UiButton variant="outline" size="sm" :disabled="!hasScope" @click="professionDrawerOpen = true">
+          <UiButton
+            variant="outline"
+            size="sm"
+            :disabled="!hasScope"
+            @click="professionDrawerOpen = true"
+          >
             专业配置
           </UiButton>
           <UiButton variant="outline" size="sm" :disabled="!hasScope" @click="goCourseMatrix">
@@ -341,23 +346,38 @@ onActivated(() => {
       </a-tabs>
     </template>
 
-    <UiDrawer
-      v-model:open="professionDrawerOpen"
-      title="专业配置"
-      :width="420"
-      :hide-footer="true"
-    >
+    <UiDrawer v-model:open="professionDrawerOpen" title="专业配置" :width="420" :hide-footer="true">
       <div class="acc-profession-links">
-        <UiButton variant="outline" size="sm" block @click="openProfessionConfig('QualityProgramEvaluationProfile')">
+        <UiButton
+          variant="outline"
+          size="sm"
+          block
+          @click="openProfessionConfig('QualityProgramEvaluationProfile')"
+        >
           专业评价口径
         </UiButton>
-        <UiButton variant="outline" size="sm" block @click="openProfessionConfig('QualityProfessionAlgorithmProfile')">
+        <UiButton
+          variant="outline"
+          size="sm"
+          block
+          @click="openProfessionConfig('QualityProfessionAlgorithmProfile')"
+        >
           专业算法实例
         </UiButton>
-        <UiButton variant="outline" size="sm" block @click="openProfessionConfig('QualityEvaluationWorkgroup')">
+        <UiButton
+          variant="outline"
+          size="sm"
+          block
+          @click="openProfessionConfig('QualityEvaluationWorkgroup')"
+        >
           评价工作组
         </UiButton>
-        <UiButton variant="outline" size="sm" block @click="openProfessionConfig('QualityScaleConversionRule')">
+        <UiButton
+          variant="outline"
+          size="sm"
+          block
+          @click="openProfessionConfig('QualityScaleConversionRule')"
+        >
           量表换算规则
         </UiButton>
       </div>

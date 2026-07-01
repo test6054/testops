@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
+import { forceReleaseScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
-import { forceReleaseScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
@@ -12,7 +12,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "released": []
+  released: []
 }>()
 
 const submitting = ref(false)
@@ -22,7 +22,7 @@ const form = reactive({
 
 watch(
   () => props.open,
-  open => {
+  (open) => {
     if (open) {
       form.releaseReason = ''
     }
@@ -49,11 +49,9 @@ async function handleSubmit() {
     message.success('派单已强制解锁')
     emit('released')
     emit('update:open', false)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }

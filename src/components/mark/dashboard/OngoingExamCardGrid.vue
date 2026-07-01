@@ -53,7 +53,9 @@
           <span class="ongoing-exam-card__stat-label">待复核</span>
           <span
             class="ongoing-exam-card__stat-value"
-            :class="{ 'ongoing-exam-card__stat-value--warn': (exam.pendingReviewTaskCount ?? 0) > 0 }"
+            :class="{
+              'ongoing-exam-card__stat-value--warn': (exam.pendingReviewTaskCount ?? 0) > 0,
+            }"
           >
             {{ formatCount(exam.pendingReviewTaskCount) }}
           </span>
@@ -173,7 +175,9 @@ function progressFillClass(progress: number): string {
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
   cursor: pointer;
-  transition: border-color var(--dp-duration-normal) ease, box-shadow var(--dp-duration-normal) ease;
+  transition:
+    border-color var(--dp-duration-normal) ease,
+    box-shadow var(--dp-duration-normal) ease;
 }
 
 .ongoing-exam-card:hover {

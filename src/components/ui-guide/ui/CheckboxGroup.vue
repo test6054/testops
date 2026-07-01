@@ -21,13 +21,16 @@ defineOptions({
 
 const modelValue = defineModel<UiOptionValue[]>({ default: () => [] })
 
-const props = withDefaults(defineProps<{
-  options?: UiSelectOption[]
-  direction?: 'horizontal' | 'vertical'
-  disabled?: boolean
-}>(), {
-  options: () => [],
-  direction: 'horizontal',
-  disabled: false,
-})
+const props = withDefaults(
+  defineProps<{
+    options?: UiSelectOption[]
+    direction?: 'horizontal' | 'vertical'
+    disabled?: boolean
+  }>(),
+  {
+    options: () => [],
+    direction: 'horizontal',
+    disabled: false,
+  },
+)
 </script>

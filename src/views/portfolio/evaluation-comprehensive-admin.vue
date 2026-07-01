@@ -6,15 +6,18 @@ import type {
   PortfolioEvaluationComprehensiveTeacherRowVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
-import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES, PORTFOLIO_EVALUATION_MODE_LABEL } from '@/apis/portfolio/enums'
 import {
   portfolioEvaluationEntryApi,
   portfolioEvaluationTaskApi,
 } from '@/apis/portfolio/teacher-platform'
+import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
 import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import {
+  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
+  PORTFOLIO_EVALUATION_MODE_LABEL,
+} from '@/apis/portfolio/enums'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -46,7 +49,12 @@ const kpiItems = computed(() => {
     return []
   }
   return [
-    { key: 'tasks', label: '纳入任务', value: String(analysis.value.taskCount), tone: 'blue' as const },
+    {
+      key: 'tasks',
+      label: '纳入任务',
+      value: String(analysis.value.taskCount),
+      tone: 'blue' as const,
+    },
     { key: 'entries', label: '填报条目', value: String(analysis.value.totalEntryCount) },
     { key: 'avg', label: '总体均分', value: analysis.value.overallAverageScore, unit: '分' },
   ]
@@ -55,17 +63,17 @@ const kpiItems = computed(() => {
 const filteredTasks = computed(() => {
   let pool = tasks.value
   if (filter.workgroupId) {
-    pool = pool.filter(item => item.workgroupId === filter.workgroupId)
+    pool = pool.filter((item) => item.workgroupId === filter.workgroupId)
   }
   const planYear = filter.planYear.trim()
   if (planYear) {
-    pool = pool.filter(item => item.startTime?.startsWith(planYear))
+    pool = pool.filter((item) => item.startTime?.startsWith(planYear))
   }
   return pool
 })
 
 const taskSelectOptions = computed(() =>
-  filteredTasks.value.map(item => ({ value: item.id, label: item.taskName })),
+  filteredTasks.value.map((item) => ({ value: item.id, label: item.taskName })),
 )
 
 const hasReadableTasks = computed(() => tasks.value.length > 0)
@@ -79,12 +87,20 @@ const taskColumns: ColumnsType<PortfolioEvaluationComprehensiveTaskItemVO> = [
 
 const teacherColumns: ColumnsType<PortfolioEvaluationComprehensiveTeacherRowVO> = [
   { title: '被评教师', dataIndex: 'subjectTeacherUserId', key: 'subjectTeacherUserId', width: 160 },
-  { title: '涉及任务', dataIndex: 'involvedTaskCount', key: 'involvedTaskCount', width: 88, align: 'right' },
+  {
+    title: '涉及任务',
+    dataIndex: 'involvedTaskCount',
+    key: 'involvedTaskCount',
+    width: 88,
+    align: 'right',
+  },
   { title: '条目数', dataIndex: 'entryCount', key: 'entryCount', width: 88, align: 'right' },
   { title: '平均分', dataIndex: 'averageScore', key: 'averageScore', width: 88, align: 'right' },
 ]
 
-function evaluationModeLabel(mode: PortfolioEvaluationComprehensiveTaskItemVO['evaluationMode']): string {
+function evaluationModeLabel(
+  mode: PortfolioEvaluationComprehensiveTaskItemVO['evaluationMode'],
+): string {
   return strictEnumLabel(PORTFOLIO_EVALUATION_MODE_LABEL, mode, '多元评价模式')
 }
 
@@ -107,8 +123,7 @@ async function loadWorkgroups() {
   try {
     const page = await evaluationWorkgroupApi.page({ pageNum: 1, pageSize: 100, enabled: true })
     workgroups.value = page.list ?? []
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -120,13 +135,12 @@ async function loadTasks() {
       pageNum: 1,
       pageSize: 200,
     })
-    tasks.value = readPageList(page, '加载评价任务失败')
-      .filter(item => PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES.includes(item.taskStatus))
-  }
-  catch (error) {
+    tasks.value = readPageList(page, '加载评价任务失败').filter((item) =>
+      PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES.includes(item.taskStatus),
+    )
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     tasksLoading.value = false
   }
 }
@@ -142,12 +156,10 @@ async function runAnalysis() {
   try {
     const result = await portfolioEvaluationEntryApi.comprehensiveAnalysis(buildAnalysisParams())
     analysis.value = result
-    await hydrateTeacherLabels(result.teacherRows.map(row => row.subjectTeacherUserId))
-  }
-  catch (error) {
+    await hydrateTeacherLabels(result.teacherRows.map((row) => row.subjectTeacherUserId))
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -158,26 +170,28 @@ async function exportAnalysis() {
   }
   exporting.value = true
   try {
-    const result = await portfolioEvaluationEntryApi.exportComprehensiveAnalysis(buildAnalysisParams())
+    const result =
+      await portfolioEvaluationEntryApi.exportComprehensiveAnalysis(buildAnalysisParams())
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条填报`)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     exporting.value = false
   }
 }
 
-watch(() => filter.workgroupId, () => {
-  if (!filter.workgroupId) {
-    return
-  }
-  filter.selectedTaskIds = filter.selectedTaskIds.filter(id =>
-    tasks.value.some(task => task.id === id && task.workgroupId === filter.workgroupId),
-  )
-})
+watch(
+  () => filter.workgroupId,
+  () => {
+    if (!filter.workgroupId) {
+      return
+    }
+    filter.selectedTaskIds = filter.selectedTaskIds.filter((id) =>
+      tasks.value.some((task) => task.id === id && task.workgroupId === filter.workgroupId),
+    )
+  },
+)
 
 onMounted(async () => {
   await loadWorkgroups()
@@ -195,9 +209,13 @@ onMounted(async () => {
           allow-clear
           placeholder="评价工作组"
           style="width: 200px"
-          :options="workgroups.map(item => ({ value: item.id, label: item.workgroupName }))"
+          :options="workgroups.map((item) => ({ value: item.id, label: item.workgroupName }))"
         />
-        <a-input v-model:value="filter.planYear" placeholder="任务开始年度，如 2026" style="width: 160px" />
+        <a-input
+          v-model:value="filter.planYear"
+          placeholder="任务开始年度，如 2026"
+          style="width: 160px"
+        />
         <a-select
           v-model:value="filter.selectedTaskIds"
           mode="multiple"
@@ -207,7 +225,12 @@ onMounted(async () => {
           :loading="tasksLoading"
           :options="taskSelectOptions"
         />
-        <UiButton variant="primary" :loading="loading" :disabled="!hasReadableTasks" @click="runAnalysis">
+        <UiButton
+          variant="primary"
+          :loading="loading"
+          :disabled="!hasReadableTasks"
+          @click="runAnalysis"
+        >
           分析
         </UiButton>
         <UiButton :loading="exporting" :disabled="!analysis" @click="exportAnalysis">
@@ -224,16 +247,12 @@ onMounted(async () => {
         description="按评价组、年度或任务范围筛选后，点击「分析」生成跨任务汇总"
       >
         <template #action>
-          <UiButton variant="primary" :loading="loading" @click="runAnalysis">
-            开始分析
-          </UiButton>
+          <UiButton variant="primary" :loading="loading" @click="runAnalysis"> 开始分析 </UiButton>
         </template>
       </UiEmpty>
       <template v-else-if="analysis">
         <UiStatPanel :items="kpiItems" compact style="margin-top: 16px" />
-        <h3 class="section-title">
-          任务汇总
-        </h3>
+        <h3 class="section-title">任务汇总</h3>
         <UiDataTable
           :columns="taskColumns"
           :data-source="analysis.tasks"
@@ -247,9 +266,7 @@ onMounted(async () => {
             </template>
           </template>
         </UiDataTable>
-        <h3 class="section-title">
-          被评教师跨任务汇总
-        </h3>
+        <h3 class="section-title">被评教师跨任务汇总</h3>
         <UiDataTable
           :columns="teacherColumns"
           :data-source="analysis.teacherRows"

@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
-import type { ArchiveVolumeExamGateVO } from '@/apis/mark/archive-volume'
 import { onUnmounted, ref } from 'vue'
+import type { ArchiveVolumeExamGateVO } from '@/apis/mark/archive-volume'
 import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import {
   CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES,
@@ -20,7 +20,10 @@ function isPollFailed(gate: ArchiveVolumeExamGateVO): boolean {
   if (gate.autoCreateFullyHealthy === true) {
     return false
   }
-  if (gate.autoCreateFailureStubPresent === true && gate.autoCreatePendingStatus === 'MANUAL_REQUIRED') {
+  if (
+    gate.autoCreateFailureStubPresent === true &&
+    gate.autoCreatePendingStatus === 'MANUAL_REQUIRED'
+  ) {
     return true
   }
   const category = gate.autoCreateFailureCategory
@@ -89,8 +92,7 @@ export function useArchiveAutoCreatePoll(options: ArchiveAutoCreatePollOptions) 
                 resolve('failed')
                 return
               }
-            }
-            catch {
+            } catch {
               // 网络抖动继续轮询直至超时
             }
             if (Date.now() - startedAt >= timeoutMs) {

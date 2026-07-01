@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
-import type { ArchiveVolumeDetailVO, ArchiveVolumeRoleCode } from '@/apis/mark/archive-volume'
 import { computed, reactive, ref, watch } from 'vue'
+import type { ArchiveVolumeDetailVO, ArchiveVolumeRoleCode } from '@/apis/mark/archive-volume'
 import { ARCHIVE_VOLUME_ROLE_LABEL } from '@/apis/mark/archive-volume'
 import { canSubmitArchiveVolumeDetail } from '@/composables/useArchiveVolumeSubmitGate'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -37,7 +37,11 @@ export function useArchiveVolumeDetailScope(
   const isReadonlyWizard = computed(() => isContributor.value)
 
   const volumeRoleLabel = computed(() =>
-    strictEnumLabel(ARCHIVE_VOLUME_ROLE_LABEL, volumeRole.value as ArchiveVolumeRoleCode, 'volumeRole'),
+    strictEnumLabel(
+      ARCHIVE_VOLUME_ROLE_LABEL,
+      volumeRole.value as ArchiveVolumeRoleCode,
+      'volumeRole',
+    ),
   )
 
   const canSubmitVolume = computed(() => {

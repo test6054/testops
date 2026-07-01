@@ -153,14 +153,6 @@ import type {
   TrialSessionStatusCode,
   TrialSessionVO,
 } from '@/apis/mark/marking-organization'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
-import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
-import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import StopOutlined from '@ant-design/icons-vue/StopOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   calibrateTrialSession,
   createTrialSession,
@@ -169,6 +161,14 @@ import {
   TRIAL_SESSION_STATUS_LABEL as TRIAL_STATUS_LABEL,
   TRIAL_SESSION_STATUS_TONE as TRIAL_STATUS_TONE,
 } from '@/apis/mark/marking-organization'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
+import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
+import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import StopOutlined from '@ant-design/icons-vue/StopOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -194,7 +194,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "refresh": []
+  refresh: []
   'open-lifecycle': [action: 'closeTrial', sessionId: string]
 }>()
 
@@ -214,7 +214,9 @@ const deletingId = ref<string | null>(null)
 
 const calibrateSessionOptions = computed(() =>
   props.sessions
-    .filter((item) => item.sessionStatus === 'TRIAL_ASSIGNED' || item.sessionStatus === 'TRIAL_SUBMITTED')
+    .filter(
+      (item) => item.sessionStatus === 'TRIAL_ASSIGNED' || item.sessionStatus === 'TRIAL_SUBMITTED',
+    )
     .map((item) => ({
       value: item.id,
       label: `${item.groupName} · ${strictEnumLabel(TRIAL_STATUS_LABEL, item.sessionStatus, '试评会话状态')} · ${formatDateTime(item.createTime)}`,
@@ -258,8 +260,8 @@ watch(
 
 function canCloseTrial(status: TrialSessionStatusCode): boolean {
   return (
-    props.canManage
-    && (status === 'TRIAL_ASSIGNED' || status === 'TRIAL_SUBMITTED' || status === 'CALIBRATED')
+    props.canManage &&
+    (status === 'TRIAL_ASSIGNED' || status === 'TRIAL_SUBMITTED' || status === 'CALIBRATED')
   )
 }
 
@@ -275,7 +277,8 @@ function guardManageAction(): boolean {
 
 async function submitCreate(): Promise<void> {
   if (!guardManageAction()) return
-  if (!props.organizationId || !trialGroupId.value || !selectedGroupHasAllocationPolicy.value) return
+  if (!props.organizationId || !trialGroupId.value || !selectedGroupHasAllocationPolicy.value)
+    return
   creating.value = true
   try {
     const sessionId = await createTrialSession({

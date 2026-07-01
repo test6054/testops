@@ -4,7 +4,12 @@
       <ProfileOutlined />
       <span>任务详情</span>
     </template>
-    <a-descriptions :column="{ xs: 1, sm: 2 }" size="middle" bordered class="marking-task-info-card__desc">
+    <a-descriptions
+      :column="{ xs: 1, sm: 2 }"
+      size="middle"
+      bordered
+      class="marking-task-info-card__desc"
+    >
       <a-descriptions-item label="任务编号">
         <a-typography-text copyable>{{ task.id }}</a-typography-text>
       </a-descriptions-item>
@@ -32,10 +37,7 @@
       <a-descriptions-item label="提交时间">
         {{ formatDateTime(task.submittedTime) }}
       </a-descriptions-item>
-      <a-descriptions-item
-        v-if="task.score !== undefined && task.score !== null"
-        label="当前给分"
-      >
+      <a-descriptions-item v-if="task.score !== undefined && task.score !== null" label="当前给分">
         <a-typography-text strong>{{ task.score }}</a-typography-text>
       </a-descriptions-item>
       <a-descriptions-item v-if="task.annotationNote" label="既有批注" :span="2">

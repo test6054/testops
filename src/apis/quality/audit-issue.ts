@@ -12,11 +12,8 @@ import http from '@/config/axios'
 const BASE = '/api/quality/audit-evaluation/issues'
 
 /** 审核评估问题来源 - 对应后端 AuditIssueSourceEnum */
-export type AuditIssueSource
-  = | 'SELF_AUDIT'
-    | 'EXPERT_AUDIT'
-    | 'ACCREDITATION_AUDIT'
-    | 'EXTERNAL_INSPECTION'
+export type AuditIssueSource =
+  'SELF_AUDIT' | 'EXPERT_AUDIT' | 'ACCREDITATION_AUDIT' | 'EXTERNAL_INSPECTION'
 
 /** 审核评估问题严重度 - 对应后端 AuditIssueSeverityEnum */
 export type AuditIssueSeverity = 'MINOR' | 'MAJOR' | 'CRITICAL'
@@ -43,11 +40,13 @@ export const AUDIT_ISSUE_SEVERITY_TONE: Record<AuditIssueSeverity, BadgeTone> = 
   CRITICAL: 'red',
 }
 
-export const AUDIT_ISSUE_SOURCE_OPTIONS = (Object.keys(AUDIT_ISSUE_SOURCE_LABEL) as AuditIssueSource[])
-  .map(value => ({ value, label: AUDIT_ISSUE_SOURCE_LABEL[value] }))
+export const AUDIT_ISSUE_SOURCE_OPTIONS = (
+  Object.keys(AUDIT_ISSUE_SOURCE_LABEL) as AuditIssueSource[]
+).map((value) => ({ value, label: AUDIT_ISSUE_SOURCE_LABEL[value] }))
 
-export const AUDIT_ISSUE_SEVERITY_OPTIONS = (Object.keys(AUDIT_ISSUE_SEVERITY_LABEL) as AuditIssueSeverity[])
-  .map(value => ({ value, label: AUDIT_ISSUE_SEVERITY_LABEL[value] }))
+export const AUDIT_ISSUE_SEVERITY_OPTIONS = (
+  Object.keys(AUDIT_ISSUE_SEVERITY_LABEL) as AuditIssueSeverity[]
+).map((value) => ({ value, label: AUDIT_ISSUE_SEVERITY_LABEL[value] }))
 
 export interface AuditIssueVO {
   id: string
@@ -106,8 +105,7 @@ export interface AuditIssueQueryRequest extends QueryDto {
 }
 
 export const auditIssueApi = {
-  page: (data: AuditIssueQueryRequest) =>
-    http.post<PageResult<AuditIssueVO>>(`${BASE}/page`, data),
+  page: (data: AuditIssueQueryRequest) => http.post<PageResult<AuditIssueVO>>(`${BASE}/page`, data),
   detail: (id: string) => http.post<AuditIssueVO>(`${BASE}/detail`, { id }),
   create: (data: AuditIssueSaveRequest) => http.post<string>(`${BASE}/create`, data),
   update: (data: AuditIssueSaveRequest) => http.post<void>(`${BASE}/update`, data),

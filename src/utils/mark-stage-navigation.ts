@@ -1,7 +1,7 @@
 import type { Router } from 'vue-router'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
-import type { MarkStageKey } from '@/stores/modules/markStage'
 import { resolveJourneyDefaultRoute } from '@/constants/exam-journey'
+import type { MarkStageKey } from '@/stores/modules/markStage'
 import { MARK_STAGE_DEFAULT_ROUTE } from '@/constants/mark-workspace-nav'
 import { resolveScanStageEntryRoute } from '@/utils/resolve-scan-stage-entry'
 
@@ -23,9 +23,11 @@ export function navigateToMarkStage(
     return
   }
   if (stageKey === 'SCAN') {
-    void router.push(resolveScanStageEntryRoute(examId, {
-      scanAttentionCount: options?.scanAttentionCount,
-    }))
+    void router.push(
+      resolveScanStageEntryRoute(examId, {
+        scanAttentionCount: options?.scanAttentionCount,
+      }),
+    )
     return
   }
   const routeName = MARK_STAGE_DEFAULT_ROUTE[stageKey as MarkStageKey]
@@ -48,7 +50,9 @@ export function navigateToJourneyStep(
   if (!examId) {
     return
   }
-  void router.push(resolveJourneyDefaultRoute(journeyKey, examId, {
-    scanAttentionCount: options?.scanAttentionCount,
-  }))
+  void router.push(
+    resolveJourneyDefaultRoute(journeyKey, examId, {
+      scanAttentionCount: options?.scanAttentionCount,
+    }),
+  )
 }

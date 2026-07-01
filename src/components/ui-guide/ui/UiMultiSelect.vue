@@ -27,26 +27,29 @@ defineOptions({
 
 const modelValue = defineModel<UiOptionValue[]>({ default: () => [] })
 
-withDefaults(defineProps<{
-  options: UiSelectOption[]
-  placeholder?: string
-  allowClear?: boolean
-  allowSearch?: boolean
-  filterOption?: boolean
-  disabled?: boolean
-  loading?: boolean
-  maxTagCount?: number | 'responsive'
-  size?: UiComponentSize
-  status?: UiFieldStatus
-}>(), {
-  placeholder: '请选择',
-  allowClear: true,
-  allowSearch: false,
-  filterOption: true,
-  disabled: false,
-  loading: false,
-  maxTagCount: 2,
-  size: 'md',
-  status: 'default',
-})
+withDefaults(
+  defineProps<{
+    options: UiSelectOption[]
+    placeholder?: string
+    allowClear?: boolean
+    allowSearch?: boolean
+    filterOption?: boolean
+    disabled?: boolean
+    loading?: boolean
+    maxTagCount?: number | 'responsive'
+    size?: UiComponentSize
+    status?: UiFieldStatus
+  }>(),
+  {
+    placeholder: '请选择',
+    allowClear: true,
+    allowSearch: false,
+    filterOption: true,
+    disabled: false,
+    loading: false,
+    maxTagCount: 2,
+    size: 'md',
+    status: 'default',
+  },
+)
 </script>

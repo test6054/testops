@@ -8,17 +8,20 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * - /api/quality/score-records: list-by-batch / list-valid-by-item / detail / create / batch-create / update / delete
  * - /api/quality/score-batches: page（按 qualityCourseId 拉批次列表）
  */
-import type {
-  AssessmentItemVO,
-} from '@/apis/quality/assessment-item'
+import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import type { RubricItemVO } from '@/apis/quality/rubric-item'
+import { rubricItemApi } from '@/apis/quality/rubric-item'
 import type { ScoreBatchVO } from '@/apis/quality/score-batch'
+import { scoreBatchApi } from '@/apis/quality/score-batch'
 import type {
   ScoreRecordRubricScoreRequest,
   ScoreRecordSaveRequest,
   ScoreRecordVO,
 } from '@/apis/quality/score-record'
-import type {ScoreBatchStatus} from '@/apis/quality/types';
+import { scoreRecordApi } from '@/apis/quality/score-record'
+import type { ScoreBatchStatus } from '@/apis/quality/types'
+import { SCORE_BATCH_STATUS_COLOR, SCORE_BATCH_STATUS_LABEL } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
@@ -26,28 +29,9 @@ import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ExportBusinessType } from '@/apis/edu/export'
-import {
-  assessmentItemApi,
-} from '@/apis/quality/assessment-item'
-import { rubricItemApi } from '@/apis/quality/rubric-item'
-import {
-  scoreBatchApi,
-} from '@/apis/quality/score-batch'
-import {
-  scoreRecordApi,
-} from '@/apis/quality/score-record'
-import {
-  SCORE_BATCH_STATUS_COLOR,
-  SCORE_BATCH_STATUS_LABEL
-  
-} from '@/apis/quality/types'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
-import {
-  ClassSelector,
-  CourseSelector,
-  StudentSelector,
-} from '@/components/quality/selectors'
+import { ClassSelector, CourseSelector, StudentSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -115,7 +99,8 @@ const qualityStore = useQualityStore()
 const batches = ref<ScoreBatchVO[]>([])
 const batchesLoading = ref(false)
 const selectedBatch = ref<ScoreBatchVO | null>(null)
-const { exporting: scoreRecordExporting, exportExcel: exportScoreRecordExcel } = useQualityTableExport()
+const { exporting: scoreRecordExporting, exportExcel: exportScoreRecordExcel } =
+  useQualityTableExport()
 
 const isBatchRecordEditable = computed(() => {
   if (!selectedBatch.value) return false
@@ -127,7 +112,7 @@ async function refreshSelectedBatch() {
   if (!selectedBatch.value) return
   const updated = await scoreBatchApi.detail(selectedBatch.value.id)
   selectedBatch.value = updated
-  const index = batches.value.findIndex(item => item.id === updated.id)
+  const index = batches.value.findIndex((item) => item.id === updated.id)
   if (index >= 0) batches.value[index] = updated
 }
 
@@ -145,11 +130,12 @@ async function loadBatches() {
   batchesLoading.value = true
   try {
     const nextBatches = await readAllPages(
-      (pageNum) => scoreBatchApi.page({
-        pageNum,
-        pageSize: SCORE_BATCH_OPTION_PAGE_SIZE,
-        qualityCourseId: qualityStore.currentQualityCourseId,
-      }),
+      (pageNum) =>
+        scoreBatchApi.page({
+          pageNum,
+          pageSize: SCORE_BATCH_OPTION_PAGE_SIZE,
+          qualityCourseId: qualityStore.currentQualityCourseId,
+        }),
       '成绩批次列表加载失败，请稍后重试',
     )
     if (scope.isStale()) {
@@ -164,17 +150,15 @@ async function loadBatches() {
   batchStatusPolling.syncPolling()
 }
 
-const batchStatusPolling = usePolling(
-  () => refreshBatchesQuietly(),
-  {
-    getOptions: () => ({
-      intervalMs: 3000,
-      when: batches.value.some((batch) => batch.status === 'PARSING')
-        || selectedBatch.value?.status === 'PARSING',
-    }),
-    pauseWhenDocumentHidden: true,
-  },
-)
+const batchStatusPolling = usePolling(() => refreshBatchesQuietly(), {
+  getOptions: () => ({
+    intervalMs: 3000,
+    when:
+      batches.value.some((batch) => batch.status === 'PARSING') ||
+      selectedBatch.value?.status === 'PARSING',
+  }),
+  pauseWhenDocumentHidden: true,
+})
 
 async function refreshBatchesQuietly(): Promise<void> {
   if (!qualityStore.currentQualityCourseId || batchesLoading.value) {
@@ -183,11 +167,12 @@ async function refreshBatchesQuietly(): Promise<void> {
   const scope = beginQualityScopeRequest()
   try {
     const nextBatches = await readAllPages(
-      (pageNum) => scoreBatchApi.page({
-        pageNum,
-        pageSize: SCORE_BATCH_OPTION_PAGE_SIZE,
-        qualityCourseId: qualityStore.currentQualityCourseId,
-      }),
+      (pageNum) =>
+        scoreBatchApi.page({
+          pageNum,
+          pageSize: SCORE_BATCH_OPTION_PAGE_SIZE,
+          qualityCourseId: qualityStore.currentQualityCourseId,
+        }),
       '成绩批次列表加载失败，请稍后重试',
     )
     if (scope.isStale()) {
@@ -325,13 +310,36 @@ const signals = computed<SignalMetric[]>(() => {
   return [
     { key: 'total', label: '当前明细', value: list.length, tone: 'blue', trendPolarity: 'neutral' },
     { key: 'valid', label: '有效', value: valid, tone: 'green', trendPolarity: 'positive' },
-    { key: 'invalid', label: '无效', value: invalid, tone: invalid > 0 ? 'orange' : 'gray', trendPolarity: 'negative' },
-    { key: 'errored', label: '异常', value: errored, tone: errored > 0 ? 'red' : 'gray', trendPolarity: 'negative' },
-    { key: 'ratio', label: '平均得分率', value: `${ratio}%`, tone: 'blue', trendPolarity: 'positive' },
-    { key: 'batches', label: '批次总数', value: batches.value.length, tone: 'gray', trendPolarity: 'neutral' },
+    {
+      key: 'invalid',
+      label: '无效',
+      value: invalid,
+      tone: invalid > 0 ? 'orange' : 'gray',
+      trendPolarity: 'negative',
+    },
+    {
+      key: 'errored',
+      label: '异常',
+      value: errored,
+      tone: errored > 0 ? 'red' : 'gray',
+      trendPolarity: 'negative',
+    },
+    {
+      key: 'ratio',
+      label: '平均得分率',
+      value: `${ratio}%`,
+      tone: 'blue',
+      trendPolarity: 'positive',
+    },
+    {
+      key: 'batches',
+      label: '批次总数',
+      value: batches.value.length,
+      tone: 'gray',
+      trendPolarity: 'neutral',
+    },
   ]
 })
-
 
 /* ========== 明细编辑 ========== */
 
@@ -545,12 +553,13 @@ async function queryValidByItem() {
   validByItemLoading.value = true
   try {
     validByItemRecords.value = await readAllPages(
-      (pageNum) => scoreRecordApi.listValidByItem({
-        assessmentItemId: validByItemId.value,
-        qualityCourseId: qualityStore.currentQualityCourseId,
-        pageNum,
-        pageSize: VALID_SCORE_RECORD_PAGE_SIZE,
-      }),
+      (pageNum) =>
+        scoreRecordApi.listValidByItem({
+          assessmentItemId: validByItemId.value,
+          qualityCourseId: qualityStore.currentQualityCourseId,
+          pageNum,
+          pageSize: VALID_SCORE_RECORD_PAGE_SIZE,
+        }),
       '有效成绩明细加载失败，请稍后重试',
     )
   } finally {
@@ -719,11 +728,7 @@ function handleCourseChange(courseId: string | null) {
             </a-space>
           </template>
 
-          <UiEmpty
-            v-if="!selectedBatch"
-            description="请选择"
-            class="score-record__empty"
-          />
+          <UiEmpty v-if="!selectedBatch" description="请选择" class="score-record__empty" />
           <template v-else>
             <UiFilterBar
               variant="plain"
@@ -879,10 +884,7 @@ function handleCourseChange(courseId: string | null) {
                 />
               </div>
             </div>
-            <UiEmpty
-              description="暂无数据"
-              class="score-record__rubric-empty"
-            />
+            <UiEmpty description="暂无数据" class="score-record__rubric-empty" />
           </a-spin>
         </a-form-item>
         <a-row :gutter="12">

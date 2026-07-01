@@ -1,9 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        :title="detail?.examName || '成绩明细'"
-      >
+      <ContextBar :title="detail?.examName || '成绩明细'">
         <template #status>
           <UiTag v-if="detail?.finalScoreStatus" :tone="finalScoreStatusTone(detail)" size="sm">
             {{ finalScoreStatusLabel(detail) }}
@@ -35,11 +33,7 @@
 
     <a-skeleton v-if="loading" active :paragraph="{ rows: 6 }" />
 
-    <UiEmpty
-      v-else-if="!detail"
-      description="暂无数据"
-      class="score-detail__empty"
-    />
+    <UiEmpty v-else-if="!detail" description="暂无数据" class="score-detail__empty" />
 
     <template v-else-if="detail">
       <UiAlertStrip
@@ -77,10 +71,7 @@
           </div>
 
           <UiEmpty v-if="detail.questions.length === 0" description="暂无数据" />
-          <UiEmpty
-            v-else-if="filteredQuestions.length === 0"
-            description="暂无数据"
-          />
+          <UiEmpty v-else-if="filteredQuestions.length === 0" description="暂无数据" />
           <MarkHeatmapSection
             v-else
             title="得分率热力图"
@@ -119,7 +110,11 @@
                   size="sm"
                 >
                   {{
-                    strictEnumLabel(OBJECTIVE_RESULT_LABEL, currentDetail.objectiveResult, '客观判定')
+                    strictEnumLabel(
+                      OBJECTIVE_RESULT_LABEL,
+                      currentDetail.objectiveResult,
+                      '客观判定',
+                    )
                   }}
                 </UiTag>
                 <UiTag :tone="getGradeStatusTone(currentDetail.gradeStatus)" size="sm">
@@ -132,10 +127,7 @@
                   <FileImageOutlined />
                   <span>作答切片</span>
                 </header>
-                <UiEmpty
-                  v-if="!currentDetail.sliceFileId"
-                  description="暂无数据"
-                />
+                <UiEmpty v-if="!currentDetail.sliceFileId" description="暂无数据" />
                 <a-spin :spinning="sliceLoading" tip="加载切片中...">
                   <ScanImageStage
                     v-if="sliceImageUrl"
@@ -169,9 +161,9 @@
 
               <section
                 v-if="
-                  currentDetail.improvementSuggestion
-                    || currentDetail.mistakeClusterLabel
-                    || currentDetail.aiDiagnostic
+                  currentDetail.improvementSuggestion ||
+                  currentDetail.mistakeClusterLabel ||
+                  currentDetail.aiDiagnostic
                 "
                 class="answer-panel__section"
               >
@@ -188,12 +180,16 @@
                     <UiTag tone="orange" size="sm">{{ currentDetail.mistakeClusterLabel }}</UiTag>
                   </p>
                   <p v-if="currentDetail.aiDiagnostic" class="answer-panel__ai-line">
-                    <strong>AI 处理说明：</strong>{{ aiLearningDiagnosticText(currentDetail.aiDiagnostic) }}
+                    <strong>AI 处理说明：</strong
+                    >{{ aiLearningDiagnosticText(currentDetail.aiDiagnostic) }}
                   </p>
                 </div>
               </section>
 
-              <div v-if="selectedQuestion && canApplyReviewOnQuestion(selectedQuestion)" class="answer-panel__actions">
+              <div
+                v-if="selectedQuestion && canApplyReviewOnQuestion(selectedQuestion)"
+                class="answer-panel__actions"
+              >
                 <UiButton size="sm" @click="goAppealForQuestion(selectedQuestion)">
                   <template #icon><FormOutlined /></template>
                   对此题申请复核
@@ -204,10 +200,7 @@
         </UiCard>
       </div>
 
-      <UiCard
-        v-if="detail.finalScoreStatus === 'PUBLISHED'"
-        class="score-detail__wrong-book-card"
-      >
+      <UiCard v-if="detail.finalScoreStatus === 'PUBLISHED'" class="score-detail__wrong-book-card">
         <template #title>
           <ProfileOutlined />
           <span>错题本</span>
@@ -234,7 +227,9 @@
         >
           <template #bodyCell="{ column, record: item }">
             <template v-if="column.key === 'score'">
-              {{ item.teacherReviewScore != null ? Number(item.teacherReviewScore).toFixed(2) : '--' }}
+              {{
+                item.teacherReviewScore != null ? Number(item.teacherReviewScore).toFixed(2) : '--'
+              }}
               / {{ Number(item.fullScore).toFixed(2) }}
             </template>
             <template v-else-if="column.key === 'gradeStatus'">
@@ -280,10 +275,7 @@
         </template>
 
         <a-spin :spinning="reportLoading">
-          <UiEmpty
-            v-if="!reportLoading && !learningReport"
-            description="暂无数据"
-          />
+          <UiEmpty v-if="!reportLoading && !learningReport" description="暂无数据" />
           <UiEmpty
             v-else-if="learningReport && !learningReport.available"
             :description="unavailableLearningReportMessage(learningReport)"
@@ -373,6 +365,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { StudentWrongBookItemVO } from '@/apis/mark/question-analysis'
+import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
 import type {
   StudentAiDiagnosisItemVO,
   StudentAiErrorClusterVO,
@@ -380,6 +373,12 @@ import type {
   StudentQuestionAnswerDetailVO,
   StudentQuestionScoreVO,
   StudentScoreDetailVO,
+} from '@/apis/mark/student-exam'
+import {
+  canSubmitReview,
+  getMyAiLearningReport,
+  getMyQuestionAnswerDetail,
+  getMyScoreDetail,
 } from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
@@ -393,22 +392,9 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
-import {
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_TONE,
-} from '@/apis/mark/final-score-status'
+import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from '@/apis/mark/final-score-status'
 import { GRADE_STATUS_LABEL, GRADE_STATUS_TONE } from '@/apis/mark/grade-status'
-import {
-  OBJECTIVE_RESULT_LABEL,
-  OBJECTIVE_RESULT_TONE,
-} from '@/apis/mark/objective-result'
-import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
-import {
-  canSubmitReview,
-  getMyAiLearningReport,
-  getMyQuestionAnswerDetail,
-  getMyScoreDetail,
-} from '@/apis/mark/student-exam'
+import { OBJECTIVE_RESULT_LABEL, OBJECTIVE_RESULT_TONE } from '@/apis/mark/objective-result'
 import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-mastery-level'
 import MarkHeatmapSection from '@/components/chart/MarkHeatmapSection.vue'
 import ScanImageStage from '@/components/mark/ScanImageStage.vue'
@@ -488,7 +474,7 @@ const sliceLoading = ref(false)
  * 从题目明细中提取所有出现过的 mistakeClusterLabel，供顶部下拉选择。
  * 学生可以按错题聚类快速查看同一类型的错题。
  */
-const clusterLabelOptions = computed<Array<{ value: string, label: string }>>(() => {
+const clusterLabelOptions = computed<Array<{ value: string; label: string }>>(() => {
   const labels = new Set<string>()
   for (const question of detailQuestions.value) {
     if (question.mistakeClusterLabel) {
@@ -517,10 +503,12 @@ const scoreHeatmapCells = computed(() =>
   ),
 )
 
-const scoreHeatmapHint = computed(() => mergeChartHint(
-  '颜色表示得分率，点击题格查看详情',
-  buildHeatmapChartInsight(scoreHeatmapCells.value),
-))
+const scoreHeatmapHint = computed(() =>
+  mergeChartHint(
+    '颜色表示得分率，点击题格查看详情',
+    buildHeatmapChartInsight(scoreHeatmapCells.value),
+  ),
+)
 
 const scoreHeatmapHeight = computed(() => {
   const count = scoreHeatmapCells.value.length
@@ -555,8 +543,8 @@ const selectedQuestion = computed<StudentQuestionScoreVO | null>(() => {
     return null
   }
   return (
-    filteredQuestions.value.find((item) => item.questionTemplateId === selectedQuestionId.value)
-    ?? null
+    filteredQuestions.value.find((item) => item.questionTemplateId === selectedQuestionId.value) ??
+    null
   )
 })
 
@@ -647,7 +635,7 @@ async function loadWrongBook(): Promise<void> {
   }
 }
 
-function handleWrongBookPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleWrongBookPageChange(pageEvent: { current: number; pageSize: number }): void {
   wrongBookPagination.current = pageEvent.current
   wrongBookPagination.pageSize = pageEvent.pageSize
   void loadWrongBook()
@@ -849,7 +837,10 @@ watch(filteredQuestions, (list) => {
     releaseSliceImage()
     return
   }
-  if (!selectedQuestionId.value || !list.some((item) => item.questionTemplateId === selectedQuestionId.value)) {
+  if (
+    !selectedQuestionId.value ||
+    !list.some((item) => item.questionTemplateId === selectedQuestionId.value)
+  ) {
     void selectQuestion(list[0])
   }
 })

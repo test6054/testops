@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioKeyTeacherRegistryStatus } from '@/apis/portfolio/enums'
+import { PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL } from '@/apis/portfolio/enums'
 import type { PortfolioDoubleDutyRegistryVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDoubleDutyApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
-import { PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL } from '@/apis/portfolio/enums'
-import { portfolioDoubleDutyApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -48,11 +48,9 @@ async function loadPage() {
   try {
     const page = await portfolioDoubleDutyApi.page({ pageNum: 1, pageSize: 50 })
     rows.value = readPageList(page, '加载双肩挑台账失败')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -77,8 +75,7 @@ async function saveRegistry() {
     form.appointYear = ''
     form.dutyScope = ''
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -88,8 +85,7 @@ async function revokeRegistry(id: string) {
     await portfolioDoubleDutyApi.revoke({ id })
     message.success('已作废')
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -99,8 +95,7 @@ async function exportRoster() {
     const result = await portfolioDoubleDutyApi.exportRoster({ registryStatus: 'ACTIVE' })
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -124,18 +119,24 @@ onMounted(loadPage)
           @search="searchTeachers"
         />
         <a-input v-model:value="form.adminPostName" placeholder="行政岗位" style="width: 140px" />
-        <a-input v-model:value="form.teachingPostName" placeholder="教学岗位" style="width: 140px" />
+        <a-input
+          v-model:value="form.teachingPostName"
+          placeholder="教学岗位"
+          style="width: 140px"
+        />
         <a-input v-model:value="form.appointYear" placeholder="聘任年份" style="width: 100px" />
         <a-input v-model:value="form.dutyScope" placeholder="职责范围" style="width: 180px" />
-        <UiButton variant="primary" @click="saveRegistry">
-          登记
-        </UiButton>
-        <UiButton @click="exportRoster">
-          导出台账
-        </UiButton>
+        <UiButton variant="primary" @click="saveRegistry"> 登记 </UiButton>
+        <UiButton @click="exportRoster"> 导出台账 </UiButton>
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="暂无双肩挑台账记录" />
-      <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
+      <UiDataTable
+        :columns="columns"
+        :data-source="rows"
+        :loading="loading"
+        row-key="id"
+        style="margin-top: 16px"
+      >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacher'">
             {{ record.teacherName }}
@@ -145,9 +146,7 @@ onMounted(loadPage)
             {{ registryStatusLabel(record.registryStatus) }}
           </template>
           <template v-else-if="column.key === 'actions' && record.registryStatus === 'ACTIVE'">
-            <UiTextAction @click="revokeRegistry(record.id)">
-              作废
-            </UiTextAction>
+            <UiTextAction @click="revokeRegistry(record.id)"> 作废 </UiTextAction>
           </template>
         </template>
       </UiDataTable>

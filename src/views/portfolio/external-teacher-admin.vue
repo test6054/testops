@@ -1,21 +1,24 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExcelImportRowDiagnostic } from '@/apis/platform/types'
-import type { PortfolioExternalTeacherDataStatus, PortfolioExternalTeacherImportBatchStatus } from '@/apis/portfolio/enums'
+import type {
+  PortfolioExternalTeacherDataStatus,
+  PortfolioExternalTeacherImportBatchStatus,
+} from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL,
+  PORTFOLIO_EXTERNAL_TEACHER_IMPORT_BATCH_STATUS_LABEL,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioExternalTeacherImportBatchVO,
   PortfolioExternalTeacherSaveRequest,
   PortfolioExternalTeacherStatsVO,
   PortfolioExternalTeacherVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import {
-  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL,
-  PORTFOLIO_EXTERNAL_TEACHER_IMPORT_BATCH_STATUS_LABEL,
-} from '@/apis/portfolio/enums'
-import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -82,8 +85,9 @@ const form = reactive<PortfolioExternalTeacherSaveRequest>({
   dataStatus: 'ACTIVE',
 })
 
-const dataStatusOptions = (Object.keys(PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL) as PortfolioExternalTeacherDataStatus[])
-  .map(value => ({ value, label: PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL[value] }))
+const dataStatusOptions = (
+  Object.keys(PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL) as PortfolioExternalTeacherDataStatus[]
+).map((value) => ({ value, label: PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL[value] }))
 
 const columns: ColumnsType = [
   { title: '姓名', dataIndex: 'fullName', key: 'fullName', width: 88 },
@@ -115,7 +119,11 @@ function dataStatusLabel(status: PortfolioExternalTeacherDataStatus): string {
 }
 
 function batchStatusLabel(status: PortfolioExternalTeacherImportBatchStatus): string {
-  return strictEnumLabel(PORTFOLIO_EXTERNAL_TEACHER_IMPORT_BATCH_STATUS_LABEL, status, '外聘教师导入批次状态')
+  return strictEnumLabel(
+    PORTFOLIO_EXTERNAL_TEACHER_IMPORT_BATCH_STATUS_LABEL,
+    status,
+    '外聘教师导入批次状态',
+  )
 }
 
 function resetForm() {
@@ -144,7 +152,7 @@ function resetForm() {
 }
 
 function attachmentFileIds(): string[] {
-  return attachmentItems.value.map(item => item.fileNodeId)
+  return attachmentItems.value.map((item) => item.fileNodeId)
 }
 
 function openAttachmentPicker() {
@@ -167,18 +175,16 @@ async function onAttachmentPick(event: Event) {
       ]
     }
     message.success('附件已上传')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '附件上传失败')
-  }
-  finally {
+  } finally {
     uploadingAttachment.value = false
     input.value = ''
   }
 }
 
 function removeAttachment(fileNodeId: string) {
-  attachmentItems.value = attachmentItems.value.filter(item => item.fileNodeId !== fileNodeId)
+  attachmentItems.value = attachmentItems.value.filter((item) => item.fileNodeId !== fileNodeId)
 }
 
 async function loadPage() {
@@ -193,11 +199,9 @@ async function loadPage() {
       contractStatus: contractStatusFilter.value.trim() || undefined,
     })
     rows.value = readPageList(page, '加载外聘教师失败')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -206,11 +210,9 @@ async function loadStats() {
   statsLoading.value = true
   try {
     stats.value = await portfolioExternalTeacherApi.stats()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     statsLoading.value = false
   }
 }
@@ -220,11 +222,9 @@ async function loadImportBatches() {
   try {
     const page = await portfolioExternalTeacherApi.importBatchPage({ pageNum: 1, pageSize: 50 })
     batchRows.value = readPageList(page, '加载导入批次失败')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     batchLoading.value = false
   }
 }
@@ -260,12 +260,11 @@ async function openEdit(id: string) {
     form.hireStartDate = detail.hireStartDate
     form.hireEndDate = detail.hireEndDate
     form.dataStatus = detail.dataStatus
-    attachmentItems.value = (detail.attachmentFileIds ?? []).map(fileNodeId => ({
+    attachmentItems.value = (detail.attachmentFileIds ?? []).map((fileNodeId) => ({
       fileNodeId,
       fileName: fileNodeId,
     }))
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -285,11 +284,9 @@ async function saveRecord() {
     message.success('外聘教师已保存')
     drawerOpen.value = false
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -307,8 +304,7 @@ async function revokeRecord(id: string) {
     await portfolioExternalTeacherApi.revoke({ id })
     message.success('已停用')
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -323,8 +319,7 @@ async function openBatchDetail(id: string) {
   batchDetail.value = null
   try {
     batchDetail.value = await portfolioExternalTeacherApi.importBatchGet({ id })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -334,8 +329,7 @@ async function exportRoster() {
     const result = await portfolioExternalTeacherApi.exportRoster()
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -351,7 +345,11 @@ const batchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() => {
     return []
   }
   try {
-    const parsed = JSON.parse(raw) as Array<{ rowIndex?: number, invalidReason?: string, errorMessage?: string }>
+    const parsed = JSON.parse(raw) as Array<{
+      rowIndex?: number
+      invalidReason?: string
+      errorMessage?: string
+    }>
     return parsed.map((item, index) => ({
       rowIndex: item.rowIndex ?? index + 1,
       valid: false,
@@ -374,18 +372,14 @@ onMounted(async () => {
     <template #context>
       <ContextBar show-title layout="workbench" title="外聘教师台账">
         <template #actions>
-          <UiButton variant="primary" @click="openCreate">
-            新增外聘教师
-          </UiButton>
+          <UiButton variant="primary" @click="openCreate"> 新增外聘教师 </UiButton>
         </template>
       </ContextBar>
     </template>
     <a-tabs v-model:active-key="activeTab">
       <a-tab-pane key="roster" tab="名册">
         <UiCard title="批量导入">
-          <UiButton @click="importModalOpen = true">
-            Excel 批量导入
-          </UiButton>
+          <UiButton @click="importModalOpen = true"> Excel 批量导入 </UiButton>
         </UiCard>
         <UiPlatformExcelImportModal
           v-model:open="importModalOpen"
@@ -424,12 +418,8 @@ onMounted(async () => {
               style="width: 120px"
               @press-enter="loadPage"
             />
-            <UiButton @click="loadPage">
-              刷新
-            </UiButton>
-            <UiButton variant="outline" @click="exportRoster">
-              导出台账
-            </UiButton>
+            <UiButton @click="loadPage"> 刷新 </UiButton>
+            <UiButton variant="outline" @click="exportRoster"> 导出台账 </UiButton>
           </div>
           <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无外聘教师" />
           <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id">
@@ -440,10 +430,11 @@ onMounted(async () => {
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiTextAction @click="openEdit(record.id)">
-                  编辑
-                </UiTextAction>
-                <UiTextAction v-if="record.dataStatus === 'ACTIVE'" @click="revokeRecord(record.id)">
+                <UiTextAction @click="openEdit(record.id)"> 编辑 </UiTextAction>
+                <UiTextAction
+                  v-if="record.dataStatus === 'ACTIVE'"
+                  @click="revokeRecord(record.id)"
+                >
                   停用
                 </UiTextAction>
               </template>
@@ -453,9 +444,7 @@ onMounted(async () => {
       </a-tab-pane>
       <a-tab-pane key="stats" tab="统计">
         <UiCard>
-          <UiButton :loading="statsLoading" @click="loadStats">
-            刷新统计
-          </UiButton>
+          <UiButton :loading="statsLoading" @click="loadStats"> 刷新统计 </UiButton>
           <a-spin :spinning="statsLoading">
             <div v-if="stats" class="stats-grid">
               <div>
@@ -491,9 +480,7 @@ onMounted(async () => {
       </a-tab-pane>
       <a-tab-pane key="import-batch" tab="导入批次">
         <UiCard>
-          <UiButton :loading="batchLoading" @click="loadImportBatches">
-            刷新批次
-          </UiButton>
+          <UiButton :loading="batchLoading" @click="loadImportBatches"> 刷新批次 </UiButton>
           <UiDataTable
             :columns="batchColumns"
             :data-source="batchRows"
@@ -506,16 +493,18 @@ onMounted(async () => {
                 {{ batchStatusLabel(record.batchStatus) }}
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiTextAction @click="openBatchDetail(record.id)">
-                  详情
-                </UiTextAction>
+                <UiTextAction @click="openBatchDetail(record.id)"> 详情 </UiTextAction>
               </template>
             </template>
           </UiDataTable>
         </UiCard>
       </a-tab-pane>
     </a-tabs>
-    <a-drawer v-model:open="drawerOpen" :title="form.id ? '编辑外聘教师' : '新增外聘教师'" width="480">
+    <a-drawer
+      v-model:open="drawerOpen"
+      :title="form.id ? '编辑外聘教师' : '新增外聘教师'"
+      width="480"
+    >
       <a-form layout="vertical">
         <a-form-item label="姓名" required>
           <a-input v-model:value="form.fullName" />
@@ -569,42 +558,53 @@ onMounted(async () => {
           <a-input v-model:value="form.contactEmail" />
         </a-form-item>
         <a-form-item label="聘期开始">
-          <a-date-picker v-model:value="form.hireStartDate" value-format="YYYY-MM-DD" style="width: 100%" />
+          <a-date-picker
+            v-model:value="form.hireStartDate"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
         </a-form-item>
         <a-form-item label="聘期结束">
-          <a-date-picker v-model:value="form.hireEndDate" value-format="YYYY-MM-DD" style="width: 100%" />
+          <a-date-picker
+            v-model:value="form.hireEndDate"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
         </a-form-item>
         <a-form-item label="数据状态">
           <a-select v-model:value="form.dataStatus" :options="dataStatusOptions" />
         </a-form-item>
         <a-form-item label="附件材料">
-          <input ref="attachmentInputRef" type="file" multiple class="sr-only" @change="onAttachmentPick">
+          <input
+            ref="attachmentInputRef"
+            type="file"
+            multiple
+            class="sr-only"
+            @change="onAttachmentPick"
+          />
           <UiButton :loading="uploadingAttachment" @click="openAttachmentPicker">
             上传附件
           </UiButton>
           <ul v-if="attachmentItems.length" class="attachment-list">
             <li v-for="item in attachmentItems" :key="item.fileNodeId">
               {{ item.fileName }}
-              <UiTextAction @click="removeAttachment(item.fileNodeId)">
-                移除
-              </UiTextAction>
+              <UiTextAction @click="removeAttachment(item.fileNodeId)"> 移除 </UiTextAction>
             </li>
           </ul>
         </a-form-item>
-        <UiButton variant="primary" :loading="saving" @click="saveRecord">
-          保存
-        </UiButton>
+        <UiButton variant="primary" :loading="saving" @click="saveRecord"> 保存 </UiButton>
       </a-form>
     </a-drawer>
     <a-drawer v-model:open="batchDetailOpen" title="导入批次详情" width="480">
       <template v-if="batchDetail">
         <p>批次号 {{ batchDetail.batchNo }}</p>
         <p>文件 {{ batchDetail.fileName ?? '—' }}</p>
-        <p>总行 {{ batchDetail.totalRows ?? 0 }} · 成功 {{ batchDetail.successRows ?? 0 }} · 失败 {{ batchDetail.failedRows ?? 0 }}</p>
-        <p>状态 {{ batchStatusLabel(batchDetail.batchStatus) }}</p>
-        <p v-if="batchDetail.createTime">
-          创建时间 {{ batchDetail.createTime }}
+        <p>
+          总行 {{ batchDetail.totalRows ?? 0 }} · 成功 {{ batchDetail.successRows ?? 0 }} · 失败
+          {{ batchDetail.failedRows ?? 0 }}
         </p>
+        <p>状态 {{ batchStatusLabel(batchDetail.batchStatus) }}</p>
+        <p v-if="batchDetail.createTime">创建时间 {{ batchDetail.createTime }}</p>
         <UiDataTable
           v-if="batchDetailDiagnostics.length"
           pagination-mode="client"
@@ -615,7 +615,9 @@ onMounted(async () => {
           size="small"
           flat
         />
-        <pre v-else-if="batchDetail.errorReportJson" class="error-report">{{ batchDetail.errorReportJson }}</pre>
+        <pre v-else-if="batchDetail.errorReportJson" class="error-report">{{
+          batchDetail.errorReportJson
+        }}</pre>
       </template>
     </a-drawer>
   </StageWorkbenchShell>

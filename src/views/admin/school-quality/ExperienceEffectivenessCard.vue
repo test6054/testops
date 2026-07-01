@@ -35,10 +35,7 @@
     </div>
 
     <a-spin :spinning="loading || generating">
-      <UiEmpty
-        v-if="!loading && !generating && !record"
-        description="暂无数据"
-      />
+      <UiEmpty v-if="!loading && !generating && !record" description="暂无数据" />
       <div v-else-if="record" class="ai-record">
         <SignalBand
           v-if="record.analysisStatus === 'SUCCESS'"
@@ -142,11 +139,18 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { GradingExperienceCaseVO } from '@/apis/mark/grading-experience'
+import { EXPERIENCE_CASE_STATUS_LABEL, listExperiences } from '@/apis/mark/grading-experience'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import type {
   ExperienceEffectivenessEvalEvidenceVO,
   ExperienceEffectivenessEvalVO,
   ExperienceRecommendationCode,
+} from '@/apis/mark/school-quality'
+import {
+  evaluateExperienceEffectiveness,
+  EXPERIENCE_RECOMMENDATION_LABEL,
+  listExperienceEvals,
 } from '@/apis/mark/school-quality'
 import type { UiBarChartItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -154,12 +158,6 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
-import {
-  EXPERIENCE_CASE_STATUS_LABEL,
-  listExperiences,
-} from '@/apis/mark/grading-experience'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
-import { evaluateExperienceEffectiveness, EXPERIENCE_RECOMMENDATION_LABEL, listExperienceEvals } from '@/apis/mark/school-quality'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamSelect from '@/components/mark/AnalysisExamSelect.vue'
@@ -176,7 +174,10 @@ import {
   buildTrendChartInsight,
   mergeChartHint,
 } from '@/utils/mark-chart-insights'
-import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
+import {
+  buildCategoryBarChartOption,
+  buildTrendLineChartOption,
+} from '@/utils/mark-echarts-options'
 import { rateTone } from '@/utils/score-tone'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -198,8 +199,10 @@ const generating = ref(false)
 
 const experienceOptions = computed(() =>
   experiences.value
-    .filter((item): item is GradingExperienceCaseVO & { id: string } =>
-      Boolean(item.id) && item.caseStatus === 'CONFIRMED' && item.analysisStatus === 'SUCCESS')
+    .filter(
+      (item): item is GradingExperienceCaseVO & { id: string } =>
+        Boolean(item.id) && item.caseStatus === 'CONFIRMED' && item.analysisStatus === 'SUCCESS',
+    )
     .map((item) => ({
       label: [
         questionTypeLabel(item.questionType),
@@ -288,11 +291,16 @@ const effectivenessBarAriaLabel = computed(() => {
 
 const effectivenessTrendPoints = computed((): UiTrendPoint[] => {
   const successRecords = [...evalHistory.value]
-    .filter((item) => item.analysisStatus === 'SUCCESS' && toConsistencyPercent(item.consistencyRate) != null)
+    .filter(
+      (item) =>
+        item.analysisStatus === 'SUCCESS' && toConsistencyPercent(item.consistencyRate) != null,
+    )
     .reverse()
   return successRecords.map((item, index) => {
     const percent = toConsistencyPercent(item.consistencyRate) ?? 0
-    const timeLabel = item.createTime ? formatDateTime(item.createTime).slice(5, 16) : `记录 ${index + 1}`
+    const timeLabel = item.createTime
+      ? formatDateTime(item.createTime).slice(5, 16)
+      : `记录 ${index + 1}`
     return {
       key: item.id || `eval-${index}`,
       label: timeLabel,
@@ -301,15 +309,16 @@ const effectivenessTrendPoints = computed((): UiTrendPoint[] => {
   })
 })
 
-const effectivenessBarHint = computed(() => mergeChartHint(
-  '一致性率与复用次数',
-  buildBarChartInsight(effectivenessBarItems.value),
-))
+const effectivenessBarHint = computed(() =>
+  mergeChartHint('一致性率与复用次数', buildBarChartInsight(effectivenessBarItems.value)),
+)
 
-const effectivenessTrendHint = computed(() => mergeChartHint(
-  '同一经验案例历次评估记录',
-  buildTrendChartInsight(effectivenessTrendPoints.value),
-))
+const effectivenessTrendHint = computed(() =>
+  mergeChartHint(
+    '同一经验案例历次评估记录',
+    buildTrendChartInsight(effectivenessTrendPoints.value),
+  ),
+)
 
 const effectivenessTrendLastValue = computed(() => {
   const points = effectivenessTrendPoints.value
@@ -355,7 +364,8 @@ const evidenceColumns: ColumnType<EvidenceTableRow>[] = [
     title: '题型',
     key: 'questionType',
     width: 88,
-    customRender: ({ record: row }) => (row.questionType ? questionTypeLabel(row.questionType) : '—'),
+    customRender: ({ record: row }) =>
+      row.questionType ? questionTypeLabel(row.questionType) : '—',
   },
   {
     title: '识别作答',

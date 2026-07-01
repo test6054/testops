@@ -8,24 +8,28 @@ import type {
   AuditIssueSource,
   AuditIssueVO,
 } from '@/apis/quality/audit-issue'
-import type { AuditIssueStatus } from '@/apis/quality/types'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
-import type {QualityScopeRequestToken} from '@/composables/useScopeRequestGuard';
-import { message } from 'ant-design-vue'
-import { reactive, ref } from 'vue'
-import { AUDIT_ISSUE_SEVERITY_LABEL,
+import {
+  AUDIT_ISSUE_SEVERITY_LABEL,
   AUDIT_ISSUE_SEVERITY_OPTIONS,
   AUDIT_ISSUE_SEVERITY_TONE,
   AUDIT_ISSUE_SOURCE_LABEL,
   AUDIT_ISSUE_SOURCE_OPTIONS,
   auditIssueApi,
 } from '@/apis/quality/audit-issue'
-import { auditRectificationApi } from '@/apis/quality/audit-rectification'
+import type { AuditIssueStatus } from '@/apis/quality/types'
+import { AUDIT_ISSUE_STATUS_COLOR, AUDIT_ISSUE_STATUS_LABEL } from '@/apis/quality/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
+import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
+import type { QualityScopeRequestToken } from '@/composables/useScopeRequestGuard'
 import {
-  AUDIT_ISSUE_STATUS_COLOR,
-  AUDIT_ISSUE_STATUS_LABEL,
-} from '@/apis/quality/types'
+  assertQualityScopeFresh,
+  beginQualityScopeRequest,
+  isQualityScopeStaleError,
+} from '@/composables/useScopeRequestGuard'
+import { message } from 'ant-design-vue'
+import { reactive, ref } from 'vue'
+import { auditRectificationApi } from '@/apis/quality/audit-rectification'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
 import {
   AchievementResultSelector,
@@ -41,12 +45,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import {
-  refreshWorkbenchSignalsAfterMutation,
-  selectedId,
-} from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { assertQualityScopeFresh, beginQualityScopeRequest, isQualityScopeStaleError } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
@@ -205,21 +204,24 @@ function hasLinkedRectification(issueId: string): boolean {
 
 async function refreshIssueRectificationCounts(scope: QualityScopeRequestToken) {
   const scopedIssues = await readAllPages(
-    pageNum => auditIssueApi.page({
-      pageNum,
-      pageSize: 100,
-      programId: issueQuery.programId || qualityStore.currentProgramId || undefined,
-      trainingPlanId: issueQuery.trainingPlanId || qualityStore.currentTrainingPlanId || undefined,
-    }),
+    (pageNum) =>
+      auditIssueApi.page({
+        pageNum,
+        pageSize: 100,
+        programId: issueQuery.programId || qualityStore.currentProgramId || undefined,
+        trainingPlanId:
+          issueQuery.trainingPlanId || qualityStore.currentTrainingPlanId || undefined,
+      }),
     '审核评估问题加载失败，请稍后重试',
   )
   assertQualityScopeFresh(scope)
-  const scopedIssueIds = new Set(scopedIssues.map(issue => issue.id))
+  const scopedIssueIds = new Set(scopedIssues.map((issue) => issue.id))
   const rects = await readAllPages(
-    pageNum => auditRectificationApi.page({
-      pageNum,
-      pageSize: 100,
-    }),
+    (pageNum) =>
+      auditRectificationApi.page({
+        pageNum,
+        pageSize: 100,
+      }),
     '整改任务加载失败，请稍后重试',
   )
   assertQualityScopeFresh(scope)
@@ -274,7 +276,7 @@ async function loadList(options?: { refreshSignals?: boolean }) {
   }
 }
 
-function handleIssuePageChange(page: { current: number, pageSize: number }) {
+function handleIssuePageChange(page: { current: number; pageSize: number }) {
   issueQuery.pageNum = page.current
   issueQuery.pageSize = page.pageSize
   loadList()
@@ -348,10 +350,10 @@ async function submitIssueEditor() {
     }
   }
   if (
-    !issueEditor.issueCode.trim()
-    || !issueEditor.issueTitle.trim()
-    || !issueEditor.issueSource
-    || !issueEditor.severity
+    !issueEditor.issueCode.trim() ||
+    !issueEditor.issueTitle.trim() ||
+    !issueEditor.issueSource ||
+    !issueEditor.severity
   ) {
     message.error('请填写编码、标题、来源、严重程度')
     return
@@ -558,12 +560,18 @@ defineExpose({
         </a-col>
         <a-col :span="6">
           <a-form-item label="问题来源" required>
-            <a-select v-model:value="issueEditor.issueSource" :options="AUDIT_ISSUE_SOURCE_OPTIONS" />
+            <a-select
+              v-model:value="issueEditor.issueSource"
+              :options="AUDIT_ISSUE_SOURCE_OPTIONS"
+            />
           </a-form-item>
         </a-col>
         <a-col :span="6">
           <a-form-item label="严重程度" required>
-            <a-select v-model:value="issueEditor.severity" :options="AUDIT_ISSUE_SEVERITY_OPTIONS" />
+            <a-select
+              v-model:value="issueEditor.severity"
+              :options="AUDIT_ISSUE_SEVERITY_OPTIONS"
+            />
           </a-form-item>
         </a-col>
         <a-col :span="6">

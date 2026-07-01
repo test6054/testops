@@ -76,10 +76,8 @@ const pickerValue = computed<string>({
 
 const resolvedSize = computed<UiComponentSize>(() => {
   const size = props.size
-  if (size === 'small' || size === 'sm')
-    return 'sm'
-  if (size === 'large' || size === 'lg')
-    return 'lg'
+  if (size === 'small' || size === 'sm') return 'sm'
+  if (size === 'large' || size === 'lg') return 'lg'
   return 'md'
 })
 

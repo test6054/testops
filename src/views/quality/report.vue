@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { ReportQueryRequest, ReportSaveRequest, ReportVO } from '@/apis/quality/report'
+import type {
+  ReportEditorForm,
+  ReportQueryRequest,
+  ReportSaveRequest,
+  ReportVO,
+} from '@/apis/quality/report'
 import { reportApi } from '@/apis/quality/report'
 /**
  * 质量评价 - 报告生成与确认台
@@ -56,7 +61,7 @@ import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import { formatSemester, isValidSemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -108,7 +113,7 @@ const query = reactive<ReportQueryRequest>({
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
-const editor = reactive<ReportSaveRequest>({
+const editor = reactive<ReportEditorForm>({
   reportType: 'COURSE_ACHIEVEMENT',
   programId: '',
   trainingPlanId: '',
@@ -360,7 +365,8 @@ async function submitEditor() {
     message.error('请选择报告所属专业')
     return
   }
-  if (!editor.schoolYear || !editor.semester) {
+  const semester = editor.semester
+  if (!editor.schoolYear || !isValidSemesterCode(semester)) {
     message.error('请填写学年与学期')
     return
   }
@@ -375,7 +381,7 @@ async function submitEditor() {
       achievementResultId: editor.achievementResultId || undefined,
       title: editor.title.trim(),
       schoolYear: editor.schoolYear,
-      semester: editor.semester,
+      semester,
       bodyContent: editor.bodyContent,
     }
     if (editorMode.value === 'create') {

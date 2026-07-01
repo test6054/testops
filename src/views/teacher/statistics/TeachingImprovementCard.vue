@@ -22,13 +22,14 @@
       <AiGenerationProgressPanel
         v-if="generating"
         title="AI 教学改进方案生成中"
-        :waiting-text="props.classId ? '正在等待后端返回当前班级的真实教学改进方案。' : '正在等待后端返回本场考试的真实教学改进方案。'"
+        :waiting-text="
+          props.classId
+            ? '正在等待后端返回当前班级的真实教学改进方案。'
+            : '正在等待后端返回本场考试的真实教学改进方案。'
+        "
       />
 
-      <UiEmpty
-        v-else-if="!loading && !generating && !record"
-        description="暂无数据"
-      />
+      <UiEmpty v-else-if="!loading && !generating && !record" description="暂无数据" />
       <div v-else-if="record" class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
@@ -40,9 +41,7 @@
             {{ analysisCreateTimeText(record) }}
           </a-descriptions-item>
           <a-descriptions-item label="生成耗时">
-            {{
-              analysisLatencyText(record)
-            }}
+            {{ analysisLatencyText(record) }}
           </a-descriptions-item>
           <a-descriptions-item label="处理追踪编号" :span="3">
             <a-typography-text
@@ -72,7 +71,9 @@
                   <div class="analysis-item__header">
                     <a-typography-text strong>第 {{ index + 1 }} 项</a-typography-text>
                     <span class="analysis-item__title">
-                      {{ item.questionType ? questionTypeLabel(item.questionType) : '教学改进内容' }}
+                      {{
+                        item.questionType ? questionTypeLabel(item.questionType) : '教学改进内容'
+                      }}
                     </span>
                     <UiTag v-if="item.severity" :tone="severityTone(item.severity)">
                       {{ severityLabel(item.severity) }}
@@ -106,17 +107,17 @@ import type {
   TeachingImprovementItemVO,
   TeachingImprovementSeverityCode,
 } from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import {
   generateTeachingImprovement,
   getLatestTeachingImprovement,
   TEACHING_IMPROVEMENT_SEVERITY_LABEL,
   TEACHING_IMPROVEMENT_SEVERITY_TONE,
 } from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -129,7 +130,7 @@ import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'TeachingImprovementCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number, classId?: string }>()
+const props = defineProps<{ examId: string; reloadToken: number; classId?: string }>()
 
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)
@@ -231,7 +232,10 @@ async function handleGenerate(): Promise<void> {
 
 function buildShareText(): string {
   const current = record.value
-  assertUserFacing(Boolean(current) && current?.analysisStatus === 'SUCCESS', '暂无可分享的 AI 教学改进方案')
+  assertUserFacing(
+    Boolean(current) && current?.analysisStatus === 'SUCCESS',
+    '暂无可分享的 AI 教学改进方案',
+  )
   const lines = [
     'AI 教学改进方案',
     `考试编号：${current!.examId}`,

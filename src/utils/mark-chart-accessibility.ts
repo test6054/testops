@@ -7,7 +7,8 @@ export { prefersReducedMotion }
 export const MARK_TREND_MIN_POINTS = 2
 
 /** mark-vue 图表空态与无障碍文案真源 */
-export const MARK_CHART_EMPTY = { trendNeedMoreExams: '至少需要 2 场考试才能展示走势',
+export const MARK_CHART_EMPTY = {
+  trendNeedMoreExams: '至少需要 2 场考试才能展示走势',
   trendSingleExam: '本课程仅有当前 1 场考试，暂无纵向趋势可对照',
   trendNoHistory: '该学生在本课程暂无可对照的历次成绩',
   barNoData: '暂无柱状图数据',

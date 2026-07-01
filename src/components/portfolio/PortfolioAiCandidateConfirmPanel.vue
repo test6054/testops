@@ -1,10 +1,6 @@
 <template>
   <UiCard title="AI 候选字段确认" class="portfolio-ai-candidate-panel">
-    <UiAlertStrip
-      v-if="!taskId"
-      tone="info"
-      title="尚未关联 AI 抽取任务"
-    />
+    <UiAlertStrip v-if="!taskId" tone="info" title="尚未关联 AI 抽取任务" />
     <template v-else>
       <UiAlertStrip
         v-if="taskStatus && taskStatus !== 'SUCCEEDED'"
@@ -68,7 +64,10 @@
           </template>
         </template>
       </UiDataTable>
-      <UiEmpty v-if="!loading && taskStatus === 'SUCCEEDED' && candidateRows.length === 0" description="暂无候选字段" />
+      <UiEmpty
+        v-if="!loading && taskStatus === 'SUCCEEDED' && candidateRows.length === 0"
+        description="暂无候选字段"
+      />
     </template>
   </UiCard>
 </template>
@@ -76,15 +75,15 @@
 <script lang="ts" setup>
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCandidateFieldVO } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_CANDIDATE_CONFIRM_STATUS_LABEL,
+  PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE,
+} from '@/apis/portfolio/types'
 import type { AiTaskStatus } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
-import {
-  PORTFOLIO_CANDIDATE_CONFIRM_STATUS_LABEL,
-  PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE,
-} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -123,12 +122,16 @@ const candidateRows = ref<PortfolioCandidateFieldVO[]>([])
 const correctedValues = reactive<Record<string, string>>({})
 const taskStatus = ref<AiTaskStatus>()
 
-const manualFillPendingCount = computed(() =>
-  candidateRows.value.filter(item => item.manualFillRequired
-    || item.confirmStatus === 'NEEDS_MANUAL_FILL').length)
+const manualFillPendingCount = computed(
+  () =>
+    candidateRows.value.filter(
+      (item) => item.manualFillRequired || item.confirmStatus === 'NEEDS_MANUAL_FILL',
+    ).length,
+)
 
-const pendingTaskPolling = computed(() =>
-  taskStatus.value === 'PENDING' || taskStatus.value === 'PROCESSING')
+const pendingTaskPolling = computed(
+  () => taskStatus.value === 'PENDING' || taskStatus.value === 'PROCESSING',
+)
 
 function candidateStatusLabel(row: PortfolioCandidateFieldVO): string {
   return strictEnumLabel(
@@ -182,18 +185,16 @@ async function loadCandidates() {
       candidateRows.value = []
       return
     }
-    const rows = await portfolioAiJobApi.listCandidates(props.taskId) ?? []
+    const rows = (await portfolioAiJobApi.listCandidates(props.taskId)) ?? []
     candidateRows.value = rows
     for (const row of rows) {
       if (!correctedValues[row.id]) {
         correctedValues[row.id] = rowNeedsManualFill(row) ? '' : row.candidateValue
       }
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载候选字段失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -209,18 +210,14 @@ async function confirmCandidate(row: PortfolioCandidateFieldVO) {
       candidateFieldId: row.id,
       aiTaskId: row.aiTaskId,
       confirmStatus: 'CONFIRMED',
-      correctedCandidateValue: rowNeedsManualFill(row)
-        ? correctedValueFor(row).trim()
-        : undefined,
+      correctedCandidateValue: rowNeedsManualFill(row) ? correctedValueFor(row).trim() : undefined,
     })
     message.success(`已确认字段：${row.fieldLabel}`)
     await loadCandidates()
     emit('confirmed')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '确认候选字段失败')
-  }
-  finally {
+  } finally {
     confirming.value = false
   }
 }
@@ -241,11 +238,9 @@ async function rejectCandidate(row: PortfolioCandidateFieldVO) {
         message.success(`已驳回字段：${row.fieldLabel}`)
         await loadCandidates()
         emit('confirmed')
-      }
-      catch (error) {
+      } catch (error) {
         showUserError(error, '驳回候选字段失败')
-      }
-      finally {
+      } finally {
         confirming.value = false
       }
     },
@@ -273,30 +268,35 @@ async function confirmAllEligible() {
     message.success(`已确认 ${eligible.length} 个字段`)
     await loadCandidates()
     emit('confirmed')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '批量确认候选字段失败')
     await loadCandidates()
-  }
-  finally {
+  } finally {
     confirming.value = false
   }
 }
 
-usePolling(async () => {
-  await loadCandidates()
-}, {
-  getOptions: () => ({
-    intervalMs: 4000,
-    when: pendingTaskPolling.value,
-    immediate: false,
-  }),
-  pauseWhenDocumentHidden: true,
-})
+usePolling(
+  async () => {
+    await loadCandidates()
+  },
+  {
+    getOptions: () => ({
+      intervalMs: 4000,
+      when: pendingTaskPolling.value,
+      immediate: false,
+    }),
+    pauseWhenDocumentHidden: true,
+  },
+)
 
-watch(() => props.taskId, () => {
-  void loadCandidates()
-}, { immediate: true })
+watch(
+  () => props.taskId,
+  () => {
+    void loadCandidates()
+  },
+  { immediate: true },
+)
 </script>
 
 <style scoped lang="scss">

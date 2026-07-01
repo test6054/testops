@@ -18,24 +18,27 @@ import { computed } from 'vue'
 
 defineOptions({ name: 'UiStatItem' })
 
-const props = withDefaults(defineProps<{
-  label: string
-  value: string | number
-  desc?: string
-  progress?: number
-  progressColor?: ColorType
-  valueSize?: ValueSize
-  valueTone?: ValueTone
-  descTone?: 'default' | 'danger'
-  clickable?: boolean
-}>(), {
-  progress: 0,
-  progressColor: 'blue',
-  valueSize: 'normal',
-  valueTone: 'default',
-  descTone: 'default',
-  clickable: false,
-})
+const props = withDefaults(
+  defineProps<{
+    label: string
+    value: string | number
+    desc?: string
+    progress?: number
+    progressColor?: ColorType
+    valueSize?: ValueSize
+    valueTone?: ValueTone
+    descTone?: 'default' | 'danger'
+    clickable?: boolean
+  }>(),
+  {
+    progress: 0,
+    progressColor: 'blue',
+    valueSize: 'normal',
+    valueTone: 'default',
+    descTone: 'default',
+    clickable: false,
+  },
+)
 type ColorType = 'gray' | 'blue' | 'orange' | 'yellow' | 'green' | 'red'
 type ValueSize = 'normal' | 'large'
 type ValueTone = 'default' | 'success' | 'danger' | 'warning'

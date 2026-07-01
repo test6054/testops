@@ -1,16 +1,26 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioDualTeacherApplicationStatus, PortfolioKeyTeacherRegistryStatus } from '@/apis/portfolio/enums'
+import type {
+  PortfolioDualTeacherApplicationStatus,
+  PortfolioKeyTeacherRegistryStatus,
+} from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL,
+  PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL,
+} from '@/apis/portfolio/enums'
 import type { PortfolioDeptStructureStatVO } from '@/apis/portfolio/teacher'
-import type { PortfolioDoubleDutyAnalyticsVO, PortfolioDualTeacherAnalyticsVO, PortfolioExternalTeacherStatsVO } from '@/apis/portfolio/teacher-platform'
-import { onMounted, ref } from 'vue'
-import { PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL, PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import type {
+  PortfolioDoubleDutyAnalyticsVO,
+  PortfolioDualTeacherAnalyticsVO,
+  PortfolioExternalTeacherStatsVO,
+} from '@/apis/portfolio/teacher-platform'
 import {
   portfolioDoubleDutyApi,
   portfolioDualTeacherApi,
   portfolioExternalTeacherApi,
 } from '@/apis/portfolio/teacher-platform'
+import { onMounted, ref } from 'vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
@@ -56,7 +66,11 @@ const appointYearColumns: ColumnsType = [
 ]
 
 function applicationStatusLabel(status: PortfolioDualTeacherApplicationStatus): string {
-  return strictEnumLabel(PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL, status, '双师认定申请状态')
+  return strictEnumLabel(
+    PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL,
+    status,
+    '双师认定申请状态',
+  )
 }
 
 function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatus): string {
@@ -76,11 +90,9 @@ async function loadAll() {
     dualStats.value = dual
     doubleDutyStats.value = doubleDuty
     externalStats.value = external
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -92,12 +104,20 @@ onMounted(loadAll)
   <StageWorkbenchShell>
     <ContextBar title="师资分析看板" subtitle="院系结构 · 双师认定 · 双肩挑 · 外聘教师" />
     <a-spin :spinning="loading">
-      <UiEmpty v-if="!loading && !deptStats && !dualStats && !externalStats" description="暂无师资分析数据" />
+      <UiEmpty
+        v-if="!loading && !deptStats && !dualStats && !externalStats"
+        description="暂无师资分析数据"
+      />
       <div v-else class="grid">
         <UiCard v-if="deptStats" title="院系教师结构">
           <UiStatPanel
             :items="[
-              { key: 'total', label: '教师总数', value: String(deptStats.totalTeacherCount), tone: 'blue' },
+              {
+                key: 'total',
+                label: '教师总数',
+                value: String(deptStats.totalTeacherCount),
+                tone: 'blue',
+              },
               { key: 'dept', label: '院系数', value: String(deptStats.departments.length) },
             ]"
             :columns="2"
@@ -117,7 +137,12 @@ onMounted(loadAll)
           <UiStatPanel
             :items="[
               { key: 'total', label: '申请总数', value: String(dualStats.totalCount) },
-              { key: 'approved', label: '认定通过', value: String(dualStats.approvedCount), tone: 'green' },
+              {
+                key: 'approved',
+                label: '认定通过',
+                value: String(dualStats.approvedCount),
+                tone: 'green',
+              },
             ]"
             :columns="2"
             variant="grid"
@@ -151,7 +176,12 @@ onMounted(loadAll)
           <UiStatPanel
             :items="[
               { key: 'total', label: '台账总数', value: String(doubleDutyStats.totalCount) },
-              { key: 'active', label: '在册', value: String(doubleDutyStats.activeCount), tone: 'green' },
+              {
+                key: 'active',
+                label: '在册',
+                value: String(doubleDutyStats.activeCount),
+                tone: 'green',
+              },
             ]"
             :columns="2"
             variant="grid"

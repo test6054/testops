@@ -1,12 +1,5 @@
-import type {AgentWireJsonObject} from './scanner-agent-local-wire';
-import type {
-  ExamScannerKioskContextVO,
-  ExamScannerScanConfigVO,
-  ScannerKioskScanMode,
-} from './scanner-kiosk'
-import { runContractGuard, throwUserFacing } from '@/utils/contract-guard'
+import type { AgentWireJsonObject } from './scanner-agent-local-wire'
 import {
-
   LOCAL_AGENT_WIRE_ERROR,
   requireAgentWireBoolean,
   requireAgentWireInt32,
@@ -16,21 +9,22 @@ import {
   requireAgentWireString,
   requireAgentWireStringArray,
   requireOptionalAgentWireInt32,
-  requireOptionalAgentWireString
+  requireOptionalAgentWireString,
 } from './scanner-agent-local-wire'
+import type {
+  ExamScannerKioskContextVO,
+  ExamScannerScanConfigVO,
+  ScannerKioskScanMode,
+} from './scanner-kiosk'
+import { runContractGuard, throwUserFacing } from '@/utils/contract-guard'
 
 const DEFAULT_AGENT_BASE_URL = 'http://127.0.0.1:18761'
 export const LOCAL_AGENT_UNAVAILABLE_ERROR = '本地扫描服务未连接，请确认一体机组件已启动'
 const LOCAL_AGENT_RESPONSE_ERROR = LOCAL_AGENT_WIRE_ERROR
 const LOCAL_AGENT_REQUEST_ERROR = '本地扫描服务处理失败，请检查扫描服务后重试'
 
-type LocalAgentJsonValue
-  = | string
-    | number
-    | boolean
-    | null
-    | LocalAgentJsonObject
-    | LocalAgentJsonValue[]
+type LocalAgentJsonValue =
+  string | number | boolean | null | LocalAgentJsonObject | LocalAgentJsonValue[]
 
 interface LocalAgentJsonObject {
   [key: string]: LocalAgentJsonValue | undefined
@@ -99,14 +93,8 @@ export const AGENT_HEALTH_STATUS_LABEL: Record<AgentHealthStatus, string> = {
 
 export type AgentDiagnosticStatus = 'OK' | 'WARNING'
 
-export type AgentUpdateStatus
-  = | 'NONE'
-    | 'AVAILABLE'
-    | 'DOWNLOADING'
-    | 'DOWNLOADED'
-    | 'INSTALLING'
-    | 'INSTALLED'
-    | 'FAILED'
+export type AgentUpdateStatus =
+  'NONE' | 'AVAILABLE' | 'DOWNLOADING' | 'DOWNLOADED' | 'INSTALLING' | 'INSTALLED' | 'FAILED'
 
 export const AGENT_UPDATE_STATUS_LABEL: Record<AgentUpdateStatus, string> = {
   NONE: '无更新',
@@ -124,34 +112,29 @@ export interface LocalScannerAgentInstallUpdateResponse {
   packageFileName: string
 }
 
-export type LocalScanJobStatus
-  = | 'CREATED'
-    | 'SCANNING'
-    | 'PAUSED'
-    | 'READYTOUPLOAD'
-    | 'UPLOADING'
-    | 'REPORTED'
-    | 'FAILED'
-    | 'RETRYING'
-    | 'CANCELLED'
+export type LocalScanJobStatus =
+  | 'CREATED'
+  | 'SCANNING'
+  | 'PAUSED'
+  | 'READYTOUPLOAD'
+  | 'UPLOADING'
+  | 'REPORTED'
+  | 'FAILED'
+  | 'RETRYING'
+  | 'CANCELLED'
 
-export type LocalScanPageStatus
-  = | 'CAPTURED'
-    | 'PREPROCESSED'
-    | 'UPLOADING'
-    | 'UPLOADED'
-    | 'FAILED'
-    | 'DELETED'
+export type LocalScanPageStatus =
+  'CAPTURED' | 'PREPROCESSED' | 'UPLOADING' | 'UPLOADED' | 'FAILED' | 'DELETED'
 
 export type LocalScanPageSide = 'FRONT' | 'BACK'
 
 /** 统一文档采集业务场景；与 edu-mark DocumentBusinessScene 一致 */
-export type ScannerBusinessScene
-  = | 'EXAM_DIRECT_SCAN'
-    | 'EXAM_ARCHIVE'
-    | 'COURSE_ASSESSMENT_ARCHIVE'
-    | 'TEACHER_PORTFOLIO'
-    | 'FULLTEXT_IMPORT'
+export type ScannerBusinessScene =
+  | 'EXAM_DIRECT_SCAN'
+  | 'EXAM_ARCHIVE'
+  | 'COURSE_ASSESSMENT_ARCHIVE'
+  | 'TEACHER_PORTFOLIO'
+  | 'FULLTEXT_IMPORT'
 
 /** 试卷直扫互斥识别链路；与 edu-mark DirectScanProviderChain 一致 */
 export type DirectScanProviderChain = 'BAIDU_QWEN' | 'PADDLE_LOCAL'
@@ -433,7 +416,9 @@ export async function startScanJob(request: StartScanJobRequest): Promise<ScanJo
   return normalizeAgentPayload(() => validateScanJobResponse(payload))
 }
 
-export async function startDocumentScanJob(request: DocumentStartScanJobRequest): Promise<ScanJobResponse> {
+export async function startDocumentScanJob(
+  request: DocumentStartScanJobRequest,
+): Promise<ScanJobResponse> {
   const payload = await localAgentPost('/api/scan-jobs/start', {
     ...request,
     scanMode: 'DIRECT',
@@ -521,8 +506,7 @@ export async function retryCommit(scanJobId: string): Promise<ScanJobResponse> {
  * 不调用后端废弃接口；若任务已有逐页上传副作用，必须走教师端废弃后端批次的 discard 链路。
  */
 export async function deleteScanJob(scanJobId: string): Promise<boolean> {
-  const payload = await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/delete`, {
-  })
+  const payload = await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/delete`, {})
   return normalizeAgentPayload(() => validateBooleanResult(payload))
 }
 
@@ -623,10 +607,10 @@ function requireObject(value: LocalAgentJsonValue): AgentWireJsonObject {
 
 function isLocalAgentJsonValue(value: unknown): value is LocalAgentJsonValue {
   if (
-    value === null
-    || typeof value === 'string'
-    || typeof value === 'number'
-    || typeof value === 'boolean'
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
   ) {
     return true
   }
@@ -680,15 +664,15 @@ function requireAgentDiagnosticStatus(
 function requireScanJobStatus(value: AgentWireJsonObject, field: string): LocalScanJobStatus {
   const fieldValue = value[field]
   if (
-    fieldValue !== 'CREATED'
-    && fieldValue !== 'SCANNING'
-    && fieldValue !== 'PAUSED'
-    && fieldValue !== 'READYTOUPLOAD'
-    && fieldValue !== 'UPLOADING'
-    && fieldValue !== 'REPORTED'
-    && fieldValue !== 'FAILED'
-    && fieldValue !== 'RETRYING'
-    && fieldValue !== 'CANCELLED'
+    fieldValue !== 'CREATED' &&
+    fieldValue !== 'SCANNING' &&
+    fieldValue !== 'PAUSED' &&
+    fieldValue !== 'READYTOUPLOAD' &&
+    fieldValue !== 'UPLOADING' &&
+    fieldValue !== 'REPORTED' &&
+    fieldValue !== 'FAILED' &&
+    fieldValue !== 'RETRYING' &&
+    fieldValue !== 'CANCELLED'
   ) {
     throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
@@ -698,12 +682,12 @@ function requireScanJobStatus(value: AgentWireJsonObject, field: string): LocalS
 function requireScanPageStatus(value: AgentWireJsonObject, field: string): LocalScanPageStatus {
   const fieldValue = value[field]
   if (
-    fieldValue !== 'CAPTURED'
-    && fieldValue !== 'PREPROCESSED'
-    && fieldValue !== 'UPLOADING'
-    && fieldValue !== 'UPLOADED'
-    && fieldValue !== 'FAILED'
-    && fieldValue !== 'DELETED'
+    fieldValue !== 'CAPTURED' &&
+    fieldValue !== 'PREPROCESSED' &&
+    fieldValue !== 'UPLOADING' &&
+    fieldValue !== 'UPLOADED' &&
+    fieldValue !== 'FAILED' &&
+    fieldValue !== 'DELETED'
   ) {
     throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
@@ -738,13 +722,13 @@ function validateLocalApiResult(value: LocalAgentJsonValue, response: Response):
 function requireAgentUpdateStatus(value: AgentWireJsonObject, field: string): AgentUpdateStatus {
   const fieldValue = value[field]
   if (
-    fieldValue !== 'NONE'
-    && fieldValue !== 'AVAILABLE'
-    && fieldValue !== 'DOWNLOADING'
-    && fieldValue !== 'DOWNLOADED'
-    && fieldValue !== 'INSTALLING'
-    && fieldValue !== 'INSTALLED'
-    && fieldValue !== 'FAILED'
+    fieldValue !== 'NONE' &&
+    fieldValue !== 'AVAILABLE' &&
+    fieldValue !== 'DOWNLOADING' &&
+    fieldValue !== 'DOWNLOADED' &&
+    fieldValue !== 'INSTALLING' &&
+    fieldValue !== 'INSTALLED' &&
+    fieldValue !== 'FAILED'
   ) {
     throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
@@ -790,7 +774,8 @@ function validateAgentHealthResponse(value: LocalAgentJsonValue): AgentHealthRes
     updateDiagnosticMessage: requireAgentWireString(result, 'updateDiagnosticMessage'),
     updateInstallable: requireAgentWireBoolean(result, 'updateInstallable'),
     workspaceBlocked: 'workspaceBlocked' in result && result.workspaceBlocked === true,
-    localWorkspaceBlocked: 'localWorkspaceBlocked' in result && result.localWorkspaceBlocked === true,
+    localWorkspaceBlocked:
+      'localWorkspaceBlocked' in result && result.localWorkspaceBlocked === true,
   }
 }
 
@@ -890,7 +875,10 @@ function validateScannerAgentActivateResponse(
     pushAuthorizationHeader: requireAgentWireString(result, 'pushAuthorizationHeader'),
     storageUploadUrl: requireAgentWireString(result, 'storageUploadUrl'),
     storageUploadToken: requireAgentWireString(result, 'storageUploadToken'),
-    storageUploadAuthorizationHeader: requireAgentWireString(result, 'storageUploadAuthorizationHeader'),
+    storageUploadAuthorizationHeader: requireAgentWireString(
+      result,
+      'storageUploadAuthorizationHeader',
+    ),
     kioskLockEnabled: requireAgentWireBoolean(result, 'kioskLockEnabled'),
     activatedAt: requireAgentWireString(result, 'activatedAt'),
     minimumAgentVersion: requireAgentWireString(result, 'minimumAgentVersion'),

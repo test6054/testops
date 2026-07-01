@@ -1,6 +1,6 @@
-import type {Ref} from 'vue';
-import type { ArchiveVolumeExamGateVO } from '@/apis/mark/archive-volume'
+import type { Ref } from 'vue'
 import { computed } from 'vue'
+import type { ArchiveVolumeExamGateVO } from '@/apis/mark/archive-volume'
 
 export interface ExamArchiveGateHintState {
   gateProgressHint: string
@@ -47,8 +47,9 @@ function resolveGateProgressHint(gate: ArchiveVolumeExamGateVO | null): string {
   if (gate.allScoresPublished) {
     return (gate.gradablePaperCount ?? 0) <= 0 ? '无可评阅试卷，成绩门禁已满足' : '成绩已全部发布'
   }
-  const unpublished = gate.unpublishedBoundPaperCount
-    ?? Math.max(0, (gate.gradablePaperCount ?? 0) - (gate.publishedScoreCount ?? 0))
+  const unpublished =
+    gate.unpublishedBoundPaperCount ??
+    Math.max(0, (gate.gradablePaperCount ?? 0) - (gate.publishedScoreCount ?? 0))
   return unpublished > 0
     ? `尚有 ${unpublished} 份试卷未发布成绩（${gate.publishedScoreCount ?? 0}/${gate.gradablePaperCount ?? 0}）`
     : `成绩发布 ${gate.publishedScoreCount ?? 0}/${gate.gradablePaperCount ?? 0}`
@@ -61,8 +62,8 @@ function resolveGateAnomaly(gate: ArchiveVolumeExamGateVO | null): boolean {
 function resolveIncompleteClasses(gate: ArchiveVolumeExamGateVO | null) {
   const progress = gate?.classPublishProgress ?? []
   return progress
-    .filter(item => (item.unpublishedBoundPaperCount ?? 0) > 0)
-    .map(item => ({
+    .filter((item) => (item.unpublishedBoundPaperCount ?? 0) > 0)
+    .map((item) => ({
       classId: item.classId ?? 'unassigned',
       className: item.className?.trim() || (item.classId ? `班级 ${item.classId}` : '未分班'),
       unpublishedBoundPaperCount: item.unpublishedBoundPaperCount ?? 0,

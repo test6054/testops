@@ -4,11 +4,7 @@
       <template #title>出勤核对摘要</template>
       <template #extra>
         <a-space>
-          <UiButton
-            size="sm"
-            :loading="reconciling"
-            @click="handleReconcile(false)"
-          >
+          <UiButton size="sm" :loading="reconciling" @click="handleReconcile(false)">
             <template #icon><SyncOutlined /></template>
             出勤核对
           </UiButton>
@@ -26,15 +22,9 @@
       <UiEmpty v-if="!reconcileVO" description="暂无数据" />
       <div v-else class="absence-page__summary">
         <div class="absence-page__summary-ring">
-          <MarkGaugeBlock
-            v-bind="attendanceGaugeBlockProps"
-          />
+          <MarkGaugeBlock v-bind="attendanceGaugeBlockProps" />
         </div>
-        <SignalBand
-          :metrics="reconcileSignalMetrics"
-          compact
-          class="absence-page__summary-stats"
-        />
+        <SignalBand :metrics="reconcileSignalMetrics" compact class="absence-page__summary-stats" />
       </div>
     </UiCard>
 
@@ -205,14 +195,6 @@ import type {
   AbsentStudentSnapshotVO,
   AttendanceReconcileVO,
 } from '@/apis/mark/absence'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   ABSENCE_REASON_LABEL,
   ABSENCE_SCORE_POLICY_LABEL,
@@ -223,6 +205,14 @@ import {
   reconcileAttendance,
   revokeAbsence,
 } from '@/apis/mark/absence'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -304,7 +294,8 @@ const attendancePercent = computed(() => {
 
 /** 出勤率环色：≥90 充足绿 / ≥70 一般蓝 / 偏低橙 */
 const attendanceRingColor = computed(() => {
-  const tone: BadgeTone = attendancePercent.value >= 90 ? 'green' : attendancePercent.value >= 70 ? 'blue' : 'orange'
+  const tone: BadgeTone =
+    attendancePercent.value >= 90 ? 'green' : attendancePercent.value >= 70 ? 'blue' : 'orange'
   return toneToColor(tone)
 })
 
@@ -440,7 +431,7 @@ async function loadRecords(): Promise<void> {
   }
 }
 
-function handleRecordPageChange(page: { current: number, pageSize: number }): void {
+function handleRecordPageChange(page: { current: number; pageSize: number }): void {
   recordPagination.pageNum = page.current
   recordPagination.pageSize = page.pageSize
   void loadRecords()
@@ -530,7 +521,7 @@ async function handleConfirm(): Promise<void> {
 const revokeModalOpen = ref(false)
 const revoking = ref(false)
 const revokeTargetName = ref('')
-const revokeForm = reactive<{ studentUserId: string, revokeReason: string }>({
+const revokeForm = reactive<{ studentUserId: string; revokeReason: string }>({
   studentUserId: '',
   revokeReason: '',
 })
@@ -570,15 +561,19 @@ async function handleRevoke(): Promise<void> {
 
 // ─── 事件处理 ─────────────────────────────────
 
-watch(selectedExamId, async (value) => {
-  reconcileVO.value = null
-  records.value = []
-  recordPagination.pageNum = 1
-  recordPagination.total = 0
-  if (value) {
-    await loadRecords()
-  }
-}, { immediate: true })
+watch(
+  selectedExamId,
+  async (value) => {
+    reconcileVO.value = null
+    records.value = []
+    recordPagination.pageNum = 1
+    recordPagination.total = 0
+    if (value) {
+      await loadRecords()
+    }
+  },
+  { immediate: true },
+)
 
 function handleRecordFilterSearch() {
   if (!selectedExamId.value) return

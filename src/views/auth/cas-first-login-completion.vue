@@ -172,15 +172,11 @@ import type {
   CasFirstLoginSubmitRequest,
   CasProfileCompletionResponse,
 } from '@/apis/sso'
+import { completeCasFirstLogin, getCasAvailableClasses, getCasFirstLoginContext } from '@/apis/sso'
 import type { UiSelectOption } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  completeCasFirstLogin,
-  getCasAvailableClasses,
-  getCasFirstLoginContext,
-} from '@/apis/sso'
 import AuthLayout from '@/components/AuthLayout/index.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -344,7 +340,10 @@ async function initialize(): Promise<void> {
     context.value = null
     availableClasses.value = []
     pageState.value = 'error'
-    pageErrorMessage.value = getUserErrorMessage(error, '统一认证补录上下文获取失败，请重新登录后再试')
+    pageErrorMessage.value = getUserErrorMessage(
+      error,
+      '统一认证补录上下文获取失败，请重新登录后再试',
+    )
     showUserError(error, '统一认证补录上下文获取失败')
   } finally {
     loading.value = false
@@ -379,7 +378,9 @@ function validateForm(): boolean {
   return valid
 }
 
-async function finalizeLogin(result: Awaited<ReturnType<typeof completeCasFirstLogin>>): Promise<void> {
+async function finalizeLogin(
+  result: Awaited<ReturnType<typeof completeCasFirstLogin>>,
+): Promise<void> {
   authStore.setTokenWithExpiry(result.accessToken, result.expiresIn)
   if (result.refreshToken) {
     authStore.setRefreshToken(result.refreshToken)

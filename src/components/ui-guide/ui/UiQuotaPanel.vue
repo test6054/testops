@@ -17,7 +17,7 @@
       </template>
     </UiPanelHeader>
 
-    <a-spin :spinning="props.loading" style="width: 100%;">
+    <a-spin :spinning="props.loading" style="width: 100%">
       <div
         v-if="props.items.length"
         class="ui-quota-panel__grid"
@@ -45,26 +45,16 @@
           />
 
           <div class="ui-quota-panel__item-footer">
-            <UiTag
-              v-if="item.statusLabel"
-              :tone="item.statusTone || getItemTone(item)"
-              size="sm"
-            >
+            <UiTag v-if="item.statusLabel" :tone="item.statusTone || getItemTone(item)" size="sm">
               {{ item.statusLabel }}
             </UiTag>
 
-            <span class="ui-quota-panel__percent">
-              {{ normalizePercent(item.percent) }}%
-            </span>
+            <span class="ui-quota-panel__percent"> {{ normalizePercent(item.percent) }}% </span>
           </div>
         </article>
       </div>
 
-      <UiEmpty
-        size="sm"
-        title="暂无配额数据"
-        :description="props.emptyText"
-      />
+      <UiEmpty size="sm" title="暂无配额数据" :description="props.emptyText" />
     </a-spin>
 
     <footer v-if="$slots.footer" class="ui-quota-panel__footer">
@@ -86,27 +76,30 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  items?: UiQuotaItem[]
-  loading?: boolean
-  emptyText?: string
-  divided?: boolean
-  compact?: boolean
-  columns?: 1 | 2 | 3
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  items: () => [],
-  loading: false,
-  emptyText: '请传入 `items` 配置',
-  divided: true,
-  compact: false,
-  columns: 2,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    items?: UiQuotaItem[]
+    loading?: boolean
+    emptyText?: string
+    divided?: boolean
+    compact?: boolean
+    columns?: 1 | 2 | 3
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    items: () => [],
+    loading: false,
+    emptyText: '请传入 `items` 配置',
+    divided: true,
+    compact: false,
+    columns: 2,
+  },
+)
 
 const slots = useSlots()
 
@@ -119,8 +112,7 @@ const normalizePercent = (value: number) => {
 }
 
 const getItemTone = (item: UiQuotaItem): BadgeTone => {
-  if (item.tone)
-    return item.tone
+  if (item.tone) return item.tone
 
   const percent = normalizePercent(item.percent)
   if (percent >= 90) return 'red'

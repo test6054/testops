@@ -89,7 +89,9 @@ const canvasEmptyHint = computed(() => {
   }
   return '送纸后将自动显示首张影像，请勿关闭工作台。'
 })
-const emptyScanTitle = computed(() => (workflow.activeBackendScanSession.value ? '存在未结束扫描进程' : '暂无扫描批次'))
+const emptyScanTitle = computed(() =>
+  workflow.activeBackendScanSession.value ? '存在未结束扫描进程' : '暂无扫描批次',
+)
 const emptyScanHint = computed(() =>
   workflow.activeBackendScanSession.value
     ? workflow.activeBackendScanSessionReason.value
@@ -123,16 +125,14 @@ const imageTransform = computed(
 )
 const imageFilter = computed(() => (grayscale.value ? 'grayscale(1)' : 'none'))
 
-const isPageException = (page: { status: string, diagnostic?: string }) =>
+const isPageException = (page: { status: string; diagnostic?: string }) =>
   page.status === 'FAILED' || Boolean(page.diagnostic)
 
 const currentIndex = computed(() => {
   if (!previewPageNo.value) return -1
   return pages.value.findIndex((p) => p.pageNo === previewPageNo.value)
 })
-const currentPreviewPage = computed(() =>
-  pages.value.find((p) => p.pageNo === previewPageNo.value),
-)
+const currentPreviewPage = computed(() => pages.value.find((p) => p.pageNo === previewPageNo.value))
 const currentPreviewTitle = computed(() =>
   currentPreviewPage.value ? workflow.scanPageDisplayTitle(currentPreviewPage.value) : '',
 )
@@ -501,7 +501,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
 
               <!-- 旋转组 -->
               <div class="tool-group" role="group" aria-label="旋转">
-                <button type="button" class="tool-btn" title="左转 90° [Shift+R]" @click="rotateLeft">
+                <button
+                  type="button"
+                  class="tool-btn"
+                  title="左转 90° [Shift+R]"
+                  @click="rotateLeft"
+                >
                   <UndoOutlined />
                 </button>
                 <span class="tool-info">

@@ -1,10 +1,7 @@
 import type { QualityScopeProfile, QualityStoreScopeField } from '@/constants/quality-scope-profile'
+import { DEFAULT_SCOPE_WATCH_FIELDS, scopeProfileShowsChrome } from '@/constants/quality-scope-profile'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import {
-  DEFAULT_SCOPE_WATCH_FIELDS,
-  scopeProfileShowsChrome,
-} from '@/constants/quality-scope-profile'
 import { resolveQualityScopeProfile } from '@/utils/quality-scope-route'
 
 /** 当前叶子路由 scopeProfile 及 layout chrome 开关 */

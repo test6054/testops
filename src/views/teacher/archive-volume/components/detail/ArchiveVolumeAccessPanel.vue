@@ -114,9 +114,6 @@ import type {
   ArchiveVolumeAccessReadPageRequest,
   ArchiveVolumeAccessRecordVO,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   approveArchiveVolumeAccess,
   ARCHIVE_ACCESS_STATUS_LABEL,
@@ -128,6 +125,9 @@ import {
   rejectArchiveVolumeAccess,
   requestArchiveVolumeAccess,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -183,11 +183,9 @@ async function loadAccessRecords() {
   accessLoading.value = true
   try {
     accessRecords.value = await listArchiveVolumeAccessRecords(props.volumeId)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     accessLoading.value = false
   }
 }
@@ -204,11 +202,12 @@ async function handleAccessDownload(record: ArchiveVolumeAccessRecordVO) {
     return
   }
   await handleBlobDownload(
-    () => downloadArchiveAccessMaterial({
-      accessRecordId: record.accessRecordId,
-      materialId,
-      downloadToken,
-    }),
+    () =>
+      downloadArchiveAccessMaterial({
+        accessRecordId: record.accessRecordId,
+        materialId,
+        downloadToken,
+      }),
     'archive-access-material',
     { showSuccessMessage: true, successMessage: '材料下载已开始' },
   )
@@ -244,8 +243,7 @@ async function handleAccessPreview(record: ArchiveVolumeAccessRecordVO) {
     readPageForm.accessRecordId = record.accessRecordId
     readPageForm.lastReadPage = record.lastReadPage ?? 1
     readPageModalOpen.value = true
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '材料预览失败')
   }
 }
@@ -284,11 +282,9 @@ async function submitReadPage() {
     readPageModalOpen.value = false
     resetReadPageForm()
     await loadAccessRecords()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     readPageSubmitting.value = false
   }
 }
@@ -312,11 +308,9 @@ async function submitAccessRequest() {
     message.success('查阅申请已提交')
     accessModalOpen.value = false
     await loadAccessRecords()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     accessSubmitting.value = false
   }
 }
@@ -326,8 +320,7 @@ async function handleApproveAccess(accessRecordId: string) {
     await approveArchiveVolumeAccess({ accessRecordId })
     message.success('已批准查阅')
     await loadAccessRecords()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -352,11 +345,9 @@ async function submitRejectAccess() {
     message.success('已驳回查阅')
     rejectAccessOpen.value = false
     await loadAccessRecords()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     rejectAccessSubmitting.value = false
   }
 }

@@ -1,10 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        show-title
-        title="成绩复核与更正"
-      >
+      <ContextBar show-title title="成绩复核与更正">
         <template #status>
           <UiTag v-if="pendingCount > 0" tone="orange" size="sm">
             待处理复核 {{ pendingCount }}
@@ -105,13 +102,17 @@ async function onAppealFlowChanged(): Promise<void> {
   await refreshSnapshot()
 }
 
-watch(selectedExamId, (value) => {
-  if (value) {
-    reloadAll()
-  } else {
-    pendingCount.value = 0
-  }
-}, { immediate: true })
+watch(
+  selectedExamId,
+  (value) => {
+    if (value) {
+      reloadAll()
+    } else {
+      pendingCount.value = 0
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <style lang="scss" scoped>

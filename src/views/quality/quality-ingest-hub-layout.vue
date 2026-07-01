@@ -15,8 +15,16 @@ const qualityStore = useQualityStore()
 const tabs = [
   { key: 'score-batch', label: '成绩 Excel 导入', path: '/quality/ingest-hub/score-batch' },
   { key: 'score-record', label: '成绩明细核对', path: '/quality/ingest-hub/score-record' },
-  { key: 'process-evaluation', label: '过程性评价', path: '/quality/ingest-hub/process-evaluation' },
-  { key: 'indirect-evaluation', label: '间接评价', path: '/quality/ingest-hub/indirect-evaluation' },
+  {
+    key: 'process-evaluation',
+    label: '过程性评价',
+    path: '/quality/ingest-hub/process-evaluation',
+  },
+  {
+    key: 'indirect-evaluation',
+    label: '间接评价',
+    path: '/quality/ingest-hub/indirect-evaluation',
+  },
   { key: 'external-pull', label: '外部数据拔取', path: '/quality/ingest-hub/external-pull' },
 ] as const
 
@@ -43,10 +51,7 @@ function handleTabChange(key: string | number) {
       v-if="!qualityStore.currentTrainingPlanId"
       description="请选择培养方案后进入数据接入"
     />
-    <router-view
-      v-else
-      :key="`${route.path}-${qualityStore.scopeChangeEpoch}`"
-    />
+    <router-view v-else :key="`${route.path}-${qualityStore.scopeChangeEpoch}`" />
   </div>
 </template>
 

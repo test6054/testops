@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ExamSummaryVO } from '@/apis/mark/exam'
+import { pageExams } from '@/apis/mark/exam'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { onMounted, ref } from 'vue'
-import { pageExams } from '@/apis/mark/exam'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
@@ -23,7 +23,7 @@ withDefaults(
 const ANALYSIS_EXAM_OPTION_PAGE_SIZE = 50
 
 const loading = ref(false)
-const examOptions = ref<{ label: string, value: string }[]>([])
+const examOptions = ref<{ label: string; value: string }[]>([])
 
 /** 加载当前租户考试范围，供 AI 分析卡片选择单个考试实体。 */
 async function loadExamOptions(keyword?: string): Promise<void> {
@@ -75,7 +75,11 @@ onMounted(loadExamOptions)
       :filter-option="false"
       allow-clear
       @search="handleExamSearch"
-      @dropdown-visible-change="(open: boolean) => { if (open) void loadExamOptions() }"
+      @dropdown-visible-change="
+        (open: boolean) => {
+          if (open) void loadExamOptions()
+        }
+      "
     />
     <a-button
       class="analysis-exam-select__reload"

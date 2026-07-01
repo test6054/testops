@@ -1,7 +1,22 @@
 import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
+import { ANONYMITY_MODE_LABEL } from '@/apis/mark/anonymity-mode'
 import type { ExamDetailVO } from '@/apis/mark/exam'
-import type { AiAbilityCode, AiExecutionStatusCode, ExamQuestionAiExecutionItemVO } from '@/apis/mark/exam-grade'
+import { getExamDetail } from '@/apis/mark/exam'
+import type {
+  AiAbilityCode,
+  AiExecutionStatusCode,
+  ExamQuestionAiExecutionItemVO,
+} from '@/apis/mark/exam-grade'
+import {
+  AI_ABILITY_LABEL,
+  AI_ABILITY_TONE,
+  AI_EXECUTION_STATUS_LABEL,
+  AI_EXECUTION_STATUS_TONE,
+  listAiExecutionsForQuestion,
+  rescoreQuestionByAi,
+} from '@/apis/mark/exam-grade'
 import type { QualityDecisionCode } from '@/apis/mark/exam-scan'
+import { QUALITY_DECISION_LABEL, QUALITY_DECISION_TONE } from '@/apis/mark/exam-scan'
 import type { PaperInstanceDisplayVO } from '@/apis/mark/exam-score'
 import type {
   AllocationUnitCode,
@@ -12,23 +27,6 @@ import type {
   MarkingTaskVO,
   QuestionMarkingGroupQuestionVO,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { storeToRefs } from 'pinia'
-import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { ANONYMITY_MODE_LABEL } from '@/apis/mark/anonymity-mode'
-import { getExamDetail } from '@/apis/mark/exam'
-import { listAnnotations, validateAnnotationContract } from '@/apis/mark/exam-annotation'
-import {
-  AI_ABILITY_LABEL,
-  AI_ABILITY_TONE,
-  AI_EXECUTION_STATUS_LABEL,
-  AI_EXECUTION_STATUS_TONE,
-  listAiExecutionsForQuestion,
-  rescoreQuestionByAi,
-} from '@/apis/mark/exam-grade'
-import { QUALITY_DECISION_LABEL, QUALITY_DECISION_TONE } from '@/apis/mark/exam-scan'
 import {
   ALLOCATION_UNIT_LABEL,
   getMarkingQuestionView,
@@ -37,6 +35,12 @@ import {
   MARKING_TASK_STATUS_TONE as STATUS_TONE,
   validateMarkingTaskContract,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { storeToRefs } from 'pinia'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { listAnnotations, validateAnnotationContract } from '@/apis/mark/exam-annotation'
 import { MARKING_WITHDRAW_TOAST_MS } from '@/apis/mark/marking-withdraw'
 import {
   buildConfidentialWatermarkLines,
@@ -105,13 +109,8 @@ export function useMarkingTaskDetailState() {
   const markTaskStore = useMarkTaskStore()
   const userStore = useUserStore()
   const { tasks: batchTasks } = storeToRefs(markTaskStore)
-  const {
-    latestWithdrawable,
-    recentList,
-    canWithdrawEntry,
-    withdrawEntry,
-    withdrawLatest,
-  } = useMarkingRecentSubmit()
+  const { latestWithdrawable, recentList, canWithdrawEntry, withdrawEntry, withdrawLatest } =
+    useMarkingRecentSubmit()
 
   const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
   const tenantId = computed(() => tenantStore.tenantId ?? '')
@@ -123,7 +122,7 @@ export function useMarkingTaskDetailState() {
   const sessionPausedAlert = ref(false)
   const withdrawToastVisible = ref(false)
   let withdrawToastTimer: ReturnType<typeof setTimeout> | null = null
-  const form = reactive<{ score?: number, annotationNote?: string }>({
+  const form = reactive<{ score?: number; annotationNote?: string }>({
     score: undefined,
     annotationNote: '',
   })
@@ -137,11 +136,12 @@ export function useMarkingTaskDetailState() {
   const isReadOnly = computed(() => task.value?.taskStatus === 'FINALIZED')
   const isScoreReadOnly = computed(() => isReadOnly.value || taskRecycledBlocked.value)
   const isWholePaperTask = computed(() => task.value?.taskUnit === 'WHOLE_PAPER')
-  const usesWholePaperWorkspace = computed(() => (
-    task.value?.taskUnit === 'WHOLE_PAPER'
-    || task.value?.taskUnit === 'SELECTED_QUESTIONS'
-    || task.value?.taskUnit === 'RANDOM_QUESTIONS'
-  ))
+  const usesWholePaperWorkspace = computed(
+    () =>
+      task.value?.taskUnit === 'WHOLE_PAPER' ||
+      task.value?.taskUnit === 'SELECTED_QUESTIONS' ||
+      task.value?.taskUnit === 'RANDOM_QUESTIONS',
+  )
   const canSubmit = computed(() => {
     if (taskRecycledBlocked.value) return false
     const status = task.value?.taskStatus
@@ -259,8 +259,7 @@ export function useMarkingTaskDetailState() {
         if (task.value && event.taskStatus) {
           strictEnumLabel(STATUS_LABEL, event.taskStatus, '阅卷任务状态')
           task.value = { ...task.value, taskStatus: event.taskStatus }
-        }
-        else if (task.value) {
+        } else if (task.value) {
           task.value = { ...task.value, taskStatus: 'RECYCLED' }
         }
         return
@@ -268,10 +267,13 @@ export function useMarkingTaskDetailState() {
       const action = markTaskStore.applyStreamEvent(event)
       if (action === 'reload') {
         if (task.value?.examId) {
-          void markTaskStore.loadTasks({
-            examId: task.value.examId,
-            reviewerUserId: navigationBatchReviewerId(),
-          }, { silent: true })
+          void markTaskStore.loadTasks(
+            {
+              examId: task.value.examId,
+              reviewerUserId: navigationBatchReviewerId(),
+            },
+            { silent: true },
+          )
         }
         void loadTask()
         return
@@ -302,7 +304,7 @@ export function useMarkingTaskDetailState() {
     withdrawToastVisible.value = false
   }
 
-  async function handleWithdrawEntry(entry: typeof recentList.value[number]): Promise<void> {
+  async function handleWithdrawEntry(entry: (typeof recentList.value)[number]): Promise<void> {
     await withdrawEntry(entry, (withdrawnTask) => {
       if (withdrawnTask.id === taskId.value) {
         task.value = withdrawnTask
@@ -340,8 +342,12 @@ export function useMarkingTaskDetailState() {
       await submitCtx.submit()
     },
     scrollToWholePage,
-    applyQuickScore: (score: number) => { form.score = score },
-    onWithdraw: () => { void handleWithdrawLatest() },
+    applyQuickScore: (score: number) => {
+      form.score = score
+    },
+    onWithdraw: () => {
+      void handleWithdrawLatest()
+    },
     applyModalOpen: submitCtx.applyModalOpen,
     onApplyModalKey: submitCtx.handleApplyModalKey,
   })
@@ -350,9 +356,12 @@ export function useMarkingTaskDetailState() {
     void taskStream.start()
   })
 
-  watch(() => task.value?.examId, () => {
-    void taskStream.refresh()
-  })
+  watch(
+    () => task.value?.examId,
+    () => {
+      void taskStream.refresh()
+    },
+  )
 
   function applySubmittedQuestionScores(scores: MarkingTaskSubmittedQuestionScoreVO[]): void {
     if (!scores.length) return
@@ -374,12 +383,13 @@ export function useMarkingTaskDetailState() {
     const paperId = paperInstanceId.value
     if (!examId || !paperId || !wholePages.value.length) return
     const pageAnnotations = await readAllPages(
-      (pageNum) => listAnnotations({
-        examId,
-        paperInstanceId: paperId,
-        pageNum,
-        pageSize: SUBMITTED_PAGE_ANNOTATION_PAGE_SIZE,
-      }),
+      (pageNum) =>
+        listAnnotations({
+          examId,
+          paperInstanceId: paperId,
+          pageNum,
+          pageSize: SUBMITTED_PAGE_ANNOTATION_PAGE_SIZE,
+        }),
       '批注列表加载失败，请刷新后重试',
     )
     for (const annotation of pageAnnotations) {
@@ -478,10 +488,12 @@ export function useMarkingTaskDetailState() {
   }
 
   function calcHalfScore(fullScore: number | undefined | null): number {
-    return Math.round((fullScore ?? 0) / 2 * 10) / 10
+    return Math.round(((fullScore ?? 0) / 2) * 10) / 10
   }
 
-  const questionViewHalfScoreLabel = computed(() => `半分 (${calcHalfScore(questionView.value?.fullScore)})`)
+  const questionViewHalfScoreLabel = computed(
+    () => `半分 (${calcHalfScore(questionView.value?.fullScore)})`,
+  )
 
   function expectsQuestionViewAiScore(view: MarkingQuestionViewVO | null | undefined): boolean {
     if (!view || view.aiScore != null) return false
@@ -550,14 +562,16 @@ export function useMarkingTaskDetailState() {
   }
 
   function openRescoreConfirmForQuestionView(): void {
-    if (!canRescoreQuestionView.value || !task.value?.examId || !questionView.value?.gradeResultId) return
+    if (!canRescoreQuestionView.value || !task.value?.examId || !questionView.value?.gradeResultId)
+      return
     void confirmAsync({
       title: '重新生成单题 AI 复评？',
       content: '系统会重新生成单题 AI 复评结果，不会直接写入教师给分。',
       type: 'info',
       okText: '生成 AI 复评',
       cancelText: '取消',
-      onOk: () => doRescoreByAi(task.value!.examId, questionView.value!.gradeResultId!, reloadQuestionView),
+      onOk: () =>
+        doRescoreByAi(task.value!.examId, questionView.value!.gradeResultId!, reloadQuestionView),
     })
   }
 
@@ -722,7 +736,10 @@ export function useMarkingTaskDetailState() {
     await submitCtx.submit()
   }
 
-  function applyQuickScoreToWholeQuestion(question: QuestionMarkingGroupQuestionVO, score: number): void {
+  function applyQuickScoreToWholeQuestion(
+    question: QuestionMarkingGroupQuestionVO,
+    score: number,
+  ): void {
     if (score > question.fullScore) return
     getWholeQuestionForm(question.questionTemplateId).score = score
   }
@@ -771,32 +788,40 @@ export function useMarkingTaskDetailState() {
     { deep: true },
   )
 
-  watch(submitCtx.hasGradingDraft, (dirty) => {
-    if (!workbenchContext?.workspaceUnsavedHint) return
-    workbenchContext.workspaceUnsavedHint.value = dirty
-      ? '当前阅卷评分尚未提交，离开工作台将丢失未保存内容'
-      : null
-  }, { immediate: true })
+  watch(
+    submitCtx.hasGradingDraft,
+    (dirty) => {
+      if (!workbenchContext?.workspaceUnsavedHint) return
+      workbenchContext.workspaceUnsavedHint.value = dirty
+        ? '当前阅卷评分尚未提交，离开工作台将丢失未保存内容'
+        : null
+    },
+    { immediate: true },
+  )
 
-  watch(taskId, () => {
-    form.score = undefined
-    form.annotationNote = ''
-    task.value = null
-    examDetail.value = null
-    taskRecycledBlocked.value = false
-    sessionPausedAlert.value = false
-    withdrawToastVisible.value = false
-    clearWithdrawToastTimer()
-    questionView.value = null
-    questionViewLoaded.value = false
-    questionViewLoading.value = false
-    resetWholePaperState()
-    wholeQuestionScoreInputRefs.value = []
-    expandedWholeQuestionKey.value = ''
-    clearRevealedIdentity()
-    revealOpen.value = false
-    void loadTask()
-  }, { immediate: true })
+  watch(
+    taskId,
+    () => {
+      form.score = undefined
+      form.annotationNote = ''
+      task.value = null
+      examDetail.value = null
+      taskRecycledBlocked.value = false
+      sessionPausedAlert.value = false
+      withdrawToastVisible.value = false
+      clearWithdrawToastTimer()
+      questionView.value = null
+      questionViewLoaded.value = false
+      questionViewLoading.value = false
+      resetWholePaperState()
+      wholeQuestionScoreInputRefs.value = []
+      expandedWholeQuestionKey.value = ''
+      clearRevealedIdentity()
+      revealOpen.value = false
+      void loadTask()
+    },
+    { immediate: true },
+  )
 
   onBeforeUnmount(() => {
     clearRevealedIdentity()

@@ -24,7 +24,11 @@ function mapOkType(type?: 'primary' | 'danger') {
     :cancel-text="state.options.cancelText ?? '取消'"
     :width="480"
     :confirm-loading="state.loading"
-    @update:open="(open: boolean) => { if (!open) handlePromptInputCancel() }"
+    @update:open="
+      (open: boolean) => {
+        if (!open) handlePromptInputCancel()
+      }
+    "
     @ok="handlePromptInputOk"
     @cancel="handlePromptInputCancel"
   >

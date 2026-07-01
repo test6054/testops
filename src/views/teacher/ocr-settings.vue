@@ -3,43 +3,16 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamDetailVO } from '@/apis/mark/exam'
+import { getExamDetail } from '@/apis/mark/exam'
 import type { ExamScoreSummaryItemVO } from '@/apis/mark/exam-score'
-import type {
-  MarkOcrConfigVO,
-} from '@/apis/mark/ocr-config'
-import type {
-  PaddleOcrInstanceVO,
-} from '@/apis/mark/ocr-paddle-instance'
-import type { MarkOcrPaperSliceVO, MarkOcrRecognizeVO } from '@/apis/mark/ocr-recognition'
-import type {
-  MarkOcrHealthStatusCode,
-  MarkOcrProviderTypeCode,
-} from '@/apis/mark/ocr-types'
-import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
-import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
-import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import {
-  getExamDetail,
-} from '@/apis/mark/exam'
-import {
-  BINDING_STATUS_LABEL,
-} from '@/apis/mark/exam-binding'
 import { pageExamScoreSummary } from '@/apis/mark/exam-score'
-import { FINAL_SCORE_STATUS_LABEL } from '@/apis/mark/final-score-status'
-import {
-  checkMarkOcrHealth,
-  getCurrentMarkOcrConfig,
-} from '@/apis/mark/ocr-config'
-import {
-  listPaddleOcrInstances,
-} from '@/apis/mark/ocr-paddle-instance'
-import {
-  listMarkOcrPaperSlices,
-  recognizeMarkOcr,
-} from '@/apis/mark/ocr-recognition'
+import type { MarkOcrConfigVO } from '@/apis/mark/ocr-config'
+import { checkMarkOcrHealth, getCurrentMarkOcrConfig } from '@/apis/mark/ocr-config'
+import type { PaddleOcrInstanceVO } from '@/apis/mark/ocr-paddle-instance'
+import { listPaddleOcrInstances } from '@/apis/mark/ocr-paddle-instance'
+import type { MarkOcrPaperSliceVO, MarkOcrRecognizeVO } from '@/apis/mark/ocr-recognition'
+import { listMarkOcrPaperSlices, recognizeMarkOcr } from '@/apis/mark/ocr-recognition'
+import type { MarkOcrHealthStatusCode, MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
 import {
   MARK_OCR_HEALTH_STATUS_LABEL,
   MARK_OCR_HEALTH_STATUS_TONE,
@@ -47,6 +20,14 @@ import {
   MARK_OCR_PROVIDER_DESCRIPTION,
   MARK_OCR_PROVIDER_LABEL,
 } from '@/apis/mark/ocr-types'
+import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
+import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
+import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { BINDING_STATUS_LABEL } from '@/apis/mark/exam-binding'
+import { FINAL_SCORE_STATUS_LABEL } from '@/apis/mark/final-score-status'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -111,7 +92,9 @@ const paperInstanceFieldLabel = computed(() => {
 const ocrDebugReady = computed(() => Boolean(examMaterialLayoutMode.value))
 
 const debugRules = computed<Record<string, Rule[]>>(() => ({
-  paperInstanceId: [{ required: true, message: `请选择${paperInstanceFieldLabel.value}`, trigger: 'change' }],
+  paperInstanceId: [
+    { required: true, message: `请选择${paperInstanceFieldLabel.value}`, trigger: 'change' },
+  ],
   responseSliceId: [{ required: true, message: '请选择当前卷面的正式作答切片', trigger: 'change' }],
 }))
 
@@ -148,11 +131,11 @@ const paperCutCapability = computed(() => {
 
 const canRecognize = computed(() =>
   Boolean(
-    ocrDebugReady.value
-    && currentConfig.value?.providerType
-    && currentConfig.value.enabled
-    && debugForm.value.paperInstanceId
-    && debugForm.value.responseSliceId,
+    ocrDebugReady.value &&
+    currentConfig.value?.providerType &&
+    currentConfig.value.enabled &&
+    debugForm.value.paperInstanceId &&
+    debugForm.value.responseSliceId,
   ),
 )
 const currentPaperSlice = computed(() =>
@@ -246,7 +229,9 @@ async function handleHealthCheck(): Promise<void> {
   healthChecking.value = true
   try {
     const result = await checkMarkOcrHealth(tenantId)
-    message.success(`OCR 健康检查完成：${strictEnumLabel(MARK_OCR_HEALTH_STATUS_LABEL, result.healthStatus, 'OCR 健康状态')}`)
+    message.success(
+      `OCR 健康检查完成：${strictEnumLabel(MARK_OCR_HEALTH_STATUS_LABEL, result.healthStatus, 'OCR 健康状态')}`,
+    )
     await loadConfig()
   } catch (error) {
     showUserError(error, 'OCR 健康检查失败')
@@ -400,10 +385,7 @@ watch(
     paperCandidateKeyword.value = ''
     recognizeResult.value = null
     if (examId) {
-      void Promise.all([
-        loadExamDetail(examId),
-        loadPaperCandidates(examId),
-      ])
+      void Promise.all([loadExamDetail(examId), loadPaperCandidates(examId)])
     } else {
       examDetail.value = null
       paperSlices.value = []
@@ -427,10 +409,7 @@ async function reloadOcrWorkbench(): Promise<void> {
   if (!examId) {
     return
   }
-  await Promise.all([
-    loadExamDetail(examId),
-    loadPaperCandidates(examId),
-  ])
+  await Promise.all([loadExamDetail(examId), loadPaperCandidates(examId)])
   if (debugForm.value.paperInstanceId) {
     await loadPaperSlices(examId, debugForm.value.paperInstanceId)
   }
@@ -449,8 +428,6 @@ onBeforeUnmount(() => {
 <template>
   <div class="ocr-settings">
     <UiEmpty v-if="!selectedExamId" description="未进入考试工作台" />
-
-
 
     <a-spin v-else-if="loading && !currentConfig" />
 
@@ -472,10 +449,7 @@ onBeforeUnmount(() => {
             <ApiOutlined />
             <span>当前 OCR 渠道</span>
           </template>
-          <UiEmpty
-            v-if="!currentConfig.providerType"
-            description="租户尚未配置 OCR 渠道"
-          />
+          <UiEmpty v-if="!currentConfig.providerType" description="租户尚未配置 OCR 渠道" />
           <template v-else>
             <div class="ocr-channel__hero">
               <span class="ocr-channel__name">{{ currentProviderLabel }}</span>
@@ -577,7 +551,9 @@ onBeforeUnmount(() => {
               {{ record.lastHealthCheckTime || '未探活' }}
             </template>
             <template v-else-if="column.key === 'lastHealthMessage'">
-              <span v-if="record.lastHealthMessage">{{ ocrHealthMessageText(record.lastHealthMessage) }}</span>
+              <span v-if="record.lastHealthMessage">{{
+                ocrHealthMessageText(record.lastHealthMessage)
+              }}</span>
               <span v-else class="text-muted">—</span>
             </template>
           </template>

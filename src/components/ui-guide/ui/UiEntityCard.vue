@@ -30,10 +30,7 @@
             </div>
           </div>
 
-          <p
-            v-if="props.description || $slots.description"
-            class="ui-entity-card__description"
-          >
+          <p v-if="props.description || $slots.description" class="ui-entity-card__description">
             <slot name="description">{{ props.description }}</slot>
           </p>
         </div>
@@ -70,22 +67,25 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title: string
-  description?: string
-  eyebrow?: string
-  tone?: BadgeTone
-  clickable?: boolean
-  selected?: boolean
-  compact?: boolean
-}>(), {
-  description: '',
-  eyebrow: '',
-  tone: 'blue',
-  clickable: true,
-  selected: false,
-  compact: false,
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    description?: string
+    eyebrow?: string
+    tone?: BadgeTone
+    clickable?: boolean
+    selected?: boolean
+    compact?: boolean
+  }>(),
+  {
+    description: '',
+    eyebrow: '',
+    tone: 'blue',
+    clickable: true,
+    selected: false,
+    compact: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'click', evt: MouseEvent): void

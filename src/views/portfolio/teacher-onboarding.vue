@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type {PortfolioTeacherJourneyKey} from '@/constants/portfolio-teacher-journey';
+import type { PortfolioTeacherJourneyKey } from '@/constants/portfolio-teacher-journey'
+import {
+  PORTFOLIO_TEACHER_JOURNEY_STEPS,
+  resolvePortfolioJourneyDefaultRoute,
+} from '@/constants/portfolio-teacher-journey'
 import type { WorkbenchStage } from '@/types/workbench'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -8,11 +12,6 @@ import PortfolioTeacherOnboardingWizard from '@/components/portfolio/PortfolioTe
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
-import {
-  PORTFOLIO_TEACHER_JOURNEY_STEPS,
-  
-  resolvePortfolioJourneyDefaultRoute
-} from '@/constants/portfolio-teacher-journey'
 
 const route = useRoute()
 const router = useRouter()
@@ -23,11 +22,12 @@ const blockedByReadiness = computed(() => route.query.blocked === 'readiness')
 const readonlyMode = computed(() => route.query.mode === 'readonly' || route.query.readonly === '1')
 
 const journeyStages = computed((): WorkbenchStage[] =>
-  PORTFOLIO_TEACHER_JOURNEY_STEPS.map(step => ({
+  PORTFOLIO_TEACHER_JOURNEY_STEPS.map((step) => ({
     key: step.key,
     title: step.title,
     status: step.key === 'learn' ? 'active' : 'pending',
-  })))
+  })),
+)
 
 function navigateJourney(journeyKey: PortfolioTeacherJourneyKey) {
   void router.push({

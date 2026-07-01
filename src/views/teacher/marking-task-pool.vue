@@ -3,16 +3,10 @@
     <template #context>
       <ContextBar layout="workbench" show-title :title="pageTitle" :subtitle="pageSubtitle">
         <template #status>
-          <UiTag
-            v-if="examDetail?.status"
-            :tone="examStatusTone(examDetail.status)"
-            size="sm"
-          >
+          <UiTag v-if="examDetail?.status" :tone="examStatusTone(examDetail.status)" size="sm">
             {{ examStatusLabel(examDetail.status) }}
           </UiTag>
-          <UiTag v-if="isTrialTaskPool" tone="purple" size="sm">
-            试评阶段
-          </UiTag>
+          <UiTag v-if="isTrialTaskPool" tone="purple" size="sm"> 试评阶段 </UiTag>
         </template>
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="() => loadTasks()">
@@ -35,14 +29,10 @@
       dense
     />
 
-    <UiAlertStrip
-      v-if="isGroupLeader"
-      tone="info"
-      title="题组批阅进度"
-      dense
-    >
+    <UiAlertStrip v-if="isGroupLeader" tone="info" title="题组批阅进度" dense>
       <template #default>
-        待处理 {{ groupLeaderProgress?.pendingCount ?? 0 }} · 已提交 {{ groupLeaderProgress?.submittedCount ?? 0 }}
+        待处理 {{ groupLeaderProgress?.pendingCount ?? 0 }} · 已提交
+        {{ groupLeaderProgress?.submittedCount ?? 0 }}
       </template>
     </UiAlertStrip>
 
@@ -59,9 +49,7 @@
             :description="claimEmptyDescription"
           >
             <template #action>
-              <UiButton variant="primary" @click="goMarkingOrg">
-                前往阅卷安排
-              </UiButton>
+              <UiButton variant="primary" @click="goMarkingOrg"> 前往阅卷安排 </UiButton>
             </template>
           </UiEmpty>
           <a-form v-else layout="inline" :model="claimForm" @submit.prevent="submitClaim">
@@ -128,12 +116,8 @@
           selection-label="份已选"
           description="须同题组 · 同题目 · 待批阅状态"
         >
-          <UiButton variant="primary" size="sm" @click="openBatchDrawer">
-            批量给分
-          </UiButton>
-          <UiButton variant="outline" size="sm" @click="clearBatchSelection">
-            清空
-          </UiButton>
+          <UiButton variant="primary" size="sm" @click="openBatchDrawer"> 批量给分 </UiButton>
+          <UiButton variant="outline" size="sm" @click="clearBatchSelection"> 清空 </UiButton>
         </UiBatchActionBar>
 
         <UiFilterBar
@@ -145,8 +129,6 @@
           @search="loadTasks"
           @reset="resetFilter"
         />
-
-
 
         <UiDataTable
           pagination-mode="client"
@@ -263,7 +245,9 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
-import type {ExamStatusCode} from '@/apis/mark/exam';
+import { ANONYMITY_MODE_LABEL } from '@/apis/mark/anonymity-mode'
+import type { ExamStatusCode } from '@/apis/mark/exam'
+import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import type {
   FormalSessionVO,
   MarkingSessionPhaseCode,
@@ -273,6 +257,15 @@ import type {
   MarkingTaskVO,
   TeacherClaimContextVO,
   TrialSessionVO,
+} from '@/apis/mark/marking-organization'
+import {
+  FORMAL_SESSION_STATUS_LABEL,
+  getMarkingQuestionView,
+  getOrganization,
+  MARKING_TASK_STATUS_LABEL,
+  MARKING_TASK_STATUS_OPTIONS,
+  MARKING_TASK_STATUS_TONE,
+  TRIAL_SESSION_STATUS_LABEL,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -284,17 +277,6 @@ import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ANONYMITY_MODE_LABEL } from '@/apis/mark/anonymity-mode'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
-import {
-  FORMAL_SESSION_STATUS_LABEL,
-  getMarkingQuestionView,
-  getOrganization,
-  MARKING_TASK_STATUS_LABEL,
-  MARKING_TASK_STATUS_OPTIONS,
-  MARKING_TASK_STATUS_TONE,
-  TRIAL_SESSION_STATUS_LABEL,
-} from '@/apis/mark/marking-organization'
 import MarkingBatchScoreDrawer from '@/components/mark/MarkingBatchScoreDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -309,7 +291,10 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkingTaskStream } from '@/composables/useMarkingTaskStream'
-import { MARK_WORKBENCH_CONTEXT_KEY, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import {
+  MARK_WORKBENCH_CONTEXT_KEY,
+  useWorkspaceExamId,
+} from '@/composables/useMarkWorkbenchContext'
 import { usePolling } from '@/composables/usePolling'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
@@ -327,21 +312,23 @@ const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 
 const isTrialTaskPool = computed(() => route.meta.workspacePhase === 'trial')
 
-const markingPhase = computed(() => (isTrialTaskPool.value ? 'TRIAL' : 'FORMAL') as MarkingSessionPhaseCode)
+const markingPhase = computed(
+  () => (isTrialTaskPool.value ? 'TRIAL' : 'FORMAL') as MarkingSessionPhaseCode,
+)
 
 const sessionSelectLabel = computed(() => (isTrialTaskPool.value ? '试评会话' : '正评会话'))
 
-const claimEmptyDescription = computed(() => (
+const claimEmptyDescription = computed(() =>
   isTrialTaskPool.value
     ? '当前暂无可领取的试评任务。请先在「阅卷安排」步骤中创建试评会话。'
-    : '当前暂无可领取的阅卷任务。请先在「阅卷安排」步骤中创建批阅会话。'
-))
+    : '当前暂无可领取的阅卷任务。请先在「阅卷安排」步骤中创建批阅会话。',
+)
 
-const taskTableEmptyDescription = computed(() => (
+const taskTableEmptyDescription = computed(() =>
   isTrialTaskPool.value
     ? '暂无待处理试评任务，领取后将在此展示'
-    : '当前无待处理任务，所有试卷可能已完成评阅'
-))
+    : '当前无待处理任务，所有试卷可能已完成评阅',
+)
 
 const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
@@ -397,7 +384,7 @@ const batchFullScore = ref(0)
 const batchGroupId = ref('')
 const sessionPausedAlert = ref(false)
 const isGroupLeader = ref(false)
-const groupLeaderProgress = ref<{ pendingCount?: number, submittedCount?: number } | null>(null)
+const groupLeaderProgress = ref<{ pendingCount?: number; submittedCount?: number } | null>(null)
 
 const selectedTasks = computed(() =>
   tasks.value.filter((task) => selectedRowKeys.value.includes(task.id)),
@@ -420,9 +407,8 @@ function handleSelectionChange(keys: (string | number)[]): void {
     clearBatchSelection()
     return
   }
-  const anchor = batchSelectionAnchor.value
-    ?? tasks.value.find((task) => task.id === typedKeys[0])
-    ?? null
+  const anchor =
+    batchSelectionAnchor.value ?? tasks.value.find((task) => task.id === typedKeys[0]) ?? null
   if (!anchor || !isBatchSelectable(anchor)) {
     clearBatchSelection()
     return
@@ -456,8 +442,7 @@ async function openBatchDrawer(): Promise<void> {
     batchFullScore.value = view.fullScore
     batchGroupId.value = first.groupId ?? ''
     batchDrawerOpen.value = true
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '批量给分题目信息加载失败')
   }
 }
@@ -475,8 +460,7 @@ async function loadGroupLeaderFlag(): Promise<void> {
   try {
     const org = await getOrganization({ examId: selectedExamId.value })
     isGroupLeader.value = org.groups.some((group) => group.leaderUserId === currentUserId.value)
-  }
-  catch {
+  } catch {
     isGroupLeader.value = false
   }
 }
@@ -527,9 +511,9 @@ const groupLeaderStream = useMarkingTaskStream({
     }
     // exam Topic 事件携带单 session 计数，须回源 claimContext 做 exam 级聚合
     if (
-      event.eventType === 'SESSION_PROGRESS'
-      || event.eventType === 'SESSION_PAUSED'
-      || event.eventType === 'SESSION_RESUMED'
+      event.eventType === 'SESSION_PROGRESS' ||
+      event.eventType === 'SESSION_PAUSED' ||
+      event.eventType === 'SESSION_RESUMED'
     ) {
       void loadClaimContext()
     }
@@ -593,7 +577,10 @@ async function loadTasks(options?: { silent?: boolean }): Promise<void> {
   }
   if (!currentUserId.value) {
     if (!options?.silent) {
-      showUserError(new Error('当前登录用户缺少 userId，无法加载阅卷任务'), '当前登录用户缺少 userId，无法加载阅卷任务')
+      showUserError(
+        new Error('当前登录用户缺少 userId，无法加载阅卷任务'),
+        '当前登录用户缺少 userId，无法加载阅卷任务',
+      )
       message.error('登录状态异常，请重新登录后再加载阅卷任务')
     }
     return
@@ -618,8 +605,7 @@ async function loadTasks(options?: { silent?: boolean }): Promise<void> {
       applyNewTaskHighlights(previousIds)
     }
     taskListPolling.syncPolling()
-  }
-  catch (error) {
+  } catch (error) {
     if (!options?.silent) {
       showUserError(error, '阅卷任务列表加载失败')
     }
@@ -659,20 +645,13 @@ function customTableRow(record: MarkingTaskVO) {
   }
 }
 
-const taskListPolling = usePolling(
-  () => loadTasks({ silent: true }),
-  {
-    getOptions: () => ({
-      intervalMs: getPollingIntervalMs(),
-      when: Boolean(
-        selectedExamId.value
-        && currentUserId.value
-        && getPollingIntervalMs() > 0,
-      ),
-    }),
-    pauseWhenDocumentHidden: true,
-  },
-)
+const taskListPolling = usePolling(() => loadTasks({ silent: true }), {
+  getOptions: () => ({
+    intervalMs: getPollingIntervalMs(),
+    when: Boolean(selectedExamId.value && currentUserId.value && getPollingIntervalMs() > 0),
+  }),
+  pauseWhenDocumentHidden: true,
+})
 
 onMounted(() => {
   void teacherTaskStream.start()
@@ -912,20 +891,24 @@ function taskStatusTone(value: MarkingTaskStatusCode): BadgeTone {
   return strictEnumTone(MARKING_TASK_STATUS_TONE, value, '阅卷任务状态')
 }
 
-watch(selectedExamId, () => {
-  claimForm.groupId = ''
-  claimForm.sessionId = ''
-  claimForm.markingPhase = markingPhase.value
-  sessionPausedAlert.value = false
-  groupLeaderProgress.value = null
-  clearBatchSelection()
-  batchMode.value = false
-  void loadTasks()
-  void loadClaimContext()
-  void loadGroupLeaderFlag()
-  void teacherTaskStream.refresh()
-  void groupLeaderStream.refresh()
-}, { immediate: true })
+watch(
+  selectedExamId,
+  () => {
+    claimForm.groupId = ''
+    claimForm.sessionId = ''
+    claimForm.markingPhase = markingPhase.value
+    sessionPausedAlert.value = false
+    groupLeaderProgress.value = null
+    clearBatchSelection()
+    batchMode.value = false
+    void loadTasks()
+    void loadClaimContext()
+    void loadGroupLeaderFlag()
+    void teacherTaskStream.refresh()
+    void groupLeaderStream.refresh()
+  },
+  { immediate: true },
+)
 
 watch(isGroupLeader, () => {
   void groupLeaderStream.refresh()

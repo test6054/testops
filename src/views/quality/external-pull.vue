@@ -6,8 +6,11 @@ import type {
   ExternalDataSourceVO,
   ExternalSourceFieldScope,
 } from '@/apis/quality/external-data-source'
+import { externalDataSourceApi } from '@/apis/quality/external-data-source'
 import type { ExternalPullAuditVO } from '@/apis/quality/external-pull-audit'
+import { externalPullAuditApi } from '@/apis/quality/external-pull-audit'
 import type { ExternalPullResultVO } from '@/apis/quality/external-pull-result'
+import { externalPullResultApi } from '@/apis/quality/external-pull-result'
 import type {
   ExternalPullFilterOperator,
   ExternalPullSortDirection,
@@ -15,20 +18,13 @@ import type {
   ExternalPullTaskSaveRequest,
   ExternalPullTaskVO,
 } from '@/apis/quality/external-pull-task'
+import { externalPullTaskApi } from '@/apis/quality/external-pull-task'
 import type {
   ExternalPullAuditCheckStatus,
   ExternalPullAuditEvent,
   ExternalPullConfirmationStatus,
   ExternalSourceType,
 } from '@/apis/quality/types'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric, TaskResultItem } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { externalDataSourceApi } from '@/apis/quality/external-data-source'
-import { externalPullAuditApi } from '@/apis/quality/external-pull-audit'
-import { externalPullResultApi } from '@/apis/quality/external-pull-result'
-import { externalPullTaskApi } from '@/apis/quality/external-pull-task'
 import {
   EXTERNAL_PULL_AUDIT_CHECK_STATUS_LABEL,
   EXTERNAL_PULL_AUDIT_EVENT_LABEL,
@@ -40,6 +36,10 @@ import {
   EXTERNAL_SOURCE_TYPE_LABEL,
   EXTERNAL_SOURCE_TYPE_OPTIONS,
 } from '@/apis/quality/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric, TaskResultItem } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import {
   AchievementResultSelector,
@@ -142,7 +142,7 @@ const detailResultColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 180 },
 ]
 
-const filterOperatorOptions: Array<{ value: ExternalPullFilterOperator, label: string }> = [
+const filterOperatorOptions: Array<{ value: ExternalPullFilterOperator; label: string }> = [
   { value: 'EQ', label: '等于' },
   { value: 'NE', label: '不等于' },
   { value: 'GT', label: '大于' },
@@ -153,7 +153,7 @@ const filterOperatorOptions: Array<{ value: ExternalPullFilterOperator, label: s
   { value: 'IN', label: '属于多个值' },
 ]
 
-const sortDirectionOptions: Array<{ value: ExternalPullSortDirection, label: string }> = [
+const sortDirectionOptions: Array<{ value: ExternalPullSortDirection; label: string }> = [
   { value: 'ASC', label: '升序' },
   { value: 'DESC', label: '降序' },
 ]
@@ -360,7 +360,6 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
-
 const taskRuleSummaryLines = computed(() => {
   const lines: string[] = []
   if (taskForm.sourceObjectName) {
@@ -371,15 +370,15 @@ const taskRuleSummaryLines = computed(() => {
   }
   const activeFilters = taskFilters.value.filter(
     (item) =>
-      item.fieldName
-      && (item.operator === 'IN' ? item.multipleValues.length > 0 : Boolean(item.singleValue.trim())),
+      item.fieldName &&
+      (item.operator === 'IN' ? item.multipleValues.length > 0 : Boolean(item.singleValue.trim())),
   )
   if (activeFilters.length) {
     lines.push(
       `筛选条件：${activeFilters
         .map((item) => {
-          const valueText
-            = item.operator === 'IN' ? item.multipleValues.join('、') : item.singleValue.trim()
+          const valueText =
+            item.operator === 'IN' ? item.multipleValues.join('、') : item.singleValue.trim()
           return `${item.fieldName}${filterOperatorText(item.operator)}${valueText}`
         })
         .join('；')}`,
@@ -504,7 +503,7 @@ function handleFilterOperatorChange(entry: PullFilterEditorRow) {
   entry.multipleValues = []
 }
 
-function handleTaskPageChange(page: { current: number, pageSize: number }) {
+function handleTaskPageChange(page: { current: number; pageSize: number }) {
   taskQuery.pageNum = page.current
   taskQuery.pageSize = page.pageSize
   loadTasks()
@@ -624,18 +623,13 @@ async function loadTasks() {
   }
 }
 
-const taskPolling = usePolling(
-  () => loadTasksQuietly(),
-  {
-    getOptions: () => ({
-      intervalMs: 3000,
-      when: tasks.value.some(
-        (task) => task.status === 'PENDING' || task.status === 'RUNNING',
-      ),
-    }),
-    pauseWhenDocumentHidden: true,
-  },
-)
+const taskPolling = usePolling(() => loadTasksQuietly(), {
+  getOptions: () => ({
+    intervalMs: 3000,
+    when: tasks.value.some((task) => task.status === 'PENDING' || task.status === 'RUNNING'),
+  }),
+  pauseWhenDocumentHidden: true,
+})
 
 async function loadTasksQuietly(): Promise<void> {
   if (taskLoading.value) {
@@ -705,9 +699,9 @@ async function openSourceEdit(record: ExternalDataSourceVO) {
 
 async function submitSource() {
   if (
-    !sourceForm.sourceCode.trim()
-    || !sourceForm.sourceName.trim()
-    || !sourceForm.jdbcUrl.trim()
+    !sourceForm.sourceCode.trim() ||
+    !sourceForm.sourceName.trim() ||
+    !sourceForm.jdbcUrl.trim()
   ) {
     message.error('请填写编码 / 名称 / 连接地址')
     return
@@ -821,12 +815,12 @@ function openTaskCreate() {
 
 async function submitTask() {
   if (
-    !taskForm.taskName.trim()
-    || !taskForm.taskCode.trim()
-    || !taskForm.sourceId
-    || !taskForm.businessAnchor.trim()
-    || !taskForm.businessId
-    || !taskForm.sourceObjectName
+    !taskForm.taskName.trim() ||
+    !taskForm.taskCode.trim() ||
+    !taskForm.sourceId ||
+    !taskForm.businessAnchor.trim() ||
+    !taskForm.businessId ||
+    !taskForm.sourceObjectName
   ) {
     message.error('请填写任务编码、名称，选择数据源，并补全业务归属和来源对象')
     return
@@ -843,8 +837,8 @@ async function submitTask() {
   const filters: NonNullable<ExternalPullTaskSaveRequest['filters']> = []
   for (let index = 0; index < taskFilters.value.length; index += 1) {
     const row = taskFilters.value[index]
-    const hasValue
-      = row.operator === 'IN' ? row.multipleValues.length > 0 : Boolean(row.singleValue.trim())
+    const hasValue =
+      row.operator === 'IN' ? row.multipleValues.length > 0 : Boolean(row.singleValue.trim())
     if (!row.fieldName && !hasValue) continue
     if (!row.fieldName || !hasValue) {
       message.error(`筛选条件 ${index + 1} 需要同时选择字段并填写取值`)
@@ -978,7 +972,7 @@ async function reloadDetail(taskId: string) {
   }
 }
 
-function handlePullResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
+function handlePullResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
   const record = tasks.value.find((t) => t.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'detail') openDetail(record)
 }
@@ -1012,11 +1006,7 @@ onMounted(async () => {
         </a-space>
       </template>
 
-      <UiEmpty
-        v-if="!sources.length && !sourceLoading"
-        description="暂无数据"
-        size="sm"
-      />
+      <UiEmpty v-if="!sources.length && !sourceLoading" description="暂无数据" size="sm" />
       <UiDataTable
         pagination-mode="none"
         class="student-detail-table__data-table"
@@ -1047,7 +1037,9 @@ onMounted(async () => {
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
               <UiTextAction @click="openSourceEdit(record)">编辑</UiTextAction>
-              <UiTextAction @click="toggleSourceEnabled(record)">{{ record.enabled ? '停用' : '启用' }}</UiTextAction>
+              <UiTextAction @click="toggleSourceEnabled(record)">{{
+                record.enabled ? '停用' : '启用'
+              }}</UiTextAction>
               <UiTextAction tone="danger" @click="deleteSource(record)">删除</UiTextAction>
             </div>
           </template>
@@ -1058,11 +1050,7 @@ onMounted(async () => {
     <UiCard class="detail-table-card external-pull__task-card">
       <template #title>拔取任务</template>
       <template #extra>
-        <UiButton
-          size="sm"
-          :disabled="!sources.some((s) => s.enabled)"
-          @click="openTaskCreate"
-        >
+        <UiButton size="sm" :disabled="!sources.some((s) => s.enabled)" @click="openTaskCreate">
           新建拔取任务
         </UiButton>
       </template>
@@ -1075,11 +1063,7 @@ onMounted(async () => {
         @reset="handleTaskReset"
       />
 
-      <UiEmpty
-        v-if="!tasks.length && !taskLoading"
-        description="暂无数据"
-        size="sm"
-      />
+      <UiEmpty v-if="!tasks.length && !taskLoading" description="暂无数据" size="sm" />
       <UiDataTable
         class="student-detail-table__data-table"
         v-else
@@ -1136,7 +1120,11 @@ onMounted(async () => {
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
               <UiTextAction @click="openDetail(record)">详情</UiTextAction>
-              <UiTextAction v-if="canCancelTask(record.status)" tone="danger" @click="cancelTask(record)">
+              <UiTextAction
+                v-if="canCancelTask(record.status)"
+                tone="danger"
+                @click="cancelTask(record)"
+              >
                 取消
               </UiTextAction>
             </div>
@@ -1455,7 +1443,9 @@ onMounted(async () => {
                   <a-select v-model:value="entry.sortDirection" :options="sortDirectionOptions" />
                 </a-col>
                 <a-col :span="6">
-                  <UiTextAction tone="danger" @click="taskSorts.splice(index, 1)">删除</UiTextAction>
+                  <UiTextAction tone="danger" @click="taskSorts.splice(index, 1)"
+                    >删除</UiTextAction
+                  >
                 </a-col>
               </a-row>
             </div>
@@ -1479,10 +1469,7 @@ onMounted(async () => {
               {{ line }}
             </div>
           </div>
-          <UiEmpty
-            description="暂无数据"
-            class="external-pull__empty"
-          />
+          <UiEmpty description="暂无数据" class="external-pull__empty" />
         </a-form-item>
         <a-row :gutter="12">
           <a-col :span="12">
@@ -1554,18 +1541,18 @@ onMounted(async () => {
           </a-descriptions-item>
           <a-descriptions-item label="开始时间">
             {{
-              detailRecord.startedTime
-                || (detailRecord.status === 'PENDING' ? '尚未开始执行' : '缺失开始时间')
+              detailRecord.startedTime ||
+              (detailRecord.status === 'PENDING' ? '尚未开始执行' : '缺失开始时间')
             }}
           </a-descriptions-item>
           <a-descriptions-item label="结束时间">
             {{
-              detailRecord.finishedTime
-                || (detailRecord.status === 'RUNNING'
-                  ? '执行中'
-                  : detailRecord.status === 'PENDING'
-                    ? '尚未开始执行'
-                    : '缺失结束时间')
+              detailRecord.finishedTime ||
+              (detailRecord.status === 'RUNNING'
+                ? '执行中'
+                : detailRecord.status === 'PENDING'
+                  ? '尚未开始执行'
+                  : '缺失结束时间')
             }}
           </a-descriptions-item>
           <a-descriptions-item v-if="detailRecord.failureReason" label="处理说明" :span="2">
@@ -1617,11 +1604,7 @@ onMounted(async () => {
         </a-descriptions>
 
         <h4 class="external-pull__section-title">结果批次（可逐批确认 / 驳回）</h4>
-        <UiEmpty
-          v-if="!detailResults.length && !detailLoading"
-          description="暂无数据"
-          size="sm"
-        />
+        <UiEmpty v-if="!detailResults.length && !detailLoading" description="暂无数据" size="sm" />
         <UiDataTable
           pagination-mode="none"
           class="student-detail-table__data-table"
@@ -1682,11 +1665,7 @@ onMounted(async () => {
         </UiDataTable>
 
         <h4 class="external-pull__section-title">审计流水</h4>
-        <UiEmpty
-          v-if="!detailAudits.length && !detailLoading"
-          description="暂无数据"
-          size="sm"
-        />
+        <UiEmpty v-if="!detailAudits.length && !detailLoading" description="暂无数据" size="sm" />
         <a-timeline v-else>
           <a-timeline-item
             v-for="audit in detailAudits"

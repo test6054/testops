@@ -24,17 +24,20 @@ import { computed } from 'vue'
 
 defineOptions({ name: 'UiAlert' })
 
-const props = withDefaults(defineProps<{
-  type?: 'info' | 'success' | 'warning' | 'error'
-  title?: string
-  description?: string
-  showIcon?: boolean
-}>(), {
-  type: 'info',
-  title: '',
-  description: '',
-  showIcon: true,
-})
+const props = withDefaults(
+  defineProps<{
+    type?: 'info' | 'success' | 'warning' | 'error'
+    title?: string
+    description?: string
+    showIcon?: boolean
+  }>(),
+  {
+    type: 'info',
+    title: '',
+    description: '',
+    showIcon: true,
+  },
+)
 
 const iconComponent = computed(() => {
   const iconMap = {

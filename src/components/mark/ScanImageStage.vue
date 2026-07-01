@@ -25,28 +25,31 @@ interface RoiStyle {
   height: string
 }
 
-const props = withDefaults(defineProps<{
-  /** 当前影像 blob URL；为空时显示空态 */
-  src?: string
-  /** 影像标题/页码说明 */
-  caption?: string
-  /** 母版 ROI 高亮区域（百分比定位），无则不渲染 */
-  roi?: RoiStyle | null
-  /** 空态文案 */
-  emptyText?: string
-  /** 画布最小高度（px），默认 420 */
-  minHeight?: number
-  /** 涉密场次：禁用右键与文本选择，水印密度提升 */
-  confidential?: boolean
-  /** 水印中的考试标识 */
-  examLabel?: string
-  /** 自定义水印行；缺省时按当前登录用户 + examLabel 生成 */
-  watermarkLines?: string[]
-  /** 是否在卷面影像上叠操作者水印（默认开启，用于试卷/扫描页追溯） */
-  viewerWatermark?: boolean
-}>(), {
-  viewerWatermark: true,
-})
+const props = withDefaults(
+  defineProps<{
+    /** 当前影像 blob URL；为空时显示空态 */
+    src?: string
+    /** 影像标题/页码说明 */
+    caption?: string
+    /** 母版 ROI 高亮区域（百分比定位），无则不渲染 */
+    roi?: RoiStyle | null
+    /** 空态文案 */
+    emptyText?: string
+    /** 画布最小高度（px），默认 420 */
+    minHeight?: number
+    /** 涉密场次：禁用右键与文本选择，水印密度提升 */
+    confidential?: boolean
+    /** 水印中的考试标识 */
+    examLabel?: string
+    /** 自定义水印行；缺省时按当前登录用户 + examLabel 生成 */
+    watermarkLines?: string[]
+    /** 是否在卷面影像上叠操作者水印（默认开启，用于试卷/扫描页追溯） */
+    viewerWatermark?: boolean
+  }>(),
+  {
+    viewerWatermark: true,
+  },
+)
 
 const showViewerWatermark = computed(() => props.viewerWatermark && Boolean(props.src))
 const resolvedWatermarkLines = computed(() => {
@@ -167,10 +170,7 @@ watch(
 </script>
 
 <template>
-  <div
-    class="scan-stage"
-    :class="{ 'scan-stage--confidential': props.confidential }"
-  >
+  <div class="scan-stage" :class="{ 'scan-stage--confidential': props.confidential }">
     <div
       class="scan-stage__canvas"
       :class="{
@@ -201,7 +201,7 @@ watch(
           :style="{ transform: imageTransform, filter: imageFilter }"
           draggable="false"
           @contextmenu="onConfidentialContextMenu"
-        >
+        />
         <div
           v-if="roi"
           class="scan-stage__roi"
@@ -211,11 +211,23 @@ watch(
 
       <div v-if="src" class="scan-stage__tools">
         <div class="scan-stage__group">
-          <button type="button" class="scan-stage__btn" :disabled="zoomLevel <= ZOOM_MIN" title="缩小" @click="zoomOut">
+          <button
+            type="button"
+            class="scan-stage__btn"
+            :disabled="zoomLevel <= ZOOM_MIN"
+            title="缩小"
+            @click="zoomOut"
+          >
             <MinusOutlined />
           </button>
           <span class="scan-stage__info">{{ zoomPercent }}</span>
-          <button type="button" class="scan-stage__btn" :disabled="zoomLevel >= ZOOM_MAX" title="放大" @click="zoomIn">
+          <button
+            type="button"
+            class="scan-stage__btn"
+            :disabled="zoomLevel >= ZOOM_MAX"
+            title="放大"
+            @click="zoomIn"
+          >
             <PlusOutlined />
           </button>
           <button type="button" class="scan-stage__btn" title="适配窗口" @click="fitToScreen">

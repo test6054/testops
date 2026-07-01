@@ -20,7 +20,11 @@ import type {
 import { courseGoalRequirementApi } from '@/apis/quality/course-goal-requirement'
 import type { GraduationRequirementVO } from '@/apis/quality/graduation-requirement'
 import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
-import type { QualityCourseSaveRequest, QualityCourseVO } from '@/apis/quality/quality-course'
+import type {
+  QualityCourseEditorForm,
+  QualityCourseSaveRequest,
+  QualityCourseVO,
+} from '@/apis/quality/quality-course'
 import { qualityCourseApi } from '@/apis/quality/quality-course'
 import type { RequirementIndicatorVO } from '@/apis/quality/requirement-indicator'
 import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
@@ -84,7 +88,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import { formatSemester, isValidSemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const itemColumns: ColumnsType = [
@@ -564,7 +568,7 @@ const assessMatrixCells = computed<MatrixCell[]>(() => {
 
 const courseEditorVisible = ref(false)
 const courseEditorMode = ref<'create' | 'edit'>('create')
-const courseEditor = reactive<QualityCourseSaveRequest>({
+const courseEditor = reactive<QualityCourseEditorForm>({
   trainingPlanId: '',
   programId: '',
   courseId: '',
@@ -667,6 +671,7 @@ function handleClassChange(value: string | null) {
 async function submitCourse() {
   if (courseEditorMode.value === 'edit' && !guardCourseMatrixEditable('编辑课程')) return
   if (courseEditorMode.value === 'create' && !guardCourseMatrixEditable('新建课程')) return
+  const semester = courseEditor.semester
   if (
     !courseEditor.programId.trim() ||
     !courseEditor.trainingPlanId.trim() ||
@@ -674,21 +679,39 @@ async function submitCourse() {
     !courseEditor.courseCode.trim() ||
     !courseEditor.courseName.trim() ||
     !courseEditor.schoolYear.trim() ||
-    !courseEditor.semester
+    !isValidSemesterCode(semester)
   ) {
     message.error('请填写专业、培养方案、目录课程、编码、名称、学年、学期')
     return
   }
-  courseEditor.schoolYear = courseEditor.schoolYear.trim()
+  const request: QualityCourseSaveRequest = {
+    id: courseEditor.id,
+    trainingPlanId: courseEditor.trainingPlanId,
+    programId: courseEditor.programId,
+    courseId: courseEditor.courseId,
+    courseCode: courseEditor.courseCode.trim(),
+    courseName: courseEditor.courseName.trim(),
+    courseCategory: courseEditor.courseCategory,
+    courseNature: courseEditor.courseNature,
+    schoolYear: courseEditor.schoolYear.trim(),
+    semester,
+    teacherUserId: courseEditor.teacherUserId,
+    classId: courseEditor.classId,
+    creditHours: courseEditor.creditHours,
+    creditValue: courseEditor.creditValue,
+    civicObjective: courseEditor.civicObjective,
+    syllabusFileId: courseEditor.syllabusFileId,
+    enabled: courseEditor.enabled,
+  }
   courseSubmitting.value = true
   try {
     if (courseEditorMode.value === 'create') {
-      const newId = await qualityCourseApi.create(courseEditor)
+      const newId = await qualityCourseApi.create(request)
       message.success('课程已创建')
       qualityStore.setQualityCourse(newId)
       await qualityStore.loadQualityCourseOptions()
     } else {
-      await qualityCourseApi.update(courseEditor)
+      await qualityCourseApi.update(request)
       message.success('课程已更新')
     }
     courseEditorVisible.value = false

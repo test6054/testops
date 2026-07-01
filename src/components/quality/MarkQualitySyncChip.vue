@@ -4,13 +4,13 @@
  */
 import type { ExamSummaryVO } from '@/apis/mark/exam'
 import type { MarkExamSyncStatusVO } from '@/apis/quality/mark-exam-sync'
-import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   MARK_EXAM_QUALITY_SYNC_STATUS_LABEL,
   MARK_EXAM_QUALITY_SYNC_STATUS_TONE,
   markExamSyncApi,
 } from '@/apis/quality/mark-exam-sync'
+import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -27,11 +27,7 @@ const loading = ref(false)
 const syncStatus = ref<MarkExamSyncStatusVO | null>(null)
 
 const canQuery = computed(
-  () =>
-    props.exam?.examId
-    && props.exam.courseId
-    && props.exam.academicYear
-    && props.exam.semester,
+  () => props.exam?.examId && props.exam.courseId && props.exam.academicYear && props.exam.semester,
 )
 
 const statusLabel = computed(() => {
@@ -46,11 +42,7 @@ const statusLabel = computed(() => {
 
 const statusTone = computed(() => {
   if (!syncStatus.value?.status) return 'gray' as const
-  return strictEnumTone(
-    MARK_EXAM_QUALITY_SYNC_STATUS_TONE,
-    syncStatus.value.status,
-    '质量同步状态',
-  )
+  return strictEnumTone(MARK_EXAM_QUALITY_SYNC_STATUS_TONE, syncStatus.value.status, '质量同步状态')
 })
 
 async function loadStatus() {

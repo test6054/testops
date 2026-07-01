@@ -6,12 +6,12 @@
 
 <script lang="ts" setup>
 import message from 'ant-design-vue/es/message'
-import {ref} from 'vue'
-import {useRoute, useRouter} from 'vue-router'
-import {bindWechatAccount} from '@/apis/auth'
-import {useAuthStore, useUserStore} from '@/stores'
-import {isLogin} from '@/utils/auth'
-import {getSafeRedirect} from '@/utils/redirect-validator'
+import { ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { bindWechatAccount } from '@/apis/auth'
+import { useAuthStore, useUserStore } from '@/stores'
+import { isLogin } from '@/utils/auth'
+import { getSafeRedirect } from '@/utils/redirect-validator'
 
 const route = useRoute()
 const router = useRouter()
@@ -97,6 +97,5 @@ div {
   left: 50%;
   top: 45%;
   margin-left: -50px;
-
 }
 </style>

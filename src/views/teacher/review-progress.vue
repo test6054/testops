@@ -4,12 +4,7 @@
       <UiTag :tone="confirmedPercent >= 100 ? 'green' : 'blue'" size="sm">
         已确认 {{ confirmedPercent }}%
       </UiTag>
-      <UiButton
-        variant="outline"
-        size="sm"
-        :loading="loading"
-        @click="loadAll"
-      >
+      <UiButton variant="outline" size="sm" :loading="loading" @click="loadAll">
         <template #icon><ReloadOutlined /></template>
         刷新
       </UiButton>
@@ -17,11 +12,7 @@
 
     <a-skeleton v-if="loading" active :paragraph="{ rows: 4 }" />
 
-    <UiEmpty
-      v-else-if="!progress"
-      description="暂无数据"
-      class="progress-page__empty"
-    />
+    <UiEmpty v-else-if="!progress" description="暂无数据" class="progress-page__empty" />
 
     <template v-else-if="progress">
       <a-row :gutter="16" class="overview-row">
@@ -33,25 +24,17 @@
             </template>
             <div class="overview-card__body">
               <div class="overview-card__ring-block">
-                <MarkGaugeBlock
-                  v-bind="confirmedGaugeBlockProps"
-                >
+                <MarkGaugeBlock v-bind="confirmedGaugeBlockProps">
                   <div class="mark-gauge-block__formula">
                     <strong>{{ progress.confirmedQuestionGradeCount }}</strong>
-                    <span class="muted">
-                      / {{ progress.totalQuestionGradeCount }} 题次
-                    </span>
+                    <span class="muted"> / {{ progress.totalQuestionGradeCount }} 题次 </span>
                   </div>
                   <p v-if="progress.totalQuestionGradeCount <= 0" class="mark-gauge-block__hint">
                     暂无应复核题次
                   </p>
                 </MarkGaugeBlock>
               </div>
-              <SignalBand
-                :metrics="overviewSignalMetrics"
-                compact
-                variant="inline"
-              />
+              <SignalBand :metrics="overviewSignalMetrics" compact variant="inline" />
             </div>
           </UiCard>
         </a-col>
@@ -69,11 +52,7 @@
                 :option="statusDistributionOption"
                 :aria-label="statusDistributionAriaLabel"
               />
-              <SignalBand
-                :metrics="statusSignalMetrics"
-                compact
-                variant="inline"
-              />
+              <SignalBand :metrics="statusSignalMetrics" compact variant="inline" />
               <SignalBand
                 :metrics="auxSignalMetrics"
                 compact
@@ -129,7 +108,9 @@
             <template v-if="column.key === 'questionNo'">
               <div
                 class="question-cell"
-                :class="{ 'question-cell--highlight': highlightedQuestionId === record.questionTemplateId }"
+                :class="{
+                  'question-cell--highlight': highlightedQuestionId === record.questionTemplateId,
+                }"
               >
                 <UiTag tone="blue" size="sm">题{{ record.questionNo }}</UiTag>
                 <span class="question-type">{{ questionTypeLabel(record.questionType) }}</span>
@@ -216,7 +197,9 @@
               </UiTag>
             </template>
             <template v-else-if="column.key === 'diagnostic'">
-              <span v-if="record.diagnostic" class="processing-card__diagnostic">{{ record.diagnostic }}</span>
+              <span v-if="record.diagnostic" class="processing-card__diagnostic">{{
+                record.diagnostic
+              }}</span>
               <span v-else class="muted">-</span>
             </template>
             <template v-else-if="column.key === 'actions'">
@@ -242,16 +225,22 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type {ExamProcessingTaskItemVO} from '@/apis/mark/exam-processing-task';
-import type {
-  MarkingProgressVO,
-  ReviewQuestionProgressItemVO,
-} from '@/apis/mark/exam-progress'
-import type {
-  ReviewTaskStatusCode,
+import type { ExamProcessingTaskItemVO } from '@/apis/mark/exam-processing-task'
+import {
+  pageExamProcessingTasks,
+  retryPaperGradeSuggestion,
+} from '@/apis/mark/exam-processing-task'
+import type { MarkingProgressVO, ReviewQuestionProgressItemVO } from '@/apis/mark/exam-progress'
+import { getMarkingProgress } from '@/apis/mark/exam-progress'
+import type { ReviewTaskStatusCode } from '@/apis/mark/exam-review-task'
+import {
+  REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
+  REVIEW_TASK_STATUS_TONE as STATUS_TONE,
 } from '@/apis/mark/exam-review-task'
-import type {TaskStatusCode} from '@/apis/mark/task-status';
-import type {ProcessingTaskTypeCode} from '@/apis/mark/task-type';
+import type { TaskStatusCode } from '@/apis/mark/task-status'
+import { TASK_STATUS_LABEL, TASK_STATUS_TONE } from '@/apis/mark/task-status'
+import type { ProcessingTaskTypeCode } from '@/apis/mark/task-type'
+import { PROCESSING_TASK_TYPE_LABEL, PROCESSING_TASK_TYPE_TONE } from '@/apis/mark/task-type'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
@@ -260,25 +249,7 @@ import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, inject, onActivated, ref, watch } from 'vue'
-import {
-  
-  pageExamProcessingTasks,
-  retryPaperGradeSuggestion
-} from '@/apis/mark/exam-processing-task'
-import {
-  getMarkingProgress,
-} from '@/apis/mark/exam-progress'
-import {
-  REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
-  REVIEW_TASK_STATUS_TONE as STATUS_TONE,
-} from '@/apis/mark/exam-review-task'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
-import { TASK_STATUS_LABEL, TASK_STATUS_TONE } from '@/apis/mark/task-status'
-import {
-  PROCESSING_TASK_TYPE_LABEL,
-  PROCESSING_TASK_TYPE_TONE
-  
-} from '@/apis/mark/task-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkDistributionSection from '@/components/chart/MarkDistributionSection.vue'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
@@ -306,7 +277,10 @@ import {
   buildGaugeChartOption,
   buildHeatmapChartOption,
 } from '@/utils/mark-echarts-options'
-import { reviewProgressToBarItems, reviewProgressToHeatmapCells } from '@/utils/mark-statistics-chart'
+import {
+  reviewProgressToBarItems,
+  reviewProgressToHeatmapCells,
+} from '@/utils/mark-statistics-chart'
 import { readPageTotal } from '@/utils/page-result'
 import { toneToColor } from '@/utils/score-tone'
 import {
@@ -388,7 +362,7 @@ function reloadProcessingTasks(): void {
   void loadProcessingTasks()
 }
 
-function handleProcessingTaskPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleProcessingTaskPageChange(pageEvent: { current: number; pageSize: number }): void {
   processingTaskPageNum.value = pageEvent.current
   processingTaskPageSize.value = pageEvent.pageSize
   void loadProcessingTasks()
@@ -422,12 +396,19 @@ const processingTaskColumns: ColumnType<ExamProcessingTaskItemVO>[] = [
 ]
 
 const contextProgress = computed(
-  () => workbenchContext?.markingProgress?.value ?? workbenchContext?.snapshot.value?.markingProgress ?? null,
+  () =>
+    workbenchContext?.markingProgress?.value ??
+    workbenchContext?.snapshot.value?.markingProgress ??
+    null,
 )
 
-watch(contextProgress, (value) => {
-  progress.value = value
-}, { immediate: true })
+watch(
+  contextProgress,
+  (value) => {
+    progress.value = value
+  },
+  { immediate: true },
+)
 
 const confirmedPercent = computed(() => {
   if (!progress.value) return 0
@@ -479,7 +460,13 @@ const statusBreakdown = computed(() => {
     taskCountMap.set(item.statusCode, item.taskCount)
   })
   // 显式列出全部枚举值，避免 Object.keys + as 推断。
-  const codes: ReviewTaskStatusCode[] = ['PENDING', 'IN_PROGRESS', 'APPROVED', 'REJECTED', 'INVALIDATED']
+  const codes: ReviewTaskStatusCode[] = [
+    'PENDING',
+    'IN_PROGRESS',
+    'APPROVED',
+    'REJECTED',
+    'INVALIDATED',
+  ]
   return codes.map((code) => ({
     code,
     label: strictEnumLabel(STATUS_LABEL, code, '复核任务状态'),
@@ -490,7 +477,9 @@ const statusBreakdown = computed(() => {
 
 const statusDistributionSegments = computed(() => toDistributionSegments(statusBreakdown.value))
 
-const statusDistributionHint = computed(() => buildDistributionChartInsight(statusDistributionSegments.value))
+const statusDistributionHint = computed(() =>
+  buildDistributionChartInsight(statusDistributionSegments.value),
+)
 
 const { chartOption: confirmedGaugeOption } = useChartOption(() =>
   buildGaugeChartOption(confirmedPercent.value, {
@@ -563,16 +552,20 @@ const questionRows = computed<ReviewQuestionProgressItemVO[]>(
 )
 const reviewProgressBarItems = computed(() => reviewProgressToBarItems(questionRows.value))
 
-const reviewProgressBarHint = computed(() => mergeChartHint(
-  '柱高表示已通过复核任务数',
-  buildBarChartInsight(reviewProgressBarItems.value, { valueUnit: ' 项' }),
-))
+const reviewProgressBarHint = computed(() =>
+  mergeChartHint(
+    '柱高表示已通过复核任务数',
+    buildBarChartInsight(reviewProgressBarItems.value, { valueUnit: ' 项' }),
+  ),
+)
 const questionHeatmapCells = computed(() => reviewProgressToHeatmapCells(questionRows.value))
 
-const questionHeatmapHint = computed(() => mergeChartHint(
-  '颜色越深表示该题复核确认率越高，点击题格可定位表格行',
-  buildHeatmapChartInsight(questionHeatmapCells.value),
-))
+const questionHeatmapHint = computed(() =>
+  mergeChartHint(
+    '颜色越深表示该题复核确认率越高，点击题格可定位表格行',
+    buildHeatmapChartInsight(questionHeatmapCells.value),
+  ),
+)
 
 const questionHeatmapHeight = computed(() => {
   const count = questionHeatmapCells.value.length
@@ -648,16 +641,20 @@ async function loadAll(): Promise<void> {
   }
 }
 
-watch(selectedExamId, (value) => {
-  if (!value) {
-    progress.value = null
-    processingTasks.value = []
-    processingTaskTotal.value = 0
-    return
-  }
-  processingTaskPageNum.value = 1
-  void loadProcessingTasks()
-}, { immediate: true })
+watch(
+  selectedExamId,
+  (value) => {
+    if (!value) {
+      progress.value = null
+      processingTasks.value = []
+      processingTaskTotal.value = 0
+      return
+    }
+    processingTaskPageNum.value = 1
+    void loadProcessingTasks()
+  },
+  { immediate: true },
+)
 
 onActivated(() => {
   if (selectedExamId.value) {

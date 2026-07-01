@@ -69,7 +69,10 @@ watch(
       当前无活跃扫描批次，绑定结果将在开始扫描后出现
     </p>
 
-    <p v-else-if="workflow.boundPapersLoading.value && workflow.boundPapers.value.length === 0" class="bound-empty">
+    <p
+      v-else-if="workflow.boundPapersLoading.value && workflow.boundPapers.value.length === 0"
+      class="bound-empty"
+    >
       加载中…
     </p>
     <p v-else-if="workflow.boundPapers.value.length === 0" class="bound-empty">

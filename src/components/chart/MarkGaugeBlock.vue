@@ -1,8 +1,5 @@
 <template>
-  <div
-    class="mark-gauge-block"
-    :class="{ 'mark-gauge-block--stacked': layout === 'stacked' }"
-  >
+  <div class="mark-gauge-block" :class="{ 'mark-gauge-block--stacked': layout === 'stacked' }">
     <MarkChart
       :option="option"
       variant="gauge"
@@ -24,19 +21,22 @@ import MarkChart from './MarkChart.vue'
 
 defineOptions({ name: 'MarkGaugeBlock' })
 
-withDefaults(defineProps<{
-  option: EChartsCoreOption
-  ariaLabel: string
-  layout?: MarkGaugeLayout
-  gaugeSize?: MarkGaugeSize
-  gaugeHeight?: string
-  gaugeWidth?: string
-}>(), {
-  layout: 'inline',
-  gaugeSize: 'md',
-  gaugeHeight: '160px',
-  gaugeWidth: '160px',
-})
+withDefaults(
+  defineProps<{
+    option: EChartsCoreOption
+    ariaLabel: string
+    layout?: MarkGaugeLayout
+    gaugeSize?: MarkGaugeSize
+    gaugeHeight?: string
+    gaugeWidth?: string
+  }>(),
+  {
+    layout: 'inline',
+    gaugeSize: 'md',
+    gaugeHeight: '160px',
+    gaugeWidth: '160px',
+  },
+)
 type MarkGaugeLayout = 'inline' | 'stacked'
 type MarkGaugeSize = 'sm' | 'md' | 'lg'
 </script>

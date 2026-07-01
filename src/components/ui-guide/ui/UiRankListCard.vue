@@ -20,12 +20,8 @@
       </template>
     </UiPanelHeader>
 
-    <a-spin :spinning="props.loading" style="width: 100%;">
-      <div
-        v-if="props.items.length"
-        class="ui-rank-list-card__list"
-        :style="listStyle"
-      >
+    <a-spin :spinning="props.loading" style="width: 100%">
+      <div v-if="props.items.length" class="ui-rank-list-card__list" :style="listStyle">
         <article
           v-for="(item, index) in props.items"
           :key="item.id || `${item.name}-${index}`"
@@ -89,11 +85,7 @@
         </article>
       </div>
 
-      <UiEmpty
-        size="sm"
-        title="暂无排行榜数据"
-        :description="props.emptyText"
-      />
+      <UiEmpty size="sm" title="暂无排行榜数据" :description="props.emptyText" />
     </a-spin>
 
     <footer v-if="$slots.footer" class="ui-rank-list-card__footer">
@@ -104,8 +96,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { UiRankListItem } from './types'
 import { computed, useSlots } from 'vue'
+import type { UiRankListItem } from './types'
 import UiBadge from './Badge.vue'
 import UiEmpty from './Empty.vue'
 import UiTag from './Tag.vue'
@@ -116,33 +108,36 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  items?: UiRankListItem[]
-  loading?: boolean
-  emptyText?: string
-  itemClickable?: boolean
-  compact?: boolean
-  divided?: boolean
-  showAvatar?: boolean
-  showCount?: boolean
-  maxHeight?: string | number
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  items: () => [],
-  loading: false,
-  emptyText: '请传入排行榜项',
-  itemClickable: true,
-  compact: false,
-  divided: true,
-  showAvatar: true,
-  showCount: true,
-  maxHeight: '',
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    items?: UiRankListItem[]
+    loading?: boolean
+    emptyText?: string
+    itemClickable?: boolean
+    compact?: boolean
+    divided?: boolean
+    showAvatar?: boolean
+    showCount?: boolean
+    maxHeight?: string | number
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    items: () => [],
+    loading: false,
+    emptyText: '请传入排行榜项',
+    itemClickable: true,
+    compact: false,
+    divided: true,
+    showAvatar: true,
+    showCount: true,
+    maxHeight: '',
+  },
+)
 
 const emit = defineEmits<{
   (e: 'item-click', item: UiRankListItem): void
@@ -151,13 +146,19 @@ const emit = defineEmits<{
 const slots = useSlots()
 
 const normalizeCssSize = (value?: string | number) => {
-  if (value === '' || value === undefined || value === null)
-    return undefined
+  if (value === '' || value === undefined || value === null) return undefined
   return typeof value === 'number' ? `${value}px` : value
 }
 
 const hasHeader = computed(() => {
-  return !!props.title || !!props.description || !!props.eyebrow || props.showCount || !!slots.meta || !!slots.actions
+  return (
+    !!props.title ||
+    !!props.description ||
+    !!props.eyebrow ||
+    props.showCount ||
+    !!slots.meta ||
+    !!slots.actions
+  )
 })
 
 const showMeta = computed(() => {
@@ -166,8 +167,7 @@ const showMeta = computed(() => {
 
 const listStyle = computed<CSSProperties | undefined>(() => {
   const maxHeight = normalizeCssSize(props.maxHeight)
-  if (!maxHeight)
-    return undefined
+  if (!maxHeight) return undefined
 
   return {
     maxHeight,
@@ -196,8 +196,7 @@ const getTrendPrefix = (trend: number) => {
 }
 
 const handleItemClick = (item: UiRankListItem) => {
-  if (!props.itemClickable)
-    return
+  if (!props.itemClickable) return
 
   emit('item-click', item)
 }

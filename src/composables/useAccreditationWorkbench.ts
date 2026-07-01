@@ -3,10 +3,10 @@ import type {
   AccreditationCyclePhase,
   AccreditationCycleVO,
 } from '@/apis/quality/accreditation'
+import { ACCREDITATION_CYCLE_PHASE_LABEL } from '@/apis/quality/accreditation'
 import type { WorkbenchStage } from '@/types/workbench'
 import { computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ACCREDITATION_CYCLE_PHASE_LABEL } from '@/apis/quality/accreditation'
 import { useAccreditationCockpit } from '@/composables/useAccreditationCockpit'
 import { useQualityStore } from '@/stores/modules/quality'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -42,7 +42,7 @@ export function useAccreditationWorkbench() {
     const coverages = cockpit.value?.annualCourseCoverages || []
     if (!coverages.length) return '无已到期年度'
     return coverages
-      .map(item => `${item.reportYear} ${item.coveredCourseCount}/${item.requiredCourseCount}`)
+      .map((item) => `${item.reportYear} ${item.coveredCourseCount}/${item.requiredCourseCount}`)
       .join('，')
   })
 
@@ -105,7 +105,7 @@ export function useAccreditationWorkbench() {
         key: 'support',
         label: '支持条件档案',
         value: c.supportProfileConfirmed ? '已确认' : '未确认',
-        tone: c.supportProfileConfirmed ? 'green' as const : 'orange' as const,
+        tone: c.supportProfileConfirmed ? ('green' as const) : ('orange' as const),
       },
       {
         key: 'faculty-profile',
@@ -118,7 +118,7 @@ export function useAccreditationWorkbench() {
         label: '年度报备材料',
         value: c.annualReportMaterialsReady ? '就绪' : '未就绪',
         helper: `材料 ${c.annualReportMaterialCount}，课程覆盖 ${annualCourseCoverageSummary.value}`,
-        tone: c.annualReportMaterialsReady ? 'green' as const : 'orange' as const,
+        tone: c.annualReportMaterialsReady ? ('green' as const) : ('orange' as const),
       },
     ]
   })
@@ -209,24 +209,24 @@ export function canSubmitSelfAssessment(row: AccreditationCycleVO) {
     return !!row.applicationRecordedTime
   }
   return (
-    row.currentPhase === 'SELF_ASSESSMENT_REVIEW'
-    && row.selfAssessmentReviewDecision === 'SUPPLEMENT_REQUIRED'
+    row.currentPhase === 'SELF_ASSESSMENT_REVIEW' &&
+    row.selfAssessmentReviewDecision === 'SUPPLEMENT_REQUIRED'
   )
 }
 
 export function canReview(row: AccreditationCycleVO) {
   return (
-    row.currentPhase === 'SELF_ASSESSMENT_REVIEW'
-    && row.cycleStatus === 'ACTIVE'
-    && row.selfAssessmentReviewStatus !== 'DECIDED'
+    row.currentPhase === 'SELF_ASSESSMENT_REVIEW' &&
+    row.cycleStatus === 'ACTIVE' &&
+    row.selfAssessmentReviewStatus !== 'DECIDED'
   )
 }
 
 export function canConclusion(row: AccreditationCycleVO) {
   return (
-    row.cycleStatus === 'ACTIVE'
-    && row.currentPhase === 'ONSITE_VISIT'
-    && !row.conclusionRegisteredTime
+    row.cycleStatus === 'ACTIVE' &&
+    row.currentPhase === 'ONSITE_VISIT' &&
+    !row.conclusionRegisteredTime
   )
 }
 
@@ -257,8 +257,8 @@ export function canEditSelfAssessmentSection(cycle: AccreditationCycleVO | undef
     return true
   }
   return (
-    cycle.currentPhase === 'SELF_ASSESSMENT_REVIEW'
-    && cycle.selfAssessmentReviewDecision === 'SUPPLEMENT_REQUIRED'
+    cycle.currentPhase === 'SELF_ASSESSMENT_REVIEW' &&
+    cycle.selfAssessmentReviewDecision === 'SUPPLEMENT_REQUIRED'
   )
 }
 
@@ -268,9 +268,9 @@ export function canMutateAccreditationEvidence(cycle: AccreditationCycleVO | und
     return false
   }
   return (
-    cycle.currentPhase === 'SELF_EVALUATION'
-    || cycle.currentPhase === 'SELF_ASSESSMENT_REVIEW'
-    || cycle.currentPhase === 'ONSITE_VISIT'
+    cycle.currentPhase === 'SELF_EVALUATION' ||
+    cycle.currentPhase === 'SELF_ASSESSMENT_REVIEW' ||
+    cycle.currentPhase === 'ONSITE_VISIT'
   )
 }
 

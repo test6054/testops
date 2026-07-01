@@ -23,26 +23,29 @@ defineOptions({
   name: 'UiProgressBar',
 })
 
-const props = withDefaults(defineProps<{
-  percent?: number
-  size?: 'xs' | 'sm' | 'md' | 'lg'
-  variant?: 'default' | 'striped' | 'gradient'
-  color?: string
-  trackColor?: string
-  label?: string
-  showLabel?: boolean
-  labelPosition?: 'top' | 'right'
-  format?: (percent: number) => string
-}>(), {
-  percent: 0,
-  size: 'md',
-  variant: 'default',
-  color: '#3b82f6',
-  trackColor: '#e2e8f0',
-  label: '',
-  showLabel: true,
-  labelPosition: 'top',
-})
+const props = withDefaults(
+  defineProps<{
+    percent?: number
+    size?: 'xs' | 'sm' | 'md' | 'lg'
+    variant?: 'default' | 'striped' | 'gradient'
+    color?: string
+    trackColor?: string
+    label?: string
+    showLabel?: boolean
+    labelPosition?: 'top' | 'right'
+    format?: (percent: number) => string
+  }>(),
+  {
+    percent: 0,
+    size: 'md',
+    variant: 'default',
+    color: '#3b82f6',
+    trackColor: '#e2e8f0',
+    label: '',
+    showLabel: true,
+    labelPosition: 'top',
+  },
+)
 
 const fillColor = computed(() => {
   if (props.variant === 'gradient') {
@@ -62,8 +65,8 @@ function lightenColor(hex: string, percent: number): string {
   const num = Number.parseInt(hex.replace('#', ''), 16)
   const amt = Math.round(2.55 * percent)
   const R = Math.min(255, (num >> 16) + amt)
-  const G = Math.min(255, ((num >> 8) & 0x00FF) + amt)
-  const B = Math.min(255, (num & 0x0000FF) + amt)
+  const G = Math.min(255, ((num >> 8) & 0x00ff) + amt)
+  const B = Math.min(255, (num & 0x0000ff) + amt)
   return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`
 }
 </script>
@@ -136,8 +139,12 @@ function lightenColor(hex: string, percent: number): string {
 }
 
 @keyframes progress-stripes {
-  0% { background-position: 1rem 0; }
-  100% { background-position: 0 0; }
+  0% {
+    background-position: 1rem 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
 }
 
 .ui-progress-bar__right {

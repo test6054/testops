@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import type { ArchiveRemediationStatusCode, ArchiveRemediationTaskVO } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { computed } from 'vue'
+import type {
+  ArchiveRemediationStatusCode,
+  ArchiveRemediationTaskVO,
+} from '@/apis/mark/archive-volume'
 import {
   ARCHIVE_REMEDIATION_STATUS_LABEL,
   ARCHIVE_REMEDIATION_STATUS_TONE,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -25,7 +28,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'register-material': []
-  'advance': [status: ArchiveRemediationStatusCode]
+  advance: [status: ArchiveRemediationStatusCode]
 }>()
 
 const assigneeLabel = computed(() => {
@@ -42,8 +45,7 @@ const description = computed(() => {
   const parts: string[] = []
   if (task.taskDescription?.trim()) {
     parts.push(task.taskDescription.trim())
-  }
-  else {
+  } else {
     parts.push(task.taskTitle)
   }
   if (task.dueTime) {

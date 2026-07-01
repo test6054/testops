@@ -1,17 +1,10 @@
 <template>
   <div class="ui-message-thread">
-    <a-spin :spinning="props.loading" style="width: 100%;">
+    <a-spin :spinning="props.loading" style="width: 100%">
       <div v-if="props.messages.length" class="ui-message-thread__list" :style="listStyle">
         <template v-for="message in props.messages" :key="message.id">
-          <div
-            v-if="message.role === 'system'"
-            class="ui-message-thread__system"
-          >
-            <UiBadge
-              :tone="message.statusTone || 'gray'"
-              variant="soft"
-              size="sm"
-            >
+          <div v-if="message.role === 'system'" class="ui-message-thread__system">
+            <UiBadge :tone="message.statusTone || 'gray'" variant="soft" size="sm">
               {{ message.text }}
             </UiBadge>
           </div>
@@ -38,10 +31,7 @@
                   {{ message.text }}
                 </div>
 
-                <div
-                  v-if="message.attachments?.length"
-                  class="ui-message-thread__attachments"
-                >
+                <div v-if="message.attachments?.length" class="ui-message-thread__attachments">
                   <div
                     v-for="attachment in message.attachments"
                     :key="attachment.id"
@@ -65,11 +55,7 @@
                   <span v-if="message.helper" class="ui-message-thread__helper">
                     {{ message.helper }}
                   </span>
-                  <UiTag
-                    v-if="message.statusLabel"
-                    :tone="message.statusTone || 'blue'"
-                    size="sm"
-                  >
+                  <UiTag v-if="message.statusLabel" :tone="message.statusTone || 'blue'" size="sm">
                     {{ message.statusLabel }}
                   </UiTag>
                 </div>
@@ -90,8 +76,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { UiThreadMessage } from './types'
 import { computed } from 'vue'
+import type { UiThreadMessage } from './types'
 import UiBadge from './Badge.vue'
 import UiEmpty from './Empty.vue'
 import UiTag from './Tag.vue'
@@ -100,21 +86,23 @@ defineOptions({
   name: 'UiMessageThread',
 })
 
-const props = withDefaults(defineProps<{
-  messages?: UiThreadMessage[]
-  loading?: boolean
-  emptyText?: string
-  maxHeight?: string | number
-}>(), {
-  messages: () => [],
-  loading: false,
-  emptyText: '暂无消息',
-  maxHeight: 420,
-})
+const props = withDefaults(
+  defineProps<{
+    messages?: UiThreadMessage[]
+    loading?: boolean
+    emptyText?: string
+    maxHeight?: string | number
+  }>(),
+  {
+    messages: () => [],
+    loading: false,
+    emptyText: '暂无消息',
+    maxHeight: 420,
+  },
+)
 
 const normalizeCssSize = (value?: string | number) => {
-  if (value === '' || value === undefined || value === null)
-    return undefined
+  if (value === '' || value === undefined || value === null) return undefined
   return typeof value === 'number' ? `${value}px` : value
 }
 

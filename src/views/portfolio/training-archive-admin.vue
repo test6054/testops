@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioArchiveRecordStatus, PortfolioArchiveRecordSummaryVO } from '@/apis/portfolio/types'
+import type {
+  PortfolioArchiveRecordStatus,
+  PortfolioArchiveRecordSummaryVO,
+} from '@/apis/portfolio/types'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL } from '@/apis/portfolio/types'
 import { onMounted, ref } from 'vue'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -38,11 +41,9 @@ async function loadPage() {
       materialType: 'CERTIFICATE',
     })
     rows.value = readPageList(page, '加载培训档案失败')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -53,18 +54,18 @@ onMounted(loadPage)
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        title="教师培训档案"
-      />
+      <ContextBar layout="workbench" show-title title="教师培训档案" />
     </template>
     <UiCard>
-      <UiButton @click="loadPage">
-        刷新
-      </UiButton>
+      <UiButton @click="loadPage"> 刷新 </UiButton>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无培训档案" />
-      <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
+      <UiDataTable
+        :columns="columns"
+        :data-source="rows"
+        :loading="loading"
+        row-key="id"
+        style="margin-top: 16px"
+      >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'recordStatus'">
             {{ recordStatusLabel(record.recordStatus) }}

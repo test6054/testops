@@ -15,7 +15,13 @@
           :disabled="!props.examId"
           :not-found-content="props.rosterLoading ? '加载中…' : '该考试未关联考生'"
         />
-        <UiButton variant="outline" size="sm" :loading="loading" :disabled="!selectedStudentUserId" @click="reload">
+        <UiButton
+          variant="outline"
+          size="sm"
+          :loading="loading"
+          :disabled="!selectedStudentUserId"
+          @click="reload"
+        >
           <template #icon><ReloadOutlined /></template>查看最新
         </UiButton>
         <UiButton
@@ -37,10 +43,7 @@
         waiting-text="正在等待后端返回该学生的真实学情画像。"
       />
 
-      <UiEmpty
-        v-else-if="!loading && !generating && !record"
-        description="暂无数据"
-      />
+      <UiEmpty v-else-if="!loading && !generating && !record" description="暂无数据" />
       <div v-else-if="record" class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
@@ -97,7 +100,11 @@
             <a-descriptions-item label="总成绩">
               <template v-if="scoreComposition.totalScore != null">
                 {{ formatScore(scoreComposition.totalScore) }} 分
-                <UiTag v-if="scoreComposition.finalScoreStatus" size="sm" :tone="finalScoreTone(scoreComposition.finalScoreStatus)">
+                <UiTag
+                  v-if="scoreComposition.finalScoreStatus"
+                  size="sm"
+                  :tone="finalScoreTone(scoreComposition.finalScoreStatus)"
+                >
                   {{ finalScoreLabel(scoreComposition.finalScoreStatus) }}
                 </UiTag>
               </template>
@@ -134,7 +141,9 @@
                     <UiTag :tone="masteryColor(item.masteryLevel)">
                       {{ masteryLabel(item.masteryLevel) }}
                     </UiTag>
-                    <span v-if="item.questionType" class="diagnosis-type">{{ questionTypeLabel(item.questionType) }}</span>
+                    <span v-if="item.questionType" class="diagnosis-type">{{
+                      questionTypeLabel(item.questionType)
+                    }}</span>
                     <span class="diagnosis-rate">得分率 {{ formatRate(item.scoreRate) }}</span>
                   </div>
                   <div v-if="item.causeAnalysis" class="diagnosis-text">
@@ -161,21 +170,21 @@
 
 <script lang="ts" setup>
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
+import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from '@/apis/mark/final-score-status'
 import type { MasteryLevelCode } from '@/apis/mark/student-mastery-level'
+import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-mastery-level'
 import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
+import {
+  generateStudentLearningProfile,
+  getLatestStudentLearningProfile,
+} from '@/apis/mark/teaching-analysis'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
-import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from '@/apis/mark/final-score-status'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
-import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-mastery-level'
-import {
-  generateStudentLearningProfile,
-  getLatestStudentLearningProfile,
-} from '@/apis/mark/teaching-analysis'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -342,7 +351,9 @@ function masteryColor(level: MasteryLevelCode): BadgeTone {
   return strictEnumTone(MASTERY_LEVEL_TONE, level, '掌握水平')
 }
 
-function questionTypeLabel(value: NonNullable<ExamTeachingAnalysisRecordVO['diagnosisItems']>[number]['questionType']): string {
+function questionTypeLabel(
+  value: NonNullable<ExamTeachingAnalysisRecordVO['diagnosisItems']>[number]['questionType'],
+): string {
   return strictEnumLabel(QUESTION_TYPE_LABEL, value, '题目类型')
 }
 
@@ -360,8 +371,8 @@ watch(
   (next) => {
     // 考试名册变化后，如果当前选中学生不在范围内，重置选择避免跨考试串号
     if (
-      selectedStudentUserId.value
-      && !next.some((opt) => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value &&
+      !next.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false
@@ -375,8 +386,8 @@ watch(
   () => {
     // 班级联动变化时，如果当前学生不在新班级范围内，需重置选择
     if (
-      selectedStudentUserId.value
-      && !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value &&
+      !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false

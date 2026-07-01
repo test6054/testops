@@ -89,12 +89,8 @@ export function closeReviewWindow(examId: string): Promise<void> {
 // ─── 复核申请 ─────────────────────────────────
 
 /** 复核申请状态编码 */
-export type GradeReviewRequestStatusCode
-  = | 'PENDING'
-    | 'IN_REVIEW'
-    | 'APPROVED'
-    | 'REJECTED'
-    | 'CORRECTED'
+export type GradeReviewRequestStatusCode =
+  'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'CORRECTED'
 
 /** 复核申请状态文案映射 */
 export const REVIEW_REQUEST_STATUS_LABEL: Record<GradeReviewRequestStatusCode, string> = {
@@ -416,13 +412,8 @@ export function listCorrections(
 // ─── 批量更正计划 ─────────────────────────────────
 
 /** 批量更正审批状态编码 */
-export type BatchCorrectionApprovalStatusCode
-  = | 'DRAFT'
-    | 'PENDING_APPROVAL'
-    | 'APPROVED'
-    | 'EXECUTING'
-    | 'COMPLETED'
-    | 'REJECTED'
+export type BatchCorrectionApprovalStatusCode =
+  'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'EXECUTING' | 'COMPLETED' | 'REJECTED'
 
 /** 批量更正审批状态文案映射 */
 export const BATCH_CORRECTION_STATUS_LABEL: Record<BatchCorrectionApprovalStatusCode, string> = {

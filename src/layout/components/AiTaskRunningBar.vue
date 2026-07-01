@@ -14,23 +14,18 @@ const qualityTaskStore = useQualityTaskStore()
 const aiTaskStore = useAiTaskStore()
 const { aiTasksInFlight, aiTasksProcessing } = storeToRefs(qualityTaskStore)
 
-const runningCount = computed(
-  () => aiTasksInFlight.value.length + aiTaskStore.activePollingCount,
-)
+const runningCount = computed(() => aiTasksInFlight.value.length + aiTaskStore.activePollingCount)
 
 const processingCount = computed(() => aiTasksProcessing.value.length)
 
-const pendingCount = computed(
-  () => runningCount.value - processingCount.value,
-)
+const pendingCount = computed(() => runningCount.value - processingCount.value)
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
 async function refreshInFlightTasks(): Promise<void> {
   try {
     await qualityTaskStore.refreshAll()
-  }
-  catch {
+  } catch {
     // edu-quality 不可用时 Layout 轮询不阻断页面
   }
 }
@@ -57,11 +52,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div
-    v-if="runningCount > 0"
-    class="ai-task-running-bar"
-    role="status"
-  >
+  <div v-if="runningCount > 0" class="ai-task-running-bar" role="status">
     <LoadingOutlined spin class="ai-task-running-bar__icon" />
     <span class="ai-task-running-bar__text">
       AI 任务运行中 {{ runningCount }} 个

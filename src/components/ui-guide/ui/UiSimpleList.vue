@@ -73,8 +73,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { UiNoticeAction, UiSimpleListItem } from './types'
 import { computed, useSlots } from 'vue'
+import type { UiNoticeAction, UiSimpleListItem } from './types'
 import UiEmpty from './Empty.vue'
 import UiTag from './Tag.vue'
 import UiActionLink from './UiActionLink.vue'
@@ -114,7 +114,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'item-click', item: UiSimpleListItem): void
-  (e: 'action-click', actionEvent: { item: UiSimpleListItem, action: UiNoticeAction }): void
+  (e: 'action-click', actionEvent: { item: UiSimpleListItem; action: UiNoticeAction }): void
 }>()
 
 const slots = useSlots()

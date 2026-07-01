@@ -16,9 +16,9 @@
  * 持久化：仅保留 currentExamId，避免缓存陈旧 detail 与 list。
  */
 import type { ExamDetailVO, ExamPageQueryRequest, ExamSummaryVO } from '@/apis/mark/exam'
+import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { readAllPages } from '@/utils/page-result'
@@ -76,15 +76,16 @@ export const useMarkExamContextStore = defineStore(
       try {
         const pageSize = request?.pageSize ?? 100
         exams.value = await readAllPages(
-          (pageNum) => pageExams({
-            pageNum,
-            pageSize,
-            status: request?.status,
-            keyword: request?.keyword,
-            createUserId: request?.createUserId,
-            startTime: request?.startTime,
-            endTime: request?.endTime,
-          }),
+          (pageNum) =>
+            pageExams({
+              pageNum,
+              pageSize,
+              status: request?.status,
+              keyword: request?.keyword,
+              createUserId: request?.createUserId,
+              startTime: request?.startTime,
+              endTime: request?.endTime,
+            }),
           '考试列表加载失败，请稍后重试',
         )
       } finally {

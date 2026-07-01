@@ -36,41 +36,40 @@
 </template>
 
 <script lang="ts" setup>
-import {
-  CheckCircleFilled,
-  ExclamationCircleFilled,
-  InfoCircleFilled,
-} from '@ant-design/icons-vue'
+import { CheckCircleFilled, ExclamationCircleFilled, InfoCircleFilled } from '@ant-design/icons-vue'
 import { computed } from 'vue'
 import UiButton from './Button.vue'
 import UiDialog from './UiDialog.vue'
 
 defineOptions({ name: 'UiConfirmDialog' })
 
-const props = withDefaults(defineProps<{
-  open: boolean
-  type?: ConfirmDialogType
-  title?: string
-  content?: string
-  width?: number
-  okText?: string
-  cancelText?: string
-  hideCancel?: boolean
-  closable?: boolean
-  maskClosable?: boolean
-  confirmLoading?: boolean
-}>(), {
-  type: 'warning',
-  title: '提示',
-  content: '',
-  width: 440,
-  okText: '确认',
-  cancelText: '取消',
-  hideCancel: false,
-  closable: true,
-  maskClosable: true,
-  confirmLoading: false,
-})
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    type?: ConfirmDialogType
+    title?: string
+    content?: string
+    width?: number
+    okText?: string
+    cancelText?: string
+    hideCancel?: boolean
+    closable?: boolean
+    maskClosable?: boolean
+    confirmLoading?: boolean
+  }>(),
+  {
+    type: 'warning',
+    title: '提示',
+    content: '',
+    width: 440,
+    okText: '确认',
+    cancelText: '取消',
+    hideCancel: false,
+    closable: true,
+    maskClosable: true,
+    confirmLoading: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
@@ -90,7 +89,7 @@ const iconComponent = computed(() => {
   return iconMap[props.type]
 })
 
-const okVariant = computed(() => props.type === 'error' ? 'destructive' : 'primary')
+const okVariant = computed(() => (props.type === 'error' ? 'destructive' : 'primary'))
 
 const handleOpenUpdate = (value: boolean) => {
   emit('update:open', value)

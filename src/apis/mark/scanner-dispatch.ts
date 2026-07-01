@@ -1,15 +1,14 @@
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
-import type { PortfolioCollectModeCode, ScanTaskKindCode, ScanWorkOrderStatusCode } from '@/apis/mark/scanner-work-order'
+import type {
+  PortfolioCollectModeCode,
+  ScanTaskKindCode,
+  ScanWorkOrderStatusCode,
+} from '@/apis/mark/scanner-work-order'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
-export type ScanDispatchTicketStatusCode
-  = | 'PENDING'
-    | 'PROCESSING'
-    | 'SUSPENDED'
-    | 'DONE'
-    | 'EXPIRED'
-    | 'CANCELLED'
+export type ScanDispatchTicketStatusCode =
+  'PENDING' | 'PROCESSING' | 'SUSPENDED' | 'DONE' | 'EXPIRED' | 'CANCELLED'
 
 export const SCAN_DISPATCH_TICKET_STATUS_LABEL: Record<ScanDispatchTicketStatusCode, string> = {
   PENDING: '待处理',
@@ -243,7 +242,10 @@ export function forceReleaseScanDispatch(request: ScanDispatchForceReleaseReques
 }
 
 export function loadScannerExceptionDashboard() {
-  return http.post<ScannerExceptionDashboardVO>('/api/mark/scanner/exception/dashboard/aggregate', {})
+  return http.post<ScannerExceptionDashboardVO>(
+    '/api/mark/scanner/exception/dashboard/aggregate',
+    {},
+  )
 }
 
 export interface ScanDispatchQueueSummaryVO {
@@ -264,22 +266,22 @@ export function loadScanDispatchQueueSummary(request: ScanDispatchQueueSummaryRe
   return http.post<ScanDispatchQueueSummaryVO>('/api/mark/scanner/dispatch/queue-summary', request)
 }
 
-export type ScanOperationActionCode
-  = | 'OPEN'
-    | 'CONFIRM'
-    | 'DISCARD'
-    | 'DISPATCH_CREATE'
-    | 'DISPATCH_CANCEL'
-    | 'DISPATCH_OPEN'
-    | 'DISPATCH_CLAIM'
-    | 'DISPATCH_SUSPEND'
-    | 'DISPATCH_RESUME'
-    | 'DISPATCH_HEARTBEAT'
-    | 'LEASE_RELEASE'
-    | 'DISPATCH_ADHOC_CREATE'
-    | 'DISPATCH_FORCE_RELEASE'
-    | 'DISPATCH_DONE'
-    | 'PHYSICAL_LOCATION_UPDATE'
+export type ScanOperationActionCode =
+  | 'OPEN'
+  | 'CONFIRM'
+  | 'DISCARD'
+  | 'DISPATCH_CREATE'
+  | 'DISPATCH_CANCEL'
+  | 'DISPATCH_OPEN'
+  | 'DISPATCH_CLAIM'
+  | 'DISPATCH_SUSPEND'
+  | 'DISPATCH_RESUME'
+  | 'DISPATCH_HEARTBEAT'
+  | 'LEASE_RELEASE'
+  | 'DISPATCH_ADHOC_CREATE'
+  | 'DISPATCH_FORCE_RELEASE'
+  | 'DISPATCH_DONE'
+  | 'PHYSICAL_LOCATION_UPDATE'
 
 export const SCAN_OPERATION_ACTION_LABEL: Record<ScanOperationActionCode, string> = {
   OPEN: '开单',
@@ -319,5 +321,8 @@ export interface ScanOperationLogItemVO {
 }
 
 export function pageScanOperationLogs(request: ScanOperationLogPageRequest) {
-  return http.post<PageResult<ScanOperationLogItemVO>>('/api/mark/scanner/operation-log/page', request)
+  return http.post<PageResult<ScanOperationLogItemVO>>(
+    '/api/mark/scanner/operation-log/page',
+    request,
+  )
 }

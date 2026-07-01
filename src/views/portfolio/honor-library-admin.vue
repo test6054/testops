@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioDevelopmentRecordVO, PortfolioHonorStatsVO } from '@/apis/portfolio/teacher-platform'
+import type {
+  PortfolioDevelopmentRecordVO,
+  PortfolioHonorStatsVO,
+} from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -38,7 +41,8 @@ const form = reactive({
   categoryCode: '',
   descriptionText: '',
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
 
 const honorImportContext = { defaultRecordType: 'HONOR' }
 const honorImportRequirements = [
@@ -70,7 +74,7 @@ async function loadPage() {
     })
     rows.value = readPageList(page, '加载荣誉库失败')
     const userIds = rows.value
-      .map(row => row.teacherUserId)
+      .map((row) => row.teacherUserId)
       .filter((id): id is string => Boolean(id))
     await hydrateTeacherLabels([...new Set(userIds)])
     stats.value = await portfolioDevelopmentRecordApi.honorStats({
@@ -80,11 +84,9 @@ async function loadPage() {
       recordDateTo: query.recordDateTo || undefined,
       categoryCode: query.categoryCode || undefined,
     })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -118,8 +120,7 @@ async function saveRecord() {
     form.categoryCode = ''
     form.descriptionText = ''
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -129,8 +130,7 @@ async function removeRecord(id: string) {
     await portfolioDevelopmentRecordApi.delete({ id })
     message.success('已删除')
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -146,8 +146,7 @@ async function exportHonor() {
     })
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -173,17 +172,19 @@ onMounted(loadPage)
         <a-input v-model:value="query.levelCode" placeholder="等级" style="width: 100px" />
         <a-input v-model:value="query.awardUnit" placeholder="授予单位" style="width: 140px" />
         <a-input v-model:value="query.categoryCode" placeholder="分类" style="width: 100px" />
-        <a-date-picker v-model:value="query.recordDateFrom" value-format="YYYY-MM-DD" placeholder="起始日期" />
-        <a-date-picker v-model:value="query.recordDateTo" value-format="YYYY-MM-DD" placeholder="截止日期" />
-        <UiButton @click="loadPage">
-          查询
-        </UiButton>
-        <UiButton @click="exportHonor">
-          导出
-        </UiButton>
-        <UiButton @click="importModalOpen = true">
-          批量导入
-        </UiButton>
+        <a-date-picker
+          v-model:value="query.recordDateFrom"
+          value-format="YYYY-MM-DD"
+          placeholder="起始日期"
+        />
+        <a-date-picker
+          v-model:value="query.recordDateTo"
+          value-format="YYYY-MM-DD"
+          placeholder="截止日期"
+        />
+        <UiButton @click="loadPage"> 查询 </UiButton>
+        <UiButton @click="exportHonor"> 导出 </UiButton>
+        <UiButton @click="importModalOpen = true"> 批量导入 </UiButton>
       </div>
       <div class="form-row">
         <a-input v-model:value="form.recordTitle" placeholder="荣誉标题" style="width: 180px" />
@@ -199,21 +200,30 @@ onMounted(loadPage)
         />
         <a-input v-model:value="form.levelCode" placeholder="等级" style="width: 88px" />
         <a-input v-model:value="form.awardUnit" placeholder="授予单位" style="width: 140px" />
-        <a-date-picker v-model:value="form.recordDate" value-format="YYYY-MM-DD" placeholder="日期" />
-        <UiButton variant="primary" @click="saveRecord">
-          新增
-        </UiButton>
+        <a-date-picker
+          v-model:value="form.recordDate"
+          value-format="YYYY-MM-DD"
+          placeholder="日期"
+        />
+        <UiButton variant="primary" @click="saveRecord"> 新增 </UiButton>
       </div>
-      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无荣誉记录，请调整条件或新建" />
-      <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
+      <UiEmpty
+        v-if="!loading && rows.length === 0"
+        description="当前筛选无荣誉记录，请调整条件或新建"
+      />
+      <UiDataTable
+        :columns="columns"
+        :data-source="rows"
+        :loading="loading"
+        row-key="id"
+        style="margin-top: 16px"
+      >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
             {{ teacherLabel(record.teacherUserId) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiTextAction @click="removeRecord(record.id)">
-              删除
-            </UiTextAction>
+            <UiTextAction @click="removeRecord(record.id)"> 删除 </UiTextAction>
           </template>
         </template>
       </UiDataTable>

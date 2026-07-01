@@ -1,15 +1,14 @@
 <template>
   <div class="gi-footer">
-    {{ appStore.getCopyright() }}{{
-      appStore.getForRecord() ? ` · ${appStore.getForRecord()}` : ''
-    }}
+    {{ appStore.getCopyright()
+    }}{{ appStore.getForRecord() ? ` · ${appStore.getForRecord()}` : '' }}
   </div>
 </template>
 
 <script lang="ts" setup>
-import {useAppStore} from '@/stores'
+import { useAppStore } from '@/stores'
 
-defineOptions({name: 'GiFooter'})
+defineOptions({ name: 'GiFooter' })
 
 const appStore = useAppStore()
 </script>

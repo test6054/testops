@@ -1,10 +1,6 @@
 <template>
   <div class="ledger-page">
-    <UiEmpty
-      v-if="!selectedExamId"
-      description="未进入考试工作台"
-      class="ledger-page__empty"
-    />
+    <UiEmpty v-if="!selectedExamId" description="未进入考试工作台" class="ledger-page__empty" />
 
     <div v-else class="ledger-page__cards">
       <a-card title="账本概览" :bordered="false" size="small">
@@ -15,7 +11,11 @@
           @balance="handleBalance"
         />
       </a-card>
-      <DuplicateResolutionCard ref="duplicateCardRef" :exam-id="selectedExamId" @resolve="openResolve" />
+      <DuplicateResolutionCard
+        ref="duplicateCardRef"
+        :exam-id="selectedExamId"
+        @resolve="openResolve"
+      />
     </div>
   </div>
 
@@ -29,9 +29,13 @@
 
 <script lang="ts" setup>
 import type { ExamPaperDuplicateResolutionVO, ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
+import {
+  executeImageLedgerBalance,
+  getImageLedgerDetail,
+  normalizeImageLedgerDetail,
+} from '@/apis/mark/image-ledger'
 import message from 'ant-design-vue/es/message'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { executeImageLedgerBalance, getImageLedgerDetail, normalizeImageLedgerDetail } from '@/apis/mark/image-ledger'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
@@ -100,13 +104,17 @@ async function onChildSubmitted(): Promise<void> {
   mittBus.emit('scan-workbench:refresh')
 }
 
-watch(selectedExamId, (v) => {
-  if (v) {
-    void loadAll()
-  } else {
-    ledger.value = null
-  }
-}, { immediate: true })
+watch(
+  selectedExamId,
+  (v) => {
+    if (v) {
+      void loadAll()
+    } else {
+      ledger.value = null
+    }
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   mittBus.on('scan-workbench:refresh', loadAll)

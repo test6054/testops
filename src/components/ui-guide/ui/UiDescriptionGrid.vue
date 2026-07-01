@@ -72,25 +72,28 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  items?: UiDescriptionItem[]
-  columns?: 1 | 2 | 3 | 4
-  compact?: boolean
-  divided?: boolean
-  emptyText?: string
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  items: () => [],
-  columns: 2,
-  compact: false,
-  divided: true,
-  emptyText: '--',
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    items?: UiDescriptionItem[]
+    columns?: 1 | 2 | 3 | 4
+    compact?: boolean
+    divided?: boolean
+    emptyText?: string
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    items: () => [],
+    columns: 2,
+    compact: false,
+    divided: true,
+    emptyText: '--',
+  },
+)
 
 const slots = useSlots()
 

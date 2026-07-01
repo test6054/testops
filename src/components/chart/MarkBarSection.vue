@@ -26,22 +26,25 @@ import MarkChart from './MarkChart.vue'
 
 defineOptions({ name: 'MarkBarSection' })
 
-const props = withDefaults(defineProps<{
-  title: string
-  hint?: string
-  itemCount: number
-  option: EChartsCoreOption
-  height?: string
-  ariaLabel?: string
-  emptyDescription?: string
-  visible?: boolean
-}>(), {
-  hint: '',
-  height: '280px',
-  ariaLabel: '',
-  emptyDescription: MARK_CHART_EMPTY.barNoData,
-  visible: true,
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    hint?: string
+    itemCount: number
+    option: EChartsCoreOption
+    height?: string
+    ariaLabel?: string
+    emptyDescription?: string
+    visible?: boolean
+  }>(),
+  {
+    hint: '',
+    height: '280px',
+    ariaLabel: '',
+    emptyDescription: MARK_CHART_EMPTY.barNoData,
+    visible: true,
+  },
+)
 
 const ready = computed(() => props.itemCount > 0)
 

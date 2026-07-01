@@ -30,12 +30,8 @@ export const AI_RESULT_IMPROVEMENT_PRIORITY_LABEL: Record<AiResultImprovementPri
 }
 
 /** 达成度诊断改进类别 - 对齐 AiResultImprovementCategoryEnum */
-export type AiResultImprovementCategory
-  = | 'TEACHING'
-    | 'ASSESSMENT'
-    | 'STUDENT_SUPPORT'
-    | 'FACULTY_PREPARATION'
-    | 'RESOURCE'
+export type AiResultImprovementCategory =
+  'TEACHING' | 'ASSESSMENT' | 'STUDENT_SUPPORT' | 'FACULTY_PREPARATION' | 'RESOURCE'
 
 export const AI_RESULT_IMPROVEMENT_CATEGORY_LABEL: Record<AiResultImprovementCategory, string> = {
   TEACHING: '教学',
@@ -46,9 +42,8 @@ export const AI_RESULT_IMPROVEMENT_CATEGORY_LABEL: Record<AiResultImprovementCat
 }
 
 /** improvementItems.priority 持久化混用跟进优先级与达成度类别 */
-export type AiResultImprovementPriorityValue
-  = | AiResultImprovementPriority
-    | AiResultImprovementCategory
+export type AiResultImprovementPriorityValue =
+  AiResultImprovementPriority | AiResultImprovementCategory
 
 export function aiResultIssueSeverityLabel(value: AiResultIssueSeverity): string {
   return strictEnumLabel(AI_RESULT_ISSUE_SEVERITY_LABEL, value, 'AI 结果问题严重级别')

@@ -24,7 +24,9 @@ export async function downloadPortfolioExcelExport(result: PortfolioExcelDownloa
 }
 
 /** 下载指标域 Excel 导出结果 */
-export async function downloadPortfolioIndicatorExcelExport(result: PortfolioIndicatorExcelDownloadPayload) {
+export async function downloadPortfolioIndicatorExcelExport(
+  result: PortfolioIndicatorExcelDownloadPayload,
+) {
   if (!result.fileNodeId) {
     throw new Error('导出结果缺少 fileNodeId')
   }

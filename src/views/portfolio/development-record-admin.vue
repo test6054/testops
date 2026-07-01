@@ -4,15 +4,15 @@ import type {
   PortfolioDevelopmentRecordStatus,
   PortfolioDevelopmentRecordType,
 } from '@/apis/portfolio/enums'
-import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_DEVELOPMENT_RECORD_STATUS_LABEL,
   PORTFOLIO_DEVELOPMENT_RECORD_TYPE_LABEL,
 } from '@/apis/portfolio/enums'
+import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -27,18 +27,19 @@ import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const RECORD_TAB_KEYS: PortfolioDevelopmentRecordType[] = ['ACHIEVEMENT', 'POLICY']
-const RECORD_TABS = RECORD_TAB_KEYS.map(key => ({
+const RECORD_TABS = RECORD_TAB_KEYS.map((key) => ({
   key,
   label: PORTFOLIO_DEVELOPMENT_RECORD_TYPE_LABEL[key],
 }))
 
-type RecordType = typeof RECORD_TAB_KEYS[number]
+type RecordType = (typeof RECORD_TAB_KEYS)[number]
 
 const activeType = ref<RecordType>('ACHIEVEMENT')
 const loading = ref(false)
 const importModalOpen = ref(false)
 const rows = ref<PortfolioDevelopmentRecordVO[]>([])
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
 const form = reactive({
   recordTitle: '',
   descriptionText: '',
@@ -48,9 +49,7 @@ const form = reactive({
 const requiresTeacher = computed(() => activeType.value === 'ACHIEVEMENT')
 
 const columns = computed<ColumnsType>(() => {
-  const base: ColumnsType = [
-    { title: '标题', dataIndex: 'recordTitle', key: 'recordTitle' },
-  ]
+  const base: ColumnsType = [{ title: '标题', dataIndex: 'recordTitle', key: 'recordTitle' }]
   if (requiresTeacher.value) {
     base.push({ title: '所属教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 })
   }
@@ -62,7 +61,9 @@ const columns = computed<ColumnsType>(() => {
   return base
 })
 
-const tabLabel = computed(() => RECORD_TABS.find(item => item.key === activeType.value)?.label ?? '')
+const tabLabel = computed(
+  () => RECORD_TABS.find((item) => item.key === activeType.value)?.label ?? '',
+)
 
 const importContext = computed(() => ({ defaultRecordType: activeType.value }))
 
@@ -86,14 +87,12 @@ async function loadPage() {
     })
     rows.value = readPageList(page, '加载发展记录失败')
     const userIds = rows.value
-      .map(row => row.teacherUserId)
+      .map((row) => row.teacherUserId)
       .filter((id): id is string => Boolean(id))
     await hydrateTeacherLabels([...new Set(userIds)])
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -117,8 +116,7 @@ async function saveRecord() {
     message.success('已保存')
     resetForm()
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -128,8 +126,7 @@ async function removeRecord(id: string) {
     await portfolioDevelopmentRecordApi.delete({ id })
     message.success('已删除')
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -139,8 +136,7 @@ async function exportExcel() {
     const result = await portfolioDevelopmentRecordApi.exportExcel({ recordType: activeType.value })
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -157,11 +153,7 @@ onMounted(loadPage)
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="tabLabel"
-      />
+      <ContextBar layout="workbench" show-title :title="tabLabel" />
     </template>
     <div class="tabs">
       <UiButton
@@ -175,7 +167,7 @@ onMounted(loadPage)
     </div>
     <UiCard title="新增条目">
       <div class="form-row">
-        <input v-model="form.recordTitle" class="input input--wide" placeholder="标题">
+        <input v-model="form.recordTitle" class="input input--wide" placeholder="标题" />
         <a-select
           v-if="requiresTeacher"
           v-model:value="form.teacherUserId"
@@ -187,25 +179,23 @@ onMounted(loadPage)
           :options="teacherOptions"
           @search="searchTeachers"
         />
-        <UiButton variant="primary" @click="saveRecord">
-          保存
-        </UiButton>
+        <UiButton variant="primary" @click="saveRecord"> 保存 </UiButton>
       </div>
     </UiCard>
     <UiCard>
       <div class="toolbar">
-        <UiButton @click="loadPage">
-          刷新
-        </UiButton>
-        <UiButton @click="importModalOpen = true">
-          批量导入
-        </UiButton>
-        <UiButton @click="exportExcel">
-          导出 Excel
-        </UiButton>
+        <UiButton @click="loadPage"> 刷新 </UiButton>
+        <UiButton @click="importModalOpen = true"> 批量导入 </UiButton>
+        <UiButton @click="exportExcel"> 导出 Excel </UiButton>
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无发展记录" />
-      <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
+      <UiDataTable
+        :columns="columns"
+        :data-source="rows"
+        :loading="loading"
+        row-key="id"
+        style="margin-top: 16px"
+      >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
             {{ teacherLabel(record.teacherUserId) }}
@@ -214,9 +204,7 @@ onMounted(loadPage)
             {{ recordStatusLabel(record.recordStatus) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton size="sm" @click="removeRecord(record.id)">
-              删除
-            </UiButton>
+            <UiButton size="sm" @click="removeRecord(record.id)"> 删除 </UiButton>
           </template>
         </template>
       </UiDataTable>

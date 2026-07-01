@@ -1,11 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        title="复核任务"
-      >
+      <ContextBar layout="workbench" show-title title="复核任务">
         <template #toolbar>
           <UiFilterBar
             v-if="examId"
@@ -33,11 +29,7 @@
     </template>
 
     <template v-if="examId" #signal>
-      <SignalBand
-        :metrics="hubSignalMetrics"
-        compact
-        @metric-click="handleHubSignalClick"
-      />
+      <SignalBand :metrics="hubSignalMetrics" compact @metric-click="handleHubSignalClick" />
     </template>
 
     <UiEmpty v-if="!examId" description="缺少考试上下文，请从考试列表进入" />
@@ -61,10 +53,20 @@
         size="middle"
         @page-change="onPageChange"
       >
-        <template #bodyCell="{ column, record }: { column: ColumnType<ReviewTaskItemVO>, record: ReviewTaskItemVO }">
+        <template
+          #bodyCell="{
+            column,
+            record,
+          }: {
+            column: ColumnType<ReviewTaskItemVO>
+            record: ReviewTaskItemVO
+          }"
+        >
           <template v-if="column.key === 'paper'">
             <div class="review-task-hub__paper-cell">
-              <span class="review-task-hub__paper-primary">{{ record.paperDisplay.primaryText }}</span>
+              <span class="review-task-hub__paper-primary">{{
+                record.paperDisplay.primaryText
+              }}</span>
               <span
                 v-if="record.paperDisplay.secondaryText"
                 class="review-task-hub__paper-secondary"
@@ -102,7 +104,10 @@
             {{ formatDateTime(record.updateTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiTextAction :tone="record.status === 'INVALIDATED' ? 'default' : 'primary'" @click="enterReview(record)">
+            <UiTextAction
+              :tone="record.status === 'INVALIDATED' ? 'default' : 'primary'"
+              @click="enterReview(record)"
+            >
               {{ record.status === 'INVALIDATED' ? '查看详情' : '进入复核' }}
             </UiTextAction>
           </template>
@@ -120,11 +125,6 @@ import type {
   ReviewTaskStatusCode,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   GRADE_SOURCE_LABEL,
   GRADE_SOURCE_TONE,
@@ -134,6 +134,11 @@ import {
   REVIEW_TASK_TYPE_META,
   validateReviewTaskItemContract,
 } from '@/apis/mark/exam-review-task'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -231,7 +236,10 @@ function handleHubSignalClick(key: string): void {
     onFilterChange()
     return
   }
-  if (key === 'in-progress' && (snapshot.value?.markingProgress?.inProgressReviewTaskCount ?? 0) > 0) {
+  if (
+    key === 'in-progress' &&
+    (snapshot.value?.markingProgress?.inProgressReviewTaskCount ?? 0) > 0
+  ) {
     statusFilter.value = 'IN_PROGRESS'
     onFilterChange()
   }
@@ -313,7 +321,7 @@ async function loadTasks(): Promise<void> {
   }
 }
 
-function onPageChange(page: { current: number, pageSize: number }): void {
+function onPageChange(page: { current: number; pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadTasks()
@@ -353,15 +361,19 @@ function goBatchConfirm(): void {
   })
 }
 
-watch(examId, (next) => {
-  pagination.current = 1
-  if (next) {
-    void loadTasks()
-  } else {
-    rows.value = []
-    pagination.total = 0
-  }
-}, { immediate: true })
+watch(
+  examId,
+  (next) => {
+    pagination.current = 1
+    if (next) {
+      void loadTasks()
+    } else {
+      rows.value = []
+      pagination.total = 0
+    }
+  },
+  { immediate: true },
+)
 
 onActivated(() => {
   if (examId.value) {

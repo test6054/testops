@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import {
+  templateParamFieldsForRuleType,
+  templateParamLabel,
+} from '@/utils/indicator-template-params'
 import { computed } from 'vue'
-import { templateParamFieldsForRuleType, templateParamLabel } from '@/utils/indicator-template-params'
 
 const props = defineProps<{
   ruleType: string
@@ -24,8 +27,7 @@ function patch(key: keyof PortfolioIndicatorTemplateParams, value: string | numb
   const num = typeof value === 'number' ? value : Number(value)
   if (Number.isNaN(num)) {
     delete next[key]
-  }
-  else {
+  } else {
     next[key] = num
   }
   emit('update:params', next)

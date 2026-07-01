@@ -1,7 +1,11 @@
 <template>
   <a-form
-    ref="formRef" :model="form" :rules="rules"
-    layout="vertical" size="large" @submit="onModify"
+    ref="formRef"
+    :model="form"
+    :rules="rules"
+    layout="vertical"
+    size="large"
+    @submit="onModify"
   >
     <a-form-item name="oldPassword" label="当前密码">
       <a-input-password v-model:value="form.oldPassword" allow-clear placeholder="请输入当前密码" />
@@ -10,11 +14,22 @@
       <a-input-password v-model:value="form.newPassword" allow-clear placeholder="请输入新密码" />
     </a-form-item>
     <a-form-item name="confirmPassword" label="确认密码">
-      <a-input-password v-model:value="form.confirmPassword" allow-clear placeholder="请再次输入新密码" />
+      <a-input-password
+        v-model:value="form.confirmPassword"
+        allow-clear
+        placeholder="请再次输入新密码"
+      />
     </a-form-item>
     <a-form-item>
       <a-space class="w-full" direction="vertical">
-        <a-button :loading="loading" class="btn" html-type="submit" block size="large" type="primary">
+        <a-button
+          :loading="loading"
+          class="btn"
+          html-type="submit"
+          block
+          size="large"
+          type="primary"
+        >
           立即修改
         </a-button>
       </a-space>
@@ -25,7 +40,7 @@
 <script lang="ts" setup>
 import type { FormInstance } from 'ant-design-vue'
 import message from 'ant-design-vue/es/message'
-import {changePassword} from '@/apis/auth'
+import { changePassword } from '@/apis/auth'
 
 interface Form {
   oldPassword: string
@@ -41,11 +56,9 @@ const form = reactive<Form>({
 })
 
 const rules = {
-  oldPassword: [
-    {required: true, message: '请输入当前密码'},
-  ],
+  oldPassword: [{ required: true, message: '请输入当前密码' }],
   newPassword: [
-    {required: true, message: '请输入新密码'},
+    { required: true, message: '请输入新密码' },
     {
       validator: (_rule: unknown, value: string) => {
         if (!value) {
@@ -56,16 +69,19 @@ const rules = {
         }
         return Promise.resolve()
       },
-    }
-  ],
-  confirmPassword: [{required: true, message: '请再次输入新密码'}, {
-    validator: (_rule: unknown, value: string) => {
-      if (value !== form.newPassword) {
-        return Promise.reject(new Error('两次密码不一致'))
-      }
-      return Promise.resolve()
     },
-  }],
+  ],
+  confirmPassword: [
+    { required: true, message: '请再次输入新密码' },
+    {
+      validator: (_rule: unknown, value: string) => {
+        if (value !== form.newPassword) {
+          return Promise.reject(new Error('两次密码不一致'))
+        }
+        return Promise.resolve()
+      },
+    },
+  ],
 }
 const router = useRouter()
 const loading = ref(false)
@@ -83,7 +99,7 @@ const onModify = async () => {
       oldPassword: form.oldPassword,
       newPassword: form.newPassword,
       confirmNewPassword: form.confirmPassword!,
-      force: false
+      force: false,
     }
     await changePassword(params)
     await router.push({
@@ -124,8 +140,6 @@ const onModify = async () => {
   border-color: var(--ant-color-primary);
 }
 
-
 .btn {
-
 }
 </style>

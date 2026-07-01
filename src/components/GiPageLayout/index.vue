@@ -61,9 +61,9 @@
 <script lang="ts" setup>
 import type { ColProps } from 'ant-design-vue/es/grid'
 import type { CSSProperties } from 'vue'
+import { computed, ref, watch } from 'vue'
 import LeftOutlined from '@ant-design/icons-vue/LeftOutlined'
 import RightOutlined from '@ant-design/icons-vue/RightOutlined'
-import { computed, ref, watch } from 'vue'
 import { useBreakpoint, useDevice } from '@/hooks'
 
 defineOptions({ name: 'GiPageLayout' })

@@ -3,14 +3,8 @@ import { StudentTaskStatusEnum } from '@/types/enums/student-task-status'
 import { TeacherReviewStatusEnum } from '@/types/enums/teacher-review-status'
 import { strictEnumTone } from '@/utils/strict-enum'
 
-export type StatusVariant
-  = | 'neutral'
-    | 'info'
-    | 'pending'
-    | 'success'
-    | 'warning'
-    | 'danger'
-    | 'purple'
+export type StatusVariant =
+  'neutral' | 'info' | 'pending' | 'success' | 'warning' | 'danger' | 'purple'
 
 export interface StatusStyle {
   bgColor: string
@@ -87,8 +81,8 @@ export function mapStudentStatusToVariant(status?: string | null): StatusVariant
   if (!status) return 'neutral'
 
   const customStatusMap: Record<string, StatusVariant> = {
-    "pending": 'pending',
-    "completed": 'success',
+    pending: 'pending',
+    completed: 'success',
     'review-needed': 'danger',
     'not-submitted': 'neutral',
   }

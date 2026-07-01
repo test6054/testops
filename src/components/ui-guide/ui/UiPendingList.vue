@@ -1,6 +1,6 @@
 <template>
   <div class="dp-pending-card">
-    <a-spin :spinning="loading" style="width: 100%;">
+    <a-spin :spinning="loading" style="width: 100%">
       <div
         v-if="items.length"
         ref="scrollContainerRef"
@@ -39,7 +39,7 @@
 </template>
 
 <script lang="ts" setup>
-import {computed, onBeforeUnmount, ref, watch} from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import GiCellAvatar from '@/components/GiCell/GiCellAvatar.vue'
 
 export interface PendingListItem {
@@ -53,18 +53,21 @@ export interface PendingListItem {
   tone?: 'orange' | 'blue' | 'red' | 'gray'
 }
 
-const props = withDefaults(defineProps<{
-  items: PendingListItem[]
-  loading?: boolean
-  emptyText?: string
-  /** 最大可见条数，超过后自动滚动 */
-  maxVisible?: number
-  /** 滚动速度（毫秒/像素） */
-  scrollSpeed?: number
-}>(), {
-  maxVisible: 5,
-  scrollSpeed: 50
-})
+const props = withDefaults(
+  defineProps<{
+    items: PendingListItem[]
+    loading?: boolean
+    emptyText?: string
+    /** 最大可见条数，超过后自动滚动 */
+    maxVisible?: number
+    /** 滚动速度（毫秒/像素） */
+    scrollSpeed?: number
+  }>(),
+  {
+    maxVisible: 5,
+    scrollSpeed: 50,
+  },
+)
 
 const emit = defineEmits<{
   'item-click': [item: PendingListItem]
@@ -147,15 +150,19 @@ const handleClick = (item: PendingListItem) => {
 }
 
 // 监听数据变化，重新启动滚动
-watch(() => props.items.length, (newLen) => {
-  stopScroll()
-  if (newLen > props.maxVisible) {
-    // 等待 DOM 更新后再启动滚动
-    setTimeout(() => {
-      startScroll()
-    }, 100)
-  }
-}, {immediate: true})
+watch(
+  () => props.items.length,
+  (newLen) => {
+    stopScroll()
+    if (newLen > props.maxVisible) {
+      // 等待 DOM 更新后再启动滚动
+      setTimeout(() => {
+        startScroll()
+      }, 100)
+    }
+  },
+  { immediate: true },
+)
 
 onBeforeUnmount(() => {
   stopScroll()

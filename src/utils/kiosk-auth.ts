@@ -28,12 +28,12 @@ export interface MarkScannerStationAuth {
  */
 export function isMarkScannerStationApiUrl(url: string): boolean {
   return (
-    url.includes('/api/mark/scanner/kiosk/')
-    || url.includes('/api/mark/scanner/work-order/')
-    || url.includes('/api/mark/scanner/dispatch/')
-    || url.includes('/api/mark/scanner/exception/')
-    || url.includes('/api/mark/sse/scan-live/')
-    || url.includes('/api/mark/scan-live/')
+    url.includes('/api/mark/scanner/kiosk/') ||
+    url.includes('/api/mark/scanner/work-order/') ||
+    url.includes('/api/mark/scanner/dispatch/') ||
+    url.includes('/api/mark/scanner/exception/') ||
+    url.includes('/api/mark/sse/scan-live/') ||
+    url.includes('/api/mark/scan-live/')
   )
 }
 
@@ -243,16 +243,15 @@ export function needsKioskBrowserReactivation(agentBound: boolean | undefined): 
 }
 
 /** 本机 Agent 已绑定，正在或需要从 DeviceBinding 同步 push_token 到浏览器。 */
-export const KIOSK_BROWSER_SESSION_SYNC_MESSAGE
-  = '正在从本机 Agent 同步会话，请稍候'
+export const KIOSK_BROWSER_SESSION_SYNC_MESSAGE = '正在从本机 Agent 同步会话，请稍候'
 
 /** 无法从本机 Agent 拉取 push_token（Agent 未启动、未绑定或版本过旧）。 */
-export const KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE
-  = '无法从本机 Agent 同步会话，请确认 Agent 已启动并完成激活；仍无法恢复时请重新输入激活码'
+export const KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE =
+  '无法从本机 Agent 同步会话，请确认 Agent 已启动并完成激活；仍无法恢复时请重新输入激活码'
 
 /** Agent 同步后服务端仍拒绝 push_token，凭证已失效。 */
-export const KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE
-  = '扫描工位凭证已失效，请重新输入激活码完成绑定'
+export const KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE =
+  '扫描工位凭证已失效，请重新输入激活码完成绑定'
 
 /**
  * 从本机 Agent DeviceBinding 恢复浏览器 push_token 会话。

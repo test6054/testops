@@ -37,19 +37,22 @@ defineOptions({
 
 const activeKey = defineModel<Key>('activeKey')
 
-const props = withDefaults(defineProps<{
-  items?: UiTabItem[]
-  variant?: 'line' | 'card' | 'pill'
-  size?: 'small' | 'middle' | 'large'
-  animated?: boolean
-  centered?: boolean
-}>(), {
-  items: () => [],
-  variant: 'line',
-  size: 'middle',
-  animated: false,
-  centered: false,
-})
+const props = withDefaults(
+  defineProps<{
+    items?: UiTabItem[]
+    variant?: 'line' | 'card' | 'pill'
+    size?: 'small' | 'middle' | 'large'
+    animated?: boolean
+    centered?: boolean
+  }>(),
+  {
+    items: () => [],
+    variant: 'line',
+    size: 'middle',
+    animated: false,
+    centered: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'change', value: Key): void

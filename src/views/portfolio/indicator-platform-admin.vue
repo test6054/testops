@@ -12,12 +12,6 @@ import type {
   PortfolioIndicatorSourceMappingVO,
   PortfolioIndustryPackVO,
 } from '@/apis/portfolio/indicator-types'
-import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
-import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import {
   PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL,
   PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS,
@@ -26,6 +20,22 @@ import {
   PF_SCORE_RULE_TYPE_LABEL,
   PF_SCORE_RULE_TYPE_OPTIONS,
 } from '@/apis/portfolio/indicator-types'
+import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
+import {
+  buildNewIndustryPackDefJson,
+  mergeIndustryPackDefJson,
+  parseIndustryPackDefJson,
+} from '@/utils/indicator-industry-pack-def'
+import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import {
+  defaultTemplateParams,
+  parseTemplateParamsJson,
+  serializeTemplateParams,
+} from '@/utils/indicator-template-params'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -36,16 +46,6 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
-import {
-  buildNewIndustryPackDefJson,
-  mergeIndustryPackDefJson,
-  parseIndustryPackDefJson,
-} from '@/utils/indicator-industry-pack-def'
-import {
-  defaultTemplateParams,
-  parseTemplateParamsJson,
-  serializeTemplateParams,
-} from '@/utils/indicator-template-params'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -95,7 +95,13 @@ const editForm = reactive({
   status: 'ACTIVE' as PfIndicatorStatus,
 })
 const query = reactive({ pageNum: 1, pageSize: 20, indicatorCode: '', indicatorName: '' })
-const templateQuery = reactive({ pageNum: 1, pageSize: 20, templateCode: '', ruleType: undefined as PfScoreRuleType | undefined, status: undefined as PfIndicatorStatus | undefined })
+const templateQuery = reactive({
+  pageNum: 1,
+  pageSize: 20,
+  templateCode: '',
+  ruleType: undefined as PfScoreRuleType | undefined,
+  status: undefined as PfIndicatorStatus | undefined,
+})
 
 const definitionColumns: ColumnsType = [
   { title: '编码', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 88 },
@@ -183,8 +189,7 @@ const observationCount = computed(() => {
 async function loadSummary() {
   try {
     summary.value = await portfolioIndicatorPlatformApi.definitionSummary()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -194,11 +199,9 @@ async function loadPage() {
   try {
     const page = await portfolioIndicatorPlatformApi.pageDefinition(query)
     rows.value = readPageList(page, '指标分页数据异常')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -207,11 +210,9 @@ async function loadTree() {
   loading.value = true
   try {
     treeData.value = await portfolioIndicatorPlatformApi.definitionTree()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -222,11 +223,9 @@ async function loadTemplates() {
     const page = await portfolioIndicatorPlatformApi.pageTemplate(templateQuery)
     templates.value = readPageList(page, '规则模板分页数据异常')
     templateTotal.value = readPageTotal(page)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -235,11 +234,9 @@ async function loadIndustryPacks() {
   loading.value = true
   try {
     industryPacks.value = await portfolioIndicatorPlatformApi.listIndustryPack()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -248,11 +245,9 @@ async function loadSourceMappings() {
   loading.value = true
   try {
     sourceMappings.value = await portfolioIndicatorPlatformApi.listSourceMapping()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -265,17 +260,13 @@ async function handleIndicatorImportSuccess() {
 async function reloadTab() {
   if (activeTab.value === 'tree') {
     await loadTree()
-  }
-  else if (activeTab.value === 'table') {
+  } else if (activeTab.value === 'table') {
     await loadPage()
-  }
-  else if (activeTab.value === 'template') {
+  } else if (activeTab.value === 'template') {
     await loadTemplates()
-  }
-  else if (activeTab.value === 'pack') {
+  } else if (activeTab.value === 'pack') {
     await loadIndustryPacks()
-  }
-  else if (activeTab.value === 'mapping') {
+  } else if (activeTab.value === 'mapping') {
     await loadSourceMappings()
   }
 }
@@ -288,11 +279,9 @@ async function openDetail(indicatorCode: string, openAsEdit = false) {
     detail.value = await portfolioIndicatorPlatformApi.getDefinition({ indicatorCode })
     fillEditForm(detail.value)
     editMode.value = openAsEdit
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
@@ -351,14 +340,14 @@ async function saveDefinition() {
     }
     message.success('指标已保存')
     editMode.value = false
-    detail.value = await portfolioIndicatorPlatformApi.getDefinition({ indicatorCode: editForm.indicatorCode })
+    detail.value = await portfolioIndicatorPlatformApi.getDefinition({
+      indicatorCode: editForm.indicatorCode,
+    })
     fillEditForm(detail.value)
     await Promise.all([loadSummary(), reloadTab()])
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -393,8 +382,7 @@ function openTemplateEdit(record?: PortfolioIndicatorRuleTemplateVO) {
     templateParams.value = parseTemplateParamsJson(record.paramsJson)
     templateForm.description = ''
     templateForm.status = record.status
-  }
-  else {
+  } else {
     templateForm.id = ''
     templateForm.templateCode = ''
     templateForm.templateName = ''
@@ -421,11 +409,9 @@ async function saveTemplateForm() {
     message.success('规则模板已保存')
     templateDrawerOpen.value = false
     await loadTemplates()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -439,11 +425,15 @@ function openPackEdit(record?: PortfolioIndustryPackVO) {
     packDefExistingJson.value = record.packDefJson ?? '{}'
     Object.assign(
       packDefForm,
-      parseIndustryPackDefJson(record.packCode, record.packName, record.packVersion ?? '1.0.0', packDefExistingJson.value),
+      parseIndustryPackDefJson(
+        record.packCode,
+        record.packName,
+        record.packVersion ?? '1.0.0',
+        packDefExistingJson.value,
+      ),
     )
     packForm.status = record.status
-  }
-  else {
+  } else {
     packForm.id = ''
     packForm.packCode = ''
     packForm.packName = ''
@@ -466,18 +456,21 @@ async function savePackForm() {
   saving.value = true
   try {
     const packDefJson = packForm.id
-      ? mergeIndustryPackDefJson({
-        ...packDefForm,
-        packId: packForm.packCode,
-        packName: packForm.packName,
-        version: packForm.packVersion,
-      }, packDefExistingJson.value)
+      ? mergeIndustryPackDefJson(
+          {
+            ...packDefForm,
+            packId: packForm.packCode,
+            packName: packForm.packName,
+            version: packForm.packVersion,
+          },
+          packDefExistingJson.value,
+        )
       : buildNewIndustryPackDefJson({
-        ...packDefForm,
-        packId: packForm.packCode,
-        packName: packForm.packName,
-        version: packForm.packVersion,
-      })
+          ...packDefForm,
+          packId: packForm.packCode,
+          packName: packForm.packName,
+          version: packForm.packVersion,
+        })
     await portfolioIndicatorPlatformApi.saveIndustryPack({
       id: packForm.id || undefined,
       packCode: packForm.packCode,
@@ -490,11 +483,9 @@ async function savePackForm() {
     packDrawerOpen.value = false
     await loadIndustryPacks()
     await loadSummary()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -503,13 +494,13 @@ async function importSeed() {
   seeding.value = true
   try {
     const result = await portfolioIndicatorPlatformApi.importSeed()
-    message.success(`种子导入完成：指标 ${result.totalIndicatorCount} 项，行业包 ${result.totalIndustryPackCount} 个`)
+    message.success(
+      `种子导入完成：指标 ${result.totalIndicatorCount} 项，行业包 ${result.totalIndustryPackCount} 个`,
+    )
     await Promise.all([loadSummary(), reloadTab()])
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     seeding.value = false
   }
 }
@@ -554,28 +545,41 @@ onMounted(async () => {
             <template #title="{ nodeTitle, nodeType, defaultDataSource, indicatorCode, status }">
               <span>{{ nodeTitle }}</span>
               <span v-if="nodeType === 'OBSERVATION'" class="obs-meta">
-                {{ indicatorCode }} · {{ defaultDataSource ? dataSourceLabel(defaultDataSource) : '—' }} · {{ status ? indicatorStatusLabel(status) : '—' }}
-                <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)">详情</a>
+                {{ indicatorCode }} ·
+                {{ defaultDataSource ? dataSourceLabel(defaultDataSource) : '—' }} ·
+                {{ status ? indicatorStatusLabel(status) : '—' }}
+                <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)"
+                  >详情</a
+                >
               </span>
             </template>
           </a-tree>
-          <div class="tree-foot">
-            观测点 {{ observationCount }} 项
-          </div>
+          <div class="tree-foot">观测点 {{ observationCount }} 项</div>
         </a-tab-pane>
         <a-tab-pane key="table" tab="指标表">
           <div class="toolbar">
-            <a-input v-model:value="query.indicatorCode" placeholder="指标编码" style="width: 120px" @press-enter="loadPage" />
-            <a-input v-model:value="query.indicatorName" placeholder="指标名称" style="width: 160px" @press-enter="loadPage" />
-            <UiButton @click="loadPage">
-              查询
-            </UiButton>
-            <UiButton variant="outline" @click="openNewIndicator">
-              新建指标
-            </UiButton>
+            <a-input
+              v-model:value="query.indicatorCode"
+              placeholder="指标编码"
+              style="width: 120px"
+              @press-enter="loadPage"
+            />
+            <a-input
+              v-model:value="query.indicatorName"
+              placeholder="指标名称"
+              style="width: 160px"
+              @press-enter="loadPage"
+            />
+            <UiButton @click="loadPage"> 查询 </UiButton>
+            <UiButton variant="outline" @click="openNewIndicator"> 新建指标 </UiButton>
           </div>
           <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无平台指标" />
-          <UiDataTable :columns="definitionColumns" :data-source="rows" :loading="loading" row-key="id">
+          <UiDataTable
+            :columns="definitionColumns"
+            :data-source="rows"
+            :loading="loading"
+            row-key="id"
+          >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'defaultDataSource'">
                 {{ dataSourceLabel(record.defaultDataSource) }}
@@ -594,7 +598,12 @@ onMounted(async () => {
         </a-tab-pane>
         <a-tab-pane key="template" tab="规则模板">
           <div class="toolbar">
-            <a-input v-model:value="templateQuery.templateCode" placeholder="模板编码" style="width: 120px" @press-enter="loadTemplates" />
+            <a-input
+              v-model:value="templateQuery.templateCode"
+              placeholder="模板编码"
+              style="width: 120px"
+              @press-enter="loadTemplates"
+            />
             <a-select
               v-model:value="templateQuery.ruleType"
               allow-clear
@@ -602,15 +611,22 @@ onMounted(async () => {
               style="width: 140px"
               :options="PF_SCORE_RULE_TYPE_OPTIONS"
             />
-            <a-select v-model:value="templateQuery.status" allow-clear placeholder="状态" style="width: 100px" :options="PF_INDICATOR_STATUS_OPTIONS" />
-            <UiButton @click="loadTemplates">
-              查询
-            </UiButton>
-            <UiButton variant="outline" @click="openTemplateEdit()">
-              新建模板
-            </UiButton>
+            <a-select
+              v-model:value="templateQuery.status"
+              allow-clear
+              placeholder="状态"
+              style="width: 100px"
+              :options="PF_INDICATOR_STATUS_OPTIONS"
+            />
+            <UiButton @click="loadTemplates"> 查询 </UiButton>
+            <UiButton variant="outline" @click="openTemplateEdit()"> 新建模板 </UiButton>
           </div>
-          <UiDataTable :columns="templateColumns" :data-source="templates" :loading="loading" row-key="id">
+          <UiDataTable
+            :columns="templateColumns"
+            :data-source="templates"
+            :loading="loading"
+            row-key="id"
+          >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'ruleType'">
                 {{ scoreRuleTypeLabel(record.ruleType) }}
@@ -635,11 +651,14 @@ onMounted(async () => {
         </a-tab-pane>
         <a-tab-pane key="pack" tab="行业包">
           <div class="toolbar">
-            <UiButton variant="outline" @click="openPackEdit()">
-              新建行业包
-            </UiButton>
+            <UiButton variant="outline" @click="openPackEdit()"> 新建行业包 </UiButton>
           </div>
-          <UiDataTable :columns="packColumns" :data-source="industryPacks" :loading="loading" row-key="id">
+          <UiDataTable
+            :columns="packColumns"
+            :data-source="industryPacks"
+            :loading="loading"
+            row-key="id"
+          >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'status'">
                 <UiTag :tone="record.status === 'ACTIVE' ? 'green' : 'gray'">
@@ -653,15 +672,16 @@ onMounted(async () => {
           </UiDataTable>
         </a-tab-pane>
         <a-tab-pane key="import" tab="Excel 导入">
-          <p class="hint">
-            请先下载模板，填写后上传 Excel 文件批量导入指标定义。
-          </p>
-          <UiButton @click="importModalOpen = true">
-            Excel 批量导入
-          </UiButton>
+          <p class="hint">请先下载模板，填写后上传 Excel 文件批量导入指标定义。</p>
+          <UiButton @click="importModalOpen = true"> Excel 批量导入 </UiButton>
         </a-tab-pane>
         <a-tab-pane key="mapping" tab="来源映射">
-          <UiDataTable :columns="mappingColumns" :data-source="sourceMappings" :loading="loading" row-key="indicatorCode">
+          <UiDataTable
+            :columns="mappingColumns"
+            :data-source="sourceMappings"
+            :loading="loading"
+            row-key="indicatorCode"
+          >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'autoCollectSupported'">
                 {{ record.autoCollectSupported ? '是' : '否' }}
@@ -679,10 +699,10 @@ onMounted(async () => {
     <a-drawer v-model:open="detailOpen" title="指标详情" width="520" @close="editMode = false">
       <a-spin :spinning="detailLoading">
         <template v-if="detail && !editMode">
-          <p><strong>{{ detail.indicatorCode }}</strong> {{ detail.indicatorName }}</p>
-          <p class="meta">
-            {{ detail.dimensionL1Name }} / {{ detail.dimensionL2Name }}
+          <p>
+            <strong>{{ detail.indicatorCode }}</strong> {{ detail.indicatorName }}
           </p>
+          <p class="meta">{{ detail.dimensionL1Name }} / {{ detail.dimensionL2Name }}</p>
           <p>{{ detail.definitionText }}</p>
           <div class="detail-tags">
             <UiTag tone="blue">
@@ -691,22 +711,12 @@ onMounted(async () => {
             <UiTag :tone="detail.status === 'ACTIVE' ? 'green' : 'gray'">
               {{ indicatorStatusLabel(detail.status) }}
             </UiTag>
-            <UiTag v-if="detail.redLineFlag" tone="red">
-              红线
-            </UiTag>
-            <UiTag v-if="detail.auditRequired" tone="orange">
-              需审核
-            </UiTag>
+            <UiTag v-if="detail.redLineFlag" tone="red"> 红线 </UiTag>
+            <UiTag v-if="detail.auditRequired" tone="orange"> 需审核 </UiTag>
           </div>
-          <p v-if="detail.applicableTeachers" class="meta">
-            适用：{{ detail.applicableTeachers }}
-          </p>
-          <p v-if="detail.policyAlign" class="meta">
-            政策对齐：{{ detail.policyAlign }}
-          </p>
-          <UiButton style="margin-top: 12px" @click="startEdit">
-            编辑
-          </UiButton>
+          <p v-if="detail.applicableTeachers" class="meta">适用：{{ detail.applicableTeachers }}</p>
+          <p v-if="detail.policyAlign" class="meta">政策对齐：{{ detail.policyAlign }}</p>
+          <UiButton style="margin-top: 12px" @click="startEdit"> 编辑 </UiButton>
         </template>
         <a-form v-else-if="editMode" layout="vertical">
           <a-form-item label="指标编码">
@@ -725,10 +735,16 @@ onMounted(async () => {
             <a-textarea v-model:value="editForm.definitionText" :rows="3" />
           </a-form-item>
           <a-form-item label="数据来源">
-            <a-select v-model:value="editForm.defaultDataSource" :options="PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS" />
+            <a-select
+              v-model:value="editForm.defaultDataSource"
+              :options="PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS"
+            />
           </a-form-item>
           <a-form-item label="规则模板 ID">
-            <a-input v-model:value="editForm.defaultRuleTemplateId" placeholder="绑定 Score 模板主键" />
+            <a-input
+              v-model:value="editForm.defaultRuleTemplateId"
+              placeholder="绑定 Score 模板主键"
+            />
           </a-form-item>
           <a-form-item label="适用对象">
             <a-input v-model:value="editForm.applicableTeachers" />
@@ -743,12 +759,8 @@ onMounted(async () => {
             <a-switch v-model:checked="editForm.auditRequired" />
           </a-form-item>
           <div class="drawer-actions">
-            <UiButton @click="editMode = false">
-              取消
-            </UiButton>
-            <UiButton variant="primary" :loading="saving" @click="saveDefinition">
-              保存
-            </UiButton>
+            <UiButton @click="editMode = false"> 取消 </UiButton>
+            <UiButton variant="primary" :loading="saving" @click="saveDefinition"> 保存 </UiButton>
           </div>
         </a-form>
       </a-spin>
@@ -772,9 +784,7 @@ onMounted(async () => {
         <a-form-item label="状态">
           <a-select v-model:value="templateForm.status" :options="PF_INDICATOR_STATUS_OPTIONS" />
         </a-form-item>
-        <UiButton variant="primary" :loading="saving" @click="saveTemplateForm">
-          保存
-        </UiButton>
+        <UiButton variant="primary" :loading="saving" @click="saveTemplateForm"> 保存 </UiButton>
       </a-form>
     </a-drawer>
     <a-drawer v-model:open="packDrawerOpen" title="行业包" width="480">
@@ -792,22 +802,58 @@ onMounted(async () => {
           <a-textarea v-model:value="packDefForm.applicableMajorsText" :rows="4" />
         </a-form-item>
         <a-form-item label="权重 · 企业实践">
-          <a-input-number v-model:value="packDefForm.weightEnterprisePractice" :min="0" :max="1" :step="0.01" style="width: 100%" />
+          <a-input-number
+            v-model:value="packDefForm.weightEnterprisePractice"
+            :min="0"
+            :max="1"
+            :step="0.01"
+            style="width: 100%"
+          />
         </a-form-item>
         <a-form-item label="权重 · 职业资格">
-          <a-input-number v-model:value="packDefForm.weightQualification" :min="0" :max="1" :step="0.01" style="width: 100%" />
+          <a-input-number
+            v-model:value="packDefForm.weightQualification"
+            :min="0"
+            :max="1"
+            :step="0.01"
+            style="width: 100%"
+          />
         </a-form-item>
         <a-form-item label="权重 · 行业项目">
-          <a-input-number v-model:value="packDefForm.weightIndustryProject" :min="0" :max="1" :step="0.01" style="width: 100%" />
+          <a-input-number
+            v-model:value="packDefForm.weightIndustryProject"
+            :min="0"
+            :max="1"
+            :step="0.01"
+            style="width: 100%"
+          />
         </a-form-item>
         <a-form-item label="权重 · 教学贡献">
-          <a-input-number v-model:value="packDefForm.weightTeachingContribution" :min="0" :max="1" :step="0.01" style="width: 100%" />
+          <a-input-number
+            v-model:value="packDefForm.weightTeachingContribution"
+            :min="0"
+            :max="1"
+            :step="0.01"
+            style="width: 100%"
+          />
         </a-form-item>
         <a-form-item label="权重 · 社会服务">
-          <a-input-number v-model:value="packDefForm.weightSocialService" :min="0" :max="1" :step="0.01" style="width: 100%" />
+          <a-input-number
+            v-model:value="packDefForm.weightSocialService"
+            :min="0"
+            :max="1"
+            :step="0.01"
+            style="width: 100%"
+          />
         </a-form-item>
         <a-form-item label="权重 · 培训发展">
-          <a-input-number v-model:value="packDefForm.weightTrainingDevelopment" :min="0" :max="1" :step="0.01" style="width: 100%" />
+          <a-input-number
+            v-model:value="packDefForm.weightTrainingDevelopment"
+            :min="0"
+            :max="1"
+            :step="0.01"
+            style="width: 100%"
+          />
         </a-form-item>
         <a-form-item label="必交材料（每行一项）">
           <a-textarea v-model:value="packDefForm.materialRequiredText" :rows="4" />
@@ -818,9 +864,7 @@ onMounted(async () => {
         <a-form-item label="状态">
           <a-select v-model:value="packForm.status" :options="PF_INDICATOR_STATUS_OPTIONS" />
         </a-form-item>
-        <UiButton variant="primary" :loading="saving" @click="savePackForm">
-          保存
-        </UiButton>
+        <UiButton variant="primary" :loading="saving" @click="savePackForm"> 保存 </UiButton>
       </a-form>
     </a-drawer>
   </StageWorkbenchShell>

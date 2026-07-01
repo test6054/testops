@@ -19,10 +19,18 @@
     </div>
     <div v-if="displayedIntegrityResult" class="archive-volume-integrity-panel__result">
       <UiTag
-        :tone="integrityStatusTone(displayedIntegrityResult.integrityStatus ?? detail.volume.integrityStatus)"
+        :tone="
+          integrityStatusTone(
+            displayedIntegrityResult.integrityStatus ?? detail.volume.integrityStatus,
+          )
+        "
         size="sm"
       >
-        {{ integrityStatusLabel(displayedIntegrityResult.integrityStatus ?? detail.volume.integrityStatus) }}
+        {{
+          integrityStatusLabel(
+            displayedIntegrityResult.integrityStatus ?? detail.volume.integrityStatus,
+          )
+        }}
       </UiTag>
       <UiDataTable
         v-if="displayedIntegrityResult.missingItems?.length"
@@ -63,8 +71,15 @@
       <p>可靠性：{{ displayedFourProperty.reliabilityPassed ? '通过' : '未通过' }}</p>
       <p>完整性：{{ displayedFourProperty.integrityPassed ? '通过' : '未通过' }}</p>
       <p>可用性：{{ displayedFourProperty.usabilityPassed ? '通过' : '未通过' }}</p>
-      <p v-if="detail.fourPropertyStale" class="archive-volume-integrity-panel__stale-hint">结论已失效，请重新检测</p>
-      <p v-else-if="!detail.latestFourPropertyCheck" class="archive-volume-integrity-panel__stale-hint">尚未执行四性检测</p>
+      <p v-if="detail.fourPropertyStale" class="archive-volume-integrity-panel__stale-hint">
+        结论已失效，请重新检测
+      </p>
+      <p
+        v-else-if="!detail.latestFourPropertyCheck"
+        class="archive-volume-integrity-panel__stale-hint"
+      >
+        尚未执行四性检测
+      </p>
     </div>
 
     <a-modal
@@ -138,9 +153,6 @@ import type {
   ArchiveMaterialTypeCode,
   ArchiveVolumeDetailVO,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { reactive, ref } from 'vue'
 import {
   allowArchiveMaterialDelay,
   ARCHIVE_INTEGRITY_STATUS_LABEL,
@@ -151,6 +163,9 @@ import {
   waiveArchiveMaterialMissing,
   waiveArchiveVolumeIntegrity,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { reactive, ref } from 'vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -173,7 +188,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "refreshed": []
+  refreshed: []
   'integrity-checked': [result: Awaited<ReturnType<typeof checkArchiveVolumeIntegrity>>]
   'four-property-checked': [result: Awaited<ReturnType<typeof checkArchiveVolumeFourProperty>>]
   'run-integrity-check': []
@@ -230,11 +245,9 @@ async function runFourPropertyCheck() {
     emit('four-property-checked', result)
     message.success('四性检测完成')
     emit('refreshed')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     checkingFourProperty.value = false
   }
 }
@@ -272,11 +285,9 @@ async function submitDelayAllow() {
     emit('refreshed')
     const result = await checkArchiveVolumeIntegrity(props.volumeId)
     emit('integrity-checked', result)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     delayAllowSubmitting.value = false
   }
 }
@@ -306,11 +317,9 @@ async function submitWaiveMissing() {
     emit('refreshed')
     const result = await checkArchiveVolumeIntegrity(props.volumeId)
     emit('integrity-checked', result)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     waiveMissingSubmitting.value = false
   }
 }
@@ -334,11 +343,9 @@ async function submitWaiveIntegrity() {
     message.success('已授权完整性豁免')
     waiveIntegrityOpen.value = false
     emit('refreshed')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     waivingIntegrity.value = false
   }
 }

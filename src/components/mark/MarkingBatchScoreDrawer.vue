@@ -97,18 +97,21 @@ const annotationWarning = ref('')
 
 const selectedTaskIds = ref<string[]>([])
 
-watch(() => props.open, (visible) => {
-  if (!visible) {
-    score.value = undefined
-    annotationText.value = ''
-    annotationWarning.value = ''
-    progressDone.value = 0
-    progressTotal.value = 0
-    progressFailed.value = false
-    return
-  }
-  selectedTaskIds.value = props.selectedTasks.map((task) => task.id)
-})
+watch(
+  () => props.open,
+  (visible) => {
+    if (!visible) {
+      score.value = undefined
+      annotationText.value = ''
+      annotationWarning.value = ''
+      progressDone.value = 0
+      progressTotal.value = 0
+      progressFailed.value = false
+      return
+    }
+    selectedTaskIds.value = props.selectedTasks.map((task) => task.id)
+  },
+)
 
 function createCorrelationId(): string {
   return `batch-${props.questionTemplateId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -118,12 +121,14 @@ function buildQuestionScores() {
   if (score.value === undefined) {
     throw new Error('请填写给分')
   }
-  return [{
-    questionTemplateId: props.questionTemplateId,
-    score: score.value,
-    annotationText: annotationText.value.trim() || undefined,
-    correlationId: createCorrelationId(),
-  }]
+  return [
+    {
+      questionTemplateId: props.questionTemplateId,
+      score: score.value,
+      annotationText: annotationText.value.trim() || undefined,
+      correlationId: createCorrelationId(),
+    },
+  ]
 }
 
 async function confirmExtremeScore(): Promise<boolean> {
@@ -192,18 +197,15 @@ async function handleSubmit(): Promise<void> {
     if (warn?.annotationWarning) {
       annotationWarning.value = warn.annotationWarning
       message.warning(warn.annotationWarning)
-    }
-    else {
+    } else {
       message.success(`已成功提交 ${selectedTaskIds.value.length} 份任务`)
     }
     emit('submitted')
     emit('update:open', false)
-  }
-  catch (error) {
+  } catch (error) {
     progressFailed.value = true
     showUserError(error, '批量提交失败')
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }

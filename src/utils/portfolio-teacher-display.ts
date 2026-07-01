@@ -1,7 +1,4 @@
-import type {
-  PortfolioTeacherDetailVO,
-  PortfolioTeacherSummaryVO,
-} from '@/apis/portfolio/types'
+import type { PortfolioTeacherDetailVO, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 
 /** 教师下拉/检索展示所需的 API 姓名字段子集。 */
 export type PortfolioTeacherNameFields = Pick<

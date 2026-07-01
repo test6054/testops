@@ -31,6 +31,5 @@ export const portfolioEvaluationPublicityApi = {
     http.post<PortfolioEvaluationTeacherResultSummaryVO>(`${BASE}/result/summary`, data),
   advanceTask: (data: PortfolioEvaluationTaskAdvanceRequest) =>
     http.post<PortfolioEvaluationTaskVO>(`${BASE}/task/advance`, data),
-  archiveTask: (id: string) =>
-    http.post<PortfolioEvaluationTaskVO>(`${BASE}/task/archive`, { id }),
+  archiveTask: (id: string) => http.post<PortfolioEvaluationTaskVO>(`${BASE}/task/archive`, { id }),
 }

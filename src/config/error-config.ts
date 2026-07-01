@@ -3,7 +3,7 @@
  * 统一管理项目中的错误处理行为
  */
 
-import {ErrorHandler} from '@/utils/error-handler'
+import { ErrorHandler } from '@/utils/error-handler'
 
 /**
  * 错误处理配置选项

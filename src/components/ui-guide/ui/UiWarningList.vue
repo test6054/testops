@@ -1,6 +1,6 @@
 <template>
   <div class="dp-warning-card">
-    <a-spin :spinning="loading" style="width: 100%;">
+    <a-spin :spinning="loading" style="width: 100%">
       <div
         v-if="items.length"
         ref="scrollContainerRef"
@@ -15,12 +15,7 @@
           class="dp-warning-item"
           @click="handleClick(item)"
         >
-          <GiCellAvatar
-            class="dp-warning-avatar"
-            :name="item.user"
-            :size="36"
-            :show-name="false"
-          />
+          <GiCellAvatar class="dp-warning-avatar" :name="item.user" :size="36" :show-name="false" />
           <div class="dp-warning-content">
             <div class="dp-warning-top">
               <span class="dp-warning-user">{{ item.user }}</span>
@@ -45,22 +40,25 @@
 </template>
 
 <script lang="ts" setup>
-import type {WarningListItem} from './types'
-import {computed, onBeforeUnmount, ref, watch} from 'vue'
+import type { WarningListItem } from './types'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import GiCellAvatar from '@/components/GiCell/GiCellAvatar.vue'
 
-const props = withDefaults(defineProps<{
-  items: WarningListItem[]
-  loading?: boolean
-  emptyText?: string
-  /** 最大可见条数，超过后自动滚动 */
-  maxVisible?: number
-  /** 滚动速度（毫秒/像素） */
-  scrollSpeed?: number
-}>(), {
-  maxVisible: 5,
-  scrollSpeed: 50
-})
+const props = withDefaults(
+  defineProps<{
+    items: WarningListItem[]
+    loading?: boolean
+    emptyText?: string
+    /** 最大可见条数，超过后自动滚动 */
+    maxVisible?: number
+    /** 滚动速度（毫秒/像素） */
+    scrollSpeed?: number
+  }>(),
+  {
+    maxVisible: 5,
+    scrollSpeed: 50,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'item-click', item: WarningListItem): void
@@ -114,11 +112,11 @@ const resumeScroll = () => {
 
 const severityLabel: Partial<Record<NonNullable<WarningListItem['severity']>, string>> = {
   high: '高风险',
-  low: '提醒'
+  low: '提醒',
 }
 
 const getSeverityStyle = (severity?: string) => {
-  const styles: Record<string, { color: string, background: string }> = {
+  const styles: Record<string, { color: string; background: string }> = {
     high: { color: 'var(--ant-color-error)', background: 'var(--ant-color-error-bg)' },
     medium: { color: 'var(--ant-color-warning)', background: 'var(--ant-color-warning-bg)' },
     low: { color: 'var(--ant-color-success)', background: 'var(--ant-color-success-bg)' },
@@ -133,15 +131,19 @@ const handleClick = (item: WarningListItem) => {
 }
 
 // 监听数据变化，重新启动滚动
-watch(() => props.items.length, (newLen) => {
-  stopScroll()
-  if (newLen > props.maxVisible) {
-    // 等待 DOM 更新后再启动滚动
-    setTimeout(() => {
-      startScroll()
-    }, 100)
-  }
-}, {immediate: true})
+watch(
+  () => props.items.length,
+  (newLen) => {
+    stopScroll()
+    if (newLen > props.maxVisible) {
+      // 等待 DOM 更新后再启动滚动
+      setTimeout(() => {
+        startScroll()
+      }, 100)
+    }
+  },
+  { immediate: true },
+)
 
 onBeforeUnmount(() => {
   stopScroll()

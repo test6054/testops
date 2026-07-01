@@ -39,39 +39,54 @@ import UiButton from './Button.vue'
 import UiPopoverPanel from './UiPopoverPanel.vue'
 
 type PopoverTrigger = 'hover' | 'focus' | 'click' | 'contextmenu'
-type PopoverPlacement = 'topLeft' | 'top' | 'topRight' | 'leftTop' | 'left' | 'leftBottom' | 'rightTop' | 'right' | 'rightBottom' | 'bottomLeft' | 'bottom' | 'bottomRight'
+type PopoverPlacement =
+  | 'topLeft'
+  | 'top'
+  | 'topRight'
+  | 'leftTop'
+  | 'left'
+  | 'leftBottom'
+  | 'rightTop'
+  | 'right'
+  | 'rightBottom'
+  | 'bottomLeft'
+  | 'bottom'
+  | 'bottomRight'
 
 defineOptions({
   name: 'UiConfirmPopover',
 })
 
-const props = withDefaults(defineProps<{
-  open?: boolean
-  title?: string
-  description?: string
-  confirmText?: string
-  cancelText?: string
-  confirmLoading?: boolean
-  danger?: boolean
-  disabled?: boolean
-  trigger?: PopoverTrigger[]
-  placement?: PopoverPlacement
-  maxWidth?: string | number
-  autoCloseOnConfirm?: boolean
-}>(), {
-  open: undefined,
-  title: '请确认操作',
-  description: '',
-  confirmText: '确认',
-  cancelText: '取消',
-  confirmLoading: false,
-  danger: false,
-  disabled: false,
-  trigger: () => ['click'],
-  placement: 'top',
-  maxWidth: 320,
-  autoCloseOnConfirm: true,
-})
+const props = withDefaults(
+  defineProps<{
+    open?: boolean
+    title?: string
+    description?: string
+    confirmText?: string
+    cancelText?: string
+    confirmLoading?: boolean
+    danger?: boolean
+    disabled?: boolean
+    trigger?: PopoverTrigger[]
+    placement?: PopoverPlacement
+    maxWidth?: string | number
+    autoCloseOnConfirm?: boolean
+  }>(),
+  {
+    open: undefined,
+    title: '请确认操作',
+    description: '',
+    confirmText: '确认',
+    cancelText: '取消',
+    confirmLoading: false,
+    danger: false,
+    disabled: false,
+    trigger: () => ['click'],
+    placement: 'top',
+    maxWidth: 320,
+    autoCloseOnConfirm: true,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
@@ -86,8 +101,7 @@ const mergedOpen = computed(() => {
 })
 
 const setOpen = (value: boolean) => {
-  if (props.open === undefined)
-    uncontrolledOpen.value = value
+  if (props.open === undefined) uncontrolledOpen.value = value
 
   emit('update:open', value)
 }
@@ -100,8 +114,7 @@ const handleCancel = () => {
 const handleConfirm = () => {
   emit('confirm')
 
-  if (props.autoCloseOnConfirm && !props.confirmLoading)
-    setOpen(false)
+  if (props.autoCloseOnConfirm && !props.confirmLoading) setOpen(false)
 }
 </script>
 

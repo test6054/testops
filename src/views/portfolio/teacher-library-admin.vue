@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioTeacherLibraryBorrowStatsVO, PortfolioTeacherLibraryBorrowVO } from '@/apis/portfolio/teacher-platform'
+import type {
+  PortfolioTeacherLibraryBorrowStatsVO,
+  PortfolioTeacherLibraryBorrowVO,
+} from '@/apis/portfolio/teacher-platform'
+import { portfolioTeacherLibraryApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
-import { portfolioTeacherLibraryApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -23,7 +26,8 @@ const form = reactive({
   bookTitle: '',
   bookIsbn: '',
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
 
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
@@ -39,13 +43,11 @@ async function loadPage() {
   try {
     const page = await portfolioTeacherLibraryApi.page({ pageNum: 1, pageSize: 50 })
     rows.value = readPageList(page, '加载借阅记录失败')
-    await hydrateTeacherLabels(rows.value.map(row => row.teacherUserId ?? ''))
+    await hydrateTeacherLabels(rows.value.map((row) => row.teacherUserId ?? ''))
     stats.value = await portfolioTeacherLibraryApi.stats()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -67,8 +69,7 @@ async function saveBorrow() {
     form.bookTitle = ''
     form.bookIsbn = ''
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -78,8 +79,7 @@ async function exportCsv() {
     const result = await portfolioTeacherLibraryApi.export()
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -109,15 +109,17 @@ onMounted(loadPage)
         />
         <a-input v-model:value="form.bookTitle" placeholder="书名" style="width: 200px" />
         <a-input v-model:value="form.bookIsbn" placeholder="ISBN" style="width: 140px" />
-        <UiButton variant="primary" @click="saveBorrow">
-          登记借阅
-        </UiButton>
-        <UiButton @click="exportCsv">
-          导出
-        </UiButton>
+        <UiButton variant="primary" @click="saveBorrow"> 登记借阅 </UiButton>
+        <UiButton @click="exportCsv"> 导出 </UiButton>
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无教师库条目" />
-      <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
+      <UiDataTable
+        :columns="columns"
+        :data-source="rows"
+        :loading="loading"
+        row-key="id"
+        style="margin-top: 16px"
+      >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
             {{ teacherLabel(record.teacherUserId) }}

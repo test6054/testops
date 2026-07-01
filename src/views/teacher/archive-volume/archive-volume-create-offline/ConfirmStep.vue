@@ -97,9 +97,7 @@ const scoreSourceText = computed(() => ARCHIVE_SCORE_SOURCE_LABEL[configForm.sco
 const securityLevelText = computed(() => ARCHIVE_SECURITY_LEVEL_LABEL[configForm.securityLevel])
 
 const retentionText = computed(() =>
-  configForm.permanentRetention
-    ? '永久保管'
-    : `${configForm.retentionYears} 年`,
+  configForm.permanentRetention ? '永久保管' : `${configForm.retentionYears} 年`,
 )
 </script>
 

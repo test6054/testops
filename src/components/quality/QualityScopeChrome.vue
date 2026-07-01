@@ -36,10 +36,10 @@ const trainingPlanId = computed(() => qualityStore.currentTrainingPlanId || null
 const showProgram = computed(() => scopeProfile.value !== 'none')
 const showPlan = computed(
   () =>
-    scopeProfile.value === 'plan'
-    || scopeProfile.value === 'plan-period'
-    || scopeProfile.value === 'plan-course'
-    || scopeProfile.value === 'accreditation',
+    scopeProfile.value === 'plan' ||
+    scopeProfile.value === 'plan-period' ||
+    scopeProfile.value === 'plan-course' ||
+    scopeProfile.value === 'accreditation',
 )
 const showPeriod = computed(
   () => scopeProfile.value === 'plan-period' || scopeProfile.value === 'plan-course',
@@ -103,7 +103,7 @@ function handleSchoolYearChange(value: string): void {
 }
 
 function handleSemesterChange(value: SemesterCode | undefined): void {
-  qualityStore.setSchoolPeriod(undefined, value ?? '')
+  qualityStore.setSchoolPeriod(undefined, value ?? null)
   emit('change')
 }
 

@@ -7,18 +7,21 @@ import { wizardStepNumberFromKey } from '@/composables/useArchiveSubmitTaskRoute
 
 defineOptions({ name: 'ArchiveVolumeWizardShell' })
 
-const props = withDefaults(defineProps<{
-  currentStep: ArchiveVolumeWizardStepKey
-  readonly?: boolean
-}>(), {
-  readonly: false,
-})
+const props = withDefaults(
+  defineProps<{
+    currentStep: ArchiveVolumeWizardStepKey
+    readonly?: boolean
+  }>(),
+  {
+    readonly: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:current-step': [step: ArchiveVolumeWizardStepKey]
 }>()
 
-const WIZARD_STEPS: Array<{ key: ArchiveVolumeWizardStepKey, title: string }> = [
+const WIZARD_STEPS: Array<{ key: ArchiveVolumeWizardStepKey; title: string }> = [
   { key: 'materials', title: '材料收齐' },
   { key: 'integrity', title: '自检与四性' },
   { key: 'catalog', title: '编制目录' },
@@ -27,7 +30,7 @@ const WIZARD_STEPS: Array<{ key: ArchiveVolumeWizardStepKey, title: string }> = 
 ]
 
 const currentIndex = computed(() =>
-  WIZARD_STEPS.findIndex(step => step.key === props.currentStep),
+  WIZARD_STEPS.findIndex((step) => step.key === props.currentStep),
 )
 
 const stepItems = computed<UiStepItem[]>(() => {
@@ -35,11 +38,7 @@ const stepItems = computed<UiStepItem[]>(() => {
   return WIZARD_STEPS.map((step, index) => ({
     key: step.key,
     title: step.title,
-    status: index < activeIndex
-      ? 'completed'
-      : index === activeIndex
-        ? 'running'
-        : 'pending',
+    status: index < activeIndex ? 'completed' : index === activeIndex ? 'running' : 'pending',
   }))
 })
 

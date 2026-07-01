@@ -1,10 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        show-title
-        title="归档审计事件"
-      />
+      <ContextBar show-title title="归档审计事件" />
     </template>
 
     <UiFilterBar
@@ -58,13 +55,10 @@ import type {
   ArchiveVolumeAuditEventVO,
   ArchiveVolumeEventTypeCode,
 } from '@/apis/mark/archive-volume'
+import { ARCHIVE_VOLUME_EVENT_TYPE_LABEL, pageArchiveAuditEvents } from '@/apis/mark/archive-volume'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  ARCHIVE_VOLUME_EVENT_TYPE_LABEL,
-  pageArchiveAuditEvents,
-} from '@/apis/mark/archive-volume'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -98,7 +92,13 @@ const eventTypeOptions = Object.entries(ARCHIVE_VOLUME_EVENT_TYPE_LABEL).map(([v
 
 const filterFields: FilterField[] = [
   { key: 'volumeId', label: '卷ID', type: 'input', placeholder: '归档卷 ID' },
-  { key: 'eventType', label: '事件类型', type: 'select', options: eventTypeOptions, allowClear: true },
+  {
+    key: 'eventType',
+    label: '事件类型',
+    type: 'select',
+    options: eventTypeOptions,
+    allowClear: true,
+  },
 ]
 
 const columns: ColumnsType<ArchiveVolumeAuditEventVO> = [
@@ -127,11 +127,9 @@ async function loadEvents() {
     })
     events.value = readPageList(result, '审计事件列表异常')
     pagination.total = readPageTotal(result)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载审计事件失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }

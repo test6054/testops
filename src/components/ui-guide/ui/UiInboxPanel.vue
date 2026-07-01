@@ -48,33 +48,36 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  total?: string | number
-  countTone?: BadgeTone
-  compact?: boolean
-  bodyScrollable?: boolean
-  bodyMaxHeight?: string | number
-  readAllText?: string
-  viewMoreText?: string
-  showReadAll?: boolean
-  showViewMore?: boolean
-}>(), {
-  title: '收件箱',
-  description: '',
-  eyebrow: '',
-  total: undefined,
-  countTone: 'blue',
-  compact: false,
-  bodyScrollable: false,
-  bodyMaxHeight: '',
-  readAllText: '全部已读',
-  viewMoreText: '查看更多',
-  showReadAll: true,
-  showViewMore: true,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    total?: string | number
+    countTone?: BadgeTone
+    compact?: boolean
+    bodyScrollable?: boolean
+    bodyMaxHeight?: string | number
+    readAllText?: string
+    viewMoreText?: string
+    showReadAll?: boolean
+    showViewMore?: boolean
+  }>(),
+  {
+    title: '收件箱',
+    description: '',
+    eyebrow: '',
+    total: undefined,
+    countTone: 'blue',
+    compact: false,
+    bodyScrollable: false,
+    bodyMaxHeight: '',
+    readAllText: '全部已读',
+    viewMoreText: '查看更多',
+    showReadAll: true,
+    showViewMore: true,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'read-all'): void

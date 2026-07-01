@@ -34,7 +34,10 @@
             class="ui-page-hero__stat"
           >
             <div class="ui-page-hero__stat-label">{{ item.label }}</div>
-            <div class="ui-page-hero__stat-value" :class="`ui-page-hero__stat-value--${item.tone || 'blue'}`">
+            <div
+              class="ui-page-hero__stat-value"
+              :class="`ui-page-hero__stat-value--${item.tone || 'blue'}`"
+            >
               {{ item.value }}
             </div>
             <div v-if="item.helper" class="ui-page-hero__stat-helper">{{ item.helper }}</div>
@@ -64,22 +67,25 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title: string
-  subtitle?: string
-  description?: string
-  eyebrow?: string
-  stats?: UiHeroStatItem[]
-  compact?: boolean
-  divided?: boolean
-}>(), {
-  subtitle: '',
-  description: '',
-  eyebrow: '',
-  stats: () => [],
-  compact: false,
-  divided: false,
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    subtitle?: string
+    description?: string
+    eyebrow?: string
+    stats?: UiHeroStatItem[]
+    compact?: boolean
+    divided?: boolean
+  }>(),
+  {
+    subtitle: '',
+    description: '',
+    eyebrow: '',
+    stats: () => [],
+    compact: false,
+    divided: false,
+  },
+)
 
 const slots = useSlots()
 

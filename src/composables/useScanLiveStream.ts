@@ -2,29 +2,19 @@
  * 扫描实时看板 composable：管理 SSE 订阅、断线补差、滚动缓冲区，并按需托管页级账本补差。
  */
 import type { Ref } from 'vue'
-import type { ScanLiveEventVO, ScanLiveSubscribeFilter } from '@/apis/mark/scan-live'
-import type {
-  ExamScannerPageLedgerRequest,
-  ExamScannerPageLedgerVO,
-} from '@/apis/mark/scanner-kiosk'
 import { computed, ref } from 'vue'
-import {
-  listRecentScanEvents,
-  ScanLiveFatalAuthError,
-  subscribeScanLive,
-} from '@/apis/mark/scan-live'
+import type { ScanLiveEventVO, ScanLiveSubscribeFilter } from '@/apis/mark/scan-live'
+import { listRecentScanEvents, ScanLiveFatalAuthError, subscribeScanLive } from '@/apis/mark/scan-live'
+import type { ExamScannerPageLedgerRequest, ExamScannerPageLedgerVO } from '@/apis/mark/scanner-kiosk'
 import { fetchScannerPageLedger } from '@/apis/mark/scanner-kiosk'
 import { useAuthStore } from '@/stores/modules/auth'
 import { toUserError } from '@/utils/error-handler'
-import {
-  hasMarkScannerStationAuth,
-  resolveMarkScannerStationAuthHeaders,
-} from '@/utils/kiosk-auth'
+import { hasMarkScannerStationAuth, resolveMarkScannerStationAuthHeaders } from '@/utils/kiosk-auth'
 import mittBus from '@/utils/mitt'
 import {
   applyLedgerResponse,
   fetchPagedHistoryLedgerSnapshot,
-  resolveLedgerMaxPageUpdateTime,
+  resolveLedgerMaxPageUpdateTime
 } from '@/views/scanner-kiosk/composables/ledgerMerge'
 
 /** SSE 连接阶段：重连中不向外抛 toast 级错误 */

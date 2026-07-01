@@ -38,10 +38,7 @@
           <span v-if="item.unit" class="ui-statistic-summary-grid__unit">{{ item.unit }}</span>
         </div>
 
-        <div
-          v-if="item.helper || item.trend"
-          class="ui-statistic-summary-grid__footer"
-        >
+        <div v-if="item.helper || item.trend" class="ui-statistic-summary-grid__footer">
           <span v-if="item.helper" class="ui-statistic-summary-grid__helper">
             {{ item.helper }}
           </span>
@@ -68,21 +65,24 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  items?: UiStatisticSummaryItem[]
-  columns?: 2 | 3 | 4
-  compact?: boolean
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  items: () => [],
-  columns: 4,
-  compact: false,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    items?: UiStatisticSummaryItem[]
+    columns?: 2 | 3 | 4
+    compact?: boolean
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    items: () => [],
+    columns: 4,
+    compact: false,
+  },
+)
 
 const slots = useSlots()
 
@@ -157,13 +157,27 @@ const hasHeader = computed(() => {
   border-radius: 999px;
 }
 
-.ui-statistic-summary-grid__dot--gray { background: #94a3b8; }
-.ui-statistic-summary-grid__dot--blue { background: #2563eb; }
-.ui-statistic-summary-grid__dot--orange { background: #ea580c; }
-.ui-statistic-summary-grid__dot--green { background: #16a34a; }
-.ui-statistic-summary-grid__dot--yellow { background: #ca8a04; }
-.ui-statistic-summary-grid__dot--red { background: #dc2626; }
-.ui-statistic-summary-grid__dot--purple { background: var(--dp-purple-500, #722ed1); }
+.ui-statistic-summary-grid__dot--gray {
+  background: #94a3b8;
+}
+.ui-statistic-summary-grid__dot--blue {
+  background: #2563eb;
+}
+.ui-statistic-summary-grid__dot--orange {
+  background: #ea580c;
+}
+.ui-statistic-summary-grid__dot--green {
+  background: #16a34a;
+}
+.ui-statistic-summary-grid__dot--yellow {
+  background: #ca8a04;
+}
+.ui-statistic-summary-grid__dot--red {
+  background: #dc2626;
+}
+.ui-statistic-summary-grid__dot--purple {
+  background: var(--dp-purple-500, #722ed1);
+}
 
 .ui-statistic-summary-grid__value-row {
   display: flex;
@@ -195,13 +209,27 @@ const hasHeader = computed(() => {
   color: var(--dp-text-secondary, #475569);
 }
 
-.ui-statistic-summary-grid__trend--gray { color: #64748b; }
-.ui-statistic-summary-grid__trend--blue { color: #1d4ed8; }
-.ui-statistic-summary-grid__trend--orange { color: #c2410c; }
-.ui-statistic-summary-grid__trend--green { color: #15803d; }
-.ui-statistic-summary-grid__trend--yellow { color: #a16207; }
-.ui-statistic-summary-grid__trend--red { color: #b91c1c; }
-.ui-statistic-summary-grid__trend--purple { color: #6d28d9; }
+.ui-statistic-summary-grid__trend--gray {
+  color: #64748b;
+}
+.ui-statistic-summary-grid__trend--blue {
+  color: #1d4ed8;
+}
+.ui-statistic-summary-grid__trend--orange {
+  color: #c2410c;
+}
+.ui-statistic-summary-grid__trend--green {
+  color: #15803d;
+}
+.ui-statistic-summary-grid__trend--yellow {
+  color: #a16207;
+}
+.ui-statistic-summary-grid__trend--red {
+  color: #b91c1c;
+}
+.ui-statistic-summary-grid__trend--purple {
+  color: #6d28d9;
+}
 
 @media (max-width: 1200px) {
   .ui-statistic-summary-grid__list {

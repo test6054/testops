@@ -16,14 +16,17 @@ defineOptions({ name: 'AiEditor' })
 
 const modelValue = defineModel<string>({ required: true })
 
-const props = withDefaults(defineProps<{
-  editable?: boolean
-  placeholder?: string
-  options?: Partial<AiEditorOptions>
-}>(), {
-  editable: true,
-  placeholder: '请输入内容',
-})
+const props = withDefaults(
+  defineProps<{
+    editable?: boolean
+    placeholder?: string
+    options?: Partial<AiEditorOptions>
+  }>(),
+  {
+    editable: true,
+    placeholder: '请输入内容',
+  },
+)
 
 function readUploadSrc(response: unknown): string {
   if (typeof response !== 'object' || response === null || !('data' in response)) {

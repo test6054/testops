@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { KioskUiState } from './composables/kioskInjection'
+import { KIOSK_CTX_KEY } from './composables/kioskInjection'
 /**
  * 扫描一体机工作站 - 持久 Layout（路由父级）
  *
@@ -26,7 +27,6 @@ import KioskShortcutHintOverlay from './components/KioskShortcutHintOverlay.vue'
 import KioskSideRail from './components/KioskSideRail.vue'
 import KioskStageBar from './components/KioskStageBar.vue'
 import KioskWorkbenchTabs from './components/KioskWorkbenchTabs.vue'
-import { KIOSK_CTX_KEY } from './composables/kioskInjection'
 import { useKioskMutex } from './composables/useKioskMutex'
 import { useKioskShortcuts } from './composables/useKioskShortcuts'
 import { useKioskWorkflow } from './composables/useKioskWorkflow'
@@ -84,11 +84,11 @@ provide(KIOSK_CTX_KEY, ctx)
 useKioskShortcuts(ctx)
 
 const showBottomBar = computed(() => stage.currentStage.value === 'scanning')
-const showWorkbenchChrome = computed(() =>
-  stage.currentStage.value === 'setup' || stage.currentStage.value === 'history',
+const showWorkbenchChrome = computed(
+  () => stage.currentStage.value === 'setup' || stage.currentStage.value === 'history',
 )
-const showStageBar = computed(() =>
-  stage.currentStage.value === 'scanning' || stage.currentStage.value === 'review',
+const showStageBar = computed(
+  () => stage.currentStage.value === 'scanning' || stage.currentStage.value === 'review',
 )
 const showSideRail = computed(() => showStageBar.value)
 

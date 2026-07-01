@@ -8,13 +8,13 @@ import type {
   OnsiteVisitPlanSaveRequest,
   OnsiteVisitPlanVO,
 } from '@/apis/quality/accreditation'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   accreditationApi,
   ONSITE_CHECKLIST_CATEGORY_LABEL,
   ONSITE_CHECKLIST_STATUS_LABEL,
 } from '@/apis/quality/accreditation'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ArchiveSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -50,7 +50,7 @@ const checklistColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 100 },
 ]
 
-const CATEGORY_TABS: { key: '' | OnsiteChecklistCategory, label: string }[] = [
+const CATEGORY_TABS: { key: '' | OnsiteChecklistCategory; label: string }[] = [
   { key: '', label: '全部' },
   { key: 'FACILITY', label: '设施' },
   { key: 'PAPER_SAMPLE', label: '样本' },
@@ -71,8 +71,8 @@ const checklistCategoryFilter = ref<'' | OnsiteChecklistCategory>('')
 
 const canMutateOnsitePlan = computed(
   () =>
-    props.activeCycle?.cycleStatus === 'ACTIVE'
-    && props.activeCycle?.currentPhase === 'ONSITE_VISIT',
+    props.activeCycle?.cycleStatus === 'ACTIVE' &&
+    props.activeCycle?.currentPhase === 'ONSITE_VISIT',
 )
 
 const canCreatePlan = computed(() => canMutateOnsitePlan.value && !!props.activeCycleId)
@@ -295,8 +295,8 @@ defineExpose({ openCreate, loadPlans })
             :percent="
               record.totalChecklistCount
                 ? Math.round(
-                  ((record.completedChecklistCount ?? 0) / record.totalChecklistCount) * 100,
-                )
+                    ((record.completedChecklistCount ?? 0) / record.totalChecklistCount) * 100,
+                  )
                 : 0
             "
             size="small"
@@ -307,7 +307,12 @@ defineExpose({ openCreate, loadPlans })
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiButton size="sm" variant="ghost" @click="selectPlan(record.id)">清单</UiButton>
-          <UiButton size="sm" variant="outline" :disabled="!canMutateOnsitePlan" @click="openEdit(record)">
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="!canMutateOnsitePlan"
+            @click="openEdit(record)"
+          >
             编辑
           </UiButton>
           <UiButton

@@ -6,16 +6,19 @@
 
 <script lang="ts" setup>
 import type { StatusVariant } from '@/utils/status-style'
-import { computed } from 'vue'
 import { STATUS_VARIANT_STYLES } from '@/utils/status-style'
+import { computed } from 'vue'
 
-const props = withDefaults(defineProps<{
-  label?: string
-  variant?: StatusVariant
-}>(), {
-  label: '',
-  variant: 'neutral',
-})
+const props = withDefaults(
+  defineProps<{
+    label?: string
+    variant?: StatusVariant
+  }>(),
+  {
+    label: '',
+    variant: 'neutral',
+  },
+)
 
 const badgeStyle = computed(() => {
   const style = STATUS_VARIANT_STYLES[props.variant] || STATUS_VARIANT_STYLES.neutral

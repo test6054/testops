@@ -27,15 +27,18 @@ defineOptions({
   name: 'UiSegmentSteps',
 })
 
-const props = withDefaults(defineProps<{
-  steps?: UiStepItem[]
-  current?: number
-  clickable?: boolean
-}>(), {
-  steps: () => [],
-  current: 0,
-  clickable: false,
-})
+const props = withDefaults(
+  defineProps<{
+    steps?: UiStepItem[]
+    current?: number
+    clickable?: boolean
+  }>(),
+  {
+    steps: () => [],
+    current: 0,
+    clickable: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'change', index: number, step: UiStepItem): void
@@ -45,7 +48,9 @@ const normalizedSteps = computed(() => {
   return props.steps.map((step, index) => ({
     ...step,
     key: step.key || `step-${index}`,
-    status: step.status || (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
+    status:
+      step.status ||
+      (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
   }))
 })
 
@@ -103,8 +108,13 @@ function handleClick(step: UiStepItem, index: number) {
 }
 
 @keyframes segment-pulse {
-  0%, 100% { background-position: 0% 0%; }
-  50% { background-position: 100% 0%; }
+  0%,
+  100% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 0%;
+  }
 }
 
 .ui-segment-steps__item--running .ui-segment-steps__title {

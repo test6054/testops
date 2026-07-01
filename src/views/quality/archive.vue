@@ -1,26 +1,26 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AccreditationCockpitVO, AccreditationCycleVO } from '@/apis/quality/accreditation'
+import { accreditationApi } from '@/apis/quality/accreditation'
 import type {
   ArchiveQueryRequest,
   ArchiveSaveRequest,
   ArchiveVO,
   ExpertPackageExportRequest,
 } from '@/apis/quality/archive'
+import { archiveApi } from '@/apis/quality/archive'
 import type { ArchiveBusinessType } from '@/apis/quality/types'
+import {
+  ARCHIVE_BUSINESS_TYPE_CODES,
+  ARCHIVE_BUSINESS_TYPE_LABEL,
+  EXPERT_PACKAGE_TYPE_LABEL,
+} from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { accreditationApi } from '@/apis/quality/accreditation'
-import { archiveApi } from '@/apis/quality/archive'
-import {
-  ARCHIVE_BUSINESS_TYPE_CODES,
-  ARCHIVE_BUSINESS_TYPE_LABEL,
-  EXPERT_PACKAGE_TYPE_LABEL,
-} from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
@@ -120,7 +120,7 @@ const filterModel = ref<ArchiveFilterModel>({
 })
 
 const annualBusinessTypeOptions = businessTypeOptions.filter(
-  item => item.value !== 'EXPERT_PACKAGE',
+  (item) => item.value !== 'EXPERT_PACKAGE',
 )
 
 const filterFields = computed((): FilterField[] => {
@@ -284,7 +284,7 @@ async function handleScopeChange(): Promise<void> {
 
 useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false })
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -295,8 +295,7 @@ function syncFilterToQuery() {
     query.businessType = 'EXPERT_PACKAGE'
     query.excludeBusinessType = undefined
     filterModel.value.businessType = undefined
-  }
-  else {
+  } else {
     query.excludeBusinessType = 'EXPERT_PACKAGE'
     query.businessType = filterModel.value.businessType || undefined
   }
@@ -537,7 +536,6 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
-
 const columns: ColumnsType = [
   { title: '归档编码', dataIndex: 'archiveCode', key: 'archiveCode' },
   { title: '业务类型', dataIndex: 'businessType', key: 'businessType', width: 160 },
@@ -641,7 +639,12 @@ onMounted(async () => {
     <a-tabs
       :active-key="archiveListTab"
       class="archive-page__tabs"
-      @change="(key: string | number) => { applyArchiveListTab(String(key) as ArchiveListTab); void loadList() }"
+      @change="
+        (key: string | number) => {
+          applyArchiveListTab(String(key) as ArchiveListTab)
+          void loadList()
+        }
+      "
     >
       <a-tab-pane key="expert" tab="专家材料包" />
       <a-tab-pane key="annual" tab="年度归档记录" />
@@ -714,7 +717,12 @@ onMounted(async () => {
                 下载
               </UiTextAction>
               <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
-              <UiTextAction v-if="isArchiveDestroyable(record)" tone="danger" @click="handleDelete(record)">删除</UiTextAction>
+              <UiTextAction
+                v-if="isArchiveDestroyable(record)"
+                tone="danger"
+                @click="handleDelete(record)"
+                >删除</UiTextAction
+              >
               <span v-else class="archive-page__locked-hint">保管期内</span>
               <UiTextAction @click="openAuditDrawer(record)">审计</UiTextAction>
             </div>
@@ -777,7 +785,9 @@ onMounted(async () => {
             {{
               exportReadinessLoading
                 ? '正在校验专业认证导出就绪条件…'
-                : (canSubmitProgramExport ? '已满足专业认证专家材料包导出条件' : '尚未满足专业认证专家材料包导出条件')
+                : canSubmitProgramExport
+                  ? '已满足专业认证专家材料包导出条件'
+                  : '尚未满足专业认证专家材料包导出条件'
             }}
           </p>
           <ul
@@ -828,12 +838,20 @@ onMounted(async () => {
         <a-row :gutter="12">
           <a-col :span="12">
             <a-form-item label="归档编码" required>
-              <a-input v-model:value="editor.archiveCode" placeholder="例：EP-REQ-1-2026" :disabled="editorMode === 'edit'" />
+              <a-input
+                v-model:value="editor.archiveCode"
+                placeholder="例：EP-REQ-1-2026"
+                :disabled="editorMode === 'edit'"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="业务类型" required>
-              <a-select v-model:value="editor.businessType" :options="businessTypeOptions" :disabled="editorMode === 'edit'" />
+              <a-select
+                v-model:value="editor.businessType"
+                :options="businessTypeOptions"
+                :disabled="editorMode === 'edit'"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -970,10 +988,7 @@ onMounted(async () => {
           {{ detailRecord.businessLabel }}
         </a-descriptions-item>
         <a-descriptions-item label="归档文件">
-          <UiTextAction
-            v-if="detailRecord.fileId"
-            @click="downloadArchiveFile(detailRecord)"
-          >
+          <UiTextAction v-if="detailRecord.fileId" @click="downloadArchiveFile(detailRecord)">
             {{ detailRecord.fileName }}
           </UiTextAction>
         </a-descriptions-item>

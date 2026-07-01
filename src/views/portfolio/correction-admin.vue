@@ -5,13 +5,13 @@ import type {
   PortfolioCorrectionRequestStatus,
   PortfolioCorrectionSummaryVO,
 } from '@/apis/portfolio/types'
-import { Input, message } from 'ant-design-vue'
-import { reactive, ref } from 'vue'
-import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
 import {
   PORTFOLIO_CORRECTION_REQUEST_STATUS_LABEL,
   PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
 } from '@/apis/portfolio/types'
+import { Input, message } from 'ant-design-vue'
+import { reactive, ref } from 'vue'
+import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -60,16 +60,18 @@ async function loadPage() {
     })
     rows.value = readPageList(page, '加载纠错工单失败')
     pageTotal.value = readPageTotal(page)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载纠错工单失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
-async function handleRow(row: PortfolioCorrectionSummaryVO, action: PortfolioCorrectionHandleAction, handleOpinion?: string) {
+async function handleRow(
+  row: PortfolioCorrectionSummaryVO,
+  action: PortfolioCorrectionHandleAction,
+  handleOpinion?: string,
+) {
   handlingId.value = row.id
   try {
     await portfolioCorrectionApi.handleCorrection({
@@ -82,11 +84,9 @@ async function handleRow(row: PortfolioCorrectionSummaryVO, action: PortfolioCor
     rejectTarget.value = null
     rejectForm.handleOpinion = ''
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '处理纠错失败')
-  }
-  finally {
+  } finally {
     handlingId.value = ''
   }
 }
@@ -116,9 +116,7 @@ void loadPage()
   <StageWorkbenchShell>
     <ContextBar title="纠错处理" description="管理端受理与流转纠错工单">
       <template #actions>
-        <UiButton :loading="loading" @click="() => void loadPage()">
-          刷新
-        </UiButton>
+        <UiButton :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
       </template>
     </ContextBar>
 
@@ -191,7 +189,10 @@ void loadPage()
                 标记待验证
               </button>
               <button
-                v-if="record.requestStatus === 'PENDING_VERIFY' || record.requestStatus === 'ARCHIVE_CORRECTING'"
+                v-if="
+                  record.requestStatus === 'PENDING_VERIFY' ||
+                  record.requestStatus === 'ARCHIVE_CORRECTING'
+                "
                 type="button"
                 class="op-link op-link--primary"
                 :disabled="handlingId === record.id"
@@ -206,11 +207,7 @@ void loadPage()
       <UiEmpty v-else description="暂无纠错工单" />
     </UiCard>
 
-    <UiDrawer
-      v-model:open="rejectDrawerOpen"
-      title="驳回纠错"
-      width="420"
-    >
+    <UiDrawer v-model:open="rejectDrawerOpen" title="驳回纠错" width="420">
       <p v-if="rejectTarget" class="correction-admin__reject-meta">
         {{ rejectTarget.teacherName }} · {{ rejectTarget.fieldLabel ?? rejectTarget.fieldCode }}
       </p>
@@ -220,14 +217,8 @@ void loadPage()
         placeholder="请填写驳回意见"
       />
       <template #footer>
-        <UiButton variant="ghost" @click="rejectDrawerOpen = false">
-          取消
-        </UiButton>
-        <UiButton
-          variant="primary"
-          :loading="!!handlingId"
-          @click="() => void submitReject()"
-        >
+        <UiButton variant="ghost" @click="rejectDrawerOpen = false"> 取消 </UiButton>
+        <UiButton variant="primary" :loading="!!handlingId" @click="() => void submitReject()">
           确认驳回
         </UiButton>
       </template>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { EChartsCoreOption } from 'echarts/core'
 import type { PortfolioDevelopmentPlanCompletionVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import type {
   PortfolioPortraitDimension,
   PortfolioTeacherPortraitCohortCompareVO,
@@ -8,11 +9,6 @@ import type {
   PortfolioTeacherPortraitTrendVO,
   PortfolioTeacherPortraitVO,
 } from '@/apis/portfolio/types'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import {
   PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
@@ -20,6 +16,10 @@ import {
   PORTFOLIO_PORTRAIT_DIMENSION_READINESS_TONE,
   PORTFOLIO_PORTRAIT_INDICATOR_EVIDENCE_TYPE_LABEL,
 } from '@/apis/portfolio/types'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
 import UiAlert from '@/components/ui-guide/ui/Alert.vue'
@@ -31,7 +31,10 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
+import {
+  usePortfolioPageScope,
+  usePortfolioScopedLoader,
+} from '@/composables/usePortfolioPageScope'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
 import {
@@ -63,7 +66,13 @@ const compositeItems = computed((): SignalMetric[] => {
   }
   const row = portrait.value
   return [
-    { key: 'composite', label: '综合画像分', value: String(row.compositeScore), unit: '分', tone: 'blue' },
+    {
+      key: 'composite',
+      label: '综合画像分',
+      value: String(row.compositeScore),
+      unit: '分',
+      tone: 'blue',
+    },
     { key: 'core', label: '发展核心', value: String(row.developmentCoreScore), unit: '分' },
     { key: 'teaching', label: '教学能力', value: String(row.teachingScore), unit: '分' },
     { key: 'research', label: '科研教研', value: String(row.researchScore), unit: '分' },
@@ -76,14 +85,18 @@ const portraitDataInsufficient = computed(() => {
   if (!portrait.value) {
     return false
   }
-  return portrait.value.dimensions.every(item => item.readiness === 'PENDING')
+  return portrait.value.dimensions.every((item) => item.readiness === 'PENDING')
 })
 
 const cohortHint = computed(() => {
   if (!cohort.value) {
     return ''
   }
-  return resolveCohortHint(cohort.value.displayMode, cohort.value.sampleSize, cohort.value.cohortLabel)
+  return resolveCohortHint(
+    cohort.value.displayMode,
+    cohort.value.sampleSize,
+    cohort.value.cohortLabel,
+  )
 })
 
 const radarOption = computed((): EChartsCoreOption => {
@@ -111,8 +124,7 @@ function buildPortraitRequest() {
 async function loadPlanCompletion() {
   try {
     planCompletion.value = await portfolioDevelopmentPlanApi.completionAnalysis({ planYear })
-  }
-  catch {
+  } catch {
     planCompletion.value = null
   }
 }
@@ -129,15 +141,13 @@ async function loadSecondaryPortraitData() {
   ])
   if (cohortSettled.status === 'fulfilled') {
     cohort.value = cohortSettled.value
-  }
-  else {
+  } else {
     cohort.value = null
     showUserError(cohortSettled.reason, '加载同群体对比失败')
   }
   if (trendSettled.status === 'fulfilled') {
     trend.value = trendSettled.value
-  }
-  else {
+  } else {
     trend.value = null
     showUserError(trendSettled.reason, '加载历史趋势失败')
   }
@@ -162,16 +172,13 @@ async function loadPortraitBundle() {
     const request = buildPortraitRequest()
     portrait.value = await portfolioAnalysisApi.getPortrait(request)
     await loadSecondaryPortraitData()
-  }
-  catch (error) {
+  } catch (error) {
     if (readBusinessResultCode(error) === ResultCode.DATA_NOT_FOUND) {
       portraitAbsent.value = true
-    }
-    else {
+    } else {
       showUserError(error, '加载教师画像失败')
     }
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -185,12 +192,10 @@ async function openIndicatorDetail(dimensionCode: PortfolioPortraitDimension) {
       ...buildPortraitRequest(),
       dimensionCode,
     })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载指标明细失败')
     detailOpen.value = false
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
@@ -208,23 +213,20 @@ function openArchiveRecord(archiveRecordId?: string) {
   })
 }
 
-usePortfolioScopedLoader(() => {
-  void loadPortraitBundle()
-}, () => targetTeacherId.value)
+usePortfolioScopedLoader(
+  () => {
+    void loadPortraitBundle()
+  },
+  () => targetTeacherId.value,
+)
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        show-title
-        layout="workbench"
-        title="教师画像"
-      >
+      <ContextBar show-title layout="workbench" title="教师画像">
         <template #actions>
-          <UiButton :loading="loading" @click="loadPortraitBundle">
-            刷新
-          </UiButton>
+          <UiButton :loading="loading" @click="loadPortraitBundle"> 刷新 </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -235,13 +237,8 @@ usePortfolioScopedLoader(() => {
     <template v-else>
       <a-spin :spinning="loading">
         <UiCard v-if="portrait" title="综合画像">
-          <SignalBand
-            :metrics="compositeItems"
-            compact
-          />
-          <p class="teacher-portrait__meta">
-            加权：核心 30% · 教学 25% · 科研/培训/实践各 15%
-          </p>
+          <SignalBand :metrics="compositeItems" compact />
+          <p class="teacher-portrait__meta">加权：核心 30% · 教学 25% · 科研/培训/实践各 15%</p>
           <p class="teacher-portrait__meta">
             正式档案记录 {{ portrait.officialRecordCount }} 条
             <template v-if="portrait.computedTime">
@@ -251,10 +248,7 @@ usePortfolioScopedLoader(() => {
               · 触发档案 {{ portrait.lastArchiveRecordId }}
             </template>
           </p>
-          <p
-            v-if="portraitDataInsufficient"
-            class="teacher-portrait__hint-text"
-          >
+          <p v-if="portraitDataInsufficient" class="teacher-portrait__hint-text">
             画像数据不足，请先完成建档
           </p>
         </UiCard>
@@ -264,14 +258,55 @@ usePortfolioScopedLoader(() => {
             :items="[
               { key: 'year', label: '统计年度', value: planCompletion.planYear },
               { key: 'total', label: '规划总数', value: String(planCompletion.totalPlanCount) },
-              { key: 'approved', label: '已通过', value: String(planCompletion.approvedPlanCount), tone: 'green' },
-              { key: 'pending', label: '待审', value: String(planCompletion.pendingPlanCount), tone: 'blue' },
-              { key: 'returned', label: '退回', value: String(planCompletion.returnedPlanCount), tone: 'orange' },
-              { key: 'rate', label: '审批完成率', value: planCompletion.completionRatePercent, unit: '%', tone: 'blue' },
-              { key: 'itemTotal', label: '明细项总数', value: String(planCompletion.totalPlanItemCount) },
-              { key: 'itemDone', label: '已完成明细', value: String(planCompletion.completedPlanItemCount), tone: 'green' },
-              { key: 'itemRate', label: '明细完成率', value: planCompletion.planItemCompletionRatePercent, unit: '%', tone: 'blue' },
-              { key: 'itemAvg', label: '平均完成度', value: planCompletion.averageItemCompletionPercent, unit: '%' },
+              {
+                key: 'approved',
+                label: '已通过',
+                value: String(planCompletion.approvedPlanCount),
+                tone: 'green',
+              },
+              {
+                key: 'pending',
+                label: '待审',
+                value: String(planCompletion.pendingPlanCount),
+                tone: 'blue',
+              },
+              {
+                key: 'returned',
+                label: '退回',
+                value: String(planCompletion.returnedPlanCount),
+                tone: 'orange',
+              },
+              {
+                key: 'rate',
+                label: '审批完成率',
+                value: planCompletion.completionRatePercent,
+                unit: '%',
+                tone: 'blue',
+              },
+              {
+                key: 'itemTotal',
+                label: '明细项总数',
+                value: String(planCompletion.totalPlanItemCount),
+              },
+              {
+                key: 'itemDone',
+                label: '已完成明细',
+                value: String(planCompletion.completedPlanItemCount),
+                tone: 'green',
+              },
+              {
+                key: 'itemRate',
+                label: '明细完成率',
+                value: planCompletion.planItemCompletionRatePercent,
+                unit: '%',
+                tone: 'blue',
+              },
+              {
+                key: 'itemAvg',
+                label: '平均完成度',
+                value: planCompletion.averageItemCompletionPercent,
+                unit: '%',
+              },
             ]"
             :columns="3"
             variant="grid"
@@ -279,30 +314,15 @@ usePortfolioScopedLoader(() => {
           />
         </UiCard>
 
-        <UiEmpty
-          v-else-if="portraitAbsent && !loading"
-          description="尚未生成画像快照"
-        />
+        <UiEmpty v-else-if="portraitAbsent && !loading" description="尚未生成画像快照" />
       </a-spin>
 
       <div v-if="portrait" class="teacher-portrait__charts">
-        <MarkChartCard
-          title="能力雷达"
-          :loading="loading"
-          chart-min-height="320"
-        >
-          <MarkChart
-            :option="radarOption"
-            height="320px"
-            aria-label="教师画像能力雷达图"
-          />
+        <MarkChartCard title="能力雷达" :loading="loading" chart-min-height="320">
+          <MarkChart :option="radarOption" height="320px" aria-label="教师画像能力雷达图" />
         </MarkChartCard>
 
-        <MarkChartCard
-          title="同群体对比"
-          :loading="loading"
-          chart-min-height="320"
-        >
+        <MarkChartCard title="同群体对比" :loading="loading" chart-min-height="320">
           <UiAlert
             v-if="cohort?.displayMode === 'INSUFFICIENT'"
             type="warning"
@@ -333,17 +353,11 @@ usePortfolioScopedLoader(() => {
         chart-min-height="280"
         class="teacher-portrait__trend"
       >
-        <MarkChart
-          :option="trendOption"
-          height="280px"
-          aria-label="教师画像综合分历史趋势图"
-        />
+        <MarkChart :option="trendOption" height="280px" aria-label="教师画像综合分历史趋势图" />
       </MarkChartCard>
 
       <UiCard v-if="portrait" title="维度明细" class="teacher-portrait__dimensions">
-        <p class="teacher-portrait__hint-text">
-          点击维度行查看得分依据与关联档案
-        </p>
+        <p class="teacher-portrait__hint-text">点击维度行查看得分依据与关联档案</p>
         <table class="teacher-portrait__table">
           <thead>
             <tr>
@@ -370,14 +384,24 @@ usePortfolioScopedLoader(() => {
               <td>{{ row.dataSource }}</td>
               <td>
                 <UiTag
-                  :tone="strictEnumTone(PORTFOLIO_PORTRAIT_DIMENSION_READINESS_TONE, row.readiness, '画像维度就绪状态')"
+                  :tone="
+                    strictEnumTone(
+                      PORTFOLIO_PORTRAIT_DIMENSION_READINESS_TONE,
+                      row.readiness,
+                      '画像维度就绪状态',
+                    )
+                  "
                 >
-                  {{ strictEnumLabel(PORTFOLIO_PORTRAIT_DIMENSION_READINESS_LABEL, row.readiness, '画像维度就绪状态') }}
+                  {{
+                    strictEnumLabel(
+                      PORTFOLIO_PORTRAIT_DIMENSION_READINESS_LABEL,
+                      row.readiness,
+                      '画像维度就绪状态',
+                    )
+                  }}
                 </UiTag>
               </td>
-              <td class="teacher-portrait__action">
-                下钻
-              </td>
+              <td class="teacher-portrait__action">下钻</td>
             </tr>
           </tbody>
         </table>
@@ -386,7 +410,11 @@ usePortfolioScopedLoader(() => {
 
     <UiDrawer
       v-model:open="detailOpen"
-      :title="indicatorDetail?.dimensionLabel ? `${indicatorDetail.dimensionLabel} · 指标下钻` : '指标下钻'"
+      :title="
+        indicatorDetail?.dimensionLabel
+          ? `${indicatorDetail.dimensionLabel} · 指标下钻`
+          : '指标下钻'
+      "
       width="640"
       hide-footer
     >
@@ -412,10 +440,7 @@ usePortfolioScopedLoader(() => {
             description="该维度暂无得分依据材料"
           />
 
-          <table
-            v-else
-            class="teacher-portrait__table teacher-portrait__evidence-table"
-          >
+          <table v-else class="teacher-portrait__table teacher-portrait__evidence-table">
             <thead>
               <tr>
                 <th>依据类型</th>
@@ -428,9 +453,18 @@ usePortfolioScopedLoader(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(item, index) in indicatorDetail.evidences" :key="`${item.evidenceType}-${index}`">
+              <tr
+                v-for="(item, index) in indicatorDetail.evidences"
+                :key="`${item.evidenceType}-${index}`"
+              >
                 <td>
-                  {{ strictEnumLabel(PORTFOLIO_PORTRAIT_INDICATOR_EVIDENCE_TYPE_LABEL, item.evidenceType, '画像指标依据类型') }}
+                  {{
+                    strictEnumLabel(
+                      PORTFOLIO_PORTRAIT_INDICATOR_EVIDENCE_TYPE_LABEL,
+                      item.evidenceType,
+                      '画像指标依据类型',
+                    )
+                  }}
                 </td>
                 <td>{{ item.summary || '—' }}</td>
                 <td>{{ item.categoryName || '—' }}</td>
@@ -438,9 +472,21 @@ usePortfolioScopedLoader(() => {
                 <td>
                   <UiTag
                     v-if="item.recordStatus"
-                    :tone="strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, item.recordStatus, '档案记录状态')"
+                    :tone="
+                      strictEnumTone(
+                        PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
+                        item.recordStatus,
+                        '档案记录状态',
+                      )
+                    "
                   >
-                    {{ strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, item.recordStatus, '档案记录状态') }}
+                    {{
+                      strictEnumLabel(
+                        PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
+                        item.recordStatus,
+                        '档案记录状态',
+                      )
+                    }}
                   </UiTag>
                   <span v-else>—</span>
                 </td>

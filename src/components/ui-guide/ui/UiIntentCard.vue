@@ -1,9 +1,5 @@
 <template>
-  <section
-    class="ui-intent-card"
-    :class="`ui-intent-card--${props.status}`"
-    v-bind="$attrs"
-  >
+  <section class="ui-intent-card" :class="`ui-intent-card--${props.status}`" v-bind="$attrs">
     <header class="ui-intent-card__header">
       <div class="ui-intent-card__header-main">
         <button
@@ -19,23 +15,16 @@
         <div class="ui-intent-card__title-wrap">
           <div class="ui-intent-card__title-row">
             <h3 class="ui-intent-card__title">{{ props.title }}</h3>
-            <UiTag
-              v-if="props.typeLabel"
-              :tone="props.typeTone"
-              size="sm"
-              variant="outline"
-            >
+            <UiTag v-if="props.typeLabel" :tone="props.typeTone" size="sm" variant="outline">
               {{ props.typeLabel }}
             </UiTag>
-            <UiBadge
-              :tone="statusTone"
-              variant="soft"
-              size="sm"
-            >
+            <UiBadge :tone="statusTone" variant="soft" size="sm">
               {{ statusLabel }}
             </UiBadge>
           </div>
-          <p v-if="props.description" class="ui-intent-card__description">{{ props.description }}</p>
+          <p v-if="props.description" class="ui-intent-card__description">
+            {{ props.description }}
+          </p>
         </div>
       </div>
 
@@ -49,12 +38,7 @@
         <span>{{ props.progressText || '执行中...' }}</span>
         <span>{{ normalizedPercent }}%</span>
       </div>
-      <UiProgressBar
-        :percent="normalizedPercent"
-        size="small"
-        :show-text="false"
-        color="#2563eb"
-      />
+      <UiProgressBar :percent="normalizedPercent" size="small" :show-text="false" color="#2563eb" />
     </div>
 
     <div v-if="props.status === 'failed' && props.errorMessage" class="ui-intent-card__error">
@@ -98,28 +82,31 @@ defineOptions({
 
 const open = defineModel<boolean>('open', { default: true })
 
-const props = withDefaults(defineProps<{
-  title: string
-  description?: string
-  typeLabel?: string
-  typeTone?: BadgeTone
-  status?: 'pending' | 'running' | 'completed' | 'failed'
-  progress?: number
-  progressText?: string
-  errorMessage?: string
-  fields?: UiIntentField[]
-  collapsible?: boolean
-}>(), {
-  description: '',
-  typeLabel: '',
-  typeTone: 'purple',
-  status: 'pending',
-  progress: 0,
-  progressText: '',
-  errorMessage: '',
-  fields: () => [],
-  collapsible: true,
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    description?: string
+    typeLabel?: string
+    typeTone?: BadgeTone
+    status?: 'pending' | 'running' | 'completed' | 'failed'
+    progress?: number
+    progressText?: string
+    errorMessage?: string
+    fields?: UiIntentField[]
+    collapsible?: boolean
+  }>(),
+  {
+    description: '',
+    typeLabel: '',
+    typeTone: 'purple',
+    status: 'pending',
+    progress: 0,
+    progressText: '',
+    errorMessage: '',
+    fields: () => [],
+    collapsible: true,
+  },
+)
 
 const normalizedPercent = computed(() => {
   return Math.max(0, Math.min(100, Math.round(props.progress || 0)))

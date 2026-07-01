@@ -57,10 +57,7 @@
             class="matrix-workbench__row"
             :class="{ 'matrix-workbench__row--warning': !!row.warning }"
           >
-            <th
-              class="matrix-workbench__th matrix-workbench__th--row"
-              :style="rowHeaderStyle"
-            >
+            <th class="matrix-workbench__th matrix-workbench__th--row" :style="rowHeaderStyle">
               <button type="button" class="matrix-workbench__hit" @click="handleRowClick(row)">
                 <div class="matrix-workbench__row-label">{{ row.label }}</div>
                 <div v-if="row.hint" class="matrix-workbench__row-hint">{{ row.hint }}</div>
@@ -204,7 +201,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   (
     e: 'cell-click',
-    eventData: { row: MatrixRow, col: MatrixCol, cell: MatrixCell | undefined },
+    eventData: { row: MatrixRow; col: MatrixCol; cell: MatrixCell | undefined },
   ): void
   (e: 'row-click', row: MatrixRow): void
 }>()

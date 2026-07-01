@@ -57,25 +57,25 @@ export interface MarkingScanPageRefVO {
 /** 重复影像处置状态 - 见 duplicate-resolution-status.ts */
 
 /** 扫描异常待办查询请求 - 对应 ScanAttentionQueryRequest */
-export type ScanAttentionTypeCode
-  = | 'QUALITY_BLOCK'
-    | 'PROCESSING_BLOCK'
-    | 'DUPLICATE_PENDING'
-    | 'RECOGNITION_REVIEW'
-    | 'BINDING_CONFLICT'
-    | 'MISSING_CANDIDATE_ROSTER'
+export type ScanAttentionTypeCode =
+  | 'QUALITY_BLOCK'
+  | 'PROCESSING_BLOCK'
+  | 'DUPLICATE_PENDING'
+  | 'RECOGNITION_REVIEW'
+  | 'BINDING_CONFLICT'
+  | 'MISSING_CANDIDATE_ROSTER'
 
 /** 扫描异常查询分组 - 对应 ScanAttentionQueryGroup */
 export type ScanAttentionQueryGroupCode = 'ABNORMAL' | 'DUPLICATE'
 
 /** 扫描异常来源类型 - 对应后端扫描异常聚合 SQL 固定来源 */
-export type ScanAttentionSourceTypeCode
-  = | 'SCANNED_PAGE'
-    | 'PROCESSING_TASK'
-    | 'DUPLICATE_RESOLUTION'
-    | 'GRADE_RESULT'
-    | 'PAPER_INSTANCE'
-    | 'IMAGE_LEDGER'
+export type ScanAttentionSourceTypeCode =
+  | 'SCANNED_PAGE'
+  | 'PROCESSING_TASK'
+  | 'DUPLICATE_RESOLUTION'
+  | 'GRADE_RESULT'
+  | 'PAPER_INSTANCE'
+  | 'IMAGE_LEDGER'
 
 /** 扫描异常类型文案 - 与后端 ScanAttentionType.message 完全一致 */
 export const SCAN_ATTENTION_TYPE_LABEL: Record<ScanAttentionTypeCode, string> = {
@@ -151,13 +151,8 @@ export interface ScanAttentionItemVO {
 }
 
 /** 扫描批次状态码 - 对应后端 ScanBatchStatus 枚举。 */
-export type ScanBatchStatusCode
-  = | 'IN_PROGRESS'
-    | 'RECEIVED'
-    | 'BLOCKED'
-    | 'BOUND'
-    | 'COMPLETED'
-    | 'DISCARDED'
+export type ScanBatchStatusCode =
+  'IN_PROGRESS' | 'RECEIVED' | 'BLOCKED' | 'BOUND' | 'COMPLETED' | 'DISCARDED'
 
 /** 扫描批次状态文案映射 - 与后端 ScanBatchStatus.message 完整一致 */
 export const SCAN_BATCH_STATUS_LABEL: Record<ScanBatchStatusCode, string> = {
@@ -338,15 +333,15 @@ export interface ExamScannerBatchQueryRequest extends QueryDto {
 }
 
 /** 扫描批次顺序审计异常码 - 与后端 ScanBatchOrderAuditCode 完全一致 */
-export type ScanBatchOrderAuditCode
-  = | 'PAGE_COUNT_MISMATCH'
-    | 'SEQ_GAP'
-    | 'TEMPLATE_MISMATCH'
-    | 'SPLIT_BOUNDARY'
-    | 'LEGACY_BULK'
-    | 'DUPLEX_INCOMPLETE'
-    | 'INSTANCE_COUNT_MISMATCH'
-    | 'DIRECT_PAGE_GROUP'
+export type ScanBatchOrderAuditCode =
+  | 'PAGE_COUNT_MISMATCH'
+  | 'SEQ_GAP'
+  | 'TEMPLATE_MISMATCH'
+  | 'SPLIT_BOUNDARY'
+  | 'LEGACY_BULK'
+  | 'DUPLEX_INCOMPLETE'
+  | 'INSTANCE_COUNT_MISMATCH'
+  | 'DIRECT_PAGE_GROUP'
 
 export const SCAN_BATCH_ORDER_AUDIT_CODE_LABEL: Record<ScanBatchOrderAuditCode, string> = {
   PAGE_COUNT_MISMATCH: '落库页数不一致',

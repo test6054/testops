@@ -1,24 +1,28 @@
 <script lang="ts" setup>
 import { computed } from 'vue'
+
 /**
  * 工作台上下文条：页标题 + #status 标签 + 操作/筛选区。
  * 默认只展示 title；subtitle 仅用于少量动态范围（学年学期、当前考试名等），禁止功能罗列说明。
  */
 defineOptions({ name: 'ContextBar' })
 
-const props = withDefaults(defineProps<{
-  /** 显式开启标题；未传时若 title 非空也会展示 */
-  showTitle?: boolean
-  title?: string
-  subtitle?: string
-  /** stack：标题在上、操作在下；workbench：原型横向标题 + 工具区 */
-  layout?: 'stack' | 'workbench'
-}>(), {
-  showTitle: false,
-  title: '',
-  subtitle: '',
-  layout: 'stack',
-})
+const props = withDefaults(
+  defineProps<{
+    /** 显式开启标题；未传时若 title 非空也会展示 */
+    showTitle?: boolean
+    title?: string
+    subtitle?: string
+    /** stack：标题在上、操作在下；workbench：原型横向标题 + 工具区 */
+    layout?: 'stack' | 'workbench'
+  }>(),
+  {
+    showTitle: false,
+    title: '',
+    subtitle: '',
+    layout: 'stack',
+  },
+)
 
 const displayTitle = computed(() => props.showTitle || Boolean(props.title))
 </script>

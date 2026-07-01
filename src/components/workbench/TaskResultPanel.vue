@@ -13,18 +13,19 @@
     </div>
 
     <ul v-else class="task-result-panel__list">
-      <li
-        v-for="item in items"
-        :key="item.id"
-        class="task-result-panel__item"
-      >
-        <button type="button" class="task-result-panel__item-trigger" @click="handleItemClick(item)">
+      <li v-for="item in items" :key="item.id" class="task-result-panel__item">
+        <button
+          type="button"
+          class="task-result-panel__item-trigger"
+          @click="handleItemClick(item)"
+        >
           <div class="task-result-panel__item-main">
             <span class="task-result-panel__item-title">{{ item.title }}</span>
             <span
               class="task-result-panel__item-badge"
               :class="`task-result-panel__item-badge--${item.statusTone}`"
-            >{{ item.statusLabel }}</span>
+              >{{ item.statusLabel }}</span
+            >
           </div>
           <div v-if="item.description" class="task-result-panel__item-desc">
             {{ item.description }}
@@ -74,7 +75,7 @@ withDefaults(
 
 const emit = defineEmits<{
   (e: 'item-click', item: TaskResultItem): void
-  (e: 'action', actionEvent: { item: TaskResultItem, action: TaskResultAction }): void
+  (e: 'action', actionEvent: { item: TaskResultItem; action: TaskResultAction }): void
 }>()
 
 function handleItemClick(item: TaskResultItem) {

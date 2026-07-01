@@ -133,7 +133,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   add: [item: T, index: number]
   remove: [item: T, index: number]
-  reorder: [moveEvent: { from: number, to: number }]
+  reorder: [moveEvent: { from: number; to: number }]
 }>()
 
 const list = computed(() => modelValue.value || [])

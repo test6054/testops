@@ -49,7 +49,7 @@ const treeData = ref<TreeSelectNode[]>([])
 
 function mapCategoryNodes(nodes: PortfolioArchiveCategoryTreeNodeVO[]): TreeSelectNode[] {
   return nodes
-    .filter(node => node.status === 'ACTIVE')
+    .filter((node) => node.status === 'ACTIVE')
     .map((node) => {
       const children = node.children?.length ? mapCategoryNodes(node.children) : undefined
       return {
@@ -66,12 +66,10 @@ async function loadTree() {
   try {
     const tree = await portfolioArchiveTemplateApi.listCategoryTree()
     treeData.value = mapCategoryNodes(tree ?? [])
-  }
-  catch (error) {
+  } catch (error) {
     treeData.value = []
     showUserError(error, '加载档案分类树失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -80,11 +78,14 @@ function handleChange(value: string | undefined) {
   emit('update:model-value', value ?? '')
 }
 
-watch(() => props.readonly, () => {
-  if (!treeData.value.length) {
-    void loadTree()
-  }
-})
+watch(
+  () => props.readonly,
+  () => {
+    if (!treeData.value.length) {
+      void loadTree()
+    }
+  },
+)
 
 onMounted(() => {
   void loadTree()

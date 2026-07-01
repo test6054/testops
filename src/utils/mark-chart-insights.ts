@@ -32,9 +32,9 @@ export function buildBarChartInsight(
     }
     return `${items.length} 项均已达到 ${passLine}${unit} ${label}`
   }
-  const maxItem = items.reduce((best, item) => (
-    Number(item.value) > Number(best.value) ? item : best
-  ))
+  const maxItem = items.reduce((best, item) =>
+    Number(item.value) > Number(best.value) ? item : best,
+  )
   return `最高为「${maxItem.label}」${maxItem.value}${unit}`
 }
 
@@ -75,14 +75,14 @@ export function buildScatterChartInsight(seriesList: UiScatterSeries[]): string 
 }
 
 /** 状态分布条摘要：占比最高分段 */
-export function buildDistributionChartInsight(segments: UiDistributionSegment[]): string | undefined {
+export function buildDistributionChartInsight(
+  segments: UiDistributionSegment[],
+): string | undefined {
   const total = segments.reduce((sum, segment) => sum + Math.max(0, segment.value), 0)
   if (total <= 0) {
     return undefined
   }
-  const top = segments.reduce((best, segment) => (
-    segment.value > best.value ? segment : best
-  ))
+  const top = segments.reduce((best, segment) => (segment.value > best.value ? segment : best))
   const percent = Math.round((top.value * 100) / total)
   return `「${top.label}」占比最高（${percent}%）`
 }
@@ -105,7 +105,10 @@ export function buildHeatmapChartInsight(
 }
 
 /** 合并静态说明与数据摘要，优先展示摘要 */
-export function mergeChartHint(staticHint: string | undefined, insight: string | undefined): string {
+export function mergeChartHint(
+  staticHint: string | undefined,
+  insight: string | undefined,
+): string {
   if (insight) {
     return insight
   }

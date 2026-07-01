@@ -12,12 +12,8 @@
         </a-form-item>
         <a-form-item label="考试范围">
           <a-radio-group v-model:value="form.examScopeMode" size="small">
-            <a-radio-button value="AUTO">
-              按开课学期自动选考
-            </a-radio-button>
-            <a-radio-button value="MANUAL">
-              手动选择考试
-            </a-radio-button>
+            <a-radio-button value="AUTO"> 按开课学期自动选考 </a-radio-button>
+            <a-radio-button value="MANUAL"> 手动选择考试 </a-radio-button>
           </a-radio-group>
         </a-form-item>
         <a-form-item v-if="form.examScopeMode === 'AUTO'" label="课程">
@@ -74,10 +70,7 @@
     </div>
 
     <a-spin :spinning="loading || generating">
-      <UiEmpty
-        v-if="!loading && !generating && !record"
-        description="暂无数据"
-      />
+      <UiEmpty v-if="!loading && !generating && !record" description="暂无数据" />
       <div v-else-if="record" class="ai-record">
         <a-descriptions :column="3" compact bordered>
           <a-descriptions-item label="状态">
@@ -190,20 +183,20 @@ import type {
   SemesterAbilityGrowthVO,
   SemesterGrowthTrendCode,
 } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
-import { ANALYSIS_SCOPE_TYPE_LABEL } from '@/apis/mark/analysis-scope-type'
 import {
   generateClassGrowth,
   listGrowth,
   SEMESTER_GROWTH_TREND_LABEL,
   SEMESTER_GROWTH_TREND_TONE,
 } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryVO } from '@/apis/mark/exam'
 import { getExamDetail } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
+import { ANALYSIS_SCOPE_TYPE_LABEL } from '@/apis/mark/analysis-scope-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
@@ -224,7 +217,10 @@ import {
   buildTrendChartInsight,
   mergeChartHint,
 } from '@/utils/mark-chart-insights'
-import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
+import {
+  buildCategoryBarChartOption,
+  buildTrendLineChartOption,
+} from '@/utils/mark-echarts-options'
 import {
   examStatSnapshotsToTrendPoints,
   growthItemsToBarItems,
@@ -256,7 +252,7 @@ const form = reactive({
 
 const record = ref<SemesterAbilityGrowthVO | null>(null)
 const selectedExams = ref<ExamSummaryVO[]>([])
-const classOptions = ref<{ label: string, value: string }[]>([])
+const classOptions = ref<{ label: string; value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
 const generating = ref(false)
@@ -265,19 +261,15 @@ const growthItems = computed(() => record.value?.growthItems ?? [])
 const examStatTrendPoints = computed(() =>
   examStatSnapshotsToTrendPoints(record.value?.examStatSnapshots ?? []),
 )
-const growthBarItems = computed(() =>
-  growthItemsToBarItems(record.value?.growthItems ?? []),
+const growthBarItems = computed(() => growthItemsToBarItems(record.value?.growthItems ?? []))
+
+const examTrendHint = computed(() =>
+  mergeChartHint('按考试时间序列展示得分率', buildTrendChartInsight(examStatTrendPoints.value)),
 )
 
-const examTrendHint = computed(() => mergeChartHint(
-  '按考试时间序列展示得分率',
-  buildTrendChartInsight(examStatTrendPoints.value),
-))
-
-const growthBarHint = computed(() => mergeChartHint(
-  '各能力维度结束值，悬停查看起止对照',
-  buildBarChartInsight(growthBarItems.value),
-))
+const growthBarHint = computed(() =>
+  mergeChartHint('各能力维度结束值，悬停查看起止对照', buildBarChartInsight(growthBarItems.value)),
+)
 
 const examTrendLastValue = computed(() => {
   const points = examStatTrendPoints.value
@@ -364,7 +356,7 @@ watch(
     classLoading.value = true
     try {
       const details = await Promise.all(examIds.map((examId) => getExamDetail(examId)))
-      const classCount = new Map<string, { className: string, count: number }>()
+      const classCount = new Map<string, { className: string; count: number }>()
       for (const detail of details) {
         for (const classRef of detail.classRefs) {
           const current = classCount.get(classRef.classId)
@@ -405,8 +397,8 @@ async function reload(): Promise<void> {
     message.warning('请选择班级')
     return
   }
-  const { academicYear: teachingAcademicYear, semester: teachingSemester }
-    = parseAcademicYearSemesterValue(form.semesterCode)
+  const { academicYear: teachingAcademicYear, semester: teachingSemester } =
+    parseAcademicYearSemesterValue(form.semesterCode)
   loading.value = true
   try {
     const list = await listGrowth({
@@ -434,8 +426,8 @@ async function handleGenerate(): Promise<void> {
     message.warning('请选择班级')
     return
   }
-  const { academicYear: teachingAcademicYear, semester: teachingSemester }
-    = parseAcademicYearSemesterValue(semesterCode)
+  const { academicYear: teachingAcademicYear, semester: teachingSemester } =
+    parseAcademicYearSemesterValue(semesterCode)
 
   if (form.examScopeMode === 'AUTO') {
     if (!form.courseId) {

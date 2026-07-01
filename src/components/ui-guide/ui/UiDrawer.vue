@@ -53,30 +53,33 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  open: boolean
-  title?: string
-  width?: number | string
-  placement?: 'left' | 'right' | 'top' | 'bottom'
-  closable?: boolean
-  maskClosable?: boolean
-  confirmLoading?: boolean
-  okText?: string
-  cancelText?: string
-  hideFooter?: boolean
-  hideCancel?: boolean
-}>(), {
-  title: '',
-  width: 640,
-  placement: 'right',
-  closable: true,
-  maskClosable: true,
-  confirmLoading: false,
-  okText: '确定',
-  cancelText: '取消',
-  hideFooter: true,
-  hideCancel: false,
-})
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    title?: string
+    width?: number | string
+    placement?: 'left' | 'right' | 'top' | 'bottom'
+    closable?: boolean
+    maskClosable?: boolean
+    confirmLoading?: boolean
+    okText?: string
+    cancelText?: string
+    hideFooter?: boolean
+    hideCancel?: boolean
+  }>(),
+  {
+    title: '',
+    width: 640,
+    placement: 'right',
+    closable: true,
+    maskClosable: true,
+    confirmLoading: false,
+    okText: '确定',
+    cancelText: '取消',
+    hideFooter: true,
+    hideCancel: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherSalaryVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioTeacherSalaryApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
-import { portfolioTeacherSalaryApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -24,14 +24,33 @@ const form = reactive({
   performanceAmount: '',
   allowanceAmount: '',
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
 
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
   { title: '月份', dataIndex: 'salaryMonth', key: 'salaryMonth', width: 96 },
-  { title: '基本工资', dataIndex: 'baseAmountDisplay', key: 'baseAmountDisplay', width: 100, align: 'right' },
-  { title: '绩效工资', dataIndex: 'performanceAmountDisplay', key: 'performanceAmountDisplay', width: 100, align: 'right' },
-  { title: '津贴', dataIndex: 'allowanceAmountDisplay', key: 'allowanceAmountDisplay', width: 100, align: 'right' },
+  {
+    title: '基本工资',
+    dataIndex: 'baseAmountDisplay',
+    key: 'baseAmountDisplay',
+    width: 100,
+    align: 'right',
+  },
+  {
+    title: '绩效工资',
+    dataIndex: 'performanceAmountDisplay',
+    key: 'performanceAmountDisplay',
+    width: 100,
+    align: 'right',
+  },
+  {
+    title: '津贴',
+    dataIndex: 'allowanceAmountDisplay',
+    key: 'allowanceAmountDisplay',
+    width: 100,
+    align: 'right',
+  },
   { title: '来源', dataIndex: 'dataSource', key: 'dataSource', width: 100 },
 ]
 
@@ -40,12 +59,10 @@ async function loadPage() {
   try {
     const page = await portfolioTeacherSalaryApi.page({ pageNum: 1, pageSize: 50 })
     rows.value = readPageList(page, '加载薪酬记录失败')
-    await hydrateTeacherLabels(rows.value.map(row => row.teacherUserId ?? ''))
-  }
-  catch (error) {
+    await hydrateTeacherLabels(rows.value.map((row) => row.teacherUserId ?? ''))
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -71,8 +88,7 @@ async function saveSalary() {
     form.performanceAmount = ''
     form.allowanceAmount = ''
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -82,8 +98,7 @@ async function exportCsv() {
     const result = await portfolioTeacherSalaryApi.export()
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -110,17 +125,23 @@ onMounted(loadPage)
         />
         <a-input v-model:value="form.salaryMonth" placeholder="月份 yyyy-MM" style="width: 120px" />
         <a-input v-model:value="form.baseAmount" placeholder="基本工资" style="width: 100px" />
-        <a-input v-model:value="form.performanceAmount" placeholder="绩效工资" style="width: 100px" />
+        <a-input
+          v-model:value="form.performanceAmount"
+          placeholder="绩效工资"
+          style="width: 100px"
+        />
         <a-input v-model:value="form.allowanceAmount" placeholder="津贴" style="width: 100px" />
-        <UiButton variant="primary" @click="saveSalary">
-          录入
-        </UiButton>
-        <UiButton @click="exportCsv">
-          导出
-        </UiButton>
+        <UiButton variant="primary" @click="saveSalary"> 录入 </UiButton>
+        <UiButton @click="exportCsv"> 导出 </UiButton>
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无薪酬档案" />
-      <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
+      <UiDataTable
+        :columns="columns"
+        :data-source="rows"
+        :loading="loading"
+        row-key="id"
+        style="margin-top: 16px"
+      >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
             {{ teacherLabel(record.teacherUserId) }}

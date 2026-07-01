@@ -1,10 +1,7 @@
 <template>
   <a-form
     class="ui-form"
-    :class="[
-      `ui-form--${props.layout}`,
-      { 'ui-form--bordered': props.bordered },
-    ]"
+    :class="[`ui-form--${props.layout}`, { 'ui-form--bordered': props.bordered }]"
     :model="props.model"
     :rules="props.rules"
     :layout="props.layout"
@@ -33,52 +30,53 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  model?: Record<string, unknown>
-  rules?: FormProps['rules']
-  layout?: 'vertical' | 'horizontal' | 'inline'
-  disabled?: boolean
-  colon?: boolean
-  requiredMark?: boolean | 'optional'
-  labelAlign?: 'left' | 'right'
-  scrollToFirstError?: boolean
-  size?: 'small' | 'middle' | 'large'
-  labelWidth?: number | string
-  gap?: number | string
-  bordered?: boolean
-}>(), {
-  model: () => ({}),
-  rules: () => ({}),
-  layout: 'vertical',
-  disabled: false,
-  colon: false,
-  requiredMark: true,
-  labelAlign: 'left',
-  scrollToFirstError: true,
-  size: 'middle',
-  labelWidth: undefined,
-  gap: 16,
-  bordered: false,
-})
+const props = withDefaults(
+  defineProps<{
+    model?: Record<string, unknown>
+    rules?: FormProps['rules']
+    layout?: 'vertical' | 'horizontal' | 'inline'
+    disabled?: boolean
+    colon?: boolean
+    requiredMark?: boolean | 'optional'
+    labelAlign?: 'left' | 'right'
+    scrollToFirstError?: boolean
+    size?: 'small' | 'middle' | 'large'
+    labelWidth?: number | string
+    gap?: number | string
+    bordered?: boolean
+  }>(),
+  {
+    model: () => ({}),
+    rules: () => ({}),
+    layout: 'vertical',
+    disabled: false,
+    colon: false,
+    requiredMark: true,
+    labelAlign: 'left',
+    scrollToFirstError: true,
+    size: 'middle',
+    labelWidth: undefined,
+    gap: 16,
+    bordered: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'finish', values: Record<string, unknown>): void
   (e: 'finish-failed', errorInfo: unknown): void
 }>()
 
-type UiFormStyle = CSSProperties & Partial<Record<'--ui-form-label-width' | '--ui-form-gap', string>>
+type UiFormStyle = CSSProperties &
+  Partial<Record<'--ui-form-label-width' | '--ui-form-gap', string>>
 
 const formStyle = computed<UiFormStyle>(() => {
   const style: UiFormStyle = {}
   if (props.labelWidth !== undefined) {
-    style['--ui-form-label-width'] = typeof props.labelWidth === 'number'
-      ? `${props.labelWidth}px`
-      : String(props.labelWidth)
+    style['--ui-form-label-width'] =
+      typeof props.labelWidth === 'number' ? `${props.labelWidth}px` : String(props.labelWidth)
   }
   if (props.gap !== undefined) {
-    style['--ui-form-gap'] = typeof props.gap === 'number'
-      ? `${props.gap}px`
-      : String(props.gap)
+    style['--ui-form-gap'] = typeof props.gap === 'number' ? `${props.gap}px` : String(props.gap)
   }
   return style
 })

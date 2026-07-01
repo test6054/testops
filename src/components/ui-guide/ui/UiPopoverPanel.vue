@@ -51,44 +51,59 @@ import { computed, ref, useSlots } from 'vue'
 import { resolvePopupContainer } from './popup-container'
 
 type PopoverTrigger = 'hover' | 'focus' | 'click' | 'contextmenu'
-type PopoverPlacement = 'topLeft' | 'top' | 'topRight' | 'leftTop' | 'left' | 'leftBottom' | 'rightTop' | 'right' | 'rightBottom' | 'bottomLeft' | 'bottom' | 'bottomRight'
+type PopoverPlacement =
+  | 'topLeft'
+  | 'top'
+  | 'topRight'
+  | 'leftTop'
+  | 'left'
+  | 'leftBottom'
+  | 'rightTop'
+  | 'right'
+  | 'rightBottom'
+  | 'bottomLeft'
+  | 'bottom'
+  | 'bottomRight'
 
 defineOptions({
   name: 'UiPopoverPanel',
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  open?: boolean
-  title?: string
-  description?: string
-  content?: string
-  trigger?: PopoverTrigger[]
-  placement?: PopoverPlacement
-  maxWidth?: string | number
-  maxBodyHeight?: string | number
-  compact?: boolean
-  arrow?: boolean
-  destroyOnHide?: boolean
-  disabled?: boolean
-  overlayClassName?: string
-  getPopupContainer?: (triggerNode?: HTMLElement) => HTMLElement
-}>(), {
-  open: undefined,
-  title: '',
-  description: '',
-  content: '',
-  trigger: () => ['hover'],
-  placement: 'bottomLeft',
-  maxWidth: 320,
-  maxBodyHeight: '',
-  compact: false,
-  arrow: true,
-  destroyOnHide: true,
-  disabled: false,
-  overlayClassName: '',
-  getPopupContainer: undefined,
-})
+const props = withDefaults(
+  defineProps<{
+    open?: boolean
+    title?: string
+    description?: string
+    content?: string
+    trigger?: PopoverTrigger[]
+    placement?: PopoverPlacement
+    maxWidth?: string | number
+    maxBodyHeight?: string | number
+    compact?: boolean
+    arrow?: boolean
+    destroyOnHide?: boolean
+    disabled?: boolean
+    overlayClassName?: string
+    getPopupContainer?: (triggerNode?: HTMLElement) => HTMLElement
+  }>(),
+  {
+    open: undefined,
+    title: '',
+    description: '',
+    content: '',
+    trigger: () => ['hover'],
+    placement: 'bottomLeft',
+    maxWidth: 320,
+    maxBodyHeight: '',
+    compact: false,
+    arrow: true,
+    destroyOnHide: true,
+    disabled: false,
+    overlayClassName: '',
+    getPopupContainer: undefined,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
@@ -99,8 +114,7 @@ const slots = useSlots()
 const popoverRoot = ref<HTMLElement>()
 
 const normalizeCssSize = (value?: string | number) => {
-  if (value === '' || value === undefined || value === null)
-    return undefined
+  if (value === '' || value === undefined || value === null) return undefined
   return typeof value === 'number' ? `${value}px` : value
 }
 
@@ -128,8 +142,7 @@ const surfaceStyle = computed<CSSProperties | undefined>(() => {
 
 const bodyStyle = computed<CSSProperties | undefined>(() => {
   const maxHeight = normalizeCssSize(props.maxBodyHeight)
-  if (!maxHeight)
-    return undefined
+  if (!maxHeight) return undefined
 
   return {
     maxHeight,
@@ -138,8 +151,7 @@ const bodyStyle = computed<CSSProperties | undefined>(() => {
 })
 
 const getPopupContainer = (triggerNode?: HTMLElement) => {
-  if (props.getPopupContainer)
-    return props.getPopupContainer(triggerNode)
+  if (props.getPopupContainer) return props.getPopupContainer(triggerNode)
 
   return popoverRoot.value ?? resolvePopupContainer(triggerNode)
 }

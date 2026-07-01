@@ -38,17 +38,28 @@ defineOptions({
   name: 'UiSimplePie',
 })
 
-const props = withDefaults(defineProps<{
-  items?: PieItem[]
-  size?: 'sm' | 'md' | 'lg'
-  colors?: string[]
-  showLegend?: boolean
-}>(), {
-  items: () => [],
-  size: 'md',
-  colors: () => ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', 'var(--dp-purple-500, #722ed1)', '#06b6d4', '#ec4899'],
-  showLegend: true,
-})
+const props = withDefaults(
+  defineProps<{
+    items?: PieItem[]
+    size?: 'sm' | 'md' | 'lg'
+    colors?: string[]
+    showLegend?: boolean
+  }>(),
+  {
+    items: () => [],
+    size: 'md',
+    colors: () => [
+      '#3b82f6',
+      '#22c55e',
+      '#f59e0b',
+      '#ef4444',
+      'var(--dp-purple-500, #722ed1)',
+      '#06b6d4',
+      '#ec4899',
+    ],
+    showLegend: true,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'select', item: PieItem, index: number): void
@@ -76,29 +87,29 @@ const total = computed(() => props.items.reduce((sum, item) => sum + item.value,
 
 const slices = computed(() => {
   if (!props.items.length || total.value === 0) return []
-  
+
   let startAngle = -Math.PI / 2
-  
+
   return props.items.map((item, index) => {
     const angle = (item.value / total.value) * Math.PI * 2
     const endAngle = startAngle + angle
-    
+
     const x1 = Math.cos(startAngle) * radius.value
     const y1 = Math.sin(startAngle) * radius.value
     const x2 = Math.cos(endAngle) * radius.value
     const y2 = Math.sin(endAngle) * radius.value
-    
+
     const largeArc = angle > Math.PI ? 1 : 0
-    
+
     const path = [
       `M 0 0`,
       `L ${x1} ${y1}`,
       `A ${radius.value} ${radius.value} 0 ${largeArc} 1 ${x2} ${y2}`,
       'Z',
     ].join(' ')
-    
+
     startAngle = endAngle
-    
+
     return {
       item,
       path,
@@ -132,7 +143,9 @@ const slices = computed(() => {
 
 .ui-simple-pie__slice {
   cursor: pointer;
-  transition: transform 0.15s ease, opacity 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
   transform-origin: center;
 }
 

@@ -11,16 +11,9 @@
       <router-view v-slot="{ Component, route: childRoute }">
         <template v-if="Component">
           <keep-alive v-if="shouldCacheRoute(childRoute)">
-            <component
-              :is="Component"
-              :key="getRouteKey(childRoute)"
-            />
+            <component :is="Component" :key="getRouteKey(childRoute)" />
           </keep-alive>
-          <component
-            v-else
-            :is="Component"
-            :key="getRouteKey(childRoute)"
-          />
+          <component v-else :is="Component" :key="getRouteKey(childRoute)" />
         </template>
       </router-view>
     </div>
@@ -29,8 +22,8 @@
 
 <script lang="ts" setup>
 import type { RouteLocationNormalized } from 'vue-router'
-import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { computed } from 'vue'
 import { isPortfolioRoute, isQualityEvaluationRoute } from '@/utils/portfolio-route'
 
 defineOptions({ name: 'LayoutMain' })

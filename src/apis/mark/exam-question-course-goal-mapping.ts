@@ -37,11 +37,15 @@ export interface ExamQuestionCourseGoalMappingDeleteRequest {
   id: string
 }
 
-export function listExamQuestionCourseGoalMappings(examId: string): Promise<ExamQuestionCourseGoalMappingVO[]> {
+export function listExamQuestionCourseGoalMappings(
+  examId: string,
+): Promise<ExamQuestionCourseGoalMappingVO[]> {
   return http.post<ExamQuestionCourseGoalMappingVO[]>(`${BASE}/list`, { examId })
 }
 
-export function listExamCourseGoalsForMapping(examId: string): Promise<QualityCourseGoalForMarkVO[]> {
+export function listExamCourseGoalsForMapping(
+  examId: string,
+): Promise<QualityCourseGoalForMarkVO[]> {
   return http.post<QualityCourseGoalForMarkVO[]>(`${BASE}/course-goals/list`, { examId })
 }
 

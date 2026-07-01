@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import type { ScannerKioskArchiveVolumeItemVO } from '@/apis/mark/scanner-kiosk'
+import { createAdhocDispatchTicket, pageKioskArchiveVolumes } from '@/apis/mark/scanner-kiosk'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  ARCHIVE_VOLUME_STATUS_LABEL,
-  ARCHIVE_VOLUME_STATUS_TONE,
-} from '@/apis/mark/archive-volume'
-import { createAdhocDispatchTicket, pageKioskArchiveVolumes } from '@/apis/mark/scanner-kiosk'
+import { ARCHIVE_VOLUME_STATUS_LABEL, ARCHIVE_VOLUME_STATUS_TONE } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -35,12 +32,15 @@ const pageSize = ref(20)
 const total = ref(0)
 const volumes = ref<ScannerKioskArchiveVolumeItemVO[]>([])
 
-const canPick = computed(() =>
-  Boolean(props.scannerDeviceId && props.scannerStationId),
-)
+const canPick = computed(() => Boolean(props.scannerDeviceId && props.scannerStationId))
 
 const columns = [
-  { title: '柜位', key: 'physicalStorageLocation', dataIndex: 'physicalStorageLocation', width: 140 },
+  {
+    title: '柜位',
+    key: 'physicalStorageLocation',
+    dataIndex: 'physicalStorageLocation',
+    width: 140,
+  },
   { title: '归档编号', key: 'archiveNo', dataIndex: 'archiveNo', width: 120 },
   { title: '卷名', key: 'archiveTitle', dataIndex: 'archiveTitle', ellipsis: true },
   { title: '教学班', key: 'teachingClassName', dataIndex: 'teachingClassName', width: 120 },
@@ -50,7 +50,7 @@ const columns = [
 
 watch(
   () => props.open,
-  open => {
+  (open) => {
     if (open) {
       pageNum.value = 1
       keyword.value = ''
@@ -70,18 +70,16 @@ async function loadVolumes() {
     })
     volumes.value = readPageList(page, '归档卷列表加载失败，请稍后重试')
     total.value = readPageTotal(page, '归档卷总数加载失败，请稍后重试')
-  }
-  catch (error) {
+  } catch (error) {
     errorMessage.value = getUserErrorMessage(error)
     volumes.value = []
     total.value = 0
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pageNum.value = pageEvent.current
   pageSize.value = pageEvent.pageSize
   void loadVolumes()
@@ -117,11 +115,9 @@ async function pickVolume(row: ScannerKioskArchiveVolumeItemVO) {
     }
     emit('update:open', false)
     void router.push(`/scanner-kiosk/dispatch/${ticketId}`)
-  }
-  catch (error) {
+  } catch (error) {
     message.error(getUserErrorMessage(error))
-  }
-  finally {
+  } finally {
     pickingVolumeId.value = ''
   }
 }
@@ -151,7 +147,12 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
         v-model:value="keyword"
         placeholder="搜索卷名 / 编号 / 柜位"
         allow-clear
-        @search="() => { pageNum = 1; loadVolumes() }"
+        @search="
+          () => {
+            pageNum = 1
+            loadVolumes()
+          }
+        "
       />
       <UiButton size="sm" variant="outline" :disabled="loading" @click="loadVolumes">
         刷新

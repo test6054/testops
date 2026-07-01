@@ -12,10 +12,11 @@ const router = useRouter()
 const session = useDispatchSession()
 
 const ticketStatus = computed(() => session.ticket.value?.status)
-const isTerminalStatus = computed(() =>
-  ticketStatus.value === 'DONE'
-  || ticketStatus.value === 'EXPIRED'
-  || ticketStatus.value === 'CANCELLED',
+const isTerminalStatus = computed(
+  () =>
+    ticketStatus.value === 'DONE' ||
+    ticketStatus.value === 'EXPIRED' ||
+    ticketStatus.value === 'CANCELLED',
 )
 const terminalHint = computed(() => {
   if (ticketStatus.value === 'DONE') {
@@ -29,9 +30,8 @@ const terminalHint = computed(() => {
   }
   return ''
 })
-const canContinueScan = computed(() =>
-  ticketStatus.value === 'PROCESSING'
-  && Boolean(session.ticket.value?.workOrderId),
+const canContinueScan = computed(
+  () => ticketStatus.value === 'PROCESSING' && Boolean(session.ticket.value?.workOrderId),
 )
 
 onMounted(async () => {
@@ -46,7 +46,7 @@ onMounted(async () => {
 
 watch(
   () => session.bootstrap.activation.isActivatedForMarkApis(),
-  activated => {
+  (activated) => {
     if (activated) {
       void session.loadTicket()
     }
@@ -81,11 +81,22 @@ function goHub() {
         <UiButton size="sm" variant="ghost" @click="goQueue">返回队列</UiButton>
       </div>
     </header>
-    <p v-if="session.errorMessage.value" class="dispatch-landing__error">{{ session.errorMessage.value }}</p>
-    <p v-if="session.lease.leaseLost.value" class="dispatch-landing__error">派单租约已失效，请返回队列重新领取。</p>
+    <p v-if="session.errorMessage.value" class="dispatch-landing__error">
+      {{ session.errorMessage.value }}
+    </p>
+    <p v-if="session.lease.leaseLost.value" class="dispatch-landing__error">
+      派单租约已失效，请返回队列重新领取。
+    </p>
     <a-skeleton v-if="session.loading.value" active :paragraph="{ rows: 5 }" />
     <section v-else-if="session.ticket.value?.portfolioSnapshot" class="dispatch-landing__panel">
-      <h2>教师档案袋 · {{ session.ticket.value.portfolioSnapshot.collectMode === 'GAP_ATTACHMENT' ? '补采附件' : 'AI 候选提交' }}</h2>
+      <h2>
+        教师档案袋 ·
+        {{
+          session.ticket.value.portfolioSnapshot.collectMode === 'GAP_ATTACHMENT'
+            ? '补采附件'
+            : 'AI 候选提交'
+        }}
+      </h2>
       <p v-if="session.ticket.value.portfolioSnapshot.teacherName">
         教师 {{ session.ticket.value.portfolioSnapshot.teacherName }}
       </p>
@@ -98,7 +109,9 @@ function goHub() {
       <p v-if="session.ticket.value.portfolioSnapshot.categoryName">
         分类 {{ session.ticket.value.portfolioSnapshot.categoryName }}
       </p>
-      <p v-if="session.ticket.value.traceLabelCode">追溯码 {{ session.ticket.value.traceLabelCode }}</p>
+      <p v-if="session.ticket.value.traceLabelCode">
+        追溯码 {{ session.ticket.value.traceLabelCode }}
+      </p>
       <p v-if="session.isPreviewMode">预览模式 · 不占设备锁</p>
       <p v-else-if="isTerminalStatus" class="dispatch-landing__hint">{{ terminalHint }}</p>
       <div v-if="isTerminalStatus" class="dispatch-landing__actions">
@@ -147,7 +160,9 @@ function goHub() {
     <section v-else-if="session.ticket.value?.archiveSnapshot" class="dispatch-landing__panel">
       <h2>{{ session.ticket.value.archiveSnapshot.archiveTitle }}</h2>
       <p>柜位 {{ session.ticket.value.archiveSnapshot.physicalStorageLocation }}</p>
-      <p v-if="session.ticket.value.traceLabelCode">追溯码 {{ session.ticket.value.traceLabelCode }}</p>
+      <p v-if="session.ticket.value.traceLabelCode">
+        追溯码 {{ session.ticket.value.traceLabelCode }}
+      </p>
       <p v-if="session.isPreviewMode">预览模式 · 不占设备锁</p>
       <p v-else-if="isTerminalStatus" class="dispatch-landing__hint">{{ terminalHint }}</p>
       <div v-if="isTerminalStatus" class="dispatch-landing__actions">

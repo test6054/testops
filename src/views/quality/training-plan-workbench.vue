@@ -29,49 +29,45 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  *   - /api/quality/accreditation-standards          认证标准条目
  */
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   GraduationRequirementSaveRequest,
   GraduationRequirementVO,
 } from '@/apis/quality/graduation-requirement'
+import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import type {
   RequirementIndicatorSaveRequest,
   RequirementIndicatorVO,
 } from '@/apis/quality/requirement-indicator'
+import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
 import type {
   RequirementStandardMappingSaveRequest,
   RequirementStandardMappingVO,
 } from '@/apis/quality/requirement-standard-mapping'
+import { requirementStandardMappingApi } from '@/apis/quality/requirement-standard-mapping'
 import type {
   TrainingObjectiveSaveRequest,
   TrainingObjectiveVO,
 } from '@/apis/quality/training-objective'
+import { trainingObjectiveApi } from '@/apis/quality/training-objective'
 import type {
   TrainingObjectiveRequirementSaveRequest,
   TrainingObjectiveRequirementVO,
 } from '@/apis/quality/training-objective-requirement'
-import type { TrainingPlanSaveRequest, TrainingPlanVO } from '@/apis/quality/training-plan'
-import type { CivicDimension, ConfirmationStatus } from '@/apis/quality/types'
-import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
-import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
-import {
-  requirementIndicatorApi,
-} from '@/apis/quality/requirement-indicator'
-import { requirementStandardMappingApi } from '@/apis/quality/requirement-standard-mapping'
-import {
-  trainingObjectiveApi,
-} from '@/apis/quality/training-objective'
 import { trainingObjectiveRequirementApi } from '@/apis/quality/training-objective-requirement'
+import type { TrainingPlanSaveRequest, TrainingPlanVO } from '@/apis/quality/training-plan'
 import { trainingPlanApi } from '@/apis/quality/training-plan'
+import type { CivicDimension, ConfirmationStatus } from '@/apis/quality/types'
 import {
   AGGREGATION_FUNCTION_LABEL,
   CIVIC_DIMENSION_LABEL,
   CONFIRMATION_STATUS_LABEL,
 } from '@/apis/quality/types'
+import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import ProgramEvaluationProfileSelector from '@/components/quality/selectors/ProgramEvaluationProfileSelector.vue'
@@ -201,9 +197,7 @@ async function loadRequirements() {
   }
   requirementsLoading.value = true
   try {
-    const list = await graduationRequirementApi.listByPlan(
-      qualityStore.currentTrainingPlanId,
-    )
+    const list = await graduationRequirementApi.listByPlan(qualityStore.currentTrainingPlanId)
     if (scope.isStale()) {
       return
     }
@@ -305,11 +299,12 @@ const standardOptions = ref<AccreditationStandardVO[]>([])
 async function loadStandardOptions() {
   const scope = beginQualityScopeRequest()
   const options = await readAllPages(
-    (pageNum) => accreditationStandardApi.page({
-      pageNum,
-      pageSize: ACCREDITATION_STANDARD_OPTION_PAGE_SIZE,
-      enabled: true,
-    }),
+    (pageNum) =>
+      accreditationStandardApi.page({
+        pageNum,
+        pageSize: ACCREDITATION_STANDARD_OPTION_PAGE_SIZE,
+        enabled: true,
+      }),
     '认证标准列表加载失败，请稍后重试',
   )
   if (scope.isStale()) {
@@ -326,9 +321,7 @@ async function loadStandardMappings() {
   }
   standardMappingsLoading.value = true
   try {
-    const list = await requirementStandardMappingApi.listByRequirement(
-      selectedRequirement.value.id,
-    )
+    const list = await requirementStandardMappingApi.listByRequirement(selectedRequirement.value.id)
     if (scope.isStale()) {
       return
     }
@@ -374,8 +367,8 @@ const planConfirmationStatus = computed<ConfirmationStatus | undefined>(() => {
 
 const canConfirmPlan = computed(
   () =>
-    !!currentPlan.value
-    && (planConfirmationStatus.value === 'DRAFT' || planConfirmationStatus.value === 'RETURNED'),
+    !!currentPlan.value &&
+    (planConfirmationStatus.value === 'DRAFT' || planConfirmationStatus.value === 'RETURNED'),
 )
 
 const canRevokePlan = computed(
@@ -434,7 +427,6 @@ const signals = computed<SignalMetric[]>(() => [
     tone: 'gray',
   },
 ])
-
 
 const objectiveMatrixRows = computed<MatrixRow[]>(() =>
   objectives.value.map((o) => {
@@ -537,10 +529,10 @@ function openPlanEdit() {
 async function submitPlan() {
   if (planEditorMode.value === 'edit' && !guardPlanStructureEditable('编辑方案')) return
   if (
-    !planEditor.programId.trim()
-    || !planEditor.planCode.trim()
-    || !planEditor.planName.trim()
-    || !planEditor.schoolYear.trim()
+    !planEditor.programId.trim() ||
+    !planEditor.planCode.trim() ||
+    !planEditor.planName.trim() ||
+    !planEditor.schoolYear.trim()
   ) {
     message.error('请选择专业，并填写方案编码、方案名称和入学学年')
     return
@@ -753,8 +745,8 @@ function handleObjectiveRequirementCellClick(cellEvent: {
   if (cellEvent.cell) {
     const mapping = objectiveRequirementMappings.value.find(
       (item) =>
-        item.trainingObjectiveId === cellEvent.row.key
-        && item.graduationRequirementId === cellEvent.col.key,
+        item.trainingObjectiveId === cellEvent.row.key &&
+        item.graduationRequirementId === cellEvent.col.key,
     )
     if (mapping) openObjMappingEdit(mapping)
     return
@@ -779,9 +771,9 @@ async function submitObjMapping() {
     return
   }
   if (
-    objMappingEditor.weight == null
-    || objMappingEditor.weight < 0
-    || objMappingEditor.weight > 1
+    objMappingEditor.weight == null ||
+    objMappingEditor.weight < 0 ||
+    objMappingEditor.weight > 1
   ) {
     message.error('权重必须在 0~1 之间')
     return
@@ -964,9 +956,9 @@ async function submitIndicator() {
     return
   }
   if (
-    indicatorEditor.requirementWeight == null
-    || indicatorEditor.requirementWeight <= 0
-    || indicatorEditor.requirementWeight > 1
+    indicatorEditor.requirementWeight == null ||
+    indicatorEditor.requirementWeight <= 0 ||
+    indicatorEditor.requirementWeight > 1
   ) {
     message.error('观测点权重必须在 (0, 1] 之间')
     return
@@ -1078,7 +1070,11 @@ async function handleScopeChange(): Promise<void> {
   await loadStandardMappings()
 }
 
-useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false, reloadOnActivated: false })
+useQualityScopedLoader(handleScopeChange, {
+  watchScope: true,
+  immediate: false,
+  reloadOnActivated: false,
+})
 
 watch(selectedRequirement, () => loadStandardMappings())
 
@@ -1110,7 +1106,7 @@ const aggregationOptions = [
   { value: 'DIRECT_INDIRECT_WEIGHTED', label: AGGREGATION_FUNCTION_LABEL.DIRECT_INDIRECT_WEIGHTED },
 ]
 
-const civicDimensionOptions: Array<{ value: CivicDimension, label: string }> = [
+const civicDimensionOptions: Array<{ value: CivicDimension; label: string }> = [
   { value: 'MORAL', label: CIVIC_DIMENSION_LABEL.MORAL },
   { value: 'INTELLECTUAL', label: CIVIC_DIMENSION_LABEL.INTELLECTUAL },
   { value: 'PHYSICAL', label: CIVIC_DIMENSION_LABEL.PHYSICAL },
@@ -1238,7 +1234,9 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   <template v-else-if="column.key === 'actions'">
                     <div class="operations-cell" @click.stop>
                       <UiTextAction @click.stop="openObjectiveEdit(record)">编辑</UiTextAction>
-                      <UiTextAction tone="danger" @click.stop="deleteObjective(record)">删除</UiTextAction>
+                      <UiTextAction tone="danger" @click.stop="deleteObjective(record)"
+                        >删除</UiTextAction
+                      >
                     </div>
                   </template>
                 </template>
@@ -1299,7 +1297,9 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   <template v-else-if="column.key === 'actions'">
                     <div class="operations-cell" @click.stop>
                       <UiTextAction @click="openObjMappingEdit(record)">编辑</UiTextAction>
-                      <UiTextAction tone="danger" @click="deleteObjMapping(record)">删除</UiTextAction>
+                      <UiTextAction tone="danger" @click="deleteObjMapping(record)"
+                        >删除</UiTextAction
+                      >
                     </div>
                   </template>
                 </template>
@@ -1377,8 +1377,12 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   <template v-else-if="column.key === 'actions'">
                     <div class="operations-cell" @click.stop>
                       <UiTextAction @click.stop="openRequirementEdit(record)">编辑</UiTextAction>
-                      <UiTextAction @click.stop="validateIndicatorWeights(record)">校验权重</UiTextAction>
-                      <UiTextAction tone="danger" @click.stop="deleteRequirement(record)">删除</UiTextAction>
+                      <UiTextAction @click.stop="validateIndicatorWeights(record)"
+                        >校验权重</UiTextAction
+                      >
+                      <UiTextAction tone="danger" @click.stop="deleteRequirement(record)"
+                        >删除</UiTextAction
+                      >
                     </div>
                   </template>
                 </template>
@@ -1399,8 +1403,8 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   <a-space>
                     <UiTag
                       :tone="
-                        Math.abs(indicatorWeightSumByReq(selectedRequirement.id) - 1)
-                          < WEIGHT_EPSILON
+                        Math.abs(indicatorWeightSumByReq(selectedRequirement.id) - 1) <
+                        WEIGHT_EPSILON
                           ? 'green'
                           : 'red'
                       "
@@ -1436,13 +1440,17 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                         <UiTag v-for="d in record.civicDimensions ?? []" :key="d" tone="purple">
                           {{ strictEnumLabel(CIVIC_DIMENSION_LABEL, d, '课程思政维度') }}
                         </UiTag>
-                        <span v-if="!(record.civicDimensions ?? []).length" class="tpw__muted">-</span>
+                        <span v-if="!(record.civicDimensions ?? []).length" class="tpw__muted"
+                          >-</span
+                        >
                       </a-space>
                     </template>
                     <template v-else-if="column.key === 'actions'">
                       <div class="operations-cell" @click.stop>
                         <UiTextAction @click="openIndicatorEdit(record)">编辑</UiTextAction>
-                        <UiTextAction tone="danger" @click="deleteIndicator(record)">删除</UiTextAction>
+                        <UiTextAction tone="danger" @click="deleteIndicator(record)"
+                          >删除</UiTextAction
+                        >
                       </div>
                     </template>
                   </template>
@@ -1492,7 +1500,9 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     <template v-else-if="column.key === 'actions'">
                       <div class="operations-cell" @click.stop>
                         <UiTextAction @click="openStdMappingEdit(record)">编辑</UiTextAction>
-                        <UiTextAction tone="danger" @click="deleteStdMapping(record)">删除</UiTextAction>
+                        <UiTextAction tone="danger" @click="deleteStdMapping(record)"
+                          >删除</UiTextAction
+                        >
                       </div>
                     </template>
                   </template>

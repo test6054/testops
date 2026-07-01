@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type {ExamDistinctTermItemVO} from '@/apis/mark/exam';
+import type { ExamDistinctTermItemVO } from '@/apis/mark/exam'
+import { listDistinctExamTerms } from '@/apis/mark/exam'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { onMounted, ref } from 'vue'
-import { listDistinctExamTerms } from '@/apis/mark/exam'
 import { getSemesterDescription } from '@/types/enums/semester-enum'
 import { formatAcademicYearSemesterValue } from '@/utils/academic-year'
 import { showUserError } from '@/utils/error-handler'
@@ -26,7 +26,7 @@ const props = withDefaults(
 )
 
 const loading = ref(false)
-const semesterOptions = ref<{ label: string, value: string }[]>([])
+const semesterOptions = ref<{ label: string; value: string }[]>([])
 const defaultScopeApplied = ref(false)
 
 function formatTermLabel(item: ExamDistinctTermItemVO): string {
@@ -43,13 +43,11 @@ async function loadSemesterOptions(): Promise<void> {
       label: formatTermLabel(item),
     }))
     if (
-      !defaultScopeApplied.value
-      && props.defaultRecentSemesterCount > 0
-      && !selectedSemesterCode.value
+      !defaultScopeApplied.value &&
+      props.defaultRecentSemesterCount > 0 &&
+      !selectedSemesterCode.value
     ) {
-      const defaultCode = semesterOptions.value
-        .slice(0, props.defaultRecentSemesterCount)[0]
-?.value
+      const defaultCode = semesterOptions.value.slice(0, props.defaultRecentSemesterCount)[0]?.value
       if (defaultCode) {
         selectedSemesterCode.value = defaultCode
         defaultScopeApplied.value = true

@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { PfEligibilityRuleTreeNodeDto, PfSceneCode } from '@/apis/portfolio/indicator-types'
+import {
+  PF_ELIGIBILITY_PRESET_OPTIONS,
+  PF_SCENE_CODE_OPTIONS,
+} from '@/apis/portfolio/indicator-types'
 import { message } from 'ant-design-vue'
 import { onMounted, ref } from 'vue'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { PF_ELIGIBILITY_PRESET_OPTIONS, PF_SCENE_CODE_OPTIONS } from '@/apis/portfolio/indicator-types'
 import PortfolioEligibilityTreeEditor from '@/components/portfolio/PortfolioEligibilityTreeEditor.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -23,13 +26,13 @@ const treeRoot = ref<PfEligibilityRuleTreeNodeDto>({ nodeType: 'AND', children: 
 const loading = ref(false)
 const saving = ref(false)
 
-const presetOptions = PF_ELIGIBILITY_PRESET_OPTIONS.map(item => ({
+const presetOptions = PF_ELIGIBILITY_PRESET_OPTIONS.map((item) => ({
   value: item.value,
   label: item.label,
 }))
 
 function onPresetChange(code: string) {
-  const preset = PF_ELIGIBILITY_PRESET_OPTIONS.find(item => item.value === code)
+  const preset = PF_ELIGIBILITY_PRESET_OPTIONS.find((item) => item.value === code)
   if (preset) {
     eligibilityName.value = preset.label
     sceneCode.value = preset.scene
@@ -39,15 +42,15 @@ function onPresetChange(code: string) {
 async function loadRule() {
   loading.value = true
   try {
-    const rule = await portfolioIndicatorTenantApi.getEligibilityRule({ eligibilityCode: eligibilityCode.value })
+    const rule = await portfolioIndicatorTenantApi.getEligibilityRule({
+      eligibilityCode: eligibilityCode.value,
+    })
     eligibilityName.value = rule.eligibilityName
     sceneCode.value = rule.sceneCode
     treeRoot.value = parseEligibilityTreeJson(rule.ruleTreeJson)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -67,11 +70,9 @@ async function saveRule() {
       ruleTreeJson: serializeEligibilityTree(treeRoot.value),
     })
     message.success('资格规则已保存')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -91,15 +92,16 @@ onMounted(loadRule)
     </template>
     <UiCard>
       <div class="toolbar">
-        <a-select v-model:value="eligibilityCode" :options="presetOptions" style="width: 200px" @change="onPresetPick" />
+        <a-select
+          v-model:value="eligibilityCode"
+          :options="presetOptions"
+          style="width: 200px"
+          @change="onPresetPick"
+        />
         <a-select v-model:value="sceneCode" :options="PF_SCENE_CODE_OPTIONS" style="width: 140px" />
         <a-input v-model:value="eligibilityName" placeholder="规则名称" style="width: 200px" />
-        <UiButton @click="loadRule">
-          加载
-        </UiButton>
-        <UiButton variant="primary" :loading="saving" @click="saveRule">
-          保存
-        </UiButton>
+        <UiButton @click="loadRule"> 加载 </UiButton>
+        <UiButton variant="primary" :loading="saving" @click="saveRule"> 保存 </UiButton>
       </div>
       <p class="hint">
         节点类型：叶子条件、与、或、非、审核门禁；通过下方表单编辑，无需手写 JSON。

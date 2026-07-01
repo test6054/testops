@@ -28,22 +28,25 @@ import MarkChart from './MarkChart.vue'
 
 defineOptions({ name: 'MarkHeatmapSection' })
 
-const props = withDefaults(defineProps<{
-  title: string
-  hint?: string
-  cellCount: number
-  option: EChartsCoreOption
-  height?: string
-  ariaLabel?: string
-  emptyDescription?: string
-  visible?: boolean
-}>(), {
-  hint: '',
-  height: '120px',
-  ariaLabel: '',
-  emptyDescription: MARK_CHART_EMPTY.heatmapNoData,
-  visible: true,
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    hint?: string
+    cellCount: number
+    option: EChartsCoreOption
+    height?: string
+    ariaLabel?: string
+    emptyDescription?: string
+    visible?: boolean
+  }>(),
+  {
+    hint: '',
+    height: '120px',
+    ariaLabel: '',
+    emptyDescription: MARK_CHART_EMPTY.heatmapNoData,
+    visible: true,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'cell-click', index: number): void

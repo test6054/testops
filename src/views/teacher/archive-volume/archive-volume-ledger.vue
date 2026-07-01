@@ -1,10 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        show-title
-        title="查阅台账"
-      >
+      <ContextBar show-title title="查阅台账">
         <template #status>
           <UiTag tone="blue" size="sm">查阅台账</UiTag>
         </template>
@@ -113,11 +110,6 @@ import type {
   ArchiveVolumeAccessRecordVO,
   ArchiveVolumeVO,
 } from '@/apis/mark/archive-volume'
-import type {TenantSchoolDepartmentDto} from '@/apis/quality/user-catalog';
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ARCHIVE_ACCESS_STATUS_LABEL,
   ARCHIVE_ACCESS_STATUS_TONE,
@@ -125,7 +117,12 @@ import {
   pageAccessLedger,
   pageArchiveVolumes,
 } from '@/apis/mark/archive-volume'
+import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { requireArrayResult } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -143,12 +140,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherArchiveVolumeLedger' })
 
 const router = useRouter()
-const {
-  grantsLoadFailed,
-  listScopedDepartmentIds,
-  filterListDepartmentOptions,
-  loadGrants,
-} = useArchiveDutyAccess()
+const { grantsLoadFailed, listScopedDepartmentIds, filterListDepartmentOptions, loadGrants } =
+  useArchiveDutyAccess()
 
 const ledgerTab = ref('volume')
 const volumeLoading = ref(false)
@@ -157,7 +150,7 @@ const selectedVolumeId = ref('')
 const selectedArchiveNo = ref('')
 const accessRecords = ref<ArchiveVolumeAccessRecordVO[]>([])
 const tenantRows = ref<ArchiveVolumeAccessLedgerRowVO[]>([])
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
 
 const volumeFilterForm = reactive({ keyword: '' })
 const volumeFilterModel = computed<Record<string, unknown>>({
@@ -182,13 +175,9 @@ const volumeFilterFields: FilterField[] = [
   { key: 'keyword', label: '档案号 / 标题', type: 'input', placeholder: '关键词' },
 ]
 
-const scopedDepartmentOptions = computed(() =>
-  filterListDepartmentOptions(departmentOptions.value),
-)
+const scopedDepartmentOptions = computed(() => filterListDepartmentOptions(departmentOptions.value))
 
-const tenantDepartmentDisabled = computed(() =>
-  listScopedDepartmentIds.value.length === 1,
-)
+const tenantDepartmentDisabled = computed(() => listScopedDepartmentIds.value.length === 1)
 
 const tenantFilterFields = computed<FilterField[]>(() => [
   {
@@ -203,7 +192,10 @@ const tenantFilterFields = computed<FilterField[]>(() => [
     key: 'accessStatus',
     label: '查阅状态',
     type: 'select',
-    options: Object.entries(ARCHIVE_ACCESS_STATUS_LABEL).map(([value, label]) => ({ value, label })),
+    options: Object.entries(ARCHIVE_ACCESS_STATUS_LABEL).map(([value, label]) => ({
+      value,
+      label,
+    })),
     allowClear: true,
   },
 ])
@@ -245,7 +237,7 @@ async function loadDepartments() {
     await departmentCatalogApi.list(),
     '院系',
   )
-  departmentOptions.value = departments.map(item => ({
+  departmentOptions.value = departments.map((item) => ({
     value: item.id,
     label: item.deptName,
   }))
@@ -273,11 +265,9 @@ async function locateVolume() {
     selectedVolumeId.value = volume.volumeId
     selectedArchiveNo.value = volume.archiveNo
     accessRecords.value = await listArchiveVolumeAccessRecords(volume.volumeId)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     volumeLoading.value = false
   }
 }
@@ -293,11 +283,9 @@ async function loadTenantLedger() {
     })
     tenantRows.value = readPageList(result, '查阅利用台账异常')
     tenantPagination.total = readPageTotal(result)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载查阅台账失败')
-  }
-  finally {
+  } finally {
     tenantLoading.value = false
   }
 }
@@ -325,7 +313,10 @@ function goList() {
 
 function goDetail() {
   if (!selectedVolumeId.value) return
-  void router.push({ name: 'TeacherArchiveVolumeDetail', params: { volumeId: selectedVolumeId.value } })
+  void router.push({
+    name: 'TeacherArchiveVolumeDetail',
+    params: { volumeId: selectedVolumeId.value },
+  })
 }
 
 watch(ledgerTab, (tab) => {

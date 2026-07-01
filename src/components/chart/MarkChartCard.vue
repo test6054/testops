@@ -22,17 +22,20 @@ import UiStatisticChartCard from '@/components/ui-guide/ui/UiStatisticChartCard.
 
 defineOptions({ name: 'MarkChartCard' })
 
-withDefaults(defineProps<{
-  title?: string
-  description?: string
-  loading?: boolean
-  chartMinHeight?: string | number
-}>(), {
-  title: '',
-  description: '',
-  loading: false,
-  chartMinHeight: 300,
-})
+withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    loading?: boolean
+    chartMinHeight?: string | number
+  }>(),
+  {
+    title: '',
+    description: '',
+    loading: false,
+    chartMinHeight: 300,
+  },
+)
 </script>
 
 <style scoped>

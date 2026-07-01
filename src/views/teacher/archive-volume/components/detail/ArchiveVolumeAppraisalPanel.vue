@@ -1,6 +1,11 @@
 <template>
   <section class="archive-volume-appraisal-panel">
-    <a-descriptions bordered size="small" :column="2" class="archive-volume-appraisal-panel__lifecycle">
+    <a-descriptions
+      bordered
+      size="small"
+      :column="2"
+      class="archive-volume-appraisal-panel__lifecycle"
+    >
       <a-descriptions-item label="鉴定状态">
         <UiTag
           v-if="detail.volume.appraisalStatus"
@@ -57,22 +62,46 @@
       <UiButton v-if="canRejectAppraisal" size="sm" variant="outline" @click="openRejectAppraisal">
         鉴定驳回
       </UiButton>
-      <UiButton v-if="canRecordAppraisalOpinion" size="sm" variant="outline" @click="openAppraisalOpinion">
+      <UiButton
+        v-if="canRecordAppraisalOpinion"
+        size="sm"
+        variant="outline"
+        @click="openAppraisalOpinion"
+      >
         提交鉴定决议
       </UiButton>
-      <UiButton v-if="canRequestDestruction" size="sm" variant="outline" @click="openDestructionRequest">
+      <UiButton
+        v-if="canRequestDestruction"
+        size="sm"
+        variant="outline"
+        @click="openDestructionRequest"
+      >
         申请销毁
       </UiButton>
-      <UiButton v-if="canApproveDestructionAction" size="sm" @click="openDestructionApproval('APPROVED')">
+      <UiButton
+        v-if="canApproveDestructionAction"
+        size="sm"
+        @click="openDestructionApproval('APPROVED')"
+      >
         批准销毁
       </UiButton>
-      <UiButton v-if="canApproveDestructionAction" size="sm" variant="outline" @click="openDestructionApproval('REJECTED')">
+      <UiButton
+        v-if="canApproveDestructionAction"
+        size="sm"
+        variant="outline"
+        @click="openDestructionApproval('REJECTED')"
+      >
         驳回销毁
       </UiButton>
       <UiButton v-if="canExecuteDestruction" size="sm" @click="handleExecuteDestruction">
         执行销毁
       </UiButton>
-      <UiButton v-if="canSuperviseDestruction" size="sm" variant="outline" @click="openSuperviseModal">
+      <UiButton
+        v-if="canSuperviseDestruction"
+        size="sm"
+        variant="outline"
+        @click="openSuperviseModal"
+      >
         监销确认
       </UiButton>
     </div>
@@ -188,9 +217,6 @@ import type {
   ArchiveVolumeAppraisalRequest,
   ArchiveVolumeDetailVO,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import {
   approveArchiveVolumeAppraisal,
   approveArchiveVolumeDestruction,
@@ -206,6 +232,9 @@ import {
   requestArchiveVolumeAppraisal,
   requestArchiveVolumeDestruction,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
@@ -278,22 +307,23 @@ const canRequestAppraisal = computed(() => {
   return true
 })
 
-const canApproveAppraisal = computed(() =>
-  props.canManageAppraisal && props.detail.volume.appraisalStatus === 'REQUESTED',
+const canApproveAppraisal = computed(
+  () => props.canManageAppraisal && props.detail.volume.appraisalStatus === 'REQUESTED',
 )
 
 const canRejectAppraisal = computed(() => canApproveAppraisal.value)
 
-const canRecordAppraisalOpinion = computed(() =>
-  props.canManageAppraisal && props.detail.volume.appraisalStatus === 'APPROVED',
+const canRecordAppraisalOpinion = computed(
+  () => props.canManageAppraisal && props.detail.volume.appraisalStatus === 'APPROVED',
 )
 
-const canRequestDestruction = computed(() =>
-  props.canManageAppraisal
-  && props.detail.volume.appraisalStatus === 'OPINION_RECORDED'
-  && props.detail.appraisalDecision === 'DESTROY'
-  && (props.detail.volume.destructionStatus === 'NONE'
-    || props.detail.volume.destructionStatus === 'FAILED'),
+const canRequestDestruction = computed(
+  () =>
+    props.canManageAppraisal &&
+    props.detail.volume.appraisalStatus === 'OPINION_RECORDED' &&
+    props.detail.appraisalDecision === 'DESTROY' &&
+    (props.detail.volume.destructionStatus === 'NONE' ||
+      props.detail.volume.destructionStatus === 'FAILED'),
 )
 
 const canApproveDestructionAction = computed(() => {
@@ -304,14 +334,15 @@ const canApproveDestructionAction = computed(() => {
   return !(requestUserId && requestUserId === props.currentUserId)
 })
 
-const canExecuteDestruction = computed(() =>
-  props.canApproveDestruction
-  && props.detail.volume.volumeStatus === 'STORED'
-  && props.detail.volume.destructionStatus === 'APPROVED',
+const canExecuteDestruction = computed(
+  () =>
+    props.canApproveDestruction &&
+    props.detail.volume.volumeStatus === 'STORED' &&
+    props.detail.volume.destructionStatus === 'APPROVED',
 )
 
-const canSuperviseDestruction = computed(() =>
-  props.canApproveDestruction && props.detail.volume.destructionStatus === 'EXECUTED',
+const canSuperviseDestruction = computed(
+  () => props.canApproveDestruction && props.detail.volume.destructionStatus === 'EXECUTED',
 )
 
 function appraisalStatusLabel(code: ArchiveAppraisalStatusCode) {
@@ -354,12 +385,22 @@ function destructionStepDone(step: 'request' | 'approve' | 'execute' | 'supervis
     return true
   }
   if (step === 'approve') {
-    return status === 'APPROVED' || status === 'EXECUTING' || status === 'EXECUTED'
-      || status === 'SUPERVISED' || status === 'LEDGER_ARCHIVED' || status === 'FAILED'
+    return (
+      status === 'APPROVED' ||
+      status === 'EXECUTING' ||
+      status === 'EXECUTED' ||
+      status === 'SUPERVISED' ||
+      status === 'LEDGER_ARCHIVED' ||
+      status === 'FAILED'
+    )
   }
   if (step === 'execute') {
-    return status === 'EXECUTING' || status === 'EXECUTED' || status === 'SUPERVISED'
-      || status === 'LEDGER_ARCHIVED'
+    return (
+      status === 'EXECUTING' ||
+      status === 'EXECUTED' ||
+      status === 'SUPERVISED' ||
+      status === 'LEDGER_ARCHIVED'
+    )
   }
   return status === 'LEDGER_ARCHIVED' || status === 'SUPERVISED'
 }
@@ -369,8 +410,7 @@ async function handleApproveAppraisal() {
     await approveArchiveVolumeAppraisal(props.volumeId)
     message.success('鉴定审批通过')
     emit('refreshed')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -394,11 +434,9 @@ async function submitRejectAppraisal() {
     message.success('鉴定已驳回')
     rejectAppraisalOpen.value = false
     emit('refreshed')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     rejectAppraisalSubmitting.value = false
   }
 }
@@ -420,11 +458,9 @@ async function submitDestructionApproval() {
     message.success('销毁审批已提交')
     destructionApprovalOpen.value = false
     emit('refreshed')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     destructionApprovalSubmitting.value = false
   }
 }
@@ -442,29 +478,29 @@ async function handleExecuteDestruction() {
     message.success('销毁执行已发起')
     emit('refreshed')
     startDestructionPollIfNeeded()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
 
 let destructionPollTimer: ReturnType<typeof setInterval> | null = null
 
-const shouldPollDestruction = computed(() =>
-  props.detail.volume.destructionStatus === 'EXECUTING',
-)
+const shouldPollDestruction = computed(() => props.detail.volume.destructionStatus === 'EXECUTING')
 
-watch(shouldPollDestruction, (shouldPoll) => {
-  if (shouldPoll && !destructionPollTimer) {
-    destructionPollTimer = setInterval(() => {
-      emit('refreshed', { silent: true })
-    }, 5000)
-  }
-  else if (!shouldPoll && destructionPollTimer) {
-    clearInterval(destructionPollTimer)
-    destructionPollTimer = null
-  }
-}, { immediate: true })
+watch(
+  shouldPollDestruction,
+  (shouldPoll) => {
+    if (shouldPoll && !destructionPollTimer) {
+      destructionPollTimer = setInterval(() => {
+        emit('refreshed', { silent: true })
+      }, 5000)
+    } else if (!shouldPoll && destructionPollTimer) {
+      clearInterval(destructionPollTimer)
+      destructionPollTimer = null
+    }
+  },
+  { immediate: true },
+)
 
 function startDestructionPollIfNeeded() {
   if (shouldPollDestruction.value && !destructionPollTimer) {
@@ -497,11 +533,9 @@ async function submitSupervise() {
     message.success('监销确认完成')
     superviseModalOpen.value = false
     emit('refreshed')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     superviseSubmitting.value = false
   }
 }
@@ -511,8 +545,7 @@ async function handleRequestAppraisal() {
     await requestArchiveVolumeAppraisal(props.volumeId)
     message.success('鉴定申请已提交')
     emit('refreshed')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -537,9 +570,11 @@ function syncAppraisalRetentionYears(value: string | number | null | undefined) 
 }
 
 async function submitAppraisalOpinion() {
-  if (appraisalForm.decision === 'RETAIN'
-    && !appraisalForm.permanentRetention
-    && !appraisalForm.retentionExtensionYears) {
+  if (
+    appraisalForm.decision === 'RETAIN' &&
+    !appraisalForm.permanentRetention &&
+    !appraisalForm.retentionExtensionYears
+  ) {
     message.warning('请填写延长保管年限或勾选永久保管')
     return
   }
@@ -548,20 +583,20 @@ async function submitAppraisalOpinion() {
     await recordArchiveVolumeAppraisalOpinion({
       volumeId: props.volumeId,
       decision: appraisalForm.decision,
-      retentionExtensionYears: appraisalForm.decision === 'RETAIN' && !appraisalForm.permanentRetention
-        ? appraisalForm.retentionExtensionYears
-        : undefined,
-      permanentRetention: appraisalForm.decision === 'RETAIN' ? appraisalForm.permanentRetention : undefined,
+      retentionExtensionYears:
+        appraisalForm.decision === 'RETAIN' && !appraisalForm.permanentRetention
+          ? appraisalForm.retentionExtensionYears
+          : undefined,
+      permanentRetention:
+        appraisalForm.decision === 'RETAIN' ? appraisalForm.permanentRetention : undefined,
       remark: appraisalForm.remark.trim() || undefined,
     })
     message.success('鉴定决议已记录')
     appraisalModalOpen.value = false
     emit('refreshed')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     appraisalSubmitting.value = false
   }
 }
@@ -585,11 +620,9 @@ async function submitDestructionRequest() {
     message.success('销毁申请已提交')
     destructionModalOpen.value = false
     emit('refreshed')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     destructionSubmitting.value = false
   }
 }

@@ -8,9 +8,7 @@
       <!-- 顶栏：状态 + 进度环 + 操作 -->
       <div class="ledger-summary__hero">
         <div class="ledger-summary__hero-left">
-          <MarkGaugeBlock
-            v-bind="scanGaugeBlockProps"
-          >
+          <MarkGaugeBlock v-bind="scanGaugeBlockProps">
             <div class="ledger-summary__hero-meta">
               <div class="ledger-summary__hero-status">
                 <UiTag :tone="statusTone" size="sm">{{ statusLabel }}</UiTag>
@@ -65,11 +63,15 @@
 
 <script lang="ts" setup>
 import type { ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
+import {
+  hasImageLedgerPageStats,
+  LEDGER_STATUS_LABEL,
+  LEDGER_STATUS_TONE,
+} from '@/apis/mark/image-ledger'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import { computed } from 'vue'
-import { hasImageLedgerPageStats, LEDGER_STATUS_LABEL, LEDGER_STATUS_TONE } from '@/apis/mark/image-ledger'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -126,7 +128,8 @@ function formatLedgerMetric(value: number | null | undefined): string | number {
 
 /** 扫描完成率环色：100% 完成绿 / ≥60% 推进蓝 / 其余推进橙 */
 const scanRingColor = computed(() => {
-  const tone: BadgeTone = scanPercent.value >= 100 ? 'green' : scanPercent.value >= 60 ? 'blue' : 'orange'
+  const tone: BadgeTone =
+    scanPercent.value >= 100 ? 'green' : scanPercent.value >= 60 ? 'blue' : 'orange'
   return toneToColor(tone)
 })
 
@@ -140,9 +143,10 @@ const { chartOption: scanGaugeOption } = useChartOption(() =>
 
 const scanGaugeAriaLabel = computed(() => {
   const ledger = props.ledger
-  const detail = ledger && hasImageLedgerPageStats(ledger)
-    ? `已扫 ${ledger.scannedPageCount} / ${ledger.expectedPageCount} 页`
-    : scanProgressLabel.value
+  const detail =
+    ledger && hasImageLedgerPageStats(ledger)
+      ? `已扫 ${ledger.scannedPageCount} / ${ledger.expectedPageCount} 页`
+      : scanProgressLabel.value
   return formatGaugeAriaLabel('扫描进度', scanPercent.value, detail)
 })
 
@@ -218,9 +222,10 @@ const bindSignalMetrics = computed((): SignalMetric[] => {
       label: '未匹配考生',
       value: formatLedgerMetric(ledger.missingCandidateCount),
       unit: '人',
-      tone: typeof ledger.missingCandidateCount === 'number' && ledger.missingCandidateCount > 0
-        ? 'red'
-        : 'green',
+      tone:
+        typeof ledger.missingCandidateCount === 'number' && ledger.missingCandidateCount > 0
+          ? 'red'
+          : 'green',
     },
   ])
 })
@@ -234,18 +239,20 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
       label: '重复影像页',
       value: formatLedgerMetric(ledger.duplicatePageCount),
       unit: '页',
-      tone: typeof ledger.duplicatePageCount === 'number' && ledger.duplicatePageCount > 0
-        ? 'orange'
-        : 'green',
+      tone:
+        typeof ledger.duplicatePageCount === 'number' && ledger.duplicatePageCount > 0
+          ? 'orange'
+          : 'green',
     },
     {
       key: 'pendingDuplicate',
       label: '待处置重复',
       value: formatLedgerMetric(ledger.pendingDuplicateCount),
       unit: '条',
-      tone: typeof ledger.pendingDuplicateCount === 'number' && ledger.pendingDuplicateCount > 0
-        ? 'red'
-        : 'green',
+      tone:
+        typeof ledger.pendingDuplicateCount === 'number' && ledger.pendingDuplicateCount > 0
+          ? 'red'
+          : 'green',
     },
     { key: 'ledgerId', label: '账本编号', value: ledger.ledgerId, tone: 'gray' },
   ])

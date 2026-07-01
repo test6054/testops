@@ -12,24 +12,18 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  *   串行化并把平台同供应商其它配置置为停用。mark 直接扫描视觉能力使用 QWEN，
  *   quality 文本任务和 mark 其他 AI 能力使用 DEEPSEEK。
  */
-import type {
-  AiModelProfileSaveRequest,
-  AiModelProfileVO,
-} from '@/apis/quality/ai-model-profile'
-import type {
-  AiHealthStatus,
-  AiProviderType,
-} from '@/apis/quality/types'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import type { AiModelProfileSaveRequest, AiModelProfileVO } from '@/apis/quality/ai-model-profile'
 import { aiModelProfileApi } from '@/apis/quality/ai-model-profile'
+import type { AiHealthStatus, AiProviderType } from '@/apis/quality/types'
 import {
   AI_HEALTH_STATUS_COLOR,
   AI_HEALTH_STATUS_LABEL,
   AI_PROVIDER_TYPE_LABEL,
 } from '@/apis/quality/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -98,9 +92,7 @@ const filterModel = computed<Record<string, unknown>>({
   },
 })
 
-const filterFields: FilterField[] = [
-  { key: 'enabledOnly', type: 'custom' },
-]
+const filterFields: FilterField[] = [{ key: 'enabledOnly', type: 'custom' }]
 
 const list = ref<AiModelProfileVO[]>([])
 const loading = ref(false)
@@ -139,11 +131,12 @@ async function loadList() {
   loading.value = true
   try {
     list.value = await readAllPages(
-      (pageNum) => aiModelProfileApi.list({
-        enabledOnly: filterForm.enabledOnly || undefined,
-        pageNum,
-        pageSize: AI_MODEL_PROFILE_PAGE_SIZE,
-      }),
+      (pageNum) =>
+        aiModelProfileApi.list({
+          enabledOnly: filterForm.enabledOnly || undefined,
+          pageNum,
+          pageSize: AI_MODEL_PROFILE_PAGE_SIZE,
+        }),
       '平台 AI 模型配置列表加载失败，请稍后重试',
     )
   } finally {
@@ -375,7 +368,6 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
-
 onMounted(() => {
   void loadList()
 })
@@ -392,11 +384,7 @@ onActivated(() => {
     <UiCard class="detail-table-card ai-model__active-card">
       <template #title>当前启用模型</template>
 
-      <UiEmpty
-        v-if="activeProfiles.length === 0"
-        description="暂无数据"
-        size="sm"
-      />
+      <UiEmpty v-if="activeProfiles.length === 0" description="暂无数据" size="sm" />
       <a-space v-else direction="vertical" :size="12" class="ai-model__active-list">
         <a-descriptions
           v-for="profile in activeProfiles"

@@ -4,7 +4,9 @@
     :metrics="metrics"
     variant="inline"
     compact
-    @metric-click="(key) => emit('metric-click', key, { academicYear: cockpit?.currentAcademicYear })"
+    @metric-click="
+      (key) => emit('metric-click', key, { academicYear: cockpit?.currentAcademicYear })
+    "
   />
 </template>
 
@@ -80,7 +82,9 @@ const metrics = computed((): SignalMetric[] => {
       clickable: true,
     })
   }
-  return items.filter(item => item.key !== 'delta' || row.completenessDeltaVsPreviousYear !== undefined)
+  return items.filter(
+    (item) => item.key !== 'delta' || row.completenessDeltaVsPreviousYear !== undefined,
+  )
 })
 
 async function loadCockpit() {
@@ -91,19 +95,21 @@ async function loadCockpit() {
   loading.value = true
   try {
     cockpit.value = await portfolioAnalysisApi.getProgressCockpit({ teacherId: props.teacherId })
-  }
-  catch (error) {
+  } catch (error) {
     cockpit.value = null
     showUserError(error, '加载进度驾驶舱失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
-watch(() => props.teacherId, () => {
-  void loadCockpit()
-}, { immediate: true })
+watch(
+  () => props.teacherId,
+  () => {
+    void loadCockpit()
+  },
+  { immediate: true },
+)
 
 defineExpose({ reload: loadCockpit, loading, cockpit })
 </script>

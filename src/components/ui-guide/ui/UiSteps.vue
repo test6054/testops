@@ -1,11 +1,7 @@
 <template>
   <div
     class="ui-steps"
-    :class="[
-      `ui-steps--${direction}`,
-      `ui-steps--${size}`,
-      { 'ui-steps--dot': dot },
-    ]"
+    :class="[`ui-steps--${direction}`, `ui-steps--${size}`, { 'ui-steps--dot': dot }]"
   >
     <div
       v-for="(step, index) in normalizedSteps"
@@ -51,21 +47,24 @@ defineOptions({
   name: 'UiSteps',
 })
 
-const props = withDefaults(defineProps<{
-  steps?: UiStepItem[]
-  current?: number
-  direction?: 'horizontal' | 'vertical'
-  size?: 'default' | 'small'
-  dot?: boolean
-  clickable?: boolean
-}>(), {
-  steps: () => [],
-  current: 0,
-  direction: 'horizontal',
-  size: 'default',
-  dot: false,
-  clickable: false,
-})
+const props = withDefaults(
+  defineProps<{
+    steps?: UiStepItem[]
+    current?: number
+    direction?: 'horizontal' | 'vertical'
+    size?: 'default' | 'small'
+    dot?: boolean
+    clickable?: boolean
+  }>(),
+  {
+    steps: () => [],
+    current: 0,
+    direction: 'horizontal',
+    size: 'default',
+    dot: false,
+    clickable: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'change', index: number, step: UiStepItem): void
@@ -75,7 +74,9 @@ const normalizedSteps = computed(() => {
   return props.steps.map((step, index) => ({
     ...step,
     key: step.key || `step-${index}`,
-    status: step.status || (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
+    status:
+      step.status ||
+      (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
   }))
 })
 

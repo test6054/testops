@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DispatchQueueStatusFilter } from './core/useDispatchQueue'
+import { useDispatchQueue } from './core/useDispatchQueue'
 import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, watch } from 'vue'
@@ -9,14 +10,13 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import DocumentKioskActivationGate from './components/DocumentKioskActivationGate.vue'
 import { useDocumentKioskBootstrap } from './composables/useDocumentKioskBootstrap'
-import { useDispatchQueue } from './core/useDispatchQueue'
 
 const router = useRouter()
 const route = useRoute()
 const queue = useDispatchQueue()
 const bootstrap = useDocumentKioskBootstrap()
 
-const statusTabs: { key: DispatchQueueStatusFilter, label: string }[] = [
+const statusTabs: { key: DispatchQueueStatusFilter; label: string }[] = [
   { key: 'ALL', label: '全部' },
   { key: 'PENDING', label: '待处理' },
   { key: 'PROCESSING', label: '处理中' },
@@ -24,7 +24,10 @@ const statusTabs: { key: DispatchQueueStatusFilter, label: string }[] = [
   { key: 'FAILED', label: '失败' },
 ]
 
-const TASK_KIND_LABEL: Record<Extract<ScanTaskKindCode, 'EXAM_ARCHIVE' | 'PORTFOLIO_COLLECT'>, string> = {
+const TASK_KIND_LABEL: Record<
+  Extract<ScanTaskKindCode, 'EXAM_ARCHIVE' | 'PORTFOLIO_COLLECT'>,
+  string
+> = {
   EXAM_ARCHIVE: '考后归档',
   PORTFOLIO_COLLECT: '教师档案袋',
 }
@@ -53,7 +56,13 @@ onMounted(async () => {
     )
   }
   const tab = route.query.tab
-  if (tab === 'FAILED' || tab === 'SUSPENDED' || tab === 'PROCESSING' || tab === 'PENDING' || tab === 'ALL') {
+  if (
+    tab === 'FAILED' ||
+    tab === 'SUSPENDED' ||
+    tab === 'PROCESSING' ||
+    tab === 'PENDING' ||
+    tab === 'ALL'
+  ) {
     queue.setStatusFilter(tab)
   }
   queue.setTaskKindFilter(resolveTaskKindFilter(route.query.taskKind))
@@ -68,7 +77,7 @@ onMounted(async () => {
 
 watch(
   () => bootstrap.activation.isActivatedForMarkApis(),
-  activated => {
+  (activated) => {
     if (activated) {
       void queue.loadQueue()
     }
@@ -109,7 +118,12 @@ async function changeStatusFilter(filter: DispatchQueueStatusFilter) {
       </div>
       <div class="dispatch-queue__head-actions">
         <UiButton size="sm" variant="ghost" @click="goHub">回 Hub</UiButton>
-        <UiButton size="sm" variant="outline" :disabled="queue.loading.value" @click="queue.loadQueue">
+        <UiButton
+          size="sm"
+          variant="outline"
+          :disabled="queue.loading.value"
+          @click="queue.loadQueue"
+        >
           刷新
         </UiButton>
       </div>
@@ -125,14 +139,20 @@ async function changeStatusFilter(filter: DispatchQueueStatusFilter) {
         {{ tab.label }}
       </UiButton>
     </div>
-    <p v-if="queue.errorMessage.value" class="dispatch-queue__error">{{ queue.errorMessage.value }}</p>
+    <p v-if="queue.errorMessage.value" class="dispatch-queue__error">
+      {{ queue.errorMessage.value }}
+    </p>
     <a-skeleton v-if="queue.loading.value" active :paragraph="{ rows: 6 }" />
     <ul v-else class="dispatch-queue__list">
       <li v-for="item in queue.tickets.value" :key="item.ticketId">
         <button type="button" class="dispatch-queue__item" @click="openTicket(item.ticketId)">
           <div class="dispatch-queue__item-top">
             <strong v-if="item.taskKind === 'PORTFOLIO_COLLECT'">
-              {{ item.portfolioSnapshot?.gapTaskTitle || item.portfolioSnapshot?.teacherName || '档案袋派单' }}
+              {{
+                item.portfolioSnapshot?.gapTaskTitle ||
+                item.portfolioSnapshot?.teacherName ||
+                '档案袋派单'
+              }}
             </strong>
             <strong v-else>{{ item.archiveSnapshot?.archiveTitle || '归档卷派单' }}</strong>
             <UiTag v-if="item.status" tone="blue" size="sm">
@@ -140,15 +160,22 @@ async function changeStatusFilter(filter: DispatchQueueStatusFilter) {
             </UiTag>
           </div>
           <p v-if="item.taskKind === 'PORTFOLIO_COLLECT'">
-            {{ item.portfolioSnapshot?.collectMode === 'GAP_ATTACHMENT' ? '补采附件' : 'AI 候选提交' }}
-            <span v-if="item.portfolioSnapshot?.categoryName"> · {{ item.portfolioSnapshot.categoryName }}</span>
+            {{
+              item.portfolioSnapshot?.collectMode === 'GAP_ATTACHMENT' ? '补采附件' : 'AI 候选提交'
+            }}
+            <span v-if="item.portfolioSnapshot?.categoryName">
+              · {{ item.portfolioSnapshot.categoryName }}</span
+            >
           </p>
           <p v-else>柜位 {{ item.archiveSnapshot?.physicalStorageLocation || '—' }}</p>
           <p class="dispatch-queue__meta">{{ item.traceLabelCode }}</p>
         </button>
       </li>
     </ul>
-    <p v-if="!queue.loading.value && queue.tickets.value.length === 0" class="dispatch-queue__empty">
+    <p
+      v-if="!queue.loading.value && queue.tickets.value.length === 0"
+      class="dispatch-queue__empty"
+    >
       暂无待办派单
     </p>
   </div>

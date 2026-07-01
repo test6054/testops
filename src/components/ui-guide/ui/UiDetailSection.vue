@@ -22,14 +22,17 @@ defineOptions({
   name: 'UiDetailSection',
 })
 
-const props = withDefaults(defineProps<{
-  title: string
-  subtitle?: string
-  compact?: boolean
-}>(), {
-  subtitle: '',
-  compact: false,
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    subtitle?: string
+    compact?: boolean
+  }>(),
+  {
+    subtitle: '',
+    compact: false,
+  },
+)
 </script>
 
 <style scoped>

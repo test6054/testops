@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import type { ScanDispatchQueueSummaryVO } from '@/apis/mark/scanner-dispatch'
+import { loadScanDispatchQueueSummary } from '@/apis/mark/scanner-dispatch'
 import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 
-import {
-  ReloadOutlined,
-  ScanOutlined,
-} from '@ant-design/icons-vue'
+import { ReloadOutlined, ScanOutlined } from '@ant-design/icons-vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { loadScanDispatchQueueSummary } from '@/apis/mark/scanner-dispatch'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import KioskArchivePickPanel from './components/KioskArchivePickPanel.vue'
@@ -78,13 +75,16 @@ const queueSummaryError = ref('')
 const QUEUE_SUMMARY_POLL_MS = 30_000
 let queueSummaryTimer: ReturnType<typeof setInterval> | undefined
 
-const canActivateOnHub = computed(() => !resolveActivationGuardMessage(deviceActivation.health.value))
+const canActivateOnHub = computed(
+  () => !resolveActivationGuardMessage(deviceActivation.health.value),
+)
 const scannerDeviceId = computed(() => deviceActivation.setup.value?.scannerDeviceId ?? '')
 const scannerStationId = computed(() => deviceActivation.setup.value?.scannerStationId ?? '')
 
 const endpointLabel = computed(() => {
-  const name = deviceActivation.setup.value?.deviceName?.trim()
-    || deviceActivation.activationForm.value.endpointName.trim()
+  const name =
+    deviceActivation.setup.value?.deviceName?.trim() ||
+    deviceActivation.activationForm.value.endpointName.trim()
   return name || '未命名工位'
 })
 
@@ -97,24 +97,27 @@ const stationLedTone = computed<'green' | 'gray'>(() =>
   deviceActivation.localAgentReachable.value ? 'green' : 'gray',
 )
 
-const showAgentOfflineHint = computed(() =>
-  !hubLoading.value
-  && !deviceActivation.loading.value
-  && !deviceActivation.localAgentReachable.value
-  && (deviceActivation.isDeviceBound.value || !deviceActivation.needsActivationGate.value),
+const showAgentOfflineHint = computed(
+  () =>
+    !hubLoading.value &&
+    !deviceActivation.loading.value &&
+    !deviceActivation.localAgentReachable.value &&
+    (deviceActivation.isDeviceBound.value || !deviceActivation.needsActivationGate.value),
 )
 
-const showTaskKindCards = computed(() =>
-  deviceActivation.localAgentReachable.value
-  && deviceActivation.isDeviceBound.value
-  && !deviceActivation.needsActivationGate.value,
+const showTaskKindCards = computed(
+  () =>
+    deviceActivation.localAgentReachable.value &&
+    deviceActivation.isDeviceBound.value &&
+    !deviceActivation.needsActivationGate.value,
 )
 
-const showFailedAlert = computed(() =>
-  showTaskKindCards.value
-  && !queueSummaryLoading.value
-  && ((queueSummary.value?.failedTicketCount ?? 0) > 0
-    || (queueSummary.value?.committingWorkOrderCount ?? 0) > 0),
+const showFailedAlert = computed(
+  () =>
+    showTaskKindCards.value &&
+    !queueSummaryLoading.value &&
+    ((queueSummary.value?.failedTicketCount ?? 0) > 0 ||
+      (queueSummary.value?.committingWorkOrderCount ?? 0) > 0),
 )
 
 const contextSubtitle = computed(() => {
@@ -148,23 +151,19 @@ const hubSignals = computed<HubSignalItem[]>(() => {
     scanValue = '不可用'
     scanLed = 'gray'
     scanSub = '请先启动本机扫描服务'
-  }
-  else if (!bound) {
+  } else if (!bound) {
     scanValue = '待激活'
     scanLed = 'orange'
     scanSub = '输入激活码完成一次绑定'
-  }
-  else if (health?.scannerConnected && health.scanAllowed) {
+  } else if (health?.scannerConnected && health.scanAllowed) {
     scanValue = '就绪'
     scanLed = 'green'
     scanSub = '扫描仪已连接'
-  }
-  else if (health?.scannerConnected) {
+  } else if (health?.scannerConnected) {
     scanValue = '受限'
     scanLed = 'orange'
     scanSub = '扫描仪已连接'
-  }
-  else {
+  } else {
     scanValue = '未连接'
     scanLed = 'orange'
     scanSub = '请检查扫描仪连接'
@@ -262,10 +261,8 @@ const hubSignals = computed<HubSignalItem[]>(() => {
   return metrics
 })
 
-const showSignalBand = computed(() =>
-  !hubLoading.value
-  && !hubErrorMessage.value
-  && !deviceActivation.needsActivationGate.value,
+const showSignalBand = computed(
+  () => !hubLoading.value && !hubErrorMessage.value && !deviceActivation.needsActivationGate.value,
 )
 
 async function loadQueueSummary() {
@@ -280,12 +277,10 @@ async function loadQueueSummary() {
       scannerDeviceId: scannerDeviceId.value || undefined,
       scannerStationId: scannerStationId.value || undefined,
     })
-  }
-  catch (error) {
+  } catch (error) {
     queueSummary.value = null
     queueSummaryError.value = getUserErrorMessage(error)
-  }
-  finally {
+  } finally {
     queueSummaryLoading.value = false
   }
 }
@@ -322,7 +317,11 @@ function handleMetricClick(key: string) {
     return
   }
   if (key === 'mixed') {
-    window.open('/teacher/scanner-exception-dashboard?kind=MIXED_BATCH', '_blank', 'noopener,noreferrer')
+    window.open(
+      '/teacher/scanner-exception-dashboard?kind=MIXED_BATCH',
+      '_blank',
+      'noopener,noreferrer',
+    )
   }
 }
 
@@ -333,11 +332,9 @@ async function loadHubState() {
     await deviceActivation.refreshDeviceActivationState()
     await loadQueueSummary()
     startQueueSummaryPolling()
-  }
-  catch (error) {
+  } catch (error) {
     hubErrorMessage.value = getUserErrorMessage(error)
-  }
-  finally {
+  } finally {
     hubLoading.value = false
   }
 }
@@ -385,7 +382,12 @@ onUnmounted(() => {
         <div class="hub-shell__logo" aria-hidden="true">
           <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
             <rect x="2" y="2" width="24" height="24" rx="6" fill="var(--kiosk-primary)" />
-            <path d="M8 10h12M8 14h8M8 18h10" stroke="white" stroke-width="2" stroke-linecap="round" />
+            <path
+              d="M8 10h12M8 14h8M8 18h10"
+              stroke="white"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
           </svg>
         </div>
         <div class="hub-shell__brand-text">
@@ -465,9 +467,7 @@ onUnmounted(() => {
           :sub-title="hubErrorMessage"
         >
           <template #extra>
-            <button type="button" class="hub-shell__cta" @click="loadHubState">
-              重试
-            </button>
+            <button type="button" class="hub-shell__cta" @click="loadHubState">重试</button>
           </template>
         </a-result>
 
@@ -488,9 +488,7 @@ onUnmounted(() => {
           <p class="hub-shell__state-detail">
             工位凭证仍有效；Agent 恢复后会自动重连。请先检查本机扫描服务是否已启动。
           </p>
-          <button type="button" class="hub-shell__cta" @click="loadHubState">
-            重新检测
-          </button>
+          <button type="button" class="hub-shell__cta" @click="loadHubState">重新检测</button>
         </section>
 
         <template v-else-if="showTaskKindCards">
@@ -500,9 +498,31 @@ onUnmounted(() => {
             <button type="button" class="hub-entry" @click="enterCard(EXAM_CARD)">
               <div class="hub-entry__icon">
                 <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-                  <rect x="4" y="4" width="32" height="32" rx="8" fill="var(--kiosk-primary)" opacity="0.12" />
-                  <path d="M12 14h16M12 20h16M12 26h10" stroke="var(--kiosk-primary)" stroke-width="2.5" stroke-linecap="round" />
-                  <rect x="8" y="8" width="24" height="24" rx="4" stroke="var(--kiosk-primary)" stroke-width="2" fill="none" />
+                  <rect
+                    x="4"
+                    y="4"
+                    width="32"
+                    height="32"
+                    rx="8"
+                    fill="var(--kiosk-primary)"
+                    opacity="0.12"
+                  />
+                  <path
+                    d="M12 14h16M12 20h16M12 26h10"
+                    stroke="var(--kiosk-primary)"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                  />
+                  <rect
+                    x="8"
+                    y="8"
+                    width="24"
+                    height="24"
+                    rx="4"
+                    stroke="var(--kiosk-primary)"
+                    stroke-width="2"
+                    fill="none"
+                  />
                 </svg>
               </div>
               <div class="hub-entry__body">
@@ -514,18 +534,20 @@ onUnmounted(() => {
                 <span class="hub-entry__cta">
                   {{ EXAM_CARD.ctaText }}
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <path
+                      d="M6 3l5 5-5 5"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
                   </svg>
                 </span>
               </div>
             </button>
 
             <div class="hub-entry-wrap">
-              <div
-                v-for="card in DEEPLINK_CARDS"
-                :key="card.kind"
-                class="hub-entry-block"
-              >
+              <div v-for="card in DEEPLINK_CARDS" :key="card.kind" class="hub-entry-block">
                 <button type="button" class="hub-entry" @click="enterCard(card)">
                   <div class="hub-entry__icon">
                     <svg
@@ -536,9 +558,27 @@ onUnmounted(() => {
                       fill="none"
                       aria-hidden="true"
                     >
-                      <rect x="4" y="4" width="32" height="32" rx="8" fill="var(--kiosk-primary)" opacity="0.12" />
-                      <path d="M10 14l4-4h12a2 2 0 012 2v16a2 2 0 01-2 2H14a2 2 0 01-2-2V14z" stroke="var(--kiosk-primary)" stroke-width="2" fill="none" />
-                      <path d="M10 14h4v-4" stroke="var(--kiosk-primary)" stroke-width="2" stroke-linecap="round" />
+                      <rect
+                        x="4"
+                        y="4"
+                        width="32"
+                        height="32"
+                        rx="8"
+                        fill="var(--kiosk-primary)"
+                        opacity="0.12"
+                      />
+                      <path
+                        d="M10 14l4-4h12a2 2 0 012 2v16a2 2 0 01-2 2H14a2 2 0 01-2-2V14z"
+                        stroke="var(--kiosk-primary)"
+                        stroke-width="2"
+                        fill="none"
+                      />
+                      <path
+                        d="M10 14h4v-4"
+                        stroke="var(--kiosk-primary)"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                      />
                     </svg>
                     <svg
                       v-else
@@ -548,11 +588,46 @@ onUnmounted(() => {
                       fill="none"
                       aria-hidden="true"
                     >
-                      <rect x="4" y="4" width="32" height="32" rx="8" fill="var(--kiosk-primary)" opacity="0.12" />
-                      <circle cx="20" cy="16" r="4" stroke="var(--kiosk-primary)" stroke-width="2" fill="none" />
-                      <path d="M12 28a8 8 0 0116 0" stroke="var(--kiosk-primary)" stroke-width="2" stroke-linecap="round" fill="none" />
-                      <rect x="22" y="10" width="8" height="10" rx="1" stroke="var(--kiosk-primary)" stroke-width="1.5" fill="none" />
-                      <path d="M25 14h2M25 16h2" stroke="var(--kiosk-primary)" stroke-width="1.5" stroke-linecap="round" />
+                      <rect
+                        x="4"
+                        y="4"
+                        width="32"
+                        height="32"
+                        rx="8"
+                        fill="var(--kiosk-primary)"
+                        opacity="0.12"
+                      />
+                      <circle
+                        cx="20"
+                        cy="16"
+                        r="4"
+                        stroke="var(--kiosk-primary)"
+                        stroke-width="2"
+                        fill="none"
+                      />
+                      <path
+                        d="M12 28a8 8 0 0116 0"
+                        stroke="var(--kiosk-primary)"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        fill="none"
+                      />
+                      <rect
+                        x="22"
+                        y="10"
+                        width="8"
+                        height="10"
+                        rx="1"
+                        stroke="var(--kiosk-primary)"
+                        stroke-width="1.5"
+                        fill="none"
+                      />
+                      <path
+                        d="M25 14h2M25 16h2"
+                        stroke="var(--kiosk-primary)"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
                     </svg>
                   </div>
                   <div class="hub-entry__body">
@@ -563,8 +638,20 @@ onUnmounted(() => {
                     <p class="hub-entry__desc">{{ card.description }}</p>
                     <span class="hub-entry__cta">
                       {{ card.ctaText }}
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M6 3l5 5-5 5"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
                       </svg>
                     </span>
                   </div>

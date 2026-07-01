@@ -27,7 +27,9 @@
       </div>
 
       <div v-if="sourceFileId" class="ird__selected-file">
-        <span class="ird__file-label">已选择：{{ sourceFileName }}（{{ formatBytes(sourceFileSize ?? 0) }}）</span>
+        <span class="ird__file-label"
+          >已选择：{{ sourceFileName }}（{{ formatBytes(sourceFileSize ?? 0) }}）</span
+        >
         <div class="ird__action-row ird__action-row--upload">
           <UiButton
             variant="outline"
@@ -78,7 +80,9 @@
         class="ird__intro"
       />
       <div v-if="extractWarnings.length" class="ird__warnings">
-        <p v-for="(line, index) in extractWarnings" :key="index" class="ird__warning-line">{{ line }}</p>
+        <p v-for="(line, index) in extractWarnings" :key="index" class="ird__warning-line">
+          {{ line }}
+        </p>
       </div>
       <pre v-if="extractDisplayText" class="ird__extract-text">{{ extractDisplayText }}</pre>
       <UiEmpty v-else description="未能从文档中抽取可读文本，请检查扫描清晰度或改用 Excel 导入。" />
@@ -123,13 +127,13 @@
 
 <script setup lang="ts">
 import type { IndirectResponseDocumentExtraction } from '@/apis/quality/indirect-response'
+import { indirectResponseApi } from '@/apis/quality/indirect-response'
 import type { AiTaskStatus } from '@/apis/quality/types'
+import { AI_TASK_STATUS_COLOR, AI_TASK_STATUS_LABEL } from '@/apis/quality/types'
 import { message } from 'ant-design-vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { aiTaskApi } from '@/apis/quality/ai-task'
-import { indirectResponseApi } from '@/apis/quality/indirect-response'
-import { AI_TASK_STATUS_COLOR, AI_TASK_STATUS_LABEL } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -176,16 +180,13 @@ const failureReason = ref<string | null>(null)
 const pollCount = ref(0)
 const pollFailureCount = ref(0)
 
-const taskPolling = usePolling(
-  () => pollTaskStatus(),
-  {
-    getOptions: () => ({
-      intervalMs: POLL_INTERVAL_MS,
-      when: phase.value === 'processing' && visible.value,
-    }),
-    pauseWhenDocumentHidden: true,
-  },
-)
+const taskPolling = usePolling(() => pollTaskStatus(), {
+  getOptions: () => ({
+    intervalMs: POLL_INTERVAL_MS,
+    when: phase.value === 'processing' && visible.value,
+  }),
+  pauseWhenDocumentHidden: true,
+})
 
 const isBusy = computed(() => phase.value === 'processing' || extracting.value)
 

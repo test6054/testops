@@ -7,25 +7,28 @@ import type {
   AccreditationCycleVO,
   AccreditationEvidenceVO,
 } from '@/apis/quality/accreditation'
+import { accreditationApi } from '@/apis/quality/accreditation'
 import type {
   SelfAssessmentSectionEvidenceRefItem,
   SelfAssessmentSectionKey,
   SelfAssessmentSectionVO,
 } from '@/apis/quality/self-assessment-section'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
-import { accreditationApi } from '@/apis/quality/accreditation'
 import {
   SELF_ASSESSMENT_SECTION_CONTENT_STATUS_LABEL,
   SELF_ASSESSMENT_SECTION_CONTENT_STATUS_TONE,
   selfAssessmentSectionApi,
 } from '@/apis/quality/self-assessment-section'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import { canEditSelfAssessmentSection, canSubmitSelfAssessment } from '@/composables/useAccreditationWorkbench'
+import {
+  canEditSelfAssessmentSection,
+  canSubmitSelfAssessment,
+} from '@/composables/useAccreditationWorkbench'
 import { showUserError } from '@/utils/error-handler'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -71,10 +74,10 @@ const editor = reactive({
 })
 
 const activeSection = computed(() =>
-  sections.value.find(item => item.sectionKey === activeSectionKey.value),
+  sections.value.find((item) => item.sectionKey === activeSectionKey.value),
 )
 
-const readyCount = computed(() => sections.value.filter(item => item.materialReady).length)
+const readyCount = computed(() => sections.value.filter((item) => item.materialReady).length)
 
 const canEdit = computed(() => canEditSelfAssessmentSection(props.activeCycle))
 
@@ -97,7 +100,7 @@ const submitHint = computed(() => {
 function syncEditor(section?: SelfAssessmentSectionVO) {
   editor.narrativeContent = section?.narrativeContent || ''
   editor.evidenceNarrative = section?.evidenceNarrative || ''
-  editor.evidenceRefs = (section?.evidenceRefs || []).map(item => ({
+  editor.evidenceRefs = (section?.evidenceRefs || []).map((item) => ({
     refType: item.refType,
     fieldPath: item.fieldPath,
     accreditationEvidenceId: item.accreditationEvidenceId,
@@ -114,7 +117,7 @@ async function loadSections() {
   loading.value = true
   try {
     sections.value = await selfAssessmentSectionApi.listByCycle(cycleId)
-    if (!sections.value.some(item => item.sectionKey === activeSectionKey.value)) {
+    if (!sections.value.some((item) => item.sectionKey === activeSectionKey.value)) {
       activeSectionKey.value = SECTION_ORDER[0]
     }
     syncEditor(activeSection.value)
@@ -166,8 +169,8 @@ async function openEvidenceDrawer() {
   evidenceDrawerOpen.value = true
   evidenceLoading.value = true
   selectedEvidenceIds.value = editor.evidenceRefs
-    .filter(item => item.refType === 'ACCREDITATION_EVIDENCE' && item.accreditationEvidenceId)
-    .map(item => item.accreditationEvidenceId!)
+    .filter((item) => item.refType === 'ACCREDITATION_EVIDENCE' && item.accreditationEvidenceId)
+    .map((item) => item.accreditationEvidenceId!)
   try {
     evidenceOptions.value = await readAllPages(
       (pageNum: number) =>
@@ -188,7 +191,7 @@ async function openEvidenceDrawer() {
 }
 
 function applySelectedEvidence() {
-  const keptFieldRefs = editor.evidenceRefs.filter(item => item.refType === 'FIELD_PATH')
+  const keptFieldRefs = editor.evidenceRefs.filter((item) => item.refType === 'FIELD_PATH')
   const evidenceRefs: SelfAssessmentSectionEvidenceRefItem[] = [...keptFieldRefs]
   for (const evidenceId of selectedEvidenceIds.value) {
     evidenceRefs.push({
@@ -232,12 +235,7 @@ watch(activeSectionKey, () => {
 <template>
   <UiCard title="自评报告章节（CEEAA 八节）">
     <template #extra>
-      <UiButton
-        variant="primary"
-        size="sm"
-        :disabled="!canEdit"
-        @click="emit('go-ai-report')"
-      >
+      <UiButton variant="primary" size="sm" :disabled="!canEdit" @click="emit('go-ai-report')">
         AI 生成自评报告
       </UiButton>
     </template>
@@ -295,17 +293,15 @@ watch(activeSectionKey, () => {
         <div class="self-assessment-panel__evidence">
           <div class="self-assessment-panel__evidence-head">
             <span>证据引用</span>
-            <UiButton
-              variant="outline"
-              size="sm"
-              :disabled="!canEdit"
-              @click="openEvidenceDrawer"
-            >
+            <UiButton variant="outline" size="sm" :disabled="!canEdit" @click="openEvidenceDrawer">
               关联认证证据
             </UiButton>
           </div>
           <ul v-if="editor.evidenceRefs.length" class="self-assessment-panel__evidence-list">
-            <li v-for="(evidenceRef, index) in editor.evidenceRefs" :key="`${evidenceRef.refType}-${index}`">
+            <li
+              v-for="(evidenceRef, index) in editor.evidenceRefs"
+              :key="`${evidenceRef.refType}-${index}`"
+            >
               <UiTag tone="gray" size="sm">
                 {{ evidenceRef.refType === 'FIELD_PATH' ? '字段路径' : '认证证据' }}
               </UiTag>
@@ -316,12 +312,7 @@ watch(activeSectionKey, () => {
                     : evidenceRef.accreditationEvidenceId
                 }}
               </span>
-              <UiButton
-                v-if="canEdit"
-                variant="ghost"
-                size="sm"
-                @click="removeEvidenceRef(index)"
-              >
+              <UiButton v-if="canEdit" variant="ghost" size="sm" @click="removeEvidenceRef(index)">
                 移除
               </UiButton>
             </li>
@@ -349,7 +340,10 @@ watch(activeSectionKey, () => {
 
     <UiDrawer v-model:open="evidenceDrawerOpen" title="关联认证证据" width="480">
       <a-spin :spinning="evidenceLoading">
-        <a-checkbox-group v-model:value="selectedEvidenceIds" class="self-assessment-panel__evidence-picker">
+        <a-checkbox-group
+          v-model:value="selectedEvidenceIds"
+          class="self-assessment-panel__evidence-picker"
+        >
           <label
             v-for="item in evidenceOptions"
             :key="item.id"

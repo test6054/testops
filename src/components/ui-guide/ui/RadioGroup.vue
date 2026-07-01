@@ -22,15 +22,18 @@ defineOptions({
 
 const modelValue = defineModel<UiOptionValue | boolean | undefined>()
 
-const props = withDefaults(defineProps<{
-  options?: UiSelectOption[]
-  size?: UiComponentSize
-  block?: boolean
-  disabled?: boolean
-}>(), {
-  options: () => [],
-  size: 'md',
-  block: false,
-  disabled: false,
-})
+const props = withDefaults(
+  defineProps<{
+    options?: UiSelectOption[]
+    size?: UiComponentSize
+    block?: boolean
+    disabled?: boolean
+  }>(),
+  {
+    options: () => [],
+    size: 'md',
+    block: false,
+    disabled: false,
+  },
+)
 </script>

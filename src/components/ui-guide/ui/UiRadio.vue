@@ -32,15 +32,18 @@ defineOptions({
 
 const checkedModel = defineModel<boolean>({ default: false })
 
-const props = withDefaults(defineProps<{
-  value?: UiOptionValue | boolean
-  label?: string
-  disabled?: boolean
-}>(), {
-  value: undefined,
-  label: '',
-  disabled: false,
-})
+const props = withDefaults(
+  defineProps<{
+    value?: UiOptionValue | boolean
+    label?: string
+    disabled?: boolean
+  }>(),
+  {
+    value: undefined,
+    label: '',
+    disabled: false,
+  },
+)
 
 const inGroup = inject(uiRadioGroupKey, undefined) === true
 </script>

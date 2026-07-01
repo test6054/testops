@@ -3,17 +3,17 @@ import type {
   ArchiveVolumeWizardStepKey,
 } from '@/apis/mark/archive-volume'
 
-export type ArchiveVolumeExpertTabKey
-  = | 'materials'
-    | 'scores'
-    | 'integrity'
-    | 'storage'
-    | 'scan-batches'
-    | 'scan-review'
-    | 'transfer'
-    | 'access'
-    | 'appraisal'
-    | 'events'
+export type ArchiveVolumeExpertTabKey =
+  | 'materials'
+  | 'scores'
+  | 'integrity'
+  | 'storage'
+  | 'scan-batches'
+  | 'scan-review'
+  | 'transfer'
+  | 'access'
+  | 'appraisal'
+  | 'events'
 
 export interface ArchiveSubmitTaskRouteTarget {
   wizardStep: ArchiveVolumeWizardStepKey
@@ -74,7 +74,7 @@ function normalizeExpertTab(raw?: string): ArchiveVolumeExpertTabKey | null {
   if (raw === 'catalog') return 'materials'
   if (raw === 'selfCheck') return 'materials'
   return allowed.includes(raw as ArchiveVolumeExpertTabKey)
-    ? raw as ArchiveVolumeExpertTabKey
+    ? (raw as ArchiveVolumeExpertTabKey)
     : null
 }
 

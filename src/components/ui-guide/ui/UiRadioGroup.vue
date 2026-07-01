@@ -1,10 +1,7 @@
 <template>
   <div
     class="ui-radio-group"
-    :class="[
-      `ui-radio-group--${props.size}`,
-      { 'ui-radio-group--block': props.block },
-    ]"
+    :class="[`ui-radio-group--${props.size}`, { 'ui-radio-group--block': props.block }]"
   >
     <a-radio-group
       v-model:value="modelValue"
@@ -40,17 +37,20 @@ defineOptions({
 
 const modelValue = defineModel<UiOptionValue | boolean | undefined>()
 
-const props = withDefaults(defineProps<{
-  options?: UiSelectOption[]
-  size?: UiComponentSize
-  block?: boolean
-  disabled?: boolean
-}>(), {
-  options: () => [],
-  size: 'md',
-  block: false,
-  disabled: false,
-})
+const props = withDefaults(
+  defineProps<{
+    options?: UiSelectOption[]
+    size?: UiComponentSize
+    block?: boolean
+    disabled?: boolean
+  }>(),
+  {
+    options: () => [],
+    size: 'md',
+    block: false,
+    disabled: false,
+  },
+)
 
 provide(uiRadioGroupKey, true)
 </script>
@@ -120,7 +120,8 @@ provide(uiRadioGroupKey, true)
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 
-.ui-radio-group :deep(.ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled):hover) {
+.ui-radio-group
+  :deep(.ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled):hover) {
   color: var(--dp-text-primary, #0f172a);
 }
 

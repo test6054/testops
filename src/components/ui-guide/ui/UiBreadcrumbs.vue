@@ -47,7 +47,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  (e: 'navigate', navigateEvent: { item: UiBreadcrumbItem, index: number }): void
+  (e: 'navigate', navigateEvent: { item: UiBreadcrumbItem; index: number }): void
 }>()
 
 const router = useRouter()

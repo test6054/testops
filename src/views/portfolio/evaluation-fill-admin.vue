@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationMode } from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
+  PORTFOLIO_EVALUATION_MODE_LABEL,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioEvaluationEntrySummaryItemVO,
   PortfolioEvaluationEntrySummaryVO,
@@ -9,13 +13,12 @@ import type {
   PortfolioEvaluationSubjectTeacherOptionVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES, PORTFOLIO_EVALUATION_MODE_LABEL } from '@/apis/portfolio/enums'
 import {
   portfolioEvaluationEntryApi,
   portfolioEvaluationTaskApi,
 } from '@/apis/portfolio/teacher-platform'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -46,7 +49,7 @@ const fillForm = reactive({
   commentText: '',
 })
 
-const selectedTask = computed(() => tasks.value.find(item => item.id === selectedTaskId.value))
+const selectedTask = computed(() => tasks.value.find((item) => item.id === selectedTaskId.value))
 const isByIndicator = computed(() => selectedTask.value?.evaluationMode === 'BY_INDICATOR')
 const fillWindowBlockedReason = computed(() => {
   const task = selectedTask.value
@@ -74,7 +77,12 @@ const taskSummaryItems = computed(() => {
     return []
   }
   return [
-    { key: 'entries', label: '填报条目', value: String(summary.value.entryCount), tone: 'blue' as const },
+    {
+      key: 'entries',
+      label: '填报条目',
+      value: String(summary.value.entryCount),
+      tone: 'blue' as const,
+    },
     { key: 'avg', label: '平均分', value: summary.value.averageScore, unit: '分' },
     { key: 'mode', label: '评价模式', value: evaluationModeLabel(summary.value.evaluationMode) },
   ]
@@ -100,7 +108,12 @@ const summaryColumns = computed<ColumnsType<PortfolioEvaluationEntrySummaryItemV
     ]
   }
   return [
-    { title: '被评教师', dataIndex: 'subjectTeacherUserId', key: 'subjectTeacherUserId', width: 100 },
+    {
+      title: '被评教师',
+      dataIndex: 'subjectTeacherUserId',
+      key: 'subjectTeacherUserId',
+      width: 100,
+    },
     ...metricColumns,
   ]
 })
@@ -121,15 +134,17 @@ function summaryRowKey(record: unknown): string {
 }
 
 function subjectTeacherLabel(teacherUserId: string): string {
-  const option = subjectTeacherOptions.value.find(item => item.teacherUserId === teacherUserId)
+  const option = subjectTeacherOptions.value.find((item) => item.teacherUserId === teacherUserId)
   return option ? `${option.fullName} (${teacherUserId})` : teacherUserId
 }
 
 const selectableTasks = computed(() => {
   if (activeTab.value === 'fill') {
-    return tasks.value.filter(item => item.taskStatus === 'PUBLISHED')
+    return tasks.value.filter((item) => item.taskStatus === 'PUBLISHED')
   }
-  return tasks.value.filter(item => PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES.includes(item.taskStatus))
+  return tasks.value.filter((item) =>
+    PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES.includes(item.taskStatus),
+  )
 })
 
 async function loadTasks() {
@@ -143,15 +158,12 @@ async function loadTasks() {
     const pool = selectableTasks.value
     if (!selectedTaskId.value && pool.length) {
       selectedTaskId.value = pool[0].id
-    }
-    else if (selectedTaskId.value && !pool.some(item => item.id === selectedTaskId.value)) {
+    } else if (selectedTaskId.value && !pool.some((item) => item.id === selectedTaskId.value)) {
       selectedTaskId.value = pool[0]?.id ?? ''
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -170,8 +182,7 @@ async function loadFillContext() {
     indicatorOptions.value = context.indicatorOptions
     fillForm.subjectTeacherUserId = ''
     fillForm.indicatorCode = ''
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -189,11 +200,9 @@ async function loadEntries() {
       pageSize: 100,
     })
     entries.value = readPageList(page, '加载填报条目失败')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -206,11 +215,9 @@ async function loadSummary() {
   loading.value = true
   try {
     summary.value = await portfolioEvaluationEntryApi.summary({ id: selectedTaskId.value })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -245,11 +252,9 @@ async function saveEntry() {
     fillForm.score = ''
     fillForm.commentText = ''
     await Promise.all([loadEntries(), loadSummary()])
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -264,11 +269,9 @@ async function exportSummaryCsv() {
     const result = await portfolioEvaluationEntryApi.exportSummary({ id: selectedTaskId.value })
     await downloadPortfolioExcelExport(result)
     message.success('汇总已导出')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     exporting.value = false
   }
 }
@@ -283,13 +286,12 @@ watch(selectedTaskId, async () => {
 
 watch(activeTab, (tab) => {
   const pool = selectableTasks.value
-  if (selectedTaskId.value && !pool.some(item => item.id === selectedTaskId.value)) {
+  if (selectedTaskId.value && !pool.some((item) => item.id === selectedTaskId.value)) {
     selectedTaskId.value = pool[0]?.id ?? ''
   }
   if (tab === 'summary') {
     void loadSummary()
-  }
-  else {
+  } else {
     void loadEntries()
   }
 })
@@ -321,10 +323,10 @@ onMounted(async () => {
             {{ task.taskName }}（{{ evaluationModeLabel(task.evaluationMode) }}）
           </a-select-option>
         </a-select>
-        <UiButton @click="loadTasks">
-          刷新任务
-        </UiButton>
-        <span v-if="fillWindowBlockedReason" class="fill-window-hint">{{ fillWindowBlockedReason }}</span>
+        <UiButton @click="loadTasks"> 刷新任务 </UiButton>
+        <span v-if="fillWindowBlockedReason" class="fill-window-hint">{{
+          fillWindowBlockedReason
+        }}</span>
       </div>
       <UiStatPanel
         v-if="summary && selectedTaskId"
@@ -372,7 +374,12 @@ onMounted(async () => {
             </a-select>
             <a-input v-model:value="fillForm.score" placeholder="得分" style="width: 100px" />
             <a-input v-model:value="fillForm.commentText" placeholder="评语" style="flex: 1" />
-            <UiButton variant="primary" :loading="saving" :disabled="!canSaveEntry" @click="saveEntry">
+            <UiButton
+              variant="primary"
+              :loading="saving"
+              :disabled="!canSaveEntry"
+              @click="saveEntry"
+            >
               保存评价
             </UiButton>
           </div>
@@ -396,9 +403,7 @@ onMounted(async () => {
             <span>条目 {{ summary.entryCount }}</span>
             <span>平均分 {{ summary.averageScore }}</span>
             <span>模式 {{ evaluationModeLabel(summary.evaluationMode) }}</span>
-            <UiButton :loading="exporting" @click="exportSummaryCsv">
-              导出 Excel
-            </UiButton>
+            <UiButton :loading="exporting" @click="exportSummaryCsv"> 导出 Excel </UiButton>
           </div>
           <UiDataTable
             :columns="summaryColumns"
@@ -420,7 +425,8 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.toolbar, .form-grid {
+.toolbar,
+.form-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;

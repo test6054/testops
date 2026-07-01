@@ -1,4 +1,5 @@
 import type { Ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import type {
   PortfolioArchiveRecordFieldInput,
   PortfolioMaterialIntakeStage,
@@ -7,16 +8,12 @@ import type {
 } from '@/apis/portfolio/types'
 import type { AiTaskStatus } from '@/apis/quality/types'
 import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioIntakeApi } from '@/apis/portfolio/intake'
 import { usePolling } from '@/composables/usePolling'
 import { showUserError } from '@/utils/error-handler'
 
-const POLLING_STAGES: PortfolioMaterialIntakeStage[] = [
-  'OCR_PENDING',
-  'AI_PROCESSING',
-]
+const POLLING_STAGES: PortfolioMaterialIntakeStage[] = ['OCR_PENDING', 'AI_PROCESSING']
 
 const POLLING_AI_STATUSES: AiTaskStatus[] = ['PENDING', 'PROCESSING']
 
@@ -52,11 +49,13 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
   const fieldValues = reactive<Record<string, string>>({})
   const evidenceRefs = reactive<Record<string, string>>({})
 
-  const demoMode = computed(() =>
-    readDemoModeFromRoute(route.query.demoMode) || status.value?.demoMode === true)
+  const demoMode = computed(
+    () => readDemoModeFromRoute(route.query.demoMode) || status.value?.demoMode === true,
+  )
 
   const teacherRequest = computed(() =>
-    targetTeacherId.value ? { teacherId: targetTeacherId.value } : {})
+    targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  )
 
   const shouldPoll = computed(() => {
     if (!status.value) {
@@ -134,11 +133,9 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
         demoMode: demoMode.value || undefined,
       })
       applyStatus(next)
-    }
-    catch (error) {
+    } catch (error) {
       showUserError(error, '加载采集状态失败')
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
@@ -179,17 +176,15 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
       taskId.value = result.aiTaskId ?? taskId.value
       await refreshStatus()
       return result
-    }
-    catch (error) {
+    } catch (error) {
       showUserError(error, '启动材料采集失败')
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
 
   function buildFieldInputs(): PortfolioArchiveRecordFieldInput[] {
-    return Object.keys(fieldValues).map(fieldCode => ({
+    return Object.keys(fieldValues).map((fieldCode) => ({
       fieldCode,
       fieldValue: fieldValues[fieldCode],
       evidenceRef: evidenceRefs[fieldCode] || undefined,
@@ -217,11 +212,9 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
       })
       applyStatus(result)
       message.success('草稿已保存')
-    }
-    catch (error) {
+    } catch (error) {
       showUserError(error, '保存草稿失败')
-    }
-    finally {
+    } finally {
       saving.value = false
     }
   }
@@ -248,11 +241,9 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
       applyStatus(result)
       message.success('已提交审核')
       return result
-    }
-    catch (error) {
+    } catch (error) {
       showUserError(error, '提交审核失败')
-    }
-    finally {
+    } finally {
       submitting.value = false
     }
   }
@@ -271,13 +262,13 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
       })
       categoryId.value = targetCategoryId
       archiveRecordId.value = result.archiveRecordId
-      message.success(`重分类完成，复用 ${result.reusedFieldCount} 项，清空 ${result.clearedFieldCount} 项`)
+      message.success(
+        `重分类完成，复用 ${result.reusedFieldCount} 项，清空 ${result.clearedFieldCount} 项`,
+      )
       await refreshStatus()
-    }
-    catch (error) {
+    } catch (error) {
       showUserError(error, '重分类失败')
-    }
-    finally {
+    } finally {
       reassigning.value = false
     }
   }
@@ -311,16 +302,19 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     }
   })
 
-  usePolling(async () => {
-    await refreshStatus()
-  }, {
-    getOptions: () => ({
-      intervalMs: 4000,
-      when: shouldPoll.value,
-      immediate: false,
-    }),
-    pauseWhenDocumentHidden: true,
-  })
+  usePolling(
+    async () => {
+      await refreshStatus()
+    },
+    {
+      getOptions: () => ({
+        intervalMs: 4000,
+        when: shouldPoll.value,
+        immediate: false,
+      }),
+      pauseWhenDocumentHidden: true,
+    },
+  )
 
   return {
     loading,

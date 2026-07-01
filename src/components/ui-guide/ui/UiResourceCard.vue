@@ -14,11 +14,7 @@
           <div class="ui-resource-card__cover-title">{{ props.title }}</div>
         </div>
         <div class="ui-resource-card__cover-badges">
-          <UiTag
-            v-if="props.difficultyLabel"
-            :tone="props.difficultyTone"
-            variant="outline"
-          >
+          <UiTag v-if="props.difficultyLabel" :tone="props.difficultyTone" variant="outline">
             {{ props.difficultyLabel }}
           </UiTag>
           <slot name="cover-badges" />
@@ -31,12 +27,7 @@
     </template>
 
     <template v-if="props.tags.length" #tags>
-      <UiTag
-        v-for="tag in props.tags"
-        :key="tag"
-        tone="gray"
-        variant="outline"
-      >
+      <UiTag v-for="tag in props.tags" :key="tag" tone="gray" variant="outline">
         {{ tag }}
       </UiTag>
     </template>
@@ -66,11 +57,7 @@
         >
           {{ props.secondaryActionText }}
         </UiButton>
-        <UiButton
-          v-if="props.primaryActionText"
-          size="sm"
-          @click.stop="emit('primary')"
-        >
+        <UiButton v-if="props.primaryActionText" size="sm" @click.stop="emit('primary')">
           {{ props.primaryActionText }}
         </UiButton>
       </div>
@@ -86,32 +73,35 @@ import UiEntityCard from './UiEntityCard.vue'
 
 defineOptions({ name: 'UiResourceCard' })
 
-const props = withDefaults(defineProps<{
-  title: string
-  subtitle?: string
-  coverLabel?: string
-  coverTone?: BadgeTone
-  difficultyLabel?: string
-  difficultyTone?: BadgeTone
-  tags?: string[]
-  metaItems?: string[]
-  creator?: string
-  primaryActionText?: string
-  secondaryActionText?: string
-  clickable?: boolean
-}>(), {
-  subtitle: '',
-  coverLabel: '',
-  coverTone: 'blue',
-  difficultyLabel: '',
-  difficultyTone: 'orange',
-  tags: () => [],
-  metaItems: () => [],
-  creator: '',
-  primaryActionText: '查看详情',
-  secondaryActionText: '',
-  clickable: true,
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    subtitle?: string
+    coverLabel?: string
+    coverTone?: BadgeTone
+    difficultyLabel?: string
+    difficultyTone?: BadgeTone
+    tags?: string[]
+    metaItems?: string[]
+    creator?: string
+    primaryActionText?: string
+    secondaryActionText?: string
+    clickable?: boolean
+  }>(),
+  {
+    subtitle: '',
+    coverLabel: '',
+    coverTone: 'blue',
+    difficultyLabel: '',
+    difficultyTone: 'orange',
+    tags: () => [],
+    metaItems: () => [],
+    creator: '',
+    primaryActionText: '查看详情',
+    secondaryActionText: '',
+    clickable: true,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'click'): void

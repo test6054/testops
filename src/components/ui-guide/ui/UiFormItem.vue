@@ -26,23 +26,26 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  label?: string
-  name?: UiFormName
-  rules?: FormItemProps['rules']
-  required?: boolean
-  help?: string
-  extra?: string
-  validateStatus?: '' | 'success' | 'warning' | 'error' | 'validating'
-}>(), {
-  label: '',
-  name: undefined,
-  rules: undefined,
-  required: false,
-  help: '',
-  extra: '',
-  validateStatus: '',
-})
+const props = withDefaults(
+  defineProps<{
+    label?: string
+    name?: UiFormName
+    rules?: FormItemProps['rules']
+    required?: boolean
+    help?: string
+    extra?: string
+    validateStatus?: '' | 'success' | 'warning' | 'error' | 'validating'
+  }>(),
+  {
+    label: '',
+    name: undefined,
+    rules: undefined,
+    required: false,
+    help: '',
+    extra: '',
+    validateStatus: '',
+  },
+)
 </script>
 
 <style scoped>

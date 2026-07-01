@@ -101,9 +101,7 @@
         :max-width="360"
         compact
       >
-        <UiButton variant="outline" size="sm">
-          最近提交
-        </UiButton>
+        <UiButton variant="outline" size="sm"> 最近提交 </UiButton>
         <template #content>
           <ul class="marking-task-toolbar__recent-list">
             <li

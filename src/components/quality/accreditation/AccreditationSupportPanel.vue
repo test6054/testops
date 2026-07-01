@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { ProgramSupportProfileSaveRequest, ProgramSupportProfileVO } from '@/apis/quality/accreditation'
+import type {
+  ProgramSupportProfileSaveRequest,
+  ProgramSupportProfileVO,
+} from '@/apis/quality/accreditation'
+import { accreditationApi } from '@/apis/quality/accreditation'
 import type { FacultyProfileSaveRequest, FacultyProfileVO } from '@/apis/quality/faculty-profile'
+import { facultyProfileApi } from '@/apis/quality/faculty-profile'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
-import { accreditationApi } from '@/apis/quality/accreditation'
-import { facultyProfileApi } from '@/apis/quality/faculty-profile'
 import { TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -287,42 +290,48 @@ function validateFacultyForm() {
     missing.push('职称')
   }
   if (facultyForm.hasTeachingEthicsTraining !== true) missing.push('师德师风培训完成状态')
-  if (typeof facultyForm.ethicsTrainingDate !== 'string' || !facultyForm.ethicsTrainingDate.trim()) {
+  if (
+    typeof facultyForm.ethicsTrainingDate !== 'string' ||
+    !facultyForm.ethicsTrainingDate.trim()
+  ) {
     missing.push('培训日期')
   }
   if (typeof facultyForm.courses !== 'string' || !facultyForm.courses.trim()) {
     missing.push('承担课程')
   }
-  if (typeof facultyForm.teachingEvaluation !== 'string' || !facultyForm.teachingEvaluation.trim()) {
+  if (
+    typeof facultyForm.teachingEvaluation !== 'string' ||
+    !facultyForm.teachingEvaluation.trim()
+  ) {
     missing.push('教学评价结果')
   }
   if (
-    typeof facultyForm.engineeringPracticeExperience !== 'string'
-    || !facultyForm.engineeringPracticeExperience.trim()
+    typeof facultyForm.engineeringPracticeExperience !== 'string' ||
+    !facultyForm.engineeringPracticeExperience.trim()
   ) {
     missing.push('工程实践经历')
   }
   if (
-    typeof facultyForm.engineeringAbilityEvidence !== 'string'
-    || !facultyForm.engineeringAbilityEvidence.trim()
+    typeof facultyForm.engineeringAbilityEvidence !== 'string' ||
+    !facultyForm.engineeringAbilityEvidence.trim()
   ) {
     missing.push('工程能力支撑证据')
   }
   if (
-    typeof facultyForm.teacherDevelopmentRecord !== 'string'
-    || !facultyForm.teacherDevelopmentRecord.trim()
+    typeof facultyForm.teacherDevelopmentRecord !== 'string' ||
+    !facultyForm.teacherDevelopmentRecord.trim()
   ) {
     missing.push('教师发展记录')
   }
   if (
-    typeof facultyForm.teachingReformContribution !== 'string'
-    || !facultyForm.teachingReformContribution.trim()
+    typeof facultyForm.teachingReformContribution !== 'string' ||
+    !facultyForm.teachingReformContribution.trim()
   ) {
     missing.push('教学改革与持续改进记录')
   }
   if (
-    typeof facultyForm.graduationDesignGuidance !== 'string'
-    || !facultyForm.graduationDesignGuidance.trim()
+    typeof facultyForm.graduationDesignGuidance !== 'string' ||
+    !facultyForm.graduationDesignGuidance.trim()
   ) {
     missing.push('毕业设计或工程项目指导情况')
   }
@@ -386,7 +395,7 @@ function resetFacultyFilters() {
   loadFacultyProfiles()
 }
 
-function handleFacultyPageChange(pageEvent: { current: number, pageSize: number }) {
+function handleFacultyPageChange(pageEvent: { current: number; pageSize: number }) {
   facultyQuery.pageNum = pageEvent.current
   facultyQuery.pageSize = pageEvent.pageSize
   loadFacultyProfiles()
@@ -415,7 +424,12 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
           <span v-else-if="profile" class="draft">草稿</span>
           <span v-else class="draft">尚未建档</span>
           <div class="actions">
-            <UiButton variant="outline" :loading="saving" :disabled="isProfileLocked" @click="saveProfile">
+            <UiButton
+              variant="outline"
+              :loading="saving"
+              :disabled="isProfileLocked"
+              @click="saveProfile"
+            >
               保存
             </UiButton>
             <UiButton
@@ -433,25 +447,49 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
           <a-textarea v-model:value="form.facultySummary" :rows="4" :disabled="isProfileLocked" />
         </a-form-item>
         <a-form-item label="师资结构说明">
-          <a-textarea v-model:value="form.facultyStructureRemark" :rows="3" :disabled="isProfileLocked" />
+          <a-textarea
+            v-model:value="form.facultyStructureRemark"
+            :rows="3"
+            :disabled="isProfileLocked"
+          />
         </a-form-item>
         <a-form-item label="实验与工程训练设施（标准 7）">
-          <a-textarea v-model:value="form.supportFacilitySummary" :rows="4" :disabled="isProfileLocked" />
+          <a-textarea
+            v-model:value="form.supportFacilitySummary"
+            :rows="4"
+            :disabled="isProfileLocked"
+          />
         </a-form-item>
         <a-form-item label="图书与文献资源">
-          <a-textarea v-model:value="form.supportLibraryRemark" :rows="3" :disabled="isProfileLocked" />
+          <a-textarea
+            v-model:value="form.supportLibraryRemark"
+            :rows="3"
+            :disabled="isProfileLocked"
+          />
         </a-form-item>
         <a-form-item label="信息化与计算资源">
           <a-textarea v-model:value="form.supportItRemark" :rows="3" :disabled="isProfileLocked" />
         </a-form-item>
         <a-form-item label="产学合作与实习基地">
-          <a-textarea v-model:value="form.industryCoopRemark" :rows="3" :disabled="isProfileLocked" />
+          <a-textarea
+            v-model:value="form.industryCoopRemark"
+            :rows="3"
+            :disabled="isProfileLocked"
+          />
         </a-form-item>
         <a-form-item label="学生发展与支持">
-          <a-textarea v-model:value="form.studentDevelopmentRemark" :rows="3" :disabled="isProfileLocked" />
+          <a-textarea
+            v-model:value="form.studentDevelopmentRemark"
+            :rows="3"
+            :disabled="isProfileLocked"
+          />
         </a-form-item>
         <a-form-item label="质量保障体系">
-          <a-textarea v-model:value="form.qualityAssuranceRemark" :rows="3" :disabled="isProfileLocked" />
+          <a-textarea
+            v-model:value="form.qualityAssuranceRemark"
+            :rows="3"
+            :disabled="isProfileLocked"
+          />
         </a-form-item>
       </a-form>
     </section>
@@ -465,7 +503,11 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
             每位教师按当前培养方案建档，供自评报告、专家材料包和标准 6 师资举证引用。
           </p>
         </div>
-        <UiButton variant="primary" :disabled="!trainingPlanId || isProfileLocked" @click="openFacultyCreate">
+        <UiButton
+          variant="primary"
+          :disabled="!trainingPlanId || isProfileLocked"
+          @click="openFacultyCreate"
+        >
           新增教师档案
         </UiButton>
       </div>

@@ -62,10 +62,7 @@
               </template>
             </a-tree>
 
-            <UiEmpty
-              :title="props.emptyTitle"
-              :description="props.emptyDescription"
-            />
+            <UiEmpty :title="props.emptyTitle" :description="props.emptyDescription" />
           </a-spin>
 
           <slot name="content-body-after" />
@@ -83,7 +80,11 @@
           <UiButton variant="outline" @click="emit('cancel')">
             {{ props.cancelText }}
           </UiButton>
-          <UiButton :loading="props.confirmLoading" :disabled="props.confirmDisabled" @click="emit('confirm')">
+          <UiButton
+            :loading="props.confirmLoading"
+            :disabled="props.confirmDisabled"
+            @click="emit('confirm')"
+          >
             {{ props.okText }}
           </UiButton>
         </div>
@@ -108,67 +109,70 @@ defineOptions({
 
 const keyword = defineModel<string>('keyword', { default: '' })
 
-const props = withDefaults(defineProps<{
-  open: boolean
-  title: string
-  width?: number
-  asideWidth?: string
-  searchPlaceholder?: string
-  loading?: boolean
-  treeData?: UiTreeNode[]
-  checkedKeys?: Key[] | { checked: Key[], halfChecked: Key[] }
-  selectedKeys?: Array<string | number>
-  defaultExpandAll?: boolean
-  defaultExpandedKeys?: Array<string | number>
-  checkable?: boolean
-  selectable?: boolean
-  fieldNames?: { title: string, key: string, children: string }
-  treeProps?: Record<string, unknown>
-  showStats?: boolean
-  selectedCount?: number
-  selectionLabel?: string
-  selectionSuffix?: string
-  confirmLoading?: boolean
-  confirmDisabled?: boolean
-  okText?: string
-  cancelText?: string
-  emptyTitle?: string
-  emptyDescription?: string
-}>(), {
-  width: 1080,
-  asideWidth: '320px',
-  searchPlaceholder: '请输入关键词搜索',
-  loading: false,
-  treeData: () => [],
-  checkedKeys: undefined,
-  selectedKeys: () => [],
-  defaultExpandAll: false,
-  defaultExpandedKeys: () => [],
-  checkable: true,
-  selectable: true,
-  fieldNames: () => ({
-    title: 'title',
-    key: 'key',
-    children: 'children',
-  }),
-  treeProps: () => ({}),
-  showStats: true,
-  selectedCount: 0,
-  selectionLabel: '已选择',
-  selectionSuffix: '项',
-  confirmLoading: false,
-  confirmDisabled: false,
-  okText: '确定',
-  cancelText: '取消',
-  emptyTitle: '暂无数据',
-  emptyDescription: '当前没有可选择内容。',
-})
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    title: string
+    width?: number
+    asideWidth?: string
+    searchPlaceholder?: string
+    loading?: boolean
+    treeData?: UiTreeNode[]
+    checkedKeys?: Key[] | { checked: Key[]; halfChecked: Key[] }
+    selectedKeys?: Array<string | number>
+    defaultExpandAll?: boolean
+    defaultExpandedKeys?: Array<string | number>
+    checkable?: boolean
+    selectable?: boolean
+    fieldNames?: { title: string; key: string; children: string }
+    treeProps?: Record<string, unknown>
+    showStats?: boolean
+    selectedCount?: number
+    selectionLabel?: string
+    selectionSuffix?: string
+    confirmLoading?: boolean
+    confirmDisabled?: boolean
+    okText?: string
+    cancelText?: string
+    emptyTitle?: string
+    emptyDescription?: string
+  }>(),
+  {
+    width: 1080,
+    asideWidth: '320px',
+    searchPlaceholder: '请输入关键词搜索',
+    loading: false,
+    treeData: () => [],
+    checkedKeys: undefined,
+    selectedKeys: () => [],
+    defaultExpandAll: false,
+    defaultExpandedKeys: () => [],
+    checkable: true,
+    selectable: true,
+    fieldNames: () => ({
+      title: 'title',
+      key: 'key',
+      children: 'children',
+    }),
+    treeProps: () => ({}),
+    showStats: true,
+    selectedCount: 0,
+    selectionLabel: '已选择',
+    selectionSuffix: '项',
+    confirmLoading: false,
+    confirmDisabled: false,
+    okText: '确定',
+    cancelText: '取消',
+    emptyTitle: '暂无数据',
+    emptyDescription: '当前没有可选择内容。',
+  },
+)
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
   (e: 'search', value: string): void
   (e: 'clear'): void
-  (e: 'check', checkedKeys: Key[] | { checked: Key[], halfChecked: Key[] }, info: CheckInfo): void
+  (e: 'check', checkedKeys: Key[] | { checked: Key[]; halfChecked: Key[] }, info: CheckInfo): void
   (e: 'select', selectedKeys: Key[], info: unknown): void
   (e: 'confirm'): void
   (e: 'cancel'): void
@@ -178,9 +182,7 @@ const titleField = computed(() => props.fieldNames.title || 'title')
 
 const resolveNodeTitle = (nodeData: UiTreeNode) => {
   const value = Reflect.get(nodeData, titleField.value)
-  return typeof value === 'string' || typeof value === 'number'
-    ? String(value)
-    : ''
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 }
 
 const handleSearch = () => {
@@ -195,7 +197,10 @@ function handleOpenChange(value: boolean): void {
   emit('update:open', value)
 }
 
-const handleCheck = (checkedKeys: Key[] | { checked: Key[], halfChecked: Key[] }, info: CheckInfo) => {
+const handleCheck = (
+  checkedKeys: Key[] | { checked: Key[]; halfChecked: Key[] },
+  info: CheckInfo,
+) => {
   emit('check', checkedKeys, info)
 }
 

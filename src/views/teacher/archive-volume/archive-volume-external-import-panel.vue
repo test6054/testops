@@ -5,7 +5,10 @@
     </p>
     <a-form layout="vertical">
       <a-form-item label="来源系统" required>
-        <a-input v-model:value="form.sourceSystem" placeholder="如 TEACHING_AFFAIRS / HISTORY_BACKFILL" />
+        <a-input
+          v-model:value="form.sourceSystem"
+          placeholder="如 TEACHING_AFFAIRS / HISTORY_BACKFILL"
+        />
       </a-form-item>
       <a-form-item label="导入类型" required>
         <a-select
@@ -17,7 +20,12 @@
       </a-form-item>
     </a-form>
     <UiFormActions align="between">
-      <UiButton size="sm" variant="outline" :disabled="!form.sourceSystem.trim()" @click="importModalOpen = true">
+      <UiButton
+        size="sm"
+        variant="outline"
+        :disabled="!form.sourceSystem.trim()"
+        @click="importModalOpen = true"
+      >
         Excel 批量导入
       </UiButton>
     </UiFormActions>
@@ -44,13 +52,13 @@ import type {
   ArchiveExternalImportResultVO,
   ArchiveImportBatchStatusCode,
 } from '@/apis/mark/archive-volume'
-import type { ExcelImportResult } from '@/apis/platform/types'
-import type { UiAlertStripTone } from '@/components/ui-guide/ui/types'
-import { computed, ref } from 'vue'
 import {
   ARCHIVE_EXTERNAL_IMPORT_TYPE_LABEL,
   ARCHIVE_IMPORT_BATCH_STATUS_LABEL,
 } from '@/apis/mark/archive-volume'
+import type { ExcelImportResult } from '@/apis/platform/types'
+import type { UiAlertStripTone } from '@/components/ui-guide/ui/types'
+import { computed, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -72,7 +80,11 @@ const form = ref({
 const importTypeOptions = [
   {
     value: 'VOLUME_MATERIAL',
-    label: strictEnumLabel(ARCHIVE_EXTERNAL_IMPORT_TYPE_LABEL, 'VOLUME_MATERIAL', '归档外部导入类型'),
+    label: strictEnumLabel(
+      ARCHIVE_EXTERNAL_IMPORT_TYPE_LABEL,
+      'VOLUME_MATERIAL',
+      '归档外部导入类型',
+    ),
   },
 ]
 
@@ -92,8 +104,8 @@ function handleImportSuccess(result: ExcelImportResult) {
     failureCount: result.errorRows ?? 0,
   }
   lastFailureSummaries.value = (result.diagnostics ?? [])
-    .filter(row => !row.valid)
-    .map(row => `第 ${row.rowIndex} 行：${row.invalidReason ?? '导入失败'}`)
+    .filter((row) => !row.valid)
+    .map((row) => `第 ${row.rowIndex} 行：${row.invalidReason ?? '导入失败'}`)
 }
 
 function resultTone(status: ArchiveImportBatchStatusCode): UiAlertStripTone {

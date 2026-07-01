@@ -7,17 +7,17 @@ import type {
   AccreditationEvidenceSaveRequest,
   AccreditationEvidenceVO,
 } from '@/apis/quality/accreditation'
-import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   ACCREDITATION_EVIDENCE_ANCHOR_LABEL,
   ACCREDITATION_EVIDENCE_CATEGORY_LABEL,
   accreditationApi,
 } from '@/apis/quality/accreditation'
-import { archiveApi } from '@/apis/quality/archive'
+import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
 import { assessmentItemApi } from '@/apis/quality/assessment-item'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { archiveApi } from '@/apis/quality/archive'
 import { qualityCourseApi } from '@/apis/quality/quality-course'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { CourseSelector } from '@/components/quality/selectors'
@@ -43,9 +43,9 @@ const props = defineProps<{
   cockpit?: AccreditationCockpitVO
 }>()
 
-const emit = defineEmits<{ 'count-change': [count: number], "exported": [] }>()
+const emit = defineEmits<{ 'count-change': [count: number]; exported: [] }>()
 
-const CATEGORY_TABS: { key: '' | AccreditationEvidenceCategory, label: string }[] = [
+const CATEGORY_TABS: { key: '' | AccreditationEvidenceCategory; label: string }[] = [
   { key: '', label: '全部' },
   { key: 'EXAM_PAPER', label: '试卷样本' },
   { key: 'HOMEWORK', label: '作业样本' },
@@ -75,7 +75,7 @@ const categoryFilter = ref<'' | AccreditationEvidenceCategory>('')
 const evidenceOpen = ref(false)
 const evidenceDrawerTitle = ref('登记认证证据')
 const markImportOpen = ref(false)
-const linkedExams = ref<{ examId: string, label: string }[]>([])
+const linkedExams = ref<{ examId: string; label: string }[]>([])
 const selectedExamIds = ref<string[]>([])
 
 const evidenceForm = reactive<AccreditationEvidenceSaveRequest>({
@@ -354,7 +354,7 @@ async function exportExpertPackage() {
   }
 }
 
-async function handleEvidencePageChange(pageEvent: { current: number, pageSize: number }) {
+async function handleEvidencePageChange(pageEvent: { current: number; pageSize: number }) {
   evidenceQuery.pageNum = pageEvent.current
   evidenceQuery.pageSize = pageEvent.pageSize
   await loadEvidences()

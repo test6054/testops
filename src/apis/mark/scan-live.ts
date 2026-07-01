@@ -1,4 +1,13 @@
 import type { MarkScannerStationAuthSource } from '@/utils/kiosk-auth'
+import {
+  ensureScannerStationTeacherJwt,
+  hasMarkScannerKioskAuth,
+  hasMarkScannerStationAuth,
+  isScannerKioskBrowserPage,
+  KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE,
+  KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE,
+  resolveMarkScannerStationAuthHeaders
+} from '@/utils/kiosk-auth'
 /**
  * 扫描实时看板 API - 对接 edu-mark 模块 ScanLiveStreamController
  *
@@ -11,15 +20,6 @@ import type { MarkScannerStationAuthSource } from '@/utils/kiosk-auth'
  */
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 import http from '@/config/axios'
-import {
-  ensureScannerStationTeacherJwt,
-  hasMarkScannerKioskAuth,
-  hasMarkScannerStationAuth,
-  isScannerKioskBrowserPage,
-  KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE,
-  KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE,
-  resolveMarkScannerStationAuthHeaders,
-} from '@/utils/kiosk-auth'
 
 /** SSE 鉴权不可恢复失败：一体机 push_token 无效或缺失，禁止自动重连。 */
 export class ScanLiveFatalAuthError extends Error {

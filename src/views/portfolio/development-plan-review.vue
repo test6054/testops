@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanStatus } from '@/apis/portfolio/enums'
-import type { PortfolioDevelopmentPlanVO } from '@/apis/portfolio/teacher-platform'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL,
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
 } from '@/apis/portfolio/enums'
+import type { PortfolioDevelopmentPlanVO } from '@/apis/portfolio/teacher-platform'
 import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -78,8 +78,9 @@ const filterFields = computed<FilterField[]>(() => [
     label: '规划状态',
     allowClear: true,
     width: 160,
-    options: (Object.keys(PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL) as PortfolioDevelopmentPlanStatus[])
-      .map(value => ({ value, label: planStatusLabel(value) })),
+    options: (
+      Object.keys(PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL) as PortfolioDevelopmentPlanStatus[]
+    ).map((value) => ({ value, label: planStatusLabel(value) })),
   },
 ])
 
@@ -112,11 +113,9 @@ async function loadPage() {
     })
     rows.value = readPageList(page, '加载待审规划失败')
     pageTotal.value = readPageTotal(page)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -126,7 +125,7 @@ function openPlanFromQuery() {
   if (!planId) {
     return
   }
-  const target = rows.value.find(item => item.id === planId)
+  const target = rows.value.find((item) => item.id === planId)
   if (target?.planStatus === 'DEPARTMENT_PENDING') {
     openReview(planId, 'approve')
   }
@@ -155,8 +154,7 @@ async function confirmReview() {
         auditOpinion: auditOpinion.value.trim() || undefined,
       })
       message.success('已通过')
-    }
-    else {
+    } else {
       await portfolioDevelopmentPlanApi.departmentReturn({
         id: reviewTargetId.value,
         auditOpinion: auditOpinion.value.trim() || undefined,
@@ -165,8 +163,7 @@ async function confirmReview() {
     }
     reviewModalOpen.value = false
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -180,8 +177,7 @@ async function exportPlans() {
     const result = await portfolioDevelopmentPlanApi.exportExcel({ planYear: filterForm.planYear })
     await downloadPortfolioExcelExport(result)
     message.success('规划已导出')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -198,9 +194,7 @@ onMounted(async () => {
     <template #context>
       <ContextBar show-title layout="workbench" title="年度规划审核">
         <template v-if="canPickTeachers" #actions>
-          <UiButton @click="exportPlans">
-            导出 Excel
-          </UiButton>
+          <UiButton @click="exportPlans"> 导出 Excel </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -221,9 +215,7 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <template v-if="record.planStatus === 'DEPARTMENT_PENDING'">
-              <UiButton size="sm" @click="openReview(record.id, 'approve')">
-                通过
-              </UiButton>
+              <UiButton size="sm" @click="openReview(record.id, 'approve')"> 通过 </UiButton>
               <UiButton size="sm" style="margin-left: 8px" @click="openReview(record.id, 'return')">
                 退回
               </UiButton>

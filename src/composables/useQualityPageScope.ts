@@ -1,8 +1,8 @@
 import type { QualityStoreScopeField } from '@/constants/quality-scope-profile'
+import { scopeProfileShowsChrome } from '@/constants/quality-scope-profile'
 import { onActivated, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQualityScopeProfile } from '@/composables/useQualityScopeProfile'
-import { scopeProfileShowsChrome } from '@/constants/quality-scope-profile'
 import { useQualityStore } from '@/stores/modules/quality'
 import { resolveQualityScopeProfile } from '@/utils/quality-scope-route'
 

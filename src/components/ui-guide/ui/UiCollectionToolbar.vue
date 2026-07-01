@@ -3,9 +3,7 @@
     <div class="ui-collection-toolbar__summary">
       <div v-if="props.title" class="ui-collection-toolbar__title">{{ props.title }}</div>
       <div class="ui-collection-toolbar__summary-row">
-        <UiBadge variant="soft" tone="gray">
-          共 {{ props.total }} {{ props.totalLabel }}
-        </UiBadge>
+        <UiBadge variant="soft" tone="gray"> 共 {{ props.total }} {{ props.totalLabel }} </UiBadge>
         <span v-if="props.summary" class="ui-collection-toolbar__summary-text">
           {{ props.summary }}
         </span>
@@ -56,12 +54,7 @@
         <slot name="actions" />
       </div>
 
-      <UiButton
-        v-if="props.showReset"
-        size="sm"
-        variant="outline"
-        @click="handleReset"
-      >
+      <UiButton v-if="props.showReset" size="sm" variant="outline" @click="handleReset">
         重置
       </UiButton>
     </div>
@@ -86,27 +79,30 @@ const sortModel = defineModel<UiOptionValue | undefined>('sortValue')
 
 const viewModeModel = defineModel<ViewMode>('viewMode', { default: 'grid' })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  total?: number
-  totalLabel?: string
-  summary?: string
-  keywordPlaceholder?: string
-  sortOptions?: UiSelectOption[]
-  showSearch?: boolean
-  showReset?: boolean
-  showViewSwitch?: boolean
-}>(), {
-  title: '',
-  total: 0,
-  totalLabel: '项',
-  summary: '',
-  keywordPlaceholder: '搜索名称、描述或标签',
-  sortOptions: () => [],
-  showSearch: true,
-  showReset: true,
-  showViewSwitch: true,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    total?: number
+    totalLabel?: string
+    summary?: string
+    keywordPlaceholder?: string
+    sortOptions?: UiSelectOption[]
+    showSearch?: boolean
+    showReset?: boolean
+    showViewSwitch?: boolean
+  }>(),
+  {
+    title: '',
+    total: 0,
+    totalLabel: '项',
+    summary: '',
+    keywordPlaceholder: '搜索名称、描述或标签',
+    sortOptions: () => [],
+    showSearch: true,
+    showReset: true,
+    showViewSwitch: true,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'search', value: string): void

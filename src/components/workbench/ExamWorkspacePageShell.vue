@@ -4,7 +4,9 @@
       <header class="exam-workspace-page-heading">
         <div class="exam-workspace-page-heading__main">
           <h2 v-if="pageTitle" class="exam-workspace-page-heading__title">{{ pageTitle }}</h2>
-          <p v-if="pageSubtitle" class="exam-workspace-page-heading__subtitle">{{ pageSubtitle }}</p>
+          <p v-if="pageSubtitle" class="exam-workspace-page-heading__subtitle">
+            {{ pageSubtitle }}
+          </p>
         </div>
         <div v-if="$slots.toolbar" class="exam-workspace-page-heading__toolbar">
           <slot name="toolbar" />
@@ -35,15 +37,18 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 
 defineOptions({ name: 'ExamWorkspacePageShell' })
 
-const props = withDefaults(defineProps<{
-  pageTitle?: string
-  pageSubtitle?: string
-  signalMetrics?: SignalMetric[]
-}>(), {
-  pageTitle: '',
-  pageSubtitle: '',
-  signalMetrics: () => [],
-})
+const props = withDefaults(
+  defineProps<{
+    pageTitle?: string
+    pageSubtitle?: string
+    signalMetrics?: SignalMetric[]
+  }>(),
+  {
+    pageTitle: '',
+    pageSubtitle: '',
+    signalMetrics: () => [],
+  },
+)
 
 const emit = defineEmits<{
   'metric-click': [key: string]
@@ -53,9 +58,9 @@ const slots = useSlots()
 
 const resolvedMetrics = computed(() => props.signalMetrics)
 
-const showPageHeading = computed(() => (
-  Boolean(props.pageTitle || props.pageSubtitle || slots.toolbar || slots.actions)
-))
+const showPageHeading = computed(() =>
+  Boolean(props.pageTitle || props.pageSubtitle || slots.toolbar || slots.actions),
+)
 </script>
 
 <style scoped lang="scss">

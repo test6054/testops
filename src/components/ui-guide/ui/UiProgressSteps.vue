@@ -1,10 +1,7 @@
 <template>
   <div class="ui-progress-steps">
     <div class="ui-progress-steps__track">
-      <div
-        class="ui-progress-steps__fill"
-        :style="{ width: `${progressPercent}%` }"
-      />
+      <div class="ui-progress-steps__fill" :style="{ width: `${progressPercent}%` }" />
       <div
         v-for="(step, index) in normalizedSteps"
         :key="step.key"
@@ -50,15 +47,18 @@ defineOptions({
   name: 'UiProgressSteps',
 })
 
-const props = withDefaults(defineProps<{
-  steps?: UiStepItem[]
-  current?: number
-  clickable?: boolean
-}>(), {
-  steps: () => [],
-  current: 0,
-  clickable: false,
-})
+const props = withDefaults(
+  defineProps<{
+    steps?: UiStepItem[]
+    current?: number
+    clickable?: boolean
+  }>(),
+  {
+    steps: () => [],
+    current: 0,
+    clickable: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'change', index: number, step: UiStepItem): void
@@ -68,13 +68,15 @@ const normalizedSteps = computed(() => {
   return props.steps.map((step, index) => ({
     ...step,
     key: step.key || `step-${index}`,
-    status: step.status || (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
+    status:
+      step.status ||
+      (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
   }))
 })
 
 const progressPercent = computed(() => {
   if (normalizedSteps.value.length <= 1) return 0
-  const completedCount = normalizedSteps.value.filter(s => s.status === 'completed').length
+  const completedCount = normalizedSteps.value.filter((s) => s.status === 'completed').length
   return (completedCount / (normalizedSteps.value.length - 1)) * 100
 })
 

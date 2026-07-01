@@ -9,7 +9,9 @@ const { workflow, ui } = useKioskCtx()
 
 const open = computed({
   get: () => ui.scanParamsDrawerOpen.value,
-  set: (v: boolean) => { ui.scanParamsDrawerOpen.value = v },
+  set: (v: boolean) => {
+    ui.scanParamsDrawerOpen.value = v
+  },
 })
 
 const contract = computed(() => workflow.kioskContext.value?.taskContract)
@@ -94,19 +96,16 @@ function applyRecommendedScanConfig() {
 </script>
 
 <template>
-  <a-drawer
-    v-model:open="open"
-    title="扫描参数"
-    placement="right"
-    :width="420"
-    destroy-on-close
-  >
+  <a-drawer v-model:open="open" title="扫描参数" placement="right" :width="420" destroy-on-close>
     <div class="drawer-body">
       <section v-if="contract" class="contract-hint">
         <p class="contract-hint__title">
           {{ contractTitleText }}
         </p>
-        <p v-if="contract.materialLayoutModeText && contract.paperStyleText" class="contract-hint__sub">
+        <p
+          v-if="contract.materialLayoutModeText && contract.paperStyleText"
+          class="contract-hint__sub"
+        >
           纸型：{{ contract.paperStyleText }}
         </p>
         <p v-else-if="contract.materialLayoutModeText" class="contract-hint__sub">
@@ -116,11 +115,7 @@ function applyRecommendedScanConfig() {
           <span class="contract-hint__mode" :class="`contract-hint__mode--${scanModeTone}`">
             {{ scanModeSummary }}
           </span>
-          <span
-            v-for="item in hardwareParamPreview"
-            :key="item"
-            class="contract-hint__chip"
-          >
+          <span v-for="item in hardwareParamPreview" :key="item" class="contract-hint__chip">
             {{ item }}
           </span>
         </p>

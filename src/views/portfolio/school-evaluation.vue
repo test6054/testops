@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationTaskStatus } from '@/apis/portfolio/enums'
-import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
-import type { PortfolioEvaluationTaskAdvanceAction } from '@/apis/portfolio/types'
-import { Input, message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   PORTFOLIO_EVALUATION_TASK_STATUS_LABEL,
   PORTFOLIO_EVALUATION_TASK_STATUS_TONE,
 } from '@/apis/portfolio/enums'
-import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
+import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
 import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
+import type { PortfolioEvaluationTaskAdvanceAction } from '@/apis/portfolio/types'
+import { Input, message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -24,7 +24,9 @@ import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-const ADVANCE_ACTIONS: Partial<Record<PortfolioEvaluationTaskStatus, PortfolioEvaluationTaskAdvanceAction>> = {
+const ADVANCE_ACTIONS: Partial<
+  Record<PortfolioEvaluationTaskStatus, PortfolioEvaluationTaskAdvanceAction>
+> = {
   PUBLISHED: 'START_PRELIMINARY_REVIEW',
   PRELIMINARY_REVIEW: 'START_SCHOOL_REVIEW',
   SCHOOL_REVIEW: 'START_EXPERT_REVIEW',
@@ -82,14 +84,15 @@ const columns: ColumnsType<PortfolioEvaluationTaskVO> = [
 ]
 
 const expiredAwaitingArchiveTasks = computed(() =>
-  rows.value.filter(row => row.publicityExpiredAwaitingArchive === true))
+  rows.value.filter((row) => row.publicityExpiredAwaitingArchive === true),
+)
 
 const archiveReminderText = computed(() => {
   const tasks = expiredAwaitingArchiveTasks.value
   if (tasks.length === 0) {
     return ''
   }
-  const names = tasks.map(task => task.taskName).join('、')
+  const names = tasks.map((task) => task.taskName).join('、')
   return tasks.length === 1
     ? `「${names}」公示已结束且无待复核异议，请执行归档。`
     : `${tasks.length} 个评价任务（${names}）公示已结束且无待复核异议，请逐条执行归档。`
@@ -104,16 +107,16 @@ async function loadPage() {
     })
     rows.value = readPageList(page, '加载评价任务失败')
     pageTotal.value = readPageTotal(page)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载评价任务失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
-function nextAction(status: PortfolioEvaluationTaskStatus): PortfolioEvaluationTaskAdvanceAction | undefined {
+function nextAction(
+  status: PortfolioEvaluationTaskStatus,
+): PortfolioEvaluationTaskAdvanceAction | undefined {
   return ADVANCE_ACTIONS[status]
 }
 
@@ -127,11 +130,9 @@ async function advanceTask(row: PortfolioEvaluationTaskVO) {
     await portfolioEvaluationPublicityApi.advanceTask({ taskId: row.id, action })
     message.success('任务状态已推进')
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '推进任务失败')
-  }
-  finally {
+  } finally {
     advancingId.value = ''
   }
 }
@@ -142,11 +143,9 @@ async function archiveTask(row: PortfolioEvaluationTaskVO) {
     await portfolioEvaluationPublicityApi.archiveTask(row.id)
     message.success('任务已归档')
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '归档任务失败')
-  }
-  finally {
+  } finally {
     archivingId.value = ''
   }
 }
@@ -188,8 +187,7 @@ async function submitPublish() {
     message.success('公示已发布')
     publishModalOpen.value = false
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '发布公示失败')
   }
 }
@@ -201,9 +199,7 @@ void loadPage()
   <StageWorkbenchShell>
     <ContextBar title="学校评价" description="评价任务状态推进、公示发布与归档">
       <template #actions>
-        <UiButton :loading="loading" @click="() => void loadPage()">
-          刷新
-        </UiButton>
+        <UiButton :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
       </template>
     </ContextBar>
 

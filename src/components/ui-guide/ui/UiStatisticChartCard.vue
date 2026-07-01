@@ -13,12 +13,7 @@
       :compact="props.compact"
     >
       <template v-if="showMeta" #meta>
-        <UiBadge
-          v-if="props.statusLabel"
-          :tone="props.statusTone"
-          variant="soft"
-          size="sm"
-        >
+        <UiBadge v-if="props.statusLabel" :tone="props.statusTone" variant="soft" size="sm">
           {{ props.statusLabel }}
         </UiBadge>
         <slot name="meta" />
@@ -29,7 +24,7 @@
       </template>
     </UiPanelHeader>
 
-    <a-spin :spinning="props.loading" style="width: 100%;">
+    <a-spin :spinning="props.loading" style="width: 100%">
       <div
         v-if="hasContent"
         class="ui-statistic-chart-card__content"
@@ -41,11 +36,7 @@
           </slot>
         </div>
 
-        <aside
-          v-if="hasSide"
-          class="ui-statistic-chart-card__side"
-          :style="sideStyle"
-        >
+        <aside v-if="hasSide" class="ui-statistic-chart-card__side" :style="sideStyle">
           <div v-if="props.stats.length" class="ui-statistic-chart-card__stats">
             <article
               v-for="item in props.stats"
@@ -79,17 +70,10 @@
         </aside>
       </div>
 
-      <UiEmpty
-        size="sm"
-        title="暂无图表内容"
-        :description="props.emptyText"
-      />
+      <UiEmpty size="sm" title="暂无图表内容" :description="props.emptyText" />
     </a-spin>
 
-    <footer
-      v-if="props.summary || $slots.footer"
-      class="ui-statistic-chart-card__footer"
-    >
+    <footer v-if="props.summary || $slots.footer" class="ui-statistic-chart-card__footer">
       <slot name="footer">
         <p class="ui-statistic-chart-card__summary">{{ props.summary }}</p>
       </slot>
@@ -109,46 +93,55 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  summary?: string
-  statusLabel?: string
-  statusTone?: BadgeTone
-  stats?: UiStatisticChartMetric[]
-  loading?: boolean
-  emptyText?: string
-  compact?: boolean
-  divided?: boolean
-  chartMinHeight?: string | number
-  sideWidth?: string | number
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  summary: '',
-  statusLabel: '',
-  statusTone: 'blue',
-  stats: () => [],
-  loading: false,
-  emptyText: '请通过 `chart` 插槽传入图表主体',
-  compact: false,
-  divided: true,
-  chartMinHeight: 260,
-  sideWidth: 260,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    summary?: string
+    statusLabel?: string
+    statusTone?: BadgeTone
+    stats?: UiStatisticChartMetric[]
+    loading?: boolean
+    emptyText?: string
+    compact?: boolean
+    divided?: boolean
+    chartMinHeight?: string | number
+    sideWidth?: string | number
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    summary: '',
+    statusLabel: '',
+    statusTone: 'blue',
+    stats: () => [],
+    loading: false,
+    emptyText: '请通过 `chart` 插槽传入图表主体',
+    compact: false,
+    divided: true,
+    chartMinHeight: 260,
+    sideWidth: 260,
+  },
+)
 
 const slots = useSlots()
 
 const normalizeCssSize = (value?: string | number) => {
-  if (value === '' || value === undefined || value === null)
-    return undefined
+  if (value === '' || value === undefined || value === null) return undefined
   return typeof value === 'number' ? `${value}px` : value
 }
 
 const hasHeader = computed(() => {
-  return !!props.title || !!props.description || !!props.eyebrow || !!props.statusLabel || !!slots.meta || !!slots.actions
+  return (
+    !!props.title ||
+    !!props.description ||
+    !!props.eyebrow ||
+    !!props.statusLabel ||
+    !!slots.meta ||
+    !!slots.actions
+  )
 })
 
 const showMeta = computed(() => {

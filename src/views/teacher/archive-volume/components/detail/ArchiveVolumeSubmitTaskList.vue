@@ -15,7 +15,7 @@ const emit = defineEmits<{
   navigate: [item: ArchiveVolumeSubmitChecklistItemVO]
 }>()
 
-const pendingItems = computed(() => props.items.filter(item => item.passed !== true))
+const pendingItems = computed(() => props.items.filter((item) => item.passed !== true))
 
 function actionLabel(item: ArchiveVolumeSubmitChecklistItemVO): string {
   if (item.actionLabel?.trim()) return item.actionLabel.trim()

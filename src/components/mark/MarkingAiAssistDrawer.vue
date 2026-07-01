@@ -25,7 +25,9 @@
               </UiTag>
               <span class="marking-ai-assist-drawer__time">{{ item.createTime }}</span>
             </div>
-            <div v-if="item.diagnostic" class="marking-ai-assist-drawer__diagnostic">{{ item.diagnostic }}</div>
+            <div v-if="item.diagnostic" class="marking-ai-assist-drawer__diagnostic">
+              {{ item.diagnostic }}
+            </div>
           </div>
         </a-timeline-item>
       </a-timeline>
@@ -34,7 +36,11 @@
 </template>
 
 <script lang="ts" setup>
-import type { AiAbilityCode, AiExecutionStatusCode, ExamQuestionAiExecutionItemVO } from '@/apis/mark/exam-grade'
+import type {
+  AiAbilityCode,
+  AiExecutionStatusCode,
+  ExamQuestionAiExecutionItemVO,
+} from '@/apis/mark/exam-grade'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'

@@ -22,8 +22,6 @@ import type {
   InboxMessageMarkRequest,
   InboxUnreadCountResponse,
 } from '@/apis/edu/message'
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
 import {
   getInboxMessages,
   getUnreadCount,
@@ -32,6 +30,8 @@ import {
   MessageOperationTypeEnum,
   updateMessageStatus,
 } from '@/apis/edu/message'
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
 import { getValidToken } from '@/utils/auth'
 import { readPageList } from '@/utils/page-result'
 

@@ -1,12 +1,19 @@
 import type { GridComponentOption } from 'echarts/components'
 import type { EChartsCoreOption } from 'echarts/core'
 import type { CallbackDataParams } from 'echarts/types/dist/shared'
-import type { BadgeTone, UiBarChartItem, UiDistributionSegment, UiScatterSeries, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import type {
+  BadgeTone,
+  UiBarChartItem,
+  UiDistributionSegment,
+  UiScatterSeries,
+  UiTrendPoint,
+} from '@/components/ui-guide/ui/types'
 import { formatScore, formatScorePercent } from '@/utils/format'
 import { prefersReducedMotion } from '@/utils/mark-chart-accessibility'
 import { SCATTER_ZONE_COLORS } from '@/utils/mark-statistics-chart'
 
-const DP_FONT_FAMILY_SANS = '-apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif'
+const DP_FONT_FAMILY_SANS =
+  '-apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif'
 
 /** mark-vue ECharts 色板：与 --dp/--ant 主题对齐的十六进制真源 */
 export const MARK_ECHARTS_PALETTE = {
@@ -84,13 +91,14 @@ export interface MarkChartToolboxConfig {
   showToolbox?: boolean
 }
 
-function resolveGridTop(grid: GridComponentOption | GridComponentOption[] | undefined, minTop: number): GridComponentOption | GridComponentOption[] | undefined {
+function resolveGridTop(
+  grid: GridComponentOption | GridComponentOption[] | undefined,
+  minTop: number,
+): GridComponentOption | GridComponentOption[] | undefined {
   if (Array.isArray(grid)) {
-    return grid.map((item, index) => (
-      index === 0
-        ? { ...item, top: Math.max(Number(item.top) || 0, minTop) }
-        : item
-    ))
+    return grid.map((item, index) =>
+      index === 0 ? { ...item, top: Math.max(Number(item.top) || 0, minTop) } : item,
+    )
   }
   if (grid) {
     return { ...grid, top: Math.max(Number(grid.top) || 0, minTop) }
@@ -153,80 +161,87 @@ export function buildTrendLineChartOption(
     : -1
   const lineColor = resolveThemeColor('--ant-color-primary', MARK_ECHARTS_PALETTE.primary)
 
-  return finalizeMarkChartOption({
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'line' },
-      formatter: (params: CallbackDataParams | CallbackDataParams[]) => {
-        const list = Array.isArray(params) ? params : [params]
-        const first = list[0]
-        const index = first?.dataIndex ?? 0
-        const point = points[index]
-        if (!point) return ''
-        const delta = index > 0 ? values[index] - values[index - 1] : null
-        const deltaText = delta == null ? '' : `<br/>较上一场 ${delta >= 0 ? '+' : ''}${formatScore(delta, 'score')}`
-        return `${point.label}<br/>${config.yAxisName || '数值'}：${formatScore(values[index], 'score')}${deltaText}`
+  return finalizeMarkChartOption(
+    {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'line' },
+        formatter: (params: CallbackDataParams | CallbackDataParams[]) => {
+          const list = Array.isArray(params) ? params : [params]
+          const first = list[0]
+          const index = first?.dataIndex ?? 0
+          const point = points[index]
+          if (!point) return ''
+          const delta = index > 0 ? values[index] - values[index - 1] : null
+          const deltaText =
+            delta == null
+              ? ''
+              : `<br/>较上一场 ${delta >= 0 ? '+' : ''}${formatScore(delta, 'score')}`
+          return `${point.label}<br/>${config.yAxisName || '数值'}：${formatScore(values[index], 'score')}${deltaText}`
+        },
       },
-    },
-    grid: baseGrid({ bottom: 48 }),
-    xAxis: {
-      type: 'category',
-      data: categories,
-      boundaryGap: false,
-      axisLabel: {
-        ...MARK_CHART_AXIS_LABEL_STYLE,
-        fontSize: 11,
-        interval: 0,
-        rotate: categories.length > 6 ? 30 : 0,
+      grid: baseGrid({ bottom: 48 }),
+      xAxis: {
+        type: 'category',
+        data: categories,
+        boundaryGap: false,
+        axisLabel: {
+          ...MARK_CHART_AXIS_LABEL_STYLE,
+          fontSize: 11,
+          interval: 0,
+          rotate: categories.length > 6 ? 30 : 0,
+        },
+        axisLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.axisLine } },
       },
-      axisLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.axisLine } },
-    },
-    yAxis: {
-      type: 'value',
-      name: config.yAxisName || '',
-      max: config.yMax,
-      axisLabel: { ...MARK_CHART_AXIS_LABEL_STYLE },
-      splitLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.splitLine } },
-    },
-    series: [
-      {
-        type: 'line',
-        smooth: true,
-        symbol: 'circle',
-        symbolSize: 8,
-        lineStyle: { width: 2, color: lineColor },
-        itemStyle: { color: lineColor },
-        areaStyle: config.area
-          ? {
-              color: {
-                type: 'linear',
-                x: 0,
-                y: 0,
-                x2: 0,
-                y2: 1,
-                colorStops: [
-                  { offset: 0, color: `${lineColor}33` },
-                  { offset: 1, color: `${lineColor}05` },
-                ],
-              },
-            }
-          : undefined,
-        data: values.map((value, index) => ({
-          value,
-          itemStyle: highlightIndex === index
+      yAxis: {
+        type: 'value',
+        name: config.yAxisName || '',
+        max: config.yMax,
+        axisLabel: { ...MARK_CHART_AXIS_LABEL_STYLE },
+        splitLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.splitLine } },
+      },
+      series: [
+        {
+          type: 'line',
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 8,
+          lineStyle: { width: 2, color: lineColor },
+          itemStyle: { color: lineColor },
+          areaStyle: config.area
             ? {
-                color: lineColor,
-                borderColor: '#fff',
-                borderWidth: 2,
-                shadowBlur: 8,
-                shadowColor: `${lineColor}55`,
+                color: {
+                  type: 'linear',
+                  x: 0,
+                  y: 0,
+                  x2: 0,
+                  y2: 1,
+                  colorStops: [
+                    { offset: 0, color: `${lineColor}33` },
+                    { offset: 1, color: `${lineColor}05` },
+                  ],
+                },
               }
             : undefined,
-          symbolSize: highlightIndex === index ? 10 : 8,
-        })),
-      },
-    ],
-  }, config)
+          data: values.map((value, index) => ({
+            value,
+            itemStyle:
+              highlightIndex === index
+                ? {
+                    color: lineColor,
+                    borderColor: '#fff',
+                    borderWidth: 2,
+                    shadowBlur: 8,
+                    shadowColor: `${lineColor}55`,
+                  }
+                : undefined,
+            symbolSize: highlightIndex === index ? 10 : 8,
+          })),
+        },
+      ],
+    },
+    config,
+  )
 }
 
 export interface MarkBarChartConfig extends MarkChartToolboxConfig {
@@ -239,7 +254,7 @@ export interface MarkBarChartConfig extends MarkChartToolboxConfig {
   /** 柱体内嵌人数与占比标签，如「12人 (24%)」 */
   innerCountLabel?: boolean
   innerCountLabelUnit?: string
-  markLines?: Array<{ value: number, name: string, color?: string }>
+  markLines?: Array<{ value: number; name: string; color?: string }>
   emptyText?: string
 }
 
@@ -252,9 +267,10 @@ export function buildCategoryBarChartOption(
     return emptyChartOption(config.emptyText || '暂无数据')
   }
   const orientation = config.orientation || 'vertical'
-  const maxValue = config.maxValue && config.maxValue > 0
-    ? config.maxValue
-    : Math.max(...items.map((item) => Number(item.value)), 0)
+  const maxValue =
+    config.maxValue && config.maxValue > 0
+      ? config.maxValue
+      : Math.max(...items.map((item) => Number(item.value)), 0)
   const categories = items.map((item) => item.label)
   const values = items.map((item) => ({
     value: Number(item.value),
@@ -320,23 +336,26 @@ export function buildCategoryBarChartOption(
         data: values,
         barMaxWidth: orientation === 'vertical' ? 32 : 22,
         itemStyle: { borderRadius: orientation === 'vertical' ? [4, 4, 0, 0] : [0, 4, 4, 0] },
-        label: innerCountLabel && innerCountTotal > 0
-          ? {
-              show: true,
-              position: orientation === 'vertical' ? 'inside' : 'right',
-              color: '#fff',
-              fontSize: 11,
-              formatter: (param: CallbackDataParams) => {
-                const value = Number(param.value)
-                if (value <= 0) {
-                  return ''
-                }
-                const percent = formatScore((value * 100) / innerCountTotal, 'percent')
-                return `${formatScore(value, 'count')}${innerCountLabelUnit} (${percent}%)`
-              },
-            }
+        label:
+          innerCountLabel && innerCountTotal > 0
+            ? {
+                show: true,
+                position: orientation === 'vertical' ? 'inside' : 'right',
+                color: '#fff',
+                fontSize: 11,
+                formatter: (param: CallbackDataParams) => {
+                  const value = Number(param.value)
+                  if (value <= 0) {
+                    return ''
+                  }
+                  const percent = formatScore((value * 100) / innerCountTotal, 'percent')
+                  return `${formatScore(value, 'count')}${innerCountLabelUnit} (${percent}%)`
+                },
+              }
+            : undefined,
+        markLine: markLineData.length
+          ? { symbol: 'none', data: markLineData, silent: true }
           : undefined,
-        markLine: markLineData.length ? { symbol: 'none', data: markLineData, silent: true } : undefined,
       },
     ],
   }
@@ -385,100 +404,101 @@ export function buildDashboardPublishedInsightChartOption(
   if (exams.length === 0) {
     return emptyChartOption(config.emptyText || '暂无已发布学情')
   }
-  const categories = exams.map(exam => truncateExamName(exam.examName))
-  const averageScores = exams.map(exam => exam.averageScore ?? '-')
-  const passRates = exams.map(exam => (
-    exam.passRatePercent != null ? Number(formatScore(exam.passRatePercent, 'percent')) : '-'
-  ))
-  const maxScore = Math.max(
-    ...exams.map(exam => exam.averageScore ?? 0),
-    100,
+  const categories = exams.map((exam) => truncateExamName(exam.examName))
+  const averageScores = exams.map((exam) => exam.averageScore ?? '-')
+  const passRates = exams.map((exam) =>
+    exam.passRatePercent != null ? Number(formatScore(exam.passRatePercent, 'percent')) : '-',
   )
-  return finalizeMarkChartOption({
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' },
-      formatter: (params: CallbackDataParams | CallbackDataParams[]) => {
-        const list = Array.isArray(params) ? params : [params]
-        const index = list[0]?.dataIndex ?? 0
-        const exam = exams[index]
-        if (!exam) {
-          return ''
-        }
-        const avg = exam.averageScore != null ? formatScore(exam.averageScore, 'score') : '—'
-        const pass = exam.passRatePercent != null ? formatScorePercent(exam.passRatePercent, '—') : '—'
-        return `${exam.examName}<br/>平均分：${avg}<br/>及格率：${pass}`
-      },
-    },
-    legend: {
-      data: ['平均分', '及格率'],
-      bottom: 0,
-      left: 'center',
-      itemWidth: 10,
-      itemHeight: 10,
-      itemGap: 20,
-      textStyle: {
-        color: MARK_ECHARTS_PALETTE.axisLabel,
-        fontSize: 12,
-        fontFamily: DP_FONT_FAMILY_SANS,
-      },
-    },
-    grid: baseGrid({ left: 40, right: 40, top: 8, bottom: 52 }),
-    xAxis: {
-      type: 'category',
-      data: categories,
-      axisTick: { alignWithLabel: true },
-      axisLabel: {
-        ...MARK_CHART_AXIS_LABEL_STYLE,
-        fontSize: 11,
-        interval: 0,
-        rotate: categories.length > 4 ? 30 : 0,
-      },
-      axisLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.axisLine } },
-    },
-    yAxis: [
-      {
-        type: 'value',
-        name: '分',
-        min: 0,
-        max: Math.ceil(maxScore * 1.1),
-        axisLabel: MARK_CHART_AXIS_LABEL_STYLE,
-        splitLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.splitLine, type: 'dashed' } },
-      },
-      {
-        type: 'value',
-        name: '%',
-        min: 0,
-        max: 100,
-        axisLabel: MARK_CHART_AXIS_LABEL_STYLE,
-        splitLine: { show: false },
-      },
-    ],
-    series: [
-      {
-        name: '平均分',
-        type: 'bar',
-        data: averageScores,
-        barMaxWidth: 16,
-        itemStyle: {
-          color: MARK_ECHARTS_PALETTE.primary,
-          borderRadius: [3, 3, 0, 0],
+  const maxScore = Math.max(...exams.map((exam) => exam.averageScore ?? 0), 100)
+  return finalizeMarkChartOption(
+    {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: (params: CallbackDataParams | CallbackDataParams[]) => {
+          const list = Array.isArray(params) ? params : [params]
+          const index = list[0]?.dataIndex ?? 0
+          const exam = exams[index]
+          if (!exam) {
+            return ''
+          }
+          const avg = exam.averageScore != null ? formatScore(exam.averageScore, 'score') : '—'
+          const pass =
+            exam.passRatePercent != null ? formatScorePercent(exam.passRatePercent, '—') : '—'
+          return `${exam.examName}<br/>平均分：${avg}<br/>及格率：${pass}`
         },
       },
-      {
-        name: '及格率',
-        type: 'bar',
-        yAxisIndex: 1,
-        data: passRates,
-        barMaxWidth: 16,
-        itemStyle: {
-          color: MARK_ECHARTS_PALETTE.success,
-          borderRadius: [3, 3, 0, 0],
+      legend: {
+        data: ['平均分', '及格率'],
+        bottom: 0,
+        left: 'center',
+        itemWidth: 10,
+        itemHeight: 10,
+        itemGap: 20,
+        textStyle: {
+          color: MARK_ECHARTS_PALETTE.axisLabel,
+          fontSize: 12,
+          fontFamily: DP_FONT_FAMILY_SANS,
         },
       },
-    ],
-    animation: prefersReducedMotion() ? false : undefined,
-  }, config)
+      grid: baseGrid({ left: 40, right: 40, top: 8, bottom: 52 }),
+      xAxis: {
+        type: 'category',
+        data: categories,
+        axisTick: { alignWithLabel: true },
+        axisLabel: {
+          ...MARK_CHART_AXIS_LABEL_STYLE,
+          fontSize: 11,
+          interval: 0,
+          rotate: categories.length > 4 ? 30 : 0,
+        },
+        axisLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.axisLine } },
+      },
+      yAxis: [
+        {
+          type: 'value',
+          name: '分',
+          min: 0,
+          max: Math.ceil(maxScore * 1.1),
+          axisLabel: MARK_CHART_AXIS_LABEL_STYLE,
+          splitLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.splitLine, type: 'dashed' } },
+        },
+        {
+          type: 'value',
+          name: '%',
+          min: 0,
+          max: 100,
+          axisLabel: MARK_CHART_AXIS_LABEL_STYLE,
+          splitLine: { show: false },
+        },
+      ],
+      series: [
+        {
+          name: '平均分',
+          type: 'bar',
+          data: averageScores,
+          barMaxWidth: 16,
+          itemStyle: {
+            color: MARK_ECHARTS_PALETTE.primary,
+            borderRadius: [3, 3, 0, 0],
+          },
+        },
+        {
+          name: '及格率',
+          type: 'bar',
+          yAxisIndex: 1,
+          data: passRates,
+          barMaxWidth: 16,
+          itemStyle: {
+            color: MARK_ECHARTS_PALETTE.success,
+            borderRadius: [3, 3, 0, 0],
+          },
+        },
+      ],
+      animation: prefersReducedMotion() ? false : undefined,
+    },
+    config,
+  )
 }
 
 export interface MarkScatterChartConfig extends MarkChartToolboxConfig {
@@ -516,77 +536,86 @@ export function buildScatterChartOption(
       weight: point.weight,
       key: point.key,
     })),
-    markArea: config.showIdealZone && index === 0
-      ? {
-          silent: true,
-          itemStyle: { color: `${SCATTER_ZONE_COLORS.ideal}22` },
-          data: [[{ xAxis: 0.3, yAxis: 0.4 }, { xAxis: 0.8, yAxis: 1 }]],
-        }
-      : undefined,
+    markArea:
+      config.showIdealZone && index === 0
+        ? {
+            silent: true,
+            itemStyle: { color: `${SCATTER_ZONE_COLORS.ideal}22` },
+            data: [
+              [
+                { xAxis: 0.3, yAxis: 0.4 },
+                { xAxis: 0.8, yAxis: 1 },
+              ],
+            ],
+          }
+        : undefined,
   }))
 
   const brushEnabled = config.brush === true
-  return finalizeMarkChartOption({
-    tooltip: {
-      trigger: 'item',
-      formatter: (param: CallbackDataParams) => {
-        const data = param.data as { label?: string, helper?: string, value?: [number, number] }
-        if (!data?.value) return ''
-        const label = data.label || param.seriesName || ''
-        return `${label}<br/>难度 ${formatScore(data.value[0], 'achievement')} · 区分度 ${formatScore(data.value[1], 'achievement')}${data.helper ? `<br/>${data.helper}` : ''}`
+  return finalizeMarkChartOption(
+    {
+      tooltip: {
+        trigger: 'item',
+        formatter: (param: CallbackDataParams) => {
+          const data = param.data as { label?: string; helper?: string; value?: [number, number] }
+          if (!data?.value) return ''
+          const label = data.label || param.seriesName || ''
+          return `${label}<br/>难度 ${formatScore(data.value[0], 'achievement')} · 区分度 ${formatScore(data.value[1], 'achievement')}${data.helper ? `<br/>${data.helper}` : ''}`
+        },
       },
-    },
-    legend: {
-      top: brushEnabled ? 28 : 0,
-      left: 0,
-      itemWidth: 10,
-      itemHeight: 10,
-      textStyle: { color: MARK_ECHARTS_PALETTE.axisLabel, fontSize: 12 },
-    },
-    toolbox: brushEnabled
-      ? {
-          show: true,
-          right: 8,
-          top: 0,
-          itemSize: 14,
-          feature: {
-            brush: {
-              type: ['rect', 'polygon', 'clear'],
-              title: { rect: '矩形选区', polygon: '套索选区', clear: '清除选区' },
+      legend: {
+        top: brushEnabled ? 28 : 0,
+        left: 0,
+        itemWidth: 10,
+        itemHeight: 10,
+        textStyle: { color: MARK_ECHARTS_PALETTE.axisLabel, fontSize: 12 },
+      },
+      toolbox: brushEnabled
+        ? {
+            show: true,
+            right: 8,
+            top: 0,
+            itemSize: 14,
+            feature: {
+              brush: {
+                type: ['rect', 'polygon', 'clear'],
+                title: { rect: '矩形选区', polygon: '套索选区', clear: '清除选区' },
+              },
             },
-          },
-        }
-      : undefined,
-    brush: brushEnabled
-      ? {
-          toolbox: ['rect', 'polygon', 'clear'],
-          xAxisIndex: 0,
-          yAxisIndex: 0,
-          brushLink: 'all',
-          outOfBrush: { colorAlpha: 0.12 },
-        }
-      : undefined,
-    grid: baseGrid({ top: brushEnabled ? 68 : 40 }),
-    xAxis: {
-      type: 'value',
-      name: config.xLabel || '难度系数',
-      min: 0,
-      max: 1,
-      nameTextStyle: { color: MARK_ECHARTS_PALETTE.axisLabel, fontSize: 11 },
-      axisLabel: { ...MARK_CHART_AXIS_LABEL_STYLE },
-      splitLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.splitLine } },
+          }
+        : undefined,
+      brush: brushEnabled
+        ? {
+            toolbox: ['rect', 'polygon', 'clear'],
+            xAxisIndex: 0,
+            yAxisIndex: 0,
+            brushLink: 'all',
+            outOfBrush: { colorAlpha: 0.12 },
+          }
+        : undefined,
+      grid: baseGrid({ top: brushEnabled ? 68 : 40 }),
+      xAxis: {
+        type: 'value',
+        name: config.xLabel || '难度系数',
+        min: 0,
+        max: 1,
+        nameTextStyle: { color: MARK_ECHARTS_PALETTE.axisLabel, fontSize: 11 },
+        axisLabel: { ...MARK_CHART_AXIS_LABEL_STYLE },
+        splitLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.splitLine } },
+      },
+      yAxis: {
+        type: 'value',
+        name: config.yLabel || '区分度',
+        min: 0,
+        max: 1,
+        nameTextStyle: { color: MARK_ECHARTS_PALETTE.axisLabel, fontSize: 11 },
+        axisLabel: { ...MARK_CHART_AXIS_LABEL_STYLE },
+        splitLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.splitLine } },
+      },
+      series: scatterSeries,
     },
-    yAxis: {
-      type: 'value',
-      name: config.yLabel || '区分度',
-      min: 0,
-      max: 1,
-      nameTextStyle: { color: MARK_ECHARTS_PALETTE.axisLabel, fontSize: 11 },
-      axisLabel: { ...MARK_CHART_AXIS_LABEL_STYLE },
-      splitLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.splitLine } },
-    },
-    series: scatterSeries,
-  }, config)
+    config,
+  )
 }
 
 export interface MarkGaugeChartConfig extends MarkChartToolboxConfig {
@@ -609,51 +638,55 @@ export function buildGaugeChartOption(
   config: MarkGaugeChartConfig = {},
 ): EChartsCoreOption {
   const safePercent = Math.max(0, Math.min(100, Math.round(percent)))
-  const color = config.color || resolveThemeColor('--ant-color-primary', MARK_ECHARTS_PALETTE.primary)
+  const color =
+    config.color || resolveThemeColor('--ant-color-primary', MARK_ECHARTS_PALETTE.primary)
   const sizeKey = config.size || 'md'
   const sizeSpec = GAUGE_SIZE_MAP[sizeKey]
   const animate = config.reduceMotion === false ? true : !prefersReducedMotion()
-  return finalizeMarkChartOption({
-    series: [
-      {
-        type: 'gauge',
-        startAngle: 90,
-        endAngle: -270,
-        radius: '92%',
-        pointer: { show: false },
-        progress: {
-          show: true,
-          overlap: false,
-          roundCap: true,
-          clip: false,
-          itemStyle: { color },
-        },
-        axisLine: {
-          lineStyle: {
-            width: sizeSpec.axisLineWidth,
-            color: [[1, resolveThemeColor('--dp-border', MARK_ECHARTS_PALETTE.splitLine)]],
+  return finalizeMarkChartOption(
+    {
+      series: [
+        {
+          type: 'gauge',
+          startAngle: 90,
+          endAngle: -270,
+          radius: '92%',
+          pointer: { show: false },
+          progress: {
+            show: true,
+            overlap: false,
+            roundCap: true,
+            clip: false,
+            itemStyle: { color },
+          },
+          axisLine: {
+            lineStyle: {
+              width: sizeSpec.axisLineWidth,
+              color: [[1, resolveThemeColor('--dp-border', MARK_ECHARTS_PALETTE.splitLine)]],
+            },
+          },
+          splitLine: { show: false },
+          axisTick: { show: false },
+          axisLabel: { show: false },
+          data: [{ value: safePercent, name: config.label || '' }],
+          title: {
+            offsetCenter: [0, '28%'],
+            fontSize: sizeSpec.titleFontSize,
+            color: resolveThemeColor('--dp-text-secondary', MARK_ECHARTS_PALETTE.axisLabel),
+          },
+          detail: {
+            valueAnimation: animate,
+            offsetCenter: [0, '-6%'],
+            fontSize: sizeSpec.detailFontSize,
+            fontWeight: 700,
+            color: resolveThemeColor('--dp-text-primary', MARK_ECHARTS_PALETTE.text),
+            formatter: '{value}%',
           },
         },
-        splitLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { show: false },
-        data: [{ value: safePercent, name: config.label || '' }],
-        title: {
-          offsetCenter: [0, '28%'],
-          fontSize: sizeSpec.titleFontSize,
-          color: resolveThemeColor('--dp-text-secondary', MARK_ECHARTS_PALETTE.axisLabel),
-        },
-        detail: {
-          valueAnimation: animate,
-          offsetCenter: [0, '-6%'],
-          fontSize: sizeSpec.detailFontSize,
-          fontWeight: 700,
-          color: resolveThemeColor('--dp-text-primary', MARK_ECHARTS_PALETTE.text),
-          formatter: '{value}%',
-        },
-      },
-    ],
-  }, { showToolbox: config.showToolbox ?? false })
+      ],
+    },
+    { showToolbox: config.showToolbox ?? false },
+  )
 }
 
 /** 状态分布条：复核任务四态占比 */
@@ -665,49 +698,52 @@ export function buildDistributionBarChartOption(
   if (total <= 0) {
     return emptyChartOption(config.emptyText || '暂无分布数据')
   }
-  return finalizeMarkChartOption({
-    tooltip: {
-      trigger: 'item',
-      formatter: (param: CallbackDataParams) => {
-        const value = Number(param.value)
-        const percent = formatScore((value * 100) / total, 'percent')
-        return `${param.seriesName}<br/>${formatScore(value, 'count')} · ${percent}%`
-      },
-    },
-    legend: {
-      bottom: 0,
-      left: 0,
-      itemWidth: 10,
-      itemHeight: 10,
-      textStyle: { color: MARK_ECHARTS_PALETTE.axisLabel, fontSize: 12 },
-    },
-    grid: { left: 0, right: 0, top: 8, bottom: 36 },
-    xAxis: { type: 'value', show: false, max: total },
-    yAxis: { type: 'category', show: false, data: [''] },
-    series: segments.map((segment) => ({
-      name: segment.label,
-      type: 'bar',
-      stack: 'total',
-      barWidth: 14,
-      emphasis: { focus: 'series' },
-      itemStyle: {
-        color: toneToChartColor(segment.tone),
-        borderRadius: 4,
-      },
-      label: {
-        show: segment.value > 0,
-        position: 'inside',
-        color: '#fff',
-        fontSize: 11,
+  return finalizeMarkChartOption(
+    {
+      tooltip: {
+        trigger: 'item',
         formatter: (param: CallbackDataParams) => {
           const value = Number(param.value)
           const percent = formatScore((value * 100) / total, 'percent')
-          return `${formatScore(value, 'count')}人 (${percent}%)`
+          return `${param.seriesName}<br/>${formatScore(value, 'count')} · ${percent}%`
         },
       },
-      data: [segment.value],
-    })),
-  }, { showToolbox: config.showToolbox ?? false })
+      legend: {
+        bottom: 0,
+        left: 0,
+        itemWidth: 10,
+        itemHeight: 10,
+        textStyle: { color: MARK_ECHARTS_PALETTE.axisLabel, fontSize: 12 },
+      },
+      grid: { left: 0, right: 0, top: 8, bottom: 36 },
+      xAxis: { type: 'value', show: false, max: total },
+      yAxis: { type: 'category', show: false, data: [''] },
+      series: segments.map((segment) => ({
+        name: segment.label,
+        type: 'bar',
+        stack: 'total',
+        barWidth: 14,
+        emphasis: { focus: 'series' },
+        itemStyle: {
+          color: toneToChartColor(segment.tone),
+          borderRadius: 4,
+        },
+        label: {
+          show: segment.value > 0,
+          position: 'inside',
+          color: '#fff',
+          fontSize: 11,
+          formatter: (param: CallbackDataParams) => {
+            const value = Number(param.value)
+            const percent = formatScore((value * 100) / total, 'percent')
+            return `${formatScore(value, 'count')}人 (${percent}%)`
+          },
+        },
+        data: [segment.value],
+      })),
+    },
+    { showToolbox: config.showToolbox ?? false },
+  )
 }
 
 /** 热力图单元格：题号矩阵、答题卡网格等一维进度/得分展示 */
@@ -759,100 +795,104 @@ export function buildHeatmapChartOption(
     : -1
   const data = cells.map((cell, index) => [index, 0, cell.value])
   const rotateLabels = labels.length > 12
-  const seriesData = highlightIndex >= 0
-    ? data.map((entry, index) => {
-      if (index !== highlightIndex) {
-        return entry
-      }
-      return {
-        value: entry,
-        itemStyle: {
-          borderColor: resolveThemeColor('--ant-color-primary', MARK_ECHARTS_PALETTE.primary),
-          borderWidth: 2,
-          shadowBlur: 8,
-          shadowColor: 'rgba(22, 119, 255, 0.2)',
+  const seriesData =
+    highlightIndex >= 0
+      ? data.map((entry, index) => {
+          if (index !== highlightIndex) {
+            return entry
+          }
+          return {
+            value: entry,
+            itemStyle: {
+              borderColor: resolveThemeColor('--ant-color-primary', MARK_ECHARTS_PALETTE.primary),
+              borderWidth: 2,
+              shadowBlur: 8,
+              shadowColor: 'rgba(22, 119, 255, 0.2)',
+            },
+          }
+        })
+      : data
+  return finalizeMarkChartOption(
+    {
+      tooltip: {
+        position: 'top',
+        formatter: (param: CallbackDataParams) => {
+          const raw = resolveHeatmapDataValue(param.value)
+          if (!raw) return ''
+          const index = Number(raw[0])
+          const cell = cells[index]
+          if (!cell) return ''
+          return `${cell.label}<br/>${formatScore(cell.value, 'count')}${suffix}`
         },
-      }
-    })
-    : data
-  return finalizeMarkChartOption({
-    tooltip: {
-      position: 'top',
-      formatter: (param: CallbackDataParams) => {
-        const raw = resolveHeatmapDataValue(param.value)
-        if (!raw) return ''
-        const index = Number(raw[0])
-        const cell = cells[index]
-        if (!cell) return ''
-        return `${cell.label}<br/>${formatScore(cell.value, 'count')}${suffix}`
       },
-    },
-    grid: {
-      left: 40,
-      right: 16,
-      top: 12,
-      bottom: rotateLabels ? 72 : 56,
-    },
-    xAxis: {
-      type: 'category',
-      data: labels,
-      splitArea: { show: true },
-      axisLabel: {
-        ...MARK_CHART_AXIS_LABEL_STYLE,
-        fontSize: 11,
-        interval: 0,
-        rotate: rotateLabels ? 45 : 0,
+      grid: {
+        left: 40,
+        right: 16,
+        top: 12,
+        bottom: rotateLabels ? 72 : 56,
       },
-      axisLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.axisLine } },
-    },
-    yAxis: {
-      type: 'category',
-      data: [rowLabel],
-      show: false,
-    },
-    visualMap: {
-      min,
-      max,
-      calculable: false,
-      orient: 'horizontal',
-      left: 'center',
-      bottom: 4,
-      itemWidth: 12,
-      itemHeight: 64,
-      text: [`${max}${suffix}`, `${min}${suffix}`],
-      inRange: {
-        color: [
-          resolveThemeColor('--dp-border', MARK_ECHARTS_PALETTE.splitLine),
-          MARK_ECHARTS_PALETTE.warning,
-          MARK_ECHARTS_PALETTE.success,
-        ],
+      xAxis: {
+        type: 'category',
+        data: labels,
+        splitArea: { show: true },
+        axisLabel: {
+          ...MARK_CHART_AXIS_LABEL_STYLE,
+          fontSize: 11,
+          interval: 0,
+          rotate: rotateLabels ? 45 : 0,
+        },
+        axisLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.axisLine } },
       },
-      textStyle: { color: MARK_ECHARTS_PALETTE.axisLabel, fontSize: 11 },
-    },
-    series: [
-      {
-        name: rowLabel,
-        type: 'heatmap',
-        data: seriesData,
-        label: {
-          show: labels.length <= 30,
-          formatter: (param: CallbackDataParams) => {
-            const raw = resolveHeatmapDataValue(param.value)
-            if (!raw) return ''
-            const index = Number(raw[0])
-            return formatScore(cells[index]?.value ?? 0, 'count')
+      yAxis: {
+        type: 'category',
+        data: [rowLabel],
+        show: false,
+      },
+      visualMap: {
+        min,
+        max,
+        calculable: false,
+        orient: 'horizontal',
+        left: 'center',
+        bottom: 4,
+        itemWidth: 12,
+        itemHeight: 64,
+        text: [`${max}${suffix}`, `${min}${suffix}`],
+        inRange: {
+          color: [
+            resolveThemeColor('--dp-border', MARK_ECHARTS_PALETTE.splitLine),
+            MARK_ECHARTS_PALETTE.warning,
+            MARK_ECHARTS_PALETTE.success,
+          ],
+        },
+        textStyle: { color: MARK_ECHARTS_PALETTE.axisLabel, fontSize: 11 },
+      },
+      series: [
+        {
+          name: rowLabel,
+          type: 'heatmap',
+          data: seriesData,
+          label: {
+            show: labels.length <= 30,
+            formatter: (param: CallbackDataParams) => {
+              const raw = resolveHeatmapDataValue(param.value)
+              if (!raw) return ''
+              const index = Number(raw[0])
+              return formatScore(cells[index]?.value ?? 0, 'count')
+            },
+            fontSize: 10,
+            color: MARK_ECHARTS_PALETTE.text,
           },
-          fontSize: 10,
-          color: MARK_ECHARTS_PALETTE.text,
+          itemStyle: {
+            borderColor: 'transparent',
+            borderWidth: 2,
+          },
+          emphasis: {
+            itemStyle: { shadowBlur: 6, shadowColor: 'rgba(0, 0, 0, 0.12)' },
+          },
         },
-        itemStyle: {
-          borderColor: 'transparent',
-          borderWidth: 2,
-        },
-        emphasis: {
-          itemStyle: { shadowBlur: 6, shadowColor: 'rgba(0, 0, 0, 0.12)' },
-        },
-      },
-    ],
-  }, config)
+      ],
+    },
+    config,
+  )
 }

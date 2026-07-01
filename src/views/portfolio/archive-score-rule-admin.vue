@@ -5,12 +5,12 @@ import type {
   PortfolioArchiveScoreRuleType,
   PortfolioArchiveScoreRuleVO,
 } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_LABEL,
   portfolioArchiveScoreApi,
 } from '@/apis/portfolio/teacher-platform'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -34,8 +34,9 @@ const form = reactive<PortfolioArchiveScoreRuleSaveRequest>({
   officialOnly: 1,
 })
 
-const ruleTypeOptions = (Object.keys(PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_LABEL) as PortfolioArchiveScoreRuleType[])
-  .map(value => ({ value, label: PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_LABEL[value] }))
+const ruleTypeOptions = (
+  Object.keys(PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_LABEL) as PortfolioArchiveScoreRuleType[]
+).map((value) => ({ value, label: PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_LABEL[value] }))
 
 const columns: ColumnsType = [
   { title: '规则名称', dataIndex: 'ruleName', key: 'ruleName' },
@@ -66,11 +67,9 @@ async function loadRules() {
   loading.value = true
   try {
     rows.value = await portfolioArchiveScoreApi.listRules()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -103,11 +102,9 @@ async function handleSave() {
     message.success('规则已保存')
     modalOpen.value = false
     await loadRules()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -121,8 +118,7 @@ async function handleDelete(id: string) {
     await portfolioArchiveScoreApi.deleteRule(id)
     message.success('已删除')
     await loadRules()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -133,20 +129,12 @@ onMounted(loadRules)
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        title="档案评分规则"
-      />
+      <ContextBar layout="workbench" show-title title="档案评分规则" />
     </template>
     <UiCard>
       <div class="toolbar">
-        <UiButton @click="loadRules">
-          刷新
-        </UiButton>
-        <UiButton variant="primary" @click="openCreate">
-          新增规则
-        </UiButton>
+        <UiButton @click="loadRules"> 刷新 </UiButton>
+        <UiButton variant="primary" @click="openCreate"> 新增规则 </UiButton>
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无档案计分规则" />
       <UiDataTable
@@ -161,12 +149,8 @@ onMounted(loadRules)
             {{ ruleTypeLabel(record.ruleType) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiTextAction @click="openEdit(record)">
-              编辑
-            </UiTextAction>
-            <UiTextAction tone="danger" @click="handleDelete(record.id)">
-              删除
-            </UiTextAction>
+            <UiTextAction @click="openEdit(record)"> 编辑 </UiTextAction>
+            <UiTextAction tone="danger" @click="handleDelete(record.id)"> 删除 </UiTextAction>
           </template>
         </template>
       </UiDataTable>
@@ -199,7 +183,10 @@ onMounted(loadRules)
         <a-form-item label="仅 OFFICIAL 计分">
           <a-select
             v-model:value="form.officialOnly"
-            :options="[{ value: 1, label: '是' }, { value: 0, label: '否' }]"
+            :options="[
+              { value: 1, label: '是' },
+              { value: 0, label: '否' },
+            ]"
           />
         </a-form-item>
       </a-form>

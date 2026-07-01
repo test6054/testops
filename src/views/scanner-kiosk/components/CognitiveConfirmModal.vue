@@ -12,8 +12,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "confirm": []
-  "cancel": []
+  confirm: []
+  cancel: []
 }>()
 
 const previewUrl = ref('')
@@ -22,7 +22,9 @@ const previewError = ref(false)
 let previewObjectUrl = ''
 
 const isPortfolio = computed(() => props.ticket?.taskKind === 'PORTFOLIO_COLLECT')
-const cabinetLocation = computed(() => props.ticket?.archiveSnapshot?.physicalStorageLocation?.trim() ?? '')
+const cabinetLocation = computed(
+  () => props.ticket?.archiveSnapshot?.physicalStorageLocation?.trim() ?? '',
+)
 const hasCabinet = computed(() => cabinetLocation.value.length > 0)
 const hasMaterialType = computed(() => Boolean(props.ticket?.archiveSnapshot?.materialType))
 const previewFileId = computed(() => props.ticket?.archiveSnapshot?.previewFileId?.trim() ?? '')
@@ -54,11 +56,9 @@ async function loadPreview() {
   try {
     previewObjectUrl = await getImageBlobUrl(fileId)
     previewUrl.value = previewObjectUrl
-  }
-  catch {
+  } catch {
     previewError.value = true
-  }
-  finally {
+  } finally {
     previewLoading.value = false
   }
 }
@@ -68,8 +68,7 @@ watch(
   ([open]) => {
     if (open) {
       void loadPreview()
-    }
-    else {
+    } else {
       revokePreviewUrl()
       previewError.value = false
     }
@@ -104,33 +103,72 @@ function handleOk() {
     <div v-if="isPortfolio && portfolioSnapshot" class="cognitive-confirm">
       <p class="cognitive-confirm__lead">请核对教师与补采任务后再进纸</p>
       <dl class="cognitive-confirm__facts">
-        <div><dt>教师</dt><dd>{{ portfolioSnapshot.teacherName || portfolioSnapshot.teacherId || '—' }}</dd></div>
-        <div><dt>分类</dt><dd>{{ portfolioSnapshot.categoryName || portfolioSnapshot.categoryId || '—' }}</dd></div>
-        <div><dt>任务</dt><dd>{{ portfolioSnapshot.gapTaskTitle || portfolioSnapshot.taskType || '—' }}</dd></div>
-        <div><dt>模式</dt><dd>{{ portfolioSnapshot.collectMode === 'GAP_ATTACHMENT' ? '补采附件' : 'AI 候选提交' }}</dd></div>
-        <div><dt>追溯码</dt><dd>{{ ticket?.traceLabelCode || '—' }}</dd></div>
+        <div>
+          <dt>教师</dt>
+          <dd>{{ portfolioSnapshot.teacherName || portfolioSnapshot.teacherId || '—' }}</dd>
+        </div>
+        <div>
+          <dt>分类</dt>
+          <dd>{{ portfolioSnapshot.categoryName || portfolioSnapshot.categoryId || '—' }}</dd>
+        </div>
+        <div>
+          <dt>任务</dt>
+          <dd>{{ portfolioSnapshot.gapTaskTitle || portfolioSnapshot.taskType || '—' }}</dd>
+        </div>
+        <div>
+          <dt>模式</dt>
+          <dd>
+            {{ portfolioSnapshot.collectMode === 'GAP_ATTACHMENT' ? '补采附件' : 'AI 候选提交' }}
+          </dd>
+        </div>
+        <div>
+          <dt>追溯码</dt>
+          <dd>{{ ticket?.traceLabelCode || '—' }}</dd>
+        </div>
       </dl>
       <UiButton size="sm" variant="ghost" disabled>无条码门禁 · 屏显确认</UiButton>
     </div>
     <div v-else-if="ticket?.archiveSnapshot" class="cognitive-confirm">
       <p class="cognitive-confirm__lead">请核对柜位与卷信息后再进纸</p>
-      <p v-if="!hasCabinet" class="cognitive-confirm__blocker">缺少档案柜位，无法进纸。请返回 PC 端补录柜位后重新派单。</p>
-      <p v-else-if="!hasMaterialType" class="cognitive-confirm__blocker">缺少扫描材料类型，无法进纸。请取消派单后重新创建。</p>
+      <p v-if="!hasCabinet" class="cognitive-confirm__blocker">
+        缺少档案柜位，无法进纸。请返回 PC 端补录柜位后重新派单。
+      </p>
+      <p v-else-if="!hasMaterialType" class="cognitive-confirm__blocker">
+        缺少扫描材料类型，无法进纸。请取消派单后重新创建。
+      </p>
       <div class="cognitive-confirm__preview">
         <p class="cognitive-confirm__preview-label">材料预览</p>
         <a-skeleton v-if="previewLoading" active :paragraph="false" />
-        <img v-else-if="previewUrl" :src="previewUrl" alt="归档材料预览" class="cognitive-confirm__thumb">
+        <img
+          v-else-if="previewUrl"
+          :src="previewUrl"
+          alt="归档材料预览"
+          class="cognitive-confirm__thumb"
+        />
         <p v-else-if="previewError" class="cognitive-confirm__preview-empty">预览加载失败</p>
         <p v-else class="cognitive-confirm__preview-empty">暂无可预览材料</p>
       </div>
       <dl class="cognitive-confirm__facts">
-        <div><dt>卷名</dt><dd>{{ ticket.archiveSnapshot.archiveTitle || '—' }}</dd></div>
-        <div><dt>班级</dt><dd>{{ ticket.archiveSnapshot.teachingClassName || '—' }}</dd></div>
-        <div><dt>柜位</dt><dd>{{ cabinetLocation || '—' }}</dd></div>
-        <div v-if="ticket.archiveSnapshot.physicalLocationNote">
-          <dt>说明</dt><dd>{{ ticket.archiveSnapshot.physicalLocationNote }}</dd>
+        <div>
+          <dt>卷名</dt>
+          <dd>{{ ticket.archiveSnapshot.archiveTitle || '—' }}</dd>
         </div>
-        <div><dt>追溯码</dt><dd>{{ ticket.traceLabelCode || '—' }}</dd></div>
+        <div>
+          <dt>班级</dt>
+          <dd>{{ ticket.archiveSnapshot.teachingClassName || '—' }}</dd>
+        </div>
+        <div>
+          <dt>柜位</dt>
+          <dd>{{ cabinetLocation || '—' }}</dd>
+        </div>
+        <div v-if="ticket.archiveSnapshot.physicalLocationNote">
+          <dt>说明</dt>
+          <dd>{{ ticket.archiveSnapshot.physicalLocationNote }}</dd>
+        </div>
+        <div>
+          <dt>追溯码</dt>
+          <dd>{{ ticket.traceLabelCode || '—' }}</dd>
+        </div>
       </dl>
       <UiButton size="sm" variant="ghost" disabled>无条码门禁 · 屏显确认</UiButton>
     </div>

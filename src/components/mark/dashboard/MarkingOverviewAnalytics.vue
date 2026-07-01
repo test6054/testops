@@ -75,39 +75,50 @@ const journeyStageItems = computed(() => {
   return buildJourneyStageChartItems(props.journeyStageSummary)
 })
 
-const markingProgressItems = computed(() => buildMarkingProgressChartItems(props.markingProgressSummary))
+const markingProgressItems = computed(() =>
+  buildMarkingProgressChartItems(props.markingProgressSummary),
+)
 
 const todoTypeItems = computed(() => buildTodoTypeChartItems(props.todoTypeSummary))
 
-const journeyStageHint = computed(() => mergeChartHint(
-  scopeHint.value,
-  buildBarChartInsight(journeyStageItems.value, { valueUnit: ' 场' }),
-))
+const journeyStageHint = computed(() =>
+  mergeChartHint(
+    scopeHint.value,
+    buildBarChartInsight(journeyStageItems.value, { valueUnit: ' 场' }),
+  ),
+)
 
-const markingProgressHint = computed(() => mergeChartHint(
-  scopeHint.value,
-  buildBarChartInsight(markingProgressItems.value, { valueUnit: ' 项' }),
-))
+const markingProgressHint = computed(() =>
+  mergeChartHint(
+    scopeHint.value,
+    buildBarChartInsight(markingProgressItems.value, { valueUnit: ' 项' }),
+  ),
+)
 
-const todoTypeHint = computed(() => mergeChartHint(
-  scopeHint.value,
-  buildBarChartInsight(todoTypeItems.value, { valueUnit: ' 项' }),
-))
+const todoTypeHint = computed(() =>
+  mergeChartHint(scopeHint.value, buildBarChartInsight(todoTypeItems.value, { valueUnit: ' 项' })),
+)
 
-const journeyStageOption = computed((): EChartsCoreOption => buildCategoryBarChartOption(
-  journeyStageItems.value,
-  { yAxisName: '场', emptyText: '当前筛选下暂无考试' },
-))
+const journeyStageOption = computed((): EChartsCoreOption =>
+  buildCategoryBarChartOption(journeyStageItems.value, {
+    yAxisName: '场',
+    emptyText: '当前筛选下暂无考试',
+  }),
+)
 
-const markingProgressOption = computed((): EChartsCoreOption => buildCategoryBarChartOption(
-  markingProgressItems.value,
-  { yAxisName: '数量', emptyText: '当前筛选下暂无阅卷进度' },
-))
+const markingProgressOption = computed((): EChartsCoreOption =>
+  buildCategoryBarChartOption(markingProgressItems.value, {
+    yAxisName: '数量',
+    emptyText: '当前筛选下暂无阅卷进度',
+  }),
+)
 
-const todoTypeOption = computed((): EChartsCoreOption => buildCategoryBarChartOption(
-  todoTypeItems.value,
-  { yAxisName: '项', emptyText: '当前筛选下暂无待办' },
-))
+const todoTypeOption = computed((): EChartsCoreOption =>
+  buildCategoryBarChartOption(todoTypeItems.value, {
+    yAxisName: '项',
+    emptyText: '当前筛选下暂无待办',
+  }),
+)
 </script>
 
 <style scoped>

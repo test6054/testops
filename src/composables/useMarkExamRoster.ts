@@ -1,4 +1,5 @@
 import type { ExamCandidateVO } from '@/apis/mark/exam-scope'
+import { listExamCandidates } from '@/apis/mark/exam-scope'
 /**
  * 批改主链：考试考生名册 composable
  *
@@ -18,7 +19,6 @@ import type { ExamCandidateVO } from '@/apis/mark/exam-scope'
  * ```
  */
 import { computed, ref } from 'vue'
-import { listExamCandidates } from '@/apis/mark/exam-scope'
 import { showUserError } from '@/utils/error-handler'
 
 export interface MarkClassOption {
@@ -52,7 +52,7 @@ export function useMarkExamRoster() {
   const loading = ref(false)
 
   const classOptions = computed<MarkClassOption[]>(() => {
-    const grouped = new Map<string, { className: string, count: number }>()
+    const grouped = new Map<string, { className: string; count: number }>()
     for (const item of candidates.value) {
       const cid = item.classId
       if (!cid) continue
@@ -116,7 +116,8 @@ export function useMarkExamRoster() {
     candidates,
     classOptions,
     studentOptions,
-    loading,    load,
+    loading,
+    load,
     reset,
   }
 }

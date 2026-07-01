@@ -7,7 +7,10 @@
  */
 import { Button, notification } from 'ant-design-vue'
 import { computed, h, onBeforeUnmount, watch } from 'vue'
-import { KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE, KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE } from '@/utils/kiosk-auth'
+import {
+  KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE,
+  KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE,
+} from '@/utils/kiosk-auth'
 import { useKioskCtx } from '../composables/kioskInjection'
 import { KIOSK_NOTICE_KEY } from '../constants/kioskNotice'
 
@@ -23,8 +26,10 @@ const showKioskReactivationAction = computed(() => {
   const err = workflow.errorMessage.value.trim()
   if (!err) return false
   if (workflow.needsActivationGate.value) return true
-  return err === KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE
-    || err === KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE
+  return (
+    err === KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE ||
+    err === KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE
+  )
 })
 
 function closeNotice() {

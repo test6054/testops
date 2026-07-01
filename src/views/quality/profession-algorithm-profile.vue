@@ -8,28 +8,17 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 状态流转：DRAFT → SUBMITTED → CONFIRMED；CONFIRMED 可退回为 RETURNED。
  * 只有 CONFIRMED + enabled 的实例进入达成度计算。
  */
-import type {
-  AccreditationStandardVO,
-} from '@/apis/quality/accreditation-standard'
+import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   ProfessionAlgorithmProfileQueryRequest,
   ProfessionAlgorithmProfileSaveRequest,
   ProfessionAlgorithmProfileVO,
 } from '@/apis/quality/profession-algorithm-profile'
-import type {
-  ProfessionAlgorithmTemplateVO,
-} from '@/apis/quality/profession-algorithm-template'
-import type {
-  AccreditationType,
-  ConfirmationStatus,
-} from '@/apis/quality/types'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorithm-profile'
+import type { ProfessionAlgorithmTemplateVO } from '@/apis/quality/profession-algorithm-template'
 import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
+import type { AccreditationType, ConfirmationStatus } from '@/apis/quality/types'
 import {
   ACCREDITATION_TYPE_LABEL,
   AGGREGATION_FUNCTION_CODES,
@@ -37,6 +26,10 @@ import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
 } from '@/apis/quality/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { ProgramSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -225,19 +218,21 @@ async function loadList() {
 async function loadDicts() {
   const [tpl, std] = await Promise.all([
     readAllPages(
-      (pageNum) => professionAlgorithmTemplateApi.page({
-        pageNum,
-        pageSize: PROFESSION_ALGORITHM_TEMPLATE_OPTION_PAGE_SIZE,
-        enabled: true,
-      }),
+      (pageNum) =>
+        professionAlgorithmTemplateApi.page({
+          pageNum,
+          pageSize: PROFESSION_ALGORITHM_TEMPLATE_OPTION_PAGE_SIZE,
+          enabled: true,
+        }),
       '专业算法模板列表加载失败，请稍后重试',
     ),
     readAllPages(
-      (pageNum) => accreditationStandardApi.page({
-        pageNum,
-        pageSize: ACCREDITATION_STANDARD_OPTION_PAGE_SIZE,
-        enabled: true,
-      }),
+      (pageNum) =>
+        accreditationStandardApi.page({
+          pageNum,
+          pageSize: ACCREDITATION_STANDARD_OPTION_PAGE_SIZE,
+          enabled: true,
+        }),
       '认证标准列表加载失败，请稍后重试',
     ),
   ])
@@ -327,18 +322,18 @@ function openEdit(record: ProfessionAlgorithmProfileVO) {
 
 async function submitEditor() {
   if (
-    !editor.profileCode.trim()
-    || !editor.profileName.trim()
-    || !editor.templateId
-    || !editor.programId
+    !editor.profileCode.trim() ||
+    !editor.profileName.trim() ||
+    !editor.templateId ||
+    !editor.programId
   ) {
     message.error('请填写编码、名称、模板、专业')
     return
   }
-  const hasOverride
-    = editor.overrideAggregationStrategy
-      || editor.overrideWeightStrategy
-      || editor.overrideThresholdStrategy
+  const hasOverride =
+    editor.overrideAggregationStrategy ||
+    editor.overrideWeightStrategy ||
+    editor.overrideThresholdStrategy
   if (hasOverride && !editor.overrideReason?.trim()) {
     message.error('存在模板策略调整时必须填写覆盖原因')
     return
@@ -397,7 +392,7 @@ async function handleDelete(record: ProfessionAlgorithmProfileVO) {
   })
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -477,10 +472,12 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
-
-useQualityScopedLoader(() => {
-  void loadList()
-}, { watchScope: true, immediate: false, reloadOnActivated: false })
+useQualityScopedLoader(
+  () => {
+    void loadList()
+  },
+  { watchScope: true, immediate: false, reloadOnActivated: false },
+)
 
 onMounted(async () => {
   await Promise.all([loadList(), loadDicts()])
@@ -513,15 +510,16 @@ onActivated(() => {
             :value="filterForm.programId ?? null"
             placeholder="专业大类"
             :width="200"
-            @change="(value: string | null) => { filterForm.programId = value ?? undefined }"
+            @change="
+              (value: string | null) => {
+                filterForm.programId = value ?? undefined
+              }
+            "
           />
         </template>
       </UiFilterBar>
 
-      <UiEmpty
-        v-if="!loading && total === 0"
-        description="无算法实例"
-      />
+      <UiEmpty v-if="!loading && total === 0" description="无算法实例" />
       <UiDataTable
         v-else
         class="student-detail-table__data-table"
@@ -555,9 +553,13 @@ onActivated(() => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <UiTextAction v-if="canEditProfile(record)" @click="openEdit(record)">编辑</UiTextAction>
+              <UiTextAction v-if="canEditProfile(record)" @click="openEdit(record)"
+                >编辑</UiTextAction
+              >
               <UiTextAction
-                v-if="record.confirmationStatus === 'DRAFT' || record.confirmationStatus === 'RETURNED'"
+                v-if="
+                  record.confirmationStatus === 'DRAFT' || record.confirmationStatus === 'RETURNED'
+                "
                 tone="primary"
                 @click="handleConfirm(record)"
               >
@@ -570,7 +572,11 @@ onActivated(() => {
               >
                 退回
               </UiTextAction>
-              <UiTextAction v-if="canEditProfile(record)" tone="danger" @click="handleDelete(record)">
+              <UiTextAction
+                v-if="canEditProfile(record)"
+                tone="danger"
+                @click="handleDelete(record)"
+              >
                 删除
               </UiTextAction>
             </div>

@@ -28,27 +28,29 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title: string
-  description: string
-  helper?: string
-  iconText?: string
-  tone?: BadgeTone
-  clickable?: boolean
-}>(), {
-  helper: '',
-  iconText: 'AI',
-  tone: 'blue',
-  clickable: true,
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    description: string
+    helper?: string
+    iconText?: string
+    tone?: BadgeTone
+    clickable?: boolean
+  }>(),
+  {
+    helper: '',
+    iconText: 'AI',
+    tone: 'blue',
+    clickable: true,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'click', evt: MouseEvent): void
 }>()
 
 const handleClick = (evt: MouseEvent) => {
-  if (!props.clickable)
-    return
+  if (!props.clickable) return
 
   emit('click', evt)
 }

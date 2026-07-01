@@ -1,17 +1,10 @@
-import type {Ref} from 'vue';
+import type { Ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import type {
   DocumentStartScanJobRequest,
   ScanJobResponse,
   ScannerBusinessScene,
 } from '@/apis/mark/scanner-agent-local'
-import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
-import type {
-  ArchiveScanBatchModeCode,
-  ScanTaskKindCode,
-  ScanWorkOrderDiscardRequest,
-  ScanWorkOrderLifecycleVO,
-} from '@/apis/mark/scanner-work-order'
-import { computed, onBeforeUnmount, ref } from 'vue'
 import {
   cancelScanJob,
   deleteScanJob,
@@ -23,6 +16,13 @@ import {
   retryUpload,
   startDocumentScanJob,
 } from '@/apis/mark/scanner-agent-local'
+import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
+import type {
+  ArchiveScanBatchModeCode,
+  ScanTaskKindCode,
+  ScanWorkOrderDiscardRequest,
+  ScanWorkOrderLifecycleVO,
+} from '@/apis/mark/scanner-work-order'
 import { commitScanWorkOrder, discardScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { getUserErrorMessage } from '@/utils/error-handler'
@@ -60,16 +60,21 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   const successMessage = ref('')
   let pollTimer: ReturnType<typeof setInterval> | null = null
 
-  const isScanning = computed(() =>
-    currentJob.value?.status === 'SCANNING' || currentJob.value?.status === 'PAUSED',
+  const isScanning = computed(
+    () => currentJob.value?.status === 'SCANNING' || currentJob.value?.status === 'PAUSED',
   )
-  const isUploading = computed(() =>
-    currentJob.value?.status === 'UPLOADING'
-    || currentJob.value?.status === 'RETRYING'
-    || currentJob.value?.status === 'READYTOUPLOAD',
+  const isUploading = computed(
+    () =>
+      currentJob.value?.status === 'UPLOADING' ||
+      currentJob.value?.status === 'RETRYING' ||
+      currentJob.value?.status === 'READYTOUPLOAD',
   )
-  const isReported = computed(() => currentJob.value?.reported === true || currentJob.value?.status === 'REPORTED')
-  const canEndBatch = computed(() => currentJob.value?.status === 'SCANNING' || currentJob.value?.status === 'PAUSED')
+  const isReported = computed(
+    () => currentJob.value?.reported === true || currentJob.value?.status === 'REPORTED',
+  )
+  const canEndBatch = computed(
+    () => currentJob.value?.status === 'SCANNING' || currentJob.value?.status === 'PAUSED',
+  )
   const canDiscard = computed(() => {
     if (!lifecycle.value?.batchExternalNo) return false
     const status = lifecycle.value.status
@@ -89,11 +94,11 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     if (!job || job.reported) return false
     const status = job.status
     if (
-      status === 'SCANNING'
-      || status === 'PAUSED'
-      || status === 'UPLOADING'
-      || status === 'CANCELLED'
-      || status === 'REPORTED'
+      status === 'SCANNING' ||
+      status === 'PAUSED' ||
+      status === 'UPLOADING' ||
+      status === 'CANCELLED' ||
+      status === 'REPORTED'
     ) {
       return false
     }
@@ -109,8 +114,9 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
       return false
     }
     const status = lifecycle.value?.status
-    return Boolean(lifecycle.value?.batchExternalNo)
-      && (status === 'COMMITTING' || status === 'FAILED')
+    return (
+      Boolean(lifecycle.value?.batchExternalNo) && (status === 'COMMITTING' || status === 'FAILED')
+    )
   })
 
   function stopPolling() {
@@ -137,8 +143,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
       if (currentJob.value.status === 'FAILED') {
         stopPolling()
       }
-    }
-    catch (error) {
+    } catch (error) {
       errorMessage.value = getUserErrorMessage(error, '刷新扫描任务失败')
     }
   }
@@ -168,8 +173,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     try {
       currentJob.value = await startDocumentScanJob(request)
       startPolling(currentJob.value.scanJobId)
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
@@ -181,11 +185,9 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     try {
       currentJob.value = await endBatch(currentJob.value.scanJobId)
       startPolling(currentJob.value.scanJobId)
-    }
-    catch (error) {
+    } catch (error) {
       errorMessage.value = getUserErrorMessage(error, '结束批次失败')
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
@@ -231,11 +233,9 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
       if (lifecycle.value.status === 'COMMITTED') {
         successMessage.value = '扫描工单已提交'
       }
-    }
-    catch (error) {
+    } catch (error) {
       errorMessage.value = getUserErrorMessage(error, '重试提交扫描工单失败')
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
@@ -269,11 +269,9 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
       currentJob.value = null
       stopPolling()
       successMessage.value = '扫描工单已废弃'
-    }
-    catch (error) {
+    } catch (error) {
       errorMessage.value = getUserErrorMessage(error, '废弃扫描失败')
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }

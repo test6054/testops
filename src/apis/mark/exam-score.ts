@@ -46,10 +46,8 @@ export interface UnboundPaperInstanceDisplayVO extends PaperInstanceDisplayBaseV
 }
 
 /** 答卷展示信息 - 对应 PaperInstanceDisplayVO */
-export type PaperInstanceDisplayVO
-  = | RealNamePaperInstanceDisplayVO
-    | AnonymousPaperInstanceDisplayVO
-    | UnboundPaperInstanceDisplayVO
+export type PaperInstanceDisplayVO =
+  RealNamePaperInstanceDisplayVO | AnonymousPaperInstanceDisplayVO | UnboundPaperInstanceDisplayVO
 
 /** 考试成绩汇总查询请求 - 对应 ExamScoreSummaryQueryRequest */
 export interface ExamScoreSummaryQueryRequest extends QueryDto {
@@ -88,14 +86,14 @@ export interface ExamScoreSummaryItemVO {
 }
 
 /** 最终成绩风险原因编码 - 对应后端全场风险概览输出 */
-export type FinalScoreRiskReasonCode
-  = | 'ABNORMAL_PAPER'
-    | 'UNRECONCILED_ABSENCE'
-    | 'MISSING_QUESTION_GRADE'
-    | 'UNCONFIRMED_QUESTION_GRADE'
-    | 'BLOCKING_INCIDENT'
-    | 'PENDING_DUPLICATE_IMAGE'
-    | 'SAFE_CONFIRMABLE'
+export type FinalScoreRiskReasonCode =
+  | 'ABNORMAL_PAPER'
+  | 'UNRECONCILED_ABSENCE'
+  | 'MISSING_QUESTION_GRADE'
+  | 'UNCONFIRMED_QUESTION_GRADE'
+  | 'BLOCKING_INCIDENT'
+  | 'PENDING_DUPLICATE_IMAGE'
+  | 'SAFE_CONFIRMABLE'
 
 /** 最终成绩全场风险概览请求 - 对应 FinalScoreRiskOverviewRequest */
 export interface FinalScoreRiskOverviewRequest {
@@ -261,10 +259,7 @@ export function pageExamScoreSummary(
 export function getFinalScoreRiskOverview(
   request: FinalScoreRiskOverviewRequest,
 ): Promise<FinalScoreRiskOverviewVO> {
-  return http.post<FinalScoreRiskOverviewVO>(
-    '/api/mark/exams/final-scores/risk-overview',
-    request,
-  )
+  return http.post<FinalScoreRiskOverviewVO>('/api/mark/exams/final-scores/risk-overview', request)
 }
 
 /** 保存最终成绩风险复核状态，并返回最新风险概览。 */
@@ -291,10 +286,7 @@ export function batchConfirmSafeFinalScores(
 export function batchPublishFinalScores(
   request: FinalScoreBatchPublishRequest,
 ): Promise<FinalScoreBatchPublishVO> {
-  return http.post<FinalScoreBatchPublishVO>(
-    '/api/mark/exams/final-scores/batch-publish',
-    request,
-  )
+  return http.post<FinalScoreBatchPublishVO>('/api/mark/exams/final-scores/batch-publish', request)
 }
 
 /** 确认试卷最终成绩，仅落库 CONFIRMED 状态，不发送学生通知。 */

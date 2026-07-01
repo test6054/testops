@@ -7,7 +7,7 @@ export function isAgentWorkspaceBlocked(health: AgentHealthResponse | null | und
   if (health?.workspaceBlocked === true || health?.localWorkspaceBlocked === true) {
     return true
   }
-  return (health?.pendingUploadJobs ?? 0) > 0;
+  return (health?.pendingUploadJobs ?? 0) > 0
 }
 
 export function resolveActivationGuardMessage(

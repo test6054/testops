@@ -9,9 +9,7 @@
       :compact="props.compact"
     >
       <template #meta>
-        <UiBadge tone="gray" variant="soft" size="sm">
-          {{ props.items.length }} 条会话
-        </UiBadge>
+        <UiBadge tone="gray" variant="soft" size="sm"> {{ props.items.length }} 条会话 </UiBadge>
         <slot name="meta" />
       </template>
 
@@ -20,7 +18,7 @@
       </template>
     </UiPanelHeader>
 
-    <a-spin :spinning="props.loading" style="width: 100%;">
+    <a-spin :spinning="props.loading" style="width: 100%">
       <div v-if="props.items.length" class="ui-session-list-panel__items" :style="listStyle">
         <article
           v-for="item in props.items"
@@ -66,8 +64,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { UiSessionListItem } from './types'
 import { computed, useSlots } from 'vue'
+import type { UiSessionListItem } from './types'
 import UiBadge from './Badge.vue'
 import UiEmpty from './Empty.vue'
 import UiTag from './Tag.vue'
@@ -79,31 +77,34 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  items?: UiSessionListItem[]
-  currentId?: string | number
-  loading?: boolean
-  emptyText?: string
-  removable?: boolean
-  maxHeight?: string | number
-  compact?: boolean
-  divided?: boolean
-}>(), {
-  title: '会话列表',
-  description: '',
-  eyebrow: 'Session List',
-  items: () => [],
-  currentId: undefined,
-  loading: false,
-  emptyText: '暂无会话记录',
-  removable: true,
-  maxHeight: 420,
-  compact: false,
-  divided: true,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    items?: UiSessionListItem[]
+    currentId?: string | number
+    loading?: boolean
+    emptyText?: string
+    removable?: boolean
+    maxHeight?: string | number
+    compact?: boolean
+    divided?: boolean
+  }>(),
+  {
+    title: '会话列表',
+    description: '',
+    eyebrow: 'Session List',
+    items: () => [],
+    currentId: undefined,
+    loading: false,
+    emptyText: '暂无会话记录',
+    removable: true,
+    maxHeight: 420,
+    compact: false,
+    divided: true,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'select', item: UiSessionListItem): void
@@ -113,8 +114,7 @@ const emit = defineEmits<{
 const slots = useSlots()
 
 const normalizeCssSize = (value?: string | number) => {
-  if (value === '' || value === undefined || value === null)
-    return undefined
+  if (value === '' || value === undefined || value === null) return undefined
   return typeof value === 'number' ? `${value}px` : value
 }
 

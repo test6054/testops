@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import type { PortfolioArchiveRecordStatus } from '@/apis/portfolio/types'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL } from '@/apis/portfolio/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
-import type {PortfolioTeacherJourneyKey} from '@/constants/portfolio-teacher-journey';
+import type { PortfolioTeacherJourneyKey } from '@/constants/portfolio-teacher-journey'
+import {
+  PORTFOLIO_TEACHER_JOURNEY_STEPS,
+  resolvePortfolioJourneyDefaultRoute,
+} from '@/constants/portfolio-teacher-journey'
 import type { WorkbenchStage } from '@/types/workbench'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL } from '@/apis/portfolio/types'
 import PortfolioTeacherJourneyRail from '@/components/portfolio/PortfolioTeacherJourneyRail.vue'
 import PortfolioTeacherReviewStatusTable from '@/components/portfolio/PortfolioTeacherReviewStatusTable.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -13,11 +17,6 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
-import {
-  PORTFOLIO_TEACHER_JOURNEY_STEPS,
-  
-  resolvePortfolioJourneyDefaultRoute
-} from '@/constants/portfolio-teacher-journey'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const route = useRoute()
@@ -36,11 +35,12 @@ const filterModel = computed<Record<string, unknown>>({
   },
 })
 
-const recordStatusOptions = (Object.keys(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL) as PortfolioArchiveRecordStatus[])
-  .map(value => ({
-    value,
-    label: strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, value, '档案记录状态'),
-  }))
+const recordStatusOptions = (
+  Object.keys(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL) as PortfolioArchiveRecordStatus[]
+).map((value) => ({
+  value,
+  label: strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, value, '档案记录状态'),
+}))
 
 const filterFields = computed<FilterField[]>(() => [
   {
@@ -62,14 +62,16 @@ const filterFields = computed<FilterField[]>(() => [
 ])
 
 const highlightRecordId = computed(() =>
-  typeof route.query.highlightRecordId === 'string' ? route.query.highlightRecordId : undefined)
+  typeof route.query.highlightRecordId === 'string' ? route.query.highlightRecordId : undefined,
+)
 
 const journeyStages = computed((): WorkbenchStage[] =>
-  PORTFOLIO_TEACHER_JOURNEY_STEPS.map(step => ({
+  PORTFOLIO_TEACHER_JOURNEY_STEPS.map((step) => ({
     key: step.key,
     title: step.title,
     status: step.key === 'review' ? 'active' : 'pending',
-  })))
+  })),
+)
 
 const tableRef = ref<InstanceType<typeof PortfolioTeacherReviewStatusTable> | null>(null)
 
@@ -84,7 +86,8 @@ function readRecordStatusFromQuery(value: unknown): PortfolioArchiveRecordStatus
 }
 
 function syncFiltersFromRoute() {
-  const academicYear = typeof route.query.academicYear === 'string' ? route.query.academicYear.trim() : ''
+  const academicYear =
+    typeof route.query.academicYear === 'string' ? route.query.academicYear.trim() : ''
   filterForm.academicYear = academicYear || undefined
   filterForm.recordStatus = readRecordStatusFromQuery(route.query.recordStatus)
 }
@@ -105,10 +108,13 @@ onMounted(() => {
   tableRef.value?.reload()
 })
 
-watch(() => [route.query.academicYear, route.query.recordStatus], () => {
-  syncFiltersFromRoute()
-  tableRef.value?.reload()
-})
+watch(
+  () => [route.query.academicYear, route.query.recordStatus],
+  () => {
+    syncFiltersFromRoute()
+    tableRef.value?.reload()
+  },
+)
 </script>
 
 <template>

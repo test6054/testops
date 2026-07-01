@@ -24,14 +24,17 @@ import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 
 defineOptions({ name: 'QualityWorkbenchCharts' })
 
-const props = withDefaults(defineProps<{
-  groups: QualityChartGroup[]
-  defaultHeight?: string
-  visible?: boolean
-}>(), {
-  defaultHeight: '220px',
-  visible: true,
-})
+const props = withDefaults(
+  defineProps<{
+    groups: QualityChartGroup[]
+    defaultHeight?: string
+    visible?: boolean
+  }>(),
+  {
+    defaultHeight: '220px',
+    visible: true,
+  },
+)
 
 interface ChartSectionView {
   key: string

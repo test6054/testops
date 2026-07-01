@@ -83,6 +83,11 @@ export interface ReportSaveRequest {
   excelFileId?: string
 }
 
+/** 报告编辑表单：学期未选时为 undefined，提交前须显式选择，禁止静默默认 */
+export type ReportEditorForm = Omit<ReportSaveRequest, 'semester'> & {
+  semester?: SemesterCode
+}
+
 /** 后端 ReportStatusTransitRequest 真值 */
 export interface ReportStatusTransitRequest {
   id: string

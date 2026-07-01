@@ -56,8 +56,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { BadgeTone } from './types'
 import { computed, useSlots } from 'vue'
+import type { BadgeTone } from './types'
 import UiBadge from './Badge.vue'
 import UiPanelHeader from './UiPanelHeader.vue'
 
@@ -66,40 +66,49 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  count?: string | number
-  countLabel?: string
-  countTone?: BadgeTone
-  compact?: boolean
-  divided?: boolean
-  bodyScrollable?: boolean
-  bodyMaxHeight?: string | number
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  count: undefined,
-  countLabel: '',
-  countTone: 'blue',
-  compact: false,
-  divided: true,
-  bodyScrollable: false,
-  bodyMaxHeight: '',
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    count?: string | number
+    countLabel?: string
+    countTone?: BadgeTone
+    compact?: boolean
+    divided?: boolean
+    bodyScrollable?: boolean
+    bodyMaxHeight?: string | number
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    count: undefined,
+    countLabel: '',
+    countTone: 'blue',
+    compact: false,
+    divided: true,
+    bodyScrollable: false,
+    bodyMaxHeight: '',
+  },
+)
 
 const slots = useSlots()
 
 const normalizeCssSize = (value?: string | number) => {
-  if (value === '' || value === undefined || value === null)
-    return undefined
+  if (value === '' || value === undefined || value === null) return undefined
   return typeof value === 'number' ? `${value}px` : value
 }
 
 const hasHeader = computed(() => {
-  return !!props.title || !!props.description || !!props.eyebrow || !!slots.icon || !!slots.actions || !!slots.meta
+  return (
+    !!props.title ||
+    !!props.description ||
+    !!props.eyebrow ||
+    !!slots.icon ||
+    !!slots.actions ||
+    !!slots.meta
+  )
 })
 
 const showMeta = computed(() => {
@@ -108,8 +117,7 @@ const showMeta = computed(() => {
 
 const bodyStyle = computed<CSSProperties | undefined>(() => {
   const maxHeight = normalizeCssSize(props.bodyMaxHeight)
-  if (!props.bodyScrollable && !maxHeight)
-    return undefined
+  if (!props.bodyScrollable && !maxHeight) return undefined
 
   return {
     maxHeight,

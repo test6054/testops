@@ -16,13 +16,14 @@
       <AiGenerationProgressPanel
         v-if="generating"
         title="AI 错因聚类分析生成中"
-        :waiting-text="props.classId ? '正在等待后端返回当前班级的真实错因聚类结果。' : '正在等待后端返回本场考试的真实错因聚类结果。'"
+        :waiting-text="
+          props.classId
+            ? '正在等待后端返回当前班级的真实错因聚类结果。'
+            : '正在等待后端返回本场考试的真实错因聚类结果。'
+        "
       />
 
-      <UiEmpty
-        v-else-if="!loading && !generating && !record"
-        description="暂无数据"
-      />
+      <UiEmpty v-else-if="!loading && !generating && !record" description="暂无数据" />
       <div v-else-if="record" class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
@@ -109,15 +110,18 @@
 </template>
 
 <script lang="ts" setup>
-import type { ErrorCauseClusterItemVO, ExamErrorCauseClusterVO } from '@/apis/mark/error-cause-cluster'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
+import type {
+  ErrorCauseClusterItemVO,
+  ExamErrorCauseClusterVO,
+} from '@/apis/mark/error-cause-cluster'
 import {
   generateErrorCauseCluster,
   getLatestErrorCauseCluster,
 } from '@/apis/mark/error-cause-cluster'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -136,7 +140,7 @@ import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'ErrorCauseClusterCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number, classId?: string }>()
+const props = defineProps<{ examId: string; reloadToken: number; classId?: string }>()
 
 const record = ref<ExamErrorCauseClusterVO | null>(null)
 const loading = ref(false)
@@ -145,10 +149,9 @@ const generating = ref(false)
 const clusterItems = computed(() => record.value?.clusterItems ?? [])
 const clusterBarItems = computed(() => errorCauseToBarItems(record.value?.clusterItems ?? []))
 
-const clusterChartHint = computed(() => mergeChartHint(
-  '悬停查看各错因占比与说明',
-  buildBarChartInsight(clusterBarItems.value),
-))
+const clusterChartHint = computed(() =>
+  mergeChartHint('悬停查看各错因占比与说明', buildBarChartInsight(clusterBarItems.value)),
+)
 
 const { chartOption: clusterChartOption } = useChartOption(() =>
   buildCategoryBarChartOption(clusterBarItems.value, {

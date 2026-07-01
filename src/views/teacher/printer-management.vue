@@ -22,8 +22,6 @@
         @reset="handleResetSearch"
       />
 
-
-
       <UiDataTable
         v-model:current="pagination.current"
         v-model:page-size="pagination.pageSize"
@@ -60,9 +58,13 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <div class="operations-cell operations-cell--split" @click.stop>
-              <button type="button" class="op-link" @click="handleViewDetail(devices[index])">详情</button>
+              <button type="button" class="op-link" @click="handleViewDetail(devices[index])">
+                详情
+              </button>
               <span class="operations-cell__sep" aria-hidden="true" />
-              <button type="button" class="op-link" @click="handleEdit(devices[index])">编辑</button>
+              <button type="button" class="op-link" @click="handleEdit(devices[index])">
+                编辑
+              </button>
               <span class="operations-cell__sep" aria-hidden="true" />
               <a-dropdown trigger="click">
                 <button type="button" class="op-link" @click.stop.prevent>更多</button>
@@ -268,7 +270,8 @@
     >
       <div v-if="activationCodeInfo" class="activation-code-modal">
         <p class="activation-code-modal__hint">
-          请在一体机 Kiosk 页面输入 8 位数字激活码与端点名称完成绑定。激活码一次性有效，过期后需重新生成。
+          请在一体机 Kiosk 页面输入 8
+          位数字激活码与端点名称完成绑定。激活码一次性有效，过期后需重新生成。
         </p>
         <div class="activation-code-modal__device">
           {{ activationCodeDeviceName }}
@@ -312,11 +315,6 @@ import type {
   ScannerDeviceStatusCode,
   ScannerEndpointOnlineStatusCode,
 } from '@/apis/mark/exam-mark-scanner'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import AQrcode from 'ant-design-vue/es/qrcode'
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   createScannerActivationCode,
   createScannerDevice,
@@ -332,6 +330,11 @@ import {
   unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import AQrcode from 'ant-design-vue/es/qrcode'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -360,13 +363,18 @@ async function syncAfterDeviceMutation(): Promise<void> {
 // ─── 列表与筛选 ───────────────────────────────────────
 const loading = ref(false)
 const devices = ref<ExamScannerDeviceVO[]>([])
-const searchForm = reactive<Pick<ExamScannerDeviceQueryRequest, 'status' | 'scannerDeviceIdKeyword' | 'location' | 'interfaceMode'>>({})
+const searchForm = reactive<
+  Pick<
+    ExamScannerDeviceQueryRequest,
+    'status' | 'scannerDeviceIdKeyword' | 'location' | 'interfaceMode'
+  >
+>({})
 const pagination = reactive({
   current: 1,
   pageSize: 20,
   total: 0,
 })
-const locationOptions = ref<Array<{ label: string, value: string }>>([])
+const locationOptions = ref<Array<{ label: string; value: string }>>([])
 
 function syncSearchForm(next: Record<string, unknown>): void {
   Object.assign(searchForm, next)
@@ -538,7 +546,7 @@ function handleResetSearch(): void {
   void loadDevices()
 }
 
-function handleUiPageChange(page: { current: number, pageSize: number }): void {
+function handleUiPageChange(page: { current: number; pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadDevices()

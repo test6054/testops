@@ -1,15 +1,32 @@
 <template>
-  <div class="ui-platform-file-field" :class="{ 'ui-platform-file-field--disabled': props.disabled }">
+  <div
+    class="ui-platform-file-field"
+    :class="{ 'ui-platform-file-field--disabled': props.disabled }"
+  >
     <div v-if="fileNodeId" class="ui-platform-file-field__file">
       <FileOutlined />
       <span class="ui-platform-file-field__name" :title="displayName">{{ displayName }}</span>
-      <span v-if="fileSize" class="ui-platform-file-field__size">{{ formatFileSize(fileSize) }}</span>
-      <UiButton v-if="props.removable" variant="ghost" size="sm" :disabled="props.disabled || uploading" @click="remove">
+      <span v-if="fileSize" class="ui-platform-file-field__size">{{
+        formatFileSize(fileSize)
+      }}</span>
+      <UiButton
+        v-if="props.removable"
+        variant="ghost"
+        size="sm"
+        :disabled="props.disabled || uploading"
+        @click="remove"
+      >
         移除
       </UiButton>
     </div>
     <div v-else class="ui-platform-file-field__empty">
-      <UiButton variant="outline" size="sm" :loading="uploading" :disabled="props.disabled" @click="openPicker">
+      <UiButton
+        variant="outline"
+        size="sm"
+        :loading="uploading"
+        :disabled="props.disabled"
+        @click="openPicker"
+      >
         {{ props.buttonText }}
       </UiButton>
       <span v-if="props.tip" class="ui-platform-file-field__tip">{{ props.tip }}</span>
@@ -19,7 +36,7 @@
         class="sr-only"
         :accept="props.accept"
         @change="onFileChange"
-      >
+      />
     </div>
   </div>
 </template>
@@ -40,19 +57,22 @@ const fileName = defineModel<string | undefined>('fileName')
 
 const fileSize = defineModel<number | undefined>('fileSize')
 
-const props = withDefaults(defineProps<{
-  sceneKey: FileUploadSceneKeyValue
-  accept?: string
-  buttonText?: string
-  tip?: string
-  disabled?: boolean
-  removable?: boolean
-}>(), {
-  accept: '',
-  buttonText: '选择文件',
-  disabled: false,
-  removable: true,
-})
+const props = withDefaults(
+  defineProps<{
+    sceneKey: FileUploadSceneKeyValue
+    accept?: string
+    buttonText?: string
+    tip?: string
+    disabled?: boolean
+    removable?: boolean
+  }>(),
+  {
+    accept: '',
+    buttonText: '选择文件',
+    disabled: false,
+    removable: true,
+  },
+)
 
 const inputRef = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)

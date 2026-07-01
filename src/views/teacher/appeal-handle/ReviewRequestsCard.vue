@@ -47,9 +47,15 @@
           {{ formatDateTime(rows[index].reviewTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
-          <div v-if="canHandleReviewRequest(rows[index].requestStatus)" class="operations-cell" @click.stop>
+          <div
+            v-if="canHandleReviewRequest(rows[index].requestStatus)"
+            class="operations-cell"
+            @click.stop
+          >
             <UiTextAction @click="openHandleModal(rows[index], 'APPROVED')">通过</UiTextAction>
-            <UiTextAction tone="danger" @click="openHandleModal(rows[index], 'REJECTED')">驳回</UiTextAction>
+            <UiTextAction tone="danger" @click="openHandleModal(rows[index], 'REJECTED')"
+              >驳回</UiTextAction
+            >
           </div>
         </template>
       </template>
@@ -93,7 +99,10 @@
         <a-form-item label="申请原因">
           <a-textarea :value="targetRequest?.requestReason ?? ''" :rows="3" disabled />
         </a-form-item>
-        <a-form-item v-if="targetRequest && targetRequest.evidenceFileRefs.length > 0" label="佐证材料">
+        <a-form-item
+          v-if="targetRequest && targetRequest.evidenceFileRefs.length > 0"
+          label="佐证材料"
+        >
           <div class="evidence-file-list">
             <UiTextAction
               v-for="file in targetRequest.evidenceFileRefs"
@@ -127,9 +136,6 @@ import type {
   GradeReviewRequestStatusCode,
   ReviewConclusion,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   getReviewSummary,
   GRADE_REVIEW_REASON_TYPE_LABEL,
@@ -139,6 +145,9 @@ import {
   REVIEW_REQUEST_STATUS_OPTIONS,
   REVIEW_REQUEST_STATUS_TONE,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -152,7 +161,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewRequestsCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{
   (e: 'handled'): void
   (e: 'pending-change', count: number): void
@@ -168,7 +177,7 @@ const pagination = reactive({
   total: 0,
 })
 
-const filterForm = reactive<{ status?: GradeReviewRequestStatusCode, keyword: string }>({
+const filterForm = reactive<{ status?: GradeReviewRequestStatusCode; keyword: string }>({
   keyword: '',
 })
 
@@ -293,7 +302,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()

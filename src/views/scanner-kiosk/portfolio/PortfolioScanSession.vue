@@ -33,12 +33,12 @@ const scanFlow = useWorkOrderScanFlow({
 
 const canStart = computed(() =>
   Boolean(
-    session.collectMode.value
-    && session.teacherId.value
-    && bootstrap.selectedScannerId.value
-    && session.portfolioContext.value != null
-    && session.portfolioContext.value.scanAllowed === true
-    && !lease.leaseLost.value,
+    session.collectMode.value &&
+    session.teacherId.value &&
+    bootstrap.selectedScannerId.value &&
+    session.portfolioContext.value != null &&
+    session.portfolioContext.value.scanAllowed === true &&
+    !lease.leaseLost.value,
   ),
 )
 const leaseLostMessage = '派单租约已失效，扫描会话可能已被中断，请返回队列'
@@ -104,7 +104,7 @@ onMounted(async () => {
 
 watch(
   () => bootstrap.activation.isActivatedForMarkApis(),
-  activated => {
+  (activated) => {
     if (activated) {
       void session.loadContext()
     }
@@ -112,7 +112,12 @@ watch(
 )
 
 watch(
-  () => [session.dispatchTicketId.value, bootstrap.setup.value?.scannerDeviceId, bootstrap.setup.value?.scannerStationId] as const,
+  () =>
+    [
+      session.dispatchTicketId.value,
+      bootstrap.setup.value?.scannerDeviceId,
+      bootstrap.setup.value?.scannerStationId,
+    ] as const,
   ([ticketId, deviceId, stationId]) => {
     if (ticketId && deviceId && stationId) {
       lease.startHeartbeat(ticketId, deviceId, stationId, { onLeaseLost: handleLeaseLost })
@@ -129,7 +134,7 @@ onUnmounted(() => {
 
 watch(
   () => scanFlow.isReported.value || scanFlow.lifecycle.value?.status === 'COMMITTED',
-  completed => {
+  (completed) => {
     if (completed) {
       handleScanCompleted()
     }
@@ -138,7 +143,7 @@ watch(
 
 watch(
   () => scanFlow.lifecycle.value?.status,
-  status => {
+  (status) => {
     if (status !== 'DISCARDED' || !session.dispatchTicketId.value) {
       return
     }
@@ -199,7 +204,11 @@ function goBack() {
       <label>
         扫描仪
         <select v-model="bootstrap.selectedScannerId.value" class="portfolio-scan-session__select">
-          <option v-for="scanner in bootstrap.scanners.value" :key="scanner.localScannerId" :value="scanner.localScannerId">
+          <option
+            v-for="scanner in bootstrap.scanners.value"
+            :key="scanner.localScannerId"
+            :value="scanner.localScannerId"
+          >
             {{ scanner.displayName }}
           </option>
         </select>
@@ -282,14 +291,17 @@ function goBack() {
     </section>
 
     <p v-if="scanFlow.lifecycle.value?.batchExternalNo" class="portfolio-scan-session__hint">
-      工单 {{ scanFlow.lifecycle.value.batchExternalNo }}；
-      状态 {{ lifecycleStatusLabel }}；
-      {{ scanFlow.currentJob.value?.status ?? '等待 Agent' }}；
-      已扫 {{ scanFlow.currentJob.value?.scannedPages ?? 0 }} 页
-      <span v-if="scanFlow.lifecycle.value.diagnostic"> — {{ scanFlow.lifecycle.value.diagnostic }}</span>
+      工单 {{ scanFlow.lifecycle.value.batchExternalNo }}； 状态 {{ lifecycleStatusLabel }}；
+      {{ scanFlow.currentJob.value?.status ?? '等待 Agent' }}； 已扫
+      {{ scanFlow.currentJob.value?.scannedPages ?? 0 }} 页
+      <span v-if="scanFlow.lifecycle.value.diagnostic">
+        — {{ scanFlow.lifecycle.value.diagnostic }}</span
+      >
       <span v-else-if="jobMessage"> — {{ jobMessage }}</span>
     </p>
-    <p v-if="scanFlow.errorMessage.value" class="portfolio-scan-session__error">{{ scanFlow.errorMessage.value }}</p>
+    <p v-if="scanFlow.errorMessage.value" class="portfolio-scan-session__error">
+      {{ scanFlow.errorMessage.value }}
+    </p>
   </div>
 </template>
 

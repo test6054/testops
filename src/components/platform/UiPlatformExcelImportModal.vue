@@ -13,8 +13,15 @@
   >
     <div v-if="phase === 'upload'" class="platform-excel-import-modal__upload">
       <div v-if="!props.hideTemplateDownload" class="platform-excel-import-modal__template">
-        <span class="platform-excel-import-modal__template-text">请先下载模板，按格式填写后上传</span>
-        <UiButton variant="outline" size="sm" :loading="templateLoading" @click="handleDownloadTemplate">
+        <span class="platform-excel-import-modal__template-text"
+          >请先下载模板，按格式填写后上传</span
+        >
+        <UiButton
+          variant="outline"
+          size="sm"
+          :loading="templateLoading"
+          @click="handleDownloadTemplate"
+        >
           下载{{ props.entityLabel }}导入模板
         </UiButton>
       </div>
@@ -36,21 +43,27 @@
       >
         <UploadOutlined class="platform-excel-import-modal__dropzone-icon" />
         <p class="platform-excel-import-modal__dropzone-hint">
-          拖拽文件到此处，或<span class="platform-excel-import-modal__dropzone-link">点击选择文件</span>
+          拖拽文件到此处，或<span class="platform-excel-import-modal__dropzone-link"
+            >点击选择文件</span
+          >
         </p>
-        <p class="platform-excel-import-modal__dropzone-desc">支持 .xlsx、.xls，单文件不超过 30MB</p>
+        <p class="platform-excel-import-modal__dropzone-desc">
+          支持 .xlsx、.xls，单文件不超过 30MB
+        </p>
         <input
           ref="fileInputRef"
           type="file"
           accept=".xlsx,.xls"
           class="sr-only"
           @change="handleFileInputChange"
-        >
+        />
       </div>
       <div v-if="stagedFile" class="platform-excel-import-modal__file">
         <FileOutlined />
         <span class="platform-excel-import-modal__file-name">{{ stagedFile.name }}</span>
-        <span class="platform-excel-import-modal__file-size">{{ formatFileSize(stagedFile.size) }}</span>
+        <span class="platform-excel-import-modal__file-size">{{
+          formatFileSize(stagedFile.size)
+        }}</span>
         <UiTag tone="green">已选择</UiTag>
         <UiButton variant="ghost" size="sm" @click="clearFile">移除</UiButton>
       </div>
@@ -117,7 +130,9 @@
         <div class="platform-excel-import-modal__summary-stats">
           <span>总计 {{ result?.totalRows ?? 0 }}</span>
           <span class="is-success">成功 {{ result?.successRows ?? 0 }}</span>
-          <span v-if="result?.createdCount != null" class="is-success">新建 {{ result.createdCount }}</span>
+          <span v-if="result?.createdCount != null" class="is-success"
+            >新建 {{ result.createdCount }}</span
+          >
           <span v-if="result?.updatedCount != null">更新 {{ result.updatedCount }}</span>
           <span class="is-fail">失败 {{ result?.errorRows ?? 0 }}</span>
         </div>
@@ -145,6 +160,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExcelImportSceneKeyValue } from '@/apis/platform/scene-keys'
+import { resolveFileStageSceneForExcel } from '@/apis/platform/scene-keys'
 import type {
   ExcelImportResult,
   ExcelImportRosterPreviewRow,
@@ -156,7 +172,6 @@ import { computed, ref, watch } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
 import { downloadExcelImportTemplate, submitExcelImport } from '@/apis/platform/excel-import'
 import { stagePlatformFile } from '@/apis/platform/file'
-import { resolveFileStageSceneForExcel } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -257,10 +272,12 @@ const pagedRosterPreviewRows = computed(() => {
 })
 
 const failedRows = computed(() =>
-  (result.value?.diagnostics ?? []).filter(row => row.valid === false).map(row => ({
-    ...row,
-    invalidReason: getUserProcessFailureMessage(row.invalidReason, '该行数据未通过校验'),
-  })),
+  (result.value?.diagnostics ?? [])
+    .filter((row) => row.valid === false)
+    .map((row) => ({
+      ...row,
+      invalidReason: getUserProcessFailureMessage(row.invalidReason, '该行数据未通过校验'),
+    })),
 )
 
 const pagedFailedRows = computed(() => {
@@ -283,11 +300,14 @@ const resultTitle = computed(() => {
   return `导入成功 ${success} 条`
 })
 
-watch(() => props.open, (open) => {
-  if (!open) {
-    resetState()
-  }
-})
+watch(
+  () => props.open,
+  (open) => {
+    if (!open) {
+      resetState()
+    }
+  },
+)
 
 function resetState() {
   stagedFile.value = null
@@ -411,7 +431,9 @@ async function handleOk() {
       rosterPreviewPage.value = 1
       phase.value = 'preview'
       if ((importResult.errorRows ?? 0) > 0) {
-        message.warning(`预览完成：${importResult.successRows ?? 0} 可导入，${importResult.errorRows ?? 0} 错误`)
+        message.warning(
+          `预览完成：${importResult.successRows ?? 0} 可导入，${importResult.errorRows ?? 0} 错误`,
+        )
       }
       return
     }
@@ -425,10 +447,14 @@ async function handleOk() {
     } else if ((importResult.errorRows ?? 0) === 0) {
       message.success(`导入成功 ${importResult.successRows ?? 0} 条`)
     } else {
-      message.warning(`导入完成：成功 ${importResult.successRows ?? 0} 条，失败 ${importResult.errorRows ?? 0} 条`)
+      message.warning(
+        `导入完成：成功 ${importResult.successRows ?? 0} 条，失败 ${importResult.errorRows ?? 0} 条`,
+      )
     }
   } catch (error) {
-    message.error(getUserErrorMessage(error, phase.value === 'preview' ? '导入考生名册失败' : '导入失败'))
+    message.error(
+      getUserErrorMessage(error, phase.value === 'preview' ? '导入考生名册失败' : '导入失败'),
+    )
   } finally {
     submitting.value = false
   }

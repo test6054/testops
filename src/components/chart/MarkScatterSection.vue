@@ -28,22 +28,25 @@ import MarkChart from './MarkChart.vue'
 
 defineOptions({ name: 'MarkScatterSection' })
 
-const props = withDefaults(defineProps<{
-  title: string
-  hint?: string
-  pointCount: number
-  option: EChartsCoreOption
-  height?: string
-  ariaLabel?: string
-  emptyDescription?: string
-  visible?: boolean
-}>(), {
-  hint: '',
-  height: '300px',
-  ariaLabel: '',
-  emptyDescription: MARK_CHART_EMPTY.scatterNoData,
-  visible: true,
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    hint?: string
+    pointCount: number
+    option: EChartsCoreOption
+    height?: string
+    ariaLabel?: string
+    emptyDescription?: string
+    visible?: boolean
+  }>(),
+  {
+    hint: '',
+    height: '300px',
+    ariaLabel: '',
+    emptyDescription: MARK_CHART_EMPTY.scatterNoData,
+    visible: true,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'brush-selected', params: unknown): void

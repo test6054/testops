@@ -38,10 +38,7 @@
 
       <a-skeleton v-if="loadingExams" active :paragraph="{ rows: 3 }" />
 
-      <UiEmpty
-        v-else-if="appealableExams.length === 0"
-        description="暂无数据"
-      />
+      <UiEmpty v-else-if="appealableExams.length === 0" description="暂无数据" />
 
       <div v-else-if="!loadingExams && appealableExams.length > 0" class="exam-pick-list">
         <article
@@ -57,8 +54,12 @@
           <div class="exam-pick-item__main">
             <div class="exam-pick-item__title-row">
               <h3 class="exam-pick-item__title">{{ exam.examName }}</h3>
-              <UiTag :tone="finalScoreStatusTone(exam)" size="sm">{{ finalScoreStatusLabel(exam) }}</UiTag>
-              <UiTag :tone="reviewWindowStatusTone(exam)" size="sm">{{ reviewWindowStatusLabel(exam) }}</UiTag>
+              <UiTag :tone="finalScoreStatusTone(exam)" size="sm">{{
+                finalScoreStatusLabel(exam)
+              }}</UiTag>
+              <UiTag :tone="reviewWindowStatusTone(exam)" size="sm">{{
+                reviewWindowStatusLabel(exam)
+              }}</UiTag>
             </div>
             <div class="exam-pick-item__meta">
               <span class="meta-item">编号：{{ exam.examNo }}</span>
@@ -92,8 +93,6 @@
         @search="handleRequestFilterSearch"
         @reset="handleRequestFilterReset"
       />
-
-
 
       <UiDataTable
         v-model:current="requestPagination.current"
@@ -202,14 +201,21 @@
             class="sr-only"
             accept=".jpg,.jpeg,.png,.webp,.pdf"
             @change="onEvidencePick"
+          />
+          <UiButton
+            variant="outline"
+            size="sm"
+            :loading="evidenceUploading"
+            @click="openEvidencePicker"
           >
-          <UiButton variant="outline" size="sm" :loading="evidenceUploading" @click="openEvidencePicker">
             上传佐证
           </UiButton>
           <ul v-if="evidenceItems.length" class="appeal-evidence-list">
             <li v-for="item in evidenceItems" :key="item.fileNodeId">
               <span>{{ item.fileName }}</span>
-              <UiButton variant="ghost" size="sm" @click="removeEvidence(item.fileNodeId)">移除</UiButton>
+              <UiButton variant="ghost" size="sm" @click="removeEvidence(item.fileNodeId)"
+                >移除</UiButton
+              >
             </li>
           </ul>
           <div class="appeal-evidence-hint">
@@ -244,7 +250,23 @@ import type {
   GradeReviewRequestStatusCode,
   StudentGradeReviewRequestItemVO,
 } from '@/apis/mark/grade-review'
+import {
+  countMyPendingReviewRequests,
+  GRADE_REVIEW_REASON_TYPE_LABEL,
+  GRADE_REVIEW_REASON_TYPE_OPTIONS,
+  listMyReviewRequests,
+  REVIEW_REQUEST_STATUS_LABEL,
+  REVIEW_REQUEST_STATUS_TONE,
+  submitReviewRequest,
+} from '@/apis/mark/grade-review'
 import type { StudentExamItemVO, StudentQuestionScoreVO } from '@/apis/mark/student-exam'
+import {
+  canSubmitReview,
+  getMyScoreDetail,
+  listMyExams,
+  STUDENT_REVIEW_WINDOW_STATUS_LABEL,
+  STUDENT_REVIEW_WINDOW_STATUS_TONE,
+} from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
@@ -255,16 +277,6 @@ import { message } from 'ant-design-vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from '@/apis/mark/final-score-status'
-import {
-  countMyPendingReviewRequests,
-  GRADE_REVIEW_REASON_TYPE_LABEL,
-  GRADE_REVIEW_REASON_TYPE_OPTIONS,
-  listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_LABEL,
-  REVIEW_REQUEST_STATUS_TONE,
-  submitReviewRequest,
-} from '@/apis/mark/grade-review'
-import { canSubmitReview, getMyScoreDetail, listMyExams, STUDENT_REVIEW_WINDOW_STATUS_LABEL, STUDENT_REVIEW_WINDOW_STATUS_TONE } from '@/apis/mark/student-exam'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -311,7 +323,7 @@ const sourceQuestionId = ref<string | undefined>(undefined)
 
 const reasonTypeOptions = GRADE_REVIEW_REASON_TYPE_OPTIONS
 
-const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }> = [
+const statusOptions: Array<{ value: GradeReviewRequestStatusCode; label: string }> = [
   { value: 'PENDING', label: '待处理' },
   { value: 'IN_REVIEW', label: '处理中' },
   { value: 'APPROVED', label: '通过' },
@@ -394,7 +406,6 @@ const questionOptions = computed(() =>
     label: `第 ${question.questionNo} 题 · ${question.questionType} · 满分 ${question.fullScore} 分`,
   })),
 )
-
 
 async function loadPendingRequestCount(): Promise<void> {
   try {
@@ -505,7 +516,11 @@ async function loadRequests() {
     requestPagination.total = readPageTotal(result, '复核申请列表加载失败')
     requestPagination.current = result.pageNum ?? requestPagination.current
     requestPagination.pageSize = result.pageSize ?? requestPagination.pageSize
-    if (requests.value.length === 0 && requestPagination.total > 0 && requestPagination.current > 1) {
+    if (
+      requests.value.length === 0 &&
+      requestPagination.total > 0 &&
+      requestPagination.current > 1
+    ) {
       requestPagination.current -= 1
       await Promise.all([loadRequests(), loadPendingRequestCount()])
     }
@@ -518,7 +533,7 @@ async function loadRequests() {
   }
 }
 
-function handleRequestPageChange(pageInfo: { current: number, pageSize: number }): void {
+function handleRequestPageChange(pageInfo: { current: number; pageSize: number }): void {
   requestPagination.current = pageInfo.current
   requestPagination.pageSize = pageInfo.pageSize
   void loadRequests()
@@ -550,11 +565,19 @@ function finalScoreStatusTone(exam: StudentExamItemVO): BadgeTone {
 }
 
 function reviewWindowStatusLabel(exam: StudentExamItemVO): string {
-  return strictEnumLabel(STUDENT_REVIEW_WINDOW_STATUS_LABEL, exam.reviewWindowStatus, '成绩复核窗口状态')
+  return strictEnumLabel(
+    STUDENT_REVIEW_WINDOW_STATUS_LABEL,
+    exam.reviewWindowStatus,
+    '成绩复核窗口状态',
+  )
 }
 
 function reviewWindowStatusTone(exam: StudentExamItemVO): BadgeTone {
-  return strictEnumTone(STUDENT_REVIEW_WINDOW_STATUS_TONE, exam.reviewWindowStatus, '成绩复核窗口状态')
+  return strictEnumTone(
+    STUDENT_REVIEW_WINDOW_STATUS_TONE,
+    exam.reviewWindowStatus,
+    '成绩复核窗口状态',
+  )
 }
 
 function formatPublishedScore(exam: StudentExamItemVO): string {
@@ -671,9 +694,10 @@ async function submit() {
       requestReason: form.requestReason.trim(),
       reasonType: form.reasonType,
       questionIds: form.questionIds,
-      evidenceFileIds: evidenceItems.value.length > 0
-        ? evidenceItems.value.map((item) => item.fileNodeId)
-        : undefined,
+      evidenceFileIds:
+        evidenceItems.value.length > 0
+          ? evidenceItems.value.map((item) => item.fileNodeId)
+          : undefined,
     })
     message.success('复核申请已提交')
     submitModalOpen.value = false

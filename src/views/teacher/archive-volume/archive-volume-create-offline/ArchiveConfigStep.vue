@@ -4,7 +4,13 @@
       <h2 class="section-title">归档配置</h2>
     </header>
     <p class="section-desc">为本卷选定目录模板套、密级与保管策略；模板决定材料目录与自查项。</p>
-    <a-form ref="formRef" :model="configForm" :rules="configRules" layout="vertical" class="archive-create-form__body">
+    <a-form
+      ref="formRef"
+      :model="configForm"
+      :rules="configRules"
+      layout="vertical"
+      class="archive-create-form__body"
+    >
       <div class="archive-create-form__grid">
         <a-form-item label="目录模板套" name="templateSetCode" class="archive-create-form__full">
           <a-select
@@ -62,20 +68,20 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { computed, ref, watch } from 'vue'
 import {
   ARCHIVE_EXAM_FORM_LABEL,
   ARCHIVE_SCORE_SOURCE_LABEL,
   ARCHIVE_SECURITY_LEVEL_LABEL,
 } from '@/apis/mark/archive-volume'
+import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import { computed, ref, watch } from 'vue'
 import { TeacherSelector } from '@/components/quality/selectors'
 import { useInjectedArchiveVolumeCreateConfigForm } from './archive-volume-create-context'
 import { nullableStringToSelectValue, selectValueToNullableString } from './select-value-bridge'
 
 const props = defineProps<{
   configRules: Record<string, Rule[]>
-  templateSetOptions: Array<{ value: string, label: string, examForm?: ArchiveExamFormCode }>
+  templateSetOptions: Array<{ value: string; label: string; examForm?: ArchiveExamFormCode }>
   templateLoading: boolean
 }>()
 
@@ -117,7 +123,7 @@ function handleTemplateChange(value: SelectValue): void {
     emit('template-change', null, '', undefined)
     return
   }
-  const selected = props.templateSetOptions.find(item => item.value === code)
+  const selected = props.templateSetOptions.find((item) => item.value === code)
   emit('template-change', code, selected?.label ?? code, selected?.examForm)
 }
 
@@ -130,9 +136,13 @@ function handleResponsibleChange(
   emit('responsible-change', userId, teacher?.nickName?.trim() ?? '')
 }
 
-watch(formRef, (form) => {
-  emit('update:config-form-ref', form)
-}, { immediate: true })
+watch(
+  formRef,
+  (form) => {
+    emit('update:config-form-ref', form)
+  },
+  { immediate: true },
+)
 </script>
 
 <style scoped lang="scss">

@@ -30,30 +30,33 @@ import MarkChart from './MarkChart.vue'
 
 defineOptions({ name: 'MarkTrendSection' })
 
-const props = withDefaults(defineProps<{
-  title: string
-  hint?: string
-  pointCount: number
-  minPoints?: number
-  option: EChartsCoreOption
-  height?: string
-  ariaLabel?: string
-  emptyDescription?: string
-  singlePointDescription?: string
-  visible?: boolean
-  lastValue?: number | null
-  valueUnit?: string
-}>(), {
-  hint: '',
-  minPoints: MARK_TREND_MIN_POINTS,
-  height: '280px',
-  ariaLabel: '',
-  emptyDescription: MARK_CHART_EMPTY.trendNeedMoreExams,
-  singlePointDescription: MARK_CHART_EMPTY.trendNeedMoreExams,
-  visible: true,
-  lastValue: null,
-  valueUnit: '',
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    hint?: string
+    pointCount: number
+    minPoints?: number
+    option: EChartsCoreOption
+    height?: string
+    ariaLabel?: string
+    emptyDescription?: string
+    singlePointDescription?: string
+    visible?: boolean
+    lastValue?: number | null
+    valueUnit?: string
+  }>(),
+  {
+    hint: '',
+    minPoints: MARK_TREND_MIN_POINTS,
+    height: '280px',
+    ariaLabel: '',
+    emptyDescription: MARK_CHART_EMPTY.trendNeedMoreExams,
+    singlePointDescription: MARK_CHART_EMPTY.trendNeedMoreExams,
+    visible: true,
+    lastValue: null,
+    valueUnit: '',
+  },
+)
 
 const ready = computed(() => props.pointCount >= props.minPoints)
 

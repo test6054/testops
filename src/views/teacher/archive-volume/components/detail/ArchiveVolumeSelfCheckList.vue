@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ArchiveSelfCheckStatusCode } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { computed, onMounted } from 'vue'
 import {
   ARCHIVE_SELF_CHECK_STATUS_LABEL,
   ARCHIVE_SELF_CHECK_STATUS_TONE,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { computed, onMounted } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -22,7 +22,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'refreshed': []
+  refreshed: []
   'open-sign-off': []
 }>()
 
@@ -49,7 +49,7 @@ function statusTone(code: ArchiveSelfCheckStatusCode): BadgeTone {
 }
 
 async function handleToggle(templateItemId: string, checked: boolean) {
-  const item = items.value.find(row => row.templateItemId === templateItemId)
+  const item = items.value.find((row) => row.templateItemId === templateItemId)
   if (!item) return
   await toggleItem(item, checked)
   emit('refreshed')
@@ -110,10 +110,7 @@ defineExpose({ loadSelfCheck })
           <span class="archive-volume-self-check-list__text">{{ item.itemText }}</span>
           <UiTag v-if="item.requiredFlag" tone="orange" size="sm">必查</UiTag>
         </a-checkbox>
-        <span
-          v-if="item.checked && item.checkedTime"
-          class="archive-volume-self-check-list__meta"
-        >
+        <span v-if="item.checked && item.checkedTime" class="archive-volume-self-check-list__meta">
           {{ item.checkerName || '已确认' }} · {{ formatDateTime(item.checkedTime) }}
         </span>
       </li>

@@ -8,6 +8,10 @@ import type {
   PortfolioTargetFieldDefinition,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_CORRECTION_REQUEST_STATUS_LABEL,
+  PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
+} from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -15,10 +19,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
-import {
-  PORTFOLIO_CORRECTION_REQUEST_STATUS_LABEL,
-  PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
-} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -28,7 +28,10 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
+import {
+  usePortfolioPageScope,
+  usePortfolioScopedLoader,
+} from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -37,9 +40,7 @@ function resolveSelectStringValue(value: SelectValue): string {
   if (value == null || Array.isArray(value)) {
     return ''
   }
-  return typeof value === 'object'
-    ? String(value.value)
-    : String(value)
+  return typeof value === 'object' ? String(value.value) : String(value)
 }
 
 function correctionRequestStatusLabel(status: PortfolioCorrectionRequestStatus): string {
@@ -87,23 +88,27 @@ const form = reactive({
 })
 
 const teacherRequest = computed(() =>
-  targetTeacherId.value ? { teacherId: targetTeacherId.value } : {})
+  targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+)
 
 const categoryOptions = computed(() =>
-  categories.value.map(item => ({
+  categories.value.map((item) => ({
     label: item.categoryName,
     value: item.categoryId,
-  })))
+  })),
+)
 
 const fieldOptions = computed(() =>
-  publishedFields.value.map(item => ({
+  publishedFields.value.map((item) => ({
     label: item.fieldLabel,
     value: item.fieldCode,
-  })))
+  })),
+)
 
 function applyRoutePrefill() {
   const categoryId = typeof route.query.categoryId === 'string' ? route.query.categoryId : ''
-  const archiveRecordId = typeof route.query.archiveRecordId === 'string' ? route.query.archiveRecordId : ''
+  const archiveRecordId =
+    typeof route.query.archiveRecordId === 'string' ? route.query.archiveRecordId : ''
   const fieldCode = typeof route.query.fieldCode === 'string' ? route.query.fieldCode : ''
   const fieldLabel = typeof route.query.fieldLabel === 'string' ? route.query.fieldLabel : ''
   const wrongValue = typeof route.query.wrongValue === 'string' ? route.query.wrongValue : ''
@@ -149,8 +154,7 @@ async function loadCategories() {
     if (form.categoryId) {
       await loadPublishedFields(form.categoryId)
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载档案分类失败')
   }
 }
@@ -170,11 +174,9 @@ async function loadCorrections() {
     })
     rows.value = readPageList(page, '加载纠错列表失败')
     pageTotal.value = readPageTotal(page, '加载纠错列表失败')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载纠错列表失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -185,11 +187,9 @@ async function openDetail(id: string) {
   detailLoading.value = true
   try {
     detail.value = await portfolioCorrectionApi.getCorrection(id)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载纠错详情失败')
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
@@ -221,23 +221,21 @@ async function handleSubmit() {
     form.evidenceRef = ''
     pageNum.value = 1
     await loadCorrections()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '提交纠错失败')
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadCorrections()
 }
 
 async function applyCategoryChange(categoryId: string) {
-  const row = categories.value.find(item => item.categoryId === categoryId)
+  const row = categories.value.find((item) => item.categoryId === categoryId)
   form.archiveRecordId = row?.officialRecordId ?? ''
   form.fieldCode = ''
   form.fieldLabel = ''
@@ -250,7 +248,7 @@ function onCategoryChange(value: SelectValue): void {
 
 function onFieldChange(value: SelectValue): void {
   const fieldCode = resolveSelectStringValue(value)
-  const field = publishedFields.value.find(item => item.fieldCode === fieldCode)
+  const field = publishedFields.value.find((item) => item.fieldCode === fieldCode)
   form.fieldLabel = field?.fieldLabel ?? ''
 }
 
@@ -258,18 +256,25 @@ function openCorrectionDetail(row: PortfolioCorrectionSummaryVO): void {
   void openDetail(row.id)
 }
 
-usePortfolioScopedLoader(() => {
-  pageNum.value = 1
-  void loadCategories()
-  void loadCorrections()
-}, () => targetTeacherId.value)
+usePortfolioScopedLoader(
+  () => {
+    pageNum.value = 1
+    void loadCategories()
+    void loadCorrections()
+  },
+  () => targetTeacherId.value,
+)
 
-watch(() => route.query, () => {
-  applyRoutePrefill()
-  if (form.categoryId) {
-    void loadPublishedFields(form.categoryId)
-  }
-}, { deep: true })
+watch(
+  () => route.query,
+  () => {
+    applyRoutePrefill()
+    if (form.categoryId) {
+      void loadPublishedFields(form.categoryId)
+    }
+  },
+  { deep: true },
+)
 </script>
 
 <template>
@@ -277,7 +282,9 @@ watch(() => route.query, () => {
     <template #context>
       <ContextBar show-title layout="workbench" title="我的纠错">
         <template #actions>
-          <UiButton @click="router.push({ path: '/portfolio/teacher/archive', query: teacherRequest })">
+          <UiButton
+            @click="router.push({ path: '/portfolio/teacher/archive', query: teacherRequest })"
+          >
             返回档案
           </UiButton>
         </template>
@@ -321,9 +328,7 @@ watch(() => route.query, () => {
           <a-form-item label="佐证引用">
             <a-input v-model:value="form.evidenceRef" />
           </a-form-item>
-          <UiButton :loading="submitting" @click="handleSubmit">
-            提交纠错
-          </UiButton>
+          <UiButton :loading="submitting" @click="handleSubmit"> 提交纠错 </UiButton>
         </a-form>
       </UiCard>
 
@@ -347,9 +352,7 @@ watch(() => route.query, () => {
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction @click="openCorrectionDetail(record)">
-                详情
-              </UiTextAction>
+              <UiTextAction @click="openCorrectionDetail(record)"> 详情 </UiTextAction>
             </template>
           </template>
         </UiDataTable>
@@ -374,9 +377,7 @@ watch(() => route.query, () => {
           <p v-if="detail.expectedValue" class="correction-page__detail-line">
             期望值：{{ detail.expectedValue }}
           </p>
-          <p class="correction-page__detail-line">
-            原因：{{ detail.reason }}
-          </p>
+          <p class="correction-page__detail-line">原因：{{ detail.reason }}</p>
           <p v-if="detail.handleOpinion" class="correction-page__detail-line">
             处理意见：{{ detail.handleOpinion }}
           </p>

@@ -44,7 +44,7 @@ function userLabel(user: Pick<UserListItemDto, 'nickName' | 'identifierNumber'>)
 }
 
 function mergeOptions(users: UserListItemDto[]) {
-  const map = new Map(options.value.map(item => [item.id, item]))
+  const map = new Map(options.value.map((item) => [item.id, item]))
   for (const user of users) {
     map.set(user.id, user)
   }
@@ -71,8 +71,7 @@ async function hydrateById(userId: string) {
   try {
     const detail = await getTenantUserDetail({ id: userId })
     mergeOptions([toListItem(detail)])
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '用户回显加载失败')
   }
 }
@@ -86,11 +85,9 @@ async function loadOptions(keyword?: string) {
       keyword: keyword?.trim() || undefined,
     })
     mergeOptions(requirePageList(res, '用户'))
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '用户列表加载失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -98,7 +95,7 @@ async function loadOptions(keyword?: string) {
 watch(
   () => props.value,
   (userId) => {
-    if (userId && !options.value.some(item => item.id === userId)) {
+    if (userId && !options.value.some((item) => item.id === userId)) {
       void hydrateById(userId)
     }
   },
@@ -141,12 +138,7 @@ defineExpose({ reload: loadOptions, hydrateById })
     @search="handleSearch"
     @change="handleChange"
   >
-    <a-select-option
-      v-for="opt in options"
-      :key="opt.id"
-      :value="opt.id"
-      :label="userLabel(opt)"
-    >
+    <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="userLabel(opt)">
       {{ userLabel(opt) }}
       <span v-if="opt.departmentName || opt.department" class="archive-duty-user-select__dept">
         {{ opt.departmentName || opt.department }}

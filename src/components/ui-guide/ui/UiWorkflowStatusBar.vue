@@ -7,14 +7,12 @@
       </div>
 
       <div class="ui-workflow-status-bar__meta">
-        <UiBadge
-          :tone="statusTone"
-          variant="soft"
-          size="sm"
-        >
+        <UiBadge :tone="statusTone" variant="soft" size="sm">
           {{ props.statusLabel || statusText }}
         </UiBadge>
-        <span v-if="props.showPercent" class="ui-workflow-status-bar__percent">{{ normalizedPercent }}%</span>
+        <span v-if="props.showPercent" class="ui-workflow-status-bar__percent"
+          >{{ normalizedPercent }}%</span
+        >
         <slot name="actions" />
       </div>
     </div>
@@ -27,11 +25,7 @@
     />
 
     <div v-if="props.steps.length" class="ui-workflow-status-bar__steps">
-      <div
-        v-for="item in props.steps"
-        :key="item.key"
-        class="ui-workflow-status-bar__step"
-      >
+      <div v-for="item in props.steps" :key="item.key" class="ui-workflow-status-bar__step">
         <span
           class="ui-workflow-status-bar__step-dot"
           :class="`ui-workflow-status-bar__step-dot--${item.status}`"
@@ -53,23 +47,26 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  detail?: string
-  status?: UiWorkflowStepItem['status']
-  statusLabel?: string
-  progress?: number
-  steps?: UiWorkflowStepItem[]
-  showPercent?: boolean
-}>(), {
-  title: '',
-  detail: '',
-  status: 'pending',
-  statusLabel: '',
-  progress: 0,
-  steps: () => [],
-  showPercent: true,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    detail?: string
+    status?: UiWorkflowStepItem['status']
+    statusLabel?: string
+    progress?: number
+    steps?: UiWorkflowStepItem[]
+    showPercent?: boolean
+  }>(),
+  {
+    title: '',
+    detail: '',
+    status: 'pending',
+    statusLabel: '',
+    progress: 0,
+    steps: () => [],
+    showPercent: true,
+  },
+)
 
 const normalizedPercent = computed(() => {
   return Math.max(0, Math.min(100, Math.round(props.progress || 0)))

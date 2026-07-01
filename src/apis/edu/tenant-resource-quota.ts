@@ -3,7 +3,7 @@
  * 对接后端 TenantResourceQuotaController 接口
  */
 
-import type {PageResult} from '@/types'
+import type { PageResult } from '@/types'
 import http from '@/config/axios'
 
 

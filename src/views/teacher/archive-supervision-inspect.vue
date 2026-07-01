@@ -1,10 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        show-title
-        title="督导抽查"
-      >
+      <ContextBar show-title title="督导抽查">
         <template #status>
           <UiTag tone="gray" size="sm">督导抽查（只读）</UiTag>
         </template>

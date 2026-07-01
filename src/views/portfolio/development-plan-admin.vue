@@ -1,7 +1,19 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExcelImportRowDiagnostic } from '@/apis/platform/types'
-import type { PortfolioDevelopmentPlanHistoryImportBatchStatus, PortfolioDevelopmentPlanItemStatus, PortfolioDevelopmentPlanStatus, PortfolioDevelopmentPlanType } from '@/apis/portfolio/enums'
+import type {
+  PortfolioDevelopmentPlanHistoryImportBatchStatus,
+  PortfolioDevelopmentPlanItemStatus,
+  PortfolioDevelopmentPlanStatus,
+  PortfolioDevelopmentPlanType,
+} from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_DEVELOPMENT_PLAN_HISTORY_IMPORT_BATCH_STATUS_LABEL,
+  PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL,
+  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL,
+  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
+  PORTFOLIO_DEVELOPMENT_PLAN_TYPE_LABEL,
+} from '@/apis/portfolio/enums'
 import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
 import type {
   PortfolioDevelopmentPlanAchievementAttainmentItemVO,
@@ -13,19 +25,12 @@ import type {
   PortfolioDevelopmentPlanVO,
   PortfolioDevelopmentPlanYearStatVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import {
-  PORTFOLIO_DEVELOPMENT_PLAN_HISTORY_IMPORT_BATCH_STATUS_LABEL,
-  PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL,
-  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL,
-  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
-  PORTFOLIO_DEVELOPMENT_PLAN_TYPE_LABEL,
-} from '@/apis/portfolio/enums'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -58,19 +63,24 @@ const historyBatchColumns: ColumnsType = [
 ]
 
 function historyBatchStatusLabel(status: PortfolioDevelopmentPlanHistoryImportBatchStatus): string {
-  return strictEnumLabel(PORTFOLIO_DEVELOPMENT_PLAN_HISTORY_IMPORT_BATCH_STATUS_LABEL, status, '历史规划导入批次状态')
+  return strictEnumLabel(
+    PORTFOLIO_DEVELOPMENT_PLAN_HISTORY_IMPORT_BATCH_STATUS_LABEL,
+    status,
+    '历史规划导入批次状态',
+  )
 }
 
 async function loadHistoryImportBatches() {
   historyBatchLoading.value = true
   try {
-    const page = await portfolioDevelopmentPlanApi.historyImportBatchPage({ pageNum: 1, pageSize: 50 })
+    const page = await portfolioDevelopmentPlanApi.historyImportBatchPage({
+      pageNum: 1,
+      pageSize: 50,
+    })
     historyBatchRows.value = readPageList(page, '加载历史规划导入批次失败')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     historyBatchLoading.value = false
   }
 }
@@ -80,8 +90,7 @@ async function openHistoryBatchDetail(id: string) {
   historyBatchDetail.value = null
   try {
     historyBatchDetail.value = await portfolioDevelopmentPlanApi.historyImportBatchGet({ id })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -102,14 +111,13 @@ const historyBatchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() =>
     return []
   }
   try {
-    const parsed = JSON.parse(raw) as Array<{ rowIndex?: number, message?: string }>
+    const parsed = JSON.parse(raw) as Array<{ rowIndex?: number; message?: string }>
     return parsed.map((item, index) => ({
       rowIndex: item.rowIndex ?? index + 1,
       valid: false,
       invalidReason: item.message ?? '导入失败',
     }))
-  }
-  catch {
+  } catch {
     return []
   }
 })
@@ -157,8 +165,9 @@ function planTypeLabel(type: PortfolioDevelopmentPlanType): string {
   return strictEnumLabel(PORTFOLIO_DEVELOPMENT_PLAN_TYPE_LABEL, type, '发展规划类型')
 }
 
-const approvedCount = computed(() =>
-  yearStats.value.find(item => item.planStatus === 'APPROVED')?.planCount ?? 0)
+const approvedCount = computed(
+  () => yearStats.value.find((item) => item.planStatus === 'APPROVED')?.planCount ?? 0,
+)
 
 const columns: ColumnsType = [
   { title: '标题', dataIndex: 'planTitle', key: 'planTitle' },
@@ -175,8 +184,9 @@ const orgColumns: ColumnsType = [
   { title: '数量', dataIndex: 'planCount', key: 'planCount', width: 80 },
 ]
 
-const itemStatusOptions = (Object.keys(PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL) as PortfolioDevelopmentPlanItemStatus[])
-  .map(value => ({ value, label: PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL[value] }))
+const itemStatusOptions = (
+  Object.keys(PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL) as PortfolioDevelopmentPlanItemStatus[]
+).map((value) => ({ value, label: PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL[value] }))
 
 const itemColumns: ColumnsType = [
   { title: '标题', dataIndex: 'itemTitle', key: 'itemTitle', width: 160 },
@@ -191,39 +201,48 @@ const itemColumns: ColumnsType = [
 const indicatorConfigs = ref<PortfolioTenantIndicatorConfigVO[]>([])
 const indicatorOptions = computed(() =>
   indicatorConfigs.value
-    .filter(item => item.enabled)
-    .map(item => ({
+    .filter((item) => item.enabled)
+    .map((item) => ({
       value: item.indicatorCode,
       label: `${item.indicatorName} (${item.indicatorCode})`,
-    })))
+    })),
+)
 
 async function loadIndicatorConfigs() {
   try {
     indicatorConfigs.value = await portfolioIndicatorTenantApi.listConfig()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
 
-const selectedPlan = computed(() => rows.value.find(item => item.id === selectedPlanId.value) ?? null)
+const selectedPlan = computed(
+  () => rows.value.find((item) => item.id === selectedPlanId.value) ?? null,
+)
 
 const planItemEditable = computed(() => {
   const status = selectedPlan.value?.planStatus
   return status === 'DRAFT' || status === 'DEPARTMENT_RETURNED'
 })
 
-const planOptions = computed(() => rows.value.map(item => ({
-  value: item.id,
-  label: `${item.planTitle} (${item.planYear})`,
-})))
+const planOptions = computed(() =>
+  rows.value.map((item) => ({
+    value: item.id,
+    label: `${item.planTitle} (${item.planYear})`,
+  })),
+)
 
 async function loadPage() {
   loading.value = true
   try {
-    const page = await portfolioDevelopmentPlanApi.page({ pageNum: 1, pageSize: 50, planYear: form.planYear, planType: 'TEACHER' })
+    const page = await portfolioDevelopmentPlanApi.page({
+      pageNum: 1,
+      pageSize: 50,
+      planYear: form.planYear,
+      planType: 'TEACHER',
+    })
     rows.value = readPageList(page, '加载教师年度规划失败')
-    if (!rows.value.some(item => item.id === selectedPlanId.value)) {
+    if (!rows.value.some((item) => item.id === selectedPlanId.value)) {
       selectedPlanId.value = rows.value[0]?.id ?? ''
       planItems.value = []
     }
@@ -233,20 +252,21 @@ async function loadPage() {
     if (showAdminStats.value) {
       yearStats.value = await portfolioDevelopmentPlanApi.statsByYear({ planYear: form.planYear })
       orgStats.value = await portfolioDevelopmentPlanApi.statsByOrg({ planYear: form.planYear })
-      completion.value = await portfolioDevelopmentPlanApi.completionAnalysis({ planYear: form.planYear })
-      attainment.value = await portfolioDevelopmentPlanApi.achievementAttainment({ planYear: form.planYear })
-    }
-    else {
+      completion.value = await portfolioDevelopmentPlanApi.completionAnalysis({
+        planYear: form.planYear,
+      })
+      attainment.value = await portfolioDevelopmentPlanApi.achievementAttainment({
+        planYear: form.planYear,
+      })
+    } else {
       yearStats.value = []
       orgStats.value = []
       completion.value = null
       attainment.value = []
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -273,7 +293,7 @@ function openPlanFromQuery() {
     return
   }
   highlightedPlanId.value = planId
-  const target = rows.value.find(item => item.id === planId)
+  const target = rows.value.find((item) => item.id === planId)
   if (target?.planStatus === 'DRAFT' || target?.planStatus === 'DEPARTMENT_RETURNED') {
     activeTab.value = 'plans'
   }
@@ -299,8 +319,7 @@ async function createPlan() {
     form.planTitle = ''
     form.planSummary = ''
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -310,8 +329,7 @@ async function submitPlan(id: string) {
     await portfolioDevelopmentPlanApi.submit({ id })
     message.success('已提交')
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -329,8 +347,7 @@ async function exportPlans() {
     })
     await downloadPortfolioExcelExport(result)
     message.success('规划已导出')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -352,7 +369,9 @@ function createEmptyPlanItem(): PortfolioDevelopmentPlanItemSaveRequest {
   }
 }
 
-function toEditableItem(item: PortfolioDevelopmentPlanItemVO): PortfolioDevelopmentPlanItemSaveRequest {
+function toEditableItem(
+  item: PortfolioDevelopmentPlanItemVO,
+): PortfolioDevelopmentPlanItemSaveRequest {
   return {
     itemTitle: item.itemTitle,
     itemGoal: item.itemGoal,
@@ -373,11 +392,9 @@ async function loadPlanItems() {
   try {
     const items = await portfolioDevelopmentPlanApi.listItems({ planId: selectedPlanId.value })
     planItems.value = items.length ? items.map(toEditableItem) : [createEmptyPlanItem()]
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     itemLoading.value = false
   }
 }
@@ -407,7 +424,7 @@ async function savePlanItems() {
       milestoneText: item.milestoneText?.trim() || undefined,
       sortOrder: index,
     }))
-    .filter(item => item.itemTitle)
+    .filter((item) => item.itemTitle)
   if (items.length === 0) {
     message.warning('请至少填写一条明细标题')
     return
@@ -417,11 +434,9 @@ async function savePlanItems() {
     await portfolioDevelopmentPlanApi.batchSaveItems({ planId: selectedPlanId.value, items })
     message.success('规划明细已保存')
     await loadPlanItems()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     itemSaving.value = false
   }
 }
@@ -443,34 +458,30 @@ onMounted(async () => {
     <template #context>
       <ContextBar show-title layout="workbench" title="教师年度规划">
         <template v-if="showAdminStats" #actions>
-          <UiButton @click="exportPlans">
-            导出 Excel
-          </UiButton>
+          <UiButton @click="exportPlans"> 导出 Excel </UiButton>
         </template>
       </ContextBar>
     </template>
     <UiCard>
       <div class="toolbar">
-        <input v-model="form.planYear" class="input" placeholder="年度">
-        <UiButton @click="loadPage">
-          刷新
-        </UiButton>
-        <span v-if="showAdminStats" class="stats">{{ form.planYear }} 年已通过 {{ approvedCount }} 项</span>
+        <input v-model="form.planYear" class="input" placeholder="年度" />
+        <UiButton @click="loadPage"> 刷新 </UiButton>
+        <span v-if="showAdminStats" class="stats"
+          >{{ form.planYear }} 年已通过 {{ approvedCount }} 项</span
+        >
       </div>
       <a-tabs v-model:active-key="activeTab">
         <a-tab-pane key="plans" tab="规划管理">
           <UiCard title="新建规划">
             <div class="form-row">
-              <input v-model="form.planTitle" class="input input--wide" placeholder="规划标题">
+              <input v-model="form.planTitle" class="input input--wide" placeholder="规划标题" />
               <a-select
                 v-model:value="form.portfolioOrgId"
                 placeholder="归属科室"
                 style="width: 220px"
                 :options="portfolioOrgOptions()"
               />
-              <UiButton variant="primary" @click="createPlan">
-                创建
-              </UiButton>
+              <UiButton variant="primary" @click="createPlan"> 创建 </UiButton>
             </div>
           </UiCard>
           <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无发展规划" />
@@ -493,15 +504,15 @@ onMounted(async () => {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiButton
-                  v-if="record.planStatus === 'DRAFT' || record.planStatus === 'DEPARTMENT_RETURNED'"
+                  v-if="
+                    record.planStatus === 'DRAFT' || record.planStatus === 'DEPARTMENT_RETURNED'
+                  "
                   size="sm"
                   @click="submitPlan(record.id)"
                 >
                   提交
                 </UiButton>
-                <UiButton size="sm" @click="openPlanItems(record.id)">
-                  明细
-                </UiButton>
+                <UiButton size="sm" @click="openPlanItems(record.id)"> 明细 </UiButton>
               </template>
             </template>
           </UiDataTable>
@@ -515,12 +526,8 @@ onMounted(async () => {
               :options="planOptions"
               @change="loadPlanItems"
             />
-            <UiButton :disabled="!selectedPlanId" @click="loadPlanItems">
-              刷新明细
-            </UiButton>
-            <UiButton v-if="planItemEditable" @click="addPlanItemRow">
-              新增行
-            </UiButton>
+            <UiButton :disabled="!selectedPlanId" @click="loadPlanItems"> 刷新明细 </UiButton>
+            <UiButton v-if="planItemEditable" @click="addPlanItemRow"> 新增行 </UiButton>
             <UiButton
               v-if="planItemEditable"
               variant="primary"
@@ -542,11 +549,19 @@ onMounted(async () => {
           >
             <template #bodyCell="{ column, record, index }">
               <template v-if="column.key === 'itemTitle'">
-                <input v-if="planItemEditable" v-model="record.itemTitle" class="input input--cell">
+                <input
+                  v-if="planItemEditable"
+                  v-model="record.itemTitle"
+                  class="input input--cell"
+                />
                 <span v-else>{{ record.itemTitle }}</span>
               </template>
               <template v-else-if="column.key === 'itemGoal'">
-                <input v-if="planItemEditable" v-model="record.itemGoal" class="input input--cell">
+                <input
+                  v-if="planItemEditable"
+                  v-model="record.itemGoal"
+                  class="input input--cell"
+                />
                 <span v-else>{{ record.itemGoal || '—' }}</span>
               </template>
               <template v-else-if="column.key === 'indicatorCode'">
@@ -563,11 +578,19 @@ onMounted(async () => {
                 <span v-else>{{ record.indicatorCode || '—' }}</span>
               </template>
               <template v-else-if="column.key === 'milestoneText'">
-                <input v-if="planItemEditable" v-model="record.milestoneText" class="input input--cell">
+                <input
+                  v-if="planItemEditable"
+                  v-model="record.milestoneText"
+                  class="input input--cell"
+                />
                 <span v-else>{{ record.milestoneText || '—' }}</span>
               </template>
               <template v-else-if="column.key === 'completionPercent'">
-                <input v-if="planItemEditable" v-model="record.completionPercent" class="input input--cell input--short">
+                <input
+                  v-if="planItemEditable"
+                  v-model="record.completionPercent"
+                  class="input input--cell input--short"
+                />
                 <span v-else>{{ record.completionPercent ?? '0' }}%</span>
               </template>
               <template v-else-if="column.key === 'itemStatus'">
@@ -578,7 +601,13 @@ onMounted(async () => {
                   :options="itemStatusOptions"
                 />
                 <UiTag v-else tone="blue">
-                  {{ strictEnumLabel(PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL, record.itemStatus, '规划明细状态') }}
+                  {{
+                    strictEnumLabel(
+                      PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL,
+                      record.itemStatus,
+                      '规划明细状态',
+                    )
+                  }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'itemActions'">
@@ -596,12 +625,19 @@ onMounted(async () => {
             <span>待审 {{ completion.pendingPlanCount }}</span>
             <span>退回 {{ completion.returnedPlanCount }}</span>
             <span>审批完成率 {{ completion.completionRatePercent }}%</span>
-            <span>明细项 {{ completion.completedPlanItemCount }}/{{ completion.totalPlanItemCount }}</span>
+            <span
+              >明细项 {{ completion.completedPlanItemCount }}/{{
+                completion.totalPlanItemCount
+              }}</span
+            >
             <span>明细完成率 {{ completion.planItemCompletionRatePercent }}%</span>
             <span>平均完成度 {{ completion.averageItemCompletionPercent }}%</span>
           </div>
           <UiDataTable
-            :columns="[{ title: '成果分类', dataIndex: 'categoryCode', key: 'categoryCode' }, { title: '条目数', dataIndex: 'recordCount', key: 'recordCount', width: 88 }]"
+            :columns="[
+              { title: '成果分类', dataIndex: 'categoryCode', key: 'categoryCode' },
+              { title: '条目数', dataIndex: 'recordCount', key: 'recordCount', width: 88 },
+            ]"
             :data-source="attainment"
             :loading="loading"
             row-key="categoryCode"
@@ -632,7 +668,8 @@ onMounted(async () => {
         <a-tab-pane v-if="showAdminStats" key="history-import" tab="历史规划导入">
           <UiCard title="Excel 批量导入">
             <p class="history-import-hint">
-              下载模板后批量补录 HISTORICAL 只读规划；列含规划标题、规划年度、负责人用户 ID、所属组织 ID。
+              下载模板后批量补录 HISTORICAL 只读规划；列含规划标题、规划年度、负责人用户
+              ID、所属组织 ID。
             </p>
             <UiButton variant="primary" @click="historyImportModalOpen = true">
               打开导入向导
@@ -653,9 +690,7 @@ onMounted(async () => {
                 {{ historyBatchStatusLabel(record.batchStatus) }}
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiTextAction @click="openHistoryBatchDetail(record.id)">
-                  详情
-                </UiTextAction>
+                <UiTextAction @click="openHistoryBatchDetail(record.id)"> 详情 </UiTextAction>
               </template>
             </template>
           </UiDataTable>
@@ -672,7 +707,10 @@ onMounted(async () => {
       <template v-if="historyBatchDetail">
         <p>批次号 {{ historyBatchDetail.batchNo }}</p>
         <p>文件 {{ historyBatchDetail.fileName ?? '—' }}</p>
-        <p>总行 {{ historyBatchDetail.totalRows ?? 0 }} · 成功 {{ historyBatchDetail.successRows ?? 0 }} · 失败 {{ historyBatchDetail.failedRows ?? 0 }}</p>
+        <p>
+          总行 {{ historyBatchDetail.totalRows ?? 0 }} · 成功
+          {{ historyBatchDetail.successRows ?? 0 }} · 失败 {{ historyBatchDetail.failedRows ?? 0 }}
+        </p>
         <p>状态 {{ historyBatchStatusLabel(historyBatchDetail.batchStatus) }}</p>
         <UiDataTable
           v-if="historyBatchDetailDiagnostics.length"
@@ -690,7 +728,8 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.toolbar, .form-row {
+.toolbar,
+.form-row {
   display: flex;
   gap: 8px;
   align-items: center;

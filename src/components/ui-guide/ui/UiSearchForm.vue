@@ -4,7 +4,9 @@
       <div class="ui-search-form__meta">
         <slot name="header">
           <div v-if="props.title" class="ui-search-form__title">{{ props.title }}</div>
-          <div v-if="props.description" class="ui-search-form__description">{{ props.description }}</div>
+          <div v-if="props.description" class="ui-search-form__description">
+            {{ props.description }}
+          </div>
         </slot>
       </div>
       <div v-if="$slots.extra" class="ui-search-form__extra">
@@ -26,11 +28,7 @@
         <slot />
       </template>
 
-      <template
-        v-for="name in forwardedFieldSlots"
-        :key="name"
-        #[name]="slotProps"
-      >
+      <template v-for="name in forwardedFieldSlots" :key="name" #[name]="slotProps">
         <slot :name="name" v-bind="slotProps" />
       </template>
 
@@ -76,29 +74,32 @@ defineOptions({
 
 const modelValue = defineModel<Record<string, unknown>>({ default: () => ({}) })
 
-const props = withDefaults(defineProps<{
-  fields?: FilterField[]
-  title?: string
-  description?: string
-  searchText?: string
-  resetText?: string
-  actionsAlign?: 'start' | 'end'
-  showLabels?: boolean
-  collapsible?: boolean
-  collapsedCount?: number
-  defaultCollapsed?: boolean
-}>(), {
-  fields: () => [],
-  title: '',
-  description: '',
-  searchText: '搜索',
-  resetText: '重置',
-  actionsAlign: 'end',
-  showLabels: true,
-  collapsible: false,
-  collapsedCount: 4,
-  defaultCollapsed: true,
-})
+const props = withDefaults(
+  defineProps<{
+    fields?: FilterField[]
+    title?: string
+    description?: string
+    searchText?: string
+    resetText?: string
+    actionsAlign?: 'start' | 'end'
+    showLabels?: boolean
+    collapsible?: boolean
+    collapsedCount?: number
+    defaultCollapsed?: boolean
+  }>(),
+  {
+    fields: () => [],
+    title: '',
+    description: '',
+    searchText: '搜索',
+    resetText: '重置',
+    actionsAlign: 'end',
+    showLabels: true,
+    collapsible: false,
+    collapsedCount: 4,
+    defaultCollapsed: true,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'search', value: Record<string, unknown>): void
@@ -108,18 +109,18 @@ const emit = defineEmits<{
 const slots = useSlots()
 const isCollapsed = ref(props.defaultCollapsed)
 
-const hasHeader = computed(() => !!props.title || !!props.description || !!slots.header || !!slots.extra)
+const hasHeader = computed(
+  () => !!props.title || !!props.description || !!slots.header || !!slots.extra,
+)
 
 const visibleFields = computed(() => {
-  if (!props.collapsible)
-    return props.fields
-  if (!isCollapsed.value)
-    return props.fields
+  if (!props.collapsible) return props.fields
+  if (!isCollapsed.value) return props.fields
   return props.fields.slice(0, props.collapsedCount)
 })
 
 const forwardedFieldSlots = computed(() => {
-  return Object.keys(slots).filter(name => name.startsWith('field-'))
+  return Object.keys(slots).filter((name) => name.startsWith('field-'))
 })
 
 const useCustomActions = computed(() => props.collapsible || !!slots.actions)
@@ -134,7 +135,12 @@ const defaultModel = computed(() => {
       acc[field.key] = []
       return acc
     }
-    if (field.type === 'select' || field.type === 'date' || field.type === 'year' || field.type === 'custom') {
+    if (
+      field.type === 'select' ||
+      field.type === 'date' ||
+      field.type === 'year' ||
+      field.type === 'custom'
+    ) {
       acc[field.key] = undefined
       return acc
     }

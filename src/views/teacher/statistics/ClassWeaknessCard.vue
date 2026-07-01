@@ -16,7 +16,13 @@
           :not-found-content="props.rosterLoading ? '加载中…' : '该考试未关联班级'"
           @change="handleClassSelectChange"
         />
-        <UiButton variant="outline" size="sm" :loading="loading" :disabled="!props.classId" @click="reload">
+        <UiButton
+          variant="outline"
+          size="sm"
+          :loading="loading"
+          :disabled="!props.classId"
+          @click="reload"
+        >
           <template #icon><ReloadOutlined /></template>查看最新
         </UiButton>
         <UiButton
@@ -38,10 +44,7 @@
         waiting-text="正在等待后端返回该班级的真实薄弱题型分析。"
       />
 
-      <UiEmpty
-        v-else-if="!loading && !generating && !record"
-        description="暂无数据"
-      />
+      <UiEmpty v-else-if="!loading && !generating && !record" description="暂无数据" />
       <div v-else-if="record" class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
@@ -124,16 +127,16 @@ import type {
   ClassWeaknessItemVO,
   ExamTeachingAnalysisRecordVO,
 } from '@/apis/mark/teaching-analysis'
+import {
+  generateClassWeaknessAnalysis,
+  getLatestClassWeaknessAnalysis,
+} from '@/apis/mark/teaching-analysis'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
-import {
-  generateClassWeaknessAnalysis,
-  getLatestClassWeaknessAnalysis,
-} from '@/apis/mark/teaching-analysis'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ArchiveScanBatchSnapshotItemVO } from '@/apis/mark/archive-volume'
-import { onMounted, ref } from 'vue'
 import {
   pageArchiveScanBatchSnapshots,
   SCAN_BATCH_QUALITY_FLAG_LABEL,
   SCAN_BATCH_QUALITY_FLAG_TONE,
 } from '@/apis/mark/archive-volume'
+import { onMounted, ref } from 'vue'
 import { SCAN_WORK_ORDER_STATUS_LABEL } from '@/apis/mark/scanner-work-order'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -31,7 +31,13 @@ const columns = [
   { title: '质检', key: 'batchQualityFlag', dataIndex: 'batchQualityFlag', width: 96 },
   { title: '状态', key: 'workOrderStatus', dataIndex: 'workOrderStatus', width: 96 },
   { title: '页数', key: 'pageCount', dataIndex: 'pageCount', width: 72, align: 'right' as const },
-  { title: '材料数', key: 'materialCount', dataIndex: 'materialCount', width: 80, align: 'right' as const },
+  {
+    title: '材料数',
+    key: 'materialCount',
+    dataIndex: 'materialCount',
+    width: 80,
+    align: 'right' as const,
+  },
   { title: '操作员', key: 'operatorName', dataIndex: 'operatorName', width: 100 },
   { title: '创建时间', key: 'createTime', dataIndex: 'createTime', width: 160 },
 ]
@@ -47,18 +53,16 @@ async function loadRows() {
     })
     rows.value = readPageList(page, '扫描批次快照加载失败，请稍后重试')
     total.value = readPageTotal(page, '扫描批次总数加载失败，请稍后重试')
-  }
-  catch (error) {
+  } catch (error) {
     errorMessage.value = getUserErrorMessage(error)
     rows.value = []
     total.value = 0
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pageNum.value = pageEvent.current
   pageSize.value = pageEvent.pageSize
   void loadRows()
@@ -90,12 +94,29 @@ onMounted(() => {
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'batchQualityFlag'">
-          <UiTag :tone="strictEnumTone(SCAN_BATCH_QUALITY_FLAG_TONE, record.batchQualityFlag, 'batchQualityFlag')" size="sm">
-            {{ strictEnumLabel(SCAN_BATCH_QUALITY_FLAG_LABEL, record.batchQualityFlag, 'batchQualityFlag') }}
+          <UiTag
+            :tone="
+              strictEnumTone(
+                SCAN_BATCH_QUALITY_FLAG_TONE,
+                record.batchQualityFlag,
+                'batchQualityFlag',
+              )
+            "
+            size="sm"
+          >
+            {{
+              strictEnumLabel(
+                SCAN_BATCH_QUALITY_FLAG_LABEL,
+                record.batchQualityFlag,
+                'batchQualityFlag',
+              )
+            }}
           </UiTag>
         </template>
         <template v-else-if="column.key === 'workOrderStatus'">
-          {{ strictEnumLabel(SCAN_WORK_ORDER_STATUS_LABEL, record.workOrderStatus, 'workOrderStatus') }}
+          {{
+            strictEnumLabel(SCAN_WORK_ORDER_STATUS_LABEL, record.workOrderStatus, 'workOrderStatus')
+          }}
         </template>
         <template v-else-if="column.key === 'createTime'">
           {{ record.createTime ? formatDateTime(record.createTime) : '—' }}

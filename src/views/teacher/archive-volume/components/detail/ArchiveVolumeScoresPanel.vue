@@ -1,6 +1,11 @@
 <template>
   <section class="archive-volume-scores-panel">
-    <a-descriptions bordered size="small" :column="2" class="archive-volume-scores-panel__lifecycle">
+    <a-descriptions
+      bordered
+      size="small"
+      :column="2"
+      class="archive-volume-scores-panel__lifecycle"
+    >
       <a-descriptions-item label="成绩完成">
         {{ scoreCompletionLabel(detail.volume.scoreCompletionStatus) }}
       </a-descriptions-item>
@@ -56,14 +61,14 @@ import type {
   ArchiveVolumeDetailVO,
   ArchiveVolumeMaterialVO,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, ref } from 'vue'
 import {
   ARCHIVE_MATERIAL_TYPE_LABEL,
   ARCHIVE_SCORE_COMPLETION_STATUS_LABEL,
   confirmArchiveVolumeScoreCompletion,
   syncTeachingAffairsScoreCompletion,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -96,7 +101,7 @@ const teachingAffairsSourceSystem = ref('TEACHING_AFFAIRS')
 const teachingAffairsProofFileId = ref('')
 
 const scoreMaterials = computed(() =>
-  (props.detail.materials ?? []).filter(item => SCORE_MATERIAL_TYPES.has(item.materialType)),
+  (props.detail.materials ?? []).filter((item) => SCORE_MATERIAL_TYPES.has(item.materialType)),
 )
 
 const scoreMaterialColumns: ColumnsType<ArchiveVolumeMaterialVO> = [
@@ -123,11 +128,9 @@ async function handleConfirmScoreCompletion() {
     })
     message.success('成绩完成状态已确认')
     emit('refreshed')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     scoreConfirmSubmitting.value = false
   }
 }
@@ -151,11 +154,9 @@ async function handleSyncTeachingAffairs() {
     })
     message.success('教务成绩完成状态已同步')
     emit('refreshed')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     teachingAffairsSyncing.value = false
   }
 }

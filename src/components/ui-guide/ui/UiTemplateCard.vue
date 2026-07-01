@@ -42,9 +42,7 @@
         </span>
       </div>
 
-      <div v-if="!props.stages.length" class="ui-template-card__stage-empty">
-        暂无阶段配置
-      </div>
+      <div v-if="!props.stages.length" class="ui-template-card__stage-empty">暂无阶段配置</div>
     </div>
 
     <template #footer>
@@ -63,28 +61,31 @@ import UiEntityCard from './UiEntityCard.vue'
 
 defineOptions({ name: 'UiTemplateCard' })
 
-const props = withDefaults(defineProps<{
-  title: string
-  description?: string
-  scopeLabel?: string
-  scopeTone?: BadgeTone
-  majorName?: string
-  courseName?: string
-  stages?: TemplateStageItem[]
-  creator?: string
-  updateTime?: string
-  clickable?: boolean
-}>(), {
-  description: '',
-  scopeLabel: '',
-  scopeTone: 'gray',
-  majorName: '',
-  courseName: '',
-  stages: () => [],
-  creator: '',
-  updateTime: '',
-  clickable: true,
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    description?: string
+    scopeLabel?: string
+    scopeTone?: BadgeTone
+    majorName?: string
+    courseName?: string
+    stages?: TemplateStageItem[]
+    creator?: string
+    updateTime?: string
+    clickable?: boolean
+  }>(),
+  {
+    description: '',
+    scopeLabel: '',
+    scopeTone: 'gray',
+    majorName: '',
+    courseName: '',
+    stages: () => [],
+    creator: '',
+    updateTime: '',
+    clickable: true,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'click'): void

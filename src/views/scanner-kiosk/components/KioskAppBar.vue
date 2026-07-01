@@ -9,11 +9,7 @@
  *
  * 自取 ctx，不接受 prop。父级通过 provide(KIOSK_CTX_KEY) 注入。
  */
-import {
-  QuestionCircleOutlined,
-  ReloadOutlined,
-  SettingOutlined,
-} from '@ant-design/icons-vue'
+import { QuestionCircleOutlined, ReloadOutlined, SettingOutlined } from '@ant-design/icons-vue'
 import { computed } from 'vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 

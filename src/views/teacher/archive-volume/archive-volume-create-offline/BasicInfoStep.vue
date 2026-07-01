@@ -4,7 +4,13 @@
       <h2 class="section-title">卷宗信息</h2>
     </header>
     <p class="section-desc">填写课程、学年学期与归档标题；带 * 为必填。</p>
-    <a-form ref="formRef" :model="basicForm" :rules="basicRules" layout="vertical" class="archive-create-form__body">
+    <a-form
+      ref="formRef"
+      :model="basicForm"
+      :rules="basicRules"
+      layout="vertical"
+      class="archive-create-form__body"
+    >
       <div class="archive-create-form__grid">
         <a-form-item label="课程" name="courseId" class="archive-create-form__full">
           <CatalogCourseSelector
@@ -23,13 +29,21 @@
           />
         </a-form-item>
         <a-form-item label="档案编号">
-          <a-input v-model:value="basicForm.archiveNo" placeholder="不填则自动生成" :maxlength="64" />
+          <a-input
+            v-model:value="basicForm.archiveNo"
+            placeholder="不填则自动生成"
+            :maxlength="64"
+          />
         </a-form-item>
         <a-form-item label="学年" name="academicYear">
           <a-input v-model:value="basicForm.academicYear" placeholder="2024-2025" :maxlength="9" />
         </a-form-item>
         <a-form-item label="学期" name="semester">
-          <a-select v-model:value="basicForm.semester" :options="semesterOptions" placeholder="选择学期" />
+          <a-select
+            v-model:value="basicForm.semester"
+            :options="semesterOptions"
+            placeholder="选择学期"
+          />
         </a-form-item>
         <a-form-item label="院系" name="departmentId">
           <a-select
@@ -76,10 +90,10 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ClassInfoDto } from '@/apis/edu/class'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import type { CourseListVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
-import { computed, onMounted, ref, watch } from 'vue'
 import { pageExams } from '@/apis/mark/exam'
+import type { CourseListVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
+import { computed, onMounted, ref, watch } from 'vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import { requireArrayResult } from '@/components/quality/selectors/page-contract'
@@ -96,7 +110,12 @@ defineProps<{
 const emit = defineEmits<{
   'course-change': [courseId: string | null, courseName: string]
   'department-change': [departmentId: string | null, departmentName: string]
-  'teaching-class-change': [classId: string | null, className: string, departmentId?: string, departmentName?: string]
+  'teaching-class-change': [
+    classId: string | null,
+    className: string,
+    departmentId?: string,
+    departmentName?: string,
+  ]
   'update:basic-form-ref': [form: FormInstance | undefined]
 }>()
 
@@ -118,9 +137,9 @@ const relatedExamIdSelectValue = computed({
   },
 })
 const departmentLoading = ref(false)
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
 const relatedExamLoading = ref(false)
-const relatedExamOptions = ref<Array<{ value: string, label: string }>>([])
+const relatedExamOptions = ref<Array<{ value: string; label: string }>>([])
 
 const RELATED_EXAM_PAGE_SIZE = 50
 let relatedExamSearchTimer: ReturnType<typeof setTimeout> | undefined
@@ -145,7 +164,7 @@ function handleDepartmentChange(value: SelectValue): void {
   const departmentId = selectValueToNullableString(value)
   basicForm.departmentId = departmentId
   const selected = departmentId
-    ? departmentOptions.value.find(item => item.value === departmentId)
+    ? departmentOptions.value.find((item) => item.value === departmentId)
     : undefined
   emit('department-change', departmentId, selected?.label ?? '')
 }
@@ -184,23 +203,22 @@ async function loadRelatedExamOptions(keyword?: string): Promise<void> {
       semester: basicForm.semester,
       keyword: keyword?.trim() || undefined,
     })
-    relatedExamOptions.value = readPageList(result, '关联考试列表加载失败')
-      .map(exam => ({
-        label: formatRelatedExamLabel(exam),
-        value: exam.examId,
-      }))
+    relatedExamOptions.value = readPageList(result, '关联考试列表加载失败').map((exam) => ({
+      label: formatRelatedExamLabel(exam),
+      value: exam.examId,
+    }))
     if (basicForm.relatedExamId) {
-      const selected = relatedExamOptions.value.find(item => item.value === basicForm.relatedExamId)
+      const selected = relatedExamOptions.value.find(
+        (item) => item.value === basicForm.relatedExamId,
+      )
       if (selected) {
         basicForm.relatedExamName = selected.label
       }
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '关联考试列表加载失败')
     relatedExamOptions.value = []
-  }
-  finally {
+  } finally {
     relatedExamLoading.value = false
   }
 }
@@ -218,7 +236,7 @@ function handleRelatedExamChange(value: SelectValue): void {
   const examId = selectValueToNullableString(value)
   basicForm.relatedExamId = examId
   const selected = examId
-    ? relatedExamOptions.value.find(item => item.value === examId)
+    ? relatedExamOptions.value.find((item) => item.value === examId)
     : undefined
   basicForm.relatedExamName = selected?.label ?? ''
 }
@@ -230,16 +248,14 @@ async function loadDepartments() {
       await departmentCatalogApi.list(),
       '院系',
     )
-    departmentOptions.value = departments.map(item => ({
+    departmentOptions.value = departments.map((item) => ({
       value: item.id,
       label: item.deptName,
     }))
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '院系列表加载失败')
     departmentOptions.value = []
-  }
-  finally {
+  } finally {
     departmentLoading.value = false
   }
 }
@@ -252,9 +268,13 @@ watch(
   },
 )
 
-watch(formRef, (form) => {
-  emit('update:basic-form-ref', form)
-}, { immediate: true })
+watch(
+  formRef,
+  (form) => {
+    emit('update:basic-form-ref', form)
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   void loadDepartments()

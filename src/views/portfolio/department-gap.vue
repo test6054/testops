@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioGapTaskStatus, PortfolioGapTaskSummaryVO } from '@/apis/portfolio/types'
+import { PORTFOLIO_GAP_TASK_STATUS_LABEL } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
-import { PORTFOLIO_GAP_TASK_STATUS_LABEL } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -48,11 +48,9 @@ async function loadPage() {
     })
     rows.value = readPageList(page, '加载补采任务失败')
     pageTotal.value = readPageTotal(page)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载补采任务失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -62,11 +60,9 @@ async function urgeTask(row: PortfolioGapTaskSummaryVO) {
   try {
     await portfolioGapApi.urgeTask({ gapTaskId: row.id })
     message.success('已发送催办通知')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '催办失败')
-  }
-  finally {
+  } finally {
     urgingId.value = ''
   }
 }
@@ -85,9 +81,7 @@ void loadPage()
   <StageWorkbenchShell>
     <ContextBar title="补采督办" description="院系补采任务催办与进度跟踪">
       <template #actions>
-        <UiButton :loading="loading" @click="() => void loadPage()">
-          刷新
-        </UiButton>
+        <UiButton :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
       </template>
     </ContextBar>
 
@@ -109,9 +103,7 @@ void loadPage()
             <UiTag>{{ gapStatusLabel(record.taskStatus) }}</UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton variant="ghost" size="sm" @click="openTask(record)">
-              查看
-            </UiButton>
+            <UiButton variant="ghost" size="sm" @click="openTask(record)"> 查看 </UiButton>
             <UiButton
               variant="outline"
               size="sm"

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioIndicatorReferenceStatusVO } from '@/apis/portfolio/indicator-types'
+import { PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL } from '@/apis/portfolio/indicator-types'
 import { onMounted, ref } from 'vue'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL } from '@/apis/portfolio/indicator-types'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -13,7 +13,9 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-function dataSourceLabel(value: NonNullable<PortfolioIndicatorReferenceStatusVO['defaultDataSource']>): string {
+function dataSourceLabel(
+  value: NonNullable<PortfolioIndicatorReferenceStatusVO['defaultDataSource']>,
+): string {
   return strictEnumLabel(PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL, value, '数据来源')
 }
 
@@ -32,11 +34,9 @@ async function loadList() {
   loading.value = true
   try {
     rows.value = await portfolioIndicatorTenantApi.listReferenceStatus()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -51,7 +51,12 @@ onMounted(loadList)
     </template>
     <UiCard>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无指标引用记录" />
-      <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="indicatorCode">
+      <UiDataTable
+        :columns="columns"
+        :data-source="rows"
+        :loading="loading"
+        row-key="indicatorCode"
+      >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'tenantEnabled'">
             <UiTag :tone="record.tenantEnabled ? 'green' : 'gray'">
@@ -62,7 +67,12 @@ onMounted(loadList)
             {{ record.defaultDataSource ? dataSourceLabel(record.defaultDataSource) : '—' }}
           </template>
           <template v-else-if="column.key === 'sceneReferences'">
-            <UiTag v-for="scene in record.sceneReferences" :key="scene.sceneCode" tone="blue" style="margin-right: 4px">
+            <UiTag
+              v-for="scene in record.sceneReferences"
+              :key="scene.sceneCode"
+              tone="blue"
+              style="margin-right: 4px"
+            >
               {{ scene.sceneName }}{{ scene.enabled === false ? '(停)' : '' }}
             </UiTag>
             <span v-if="!record.sceneReferences?.length">—</span>

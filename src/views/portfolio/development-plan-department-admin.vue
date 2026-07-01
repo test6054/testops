@@ -1,21 +1,25 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioDevelopmentPlanItemStatus, PortfolioDevelopmentPlanStatus, PortfolioDevelopmentPlanType } from '@/apis/portfolio/enums'
+import type {
+  PortfolioDevelopmentPlanItemStatus,
+  PortfolioDevelopmentPlanStatus,
+  PortfolioDevelopmentPlanType,
+} from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL,
+  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL,
+  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
+} from '@/apis/portfolio/enums'
 import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
 import type {
   PortfolioDevelopmentPlanItemSaveRequest,
   PortfolioDevelopmentPlanItemVO,
   PortfolioDevelopmentPlanVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import {
-  PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL,
-  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL,
-  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
-} from '@/apis/portfolio/enums'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -58,8 +62,9 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 140 },
 ]
 
-const itemStatusOptions = (Object.keys(PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL) as PortfolioDevelopmentPlanItemStatus[])
-  .map(value => ({ value, label: PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL[value] }))
+const itemStatusOptions = (
+  Object.keys(PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL) as PortfolioDevelopmentPlanItemStatus[]
+).map((value) => ({ value, label: PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL[value] }))
 
 const itemColumns: ColumnsType = [
   { title: '标题', dataIndex: 'itemTitle', key: 'itemTitle', width: 160 },
@@ -74,32 +79,36 @@ const itemColumns: ColumnsType = [
 const indicatorConfigs = ref<PortfolioTenantIndicatorConfigVO[]>([])
 const indicatorOptions = computed(() =>
   indicatorConfigs.value
-    .filter(item => item.enabled)
-    .map(item => ({
+    .filter((item) => item.enabled)
+    .map((item) => ({
       value: item.indicatorCode,
       label: `${item.indicatorName} (${item.indicatorCode})`,
-    })))
+    })),
+)
 
 async function loadIndicatorConfigs() {
   try {
     indicatorConfigs.value = await portfolioIndicatorTenantApi.listConfig()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
 
-const selectedPlan = computed(() => rows.value.find(item => item.id === selectedPlanId.value) ?? null)
+const selectedPlan = computed(
+  () => rows.value.find((item) => item.id === selectedPlanId.value) ?? null,
+)
 
 const planItemEditable = computed(() => {
   const status = selectedPlan.value?.planStatus
   return status === 'DRAFT' || status === 'DEPARTMENT_RETURNED'
 })
 
-const planOptions = computed(() => rows.value.map(item => ({
-  value: item.id,
-  label: `${item.planTitle} (${item.planYear})`,
-})))
+const planOptions = computed(() =>
+  rows.value.map((item) => ({
+    value: item.id,
+    label: `${item.planTitle} (${item.planYear})`,
+  })),
+)
 
 function planStatusLabel(status: PortfolioDevelopmentPlanStatus): string {
   return strictEnumLabel(PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL, status, '发展规划状态')
@@ -119,18 +128,16 @@ async function loadPage() {
       planType: 'DEPARTMENT' as PortfolioDevelopmentPlanType,
     })
     rows.value = readPageList(page, '加载部门年度规划失败')
-    if (!rows.value.some(item => item.id === selectedPlanId.value)) {
+    if (!rows.value.some((item) => item.id === selectedPlanId.value)) {
       selectedPlanId.value = rows.value[0]?.id ?? ''
       planItems.value = []
     }
     if (selectedPlanId.value && activeTab.value === 'items') {
       await loadPlanItems()
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -155,8 +162,7 @@ async function createPlan() {
     form.planTitle = ''
     form.planSummary = ''
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -166,8 +172,7 @@ async function submitPlan(id: string) {
     await portfolioDevelopmentPlanApi.submit({ id })
     message.success('已提交')
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -180,8 +185,7 @@ async function exportPlans() {
     })
     await downloadPortfolioExcelExport(result)
     message.success('规划已导出')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -203,7 +207,9 @@ function createEmptyPlanItem(): PortfolioDevelopmentPlanItemSaveRequest {
   }
 }
 
-function toEditableItem(item: PortfolioDevelopmentPlanItemVO): PortfolioDevelopmentPlanItemSaveRequest {
+function toEditableItem(
+  item: PortfolioDevelopmentPlanItemVO,
+): PortfolioDevelopmentPlanItemSaveRequest {
   return {
     itemTitle: item.itemTitle,
     itemGoal: item.itemGoal,
@@ -224,11 +230,9 @@ async function loadPlanItems() {
   try {
     const items = await portfolioDevelopmentPlanApi.listItems({ planId: selectedPlanId.value })
     planItems.value = items.length ? items.map(toEditableItem) : [createEmptyPlanItem()]
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     itemLoading.value = false
   }
 }
@@ -258,7 +262,7 @@ async function savePlanItems() {
       milestoneText: item.milestoneText?.trim() || undefined,
       sortOrder: index,
     }))
-    .filter(item => item.itemTitle)
+    .filter((item) => item.itemTitle)
   if (items.length === 0) {
     message.warning('请至少填写一条明细标题')
     return
@@ -268,11 +272,9 @@ async function savePlanItems() {
     await portfolioDevelopmentPlanApi.batchSaveItems({ planId: selectedPlanId.value, items })
     message.success('规划明细已保存')
     await loadPlanItems()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     itemSaving.value = false
   }
 }
@@ -288,32 +290,26 @@ onMounted(async () => {
   <StageWorkbenchShell>
     <ContextBar title="部门年度规划" subtitle="科室编制 · 提交审核 · 年度唯一">
       <template #actions>
-        <UiButton @click="exportPlans">
-          导出 Excel
-        </UiButton>
+        <UiButton @click="exportPlans"> 导出 Excel </UiButton>
       </template>
     </ContextBar>
     <UiCard>
       <div class="toolbar">
-        <input v-model="form.planYear" class="input" placeholder="年度">
-        <UiButton @click="loadPage">
-          刷新
-        </UiButton>
+        <input v-model="form.planYear" class="input" placeholder="年度" />
+        <UiButton @click="loadPage"> 刷新 </UiButton>
       </div>
       <a-tabs v-model:active-key="activeTab">
         <a-tab-pane key="plans" tab="规划管理">
           <UiCard title="新建部门规划">
             <div class="form-row">
-              <input v-model="form.planTitle" class="input input--wide" placeholder="规划标题">
+              <input v-model="form.planTitle" class="input input--wide" placeholder="规划标题" />
               <a-select
                 v-model:value="form.portfolioOrgId"
                 placeholder="归属科室"
                 style="width: 220px"
                 :options="portfolioOrgOptions()"
               />
-              <UiButton variant="primary" @click="createPlan">
-                创建
-              </UiButton>
+              <UiButton variant="primary" @click="createPlan"> 创建 </UiButton>
             </div>
           </UiCard>
           <UiEmpty v-if="!loading && rows.length === 0" description="当前年度暂无部门规划" />
@@ -332,15 +328,15 @@ onMounted(async () => {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiButton
-                  v-if="record.planStatus === 'DRAFT' || record.planStatus === 'DEPARTMENT_RETURNED'"
+                  v-if="
+                    record.planStatus === 'DRAFT' || record.planStatus === 'DEPARTMENT_RETURNED'
+                  "
                   size="sm"
                   @click="submitPlan(record.id)"
                 >
                   提交
                 </UiButton>
-                <UiButton size="sm" @click="openPlanItems(record.id)">
-                  明细
-                </UiButton>
+                <UiButton size="sm" @click="openPlanItems(record.id)"> 明细 </UiButton>
               </template>
             </template>
           </UiDataTable>
@@ -354,12 +350,8 @@ onMounted(async () => {
               :options="planOptions"
               @change="loadPlanItems"
             />
-            <UiButton :disabled="!selectedPlanId" @click="loadPlanItems">
-              刷新明细
-            </UiButton>
-            <UiButton v-if="planItemEditable" @click="addPlanItemRow">
-              新增行
-            </UiButton>
+            <UiButton :disabled="!selectedPlanId" @click="loadPlanItems"> 刷新明细 </UiButton>
+            <UiButton v-if="planItemEditable" @click="addPlanItemRow"> 新增行 </UiButton>
             <UiButton
               v-if="planItemEditable"
               variant="primary"
@@ -381,11 +373,19 @@ onMounted(async () => {
           >
             <template #bodyCell="{ column, record, index }">
               <template v-if="column.key === 'itemTitle'">
-                <input v-if="planItemEditable" v-model="record.itemTitle" class="input input--cell">
+                <input
+                  v-if="planItemEditable"
+                  v-model="record.itemTitle"
+                  class="input input--cell"
+                />
                 <span v-else>{{ record.itemTitle }}</span>
               </template>
               <template v-else-if="column.key === 'itemGoal'">
-                <input v-if="planItemEditable" v-model="record.itemGoal" class="input input--cell">
+                <input
+                  v-if="planItemEditable"
+                  v-model="record.itemGoal"
+                  class="input input--cell"
+                />
                 <span v-else>{{ record.itemGoal || '—' }}</span>
               </template>
               <template v-else-if="column.key === 'indicatorCode'">
@@ -402,11 +402,19 @@ onMounted(async () => {
                 <span v-else>{{ record.indicatorCode || '—' }}</span>
               </template>
               <template v-else-if="column.key === 'milestoneText'">
-                <input v-if="planItemEditable" v-model="record.milestoneText" class="input input--cell">
+                <input
+                  v-if="planItemEditable"
+                  v-model="record.milestoneText"
+                  class="input input--cell"
+                />
                 <span v-else>{{ record.milestoneText || '—' }}</span>
               </template>
               <template v-else-if="column.key === 'completionPercent'">
-                <input v-if="planItemEditable" v-model="record.completionPercent" class="input input--cell input--short">
+                <input
+                  v-if="planItemEditable"
+                  v-model="record.completionPercent"
+                  class="input input--cell input--short"
+                />
                 <span v-else>{{ record.completionPercent ?? '0' }}%</span>
               </template>
               <template v-else-if="column.key === 'itemStatus'">
@@ -417,7 +425,13 @@ onMounted(async () => {
                   :options="itemStatusOptions"
                 />
                 <UiTag v-else tone="blue">
-                  {{ strictEnumLabel(PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL, record.itemStatus, '规划明细状态') }}
+                  {{
+                    strictEnumLabel(
+                      PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL,
+                      record.itemStatus,
+                      '规划明细状态',
+                    )
+                  }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'itemActions'">

@@ -73,32 +73,33 @@ defineOptions({
 
 const openModel = defineModel<boolean>('open', { default: true })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  subtitle?: string
-  collapsible?: boolean
-  togglePosition?: 'left' | 'right'
-}>(), {
-  title: '',
-  subtitle: '',
-  collapsible: true,
-  togglePosition: 'right',
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    subtitle?: string
+    collapsible?: boolean
+    togglePosition?: 'left' | 'right'
+  }>(),
+  {
+    title: '',
+    subtitle: '',
+    collapsible: true,
+    togglePosition: 'right',
+  },
+)
 
 const emit = defineEmits<{
   (e: 'toggle', value: boolean): void
 }>()
 
 const toggleOpen = () => {
-  if (!props.collapsible)
-    return
+  if (!props.collapsible) return
   openModel.value = !openModel.value
   emit('toggle', openModel.value)
 }
 
 const handleToggle = () => {
-  if (!props.collapsible)
-    return
+  if (!props.collapsible) return
   toggleOpen()
 }
 </script>

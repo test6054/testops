@@ -1,7 +1,7 @@
 import type { PortfolioOrgTreeNodeVO, PortfolioOrgUnitType } from '@/apis/portfolio/types'
+import { PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES } from '@/apis/portfolio/types'
 import { ref } from 'vue'
 import { portfolioOrgApi } from '@/apis/portfolio/org'
-import { PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES } from '@/apis/portfolio/types'
 import { showUserError } from '@/utils/error-handler'
 
 export interface PortfolioOrgFlatOption {
@@ -23,7 +23,9 @@ function walkTree(
   }
 }
 
-export function flattenDepartmentOptions(roots: PortfolioOrgTreeNodeVO[]): PortfolioOrgFlatOption[] {
+export function flattenDepartmentOptions(
+  roots: PortfolioOrgTreeNodeVO[],
+): PortfolioOrgFlatOption[] {
   const result: PortfolioOrgFlatOption[] = []
   walkTree(roots, (node, label) => {
     if (node.nodeType === 'DEPARTMENT' && node.id) {
@@ -33,10 +35,15 @@ export function flattenDepartmentOptions(roots: PortfolioOrgTreeNodeVO[]): Portf
   return result
 }
 
-export function flattenPortfolioOrgOptions(roots: PortfolioOrgTreeNodeVO[]): PortfolioOrgFlatOption[] {
+export function flattenPortfolioOrgOptions(
+  roots: PortfolioOrgTreeNodeVO[],
+): PortfolioOrgFlatOption[] {
   const result: PortfolioOrgFlatOption[] = []
   walkTree(roots, (node, label) => {
-    if (node.portfolioOrgId && PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES.includes(node.nodeType as PortfolioOrgUnitType)) {
+    if (
+      node.portfolioOrgId &&
+      PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES.includes(node.nodeType as PortfolioOrgUnitType)
+    ) {
       result.push({ value: node.portfolioOrgId, label })
     }
   })

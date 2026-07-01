@@ -6,6 +6,13 @@ import type {
   TeacherClaimContextQueryRequest,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
+import {
+  claimMarkingTasks,
+  getTeacherClaimContext,
+  listMarkingTasks,
+  validateMarkingTaskContract,
+  validateTeacherClaimContextContract,
+} from '@/apis/mark/marking-organization'
 /**
  * 阅卷任务 Store
  *
@@ -24,16 +31,9 @@ import type {
  * 不持久化：任务状态对实时性敏感，每次进入页面需重新拉取。
  */
 import type { MarkingTaskStreamEventVO } from '@/apis/mark/marking-task-stream'
+import { validateMarkingTaskStreamEvent } from '@/apis/mark/marking-task-stream'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import {
-  claimMarkingTasks,
-  getTeacherClaimContext,
-  listMarkingTasks,
-  validateMarkingTaskContract,
-  validateTeacherClaimContextContract,
-} from '@/apis/mark/marking-organization'
-import { validateMarkingTaskStreamEvent } from '@/apis/mark/marking-task-stream'
 
 export const useMarkTaskStore = defineStore('markTask', () => {
   /** 当前用户在指定考试下的阅卷任务（按 examId 隔离） */
@@ -106,7 +106,10 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     }
   }
 
-  function getClaimContext(examId: string, markingPhase: MarkingSessionPhaseCode): TeacherClaimContextVO | null {
+  function getClaimContext(
+    examId: string,
+    markingPhase: MarkingSessionPhaseCode,
+  ): TeacherClaimContextVO | null {
     return claimContextByExam.value.get(claimContextKey(examId, markingPhase)) ?? null
   }
 

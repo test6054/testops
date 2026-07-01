@@ -4,22 +4,25 @@ import type {
   PortfolioArchiveRecordStatus,
   PortfolioTargetFieldDefinition,
 } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
+  PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
+} from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
-import {
-  PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
-  PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
-} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
+import {
+  usePortfolioPageScope,
+  usePortfolioScopedLoader,
+} from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -41,12 +44,13 @@ const evidenceRefs = reactive<Record<string, string>>({})
 
 const categoryId = computed(() => route.params.categoryId as string)
 const queryRecordId = computed(() =>
-  typeof route.query.recordId === 'string' ? route.query.recordId : '')
+  typeof route.query.recordId === 'string' ? route.query.recordId : '',
+)
 const teacherRequest = computed(() =>
-  targetTeacherId.value ? { teacherId: targetTeacherId.value } : {})
+  targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+)
 
-const editableFields = computed(() =>
-  fieldDefs.value.filter(item => !item.readonly))
+const editableFields = computed(() => fieldDefs.value.filter((item) => !item.readonly))
 
 const statusHint = computed(() => {
   if (recordStatus.value === 'RETURNED') {
@@ -96,7 +100,7 @@ async function loadPage() {
     categoryName.value = published.templateCode
     fieldDefs.value = published.targetFields
     const oneTable = await portfolioArchiveApi.getOneTable(teacherRequest.value)
-    const categoryRow = oneTable.categories.find(item => item.categoryId === categoryId.value)
+    const categoryRow = oneTable.categories.find((item) => item.categoryId === categoryId.value)
     if (categoryRow?.categoryName) {
       categoryName.value = categoryRow.categoryName
     }
@@ -131,17 +135,15 @@ async function loadPage() {
     if (returned) {
       await applyRecordDetail(returned.id)
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载分类填报页失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
 function buildFieldInputs(): PortfolioArchiveRecordFieldInput[] {
-  return editableFields.value.map(field => ({
+  return editableFields.value.map((field) => ({
     fieldCode: field.fieldCode,
     fieldValue: fieldValues[field.fieldCode] ?? '',
     evidenceRef: evidenceRefs[field.fieldCode] || undefined,
@@ -160,11 +162,9 @@ async function handleSaveDraft() {
     recordId.value = result.recordId
     recordStatus.value = result.recordStatus
     message.success('草稿已保存')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '保存草稿失败')
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -185,11 +185,9 @@ async function handleSubmit() {
       path: '/portfolio/teacher/archive',
       query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
     })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '提交审核失败')
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -201,9 +199,12 @@ function goBack() {
   })
 }
 
-usePortfolioScopedLoader(() => {
-  void loadPage()
-}, () => `${targetTeacherId.value}:${categoryId.value}:${queryRecordId.value}`)
+usePortfolioScopedLoader(
+  () => {
+    void loadPage()
+  },
+  () => `${targetTeacherId.value}:${categoryId.value}:${queryRecordId.value}`,
+)
 </script>
 
 <template>
@@ -215,9 +216,7 @@ usePortfolioScopedLoader(() => {
         :title="categoryName ? `${categoryName} · 分类填报` : '分类填报'"
       >
         <template #actions>
-          <UiButton @click="goBack">
-            返回档案
-          </UiButton>
+          <UiButton @click="goBack"> 返回档案 </UiButton>
           <UiButton :loading="saving" :disabled="loading" @click="handleSaveDraft">
             保存草稿
           </UiButton>
@@ -233,7 +232,9 @@ usePortfolioScopedLoader(() => {
 
     <a-spin v-else :spinning="loading">
       <p v-if="recordStatus" class="archive-category-edit__status">
-        <UiTag :tone="strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, recordStatus, '档案记录状态')">
+        <UiTag
+          :tone="strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, recordStatus, '档案记录状态')"
+        >
           {{ strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, recordStatus, '档案记录状态') }}
         </UiTag>
         <span v-if="statusHint" class="archive-category-edit__status-hint">{{ statusHint }}</span>

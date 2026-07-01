@@ -17,8 +17,7 @@ const parsedStruct = computed(() => {
   }
   try {
     return JSON.stringify(JSON.parse(props.explainStructJson), null, 2)
-  }
-  catch {
+  } catch {
     return props.explainStructJson
   }
 })

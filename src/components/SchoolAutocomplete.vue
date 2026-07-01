@@ -60,13 +60,20 @@ function isSchoolJsonRecord(record: unknown): record is SchoolJsonRecord {
   if (typeof record !== 'object' || record === null) {
     return false
   }
-  if (!('id' in record) || !('name' in record) || !('province' in record) || !('letter' in record)) {
+  if (
+    !('id' in record) ||
+    !('name' in record) ||
+    !('province' in record) ||
+    !('letter' in record)
+  ) {
     return false
   }
-  return typeof record.id === 'number'
-    && typeof record.name === 'string'
-    && typeof record.province === 'string'
-    && typeof record.letter === 'string'
+  return (
+    typeof record.id === 'number' &&
+    typeof record.name === 'string' &&
+    typeof record.province === 'string' &&
+    typeof record.letter === 'string'
+  )
 }
 
 function mapSchoolRecords(raw: unknown): SchoolItem[] {
@@ -111,7 +118,7 @@ watch(inputValue, (newVal) => {
 
 const filteredSchools = computed(() => {
   const keyword = searchKeyword.value.trim().toLowerCase()
-  const results: { value: string, label: string }[] = []
+  const results: { value: string; label: string }[] = []
 
   for (const school of schools.value) {
     if (!keyword || (school.name && school.name.toLowerCase().includes(keyword))) {
@@ -138,7 +145,7 @@ const handleSelect = (value: string | number | LabeledValue) => {
   const strValue = resolveSelectValue(value)
   inputValue.value = strValue
 
-  const school = schools.value.find(s => s.name === strValue)
+  const school = schools.value.find((s) => s.name === strValue)
   if (school) {
     emit('select', school)
   }

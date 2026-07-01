@@ -1,7 +1,11 @@
 <template>
   <section class="appeal-section">
     <div class="appeal-section__header">
-      <UiTag v-if="policy?.policyStatus" :tone="reviewWindowStatusColor(policy.policyStatus)" size="sm">
+      <UiTag
+        v-if="policy?.policyStatus"
+        :tone="reviewWindowStatusColor(policy.policyStatus)"
+        size="sm"
+      >
         {{ reviewWindowStatusLabel(policy.policyStatus) }}
       </UiTag>
     </div>
@@ -90,9 +94,6 @@ import type {
   ReviewWindowPolicyStatusCode,
   VisibleMaterialScopeCode,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref, watch } from 'vue'
 import {
   activateReviewWindow,
   closeReviewWindow,
@@ -102,13 +103,16 @@ import {
   REVIEW_WINDOW_STATUS_TONE,
   saveReviewWindowPolicy,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { reactive, ref, watch } from 'vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewWindowPolicyCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{ (e: 'changed'): void }>()
 
 function reviewWindowStatusColor(status: ReviewWindowPolicyStatusCode): BadgeTone {
@@ -139,13 +143,13 @@ const form = reactive<{
   allowedReasonTypes: [],
 })
 
-const scopeOptions: { label: string, value: VisibleMaterialScopeCode }[] = [
+const scopeOptions: { label: string; value: VisibleMaterialScopeCode }[] = [
   { label: '仅分数', value: 'SCORE_ONLY' },
   { label: '分数+批注', value: 'SCORE_AND_ANNOTATION' },
   { label: '完整材料', value: 'FULL' },
 ]
 
-const reasonTypeOptions: { label: string, value: GradeReviewReasonTypeCode }[] = [
+const reasonTypeOptions: { label: string; value: GradeReviewReasonTypeCode }[] = [
   { label: GRADE_REVIEW_REASON_TYPE_LABEL.SCORE_ERROR, value: 'SCORE_ERROR' },
   { label: GRADE_REVIEW_REASON_TYPE_LABEL.RUBRIC, value: 'RUBRIC' },
   { label: GRADE_REVIEW_REASON_TYPE_LABEL.OBJECTIVE, value: 'OBJECTIVE' },

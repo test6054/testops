@@ -1,16 +1,14 @@
 import type { InjectionKey } from 'vue'
+import { inject } from 'vue'
 import type {
   ArchiveExamFormCode,
   ArchiveScoreSourceCode,
   ArchiveSecurityLevelCode,
 } from '@/apis/mark/archive-volume'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { inject } from 'vue'
 
-export type ArchiveVolumeCreateSectionKey
-  = | 'archive-create-basic'
-    | 'archive-create-config'
-    | 'archive-create-confirm'
+export type ArchiveVolumeCreateSectionKey =
+  'archive-create-basic' | 'archive-create-config' | 'archive-create-confirm'
 
 export const ARCHIVE_VOLUME_CREATE_SECTION_ORDER: ArchiveVolumeCreateSectionKey[] = [
   'archive-create-basic',
@@ -47,12 +45,16 @@ export interface ArchiveVolumeCreateConfigForm {
   responsibleUserName: string
 }
 
-export const archiveVolumeCreateBasicFormKey: InjectionKey<ArchiveVolumeCreateBasicForm>
-  = Symbol('archiveVolumeCreateBasicForm')
-export const archiveVolumeCreateConfigFormKey: InjectionKey<ArchiveVolumeCreateConfigForm>
-  = Symbol('archiveVolumeCreateConfigForm')
+export const archiveVolumeCreateBasicFormKey: InjectionKey<ArchiveVolumeCreateBasicForm> = Symbol(
+  'archiveVolumeCreateBasicForm',
+)
+export const archiveVolumeCreateConfigFormKey: InjectionKey<ArchiveVolumeCreateConfigForm> = Symbol(
+  'archiveVolumeCreateConfigForm',
+)
 
-export function isArchiveVolumeCreateSectionKey(value: string): value is ArchiveVolumeCreateSectionKey {
+export function isArchiveVolumeCreateSectionKey(
+  value: string,
+): value is ArchiveVolumeCreateSectionKey {
   for (const sectionKey of ARCHIVE_VOLUME_CREATE_SECTION_ORDER) {
     if (sectionKey === value) {
       return true
@@ -76,8 +78,5 @@ export function useInjectedArchiveVolumeCreateBasicForm(): ArchiveVolumeCreateBa
 }
 
 export function useInjectedArchiveVolumeCreateConfigForm(): ArchiveVolumeCreateConfigForm {
-  return requireInjectedContext(
-    inject(archiveVolumeCreateConfigFormKey),
-    '归档建卷配置表单未注入',
-  )
+  return requireInjectedContext(inject(archiveVolumeCreateConfigFormKey), '归档建卷配置表单未注入')
 }

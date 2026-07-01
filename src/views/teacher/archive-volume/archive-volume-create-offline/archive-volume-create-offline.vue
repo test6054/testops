@@ -3,9 +3,7 @@
     <template #context>
       <ContextBar layout="workbench" show-title title="线下纯归档建卷">
         <template #actions>
-          <UiButton variant="ghost" size="sm" @click="ac.handleGoBack">
-            返回列表
-          </UiButton>
+          <UiButton variant="ghost" size="sm" @click="ac.handleGoBack"> 返回列表 </UiButton>
           <UiButton
             variant="primary"
             :loading="ac.submitting.value"
@@ -97,7 +95,7 @@ function handleScroll(): void {
   const container = scrollContainerRef.value
   if (!container) return
   const threshold = container.getBoundingClientRect().top + 80
-  const sections = ac.navItems.value.map(item => String(item.key))
+  const sections = ac.navItems.value.map((item) => String(item.key))
   for (let i = sections.length - 1; i >= 0; i--) {
     const el = document.getElementById(sections[i])
     if (el && el.getBoundingClientRect().top <= threshold) {

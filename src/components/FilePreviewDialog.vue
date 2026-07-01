@@ -14,7 +14,15 @@
           class="file-preview-dialog__header-icon file-icon"
           :class="`file-icon--${resolveFileIconTheme(api.filePreviewTitle.value, api.currentPreviewTarget.value?.extension, api.currentPreviewTarget.value?.mimeType)}`"
         >
-          <component :is="resolveFileIcon(api.filePreviewTitle.value, api.currentPreviewTarget.value?.extension, api.currentPreviewTarget.value?.mimeType)" />
+          <component
+            :is="
+              resolveFileIcon(
+                api.filePreviewTitle.value,
+                api.currentPreviewTarget.value?.extension,
+                api.currentPreviewTarget.value?.mimeType,
+              )
+            "
+          />
         </span>
         <span class="file-preview-dialog__header-main">
           <strong>{{ api.filePreviewTitle.value || '文件预览' }}</strong>
@@ -45,7 +53,11 @@
       <div v-else-if="api.filePreviewError.value" class="file-preview-dialog__state">
         <FileUnknownOutlined />
         <strong>{{ api.filePreviewError.value }}</strong>
-        <UiButton v-if="api.currentPreviewTarget.value" size="sm" @click="api.downloadCurrentTarget">
+        <UiButton
+          v-if="api.currentPreviewTarget.value"
+          size="sm"
+          @click="api.downloadCurrentTarget"
+        >
           <template #icon>
             <DownloadOutlined />
           </template>
@@ -58,7 +70,7 @@
         :src="api.filePreviewUrl.value"
         :alt="api.filePreviewTitle.value"
         class="file-preview-dialog__image"
-      >
+      />
 
       <iframe
         v-else-if="api.filePreviewKind.value === 'pdf' && api.filePreviewUrl.value"
@@ -88,7 +100,9 @@
         @error="api.handleOfficePreviewError"
       />
 
-      <pre v-else-if="api.filePreviewKind.value === 'text'" class="file-preview-dialog__text">{{ api.filePreviewText.value }}</pre>
+      <pre v-else-if="api.filePreviewKind.value === 'text'" class="file-preview-dialog__text">{{
+        api.filePreviewText.value
+      }}</pre>
 
       <video
         v-else-if="api.filePreviewKind.value === 'video' && api.filePreviewUrl.value"
@@ -293,19 +307,49 @@ const dialogWidth = computed(() => {
   background: var(--ant-color-fill-quaternary);
   color: var(--ant-color-text-secondary);
 
-  &.file-icon--pdf { background: #fff1f0; color: #cf1322; }
-  &.file-icon--image { background: #f3e8ff; color: #7e22ce; }
-  &.file-icon--word { background: #eaf2ff; color: #1d4ed8; }
-  &.file-icon--excel { background: #eaf8ef; color: #16834a; }
-  &.file-icon--ppt { background: #fff4e6; color: #d46b08; }
-  &.file-icon--zip { background: #fff8db; color: #ad6800; }
-  &.file-icon--audio { background: #eef2ff; color: #4f46e5; }
-  &.file-icon--video { background: #fff0f6; color: #c41d7f; }
+  &.file-icon--pdf {
+    background: #fff1f0;
+    color: #cf1322;
+  }
+  &.file-icon--image {
+    background: #f3e8ff;
+    color: #7e22ce;
+  }
+  &.file-icon--word {
+    background: #eaf2ff;
+    color: #1d4ed8;
+  }
+  &.file-icon--excel {
+    background: #eaf8ef;
+    color: #16834a;
+  }
+  &.file-icon--ppt {
+    background: #fff4e6;
+    color: #d46b08;
+  }
+  &.file-icon--zip {
+    background: #fff8db;
+    color: #ad6800;
+  }
+  &.file-icon--audio {
+    background: #eef2ff;
+    color: #4f46e5;
+  }
+  &.file-icon--video {
+    background: #fff0f6;
+    color: #c41d7f;
+  }
   &.file-icon--markdown,
-  &.file-icon--code { background: #eef1f6; color: #344054; }
+  &.file-icon--code {
+    background: #eef1f6;
+    color: #344054;
+  }
   &.file-icon--text,
   &.file-icon--document,
-  &.file-icon--unknown { background: var(--ant-color-fill-quaternary); color: var(--ant-color-text-secondary); }
+  &.file-icon--unknown {
+    background: var(--ant-color-fill-quaternary);
+    color: var(--ant-color-text-secondary);
+  }
 }
 </style>
 

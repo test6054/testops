@@ -8,15 +8,10 @@
 </template>
 
 <script setup lang="ts">
-import type {
-  ArchiveVolumeDetailVO,
-  ArchiveVolumeEventTypeCode,
-} from '@/apis/mark/archive-volume'
+import type { ArchiveVolumeDetailVO, ArchiveVolumeEventTypeCode } from '@/apis/mark/archive-volume'
+import { ARCHIVE_VOLUME_EVENT_TYPE_LABEL } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed } from 'vue'
-import {
-  ARCHIVE_VOLUME_EVENT_TYPE_LABEL,
-} from '@/apis/mark/archive-volume'
 import UiActivityTimeline from '@/components/ui-guide/ui/UiActivityTimeline.vue'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -59,7 +54,7 @@ const sortedEvents = computed(() =>
 )
 
 const timelineGroups = computed(() => {
-  const items = sortedEvents.value.map(event => ({
+  const items = sortedEvents.value.map((event) => ({
     key: event.eventId,
     title: eventTypeLabel(event.eventType),
     time: event.createTime ? formatDateTime(event.createTime) : undefined,
@@ -69,11 +64,13 @@ const timelineGroups = computed(() => {
   if (items.length === 0) {
     return []
   }
-  return [{
-    key: 'archive-volume-events',
-    label: '事件流水',
-    items,
-  }]
+  return [
+    {
+      key: 'archive-volume-events',
+      label: '事件流水',
+      items,
+    },
+  ]
 })
 
 function eventTypeLabel(code?: ArchiveVolumeEventTypeCode) {

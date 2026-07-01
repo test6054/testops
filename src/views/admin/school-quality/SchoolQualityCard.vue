@@ -49,16 +49,9 @@
     </div>
 
     <a-spin :spinning="loading || generating">
-      <UiEmpty
-        v-if="!loading && !generating && !record"
-        description="暂无数据"
-      />
+      <UiEmpty v-if="!loading && !generating && !record" description="暂无数据" />
       <div v-else-if="record" class="ai-record">
-        <SignalBand
-          :metrics="qualitySignalMetrics"
-          compact
-          variant="inline"
-        />
+        <SignalBand :metrics="qualitySignalMetrics" compact variant="inline" />
 
         <a-descriptions :column="3" compact bordered>
           <a-descriptions-item label="状态">
@@ -162,11 +155,6 @@ import type {
   SchoolQualityItemVO,
   SchoolQualityRatingCode,
 } from '@/apis/mark/school-quality'
-import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import {
   generateQualityAnalysis,
   listQualityAnalysis,
@@ -175,6 +163,11 @@ import {
   SCHOOL_QUALITY_RATING_LABEL,
   SCHOOL_QUALITY_RATING_TONE,
 } from '@/apis/mark/school-quality'
+import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
@@ -219,10 +212,9 @@ const examStatTrendPoints = computed(() =>
   examStatSnapshotsToTrendPoints(record.value?.examStatSnapshots ?? []),
 )
 
-const examTrendHint = computed(() => mergeChartHint(
-  '多考试对比：得分率走势',
-  buildTrendChartInsight(examStatTrendPoints.value),
-))
+const examTrendHint = computed(() =>
+  mergeChartHint('多考试对比：得分率走势', buildTrendChartInsight(examStatTrendPoints.value)),
+)
 
 const examTrendLastValue = computed(() => {
   const points = examStatTrendPoints.value
@@ -268,11 +260,11 @@ const qualityMetrics = computed((): UiStatPanelItem[] => {
 
 const qualitySignalMetrics = computed(() => {
   const scoreRateTrend = computeTrendPointDelta(examStatTrendPoints.value)
-  return toSignalMetrics(qualityMetrics.value).map((metric) => (
+  return toSignalMetrics(qualityMetrics.value).map((metric) =>
     metric.key === 'teachingQualityScore'
       ? { ...metric, trend: scoreRateTrend, trendPolarity: 'positive' as const }
-      : metric
-  ))
+      : metric,
+  )
 })
 
 function qualityRatingLabel(rating: SchoolQualityRatingCode): string {

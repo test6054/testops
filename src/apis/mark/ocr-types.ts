@@ -25,7 +25,8 @@ export const MARK_OCR_PROVIDER_DESCRIPTION: Record<MarkOcrProviderTypeCode, stri
 
 /** 直接扫描整页切题能力说明，必须与 edu-mark 后端 provider 路由保持一致。 */
 export const MARK_OCR_PAPER_CUT_CAPABILITY: Record<MarkOcrProviderTypeCode, string> = {
-  BAIDU: '支持直接扫描整页切题，使用百度 paper_cut_edu 生成题块候选；正式 ROI 由千问版面或 OCR 拆题器生成。',
+  BAIDU:
+    '支持直接扫描整页切题，使用百度 paper_cut_edu 生成题块候选；正式 ROI 由千问版面或 OCR 拆题器生成。',
   PADDLE: '支持直接扫描整页切题，要求本地 PaddleOCR 服务暴露 /paper-cut 并返回真实题块 ROI。',
 }
 

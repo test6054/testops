@@ -1,7 +1,4 @@
-import type {
-  MarkingPageAnnotationSubmitItem,
-  MarkingQuestionScoreSubmitItem,
-} from './marking-organization'
+import type { MarkingPageAnnotationSubmitItem, MarkingQuestionScoreSubmitItem } from './marking-organization'
 import http from '@/config/axios'
 import { strictEnumLabel } from '@/utils/strict-enum'
 

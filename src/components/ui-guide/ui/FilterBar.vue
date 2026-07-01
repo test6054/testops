@@ -223,9 +223,11 @@ const normalizeOptionValue = (value: unknown): UiOptionValue => {
 
 const getFieldStyle = (field: FilterField) => {
   const style: Record<string, string> = {}
-  const widthPx
-    = field.width !== undefined
-      ? (typeof field.width === 'number' ? field.width : Number.parseFloat(String(field.width)))
+  const widthPx =
+    field.width !== undefined
+      ? typeof field.width === 'number'
+        ? field.width
+        : Number.parseFloat(String(field.width))
       : undefined
   const resolvedWidth = widthPx !== undefined && !Number.isNaN(widthPx) ? widthPx : undefined
 
@@ -243,10 +245,7 @@ const getFieldStyle = (field: FilterField) => {
   return style
 }
 
-const getSingleSelectValue = (
-  value: unknown,
-  defaultValue: unknown,
-): UiOptionValue | undefined => {
+const getSingleSelectValue = (value: unknown, defaultValue: unknown): UiOptionValue | undefined => {
   const val = value ?? defaultValue
   if (val === null || val === undefined || val === '') {
     return undefined
@@ -274,18 +273,14 @@ const getMultiSelectValue = (
 
 const getDateValue = (value: unknown, defaultValue: unknown): string | undefined => {
   const val = value ?? defaultValue
-  if (val === null || val === undefined || val === '')
-    return undefined
+  if (val === null || val === undefined || val === '') return undefined
   return String(val)
 }
 
 const resolveFieldDefault = (field: FilterField) => {
-  if (field.defaultValue !== undefined)
-    return field.defaultValue
-  if (field.type === 'select' && field.mode === 'multiple')
-    return []
-  if (field.type === 'select' || field.type === 'date' || field.type === 'year')
-    return undefined
+  if (field.defaultValue !== undefined) return field.defaultValue
+  if (field.type === 'select' && field.mode === 'multiple') return []
+  if (field.type === 'select' || field.type === 'date' || field.type === 'year') return undefined
   return ''
 }
 
@@ -301,25 +296,24 @@ const normalizeFieldValue = (value: unknown, field?: FilterField) => {
       return undefined
     return ''
   }
-  if (value === '' && (field?.type === 'select' || field?.type === 'date' || field?.type === 'year')) {
+  if (
+    value === '' &&
+    (field?.type === 'select' || field?.type === 'date' || field?.type === 'year')
+  ) {
     return undefined
   }
   return value
 }
 
 const shouldTriggerSearchOnChange = (field?: FilterField) => {
-  if (!field)
-    return false
-  if (field.triggerSearchOnChange !== undefined)
-    return field.triggerSearchOnChange
+  if (!field) return false
+  if (field.triggerSearchOnChange !== undefined) return field.triggerSearchOnChange
   return field.type === 'select' || field.type === 'date' || field.type === 'year'
 }
 
 const resolveAntSize = (size?: FilterField['size']): SizeType => {
-  if (size === 'sm')
-    return 'small'
-  if (size === 'lg')
-    return 'large'
+  if (size === 'sm') return 'small'
+  if (size === 'lg') return 'large'
   return 'middle'
 }
 </script>

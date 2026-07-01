@@ -69,7 +69,11 @@
         </UiButton>
       </a-space>
       <div
-        v-if="selectedSession && (selectedSession.sessionStatus === 'SESSION_ACTIVE' || selectedSession.sessionStatus === 'SESSION_PAUSED')"
+        v-if="
+          selectedSession &&
+          (selectedSession.sessionStatus === 'SESSION_ACTIVE' ||
+            selectedSession.sessionStatus === 'SESSION_PAUSED')
+        "
         class="session-progress-hint"
       >
         <span>{{ formatSessionTaskProgress(selectedSession) }}</span>
@@ -77,7 +81,10 @@
         <span v-if="selectedSession.sessionCompletionBlockedReason" class="session-blocked-reason">
           {{ selectedSession.sessionCompletionBlockedReason }}
         </span>
-        <span v-else-if="selectedSession.sessionGradeClosureBlockedReason" class="session-blocked-reason">
+        <span
+          v-else-if="selectedSession.sessionGradeClosureBlockedReason"
+          class="session-blocked-reason"
+        >
           {{ selectedSession.sessionGradeClosureBlockedReason }}
         </span>
       </div>
@@ -106,9 +113,8 @@
             <span>
               正评会话 · 创建于 {{ formatDateTime(item.createTime) }} ·
               {{ strictEnumLabel(ALLOCATION_UNIT_LABEL, item.allocationUnit, '批阅任务单元') }}
-              · {{ formatSessionQuestionScope(item) }}
-              · {{ formatSessionTaskProgress(item) }}
-              · {{ formatSessionGradeClosureProgress(item) }}
+              · {{ formatSessionQuestionScope(item) }} · {{ formatSessionTaskProgress(item) }} ·
+              {{ formatSessionGradeClosureProgress(item) }}
               <template v-if="item.startTime">· 开始 {{ formatDateTime(item.startTime) }}</template>
               <template v-if="item.endTime">· 结束 {{ formatDateTime(item.endTime) }}</template>
               <template v-if="item.pauseReason"> · 暂停原因：{{ item.pauseReason }} </template>
@@ -169,15 +175,11 @@
 </template>
 
 <script lang="ts" setup>
-import type { AllocationUnitCode, FormalSessionStatusCode, FormalSessionVO } from '@/apis/mark/marking-organization'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
-import PauseCircleOutlined from '@ant-design/icons-vue/PauseCircleOutlined'
-import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import StopOutlined from '@ant-design/icons-vue/StopOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
+import type {
+  AllocationUnitCode,
+  FormalSessionStatusCode,
+  FormalSessionVO,
+} from '@/apis/mark/marking-organization'
 import {
   ALLOCATION_UNIT_LABEL,
   completeFormalSession,
@@ -186,8 +188,16 @@ import {
   FORMAL_SESSION_STATUS_LABEL as FORMAL_STATUS_LABEL,
   FORMAL_SESSION_STATUS_TONE as FORMAL_STATUS_TONE,
   resumeFormalSession,
-  startFormalSession
+  startFormalSession,
 } from '@/apis/mark/marking-organization'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
+import PauseCircleOutlined from '@ant-design/icons-vue/PauseCircleOutlined'
+import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import StopOutlined from '@ant-design/icons-vue/StopOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -214,7 +224,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "refresh": []
+  refresh: []
   'open-lifecycle': [action: 'pauseFormal' | 'closeFormal', sessionId: string]
 }>()
 
@@ -308,8 +318,8 @@ function canResume(status: FormalSessionStatusCode): boolean {
 
 function canClose(status: FormalSessionStatusCode): boolean {
   return (
-    props.canManage
-    && (status === 'SESSION_ACTIVE' || status === 'SESSION_PAUSED' || status === 'SESSION_COMPLETED')
+    props.canManage &&
+    (status === 'SESSION_ACTIVE' || status === 'SESSION_PAUSED' || status === 'SESSION_COMPLETED')
   )
 }
 
@@ -324,12 +334,15 @@ function formatSessionQuestionScope(session: FormalSessionVO): string {
   if (!session.questionScopes.length) {
     return '题目范围待启动固化'
   }
-  const questionNos = session.questionScopes.map((scope) => {
-    const progress = scope.scopedTaskCount > 0
-      ? `（任务 ${scope.scopedFinalizedTaskCount}/${scope.scopedTaskCount}，成绩 ${scope.scopedConfirmedGradeCount}/${scope.scopedGradeItemCount}）`
-      : ''
-    return `题 ${scope.questionNo}${progress}`
-  }).join('、')
+  const questionNos = session.questionScopes
+    .map((scope) => {
+      const progress =
+        scope.scopedTaskCount > 0
+          ? `（任务 ${scope.scopedFinalizedTaskCount}/${scope.scopedTaskCount}，成绩 ${scope.scopedConfirmedGradeCount}/${scope.scopedGradeItemCount}）`
+          : ''
+      return `题 ${scope.questionNo}${progress}`
+    })
+    .join('、')
   const prefix = session.allocationUnit === 'RANDOM_QUESTIONS' ? '随机抽题' : '指定题目'
   return `${prefix} ${session.questionScopeCount} 题：${questionNos}`
 }
@@ -360,7 +373,12 @@ function guardManageAction(): boolean {
 
 async function submitCreate(): Promise<void> {
   if (!guardManageAction()) return
-  if (!props.organizationId || !formalGroupId.value || !formalAllocationUnit.value || !selectedGroupHasAllocationPolicy.value) {
+  if (
+    !props.organizationId ||
+    !formalGroupId.value ||
+    !formalAllocationUnit.value ||
+    !selectedGroupHasAllocationPolicy.value
+  ) {
     return
   }
   creating.value = true

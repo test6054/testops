@@ -1,6 +1,10 @@
 import { jwtDecode } from 'jwt-decode'
 import { resetAuthState } from '@/config/axios/auth-state'
-import { STORAGE_REFRESH_TOKEN, STORAGE_TOKEN, STORAGE_TOKEN_EXPIRES_AT } from '@/constants/storage-keys'
+import {
+  STORAGE_REFRESH_TOKEN,
+  STORAGE_TOKEN,
+  STORAGE_TOKEN_EXPIRES_AT,
+} from '@/constants/storage-keys'
 
 const isLogin = () => {
   return !!getValidToken()
@@ -62,4 +66,12 @@ const clearToken = () => {
   localStorage.removeItem(STORAGE_TOKEN)
 }
 
-export { clearToken, getToken, getValidToken, hasPersistedSessionHint, healTokenExpiresAt, isLogin, setToken }
+export {
+  clearToken,
+  getToken,
+  getValidToken,
+  hasPersistedSessionHint,
+  healTokenExpiresAt,
+  isLogin,
+  setToken,
+}

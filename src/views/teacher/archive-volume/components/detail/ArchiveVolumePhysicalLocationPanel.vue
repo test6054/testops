@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ArchivePhysicalLocationVO, ArchiveVolumeDetailVO } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref, watch } from 'vue'
 import {
   listArchivePhysicalLocationHistory,
   updateArchiveVolumePhysicalLocation,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { showUserError } from '@/utils/error-handler'
 
@@ -46,7 +46,7 @@ function applyStructuredLocation(source: {
 
 watch(
   () => props.detail.volume,
-  volume => {
+  (volume) => {
     applyStructuredLocation({
       building: volume.physicalBuilding,
       room: volume.physicalRoom,
@@ -75,12 +75,10 @@ async function loadLocationHistory() {
         physicalLocationNote: props.detail.volume.physicalLocationNote,
       })
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
     locationHistory.value = []
-  }
-  finally {
+  } finally {
     historyLoading.value = false
   }
 }
@@ -105,16 +103,16 @@ async function handleSave() {
     message.success('柜位已更新')
     emit('refreshed')
     await loadLocationHistory()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
 
-function formatStructuredLocation(item: Pick<ArchivePhysicalLocationVO, 'building' | 'room' | 'cabinet' | 'slot'>) {
+function formatStructuredLocation(
+  item: Pick<ArchivePhysicalLocationVO, 'building' | 'room' | 'cabinet' | 'slot'>,
+) {
   return [item.building, item.room, item.cabinet, item.slot].filter(Boolean).join(' / ')
 }
 
@@ -172,9 +170,7 @@ onMounted(() => {
       >
         保存柜位
       </UiButton>
-      <p v-else class="archive-volume-physical-location__readonly">
-        当前卷状态不允许修改柜位
-      </p>
+      <p v-else class="archive-volume-physical-location__readonly">当前卷状态不允许修改柜位</p>
     </a-form>
     <section class="archive-volume-physical-location__timeline">
       <h3>柜位变更记录</h3>

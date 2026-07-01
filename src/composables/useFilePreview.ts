@@ -1,15 +1,6 @@
-import type {FilePreviewResponseDTO} from '@/apis/edu/file-management';
-import type {AttachmentPreviewTarget, FilePreviewKind} from '@/utils/file-preview';
-import antMessage from 'ant-design-vue/es/message'
-import { computed, ref } from 'vue'
-import {
-  convertLegacyOfficeArrayBuffer,
-  getFileArrayBuffer,
-  previewFile
-} from '@/apis/edu/file-management'
-import { useUserStore } from '@/stores/modules/user'
-import { ErrorHandler } from '@/utils/error-handler'
-import { handleDownloadFile as downloadFileUtil } from '@/utils/file-download'
+import type { FilePreviewResponseDTO } from '@/apis/edu/file-management'
+import { convertLegacyOfficeArrayBuffer, getFileArrayBuffer, previewFile } from '@/apis/edu/file-management'
+import type { AttachmentPreviewTarget, FilePreviewKind } from '@/utils/file-preview'
 import {
   formatFileSize,
   getMimeTypeForPreview,
@@ -20,6 +11,11 @@ import {
   resolveFileExtension,
   resolvePreviewKind
 } from '@/utils/file-preview'
+import antMessage from 'ant-design-vue/es/message'
+import { computed, ref } from 'vue'
+import { useUserStore } from '@/stores/modules/user'
+import { ErrorHandler } from '@/utils/error-handler'
+import { handleDownloadFile as downloadFileUtil } from '@/utils/file-download'
 
 /**
  * 文件预览 / 下载能力 composable。

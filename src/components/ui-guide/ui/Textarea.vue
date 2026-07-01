@@ -38,31 +38,34 @@ defineOptions({
 
 const modelValue = defineModel<string>({ default: '' })
 
-const props = withDefaults(defineProps<{
-  placeholder?: string
-  disabled?: boolean
-  readonly?: boolean
-  error?: boolean
-  rows?: number
-  maxlength?: number
-  showCount?: boolean
-  showWordLimit?: boolean
-  autoSize?: boolean | { minRows?: number, maxRows?: number }
-  size?: UiComponentSize
-  status?: UiFieldStatus
-}>(), {
-  placeholder: '',
-  disabled: false,
-  readonly: false,
-  error: false,
-  rows: 3,
-  maxlength: undefined,
-  showCount: false,
-  showWordLimit: false,
-  autoSize: false,
-  size: 'md',
-  status: 'default',
-})
+const props = withDefaults(
+  defineProps<{
+    placeholder?: string
+    disabled?: boolean
+    readonly?: boolean
+    error?: boolean
+    rows?: number
+    maxlength?: number
+    showCount?: boolean
+    showWordLimit?: boolean
+    autoSize?: boolean | { minRows?: number; maxRows?: number }
+    size?: UiComponentSize
+    status?: UiFieldStatus
+  }>(),
+  {
+    placeholder: '',
+    disabled: false,
+    readonly: false,
+    error: false,
+    rows: 3,
+    maxlength: undefined,
+    showCount: false,
+    showWordLimit: false,
+    autoSize: false,
+    size: 'md',
+    status: 'default',
+  },
+)
 
 const emit = defineEmits<{
   (e: 'focus', event: FocusEvent): void
@@ -70,7 +73,7 @@ const emit = defineEmits<{
 }>()
 
 const showCount = computed(() => props.showCount || props.showWordLimit)
-const resolvedStatus = computed<UiFieldStatus>(() => props.error ? 'error' : props.status)
+const resolvedStatus = computed<UiFieldStatus>(() => (props.error ? 'error' : props.status))
 </script>
 
 <style lang="scss" scoped>

@@ -108,10 +108,8 @@ const resolvedShowTime = computed<boolean | SharedTimeProps<Dayjs>>(() => {
 
 const resolvedSize = computed<UiComponentSize>(() => {
   const size = props.size
-  if (size === 'small' || size === 'sm')
-    return 'sm'
-  if (size === 'large' || size === 'lg')
-    return 'lg'
+  if (size === 'small' || size === 'sm') return 'sm'
+  if (size === 'large' || size === 'lg') return 'lg'
   return 'md'
 })
 
@@ -273,7 +271,10 @@ const handleOpenChange = (open: boolean) => {
   background-color: var(--dp-gray-100, #f3f4f6) !important;
 }
 
-.ui-date-picker-dropdown .ant-picker-time-panel-column > li.ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner {
+.ui-date-picker-dropdown
+  .ant-picker-time-panel-column
+  > li.ant-picker-time-panel-cell-selected
+  .ant-picker-time-panel-cell-inner {
   font-weight: 600 !important;
   color: var(--dp-text-primary, #0f172a) !important;
   background-color: var(--dp-gray-100, #f3f4f6) !important;

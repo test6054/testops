@@ -1,9 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        title="考试历史"
-      >
+      <ContextBar title="考试历史">
         <template #status>
           <UiTag tone="blue" size="sm">{{ exams.length }} 场</UiTag>
           <UiTag v-if="publishedCount > 0" tone="green" size="sm">
@@ -48,9 +46,7 @@
             >
               {{ item.examName }}
             </button>
-            <div v-if="item.examNo" class="link-cell__sub">
-              编号：{{ item.examNo }}
-            </div>
+            <div v-if="item.examNo" class="link-cell__sub">编号：{{ item.examNo }}</div>
           </template>
           <template v-else-if="column.key === 'finalScoreStatus'">
             <UiTag :tone="finalScoreStatusTone(item.finalScoreStatus)" size="sm">
@@ -85,10 +81,7 @@
               >
                 查看详情
               </UiTextAction>
-              <UiTextAction
-                :disabled="!canSubmitReview(item)"
-                @click="goAppeal(item.examId)"
-              >
+              <UiTextAction :disabled="!canSubmitReview(item)" @click="goAppeal(item.examId)">
                 提交复核
               </UiTextAction>
             </div>
@@ -101,22 +94,22 @@
 
 <script lang="ts" setup>
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
-import type { StudentExamItemVO } from '@/apis/mark/student-exam'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   FINAL_SCORE_STATUS_CODES,
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_TONE,
 } from '@/apis/mark/final-score-status'
+import type { StudentExamItemVO } from '@/apis/mark/student-exam'
 import {
   canSubmitReview,
   listMyExams,
   STUDENT_REVIEW_WINDOW_STATUS_LABEL,
   STUDENT_REVIEW_WINDOW_STATUS_TONE,
 } from '@/apis/mark/student-exam'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -185,7 +178,10 @@ const columns = [
 
 const filteredExams = computed<StudentExamItemVO[]>(() => {
   return exams.value.filter((item) => {
-    if (historyFilterForm.statusFilter && item.finalScoreStatus !== historyFilterForm.statusFilter) {
+    if (
+      historyFilterForm.statusFilter &&
+      item.finalScoreStatus !== historyFilterForm.statusFilter
+    ) {
       return false
     }
     if (historyFilterForm.keyword.trim()) {

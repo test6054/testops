@@ -23,17 +23,32 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  placement?: 'top' | 'left' | 'right' | 'bottom' | 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' | 'leftTop' | 'leftBottom' | 'rightTop' | 'rightBottom'
-  trigger?: TooltipProps['trigger']
-  overlayClassName?: string
-}>(), {
-  title: '',
-  placement: 'top',
-  trigger: () => ['hover'],
-  overlayClassName: '',
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    placement?:
+      | 'top'
+      | 'left'
+      | 'right'
+      | 'bottom'
+      | 'topLeft'
+      | 'topRight'
+      | 'bottomLeft'
+      | 'bottomRight'
+      | 'leftTop'
+      | 'leftBottom'
+      | 'rightTop'
+      | 'rightBottom'
+    trigger?: TooltipProps['trigger']
+    overlayClassName?: string
+  }>(),
+  {
+    title: '',
+    placement: 'top',
+    trigger: () => ['hover'],
+    overlayClassName: '',
+  },
+)
 
 const tooltipRoot = ref<HTMLElement>()
 

@@ -1,10 +1,10 @@
 import type { Ref } from 'vue'
-import type { MarkingTaskStreamEventVO, MarkingTaskStreamSubscribeScopeCode } from '@/apis/mark/marking-task-stream'
 import { computed, onBeforeUnmount, ref } from 'vue'
+import type { MarkingTaskStreamEventVO, MarkingTaskStreamSubscribeScopeCode } from '@/apis/mark/marking-task-stream'
 import {
   listRecentMarkingTaskEvents,
   MarkingTaskStreamFatalAuthError,
-  subscribeMarkingTaskStream,
+  subscribeMarkingTaskStream
 } from '@/apis/mark/marking-task-stream'
 import { useAuthStore } from '@/stores/modules/auth'
 import { toUserError } from '@/utils/error-handler'

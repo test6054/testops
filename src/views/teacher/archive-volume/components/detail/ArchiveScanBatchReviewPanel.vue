@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import type { Key } from 'ant-design-vue/es/table/interface'
 import type { ArchiveScanBatchSnapshotItemVO } from '@/apis/mark/archive-volume'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
 import {
   batchDiscardArchiveScanBatches,
   batchRetryArchiveScanBatches,
@@ -10,6 +8,8 @@ import {
   SCAN_BATCH_QUALITY_FLAG_LABEL,
   SCAN_BATCH_QUALITY_FLAG_TONE,
 } from '@/apis/mark/archive-volume'
+import { message, Modal } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
 import { SCAN_WORK_ORDER_STATUS_LABEL } from '@/apis/mark/scanner-work-order'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -42,7 +42,13 @@ const columns = [
   { title: '质检', key: 'batchQualityFlag', dataIndex: 'batchQualityFlag', width: 96 },
   { title: '状态', key: 'workOrderStatus', dataIndex: 'workOrderStatus', width: 96 },
   { title: '页数', key: 'pageCount', dataIndex: 'pageCount', width: 72, align: 'right' as const },
-  { title: '材料数', key: 'materialCount', dataIndex: 'materialCount', width: 80, align: 'right' as const },
+  {
+    title: '材料数',
+    key: 'materialCount',
+    dataIndex: 'materialCount',
+    width: 80,
+    align: 'right' as const,
+  },
   { title: '诊断', key: 'diagnostic', dataIndex: 'diagnostic', ellipsis: true },
   { title: '更新时间', key: 'updateTime', dataIndex: 'updateTime', width: 160 },
 ]
@@ -71,18 +77,16 @@ async function loadRows() {
     rows.value = readPageList(page, '扫描批次加载失败，请稍后重试')
     total.value = readPageTotal(page, '扫描批次总数加载失败，请稍后重试')
     selectedRowKeys.value = []
-  }
-  catch (error) {
+  } catch (error) {
     errorMessage.value = getUserErrorMessage(error)
     rows.value = []
     total.value = 0
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pageNum.value = pageEvent.current
   pageSize.value = pageEvent.pageSize
   void loadRows()
@@ -108,18 +112,15 @@ async function runBatchAction(action: 'retry' | 'discard') {
         }
         if (action === 'retry') {
           await batchRetryArchiveScanBatches(payload)
-        }
-        else {
+        } else {
           await batchDiscardArchiveScanBatches(payload)
         }
         message.success(`${label}已提交`)
         emit('refreshed')
         await loadRows()
-      }
-      catch (error) {
+      } catch (error) {
         message.error(getUserErrorMessage(error))
-      }
-      finally {
+      } finally {
         actionLoading.value = false
       }
     },
@@ -155,9 +156,7 @@ onMounted(() => {
       >
         批量作废
       </UiButton>
-      <UiButton size="sm" variant="outline" :disabled="loading" @click="loadRows">
-        刷新
-      </UiButton>
+      <UiButton size="sm" variant="outline" :disabled="loading" @click="loadRows"> 刷新 </UiButton>
     </div>
     <p v-if="errorMessage" class="archive-scan-batch-review__error">{{ errorMessage }}</p>
     <UiDataTable
@@ -177,12 +176,29 @@ onMounted(() => {
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'batchQualityFlag'">
-          <UiTag :tone="strictEnumTone(SCAN_BATCH_QUALITY_FLAG_TONE, record.batchQualityFlag, 'batchQualityFlag')" size="sm">
-            {{ strictEnumLabel(SCAN_BATCH_QUALITY_FLAG_LABEL, record.batchQualityFlag, 'batchQualityFlag') }}
+          <UiTag
+            :tone="
+              strictEnumTone(
+                SCAN_BATCH_QUALITY_FLAG_TONE,
+                record.batchQualityFlag,
+                'batchQualityFlag',
+              )
+            "
+            size="sm"
+          >
+            {{
+              strictEnumLabel(
+                SCAN_BATCH_QUALITY_FLAG_LABEL,
+                record.batchQualityFlag,
+                'batchQualityFlag',
+              )
+            }}
           </UiTag>
         </template>
         <template v-else-if="column.key === 'workOrderStatus'">
-          {{ strictEnumLabel(SCAN_WORK_ORDER_STATUS_LABEL, record.workOrderStatus, 'workOrderStatus') }}
+          {{
+            strictEnumLabel(SCAN_WORK_ORDER_STATUS_LABEL, record.workOrderStatus, 'workOrderStatus')
+          }}
         </template>
         <template v-else-if="column.key === 'updateTime'">
           {{ record.updateTime ? formatDateTime(record.updateTime) : '—' }}

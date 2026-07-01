@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import type { PortfolioPortraitDimension } from '@/apis/portfolio/enums'
 import type { PortfolioPortraitLayoutWidget, PortraitWidgetType } from '@/utils/portrait-layout'
+import { PORTRAIT_DIMENSION_OPTIONS, PORTRAIT_WIDGET_TYPE_LABEL } from '@/utils/portrait-layout'
 import { computed, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import {
-  PORTRAIT_DIMENSION_OPTIONS,
-  PORTRAIT_WIDGET_TYPE_LABEL,
-} from '@/utils/portrait-layout'
 
 const props = defineProps<{
   widgets: PortfolioPortraitLayoutWidget[]
@@ -20,11 +17,12 @@ const GRID_ROWS = 8
 const dragIndex = ref<number | null>(null)
 const selectedIndex = ref<number | null>(null)
 
-const widgetOptions = (Object.keys(PORTRAIT_WIDGET_TYPE_LABEL) as PortraitWidgetType[])
-  .map(value => ({ value, label: PORTRAIT_WIDGET_TYPE_LABEL[value] }))
+const widgetOptions = (Object.keys(PORTRAIT_WIDGET_TYPE_LABEL) as PortraitWidgetType[]).map(
+  (value) => ({ value, label: PORTRAIT_WIDGET_TYPE_LABEL[value] }),
+)
 
 const canvasCells = computed(() => {
-  const cells: Array<{ col: number, row: number, key: string }> = []
+  const cells: Array<{ col: number; row: number; key: string }> = []
   for (let row = 0; row < GRID_ROWS; row += 1) {
     for (let col = 0; col < GRID_COLS; col += 1) {
       cells.push({ col, row, key: `${col}-${row}` })
@@ -46,7 +44,10 @@ function addWidget() {
 }
 
 function removeWidget(index: number) {
-  emit('update:widgets', props.widgets.filter((_, i) => i !== index))
+  emit(
+    'update:widgets',
+    props.widgets.filter((_, i) => i !== index),
+  )
   if (selectedIndex.value === index) {
     selectedIndex.value = null
   }
@@ -98,7 +99,10 @@ function selectWidget(index: number) {
   <div class="layout-editor">
     <div
       class="layout-canvas"
-      :style="{ gridTemplateColumns: `repeat(${GRID_COLS}, 1fr)`, gridTemplateRows: `repeat(${GRID_ROWS}, 32px)` }"
+      :style="{
+        gridTemplateColumns: `repeat(${GRID_COLS}, 1fr)`,
+        gridTemplateRows: `repeat(${GRID_ROWS}, 32px)`,
+      }"
     >
       <div
         v-for="cell in canvasCells"
@@ -136,7 +140,9 @@ function selectWidget(index: number) {
         placeholder="绑定维度"
         style="width: 160px"
         :options="PORTRAIT_DIMENSION_OPTIONS"
-        @update:value="patch(selectedIndex, { dimensionCode: $event as PortfolioPortraitDimension | undefined })"
+        @update:value="
+          patch(selectedIndex, { dimensionCode: $event as PortfolioPortraitDimension | undefined })
+        "
       />
       <a-input-number
         :value="widgets[selectedIndex].w"
@@ -152,13 +158,9 @@ function selectWidget(index: number) {
         placeholder="高"
         @update:value="patch(selectedIndex, { h: Number($event) || 1 })"
       />
-      <UiButton size="sm" @click="removeWidget(selectedIndex)">
-        删除
-      </UiButton>
+      <UiButton size="sm" @click="removeWidget(selectedIndex)"> 删除 </UiButton>
     </div>
-    <UiButton @click="addWidget">
-      添加组件
-    </UiButton>
+    <UiButton @click="addWidget"> 添加组件 </UiButton>
   </div>
 </template>
 

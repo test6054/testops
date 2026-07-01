@@ -1,6 +1,6 @@
 import type { ArchiveTenantSetupReadinessVO } from '@/apis/mark/archive-platform-template'
-import { ref } from 'vue'
 import { getArchiveTenantSetupReadiness } from '@/apis/mark/archive-platform-template'
+import { ref } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 
 export function useArchiveTenantSetupReadiness() {
@@ -13,13 +13,11 @@ export function useArchiveTenantSetupReadiness() {
     readinessLoadFailed.value = false
     try {
       readiness.value = await getArchiveTenantSetupReadiness()
-    }
-    catch (error) {
+    } catch (error) {
       readiness.value = null
       readinessLoadFailed.value = true
       showUserError(error, '加载归档启用就绪状态失败')
-    }
-    finally {
+    } finally {
       readinessLoading.value = false
     }
   }

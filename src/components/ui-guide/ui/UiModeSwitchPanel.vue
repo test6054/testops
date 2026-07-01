@@ -17,7 +17,10 @@
       </template>
     </UiPanelHeader>
 
-    <div class="ui-mode-switch-panel__options" :class="`ui-mode-switch-panel__options--${props.columns}`">
+    <div
+      class="ui-mode-switch-panel__options"
+      :class="`ui-mode-switch-panel__options--${props.columns}`"
+    >
       <button
         v-for="item in props.options"
         :key="item.key"
@@ -32,16 +35,13 @@
       >
         <div class="ui-mode-switch-panel__option-head">
           <div class="ui-mode-switch-panel__option-title">{{ item.label }}</div>
-          <UiBadge
-            v-if="item.badgeLabel"
-            :tone="item.badgeTone || 'gray'"
-            variant="soft"
-            size="sm"
-          >
+          <UiBadge v-if="item.badgeLabel" :tone="item.badgeTone || 'gray'" variant="soft" size="sm">
             {{ item.badgeLabel }}
           </UiBadge>
         </div>
-        <div v-if="item.description" class="ui-mode-switch-panel__option-desc">{{ item.description }}</div>
+        <div v-if="item.description" class="ui-mode-switch-panel__option-desc">
+          {{ item.description }}
+        </div>
       </button>
     </div>
 
@@ -64,23 +64,26 @@ defineOptions({
 
 const currentValue = defineModel<string>({ default: '' })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  options?: UiModeSwitchOption[]
-  columns?: 2 | 3
-  compact?: boolean
-  divided?: boolean
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  options: () => [],
-  columns: 3,
-  compact: false,
-  divided: true,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    options?: UiModeSwitchOption[]
+    columns?: 2 | 3
+    compact?: boolean
+    divided?: boolean
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    options: () => [],
+    columns: 3,
+    compact: false,
+    divided: true,
+  },
+)
 
 const slots = useSlots()
 
@@ -89,7 +92,7 @@ const hasHeader = computed(() => {
 })
 
 const activeOption = computed(() => {
-  return props.options.find(item => item.key === currentValue.value)
+  return props.options.find((item) => item.key === currentValue.value)
 })
 
 const handleChange = (key: string) => {

@@ -6,7 +6,9 @@ export interface MarkExamSelectOption {
   label: string
 }
 
-export function formatMarkExamOptionLabel(exam: Pick<ExamSummaryVO, 'examName' | 'examNo'>): string {
+export function formatMarkExamOptionLabel(
+  exam: Pick<ExamSummaryVO, 'examName' | 'examNo'>,
+): string {
   if (!exam.examNo) return exam.examName
   return `${exam.examName} (${exam.examNo})`
 }
@@ -20,7 +22,9 @@ export function formatMarkExamAcademicTerm(
 export function toMarkExamSelectOption(exam: ExamSummaryVO): MarkExamSelectOption {
   return {
     value: exam.examId,
-    label: [formatMarkExamOptionLabel(exam), formatMarkExamAcademicTerm(exam)].filter(Boolean).join(' · '),
+    label: [formatMarkExamOptionLabel(exam), formatMarkExamAcademicTerm(exam)]
+      .filter(Boolean)
+      .join(' · '),
   }
 }
 

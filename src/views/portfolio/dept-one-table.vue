@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanStatus } from '@/apis/portfolio/enums'
-import type { PortfolioDeptOneTableSummaryVO, PortfolioDeptOneTableTeacherRowVO } from '@/apis/portfolio/teacher'
+import {
+  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL,
+  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
+} from '@/apis/portfolio/enums'
+import type {
+  PortfolioDeptOneTableSummaryVO,
+  PortfolioDeptOneTableTeacherRowVO,
+} from '@/apis/portfolio/teacher'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL, PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE } from '@/apis/portfolio/enums'
-import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -65,16 +71,18 @@ const titleChartOption = computed(() => {
   }
   return {
     tooltip: { trigger: 'item' },
-    series: [{
-      type: 'pie',
-      radius: ['42%', '68%'],
-      data: titleStructureRows
-        .map(row => ({
-          name: row.label,
-          value: summary.value?.[row.key] ?? 0,
-        }))
-        .filter(item => item.value > 0),
-    }],
+    series: [
+      {
+        type: 'pie',
+        radius: ['42%', '68%'],
+        data: titleStructureRows
+          .map((row) => ({
+            name: row.label,
+            value: summary.value?.[row.key] ?? 0,
+          }))
+          .filter((item) => item.value > 0),
+      },
+    ],
   }
 })
 
@@ -91,11 +99,9 @@ async function loadSummary() {
       departmentId: filter.departmentId,
       planYear: filter.planYear.trim() || undefined,
     })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -118,11 +124,9 @@ async function loadTeachers() {
     teacherQuery.pageNum = page.pageNum
     teacherQuery.pageSize = page.pageSize
     teacherTotal.value = readPageTotal(page, '加载教师明细失败')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     teacherLoading.value = false
   }
 }
@@ -145,20 +149,18 @@ async function exportDeptOneTable() {
     })
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 行`)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     exporting.value = false
   }
 }
 
-function structureCount(key: typeof titleStructureRows[number]['key']) {
+function structureCount(key: (typeof titleStructureRows)[number]['key']) {
   return summary.value?.[key] ?? 0
 }
 
-function handleTeacherPageChange(page: { current: number, pageSize: number }) {
+function handleTeacherPageChange(page: { current: number; pageSize: number }) {
   teacherQuery.pageNum = page.current
   teacherQuery.pageSize = page.pageSize
   void loadTeachers()
@@ -201,11 +203,7 @@ watch(
   <StageWorkbenchShell>
     <ContextBar title="部门一张表" subtitle="院系师资结构 · 教师明细 · 职称分布">
       <template #actions>
-        <UiButton
-          :loading="exporting"
-          :disabled="!filter.departmentId"
-          @click="exportDeptOneTable"
-        >
+        <UiButton :loading="exporting" :disabled="!filter.departmentId" @click="exportDeptOneTable">
           导出部门一张表
         </UiButton>
       </template>
@@ -226,14 +224,8 @@ watch(
         />
       </div>
       <a-spin :spinning="loading">
-        <UiEmpty
-          v-if="!filter.departmentId"
-          description="请选择院系查看部门一张表"
-        />
-        <UiEmpty
-          v-else-if="!loading && !summary"
-          description="暂无该院系汇总数据"
-        />
+        <UiEmpty v-if="!filter.departmentId" description="请选择院系查看部门一张表" />
+        <UiEmpty v-else-if="!loading && !summary" description="暂无该院系汇总数据" />
         <template v-else-if="summary">
           <a-descriptions :column="3" size="small" bordered style="margin-top: 16px">
             <a-descriptions-item label="院系">
@@ -262,7 +254,8 @@ watch(
                 {{ summary.planYear }}
               </a-descriptions-item>
               <a-descriptions-item label="年度规划">
-                {{ summary.developmentPlanApprovedCount ?? 0 }} / {{ summary.developmentPlanTotalCount ?? 0 }}
+                {{ summary.developmentPlanApprovedCount ?? 0 }} /
+                {{ summary.developmentPlanTotalCount ?? 0 }}
               </a-descriptions-item>
               <a-descriptions-item label="规划完成率">
                 {{ summary.developmentPlanCompletionRatePercent ?? 0 }}%
@@ -315,13 +308,21 @@ watch(
                   {{ boolLabel(record.externalTeacher) }}
                 </template>
                 <template v-else-if="column.key === 'developmentPlanStatus'">
-                  <UiTag v-if="record.developmentPlanStatus" :tone="planStatusTone(record.developmentPlanStatus)" size="sm">
+                  <UiTag
+                    v-if="record.developmentPlanStatus"
+                    :tone="planStatusTone(record.developmentPlanStatus)"
+                    size="sm"
+                  >
                     {{ planStatusLabel(record.developmentPlanStatus) }}
                   </UiTag>
                   <span v-else>—</span>
                 </template>
                 <template v-else-if="column.key === 'developmentPlanItemCompletionPercent'">
-                  {{ record.developmentPlanItemCompletionPercent != null ? `${record.developmentPlanItemCompletionPercent}%` : '—' }}
+                  {{
+                    record.developmentPlanItemCompletionPercent != null
+                      ? `${record.developmentPlanItemCompletionPercent}%`
+                      : '—'
+                  }}
                 </template>
               </template>
             </UiDataTable>

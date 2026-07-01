@@ -1,4 +1,4 @@
-import type {Ref} from 'vue';
+import type { Ref } from 'vue'
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useDraggable } from 'vue-draggable-plus'
 
@@ -29,7 +29,8 @@ export function useArchiveTemplateTableSortable<T>(
   async function refreshSortable() {
     pause()
     await nextTick()
-    sortableTargetRef.value = tableRootRef.value?.querySelector<HTMLElement>('.ant-table-tbody') ?? null
+    sortableTargetRef.value =
+      tableRootRef.value?.querySelector<HTMLElement>('.ant-table-tbody') ?? null
     if (sortableTargetRef.value && listRef.value.length > 0) {
       start()
     }

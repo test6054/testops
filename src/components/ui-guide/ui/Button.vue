@@ -16,8 +16,21 @@
     @click="onClick"
   >
     <span v-if="loading" class="dp-btn__loading">
-      <svg class="dp-btn__spinner" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="31.4 31.4" />
+      <svg
+        class="dp-btn__spinner"
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <circle
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          stroke-width="3"
+          stroke-linecap="round"
+          stroke-dasharray="31.4 31.4"
+        />
       </svg>
     </span>
     <span v-if="hasPrefixIcon && !loading" class="dp-btn__icon">
@@ -41,27 +54,30 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  variant?: UiButtonVariant
-  size?: UiComponentSize
-  block?: boolean
-  disabled?: boolean
-  loading?: boolean
-  status?: UiButtonStatus
-  type?: 'button' | 'submit' | 'reset'
-  htmlType?: 'button' | 'submit' | 'reset'
-  iconOnly?: boolean
-}>(), {
-  variant: 'primary',
-  size: 'md',
-  block: false,
-  disabled: false,
-  loading: false,
-  status: 'normal',
-  type: 'button',
-  htmlType: undefined,
-  iconOnly: false,
-})
+const props = withDefaults(
+  defineProps<{
+    variant?: UiButtonVariant
+    size?: UiComponentSize
+    block?: boolean
+    disabled?: boolean
+    loading?: boolean
+    status?: UiButtonStatus
+    type?: 'button' | 'submit' | 'reset'
+    htmlType?: 'button' | 'submit' | 'reset'
+    iconOnly?: boolean
+  }>(),
+  {
+    variant: 'primary',
+    size: 'md',
+    block: false,
+    disabled: false,
+    loading: false,
+    status: 'normal',
+    type: 'button',
+    htmlType: undefined,
+    iconOnly: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'click', evt: MouseEvent): void

@@ -85,21 +85,24 @@ defineOptions({
 
 const modelValue = defineModel<string>({ default: '' })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  items?: UiMilestoneItem[]
-  compact?: boolean
-  divided?: boolean
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  items: () => [],
-  compact: false,
-  divided: false,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    items?: UiMilestoneItem[]
+    compact?: boolean
+    divided?: boolean
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    items: () => [],
+    compact: false,
+    divided: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'select', value: string): void
@@ -120,7 +123,12 @@ const normalizedItems = computed(() => {
 })
 
 const currentActiveKey = computed(() => {
-  return modelValue.value || normalizedItems.value.find(item => item.status === 'active')?.key || normalizedItems.value[0]?.key || ''
+  return (
+    modelValue.value ||
+    normalizedItems.value.find((item) => item.status === 'active')?.key ||
+    normalizedItems.value[0]?.key ||
+    ''
+  )
 })
 
 const railStyle = computed(() => {

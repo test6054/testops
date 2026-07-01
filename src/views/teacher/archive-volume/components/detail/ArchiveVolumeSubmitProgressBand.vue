@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import type { ArchiveVolumeSubmitChecklistItemVO, ArchiveVolumeSubmitProgressVO } from '@/apis/mark/archive-volume'
+import type {
+  ArchiveVolumeSubmitChecklistItemVO,
+  ArchiveVolumeSubmitProgressVO,
+} from '@/apis/mark/archive-volume'
 import { computed, ref } from 'vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
@@ -22,7 +25,7 @@ const pendingCount = computed(() => {
   if (props.progress?.pendingBlockingCount != null) {
     return props.progress.pendingBlockingCount
   }
-  return props.blockingItems?.filter(item => item.passed !== true).length ?? 0
+  return props.blockingItems?.filter((item) => item.passed !== true).length ?? 0
 })
 
 const currentLabel = computed(() => props.progress?.currentStepLabel ?? '材料收齐')
@@ -36,7 +39,9 @@ const submitReady = computed(() => props.progress?.submitReady === true)
         <span class="archive-volume-submit-progress-band__label">当前步骤</span>
         <strong class="archive-volume-submit-progress-band__step">{{ currentLabel }}</strong>
         <UiTag v-if="submitReady" tone="green" size="sm">可提交</UiTag>
-        <UiTag v-else-if="pendingCount > 0" tone="orange" size="sm">还有 {{ pendingCount }} 项</UiTag>
+        <UiTag v-else-if="pendingCount > 0" tone="orange" size="sm"
+          >还有 {{ pendingCount }} 项</UiTag
+        >
       </div>
       <UiTextAction v-if="pendingCount > 0" @click="expanded = !expanded">
         {{ expanded ? '收起待办' : '展开待办' }}

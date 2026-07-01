@@ -1,5 +1,6 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { Ref } from 'vue'
+import { computed, ref } from 'vue'
 import type {
   MarkingPageAnnotationSubmitItem,
   MarkingQuestionScoreSubmitItem,
@@ -7,14 +8,13 @@ import type {
   MarkingTaskVO,
   QuestionMarkingGroupQuestionVO,
 } from '@/apis/mark/marking-organization'
+import { submitMarkingTask } from '@/apis/mark/marking-organization'
 import type { WholeQuestionForm } from '@/composables/useWholePaperGallery'
 import message from 'ant-design-vue/es/message'
-import { computed, ref } from 'vue'
 import {
   batchSubmitMarkingTasksInChunks,
   precheckMarkingTaskBatch,
 } from '@/apis/mark/marking-batch'
-import { submitMarkingTask } from '@/apis/mark/marking-organization'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   buildGradingDraftKey,
@@ -39,7 +39,7 @@ export interface UseMarkingSubmitOptions {
   goToTask: (targetTaskId: string) => void
   loadTask: () => Promise<void>
   tenantId: Ref<string>
-  form: { score?: number, annotationNote?: string }
+  form: { score?: number; annotationNote?: string }
   wholeQuestions: Ref<QuestionMarkingGroupQuestionVO[]>
   getWholeQuestionForm: (questionTemplateId: string) => WholeQuestionForm
   wholePageAnnotationForms: Record<string, string>
@@ -47,7 +47,7 @@ export interface UseMarkingSubmitOptions {
     questionScores: MarkingQuestionScoreSubmitItem[]
     pageAnnotations: MarkingPageAnnotationSubmitItem[]
   }
-  onSubmitSuccess?: (payload: { taskId: string, score: number }) => void
+  onSubmitSuccess?: (payload: { taskId: string; score: number }) => void
 }
 
 export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
@@ -101,12 +101,10 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     }
   }
 
-  function resolveSubmittedScore(
-    submitRequest: {
-      questionScores: MarkingQuestionScoreSubmitItem[]
-      pageAnnotations: MarkingPageAnnotationSubmitItem[]
-    },
-  ): number {
+  function resolveSubmittedScore(submitRequest: {
+    questionScores: MarkingQuestionScoreSubmitItem[]
+    pageAnnotations: MarkingPageAnnotationSubmitItem[]
+  }): number {
     const firstScore = submitRequest.questionScores[0]?.score
     if (firstScore === undefined) {
       throw new Error('提交给分缺失')
@@ -133,7 +131,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   }
 
   function buildDraftPayload() {
-    const wholeQuestionForms: Record<string, { score?: number, annotationText: string }> = {}
+    const wholeQuestionForms: Record<string, { score?: number; annotationText: string }> = {}
     for (const question of options.wholeQuestions.value) {
       const qForm = options.getWholeQuestionForm(question.questionTemplateId)
       if (qForm.score !== undefined || qForm.annotationText.trim()) {
@@ -146,7 +144,8 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     return {
       score: options.form.score,
       annotationNote: options.form.annotationNote,
-      wholeQuestionForms: Object.keys(wholeQuestionForms).length > 0 ? wholeQuestionForms : undefined,
+      wholeQuestionForms:
+        Object.keys(wholeQuestionForms).length > 0 ? wholeQuestionForms : undefined,
       wholePageAnnotationForms: { ...options.wholePageAnnotationForms },
       updatedAt: Date.now(),
     }
@@ -166,7 +165,11 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     applyModalCountdown.value = 0
   }
 
-  async function confirmExtremeBatchScore(score: number, count: number, fullScore: number): Promise<boolean> {
+  async function confirmExtremeBatchScore(
+    score: number,
+    count: number,
+    fullScore: number,
+  ): Promise<boolean> {
     if (score !== 0 && score !== fullScore) return true
     const isZero = score === 0
     return confirmAsync({
@@ -183,8 +186,14 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   async function applyScoreToRemaining(): Promise<void> {
     const currentTask = options.task.value
     const score = submittedScoreSnapshot.value
-    const questionTemplateId = pendingBatchQuestionTemplateId.value || options.questionView.value?.questionTemplateId
-    if (!currentTask?.examId || !currentTask.groupId || score === undefined || !questionTemplateId) {
+    const questionTemplateId =
+      pendingBatchQuestionTemplateId.value || options.questionView.value?.questionTemplateId
+    if (
+      !currentTask?.examId ||
+      !currentTask.groupId ||
+      score === undefined ||
+      !questionTemplateId
+    ) {
       closeApplyModal()
       return
     }
@@ -194,19 +203,25 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       return
     }
 
-    const confirmed = await confirmExtremeBatchScore(score, taskIds.length, pendingBatchFullScore.value)
+    const confirmed = await confirmExtremeBatchScore(
+      score,
+      taskIds.length,
+      pendingBatchFullScore.value,
+    )
     if (!confirmed) return
 
     closeApplyModal()
     batchApplying.value = true
     batchApplyProgress.value = { done: 0, total: taskIds.length }
 
-    const questionScores: MarkingQuestionScoreSubmitItem[] = [{
-      questionTemplateId,
-      score,
-      annotationText: options.form.annotationNote?.trim() || undefined,
-      correlationId: createCorrelationId('question', questionTemplateId),
-    }]
+    const questionScores: MarkingQuestionScoreSubmitItem[] = [
+      {
+        questionTemplateId,
+        score,
+        annotationText: options.form.annotationNote?.trim() || undefined,
+        correlationId: createCorrelationId('question', questionTemplateId),
+      },
+    ]
 
     const baseRequest = {
       examId: currentTask.examId,
@@ -220,13 +235,9 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
         message.error(precheck.blockingReason ?? '批量预检未通过')
         return
       }
-      const results = await batchSubmitMarkingTasksInChunks(
-        baseRequest,
-        taskIds,
-        (done, total) => {
-          batchApplyProgress.value = { done, total }
-        },
-      )
+      const results = await batchSubmitMarkingTasksInChunks(baseRequest, taskIds, (done, total) => {
+        batchApplyProgress.value = { done, total }
+      })
       const failed = results.find((item) => item.outcome === 'FAILED')
       if (failed) {
         message.error(failed.failureMessage ?? '批量提交失败')
@@ -235,8 +246,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       const warn = results.find((item) => item.outcome === 'WARN')
       if (warn?.annotationWarning) {
         message.warning(warn.annotationWarning)
-      }
-      else {
+      } else {
         message.success(`已将 ${taskIds.length} 份同类卷应用 ${score} 分`)
       }
       for (const submittedTaskId of taskIds) {
@@ -248,11 +258,9 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
         })
       }
       await refreshSnapshot()
-    }
-    catch (error) {
+    } catch (error) {
       showUserError(error, '批量应用给分失败')
-    }
-    finally {
+    } finally {
       batchApplying.value = false
     }
   }
@@ -302,12 +310,16 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   function continueAfterSubmit(): void {
     if (options.nextTaskId.value) {
       if (!applyModalOpen.value) {
-        message.success(`阅卷任务已提交，已切换到${options.isWholePaperTask.value ? '下一份' : '下一题'}`)
+        message.success(
+          `阅卷任务已提交，已切换到${options.isWholePaperTask.value ? '下一份' : '下一题'}`,
+        )
         options.goToTask(options.nextTaskId.value)
       }
       return
     }
-    message.success(`阅卷任务已提交，当前批次已到最后${options.isWholePaperTask.value ? '一份' : '一题'}`)
+    message.success(
+      `阅卷任务已提交，当前批次已到最后${options.isWholePaperTask.value ? '一份' : '一题'}`,
+    )
     void options.loadTask()
   }
 
@@ -316,17 +328,17 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     if (!options.usesWholePaperWorkspace.value) {
       try {
         await formRef.value.validate()
-      }
-      catch {
+      } catch {
         return
       }
     }
     onGradingDraftSubmitStart()
     submitting.value = true
     const currentTask = options.task.value
-    const draftKey = options.tenantId.value && currentTask
-      ? buildGradingDraftKey(options.tenantId.value, currentTask.examId, currentTask.id)
-      : null
+    const draftKey =
+      options.tenantId.value && currentTask
+        ? buildGradingDraftKey(options.tenantId.value, currentTask.examId, currentTask.id)
+        : null
     try {
       const submitRequest = options.usesWholePaperWorkspace.value
         ? options.buildWholePaperSubmitRequest()
@@ -355,11 +367,9 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
         return
       }
       continueAfterSubmit()
-    }
-    catch (error) {
+    } catch (error) {
       showUserError(error, '提交阅卷任务失败')
-    }
-    finally {
+    } finally {
       submitting.value = false
     }
   }
@@ -377,14 +387,15 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     if (options.usesWholePaperWorkspace.value) {
       const hasQuestionDraft = options.wholeQuestions.value.some((question) => {
         const questionForm = options.getWholeQuestionForm(question.questionTemplateId)
-        return (questionForm.score !== undefined && questionForm.score !== null)
-          || (questionForm.annotationText?.trim() ?? '') !== ''
+        return (
+          (questionForm.score !== undefined && questionForm.score !== null) ||
+          (questionForm.annotationText?.trim() ?? '') !== ''
+        )
       })
       if (hasQuestionDraft) return true
       return Object.values(options.wholePageAnnotationForms).some((text) => text.trim() !== '')
     }
-    return options.form.score !== undefined
-      || (options.form.annotationNote?.trim() ?? '') !== ''
+    return options.form.score !== undefined || (options.form.annotationNote?.trim() ?? '') !== ''
   })
 
   return {

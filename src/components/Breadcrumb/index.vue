@@ -8,12 +8,13 @@
       >
         <span
           v-if="
-            item.redirect === 'noRedirect'
-              || item.redirect === ''
-              || index === breadcrumbList.length - 1
+            item.redirect === 'noRedirect' ||
+            item.redirect === '' ||
+            index === breadcrumbList.length - 1
           "
           class="gi_line_1"
-        >{{ item.meta.title }}</span>
+          >{{ item.meta.title }}</span
+        >
         <span v-else class="gi_line_1 breadcrumb-item-title" @click="handleLink(item)">{{
           item.meta.title
         }}</span>
@@ -42,9 +43,9 @@ const getHome = () => {
     const obj = XEUtils.findTree(
       cloneRoutes,
       (i) =>
-        i.path === '/teacher/dashboard'
-        || i.path === '/teacher/exam-list'
-        || i.path === '/student/score',
+        i.path === '/teacher/dashboard' ||
+        i.path === '/teacher/exam-list' ||
+        i.path === '/student/score',
     )
     home = obj?.item || null
   }

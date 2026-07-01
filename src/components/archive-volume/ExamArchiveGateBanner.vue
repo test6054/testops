@@ -16,9 +16,7 @@
       dense
     >
       <template v-if="showCloseReadyAction" #actions>
-        <UiButton variant="outline" size="sm" @click="emit('go-close-exam')">
-          前往关考
-        </UiButton>
+        <UiButton variant="outline" size="sm" @click="emit('go-close-exam')"> 前往关考 </UiButton>
       </template>
     </UiAlertStrip>
     <UiDataTable
@@ -48,8 +46,8 @@
 
 <script lang="ts" setup>
 import type { ArchiveVolumeExamGateVO } from '@/apis/mark/archive-volume'
-import { computed, ref, watch } from 'vue'
 import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
+import { computed, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -60,20 +58,23 @@ import {
 } from '@/composables/useExamArchiveGateHint'
 import { showUserError } from '@/utils/error-handler'
 
-const props = withDefaults(defineProps<{
-  examId?: string | null
-  compact?: boolean
-  /** 是否在 Banner 下展示按班进度表；与 compact 独立，发布页可紧凑条 + 小表 */
-  showClassProgressTable?: boolean
-}>(), {
-  examId: null,
-  compact: false,
-  showClassProgressTable: true,
-})
+const props = withDefaults(
+  defineProps<{
+    examId?: string | null
+    compact?: boolean
+    /** 是否在 Banner 下展示按班进度表；与 compact 独立，发布页可紧凑条 + 小表 */
+    showClassProgressTable?: boolean
+  }>(),
+  {
+    examId: null,
+    compact: false,
+    showClassProgressTable: true,
+  },
+)
 
 const emit = defineEmits<{
   'go-close-exam': []
-  'loaded': [ArchiveVolumeExamGateVO]
+  loaded: [ArchiveVolumeExamGateVO]
 }>()
 
 const loading = ref(false)
@@ -129,22 +130,21 @@ const bannerDescription = computed(() => {
   if (incompleteClasses.value.length > 0) {
     const classHint = incompleteClasses.value
       .slice(0, 3)
-      .map(item => `${item.className} ${item.unpublishedBoundPaperCount} 份`)
+      .map((item) => `${item.className} ${item.unpublishedBoundPaperCount} 份`)
       .join('；')
     return `${gateProgressHint.value}${classHint ? `（${classHint}）` : ''}`
   }
   return gateProgressHint.value
 })
 
-const showCloseReadyAction = computed(() =>
-  props.compact
-  && gate.value?.allScoresPublished === true
-  && gate.value?.examClosed !== true,
+const showCloseReadyAction = computed(
+  () => props.compact && gate.value?.allScoresPublished === true && gate.value?.examClosed !== true,
 )
 
-const showClassTable = computed(() =>
-  (gate.value?.classPublishProgress?.length ?? 0) > 0
-  && (gate.value?.unpublishedBoundPaperCount ?? 0) > 0,
+const showClassTable = computed(
+  () =>
+    (gate.value?.classPublishProgress?.length ?? 0) > 0 &&
+    (gate.value?.unpublishedBoundPaperCount ?? 0) > 0,
 )
 
 const classColumns = [
@@ -154,7 +154,7 @@ const classColumns = [
 ]
 
 const classRows = computed(() =>
-  (gate.value?.classPublishProgress ?? []).map(item => ({
+  (gate.value?.classPublishProgress ?? []).map((item) => ({
     classId: item.classId,
     className: item.className?.trim() || (item.classId ? `班级 ${item.classId}` : '未分班'),
     boundPaperCount: item.boundPaperCount ?? 0,
@@ -173,20 +173,22 @@ async function refresh(): Promise<void> {
   try {
     gate.value = await getArchiveVolumeExamGate(props.examId)
     emit('loaded', gate.value)
-  }
-  catch (error) {
+  } catch (error) {
     gate.value = null
     loadFailed.value = true
     showUserError(error, '加载考试双门禁失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
-watch(() => props.examId, () => {
-  void refresh()
-}, { immediate: true })
+watch(
+  () => props.examId,
+  () => {
+    void refresh()
+  },
+  { immediate: true },
+)
 
 defineExpose({
   gate,

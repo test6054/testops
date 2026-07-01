@@ -1,7 +1,7 @@
 import type { WorkbenchStageSnapshotVO } from '@/apis/mark/exam-progress'
+import { getWorkbenchStageSnapshot } from '@/apis/mark/exam-progress'
 import { storeToRefs } from 'pinia'
 import { onBeforeUnmount, ref, watch } from 'vue'
-import { getWorkbenchStageSnapshot } from '@/apis/mark/exam-progress'
 import { usePolling } from '@/composables/usePolling'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { showUserError } from '@/utils/error-handler'
@@ -15,8 +15,16 @@ const SNAPSHOT_POLL_MAX_MS = 30000
  */
 export function useMarkWorkbenchSnapshot(examId: () => string) {
   const markStageStore = useMarkStageStore()
-  const { snapshot, loading, error, orderedStages, suggestedStageKey, prepAdvisoryReasons, prepBlockingReasons, selectedExamLabel }
-    = storeToRefs(markStageStore)
+  const {
+    snapshot,
+    loading,
+    error,
+    orderedStages,
+    suggestedStageKey,
+    prepAdvisoryReasons,
+    prepBlockingReasons,
+    selectedExamLabel,
+  } = storeToRefs(markStageStore)
   const refreshing = ref(false)
   const pollIntervalMs = ref(SNAPSHOT_POLL_BASE_MS)
 
@@ -35,10 +43,10 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
       return true
     }
     const watchStageKeys = new Set(['SCAN', 'FORMAL_MARKING'])
-    return current.stages.some((stage) => (
-      watchStageKeys.has(stage.key)
-      && (stage.status === 'active' || stage.status === 'warning')
-    ))
+    return current.stages.some(
+      (stage) =>
+        watchStageKeys.has(stage.key) && (stage.status === 'active' || stage.status === 'warning'),
+    )
   }
 
   let syncPollingRef: (() => void) | null = null
@@ -67,20 +75,17 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
           pollIntervalMs.value + SNAPSHOT_POLL_BASE_MS,
           SNAPSHOT_POLL_MAX_MS,
         )
-      }
-      else {
+      } else {
         pollIntervalMs.value = SNAPSHOT_POLL_BASE_MS
       }
       syncPollingRef?.()
-    }
-    catch (err) {
+    } catch (err) {
       if (quiet) {
         quietFailureCount += 1
         if (quietFailureCount >= 2) {
           showUserError(err, '工作台阶段快照加载失败')
         }
-      }
-      else {
+      } else {
         markStageStore.reset()
         markStageStore.observeExam(id)
         markStageStore.setError('工作台阶段快照加载失败')
@@ -91,8 +96,7 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
       if (!quiet) {
         throw err
       }
-    }
-    finally {
+    } finally {
       if (!quiet) {
         markStageStore.setLoading(false)
         refreshing.value = false
@@ -118,14 +122,18 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
   )
   syncPollingRef = polling.syncPolling
 
-  watch(examId, (next, prev) => {
-    if (next === prev) {
-      return
-    }
-    quietFailureCount = 0
-    pollIntervalMs.value = SNAPSHOT_POLL_BASE_MS
-    void refreshSnapshot()
-  }, { immediate: true })
+  watch(
+    examId,
+    (next, prev) => {
+      if (next === prev) {
+        return
+      }
+      quietFailureCount = 0
+      pollIntervalMs.value = SNAPSHOT_POLL_BASE_MS
+      void refreshSnapshot()
+    },
+    { immediate: true },
+  )
 
   onBeforeUnmount(() => {
     polling.pause()

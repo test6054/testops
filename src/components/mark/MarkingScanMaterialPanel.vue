@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import type { MarkingScanPageRefVO } from '@/apis/mark/exam-scan'
+import { QUALITY_DECISION_LABEL, QUALITY_DECISION_TONE } from '@/apis/mark/exam-scan'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import { QUALITY_DECISION_LABEL, QUALITY_DECISION_TONE } from '@/apis/mark/exam-scan'
 import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -33,9 +33,11 @@ const loading = ref(false)
 const hasSlice = computed(() => Boolean(props.sliceFileId))
 const hasSource = computed(() => Boolean(props.sourceScanPage?.fileId))
 const hasMaster = computed(() => Boolean(props.masterPaperPage?.fileId))
-const showTabs = computed(() => (hasSlice.value ? 1 : 0) + (hasSource.value ? 1 : 0) + (hasMaster.value ? 1 : 0) > 1)
+const showTabs = computed(
+  () => (hasSlice.value ? 1 : 0) + (hasSource.value ? 1 : 0) + (hasMaster.value ? 1 : 0) > 1,
+)
 const tabOptions = computed(() => {
-  const options: { label: string, value: ViewTab }[] = []
+  const options: { label: string; value: ViewTab }[] = []
   if (hasSlice.value) {
     options.push({ label: '作答切片', value: 'slice' })
   }
@@ -51,7 +53,14 @@ const tabOptions = computed(() => {
 /** 母版页 ROI 定位样式（像素→百分比，适配浏览器任意渲染尺寸） */
 const masterRoiStyle = computed(() => {
   const page = props.masterPaperPage
-  if (!page || page.roiX == null || page.roiY == null || page.roiWidth == null || page.roiHeight == null) return null
+  if (
+    !page ||
+    page.roiX == null ||
+    page.roiY == null ||
+    page.roiWidth == null ||
+    page.roiHeight == null
+  )
+    return null
   const pw = page.pageImageWidth
   const ph = page.pageImageHeight
   if (!pw || !ph || pw <= 0 || ph <= 0) return null
@@ -168,7 +177,10 @@ onBeforeUnmount(releaseImages)
       <div v-else-if="hasSlice && !hasSource" class="marking-scan-material__solo-label">
         作答切片
       </div>
-      <div v-else-if="hasMaster && !hasSlice && !hasSource" class="marking-scan-material__solo-label">
+      <div
+        v-else-if="hasMaster && !hasSlice && !hasSource"
+        class="marking-scan-material__solo-label"
+      >
         试卷母版
       </div>
       <a-spin :spinning="loading" tip="加载影像中...">

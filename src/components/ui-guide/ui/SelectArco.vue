@@ -24,28 +24,31 @@ defineOptions({
 
 const modelValue = defineModel<UiOptionValue | UiOptionValue[] | undefined>()
 
-const props = withDefaults(defineProps<{
-  options: UiSelectOption[]
-  placeholder?: string
-  allowClear?: boolean
-  allowSearch?: boolean
-  showSearch?: boolean
-  allowCreate?: boolean
-  filterOption?: boolean
-  mode?: 'multiple'
-  disabled?: boolean
-  loading?: boolean
-}>(), {
-  placeholder: '请选择',
-  allowClear: true,
-  allowSearch: false,
-  showSearch: undefined,
-  allowCreate: false,
-  filterOption: true,
-  mode: undefined,
-  disabled: false,
-  loading: false,
-})
+const props = withDefaults(
+  defineProps<{
+    options: UiSelectOption[]
+    placeholder?: string
+    allowClear?: boolean
+    allowSearch?: boolean
+    showSearch?: boolean
+    allowCreate?: boolean
+    filterOption?: boolean
+    mode?: 'multiple'
+    disabled?: boolean
+    loading?: boolean
+  }>(),
+  {
+    placeholder: '请选择',
+    allowClear: true,
+    allowSearch: false,
+    showSearch: undefined,
+    allowCreate: false,
+    filterOption: true,
+    mode: undefined,
+    disabled: false,
+    loading: false,
+  },
+)
 
 const resolvedAllowSearch = computed(() => props.showSearch ?? props.allowSearch)
 </script>

@@ -17,10 +17,7 @@
       </UiButton>
     </template>
     <UiEmpty v-if="!loaded && !loading" description="正在加载扫描页…" />
-    <UiEmpty
-      v-else-if="error"
-      :description="scanPagesErrorText"
-    />
+    <UiEmpty v-else-if="error" :description="scanPagesErrorText" />
     <a-spin v-else :spinning="loading" tip="加载扫描页中...">
       <UiEmpty v-if="loaded && pages.length === 0" description="暂无数据" />
       <div
@@ -64,10 +61,7 @@
               :min-height="480"
               class="whole-paper-gallery__image"
             />
-            <UiEmpty
-              v-else-if="imageErrors[item.page.pageId]"
-              description="暂无数据"
-            />
+            <UiEmpty v-else-if="imageErrors[item.page.pageId]" description="暂无数据" />
             <div v-else class="whole-paper-gallery__image-placeholder">
               <a-spin :spinning="Boolean(imageLoading[item.page.pageId])" />
               <span>扫描页图片加载中</span>
@@ -82,7 +76,9 @@
             class="whole-paper-gallery__annotation"
             placeholder="页面级批注，可选"
             show-count
-            @update:value="(value: string) => emit('update:page-annotation', item.page.pageId, value)"
+            @update:value="
+              (value: string) => emit('update:page-annotation', item.page.pageId, value)
+            "
           />
         </div>
         <div
@@ -113,32 +109,35 @@ import { getUserProcessFailureMessage } from '@/utils/error-handler'
 
 defineOptions({ name: 'WholePaperGallery' })
 
-const props = withDefaults(defineProps<{
-  examId?: string
-  taskId?: string
-  pages: ScannedPageRef[]
-  loaded: boolean
-  loading: boolean
-  error: Error | null
-  visiblePages: VisibleWholePage[]
-  topSpacerHeight: number
-  bottomSpacerHeight: number
-  currentPageIndex: number
-  imageUrls: Record<string, string>
-  imageLoading: Record<string, boolean>
-  imageErrors: Record<string, Error | null>
-  pageAnnotations: Record<string, string>
-  showPageAnnotations: boolean
-  readOnly: boolean
-  qualityLabel: (status: QualityDecisionCode) => string
-  qualityTone: (status: QualityDecisionCode) => BadgeTone
-  confidential?: boolean
-  examLabel?: string
-  watermarkLines?: string[]
-  viewerWatermark?: boolean
-}>(), {
-  viewerWatermark: true,
-})
+const props = withDefaults(
+  defineProps<{
+    examId?: string
+    taskId?: string
+    pages: ScannedPageRef[]
+    loaded: boolean
+    loading: boolean
+    error: Error | null
+    visiblePages: VisibleWholePage[]
+    topSpacerHeight: number
+    bottomSpacerHeight: number
+    currentPageIndex: number
+    imageUrls: Record<string, string>
+    imageLoading: Record<string, boolean>
+    imageErrors: Record<string, Error | null>
+    pageAnnotations: Record<string, string>
+    showPageAnnotations: boolean
+    readOnly: boolean
+    qualityLabel: (status: QualityDecisionCode) => string
+    qualityTone: (status: QualityDecisionCode) => BadgeTone
+    confidential?: boolean
+    examLabel?: string
+    watermarkLines?: string[]
+    viewerWatermark?: boolean
+  }>(),
+  {
+    viewerWatermark: true,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'reload'): void
@@ -168,9 +167,13 @@ function onConfidentialContextMenu(event: MouseEvent): void {
 
 const galleryViewportRef = ref<HTMLElement | null>(null)
 
-watch(galleryViewportRef, (element) => {
-  emit('viewport-ready', element)
-}, { immediate: true })
+watch(
+  galleryViewportRef,
+  (element) => {
+    emit('viewport-ready', element)
+  },
+  { immediate: true },
+)
 </script>
 
 <style lang="scss" scoped>

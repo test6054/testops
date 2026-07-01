@@ -92,7 +92,9 @@ interface Props {
 const expanded = ref(false)
 const visibleOverflow = computed(() => props.options.length > props.maxVisibleItems)
 
-function isMultipleSelection(value: FilterPillModelValue | undefined): value is Array<string | number> {
+function isMultipleSelection(
+  value: FilterPillModelValue | undefined,
+): value is Array<string | number> {
   return Array.isArray(value)
 }
 
@@ -114,7 +116,7 @@ const handleSelect = (value: string | number | null) => {
 
   if (props.multiple) {
     const currentValues = isMultipleSelection(modelValue.value) ? [...modelValue.value] : []
-    const index = currentValues.findIndex(item => item === value)
+    const index = currentValues.findIndex((item) => item === value)
 
     if (index > -1) {
       currentValues.splice(index, 1)
@@ -124,9 +126,7 @@ const handleSelect = (value: string | number | null) => {
 
     newValue = currentValues
   } else {
-    newValue = modelValue.value === value
-      ? (props.allowDeselect ? null : value)
-      : value
+    newValue = modelValue.value === value ? (props.allowDeselect ? null : value) : value
   }
 
   modelValue.value = newValue

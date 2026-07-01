@@ -2,7 +2,15 @@
   <AuthLayout>
     <template #brand-content>
       <div class="forgot-brand-steps">
-        <div v-for="(step, idx) in stepLabels" :key="idx" class="brand-step" :class="{ 'brand-step--active': currentStep === idx, 'brand-step--done': currentStep > idx }">
+        <div
+          v-for="(step, idx) in stepLabels"
+          :key="idx"
+          class="brand-step"
+          :class="{
+            'brand-step--active': currentStep === idx,
+            'brand-step--done': currentStep > idx,
+          }"
+        >
           <span class="brand-step__num">
             <svg
               v-if="currentStep > idx"
@@ -32,7 +40,12 @@
 
     <!-- 步骤指示器（右侧面板内紧凑版） -->
     <div class="step-indicators">
-      <div v-for="(step, idx) in stepLabels" :key="idx" class="step-dot" :class="{ 'step-dot--active': currentStep === idx, 'step-dot--done': currentStep > idx }">
+      <div
+        v-for="(step, idx) in stepLabels"
+        :key="idx"
+        class="step-dot"
+        :class="{ 'step-dot--active': currentStep === idx, 'step-dot--done': currentStep > idx }"
+      >
         <span class="step-dot__num">
           <svg
             v-if="currentStep > idx"
@@ -57,29 +70,60 @@
     <!-- 步骤1：验证邮箱 -->
     <form v-if="currentStep === 0" class="step-form" @submit.prevent="handleIdentityVerify">
       <UiFormField label="邮箱地址" required :error="errors.email">
-        <UiInput v-model="identityForm.email" placeholder="请输入注册时的邮箱地址" size="lg" clearable :maxlength="255" :status="errors.email ? 'error' : 'default'" />
+        <UiInput
+          v-model="identityForm.email"
+          placeholder="请输入注册时的邮箱地址"
+          size="lg"
+          clearable
+          :maxlength="255"
+          :status="errors.email ? 'error' : 'default'"
+        />
       </UiFormField>
-      <UiButton type="submit" variant="primary" size="lg" block :loading="loading">发送验证码</UiButton>
+      <UiButton type="submit" variant="primary" size="lg" block :loading="loading"
+        >发送验证码</UiButton
+      >
     </form>
 
     <!-- 步骤2：验证码 -->
     <div v-if="currentStep === 1" class="step-form">
       <div class="verification-info">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          width="40"
+          height="40"
+        >
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
         <p>验证码已发送至</p>
         <p class="contact-highlight">{{ maskEmail(identityForm.email) }}</p>
       </div>
 
       <form @submit.prevent="handleVerificationCode">
         <UiFormField label="验证码" required :error="errors.code">
-          <UiInput v-model="verificationForm.code" placeholder="请输入6位验证码" size="lg" :maxlength="6" clearable :status="errors.code ? 'error' : 'default'" />
+          <UiInput
+            v-model="verificationForm.code"
+            placeholder="请输入6位验证码"
+            size="lg"
+            :maxlength="6"
+            clearable
+            :status="errors.code ? 'error' : 'default'"
+          />
         </UiFormField>
         <div class="verification-actions">
-          <span class="countdown-text">{{ countdown > 0 ? `${countdown}秒后可重新发送` : '' }}</span>
-          <a :class="{ disabled: countdown > 0 }" @click="countdown <= 0 && resendCode()">重新发送</a>
+          <span class="countdown-text">{{
+            countdown > 0 ? `${countdown}秒后可重新发送` : ''
+          }}</span>
+          <a :class="{ disabled: countdown > 0 }" @click="countdown <= 0 && resendCode()"
+            >重新发送</a
+          >
         </div>
         <div class="step-buttons">
-          <UiButton type="submit" variant="primary" size="lg" block :loading="loading">验证</UiButton>
+          <UiButton type="submit" variant="primary" size="lg" block :loading="loading"
+            >验证</UiButton
+          >
           <UiButton size="lg" block @click="goToPreviousStep">上一步</UiButton>
         </div>
       </form>
@@ -88,22 +132,38 @@
     <!-- 步骤3：重置密码 -->
     <form v-if="currentStep === 2" class="step-form" @submit.prevent="handleResetPassword">
       <UiFormField label="新密码" required :error="errors.newPassword">
-        <UiPasswordInput v-model="passwordForm.newPassword" placeholder="请输入新密码" size="lg" :status="errors.newPassword ? 'error' : 'default'" />
+        <UiPasswordInput
+          v-model="passwordForm.newPassword"
+          placeholder="请输入新密码"
+          size="lg"
+          :status="errors.newPassword ? 'error' : 'default'"
+        />
       </UiFormField>
       <UiFormField label="确认密码" required :error="errors.confirmPassword">
-        <UiPasswordInput v-model="passwordForm.confirmPassword" placeholder="请再次输入新密码" size="lg" :status="errors.confirmPassword ? 'error' : 'default'" />
+        <UiPasswordInput
+          v-model="passwordForm.confirmPassword"
+          placeholder="请再次输入新密码"
+          size="lg"
+          :status="errors.confirmPassword ? 'error' : 'default'"
+        />
       </UiFormField>
 
       <div class="password-strength">
         <span class="strength-label">密码强度</span>
         <div class="strength-bar">
-          <div class="strength-fill" :class="`strength-${passwordStrength}`" :style="{ width: `${(passwordStrength / 5) * 100}%` }" />
+          <div
+            class="strength-fill"
+            :class="`strength-${passwordStrength}`"
+            :style="{ width: `${(passwordStrength / 5) * 100}%` }"
+          />
         </div>
         <span class="strength-text">{{ passwordStrengthText }}</span>
       </div>
 
       <div class="step-buttons">
-        <UiButton type="submit" variant="primary" size="lg" block :loading="loading">重置密码</UiButton>
+        <UiButton type="submit" variant="primary" size="lg" block :loading="loading"
+          >重置密码</UiButton
+        >
         <UiButton size="lg" block @click="goToPreviousStep">上一步</UiButton>
       </div>
     </form>
@@ -111,7 +171,13 @@
     <!-- 步骤4：完成 -->
     <div v-if="currentStep === 3" class="step-form">
       <div class="success-block">
-        <svg viewBox="0 0 20 20" fill="currentColor" width="56" height="56"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+        <svg viewBox="0 0 20 20" fill="currentColor" width="56" height="56">
+          <path
+            fill-rule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+            clip-rule="evenodd"
+          />
+        </svg>
         <h3>密码重置成功！</h3>
         <p>您的密码已成功重置，请使用新密码登录。</p>
         <UiButton variant="primary" size="lg" block @click="goToLogin">立即登录</UiButton>
@@ -229,8 +295,7 @@ const handleResetPassword = async () => {
   if (!passwordForm.value.confirmPassword) {
     errors.confirmPassword = '请确认密码'
     ok = false
-  }
-  else if (passwordForm.value.confirmPassword !== passwordForm.value.newPassword) {
+  } else if (passwordForm.value.confirmPassword !== passwordForm.value.newPassword) {
     errors.confirmPassword = '两次输入的密码不一致'
     ok = false
   }
@@ -293,8 +358,8 @@ const maskEmail = (email: string) => {
   if (!email) return ''
   const [username, domain] = email.split('@')
   if (!username || !domain) return email
-  const maskedUsername
-    = username.length > 2 ? username.substring(0, 2) + '*'.repeat(username.length - 2) : username
+  const maskedUsername =
+    username.length > 2 ? username.substring(0, 2) + '*'.repeat(username.length - 2) : username
   return `${maskedUsername}@${domain}`
 }
 
@@ -522,13 +587,25 @@ onUnmounted(() => {
 .strength-fill {
   height: 100%;
   border-radius: 999px;
-  transition: width 0.3s, background-color 0.3s;
+  transition:
+    width 0.3s,
+    background-color 0.3s;
 
-  &.strength-1 { background: #ef4444; }
-  &.strength-2 { background: #f59e0b; }
-  &.strength-3 { background: #eab308; }
-  &.strength-4 { background: #22c55e; }
-  &.strength-5 { background: #2563eb; }
+  &.strength-1 {
+    background: #ef4444;
+  }
+  &.strength-2 {
+    background: #f59e0b;
+  }
+  &.strength-3 {
+    background: #eab308;
+  }
+  &.strength-4 {
+    background: #22c55e;
+  }
+  &.strength-5 {
+    background: #2563eb;
+  }
 }
 
 .strength-text {

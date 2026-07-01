@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TaskStatusCode } from '@/apis/mark/task-status'
+import { TASK_STATUS_LABEL } from '@/apis/mark/task-status'
 /**
  * Stage 3 - 澶嶆牳涓庡紓甯稿缃?
  *
@@ -19,7 +20,6 @@ import {
   WarningFilled,
 } from '@ant-design/icons-vue'
 import { computed, watch } from 'vue'
-import { TASK_STATUS_LABEL } from '@/apis/mark/task-status'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
@@ -41,21 +41,19 @@ interface ReviewItem {
 
 /** 澶辫触椤碉紙鐩存帴浠?currentJob.pages 涓瓫閫夛級 */
 const failedPages = computed<ReviewItem[]>(() =>
-  workflow.exceptionPages.value.map(
-    (page): ReviewItem => ({
-      key: `page-${page.pageNo}`,
-      pageNo: page.pageNo,
-      type: 'page-failed',
-      title: workflow.scanPageDisplayTitleByNo(page.pageNo),
-      description: page.status === 'FAILED' ? '上传失败' : '页处理异常',
-      detail:
-        typeof page.diagnostic === 'string'
-          ? workflow.scannerDiagnosticText(page.diagnostic)
-          : undefined,
-      status: page.status,
-      source: 'job',
-    }),
-  ),
+  workflow.exceptionPages.value.map((page): ReviewItem => ({
+    key: `page-${page.pageNo}`,
+    pageNo: page.pageNo,
+    type: 'page-failed',
+    title: workflow.scanPageDisplayTitleByNo(page.pageNo),
+    description: page.status === 'FAILED' ? '上传失败' : '页处理异常',
+    detail:
+      typeof page.diagnostic === 'string'
+        ? workflow.scannerDiagnosticText(page.diagnostic)
+        : undefined,
+    status: page.status,
+    source: 'job',
+  })),
 )
 
 /** 璐︽湰寮傚父寰呭姙锛坅ttentionItems + ledger 寮傚父椤碉級 */
@@ -63,22 +61,20 @@ const ledgerAttentions = computed<ReviewItem[]>(() => {
   const ledger = workflow.pageLedger.value
   if (!ledger) return []
   const ledgerItems = ledger.items.filter((item) => Boolean(item.attentionType))
-  return ledgerItems.map(
-    (item): ReviewItem => ({
-      key: `ledger-${workflow.ledgerItemKey(item)}`,
-      pageNo: item.pageNo,
-      type: 'attention',
-      title: `${workflow.scanPageDisplayTitleByNo(item.pageNo)} 路 ${workflow.attentionTypeText(item.attentionType!)}`,
-      description:
-        item.attentionMessage || workflow.registrationStatusText(item.registrationStatus),
-      detail: item.operatorName
-        ? `鎿嶄綔浜?${item.operatorName} 路 ${workflow.formatTime(item.occurredAt)}`
-        : workflow.formatTime(item.occurredAt),
-      processingStatus: ledger.attentionItems.find((att) => att.pageId === item.localPageId)?.processingStatus,
-      source: 'ledger',
-      localPageId: item.localPageId,
-    }),
-  )
+  return ledgerItems.map((item): ReviewItem => ({
+    key: `ledger-${workflow.ledgerItemKey(item)}`,
+    pageNo: item.pageNo,
+    type: 'attention',
+    title: `${workflow.scanPageDisplayTitleByNo(item.pageNo)} 路 ${workflow.attentionTypeText(item.attentionType!)}`,
+    description: item.attentionMessage || workflow.registrationStatusText(item.registrationStatus),
+    detail: item.operatorName
+      ? `鎿嶄綔浜?${item.operatorName} 路 ${workflow.formatTime(item.occurredAt)}`
+      : workflow.formatTime(item.occurredAt),
+    processingStatus: ledger.attentionItems.find((att) => att.pageId === item.localPageId)
+      ?.processingStatus,
+    source: 'ledger',
+    localPageId: item.localPageId,
+  }))
 })
 
 /** 璐︽湰 attentionItems锛堝韬唤缁戝畾鍐茬獊锛夛紝涓?items.attentionType 浜掕ˉ */
@@ -97,7 +93,9 @@ const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
       pageNo,
       type: 'attention',
       title: `${workflow.scanPageDisplayTitleByNo(pageNo)} 路 ${workflow.attentionTypeText(att.attentionType)}`,
-      description: att.diagnostic || workflow.registrationStatusText(pageItem?.registrationStatus ?? 'PENDING'),
+      description:
+        att.diagnostic ||
+        workflow.registrationStatusText(pageItem?.registrationStatus ?? 'PENDING'),
       detail: workflow.formatTime(att.updateTime),
       processingStatus: att.processingStatus,
       source: 'ledger',
@@ -128,32 +126,32 @@ const registeredPages = computed<ReviewItem[]>(() => {
   if (!ledger?.items.length) return []
   const issuePageNos = new Set(reviewItems.value.map((item) => item.pageNo))
   return ledger.items
-    .filter((item) => item.registrationStatus !== 'DISCARDED' && item.registrationStatus !== 'SUPERSEDED')
-    .filter((item) => !issuePageNos.has(item.pageNo))
-    .map(
-      (item): ReviewItem => ({
-        key: `registered-${workflow.ledgerItemKey(item)}`,
-        pageNo: item.pageNo,
-        type: 'page-registered',
-        title: workflow.scanPageDisplayTitleByNo(item.pageNo),
-        description: workflow.registrationStatusText(item.registrationStatus),
-        detail: item.operatorName
-          ? `鎿嶄綔浜?${item.operatorName} 路 ${workflow.formatTime(item.occurredAt)}`
-          : workflow.formatTime(item.occurredAt),
-        source: 'ledger',
-        localPageId: item.localPageId,
-      }),
+    .filter(
+      (item) => item.registrationStatus !== 'DISCARDED' && item.registrationStatus !== 'SUPERSEDED',
     )
+    .filter((item) => !issuePageNos.has(item.pageNo))
+    .map((item): ReviewItem => ({
+      key: `registered-${workflow.ledgerItemKey(item)}`,
+      pageNo: item.pageNo,
+      type: 'page-registered',
+      title: workflow.scanPageDisplayTitleByNo(item.pageNo),
+      description: workflow.registrationStatusText(item.registrationStatus),
+      detail: item.operatorName
+        ? `鎿嶄綔浜?${item.operatorName} 路 ${workflow.formatTime(item.occurredAt)}`
+        : workflow.formatTime(item.occurredAt),
+      source: 'ledger',
+      localPageId: item.localPageId,
+    }))
 })
 
 const selectedItem = computed<ReviewItem | null>(() => {
   if (!workflow.previewPageNo.value) return null
   const pageNo = workflow.previewPageNo.value
   return (
-    reviewItems.value.find((item) => item.pageNo === pageNo)
-    ?? registeredPages.value.find((item) => item.pageNo === pageNo)
-    ?? localBrowsablePages.value.find((item) => item.pageNo === pageNo)
-    ?? null
+    reviewItems.value.find((item) => item.pageNo === pageNo) ??
+    registeredPages.value.find((item) => item.pageNo === pageNo) ??
+    localBrowsablePages.value.find((item) => item.pageNo === pageNo) ??
+    null
   )
 })
 
@@ -174,18 +172,16 @@ const localBrowsablePages = computed<ReviewItem[]>(() => {
   return job.pages
     .filter((page) => page.status !== 'DELETED')
     .filter((page) => !issuePageNos.has(page.pageNo) && !registeredPageNos.has(page.pageNo))
-    .map(
-      (page): ReviewItem => ({
-        key: `local-${page.pageNo}`,
-        pageNo: page.pageNo,
-        type: 'page-registered',
-        title: workflow.scanPageDisplayTitleByNo(page.pageNo),
-        description: page.status === 'UPLOADED' ? '本机已上传' : '本机已扫描',
-        detail: page.uploadedFileId ? `鏂囦欢 ${page.uploadedFileId}` : undefined,
-        status: page.status,
-        source: 'job',
-      }),
-    )
+    .map((page): ReviewItem => ({
+      key: `local-${page.pageNo}`,
+      pageNo: page.pageNo,
+      type: 'page-registered',
+      title: workflow.scanPageDisplayTitleByNo(page.pageNo),
+      description: page.status === 'UPLOADED' ? '本机已上传' : '本机已扫描',
+      detail: page.uploadedFileId ? `鏂囦欢 ${page.uploadedFileId}` : undefined,
+      status: page.status,
+      source: 'job',
+    }))
 })
 
 const browsablePageCount = computed(
@@ -258,8 +254,6 @@ const reviewBoundBatchId = computed(
         </button>
       </header>
 
-
-
       <div v-if="totalIssues === 0" class="issue-empty">
         <ExclamationCircleFilled class="issue-empty-icon" />
         <p>暂无需要复核的项</p>
@@ -272,7 +266,7 @@ const reviewBoundBatchId = computed(
           :key="item.key"
           class="issue-item"
           :class="{
-            'active': workflow.previewPageNo.value === item.pageNo,
+            active: workflow.previewPageNo.value === item.pageNo,
             'item-failed': item.type === 'page-failed',
             'item-attention': item.type === 'attention',
           }"
@@ -285,7 +279,9 @@ const reviewBoundBatchId = computed(
             <div class="issue-item-text">
               <strong>{{ item.title }}</strong>
               <span>{{ item.description }}</span>
-              <small v-if="item.processingStatus">处理任务：{{ processingStatusLabel(item.processingStatus) }}</small>
+              <small v-if="item.processingStatus"
+                >处理任务：{{ processingStatusLabel(item.processingStatus) }}</small
+              >
               <small v-if="item.detail">{{ item.detail }}</small>
             </div>
           </button>
@@ -347,7 +343,10 @@ const reviewBoundBatchId = computed(
     <!-- 涓細澶х敾甯冮瑙? -->
     <main class="preview-wrap">
       <div class="preview-canvas">
-        <div v-if="!workflow.reviewScanJob.value && totalIssues === 0 && browsablePageCount === 0" class="preview-empty">
+        <div
+          v-if="!workflow.reviewScanJob.value && totalIssues === 0 && browsablePageCount === 0"
+          class="preview-empty"
+        >
           <FileTextOutlined class="preview-empty-icon" />
           <p>批次结束后显示复核内容</p>
           <small>当前仍在扫描中，结束批次后才能查看本地图像与复核项</small>
@@ -361,7 +360,9 @@ const reviewBoundBatchId = computed(
         <div v-else-if="!workflow.previewImageUrl.value" class="preview-empty">
           <FileTextOutlined class="preview-empty-icon" />
           <p>影像未就绪</p>
-          <small v-if="workflow.previewLoadError.value">{{ workflow.previewLoadError.value }}</small>
+          <small v-if="workflow.previewLoadError.value">{{
+            workflow.previewLoadError.value
+          }}</small>
           <small v-else>{{ selectedPreviewTitle }}尚未生成或已删除</small>
         </div>
         <img
@@ -418,9 +419,9 @@ const reviewBoundBatchId = computed(
           type="button"
           class="op-btn op-btn--danger"
           :disabled="
-            !selectedItem
-              || selectedItem.source !== 'ledger'
-              || !workflow.canDiscardLedgerPage.value
+            !selectedItem ||
+            selectedItem.source !== 'ledger' ||
+            !workflow.canDiscardLedgerPage.value
           "
           :title="
             selectedItem
@@ -867,4 +868,3 @@ const reviewBoundBatchId = computed(
   }
 }
 </style>
-

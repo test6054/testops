@@ -1,7 +1,7 @@
 <template>
   <aside
     v-if="isDesktop"
-    :class="{ 'app-menu-dark': appStore.menuDark, 'collapsed': appStore.menuCollapse }"
+    :class="{ 'app-menu-dark': appStore.menuDark, collapsed: appStore.menuCollapse }"
     :style="appStore.menuDark ? appStore.themeCSSVar : undefined"
     class="asider"
   >

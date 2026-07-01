@@ -1,19 +1,16 @@
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
+import { ARCHIVE_MATERIAL_TYPE_LABEL } from '@/apis/mark/archive-volume'
 import type { ScanDispatchArchiveSnapshotVO } from '@/apis/mark/scanner-dispatch'
+import { previewScanDispatch } from '@/apis/mark/scanner-dispatch'
 import type {
   ArchiveScanBatchModeCode,
   ScanWorkOrderArchiveContextVO,
   ScanWorkOrderLifecycleVO,
 } from '@/apis/mark/scanner-work-order'
+import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { ARCHIVE_MATERIAL_TYPE_LABEL } from '@/apis/mark/archive-volume'
 import { getAgentSetupContext } from '@/apis/mark/scanner-agent-local'
-import { previewScanDispatch } from '@/apis/mark/scanner-dispatch'
-import {
-  getScanWorkOrderContext,
-  startScanWorkOrder,
-} from '@/apis/mark/scanner-work-order'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -27,7 +24,9 @@ export function useArchiveScanSession() {
 
   const volumeId = computed(() => String(route.query.volumeId ?? ''))
   const catalogCode = computed(() => String(route.query.catalogCode ?? ''))
-  const materialType = computed(() => route.query.materialType as ArchiveMaterialTypeCode | undefined)
+  const materialType = computed(
+    () => route.query.materialType as ArchiveMaterialTypeCode | undefined,
+  )
   const returnTo = computed(() => String(route.query.returnTo ?? ''))
   const dispatchTicketId = computed(() => String(route.query.dispatchTicketId ?? ''))
   const batchMode = computed<ArchiveScanBatchModeCode>(() => {
@@ -58,8 +57,7 @@ export function useArchiveScanSession() {
       const ticket = await previewScanDispatch({ ticketId: dispatchTicketId.value })
       dispatchSnapshot.value = ticket.archiveSnapshot ?? null
       dispatchTraceLabelCode.value = ticket.traceLabelCode ?? ''
-    }
-    catch {
+    } catch {
       dispatchSnapshot.value = null
       dispatchTraceLabelCode.value = ''
     }
@@ -95,12 +93,10 @@ export function useArchiveScanSession() {
           taskKind: 'EXAM_ARCHIVE',
         }
       }
-    }
-    catch (error) {
+    } catch (error) {
       showUserError(error, '加载归档扫描上下文失败')
       throw error
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
@@ -136,8 +132,7 @@ export function useArchiveScanSession() {
       })
       await loadContext()
       return lifecycle.value
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }

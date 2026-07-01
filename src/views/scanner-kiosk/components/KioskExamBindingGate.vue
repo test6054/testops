@@ -40,12 +40,16 @@ async function confirmBind() {
   }
 }
 
-watch(visible, (show) => {
-  if (!show) return
-  selectedExamId.value = undefined
-  workflow.resetExamOptionFilter()
-  void workflow.loadExamOptions()
-}, { immediate: true })
+watch(
+  visible,
+  (show) => {
+    if (!show) return
+    selectedExamId.value = undefined
+    workflow.resetExamOptionFilter()
+    void workflow.loadExamOptions()
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

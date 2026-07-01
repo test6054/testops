@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { PfEligibilityRuleTreeNodeDto } from '@/apis/portfolio/indicator-types'
-import { computed } from 'vue'
 import {
   PF_ELIGIBILITY_AUDIT_STATUS_OPTIONS,
   PF_ELIGIBILITY_NODE_TYPE_OPTIONS,
 } from '@/apis/portfolio/indicator-types'
+import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 
 defineOptions({ name: 'PortfolioEligibilityTreeEditor' })
@@ -17,7 +17,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:node': [node: PfEligibilityRuleTreeNodeDto]
-  'remove': []
+  remove: []
 }>()
 
 const depth = computed(() => props.depth ?? 0)
@@ -136,13 +136,9 @@ function onNodeTypeChange(nodeType: SelectValue) {
         />
       </template>
       <template v-if="isLogic">
-        <UiButton size="sm" @click="addChild">
-          子节点
-        </UiButton>
+        <UiButton size="sm" @click="addChild"> 子节点 </UiButton>
       </template>
-      <UiButton v-if="depth > 0" size="sm" @click="emit('remove')">
-        删除
-      </UiButton>
+      <UiButton v-if="depth > 0" size="sm" @click="emit('remove')"> 删除 </UiButton>
     </div>
     <div v-if="isLogic && node.children?.length" class="tree-children">
       <PortfolioEligibilityTreeEditor

@@ -1,7 +1,4 @@
-import type {
-  AiHealthStatus,
-  AiProviderType,
-} from './types'
+import type { AiHealthStatus, AiProviderType } from './types'
 /**
  * AI 模型配置 API - 对齐 AiModelProfileController。
  *

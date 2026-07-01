@@ -1,9 +1,9 @@
 import type { TenantPublicInfo } from '@/apis/auth'
+import { getTenantByCode } from '@/apis/auth'
 /**
  * 子域名检测与租户解析工具
  */
 import { ref } from 'vue'
-import { getTenantByCode } from '@/apis/auth'
 import { getUserErrorMessage } from '@/utils/error-handler'
 
 // 主域名列表（这些不算作租户子域名）

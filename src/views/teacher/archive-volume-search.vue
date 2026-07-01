@@ -1,10 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        show-title
-        title="OCR 全文检索"
-      >
+      <ContextBar show-title title="OCR 全文检索">
         <template #status>
           <UiTag tone="blue" size="sm">OCR 全文检索</UiTag>
         </template>
@@ -59,18 +56,12 @@
 
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  ArchiveMaterialTypeCode,
-  ArchiveVolumeSearchHitVO,
-} from '@/apis/mark/archive-volume'
+import type { ArchiveMaterialTypeCode, ArchiveVolumeSearchHitVO } from '@/apis/mark/archive-volume'
+import { ARCHIVE_MATERIAL_TYPE_LABEL, searchArchiveVolumes } from '@/apis/mark/archive-volume'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  ARCHIVE_MATERIAL_TYPE_LABEL,
-  searchArchiveVolumes,
-} from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -131,11 +122,9 @@ async function loadHits() {
     })
     hits.value = readPageList(result, 'OCR 检索结果异常，请刷新后重试')
     pagination.total = readPageTotal(result)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, 'OCR 检索失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }

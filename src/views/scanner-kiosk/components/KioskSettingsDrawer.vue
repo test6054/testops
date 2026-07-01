@@ -113,13 +113,13 @@ const agentUpdateInProgress = computed(
 const agentUpdateFailed = computed(() => agentUpdateStatus.value === 'FAILED')
 const showMaintenanceSection = computed(
   () =>
-    upgradeRequired.value
-    || tokenResetRequired.value
-    || rebindRequired.value
-    || kioskBrowserSessionSyncNeeded.value
-    || agentUpdateInProgress.value
-    || agentUpdateFailed.value
-    || agentUpdateAvailable.value,
+    upgradeRequired.value ||
+    tokenResetRequired.value ||
+    rebindRequired.value ||
+    kioskBrowserSessionSyncNeeded.value ||
+    agentUpdateInProgress.value ||
+    agentUpdateFailed.value ||
+    agentUpdateAvailable.value,
 )
 
 const minAgentVersion = computed(() => health.value?.minimumAgentVersion || '')
@@ -165,7 +165,9 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
 
           <div v-if="kioskBrowserSessionSyncNeeded" class="alert-block">
             <p>浏览器会话未与 Agent 对齐</p>
-            <small>正在从本机 Agent 同步 push_token；若长时间无响应，请刷新连接或重新输入激活码。</small>
+            <small
+              >正在从本机 Agent 同步 push_token；若长时间无响应，请刷新连接或重新输入激活码。</small
+            >
             <button type="button" class="ghost-btn" @click="handleRefreshSession">
               <ReloadOutlined />
               刷新连接
@@ -174,7 +176,11 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
 
           <div v-if="tokenResetRequired || rebindRequired" class="alert-block">
             <p>系统要求重新激活一体机</p>
-            <small>{{ rebindRequired ? '当前机器码未绑定服务端端点，请使用激活码重新激活。' : '请通过激活弹窗重新激活，本机当前任务在激活后会被中断。' }}</small>
+            <small>{{
+              rebindRequired
+                ? '当前机器码未绑定服务端端点，请使用激活码重新激活。'
+                : '请通过激活弹窗重新激活，本机当前任务在激活后会被中断。'
+            }}</small>
             <button type="button" class="ghost-btn" @click="handleReactivate">打开激活窗口</button>
           </div>
 
@@ -202,10 +208,15 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
                 <dd>{{ latestClientVersion }}</dd>
               </div>
             </dl>
-            <small> 下载完成后将在无进行中扫描任务时自动安装；有扫描任务时请待任务结束后再安装。 </small>
+            <small>
+              下载完成后将在无进行中扫描任务时自动安装；有扫描任务时请待任务结束后再安装。
+            </small>
           </div>
 
-          <div v-if="agentUpdateAvailable || agentUpdateInProgress || agentUpdateFailed" class="alert-block">
+          <div
+            v-if="agentUpdateAvailable || agentUpdateInProgress || agentUpdateFailed"
+            class="alert-block"
+          >
             <p>本机扫描组件更新</p>
             <dl class="kv">
               <div>
@@ -225,7 +236,9 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
                 <dd>{{ workflow.formatTime(health.updateDownloadedAt) }}</dd>
               </div>
             </dl>
-            <small v-if="health?.updateDiagnosticMessage">{{ health.updateDiagnosticMessage }}</small>
+            <small v-if="health?.updateDiagnosticMessage">{{
+              health.updateDiagnosticMessage
+            }}</small>
             <button
               v-if="agentUpdateInstallable"
               type="button"
@@ -405,9 +418,7 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
               <span>重新激活</span>
             </button>
           </div>
-          <p class="section-note">
-            一体机客户端不支持解绑；如需解绑请联系管理员在教务平台操作。
-          </p>
+          <p class="section-note">一体机客户端不支持解绑；如需解绑请联系管理员在教务平台操作。</p>
         </section>
       </div>
     </div>

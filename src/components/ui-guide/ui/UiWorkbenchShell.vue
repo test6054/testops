@@ -35,20 +35,22 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title: string
-  subtitle?: string
-  asideWidth?: string | number
-}>(), {
-  subtitle: '',
-  asideWidth: 220,
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    subtitle?: string
+    asideWidth?: string | number
+  }>(),
+  {
+    subtitle: '',
+    asideWidth: 220,
+  },
+)
 
 const slots = useSlots()
 
 const normalizeCssSize = (value?: string | number) => {
-  if (value === '' || value === undefined || value === null)
-    return undefined
+  if (value === '' || value === undefined || value === null) return undefined
   return typeof value === 'number' ? `${value}px` : value
 }
 

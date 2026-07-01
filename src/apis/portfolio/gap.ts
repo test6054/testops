@@ -17,6 +17,5 @@ export const portfolioGapApi = {
     http.post<PortfolioGapTaskDetailVO>(`${BASE}/task/submit`, data),
   pageTasks: (data: PortfolioGapTaskPageRequest = { pageNum: 1, pageSize: 20 }) =>
     http.post<PageResult<PortfolioGapTaskSummaryVO>>(`${BASE}/task/page`, data),
-  urgeTask: (data: PortfolioGapUrgeRequest) =>
-    http.post<void>(`${BASE}/urge`, data),
+  urgeTask: (data: PortfolioGapUrgeRequest) => http.post<void>(`${BASE}/urge`, data),
 }

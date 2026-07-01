@@ -56,27 +56,30 @@ defineOptions({
 
 const modelValue = defineModel<RangeValue>()
 
-const props = withDefaults(defineProps<{
-  placeholder?: [string, string]
-  allowClear?: boolean
-  disabled?: boolean
-  format?: string
-  valueFormat?: string
-  showTime?: boolean
-  timePickerProps?: RangeTimePickerProps
-  size?: UiComponentSize | SizeType
-  status?: UiFieldStatus
-}>(), {
-  placeholder: (): [string, string] => ['开始日期', '结束日期'],
-  allowClear: true,
-  disabled: false,
-  format: 'YYYY-MM-DD',
-  valueFormat: 'YYYY-MM-DD',
-  showTime: false,
-  timePickerProps: undefined,
-  size: 'md',
-  status: 'default',
-})
+const props = withDefaults(
+  defineProps<{
+    placeholder?: [string, string]
+    allowClear?: boolean
+    disabled?: boolean
+    format?: string
+    valueFormat?: string
+    showTime?: boolean
+    timePickerProps?: RangeTimePickerProps
+    size?: UiComponentSize | SizeType
+    status?: UiFieldStatus
+  }>(),
+  {
+    placeholder: (): [string, string] => ['开始日期', '结束日期'],
+    allowClear: true,
+    disabled: false,
+    format: 'YYYY-MM-DD',
+    valueFormat: 'YYYY-MM-DD',
+    showTime: false,
+    timePickerProps: undefined,
+    size: 'md',
+    status: 'default',
+  },
+)
 const emit = defineEmits<{
   (e: 'change', value: RangeValue, dateString: [string, string]): void
   (e: 'open-change', open: boolean): void
@@ -101,10 +104,8 @@ const resolvedShowTime = computed<boolean | RangeTimePickerProps | undefined>(()
 
 const resolvedSize = computed<UiComponentSize>(() => {
   const size = props.size
-  if (size === 'small' || size === 'sm')
-    return 'sm'
-  if (size === 'large' || size === 'lg')
-    return 'lg'
+  if (size === 'small' || size === 'sm') return 'sm'
+  if (size === 'large' || size === 'lg') return 'lg'
   return 'md'
 })
 

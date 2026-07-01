@@ -79,52 +79,55 @@ defineOptions({
 
 const draft = defineModel<string>('draft', { default: '' })
 
-const props = withDefaults(defineProps<{
-  title: string
-  subtitle?: string
-  statusLabel?: string
-  statusTone?: BadgeTone
-  sessions?: UiSessionListItem[]
-  currentSessionId?: string | number
-  sessionTitle?: string
-  sessionDescription?: string
-  messages?: UiThreadMessage[]
-  loading?: boolean
-  sessionLoading?: boolean
-  empty?: boolean
-  emptyText?: string
-  sessionEmptyText?: string
-  removable?: boolean
-  hideComposer?: boolean
-  composerTitle?: string
-  composerPlaceholder?: string
-  sendText?: string
-  bodyMinHeight?: string | number
-  threadMaxHeight?: string | number
-  listMaxHeight?: string | number
-}>(), {
-  subtitle: '',
-  statusLabel: '',
-  statusTone: 'blue',
-  sessions: () => [],
-  currentSessionId: undefined,
-  sessionTitle: '会话列表',
-  sessionDescription: '',
-  messages: () => [],
-  loading: false,
-  sessionLoading: false,
-  empty: false,
-  emptyText: '请先从左侧选择会话，或者直接发起一条新消息。',
-  sessionEmptyText: '暂无会话',
-  removable: true,
-  hideComposer: false,
-  composerTitle: '统一输入区壳层',
-  composerPlaceholder: '输入你的问题...',
-  sendText: '发送',
-  bodyMinHeight: 420,
-  threadMaxHeight: 360,
-  listMaxHeight: 420,
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    subtitle?: string
+    statusLabel?: string
+    statusTone?: BadgeTone
+    sessions?: UiSessionListItem[]
+    currentSessionId?: string | number
+    sessionTitle?: string
+    sessionDescription?: string
+    messages?: UiThreadMessage[]
+    loading?: boolean
+    sessionLoading?: boolean
+    empty?: boolean
+    emptyText?: string
+    sessionEmptyText?: string
+    removable?: boolean
+    hideComposer?: boolean
+    composerTitle?: string
+    composerPlaceholder?: string
+    sendText?: string
+    bodyMinHeight?: string | number
+    threadMaxHeight?: string | number
+    listMaxHeight?: string | number
+  }>(),
+  {
+    subtitle: '',
+    statusLabel: '',
+    statusTone: 'blue',
+    sessions: () => [],
+    currentSessionId: undefined,
+    sessionTitle: '会话列表',
+    sessionDescription: '',
+    messages: () => [],
+    loading: false,
+    sessionLoading: false,
+    empty: false,
+    emptyText: '请先从左侧选择会话，或者直接发起一条新消息。',
+    sessionEmptyText: '暂无会话',
+    removable: true,
+    hideComposer: false,
+    composerTitle: '统一输入区壳层',
+    composerPlaceholder: '输入你的问题...',
+    sendText: '发送',
+    bodyMinHeight: 420,
+    threadMaxHeight: 360,
+    listMaxHeight: 420,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'select-session', item: UiSessionListItem): void
@@ -135,8 +138,7 @@ const emit = defineEmits<{
 const hasMeaningfulDraft = computed(() => draft.value.trim())
 
 const handleSend = () => {
-  if (!hasMeaningfulDraft.value)
-    return
+  if (!hasMeaningfulDraft.value) return
 
   emit('send', draft.value)
   draft.value = ''

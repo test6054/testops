@@ -3,13 +3,10 @@ import type {
   ScanWorkOrderLifecycleVO,
   ScanWorkOrderPortfolioContextVO,
 } from '@/apis/mark/scanner-work-order'
+import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { getAgentSetupContext } from '@/apis/mark/scanner-agent-local'
-import {
-  getScanWorkOrderContext,
-  startScanWorkOrder,
-} from '@/apis/mark/scanner-work-order'
 import { showUserError } from '@/utils/error-handler'
 
 export function usePortfolioScanSession() {
@@ -69,8 +66,10 @@ export function usePortfolioScanSession() {
         batchExternalNo: lifecycle.value?.batchExternalNo,
       })
       portfolioContext.value = context.portfolioContext ?? null
-      const batchNo = context.activeBatchExternalNo ?? context.portfolioContext?.activeBatchExternalNo
-      const status = context.activeWorkOrderStatus ?? context.portfolioContext?.activeWorkOrderStatus
+      const batchNo =
+        context.activeBatchExternalNo ?? context.portfolioContext?.activeBatchExternalNo
+      const status =
+        context.activeWorkOrderStatus ?? context.portfolioContext?.activeWorkOrderStatus
       if (batchNo && (status === 'COMMITTING' || status === 'FAILED' || status === 'IN_PROGRESS')) {
         lifecycle.value = {
           workOrderId: context.activeWorkOrderId ?? context.portfolioContext?.activeWorkOrderId,
@@ -80,12 +79,10 @@ export function usePortfolioScanSession() {
           diagnostic: context.portfolioContext?.activeWorkOrderDiagnostic,
         }
       }
-    }
-    catch (error) {
+    } catch (error) {
       showUserError(error, '加载档案袋扫描上下文失败')
       throw error
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
@@ -124,8 +121,7 @@ export function usePortfolioScanSession() {
       })
       await loadContext()
       return lifecycle.value
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }

@@ -20,15 +20,18 @@ import type { UiComponentSize } from './types'
 
 defineOptions({ name: 'UiTable' })
 
-const props = withDefaults(defineProps<{
-  size?: UiComponentSize
-  striped?: boolean
-  hoverable?: boolean
-}>(), {
-  size: 'md',
-  striped: false,
-  hoverable: true,
-})
+const props = withDefaults(
+  defineProps<{
+    size?: UiComponentSize
+    striped?: boolean
+    hoverable?: boolean
+  }>(),
+  {
+    size: 'md',
+    striped: false,
+    hoverable: true,
+  },
+)
 </script>
 
 <style>

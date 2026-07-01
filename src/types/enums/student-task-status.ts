@@ -94,8 +94,8 @@ export function isPendingResubmission(status: StudentTaskStatusEnum): boolean {
 
 export function canSubmit(status: StudentTaskStatusEnum): boolean {
   return (
-    status === StudentTaskStatusEnum.IN_PROGRESS
-    || status === StudentTaskStatusEnum.PENDING_RESUBMISSION
+    status === StudentTaskStatusEnum.IN_PROGRESS ||
+    status === StudentTaskStatusEnum.PENDING_RESUBMISSION
   )
 }
 

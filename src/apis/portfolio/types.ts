@@ -1,4 +1,3 @@
-import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { PortfolioEvaluationTaskStatus } from '@/apis/portfolio/enums'
 import type { AiTaskStatus } from '@/apis/quality/types'
 /**
@@ -6,6 +5,7 @@ import type { AiTaskStatus } from '@/apis/quality/types'
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { QueryDto } from '@/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { UserStatusEnum } from '@/types/enums/user-status'
 
 /** 扩展组织类型 - PortfolioOrgUnitTypeEnum */

@@ -1,20 +1,17 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  PortfolioEvaluationMode,
-  PortfolioEvaluationTaskStatus,
-} from '@/apis/portfolio/enums'
-import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
-import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
+import type { PortfolioEvaluationMode, PortfolioEvaluationTaskStatus } from '@/apis/portfolio/enums'
 import {
   PORTFOLIO_EVALUATION_MODE_LABEL,
   PORTFOLIO_EVALUATION_TASK_STATUS_LABEL,
   PORTFOLIO_EVALUATION_TASK_STATUS_TONE,
 } from '@/apis/portfolio/enums'
+import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
 import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
+import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
 import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -38,13 +35,19 @@ const form = reactive({
   startTime: '',
   endTime: '',
 })
-const query = reactive({ pageNum: 1, pageSize: 20, taskStatus: '' as '' | PortfolioEvaluationTaskStatus })
+const query = reactive({
+  pageNum: 1,
+  pageSize: 20,
+  taskStatus: '' as '' | PortfolioEvaluationTaskStatus,
+})
 
-const evaluationModeOptions = (Object.keys(PORTFOLIO_EVALUATION_MODE_LABEL) as PortfolioEvaluationMode[])
-  .map(value => ({ value, label: PORTFOLIO_EVALUATION_MODE_LABEL[value] }))
+const evaluationModeOptions = (
+  Object.keys(PORTFOLIO_EVALUATION_MODE_LABEL) as PortfolioEvaluationMode[]
+).map((value) => ({ value, label: PORTFOLIO_EVALUATION_MODE_LABEL[value] }))
 
-const taskStatusOptions = (Object.keys(PORTFOLIO_EVALUATION_TASK_STATUS_LABEL) as PortfolioEvaluationTaskStatus[])
-  .map(value => ({ value, label: PORTFOLIO_EVALUATION_TASK_STATUS_LABEL[value] }))
+const taskStatusOptions = (
+  Object.keys(PORTFOLIO_EVALUATION_TASK_STATUS_LABEL) as PortfolioEvaluationTaskStatus[]
+).map((value) => ({ value, label: PORTFOLIO_EVALUATION_TASK_STATUS_LABEL[value] }))
 
 const columns: ColumnsType = [
   { title: '任务名称', dataIndex: 'taskName', key: 'taskName' },
@@ -72,15 +75,14 @@ function workgroupName(id?: string) {
   if (!id) {
     return '—'
   }
-  return workgroups.value.find(item => item.id === id)?.workgroupName ?? id
+  return workgroups.value.find((item) => item.id === id)?.workgroupName ?? id
 }
 
 async function loadWorkgroups() {
   try {
     const page = await evaluationWorkgroupApi.page({ pageNum: 1, pageSize: 100, enabled: true })
     workgroups.value = page.list ?? []
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -95,11 +97,9 @@ async function loadPage() {
     })
     rows.value = readPageList(page, '加载评价任务失败')
     total.value = readPageTotal(page)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -135,8 +135,7 @@ async function createTask() {
     form.startTime = ''
     form.endTime = ''
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -146,8 +145,7 @@ async function publishTask(id: string) {
     await portfolioEvaluationTaskApi.publish({ id })
     message.success('任务已发布')
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -157,8 +155,7 @@ async function exportExcel() {
     const result = await portfolioEvaluationTaskApi.exportExcel()
     await downloadPortfolioExcelExport(result)
     message.success('评价任务已导出')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -174,26 +171,20 @@ onMounted(async () => {
     <template #context>
       <ContextBar show-title layout="workbench" title="多元评价任务">
         <template #actions>
-          <UiButton @click="exportExcel">
-            导出 Excel
-          </UiButton>
+          <UiButton @click="exportExcel"> 导出 Excel </UiButton>
         </template>
       </ContextBar>
     </template>
     <UiCard>
       <div class="form-row">
-        <input v-model="form.taskName" class="input input--wide" placeholder="任务名称">
+        <input v-model="form.taskName" class="input input--wide" placeholder="任务名称" />
         <a-select
           v-model:value="form.evaluationMode"
           placeholder="评价模式"
           style="width: 120px"
           :options="evaluationModeOptions"
         />
-        <a-select
-          v-model:value="form.workgroupId"
-          placeholder="评价工作组"
-          style="width: 200px"
-        >
+        <a-select v-model:value="form.workgroupId" placeholder="评价工作组" style="width: 200px">
           <a-select-option v-for="wg in workgroups" :key="wg.id" :value="wg.id">
             {{ wg.workgroupName }}
           </a-select-option>
@@ -210,9 +201,7 @@ onMounted(async () => {
           show-time
           placeholder="结束时间"
         />
-        <UiButton variant="primary" @click="createTask">
-          创建任务
-        </UiButton>
+        <UiButton variant="primary" @click="createTask"> 创建任务 </UiButton>
       </div>
       <div class="filter-row">
         <a-select
@@ -223,9 +212,7 @@ onMounted(async () => {
           :options="taskStatusOptions"
           @change="loadPage"
         />
-        <UiButton @click="loadPage">
-          查询
-        </UiButton>
+        <UiButton @click="loadPage"> 查询 </UiButton>
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无评价任务" />
       <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id">
@@ -248,7 +235,11 @@ onMounted(async () => {
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <a v-if="record.taskStatus !== 'PUBLISHED' && record.taskStatus !== 'CLOSED'" @click="publishTask(record.id)">发布</a>
+            <a
+              v-if="record.taskStatus !== 'PUBLISHED' && record.taskStatus !== 'CLOSED'"
+              @click="publishTask(record.id)"
+              >发布</a
+            >
           </template>
         </template>
       </UiDataTable>

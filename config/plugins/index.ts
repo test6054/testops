@@ -10,12 +10,7 @@ import createComponents from './components'
 import configCompressPlugin from './compress'
 
 export default async function createVitePlugins(isBuild = false) {
-  const vitePlugins: (PluginOption | PluginOption[])[] = [
-    appInfo(),
-    tailwindcss(),
-    vue(),
-    vueJsx(),
-  ]
+  const vitePlugins: (PluginOption | PluginOption[])[] = [appInfo(), tailwindcss(), vue(), vueJsx()]
 
   if (!isBuild) {
     vitePlugins.push(VueDevTools())

@@ -4,7 +4,7 @@
     <aside class="auth-brand">
       <div class="auth-brand__mark">
         <slot name="brand-mark">
-          <img src="/logo.svg" alt="实训坊" class="auth-brand__logo">
+          <img src="/logo.svg" alt="实训坊" class="auth-brand__logo" />
           <div class="auth-brand__mark-text">
             <div class="auth-brand__product">实训坊</div>
             <div class="auth-brand__product-sub">EDU PRACTICE WEB</div>
@@ -15,7 +15,9 @@
       <div class="auth-brand__hero">
         <slot name="brand-header">
           <h1 class="auth-brand__title">工科产教融合 AI 实训平台</h1>
-          <p class="auth-brand__subtitle">服务课程实训、毕业设计、校企项目与阶段答辩等高校教学场景。</p>
+          <p class="auth-brand__subtitle">
+            服务课程实训、毕业设计、校企项目与阶段答辩等高校教学场景。
+          </p>
         </slot>
       </div>
 
@@ -58,7 +60,7 @@
 
     <!-- 移动端顶栏（< 860px 显示） -->
     <div class="auth-mobile-bar">
-      <img src="/logo.svg" alt="logo" class="auth-mobile-bar__logo">
+      <img src="/logo.svg" alt="logo" class="auth-mobile-bar__logo" />
       <span class="auth-mobile-bar__title">实训坊</span>
     </div>
   </div>
@@ -70,13 +72,16 @@ import { useAppStore } from '@/stores'
 
 defineOptions({ name: 'AuthLayout' })
 
-withDefaults(defineProps<{
-  showFooter?: boolean
-  wide?: boolean
-}>(), {
-  showFooter: true,
-  wide: false,
-})
+withDefaults(
+  defineProps<{
+    showFooter?: boolean
+    wide?: boolean
+  }>(),
+  {
+    showFooter: true,
+    wide: false,
+  },
+)
 
 const appStore = useAppStore()
 const copyright = computed(() => appStore.getCopyright())

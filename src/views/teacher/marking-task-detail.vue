@@ -147,9 +147,7 @@ const {
       @close="dismissWithdrawToast"
     >
       <template #actions>
-        <UiButton variant="outline" size="sm" @click="handleWithdrawLatest">
-          撤销
-        </UiButton>
+        <UiButton variant="outline" size="sm" @click="handleWithdrawLatest"> 撤销 </UiButton>
       </template>
     </UiAlertStrip>
 
@@ -222,7 +220,11 @@ const {
             @reload="reloadWholePaperView"
             @scroll="handleWholePageGalleryScroll"
             @viewport-ready="handleGalleryViewportReady"
-            @update:page-annotation="(pageId, value) => { wholePageAnnotationForms[pageId] = value }"
+            @update:page-annotation="
+              (pageId, value) => {
+                wholePageAnnotationForms[pageId] = value
+              }
+            "
           />
 
           <MarkingTaskInfoCard
@@ -240,8 +242,16 @@ const {
             v-model:score="form.score"
             v-model:annotation-note="form.annotationNote"
             v-model:expanded-whole-question-key="expandedWholeQuestionKey"
-            :bind-form-ref="(el: FormInstance | null) => { formRef = el ?? undefined }"
-            :bind-score-input-ref="(el: { focus?: () => void } | null) => { scoreInputRef = el }"
+            :bind-form-ref="
+              (el: FormInstance | null) => {
+                formRef = el ?? undefined
+              }
+            "
+            :bind-score-input-ref="
+              (el: { focus?: () => void } | null) => {
+                scoreInputRef = el
+              }
+            "
             :rules="rules"
             :uses-whole-paper-workspace="usesWholePaperWorkspace"
             :is-whole-paper-task="isWholePaperTask"

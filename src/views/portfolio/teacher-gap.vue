@@ -4,6 +4,7 @@ import type {
   PortfolioGapTaskDetailVO,
   PortfolioGapTaskStatus,
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_GAP_TASK_STATUS_LABEL } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -11,7 +12,6 @@ import { createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
-import { PORTFOLIO_GAP_TASK_STATUS_LABEL } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -19,7 +19,10 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
+import {
+  usePortfolioPageScope,
+  usePortfolioScopedLoader,
+} from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -170,18 +173,19 @@ async function openPortfolioGapScan() {
       path: `/scanner-kiosk/dispatch/${created.ticket.ticketId}`,
       query: { returnTo: route.fullPath },
     })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '创建档案袋扫描派单失败')
-  }
-  finally {
+  } finally {
     scanOpening.value = false
   }
 }
 
-usePortfolioScopedLoader(() => {
-  void loadTask()
-}, () => `${targetTeacherId.value}:${gapTaskId.value}`)
+usePortfolioScopedLoader(
+  () => {
+    void loadTask()
+  },
+  () => `${targetTeacherId.value}:${gapTaskId.value}`,
+)
 
 watch(
   () => route.query.scanCommitted,
@@ -189,9 +193,8 @@ watch(
     if (value !== '1') {
       return
     }
-    const fileNodeId = typeof route.query.scanFileNodeId === 'string'
-      ? route.query.scanFileNodeId
-      : ''
+    const fileNodeId =
+      typeof route.query.scanFileNodeId === 'string' ? route.query.scanFileNodeId : ''
     const nextQuery = { ...route.query }
     delete nextQuery.scanCommitted
     delete nextQuery.scanFileNodeId
@@ -208,11 +211,7 @@ watch(
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        show-title
-        layout="workbench"
-        :title="detail?.taskTitle ?? '补采任务'"
-      >
+      <ContextBar show-title layout="workbench" :title="detail?.taskTitle ?? '补采任务'">
         <template #actions>
           <UiButton @click="goBack"> 返回首页 </UiButton>
           <UiButton :loading="saving" :disabled="loading || !detail" @click="handleSaveDraft">
@@ -246,7 +245,12 @@ watch(
                 accept=".pdf,.doc,.docx,.png,.jpg"
                 button-text="上传附件"
               />
-              <UiButton class="teacher-gap__scan-btn" variant="outline" :loading="scanOpening" @click="openPortfolioGapScan">
+              <UiButton
+                class="teacher-gap__scan-btn"
+                variant="outline"
+                :loading="scanOpening"
+                @click="openPortfolioGapScan"
+              >
                 一体机扫描
               </UiButton>
             </a-form-item>

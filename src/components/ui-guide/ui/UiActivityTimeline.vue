@@ -36,10 +36,7 @@
                 class="ui-activity-timeline__dot"
                 :class="`ui-activity-timeline__dot--${item.tone || 'blue'}`"
               />
-              <span
-                v-if="index < group.items.length - 1"
-                class="ui-activity-timeline__axis-line"
-              />
+              <span v-if="index < group.items.length - 1" class="ui-activity-timeline__axis-line" />
             </div>
 
             <article class="ui-activity-timeline__card">
@@ -58,7 +55,9 @@
 
                   <div class="ui-activity-timeline__meta-row">
                     <span v-if="item.time" class="ui-activity-timeline__time">{{ item.time }}</span>
-                    <span v-if="item.actor" class="ui-activity-timeline__actor">{{ item.actor }}</span>
+                    <span v-if="item.actor" class="ui-activity-timeline__actor">{{
+                      item.actor
+                    }}</span>
                     <span v-if="item.meta" class="ui-activity-timeline__meta">{{ item.meta }}</span>
                   </div>
                 </div>
@@ -84,17 +83,14 @@
                   class="ui-activity-timeline__file-row"
                   :class="{ 'is-deleted': file.deleted }"
                 >
-                  <UiTag
-                    v-if="file.tag"
-                    size="sm"
-                    variant="outline"
-                    :tone="file.tagTone || 'blue'"
-                  >
+                  <UiTag v-if="file.tag" size="sm" variant="outline" :tone="file.tagTone || 'blue'">
                     {{ file.tag }}
                   </UiTag>
                   <span class="ui-activity-timeline__file-name">{{ file.name }}</span>
                   <span v-if="file.deleted" class="ui-activity-timeline__file-state">已删除</span>
-                  <span v-if="file.size" class="ui-activity-timeline__file-size">{{ file.size }}</span>
+                  <span v-if="file.size" class="ui-activity-timeline__file-size">{{
+                    file.size
+                  }}</span>
                 </div>
               </div>
             </article>
@@ -116,25 +112,30 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  groups?: TimelineGroup[]
-  bordered?: boolean
-  compact?: boolean
-  emptyTitle?: string
-  emptyDescription?: string
-}>(), {
-  groups: () => [],
-  bordered: false,
-  compact: false,
-  emptyTitle: '暂无记录',
-  emptyDescription: '当前还没有可展示的时间轴数据。',
-})
+const props = withDefaults(
+  defineProps<{
+    groups?: TimelineGroup[]
+    bordered?: boolean
+    compact?: boolean
+    emptyTitle?: string
+    emptyDescription?: string
+  }>(),
+  {
+    groups: () => [],
+    bordered: false,
+    compact: false,
+    emptyTitle: '暂无记录',
+    emptyDescription: '当前还没有可展示的时间轴数据。',
+  },
+)
 
-type TimelineTag = string | {
-  label: string
-  tone?: BadgeTone
-  variant?: 'soft' | 'outline'
-}
+type TimelineTag =
+  | string
+  | {
+      label: string
+      tone?: BadgeTone
+      variant?: 'soft' | 'outline'
+    }
 
 interface TimelineFileItem {
   name: string
@@ -170,11 +171,11 @@ const resolveTagLabel = (tag: TimelineTag) => {
 }
 
 const resolveTagTone = (tag: TimelineTag): BadgeTone => {
-  return typeof tag === 'string' ? 'gray' : (tag.tone || 'gray')
+  return typeof tag === 'string' ? 'gray' : tag.tone || 'gray'
 }
 
 const resolveTagVariant = (tag: TimelineTag) => {
-  return typeof tag === 'string' ? 'outline' : (tag.variant || 'outline')
+  return typeof tag === 'string' ? 'outline' : tag.variant || 'outline'
 }
 </script>
 

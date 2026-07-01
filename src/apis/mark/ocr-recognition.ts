@@ -1,9 +1,9 @@
 import type { MarkOcrProviderTypeCode } from './ocr-types'
-import type {QuestionTypeCode} from './question-type';
+import type { QuestionTypeCode } from './question-type'
+import { QUESTION_TYPE_LABEL } from './question-type'
 import http from '@/config/axios'
 import { assertUserFacingFiniteNumber, assertUserFacingText } from '@/utils/contract-guard'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import { QUESTION_TYPE_LABEL } from './question-type'
 
 const MARK_OCR_PAPER_SLICE_DATA_ERROR = 'OCR 调试切片数据异常，请刷新后重试'
 

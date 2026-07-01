@@ -20,10 +20,7 @@
         </UiTag>
       </template>
       <template v-else-if="column.key === 'reviewTaskStatus'">
-        <UiTag
-          v-if="record.reviewTaskStatus"
-          :tone="reviewTaskStatusTone(record.reviewTaskStatus)"
-        >
+        <UiTag v-if="record.reviewTaskStatus" :tone="reviewTaskStatusTone(record.reviewTaskStatus)">
           {{ reviewTaskStatusLabel(record.reviewTaskStatus) }}
         </UiTag>
         <span v-else>—</span>
@@ -42,15 +39,15 @@ import type {
   PortfolioReviewTaskStatus,
   PortfolioTeacherReviewStatusRowVO,
 } from '@/apis/portfolio/types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { ref, watch } from 'vue'
-import { portfolioReviewStatusApi } from '@/apis/portfolio/review-status'
 import {
   PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
   PORTFOLIO_REVIEW_TASK_STATUS_LABEL,
   PORTFOLIO_REVIEW_TASK_STATUS_TONE,
 } from '@/apis/portfolio/types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { ref, watch } from 'vue'
+import { portfolioReviewStatusApi } from '@/apis/portfolio/review-status'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -97,7 +94,9 @@ function reviewTaskStatusTone(status: PortfolioReviewTaskStatus): BadgeTone {
 }
 
 function rowClassName(record: PortfolioTeacherReviewStatusRowVO): string {
-  return record.archiveRecordId === props.highlightRecordId ? 'portfolio-review-status__row-highlight' : ''
+  return record.archiveRecordId === props.highlightRecordId
+    ? 'portfolio-review-status__row-highlight'
+    : ''
 }
 
 async function loadPage() {
@@ -112,16 +111,14 @@ async function loadPage() {
     })
     rows.value = readPageList(page, '加载审核进度失败')
     total.value = readPageTotal(page, '加载审核进度失败')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载审核进度失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
-function handlePageChange(next: { current: number, pageSize: number }) {
+function handlePageChange(next: { current: number; pageSize: number }) {
   pageNum.value = next.current
   pageSize.value = next.pageSize
   void loadPage()

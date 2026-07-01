@@ -20,7 +20,7 @@ import Breadcrumb from '../Breadcrumb/index.vue'
 import HeaderRightBar from '../HeaderRightBar/index.vue'
 import MenuFoldBtn from '../MenuFoldBtn.vue'
 
-defineOptions({name: 'LayoutHeader'})
+defineOptions({ name: 'LayoutHeader' })
 const { isMobile } = useDevice()
 </script>
 

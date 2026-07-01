@@ -1,7 +1,9 @@
 <template>
   <section class="archive-volume-transfer-panel">
     <UiAlertStrip
-      v-if="detail.volume.transferStatus === 'REJECTED' && detail.volume.volumeStatus === 'COLLECTING'"
+      v-if="
+        detail.volume.transferStatus === 'REJECTED' && detail.volume.volumeStatus === 'COLLECTING'
+      "
       tone="info"
       title="移交已退回"
       description="请补正材料、重新执行完整性/四性检测后再提交归档"
@@ -20,9 +22,7 @@
       v-if="detail.latestTransferRecord?.transferPackageFileId"
       class="archive-volume-transfer-panel__actions"
     >
-      <UiButton size="sm" @click="downloadTransferPackage">
-        下载移交包（DA/T93）
-      </UiButton>
+      <UiButton size="sm" @click="downloadTransferPackage"> 下载移交包（DA/T93） </UiButton>
     </div>
     <div
       v-if="canReviewTransfer && detail.volume.transferStatus === 'PENDING_REVIEW'"
@@ -31,12 +31,7 @@
       <UiButton size="sm" :loading="approvingTransfer" @click="handleApproveTransfer">
         验收通过
       </UiButton>
-      <UiButton
-        v-if="canRejectTransfer"
-        size="sm"
-        variant="outline"
-        @click="openRejectTransfer"
-      >
+      <UiButton v-if="canRejectTransfer" size="sm" variant="outline" @click="openRejectTransfer">
         退回补正
       </UiButton>
     </div>
@@ -60,15 +55,15 @@
 
 <script setup lang="ts">
 import type { ArchiveVolumeDetailVO } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { ref } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   approveArchiveVolumeTransfer,
   ARCHIVE_SCORE_COMPLETION_STATUS_LABEL,
   ARCHIVE_TRANSFER_STATUS_LABEL,
   rejectArchiveVolumeTransfer,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { ref } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -105,8 +100,7 @@ async function downloadTransferPackage() {
   if (!fileId) return
   try {
     await downloadFile({ nodeId: fileId })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '下载移交包失败')
   }
 }
@@ -117,11 +111,9 @@ async function handleApproveTransfer() {
     await approveArchiveVolumeTransfer({ volumeId: props.volumeId })
     message.success('移交验收通过')
     emit('refreshed')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     approvingTransfer.value = false
   }
 }
@@ -145,11 +137,9 @@ async function submitRejectTransfer() {
     message.success('已退回补正')
     rejectTransferOpen.value = false
     emit('refreshed')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     rejectingTransfer.value = false
   }
 }

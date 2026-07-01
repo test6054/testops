@@ -1,15 +1,12 @@
 <script setup lang="ts">
-import type {CandidateStatusCode, ExamCandidateVO} from '@/apis/mark/exam-scope';
+import type { CandidateStatusCode, ExamCandidateVO } from '@/apis/mark/exam-scope'
+import { CANDIDATE_STATUS_LABEL, listExamCandidates } from '@/apis/mark/exam-scope'
 /**
  * 扫描中异常修正面板：边扫边处理，占用缩略图列（非遮罩叠加）。
  */
 import { CloseOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
 import { bindPaper } from '@/apis/mark/exam-binding'
-import {
-  CANDIDATE_STATUS_LABEL,
-  listExamCandidates
-} from '@/apis/mark/exam-scope'
 import { TASK_STATUS_LABEL } from '@/apis/mark/task-status'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { useKioskCtx } from '../composables/kioskInjection'
@@ -32,22 +29,22 @@ const candidatesLoading = ref(false)
 const candidatesLoadError = ref('')
 const binding = ref(false)
 
-const currentPage = computed(() =>
-  workflow.visiblePages.value.find((p) => p.pageNo === props.pageNo) ?? null,
+const currentPage = computed(
+  () => workflow.visiblePages.value.find((p) => p.pageNo === props.pageNo) ?? null,
 )
 
-const ledgerItem = computed(() =>
-  workflow.pageLedger.value?.items.find((item) => item.pageNo === props.pageNo) ?? null,
+const ledgerItem = computed(
+  () => workflow.pageLedger.value?.items.find((item) => item.pageNo === props.pageNo) ?? null,
 )
 
 const pageTitle = computed(() => workflow.scanPageDisplayTitleByNo(props.pageNo))
 
 const scanBatchId = computed(
   () =>
-    workflow.currentJob.value?.scanBatchId
-    || workflow.pageLedger.value?.scanBatchId
-    || workflow.boundPaperScanBatchId.value
-    || '',
+    workflow.currentJob.value?.scanBatchId ||
+    workflow.pageLedger.value?.scanBatchId ||
+    workflow.boundPaperScanBatchId.value ||
+    '',
 )
 
 /** 仅通过页级 localPageId 与 attentionItems.pageId 精确关联，禁止回退到首个 paperInstanceId。 */
@@ -72,8 +69,8 @@ const processingStatusText = computed(() => {
   return strictEnumLabel(TASK_STATUS_LABEL, status, '处理任务状态')
 })
 
-const canBindCandidate = computed(
-  () => Boolean(scanBatchId.value && paperInstanceId.value && workflow.examId.value),
+const canBindCandidate = computed(() =>
+  Boolean(scanBatchId.value && paperInstanceId.value && workflow.examId.value),
 )
 
 const diagnosticText = computed(() => {
@@ -121,8 +118,7 @@ async function loadCandidates() {
     candidates.value = await listExamCandidates(examId)
   } catch (error) {
     candidates.value = []
-    candidatesLoadError.value
-      = error instanceof Error ? error.message : '考生名册加载失败'
+    candidatesLoadError.value = error instanceof Error ? error.message : '考生名册加载失败'
     workflow.errorMessage.value = candidatesLoadError.value
   } finally {
     candidatesLoading.value = false
@@ -171,8 +167,7 @@ async function submitBind() {
     await workflow.refreshBoundPapers()
     emit('close')
   } catch (error) {
-    workflow.errorMessage.value
-      = error instanceof Error ? error.message : '考号绑定失败'
+    workflow.errorMessage.value = error instanceof Error ? error.message : '考号绑定失败'
   } finally {
     binding.value = false
   }
@@ -210,7 +205,12 @@ function gotoReview() {
     <div v-if="canBindCandidate" class="exception-panel__form">
       <label class="field">
         <span>考号 / 学号</span>
-        <input v-model="studentNo" type="text" class="field__input" placeholder="选择名册后自动填充" />
+        <input
+          v-model="studentNo"
+          type="text"
+          class="field__input"
+          placeholder="选择名册后自动填充"
+        />
       </label>
       <label class="field">
         <span>名册考生（必选）</span>

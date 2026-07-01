@@ -4,7 +4,11 @@
  * 后端路径：/api/quality/indirect-items
  */
 import type { AchievementTargetType } from './types'
-import type { PublicSurveyItemType, SurveyChoiceOptionVO, SurveyScaleLabelVO } from '@/apis/public-survey'
+import type {
+  PublicSurveyItemType,
+  SurveyChoiceOptionVO,
+  SurveyScaleLabelVO,
+} from '@/apis/public-survey'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/indirect-items'

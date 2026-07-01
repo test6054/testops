@@ -23,21 +23,24 @@ defineOptions({
 
 const modelValue = defineModel<boolean>({ default: false })
 
-const props = withDefaults(defineProps<{
-  disabled?: boolean
-  loading?: boolean
-  size?: 'sm' | 'md'
-}>(), {
-  disabled: false,
-  loading: false,
-  size: 'md',
-})
+const props = withDefaults(
+  defineProps<{
+    disabled?: boolean
+    loading?: boolean
+    size?: 'sm' | 'md'
+  }>(),
+  {
+    disabled: false,
+    loading: false,
+    size: 'md',
+  },
+)
 
 const emit = defineEmits<{
   (e: 'change', value: boolean): void
 }>()
 
-const antSize = computed(() => props.size === 'sm' ? 'small' : 'default')
+const antSize = computed(() => (props.size === 'sm' ? 'small' : 'default'))
 
 function handleValueUpdate(value: SwitchProps['checked']) {
   if (typeof value !== 'boolean') {

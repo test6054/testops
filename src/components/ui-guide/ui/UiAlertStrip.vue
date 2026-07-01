@@ -59,23 +59,26 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  tone?: UiAlertStripTone
-  title?: string
-  description?: string
-  size?: 'sm' | 'md'
-  showIcon?: boolean
-  closable?: boolean
-  dense?: boolean
-}>(), {
-  tone: 'info',
-  title: '',
-  description: '',
-  size: 'md',
-  showIcon: true,
-  closable: false,
-  dense: false,
-})
+const props = withDefaults(
+  defineProps<{
+    tone?: UiAlertStripTone
+    title?: string
+    description?: string
+    size?: 'sm' | 'md'
+    showIcon?: boolean
+    closable?: boolean
+    dense?: boolean
+  }>(),
+  {
+    tone: 'info',
+    title: '',
+    description: '',
+    size: 'md',
+    showIcon: true,
+    closable: false,
+    dense: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'close'): void

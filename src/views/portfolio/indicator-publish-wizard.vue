@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import type { PfSceneCode, PortfolioImpactIndicatorSummaryDto, PortfolioIndicatorEngineReadinessVO, PortfolioPublishImpactReportVO } from '@/apis/portfolio/indicator-types'
+import type {
+  PfSceneCode,
+  PortfolioImpactIndicatorSummaryDto,
+  PortfolioIndicatorEngineReadinessVO,
+  PortfolioPublishImpactReportVO,
+} from '@/apis/portfolio/indicator-types'
+import {
+  PF_INDICATOR_BUSINESS_REFERENCE_SCENE_LABEL,
+  PF_SCENE_CODE_OPTIONS,
+} from '@/apis/portfolio/indicator-types'
 import { message } from 'ant-design-vue'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { PF_INDICATOR_BUSINESS_REFERENCE_SCENE_LABEL, PF_SCENE_CODE_OPTIONS } from '@/apis/portfolio/indicator-types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -29,8 +37,7 @@ const impactSummary = ref<PortfolioImpactIndicatorSummaryDto | null>(null)
 async function loadReadiness() {
   try {
     readiness.value = await portfolioIndicatorTenantApi.referenceStatus()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -41,11 +48,9 @@ async function enableAllIndicators() {
     const result = await portfolioIndicatorTenantApi.enableAllConfig()
     message.success(`已启用 ${result.enabledCount} 项指标`)
     await loadReadiness()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     enabling.value = false
   }
 }
@@ -61,11 +66,9 @@ async function runTrial() {
     }
     step.value = 2
     message.success('试算通过')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     trialing.value = false
   }
 }
@@ -76,10 +79,11 @@ function parseImpactSummary(report: PortfolioPublishImpactReportVO): boolean {
     return false
   }
   try {
-    impactSummary.value = JSON.parse(report.indicatorSummaryJson) as PortfolioImpactIndicatorSummaryDto
+    impactSummary.value = JSON.parse(
+      report.indicatorSummaryJson,
+    ) as PortfolioImpactIndicatorSummaryDto
     return true
-  }
-  catch {
+  } catch {
     impactSummary.value = null
     return false
   }
@@ -88,19 +92,21 @@ function parseImpactSummary(report: PortfolioPublishImpactReportVO): boolean {
 async function runImpactPreview() {
   previewing.value = true
   try {
-    impactReportId.value = await portfolioIndicatorTenantApi.impactPreview({ sceneCode: sceneCode.value })
-    impactReport.value = await portfolioIndicatorTenantApi.getImpactReport({ id: impactReportId.value })
+    impactReportId.value = await portfolioIndicatorTenantApi.impactPreview({
+      sceneCode: sceneCode.value,
+    })
+    impactReport.value = await portfolioIndicatorTenantApi.getImpactReport({
+      id: impactReportId.value,
+    })
     if (!parseImpactSummary(impactReport.value)) {
       message.error('影响分析摘要解析失败，请重新生成影响分析')
       return
     }
     step.value = 3
     message.success('影响分析完成')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     previewing.value = false
   }
 }
@@ -115,11 +121,9 @@ async function publish() {
     })
     message.success(`发布成功，快照 ID：${snapshotId}`)
     router.push({ name: 'PortfolioIndicatorHistory' })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     publishing.value = false
   }
 }
@@ -129,11 +133,12 @@ async function exportImpact() {
     return
   }
   try {
-    const result = await portfolioIndicatorTenantApi.exportImpactReport({ id: impactReportId.value })
+    const result = await portfolioIndicatorTenantApi.exportImpactReport({
+      id: impactReportId.value,
+    })
     await downloadPortfolioIndicatorExcelExport(result)
     message.success('影响报告已导出')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -148,9 +153,18 @@ onMounted(loadReadiness)
     </template>
     <UiCard title="指标工程贯通">
       <div v-if="readiness" class="readiness">
-        <span>已启用 {{ readiness.enabledIndicatorCount }} / {{ readiness.platformIndicatorCount }}</span>
-        <span v-for="scene in readiness.sceneStatuses" :key="scene.referenceScene" class="scene-tag">
-          {{ PF_INDICATOR_BUSINESS_REFERENCE_SCENE_LABEL[scene.referenceScene] }}：{{ scene.referencedIndicatorCount }}
+        <span
+          >已启用 {{ readiness.enabledIndicatorCount }} /
+          {{ readiness.platformIndicatorCount }}</span
+        >
+        <span
+          v-for="scene in readiness.sceneStatuses"
+          :key="scene.referenceScene"
+          class="scene-tag"
+        >
+          {{ PF_INDICATOR_BUSINESS_REFERENCE_SCENE_LABEL[scene.referenceScene] }}：{{
+            scene.referencedIndicatorCount
+          }}
         </span>
       </div>
       <UiButton variant="outline" :loading="enabling" @click="enableAllIndicators">
@@ -168,14 +182,10 @@ onMounted(loadReadiness)
         <a-input v-model:value="academicYear" placeholder="学年" style="width: 140px" />
       </div>
       <div v-if="step === 1" class="actions">
-        <UiButton variant="primary" :loading="trialing" @click="runTrial">
-          执行试算
-        </UiButton>
+        <UiButton variant="primary" :loading="trialing" @click="runTrial"> 执行试算 </UiButton>
       </div>
       <div v-else-if="step === 2" class="actions">
-        <UiButton @click="router.push({ name: 'PortfolioIndicatorOps' })">
-          计分与审计
-        </UiButton>
+        <UiButton @click="router.push({ name: 'PortfolioIndicatorOps' })"> 计分与审计 </UiButton>
         <UiButton :loading="previewing" variant="primary" @click="runImpactPreview">
           生成影响报告
         </UiButton>
@@ -196,19 +206,16 @@ onMounted(loadReadiness)
             <pre class="impact-json">{{ impactReport.indicatorSummaryJson }}</pre>
           </a-collapse-panel>
         </a-collapse>
-        <UiButton variant="primary" :loading="publishing" @click="publish">
-          确认发布
-        </UiButton>
-        <UiButton v-if="impactReportId" @click="exportImpact">
-          导出影响报告
-        </UiButton>
+        <UiButton variant="primary" :loading="publishing" @click="publish"> 确认发布 </UiButton>
+        <UiButton v-if="impactReportId" @click="exportImpact"> 导出影响报告 </UiButton>
       </div>
     </UiCard>
   </StageWorkbenchShell>
 </template>
 
 <style scoped>
-.toolbar, .actions {
+.toolbar,
+.actions {
   display: flex;
   gap: 8px;
   align-items: center;

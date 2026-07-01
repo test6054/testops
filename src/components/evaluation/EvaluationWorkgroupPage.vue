@@ -14,7 +14,12 @@ import type {
   WorkgroupMember,
   WorkgroupMemberRole,
 } from '@/apis/quality/evaluation-workgroup'
+import {
+  evaluationWorkgroupApi,
+  WORKGROUP_MEMBER_ROLE_LABEL,
+} from '@/apis/quality/evaluation-workgroup'
 import type { WorkgroupLevel } from '@/apis/quality/types'
+import { WORKGROUP_LEVEL_LABEL, WORKGROUP_LEVEL_OPTIONS } from '@/apis/quality/types'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -22,14 +27,6 @@ import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import {
-  evaluationWorkgroupApi,
-  WORKGROUP_MEMBER_ROLE_LABEL,
-} from '@/apis/quality/evaluation-workgroup'
-import {
-  WORKGROUP_LEVEL_LABEL,
-  WORKGROUP_LEVEL_OPTIONS,
-} from '@/apis/quality/types'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import { ProgramSelector, TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -48,17 +45,22 @@ import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const props = withDefaults(defineProps<{
-  domainShell?: 'portfolio' | 'quality'
-}>(), {
-  domainShell: undefined,
-})
+const props = withDefaults(
+  defineProps<{
+    domainShell?: 'portfolio' | 'quality'
+  }>(),
+  {
+    domainShell: undefined,
+  },
+)
 
 const route = useRoute()
 /** 教学档案袋 /portfolio 域独立壳层；质量评价 /quality 仍走 OBE scope 加载 */
-const isPortfolioDomain = computed(() =>
-  props.domainShell === 'portfolio'
-  || (props.domainShell !== 'quality' && Boolean(route.meta.portfolioDomain)))
+const isPortfolioDomain = computed(
+  () =>
+    props.domainShell === 'portfolio' ||
+    (props.domainShell !== 'quality' && Boolean(route.meta.portfolioDomain)),
+)
 
 interface EvaluationWorkgroupFilterModel {
   programId?: string
@@ -170,7 +172,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -296,10 +298,10 @@ function removeMember(index: number) {
 
 async function submitEditor() {
   if (
-    !editor.programId
-    || !editor.workgroupCode.trim()
-    || !editor.workgroupName.trim()
-    || !editor.convenerUserId
+    !editor.programId ||
+    !editor.workgroupCode.trim() ||
+    !editor.workgroupName.trim() ||
+    !editor.convenerUserId
   ) {
     message.error('请填写专业、编码、名称、召集人')
     return
@@ -435,11 +437,13 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
-
 if (!isPortfolioDomain.value) {
-  useQualityScopedLoader(() => {
-    void loadList()
-  }, { watchScope: true, immediate: false, reloadOnActivated: false })
+  useQualityScopedLoader(
+    () => {
+      void loadList()
+    },
+    { watchScope: true, immediate: false, reloadOnActivated: false },
+  )
 }
 
 onMounted(async () => {
@@ -454,19 +458,12 @@ onActivated(() => {
 <template>
   <StageWorkbenchShell>
     <template v-if="isPortfolioDomain" #context>
-      <ContextBar
-        title="评价工作组"
-        subtitle="多元评价 · 维护评价任务成员编组与职责分工"
-      >
+      <ContextBar title="评价工作组" subtitle="多元评价 · 维护评价任务成员编组与职责分工">
         <template #status>
-          <UiTag tone="blue" size="sm">
-            教学档案袋
-          </UiTag>
+          <UiTag tone="blue" size="sm"> 教学档案袋 </UiTag>
         </template>
         <template #actions>
-          <UiButton variant="primary" size="sm" @click="openCreate">
-            新建工作组
-          </UiButton>
+          <UiButton variant="primary" size="sm" @click="openCreate"> 新建工作组 </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -557,7 +554,11 @@ onActivated(() => {
           </a-col>
           <a-col :span="12">
             <a-form-item label="层级" required>
-              <a-select v-model:value="editor.levelCode" :options="levelOptions" :disabled="editorMode === 'edit'" />
+              <a-select
+                v-model:value="editor.levelCode"
+                :options="levelOptions"
+                :disabled="editorMode === 'edit'"
+              />
             </a-form-item>
           </a-col>
         </a-row>

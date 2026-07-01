@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioDevelopmentRecordStatus, PortfolioDevelopmentRecordType } from '@/apis/portfolio/enums'
+import type {
+  PortfolioDevelopmentRecordStatus,
+  PortfolioDevelopmentRecordType,
+} from '@/apis/portfolio/enums'
+import { PORTFOLIO_DEVELOPMENT_RECORD_STATUS_LABEL } from '@/apis/portfolio/enums'
 import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { PORTFOLIO_DEVELOPMENT_RECORD_STATUS_LABEL } from '@/apis/portfolio/enums'
-import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -34,7 +37,8 @@ const loading = ref(false)
 const importModalOpen = ref(false)
 const rows = ref<PortfolioDevelopmentRecordVO[]>([])
 const form = reactive({ recordTitle: '', descriptionText: '', teacherUserId: '' })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
 
 const requiresTeacher = computed(() => props.recordType === 'ACHIEVEMENT')
 const showEditor = computed(() => !props.readonly)
@@ -47,9 +51,7 @@ const importContext = computed(() => ({
 }))
 
 const columns = computed<ColumnsType>(() => {
-  const base: ColumnsType = [
-    { title: '标题', dataIndex: 'recordTitle', key: 'recordTitle' },
-  ]
+  const base: ColumnsType = [{ title: '标题', dataIndex: 'recordTitle', key: 'recordTitle' }]
   if (requiresTeacher.value) {
     base.push({ title: '所属教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 })
   }
@@ -85,15 +87,13 @@ async function loadPage() {
     rows.value = readPageList(page, '加载发展记录失败')
     if (requiresTeacher.value) {
       const userIds = rows.value
-        .map(row => row.teacherUserId)
+        .map((row) => row.teacherUserId)
         .filter((id): id is string => Boolean(id))
       await hydrateTeacherLabels([...new Set(userIds)])
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -119,8 +119,7 @@ async function saveRecord() {
     message.success('已保存')
     resetForm()
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -130,8 +129,7 @@ async function removeRecord(id: string) {
     await portfolioDevelopmentRecordApi.delete({ id })
     message.success('已删除')
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -146,8 +144,7 @@ async function exportExcel() {
     })
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -160,7 +157,7 @@ onMounted(loadPage)
     <ContextBar :title="title" :subtitle="subtitle" />
     <UiCard v-if="showEditor" title="新增条目">
       <div class="form-row">
-        <input v-model="form.recordTitle" class="input input--wide" placeholder="标题">
+        <input v-model="form.recordTitle" class="input input--wide" placeholder="标题" />
         <a-select
           v-if="requiresTeacher"
           v-model:value="form.teacherUserId"
@@ -172,25 +169,23 @@ onMounted(loadPage)
           :options="teacherOptions"
           @search="searchTeachers"
         />
-        <UiButton variant="primary" @click="saveRecord">
-          保存
-        </UiButton>
+        <UiButton variant="primary" @click="saveRecord"> 保存 </UiButton>
       </div>
     </UiCard>
     <UiCard>
       <div class="toolbar">
-        <UiButton @click="loadPage">
-          刷新
-        </UiButton>
-        <UiButton v-if="showEditor" @click="importModalOpen = true">
-          批量导入
-        </UiButton>
-        <UiButton @click="exportExcel">
-          导出 Excel
-        </UiButton>
+        <UiButton @click="loadPage"> 刷新 </UiButton>
+        <UiButton v-if="showEditor" @click="importModalOpen = true"> 批量导入 </UiButton>
+        <UiButton @click="exportExcel"> 导出 Excel </UiButton>
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无发展记录" />
-      <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id" style="margin-top: 16px">
+      <UiDataTable
+        :columns="columns"
+        :data-source="rows"
+        :loading="loading"
+        row-key="id"
+        style="margin-top: 16px"
+      >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
             {{ teacherLabel(record.teacherUserId) }}
@@ -199,9 +194,7 @@ onMounted(loadPage)
             {{ recordStatusLabel(record.recordStatus) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton v-if="showEditor" size="sm" @click="removeRecord(record.id)">
-              删除
-            </UiButton>
+            <UiButton v-if="showEditor" size="sm" @click="removeRecord(record.id)"> 删除 </UiButton>
           </template>
         </template>
       </UiDataTable>

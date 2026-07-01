@@ -13,11 +13,6 @@ import type {
   PortfolioReviewTaskStatus,
   PortfolioReviewTaskSummaryVO,
 } from '@/apis/portfolio/types'
-import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
-import { Input, message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
-import { portfolioReviewApi } from '@/apis/portfolio/review'
 import {
   PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL,
   PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
@@ -30,6 +25,11 @@ import {
   PORTFOLIO_REVIEW_TASK_STATUS_TONE,
   PORTFOLIO_SCHOOL_REVIEW_FLOW_CODE,
 } from '@/apis/portfolio/types'
+import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
+import { Input, message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
+import { portfolioReviewApi } from '@/apis/portfolio/review'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
@@ -90,7 +90,7 @@ function reviewActionTypeLabel(actionType: PortfolioReviewActionType): string {
 }
 
 function reviewTaskStatusFilterOptions(): FilterOption[] {
-  return PORTFOLIO_REVIEW_TASK_STATUS_FILTER_CODES.map(value => ({
+  return PORTFOLIO_REVIEW_TASK_STATUS_FILTER_CODES.map((value) => ({
     value,
     label: reviewTaskStatusLabel(value),
   }))
@@ -138,9 +138,8 @@ const filterForm = reactive<ReviewFilterModel>({
   categoryId: undefined,
 })
 
-const hasSensitiveRows = computed(() => rows.value.some(item => item.riskLevel === 'SENSITIVE'))
-const showReviewActions = computed(() =>
-  Boolean(activeRow.value?.reviewActionAllowed))
+const hasSensitiveRows = computed(() => rows.value.some((item) => item.riskLevel === 'SENSITIVE'))
+const showReviewActions = computed(() => Boolean(activeRow.value?.reviewActionAllowed))
 
 const filterModel = computed<Record<string, unknown>>({
   get: () => filterForm as Record<string, unknown>,
@@ -149,7 +148,7 @@ const filterModel = computed<Record<string, unknown>>({
   },
 })
 
-const categoryOptions = ref<{ label: string, value: string }[]>([])
+const categoryOptions = ref<{ label: string; value: string }[]>([])
 
 const filterFields = computed<FilterField[]>(() => [
   {
@@ -222,20 +221,22 @@ const batchReturnDeadline = ref('')
 const escalateReason = ref('')
 
 const batchSelectableKeys = computed(() =>
-  rows.value.filter(item => item.batchApproveAllowed).map(item => item.id))
+  rows.value.filter((item) => item.batchApproveAllowed).map((item) => item.id),
+)
 
 async function loadCategories() {
   try {
     const tree = await portfolioArchiveTemplateApi.listCategoryTree()
     categoryOptions.value = flattenCategoryTree(tree ?? [])
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载档案分类失败')
   }
 }
 
-function flattenCategoryTree(nodes: PortfolioArchiveCategoryTreeNodeVO[]): { label: string, value: string }[] {
-  const options: { label: string, value: string }[] = []
+function flattenCategoryTree(
+  nodes: PortfolioArchiveCategoryTreeNodeVO[],
+): { label: string; value: string }[] {
+  const options: { label: string; value: string }[] = []
   for (const node of nodes) {
     options.push({ label: node.categoryName, value: node.id })
     if (node.children?.length) {
@@ -259,12 +260,12 @@ async function loadPage() {
     })
     rows.value = readPageList(result, '加载审核待办失败')
     pageTotal.value = readPageTotal(result, '加载审核待办失败')
-    selectedRowKeys.value = selectedRowKeys.value.filter(id => batchSelectableKeys.value.includes(id))
-  }
-  catch (error) {
+    selectedRowKeys.value = selectedRowKeys.value.filter((id) =>
+      batchSelectableKeys.value.includes(id),
+    )
+  } catch (error) {
     showUserError(error, '加载审核待办失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -298,21 +299,17 @@ async function openDetail(row: PortfolioReviewTaskSummaryVO) {
       logRows.value = await portfolioReviewApi.listLogs(row.id)
       try {
         aiPreReview.value = await portfolioReviewApi.getAiPreReview(row.id)
-      }
-      catch (error) {
+      } catch (error) {
         if (readBusinessResultCode(error) === ResultCode.DATA_NOT_FOUND) {
           aiPreReviewAbsent.value = true
-        }
-        else {
+        } else {
           showUserError(error, '加载 AI 初审失败')
         }
       }
     }
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载审核详情失败')
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
@@ -330,11 +327,9 @@ async function handleApprove() {
     message.success('审核已通过')
     drawerOpen.value = false
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '审核通过失败')
-  }
-  finally {
+  } finally {
     actionSubmitting.value = false
   }
 }
@@ -354,11 +349,9 @@ async function handleReject() {
     message.success('已退回修改')
     drawerOpen.value = false
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '审核退回失败')
-  }
-  finally {
+  } finally {
     actionSubmitting.value = false
   }
 }
@@ -385,11 +378,9 @@ async function handleDismiss() {
     message.success('已驳回')
     drawerOpen.value = false
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '审核驳回失败')
-  }
-  finally {
+  } finally {
     actionSubmitting.value = false
   }
 }
@@ -405,11 +396,9 @@ async function handleBatchApprove() {
     message.success(`已批量通过 ${count} 条`)
     selectedRowKeys.value = []
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '批量通过失败')
-  }
-  finally {
+  } finally {
     batchSubmitting.value = false
   }
 }
@@ -435,11 +424,9 @@ async function handleBatchReject() {
     batchRejectReason.value = ''
     batchReturnDeadline.value = ''
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '批量退回失败')
-  }
-  finally {
+  } finally {
     batchRejectSubmitting.value = false
   }
 }
@@ -466,11 +453,9 @@ async function handleEscalate() {
     message.success('已转复审')
     drawerOpen.value = false
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '转复审失败')
-  }
-  finally {
+  } finally {
     actionSubmitting.value = false
   }
 }
@@ -537,7 +522,9 @@ onMounted(async () => {
         empty-description="当前筛选条件下没有待复核材料，可调整院系、分类或审核状态后重试。"
         :row-selection="{
           selectedRowKeys,
-          onChange: (keys: string[]) => { selectedRowKeys = keys },
+          onChange: (keys: string[]) => {
+            selectedRowKeys = keys
+          },
           getCheckboxProps: (record: PortfolioReviewTaskSummaryVO) => ({
             disabled: !record.batchApproveAllowed,
           }),
@@ -548,10 +535,7 @@ onMounted(async () => {
             {{ record.teacherName }}
           </template>
           <template v-else-if="column.key === 'riskLevel'">
-            <UiTag
-              v-if="record.riskLevel"
-              :tone="materialRiskLevelTone(record.riskLevel)"
-            >
+            <UiTag v-if="record.riskLevel" :tone="materialRiskLevelTone(record.riskLevel)">
               {{ materialRiskLevelLabel(record.riskLevel) }}
             </UiTag>
           </template>
@@ -565,10 +549,7 @@ onMounted(async () => {
             {{ record.sourceType ? archiveRecordSourceTypeLabel(record.sourceType) : '—' }}
           </template>
           <template v-else-if="column.key === 'recordStatus'">
-            <UiTag
-              v-if="record.recordStatus"
-              :tone="archiveRecordStatusTone(record.recordStatus)"
-            >
+            <UiTag v-if="record.recordStatus" :tone="archiveRecordStatusTone(record.recordStatus)">
               {{ archiveRecordStatusLabel(record.recordStatus) }}
             </UiTag>
           </template>
@@ -595,11 +576,7 @@ onMounted(async () => {
       </div>
     </UiCard>
 
-    <UiDrawer
-      v-model:open="drawerOpen"
-      title="审核复核"
-      width="720"
-    >
+    <UiDrawer v-model:open="drawerOpen" title="审核复核" width="720">
       <template v-if="activeRow">
         <p class="review-meta">
           {{ activeRow.teacherName }} · {{ activeRow.categoryName }} ·
@@ -616,7 +593,10 @@ onMounted(async () => {
         <p v-else-if="activeRow.aiPreReviewSummary" class="review-ai-summary">
           AI 初审：{{ activeRow.aiPreReviewSummary }}
         </p>
-        <p v-else-if="aiPreReviewAbsent && activeRow.reviewActionAllowed" class="review-ai-summary review-ai-absent">
+        <p
+          v-else-if="aiPreReviewAbsent && activeRow.reviewActionAllowed"
+          class="review-ai-summary review-ai-absent"
+        >
           尚无 AI 初审结果
         </p>
         <p v-if="activeRow.singleReviewRequired" class="review-sensitive-hint">
@@ -649,15 +629,11 @@ onMounted(async () => {
         <div v-if="showReviewActions" class="review-actions">
           <Input v-model:value="approveOpinion" placeholder="通过意见（可选）" />
           <div class="review-actions__row">
-            <UiButton :loading="actionSubmitting" @click="handleApprove">
-              通过
-            </UiButton>
+            <UiButton :loading="actionSubmitting" @click="handleApprove"> 通过 </UiButton>
           </div>
           <template v-if="activeRow.escalateAllowed">
             <Input v-model:value="escalateReason" placeholder="转复审原因" />
-            <UiButton :loading="actionSubmitting" @click="handleEscalate">
-              转复审
-            </UiButton>
+            <UiButton :loading="actionSubmitting" @click="handleEscalate"> 转复审 </UiButton>
           </template>
           <Input v-model:value="rejectReason" placeholder="退回原因" />
           <UiDatePicker
@@ -668,9 +644,7 @@ onMounted(async () => {
             placeholder="重提期限"
             style="width: 100%"
           />
-          <UiButton :loading="actionSubmitting" @click="handleReject">
-            退回修改
-          </UiButton>
+          <UiButton :loading="actionSubmitting" @click="handleReject"> 退回修改 </UiButton>
           <Input v-model:value="dismissReason" placeholder="驳回依据" />
           <UiButton status="danger" :loading="actionSubmitting" @click="handleDismiss">
             驳回

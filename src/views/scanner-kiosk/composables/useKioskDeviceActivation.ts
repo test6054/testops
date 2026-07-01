@@ -1,5 +1,7 @@
-import type { AgentHealthResponse, AgentSetupContextResponse } from '@/apis/mark/scanner-agent-local'
-import { computed, ref } from 'vue'
+import type {
+  AgentHealthResponse,
+  AgentSetupContextResponse,
+} from '@/apis/mark/scanner-agent-local'
 import {
   activateLocalAgent,
   getAgentHealth,
@@ -7,6 +9,7 @@ import {
   LOCAL_AGENT_UNAVAILABLE_ERROR,
   LocalAgentUnavailableError,
 } from '@/apis/mark/scanner-agent-local'
+import { computed, ref } from 'vue'
 import { bindScannerOperator } from '@/apis/mark/scanner-operator-bind'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import {
@@ -20,8 +23,7 @@ import {
 } from '@/utils/kiosk-auth'
 
 const gatewayBaseUrlEnv = import.meta.env.VITE_SCANNER_GATEWAY_BASE_URL
-const defaultGatewayFromEnv
-  = typeof gatewayBaseUrlEnv === 'string' ? gatewayBaseUrlEnv.trim() : ''
+const defaultGatewayFromEnv = typeof gatewayBaseUrlEnv === 'string' ? gatewayBaseUrlEnv.trim() : ''
 
 export interface KioskDeviceActivateOptions {
   /** 返回非空字符串时阻断激活并写入 activationErrorMessage */
@@ -57,10 +59,11 @@ function createKioskDeviceActivation() {
   })
 
   const isDeviceBound = computed(() => Boolean(health.value?.bound))
-  const activationModalForced = computed(() =>
-    !health.value?.bound
-    || Boolean(health.value?.tokenResetRequired)
-    || Boolean(health.value?.rebindRequired),
+  const activationModalForced = computed(
+    () =>
+      !health.value?.bound ||
+      Boolean(health.value?.tokenResetRequired) ||
+      Boolean(health.value?.rebindRequired),
   )
   const needsActivationGate = computed(
     () => activationModalForced.value || manualActivationGateOpen.value,
@@ -116,7 +119,8 @@ function createKioskDeviceActivation() {
       }
       return {
         headline: '请先激活本机扫描工位',
-        detail: '设备激活与业务类型无关：完成一次激活后，考试扫描、考后归档、档案袋采集共用同一 push_token。',
+        detail:
+          '设备激活与业务类型无关：完成一次激活后，考试扫描、考后归档、档案袋采集共用同一 push_token。',
       }
     }
     if (kioskBrowserSessionSyncNeeded.value) {
@@ -136,9 +140,11 @@ function createKioskDeviceActivation() {
   }
 
   function isActivatedForMarkApis(): boolean {
-    return hasActiveDeviceActivation()
-      && !health.value?.tokenResetRequired
-      && !health.value?.rebindRequired
+    return (
+      hasActiveDeviceActivation() &&
+      !health.value?.tokenResetRequired &&
+      !health.value?.rebindRequired
+    )
   }
 
   function clearStaleKioskSessionWhenUnbound(): void {
@@ -179,15 +185,17 @@ function createKioskDeviceActivation() {
     return defaultGatewayFromEnv.replace(/\/+$/, '')
   }
 
-  function validateActivationForm(): {
-    ok: true
-    gatewayBaseUrl: string
-    activationCode: string
-    endpointName: string
-  } | {
-    ok: false
-    errorMessage: string
-  } {
+  function validateActivationForm():
+    | {
+        ok: true
+        gatewayBaseUrl: string
+        activationCode: string
+        endpointName: string
+      }
+    | {
+        ok: false
+        errorMessage: string
+      } {
     const gatewayBaseUrl = resolveGatewayBaseUrl(setup.value)
     const activationCode = activationForm.value.activationCode.trim()
     const endpointName = activationForm.value.endpointName.trim()
@@ -199,8 +207,7 @@ function createKioskDeviceActivation() {
       if (url.protocol !== 'http:' && url.protocol !== 'https:') {
         return { ok: false, errorMessage: '平台服务地址必须使用 HTTP 或 HTTPS 协议' }
       }
-    }
-    catch {
+    } catch {
       return { ok: false, errorMessage: '平台服务地址格式不正确' }
     }
     if (!activationCode) {
@@ -224,12 +231,10 @@ function createKioskDeviceActivation() {
       const savedProfile = getKioskBindingProfile()
       if (setupContext.deviceName && !activationForm.value.endpointName) {
         activationForm.value.endpointName = setupContext.deviceName
-      }
-      else if (savedProfile?.endpointName && !activationForm.value.endpointName) {
+      } else if (savedProfile?.endpointName && !activationForm.value.endpointName) {
         activationForm.value.endpointName = savedProfile.endpointName
       }
-    }
-    catch {
+    } catch {
       activationForm.value.gatewayBaseUrl = resolveGatewayBaseUrl(null)
     }
   }
@@ -248,23 +253,19 @@ function createKioskDeviceActivation() {
         if (needsKioskBrowserSessionSync(health.value.bound)) {
           await recoverKioskBrowserSessionFromAgent()
         }
-      }
-      else {
+      } else {
         clearStaleKioskSessionWhenUnbound()
         await syncActivationFormFromAgent()
       }
-    }
-    catch (error) {
+    } catch (error) {
       if (error instanceof LocalAgentUnavailableError) {
         markLocalAgentDisconnected()
-      }
-      else {
+      } else {
         health.value = null
         setup.value = null
         localAgentReachable.value = false
       }
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
@@ -321,12 +322,10 @@ function createKioskDeviceActivation() {
         await options.onSuccess(activation)
       }
       return true
-    }
-    catch (error) {
+    } catch (error) {
       activationErrorMessage.value = getUserErrorMessage(error, '一体机激活失败')
       return false
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }

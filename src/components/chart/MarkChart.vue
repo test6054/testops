@@ -1,8 +1,5 @@
 <template>
-  <figure
-    class="mark-chart-host"
-    :class="hostSizeClass"
-  >
+  <figure class="mark-chart-host" :class="hostSizeClass">
     <VChart
       ref="vChartRef"
       class="mark-chart"
@@ -33,24 +30,27 @@ import { MARK_ECHARTS_THEME } from '@/config/mark-echarts-theme'
 
 defineOptions({ name: 'MarkChart' })
 
-const props = withDefaults(defineProps<{
-  option: EChartsCoreOption
-  autoResize?: boolean
-  loading?: boolean
-  width?: string
-  height?: string
-  ariaLabel?: string
-  variant?: MarkChartVariant
-  gaugeSize?: MarkChartGaugeSize
-}>(), {
-  autoResize: true,
-  loading: false,
-  width: '100%',
-  height: '300px',
-  ariaLabel: '',
-  variant: 'default',
-  gaugeSize: 'md',
-})
+const props = withDefaults(
+  defineProps<{
+    option: EChartsCoreOption
+    autoResize?: boolean
+    loading?: boolean
+    width?: string
+    height?: string
+    ariaLabel?: string
+    variant?: MarkChartVariant
+    gaugeSize?: MarkChartGaugeSize
+  }>(),
+  {
+    autoResize: true,
+    loading: false,
+    width: '100%',
+    height: '300px',
+    ariaLabel: '',
+    variant: 'default',
+    gaugeSize: 'md',
+  },
+)
 const emit = defineEmits<{
   (e: 'chart-click', params: unknown): void
   (e: 'brush-selected', params: unknown): void

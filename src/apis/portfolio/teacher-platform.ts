@@ -41,7 +41,10 @@ export const portfolioArchiveBagApi = {
 
 export type PortfolioArchiveScoreRuleType = 'COMPLETENESS' | 'CATEGORY' | 'ACHIEVEMENT'
 
-export const PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_LABEL: Record<PortfolioArchiveScoreRuleType, string> = {
+export const PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_LABEL: Record<
+  PortfolioArchiveScoreRuleType,
+  string
+> = {
   COMPLETENESS: '完整度加权',
   CATEGORY: '分类归档计分',
   ACHIEVEMENT: '成果条目计分',
@@ -68,7 +71,8 @@ export interface PortfolioArchiveScoreRuleSaveRequest {
 }
 
 export const portfolioArchiveScoreApi = {
-  listRules: () => http.post<PortfolioArchiveScoreRuleVO[]>('/api/portfolio/archive-score/rule/list', {}),
+  listRules: () =>
+    http.post<PortfolioArchiveScoreRuleVO[]>('/api/portfolio/archive-score/rule/list', {}),
   saveRule: (data: PortfolioArchiveScoreRuleSaveRequest) =>
     http.post<string>('/api/portfolio/archive-score/rule/save', data),
   deleteRule: (id: string) => http.post<void>('/api/portfolio/archive-score/rule/delete', { id }),
@@ -103,8 +107,11 @@ export interface PortfolioDualTeacherImportResultVO {
 }
 
 export const portfolioDualTeacherApi = {
-  page: (data: QueryDto & { teacherUserId?: string, applicationStatus?: string }) =>
-    http.post<PageResult<PortfolioDualTeacherApplicationVO>>('/api/portfolio/dual-teacher/page', data),
+  page: (data: QueryDto & { teacherUserId?: string; applicationStatus?: string }) =>
+    http.post<PageResult<PortfolioDualTeacherApplicationVO>>(
+      '/api/portfolio/dual-teacher/page',
+      data,
+    ),
   get: (data: { id: string }) =>
     http.post<PortfolioDualTeacherApplicationVO>('/api/portfolio/dual-teacher/get', data),
   saveDraft: (data: {
@@ -116,27 +123,32 @@ export const portfolioDualTeacherApi = {
     attachmentFileIds?: string[]
   }) => http.post<string>('/api/portfolio/dual-teacher/save-draft', data),
   submit: (data: { id: string }) => http.post<void>('/api/portfolio/dual-teacher/submit', data),
-  collegeApprove: (data: { id: string, auditOpinion?: string }) =>
+  collegeApprove: (data: { id: string; auditOpinion?: string }) =>
     http.post<void>('/api/portfolio/dual-teacher/college-approve', data),
   previewEligibilityGate: (data: { id: string }) =>
-    http.post<PortfolioDualTeacherEligibilityFreezeVO>('/api/portfolio/dual-teacher/preview-eligibility-gate', data),
-  collegeReturn: (data: { id: string, auditOpinion?: string }) =>
+    http.post<PortfolioDualTeacherEligibilityFreezeVO>(
+      '/api/portfolio/dual-teacher/preview-eligibility-gate',
+      data,
+    ),
+  collegeReturn: (data: { id: string; auditOpinion?: string }) =>
     http.post<void>('/api/portfolio/dual-teacher/college-return', data),
-  academicApprove: (data: { id: string, auditOpinion?: string }) =>
+  academicApprove: (data: { id: string; auditOpinion?: string }) =>
     http.post<void>('/api/portfolio/dual-teacher/academic-approve', data),
-  academicReject: (data: { id: string, auditOpinion?: string }) =>
+  academicReject: (data: { id: string; auditOpinion?: string }) =>
     http.post<void>('/api/portfolio/dual-teacher/academic-reject', data),
-  academicReturn: (data: { id: string, auditOpinion?: string }) =>
+  academicReturn: (data: { id: string; auditOpinion?: string }) =>
     http.post<void>('/api/portfolio/dual-teacher/academic-return', data),
-  exportRoster: () => http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/dual-teacher/export-roster', {}),
-  analyticsStats: () => http.post<PortfolioDualTeacherAnalyticsVO>('/api/portfolio/dual-teacher/analytics/stats', {}),
+  exportRoster: () =>
+    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/dual-teacher/export-roster', {}),
+  analyticsStats: () =>
+    http.post<PortfolioDualTeacherAnalyticsVO>('/api/portfolio/dual-teacher/analytics/stats', {}),
 }
 
 export interface PortfolioDualTeacherAnalyticsVO {
   totalCount: number
   approvedCount: number
-  statusCounts: Array<{ applicationStatus: string, count: number }>
-  certLevelCounts: Array<{ certLevel: string, count: number }>
+  statusCounts: Array<{ applicationStatus: string; count: number }>
+  certLevelCounts: Array<{ certLevel: string; count: number }>
 }
 
 export interface PortfolioExternalTeacherVO {
@@ -167,8 +179,8 @@ export interface PortfolioExternalTeacherVO {
 }
 
 export interface PortfolioExternalTeacherStatsVO {
-  contractStatusCounts: Array<{ dimensionCode?: string, count?: number }>
-  teacherSourceCounts: Array<{ dimensionCode?: string, count?: number }>
+  contractStatusCounts: Array<{ dimensionCode?: string; count?: number }>
+  teacherSourceCounts: Array<{ dimensionCode?: string; count?: number }>
 }
 
 export interface PortfolioExternalTeacherSaveRequest {
@@ -209,21 +221,24 @@ export interface PortfolioExternalTeacherImportBatchVO {
 }
 
 export const portfolioExternalTeacherApi = {
-  page: (data: QueryDto & {
-    fullName?: string
-    searchText?: string
-    dataStatus?: PortfolioExternalTeacherDataStatus
-    teachSubject?: string
-    teacherSource?: string
-    contractStatus?: string
-  }) => http.post<PageResult<PortfolioExternalTeacherVO>>('/api/portfolio/external-teacher/page', data),
-  stats: () => http.post<PortfolioExternalTeacherStatsVO>('/api/portfolio/external-teacher/stats', {}),
+  page: (
+    data: QueryDto & {
+      fullName?: string
+      searchText?: string
+      dataStatus?: PortfolioExternalTeacherDataStatus
+      teachSubject?: string
+      teacherSource?: string
+      contractStatus?: string
+    },
+  ) =>
+    http.post<PageResult<PortfolioExternalTeacherVO>>('/api/portfolio/external-teacher/page', data),
+  stats: () =>
+    http.post<PortfolioExternalTeacherStatsVO>('/api/portfolio/external-teacher/stats', {}),
   get: (data: { id: string }) =>
     http.post<PortfolioExternalTeacherVO>('/api/portfolio/external-teacher/get', data),
   save: (data: PortfolioExternalTeacherSaveRequest) =>
     http.post<string>('/api/portfolio/external-teacher/save', data),
-  revoke: (data: { id: string }) =>
-    http.post<void>('/api/portfolio/external-teacher/revoke', data),
+  revoke: (data: { id: string }) => http.post<void>('/api/portfolio/external-teacher/revoke', data),
   importBatchPage: (data: QueryDto) =>
     http.post<PageResult<PortfolioExternalTeacherImportBatchVO>>(
       '/api/portfolio/external-teacher/import-batch/page',
@@ -235,7 +250,10 @@ export const portfolioExternalTeacherApi = {
       data,
     ),
   exportRoster: () =>
-    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/external-teacher/export-roster', {}),
+    http.post<PortfolioArchiveBagExportResultVO>(
+      '/api/portfolio/external-teacher/export-roster',
+      {},
+    ),
 }
 
 export interface PortfolioDevelopmentPlanVO {
@@ -322,12 +340,14 @@ export interface PortfolioDevelopmentPlanHistoryImportResultVO {
 }
 
 export const portfolioDevelopmentPlanApi = {
-  page: (data: QueryDto & {
-    planYear?: string
-    planStatus?: PortfolioDevelopmentPlanStatus
-    planType?: PortfolioDevelopmentPlanType
-    portfolioOrgId?: string
-  }) =>
+  page: (
+    data: QueryDto & {
+      planYear?: string
+      planStatus?: PortfolioDevelopmentPlanStatus
+      planType?: PortfolioDevelopmentPlanType
+      portfolioOrgId?: string
+    },
+  ) =>
     http.post<PageResult<PortfolioDevelopmentPlanVO>>('/api/portfolio/development-plan/page', data),
   createTeacherPlan: (data: {
     planYear: string
@@ -335,34 +355,44 @@ export const portfolioDevelopmentPlanApi = {
     planSummary?: string
     portfolioOrgId: string
     ownerUserId?: string
-  }) =>
-    http.post<string>('/api/portfolio/development-plan/create-teacher-plan', data),
+  }) => http.post<string>('/api/portfolio/development-plan/create-teacher-plan', data),
   createDepartmentPlan: (data: {
     planYear: string
     planTitle: string
     planSummary?: string
     portfolioOrgId: string
-  }) =>
-    http.post<string>('/api/portfolio/development-plan/create-department-plan', data),
+  }) => http.post<string>('/api/portfolio/development-plan/create-department-plan', data),
   submit: (data: { id: string }) => http.post<void>('/api/portfolio/development-plan/submit', data),
-  departmentApprove: (data: { id: string, auditOpinion?: string }) =>
+  departmentApprove: (data: { id: string; auditOpinion?: string }) =>
     http.post<void>('/api/portfolio/development-plan/department-approve', data),
-  departmentReturn: (data: { id: string, auditOpinion?: string }) =>
+  departmentReturn: (data: { id: string; auditOpinion?: string }) =>
     http.post<void>('/api/portfolio/development-plan/department-return', data),
   statsByYear: (data: { planYear: string }) =>
-    http.post<PortfolioDevelopmentPlanYearStatVO[]>('/api/portfolio/development-plan/stats-by-year', data),
+    http.post<PortfolioDevelopmentPlanYearStatVO[]>(
+      '/api/portfolio/development-plan/stats-by-year',
+      data,
+    ),
   statsByOrg: (data: { planYear: string }) =>
-    http.post<PortfolioDevelopmentPlanOrgStatVO[]>('/api/portfolio/development-plan/stats-by-org', data),
+    http.post<PortfolioDevelopmentPlanOrgStatVO[]>(
+      '/api/portfolio/development-plan/stats-by-org',
+      data,
+    ),
   completionAnalysis: (data: { planYear: string }) =>
-    http.post<PortfolioDevelopmentPlanCompletionVO>('/api/portfolio/development-plan/completion-analysis', data),
+    http.post<PortfolioDevelopmentPlanCompletionVO>(
+      '/api/portfolio/development-plan/completion-analysis',
+      data,
+    ),
   achievementAttainment: (data: { planYear: string }) =>
     http.post<PortfolioDevelopmentPlanAchievementAttainmentItemVO[]>(
       '/api/portfolio/development-plan/achievement-attainment',
       data,
     ),
-  exportExcel: (data: { planYear: string, planType?: PortfolioDevelopmentPlanType }) =>
-    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/development-plan/export-excel', data),
-  confirmHistoryImport: (data: { sourceFileId: string, fileName?: string }) =>
+  exportExcel: (data: { planYear: string; planType?: PortfolioDevelopmentPlanType }) =>
+    http.post<PortfolioArchiveBagExportResultVO>(
+      '/api/portfolio/development-plan/export-excel',
+      data,
+    ),
+  confirmHistoryImport: (data: { sourceFileId: string; fileName?: string }) =>
     http.post<PortfolioDevelopmentPlanHistoryImportResultVO>(
       '/api/portfolio/development-plan/history-import/confirm',
       data,
@@ -379,7 +409,7 @@ export const portfolioDevelopmentPlanApi = {
     ),
   listItems: (data: { planId: string }) =>
     http.post<PortfolioDevelopmentPlanItemVO[]>('/api/portfolio/development-plan/item/list', data),
-  batchSaveItems: (data: { planId: string, items: PortfolioDevelopmentPlanItemSaveRequest[] }) =>
+  batchSaveItems: (data: { planId: string; items: PortfolioDevelopmentPlanItemSaveRequest[] }) =>
     http.post<void>('/api/portfolio/development-plan/item/batch-save', data),
 }
 
@@ -399,30 +429,35 @@ export interface PortfolioDevelopmentRecordVO {
 }
 
 export interface PortfolioHonorStatsVO {
-  levelCounts: Array<{ levelCode: string, count: number }>
-  yearCounts: Array<{ year: number, count: number }>
+  levelCounts: Array<{ levelCode: string; count: number }>
+  yearCounts: Array<{ year: number; count: number }>
 }
 
 export interface PortfolioAchievementStatsVO {
   totalCount: number
   nationalCount: number
-  levelCounts: Array<{ levelCode: string, count: number }>
-  yearCounts: Array<{ year: number, count: number }>
+  levelCounts: Array<{ levelCode: string; count: number }>
+  yearCounts: Array<{ year: number; count: number }>
 }
 
 export const portfolioDevelopmentRecordApi = {
-  page: (data: QueryDto & {
-    recordType: PortfolioDevelopmentRecordType
-    recordStatus?: PortfolioDevelopmentRecordStatus
-    searchText?: string
-    levelCode?: string
-    awardUnit?: string
-    recordDateFrom?: string
-    recordDateTo?: string
-    categoryCode?: string
-    teacherUserId?: string
-  }) =>
-    http.post<PageResult<PortfolioDevelopmentRecordVO>>('/api/portfolio/development-record/page', data),
+  page: (
+    data: QueryDto & {
+      recordType: PortfolioDevelopmentRecordType
+      recordStatus?: PortfolioDevelopmentRecordStatus
+      searchText?: string
+      levelCode?: string
+      awardUnit?: string
+      recordDateFrom?: string
+      recordDateTo?: string
+      categoryCode?: string
+      teacherUserId?: string
+    },
+  ) =>
+    http.post<PageResult<PortfolioDevelopmentRecordVO>>(
+      '/api/portfolio/development-record/page',
+      data,
+    ),
   save: (data: {
     id?: string
     recordType: PortfolioDevelopmentRecordType
@@ -435,7 +470,8 @@ export const portfolioDevelopmentRecordApi = {
     descriptionText?: string
     fileId?: string
   }) => http.post<string>('/api/portfolio/development-record/save', data),
-  delete: (data: { id: string }) => http.post<void>('/api/portfolio/development-record/delete', data),
+  delete: (data: { id: string }) =>
+    http.post<void>('/api/portfolio/development-record/delete', data),
   exportExcel: (data: {
     recordType: PortfolioDevelopmentRecordType
     categoryCode?: string
@@ -446,39 +482,62 @@ export const portfolioDevelopmentRecordApi = {
     recordDateFrom?: string
     recordDateTo?: string
   }) =>
-    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/development-record/export-excel', data),
-  honorStats: (data: {
-    levelCode?: string
-    awardUnit?: string
-    recordDateFrom?: string
-    recordDateTo?: string
-    categoryCode?: string
-    teacherUserId?: string
-  } = {}) => http.post<PortfolioHonorStatsVO>('/api/portfolio/development-record/honor/stats', data),
-  honorExport: (data: {
-    levelCode?: string
-    awardUnit?: string
-    recordDateFrom?: string
-    recordDateTo?: string
-    categoryCode?: string
-    teacherUserId?: string
-    nationalOnly?: boolean
-  } = {}) => http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/development-record/honor/export', data),
-  achievementStats: (data: {
-    levelCode?: string
-    nationalOnly?: boolean
-    categoryCode?: string
-    teacherUserId?: string
-  } = {}) => http.post<PortfolioAchievementStatsVO>('/api/portfolio/development-record/achievement/stats', data),
-  comprehensivePage: (data: QueryDto & {
-    searchText?: string
-    recordTypes?: PortfolioDevelopmentRecordType[]
-    levelCode?: string
-    nationalOnly?: boolean
-    teacherUserId?: string
-    recordDateFrom?: string
-    recordDateTo?: string
-  }) => http.post<PageResult<PortfolioDevelopmentRecordVO>>('/api/portfolio/development-record/comprehensive/page', data),
+    http.post<PortfolioArchiveBagExportResultVO>(
+      '/api/portfolio/development-record/export-excel',
+      data,
+    ),
+  honorStats: (
+    data: {
+      levelCode?: string
+      awardUnit?: string
+      recordDateFrom?: string
+      recordDateTo?: string
+      categoryCode?: string
+      teacherUserId?: string
+    } = {},
+  ) => http.post<PortfolioHonorStatsVO>('/api/portfolio/development-record/honor/stats', data),
+  honorExport: (
+    data: {
+      levelCode?: string
+      awardUnit?: string
+      recordDateFrom?: string
+      recordDateTo?: string
+      categoryCode?: string
+      teacherUserId?: string
+      nationalOnly?: boolean
+    } = {},
+  ) =>
+    http.post<PortfolioArchiveBagExportResultVO>(
+      '/api/portfolio/development-record/honor/export',
+      data,
+    ),
+  achievementStats: (
+    data: {
+      levelCode?: string
+      nationalOnly?: boolean
+      categoryCode?: string
+      teacherUserId?: string
+    } = {},
+  ) =>
+    http.post<PortfolioAchievementStatsVO>(
+      '/api/portfolio/development-record/achievement/stats',
+      data,
+    ),
+  comprehensivePage: (
+    data: QueryDto & {
+      searchText?: string
+      recordTypes?: PortfolioDevelopmentRecordType[]
+      levelCode?: string
+      nationalOnly?: boolean
+      teacherUserId?: string
+      recordDateFrom?: string
+      recordDateTo?: string
+    },
+  ) =>
+    http.post<PageResult<PortfolioDevelopmentRecordVO>>(
+      '/api/portfolio/development-record/comprehensive/page',
+      data,
+    ),
 }
 
 export interface PortfolioKeyTeacherRegistryVO {
@@ -496,12 +555,15 @@ export interface PortfolioKeyTeacherRegistryVO {
 }
 
 export const portfolioKeyTeacherApi = {
-  page: (data: QueryDto & {
-    registryType?: string
-    teacherUserId?: string
-    appointYear?: string
-    registryStatus?: string
-  }) => http.post<PageResult<PortfolioKeyTeacherRegistryVO>>('/api/portfolio/key-teacher/page', data),
+  page: (
+    data: QueryDto & {
+      registryType?: string
+      teacherUserId?: string
+      appointYear?: string
+      registryStatus?: string
+    },
+  ) =>
+    http.post<PageResult<PortfolioKeyTeacherRegistryVO>>('/api/portfolio/key-teacher/page', data),
   save: (data: {
     id?: string
     teacherUserId: string
@@ -551,12 +613,15 @@ export interface PortfolioDoubleDutyAnalyticsVO {
 }
 
 export const portfolioDoubleDutyApi = {
-  page: (data: QueryDto & {
-    teacherUserId?: string
-    appointYear?: string
-    registryStatus?: string
-    searchText?: string
-  }) => http.post<PageResult<PortfolioDoubleDutyRegistryVO>>('/api/portfolio/double-duty/page', data),
+  page: (
+    data: QueryDto & {
+      teacherUserId?: string
+      appointYear?: string
+      registryStatus?: string
+      searchText?: string
+    },
+  ) =>
+    http.post<PageResult<PortfolioDoubleDutyRegistryVO>>('/api/portfolio/double-duty/page', data),
   save: (data: {
     id?: string
     teacherUserId: string
@@ -589,7 +654,7 @@ export interface PortfolioTeacherSalaryVO {
 }
 
 export const portfolioTeacherSalaryApi = {
-  page: (data: QueryDto & { teacherUserId?: string, salaryMonth?: string }) =>
+  page: (data: QueryDto & { teacherUserId?: string; salaryMonth?: string }) =>
     http.post<PageResult<PortfolioTeacherSalaryVO>>('/api/portfolio/teacher-salary/page', data),
   save: (data: {
     id?: string
@@ -601,7 +666,7 @@ export const portfolioTeacherSalaryApi = {
     dataSource?: string
     remark?: string
   }) => http.post<string>('/api/portfolio/teacher-salary/save', data),
-  export: (data: { teacherUserId?: string, salaryMonth?: string } = {}) =>
+  export: (data: { teacherUserId?: string; salaryMonth?: string } = {}) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/teacher-salary/export', data),
 }
 
@@ -625,8 +690,11 @@ export interface PortfolioTeacherLibraryBorrowStatsVO {
 }
 
 export const portfolioTeacherLibraryApi = {
-  page: (data: QueryDto & { teacherUserId?: string, searchText?: string, activeOnly?: boolean }) =>
-    http.post<PageResult<PortfolioTeacherLibraryBorrowVO>>('/api/portfolio/teacher-library/page', data),
+  page: (data: QueryDto & { teacherUserId?: string; searchText?: string; activeOnly?: boolean }) =>
+    http.post<PageResult<PortfolioTeacherLibraryBorrowVO>>(
+      '/api/portfolio/teacher-library/page',
+      data,
+    ),
   save: (data: {
     id?: string
     teacherUserId: string
@@ -638,7 +706,7 @@ export const portfolioTeacherLibraryApi = {
     dataSource?: string
     remark?: string
   }) => http.post<string>('/api/portfolio/teacher-library/save', data),
-  export: (data: { teacherUserId?: string, searchText?: string, activeOnly?: boolean } = {}) =>
+  export: (data: { teacherUserId?: string; searchText?: string; activeOnly?: boolean } = {}) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/teacher-library/export', data),
   stats: (data: { teacherUserId?: string } = {}) =>
     http.post<PortfolioTeacherLibraryBorrowStatsVO>('/api/portfolio/teacher-library/stats', data),
@@ -734,7 +802,8 @@ export const portfolioTeacherRecommendationApi = {
     enabled?: boolean
     filterSnapshot: PortfolioTeacherRecommendRuleVO['filterSnapshot']
   }) => http.post<string>('/api/portfolio/recommendation/rule/save', data),
-  listRules: () => http.post<PortfolioTeacherRecommendRuleVO[]>('/api/portfolio/recommendation/rule/list', {}),
+  listRules: () =>
+    http.post<PortfolioTeacherRecommendRuleVO[]>('/api/portfolio/recommendation/rule/list', {}),
   executeRun: (data: { ruleId: string }) =>
     http.post<string>('/api/portfolio/recommendation/run/execute', data),
   pageRuns: (data: QueryDto & { ruleId?: string }) =>
@@ -743,13 +812,22 @@ export const portfolioTeacherRecommendationApi = {
       data,
     ),
   pageCandidates: (data: QueryDto & { runId: string }) =>
-    http.post<PageResult<PortfolioTeacherRecommendCandidateVO>>('/api/portfolio/recommendation/candidate/page', data),
-  pkCompare: (data: { teacherUserIds: string[], dimensionCodes: PortfolioPortraitDimension[] }) =>
+    http.post<PageResult<PortfolioTeacherRecommendCandidateVO>>(
+      '/api/portfolio/recommendation/candidate/page',
+      data,
+    ),
+  pkCompare: (data: { teacherUserIds: string[]; dimensionCodes: PortfolioPortraitDimension[] }) =>
     http.post<PortfolioTeacherPkCompareVO>('/api/portfolio/recommendation/pk-compare', data),
   explainSubmit: (data: { runId: string }) =>
-    http.post<PortfolioTeacherRecommendExplainSubmitVO>('/api/portfolio/recommendation/ai/explain-submit', data),
+    http.post<PortfolioTeacherRecommendExplainSubmitVO>(
+      '/api/portfolio/recommendation/ai/explain-submit',
+      data,
+    ),
   explainStatus: (data: { runId: string }) =>
-    http.post<PortfolioTeacherRecommendExplainStatusVO>('/api/portfolio/recommendation/run/explain-status', data),
+    http.post<PortfolioTeacherRecommendExplainStatusVO>(
+      '/api/portfolio/recommendation/run/explain-status',
+      data,
+    ),
 }
 
 export interface PortfolioPortraitTemplateVO {
@@ -771,8 +849,7 @@ export const portfolioPortraitTemplateApi = {
     academicYear: string
     layoutJson: string
     chartConfigJson?: string
-  }) =>
-    http.post<string>('/api/portfolio/portrait-template/save', data),
+  }) => http.post<string>('/api/portfolio/portrait-template/save', data),
 }
 
 export type { PortfolioEvaluationMode, PortfolioEvaluationTaskStatus } from '@/apis/portfolio/enums'
@@ -827,13 +904,16 @@ export const portfolioEvaluationTaskApi = {
     workgroupId: string
     startTime: string
     endTime: string
-  }) =>
-    http.post<string>('/api/portfolio/evaluation-task/create', data),
-  publish: (data: { id: string }) => http.post<void>('/api/portfolio/evaluation-task/publish', data),
+  }) => http.post<string>('/api/portfolio/evaluation-task/create', data),
+  publish: (data: { id: string }) =>
+    http.post<void>('/api/portfolio/evaluation-task/publish', data),
   get: (data: { id: string }) =>
     http.post<PortfolioEvaluationTaskVO>('/api/portfolio/evaluation-task/get', data),
   fillContext: (data: { id: string }) =>
-    http.post<PortfolioEvaluationTaskFillContextVO>('/api/portfolio/evaluation-task/fill-context', data),
+    http.post<PortfolioEvaluationTaskFillContextVO>(
+      '/api/portfolio/evaluation-task/fill-context',
+      data,
+    ),
   page: (data: QueryDto & { taskStatus?: PortfolioEvaluationTaskStatus }) =>
     http.post<PageResult<PortfolioEvaluationTaskVO>>('/api/portfolio/evaluation-task/page', data),
   exportExcel: () =>
@@ -898,29 +978,37 @@ export const portfolioEvaluationEntryApi = {
     score: string
     commentText?: string
   }) => http.post<string>('/api/portfolio/evaluation-entry/save', data),
-  page: (data: QueryDto & {
-    evaluationTaskId: string
-    subjectTeacherUserId?: string
-    indicatorCode?: string
-  }) => http.post<PageResult<PortfolioEvaluationEntryVO>>('/api/portfolio/evaluation-entry/page', data),
+  page: (
+    data: QueryDto & {
+      evaluationTaskId: string
+      subjectTeacherUserId?: string
+      indicatorCode?: string
+    },
+  ) =>
+    http.post<PageResult<PortfolioEvaluationEntryVO>>('/api/portfolio/evaluation-entry/page', data),
   summary: (data: { id: string }) =>
     http.post<PortfolioEvaluationEntrySummaryVO>('/api/portfolio/evaluation-entry/summary', data),
   exportSummary: (data: { id: string }) =>
-    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/evaluation-entry/export-summary', data),
+    http.post<PortfolioArchiveBagExportResultVO>(
+      '/api/portfolio/evaluation-entry/export-summary',
+      data,
+    ),
   comprehensiveAnalysis: (data: {
     workgroupId?: string
     planYear?: string
     evaluationTaskIds?: string[]
-  }) => http.post<PortfolioEvaluationComprehensiveAnalysisVO>(
-    '/api/portfolio/evaluation-entry/comprehensive-analysis',
-    data,
-  ),
+  }) =>
+    http.post<PortfolioEvaluationComprehensiveAnalysisVO>(
+      '/api/portfolio/evaluation-entry/comprehensive-analysis',
+      data,
+    ),
   exportComprehensiveAnalysis: (data: {
     workgroupId?: string
     planYear?: string
     evaluationTaskIds?: string[]
-  }) => http.post<PortfolioArchiveBagExportResultVO>(
-    '/api/portfolio/evaluation-entry/export-comprehensive-analysis',
-    data,
-  ),
+  }) =>
+    http.post<PortfolioArchiveBagExportResultVO>(
+      '/api/portfolio/evaluation-entry/export-comprehensive-analysis',
+      data,
+    ),
 }

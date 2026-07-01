@@ -11,7 +11,9 @@ export interface ExamWorkspacePageMetricsInput {
  * 按工作台子路由阶段键构建页级 KPI；与布局级 Signal 互补，不重复全考试指标。
  * 扫描/批阅/发布等跨阶段指标由布局 Chrome 的 buildExamWorkspaceSignalMetrics 承担。
  */
-export function buildExamWorkspacePageMetrics(input: ExamWorkspacePageMetricsInput): SignalMetric[] {
+export function buildExamWorkspacePageMetrics(
+  input: ExamWorkspacePageMetricsInput,
+): SignalMetric[] {
   const { markStageKey, snapshot } = input
   if (!markStageKey || !snapshot) {
     return []
@@ -49,9 +51,13 @@ export function buildExamWorkspacePageMetrics(input: ExamWorkspacePageMetricsInp
       return []
     case 'MARKING_ORG': {
       if (snapshot.markingOrgConfigured) {
-        return [{ key: 'org-ready', label: '阅卷设置', value: '已配置', tone: 'green', clickable: true }]
+        return [
+          { key: 'org-ready', label: '阅卷设置', value: '已配置', tone: 'green', clickable: true },
+        ]
       }
-      return [{ key: 'org-pending', label: '阅卷设置', value: '待配置', tone: 'orange', clickable: true }]
+      return [
+        { key: 'org-pending', label: '阅卷设置', value: '待配置', tone: 'orange', clickable: true },
+      ]
     }
     case 'TRIAL_MARKING':
     case 'FORMAL_MARKING':

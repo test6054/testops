@@ -55,11 +55,9 @@ async function loadTeacherOptions(keyword?: string) {
       searchText: keyword || undefined,
     })
     teacherOptions.value = readPageList(page, '加载教师名册失败')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载教师名册失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -68,8 +66,7 @@ function syncRouteQuery(teacherId: string) {
   const query = { ...route.query }
   if (teacherId) {
     query.teacherId = teacherId
-  }
-  else {
+  } else {
     delete query.teacherId
   }
   void router.replace({ path: route.path, query })
@@ -118,15 +115,9 @@ onMounted(() => {
         @search="(val: string) => loadTeacherOptions(val)"
         @focus="() => loadTeacherOptions()"
       >
-        <a-select-option
-          v-for="item in teacherOptions"
-          :key="item.userId"
-          :value="item.userId"
-        >
+        <a-select-option v-for="item in teacherOptions" :key="item.userId" :value="item.userId">
           {{ resolvePortfolioTeacherDisplayName(item) ?? item.userId }}
-          <template v-if="item.departmentName">
-            · {{ item.departmentName }}
-          </template>
+          <template v-if="item.departmentName"> · {{ item.departmentName }} </template>
         </a-select-option>
       </a-select>
     </template>

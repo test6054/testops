@@ -2,10 +2,7 @@
   <UiSectionTabs v-model="settingsTab" :items="settingsTabs" compact>
     <section v-if="settingsTab === 'duty'" class="archive-volume-settings__panel">
       <UiForm :disabled="dutyLoading || saving">
-        <UiFormSection
-          title="职责授权"
-          subtitle="配置归档职责类型、院系范围与全校授权"
-        >
+        <UiFormSection title="职责授权" subtitle="配置归档职责类型、院系范围与全校授权">
           <UiDataTable
             pagination-mode="none"
             :columns="dutyColumns"
@@ -65,10 +62,7 @@
 
     <section v-else-if="settingsTab === 'security'" class="archive-volume-settings__panel">
       <UiForm :disabled="policyLoading || saving">
-        <UiFormSection
-          title="密级策略"
-          subtitle="按职责类型限制可访问的最高密级"
-        >
+        <UiFormSection title="密级策略" subtitle="按职责类型限制可访问的最高密级">
           <UiDataTable
             pagination-mode="none"
             :columns="policyColumns"
@@ -82,7 +76,11 @@
           >
             <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'dutyType'">
-                <a-select v-model:value="policyRows[index].dutyType" :options="dutyTypeOptions" style="width: 100%" />
+                <a-select
+                  v-model:value="policyRows[index].dutyType"
+                  :options="dutyTypeOptions"
+                  style="width: 100%"
+                />
               </template>
               <template v-else-if="column.key === 'maxSecurityLevel'">
                 <a-select
@@ -108,10 +106,7 @@
 
     <section v-else class="archive-volume-settings__panel">
       <UiForm :disabled="catalogLoading || saving">
-        <UiFormSection
-          title="目录模板"
-          subtitle="维护租户材料目录项、必交规则与排序"
-        >
+        <UiFormSection title="目录模板" subtitle="维护租户材料目录项、必交规则与排序">
           <UiDataTable
             pagination-mode="none"
             :columns="catalogColumns"
@@ -152,10 +147,16 @@
                 <a-checkbox v-model:checked="catalogRows[index].requiredFlag">必交</a-checkbox>
               </template>
               <template v-else-if="column.key === 'delayAllowedFlag'">
-                <a-checkbox v-model:checked="catalogRows[index].delayAllowedFlag">允许延迟</a-checkbox>
+                <a-checkbox v-model:checked="catalogRows[index].delayAllowedFlag"
+                  >允许延迟</a-checkbox
+                >
               </template>
               <template v-else-if="column.key === 'sortOrder'">
-                <a-input-number v-model:value="catalogRows[index].sortOrder" :min="0" style="width: 100%" />
+                <a-input-number
+                  v-model:value="catalogRows[index].sortOrder"
+                  :min="0"
+                  style="width: 100%"
+                />
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTextAction tone="danger" @click="removeCatalogRow(index)">删除</UiTextAction>
@@ -177,10 +178,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveDutyGrantItemRequest, ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
-import type { ArchiveCatalogTemplateSaveItemRequest, ArchiveMaterialTypeCode, ArchiveSecurityLevelCode } from '@/apis/mark/archive-volume'
-import type {TenantSchoolDepartmentDto} from '@/apis/quality/user-catalog';
-import { message } from 'ant-design-vue'
-import { onMounted, ref, watch } from 'vue'
 import {
   ARCHIVE_DUTY_TYPE_LABEL,
   listArchiveDutyGrants,
@@ -188,6 +185,11 @@ import {
   saveArchiveDutyGrants,
   saveArchiveSecurityPolicy,
 } from '@/apis/mark/archive-config'
+import type {
+  ArchiveCatalogTemplateSaveItemRequest,
+  ArchiveMaterialTypeCode,
+  ArchiveSecurityLevelCode,
+} from '@/apis/mark/archive-volume'
 import {
   ARCHIVE_EXAM_FORM_LABEL,
   ARCHIVE_MATERIAL_TYPE_LABEL,
@@ -195,7 +197,10 @@ import {
   listArchiveCatalogTemplate,
   saveArchiveCatalogTemplate,
 } from '@/apis/mark/archive-volume'
+import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
+import { message } from 'ant-design-vue'
+import { onMounted, ref, watch } from 'vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import { requireArrayResult } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -214,7 +219,11 @@ const props = defineProps<{
 }>()
 
 type DutyRow = ArchiveDutyGrantItemRequest & { rowKey: string }
-interface PolicyRow { rowKey: string, dutyType: ArchiveDutyTypeCode, maxSecurityLevel: ArchiveSecurityLevelCode }
+interface PolicyRow {
+  rowKey: string
+  dutyType: ArchiveDutyTypeCode
+  maxSecurityLevel: ArchiveSecurityLevelCode
+}
 type CatalogRow = ArchiveCatalogTemplateSaveItemRequest & { rowKey: string }
 
 const settingsTab = ref('duty')
@@ -225,7 +234,7 @@ const catalogLoading = ref(false)
 const dutyRows = ref<DutyRow[]>([])
 const policyRows = ref<PolicyRow[]>([])
 const catalogRows = ref<CatalogRow[]>([])
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
 
 function dutyRowKey(row: DutyRow) {
   const scope = row.tenantWide ? 'tenant' : (row.scopeDepartmentId ?? 'none')
@@ -264,14 +273,26 @@ const settingsTabs = [
 function resolveSettingsTab(raw?: string) {
   if (!raw) return 'duty'
   if (raw === 'duties') return 'duty'
-  const allowed = settingsTabs.map(item => item.key)
+  const allowed = settingsTabs.map((item) => item.key)
   return allowed.includes(raw) ? raw : 'duty'
 }
 
-const dutyTypeOptions = Object.entries(ARCHIVE_DUTY_TYPE_LABEL).map(([value, label]) => ({ value, label }))
-const securityLevelOptions = Object.entries(ARCHIVE_SECURITY_LEVEL_LABEL).map(([value, label]) => ({ value, label }))
-const materialTypeOptions = Object.entries(ARCHIVE_MATERIAL_TYPE_LABEL).map(([value, label]) => ({ value, label }))
-const examFormOptions = Object.entries(ARCHIVE_EXAM_FORM_LABEL).map(([value, label]) => ({ value, label }))
+const dutyTypeOptions = Object.entries(ARCHIVE_DUTY_TYPE_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
+const securityLevelOptions = Object.entries(ARCHIVE_SECURITY_LEVEL_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
+const materialTypeOptions = Object.entries(ARCHIVE_MATERIAL_TYPE_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
+const examFormOptions = Object.entries(ARCHIVE_EXAM_FORM_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
 
 const dutyColumns: ColumnsType<DutyRow> = [
   { title: '用户', key: 'userId', width: 220 },
@@ -324,13 +345,15 @@ function handleTenantWideChange(index: number) {
 
 async function loadDepartments() {
   try {
-    const departments = requireArrayResult<TenantSchoolDepartmentDto>(await departmentCatalogApi.list(), '院系')
-    departmentOptions.value = departments.map(item => ({
+    const departments = requireArrayResult<TenantSchoolDepartmentDto>(
+      await departmentCatalogApi.list(),
+      '院系',
+    )
+    departmentOptions.value = departments.map((item) => ({
       value: item.id,
       label: item.deptName,
     }))
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -367,19 +390,17 @@ async function loadDutyGrants() {
   dutyLoading.value = true
   try {
     const grants = await listArchiveDutyGrants()
-    dutyRows.value = grants.map(item => ({
+    dutyRows.value = grants.map((item) => ({
       rowKey: item.grantId,
       userId: item.userId,
       dutyType: item.dutyType,
       scopeDepartmentId: item.scopeDepartmentId,
       tenantWide: item.tenantWide,
     }))
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载职责授权失败')
     dutyRows.value = []
-  }
-  finally {
+  } finally {
     dutyLoading.value = false
   }
 }
@@ -388,17 +409,15 @@ async function loadPolicy() {
   policyLoading.value = true
   try {
     const policies = await listArchiveSecurityPolicy()
-    policyRows.value = policies.map(item => ({
+    policyRows.value = policies.map((item) => ({
       rowKey: item.policyId,
       dutyType: item.dutyType,
       maxSecurityLevel: item.maxSecurityLevel,
     }))
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载密级策略失败')
     policyRows.value = []
-  }
-  finally {
+  } finally {
     policyLoading.value = false
   }
 }
@@ -407,7 +426,7 @@ async function loadCatalog() {
   catalogLoading.value = true
   try {
     const templates = await listArchiveCatalogTemplate()
-    catalogRows.value = templates.map(item => ({
+    catalogRows.value = templates.map((item) => ({
       rowKey: item.templateItemId,
       examForm: item.examForm,
       materialType: item.materialType,
@@ -417,12 +436,10 @@ async function loadCatalog() {
       delayAllowedFlag: item.delayAllowedFlag,
       sortOrder: item.sortOrder ?? 0,
     }))
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载目录模板失败')
     catalogRows.value = []
-  }
-  finally {
+  } finally {
     catalogLoading.value = false
   }
 }
@@ -434,11 +451,9 @@ async function saveDutyGrants() {
     await saveArchiveDutyGrants(dutyRows.value.map(({ rowKey, ...item }) => item))
     message.success('职责授权已保存')
     await loadDutyGrants()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -459,11 +474,9 @@ async function saveSecurityPolicyRows() {
     await saveArchiveSecurityPolicy(policyRows.value.map(({ rowKey, ...item }) => item))
     message.success('密级策略已保存')
     await loadPolicy()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -490,18 +503,20 @@ async function saveCatalogRows() {
     })
     message.success('目录模板已保存')
     await loadCatalog()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
 
-watch(() => props.initialTab, (tab) => {
-  settingsTab.value = resolveSettingsTab(tab)
-}, { immediate: true })
+watch(
+  () => props.initialTab,
+  (tab) => {
+    settingsTab.value = resolveSettingsTab(tab)
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   settingsTab.value = resolveSettingsTab(props.initialTab)

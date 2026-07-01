@@ -126,13 +126,13 @@ const normalizeCssSize = (value?: string | number) => {
 
 const hasHeader = computed(() => {
   return (
-    !!props.title
-    || !!props.description
-    || !!props.eyebrow
-    || !!slots.meta
-    || !!slots.actions
-    || props.copyable
-    || props.allowWrapToggle
+    !!props.title ||
+    !!props.description ||
+    !!props.eyebrow ||
+    !!slots.meta ||
+    !!slots.actions ||
+    props.copyable ||
+    props.allowWrapToggle
   )
 })
 

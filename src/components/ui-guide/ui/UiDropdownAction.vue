@@ -30,12 +30,7 @@
         <a-menu class="ui-dropdown-action__menu" @click="handleMenuClick">
           <template v-for="item in props.items" :key="item.key">
             <a-menu-divider v-if="item.type === 'divider'" />
-            <a-menu-item
-              v-else
-              :key="item.key"
-              :disabled="item.disabled"
-              :danger="item.danger"
-            >
+            <a-menu-item v-else :key="item.key" :disabled="item.disabled" :danger="item.danger">
               {{ item.label }}
             </a-menu-item>
           </template>
@@ -59,21 +54,24 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  items?: UiDropdownActionItem[]
-  buttonText?: string
-  disabled?: boolean
-  trigger?: DropdownProps['trigger']
-  triggerStyle?: 'text' | 'button'
-  placement?: 'bottomLeft' | 'bottomCenter' | 'bottomRight' | 'topLeft' | 'topCenter' | 'topRight'
-}>(), {
-  items: () => [],
-  buttonText: '更多',
-  disabled: false,
-  trigger: () => ['click'],
-  triggerStyle: 'text',
-  placement: 'bottomRight',
-})
+const props = withDefaults(
+  defineProps<{
+    items?: UiDropdownActionItem[]
+    buttonText?: string
+    disabled?: boolean
+    trigger?: DropdownProps['trigger']
+    triggerStyle?: 'text' | 'button'
+    placement?: 'bottomLeft' | 'bottomCenter' | 'bottomRight' | 'topLeft' | 'topCenter' | 'topRight'
+  }>(),
+  {
+    items: () => [],
+    buttonText: '更多',
+    disabled: false,
+    trigger: () => ['click'],
+    triggerStyle: 'text',
+    placement: 'bottomRight',
+  },
+)
 
 const emit = defineEmits<{
   (e: 'select', key: string): void

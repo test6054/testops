@@ -21,16 +21,9 @@
 
     <a-skeleton v-if="loading" active :paragraph="{ rows: 3 }" />
 
-    <UiEmpty
-      v-else-if="!distribution"
-      description="暂无数据"
-    />
+    <UiEmpty v-else-if="!distribution" description="暂无数据" />
     <div v-else-if="distribution" class="score-dist">
-      <SignalBand
-        :metrics="distributionMetrics"
-        compact
-        class="score-dist__metrics"
-      />
+      <SignalBand :metrics="distributionMetrics" compact class="score-dist__metrics" />
 
       <MarkBarSection
         title="五级分数分布"
@@ -48,11 +41,11 @@
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamScoreDistributionVO } from '@/apis/mark/exam-score'
+import { getExamScoreDistribution } from '@/apis/mark/exam-score'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref, watch } from 'vue'
-import { getExamScoreDistribution } from '@/apis/mark/exam-score'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -96,7 +89,10 @@ const histogramChartHint = computed(() => {
     const passRate = Math.round((dist.passCount * 100) / dist.participantCount)
     return `${dist.participantCount} 人中 ${dist.passCount} 人及格（${passRate}%）`
   }
-  return mergeChartHint(staticHint, buildBarChartInsight(histogramBarItems.value, { valueUnit: ' 人' }))
+  return mergeChartHint(
+    staticHint,
+    buildBarChartInsight(histogramBarItems.value, { valueUnit: ' 人' }),
+  )
 })
 
 const { chartOption: histogramChartOption } = useChartOption(() =>

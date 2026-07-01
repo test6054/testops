@@ -4,16 +4,16 @@ import type {
   ArchiveVolumeCreateConfigForm,
   ArchiveVolumeCreateSectionKey,
 } from './archive-volume-create-context'
+import { ARCHIVE_VOLUME_CREATE_SECTION_ORDER } from './archive-volume-create-context'
 import type { ArchiveTenantTemplateSetVO } from '@/apis/mark/archive-platform-template'
+import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import { createOfflineArchiveVolume } from '@/apis/mark/archive-volume'
 import { useUserStore } from '@/stores/modules/user'
 import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import { showUserError } from '@/utils/error-handler'
-import { ARCHIVE_VOLUME_CREATE_SECTION_ORDER } from './archive-volume-create-context'
 
 export type {
   ArchiveVolumeCreateBasicForm,
@@ -97,7 +97,7 @@ export function useArchiveVolumeCreateOffline() {
   ])
 
   const templateSetOptions = computed(() =>
-    templateSets.value.map(item => ({
+    templateSets.value.map((item) => ({
       value: item.templateSetCode,
       label: item.templateSetName,
       examForm: item.examForm,
@@ -132,7 +132,11 @@ export function useArchiveVolumeCreateOffline() {
     }
   }
 
-  function setTemplateSet(code: string | null, name: string, examForm?: ArchiveVolumeCreateConfigForm['examForm']): void {
+  function setTemplateSet(
+    code: string | null,
+    name: string,
+    examForm?: ArchiveVolumeCreateConfigForm['examForm'],
+  ): void {
     configForm.templateSetCode = code
     configForm.templateSetName = name
     if (examForm) {
@@ -149,12 +153,10 @@ export function useArchiveVolumeCreateOffline() {
     templateLoading.value = true
     try {
       templateSets.value = await listArchiveTenantTemplateSets()
-    }
-    catch (error) {
+    } catch (error) {
       showUserError(error, '加载目录模板套失败')
       templateSets.value = []
-    }
-    finally {
+    } finally {
       templateLoading.value = false
     }
   }
@@ -164,8 +166,7 @@ export function useArchiveVolumeCreateOffline() {
     try {
       await basicFormRef.value.validate()
       return true
-    }
-    catch {
+    } catch {
       return false
     }
   }
@@ -175,13 +176,14 @@ export function useArchiveVolumeCreateOffline() {
     try {
       await configFormRef.value.validate()
       return true
-    }
-    catch {
+    } catch {
       return false
     }
   }
 
-  async function validateStepsBeforeSection(target: ArchiveVolumeCreateSectionKey): Promise<boolean> {
+  async function validateStepsBeforeSection(
+    target: ArchiveVolumeCreateSectionKey,
+  ): Promise<boolean> {
     const targetIdx = ARCHIVE_VOLUME_CREATE_SECTION_ORDER.indexOf(target)
     for (let i = 0; i < targetIdx; i++) {
       const sectionKey = ARCHIVE_VOLUME_CREATE_SECTION_ORDER[i]
@@ -242,11 +244,9 @@ export function useArchiveVolumeCreateOffline() {
       })
       void message.success('归档卷创建成功')
       void router.push({ name: 'TeacherArchiveVolumeDetail', params: { volumeId } })
-    }
-    catch (error) {
+    } catch (error) {
       showUserError(error)
-    }
-    finally {
+    } finally {
       submitting.value = false
     }
   }

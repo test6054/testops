@@ -7,8 +7,15 @@ import type {
   PortfolioTeacherPageRequest,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_TEACHER_IDENTITY_STATUS_LABEL,
+  PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS,
+  PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL,
+  PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS,
+} from '@/apis/portfolio/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { UserStatusEnum} from '@/types/enums/user-status';
+import type { UserStatusEnum } from '@/types/enums/user-status'
+import { getUserStatusLabel, USER_STATUS_CONFIG } from '@/types/enums/user-status'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -17,12 +24,6 @@ import {
   portfolioTeacherLibraryApi,
   portfolioTeacherSalaryApi,
 } from '@/apis/portfolio/teacher-platform'
-import {
-  PORTFOLIO_TEACHER_IDENTITY_STATUS_LABEL,
-  PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS,
-  PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL,
-  PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS,
-} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -34,14 +35,14 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { getUserStatusLabel, USER_STATUS_CONFIG } from '@/types/enums/user-status'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const USER_STATUS_FILTER_OPTIONS = (Object.keys(USER_STATUS_CONFIG) as UserStatusEnum[])
-  .map(value => ({ value, label: USER_STATUS_CONFIG[value].label }))
+const USER_STATUS_FILTER_OPTIONS = (Object.keys(USER_STATUS_CONFIG) as UserStatusEnum[]).map(
+  (value) => ({ value, label: USER_STATUS_CONFIG[value].label }),
+)
 
 const listColumns: ColumnsType = [
   { title: '工号', dataIndex: 'teacherNumber', key: 'teacherNumber', width: 120 },
@@ -164,14 +165,22 @@ function identityTypeLabel(type?: string) {
   if (!type) {
     return '—'
   }
-  return strictEnumLabel(PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL, type as keyof typeof PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL, '教师身份类型')
+  return strictEnumLabel(
+    PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL,
+    type as keyof typeof PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL,
+    '教师身份类型',
+  )
 }
 
 function identityStatusLabel(status?: string) {
   if (!status) {
     return '—'
   }
-  return strictEnumLabel(PORTFOLIO_TEACHER_IDENTITY_STATUS_LABEL, status as keyof typeof PORTFOLIO_TEACHER_IDENTITY_STATUS_LABEL, '教师身份状态')
+  return strictEnumLabel(
+    PORTFOLIO_TEACHER_IDENTITY_STATUS_LABEL,
+    status as keyof typeof PORTFOLIO_TEACHER_IDENTITY_STATUS_LABEL,
+    '教师身份状态',
+  )
 }
 
 async function loadPage() {
@@ -198,7 +207,7 @@ function handleSearch() {
   loadPage()
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadPage()
@@ -218,15 +227,18 @@ async function loadTeacherExtensions(userId: string) {
   salarySummary.value = ''
   librarySummary.value = ''
   try {
-    const salaryPage = await portfolioTeacherSalaryApi.page({ teacherUserId: userId, pageNum: 1, pageSize: 1 })
+    const salaryPage = await portfolioTeacherSalaryApi.page({
+      teacherUserId: userId,
+      pageNum: 1,
+      pageSize: 1,
+    })
     const latest = salaryPage.list?.[0]
     if (latest) {
       salarySummary.value = `${latest.salaryMonth} 基本 ${latest.baseAmountDisplay ?? '—'}`
     }
     const libStats = await portfolioTeacherLibraryApi.stats({ teacherUserId: userId })
     librarySummary.value = `在借 ${libStats.activeBorrowCount} · 逾期 ${libStats.overdueCount}`
-  }
-  catch {
+  } catch {
     salarySummary.value = ''
     librarySummary.value = ''
   }
@@ -240,7 +252,7 @@ async function reloadDetail() {
   await loadTeacherExtensions(detail.value.userId)
 }
 
-function openIdentityCreate(context: { userId: string, nickName?: string, departmentId?: string }) {
+function openIdentityCreate(context: { userId: string; nickName?: string; departmentId?: string }) {
   identityMode.value = 'create'
   identityEditor.teacherUserId = context.userId
   identityEditor.id = undefined
@@ -326,8 +338,7 @@ async function exportRoster() {
     const result = await portfolioTeacherApi.exportRoster({ ...query })
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -343,12 +354,15 @@ onMounted(async () => {
     <template #context>
       <ContextBar layout="workbench" show-title title="教师名册" />
     </template>
-    <UiFilterBar variant="plain" v-model="filterModel" :fields="filterFields" @search="handleSearch" />
+    <UiFilterBar
+      variant="plain"
+      v-model="filterModel"
+      :fields="filterFields"
+      @search="handleSearch"
+    />
     <UiCard>
       <div class="list-toolbar">
-        <UiButton @click="exportRoster">
-          导出名册
-        </UiButton>
+        <UiButton @click="exportRoster"> 导出名册 </UiButton>
       </div>
       <UiDataTable
         v-model:current="query.pageNum"
@@ -369,10 +383,15 @@ onMounted(async () => {
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'identityTags'">
-            <UiTag v-for="tag in record.identityTags ?? []" :key="tag" tone="gray" style="margin-right: 4px">
+            <UiTag
+              v-for="tag in record.identityTags ?? []"
+              :key="tag"
+              tone="gray"
+              style="margin-right: 4px"
+            >
               {{ identityTypeLabel(tag) }}
             </UiTag>
-            <span v-if="!(record.identityTags?.length)">—</span>
+            <span v-if="!record.identityTags?.length">—</span>
           </template>
           <template v-else-if="column.key === 'userStatus'">
             <span v-if="record.status">
@@ -381,25 +400,25 @@ onMounted(async () => {
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiTextAction @click="openDetail(record)">
-              详情
-            </UiTextAction>
-            <UiTextAction @click="openTeacherHome(record.userId)">
-              首页
-            </UiTextAction>
-            <UiTextAction @click="openTeacherArchive(record.userId)">
-              档案
-            </UiTextAction>
-            <UiTextAction @click="openOneTable(record.userId)">
-              一张表
-            </UiTextAction>
+            <UiTextAction @click="openDetail(record)"> 详情 </UiTextAction>
+            <UiTextAction @click="openTeacherHome(record.userId)"> 首页 </UiTextAction>
+            <UiTextAction @click="openTeacherArchive(record.userId)"> 档案 </UiTextAction>
+            <UiTextAction @click="openOneTable(record.userId)"> 一张表 </UiTextAction>
             <UiTextAction
               v-if="canManageTeacherAi(record.userId, true)"
               @click="openAiCandidateConfirm(record.userId)"
             >
               AI 确认
             </UiTextAction>
-            <UiTextAction @click="openIdentityCreate({ userId: record.userId, nickName: record.nickName, departmentId: record.departmentId })">
+            <UiTextAction
+              @click="
+                openIdentityCreate({
+                  userId: record.userId,
+                  nickName: record.nickName,
+                  departmentId: record.departmentId,
+                })
+              "
+            >
               身份
             </UiTextAction>
           </template>
@@ -431,7 +450,13 @@ onMounted(async () => {
             {{ detail.email ?? '—' }}
           </a-descriptions-item>
         </a-descriptions>
-        <a-descriptions v-if="salarySummary || librarySummary" :column="1" size="small" bordered style="margin-top: 16px">
+        <a-descriptions
+          v-if="salarySummary || librarySummary"
+          :column="1"
+          size="small"
+          bordered
+          style="margin-top: 16px"
+        >
           <a-descriptions-item v-if="salarySummary" label="工资摘要">
             {{ salarySummary }}
           </a-descriptions-item>
@@ -441,7 +466,16 @@ onMounted(async () => {
         </a-descriptions>
         <div class="teacher-directory__identity-header">
           <h4>扩展身份</h4>
-          <UiButton size="sm" @click="openIdentityCreate({ userId: detail.userId, nickName: detail.nickName, departmentId: detail.departmentId })">
+          <UiButton
+            size="sm"
+            @click="
+              openIdentityCreate({
+                userId: detail.userId,
+                nickName: detail.nickName,
+                departmentId: detail.departmentId,
+              })
+            "
+          >
             新增身份
           </UiButton>
         </div>
@@ -462,9 +496,7 @@ onMounted(async () => {
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction @click="openIdentityEdit(record)">
-                编辑
-              </UiTextAction>
+              <UiTextAction @click="openIdentityEdit(record)"> 编辑 </UiTextAction>
             </template>
           </template>
           <template #empty>
@@ -480,10 +512,16 @@ onMounted(async () => {
     >
       <a-form layout="vertical">
         <a-form-item label="身份类型" required>
-          <a-select v-model:value="identityEditor.identityType" :options="PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS" />
+          <a-select
+            v-model:value="identityEditor.identityType"
+            :options="PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS"
+          />
         </a-form-item>
         <a-form-item label="身份状态" required>
-          <a-select v-model:value="identityEditor.identityStatus" :options="PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS" />
+          <a-select
+            v-model:value="identityEditor.identityStatus"
+            :options="PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS"
+          />
         </a-form-item>
         <a-form-item label="聘任编号">
           <a-input v-model:value="identityEditor.appointmentNo" />

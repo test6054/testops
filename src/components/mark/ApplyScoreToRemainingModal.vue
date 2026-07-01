@@ -2,19 +2,13 @@
   <div v-if="open" class="apply-score-modal" role="dialog" aria-live="polite">
     <div class="apply-score-modal__panel">
       <div class="apply-score-modal__title">已提交 · 给分 {{ scoreText }}</div>
-      <p class="apply-score-modal__desc">
-        是否将相同分数用于剩余 {{ remainingCount }} 份同类卷？
-      </p>
+      <p class="apply-score-modal__desc">是否将相同分数用于剩余 {{ remainingCount }} 份同类卷？</p>
       <p v-if="countdown > 0" class="apply-score-modal__countdown">
         {{ countdown }} 秒后自动仅提交并继续下一份
       </p>
       <div class="apply-score-modal__actions">
-        <UiButton variant="primary" size="sm" @click="emit('apply')">
-          应用并继续 (Y)
-        </UiButton>
-        <UiButton variant="outline" size="sm" @click="emit('dismiss')">
-          仅提交 (N)
-        </UiButton>
+        <UiButton variant="primary" size="sm" @click="emit('apply')"> 应用并继续 (Y) </UiButton>
+        <UiButton variant="outline" size="sm" @click="emit('dismiss')"> 仅提交 (N) </UiButton>
       </div>
     </div>
   </div>
@@ -28,24 +22,25 @@ defineOptions({ name: 'ApplyScoreToRemainingModal' })
 
 const countdown = defineModel<number>('countdown', { default: 0 })
 
-const props = withDefaults(defineProps<{
-  open: boolean
-  score?: number
-  remainingCount: number
-  countdownSeconds?: number
-}>(), {
-  score: undefined,
-  countdownSeconds: 3,
-})
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    score?: number
+    remainingCount: number
+    countdownSeconds?: number
+  }>(),
+  {
+    score: undefined,
+    countdownSeconds: 3,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'apply'): void
   (e: 'dismiss'): void
 }>()
 
-const scoreText = computed(() => (
-  props.score === undefined ? '-' : String(props.score)
-))
+const scoreText = computed(() => (props.score === undefined ? '-' : String(props.score)))
 
 let timer: ReturnType<typeof setInterval> | null = null
 
@@ -69,14 +64,18 @@ function startCountdown(): void {
   }, 1000)
 }
 
-watch(() => props.open, (visible) => {
-  if (visible) {
-    startCountdown()
-    return
-  }
-  clearTimer()
-  countdown.value = 0
-}, { immediate: true })
+watch(
+  () => props.open,
+  (visible) => {
+    if (visible) {
+      startCountdown()
+      return
+    }
+    clearTimer()
+    countdown.value = 0
+  },
+  { immediate: true },
+)
 
 onBeforeUnmount(clearTimer)
 </script>

@@ -67,21 +67,24 @@ defineOptions({
 
 const modelValue = defineModel<Key>({ default: '' })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  items?: UiSectionTabItem[]
-  compact?: boolean
-  divided?: boolean
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  items: () => [],
-  compact: false,
-  divided: false,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    items?: UiSectionTabItem[]
+    compact?: boolean
+    divided?: boolean
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    items: () => [],
+    compact: false,
+    divided: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'change', value: Key): void
@@ -94,13 +97,12 @@ const hasHeader = computed(() => {
 })
 
 const mergedActiveKey = computed(() => {
-  if (modelValue.value)
-    return modelValue.value
+  if (modelValue.value) return modelValue.value
   return props.items[0]?.key || ''
 })
 
 const activeTab = computed(() => {
-  return props.items.find(item => item.key === mergedActiveKey.value)
+  return props.items.find((item) => item.key === mergedActiveKey.value)
 })
 
 function isActive(key: Key): boolean {

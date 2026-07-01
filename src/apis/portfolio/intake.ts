@@ -64,5 +64,8 @@ export const portfolioIntakeApi = {
   getProviderChain: () =>
     http.post<{ providerChain: string }>(`${INTAKE_BASE}/provider-chain/get`, {}),
   reassignCategory: (data: PortfolioMaterialReassignCategoryRequest) =>
-    http.post<PortfolioMaterialReassignCategoryResultVO>('/api/portfolio/material/reassign-category', data),
+    http.post<PortfolioMaterialReassignCategoryResultVO>(
+      '/api/portfolio/material/reassign-category',
+      data,
+    ),
 }

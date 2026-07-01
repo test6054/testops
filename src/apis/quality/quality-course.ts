@@ -64,6 +64,11 @@ export interface QualityCourseSaveRequest {
   enabled?: boolean
 }
 
+/** 课程编辑表单：学期未选时为 undefined，提交前须显式选择，禁止静默默认 */
+export type QualityCourseEditorForm = Omit<QualityCourseSaveRequest, 'semester'> & {
+  semester?: SemesterCode
+}
+
 export const qualityCourseApi = {
   page: (data: QualityCourseQueryRequest) =>
     http.post<PageResult<QualityCourseVO>>(`${BASE}/page`, data),

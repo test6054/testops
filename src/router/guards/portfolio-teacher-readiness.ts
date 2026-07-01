@@ -25,10 +25,7 @@ function resolveTeacherId(to: RouteLocationNormalized): string | undefined {
   return portfolioStore.currentTeacherId || undefined
 }
 
-function buildOnboardingBlockedPath(
-  blocked: 'template' | 'readiness',
-  teacherId?: string,
-): string {
+function buildOnboardingBlockedPath(blocked: 'template' | 'readiness', teacherId?: string): string {
   const params = new URLSearchParams({ blocked })
   if (teacherId) {
     params.set('teacherId', teacherId)
@@ -70,8 +67,7 @@ export async function runPortfolioTeacherReadinessGuard(
       if (!readiness.templatePublished) {
         return buildOnboardingBlockedPath('template', teacherId)
       }
-    }
-    catch {
+    } catch {
       return buildOnboardingBlockedPath('readiness', teacherId)
     }
   }
@@ -83,8 +79,7 @@ export async function runPortfolioTeacherReadinessGuard(
         const query = teacherId ? `?teacherId=${encodeURIComponent(teacherId)}` : ''
         return `${ONBOARDING_PATH}${query}`
       }
-    }
-    catch {
+    } catch {
       return buildOnboardingBlockedPath('readiness', teacherId)
     }
   }

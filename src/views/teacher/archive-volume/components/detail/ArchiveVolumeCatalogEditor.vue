@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveCatalogStatusCode } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { computed, onMounted } from 'vue'
 import {
   ARCHIVE_CATALOG_STATUS_LABEL,
   ARCHIVE_CATALOG_STATUS_TONE,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { computed, onMounted } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -135,10 +135,7 @@ defineExpose({ loadCatalog })
 
     <a-skeleton v-if="loading" active :paragraph="{ rows: 6 }" />
 
-    <UiEmpty
-      v-else-if="editableLines.length === 0"
-      description="尚未生成目录草稿"
-    />
+    <UiEmpty v-else-if="editableLines.length === 0" description="尚未生成目录草稿" />
 
     <UiDataTable
       v-else

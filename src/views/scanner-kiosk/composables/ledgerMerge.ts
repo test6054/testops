@@ -71,17 +71,20 @@ export function applyLedgerResponse(
       ...previous,
       ...incoming,
       items: mergeLedgerItems(previous.items, incoming.items),
-      attentionItems: incoming.attentionItems.length > 0
-        ? incoming.attentionItems
-        : incoming.attentionCount === previous.attentionCount
-          ? previous.attentionItems
-          : incoming.attentionItems,
+      attentionItems:
+        incoming.attentionItems.length > 0
+          ? incoming.attentionItems
+          : incoming.attentionCount === previous.attentionCount
+            ? previous.attentionItems
+            : incoming.attentionItems,
       notModified: false,
     }
   }
-  if (previous
-    && incoming.attentionItems.length === 0
-    && incoming.attentionCount === previous.attentionCount) {
+  if (
+    previous &&
+    incoming.attentionItems.length === 0 &&
+    incoming.attentionCount === previous.attentionCount
+  ) {
     return {
       ...incoming,
       attentionItems: previous.attentionItems,
@@ -105,8 +108,7 @@ export async function fetchPagedHistoryLedgerSnapshot(
     })
     if (!snapshot) {
       snapshot = chunk
-    }
-    else {
+    } else {
       snapshot = applyLedgerResponse(snapshot, {
         ...chunk,
         incremental: true,

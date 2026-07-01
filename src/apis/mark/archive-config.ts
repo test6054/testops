@@ -4,14 +4,14 @@
 import type { ArchiveSecurityLevelCode } from '@/apis/mark/archive-volume'
 import http from '@/config/axios'
 
-export type ArchiveDutyTypeCode
-  = | 'VOLUME_OWNER'
-    | 'CONTRIBUTOR'
-    | 'COLLEGE_COORDINATOR'
-    | 'TRANSFER_REVIEWER'
-    | 'ARCHIVE_ADMIN'
-    | 'DESTRUCTION_APPROVER'
-    | 'SUPERVISION_INSPECTOR'
+export type ArchiveDutyTypeCode =
+  | 'VOLUME_OWNER'
+  | 'CONTRIBUTOR'
+  | 'COLLEGE_COORDINATOR'
+  | 'TRANSFER_REVIEWER'
+  | 'ARCHIVE_ADMIN'
+  | 'DESTRUCTION_APPROVER'
+  | 'SUPERVISION_INSPECTOR'
 
 export const ARCHIVE_DUTY_TYPE_LABEL: Record<ArchiveDutyTypeCode, string> = {
   VOLUME_OWNER: '卷归属人',

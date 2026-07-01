@@ -2,11 +2,7 @@
 /**
  * 讯飞式扫描工作台：左任务进度 + 批次列表，右设备状态条 + 主 CTA。
  */
-import {
-  PlayCircleFilled,
-  ReloadOutlined,
-  SettingOutlined,
-} from '@ant-design/icons-vue'
+import { PlayCircleFilled, ReloadOutlined, SettingOutlined } from '@ant-design/icons-vue'
 import { computed, ref } from 'vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import KioskSessionBatchPanel from '../components/KioskSessionBatchPanel.vue'
@@ -145,9 +141,9 @@ function buildFirstScanCalibrationDialog() {
     return {
       title: '试卷首次扫描核对',
       content:
-        `当前考试为整卷作答，纸型 ${paperStyle}。`
-        + '首张送纸后请在「扫描中」预览整卷切分与页序是否正常；'
-        + '若偏差，请暂停并在 Web 端调整试卷母版后再继续批量扫描。',
+        `当前考试为整卷作答，纸型 ${paperStyle}。` +
+        '首张送纸后请在「扫描中」预览整卷切分与页序是否正常；' +
+        '若偏差，请暂停并在 Web 端调整试卷母版后再继续批量扫描。',
       okText: '已了解，开始扫描',
       cancelText: '先查看制卷摘要',
     }
@@ -156,9 +152,9 @@ function buildFirstScanCalibrationDialog() {
     return {
       title: '答卷页首次扫描核对',
       content:
-        `当前考试为独立答卷页，纸型 ${paperStyle}。`
-        + '首张送纸后请在「扫描中」预览定位框与考号区是否正常；'
-        + '若偏差，请暂停并在 Web 端调整答卷页模板后再继续批量扫描。',
+        `当前考试为独立答卷页，纸型 ${paperStyle}。` +
+        '首张送纸后请在「扫描中」预览定位框与考号区是否正常；' +
+        '若偏差，请暂停并在 Web 端调整答卷页模板后再继续批量扫描。',
       okText: '已了解，开始扫描',
       cancelText: '先查看制卷摘要',
     }
@@ -166,8 +162,8 @@ function buildFirstScanCalibrationDialog() {
   return {
     title: '首次扫描核对',
     content:
-      `考试制卷形态尚未配置，已按 ${kind} 单面扫描建议参数（纸型 ${paperStyle}）。`
-      + '首张送纸后请核对预览是否正常，并在 Web 端补配制卷形态与模板。',
+      `考试制卷形态尚未配置，已按 ${kind} 单面扫描建议参数（纸型 ${paperStyle}）。` +
+      '首张送纸后请核对预览是否正常，并在 Web 端补配制卷形态与模板。',
     okText: '已了解，开始扫描',
     cancelText: '先查看制卷摘要',
   }
@@ -212,19 +208,26 @@ function continueActiveBatch() {
     <div class="workbench__grid">
       <aside class="sidebar">
         <h2 class="sidebar__title">{{ exam?.examName || '—' }}</h2>
-        <p v-if="contract?.gradeSubjectText" class="sidebar__sub">{{ contract.gradeSubjectText }}</p>
+        <p v-if="contract?.gradeSubjectText" class="sidebar__sub">
+          {{ contract.gradeSubjectText }}
+        </p>
 
         <div class="progress-kpi">
           <div class="progress-kpi__item">
             <span>应扫页</span>
             <strong>{{ expectedPages ?? '—' }}</strong>
-            <small v-if="expectedPagesFormula" class="progress-kpi__sub">{{ expectedPagesFormula }}</small>
+            <small v-if="expectedPagesFormula" class="progress-kpi__sub">{{
+              expectedPagesFormula
+            }}</small>
           </div>
           <div class="progress-kpi__item">
             <span>已扫页</span>
             <strong>{{ scannedPages ?? '—' }}</strong>
           </div>
-          <div class="progress-kpi__item" :class="{ 'progress-kpi__item--warn': (attentionCount ?? 0) > 0 }">
+          <div
+            class="progress-kpi__item"
+            :class="{ 'progress-kpi__item--warn': (attentionCount ?? 0) > 0 }"
+          >
             <span>异常</span>
             <strong>{{ attentionCount ?? '—' }}</strong>
           </div>
@@ -242,7 +245,9 @@ function continueActiveBatch() {
         </p>
 
         <details v-if="contract" class="template-fold" :open="templateExpanded">
-          <summary @click.prevent="templateExpanded = !templateExpanded">制卷摘要 · {{ materialKindLabel }}</summary>
+          <summary @click.prevent="templateExpanded = !templateExpanded">
+            制卷摘要 · {{ materialKindLabel }}
+          </summary>
           <dl class="template-fold__body">
             <div v-if="contract.schoolName">
               <dt>学校</dt>
@@ -266,10 +271,15 @@ function continueActiveBatch() {
             </div>
             <div>
               <dt>题型</dt>
-              <dd>客观 {{ contract.objectiveQuestionCount }} · 主观 {{ contract.subjectiveQuestionCount }}</dd>
+              <dd>
+                客观 {{ contract.objectiveQuestionCount }} · 主观
+                {{ contract.subjectiveQuestionCount }}
+              </dd>
             </div>
           </dl>
-          <button type="button" class="template-fold__link" @click="openTemplateReview">{{ templateReviewLinkText }}</button>
+          <button type="button" class="template-fold__link" @click="openTemplateReview">
+            {{ templateReviewLinkText }}
+          </button>
         </details>
 
         <KioskSessionBatchPanel variant="setup" class="sidebar__batches" />
@@ -289,18 +299,11 @@ function continueActiveBatch() {
                 <span class="scan-profile__mode" :class="`scan-profile__mode--${scanModeTone}`">
                   {{ scanModeLabel }}
                 </span>
-                <span
-                  v-for="item in hardwareParamItems"
-                  :key="item"
-                  class="scan-profile__chip"
-                >
+                <span v-for="item in hardwareParamItems" :key="item" class="scan-profile__chip">
                   {{ item }}
                 </span>
               </div>
-              <p
-                v-else-if="readiness.tone === 'success'"
-                class="scan-control__sub"
-              >
+              <p v-else-if="readiness.tone === 'success'" class="scan-control__sub">
                 参数未加载，请打开扫描参数
               </p>
               <p v-else-if="statusDetailLine" class="scan-control__sub">{{ statusDetailLine }}</p>
@@ -343,7 +346,10 @@ function continueActiveBatch() {
         <div v-if="troubleshootingLine" class="scan-control__trouble">
           <p>{{ troubleshootingLine }}</p>
         </div>
-        <div v-if="scanMaterialAdvisory || classScopeAdvisory || scanConfigAdvisory" class="scan-control__advisory">
+        <div
+          v-if="scanMaterialAdvisory || classScopeAdvisory || scanConfigAdvisory"
+          class="scan-control__advisory"
+        >
           <p v-if="scanMaterialAdvisory">{{ scanMaterialAdvisory }}</p>
           <p v-if="classScopeAdvisory">{{ classScopeAdvisory }}</p>
           <p v-if="scanConfigAdvisory">{{ scanConfigAdvisory }}</p>

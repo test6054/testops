@@ -10,29 +10,21 @@ import type { SelectValue } from 'ant-design-vue/es/select'
  *  - 直接打开页面后选择 AI 任务查询
  *  - 从 AI 任务详情抽屉点击「查看脱敏审计」跳转，自动加载（query.aiTaskId）
  */
-import type {
-  AiMaskMappingVO,
-} from '@/apis/quality/ai-mask-mapping'
-import type {
-  AiTaskVO,
-} from '@/apis/quality/ai-task'
-import type {
-  AiTaskBusinessType,
-  AiTaskStatus,
-  AiTaskType,
-} from '@/apis/quality/types'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import type { AiMaskMappingVO } from '@/apis/quality/ai-mask-mapping'
 import { aiMaskMappingApi } from '@/apis/quality/ai-mask-mapping'
+import type { AiTaskVO } from '@/apis/quality/ai-task'
 import { aiTaskApi } from '@/apis/quality/ai-task'
+import type { AiTaskBusinessType, AiTaskStatus, AiTaskType } from '@/apis/quality/types'
 import {
   AI_TASK_BUSINESS_TYPE_LABEL,
   AI_TASK_STATUS_COLOR,
   AI_TASK_STATUS_LABEL,
   AI_TASK_TYPE_LABEL,
 } from '@/apis/quality/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -65,7 +57,7 @@ const selectedAiTaskId = ref<string>(
 )
 const loading = ref(false)
 const taskLoading = ref(false)
-const taskOptions = ref<Array<{ value: string, label: string }>>([])
+const taskOptions = ref<Array<{ value: string; label: string }>>([])
 
 const taskVO = ref<AiTaskVO | null>(null)
 const mappingVO = ref<AiMaskMappingVO | null>(null)

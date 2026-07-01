@@ -9,12 +9,7 @@
       :compact="props.compact"
     >
       <template #meta>
-        <UiBadge
-          v-if="props.statusLabel"
-          :tone="props.statusTone"
-          variant="soft"
-          size="sm"
-        >
+        <UiBadge v-if="props.statusLabel" :tone="props.statusTone" variant="soft" size="sm">
           {{ props.statusLabel }}
         </UiBadge>
         <slot name="meta" />
@@ -32,15 +27,19 @@
             class="ui-progress-monitor-card__dot"
             :class="`ui-progress-monitor-card__dot--${props.statusTone}`"
           />
-          <span v-if="props.timeText" class="ui-progress-monitor-card__time">{{ props.timeText }}</span>
-          <span v-if="props.helper" class="ui-progress-monitor-card__helper">{{ props.helper }}</span>
+          <span v-if="props.timeText" class="ui-progress-monitor-card__time">{{
+            props.timeText
+          }}</span>
+          <span v-if="props.helper" class="ui-progress-monitor-card__helper">{{
+            props.helper
+          }}</span>
         </div>
 
         <div class="ui-progress-monitor-card__value-row">
-          <div class="ui-progress-monitor-card__percent">
-            {{ normalizedPercent }}<span>%</span>
+          <div class="ui-progress-monitor-card__percent">{{ normalizedPercent }}<span>%</span></div>
+          <div v-if="props.sideValue" class="ui-progress-monitor-card__side-value">
+            {{ props.sideValue }}
           </div>
-          <div v-if="props.sideValue" class="ui-progress-monitor-card__side-value">{{ props.sideValue }}</div>
         </div>
 
         <UiProgressBar
@@ -85,38 +84,48 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  statusLabel?: string
-  statusTone?: BadgeTone
-  percent?: number
-  timeText?: string
-  helper?: string
-  sideValue?: string
-  metrics?: UiProgressMonitorMetric[]
-  compact?: boolean
-  divided?: boolean
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  statusLabel: '',
-  statusTone: 'blue',
-  percent: 0,
-  timeText: '',
-  helper: '',
-  sideValue: '',
-  metrics: () => [],
-  compact: false,
-  divided: true,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    statusLabel?: string
+    statusTone?: BadgeTone
+    percent?: number
+    timeText?: string
+    helper?: string
+    sideValue?: string
+    metrics?: UiProgressMonitorMetric[]
+    compact?: boolean
+    divided?: boolean
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    statusLabel: '',
+    statusTone: 'blue',
+    percent: 0,
+    timeText: '',
+    helper: '',
+    sideValue: '',
+    metrics: () => [],
+    compact: false,
+    divided: true,
+  },
+)
 
 const slots = useSlots()
 
 const hasHeader = computed(() => {
-  return !!props.title || !!props.description || !!props.eyebrow || !!props.statusLabel || !!slots.meta || !!slots.actions
+  return (
+    !!props.title ||
+    !!props.description ||
+    !!props.eyebrow ||
+    !!props.statusLabel ||
+    !!slots.meta ||
+    !!slots.actions
+  )
 })
 
 const normalizedPercent = computed(() => {

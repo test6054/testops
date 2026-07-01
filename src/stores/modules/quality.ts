@@ -223,14 +223,15 @@ export const useQualityStore = defineStore(
       }
     }
 
-    function setSchoolPeriod(schoolYear?: string, semester?: SemesterCode) {
+    function setSchoolPeriod(schoolYear?: string, semester?: SemesterCode | null) {
       const yearChanged = schoolYear !== undefined && currentSchoolYear.value !== schoolYear
-      const semesterChanged = semester !== undefined && currentSemester.value !== semester
+      const nextSemester = semester === undefined ? undefined : (semester ?? undefined)
+      const semesterChanged = semester !== undefined && currentSemester.value !== nextSemester
       if (schoolYear !== undefined) {
         currentSchoolYear.value = schoolYear
       }
       if (semester !== undefined) {
-        currentSemester.value = semester
+        currentSemester.value = nextSemester
       }
       if (yearChanged || semesterChanged) {
         qualityCourseOptions.value = []

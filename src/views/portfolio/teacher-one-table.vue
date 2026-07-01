@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioDeptStructureStatVO, PortfolioTeacherOneTableSummaryVO } from '@/apis/portfolio/teacher'
+import type {
+  PortfolioDeptStructureStatVO,
+  PortfolioTeacherOneTableSummaryVO,
+} from '@/apis/portfolio/teacher'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import type { PortfolioTeacherIdentityType } from '@/apis/portfolio/types'
+import { PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import { PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -14,7 +17,10 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
+import {
+  usePortfolioPageScope,
+  usePortfolioScopedLoader,
+} from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -46,12 +52,10 @@ async function loadSummary() {
       teacherId: targetTeacherId.value || undefined,
     })
     deptStats.value = await portfolioTeacherApi.deptStructureStats()
-  }
-  catch (error) {
+  } catch (error) {
     loadFailed.value = true
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -76,18 +80,19 @@ async function exportOneTable() {
     })
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 行`)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     exporting.value = false
   }
 }
 
-usePortfolioScopedLoader(() => {
-  void loadSummary()
-}, () => targetTeacherId.value)
+usePortfolioScopedLoader(
+  () => {
+    void loadSummary()
+  },
+  () => targetTeacherId.value,
+)
 </script>
 
 <template>
@@ -95,7 +100,11 @@ usePortfolioScopedLoader(() => {
     <template #context>
       <ContextBar show-title layout="workbench" title="教师一张表">
         <template #actions>
-          <UiButton :loading="exporting" :disabled="canPickTeachers && !targetTeacherId" @click="exportOneTable">
+          <UiButton
+            :loading="exporting"
+            :disabled="canPickTeachers && !targetTeacherId"
+            @click="exportOneTable"
+          >
             导出一张表
           </UiButton>
         </template>
@@ -106,19 +115,11 @@ usePortfolioScopedLoader(() => {
         v-if="canPickTeachers && !targetTeacherId"
         description="请从顶部教师范围选择目标教师"
       />
-      <UiEmpty
-        v-else-if="loadFailed && !loading"
-        description="加载教师一张表失败"
-      />
-      <UiEmpty
-        v-else-if="!loading && !summary"
-        description="暂无教师一张表数据"
-      />
+      <UiEmpty v-else-if="loadFailed && !loading" description="加载教师一张表失败" />
+      <UiEmpty v-else-if="!loading && !summary" description="暂无教师一张表数据" />
       <UiCard v-if="summary" title="教师概要">
         <div v-if="summary.correctionPending" class="correction-badge">
-          <UiTag tone="orange">
-            纠错待处理
-          </UiTag>
+          <UiTag tone="orange"> 纠错待处理 </UiTag>
         </div>
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="工号">
@@ -140,23 +141,22 @@ usePortfolioScopedLoader(() => {
             {{ summary.honorCount ?? 0 }}
           </a-descriptions-item>
           <a-descriptions-item label="身份标签" :span="3">
-            <UiTag v-for="tag in summary.identityTags" :key="tag" tone="blue" style="margin-right: 4px">
+            <UiTag
+              v-for="tag in summary.identityTags"
+              :key="tag"
+              tone="blue"
+              style="margin-right: 4px"
+            >
               {{ identityLabel(tag) }}
             </UiTag>
             <span v-if="!summary.identityTags.length">—</span>
           </a-descriptions-item>
         </a-descriptions>
         <div class="actions">
-          <UiButton @click="openCorrection">
-            数据纠错
-          </UiButton>
+          <UiButton @click="openCorrection"> 数据纠错 </UiButton>
         </div>
       </UiCard>
-      <UiCard
-        v-if="summary?.recentChangeSummary?.length"
-        title="近期变更"
-        style="margin-top: 16px"
-      >
+      <UiCard v-if="summary?.recentChangeSummary?.length" title="近期变更" style="margin-top: 16px">
         <ul class="change-list">
           <li v-for="(item, index) in summary.recentChangeSummary" :key="index">
             {{ item }}
@@ -164,12 +164,15 @@ usePortfolioScopedLoader(() => {
         </ul>
       </UiCard>
       <UiCard v-if="summary" title="档案分类汇总" style="margin-top: 16px">
-        <UiDataTable :columns="categoryColumns" :data-source="summary.categories" row-key="categoryId" :pagination="false" />
+        <UiDataTable
+          :columns="categoryColumns"
+          :data-source="summary.categories"
+          row-key="categoryId"
+          :pagination="false"
+        />
       </UiCard>
       <UiCard v-if="deptStats" title="院系师资结构" style="margin-top: 16px">
-        <p class="dept-total">
-          教师总数 {{ deptStats.totalTeacherCount }}
-        </p>
+        <p class="dept-total">教师总数 {{ deptStats.totalTeacherCount }}</p>
         <a-table
           size="small"
           :pagination="false"

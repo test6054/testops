@@ -13,13 +13,16 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  value?: UiOptionValue | boolean
-  label?: string
-  disabled?: boolean
-}>(), {
-  value: undefined,
-  label: '',
-  disabled: false,
-})
+const props = withDefaults(
+  defineProps<{
+    value?: UiOptionValue | boolean
+    label?: string
+    disabled?: boolean
+  }>(),
+  {
+    value: undefined,
+    label: '',
+    disabled: false,
+  },
+)
 </script>

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDualTeacherApplicationStatus } from '@/apis/portfolio/enums'
-import type { PortfolioDualTeacherAnalyticsVO } from '@/apis/portfolio/teacher-platform'
-import { onMounted, ref } from 'vue'
 import { PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL } from '@/apis/portfolio/enums'
+import type { PortfolioDualTeacherAnalyticsVO } from '@/apis/portfolio/teacher-platform'
 import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
+import { onMounted, ref } from 'vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -26,18 +26,20 @@ const certLevelColumns: ColumnsType = [
 ]
 
 function applicationStatusLabel(status: PortfolioDualTeacherApplicationStatus): string {
-  return strictEnumLabel(PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL, status, '双师认定申请状态')
+  return strictEnumLabel(
+    PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL,
+    status,
+    '双师认定申请状态',
+  )
 }
 
 async function loadStats() {
   loading.value = true
   try {
     stats.value = await portfolioDualTeacherApi.analyticsStats()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }

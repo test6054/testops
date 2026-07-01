@@ -4,12 +4,7 @@
       <div class="ui-chat-shell__header-main">
         <div class="ui-chat-shell__title-row">
           <h3 class="ui-chat-shell__title">{{ props.title }}</h3>
-          <UiBadge
-            v-if="props.statusLabel"
-            :tone="props.statusTone"
-            variant="soft"
-            size="sm"
-          >
+          <UiBadge v-if="props.statusLabel" :tone="props.statusTone" variant="soft" size="sm">
             {{ props.statusLabel }}
           </UiBadge>
           <div v-if="$slots.meta" class="ui-chat-shell__meta">
@@ -26,13 +21,10 @@
     </header>
 
     <div class="ui-chat-shell__body" :style="bodyStyle">
-      <a-spin :spinning="props.loading" style="width: 100%;">
+      <a-spin :spinning="props.loading" style="width: 100%">
         <template v-if="props.empty">
           <slot name="empty">
-            <UiEmpty
-              title="暂无会话内容"
-              :description="props.emptyText"
-            />
+            <UiEmpty title="暂无会话内容" :description="props.emptyText" />
           </slot>
         </template>
 
@@ -59,28 +51,30 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title: string
-  subtitle?: string
-  statusLabel?: string
-  statusTone?: BadgeTone
-  loading?: boolean
-  empty?: boolean
-  emptyText?: string
-  bodyMinHeight?: string | number
-}>(), {
-  subtitle: '',
-  statusLabel: '',
-  statusTone: 'blue',
-  loading: false,
-  empty: false,
-  emptyText: '请从左侧选择会话，或者直接发送第一条消息。',
-  bodyMinHeight: 420,
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    subtitle?: string
+    statusLabel?: string
+    statusTone?: BadgeTone
+    loading?: boolean
+    empty?: boolean
+    emptyText?: string
+    bodyMinHeight?: string | number
+  }>(),
+  {
+    subtitle: '',
+    statusLabel: '',
+    statusTone: 'blue',
+    loading: false,
+    empty: false,
+    emptyText: '请从左侧选择会话，或者直接发送第一条消息。',
+    bodyMinHeight: 420,
+  },
+)
 
 const normalizeCssSize = (value?: string | number) => {
-  if (value === '' || value === undefined || value === null)
-    return undefined
+  if (value === '' || value === undefined || value === null) return undefined
   return typeof value === 'number' ? `${value}px` : value
 }
 

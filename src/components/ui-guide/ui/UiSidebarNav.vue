@@ -48,23 +48,25 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  items?: UiSidebarNavItem[]
-  activeKey?: string | number
-}>(), {
-  title: '',
-  items: () => [],
-  activeKey: undefined,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    items?: UiSidebarNavItem[]
+    activeKey?: string | number
+  }>(),
+  {
+    title: '',
+    items: () => [],
+    activeKey: undefined,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'select', item: UiSidebarNavItem): void
 }>()
 
 const handleSelect = (item: UiSidebarNavItem) => {
-  if (item.disabled)
-    return
+  if (item.disabled) return
 
   emit('select', item)
 }

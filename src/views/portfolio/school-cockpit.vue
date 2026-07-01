@@ -21,9 +21,19 @@ const signals = computed<SignalMetric[]>(() => {
     { key: 'teacher', label: '教师总数', value: summary.value.teacherCount ?? 0, tone: 'blue' },
     { key: 'dual', label: '双师认定', value: summary.value.dualTeacherCount ?? 0, tone: 'green' },
     { key: 'key', label: '骨干教师', value: summary.value.keyTeacherCount ?? 0, tone: 'purple' },
-    { key: 'achievement', label: '成果合计', value: summary.value.achievementTotalCount ?? 0, tone: 'orange' },
+    {
+      key: 'achievement',
+      label: '成果合计',
+      value: summary.value.achievementTotalCount ?? 0,
+      tone: 'orange',
+    },
     { key: 'honor', label: '荣誉合计', value: summary.value.honorTotalCount ?? 0, tone: 'gray' },
-    { key: 'indicator', label: '启用指标', value: summary.value.tenantEnabledIndicatorCount ?? 0, tone: 'blue' },
+    {
+      key: 'indicator',
+      label: '启用指标',
+      value: summary.value.tenantEnabledIndicatorCount ?? 0,
+      tone: 'blue',
+    },
   ]
 })
 
@@ -31,11 +41,9 @@ async function loadSummary() {
   loading.value = true
   try {
     summary.value = await portfolioCockpitApi.schoolSummary()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载学校驾驶舱汇总失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }

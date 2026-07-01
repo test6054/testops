@@ -1,11 +1,5 @@
 <template>
-  <UiCard
-    class="ui-page-card"
-    bordered
-    :title="title"
-    :show-header="showHeader"
-    v-bind="$attrs"
-  >
+  <UiCard class="ui-page-card" bordered :title="title" :show-header="showHeader" v-bind="$attrs">
     <template v-if="$slots.title || title" #title>
       <slot name="title">{{ title }}</slot>
     </template>
@@ -24,13 +18,16 @@ defineOptions({
   inheritAttrs: false,
 })
 
-withDefaults(defineProps<{
-  title?: string
-  showHeader?: boolean
-}>(), {
-  title: '',
-  showHeader: true,
-})
+withDefaults(
+  defineProps<{
+    title?: string
+    showHeader?: boolean
+  }>(),
+  {
+    title: '',
+    showHeader: true,
+  },
+)
 </script>
 
 <style scoped>
