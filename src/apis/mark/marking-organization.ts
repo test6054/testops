@@ -94,16 +94,6 @@ export const ALLOCATION_UNIT_LABEL: Record<AllocationUnitCode, string> = {
   RANDOM_QUESTIONS: '随机题目批阅',
 }
 
-/** 阅卷分配单元下拉选项，值必须与后端 AllocationUnit 枚举完全一致 */
-export const ALLOCATION_UNIT_OPTIONS: Array<{
-  label: string
-  value: AllocationUnitCode
-}> = [
-  { value: 'WHOLE_PAPER', label: ALLOCATION_UNIT_LABEL.WHOLE_PAPER },
-  { value: 'SELECTED_QUESTIONS', label: ALLOCATION_UNIT_LABEL.SELECTED_QUESTIONS },
-  { value: 'RANDOM_QUESTIONS', label: ALLOCATION_UNIT_LABEL.RANDOM_QUESTIONS },
-]
-
 /** 阅卷会话阶段 - 与后端 MarkingSessionPhase enum 对齐 */
 export type MarkingSessionPhaseCode = 'TRIAL' | 'FORMAL'
 
@@ -128,16 +118,6 @@ export const ANONYMOUS_TOKEN_POLICY_LABEL: Record<AnonymousTokenPolicyCode, stri
   PER_EXAM: '考试级匿名',
   PER_GROUP: '题组级匿名',
 }
-
-/** 匿名令牌策略下拉选项，值必须与前端提交合同完全一致 */
-export const ANONYMOUS_TOKEN_POLICY_OPTIONS: Array<{
-  label: string
-  value: AnonymousTokenPolicyCode
-}> = [
-  { value: 'NONE', label: ANONYMOUS_TOKEN_POLICY_LABEL.NONE },
-  { value: 'PER_EXAM', label: ANONYMOUS_TOKEN_POLICY_LABEL.PER_EXAM },
-  { value: 'PER_GROUP', label: ANONYMOUS_TOKEN_POLICY_LABEL.PER_GROUP },
-]
 
 /** 阅卷任务状态编码 - 与后端 MarkingTaskStatus enum 对齐 */
 export type MarkingTaskStatusCode
@@ -207,32 +187,6 @@ export interface OrganizationUpdateRequest {
 /** 删除阅卷组织请求 - 对应后端 OrganizationDeleteRequest */
 export interface OrganizationDeleteRequest {
   organizationId: string
-}
-
-/** 更新阅卷组织状态请求 - 对应后端 OrganizationStatusUpdateRequest */
-export interface OrganizationStatusUpdateRequest {
-  organizationId: string
-  targetStatus: MarkingOrganizationStatusCode
-}
-
-/** 考试阅卷分配一站式规划请求 - 对应后端 ExamAllocationPlanRequest */
-export interface ExamAllocationPlanRequest {
-  examId: string
-  leaderUserId: string
-  anonymityMode: AnonymityModeCode
-  allocationUnit: AllocationUnitCode
-  allocationMode: MarkingAllocationModeCode
-  /** 题目模板ID列表，题目级分配时必填 */
-  questionTemplateIds?: string[]
-  reviewerUserIds: string[]
-  /** 每批分配任务数量 */
-  batchSize: number
-  /** 教师最大待处理任务数 */
-  loadLimit: number
-  anonymousTokenPolicy: AnonymousTokenPolicyCode
-  /** 随机题目抽样数量 */
-  randomQuestionSampleSize?: number
-  remark?: string
 }
 
 /** 保存题目阅卷小组请求 - 对应后端 QuestionGroupSaveRequest */
@@ -452,31 +406,6 @@ export interface MarkingOrganizationVO {
   groups: QuestionMarkingGroupVO[]
   createTime?: string
   updateTime?: string
-}
-
-/** 考试阅卷分配一站式规划响应 - 对应后端 ExamAllocationPlanResponse */
-export interface ExamAllocationPlanVO {
-  organizationId: string
-  groupId: string
-  policyId: string
-  sessionId: string
-  taskCount: number
-  allocationUnit: AllocationUnitCode
-  anonymityMode: AnonymityModeCode
-}
-
-/** 考试阅卷分配规划预览响应 - 对应后端 ExamAllocationPlanPreviewResponse */
-export interface ExamAllocationPlanPreviewVO {
-  allocationUnit: AllocationUnitCode
-  boundPaperCount: number
-  questionScopeCount?: number
-  randomSampleSize?: number
-  registeredSliceCount?: number
-  expectedTaskCount?: number
-  reviewerCount: number
-  ready: boolean
-  readinessMessage?: string
-  coverageMessage?: string
 }
 
 /** 阅卷任务详情响应 - 对应后端 MarkingTaskResponse */
@@ -857,37 +786,6 @@ export function updateOrganization(
  */
 export function deleteOrganization(request: OrganizationDeleteRequest): Promise<boolean> {
   return http.post<boolean>('/api/mark/organization/delete', request)
-}
-
-/**
- * 更新阅卷组织状态（管理员推进 / 撤销组织阶段）。
- * POST /api/mark/organization/updateStatus
- */
-export function updateOrganizationStatus(
-  request: OrganizationStatusUpdateRequest,
-): Promise<boolean> {
-  return http.post<boolean>('/api/mark/organization/updateStatus', request)
-}
-
-/**
- * 一站式规划考试阅卷分配（创建组织、题组、策略与正评草稿会话，不立即生成任务）。
- * POST /api/mark/organization/allocation/plan
- */
-export function planAllocation(request: ExamAllocationPlanRequest): Promise<ExamAllocationPlanVO> {
-  return http.post<ExamAllocationPlanVO>('/api/mark/organization/allocation/plan', request)
-}
-
-/**
- * 预览阅卷分配覆盖范围与预计任务量。
- * POST /api/mark/organization/allocation/preview
- */
-export function previewAllocationPlan(
-  request: ExamAllocationPlanRequest,
-): Promise<ExamAllocationPlanPreviewVO> {
-  return http.post<ExamAllocationPlanPreviewVO>(
-    '/api/mark/organization/allocation/preview',
-    request,
-  )
 }
 
 // ===================== 题组管理 =====================
