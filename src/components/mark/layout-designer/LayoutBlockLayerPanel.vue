@@ -90,15 +90,15 @@ function moveLayer(delta: number): void {
           </a-menu>
         </template>
       </a-dropdown>
-      <UiButton size="sm" variant="outline" :disabled="!focusedBlockId" @click="moveLayer(1)"
-        >上移层</UiButton
-      >
-      <UiButton size="sm" variant="outline" :disabled="!focusedBlockId" @click="moveLayer(-1)"
-        >下移层</UiButton
-      >
-      <UiButton size="sm" variant="ghost" :disabled="!focusedBlockId" @click="removeFocusedBlock"
-        >删除</UiButton
-      >
+      <UiButton size="sm" variant="outline" :disabled="!focusedBlockId" @click="moveLayer(1)">
+        上移层
+      </UiButton>
+      <UiButton size="sm" variant="outline" :disabled="!focusedBlockId" @click="moveLayer(-1)">
+        下移层
+      </UiButton>
+      <UiButton size="sm" variant="ghost" :disabled="!focusedBlockId" @click="removeFocusedBlock">
+        删除
+      </UiButton>
     </div>
     <ul class="layout-block-layer__list">
       <li

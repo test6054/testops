@@ -156,6 +156,7 @@ import {
   findExamWorkspaceMenuItem,
   resolveExamWorkspaceMenuKey,
 } from '@/constants/exam-workspace-menu'
+import type { MarkStageKey } from '@/stores/modules/markStage'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
 import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
@@ -197,7 +198,6 @@ import { useMarkWorkbenchSnapshot } from '@/composables/useMarkWorkbenchSnapshot
 import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
 import { MARK_STAGE_TITLE, shouldShowStageSuggestionBanner } from '@/constants/mark-workspace-nav'
 import HeaderRightBar from '@/layout/components/HeaderRightBar/index.vue'
-import type { MarkStageKey } from '@/stores/modules/markStage'
 import { useAppStore } from '@/stores/modules/app'
 import { formatMarkExamOptionLabel } from '@/utils/mark-exam-option'
 import { navigateToJourneyStep } from '@/utils/mark-stage-navigation'

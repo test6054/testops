@@ -286,6 +286,8 @@ import {
   updateExam,
 } from '@/apis/mark/exam'
 import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
@@ -309,19 +311,18 @@ import {
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
-import { formatSemester, SemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
 import {
   generateAcademicYearOptions,
   getDefaultAcademicYearAndSemester,
 } from '@/utils/academic-year'
 import { showUserError } from '@/utils/error-handler'
 import { readExamListDeepLinkQuery } from '@/utils/exam-list-navigation'
-import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import {
   countBlockingScanAttention,
   resolveSmartExamEntryRouteName,
 } from '@/utils/exam-workspace-entry-gates'
+import { formatDateTime } from '@/utils/format'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { resolveScanStageEntryRoute } from '@/utils/resolve-scan-stage-entry'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ExamListExamWindowCell from '@/views/teacher/components/ExamListExamWindowCell.vue'

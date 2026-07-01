@@ -2,34 +2,15 @@ import type {
   MarkingProgressVO,
   WorkbenchNextActionKeyCode,
   WorkbenchNextActionVO,
-  WorkbenchStageSnapshotVO,
 } from '@/apis/mark/exam-progress'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
-import { resolveScanStageEntryRoute } from '@/utils/resolve-scan-stage-entry'
+import { resolveScanStageEntryRouteName } from '@/utils/resolve-scan-stage-entry'
 
 const NEXT_ACTION_ROUTE: Record<WorkbenchNextActionKeyCode, string> = {
   START_SCAN: 'TeacherExamWorkspaceScanBatches',
   ENTER_REVIEW: 'TeacherExamWorkspaceReviewBatchConfirm',
   ENTER_MARKING: 'TeacherExamWorkspaceMarkingTaskPool',
-}
-
-/** 九段主链中属于「创建与准备」旅程的细阶段 */
-export const PREP_MARK_STAGE_KEYS: readonly MarkStageKey[] = [
-  'EXAM_PREP',
-  'PAPER_TEMPLATE',
-  'CANDIDATE_ROSTER',
-]
-
-export function isPrepMarkStageKey(stageKey: MarkStageKey): boolean {
-  return (PREP_MARK_STAGE_KEYS as readonly string[]).includes(stageKey)
-}
-
-/** 后端建议阶段是否仍落在准备旅程内 */
-export function isSuggestedStillInPrep(
-  suggestedStageKey: MarkStageKey | null | undefined,
-): boolean {
-  return suggestedStageKey != null && isPrepMarkStageKey(suggestedStageKey)
 }
 
 /** 是否存在扫描登记硬阻断 */
@@ -78,18 +59,6 @@ export function canEnterReviewBatch(
   return progress.gradablePaperCount > 0 && pendingReview > 0
 }
 
-/** 是否允许进入阅卷任务池：消费后端 nextActions.ENTER_MARKING */
-export function canEnterMarkingTaskPool(
-  nextActions?: WorkbenchNextActionVO[] | null,
-  progress?: MarkingProgressVO | null,
-): boolean {
-  const action = findWorkbenchNextAction(nextActions, 'ENTER_MARKING')
-  if (action) {
-    return action.enabled
-  }
-  return (progress?.gradablePaperCount ?? 0) > 0
-}
-
 export function resolveNextActionDisabledReason(
   nextActions: WorkbenchNextActionVO[] | null | undefined,
   actionKey: WorkbenchNextActionKeyCode,
@@ -126,8 +95,7 @@ export function resolveNextActionRouteName(
   scanAttentionCount?: number,
 ): string {
   if (actionKey === 'START_SCAN' && examId) {
-    const route = resolveScanStageEntryRoute(examId, { scanAttentionCount })
-    return typeof route.name === 'string' ? route.name : NEXT_ACTION_ROUTE.START_SCAN
+    return resolveScanStageEntryRouteName({ scanAttentionCount })
   }
   return NEXT_ACTION_ROUTE[actionKey]
 }
@@ -188,8 +156,3 @@ export function resolveJourneyIndex(journeyKey: ExamJourneyKey): number {
   const order: ExamJourneyKey[] = ['prep', 'scan', 'assign', 'mark', 'publish', 'archive']
   return order.indexOf(journeyKey)
 }
-
-export type WorkbenchEntrySnapshot = Pick<
-  WorkbenchStageSnapshotVO,
-  'prepBlockingReasons' | 'nextActions' | 'markingProgress'
->

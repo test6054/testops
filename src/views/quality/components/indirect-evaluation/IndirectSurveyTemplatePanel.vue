@@ -34,6 +34,11 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
+import {
+  formatIndirectEvaluationItemType,
+  IndirectEvaluationItemType,
+  isIndirectEvaluationItemType,
+} from '@/types/enums/indirect-evaluation-item-type-enum'
 import { throwUserFacing } from '@/utils/contract-guard'
 import { showUserError } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
@@ -59,11 +64,6 @@ import {
   targetTypeLabel,
   targetTypeOptions,
 } from './indirect-evaluation-shared'
-import {
-  formatIndirectEvaluationItemType,
-  IndirectEvaluationItemType,
-  isIndirectEvaluationItemType,
-} from '@/types/enums/indirect-evaluation-item-type-enum'
 
 const selectedForm = defineModel<IndirectEvaluationFormVO | null>('selectedForm', { default: null })
 const selectedItem = defineModel<IndirectEvaluationItemVO | null>('selectedItem', { default: null })

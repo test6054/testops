@@ -11,8 +11,8 @@ import {
   IndirectEvaluationItemType,
   isIndirectEvaluationItemType,
 } from '@/types/enums/indirect-evaluation-item-type-enum'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { throwUserFacing } from '@/utils/contract-guard'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 
 export function useSurveyFill() {
   const route = useRoute()

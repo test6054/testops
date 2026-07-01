@@ -1,5 +1,5 @@
-import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { ConfirmationStatus } from './types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/workbench'

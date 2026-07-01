@@ -50,9 +50,9 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'auditStatus'">
-              <UiTag :tone="auditStatusTone(record.auditStatus)" size="sm">{{
-                auditStatusLabel(record.auditStatus)
-              }}</UiTag>
+              <UiTag :tone="auditStatusTone(record.auditStatus)" size="sm">
+                {{ auditStatusLabel(record.auditStatus) }}
+              </UiTag>
             </template>
             <template v-else-if="column.key === 'courseName'">
               <div class="course-cell">
@@ -110,9 +110,9 @@
       <template #footer>
         <a-space>
           <UiButton variant="outline" @click="editOpen = false">取消</UiButton>
-          <UiButton status="danger" :loading="editing" @click="submitAudit('REJECTED')"
-            >驳回</UiButton
-          >
+          <UiButton status="danger" :loading="editing" @click="submitAudit('REJECTED')">
+            驳回
+          </UiButton>
           <UiButton
             variant="primary"
             :loading="editing"
@@ -143,6 +143,8 @@ import {
 import type { AssessmentRationalityAuditStatus } from '@/apis/quality/types'
 import { ASSESSMENT_RATIONALITY_AUDIT_STATUS_LABEL } from '@/apis/quality/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { isValidSemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
 import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
@@ -157,8 +159,6 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -176,14 +176,14 @@ interface RationalityAuditEditForm {
 
 interface RationalityAuditFilterModel {
   schoolYear: string
-  semester: SemesterCode | ''
+  semester?: SemesterCode
 }
 
 const loading = ref(false)
 const qualityStore = useQualityStore()
 const filterForm = reactive<RationalityAuditFilterModel>({
   schoolYear: '',
-  semester: '',
+  semester: undefined,
 })
 
 const filterModel = computed<Record<string, unknown>>({
@@ -282,7 +282,7 @@ function handleSearch() {
 function handleReset() {
   Object.assign(filterForm, {
     schoolYear: '',
-    semester: '',
+    semester: undefined,
   })
   list.value = []
   overview.value = {
@@ -310,7 +310,7 @@ onMounted(async () => {
   if (!filterForm.schoolYear && qualityStore.currentSchoolYear) {
     filterForm.schoolYear = qualityStore.currentSchoolYear
   }
-  if (!filterForm.semester && qualityStore.currentSemester) {
+  if (!filterForm.semester && isValidSemesterCode(qualityStore.currentSemester)) {
     filterForm.semester = qualityStore.currentSemester
   }
   if (filterForm.schoolYear && filterForm.semester && qualityStore.currentTrainingPlanId) {

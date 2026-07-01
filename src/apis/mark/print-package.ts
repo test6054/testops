@@ -123,23 +123,26 @@ function validatePrintPackagePageContract(page: PageResult<PrintPackageVO>): Pag
 }
 
 export function isPaperMasterNotConfiguredError(error: MarkBusinessError): boolean {
-  const code = error.code ?? error.response?.data.code
+  const code = error.code ?? error.response?.data?.code
   return Number(code) === PAPER_MASTER_NOT_CONFIGURED_CODE
 }
 
-export function getPrintPackage(request: PrintPackageQueryRequest): Promise<PrintPackageVO> {
-  return http.post<PrintPackageVO>('/api/mark/exams/print-package/detail', request)
-    .then((record) => {
-      validatePrintPackageContract(record)
-      return record
-    })
+export async function getPrintPackage(request: PrintPackageQueryRequest): Promise<PrintPackageVO> {
+  const record = await http.post<PrintPackageVO>('/api/mark/exams/print-package/detail', request)
+  validatePrintPackageContract(record)
+  return record
 }
 
 export function generatePrintPackage(request: PrintPackageGenerateRequest): Promise<string> {
   return http.post<string>('/api/mark/exams/print-package/generate', request)
 }
 
-export function pagePrintPackages(request: PrintPackagePageRequest): Promise<PageResult<PrintPackageVO>> {
-  return http.post<PageResult<PrintPackageVO>>('/api/mark/exams/print-package/page', request)
-    .then(validatePrintPackagePageContract)
+export async function pagePrintPackages(
+  request: PrintPackagePageRequest,
+): Promise<PageResult<PrintPackageVO>> {
+  const page = await http.post<PageResult<PrintPackageVO>>(
+    '/api/mark/exams/print-package/page',
+    request,
+  )
+  return validatePrintPackagePageContract(page)
 }

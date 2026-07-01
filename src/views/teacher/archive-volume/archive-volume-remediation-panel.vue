@@ -83,9 +83,9 @@
           {{ remediationAssigneeLabel(record) }}
         </template>
         <template v-else-if="column.key === 'volumeId'">
-          <UiTextAction @click="goVolumeDetail(record.volumeId, record.taskId)">{{
-            record.volumeId
-          }}</UiTextAction>
+          <UiTextAction @click="goVolumeDetail(record.volumeId, record.taskId)">
+            {{ record.volumeId }}
+          </UiTextAction>
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTextAction @click="openTask(record.taskId)">详情</UiTextAction>
@@ -112,25 +112,25 @@
             <a-descriptions-item label="状态">
               {{ remediationStatusLabel(taskDetail.taskStatus) }}
             </a-descriptions-item>
-            <a-descriptions-item label="责任人">{{
-              remediationAssigneeLabel(taskDetail)
-            }}</a-descriptions-item>
+            <a-descriptions-item label="责任人">
+              {{ remediationAssigneeLabel(taskDetail) }}
+            </a-descriptions-item>
             <a-descriptions-item
               v-if="canManageTaskAsCoordinator && taskDetail.taskStatus !== 'CLOSED'"
               label="改派责任人"
             >
               <ArchiveDutyUserSelect v-model:value="editAssigneeUserId" />
             </a-descriptions-item>
-            <a-descriptions-item label="诊断码">{{
-              taskDetail.diagnosticCode || '—'
-            }}</a-descriptions-item>
-            <a-descriptions-item label="说明">{{
-              taskDetail.taskDescription || '—'
-            }}</a-descriptions-item>
+            <a-descriptions-item label="诊断码">
+              {{ taskDetail.diagnosticCode || '—' }}
+            </a-descriptions-item>
+            <a-descriptions-item label="说明">
+              {{ taskDetail.taskDescription || '—' }}
+            </a-descriptions-item>
             <a-descriptions-item label="截止">{{ taskDetail.dueTime || '—' }}</a-descriptions-item>
-            <a-descriptions-item label="关闭">{{
-              taskDetail.closedTime || '—'
-            }}</a-descriptions-item>
+            <a-descriptions-item label="关闭">
+              {{ taskDetail.closedTime || '—' }}
+            </a-descriptions-item>
           </a-descriptions>
           <div v-if="taskDetail.taskStatus !== 'CLOSED'" class="task-actions">
             <template v-if="canManageTaskAsCoordinator">
@@ -144,28 +144,30 @@
                 保存改派
               </UiButton>
               <template v-if="taskDetail.taskStatus === 'OPEN'">
-                <UiButton size="sm" :loading="updating" @click="advanceStatus('IN_PROGRESS')"
-                  >开始处理</UiButton
-                >
+                <UiButton size="sm" :loading="updating" @click="advanceStatus('IN_PROGRESS')">
+                  开始处理
+                </UiButton>
                 <UiButton
                   size="sm"
                   variant="outline"
                   :loading="updating"
                   @click="advanceStatus('CLOSED')"
-                  >关闭</UiButton
                 >
+                  关闭
+                </UiButton>
               </template>
               <template v-else-if="taskDetail.taskStatus === 'IN_PROGRESS'">
-                <UiButton size="sm" :loading="updating" @click="advanceStatus('RESUBMITTED')"
-                  >标记已重提</UiButton
-                >
+                <UiButton size="sm" :loading="updating" @click="advanceStatus('RESUBMITTED')">
+                  标记已重提
+                </UiButton>
                 <UiButton
                   size="sm"
                   variant="outline"
                   :loading="updating"
                   @click="advanceStatus('CLOSED')"
-                  >关闭</UiButton
                 >
+                  关闭
+                </UiButton>
               </template>
               <template v-else-if="taskDetail.taskStatus === 'RESUBMITTED'">
                 <UiButton
@@ -173,8 +175,9 @@
                   variant="outline"
                   :loading="updating"
                   @click="advanceStatus('CLOSED')"
-                  >复检关闭</UiButton
                 >
+                  复检关闭
+                </UiButton>
               </template>
             </template>
             <template v-else-if="isCurrentAssignee">
@@ -333,6 +336,8 @@ import {
   updateRemediationTask,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -346,8 +351,6 @@ import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { useUserStore } from '@/stores/modules/user'
 import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
 import { showUserError } from '@/utils/error-handler'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeRemediationPanel' })

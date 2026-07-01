@@ -5,7 +5,7 @@
  */
 import type { AiTaskSubmitResponseVO } from './ai-task-trigger'
 import type { SurveyChoiceOptionVO, SurveyRespondentIdentityItemVO } from '@/apis/public-survey'
-import { RespondentType } from '@/types/enums/respondent-type-enum'
+import type { RespondentType } from '@/types/enums/respondent-type-enum'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/indirect-responses'

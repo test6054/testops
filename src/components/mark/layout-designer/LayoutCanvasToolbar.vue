@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import { MinusOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 
@@ -46,8 +47,14 @@ function toggleSafeMargin(): void {
   emit('update:show-safe-margin', !props.showSafeMargin)
 }
 
-function onSnapChange(value: number | string): void {
-  emit('update:snap-grid-mm', Number(value) || 0)
+function onSnapChange(value: SelectValue, _option?: DefaultOptionType | DefaultOptionType[]): void {
+  if (typeof value === 'number') {
+    emit('update:snap-grid-mm', value)
+    return
+  }
+  if (typeof value === 'string') {
+    emit('update:snap-grid-mm', Number(value) || 0)
+  }
 }
 </script>
 

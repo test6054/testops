@@ -20,6 +20,8 @@ import {
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
 } from '@/apis/portfolio/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -39,8 +41,6 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -461,8 +461,8 @@ watch(
       <p>
         总分 {{ scoreResult.totalScore
         }}<template v-if="scoreResult.computedTime">
-          · 计算于 {{ scoreResult.computedTime }}</template
-        >
+          · 计算于 {{ scoreResult.computedTime }}
+        </template>
       </p>
       <ul v-if="scoreResult.breakdown.length" class="teacher-archive__score-list">
         <li v-for="item in scoreResult.breakdown" :key="item.ruleId">

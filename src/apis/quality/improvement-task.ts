@@ -79,6 +79,8 @@ export interface ImprovementTaskSaveRequest {
   proposedAction: string
   ownerUserId: string
   ownerRole?: string
+  /** yyyy-MM-dd，后端 @NotNull */
+  dueDate: string
   /** 创建时同步提交 AI 改进建议草稿 */
   submitAiSuggestionDraft?: boolean
 }

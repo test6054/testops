@@ -4,9 +4,9 @@
       <div class="archive-supervision-panel__problem-filters">
         <a-checkbox v-model:checked="volumeFilterForm.integrityFailedOnly">缺必交项</a-checkbox>
         <a-checkbox v-model:checked="volumeFilterForm.archiveOverdueOnly">归档逾期</a-checkbox>
-        <a-checkbox v-model:checked="volumeFilterForm.delaySubmissionOverdueOnly"
-          >补交逾期</a-checkbox
-        >
+        <a-checkbox v-model:checked="volumeFilterForm.delaySubmissionOverdueOnly">
+          补交逾期
+        </a-checkbox>
       </div>
       <UiFilterBar
         v-model="volumeFilter"
@@ -274,6 +274,8 @@ import {
   pageSupervisionArchiveVolumes,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -288,8 +290,6 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
 import { showUserError } from '@/utils/error-handler'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 

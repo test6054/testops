@@ -4,6 +4,7 @@
  * 禁止 silent 自动选首项；仅恢复 persist 选择。
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { CONFIRMATION_STATUS_COLOR, CONFIRMATION_STATUS_LABEL } from '@/apis/quality/types'
@@ -17,7 +18,6 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { useQualityScopeProfile } from '@/composables/useQualityScopeProfile'
 import { SEMESTER_OPTIONS } from '@/constants/quality-scope-profile'
 import { useQualityStore } from '@/stores/modules/quality'
-import type { SemesterCode } from '@/types/enums/semester-enum'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'QualityScopeChrome' })

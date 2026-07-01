@@ -12,8 +12,17 @@ export function resolveScanStageEntryRoute(
   examId: string,
   context?: ScanStageEntryContext | null,
 ): RouteLocationRaw {
+  return { name: resolveScanStageEntryRouteName(context), params: { examId } }
+}
+
+/**
+ * 扫描阶段入口路由名；与 {@link resolveScanStageEntryRoute} 同一分流规则。
+ */
+export function resolveScanStageEntryRouteName(
+  context?: ScanStageEntryContext | null,
+): 'TeacherExamWorkspaceScanMonitor' | 'TeacherExamWorkspaceScanBatches' {
   if ((context?.scanAttentionCount ?? 0) > 0) {
-    return { name: 'TeacherExamWorkspaceScanMonitor', params: { examId } }
+    return 'TeacherExamWorkspaceScanMonitor'
   }
-  return { name: 'TeacherExamWorkspaceScanBatches', params: { examId } }
+  return 'TeacherExamWorkspaceScanBatches'
 }

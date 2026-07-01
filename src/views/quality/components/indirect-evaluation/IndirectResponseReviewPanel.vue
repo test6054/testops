@@ -18,21 +18,20 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { isIndirectEvaluationItemType } from '@/types/enums/indirect-evaluation-item-type-enum'
+import { isSystemCollectedRespondentType, RespondentType } from '@/types/enums/respondent-type-enum'
 import ImportResponseDocumentModal from '../ImportResponseDocumentModal.vue'
 import {
-  isIndirectEvaluationItemType,
   isMultiChoiceItemType,
   isOpenTextItemType,
   isScaleItemType,
   isSingleChoiceItemType,
-  isSystemCollectedRespondentType,
   isTeacherResponseWritable,
   requiresTeacherScoreConversion,
   respondentTypeLabel,
   respondentTypeOptions,
   responseColumns,
 } from './indirect-evaluation-shared'
-import { RespondentType } from '@/types/enums/respondent-type-enum'
 
 const props = defineProps<{
   selectedForm: IndirectEvaluationFormVO | null
@@ -97,6 +96,16 @@ const responseEditor = ref<IndirectEvaluationResponseSaveRequest>({
   openText: '',
   validFlag: true,
   invalidReason: '',
+})
+
+/** 表单开关只接受 boolean；API 契约 validFlag 可为 null（待确认） */
+const responseEditorValidFlag = computed({
+  get(): boolean {
+    return responseEditor.value.validFlag === true
+  },
+  set(value: boolean) {
+    responseEditor.value.validFlag = value
+  },
 })
 
 const importExcelVisible = ref(false)
@@ -686,7 +695,7 @@ defineExpose({
         <a-col :span="12">
           <a-form-item
             label="换算分（0~1）"
-            :required="showConversionWorkflow && responseEditor.validFlag && !clearConvertedScore"
+            :required="showConversionWorkflow && responseEditorValidFlag && !clearConvertedScore"
           >
             <a-input-number
               v-model:value="responseEditor.convertedScore"
@@ -714,14 +723,14 @@ defineExpose({
       <a-row :gutter="12">
         <a-col :span="8">
           <a-form-item label="有效">
-            <a-switch v-model:checked="responseEditor.validFlag" />
+            <a-switch v-model:checked="responseEditorValidFlag" />
           </a-form-item>
         </a-col>
         <a-col :span="16">
           <a-form-item label="无效原因">
             <a-input
               v-model:value="responseEditor.invalidReason"
-              :disabled="responseEditor.validFlag"
+              :disabled="responseEditorValidFlag"
             />
           </a-form-item>
         </a-col>

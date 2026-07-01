@@ -696,9 +696,9 @@ function handleCourseChange(courseId: string | null) {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
-                  <UiTextAction v-if="isNodeMutable(record)" @click.stop="openNodeEdit(record)"
-                    >编辑</UiTextAction
-                  >
+                  <UiTextAction v-if="isNodeMutable(record)" @click.stop="openNodeEdit(record)">
+                    编辑
+                  </UiTextAction>
                   <a-dropdown
                     v-if="allowedConfirmationTransitions(record.confirmationStatus).length"
                   >

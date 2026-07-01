@@ -17,8 +17,8 @@ import {
 } from '@/composables/quality/improvement'
 import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
-import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
 import { aiTaskApi } from '@/apis/quality/ai-task'
+import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
 import {
   AchievementResultSelector,

@@ -78,6 +78,8 @@ import {
 } from '@/apis/mark/scanner-kiosk'
 import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
 import { discardExamScanWorkOrder, startExamScanWorkOrder } from '@/apis/mark/scanner-work-order'
+import type { SemesterCode } from '@/types/enums'
+import { getSemesterDescription, SemesterOptions } from '@/types/enums'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
   SCANNER_COLOR_MODE_LABEL,
@@ -87,7 +89,6 @@ import {
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
-import { getSemesterDescription, SemesterCode, SemesterOptions } from '@/types/enums'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import {

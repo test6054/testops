@@ -1,9 +1,5 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PublicSurveyItemType, SurveyIdentityFieldVO } from '@/apis/public-survey'
-import {
-  INDIRECT_EVALUATION_ITEM_TYPE_OPTIONS,
-  IndirectEvaluationItemType,
-} from '@/types/enums/indirect-evaluation-item-type-enum'
 import type { IndirectEvaluationFormVO } from '@/apis/quality/indirect-form'
 import type {
   AchievementTargetType,
@@ -17,11 +13,15 @@ import {
   INDIRECT_FORM_STATUS_LABEL,
   INDIRECT_FORM_TYPE_LABEL,
 } from '@/apis/quality/types'
+import type { RespondentType } from '@/types/enums/respondent-type-enum'
 import {
   formatRespondentType,
   MANUAL_RESPONDENT_TYPE_OPTIONS,
-  RespondentType,
 } from '@/types/enums/respondent-type-enum'
+import {
+  INDIRECT_EVALUATION_ITEM_TYPE_OPTIONS,
+  IndirectEvaluationItemType,
+} from '@/types/enums/indirect-evaluation-item-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export const ITEM_CONFIG_ERROR = '题项配置不完整，请检查后重试'

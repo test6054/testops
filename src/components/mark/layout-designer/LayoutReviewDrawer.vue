@@ -89,9 +89,9 @@ async function persistAdjust(): Promise<void> {
         "
         @change="focusedBlockId = ($event as string | undefined) ?? null"
       />
-      <UiButton variant="primary" :loading="saving" :disabled="readonly" @click="persistAdjust"
-        >保存微调</UiButton
-      >
+      <UiButton variant="primary" :loading="saving" :disabled="readonly" @click="persistAdjust">
+        保存微调
+      </UiButton>
     </div>
     <LayoutCanvasLite
       :document="document"

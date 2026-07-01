@@ -46,20 +46,20 @@ export interface ReviewQuestionProgressItemVO {
 }
 
 /** 考试工作台阶段键 - 对应 ExamWorkbenchStageKey */
-export type ExamWorkbenchStageKeyCode =
-  | 'EXAM_PREP'
-  | 'PAPER_TEMPLATE'
-  | 'CANDIDATE_ROSTER'
-  | 'SCAN'
-  | 'MARKING_ORG'
-  | 'TRIAL_MARKING'
-  | 'FORMAL_MARKING'
-  | 'SCORE_PUBLISH'
-  | 'ARCHIVE'
+export type ExamWorkbenchStageKeyCode
+  = | 'EXAM_PREP'
+    | 'PAPER_TEMPLATE'
+    | 'CANDIDATE_ROSTER'
+    | 'SCAN'
+    | 'MARKING_ORG'
+    | 'TRIAL_MARKING'
+    | 'FORMAL_MARKING'
+    | 'SCORE_PUBLISH'
+    | 'ARCHIVE'
 
 /** 工作台阶段状态 - 对应 ExamWorkbenchStageStatus */
-export type WorkbenchStageStatusCode =
-  'pending' | 'active' | 'completed' | 'warning' | 'error' | 'blocked'
+export type WorkbenchStageStatusCode
+  = 'pending' | 'active' | 'completed' | 'warning' | 'error' | 'blocked'
 
 /** 考试工作台阶段项 - 对应 ExamWorkbenchStageItemResponse */
 export interface ExamWorkbenchStageItemVO {

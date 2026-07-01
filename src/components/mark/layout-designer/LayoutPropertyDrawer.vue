@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
 import type { ExamLayoutBlockTypeCode } from '@/utils/exam-layout-designer'
 import { EXAM_LAYOUT_BLOCK_TYPE, EXAM_LAYOUT_BLOCK_TYPE_LABEL } from '@/utils/exam-layout-designer'
@@ -54,11 +55,31 @@ function patchRectField(field: 'x' | 'y' | 'w' | 'h', value: number | string | n
   })
 }
 
-function onBlockTypeChange(value: string): void {
+function onBlockTypeChange(
+  value: SelectValue,
+  _option?: DefaultOptionType | DefaultOptionType[],
+): void {
+  if (typeof value !== 'string') {
+    throwUserFacing('布局块类型契约异常')
+  }
   if (!(value in EXAM_LAYOUT_BLOCK_TYPE)) {
     throwUserFacing('布局块类型契约异常')
   }
   patchBlock({ blockType: value as ExamLayoutBlockTypeCode })
+}
+
+function onLayoutQuestionChange(
+  value: SelectValue,
+  _option?: DefaultOptionType | DefaultOptionType[],
+): void {
+  if (value === null || value === undefined) {
+    patchBlock({ layoutQuestionId: undefined })
+    return
+  }
+  if (typeof value !== 'string') {
+    throwUserFacing('关联题目契约异常')
+  }
+  patchBlock({ layoutQuestionId: value })
 }
 </script>
 
@@ -80,7 +101,7 @@ function onBlockTypeChange(value: string): void {
           allow-clear
           placeholder="主观/客观块需绑定题目"
           :options="questionOptions"
-          @change="patchBlock({ layoutQuestionId: $event as string | undefined })"
+          @change="onLayoutQuestionChange"
         />
       </a-form-item>
       <a-form-item label="图层层级">

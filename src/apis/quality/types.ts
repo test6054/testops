@@ -871,8 +871,8 @@ export {
   isRespondentType,
   isSystemCollectedRespondentType,
   MANUAL_RESPONDENT_TYPE_OPTIONS,
-  RespondentType,
   RESPONDENT_TYPE_LABEL,
+  RespondentType,
 } from '@/types/enums/respondent-type-enum'
 
 /** 间接评价问卷类型 - 对应 IndirectFormTypeEnum */

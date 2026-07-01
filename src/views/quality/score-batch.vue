@@ -1035,12 +1035,12 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
-                <UiTextAction v-if="canPreview(record.status)" @click="openPreview(record)"
-                  >预览</UiTextAction
-                >
-                <UiTextAction v-if="canValidate(record)" @click="handleValidate(record)"
-                  >校验</UiTextAction
-                >
+                <UiTextAction v-if="canPreview(record.status)" @click="openPreview(record)">
+                  预览
+                </UiTextAction>
+                <UiTextAction v-if="canValidate(record)" @click="handleValidate(record)">
+                  校验
+                </UiTextAction>
                 <UiTextAction
                   v-if="canConfirm(record.status)"
                   tone="primary"
@@ -1055,9 +1055,9 @@ onMounted(async () => {
                 >
                   重新解析
                 </UiTextAction>
-                <UiTextAction v-if="canEdit(record.status)" @click="openEdit(record)"
-                  >编辑</UiTextAction
-                >
+                <UiTextAction v-if="canEdit(record.status)" @click="openEdit(record)">
+                  编辑
+                </UiTextAction>
                 <UiTextAction
                   v-if="canCancel(record.status)"
                   tone="danger"

@@ -44,9 +44,9 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { storeToRefs } from 'pinia'
+import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -96,7 +96,7 @@ const {
   refreshChrome,
 } = useExamWorkspaceChromeContext()
 
-const displayTitle = computed(() => props.pageTitle || contextTitle)
+const displayTitle = computed(() => props.pageTitle || contextTitle.value)
 
 function handleRefresh(): void {
   void refreshChrome()

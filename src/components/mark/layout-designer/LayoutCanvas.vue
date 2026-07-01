@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type Konva from 'konva'
-import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
+import type { ComponentPublicInstance } from 'vue'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
 import { Image as KonvaImage, Layer, Line, Rect, Stage, Text, Transformer } from 'vue-konva'
 import LayoutCanvasToolbar from '@/components/mark/layout-designer/LayoutCanvasToolbar.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -47,6 +48,35 @@ const stageRef = ref()
 const transformerRef = ref()
 const shapeRefs = new Map<string, Konva.Rect>()
 const bgImage = ref<HTMLCanvasElement | null>(null)
+
+interface VueKonvaShapeRef {
+  getNode: () => Konva.Rect
+}
+
+interface TransformerBoundBox {
+  x: number
+  y: number
+  width: number
+  height: number
+  rotation: number
+}
+
+function createShapeRefSetter(blockId: string) {
+  return (el: Element | ComponentPublicInstance | null) => {
+    if (el && typeof el === 'object' && 'getNode' in el) {
+      registerShape(blockId, (el as VueKonvaShapeRef).getNode())
+      return
+    }
+    registerShape(blockId, null)
+  }
+}
+
+function transformerBoundBoxFunc(
+  oldBox: TransformerBoundBox,
+  newBox: TransformerBoundBox,
+): TransformerBoundBox {
+  return newBox.width < 8 || newBox.height < 8 ? oldBox : newBox
+}
 
 const page = computed(() => pageByNo(props.document, props.pageNo))
 const stageSize = computed(() => computeStageSize(page.value))
@@ -310,10 +340,7 @@ onMounted(() => {
           <Layer>
             <template v-for="block in visibleBlocks" :key="block.id">
               <Rect
-                :ref="
-                  (el: { getNode?: () => Konva.Rect } | null) =>
-                    registerShape(block.id, el?.getNode?.() ?? null)
-                "
+                :ref="createShapeRefSetter(block.id)"
                 :config="blockConfig(block)"
                 @click="handleSelect(block)"
                 @tap="handleSelect(block)"
@@ -338,8 +365,7 @@ onMounted(() => {
                   'top-center',
                   'bottom-center',
                 ],
-                boundBoxFunc: (oldBox, newBox) =>
-                  newBox.width < 8 || newBox.height < 8 ? oldBox : newBox,
+                boundBoxFunc: transformerBoundBoxFunc,
               }"
             />
           </Layer>

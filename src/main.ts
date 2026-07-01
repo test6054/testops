@@ -1,9 +1,9 @@
 import Antd from 'ant-design-vue'
 import { createApp } from 'vue'
+import VueKonva from 'vue-konva'
 // 错误处理
 import { DEV_ERROR_CONFIG, initGlobalErrorHandler, PROD_ERROR_CONFIG } from '@/config/error-config'
 import { installVueECharts } from '@/plugins/vue-echarts'
-import VueKonva from 'vue-konva'
 // 状态管理
 import pinia, { useAuthStore } from '@/stores'
 import { hasPersistedSessionHint } from '@/utils/auth'

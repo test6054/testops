@@ -44,6 +44,7 @@ import {
   AI_TASK_STATUS_LABEL,
   AI_TASK_TYPE_LABEL,
 } from '@/apis/quality/types'
+import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
@@ -623,11 +624,19 @@ function handleQueryBusinessTypeChange(value: SelectValue) {
   query.businessType = value as AiTaskBusinessType
 }
 
-function handleQueryBusinessObjectChange(value: string | null): void {
+function handleQueryBusinessObjectChange(value: string | string[] | null, _option?: unknown): void {
+  if (Array.isArray(value)) {
+    showUserError(null, '业务对象筛选只能单选，请重新选择')
+    query.businessId = ''
+    return
+  }
   query.businessId = value ?? ''
 }
 
-function handleQueryOperatorChange(value: string | string[] | null): void {
+function handleQueryOperatorChange(
+  value: string | string[] | null,
+  _option?: TeacherUserInfoDto | TeacherUserInfoDto[],
+): void {
   if (Array.isArray(value)) {
     showUserError(null, '操作人筛选只能单选，请重新选择')
     return

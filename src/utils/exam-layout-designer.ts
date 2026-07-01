@@ -2,7 +2,7 @@ import type {
   ExamLayoutBlockDto,
   ExamLayoutDocument,
   ExamLayoutPageDto,
-  ExamLayoutRectNorm,
+  ExamLayoutRectNorm
 } from '@/apis/mark/exam-layout-design'
 import { throwUserFacing } from '@/utils/contract-guard'
 
@@ -15,8 +15,8 @@ export const EXAM_LAYOUT_BLOCK_TYPE = {
   FORBIDDEN_ZONE: 'FORBIDDEN_ZONE',
 } as const
 
-export type ExamLayoutBlockTypeCode =
-  (typeof EXAM_LAYOUT_BLOCK_TYPE)[keyof typeof EXAM_LAYOUT_BLOCK_TYPE]
+export type ExamLayoutBlockTypeCode
+  = (typeof EXAM_LAYOUT_BLOCK_TYPE)[keyof typeof EXAM_LAYOUT_BLOCK_TYPE]
 
 export const EXAM_LAYOUT_BLOCK_TYPE_LABEL: Record<ExamLayoutBlockTypeCode, string> = {
   IDENTITY_BUBBLE: '身份填涂区',
@@ -103,7 +103,7 @@ export function normToStageRect(
   rectNorm: ExamLayoutRectNorm,
   page: ExamLayoutPageDto,
   stageWidth: number,
-): { x: number; y: number; width: number; height: number } {
+): { x: number, y: number, width: number, height: number } {
   const stageHeight = Math.round(stageWidth * (page.naturalHeightPx / page.naturalWidthPx))
   return {
     x: rectNorm.x * stageWidth,
@@ -215,8 +215,8 @@ export function snapStageValue(
     return value
   }
   const natural = axis === 'x' ? page.naturalWidthPx : page.naturalHeightPx
-  const stageSize =
-    axis === 'x'
+  const stageSize
+    = axis === 'x'
       ? stageWidth
       : Math.round(stageWidth * (page.naturalHeightPx / page.naturalWidthPx))
   const gridStagePx = (gridMm / MM_REFERENCE) * natural * (stageSize / natural)
