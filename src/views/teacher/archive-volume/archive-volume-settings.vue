@@ -180,7 +180,7 @@ import type { ArchiveDutyGrantItemRequest, ArchiveDutyTypeCode } from '@/apis/ma
 import type { ArchiveCatalogTemplateSaveItemRequest, ArchiveMaterialTypeCode, ArchiveSecurityLevelCode } from '@/apis/mark/archive-volume'
 import type {TenantSchoolDepartmentDto} from '@/apis/quality/user-catalog';
 import { message } from 'ant-design-vue'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import {
   ARCHIVE_DUTY_TYPE_LABEL,
   listArchiveDutyGrants,
@@ -208,6 +208,10 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'ArchiveVolumeSettings' })
+
+const props = defineProps<{
+  initialTab?: string
+}>()
 
 type DutyRow = ArchiveDutyGrantItemRequest & { rowKey: string }
 interface PolicyRow { rowKey: string, dutyType: ArchiveDutyTypeCode, maxSecurityLevel: ArchiveSecurityLevelCode }
@@ -256,6 +260,13 @@ const settingsTabs = [
   { key: 'security', label: '密级策略' },
   { key: 'catalog', label: '目录模板' },
 ]
+
+function resolveSettingsTab(raw?: string) {
+  if (!raw) return 'duty'
+  if (raw === 'duties') return 'duty'
+  const allowed = settingsTabs.map(item => item.key)
+  return allowed.includes(raw) ? raw : 'duty'
+}
 
 const dutyTypeOptions = Object.entries(ARCHIVE_DUTY_TYPE_LABEL).map(([value, label]) => ({ value, label }))
 const securityLevelOptions = Object.entries(ARCHIVE_SECURITY_LEVEL_LABEL).map(([value, label]) => ({ value, label }))
@@ -488,7 +499,12 @@ async function saveCatalogRows() {
   }
 }
 
+watch(() => props.initialTab, (tab) => {
+  settingsTab.value = resolveSettingsTab(tab)
+}, { immediate: true })
+
 onMounted(() => {
+  settingsTab.value = resolveSettingsTab(props.initialTab)
   void loadDepartments()
   void loadDutyGrants()
   void loadPolicy()

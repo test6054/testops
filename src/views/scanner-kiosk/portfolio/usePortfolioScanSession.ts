@@ -146,5 +146,12 @@ export function usePortfolioScanSession() {
     returnTo,
     loadContext,
     startSession,
+    buildIntakeReturnTo: buildPortfolioIntakeScanReturnTo,
   }
+}
+
+/** 构建材料采集页扫描回跳 URL（携带 scanCommitted 由扫描会话追加） */
+export function buildPortfolioIntakeScanReturnTo(query: Record<string, string>): string {
+  const params = new URLSearchParams(query)
+  return `/portfolio/teacher/intake?${params.toString()}`
 }

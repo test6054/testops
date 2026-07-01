@@ -8,9 +8,7 @@
 
     <a-layout class="layout-default-right">
       <Header></Header>
-      <QualityLayoutContext />
       <PortfolioLayoutContext />
-      <AiTaskRunningBar />
       <Main id="main-content" :class="{ 'with-tabbar': isMobile }"></Main>
       <!-- <GiFooter v-if="appStore.copyrightDisplay && !isMobile" /> -->
     </a-layout>
@@ -26,11 +24,9 @@
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue'
 import PortfolioLayoutContext from '@/components/portfolio/PortfolioLayoutContext.vue'
-import QualityLayoutContext from '@/components/quality/QualityLayoutContext.vue'
 import { useDevice } from '@/hooks'
 import { getToken } from '@/utils/auth'
 import NoticePopup from '@/views/user/message/components/NoticePopup.vue'
-import AiTaskRunningBar from './components/AiTaskRunningBar.vue'
 
 import Asider from './components/Asider/index.vue'
 import Header from './components/Header/index.vue'

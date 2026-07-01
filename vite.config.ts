@@ -88,6 +88,9 @@ export default defineConfig(async ({ command, mode }): Promise<UserConfig> => {
       },
     },
     plugins: await createVitePlugins(command === 'build'),
+    optimizeDeps: {
+      include: ['vue-draggable-plus'],
+    },
     build: {
       chunkSizeWarningLimit: 2000,
       outDir: 'dist',

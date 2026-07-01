@@ -842,7 +842,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <QualityIngestPageShell>
+  <QualityIngestPageShell embedded>
     <template #context>
       <QualityPageContextBar>
         <template #actions>

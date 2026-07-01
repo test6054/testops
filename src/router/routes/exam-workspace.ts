@@ -110,8 +110,8 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'candidate-roster',
       keepAlive: true,
     }),
-    workspaceChild('scan/batches', 'TeacherExamWorkspaceScanBatches', () => import('@/views/teacher/scan-upload.vue'), {
-      title: '录入与批次',
+    workspaceChild('scan/batches', 'TeacherExamWorkspaceScanBatches', () => import('@/views/teacher/scan-batch-workbench.vue'), {
+      title: '扫描批次',
       markStageKey: 'SCAN',
       journeyKey: 'scan',
       workspacePhase: 'scan',
@@ -146,12 +146,13 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'scan',
       keepAlive: true,
     }),
-    workspaceChild('marking-org', 'TeacherExamWorkspaceMarkingOrg', () => import('@/views/admin/marking-organization/index.vue'), {
+    workspaceChild('marking-org', 'TeacherExamWorkspaceMarkingOrg', () => import('@/views/admin/marking-organization/marking-org-entry.vue'), {
       title: '阅卷设置',
       markStageKey: 'MARKING_ORG',
       journeyKey: 'assign',
       workspacePhase: 'marking-org',
-      keepAlive: true,
+      keepAlive: false,
+      noCache: true,
       hasWorkbenchShell: true,
     }),
     {
@@ -160,7 +161,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       redirect: (to) => ({
         name: 'TeacherExamWorkspaceMarkingOrg',
         params: { examId: to.params.examId },
-        query: { setupTab: 'launch' },
+        query: { tab: 'launch' },
       }),
       meta: {
         roles: TEACHER_ROLES,
@@ -251,6 +252,22 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'marking',
       keepAlive: true,
     }),
+    workspaceChild('marking/quality-monitor', 'TeacherExamWorkspaceMarkingQualityMonitor', () => import('@/views/admin/marking-quality-dashboard.vue'), {
+      title: '阅卷质量监控',
+      markStageKey: 'FORMAL_MARKING',
+      journeyKey: 'mark',
+      workspacePhase: 'marking',
+      keepAlive: true,
+      hasWorkbenchShell: true,
+    }),
+    workspaceChild('marking/audit-trail', 'TeacherExamWorkspaceMarkingAuditTrail', () => import('@/views/admin/audit-trail.vue'), {
+      title: '批改审计',
+      markStageKey: 'FORMAL_MARKING',
+      journeyKey: 'mark',
+      workspacePhase: 'marking',
+      keepAlive: true,
+      hasWorkbenchShell: true,
+    }),
     workspaceChild('marking/review', 'TeacherExamWorkspaceMarkingReview', () => import('@/views/teacher/review-workspace.vue'), {
       title: 'OCR/AI 复核',
       markStageKey: 'FORMAL_MARKING',
@@ -331,6 +348,14 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
     }),
     workspaceChild('archive/exports', 'TeacherExamWorkspaceArchiveExports', () => import('@/views/common/exam-export-tasks.vue'), {
       title: '导出任务',
+      markStageKey: 'ARCHIVE',
+      journeyKey: 'archive',
+      workspacePhase: 'archive',
+      keepAlive: true,
+      hasWorkbenchShell: true,
+    }),
+    workspaceChild('archive/teaching-affairs', 'TeacherExamWorkspaceArchiveTeachingAffairs', () => import('@/views/admin/teaching-affairs-sync.vue'), {
+      title: '教务同步',
       markStageKey: 'ARCHIVE',
       journeyKey: 'archive',
       workspacePhase: 'archive',

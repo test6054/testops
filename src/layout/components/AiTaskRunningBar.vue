@@ -1,24 +1,18 @@
 <script lang="ts" setup>
-/**
- * 质量评价域 AI 任务运行条：仅在质量评价 /quality 路由下展示（不含教学档案袋 /portfolio）。
- */
+/** 质量评价域 AI 任务运行条：由 quality-workspace-layout 挂载。 */
 import LoadingOutlined from '@ant-design/icons-vue/LoadingOutlined'
 import { storeToRefs } from 'pinia'
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
-import { isQualityEvaluationRoute } from '@/utils/portfolio-route'
 
 defineOptions({ name: 'AiTaskRunningBar' })
 
-const route = useRoute()
 const router = useRouter()
 const qualityTaskStore = useQualityTaskStore()
 const aiTaskStore = useAiTaskStore()
 const { aiTasksInFlight, aiTasksProcessing } = storeToRefs(qualityTaskStore)
-
-const isQualityRoute = computed(() => isQualityEvaluationRoute(route.path))
 
 const runningCount = computed(
   () => aiTasksInFlight.value.length + aiTaskStore.activePollingCount,
@@ -33,7 +27,12 @@ const pendingCount = computed(
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
 async function refreshInFlightTasks(): Promise<void> {
-  await qualityTaskStore.refreshAll()
+  try {
+    await qualityTaskStore.refreshAll()
+  }
+  catch {
+    // edu-quality 不可用时 Layout 轮询不阻断页面
+  }
 }
 
 function goAiTaskCenter(): void {
@@ -41,11 +40,9 @@ function goAiTaskCenter(): void {
 }
 
 onMounted(() => {
-  if (isQualityRoute.value) {
-    void refreshInFlightTasks()
-  }
+  void refreshInFlightTasks()
   pollTimer = setInterval(() => {
-    if (isQualityRoute.value && runningCount.value > 0) {
+    if (runningCount.value > 0) {
       void refreshInFlightTasks()
     }
   }, 15000)
@@ -57,17 +54,11 @@ onBeforeUnmount(() => {
     pollTimer = null
   }
 })
-
-watch(isQualityRoute, (active) => {
-  if (active) {
-    void refreshInFlightTasks()
-  }
-})
 </script>
 
 <template>
   <div
-    v-if="isQualityRoute && runningCount > 0"
+    v-if="runningCount > 0"
     class="ai-task-running-bar"
     role="status"
   >

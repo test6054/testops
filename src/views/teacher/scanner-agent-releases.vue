@@ -17,13 +17,11 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { useAuthStore } from '@/stores/modules/auth'
 import { RoleEnum } from '@/types/enums'
 import { showUserError } from '@/utils/error-handler'
@@ -32,7 +30,6 @@ import { readPageList, readPageTotal } from '@/utils/page-result'
 
 defineOptions({ name: 'ScannerAgentReleasesPage' })
 
-const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
 const authStore = useAuthStore()
 const canManage = computed(() =>
   authStore.userRole === RoleEnum.CROP_ADMIN || authStore.userRole === RoleEnum.SUPER_ADMIN,
@@ -123,7 +120,6 @@ async function loadReleases() {
     return
   }
   loading.value = true
-  clearLoadFailure()
   try {
     const result = await pageScannerAgentReleases({
       keyword: filters.keyword.trim() || undefined,
@@ -143,7 +139,7 @@ async function loadReleases() {
   catch (error) {
     releases.value = []
     pagination.total = 0
-    captureLoadFailure(error, 'Agent 发布包列表加载失败')
+    showUserError(error, 'Agent 发布包列表加载失败')
   }
   finally {
     loading.value = false
@@ -285,12 +281,6 @@ onMounted(() => {
     </template>
 
     <UiEmpty v-if="!canManage" description="当前账号无租户管理员权限，无法维护 Agent 发布包" />
-
-    <UiLoadFailure
-      v-else-if="loadError"
-      title="Agent 发布包列表加载失败"
-      :description="loadError"
-    />
 
     <template v-else>
       <UiFilterBar

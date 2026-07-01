@@ -38,7 +38,6 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -185,8 +184,6 @@ async function handleScopeChange(): Promise<void> {
     await loadMapping()
   }
 }
-
-useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false, reloadOnActivated: false })
 
 onMounted(async () => {
   filterForm.aiTaskId = selectedAiTaskId.value

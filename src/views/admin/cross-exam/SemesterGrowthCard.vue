@@ -10,8 +10,34 @@
             :default-recent-semester-count="defaultRecentSemesterCount"
           />
         </a-form-item>
+        <a-form-item label="考试范围">
+          <a-radio-group v-model:value="form.examScopeMode" size="small">
+            <a-radio-button value="AUTO">
+              按开课学期自动选考
+            </a-radio-button>
+            <a-radio-button value="MANUAL">
+              手动选择考试
+            </a-radio-button>
+          </a-radio-group>
+        </a-form-item>
+        <a-form-item v-if="form.examScopeMode === 'AUTO'" label="课程">
+          <CatalogCourseSelector
+            v-model:value="form.courseId"
+            placeholder="请选择课程"
+            :allow-clear="false"
+            width="240px"
+          />
+        </a-form-item>
         <a-form-item label="班级">
+          <ClassSelector
+            v-if="form.examScopeMode === 'AUTO'"
+            v-model:value="form.classId"
+            placeholder="请选择班级"
+            :allow-clear="false"
+            width="240px"
+          />
           <a-select
+            v-else
             v-model:value="form.classId"
             :options="classOptions"
             :loading="classLoading"
@@ -22,7 +48,11 @@
             style="width: 240px"
           />
         </a-form-item>
-        <a-form-item label="参与考试列表" style="flex: 1; min-width: 360px">
+        <a-form-item
+          v-if="form.examScopeMode === 'MANUAL'"
+          label="参与考试列表"
+          style="flex: 1; min-width: 360px"
+        >
           <AnalysisExamMultiSelect
             v-model="form.examIds"
             placeholder="请选择至少 2 场考试"
@@ -178,6 +208,8 @@ import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
+import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
+import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -216,6 +248,8 @@ const props = withDefaults(
 
 const form = reactive({
   semesterCode: '',
+  examScopeMode: 'AUTO' as 'AUTO' | 'MANUAL',
+  courseId: null as string | null,
   classId: '',
   examIds: [] as string[],
 })
@@ -304,8 +338,26 @@ watch(
 )
 
 watch(
+  () => form.examScopeMode,
+  (mode) => {
+    if (mode === 'AUTO') {
+      form.examIds = []
+      selectedExams.value = []
+      classOptions.value = []
+      classLoading.value = false
+      return
+    }
+    form.courseId = null
+    form.classId = ''
+  },
+)
+
+watch(
   () => [...form.examIds],
   async (examIds) => {
+    if (form.examScopeMode !== 'MANUAL') {
+      return
+    }
     form.classId = ''
     classOptions.value = []
     if (examIds.length === 0) return
@@ -374,6 +426,42 @@ async function reload(): Promise<void> {
 
 async function handleGenerate(): Promise<void> {
   const semesterCode = form.semesterCode
+  if (!semesterCode) {
+    message.warning('请选择学年学期')
+    return
+  }
+  if (!form.classId) {
+    message.warning('请选择班级')
+    return
+  }
+  const { academicYear: teachingAcademicYear, semester: teachingSemester }
+    = parseAcademicYearSemesterValue(semesterCode)
+
+  if (form.examScopeMode === 'AUTO') {
+    if (!form.courseId) {
+      message.warning('请选择课程')
+      return
+    }
+    generating.value = true
+    try {
+      const generated = await generateClassGrowth({
+        teachingAcademicYear,
+        teachingSemester,
+        courseId: form.courseId,
+        classId: form.classId,
+        examIds: [],
+        autoSelectExams: true,
+      })
+      acceptSemesterGrowthRecord(generated)
+      message.success('已按开课学期自动选考并生成成长曲线')
+    } catch (e) {
+      showUserError(e, '学期成长曲线生成失败')
+    } finally {
+      generating.value = false
+    }
+    return
+  }
+
   if (selectedCourseIds.value.length > 1) {
     message.warning('请选择同一课程下的考试')
     return
@@ -381,16 +469,8 @@ async function handleGenerate(): Promise<void> {
   const courseId = selectedCourseIds.value[0] ?? ''
   const classId = form.classId
   const examIds = form.examIds
-  if (!semesterCode) {
-    message.warning('请选择学年学期')
-    return
-  }
   if (!courseId) {
     message.warning('请选择同一课程下的考试')
-    return
-  }
-  if (!classId) {
-    message.warning('请选择班级')
     return
   }
   if (examIds.length < 2) {
@@ -399,14 +479,13 @@ async function handleGenerate(): Promise<void> {
   }
   generating.value = true
   try {
-    const { academicYear: teachingAcademicYear, semester: teachingSemester }
-      = parseAcademicYearSemesterValue(semesterCode)
     const generated = await generateClassGrowth({
       teachingAcademicYear,
       teachingSemester,
       courseId,
       classId,
       examIds,
+      autoSelectExams: false,
     })
     acceptSemesterGrowthRecord(generated)
     message.success('已生成成长曲线')

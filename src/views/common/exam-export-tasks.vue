@@ -755,6 +755,10 @@ async function loadQuestionOptions(examId: string | undefined): Promise<void> {
   questionLoading.value = true
   try {
     const template = await getExamTemplate(examId)
+    if (!template.configured) {
+      questionOptions.value = []
+      return
+    }
     questionOptions.value = [...template.questions]
       .sort(
         (left: ExamQuestionTemplateVO, right: ExamQuestionTemplateVO) =>

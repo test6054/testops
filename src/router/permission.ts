@@ -13,6 +13,8 @@ import { studentRoutes } from '@/router/routes/student'
 import { teacherRoutes } from '@/router/routes/teacher'
 import { RoleEnum } from '@/utils/permission'
 
+export { runPortfolioTeacherReadinessGuard } from '@/router/guards/portfolio-teacher-readiness'
+
 const allRoutes: RouteRecordRaw[] = [
   ...constantRoutes,
   ...teacherRoutes,

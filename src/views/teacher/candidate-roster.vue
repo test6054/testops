@@ -4,7 +4,7 @@
 
 
   <a-spin v-else :spinning="contextLoading">
-    <UiCard class="info-card">
+    <UiCard class="exam-scope-card">
       <template #title>
         <TeamOutlined />
         <span>考试范围</span>
@@ -12,24 +12,36 @@
         <UiTag v-else-if="archiveClassScopeRecoveryAllowed" tone="orange" size="sm">关考后可修正</UiTag>
         <UiTag v-else-if="classScopeReadOnly" tone="gray" size="sm">只读</UiTag>
       </template>
-      <div v-if="classScopeReadOnly" class="roster-class-tags">
-        <UiTag v-for="item in scopedClassTags" :key="item.classId" tone="blue" size="sm">
-          {{ item.className }}
-        </UiTag>
-        <span v-if="!scopedClassTags.length" class="roster-class-tags__empty">尚未配置参考班级</span>
+      <template v-if="canAddClassScope" #extra>
+        <UiButton size="sm" variant="outline" @click="openAddClassModal">
+          <template #icon><PlusOutlined /></template>
+          新增班级
+        </UiButton>
+      </template>
+
+      <div class="exam-scope-meta">
+        <div class="exam-scope-meta__item">
+          <span class="exam-scope-meta__label">纳入方式</span>
+          <span class="exam-scope-meta__value">{{ rosterScopeModeDisplay || '—' }}</span>
+        </div>
+        <div class="exam-scope-meta__item">
+          <span class="exam-scope-meta__label">参考院系</span>
+          <span class="exam-scope-meta__value">{{ referenceDepartmentName || '—' }}</span>
+        </div>
       </div>
-      <a-select
-        v-else
-        v-model:value="classIds"
-        mode="multiple"
-        placeholder="选择参考班级（可多选）"
-        :options="classSelectOptions"
-        :loading="classOptionsLoading"
-        show-search
-        option-filter-prop="label"
-        allow-clear
-        class="info-card__class-select"
-      />
+
+      <div class="exam-scope-classes">
+        <div class="exam-scope-classes__head">
+          <span class="exam-scope-classes__title">参考班级</span>
+          <span v-if="scopedClassTags.length" class="exam-scope-classes__count">{{ scopedClassTags.length }} 个</span>
+        </div>
+        <div v-if="scopedClassTags.length" class="exam-scope-classes__tags">
+          <UiTag v-for="item in scopedClassTags" :key="item.classId" tone="blue" size="sm">
+            {{ item.className }}
+          </UiTag>
+        </div>
+        <UiEmpty v-else description="尚未配置参考班级" class="exam-scope-classes__empty" />
+      </div>
     </UiCard>
 
     <UiAlertStrip
@@ -60,13 +72,13 @@
       dense
     />
 
-    <a-card :bordered="false" class="detail-table-card info-card roster-page__table-card">
+    <UiCard class="roster-page__table-card">
       <template #title>
         <UserOutlined />
         <span>考生名册</span>
       </template>
       <template v-if="candidateRosterWriteAllowed" #extra>
-        <a-space>
+        <a-space v-if="allowsManualCandidateEdit">
           <UiButton
             size="sm"
             variant="outline"
@@ -78,11 +90,11 @@
           </UiButton>
           <UiButton size="sm" variant="outline" @click="openImportModal">
             <template #icon><UploadOutlined /></template>
-            批量导入
+            批量导入考生
           </UiButton>
           <UiButton size="sm" @click="openSingleAddModal">
             <template #icon><PlusOutlined /></template>
-            添加单个
+            添加单个考生
           </UiButton>
           <UiButton
             size="sm"
@@ -157,7 +169,7 @@
           </template>
         </template>
       </UiDataTable>
-    </a-card>
+    </UiCard>
   </a-spin>
 
   <ClassStudentTreeSelectorDrawer
@@ -209,6 +221,34 @@
       </a-form-item>
     </a-form>
   </a-modal>
+
+  <a-modal
+    v-model:open="addClassModalOpen"
+    title="新增参考班级"
+    ok-text="确认新增"
+    :confirm-loading="addClassSubmitting"
+    :destroy-on-close="true"
+    width="520px"
+    @ok="handleAddClassSubmit"
+  >
+    <a-form layout="vertical">
+      <a-form-item label="参考院系">
+        <span class="exam-scope-meta__value">{{ referenceDepartmentName || '—' }}</span>
+      </a-form-item>
+      <a-form-item label="班级" required>
+        <a-select
+          v-model:value="pendingAddClassIds"
+          mode="multiple"
+          placeholder="选择要新增的班级"
+          :options="addableClassOptions"
+          :loading="classOptionsLoading"
+          show-search
+          option-filter-prop="label"
+          style="width: 100%"
+        />
+      </a-form-item>
+    </a-form>
+  </a-modal>
 </template>
 
 <script lang="ts" setup>
@@ -216,27 +256,17 @@ import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { CandidateRow } from './candidate-roster/types'
 import type {
   ExamClassRefVO,
+  ExamRosterScopeMode,
+} from '@/apis/mark/exam'
+import {
+  EXAM_ROSTER_SCOPE_MODE_LABEL,
+  getExamDetail,
 } from '@/apis/mark/exam'
 import type {
   ExamCandidateRosterRequest,
 } from '@/apis/mark/exam-scope'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { UserDto } from '@/types/api-types.d'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
-import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
-import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
-import UserOutlined from '@ant-design/icons-vue/UserOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, nextTick, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  getExamDetail,
-} from '@/apis/mark/exam'
-import { pageScannerBatches } from '@/apis/mark/exam-scan'
 import {
   listExamCandidates,
-  listExamClassOptions,
   mergeExamCandidates,
   pageExamCandidates,
   previewExamCandidates,
@@ -244,6 +274,7 @@ import {
   saveExamClassScope,
   saveExamScope,
 } from '@/apis/mark/exam-scope'
+import { pageScannerBatches } from '@/apis/mark/exam-scan'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSelectorDrawer.vue'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
@@ -258,11 +289,12 @@ import UiConfirmPopover from '@/components/ui-guide/ui/UiConfirmPopover.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useExamDepartmentClassScope } from '@/composables/useExamDepartmentClassScope'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { ErrorType, handleError, showUserError } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
-import { buildScopedClassTags, mergeClassSelectOptions } from './candidate-roster/class-scope'
+import { buildScopedClassTags } from './candidate-roster/class-scope'
 import { toCandidateRow } from './candidate-roster/roster-merge'
 
 defineOptions({ name: 'TeacherCandidateRoster' })
@@ -278,16 +310,31 @@ const classScopePersisted = ref(true)
 const examStatus = ref<'ACTIVE' | 'CLOSED' | null>(null)
 const archiveClassScopeRecoveryAllowed = ref(false)
 const examClassRefs = ref<ExamClassRefVO[]>([])
-const classSelectOptions = ref<Array<{ label: string, value: string }>>([])
-const classOptionsLoading = ref(false)
 const classScopeHydrating = ref(false)
 const lastSavedClassIds = ref<string[]>([])
 const rosterLocked = ref(false)
 const rosterWriteForbidden = ref(false)
+const rosterScopeMode = ref<ExamRosterScopeMode | undefined>(undefined)
+const referenceDepartmentName = ref<string | undefined>(undefined)
 const candidateTotal = ref(0)
 let classScopeSaveTimer: ReturnType<typeof setTimeout> | null = null
 let loadContextSeq = 0
 let loadTableSeq = 0
+
+const {
+  departmentId,
+  classOptionsLoading,
+  classSelectOptions,
+  loadClassesForDepartment,
+} = useExamDepartmentClassScope({
+  selectedClassIds: classIds,
+  seedOptions: computed(() => examClassRefs.value.flatMap((item) => {
+    if (!item.classId || !item.className) {
+      return []
+    }
+    return [{ classId: item.classId, className: item.className }]
+  })),
+})
 
 const tableCandidates = ref<CandidateRow[]>([])
 const rosterStudentUserIds = ref<string[]>([])
@@ -321,6 +368,9 @@ const pagination = reactive<TablePaginationConfig>({
 const selectDrawerOpen = ref(false)
 const showImportModal = ref(false)
 const singleAddOpen = ref(false)
+const addClassModalOpen = ref(false)
+const pendingAddClassIds = ref<string[]>([])
+const addClassSubmitting = ref(false)
 const singleAddClassId = ref<string | undefined>(undefined)
 const singleAddStudentUserId = ref<string | null>(null)
 const singleAddStudent = ref<UserDto | null>(null)
@@ -339,6 +389,21 @@ const candidateRosterWriteAllowed = computed(() =>
   examStatus.value !== 'CLOSED'
   && !classScopeReadOnly.value
   && !rosterLocked.value,
+)
+
+const allowsManualCandidateEdit = computed(() => rosterScopeMode.value !== 'BY_CLASS')
+
+const rosterScopeModeDisplay = computed(() => {
+  if (!rosterScopeMode.value) {
+    return undefined
+  }
+  return EXAM_ROSTER_SCOPE_MODE_LABEL[rosterScopeMode.value]
+})
+
+const canAddClassScope = computed(() => !classScopeReadOnly.value && !!departmentId.value)
+
+const addableClassOptions = computed(() =>
+  classSelectOptions.value.filter(item => !classIds.value.includes(item.value)),
 )
 
 const showInferredClassScopeNotice = computed(() =>
@@ -380,11 +445,16 @@ const rosterFilterFields = computed<FilterField[]>(() => [
   },
 ])
 
-const columns: ColumnType<CandidateRow>[] = [
-  { title: '考生', key: 'student', width: 220 },
-  { title: '班级', key: 'className', width: 200 },
-  { title: '操作', key: 'actions', width: 80, fixed: 'right' },
-]
+const columns = computed<ColumnType<CandidateRow>[]>(() => {
+  const cols: ColumnType<CandidateRow>[] = [
+    { title: '考生', key: 'student', width: 220 },
+    { title: '班级', key: 'className', width: 200 },
+  ]
+  if (allowsManualCandidateEdit.value) {
+    cols.push({ title: '操作', key: 'actions', width: 80, fixed: 'right' })
+  }
+  return cols
+})
 
 const importExcelContext = computed(() => ({
   examId: selectedExamId.value,
@@ -409,31 +479,53 @@ function sameClassIds(left: string[], right: string[]): boolean {
   return sortedLeft.every((value, index) => value === sortedRight[index])
 }
 
+function buildClassScopeSavePayload(classIdList: string[]) {
+  return {
+    examId: selectedExamId.value!,
+    classIds: [...classIdList],
+    referenceDepartmentId: departmentId.value,
+  }
+}
+
 async function probeRosterLocked(examId: string): Promise<boolean> {
   const result = await pageScannerBatches({ examId, pageNum: 1, pageSize: 1 })
   return readPageTotal(result) > 0
 }
 
-async function loadClassOptionsForExam(examId: string): Promise<void> {
-  classOptionsLoading.value = true
+async function loadClassOptionsForExam(_examId: string): Promise<void> {
+  if (departmentId.value) {
+    await loadClassesForDepartment()
+  }
+}
+
+async function openAddClassModal(): Promise<void> {
+  if (!departmentId.value) {
+    message.warning('本场考试未配置参考院系，无法新增班级')
+    return
+  }
+  if (!addableClassOptions.value.length) {
+    await loadClassesForDepartment()
+  }
+  if (!addableClassOptions.value.length) {
+    message.warning('当前院系下没有可新增的班级')
+    return
+  }
+  pendingAddClassIds.value = []
+  addClassModalOpen.value = true
+}
+
+async function handleAddClassSubmit(): Promise<void> {
+  if (!pendingAddClassIds.value.length) {
+    message.warning('请选择要新增的班级')
+    return
+  }
+  addClassSubmitting.value = true
   try {
-    const list = await listExamClassOptions(examId)
-    classSelectOptions.value = mergeClassSelectOptions(
-      examClassRefs.value,
-      list.map((item) => ({
-        label: item.className,
-        value: item.classId,
-      })),
-    )
-  } catch (error) {
-    if (isPermissionError(error)) {
-      rosterWriteForbidden.value = true
-      classSelectOptions.value = mergeClassSelectOptions(examClassRefs.value, [])
-      return
-    }
-    showUserError(error, '班级范围加载失败')
-  } finally {
-    classOptionsLoading.value = false
+    classIds.value = [...new Set([...classIds.value, ...pendingAddClassIds.value])]
+    addClassModalOpen.value = false
+  }
+  finally {
+    addClassSubmitting.value = false
   }
 }
 
@@ -518,20 +610,21 @@ async function loadExamContext(): Promise<void> {
     }
     rosterLocked.value = locked
     examStatus.value = detail.status
+    rosterScopeMode.value = detail.rosterScopeMode
     archiveClassScopeRecoveryAllowed.value = detail.archiveAutoCreateClassScopeRecoveryAllowed === true
     examClassRefs.value = [...(detail.classRefs ?? [])]
     candidateTotal.value = detail.candidateCount ?? 0
-    classIds.value = [...(detail.classIds ?? [])]
+    classIds.value = [...new Set(detail.classIds ?? [])]
     classScopePersisted.value = detail.classScopePersisted
     lastSavedClassIds.value = classScopePersisted.value ? [...classIds.value] : []
+    referenceDepartmentName.value = detail.referenceDepartmentName
+    if (detail.referenceDepartmentId) {
+      departmentId.value = detail.referenceDepartmentId
+    }
     await loadClassOptionsForExam(examId)
     if (seq !== loadContextSeq) {
       return
     }
-    classSelectOptions.value = mergeClassSelectOptions(
-      examClassRefs.value,
-      classSelectOptions.value,
-    )
     await loadRosterStudentIds(examId)
   } catch (error) {
     if (seq !== loadContextSeq) {
@@ -553,10 +646,7 @@ async function persistInferredClassScope(): Promise<void> {
   }
   persistClassScopeSaving.value = true
   try {
-    await saveExamClassScope({
-      examId: selectedExamId.value,
-      classIds: [...classIds.value],
-    })
+    await saveExamClassScope(buildClassScopeSavePayload(classIds.value))
     classScopePersisted.value = true
     lastSavedClassIds.value = [...classIds.value]
     message.success('参考班级已保存')
@@ -664,6 +754,7 @@ async function confirmSaveFullScope(): Promise<void> {
         await saveExamScope({
           examId: selectedExamId.value!,
           classIds: [...classIds.value],
+          referenceDepartmentId: departmentId.value,
           candidates,
         })
         message.success(`已全量保存 ${candidates.length} 名考生`)
@@ -770,7 +861,7 @@ async function handleSingleAddSubmit(): Promise<void> {
 }
 
 function canRemoveCandidate(record: CandidateRow): boolean {
-  if (!candidateRosterWriteAllowed.value) {
+  if (!allowsManualCandidateEdit.value || !candidateRosterWriteAllowed.value) {
     return false
   }
   return record.removable !== false
@@ -808,10 +899,7 @@ watch(classIds, (ids) => {
   const previous = [...lastSavedClassIds.value]
   classScopeSaveTimer = setTimeout(() => {
     classScopeSaveTimer = null
-    void saveExamClassScope({
-      examId: selectedExamId.value!,
-      classIds: [...ids],
-    })
+    void saveExamClassScope(buildClassScopeSavePayload(ids))
       .then(async () => {
         lastSavedClassIds.value = [...ids]
         classScopePersisted.value = true
@@ -831,10 +919,6 @@ watch(classIds, (ids) => {
             className: existing?.className ?? option?.label ?? classId,
           }
         })
-        classSelectOptions.value = mergeClassSelectOptions(
-          examClassRefs.value,
-          classSelectOptions.value,
-        )
         await loadCandidatePage()
       })
       .catch(async (error) => {
@@ -869,7 +953,9 @@ watch(selectedExamId, (value) => {
     lastSavedClassIds.value = []
     tableCandidates.value = []
     rosterStudentUserIds.value = []
-    classSelectOptions.value = []
+    rosterScopeMode.value = undefined
+    referenceDepartmentName.value = undefined
+    departmentId.value = undefined
     candidateTotal.value = 0
     pagination.total = 0
   }
@@ -886,36 +972,80 @@ watch(selectedExamId, (value) => {
     padding: 60px 0;
   }
 
+  &__table-card {
+    margin-bottom: 0;
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 8px 10px;
 }
 
-.info-card {
-  margin-bottom: 16px;
+.exam-scope-card {
+  margin-bottom: 0;
+}
 
-  &:last-child {
-    margin-bottom: 0;
+.exam-scope-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+
+  &__item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
   }
 
-  &__alert {
-    margin-bottom: 12px;
+  &__label {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ant-color-text-secondary);
   }
 
-  &__class-select {
-    width: 100%;
+  &__value {
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 500;
+    color: var(--ant-color-text);
   }
 }
 
-.roster-class-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.exam-scope-classes {
+  padding-top: 16px;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  &__title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ant-color-text);
+  }
+
+  &__count {
+    font-size: 12px;
+    color: var(--ant-color-text-secondary);
+  }
+
+  &__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+    background: var(--ant-color-fill-quaternary);
+    border-radius: 6px;
+  }
 
   &__empty {
-    font-size: 13px;
-    color: var(--ant-color-text-secondary);
+    padding: 16px 0;
   }
 }
 

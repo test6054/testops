@@ -21,12 +21,11 @@ import { SCAN_WORK_ORDER_STATUS_LABEL } from '@/apis/mark/scanner-work-order'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ScanDispatchForceReleaseDialog from '@/views/teacher/archive-volume/components/ScanDispatchForceReleaseDialog.vue'
 
@@ -63,7 +62,6 @@ interface ExceptionDashboardRow {
 const router = useRouter()
 const route = useRoute()
 const loading = ref(false)
-const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
 const dashboard = ref<ScannerExceptionDashboardVO | null>(null)
 const itemKindFilter = ref<ExceptionDashboardRowKind | undefined>(undefined)
 const forceReleaseOpen = ref(false)
@@ -195,13 +193,12 @@ const signalMetrics = computed<SignalMetric[]>(() => {
 
 async function loadDashboard() {
   loading.value = true
-  clearLoadFailure()
   try {
     dashboard.value = await loadScannerExceptionDashboard()
   }
   catch (error) {
     dashboard.value = null
-    captureLoadFailure(error, '扫描异常看板加载失败')
+    showUserError(error, '扫描异常看板加载失败')
   }
   finally {
     loading.value = false
@@ -392,19 +389,12 @@ watch(
       </ContextBar>
     </template>
 
-    <template v-if="!loadError && signalMetrics.length" #signal>
+    <template v-if="signalMetrics.length" #signal>
       <SignalBand :metrics="signalMetrics" variant="panel" />
     </template>
 
-    <UiLoadFailure
-      v-if="loadError"
-      title="扫描异常看板加载失败"
-      :description="loadError"
-    />
-
-    <template v-else>
-      <div class="scanner-exception-dashboard__filters">
-        <UiButton size="sm" :variant="itemKindFilter === undefined ? 'primary' : 'outline'" @click="filterByKind(undefined)">
+    <div class="scanner-exception-dashboard__filters">
+      <UiButton size="sm" :variant="itemKindFilter === undefined ? 'primary' : 'outline'" @click="filterByKind(undefined)">
           全部
         </UiButton>
         <UiButton size="sm" :variant="itemKindFilter === 'TICKET' ? 'primary' : 'outline'" @click="filterByKind('TICKET')">
@@ -419,9 +409,9 @@ watch(
         <UiButton size="sm" :variant="itemKindFilter === 'PAGE_REGISTER_BLOCKED' ? 'primary' : 'outline'" @click="filterByKind('PAGE_REGISTER_BLOCKED')">
           页登记阻断
         </UiButton>
-      </div>
+    </div>
 
-      <UiDataTable
+    <UiDataTable
         pagination-mode="none"
         :columns="columns"
         :data-source="filteredRows"
@@ -484,12 +474,11 @@ watch(
         </template>
       </UiDataTable>
 
-      <ScanDispatchForceReleaseDialog
-        v-model:open="forceReleaseOpen"
-        :ticket="forceReleaseTicket ? { ticketId: forceReleaseTicket.ticketId } : null"
-        @released="loadDashboard"
-      />
-    </template>
+    <ScanDispatchForceReleaseDialog
+      v-model:open="forceReleaseOpen"
+      :ticket="forceReleaseTicket ? { ticketId: forceReleaseTicket.ticketId } : null"
+      @released="loadDashboard"
+    />
   </StageWorkbenchShell>
 </template>
 

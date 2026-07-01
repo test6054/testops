@@ -1,0 +1,158 @@
+<script setup lang="ts">
+import type { PortfolioArchiveRecordStatus } from '@/apis/portfolio/types'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type {PortfolioTeacherJourneyKey} from '@/constants/portfolio-teacher-journey';
+import type { WorkbenchStage } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL } from '@/apis/portfolio/types'
+import PortfolioTeacherJourneyRail from '@/components/portfolio/PortfolioTeacherJourneyRail.vue'
+import PortfolioTeacherReviewStatusTable from '@/components/portfolio/PortfolioTeacherReviewStatusTable.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
+import {
+  PORTFOLIO_TEACHER_JOURNEY_STEPS,
+  
+  resolvePortfolioJourneyDefaultRoute
+} from '@/constants/portfolio-teacher-journey'
+import { strictEnumLabel } from '@/utils/strict-enum'
+
+const route = useRoute()
+const router = useRouter()
+const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+
+const filterForm = reactive<{
+  academicYear?: string
+  recordStatus?: PortfolioArchiveRecordStatus
+}>({})
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
+})
+
+const recordStatusOptions = (Object.keys(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL) as PortfolioArchiveRecordStatus[])
+  .map(value => ({
+    value,
+    label: strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, value, '档案记录状态'),
+  }))
+
+const filterFields = computed<FilterField[]>(() => [
+  {
+    key: 'academicYear',
+    type: 'input',
+    label: '学年',
+    allowClear: true,
+    width: 140,
+    placeholder: '如 2024-2025',
+  },
+  {
+    key: 'recordStatus',
+    type: 'select',
+    label: '档案状态',
+    allowClear: true,
+    width: 160,
+    options: recordStatusOptions,
+  },
+])
+
+const highlightRecordId = computed(() =>
+  typeof route.query.highlightRecordId === 'string' ? route.query.highlightRecordId : undefined)
+
+const journeyStages = computed((): WorkbenchStage[] =>
+  PORTFOLIO_TEACHER_JOURNEY_STEPS.map(step => ({
+    key: step.key,
+    title: step.title,
+    status: step.key === 'review' ? 'active' : 'pending',
+  })))
+
+const tableRef = ref<InstanceType<typeof PortfolioTeacherReviewStatusTable> | null>(null)
+
+function readRecordStatusFromQuery(value: unknown): PortfolioArchiveRecordStatus | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  if (!(value in PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL)) {
+    return undefined
+  }
+  return value as PortfolioArchiveRecordStatus
+}
+
+function syncFiltersFromRoute() {
+  const academicYear = typeof route.query.academicYear === 'string' ? route.query.academicYear.trim() : ''
+  filterForm.academicYear = academicYear || undefined
+  filterForm.recordStatus = readRecordStatusFromQuery(route.query.recordStatus)
+}
+
+function navigateJourney(journeyKey: PortfolioTeacherJourneyKey) {
+  void router.push({
+    ...resolvePortfolioJourneyDefaultRoute(journeyKey),
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
+
+function handleSearch() {
+  tableRef.value?.reload()
+}
+
+onMounted(() => {
+  syncFiltersFromRoute()
+  tableRef.value?.reload()
+})
+
+watch(() => [route.query.academicYear, route.query.recordStatus], () => {
+  syncFiltersFromRoute()
+  tableRef.value?.reload()
+})
+</script>
+
+<template>
+  <StageWorkbenchShell>
+    <template #context>
+      <ContextBar show-title layout="workbench" title="审核进度" />
+    </template>
+    <template #rail>
+      <PortfolioTeacherJourneyRail
+        :stages="journeyStages"
+        active-key="review"
+        @select="navigateJourney"
+      />
+    </template>
+
+    <UiFilterBar
+      v-model="filterModel"
+      class="teacher-review-status__filter"
+      :fields="filterFields"
+      @search="handleSearch"
+    />
+
+    <PortfolioTeacherReviewStatusTable
+      v-if="targetTeacherId || !canPickTeachers"
+      ref="tableRef"
+      :teacher-id="targetTeacherId"
+      :academic-year="filterForm.academicYear"
+      :record-status="filterForm.recordStatus"
+      :highlight-record-id="highlightRecordId"
+    />
+    <UiEmpty
+      v-else
+      class="teacher-review-status__empty"
+      description="请从教师名册选择目标教师，或在 URL 携带 teacherId 参数"
+    />
+  </StageWorkbenchShell>
+</template>
+
+<style scoped lang="scss">
+.teacher-review-status__filter {
+  margin: var(--dp-space-4);
+}
+
+.teacher-review-status__empty {
+  margin: var(--dp-space-8) var(--dp-space-4);
+}
+</style>

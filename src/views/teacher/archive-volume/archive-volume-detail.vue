@@ -42,14 +42,35 @@
           >
             {{ appraisalStatusLabel(detail.volume.appraisalStatus) }}
           </UiTag>
+          <UiTag
+            v-if="detail?.volumeRole"
+            tone="purple"
+            size="sm"
+          >
+            {{ detailScope.volumeRoleLabel }}
+          </UiTag>
         </template>
         <template #actions>
           <UiButton variant="ghost" size="sm" @click="goBack">返回列表</UiButton>
-          <UiButton variant="outline" size="sm" :loading="checkingIntegrity" @click="runIntegrityCheck">
+          <UiButton
+            v-if="detailScope.wizardEligible"
+            variant="ghost"
+            size="sm"
+            @click="detailScope.effectiveViewMode === 'wizard' ? detailScope.switchToExpertMode() : detailScope.switchToWizardMode()"
+          >
+            {{ detailScope.effectiveViewMode === 'wizard' ? '查看全部区段' : '返回向导' }}
+          </UiButton>
+          <UiButton
+            v-if="detailScope.canRunIntegrityCheck"
+            variant="outline"
+            size="sm"
+            :loading="checkingIntegrity"
+            @click="runIntegrityCheck"
+          >
             完整性自检
           </UiButton>
           <UiButton
-            v-if="showSelfCheckButton"
+            v-if="detailScope.showSelfCheckButton"
             variant="outline"
             size="sm"
             @click="selfCheckModalOpen = true"
@@ -57,7 +78,7 @@
             提交前自查
           </UiButton>
           <UiButton
-            v-if="detail && detail.volume.volumeStatus === 'COLLECTING' && detail.volume.responsibleUserId === currentUserId && !canSubmitVolume"
+            v-if="detailScope.showSubmitActions && detail && detail.volume.volumeStatus === 'COLLECTING' && !detailScope.canSubmitVolume"
             variant="outline"
             size="sm"
             disabled
@@ -66,7 +87,7 @@
             提交归档
           </UiButton>
           <UiButton
-            v-if="canSubmitVolume"
+            v-if="detailScope.canSubmitVolume"
             variant="primary"
             size="sm"
             :loading="submitting"
@@ -88,12 +109,6 @@
     </template>
 
     <a-skeleton v-if="loading" active :paragraph="{ rows: 8 }" />
-
-    <UiLoadFailure
-      v-else-if="loadError"
-      title="加载归档卷详情失败"
-      :description="loadError"
-    />
 
     <template v-else-if="detail">
       <UiAlertStrip
@@ -145,7 +160,7 @@
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
-        v-if="showRemediationWorkflowStrip"
+        v-if="showRemediationWorkflowStrip && detailScope.effectiveViewMode === 'expert'"
         tone="warning"
         title="迎评整改进行中"
         :description="remediationOpenDescription"
@@ -230,10 +245,116 @@
           {{ sourceTypeLabel(detail.volume.sourceType) }}
           <span v-if="detail.volume.teachingClassName"> · {{ detail.volume.teachingClassName }}</span>
           <span v-if="detail.volume.departmentName"> · {{ detail.volume.departmentName }}</span>
+          <span v-if="detailScope.isContributor"> · 协作上传材料</span>
         </p>
       </div>
 
-      <UiSectionTabs v-model="activeTab" :items="sectionTabs" compact>
+      <template v-if="detailScope.effectiveViewMode === 'wizard'">
+        <ArchiveVolumeSubmitProgressBand
+          :progress="detail.submitProgress"
+          :blocking-items="submitChecklist?.blockingItems"
+          @navigate="handleTaskNavigate"
+        />
+
+        <ArchiveVolumeWizardShell
+          v-model:current-step="activeWizardStep"
+          :readonly="detailScope.isReadonlyWizard"
+        >
+          <ArchiveVolumeRemediationStrip
+            v-if="activeWizardStep === 'integrity' && showRemediationWorkflowStrip"
+            :task="focusedRemediationTask"
+            :current-user-id="currentUserId"
+            :can-advance="canAdvanceRemediation"
+            :can-manage-coordinator="canManageCoordinatorRemediation"
+            :updating="remediationUpdating"
+            @register-material="activeWizardStep = 'materials'"
+            @advance="advanceRemediation"
+          />
+
+          <section v-if="activeWizardStep === 'materials'" class="archive-volume-detail__panel">
+            <div class="archive-volume-detail__catalog">
+              <ArchiveVolumeMaterialTreePanel
+                v-model:selected-keys="selectedCatalogKeys"
+                :materials="detail.materials"
+                :missing-items="detail.latestIntegrityCheck?.missingItems ?? []"
+              />
+              <ArchiveVolumeMaterialTablePanel
+                :volume-id="volumeId"
+                :detail="detail"
+                :selected-catalog-keys="selectedCatalogKeys"
+                :can-register-material="detailScope.canRegisterMaterial"
+                @refreshed="loadDetail"
+                @ocr-completed-stale="message.info('OCR 已完成，请重新执行完整性/四性检测')"
+              />
+            </div>
+          </section>
+
+          <ArchiveVolumeIntegrityPanel
+            v-else-if="activeWizardStep === 'integrity'"
+            :volume-id="volumeId"
+            :detail="detail"
+            :displayed-integrity-result="displayedIntegrityResult"
+            :displayed-four-property="displayedFourProperty"
+            :checking-integrity="checkingIntegrity"
+            :can-allow-material-delay="canAllowMaterialDelay"
+            :can-waive-material-missing="canWaiveMaterialMissing"
+            :can-waive-integrity="canWaiveIntegrity"
+            @run-integrity-check="runIntegrityCheck"
+            @refreshed="loadDetail"
+            @integrity-checked="integrityResult = $event"
+            @four-property-checked="fourPropertyResult = $event"
+          />
+
+          <ArchiveVolumeCatalogEditor
+            v-else-if="activeWizardStep === 'catalog'"
+            :volume-id="volumeId"
+            :catalog-status="detail.catalogStatus"
+            :readonly="!detailScope.canEditCatalog"
+            @refreshed="loadDetail"
+          />
+
+          <ArchiveVolumeSelfCheckList
+            v-else-if="activeWizardStep === 'selfCheck'"
+            :volume-id="volumeId"
+            :self-check-status="detail.selfCheckStatus"
+            :readonly="!detailScope.canEditSelfCheck"
+            @refreshed="loadDetail"
+            @open-sign-off="selfCheckModalOpen = true"
+          />
+
+          <section v-else-if="activeWizardStep === 'submit'" class="archive-volume-detail__panel">
+            <UiAlertStrip
+              tone="info"
+              title="提交前确认"
+              description="请确认目录、自查与四性检测均已满足后再提交归档"
+              dense
+            />
+            <ArchiveVolumeTransferPanel
+              v-if="detail.volume.volumeStatus === 'SUBMITTED'"
+              :volume-id="volumeId"
+              :detail="detail"
+              :can-review-transfer="canReviewTransfer"
+              :can-reject-transfer="canRejectTransfer"
+              @refreshed="loadDetail"
+            />
+            <div v-else class="archive-volume-detail__submit-summary">
+              <p>
+                目录状态：
+                {{ detail.catalogStatus ? strictEnumLabel(ARCHIVE_CATALOG_STATUS_LABEL, detail.catalogStatus, 'catalogStatus') : '未开始' }}
+              </p>
+              <p>
+                自查状态：
+                {{ detail.selfCheckStatus ? strictEnumLabel(ARCHIVE_SELF_CHECK_STATUS_LABEL, detail.selfCheckStatus, 'selfCheckStatus') : '未开始' }}
+              </p>
+              <p v-if="detail.latestTransferRecord?.transferPackageFileId">
+                移交清单已生成
+              </p>
+            </div>
+          </section>
+        </ArchiveVolumeWizardShell>
+      </template>
+
+      <UiSectionTabs v-else v-model="activeTab" :items="sectionTabs" compact>
         <section v-if="activeTab === 'materials'" class="archive-volume-detail__panel">
           <div class="archive-volume-detail__catalog">
             <ArchiveVolumeMaterialTreePanel
@@ -245,7 +366,7 @@
               :volume-id="volumeId"
               :detail="detail"
               :selected-catalog-keys="selectedCatalogKeys"
-              :can-register-material="canRegisterMaterial"
+              :can-register-material="detailScope.canRegisterMaterial"
               @refreshed="loadDetail"
               @ocr-completed-stale="message.info('OCR 已完成，请重新执行完整性/四性检测')"
             />
@@ -346,25 +467,33 @@
 import type {
   ArchiveAppraisalStatusCode,
   ArchiveRemediationStatusCode,
-  ArchiveRemediationTaskVO, ArchiveVolumeAccessRecordVO, ArchiveVolumeDetailVO
+  ArchiveRemediationTaskVO,
+  ArchiveVolumeAccessRecordVO,
+  ArchiveVolumeDetailVO,
+  ArchiveVolumeSubmitChecklistItemVO,
+  ArchiveVolumeWizardStepKey,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
-import { ARCHIVE_APPRAISAL_STATUS_LABEL, ARCHIVE_APPRAISAL_STATUS_TONE, ARCHIVE_INTEGRITY_STATUS_LABEL, ARCHIVE_INTEGRITY_STATUS_TONE, ARCHIVE_REMEDIATION_STATUS_LABEL, ARCHIVE_REMEDIATION_STATUS_TONE, ARCHIVE_TRANSFER_STATUS_LABEL, ARCHIVE_TRANSFER_STATUS_TONE, ARCHIVE_VOLUME_SOURCE_TYPE_LABEL, ARCHIVE_VOLUME_SOURCE_TYPE_TONE, ARCHIVE_VOLUME_STATUS_LABEL, ARCHIVE_VOLUME_STATUS_TONE, checkArchiveVolumeIntegrity, exportArchiveVolume, getArchiveVolumeDetail, getRemediationTask, submitArchiveVolume, updateRemediationTask } from '@/apis/mark/archive-volume'
+import { ARCHIVE_APPRAISAL_STATUS_LABEL, ARCHIVE_APPRAISAL_STATUS_TONE, ARCHIVE_INTEGRITY_STATUS_LABEL, ARCHIVE_INTEGRITY_STATUS_TONE, ARCHIVE_REMEDIATION_STATUS_LABEL, ARCHIVE_REMEDIATION_STATUS_TONE, ARCHIVE_TRANSFER_STATUS_LABEL, ARCHIVE_TRANSFER_STATUS_TONE, ARCHIVE_VOLUME_SOURCE_TYPE_LABEL, ARCHIVE_VOLUME_SOURCE_TYPE_TONE, ARCHIVE_VOLUME_STATUS_LABEL, ARCHIVE_VOLUME_STATUS_TONE, checkArchiveVolumeIntegrity, exportArchiveVolume, getArchiveVolumeDetail,
+  getRemediationTask,
+  previewArchiveVolumeSubmitChecklist,
+  submitArchiveVolume,
+  updateRemediationTask } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
-import { canSubmitArchiveVolumeDetail, describeSubmitBlockReason, isScoreSubmitReady } from '@/composables/useArchiveVolumeSubmitGate'
-import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
+import { resolveSubmitTaskTarget, wizardStepKeyFromNumber } from '@/composables/useArchiveSubmitTaskRouter'
+import { useArchiveVolumeDetailScope } from '@/composables/useArchiveVolumeDetailScope'
+import { describeSubmitBlockReason, isScoreSubmitReady } from '@/composables/useArchiveVolumeSubmitGate'
 import { useUserStore } from '@/stores/modules/user'
 import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
 import { showUserError } from '@/utils/error-handler'
@@ -374,18 +503,21 @@ import ArchiveScanBatchReviewPanel from '@/views/teacher/archive-volume/componen
 import ArchiveScanBatchSnapshotPanel from '@/views/teacher/archive-volume/components/detail/ArchiveScanBatchSnapshotPanel.vue'
 import ArchiveVolumeAccessPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeAccessPanel.vue'
 import ArchiveVolumeAppraisalPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeAppraisalPanel.vue'
+import ArchiveVolumeCatalogEditor from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeCatalogEditor.vue'
 import ArchiveVolumeEventsPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeEventsPanel.vue'
 import ArchiveVolumeIntegrityPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeIntegrityPanel.vue'
 import ArchiveVolumeMaterialTablePanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTablePanel.vue'
 import ArchiveVolumeMaterialTreePanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTreePanel.vue'
 import ArchiveVolumePhysicalLocationPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumePhysicalLocationPanel.vue'
+import ArchiveVolumeRemediationStrip from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeRemediationStrip.vue'
 import ArchiveVolumeScoresPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeScoresPanel.vue'
+import ArchiveVolumeSelfCheckList from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeSelfCheckList.vue'
 import ArchiveVolumeSubmitChecklistModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitChecklistModal.vue'
+import ArchiveVolumeSubmitProgressBand from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitProgressBand.vue'
 import ArchiveVolumeTransferPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeTransferPanel.vue'
+import ArchiveVolumeWizardShell from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeWizardShell.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeDetail' })
-
-const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
 
 const route = useRoute()
 const router = useRouter()
@@ -404,8 +536,11 @@ const currentUserId = computed(() => String(userStore.userInfo?.userId ?? ''))
 
 const loading = ref(true)
 const detail = ref<ArchiveVolumeDetailVO | null>(null)
+const detailScope = useArchiveVolumeDetailScope(detail, currentUserId)
 const focusedRemediationTask = ref<ArchiveRemediationTaskVO | null>(null)
 const activeTab = ref('materials')
+const activeWizardStep = ref<ArchiveVolumeWizardStepKey>('materials')
+const submitChecklist = ref<Awaited<ReturnType<typeof previewArchiveVolumeSubmitChecklist>> | null>(null)
 const checkingIntegrity = ref(false)
 const selectedCatalogKeys = ref<string[]>([])
 const submitting = ref(false)
@@ -580,29 +715,39 @@ function appraisalStatusTone(code: ArchiveAppraisalStatusCode): BadgeTone {
 
 const canManageAppraisal = computed(() => detail.value?.canManageAppraisal === true)
 
-const canSubmitVolume = computed(() =>
-  detail.value ? canSubmitArchiveVolumeDetail(detail.value, currentUserId.value) : false,
-)
-
-const showSelfCheckButton = computed(() => {
+async function loadSubmitChecklist() {
   const d = detail.value
-  if (!d) return false
-  if (d.volume.volumeStatus !== 'COLLECTING') return false
-  if (d.volume.responsibleUserId !== currentUserId.value) return false
-  return d.volume.requireSelfCheckConfirm === true
-})
+  if (!d?.submitProgress) {
+    submitChecklist.value = null
+    return
+  }
+  try {
+    submitChecklist.value = await previewArchiveVolumeSubmitChecklist(volumeId.value)
+  }
+  catch {
+    submitChecklist.value = null
+  }
+}
+
+function syncWizardStepFromProgress() {
+  const step = detail.value?.submitProgress?.currentWizardStep
+  if (step) {
+    activeWizardStep.value = wizardStepKeyFromNumber(step)
+  }
+}
+
+function handleTaskNavigate(item: ArchiveVolumeSubmitChecklistItemVO) {
+  const target = resolveSubmitTaskTarget(item)
+  if (detailScope.effectiveViewMode.value === 'wizard') {
+    activeWizardStep.value = target.wizardStep
+    return
+  }
+  activeTab.value = target.expertTab
+}
 
 const canExportManifest = computed(() => {
   const status = detail.value?.volume.volumeStatus
   return status === 'SUBMITTED' || status === 'STORED'
-})
-
-const canRegisterMaterial = computed(() => {
-  const d = detail.value
-  if (!d?.canManageMaterials) return false
-  if (d.hasOpenRemediationTask) return true
-  const status = d.volume.volumeStatus
-  return status === 'DRAFT' || status === 'COLLECTING'
 })
 
 const canEditPhysicalLocation = computed(() => {
@@ -659,11 +804,12 @@ async function loadDetail(options?: { silent?: boolean }) {
     fourPropertyResult.value = detail.value.latestFourPropertyCheck
     integrityResult.value = detail.value.latestIntegrityCheck ?? null
     syncFocusedRemediationTaskFromDetail()
-    clearLoadFailure()
+    syncWizardStepFromProgress()
+    await loadSubmitChecklist()
   }
   catch (error) {
     if (!options?.silent) {
-      captureLoadFailure(error, '加载归档卷详情失败')
+      showUserError(error, '加载归档卷详情失败')
       detail.value = null
     }
   }
@@ -847,5 +993,12 @@ watch(
   display: flex;
   gap: var(--dp-space-4, 16px);
   align-items: flex-start;
+}
+
+.archive-volume-detail__submit-summary {
+  display: grid;
+  gap: var(--dp-space-2, 8px);
+  font-size: 14px;
+  color: var(--dp-text-secondary, #64748b);
 }
 </style>

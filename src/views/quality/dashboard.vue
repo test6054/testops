@@ -28,7 +28,6 @@ import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
 import { storeToRefs } from 'pinia'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { accreditationApi } from '@/apis/quality/accreditation'
 import { achievementResultApi } from '@/apis/quality/achievement-result'
 import { aiTaskApi } from '@/apis/quality/ai-task'
 import {
@@ -57,6 +56,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageRail from '@/components/workbench/StageRail.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { useAccreditationCockpit } from '@/composables/useAccreditationCockpit'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
@@ -91,6 +91,7 @@ const recentAiTaskColumns: ColumnsType = [
 
 const router = useRouter()
 const qualityStore = useQualityStore()
+const { cockpit, refresh: refreshCockpit } = useAccreditationCockpit()
 
 const loading = reactive({
   achievement: false,
@@ -434,7 +435,7 @@ async function reload() {
     loadAchievement(),
     loadImprovement(),
     loadAiTasks(),
-    loadCockpitPhase(),
+    refreshCockpit(),
     qualityTaskStore.refreshAll({
       trainingPlanId: trainingPlanId.value || undefined,
       programId: qualityStore.currentProgramId || undefined,
@@ -446,12 +447,6 @@ async function reload() {
 useQualityScopedLoader(reload, { watchScope: true, immediate: false, reloadOnActivated: false })
 
 onMounted(async () => {
-  if (!qualityStore.currentTrainingPlanId) {
-    await qualityStore.loadTrainingPlanOptions()
-    if (qualityStore.trainingPlanOptions.length) {
-      qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
-    }
-  }
   await reload()
 })
 
@@ -480,7 +475,7 @@ interface DashboardTodoItem {
   tone: BadgeTone
 }
 
-const cockpitPhase = ref<string>()
+const cockpitPhase = computed(() => cockpit.value?.activeCycle?.currentPhase)
 
 const dashboardTodos = computed<DashboardTodoItem[]>(() => {
   if (!trainingPlanId.value) return []
@@ -580,19 +575,6 @@ function handleTodoAction(key: string) {
     case 'onsite':
       void router.push({ name: 'QualityAccreditationCockpit' })
       break
-  }
-}
-
-async function loadCockpitPhase() {
-  if (!trainingPlanId.value) {
-    cockpitPhase.value = undefined
-    return
-  }
-  try {
-    const cockpit = await accreditationApi.cockpit(trainingPlanId.value)
-    cockpitPhase.value = cockpit.activeCycle?.currentPhase
-  } catch {
-    cockpitPhase.value = undefined
   }
 }
 </script>

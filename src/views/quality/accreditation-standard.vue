@@ -29,7 +29,7 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -157,13 +157,21 @@ async function loadList() {
       query.pageNum -= 1
       await loadList()
     }
+  } catch (error) {
+    showUserError(error, '认证标准加载失败')
+    list.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
 }
 
 async function loadSummary() {
-  summary.value = await accreditationStandardApi.summary()
+  try {
+    summary.value = await accreditationStandardApi.summary()
+  } catch (error) {
+    showUserError(error, '认证标准统计加载失败')
+  }
 }
 
 async function loadPageData() {
@@ -288,11 +296,9 @@ const signals = computed<SignalMetric[]>(() => {
 })
 
 
-useQualityScopedLoader(() => {
+onMounted(() => {
   void loadPageData()
-}, { watchScope: true, immediate: false, reloadOnActivated: false })
-
-onMounted(() => loadPageData())
+})
 
 onActivated(() => {
   void loadPageData()

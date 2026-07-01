@@ -6,6 +6,7 @@ import http from '@/config/axios'
 
 export type ArchiveDutyTypeCode
   = | 'VOLUME_OWNER'
+    | 'CONTRIBUTOR'
     | 'COLLEGE_COORDINATOR'
     | 'TRANSFER_REVIEWER'
     | 'ARCHIVE_ADMIN'
@@ -14,6 +15,7 @@ export type ArchiveDutyTypeCode
 
 export const ARCHIVE_DUTY_TYPE_LABEL: Record<ArchiveDutyTypeCode, string> = {
   VOLUME_OWNER: '卷归属人',
+  CONTRIBUTOR: '任课教师协作',
   COLLEGE_COORDINATOR: '学院协调',
   TRANSFER_REVIEWER: '移交验收',
   ARCHIVE_ADMIN: '档案管理',

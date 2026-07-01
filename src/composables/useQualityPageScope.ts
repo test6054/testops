@@ -1,81 +1,73 @@
-import { inject, onActivated, onMounted, watch } from 'vue'
-import {
-  qualityIngestEmbeddedKey,
-  qualityLayoutScopeProvidedKey,
-} from '@/composables/quality-layout-context'
+import type { QualityStoreScopeField } from '@/constants/quality-scope-profile'
+import { onActivated, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { useQualityScopeProfile } from '@/composables/useQualityScopeProfile'
+import { scopeProfileShowsChrome } from '@/constants/quality-scope-profile'
 import { useQualityStore } from '@/stores/modules/quality'
+import { resolveQualityScopeProfile } from '@/utils/quality-scope-route'
 
-/** 页面是否应渲染自有 QualityScopeHeader */
-export function useQualityPageScope() {
-  const layoutScopeProvided = inject(qualityLayoutScopeProvidedKey, undefined)
-  const ingestEmbedded = inject(qualityIngestEmbeddedKey, undefined)
-  const showPageScopeHeader = !layoutScopeProvided?.value && !ingestEmbedded?.value
-  const useStandaloneShell = !ingestEmbedded?.value
-  return {
-    showPageScopeHeader,
-    useStandaloneShell,
-  }
-}
-
-/** Layout 级范围切换后自动刷新页面数据（含 keepAlive 缓存页） */
-export function useQualityScopeReload(reloadFn: () => void | Promise<void>) {
-  const qualityStore = useQualityStore()
-  watch(
-    () => qualityStore.scopeChangeEpoch,
-    () => {
-      void reloadFn()
-    },
-  )
+/** 当前路由是否需要 quality 培养方案上下文 */
+export function useRequiresQualityScope() {
+  const route = useRoute()
+  return scopeProfileShowsChrome(resolveQualityScopeProfile(route.matched))
 }
 
 export interface QualityScopedLoaderOptions {
-  /** 是否在 currentQualityCourseId / trainingPlanId / programId 变化时 reload（含 scopeChangeEpoch） */
   watchScope?: boolean
-  /** 首次挂载是否立即 load */
   immediate?: boolean
-  /** keepAlive 激活时是否 reload */
   reloadOnActivated?: boolean
 }
 
+function buildScopeWatchValues(
+  qualityStore: ReturnType<typeof useQualityStore>,
+  fields: QualityStoreScopeField[],
+): unknown[] {
+  const values: unknown[] = [qualityStore.scopeChangeEpoch]
+  for (const field of fields) {
+    values.push(qualityStore[field])
+  }
+  return values
+}
+
 /**
- * 质量页统一数据加载：合并 scopeChangeEpoch 与 programId/trainingPlanId/qualityCourseId watch。
- * 替代「useQualityScopeReload + watch(currentQualityCourseId)」双触发写法。
+ * 质量页统一数据加载：按 scopeProfile 默认 watch 字段刷新。
  * loadFn 内在每次 await 后须用 beginQualityScopeRequest().isStale() 丢弃过期响应。
  */
 export function useQualityScopedLoader(
   loadFn: () => void | Promise<void>,
   options?: QualityScopedLoaderOptions,
 ) {
+  const route = useRoute()
   const qualityStore = useQualityStore()
+  const { scopeWatchFields } = useQualityScopeProfile()
   const watchScope = options?.watchScope ?? true
   const immediate = options?.immediate ?? true
   const reloadOnActivated = options?.reloadOnActivated ?? true
+
+  const profile = resolveQualityScopeProfile(route.matched)
+  const scopeActive = scopeProfileShowsChrome(profile) || profile === 'none'
 
   function guardedReload(): void | Promise<void> {
     return loadFn()
   }
 
-  if (watchScope) {
+  if (!scopeActive) {
+    return { reload: guardedReload }
+  }
+
+  if (watchScope && scopeWatchFields.value.length > 0) {
     watch(
-      () => [
-        qualityStore.scopeChangeEpoch,
-        qualityStore.currentProgramId,
-        qualityStore.currentTrainingPlanId,
-        qualityStore.currentQualityCourseId,
-      ] as const,
+      () => buildScopeWatchValues(qualityStore, scopeWatchFields.value),
       () => {
         void guardedReload()
       },
       { immediate },
     )
   }
-  else {
-    useQualityScopeReload(guardedReload)
-    if (immediate) {
-      onMounted(() => {
-        void guardedReload()
-      })
-    }
+  else if (immediate) {
+    onMounted(() => {
+      void guardedReload()
+    })
   }
 
   if (reloadOnActivated) {
@@ -84,7 +76,5 @@ export function useQualityScopedLoader(
     })
   }
 
-  return {
-    reload: guardedReload,
-  }
+  return { reload: guardedReload }
 }

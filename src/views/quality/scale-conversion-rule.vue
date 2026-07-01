@@ -25,7 +25,6 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -379,10 +378,6 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
-
-useQualityScopedLoader(() => {
-  void loadList()
-}, { watchScope: true, immediate: false, reloadOnActivated: false })
 
 onMounted(() => {
   void loadList()

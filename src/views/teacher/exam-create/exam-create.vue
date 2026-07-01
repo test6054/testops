@@ -53,7 +53,11 @@
             @remove-candidate="ec.removeCandidate"
             @update:roster-form-ref="ec.rosterFormRef.value = $event"
           />
-          <ConfirmStep />
+          <ConfirmStep
+            :submitting="ec.submitting.value"
+            :preview-syncing="ec.rosterPreviewSyncing.value"
+            @submit="handleSubmit"
+          />
         </a-spin>
       </div>
     </div>
@@ -76,7 +80,7 @@
 <script setup lang="ts">
 import ArrowLeftOutlined from '@ant-design/icons-vue/ArrowLeftOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import { onBeforeUnmount, onMounted, provide, ref } from 'vue'
+import { onBeforeUnmount, onMounted, provide, ref, nextTick } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiConfirmModal from '@/components/ui-guide/ui/ConfirmModal.vue'
 import UiSidebarNav from '@/components/ui-guide/ui/UiSidebarNav.vue'
@@ -90,6 +94,7 @@ import {
   examCreateMarkingTeamFormKey,
   examCreateRosterFormKey,
   isExamCreateSectionKey,
+  type ExamCreateSectionKey,
 } from './exam-create-context'
 import MarkingTeamStep from './MarkingTeamStep.vue'
 import { useExamCreate } from './useExamCreate'
@@ -104,9 +109,7 @@ function findScrollContainer(): HTMLElement | null {
   return document.querySelector('.main-scroll-wrapper')
 }
 
-async function scrollToSection(sectionId: string): Promise<void> {
-  if (!isExamCreateSectionKey(sectionId)) return
-  if (!(await ec.validateStepsBeforeSection(sectionId))) return
+function scrollToSectionAnchor(sectionId: ExamCreateSectionKey): void {
   ec.activeSection.value = sectionId
   const el = document.getElementById(sectionId)
   const container = scrollContainerRef.value
@@ -115,6 +118,20 @@ async function scrollToSection(sectionId: string): Promise<void> {
   const elTop = el.getBoundingClientRect().top
   const offset = elTop - containerTop + container.scrollTop - 24
   container.scrollTo({ top: offset, behavior: 'smooth' })
+}
+
+async function scrollToSection(sectionId: string): Promise<void> {
+  if (!isExamCreateSectionKey(sectionId)) return
+  if (!(await ec.validateStepsBeforeSection(sectionId))) {
+    if (isExamCreateSectionKey(ec.activeSection.value)) {
+      scrollToSectionAnchor(ec.activeSection.value)
+      await nextTick()
+      ec.scrollToFirstInvalidField()
+    }
+    return
+  }
+  ec.activeSection.value = sectionId
+  scrollToSectionAnchor(sectionId)
 }
 
 function handleScroll(): void {
@@ -139,7 +156,11 @@ function handleScroll(): void {
 }
 
 async function handleSubmit(): Promise<void> {
-  await ec.handleCreateExam()
+  const failedSection = await ec.handleCreateExam()
+  if (!failedSection) return
+  scrollToSectionAnchor(failedSection)
+  await nextTick()
+  ec.scrollToFirstInvalidField()
 }
 
 onMounted(() => {
@@ -174,6 +195,7 @@ onBeforeUnmount(() => {
   &__main {
     min-width: 0;
     width: 100%;
+    max-width: 920px;
     padding: 0 16px;
     background: transparent;
 
@@ -199,7 +221,14 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  margin-bottom: 20px;
+  margin-bottom: 8px;
+}
+
+:deep(.section-desc) {
+  margin: 0 0 20px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dp-text-secondary, #64748b);
 }
 
 :deep(.section-title) {
@@ -222,6 +251,69 @@ onBeforeUnmount(() => {
   }
 }
 
+:deep(.exam-create-form__body) {
+  max-width: 880px;
+}
+
+:deep(.exam-create-form__grid) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 24px;
+  row-gap: 0;
+}
+
+:deep(.exam-create-form__grid--single) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+:deep(.exam-create-form__grid--triple) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+:deep(.exam-create-form__full) {
+  grid-column: 1 / -1;
+}
+
+:deep(.exam-create-form__span-2) {
+  grid-column: span 2;
+}
+
+@media (max-width: 767px) {
+  .create-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+
+    &__aside {
+      border-right: none;
+      border-bottom: 1px solid var(--dp-border, #e5e7eb);
+      padding-right: 0;
+      padding-bottom: 12px;
+      margin-bottom: 8px;
+    }
+
+    &__aside-sticky {
+      position: static;
+    }
+
+    &__main {
+      max-width: none;
+      padding: 0;
+    }
+  }
+
+  :deep(.exam-create-form__grid) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  :deep(.exam-create-form__grid--triple) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  :deep(.exam-create-form__span-2) {
+    grid-column: auto;
+  }
+}
+
 :deep(.ui-sidebar-nav) {
   border: none;
   border-radius: 0;
@@ -231,12 +323,12 @@ onBeforeUnmount(() => {
 :deep(.ui-sidebar-nav__item) {
   border-radius: 0;
   border-right: 2px solid transparent;
+}
 
-  &--active {
-    background: transparent;
-    border-right-color: var(--ant-color-primary, #1677ff);
-    color: var(--ant-color-primary, #1677ff);
-    font-weight: 600;
-  }
+:deep(.ui-sidebar-nav__item--active) {
+  background: transparent;
+  border-right-color: var(--ant-color-primary, #1677ff);
+  color: var(--ant-color-primary, #1677ff);
+  font-weight: 600;
 }
 </style>

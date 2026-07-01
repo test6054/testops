@@ -301,12 +301,6 @@ function handleScopeChange(): void {
 useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false, reloadOnActivated: false })
 
 onMounted(async () => {
-  if (!qualityStore.currentTrainingPlanId) {
-    await qualityStore.loadTrainingPlanOptions()
-    if (qualityStore.trainingPlanOptions.length) {
-      qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
-    }
-  }
   if (!filterForm.schoolYear && qualityStore.currentSchoolYear) {
     filterForm.schoolYear = qualityStore.currentSchoolYear
   }

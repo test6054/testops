@@ -1,14 +1,15 @@
 <!--
   教师选择器（SCH_TECH 角色）
   数据源：POST /api/admin/teachers/user-list（远程搜索+分页）
+  已选值回显：POST /api/admin/teachers/batch-details
 -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import type { TeacherDetailsDto, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import { onMounted, ref, watch } from 'vue'
 import { teacherCatalogApi } from '@/apis/quality/user-catalog'
 import { showUserError } from '@/utils/error-handler'
-import { requirePageList } from './page-contract'
+import { requireArrayResult, requirePageList } from './page-contract'
 
 interface Props {
   value?: string | string[] | null
@@ -35,20 +36,98 @@ const emit = defineEmits<{
 const options = ref<TeacherUserInfoDto[]>([])
 const loading = ref(false)
 const searchText = ref('')
-// a-select v-model:value 不接受 null，外部 emit 仍保持 string | string[] | null。
-const internalValue = ref<string | string[] | undefined>(props.value ?? undefined)
+const internalValue = ref<string | string[] | undefined>(normalizeSelectValue(props.value) ?? undefined)
+
+function normalizeTeacherUserId(value: string | number | null | undefined): string | null {
+  if (value == null || value === '') return null
+  return String(value)
+}
+
+function normalizeSelectValue(value: string | string[] | null | undefined): string | string[] | null {
+  if (value == null) return null
+  if (Array.isArray(value)) {
+    return value.map(item => normalizeTeacherUserId(item)).filter((item): item is string => item != null)
+  }
+  return normalizeTeacherUserId(value)
+}
+
+function normalizeTeacherOption(teacher: TeacherUserInfoDto): TeacherUserInfoDto {
+  return {
+    ...teacher,
+    id: String(teacher.id),
+  }
+}
 
 watch(
   () => props.value,
-  (v) => {
-    internalValue.value = v ?? undefined
+  (value) => {
+    internalValue.value = normalizeSelectValue(value) ?? undefined
   },
 )
 
 watch(
   () => props.departmentId,
-  () => loadOptions(),
+  () => {
+    void loadOptions()
+  },
 )
+
+function teacherDisplayName(opt: TeacherUserInfoDto): string {
+  return opt.nickName
+}
+
+function mergeOptions(teachers: TeacherUserInfoDto[]): void {
+  const map = new Map(options.value.map(item => [item.id, item]))
+  for (const teacher of teachers.map(normalizeTeacherOption)) {
+    map.set(teacher.id, teacher)
+  }
+  options.value = Array.from(map.values())
+}
+
+function toTeacherUserInfo(detail: TeacherDetailsDto): TeacherUserInfoDto {
+  return normalizeTeacherOption({
+    id: detail.id,
+    userName: detail.userName,
+    nickName: detail.nickName,
+    email: detail.email,
+    mobile: detail.mobile,
+    teacherNumber: detail.teacherNumber,
+    department: detail.department,
+    title: detail.title,
+    status: detail.status,
+  })
+}
+
+function collectSelectedIds(): string[] {
+  const normalized = normalizeSelectValue(props.value)
+  if (normalized == null) return []
+  return Array.isArray(normalized) ? normalized : [normalized]
+}
+
+function hasTeacherOption(teacherId: string): boolean {
+  return options.value.some(option => option.id === teacherId)
+}
+
+async function hydrateSelectedByIds(teacherIds: string[]): Promise<void> {
+  const missingIds = teacherIds.filter(id => !hasTeacherOption(id))
+  if (!missingIds.length) return
+  try {
+    const details = requireArrayResult<TeacherDetailsDto>(
+      await teacherCatalogApi.batchDetails(missingIds),
+      '教师',
+    )
+    mergeOptions(details.map(toTeacherUserInfo))
+  }
+  catch (error) {
+    showUserError(error, '教师回显加载失败')
+  }
+}
+
+async function syncSelectedTeachers(): Promise<void> {
+  const selectedIds = collectSelectedIds()
+  if (!selectedIds.length) return
+  await hydrateSelectedByIds(selectedIds)
+}
 
 async function loadOptions(keyword?: string) {
   loading.value = true
@@ -60,16 +139,13 @@ async function loadOptions(keyword?: string) {
       departmentId: props.departmentId || undefined,
       roleKey: 'SCH_TECH',
     })
-    options.value = requirePageList(res, '教师')
+    mergeOptions(requirePageList(res, '教师'))
+    await syncSelectedTeachers()
   } catch (e) {
     showUserError(e, '教师列表加载失败')
   } finally {
     loading.value = false
   }
-}
-
-function teacherDisplayName(opt: TeacherUserInfoDto): string {
-  return opt.nickName
 }
 
 /** 将 a-select 的 SelectValue 收敛为本选择器的 string | string[] | null 合同 */
@@ -80,28 +156,21 @@ function selectValueToTeacherIds(val: SelectValue): string | string[] | null {
   if (Array.isArray(val)) {
     const ids: string[] = []
     for (const item of val) {
-      if (typeof item === 'string') {
-        ids.push(item)
-      } else if (typeof item === 'number') {
-        ids.push(String(item))
-      }
+      const normalized = normalizeTeacherUserId(typeof item === 'number' ? item : item)
+      if (normalized) ids.push(normalized)
     }
     return ids
   }
-  if (typeof val === 'string') {
-    return val
-  }
-  if (typeof val === 'number') {
-    return String(val)
-  }
-  return null
+  return normalizeTeacherUserId(typeof val === 'number' ? val : val)
 }
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 function handleSearch(val: string) {
   searchText.value = val
   if (debounceTimer) clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(() => loadOptions(val), 300)
+  debounceTimer = setTimeout(() => {
+    void loadOptions(val)
+  }, 300)
 }
 
 function handleChange(val: SelectValue) {
@@ -114,11 +183,19 @@ function handleChange(val: SelectValue) {
   emit('change', next, option)
 }
 
+watch(
+  () => props.value,
+  () => {
+    void syncSelectedTeachers()
+  },
+  { immediate: true },
+)
+
 onMounted(() => {
-  loadOptions()
+  void loadOptions()
 })
 
-defineExpose({ reload: loadOptions })
+defineExpose({ reload: loadOptions, hydrateSelectedByIds })
 </script>
 
 <template>
@@ -132,6 +209,7 @@ defineExpose({ reload: loadOptions })
     :style="{ width: typeof width === 'number' ? `${width}px` : width }"
     show-search
     :filter-option="false"
+    option-label-prop="label"
     @search="handleSearch"
     @change="handleChange"
   >

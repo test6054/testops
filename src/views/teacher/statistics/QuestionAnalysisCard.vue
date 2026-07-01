@@ -322,6 +322,10 @@ async function loadQuestionOptions(): Promise<void> {
   questionLoading.value = true
   try {
     const template = await getExamTemplate(props.examId)
+    if (!template.configured) {
+      questionOptions.value = []
+      return
+    }
     questionOptions.value = template.questions.map((question: ExamQuestionTemplateVO) => ({
       value: question.questionTemplateId,
       label: `题${question.questionNo} · ${question.questionType} · ${question.fullScore}分${

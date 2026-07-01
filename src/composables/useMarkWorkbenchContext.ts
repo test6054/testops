@@ -18,7 +18,6 @@ export interface MarkWorkbenchContext {
   /** 布局级加载的考试详情，子页可复用避免重复请求 */
   examDetail?: Ref<ExamDetailVO | null>
   examDetailLoading?: Ref<boolean>
-  examDetailError?: Ref<string | null>
   /** 阅卷进度：优先 snapshot 内嵌，与布局 Chrome 同源 */
   markingProgress?: Ref<MarkingProgressVO | null>
   refreshChrome?: () => Promise<void>

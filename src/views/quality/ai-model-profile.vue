@@ -41,7 +41,6 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -376,10 +375,6 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
-
-useQualityScopedLoader(() => {
-  void loadList()
-}, { watchScope: true, immediate: false, reloadOnActivated: false })
 
 onMounted(() => {
   void loadList()

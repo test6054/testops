@@ -31,6 +31,7 @@ export interface ArchiveVO {
 
 export interface ArchiveQueryRequest extends QueryDto {
   businessType?: ArchiveBusinessType
+  excludeBusinessType?: ArchiveBusinessType
   businessId?: string
   archiveCategory?: string
   archiveOfficeConfirmed?: boolean

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type {
-  PortfolioTeacherCompletenessVO,
   PortfolioTeacherPortraitVO,
   PortfolioTeacherWorkbenchSummaryVO,
   PortfolioTodoSummaryVO,
 } from '@/apis/portfolio/types'
 import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
@@ -14,6 +14,8 @@ import {
   PORTFOLIO_COMPLETENESS_LEVEL_LABEL,
   PORTFOLIO_COMPLETENESS_LEVEL_TONE,
 } from '@/apis/portfolio/types'
+import PortfolioProgressCockpitBand from '@/components/portfolio/PortfolioProgressCockpitBand.vue'
+import PortfolioProgressCompareDrawer from '@/components/portfolio/PortfolioProgressCompareDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -32,20 +34,19 @@ const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 
 const loading = ref(false)
-const completeness = ref<PortfolioTeacherCompletenessVO | null>(null)
-const completenessAbsent = ref(false)
 const portrait = ref<PortfolioTeacherPortraitVO | null>(null)
 const portraitAbsent = ref(false)
 const todos = ref<PortfolioTodoSummaryVO[]>([])
 const todoLoading = ref(false)
 const workbenchSummary = ref<PortfolioTeacherWorkbenchSummaryVO | null>(null)
 const workbenchSummaryLoading = ref(false)
+const compareDrawerOpen = ref(false)
 
 const completenessPercentText = computed(() => {
-  if (!completeness.value) {
+  if (!workbenchSummary.value) {
     return ''
   }
-  return `${completeness.value.completenessPercent}%`
+  return `${workbenchSummary.value.completenessPercent}%`
 })
 
 const portraitStatItems = computed((): SignalMetric[] => {
@@ -73,45 +74,28 @@ const portraitDataInsufficient = computed(() => {
 
 async function loadDashboard() {
   if (!targetTeacherId.value && canPickTeachers.value) {
-    completenessAbsent.value = true
     portraitAbsent.value = true
     return
   }
   loading.value = true
-  completenessAbsent.value = false
   portraitAbsent.value = false
-  completeness.value = null
   portrait.value = null
   const request = targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}
-  const [completenessResult, portraitResult] = await Promise.allSettled([
-    portfolioAnalysisApi.getCompleteness(request),
-    portfolioAnalysisApi.getPortrait(request),
-  ])
-  if (completenessResult.status === 'fulfilled') {
-    completeness.value = completenessResult.value
+  try {
+    portrait.value = await portfolioAnalysisApi.getPortrait(request)
   }
-  else {
-    const code = readBusinessResultCode(completenessResult.reason)
-    if (code === ResultCode.DATA_NOT_FOUND) {
-      completenessAbsent.value = true
-    }
-    else {
-      showUserError(completenessResult.reason, '加载档案完整度失败')
-    }
-  }
-  if (portraitResult.status === 'fulfilled') {
-    portrait.value = portraitResult.value
-  }
-  else {
-    const code = readBusinessResultCode(portraitResult.reason)
+  catch (error) {
+    const code = readBusinessResultCode(error)
     if (code === ResultCode.DATA_NOT_FOUND) {
       portraitAbsent.value = true
     }
     else {
-      showUserError(portraitResult.reason, '加载画像摘要失败')
+      showUserError(error, '加载画像摘要失败')
     }
   }
-  loading.value = false
+  finally {
+    loading.value = false
+  }
 }
 
 async function loadWorkbenchSummary() {
@@ -163,7 +147,7 @@ function openTodo(item: PortfolioTodoSummaryVO) {
   }
   if (item.todoType === 'ARCHIVE_PENDING_CONFIRM') {
     void router.push({
-      path: '/portfolio/ai-candidate-confirm',
+      path: '/portfolio/teacher/intake',
       query: item.referenceAiTaskId
         ? { ...query, taskId: item.referenceAiTaskId }
         : query,
@@ -230,6 +214,45 @@ function goPortrait() {
   })
 }
 
+function handleCockpitMetricClick(key: string, context?: { academicYear?: string }) {
+  const query: Record<string, string> = targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}
+  const academicYear = context?.academicYear
+  if (academicYear) {
+    query.academicYear = academicYear
+  }
+  if (key === 'completeness') {
+    void router.push({ path: '/portfolio/teacher/one-table', query })
+    return
+  }
+  if (key === 'delta') {
+    compareDrawerOpen.value = true
+    return
+  }
+  if (key === 'pendingReview') {
+    void router.push({
+      path: '/portfolio/teacher/review-status',
+      query: { ...query, recordStatus: 'PENDING_REVIEW' },
+    })
+    return
+  }
+  if (key === 'returned') {
+    void router.push({
+      path: '/portfolio/teacher/review-status',
+      query: { ...query, recordStatus: 'RETURNED' },
+    })
+    return
+  }
+  if (key === 'openGap') {
+    const gapTodo = todos.value.find(item =>
+      item.todoType === 'GAP_PENDING' || item.todoType === 'GAP_RETURNED')
+    if (gapTodo) {
+      openTodo(gapTodo)
+      return
+    }
+    message.info('暂无补采待办')
+  }
+}
+
 function goArchive() {
   void router.push({
     path: '/portfolio/teacher/archive',
@@ -237,9 +260,9 @@ function goArchive() {
   })
 }
 
-function goAiConfirm() {
+function goIntake() {
   void router.push({
-    path: '/portfolio/ai-candidate-confirm',
+    path: '/portfolio/teacher/intake',
     query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
   })
 }
@@ -293,129 +316,136 @@ onUnmounted(() => {
       </ContextBar>
     </template>
 
+    <template v-if="!(canPickTeachers && !targetTeacherId)" #signal>
+      <PortfolioProgressCockpitBand
+        :teacher-id="targetTeacherId"
+        @metric-click="handleCockpitMetricClick"
+      />
+    </template>
+
     <div v-if="canPickTeachers && !targetTeacherId" class="teacher-home__hint">
       <UiEmpty description="请从教师名册选择目标教师，或在 URL 携带 teacherId 参数" />
     </div>
 
-    <template v-else>
-      <div class="teacher-home__grid">
-        <UiCard title="档案完整度" class="teacher-home__card">
-          <a-spin :spinning="loading">
-            <template v-if="completeness">
-              <div class="teacher-home__completeness-head">
-                <span class="teacher-home__percent">{{ completenessPercentText }}</span>
-                <UiTag
-                  :tone="strictEnumTone(PORTFOLIO_COMPLETENESS_LEVEL_TONE, completeness.completenessLevel, '档案完整度等级')"
-                >
-                  {{ strictEnumLabel(PORTFOLIO_COMPLETENESS_LEVEL_LABEL, completeness.completenessLevel, '档案完整度等级') }}
-                </UiTag>
-              </div>
-              <p class="teacher-home__meta">
-                必填分类 {{ completeness.requiredCategoryDone }} / {{ completeness.requiredCategoryTotal }}
-                <template v-if="completeness.computedTime">
-                  · 更新于 {{ completeness.computedTime }}
-                </template>
-              </p>
-              <p
-                v-if="completeness.completenessPercent === 0 && completeness.requiredCategoryDone === 0"
-                class="teacher-home__onboarding"
+    <div v-else class="teacher-home__grid">
+      <UiCard :title="workbenchSummary?.currentAcademicYear ? `${workbenchSummary.currentAcademicYear} 档案完整度` : '档案完整度'" class="teacher-home__card">
+        <a-spin :spinning="workbenchSummaryLoading">
+          <template v-if="workbenchSummary">
+            <div class="teacher-home__completeness-head">
+              <span class="teacher-home__percent">{{ completenessPercentText }}</span>
+              <UiTag
+                v-if="workbenchSummary.completenessLevel"
+                :tone="strictEnumTone(PORTFOLIO_COMPLETENESS_LEVEL_TONE, workbenchSummary.completenessLevel, '档案完整度等级')"
               >
-                数据不足，请先完成建档
-              </p>
-            </template>
-            <UiEmpty
-              v-else-if="completenessAbsent && !loading"
-              description="尚未生成档案完整度"
-            />
-          </a-spin>
-        </UiCard>
-
-        <UiCard title="画像摘要" class="teacher-home__card">
-          <template #extra>
-            <UiButton variant="ghost" size="sm" :disabled="!portrait && !portraitAbsent" @click="goPortrait">
-              查看画像
-            </UiButton>
-          </template>
-          <a-spin :spinning="loading">
-            <SignalBand
-              v-if="portrait"
-              :metrics="portraitStatItems"
-              variant="inline"
-              compact
-            />
-            <p v-if="portrait" class="teacher-home__meta">
-              正式档案 {{ portrait.officialRecordCount }} 条
-              <template v-if="portrait.computedTime">
-                · 更新于 {{ portrait.computedTime }}
-              </template>
+                {{ strictEnumLabel(PORTFOLIO_COMPLETENESS_LEVEL_LABEL, workbenchSummary.completenessLevel, '档案完整度等级') }}
+              </UiTag>
+            </div>
+            <p class="teacher-home__meta">
+              必填分类 {{ workbenchSummary.requiredCategoryDone ?? 0 }} / {{ workbenchSummary.requiredCategoryTotal ?? 0 }}
             </p>
             <p
-              v-if="portrait && portraitDataInsufficient"
+              v-if="workbenchSummary.completenessPercent === 0 && (workbenchSummary.requiredCategoryDone ?? 0) === 0"
               class="teacher-home__onboarding"
             >
-              画像数据不足，请先完成建档
+              数据不足，请先完成建档
             </p>
-            <UiEmpty
-              v-else-if="portraitAbsent && !loading"
-              description="尚未生成画像快照"
-            />
-          </a-spin>
-        </UiCard>
-
-        <UiCard title="快捷入口" class="teacher-home__card teacher-home__card--actions">
-          <div class="teacher-home__actions">
-            <UiButton @click="goAiConfirm">
-              AI 候选确认
-            </UiButton>
-            <UiButton @click="goArchive">
-              我的档案
-            </UiButton>
-            <UiButton @click="goPortrait">
-              教师画像
-            </UiButton>
-            <UiButton @click="goCorrection">
-              我的纠错
-            </UiButton>
-            <UiButton @click="goDualTeacherApply">
-              双师认定申请
-            </UiButton>
-            <UiButton @click="goOneTable">
-              教师一张表
-            </UiButton>
-          </div>
-        </UiCard>
-
-        <UiCard title="待办聚合" class="teacher-home__card">
-          <template #extra>
-            <span v-if="workbenchSummary" class="teacher-home__meta">
-              未完成 {{ workbenchSummary.pendingTodoCount }} 项
-            </span>
           </template>
-          <a-spin :spinning="todoLoading || workbenchSummaryLoading">
-            <ul v-if="todos.length" class="teacher-home__todo-list">
-              <li
-                v-for="item in todos"
-                :key="`${item.todoType}-${item.refId}`"
-                class="teacher-home__todo-item"
-                @click="openTodo(item)"
-              >
-                <p class="teacher-home__todo-title">
-                  {{ item.title }}
-                </p>
-                <p v-if="item.summary" class="teacher-home__meta">
-                  {{ item.summary }}
-                </p>
-                <p v-if="item.dueTime" class="teacher-home__meta">
-                  截止 {{ item.dueTime }}
-                </p>
-              </li>
-            </ul>
-            <UiEmpty v-else description="暂无待办" />
-          </a-spin>
-        </UiCard>
-      </div>
-    </template>
+          <UiEmpty
+            v-else-if="!workbenchSummaryLoading"
+            description="尚未生成档案完整度"
+          />
+        </a-spin>
+      </UiCard>
+
+      <UiCard title="画像摘要" class="teacher-home__card">
+        <template #extra>
+          <UiButton variant="ghost" size="sm" :disabled="!portrait && !portraitAbsent" @click="goPortrait">
+            查看画像
+          </UiButton>
+        </template>
+        <a-spin :spinning="loading">
+          <SignalBand
+            v-if="portrait"
+            :metrics="portraitStatItems"
+            variant="inline"
+            compact
+          />
+          <p v-if="portrait" class="teacher-home__meta">
+            正式档案 {{ portrait.officialRecordCount }} 条
+            <template v-if="portrait.computedTime">
+              · 更新于 {{ portrait.computedTime }}
+            </template>
+          </p>
+          <p
+            v-if="portrait && portraitDataInsufficient"
+            class="teacher-home__onboarding"
+          >
+            画像数据不足，请先完成建档
+          </p>
+          <UiEmpty
+            v-else-if="portraitAbsent && !loading"
+            description="尚未生成画像快照"
+          />
+        </a-spin>
+      </UiCard>
+
+      <UiCard title="快捷入口" class="teacher-home__card teacher-home__card--actions">
+        <div class="teacher-home__actions">
+          <UiButton @click="goIntake">
+            材料采集
+          </UiButton>
+          <UiButton @click="goArchive">
+            我的档案
+          </UiButton>
+          <UiButton @click="goPortrait">
+            教师画像
+          </UiButton>
+          <UiButton @click="goCorrection">
+            我的纠错
+          </UiButton>
+          <UiButton @click="goDualTeacherApply">
+            双师认定申请
+          </UiButton>
+          <UiButton @click="goOneTable">
+            教师一张表
+          </UiButton>
+        </div>
+      </UiCard>
+
+      <UiCard title="待办聚合" class="teacher-home__card">
+        <template #extra>
+          <span v-if="workbenchSummary" class="teacher-home__meta">
+            未完成 {{ workbenchSummary.pendingTodoCount }} 项
+          </span>
+        </template>
+        <a-spin :spinning="todoLoading || workbenchSummaryLoading">
+          <ul v-if="todos.length" class="teacher-home__todo-list">
+            <li
+              v-for="item in todos"
+              :key="`${item.todoType}-${item.refId}`"
+              class="teacher-home__todo-item"
+              @click="openTodo(item)"
+            >
+              <p class="teacher-home__todo-title">
+                {{ item.title }}
+              </p>
+              <p v-if="item.summary" class="teacher-home__meta">
+                {{ item.summary }}
+              </p>
+              <p v-if="item.dueTime" class="teacher-home__meta">
+                截止 {{ item.dueTime }}
+              </p>
+            </li>
+          </ul>
+          <UiEmpty v-else description="暂无待办" />
+        </a-spin>
+      </UiCard>
+    </div>
   </StageWorkbenchShell>
+  <PortfolioProgressCompareDrawer
+    v-model:open="compareDrawerOpen"
+    :teacher-id="targetTeacherId"
+  />
 </template>
 
 <style scoped lang="scss">

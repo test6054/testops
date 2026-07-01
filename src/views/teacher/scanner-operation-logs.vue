@@ -13,10 +13,9 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -25,7 +24,6 @@ defineOptions({ name: 'ScannerOperationLogsPage' })
 
 const route = useRoute()
 const loading = ref(false)
-const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
 const logs = ref<ScanOperationLogItemVO[]>([])
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
 const filters = reactive({
@@ -66,7 +64,6 @@ function actionLabel(action?: ScanOperationActionCode) {
 
 async function loadLogs() {
   loading.value = true
-  clearLoadFailure()
   try {
     const result = await pageScanOperationLogs({
       ticketId: filters.ticketId.trim() || undefined,
@@ -81,7 +78,7 @@ async function loadLogs() {
   catch (error) {
     logs.value = []
     pagination.total = 0
-    captureLoadFailure(error, '扫描操作日志加载失败')
+    showUserError(error, '扫描操作日志加载失败')
   }
   finally {
     loading.value = false
@@ -138,14 +135,7 @@ onMounted(() => {
       </ContextBar>
     </template>
 
-    <UiLoadFailure
-      v-if="loadError"
-      title="扫描操作日志加载失败"
-      :description="loadError"
-    />
-
-    <template v-else>
-      <UiFilterBar
+    <UiFilterBar
         variant="plain"
         :model-value="filters"
         :fields="filterFields"
@@ -192,6 +182,5 @@ onMounted(() => {
           </template>
         </template>
       </UiDataTable>
-    </template>
   </StageWorkbenchShell>
 </template>

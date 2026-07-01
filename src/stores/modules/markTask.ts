@@ -1,4 +1,13 @@
 import type { ReviewTaskItemVO, ReviewTaskQueryRequest } from '@/apis/mark/exam-review-task'
+import type {
+  MarkingSessionPhaseCode,
+  MarkingTaskClaimRequest,
+  MarkingTaskQueryRequest,
+  MarkingTaskStatusCode,
+  MarkingTaskVO,
+  TeacherClaimContextQueryRequest,
+  TeacherClaimContextVO,
+} from '@/apis/mark/marking-organization'
 /**
  * 阅卷任务 Store
  *
@@ -17,14 +26,7 @@ import type { ReviewTaskItemVO, ReviewTaskQueryRequest } from '@/apis/mark/exam-
  *
  * 不持久化：任务状态对实时性敏感，每次进入页面需重新拉取。
  */
-import type {
-  MarkingSessionPhaseCode,
-  MarkingTaskClaimRequest,
-  MarkingTaskQueryRequest,
-  MarkingTaskVO,
-  TeacherClaimContextQueryRequest,
-  TeacherClaimContextVO,
-} from '@/apis/mark/marking-organization'
+import type { MarkingTaskStreamEventVO } from '@/apis/mark/marking-task-stream'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { listReviewTasks, validateReviewTaskItemContract } from '@/apis/mark/exam-review-task'
@@ -32,10 +34,13 @@ import {
   claimMarkingTasks,
   getTeacherClaimContext,
   listMarkingTasks,
+  MARKING_TASK_STATUS_LABEL,
   validateMarkingTaskContract,
   validateTeacherClaimContextContract,
 } from '@/apis/mark/marking-organization'
+import { validateMarkingTaskStreamEvent } from '@/apis/mark/marking-task-stream'
 import { readAllPages } from '@/utils/page-result'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export const useMarkTaskStore = defineStore('markTask', () => {
   /** 当前用户在指定考试下的阅卷任务（按 examId 隔离） */
@@ -189,6 +194,46 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     reviewTasksPagination.value = { pageNum: 1, pageSize: 0, total: 0 }
   }
 
+  /**
+   * 应用阅卷任务 SSE 事件；未知任务或缺少本地行时返回 reload 供页面 silent 拉全量。
+   */
+  function applyStreamEvent(event: MarkingTaskStreamEventVO): 'reload' | 'none' {
+    validateMarkingTaskStreamEvent(event)
+    // 回收后任务可能已转派他人，局部 patch taskStatus 会误留「待领取」行（AUTO 回收时 SSE 带 ALLOCATED）
+    if (event.eventType === 'TASK_RECYCLED') {
+      return 'reload'
+    }
+    // 提交/撤回会改写 score/submittedTime，仅 patch taskStatus 不足
+    if (event.eventType === 'TASK_SUBMITTED' || event.eventType === 'TASK_WITHDRAWN') {
+      return 'reload'
+    }
+    if (event.taskId && event.taskStatus) {
+      strictEnumLabel(MARKING_TASK_STATUS_LABEL, event.taskStatus, '阅卷任务状态')
+      const idx = tasks.value.findIndex((task) => task.id === event.taskId)
+      if (idx >= 0) {
+        tasks.value[idx] = { ...tasks.value[idx], taskStatus: event.taskStatus as MarkingTaskStatusCode }
+        return 'none'
+      }
+    }
+    if (
+      event.eventType === 'TASK_ALLOCATED'
+      || event.eventType === 'TASK_RECYCLED'
+    ) {
+      return 'reload'
+    }
+    return 'none'
+  }
+
+  function upsertTask(task: MarkingTaskVO): void {
+    validateMarkingTaskContract(task)
+    const idx = tasks.value.findIndex((item) => item.id === task.id)
+    if (idx >= 0) {
+      tasks.value[idx] = task
+      return
+    }
+    tasks.value = [task, ...tasks.value]
+  }
+
   return {
     // state
     tasks,
@@ -215,5 +260,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     clearTasks,
     clearReviewTasks,
     reset,
+    applyStreamEvent,
+    upsertTask,
   }
 })

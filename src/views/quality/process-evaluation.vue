@@ -591,12 +591,6 @@ watch(
 watch(selectedNode, () => loadRecords())
 
 onMounted(async () => {
-  if (!qualityStore.currentTrainingPlanId) {
-    await qualityStore.loadTrainingPlanOptions()
-    if (qualityStore.trainingPlanOptions.length) {
-      qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
-    }
-  }
   if (qualityStore.currentQualityCourseId) {
     await loadNodes()
   }
@@ -612,7 +606,7 @@ function handleCourseChange(courseId: string | null) {
 </script>
 
 <template>
-  <QualityIngestPageShell>
+  <QualityIngestPageShell embedded>
     <template #context>
       <QualityPageContextBar>
         <template #status>

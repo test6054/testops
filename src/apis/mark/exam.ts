@@ -1,4 +1,4 @@
-import type { ExamCandidateRosterRequest, ExamCandidateVO, ExamClassOptionVO } from '@/apis/mark/exam-scope'
+import type { ExamCandidateRosterRequest, ExamCandidateVO } from '@/apis/mark/exam-scope'
 /**
  * 阅卷考试主记录 API - 对接 edu-mark 模块 ExamMarkController 的考试主对象接口。
  *
@@ -214,6 +214,10 @@ export interface ExamDetailVO {
   courseName?: string
   /** 院系名称 - 对应 ExamDetailResponse.departmentName（edu-user 院系树） */
   departmentName?: string
+  /** 参考班级维护上下文院系 ID - 对应 ExamDetailResponse.referenceDepartmentId */
+  referenceDepartmentId?: string
+  /** 参考班级维护上下文院系名称 - 对应 ExamDetailResponse.referenceDepartmentName */
+  referenceDepartmentName?: string
   examName: string
   examNo: string
   academicYear?: string
@@ -369,6 +373,8 @@ export const EXAM_ROSTER_SCOPE_MODE_LABEL: Record<ExamRosterScopeMode, string> =
 export interface ExamRosterCreateRequest {
   scopeMode: ExamRosterScopeMode
   classIds: string[]
+  /** 参考班级维护上下文院系 ID */
+  referenceDepartmentId?: string
   candidates: ExamCandidateRosterRequest[]
 }
 
@@ -441,11 +447,6 @@ export function previewCreateExamRoster(
   request: ExamCreateRosterPreviewRequest,
 ): Promise<ExamCreateRosterPreviewResponse> {
   return http.post<ExamCreateRosterPreviewResponse>('/api/mark/exams/create-roster-preview', request)
-}
-
-/** 创建考试前查询教师授课班级选项。 */
-export function listCreateExamClassOptions(): Promise<ExamClassOptionVO[]> {
-  return http.post<ExamClassOptionVO[]>('/api/mark/exams/create-class-options', {})
 }
 
 /** 更新考试主信息。 */

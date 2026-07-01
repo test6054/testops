@@ -16,7 +16,7 @@ export interface ExamWorkspaceMenuGroup {
   items: ExamWorkspaceMenuItem[]
 }
 
-/** 9 个 group、31 个 menu item；侧栏按 activeJourneyKey 过滤 group */
+/** 9 个 group、34 个 menu item；侧栏按 activeJourneyKey 过滤 group */
 export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
   {
     key: 'overview',
@@ -47,7 +47,7 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
     journeyKey: 'scan',
     stageKeys: ['SCAN'],
     items: [
-      { key: 'scan-batches', label: '录入与批次', routeName: 'TeacherExamWorkspaceScanBatches', markStageKey: 'SCAN' },
+      { key: 'scan-batches', label: '扫描批次', routeName: 'TeacherExamWorkspaceScanBatches', markStageKey: 'SCAN' },
       { key: 'scan-monitor', label: '扫描监控', routeName: 'TeacherExamWorkspaceScanMonitor', markStageKey: 'SCAN' },
       { key: 'scan-ledger', label: '影像账本', routeName: 'TeacherExamWorkspaceScanLedger', markStageKey: 'SCAN' },
       { key: 'scan-devices', label: '扫描设备', routeName: 'TeacherExamWorkspaceScanDevices', markStageKey: 'SCAN' },
@@ -93,6 +93,8 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
     items: [
       { key: 'marking-arbitration', label: '仲裁裁定', routeName: 'TeacherExamWorkspaceMarkingArbitration', markStageKey: 'FORMAL_MARKING' },
       { key: 'marking-quality', label: '抽检处理', routeName: 'TeacherExamWorkspaceMarkingQuality', markStageKey: 'FORMAL_MARKING' },
+      { key: 'marking-quality-monitor', label: '阅卷质量监控', routeName: 'TeacherExamWorkspaceMarkingQualityMonitor', markStageKey: 'FORMAL_MARKING' },
+      { key: 'marking-audit-trail', label: '批改审计', routeName: 'TeacherExamWorkspaceMarkingAuditTrail', markStageKey: 'FORMAL_MARKING' },
     ],
   },
   {
@@ -117,6 +119,7 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
       { key: 'archive-statistics', label: '成绩统计', routeName: 'TeacherExamWorkspaceArchiveStatistics', markStageKey: 'ARCHIVE' },
       { key: 'archive-grading-experience', label: '阅卷经验库', routeName: 'TeacherExamWorkspaceGradingExperience', markStageKey: 'ARCHIVE' },
       { key: 'archive-exports', label: '导出任务', routeName: 'TeacherExamWorkspaceArchiveExports', markStageKey: 'ARCHIVE' },
+      { key: 'archive-teaching-affairs', label: '教务同步', routeName: 'TeacherExamWorkspaceArchiveTeachingAffairs', markStageKey: 'ARCHIVE' },
     ],
   },
 ]

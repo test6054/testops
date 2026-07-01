@@ -2,9 +2,9 @@
   <a-tabs v-model:active-key="activeTab" class="archive-supervision-panel__tabs">
     <a-tab-pane key="volumes" tab="归档卷">
       <div class="archive-supervision-panel__problem-filters">
-        <a-checkbox v-model:checked="volumeFilter.integrityFailedOnly">缺必交项</a-checkbox>
-        <a-checkbox v-model:checked="volumeFilter.archiveOverdueOnly">归档逾期</a-checkbox>
-        <a-checkbox v-model:checked="volumeFilter.delaySubmissionOverdueOnly">补交逾期</a-checkbox>
+        <a-checkbox v-model:checked="volumeFilterForm.integrityFailedOnly">缺必交项</a-checkbox>
+        <a-checkbox v-model:checked="volumeFilterForm.archiveOverdueOnly">归档逾期</a-checkbox>
+        <a-checkbox v-model:checked="volumeFilterForm.delaySubmissionOverdueOnly">补交逾期</a-checkbox>
       </div>
       <UiFilterBar
         v-model="volumeFilter"
@@ -290,12 +290,18 @@ const remediationTasks = ref<ArchiveRemediationTaskVO[]>([])
 const campaigns = ref<ArchiveEvaluationCampaignVO[]>([])
 const detail = ref<ArchiveVolumeDetailVO | null>(null)
 
-const volumeFilter = reactive({
+const volumeFilterForm = reactive({
   keyword: '',
   volumeStatus: undefined as ArchiveVolumeStatusCode | undefined,
   integrityFailedOnly: false,
   archiveOverdueOnly: false,
   delaySubmissionOverdueOnly: false,
+})
+const volumeFilter = computed<Record<string, unknown>>({
+  get: () => volumeFilterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(volumeFilterForm, value)
+  },
 })
 const volumePagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
 const statsFilter = reactive({ academicYear: '', semester: '' })
@@ -451,11 +457,11 @@ async function loadVolumes() {
   volumeLoading.value = true
   try {
     const result = await pageSupervisionArchiveVolumes({
-      keyword: volumeFilter.keyword.trim() || undefined,
-      volumeStatus: volumeFilter.volumeStatus,
-      integrityFailedOnly: volumeFilter.integrityFailedOnly || undefined,
-      archiveOverdueOnly: volumeFilter.archiveOverdueOnly || undefined,
-      delaySubmissionOverdueOnly: volumeFilter.delaySubmissionOverdueOnly || undefined,
+      keyword: volumeFilterForm.keyword.trim() || undefined,
+      volumeStatus: volumeFilterForm.volumeStatus,
+      integrityFailedOnly: volumeFilterForm.integrityFailedOnly || undefined,
+      archiveOverdueOnly: volumeFilterForm.archiveOverdueOnly || undefined,
+      delaySubmissionOverdueOnly: volumeFilterForm.delaySubmissionOverdueOnly || undefined,
       pageNum: volumePagination.pageNum,
       pageSize: volumePagination.pageSize,
     })
@@ -471,11 +477,11 @@ async function loadVolumes() {
 }
 
 function resetVolumeFilter() {
-  volumeFilter.keyword = ''
-  volumeFilter.volumeStatus = undefined
-  volumeFilter.integrityFailedOnly = false
-  volumeFilter.archiveOverdueOnly = false
-  volumeFilter.delaySubmissionOverdueOnly = false
+  volumeFilterForm.keyword = ''
+  volumeFilterForm.volumeStatus = undefined
+  volumeFilterForm.integrityFailedOnly = false
+  volumeFilterForm.archiveOverdueOnly = false
+  volumeFilterForm.delaySubmissionOverdueOnly = false
   volumePagination.pageNum = 1
   void loadVolumes()
 }

@@ -36,6 +36,7 @@ import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
@@ -137,8 +138,7 @@ const filterForm = reactive<ReviewFilterModel>({
   categoryId: undefined,
 })
 
-const lowRiskRows = computed(() => rows.value.filter(item => item.riskLevel !== 'SENSITIVE'))
-const sensitiveRows = computed(() => rows.value.filter(item => item.riskLevel === 'SENSITIVE'))
+const hasSensitiveRows = computed(() => rows.value.some(item => item.riskLevel === 'SENSITIVE'))
 const showReviewActions = computed(() =>
   Boolean(activeRow.value?.reviewActionAllowed))
 
@@ -494,150 +494,96 @@ onMounted(async () => {
       @search="handleSearch"
     />
     <UiCard class="review-card">
-      <p v-if="sensitiveRows.length" class="review-sensitive-hint">
-        敏感材料须单条复核，禁止批量通过/退回。
-      </p>
-      <div v-if="lowRiskRows.length" class="review-section">
-        <h3 class="review-section__title">
-          低风险待办（可批量）
-        </h3>
-        <div class="review-toolbar">
-          <UiButton
-            :loading="batchSubmitting"
-            :disabled="!selectedRowKeys.length"
-            @click="handleBatchApprove"
-          >
-            批量通过（{{ selectedRowKeys.length }}）
-          </UiButton>
-          <UiButton
-            :loading="batchRejectSubmitting"
-            :disabled="!selectedRowKeys.length"
-            @click="handleBatchReject"
-          >
-            批量退回（{{ selectedRowKeys.length }}）
-          </UiButton>
-        </div>
-        <div v-if="selectedRowKeys.length" class="review-batch-reject">
-          <Input v-model:value="batchRejectReason" placeholder="批量退回原因" />
-          <UiDatePicker
-            v-model="batchReturnDeadline"
-            show-time
-            format="YYYY-MM-DD HH:mm:ss"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="重提期限"
-            style="width: 100%"
-          />
-        </div>
-        <UiDataTable
-          row-key="id"
-          :columns="listColumns"
-          :data-source="lowRiskRows"
-          :loading="loading"
-          :pagination="false"
-          :row-selection="{
-            selectedRowKeys,
-            onChange: (keys: string[]) => { selectedRowKeys = keys },
-            getCheckboxProps: (record: PortfolioReviewTaskSummaryVO) => ({
-              disabled: !record.batchApproveAllowed,
-            }),
-          }"
+      <UiAlertStrip
+        v-if="hasSensitiveRows"
+        tone="warning"
+        :closable="false"
+        title="敏感材料须单条复核，禁止批量通过/退回"
+      />
+      <div class="review-toolbar">
+        <UiButton
+          :loading="batchSubmitting"
+          :disabled="!selectedRowKeys.length"
+          @click="handleBatchApprove"
         >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'teacher'">
-              {{ record.teacherName }}
-            </template>
-            <template v-else-if="column.key === 'riskLevel'">
-              <UiTag
-                v-if="record.riskLevel"
-                :tone="materialRiskLevelTone(record.riskLevel)"
-              >
-                {{ materialRiskLevelLabel(record.riskLevel) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'referenceTask'">
-              {{ record.referenceAiTaskId ?? '—' }}
-            </template>
-            <template v-else-if="column.key === 'aiPreReview'">
-              {{ record.aiPreReviewSummary ?? '—' }}
-            </template>
-            <template v-else-if="column.key === 'sourceType'">
-              {{ record.sourceType ? archiveRecordSourceTypeLabel(record.sourceType) : '—' }}
-            </template>
-            <template v-else-if="column.key === 'recordStatus'">
-              <UiTag
-                v-if="record.recordStatus"
-                :tone="archiveRecordStatusTone(record.recordStatus)"
-              >
-                {{ archiveRecordStatusLabel(record.recordStatus) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'reviewStatus'">
-              <UiTag :tone="reviewTaskStatusTone(record.reviewStatus)">
-                {{ reviewTaskStatusLabel(record.reviewStatus) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <UiTextAction @click="openDetail(record)">
-                复核
-              </UiTextAction>
-            </template>
-          </template>
-        </UiDataTable>
-      </div>
-      <div v-if="sensitiveRows.length" class="review-section">
-        <h3 class="review-section__title">
-          敏感材料（强制单条）
-        </h3>
-        <UiDataTable
-          row-key="id"
-          :columns="listColumns"
-          :data-source="sensitiveRows"
-          :loading="loading"
-          :pagination="false"
+          批量通过（{{ selectedRowKeys.length }}）
+        </UiButton>
+        <UiButton
+          :loading="batchRejectSubmitting"
+          :disabled="!selectedRowKeys.length"
+          @click="handleBatchReject"
         >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'teacher'">
-              {{ record.teacherName }}
-            </template>
-            <template v-else-if="column.key === 'riskLevel'">
-              <UiTag
-                v-if="record.riskLevel"
-                :tone="materialRiskLevelTone(record.riskLevel)"
-              >
-                {{ materialRiskLevelLabel(record.riskLevel) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'referenceTask'">
-              {{ record.referenceAiTaskId ?? '—' }}
-            </template>
-            <template v-else-if="column.key === 'aiPreReview'">
-              {{ record.aiPreReviewSummary ?? '—' }}
-            </template>
-            <template v-else-if="column.key === 'sourceType'">
-              {{ record.sourceType ? archiveRecordSourceTypeLabel(record.sourceType) : '—' }}
-            </template>
-            <template v-else-if="column.key === 'recordStatus'">
-              <UiTag
-                v-if="record.recordStatus"
-                :tone="archiveRecordStatusTone(record.recordStatus)"
-              >
-                {{ archiveRecordStatusLabel(record.recordStatus) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'reviewStatus'">
-              <UiTag :tone="reviewTaskStatusTone(record.reviewStatus)">
-                {{ reviewTaskStatusLabel(record.reviewStatus) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <UiTextAction @click="openDetail(record)">
-                单条复核
-              </UiTextAction>
-            </template>
-          </template>
-        </UiDataTable>
+          批量退回（{{ selectedRowKeys.length }}）
+        </UiButton>
       </div>
-      <UiEmpty v-if="!loading && !rows.length" description="暂无审核待办" />
+      <div v-if="selectedRowKeys.length" class="review-batch-reject">
+        <Input v-model:value="batchRejectReason" placeholder="批量退回原因" />
+        <UiDatePicker
+          v-model="batchReturnDeadline"
+          show-time
+          format="YYYY-MM-DD HH:mm:ss"
+          value-format="YYYY-MM-DD HH:mm:ss"
+          placeholder="重提期限"
+          style="width: 100%"
+        />
+      </div>
+      <UiDataTable
+        row-key="id"
+        :columns="listColumns"
+        :data-source="rows"
+        :loading="loading"
+        :pagination="false"
+        empty-title="暂无审核待办"
+        empty-description="当前筛选条件下没有待复核材料，可调整院系、分类或审核状态后重试。"
+        :row-selection="{
+          selectedRowKeys,
+          onChange: (keys: string[]) => { selectedRowKeys = keys },
+          getCheckboxProps: (record: PortfolioReviewTaskSummaryVO) => ({
+            disabled: !record.batchApproveAllowed,
+          }),
+        }"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'teacher'">
+            {{ record.teacherName }}
+          </template>
+          <template v-else-if="column.key === 'riskLevel'">
+            <UiTag
+              v-if="record.riskLevel"
+              :tone="materialRiskLevelTone(record.riskLevel)"
+            >
+              {{ materialRiskLevelLabel(record.riskLevel) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'referenceTask'">
+            {{ record.referenceAiTaskId ?? '—' }}
+          </template>
+          <template v-else-if="column.key === 'aiPreReview'">
+            {{ record.aiPreReviewSummary ?? '—' }}
+          </template>
+          <template v-else-if="column.key === 'sourceType'">
+            {{ record.sourceType ? archiveRecordSourceTypeLabel(record.sourceType) : '—' }}
+          </template>
+          <template v-else-if="column.key === 'recordStatus'">
+            <UiTag
+              v-if="record.recordStatus"
+              :tone="archiveRecordStatusTone(record.recordStatus)"
+            >
+              {{ archiveRecordStatusLabel(record.recordStatus) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'reviewStatus'">
+            <UiTag :tone="reviewTaskStatusTone(record.reviewStatus)">
+              {{ reviewTaskStatusLabel(record.reviewStatus) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <UiTextAction @click="openDetail(record)">
+              {{ record.riskLevel === 'SENSITIVE' ? '单条复核' : '复核' }}
+            </UiTextAction>
+          </template>
+        </template>
+      </UiDataTable>
       <div v-if="pageTotal > 20" class="review-pagination">
         <UiButton @click="handlePageChange(pageNum - 1)" :disabled="pageNum <= 1">
           上一页

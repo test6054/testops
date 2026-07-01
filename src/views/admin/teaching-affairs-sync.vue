@@ -6,6 +6,7 @@
       >
         <template #status>
           <MarkExamSelect
+            v-if="!isExamWorkspaceRoute"
             :selected-exam-id="selectedExamId"
             :exam-options="examOptions"
             :loading="examLoading"
@@ -364,6 +365,7 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   cancelSyncTask,
   CREATABLE_SYNC_TYPE_LABEL,
@@ -393,14 +395,16 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminTeachingAffairsSync' })
 
-// B-8 统一考试选择器
+const route = useRoute()
+const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
+
 const {
   examOptions,
   loading: examLoading,
@@ -411,7 +415,7 @@ const {
   searching,
   resolvingPinned,
   init: initExamSelector,
-} = useMarkExamSelector()
+} = useMarkExamContext()
 const loading = ref(false)
 
 // ─── 同步任务 ─────────────────────────────────

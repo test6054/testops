@@ -14,14 +14,7 @@
       </ContextBar>
     </template>
 
-    <UiLoadFailure
-      v-if="loadError"
-      title="OCR 检索失败"
-      :description="loadError"
-    />
-
     <UiFilterBar
-      v-else
       v-model="filterModel"
       :fields="filterFields"
       variant="panel"
@@ -32,7 +25,6 @@
     />
 
     <UiDataTable
-      v-if="!loadError"
       v-model:current="pagination.pageNum"
       v-model:page-size="pagination.pageSize"
       :columns="columns"
@@ -73,7 +65,7 @@ import type {
 } from '@/apis/mark/archive-volume'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ARCHIVE_MATERIAL_TYPE_LABEL,
@@ -83,21 +75,24 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
+import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveVolumeSearch' })
 
-const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
-
 const router = useRouter()
 const loading = ref(false)
 const hits = ref<ArchiveVolumeSearchHitVO[]>([])
-const filterModel = reactive({ keyword: '' })
+const filterForm = reactive({ keyword: '' })
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
+})
 const pagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
 
 const filterFields: FilterField[] = [
@@ -121,7 +116,7 @@ function materialTypeLabel(code: ArchiveMaterialTypeCode) {
 }
 
 async function loadHits() {
-  const keyword = filterModel.keyword.trim()
+  const keyword = filterForm.keyword.trim()
   if (!keyword) {
     hits.value = []
     pagination.total = 0
@@ -136,10 +131,9 @@ async function loadHits() {
     })
     hits.value = readPageList(result, 'OCR 检索结果异常，请刷新后重试')
     pagination.total = readPageTotal(result)
-    clearLoadFailure()
   }
   catch (error) {
-    captureLoadFailure(error, 'OCR 检索失败')
+    showUserError(error, 'OCR 检索失败')
   }
   finally {
     loading.value = false
@@ -147,7 +141,7 @@ async function loadHits() {
 }
 
 function handleSearch() {
-  if (!filterModel.keyword.trim()) {
+  if (!filterForm.keyword.trim()) {
     message.warning('请输入检索关键词')
     return
   }
@@ -156,7 +150,7 @@ function handleSearch() {
 }
 
 function handleReset() {
-  filterModel.keyword = ''
+  filterForm.keyword = ''
   hits.value = []
   pagination.pageNum = 1
   pagination.total = 0

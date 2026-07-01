@@ -2,19 +2,15 @@
 /**
  * 数据接入 Hub 布局：Tab + router-view，聚合五类接入页。
  */
-import { computed, provide, ref } from 'vue'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import { qualityIngestEmbeddedKey } from '@/composables/quality-layout-context'
 import { useQualityStore } from '@/stores/modules/quality'
 
 const route = useRoute()
 const router = useRouter()
 const qualityStore = useQualityStore()
-
-const ingestEmbedded = ref(true)
-provide(qualityIngestEmbeddedKey, ingestEmbedded)
 
 const tabs = [
   { key: 'score-batch', label: '成绩 Excel 导入', path: '/quality/ingest-hub/score-batch' },
@@ -58,7 +54,7 @@ function handleTabChange(key: string | number) {
 .ingest-hub-layout {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-4);
 }
 
 .ingest-hub-layout__tabs {

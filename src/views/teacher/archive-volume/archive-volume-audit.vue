@@ -7,14 +7,7 @@
       />
     </template>
 
-    <UiLoadFailure
-      v-if="loadError"
-      title="加载审计事件失败"
-      :description="loadError"
-    />
-
     <UiFilterBar
-      v-else
       v-model="filterModel"
       :fields="filterFields"
       variant="panel"
@@ -25,7 +18,6 @@
     />
 
     <UiDataTable
-      v-if="!loadError"
       v-model:current="pagination.pageNum"
       v-model:page-size="pagination.pageSize"
       :columns="columns"
@@ -67,7 +59,7 @@ import type {
   ArchiveVolumeEventTypeCode,
 } from '@/apis/mark/archive-volume'
 import type { FilterField } from '@/components/ui-guide/ui/types'
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ARCHIVE_VOLUME_EVENT_TYPE_LABEL,
@@ -75,25 +67,28 @@ import {
 } from '@/apis/mark/archive-volume'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveVolumeAudit' })
 
-const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
-
 const router = useRouter()
 const loading = ref(false)
 const events = ref<ArchiveVolumeAuditEventVO[]>([])
 const pagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
-const filterModel = reactive({
+const filterForm = reactive({
   volumeId: '',
   eventType: undefined as ArchiveVolumeEventTypeCode | undefined,
+})
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
 })
 
 const eventTypeOptions = Object.entries(ARCHIVE_VOLUME_EVENT_TYPE_LABEL).map(([value, label]) => ({
@@ -125,17 +120,16 @@ async function loadEvents() {
   loading.value = true
   try {
     const result = await pageArchiveAuditEvents({
-      volumeId: filterModel.volumeId.trim() || undefined,
-      eventType: filterModel.eventType,
+      volumeId: filterForm.volumeId.trim() || undefined,
+      eventType: filterForm.eventType,
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize,
     })
     events.value = readPageList(result, '审计事件列表异常')
     pagination.total = readPageTotal(result)
-    clearLoadFailure()
   }
   catch (error) {
-    captureLoadFailure(error, '加载审计事件失败')
+    showUserError(error, '加载审计事件失败')
   }
   finally {
     loading.value = false
@@ -148,8 +142,8 @@ function handleSearch() {
 }
 
 function handleReset() {
-  filterModel.volumeId = ''
-  filterModel.eventType = undefined
+  filterForm.volumeId = ''
+  filterForm.eventType = undefined
   pagination.pageNum = 1
   void loadEvents()
 }

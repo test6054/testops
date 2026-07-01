@@ -10,6 +10,7 @@ import type {
   PortfolioArchiveFieldDeleteRequest,
   PortfolioArchiveFieldListRequest,
   PortfolioArchivePublishedFieldsRequest,
+  PortfolioArchiveTeacherReadinessVO,
   PortfolioArchiveTemplateChangeLogVO,
   PortfolioArchiveTemplateSeedResultVO,
   PortfolioArchiveTemplateVersionVO,
@@ -22,6 +23,8 @@ import http from '@/config/axios'
 const BASE = '/api/portfolio/archive-template'
 
 export const portfolioArchiveTemplateApi = {
+  getTeacherReadiness: () =>
+    http.post<PortfolioArchiveTeacherReadinessVO>(`${BASE}/teacher-readiness/get`, {}),
   listCategoryTree: (data?: PortfolioArchiveCategoryListRequest) =>
     http.post<PortfolioArchiveCategoryTreeNodeVO[]>(`${BASE}/category/list`, data ?? {}),
   saveCategory: (data: PortfolioArchiveCategorySaveRequest) =>

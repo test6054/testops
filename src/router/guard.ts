@@ -2,6 +2,7 @@ import type { Router } from 'vue-router'
 import type { RoleEnum } from '@/utils/permission'
 import type { SeoMeta } from '@/utils/seo'
 import NProgress from 'nprogress'
+import { runPortfolioTeacherReadinessGuard } from '@/router/guards/portfolio-teacher-readiness'
 import { getDefaultRoute, hasRoutePermission, requiresAuth } from '@/router/permission'
 import { useAuthStore, useRouteStore, useUserStore } from '@/stores'
 import { getValidToken } from '@/utils/auth'
@@ -11,6 +12,8 @@ import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement
 import { isValidRole } from '@/utils/permission'
 import { applySeoMeta } from '@/utils/seo'
 import { getRoutePreloadManager } from './preload-strategy'
+import { isQualityEvaluationRoute } from '@/utils/portfolio-route'
+import { ensureQualityPlanConfirmedForNavigation } from '@/utils/quality-plan-guard'
 import 'nprogress/nprogress.css'
 
 NProgress.configure({
@@ -191,6 +194,18 @@ export const setupRouterGuard = (router: Router) => {
       } else {
         // 如果默认路由也是当前路由，说明配置有问题，跳转到403页面
         return '/403'
+      }
+    }
+
+    const portfolioRedirect = await runPortfolioTeacherReadinessGuard(to)
+    if (portfolioRedirect) {
+      return portfolioRedirect
+    }
+
+    if (isQualityEvaluationRoute(to.path)) {
+      const planOk = await ensureQualityPlanConfirmedForNavigation(to.matched)
+      if (!planOk) {
+        return { path: '/quality/training-plan-workbench' }
       }
     }
   })

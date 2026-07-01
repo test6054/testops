@@ -53,22 +53,25 @@
               {{ qualityLabel(item.page.qualityStatus) }}
             </UiTag>
           </div>
-          <a-image
-            v-if="imageUrls[item.page.pageId]"
-            :src="imageUrls[item.page.pageId]"
-            :preview="imagePreview"
-            class="whole-paper-gallery__image"
-            @contextmenu="onConfidentialContextMenu"
-          >
-            <template #previewMask>点击查看原始扫描页</template>
-          </a-image>
-          <UiEmpty
-            v-else-if="imageErrors[item.page.pageId]"
-            description="暂无数据"
-          />
-          <div v-else class="whole-paper-gallery__image-placeholder">
-            <a-spin :spinning="Boolean(imageLoading[item.page.pageId])" />
-            <span>扫描页图片加载中</span>
+          <div class="whole-paper-gallery__image-wrap" @contextmenu="onConfidentialContextMenu">
+            <ScanImageStage
+              v-if="imageUrls[item.page.pageId]"
+              :src="imageUrls[item.page.pageId]"
+              :caption="`第 ${item.page.pageSeq} 页`"
+              :confidential="confidential"
+              :exam-label="examLabel"
+              :watermark-lines="watermarkLines"
+              :min-height="480"
+              class="whole-paper-gallery__image"
+            />
+            <UiEmpty
+              v-else-if="imageErrors[item.page.pageId]"
+              description="暂无数据"
+            />
+            <div v-else class="whole-paper-gallery__image-placeholder">
+              <a-spin :spinning="Boolean(imageLoading[item.page.pageId])" />
+              <span>扫描页图片加载中</span>
+            </div>
           </div>
           <a-textarea
             v-if="showPageAnnotations"
@@ -100,6 +103,7 @@ import type { VisibleWholePage } from '@/composables/useWholePaperGallery'
 import { FileImageOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
 import ConfidentialWatermarkLayer from '@/components/mark/ConfidentialWatermarkLayer.vue'
+import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -155,7 +159,6 @@ const watermarkDensity = computed(() => (props.confidential ? 'dense' : 'normal'
 const scanPagesErrorText = computed(() =>
   getUserProcessFailureMessage(props.error?.message, '扫描页加载失败，请刷新后重试'),
 )
-const imagePreview = computed(() => (props.confidential ? false : {}))
 
 function onConfidentialContextMenu(event: MouseEvent): void {
   if (props.confidential) {
@@ -205,8 +208,8 @@ watch(galleryViewportRef, (element) => {
     user-select: none;
   }
 
-  &--confidential &__image {
-    -webkit-user-drag: none;
+  &__image-wrap {
+    width: 100%;
   }
 
   &__image-placeholder {

@@ -6,6 +6,7 @@
       >
         <template #status>
           <MarkExamSelect
+            v-if="!isExamWorkspaceRoute"
             :selected-exam-id="selectedExamId"
             :exam-options="examOptions"
             :loading="examLoading"
@@ -435,7 +436,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError } from '@/utils/error-handler'
 import {
@@ -456,8 +457,8 @@ const SCANNER_BATCH_OPTION_PAGE_SIZE = 100
 
 const route = useRoute()
 const router = useRouter()
+const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
-// B-8 统一考试选择器
 const {
   examOptions,
   loading: examLoading,
@@ -467,7 +468,7 @@ const {
   searching,
   resolvingPinned,
   init: initExamSelector,
-} = useMarkExamSelector()
+} = useMarkExamContext()
 
 const activeTab = ref<'progress' | 'reviewer' | 'spotcheck' | 'reprocess'>('progress')
 

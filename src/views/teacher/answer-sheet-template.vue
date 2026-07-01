@@ -116,7 +116,6 @@ import { computed, reactive, ref, watch } from 'vue'
 import { getFileArrayBuffer } from '@/apis/edu/file-management'
 import {
   getExamTemplate,
-  isPaperTemplateNotConfiguredError,
   saveAnswerSheetTemplate,
 } from '@/apis/mark/exam-template'
 import { generateStandardAnswerSheet } from '@/apis/mark/paper-master'
@@ -128,7 +127,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { hydrateTemplatePageFileNames } from '@/utils/mark-storage-file'
 
 defineOptions({ name: 'TeacherAnswerSheetTemplate' })
@@ -248,13 +247,14 @@ async function loadTemplate(): Promise<void> {
   loading.value = true
   try {
     const tpl = await getExamTemplate(selectedExamId.value)
-    await applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages, tpl.questions)
+    if (!tpl.configured) {
+      clearTemplate()
+      return
+    }
+    await applyTemplate(tpl.templateName ?? '', tpl.totalPages, tpl.pages, tpl.questions)
   } catch (error) {
     clearTemplate()
-    if (!(error instanceof Error && isPaperTemplateNotConfiguredError(error))) {
     showUserError(error, '答卷页模板加载失败')
-      message.warning(getUserErrorMessage(error, '答卷页模板加载失败，请稍后重试'))
-    }
   } finally {
     loading.value = false
   }

@@ -1,5 +1,11 @@
-import type { ExamScannerBoundPaperItemVO, ExamScannerScanConfigVO, ScannerKioskScanMode } from '@/apis/mark/scanner-kiosk'
+import type { ExamScannerBoundPaperItemVO, ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
 import http from '@/config/axios'
+
+/** 教师 Web 端补录扫描模式 - 后端仅接受 SUPPLEMENT */
+export type TeacherScanSupplementMode = 'SUPPLEMENT'
+
+/** 教师 Web 端补录扫描模式固定值 */
+export const TEACHER_SCAN_SUPPLEMENT_MODE: TeacherScanSupplementMode = 'SUPPLEMENT'
 
 /** 扫描来源页映射 - 对应 ExamScanSourcePageMappingRequest */
 export interface ExamScanSourcePageMappingRequest {
@@ -12,7 +18,9 @@ export interface ExamTeacherScanSupplementPrepareRequest {
   examId: string
   scannerDeviceId: string
   scannerStationId: string
-  scanMode: ScannerKioskScanMode
+  scanMode: TeacherScanSupplementMode
+  /** 补扫上下文扫描批次 ID（须已 commit） */
+  scanBatchId: string
 }
 
 /** 教师 Web 端人工补录准备查询响应 - 对应 ExamTeacherScanSupplementPrepareResponse */
@@ -33,7 +41,9 @@ export interface ExamTeacherScanSupplementRequest {
   scannerDeviceId: string
   scannerStationId: string
   declaredClassIds: string[]
-  scanMode: ScannerKioskScanMode
+  scanMode: TeacherScanSupplementMode
+  /** 补扫上下文扫描批次 ID（须与设备一致） */
+  scanBatchId: string
   targetPageNo?: number
   supplementReason?: string
   replaceTargetPage: boolean

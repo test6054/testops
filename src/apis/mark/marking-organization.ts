@@ -1,4 +1,3 @@
-import type { AxiosResponse } from 'axios'
 import type { AnonymityModeCode } from './anonymity-mode'
 import type { EffectiveStatusCode } from './effective-status'
 import type { QualityDecisionCode } from './exam-scan'
@@ -6,6 +5,7 @@ import type { PaperInstanceDisplayVO } from './exam-score'
 import type { QuestionTypeCode } from './question-type'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
+import { assertUserFacingText } from '@/utils/contract-guard'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { ANONYMITY_MODE_LABEL } from './anonymity-mode'
@@ -15,15 +15,6 @@ import { QUESTION_TYPE_LABEL } from './question-type'
 const MARK_ORG_LIST_PAGE_SIZE = 100
 
 // ─── 状态枚举与文案 ─────────────────────────────────────────
-
-/** 阅卷组织未创建业务码 - 与后端 ResultCodeEnum.MARKING_ORG_NOT_CREATED 对齐 */
-export const MARKING_ORG_NOT_CREATED_CODE = 20013
-
-/** Axios 拦截器抛出的后端业务错误对象 */
-type MarkBusinessError = Error & {
-  code?: number | string
-  response?: AxiosResponse<ResultInfo<null>>
-}
 
 /** 阅卷组织状态编码 - 与后端 OrganizationStatus enum 对齐 */
 export type MarkingOrganizationStatusCode
@@ -186,17 +177,6 @@ export const MARKING_TASK_STATUS_OPTIONS: Array<{
   { value: 'FINALIZED', label: MARKING_TASK_STATUS_LABEL.FINALIZED },
   { value: 'RECYCLED', label: MARKING_TASK_STATUS_LABEL.RECYCLED },
 ]
-
-/**
- * 判断后端是否返回“阅卷组织未创建”业务态。
- * 只读取稳定 code，不依赖可变错误文案。
- */
-export function isMarkingOrgNotCreatedError(error: MarkBusinessError): boolean {
-  const code = error.code ?? error.response?.data.code
-  return Number(code) === MARKING_ORG_NOT_CREATED_CODE
-}
-
-// ─── 请求模型类型 ───────────────────────────────────────────
 
 /** 创建阅卷组织请求 - 对应后端 OrganizationCreateRequest */
 export interface OrganizationCreateRequest {
@@ -453,15 +433,17 @@ export interface QuestionMarkingGroupVO {
 
 /** 阅卷组织详情响应 - 对应后端 MarkingOrganizationResponse */
 export interface MarkingOrganizationVO {
-  id: string
+  /** 是否已创建阅卷组织 */
+  configured: boolean
+  id?: string
   examId: string
-  examName: string
+  examName?: string
   examNo?: string
-  leaderUserId: string
-  leaderUserName: string
-  leaderTeacherNo: string
-  organizationStatus: MarkingOrganizationStatusCode
-  anonymousMode: boolean
+  leaderUserId?: string
+  leaderUserName?: string
+  leaderTeacherNo?: string
+  organizationStatus?: MarkingOrganizationStatusCode
+  anonymousMode?: boolean
   remark?: string
   /** 考试主考老师用户 ID - 对应后端 MarkingOrganizationResponse.examCreateUserId */
   examCreateUserId?: string
@@ -704,18 +686,33 @@ export interface FormalSessionVO {
 export function validateQuestionMarkingGroupContract(record: QuestionMarkingGroupVO): void {
   strictEnumLabel(QUESTION_GROUP_STATUS_LABEL, record.groupStatus, '题组状态')
   strictEnumTone(QUESTION_GROUP_STATUS_TONE, record.groupStatus, '题组状态')
-  record.questions.forEach((question) => {
+  ;(record.questions ?? []).forEach((question) => {
     strictEnumLabel(QUESTION_TYPE_LABEL, question.questionType, '题型')
   })
+}
+
+const MARKING_ORG_DATA_ERROR = '阅卷组织数据异常，请刷新后重试'
+
+/** 已创建阅卷组织的响应合同校验。 */
+function validateConfiguredMarkingOrganization(record: MarkingOrganizationVO): MarkingOrganizationVO {
+  assertUserFacingText(record.id, MARKING_ORG_DATA_ERROR)
+  assertUserFacingText(record.leaderUserId, MARKING_ORG_DATA_ERROR)
+  assertUserFacingText(record.leaderUserName, MARKING_ORG_DATA_ERROR)
+  assertUserFacingText(record.leaderTeacherNo, MARKING_ORG_DATA_ERROR)
+  strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, record.organizationStatus, '阅卷组织状态')
+  strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, record.organizationStatus, '阅卷组织状态')
+  ;(record.groups ?? []).forEach(validateQuestionMarkingGroupContract)
+  return record
 }
 
 /**
  * 校验阅卷组织合同枚举，避免模板渲染路径成为首次失败位置。
  */
 export function validateMarkingOrganizationContract(record: MarkingOrganizationVO): void {
-  strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, record.organizationStatus, '阅卷组织状态')
-  strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, record.organizationStatus, '阅卷组织状态')
-  record.groups.forEach(validateQuestionMarkingGroupContract)
+  if (record.configured !== true) {
+    return
+  }
+  validateConfiguredMarkingOrganization(record)
 }
 
 /**
@@ -802,21 +799,40 @@ export function createOrganization(
 }
 
 /**
- * 查询阅卷组织详情。
+ * 查询阅卷组织详情；未创建时返回 configured=false 空壳，不触发业务错误。
  * POST /api/mark/organization/detail
  */
-export function getOrganization(request: OrganizationQueryRequest): Promise<MarkingOrganizationVO> {
-  return http.post<MarkingOrganizationVO>('/api/mark/organization/detail', request)
+export async function getOrganization(request: OrganizationQueryRequest): Promise<MarkingOrganizationVO> {
+  const record = await http.post<MarkingOrganizationVO>('/api/mark/organization/detail', request)
+  assertUserFacingText(record.examId, MARKING_ORG_DATA_ERROR)
+  if (record.configured !== true) {
+    return {
+      configured: false,
+      examId: record.examId,
+      groups: [],
+    }
+  }
+  return validateConfiguredMarkingOrganization({
+    ...record,
+    configured: true,
+    groups: record.groups ?? [],
+  })
 }
 
 /**
  * 按阅卷组织ID查询详情。
  * POST /api/mark/organization/detailById
  */
-export function getOrganizationById(
+export async function getOrganizationById(
   request: OrganizationQueryByIdRequest,
 ): Promise<MarkingOrganizationVO> {
-  return http.post<MarkingOrganizationVO>('/api/mark/organization/detailById', request)
+  const record = await http.post<MarkingOrganizationVO>('/api/mark/organization/detailById', request)
+  assertUserFacingText(record.examId, MARKING_ORG_DATA_ERROR)
+  return validateConfiguredMarkingOrganization({
+    ...record,
+    configured: true,
+    groups: record.groups ?? [],
+  })
 }
 
 /**

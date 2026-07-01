@@ -989,7 +989,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <QualityIngestPageShell>
+  <QualityIngestPageShell embedded>
     <SignalBand :metrics="signals" compact class="external-pull__signals" />
 
     <TaskResultPanel

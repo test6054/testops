@@ -86,10 +86,27 @@ const query = reactive<ArchiveQueryRequest>({
   pageNum: 1,
   pageSize: 10,
   businessType: undefined,
+  excludeBusinessType: undefined,
   archiveCategory: '',
   archiveOfficeConfirmed: undefined,
   keyword: '',
 })
+
+type ArchiveListTab = 'expert' | 'annual'
+const archiveListTab = ref<ArchiveListTab>('expert')
+
+function applyArchiveListTab(tab: ArchiveListTab): void {
+  archiveListTab.value = tab
+  query.pageNum = 1
+  filterModel.value.businessType = undefined
+  if (tab === 'expert') {
+    query.businessType = 'EXPERT_PACKAGE'
+    query.excludeBusinessType = undefined
+  } else {
+    query.businessType = undefined
+    query.excludeBusinessType = 'EXPERT_PACKAGE'
+  }
+}
 
 const businessTypeOptions = ARCHIVE_BUSINESS_TYPE_CODES.map((value) => ({
   value,
@@ -102,35 +119,44 @@ const filterModel = ref<ArchiveFilterModel>({
   keyword: '',
 })
 
-const filterFields: FilterField[] = [
-  {
-    key: 'businessType',
-    type: 'select',
-    label: '业务类型',
-    placeholder: '业务类型',
-    allowClear: true,
-    width: 180,
-    options: businessTypeOptions,
-  },
-  {
-    key: 'archiveCategory',
-    type: 'input',
-    label: '归档分类',
-    placeholder: '归档分类',
-    allowClear: true,
-    width: 130,
-    triggerSearchOnChange: false,
-  },
-  {
-    key: 'keyword',
-    type: 'input',
-    label: '关键字',
-    placeholder: '关键字',
-    allowClear: true,
-    width: 180,
-    triggerSearchOnChange: false,
-  },
-]
+const annualBusinessTypeOptions = businessTypeOptions.filter(
+  item => item.value !== 'EXPERT_PACKAGE',
+)
+
+const filterFields = computed((): FilterField[] => {
+  const fields: FilterField[] = [
+    {
+      key: 'archiveCategory',
+      type: 'input',
+      label: '归档分类',
+      placeholder: '归档分类',
+      allowClear: true,
+      width: 130,
+      triggerSearchOnChange: false,
+    },
+    {
+      key: 'keyword',
+      type: 'input',
+      label: '关键字',
+      placeholder: '关键字',
+      allowClear: true,
+      width: 180,
+      triggerSearchOnChange: false,
+    },
+  ]
+  if (archiveListTab.value === 'annual') {
+    fields.unshift({
+      key: 'businessType',
+      type: 'select',
+      label: '业务类型',
+      placeholder: '业务类型',
+      allowClear: true,
+      width: 180,
+      options: annualBusinessTypeOptions,
+    })
+  }
+  return fields
+})
 
 const exportVisible = ref(false)
 const exportSubmitting = ref(false)
@@ -233,6 +259,7 @@ async function loadList() {
     const page = await archiveApi.page({
       ...query,
       businessType: query.businessType || undefined,
+      excludeBusinessType: query.excludeBusinessType || undefined,
       archiveCategory: query.archiveCategory?.trim() || undefined,
       keyword: query.keyword?.trim() || undefined,
     })
@@ -264,7 +291,15 @@ function handlePageChange(page: { current: number, pageSize: number }) {
 }
 
 function syncFilterToQuery() {
-  query.businessType = filterModel.value.businessType
+  if (archiveListTab.value === 'expert') {
+    query.businessType = 'EXPERT_PACKAGE'
+    query.excludeBusinessType = undefined
+    filterModel.value.businessType = undefined
+  }
+  else {
+    query.excludeBusinessType = 'EXPERT_PACKAGE'
+    query.businessType = filterModel.value.businessType || undefined
+  }
   query.archiveCategory = filterModel.value.archiveCategory
   query.keyword = filterModel.value.keyword
 }
@@ -584,10 +619,7 @@ watch(
 )
 
 onMounted(async () => {
-  if (!qualityStore.currentTrainingPlanId) {
-    const plans = await qualityStore.loadTrainingPlanOptions()
-    if (plans.length) qualityStore.setTrainingPlan(plans[0].id)
-  }
+  applyArchiveListTab('expert')
   await loadList()
 })
 </script>
@@ -605,6 +637,15 @@ onMounted(async () => {
         </template>
       </QualityPageContextBar>
     </template>
+
+    <a-tabs
+      :active-key="archiveListTab"
+      class="archive-page__tabs"
+      @change="(key: string | number) => { applyArchiveListTab(String(key) as ArchiveListTab); void loadList() }"
+    >
+      <a-tab-pane key="expert" tab="专家材料包" />
+      <a-tab-pane key="annual" tab="年度归档记录" />
+    </a-tabs>
 
     <SignalBand :metrics="signals" compact class="archive__signals" />
 

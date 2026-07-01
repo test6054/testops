@@ -43,10 +43,7 @@ import { message } from 'ant-design-vue'
 import { debounce } from 'lodash-es'
 import { computed, ref, watch } from 'vue'
 import { useDevice } from '@/hooks'
-import { useAppStore, useRouteStore } from '@/stores'
-import { useAuthStore } from '@/stores/modules/auth'
-import { useQualityStore } from '@/stores/modules/quality'
-import { RoleEnum } from '@/utils/permission'
+import { useAppStore, useRouteStore, useQualityStore } from '@/stores'
 import { isQualityEvaluationRoute, PORTFOLIO_ROUTE_PREFIX } from '@/utils/portfolio-route'
 import { isExternal } from '@/utils/validate'
 import DualDomainSideNav from './DualDomainSideNav.vue'
@@ -70,7 +67,6 @@ const route = useRoute()
 const router = useRouter()
 const appStore = useAppStore()
 const routeStore = useRouteStore()
-const authStore = useAuthStore()
 const qualityStore = useQualityStore()
 
 const ROLE_LAYOUT_PREFIXES = ['/teacher', '/student', '/quality', PORTFOLIO_ROUTE_PREFIX] as const
@@ -86,8 +82,11 @@ function toAbsoluteLayoutPath(prefix: string, child: RouteRecordRaw): RouteRecor
   return { ...child, path: absPath }
 }
 
-function isMenuItemDisabled(_item: RouteRecordRaw): boolean {
-  // 业务菜单不在侧栏置灰；范围与租户校验在页面顶栏/路由内完成
+function isMenuItemDisabled(item: RouteRecordRaw): boolean {
+  if (item.meta?.qualityGate === 'plan-confirmed') {
+    const qualityStore = useQualityStore()
+    return qualityStore.currentPlan?.confirmationStatus !== 'CONFIRMED'
+  }
   return false
 }
 
@@ -97,8 +96,22 @@ function buildLayoutChildren(prefix: string): RouteRecordRaw[] {
   if (!layoutRoute?.children) {
     return []
   }
-  return layoutRoute.children
-    .filter(isSidebarMenuRoute)
+
+  function flattenChildren(children: RouteRecordRaw[]): RouteRecordRaw[] {
+    const items: RouteRecordRaw[] = []
+    for (const child of children) {
+      if (child.meta?.hideInMenu && child.children?.length) {
+        items.push(...flattenChildren(child.children))
+        continue
+      }
+      if (isSidebarMenuRoute(child)) {
+        items.push(child)
+      }
+    }
+    return items
+  }
+
+  return flattenChildren(layoutRoute.children)
     .map((child) => toAbsoluteLayoutPath(prefix, child))
     .map((child) => ({
       ...child,
@@ -152,8 +165,6 @@ const layoutRouteSource = computed(() => {
 const hasMarkingDomain = computed(() => layoutRouteSource.value.some((entry) => entry.path === '/teacher'))
 const hasQualityDomain = computed(() => layoutRouteSource.value.some((entry) => entry.path === '/quality'))
 const hasPortfolioDomain = computed(() => layoutRouteSource.value.some((entry) => entry.path === PORTFOLIO_ROUTE_PREFIX))
-const isSuperAdmin = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
-
 const isDualTeacherQualityMenu = computed(() => {
   if (props.menus) {
     return false
@@ -178,20 +189,18 @@ const isRoleLayoutRoute = computed(() => {
 })
 
 const markingSidebarRoutes = computed(() => buildLayoutChildren('/teacher'))
-const qualitySidebarRoutes = computed(() => buildLayoutChildren('/quality'))
+const qualitySidebarRoutes = computed(() => {
+  void qualityStore.currentPlan?.confirmationStatus
+  void qualityStore.currentTrainingPlanId
+  return buildLayoutChildren('/quality')
+})
 const portfolioSidebarRoutes = computed(() => buildLayoutChildren(PORTFOLIO_ROUTE_PREFIX))
 
-const qualitySidebarRoutesForMenu = computed(() => {
-  if (!isSuperAdmin.value) {
-    return qualitySidebarRoutes.value
-  }
-  return qualitySidebarRoutes.value.filter((item) => item.meta?.menuGroup !== QUALITY_ADMIN_MENU_GROUP)
-})
+const qualitySidebarRoutesForMenu = computed(() =>
+  qualitySidebarRoutes.value.filter((item) => item.meta?.menuGroup !== QUALITY_ADMIN_MENU_GROUP),
+)
 
 const markingSidebarRoutesForMenu = computed(() => {
-  if (!isSuperAdmin.value) {
-    return markingSidebarRoutes.value
-  }
   const platformAdminRoutes = qualitySidebarRoutes.value.filter(
     (item) => item.meta?.menuGroup === QUALITY_ADMIN_MENU_GROUP,
   )
@@ -245,23 +254,6 @@ const updateStableRoutes = debounce(() => {
 }, 100)
 
 watch(sidebarRoutes, updateStableRoutes, { immediate: true, deep: true })
-
-watch(
-  () =>
-    [
-      isQualityEvaluationRoute(route.path),
-      qualityStore.currentProgramId,
-      qualityStore.currentTrainingPlanId,
-    ] as const,
-  ([isQuality, programId, planId]) => {
-    if (isQuality && (programId || planId)) {
-      void qualityStore.loadTrainingPlanOptions({
-        programId: programId || undefined,
-      })
-    }
-  },
-  { immediate: true },
-)
 
 function resolveMenuSelectedKey(raw: string): string {
   if (raw.startsWith('/')) {

@@ -1,20 +1,20 @@
-import type { RouteLocationNormalized, RouteRecordNormalized } from 'vue-router'
+import type { RouteRecordNormalized } from 'vue-router'
 import { message } from 'ant-design-vue'
+import type { QualityGate } from '@/constants/quality-scope-profile'
 import { useQualityStore } from '@/stores/modules/quality'
 
-/** 路由链是否要求培养方案已确认 */
+/** 路由链是否要求培养方案已确认（仅 qualityGate） */
 export function routeRequiresPlanConfirmed(matched: RouteRecordNormalized[]): boolean {
-  return matched.some((record) => record.meta.requiresPlanConfirmed === true)
+  return matched.some((record) => record.meta?.qualityGate === ('plan-confirmed' satisfies QualityGate))
 }
 
 /**
  * 质量评价 Publish 门控：进入达成度/报告等页面前校验培养方案已确认。
- * 会先确保 plan options 已加载，缺失时显式失败，不做静默 fallback。
  */
 export async function ensureQualityPlanConfirmedForNavigation(
-  to?: RouteLocationNormalized,
+  matched: RouteRecordNormalized[],
 ): Promise<boolean> {
-  if (to && !routeRequiresPlanConfirmed(to.matched)) {
+  if (!routeRequiresPlanConfirmed(matched)) {
     return true
   }
   const qualityStore = useQualityStore()

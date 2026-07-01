@@ -10,6 +10,7 @@ import { jwtDecode } from 'jwt-decode'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import * as authApi from '@/apis/auth'
+import { clearAllGradingDrafts } from '@/composables/useGradingDraftPersist'
 import { resetAuthState } from '@/config/axios/auth-state'
 import {
   STORAGE_REFRESH_TOKEN,
@@ -673,6 +674,7 @@ export const useAuthStore = defineStore(
 
       userStore.clearUserInfo()
       resetToken()
+      await clearAllGradingDrafts()
 
       syncRememberedAccountOnLogout()
 

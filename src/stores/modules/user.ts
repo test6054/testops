@@ -74,9 +74,24 @@ export const useUserStore = defineStore(
     // 获取用户信息的Promise引用，防止重复调用
     const getUserInfoPromise = ref<Promise<UserDetailedInfoVO | void> | null>(null)
 
+    /** 登录接口部分字段仍为 number，与 detailed/me、选择器 string 合同对齐。 */
+    function normalizeUserIdentityFields(userData: Partial<UserLoginResponseDto>): Partial<UserLoginResponseDto> {
+      const normalized: Partial<UserLoginResponseDto> = { ...userData }
+      if (userData.userId != null && userData.userId !== '') {
+        normalized.userId = String(userData.userId)
+      }
+      if (userData.tenantId != null && userData.tenantId !== '') {
+        normalized.tenantId = String(userData.tenantId)
+      }
+      if (userData.roleId != null && userData.roleId !== '') {
+        normalized.roleId = String(userData.roleId)
+      }
+      return normalized
+    }
+
     // 设置用户信息
     const setUserInfo = (userData: Partial<UserLoginResponseDto>) => {
-      Object.assign(userInfo, userData)
+      Object.assign(userInfo, normalizeUserIdentityFields(userData))
 
       // 更新 auth store 中的角色信息
       const authStore = useAuthStore()
@@ -184,7 +199,7 @@ export const useUserStore = defineStore(
           const userData = await getUserDetailedInfo()
 
           // 使用 Object.assign 统一赋值，避免逐字段遗漏
-          Object.assign(userInfo, userData)
+          Object.assign(userInfo, normalizeUserIdentityFields(userData))
 
           // 处理学校名称：从 studentDetails 或 teacherDetails 中提取
           if (userData.studentDetails?.schoolName) {

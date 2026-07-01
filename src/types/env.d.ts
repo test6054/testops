@@ -98,8 +98,12 @@ declare module 'vue-router' {
     journeyKey?: 'overview' | 'prep' | 'scan' | 'assign' | 'mark' | 'publish' | 'archive'
     /** 工作台侧栏分组 */
     workspacePhase?: string
-    /** 侧栏项是否要求培养方案已确认后才可进入 */
-    requiresPlanConfirmed?: boolean
+    /** 质量评价 scope 维度（路由 meta.scopeProfile） */
+    scopeProfile?: import('@/constants/quality-scope-profile').QualityScopeProfile
+    /** Publish 门控：培养方案已确认 */
+    qualityGate?: import('@/constants/quality-scope-profile').QualityGate
+    /** 覆盖默认 scope watch 字段 */
+    scopeWatchFields?: import('@/constants/quality-scope-profile').QualityStoreScopeField[]
     /** 侧栏项禁用（由 Menu 根据业务状态写入） */
     disabled?: boolean
   }

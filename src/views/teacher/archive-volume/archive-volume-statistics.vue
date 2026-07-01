@@ -14,13 +14,7 @@
       </ContextBar>
     </template>
 
-    <UiLoadFailure
-      v-if="loadError"
-      title="加载迎评统计失败"
-      :description="loadError"
-    />
-
-    <a-tabs v-else v-model:active-key="statsTab" class="archive-volume-statistics__tabs">
+    <a-tabs v-model:active-key="statsTab" class="archive-volume-statistics__tabs">
       <a-tab-pane key="overview" tab="迎评统计">
         <UiFilterBar
           v-model="filterModel"
@@ -162,12 +156,10 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
-import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { downloadArchiveExcelBase64 } from '@/utils/archive-excel-export'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -175,8 +167,6 @@ import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveVolumeStatistics' })
-
-const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
 
 const router = useRouter()
 const {
@@ -195,15 +185,27 @@ const statistics = ref<ArchiveVolumeStatisticsVO | null>(null)
 const destructionRows = ref<ArchiveVolumeDestructionLedgerRowVO[]>([])
 const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 
-const filterModel = reactive({
+const filterForm = reactive({
   academicYear: '',
   semester: '',
   departmentId: undefined as string | undefined,
 })
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
+})
 
-const destructionFilterModel = reactive({
+const destructionFilterForm = reactive({
   departmentId: undefined as string | undefined,
   keyword: '',
+})
+const destructionFilterModel = computed<Record<string, unknown>>({
+  get: () => destructionFilterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(destructionFilterForm, value)
+  },
 })
 
 const destructionPagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
@@ -286,8 +288,8 @@ function destructionStatusTone(code: ArchiveDestructionStatusCode): BadgeTone {
 function applyScopedDepartmentDefault() {
   const scopeIds = listScopedDepartmentIds.value
   if (scopeIds.length === 1) {
-    filterModel.departmentId = scopeIds[0]
-    destructionFilterModel.departmentId = scopeIds[0]
+    filterForm.departmentId = scopeIds[0]
+    destructionFilterForm.departmentId = scopeIds[0]
   }
 }
 
@@ -309,14 +311,13 @@ async function loadStatistics() {
   loading.value = true
   try {
     statistics.value = await getArchiveVolumeStatistics({
-      academicYear: filterModel.academicYear.trim() || undefined,
-      semester: filterModel.semester.trim() || undefined,
-      departmentId: filterModel.departmentId,
+      academicYear: filterForm.academicYear.trim() || undefined,
+      semester: filterForm.semester.trim() || undefined,
+      departmentId: filterForm.departmentId,
     })
-    clearLoadFailure()
   }
   catch (error) {
-    captureLoadFailure(error, '加载迎评统计失败')
+    showUserError(error, '加载迎评统计失败')
   }
   finally {
     loading.value = false
@@ -327,8 +328,8 @@ async function loadDestructionLedger() {
   destructionLoading.value = true
   try {
     const result = await pageDestructionLedger({
-      departmentId: destructionFilterModel.departmentId,
-      keyword: destructionFilterModel.keyword.trim() || undefined,
+      departmentId: destructionFilterForm.departmentId,
+      keyword: destructionFilterForm.keyword.trim() || undefined,
       pageNum: destructionPagination.pageNum,
       pageSize: destructionPagination.pageSize,
     })
@@ -344,17 +345,17 @@ async function loadDestructionLedger() {
 }
 
 function handleReset() {
-  filterModel.academicYear = ''
-  filterModel.semester = ''
-  filterModel.departmentId = departmentFilterDisabled.value
+  filterForm.academicYear = ''
+  filterForm.semester = ''
+  filterForm.departmentId = departmentFilterDisabled.value
     ? listScopedDepartmentIds.value[0]
     : undefined
   statistics.value = null
 }
 
 function handleDestructionReset() {
-  destructionFilterModel.keyword = ''
-  destructionFilterModel.departmentId = departmentFilterDisabled.value
+  destructionFilterForm.keyword = ''
+  destructionFilterForm.departmentId = departmentFilterDisabled.value
     ? listScopedDepartmentIds.value[0]
     : undefined
   destructionPagination.pageNum = 1
@@ -370,9 +371,9 @@ async function exportOverviewExcel() {
   exportOverviewLoading.value = true
   try {
     const result = await exportArchiveVolumeStatisticsExcel({
-      academicYear: filterModel.academicYear.trim() || undefined,
-      semester: filterModel.semester.trim() || undefined,
-      departmentId: filterModel.departmentId,
+      academicYear: filterForm.academicYear.trim() || undefined,
+      semester: filterForm.semester.trim() || undefined,
+      departmentId: filterForm.departmentId,
     })
     downloadArchiveExcelBase64(result.fileName, result.fileContentBase64)
   }
@@ -388,8 +389,8 @@ async function exportDestructionExcel() {
   exportDestructionLoading.value = true
   try {
     const result = await exportDestructionLedgerExcel({
-      departmentId: destructionFilterModel.departmentId,
-      keyword: destructionFilterModel.keyword.trim() || undefined,
+      departmentId: destructionFilterForm.departmentId,
+      keyword: destructionFilterForm.keyword.trim() || undefined,
       pageNum: destructionPagination.pageNum,
       pageSize: destructionPagination.pageSize,
     })

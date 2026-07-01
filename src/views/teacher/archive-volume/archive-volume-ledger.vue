@@ -14,13 +14,7 @@
       </ContextBar>
     </template>
 
-    <UiLoadFailure
-      v-if="loadError"
-      title="加载查阅台账失败"
-      :description="loadError"
-    />
-
-    <a-tabs v-else v-model:active-key="ledgerTab" class="archive-volume-ledger__tabs">
+    <a-tabs v-model:active-key="ledgerTab" class="archive-volume-ledger__tabs">
       <a-tab-pane key="volume" tab="单卷台账">
         <UiFilterBar
           v-model="volumeFilterModel"
@@ -138,19 +132,15 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
-import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveVolumeLedger' })
-
-const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
 
 const router = useRouter()
 const {
@@ -169,10 +159,22 @@ const accessRecords = ref<ArchiveVolumeAccessRecordVO[]>([])
 const tenantRows = ref<ArchiveVolumeAccessLedgerRowVO[]>([])
 const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 
-const volumeFilterModel = reactive({ keyword: '' })
-const tenantFilterModel = reactive({
+const volumeFilterForm = reactive({ keyword: '' })
+const volumeFilterModel = computed<Record<string, unknown>>({
+  get: () => volumeFilterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(volumeFilterForm, value)
+  },
+})
+const tenantFilterForm = reactive({
   departmentId: undefined as string | undefined,
   accessStatus: undefined as ArchiveAccessStatusCode | undefined,
+})
+const tenantFilterModel = computed<Record<string, unknown>>({
+  get: () => tenantFilterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(tenantFilterForm, value)
+  },
 })
 const tenantPagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
 
@@ -234,7 +236,7 @@ function accessStatusTone(code: ArchiveAccessStatusCode): BadgeTone {
 function applyScopedDepartmentDefault() {
   const scopeIds = listScopedDepartmentIds.value
   if (scopeIds.length === 1) {
-    tenantFilterModel.departmentId = scopeIds[0]
+    tenantFilterForm.departmentId = scopeIds[0]
   }
 }
 
@@ -251,7 +253,7 @@ async function loadDepartments() {
 }
 
 async function locateVolume() {
-  const keyword = volumeFilterModel.keyword.trim()
+  const keyword = volumeFilterForm.keyword.trim()
   if (!keyword) {
     message.warning('请输入关键词')
     return
@@ -284,17 +286,16 @@ async function loadTenantLedger() {
   tenantLoading.value = true
   try {
     const result = await pageAccessLedger({
-      departmentId: tenantFilterModel.departmentId,
-      accessStatus: tenantFilterModel.accessStatus,
+      departmentId: tenantFilterForm.departmentId,
+      accessStatus: tenantFilterForm.accessStatus,
       pageNum: tenantPagination.pageNum,
       pageSize: tenantPagination.pageSize,
     })
     tenantRows.value = readPageList(result, '查阅利用台账异常')
     tenantPagination.total = readPageTotal(result)
-    clearLoadFailure()
   }
   catch (error) {
-    captureLoadFailure(error, '加载查阅台账失败')
+    showUserError(error, '加载查阅台账失败')
   }
   finally {
     tenantLoading.value = false
@@ -302,15 +303,15 @@ async function loadTenantLedger() {
 }
 
 function handleVolumeReset() {
-  volumeFilterModel.keyword = ''
+  volumeFilterForm.keyword = ''
   selectedVolumeId.value = ''
   selectedArchiveNo.value = ''
   accessRecords.value = []
 }
 
 function handleTenantReset() {
-  tenantFilterModel.accessStatus = undefined
-  tenantFilterModel.departmentId = tenantDepartmentDisabled.value
+  tenantFilterForm.accessStatus = undefined
+  tenantFilterForm.departmentId = tenantDepartmentDisabled.value
     ? listScopedDepartmentIds.value[0]
     : undefined
   tenantPagination.pageNum = 1

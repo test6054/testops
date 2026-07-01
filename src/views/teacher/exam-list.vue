@@ -1,42 +1,34 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        title="考试列表"
-        subtitle="参与角色：绿色主考、蓝色评阅、灰色管理视图"
+      <UiFilterBar
+        v-model="filterModel"
+        :fields="filterFields"
+        variant="panel"
+        show-labels
+        search-text="查询"
+        actions-align="end"
+        class="exam-list-page__filter"
+        @search="handleSearch"
+        @reset="handleReset"
       >
-        <template #toolbar>
-          <UiFilterBar
-            v-model="filterModel"
-            :fields="filterFields"
-            variant="panel"
-            show-labels
-            search-text="查询"
-            actions-align="end"
-            @search="handleSearch"
-            @reset="handleReset"
-          >
-            <template #field-dateRange>
-              <a-range-picker
-                v-model:value="filterForm.dateRange"
-                style="width: 260px"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                :placeholder="['开始日期', '结束日期']"
-                allow-clear
-              />
-            </template>
-            <template #actions>
-              <UiButton size="sm" @click="goCreateExam">
-                <template #icon><PlusOutlined /></template>
-                新建考试
-              </UiButton>
-            </template>
-          </UiFilterBar>
+        <template #field-dateRange>
+          <a-range-picker
+            v-model:value="filterForm.dateRange"
+            style="width: 260px"
+            format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            :placeholder="['开始日期', '结束日期']"
+            allow-clear
+          />
         </template>
-      </ContextBar>
+        <template #actions>
+          <UiButton size="sm" @click="goCreateExam">
+            <template #icon><PlusOutlined /></template>
+            新建考试
+          </UiButton>
+        </template>
+      </UiFilterBar>
     </template>
 
     <template #signal>
@@ -47,14 +39,7 @@
       />
     </template>
 
-    <UiLoadFailure
-      v-if="loadError"
-      title="考试列表加载失败"
-      :description="loadError"
-    />
-
     <UiSectionTabs
-      v-else
       v-model="listTab"
       :items="examListTabs"
       compact
@@ -330,9 +315,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
-import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -340,7 +323,6 @@ import {
   buildCloseExamBlockedContent,
   buildCloseExamReadyContent,
 } from '@/composables/useExamArchiveGateHint'
-import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
@@ -357,8 +339,6 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ExamListExamWindowCell from '@/views/teacher/components/ExamListExamWindowCell.vue'
 
 defineOptions({ name: 'TeacherExamList' })
-
-const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
 
 const router = useRouter()
 const route = useRoute()
@@ -619,8 +599,25 @@ const examListTabs = computed<UiSectionTabItem[]>(() => [
 
 watch(listTab, () => {
   if (suppressListTabWatch) return
-  void reloadListAndCounts()
+  void reloadListAndCounts({ resolveTab: false })
 })
+
+/** 优先推进 / 进行中无数据时，依次回退到下一 Tab（全部始终可停留）。 */
+function resolveListTabFromCounts(): void {
+  suppressListTabWatch = true
+  try {
+    let tab = listTab.value
+    if (tab === 'priority' && priorityBadgeTotal.value === 0) {
+      tab = 'ongoing'
+    }
+    if (tab === 'ongoing' && ongoingBadgeTotal.value === 0) {
+      tab = 'all'
+    }
+    listTab.value = tab
+  } finally {
+    suppressListTabWatch = false
+  }
+}
 
 const summarySignalMetrics = computed((): SignalMetric[] => {
   const dash = '—'
@@ -835,9 +832,8 @@ async function loadTabData(scope: ExamListScopeCode): Promise<void> {
       paginationState.pageSize = result.pageSize
     }
     syncTabBadgeFromPagination(scope)
-    clearLoadFailure()
   } catch (error) {
-    captureLoadFailure(error, '考试列表加载失败')
+    showUserError(error, '考试列表加载失败')
     dataSourceRef.value = []
     paginationState.total = 0
   } finally {
@@ -1255,11 +1251,12 @@ function confirmDelete(exam: ExamWorkbenchSummaryVO): void {
   })
 }
 
-async function reloadListAndCounts(): Promise<void> {
-  await Promise.all([
-    loadTabData(tabToScope(listTab.value)),
-    loadWorkbenchScopeCounts(),
-  ])
+async function reloadListAndCounts(options?: { resolveTab?: boolean }): Promise<void> {
+  await loadWorkbenchScopeCounts()
+  if (options?.resolveTab !== false) {
+    resolveListTabFromCounts()
+  }
+  await loadTabData(tabToScope(listTab.value))
 }
 
 async function reloadAll(): Promise<void> {
@@ -1277,6 +1274,10 @@ onActivated(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.exam-list-page__filter {
+  margin-bottom: var(--dp-space-5, 20px);
 }
 
 .exam-list-page__signals {

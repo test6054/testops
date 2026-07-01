@@ -523,7 +523,6 @@ import {
 } from '@/apis/mark/exam-standard-answer'
 import {
   getExamTemplate,
-  isPaperTemplateNotConfiguredError,
   saveExamTemplate,
 } from '@/apis/mark/exam-template'
 import { revokePaperMaster } from '@/apis/mark/paper-master'
@@ -540,7 +539,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { hydrateTemplatePageFileNames } from '@/utils/mark-storage-file'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -609,22 +608,18 @@ const examDetail = ref<ExamDetailVO | null>(null)
 const layoutMode = ref<ExamMaterialLayoutModeCode | undefined>()
 const isFullPaperLayout = computed(() => layoutMode.value === 'FULL_PAPER')
 
-/** 与后端 requireExamNotPrintedOrScanned + 母版存在守门对齐，禁止前端继续编辑。 */
+/** 与后端 requireExamNotPrintedOrScanned 对齐，禁止前端继续编辑。 */
 const templateWriteLocked = computed(() => {
   const detail = examDetail.value
   if (!detail) return false
   if (detail.status === 'CLOSED') return true
-  if (detail.layoutModeLocked === true) return true
-  return detail.masterConfigured === true;
+  return detail.layoutModeLocked === true
 })
 
 const templateWriteLockReason = computed(() => {
   const detail = examDetail.value
   if (!detail) return ''
   if (detail.status === 'CLOSED') return '考试已关闭，模板与标准答案不可再修改'
-  if (detail.masterConfigured === true) {
-    return '考试已生成试卷母版，请先撤销母版后再修改模板或标准答案'
-  }
   if (detail.layoutModeLocked === true) {
     return '考试已开印或已开始扫描，模板与标准答案已锁定'
   }
@@ -801,6 +796,14 @@ async function applyTemplate(
   })
 }
 
+function resetTemplateForm(): void {
+  form.templateName = ''
+  form.totalPages = undefined
+  pages.value = []
+  questions.splice(0, questions.length)
+  clearAnswerPreviewCache()
+}
+
 async function loadTemplate(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
@@ -810,13 +813,19 @@ async function loadTemplate(): Promise<void> {
     examDetail.value = detail
     layoutMode.value = detail.materialLayoutMode
     const tpl = await getExamTemplate(selectedExamId.value)
-    await applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages, tpl.questions)
-  } catch (error) {
-    clearTemplate()
-    if (!(error instanceof Error && isPaperTemplateNotConfiguredError(error))) {
-    showUserError(error, '试卷模板加载失败')
-      message.warning(getUserErrorMessage(error, '题目模板加载失败，请稍后重试'))
+    if (!tpl.configured) {
+      resetTemplateForm()
+      return
     }
+    await applyTemplate(
+      tpl.templateName ?? '',
+      tpl.totalPages,
+      tpl.pages,
+      tpl.questions,
+    )
+  } catch (error) {
+    resetTemplateForm()
+    showUserError(error, '试卷模板加载失败')
   } finally {
     loading.value = false
   }

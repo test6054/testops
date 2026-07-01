@@ -53,22 +53,40 @@
           {{ materialTypeLabel(record.materialType) }}
         </template>
         <template v-else-if="column.key === 'submissionStatus'">
-          <UiTag
+          <span
             v-if="record.submissionStatus"
-            :tone="submissionStatusTone(record.submissionStatus)"
-            size="sm"
+            class="archive-volume-material-table__status"
           >
-            {{ submissionStatusLabel(record.submissionStatus) }}
-          </UiTag>
+            <span
+              class="archive-volume-material-table__status-icon"
+              :class="`archive-volume-material-table__status-icon--${submissionStatusTone(record.submissionStatus)}`"
+              aria-hidden="true"
+            />
+            <UiTag
+              :tone="submissionStatusTone(record.submissionStatus)"
+              size="sm"
+            >
+              {{ submissionStatusLabel(record.submissionStatus) }}
+            </UiTag>
+          </span>
         </template>
         <template v-else-if="column.key === 'ocrStatus'">
-          <UiTag
+          <span
             v-if="record.ocrStatus"
-            :tone="materialOcrStatusTone(record.ocrStatus)"
-            size="sm"
+            class="archive-volume-material-table__status"
           >
-            {{ materialOcrStatusLabel(record.ocrStatus) }}
-          </UiTag>
+            <span
+              class="archive-volume-material-table__status-icon"
+              :class="`archive-volume-material-table__status-icon--${materialOcrStatusTone(record.ocrStatus)}`"
+              aria-hidden="true"
+            />
+            <UiTag
+              :tone="materialOcrStatusTone(record.ocrStatus)"
+              size="sm"
+            >
+              {{ materialOcrStatusLabel(record.ocrStatus) }}
+            </UiTag>
+          </span>
           <span
             v-if="record.ocrStatus === 'FAILED' && record.ocrFailureReason"
             class="archive-volume-material-table__ocr-failure"
@@ -621,5 +639,42 @@ async function submitSharedRef() {
 
 .archive-volume-material-table__mapping-link {
   margin-left: 8px;
+}
+
+.archive-volume-material-table__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-1, 4px);
+}
+
+.archive-volume-material-table__status-icon {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.archive-volume-material-table__status-icon--gray {
+  background: var(--dp-color-text-quaternary, #bfbfbf);
+}
+
+.archive-volume-material-table__status-icon--blue {
+  background: var(--dp-color-primary, #1677ff);
+}
+
+.archive-volume-material-table__status-icon--green {
+  background: var(--dp-color-success, #52c41a);
+}
+
+.archive-volume-material-table__status-icon--red {
+  background: var(--dp-color-error, #ff4d4f);
+}
+
+.archive-volume-material-table__status-icon--orange {
+  background: var(--dp-color-warning, #fa8c16);
+}
+
+.archive-volume-material-table__status-icon--purple {
+  background: #722ed1;
 }
 </style>

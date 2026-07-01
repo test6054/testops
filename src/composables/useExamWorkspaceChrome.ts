@@ -12,6 +12,7 @@ import { formatSemester } from '@/types/enums/semester-enum'
 import { buildExamWorkspaceSignalMetrics } from '@/utils/exam-workspace-signal-metrics'
 import { navigateToJourneyStep, navigateToMarkStage } from '@/utils/mark-stage-navigation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import { showUserError } from '@/utils/error-handler'
 
 export interface UseExamWorkspaceChromeOptions {
   examId: ComputedRef<string>
@@ -29,7 +30,6 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
   const router = useRouter()
   const examDetail = ref<ExamDetailVO | null>(null)
   const detailLoading = ref(false)
-  const detailError = ref<string | null>(null)
 
   const markingProgress = computed<MarkingProgressVO | null>(
     () => options.snapshot.value?.markingProgress ?? null,
@@ -156,16 +156,14 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
   async function loadExamDetail(): Promise<void> {
     if (!options.examId.value) {
       examDetail.value = null
-      detailError.value = null
       return
     }
     detailLoading.value = true
-    detailError.value = null
     try {
       examDetail.value = await getExamDetail(options.examId.value)
     } catch (error) {
       examDetail.value = null
-      detailError.value = error instanceof Error ? error.message : '考试详情加载失败'
+      showUserError(error, '考试详情加载失败')
     } finally {
       detailLoading.value = false
     }
@@ -182,7 +180,6 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
   return {
     examDetail,
     detailLoading,
-    detailError,
     markingProgress,
     contextTitle,
     contextSubtitle,

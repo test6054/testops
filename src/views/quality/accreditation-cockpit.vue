@@ -133,7 +133,7 @@ const signalMetrics = computed(() => {
 const annualCourseCoverages = computed(() => cockpit.value?.annualCourseCoverages || [])
 
 async function refreshAll() {
-  await reloadCockpit()
+  await reloadCockpit(true)
   cyclePanelRef.value?.loadCycles()
   annualPanelRef.value?.loadPlans()
   annualReportMaterialPanelRef.value?.loadMaterials()

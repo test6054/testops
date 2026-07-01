@@ -129,7 +129,7 @@ async function openGapScan(row: ScannerKioskPortfolioGapTaskSummaryVO) {
     @update:open="emit('update:open', $event)"
   >
     <p class="kiosk-portfolio-pick__hint">
-      展示当前扫描员授权范围内、仍开放的补采任务。选定后将创建派单 ticket 并进入认知确认。
+      展示仍开放的补采任务。选定后将创建派单 ticket 并进入认知确认。
     </p>
     <div class="kiosk-portfolio-pick__toolbar">
       <a-input-search

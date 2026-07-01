@@ -45,8 +45,17 @@ export function buildScopedClassTags(
   for (const opt of options) {
     labelMap.set(opt.value, opt.label)
   }
-  return classIds.map((classId) => ({
-    classId,
-    className: labelMap.get(classId) ?? classId,
-  }))
+  const seen = new Set<string>()
+  const tags: ScopedClassTag[] = []
+  for (const classId of classIds) {
+    if (seen.has(classId)) {
+      continue
+    }
+    seen.add(classId)
+    tags.push({
+      classId,
+      className: labelMap.get(classId) ?? classId,
+    })
+  }
+  return tags
 }

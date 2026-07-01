@@ -45,6 +45,8 @@
           :scroll="resolvedScroll"
           :table-layout="tableLayout"
           :get-popup-container="getPopupContainer"
+          :custom-row="props.customRow"
+          :row-class-name="props.rowClassName"
           v-bind="passthroughTableAttrs"
           @change="handleTableChange"
         >
@@ -147,6 +149,10 @@ const props = withDefaults(
     zebra?: boolean
     /** 窄视口自动隐藏低优先级列并在操作列启用触控友好布局 */
     responsiveColumns?: boolean
+    /** 透传 a-table customRow，用于行级拖拽等交互 */
+    customRow?: TableProps['customRow']
+    /** 透传 a-table rowClassName */
+    rowClassName?: TableProps['rowClassName']
   }>(),
   {
     loading: false,
@@ -208,7 +214,16 @@ const rootClasses = computed(() => {
 })
 
 const passthroughTableAttrs = computed(() => {
-  const { class: _class, style: _style, scroll: _scroll, ...rest } = attrs
+  const {
+    class: _class,
+    style: _style,
+    scroll: _scroll,
+    customRow: _customRow,
+    rowClassName: _rowClassName,
+    'custom-row': _customRowKebab,
+    'row-class-name': _rowClassNameKebab,
+    ...rest
+  } = attrs
   return rest
 })
 

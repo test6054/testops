@@ -711,7 +711,7 @@ async function loadQuestions() {
   questionsLoading.value = true
   try {
     const template = await getExamTemplate(selectedExamId.value)
-    questions.value = template.questions
+    questions.value = template.configured ? template.questions : []
   } catch (error) {
     questions.value = []
     showUserError(error, '题目列表加载失败')

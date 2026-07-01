@@ -7,6 +7,7 @@ import type {
   PortfolioArchiveCategoryTreeNodeVO,
   PortfolioArchiveFieldDefSaveRequest,
   PortfolioArchiveFieldDefVO,
+  PortfolioArchiveTeacherReadinessVO,
   PortfolioArchiveTemplateChangeLogVO,
   PortfolioArchiveTemplateDiffSummary,
   PortfolioArchiveTemplateVersionVO,
@@ -29,6 +30,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -87,6 +89,7 @@ const fieldEditing = ref(false)
 const categoryEditing = ref(false)
 const publishSummary = ref('')
 const scopeFilter = ref<PortfolioArchiveCategorySaveRequest['scope'] | undefined>(undefined)
+const teacherReadiness = ref<PortfolioArchiveTeacherReadinessVO | null>(null)
 
 const authStore = useAuthStore()
 const userStore = useUserStore()
@@ -640,7 +643,20 @@ const onTreeSelect: TreeProps['onSelect'] = (_keys, info) => {
     selectCategory(info.node as unknown as TreeNode)
 }
 
-onMounted(loadTree)
+async function loadTeacherReadiness() {
+  try {
+    teacherReadiness.value = await portfolioArchiveTemplateApi.getTeacherReadiness()
+  }
+  catch (error) {
+    teacherReadiness.value = null
+    showUserError(error, '加载教师端模板就绪状态失败')
+  }
+}
+
+onMounted(async () => {
+  await loadTree()
+  await loadTeacherReadiness()
+})
 </script>
 
 <template>
@@ -652,6 +668,18 @@ onMounted(loadTree)
         title="档案模板"
       />
     </template>
+    <UiAlertStrip
+      v-if="teacherReadiness && !teacherReadiness.templatePublished"
+      tone="warning"
+      :closable="false"
+      :title="teacherReadiness.blockingReason || '教师端档案模板尚未发布'"
+      :description="teacherReadiness.adminContactHint"
+    />
+    <UiAlertStrip
+      v-else-if="teacherReadiness?.templatePublished"
+      tone="success"
+      :title="`教师端模板已就绪 · 启用分类 ${teacherReadiness.categoryCount} 个`"
+    />
     <div class="template-layout">
       <UiCard class="tree-panel" title="档案分类">
         <div class="toolbar scope-filter">

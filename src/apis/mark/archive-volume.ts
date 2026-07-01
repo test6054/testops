@@ -296,6 +296,9 @@ export const ARCHIVE_EVALUATION_CAMPAIGN_STATUS_LABEL: Record<ArchiveEvaluationC
 export interface ArchiveVolumeVO {
   volumeId: string
   examId?: string
+  relatedExamId?: string
+  relatedExamName?: string
+  relatedExamNo?: string
   archiveNo: string
   archiveTitle: string
   courseId?: string
@@ -304,6 +307,7 @@ export interface ArchiveVolumeVO {
   teachingClassName?: string
   academicYear?: string
   semester?: string
+  templateSetCode?: string
   sourceType: ArchiveVolumeSourceTypeCode
   volumeStatus: ArchiveVolumeStatusCode
   integrityStatus: ArchiveIntegrityStatusCode
@@ -361,6 +365,74 @@ export interface ArchiveVolumeSearchHitVO {
   studentName?: string
 }
 
+export type ArchiveVolumeRoleCode
+  = | 'OWNER'
+    | 'CONTRIBUTOR'
+    | 'REVIEWER'
+    | 'READONLY'
+
+export const ARCHIVE_VOLUME_ROLE_LABEL: Record<ArchiveVolumeRoleCode, string> = {
+  OWNER: '归档责任人',
+  CONTRIBUTOR: '协作上传人',
+  REVIEWER: '验收审核',
+  READONLY: '只读',
+}
+
+export type ArchiveCatalogStatusCode
+  = | 'NOT_STARTED'
+    | 'DRAFT'
+    | 'CONFIRMED'
+
+export const ARCHIVE_CATALOG_STATUS_LABEL: Record<ArchiveCatalogStatusCode, string> = {
+  NOT_STARTED: '未开始',
+  DRAFT: '草稿',
+  CONFIRMED: '已确认',
+}
+
+export const ARCHIVE_CATALOG_STATUS_TONE: Record<
+  ArchiveCatalogStatusCode,
+  'gray' | 'blue' | 'green' | 'red' | 'orange' | 'purple'
+> = {
+  NOT_STARTED: 'gray',
+  DRAFT: 'orange',
+  CONFIRMED: 'green',
+}
+
+export type ArchiveSelfCheckStatusCode
+  = | 'NOT_STARTED'
+    | 'IN_PROGRESS'
+    | 'COMPLETED'
+
+export const ARCHIVE_SELF_CHECK_STATUS_LABEL: Record<ArchiveSelfCheckStatusCode, string> = {
+  NOT_STARTED: '未开始',
+  IN_PROGRESS: '进行中',
+  COMPLETED: '已完成',
+}
+
+export const ARCHIVE_SELF_CHECK_STATUS_TONE: Record<
+  ArchiveSelfCheckStatusCode,
+  'gray' | 'blue' | 'green' | 'red' | 'orange' | 'purple'
+> = {
+  NOT_STARTED: 'gray',
+  IN_PROGRESS: 'blue',
+  COMPLETED: 'green',
+}
+
+export interface ArchiveVolumeSubmitProgressVO {
+  currentWizardStep?: number
+  currentStepLabel?: string
+  pendingBlockingCount?: number
+  baseReady?: boolean
+  submitReady?: boolean
+}
+
+export type ArchiveVolumeWizardStepKey
+  = | 'materials'
+    | 'integrity'
+    | 'catalog'
+    | 'selfCheck'
+    | 'submit'
+
 export interface ArchiveVolumeDetailVO {
   volume: ArchiveVolumeVO
   materials: ArchiveVolumeMaterialVO[]
@@ -395,6 +467,14 @@ export interface ArchiveVolumeDetailVO {
   courseObjectiveTotalGoalCount?: number
   /** 至少映射一题的 quality 课程目标数 */
   courseObjectiveCoveredGoalCount?: number
+  /** 当前查看用户在本卷的业务角色 */
+  volumeRole?: ArchiveVolumeRoleCode
+  /** 提交向导进度（COLLECTING/SUBMITTED 时有值） */
+  submitProgress?: ArchiveVolumeSubmitProgressVO
+  /** 编目状态 */
+  catalogStatus?: ArchiveCatalogStatusCode
+  /** 逐项自查完成度 */
+  selfCheckStatus?: ArchiveSelfCheckStatusCode
 }
 
 export interface ArchiveVolumeTransferRecordVO {
@@ -1113,8 +1193,9 @@ export interface OfflineMarkedArchiveCreateRequest {
   teachingClassName?: string
   academicYear: string
   semester: string
-  examRound?: string
+  relatedExamId?: string
   examForm?: ArchiveExamFormCode
+  templateSetCode: string
   archiveNo?: string
   archiveTitle: string
   scoreSource: ArchiveScoreSourceCode
@@ -1312,10 +1393,87 @@ export interface ArchiveVolumeSignOffItemVO {
   signatoryName?: string
 }
 
+export type ArchiveVolumeSubmitChecklistActionTypeCode
+  = | 'OPEN_TAB'
+    | 'RUN_CHECK'
+    | 'OPEN_CATALOG'
+    | 'OPEN_SELF_CHECK'
+    | 'OPEN_EXAM_WORKSPACE'
+
 export interface ArchiveVolumeSubmitChecklistItemVO {
   dimension: string
   message: string
   passed?: boolean
+  actionType?: ArchiveVolumeSubmitChecklistActionTypeCode | string
+  targetTab?: string
+  actionLabel?: string
+}
+
+export interface ArchiveVolumeCatalogLineVO {
+  lineId?: string
+  lineNo: number
+  archiveCode?: string
+  title: string
+  responsible?: string
+  pageRange?: string
+  fileDate?: string
+  remark?: string
+}
+
+export interface ArchiveVolumeCatalogVO {
+  volumeId: string
+  catalogStatus: ArchiveCatalogStatusCode
+  lines: ArchiveVolumeCatalogLineVO[]
+}
+
+export interface ArchiveVolumeCatalogLineSaveRequest {
+  lineNo: number
+  archiveCode?: string
+  title: string
+  responsible?: string
+  pageRange?: string
+  fileDate?: string
+  remark?: string
+}
+
+export interface ArchiveVolumeCatalogSaveRequest {
+  volumeId: string
+  lines: ArchiveVolumeCatalogLineSaveRequest[]
+}
+
+export interface ArchiveVolumeCatalogExportVO {
+  exportFileId?: string
+  fileName?: string
+}
+
+export interface ArchiveVolumeSelfCheckItemVO {
+  recordId?: string
+  templateItemId: string
+  itemOrder: number
+  itemText: string
+  requiredFlag: boolean
+  checked: boolean
+  checkerUserId?: string
+  checkerName?: string
+  checkedTime?: string
+}
+
+export interface ArchiveVolumeSelfCheckListVO {
+  volumeId: string
+  selfCheckStatus: ArchiveSelfCheckStatusCode
+  items: ArchiveVolumeSelfCheckItemVO[]
+  allRequiredChecked?: boolean
+}
+
+export interface ArchiveVolumeSelfCheckItemCheckRequest {
+  volumeId: string
+  templateItemId: string
+  checked: boolean
+}
+
+export interface ArchiveVolumeSelfCheckExportVO {
+  exportFileId?: string
+  fileName?: string
 }
 
 export interface ArchiveVolumeSubmitChecklistVO {
@@ -1353,6 +1511,42 @@ export function confirmArchiveVolumeSelfCheck(
   request: ArchiveVolumeSelfCheckConfirmRequest,
 ): Promise<void> {
   return http.post<void>('/api/mark/archive-volumes/submit/self-check/confirm', request)
+}
+
+export function getArchiveVolumeCatalog(volumeId: string): Promise<ArchiveVolumeCatalogVO> {
+  return http.post<ArchiveVolumeCatalogVO>('/api/mark/archive-volumes/catalog/get', { volumeId })
+}
+
+export function generateArchiveVolumeCatalogDraft(volumeId: string): Promise<ArchiveVolumeCatalogVO> {
+  return http.post<ArchiveVolumeCatalogVO>('/api/mark/archive-volumes/catalog/generate-draft', { volumeId })
+}
+
+export function saveArchiveVolumeCatalog(
+  request: ArchiveVolumeCatalogSaveRequest,
+): Promise<ArchiveVolumeCatalogVO> {
+  return http.post<ArchiveVolumeCatalogVO>('/api/mark/archive-volumes/catalog/save', request)
+}
+
+export function confirmArchiveVolumeCatalog(volumeId: string): Promise<ArchiveVolumeCatalogVO> {
+  return http.post<ArchiveVolumeCatalogVO>('/api/mark/archive-volumes/catalog/confirm', { volumeId })
+}
+
+export function exportArchiveVolumeCatalog(volumeId: string): Promise<ArchiveVolumeCatalogExportVO> {
+  return http.post<ArchiveVolumeCatalogExportVO>('/api/mark/archive-volumes/catalog/export', { volumeId })
+}
+
+export function listArchiveVolumeSelfCheckItems(volumeId: string): Promise<ArchiveVolumeSelfCheckListVO> {
+  return http.post<ArchiveVolumeSelfCheckListVO>('/api/mark/archive-volumes/self-check/items/list', { volumeId })
+}
+
+export function checkArchiveVolumeSelfCheckItem(
+  request: ArchiveVolumeSelfCheckItemCheckRequest,
+): Promise<ArchiveVolumeSelfCheckListVO> {
+  return http.post<ArchiveVolumeSelfCheckListVO>('/api/mark/archive-volumes/self-check/items/check', request)
+}
+
+export function exportArchiveVolumeSelfCheck(volumeId: string): Promise<ArchiveVolumeSelfCheckExportVO> {
+  return http.post<ArchiveVolumeSelfCheckExportVO>('/api/mark/archive-volumes/self-check/export', { volumeId })
 }
 
 export function submitArchiveVolume(request: ArchiveVolumeSubmitRequest): Promise<ArchiveVolumeVO> {

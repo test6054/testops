@@ -31,7 +31,7 @@
       </ContextBar>
     </template>
 
-    <template v-if="!loadError" #rail>
+    <template #rail>
       <MarkingOverviewStageRail
         :exams="overview?.ongoingExams ?? []"
         :journey-stage-summary="overview?.journeyStageSummary ?? []"
@@ -39,7 +39,7 @@
       />
     </template>
 
-    <template v-if="!loadError" #signal>
+    <template #signal>
       <UiSkeletonState
         v-if="signalLoading"
         variant="card"
@@ -55,17 +55,7 @@
       />
     </template>
 
-    <UiLoadFailure
-      v-if="loadError"
-      title="阅卷概览加载失败"
-      :description="loadError"
-    />
-    <UiEmpty
-      v-else-if="contractError"
-      :description="contractError"
-    />
-    <template v-else>
-      <div class="marking-overview__content-grid">
+    <div class="marking-overview__content-grid">
         <UiCard title="进行中的考试" :description="ongoingCardHint" bordered>
           <template #extra>
             <UiButton variant="outline" size="sm" @click="goExamList">
@@ -151,7 +141,6 @@
           </UiCard>
         </a-col>
       </a-row>
-    </template>
   </StageWorkbenchShell>
 </template>
 
@@ -170,6 +159,7 @@ import { useRouter } from 'vue-router'
 import { EXAM_STATUS_FILTER_OPTIONS } from '@/apis/mark/exam'
 import {
   loadTeacherDashboardOverview,
+  loadTeacherDashboardOverviewOnce,
 } from '@/apis/mark/teacher-dashboard'
 import MarkingOverviewAnalytics from '@/components/mark/dashboard/MarkingOverviewAnalytics.vue'
 import MarkingOverviewSignalBand from '@/components/mark/dashboard/MarkingOverviewSignalBand.vue'
@@ -180,14 +170,12 @@ import PublishedExamInsightChart from '@/components/mark/dashboard/PublishedExam
 import PublishedExamInsightTable from '@/components/mark/dashboard/PublishedExamInsightTable.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
-import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { useUserStore } from '@/stores'
+import { showUserError } from '@/utils/error-handler'
 import { formatSemester, isValidSemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
 import {
   generateAcademicYearOptions,
@@ -200,13 +188,11 @@ defineOptions({ name: 'TeacherMarkingOverview' })
 
 const router = useRouter()
 const userStore = useUserStore()
-const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
 
 const signalLoading = ref(false)
 const examsLoading = ref(false)
 const todosLoading = ref(false)
 const dashboardRefreshing = computed(() => signalLoading.value || examsLoading.value || todosLoading.value)
-const contractError = ref('')
 const overview = ref<MarkTeacherDashboardOverviewVO | null>(null)
 const defaultYearSemester = getDefaultAcademicYearAndSemester()
 const emptyMarkingProgressSummary: MarkTeacherDashboardMarkingProgressSummaryVO = {
@@ -371,6 +357,12 @@ function isFilterRangeError(error: unknown): boolean {
 
 function applyOverview(data: MarkTeacherDashboardOverviewVO) {
   overview.value = data
+  filter.value = {
+    academicYear: data.filterContext.academicYear ?? filter.value.academicYear,
+    semester: data.filterContext.semester ?? filter.value.semester,
+    status: data.filterContext.status ?? filter.value.status ?? 'ACTIVE',
+  }
+  committedFilter.value = { ...filter.value }
 }
 
 let inflightOverview: Promise<MarkTeacherDashboardOverviewVO> | null = null
@@ -391,13 +383,14 @@ async function loadOverviewWithFallback(
   query: MarkTeacherDashboardQuery,
   options?: { rollbackFilterOnError?: boolean },
 ): Promise<MarkTeacherDashboardOverviewVO> {
+  const silentConfig = { showErrorMessage: false }
   try {
-    const data = await loadTeacherDashboardOverview({ ...query })
+    const data = await loadTeacherDashboardOverviewOnce({ ...query })
     assertTenantContract(data)
     return data
   } catch (error) {
     if (isFilterRangeError(error) && (query.academicYear || query.semester)) {
-      const bootstrap = await loadTeacherDashboardOverview({})
+      const bootstrap = await loadTeacherDashboardOverviewOnce({}, silentConfig)
       assertTenantContract(bootstrap)
       const reconciled = resolveDefaultDashboardFilter(bootstrap.filterOptions)
       filter.value = {
@@ -405,12 +398,9 @@ async function loadOverviewWithFallback(
         academicYear: reconciled.academicYear,
         semester: reconciled.semester,
       }
-      if (reconciled.academicYear || reconciled.semester) {
-        const data = await loadTeacherDashboardOverview({ ...filter.value })
-        assertTenantContract(data)
-        return data
-      }
-      return bootstrap
+      const data = await loadTeacherDashboardOverviewOnce({ ...filter.value })
+      assertTenantContract(data)
+      return data
     }
     if (options?.rollbackFilterOnError) {
       filter.value = { ...committedFilter.value }
@@ -462,7 +452,6 @@ async function loadTodosSection(
 }
 
 async function load(options?: { rollbackFilterOnError?: boolean }) {
-  contractError.value = ''
   const query = { ...filter.value }
   try {
     await Promise.all([
@@ -471,15 +460,9 @@ async function load(options?: { rollbackFilterOnError?: boolean }) {
       loadTodosSection(query, options),
     ])
     committedFilter.value = { ...filter.value }
-    clearLoadFailure()
   } catch (error) {
-    if (!(error instanceof TypeError)) {
-      captureLoadFailure(error, '阅卷概览加载失败')
-      overview.value = null
-    } else {
-      overview.value = null
-      contractError.value = error.message
-    }
+    overview.value = null
+    showUserError(error, '阅卷概览加载失败')
   }
 }
 

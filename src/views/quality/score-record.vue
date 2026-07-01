@@ -604,12 +604,6 @@ async function handleScopeReload(): Promise<void> {
 useQualityScopedLoader(handleScopeReload, { watchScope: true, immediate: false })
 
 onMounted(async () => {
-  if (!qualityStore.currentTrainingPlanId) {
-    await qualityStore.loadTrainingPlanOptions()
-    if (qualityStore.trainingPlanOptions.length) {
-      qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
-    }
-  }
   await handleScopeReload()
 })
 
@@ -619,7 +613,7 @@ function handleCourseChange(courseId: string | null) {
 </script>
 
 <template>
-  <QualityIngestPageShell>
+  <QualityIngestPageShell embedded>
     <template #context>
       <QualityPageContextBar>
         <template #status>

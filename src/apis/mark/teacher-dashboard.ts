@@ -6,6 +6,7 @@ import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 
 import http from '@/config/axios'
+import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
 import { isValidSemesterCode } from '@/types/enums/semester-enum'
 
 export type MarkTeacherDashboardTodoTypeCode
@@ -358,8 +359,13 @@ export function validateTeacherDashboardOverview(data: MarkTeacherDashboardOverv
 /** POST /api/mark/teacher/dashboard/overview */
 export async function loadTeacherDashboardOverview(
   query: MarkTeacherDashboardQuery = {},
+  config?: Partial<ExtendedAxiosRequestConfig>,
 ): Promise<MarkTeacherDashboardOverviewVO> {
-  const data = await http.post<MarkTeacherDashboardOverviewVO>('/api/mark/teacher/dashboard/overview', query)
+  const data = await http.post<MarkTeacherDashboardOverviewVO>(
+    '/api/mark/teacher/dashboard/overview',
+    query,
+    config,
+  )
   return validateTeacherDashboardOverview(data)
 }
 
@@ -378,7 +384,7 @@ function buildOverviewQueryKey(query: MarkTeacherDashboardQuery): string {
 }
 
 /** 同屏多段加载共用一次 overview 请求；后端分段契约就绪后可替换为独立 endpoint。 */
-function loadTeacherDashboardOverviewOnce(
+export function loadTeacherDashboardOverviewOnce(
   query: MarkTeacherDashboardQuery = {},
 ): Promise<MarkTeacherDashboardOverviewVO> {
   const queryKey = buildOverviewQueryKey(query)

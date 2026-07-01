@@ -576,7 +576,7 @@ import { adminGetUserPage } from '@/apis/edu/admin-user'
 import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
 import { getExamDetail } from '@/apis/mark/exam'
 import { getExamTemplate } from '@/apis/mark/exam-template'
-import { ALLOCATION_UNIT_LABEL, ANONYMOUS_TOKEN_POLICY_LABEL, closeQuestionGroup, deleteOrganization, deleteQuestionGroup, getOrganizationById, isMarkingOrgNotCreatedError, listFormalSessions, listMarkingPolicies, MARKING_ALLOCATION_MODE_LABEL, MARKING_ORGANIZATION_STATUS_LABEL, MARKING_ORGANIZATION_STATUS_TONE, MARKING_REASSIGN_MODE_LABEL, QUESTION_GROUP_STATUS_LABEL, QUESTION_GROUP_STATUS_TONE, saveAllocationPolicy, saveQuestionGroup, saveRecyclePolicy, updateOrganization, validateFormalSessionContract, validateMarkingOrganizationContract, validateMarkingPolicyListContract } from '@/apis/mark/marking-organization'
+import { ALLOCATION_UNIT_LABEL, ANONYMOUS_TOKEN_POLICY_LABEL, closeQuestionGroup, deleteOrganization, deleteQuestionGroup, getOrganizationById, listFormalSessions, listMarkingPolicies, MARKING_ALLOCATION_MODE_LABEL, MARKING_ORGANIZATION_STATUS_LABEL, MARKING_ORGANIZATION_STATUS_TONE, MARKING_REASSIGN_MODE_LABEL, QUESTION_GROUP_STATUS_LABEL, QUESTION_GROUP_STATUS_TONE, saveAllocationPolicy, saveQuestionGroup, saveRecyclePolicy, updateOrganization, validateFormalSessionContract, validateMarkingPolicyListContract } from '@/apis/mark/marking-organization'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -792,7 +792,6 @@ async function loadOrganization(): Promise<void> {
   loading.value = true
   try {
     const nextOrganization = await getOrganizationById({ organizationId: organizationId.value })
-    validateMarkingOrganizationContract(nextOrganization)
     if (!(await alignWorkspaceRouteExamId(nextOrganization))) {
       return
     }
@@ -804,9 +803,7 @@ async function loadOrganization(): Promise<void> {
     organization.value = null
     examDetail.value = null
     resetPolicyState()
-    if (!(error instanceof Error && isMarkingOrgNotCreatedError(error))) {
-      showUserError(error, '阅卷组织详情加载失败')
-    }
+    showUserError(error, '阅卷组织详情加载失败')
   } finally {
     loading.value = false
   }
@@ -868,7 +865,12 @@ async function loadQuestionTemplates(): Promise<void> {
   templateLoading.value = true
   try {
     const tpl = await getExamTemplate(currentExamId)
-    questionOptions.value = (tpl.questions ?? []).map((q) => ({
+    if (!tpl.configured) {
+      questionOptions.value = []
+      loadedQuestionTemplateExamId.value = currentExamId
+      return
+    }
+    questionOptions.value = tpl.questions.map((q) => ({
       value: q.questionTemplateId,
       label: `第 ${q.questionNo} 题（${strictEnumLabel(QUESTION_TYPE_LABEL, q.questionType, '题型')}，满分 ${q.fullScore}）`,
     }))
@@ -932,6 +934,28 @@ const groupRules: Record<string, Rule[]> = {
       message: '请至少选择 1 名阅卷教师',
       trigger: 'change',
     },
+    {
+      validator: (_rule, value: string[]) => {
+        const chiefId = examCreateUserId.value
+        if (!chiefId) {
+          return Promise.resolve()
+        }
+        if (value.includes(chiefId)) {
+          return Promise.resolve()
+        }
+        const chiefInOtherGroup = organization.value?.groups.some((group) => {
+          if (groupForm.groupId && group.id === groupForm.groupId) {
+            return false
+          }
+          return group.reviewers.some((reviewer) => reviewer.reviewerUserId === chiefId)
+        })
+        if (chiefInOtherGroup) {
+          return Promise.resolve()
+        }
+        return Promise.reject(new Error('考试主考老师必须加入至少一个题组的阅卷教师'))
+      },
+      trigger: 'change',
+    },
   ],
 }
 
@@ -941,7 +965,7 @@ function openGroupModal(): void {
   groupForm.groupName = ''
   groupForm.leaderUserId = undefined
   groupForm.questionTemplateIds = []
-  groupForm.reviewerUserIds = []
+  groupForm.reviewerUserIds = examCreateUserId.value ? [examCreateUserId.value] : []
   groupForm.wholePaperGroup = false
   groupModalOpen.value = true
   void loadTeachers()

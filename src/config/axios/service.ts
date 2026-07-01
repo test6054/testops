@@ -411,10 +411,15 @@ service.interceptors.response.use(
       businessError.code = businessCode
       businessError.response = response
 
-      handleAxiosError(businessError, {
-        showMessage: shouldShowError(businessCode),
-        useNotification: shouldUseNotification(businessCode, false),
-      })
+      const extendedConfig = response.config as ExtendedAxiosRequestConfig
+      const skipErrorHandler = extendedConfig.skipErrorHandler === true
+      const suppressErrorMessage = extendedConfig.showErrorMessage === false
+      if (!skipErrorHandler && !suppressErrorMessage) {
+        handleAxiosError(businessError, {
+          showMessage: shouldShowError(businessCode),
+          useNotification: shouldUseNotification(businessCode, false),
+        })
+      }
       businessError._handledByInterceptor = true
 
       return Promise.reject(businessError)

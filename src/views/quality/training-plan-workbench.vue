@@ -1084,12 +1084,7 @@ watch(selectedRequirement, () => loadStandardMappings())
 
 onMounted(async () => {
   await loadStandardOptions()
-  if (!qualityStore.currentTrainingPlanId) {
-    await qualityStore.loadTrainingPlanOptions()
-    if (qualityStore.trainingPlanOptions.length) {
-      qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
-    }
-  } else {
+  if (qualityStore.currentTrainingPlanId) {
     await handleScopeChange()
   }
 })

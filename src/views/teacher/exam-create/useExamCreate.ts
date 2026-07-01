@@ -1,4 +1,5 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
+import type { NamePath } from 'ant-design-vue/es/form/interface'
 import type {
   ExamCreateBasicForm,
   ExamCreateMarkingTeamForm,
@@ -56,6 +57,29 @@ export function useExamCreate() {
   const rosterFormRef = ref<FormInstance>()
   /** 整班纳入 preview 请求进行中；提交前须等待完成，避免携带过期考生快照。 */
   const rosterPreviewSyncing = ref(false)
+  /** 提交校验失败时，用于滚动定位到首个错误表单项。 */
+  const lastInvalidField = ref<{ section: ExamCreateSectionKey, name: NamePath } | null>(null)
+
+  function captureFormValidationError(section: ExamCreateSectionKey, error: unknown): void {
+    const errorFields = (error as { errorFields?: Array<{ name: NamePath }> })?.errorFields
+    const firstName = errorFields?.[0]?.name
+    if (firstName == null) return
+    lastInvalidField.value = { section, name: firstName }
+  }
+
+  function scrollToFirstInvalidField(): void {
+    const target = lastInvalidField.value
+    if (!target) return
+    const formRef = target.section === 'exam-create-basic'
+      ? basicFormRef.value
+      : target.section === 'exam-create-marking-team'
+        ? markingTeamFormRef.value
+        : target.section === 'exam-create-candidates'
+          ? rosterFormRef.value
+          : undefined
+    formRef?.scrollToField(target.name, { behavior: 'smooth', block: 'center' })
+    lastInvalidField.value = null
+  }
 
   const defaultTerm = getDefaultAcademicYearAndSemester()
   const examForm = reactive<ExamCreateBasicForm>({
@@ -242,16 +266,42 @@ export function useExamCreate() {
     { key: 'exam-create-confirm', label: '确认创建' },
   ])
 
+  function normalizeTeacherUserId(userId: string | number | null | undefined): string | null {
+    if (userId == null || userId === '') return null
+    return String(userId)
+  }
+
+  function replaceChiefInReviewerList(
+    previousChiefId: string | null,
+    chiefId: string,
+    chiefName: string,
+  ): void {
+    const pairs: Array<{ id: string, name: string }> = []
+    for (let index = 0; index < markingTeamForm.reviewerUserIds.length; index += 1) {
+      pairs.push({
+        id: markingTeamForm.reviewerUserIds[index],
+        name: markingTeamForm.reviewerNickNames[index] ?? '',
+      })
+    }
+
+    let nextPairs = pairs
+    if (previousChiefId && previousChiefId !== chiefId) {
+      nextPairs = nextPairs.filter(pair => pair.id !== previousChiefId)
+    }
+    nextPairs = nextPairs.filter(pair => pair.id !== chiefId)
+
+    const trimmedChiefName = chiefName.trim()
+    markingTeamForm.reviewerUserIds = [chiefId, ...nextPairs.map(pair => pair.id)]
+    markingTeamForm.reviewerNickNames = trimmedChiefName
+      ? [trimmedChiefName, ...nextPairs.map(pair => pair.name).filter(Boolean)]
+      : nextPairs.map(pair => pair.name).filter(Boolean)
+  }
+
   function ensureChiefInReviewers(): void {
     const chiefId = markingTeamForm.chiefExaminerUserId
     if (!chiefId) return
-    if (!markingTeamForm.reviewerUserIds.includes(chiefId)) {
-      markingTeamForm.reviewerUserIds = [chiefId, ...markingTeamForm.reviewerUserIds]
-    }
-    const chiefName = markingTeamForm.chiefExaminerNickName?.trim()
-    if (chiefName && !markingTeamForm.reviewerNickNames.includes(chiefName)) {
-      markingTeamForm.reviewerNickNames = [chiefName, ...markingTeamForm.reviewerNickNames]
-    }
+    if (markingTeamForm.reviewerUserIds.includes(chiefId)) return
+    replaceChiefInReviewerList(null, chiefId, markingTeamForm.chiefExaminerNickName)
   }
 
   function setCourseSelection(courseId: string | null, courseName: string): void {
@@ -263,10 +313,13 @@ export function useExamCreate() {
     markingTeamForm.reviewerNickNames = [...nickNames]
   }
 
-  function setChiefExaminer(userId: string | null, nickName: string): void {
-    markingTeamForm.chiefExaminerUserId = userId
+  function setChiefExaminer(userId: string | number | null, nickName: string): void {
+    const normalizedUserId = normalizeTeacherUserId(userId)
+    const previousChiefId = markingTeamForm.chiefExaminerUserId
+    markingTeamForm.chiefExaminerUserId = normalizedUserId
     markingTeamForm.chiefExaminerNickName = nickName
-    ensureChiefInReviewers()
+    if (!normalizedUserId) return
+    replaceChiefInReviewerList(previousChiefId, normalizedUserId, nickName)
   }
 
   function changeScopeMode(mode: ExamRosterScopeMode): void {
@@ -283,16 +336,34 @@ export function useExamCreate() {
         classSet.add(candidate.classId)
       }
     }
-    rosterForm.classIds = [...classSet]
+    const mergedClassIds = [...classSet]
+    if (!isSameStringIdSet(rosterForm.classIds, mergedClassIds)) {
+      rosterForm.classIds = mergedClassIds
+    }
   }
 
   function setRosterPreviewSyncing(syncing: boolean): void {
     rosterPreviewSyncing.value = syncing
   }
 
+  function isSameStringIdSet(left: string[], right: string[]): boolean {
+    if (left.length !== right.length) return false
+    const leftSet = new Set(left)
+    return right.every(id => leftSet.has(id))
+  }
+
+  function isSameCandidateSnapshot(left: ExamCandidateVO[], right: ExamCandidateVO[]): boolean {
+    if (left.length !== right.length) return false
+    return left.every((row, index) => row.studentUserId === right[index]?.studentUserId)
+  }
+
   function syncClassScopeCandidates(candidates: ExamCandidateVO[], classIds: string[]): void {
-    rosterForm.classIds = [...classIds]
-    rosterForm.candidates = candidates
+    if (!isSameStringIdSet(rosterForm.classIds, classIds)) {
+      rosterForm.classIds = [...classIds]
+    }
+    if (!isSameCandidateSnapshot(rosterForm.candidates, candidates)) {
+      rosterForm.candidates = candidates
+    }
   }
 
   function removeCandidate(studentUserId: string): void {
@@ -303,9 +374,11 @@ export function useExamCreate() {
   function pruneCandidatesToClassScope(): void {
     if (rosterForm.scopeMode !== 'BY_STUDENT') return
     const allowedClassIds = new Set(rosterForm.classIds)
-    rosterForm.candidates = rosterForm.candidates.filter(
+    const pruned = rosterForm.candidates.filter(
       candidate => candidate.classId != null && allowedClassIds.has(candidate.classId),
     )
+    if (pruned.length === rosterForm.candidates.length) return
+    rosterForm.candidates = pruned
   }
 
   function validateRosterContractInline(): string | null {
@@ -376,6 +449,7 @@ export function useExamCreate() {
     return {
       scopeMode: rosterForm.scopeMode,
       classIds: [...rosterForm.classIds],
+      referenceDepartmentId: rosterForm.referenceDepartmentId,
       candidates,
     }
   }
@@ -411,7 +485,8 @@ export function useExamCreate() {
     try {
       await basicFormRef.value.validate()
       return true
-    } catch {
+    } catch (error) {
+      captureFormValidationError('exam-create-basic', error)
       return false
     }
   }
@@ -422,7 +497,8 @@ export function useExamCreate() {
     try {
       await markingTeamFormRef.value.validate()
       return true
-    } catch {
+    } catch (error) {
+      captureFormValidationError('exam-create-marking-team', error)
       return false
     }
   }
@@ -445,7 +521,7 @@ export function useExamCreate() {
       && rosterForm.classIds.length > 0
       && rosterForm.candidates.length === 0
     ) {
-      void message.error('请通过「按学生选择」纳入补考或部分考生')
+      void message.error('所选参考班级暂无在籍学生，请重新选择或通过「按学生选择」追加')
       return false
     }
     const inlineError = validateRosterContractInline()
@@ -461,7 +537,8 @@ export function useExamCreate() {
     try {
       await rosterFormRef.value.validate()
       return true
-    } catch {
+    } catch (error) {
+      captureFormValidationError('exam-create-candidates', error)
       return false
     }
   }
@@ -496,23 +573,22 @@ export function useExamCreate() {
     return true
   }
 
-  async function validateAllSteps(): Promise<boolean> {
-    const basicOk = await validateBasicStep()
-    if (!basicOk) {
+  async function validateAllSteps(): Promise<ExamCreateSectionKey | null> {
+    if (!(await validateBasicStep())) {
       activeSection.value = 'exam-create-basic'
-      return false
+      void message.warning('请先完善考务信息')
+      return 'exam-create-basic'
     }
-    const teamOk = await validateMarkingTeamStep()
-    if (!teamOk) {
+    if (!(await validateMarkingTeamStep())) {
       activeSection.value = 'exam-create-marking-team'
-      return false
+      void message.warning('请先完善阅卷队伍')
+      return 'exam-create-marking-team'
     }
-    const rosterOk = await validateRosterStep()
-    if (!rosterOk) {
+    if (!(await validateRosterStep())) {
       activeSection.value = 'exam-create-candidates'
-      return false
+      return 'exam-create-candidates'
     }
-    return true
+    return null
   }
 
   async function refreshByClassRosterBeforeSubmit(): Promise<boolean> {
@@ -535,14 +611,20 @@ export function useExamCreate() {
     }
   }
 
-  async function handleCreateExam(): Promise<void> {
-    if (!(await validateAllSteps())) return
+  async function handleCreateExam(): Promise<ExamCreateSectionKey | null> {
+    const failedSection = await validateAllSteps()
+    if (failedSection) {
+      return failedSection
+    }
     if (!(await refreshByClassRosterBeforeSubmit())) {
       activeSection.value = 'exam-create-candidates'
-      return
+      return 'exam-create-candidates'
     }
     const request = buildBundleRequest()
-    if (!request) return
+    if (!request) {
+      activeSection.value = 'exam-create-basic'
+      return 'exam-create-basic'
+    }
     submitting.value = true
     try {
       const response = await createExamBundle(request)
@@ -553,6 +635,7 @@ export function useExamCreate() {
     } finally {
       submitting.value = false
     }
+    return null
   }
 
   function handleGoBack(): void {
@@ -577,7 +660,6 @@ export function useExamCreate() {
     examForm.semester = defaults.semester
     const { userId, nickName } = userStore.userInfo
     setChiefExaminer(userId, nickName)
-    markingTeamForm.reviewerNickNames = [nickName]
   })
 
   watch(
@@ -592,9 +674,8 @@ export function useExamCreate() {
   )
 
   watch(
-    () => rosterForm.classIds,
+    () => rosterForm.classIds.map(id => id).sort().join(','),
     () => pruneCandidatesToClassScope(),
-    { deep: true },
   )
 
   return {
@@ -613,6 +694,7 @@ export function useExamCreate() {
     showSuccessModal,
     createdExamId,
     rosterPreviewSyncing,
+    scrollToFirstInvalidField,
     setChiefExaminer,
     setCourseSelection,
     setReviewerNickNames,

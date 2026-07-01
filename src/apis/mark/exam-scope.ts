@@ -44,6 +44,8 @@ export interface ExamCandidateVO {
 export interface ExamScopeSaveRequest {
   examId: string
   classIds: string[]
+  /** 参考班级维护上下文院系 ID */
+  referenceDepartmentId?: string
   candidates: ExamCandidateRosterRequest[]
 }
 
@@ -63,13 +65,8 @@ export interface ExamCandidateRemoveRequest {
 export interface ExamClassScopeSaveRequest {
   examId: string
   classIds?: string[]
-}
-
-/** 名册可选班级 */
-export interface ExamClassOptionVO {
-  classId: string
-  className: string
-  departmentId?: string
+  /** 参考班级维护上下文院系 ID */
+  referenceDepartmentId?: string
 }
 
 /** 预览考生名册绑定行（不落库） */
@@ -161,11 +158,6 @@ export function removeExamCandidates(request: ExamCandidateRemoveRequest): Promi
 /** 增量保存考试班级范围。 */
 export function saveExamClassScope(request: ExamClassScopeSaveRequest): Promise<boolean> {
   return http.post<boolean>('/api/mark/exams/scope/class-scope/save', request)
-}
-
-/** 查询名册可选班级。 */
-export function listExamClassOptions(examId: string): Promise<ExamClassOptionVO[]> {
-  return http.post<ExamClassOptionVO[]>('/api/mark/exams/scope/class-options', { examId })
 }
 
 /** 预览考生名册绑定行。 */

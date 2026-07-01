@@ -1103,11 +1103,6 @@ const signals = computed<SignalMetric[]>(() => {
 
 
 onMounted(async () => {
-  if (!qualityStore.currentTrainingPlanId) {
-    await qualityStore.loadTrainingPlanOptions()
-    if (qualityStore.trainingPlanOptions.length)
-      qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
-  }
   applyAccreditationRoutePrefill()
   await handleScopeChange()
   await applyRouteTaskDeepLink()

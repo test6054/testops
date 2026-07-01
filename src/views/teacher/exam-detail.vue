@@ -1,12 +1,6 @@
 <template>
   <StageWorkbenchShell>
-    <UiLoadFailure
-      v-if="loadError"
-      title="考试概览加载失败"
-      :description="loadError"
-    />
-
-    <a-skeleton v-else-if="pageLoading" active :paragraph="{ rows: 8 }" />
+    <a-skeleton v-if="pageLoading" active :paragraph="{ rows: 8 }" />
 
     <UiEmpty
       v-else-if="!detail"
@@ -61,39 +55,26 @@
           </a-descriptions>
         </UiCard>
 
-        <UiCard class="exam-overview__card">
+        <UiCard class="exam-overview__card exam-overview__prep-summary">
           <template #title>
             <ContainerOutlined />
-            <span>准备步骤</span>
+            <span>准备状态</span>
           </template>
           <UiEmpty
-            v-if="prepSteps.length === 0"
-            description="暂无准备诊断步骤"
+            v-if="!detail?.materialLayoutMode"
+            description="尚未选择制卷形态"
           >
             <template #action>
-              <UiButton size="sm" @click="goPrepWorkbench">前往考试准备</UiButton>
+              <UiButton size="sm" variant="primary" @click="goPrepWorkbench">前往准备工作台</UiButton>
             </template>
           </UiEmpty>
-          <div v-else class="exam-overview__prep-list">
-            <div
-              v-for="step in prepSteps"
-              :key="step.key"
-              class="exam-overview__prep-item"
-            >
-              <div class="exam-overview__prep-head">
-                <span class="exam-overview__prep-title">{{ step.title }}</span>
-                <UiBadge :tone="prepStepTone(step.status)">{{ step.statusText }}</UiBadge>
-              </div>
-              <p class="exam-overview__prep-desc">{{ step.description }}</p>
-              <UiButton
-                size="sm"
-                :variant="step.status === 'completed' ? 'outline' : 'primary'"
-                @click="goPrepStep(step)"
-              >
-                {{ step.primaryAction }}
-              </UiButton>
-            </div>
-          </div>
+          <template v-else>
+            <SignalBand :metrics="prepSummaryMetrics" compact />
+            <p v-if="nextPrepHint" class="exam-overview__prep-hint">{{ nextPrepHint }}</p>
+            <UiButton size="sm" variant="outline" class="exam-overview__prep-link" @click="goPrepWorkbench">
+              前往准备工作台
+            </UiButton>
+          </template>
         </UiCard>
       </a-col>
 
@@ -149,7 +130,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import type { CSSProperties } from 'vue'
 import type { ExamDetailVO, ExamStatusCode } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
+import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
 import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
 import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
 import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
@@ -159,15 +140,14 @@ import { useBreakpoints } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
-import { EXAM_KIND_LABEL, EXAM_KIND_TONE, EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
+import { EXAM_KIND_LABEL, EXAM_KIND_TONE, EXAM_MATERIAL_LAYOUT_MODE_LABEL, EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import { REVIEW_TASK_STATUS_LABEL } from '@/apis/mark/exam-review-task'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
-import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
@@ -187,7 +167,6 @@ const {
   examId,
   examDetail,
   examDetailLoading,
-  examDetailError,
   markingProgress,
   snapshot,
   loading: snapshotLoading,
@@ -198,7 +177,6 @@ const markStageStore = useMarkStageStore()
 const { suggestedStageKey, orderedStages } = storeToRefs(markStageStore)
 
 const detail = computed(() => examDetail?.value ?? null)
-const loadError = computed(() => examDetailError?.value ?? null)
 const pageLoading = computed(() =>
   (snapshotLoading.value && !snapshot.value)
   || (examDetailLoading?.value === true && !detail.value),
@@ -223,6 +201,46 @@ const prepSteps = computed<PrepStepCard[]>(() => {
     return []
   }
   return buildPrepStepCards(backendSteps, d)
+})
+
+const prepSummaryMetrics = computed((): SignalMetric[] => {
+  const d = detail.value
+  if (!d || prepSteps.value.length === 0) {
+    return []
+  }
+  const completed = prepSteps.value.filter((step) => step.status === 'completed').length
+  const blockingCount = d.prepBlockingReasons?.length ?? 0
+  return [
+    {
+      key: 'prepProgress',
+      label: '准备进度',
+      value: `${completed} / ${prepSteps.value.length}`,
+      tone: completed === prepSteps.value.length ? 'green' : 'blue',
+    },
+    {
+      key: 'blocking',
+      label: '扫描硬阻断',
+      value: blockingCount,
+      unit: '项',
+      tone: blockingCount > 0 ? 'orange' : 'green',
+    },
+    {
+      key: 'layoutMode',
+      label: '制卷形态',
+      value: d.materialLayoutMode
+        ? strictEnumLabel(EXAM_MATERIAL_LAYOUT_MODE_LABEL, d.materialLayoutMode, '制卷形态')
+        : '未选择',
+      tone: 'gray',
+    },
+  ]
+})
+
+const nextPrepHint = computed(() => {
+  const pending = prepSteps.value.find((step) => step.status !== 'completed')
+  if (!pending) {
+    return '准备项已全部完成，可进入扫描登记'
+  }
+  return `下一步：${pending.title}（${pending.statusText}）`
 })
 
 const confirmedPercent = computed(() => {
@@ -298,22 +316,6 @@ function formatAcademicTerm(exam: ExamDetailVO): string {
   return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
 }
 
-function prepStepTone(status: WorkbenchStageStatus): BadgeTone {
-  const map: Record<WorkbenchStageStatus, BadgeTone> = {
-    pending: 'gray',
-    active: 'blue',
-    completed: 'green',
-    warning: 'orange',
-    error: 'red',
-    blocked: 'red',
-  }
-  return map[status]
-}
-
-function goPrepStep(step: PrepStepCard): void {
-  void router.push({ name: step.routeName, params: { examId: examId.value } })
-}
-
 function goPrepWorkbench(): void {
   void router.push({ name: 'TeacherExamWorkspacePrep', params: { examId: examId.value } })
 }
@@ -360,37 +362,17 @@ onActivated(() => {
     margin-bottom: 16px;
   }
 
-  &__prep-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
+  &__prep-summary {
+    .exam-overview__prep-hint {
+      margin: 12px 0 0;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--ant-color-text-secondary);
+    }
 
-  &__prep-item {
-    padding: 12px;
-    border: 1px solid var(--ant-color-border-secondary);
-    border-radius: var(--dp-radius-panel, 8px);
-  }
-
-  &__prep-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 6px;
-  }
-
-  &__prep-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--ant-color-text);
-  }
-
-  &__prep-desc {
-    margin: 0 0 10px;
-    font-size: 13px;
-    line-height: 1.5;
-    color: var(--ant-color-text-secondary);
+    .exam-overview__prep-link {
+      margin-top: 12px;
+    }
   }
 
   &__review-list {

@@ -1,7 +1,6 @@
 /**
  * 阅卷考试试卷模板 API - 对接 /api/mark/exams/template 与答题卡模板接口。
  */
-import type { AxiosResponse } from 'axios'
 import type { AnonymityModeCode } from './anonymity-mode'
 import type { EffectiveStatusCode } from './effective-status'
 import type { QuestionTypeCode } from './question-type'
@@ -13,15 +12,6 @@ import { EFFECTIVE_STATUS_LABEL } from './effective-status'
 import { QUESTION_TYPE_LABEL } from './question-type'
 
 const EXAM_TEMPLATE_DATA_ERROR = '试卷模板数据异常，请刷新后重试'
-
-/** 试卷模板未配置业务码 - 与后端 ResultCodeEnum.EXAM_MARK_PAPER_TEMPLATE_NOT_CONFIGURED 对齐 */
-export const PAPER_TEMPLATE_NOT_CONFIGURED_CODE = 20014
-
-/** Axios 拦截器抛出的后端业务错误对象 */
-type MarkBusinessError = Error & {
-  code?: number | string
-  response?: AxiosResponse<ResultInfo<null>>
-}
 
 /** 页面模板项 - 对应 ExamPageTemplateRequest */
 export interface ExamPageTemplateRequest {
@@ -96,14 +86,16 @@ export interface ExamQuestionTemplateVO {
 
 /** 模板查询响应 - 对应 ExamTemplateResponse */
 export interface ExamTemplateVO {
-  templateId: string
+  /** 是否已配置试卷模板 */
+  configured: boolean
   examId: string
-  templateName: string
-  totalPages: number
-  status: EffectiveStatusCode
+  templateId?: string
+  templateName?: string
+  totalPages?: number
+  status?: EffectiveStatusCode
   pages: ExamPaperPageTemplateVO[]
   questions: ExamQuestionTemplateVO[]
-  subjectiveAnonymityMode: AnonymityModeCode
+  subjectiveAnonymityMode?: AnonymityModeCode
 }
 
 /** 试卷页面模板合同校验，确保页面与文件尺寸字段由后端完整返回。 */
@@ -124,20 +116,13 @@ function validateExamQuestionTemplateContract(record: ExamQuestionTemplateVO): v
   assertUserFacingFiniteNumber(record.sortNo, EXAM_TEMPLATE_DATA_ERROR)
 }
 
-/** 试卷模板响应合同校验，缺页、缺题或状态枚举异常时显式失败。 */
-function validateExamTemplateContract(record: ExamTemplateVO): ExamTemplateVO {
+/** 已配置试卷模板的响应合同校验。 */
+function validateConfiguredExamTemplate(record: ExamTemplateVO): ExamTemplateVO {
   assertUserFacingText(record.templateId, EXAM_TEMPLATE_DATA_ERROR)
-  assertUserFacingText(record.examId, EXAM_TEMPLATE_DATA_ERROR)
   assertUserFacingText(record.templateName, EXAM_TEMPLATE_DATA_ERROR)
   assertUserFacingFiniteNumber(record.totalPages, EXAM_TEMPLATE_DATA_ERROR)
   strictEnumLabel(EFFECTIVE_STATUS_LABEL, record.status, '试卷模板生效状态')
   strictEnumLabel(ANONYMITY_MODE_LABEL, record.subjectiveAnonymityMode, '主观题匿名模式')
-  if (!Array.isArray(record.pages)) {
-    throw new TypeError(EXAM_TEMPLATE_DATA_ERROR)
-  }
-  if (!Array.isArray(record.questions)) {
-    throw new TypeError(EXAM_TEMPLATE_DATA_ERROR)
-  }
   record.pages.forEach(validateExamPaperPageTemplateContract)
   record.questions.forEach(validateExamQuestionTemplateContract)
   return record
@@ -155,14 +140,22 @@ export function saveAnswerSheetTemplate(
   return http.post<string>('/api/mark/exams/answer-sheet-template/save', request)
 }
 
-/** 查询考试当前模板，模板未配置时由后端业务码表达。 */
+/** 查询考试当前模板；未配置时返回 configured=false 的空壳，不触发业务错误。 */
 export async function getExamTemplate(examId: string): Promise<ExamTemplateVO> {
   const record = await http.post<ExamTemplateVO>('/api/mark/exams/template', { examId })
-  return validateExamTemplateContract(record)
-}
-
-/** 判断后端是否返回“试卷模板尚未配置”业务态，只读取稳定 code。 */
-export function isPaperTemplateNotConfiguredError(error: MarkBusinessError): boolean {
-  const code = error.code ?? error.response?.data.code
-  return Number(code) === PAPER_TEMPLATE_NOT_CONFIGURED_CODE
+  assertUserFacingText(record.examId, EXAM_TEMPLATE_DATA_ERROR)
+  if (record.configured !== true) {
+    return {
+      configured: false,
+      examId: record.examId,
+      pages: [],
+      questions: [],
+    }
+  }
+  return validateConfiguredExamTemplate({
+    ...record,
+    configured: true,
+    pages: record.pages ?? [],
+    questions: record.questions ?? [],
+  })
 }

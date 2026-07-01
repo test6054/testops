@@ -40,7 +40,6 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -396,10 +395,6 @@ async function handleDelete(record: ProfessionAlgorithmTemplateVO) {
     },
   })
 }
-
-useQualityScopedLoader(() => {
-  void loadList()
-}, { watchScope: true, immediate: false, reloadOnActivated: false })
 
 onMounted(async () => {
   await Promise.all([loadList(), loadStandards()])

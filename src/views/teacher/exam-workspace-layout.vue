@@ -139,7 +139,10 @@ import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import DesktopOutlined from '@ant-design/icons-vue/DesktopOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import ExportOutlined from '@ant-design/icons-vue/ExportOutlined'
+import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
+import FileProtectOutlined from '@ant-design/icons-vue/FileProtectOutlined'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import SafetyOutlined from '@ant-design/icons-vue/SafetyOutlined'
 import FolderOutlined from '@ant-design/icons-vue/FolderOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import FundOutlined from '@ant-design/icons-vue/FundOutlined'
@@ -152,7 +155,7 @@ import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import { useBreakpoints } from '@vueuse/core'
-import { computed, ref, watch } from 'vue'
+import { computed, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -161,8 +164,9 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import ExamSubSidebar from '@/components/workbench/ExamSubSidebar.vue'
 import ExamSwitcher from '@/components/workbench/ExamSwitcher.vue'
 import { useExamJourneySteps } from '@/composables/useExamJourneySteps'
+import { useExamWorkspaceChrome } from '@/composables/useExamWorkspaceChrome'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
-import { provideMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
+import { EXAM_WORKSPACE_CHROME_KEY, provideMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
 import { useMarkWorkbenchSnapshot } from '@/composables/useMarkWorkbenchSnapshot'
 import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
 import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
@@ -198,6 +202,8 @@ const menuIconMap: Record<ExamWorkspaceMenuKey, Component> = {
   'marking-progress': LineChartOutlined,
   'marking-arbitration': AuditOutlined,
   'marking-quality': CheckCircleOutlined,
+  'marking-quality-monitor': SafetyOutlined,
+  'marking-audit-trail': FileProtectOutlined,
   'marking-review': EditOutlined,
   'marking-review-batch': CheckCircleOutlined,
   'archive-grading-experience': BulbOutlined,
@@ -208,6 +214,7 @@ const menuIconMap: Record<ExamWorkspaceMenuKey, Component> = {
   'archive-package': FolderOutlined,
   'archive-statistics': BarChartOutlined,
   'archive-exports': ExportOutlined,
+  'archive-teaching-affairs': ApiOutlined,
 }
 
 const route = useRoute()
@@ -259,6 +266,16 @@ const { isExamConfidential } = useWorkspaceConfidentialContext()
 
 const { journeyStages, activeJourneyKey } = useExamJourneySteps(orderedStages)
 
+const workspaceChrome = useExamWorkspaceChrome({
+  examId,
+  snapshot,
+  journeyStages,
+  activeJourneyKey,
+  suggestedStageKey,
+  refreshSnapshot,
+})
+provide(EXAM_WORKSPACE_CHROME_KEY, workspaceChrome)
+
 provideMarkWorkbenchContext({
   examId,
   selectedExamId: examId,
@@ -266,6 +283,10 @@ provideMarkWorkbenchContext({
   loading,
   refreshing,
   refreshSnapshot,
+  examDetail: workspaceChrome.examDetail,
+  examDetailLoading: workspaceChrome.detailLoading,
+  markingProgress: workspaceChrome.markingProgress,
+  refreshChrome: workspaceChrome.refreshChrome,
 })
 
 const activeMenuKey = computed(() => resolveExamWorkspaceMenuKey(route.name ? String(route.name) : undefined))

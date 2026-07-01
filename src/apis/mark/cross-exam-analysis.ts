@@ -221,7 +221,8 @@ export function generateClassGrowth(params: {
   teachingSemester: string
   courseId: string
   classId: string
-  examIds: string[]
+  examIds?: string[]
+  autoSelectExams?: boolean
 }): Promise<SemesterAbilityGrowthVO> {
   return http.post<SemesterAbilityGrowthVO>(
     '/api/exam/cross-exam-analysis/growth/class',

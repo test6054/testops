@@ -11,13 +11,7 @@
       </ContextBar>
     </template>
 
-    <UiLoadFailure
-      v-if="loadError"
-      title="加载就绪度矩阵失败"
-      :description="loadError"
-    />
-
-    <section v-else class="archive-readiness-matrix">
+    <section class="archive-readiness-matrix">
       <div class="archive-readiness-matrix__toolbar">
         <AnalysisSemesterSelect
           v-model="filterModel.endAcademicYearSemester"
@@ -86,17 +80,15 @@ import StageWorkbenchShell from '@/components/mark/StageWorkbenchShell.vue'
 import UiButton from '@/components/ui/UiButton.vue'
 import UiDataTable from '@/components/ui/UiDataTable.vue'
 import UiEmpty from '@/components/ui/UiEmpty.vue'
-import UiLoadFailure from '@/components/ui/UiLoadFailure.vue'
 import UiTag from '@/components/ui/UiTag.vue'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
 import { parseAcademicYearSemesterValue } from '@/utils/academic-year'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'ArchiveVolumeReadinessMatrix' })
 
 const router = useRouter()
 const loading = ref(false)
-const loadError = ref('')
 const matrix = ref<ArchiveReadinessMatrixVO | null>(null)
 
 const filterModel = reactive({
@@ -181,7 +173,6 @@ async function loadMatrix() {
     return
   }
   loading.value = true
-  loadError.value = ''
   try {
     const { academicYear, semester } = parseAcademicYearSemesterValue(filterModel.endAcademicYearSemester)
     matrix.value = await getSupervisionReadinessMatrix({
@@ -192,7 +183,6 @@ async function loadMatrix() {
   }
   catch (error) {
     matrix.value = null
-    loadError.value = getUserErrorMessage(error, '加载就绪度矩阵失败')
     showUserError(error, '加载就绪度矩阵失败')
   }
   finally {

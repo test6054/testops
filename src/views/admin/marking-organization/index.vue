@@ -248,17 +248,15 @@ import type { SignalMetric } from '@/types/workbench'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, inject, onMounted, reactive, ref, watch } from 'vue'
+import { computed, inject, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   createOrganization,
   deleteOrganization,
   getOrganization,
-  isMarkingOrgNotCreatedError,
   MARKING_ORGANIZATION_STATUS_LABEL,
   MARKING_ORGANIZATION_STATUS_TONE,
   updateOrganization,
-  validateMarkingOrganizationContract,
 } from '@/apis/mark/marking-organization'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -330,13 +328,14 @@ async function loadOrganization(): Promise<void> {
   loading.value = true
   try {
     const nextOrganization = await getOrganization({ examId: selectedExamId.value })
-    validateMarkingOrganizationContract(nextOrganization)
+    if (!nextOrganization.configured) {
+      organization.value = null
+      return
+    }
     organization.value = nextOrganization
   } catch (error) {
     organization.value = null
-    if (!(error instanceof Error && isMarkingOrgNotCreatedError(error))) {
     showUserError(error, '阅卷组织加载失败')
-    }
   } finally {
     loading.value = false
   }
@@ -549,9 +548,10 @@ watch(selectedExamId, () => {
 }, { immediate: true })
 
 watch(
-  () => [route.query.setupTab, organization.value?.id] as const,
-  ([setupTab, orgId]) => {
-    if (setupTab === 'launch' && orgId) {
+  () => [route.query.tab, route.query.setupTab, organization.value?.id] as const,
+  ([tab, setupTab, orgId]) => {
+    const launchTab = tab === 'launch' || setupTab === 'launch'
+    if (launchTab && orgId) {
       goDetailTab('launch')
     }
   },
@@ -560,6 +560,10 @@ watch(
 
 onMounted(async () => {
   await initExamSelector()
+})
+
+onActivated(() => {
+  void loadOrganization()
 })
 </script>
 

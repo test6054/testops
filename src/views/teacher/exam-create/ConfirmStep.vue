@@ -3,6 +3,7 @@
     <header class="section-header">
       <h2 class="section-title">确认创建</h2>
     </header>
+    <p class="section-desc">请核对以下信息，确认无误后创建考试。</p>
     <dl class="exam-create-summary">
       <div class="exam-create-summary__row">
         <dt>考试性质</dt>
@@ -69,14 +70,24 @@
         <dd>{{ rosterForm.candidates.length ? `${rosterForm.candidates.length} 人` : '创建后补录' }}</dd>
       </div>
     </dl>
-    <p class="exam-create-form__hint">
-      创建后将进入考试工作台。未纳入的考生可在名册页继续编辑；已扫描或已有成绩的考生后续不可移除。
-    </p>
+    <div class="exam-create-summary-actions">
+      <UiButton
+        variant="primary"
+        :loading="submitting"
+        :disabled="submitting || previewSyncing"
+        @click="emit('submit')"
+      >
+        <template v-if="!submitting" #icon><SaveOutlined /></template>
+        {{ submitting ? '创建中…' : '创建考试' }}
+      </UiButton>
+    </div>
   </section>
 </template>
 
 <script setup lang="ts">
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import { computed } from 'vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { EXAM_KIND_LABEL, GRADING_STRATEGY_LABEL } from '@/apis/mark/exam'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { formatDateTime } from '@/utils/format'
@@ -86,6 +97,15 @@ import {
   useInjectedExamCreateMarkingTeamForm,
   useInjectedExamCreateRosterForm,
 } from './exam-create-context'
+
+defineProps<{
+  submitting?: boolean
+  previewSyncing?: boolean
+}>()
+
+const emit = defineEmits<{
+  submit: []
+}>()
 
 const examForm = useInjectedExamCreateBasicForm()
 const markingTeamForm = useInjectedExamCreateMarkingTeamForm()
@@ -138,11 +158,13 @@ const reviewerText = computed(() => {
 .exam-create-summary {
   margin: 0;
   display: grid;
-  gap: 12px;
+  gap: 12px 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 880px;
 
   &__row {
     display: grid;
-    grid-template-columns: 96px minmax(0, 1fr);
+    grid-template-columns: 88px minmax(0, 1fr);
     gap: 12px;
     align-items: baseline;
     font-size: 14px;
@@ -161,10 +183,16 @@ const reviewerText = computed(() => {
   }
 }
 
-.exam-create-form__hint {
-  margin-top: 20px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--dp-text-secondary, #64748b);
+.exam-create-summary-actions {
+  display: flex;
+  justify-content: flex-start;
+  max-width: 880px;
+  margin-top: 24px;
+}
+
+@media (max-width: 767px) {
+  .exam-create-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 </style>

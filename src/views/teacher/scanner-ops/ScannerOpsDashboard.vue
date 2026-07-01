@@ -4,16 +4,14 @@ import { computed, onMounted, ref } from 'vue'
 import { loadScannerOpsDashboard } from '@/apis/mark/scanner-ops'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
+import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'ScannerOpsDashboard' })
 
 const loading = ref(false)
-const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
 const dateRange = ref<[string, string] | null>(null)
 const dashboard = ref<Awaited<ReturnType<typeof loadScannerOpsDashboard>> | null>(null)
 
@@ -76,7 +74,6 @@ const signalMetrics = computed<SignalMetric[]>(() => {
 
 async function loadDashboard() {
   loading.value = true
-  clearLoadFailure()
   try {
     dashboard.value = await loadScannerOpsDashboard({
       startTime: dateRange.value?.[0] ? `${dateRange.value[0]}T00:00:00` : undefined,
@@ -85,7 +82,7 @@ async function loadDashboard() {
   }
   catch (error) {
     dashboard.value = null
-    captureLoadFailure(error, '扫描运营看板加载失败')
+    showUserError(error, '扫描运营看板加载失败')
   }
   finally {
     loading.value = false
@@ -122,17 +119,11 @@ onMounted(() => {
       </ContextBar>
     </template>
 
-    <template v-if="!loadError && signalMetrics.length" #signal>
+    <template v-if="signalMetrics.length" #signal>
       <SignalBand :metrics="signalMetrics" variant="panel" />
     </template>
 
-    <UiLoadFailure
-      v-if="loadError"
-      title="扫描运营看板加载失败"
-      :description="loadError"
-    />
-
-    <section v-else class="scanner-ops-dashboard__section">
+    <section class="scanner-ops-dashboard__section">
       <h3 class="scanner-ops-dashboard__section-title">院系时效</h3>
       <UiDataTable
         pagination-mode="none"

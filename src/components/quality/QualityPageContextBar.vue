@@ -1,11 +1,7 @@
 <script setup lang="ts">
-/**
- * 质量评价页 ContextBar：Layout 已注入范围选择器时仅展示标题与操作区。
- * subtitle 默认省略；动态范围优先 #status。
- */
+/** 质量评价页 ContextBar：标题与操作区（scope 由 quality-workspace-layout 承担）。 */
 import { computed, useSlots } from 'vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
-import { useQualityPageScope } from '@/composables/useQualityPageScope'
 
 defineOptions({ name: 'QualityPageContextBar' })
 
@@ -20,12 +16,12 @@ const props = withDefaults(
   },
 )
 
-const { showPageScopeHeader } = useQualityPageScope()
 const slots = useSlots()
 
 const showContextBar = computed(() => {
-  if (props.showTitle) return true
-  if (showPageScopeHeader) return true
+  if (props.showTitle) {
+    return true
+  }
   return Boolean(slots.actions || slots.status)
 })
 </script>

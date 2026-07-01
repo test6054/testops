@@ -155,12 +155,19 @@ export const useQualityTaskStore = defineStore('qualityTask', () => {
    * 一次性刷新全部三个汇总（业务页面顶层 onMounted 调用）。
    */
   async function refreshAll(scope: QualityTaskScopeFilter = {}): Promise<void> {
-    await Promise.all([
-      pollAiTasks(scope),
-      pollReportExports(scope),
-      pollImprovementTasks(scope),
-    ])
-    lastFetchedAt.value = Date.now()
+    try {
+      await Promise.all([
+        pollAiTasks(scope),
+        pollReportExports(scope),
+        pollImprovementTasks(scope),
+      ])
+      lastFetchedAt.value = Date.now()
+    }
+    catch {
+      aiTasksInFlight.value = []
+      reportExportsInFlight.value = []
+      improvementTasksOpen.value = []
+    }
   }
 
   function reset(): void {

@@ -165,11 +165,8 @@ const MARKING_DOMAIN_KEY = 'domain-marking'
 const QUALITY_DOMAIN_KEY = 'domain-quality'
 const PORTFOLIO_DOMAIN_KEY = 'domain-portfolio'
 
-/** 超管租户级配置与 SaaS 监管分组，展示时归入考试阅卷域（不含考试内阅卷组织）。 */
+/** 超管 SaaS 监管分组；平台管理见 quality-admin，展示时归入考试阅卷域。 */
 const MARKING_DOMAIN_MENU_GROUPS = new Set([
-  'marking-admin',
-  'ai-analysis',
-  'exam-delivery',
   'quality-admin',
 ])
 

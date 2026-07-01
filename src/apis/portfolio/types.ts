@@ -949,8 +949,161 @@ export interface PortfolioTeacherCompletenessGetRequest {
 export interface PortfolioTeacherWorkbenchSummaryVO {
   teacherUserId: string
   pendingTodoCount: number
+  currentAcademicYear?: string
   completenessPercent: number
+  completenessLevel?: PortfolioCompletenessLevel
+  requiredCategoryTotal?: number
+  requiredCategoryDone?: number
   compositeScore: number
+  pendingReviewCount?: number
+  returnedCount?: number
+  openGapCount?: number
+}
+
+/** 材料采集阶段 - PortfolioMaterialIntakeStageEnum */
+export type PortfolioMaterialIntakeStage
+  = | 'EMPTY'
+    | 'UPLOADED'
+    | 'OCR_PENDING'
+    | 'AI_PROCESSING'
+    | 'CATEGORY_PENDING'
+    | 'FIELDS_INCOMPLETE'
+    | 'READY_TO_SUBMIT'
+    | 'SUBMITTED'
+    | 'UNDER_REVIEW'
+    | 'RETURNED'
+
+export const PORTFOLIO_MATERIAL_INTAKE_STAGE_LABEL: Record<PortfolioMaterialIntakeStage, string> = {
+  EMPTY: '待上传',
+  UPLOADED: '已上传',
+  OCR_PENDING: 'OCR 处理中',
+  AI_PROCESSING: 'AI 抽取中',
+  CATEGORY_PENDING: '待确认分类',
+  FIELDS_INCOMPLETE: '字段待补全',
+  READY_TO_SUBMIT: '可提交审核',
+  SUBMITTED: '已提交',
+  UNDER_REVIEW: '审核中',
+  RETURNED: '已退回',
+}
+
+export const PORTFOLIO_MATERIAL_INTAKE_STAGE_TONE: Record<PortfolioMaterialIntakeStage, BadgeTone> = {
+  EMPTY: 'gray',
+  UPLOADED: 'blue',
+  OCR_PENDING: 'blue',
+  AI_PROCESSING: 'blue',
+  CATEGORY_PENDING: 'orange',
+  FIELDS_INCOMPLETE: 'orange',
+  READY_TO_SUBMIT: 'green',
+  SUBMITTED: 'green',
+  UNDER_REVIEW: 'blue',
+  RETURNED: 'orange',
+}
+
+export interface PortfolioTeacherOnboardingStateVO {
+  teacherId: string
+  currentStep: number
+  completed: boolean
+  dismissedUntil?: string
+  templateReady?: boolean
+}
+
+export interface PortfolioOnboardingFieldSpecSummaryVO {
+  categoryId: string
+  categoryName: string
+  fieldLabels: string[]
+}
+
+export interface PortfolioTeacherOnboardingReviewContentVO {
+  categoryTree: PortfolioArchiveCategoryTreeNodeVO[]
+  fieldSpecSummaries: PortfolioOnboardingFieldSpecSummaryVO[]
+}
+
+export interface PortfolioArchiveTeacherReadinessVO {
+  templatePublished: boolean
+  categoryCount: number
+  blockingReason?: string
+  adminContactHint?: string
+}
+
+export interface PortfolioMaterialIntakeValidationDiagnosticVO {
+  code?: string
+  fieldCode: string
+  fieldLabel?: string
+  message: string
+}
+
+export interface PortfolioMaterialIntakeStatusVO {
+  intakeSessionId: string
+  materialId: string
+  teacherId?: string
+  materialTitle?: string
+  fileNodeId?: string
+  archiveRecordId?: string
+  aiTaskId?: string
+  stage: PortfolioMaterialIntakeStage
+  categoryId?: string
+  categoryName?: string
+  ocrStatus?: string
+  aiTaskStatus?: AiTaskStatus
+  pendingCandidateCount?: number
+  missingFieldCount?: number
+  diagnostics?: PortfolioMaterialIntakeValidationDiagnosticVO[]
+  demoMode?: boolean
+  recordStatus?: PortfolioArchiveRecordStatus
+  latestRejectReason?: string
+  fieldValues?: PortfolioRecordFieldCore[]
+  targetFields?: PortfolioTargetFieldDefinition[]
+}
+
+export interface PortfolioMaterialIntakeStartResultVO {
+  intakeSessionId: string
+  materialId: string
+  aiTaskId?: string
+}
+
+export interface PortfolioTeacherProgressPeriodRowVO {
+  academicYear: string
+  completenessPercent: number
+  pendingReviewCount?: number
+  returnedCount?: number
+  openGapCount?: number
+  topGapCategoryNames: string[]
+}
+
+export interface PortfolioTeacherProgressCockpitVO {
+  teacherId: string
+  currentAcademicYear: string
+  completenessPercent: number
+  pendingReviewCount: number
+  returnedCount: number
+  openGapCount: number
+  completenessDeltaVsPreviousYear?: number
+  periodRows: PortfolioTeacherProgressPeriodRowVO[]
+}
+
+export interface PortfolioTeacherReviewStatusPageRequest extends QueryDto {
+  teacherId?: string
+  academicYear?: string
+  recordStatus?: PortfolioArchiveRecordStatus
+}
+
+export interface PortfolioTeacherReviewStatusRowVO {
+  archiveRecordId: string
+  categoryId: string
+  categoryName: string
+  recordStatus: PortfolioArchiveRecordStatus
+  academicYear?: string
+  reviewTaskId?: string
+  reviewTaskStatus?: PortfolioReviewTaskStatus
+  updateTime?: string
+  latestRejectReason?: string
+}
+
+export interface PortfolioMaterialReassignCategoryResultVO {
+  archiveRecordId: string
+  reusedFieldCount: number
+  clearedFieldCount: number
+  stageAfterReassign: PortfolioMaterialIntakeStage
 }
 
 export interface PortfolioTeacherCompletenessVO {

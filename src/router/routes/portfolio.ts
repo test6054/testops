@@ -94,6 +94,43 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'teacher/onboarding',
+        name: 'PortfolioTeacherOnboarding',
+        component: () => import('@/views/portfolio/teacher-onboarding.vue'),
+        meta: {
+          title: '认识档案',
+          roles: ALL_ROLES,
+          hideInMenu: true,
+          keepAlive: false,
+        },
+      },
+      {
+        path: 'teacher/intake',
+        name: 'PortfolioTeacherIntake',
+        component: () => import('@/views/portfolio/teacher-intake.vue'),
+        meta: {
+          title: '材料采集',
+          roles: ALL_ROLES,
+          icon: 'cloud-upload',
+          hideInMenu: false,
+          keepAlive: true,
+          ...portfolioTeacherMenuMeta,
+        },
+      },
+      {
+        path: 'teacher/review-status',
+        name: 'PortfolioTeacherReviewStatus',
+        component: () => import('@/views/portfolio/teacher-review-status.vue'),
+        meta: {
+          title: '审核进度',
+          roles: ALL_ROLES,
+          icon: 'audit',
+          hideInMenu: false,
+          keepAlive: true,
+          ...portfolioTeacherMenuMeta,
+        },
+      },
+      {
         path: 'teacher/portrait',
         name: 'PortfolioTeacherPortrait',
         component: () => import('@/views/portfolio/teacher-portrait.vue'),
@@ -156,15 +193,20 @@ export const portfolioRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'teacher/materials',
+        redirect: to => ({
+          path: '/portfolio/teacher/intake',
+          query: to.query,
+        }),
+      },
+      {
+        path: 'teacher/materials-legacy',
         name: 'PortfolioTeacherMaterials',
         component: () => import('@/views/portfolio/teacher-materials.vue'),
         meta: {
           title: '材料库',
           roles: ALL_ROLES,
-          icon: 'folder-open',
-          hideInMenu: false,
-          keepAlive: true,
-          ...portfolioTeacherMenuMeta,
+          hideInMenu: true,
+          keepAlive: false,
         },
       },
       {
@@ -234,15 +276,23 @@ export const portfolioRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'ai-candidate-confirm',
+        redirect: to => {
+          const query = { ...to.query }
+          if (typeof query.taskId === 'string') {
+            return { path: '/portfolio/teacher/intake', query }
+          }
+          return { path: '/portfolio/teacher/intake', query }
+        },
+      },
+      {
+        path: 'ai-candidate-confirm-legacy',
         name: 'PortfolioAiCandidateConfirm',
         component: () => import('@/views/portfolio/ai-candidate-confirm.vue'),
         meta: {
           title: 'AI 候选字段确认',
           roles: PORTFOLIO_ADMIN_ROLES,
-          icon: 'robot',
-          hideInMenu: false,
-          keepAlive: true,
-          ...portfolioOrgMenuMeta,
+          hideInMenu: true,
+          keepAlive: false,
         },
       },
       {

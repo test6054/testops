@@ -1,19 +1,52 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
+      <UiFilterBar
+        v-if="listTab === 'mine'"
+        v-model="filterModel"
+        :fields="filterFields"
+        variant="panel"
+        show-labels
+        search-text="查询"
+        actions-align="end"
+        class="archive-volume-list__filter archive-volume-list__filter--context"
+        @search="handleSearch"
+        @reset="handleReset"
+      >
+        <template #actions>
+          <UiButton
+            v-if="canViewStatisticsKpi"
+            variant="outline"
+            size="sm"
+            @click="goAudit"
+          >
+            审计查询
+          </UiButton>
+          <UiButton
+            v-if="hasDuty('COLLEGE_COORDINATOR')"
+            variant="outline"
+            size="sm"
+            @click="importDrawerOpen = true"
+          >
+            批量导入
+          </UiButton>
+          <UiButton size="sm" variant="outline" @click="goCreateOffline">
+            新建
+          </UiButton>
+          <UiButton size="sm" @click="handleSearch">
+            查询
+          </UiButton>
+          <UiButton size="sm" variant="outline" @click="handleReset">
+            重置
+          </UiButton>
+        </template>
+      </UiFilterBar>
       <ContextBar
+        v-else
         show-title
         title="课程考核归档卷"
       >
-        <template #status>
-          <UiTag tone="blue" size="sm">课程考核归档卷</UiTag>
-          <UiTag tone="gray" size="sm">{{ tabLabel }}</UiTag>
-        </template>
         <template #actions>
-          <UiButton variant="ghost" size="sm" :loading="dutyLoading" @click="refreshAll">
-            刷新
-          </UiButton>
-          <UiButton variant="outline" size="sm" @click="goSearch">全文检索</UiButton>
           <UiButton
             v-if="canViewStatisticsKpi && (listTab === 'college' || listTab === 'archive')"
             variant="outline"
@@ -38,36 +71,28 @@
           >
             批量导入
           </UiButton>
-          <UiButton variant="outline" size="sm" @click="goCreateOffline">线下建卷</UiButton>
         </template>
       </ContextBar>
     </template>
 
     <template v-if="showSignalBand" #signal>
-      <SignalBand :metrics="signalMetrics" compact @metric-click="handleSignalMetricClick" />
+      <SignalBand :metrics="activeSignalMetrics" compact @metric-click="handleSignalMetricClick" />
     </template>
 
-    <UiLoadFailure
-      v-if="loadError"
-      title="加载归档卷列表失败"
-      :description="loadError"
-    />
+    <div class="archive-volume-list__root">
+      <UiSectionTabs
+        v-if="showRoleTabs"
+        v-model="listTab"
+        :items="visibleListTabs"
+        compact
+        class="archive-volume-list__role-tabs"
+      />
 
-    <UiSectionTabs v-else v-model="listTab" :items="visibleListTabs" compact>
-      <ArchiveVolumeSettings v-if="listTab === 'settings'" />
-
-      <ArchiveVolumeSupervisionPanel v-else-if="listTab === 'supervision'" />
+      <ArchiveVolumeSupervisionPanel v-if="listTab === 'supervision'" />
 
       <ArchiveVolumeRemediationPanel v-else-if="listTab === 'remediation'" />
 
-      <section v-else class="archive-volume-list__panel">
-        <ArchiveVolumeMineRemediationBanner
-          v-if="listTab === 'mine'"
-          :tasks="openRemediationTasks"
-          :loading="remediationLoading"
-          class="archive-volume-list__alert"
-          @go="goRemediationVolume"
-        />
+      <section v-else-if="showVolumeListPanel" class="archive-volume-list__panel">
         <UiSectionTabs
           v-if="listTab === 'archive'"
           v-model="archiveSubTab"
@@ -84,19 +109,56 @@
           <UiButton size="sm" variant="outline" @click="openBatchReject">批量退回</UiButton>
         </UiBatchActionBar>
 
-        <UiFilterBar
-          v-if="showVolumeFilter && archiveSubTab !== 'pending-access' && archiveSubTab !== 'search'"
-          v-model="filterModel"
-          :fields="filterFields"
-          variant="panel"
-          show-labels
-          search-text="查询"
-          @search="handleSearch"
-          @reset="handleReset"
+        <div
+          v-if="showVolumeFilter && listTab !== 'mine' && archiveSubTab !== 'pending-access'"
+          class="archive-volume-list__filter"
+        >
+          <UiFilterBar
+            v-model="filterModel"
+            :fields="filterFields"
+            variant="panel"
+            show-labels
+            search-text="查询"
+            @search="handleSearch"
+            @reset="handleReset"
+          >
+            <template #actions>
+              <UiButton
+                v-if="listTab === 'mine'"
+                size="sm"
+                variant="outline"
+                @click="goCreateOffline"
+              >
+                新建
+              </UiButton>
+              <UiButton size="sm" @click="handleSearch">
+                查询
+              </UiButton>
+              <UiButton size="sm" variant="outline" @click="handleReset">
+                重置
+              </UiButton>
+            </template>
+          </UiFilterBar>
+        </div>
+
+        <div v-if="listTab === 'mine'" class="archive-volume-list__scope-bar">
+          <a-segmented
+            :value="volumeScope"
+            :options="volumeScopeOptions"
+            @change="handleVolumeScopeChange"
+          />
+        </div>
+
+        <ArchiveVolumeMineRemediationBanner
+          v-if="listTab === 'mine' && volumeScope === 'mine'"
+          :tasks="openRemediationTasks"
+          :loading="remediationLoading"
+          class="archive-volume-list__alert"
+          @go="goRemediationVolume"
         />
 
         <UiDataTable
-          v-if="archiveSubTab !== 'pending-access' && archiveSubTab !== 'search'"
+          v-if="archiveSubTab !== 'pending-access'"
           v-model:current="pagination.pageNum"
           v-model:page-size="pagination.pageSize"
           :columns="tableColumns"
@@ -161,14 +223,14 @@
               <div class="operations-cell" @click.stop>
                 <UiTextAction tone="primary" @click="goDetail(record.volumeId)">详情</UiTextAction>
                 <UiTextAction
-                  v-if="listTab === 'mine' && hasOpenRemediationForVolume(record.volumeId)"
+                  v-if="listTab === 'mine' && volumeScope === 'mine' && hasOpenRemediationForVolume(record.volumeId)"
                   tone="primary"
                   @click="goRemediationVolumeByVolumeId(record.volumeId)"
                 >
                   去整改
                 </UiTextAction>
                 <UiTextAction
-                  v-if="canSubmitVolumeRow(record) && listTab === 'mine'"
+                  v-if="canSubmitVolumeRow(record) && listTab === 'mine' && volumeScope === 'mine'"
                   @click="goDetail(record.volumeId)"
                 >
                   提交归档
@@ -230,7 +292,7 @@
           </template>
         </UiDataTable>
       </section>
-    </UiSectionTabs>
+    </div>
 
     <a-modal
       v-model:open="batchRejectOpen"
@@ -358,7 +420,6 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiBatchActionBar from '@/components/ui-guide/ui/UiBatchActionBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -366,9 +427,10 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { canSubmitArchiveVolumeRow } from '@/composables/useArchiveVolumeSubmitGate'
-import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { useUserStore } from '@/stores/modules/user'
-import { parseAcademicYearSemesterValue } from '@/utils/academic-year'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import { generateAcademicYearOptions, getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -376,27 +438,23 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveVolumeExternalImportPanel from '@/views/teacher/archive-volume/archive-volume-external-import-panel.vue'
 import ArchiveVolumeHistoryImportPanel from '@/views/teacher/archive-volume/archive-volume-history-import-panel.vue'
 import ArchiveVolumeRemediationPanel from '@/views/teacher/archive-volume/archive-volume-remediation-panel.vue'
-import ArchiveVolumeSettings from '@/views/teacher/archive-volume/archive-volume-settings.vue'
 import ArchiveVolumeSupervisionPanel from '@/views/teacher/archive-volume/archive-volume-supervision-panel.vue'
 import ArchiveVolumeMineRemediationBanner from '@/views/teacher/archive-volume/components/ArchiveVolumeMineRemediationBanner.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeList' })
 
-const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
-
-type ListTabKey = 'mine' | 'college' | 'archive' | 'supervision' | 'remediation' | 'settings'
-type ArchiveSubTabKey = 'pending-transfer' | 'pending-access' | 'due-appraisal' | 'overdue' | 'search'
+type ListTabKey = 'mine' | 'college' | 'archive' | 'supervision' | 'remediation'
+type ArchiveSubTabKey = 'pending-transfer' | 'pending-access' | 'due-appraisal' | 'overdue'
+type VolumeScopeKey = 'all' | 'mine'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const {
-  loading: dutyLoading,
   grantsLoadFailed,
   canViewCollegeBoard,
   canViewArchiveReviewer,
   canViewSupervision,
-  canManageConfig,
   canApproveAccessForVolume,
   canRejectTransfer,
   canReviewTransfer,
@@ -411,6 +469,7 @@ const {
 const currentUserId = computed(() => userStore.userInfo?.userId ?? '')
 
 const listTab = ref<ListTabKey>('mine')
+const volumeScope = ref<VolumeScopeKey>('all')
 const archiveSubTab = ref<ArchiveSubTabKey>('pending-transfer')
 const loading = ref(false)
 const pendingAccessLoading = ref(false)
@@ -437,20 +496,36 @@ const kpiCollectingCount = ref<number | string>('—')
 const kpiPendingTransferCount = ref<number | string>('—')
 const kpiMissingCount = ref<number | string>('—')
 const kpiOverdueCount = ref<number | string>('—')
-const filterModel = reactive({
+const mineSummaryCollectingCount = ref<number | string>('—')
+const mineSummaryMissingCount = ref<number | string>('—')
+const mineSummaryOverdueCount = ref<number | string>('—')
+const mineSummaryCountsFailed = ref(false)
+const filterExtras = reactive({
+  integrityFailedOnly: false,
+  archiveOverdueOnly: false,
+})
+const defaultYearSemester = getDefaultAcademicYearAndSemester()
+const filterForm = reactive({
   keyword: '',
   departmentId: undefined as string | undefined,
-  academicYearSemester: '',
+  academicYear: defaultYearSemester.academicYear as string | undefined,
+  semester: defaultYearSemester.semester as SemesterCode | undefined,
   sourceType: undefined as ArchiveVolumeSourceTypeCode | undefined,
   volumeStatus: undefined as ArchiveVolumeStatusCode | undefined,
   integrityStatus: undefined as ArchiveIntegrityStatusCode | undefined,
   transferStatus: undefined as ArchiveTransferStatusCode | undefined,
   appraisalStatus: undefined as ArchiveAppraisalStatusCode | undefined,
 })
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
+})
 
 const visibleListTabs = computed(() => {
   const tabs: Array<{ key: ListTabKey, label: string }> = [
-    { key: 'mine', label: '我的归档卷' },
+    { key: 'mine', label: '归档卷' },
   ]
   if (canViewCollegeBoard.value) {
     tabs.push({ key: 'college', label: '院系看板' })
@@ -464,11 +539,26 @@ const visibleListTabs = computed(() => {
   if (canViewCollegeBoard.value || canViewSupervision.value || hasDuty('ARCHIVE_ADMIN')) {
     tabs.push({ key: 'remediation', label: '迎评整改' })
   }
-  if (canManageConfig.value) {
-    tabs.push({ key: 'settings', label: '归档设置' })
-  }
   return tabs
 })
+
+const volumeScopeOptions = [
+  { label: '全部', value: 'all' },
+  { label: '我的', value: 'mine' },
+]
+
+function handleVolumeScopeChange(value: string | number) {
+  if (value !== 'all' && value !== 'mine') {
+    return
+  }
+  volumeScope.value = value
+}
+
+const showRoleTabs = computed(() => visibleListTabs.value.length > 1)
+
+const showVolumeListPanel = computed(() =>
+  listTab.value === 'mine' || listTab.value === 'college' || listTab.value === 'archive',
+)
 
 const archiveSubTabs = computed(() => {
   const tabs: Array<{ key: ArchiveSubTabKey, label: string }> = [
@@ -481,69 +571,15 @@ const archiveSubTabs = computed(() => {
   if (canViewCollegeBoard.value || canViewArchiveReviewer.value) {
     tabs.push({ key: 'overdue', label: '逾期卷' })
   }
-  tabs.push({ key: 'search', label: '全文检索' })
   return tabs
 })
 
-const tabLabel = computed(() =>
-  visibleListTabs.value.find(item => item.key === listTab.value)?.label ?? '',
-)
-
-const showSignalBand = computed(() =>
-  (canViewStatisticsKpi.value && (listTab.value === 'college' || listTab.value === 'archive'))
-  || listTab.value === 'mine',
-)
-
-const appraisalFilterDisabled = computed(() =>
-  listTab.value === 'archive' && archiveSubTab.value === 'due-appraisal',
-)
-
-const showVolumeFilter = computed(() =>
-  listTab.value === 'mine' || listTab.value === 'college' || listTab.value === 'archive',
-)
-
-const visibleDepartmentOptions = computed(() => {
-  if (listTab.value === 'mine') {
-    return allDepartmentOptions.value
-  }
-  return filterListDepartmentOptions(allDepartmentOptions.value)
-})
-
-const departmentFilterDisabled = computed(() =>
-  listTab.value !== 'mine' && listScopedDepartmentIds.value.length === 1,
-)
-
-const signalMetrics = computed<SignalMetric[]>(() => {
-  if (listTab.value === 'mine') {
-    const count = openRemediationTasks.value.length
-    if (count <= 0) {
-      return []
-    }
-    return [{
-      key: 'remediation',
-      label: '待整改',
-      value: count,
-      tone: 'orange',
-      clickable: true,
-    }]
-  }
-  return [
-    { key: 'collecting', label: '待提交', value: kpiCollectingCount.value },
-    { key: 'pending', label: '待验收', value: kpiPendingTransferCount.value },
-    { key: 'missing', label: '缺项', value: kpiMissingCount.value },
-    {
-      key: 'overdue',
-      label: '逾期',
-      value: kpiOverdueCount.value,
-      tone: 'red',
-      clickable: canViewCollegeBoard.value || canViewArchiveReviewer.value,
-    },
-  ]
-})
-
 const emptyDescription = computed(() => {
-  if (listTab.value === 'mine') {
-    return '尚无归档卷，线上考试关考后将自动创建'
+  if (listTab.value === 'mine' && volumeScope.value === 'mine') {
+    return '尚无我的归档卷，线上考试关考后将自动创建'
+  }
+  if (listTab.value === 'mine' && volumeScope.value === 'all') {
+    return '当前筛选无归档卷'
   }
   if (listTab.value === 'archive' && archiveSubTab.value === 'pending-transfer') {
     return '暂无待验收归档卷'
@@ -556,6 +592,107 @@ const emptyDescription = computed(() => {
   }
   return '当前筛选无结果'
 })
+
+const showSignalBand = computed(() => {
+  if (listTab.value === 'mine') {
+    return true
+  }
+  return canViewStatisticsKpi.value && (listTab.value === 'college' || listTab.value === 'archive')
+})
+
+const signalMetrics = computed<SignalMetric[]>(() => [
+  { key: 'collecting', label: '待提交', value: kpiCollectingCount.value },
+  { key: 'pending', label: '待验收', value: kpiPendingTransferCount.value },
+  { key: 'missing', label: '缺项', value: kpiMissingCount.value },
+  {
+    key: 'overdue',
+    label: '逾期',
+    value: kpiOverdueCount.value,
+    tone: 'red',
+    clickable: canViewCollegeBoard.value || canViewArchiveReviewer.value,
+  },
+])
+
+const mineSummarySignalMetrics = computed((): SignalMetric[] => {
+  const dash = '—'
+  const filteredTotal = pagination.total ?? 0
+  const collectingValue = mineSummaryCountsFailed.value ? dash : mineSummaryCollectingCount.value
+  const missingValue = mineSummaryCountsFailed.value ? dash : mineSummaryMissingCount.value
+  const overdueValue = mineSummaryCountsFailed.value ? dash : mineSummaryOverdueCount.value
+  const remediationCount = openRemediationTasks.value.length
+  const isMineScope = volumeScope.value === 'mine'
+
+  return [
+    {
+      key: 'filtered',
+      label: '筛选命中',
+      value: filteredTotal,
+      unit: '卷',
+      tone: 'blue',
+      helper: isMineScope ? '我的归档卷范围' : '当前列表范围',
+    },
+    {
+      key: 'collecting',
+      label: '待提交',
+      value: collectingValue,
+      unit: '卷',
+      tone: 'green',
+      clickable: !mineSummaryCountsFailed.value && Number(collectingValue) > 0,
+      helper: '收集中卷，点击筛选待提交',
+    },
+    {
+      key: 'missing',
+      label: '缺项',
+      value: missingValue,
+      unit: '卷',
+      tone: !mineSummaryCountsFailed.value && Number(missingValue) > 0 ? 'orange' : 'gray',
+      clickable: !mineSummaryCountsFailed.value && Number(missingValue) > 0,
+      helper: '完整性未通过，点击筛选缺项卷',
+    },
+    isMineScope
+      ? {
+          key: 'remediation',
+          label: '待整改',
+          value: remediationCount,
+          unit: '卷',
+          tone: remediationCount > 0 ? 'orange' : 'gray',
+          clickable: remediationCount > 0,
+          helper: remediationCount > 0 ? '开放整改任务，点击查看' : '暂无待整改',
+        }
+      : {
+          key: 'overdue',
+          label: '已逾期',
+          value: overdueValue,
+          unit: '卷',
+          tone: !mineSummaryCountsFailed.value && Number(overdueValue) > 0 ? 'red' : 'gray',
+          clickable: !mineSummaryCountsFailed.value && Number(overdueValue) > 0,
+          helper: !mineSummaryCountsFailed.value && Number(overdueValue) > 0
+            ? '归档时限已过，点击筛选'
+            : '暂无逾期卷',
+        },
+  ]
+})
+
+const activeSignalMetrics = computed(() =>
+  listTab.value === 'mine' ? mineSummarySignalMetrics.value : signalMetrics.value,
+)
+
+const appraisalFilterDisabled = computed(() =>
+  listTab.value === 'archive' && archiveSubTab.value === 'due-appraisal',
+)
+
+const showVolumeFilter = computed(() => showVolumeListPanel.value)
+
+const visibleDepartmentOptions = computed(() => {
+  if (listTab.value === 'mine') {
+    return allDepartmentOptions.value
+  }
+  return filterListDepartmentOptions(allDepartmentOptions.value)
+})
+
+const departmentFilterDisabled = computed(() =>
+  listTab.value !== 'mine' && listScopedDepartmentIds.value.length === 1,
+)
 
 const rowSelection = computed<TableProps['rowSelection']>(() => {
   if (listTab.value !== 'college' || !canRejectTransfer.value) return undefined
@@ -592,8 +729,35 @@ const appraisalStatusOptions = Object.entries(ARCHIVE_APPRAISAL_STATUS_LABEL).ma
   label,
 }))
 
+const academicYearOptions = computed(() =>
+  generateAcademicYearOptions().map(year => ({ label: year, value: year })),
+)
+
+const semesterOptions = computed(() =>
+  SemesterOptions.map(item => ({
+    label: formatSemester(item.value),
+    value: item.value,
+  })),
+)
+
 const filterFields = computed<FilterField[]>(() => [
   { key: 'keyword', label: '关键词', type: 'input', placeholder: '档案号 / 标题' },
+  {
+    key: 'academicYear',
+    label: '学年',
+    type: 'select',
+    placeholder: '全部学年',
+    options: academicYearOptions.value,
+    allowClear: true,
+  },
+  {
+    key: 'semester',
+    label: '学期',
+    type: 'select',
+    placeholder: '全部学期',
+    options: semesterOptions.value,
+    allowClear: true,
+  },
   {
     key: 'departmentId',
     label: '学院',
@@ -602,7 +766,6 @@ const filterFields = computed<FilterField[]>(() => [
     allowClear: !departmentFilterDisabled.value,
     disabled: departmentFilterDisabled.value,
   },
-  { key: 'academicYearSemester', label: '学年学期', type: 'input', placeholder: '如 2024-2025_1' },
   { key: 'sourceType', label: '来源', type: 'select', options: sourceTypeOptions, allowClear: true },
   { key: 'volumeStatus', label: '卷状态', type: 'select', options: volumeStatusOptions, allowClear: true },
   { key: 'integrityStatus', label: '完整性', type: 'select', options: integrityStatusOptions, allowClear: true },
@@ -688,7 +851,7 @@ function canSubmitVolumeRow(record: ArchiveVolumeVO) {
 }
 
 function isSubmitBlockedByRemediation(record: ArchiveVolumeVO) {
-  if (listTab.value !== 'mine') return false
+  if (listTab.value !== 'mine' || volumeScope.value !== 'mine') return false
   if (record.volumeStatus !== 'COLLECTING') return false
   if (record.responsibleUserId !== currentUserId.value) return false
   return record.hasBlockingRemediationForSubmit === true
@@ -721,11 +884,11 @@ function applyScopedDepartmentDefault() {
   }
   const scopeIds = listScopedDepartmentIds.value
   if (scopeIds.length === 1) {
-    filterModel.departmentId = scopeIds[0]
+    filterForm.departmentId = scopeIds[0]
     return
   }
-  if (filterModel.departmentId && !visibleDepartmentOptions.value.some(item => item.value === filterModel.departmentId)) {
-    filterModel.departmentId = undefined
+  if (filterForm.departmentId && !visibleDepartmentOptions.value.some(item => item.value === filterForm.departmentId)) {
+    filterForm.departmentId = undefined
   }
 }
 
@@ -762,15 +925,31 @@ async function loadSignalKpis() {
   }
 }
 
+function applyRouteQuery() {
+  listTab.value = resolveListTabFromQuery()
+  applySourceTypeFromQuery()
+  stripScopeQueryFromRoute()
+}
+
+/** 全部/我的为页内表格切换，不写入 URL，避免同一列表出现两个地址。 */
+function stripScopeQueryFromRoute() {
+  if (route.query.scope === undefined) {
+    return
+  }
+  const nextQuery = { ...route.query }
+  delete nextQuery.scope
+  void router.replace({ query: nextQuery })
+}
 function applySourceTypeFromQuery() {
   const raw = route.query.sourceType
   if (typeof raw !== 'string') return
   if (!(raw in ARCHIVE_VOLUME_SOURCE_TYPE_LABEL)) return
-  filterModel.sourceType = raw as ArchiveVolumeSourceTypeCode
+  filterForm.sourceType = raw as ArchiveVolumeSourceTypeCode
   if (canViewArchiveReviewer.value) {
     listTab.value = 'archive'
   }
 }
+
 function resolveListTabFromQuery(): ListTabKey {
   const raw = route.query.tab
   const tab = typeof raw === 'string' ? raw : 'mine'
@@ -782,19 +961,67 @@ function resolveListTabFromQuery(): ListTabKey {
 }
 
 function resolvePeriodFilter(): Pick<ArchiveVolumePageRequest, 'academicYear' | 'semester'> {
-  const raw = filterModel.academicYearSemester.trim()
-  if (!raw) return {}
-  const { academicYear, semester } = parseAcademicYearSemesterValue(raw)
-  return { academicYear, semester }
+  const academicYear = filterForm.academicYear?.trim()
+  const semester = filterForm.semester
+  if (!academicYear && !semester) {
+    return {}
+  }
+  return {
+    academicYear: academicYear || undefined,
+    semester: semester || undefined,
+  }
+}
+
+/** 归档卷列表共用筛选条件（不含分页与 Tab 特化字段）。 */
+function buildVolumeFilterRequest(): ArchiveVolumePageRequest {
+  const periodFilter = resolvePeriodFilter()
+  const request: ArchiveVolumePageRequest = {
+    keyword: filterForm.keyword.trim() || undefined,
+    departmentId: filterForm.departmentId,
+    ...periodFilter,
+    sourceType: filterForm.sourceType,
+    volumeStatus: filterForm.volumeStatus,
+    integrityStatus: filterForm.integrityStatus,
+    transferStatus: filterForm.transferStatus,
+    appraisalStatus: filterForm.appraisalStatus,
+    integrityFailedOnly: filterExtras.integrityFailedOnly || undefined,
+    archiveOverdueOnly: filterExtras.archiveOverdueOnly || undefined,
+  }
+  if (listTab.value === 'mine' && volumeScope.value === 'mine') {
+    request.mineOnly = true
+  }
+  return request
+}
+
+async function loadMineSummaryKpis() {
+  if (listTab.value !== 'mine') {
+    return
+  }
+  mineSummaryCountsFailed.value = false
+  try {
+    const countBase = buildVolumeFilterRequest()
+    delete countBase.integrityFailedOnly
+    delete countBase.archiveOverdueOnly
+    const [collectingResult, missingResult, overdueResult] = await Promise.all([
+      pageArchiveVolumes({ ...countBase, volumeStatus: 'COLLECTING', pageNum: 1, pageSize: 1 }),
+      pageArchiveVolumes({ ...countBase, integrityFailedOnly: true, pageNum: 1, pageSize: 1 }),
+      pageArchiveVolumes({ ...countBase, archiveOverdueOnly: true, pageNum: 1, pageSize: 1 }),
+    ])
+    mineSummaryCollectingCount.value = readPageTotal(collectingResult)
+    mineSummaryMissingCount.value = readPageTotal(missingResult)
+    mineSummaryOverdueCount.value = readPageTotal(overdueResult)
+  }
+  catch {
+    mineSummaryCountsFailed.value = true
+    mineSummaryCollectingCount.value = '—'
+    mineSummaryMissingCount.value = '—'
+    mineSummaryOverdueCount.value = '—'
+  }
 }
 
 async function loadVolumes() {
   if (!showVolumeFilter.value) return
   if (grantsLoadFailed.value) return
-  if (archiveSubTab.value === 'search') {
-    goSearch()
-    return
-  }
   if (listTab.value === 'archive' && archiveSubTab.value === 'pending-access') {
     await loadPendingAccess()
     return
@@ -805,20 +1032,14 @@ async function loadVolumes() {
     const periodFilter = resolvePeriodFilter()
     const request: ArchiveVolumePageRequest = isOverdueTab
       ? {
-          keyword: filterModel.keyword.trim() || undefined,
-          departmentId: filterModel.departmentId,
+          keyword: filterForm.keyword.trim() || undefined,
+          departmentId: filterForm.departmentId,
           ...periodFilter,
           pageNum: pagination.pageNum,
           pageSize: pagination.pageSize,
         }
       : {
-          keyword: filterModel.keyword.trim() || undefined,
-          departmentId: filterModel.departmentId,
-          ...periodFilter,
-          sourceType: filterModel.sourceType,
-          volumeStatus: filterModel.volumeStatus,
-          integrityStatus: filterModel.integrityStatus,
-          transferStatus: filterModel.transferStatus,
+          ...buildVolumeFilterRequest(),
           pageNum: pagination.pageNum,
           pageSize: pagination.pageSize,
         }
@@ -829,28 +1050,31 @@ async function loadVolumes() {
       if (archiveSubTab.value === 'due-appraisal') {
         Object.assign(request, { dueAppraisalOnly: true })
       }
-      else if (filterModel.appraisalStatus) {
-        request.appraisalStatus = filterModel.appraisalStatus
+      else if (filterForm.appraisalStatus) {
+        request.appraisalStatus = filterForm.appraisalStatus
       }
     }
-    else if (!isOverdueTab && filterModel.appraisalStatus) {
-      request.appraisalStatus = filterModel.appraisalStatus
+    else if (!isOverdueTab && filterForm.appraisalStatus) {
+      request.appraisalStatus = filterForm.appraisalStatus
     }
-    if (listTab.value === 'mine') {
+    if (listTab.value === 'mine' && volumeScope.value === 'mine') {
       request.mineOnly = true
     }
     const result = isOverdueTab
       ? await pageOverdueArchiveVolumes(request)
       : await pageArchiveVolumes(request)
-    volumes.value = readPageList(result, '归档卷列表异常，请刷新后重试')
+    const pageRows = readPageList(result, '归档卷列表异常，请刷新后重试')
+    volumes.value = pageRows
     pagination.total = readPageTotal(result)
-    if (showSignalBand.value) {
+    if (listTab.value === 'mine') {
+      void loadMineSummaryKpis()
+    }
+    else if (showSignalBand.value) {
       void loadSignalKpis()
     }
-    clearLoadFailure()
   }
   catch (error) {
-    captureLoadFailure(error, '加载归档卷列表失败')
+    showUserError(error, '加载归档卷列表失败')
     volumes.value = []
     pagination.total = 0
   }
@@ -873,18 +1097,6 @@ async function loadPendingAccess() {
   }
 }
 
-async function refreshAll() {
-  await initPage()
-  if (listTab.value === 'settings' || listTab.value === 'supervision' || listTab.value === 'remediation') {
-    return
-  }
-  if (grantsLoadFailed.value) {
-    return
-  }
-  await loadVolumes()
-  await loadOpenRemediationTasks()
-}
-
 async function initPage() {
   await loadGrants()
   if (grantsLoadFailed.value) {
@@ -899,16 +1111,19 @@ function handleSearch() {
 }
 
 function handleReset() {
-  filterModel.keyword = ''
-  filterModel.departmentId = departmentFilterDisabled.value
+  filterForm.keyword = ''
+  filterForm.departmentId = departmentFilterDisabled.value
     ? listScopedDepartmentIds.value[0]
     : undefined
-  filterModel.academicYearSemester = ''
-  filterModel.sourceType = undefined
-  filterModel.volumeStatus = undefined
-  filterModel.integrityStatus = undefined
-  filterModel.transferStatus = undefined
-  filterModel.appraisalStatus = undefined
+  filterForm.academicYear = defaultYearSemester.academicYear
+  filterForm.semester = defaultYearSemester.semester
+  filterForm.sourceType = undefined
+  filterForm.volumeStatus = undefined
+  filterForm.integrityStatus = undefined
+  filterForm.transferStatus = undefined
+  filterForm.appraisalStatus = undefined
+  filterExtras.integrityFailedOnly = false
+  filterExtras.archiveOverdueOnly = false
   pagination.pageNum = 1
   selectedVolumeIds.value = []
   void loadVolumes()
@@ -1060,7 +1275,7 @@ async function downloadReviewerTransferPackage() {
 }
 
 async function loadOpenRemediationTasks() {
-  if (listTab.value !== 'mine') {
+  if (listTab.value !== 'mine' || volumeScope.value !== 'mine') {
     openRemediationTasks.value = []
     remediationLoading.value = false
     return
@@ -1078,10 +1293,6 @@ async function loadOpenRemediationTasks() {
   }
 }
 
-function goSearch() {
-  void router.push({ name: 'TeacherArchiveVolumeSearch' })
-}
-
 function goStatistics() {
   void router.push({ name: 'TeacherArchiveVolumeStatistics' })
 }
@@ -1095,10 +1306,39 @@ function goCreateOffline() {
 }
 
 function handleSignalMetricClick(key: string) {
-  if (key === 'remediation') {
-    const task = openRemediationTasks.value[0]
-    if (task) {
-      goRemediationVolume(task)
+  if (listTab.value === 'mine') {
+    if (key === 'collecting') {
+      filterExtras.integrityFailedOnly = false
+      filterExtras.archiveOverdueOnly = false
+      filterForm.volumeStatus = 'COLLECTING'
+      filterForm.integrityStatus = undefined
+      filterForm.transferStatus = undefined
+      handleSearch()
+      return
+    }
+    if (key === 'missing') {
+      filterExtras.integrityFailedOnly = true
+      filterExtras.archiveOverdueOnly = false
+      filterForm.volumeStatus = undefined
+      filterForm.integrityStatus = undefined
+      filterForm.transferStatus = undefined
+      handleSearch()
+      return
+    }
+    if (key === 'overdue') {
+      filterExtras.archiveOverdueOnly = true
+      filterExtras.integrityFailedOnly = false
+      filterForm.volumeStatus = undefined
+      filterForm.integrityStatus = undefined
+      filterForm.transferStatus = undefined
+      handleSearch()
+      return
+    }
+    if (key === 'remediation') {
+      const task = openRemediationTasks.value[0]
+      if (task) {
+        goRemediationVolume(task)
+      }
     }
     return
   }
@@ -1109,39 +1349,50 @@ function handleSignalMetricClick(key: string) {
 }
 
 watch(listTab, (tab) => {
-  void router.replace({
-    query: {
-      ...route.query,
-      tab,
-    },
-  })
+  const nextQuery = { ...route.query, tab }
+  delete nextQuery.scope
+  void router.replace({ query: nextQuery })
 })
 
-watch([listTab, archiveSubTab], (values, oldValues) => {
-  applyScopedDepartmentDefault()
-  const [tab, subTab] = values
-  const [, oldSubTab] = oldValues ?? []
-  if (subTab === 'due-appraisal') {
-    filterModel.appraisalStatus = undefined
-  }
-  if (subTab === 'overdue') {
-    filterModel.volumeStatus = undefined
-    filterModel.integrityStatus = undefined
-    filterModel.transferStatus = undefined
-    filterModel.appraisalStatus = undefined
-    filterModel.sourceType = undefined
-  }
-  if (subTab === 'search' && oldSubTab !== 'search') {
-    goSearch()
-    archiveSubTab.value = (oldSubTab as ArchiveSubTabKey) || 'pending-transfer'
+watch(volumeScope, (scope) => {
+  if (listTab.value !== 'mine') {
     return
   }
   pagination.pageNum = 1
   selectedVolumeIds.value = []
-  if (tab === 'mine') {
+  if (scope === 'mine') {
     void loadOpenRemediationTasks()
   }
-  if (tab === 'mine' || tab === 'college' || tab === 'archive') {
+  else {
+    openRemediationTasks.value = []
+    remediationLoading.value = false
+  }
+  void loadVolumes()
+})
+
+watch([listTab, archiveSubTab], (values) => {
+  applyScopedDepartmentDefault()
+  const [tab, subTab] = values
+  if (tab !== 'mine') {
+    filterExtras.integrityFailedOnly = false
+    filterExtras.archiveOverdueOnly = false
+  }
+  if (subTab === 'due-appraisal') {
+    filterForm.appraisalStatus = undefined
+  }
+  if (subTab === 'overdue') {
+    filterForm.volumeStatus = undefined
+    filterForm.integrityStatus = undefined
+    filterForm.transferStatus = undefined
+    filterForm.appraisalStatus = undefined
+    filterForm.sourceType = undefined
+  }
+  pagination.pageNum = 1
+  selectedVolumeIds.value = []
+  if (listTab.value === 'mine' && volumeScope.value === 'mine') {
+    void loadOpenRemediationTasks()
+  }
+  if (showVolumeListPanel.value) {
     void loadVolumes()
   }
 })
@@ -1154,17 +1405,16 @@ watch(visibleListTabs, (tabs) => {
 
 onMounted(async () => {
   await initPage()
-  listTab.value = resolveListTabFromQuery()
-  applySourceTypeFromQuery()
+  applyRouteQuery()
   if (grantsLoadFailed.value) {
     return
   }
-  if (listTab.value === 'mine') {
+  if (listTab.value === 'mine' && volumeScope.value === 'mine') {
     await loadOpenRemediationTasks()
   }
-  if (listTab.value === 'mine' || listTab.value === 'college' || listTab.value === 'archive') {
+  if (showVolumeListPanel.value) {
     await loadVolumes()
-    if (showSignalBand.value) {
+    if (listTab.value !== 'mine' && showSignalBand.value) {
       await loadSignalKpis()
     }
   }
@@ -1172,6 +1422,16 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.archive-volume-list__root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-4, 16px);
+}
+
+.archive-volume-list__role-tabs :deep(.ui-section-tabs__content) {
+  display: none;
+}
+
 .archive-volume-list__panel {
   display: flex;
   flex-direction: column;
@@ -1184,6 +1444,22 @@ onMounted(async () => {
 
 .archive-volume-list__batch {
   margin-bottom: var(--dp-space-2, 8px);
+}
+
+.archive-volume-list__filter {
+  width: 100%;
+}
+
+.archive-volume-list__filter--context {
+  width: 100%;
+}
+
+.archive-volume-list__scope-bar {
+  display: flex;
+  align-items: center;
+  padding-bottom: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-3, 12px);
+  border-bottom: 1px solid var(--dp-border, #e2e8f0);
 }
 
 .status-tags {

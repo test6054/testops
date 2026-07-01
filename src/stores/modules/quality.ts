@@ -100,7 +100,12 @@ export const useQualityStore = defineStore(
       try {
         majorCategoryOptions.value = (await majorCategoryCatalogApi.listAll()) || []
         return majorCategoryOptions.value
-      } finally {
+      }
+      catch {
+        majorCategoryOptions.value = []
+        return majorCategoryOptions.value
+      }
+      finally {
         majorCategoryLoading.value = false
       }
     }
@@ -131,7 +136,12 @@ export const useQualityStore = defineStore(
           '培养方案列表加载失败',
         )
         return trainingPlanOptions.value
-      } finally {
+      }
+      catch {
+        trainingPlanOptions.value = []
+        return trainingPlanOptions.value
+      }
+      finally {
         trainingPlanLoading.value = false
       }
     }

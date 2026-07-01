@@ -858,17 +858,13 @@ watch(
 
 onMounted(async () => {
   await applyRouteScopeQuery()
-  if (!qualityStore.currentTrainingPlanId) {
-    await qualityStore.loadTrainingPlanOptions()
-    if (qualityStore.trainingPlanOptions.length) {
-      qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
-    }
-  }
   triggerForm.trainingPlanId = qualityStore.currentTrainingPlanId
   triggerForm.programId = qualityStore.currentProgramId
   query.trainingPlanId = qualityStore.currentTrainingPlanId
-  await loadList()
-  await loadComputeReadiness()
+  if (qualityStore.currentTrainingPlanId) {
+    await loadList()
+    await loadComputeReadiness()
+  }
 })
 
 onActivated(async () => {

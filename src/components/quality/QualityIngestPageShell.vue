@@ -1,17 +1,18 @@
 <script lang="ts" setup>
 /**
- * 质量数据接入页外壳：hub 内嵌时省略 StageWorkbenchShell 与重复 ContextBar。
+ * 质量数据接入页外壳：hub 内嵌时省略 StageWorkbenchShell。
  */
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { useQualityPageScope } from '@/composables/useQualityPageScope'
 
 defineOptions({ name: 'QualityIngestPageShell' })
 
-const { useStandaloneShell } = useQualityPageScope()
+defineProps<{
+  embedded?: boolean
+}>()
 </script>
 
 <template>
-  <StageWorkbenchShell v-if="useStandaloneShell">
+  <StageWorkbenchShell v-if="!embedded">
     <template v-if="$slots.context" #context>
       <slot name="context" />
     </template>

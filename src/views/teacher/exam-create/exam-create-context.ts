@@ -64,6 +64,8 @@ export interface ExamCreateMarkingTeamForm {
 export interface ExamCreateRosterForm {
   scopeMode: ExamRosterScopeMode
   classIds: string[]
+  /** 参考班级维护上下文院系 ID */
+  referenceDepartmentId?: string
   candidates: ExamCandidateVO[]
 }
 

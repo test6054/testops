@@ -8,6 +8,7 @@
       >
         <template #status>
           <MarkExamSelect
+            v-if="!isExamWorkspaceRoute"
             :selected-exam-id="selectedExamId"
             :exam-options="examOptions"
             :loading="examLoading"
@@ -310,7 +311,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
@@ -319,6 +320,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'AdminAuditTrail' })
 
 const route = useRoute()
+const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
 const {
   examOptions,
@@ -329,7 +331,7 @@ const {
   onExamSearch,
   searching,
   resolvingPinned,
-} = useMarkExamSelector()
+} = useMarkExamContext()
 
 const activeTab = ref<'logs' | 'incidents' | 'diagnostic-samples'>('logs')
 

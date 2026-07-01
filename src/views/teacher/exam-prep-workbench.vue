@@ -35,20 +35,15 @@ import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiLoadFailure from '@/components/ui-guide/ui/UiLoadFailure.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
-import { usePageLoadFailure } from '@/composables/usePageLoadFailure'
 import { WORKSPACE_STAGE_STATUS_TONE } from '@/constants/mark-workspace-nav'
 import { showUserError } from '@/utils/error-handler'
 import { buildPrepStepCards } from '@/utils/exam-prep-step-ui'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamPrepWorkbench' })
-
-const { loadError, captureLoadFailure, clearLoadFailure } = usePageLoadFailure()
 
 const ICON_MAP: Record<string, Component> = {
   materialLayout: ContainerOutlined,
@@ -108,11 +103,10 @@ async function loadDetail(examId: string | undefined) {
     detail.value = examDetail
     draftLayoutMode.value = detail.value.materialLayoutMode
     draftPrintSource.value = detail.value.printSourceMode
-    clearLoadFailure()
   } catch (error) {
     detail.value = null
     markingProgress.value = null
-    captureLoadFailure(error, '考试准备信息加载失败')
+    showUserError(error, '考试准备信息加载失败')
   } finally {
     detailLoading.value = false
   }
@@ -166,10 +160,13 @@ const prepSteps = computed<PrepStepCard[]>(() => {
   return buildPrepStepCards(backendSteps, d)
 })
 
+/** 页头已承载制卷形态编辑，步骤区不再重复 materialLayout 卡片 */
+const prepActionSteps = computed(() => prepSteps.value.filter((step) => step.key !== 'materialLayout'))
+
 /** 准备步骤按钮：仅当前首个未完成步骤保留 primary，避免同屏多颗主按钮 */
 function prepStepButtonVariant(step: PrepStepCard): 'primary' | 'outline' {
   if (step.status === 'completed') return 'outline'
-  const firstPending = prepSteps.value.find((item) => item.status !== 'completed')
+  const firstPending = prepActionSteps.value.find((item) => item.status !== 'completed')
   return firstPending?.key === step.key ? 'primary' : 'outline'
 }
 
@@ -254,9 +251,7 @@ watch(
   <UiEmpty v-if="!selectedExamId" description="请选择考试" class="exam-prep__empty" />
 
   <template v-else>
-    <UiLoadFailure v-if="loadError" title="考试准备信息加载失败" :description="loadError" />
-
-    <a-spin v-else :spinning="detailLoading">
+    <a-spin :spinning="detailLoading">
       <UiCard class="exam-prep__mode-card">
         <template #title>制卷形态</template>
         <a-form layout="inline">
@@ -326,7 +321,7 @@ watch(
         <SignalBand :metrics="statMetrics" compact class="exam-prep__signals" />
         <section class="exam-prep__cards">
           <UiCard
-            v-for="step in prepSteps"
+            v-for="step in prepActionSteps"
             :key="step.key"
             class="exam-prep__card"
             :class="`exam-prep__card--${step.status}`"
@@ -336,15 +331,13 @@ watch(
               <span>{{ step.title }}</span>
               <UiBadge :tone="resolveTone(step.status)">{{ step.statusText }}</UiBadge>
             </template>
-            <p class="exam-prep__desc">{{ step.description }}</p>
-            <a-space>
+            <div class="exam-prep__card-body">
+              <p class="exam-prep__desc">{{ step.description }}</p>
               <UiButton :variant="prepStepButtonVariant(step)" size="sm" @click="goPrepStep(step)">
                 {{ step.primaryAction }}
               </UiButton>
-              <UiTag v-if="step.advisoryReason" tone="orange" size="sm">
-                {{ step.advisoryReason }}
-              </UiTag>
-            </a-space>
+              <p v-if="step.advisoryReason" class="exam-prep__advisory">{{ step.advisoryReason }}</p>
+            </div>
           </UiCard>
         </section>
         <div v-if="prepReady" class="exam-prep__next-step">
@@ -437,10 +430,14 @@ watch(
   }
   &__cards {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 16px;
+    align-items: stretch;
   }
   &__card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     transition: border-color 0.2s ease;
     &--warning {
       border-color: var(--ant-color-warning-border, #fcd34d);
@@ -449,36 +446,35 @@ watch(
       border-color: var(--dp-green-200, #bbf7d0);
     }
   }
+  &__card-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
   &__desc {
-    margin: 8px 0 12px;
+    flex: 1;
+    margin: 0;
     font-size: 13px;
     color: var(--dp-text-muted, #64748b);
     line-height: 1.6;
+    word-break: break-word;
   }
-}
-
-@media (max-width: 1400px) {
-  .exam-prep {
-    &__cards {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-}
-
-@media (max-width: 960px) {
-  .exam-prep {
-    &__cards {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+  &__advisory {
+    margin: 0;
+    padding-top: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ant-color-warning, #d97706);
+    border-top: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+    word-break: break-word;
   }
 }
 
 @media (max-width: 640px) {
   .exam-prep {
     &__mode-options {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    &__cards {
       grid-template-columns: minmax(0, 1fr);
     }
   }

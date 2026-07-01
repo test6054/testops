@@ -4,11 +4,11 @@ import type {
   AccreditationCycleVO,
 } from '@/apis/quality/accreditation'
 import type { WorkbenchStage } from '@/types/workbench'
-import { computed, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ACCREDITATION_CYCLE_PHASE_LABEL, accreditationApi } from '@/apis/quality/accreditation'
+import { ACCREDITATION_CYCLE_PHASE_LABEL } from '@/apis/quality/accreditation'
+import { useAccreditationCockpit } from '@/composables/useAccreditationCockpit'
 import { useQualityStore } from '@/stores/modules/quality'
-import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const PHASE_ORDER: AccreditationCyclePhase[] = [
@@ -30,8 +30,7 @@ const PHASE_TAB: Record<AccreditationCyclePhase, string> = {
 export function useAccreditationWorkbench() {
   const router = useRouter()
   const qualityStore = useQualityStore()
-  const cockpit = ref<AccreditationCockpitVO>()
-  const cockpitLoading = ref(false)
+  const { cockpit, cockpitLoading, refresh: reloadCockpit } = useAccreditationCockpit()
 
   const programId = computed(() => qualityStore.currentProgramId)
   const trainingPlanId = computed(() => qualityStore.currentTrainingPlanId)
@@ -124,21 +123,9 @@ export function useAccreditationWorkbench() {
     ]
   })
 
-  async function reloadCockpit() {
-    if (!trainingPlanId.value) {
-      cockpit.value = undefined
-      return
-    }
-    cockpitLoading.value = true
-    try {
-      cockpit.value = await accreditationApi.cockpit(trainingPlanId.value)
-    } catch (e) {
-      cockpit.value = undefined
-      showUserError(e)
-    } finally {
-      cockpitLoading.value = false
-    }
-  }
+  watch(trainingPlanId, () => {
+    void reloadCockpit()
+  })
 
   function handleProgramChange(id: string | null) {
     if (id) qualityStore.setProgram(id)
@@ -186,8 +173,6 @@ export function useAccreditationWorkbench() {
   function goImprovement() {
     router.push({ name: 'QualityImprovementWorkbench' })
   }
-
-  watch(trainingPlanId, reloadCockpit)
 
   return {
     qualityStore,
