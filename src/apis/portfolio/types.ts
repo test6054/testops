@@ -1,3 +1,4 @@
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { PortfolioEvaluationTaskStatus } from '@/apis/portfolio/enums'
 import type { AiTaskStatus } from '@/apis/quality/types'
 /**
@@ -272,13 +273,14 @@ export const PORTFOLIO_ARCHIVE_TEMPLATE_VERSION_STATUS_LABEL: Record<PortfolioAr
   DEPRECATED: '已停用',
 }
 
-export type PortfolioArchiveFieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'ENUM'
+export type PortfolioArchiveFieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'ENUM' | 'SEMESTER'
 
 export const PORTFOLIO_ARCHIVE_FIELD_TYPE_LABEL: Record<PortfolioArchiveFieldType, string> = {
   TEXT: '文本',
   NUMBER: '数值',
   DATE: '日期',
   ENUM: '枚举',
+  SEMESTER: '学期',
 }
 
 export const PORTFOLIO_ARCHIVE_FIELD_TYPE_OPTIONS = (Object.keys(PORTFOLIO_ARCHIVE_FIELD_TYPE_LABEL) as PortfolioArchiveFieldType[])
@@ -1258,7 +1260,7 @@ export interface PortfolioArchiveRecordPageRequest extends QueryDto {
   categoryId?: string
   recordStatus?: PortfolioArchiveRecordStatus
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   courseCode?: string
   achievementType?: string
   materialType?: string

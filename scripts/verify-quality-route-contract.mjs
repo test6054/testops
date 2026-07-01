@@ -90,4 +90,4 @@ if (errors.length) {
   process.exit(1)
 }
 
-console.log(`verify-quality-route-contract 通过（${routes.size} 条叶子路由）`)
+process.stdout.write(`verify-quality-route-contract 通过（${routes.size} 条叶子路由）\n`)

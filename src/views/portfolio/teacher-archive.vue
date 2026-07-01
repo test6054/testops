@@ -5,6 +5,7 @@ import type {
   PortfolioArchiveBagPreviewVO,
   PortfolioArchiveScoreResultVO,
 } from '@/apis/portfolio/bag-types'
+import { PORTFOLIO_ARCHIVE_BAG_SOURCE_TYPE_LABEL } from '@/apis/portfolio/bag-types'
 import type {
   PortfolioArchiveRecordDetailVO,
   PortfolioArchiveRecordSourceType,
@@ -13,19 +14,19 @@ import type {
   PortfolioArchiveTimelineItemVO,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { message } from 'ant-design-vue'
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { portfolioArchiveApi } from '@/apis/portfolio/archive'
-import { PORTFOLIO_ARCHIVE_BAG_SOURCE_TYPE_LABEL } from '@/apis/portfolio/bag-types'
-import { portfolioArchiveBagApi } from '@/apis/portfolio/teacher-platform'
 import {
   PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL,
   PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
 } from '@/apis/portfolio/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
+import { message } from 'ant-design-vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { portfolioArchiveApi } from '@/apis/portfolio/archive'
+import { portfolioArchiveBagApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -40,7 +41,6 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -121,13 +121,13 @@ const scoreLoading = ref(false)
 const exportConfirmOpen = ref(false)
 const bagFilter = ref<{
   academicYear: string
-  semester: SemesterCode | ''
+  semester: SemesterCode | undefined
   courseCode: string
   achievementType: string
   materialType: string
 }>({
   academicYear: '',
-  semester: '',
+  semester: undefined,
   courseCode: '',
   achievementType: '',
   materialType: '',
@@ -250,7 +250,7 @@ function selectCategory(categoryId: string) {
   void loadRecords()
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadRecords()

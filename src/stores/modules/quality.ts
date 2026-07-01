@@ -11,16 +11,16 @@
  * - 持久化只保存少量"用户选择"字段，目录缓存只放内存。
  */
 import type { GraduationRequirementVO } from '@/apis/quality/graduation-requirement'
+import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import type { QualityCourseVO } from '@/apis/quality/quality-course'
+import { qualityCourseApi } from '@/apis/quality/quality-course'
 import type { TrainingPlanVO } from '@/apis/quality/training-plan'
+import { trainingPlanApi } from '@/apis/quality/training-plan'
 import type { MajorCategoryVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
+import { departmentCatalogApi, majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
-import { qualityCourseApi } from '@/apis/quality/quality-course'
-import { trainingPlanApi } from '@/apis/quality/training-plan'
-import { departmentCatalogApi, majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
 import { readAllPages } from '@/utils/page-result'
 
 export const useQualityStore = defineStore(
@@ -41,7 +41,7 @@ export const useQualityStore = defineStore(
     const currentSchoolYear = ref<string>('')
 
     /** 当前学期（SemesterCode：秋季 / 春季） */
-    const currentSemester = ref<SemesterCode | ''>('')
+    const currentSemester = ref<SemesterCode | undefined>(undefined)
 
     /** 当前质量评价课程 ID（供成绩导入 / 达成度触发默认回填） */
     const currentQualityCourseId = ref<string>('')
@@ -101,12 +101,10 @@ export const useQualityStore = defineStore(
       try {
         majorCategoryOptions.value = (await majorCategoryCatalogApi.listAll()) || []
         return majorCategoryOptions.value
-      }
-      catch {
+      } catch {
         majorCategoryOptions.value = []
         return majorCategoryOptions.value
-      }
-      finally {
+      } finally {
         majorCategoryLoading.value = false
       }
     }
@@ -122,7 +120,7 @@ export const useQualityStore = defineStore(
       }
     }
 
-    async function loadTrainingPlanOptions(opts?: { programId?: string, keyword?: string }) {
+    async function loadTrainingPlanOptions(opts?: { programId?: string; keyword?: string }) {
       trainingPlanLoading.value = true
       try {
         trainingPlanOptions.value = await readAllPages(
@@ -137,12 +135,10 @@ export const useQualityStore = defineStore(
           '培养方案列表加载失败',
         )
         return trainingPlanOptions.value
-      }
-      catch {
+      } catch {
         trainingPlanOptions.value = []
         return trainingPlanOptions.value
-      }
-      finally {
+      } finally {
         trainingPlanLoading.value = false
       }
     }
@@ -227,7 +223,7 @@ export const useQualityStore = defineStore(
       }
     }
 
-    function setSchoolPeriod(schoolYear?: string, semester?: SemesterCode | '') {
+    function setSchoolPeriod(schoolYear?: string, semester?: SemesterCode) {
       const yearChanged = schoolYear !== undefined && currentSchoolYear.value !== schoolYear
       const semesterChanged = semester !== undefined && currentSemester.value !== semester
       if (schoolYear !== undefined) {
@@ -254,7 +250,7 @@ export const useQualityStore = defineStore(
       currentAccreditationProfileId.value = ''
       currentTrainingPlanId.value = ''
       currentSchoolYear.value = ''
-      currentSemester.value = ''
+      currentSemester.value = undefined
       currentQualityCourseId.value = ''
       majorCategoryOptions.value = []
       departmentOptions.value = []

@@ -1,21 +1,12 @@
 <template>
   <div class="portfolio-intake-panel">
-    <SignalBand
-      v-if="signalMetrics.length"
-      :metrics="signalMetrics"
-      variant="inline"
-      compact
-    />
+    <SignalBand v-if="signalMetrics.length" :metrics="signalMetrics" variant="inline" compact />
 
     <UiCard title="材料来源" class="portfolio-intake-panel__section">
       <div class="portfolio-intake-panel__upload-grid">
         <div>
           <div class="portfolio-intake-panel__label">材料标题</div>
-          <a-input
-            v-model:value="materialTitle"
-            :disabled="readOnly"
-            placeholder="材料标题"
-          />
+          <a-input v-model:value="materialTitle" :disabled="readOnly" placeholder="材料标题" />
         </div>
         <div>
           <div class="portfolio-intake-panel__label">材料文件</div>
@@ -31,12 +22,8 @@
         </div>
       </div>
       <div v-if="!readOnly" class="portfolio-intake-panel__actions">
-        <UiButton variant="outline" :loading="scanOpening" @click="openScan">
-          一体机扫描
-        </UiButton>
-        <UiButton :loading="starting" @click="handleStart">
-          登记并开始处理
-        </UiButton>
+        <UiButton variant="outline" :loading="scanOpening" @click="openScan"> 一体机扫描 </UiButton>
+        <UiButton :loading="starting" @click="handleStart"> 登记并开始处理 </UiButton>
       </div>
     </UiCard>
 
@@ -46,11 +33,7 @@
         tone="warning"
         :title="`审核退回：${status.latestRejectReason}`"
       />
-      <UiAlertStrip
-        v-else-if="status?.stage"
-        :tone="stageTone"
-        :title="stageLabel"
-      />
+      <UiAlertStrip v-else-if="status?.stage" :tone="stageTone" :title="stageLabel" />
       <p v-if="status?.ocrStatus" class="portfolio-intake-panel__meta">
         OCR 状态：{{ status.ocrStatus }}
       </p>
@@ -89,10 +72,21 @@
             {{ field.fieldLabel }}
             <UiTag v-if="field.required" tone="orange" size="sm">必填</UiTag>
           </div>
+          <a-select
+            v-if="field.fieldType === 'SEMESTER'"
+            v-model:value="fieldValues[field.fieldCode]"
+            :disabled="readOnly"
+            :options="SemesterOptions"
+            allow-clear
+            placeholder="请选择学期"
+            class="portfolio-intake-panel__field-control"
+          />
           <a-input
+            v-else
             v-model:value="fieldValues[field.fieldCode]"
             :disabled="readOnly"
             :placeholder="field.fieldLabel"
+            class="portfolio-intake-panel__field-control"
           />
         </div>
       </div>
@@ -101,12 +95,8 @@
 
     <UiCard title="归档动作" class="portfolio-intake-panel__section">
       <div v-if="!readOnly" class="portfolio-intake-panel__actions">
-        <UiButton variant="outline" :loading="saving" @click="saveDraft">
-          保存草稿
-        </UiButton>
-        <UiButton :loading="submitting" @click="handleSubmit">
-          提交审核
-        </UiButton>
+        <UiButton variant="outline" :loading="saving" @click="saveDraft"> 保存草稿 </UiButton>
+        <UiButton :loading="submitting" @click="handleSubmit"> 提交审核 </UiButton>
       </div>
       <UiEmpty v-else :description="archiveActionHint" />
     </UiCard>
@@ -136,9 +126,13 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { buildPortfolioIntakeScanReturnTo, usePortfolioIntake } from '@/composables/usePortfolioIntake'
+import {
+  buildPortfolioIntakeScanReturnTo,
+  usePortfolioIntake,
+} from '@/composables/usePortfolioIntake'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'PortfolioMaterialIntakePanel' })
@@ -188,7 +182,8 @@ const categoryIdModel = computed({
 })
 
 const editableFields = computed(() =>
-  (status.value?.targetFields ?? []).filter(item => !item.readonly))
+  (status.value?.targetFields ?? []).filter((item) => !item.readonly),
+)
 
 const reassignBlocked = computed(() => {
   if (!status.value) {
@@ -201,11 +196,7 @@ const stageLabel = computed(() => {
   if (!status.value?.stage) {
     return '尚未开始采集'
   }
-  return strictEnumLabel(
-    PORTFOLIO_MATERIAL_INTAKE_STAGE_LABEL,
-    status.value.stage,
-    '材料采集阶段',
-  )
+  return strictEnumLabel(PORTFOLIO_MATERIAL_INTAKE_STAGE_LABEL, status.value.stage, '材料采集阶段')
 })
 
 /** BadgeTone 与 UiAlertStrip 四色语义不一致，展示前映射到 alert strip 合同。 */
@@ -261,7 +252,10 @@ const archiveActionHint = computed(() => {
   if (!status.value) {
     return '请先登记材料'
   }
-  if (status.value.recordStatus === 'PENDING_CONFIRM' || (status.value.pendingCandidateCount ?? 0) > 0) {
+  if (
+    status.value.recordStatus === 'PENDING_CONFIRM' ||
+    (status.value.pendingCandidateCount ?? 0) > 0
+  ) {
     return '请先确认 AI 候选字段后再保存或提交'
   }
   if (status.value.stage === 'OCR_PENDING' || status.value.stage === 'AI_PROCESSING') {
@@ -286,8 +280,7 @@ async function handleStart() {
       fileName: fileName.value,
       demoMode: demoMode.value,
     })
-  }
-  finally {
+  } finally {
     starting.value = false
   }
 }
@@ -328,11 +321,9 @@ async function openScan() {
         returnTo: buildPortfolioIntakeScanReturnTo(query),
       },
     })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '创建档案袋扫描派单失败')
-  }
-  finally {
+  } finally {
     scanOpening.value = false
   }
 }
@@ -364,7 +355,13 @@ async function handleSubmit() {
 }
 
 watch(
-  () => [route.query.materialId, route.query.recordId, route.query.taskId, route.query.categoryId, targetTeacherId.value],
+  () => [
+    route.query.materialId,
+    route.query.recordId,
+    route.query.taskId,
+    route.query.categoryId,
+    targetTeacherId.value,
+  ],
   () => {
     if (typeof route.query.categoryId === 'string') {
       categoryId.value = route.query.categoryId
