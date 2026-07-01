@@ -709,7 +709,7 @@ function validateConfiguredMarkingOrganization(record: MarkingOrganizationVO): M
  * 校验阅卷组织合同枚举，避免模板渲染路径成为首次失败位置。
  */
 export function validateMarkingOrganizationContract(record: MarkingOrganizationVO): void {
-  if (record.configured !== true) {
+  if (!record.configured) {
     return
   }
   validateConfiguredMarkingOrganization(record)
@@ -811,7 +811,7 @@ export function createOrganization(
 export async function getOrganization(request: OrganizationQueryRequest): Promise<MarkingOrganizationVO> {
   const record = await http.post<MarkingOrganizationVO>('/api/mark/organization/detail', request)
   assertUserFacingText(record.examId, MARKING_ORG_DATA_ERROR)
-  if (record.configured !== true) {
+  if (!record.configured) {
     return {
       configured: false,
       examId: record.examId,

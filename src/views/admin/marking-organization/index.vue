@@ -364,7 +364,7 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     ]
   }
   const snapshot = workbenchContext?.snapshot.value
-  if (snapshot && snapshot.markingOrgConfigured === false) {
+  if (snapshot && !snapshot.markingOrgConfigured) {
     return [{
       key: 'org-pending',
       label: '阅卷设置',
