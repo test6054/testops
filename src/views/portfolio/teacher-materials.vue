@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PaperArchiveOcrStatusCode } from '@/apis/mark/paper-archive'
-import {
-  PAPER_ARCHIVE_OCR_STATUS_LABEL,
-  PAPER_ARCHIVE_OCR_STATUS_TONE,
-} from '@/apis/mark/paper-archive'
 import type {
   PortfolioMaterialSaveRequest,
   PortfolioMaterialSearchResponse,
@@ -12,17 +8,21 @@ import type {
   PortfolioMaterialType,
   PortfolioMaterialVO,
 } from '@/apis/portfolio/types'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import { Input, message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  PAPER_ARCHIVE_OCR_STATUS_LABEL,
+  PAPER_ARCHIVE_OCR_STATUS_TONE,
+} from '@/apis/mark/paper-archive'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import {
   PORTFOLIO_MATERIAL_STATUS_LABEL,
   PORTFOLIO_MATERIAL_STATUS_TONE,
   PORTFOLIO_MATERIAL_TYPE_LABEL,
 } from '@/apis/portfolio/types'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import { Input, message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'

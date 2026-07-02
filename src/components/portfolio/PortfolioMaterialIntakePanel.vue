@@ -230,9 +230,9 @@ const reassignAllowed = computed(() => {
 
 const reassignReady = computed(
   () =>
-    reassignAllowed.value &&
-    Boolean(categoryIdModel.value) &&
-    categoryIdModel.value !== status.value?.categoryId,
+    reassignAllowed.value
+    && Boolean(categoryIdModel.value)
+    && categoryIdModel.value !== status.value?.categoryId,
 )
 
 const clearedFieldsHint = computed(() => {
@@ -310,8 +310,8 @@ const archiveActionHint = computed(() => {
     return '请先登记材料'
   }
   if (
-    status.value.recordStatus === 'PENDING_CONFIRM' ||
-    (status.value.pendingCandidateCount ?? 0) > 0
+    status.value.recordStatus === 'PENDING_CONFIRM'
+    || (status.value.pendingCandidateCount ?? 0) > 0
   ) {
     return '请先确认 AI 候选字段后再保存或提交'
   }

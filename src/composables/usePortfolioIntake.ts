@@ -1,5 +1,4 @@
 import type { Ref } from 'vue'
-import { computed, reactive, ref } from 'vue'
 import type {
   PortfolioArchiveRecordFieldInput,
   PortfolioMaterialIntakeStage,
@@ -8,6 +7,7 @@ import type {
 } from '@/apis/portfolio/types'
 import type { AiTaskStatus } from '@/apis/quality/types'
 import { message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioIntakeApi } from '@/apis/portfolio/intake'
 import { usePolling } from '@/composables/usePolling'
@@ -156,12 +156,12 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     const effectiveDemoMode = options?.demoMode ?? demoMode.value
     const effectiveCategoryId = categoryId.value || undefined
     const aiFailedStage = status.value?.stage === 'AI_FAILED'
-    const shouldSubmitAi =
-      options?.submitAi === true ||
-      (options?.submitAi !== false &&
-        !effectiveDemoMode &&
-        Boolean(effectiveCategoryId) &&
-        !aiFailedStage)
+    const shouldSubmitAi
+      = options?.submitAi === true
+        || (options?.submitAi !== false
+          && !effectiveDemoMode
+          && Boolean(effectiveCategoryId)
+          && !aiFailedStage)
     loading.value = true
     try {
       let frozenProviderChain: string | undefined
