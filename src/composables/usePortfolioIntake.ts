@@ -65,10 +65,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     if (POLLING_STAGES.includes(status.value.stage)) {
       return true
     }
-    if (status.value.aiTaskStatus && POLLING_AI_STATUSES.includes(status.value.aiTaskStatus)) {
-      return true
-    }
-    return false
+    return !!(status.value.aiTaskStatus && POLLING_AI_STATUSES.includes(status.value.aiTaskStatus))
   })
 
   const fieldReadOnly = computed(() => {
@@ -82,13 +79,9 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     if (stage === 'OCR_PENDING' || stage === 'AI_PROCESSING') {
       return true
     }
-    if (
-      status.value.recordStatus === 'PENDING_CONFIRM' ||
-      status.value.recordStatus === 'OFFICIAL'
-    ) {
-      return true
-    }
-    return false
+    return (
+      status.value.recordStatus === 'PENDING_CONFIRM' || status.value.recordStatus === 'OFFICIAL'
+    )
   })
 
   const aiCandidateReadOnly = computed(() => {
@@ -215,7 +208,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
         status.value?.archiveRecordId,
       )
     ) {
-      message.warning('分类已变更，请先点击「重分类」确认后再保存或提交')
+      void message.warning('分类已变更，请先点击「重分类」确认后再保存或提交')
       return true
     }
     return false
@@ -372,7 +365,6 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     saveDraft,
     submitIntake,
     reassignCategory,
-    handleScanCommitted,
     clearScanCommittedQuery,
   }
 }

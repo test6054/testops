@@ -1862,6 +1862,19 @@ export interface PortfolioMaterialVO {
   ocrFinishedTime?: string
   ocrFailureReason?: string
   providerChain?: string
+  /** 重分类未映射字段快照 JSON */
+  unmappedFieldSnapshot?: string
+}
+
+/**
+ * 材料库「重分类」跳转 Intake 路由 query。
+ * materialId / recordId / categoryId 分别映射 PortfolioMaterialVO.id / archiveRecordId / categoryId。
+ */
+export interface PortfolioIntakeReassignRouteQuery {
+  teacherId: string
+  materialId: string
+  recordId?: string
+  categoryId?: string
 }
 
 export interface PortfolioMaterialSearchRequest extends QueryDto {

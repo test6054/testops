@@ -1,8 +1,9 @@
 import type {
   PortfolioArchiveRecordStatus,
+  PortfolioIntakeReassignRouteQuery,
   PortfolioMaterialIntakeStage,
   PortfolioMaterialStatus,
-  PortfolioMaterialVO,
+  PortfolioMaterialVO
 } from '@/apis/portfolio/types'
 
 /** 材料库行是否可进入 Intake 重分类：仅 ACTIVE + 已绑定 DRAFT/RETURNED 档案且异步处理未阻塞。 */
@@ -17,29 +18,19 @@ export function canReassignPortfolioMaterial(row: PortfolioMaterialVO): boolean 
   if (recordStatus !== 'DRAFT' && recordStatus !== 'RETURNED') {
     return false
   }
-  if (isReassignBlockedByIntakeStage(row.intakeStage)) {
-    return false
-  }
-  return true
+  return !isReassignBlockedByIntakeStage(row.intakeStage);
 }
 
 function isReassignBlockedByIntakeStage(stage: PortfolioMaterialIntakeStage | undefined): boolean {
   return stage === 'OCR_PENDING' || stage === 'AI_PROCESSING'
 }
 
-export interface PortfolioIntakeReassignRouteQuery {
-  teacherId: string
-  materialId: string
-  recordId?: string
-  categoryId?: string
-}
-
 /** 材料库「重分类」行操作跳转 Intake 采集页 query。 */
 export function buildPortfolioIntakeReassignQuery(
   row: PortfolioMaterialVO,
   teacherId: string,
-): PortfolioIntakeReassignRouteQuery {
-  const query: PortfolioIntakeReassignRouteQuery = {
+): PortfolioIntakeReassignRouteQuery & Record<string, string> {
+  const query: PortfolioIntakeReassignRouteQuery & Record<string, string> = {
     teacherId,
     materialId: row.id,
   }

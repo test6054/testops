@@ -182,7 +182,6 @@ const {
   taskId,
   fieldValues,
   readOnly,
-  fieldReadOnly,
   aiCandidateReadOnly,
   demoMode,
   refreshStatus,
@@ -207,10 +206,7 @@ const editableFields = computed(() =>
 const materialRegistered = computed(() => Boolean(materialId.value || status.value?.materialId))
 
 const showRegisterStart = computed(() => {
-  if (status.value?.stage === 'AI_FAILED' && materialRegistered.value) {
-    return false
-  }
-  return true
+  return !(status.value?.stage === 'AI_FAILED' && materialRegistered.value)
 })
 
 const showRetryAi = computed(
@@ -418,7 +414,8 @@ async function openScan() {
       archiveRecordId: archiveRecordId.value || undefined,
     })
     if (!created.ticket?.ticketId) {
-      throw new Error('创建档案袋派单失败')
+      showUserError(new Error('创建档案袋派单失败'), '创建档案袋扫描派单失败')
+      return
     }
     void router.push({
       path: `/scanner-kiosk/dispatch/${created.ticket.ticketId}`,
