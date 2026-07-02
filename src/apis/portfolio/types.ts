@@ -968,6 +968,7 @@ export type PortfolioMaterialIntakeStage
     | 'UPLOADED'
     | 'OCR_PENDING'
     | 'AI_PROCESSING'
+    | 'AI_FAILED'
     | 'CATEGORY_PENDING'
     | 'FIELDS_INCOMPLETE'
     | 'READY_TO_SUBMIT'
@@ -980,6 +981,7 @@ export const PORTFOLIO_MATERIAL_INTAKE_STAGE_LABEL: Record<PortfolioMaterialInta
   UPLOADED: '已上传',
   OCR_PENDING: 'OCR 处理中',
   AI_PROCESSING: 'AI 抽取中',
+  AI_FAILED: 'AI 抽取失败',
   CATEGORY_PENDING: '待确认分类',
   FIELDS_INCOMPLETE: '字段待补全',
   READY_TO_SUBMIT: '可提交审核',
@@ -993,6 +995,7 @@ export const PORTFOLIO_MATERIAL_INTAKE_STAGE_TONE: Record<PortfolioMaterialIntak
   UPLOADED: 'blue',
   OCR_PENDING: 'blue',
   AI_PROCESSING: 'blue',
+  AI_FAILED: 'red',
   CATEGORY_PENDING: 'orange',
   FIELDS_INCOMPLETE: 'orange',
   READY_TO_SUBMIT: 'green',
@@ -1034,6 +1037,12 @@ export interface PortfolioMaterialIntakeValidationDiagnosticVO {
   message: string
 }
 
+export interface PortfolioMaterialUnmappedFieldVO {
+  fieldCode: string
+  fieldLabel?: string
+  fieldValue?: string
+}
+
 export interface PortfolioMaterialIntakeStatusVO {
   intakeSessionId: string
   materialId: string
@@ -1055,6 +1064,7 @@ export interface PortfolioMaterialIntakeStatusVO {
   latestRejectReason?: string
   fieldValues?: PortfolioRecordFieldCore[]
   targetFields?: PortfolioTargetFieldDefinition[]
+  clearedFieldsFromReassign?: PortfolioMaterialUnmappedFieldVO[]
 }
 
 export interface PortfolioMaterialIntakeStartResultVO {
@@ -1106,6 +1116,7 @@ export interface PortfolioMaterialReassignCategoryResultVO {
   reusedFieldCount: number
   clearedFieldCount: number
   stageAfterReassign: PortfolioMaterialIntakeStage
+  clearedFields?: PortfolioMaterialUnmappedFieldVO[]
 }
 
 export interface PortfolioTeacherCompletenessVO {
@@ -1842,6 +1853,10 @@ export interface PortfolioMaterialVO {
   materialTitle?: string
   fileNodeId?: string
   categoryCode?: string
+  categoryId?: string
+  archiveRecordId?: string
+  recordStatus?: PortfolioArchiveRecordStatus
+  intakeStage?: PortfolioMaterialIntakeStage
   status?: PortfolioMaterialStatus
   ocrStatus?: string
   ocrFinishedTime?: string

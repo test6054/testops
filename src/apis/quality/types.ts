@@ -72,15 +72,17 @@ export const ACHIEVEMENT_STATUS_LABEL: Record<AchievementStatus, string> = {
 /** 达成度明细类型 - AchievementDetailTypeEnum */
 export type AchievementDetailType
   = | 'ASSESSMENT_ITEM'
+    | 'INDIRECT_AGGREGATE'
     | 'COURSE_GOAL'
-    | 'INDICATOR'
-    | 'REQUIREMENT'
+    | 'REQUIREMENT_INDICATOR'
+    | 'GRADUATION_REQUIREMENT'
 
 export const ACHIEVEMENT_DETAIL_TYPE_LABEL: Record<AchievementDetailType, string> = {
   ASSESSMENT_ITEM: '考核环节',
+  INDIRECT_AGGREGATE: '间接评价聚合',
   COURSE_GOAL: '课程目标',
-  INDICATOR: '毕业要求观测点',
-  REQUIREMENT: '毕业要求',
+  REQUIREMENT_INDICATOR: '毕业要求观测点',
+  GRADUATION_REQUIREMENT: '毕业要求',
 }
 
 /** 达成度人工复核决定 - ManualReviewDecisionEnum */
@@ -614,6 +616,7 @@ export type AssessmentItemType
     | 'WORK_PORTFOLIO'
     | 'FIELD_TRIAL'
     | 'CLINICAL_PRACTICE'
+    | 'EXAM'
 
 export const ASSESSMENT_ITEM_TYPE_LABEL: Record<AssessmentItemType, string> = {
   FINAL_EXAM: '期末考试',
@@ -629,6 +632,7 @@ export const ASSESSMENT_ITEM_TYPE_LABEL: Record<AssessmentItemType, string> = {
   WORK_PORTFOLIO: '作品集',
   FIELD_TRIAL: '田间或现场试验',
   CLINICAL_PRACTICE: '临床实习与轮转',
+  EXAM: '考试（edu-mark 同步）',
 }
 
 /** 五育维度标签 */

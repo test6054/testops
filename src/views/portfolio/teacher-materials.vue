@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PaperArchiveOcrStatusCode } from '@/apis/mark/paper-archive'
+import {
+  PAPER_ARCHIVE_OCR_STATUS_LABEL,
+  PAPER_ARCHIVE_OCR_STATUS_TONE,
+} from '@/apis/mark/paper-archive'
 import type {
   PortfolioMaterialSaveRequest,
   PortfolioMaterialSearchResponse,
@@ -8,21 +12,17 @@ import type {
   PortfolioMaterialType,
   PortfolioMaterialVO,
 } from '@/apis/portfolio/types'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import { Input, message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  PAPER_ARCHIVE_OCR_STATUS_LABEL,
-  PAPER_ARCHIVE_OCR_STATUS_TONE,
-} from '@/apis/mark/paper-archive'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import {
   PORTFOLIO_MATERIAL_STATUS_LABEL,
   PORTFOLIO_MATERIAL_STATUS_TONE,
   PORTFOLIO_MATERIAL_TYPE_LABEL,
 } from '@/apis/portfolio/types'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import { Input, message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -33,9 +33,16 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
+import {
+  usePortfolioPageScope,
+  usePortfolioScopedLoader,
+} from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
+import {
+  buildPortfolioIntakeReassignQuery,
+  canReassignPortfolioMaterial,
+} from '@/utils/portfolio-material-reassign'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const router = useRouter()
@@ -70,11 +77,13 @@ function isOcrStatusCode(value: string | undefined): value is PaperArchiveOcrSta
   return !!value && Object.hasOwn(PAPER_ARCHIVE_OCR_STATUS_LABEL, value)
 }
 
-const materialTypeOptions = (Object.keys(PORTFOLIO_MATERIAL_TYPE_LABEL) as PortfolioMaterialType[])
-  .map(value => ({ value, label: materialTypeLabel(value) }))
+const materialTypeOptions = (
+  Object.keys(PORTFOLIO_MATERIAL_TYPE_LABEL) as PortfolioMaterialType[]
+).map((value) => ({ value, label: materialTypeLabel(value) }))
 
-const materialStatusOptions = (Object.keys(PORTFOLIO_MATERIAL_STATUS_LABEL) as PortfolioMaterialStatus[])
-  .map(value => ({ value, label: materialStatusLabel(value) }))
+const materialStatusOptions = (
+  Object.keys(PORTFOLIO_MATERIAL_STATUS_LABEL) as PortfolioMaterialStatus[]
+).map((value) => ({ value, label: materialStatusLabel(value) }))
 
 const filterFields: FilterField[] = [
   { key: 'materialType', label: '材料类型', type: 'select', options: materialTypeOptions },
@@ -87,7 +96,7 @@ const listColumns: ColumnsType<PortfolioMaterialVO> = [
   { title: '分类编码', dataIndex: 'categoryCode', key: 'categoryCode', width: 120 },
   { title: '状态', key: 'status', width: 100 },
   { title: 'OCR', key: 'ocrStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 220, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 280, fixed: 'right' },
 ]
 
 const searchColumns: ColumnsType<PortfolioMaterialSearchResponse> = [
@@ -119,7 +128,7 @@ const form = reactive<PortfolioMaterialSaveRequest>({
 })
 const attachmentFileName = ref<string>()
 
-const modalTitle = computed(() => editingId.value ? '编辑材料' : '登记材料')
+const modalTitle = computed(() => (editingId.value ? '编辑材料' : '登记材料'))
 const showSearchResults = computed(() => searchKeyword.value.trim().length > 0)
 
 async function loadPage() {
@@ -134,11 +143,9 @@ async function loadPage() {
     })
     rows.value = readPageList(page, '加载材料库失败')
     pageTotal.value = readPageTotal(page)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载材料库失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -161,11 +168,9 @@ async function searchOcr() {
     })
     searchRows.value = readPageList(page, 'OCR 检索失败')
     searchPageTotal.value = readPageTotal(page)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, 'OCR 检索失败')
-  }
-  finally {
+  } finally {
     searchLoading.value = false
   }
 }
@@ -221,11 +226,9 @@ async function submitForm() {
     message.success(editingId.value ? '材料已更新' : '材料已登记')
     formModalOpen.value = false
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '保存材料失败')
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -243,8 +246,7 @@ async function deleteMaterial(row: PortfolioMaterialVO) {
     await portfolioMaterialApi.delete(row.id)
     message.success('材料已删除')
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '删除材料失败')
   }
 }
@@ -288,22 +290,37 @@ function openAiExtract(row: PortfolioMaterialVO) {
   })
 }
 
-usePortfolioScopedLoader(() => {
-  pageNum.value = 1
-  void loadPage()
-}, () => targetTeacherId.value)
+function openIntakeReassign(row: PortfolioMaterialVO) {
+  const teacherId = targetTeacherId.value ?? row.teacherId
+  if (!teacherId) {
+    message.warning('请先选择教师')
+    return
+  }
+  if (!canReassignPortfolioMaterial(row)) {
+    message.warning('当前材料不可重分类，仅草稿或退回修改中的档案记录可重分类')
+    return
+  }
+  void router.push({
+    path: '/portfolio/teacher/intake',
+    query: buildPortfolioIntakeReassignQuery(row, teacherId),
+  })
+}
+
+usePortfolioScopedLoader(
+  () => {
+    pageNum.value = 1
+    void loadPage()
+  },
+  () => targetTeacherId.value,
+)
 </script>
 
 <template>
   <StageWorkbenchShell>
     <ContextBar title="材料库" description="教师佐证材料登记、OCR 检索与复用">
       <template #actions>
-        <UiButton variant="primary" @click="openCreateModal">
-          登记材料
-        </UiButton>
-        <UiButton :loading="loading" @click="() => void loadPage()">
-          刷新
-        </UiButton>
+        <UiButton variant="primary" @click="openCreateModal"> 登记材料 </UiButton>
+        <UiButton :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
       </template>
     </ContextBar>
 
@@ -359,28 +376,33 @@ usePortfolioScopedLoader(() => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'ocrStatus'">
-            <UiTag
-              v-if="isOcrStatusCode(record.ocrStatus)"
-              :tone="ocrStatusTone(record.ocrStatus)"
-            >
+            <UiTag v-if="isOcrStatusCode(record.ocrStatus)" :tone="ocrStatusTone(record.ocrStatus)">
               {{ ocrStatusLabel(record.ocrStatus) }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell">
-              <button type="button" class="op-link" @click="openAiExtract(record)">
-                AI 抽取
+              <button
+                v-if="canReassignPortfolioMaterial(record)"
+                type="button"
+                class="op-link"
+                @click="openIntakeReassign(record)"
+              >
+                重分类
               </button>
+              <button type="button" class="op-link" @click="openAiExtract(record)">AI 抽取</button>
               <button type="button" class="op-link" @click="openAiOrchestration(record, 'ask')">
                 智能问数
               </button>
               <button type="button" class="op-link" @click="openAiOrchestration(record, 'policy')">
                 政策核验
               </button>
-              <button type="button" class="op-link" @click="openEditModal(record)">
-                编辑
-              </button>
-              <button type="button" class="op-link op-link--danger" @click="() => void deleteMaterial(record)">
+              <button type="button" class="op-link" @click="openEditModal(record)">编辑</button>
+              <button
+                type="button"
+                class="op-link op-link--danger"
+                @click="() => void deleteMaterial(record)"
+              >
                 删除
               </button>
             </div>

@@ -1,4 +1,5 @@
 import type { Ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import type {
   PortfolioArchiveRecordFieldInput,
   PortfolioMaterialIntakeStage,
@@ -7,11 +8,11 @@ import type {
 } from '@/apis/portfolio/types'
 import type { AiTaskStatus } from '@/apis/quality/types'
 import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioIntakeApi } from '@/apis/portfolio/intake'
 import { usePolling } from '@/composables/usePolling'
 import { showUserError } from '@/utils/error-handler'
+import { hasPendingPortfolioCategoryChange } from '@/utils/portfolio-material-reassign'
 
 const POLLING_STAGES: PortfolioMaterialIntakeStage[] = ['OCR_PENDING', 'AI_PROCESSING']
 
@@ -81,7 +82,10 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     if (stage === 'OCR_PENDING' || stage === 'AI_PROCESSING') {
       return true
     }
-    if (status.value.recordStatus === 'PENDING_CONFIRM') {
+    if (
+      status.value.recordStatus === 'PENDING_CONFIRM' ||
+      status.value.recordStatus === 'OFFICIAL'
+    ) {
       return true
     }
     return false
@@ -89,7 +93,10 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
 
   const aiCandidateReadOnly = computed(() => {
     const stage = status.value?.stage
-    return stage === 'SUBMITTED' || stage === 'UNDER_REVIEW'
+    if (stage === 'SUBMITTED' || stage === 'UNDER_REVIEW') {
+      return true
+    }
+    return status.value?.recordStatus === 'OFFICIAL'
   })
 
   const readOnly = fieldReadOnly
@@ -121,7 +128,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
   }
 
   async function refreshStatus() {
-    if (!targetTeacherId.value && !materialId.value) {
+    if (!materialId.value) {
       status.value = null
       return
     }
@@ -146,6 +153,8 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     fileName?: string
     demoMode?: boolean
     scanFileNodeId?: string
+    /** 显式 true 时重新提交 AI；AI_FAILED 阶段默认不自动提交 */
+    submitAi?: boolean
   }) {
     if (!targetTeacherId.value) {
       message.error('请先选择教师')
@@ -153,6 +162,13 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     }
     const effectiveDemoMode = options?.demoMode ?? demoMode.value
     const effectiveCategoryId = categoryId.value || undefined
+    const aiFailedStage = status.value?.stage === 'AI_FAILED'
+    const shouldSubmitAi =
+      options?.submitAi === true ||
+      (options?.submitAi !== false &&
+        !effectiveDemoMode &&
+        Boolean(effectiveCategoryId) &&
+        !aiFailedStage)
     loading.value = true
     try {
       let frozenProviderChain: string | undefined
@@ -167,7 +183,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
         fileNodeId: options?.fileNodeId,
         materialTitle: options?.materialTitle,
         materialType: inferMaterialType(options?.fileName ?? options?.materialTitle),
-        submitAi: !effectiveDemoMode && Boolean(effectiveCategoryId),
+        submitAi: shouldSubmitAi,
         demoMode: effectiveDemoMode || undefined,
         frozenProviderChain,
         scanFileNodeId: options?.scanFileNodeId,
@@ -191,6 +207,20 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     }))
   }
 
+  function warnPendingCategoryChange(): boolean {
+    if (
+      hasPendingPortfolioCategoryChange(
+        categoryId.value,
+        status.value?.categoryId,
+        status.value?.archiveRecordId,
+      )
+    ) {
+      message.warning('分类已变更，请先点击「重分类」确认后再保存或提交')
+      return true
+    }
+    return false
+  }
+
   async function saveDraft() {
     if (fieldReadOnly.value) {
       message.warning('当前阶段不可保存草稿，请先完成 AI 候选确认或等待处理结束')
@@ -198,6 +228,9 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     }
     if (!status.value || !categoryId.value) {
       message.warning('请先选择档案分类')
+      return
+    }
+    if (warnPendingCategoryChange()) {
       return
     }
     saving.value = true
@@ -228,6 +261,9 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
       message.warning('请先选择档案分类')
       return
     }
+    if (warnPendingCategoryChange()) {
+      return
+    }
     submitting.value = true
     try {
       const result = await portfolioIntakeApi.submit({
@@ -249,8 +285,12 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
   }
 
   async function reassignCategory(targetCategoryId: string) {
-    if (!status.value?.materialId || !archiveRecordId.value) {
-      message.warning('当前材料尚未关联档案记录，无法重分类')
+    if (!status.value?.materialId) {
+      message.warning('请先登记材料后再重分类')
+      return
+    }
+    if (targetCategoryId === status.value.categoryId) {
+      message.warning('目标分类与当前分类相同，请选择其他分类')
       return
     }
     reassigning.value = true
@@ -295,12 +335,6 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     await handleScanCommitted(scanFileNodeId || undefined)
     return true
   }
-
-  watch(categoryId, (value) => {
-    if (status.value && value !== status.value.categoryId) {
-      void refreshStatus()
-    }
-  })
 
   usePolling(
     async () => {
