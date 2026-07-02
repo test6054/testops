@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type Konva from 'konva'
 import type { ComponentPublicInstance } from 'vue'
-import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
 import { Image as KonvaImage, Layer, Line, Rect, Stage, Text, Transformer } from 'vue-konva'
 import LayoutCanvasToolbar from '@/components/mark/layout-designer/LayoutCanvasToolbar.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -16,6 +16,7 @@ import {
   pageByNo,
   resolveBlockFill,
   resolveBlockStroke,
+  resolvePaperMm,
   resolveSafeMarginMm,
   snapStageValue,
   stageRectToNorm,
@@ -35,7 +36,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'focus-block': [block: ExamLayoutBlockDto | null]
-  "patch": [document: ExamLayoutDocument]
+  patch: [document: ExamLayoutDocument]
 }>()
 
 const { loading: rasterLoading, errorMessage: rasterError, loadPageRaster } = useLayoutPageRaster()
@@ -91,7 +92,7 @@ const rulerLabel = computed(() => {
   if (!focusedBlock.value || !page.value) {
     return ''
   }
-  return formatRectMmLabel(focusedBlock.value.rectNorm, page.value)
+  return formatRectMmLabel(focusedBlock.value.rectNorm, page.value, props.document?.paperSpec)
 })
 
 const bgImageConfig = computed(() => {
@@ -112,12 +113,13 @@ const safeMarginConfig = computed(() => {
   if (!page.value || !showSafeMargin.value) {
     return null
   }
-  const marginX
-    = mmToPx(safeMarginMm.value, page.value.naturalWidthPx)
-      * (stageSize.value.width / page.value.naturalWidthPx)
-  const marginY
-    = mmToPx(safeMarginMm.value, page.value.naturalHeightPx)
-      * (stageSize.value.height / page.value.naturalHeightPx)
+  const paperMm = resolvePaperMm(props.document?.paperSpec, page.value)
+  const marginX =
+    mmToPx(safeMarginMm.value, page.value.naturalWidthPx, paperMm.widthMm) *
+    (stageSize.value.width / page.value.naturalWidthPx)
+  const marginY =
+    mmToPx(safeMarginMm.value, page.value.naturalHeightPx, paperMm.heightMm) *
+    (stageSize.value.height / page.value.naturalHeightPx)
   return {
     x: marginX,
     y: marginY,
@@ -134,7 +136,7 @@ const gridLines = computed(() => {
   if (!page.value || !showGrid.value) {
     return []
   }
-  const lines: Array<{ points: number[], key: string }> = []
+  const lines: Array<{ points: number[]; key: string }> = []
   const stepMm = 10
   const stepX = (stepMm / 210) * stageSize.value.width
   const stepY = (stepMm / 210) * stageSize.value.height
@@ -216,10 +218,25 @@ function patchBlockRect(blockId: string, node: Konva.Rect): void {
   let width = Math.max(8, node.width() * scaleX)
   let height = Math.max(8, node.height() * scaleY)
   if (snapGridMm.value > 0) {
-    x = snapStageValue(x, snapGridMm.value, page.value, stageSize.value.width, 'x')
-    y = snapStageValue(y, snapGridMm.value, page.value, stageSize.value.width, 'y')
-    width = snapStageValue(width, snapGridMm.value, page.value, stageSize.value.width, 'x')
-    height = snapStageValue(height, snapGridMm.value, page.value, stageSize.value.width, 'y')
+    const paperSpec = props.document?.paperSpec
+    x = snapStageValue(x, snapGridMm.value, page.value, stageSize.value.width, 'x', paperSpec)
+    y = snapStageValue(y, snapGridMm.value, page.value, stageSize.value.width, 'y', paperSpec)
+    width = snapStageValue(
+      width,
+      snapGridMm.value,
+      page.value,
+      stageSize.value.width,
+      'x',
+      paperSpec,
+    )
+    height = snapStageValue(
+      height,
+      snapGridMm.value,
+      page.value,
+      stageSize.value.width,
+      'y',
+      paperSpec,
+    )
     node.position({ x, y })
     node.size({ width, height })
   }

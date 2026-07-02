@@ -57,14 +57,42 @@ export const EXAM_LAYOUT_PAPER_SPEC = {
   A3_2COL: 'A3_2COL',
 } as const
 
-export const EXAM_LAYOUT_PAPER_SPEC_LABEL: Record<string, string> = {
+export type ExamLayoutPaperSpecCode
+  = (typeof EXAM_LAYOUT_PAPER_SPEC)[keyof typeof EXAM_LAYOUT_PAPER_SPEC]
+
+export const EXAM_LAYOUT_PAPER_SPEC_LABEL: Record<ExamLayoutPaperSpecCode, string> = {
+  A3_2COL: 'A3 双栏（推荐）',
   A4_1COL: 'A4 单栏',
-  A3_2COL: 'A3 双栏',
 }
 
-const MM_REFERENCE = 210
+/** 与后端 ExamLayoutPaperSpec 毫米尺寸一致 */
+export const EXAM_LAYOUT_PAPER_SPEC_MM: Record<ExamLayoutPaperSpecCode, { widthMm: number, heightMm: number }> = {
+  A4_1COL: { widthMm: 210, heightMm: 297 },
+  A3_2COL: { widthMm: 420, heightMm: 297 },
+}
+
 const DEFAULT_SAFE_MARGIN_MM = 5
 const DEFAULT_STAGE_WIDTH = 760
+
+export function resolvePaperSpecLabel(paperSpec: string | undefined): string {
+  if (!paperSpec || !(paperSpec in EXAM_LAYOUT_PAPER_SPEC_LABEL)) {
+    throwUserFacing('纸张规格契约异常，请刷新后重试')
+  }
+  return EXAM_LAYOUT_PAPER_SPEC_LABEL[paperSpec as ExamLayoutPaperSpecCode]
+}
+
+export function resolvePaperMm(
+  paperSpec: string | undefined,
+  page: ExamLayoutPageDto,
+): { widthMm: number, heightMm: number } {
+  if (paperSpec && paperSpec in EXAM_LAYOUT_PAPER_SPEC_MM) {
+    return EXAM_LAYOUT_PAPER_SPEC_MM[paperSpec as ExamLayoutPaperSpecCode]
+  }
+  if (page.naturalWidthPx >= page.naturalHeightPx) {
+    return EXAM_LAYOUT_PAPER_SPEC_MM.A3_2COL
+  }
+  return EXAM_LAYOUT_PAPER_SPEC_MM.A4_1COL
+}
 
 export function resolveBlockTypeLabel(blockType: string | undefined): string {
   if (!blockType || !(blockType in EXAM_LAYOUT_BLOCK_TYPE_LABEL)) {
@@ -91,12 +119,12 @@ export function resolveSafeMarginMm(document: ExamLayoutDocument | null): number
   return document?.printSafeMarginMm ?? DEFAULT_SAFE_MARGIN_MM
 }
 
-export function mmToPx(mm: number, naturalSizePx: number): number {
-  return Math.round((mm * naturalSizePx) / MM_REFERENCE)
+export function mmToPx(mm: number, naturalSizePx: number, mmReference: number): number {
+  return Math.round((mm * naturalSizePx) / mmReference)
 }
 
-export function pxToMm(px: number, naturalSizePx: number): number {
-  return Math.round((px / naturalSizePx) * MM_REFERENCE * 10) / 10
+export function pxToMm(px: number, naturalSizePx: number, mmReference: number): number {
+  return Math.round((px / naturalSizePx) * mmReference * 10) / 10
 }
 
 export function normToStageRect(
@@ -190,12 +218,17 @@ export function createDefaultBlock(
   }
 }
 
-export function formatRectMmLabel(rectNorm: ExamLayoutRectNorm, page: ExamLayoutPageDto): string {
+export function formatRectMmLabel(
+  rectNorm: ExamLayoutRectNorm,
+  page: ExamLayoutPageDto,
+  paperSpec?: string,
+): string {
+  const paperMm = resolvePaperMm(paperSpec, page)
   const xPx = rectNorm.x * page.naturalWidthPx
   const yPx = rectNorm.y * page.naturalHeightPx
   const wPx = rectNorm.w * page.naturalWidthPx
   const hPx = rectNorm.h * page.naturalHeightPx
-  return `${pxToMm(xPx, page.naturalWidthPx)}×${pxToMm(yPx, page.naturalHeightPx)} mm · ${pxToMm(wPx, page.naturalWidthPx)}×${pxToMm(hPx, page.naturalHeightPx)} mm`
+  return `${pxToMm(xPx, page.naturalWidthPx, paperMm.widthMm)}×${pxToMm(yPx, page.naturalHeightPx, paperMm.heightMm)} mm · ${pxToMm(wPx, page.naturalWidthPx, paperMm.widthMm)}×${pxToMm(hPx, page.naturalHeightPx, paperMm.heightMm)} mm`
 }
 
 export function hasIdentityBlock(document: ExamLayoutDocument | null): boolean {
@@ -210,15 +243,18 @@ export function snapStageValue(
   page: ExamLayoutPageDto,
   stageWidth: number,
   axis: 'x' | 'y',
+  paperSpec?: string,
 ): number {
   if (gridMm <= 0) {
     return value
   }
+  const paperMm = resolvePaperMm(paperSpec, page)
   const natural = axis === 'x' ? page.naturalWidthPx : page.naturalHeightPx
+  const mmReference = axis === 'x' ? paperMm.widthMm : paperMm.heightMm
   const stageSize
     = axis === 'x'
       ? stageWidth
       : Math.round(stageWidth * (page.naturalHeightPx / page.naturalWidthPx))
-  const gridStagePx = (gridMm / MM_REFERENCE) * natural * (stageSize / natural)
+  const gridStagePx = (gridMm / mmReference) * natural * (stageSize / natural)
   return Math.round(value / gridStagePx) * gridStagePx
 }

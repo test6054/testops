@@ -37,7 +37,10 @@ export interface ExamProcessingTaskItemVO {
 export function pageExamProcessingTasks(
   request: ExamProcessingTaskQueryRequest,
 ): Promise<PageResult<ExamProcessingTaskItemVO>> {
-  return http.post<PageResult<ExamProcessingTaskItemVO>>('/api/mark/exams/processing-tasks/page', request)
+  return http.post<PageResult<ExamProcessingTaskItemVO>>(
+    '/api/mark/exams/processing-tasks/page',
+    request,
+  )
 }
 
 /** 教师主动重试整卷 AI 批阅 */

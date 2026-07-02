@@ -23,6 +23,7 @@ export interface IndirectEvaluationItemVO {
   scaleRuleId?: string
   weight?: number
   sortOrder?: number
+  /** 必填；对应后端 IndirectEvaluationItemTypeEnum */
   itemType: PublicSurveyItemType
   scaleMin?: number
   scaleMax?: number
@@ -43,6 +44,7 @@ export interface IndirectEvaluationItemSaveRequest {
   scaleRuleId?: string
   weight?: number
   sortOrder?: number
+  /** 必填；对应后端 IndirectEvaluationItemTypeEnum */
   itemType: PublicSurveyItemType
   scaleMin?: number
   scaleMax?: number

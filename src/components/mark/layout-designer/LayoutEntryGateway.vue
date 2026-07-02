@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
+import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import { message } from 'ant-design-vue'
 import { computed, ref } from 'vue'
-import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -25,12 +25,12 @@ const props = defineProps<{
 const emit = defineEmits<{
   'generate-sheet': [paperSpec: string]
   'auto-detect': [sourcePdfFileId: string]
-  "patch": [document: ExamLayoutDocument]
+  patch: [document: ExamLayoutDocument]
 }>()
 
 const sourcePdfFileId = ref(props.document?.sourcePdfFileId ?? '')
 const sourcePdfFileName = ref('')
-const paperSpec = ref(props.document?.paperSpec ?? EXAM_LAYOUT_PAPER_SPEC.A4_1COL)
+const paperSpec = ref(props.document?.paperSpec ?? EXAM_LAYOUT_PAPER_SPEC.A3_2COL)
 const layoutName = ref(props.document?.layoutName ?? '')
 const printSafeMarginMm = ref(props.document?.printSafeMarginMm ?? 5)
 
@@ -39,10 +39,10 @@ const entryKindLabel = computed(() => {
   return kind ? (EXAM_LAYOUT_ENTRY_KIND_LABEL[kind] ?? kind) : '未选择'
 })
 
-const paperSpecOptions = Object.entries(EXAM_LAYOUT_PAPER_SPEC_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const paperSpecOptions = [
+  { value: EXAM_LAYOUT_PAPER_SPEC.A3_2COL, label: EXAM_LAYOUT_PAPER_SPEC_LABEL.A3_2COL },
+  { value: EXAM_LAYOUT_PAPER_SPEC.A4_1COL, label: EXAM_LAYOUT_PAPER_SPEC_LABEL.A4_1COL },
+]
 
 function patchDocument(partial: Partial<ExamLayoutDocument>): void {
   if (!props.document) {

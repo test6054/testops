@@ -4,7 +4,10 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 /** 归档模板作用域 - 与后端 ArchiveTemplateScope 枚举完全一致 */
 export type ArchiveTemplateScopeCode = 'PLATFORM' | 'TENANT'
 
-export const ARCHIVE_TEMPLATE_SCOPE_CODES = ['PLATFORM', 'TENANT'] as const satisfies readonly ArchiveTemplateScopeCode[]
+export const ARCHIVE_TEMPLATE_SCOPE_CODES = [
+  'PLATFORM',
+  'TENANT',
+] as const satisfies readonly ArchiveTemplateScopeCode[]
 
 /** 归档模板作用域文案 - 与后端 ArchiveTemplateScope.message 完全一致 */
 export const ARCHIVE_TEMPLATE_SCOPE_LABEL: Record<ArchiveTemplateScopeCode, string> = {

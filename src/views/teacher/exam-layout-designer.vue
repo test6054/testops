@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, inject, onMounted, ref } from 'vue'
 import {
   autoDetectExamLayout,
   generateExamLayoutSheet,
@@ -10,6 +7,9 @@ import {
   previewExamLayoutDesign,
   saveExamLayoutDesign,
 } from '@/apis/mark/exam-layout-design'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, inject, onMounted, ref } from 'vue'
 import LayoutBlockLayerPanel from '@/components/mark/layout-designer/LayoutBlockLayerPanel.vue'
 import LayoutCanvas from '@/components/mark/layout-designer/LayoutCanvas.vue'
 import LayoutEntryGateway from '@/components/mark/layout-designer/LayoutEntryGateway.vue'
@@ -25,7 +25,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
-import { hasIdentityBlock } from '@/utils/exam-layout-designer'
+import { hasIdentityBlock, resolvePaperSpecLabel } from '@/utils/exam-layout-designer'
 
 defineOptions({ name: 'TeacherExamWorkspaceLayoutDesigner' })
 
@@ -60,6 +60,11 @@ const pageTabs = computed(() =>
     label: `第 ${page.pageNo} 页`,
   })),
 )
+
+const paperSpecLabel = computed(() => {
+  const spec = document.value?.paperSpec
+  return spec ? resolvePaperSpecLabel(spec) : ''
+})
 
 const signalMetrics = computed<SignalMetric[]>(() => {
   const doc = document.value
@@ -211,7 +216,7 @@ onMounted(() => {
       >
         <template #status>
           <UiTag v-if="document?.layoutEntryKind" tone="blue">{{ document.layoutEntryKind }}</UiTag>
-          <UiTag v-if="document?.paperSpec" tone="gray">{{ document.paperSpec }}</UiTag>
+          <UiTag v-if="paperSpecLabel" tone="gray">{{ paperSpecLabel }}</UiTag>
         </template>
         <template #actions>
           <UiButton variant="outline" @click="reviewOpen = true">复核微调</UiButton>

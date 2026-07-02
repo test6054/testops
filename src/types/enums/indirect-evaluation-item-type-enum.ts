@@ -1,6 +1,6 @@
 /**
  * 间接评价题项题型枚举
- * 与后端 IndirectEvaluationItemTypeEnum 保持一致
+ * 取值与展示文案以后端 {@code IndirectEvaluationItemTypeEnum} 为真源，须逐值同步。
  */
 import { throwUserFacing } from '@/utils/contract-guard'
 
@@ -11,20 +11,20 @@ export enum IndirectEvaluationItemType {
   OPEN_TEXT = 'OPEN_TEXT',
 }
 
-/** 管理端 / 间接评价配置题型展示文案 */
+/** 与后端 IndirectEvaluationItemTypeEnum.label 一致 */
 export const INDIRECT_EVALUATION_ITEM_TYPE_LABEL: Record<IndirectEvaluationItemType, string> = {
   [IndirectEvaluationItemType.SCALE]: '量表题',
   [IndirectEvaluationItemType.SINGLE_CHOICE]: '单选题',
   [IndirectEvaluationItemType.MULTI_CHOICE]: '多选题',
-  [IndirectEvaluationItemType.OPEN_TEXT]: '开放文本',
+  [IndirectEvaluationItemType.OPEN_TEXT]: '开放文本题',
 }
 
-/** 公开问卷填写页题型展示文案（面向填答人） */
+/** 公开问卷填写页题型展示；枚举取值同上，文案与后端 label 一致 */
 export const PUBLIC_SURVEY_ITEM_TYPE_LABEL: Record<IndirectEvaluationItemType, string> = {
   [IndirectEvaluationItemType.SCALE]: '量表题',
   [IndirectEvaluationItemType.SINGLE_CHOICE]: '单选题',
   [IndirectEvaluationItemType.MULTI_CHOICE]: '多选题',
-  [IndirectEvaluationItemType.OPEN_TEXT]: '填空题',
+  [IndirectEvaluationItemType.OPEN_TEXT]: '开放文本题',
 }
 
 export const INDIRECT_EVALUATION_ITEM_TYPE_OPTIONS: Array<{

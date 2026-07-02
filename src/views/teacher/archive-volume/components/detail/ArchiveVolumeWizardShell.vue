@@ -21,7 +21,7 @@ const emit = defineEmits<{
   'update:current-step': [step: ArchiveVolumeWizardStepKey]
 }>()
 
-const WIZARD_STEPS: Array<{ key: ArchiveVolumeWizardStepKey, title: string }> = [
+const WIZARD_STEPS: Array<{ key: ArchiveVolumeWizardStepKey; title: string }> = [
   { key: 'materials', title: '材料收齐' },
   { key: 'integrity', title: '自检与四性' },
   { key: 'catalog', title: '编制目录' },
