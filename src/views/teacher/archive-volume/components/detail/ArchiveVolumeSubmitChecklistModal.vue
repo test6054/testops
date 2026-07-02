@@ -4,12 +4,12 @@ import type {
   ArchiveVolumeSignOffRoleCode,
   ArchiveVolumeSubmitChecklistVO,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, ref, watch } from 'vue'
 import {
   confirmArchiveVolumeSelfCheck,
   previewArchiveVolumeSubmitChecklist,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
@@ -19,7 +19,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  confirmed: []
+  "confirmed": []
 }>()
 
 const loading = ref(false)
@@ -29,7 +29,7 @@ const materialCompleteConfirmed = ref(false)
 const gradingNormConfirmed = ref(false)
 const reason = ref('')
 const signOffState = ref<
-  Record<ArchiveVolumeSignOffRoleCode, { confirmed: boolean; signatoryName: string }>
+  Record<ArchiveVolumeSignOffRoleCode, { confirmed: boolean, signatoryName: string }>
 >({
   PROPOSER: { confirmed: false, signatoryName: '' },
   REVIEWER: { confirmed: false, signatoryName: '' },
