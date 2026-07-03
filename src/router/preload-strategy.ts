@@ -65,6 +65,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherExamWorkspaceCandidateRoster: () => import('@/views/teacher/candidate-roster.vue'),
   TeacherExamWorkspacePrintPackage: () => import('@/views/teacher/print-package.vue'),
   TeacherExamWorkspaceScanBatches: () => import('@/views/teacher/scan-batch-workbench.vue'),
+  TeacherExamWorkspaceScanManualEntry: () => import('@/views/teacher/scan-manual-entry.vue'),
   TeacherExamWorkspaceScanMonitor: () => import('@/views/teacher/scan-live-monitor.vue'),
   TeacherExamWorkspaceScanLedger: () => import('@/views/teacher/image-ledger.vue'),
   TeacherExamWorkspaceScanDevices: () => import('@/views/teacher/printer-management.vue'),
@@ -235,10 +236,15 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
     'TeacherExamWorkspaceScanBatches',
   ],
   TeacherExamWorkspaceScanBatches: [
+    'TeacherExamWorkspaceScanManualEntry',
     'TeacherExamWorkspaceScanMonitor',
     'TeacherExamWorkspaceScanLedger',
     'TeacherExamWorkspaceScanDevices',
     'TeacherExamWorkspaceScanOcr',
+  ],
+  TeacherExamWorkspaceScanManualEntry: [
+    'TeacherExamWorkspaceScanBatches',
+    'TeacherExamWorkspaceScanMonitor',
   ],
   TeacherExamWorkspaceScanMonitor: ['TeacherExamWorkspaceScanBatches', 'TeacherExamWorkspaceScanLedger'],
   TeacherExamWorkspaceMarkingTaskPool: ['TeacherExamWorkspaceMarkingTaskDetail', 'TeacherExamWorkspaceMarkingQuality'],

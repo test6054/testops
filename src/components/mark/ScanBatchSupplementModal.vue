@@ -97,7 +97,6 @@ import { computed, reactive, ref, watch } from 'vue'
 import { getExamDetail } from '@/apis/mark/exam'
 import {
   prepareTeacherScanSupplement,
-  TEACHER_SCAN_SUPPLEMENT_MODE,
   teacherSupplementScanSource,
 } from '@/apis/mark/scan-source'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -229,7 +228,7 @@ async function loadPrepareContext(): Promise<void> {
       examId: props.examId,
       scannerDeviceId: batch.scannerDeviceId,
       scannerStationId: batch.scannerStationId,
-      scanMode: TEACHER_SCAN_SUPPLEMENT_MODE,
+      scanMode: 'SUPPLEMENT',
       scanBatchId: batch.scanBatchId,
     })
   } catch (error) {
@@ -261,7 +260,7 @@ async function handleSubmit(): Promise<void> {
       scannerDeviceId: batch.scannerDeviceId,
       scannerStationId: batch.scannerStationId,
       declaredClassIds: declaredClassIds.value,
-      scanMode: TEACHER_SCAN_SUPPLEMENT_MODE,
+      scanMode: 'SUPPLEMENT',
       scanBatchId: batch.scanBatchId,
       targetPageNo: form.targetPageNo,
       supplementReason: form.supplementReason.trim(),

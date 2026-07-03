@@ -341,8 +341,8 @@
             variant="outline"
             :loading="riskReviewSavingReasonCode === reason.reasonCode"
             :disabled="
-              riskReviewSavingReasonCode !== null &&
-              riskReviewSavingReasonCode !== reason.reasonCode
+              riskReviewSavingReasonCode !== null
+                && riskReviewSavingReasonCode !== reason.reasonCode
             "
             @click="toggleRiskReasonReviewed(reason.reasonCode)"
           >
@@ -422,16 +422,25 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { OperationLogVO, OperationTypeCode } from '@/apis/mark/admin-audit'
-import { listOperationLogs, OPERATION_TYPE_LABEL } from '@/apis/mark/admin-audit'
 import type { ExamDetailVO } from '@/apis/mark/exam'
-import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import type { ExamPaperScoreVO, ExamQuestionScoreVO } from '@/apis/mark/exam-grade'
-import { getPaperScore } from '@/apis/mark/exam-grade'
 import type {
   ExamScoreSummaryItemVO,
   FinalScoreRiskOverviewVO,
   FinalScoreRiskReasonCode,
 } from '@/apis/mark/exam-score'
+import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
+import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
+import type { BadgeTone, FilterField, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { listOperationLogs, OPERATION_TYPE_LABEL } from '@/apis/mark/admin-audit'
+import { getExamDetail, pageExams } from '@/apis/mark/exam'
+import { getPaperScore } from '@/apis/mark/exam-grade'
 import {
   batchConfirmSafeFinalScores,
   confirmFinalScore,
@@ -440,13 +449,11 @@ import {
   saveFinalScoreRiskReview,
   withdrawFinalScore,
 } from '@/apis/mark/exam-score'
-import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
 import {
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_OPTIONS,
   FINAL_SCORE_STATUS_TONE,
 } from '@/apis/mark/final-score-status'
-import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
 import {
   classifyScoreBias,
   computeScoreBiasStats,
@@ -454,13 +461,6 @@ import {
   SCORE_BIAS_LEVEL_LABEL,
   SCORE_BIAS_LEVEL_TONE,
 } from '@/apis/mark/score-bias'
-import type { BadgeTone, FilterField, UiTrendPoint } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -685,7 +685,7 @@ function handleReset(): void {
   void loadCandidates()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
@@ -719,8 +719,8 @@ const hasHardBlockingRisks = computed(() => hardBlockingRiskReasons.value.length
 const hasUnreviewedBlockingRisks = computed(() => {
   return blockingRiskReasons.value.some(
     (reason) =>
-      !HARD_BLOCKING_RISK_REASON_CODES.has(reason.reasonCode) &&
-      !reviewedRiskReasonCodes.value.has(reason.reasonCode),
+      !HARD_BLOCKING_RISK_REASON_CODES.has(reason.reasonCode)
+      && !reviewedRiskReasonCodes.value.has(reason.reasonCode),
   )
 })
 
@@ -797,12 +797,12 @@ function warnUnreviewedBlockingRisks(): boolean {
 const canBatchConfirmSafe = computed(() => {
   const overview = riskOverview.value
   return Boolean(
-    overview &&
-    overview.safeConfirmableCount > 0 &&
-    blockingRiskReasons.value.length === 0 &&
-    !hasHardBlockingRisks.value &&
-    !hasDailyScoreConfig.value &&
-    !batchConfirming.value,
+    overview
+    && overview.safeConfirmableCount > 0
+    && blockingRiskReasons.value.length === 0
+    && !hasHardBlockingRisks.value
+    && !hasDailyScoreConfig.value
+    && !batchConfirming.value,
   )
 })
 
@@ -1276,8 +1276,8 @@ function deriveNextStepSuggestion(): void {
     return
   }
   // 当前页找下一份未确认
-  const next =
-    candidates.value.find(
+  const next
+    = candidates.value.find(
       (c) => c.finalScoreStatus === 'CALCULATED' || c.finalScoreStatus === 'PENDING',
     ) ?? null
   if (next) {

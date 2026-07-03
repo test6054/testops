@@ -63,7 +63,9 @@
         <template #empty>
           <UiEmpty description="暂无扫描批次">
             <p class="scan-batch-workbench__empty-guide">
-              扫描批次由扫描一体机或扫描终端自动创建。请先在
+              扫描批次由扫描一体机、扫描终端或
+              <UiTextAction @click="goManualEntry">手动补录</UiTextAction>
+              创建。请先在
               <UiTextAction @click="goScannerKiosk">扫描一体机</UiTextAction>
               登录本考试并完成扫描，或在
               <UiTextAction @click="goScanDevices">扫描设备</UiTextAction>
@@ -476,6 +478,16 @@ async function handleOrphanRecovered(): Promise<void> {
 async function handleDetailUpdated(): Promise<void> {
   await loadAllForExam()
   await syncScanWorkbenchState()
+}
+
+function goManualEntry(): void {
+  if (!selectedExamId.value) {
+    return
+  }
+  void router.push({
+    name: 'TeacherExamWorkspaceScanManualEntry',
+    params: { examId: selectedExamId.value },
+  })
 }
 
 function goScannerKiosk(): void {

@@ -8,8 +8,8 @@ import type { ExamCandidateRosterRequest, ExamCandidateVO } from '@/apis/mark/ex
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { isValidSemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
+import { isValidSemesterCode } from '@/types/enums/semester-enum'
 
 /** 考试状态编码 - 对应后端 ExamStatus 枚举（仅保留批改链有意义的状态） */
 export type ExamStatusCode = 'ACTIVE' | 'CLOSED'

@@ -137,6 +137,11 @@ import type {
   GradeCorrectionTypeCode,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   createCorrection,
   GRADE_CORRECTION_STATUS_LABEL,
@@ -145,11 +150,6 @@ import {
   listCorrections,
   listReviewRequests,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -163,8 +163,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CorrectionsCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
-const emit = defineEmits<{ (e: 'created'): void; (e: 'republish-required'): void }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
+const emit = defineEmits<{ (e: 'created'): void, (e: 'republish-required'): void }>()
 
 const router = useRouter()
 const republishGuideVisible = ref(false)
@@ -310,7 +310,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -346,8 +346,8 @@ function validateCorrectionDisplayContracts(list: ExamGradeCorrectionRecordVO[])
   for (const row of list) {
     assertUserFacing(Boolean(row.studentName?.trim()) && Boolean(row.studentNo?.trim()), dataError)
     if (row.correctionType !== 'TOTAL_SCORE') {
-      const hasQuestionDisplay =
-        row.questionNo?.trim() && row.questionType?.trim() && typeof row.fullScore === 'number'
+      const hasQuestionDisplay
+        = row.questionNo?.trim() && row.questionType?.trim() && typeof row.fullScore === 'number'
       assertUserFacing(Boolean(hasQuestionDisplay), dataError)
     }
   }
@@ -383,8 +383,8 @@ async function submit(): Promise<void> {
     return
   }
   if (
-    form.questionTemplateId &&
-    !request.questionRefs.some(
+    form.questionTemplateId
+    && !request.questionRefs.some(
       (question) => question.questionTemplateId === form.questionTemplateId,
     )
   ) {
