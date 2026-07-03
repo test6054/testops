@@ -295,7 +295,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { SemesterOptions } from '@/types/enums/semester-enum'
+import { type SemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
 import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
@@ -653,7 +653,7 @@ const makeupDeriveForm = reactive<{
   examName: string
   examNo: string
   academicYear: string
-  semester: string | undefined
+  semester: SemesterCode | undefined
   examWindow: [string, string] | undefined
 }>({
   examName: '',
