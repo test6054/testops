@@ -28,6 +28,20 @@
       </div>
     </UiCard>
 
+    <UiCard v-if="deriveMakeupVisible" class="info-card absence-page__makeup-card">
+      <template #title>
+        <SolutionOutlined />
+        <span class="section-title">派生补考考试</span>
+      </template>
+      <template #extra>
+        <UiButton size="sm" variant="outline" @click="openMakeupDeriveModal">派生补考</UiButton>
+      </template>
+      <p class="absence-page__makeup-desc">
+        当前正考已关考，共有
+        {{ pendingMakeupCount }} 名「待补考」缺考学生，可一键创建补考考试并写入补考名册。
+      </p>
+    </UiCard>
+
     <UiCard v-if="reconcileVO && absentStudents.length" class="info-card">
       <template #title>
         <UserDeleteOutlined />
@@ -183,6 +197,60 @@
       </a-form-item>
     </a-form>
   </a-modal>
+
+  <a-modal
+    v-model:open="makeupDeriveModalOpen"
+    title="派生补考考试"
+    :destroy-on-close="true"
+    :confirm-loading="derivingMakeup"
+    :ok-button-props="{ disabled: !makeupDeriveValid }"
+    ok-text="创建补考"
+    width="640px"
+    @ok="handleMakeupDerive"
+  >
+    <a-form layout="vertical">
+      <a-form-item label="补考名称" required>
+        <a-input
+          v-model:value="makeupDeriveForm.examName"
+          placeholder="例如：2026 春《工程制图》补考"
+          :maxlength="100"
+        />
+      </a-form-item>
+      <a-form-item label="考务编号" required>
+        <a-input
+          v-model:value="makeupDeriveForm.examNo"
+          placeholder="例如：MK-2026-001"
+          :maxlength="50"
+        />
+      </a-form-item>
+      <div class="absence-page__makeup-grid">
+        <a-form-item label="补考学年" required>
+          <a-input
+            v-model:value="makeupDeriveForm.academicYear"
+            placeholder="2024-2025"
+            :maxlength="9"
+          />
+        </a-form-item>
+        <a-form-item label="补考学期" required>
+          <a-select
+            v-model:value="makeupDeriveForm.semester"
+            placeholder="选择学期"
+            :options="SemesterOptions"
+          />
+        </a-form-item>
+      </div>
+      <a-form-item label="补考时间" required>
+        <a-range-picker
+          v-model:value="makeupDeriveForm.examWindow"
+          style="width: 100%"
+          show-time
+          format="YYYY-MM-DD HH:mm"
+          value-format="YYYY-MM-DD HH:mm:ss"
+          :placeholder="['开始时间', '结束时间']"
+        />
+      </a-form-item>
+    </a-form>
+  </a-modal>
 </template>
 
 <script lang="ts" setup>
@@ -195,14 +263,6 @@ import type {
   AbsentStudentSnapshotVO,
   AttendanceReconcileVO,
 } from '@/apis/mark/absence'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   ABSENCE_REASON_LABEL,
   ABSENCE_SCORE_POLICY_LABEL,
@@ -213,6 +273,16 @@ import {
   reconcileAttendance,
   revokeAbsence,
 } from '@/apis/mark/absence'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { deriveMakeupExam } from '@/apis/mark/exam'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -225,6 +295,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
 import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
@@ -234,8 +305,9 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherAbsenceConfirm' })
 
-const { selectedExamId } = useMarkExamContext()
+const { selectedExamId, selectedExam } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
+const router = useRouter()
 
 interface AbsentStudentRow {
   studentUserId: string
@@ -286,6 +358,20 @@ const absentStudents = computed<AbsentStudentRow[]>(() => {
     .map(toAbsentStudentRow)
 })
 
+const pendingMakeupCount = computed(
+  () =>
+    records.value.filter(
+      (record) => record.absenceStatus === 'CONFIRMED' && record.scorePolicy === 'PENDING_MAKEUP',
+    ).length,
+)
+
+const deriveMakeupVisible = computed(() => {
+  const exam = selectedExam.value
+  if (!exam || !selectedExamId.value) return false
+  const examKind = exam.examKind ?? 'REGULAR'
+  return exam.status === 'CLOSED' && examKind === 'REGULAR' && pendingMakeupCount.value > 0
+})
+
 const attendancePercent = computed(() => {
   const total = reconcileVO.value?.expectedCount ?? 0
   const attended = reconcileVO.value?.attendedCount ?? 0
@@ -294,8 +380,8 @@ const attendancePercent = computed(() => {
 
 /** 出勤率环色：≥90 充足绿 / ≥70 一般蓝 / 偏低橙 */
 const attendanceRingColor = computed(() => {
-  const tone: BadgeTone
-    = attendancePercent.value >= 90 ? 'green' : attendancePercent.value >= 70 ? 'blue' : 'orange'
+  const tone: BadgeTone =
+    attendancePercent.value >= 90 ? 'green' : attendancePercent.value >= 70 ? 'blue' : 'orange'
   return toneToColor(tone)
 })
 
@@ -431,7 +517,7 @@ async function loadRecords(): Promise<void> {
   }
 }
 
-function handleRecordPageChange(page: { current: number, pageSize: number }): void {
+function handleRecordPageChange(page: { current: number; pageSize: number }): void {
   recordPagination.pageNum = page.current
   recordPagination.pageSize = page.pageSize
   void loadRecords()
@@ -521,7 +607,7 @@ async function handleConfirm(): Promise<void> {
 const revokeModalOpen = ref(false)
 const revoking = ref(false)
 const revokeTargetName = ref('')
-const revokeForm = reactive<{ studentUserId: string, revokeReason: string }>({
+const revokeForm = reactive<{ studentUserId: string; revokeReason: string }>({
   studentUserId: '',
   revokeReason: '',
 })
@@ -556,6 +642,75 @@ async function handleRevoke(): Promise<void> {
     showUserError(error, '缺考撤销失败')
   } finally {
     revoking.value = false
+  }
+}
+
+// ─── 派生补考 ─────────────────────────────────
+
+const makeupDeriveModalOpen = ref(false)
+const derivingMakeup = ref(false)
+const makeupDeriveForm = reactive<{
+  examName: string
+  examNo: string
+  academicYear: string
+  semester: string | undefined
+  examWindow: [string, string] | undefined
+}>({
+  examName: '',
+  examNo: '',
+  academicYear: '',
+  semester: undefined,
+  examWindow: undefined,
+})
+
+const makeupDeriveValid = computed(() => {
+  const window = makeupDeriveForm.examWindow
+  return Boolean(
+    selectedExamId.value &&
+    makeupDeriveForm.examName.trim() &&
+    makeupDeriveForm.examNo.trim() &&
+    makeupDeriveForm.academicYear.trim() &&
+    makeupDeriveForm.semester &&
+    window?.[0] &&
+    window[1],
+  )
+})
+
+function openMakeupDeriveModal(): void {
+  const exam = selectedExam.value
+  const baseName = exam?.examName?.trim() || '补考'
+  const baseNo = exam?.examNo?.trim() || 'MK'
+  makeupDeriveForm.examName = `${baseName} 补考`
+  makeupDeriveForm.examNo = `${baseNo}-MK`
+  makeupDeriveForm.academicYear = exam?.academicYear?.trim() || ''
+  makeupDeriveForm.semester = exam?.semester
+  makeupDeriveForm.examWindow = undefined
+  makeupDeriveModalOpen.value = true
+}
+
+async function handleMakeupDerive(): Promise<void> {
+  if (!selectedExamId.value || !makeupDeriveValid.value) return
+  const window = makeupDeriveForm.examWindow
+  const semester = makeupDeriveForm.semester
+  if (!window?.[0] || !window[1] || !semester) return
+  derivingMakeup.value = true
+  try {
+    const makeupExamId = await deriveMakeupExam({
+      sourceExamId: selectedExamId.value,
+      academicYear: makeupDeriveForm.academicYear.trim(),
+      semester,
+      examName: makeupDeriveForm.examName.trim(),
+      examNo: makeupDeriveForm.examNo.trim(),
+      examStartTime: window[0],
+      examEndTime: window[1],
+    })
+    message.success('补考考试已创建')
+    makeupDeriveModalOpen.value = false
+    await router.push({ name: 'TeacherExamWorkspaceOverview', params: { examId: makeupExamId } })
+  } catch (error) {
+    showUserError(error, '派生补考失败')
+  } finally {
+    derivingMakeup.value = false
   }
 }
 
@@ -628,6 +783,19 @@ function handleRecordFilterReset() {
     :deep(.signal-band) {
       width: 100%;
     }
+  }
+
+  &__makeup-desc {
+    margin: 0;
+    color: var(--dp-text-secondary, #475569);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  &__makeup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
   }
 }
 </style>

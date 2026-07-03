@@ -1,5 +1,17 @@
 <template>
   <section class="appeal-section">
+    <UiAlertStrip
+      v-if="republishGuideVisible"
+      tone="warning"
+      title="成绩已更正，学生侧暂不可见"
+      description="更正后最终成绩状态为「已更正」，须前往「成绩发布」重新发布，学生才能看到更新后的分数。"
+      :closable="false"
+      dense
+    >
+      <template #actions>
+        <UiButton size="sm" variant="outline" @click="goScorePublish">前往成绩发布</UiButton>
+      </template>
+    </UiAlertStrip>
     <div class="appeal-section__header">
       <a-button type="primary" @click="openCreateModal">
         <template #icon><PlusOutlined /></template>新建更正
@@ -125,10 +137,6 @@ import type {
   GradeCorrectionTypeCode,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   createCorrection,
   GRADE_CORRECTION_STATUS_LABEL,
@@ -137,6 +145,13 @@ import {
   listCorrections,
   listReviewRequests,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -148,8 +163,11 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CorrectionsCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
-const emit = defineEmits<{ (e: 'created'): void }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
+const emit = defineEmits<{ (e: 'created'): void; (e: 'republish-required'): void }>()
+
+const router = useRouter()
+const republishGuideVisible = ref(false)
 
 const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 100
 
@@ -241,8 +259,14 @@ async function openCreateModal(): Promise<void> {
   form.afterScore = 0
   form.reason = ''
   form.reviewRequestId = ''
+  republishGuideVisible.value = false
   createOpen.value = true
   await loadApprovedReviewRequests()
+}
+
+function goScorePublish(): void {
+  if (!props.examId) return
+  void router.push({ name: 'TeacherExamWorkspaceScoreRelease', params: { examId: props.examId } })
 }
 
 async function reload(): Promise<void> {
@@ -286,7 +310,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -322,8 +346,8 @@ function validateCorrectionDisplayContracts(list: ExamGradeCorrectionRecordVO[])
   for (const row of list) {
     assertUserFacing(Boolean(row.studentName?.trim()) && Boolean(row.studentNo?.trim()), dataError)
     if (row.correctionType !== 'TOTAL_SCORE') {
-      const hasQuestionDisplay
-        = row.questionNo?.trim() && row.questionType?.trim() && typeof row.fullScore === 'number'
+      const hasQuestionDisplay =
+        row.questionNo?.trim() && row.questionType?.trim() && typeof row.fullScore === 'number'
       assertUserFacing(Boolean(hasQuestionDisplay), dataError)
     }
   }
@@ -359,8 +383,8 @@ async function submit(): Promise<void> {
     return
   }
   if (
-    form.questionTemplateId
-    && !request.questionRefs.some(
+    form.questionTemplateId &&
+    !request.questionRefs.some(
       (question) => question.questionTemplateId === form.questionTemplateId,
     )
   ) {
@@ -381,8 +405,10 @@ async function submit(): Promise<void> {
       : '总分更正已执行'
     message.success(successMessage)
     createOpen.value = false
+    republishGuideVisible.value = true
     await reload()
     emit('created')
+    emit('republish-required')
   } catch (e) {
     showUserError(e, '成绩更正提交失败')
   } finally {
@@ -451,6 +477,7 @@ watch(
   () => {
     if (props.examId) {
       pagination.current = 1
+      republishGuideVisible.value = false
       void reload()
     }
   },

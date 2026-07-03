@@ -8,8 +8,8 @@ import type { ExamCandidateRosterRequest, ExamCandidateVO } from '@/apis/mark/ex
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import http from '@/config/axios'
 import { isValidSemesterCode } from '@/types/enums/semester-enum'
+import http from '@/config/axios'
 
 /** 考试状态编码 - 对应后端 ExamStatus 枚举（仅保留批改链有意义的状态） */
 export type ExamStatusCode = 'ACTIVE' | 'CLOSED'
@@ -500,6 +500,24 @@ export interface ExamDistinctTermItemVO {
   semester: SemesterCode
 }
 
+/** 从缺考记录派生补考考试请求 - 对应 ExamMakeupDeriveRequest */
+export interface ExamMakeupDeriveRequest {
+  /** 原期末考试 ID */
+  sourceExamId: string
+  /** 补考发生学年，如 2024-2025 */
+  academicYear: string
+  /** 补考发生学期：1 秋季、2 春季 */
+  semester: SemesterCode
+  /** 补考名称 */
+  examName: string
+  /** 补考编号 */
+  examNo: string
+  /** 补考开始时间，格式 yyyy-MM-dd HH:mm:ss */
+  examStartTime: string
+  /** 补考结束时间，格式 yyyy-MM-dd HH:mm:ss */
+  examEndTime: string
+}
+
 function assertDistinctTermItem(item: unknown, index: number): ExamDistinctTermItemVO {
   if (!item || typeof item !== 'object') {
     throw new TypeError(`distinct-terms 响应缺少合法项：[${index}]`)
@@ -529,4 +547,12 @@ export function listDistinctExamTerms(
     }
     return rows.map((item, index) => assertDistinctTermItem(item, index))
   })
+}
+
+/**
+ * 从 CONFIRMED + PENDING_MAKEUP 缺考记录派生补考考试。
+ * POST /api/exam/makeup/derive
+ */
+export function deriveMakeupExam(request: ExamMakeupDeriveRequest): Promise<string> {
+  return http.post<string>('/api/exam/makeup/derive', request)
 }

@@ -8,11 +8,7 @@
       />
     </div>
 
-    <SignalBand
-      :metrics="statMetrics"
-      compact
-      class="score-finalize__signals"
-    />
+    <SignalBand :metrics="statMetrics" compact class="score-finalize__signals" />
 
     <a-card :bordered="false" class="detail-table-card score-finalize__table-card">
       <template #title>
@@ -50,8 +46,6 @@
         @search="handleSearch"
         @reset="handleReset"
       />
-
-
 
       <UiDataTable
         v-model:current="pagination.current"
@@ -98,8 +92,15 @@
           </template>
           <template v-else-if="column.key === 'bias'">
             <div class="score-finalize__bias-cell">
-              <UiTag :tone="biasLevelTone(classifyScoreBias(candidates[index].finalScore, pageScoreStats))" size="sm">
-                {{ biasLevelLabel(classifyScoreBias(candidates[index].finalScore, pageScoreStats)) }}
+              <UiTag
+                :tone="
+                  biasLevelTone(classifyScoreBias(candidates[index].finalScore, pageScoreStats))
+                "
+                size="sm"
+              >
+                {{
+                  biasLevelLabel(classifyScoreBias(candidates[index].finalScore, pageScoreStats))
+                }}
               </UiTag>
               <span
                 v-if="formatScoreBiasDelta(candidates[index].finalScore, pageScoreStats)"
@@ -130,12 +131,6 @@
                 @click="openConfirmModal(candidates[index])"
               >
                 {{ confirmButtonLabel(candidates[index]) }}
-              </UiTextAction>
-              <UiTextAction
-                :disabled="!canPublish(candidates[index])"
-                @click="handlePublish(candidates[index])"
-              >
-                {{ publishButtonLabel(candidates[index]) }}
               </UiTextAction>
               <UiTextAction
                 :disabled="!canWithdraw(candidates[index])"
@@ -272,17 +267,21 @@
             disabled
           />
         </a-form-item>
-        <a-form-item :label="hasDailyScoreConfig ? '考试分（各题教师复核评分之和）' : '试卷计算总分将作为教师复核评分'">
+        <a-form-item
+          :label="
+            hasDailyScoreConfig
+              ? '考试分（各题教师复核评分之和）'
+              : '试卷计算总分将作为教师复核评分'
+          "
+        >
           <a-input
-            :value="confirmComputedExamScore != null ? `${confirmComputedExamScore} 分` : '加载中...'"
+            :value="
+              confirmComputedExamScore != null ? `${confirmComputedExamScore} 分` : '加载中...'
+            "
             disabled
           />
         </a-form-item>
-        <a-form-item
-          v-if="hasDailyScoreConfig"
-          label="日常成绩"
-          :required="true"
-        >
+        <a-form-item v-if="hasDailyScoreConfig" label="日常成绩" :required="true">
           <a-input-number
             v-model:value="confirmDailyScore"
             :min="0"
@@ -298,14 +297,6 @@
         <a-form-item v-if="hasDailyScoreConfig" label="总成绩预览">
           <a-input :value="`${confirmTotalScorePreview} 分`" disabled />
         </a-form-item>
-        <a-form-item>
-          <a-checkbox
-            v-model:checked="confirmAndPublish"
-            :disabled="hasUnreviewedBlockingRisks"
-          >
-            确认后立即发布并通知学生
-          </a-checkbox>
-        </a-form-item>
       </a-form>
     </UiDrawer>
 
@@ -317,10 +308,7 @@
       @update:open="(v: boolean) => (riskReviewDrawerOpen = v)"
       @close="riskReviewDrawerOpen = false"
     >
-      <UiEmpty
-        v-if="blockingRiskReasons.length === 0"
-        description="暂无数据"
-      />
+      <UiEmpty v-if="blockingRiskReasons.length === 0" description="暂无数据" />
       <div v-else class="score-finalize__risk-review-list">
         <div
           v-for="reason in blockingRiskReasons"
@@ -352,7 +340,10 @@
             size="sm"
             variant="outline"
             :loading="riskReviewSavingReasonCode === reason.reasonCode"
-            :disabled="riskReviewSavingReasonCode !== null && riskReviewSavingReasonCode !== reason.reasonCode"
+            :disabled="
+              riskReviewSavingReasonCode !== null &&
+              riskReviewSavingReasonCode !== reason.reasonCode
+            "
             @click="toggleRiskReasonReviewed(reason.reasonCode)"
           >
             {{ isRiskReasonReviewed(reason.reasonCode) ? '取消复核标记' : '标记已复核' }}
@@ -431,44 +422,31 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { OperationLogVO, OperationTypeCode } from '@/apis/mark/admin-audit'
-import type {
-  ExamDetailVO,
-} from '@/apis/mark/exam'
+import { listOperationLogs, OPERATION_TYPE_LABEL } from '@/apis/mark/admin-audit'
+import type { ExamDetailVO } from '@/apis/mark/exam'
+import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import type { ExamPaperScoreVO, ExamQuestionScoreVO } from '@/apis/mark/exam-grade'
+import { getPaperScore } from '@/apis/mark/exam-grade'
 import type {
   ExamScoreSummaryItemVO,
   FinalScoreRiskOverviewVO,
   FinalScoreRiskReasonCode,
 } from '@/apis/mark/exam-score'
-import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
-import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
-import type { BadgeTone, FilterField, UiTrendPoint } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { listOperationLogs, OPERATION_TYPE_LABEL } from '@/apis/mark/admin-audit'
-import {
-  getExamDetail,
-  pageExams,
-} from '@/apis/mark/exam'
-import { getPaperScore } from '@/apis/mark/exam-grade'
 import {
   batchConfirmSafeFinalScores,
   confirmFinalScore,
   getFinalScoreRiskOverview,
   pageExamScoreSummary,
-  publishFinalScore,
   saveFinalScoreRiskReview,
   withdrawFinalScore,
 } from '@/apis/mark/exam-score'
+import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
 import {
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_OPTIONS,
   FINAL_SCORE_STATUS_TONE,
 } from '@/apis/mark/final-score-status'
+import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
 import {
   classifyScoreBias,
   computeScoreBiasStats,
@@ -476,6 +454,13 @@ import {
   SCORE_BIAS_LEVEL_LABEL,
   SCORE_BIAS_LEVEL_TONE,
 } from '@/apis/mark/score-bias'
+import type { BadgeTone, FilterField, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -597,9 +582,7 @@ const riskReviewDrawerOpen = ref(false)
 const riskReviewSavingReasonCode = ref<FinalScoreRiskReasonCode | null>(null)
 const reviewedRiskReasonCodes = ref<Set<FinalScoreRiskReasonCode>>(new Set())
 
-const HARD_BLOCKING_RISK_REASON_CODES = new Set<FinalScoreRiskReasonCode>([
-  'UNRECONCILED_ABSENCE',
-])
+const HARD_BLOCKING_RISK_REASON_CODES = new Set<FinalScoreRiskReasonCode>(['UNRECONCILED_ABSENCE'])
 
 const pagination = reactive<TablePaginationConfig>({
   current: 1,
@@ -667,7 +650,9 @@ async function loadRiskOverview(): Promise<void> {
     riskOverview.value = await getFinalScoreRiskOverview({ examId: selectedExamId.value })
     const validReasonCodes = new Set(blockingRiskReasons.value.map((reason) => reason.reasonCode))
     reviewedRiskReasonCodes.value = new Set(
-      (riskOverview.value.reviewedReasonCodes ?? []).filter((reasonCode) => validReasonCodes.has(reasonCode)),
+      (riskOverview.value.reviewedReasonCodes ?? []).filter((reasonCode) =>
+        validReasonCodes.has(reasonCode),
+      ),
     )
   } catch (error) {
     riskOverview.value = null
@@ -700,7 +685,7 @@ function handleReset(): void {
   void loadCandidates()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
@@ -716,16 +701,6 @@ function confirmButtonLabel(record: ExamScoreSummaryItemVO): string {
   const s = record.finalScoreStatus
   if (s === 'WITHDRAWN' || s === 'CORRECTED') return '重新确认'
   return '确认'
-}
-function canPublish(record: ExamScoreSummaryItemVO): boolean {
-  if (!record.paperInstanceId) return false
-  if (hasHardBlockingRisks.value || hasUnreviewedBlockingRisks.value) return false
-  const s = record.finalScoreStatus
-  // CONFIRMED / WITHDRAWN / CORRECTED 可以发布
-  return s === 'CONFIRMED' || s === 'WITHDRAWN' || s === 'CORRECTED'
-}
-function publishButtonLabel(record: ExamScoreSummaryItemVO): string {
-  return record.finalScoreStatus === 'WITHDRAWN' ? '重新发布' : '发布'
 }
 
 const blockingRiskReasons = computed(() => {
@@ -744,8 +719,8 @@ const hasHardBlockingRisks = computed(() => hardBlockingRiskReasons.value.length
 const hasUnreviewedBlockingRisks = computed(() => {
   return blockingRiskReasons.value.some(
     (reason) =>
-      !HARD_BLOCKING_RISK_REASON_CODES.has(reason.reasonCode)
-      && !reviewedRiskReasonCodes.value.has(reason.reasonCode),
+      !HARD_BLOCKING_RISK_REASON_CODES.has(reason.reasonCode) &&
+      !reviewedRiskReasonCodes.value.has(reason.reasonCode),
   )
 })
 
@@ -822,12 +797,12 @@ function warnUnreviewedBlockingRisks(): boolean {
 const canBatchConfirmSafe = computed(() => {
   const overview = riskOverview.value
   return Boolean(
-    overview
-    && overview.safeConfirmableCount > 0
-    && blockingRiskReasons.value.length === 0
-    && !hasHardBlockingRisks.value
-    && !hasDailyScoreConfig.value
-    && !batchConfirming.value,
+    overview &&
+    overview.safeConfirmableCount > 0 &&
+    blockingRiskReasons.value.length === 0 &&
+    !hasHardBlockingRisks.value &&
+    !hasDailyScoreConfig.value &&
+    !batchConfirming.value,
   )
 })
 
@@ -1029,13 +1004,14 @@ async function loadPaperAuditLogs(): Promise<void> {
   const paperInstanceId = detailCandidate.value.paperInstanceId
   try {
     const logs = await readAllPages(
-      (pageNum) => listOperationLogs({
-        examId,
-        targetType: 'EXAM_FINAL_SCORE',
-        targetId: paperInstanceId,
-        pageNum,
-        pageSize: SCORE_AUDIT_LOG_PAGE_SIZE,
-      }),
+      (pageNum) =>
+        listOperationLogs({
+          examId,
+          targetType: 'EXAM_FINAL_SCORE',
+          targetId: paperInstanceId,
+          pageNum,
+          pageSize: SCORE_AUDIT_LOG_PAGE_SIZE,
+        }),
       '操作记录加载失败，请刷新后重试',
     )
     auditLogs.value = logs.sort((a, b) => {
@@ -1155,10 +1131,9 @@ const historicalTrendPoints = computed<UiTrendPoint[]>(() => {
   }))
 })
 
-const historicalTrendHint = computed(() => buildTrendChartInsight(
-  historicalTrendPoints.value,
-  { valueUnit: ' 分' },
-))
+const historicalTrendHint = computed(() =>
+  buildTrendChartInsight(historicalTrendPoints.value, { valueUnit: ' 分' }),
+)
 
 const { chartOption: historicalTrendChartOption } = useChartOption(() =>
   buildTrendLineChartOption(historicalTrendPoints.value, {
@@ -1231,7 +1206,6 @@ const confirming = ref(false)
 const confirmCandidate = ref<ExamScoreSummaryItemVO | null>(null)
 const confirmComputedExamScore = ref<number | null>(null)
 const confirmDailyScore = ref<number | undefined>(undefined)
-const confirmAndPublish = ref(false)
 
 const confirmTotalScorePreview = computed(() => {
   const examScore = confirmComputedExamScore.value ?? 0
@@ -1245,7 +1219,6 @@ async function openConfirmModal(record: ExamScoreSummaryItemVO): Promise<void> {
   confirmOpen.value = true
   confirmComputedExamScore.value = null
   confirmDailyScore.value = undefined
-  confirmAndPublish.value = false
   try {
     const score = await getPaperScore(selectedExamId.value, record.paperInstanceId)
     confirmComputedExamScore.value = score.examScore ?? score.totalScore ?? 0
@@ -1303,8 +1276,8 @@ function deriveNextStepSuggestion(): void {
     return
   }
   // 当前页找下一份未确认
-  const next
-    = candidates.value.find(
+  const next =
+    candidates.value.find(
       (c) => c.finalScoreStatus === 'CALCULATED' || c.finalScoreStatus === 'PENDING',
     ) ?? null
   if (next) {
@@ -1322,7 +1295,8 @@ function deriveNextStepSuggestion(): void {
     visible: true,
     kind: 'continue-next',
     title: '当前页已全部核对',
-    description: '当前页成绩已处理，全场仍有待确认或风险项，请切换筛选 / 翻页或处理风险概览中的问题。',
+    description:
+      '当前页成绩已处理，全场仍有待确认或风险项，请切换筛选 / 翻页或处理风险概览中的问题。',
     nextCandidate: null,
   }
 }
@@ -1357,14 +1331,9 @@ async function handleConfirm(): Promise<void> {
     await confirmFinalScore({
       examId,
       paperInstanceId,
-      dailyScore: hasDailyScoreConfig.value ? confirmDailyScore.value ?? undefined : undefined,
+      dailyScore: hasDailyScoreConfig.value ? (confirmDailyScore.value ?? undefined) : undefined,
     })
-    if (confirmAndPublish.value) {
-      await publishFinalScore({ examId, paperInstanceId })
-      message.success('成绩已确认并发布，学生通知已下发')
-    } else {
-      message.success('成绩已确认，可在列表点击「发布」推送到学生侧')
-    }
+    message.success('成绩已确认，请前往「成绩发布」推送到学生侧')
     confirmOpen.value = false
     await refreshAfterScoreWrite()
     deriveNextStepSuggestion()
@@ -1372,22 +1341,6 @@ async function handleConfirm(): Promise<void> {
     showUserError(error, '成绩确认失败')
   } finally {
     confirming.value = false
-  }
-}
-
-// ─── 发布成绩 ─────────────────────────────
-async function handlePublish(record: ExamScoreSummaryItemVO): Promise<void> {
-  if (!selectedExamId.value || !record.paperInstanceId) return
-  if (warnUnreviewedBlockingRisks()) return
-  try {
-    await publishFinalScore({
-      examId: selectedExamId.value,
-      paperInstanceId: record.paperInstanceId,
-    })
-    message.success('成绩已发布，学生通知已下发')
-    await refreshAfterScoreWrite()
-  } catch (error) {
-    showUserError(error, '成绩发布失败')
   }
 }
 
@@ -1428,18 +1381,22 @@ async function handleWithdraw(): Promise<void> {
 }
 
 // ─── 初始化 ─────────────────────────────────────
-watch(selectedExamId, (value) => {
-  pagination.current = 1
-  reviewedRiskReasonCodes.value = new Set()
-  riskReviewDrawerOpen.value = false
-  examDetail.value = null
-  candidates.value = []
-  riskOverview.value = null
-  pagination.total = 0
-  if (value) {
-    void Promise.all([loadExamDetail(), refreshScoreFinalizeData()])
-  }
-}, { immediate: true })
+watch(
+  selectedExamId,
+  (value) => {
+    pagination.current = 1
+    reviewedRiskReasonCodes.value = new Set()
+    riskReviewDrawerOpen.value = false
+    examDetail.value = null
+    candidates.value = []
+    riskOverview.value = null
+    pagination.total = 0
+    if (value) {
+      void Promise.all([loadExamDetail(), refreshScoreFinalizeData()])
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <style lang="scss" scoped>

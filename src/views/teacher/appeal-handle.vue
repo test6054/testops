@@ -10,6 +10,20 @@
       </ContextBar>
     </template>
 
+    <UiAlertStrip
+      v-if="republishGuideVisible"
+      tone="warning"
+      title="存在已更正成绩待重新发布"
+      description="更正后学生侧不可见已更新分数，请前往「成绩发布」完成重新发布。"
+      :closable="false"
+      dense
+      class="appeal-page__republish-strip"
+    >
+      <template #actions>
+        <UiButton size="sm" variant="outline" @click="goScorePublish">前往成绩发布</UiButton>
+      </template>
+    </UiAlertStrip>
+
     <a-tabs v-model:active-key="activeTab" class="appeal-page__tabs">
       <a-tab-pane key="policy" tab="复核窗口策略">
         <ReviewWindowPolicyCard
@@ -33,6 +47,7 @@
           :exam-id="currentExamId"
           :reload-token="correctionReloadToken"
           @created="onCorrectionCreated"
+          @republish-required="republishGuideVisible = true"
         />
       </a-tab-pane>
 
@@ -49,6 +64,9 @@
 
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -65,10 +83,12 @@ type AppealTabKey = 'policy' | 'requests' | 'corrections' | 'batch'
 
 const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
+const router = useRouter()
 const currentExamId = computed(() => selectedExamId.value || '')
 
 const activeTab = ref<AppealTabKey>('policy')
 const pendingCount = ref(0)
+const republishGuideVisible = ref(false)
 
 const windowReloadToken = ref(0)
 const requestReloadToken = ref(0)
@@ -102,13 +122,21 @@ async function onAppealFlowChanged(): Promise<void> {
   await refreshSnapshot()
 }
 
+function goScorePublish(): void {
+  const examId = currentExamId.value
+  if (!examId) return
+  void router.push({ name: 'TeacherExamWorkspaceScoreRelease', params: { examId } })
+}
+
 watch(
   selectedExamId,
   (value) => {
     if (value) {
+      republishGuideVisible.value = false
       reloadAll()
     } else {
       pendingCount.value = 0
+      republishGuideVisible.value = false
     }
   },
   { immediate: true },
@@ -120,6 +148,10 @@ watch(
   :deep(.ant-tabs-nav) {
     margin-bottom: 16px;
   }
+}
+
+.appeal-page__republish-strip {
+  margin-bottom: 16px;
 }
 
 :deep(.appeal-section) {
