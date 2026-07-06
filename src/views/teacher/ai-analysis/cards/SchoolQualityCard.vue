@@ -261,10 +261,7 @@ const examSelectReady = computed(() => {
   if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !form.dimensionId) {
     return false
   }
-  if (form.analysisDimension === SchoolQualityDimensionCode.CLASS && !form.dimensionId) {
-    return false
-  }
-  return true
+  return !(form.analysisDimension === SchoolQualityDimensionCode.CLASS && !form.dimensionId);
 })
 const examSelectHint = computed(() => {
   if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !form.dimensionId) {

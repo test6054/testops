@@ -98,14 +98,9 @@ function resolveFlowEmphasis(
   if (code === FinalScoreStatusCode.CONFIRMED && publishableCount > 0) {
     return true
   }
-  if (
-    code === FinalScoreStatusCode.PUBLISHED
-    && overview.publishedCount > 0
-    && publishableCount === 0
-  ) {
-    return true
-  }
-  return false
+  return code === FinalScoreStatusCode.PUBLISHED
+      && overview.publishedCount > 0
+      && publishableCount === 0;
 }
 
 /** 有分布时右侧 stat-card 六格（确认 / 发布口径不同）。 */

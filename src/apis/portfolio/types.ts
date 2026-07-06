@@ -1529,12 +1529,24 @@ export interface PortfolioCorrectionSummaryVO {
   updateTime?: string
 }
 
-export interface PortfolioCorrectionDetailVO extends PortfolioCorrectionSummaryVO {
+export interface PortfolioCorrectionDetailVO {
+  id: string
+  teacherId: string
+  archiveRecordId?: string
+  categoryId: string
+  categoryName?: string
+  fieldCode: string
+  fieldLabel?: string
   wrongValue?: string
   expectedValue?: string
+  reason: string
   evidenceRef?: string
   sourceType?: PortfolioArchiveRecordSourceTypeCode
+  requestStatus: PortfolioCorrectionRequestStatusCode
+  handleOpinion?: string
   handledTime?: string
+  createTime?: string
+  updateTime?: string
 }
 
 export interface PortfolioGapMissingFieldVO {

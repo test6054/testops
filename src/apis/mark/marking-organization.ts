@@ -11,37 +11,31 @@ import type { MarkingAllocationModeCode } from '@/types/enums/marking-allocation
 import type { MarkingReassignModeCode } from '@/types/enums/marking-reassign-mode-enum'
 import type { MarkingSessionPhaseCode } from '@/types/enums/marking-session-phase-enum'
 import http from '@/config/axios'
-import {
-  ALL_ALLOCATION_UNIT_CODES,
-  AllocationUnitDescription,
-} from '@/types/enums/allocation-unit-enum'
+import { ALL_ALLOCATION_UNIT_CODES, AllocationUnitDescription } from '@/types/enums/allocation-unit-enum'
 import {
   ALL_ANONYMOUS_TOKEN_POLICY_CODES,
-  AnonymousTokenPolicyDescription,
+  AnonymousTokenPolicyDescription
 } from '@/types/enums/anonymous-token-policy-enum'
-import {
-  FormalSessionStatusCode,
-  FormalSessionStatusDescription,
-} from '@/types/enums/formal-session-status-enum'
+import { FormalSessionStatusCode, FormalSessionStatusDescription } from '@/types/enums/formal-session-status-enum'
 import {
   ALL_MARKING_ALLOCATION_MODE_CODES,
-  MarkingAllocationModeDescription,
+  MarkingAllocationModeDescription
 } from '@/types/enums/marking-allocation-mode-enum'
 import { MarkingOrganizationStatusCode } from '@/types/enums/marking-organization-status-enum'
 import {
   ALL_MARKING_REASSIGN_MODE_CODES,
-  MarkingReassignModeDescription,
+  MarkingReassignModeDescription
 } from '@/types/enums/marking-reassign-mode-enum'
 import {
   ALL_MARKING_TASK_STATUS_CODES,
   MarkingTaskStatusCode,
-  MarkingTaskStatusDescription,
+  MarkingTaskStatusDescription
 } from '@/types/enums/marking-task-status-enum'
 import { QuestionMarkingGroupStatusCode } from '@/types/enums/question-marking-group-status-enum'
 import {
   TRIAL_SESSION_MAIN_FLOW_STATUS_CODES,
   TrialSessionStatusCode,
-  TrialSessionStatusDescription,
+  TrialSessionStatusDescription
 } from '@/types/enums/trial-session-status-enum'
 import { readAllPages } from '@/utils/page-result'
 
@@ -503,11 +497,9 @@ export const FORMAL_SESSION_STATUS_TONE: Record<
   [FormalSessionStatusCode.SESSION_CLOSED]: 'red',
 }
 
-/** 试评会话主流程状态链，供列表页流程 hint 展示 */
-export const TRIAL_SESSION_MAIN_FLOW_STATUSES = TRIAL_SESSION_MAIN_FLOW_STATUS_CODES
 
 /** 试评会话主流程 hint，文案与 TrialSessionStatusDescription 一致 */
-export const TRIAL_SESSION_FLOW_HINT = TRIAL_SESSION_MAIN_FLOW_STATUSES.map(
+export const TRIAL_SESSION_FLOW_HINT = TRIAL_SESSION_MAIN_FLOW_STATUS_CODES.map(
   (status) => TrialSessionStatusDescription[status],
 ).join(' → ')
 

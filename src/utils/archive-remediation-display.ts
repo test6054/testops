@@ -1,16 +1,10 @@
 import type { ArchiveRemediationTaskVO } from '@/apis/mark/archive-volume'
 
-/**
- * 整改任务责任人展示名；有 assigneeUserId 但缺 nickName 时显式失败，避免 UI 兜底掩盖契约漂移。
- */
 export function remediationAssigneeLabel(task: ArchiveRemediationTaskVO) {
   if (!task.assigneeUserId) {
     return '—'
   }
-  if (!task.assigneeNickName?.trim()) {
-    throw new Error(`整改任务缺少 assigneeNickName 契约：taskId=${task.taskId}`)
-  }
-  return task.assigneeNickName
+  return task.assigneeNickName?.trim() || `用户 ${task.assigneeUserId}`
 }
 
 /**

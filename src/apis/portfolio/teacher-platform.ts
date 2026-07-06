@@ -156,6 +156,10 @@ export interface PortfolioDualTeacherSaveDraftRequest {
   attachmentFileIds?: string[]
 }
 
+export interface PortfolioDualTeacherExportRequest {
+  applicationStatus?: PortfolioDualTeacherApplicationStatusCode
+}
+
 export const portfolioDualTeacherApi = {
   page: (data: PortfolioDualTeacherPageRequest) =>
     http.post<PageResult<PortfolioDualTeacherApplicationVO>>(
@@ -182,8 +186,8 @@ export const portfolioDualTeacherApi = {
     http.post<void>('/api/portfolio/dual-teacher/academic-reject', data),
   academicReturn: (data: PortfolioDualTeacherWorkflowRequest) =>
     http.post<void>('/api/portfolio/dual-teacher/academic-return', data),
-  exportRoster: () =>
-    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/dual-teacher/export-roster', {}),
+  exportRoster: (data: PortfolioDualTeacherExportRequest = {}) =>
+    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/dual-teacher/export-roster', data),
   analyticsStats: () =>
     http.post<PortfolioDualTeacherAnalyticsVO>('/api/portfolio/dual-teacher/analytics/stats', {}),
 }
@@ -939,6 +943,11 @@ export interface PortfolioTeacherRecommendRuleSaveRequest {
   filterSnapshot: PortfolioTeacherRecommendRuleVO['filterSnapshot']
 }
 
+export interface PortfolioTeacherRecommendRuleListRequest {
+  recommendScene?: PortfolioTeacherRecommendSceneCode
+  enabledOnly?: boolean
+}
+
 export interface PortfolioTeacherRecommendRunExecuteRequest {
   ruleId: string
 }
@@ -954,8 +963,8 @@ export interface PortfolioTeacherRecommendExplainStatusRequest {
 export const portfolioTeacherRecommendationApi = {
   saveRule: (data: PortfolioTeacherRecommendRuleSaveRequest) =>
     http.post<string>('/api/portfolio/recommendation/rule/save', data),
-  listRules: () =>
-    http.post<PortfolioTeacherRecommendRuleVO[]>('/api/portfolio/recommendation/rule/list', {}),
+  listRules: (data: PortfolioTeacherRecommendRuleListRequest = {}) =>
+    http.post<PortfolioTeacherRecommendRuleVO[]>('/api/portfolio/recommendation/rule/list', data),
   executeRun: (data: PortfolioTeacherRecommendRunExecuteRequest) =>
     http.post<string>('/api/portfolio/recommendation/run/execute', data),
   pageRuns: (data: PortfolioTeacherRecommendRunPageRequest) =>
@@ -1001,8 +1010,13 @@ export interface PortfolioPortraitTemplateSaveRequest {
   templateStatus?: PortfolioPortraitTemplateStatusCode
 }
 
+export interface PortfolioPortraitTemplateListRequest {
+  templateStatus?: PortfolioPortraitTemplateStatusCode
+}
+
 export const portfolioPortraitTemplateApi = {
-  list: () => http.post<PortfolioPortraitTemplateVO[]>('/api/portfolio/portrait-template/list', {}),
+  list: (data: PortfolioPortraitTemplateListRequest = {}) =>
+    http.post<PortfolioPortraitTemplateVO[]>('/api/portfolio/portrait-template/list', data),
   get: (data: { id: string }) =>
     http.post<PortfolioPortraitTemplateVO>('/api/portfolio/portrait-template/get', data),
   save: (data: PortfolioPortraitTemplateSaveRequest) =>

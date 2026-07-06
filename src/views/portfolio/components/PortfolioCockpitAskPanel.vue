@@ -6,7 +6,6 @@ import type {
   PortfolioCockpitAskResultPayload,
   PortfolioCockpitAskTeacherRow,
 } from '@/apis/portfolio/types'
-import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
@@ -16,6 +15,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { showUserError } from '@/utils/error-handler'
+import { message } from '@/utils/feedback'
 import { readPageList } from '@/utils/page-result'
 import { parsePortfolioCockpitAskPayload } from '@/utils/portfolio-cockpit-payload'
 
@@ -81,7 +81,8 @@ function sleep(ms: number) {
 
 function applyAnalysisDetail(detail: PortfolioAiAnalysisDetailVO) {
   if (detail.analysisType !== PortfolioAiAnalysisTypeCode.COCKPIT_ASK) {
-    throw new Error('该 AI 任务不属于驾驶舱智能问数')
+    showUserError(null, '该 AI 任务不属于驾驶舱智能问数')
+    return
   }
   analysisDetail.value = detail
   askPayload.value = parsePortfolioCockpitAskPayload(detail.draftMarkdown)
@@ -131,11 +132,12 @@ async function pollAnalysis(taskId: string) {
         return
       }
       if (task.status === 'FAILED' || task.status === 'CANCELLED') {
-        throw new Error(`AI 任务失败：${task.status}`)
+        showUserError(null, 'AI 问数任务失败，请稍后重试或重新提交')
+        return
       }
       await sleep(2000)
     }
-    throw new Error('AI 任务超时，请稍后在问数历史中查看')
+    showUserError(null, 'AI 任务超时，请稍后在问数历史中查看')
   } finally {
     polling.value = false
   }
@@ -199,7 +201,8 @@ async function openTaskResult(taskId: string) {
       return
     }
     if (task.status === 'FAILED' || task.status === 'CANCELLED') {
-      throw new Error(`AI 任务失败：${task.status}`)
+      showUserError(null, 'AI 问数任务失败，请稍后重试或重新提交')
+      return
     }
     await pollAnalysis(taskId)
   } catch (error) {

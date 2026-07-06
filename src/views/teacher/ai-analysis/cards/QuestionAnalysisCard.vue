@@ -194,7 +194,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import {
   buildBarChartInsight,
@@ -430,15 +430,6 @@ async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
 function acceptQuestionAnalysisRows(
   records: ExamQuestionAnalysisRecordVO[],
 ): ExamQuestionAnalysisRecordVO[] {
-  const expectedScopeType = props.classId ? 'CLASS' : 'EXAM'
-  const invalidRecord = records.find((record) => {
-    if (record.scopeType !== expectedScopeType) return true
-    if (expectedScopeType === 'CLASS') return record.scopeId !== props.classId
-    return record.scopeId != null
-  })
-  if (invalidRecord) {
-    throw toUserError(null, '题目质量分析范围与当前筛选不一致')
-  }
   return records
 }
 

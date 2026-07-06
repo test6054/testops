@@ -2,9 +2,7 @@
   <WorkbenchSurfaceCard flush class="appeal-section">
     <template #head>
       <div class="appeal-section__header">
-        <UiButton size="sm" variant="primary" @click="openCreateModal">
-          新建纠正
-        </UiButton>
+        <UiButton size="sm" variant="primary" @click="openCreateModal"> 新建纠正 </UiButton>
       </div>
     </template>
 
@@ -135,15 +133,15 @@ import type {
   ExamGradeCorrectionRecordVO,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   createCorrection,
   GradeReviewRequestStatusCode,
   listCorrections,
   listReviewRequests,
 } from '@/apis/mark/grade-review'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -278,8 +276,8 @@ async function reload(): Promise<void> {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
-    const records = readPageList(result, '成绩更正记录加载失败')
-    rows.value = records
+
+    rows.value = readPageList(result, '成绩更正记录加载失败')
     pagination.total = readPageTotal(result, '成绩更正记录加载失败')
     pagination.current = result.pageNum ?? pagination.current
     pagination.pageSize = result.pageSize ?? pagination.pageSize
@@ -307,7 +305,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -317,7 +315,7 @@ async function loadApprovedReviewRequests(): Promise<void> {
   if (!props.examId) return
   reviewRequestLoading.value = true
   try {
-    const requests = await readAllPages(
+    approvedReviewRequests.value = await readAllPages(
       (pageNum) =>
         listReviewRequests({
           examId: props.examId,
@@ -327,7 +325,6 @@ async function loadApprovedReviewRequests(): Promise<void> {
         }),
       '已通过复核申请加载失败',
     )
-    approvedReviewRequests.value = requests
   } catch (e) {
     approvedReviewRequests.value = []
     showUserError(e, '已通过复核申请加载失败')
@@ -355,18 +352,16 @@ async function submit(): Promise<void> {
     return
   }
   if (
-    form.layoutQuestionId
-    && !request.questionRefs.some(
-      (question) => question.layoutQuestionId === form.layoutQuestionId,
-    )
+    form.layoutQuestionId &&
+    !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
   ) {
     message.warning('更正题目必须来自选中的复核申请')
     return
   }
   if (
-    request.questionRefs.length === 0
-    && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
-    && form.afterScore > 60
+    request.questionRefs.length === 0 &&
+    props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
+    form.afterScore > 60
   ) {
     message.warning('补考成绩策略为封顶60分，更正后总成绩不能超过60分')
     return
