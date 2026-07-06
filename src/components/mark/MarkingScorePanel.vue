@@ -288,8 +288,8 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type {
-  MarkingQuestionViewVO,
-  QuestionMarkingGroupQuestionVO,
+  MarkingQuestionViewResponse,
+  QuestionMarkingGroupQuestionResponse,
 } from '@/apis/mark/marking-organization'
 import type { WholeQuestionForm } from '@/composables/useWholePaperGallery'
 import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grading-experience-reference-match-mode-enum'
@@ -321,16 +321,16 @@ const props = defineProps<{
   isReadOnly: boolean
   canSubmit: boolean
   submitting: boolean
-  questionView: MarkingQuestionViewVO | null
+  questionView: MarkingQuestionViewResponse | null
   questionViewHalfScoreLabel: string
   isQuestionViewAiScorePending: boolean
   canRescoreQuestionView: boolean
-  wholeQuestions: QuestionMarkingGroupQuestionVO[]
+  wholeQuestions: QuestionMarkingGroupQuestionResponse[]
   rescoringGradeResultId: string | null
   getWholeQuestionForm: (layoutQuestionId: string) => WholeQuestionForm
   isWholeQuestionScored: (layoutQuestionId: string) => boolean
-  isWholeQuestionAiScorePending: (question: QuestionMarkingGroupQuestionVO) => boolean
-  canRescoreWholeQuestion: (question: QuestionMarkingGroupQuestionVO) => boolean
+  isWholeQuestionAiScorePending: (question: QuestionMarkingGroupQuestionResponse) => boolean
+  canRescoreWholeQuestion: (question: QuestionMarkingGroupQuestionResponse) => boolean
   experienceAssistApplied?: boolean
   experienceAssistSourceExamName?: string
   experienceAssistConsistencyRate?: number
@@ -345,15 +345,15 @@ const emit = defineEmits<{
   (e: 'quick-zero-score'): void
   (e: 'quick-ai-score'): void
   (e: 'quick-digit-score', digit: number): void
-  (e: 'whole-quick-score', question: QuestionMarkingGroupQuestionVO, digit: number): void
+  (e: 'whole-quick-score', question: QuestionMarkingGroupQuestionResponse, digit: number): void
   (e: 'rescore-question'): void
-  (e: 'rescore-whole', question: QuestionMarkingGroupQuestionVO): void
+  (e: 'rescore-whole', question: QuestionMarkingGroupQuestionResponse): void
   (e: 'open-ai-history'): void
   (e: 'open-ai-history-from-badge'): void
-  (e: 'open-ai-history-from-whole-question', question: QuestionMarkingGroupQuestionVO): void
-  (e: 'fill-ai-score', question: QuestionMarkingGroupQuestionVO): void
-  (e: 'accept-ai-score', question: QuestionMarkingGroupQuestionVO, index: number): void
-  (e: 'focus-page', question: QuestionMarkingGroupQuestionVO): void
+  (e: 'open-ai-history-from-whole-question', question: QuestionMarkingGroupQuestionResponse): void
+  (e: 'fill-ai-score', question: QuestionMarkingGroupQuestionResponse): void
+  (e: 'accept-ai-score', question: QuestionMarkingGroupQuestionResponse, index: number): void
+  (e: 'focus-page', question: QuestionMarkingGroupQuestionResponse): void
   (e: 'whole-question-enter', index: number): void
   (e: 'set-score-input-ref', el: unknown, index: number): void
 }>()

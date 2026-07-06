@@ -15,5 +15,3 @@ export enum ResultCode {
   DATA_OPERATION_FAILED = 9004,
   CONCURRENT_UPDATE_CONFLICT = 9006,
 }
-
-export type ResultCodeValue = ResultCode

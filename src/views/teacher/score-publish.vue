@@ -349,16 +349,16 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
-import type { ArchiveVolumeExamGateVO } from '@/apis/mark/archive-volume'
+import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
 import type {
-  ExamDetailVO,
+  ExamDetailResponse,
 } from '@/apis/mark/exam'
-import type { ExamPaperScoreVO, ExamQuestionScoreVO } from '@/apis/mark/exam-grade'
-import type {WorkbenchScorePanelVO} from '@/apis/mark/exam-progress';
+import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
+import type {ExamWorkbenchScorePanelResponse} from '@/apis/mark/exam-progress';
 import type {
-  ExamScoreSummaryItemVO,
-  FinalScoreBatchPublishVO,
-  FinalScoreRiskOverviewVO,
+  ExamScoreSummaryItemResponse,
+  FinalScoreBatchPublishResponse,
+  FinalScoreRiskOverviewResponse,
 } from '@/apis/mark/exam-score'
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
 import type { FilterField } from '@/components/ui-guide/ui/types'
@@ -438,7 +438,7 @@ const scoreFilterForm = reactive<{
   unpublishedBoundOnly: false,
 })
 
-const examArchiveGate = ref<ArchiveVolumeExamGateVO | null>(null)
+const examArchiveGate = ref<ArchiveVolumeExamGateResponse | null>(null)
 
 const scoreFilterModel = computed<Record<string, unknown>>({
   get: () => scoreFilterForm as Record<string, unknown>,
@@ -497,7 +497,7 @@ async function refreshArchiveGate(): Promise<void> {
   await gateBannerRef.value?.refresh()
 }
 
-function onExamArchiveGateLoaded(gate: ArchiveVolumeExamGateVO): void {
+function onExamArchiveGateLoaded(gate: ArchiveVolumeExamGateResponse): void {
   examArchiveGate.value = gate
 }
 
@@ -529,7 +529,7 @@ const { selectedExamId } = useMarkExamContext()
 const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('成绩发布')
 const { refreshSnapshot } = useWorkspaceExamId()
 
-const examDetail = ref<ExamDetailVO | null>(null)
+const examDetail = ref<ExamDetailResponse | null>(null)
 
 async function loadExamDetail(): Promise<void> {
   if (!selectedExamId.value) {
@@ -550,11 +550,11 @@ const columns = computed(() =>
 )
 
 // ─── 数据加载（服务端分页） ─────────────────────────────
-const candidates = ref<ExamScoreSummaryItemVO[]>([])
+const candidates = ref<ExamScoreSummaryItemResponse[]>([])
 const loading = ref(false)
 const pendingAbsenceCount = ref(0)
-const finalScoreOverview = ref<FinalScoreRiskOverviewVO | null>(null)
-const scorePanel = ref<WorkbenchScorePanelVO | null>(null)
+const finalScoreOverview = ref<FinalScoreRiskOverviewResponse | null>(null)
+const scorePanel = ref<ExamWorkbenchScorePanelResponse | null>(null)
 const finalScoreOverviewLoading = ref(false)
 
 const pagination = reactive<TablePaginationConfig>({
@@ -722,7 +722,7 @@ const canBulkPublish = computed(() =>
 
 const bulkOpen = ref(false)
 const bulkRunning = ref(false)
-const bulkResult = ref<FinalScoreBatchPublishVO | null>(null)
+const bulkResult = ref<FinalScoreBatchPublishResponse | null>(null)
 const bulkResultPercent = computed(() => {
   const result = bulkResult.value
   if (!result || result.totalCandidateCount <= 0) return 0
@@ -801,7 +801,7 @@ const publishSignalMetrics = computed(() =>
 )
 
 // ─── 状态机按钮 ─────────────────────────────
-function canPublish(record: ExamScoreSummaryItemVO): boolean {
+function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
   const overview = finalScoreOverview.value
   if (overview && (!overview.readyToPublish || overview.blockedCount > 0)) {
@@ -810,16 +810,16 @@ function canPublish(record: ExamScoreSummaryItemVO): boolean {
   const s = record.finalScoreStatus
   return s === 'CONFIRMED' || s === 'WITHDRAWN' || s === 'CORRECTED'
 }
-function publishButtonLabel(record: ExamScoreSummaryItemVO): string {
+function publishButtonLabel(record: ExamScoreSummaryItemResponse): string {
   return record.finalScoreStatus === 'WITHDRAWN' ? '重新发布' : '发布'
 }
-function canWithdraw(record: ExamScoreSummaryItemVO): boolean {
+function canWithdraw(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
   const s = record.finalScoreStatus
   return s === 'PUBLISHED' || s === 'CORRECTED'
 }
 
-async function handlePublish(record: ExamScoreSummaryItemVO): Promise<void> {
+async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
   const canContinue = await ensureNoPendingAbsenceBeforePublish()
   if (!canContinue) {
@@ -845,10 +845,10 @@ async function handlePublish(record: ExamScoreSummaryItemVO): Promise<void> {
 // ─── 撤回成绩 Modal ─────────────────────────────
 const withdrawOpen = ref(false)
 const withdrawing = ref(false)
-const withdrawCandidate = ref<ExamScoreSummaryItemVO | null>(null)
+const withdrawCandidate = ref<ExamScoreSummaryItemResponse | null>(null)
 const withdrawReason = ref('')
 
-function openWithdrawModal(record: ExamScoreSummaryItemVO): void {
+function openWithdrawModal(record: ExamScoreSummaryItemResponse): void {
   withdrawCandidate.value = record
   withdrawReason.value = ''
   withdrawOpen.value = true
@@ -886,13 +886,13 @@ async function handleWithdraw(): Promise<void> {
 // ─── 成绩明细 Drawer ─────────────────────────────
 const detailOpen = ref(false)
 const detailLoading = ref(false)
-const detailCandidate = ref<ExamScoreSummaryItemVO | null>(null)
-const paperScore = ref<ExamPaperScoreVO | null>(null)
+const detailCandidate = ref<ExamScoreSummaryItemResponse | null>(null)
+const paperScore = ref<ExamPaperScoreResponse | null>(null)
 
 // computed 派生强类型题目数组，模板侧用 paperQuestions[index] 取 VO，避免 a-table slot record 类型丢失。
-const paperQuestions = computed<ExamQuestionScoreVO[]>(() => paperScore.value?.questions ?? [])
+const paperQuestions = computed<ExamQuestionScoreResponse[]>(() => paperScore.value?.questions ?? [])
 
-const paperItemColumns: ColumnType<ExamQuestionScoreVO>[] = [
+const paperItemColumns: ColumnType<ExamQuestionScoreResponse>[] = [
   { title: '题号', key: 'questionNo', width: 80 },
   { title: '题型', dataIndex: 'questionType', key: 'questionType', width: 100 },
   { title: '满分', dataIndex: 'fullScore', key: 'fullScore', width: 80 },
@@ -900,7 +900,7 @@ const paperItemColumns: ColumnType<ExamQuestionScoreVO>[] = [
   { title: '状态', dataIndex: 'gradeStatus', key: 'gradeStatus', width: 110 },
 ]
 
-async function openDetailDrawer(record: ExamScoreSummaryItemVO): Promise<void> {
+async function openDetailDrawer(record: ExamScoreSummaryItemResponse): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
   detailCandidate.value = record
   detailOpen.value = true

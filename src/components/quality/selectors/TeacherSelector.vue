@@ -9,7 +9,6 @@ import type { TeacherDetailsDto, TeacherUserInfoDto } from '@/apis/quality/user-
 import { onMounted, ref, watch } from 'vue'
 import { teacherCatalogApi } from '@/apis/quality/user-catalog'
 import { showUserError } from '@/utils/error-handler'
-import { requireArrayResult, requirePageList } from './page-contract'
 
 interface Props {
   value?: string | string[] | null
@@ -119,10 +118,7 @@ async function hydrateSelectedByIds(teacherIds: string[]): Promise<void> {
   const missingIds = teacherIds.filter(id => !hasTeacherOption(id))
   if (!missingIds.length) return
   try {
-    const details = requireArrayResult<TeacherDetailsDto>(
-      await teacherCatalogApi.batchDetails(missingIds),
-      '教师',
-    )
+    const details = await teacherCatalogApi.batchDetails(missingIds)
     mergeOptions(details.map(toTeacherUserInfo))
   }
   catch (error) {
@@ -146,7 +142,7 @@ async function loadOptions(keyword?: string) {
       departmentId: props.departmentId || undefined,
       roleKey: 'SCH_TECH',
     })
-    mergeOptions(requirePageList(res, '教师'))
+    mergeOptions(res.list)
     await syncSelectedTeachers()
   } catch (e) {
     showUserError(e, '教师列表加载失败')

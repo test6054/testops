@@ -112,7 +112,14 @@
             v-if="makeupCap60Hint"
             type="info"
             show-icon
-            message="本场为补考封顶60分：总分更正不得超过60分"
+            :message="makeupCap60AlertMessage"
+            style="margin-bottom: 12px"
+          />
+          <a-alert
+            v-if="singleQuestionProjectionHint"
+            type="warning"
+            show-icon
+            :message="singleQuestionProjectionHint"
             style="margin-bottom: 12px"
           />
           <a-form-item label="申请学生">
@@ -130,18 +137,20 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
-  ExamGradeCorrectionRecordVO,
+  ExamGradeCorrectionRecordResponse,
   GradeReviewRequestItemResponse,
-} from '@/apis/mark/grade-review'
-import {
-  createCorrection,
-  GradeReviewRequestStatusCode,
-  listCorrections,
-  listReviewRequests,
 } from '@/apis/mark/grade-review'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import {
+  computeSingleQuestionCorrectionCompositeTotal,
+  createCorrection,
+  GradeReviewRequestStatusCode,
+  isMakeupCap60SingleQuestionCorrectionExceeded,
+  listCorrections,
+  listReviewRequests,
+} from '@/apis/mark/grade-review'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -163,7 +172,7 @@ const emit = defineEmits<{ (e: 'created'): void }>()
 
 const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 100
 
-const rows = ref<ExamGradeCorrectionRecordVO[]>([])
+const rows = ref<ExamGradeCorrectionRecordResponse[]>([])
 const loading = ref(false)
 const approvedReviewRequests = ref<GradeReviewRequestItemResponse[]>([])
 const reviewRequestLoading = ref(false)
@@ -194,7 +203,7 @@ const filterFields: FilterField[] = [
   },
 ]
 
-const columns: ColumnType<ExamGradeCorrectionRecordVO>[] = [
+const columns: ColumnType<ExamGradeCorrectionRecordResponse>[] = [
   { title: '学号', key: 'studentNo', width: 120 },
   { title: '姓名', key: 'studentName', dataIndex: 'studentName', width: 96 },
   { title: '题号', key: 'questionNo', width: 88 },
@@ -251,10 +260,45 @@ const isTotalScoreCorrection = computed(
 )
 
 const makeupCap60Hint = computed(
-  () => isTotalScoreCorrection.value && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60,
+  () => props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60,
 )
 
-const totalCorrectionScoreMax = computed(() => (makeupCap60Hint.value ? 60 : undefined))
+const makeupCap60AlertMessage = computed(() =>
+  isTotalScoreCorrection.value
+    ? '本场为补考封顶60分：更正后总成绩不得超过60分'
+    : '本场为补考封顶60分：单题更正后合成总成绩不得超过60分',
+)
+
+const projectedCompositeTotal = computed(() => {
+  if (!selectedReviewRequest.value || !form.layoutQuestionId) {
+    return null
+  }
+  return computeSingleQuestionCorrectionCompositeTotal(
+    selectedReviewRequest.value,
+    form.layoutQuestionId,
+    form.afterScore,
+  )
+})
+
+const singleQuestionProjectionHint = computed(() => {
+  if (!makeupCap60Hint.value || !form.layoutQuestionId || !selectedReviewRequest.value) {
+    return ''
+  }
+  const projected = projectedCompositeTotal.value
+  if (projected == null) {
+    return '当前成绩快照未就绪，提交前请确认最终成绩已确认'
+  }
+  const currentTotal = selectedReviewRequest.value.currentTotalScore
+  const currentPart = currentTotal != null ? `当前总分 ${currentTotal}，` : ''
+  if (projected > 60) {
+    return `${currentPart}更正后合成总分 ${projected} 超过60分，无法提交`
+  }
+  return `${currentPart}更正后合成总分 ${projected}`
+})
+
+const totalCorrectionScoreMax = computed(
+  () => (isTotalScoreCorrection.value && makeupCap60Hint.value ? 60 : undefined),
+)
 
 async function openCreateModal(): Promise<void> {
   form.layoutQuestionId = ''
@@ -305,7 +349,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -352,18 +396,26 @@ async function submit(): Promise<void> {
     return
   }
   if (
-    form.layoutQuestionId &&
-    !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
+    form.layoutQuestionId
+    && !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
   ) {
     message.warning('更正题目必须来自选中的复核申请')
     return
   }
   if (
-    request.questionRefs.length === 0 &&
-    props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
-    form.afterScore > 60
+    request.questionRefs.length === 0
+    && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
+    && form.afterScore > 60
   ) {
     message.warning('补考成绩策略为封顶60分，更正后总成绩不能超过60分')
+    return
+  }
+  if (
+    form.layoutQuestionId
+    && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
+    && isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, form.afterScore)
+  ) {
+    message.warning('补考成绩策略为封顶60分，单题更正后合成总成绩不能超过60分')
     return
   }
   submitting.value = true

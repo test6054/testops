@@ -52,8 +52,8 @@
 import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
 import type {
   AllocationUnitCode,
+  MarkingTaskResponse,
   MarkingTaskStatusCode,
-  MarkingTaskVO,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
@@ -63,7 +63,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 defineOptions({ name: 'MarkingTaskInfoCard' })
 
 defineProps<{
-  task: MarkingTaskVO
+  task: MarkingTaskResponse
   formatDateTime: (value?: string) => string
   taskStatusTone: (status: MarkingTaskStatusCode) => BadgeTone
   taskStatusLabel: (status: MarkingTaskStatusCode) => string

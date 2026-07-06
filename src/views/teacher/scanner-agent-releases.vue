@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { ScannerAgentReleaseVO } from '@/apis/mark/scanner-agent-release'
+import type { ScannerAgentReleaseResponse } from '@/apis/mark/scanner-agent-release'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
@@ -41,7 +41,7 @@ const canManage = computed(() =>
 const loading = ref(false)
 const saving = ref(false)
 const publishing = ref(false)
-const releases = ref<ScannerAgentReleaseVO[]>([])
+const releases = ref<ScannerAgentReleaseResponse[]>([])
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
 const filters = reactive({ keyword: '' })
 
@@ -61,10 +61,10 @@ const registerForm = reactive<ScannerAgentReleaseRegisterForm>({
 })
 
 const publishOpen = ref(false)
-const publishTarget = ref<ScannerAgentReleaseVO | null>(null)
+const publishTarget = ref<ScannerAgentReleaseResponse | null>(null)
 const publishPushEnabled = ref(false)
 
-const publishedReleaseSnapshot = ref<ScannerAgentReleaseVO | null>(null)
+const publishedReleaseSnapshot = ref<ScannerAgentReleaseResponse | null>(null)
 
 const signalMetrics = computed<SignalMetric[]>(() => {
   const published = publishedReleaseSnapshot.value
@@ -99,7 +99,7 @@ const filterFields = computed<FilterField[]>(() => [
   },
 ])
 
-const columns: ColumnsType<ScannerAgentReleaseVO> = [
+const columns: ColumnsType<ScannerAgentReleaseResponse> = [
   { title: '版本', dataIndex: 'version', key: 'version', width: 120 },
   { title: '安装包', dataIndex: 'fileName', key: 'fileName', ellipsis: true },
   { title: '大小', dataIndex: 'fileSize', key: 'fileSize', width: 100, align: 'right' },
@@ -109,7 +109,7 @@ const columns: ColumnsType<ScannerAgentReleaseVO> = [
   { title: '操作', key: 'actions', width: 140, align: 'center' },
 ]
 
-function isMsiPackage(record: ScannerAgentReleaseVO): boolean {
+function isMsiPackage(record: ScannerAgentReleaseResponse): boolean {
   return record.fileName?.toLowerCase().endsWith('.msi') ?? false
 }
 
@@ -186,7 +186,7 @@ async function submitRegister() {
   }
 }
 
-function openPublishModal(record: ScannerAgentReleaseVO) {
+function openPublishModal(record: ScannerAgentReleaseResponse) {
   publishTarget.value = record
   publishPushEnabled.value = isMsiPackage(record)
   publishOpen.value = true
@@ -215,7 +215,7 @@ async function submitPublish() {
   }
 }
 
-async function confirmDelete(record: ScannerAgentReleaseVO) {
+async function confirmDelete(record: ScannerAgentReleaseResponse) {
   if (record.published) {
     message.warning('当前发布版本不能删除')
     return

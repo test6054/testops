@@ -160,8 +160,8 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  ArchiveEvaluationCampaignVO,
-  ArchiveEvaluationVolumeReadinessVO,
+  ArchiveEvaluationCampaignResponse,
+  ArchiveEvaluationVolumeReadinessResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -212,9 +212,9 @@ const activeTab = ref<EvalCampaignTabKey>('list')
 const campaignLoading = ref(false)
 const readinessLoading = ref(false)
 const exportingCampaignId = ref('')
-const campaigns = ref<ArchiveEvaluationCampaignVO[]>([])
+const campaigns = ref<ArchiveEvaluationCampaignResponse[]>([])
 const selectedCampaignId = ref<string>()
-const readinessRows = ref<ArchiveEvaluationVolumeReadinessVO[]>([])
+const readinessRows = ref<ArchiveEvaluationVolumeReadinessResponse[]>([])
 const readinessPagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
 
 const canExportCampaign = computed(() => hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR))
@@ -269,7 +269,7 @@ const campaignOptions = computed(() =>
   })),
 )
 
-const campaignColumns: ColumnsType<ArchiveEvaluationCampaignVO> = [
+const campaignColumns: ColumnsType<ArchiveEvaluationCampaignResponse> = [
   { title: '批次名称', dataIndex: 'campaignName', key: 'campaignName', width: 200 },
   { title: '学年学期', key: 'term', width: 120 },
   { title: '状态', key: 'campaignStatus', width: 90 },
@@ -280,7 +280,7 @@ const campaignColumns: ColumnsType<ArchiveEvaluationCampaignVO> = [
   { title: '操作', key: 'actions', width: 110, fixed: 'right' },
 ]
 
-const readinessColumns: ColumnsType<ArchiveEvaluationVolumeReadinessVO> = [
+const readinessColumns: ColumnsType<ArchiveEvaluationVolumeReadinessResponse> = [
   { title: '归档编号', key: 'archiveNo', width: 150 },
   { title: '课程', key: 'course', width: 180 },
   { title: '目录', key: 'catalogReady', width: 64, align: 'center' },

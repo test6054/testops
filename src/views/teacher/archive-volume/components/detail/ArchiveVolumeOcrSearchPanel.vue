@@ -171,8 +171,8 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {ArchiveMaterialOcrStatusCode} from '@/apis/mark/archive-ocr-status';
 import type {
-  ArchiveVolumeMaterialVO,
-  ArchiveVolumeSearchHitVO,
+  ArchiveVolumeMaterialResponse,
+  ArchiveVolumeSearchResponse,
 } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
@@ -205,7 +205,7 @@ defineOptions({ name: 'ArchiveVolumeOcrSearchPanel' })
 
 const props = defineProps<{
   volumeId: string
-  materials: ArchiveVolumeMaterialVO[]
+  materials: ArchiveVolumeMaterialResponse[]
   canRegisterMaterial: boolean
 }>()
 
@@ -229,7 +229,7 @@ const keyword = ref('')
 const loading = ref(false)
 const batchOcrSubmitting = ref(false)
 const searched = ref(false)
-const hits = ref<ArchiveVolumeSearchHitVO[]>([])
+const hits = ref<ArchiveVolumeSearchResponse[]>([])
 const pagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 const ocrDetailOpen = ref(false)
 const ocrDetailMaterialId = ref('')
@@ -237,7 +237,7 @@ const ocrDetailInitialPageNo = ref<number>()
 
 const quickKeywords = ['水准测量', '高程计算', '评分标准', '达成度']
 
-const overviewColumns: ColumnsType<ArchiveVolumeMaterialVO> = [
+const overviewColumns: ColumnsType<ArchiveVolumeMaterialResponse> = [
   { title: '材料', dataIndex: 'fileName', key: 'fileName', width: 220 },
   { title: '类型', key: 'materialType', width: 120 },
   { title: 'OCR 状态', key: 'ocrStatus', width: 120 },
@@ -254,7 +254,7 @@ const pendingOcrMaterials = computed(() =>
   ocrMaterials.value.filter((item) => canTriggerMaterialOcr(item)),
 )
 
-function materialTypeLabel(code: ArchiveVolumeMaterialVO['materialType']) {
+function materialTypeLabel(code: ArchiveVolumeMaterialResponse['materialType']) {
   return strictEnumLabel(ArchiveMaterialTypeDescription, code, 'materialType')
 }
 
@@ -270,19 +270,19 @@ function highlightSnippet(snippet: string): string {
   return highlightArchiveSearchSnippet(snippet, keyword.value)
 }
 
-function canViewMaterialOcr(record: ArchiveVolumeSearchHitVO): boolean {
+function canViewMaterialOcr(record: ArchiveVolumeSearchResponse): boolean {
   return record.ocrStatus === 'COMPLETED'
     || record.ocrStatus === 'FAILED'
     || record.ocrStatus === 'RUNNING'
 }
 
-function canViewMaterialOcrMaterial(record: ArchiveVolumeMaterialVO): boolean {
+function canViewMaterialOcrMaterial(record: ArchiveVolumeMaterialResponse): boolean {
   return record.ocrStatus === 'COMPLETED'
     || record.ocrStatus === 'FAILED'
     || record.ocrStatus === 'RUNNING'
 }
 
-function canTriggerMaterialOcr(record: ArchiveVolumeMaterialVO): boolean {
+function canTriggerMaterialOcr(record: ArchiveVolumeMaterialResponse): boolean {
   return props.canRegisterMaterial
     && Boolean(record.fileId)
     && (record.ocrStatus === 'PENDING'
@@ -296,7 +296,7 @@ function openMaterialOcr(materialId: string, pageNo?: number): void {
   ocrDetailOpen.value = true
 }
 
-function openMaterialOcrPreview(record: ArchiveVolumeSearchHitVO): void {
+function openMaterialOcrPreview(record: ArchiveVolumeSearchResponse): void {
   openMaterialOcr(record.materialId, record.matchPageNo)
 }
 
@@ -377,7 +377,7 @@ async function handleBatchOcr(): Promise<void> {
   }
 }
 
-function confirmTriggerOcr(material: ArchiveVolumeMaterialVO): void {
+function confirmTriggerOcr(material: ArchiveVolumeMaterialResponse): void {
   void confirmAsync({
     title: '触发 OCR 识别？',
     content: `材料「${material.fileName ?? material.materialId}」将进入 OCR 队列。`,

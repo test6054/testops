@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ExamDistinctTermItemVO } from '@/apis/mark/exam'
+import type { ExamDistinctTermItemResponse } from '@/apis/mark/exam'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { computed, onMounted, ref, watch } from 'vue'
@@ -38,7 +38,7 @@ const props = withDefaults(
 )
 
 const loading = ref(false)
-const distinctTerms = ref<ExamDistinctTermItemVO[]>([])
+const distinctTerms = ref<ExamDistinctTermItemResponse[]>([])
 const defaultScopeApplied = ref(false)
 
 const yearOptions = computed(() => {

@@ -163,14 +163,14 @@ export interface ReviewerQualityMetricResponse {
 }
 
 /** 进度监控记录 VO - 对应 ProgressMonitorRecordResponse */
-export interface ProgressRiskItemVO {
+export interface ProgressRiskItemResponse {
   riskCode: string
   riskLabel: string
   riskDescription: string
   riskLevel: ProgressRiskLevelCode
 }
 
-export interface ProgressMonitorRecordVO {
+export interface ProgressMonitorRecordResponse {
   id?: string
   tenantId?: string
   examId: string
@@ -186,7 +186,7 @@ export interface ProgressMonitorRecordVO {
   estimatedRemainingMinutes?: number
   riskLevel: ProgressRiskLevelCode
   /** latest / snapshot 返回；历史 list 接口不返回明细 */
-  riskItems?: ProgressRiskItemVO[]
+  riskItems?: ProgressRiskItemResponse[]
   snapshotTime: string
 }
 
@@ -219,8 +219,8 @@ export function refreshReviewerMetrics(request: ProgressSnapshotRequest): Promis
  */
 export function getLatestProgress(
   request: ProgressSnapshotRequest,
-): Promise<ProgressMonitorRecordVO | null> {
-  return http.post<ProgressMonitorRecordVO | null>('/api/mark/quality/progress/latest', request)
+): Promise<ProgressMonitorRecordResponse | null> {
+  return http.post<ProgressMonitorRecordResponse | null>('/api/mark/quality/progress/latest', request)
 }
 
 /**
@@ -229,12 +229,15 @@ export function getLatestProgress(
  */
 export function takeProgressSnapshot(
   request: ProgressSnapshotRequest,
-): Promise<ProgressMonitorRecordVO> {
-  return http.post<ProgressMonitorRecordVO>('/api/mark/quality/progress/snapshot', request)
+): Promise<ProgressMonitorRecordResponse> {
+  return http.post<ProgressMonitorRecordResponse>('/api/mark/quality/progress/snapshot', request)
 }
 
 /** 历史进度快照查询请求 */
-export interface ProgressSnapshotListRequest extends ProgressSnapshotRequest {
+export interface ProgressSnapshotListRequest {
+  examId: string
+  organizationId: string
+  groupId?: string
   /** 返回最近快照条数，默认 30，最大 100 */
   limit?: number
 }
@@ -245,8 +248,8 @@ export interface ProgressSnapshotListRequest extends ProgressSnapshotRequest {
  */
 export function listProgressSnapshots(
   request: ProgressSnapshotListRequest,
-): Promise<ProgressMonitorRecordVO[]> {
-  return http.post<ProgressMonitorRecordVO[]>('/api/mark/quality/progress/list', request)
+): Promise<ProgressMonitorRecordResponse[]> {
+  return http.post<ProgressMonitorRecordResponse[]>('/api/mark/quality/progress/list', request)
 }
 
 /**

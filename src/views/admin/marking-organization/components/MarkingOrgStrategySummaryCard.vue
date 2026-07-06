@@ -52,7 +52,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { AllocationPolicyVO, RecyclePolicyVO } from '@/apis/mark/marking-organization'
+import type { AllocationPolicyResponse, RecyclePolicyResponse } from '@/apis/mark/marking-organization'
 import { computed } from 'vue'
 import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import {
@@ -67,8 +67,8 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 defineOptions({ name: 'MarkingOrgStrategySummaryCard' })
 
 const props = defineProps<{
-  allocationPolicy?: AllocationPolicyVO
-  recyclePolicy?: RecyclePolicyVO
+  allocationPolicy?: AllocationPolicyResponse
+  recyclePolicy?: RecyclePolicyResponse
   canManage: boolean
 }>()
 

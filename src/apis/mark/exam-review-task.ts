@@ -6,7 +6,7 @@ import type { QuestionTypeCode } from './question-type'
 /**
  * 阅卷考试匿名复核任务 API - 对接 /api/mark/exams/review-tasks/*。
  */
-import type { MarkAiReferenceExperienceAuditVO } from '@/apis/mark/grading-experience-assist'
+import type { MarkAiReferenceExperienceAuditResponse } from '@/apis/mark/grading-experience-assist'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { ReviewTaskTypeCode } from '@/types/enums/review-task-type-enum'
@@ -79,7 +79,7 @@ export const REVIEW_TASK_HUB_STATUS_FILTER_OPTIONS: Array<{
 ]
 
 /** 匿名批阅任务项 - 对应 ReviewTaskItemResponse */
-export interface ReviewTaskItemVO {
+export interface ReviewTaskItemResponse {
   reviewTaskId: string
   examId: string
   anonymousNo: string
@@ -114,7 +114,7 @@ export interface ReviewTaskActionRequest {
 }
 
 /** 匿名批阅任务详情 - 对应 ReviewTaskDetailResponse */
-export interface ReviewTaskDetailVO {
+export interface ReviewTaskDetailResponse {
   reviewTaskId: string
   anonymousNo: string
   /** AI trace ID，便于教师在批阅工作台定位本题 AI 执行记录 */
@@ -124,7 +124,7 @@ export interface ReviewTaskDetailVO {
   /** AI 是否被限流或阻断，为 true 时教师需依赖人工复核 */
   aiLimited?: boolean
   /** AI 定标引用审计快照 */
-  referenceExperienceAudit?: MarkAiReferenceExperienceAuditVO
+  referenceExperienceAudit?: MarkAiReferenceExperienceAuditResponse
   examId: string
   paperInstanceId: string
   candidateRosterId?: string
@@ -157,8 +157,8 @@ export interface ReviewTaskDetailVO {
   responseSliceId: string
   /** 复核详情绑定的 OCR 识别结果ID */
   recognitionResultId?: string
-  /** 试卷母版页引用，仅 ANSWER_SHEET 模式回填 */
-  masterPaperPage?: MarkingScanPageRefVO
+  /** 制卷页引用，仅 ANSWER_SHEET 模式回填 */
+  layoutPaperPage?: MarkingScanPageRefVO
   /** 题干文本 */
   questionStem?: string
   /** 标准答案文本 */
@@ -180,16 +180,16 @@ export const GRADE_SOURCE_TONE: Record<GradeSourceCode, BadgeTone> = {
 /** 查询匿名批阅任务列表。 */
 export function listReviewTasks(
   request: ReviewTaskQueryRequest,
-): Promise<PageResult<ReviewTaskItemVO>> {
-  return http.post<PageResult<ReviewTaskItemVO>>('/api/mark/exams/review-tasks', request)
+): Promise<PageResult<ReviewTaskItemResponse>> {
+  return http.post<PageResult<ReviewTaskItemResponse>>('/api/mark/exams/review-tasks', request)
 }
 
 /** 查询匿名批阅任务详情。 */
-export function getReviewTaskDetail(request: ReviewTaskActionRequest): Promise<ReviewTaskDetailVO> {
-  return http.post<ReviewTaskDetailVO>('/api/mark/exams/review-tasks/detail', request)
+export function getReviewTaskDetail(request: ReviewTaskActionRequest): Promise<ReviewTaskDetailResponse> {
+  return http.post<ReviewTaskDetailResponse>('/api/mark/exams/review-tasks/detail', request)
 }
 
 /** 领取匿名批阅任务（分派给当前教师）。 */
-export function claimReviewTask(request: ReviewTaskActionRequest): Promise<ReviewTaskDetailVO> {
-  return http.post<ReviewTaskDetailVO>('/api/mark/exams/review-tasks/claim', request)
+export function claimReviewTask(request: ReviewTaskActionRequest): Promise<ReviewTaskDetailResponse> {
+  return http.post<ReviewTaskDetailResponse>('/api/mark/exams/review-tasks/claim', request)
 }

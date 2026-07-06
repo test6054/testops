@@ -83,7 +83,7 @@ export interface ExamQuestionDeclaredOptionVO {
 }
 
 /** 标准答案响应 - 对应 ExamStandardAnswerResponse */
-export interface ExamStandardAnswerVO {
+export interface ExamStandardAnswerResponse {
   standardAnswerId: string
   examId: string
   layoutQuestionId: string
@@ -108,6 +108,6 @@ export function saveStandardAnswer(request: ExamStandardAnswerSaveRequest): Prom
 /** 查询题目当前标准答案。 */
 export function getStandardAnswer(
   request: ExamStandardAnswerQueryRequest,
-): Promise<ExamStandardAnswerVO | null> {
-  return http.post<ExamStandardAnswerVO | null>('/api/mark/exams/standard-answer/get', request)
+): Promise<ExamStandardAnswerResponse | null> {
+  return http.post<ExamStandardAnswerResponse | null>('/api/mark/exams/standard-answer/get', request)
 }

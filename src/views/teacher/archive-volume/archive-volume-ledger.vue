@@ -140,11 +140,10 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveAccessStatusCode,
-  ArchiveVolumeAccessLedgerRowVO,
-  ArchiveVolumeAccessRecordVO,
-  ArchiveVolumeVO,
+  ArchiveVolumeAccessLedgerRowResponse,
+  ArchiveVolumeAccessRecordResponse,
+  ArchiveVolumeResponse,
 } from '@/apis/mark/archive-volume'
-import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
@@ -157,7 +156,6 @@ import {
   pageArchiveVolumes,
 } from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
-import { requireArrayResult } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -195,8 +193,8 @@ const volumeLoading = ref(false)
 const tenantLoading = ref(false)
 const selectedVolumeId = ref('')
 const selectedArchiveNo = ref('')
-const accessRecords = ref<ArchiveVolumeAccessRecordVO[]>([])
-const tenantRows = ref<ArchiveVolumeAccessLedgerRowVO[]>([])
+const accessRecords = ref<ArchiveVolumeAccessRecordResponse[]>([])
+const tenantRows = ref<ArchiveVolumeAccessLedgerRowResponse[]>([])
 const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 
 interface ArchiveVolumeAccessLedgerVolumeFilterForm extends Record<string, unknown> {
@@ -262,7 +260,7 @@ const tenantFilterFields = computed<FilterField[]>(() => [
   },
 ])
 
-const tenantAccessColumns: ColumnsType<ArchiveVolumeAccessLedgerRowVO> = [
+const tenantAccessColumns: ColumnsType<ArchiveVolumeAccessLedgerRowResponse> = [
   { title: '档案号', dataIndex: 'archiveNo', width: 140 },
   { title: '院系', dataIndex: 'departmentName', width: 140 },
   { title: '申请人', key: 'applicant', width: 120 },
@@ -282,10 +280,7 @@ function applyScopedDepartmentDefault() {
 }
 
 async function loadDepartments() {
-  const departments = requireArrayResult<TenantSchoolDepartmentDto>(
-    await departmentCatalogApi.list(),
-    '院系',
-  )
+  const departments = await departmentCatalogApi.list()
   departmentOptions.value = departments.map((item) => ({
     value: item.id,
     label: item.deptName,
@@ -303,7 +298,7 @@ async function locateVolume() {
   try {
     const page = await pageArchiveVolumes({ keyword, pageNum: 1, pageSize: 1 })
     const list = readPageList(page, '归档卷查询异常')
-    const volume: ArchiveVolumeVO | undefined = list[0]
+    const volume: ArchiveVolumeResponse | undefined = list[0]
     if (!volume) {
       message.warning('未找到匹配的归档卷')
       selectedVolumeId.value = ''

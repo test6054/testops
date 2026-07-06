@@ -78,7 +78,7 @@ export interface DashboardRecentExamItemVO {
 }
 
 /** 重大事件记录 - 对应 ExamIncidentRecord */
-export interface IncidentRecordVO {
+export interface ExamIncidentRecord {
   id: string
   tenantId?: string
   examId: string

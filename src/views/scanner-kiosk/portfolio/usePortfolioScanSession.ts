@@ -44,10 +44,12 @@ export function usePortfolioScanSession() {
 
   async function loadContext() {
     if (!dispatchTicketId.value) {
-      throw new Error('缺少派单 ticketId，请从 Hub 或派单页进入')
+      showUserError(null, '缺少派单 ticketId，请从 Hub 或派单页进入')
+      return
     }
     if (!collectMode.value || !teacherId.value) {
-      throw new Error('缺少 collectMode 或 teacherId')
+      showUserError(null, '缺少采集模式或教师 ID')
+      return
     }
     loading.value = true
     try {
@@ -95,7 +97,6 @@ export function usePortfolioScanSession() {
       }
     } catch (error) {
       showUserError(error, '加载档案袋扫描上下文失败')
-      throw error
     } finally {
       loading.value = false
     }
@@ -103,13 +104,16 @@ export function usePortfolioScanSession() {
 
   async function startSession() {
     if (!dispatchTicketId.value) {
-      throw new Error('缺少派单 ticketId，请从 Hub 或派单页进入')
+      showUserError(null, '缺少派单 ticketId，请从 Hub 或派单页进入')
+      return null
     }
     if (!collectMode.value || !teacherId.value) {
-      throw new Error('缺少采集模式或教师 ID')
+      showUserError(null, '缺少采集模式或教师 ID')
+      return null
     }
     if (portfolioContext.value?.scanAllowed !== true) {
-      throw new Error(portfolioContext.value?.blockReason || '当前不允许档案袋扫描')
+      showUserError(null, portfolioContext.value?.blockReason || '当前不允许档案袋扫描')
+      return null
     }
     loading.value = true
     try {

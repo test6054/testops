@@ -14,13 +14,13 @@
 </template>
 
 <script lang="ts" setup>
-import type { ExamWorkbenchStageItemVO, ExamWorkbenchStageKeyCode, WorkbenchStageStatusCode } from '@/apis/mark/exam-progress'
+import type { ExamWorkbenchStageItemResponse, ExamWorkbenchStageKeyCode, WorkbenchStageStatusCode } from '@/apis/mark/exam-progress'
 import { computed } from 'vue'
 
 defineOptions({ name: 'ExamJourneyMiniStrip' })
 
 const props = defineProps<{
-  stages: ExamWorkbenchStageItemVO[]
+  stages: ExamWorkbenchStageItemResponse[]
 }>()
 
 const emit = defineEmits<{

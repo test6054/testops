@@ -47,7 +47,7 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { QuestionMarkingGroupVO } from '@/apis/mark/marking-organization'
+import type { QuestionMarkingGroupResponse } from '@/apis/mark/marking-organization'
 import type { ReviewerQualityMetricResponse } from '@/apis/mark/marking-quality'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed } from 'vue'
@@ -59,7 +59,7 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 defineOptions({ name: 'MarkingOrgReviewerRosterTable' })
 
 const props = defineProps<{
-  groups: QuestionMarkingGroupVO[]
+  groups: QuestionMarkingGroupResponse[]
   reviewerMetrics: ReviewerQualityMetricResponse[]
   loading?: boolean
 }>()

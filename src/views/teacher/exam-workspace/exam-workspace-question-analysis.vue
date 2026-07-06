@@ -54,7 +54,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { ExamPaperAnalysisVO } from '@/apis/mark/question-analysis'
+import type { ExamPaperAnalysisResponse } from '@/apis/mark/question-analysis'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -80,7 +80,7 @@ const router = useRouter()
 const { examId } = useWorkspaceExamId()
 const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('题目分析')
 const reloadToken = ref(0)
-const paperAnalysis = ref<ExamPaperAnalysisVO | null>(null)
+const paperAnalysis = ref<ExamPaperAnalysisResponse | null>(null)
 
 const currentExamId = computed(() => examId.value || '')
 

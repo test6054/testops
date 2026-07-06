@@ -49,14 +49,14 @@
 </template>
 
 <script setup lang="ts">
-import type { ArchiveVolumeExamGateVO } from '@/apis/mark/archive-volume'
+import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
 import { computed } from 'vue'
 
 defineOptions({ name: 'ArchiveExamScoreGatePanel' })
 
 const props = withDefaults(
   defineProps<{
-    gate: ArchiveVolumeExamGateVO | null
+    gate: ArchiveVolumeExamGateResponse | null
     loading?: boolean
     showStats?: boolean
   }>(),

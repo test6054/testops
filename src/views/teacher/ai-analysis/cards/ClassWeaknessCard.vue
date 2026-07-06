@@ -78,8 +78,8 @@
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type {
-  ClassWeaknessItemVO,
-  ExamTeachingAnalysisRecordVO,
+  ClassWeaknessItemResponse,
+  TeachingAnalysisRecordResponse,
 } from '@/apis/mark/teaching-analysis'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import message from 'ant-design-vue/es/message'
@@ -118,7 +118,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{ (e: 'class-change', classId?: string): void }>()
 
-const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
+const record = ref<TeachingAnalysisRecordResponse | null>(null)
 const loading = ref(false)
 const generating = ref(false)
 
@@ -128,7 +128,7 @@ const shellProps = computed(() =>
     : { class: 'stats-card' },
 )
 
-const weaknessItems = computed<ClassWeaknessItemVO[]>(() => record.value?.weaknessItems ?? [])
+const weaknessItems = computed<ClassWeaknessItemResponse[]>(() => record.value?.weaknessItems ?? [])
 
 const classContextLabel = computed(() => {
   if (!props.classId) return ''
@@ -142,9 +142,9 @@ const metaExtraItems = computed(() => {
 })
 
 function acceptClassWeaknessRecord(
-  value: ExamTeachingAnalysisRecordVO | null,
+  value: TeachingAnalysisRecordResponse | null,
   expectedClassId: string,
-): ExamTeachingAnalysisRecordVO | null {
+): TeachingAnalysisRecordResponse | null {
   void expectedClassId
   if (!value) return null
   return value
@@ -189,7 +189,7 @@ function handleClassSelectChange(value?: SelectValue): void {
   record.value = null
 }
 
-function questionTypeLabel(value: ClassWeaknessItemVO['questionType']): string {
+function questionTypeLabel(value: ClassWeaknessItemResponse['questionType']): string {
   return strictEnumLabel(QuestionTypeDescription, value, '题目类型')
 }
 

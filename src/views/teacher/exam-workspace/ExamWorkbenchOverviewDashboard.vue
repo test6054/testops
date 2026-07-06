@@ -158,12 +158,12 @@
 </template>
 
 <script lang="ts" setup>
-import type { ExamDetailVO } from '@/apis/mark/exam'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
 import type {
-  ExamWorkbenchStageItemVO,
+  ExamWorkbenchDashboardPanelResponse,
+  ExamWorkbenchStageItemResponse,
   ExamWorkbenchStageKeyCode,
-  MarkingProgressVO,
-  WorkbenchDashboardPanelVO,
+  MarkingProgressResponse,
   WorkbenchStageStatusCode,
 } from '@/apis/mark/exam-progress'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
@@ -186,10 +186,10 @@ import { strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'ExamWorkbenchOverviewDashboard' })
 
 const props = defineProps<{
-  detail: ExamDetailVO
-  markingProgress: MarkingProgressVO | null
-  stages: ExamWorkbenchStageItemVO[]
-  dashboardPanel: WorkbenchDashboardPanelVO | null
+  detail: ExamDetailResponse
+  markingProgress: MarkingProgressResponse | null
+  stages: ExamWorkbenchStageItemResponse[]
+  dashboardPanel: ExamWorkbenchDashboardPanelResponse | null
   suggestedStageTitle?: string
   suggestedStageStatus?: WorkbenchStageStatusCode
 }>()

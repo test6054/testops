@@ -273,7 +273,7 @@ import type {
   ArchiveIntegrityMissingItemVO,
   ArchiveMaterialTypeCode,
   ArchiveSecurityLevelCode,
-  ArchiveVolumeDetailVO,
+  ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
@@ -312,9 +312,9 @@ defineOptions({ name: 'ArchiveVolumeIntegrityPanel' })
 
 const props = defineProps<{
   volumeId: string
-  detail: ArchiveVolumeDetailVO
-  displayedIntegrityResult: NonNullable<ArchiveVolumeDetailVO['latestIntegrityCheck']> | null
-  displayedFourProperty: NonNullable<ArchiveVolumeDetailVO['latestFourPropertyCheck']> | null
+  detail: ArchiveVolumeDetailResponse
+  displayedIntegrityResult: NonNullable<ArchiveVolumeDetailResponse['latestIntegrityCheck']> | null
+  displayedFourProperty: NonNullable<ArchiveVolumeDetailResponse['latestFourPropertyCheck']> | null
   checkingIntegrity: boolean
   canAllowMaterialDelay: boolean
   canWaiveMaterialMissing: boolean
@@ -400,11 +400,11 @@ function materialTypeLabel(code: ArchiveMaterialTypeCode) {
   return strictEnumLabel(ArchiveMaterialTypeDescription, code, 'materialType')
 }
 
-function integrityStatusLabel(code: ArchiveVolumeDetailVO['volume']['integrityStatus']) {
+function integrityStatusLabel(code: ArchiveVolumeDetailResponse['volume']['integrityStatus']) {
   return strictEnumLabel(ArchiveIntegrityStatusDescription, code, 'integrityStatus')
 }
 
-function integrityStatusTone(code: ArchiveVolumeDetailVO['volume']['integrityStatus']): BadgeTone {
+function integrityStatusTone(code: ArchiveVolumeDetailResponse['volume']['integrityStatus']): BadgeTone {
   return strictEnumTone(ARCHIVE_INTEGRITY_STATUS_TONE, code, 'integrityStatus')
 }
 

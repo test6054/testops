@@ -118,7 +118,8 @@ async function applyRouteDeepLink() {
   try {
     const task = await aiTaskApi.detail(taskId)
     if (!task.businessId) {
-      throw new Error('推荐解释任务缺少运行 ID')
+      showUserError(null, '推荐解释任务缺少运行 ID')
+      return
     }
     viewRunCandidates(task.businessId)
     await loadExplainStatus(task.businessId)

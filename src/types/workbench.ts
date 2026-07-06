@@ -94,7 +94,7 @@ export interface TaskResultItem {
 
 // ─── 审计时间线抽屉（AuditTimelineDrawer）────────────────
 
-/** 审计事件项 - 与后端 OperationLogVO 字段对齐 */
+/** 审计事件项 - 与后端 OperationLogResponse 字段对齐 */
 export interface AuditTimelineEvent {
   /** 审计日志ID */
   id: string

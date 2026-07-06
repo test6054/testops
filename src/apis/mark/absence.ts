@@ -85,7 +85,7 @@ export interface AttendanceReconcileRequest {
 }
 
 /** 缺考学生快照 - 对应 AbsentStudentSnapshotResponse */
-export interface AbsentStudentSnapshotVO {
+export interface AbsentStudentSnapshotResponse {
   studentUserId: string
   classId?: string
   className: string
@@ -94,13 +94,13 @@ export interface AbsentStudentSnapshotVO {
 }
 
 /** 出勤缺考核对响应 - 对应 AttendanceReconcileResponse */
-export interface AttendanceReconcileVO {
+export interface AttendanceReconcileResponse {
   examId: string
   expectedCount: number
   attendedCount: number
   absentCount: number
   createdPendingCount: number
-  absentStudents: AbsentStudentSnapshotVO[]
+  absentStudents: AbsentStudentSnapshotResponse[]
 }
 
 /**
@@ -109,8 +109,8 @@ export interface AttendanceReconcileVO {
  */
 export function reconcileAttendance(
   request: AttendanceReconcileRequest,
-): Promise<AttendanceReconcileVO> {
-  return http.post<AttendanceReconcileVO>('/api/mark/exams/absence/reconcile', request)
+): Promise<AttendanceReconcileResponse> {
+  return http.post<AttendanceReconcileResponse>('/api/mark/exams/absence/reconcile', request)
 }
 
 // ─── 确认缺考 ─────────────────────────────────
@@ -124,7 +124,7 @@ export interface AbsenceConfirmRequest {
 }
 
 /** 缺考记录响应 - 对应 AbsenceRecordResponse */
-export interface AbsenceRecordVO {
+export interface AbsenceRecordResponse {
   absenceRecordId: string
   examId: string
   studentUserId: string
@@ -147,8 +147,8 @@ export interface AbsenceRecordVO {
  * 教师确认单个学生缺考
  * POST /api/mark/exams/absence/confirm
  */
-export function confirmAbsence(request: AbsenceConfirmRequest): Promise<AbsenceRecordVO> {
-  return http.post<AbsenceRecordVO>('/api/mark/exams/absence/confirm', request)
+export function confirmAbsence(request: AbsenceConfirmRequest): Promise<AbsenceRecordResponse> {
+  return http.post<AbsenceRecordResponse>('/api/mark/exams/absence/confirm', request)
 }
 
 // ─── 撤销缺考 ─────────────────────────────────
@@ -164,8 +164,8 @@ export interface AbsenceRevokeRequest {
  * 教师撤销已确认缺考
  * POST /api/mark/exams/absence/revoke
  */
-export function revokeAbsence(request: AbsenceRevokeRequest): Promise<AbsenceRecordVO> {
-  return http.post<AbsenceRecordVO>('/api/mark/exams/absence/revoke', request)
+export function revokeAbsence(request: AbsenceRevokeRequest): Promise<AbsenceRecordResponse> {
+  return http.post<AbsenceRecordResponse>('/api/mark/exams/absence/revoke', request)
 }
 
 // ─── 查询缺考记录 ─────────────────────────────────
@@ -183,8 +183,8 @@ export interface AbsenceQueryRequest extends QueryDto {
  */
 export function listAbsenceRecords(
   request: AbsenceQueryRequest,
-): Promise<PageResult<AbsenceRecordVO>> {
-  return http.post<PageResult<AbsenceRecordVO>>('/api/mark/exams/absence/list', request)
+): Promise<PageResult<AbsenceRecordResponse>> {
+  return http.post<PageResult<AbsenceRecordResponse>>('/api/mark/exams/absence/list', request)
 }
 
 /** 待补考缺考计数请求 - 对应 AbsencePendingMakeupCountRequest */
@@ -193,7 +193,7 @@ export interface AbsencePendingMakeupCountRequest {
 }
 
 /** 待补考缺考计数响应 - 对应 AbsencePendingMakeupCountResponse */
-export interface AbsencePendingMakeupCountVO {
+export interface AbsencePendingMakeupCountResponse {
   examId: string
   pendingMakeupCount: number
 }
@@ -204,8 +204,8 @@ export interface AbsencePendingMakeupCountVO {
  */
 export function countPendingMakeupAbsences(
   request: AbsencePendingMakeupCountRequest,
-): Promise<AbsencePendingMakeupCountVO> {
-  return http.post<AbsencePendingMakeupCountVO>(
+): Promise<AbsencePendingMakeupCountResponse> {
+  return http.post<AbsencePendingMakeupCountResponse>(
     '/api/mark/exams/absence/pending-makeup-count',
     request,
   )

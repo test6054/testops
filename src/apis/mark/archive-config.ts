@@ -21,7 +21,7 @@ export const ARCHIVE_DUTY_TYPE_OPTIONS: Array<{ value: ArchiveDutyTypeCode, labe
     label: ArchiveDutyTypeDescription[value],
   }))
 
-export interface ArchiveDutyGrantVO {
+export interface ArchiveDutyGrantResponse {
   grantId: string
   userId: string
   userNickName?: string
@@ -40,7 +40,7 @@ export interface ArchiveDutyGrantItemRequest {
   tenantWide?: boolean
 }
 
-export interface ArchiveSecurityPolicyVO {
+export interface ArchiveSecurityPolicyResponse {
   policyId: string
   dutyType: ArchiveDutyTypeCode
   maxSecurityLevel: ArchiveSecurityLevelCode
@@ -51,20 +51,20 @@ export interface ArchiveSecurityPolicyItemRequest {
   maxSecurityLevel: ArchiveSecurityLevelCode
 }
 
-export function listMyArchiveDutyGrants(): Promise<ArchiveDutyGrantVO[]> {
-  return http.post<ArchiveDutyGrantVO[]>('/api/mark/archive-config/duty-grants/my', {})
+export function listMyArchiveDutyGrants(): Promise<ArchiveDutyGrantResponse[]> {
+  return http.post<ArchiveDutyGrantResponse[]>('/api/mark/archive-config/duty-grants/my', {})
 }
 
-export function listArchiveDutyGrants(): Promise<ArchiveDutyGrantVO[]> {
-  return http.post<ArchiveDutyGrantVO[]>('/api/mark/archive-config/duty-grants/list', {})
+export function listArchiveDutyGrants(): Promise<ArchiveDutyGrantResponse[]> {
+  return http.post<ArchiveDutyGrantResponse[]>('/api/mark/archive-config/duty-grants/list', {})
 }
 
 export function saveArchiveDutyGrants(items: ArchiveDutyGrantItemRequest[]): Promise<void> {
   return http.post<void>('/api/mark/archive-config/duty-grants/save', { items })
 }
 
-export function listArchiveSecurityPolicy(): Promise<ArchiveSecurityPolicyVO[]> {
-  return http.post<ArchiveSecurityPolicyVO[]>('/api/mark/archive-config/security-policy/list', {})
+export function listArchiveSecurityPolicy(): Promise<ArchiveSecurityPolicyResponse[]> {
+  return http.post<ArchiveSecurityPolicyResponse[]>('/api/mark/archive-config/security-policy/list', {})
 }
 
 export function saveArchiveSecurityPolicy(

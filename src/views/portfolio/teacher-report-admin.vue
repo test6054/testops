@@ -3,7 +3,6 @@ import type {
   PortfolioAiAnalysisDetailVO,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
@@ -19,6 +18,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
+import { message } from '@/utils/feedback'
 import { readPageList } from '@/utils/page-result'
 import {
   portfolioTeacherSelectOptionsFromSummaries,
@@ -63,30 +63,34 @@ async function loadTeachers() {
   }
 }
 
-function selectedTeacherName(): string {
+function selectedTeacherName(): string | null {
   const teacher = teachers.value.find((item) => item.userId === form.teacherId)
   if (!teacher) {
-    throw new Error('所选教师不存在')
+    showUserError(null, '所选教师不存在')
+    return null
   }
   const displayName = resolvePortfolioTeacherDisplayName(teacher)
   if (!displayName) {
-    throw new Error('所选教师缺少可展示姓名')
+    showUserError(null, '所选教师缺少可展示姓名')
+    return null
   }
   return displayName
 }
 
-async function pollAnalysis(taskId: string) {
+async function pollAnalysis(taskId: string): Promise<PortfolioAiAnalysisDetailVO | null> {
   for (let attempt = 0; attempt < 60; attempt++) {
     const task = await portfolioAiJobApi.get(taskId)
     if (task.status === 'SUCCEEDED') {
       return portfolioAiJobApi.getAnalysisByTask(taskId)
     }
     if (task.status === 'FAILED' || task.status === 'CANCELLED') {
-      throw new Error(`报告生成失败：${task.status}`)
+      showUserError(null, '报告生成失败，请稍后重试')
+      return null
     }
     await sleep(2000)
   }
-  throw new Error('报告生成超时，请稍后重试')
+  showUserError(null, '报告生成超时，请稍后重试')
+  return null
 }
 
 async function submitReport() {
@@ -102,6 +106,10 @@ async function submitReport() {
   polling.value = true
   reportDetail.value = null
   try {
+    const teacherName = selectedTeacherName()
+    if (!teacherName) {
+      return
+    }
     const submitResult = await portfolioAiJobApi.submit({
       taskType: PortfolioAiTaskTypeCode.PORTFOLIO_REPORT_GENERATE,
       teacherId: form.teacherId,
@@ -109,11 +117,14 @@ async function submitReport() {
       context: {
         reportScene: form.reportScene,
         reportPeriodLabel: form.reportPeriodLabel.trim(),
-        teacherName: selectedTeacherName(),
+        teacherName,
       },
     })
     message.info('报告生成任务已提交，正在等待结果…')
     reportDetail.value = await pollAnalysis(submitResult.taskId)
+    if (!reportDetail.value) {
+      return
+    }
     message.success('报告生成完成')
   } catch (error) {
     showUserError(error)

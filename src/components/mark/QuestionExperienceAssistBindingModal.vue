@@ -40,7 +40,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { GradingExperienceAssistCandidateVO } from '@/apis/mark/grading-experience-assist'
+import type { GradingExperienceAssistCandidateResponse } from '@/apis/mark/grading-experience-assist'
 import type { ExperienceRecommendationCode } from '@/types/enums/experience-recommendation-enum'
 import { message } from 'ant-design-vue'
 import { ref, watch } from 'vue'
@@ -73,7 +73,7 @@ const emit = defineEmits<{
 
 const loading = ref(false)
 const saving = ref(false)
-const candidates = ref<GradingExperienceAssistCandidateVO[]>([])
+const candidates = ref<GradingExperienceAssistCandidateResponse[]>([])
 const selectedEvalId = ref<string>()
 
 function formatRate(rate: number): string {

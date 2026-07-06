@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { onMounted, ref, watch } from 'vue'
 import { pageExams } from '@/apis/mark/exam'
@@ -50,12 +50,12 @@ function buildOrgScopeQuery() {
   return query
 }
 
-function formatExamOptionLabel(exam: ExamSummaryVO): string {
+function formatExamOptionLabel(exam: ExamSummaryResponse): string {
   if (!exam.examNo) return exam.examName
   return `${exam.examName}（${exam.examNo}）`
 }
 
-function mapExamOptions(exams: ExamSummaryVO[]): { label: string, value: string }[] {
+function mapExamOptions(exams: ExamSummaryResponse[]): { label: string, value: string }[] {
   return exams.map((exam) => ({
     label: [formatExamOptionLabel(exam), formatAcademicYearSemester(exam.academicYear, exam.semester)].filter(Boolean).join(' · '),
     value: exam.examId,

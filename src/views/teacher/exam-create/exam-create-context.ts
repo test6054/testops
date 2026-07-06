@@ -5,7 +5,7 @@ import type {
   ExamRosterScopeModeCode,
   ExamScorePolicyCode,
 } from '@/apis/mark/exam'
-import type { ExamCandidateVO } from '@/apis/mark/exam-scope'
+import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import { inject } from 'vue'
 
@@ -59,13 +59,13 @@ export interface ExamCreateMarkingTeamForm {
   remark?: string
 }
 
-/** 考生范围草稿：scope/classIds 对齐 ExamRosterCreateRequest，candidates 为 preview API 的 ExamCandidateVO。 */
+/** 考生范围草稿：scope/classIds 对齐 ExamRosterCreateRequest，candidates 为 preview API 的 ExamCandidateResponse。 */
 export interface ExamCreateRosterForm {
   scopeMode: ExamRosterScopeModeCode
   classIds: string[]
   /** 参考班级维护上下文院系 ID */
   referenceDepartmentId?: string
-  candidates: ExamCandidateVO[]
+  candidates: ExamCandidateResponse[]
 }
 
 export const examCreateBasicFormKey: InjectionKey<ExamCreateBasicForm> = Symbol('examCreateBasicForm')

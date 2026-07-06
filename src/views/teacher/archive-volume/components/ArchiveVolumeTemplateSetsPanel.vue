@@ -252,9 +252,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  ArchivePlatformMaterialItemVO,
-  ArchivePlatformTemplatePreviewVO,
-  ArchiveTenantTemplateSetVO,
+  ArchivePlatformMaterialItemResponse,
+  ArchivePlatformTemplatePreviewResponse,
+  ArchiveTenantTemplateSetResponse,
 } from '@/apis/mark/archive-platform-template'
 import type {
   ArchiveExamFormCode,
@@ -305,7 +305,7 @@ const scopeTabItems = [
   { key: ArchiveTemplateScopeCode.PLATFORM, label: '平台模板（只读）' },
   { key: ArchiveTemplateScopeCode.TENANT, label: '本校模板（可维护）' },
 ]
-const templateSets = ref<ArchiveTenantTemplateSetVO[]>([])
+const templateSets = ref<ArchiveTenantTemplateSetResponse[]>([])
 const templateSetsLoading = ref(false)
 const platformSets = computed(() => templateSets.value.filter(item => item.templateScope === 'PLATFORM'))
 const tenantSets = computed(() => templateSets.value.filter(item => item.templateScope === 'TENANT'))
@@ -325,9 +325,9 @@ const copyOverride = ref(false)
 const resyncConfirmCode = ref('')
 const selectedSetCode = ref('')
 const editorDrawerOpen = ref(false)
-const copySource = ref<ArchiveTenantTemplateSetVO | null>(null)
-const resyncTarget = ref<ArchiveTenantTemplateSetVO | null>(null)
-const previewData = ref<ArchivePlatformTemplatePreviewVO | null>(null)
+const copySource = ref<ArchiveTenantTemplateSetResponse | null>(null)
+const resyncTarget = ref<ArchiveTenantTemplateSetResponse | null>(null)
+const previewData = ref<ArchivePlatformTemplatePreviewResponse | null>(null)
 const categoryGroupMap = ref<Map<string, string>>(new Map())
 const materialRows = ref<ArchiveTemplateMaterialEditRow[]>([])
 const selfCheckRows = ref<ArchiveTemplateSelfCheckEditRow[]>([])
@@ -342,7 +342,7 @@ const editorMeta = reactive<ArchiveVolumeTemplateEditorMeta>({
   forkSourceSetCode: undefined,
 })
 
-const platformColumns: ColumnsType<ArchiveTenantTemplateSetVO> = [
+const platformColumns: ColumnsType<ArchiveTenantTemplateSetResponse> = [
   { title: '作用域', key: 'templateScope', width: 100, align: 'center' },
   { title: '模板编码', dataIndex: 'templateSetCode', key: 'templateSetCode', width: 180 },
   { title: '名称', dataIndex: 'templateSetName', key: 'templateSetName', width: 160 },
@@ -351,7 +351,7 @@ const platformColumns: ColumnsType<ArchiveTenantTemplateSetVO> = [
   { title: '操作', key: 'actions', width: 140 },
 ]
 
-const tenantColumns: ColumnsType<ArchiveTenantTemplateSetVO> = [
+const tenantColumns: ColumnsType<ArchiveTenantTemplateSetResponse> = [
   { title: '作用域', key: 'templateScope', width: 100, align: 'center' },
   { title: '套编码', dataIndex: 'templateSetCode', key: 'templateSetCode', width: 180 },
   { title: '名称', dataIndex: 'templateSetName', key: 'templateSetName', width: 160 },
@@ -393,8 +393,8 @@ function materialKey(materialType: string, catalogCode?: string) {
   return `${materialType}:${catalogCode ?? ''}`
 }
 
-function groupPlatformMaterials(items: ArchivePlatformMaterialItemVO[]) {
-  const groups = new Map<string, ArchivePlatformMaterialItemVO[]>()
+function groupPlatformMaterials(items: ArchivePlatformMaterialItemResponse[]) {
+  const groups = new Map<string, ArchivePlatformMaterialItemResponse[]>()
   for (const item of items) {
     const groupName = item.categoryGroup?.trim() || '未分组'
     const bucket = groups.get(groupName) ?? []
@@ -409,7 +409,7 @@ function groupPlatformMaterials(items: ArchivePlatformMaterialItemVO[]) {
     }))
 }
 
-function buildCategoryGroupMap(preview: ArchivePlatformTemplatePreviewVO | null) {
+function buildCategoryGroupMap(preview: ArchivePlatformTemplatePreviewResponse | null) {
   const map = new Map<string, string>()
   for (const item of preview?.materialItems ?? []) {
     map.set(
@@ -485,7 +485,7 @@ async function openReadOnlyPreview(templateSetCode: string) {
   }
 }
 
-function canResyncTenantSet(record: ArchiveTenantTemplateSetVO) {
+function canResyncTenantSet(record: ArchiveTenantTemplateSetResponse) {
   if (!record.forkSourceSetCode || !record.forkSourceReleaseTag) return false
   const latestTag = platformReleaseTag(record.forkSourceSetCode)
   if (!latestTag) return false
@@ -551,7 +551,7 @@ function findTenantSetByPlatformSource(sourceSetCode: string) {
 }
 
 /** 模板套入口：本校副本可编辑；平台母版引导复制后编辑。 */
-async function openPlatformTemplate(record: ArchiveTenantTemplateSetVO) {
+async function openPlatformTemplate(record: ArchiveTenantTemplateSetResponse) {
   const tenantSet = findTenantSetByPlatformSource(record.templateSetCode)
   if (tenantSet) {
     await openEditDrawer(tenantSet.templateSetCode)
@@ -565,7 +565,7 @@ async function openPlatformTemplate(record: ArchiveTenantTemplateSetVO) {
   await openReadOnlyPreview(record.templateSetCode)
 }
 
-function openCopyModal(record: ArchiveTenantTemplateSetVO, defaultTargetSetCode = '') {
+function openCopyModal(record: ArchiveTenantTemplateSetResponse, defaultTargetSetCode = '') {
   copySource.value = record
   copyTargetSetCode.value = defaultTargetSetCode
   copyOverride.value = false
@@ -622,7 +622,7 @@ async function submitCopyAll() {
   }
 }
 
-function openResyncModal(record: ArchiveTenantTemplateSetVO) {
+function openResyncModal(record: ArchiveTenantTemplateSetResponse) {
   resyncTarget.value = record
   resyncConfirmCode.value = ''
   resyncOpen.value = true

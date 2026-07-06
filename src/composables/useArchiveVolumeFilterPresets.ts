@@ -1,4 +1,4 @@
-import type { ArchiveVolumePageRequest, ArchiveVolumeVO } from '@/apis/mark/archive-volume'
+import type { ArchiveVolumePageRequest, ArchiveVolumeResponse } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, ref } from 'vue'
 import {
@@ -24,7 +24,7 @@ export interface ArchiveVolumeFilterPreset {
   tone: BadgeTone
   tabs: ArchiveVolumeListTabKey[]
   buildRequest: (ctx: ArchiveVolumeFilterPresetContext) => Partial<ArchiveVolumePageRequest>
-  matchRow?: (row: ArchiveVolumeVO) => boolean
+  matchRow?: (row: ArchiveVolumeResponse) => boolean
 }
 
 export interface ArchiveVolumeFilterPresetContext {
@@ -134,7 +134,7 @@ export function useArchiveVolumeFilterPresets(listTab: () => ArchiveVolumeListTa
     return preset.buildRequest({ listTab: listTab() })
   }
 
-  function filterScenarioRows(rows: ArchiveVolumeVO[]): ArchiveVolumeVO[] {
+  function filterScenarioRows(rows: ArchiveVolumeResponse[]): ArchiveVolumeResponse[] {
     const preset = activePreset.value
     if (!preset?.matchRow) return rows
     return rows.filter(preset.matchRow)

@@ -1,5 +1,5 @@
 import type { AiAnalysisStatusCode } from './ai-analysis-status'
-import type { AnalysisExamScopeVO, ExamStatSnapshotVO } from './cross-exam-analysis'
+import type { AnalysisExamScopeResponse, ExamStatSnapshotResponse } from './cross-exam-analysis'
 import type { QuestionTypeCode } from './question-type'
 
 /**
@@ -63,7 +63,7 @@ export const SCHOOL_QUALITY_RATING_TONE: Record<SchoolQualityRatingCode, BadgeTo
 }
 
 /** 校级质量分析条目 */
-export interface SchoolQualityItemVO {
+export interface SchoolQualityItemResponse {
   qualityDimension?: SchoolQualityItemDimensionCode
   metricName?: string
   metricValue?: number
@@ -74,19 +74,19 @@ export interface SchoolQualityItemVO {
 }
 
 /** 校级质量分析记录 - 对应 SchoolQualityAnalysis */
-export interface SchoolQualityAnalysisVO {
+export interface SchoolQualityAnalysisResponse {
   id: string
   analysisDimension: SchoolQualityDimensionCode
   dimensionId?: string
   dimensionName?: string
   academicYear?: string
   semester?: SemesterCode
-  exams?: AnalysisExamScopeVO[]
+  exams?: AnalysisExamScopeResponse[]
   examCount?: number
   aiTraceId?: string
   qualitySummary?: string
-  qualityItems?: SchoolQualityItemVO[]
-  examStatSnapshots?: ExamStatSnapshotVO[]
+  qualityItems?: SchoolQualityItemResponse[]
+  examStatSnapshots?: ExamStatSnapshotResponse[]
   teachingQualityScore?: number
   questionQualityScore?: number
   markingQualityScore?: number
@@ -97,7 +97,7 @@ export interface SchoolQualityAnalysisVO {
 }
 
 /** 经验有效性评估脱敏样本 */
-export interface ExperienceEffectivenessEvalEvidenceVO {
+export interface ExperienceEffectivenessEvalEvidenceResponse {
   anonymousId?: string
   anonymousClassLabel?: string
   questionNo?: string
@@ -113,7 +113,7 @@ export interface ExperienceEffectivenessEvalEvidenceVO {
 }
 
 /** 经验有效性评估记录 - 对应 ExperienceEffectivenessEval */
-export interface ExperienceEffectivenessEvalVO {
+export interface ExperienceEffectivenessEvalResponse {
   id: string
   experienceCaseId?: string
   evalExamId?: string
@@ -129,7 +129,7 @@ export interface ExperienceEffectivenessEvalVO {
   consistencyRate?: number
   reuseCount?: number
   recommendation?: ExperienceRecommendationCode
-  evidenceItems?: ExperienceEffectivenessEvalEvidenceVO[]
+  evidenceItems?: ExperienceEffectivenessEvalEvidenceResponse[]
   analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
   latencyMs?: number
@@ -146,8 +146,8 @@ export function generateQualityAnalysis(params: {
   academicYear?: string
   semester?: SemesterCode
   examIds: string[]
-}): Promise<SchoolQualityAnalysisVO> {
-  return http.post<SchoolQualityAnalysisVO>('/api/exam/school-quality/analysis/generate', params)
+}): Promise<SchoolQualityAnalysisResponse> {
+  return http.post<SchoolQualityAnalysisResponse>('/api/exam/school-quality/analysis/generate', params)
 }
 
 /**
@@ -159,15 +159,15 @@ export function listQualityAnalysis(params: {
   dimensionId?: string
   academicYear?: string
   semester?: SemesterCode
-}): Promise<SchoolQualityAnalysisVO[]> {
-  return http.post<SchoolQualityAnalysisVO[]>('/api/exam/school-quality/analysis/list', params)
+}): Promise<SchoolQualityAnalysisResponse[]> {
+  return http.post<SchoolQualityAnalysisResponse[]>('/api/exam/school-quality/analysis/list', params)
 }
 
 export function evaluateExperienceEffectiveness(params: {
   experienceCaseId: string
   evalExamId: string
-}): Promise<ExperienceEffectivenessEvalVO> {
-  return http.post<ExperienceEffectivenessEvalVO>(
+}): Promise<ExperienceEffectivenessEvalResponse> {
+  return http.post<ExperienceEffectivenessEvalResponse>(
     '/api/exam/school-quality/experience-eval/generate',
     params,
   )
@@ -175,8 +175,8 @@ export function evaluateExperienceEffectiveness(params: {
 
 export function listExperienceEvals(
   experienceCaseId: string,
-): Promise<ExperienceEffectivenessEvalVO[]> {
-  return http.post<ExperienceEffectivenessEvalVO[]>(
+): Promise<ExperienceEffectivenessEvalResponse[]> {
+  return http.post<ExperienceEffectivenessEvalResponse[]>(
     '/api/exam/school-quality/experience-eval/list',
     { id: experienceCaseId },
   )

@@ -817,18 +817,18 @@
 <script lang="ts" setup>
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type {WorkbenchQualityPanelVO} from '@/apis/mark/exam-progress';
-import type { ExamScannerBatchVO } from '@/apis/mark/exam-scan'
+import type {ExamWorkbenchQualityPanelResponse} from '@/apis/mark/exam-progress';
+import type { ExamScannerBatchResponse } from '@/apis/mark/exam-scan'
 import type {
-  MarkingOrganizationVO,
-  QuestionGroupReviewerVO,
-  QuestionMarkingGroupVO,
+  MarkingOrganizationResponse,
+  QuestionGroupReviewerResponse,
+  QuestionMarkingGroupResponse,
 } from '@/apis/mark/marking-organization'
 import type {
   ExamSpotCheckRecordItemResponse,
   MyPendingSpotCheckItemResponse,
-  ProgressMonitorRecordVO,
-  ProgressRiskItemVO,
+  ProgressMonitorRecordResponse,
+  ProgressRiskItemResponse,
   ProgressRiskLevelCode,
   ReviewerMetricStatusCode, ReviewerQualityMetricResponse,
  SpotCheckStatusCode} from '@/apis/mark/marking-quality'
@@ -943,12 +943,12 @@ const selectedOrganizationId = ref<string | undefined>(
 const selectedGroupId = ref<string | undefined>(
   route.query.groupId ? String(route.query.groupId) : undefined,
 )
-const organizationDetail = ref<MarkingOrganizationVO | null>(null)
+const organizationDetail = ref<MarkingOrganizationResponse | null>(null)
 const organizationLoading = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
-const scannerBatches = ref<ExamScannerBatchVO[]>([])
+const scannerBatches = ref<ExamScannerBatchResponse[]>([])
 const scannerBatchLoading = ref(false)
-const examQualityPanel = ref<WorkbenchQualityPanelVO | null>(null)
+const examQualityPanel = ref<ExamWorkbenchQualityPanelResponse | null>(null)
 // 加载失败：toast 提示，主区保持空态/列表壳
 
 const scopeValid = computed(() => Boolean(selectedExamId.value && selectedOrganizationId.value))
@@ -984,7 +984,7 @@ const groupSummaryColumns: ColumnType<GroupSummaryRow>[] = [
 ]
 
 const groupSummaryLoading = ref(false)
-const groupProgressByGroupId = ref<Record<string, ProgressMonitorRecordVO | null>>({})
+const groupProgressByGroupId = ref<Record<string, ProgressMonitorRecordResponse | null>>({})
 
 const groupSummaryRows = computed((): GroupSummaryRow[] =>
   (organizationDetail.value?.groups ?? []).map((group) => {
@@ -1026,12 +1026,12 @@ const groupOptions = computed<DefaultOptionType[]>(() =>
   })),
 )
 
-const selectedGroup = computed<QuestionMarkingGroupVO | undefined>(() =>
+const selectedGroup = computed<QuestionMarkingGroupResponse | undefined>(() =>
   organizationDetail.value?.groups.find((group) => group.id === selectedGroupId.value),
 )
 
 const reviewerOptions = computed<DefaultOptionType[]>(() => {
-  const reviewersByUserId = new Map<string, QuestionGroupReviewerVO>()
+  const reviewersByUserId = new Map<string, QuestionGroupReviewerResponse>()
   const groups = selectedGroup.value
     ? [selectedGroup.value]
     : (organizationDetail.value?.groups ?? [])
@@ -1063,11 +1063,11 @@ const scannerBatchOptions = computed<DefaultOptionType[]>(() =>
 
 // ─── 进度监控 ─────────────────────────────────
 
-const progress = ref<ProgressMonitorRecordVO | null>(null)
-const progressHistory = ref<ProgressMonitorRecordVO[]>([])
+const progress = ref<ProgressMonitorRecordResponse | null>(null)
+const progressHistory = ref<ProgressMonitorRecordResponse[]>([])
 const progressLoading = ref(false)
 const snapshotting = ref(false)
-const progressRiskItems = computed<ProgressRiskItemVO[]>(() => progress.value?.riskItems ?? [])
+const progressRiskItems = computed<ProgressRiskItemResponse[]>(() => progress.value?.riskItems ?? [])
 
 const progressTrendPoints = computed(() => progressSnapshotsToTrendPoints(progressHistory.value))
 
@@ -1262,7 +1262,7 @@ async function loadGroupSummaryProgress(): Promise<void> {
   }
   groupSummaryLoading.value = true
   try {
-    const entries: Array<[string, ProgressMonitorRecordVO | null]> = await Promise.all(groups.map(async (group) => {
+    const entries: Array<[string, ProgressMonitorRecordResponse | null]> = await Promise.all(groups.map(async (group) => {
       const record = await getLatestProgress({
         examId: selectedExamId.value!,
         organizationId: selectedOrganizationId.value!,

@@ -5,7 +5,7 @@
  * 全部聚合为统一的 blockedReasons 对象，UI 层只读这一个 computed 决定 disable 状态。
  */
 
-import type { KioskWorkflow } from './useExamKioskWorkflow'
+import type { ExamKioskWorkflow } from './useExamKioskWorkflow'
 import { computed } from 'vue'
 import { LocalScanJobStatusCode } from '@/apis/mark/scanner-agent-local'
 import { ScannerKioskScanModeCode } from '@/apis/mark/scanner-kiosk'
@@ -51,7 +51,7 @@ export interface KioskBlockedReasons {
   activateAgent: string
 }
 
-export function useKioskMutex(workflow: KioskWorkflow) {
+export function useKioskMutex(workflow: ExamKioskWorkflow) {
   /**
    * 当前活动任务在采集 / 上传链路时通用的阻断文案。
    * SCANNING / PAUSED / READYTOUPLOAD / UPLOADING / RETRYING / FAILED / CANCELLED 都属于"未结束"。

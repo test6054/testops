@@ -591,7 +591,7 @@ export interface ExamScannerKioskBatchHistoryRequest extends QueryDto {
  * receivedPageCount / pendingUploadCount / attentionItemCount（后端聚合视图层差异，
  * 历史浏览场景已通过 statusMessage / diagnostic 表达）。</p>
  */
-export interface ExamScannerKioskBatchHistoryItem {
+export interface ExamScannerBatchResponse {
   scanBatchId: string
   examId?: string
   batchNo: string
@@ -635,8 +635,8 @@ export interface ExamScannerKioskBatchHistoryItem {
 
 export async function pageScannerKioskBatchHistory(
   request: ExamScannerKioskBatchHistoryRequest,
-): Promise<PageResult<ExamScannerKioskBatchHistoryItem>> {
-  return http.post<PageResult<ExamScannerKioskBatchHistoryItem>>(
+): Promise<PageResult<ExamScannerBatchResponse>> {
+  return http.post<PageResult<ExamScannerBatchResponse>>(
     '/api/mark/scanner/kiosk/batch/list',
     request,
   )
@@ -670,7 +670,7 @@ export interface ScannerKioskPortfolioGapTaskPageRequest extends QueryDto {
 }
 
 /** 工位档案袋 gap 摘要，对齐 quality internal 分页项 */
-export interface ScannerKioskPortfolioGapTaskSummaryVO {
+export interface PortfolioGapTaskSummaryInternalVO {
   id: string
   teacherId: string
   categoryId: string
@@ -702,7 +702,7 @@ export interface ScanDispatchAdhocTicketCreateRequest {
   materialTags?: string[]
 }
 
-export interface ScanDispatchAdhocTicketCreateResponse {
+export interface ScanDispatchCreateResponse {
   ticket?: ScanDispatchTicketVO
 }
 
@@ -717,8 +717,8 @@ export function pageKioskArchiveVolumes(
 
 export function pageKioskPortfolioGapTasks(
   request: ScannerKioskPortfolioGapTaskPageRequest,
-): Promise<PageResult<ScannerKioskPortfolioGapTaskSummaryVO>> {
-  return http.post<PageResult<ScannerKioskPortfolioGapTaskSummaryVO>>(
+): Promise<PageResult<PortfolioGapTaskSummaryInternalVO>> {
+  return http.post<PageResult<PortfolioGapTaskSummaryInternalVO>>(
     '/api/mark/scanner/kiosk/portfolio/gap-tasks/page',
     request,
   )
@@ -726,8 +726,8 @@ export function pageKioskPortfolioGapTasks(
 
 export function createAdhocDispatchTicket(
   request: ScanDispatchAdhocTicketCreateRequest,
-): Promise<ScanDispatchAdhocTicketCreateResponse> {
-  return http.post<ScanDispatchAdhocTicketCreateResponse>(
+): Promise<ScanDispatchCreateResponse> {
+  return http.post<ScanDispatchCreateResponse>(
     '/api/mark/scanner/kiosk/adhoc-ticket/create',
     request,
   )

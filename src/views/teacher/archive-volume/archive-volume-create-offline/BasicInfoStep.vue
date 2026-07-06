@@ -93,14 +93,13 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ClassInfoDto } from '@/apis/edu/class'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
-import type { CourseListVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import type { CourseListVO } from '@/apis/quality/user-catalog'
 import { computed, onMounted, ref, watch } from 'vue'
 import { pageExams } from '@/apis/mark/exam'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
-import { requireArrayResult } from '@/components/quality/selectors/page-contract'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
@@ -182,7 +181,7 @@ function handleClassChange(classId: string | null, option?: ClassInfoDto) {
   )
 }
 
-function formatRelatedExamLabel(exam: ExamSummaryVO): string {
+function formatRelatedExamLabel(exam: ExamSummaryResponse): string {
   return exam.examNo ? `${exam.examName}（${exam.examNo}）` : exam.examName
 }
 
@@ -247,10 +246,7 @@ function handleRelatedExamChange(value: SelectValue): void {
 async function loadDepartments() {
   departmentLoading.value = true
   try {
-    const departments = requireArrayResult<TenantSchoolDepartmentDto>(
-      await departmentCatalogApi.list(),
-      '院系',
-    )
+    const departments = await departmentCatalogApi.list()
     departmentOptions.value = departments.map((item) => ({
       value: item.id,
       label: item.deptName,

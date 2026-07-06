@@ -73,7 +73,8 @@ export function useArchiveScanSession() {
 
   async function loadContext() {
     if (!volumeId.value) {
-      throw new Error('缺少 volumeId')
+      showUserError(null, '缺少归档卷 ID')
+      return
     }
     loading.value = true
     try {
@@ -110,7 +111,6 @@ export function useArchiveScanSession() {
       }
     } catch (error) {
       showUserError(error, '加载归档扫描上下文失败')
-      throw error
     } finally {
       loading.value = false
     }
@@ -118,16 +118,19 @@ export function useArchiveScanSession() {
 
   async function startSession() {
     if (!volumeId.value || !materialType.value) {
-      throw new Error('缺少卷或材料类型')
+      showUserError(null, '缺少卷或材料类型')
+      return null
     }
     if (archiveContext.value?.canRegisterMaterial !== true) {
-      throw new Error('当前卷状态不允许登记材料')
+      showUserError(null, '当前卷状态不允许登记材料')
+      return null
     }
     loading.value = true
     try {
       const setup = await getAgentSetupContext()
       if (!setup.bound || !setup.scannerDeviceId || !setup.scannerStationId) {
-        throw new Error('扫描设备未绑定，请先激活一体机')
+        showUserError(null, '扫描设备未绑定，请先激活一体机')
+        return null
       }
       lifecycle.value = await startScanWorkOrder({
         taskKind: ScanTaskKindCode.EXAM_ARCHIVE,

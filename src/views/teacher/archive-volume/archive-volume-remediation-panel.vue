@@ -242,9 +242,9 @@
 
 <script setup lang="ts">
 import type {
-  ArchiveEvaluationCampaignVO,
+  ArchiveEvaluationCampaignResponse,
   ArchiveRemediationPriorityCode,
-  ArchiveRemediationTaskVO,
+  ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
@@ -307,8 +307,8 @@ const campaignSaving = ref(false)
 const createTaskSubmitting = ref(false)
 const campaignModalOpen = ref(false)
 const createTaskOpen = ref(false)
-const campaigns = ref<ArchiveEvaluationCampaignVO[]>([])
-const tasks = ref<ArchiveRemediationTaskVO[]>([])
+const campaigns = ref<ArchiveEvaluationCampaignResponse[]>([])
+const tasks = ref<ArchiveRemediationTaskResponse[]>([])
 const selectedCampaignId = ref<string>()
 
 const remediationDiagnosticOptions = ARCHIVE_REMEDIATION_DIAGNOSTIC_CODE_OPTIONS
@@ -421,7 +421,7 @@ async function loadTasks() {
   }
 }
 
-function openCampaignModal(campaign?: ArchiveEvaluationCampaignVO) {
+function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
   campaignForm.campaignId = campaign?.campaignId
   campaignForm.campaignName = campaign?.campaignName ?? ''
   campaignForm.academicYear = campaign?.academicYear ?? ''

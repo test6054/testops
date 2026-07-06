@@ -10,7 +10,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { courseGoalApi } from '@/apis/quality/course-goal'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
-import { requireArrayResult } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -67,10 +66,7 @@ async function loadOptions() {
   if (!props.qualityCourseId) return
   loading.value = true
   try {
-    options.value = requireArrayResult(
-      await courseGoalApi.listByCourse(props.qualityCourseId),
-      '课程目标',
-    )
+    options.value = await courseGoalApi.listByCourse(props.qualityCourseId)
   } catch (e) {
     showUserError(e, '课程目标列表加载失败')
   } finally {

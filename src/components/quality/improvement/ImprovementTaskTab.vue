@@ -416,7 +416,8 @@ async function submitImprovementEditor(): Promise<void> {
       if (submitAiSuggestionDraft.value && improvementTaskId) {
         const achievementResultId = request.achievementResultId
         if (!achievementResultId) {
-          throw new Error('生成 AI 改进草稿需要先关联达成度计算结果')
+          showUserError(null, '生成 AI 改进草稿需要先关联达成度计算结果')
+          return
         }
         const res = await aiTaskTriggerApi.submit({
           taskType: AiTaskTypeCode.IMPROVEMENT_SUGGESTION_GENERATE,

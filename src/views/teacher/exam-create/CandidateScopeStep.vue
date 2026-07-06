@@ -119,7 +119,7 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamCandidateVO } from '@/apis/mark/exam-scope'
+import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
 import { message, Modal } from 'ant-design-vue'
 import { computed, onMounted, ref, toRef, watch } from 'vue'
 import { EXAM_ROSTER_SCOPE_MODE_OPTIONS, ExamRosterScopeModeCode, previewCreateExamRoster } from '@/apis/mark/exam'
@@ -146,9 +146,9 @@ defineProps<{
 const emit = defineEmits<{
   'update:roster-form-ref': [ref: FormInstance | undefined]
   'change-scope-mode': [mode: ExamRosterScopeModeCode]
-  'sync-class-scope': [candidates: ExamCandidateVO[], classIds: string[]]
+  'sync-class-scope': [candidates: ExamCandidateResponse[], classIds: string[]]
   'roster-preview-syncing': [syncing: boolean]
-  'add-candidates': [candidates: ExamCandidateVO[]]
+  'add-candidates': [candidates: ExamCandidateResponse[]]
   'remove-candidate': [studentUserId: string]
 }>()
 const rosterForm = useInjectedExamCreateRosterForm()
@@ -191,7 +191,7 @@ const emptyDescription = computed(() => {
   return '选择参考班级后将自动列出在籍学生'
 })
 
-const columns: ColumnType<ExamCandidateVO>[] = [
+const columns: ColumnType<ExamCandidateResponse>[] = [
   { title: '考生', key: 'student', dataIndex: 'studentName' },
   { title: '班级', key: 'className', dataIndex: 'className', width: 180 },
   { title: '操作', key: 'actions', width: 88, align: 'center' },

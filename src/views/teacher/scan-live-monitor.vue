@@ -597,19 +597,19 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamPaperBatchBindResultVO, ExamScannerDeviceVO } from '@/apis/mark/exam-mark-scanner'
-import type {WorkbenchScanMonitorPanelVO} from '@/apis/mark/exam-progress';
+import type { ExamPaperBatchBindResponse, ExamScannerDeviceResponse } from '@/apis/mark/exam-mark-scanner'
+import type {ExamWorkbenchScanMonitorPanelResponse} from '@/apis/mark/exam-progress';
 import type {
-  ExamScannerBatchVO,
-  ScanAttentionItemVO,
+  ExamScannerBatchResponse,
+  ScanAttentionItemResponse,
   ScanAttentionSourceTypeCode,
   ScanBatchStatusCode,
 } from '@/apis/mark/exam-scan'
 import type {
   CandidateStatusCode,
-  ExamCandidateVO,
+  ExamCandidateResponse,
 } from '@/apis/mark/exam-scope'
-import type { ExamScoreSummaryItemVO } from '@/apis/mark/exam-score'
+import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
 import type { BadgeTone, FilterField, UiSectionTabItem, UiSelectOption } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
@@ -747,16 +747,16 @@ const filterForm = reactive<{
   monitorDeviceId: '',
 })
 
-const scannerDevices = ref<ExamScannerDeviceVO[]>([])
+const scannerDevices = ref<ExamScannerDeviceResponse[]>([])
 const scannerDevicesLoading = ref(false)
-const scanMonitorPanel = ref<WorkbenchScanMonitorPanelVO | null>(null)
+const scanMonitorPanel = ref<ExamWorkbenchScanMonitorPanelResponse | null>(null)
 const scanMonitorPanelLoadFailed = ref(false)
 const SCANNER_DEVICE_POLL_INTERVAL_MS = 60_000
 let scannerDevicePollTimer: ReturnType<typeof setInterval> | null = null
 
 const connectedDevices = computed(() => scannerDevices.value.filter(isScannerDeviceOnline))
 
-function formatMonitorDeviceLabel(device: ExamScannerDeviceVO): string {
+function formatMonitorDeviceLabel(device: ExamScannerDeviceResponse): string {
   const name = device.deviceName || device.scannerDeviceId
   return device.scannerIp ? `${name}（${device.scannerIp}）` : name
 }
@@ -916,7 +916,7 @@ const hasMonitorScanBatchFilter = computed(() =>
   monitorFilterFields.value.some((field) => field.key === 'scanBatchId'),
 )
 
-const monitorBatches = ref<ExamScannerBatchVO[]>([])
+const monitorBatches = ref<ExamScannerBatchResponse[]>([])
 const monitorBatchLoading = ref(false)
 const monitorBatchPagination = reactive({
   current: 1,
@@ -925,9 +925,9 @@ const monitorBatchPagination = reactive({
 })
 const batchDetailDrawerOpen = ref(false)
 const batchDetailBatchId = ref<string | null>(null)
-const batchDetailSummary = ref<ExamScannerBatchVO | null>(null)
+const batchDetailSummary = ref<ExamScannerBatchResponse | null>(null)
 
-const monitorBatchColumns: ColumnType<ExamScannerBatchVO>[] = [
+const monitorBatchColumns: ColumnType<ExamScannerBatchResponse>[] = [
   { title: '批次号', key: 'batchNo', width: 200, ellipsis: true },
   { title: '状态', key: 'status', width: 100 },
   { title: '页数', key: 'pageCount', width: 72, align: 'right' },
@@ -941,14 +941,14 @@ const monitorBatchColumns: ColumnType<ExamScannerBatchVO>[] = [
   { title: '操作', key: 'actions', width: 80, fixed: 'right' },
 ]
 
-function monitorBatchStatusTone(batch: ExamScannerBatchVO): BadgeTone {
+function monitorBatchStatusTone(batch: ExamScannerBatchResponse): BadgeTone {
   if (batch.sealedTime) {
     return 'green'
   }
   return strictEnumTone(SCAN_BATCH_STATUS_TONE, batch.status, '扫描批次状态')
 }
 
-function monitorBatchStatusLabel(batch: ExamScannerBatchVO): string {
+function monitorBatchStatusLabel(batch: ExamScannerBatchResponse): string {
   if (batch.sealedTime) {
     return '已封存'
   }
@@ -966,7 +966,7 @@ function formatMonitorBatchDeviceLabel(deviceId?: string): string {
   return formatMonitorDeviceLabel(device)
 }
 
-function openMonitorBatchDetail(batch: ExamScannerBatchVO): void {
+function openMonitorBatchDetail(batch: ExamScannerBatchResponse): void {
   batchDetailBatchId.value = batch.scanBatchId
   batchDetailSummary.value = batch
   batchDetailDrawerOpen.value = true
@@ -1021,22 +1021,22 @@ function applyNormalFilters(): void {
   void loadMonitorBatches()
 }
 
-const attentions = ref<ScanAttentionItemVO[]>([])
+const attentions = ref<ScanAttentionItemResponse[]>([])
 const loading = ref(false)
 const attentionPagination = reactive({
   current: 1,
   pageSize: 20,
   total: 0,
 })
-const scanBatches = ref<ExamScannerBatchVO[]>([])
+const scanBatches = ref<ExamScannerBatchResponse[]>([])
 const scanBatchesLoading = ref(false)
 const scanBatchKeyword = ref('')
-const paperCandidates = ref<ExamScoreSummaryItemVO[]>([])
+const paperCandidates = ref<ExamScoreSummaryItemResponse[]>([])
 const paperCandidatesLoading = ref(false)
 const paperCandidateKeyword = ref('')
 const scanBatchOptions = computed<UiSelectOption[]>(() =>
   scanBatches.value
-    .filter((item): item is ExamScannerBatchVO & { scanBatchId: string } => Boolean(item.scanBatchId))
+    .filter((item): item is ExamScannerBatchResponse & { scanBatchId: string } => Boolean(item.scanBatchId))
     .map((item) => ({
       value: item.scanBatchId,
       label: [
@@ -1048,7 +1048,7 @@ const scanBatchOptions = computed<UiSelectOption[]>(() =>
 )
 const paperCandidateOptions = computed<UiSelectOption[]>(() =>
   paperCandidates.value
-    .filter((item): item is ExamScoreSummaryItemVO & { paperInstanceId: string } => Boolean(item.paperInstanceId))
+    .filter((item): item is ExamScoreSummaryItemResponse & { paperInstanceId: string } => Boolean(item.paperInstanceId))
     .map((item) => ({
       value: item.paperInstanceId,
       label: [
@@ -1123,7 +1123,7 @@ watch(() => scanLiveStream.events.value.length, () => {
   scheduleMonitorBatchReload()
 })
 
-function handleMonitorDeviceSelect(device: ExamScannerDeviceVO): void {
+function handleMonitorDeviceSelect(device: ExamScannerDeviceResponse): void {
   filterForm.monitorDeviceId = device.scannerDeviceId
   if (activeTab.value === 'normal') {
     applyNormalFilters()
@@ -1352,15 +1352,15 @@ function openAttentionReviewWorkspace(): void {
 
 const attentionTypeOptions = SCAN_ATTENTION_TYPE_OPTIONS
 
-function scanBatchStatusLabel(batch: ExamScannerBatchVO): string {
+function scanBatchStatusLabel(batch: ExamScannerBatchResponse): string {
   return strictEnumLabel(ScanBatchStatusDescription, batch.status, '扫描批次状态')
 }
 
-function finalScoreStatusLabel(status: ExamScoreSummaryItemVO['finalScoreStatus']): string {
+function finalScoreStatusLabel(status: ExamScoreSummaryItemResponse['finalScoreStatus']): string {
   return strictEnumLabel(FinalScoreStatusDescription, status, '最终成绩状态')
 }
 
-const columns: ColumnType<ScanAttentionItemVO>[] = [
+const columns: ColumnType<ScanAttentionItemResponse>[] = [
   { title: '异常类型', key: 'attentionType', width: 160 },
   { title: '来源', key: 'sourceInfo', width: 180 },
   { title: '扫描批次', key: 'scanBatch', width: 220, ellipsis: true },
@@ -1587,7 +1587,7 @@ function assertNeverScanAttentionType(_type: never): never {
   throw toUserError(null, '扫描异常类型无法识别，请刷新后重试')
 }
 
-function scanAttentionStatusLabel(record: ScanAttentionItemVO): string {
+function scanAttentionStatusLabel(record: ScanAttentionItemResponse): string {
   switch (record.attentionType) {
     case ScanAttentionTypeCode.QUALITY_BLOCK:
       return strictEnumLabel(QualityDecisionDescription, record.qualityDecision, '扫描页质量判定')
@@ -1610,7 +1610,7 @@ function scanAttentionStatusLabel(record: ScanAttentionItemVO): string {
   }
 }
 
-function scanAttentionStatusTone(record: ScanAttentionItemVO): BadgeTone {
+function scanAttentionStatusTone(record: ScanAttentionItemResponse): BadgeTone {
   switch (record.attentionType) {
     case ScanAttentionTypeCode.QUALITY_BLOCK:
       return strictEnumTone(QUALITY_DECISION_TONE, record.qualityDecision, '扫描页质量判定')
@@ -1672,10 +1672,10 @@ function handleMonitorFilterSearch(): void {
  */
 const pageDiscarding = ref<string | null>(null)
 const pageDiscardModalOpen = ref(false)
-const pageDiscardTarget = ref<ScanAttentionItemVO | null>(null)
+const pageDiscardTarget = ref<ScanAttentionItemResponse | null>(null)
 const pageDiscardReason = ref('')
 const pageDiscardReasonError = ref('')
-async function onDiscardPage(record: ScanAttentionItemVO): Promise<void> {
+async function onDiscardPage(record: ScanAttentionItemResponse): Promise<void> {
   if (record.sourceType !== 'SCANNED_PAGE' || !record.pageId) {
     message.warning('该异常不是扫描页来源，无法废弃')
     return
@@ -1759,7 +1759,7 @@ const bindFormRules: Record<string, Rule[]> = {
 }
 
 // 考生名册缓存
-const candidates = ref<ExamCandidateVO[]>([])
+const candidates = ref<ExamCandidateResponse[]>([])
 const candidatesLoading = ref(false)
 const bindIdentitySliceFileId = ref('')
 const bindIdentitySliceImageUrl = ref('')
@@ -1814,7 +1814,7 @@ const candidateOptions = computed(() =>
 )
 
 /** 判断名册考生是否允许用于答卷身份绑定，缺考和状态异常必须在教师提交前阻断。 */
-function isCandidateBindable(candidate: ExamCandidateVO): boolean {
+function isCandidateBindable(candidate: ExamCandidateResponse): boolean {
   return candidate.status === 'ACTIVE'
 }
 
@@ -1918,7 +1918,7 @@ async function loadBindSourcePageImage(): Promise<void> {
   }
 }
 
-function openBindDrawer(record: ScanAttentionItemVO): void {
+function openBindDrawer(record: ScanAttentionItemResponse): void {
   if (!record.paperInstanceId || !record.scanBatchId) {
     message.warning('该异常缺少答题卡或扫描批次信息，无法进行身份绑定')
     return
@@ -1989,9 +1989,9 @@ async function handleBind(): Promise<void> {
 
 // ─── 详情弹窗 ────────────────────────────────────
 const detailDrawerOpen = ref(false)
-const detailRecord = ref<ScanAttentionItemVO | null>(null)
+const detailRecord = ref<ScanAttentionItemResponse | null>(null)
 
-function openDetail(record: ScanAttentionItemVO): void {
+function openDetail(record: ScanAttentionItemResponse): void {
   detailRecord.value = record
   detailDrawerOpen.value = true
 }
@@ -2000,7 +2000,7 @@ function openDetail(record: ScanAttentionItemVO): void {
 const selectedRowKeys = ref<string[]>([])
 const batchBinding = ref(false)
 const batchBindDrawerOpen = ref(false)
-const batchBindResult = ref<ExamPaperBatchBindResultVO | null>(null)
+const batchBindResult = ref<ExamPaperBatchBindResponse | null>(null)
 type BatchBindAttemptStatus = 'NORMAL' | 'MAKEUP' | 'RETAKE'
 
 const batchAttemptStatusOptions: Array<{ label: string, value: BatchBindAttemptStatus }> = [
@@ -2052,7 +2052,7 @@ const rowSelection = computed(() => ({
   onChange: (keys: (string | number)[]) => {
     selectedRowKeys.value = keys.map(String)
   },
-  getCheckboxProps: (record: ScanAttentionItemVO) => ({
+  getCheckboxProps: (record: ScanAttentionItemResponse) => ({
     disabled:
       record.attentionType !== 'BINDING_CONFLICT'
       || !record.paperInstanceId

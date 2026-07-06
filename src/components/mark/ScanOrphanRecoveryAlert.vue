@@ -41,7 +41,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { ExamScannerBatchRecoverOrphanFailureVO } from '@/apis/mark/exam-scan'
+import type { ExamScannerBatchRecoverOrphanFailureItem } from '@/apis/mark/exam-scan'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { recoverOrphanScanEvents } from '@/apis/mark/exam-scan'
@@ -68,7 +68,7 @@ const { selectedExam } = useMarkExamContext()
 const { isExamOwner } = useExamOwnerPermission(selectedExam)
 
 const recovering = ref(false)
-const failureItems = ref<ExamScannerBatchRecoverOrphanFailureVO[]>([])
+const failureItems = ref<ExamScannerBatchRecoverOrphanFailureItem[]>([])
 
 const visible = computed(() => props.orphanPendingEventCount > 0)
 
@@ -92,11 +92,11 @@ watch(() => props.examId, () => {
   failureItems.value = []
 })
 
-function failureItemKey(item: ExamScannerBatchRecoverOrphanFailureVO): string {
+function failureItemKey(item: ExamScannerBatchRecoverOrphanFailureItem): string {
   return `${item.scannerDeviceId}-${item.scannerStationId ?? ''}`
 }
 
-function formatFailureItem(item: ExamScannerBatchRecoverOrphanFailureVO): string {
+function formatFailureItem(item: ExamScannerBatchRecoverOrphanFailureItem): string {
   const deviceLabel = item.scannerStationId
     ? `${item.scannerDeviceId} / ${item.scannerStationId}`
     : item.scannerDeviceId

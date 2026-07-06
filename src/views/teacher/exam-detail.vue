@@ -60,7 +60,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { ExamDetailVO } from '@/apis/mark/exam'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
 import type { ExamWorkbenchStageKeyCode } from '@/apis/mark/exam-progress'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
@@ -166,11 +166,11 @@ const overviewSignalMetrics = computed((): SignalMetric[] => {
   return metrics.slice(0, 6)
 })
 
-function examKindTone(examKind: ExamDetailVO['examKind']): BadgeTone {
+function examKindTone(examKind: ExamDetailResponse['examKind']): BadgeTone {
   return strictEnumTone(EXAM_KIND_TONE, examKind, '考试性质')
 }
 
-function examKindLabel(exam: ExamDetailVO): string {
+function examKindLabel(exam: ExamDetailResponse): string {
   if (exam.examKindMessage?.trim()) return exam.examKindMessage.trim()
   return strictEnumLabel(ExamKindDescription, exam.examKind, '考试性质')
 }

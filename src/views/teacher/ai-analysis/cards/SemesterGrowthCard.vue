@@ -147,10 +147,10 @@
 
 <script lang="ts" setup>
 import type {
-  SemesterAbilityGrowthVO,
+  SemesterAbilityGrowthResponse,
   SemesterGrowthTrendCode,
 } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import message from 'ant-design-vue/es/message'
@@ -247,7 +247,7 @@ const {
   clearHistory,
   applyLoadedList,
   adoptGenerated,
-} = useAiAnalysisHistoryPicker<SemesterAbilityGrowthVO>()
+} = useAiAnalysisHistoryPicker<SemesterAbilityGrowthResponse>()
 
 const historyRows = computed(() =>
   historyRecords.value.map((item) => ({
@@ -261,7 +261,7 @@ const historyRows = computed(() =>
   })),
 )
 
-const selectedExams = ref<ExamSummaryVO[]>([])
+const selectedExams = ref<ExamSummaryResponse[]>([])
 const classOptions = ref<{ label: string, value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
@@ -371,7 +371,7 @@ const metaExtraItems = computed(() => {
   ]
 })
 
-function examScopeSummary(value: SemesterAbilityGrowthVO): string {
+function examScopeSummary(value: SemesterAbilityGrowthResponse): string {
   if (!value.exams.length) {
     return '无考试范围'
   }
@@ -595,7 +595,7 @@ function trendColor(trend: SemesterGrowthTrendCode): BadgeTone {
   return strictEnumTone(SEMESTER_GROWTH_TREND_TONE, trend, '学期能力成长趋势')
 }
 
-function scopeTypeLabel(scopeType: SemesterAbilityGrowthVO['scopeType']): string {
+function scopeTypeLabel(scopeType: SemesterAbilityGrowthResponse['scopeType']): string {
   return strictEnumLabel(AnalysisScopeTypeDescription, scopeType, '分析范围类型')
 }
 

@@ -7,7 +7,7 @@ import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
  * - 输入关键词走后端 keyword 模糊搜索（exam_name / exam_no），不客户端全量过滤
  * - URL / Store 预选考试若不在当前页，通过详情接口补全标签，避免 Select 展示裸 ID
  */
-import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -41,9 +41,9 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
   const syncUrl = options.syncUrl ?? true
   const pageSize = options.pageSize ?? MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE
 
-  const exams = ref<ExamSummaryVO[]>([])
+  const exams = ref<ExamSummaryResponse[]>([])
   /** 当前选中考试：不在分页结果内时由详情补全，保证 Select 有 label */
-  const pinnedExam = ref<ExamSummaryVO | null>(null)
+  const pinnedExam = ref<ExamSummaryResponse | null>(null)
   const loading = ref(false)
   const searching = ref(false)
   const resolvingPinned = ref(false)
@@ -74,7 +74,7 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
     },
   )
 
-  const selectedExam = computed<ExamSummaryVO | null>(() => {
+  const selectedExam = computed<ExamSummaryResponse | null>(() => {
     const id = selectedExamId.value
     if (!id) return null
     return exams.value.find((item) => item.examId === id)
@@ -119,7 +119,7 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
     }
   }
 
-  async function fetchExamPage(keyword?: string): Promise<ExamSummaryVO[]> {
+  async function fetchExamPage(keyword?: string): Promise<ExamSummaryResponse[]> {
     const result = await pageExams(buildPageRequest(keyword))
     return readPageList(result, '考试列表加载失败，请稍后重试')
   }

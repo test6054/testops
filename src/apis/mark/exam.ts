@@ -1,4 +1,4 @@
-import type { ExamCandidateRosterRequest, ExamCandidateVO } from '@/apis/mark/exam-scope'
+import type { ExamCandidateResponse, ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
 /**
  * 阅卷考试主记录 API - 对接 edu-mark 模块 ExamMarkController 的考试主对象接口。
  *
@@ -166,7 +166,7 @@ export interface ExamPageQueryRequest extends QueryDto {
 }
 
 /** 考试列表项 - 对应 ExamSummaryResponse */
-export interface ExamSummaryVO {
+export interface ExamSummaryResponse {
   examId: string
   courseId?: string
   /** 课程名称 - 服务层按 courseId 反查 */
@@ -211,7 +211,7 @@ export interface ExamWorkbenchPageQueryRequest extends ExamPageQueryRequest {
 }
 
 /** 考试工作台范围计数 - 对应 ExamWorkbenchScopeCountResponse */
-export interface ExamWorkbenchScopeCountVO {
+export interface ExamWorkbenchScopeCountResponse {
   priorityCount: number
   ongoingCount: number
   allCount: number
@@ -222,7 +222,42 @@ export interface ExamWorkbenchScopeCountVO {
 }
 
 /** 考试工作台列表项 - 对应 ExamWorkbenchSummaryResponse */
-export interface ExamWorkbenchSummaryVO extends ExamSummaryVO {
+export interface ExamWorkbenchSummaryResponse {
+  examId: string
+  courseId?: string
+  /** 课程名称 - 服务层按 courseId 反查 */
+  courseName?: string
+  /** 参考院系 ID - 对应 t_exam.reference_department_id */
+  referenceDepartmentId?: string
+  /** 参考院系名称 - 服务层按 referenceDepartmentId 经 edu-user 反查 */
+  departmentName?: string
+  examName: string
+  examNo: string
+  academicYear?: string
+  semester?: SemesterCode
+  status: ExamStatusCode
+  statusMessage: string
+  examStartTime?: string
+  examEndTime?: string
+  gradingStrategy?: ExamGradingStrategyCode
+  remark?: string
+  /** 创建人用户ID - 对应后端 ExamWorkbenchSummaryResponse.createUser */
+  createUser?: string
+  createTime?: string
+  /** 日常成绩满分；为空表示本场考试不纳入日常成绩 */
+  dailyScoreFull?: number
+  /** 考试性质 */
+  examKind: ExamKindCode
+  /** 考试性质展示名称 */
+  examKindMessage?: string
+  /** 原期末考试 ID */
+  sourceExamId?: string
+  /** 成绩合成策略 */
+  scorePolicy?: ExamScorePolicyCode
+  /** 开课学年 - 对应 ExamWorkbenchSummaryResponse.teachingAcademicYear */
+  teachingAcademicYear?: string
+  /** 开课学期 - 对应 ExamWorkbenchSummaryResponse.teachingSemester */
+  teachingSemester?: SemesterCode
   questionCount: number
   totalQuestionGradeCount: number
   confirmedQuestionGradeCount: number
@@ -246,7 +281,7 @@ export interface ExamFileRefVO {
 }
 
 /** 考试详情 - 对应 ExamDetailResponse */
-export interface ExamDetailVO {
+export interface ExamDetailResponse {
   examId: string
   courseId?: string
   /** 课程名称 - 对应 ExamDetailResponse.courseName */
@@ -304,9 +339,9 @@ export interface ExamDetailVO {
   printSourceModeMessage?: string
   layoutModeLocked?: boolean
   pageTemplateReady?: boolean
-  masterConfigured?: boolean
-  masterName?: string
-  masterRegionReady?: boolean
+  layoutConfigured?: boolean
+  layoutName?: string
+  layoutRegionReady?: boolean
   subjectiveRegionReady?: boolean
   subjectiveQuestionCount?: number
   subjectiveRegionConfiguredCount?: number
@@ -476,7 +511,7 @@ export interface ExamCreateRosterPreviewRequest {
 export interface ExamCreateRosterPreviewResponse {
   scopeMode: ExamRosterScopeModeCode
   classIds: string[]
-  candidates: ExamCandidateVO[]
+  candidates: ExamCandidateResponse[]
   candidateCount: number
 }
 
@@ -496,27 +531,27 @@ export interface ExamCreateBundleResponse {
 }
 
 /** 分页查询考试列表。 */
-export function pageExams(request: ExamPageQueryRequest): Promise<PageResult<ExamSummaryVO>> {
-  return http.post<PageResult<ExamSummaryVO>>('/api/mark/exams/page', request)
+export function pageExams(request: ExamPageQueryRequest): Promise<PageResult<ExamSummaryResponse>> {
+  return http.post<PageResult<ExamSummaryResponse>>('/api/mark/exams/page', request)
 }
 
 /** 分页查询考试工作台列表（内嵌阅卷进度摘要）。 */
 export function pageExamWorkbench(
   request: ExamWorkbenchPageQueryRequest,
-): Promise<PageResult<ExamWorkbenchSummaryVO>> {
-  return http.post<PageResult<ExamWorkbenchSummaryVO>>('/api/mark/exams/workbench-page', request)
+): Promise<PageResult<ExamWorkbenchSummaryResponse>> {
+  return http.post<PageResult<ExamWorkbenchSummaryResponse>>('/api/mark/exams/workbench-page', request)
 }
 
 /** 聚合统计考试工作台三 Tab 与 ACTIVE/CLOSED 概览计数。 */
 export function countExamWorkbenchScopes(
   request: ExamPageQueryRequest,
-): Promise<ExamWorkbenchScopeCountVO> {
-  return http.post<ExamWorkbenchScopeCountVO>('/api/mark/exams/workbench-scope-counts', request)
+): Promise<ExamWorkbenchScopeCountResponse> {
+  return http.post<ExamWorkbenchScopeCountResponse>('/api/mark/exams/workbench-scope-counts', request)
 }
 
 /** 查询考试详情。 */
-export function getExamDetail(examId: string): Promise<ExamDetailVO> {
-  return http.post<ExamDetailVO>('/api/mark/exams/detail', { examId })
+export function getExamDetail(examId: string): Promise<ExamDetailResponse> {
+  return http.post<ExamDetailResponse>('/api/mark/exams/detail', { examId })
 }
 
 /** 保存考试制卷形态与整卷印刷来源。 */
@@ -566,7 +601,7 @@ export interface ExamDistinctTermQueryRequest {
 }
 
 /** DISTINCT 学期项 - 对应 ExamDistinctTermItemResponse */
-export interface ExamDistinctTermItemVO {
+export interface ExamDistinctTermItemResponse {
   academicYear: string
   /** 考试发生学期：1 秋季、2 春季（与后端 SemesterEnum 一致） */
   semester: SemesterCode
@@ -575,15 +610,15 @@ export interface ExamDistinctTermItemVO {
 /** 查询租户内 DISTINCT 考试学期列表，按学期编码倒序。 */
 export function listDistinctExamTerms(
   request: ExamDistinctTermQueryRequest = {},
-): Promise<ExamDistinctTermItemVO[]> {
-  return http.post<ExamDistinctTermItemVO[]>('/api/exam/distinct-terms', request)
+): Promise<ExamDistinctTermItemResponse[]> {
+  return http.post<ExamDistinctTermItemResponse[]>('/api/exam/distinct-terms', request)
 }
 
 /** 查询租户内 DISTINCT 开课学期列表，按开课学期编码倒序。 */
 export function listDistinctTeachingExamTerms(
   request: ExamDistinctTermQueryRequest = {},
-): Promise<ExamDistinctTermItemVO[]> {
-  return http.post<ExamDistinctTermItemVO[]>('/api/exam/distinct-teaching-terms', request)
+): Promise<ExamDistinctTermItemResponse[]> {
+  return http.post<ExamDistinctTermItemResponse[]>('/api/exam/distinct-teaching-terms', request)
 }
 
 /** 从缺考记录派生补考考试请求 - 对应 ExamMakeupDeriveRequest */

@@ -6,14 +6,14 @@ import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grad
 import type { MarkingOrganizationStatusCode } from '@/types/enums/marking-organization-status-enum'
 import http from '@/config/axios'
 
-export interface MarkAiReferenceExperienceAuditVO {
+export interface MarkAiReferenceExperienceAuditResponse {
   referenceExperienceApplied?: boolean
   referenceExperienceSourceExamName?: string
   referenceExperienceConsistencyRate?: number
   referenceExperienceMatchMode?: GradingExperienceReferenceMatchModeCode
 }
 
-export interface MarkTenantGradingPolicyVO {
+export interface MarkTenantGradingPolicyResponse {
   experienceAssistEnabled: boolean
   minConsistencyRate: number
   maxHammingDistance: number
@@ -21,6 +21,8 @@ export interface MarkTenantGradingPolicyVO {
   sourceExamKinds?: string
   requireSameCourse?: boolean
   requireEffectivenessEval?: boolean
+  manualFinalScoreConfirmRequired: boolean
+  delayedFinalScoreConfirmMinutes: number
 }
 
 export interface MarkTenantGradingPolicySaveRequest {
@@ -31,11 +33,13 @@ export interface MarkTenantGradingPolicySaveRequest {
   sourceExamKinds?: string
   requireSameCourse?: boolean
   requireEffectivenessEval?: boolean
+  manualFinalScoreConfirmRequired: boolean
+  delayedFinalScoreConfirmMinutes: number
 }
 
 export type GradingExperienceAssistPolicyStatusCode = 'DISABLED' | 'ENABLED' | 'FROZEN'
 
-export interface ExamGradingExperienceAssistPolicyVO {
+export interface ExamGradingExperienceAssistPolicyResponse {
   examId: string
   examKind?: ExamKindCode
   autoMatchSupported?: boolean
@@ -49,7 +53,7 @@ export interface ExamGradingExperienceAssistPolicyVO {
   frozenTime?: string
 }
 
-export interface ExamQuestionExperienceAssistBindingVO {
+export interface ExamQuestionExperienceAssistBindingResponse {
   id?: string
   examId: string
   layoutQuestionId: string
@@ -64,7 +68,7 @@ export interface ExamQuestionExperienceAssistBindingVO {
   assistResolutionStatus?: GradingExperienceAssistQuestionResolutionCode
 }
 
-export interface GradingExperienceAssistCandidateVO {
+export interface GradingExperienceAssistCandidateResponse {
   experienceCaseId: string
   effectivenessEvalId: string
   sourceExamId: string
@@ -82,7 +86,7 @@ export interface ExamQuestionExperienceAssistBindingSaveRequest {
   effectivenessEvalId?: string
 }
 
-export interface GradingExperienceAssistReadinessQuestionVO {
+export interface GradingExperienceAssistReadinessQuestionResponse {
   layoutQuestionId: string
   questionNo?: string
   baselineReady?: boolean
@@ -90,7 +94,7 @@ export interface GradingExperienceAssistReadinessQuestionVO {
   readyForFormalMarking?: boolean
 }
 
-export interface GradingExperienceAssistReadinessVO {
+export interface GradingExperienceAssistReadinessResponse {
   examId: string
   tenantExperienceAssistEnabled?: boolean
   examPolicyEnabled?: boolean
@@ -98,10 +102,10 @@ export interface GradingExperienceAssistReadinessVO {
   readyForFormalMarking?: boolean
   baselineMissingCount?: number
   assistUnresolvedCount?: number
-  questions?: GradingExperienceAssistReadinessQuestionVO[]
+  questions?: GradingExperienceAssistReadinessQuestionResponse[]
 }
 
-export interface MarkTenantGradingOpsExamRowVO {
+export interface MarkTenantGradingOpsExamRowResponse {
   examId: string
   examName: string
   examNo: string
@@ -113,25 +117,25 @@ export interface MarkTenantGradingOpsExamRowVO {
   readyForFormalMarking?: boolean
 }
 
-export interface MarkTenantGradingOpsOverviewVO {
-  tenantPolicy: MarkTenantGradingPolicyVO
+export interface MarkTenantGradingOpsOverviewResponse {
+  tenantPolicy: MarkTenantGradingPolicyResponse
   trialMarkingExamCount: number
   pendingExamCount: number
   totalPendingItemCount: number
-  exams: MarkTenantGradingOpsExamRowVO[]
+  exams: MarkTenantGradingOpsExamRowResponse[]
 }
 
 export function getTenantGradingPolicy(
   config?: ExtendedAxiosRequestConfig,
-): Promise<MarkTenantGradingPolicyVO> {
-  return http.get<MarkTenantGradingPolicyVO>('/api/mark/admin/grading-policy/tenant', config)
+): Promise<MarkTenantGradingPolicyResponse> {
+  return http.get<MarkTenantGradingPolicyResponse>('/api/mark/admin/grading-policy/tenant', config)
 }
 
 export function saveTenantGradingPolicy(
   request: MarkTenantGradingPolicySaveRequest,
   config?: ExtendedAxiosRequestConfig,
-): Promise<MarkTenantGradingPolicyVO> {
-  return http.post<MarkTenantGradingPolicyVO>(
+): Promise<MarkTenantGradingPolicyResponse> {
+  return http.post<MarkTenantGradingPolicyResponse>(
     '/api/mark/admin/grading-policy/tenant/save',
     request,
     config,
@@ -140,8 +144,8 @@ export function saveTenantGradingPolicy(
 
 export function getTenantGradingOpsOverview(
   config?: ExtendedAxiosRequestConfig,
-): Promise<MarkTenantGradingOpsOverviewVO> {
-  return http.get<MarkTenantGradingOpsOverviewVO>(
+): Promise<MarkTenantGradingOpsOverviewResponse> {
+  return http.get<MarkTenantGradingOpsOverviewResponse>(
     '/api/mark/admin/grading-policy/tenant/ops-overview',
     config,
   )
@@ -150,8 +154,8 @@ export function getTenantGradingOpsOverview(
 export function getExamGradingExperienceAssistPolicy(
   examId: string,
   config?: ExtendedAxiosRequestConfig,
-): Promise<ExamGradingExperienceAssistPolicyVO> {
-  return http.get<ExamGradingExperienceAssistPolicyVO>(
+): Promise<ExamGradingExperienceAssistPolicyResponse> {
+  return http.get<ExamGradingExperienceAssistPolicyResponse>(
     '/api/mark/exam/grading-experience-assist/policy',
     {
       ...config,
@@ -163,8 +167,8 @@ export function getExamGradingExperienceAssistPolicy(
 export function enableExamGradingExperienceAssistPolicy(
   examId: string,
   config?: ExtendedAxiosRequestConfig,
-): Promise<ExamGradingExperienceAssistPolicyVO> {
-  return http.post<ExamGradingExperienceAssistPolicyVO>(
+): Promise<ExamGradingExperienceAssistPolicyResponse> {
+  return http.post<ExamGradingExperienceAssistPolicyResponse>(
     '/api/mark/exam/grading-experience-assist/policy/enable',
     { examId },
     config,
@@ -174,8 +178,8 @@ export function enableExamGradingExperienceAssistPolicy(
 export function disableExamGradingExperienceAssistPolicy(
   examId: string,
   config?: ExtendedAxiosRequestConfig,
-): Promise<ExamGradingExperienceAssistPolicyVO> {
-  return http.post<ExamGradingExperienceAssistPolicyVO>(
+): Promise<ExamGradingExperienceAssistPolicyResponse> {
+  return http.post<ExamGradingExperienceAssistPolicyResponse>(
     '/api/mark/exam/grading-experience-assist/policy/disable',
     { examId },
     config,
@@ -185,8 +189,8 @@ export function disableExamGradingExperienceAssistPolicy(
 export function getExamGradingExperienceAssistReadiness(
   examId: string,
   config?: ExtendedAxiosRequestConfig,
-): Promise<GradingExperienceAssistReadinessVO> {
-  return http.get<GradingExperienceAssistReadinessVO>(
+): Promise<GradingExperienceAssistReadinessResponse> {
+  return http.get<GradingExperienceAssistReadinessResponse>(
     '/api/mark/exam/grading-experience-assist/policy/readiness',
     { ...config, params: { examId, ...(config?.params ?? {}) } },
   )
@@ -195,8 +199,8 @@ export function getExamGradingExperienceAssistReadiness(
 export function listExamExperienceAssistBindings(
   examId: string,
   config?: ExtendedAxiosRequestConfig,
-): Promise<ExamQuestionExperienceAssistBindingVO[]> {
-  return http.get<ExamQuestionExperienceAssistBindingVO[]>(
+): Promise<ExamQuestionExperienceAssistBindingResponse[]> {
+  return http.get<ExamQuestionExperienceAssistBindingResponse[]>(
     '/api/mark/exam/grading-experience-assist/bindings/list',
     { ...config, params: { examId, ...(config?.params ?? {}) } },
   )
@@ -205,8 +209,8 @@ export function listExamExperienceAssistBindings(
 export function saveExamExperienceAssistBinding(
   request: ExamQuestionExperienceAssistBindingSaveRequest,
   config?: ExtendedAxiosRequestConfig,
-): Promise<ExamQuestionExperienceAssistBindingVO> {
-  return http.post<ExamQuestionExperienceAssistBindingVO>(
+): Promise<ExamQuestionExperienceAssistBindingResponse> {
+  return http.post<ExamQuestionExperienceAssistBindingResponse>(
     '/api/mark/exam/grading-experience-assist/bindings/save',
     request,
     config,
@@ -217,8 +221,8 @@ export function listExamExperienceAssistCandidates(
   examId: string,
   layoutQuestionId: string,
   config?: ExtendedAxiosRequestConfig,
-): Promise<GradingExperienceAssistCandidateVO[]> {
-  return http.get<GradingExperienceAssistCandidateVO[]>(
+): Promise<GradingExperienceAssistCandidateResponse[]> {
+  return http.get<GradingExperienceAssistCandidateResponse[]>(
     '/api/mark/exam/grading-experience-assist/bindings/candidates',
     { ...config, params: { examId, layoutQuestionId, ...(config?.params ?? {}) } },
   )

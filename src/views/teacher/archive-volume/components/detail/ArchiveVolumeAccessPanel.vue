@@ -177,7 +177,7 @@
 <script setup lang="ts">
 import type {
   ArchiveVolumeAccessReadPageRequest,
-  ArchiveVolumeAccessRecordVO,
+  ArchiveVolumeAccessRecordResponse,
 } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
@@ -211,7 +211,7 @@ defineOptions({ name: 'ArchiveVolumeAccessPanel' })
 const props = defineProps<{
   volumeId: string
   canRequestAccess: boolean
-  canApproveAccessRecord: (record: ArchiveVolumeAccessRecordVO) => boolean
+  canApproveAccessRecord: (record: ArchiveVolumeAccessRecordResponse) => boolean
   currentUserId: string
 }>()
 
@@ -229,7 +229,7 @@ const readPageForm = reactive<ArchiveVolumeAccessReadPageRequest>({
   accessRecordId: '',
   lastReadPage: 1,
 })
-const accessRecords = ref<ArchiveVolumeAccessRecordVO[]>([])
+const accessRecords = ref<ArchiveVolumeAccessRecordResponse[]>([])
 const accessModalOpen = ref(false)
 const accessReason = ref('')
 
@@ -245,7 +245,7 @@ async function loadAccessRecords() {
   }
 }
 
-async function handleAccessDownload(record: ArchiveVolumeAccessRecordVO) {
+async function handleAccessDownload(record: ArchiveVolumeAccessRecordResponse) {
   const materialId = record.materialId
   const downloadToken = record.downloadToken
   if (!materialId) {
@@ -269,7 +269,7 @@ async function handleAccessDownload(record: ArchiveVolumeAccessRecordVO) {
   await loadAccessRecords()
 }
 
-async function handleAccessPreview(record: ArchiveVolumeAccessRecordVO) {
+async function handleAccessPreview(record: ArchiveVolumeAccessRecordResponse) {
   const materialId = record.materialId
   const downloadToken = record.downloadToken
   if (!materialId) {

@@ -2,7 +2,7 @@ import type {
   ArchiveIntegrityMissingItemVO,
   ArchiveMaterialTypeCode,
   ArchiveVolumeCatalogLineVO,
-  ArchiveVolumeMaterialVO,
+  ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
 
 /** 目录行选中键：archiveCode 与后端材料 catalogCode 同义，无档号时回退行号。 */
@@ -28,7 +28,7 @@ export function resolveArchiveMaterialGroupKey(item: {
 
 /** 判断材料是否归属目录选中键（与 MaterialTable 过滤口径一致）。 */
 export function archiveMaterialBelongsToCatalogKey(
-  material: ArchiveVolumeMaterialVO,
+  material: ArchiveVolumeMaterialResponse,
   catalogKey: string,
 ): boolean {
   if (!catalogKey) {
@@ -47,9 +47,9 @@ export function archiveMissingItemTargetsCatalogKey(
 
 /** 按目录键过滤材料；未选中时返回全量。 */
 export function filterArchiveMaterialsByCatalogKey(
-  materials: ArchiveVolumeMaterialVO[],
+  materials: ArchiveVolumeMaterialResponse[],
   catalogKey?: string,
-): ArchiveVolumeMaterialVO[] {
+): ArchiveVolumeMaterialResponse[] {
   if (!catalogKey) {
     return materials
   }

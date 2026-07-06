@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type {
-  ArchiveRemediationTaskVO,
+  ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed } from 'vue'
@@ -19,7 +19,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'ArchiveVolumeRemediationStrip' })
 
 const props = defineProps<{
-  task: ArchiveRemediationTaskVO | null
+  task: ArchiveRemediationTaskResponse | null
   currentUserId: string
   canAdvance: boolean
   canManageCoordinator: boolean

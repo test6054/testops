@@ -1,4 +1,4 @@
-import type { ArchiveVolumeSelfCheckItemVO, ArchiveVolumeSelfCheckListVO } from '@/apis/mark/archive-volume'
+import type { ArchiveVolumeSelfCheckItemVO, ArchiveVolumeSelfCheckListResponse } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { computed, ref } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
@@ -17,7 +17,7 @@ export function useArchiveVolumeSelfCheck(volumeId: () => string) {
   const loading = ref(false)
   const checking = ref(false)
   const exporting = ref(false)
-  const selfCheck = ref<ArchiveVolumeSelfCheckListVO | null>(null)
+  const selfCheck = ref<ArchiveVolumeSelfCheckListResponse | null>(null)
 
   const items = computed(() => selfCheck.value?.items ?? [])
   const selfCheckStatus = computed(() => {

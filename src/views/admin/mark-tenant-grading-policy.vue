@@ -5,7 +5,7 @@
         layout="workbench"
         show-title
         title="租户阅卷策略"
-        subtitle="经验辅助评阅开关与定标阈值；正考可自动匹配，补考/重修/缓考/重考须逐题显式绑定"
+        subtitle="经验辅助评阅开关、定标阈值与成绩确认工作台策略"
       />
     </template>
 
@@ -13,6 +13,33 @@
     <template v-else>
       <UiSkeletonState v-if="loading" variant="card" :card-count="2" compact />
       <template v-else>
+        <WorkbenchSurfaceCard class="tenant-policy__card">
+          <template #head>
+            <h3 class="tenant-policy__title">成绩确认工作台</h3>
+          </template>
+
+          <p class="tenant-policy__hint">
+            关闭「须人工确认最终成绩」后，全部题目教师确认完成将延迟自动汇总确认，延迟分钟数与阅卷任务撤回窗口一致。
+          </p>
+
+          <form class="tenant-policy__form" @submit.prevent="handleSave">
+            <label class="tenant-policy__field tenant-policy__field--switch">
+              <span>须人工确认最终成绩</span>
+              <a-switch v-model:checked="form.manualFinalScoreConfirmRequired" />
+            </label>
+
+            <label class="tenant-policy__field">
+              <span>延迟自动确认 / 撤回窗口（分钟）</span>
+              <a-input-number
+                v-model:value="form.delayedFinalScoreConfirmMinutes"
+                :min="1"
+                :max="120"
+                :disabled="form.manualFinalScoreConfirmRequired"
+              />
+            </label>
+          </form>
+        </WorkbenchSurfaceCard>
+
         <WorkbenchSurfaceCard class="tenant-policy__card">
           <template #head>
             <h3 class="tenant-policy__title">经验辅助评阅</h3>
@@ -104,9 +131,9 @@
 
 <script lang="ts" setup>
 import type {
-  MarkTenantGradingOpsOverviewVO,
+  MarkTenantGradingOpsOverviewResponse,
+  MarkTenantGradingPolicyResponse,
   MarkTenantGradingPolicySaveRequest,
-  MarkTenantGradingPolicyVO,
 } from '@/apis/mark/grading-experience-assist'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -139,7 +166,7 @@ const canManage = computed(() =>
 const loading = ref(false)
 const saving = ref(false)
 const opsLoading = ref(false)
-const opsOverview = ref<MarkTenantGradingOpsOverviewVO | null>(null)
+const opsOverview = ref<MarkTenantGradingOpsOverviewResponse | null>(null)
 
 const form = reactive<MarkTenantGradingPolicySaveRequest>({
   experienceAssistEnabled: false,
@@ -149,6 +176,8 @@ const form = reactive<MarkTenantGradingPolicySaveRequest>({
   sourceExamKinds: 'REGULAR',
   requireSameCourse: true,
   requireEffectivenessEval: true,
+  manualFinalScoreConfirmRequired: true,
+  delayedFinalScoreConfirmMinutes: 10,
 })
 
 const opsColumns = [
@@ -174,7 +203,7 @@ const consistencyPercent = computed({
   },
 })
 
-function applyPolicy(policy: MarkTenantGradingPolicyVO): void {
+function applyPolicy(policy: MarkTenantGradingPolicyResponse): void {
   form.experienceAssistEnabled = policy.experienceAssistEnabled
   form.minConsistencyRate = policy.minConsistencyRate
   form.maxHammingDistance = policy.maxHammingDistance
@@ -182,6 +211,8 @@ function applyPolicy(policy: MarkTenantGradingPolicyVO): void {
   form.sourceExamKinds = policy.sourceExamKinds ?? 'REGULAR'
   form.requireSameCourse = policy.requireSameCourse ?? true
   form.requireEffectivenessEval = policy.requireEffectivenessEval ?? true
+  form.manualFinalScoreConfirmRequired = policy.manualFinalScoreConfirmRequired ?? true
+  form.delayedFinalScoreConfirmMinutes = policy.delayedFinalScoreConfirmMinutes ?? 10
 }
 
 async function loadPolicy(): Promise<void> {

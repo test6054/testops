@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  ArchivePlatformMaterialItemVO,
+  ArchivePlatformMaterialItemResponse,
+  ArchivePlatformTemplateSetResponse,
   ArchivePlatformTemplateSetSaveRequest,
-  ArchivePlatformTemplateSetVO,
 } from '@/apis/mark/archive-platform-template'
 import type {
   ArchiveTemplateMaterialEditRow,
@@ -43,7 +43,7 @@ const isSuperAdmin = computed(() => authStore.isAdmin)
 
 const pageTitle = '归档模板配置'
 
-const platformSets = ref<ArchivePlatformTemplateSetVO[]>([])
+const platformSets = ref<ArchivePlatformTemplateSetResponse[]>([])
 const loading = ref(false)
 const saving = ref(false)
 const seeding = ref(false)
@@ -68,7 +68,7 @@ const editorDrawerTitle = computed(() =>
 
 const examFormOptions = ARCHIVE_EXAM_FORM_OPTIONS
 
-const platformColumns: ColumnsType<ArchivePlatformTemplateSetVO> = [
+const platformColumns: ColumnsType<ArchivePlatformTemplateSetResponse> = [
   { title: '作用域', key: 'templateScope', width: 100, align: 'center' },
   { title: '套编码', dataIndex: 'setCode', key: 'setCode', width: 180 },
   { title: '名称', dataIndex: 'setName', key: 'setName', ellipsis: true },
@@ -100,7 +100,7 @@ function openCreateEditor() {
   editorMeta.releaseTag = new Date().toISOString().slice(0, 10)
 }
 
-function mapMaterialRow(item: ArchivePlatformMaterialItemVO, index: number): ArchiveTemplateMaterialEditRow {
+function mapMaterialRow(item: ArchivePlatformMaterialItemResponse, index: number): ArchiveTemplateMaterialEditRow {
   return {
     rowKey: `${item.materialType}-${index}`,
     materialType: item.materialType,

@@ -14,8 +14,8 @@ export {
   PrintPackageItemStatusDescription,
 } from '@/types/enums/print-package-item-status-enum'
 
-/** 试卷母版/制卷未配置业务码 - 与后端 ResultCodeEnum.EXAM_MARK_PAPER_MASTER_NOT_CONFIGURED 对齐 */
-export const PAPER_MASTER_NOT_CONFIGURED_CODE = 20015
+/** 制卷设计未完成业务码 - 与后端 ResultCodeEnum.EXAM_MARK_LAYOUT_NOT_READY 对齐 */
+export const LAYOUT_NOT_READY_CODE = 20015
 
 type MarkBusinessError = Error & {
   code?: number | string
@@ -26,8 +26,8 @@ export const PRINT_PACKAGE_STATUS_TONE: Record<PrintPackageStatusCode, BadgeTone
   [PrintPackageStatusCode.GENERATED]: 'green',
 }
 
-/** 印刷包主流程 hint：名册与母版就绪后生成，再预览或下载 PDF */
-export const PRINT_PACKAGE_FLOW_HINT = '名册与母版就绪 → 生成印刷包 → 预览 / 下载'
+/** 印刷包主流程 hint：名册与制卷设计就绪后生成，再预览或下载 PDF */
+export const PRINT_PACKAGE_FLOW_HINT = '名册与制卷设计就绪 → 生成印刷包 → 预览 / 下载'
 
 export {
   ALL_PRINT_PACKAGE_STATUS_CODES,
@@ -54,10 +54,10 @@ export interface PrintPackageQueryRequest {
   printPackageId?: string
 }
 
-export interface PrintPackageVO {
+export interface ExamPrintPackageResponse {
   printPackageId: string
   examId: string
-  masterId: string
+  layoutId: string
   packageNo: string
   packageName: string
   packageFileId: string
@@ -79,13 +79,13 @@ export interface PrintPackagePageRequest extends QueryDto {
   examId: string
 }
 
-export function isPaperMasterNotConfiguredError(error: MarkBusinessError): boolean {
+export function isLayoutNotReadyError(error: MarkBusinessError): boolean {
   const code = error.code ?? error.response?.data?.code
-  return Number(code) === PAPER_MASTER_NOT_CONFIGURED_CODE
+  return Number(code) === LAYOUT_NOT_READY_CODE
 }
 
-export function getPrintPackage(request: PrintPackageQueryRequest): Promise<PrintPackageVO> {
-  return http.post<PrintPackageVO>('/api/mark/exams/print-package/detail', request)
+export function getPrintPackage(request: PrintPackageQueryRequest): Promise<ExamPrintPackageResponse> {
+  return http.post<ExamPrintPackageResponse>('/api/mark/exams/print-package/detail', request)
 }
 
 export function generatePrintPackage(request: PrintPackageGenerateRequest): Promise<string> {
@@ -94,6 +94,6 @@ export function generatePrintPackage(request: PrintPackageGenerateRequest): Prom
 
 export function pagePrintPackages(
   request: PrintPackagePageRequest,
-): Promise<PageResult<PrintPackageVO>> {
-  return http.post<PageResult<PrintPackageVO>>('/api/mark/exams/print-package/page', request)
+): Promise<PageResult<ExamPrintPackageResponse>> {
+  return http.post<PageResult<ExamPrintPackageResponse>>('/api/mark/exams/print-package/page', request)
 }

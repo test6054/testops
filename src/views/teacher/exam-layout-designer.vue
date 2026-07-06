@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
+import type {
+  ExamLayoutBlockDto,
+  ExamLayoutDocument,
+  ExamLayoutGenerateQuestionRequest,
+} from '@/apis/mark/exam-layout-design'
 import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
 import { message } from 'ant-design-vue'
 import { computed, inject, onMounted, ref } from 'vue'
@@ -33,7 +37,6 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
-import { ExamLayoutEntryKindCode } from '@/types/enums/exam-layout-entry-kind-enum'
 import { ALL_EXAM_LAYOUT_PAPER_SPEC_CODES } from '@/types/enums/exam-layout-paper-spec-enum'
 import { showUserError } from '@/utils/error-handler'
 import { resolvePaperSpecLabel, validateLayoutDocumentForSave } from '@/utils/exam-layout-designer'
@@ -61,6 +64,7 @@ const loading = ref(false)
 const saving = ref(false)
 const generating = ref(false)
 const detecting = ref(false)
+const previewing = ref(false)
 const layoutWritable = ref(true)
 const writeLockReason = ref<string>()
 const document = ref<ExamLayoutDocument | null>(null)
@@ -149,7 +153,9 @@ const pageLoading = computed(
   () => loading.value || (examDetailLoading.value && !examDetail.value),
 )
 const saveBlockingReasons = computed(() => validateLayoutDocumentForSave(document.value))
-const previewDisabled = computed(() => !materialLayoutMode.value || !document.value)
+const previewDisabled = computed(
+  () => !materialLayoutMode.value || !document.value || saveBlockingReasons.value.length > 0,
+)
 
 function goDesignerPrepStep(step: PrepStepCard): void {
   if (!examId.value) {
@@ -218,35 +224,38 @@ async function handleSave(): Promise<void> {
 }
 
 async function handlePreview(): Promise<void> {
-  if (!examId.value) {
+  if (!examId.value || !document.value) {
     return
   }
-  if (document.value?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE && document.value.sourcePdfFileId) {
-    previewPdfFileId.value = document.value.sourcePdfFileId
-    previewOpen.value = true
+  if (saveBlockingReasons.value.length > 0) {
+    message.warning(saveBlockingReasons.value[0])
     return
   }
-  if (document.value?.layoutEntryKind === ExamLayoutEntryKindCode.BLANK_SHEET && document.value.previewPdfFileId) {
-    previewPdfFileId.value = document.value.previewPdfFileId
-    previewOpen.value = true
-    return
-  }
+  previewing.value = true
   try {
-    const res = await previewExamLayoutDesign({ examId: examId.value })
+    const res = await previewExamLayoutDesign({
+      examId: examId.value,
+      document: { ...document.value, examId: examId.value, previewPdfFileId: undefined },
+    })
     previewPdfFileId.value = res.previewPdfFileId
     previewOpen.value = true
   } catch (error) {
     showUserError(error, '生成预览失败')
+  } finally {
+    previewing.value = false
   }
 }
 
-async function handleGenerateSheet(paperSpec: string): Promise<void> {
+async function handleGenerateSheet(
+  paperSpec: string,
+  questions: ExamLayoutGenerateQuestionRequest[],
+): Promise<void> {
   if (!examId.value || !layoutWritable.value) {
     return
   }
   generating.value = true
   try {
-    document.value = await generateExamLayoutSheet({ examId: examId.value, paperSpec })
+    document.value = await generateExamLayoutSheet({ examId: examId.value, paperSpec, questions })
     if (document.value.pages?.length) {
       currentPageNo.value = document.value.pages[0].pageNo
     }
@@ -318,7 +327,14 @@ onMounted(() => {
         </template>
         <template #actions>
           <UiButton variant="outline" @click="reviewOpen = true">复核微调</UiButton>
-          <UiButton variant="outline" :disabled="previewDisabled" @click="handlePreview">预览 PDF</UiButton>
+          <UiButton
+            variant="outline"
+            :loading="previewing"
+            :disabled="previewDisabled"
+            @click="handlePreview"
+          >
+            预览 PDF
+          </UiButton>
           <UiButton
             variant="primary"
             :loading="saving"

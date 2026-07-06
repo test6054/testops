@@ -1,4 +1,4 @@
-import type { ExamDetailVO } from '@/apis/mark/exam'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
 import type { SignalMetric } from '@/types/workbench'
 import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
 
@@ -27,7 +27,7 @@ export function filterLayoutDesignerPrepSteps(steps: PrepStepCard[]): PrepStepCa
 }
 
 /** 制卷形态 KPI：独立答卷页 / 整卷作答，与纸型、印张分离。 */
-function buildMaterialLayoutModeMetric(detail: ExamDetailVO): SignalMetric {
+function buildMaterialLayoutModeMetric(detail: ExamDetailResponse): SignalMetric {
   const modeLabel = detail.materialLayoutModeMessage
   if (!detail.materialLayoutMode) {
     return {
@@ -54,7 +54,7 @@ function buildMaterialLayoutModeMetric(detail: ExamDetailVO): SignalMetric {
 }
 
 /** 纸型 KPI：A3/A4 规格，与业务形态正交。 */
-function buildPaperTypeMetric(detail: ExamDetailVO): SignalMetric {
+function buildPaperTypeMetric(detail: ExamDetailResponse): SignalMetric {
   const label = detail.layoutPaperSpecMessage
   let helper: string | undefined
   if (!label) {
@@ -71,7 +71,7 @@ function buildPaperTypeMetric(detail: ExamDetailVO): SignalMetric {
   }
 }
 
-function buildScanSheetMetric(detail: ExamDetailVO): SignalMetric {
+function buildScanSheetMetric(detail: ExamDetailResponse): SignalMetric {
   const text = detail.scanPaperStyleText
   if (!text) {
     return {
@@ -100,13 +100,13 @@ function buildScanSheetMetric(detail: ExamDetailVO): SignalMetric {
 /**
  * 制卷设计器 Signal KPI：形态 → 纸型 → 印张 → 就绪项，四格语义固定、与制卷形态分支无关。
  */
-export function buildLayoutDesignerSignalMetrics(detail: ExamDetailVO): SignalMetric[] {
+export function buildLayoutDesignerSignalMetrics(detail: ExamDetailResponse): SignalMetric[] {
   if (!detail.materialLayoutMode) {
     return [buildMaterialLayoutModeMetric(detail)]
   }
 
   if (detail.materialLayoutMode === 'ANSWER_SHEET') {
-    const regionReady = detail.masterRegionReady === true
+    const regionReady = detail.layoutRegionReady === true
     return [
       buildMaterialLayoutModeMetric(detail),
       buildPaperTypeMetric(detail),
@@ -123,7 +123,7 @@ export function buildLayoutDesignerSignalMetrics(detail: ExamDetailVO): SignalMe
 
   if (detail.materialLayoutMode === 'FULL_PAPER') {
     const pageReady = detail.pageTemplateReady === true
-    const regionReady = detail.masterRegionReady === true
+    const regionReady = detail.layoutRegionReady === true
     return [
       buildMaterialLayoutModeMetric(detail),
       buildPaperTypeMetric(detail),
@@ -135,7 +135,7 @@ export function buildLayoutDesignerSignalMetrics(detail: ExamDetailVO): SignalMe
         tone: pageReady ? 'green' : 'orange',
         helper: pageReady
           ? (regionReady ? undefined : '身份区或客观区待补')
-          : '母版拆页尚未同步完成',
+          : '制卷页底图尚未同步完成',
       },
     ]
   }

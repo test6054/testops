@@ -1,6 +1,6 @@
 import type { ComputedRef, InjectionKey, Ref } from 'vue'
 import type {
-  ArchiveVolumeDetailVO,
+  ArchiveVolumeDetailResponse,
   ArchiveVolumeNavChainStepVO,
   ArchiveVolumeNextStepActionVO,
 } from '@/apis/mark/archive-volume'
@@ -22,7 +22,7 @@ export interface ArchiveVolumeSidebarTab {
 
 export interface ArchiveVolumeWorkbenchContext {
   volumeId: ComputedRef<string>
-  detail: Ref<ArchiveVolumeDetailVO | null>
+  detail: Ref<ArchiveVolumeDetailResponse | null>
   loading: Ref<boolean>
   activeTab: Ref<string>
   sidebarTabs: ComputedRef<ArchiveVolumeSidebarTab[]>
@@ -43,7 +43,7 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
   const router = useRouter()
 
   const volumeId = computed(() => String(route.params.volumeId ?? ''))
-  const detail = ref<ArchiveVolumeDetailVO | null>(null)
+  const detail = ref<ArchiveVolumeDetailResponse | null>(null)
   const loading = ref(true)
   const activeTab = ref<string>('materials')
 

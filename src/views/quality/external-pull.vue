@@ -77,7 +77,7 @@ import {
   EXTERNAL_PULL_SORT_DIRECTION_OPTIONS,
   ExternalPullSortDirectionCode,
 } from '@/types/enums/external-pull-sort-direction-enum'
-import { getUserProcessFailureMessage } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -915,7 +915,8 @@ async function cancelTask(record: ExternalPullTaskVO) {
 async function confirmResult(result: ExternalPullResultVO) {
   const confirmedRows = result.previewRows
   if (confirmedRows === null || confirmedRows === undefined) {
-    throw new Error('结果批次尚未生成预览数据，不能确认')
+    showUserError(null, '结果批次尚未生成预览数据，不能确认')
+    return
   }
   if (confirmedRows <= 0) {
     message.warning('预览行数为 0，无法确认导入')

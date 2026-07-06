@@ -109,7 +109,7 @@ export interface ReviewWindowPolicySaveRequest {
 }
 
 /** 复核窗口策略 - 对应 ExamReviewWindowPolicy */
-export interface ExamReviewWindowPolicyVO {
+export interface ExamReviewWindowPolicy {
   id: string
   tenantId?: string
   examId: string
@@ -129,16 +129,16 @@ export interface ExamReviewWindowPolicyVO {
  */
 export function saveReviewWindowPolicy(
   request: ReviewWindowPolicySaveRequest,
-): Promise<ExamReviewWindowPolicyVO> {
-  return http.post<ExamReviewWindowPolicyVO>('/api/exam/grade-review/window/save', request)
+): Promise<ExamReviewWindowPolicy> {
+  return http.post<ExamReviewWindowPolicy>('/api/exam/grade-review/window/save', request)
 }
 
 /**
  * 查询复核窗口策略
  * POST /api/exam/grade-review/window/get
  */
-export function getReviewWindowPolicy(examId: string): Promise<ExamReviewWindowPolicyVO | null> {
-  return http.post<ExamReviewWindowPolicyVO | null>('/api/exam/grade-review/window/get', { examId })
+export function getReviewWindowPolicy(examId: string): Promise<ExamReviewWindowPolicy | null> {
+  return http.post<ExamReviewWindowPolicy | null>('/api/exam/grade-review/window/get', { examId })
 }
 
 export function activateReviewWindow(examId: string): Promise<void> {
@@ -210,6 +210,8 @@ export interface GradeReviewQuestionRefVO {
   questionNo: string
   questionType: QuestionTypeCode
   fullScore: number
+  /** 题目当前教师复核分，供单题更正合成总分预检 */
+  currentTeacherReviewScore?: number
 }
 
 /** 复核申请佐证文件业务引用 */
@@ -241,10 +243,16 @@ export interface GradeReviewRequestItemResponse {
   reviewTime?: string
   createTime: string
   updateTime?: string
+  /** 当前考试分，供单题更正合成总分预检 */
+  currentExamScore?: number
+  /** 当前合成总成绩，供 cap60 预检 */
+  currentTotalScore?: number
+  /** 当前平时分，单题更正合成总分时参与计算 */
+  currentDailyScore?: number
 }
 
 /** 复核处理汇总 - 对应 GradeReviewSummaryResponse */
-export interface GradeReviewSummaryVO {
+export interface GradeReviewSummaryResponse {
   pendingRequestCount: number
   inReviewRequestCount: number
   approvedRequestCount: number
@@ -297,7 +305,7 @@ export function listReviewRequests(
 }
 
 /** 学生“我的复核申请”列表项 - 对应 StudentGradeReviewRequestItemResponse */
-export interface StudentGradeReviewRequestItemVO {
+export interface StudentGradeReviewRequestItemResponse {
   id: string
   tenantId?: string
   examId: string
@@ -330,8 +338,8 @@ export interface StudentGradeReviewRequestListQueryRequest extends QueryDto {
 
 export function listMyReviewRequests(
   request: StudentGradeReviewRequestListQueryRequest = {},
-): Promise<PageResult<StudentGradeReviewRequestItemVO>> {
-  return http.post<PageResult<StudentGradeReviewRequestItemVO>>(
+): Promise<PageResult<StudentGradeReviewRequestItemResponse>> {
+  return http.post<PageResult<StudentGradeReviewRequestItemResponse>>(
     '/api/exam/grade-review/request/student-list',
     request,
   )
@@ -345,8 +353,8 @@ export function countMyPendingReviewRequests(): Promise<number> {
   return http.post<number>('/api/exam/grade-review/request/student-pending-count', {})
 }
 
-export function getReviewSummary(examId: string): Promise<GradeReviewSummaryVO> {
-  return http.post<GradeReviewSummaryVO>('/api/exam/grade-review/summary', { examId })
+export function getReviewSummary(examId: string): Promise<GradeReviewSummaryResponse> {
+  return http.post<GradeReviewSummaryResponse>('/api/exam/grade-review/summary', { examId })
 }
 
 /**
@@ -378,7 +386,7 @@ export interface GradeCorrectionRequest {
 }
 
 /** 成绩更正记录 - 对应 ExamGradeCorrectionRecordResponse */
-export interface ExamGradeCorrectionRecordVO {
+export interface ExamGradeCorrectionRecordResponse {
   id: string
   tenantId: string
   examId: string
@@ -409,8 +417,8 @@ export interface ExamGradeCorrectionRecordVO {
  */
 export function createCorrection(
   request: GradeCorrectionRequest,
-): Promise<ExamGradeCorrectionRecordVO> {
-  return http.post<ExamGradeCorrectionRecordVO>('/api/exam/grade-review/correction/create', request)
+): Promise<ExamGradeCorrectionRecordResponse> {
+  return http.post<ExamGradeCorrectionRecordResponse>('/api/exam/grade-review/correction/create', request)
 }
 
 /**
@@ -425,8 +433,8 @@ export interface GradeCorrectionListQueryRequest extends QueryDto {
 
 export function listCorrections(
   request: GradeCorrectionListQueryRequest,
-): Promise<PageResult<ExamGradeCorrectionRecordVO>> {
-  return http.post<PageResult<ExamGradeCorrectionRecordVO>>(
+): Promise<PageResult<ExamGradeCorrectionRecordResponse>> {
+  return http.post<PageResult<ExamGradeCorrectionRecordResponse>>(
     '/api/exam/grade-review/correction/list',
     request,
   )
@@ -468,7 +476,7 @@ export const BATCH_CORRECTION_FLOW_HINT = BATCH_CORRECTION_MAIN_FLOW_STATUSES.ma
 ).join(' → ')
 
 /** 批量成绩更正计划 - 对应 ExamBatchGradeCorrectionPlan */
-export interface ExamBatchGradeCorrectionPlanVO {
+export interface ExamBatchGradeCorrectionPlan {
   id: string
   tenantId?: string
   examId: string
@@ -535,8 +543,8 @@ export interface BatchCorrectionPlanListQueryRequest extends QueryDto {
  */
 export function listBatchCorrectionPlans(
   request: BatchCorrectionPlanListQueryRequest,
-): Promise<PageResult<ExamBatchGradeCorrectionPlanVO>> {
-  return http.post<PageResult<ExamBatchGradeCorrectionPlanVO>>(
+): Promise<PageResult<ExamBatchGradeCorrectionPlan>> {
+  return http.post<PageResult<ExamBatchGradeCorrectionPlan>>(
     '/api/exam/grade-review/batch-correction/list',
     request,
   )
@@ -544,8 +552,8 @@ export function listBatchCorrectionPlans(
 
 export function createBatchCorrectionPlan(
   request: BatchCorrectionPlanCreateRequest,
-): Promise<ExamBatchGradeCorrectionPlanVO> {
-  return http.post<ExamBatchGradeCorrectionPlanVO>(
+): Promise<ExamBatchGradeCorrectionPlan> {
+  return http.post<ExamBatchGradeCorrectionPlan>(
     '/api/exam/grade-review/batch-correction/create',
     request,
   )
@@ -567,4 +575,37 @@ export function executeBatchCorrectionPlan(
   request: BatchCorrectionPlanExecuteRequest,
 ): Promise<void> {
   return http.post<void>('/api/exam/grade-review/batch-correction/execute', request)
+}
+
+/**
+ * 单题更正合成总成绩预检：当前考试分 − 当前题分 + 更正后题分 + 平时分。
+ * 缺少成绩快照时返回 null，由后端硬校验兜底。
+ */
+export function computeSingleQuestionCorrectionCompositeTotal(
+  request: GradeReviewRequestItemResponse,
+  layoutQuestionId: string,
+  afterScore: number,
+): number | null {
+  if (request.currentExamScore == null) {
+    return null
+  }
+  const questionRef = request.questionRefs.find(
+    (question) => question.layoutQuestionId === layoutQuestionId,
+  )
+  if (!questionRef || questionRef.currentTeacherReviewScore == null) {
+    return null
+  }
+  const dailyScore = request.currentDailyScore ?? 0
+  const correctedExamScore = request.currentExamScore - questionRef.currentTeacherReviewScore + afterScore
+  return correctedExamScore + dailyScore
+}
+
+/** 补考 cap60 下单题更正合成总分是否超限 */
+export function isMakeupCap60SingleQuestionCorrectionExceeded(
+  request: GradeReviewRequestItemResponse,
+  layoutQuestionId: string,
+  afterScore: number,
+): boolean {
+  const projected = computeSingleQuestionCorrectionCompositeTotal(request, layoutQuestionId, afterScore)
+  return projected != null && projected > 60
 }

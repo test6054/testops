@@ -71,7 +71,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveReadinessCellVO,
-  ArchiveReadinessMatrixVO,
+  ArchiveReadinessMatrixResponse,
   ArchiveReadinessTermColumnVO,
 } from '@/apis/mark/archive-volume'
 import type { SemesterCode } from '@/types/enums/semester-enum'
@@ -102,7 +102,7 @@ defineOptions({ name: 'ArchiveVolumeReadinessMatrix' })
 
 const router = useRouter()
 const loading = ref(false)
-const matrix = ref<ArchiveReadinessMatrixVO | null>(null)
+const matrix = ref<ArchiveReadinessMatrixResponse | null>(null)
 
 const filterModel = reactive<{
   endAcademicYear: string | undefined

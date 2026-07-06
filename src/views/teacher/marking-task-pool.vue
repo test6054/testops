@@ -269,12 +269,12 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
 import type { ExamStatusCode } from '@/apis/mark/exam'
 import type {
-  FormalSessionVO,
+  FormalSessionResponse,
   MarkingTaskClaimRequest,
   MarkingTaskQueryRequest,
-  MarkingTaskVO,
-  TeacherClaimContextVO,
-  TrialSessionVO,
+  MarkingTaskResponse,
+  TeacherClaimContextResponse,
+  TrialSessionResponse,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -409,7 +409,7 @@ const highlightTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 const batchMode = ref(false)
 const selectedRowKeys = ref<string[]>([])
-const batchSelectionAnchor = ref<MarkingTaskVO | null>(null)
+const batchSelectionAnchor = ref<MarkingTaskResponse | null>(null)
 const batchDrawerOpen = ref(false)
 const batchLayoutQuestionId = ref('')
 const batchFullScore = ref(0)
@@ -423,12 +423,12 @@ const selectedTasks = computed(() =>
   tasks.value.filter((task) => selectedRowKeys.value.includes(task.id)),
 )
 
-function isBatchSelectable(task: MarkingTaskVO): boolean {
+function isBatchSelectable(task: MarkingTaskResponse): boolean {
   return task.taskStatus === MarkingTaskStatusCode.ALLOCATED
     || task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS
 }
 
-function isSameBatchGroup(task: MarkingTaskVO, anchor: MarkingTaskVO): boolean {
+function isSameBatchGroup(task: MarkingTaskResponse, anchor: MarkingTaskResponse): boolean {
   if (task.taskUnit === 'WHOLE_PAPER' || anchor.taskUnit === 'WHOLE_PAPER') {
     return false
   }
@@ -588,7 +588,7 @@ const pageSignalMetrics = computed((): SignalMetric[] => {
   ]
 })
 
-const columns = computed<ColumnType<MarkingTaskVO>[]>(() => [
+const columns = computed<ColumnType<MarkingTaskResponse>[]>(() => [
   { title: '题目', key: 'question', width: 190 },
   { title: '匿名', key: 'anonymityMode', width: 72 },
   { title: '答卷', key: 'paperDisplay', width: 220 },
@@ -677,7 +677,7 @@ function highlightTaskRow(taskId: string): void {
   highlightTimers.set(taskId, timer)
 }
 
-function customTableRow(record: MarkingTaskVO) {
+function customTableRow(record: MarkingTaskResponse) {
   return {
     class: highlightedTaskIds.value.has(record.id) ? 'marking-task-pool-row--highlight' : '',
   }
@@ -725,9 +725,13 @@ const claimForm = reactive<MarkingTaskClaimRequest>({
   markingPhase: MarkingSessionPhaseCode.FORMAL,
 })
 
-const canClaim = computed(() => !!claimForm.sessionId.trim() && !!claimForm.groupId.trim())
+const canClaim = computed(
+  () => !sessionPausedAlert.value
+    && !!claimForm.sessionId.trim()
+    && !!claimForm.groupId.trim(),
+)
 
-const claimContext = computed<TeacherClaimContextVO | null>(() =>
+const claimContext = computed<TeacherClaimContextResponse | null>(() =>
   selectedExamId.value
     ? markTaskStore.getClaimContext(selectedExamId.value, markingPhase.value)
     : null,
@@ -756,7 +760,7 @@ function formatSessionSelectLabel(
   return label
 }
 
-function buildTrialSessionSelectOptions(sessions: TrialSessionVO[]) {
+function buildTrialSessionSelectOptions(sessions: TrialSessionResponse[]) {
   return sessions.map((session) => ({
     value: session.id,
     label: formatSessionSelectLabel(
@@ -766,7 +770,7 @@ function buildTrialSessionSelectOptions(sessions: TrialSessionVO[]) {
   }))
 }
 
-function buildFormalSessionSelectOptions(sessions: FormalSessionVO[]) {
+function buildFormalSessionSelectOptions(sessions: FormalSessionResponse[]) {
   return sessions.map((session) => ({
     value: session.id,
     label: formatSessionSelectLabel(
@@ -861,6 +865,10 @@ function onClaimGroupChange(): void {
 const claiming = ref(false)
 
 async function submitClaim(): Promise<void> {
+  if (sessionPausedAlert.value) {
+    message.warning('正评已暂停，暂停期间无法领取新任务')
+    return
+  }
   if (!canClaim.value) {
     message.warning(isTrialTaskPool.value ? '请选择题组和试评会话' : '请选择题组和正评会话')
     return
@@ -890,7 +898,7 @@ async function submitClaim(): Promise<void> {
   }
 }
 
-function goDetail(task: MarkingTaskVO): void {
+function goDetail(task: MarkingTaskResponse): void {
   if (!selectedExamId.value) return
   void router.push({
     name: 'TeacherExamWorkspaceMarkingTaskDetail',

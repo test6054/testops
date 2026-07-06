@@ -1,9 +1,5 @@
 import type { PageResult } from '@/types'
 
-export function requirePageList<T>(res: PageResult<T>, _moduleName: string): T[] {
-  return res.list
-}
-
 export function requireAllPages<T>(
   loadPage: (pageNum: number) => Promise<PageResult<T>>,
   _moduleName: string,
@@ -21,8 +17,4 @@ export function requireAllPages<T>(
     }
   }
   return load()
-}
-
-export function requireArrayResult<T>(res: T[], _moduleName: string): T[] {
-  return res
 }

@@ -175,9 +175,9 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
-  ExamGradingExperienceAssistPolicyVO,
-  ExamQuestionExperienceAssistBindingVO,
-  GradingExperienceAssistReadinessVO,
+  ExamGradingExperienceAssistPolicyResponse,
+  ExamQuestionExperienceAssistBindingResponse,
+  GradingExperienceAssistReadinessResponse,
 } from '@/apis/mark/grading-experience-assist'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
@@ -221,13 +221,13 @@ const loading = ref(false)
 const saving = ref(false)
 const bindingsLoading = ref(false)
 const unbindingQuestionId = ref<string>()
-const policy = ref<ExamGradingExperienceAssistPolicyVO | null>(null)
-const readiness = ref<GradingExperienceAssistReadinessVO | null>(null)
-const bindings = ref<ExamQuestionExperienceAssistBindingVO[]>([])
+const policy = ref<ExamGradingExperienceAssistPolicyResponse | null>(null)
+const readiness = ref<GradingExperienceAssistReadinessResponse | null>(null)
+const bindings = ref<ExamQuestionExperienceAssistBindingResponse[]>([])
 const bindingModalOpen = ref(false)
-const bindingTarget = ref<ExamQuestionExperienceAssistBindingVO | null>(null)
+const bindingTarget = ref<ExamQuestionExperienceAssistBindingResponse | null>(null)
 
-const bindingColumns: ColumnType<ExamQuestionExperienceAssistBindingVO>[] = [
+const bindingColumns: ColumnType<ExamQuestionExperienceAssistBindingResponse>[] = [
   { title: '题号', key: 'questionNo', dataIndex: 'questionNo', width: 80 },
   { title: '标答基线', key: 'baselineReady', width: 96 },
   { title: '定标状态', key: 'assistResolutionStatus', width: 108 },
@@ -312,7 +312,7 @@ const needsExplicitBindingCount = unboundSubjectiveCount
 
 function resolutionLabel(
   status?: GradingExperienceAssistQuestionResolutionCode,
-  row?: ExamQuestionExperienceAssistBindingVO,
+  row?: ExamQuestionExperienceAssistBindingResponse,
 ): string {
   if (!status) return '—'
   if (
@@ -403,12 +403,12 @@ async function handleDisable(): Promise<void> {
   }
 }
 
-function openBindingModal(row: ExamQuestionExperienceAssistBindingVO): void {
+function openBindingModal(row: ExamQuestionExperienceAssistBindingResponse): void {
   bindingTarget.value = row
   bindingModalOpen.value = true
 }
 
-function confirmUnbind(row: ExamQuestionExperienceAssistBindingVO): void {
+function confirmUnbind(row: ExamQuestionExperienceAssistBindingResponse): void {
   if (!examId.value || policy.value?.policyStatus === 'FROZEN') return
   void confirmAsync({
     title: '解除题目定标绑定？',
@@ -420,7 +420,7 @@ function confirmUnbind(row: ExamQuestionExperienceAssistBindingVO): void {
   })
 }
 
-async function handleUnbind(row: ExamQuestionExperienceAssistBindingVO): Promise<void> {
+async function handleUnbind(row: ExamQuestionExperienceAssistBindingResponse): Promise<void> {
   if (!examId.value) return
   unbindingQuestionId.value = row.layoutQuestionId
   try {

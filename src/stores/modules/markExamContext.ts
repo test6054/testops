@@ -15,7 +15,7 @@
  *
  * 持久化：仅保留 currentExamId，避免缓存陈旧 detail 与 list。
  */
-import type { ExamDetailVO, ExamPageQueryRequest, ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamDetailResponse, ExamPageQueryRequest, ExamSummaryResponse } from '@/apis/mark/exam'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { getExamDetail, pageExams } from '@/apis/mark/exam'
@@ -30,20 +30,20 @@ export const useMarkExamContextStore = defineStore(
     const currentExamId = ref<string>('')
 
     /** 已加载的考试列表（仅内存） */
-    const exams = ref<ExamSummaryVO[]>([])
+    const exams = ref<ExamSummaryResponse[]>([])
     const examsLoading = ref(false)
 
-    /** 当前考试详情缓存：examId → ExamDetailVO（仅内存） */
-    const detailCache = ref<Map<string, ExamDetailVO>>(new Map())
+    /** 当前考试详情缓存：examId → ExamDetailResponse（仅内存） */
+    const detailCache = ref<Map<string, ExamDetailResponse>>(new Map())
     const detailLoading = ref(false)
 
     /* ---------- Computed ---------- */
 
-    const currentExam = computed<ExamSummaryVO | null>(
+    const currentExam = computed<ExamSummaryResponse | null>(
       () => exams.value.find((e) => e.examId === currentExamId.value) ?? null,
     )
 
-    const currentExamDetail = computed<ExamDetailVO | null>(
+    const currentExamDetail = computed<ExamDetailResponse | null>(
       () => detailCache.value.get(currentExamId.value) ?? null,
     )
 
@@ -110,7 +110,7 @@ export const useMarkExamContextStore = defineStore(
     /**
      * 加载指定考试详情；强制刷新覆盖缓存。
      */
-    async function loadDetail(examId: string): Promise<ExamDetailVO> {
+    async function loadDetail(examId: string): Promise<ExamDetailResponse> {
       detailLoading.value = true
       try {
         const detail = await getExamDetail(examId)
@@ -141,7 +141,7 @@ export const useMarkExamContextStore = defineStore(
       useMarkStageStore().reset()
     }
 
-    function formatExamOptionLabel(exam: ExamSummaryVO): string {
+    function formatExamOptionLabel(exam: ExamSummaryResponse): string {
       return exam.examNo ? `${exam.examName}（${exam.examNo}）` : exam.examName
     }
 

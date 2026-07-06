@@ -91,6 +91,7 @@ export interface ExamLayoutDesignSaveRequest {
 
 export interface ExamLayoutDesignPreviewRequest {
   examId: string
+  document?: ExamLayoutDocument
 }
 
 export interface ExamLayoutPreviewResponse {
@@ -101,6 +102,16 @@ export interface ExamLayoutGenerateSheetRequest {
   examId: string
   paperSpec?: string
   identityNumberMode?: string
+  questions?: ExamLayoutGenerateQuestionRequest[]
+}
+
+export interface ExamLayoutGenerateQuestionRequest {
+  questionNo: string
+  questionType: 'OBJECTIVE' | 'SUBJECTIVE'
+  ocrScene: string
+  fullScore: number
+  sortNo: number
+  optionCount?: number
 }
 
 export interface ExamLayoutAutoDetectRequest {

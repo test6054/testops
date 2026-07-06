@@ -5,7 +5,7 @@
  * 历史：侧栏入口进入 /scanner-kiosk/history，不参与 StageBar
  */
 
-import type { KioskWorkflow } from './useExamKioskWorkflow'
+import type { ExamKioskWorkflow } from './useExamKioskWorkflow'
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { LocalScanJobStatusCode } from '@/apis/mark/scanner-agent-local'
@@ -65,7 +65,7 @@ const SCANNING_JOB_STATUS = new Set<LocalScanJobStatusCode>([
   LocalScanJobStatusCode.RETRYING,
 ])
 
-export function useStageMachine(workflow: KioskWorkflow) {
+export function useStageMachine(workflow: ExamKioskWorkflow) {
   const route = useRoute()
   const router = useRouter()
 

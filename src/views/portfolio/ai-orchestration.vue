@@ -4,7 +4,6 @@ import type {
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -31,6 +30,7 @@ import {
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showUserError } from '@/utils/error-handler'
+import { message } from '@/utils/feedback'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -164,12 +164,13 @@ async function loadRegisteredMaterial(materialId: string) {
   }
 }
 
-async function ensureMaterialRegistered(): Promise<string> {
+async function ensureMaterialRegistered(): Promise<string | null> {
   if (registeredMaterialId.value) {
     return registeredMaterialId.value
   }
   if (!targetTeacherId.value || !materialFileNodeId.value) {
-    throw new Error('请先选择教师并上传材料文件')
+    showUserError(null, '请先选择教师并上传材料文件')
+    return null
   }
   const materialTitle = materialFileName.value?.trim() || 'AI编排材料'
   const materialId = await portfolioMaterialApi.save({
@@ -188,7 +189,8 @@ function applyOrchestrationAnalysisDetail(detail: PortfolioAiAnalysisDetailVO) {
   } else if (detail.analysisType === PortfolioAiAnalysisTypeCode.MATERIAL_QA) {
     activeTab.value = 'ask'
   } else {
-    throw new Error('该 AI 任务不属于智能问数或政策核验')
+    showUserError(null, '该 AI 任务不属于智能问数或政策核验')
+    return
   }
   analysisDetail.value = detail
   if (detail.fileNodeId) {
@@ -207,11 +209,12 @@ async function pollAnalysis(taskId: string) {
         return
       }
       if (task.status === 'FAILED' || task.status === 'CANCELLED') {
-        throw new Error(`AI 任务失败：${task.status}`)
+        showUserError(null, 'AI 任务失败，请稍后重试或重新提交')
+        return
       }
       await sleep(2000)
     }
-    throw new Error('AI 任务超时，请稍后在任务列表查看')
+    showUserError(null, 'AI 任务超时，请稍后在任务列表查看')
   } finally {
     polling.value = false
   }
@@ -238,6 +241,9 @@ async function submitAsk() {
   analysisDetail.value = null
   try {
     const materialId = await ensureMaterialRegistered()
+    if (!materialId) {
+      return
+    }
     const submitResult = await portfolioAiOrchestrationApi.ask({
       teacherId: targetTeacherId.value!,
       materialId,
@@ -279,7 +285,11 @@ async function submitPolicyCheck() {
     let materialId: string | undefined
     let fileNodeId: string | undefined
     if (policyForm.attachMaterial && materialFileNodeId.value) {
-      materialId = await ensureMaterialRegistered()
+      const registeredMaterialId = await ensureMaterialRegistered()
+      if (!registeredMaterialId) {
+        return
+      }
+      materialId = registeredMaterialId
       fileNodeId = materialFileNodeId.value
     }
     const submitResult = await portfolioAiOrchestrationApi.policyCheck({

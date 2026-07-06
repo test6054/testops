@@ -1,13 +1,13 @@
-import type { ArchiveVolumeExamGateVO } from '@/apis/mark/archive-volume'
-import type { WorkbenchScorePanelVO } from '@/apis/mark/exam-progress'
-import type { FinalScoreRiskOverviewVO } from '@/apis/mark/exam-score'
+import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
+import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
+import type { FinalScoreRiskOverviewResponse } from '@/apis/mark/exam-score'
 import type { SignalMetric } from '@/types/workbench'
 import type { StatMetricLike } from '@/utils/stat-metric-helpers'
 
 /** 成绩确认页 Signal：有分布时对齐原型 renderScores 五 KPI，否则展示确认流程计数。 */
 export function buildScoreFinalizeSignalMetrics(
-  panel: WorkbenchScorePanelVO | null,
-  overview: FinalScoreRiskOverviewVO | null,
+  panel: ExamWorkbenchScorePanelResponse | null,
+  overview: FinalScoreRiskOverviewResponse | null,
 ): SignalMetric[] {
   if (panel?.distributionAvailable) {
     const total = overview?.totalCandidateCount ?? 0
@@ -89,9 +89,9 @@ export function buildScoreFinalizeSignalMetrics(
 
 /** 成绩发布页 Signal：有分布时展示统计 KPI + 已发布；否则展示发布流程计数。 */
 export function buildScorePublishSignalMetrics(
-  panel: WorkbenchScorePanelVO | null,
-  overview: FinalScoreRiskOverviewVO | null,
-  gate: ArchiveVolumeExamGateVO | null,
+  panel: ExamWorkbenchScorePanelResponse | null,
+  overview: FinalScoreRiskOverviewResponse | null,
+  gate: ArchiveVolumeExamGateResponse | null,
   publishableCount: number,
   listTotal: number,
 ): StatMetricLike[] {

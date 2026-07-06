@@ -377,11 +377,11 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
-  PassbackProgressVO,
-  PassbackRecordVO,
+  ExamTeachingAffairsSyncTask,
+  PassbackProgressResponse,
+  PassbackRecordResponse,
   ReconcileStatusCode,
   SyncTaskStatusCode,
-  SyncTaskVO,
 } from '@/apis/mark/teaching-affairs-sync'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -469,7 +469,7 @@ const loadFailed = ref(false)
 
 // ─── 同步任务 ─────────────────────────────────
 
-const syncTasks = ref<SyncTaskVO[]>([])
+const syncTasks = ref<ExamTeachingAffairsSyncTask[]>([])
 const syncLoading = ref(false)
 
 const syncFilterForm = reactive<{ status?: SyncTaskStatusCode }>({})
@@ -487,7 +487,7 @@ const syncFilterFields: FilterField[] = [
 
 const actionLoadingId = ref<string | undefined>(undefined)
 
-const syncColumns: ColumnType<SyncTaskVO>[] = [
+const syncColumns: ColumnType<ExamTeachingAffairsSyncTask>[] = [
   { title: '同步任务编号', key: 'id', dataIndex: 'id', width: 120 },
   { title: '外部系统', key: 'externalSystemType', width: 140 },
   { title: '同步类型', key: 'syncType', width: 120 },
@@ -565,7 +565,7 @@ function handleSyncFilterReset(): void {
   void loadSyncTasks()
 }
 
-function canExecute(record: SyncTaskVO): boolean {
+function canExecute(record: ExamTeachingAffairsSyncTask): boolean {
   // 后端 executeGradePassback 仅允许首次 PENDING 且无回写记录；重试后任务虽回到 PENDING 但记录已存在
   return record.taskStatus === 'PENDING' && record.retryCount === 0
 }
@@ -579,7 +579,7 @@ function canCancel(status: SyncTaskStatusCode): boolean {
 }
 
 async function withTaskAction(
-  record: SyncTaskVO,
+  record: ExamTeachingAffairsSyncTask,
   action: () => Promise<void>,
   hint: string,
 ): Promise<void> {
@@ -596,15 +596,15 @@ async function withTaskAction(
   }
 }
 
-function handleExecute(record: SyncTaskVO): void {
+function handleExecute(record: ExamTeachingAffairsSyncTask): void {
   void withTaskAction(record, () => executeGradePassback(record.id!), '已触发执行回写')
 }
 
-function handleRetry(record: SyncTaskVO): void {
+function handleRetry(record: ExamTeachingAffairsSyncTask): void {
   void withTaskAction(record, () => retrySyncTask(record.id!), '已重试')
 }
 
-function handleCancel(record: SyncTaskVO): void {
+function handleCancel(record: ExamTeachingAffairsSyncTask): void {
   void withTaskAction(record, () => cancelSyncTask(record.id!), '已取消')
 }
 
@@ -660,12 +660,12 @@ async function handleCreate(): Promise<void> {
 // ─── 详情抽屉 + 对账 ─────────────────────────────
 
 const taskDetailOpen = ref(false)
-const detailTask = ref<SyncTaskVO | null>(null)
+const detailTask = ref<ExamTeachingAffairsSyncTask | null>(null)
 const reconciling = ref(false)
 
 // 同步任务详情抽屉中的回写进度面板：通过 GET /passback/progress 拉取该任务下
 // PENDING / SENT / SUCCESS / FAILED / WITHDRAWN 各状态的回写记录计数。
-const detailProgress = ref<PassbackProgressVO | null>(null)
+const detailProgress = ref<PassbackProgressResponse | null>(null)
 const progressLoading = ref(false)
 
 const detailProgressPercent = computed<number>(() => {
@@ -697,7 +697,7 @@ async function loadProgress(syncTaskId: string): Promise<void> {
   }
 }
 
-function openTaskDetail(record: SyncTaskVO): void {
+function openTaskDetail(record: ExamTeachingAffairsSyncTask): void {
   detailTask.value = record
   taskDetailOpen.value = true
   detailProgress.value = null
@@ -706,7 +706,7 @@ function openTaskDetail(record: SyncTaskVO): void {
   }
 }
 
-function buildSyncTargetSummary(task: SyncTaskVO): string {
+function buildSyncTargetSummary(task: ExamTeachingAffairsSyncTask): string {
   const segments = [
     externalSystemTypeLabel(task.externalSystemType),
     syncTypeLabel(task.syncType),
@@ -722,7 +722,7 @@ async function handleRefreshProgress(): Promise<void> {
   }
 }
 
-async function handleReconcile(record: SyncTaskVO): Promise<void> {
+async function handleReconcile(record: ExamTeachingAffairsSyncTask): Promise<void> {
   if (!record.id) return
   reconciling.value = true
   try {
@@ -738,7 +738,7 @@ async function handleReconcile(record: SyncTaskVO): Promise<void> {
 
 // ─── 回写记录 ─────────────────────────────────
 
-const passbackRecords = ref<PassbackRecordVO[]>([])
+const passbackRecords = ref<PassbackRecordResponse[]>([])
 const passbackLoading = ref(false)
 
 const passbackFilterForm = reactive<{ syncTaskId?: string, passbackStatus?: PassbackStatusCode }>({})
@@ -785,7 +785,7 @@ const syncSignalMetrics = computed((): SignalMetric[] => [
   },
 ])
 
-const passbackColumns: ColumnType<PassbackRecordVO>[] = [
+const passbackColumns: ColumnType<PassbackRecordResponse>[] = [
   { title: '回写记录编号', key: 'id', dataIndex: 'id', width: 110 },
   { title: '同步任务', key: 'syncTaskId', dataIndex: 'syncTaskId', width: 100 },
   { title: '学生', key: 'studentName', dataIndex: 'studentName', width: 140 },

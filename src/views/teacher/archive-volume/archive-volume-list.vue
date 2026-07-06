@@ -294,12 +294,11 @@ import type { LocationQueryRaw } from 'vue-router'
 import type {
   ArchiveAppraisalStatusCode,
   ArchiveIntegrityStatusCode,
-  ArchiveRemediationTaskVO,
+  ArchiveRemediationTaskResponse,
   ArchiveVolumePageRequest,
+  ArchiveVolumeResponse,
   ArchiveVolumeSourceTypeCode,
-  ArchiveVolumeVO,
 } from '@/apis/mark/archive-volume'
-import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { ArchiveVolumeScenarioKey } from '@/composables/useArchiveVolumeFilterPresets'
 import type { SemesterCode } from '@/types/enums/semester-enum'
@@ -327,7 +326,6 @@ import {
 } from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import ArchiveDimPill from '@/components/archive-volume/ArchiveDimPill.vue'
-import { requireArrayResult } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -435,8 +433,8 @@ const batchRejecting = ref(false)
 const batchRejectOpen = ref(false)
 const importDrawerOpen = ref(false)
 const batchRejectReason = ref('')
-const volumes = ref<ArchiveVolumeVO[]>([])
-const openRemediationTasks = ref<ArchiveRemediationTaskVO[]>([])
+const volumes = ref<ArchiveVolumeResponse[]>([])
+const openRemediationTasks = ref<ArchiveRemediationTaskResponse[]>([])
 const remediationLoading = ref(false)
 const openRemediationVolumeIdSet = computed(
   () => new Set(openRemediationTasks.value.map((task) => task.volumeId)),
@@ -798,7 +796,7 @@ const filterFields = computed<FilterField[]>(() => [
   },
 ])
 
-const tableColumns = computed<ColumnsType<ArchiveVolumeVO>>(() => [
+const tableColumns = computed<ColumnsType<ArchiveVolumeResponse>>(() => [
   { title: '归档编号', key: 'archiveNo', dataIndex: 'archiveNo', width: 200 },
   { title: '归档标题', key: 'archiveTitle', dataIndex: 'archiveTitle', width: 220 },
   { title: '学年', key: 'academicYear', width: 100 },
@@ -810,7 +808,7 @@ const tableColumns = computed<ColumnsType<ArchiveVolumeVO>>(() => [
   { title: '操作', key: 'actions', width: 180, fixed: 'right' },
 ])
 
-function volumeRowClassName(record: ArchiveVolumeVO): string {
+function volumeRowClassName(record: ArchiveVolumeResponse): string {
   return archiveVolumeListRowClassName(record)
 }
 
@@ -822,18 +820,18 @@ function sourceTypeLabel(code: ArchiveVolumeSourceTypeCode) {
   return strictEnumLabel(ArchiveVolumeSourceTypeDescription, code, 'sourceType')
 }
 
-function canSubmitVolumeRow(record: ArchiveVolumeVO) {
+function canSubmitVolumeRow(record: ArchiveVolumeResponse) {
   return canSubmitArchiveVolumeRow(record, currentUserId.value)
 }
 
-function isSubmitBlockedByRemediation(record: ArchiveVolumeVO) {
+function isSubmitBlockedByRemediation(record: ArchiveVolumeResponse) {
   if (listTab.value !== 'mine' || volumeScope.value !== 'mine') return false
   if (record.volumeStatus !== 'COLLECTING') return false
   if (record.responsibleUserId !== currentUserId.value) return false
   return record.hasBlockingRemediationForSubmit === true
 }
 
-function shouldRemindVolume(record: ArchiveVolumeVO) {
+function shouldRemindVolume(record: ArchiveVolumeResponse) {
   if (listTab.value !== 'college') return false
   if (record.volumeStatus !== 'COLLECTING') return false
   if (!record.archiveDueTime) return false
@@ -842,10 +840,7 @@ function shouldRemindVolume(record: ArchiveVolumeVO) {
 
 async function loadDepartments() {
   try {
-    const departments = requireArrayResult<TenantSchoolDepartmentDto>(
-      await departmentCatalogApi.list(),
-      '院系',
-    )
+    const departments = await departmentCatalogApi.list()
     allDepartmentOptions.value = departments.map((item) => ({
       value: item.id,
       label: item.deptName,
@@ -1203,7 +1198,7 @@ function hasOpenRemediationForVolume(volumeId: string) {
   )
 }
 
-function goRemediationVolume(task: ArchiveRemediationTaskVO) {
+function goRemediationVolume(task: ArchiveRemediationTaskResponse) {
   if (isSecurityRemediationDiagnostic(task.diagnosticCode)) {
     void router.push({
       name: 'TeacherArchiveVolumeDetail',
@@ -1230,7 +1225,7 @@ function goRemediationVolumeByVolumeId(volumeId: string) {
   goDetail(volumeId)
 }
 
-function remindVolume(record: ArchiveVolumeVO) {
+function remindVolume(record: ArchiveVolumeResponse) {
   void (async () => {
     try {
       await remindArchiveDue(record.volumeId)

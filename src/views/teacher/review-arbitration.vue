@@ -81,8 +81,8 @@
               column,
               record,
             }: {
-            column: ColumnType<ReviewTaskItemVO>
-            record: ReviewTaskItemVO
+            column: ColumnType<ReviewTaskItemResponse>
+            record: ReviewTaskItemResponse
             }"
           >
             <template v-if="column.key === 'questionNo'">
@@ -150,7 +150,7 @@
             </template>
           </template>
 
-          <template #expandedRowRender="{ record }: { record: ReviewTaskItemVO }">
+          <template #expandedRowRender="{ record }: { record: ReviewTaskItemResponse }">
             <div class="workbench-score-bars">
               <div class="workbench-score-bars__title">AI 建议分占满分比</div>
               <div class="workbench-score-bar-item">
@@ -186,7 +186,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
-  ReviewTaskItemVO,
+  ReviewTaskItemResponse,
 } from '@/apis/mark/exam-review-task'
 import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -232,7 +232,7 @@ const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('仲裁
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const currentUserId = computed(() => userStore.userInfo.userId || '')
-const allTasks = ref<ReviewTaskItemVO[]>([])
+const allTasks = ref<ReviewTaskItemResponse[]>([])
 const loading = ref(false)
 const statusTab = ref<StatusTabKey>('pending')
 const filterQuestion = ref('')
@@ -390,7 +390,7 @@ const filteredTasks = computed(() => {
   return rows
 })
 
-const columns: ColumnType<ReviewTaskItemVO>[] = [
+const columns: ColumnType<ReviewTaskItemResponse>[] = [
   { title: '题号', key: 'questionNo', width: 96, align: 'center' },
   { title: '考生', key: 'student', width: 140 },
   { title: '答卷', key: 'paperDisplay', width: 160 },
@@ -410,7 +410,7 @@ function reviewStatusLabel(value: ReviewTaskStatusCode): string {
   return ReviewTaskStatusDescription[value]
 }
 
-function getSuggestedRatio(record: ReviewTaskItemVO): number | null {
+function getSuggestedRatio(record: ReviewTaskItemResponse): number | null {
   const full = record.fullScore
   const sug = record.aiScore
   if (sug == null || full <= 0) {
@@ -419,7 +419,7 @@ function getSuggestedRatio(record: ReviewTaskItemVO): number | null {
   return Math.round((sug / full) * 100)
 }
 
-function getSuggestedRatioTone(record: ReviewTaskItemVO): BadgeTone {
+function getSuggestedRatioTone(record: ReviewTaskItemResponse): BadgeTone {
   const ratio = getSuggestedRatio(record)
   if (ratio == null) {
     return 'gray'
@@ -433,7 +433,7 @@ function getSuggestedRatioTone(record: ReviewTaskItemVO): BadgeTone {
   return 'blue'
 }
 
-function getAiScoreBarWidth(record: ReviewTaskItemVO): number {
+function getAiScoreBarWidth(record: ReviewTaskItemResponse): number {
   const ratio = getSuggestedRatio(record)
   if (ratio == null) {
     return 0
@@ -441,7 +441,7 @@ function getAiScoreBarWidth(record: ReviewTaskItemVO): number {
   return Math.min(100, Math.max(8, ratio))
 }
 
-function formatAssignedTeacher(record: ReviewTaskItemVO): string {
+function formatAssignedTeacher(record: ReviewTaskItemResponse): string {
   if (record.assignedTeacherUserId && record.assignedTeacherUserId === currentUserId.value) {
     return '我'
   }
@@ -455,7 +455,7 @@ function formatAssignedTeacher(record: ReviewTaskItemVO): string {
 }
 
 /** 待领取或当前教师进行中的任务可进入仲裁工作台。 */
-function isActionableTask(record: ReviewTaskItemVO): boolean {
+function isActionableTask(record: ReviewTaskItemResponse): boolean {
   if (record.status === 'PENDING') {
     return true
   }
@@ -487,7 +487,7 @@ function resetFilters(): void {
   filterTeacher.value = ''
 }
 
-function handleExpandChange(expanded: boolean, record: ReviewTaskItemVO): void {
+function handleExpandChange(expanded: boolean, record: ReviewTaskItemResponse): void {
   if (expanded) {
     expandedRowKeys.value = [record.reviewTaskId]
     return
@@ -551,7 +551,7 @@ async function loadQuestionArbitrationTasks(): Promise<void> {
       '题目复核仲裁任务加载失败',
     ),
   ])
-  const merged = new Map<string, ReviewTaskItemVO>()
+  const merged = new Map<string, ReviewTaskItemResponse>()
   pendingItems.forEach((item) => {
     merged.set(item.reviewTaskId, item)
   })
@@ -583,7 +583,7 @@ async function loadTasks(): Promise<void> {
   }
 }
 
-function goReviewWorkspace(record: ReviewTaskItemVO): void {
+function goReviewWorkspace(record: ReviewTaskItemResponse): void {
   if (!selectedExamId.value) {
     return
   }
@@ -594,7 +594,7 @@ function goReviewWorkspace(record: ReviewTaskItemVO): void {
   })
 }
 
-function goReviewDetail(record: ReviewTaskItemVO): void {
+function goReviewDetail(record: ReviewTaskItemResponse): void {
   if (!selectedExamId.value) {
     return
   }

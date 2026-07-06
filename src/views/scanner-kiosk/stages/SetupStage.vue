@@ -145,7 +145,7 @@ function buildFirstScanCalibrationDialog() {
       content:
         `当前考试为整卷作答，纸型 ${paperStyle}。`
         + '首张送纸后请在「扫描中」预览整卷切分与页序是否正常；'
-        + '若偏差，请暂停并在 Web 端调整试卷母版后再继续批量扫描。',
+        + '若偏差，请暂停并在 Web 端调整制卷设计后再继续批量扫描。',
       okText: '已了解，开始扫描',
       cancelText: '先查看制卷摘要',
     }

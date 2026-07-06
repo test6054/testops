@@ -178,7 +178,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamLayoutQuestionViewResponse } from '@/apis/mark/exam-layout-question'
-import type { ExamQuestionAnalysisRecordVO, QuestionAnalysisListQueryRequest } from '@/apis/mark/question-analysis'
+import type { ExamQuestionAnalysisRecordResponse, QuestionAnalysisListQueryRequest } from '@/apis/mark/question-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
@@ -231,8 +231,8 @@ const shellProps = computed(() =>
     : { class: 'stats-card' },
 )
 
-const chartRows = ref<ExamQuestionAnalysisRecordVO[]>([])
-const tableRows = ref<ExamQuestionAnalysisRecordVO[]>([])
+const chartRows = ref<ExamQuestionAnalysisRecordResponse[]>([])
+const tableRows = ref<ExamQuestionAnalysisRecordResponse[]>([])
 const chartLoading = ref(false)
 const tableLoading = ref(false)
 const loading = computed(() => chartLoading.value || tableLoading.value)
@@ -245,7 +245,7 @@ const generationSummary = ref('')
 const tablePageNum = ref(1)
 const tablePageSize = ref(20)
 const tableTotal = ref(0)
-const brushSelectedRows = ref<ExamQuestionAnalysisRecordVO[]>([])
+const brushSelectedRows = ref<ExamQuestionAnalysisRecordResponse[]>([])
 const scatterSectionRef = ref<InstanceType<typeof MarkScatterSection> | null>(null)
 
 interface ScatterBrushSelectedBatch {
@@ -275,7 +275,7 @@ function clearQuestionFilter(): void {
   void reload()
 }
 
-const columns: ColumnType<ExamQuestionAnalysisRecordVO>[] = [
+const columns: ColumnType<ExamQuestionAnalysisRecordResponse>[] = [
   { title: '题目', key: 'question', width: 260 },
   buildNumericColumn({ title: '总人数', dataIndex: 'totalCount', key: 'totalCount', width: 90 }),
   { title: '正确率', key: 'correctRatio', width: 110, align: 'right' },
@@ -428,8 +428,8 @@ async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
 }
 
 function acceptQuestionAnalysisRows(
-  records: ExamQuestionAnalysisRecordVO[],
-): ExamQuestionAnalysisRecordVO[] {
+  records: ExamQuestionAnalysisRecordResponse[],
+): ExamQuestionAnalysisRecordResponse[] {
   return records
 }
 
@@ -443,14 +443,14 @@ function formatQuestionStemPreview(stem: string): string {
   return stem.length > 36 ? `${stem.slice(0, 36)}...` : stem
 }
 
-function correctRatio(r: ExamQuestionAnalysisRecordVO): string {
+function correctRatio(r: ExamQuestionAnalysisRecordResponse): string {
   const total = r.totalCount
   if (total <= 0) return '-'
   const ratio = (r.correctCount / total) * 100
   return `${ratio.toFixed(1)}%`
 }
 
-function getCorrectRatioType(r: ExamQuestionAnalysisRecordVO): 'danger' | 'warning' | undefined {
+function getCorrectRatioType(r: ExamQuestionAnalysisRecordResponse): 'danger' | 'warning' | undefined {
   const total = r.totalCount
   if (total <= 0) return undefined
   const ratio = r.correctCount / total
@@ -459,7 +459,7 @@ function getCorrectRatioType(r: ExamQuestionAnalysisRecordVO): 'danger' | 'warni
   return undefined
 }
 
-function questionTypeLabel(questionType: ExamQuestionAnalysisRecordVO['questionType']): string {
+function questionTypeLabel(questionType: ExamQuestionAnalysisRecordResponse['questionType']): string {
   return strictEnumLabel(QuestionTypeDescription, questionType, '题型')
 }
 

@@ -44,7 +44,7 @@ import type {
   ArchiveIntegrityMissingItemVO,
   ArchiveMaterialTypeCode,
   ArchiveVolumeCatalogLineVO,
-  ArchiveVolumeMaterialVO,
+  ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
 import { computed, onMounted, ref, watch } from 'vue'
 import {
@@ -73,7 +73,7 @@ const selectedKeys = defineModel<string[]>('selectedKeys', { default: () => [] }
 
 const props = defineProps<{
   volumeId: string
-  materials: ArchiveVolumeMaterialVO[]
+  materials: ArchiveVolumeMaterialResponse[]
   missingItems: ArchiveIntegrityMissingItemVO[]
   catalogStatus?: ArchiveCatalogStatusCode
 }>()

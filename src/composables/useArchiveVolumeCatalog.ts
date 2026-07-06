@@ -1,7 +1,7 @@
 import type {
   ArchiveVolumeCatalogLineSaveRequest,
   ArchiveVolumeCatalogLineVO,
-  ArchiveVolumeCatalogVO
+  ArchiveVolumeCatalogResponse
 } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { computed, ref } from 'vue'
@@ -24,7 +24,7 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
   const saving = ref(false)
   const confirming = ref(false)
   const exporting = ref(false)
-  const catalog = ref<ArchiveVolumeCatalogVO | null>(null)
+  const catalog = ref<ArchiveVolumeCatalogResponse | null>(null)
   const editableLines = ref<ArchiveVolumeCatalogLineVO[]>([])
 
   const catalogStatus = computed(() => catalog.value?.catalogStatus ?? ArchiveCatalogStatusCode.NOT_STARTED)

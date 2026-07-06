@@ -2,7 +2,7 @@
 import type {
   ArchiveVolumeSelfCheckConfirmRequest,
   ArchiveVolumeSignOffRoleCode,
-  ArchiveVolumeSubmitChecklistVO,
+  ArchiveVolumeSubmitChecklistResponse,
 } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
@@ -30,7 +30,7 @@ const emit = defineEmits<{
 
 const loading = ref(false)
 const submitting = ref(false)
-const checklist = ref<ArchiveVolumeSubmitChecklistVO | null>(null)
+const checklist = ref<ArchiveVolumeSubmitChecklistResponse | null>(null)
 const materialCompleteConfirmed = ref(false)
 const gradingNormConfirmed = ref(false)
 const reason = ref('')
@@ -79,7 +79,7 @@ watch(
   },
 )
 
-function resetFormFromChecklist(data: ArchiveVolumeSubmitChecklistVO) {
+function resetFormFromChecklist(data: ArchiveVolumeSubmitChecklistResponse) {
   materialCompleteConfirmed.value = false
   gradingNormConfirmed.value = false
   reason.value = ''

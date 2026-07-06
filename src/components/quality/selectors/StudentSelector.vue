@@ -11,7 +11,6 @@ import { getStudentsByClass } from '@/apis/edu/class'
 import { listExamClassStudents } from '@/apis/mark/exam-scope'
 import { showUserError } from '@/utils/error-handler'
 import { readAllPages } from '@/utils/page-result'
-import { requirePageList } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -87,7 +86,7 @@ async function loadOptions(keyword?: string) {
         keyword: keyword ?? searchText.value ?? undefined,
         classId: props.classId,
       })
-      options.value = requirePageList(page, '学生')
+      options.value = page.list
     }
   } catch (e) {
     showUserError(e, '学生列表加载失败')

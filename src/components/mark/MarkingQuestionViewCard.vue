@@ -22,7 +22,7 @@
         <MarkingScanMaterialPanel
           :slice-file-id="questionView.sliceFileId"
           :source-scan-page="questionView.sourceScanPage"
-          :master-paper-page="questionView.masterPaperPage"
+          :layout-paper-page="questionView.layoutPaperPage"
           :confidential="confidential"
           :exam-label="examLabel"
           :watermark-lines="watermarkLines"
@@ -75,7 +75,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { MarkingQuestionViewVO } from '@/apis/mark/marking-organization'
+import type { MarkingQuestionViewResponse } from '@/apis/mark/marking-organization'
 import { FileImageOutlined } from '@ant-design/icons-vue'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -89,7 +89,7 @@ defineProps<{
   showWholePaperPlaceholder: boolean
   loading: boolean
   loaded: boolean
-  questionView: MarkingQuestionViewVO | null
+  questionView: MarkingQuestionViewResponse | null
   confidential?: boolean
   examLabel?: string
   watermarkLines?: string[]

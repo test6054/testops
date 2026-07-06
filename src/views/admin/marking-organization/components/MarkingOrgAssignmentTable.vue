@@ -58,12 +58,12 @@
             <span class="org-assignment__muted">{{ summaryQuestionCount }} 题</span>
           </a-table-summary-cell>
           <a-table-summary-cell :index="2" />
-          <a-table-summary-cell :index="3" align="right">
-            <strong>{{ summaryTotalScore }}</strong>
+          <a-table-summary-cell :index="3">
+            <strong class="org-assignment__summary-num">{{ summaryTotalScore }}</strong>
           </a-table-summary-cell>
           <a-table-summary-cell :index="4" />
-          <a-table-summary-cell :index="5" align="right">
-            <strong>{{ summaryReviewerCount }}</strong>
+          <a-table-summary-cell :index="5">
+            <strong class="org-assignment__summary-num">{{ summaryReviewerCount }}</strong>
           </a-table-summary-cell>
           <a-table-summary-cell :index="6" />
           <a-table-summary-cell :index="7" />
@@ -81,8 +81,8 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
-  AllocationPolicyVO,
-  QuestionMarkingGroupVO,
+  AllocationPolicyResponse,
+  QuestionMarkingGroupResponse,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -103,8 +103,8 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 defineOptions({ name: 'MarkingOrgAssignmentTable' })
 
 const props = defineProps<{
-  groups: QuestionMarkingGroupVO[]
-  allocationPolicies: AllocationPolicyVO[]
+  groups: QuestionMarkingGroupResponse[]
+  allocationPolicies: AllocationPolicyResponse[]
   canManage: boolean
 }>()
 
@@ -142,7 +142,7 @@ const emptyDescription = computed(() =>
   props.groups.length === 0 ? '暂无题组，创建后可配置题目范围与阅卷教师' : '暂无数据',
 )
 
-function resolveGroupPolicy(groupId: string): AllocationPolicyVO | undefined {
+function resolveGroupPolicy(groupId: string): AllocationPolicyResponse | undefined {
   const groupPolicy = props.allocationPolicies.find((item) => item.groupId === groupId)
   if (groupPolicy) return groupPolicy
   return props.allocationPolicies.find((item) => item.groupId == null)
@@ -152,7 +152,7 @@ function isEditable(status: QuestionMarkingGroupStatusCode): boolean {
   return status !== QuestionMarkingGroupStatusCode.GROUP_CLOSED
 }
 
-function resolveTypeLabel(group: QuestionMarkingGroupVO): { label: string, tone: BadgeTone } {
+function resolveTypeLabel(group: QuestionMarkingGroupResponse): { label: string, tone: BadgeTone } {
   if (group.questions.length === 0) {
     return { label: '整卷', tone: 'gray' }
   }
@@ -255,6 +255,12 @@ const summaryReviewerCount = computed(() => {
   &__strategy {
     font-size: 12px;
     color: var(--dp-text-secondary);
+  }
+
+  &__summary-num {
+    display: block;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
   }
 
   &__footer {

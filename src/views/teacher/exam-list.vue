@@ -393,7 +393,7 @@ import type {
   ExamPageQueryRequest,
   ExamScorePolicyCode,
   ExamUpdateRequest,
-  ExamWorkbenchSummaryVO,
+  ExamWorkbenchSummaryResponse,
 } from '@/apis/mark/exam'
 import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
@@ -580,9 +580,9 @@ watch(
 
 type ExamScoreCompositionMode = 'EXAM_ONLY' | 'EXAM_WITH_DAILY'
 
-const priorityDataSource = ref<ExamWorkbenchSummaryVO[]>([])
-const ongoingDataSource = ref<ExamWorkbenchSummaryVO[]>([])
-const allDataSource = ref<ExamWorkbenchSummaryVO[]>([])
+const priorityDataSource = ref<ExamWorkbenchSummaryResponse[]>([])
+const ongoingDataSource = ref<ExamWorkbenchSummaryResponse[]>([])
+const allDataSource = ref<ExamWorkbenchSummaryResponse[]>([])
 const priorityLoading = ref(false)
 const ongoingLoading = ref(false)
 const allLoading = ref(false)
@@ -595,7 +595,7 @@ const allBadgeTotal = ref(0)
 const stalePushTotal = ref(0)
 const listLoadFailed = ref(false)
 
-const allTabColumns: ColumnType<ExamWorkbenchSummaryVO>[] = [
+const allTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
   {
     title: '考试名称',
     dataIndex: 'examName',
@@ -613,7 +613,7 @@ const allTabColumns: ColumnType<ExamWorkbenchSummaryVO>[] = [
   { title: '操作', key: 'actions', width: 260, fixed: 'right' },
 ]
 
-const workbenchTabColumns: ColumnType<ExamWorkbenchSummaryVO>[] = [
+const workbenchTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
   {
     title: '考试名称',
     dataIndex: 'examName',
@@ -634,7 +634,7 @@ const workbenchTabColumns: ColumnType<ExamWorkbenchSummaryVO>[] = [
   { title: '操作', key: 'actions', width: 260, fixed: 'right' },
 ]
 
-const ongoingTabColumns: ColumnType<ExamWorkbenchSummaryVO>[] = [
+const ongoingTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
   {
     title: '考试名称',
     dataIndex: 'examName',
@@ -684,7 +684,7 @@ function applyExamListDeepLinkFromRoute(): void {
   }
 }
 
-const tableColumns = computed<ColumnType<ExamWorkbenchSummaryVO>[]>(() => {
+const tableColumns = computed<ColumnType<ExamWorkbenchSummaryResponse>[]>(() => {
   if (listTab.value === 'all') {
     return allTabColumns
   }
@@ -694,7 +694,7 @@ const tableColumns = computed<ColumnType<ExamWorkbenchSummaryVO>[]>(() => {
   return workbenchTabColumns
 })
 
-const currentDataSource = computed<ExamWorkbenchSummaryVO[]>(() => {
+const currentDataSource = computed<ExamWorkbenchSummaryResponse[]>(() => {
   if (listTab.value === 'priority') {
     return priorityDataSource.value
   }
@@ -856,20 +856,20 @@ function handleContextFilterChange(): void {
   void reloadListAndCounts()
 }
 
-function getExamGradingPercent(exam: ExamWorkbenchSummaryVO): number {
+function getExamGradingPercent(exam: ExamWorkbenchSummaryResponse): number {
   const total = exam.totalQuestionGradeCount
   if (total <= 0) return 0
   return Math.round((exam.confirmedQuestionGradeCount / total) * 100)
 }
 
-function progressFillClass(exam: ExamWorkbenchSummaryVO): string {
+function progressFillClass(exam: ExamWorkbenchSummaryResponse): string {
   const percent = getExamGradingPercent(exam)
   if (percent >= 100) return 'exam-list-page__progress-fill--success'
   if (percent < 50) return 'exam-list-page__progress-fill--warning'
   return ''
 }
 
-function progressPercentClass(exam: ExamWorkbenchSummaryVO): string {
+function progressPercentClass(exam: ExamWorkbenchSummaryResponse): string {
   const percent = getExamGradingPercent(exam)
   if (percent >= 100) return 'exam-list-page__progress-pct--ok'
   if (percent <= 0) return 'exam-list-page__progress-pct--zero'
@@ -877,7 +877,7 @@ function progressPercentClass(exam: ExamWorkbenchSummaryVO): string {
   return ''
 }
 
-function isExamPriorityRow(exam: ExamWorkbenchSummaryVO): boolean {
+function isExamPriorityRow(exam: ExamWorkbenchSummaryResponse): boolean {
   if (listTab.value === 'priority') return true
   if (exam.status !== ExamStatusCode.ACTIVE) return false
   return (
@@ -888,7 +888,7 @@ function isExamPriorityRow(exam: ExamWorkbenchSummaryVO): boolean {
 }
 
 /** 考试名列副行：编号 · 院系（院系名由后端按 reference_department_id 反查）。 */
-function examListExamSubMeta(exam: ExamWorkbenchSummaryVO): string {
+function examListExamSubMeta(exam: ExamWorkbenchSummaryResponse): string {
   const parts: string[] = []
   if (exam.examNo?.trim()) {
     parts.push(exam.examNo.trim())
@@ -899,17 +899,17 @@ function examListExamSubMeta(exam: ExamWorkbenchSummaryVO): string {
   return parts.join(' · ')
 }
 
-function isExamArchiveReady(exam: ExamWorkbenchSummaryVO): boolean {
+function isExamArchiveReady(exam: ExamWorkbenchSummaryResponse): boolean {
   return exam.status === ExamStatusCode.CLOSED && getExamGradingPercent(exam) >= 100
 }
 
-function examListCustomRow(record: ExamWorkbenchSummaryVO) {
+function examListCustomRow(record: ExamWorkbenchSummaryResponse) {
   return {
     onClick: () => goSmartExamEntry(record),
   }
 }
 
-function examListRowClassName(record: ExamWorkbenchSummaryVO): string {
+function examListRowClassName(record: ExamWorkbenchSummaryResponse): string {
   if (record.status === ExamStatusCode.CLOSED) return ''
   if (isExamPriorityRow(record)) return 'exam-list-row--priority'
   if (record.status === ExamStatusCode.ACTIVE) return 'exam-list-row--active'
@@ -917,7 +917,7 @@ function examListRowClassName(record: ExamWorkbenchSummaryVO): string {
 }
 
 /** 从列表行内嵌进度字段提取待确认题数、扫描异常与进行中批阅任务数。 */
-function resolveExamProgressSnapshot(exam: ExamWorkbenchSummaryVO): {
+function resolveExamProgressSnapshot(exam: ExamWorkbenchSummaryResponse): {
   pendingGrades: number
   scanAttention: number
   openMarking: number
@@ -929,20 +929,20 @@ function resolveExamProgressSnapshot(exam: ExamWorkbenchSummaryVO): {
   }
 }
 
-function getPendingConfirmCount(exam: ExamWorkbenchSummaryVO): number {
+function getPendingConfirmCount(exam: ExamWorkbenchSummaryResponse): number {
   return resolveExamProgressSnapshot(exam).pendingGrades
 }
 
-function getScanAttentionCount(exam: ExamWorkbenchSummaryVO): number {
+function getScanAttentionCount(exam: ExamWorkbenchSummaryResponse): number {
   return resolveExamProgressSnapshot(exam).scanAttention
 }
 
-function getOpenMarkingCount(exam: ExamWorkbenchSummaryVO): number {
+function getOpenMarkingCount(exam: ExamWorkbenchSummaryResponse): number {
   return resolveExamProgressSnapshot(exam).openMarking
 }
 
 /** 教师视角：主考为自己创建；其余可见考试均为被分配批阅任务或题组评阅。 */
-function examParticipationLabel(exam: ExamWorkbenchSummaryVO): string {
+function examParticipationLabel(exam: ExamWorkbenchSummaryResponse): string {
   if (!!exam.createUser && exam.createUser === userStore.userInfo.userId) {
     return '主考'
   }
@@ -952,7 +952,7 @@ function examParticipationLabel(exam: ExamWorkbenchSummaryVO): string {
   return '评阅'
 }
 
-function examParticipationTone(exam: ExamWorkbenchSummaryVO): BadgeTone {
+function examParticipationTone(exam: ExamWorkbenchSummaryResponse): BadgeTone {
   if (!!exam.createUser && exam.createUser === userStore.userInfo.userId) {
     return 'green'
   }
@@ -1118,20 +1118,20 @@ function handleUiPageChange(page: { current: number, pageSize: number }): void {
   void loadTabData(scope)
 }
 
-// helper 严格 typed 接收后端 API 对象 ExamWorkbenchSummaryVO，模板侧使用表格 slot record 保留当前行引用。
-function examStatusTone(exam: ExamWorkbenchSummaryVO): BadgeTone {
+// helper 严格 typed 接收后端 API 对象 ExamWorkbenchSummaryResponse，模板侧使用表格 slot record 保留当前行引用。
+function examStatusTone(exam: ExamWorkbenchSummaryResponse): BadgeTone {
   return strictEnumTone(EXAM_STATUS_TONE, exam.status, '考试状态')
 }
 
-function examStatusLabel(exam: ExamWorkbenchSummaryVO): string {
+function examStatusLabel(exam: ExamWorkbenchSummaryResponse): string {
   return strictEnumLabel(ExamStatusDescription, exam.status, '考试状态')
 }
 
-function examKindTone(exam: ExamWorkbenchSummaryVO): BadgeTone {
+function examKindTone(exam: ExamWorkbenchSummaryResponse): BadgeTone {
   return strictEnumTone(EXAM_KIND_TONE, exam.examKind, '考试性质')
 }
 
-function examKindLabel(exam: ExamWorkbenchSummaryVO): string {
+function examKindLabel(exam: ExamWorkbenchSummaryResponse): string {
   if (exam.examKindMessage?.trim()) {
     return exam.examKindMessage.trim()
   }
@@ -1144,7 +1144,7 @@ function examKindLabel(exam: ExamWorkbenchSummaryVO): string {
  * ACTIVE：扫描异常 → 准备 → 复核 → 阅卷 → 成绩确认。
  * CLOSED：进入考试概览，工作台内各阶段为只读查看。
  */
-function goSmartExamEntry(exam: ExamWorkbenchSummaryVO): void {
+function goSmartExamEntry(exam: ExamWorkbenchSummaryResponse): void {
   const examId = exam.examId
   const blockingScanAttention = countBlockingScanAttention(
     exam.scanAttentionCount,
@@ -1160,7 +1160,7 @@ function goSmartExamEntry(exam: ExamWorkbenchSummaryVO): void {
   void router.push({ name: routeName, params: { examId } })
 }
 
-function goMarkingTaskPool(exam: ExamWorkbenchSummaryVO): void {
+function goMarkingTaskPool(exam: ExamWorkbenchSummaryResponse): void {
   void router.push({ name: 'TeacherExamWorkspaceMarkingTaskPool', params: { examId: exam.examId } })
 }
 
@@ -1308,7 +1308,7 @@ function goCreateExam(): void {
   void router.push({ name: 'TeacherExamCreate' })
 }
 
-async function openEditModal(exam: ExamWorkbenchSummaryVO): Promise<void> {
+async function openEditModal(exam: ExamWorkbenchSummaryResponse): Promise<void> {
   resetExamForm()
   editingExamId.value = exam.examId
   examForm.courseId = exam.courseId ?? null
@@ -1396,11 +1396,11 @@ async function handleSave(): Promise<void> {
   }
 }
 
-function isExamOwner(exam: ExamWorkbenchSummaryVO): boolean {
+function isExamOwner(exam: ExamWorkbenchSummaryResponse): boolean {
   return !!exam.createUser && exam.createUser === userStore.userInfo.userId
 }
 
-function confirmClose(exam: ExamWorkbenchSummaryVO): void {
+function confirmClose(exam: ExamWorkbenchSummaryResponse): void {
   void (async () => {
     try {
       const gate = await getArchiveVolumeExamGate(exam.examId)
@@ -1444,7 +1444,7 @@ function confirmClose(exam: ExamWorkbenchSummaryVO): void {
   })()
 }
 
-function confirmDelete(exam: ExamWorkbenchSummaryVO): void {
+function confirmDelete(exam: ExamWorkbenchSummaryResponse): void {
   void confirmAsync({
     title: `删除考试 ${exam.examName}？`,
     content: '已进入模板、考生、印刷、扫描或成绩流程的考试不能删除。',

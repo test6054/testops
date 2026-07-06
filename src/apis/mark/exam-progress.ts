@@ -1,7 +1,7 @@
 import type { ExamStatusCode } from './exam'
 import type { ReviewTaskStatusCode } from './exam-review-task'
-import type { FinalScoreRiskOverviewVO } from './exam-score'
-import type { FormalSessionVO, TrialSessionVO } from './marking-organization'
+import type { FinalScoreRiskOverviewResponse } from './exam-score'
+import type { FormalSessionResponse, TrialSessionResponse } from './marking-organization'
 /**
  * 阅卷考试进度与工作台阶段快照 API - 对接 /api/mark/exams/marking-progress 与 workbench-stage-snapshot。
  */
@@ -19,7 +19,7 @@ export {
 } from '@/types/enums/exam-workbench-next-action-key-enum'
 
 /** 阅卷进度响应 - 对应 MarkingProgressResponse */
-export interface MarkingProgressVO {
+export interface MarkingProgressResponse {
   examId: string
   /** 试卷数量（含未绑定 / 冲突 / 已绑定的全部扫描卷面） */
   paperCount: number
@@ -35,18 +35,18 @@ export interface MarkingProgressVO {
   scanAttentionCount: number
   /** 待教师复核的批改结果数（grade_status = NEED_REVIEW） */
   needReviewGradeResultCount: number
-  reviewTaskStatusSummaryList: ReviewTaskStatusSummaryVO[]
-  reviewQuestionProgressList: ReviewQuestionProgressItemVO[]
+  reviewTaskStatusSummaryList: ReviewTaskStatusSummaryResponse[]
+  reviewQuestionProgressList: ReviewQuestionProgressItemResponse[]
 }
 
 /** 复核任务状态汇总项 - 对应 ReviewTaskStatusSummaryResponse */
-export interface ReviewTaskStatusSummaryVO {
+export interface ReviewTaskStatusSummaryResponse {
   statusCode: ReviewTaskStatusCode
   taskCount: number
 }
 
 /** 按题目聚合的复核进度项 - 对应 ReviewQuestionProgressItemResponse */
-export interface ReviewQuestionProgressItemVO {
+export interface ReviewQuestionProgressItemResponse {
   layoutQuestionId: string
   questionNo: string
   questionType: QuestionTypeCode
@@ -70,7 +70,7 @@ export {
 } from '@/types/enums/exam-workbench-stage-status-enum'
 
 /** 考试工作台阶段项 - 对应 ExamWorkbenchStageItemResponse */
-export interface ExamWorkbenchStageItemVO {
+export interface ExamWorkbenchStageItemResponse {
   key: ExamWorkbenchStageKeyCode
   title: string
   status: WorkbenchStageStatusCode
@@ -78,7 +78,7 @@ export interface ExamWorkbenchStageItemVO {
 }
 
 /** 考试工作台准备步骤 - 对应 ExamWorkbenchPrepStepResponse */
-export interface ExamWorkbenchPrepStepVO {
+export interface ExamWorkbenchPrepStepResponse {
   key: string
   title: string
   status: WorkbenchStageStatusCode
@@ -87,7 +87,7 @@ export interface ExamWorkbenchPrepStepVO {
 }
 
 /** 工作台下一步动作 - 对应 ExamWorkbenchNextActionResponse */
-export interface WorkbenchNextActionVO {
+export interface ExamWorkbenchNextActionResponse {
   actionKey: WorkbenchNextActionKeyCode
   label: string
   enabled: boolean
@@ -96,7 +96,7 @@ export interface WorkbenchNextActionVO {
 }
 
 /** 阅卷任务状态汇总 - 对应 ExamWorkbenchMarkingTaskSummaryResponse */
-export interface WorkbenchMarkingTaskSummaryVO {
+export interface ExamWorkbenchMarkingTaskSummaryResponse {
   totalTaskCount: number
   finalizedTaskCount: number
   pendingTaskCount: number
@@ -104,7 +104,7 @@ export interface WorkbenchMarkingTaskSummaryVO {
 }
 
 /** 快速统计 - 对应 ExamWorkbenchQuickStatsResponse */
-export interface WorkbenchQuickStatsVO {
+export interface ExamWorkbenchQuickStatsResponse {
   reviewerCount: number
   groupCount: number
   recycledTaskCount: number
@@ -113,14 +113,14 @@ export interface WorkbenchQuickStatsVO {
 }
 
 /** 质量概览条 - 对应 ExamWorkbenchQualityOverviewItemResponse */
-export interface WorkbenchQualityOverviewItemVO {
+export interface ExamWorkbenchQualityOverviewItemResponse {
   reviewerUserId: string
   reviewerDisplayName: string
   consistencyRate: number
 }
 
 /** 考试级质量汇总 - 对应 ExamWorkbenchQualitySummaryResponse */
-export interface WorkbenchQualitySummaryVO {
+export interface ExamWorkbenchQualitySummaryResponse {
   /** 考试级评阅一致性率；抽检证据不足时为 null */
   examConsistencyRate: number | null
   consistencyReviewerCount: number
@@ -134,18 +134,18 @@ export interface WorkbenchQualitySummaryVO {
 }
 
 /** 质量雷达维度项 - 对应 ExamWorkbenchQualityDimensionItemResponse */
-export interface WorkbenchQualityDimensionItemVO {
+export interface ExamWorkbenchQualityDimensionItemResponse {
   dimensionCode: string
   dimensionLabel: string
   score: number | null
 }
 
 /** 考试质量看板面板 - 对应 ExamWorkbenchQualityPanelResponse */
-export interface WorkbenchQualityPanelVO {
+export interface ExamWorkbenchQualityPanelResponse {
   examId: string
-  qualitySummary: WorkbenchQualitySummaryVO
-  qualityOverviewItems: WorkbenchQualityOverviewItemVO[]
-  qualityDimensionItems: WorkbenchQualityDimensionItemVO[]
+  qualitySummary: ExamWorkbenchQualitySummaryResponse
+  qualityOverviewItems: ExamWorkbenchQualityOverviewItemResponse[]
+  qualityDimensionItems: ExamWorkbenchQualityDimensionItemResponse[]
   openSpotCheckCount: number
   arbitrationPendingCount: number
   reviewerWarningCount: number
@@ -153,57 +153,57 @@ export interface WorkbenchQualityPanelVO {
 }
 
 /** 概览仪表盘面板 - 对应 ExamWorkbenchDashboardPanelResponse */
-export interface WorkbenchDashboardPanelVO {
+export interface ExamWorkbenchDashboardPanelResponse {
   pendingTodos: MarkTeacherDashboardPendingTodoItemVO[]
-  markingTaskSummary: WorkbenchMarkingTaskSummaryVO
-  quickStats: WorkbenchQuickStatsVO
-  qualityOverviewItems: WorkbenchQualityOverviewItemVO[]
-  qualitySummary: WorkbenchQualitySummaryVO
-  qualityDimensionItems: WorkbenchQualityDimensionItemVO[]
+  markingTaskSummary: ExamWorkbenchMarkingTaskSummaryResponse
+  quickStats: ExamWorkbenchQuickStatsResponse
+  qualityOverviewItems: ExamWorkbenchQualityOverviewItemResponse[]
+  qualitySummary: ExamWorkbenchQualitySummaryResponse
+  qualityDimensionItems: ExamWorkbenchQualityDimensionItemResponse[]
 }
 
 /** 考试工作台阶段快照 - 对应 ExamWorkbenchStageSnapshotResponse */
-export interface WorkbenchStageSnapshotVO {
+export interface ExamWorkbenchStageSnapshotResponse {
   examId: string
   examName: string
   examNo: string
   examStatus: ExamStatusCode
   suggestedStageKey: ExamWorkbenchStageKeyCode
-  stages: ExamWorkbenchStageItemVO[]
-  prepSteps: ExamWorkbenchPrepStepVO[]
+  stages: ExamWorkbenchStageItemResponse[]
+  prepSteps: ExamWorkbenchPrepStepResponse[]
   prepAdvisoryReasons: string[]
   prepBlockingReasons: string[]
   /** 试评阶段经验辅助定标阻断原因 */
   experienceAssistBlockingReasons: string[]
-  markingProgress: MarkingProgressVO
+  markingProgress: MarkingProgressResponse
   markingOrgConfigured: boolean
   trialSessionActive: boolean
   formalSessionActive: boolean
   archiveClosed: boolean
   /** 涉密 / 统考涉密场次 */
   confidential?: boolean
-  nextActions: WorkbenchNextActionVO[]
-  dashboardPanel: WorkbenchDashboardPanelVO
+  nextActions: ExamWorkbenchNextActionResponse[]
+  dashboardPanel: ExamWorkbenchDashboardPanelResponse
 }
 
 /** 批量阅卷进度响应 */
-export interface MarkingProgressBatchVO {
-  items: MarkingProgressVO[]
+export interface MarkingProgressBatchResponse {
+  items: MarkingProgressResponse[]
 }
 
 /** 查询考试工作台阶段快照。 */
-export function getWorkbenchStageSnapshot(examId: string): Promise<WorkbenchStageSnapshotVO> {
-  return http.post<WorkbenchStageSnapshotVO>('/api/mark/exams/workbench-stage-snapshot', { examId })
+export function getWorkbenchStageSnapshot(examId: string): Promise<ExamWorkbenchStageSnapshotResponse> {
+  return http.post<ExamWorkbenchStageSnapshotResponse>('/api/mark/exams/workbench-stage-snapshot', { examId })
 }
 
 /** 查询阅卷进度。 */
-export function getMarkingProgress(examId: string): Promise<MarkingProgressVO> {
-  return http.post<MarkingProgressVO>('/api/mark/exams/marking-progress', { examId })
+export function getMarkingProgress(examId: string): Promise<MarkingProgressResponse> {
+  return http.post<MarkingProgressResponse>('/api/mark/exams/marking-progress', { examId })
 }
 
 /** 批量查询阅卷进度（考试工作台列表聚合，一次请求）。 */
-export async function batchGetMarkingProgress(examIds: string[]): Promise<MarkingProgressVO[]> {
-  const response = await http.post<MarkingProgressBatchVO>(
+export async function batchGetMarkingProgress(examIds: string[]): Promise<MarkingProgressResponse[]> {
+  const response = await http.post<MarkingProgressBatchResponse>(
     '/api/mark/exams/marking-progress/batch',
     { examIds },
   )
@@ -211,29 +211,29 @@ export async function batchGetMarkingProgress(examIds: string[]): Promise<Markin
 }
 
 /** 阅卷进度看板面板 - 对应 ExamWorkbenchMarkingProgressPanelResponse */
-export interface WorkbenchMarkingProgressPanelVO {
+export interface ExamWorkbenchMarkingProgressPanelResponse {
   examId: string
   organizationId?: string
   markingOrgConfigured: boolean
-  markingTaskSummary: WorkbenchMarkingTaskSummaryVO
-  formalSessions: FormalSessionVO[]
-  trialSessions: TrialSessionVO[]
+  markingTaskSummary: ExamWorkbenchMarkingTaskSummaryResponse
+  formalSessions: FormalSessionResponse[]
+  trialSessions: TrialSessionResponse[]
 }
 
 /** 查询阅卷进度看板（正评 / 试评进度页真源）。 */
-export function getMarkingProgressPanel(examId: string): Promise<WorkbenchMarkingProgressPanelVO> {
-  return http.post<WorkbenchMarkingProgressPanelVO>('/api/mark/exams/marking-progress-panel', {
+export function getMarkingProgressPanel(examId: string): Promise<ExamWorkbenchMarkingProgressPanelResponse> {
+  return http.post<ExamWorkbenchMarkingProgressPanelResponse>('/api/mark/exams/marking-progress-panel', {
     examId,
   })
 }
 
 /** 查询考试质量看板（质控页考试级 Signal 真源）。 */
-export function getQualityPanel(examId: string): Promise<WorkbenchQualityPanelVO> {
-  return http.post<WorkbenchQualityPanelVO>('/api/mark/exams/quality-panel', { examId })
+export function getQualityPanel(examId: string): Promise<ExamWorkbenchQualityPanelResponse> {
+  return http.post<ExamWorkbenchQualityPanelResponse>('/api/mark/exams/quality-panel', { examId })
 }
 
 /** 考生名册看板面板 - 对应 ExamWorkbenchCandidateRosterPanelResponse */
-export interface WorkbenchCandidateRosterPanelVO {
+export interface ExamWorkbenchCandidateRosterPanelResponse {
   examId: string
   totalCount: number
   activeCount: number
@@ -243,14 +243,14 @@ export interface WorkbenchCandidateRosterPanelVO {
 }
 
 /** 查询考生名册看板（名册页 Signal 真源）。 */
-export function getCandidateRosterPanel(examId: string): Promise<WorkbenchCandidateRosterPanelVO> {
-  return http.post<WorkbenchCandidateRosterPanelVO>('/api/mark/exams/candidate-roster-panel', {
+export function getCandidateRosterPanel(examId: string): Promise<ExamWorkbenchCandidateRosterPanelResponse> {
+  return http.post<ExamWorkbenchCandidateRosterPanelResponse>('/api/mark/exams/candidate-roster-panel', {
     examId,
   })
 }
 
 /** 印刷包看板面板 - 对应 ExamWorkbenchPrintPackagePanelResponse */
-export interface WorkbenchPrintPackagePanelVO {
+export interface ExamWorkbenchPrintPackagePanelResponse {
   examId: string
   candidateCount: number
   packageCount: number
@@ -261,14 +261,14 @@ export interface WorkbenchPrintPackagePanelVO {
 }
 
 /** 查询印刷包看板（印刷包页 Signal 真源）。 */
-export function getPrintPackagePanel(examId: string): Promise<WorkbenchPrintPackagePanelVO> {
-  return http.post<WorkbenchPrintPackagePanelVO>('/api/mark/exams/print-package-panel', { examId })
+export function getPrintPackagePanel(examId: string): Promise<ExamWorkbenchPrintPackagePanelResponse> {
+  return http.post<ExamWorkbenchPrintPackagePanelResponse>('/api/mark/exams/print-package-panel', { examId })
 }
 
 /** 成绩看板面板 - 对应 ExamWorkbenchScorePanelResponse */
-export interface WorkbenchScorePanelVO {
+export interface ExamWorkbenchScorePanelResponse {
   examId: string
-  riskOverview: FinalScoreRiskOverviewVO
+  riskOverview: FinalScoreRiskOverviewResponse
   absentCount: number
   distributionAvailable: boolean
   participantCount?: number
@@ -284,12 +284,12 @@ export interface WorkbenchScorePanelVO {
 }
 
 /** 查询考试成绩看板（成绩确认 / 发布页 Signal 真源）。 */
-export function getScorePanel(examId: string): Promise<WorkbenchScorePanelVO> {
-  return http.post<WorkbenchScorePanelVO>('/api/mark/exams/score-panel', { examId })
+export function getScorePanel(examId: string): Promise<ExamWorkbenchScorePanelResponse> {
+  return http.post<ExamWorkbenchScorePanelResponse>('/api/mark/exams/score-panel', { examId })
 }
 
 /** 扫描监控看板面板 - 对应 ExamWorkbenchScanMonitorPanelResponse */
-export interface WorkbenchScanMonitorPanelVO {
+export interface ExamWorkbenchScanMonitorPanelResponse {
   examId: string
   batchTotal: number
   settledBatchCount: number
@@ -304,6 +304,6 @@ export interface WorkbenchScanMonitorPanelVO {
 }
 
 /** 查询扫描监控看板（扫描监控页 Signal 真源）。 */
-export function getScanMonitorPanel(examId: string): Promise<WorkbenchScanMonitorPanelVO> {
-  return http.post<WorkbenchScanMonitorPanelVO>('/api/mark/exams/scan-monitor-panel', { examId })
+export function getScanMonitorPanel(examId: string): Promise<ExamWorkbenchScanMonitorPanelResponse> {
+  return http.post<ExamWorkbenchScanMonitorPanelResponse>('/api/mark/exams/scan-monitor-panel', { examId })
 }

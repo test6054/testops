@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ArchiveVolumeDetailVO } from '@/apis/mark/archive-volume'
+import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
@@ -30,7 +30,7 @@ defineOptions({ name: 'ArchiveVolumeEventsPanel' })
 
 const props = defineProps<{
   volumeId: string
-  events: ArchiveVolumeDetailVO['events']
+  events: ArchiveVolumeDetailResponse['events']
 }>()
 
 const exporting = ref(false)

@@ -3,9 +3,9 @@ import type { Ref } from 'vue'
 import type {
   MarkingPageAnnotationSubmitItem,
   MarkingQuestionScoreSubmitItem,
-  MarkingQuestionViewVO,
-  MarkingTaskVO,
-  QuestionMarkingGroupQuestionVO,
+  MarkingQuestionViewResponse,
+  MarkingTaskResponse,
+  QuestionMarkingGroupQuestionResponse,
 } from '@/apis/mark/marking-organization'
 import type { WholeQuestionForm } from '@/composables/useWholePaperGallery'
 import message from 'ant-design-vue/es/message'
@@ -28,9 +28,9 @@ import { showUserError } from '@/utils/error-handler'
 
 export interface UseMarkingSubmitOptions {
   taskId: Ref<string>
-  task: Ref<MarkingTaskVO | null>
-  batchTasks: Ref<MarkingTaskVO[]>
-  questionView: Ref<MarkingQuestionViewVO | null>
+  task: Ref<MarkingTaskResponse | null>
+  batchTasks: Ref<MarkingTaskResponse[]>
+  questionView: Ref<MarkingQuestionViewResponse | null>
   usesWholePaperWorkspace: Ref<boolean>
   isWholePaperTask: Ref<boolean>
   isReadOnly: Ref<boolean>
@@ -40,7 +40,7 @@ export interface UseMarkingSubmitOptions {
   loadTask: () => Promise<void>
   tenantId: Ref<string>
   form: { score?: number, annotationNote?: string }
-  wholeQuestions: Ref<QuestionMarkingGroupQuestionVO[]>
+  wholeQuestions: Ref<QuestionMarkingGroupQuestionResponse[]>
   getWholeQuestionForm: (layoutQuestionId: string) => WholeQuestionForm
   wholePageAnnotationForms: Record<string, string>
   buildWholePaperSubmitRequest: () => {
@@ -90,12 +90,14 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     return `${scope}-${id}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
   }
 
-  function buildQuestionSubmitRequest(): MarkingQuestionScoreSubmitItem {
+  function buildQuestionSubmitRequest(): MarkingQuestionScoreSubmitItem | null {
     if (!options.questionView.value) {
-      throw new Error('题目视图未加载，请刷新后重试')
+      showUserError(null, '题目视图未加载，请刷新后重试')
+      return null
     }
     if (options.form.score === undefined) {
-      throw new Error('请填写教师给分')
+      showUserError(null, '请填写教师给分')
+      return null
     }
     return {
       layoutQuestionId: options.questionView.value.layoutQuestionId,
@@ -108,15 +110,16 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   function resolveSubmittedScore(submitRequest: {
     questionScores: MarkingQuestionScoreSubmitItem[]
     pageAnnotations: MarkingPageAnnotationSubmitItem[]
-  }): number {
+  }): number | null {
     const firstScore = submitRequest.questionScores[0]?.score
     if (firstScore === undefined) {
-      throw new Error('提交给分缺失')
+      showUserError(null, '提交给分缺失')
+      return null
     }
     return firstScore
   }
 
-  function resolveSameQuestionRemainingTasks(currentTask: MarkingTaskVO): MarkingTaskVO[] {
+  function resolveSameQuestionRemainingTasks(currentTask: MarkingTaskResponse): MarkingTaskResponse[] {
     if (currentTask.taskUnit === 'WHOLE_PAPER') {
       return []
     }
@@ -291,9 +294,9 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   }
 
   function openApplyModalIfNeeded(
-    currentTask: MarkingTaskVO,
+    currentTask: MarkingTaskResponse,
     score: number,
-    remainingTasks: MarkingTaskVO[],
+    remainingTasks: MarkingTaskResponse[],
   ): void {
     if (remainingTasks.length === 0 || !options.questionView.value?.layoutQuestionId) {
       continueAfterSubmit()
@@ -346,15 +349,27 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     try {
       const submitRequest = options.usesWholePaperWorkspace.value
         ? options.buildWholePaperSubmitRequest()
-        : {
-            questionScores: [buildQuestionSubmitRequest()],
-            pageAnnotations: [],
-          }
+        : (() => {
+            const questionScore = buildQuestionSubmitRequest()
+            if (!questionScore) {
+              return null
+            }
+            return {
+              questionScores: [questionScore],
+              pageAnnotations: [],
+            }
+          })()
+      if (!submitRequest) {
+        return
+      }
       await submitMarkingTask({ taskId: options.taskId.value, ...submitRequest })
       if (draftKey) {
         await onGradingDraftSubmitSuccess(draftKey)
       }
       const score = resolveSubmittedScore(submitRequest)
+      if (score === null) {
+        return
+      }
       recordSubmit({
         taskId: currentTask.id,
         examId: currentTask.examId,

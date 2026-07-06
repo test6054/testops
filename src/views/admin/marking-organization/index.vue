@@ -246,7 +246,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type {RouteLocationRaw} from 'vue-router';
 import type {
-  MarkingOrganizationVO,
+  MarkingOrganizationResponse,
   OrganizationCreateRequest,
   OrganizationUpdateRequest,
 } from '@/apis/mark/marking-organization'
@@ -314,7 +314,7 @@ const {
 const { refreshSnapshot } = useWorkspaceExamId()
 const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 
-const organization = ref<MarkingOrganizationVO | null>(null)
+const organization = ref<MarkingOrganizationResponse | null>(null)
 const examCreateUserId = computed(() => selectedExam.value?.createUser)
 const { canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, organization)
 const loading = ref(false)

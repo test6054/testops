@@ -1,7 +1,7 @@
 /**
  * 阅卷主链阶段状态 Store：仅缓存后端 workbench-stage-snapshot，不做客户端推导。
  */
-import type { WorkbenchStageSnapshotVO } from '@/apis/mark/exam-progress'
+import type { ExamWorkbenchStageSnapshotResponse } from '@/apis/mark/exam-progress'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
@@ -65,7 +65,7 @@ function mapSnapshotStatus(status: string): WorkbenchStageStatus {
 
 export const useMarkStageStore = defineStore('markStage', () => {
   const observedExamId = ref('')
-  const snapshot = ref<WorkbenchStageSnapshotVO | null>(null)
+  const snapshot = ref<ExamWorkbenchStageSnapshotResponse | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const refreshedAt = ref<number | null>(null)
@@ -126,7 +126,7 @@ export const useMarkStageStore = defineStore('markStage', () => {
     observedExamId.value = examId
   }
 
-  function applySnapshot(next: WorkbenchStageSnapshotVO): void {
+  function applySnapshot(next: ExamWorkbenchStageSnapshotResponse): void {
     observedExamId.value = next.examId
     snapshot.value = next
     error.value = null

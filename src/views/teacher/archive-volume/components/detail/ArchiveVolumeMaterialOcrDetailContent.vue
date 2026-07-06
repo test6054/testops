@@ -36,7 +36,7 @@
 
 <script setup lang="ts">
 import type {
-  DocumentMaterialOcrDetailVO,
+  DocumentMaterialOcrDetailResponse,
   DocumentOcrPageResultStatusCode,
   DocumentOcrTaskStatusCode,
 } from '@/apis/mark/archive-volume'
@@ -58,7 +58,7 @@ const props = defineProps<{
 }>()
 
 const loading = ref(false)
-const detail = ref<DocumentMaterialOcrDetailVO | null>(null)
+const detail = ref<DocumentMaterialOcrDetailResponse | null>(null)
 const activePageKey = ref<string>()
 
 watch(

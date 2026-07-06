@@ -6,7 +6,7 @@ import type {
   PortfolioTeacherPageRequest,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
-import type { PageResult } from '@/types'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 export interface PortfolioTeacherOneTableSummaryVO {
@@ -87,9 +87,9 @@ export interface PortfolioDeptOneTableExportRequest {
   planYear?: string
 }
 
-export interface PortfolioDeptOneTableTeacherPageRequest extends PortfolioDeptOneTableGetRequest {
-  pageNum?: number
-  pageSize?: number
+export interface PortfolioDeptOneTableTeacherPageRequest extends QueryDto {
+  departmentId: string
+  planYear?: string
 }
 
 const BASE = '/api/portfolio/teacher'

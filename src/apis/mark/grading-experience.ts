@@ -59,7 +59,7 @@ export interface ExamQuestionScopeQueryRequest {
 }
 
 /** 题目签名 VO - 对应 QuestionSignatureResponse */
-export interface QuestionSignatureVO {
+export interface QuestionSignatureResponse {
   id?: string
   examId: string
   examName: string
@@ -73,7 +73,7 @@ export interface QuestionSignatureVO {
 }
 
 /** 批改经验单项 */
-export interface ExperienceItemVO {
+export interface ExperienceItemResponse {
   experienceType?: string
   description?: string
   frequency?: number
@@ -83,7 +83,7 @@ export interface ExperienceItemVO {
 }
 
 /** 经验案例 VO - 对应 GradingExperienceCaseResponse */
-export interface GradingExperienceCaseVO {
+export interface GradingExperienceCaseResponse {
   id?: string
   sourceExamId: string
   sourceExamName: string
@@ -94,7 +94,7 @@ export interface GradingExperienceCaseVO {
   questionType: QuestionTypeCode
   aiTraceId?: string
   experienceSummary?: string
-  experienceItems?: ExperienceItemVO[]
+  experienceItems?: ExperienceItemResponse[]
   riskTags?: string[]
   applicableScope?: string
   caseStatus: ExperienceCaseStatusCode
@@ -111,7 +111,7 @@ export interface GradingExperienceCaseVO {
 }
 
 /** 答案聚类单组 */
-export interface AnswerGroupVO {
+export interface AnswerGroupResponse {
   groupNo?: number
   groupLabel?: string
   groupDescription?: string
@@ -123,13 +123,13 @@ export interface AnswerGroupVO {
 }
 
 /** 答案聚类记录 VO - 对应 ExamAnswerClusterRecord */
-export interface AnswerClusterRecordVO {
+export interface AnswerClusterRecordResponse {
   id?: string
   examId: string
   layoutQuestionId: string
   aiTraceId?: string
   clusterSummary?: string
-  answerGroups?: AnswerGroupVO[]
+  answerGroups?: AnswerGroupResponse[]
   groupCount?: number
   analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
@@ -137,66 +137,66 @@ export interface AnswerClusterRecordVO {
   createTime?: string
 }
 
-export function generateSignatures(examId: string): Promise<QuestionSignatureVO[]> {
-  return http.post<QuestionSignatureVO[]>('/api/exam/grading-experience/signature/generate', {
+export function generateSignatures(examId: string): Promise<QuestionSignatureResponse[]> {
+  return http.post<QuestionSignatureResponse[]>('/api/exam/grading-experience/signature/generate', {
     examId,
   } satisfies ExamDetailQueryRequest)
 }
 
-export function listSignatures(examId: string): Promise<QuestionSignatureVO[]> {
-  return http.post<QuestionSignatureVO[]>('/api/exam/grading-experience/signature/list', {
+export function listSignatures(examId: string): Promise<QuestionSignatureResponse[]> {
+  return http.post<QuestionSignatureResponse[]>('/api/exam/grading-experience/signature/list', {
     examId,
   } satisfies ExamDetailQueryRequest)
 }
 
 export function searchSimilar(
   request: SimilarQuestionSearchRequest,
-): Promise<QuestionSignatureVO[]> {
-  return http.post<QuestionSignatureVO[]>('/api/exam/grading-experience/signature/similar', request)
+): Promise<QuestionSignatureResponse[]> {
+  return http.post<QuestionSignatureResponse[]>('/api/exam/grading-experience/signature/similar', request)
 }
 
 export function extractExperience(
   request: ExamQuestionScopeQueryRequest,
-): Promise<GradingExperienceCaseVO> {
-  return http.post<GradingExperienceCaseVO>(
+): Promise<GradingExperienceCaseResponse> {
+  return http.post<GradingExperienceCaseResponse>(
     '/api/exam/grading-experience/experience/extract',
     request,
   )
 }
 
-export function listExperiences(examId: string): Promise<GradingExperienceCaseVO[]> {
-  return http.post<GradingExperienceCaseVO[]>('/api/exam/grading-experience/experience/list', {
+export function listExperiences(examId: string): Promise<GradingExperienceCaseResponse[]> {
+  return http.post<GradingExperienceCaseResponse[]>('/api/exam/grading-experience/experience/list', {
     examId,
   } satisfies ExamDetailQueryRequest)
 }
 
 export function listExperiencesByQuestion(
   request: ExamQuestionScopeQueryRequest,
-): Promise<GradingExperienceCaseVO[]> {
-  return http.post<GradingExperienceCaseVO[]>(
+): Promise<GradingExperienceCaseResponse[]> {
+  return http.post<GradingExperienceCaseResponse[]>(
     '/api/exam/grading-experience/experience/by-question',
     request,
   )
 }
 
-export function confirmExperienceCase(experienceCaseId: string): Promise<GradingExperienceCaseVO> {
-  return http.post<GradingExperienceCaseVO>('/api/exam/grading-experience/experience/confirm', {
+export function confirmExperienceCase(experienceCaseId: string): Promise<GradingExperienceCaseResponse> {
+  return http.post<GradingExperienceCaseResponse>('/api/exam/grading-experience/experience/confirm', {
     id: experienceCaseId,
   })
 }
 
 export function deprecateExperienceCase(
   experienceCaseId: string,
-): Promise<GradingExperienceCaseVO> {
-  return http.post<GradingExperienceCaseVO>('/api/exam/grading-experience/experience/deprecate', {
+): Promise<GradingExperienceCaseResponse> {
+  return http.post<GradingExperienceCaseResponse>('/api/exam/grading-experience/experience/deprecate', {
     id: experienceCaseId,
   })
 }
 
 export function generateAnswerCluster(
   request: ExamQuestionScopeQueryRequest,
-): Promise<AnswerClusterRecordVO> {
-  return http.post<AnswerClusterRecordVO>(
+): Promise<AnswerClusterRecordResponse> {
+  return http.post<AnswerClusterRecordResponse>(
     '/api/exam/grading-experience/answer-cluster/generate',
     request,
   )
@@ -204,8 +204,8 @@ export function generateAnswerCluster(
 
 export function getLatestAnswerCluster(
   request: ExamQuestionScopeQueryRequest,
-): Promise<AnswerClusterRecordVO | null> {
-  return http.post<AnswerClusterRecordVO | null>(
+): Promise<AnswerClusterRecordResponse | null> {
+  return http.post<AnswerClusterRecordResponse | null>(
     '/api/exam/grading-experience/answer-cluster/latest',
     request,
   )

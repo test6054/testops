@@ -8,7 +8,7 @@ import http from '@/config/axios'
  * （UNKNOWN / HEALTHY / FAILED）。localAutoDeploy 标识该实例是否为
  * Docker Compose 本地随服务一起自动拉起的实例。
  */
-export interface PaddleOcrInstanceVO {
+export interface PaddleOcrInstanceResponse {
   id: string
   instanceName: string
   serviceUrl: string
@@ -35,13 +35,13 @@ export interface PaddleOcrInstanceRegisterRequest {
  * 供管理员确认后端识别请求实际命中的服务实例。后端按 health_status asc, updated_at desc 排序，
  * 健康实例排在前面。
  */
-export function listPaddleOcrInstances(): Promise<PaddleOcrInstanceVO[]> {
-  return http.post<PaddleOcrInstanceVO[]>('/api/mark/ocr/paddle/instance/list', {})
+export function listPaddleOcrInstances(): Promise<PaddleOcrInstanceResponse[]> {
+  return http.post<PaddleOcrInstanceResponse[]>('/api/mark/ocr/paddle/instance/list', {})
 }
 
 /** 注册 PaddleOCR 服务实例。 */
 export function registerPaddleOcrInstance(
   request: PaddleOcrInstanceRegisterRequest,
-): Promise<PaddleOcrInstanceVO> {
-  return http.post<PaddleOcrInstanceVO>('/api/mark/ocr/paddle/instance/register', request)
+): Promise<PaddleOcrInstanceResponse> {
+  return http.post<PaddleOcrInstanceResponse>('/api/mark/ocr/paddle/instance/register', request)
 }

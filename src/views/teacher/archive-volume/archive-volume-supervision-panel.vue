@@ -324,15 +324,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  ArchiveEvaluationCampaignVO,
+  ArchiveEvaluationCampaignResponse,
   ArchiveIntegrityStatusCode,
   ArchiveMaterialTypeCode,
-  ArchiveReadinessMatrixVO,
-  ArchiveRemediationTaskVO,
-  ArchiveVolumeDetailVO,
+  ArchiveReadinessMatrixResponse,
+  ArchiveRemediationTaskResponse,
+  ArchiveVolumeDetailResponse,
+  ArchiveVolumeResponse,
   ArchiveVolumeSourceTypeCode,
   ArchiveVolumeStatusCode,
-  ArchiveVolumeVO,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
@@ -416,11 +416,11 @@ const markProblemCampaignId = ref<string | undefined>(undefined)
 const exportCampaignId = ref<string>()
 const exportingManifest = ref(false)
 const exportingArchive = ref(false)
-const volumes = ref<ArchiveVolumeVO[]>([])
-const readinessMatrix = ref<ArchiveReadinessMatrixVO | null>(null)
-const remediationTasks = ref<ArchiveRemediationTaskVO[]>([])
-const campaigns = ref<ArchiveEvaluationCampaignVO[]>([])
-const detail = ref<ArchiveVolumeDetailVO | null>(null)
+const volumes = ref<ArchiveVolumeResponse[]>([])
+const readinessMatrix = ref<ArchiveReadinessMatrixResponse | null>(null)
+const remediationTasks = ref<ArchiveRemediationTaskResponse[]>([])
+const campaigns = ref<ArchiveEvaluationCampaignResponse[]>([])
+const detail = ref<ArchiveVolumeDetailResponse | null>(null)
 
 const openRemediationCount = computed(() =>
   remediationTasks.value.filter((item) => item.taskStatus !== 'CLOSED').length,
@@ -500,7 +500,7 @@ const volumeFilterFields = computed<FilterField[]>(() => [
   },
 ])
 
-const volumeColumns: ColumnsType<ArchiveVolumeVO> = [
+const volumeColumns: ColumnsType<ArchiveVolumeResponse> = [
   { title: '归档卷', key: 'archive', dataIndex: 'archiveNo', width: 240 },
   { title: '院系', key: 'departmentName', dataIndex: 'departmentName', width: 140 },
   { title: '状态', key: 'volumeStatus', dataIndex: 'volumeStatus', width: 120 },
@@ -548,7 +548,7 @@ const matrixPreviewRows = computed<MatrixPreviewRow[]>(() => {
   })
 })
 
-const remediationColumns: ColumnsType<ArchiveRemediationTaskVO> = [
+const remediationColumns: ColumnsType<ArchiveRemediationTaskResponse> = [
   { title: '任务', dataIndex: 'taskTitle', key: 'taskTitle' },
   { title: '诊断', key: 'diagnosticCode', width: 140 },
   { title: '卷 ID', dataIndex: 'volumeId', key: 'volumeId', width: 100 },
@@ -557,7 +557,7 @@ const remediationColumns: ColumnsType<ArchiveRemediationTaskVO> = [
   { title: '操作', key: 'actions', width: 88 },
 ]
 
-const campaignColumns: ColumnsType<ArchiveEvaluationCampaignVO> = [
+const campaignColumns: ColumnsType<ArchiveEvaluationCampaignResponse> = [
   { title: '批次', dataIndex: 'campaignName', key: 'campaignName' },
   { title: '学年', dataIndex: 'academicYear', key: 'academicYear', width: 120 },
   {
@@ -574,7 +574,7 @@ const campaignColumns: ColumnsType<ArchiveEvaluationCampaignVO> = [
   },
 ]
 
-const materialColumns: ColumnsType<ArchiveVolumeDetailVO['materials'][number]> = [
+const materialColumns: ColumnsType<ArchiveVolumeDetailResponse['materials'][number]> = [
   {
     title: '类型',
     key: 'materialType',
@@ -629,18 +629,18 @@ function materialTypeLabel(code: ArchiveMaterialTypeCode) {
   return strictEnumLabel(ArchiveMaterialTypeDescription, code, 'materialType')
 }
 
-function remediationStatusLabel(code: ArchiveRemediationTaskVO['taskStatus']) {
+function remediationStatusLabel(code: ArchiveRemediationTaskResponse['taskStatus']) {
   return strictEnumLabel(ArchiveRemediationStatusDescription, code, 'taskStatus')
 }
 
-function remediationStatusTone(code: ArchiveRemediationTaskVO['taskStatus']): BadgeTone {
+function remediationStatusTone(code: ArchiveRemediationTaskResponse['taskStatus']): BadgeTone {
   if (code === 'CLOSED') return 'gray'
   if (code === 'RESUBMITTED') return 'green'
   if (code === 'IN_PROGRESS') return 'blue'
   return 'orange'
 }
 
-function goRemediationTaskDetail(task: ArchiveRemediationTaskVO) {
+function goRemediationTaskDetail(task: ArchiveRemediationTaskResponse) {
   void router.push({
     name: 'TeacherArchiveVolumeRemediationDetail',
     params: { taskId: task.taskId },
@@ -655,7 +655,7 @@ function goVolumeDetail(volumeId: string, diagnosticCode?: ArchiveRemediationDia
   })
 }
 
-function goRemediationVolume(task: ArchiveRemediationTaskVO) {
+function goRemediationVolume(task: ArchiveRemediationTaskResponse) {
   goRemediationTaskDetail(task)
 }
 

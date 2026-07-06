@@ -46,7 +46,7 @@ export const TEACHING_ANALYSIS_TYPE_TONE: Record<TeachingAnalysisTypeCode, Badge
 }
 
 /** 教学改进内容条目 */
-export interface TeachingImprovementItemVO {
+export interface TeachingImprovementItemResponse {
   questionType: QuestionTypeCode
   problemDescription?: string
   severity?: TeachingImprovementSeverityCode
@@ -55,7 +55,7 @@ export interface TeachingImprovementItemVO {
 }
 
 /** 班级薄弱题型条目 */
-export interface ClassWeaknessItemVO {
+export interface ClassWeaknessItemResponse {
   questionType: QuestionTypeCode
   rank?: number
   avgScoreRate?: number
@@ -66,7 +66,7 @@ export interface ClassWeaknessItemVO {
 }
 
 /** 学生学情诊断条目 */
-export interface StudentLearningDiagnosisItemVO {
+export interface StudentLearningDiagnosisItemResponse {
   questionType: QuestionTypeCode
   masteryLevel: MasteryLevelCode
   scoreRate: string
@@ -76,7 +76,7 @@ export interface StudentLearningDiagnosisItemVO {
 }
 
 /** 学生学情成绩构成 */
-export interface StudentLearningScoreCompositionVO {
+export interface StudentLearningScoreCompositionResponse {
   classId?: string
   paperFullScore?: number
   dailyScoreFull?: number
@@ -90,7 +90,7 @@ export interface StudentLearningScoreCompositionVO {
 }
 
 /** AI 教学分析记录 - 对应 ExamTeachingAnalysisRecord */
-export interface ExamTeachingAnalysisRecordVO {
+export interface TeachingAnalysisRecordResponse {
   id: string
   examId: string
   analysisType?: TeachingAnalysisTypeCode
@@ -98,10 +98,10 @@ export interface ExamTeachingAnalysisRecordVO {
   scopeId?: string
   aiTraceId?: string
   overallSummary?: string
-  improvementItems?: TeachingImprovementItemVO[]
-  weaknessItems?: ClassWeaknessItemVO[]
-  diagnosisItems?: StudentLearningDiagnosisItemVO[]
-  scoreComposition?: StudentLearningScoreCompositionVO
+  improvementItems?: TeachingImprovementItemResponse[]
+  weaknessItems?: ClassWeaknessItemResponse[]
+  diagnosisItems?: StudentLearningDiagnosisItemResponse[]
+  scoreComposition?: StudentLearningScoreCompositionResponse
   suggestions?: string[]
   analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
@@ -121,8 +121,8 @@ export interface ExamStudentScopeQueryRequest {
 
 export function generateTeachingImprovement(
   request: ExamClassScopeQueryRequest,
-): Promise<ExamTeachingAnalysisRecordVO> {
-  return http.post<ExamTeachingAnalysisRecordVO>(
+): Promise<TeachingAnalysisRecordResponse> {
+  return http.post<TeachingAnalysisRecordResponse>(
     '/api/exam/teaching-analysis/improvement/generate',
     request,
   )
@@ -130,8 +130,8 @@ export function generateTeachingImprovement(
 
 export function getLatestTeachingImprovement(
   request: ExamClassScopeQueryRequest,
-): Promise<ExamTeachingAnalysisRecordVO | null> {
-  return http.post<ExamTeachingAnalysisRecordVO | null>(
+): Promise<TeachingAnalysisRecordResponse | null> {
+  return http.post<TeachingAnalysisRecordResponse | null>(
     '/api/exam/teaching-analysis/improvement/latest',
     request,
   )
@@ -140,8 +140,8 @@ export function getLatestTeachingImprovement(
 export function generateClassWeaknessAnalysis(request: {
   examId: string
   classId: string
-}): Promise<ExamTeachingAnalysisRecordVO> {
-  return http.post<ExamTeachingAnalysisRecordVO>(
+}): Promise<TeachingAnalysisRecordResponse> {
+  return http.post<TeachingAnalysisRecordResponse>(
     '/api/exam/teaching-analysis/class-weakness/generate',
     request,
   )
@@ -150,8 +150,8 @@ export function generateClassWeaknessAnalysis(request: {
 export function getLatestClassWeaknessAnalysis(params: {
   examId: string
   classId: string
-}): Promise<ExamTeachingAnalysisRecordVO | null> {
-  return http.post<ExamTeachingAnalysisRecordVO | null>(
+}): Promise<TeachingAnalysisRecordResponse | null> {
+  return http.post<TeachingAnalysisRecordResponse | null>(
     '/api/exam/teaching-analysis/class-weakness/latest',
     params,
   )
@@ -159,8 +159,8 @@ export function getLatestClassWeaknessAnalysis(params: {
 
 export function generateStudentLearningProfile(
   request: ExamStudentScopeQueryRequest,
-): Promise<ExamTeachingAnalysisRecordVO> {
-  return http.post<ExamTeachingAnalysisRecordVO>(
+): Promise<TeachingAnalysisRecordResponse> {
+  return http.post<TeachingAnalysisRecordResponse>(
     '/api/exam/teaching-analysis/student-profile/generate',
     request,
   )
@@ -168,8 +168,8 @@ export function generateStudentLearningProfile(
 
 export function getLatestStudentLearningProfile(
   request: ExamStudentScopeQueryRequest,
-): Promise<ExamTeachingAnalysisRecordVO | null> {
-  return http.post<ExamTeachingAnalysisRecordVO | null>(
+): Promise<TeachingAnalysisRecordResponse | null> {
+  return http.post<TeachingAnalysisRecordResponse | null>(
     '/api/exam/teaching-analysis/student-profile/latest',
     request,
   )

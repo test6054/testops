@@ -2,8 +2,8 @@ import type {
   ArchiveAppraisalStatusCode,
   ArchiveIntegrityStatusCode,
   ArchiveTransferStatusCode,
+  ArchiveVolumeResponse,
   ArchiveVolumeStatusCode,
-  ArchiveVolumeVO,
 } from '@/apis/mark/archive-volume'
 import {
   ArchiveAppraisalStatusDescription,
@@ -74,7 +74,7 @@ export function appraisalStatusDimTone(status: ArchiveAppraisalStatusCode): Arch
 }
 
 /** 组装列表「五维状态」dim-pill 行，顺序与原型一致。 */
-export function buildArchiveVolumeDimPills(record: ArchiveVolumeVO): ArchiveDimPillItem[] {
+export function buildArchiveVolumeDimPills(record: ArchiveVolumeResponse): ArchiveDimPillItem[] {
   const pills: ArchiveDimPillItem[] = [
     {
       tone: volumeStatusDimTone(record.volumeStatus),

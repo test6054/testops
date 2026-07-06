@@ -1392,7 +1392,11 @@ export interface PortfolioArchiveRecordSummaryVO {
   createTime?: string
 }
 
-export interface PortfolioArchiveRecordFieldVO extends PortfolioRecordFieldCore {
+export interface PortfolioArchiveRecordFieldVO {
+  fieldCode: string
+  fieldLabel?: string
+  fieldValue: string
+  evidenceRef?: string
   referenceCandidateFieldId?: string
   updateTime?: string
   fieldCorrecting?: boolean

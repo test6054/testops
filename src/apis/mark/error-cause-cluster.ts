@@ -15,7 +15,7 @@ export interface ErrorCauseClusterItemVO {
 }
 
 /** 错因聚类分析记录 - 对应 ExamErrorCauseCluster */
-export interface ExamErrorCauseClusterVO {
+export interface ErrorCauseClusterResponse {
   id: string
   examId?: string
   layoutQuestionId?: string
@@ -38,12 +38,12 @@ export interface ExamClassScopeQueryRequest {
 
 export function generateErrorCauseCluster(
   request: ExamClassScopeQueryRequest,
-): Promise<ExamErrorCauseClusterVO> {
-  return http.post<ExamErrorCauseClusterVO>('/api/exam/error-cause-cluster/generate', request)
+): Promise<ErrorCauseClusterResponse> {
+  return http.post<ErrorCauseClusterResponse>('/api/exam/error-cause-cluster/generate', request)
 }
 
 export function getLatestErrorCauseCluster(
   request: ExamClassScopeQueryRequest,
-): Promise<ExamErrorCauseClusterVO | null> {
-  return http.post<ExamErrorCauseClusterVO | null>('/api/exam/error-cause-cluster/latest', request)
+): Promise<ErrorCauseClusterResponse | null> {
+  return http.post<ErrorCauseClusterResponse | null>('/api/exam/error-cause-cluster/latest', request)
 }

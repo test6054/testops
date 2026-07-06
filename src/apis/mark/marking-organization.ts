@@ -1,7 +1,7 @@
 import type { QualityDecisionCode } from './exam-scan'
 import type { PaperInstanceDisplayVO } from './exam-score'
 import type { QuestionTypeCode } from './question-type'
-import type { MarkAiReferenceExperienceAuditVO } from '@/apis/mark/grading-experience-assist'
+import type { MarkAiReferenceExperienceAuditResponse } from '@/apis/mark/grading-experience-assist'
 import type { PageResult, QueryDto } from '@/types'
 import type { AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
 import type { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
@@ -251,7 +251,7 @@ export interface RecyclePolicySaveRequest {
 }
 
 /** 任务分配策略查询响应 - 对应后端 AllocationPolicyResponse */
-export interface AllocationPolicyVO {
+export interface AllocationPolicyResponse {
   id: string
   organizationId: string
   groupId?: string | null
@@ -266,7 +266,7 @@ export interface AllocationPolicyVO {
 }
 
 /** 任务回收策略查询响应 - 对应后端 RecyclePolicyResponse */
-export interface RecyclePolicyVO {
+export interface RecyclePolicyResponse {
   id: string
   organizationId: string
   groupId?: string | null
@@ -276,9 +276,9 @@ export interface RecyclePolicyVO {
 }
 
 /** 阅卷组织任务策略列表响应 - 对应后端 MarkingPolicyListResponse */
-export interface MarkingPolicyListVO {
-  allocationPolicies: AllocationPolicyVO[]
-  recyclePolicies: RecyclePolicyVO[]
+export interface MarkingPolicyListResponse {
+  allocationPolicies: AllocationPolicyResponse[]
+  recyclePolicies: RecyclePolicyResponse[]
 }
 
 /** 创建试评会话请求 - 对应后端 TrialSessionCreateRequest */
@@ -347,14 +347,14 @@ export interface MarkingTaskQueryRequest extends QueryDto {
 // ─── 响应模型类型 ───────────────────────────────────────────
 
 /** 题目阅卷小组详情响应 - 对应后端 QuestionMarkingGroupResponse */
-export interface QuestionGroupReviewerVO {
+export interface QuestionGroupReviewerResponse {
   reviewerUserId: string
   reviewerUserName: string
   reviewerTeacherNo: string
 }
 
 /** 题组负责题目详情 - 对应后端 QuestionMarkingGroupQuestionResponse */
-export interface QuestionMarkingGroupQuestionVO {
+export interface QuestionMarkingGroupQuestionResponse {
   groupId: string | null
   layoutQuestionId: string
   /** 题目批改结果 ID，供单题 AI 复评使用 */
@@ -382,24 +382,24 @@ export interface QuestionMarkingGroupQuestionVO {
   questionStem?: string
   questionOrder: number
   /** AI 定标引用审计快照 */
-  referenceExperienceAudit?: MarkAiReferenceExperienceAuditVO
+  referenceExperienceAudit?: MarkAiReferenceExperienceAuditResponse
 }
 
-export interface QuestionMarkingGroupVO {
+export interface QuestionMarkingGroupResponse {
   id: string
   groupName: string
-  questions: QuestionMarkingGroupQuestionVO[]
+  questions: QuestionMarkingGroupQuestionResponse[]
   leaderUserId: string
   leaderUserName: string
   leaderTeacherNo: string
   groupStatus: QuestionMarkingGroupStatusCode
-  reviewers: QuestionGroupReviewerVO[]
+  reviewers: QuestionGroupReviewerResponse[]
   reviewerUserIds?: string[]
   createTime?: string
 }
 
 /** 阅卷组织详情响应 - 对应后端 MarkingOrganizationResponse */
-export interface MarkingOrganizationVO {
+export interface MarkingOrganizationResponse {
   /** 是否已创建阅卷组织 */
   configured: boolean
   id?: string
@@ -416,7 +416,7 @@ export interface MarkingOrganizationVO {
   examCreateUserId?: string
   /** 当前用户是否具备主考专属权限 - 对应后端 canManageExamOwner */
   canManageExamOwner?: boolean
-  groups: QuestionMarkingGroupVO[]
+  groups: QuestionMarkingGroupResponse[]
   /** 题组数量 - 对应后端 groupCount */
   groupCount?: number
   /** 去重阅卷教师人数 - 对应后端 uniqueReviewerCount */
@@ -427,14 +427,14 @@ export interface MarkingOrganizationVO {
 
 /** 阅卷任务详情响应 - 对应后端 MarkingTaskResponse */
 /** 已定稿阅卷任务逐题给分回显 - 对应 MarkingTaskSubmittedQuestionScoreResponse */
-export interface MarkingTaskSubmittedQuestionScoreVO {
+export interface MarkingTaskSubmittedQuestionScoreResponse {
   layoutQuestionId: string
   questionNo: string
   score: number
   annotationText?: string
 }
 
-export interface MarkingTaskVO {
+export interface MarkingTaskResponse {
   id: string
   examId: string
   /** 题组ID；组织级整卷任务无题组时为 null */
@@ -472,7 +472,7 @@ export interface MarkingTaskVO {
   recycledTime?: string
   recycleReason?: string
   /** 已定稿任务的逐题给分回显；非 FINALIZED 为 undefined */
-  submittedQuestionScores?: MarkingTaskSubmittedQuestionScoreVO[]
+  submittedQuestionScores?: MarkingTaskSubmittedQuestionScoreResponse[]
 }
 
 export const TRIAL_SESSION_STATUS_TONE: Record<
@@ -517,7 +517,7 @@ export interface SessionListQueryRequest extends QueryDto {
 }
 
 /** 试评会话详情响应 - 对应后端 TrialSessionResponse */
-export interface TrialSessionVO {
+export interface TrialSessionResponse {
   id: string
   examId: string
   organizationId: string
@@ -542,7 +542,7 @@ export interface TrialSessionVO {
 }
 
 /** 正评会话详情响应 - 对应后端 FormalSessionResponse */
-export interface FormalSessionQuestionScopeVO {
+export interface FormalSessionQuestionScopeResponse {
   sessionId: string
   layoutQuestionId: string
   questionNo: string
@@ -564,7 +564,7 @@ export interface FormalSessionQuestionScopeVO {
   scopedGradeClosureReady: boolean
 }
 
-export interface FormalSessionVO {
+export interface FormalSessionResponse {
   id: string
   examId: string
   organizationId: string
@@ -578,7 +578,7 @@ export interface FormalSessionVO {
   /** 正评会话实际题目范围数量；题目级会话启动后由后端固化 */
   questionScopeCount: number
   /** 正评会话实际题目范围；随机题目模式展示本次启动固化后的抽题结果 */
-  questionScopes: FormalSessionQuestionScopeVO[]
+  questionScopes: FormalSessionQuestionScopeResponse[]
   /** 本会话派发阅卷任务总数 */
   totalTaskCount: number
   /** 本会话已定稿阅卷任务数 */
@@ -620,7 +620,7 @@ export interface FormalSessionVO {
 const MARKING_ORG_DATA_ERROR = '阅卷组织数据异常，请刷新后重试'
 
 /** 读取已配置阅卷组织的组织 ID；configured 为 true 但 id 缺失时拒绝继续。 */
-export function requireMarkingOrganizationId(record: MarkingOrganizationVO): string {
+export function requireMarkingOrganizationId(record: MarkingOrganizationResponse): string {
   if (!record.id) {
     throw new Error(MARKING_ORG_DATA_ERROR)
   }
@@ -637,8 +637,8 @@ export function requireMarkingOrganizationId(record: MarkingOrganizationVO): str
  */
 export function createOrganization(
   request: OrganizationCreateRequest,
-): Promise<MarkingOrganizationVO> {
-  return http.post<MarkingOrganizationVO>('/api/mark/organization/create', request)
+): Promise<MarkingOrganizationResponse> {
+  return http.post<MarkingOrganizationResponse>('/api/mark/organization/create', request)
 }
 
 /**
@@ -647,8 +647,8 @@ export function createOrganization(
  */
 export async function getOrganization(
   request: OrganizationQueryRequest,
-): Promise<MarkingOrganizationVO> {
-  return http.post<MarkingOrganizationVO>('/api/mark/organization/detail', request)
+): Promise<MarkingOrganizationResponse> {
+  return http.post<MarkingOrganizationResponse>('/api/mark/organization/detail', request)
 }
 
 /**
@@ -657,8 +657,8 @@ export async function getOrganization(
  */
 export async function getOrganizationById(
   request: OrganizationQueryByIdRequest,
-): Promise<MarkingOrganizationVO> {
-  return http.post<MarkingOrganizationVO>('/api/mark/organization/detailById', request)
+): Promise<MarkingOrganizationResponse> {
+  return http.post<MarkingOrganizationResponse>('/api/mark/organization/detailById', request)
 }
 
 /**
@@ -667,8 +667,8 @@ export async function getOrganizationById(
  */
 export function updateOrganization(
   request: OrganizationUpdateRequest,
-): Promise<MarkingOrganizationVO> {
-  return http.post<MarkingOrganizationVO>('/api/mark/organization/update', request)
+): Promise<MarkingOrganizationResponse> {
+  return http.post<MarkingOrganizationResponse>('/api/mark/organization/update', request)
 }
 
 /**
@@ -729,8 +729,8 @@ export function saveRecyclePolicy(request: RecyclePolicySaveRequest): Promise<bo
  */
 export function listMarkingPolicies(
   request: OrganizationQueryByIdRequest,
-): Promise<MarkingPolicyListVO> {
-  return http.post<MarkingPolicyListVO>('/api/mark/organization/policy/list', request)
+): Promise<MarkingPolicyListResponse> {
+  return http.post<MarkingPolicyListResponse>('/api/mark/organization/policy/list', request)
 }
 
 // ===================== 试评会话 =====================
@@ -765,8 +765,8 @@ export function startTrialSession(sessionId: string): Promise<boolean> {
  */
 export function pageTrialSessions(
   request: SessionListQueryRequest,
-): Promise<PageResult<TrialSessionVO>> {
-  return http.post<PageResult<TrialSessionVO>>('/api/mark/organization/trial/list', request)
+): Promise<PageResult<TrialSessionResponse>> {
+  return http.post<PageResult<TrialSessionResponse>>('/api/mark/organization/trial/list', request)
 }
 
 /**
@@ -775,7 +775,7 @@ export function pageTrialSessions(
  */
 export async function listTrialSessions(
   request: SessionListQueryRequest,
-): Promise<TrialSessionVO[]> {
+): Promise<TrialSessionResponse[]> {
   const pageSize = request.pageSize ?? MARK_ORG_LIST_PAGE_SIZE
   return readAllPages(
     (pageNum) => pageTrialSessions({ ...request, pageNum, pageSize }),
@@ -815,8 +815,8 @@ export function completeFormalSession(sessionId: string): Promise<boolean> {
  */
 export function pageFormalSessions(
   request: SessionListQueryRequest,
-): Promise<PageResult<FormalSessionVO>> {
-  return http.post<PageResult<FormalSessionVO>>('/api/mark/organization/formal/list', request)
+): Promise<PageResult<FormalSessionResponse>> {
+  return http.post<PageResult<FormalSessionResponse>>('/api/mark/organization/formal/list', request)
 }
 
 /**
@@ -825,7 +825,7 @@ export function pageFormalSessions(
  */
 export async function listFormalSessions(
   request: SessionListQueryRequest,
-): Promise<FormalSessionVO[]> {
+): Promise<FormalSessionResponse[]> {
   const pageSize = request.pageSize ?? MARK_ORG_LIST_PAGE_SIZE
   return readAllPages(
     (pageNum) => pageFormalSessions({ ...request, pageNum, pageSize }),
@@ -839,8 +839,8 @@ export async function listFormalSessions(
  * 教师领取阅卷任务（CAS 守门，按当前组织分配策略批量分配）。
  * POST /api/mark/organization/task/claim
  */
-export function claimMarkingTasks(request: MarkingTaskClaimRequest): Promise<MarkingTaskVO[]> {
-  return http.post<MarkingTaskVO[]>('/api/mark/organization/task/claim', request)
+export function claimMarkingTasks(request: MarkingTaskClaimRequest): Promise<MarkingTaskResponse[]> {
+  return http.post<MarkingTaskResponse[]>('/api/mark/organization/task/claim', request)
 }
 
 /**
@@ -864,8 +864,8 @@ export interface MarkingTaskReassignRequest {
  */
 export function reassignRecycledMarkingTask(
   request: MarkingTaskReassignRequest,
-): Promise<MarkingTaskVO> {
-  return http.post<MarkingTaskVO>('/api/mark/organization/task/reassign-recycled', request)
+): Promise<MarkingTaskResponse> {
+  return http.post<MarkingTaskResponse>('/api/mark/organization/task/reassign-recycled', request)
 }
 
 /**
@@ -874,15 +874,15 @@ export function reassignRecycledMarkingTask(
  */
 export function pageMarkingTasks(
   request: MarkingTaskQueryRequest,
-): Promise<PageResult<MarkingTaskVO>> {
-  return http.post<PageResult<MarkingTaskVO>>('/api/mark/organization/task/list', request)
+): Promise<PageResult<MarkingTaskResponse>> {
+  return http.post<PageResult<MarkingTaskResponse>>('/api/mark/organization/task/list', request)
 }
 
 /**
  * 查询阅卷任务列表（自动分页拉全）。
  * POST /api/mark/organization/task/list
  */
-export async function listMarkingTasks(request: MarkingTaskQueryRequest): Promise<MarkingTaskVO[]> {
+export async function listMarkingTasks(request: MarkingTaskQueryRequest): Promise<MarkingTaskResponse[]> {
   const pageSize = request.pageSize ?? MARK_ORG_LIST_PAGE_SIZE
   return readAllPages(
     (pageNum) => pageMarkingTasks({ ...request, pageNum, pageSize }),
@@ -901,8 +901,8 @@ export interface MarkingTaskDetailQueryRequest {
  */
 export function getMarkingTaskDetail(
   request: MarkingTaskDetailQueryRequest,
-): Promise<MarkingTaskVO> {
-  return http.post<MarkingTaskVO>('/api/mark/organization/task/detail', request)
+): Promise<MarkingTaskResponse> {
+  return http.post<MarkingTaskResponse>('/api/mark/organization/task/detail', request)
 }
 
 /** 教师领取上下文查询请求 - 对应后端 TeacherClaimContextQueryRequest */
@@ -913,18 +913,18 @@ export interface TeacherClaimContextQueryRequest {
 }
 
 /** 题组级领取上下文 - 对应后端 TeacherGroupClaimContextResponse */
-export interface GroupClaimContextVO {
+export interface TeacherGroupClaimContextResponse {
   groupId: string
   groupName: string
   organizationId: string
   /** 该题组下当前活跃的正评会话（session_status = SESSION_ACTIVE） */
-  activeSessions: FormalSessionVO[]
+  activeSessions: FormalSessionResponse[]
   /** 该题组下当前可领取的试评会话（session_status = TRIAL_ASSIGNED） */
-  activeTrialSessions: TrialSessionVO[]
+  activeTrialSessions: TrialSessionResponse[]
 }
 
 /** 教师任务池状态汇总 - 对应 TeacherMarkingTaskPoolSummaryResponse */
-export interface TeacherMarkingTaskPoolSummaryVO {
+export interface TeacherMarkingTaskPoolSummaryResponse {
   totalTaskCount: number
   allocatedTaskCount: number
   inProgressTaskCount: number
@@ -934,13 +934,13 @@ export interface TeacherMarkingTaskPoolSummaryVO {
 }
 
 /** 教师领取上下文响应 - 对应后端 TeacherClaimContextResponse */
-export interface TeacherClaimContextVO {
+export interface TeacherClaimContextResponse {
   examId: string
   markingPhase: MarkingSessionPhaseCode
   /** 教师所属的活跃题组上下文列表 */
-  groups: GroupClaimContextVO[]
+  groups: TeacherGroupClaimContextResponse[]
   /** 当前评阅员在本考试本阶段下的任务状态汇总 */
-  taskSummary: TeacherMarkingTaskPoolSummaryVO
+  taskSummary: TeacherMarkingTaskPoolSummaryResponse
 }
 
 /**
@@ -951,8 +951,8 @@ export interface TeacherClaimContextVO {
  */
 export function getTeacherClaimContext(
   request: TeacherClaimContextQueryRequest,
-): Promise<TeacherClaimContextVO> {
-  return http.post<TeacherClaimContextVO>('/api/mark/organization/task/claim-context', request)
+): Promise<TeacherClaimContextResponse> {
+  return http.post<TeacherClaimContextResponse>('/api/mark/organization/task/claim-context', request)
 }
 
 // ===================== 整卷视图 / 解匿名（P1.5 + P1.6） =====================
@@ -991,13 +991,13 @@ export interface ScannedPageRef {
 }
 
 /** 整卷视图响应 - 对应后端 WholePaperViewResponse */
-export interface WholePaperViewVO {
+export interface WholePaperViewResponse {
   /** 匿名 token 值；匿名模式为真实令牌，实名模式为 null */
   anonymousToken: string | null
   /** 扫描页列表，按 page_seq 升序 */
   pages: ScannedPageRef[]
   /** 整卷批阅题目列表，前端逐题评分必须使用该真实题目清单 */
-  questions: QuestionMarkingGroupQuestionVO[]
+  questions: QuestionMarkingGroupQuestionResponse[]
 }
 
 /**
@@ -1010,7 +1010,7 @@ export interface MarkingQuestionViewRequest {
 }
 
 /** 题目级批阅视图响应 - 对应后端 MarkingQuestionViewResponse */
-export interface MarkingQuestionViewVO {
+export interface MarkingQuestionViewResponse {
   /** 匿名 token 值；匿名模式为真实令牌，实名模式为 null */
   anonymousToken: string | null
   layoutQuestionId: string
@@ -1041,10 +1041,10 @@ export interface MarkingQuestionViewVO {
   aiDiagnostic?: string
   /** 当前题目 AI 执行 trace，供定标徽标跳转 AI 历史定位 */
   aiTraceId?: string
-  /** 试卷母版页引用，仅 ANSWER_SHEET 模式回填 */
-  masterPaperPage?: ScannedPageRef
+  /** 制卷页引用，仅 ANSWER_SHEET 模式回填 */
+  layoutPaperPage?: ScannedPageRef
   /** AI 定标引用审计快照 */
-  referenceExperienceAudit?: MarkAiReferenceExperienceAuditVO
+  referenceExperienceAudit?: MarkAiReferenceExperienceAuditResponse
 }
 
 /**
@@ -1052,8 +1052,8 @@ export interface MarkingQuestionViewVO {
  * 后端校验 task.reviewerUserId == 当前用户，并由 taskId 推导 paperInstanceId 防止跨试卷越权浏览。
  * POST /api/mark/organization/task/whole-paper
  */
-export function getWholePaperView(request: WholePaperViewRequest): Promise<WholePaperViewVO> {
-  return http.post<WholePaperViewVO>('/api/mark/organization/task/whole-paper', request)
+export function getWholePaperView(request: WholePaperViewRequest): Promise<WholePaperViewResponse> {
+  return http.post<WholePaperViewResponse>('/api/mark/organization/task/whole-paper', request)
 }
 
 /**
@@ -1063,8 +1063,8 @@ export function getWholePaperView(request: WholePaperViewRequest): Promise<Whole
  */
 export function getMarkingQuestionView(
   request: MarkingQuestionViewRequest,
-): Promise<MarkingQuestionViewVO> {
-  return http.post<MarkingQuestionViewVO>('/api/mark/organization/task/question-view', request)
+): Promise<MarkingQuestionViewResponse> {
+  return http.post<MarkingQuestionViewResponse>('/api/mark/organization/task/question-view', request)
 }
 
 /** 匿名整卷扫描页遮罩展示请求 - 对应后端 MarkingScanPageDisplayRequest */
@@ -1115,7 +1115,7 @@ export interface AnonymousRevealRequest {
 }
 
 /** 解匿名响应 - 对应后端 AnonymousRevealResponse */
-export interface AnonymousRevealVO {
+export interface AnonymousRevealResponse {
   tokenValue: string
   studentName: string
   studentNo: string
@@ -1128,8 +1128,8 @@ export interface AnonymousRevealVO {
  * 仅 Exam.createUser 本人可触发；后端密码二次验证通过后才解匿名。
  * POST /api/mark/organization/anonymous/reveal
  */
-export function revealAnonymous(request: AnonymousRevealRequest): Promise<AnonymousRevealVO> {
-  return http.post<AnonymousRevealVO>('/api/mark/organization/anonymous/reveal', request)
+export function revealAnonymous(request: AnonymousRevealRequest): Promise<AnonymousRevealResponse> {
+  return http.post<AnonymousRevealResponse>('/api/mark/organization/anonymous/reveal', request)
 }
 
 // ===================== 会话生命周期 =====================

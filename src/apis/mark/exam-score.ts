@@ -7,8 +7,9 @@ import type { FinalScoreStatusCode } from './final-score-status'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
-/** 答卷展示基础信息 - 对应 PaperInstanceDisplayVO 公共字段 */
-interface PaperInstanceDisplayBaseVO {
+/** 答卷展示信息 - 对应 PaperInstanceDisplayVO */
+export interface PaperInstanceDisplayVO {
+  displayMode?: 'REAL_NAME' | 'ANONYMOUS' | 'UNBOUND'
   paperInstanceId?: string
   candidateRosterId?: string
   studentUserId?: string
@@ -20,31 +21,6 @@ interface PaperInstanceDisplayBaseVO {
   primaryText: string
   secondaryText?: string
 }
-
-/** 实名答卷展示信息 - 后端 REAL_NAME 分支必须返回学生身份字段 */
-export interface RealNamePaperInstanceDisplayVO extends PaperInstanceDisplayBaseVO {
-  displayMode: 'REAL_NAME'
-  paperInstanceId: string
-  studentUserId: string
-  studentNo: string
-  studentName: string
-}
-
-/** 匿名答卷展示信息 - 后端 ANONYMOUS 分支以匿名号作为主展示锚点 */
-export interface AnonymousPaperInstanceDisplayVO extends PaperInstanceDisplayBaseVO {
-  displayMode: 'ANONYMOUS'
-  paperInstanceId: string
-  anonymousNo: string
-}
-
-/** 未绑定答卷展示信息 - 后端 UNBOUND 分支表达合法扫描未绑定态 */
-export interface UnboundPaperInstanceDisplayVO extends PaperInstanceDisplayBaseVO {
-  displayMode: 'UNBOUND'
-}
-
-/** 答卷展示信息 - 对应 PaperInstanceDisplayVO */
-export type PaperInstanceDisplayVO
-  = RealNamePaperInstanceDisplayVO | AnonymousPaperInstanceDisplayVO | UnboundPaperInstanceDisplayVO
 
 /** 考试成绩汇总查询请求 - 对应 ExamScoreSummaryQueryRequest */
 export interface ExamScoreSummaryQueryRequest extends QueryDto {
@@ -60,7 +36,7 @@ export interface ExamScoreSummaryQueryRequest extends QueryDto {
 }
 
 /** 考试成绩汇总项 - 对应 ExamScoreSummaryItemResponse */
-export interface ExamScoreSummaryItemVO {
+export interface ExamScoreSummaryItemResponse {
   candidateRosterId: string
   classId: string
   studentClassName: string
@@ -98,14 +74,14 @@ export interface FinalScoreRiskOverviewRequest {
 }
 
 /** 最终成绩风险原因 - 对应 FinalScoreRiskReasonResponse */
-export interface FinalScoreRiskReasonVO {
+export interface FinalScoreRiskReasonResponse {
   reasonCode: FinalScoreRiskReasonCode
   reasonName: string
   count: number
 }
 
 /** 最终成绩全场风险概览 - 对应 FinalScoreRiskOverviewResponse */
-export interface FinalScoreRiskOverviewVO {
+export interface FinalScoreRiskOverviewResponse {
   totalCandidateCount: number
   pendingCount: number
   calculatedCount: number
@@ -122,7 +98,7 @@ export interface FinalScoreRiskOverviewVO {
   blockingIncidentCount: number
   pendingDuplicateImageCount: number
   readyToPublish: boolean
-  riskReasons: FinalScoreRiskReasonVO[]
+  riskReasons: FinalScoreRiskReasonResponse[]
   reviewedReasonCodes: FinalScoreRiskReasonCode[]
 }
 
@@ -138,21 +114,21 @@ export interface FinalScoreSafeBatchConfirmRequest {
 }
 
 /** 安全批量确认失败明细 - 对应 FinalScoreSafeBatchConfirmFailureResponse */
-export interface FinalScoreSafeBatchConfirmFailureVO {
+export interface FinalScoreSafeBatchConfirmFailureResponse {
   paperInstanceId: string
   code: string
   message: string
 }
 
 /** 安全批量确认最终成绩响应 - 对应 FinalScoreSafeBatchConfirmResponse */
-export interface FinalScoreSafeBatchConfirmVO {
+export interface FinalScoreSafeBatchConfirmResponse {
   totalCandidateCount: number
   successCount: number
   skippedCount: number
   failureCount: number
   confirmedPaperInstanceIds: string[]
-  failures: FinalScoreSafeBatchConfirmFailureVO[]
-  skipReasons: FinalScoreRiskReasonVO[]
+  failures: FinalScoreSafeBatchConfirmFailureResponse[]
+  skipReasons: FinalScoreRiskReasonResponse[]
 }
 
 /** 全场批量发布最终成绩请求 - 对应 FinalScoreBatchPublishRequest */
@@ -161,14 +137,14 @@ export interface FinalScoreBatchPublishRequest {
 }
 
 /** 全场批量发布最终成绩失败明细 - 对应 FinalScoreBatchPublishFailureResponse */
-export interface FinalScoreBatchPublishFailureVO {
+export interface FinalScoreBatchPublishFailureResponse {
   paperInstanceId: string
   code: string
   message: string
 }
 
 /** 全场批量发布最终成绩响应 - 对应 FinalScoreBatchPublishResponse */
-export interface FinalScoreBatchPublishVO {
+export interface FinalScoreBatchPublishResponse {
   totalCandidateCount: number
   publishableCount: number
   successCount: number
@@ -176,9 +152,9 @@ export interface FinalScoreBatchPublishVO {
   remainingCount: number
   failureCount: number
   publishedPaperInstanceIds: string[]
-  failures: FinalScoreBatchPublishFailureVO[]
-  beforeOverview: FinalScoreRiskOverviewVO
-  afterOverview: FinalScoreRiskOverviewVO
+  failures: FinalScoreBatchPublishFailureResponse[]
+  beforeOverview: FinalScoreRiskOverviewResponse
+  afterOverview: FinalScoreRiskOverviewResponse
 }
 
 /** 试卷最终成绩确认请求 - 对应 ExamFinalScoreConfirmRequest */
@@ -210,7 +186,7 @@ export interface ExamScoreDistributionQueryRequest {
 }
 
 /** 考试分数分布响应 */
-export interface ExamScoreDistributionVO {
+export interface ExamScoreDistributionResponse {
   examId: string
   classId?: string
   fullScore: number
@@ -230,22 +206,22 @@ export interface ExamScoreDistributionVO {
 /** 分页查询考试成绩汇总。 */
 export function pageExamScoreSummary(
   request: ExamScoreSummaryQueryRequest,
-): Promise<PageResult<ExamScoreSummaryItemVO>> {
-  return http.post<PageResult<ExamScoreSummaryItemVO>>('/api/mark/exams/score-summary', request)
+): Promise<PageResult<ExamScoreSummaryItemResponse>> {
+  return http.post<PageResult<ExamScoreSummaryItemResponse>>('/api/mark/exams/score-summary', request)
 }
 
 /** 查询最终成绩全场风险概览，前端不得由分页列表自行推断全场状态。 */
 export function getFinalScoreRiskOverview(
   request: FinalScoreRiskOverviewRequest,
-): Promise<FinalScoreRiskOverviewVO> {
-  return http.post<FinalScoreRiskOverviewVO>('/api/mark/exams/final-scores/risk-overview', request)
+): Promise<FinalScoreRiskOverviewResponse> {
+  return http.post<FinalScoreRiskOverviewResponse>('/api/mark/exams/final-scores/risk-overview', request)
 }
 
 /** 保存最终成绩风险复核状态，并返回最新风险概览。 */
 export function saveFinalScoreRiskReview(
   request: FinalScoreRiskReviewSaveRequest,
-): Promise<FinalScoreRiskOverviewVO> {
-  return http.post<FinalScoreRiskOverviewVO>(
+): Promise<FinalScoreRiskOverviewResponse> {
+  return http.post<FinalScoreRiskOverviewResponse>(
     '/api/mark/exams/final-scores/risk-review/save',
     request,
   )
@@ -254,8 +230,8 @@ export function saveFinalScoreRiskReview(
 /** 安全批量确认最终成绩，只确认后端判定为无阻塞风险的已计算成绩。 */
 export function batchConfirmSafeFinalScores(
   request: FinalScoreSafeBatchConfirmRequest,
-): Promise<FinalScoreSafeBatchConfirmVO> {
-  return http.post<FinalScoreSafeBatchConfirmVO>(
+): Promise<FinalScoreSafeBatchConfirmResponse> {
+  return http.post<FinalScoreSafeBatchConfirmResponse>(
     '/api/mark/exams/final-scores/batch-confirm-safe',
     request,
   )
@@ -264,8 +240,8 @@ export function batchConfirmSafeFinalScores(
 /** 全场批量发布最终成绩，按考试全场口径筛选可发布成绩。 */
 export function batchPublishFinalScores(
   request: FinalScoreBatchPublishRequest,
-): Promise<FinalScoreBatchPublishVO> {
-  return http.post<FinalScoreBatchPublishVO>('/api/mark/exams/final-scores/batch-publish', request)
+): Promise<FinalScoreBatchPublishResponse> {
+  return http.post<FinalScoreBatchPublishResponse>('/api/mark/exams/final-scores/batch-publish', request)
 }
 
 /** 确认试卷最终成绩，仅落库 CONFIRMED 状态，不发送学生通知。 */
@@ -286,6 +262,6 @@ export function withdrawFinalScore(request: ExamFinalScoreWithdrawRequest): Prom
 /** 查询考试分数分布（五级分段直方图）。 */
 export function getExamScoreDistribution(
   request: ExamScoreDistributionQueryRequest,
-): Promise<ExamScoreDistributionVO> {
-  return http.post<ExamScoreDistributionVO>('/api/mark/exams/score-distribution', request)
+): Promise<ExamScoreDistributionResponse> {
+  return http.post<ExamScoreDistributionResponse>('/api/mark/exams/score-distribution', request)
 }

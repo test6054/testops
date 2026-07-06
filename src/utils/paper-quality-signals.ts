@@ -1,4 +1,4 @@
-import type { ExamPaperAnalysisVO } from '@/apis/mark/question-analysis'
+import type { ExamPaperAnalysisResponse } from '@/apis/mark/question-analysis'
 import type { SignalMetric } from '@/types/workbench'
 
 function formatMetricValue(value: number | null | undefined, digits = 3): string {
@@ -8,7 +8,7 @@ function formatMetricValue(value: number | null | undefined, digits = 3): string
 
 /** 整卷测量学质量 Signal 指标，供题目分析页与 PaperQualityCard 共用。 */
 export function buildPaperQualitySignalMetrics(
-  data: ExamPaperAnalysisVO | null | undefined,
+  data: ExamPaperAnalysisResponse | null | undefined,
 ): SignalMetric[] {
   if (!data) return []
   const alphaMetric: SignalMetric

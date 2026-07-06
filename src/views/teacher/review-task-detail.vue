@@ -69,7 +69,7 @@
               v-else
               :slice-file-id="detail.sliceFileId"
               :source-scan-page="detail.sourceScanPage"
-              :master-paper-page="detail.masterPaperPage"
+              :layout-paper-page="detail.layoutPaperPage"
               :confidential="isExamConfidential"
               :exam-label="examConfidentialLabel"
               :watermark-lines="watermarkLines"
@@ -211,9 +211,9 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { AnnotationVO } from '@/apis/mark/exam-annotation'
-import type { AiAbilityCode, AiExecutionStatusCode, ExamQuestionAiExecutionItemVO } from '@/apis/mark/exam-grade'
-import type { ReviewTaskDetailVO, ReviewTaskStatusCode } from '@/apis/mark/exam-review-task'
+import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
+import type { AiAbilityCode, AiExecutionStatusCode, ExamQuestionAiExecutionItemResponse } from '@/apis/mark/exam-grade'
+import type { ReviewTaskDetailResponse, ReviewTaskStatusCode } from '@/apis/mark/exam-review-task'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
@@ -290,12 +290,12 @@ const taskId = computed(() => (route.params.taskId ? String(route.params.taskId)
 const hasParams = computed(() => !!examId.value && !!taskId.value)
 const taskSource = computed(() => (route.query.source === 'arbitration' ? 'arbitration' : 'review'))
 
-const detail = ref<ReviewTaskDetailVO | null>(null)
+const detail = ref<ReviewTaskDetailResponse | null>(null)
 const loading = ref(false)
 const rescoring = ref(false)
 const executionsDrawerOpen = ref(false)
 const executionsLoading = ref(false)
-const aiExecutions = ref<ExamQuestionAiExecutionItemVO[]>([])
+const aiExecutions = ref<ExamQuestionAiExecutionItemResponse[]>([])
 const highlightExecutionTraceId = ref<string | null>(null)
 const lastExperienceAssistMeta = ref<{
   applied?: boolean
@@ -303,7 +303,7 @@ const lastExperienceAssistMeta = ref<{
   consistencyRate?: number
 } | null>(null)
 
-function syncExperienceAssistMetaFromDetail(taskDetail: ReviewTaskDetailVO | null): void {
+function syncExperienceAssistMetaFromDetail(taskDetail: ReviewTaskDetailResponse | null): void {
   const audit = taskDetail?.referenceExperienceAudit
   if (audit?.referenceExperienceApplied && audit.referenceExperienceSourceExamName) {
     lastExperienceAssistMeta.value = {
@@ -456,7 +456,7 @@ function timelineColor(status: AiExecutionStatusCode): string {
 
 const labelStyle: CSSProperties = { color: 'var(--ant-color-text-tertiary)', width: '100px' }
 
-const annotations = ref<AnnotationVO[]>([])
+const annotations = ref<AnnotationResponse[]>([])
 
 async function loadAnnotations(): Promise<void> {
   if (!examId.value || !detail.value) return

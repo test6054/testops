@@ -45,13 +45,25 @@ export interface AchievementComputeScopeRequest {
 }
 
 /** 毕业要求 / 观测点聚合请求 */
-export interface ComputeRequirementRequest extends AchievementComputeScopeRequest {
+export interface ComputeRequirementRequest {
+  programId: string
+  trainingPlanId: string
   requirementId?: string
+  gradeLevel?: string
+  schoolYear?: string
+  semester?: SemesterCode
+  professionProfileId?: string
 }
 
 /** 培养目标聚合请求 */
-export interface ComputeTrainingObjectiveRequest extends AchievementComputeScopeRequest {
+export interface ComputeTrainingObjectiveRequest {
+  programId: string
+  trainingPlanId: string
   trainingObjectiveId: string
+  gradeLevel?: string
+  schoolYear?: string
+  semester?: SemesterCode
+  professionProfileId?: string
 }
 
 /** 课程目标达成度计算摘要 - 严格对齐后端 CourseGoalAchievementSummaryVO */

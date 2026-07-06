@@ -61,7 +61,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
+import type { ImageLedgerDetailResponse } from '@/apis/mark/image-ledger'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
@@ -85,7 +85,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'LedgerSummaryCard' })
 const props = defineProps<{
-  ledger: ImageLedgerDetailVO | null
+  ledger: ImageLedgerDetailResponse | null
   loading: boolean
   balancing: boolean
 }>()

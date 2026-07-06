@@ -62,7 +62,7 @@ export interface StudentQuestionScoreVO {
   mistakeClusterLabel?: string
 }
 
-export interface StudentScoreDetailVO {
+export interface StudentScoreDetailResponse {
   examId: string
   examName: string
   examNo: string
@@ -91,7 +91,7 @@ export interface StudentScoreDetailVO {
   confidential?: boolean
 }
 
-export interface StudentAiDiagnosisItemVO {
+export interface StudentAiDiagnosisItemResponse {
   questionType: QuestionTypeCode
   masteryLevel: MasteryLevelCode
   /** 得分率，后端返回 0-1 小数比例字符串，前端展示时转为百分比 */
@@ -101,7 +101,7 @@ export interface StudentAiDiagnosisItemVO {
   suggestion?: string
 }
 
-export interface StudentAiErrorClusterVO {
+export interface StudentAiErrorClusterResponse {
   causeName: string
   causeDescription: string
   affectedCount: number
@@ -110,7 +110,7 @@ export interface StudentAiErrorClusterVO {
   suggestion: string
 }
 
-export interface StudentAiLearningReportVO {
+export interface StudentAiLearningReportResponse {
   examId: string
   published: boolean
   available: boolean
@@ -120,9 +120,9 @@ export interface StudentAiLearningReportVO {
   clusterMessage?: string
   overallSummary?: string
   errorClusterSummary?: string
-  diagnosisItems?: StudentAiDiagnosisItemVO[]
+  diagnosisItems?: StudentAiDiagnosisItemResponse[]
   improvementSuggestions?: string[]
-  errorClusters?: StudentAiErrorClusterVO[]
+  errorClusters?: StudentAiErrorClusterResponse[]
 }
 
 /**
@@ -135,7 +135,7 @@ export interface StudentAiLearningReportVO {
  * - sliceFileId / recognizedAnswer / commentText / objectiveResult
  *   / improvementSuggestion / mistakeClusterLabel / aiDiagnostic
  */
-export interface StudentQuestionAnswerDetailVO {
+export interface StudentQuestionAnswerDetailResponse {
   examId: string
   paperInstanceId: string
   layoutQuestionId: string
@@ -163,12 +163,12 @@ export function listMyExams(): Promise<StudentExamItemVO[]> {
   return http.post<StudentExamItemVO[]>('/api/mark/student/exams/list', {})
 }
 
-export function getMyScoreDetail(examId: string): Promise<StudentScoreDetailVO> {
-  return http.post<StudentScoreDetailVO>('/api/mark/student/exams/score-detail', { examId })
+export function getMyScoreDetail(examId: string): Promise<StudentScoreDetailResponse> {
+  return http.post<StudentScoreDetailResponse>('/api/mark/student/exams/score-detail', { examId })
 }
 
-export function getMyAiLearningReport(examId: string): Promise<StudentAiLearningReportVO> {
-  return http.post<StudentAiLearningReportVO>('/api/mark/student/exams/ai-learning-report', {
+export function getMyAiLearningReport(examId: string): Promise<StudentAiLearningReportResponse> {
+  return http.post<StudentAiLearningReportResponse>('/api/mark/student/exams/ai-learning-report', {
     examId,
   })
 }
@@ -186,8 +186,8 @@ export function getMyAiLearningReport(examId: string): Promise<StudentAiLearning
 export function getMyQuestionAnswerDetail(
   examId: string,
   layoutQuestionId: string,
-): Promise<StudentQuestionAnswerDetailVO> {
-  return http.post<StudentQuestionAnswerDetailVO>(
+): Promise<StudentQuestionAnswerDetailResponse> {
+  return http.post<StudentQuestionAnswerDetailResponse>(
     '/api/mark/student/exams/question-answer-detail',
     {
       examId,
@@ -196,6 +196,6 @@ export function getMyQuestionAnswerDetail(
   )
 }
 
-export function canSubmitReview(item: StudentExamItemVO | StudentScoreDetailVO): boolean {
+export function canSubmitReview(item: StudentExamItemVO | StudentScoreDetailResponse): boolean {
   return item.finalScoreStatus === 'PUBLISHED' && item.reviewWindowStatus === 'ACTIVE'
 }

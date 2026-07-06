@@ -32,7 +32,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { ExamPaperAnalysisVO } from '@/apis/mark/question-analysis'
+import type { ExamPaperAnalysisResponse } from '@/apis/mark/question-analysis'
 import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref, watch } from 'vue'
@@ -61,7 +61,7 @@ const props = withDefaults(
   { embedded: false, showSignalBand: true },
 )
 
-const analysis = ref<ExamPaperAnalysisVO | null>(null)
+const analysis = ref<ExamPaperAnalysisResponse | null>(null)
 const loading = ref(false)
 
 const shellProps = computed(() =>

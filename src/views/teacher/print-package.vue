@@ -184,8 +184,8 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type {WorkbenchPrintPackagePanelVO} from '@/apis/mark/exam-progress';
-import type { PrintPackageItemVO, PrintPackageVO } from '@/apis/mark/print-package'
+import type {ExamWorkbenchPrintPackagePanelResponse} from '@/apis/mark/exam-progress';
+import type { ExamPrintPackageResponse, PrintPackageItemVO } from '@/apis/mark/print-package'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
@@ -196,7 +196,7 @@ import { getPrintPackagePanel } from '@/apis/mark/exam-progress'
 import {
   generatePrintPackage,
   getPrintPackage,
-  isPaperMasterNotConfiguredError,
+  isLayoutNotReadyError,
   pagePrintPackages,
   PRINT_PACKAGE_FLOW_HINT,
   PRINT_PACKAGE_STATUS_TONE,
@@ -246,8 +246,8 @@ const generateDisabledReason = computed(() =>
 // ─── 印刷包分页列表 ─────────────────────────────────────────────────
 
 const loading = ref(false)
-const packageList = ref<PrintPackageVO[]>([])
-const printPackagePanel = ref<WorkbenchPrintPackagePanelVO | null>(null)
+const packageList = ref<ExamPrintPackageResponse[]>([])
+const printPackagePanel = ref<ExamWorkbenchPrintPackagePanelResponse | null>(null)
 // 加载失败：toast 提示，主区保持空态/列表壳
 const pagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 
@@ -303,7 +303,7 @@ const packageSignalMetrics = computed((): SignalMetric[] => {
   return metrics
 })
 
-const packageColumns: ColumnType<PrintPackageVO>[] = [
+const packageColumns: ColumnType<ExamPrintPackageResponse>[] = [
   { title: '名称', key: 'packageName', width: 200, ellipsis: true },
   { title: '编号', dataIndex: 'packageNo', key: 'packageNo', width: 140 },
   { title: '状态', key: 'status', width: 100 },
@@ -356,11 +356,11 @@ function handlePackagePageChange(pageEvent: { current: number, pageSize: number 
 
 // ─── 状态展示 ───────────────────────────────────────────────────────
 
-function statusTone(status: PrintPackageVO['status']): BadgeTone {
+function statusTone(status: ExamPrintPackageResponse['status']): BadgeTone {
   return strictEnumTone(PRINT_PACKAGE_STATUS_TONE, status, '印刷包状态')
 }
 
-function statusLabel(status: PrintPackageVO['status']): string {
+function statusLabel(status: ExamPrintPackageResponse['status']): string {
   return strictEnumLabel(PrintPackageStatusDescription, status, '印刷包状态')
 }
 
@@ -411,11 +411,11 @@ async function handleGenerate() {
     await Promise.all([loadPackageList(), loadPrintPackagePanel()])
     await refreshSnapshot()
   } catch (error) {
-    if (error instanceof Error && isPaperMasterNotConfiguredError(error)) {
-      showUserError(error, '请先在试卷母版页上传并保存母版 PDF，再生成印刷包')
+    if (error instanceof Error && isLayoutNotReadyError(error)) {
+      showUserError(error, '请先完成制卷设计并生成可打印 PDF，再生成印刷包')
       return
     }
-    showUserError(error, '印刷包生成失败，请确认考生名册已配置且母版 PDF 已保存')
+    showUserError(error, '印刷包生成失败，请确认考生名册已配置且制卷设计可打印 PDF 已就绪')
   } finally {
     generating.value = false
   }
@@ -423,7 +423,7 @@ async function handleGenerate() {
 
 // ─── 下载印刷包 PDF ──────────────────────────────────────────────────
 
-async function downloadPackagePdf(pkg: PrintPackageVO) {
+async function downloadPackagePdf(pkg: ExamPrintPackageResponse) {
   try {
     await downloadFile({ nodeId: pkg.packageFileId })
   } catch (error) {
@@ -437,7 +437,7 @@ const previewModalOpen = ref(false)
 const previewLoading = ref(false)
 const previewPdfUrl = ref('')
 
-async function previewPackagePdf(pkg: PrintPackageVO) {
+async function previewPackagePdf(pkg: ExamPrintPackageResponse) {
   previewModalOpen.value = true
   previewLoading.value = true
   previewPdfUrl.value = ''
@@ -455,10 +455,10 @@ async function previewPackagePdf(pkg: PrintPackageVO) {
 
 const detailModalVisible = ref(false)
 const detailLoading = ref(false)
-const detailPackage = ref<PrintPackageVO | null>(null)
+const detailPackage = ref<ExamPrintPackageResponse | null>(null)
 const detailItems = ref<PrintPackageItemVO[]>([])
 
-async function viewDetail(pkg: PrintPackageVO) {
+async function viewDetail(pkg: ExamPrintPackageResponse) {
   detailPackage.value = pkg
   detailItems.value = []
   detailModalVisible.value = true

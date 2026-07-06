@@ -179,7 +179,7 @@
 
 <script lang="ts" setup>
 import type {
-  FormalSessionVO,
+  FormalSessionResponse,
 } from '@/apis/mark/marking-organization'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
@@ -225,7 +225,7 @@ const props = defineProps<{
   organizationId: string
   examId?: string
   groupOptions: GroupOption[]
-  sessions: FormalSessionVO[]
+  sessions: FormalSessionResponse[]
   canManage: boolean
   /** 题组分配策略中的批阅单元，用于限制会话创建与分配单元选择 */
   groupAllocationUnits?: Record<string, AllocationUnitCode>
@@ -337,7 +337,7 @@ function canDelete(status: FormalSessionStatusCode): boolean {
   return props.canManage && status === FormalSessionStatusCode.SESSION_CREATED
 }
 
-function formatSessionQuestionScope(session: FormalSessionVO): string {
+function formatSessionQuestionScope(session: FormalSessionResponse): string {
   if (session.allocationUnit === AllocationUnitCode.WHOLE_PAPER) {
     return '整卷批阅'
   }
@@ -357,7 +357,7 @@ function formatSessionQuestionScope(session: FormalSessionVO): string {
   return `${prefix} ${session.questionScopeCount} 题：${questionNos}`
 }
 
-function formatSessionTaskProgress(session: FormalSessionVO): string {
+function formatSessionTaskProgress(session: FormalSessionResponse): string {
   if (session.totalTaskCount <= 0) {
     return '阅卷任务待生成'
   }
@@ -368,7 +368,7 @@ function formatSessionTaskProgress(session: FormalSessionVO): string {
   return text
 }
 
-function formatSessionGradeClosureProgress(session: FormalSessionVO): string {
+function formatSessionGradeClosureProgress(session: FormalSessionResponse): string {
   if (session.sessionGradeItemCount <= 0) {
     return '会话成绩闭环待形成'
   }

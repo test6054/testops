@@ -42,7 +42,7 @@
 
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { ExamScoreDistributionVO } from '@/apis/mark/exam-score'
+import type { ExamScoreDistributionResponse } from '@/apis/mark/exam-score'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -72,7 +72,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ (e: 'class-change', classId?: string): void }>()
 
-const distribution = ref<ExamScoreDistributionVO | null>(null)
+const distribution = ref<ExamScoreDistributionResponse | null>(null)
 const loading = ref(false)
 
 const histogramBarItems = computed(() => {

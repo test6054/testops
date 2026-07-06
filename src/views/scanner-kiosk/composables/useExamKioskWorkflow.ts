@@ -30,8 +30,8 @@ import type {
   ScannerListResponse,
 } from '@/apis/mark/scanner-agent-local'
 import type {
+  ExamScannerBatchResponse,
   ExamScannerBoundPaperItemVO,
-  ExamScannerKioskBatchHistoryItem,
   ExamScannerKioskBatchHistoryRequest,
   ExamScannerKioskContextVO,
   ExamScannerKioskExamOptionRequest,
@@ -280,7 +280,7 @@ export function useExamKioskWorkflow() {
 
   // 历史批次浏览（HistoryStage）
   // 缺少任一身份字段时直接返回空列表，避免误调后端。
-  const batchHistoryList = ref<ExamScannerKioskBatchHistoryItem[]>([])
+  const batchHistoryList = ref<ExamScannerBatchResponse[]>([])
   const batchHistoryTotal = ref(0)
   const batchHistoryLoading = ref(false)
   const batchHistoryFilter = reactive<{
@@ -299,7 +299,7 @@ export function useExamKioskWorkflow() {
   })
 
   // 历史批次 ledger 快照（HistoryStage 行点击「查看 ledger」触发，独立于 SSE 流活跃 ledger）
-  const historyLedgerBatch = ref<ExamScannerKioskBatchHistoryItem | null>(null)
+  const historyLedgerBatch = ref<ExamScannerBatchResponse | null>(null)
   const historyLedgerSnapshot = ref<ExamScannerPageLedgerVO | null>(null)
   const historyLedgerLoading = ref(false)
   const historyLedgerError = ref<string>('')
@@ -1924,7 +1924,7 @@ export function useExamKioskWorkflow() {
    * 抽屉互斥：调用方需要负责关闭其它抽屉（设备设置抽屉），避免同时浮动两层 Drawer
    * 影响视觉。本函数自身不引用 ui state，由 stage 组件在调用前 close。
    */
-  async function viewBatchHistoryLedger(item: ExamScannerKioskBatchHistoryItem): Promise<void> {
+  async function viewBatchHistoryLedger(item: ExamScannerBatchResponse): Promise<void> {
     historyLedgerBatch.value = item
     historyLedgerSnapshot.value = null
     historyLedgerError.value = ''
@@ -3306,7 +3306,6 @@ export function useExamKioskWorkflow() {
 }
 
 export type ExamKioskWorkflow = ReturnType<typeof useExamKioskWorkflow>
-export type KioskWorkflow = ExamKioskWorkflow
 
 // -------------------------------------------------------------
 // 模块级 helper

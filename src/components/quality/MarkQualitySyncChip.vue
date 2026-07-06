@@ -2,7 +2,7 @@
 /**
  * 阅卷考后讲评页：质量评价同步状态芯片与跳转。
  */
-import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { MarkExamSyncStatusVO } from '@/apis/quality/mark-exam-sync'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, ref, watch } from 'vue'
@@ -20,7 +20,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'MarkQualitySyncChip' })
 
 const props = defineProps<{
-  exam?: ExamSummaryVO | null
+  exam?: ExamSummaryResponse | null
 }>()
 
 const router = useRouter()

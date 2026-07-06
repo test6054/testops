@@ -182,12 +182,12 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamScannerDeviceVO } from '@/apis/mark/exam-mark-scanner'
-import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
+import type { ExamScannerDeviceResponse } from '@/apis/mark/exam-mark-scanner'
+import type { MarkingProgressResponse } from '@/apis/mark/exam-progress'
 import type {
   ExamScannerBatchQueryRequest,
-  ExamScannerBatchVO,
-  ExamScannerBatchWorkbenchSummaryVO,
+  ExamScannerBatchResponse,
+  ExamScannerBatchWorkbenchSummaryResponse,
 } from '@/apis/mark/exam-scan'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -250,10 +250,10 @@ const scanBatchContextSubtitle = computed(() => {
 })
 const { refreshSnapshot } = useWorkspaceExamId()
 
-const summary = ref<ExamScannerBatchWorkbenchSummaryVO | null>(null)
+const summary = ref<ExamScannerBatchWorkbenchSummaryResponse | null>(null)
 const summaryLoadFailed = ref(false)
 const batchListLoadFailed = ref(false)
-const markingProgress = ref<MarkingProgressVO | null>(null)
+const markingProgress = ref<MarkingProgressResponse | null>(null)
 const orphanAlertRef = ref<InstanceType<typeof ScanOrphanRecoveryAlert> | null>(null)
 
 const scanAttentionAlertVisible = computed(() => (summary.value?.attentionCount ?? 0) > 0)
@@ -263,7 +263,7 @@ const scanAttentionAlertDescription = computed(() => {
   return `当前考试有 ${count} 项扫描异常待处置，请在扫描监控异常队列中逐项处理。`
 })
 
-const batches = ref<ExamScannerBatchVO[]>([])
+const batches = ref<ExamScannerBatchResponse[]>([])
 const batchTotal = ref(0)
 const batchLoading = ref(false)
 const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
@@ -271,7 +271,7 @@ const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
   pageSize: 10,
 })
 
-const devices = ref<ExamScannerDeviceVO[]>([])
+const devices = ref<ExamScannerDeviceResponse[]>([])
 const statusTab = ref<StatusTabKey>('ALL')
 
 interface ScanBatchWorkbenchFilterForm {
@@ -288,7 +288,7 @@ const filterForm = reactive<ScanBatchWorkbenchFilterForm>({
 
 const detailDrawerOpen = ref(false)
 const detailBatchId = ref<string | null>(null)
-const detailBatchSummary = ref<ExamScannerBatchVO | null>(null)
+const detailBatchSummary = ref<ExamScannerBatchResponse | null>(null)
 
 const statusTabItems = computed(() => [
   { key: 'ALL', label: '全部', count: summary.value?.batchTotal },
@@ -381,7 +381,7 @@ const summaryMetrics = computed((): SignalMetric[] => {
   return metrics
 })
 
-const batchColumns: ColumnType<ExamScannerBatchVO>[] = [
+const batchColumns: ColumnType<ExamScannerBatchResponse>[] = [
   { title: '批次号', key: 'batchNo', width: 220 },
   { title: '状态', key: 'status', width: 100 },
   { title: '扫描设备', key: 'scannerDevice', width: 200, ellipsis: true },
@@ -395,14 +395,14 @@ const batchColumns: ColumnType<ExamScannerBatchVO>[] = [
   { title: '操作', key: 'actions', width: 80, fixed: 'right' },
 ]
 
-function batchStatusTone(batch: ExamScannerBatchVO): BadgeTone {
+function batchStatusTone(batch: ExamScannerBatchResponse): BadgeTone {
   if (batch.sealedTime) {
     return 'green'
   }
   return strictEnumTone(SCAN_BATCH_STATUS_TONE, batch.status, '扫描批次状态')
 }
 
-function batchStatusLabel(batch: ExamScannerBatchVO): string {
+function batchStatusLabel(batch: ExamScannerBatchResponse): string {
   if (batch.sealedTime) {
     return '已封存'
   }
@@ -544,13 +544,13 @@ function onBatchPageChange(page: { current: number, pageSize: number }): void {
   void loadBatches()
 }
 
-function openBatchDetail(batch: ExamScannerBatchVO): void {
+function openBatchDetail(batch: ExamScannerBatchResponse): void {
   detailBatchId.value = batch.scanBatchId
   detailBatchSummary.value = batch
   detailDrawerOpen.value = true
 }
 
-function batchTableCustomRow(record: ExamScannerBatchVO) {
+function batchTableCustomRow(record: ExamScannerBatchResponse) {
   return {
     onClick: () => openBatchDetail(record),
     style: { cursor: 'pointer' },

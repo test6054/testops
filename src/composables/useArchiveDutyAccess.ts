@@ -1,6 +1,6 @@
 import type {
-  ArchiveDutyGrantVO,
-  ArchiveSecurityPolicyVO,
+  ArchiveDutyGrantResponse,
+  ArchiveSecurityPolicyResponse,
 } from '@/apis/mark/archive-config'
 import { computed, ref } from 'vue'
 import { ArchiveDutyTypeCode, listArchiveSecurityPolicy, listMyArchiveDutyGrants } from '@/apis/mark/archive-config'
@@ -22,8 +22,8 @@ export function useArchiveDutyAccess() {
   const userStore = useUserStore()
   const loading = ref(false)
   const grantsLoadFailed = ref(false)
-  const grants = ref<ArchiveDutyGrantVO[]>([])
-  const securityPolicies = ref<ArchiveSecurityPolicyVO[]>([])
+  const grants = ref<ArchiveDutyGrantResponse[]>([])
+  const securityPolicies = ref<ArchiveSecurityPolicyResponse[]>([])
 
   const dutyTypes = computed(() => new Set(grants.value.map((item) => item.dutyType)))
 

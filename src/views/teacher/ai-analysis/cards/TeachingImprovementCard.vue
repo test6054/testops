@@ -68,8 +68,8 @@
 
 <script lang="ts" setup>
 import type {
-  ExamTeachingAnalysisRecordVO,
-  TeachingImprovementItemVO,
+  TeachingAnalysisRecordResponse,
+  TeachingImprovementItemResponse,
   TeachingImprovementSeverityCode,
 } from '@/apis/mark/teaching-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -107,7 +107,7 @@ const props = withDefaults(
   { embedded: false },
 )
 
-const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
+const record = ref<TeachingAnalysisRecordResponse | null>(null)
 const loading = ref(false)
 const generating = ref(false)
 
@@ -117,10 +117,10 @@ const shellProps = computed(() =>
     : { class: 'stats-card' },
 )
 
-const improvementItems = computed<TeachingImprovementItemVO[]>(() => record.value?.improvementItems ?? [])
+const improvementItems = computed<TeachingImprovementItemResponse[]>(() => record.value?.improvementItems ?? [])
 const canShareRecord = computed(() => record.value?.analysisStatus === 'SUCCESS')
 
-function questionTypeLabel(value: TeachingImprovementItemVO['questionType']): string {
+function questionTypeLabel(value: TeachingImprovementItemResponse['questionType']): string {
   return strictEnumLabel(QuestionTypeDescription, value, '题目类型')
 }
 
@@ -133,8 +133,8 @@ function severityTone(value: TeachingImprovementSeverityCode) {
 }
 
 function acceptTeachingImprovementRecord(
-  value: ExamTeachingAnalysisRecordVO | null,
-): ExamTeachingAnalysisRecordVO | null {
+  value: TeachingAnalysisRecordResponse | null,
+): TeachingAnalysisRecordResponse | null {
   if (!value) return null
   return value
 }
@@ -173,10 +173,10 @@ async function handleGenerate(): Promise<void> {
   }
 }
 
-function buildShareText(): string {
+function buildShareText(): string | null {
   const current = record.value
   if (!current || current.analysisStatus !== 'SUCCESS') {
-    throw new Error('暂无可分享的 AI 教学改进方案')
+    return null
   }
   const lines = [
     'AI 教学改进方案',
@@ -197,12 +197,22 @@ function buildShareText(): string {
 }
 
 async function copyShareText(): Promise<void> {
-  await navigator.clipboard.writeText(buildShareText())
+  const text = buildShareText()
+  if (!text) {
+    showUserError(null, '暂无可分享的 AI 教学改进方案')
+    return
+  }
+  await navigator.clipboard.writeText(text)
   message.success('已复制教学改进方案')
 }
 
 function exportRecordText(): void {
-  const blob = new Blob([buildShareText()], { type: 'text/plain;charset=utf-8' })
+  const text = buildShareText()
+  if (!text) {
+    showUserError(null, '暂无可分享的 AI 教学改进方案')
+    return
+  }
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url

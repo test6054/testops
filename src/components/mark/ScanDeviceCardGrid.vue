@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { ExamScannerDeviceVO } from '@/apis/mark/exam-mark-scanner'
+import type { ExamScannerDeviceResponse } from '@/apis/mark/exam-mark-scanner'
 import { isScannerDeviceOnline } from '@/apis/mark/exam-mark-scanner'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -8,27 +8,27 @@ import { formatDateTimeWithSeconds } from '@/utils/format'
 defineOptions({ name: 'ScanDeviceCardGrid' })
 
 const props = defineProps<{
-  devices: ExamScannerDeviceVO[]
+  devices: ExamScannerDeviceResponse[]
   loading?: boolean
   selectedDeviceId?: string
 }>()
 
 const emit = defineEmits<{
-  select: [device: ExamScannerDeviceVO]
+  select: [device: ExamScannerDeviceResponse]
 }>()
 
-function deviceOnline(device: ExamScannerDeviceVO): boolean {
+function deviceOnline(device: ExamScannerDeviceResponse): boolean {
   return isScannerDeviceOnline(device)
 }
 
-function heartbeatLabel(device: ExamScannerDeviceVO): string {
+function heartbeatLabel(device: ExamScannerDeviceResponse): string {
   if (!device.lastHeartbeatTime) {
     return '无心跳记录'
   }
   return formatDateTimeWithSeconds(device.lastHeartbeatTime)
 }
 
-function handleSelect(device: ExamScannerDeviceVO): void {
+function handleSelect(device: ExamScannerDeviceResponse): void {
   emit('select', device)
 }
 </script>

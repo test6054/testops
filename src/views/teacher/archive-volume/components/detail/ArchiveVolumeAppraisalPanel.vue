@@ -324,10 +324,10 @@
 <script setup lang="ts">
 import type {
   ArchiveAppraisalStatusCode,
-  ArchiveVolumeAppraisalFlowRecordVO,
+  ArchiveVolumeAppraisalFlowRecordResponse,
   ArchiveVolumeAppraisalRequest,
-  ArchiveVolumeDestructionFlowRecordVO,
-  ArchiveVolumeDetailVO,
+  ArchiveVolumeDestructionFlowRecordResponse,
+  ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
@@ -375,7 +375,7 @@ defineOptions({ name: 'ArchiveVolumeAppraisalPanel' })
 
 const props = defineProps<{
   volumeId: string
-  detail: ArchiveVolumeDetailVO
+  detail: ArchiveVolumeDetailResponse
   canManageAppraisal: boolean
   canApproveDestruction: boolean
   currentUserId: string
@@ -387,9 +387,9 @@ const emit = defineEmits<{
 
 const appraisalSubmitting = ref(false)
 const flowLoading = ref(false)
-const flowRecords = ref<ArchiveVolumeAppraisalFlowRecordVO[]>([])
+const flowRecords = ref<ArchiveVolumeAppraisalFlowRecordResponse[]>([])
 const destructionFlowLoading = ref(false)
-const destructionFlowRecords = ref<ArchiveVolumeDestructionFlowRecordVO[]>([])
+const destructionFlowRecords = ref<ArchiveVolumeDestructionFlowRecordResponse[]>([])
 const destructionSubmitting = ref(false)
 const rejectAppraisalSubmitting = ref(false)
 const destructionApprovalSubmitting = ref(false)
@@ -490,12 +490,12 @@ const retentionDisplayText = computed(() => {
   return '—'
 })
 
-function flowRecordTitle(record: ArchiveVolumeAppraisalFlowRecordVO): string {
+function flowRecordTitle(record: ArchiveVolumeAppraisalFlowRecordResponse): string {
   const title = props.detail.volume.archiveTitle || props.detail.volume.archiveNo || '归档卷'
   return `${title} · ${record.actionLabel || '鉴定'}`
 }
 
-function formatFlowRecordMeta(record: ArchiveVolumeAppraisalFlowRecordVO): string {
+function formatFlowRecordMeta(record: ArchiveVolumeAppraisalFlowRecordResponse): string {
   const actor = record.operatorNickName
     || (record.eventType === 'RETENTION_REMINDER' ? '系统自动' : '—')
   const time = record.occurredAt ? formatDateTime(record.occurredAt) : '—'
@@ -515,13 +515,13 @@ function formatFlowRecordMeta(record: ArchiveVolumeAppraisalFlowRecordVO): strin
   return parts.join(' · ')
 }
 
-function isLatestFlowRecord(record: ArchiveVolumeAppraisalFlowRecordVO): boolean {
+function isLatestFlowRecord(record: ArchiveVolumeAppraisalFlowRecordResponse): boolean {
   const records = flowRecords.value
   if (!records.length || !record.eventId) return false
   return records[records.length - 1]?.eventId === record.eventId
 }
 
-function showRecordActions(record: ArchiveVolumeAppraisalFlowRecordVO): boolean {
+function showRecordActions(record: ArchiveVolumeAppraisalFlowRecordResponse): boolean {
   if (!isLatestFlowRecord(record)) return false
   if (record.appraisalStatus === 'REQUESTED' && props.detail.volume.appraisalStatus === 'REQUESTED') {
     return canApproveAppraisal.value || canRejectAppraisal.value
@@ -544,12 +544,12 @@ async function loadAppraisalFlowRecords() {
   }
 }
 
-function destructionFlowRecordTitle(record: ArchiveVolumeDestructionFlowRecordVO): string {
+function destructionFlowRecordTitle(record: ArchiveVolumeDestructionFlowRecordResponse): string {
   const title = props.detail.volume.archiveTitle || props.detail.volume.archiveNo || '归档卷'
   return `${title} · ${record.actionLabel || '销毁'}`
 }
 
-function formatDestructionFlowRecordMeta(record: ArchiveVolumeDestructionFlowRecordVO): string {
+function formatDestructionFlowRecordMeta(record: ArchiveVolumeDestructionFlowRecordResponse): string {
   const actor = record.operatorNickName || '—'
   const time = record.occurredAt ? formatDateTime(record.occurredAt) : '—'
   return `${actor} · ${time}`

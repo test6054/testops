@@ -11,7 +11,7 @@ import type {
   ExamCreateRequest,
   ExamRosterCreateRequest,
 } from '@/apis/mark/exam'
-import type { ExamCandidateRosterRequest, ExamCandidateVO } from '@/apis/mark/exam-scope'
+import type { ExamCandidateResponse, ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -332,7 +332,7 @@ export function useExamCreate() {
     rosterForm.candidates = []
   }
 
-  function addCandidates(candidates: ExamCandidateVO[]): void {
+  function addCandidates(candidates: ExamCandidateResponse[]): void {
     rosterForm.candidates = mergePreviewCandidates(rosterForm.candidates, candidates)
     const classSet = new Set(rosterForm.classIds)
     for (const candidate of candidates) {
@@ -356,12 +356,12 @@ export function useExamCreate() {
     return right.every(id => leftSet.has(id))
   }
 
-  function isSameCandidateSnapshot(left: ExamCandidateVO[], right: ExamCandidateVO[]): boolean {
+  function isSameCandidateSnapshot(left: ExamCandidateResponse[], right: ExamCandidateResponse[]): boolean {
     if (left.length !== right.length) return false
     return left.every((row, index) => row.studentUserId === right[index]?.studentUserId)
   }
 
-  function syncClassScopeCandidates(candidates: ExamCandidateVO[], classIds: string[]): void {
+  function syncClassScopeCandidates(candidates: ExamCandidateResponse[], classIds: string[]): void {
     if (!isSameStringIdSet(rosterForm.classIds, classIds)) {
       rosterForm.classIds = [...classIds]
     }

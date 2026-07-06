@@ -2,9 +2,9 @@ import type {
   MarkingSessionPhaseCode,
   MarkingTaskClaimRequest,
   MarkingTaskQueryRequest,
-  MarkingTaskVO,
+  MarkingTaskResponse,
   TeacherClaimContextQueryRequest,
-  TeacherClaimContextVO,
+  TeacherClaimContextResponse,
 } from '@/apis/mark/marking-organization'
 /**
  * 阅卷任务 Store
@@ -35,12 +35,12 @@ import { validateMarkingTaskStreamEvent } from '@/wire/mark/marking-task-stream-
 
 export const useMarkTaskStore = defineStore('markTask', () => {
   /** 当前用户在指定考试下的阅卷任务（按 examId 隔离） */
-  const tasks = ref<MarkingTaskVO[]>([])
+  const tasks = ref<MarkingTaskResponse[]>([])
   const tasksLoading = ref(false)
   const tasksLoadedExamId = ref<string>('')
 
   /** 教师领取上下文：活跃题组 + 当前会话；按 examId + markingPhase 隔离 */
-  const claimContextByExam = ref<Map<string, TeacherClaimContextVO>>(new Map())
+  const claimContextByExam = ref<Map<string, TeacherClaimContextResponse>>(new Map())
   const claimContextLoading = ref(false)
 
   function claimContextKey(examId: string, markingPhase: MarkingSessionPhaseCode): string {
@@ -62,7 +62,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
   async function loadTasks(
     request: MarkingTaskQueryRequest,
     options?: { silent?: boolean },
-  ): Promise<MarkingTaskVO[]> {
+  ): Promise<MarkingTaskResponse[]> {
     if (!options?.silent) {
       tasksLoading.value = true
     }
@@ -78,7 +78,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     }
   }
 
-  async function claimTasks(request: MarkingTaskClaimRequest): Promise<MarkingTaskVO[]> {
+  async function claimTasks(request: MarkingTaskClaimRequest): Promise<MarkingTaskResponse[]> {
     const claimed = await claimMarkingTasks(request)
     if (claimed.length > 0) {
       tasks.value = [...claimed, ...tasks.value]
@@ -88,7 +88,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
 
   async function loadClaimContext(
     request: TeacherClaimContextQueryRequest,
-  ): Promise<TeacherClaimContextVO> {
+  ): Promise<TeacherClaimContextResponse> {
     claimContextLoading.value = true
     try {
       const result = await getTeacherClaimContext(request)
@@ -104,7 +104,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
   function getClaimContext(
     examId: string,
     markingPhase: MarkingSessionPhaseCode,
-  ): TeacherClaimContextVO | null {
+  ): TeacherClaimContextResponse | null {
     return claimContextByExam.value.get(claimContextKey(examId, markingPhase)) ?? null
   }
 
@@ -145,7 +145,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     }
   }
 
-  function upsertTask(task: MarkingTaskVO): void {
+  function upsertTask(task: MarkingTaskResponse): void {
     const idx = tasks.value.findIndex((item) => item.id === task.id)
     if (idx >= 0) {
       tasks.value[idx] = task

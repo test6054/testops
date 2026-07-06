@@ -54,7 +54,7 @@
 
 <script lang="ts" setup>
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
-import type { MarkingOrganizationVO } from '@/apis/mark/marking-organization'
+import type { MarkingOrganizationResponse } from '@/apis/mark/marking-organization'
 import { computed } from 'vue'
 import {
   MarkingOrganizationStatusDescription,
@@ -68,7 +68,7 @@ defineOptions({ name: 'MarkQualityScopeBar' })
 const props = withDefaults(
   defineProps<{
     mode: 'workbench' | 'standalone'
-    organizationDetail: MarkingOrganizationVO | null
+    organizationDetail: MarkingOrganizationResponse | null
     selectedOrganizationId?: string
     selectedGroupId?: string
     organizationLoading?: boolean

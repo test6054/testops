@@ -93,7 +93,7 @@
 
 <script lang="ts" setup>
 import type {
-  ExamReviewWindowPolicyVO,
+  ExamReviewWindowPolicy,
   GradeReviewReasonTypeCode,
   ReviewWindowPolicyStatusCode,
 } from '@/apis/mark/grade-review'
@@ -131,7 +131,7 @@ function reviewWindowStatusLabel(status: ReviewWindowPolicyStatusCode): string {
   return strictEnumLabel(ReviewWindowPolicyStatusDescription, status, '复核窗口状态')
 }
 
-const policy = ref<ExamReviewWindowPolicyVO | null>(null)
+const policy = ref<ExamReviewWindowPolicy | null>(null)
 const loading = ref(false)
 const saving = ref(false)
 const activating = ref(false)

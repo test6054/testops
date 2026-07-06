@@ -153,10 +153,9 @@ import type {
   ArchiveDestructionStatusCode,
   ArchiveMaterialTypeCode,
   ArchiveMissingMaterialStatVO,
-  ArchiveVolumeDestructionLedgerRowVO,
-  ArchiveVolumeStatisticsVO,
+  ArchiveVolumeDestructionLedgerRowResponse,
+  ArchiveVolumeStatisticsResponse,
 } from '@/apis/mark/archive-volume'
-import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
@@ -172,7 +171,6 @@ import {
   pageDestructionLedger,
 } from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
-import { requireArrayResult } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -214,8 +212,8 @@ const loading = ref(false)
 const exportOverviewLoading = ref(false)
 const exportDestructionLoading = ref(false)
 const destructionLoading = ref(false)
-const statistics = ref<ArchiveVolumeStatisticsVO | null>(null)
-const destructionRows = ref<ArchiveVolumeDestructionLedgerRowVO[]>([])
+const statistics = ref<ArchiveVolumeStatisticsResponse | null>(null)
+const destructionRows = ref<ArchiveVolumeDestructionLedgerRowResponse[]>([])
 const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 
 interface ArchiveVolumeStatisticsFilterForm extends Record<string, unknown> {
@@ -302,7 +300,7 @@ const missingColumns: ColumnsType<ArchiveMissingMaterialStatVO> = [
   { title: '缺项卷数', dataIndex: 'missingVolumeCount', width: 120 },
 ]
 
-const destructionColumns: ColumnsType<ArchiveVolumeDestructionLedgerRowVO> = [
+const destructionColumns: ColumnsType<ArchiveVolumeDestructionLedgerRowResponse> = [
   { title: '档案号', dataIndex: 'archiveNo', width: 140 },
   { title: '标题', dataIndex: 'archiveTitle' },
   { title: '院系', dataIndex: 'departmentName', width: 140 },
@@ -444,10 +442,7 @@ function applyScopedDepartmentDefault() {
 
 async function loadDepartments() {
   try {
-    const departments = requireArrayResult<TenantSchoolDepartmentDto>(
-      await departmentCatalogApi.list(),
-      '院系',
-    )
+    const departments = await departmentCatalogApi.list()
     departmentOptions.value = departments.map((item) => ({
       value: item.id,
       label: item.deptName,

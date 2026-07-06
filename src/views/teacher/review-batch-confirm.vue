@@ -72,7 +72,7 @@
           size="middle"
           @page-change="onPageChange"
         >
-          <template #bodyCell="{ column, record }: { column: ColumnType<ReviewTaskItemVO>, record: ReviewTaskItemVO }">
+          <template #bodyCell="{ column, record }: { column: ColumnType<ReviewTaskItemResponse>, record: ReviewTaskItemResponse }">
             <template v-if="column.key === 'paper'">
               {{ record.paperDisplay.primaryText }}
             </template>
@@ -135,7 +135,7 @@ import type {
 } from '@/apis/mark/exam-grade'
 import type {
   GradeSourceCode,
-  ReviewTaskItemVO,
+  ReviewTaskItemResponse,
 } from '@/apis/mark/exam-review-task'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -179,7 +179,7 @@ const { refreshing: workbenchRefreshing } = useMarkWorkbenchContext()
 const loading = ref(false)
 const submitting = ref(false)
 const batchFailures = ref<ExamGradeBatchConfirmFailureItem[]>([])
-const rows = ref<ReviewTaskItemVO[]>([])
+const rows = ref<ReviewTaskItemResponse[]>([])
 const scoreDraftMap = reactive<Record<string, number>>({})
 const selectedRowKeys = ref<string[]>([])
 
@@ -206,7 +206,7 @@ const batchSignalMetrics = computed((): SignalMetric[] => [
   },
 ])
 
-const columns: ColumnType<ReviewTaskItemVO>[] = [
+const columns: ColumnType<ReviewTaskItemResponse>[] = [
   { title: '答卷', key: 'paper', width: 200 },
   { title: '题号', key: 'question', width: 100 },
   { title: '来源', key: 'gradeSource', width: 110 },
@@ -229,7 +229,7 @@ function gradeSourceTone(source: GradeSourceCode): BadgeTone {
   return GRADE_SOURCE_TONE[source]
 }
 
-function initScoreDraft(records: ReviewTaskItemVO[]): void {
+function initScoreDraft(records: ReviewTaskItemResponse[]): void {
   for (const record of records) {
     if (scoreDraftMap[record.gradeResultId] == null && record.aiScore != null) {
       scoreDraftMap[record.gradeResultId] = record.aiScore

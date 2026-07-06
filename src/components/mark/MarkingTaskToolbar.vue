@@ -133,9 +133,9 @@
 import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
 import type {
   AllocationUnitCode,
-  AnonymousRevealVO,
+  AnonymousRevealResponse,
+  MarkingTaskResponse,
   MarkingTaskStatusCode,
-  MarkingTaskVO,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { MarkingRecentSubmitEntry } from '@/composables/useMarkingRecentSubmit'
@@ -153,11 +153,11 @@ import UiPopoverPanel from '@/components/ui-guide/ui/UiPopoverPanel.vue'
 defineOptions({ name: 'MarkingTaskToolbar' })
 
 const props = defineProps<{
-  task: MarkingTaskVO | null
+  task: MarkingTaskResponse | null
   loading: boolean
   isReadOnly: boolean
   isExamOwner: boolean
-  revealedIdentity: AnonymousRevealVO | null
+  revealedIdentity: AnonymousRevealResponse | null
   navigation: ReturnType<typeof useMarkingTaskNavigation>
   taskStatusTone: (status: MarkingTaskStatusCode) => BadgeTone
   taskStatusLabel: (status: MarkingTaskStatusCode) => string

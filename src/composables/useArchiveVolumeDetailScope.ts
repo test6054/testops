@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import type { ArchiveVolumeDetailVO } from '@/apis/mark/archive-volume'
+import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
 import { computed, reactive } from 'vue'
 import { ArchiveVolumeRoleDescription } from '@/apis/mark/archive-volume'
 import { canSubmitArchiveVolumeDetail } from '@/composables/useArchiveVolumeSubmitGate'
@@ -10,7 +10,7 @@ import { strictEnumLabel } from '@/utils/strict-enum'
  * 归档卷详情页 volumeRole 操作门禁（已移除 wizard/expert 双轨）。
  */
 export function useArchiveVolumeDetailScope(
-  detail: Ref<ArchiveVolumeDetailVO | null>,
+  detail: Ref<ArchiveVolumeDetailResponse | null>,
   currentUserId: Ref<string>,
 ) {
   const volumeRole = computed(() => detail.value?.volumeRole ?? ArchiveVolumeRoleCode.READONLY)

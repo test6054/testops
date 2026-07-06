@@ -1,5 +1,5 @@
 import type { ComputedRef, MaybeRefOrGetter } from 'vue'
-import type { ExamDetailVO } from '@/apis/mark/exam'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, inject, toValue } from 'vue'
 import {
@@ -12,7 +12,7 @@ export interface ExamJourneyContextBarState {
   contextBarSubtitle: ComputedRef<string>
   examStatusLabel: ComputedRef<string>
   examStatusTone: ComputedRef<BadgeTone | undefined>
-  examDetail: ComputedRef<ExamDetailVO | null>
+  examDetail: ComputedRef<ExamDetailResponse | null>
   examDetailLoading: ComputedRef<boolean>
 }
 

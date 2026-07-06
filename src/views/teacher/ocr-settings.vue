@@ -2,11 +2,11 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamDetailVO } from '@/apis/mark/exam'
-import type { ExamScoreSummaryItemVO } from '@/apis/mark/exam-score'
-import type { MarkOcrConfigVO } from '@/apis/mark/ocr-config'
-import type { PaddleOcrInstanceVO } from '@/apis/mark/ocr-paddle-instance'
-import type { MarkOcrPaperSliceVO, MarkOcrRecognizeVO } from '@/apis/mark/ocr-recognition'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
+import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
+import type { MarkOcrConfigResponse } from '@/apis/mark/ocr-config'
+import type { PaddleOcrInstanceResponse } from '@/apis/mark/ocr-paddle-instance'
+import type { MarkOcrPaperSliceVO, MarkOcrRecognizeResponse } from '@/apis/mark/ocr-recognition'
 import type { MarkOcrHealthStatusCode, MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
 import type { SignalMetric } from '@/types/workbench'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
@@ -64,9 +64,9 @@ const loading = ref(false)
 const loadFailed = ref(false)
 const healthChecking = ref(false)
 const recognizing = ref(false)
-const currentConfig = ref<MarkOcrConfigVO | null>(null)
+const currentConfig = ref<MarkOcrConfigResponse | null>(null)
 // 加载失败：toast 提示，主区保持空态/列表壳
-const recognizeResult = ref<MarkOcrRecognizeVO | null>(null)
+const recognizeResult = ref<MarkOcrRecognizeResponse | null>(null)
 const debugForm = ref<DebugFormState>({})
 const { selectedExamId } = useMarkExamContext()
 const {
@@ -88,14 +88,14 @@ const ocrHealthCheckAllowed = computed(() => authStore.userRole === RoleEnum.SUP
 
 // 仅 PADDLE 渠道相关：展示后端已注册的 PaddleOCR 服务实例列表。
 // 用 watch(currentConfig.providerType) 自动开关加载，无需手动触发。
-const paddleInstances = ref<PaddleOcrInstanceVO[]>([])
+const paddleInstances = ref<PaddleOcrInstanceResponse[]>([])
 const paddleInstancesLoading = ref(false)
 const paperSlices = ref<MarkOcrPaperSliceVO[]>([])
 const paperSlicesLoading = ref(false)
-const paperCandidates = ref<ExamScoreSummaryItemVO[]>([])
+const paperCandidates = ref<ExamScoreSummaryItemResponse[]>([])
 const paperCandidatesLoading = ref(false)
 const paperCandidateKeyword = ref('')
-const examDetail = ref<ExamDetailVO | null>(null)
+const examDetail = ref<ExamDetailResponse | null>(null)
 const examDetailLoading = ref(false)
 
 const examMaterialLayoutMode = computed(() => examDetail.value?.materialLayoutMode)
@@ -216,11 +216,11 @@ const paperCandidateOptions = computed(() =>
     })),
 )
 
-function finalScoreStatusLabel(status: ExamScoreSummaryItemVO['finalScoreStatus']): string {
+function finalScoreStatusLabel(status: ExamScoreSummaryItemResponse['finalScoreStatus']): string {
   return strictEnumLabel(FinalScoreStatusDescription, status, '最终成绩状态')
 }
 
-function bindingStatusLabel(status: ExamScoreSummaryItemVO['bindingStatus']): string | undefined {
+function bindingStatusLabel(status: ExamScoreSummaryItemResponse['bindingStatus']): string | undefined {
   if (!status) return undefined
   return strictEnumLabel(BindingStatusDescription, status, '试卷绑定状态')
 }
@@ -244,7 +244,7 @@ function ocrHealthMessageText(messageText?: string): string {
   )
 }
 
-function applyConfig(config: MarkOcrConfigVO): void {
+function applyConfig(config: MarkOcrConfigResponse): void {
   currentConfig.value = config
 }
 
@@ -386,7 +386,7 @@ const paddleHealthyCount = computed(
   () => paddleInstances.value.filter((it) => it.healthStatus === 'HEALTHY').length,
 )
 
-const paddleInstanceColumns: ColumnType<PaddleOcrInstanceVO>[] = [
+const paddleInstanceColumns: ColumnType<PaddleOcrInstanceResponse>[] = [
   { title: '实例', key: 'instanceName', width: 180, ellipsis: true },
   { title: '健康', key: 'healthStatus', width: 100 },
   { title: '设备类型', dataIndex: 'deviceType', key: 'deviceType', width: 100 },

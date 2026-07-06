@@ -312,7 +312,7 @@
     <UiSkeletonState v-if="similarLoading" variant="card" compact />
     <UiEmpty v-else-if="similarResults.length === 0" description="暂无相似题" />
     <a-list v-else :data-source="similarResults" item-layout="vertical">
-      <template #renderItem="{ item }: { item: QuestionSignatureVO }">
+      <template #renderItem="{ item }: { item: QuestionSignatureResponse }">
         <a-list-item>
           <a-space size="small">
             <UiTag tone="blue" size="sm">{{ item.examName }} · {{ item.examNo }}</UiTag>
@@ -432,10 +432,10 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import type {
-  AnswerClusterRecordVO,
+  AnswerClusterRecordResponse,
   ExperienceCaseStatusCode,
-  GradingExperienceCaseVO,
-  QuestionSignatureVO,
+  GradingExperienceCaseResponse,
+  QuestionSignatureResponse,
 } from '@/apis/mark/grading-experience'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
@@ -502,11 +502,11 @@ const tabItems: UiSectionTabItem[] = [
 
 // ─── 题目签名 ─────────────────────────────────
 
-const signatures = ref<QuestionSignatureVO[]>([])
+const signatures = ref<QuestionSignatureResponse[]>([])
 const signaturesLoading = ref(false)
 const generatingSignatures = ref(false)
 
-const signatureColumns: ColumnType<QuestionSignatureVO>[] = [
+const signatureColumns: ColumnType<QuestionSignatureResponse>[] = [
   { title: '题号', key: 'questionNo', width: 80 },
   { title: '题型', key: 'questionType', width: 100 },
   { title: '经验案例', key: 'experienceCount', width: 88, align: 'right' },
@@ -592,10 +592,10 @@ async function handleGenerateSignatures(): Promise<void> {
 
 const similarDrawerOpen = ref(false)
 const similarLoading = ref(false)
-const similarResults = ref<QuestionSignatureVO[]>([])
+const similarResults = ref<QuestionSignatureResponse[]>([])
 const similarSourceQuestionNo = ref<string | undefined>(undefined)
 
-async function openSimilarDrawer(record: QuestionSignatureVO): Promise<void> {
+async function openSimilarDrawer(record: QuestionSignatureResponse): Promise<void> {
   if (!selectedExamId.value) return
   similarSourceQuestionNo.value = record.questionNo
   similarDrawerOpen.value = true
@@ -616,7 +616,7 @@ async function openSimilarDrawer(record: QuestionSignatureVO): Promise<void> {
 
 // ─── AI 经验提取 ─────────────────────────────────
 
-const experiences = ref<GradingExperienceCaseVO[]>([])
+const experiences = ref<GradingExperienceCaseResponse[]>([])
 const experienceLoading = ref(false)
 const extracting = ref(false)
 
@@ -662,7 +662,7 @@ const experienceSignalMetrics = computed((): SignalMetric[] => {
   ]
 })
 
-const experienceColumns: ColumnType<GradingExperienceCaseVO>[] = [
+const experienceColumns: ColumnType<GradingExperienceCaseResponse>[] = [
   { title: '题号', key: 'questionNo', dataIndex: 'questionNo', width: 100 },
   { title: '题型', key: 'questionType', width: 100 },
   { title: 'AI 状态', key: 'analysisStatus', width: 100 },
@@ -715,7 +715,7 @@ async function handleExtract(): Promise<void> {
 // ─── 经验详情抽屉 ─────────────────────────────────
 
 const experienceDrawerOpen = ref(false)
-const detailExperience = ref<GradingExperienceCaseVO | null>(null)
+const detailExperience = ref<GradingExperienceCaseResponse | null>(null)
 const confirmingExperience = ref(false)
 const deprecatingExperience = ref(false)
 
@@ -770,7 +770,7 @@ function handleDeprecateExperience(): void {
   })
 }
 
-function openExperienceDrawer(record: GradingExperienceCaseVO): void {
+function openExperienceDrawer(record: GradingExperienceCaseResponse): void {
   detailExperience.value = record
   experienceDrawerOpen.value = true
 }
@@ -782,7 +782,7 @@ function handleExperienceFilterReset(): void {
 
 // ─── AI 答案聚类 ─────────────────────────────────
 
-const latestCluster = ref<AnswerClusterRecordVO | null>(null)
+const latestCluster = ref<AnswerClusterRecordResponse | null>(null)
 const clusterLoading = ref(false)
 const clustering = ref(false)
 
@@ -852,56 +852,56 @@ function experienceCountForQuestion(layoutQuestionId: string): number {
 }
 
 function ellipsis(
-  text: QuestionSignatureVO['questionDigest'] | GradingExperienceCaseVO['experienceSummary'],
+  text: QuestionSignatureResponse['questionDigest'] | GradingExperienceCaseResponse['experienceSummary'],
   len = 60,
 ): string {
   if (!text) return '—'
   return text.length > len ? `${text.slice(0, len)}…` : text
 }
 
-function clusterLatencyText(item: AnswerClusterRecordVO): string {
+function clusterLatencyText(item: AnswerClusterRecordResponse): string {
   if (item.analysisStatus === 'PENDING') return '待分析，尚未生成耗时'
   if (item.analysisStatus === 'SUCCESS' && item.latencyMs != null) return `${item.latencyMs} ms`
   return '处理失败，未生成耗时'
 }
 
-function clusterTraceText(item: AnswerClusterRecordVO): string {
+function clusterTraceText(item: AnswerClusterRecordResponse): string {
   if (item.analysisStatus === 'PENDING') return '待分析，尚未生成追踪编号'
   if (item.analysisStatus === 'SUCCESS') return item.aiTraceId ?? '—'
   return '处理失败，未生成追踪编号'
 }
 
-function clusterSummaryText(item: AnswerClusterRecordVO): string {
+function clusterSummaryText(item: AnswerClusterRecordResponse): string {
   if (item.analysisStatus === 'PENDING') return 'AI 答案聚类待分析，完成后展示聚类总结'
   if (item.analysisStatus === 'SUCCESS') return item.clusterSummary ?? '—'
   return aiClusterFailureMessage(item.errorMessage)
 }
 
-function clusterGroupCountText(item: AnswerClusterRecordVO): string {
+function clusterGroupCountText(item: AnswerClusterRecordResponse): string {
   if (item.analysisStatus === 'PENDING') return '待分析'
   if (item.analysisStatus === 'SUCCESS' && item.groupCount != null) return String(item.groupCount)
   return '处理失败'
 }
 
-function experienceTraceText(item: GradingExperienceCaseVO): string {
+function experienceTraceText(item: GradingExperienceCaseResponse): string {
   if (item.analysisStatus === 'PENDING') return '待分析，尚未生成追踪编号'
   if (item.analysisStatus === 'SUCCESS') return item.aiTraceId ?? '—'
   return '处理失败，未生成追踪编号'
 }
 
-function experienceLatencyText(item: GradingExperienceCaseVO): string {
+function experienceLatencyText(item: GradingExperienceCaseResponse): string {
   if (item.analysisStatus === 'PENDING') return '待分析，尚未生成耗时'
   if (item.analysisStatus === 'SUCCESS' && item.latencyMs != null) return `${item.latencyMs} ms`
   return '处理失败，未生成耗时'
 }
 
-function experienceSummaryText(item: GradingExperienceCaseVO): string {
+function experienceSummaryText(item: GradingExperienceCaseResponse): string {
   if (item.analysisStatus === 'PENDING') return 'AI 阅卷经验提炼待分析，完成后展示经验总结'
   if (item.analysisStatus === 'SUCCESS') return item.experienceSummary ?? '—'
   return gradingExperienceFailureMessage(item.errorMessage)
 }
 
-function experienceApplicableScopeText(item: GradingExperienceCaseVO): string {
+function experienceApplicableScopeText(item: GradingExperienceCaseResponse): string {
   if (item.analysisStatus === 'PENDING') return '待分析，尚未生成适用边界'
   if (item.analysisStatus === 'SUCCESS') return item.applicableScope ?? '—'
   return '处理失败，未生成适用边界'

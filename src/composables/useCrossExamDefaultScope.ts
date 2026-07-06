@@ -1,4 +1,4 @@
-import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import { listDistinctExamTerms, pageExams } from '@/apis/mark/exam'
 import { readAllPages } from '@/utils/page-result'
@@ -24,7 +24,7 @@ export async function loadExamsForAcademicYearSemester(
   academicYear: string,
   semester: SemesterCode,
   orgScope?: AnalysisExamOrgScope,
-): Promise<ExamSummaryVO[]> {
+): Promise<ExamSummaryResponse[]> {
   return readAllPages(
     (pageNum) => pageExams({
       academicYear,
@@ -45,7 +45,7 @@ export async function loadExamsForCourseAcademicYearSemester(
   academicYear: string,
   semester: SemesterCode,
   orgScope?: AnalysisExamOrgScope,
-): Promise<ExamSummaryVO[]> {
+): Promise<ExamSummaryResponse[]> {
   return readAllPages(
     (pageNum) => pageExams({
       courseId,
@@ -66,7 +66,7 @@ export async function loadExamsForTeachingTerm(
   teachingAcademicYear: string,
   teachingSemester: SemesterCode,
   orgScope?: AnalysisExamOrgScope,
-): Promise<ExamSummaryVO[]> {
+): Promise<ExamSummaryResponse[]> {
   return readAllPages(
     (pageNum) => pageExams({
       teachingAcademicYear,
@@ -86,13 +86,13 @@ export async function loadExamsForTeachingTerm(
 export async function loadExamsForRecentDistinctTerms(
   semesterCount: number,
   orgScope?: AnalysisExamOrgScope,
-): Promise<ExamSummaryVO[]> {
+): Promise<ExamSummaryResponse[]> {
   if (semesterCount <= 0) {
     return []
   }
   const terms = await listDistinctExamTerms(buildOrgScopeQuery(orgScope))
   const recentTerms = terms.slice(0, semesterCount)
-  const merged = new Map<string, ExamSummaryVO>()
+  const merged = new Map<string, ExamSummaryResponse>()
   for (const term of recentTerms) {
     const termExams = await loadExamsForAcademicYearSemester(term.academicYear, term.semester, orgScope)
     for (const exam of termExams) {
@@ -137,12 +137,12 @@ export const CROSS_EXAM_TREND_MIN_AUTO_SELECT_COUNT = 2
  * 供跨考趋势等须「同一课程」的分析卡片，避免最近 N 学期全选跨课导致生成失败。
  * 无 courseId 的考试不参与聚类；若无有效簇则返回空数组。
  */
-export function pickExamIdsByLargestCourseCluster(exams: ExamSummaryVO[]): string[] {
+export function pickExamIdsByLargestCourseCluster(exams: ExamSummaryResponse[]): string[] {
   if (exams.length === 0) {
     return []
   }
 
-  const examsByCourseId = new Map<string, ExamSummaryVO[]>()
+  const examsByCourseId = new Map<string, ExamSummaryResponse[]>()
   for (const exam of exams) {
     const courseId = exam.courseId?.trim()
     if (!courseId) {
@@ -157,7 +157,7 @@ export function pickExamIdsByLargestCourseCluster(exams: ExamSummaryVO[]): strin
   }
 
   let selectedCourseId = ''
-  let selectedExams: ExamSummaryVO[] = []
+  let selectedExams: ExamSummaryResponse[] = []
   for (const [courseId, courseExams] of examsByCourseId) {
     if (courseExams.length > selectedExams.length) {
       selectedCourseId = courseId

@@ -9,7 +9,6 @@ import type { GraduationRequirementVO } from '@/apis/quality/graduation-requirem
 import { computed, onMounted, ref, watch } from 'vue'
 import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import { showUserError } from '@/utils/error-handler'
-import { requireArrayResult } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -69,10 +68,7 @@ async function loadOptions() {
   }
   loading.value = true
   try {
-    options.value = requireArrayResult(
-      await graduationRequirementApi.listByPlan(props.trainingPlanId),
-      '毕业要求',
-    )
+    options.value = await graduationRequirementApi.listByPlan(props.trainingPlanId)
   } catch (e) {
     showUserError(e, '毕业要求列表加载失败')
   } finally {

@@ -273,8 +273,8 @@ import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-statu
 import type {
   ArchiveMaterialSubmissionStatusCode,
   ArchiveMaterialTypeCode,
-  ArchiveVolumeDetailVO,
-  ArchiveVolumeMaterialVO,
+  ArchiveVolumeDetailResponse,
+  ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
@@ -336,7 +336,7 @@ defineOptions({ name: 'ArchiveVolumeMaterialTablePanel' })
 
 const props = defineProps<{
   volumeId: string
-  detail: ArchiveVolumeDetailVO
+  detail: ArchiveVolumeDetailResponse
   selectedCatalogKeys: string[]
   canRegisterMaterial: boolean
 }>()
@@ -358,7 +358,7 @@ const sharedRefSubmitting = ref(false)
 const ocrDetailOpen = ref(false)
 const ocrDetailMaterialId = ref<string>()
 const tagModalOpen = ref(false)
-const tagEditMaterial = ref<ArchiveVolumeMaterialVO>()
+const tagEditMaterial = ref<ArchiveVolumeMaterialResponse>()
 const scanDispatchOpen = ref(false)
 const scanDispatchResultOpen = ref(false)
 const scanDispatchQuery = ref<Record<string, string> | null>(null)
@@ -403,7 +403,7 @@ const sharedRefTypeOptions = [
 
 const materialTypeOptions = ARCHIVE_MATERIAL_TYPE_OPTIONS
 
-const materialColumns: ColumnsType<ArchiveVolumeMaterialVO> = [
+const materialColumns: ColumnsType<ArchiveVolumeMaterialResponse> = [
   { title: '类别', key: 'materialType', width: 160 },
   { title: '目录编码', dataIndex: 'catalogCode', width: 120 },
   { title: '文件名', dataIndex: 'fileName' },
@@ -534,15 +534,15 @@ function materialOcrStatusTone(code: ArchiveMaterialOcrStatusCode): BadgeTone {
   return strictEnumTone(ARCHIVE_MATERIAL_OCR_STATUS_TONE, code, 'ocrStatus')
 }
 
-function canRetryMaterialOcr(material: ArchiveVolumeMaterialVO): boolean {
+function canRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): boolean {
   return material.ocrStatus === 'FAILED' && Boolean(material.fileId)
 }
 
-function canPreviewMaterialFile(material: ArchiveVolumeMaterialVO): boolean {
+function canPreviewMaterialFile(material: ArchiveVolumeMaterialResponse): boolean {
   return Boolean(material.fileId)
 }
 
-function handlePreviewMaterial(material: ArchiveVolumeMaterialVO): void {
+function handlePreviewMaterial(material: ArchiveVolumeMaterialResponse): void {
   if (!material.fileId) return
   void filePreview.openPreview({
     fileId: material.fileId,
@@ -550,7 +550,7 @@ function handlePreviewMaterial(material: ArchiveVolumeMaterialVO): void {
   })
 }
 
-async function handleDownloadMaterial(material: ArchiveVolumeMaterialVO): Promise<void> {
+async function handleDownloadMaterial(material: ArchiveVolumeMaterialResponse): Promise<void> {
   if (!material.fileId) return
   try {
     await downloadFile({ nodeId: material.fileId })
@@ -559,7 +559,7 @@ async function handleDownloadMaterial(material: ArchiveVolumeMaterialVO): Promis
   }
 }
 
-function canViewMaterialOcr(material: ArchiveVolumeMaterialVO): boolean {
+function canViewMaterialOcr(material: ArchiveVolumeMaterialResponse): boolean {
   return (
     material.ocrStatus === 'COMPLETED'
     || material.ocrStatus === 'FAILED'
@@ -567,12 +567,12 @@ function canViewMaterialOcr(material: ArchiveVolumeMaterialVO): boolean {
   )
 }
 
-function openMaterialOcrDetail(material: ArchiveVolumeMaterialVO): void {
+function openMaterialOcrDetail(material: ArchiveVolumeMaterialResponse): void {
   ocrDetailMaterialId.value = material.materialId
   ocrDetailOpen.value = true
 }
 
-function openTagModal(material: ArchiveVolumeMaterialVO): void {
+function openTagModal(material: ArchiveVolumeMaterialResponse): void {
   tagEditMaterial.value = material
   tagModalOpen.value = true
 }
@@ -581,7 +581,7 @@ function emitRefreshed(options?: { silent?: boolean }) {
   emit('refreshed', options)
 }
 
-function confirmRetryMaterialOcr(material: ArchiveVolumeMaterialVO): void {
+function confirmRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): void {
   void confirmAsync({
     title: '重试 OCR 识别？',
     content: `材料「${material.fileName ?? material.materialId}」将重新进入 OCR 队列。`,

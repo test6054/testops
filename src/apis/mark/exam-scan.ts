@@ -131,7 +131,7 @@ export interface ScanAttentionQueryRequest extends QueryDto {
 }
 
 /** 扫描异常待办项 - 对应 ScanAttentionItemResponse */
-export interface ScanAttentionItemVO {
+export interface ScanAttentionItemResponse {
   id: string
   attentionType: ScanAttentionTypeCode
   sourceType: ScanAttentionSourceTypeCode
@@ -198,7 +198,7 @@ export const SCAN_MONITOR_FLOW_HINT = `${ScanBatchStatusDescription[ScanBatchSta
 import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
 
 /** 扫描批次视图 - 对应 ExamScannerBatchResponse */
-export interface ExamScannerBatchVO {
+export interface ExamScannerBatchResponse {
   /** 扫描批次ID */
   scanBatchId: string
   examId: string
@@ -261,7 +261,7 @@ export interface ExamScannerBatchVO {
 }
 
 /** 扫描批次创建响应 - 对应 ExamScannerBatchCreateResponse（orphan 补救等场景复用） */
-export interface ExamScannerBatchCreateVO {
+export interface ExamScannerBatchCreateResponse {
   scanBatchId: string
   batchNo: string
   eventCount: number
@@ -277,7 +277,7 @@ export interface ExamScannerBatchWorkbenchSummaryRequest {
 }
 
 /** 扫描批次工作台 KPI 响应 - 对应 ExamScannerBatchWorkbenchSummaryResponse */
-export interface ExamScannerBatchWorkbenchSummaryVO {
+export interface ExamScannerBatchWorkbenchSummaryResponse {
   batchTotal: number
   inProgressCount: number
   blockedCount: number
@@ -320,7 +320,7 @@ export interface ExamScannerBatchOrphanStatsRequest {
 }
 
 /** orphan 扫描事件统计响应 - 对应 ExamScannerBatchOrphanStatsResponse */
-export interface ExamScannerBatchOrphanStatsVO {
+export interface ExamScannerBatchOrphanStatsResponse {
   orphanPendingEventCount: number
   orphanPendingPageCount: number
 }
@@ -331,7 +331,7 @@ export interface ExamScannerBatchRecoverOrphanRequest {
 }
 
 /** orphan 扫描事件一键补救失败项 - 对应 ExamScannerBatchRecoverOrphanFailureItem */
-export interface ExamScannerBatchRecoverOrphanFailureVO {
+export interface ExamScannerBatchRecoverOrphanFailureItem {
   scannerDeviceId: string
   scannerStationId?: string
   eventCount?: number
@@ -340,9 +340,9 @@ export interface ExamScannerBatchRecoverOrphanFailureVO {
 }
 
 /** orphan 扫描事件一键补救响应 - 对应 ExamScannerBatchRecoverOrphanResponse */
-export interface ExamScannerBatchRecoverOrphanVO {
-  recoveredBatches: ExamScannerBatchCreateVO[]
-  failedGroups?: ExamScannerBatchRecoverOrphanFailureVO[]
+export interface ExamScannerBatchRecoverOrphanResponse {
+  recoveredBatches: ExamScannerBatchCreateResponse[]
+  failedGroups?: ExamScannerBatchRecoverOrphanFailureItem[]
 }
 
 /** 扫描批次分页查询请求 - 对应 ExamScannerBatchQueryRequest */
@@ -364,7 +364,7 @@ export interface ExamScannerBatchQueryRequest extends QueryDto {
 }
 
 /** 扫描批次顺序审计异常项 */
-export interface ScanBatchOrderAuditIssueVO {
+export interface ScanBatchOrderAuditIssueResponse {
   auditCode: ScanBatchOrderAuditCode
   message: string
   pageSeq?: number
@@ -373,7 +373,7 @@ export interface ScanBatchOrderAuditIssueVO {
 }
 
 /** 扫描批次顺序审计结果 */
-export interface ScanBatchOrderAuditVO {
+export interface ScanBatchOrderAuditResponse {
   scanBatchId: string
   examId: string
   passed: boolean
@@ -383,7 +383,7 @@ export interface ScanBatchOrderAuditVO {
   receivedPageCount?: number
   expectedPaperInstanceCount?: number
   actualPaperInstanceCount?: number
-  issues: ScanBatchOrderAuditIssueVO[]
+  issues: ScanBatchOrderAuditIssueResponse[]
 }
 
 /** 扫描批次顺序审计查询请求 */
@@ -400,8 +400,8 @@ export interface ExamScannerBatchTeacherSealRequest {
 /** 查询扫描批次工作台 KPI。 */
 export function getScannerBatchWorkbenchSummary(
   request: ExamScannerBatchWorkbenchSummaryRequest,
-): Promise<ExamScannerBatchWorkbenchSummaryVO> {
-  return http.post<ExamScannerBatchWorkbenchSummaryVO>(
+): Promise<ExamScannerBatchWorkbenchSummaryResponse> {
+  return http.post<ExamScannerBatchWorkbenchSummaryResponse>(
     '/api/mark/exams/scanner-batches/workbench-summary',
     request,
   )
@@ -410,8 +410,8 @@ export function getScannerBatchWorkbenchSummary(
 /** 查询扫描批次详情。 */
 export function getScannerBatchDetail(
   request: ExamScannerBatchDetailRequest,
-): Promise<ExamScannerBatchVO> {
-  return http.post<ExamScannerBatchVO>('/api/mark/exams/scanner-batches/detail', request)
+): Promise<ExamScannerBatchResponse> {
+  return http.post<ExamScannerBatchResponse>('/api/mark/exams/scanner-batches/detail', request)
 }
 
 /** 分页查询扫描批次内扫描页。 */
@@ -427,8 +427,8 @@ export function pageScannerBatchPages(
 /** 查询 orphan PENDING 扫描事件统计。 */
 export function getScannerBatchOrphanStats(
   request: ExamScannerBatchOrphanStatsRequest,
-): Promise<ExamScannerBatchOrphanStatsVO> {
-  return http.post<ExamScannerBatchOrphanStatsVO>(
+): Promise<ExamScannerBatchOrphanStatsResponse> {
+  return http.post<ExamScannerBatchOrphanStatsResponse>(
     '/api/mark/exams/scanner-batches/orphan-stats',
     request,
   )
@@ -437,8 +437,8 @@ export function getScannerBatchOrphanStats(
 /** 按设备分组一键补救 orphan PENDING 扫描事件。 */
 export function recoverOrphanScanEvents(
   request: ExamScannerBatchRecoverOrphanRequest,
-): Promise<ExamScannerBatchRecoverOrphanVO> {
-  return http.post<ExamScannerBatchRecoverOrphanVO>(
+): Promise<ExamScannerBatchRecoverOrphanResponse> {
+  return http.post<ExamScannerBatchRecoverOrphanResponse>(
     '/api/mark/exams/scanner-batches/recover-orphan-events',
     request,
   )
@@ -454,15 +454,15 @@ export function sealScanBatchByTeacher(
 /** 查询扫描批次顺序审计结果。 */
 export function getScanBatchOrderAudit(
   request: ScanBatchOrderAuditQueryRequest,
-): Promise<ScanBatchOrderAuditVO> {
-  return http.post<ScanBatchOrderAuditVO>('/api/mark/exams/scanner-batches/order-audit', request)
+): Promise<ScanBatchOrderAuditResponse> {
+  return http.post<ScanBatchOrderAuditResponse>('/api/mark/exams/scanner-batches/order-audit', request)
 }
 
 /** 分页查询扫描批次。 */
 export function pageScannerBatches(
   request: ExamScannerBatchQueryRequest,
-): Promise<PageResult<ExamScannerBatchVO>> {
-  return http.post<PageResult<ExamScannerBatchVO>>('/api/mark/exams/scanner-batches/page', request)
+): Promise<PageResult<ExamScannerBatchResponse>> {
+  return http.post<PageResult<ExamScannerBatchResponse>>('/api/mark/exams/scanner-batches/page', request)
 }
 
 /** 扫描批次自动页登记重试请求 - 对应 ExamScanBatchPageRegisterRetryRequest */
@@ -493,6 +493,6 @@ export function retryScanBatchPageRegister(
 /** 查询扫描异常待办列表。 */
 export function listScanAttentions(
   request: ScanAttentionQueryRequest,
-): Promise<PageResult<ScanAttentionItemVO>> {
-  return http.post<PageResult<ScanAttentionItemVO>>('/api/mark/exams/scan-attentions', request)
+): Promise<PageResult<ScanAttentionItemResponse>> {
+  return http.post<PageResult<ScanAttentionItemResponse>>('/api/mark/exams/scan-attentions', request)
 }

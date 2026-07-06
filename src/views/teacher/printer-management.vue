@@ -319,14 +319,14 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  ExamScannerActivationCodeVO,
-  ExamScannerDeviceActivationHandoffVO,
+  ExamScannerActivationCodeResponse,
+  ExamScannerDeviceActivationHandoffResponse,
   ExamScannerDeviceCreateRequest,
-  ExamScannerDeviceDetailVO,
+  ExamScannerDeviceDetailResponse,
   ExamScannerDeviceQueryRequest,
-  ExamScannerDeviceSummaryVO,
+  ExamScannerDeviceResponse,
+  ExamScannerDeviceSummaryResponse,
   ExamScannerDeviceUpdateRequest,
-  ExamScannerDeviceVO,
   ScannerAgentDiagnosticStatusCode,
   ScannerEndpointOnlineStatusCode,
 } from '@/apis/mark/exam-mark-scanner'
@@ -391,8 +391,8 @@ async function syncAfterDeviceMutation(): Promise<void> {
 
 // ─── 列表与筛选 ───────────────────────────────────────
 const loading = ref(false)
-const devices = ref<ExamScannerDeviceVO[]>([])
-const deviceSummary = ref<ExamScannerDeviceSummaryVO | null>(null)
+const devices = ref<ExamScannerDeviceResponse[]>([])
+const deviceSummary = ref<ExamScannerDeviceSummaryResponse | null>(null)
 const searchForm = reactive<
   Pick<
     ExamScannerDeviceQueryRequest,
@@ -435,7 +435,7 @@ function syncSearchForm(next: Record<string, unknown>): void {
   Object.assign(searchForm, next)
 }
 const showActivationCodeModal = ref(false)
-const activationCodeInfo = ref<ExamScannerActivationCodeVO | null>(null)
+const activationCodeInfo = ref<ExamScannerActivationCodeResponse | null>(null)
 const activationCodeDeviceName = ref('')
 
 const statusOptions = SCANNER_DEVICE_STATUS_OPTIONS
@@ -467,7 +467,7 @@ const deviceFilterFields = computed<FilterField[]>(() => [
   },
 ])
 
-const columns: ColumnsType<ExamScannerDeviceVO> = [
+const columns: ColumnsType<ExamScannerDeviceResponse> = [
   { title: '设备名称', dataIndex: 'deviceName', key: 'deviceName', width: 160 },
   { title: '扫描设备编号', dataIndex: 'scannerDeviceId', key: 'scannerDeviceId', width: 160 },
   { title: '站点', dataIndex: 'scannerStationId', key: 'scannerStationId', width: 120 },
@@ -487,7 +487,7 @@ interface DeviceMenuItem {
 }
 
 /** 扫描设备行内次要操作：收进「更多」下拉，避免操作列横向积压换行。 */
-function buildDeviceMenuItems(record: ExamScannerDeviceVO): DeviceMenuItem[] {
+function buildDeviceMenuItems(record: ExamScannerDeviceResponse): DeviceMenuItem[] {
   const items: DeviceMenuItem[] = [
     { key: 'rebind', label: '重新绑定' },
     { key: 'activation', label: '激活码' },
@@ -499,7 +499,7 @@ function buildDeviceMenuItems(record: ExamScannerDeviceVO): DeviceMenuItem[] {
   return items
 }
 
-function handleDeviceMenuClick(record: ExamScannerDeviceVO, event: { key: string | number }): void {
+function handleDeviceMenuClick(record: ExamScannerDeviceResponse, event: { key: string | number }): void {
   if (typeof event.key !== 'string') {
     return
   }
@@ -535,12 +535,12 @@ function endpointOnlineStatusLabelOf(status: ScannerEndpointOnlineStatusCode): s
 function endpointOnlineStatusColorOf(status: ScannerEndpointOnlineStatusCode): BadgeTone {
   return strictEnumTone(SCANNER_ENDPOINT_ONLINE_STATUS_TONE, status, '扫描端点在线状态')
 }
-function endpointOnlineStatusDisplayLabelOf(device: ExamScannerDeviceVO): string {
+function endpointOnlineStatusDisplayLabelOf(device: ExamScannerDeviceResponse): string {
   return device.endpointOnlineStatus
     ? endpointOnlineStatusLabelOf(device.endpointOnlineStatus)
     : '未激活'
 }
-function endpointOnlineStatusDisplayColorOf(device: ExamScannerDeviceVO): BadgeTone {
+function endpointOnlineStatusDisplayColorOf(device: ExamScannerDeviceResponse): BadgeTone {
   return device.endpointOnlineStatus
     ? endpointOnlineStatusColorOf(device.endpointOnlineStatus)
     : 'gray'
@@ -664,7 +664,7 @@ function handleCreate(): void {
   showFormModal.value = true
 }
 
-function handleEdit(record: ExamScannerDeviceVO): void {
+function handleEdit(record: ExamScannerDeviceResponse): void {
   formMode.value = 'edit'
   resetForm()
   Object.assign(formData, {
@@ -742,7 +742,7 @@ function emptyToUndefined(value?: string): string | undefined {
   return trimmed === '' ? undefined : trimmed
 }
 
-function openActivationHandoff(handoff: ExamScannerDeviceActivationHandoffVO): void {
+function openActivationHandoff(handoff: ExamScannerDeviceActivationHandoffResponse): void {
   if (!handoff.activationCode || !handoff.expireTime) {
     return
   }
@@ -767,7 +767,7 @@ function scannerDeviceDiagnosticText(
   return getUserErrorMessage({ message }, fallback)
 }
 
-async function handleRebindAgent(record: ExamScannerDeviceVO): Promise<void> {
+async function handleRebindAgent(record: ExamScannerDeviceResponse): Promise<void> {
   void confirmAsync({
     title: '重新绑定',
     content: `将重置服务端接入密钥并生成新激活码。原一体机需使用新激活码重新绑定。设备：${record.deviceName}`,
@@ -785,7 +785,7 @@ async function handleRebindAgent(record: ExamScannerDeviceVO): Promise<void> {
   })
 }
 
-async function handleCreateActivationCode(record: ExamScannerDeviceVO): Promise<void> {
+async function handleCreateActivationCode(record: ExamScannerDeviceResponse): Promise<void> {
   activationCodeDeviceName.value = record.deviceName || record.scannerDeviceId || '扫描设备'
   activationCodeInfo.value = null
   showActivationCodeModal.value = true
@@ -796,7 +796,7 @@ async function handleCreateActivationCode(record: ExamScannerDeviceVO): Promise<
   }
 }
 
-function handleUnbindAgent(record: ExamScannerDeviceVO): void {
+function handleUnbindAgent(record: ExamScannerDeviceResponse): void {
   void confirmAsync({
     title: '解绑扫描组件',
     content: `确定解绑设备"${record.deviceName}"当前扫描组件吗？解绑后原一体机需要重新使用激活码绑定。`,
@@ -827,7 +827,7 @@ function copyText(value?: string | null): void {
 
 // ─── 详情弹窗 ────────────────────────────────────────
 const showDetailModal = ref(false)
-const detailInfo = ref<ExamScannerDeviceDetailVO | null>(null)
+const detailInfo = ref<ExamScannerDeviceDetailResponse | null>(null)
 const detailDeviceId = ref<string | null>(null)
 
 async function reloadDeviceDetail(): Promise<void> {
@@ -840,7 +840,7 @@ async function reloadDeviceDetail(): Promise<void> {
   }
 }
 
-async function handleViewDetail(record: ExamScannerDeviceVO): Promise<void> {
+async function handleViewDetail(record: ExamScannerDeviceResponse): Promise<void> {
   detailInfo.value = null
   detailDeviceId.value = record.id
   showDetailModal.value = true
@@ -848,7 +848,7 @@ async function handleViewDetail(record: ExamScannerDeviceVO): Promise<void> {
 }
 
 // ─── 删除 ────────────────────────────────────────────
-function handleDelete(record: ExamScannerDeviceVO): void {
+function handleDelete(record: ExamScannerDeviceResponse): void {
   void confirmAsync({
     title: '删除扫描设备',
     content: `确定删除设备"${record.deviceName}"吗？历史扫描事件保持引用，仅当前设备记录被逻辑删除。`,

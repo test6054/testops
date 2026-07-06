@@ -10,7 +10,8 @@ export interface PortfolioTeacherOnboardingTeacherRequest {
   teacherId?: string
 }
 
-export interface PortfolioTeacherOnboardingSaveProgressRequest extends PortfolioTeacherOnboardingTeacherRequest {
+export interface PortfolioTeacherOnboardingSaveProgressRequest {
+  teacherId?: string
   currentStep: number
 }
 

@@ -59,7 +59,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { MarkingTaskVO } from '@/apis/mark/marking-organization'
+import type { MarkingTaskResponse } from '@/apis/mark/marking-organization'
 import message from 'ant-design-vue/es/message'
 import { ref, watch } from 'vue'
 import {
@@ -79,7 +79,7 @@ const props = defineProps<{
   groupId: string
   layoutQuestionId: string
   fullScore: number
-  selectedTasks: MarkingTaskVO[]
+  selectedTasks: MarkingTaskResponse[]
 }>()
 
 const emit = defineEmits<{
@@ -119,7 +119,8 @@ function createCorrelationId(): string {
 
 function buildQuestionScores() {
   if (score.value === undefined) {
-    throw new Error('请填写给分')
+    showUserError(null, '请填写给分')
+    return null
   }
   return [
     {
@@ -161,10 +162,15 @@ async function handleSubmit(): Promise<void> {
   progressFailed.value = false
   annotationWarning.value = ''
 
+  const questionScores = buildQuestionScores()
+  if (!questionScores) {
+    return
+  }
+
   const baseRequest = {
     examId: props.examId,
     groupId: props.groupId,
-    questionScores: buildQuestionScores(),
+    questionScores,
   }
 
   try {

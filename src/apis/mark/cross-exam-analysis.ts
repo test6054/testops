@@ -50,7 +50,7 @@ export const COURSE_ACHIEVEMENT_STATUS_TONE: Record<CourseAchievementStatusCode,
 }
 
 /** 考试维度统计快照 - 对应 ExamStatSnapshot */
-export interface ExamStatSnapshotVO {
+export interface ExamStatSnapshotResponse {
   examId?: string
   examName?: string
   examTime?: string
@@ -68,7 +68,7 @@ export interface ExamStatSnapshotVO {
 }
 
 /** 跨考试趋势条目 */
-export interface CrossExamTrendItemVO {
+export interface CrossExamTrendItemResponse {
   dimension?: string
   description?: string
   direction?: string
@@ -79,7 +79,7 @@ export interface CrossExamTrendItemVO {
 }
 
 /** 学期成长条目 */
-export interface SemesterGrowthItemVO {
+export interface SemesterGrowthItemResponse {
   dimension?: string
   dimensionLabel?: string
   description?: string
@@ -91,7 +91,7 @@ export interface SemesterGrowthItemVO {
 }
 
 /** 课程目标达成条目 */
-export interface CourseAchievementItemVO {
+export interface CourseAchievementItemResponse {
   objectiveDimension?: CourseObjectiveDimensionCode
   objectiveDescription?: string
   achievementRate?: number
@@ -101,7 +101,7 @@ export interface CourseAchievementItemVO {
 }
 
 /** AI 分析使用的考试范围项 */
-export interface AnalysisExamScopeVO {
+export interface AnalysisExamScopeResponse {
   examId: string
   examName: string
   examTime?: string
@@ -109,19 +109,19 @@ export interface AnalysisExamScopeVO {
 }
 
 /** 跨考试趋势分析记录 - 对应 CrossExamTrendAnalysis */
-export interface CrossExamTrendAnalysisVO {
+export interface CrossExamTrendAnalysisResponse {
   id: string
   courseId: string
   courseName: string
   classId?: string
   className?: string
   scopeType: AnalysisScopeTypeCode
-  exams: AnalysisExamScopeVO[]
+  exams: AnalysisExamScopeResponse[]
   examCount: number
   aiTraceId?: string
   trendSummary?: string
-  trendItems?: CrossExamTrendItemVO[]
-  examStatSnapshots?: ExamStatSnapshotVO[]
+  trendItems?: CrossExamTrendItemResponse[]
+  examStatSnapshots?: ExamStatSnapshotResponse[]
   analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
   latencyMs?: number
@@ -129,7 +129,7 @@ export interface CrossExamTrendAnalysisVO {
 }
 
 /** 学期能力成长曲线记录 - 对应 SemesterAbilityGrowth */
-export interface SemesterAbilityGrowthVO {
+export interface SemesterAbilityGrowthResponse {
   id: string
   academicYear: string
   semester: SemesterCode
@@ -138,12 +138,12 @@ export interface SemesterAbilityGrowthVO {
   scopeType: AnalysisScopeTypeCode
   scopeId: string
   scopeName: string
-  exams: AnalysisExamScopeVO[]
+  exams: AnalysisExamScopeResponse[]
   examCount: number
   aiTraceId?: string
   growthSummary?: string
-  growthItems?: SemesterGrowthItemVO[]
-  examStatSnapshots?: ExamStatSnapshotVO[]
+  growthItems?: SemesterGrowthItemResponse[]
+  examStatSnapshots?: ExamStatSnapshotResponse[]
   growthTrend: SemesterGrowthTrendCode
   analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
@@ -152,18 +152,18 @@ export interface SemesterAbilityGrowthVO {
 }
 
 /** 课程目标达成度记录 - 对应 CourseObjectiveAchievement */
-export interface CourseObjectiveAchievementVO {
+export interface CourseObjectiveAchievementResponse {
   id: string
   courseId: string
   courseName: string
   academicYear?: string
   semester?: SemesterCode
-  exams: AnalysisExamScopeVO[]
+  exams: AnalysisExamScopeResponse[]
   examCount: number
   aiTraceId?: string
   achievementSummary?: string
-  achievementItems?: CourseAchievementItemVO[]
-  examStatSnapshots?: ExamStatSnapshotVO[]
+  achievementItems?: CourseAchievementItemResponse[]
+  examStatSnapshots?: ExamStatSnapshotResponse[]
   overallAchievementRate?: number
   analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
@@ -176,8 +176,8 @@ export function generateCourseTrend(params: {
   academicYear: string
   semester: SemesterCode
   examIds: string[]
-}): Promise<CrossExamTrendAnalysisVO> {
-  return http.post<CrossExamTrendAnalysisVO>('/api/exam/cross-exam-analysis/trend/course', params)
+}): Promise<CrossExamTrendAnalysisResponse> {
+  return http.post<CrossExamTrendAnalysisResponse>('/api/exam/cross-exam-analysis/trend/course', params)
 }
 
 /**
@@ -190,8 +190,8 @@ export function generateClassTrend(params: {
   academicYear: string
   semester: SemesterCode
   examIds: string[]
-}): Promise<CrossExamTrendAnalysisVO> {
-  return http.post<CrossExamTrendAnalysisVO>('/api/exam/cross-exam-analysis/trend/class', params)
+}): Promise<CrossExamTrendAnalysisResponse> {
+  return http.post<CrossExamTrendAnalysisResponse>('/api/exam/cross-exam-analysis/trend/class', params)
 }
 
 /**
@@ -212,8 +212,8 @@ export function listTrends(params: {
   scopeType: AnalysisScopeTypeCode
   courseId: string
   classId?: string
-}): Promise<CrossExamTrendAnalysisVO[]> {
-  return http.post<CrossExamTrendAnalysisVO[]>('/api/exam/cross-exam-analysis/trend/list', params)
+}): Promise<CrossExamTrendAnalysisResponse[]> {
+  return http.post<CrossExamTrendAnalysisResponse[]>('/api/exam/cross-exam-analysis/trend/list', params)
 }
 
 /**
@@ -227,8 +227,8 @@ export function generateClassGrowth(params: {
   classId: string
   examIds?: string[]
   autoSelectExams?: boolean
-}): Promise<SemesterAbilityGrowthVO> {
-  return http.post<SemesterAbilityGrowthVO>('/api/exam/cross-exam-analysis/growth/class', params)
+}): Promise<SemesterAbilityGrowthResponse> {
+  return http.post<SemesterAbilityGrowthResponse>('/api/exam/cross-exam-analysis/growth/class', params)
 }
 
 /**
@@ -240,8 +240,8 @@ export function listGrowth(params: {
   teachingSemester: SemesterCode
   scopeType: AnalysisScopeTypeCode
   scopeId?: string
-}): Promise<SemesterAbilityGrowthVO[]> {
-  return http.post<SemesterAbilityGrowthVO[]>('/api/exam/cross-exam-analysis/growth/list', params)
+}): Promise<SemesterAbilityGrowthResponse[]> {
+  return http.post<SemesterAbilityGrowthResponse[]>('/api/exam/cross-exam-analysis/growth/list', params)
 }
 
 /**
@@ -253,8 +253,8 @@ export function generateAchievement(params: {
   academicYear?: string
   semester?: SemesterCode
   examIds: string[]
-}): Promise<CourseObjectiveAchievementVO> {
-  return http.post<CourseObjectiveAchievementVO>(
+}): Promise<CourseObjectiveAchievementResponse> {
+  return http.post<CourseObjectiveAchievementResponse>(
     '/api/exam/cross-exam-analysis/achievement/generate',
     params,
   )
@@ -268,8 +268,8 @@ export function listAchievements(params: {
   courseId: string
   academicYear?: string
   semester?: SemesterCode
-}): Promise<CourseObjectiveAchievementVO[]> {
-  return http.post<CourseObjectiveAchievementVO[]>(
+}): Promise<CourseObjectiveAchievementResponse[]> {
+  return http.post<CourseObjectiveAchievementResponse[]>(
     '/api/exam/cross-exam-analysis/achievement/list',
     params,
   )

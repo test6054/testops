@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import type { MarkingTaskVO } from '@/apis/mark/marking-organization'
+import type { MarkingTaskResponse } from '@/apis/mark/marking-organization'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -12,7 +12,7 @@ export interface BatchProgress {
 }
 
 export interface UseMarkingTaskNavigationOptions {
-  task: Ref<MarkingTaskVO | null>
+  task: Ref<MarkingTaskResponse | null>
   isWholePaperTask: Ref<boolean>
 }
 

@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ArchiveVolumeDetailVO, ArchiveVolumeEventVO } from '@/apis/mark/archive-volume'
+import type { ArchiveVolumeDetailResponse, ArchiveVolumeEventVO } from '@/apis/mark/archive-volume'
 import { computed } from 'vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import { archiveVolumeEventTypeLabel } from '@/utils/archive-volume-event-ui'
@@ -25,7 +25,7 @@ import { formatDateTime } from '@/utils/format'
 defineOptions({ name: 'ArchiveVolumeEventsTimeline' })
 
 const props = defineProps<{
-  events: ArchiveVolumeDetailVO['events']
+  events: ArchiveVolumeDetailResponse['events']
 }>()
 
 const sortedEvents = computed(() =>

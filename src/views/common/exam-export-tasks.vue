@@ -273,11 +273,10 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExportCreateRequest,
-  ExportScopeItemVO,
-  ExportTaskCompletedVO,
+  ExportScopeItemResponse,
   ExportTaskQueryRequest,
-  ExportTaskStatusSummaryVO,
-  ExportTaskVO,
+  ExportTaskResponse,
+  ExportTaskStatusSummaryResponse,
 } from '@/apis/mark/exam-export'
 import type { ExamLayoutQuestionViewResponse } from '@/apis/mark/exam-layout-question'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
@@ -363,7 +362,7 @@ const {
   reset: resetRoster,
 } = useMarkExamRoster()
 
-const tasks = ref<ExportTaskVO[]>([])
+const tasks = ref<ExportTaskResponse[]>([])
 const loading = ref(false)
 const loadFailed = ref(false)
 const downloadingId = ref<string | undefined>(undefined)
@@ -471,12 +470,12 @@ function activeTasksHiddenByStatusFilter(): boolean {
   return counts.generating > 0 && statusFilter !== 'GENERATING';
 }
 
-function listHasActiveExportTask(taskList: ExportTaskVO[]): boolean {
+function listHasActiveExportTask(taskList: ExportTaskResponse[]): boolean {
   return taskList.some((task) => task.taskStatus === 'PENDING' || task.taskStatus === 'GENERATING')
 }
 
 /** 无筛选时若全局仍有进行中任务但当前页看不到，应回到第 1 页。 */
-function shouldReloadFirstPageForActiveTasks(taskList: ExportTaskVO[]): boolean {
+function shouldReloadFirstPageForActiveTasks(taskList: ExportTaskResponse[]): boolean {
   if (counts.pending === 0 && counts.generating === 0) {
     return false
   }
@@ -537,7 +536,7 @@ async function reconcileExportFiltersForActiveTasks(examId: string): Promise<voi
   }
 }
 
-function applyStatusSummary(summary: ExportTaskStatusSummaryVO): void {
+function applyStatusSummary(summary: ExportTaskStatusSummaryResponse): void {
   counts.total = summary.totalCount
   counts.pending = summary.pendingCount
   counts.generating = summary.generatingCount
@@ -573,7 +572,7 @@ function handleTaskPageChange(page: { current: number, pageSize: number }): void
   void loadTasks()
 }
 
-const columns: ColumnType<ExportTaskVO>[] = [
+const columns: ColumnType<ExportTaskResponse>[] = [
   { title: '类型', key: 'exportType', width: 120 },
   { title: '范围', key: 'exportScope', width: 100 },
   { title: '范围条件', key: 'scopeSummary', width: 160 },
@@ -619,14 +618,14 @@ function formatBytes(size: number): string {
   return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`
 }
 
-function exportTaskFileNameText(task: ExportTaskVO): string {
-  if (task.taskStatus === 'COMPLETED') return task.fileName
+function exportTaskFileNameText(task: ExportTaskResponse): string {
+  if (task.taskStatus === 'COMPLETED') return task.fileName || '导出文件'
   if (task.taskStatus === 'FAILED') return '导出失败，未生成文件'
   if (task.taskStatus === 'GENERATING') return '文件生成中'
   return '等待任务执行'
 }
 
-function exportTaskFileSizeText(task: ExportTaskVO): string {
+function exportTaskFileSizeText(task: ExportTaskResponse): string {
   if (task.taskStatus === 'COMPLETED') {
     const fileSize = Number(task.fileSize)
     if (!Number.isFinite(fileSize)) {
@@ -639,37 +638,37 @@ function exportTaskFileSizeText(task: ExportTaskVO): string {
   return '等待任务执行'
 }
 
-function exportTaskStartedTimeText(task: ExportTaskVO): string {
+function exportTaskStartedTimeText(task: ExportTaskResponse): string {
   if (task.taskStatus === 'PENDING') return '等待任务执行'
-  return task.startedTime
+  return task.startedTime || '—'
 }
 
-function exportTaskCompletedTimeText(task: ExportTaskVO): string {
-  if (task.taskStatus === 'COMPLETED') return task.completedTime
+function exportTaskCompletedTimeText(task: ExportTaskResponse): string {
+  if (task.taskStatus === 'COMPLETED') return task.completedTime || '—'
   if (task.taskStatus === 'FAILED') return '导出失败，未完成'
   if (task.taskStatus === 'GENERATING') return '生成中，未完成'
   return '等待任务执行'
 }
 
-function exportTaskProcessingText(task: ExportTaskVO): string {
-  if (task.taskStatus === 'FAILED') return task.errorMessage
+function exportTaskProcessingText(task: ExportTaskResponse): string {
+  if (task.taskStatus === 'FAILED') return task.errorMessage || '导出失败'
   if (task.taskStatus === 'COMPLETED') return '导出完成'
   if (task.taskStatus === 'GENERATING') return '文件生成中'
   return '等待任务执行'
 }
 
-function exportTaskFailureMessageText(task: ExportTaskVO): string | undefined {
+function exportTaskFailureMessageText(task: ExportTaskResponse): string | undefined {
   if (task.taskStatus !== 'FAILED') return undefined
   return getUserProcessFailureMessage(task.errorMessage, '导出任务未完成，请稍后重试或重新发起导出')
 }
 
-function clippedExportTaskFailureMessage(task: ExportTaskVO): string {
+function clippedExportTaskFailureMessage(task: ExportTaskResponse): string {
   const messageText
     = exportTaskFailureMessageText(task) ?? '导出任务未完成，请稍后重试或重新发起导出'
   return messageText.length > 24 ? `${messageText.slice(0, 24)}…` : messageText
 }
 
-function canDownloadExportTask(task: ExportTaskVO): task is ExportTaskCompletedVO {
+function canDownloadExportTask(task: ExportTaskResponse): boolean {
   return task.taskStatus === 'COMPLETED'
 }
 
@@ -870,13 +869,13 @@ async function handleCreate(): Promise<void> {
 // ─── 详情抽屉 ─────────────────────────────────
 
 const detailDrawerOpen = ref(false)
-const detailTask = ref<ExportTaskVO | null>(null)
+const detailTask = ref<ExportTaskResponse | null>(null)
 const detailLoading = ref(false)
 const detailError = ref<Error | null>(null)
 /** 当前正在获取详情的任务 ID，用于关闭后重开另一条时覆盖 */
 let pendingDetailTaskId: string | null = null
 
-async function openDetailDrawer(record: ExportTaskVO): Promise<void> {
+async function openDetailDrawer(record: ExportTaskResponse): Promise<void> {
   detailTask.value = null
   detailError.value = null
   detailDrawerOpen.value = true
@@ -902,23 +901,27 @@ async function openDetailDrawer(record: ExportTaskVO): Promise<void> {
   }
 }
 
-function formatTaskExam(task: ExportTaskVO): string {
+function formatTaskExam(task: ExportTaskResponse): string {
   return task.examNo ? `${task.examName}（${task.examNo}）` : task.examName
 }
 
-function formatScopeItem(item: ExportScopeItemVO): string {
+function formatScopeItem(item: ExportScopeItemResponse): string {
   return item.targetCode ? `${item.targetName}（${item.targetCode}）` : item.targetName
 }
 
 // ─── 下载 ─────────────────────────────────────
 
-async function handleDownload(record: ExportTaskVO): Promise<void> {
+async function handleDownload(record: ExportTaskResponse): Promise<void> {
   if (!canDownloadExportTask(record)) {
     message.warning('该任务尚未生成文件')
     return
   }
   downloadingId.value = record.taskId
   try {
+    if (!record.fileId) {
+      message.error('导出任务缺少文件引用，暂不可下载')
+      return
+    }
     const blobResp = await downloadFile({ nodeId: record.fileId })
     const blob = blobResp.data
     if (!blob) {
@@ -928,7 +931,7 @@ async function handleDownload(record: ExportTaskVO): Promise<void> {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = record.fileName
+    link.download = record.fileName || '导出文件'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

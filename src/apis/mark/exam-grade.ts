@@ -2,7 +2,7 @@ import type { FinalScoreStatusCode } from './final-score-status'
 import type { GradeStatusCode } from './grade-status'
 import type { ObjectiveResultCode } from './objective-result'
 import type { QuestionTypeCode } from './question-type'
-import type { MarkAiReferenceExperienceAuditVO } from '@/apis/mark/grading-experience-assist'
+import type { MarkAiReferenceExperienceAuditResponse } from '@/apis/mark/grading-experience-assist'
 /**
  * 阅卷考试题目评分确认与 AI 复评 API - 对接 /api/mark/exams/question-grades/*。
  */
@@ -24,7 +24,7 @@ export interface ExamGradeConfirmRequest {
 }
 
 /** 试卷题目得分明细 - 对应 ExamQuestionScoreDto */
-export interface ExamQuestionScoreVO {
+export interface ExamQuestionScoreResponse {
   layoutQuestionId: string
   questionNo: string
   questionType: QuestionTypeCode
@@ -37,7 +37,7 @@ export interface ExamQuestionScoreVO {
 }
 
 /** 试卷成绩明细响应 - 对应 ExamPaperScoreResponse */
-export interface ExamPaperScoreVO {
+export interface ExamPaperScoreResponse {
   examId: string
   paperInstanceId: string
   candidateRosterId: string
@@ -48,7 +48,7 @@ export interface ExamPaperScoreVO {
   dailyScore?: number
   totalScore?: number
   finalScoreStatus: FinalScoreStatusCode
-  questions?: ExamQuestionScoreVO[]
+  questions?: ExamQuestionScoreResponse[]
 }
 
 /** 题目成绩驳回请求 - 对应 ExamGradeRejectRequest */
@@ -101,7 +101,7 @@ export interface ExamQuestionAiRescoreRequest {
 }
 
 /** AI 风险标记 - 对应 SubjectiveAiRiskFlag */
-export interface SubjectiveAiRiskFlagVO {
+export interface SubjectiveAiRiskFlag {
   code?: string
   message?: string
 }
@@ -138,7 +138,7 @@ export const AI_EXECUTION_STATUS_TONE: Record<AiExecutionStatusCode, BadgeTone> 
 }
 
 /** 单题 AI 复评结果 - 对应后端 SubjectiveGradeSuggestionResult 合同 */
-export interface SubjectiveGradeSuggestionResultVO {
+export interface SubjectiveGradeSuggestionResult {
   scored?: boolean
   aiScore?: number
   modelProfileId?: string
@@ -148,11 +148,11 @@ export interface SubjectiveGradeSuggestionResultVO {
   evidenceSummary?: string
   traceId?: string
   limited?: boolean
-  riskFlags?: SubjectiveAiRiskFlagVO[]
+  riskFlags?: SubjectiveAiRiskFlag[]
   referenceExperienceCaseId?: string
   referenceExperienceEvalId?: string
   referenceBindingId?: string
-  referenceExperienceAudit?: MarkAiReferenceExperienceAuditVO
+  referenceExperienceAudit?: MarkAiReferenceExperienceAuditResponse
 }
 
 /** 单题历次 AI 执行查询请求 - 对应 ExamQuestionAiExecutionsRequest */
@@ -161,7 +161,7 @@ export interface ExamQuestionAiExecutionsRequest {
   gradeResultId: string
 }
 
-export interface ExamQuestionAiExecutionItemVO {
+export interface ExamQuestionAiExecutionItemResponse {
   traceId: string
   abilityCode: AiAbilityCode
   status: AiExecutionStatusCode
@@ -173,7 +173,7 @@ export interface ExamQuestionAiExecutionItemVO {
   latencyMs: number
   createTime: string
   createUser: string
-  referenceExperienceAudit?: MarkAiReferenceExperienceAuditVO
+  referenceExperienceAudit?: MarkAiReferenceExperienceAuditResponse
 }
 
 /** 教师确认题目得分。 */
@@ -199,8 +199,8 @@ export function batchConfirmQuestionGrades(
 /** 教师异议场景单题 AI 复评，最终成绩仍由 confirmQuestionGrade 写入。 */
 export function rescoreQuestionByAi(
   request: ExamQuestionAiRescoreRequest,
-): Promise<SubjectiveGradeSuggestionResultVO> {
-  return http.post<SubjectiveGradeSuggestionResultVO>(
+): Promise<SubjectiveGradeSuggestionResult> {
+  return http.post<SubjectiveGradeSuggestionResult>(
     '/api/mark/exams/question-grades/ai-rescore',
     request,
   )
@@ -209,8 +209,8 @@ export function rescoreQuestionByAi(
 /** 查询单题历次 AI 执行记录，仅暴露审计真源，不引入版本化读取。 */
 export function listAiExecutionsForQuestion(
   request: ExamQuestionAiExecutionsRequest,
-): Promise<ExamQuestionAiExecutionItemVO[]> {
-  return http.post<ExamQuestionAiExecutionItemVO[]>(
+): Promise<ExamQuestionAiExecutionItemResponse[]> {
+  return http.post<ExamQuestionAiExecutionItemResponse[]>(
     '/api/mark/exams/question-grades/ai-executions',
     request,
   )
@@ -222,6 +222,6 @@ export interface ExamPaperScoreQueryRequest {
 }
 
 /** 查询试卷当前成绩明细。 */
-export function getPaperScore(request: ExamPaperScoreQueryRequest): Promise<ExamPaperScoreVO> {
-  return http.post<ExamPaperScoreVO>('/api/mark/exams/paper-score', request)
+export function getPaperScore(request: ExamPaperScoreQueryRequest): Promise<ExamPaperScoreResponse> {
+  return http.post<ExamPaperScoreResponse>('/api/mark/exams/paper-score', request)
 }

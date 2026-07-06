@@ -258,7 +258,7 @@ import type {
   GradeReviewEvidenceFileRefVO,
   GradeReviewRequestStatusCode,
 
-  StudentGradeReviewRequestItemVO} from '@/apis/mark/grade-review'
+  StudentGradeReviewRequestItemResponse} from '@/apis/mark/grade-review'
 import type { StudentExamItemVO, StudentQuestionScoreVO } from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -320,7 +320,7 @@ const submitModalOpen = ref(false)
 const scoreDetailLoading = ref(false)
 
 const exams = ref<StudentExamItemVO[]>([])
-const requests = ref<StudentGradeReviewRequestItemVO[]>([])
+const requests = ref<StudentGradeReviewRequestItemResponse[]>([])
 const requestPagination = reactive({
   current: 1,
   pageSize: 10,
@@ -585,7 +585,7 @@ function requestStatusLabel(status: GradeReviewRequestStatusCode): string {
   return strictEnumLabel(GradeReviewRequestStatusDescription, status, '复核申请状态')
 }
 
-function reviewNoteText(item: StudentGradeReviewRequestItemVO): string {
+function reviewNoteText(item: StudentGradeReviewRequestItemResponse): string {
   if (item.reviewNote) return item.reviewNote
   if (item.requestStatus === 'PENDING') return '等待复核处理'
   if (item.requestStatus === 'IN_REVIEW') return '复核处理中'

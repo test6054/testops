@@ -20,7 +20,7 @@ export interface AnnotationQueryRequest extends QueryDto {
 }
 
 /** 批注响应 - 对应 AnnotationResponse */
-export interface AnnotationVO {
+export interface AnnotationResponse {
   annotationId: string
   examId?: string
   paperInstanceId?: string
@@ -36,6 +36,6 @@ export interface AnnotationVO {
 /** 查询批注记录。 */
 export function listAnnotations(
   request: AnnotationQueryRequest,
-): Promise<PageResult<AnnotationVO>> {
-  return http.post<PageResult<AnnotationVO>>('/api/mark/exams/annotations', request)
+): Promise<PageResult<AnnotationResponse>> {
+  return http.post<PageResult<AnnotationResponse>>('/api/mark/exams/annotations', request)
 }

@@ -1,6 +1,6 @@
 import type { RadarSeriesOption } from 'echarts/charts'
 import type { EChartsCoreOption } from 'echarts/core'
-import type { WorkbenchQualityDimensionItemVO } from '@/apis/mark/exam-progress'
+import type { ExamWorkbenchQualityDimensionItemResponse } from '@/apis/mark/exam-progress'
 import {
   emptyChartOption,
   finalizeMarkChartOption,
@@ -11,7 +11,7 @@ const QUALITY_RADAR_MAX = 100
 
 /** 考试质量雷达图：维度得分由后端 qualityDimensionItems 真源提供 */
 export function buildExamQualityRadarChartOption(
-  dimensions: WorkbenchQualityDimensionItemVO[],
+  dimensions: ExamWorkbenchQualityDimensionItemResponse[],
 ): EChartsCoreOption {
   const scored = dimensions.filter(item => item.score != null)
   if (scored.length === 0) {

@@ -137,7 +137,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
-  ExamRejudgePlanVO,
+  ExamRejudgePlan,
   RejudgePlanStatusCode,
   RejudgeTriggerTypeCode,
 } from '@/apis/mark/question-analysis'
@@ -185,7 +185,7 @@ const shellProps = computed(() =>
     : { class: 'stats-card' },
 )
 
-const rows = ref<ExamRejudgePlanVO[]>([])
+const rows = ref<ExamRejudgePlan[]>([])
 const loading = ref(false)
 
 const pagination = reactive({
@@ -231,7 +231,7 @@ const executeModalOpen = ref(false)
 const executePlanId = ref<string>('')
 const executeReason = ref('')
 
-const columns: ColumnType<ExamRejudgePlanVO>[] = [
+const columns: ColumnType<ExamRejudgePlan>[] = [
   { title: '触发类型', key: 'triggerType', width: 110 },
   { title: '受影响题目', key: 'affectedQuestionRefs', width: 180 },
   {
@@ -372,12 +372,12 @@ async function handleExecute(): Promise<void> {
   }
 }
 
-// 严格 typed helper：rows[index] 是 ExamRejudgePlanVO，model 映射需以合法 union 类型索引。
+// 严格 typed helper：rows[index] 是 ExamRejudgePlan，model 映射需以合法 union 类型索引。
 function triggerTypeLabel(code: RejudgeTriggerTypeCode): string {
   return strictEnumLabel(RejudgeTriggerTypeDescription, code, '重判触发类型')
 }
 
-function affectedQuestionSummary(row: ExamRejudgePlanVO): string {
+function affectedQuestionSummary(row: ExamRejudgePlan): string {
   const questionRefs = row.affectedQuestionRefs ?? []
   if (questionRefs.length === 0) {
     return triggerTypeLabel(row.triggerType)

@@ -35,7 +35,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { ArchiveTenantSetupReadinessVO } from '@/apis/mark/archive-platform-template'
+import type { ArchiveTenantSetupReadinessResponse } from '@/apis/mark/archive-platform-template'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -44,7 +44,7 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 defineOptions({ name: 'ArchiveSetupGuideBanner' })
 
 const props = defineProps<{
-  readiness: ArchiveTenantSetupReadinessVO | null
+  readiness: ArchiveTenantSetupReadinessResponse | null
   loading: boolean
 }>()
 

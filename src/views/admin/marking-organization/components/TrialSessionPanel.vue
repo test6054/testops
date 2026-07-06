@@ -153,7 +153,7 @@
 <script lang="ts" setup>
 import type {
   TrialSessionCalibrateRequest,
-  TrialSessionVO,
+  TrialSessionResponse,
 } from '@/apis/mark/marking-organization'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
@@ -191,7 +191,7 @@ defineOptions({ name: 'TrialSessionPanel' })
 const props = defineProps<{
   organizationId: string
   groupOptions: GroupOption[]
-  sessions: TrialSessionVO[]
+  sessions: TrialSessionResponse[]
   canManage: boolean
   groupHasAllocationPolicyMap?: Record<string, boolean>
 }>()

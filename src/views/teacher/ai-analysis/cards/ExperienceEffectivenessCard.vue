@@ -117,11 +117,11 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { GradingExperienceCaseVO } from '@/apis/mark/grading-experience'
+import type { GradingExperienceCaseResponse } from '@/apis/mark/grading-experience'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import type {
-  ExperienceEffectivenessEvalEvidenceVO,
-  ExperienceEffectivenessEvalVO,
+  ExperienceEffectivenessEvalEvidenceResponse,
+  ExperienceEffectivenessEvalResponse,
   ExperienceRecommendationCode,
 } from '@/apis/mark/school-quality'
 import type { UiBarChartItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
@@ -201,7 +201,7 @@ const {
   record,
   clearHistory,
   applyLoadedList,
-} = useAiAnalysisHistoryPicker<ExperienceEffectivenessEvalVO>()
+} = useAiAnalysisHistoryPicker<ExperienceEffectivenessEvalResponse>()
 
 const historyRows = computed(() =>
   historyRecords.value.map((item) => ({
@@ -212,7 +212,7 @@ const historyRows = computed(() =>
   })),
 )
 
-const experiences = ref<GradingExperienceCaseVO[]>([])
+const experiences = ref<GradingExperienceCaseResponse[]>([])
 const loading = ref(false)
 const experienceLoading = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
@@ -221,7 +221,7 @@ const generating = ref(false)
 const experienceOptions = computed(() =>
   experiences.value
     .filter(
-      (item): item is GradingExperienceCaseVO & { id: string } =>
+      (item): item is GradingExperienceCaseResponse & { id: string } =>
         Boolean(item.id) && item.caseStatus === 'CONFIRMED' && item.analysisStatus === 'SUCCESS',
     )
     .map((item) => ({
@@ -369,7 +369,7 @@ const effectivenessTrendAriaLabel = computed(() => {
   return `一致性率历史走势，共 ${count} 次评估`
 })
 
-interface EvidenceTableRow extends ExperienceEffectivenessEvalEvidenceVO {
+interface EvidenceTableRow extends ExperienceEffectivenessEvalEvidenceResponse {
   rowKey: string
   scoreDiffText: string
 }
@@ -451,19 +451,19 @@ function recommendationLabel(value: ExperienceRecommendationCode): string {
   return strictEnumLabel(ExperienceRecommendationDescription, value, '维护动作')
 }
 
-function experienceCaseStatusLabel(value: GradingExperienceCaseVO['caseStatus']): string {
+function experienceCaseStatusLabel(value: GradingExperienceCaseResponse['caseStatus']): string {
   return strictEnumLabel(ExperienceCaseStatusDescription, value, '经验案例状态')
 }
 
 function requireText(value: string | undefined, _fieldName: string): string {
   const normalized = value?.trim()
   if (!normalized) {
-    throw new Error('经验有效性评估数据不完整，请刷新后重试')
+    return '经验有效性评估数据不完整，请刷新后重试'
   }
   return normalized
 }
 
-function experienceCaseSummaryText(item: GradingExperienceCaseVO): string {
+function experienceCaseSummaryText(item: GradingExperienceCaseResponse): string {
   if (item.analysisStatus === 'SUCCESS') {
     return requireText(item.experienceSummary, 'experienceSummary')
   }

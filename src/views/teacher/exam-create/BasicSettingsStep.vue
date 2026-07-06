@@ -139,7 +139,7 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { CourseListVO } from '@/apis/quality/user-catalog'
 import { computed, onMounted, ref, watch } from 'vue'
 import {
@@ -181,11 +181,11 @@ function handleCourseChange(courseId: string | null, option?: CourseListVO): voi
   emit('course-change', courseId, option?.courseName?.trim() ?? '')
 }
 
-function formatSourceExamLabel(exam: ExamSummaryVO): string {
+function formatSourceExamLabel(exam: ExamSummaryResponse): string {
   return exam.examNo ? `${exam.examName}（${exam.examNo}）` : exam.examName
 }
 
-function isRegularSourceExam(exam: ExamSummaryVO): boolean {
+function isRegularSourceExam(exam: ExamSummaryResponse): boolean {
   return !exam.examKind || exam.examKind === ExamKindCode.REGULAR
 }
 

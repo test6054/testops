@@ -1,6 +1,6 @@
 import type {
-  MarkingProgressVO,
-  WorkbenchNextActionVO,
+  ExamWorkbenchNextActionResponse,
+  MarkingProgressResponse,
 } from '@/apis/mark/exam-progress'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
@@ -20,9 +20,9 @@ export function hasPrepHardBlocking(prepBlockingReasons: string[] | null | undef
 }
 
 export function findWorkbenchNextAction(
-  nextActions: WorkbenchNextActionVO[] | null | undefined,
+  nextActions: ExamWorkbenchNextActionResponse[] | null | undefined,
   actionKey: WorkbenchNextActionKeyCode,
-): WorkbenchNextActionVO | undefined {
+): ExamWorkbenchNextActionResponse | undefined {
   return nextActions?.find((item) => item.actionKey === actionKey)
 }
 
@@ -31,7 +31,7 @@ export function findWorkbenchNextAction(
  */
 export function canStartScanRegistration(
   prepBlockingReasons: string[] | null | undefined,
-  nextActions?: WorkbenchNextActionVO[] | null,
+  nextActions?: ExamWorkbenchNextActionResponse[] | null,
 ): boolean {
   const action = findWorkbenchNextAction(nextActions, WorkbenchNextActionKeyCode.START_SCAN)
   if (action) {
@@ -42,8 +42,8 @@ export function canStartScanRegistration(
 
 /** 是否允许进入批量复核：消费后端 nextActions.ENTER_REVIEW */
 export function canEnterReviewBatch(
-  nextActions?: WorkbenchNextActionVO[] | null,
-  progress?: MarkingProgressVO | null,
+  nextActions?: ExamWorkbenchNextActionResponse[] | null,
+  progress?: MarkingProgressResponse | null,
 ): boolean {
   const action = findWorkbenchNextAction(nextActions, WorkbenchNextActionKeyCode.ENTER_REVIEW)
   if (action) {
@@ -61,7 +61,7 @@ export function canEnterReviewBatch(
 }
 
 export function resolveNextActionDisabledReason(
-  nextActions: WorkbenchNextActionVO[] | null | undefined,
+  nextActions: ExamWorkbenchNextActionResponse[] | null | undefined,
   actionKey: WorkbenchNextActionKeyCode,
 ): string | undefined {
   const action = findWorkbenchNextAction(nextActions, actionKey)
@@ -73,9 +73,9 @@ export function resolveNextActionDisabledReason(
 
 /** 首个 enabled 的 nextAction；若传入 suggestedStageKey 则优先匹配目标阶段对应动作。 */
 export function resolvePrimaryEnabledNextAction(
-  nextActions: WorkbenchNextActionVO[] | null | undefined,
+  nextActions: ExamWorkbenchNextActionResponse[] | null | undefined,
   suggestedStageKey?: MarkStageKey | null,
-): WorkbenchNextActionVO | undefined {
+): ExamWorkbenchNextActionResponse | undefined {
   if (!nextActions?.length) {
     return undefined
   }

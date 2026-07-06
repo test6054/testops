@@ -59,8 +59,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { ArchiveVolumeExamGateVO } from '@/apis/mark/archive-volume'
-import type { WorkbenchScorePanelVO } from '@/apis/mark/exam-progress'
+import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
+import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
 import type {ScoreWorkbenchAnalyticsMode} from '@/utils/score-workbench-analytics';
 import { computed } from 'vue'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
@@ -83,11 +83,11 @@ defineOptions({ name: 'ScoreWorkbenchAnalyticsSection' })
 
 const props = withDefaults(
   defineProps<{
-    panel: WorkbenchScorePanelVO | null
+    panel: ExamWorkbenchScorePanelResponse | null
     loading?: boolean
     mode?: ScoreWorkbenchAnalyticsMode
     publishableCount?: number
-    gate?: ArchiveVolumeExamGateVO | null
+    gate?: ArchiveVolumeExamGateResponse | null
   }>(),
   {
     loading: false,

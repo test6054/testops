@@ -75,7 +75,7 @@ import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   AiProviderTypeCode,
-  ExamQuestionAiExecutionItemVO,
+  ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grading-experience-reference-match-mode-enum'
@@ -93,7 +93,7 @@ defineOptions({ name: 'MarkingAiAssistDrawer' })
 const props = defineProps<{
   open: boolean
   loading: boolean
-  executions: ExamQuestionAiExecutionItemVO[]
+  executions: ExamQuestionAiExecutionItemResponse[]
   highlightTraceId?: string | null
   statusLabel: (status: AiExecutionStatusCode) => string
   statusTone: (status: AiExecutionStatusCode) => BadgeTone

@@ -749,17 +749,17 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
-import type { ExamDetailVO } from '@/apis/mark/exam'
-import type {WorkbenchMarkingProgressPanelVO} from '@/apis/mark/exam-progress';
+import type { ExamDetailResponse } from '@/apis/mark/exam'
+import type {ExamWorkbenchMarkingProgressPanelResponse} from '@/apis/mark/exam-progress';
 import type {
+  AllocationPolicyResponse,
   AllocationPolicySaveRequest,
-  AllocationPolicyVO,
-  FormalSessionVO,
-  MarkingOrganizationVO,
+  FormalSessionResponse,
+  MarkingOrganizationResponse,
   OrganizationUpdateRequest,
   QuestionGroupSaveRequest,
-  QuestionMarkingGroupVO,
-  RecyclePolicySaveRequest, RecyclePolicyVO
+  QuestionMarkingGroupResponse,
+  RecyclePolicyResponse, RecyclePolicySaveRequest
 } from '@/apis/mark/marking-organization'
 import type {ReviewerQualityMetricResponse} from '@/apis/mark/marking-quality';
 import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
@@ -861,8 +861,8 @@ const organizationId = computed(() => String(route.params.organizationId || ''))
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 const routeExamId = computed(() => String(route.params.examId || ''))
 
-const organization = ref<MarkingOrganizationVO | null>(null)
-const examDetail = ref<ExamDetailVO | null>(null)
+const organization = ref<MarkingOrganizationResponse | null>(null)
+const examDetail = ref<ExamDetailResponse | null>(null)
 const examId = computed(() => String(organization.value?.examId || ''))
 const workspaceExamId = computed(() => {
   if (isExamWorkspaceRoute.value && routeExamId.value) {
@@ -877,7 +877,7 @@ const activeTab = ref<'info' | 'policy' | 'recycled' | 'launch'>('info')
 const workspaceSecondaryTab = ref<'recycled' | 'launch'>('launch')
 const policyDrawerOpen = ref(false)
 const secondaryPanelRef = ref<HTMLElement | null>(null)
-const markingProgressPanel = ref<WorkbenchMarkingProgressPanelVO | null>(null)
+const markingProgressPanel = ref<ExamWorkbenchMarkingProgressPanelResponse | null>(null)
 const reviewerMetrics = ref<ReviewerQualityMetricResponse[]>([])
 const reviewerMetricsLoading = ref(false)
 
@@ -888,12 +888,12 @@ interface GroupProgressSnapshot {
 
 const reviewerCount = computed(() => organization.value?.uniqueReviewerCount ?? 0)
 
-const groups = computed<QuestionMarkingGroupVO[]>(() => organization.value?.groups ?? [])
+const groups = computed<QuestionMarkingGroupResponse[]>(() => organization.value?.groups ?? [])
 const groupSearchKeyword = ref('')
 const normalizedGroupSearchKeyword = computed(() => groupSearchKeyword.value.trim().toLowerCase())
 
 /** 题组列表前端筛选：匹配名称、组长、阅卷教师、题号与题型 */
-function matchesGroupSearch(group: QuestionMarkingGroupVO, keyword: string): boolean {
+function matchesGroupSearch(group: QuestionMarkingGroupResponse, keyword: string): boolean {
   if (group.groupName?.toLowerCase().includes(keyword)) {
     return true
   }
@@ -1061,7 +1061,7 @@ function guardExamOwnerAction(): boolean {
   return false
 }
 
-const formalSessions = ref<FormalSessionVO[]>([])
+const formalSessions = ref<FormalSessionResponse[]>([])
 
 async function loadFormalSessions(): Promise<void> {
   if (!organizationId.value) {
@@ -1170,7 +1170,7 @@ function resetPolicyState(): void {
 /**
  * 工作台详情路由必须与组织真实 examId 对齐，否则阶段快照、回跳目标与当前操作对象会错位。
  */
-async function alignWorkspaceRouteExamId(nextOrganization: MarkingOrganizationVO): Promise<boolean> {
+async function alignWorkspaceRouteExamId(nextOrganization: MarkingOrganizationResponse): Promise<boolean> {
   if (!nextOrganization.examId) {
     return true
   }
@@ -1215,7 +1215,7 @@ async function loadOrganization(): Promise<void> {
   }
 }
 
-const groupColumns: ColumnType<QuestionMarkingGroupVO>[] = [
+const groupColumns: ColumnType<QuestionMarkingGroupResponse>[] = [
   { title: '题组名称', key: 'groupName', dataIndex: 'groupName', width: 220 },
   { title: '负责题目', key: 'questions', width: 280 },
   { title: '阅卷教师', key: 'reviewers', width: 240 },
@@ -1378,7 +1378,7 @@ function openGroupModal(): void {
   void loadLayoutQuestions()
 }
 
-function openGroupEdit(record: QuestionMarkingGroupVO): void {
+function openGroupEdit(record: QuestionMarkingGroupResponse): void {
   if (!guardExamOwnerAction()) return
   groupForm.groupId = record.id
   groupForm.groupName = record.groupName
@@ -1447,15 +1447,15 @@ async function submitGroup(): Promise<void> {
   }
 }
 
-function canEditGroup(record: QuestionMarkingGroupVO): boolean {
+function canEditGroup(record: QuestionMarkingGroupResponse): boolean {
   return canManageExamOwner.value && record.groupStatus !== QuestionMarkingGroupStatusCode.GROUP_CLOSED
 }
 
-function canDeleteGroup(record: QuestionMarkingGroupVO): boolean {
+function canDeleteGroup(record: QuestionMarkingGroupResponse): boolean {
   return canManageExamOwner.value && record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_DRAFT
 }
 
-function canCloseGroup(record: QuestionMarkingGroupVO): boolean {
+function canCloseGroup(record: QuestionMarkingGroupResponse): boolean {
   return (
     canManageExamOwner.value
     && (record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE
@@ -1463,7 +1463,7 @@ function canCloseGroup(record: QuestionMarkingGroupVO): boolean {
   )
 }
 
-async function submitGroupDelete(record: QuestionMarkingGroupVO): Promise<void> {
+async function submitGroupDelete(record: QuestionMarkingGroupResponse): Promise<void> {
   if (!guardExamOwnerAction()) return
   groupActionLoadingId.value = record.id
   try {
@@ -1478,7 +1478,7 @@ async function submitGroupDelete(record: QuestionMarkingGroupVO): Promise<void> 
   }
 }
 
-async function submitGroupClose(record: QuestionMarkingGroupVO): Promise<void> {
+async function submitGroupClose(record: QuestionMarkingGroupResponse): Promise<void> {
   if (!guardExamOwnerAction()) return
   groupActionLoadingId.value = record.id
   try {
@@ -1575,8 +1575,8 @@ const policyForm = reactive<PolicyForm>({
   reassignMode: MarkingReassignModeCode.AUTO,
 })
 
-const allocationPolicies = ref<AllocationPolicyVO[]>([])
-const recyclePolicies = ref<RecyclePolicyVO[]>([])
+const allocationPolicies = ref<AllocationPolicyResponse[]>([])
+const recyclePolicies = ref<RecyclePolicyResponse[]>([])
 
 const DEFAULT_ALLOCATION_POLICY_FIELDS = {
   allocationMode: MarkingAllocationModeCode.BY_QUESTION,

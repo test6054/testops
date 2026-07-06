@@ -275,7 +275,6 @@ import type {
 import type {
   ArchiveCatalogTemplateSaveItemRequest,
 } from '@/apis/mark/archive-volume'
-import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
@@ -297,7 +296,6 @@ import {
 } from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
-import { requireArrayResult } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -458,10 +456,7 @@ async function loadTemplateSetStats() {
 
 async function loadDepartments() {
   try {
-    const departments = requireArrayResult<TenantSchoolDepartmentDto>(
-      await departmentCatalogApi.list(),
-      '院系',
-    )
+    const departments = await departmentCatalogApi.list()
     departmentOptions.value = departments.map((item) => ({
       value: item.id,
       label: item.deptName,

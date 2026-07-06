@@ -144,10 +144,10 @@
             />
           </a-form-item>
           <a-alert
-            v-if="makeupCap60TotalHint"
+            v-if="makeupCap60Hint"
             type="info"
             show-icon
-            message="本场为补考封顶60分：总分批量更正每条明细不得超过60分"
+            :message="makeupCap60AlertMessage"
             style="margin-bottom: 12px"
           />
           <a-form-item label="更正原因" required>
@@ -161,7 +161,7 @@
               </a-button>
             </div>
             <div v-for="(item, index) in form.items" :key="item.localId" class="batch-plan-item">
-              <a-row :gutter="12" align="middle">
+              <a-row :gutter="12">
                 <a-col :span="14">
                   <a-form-item label="复核申请" required>
                     <a-select
@@ -196,6 +196,9 @@
                   </a-button>
                 </a-col>
               </a-row>
+              <div v-if="batchItemProjectionHint(item)" class="batch-plan-item__hint">
+                {{ batchItemProjectionHint(item) }}
+              </div>
             </div>
           </div>
         </a-form>
@@ -252,11 +255,12 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   BatchCorrectionPlanCreateRequest,
-  ExamBatchGradeCorrectionPlanVO,
+  ExamBatchGradeCorrectionPlan,
   GradeReviewQuestionRefVO,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import {
@@ -266,11 +270,13 @@ import {
   BATCH_CORRECTION_STATUS_TONE,
   BatchCorrectionApprovalStatusCode,
   BatchCorrectionApprovalStatusDescription,
+  computeSingleQuestionCorrectionCompositeTotal,
   createBatchCorrectionPlan,
   executeBatchCorrectionPlan,
   GradeCorrectionTypeCode,
   GradeCorrectionTypeDescription,
   GradeReviewRequestStatusCode,
+  isMakeupCap60SingleQuestionCorrectionExceeded,
   listBatchCorrectionPlans,
   listReviewRequests,
   submitBatchCorrectionPlan,
@@ -306,7 +312,7 @@ interface PlanItemForm {
   afterScore: number | undefined
 }
 
-const rows = ref<ExamBatchGradeCorrectionPlanVO[]>([])
+const rows = ref<ExamBatchGradeCorrectionPlan[]>([])
 const loading = ref(false)
 
 const pagination = reactive({
@@ -377,13 +383,49 @@ const form = reactive<{
   items: [],
 })
 
-const makeupCap60TotalHint = computed(
-  () =>
-    form.correctionType === GradeCorrectionTypeCode.TOTAL_SCORE
-    && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60,
+const makeupCap60Hint = computed(
+  () => props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60,
 )
 
-const batchTotalScoreMax = computed(() => (makeupCap60TotalHint.value ? 60 : undefined))
+const makeupCap60AlertMessage = computed(() =>
+  form.correctionType === GradeCorrectionTypeCode.TOTAL_SCORE
+    ? '本场为补考封顶60分：总分批量更正每条明细不得超过60分'
+    : '本场为补考封顶60分：单题批量更正后合成总成绩不得超过60分',
+)
+
+const batchTotalScoreMax = computed(() =>
+  makeupCap60Hint.value && form.correctionType === GradeCorrectionTypeCode.TOTAL_SCORE ? 60 : undefined,
+)
+
+function batchItemProjectionHint(item: PlanItemForm): string {
+  if (
+    !makeupCap60Hint.value
+    || form.correctionType !== GradeCorrectionTypeCode.SINGLE_QUESTION
+    || !form.layoutQuestionId
+    || !item.reviewRequestId
+    || typeof item.afterScore !== 'number'
+  ) {
+    return ''
+  }
+  const request = approvedReviewRequests.value.find(
+    (approvedRequest) => approvedRequest.id === item.reviewRequestId,
+  )
+  if (!request) {
+    return ''
+  }
+  const projected = computeSingleQuestionCorrectionCompositeTotal(
+    request,
+    form.layoutQuestionId,
+    item.afterScore,
+  )
+  if (projected == null) {
+    return '当前成绩快照未就绪'
+  }
+  if (projected > 60) {
+    return `更正后合成总分 ${projected} 超过60分`
+  }
+  return `更正后合成总分 ${projected}`
+}
 
 const correctionTypeOptions = [
   { value: GradeCorrectionTypeCode.SINGLE_QUESTION, label: GradeCorrectionTypeDescription[GradeCorrectionTypeCode.SINGLE_QUESTION] },
@@ -420,7 +462,7 @@ const itemReviewRequestOptions = computed(() =>
     })),
 )
 
-const columns: ColumnType<ExamBatchGradeCorrectionPlanVO>[] = [
+const columns: ColumnType<ExamBatchGradeCorrectionPlan>[] = [
   { title: '名称', dataIndex: 'planName', key: 'planName', ellipsis: true },
   { title: '类型', key: 'correctionType', width: 110 },
   { title: '受影响题目', key: 'affectedQuestionRefs', width: 160 },
@@ -451,8 +493,7 @@ async function reload(): Promise<void> {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
-    const list = readPageList(result, '批量成绩更正计划加载失败')
-    rows.value = list
+    rows.value = readPageList(result, '批量成绩更正计划加载失败')
     pagination.total = readPageTotal(result, '批量成绩更正计划加载失败')
     pagination.current = result.pageNum ?? pagination.current
     pagination.pageSize = result.pageSize ?? pagination.pageSize
@@ -525,7 +566,7 @@ async function loadApprovedReviewRequests(): Promise<void> {
   if (!props.examId) return
   reviewRequestLoading.value = true
   try {
-    const requests = await readAllPages(
+    approvedReviewRequests.value = await readAllPages(
       (pageNum) =>
         listReviewRequests({
           examId: props.examId,
@@ -535,7 +576,6 @@ async function loadApprovedReviewRequests(): Promise<void> {
         }),
       '已通过复核申请加载失败',
     )
-    approvedReviewRequests.value = requests
   } catch (e) {
     approvedReviewRequests.value = []
     showUserError(e, '已通过复核申请加载失败')
@@ -589,6 +629,15 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
       && item.afterScore > 60
     ) {
       message.warning('补考成绩策略为封顶60分，更正后总成绩不能超过60分')
+      return null
+    }
+    if (
+      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION
+      && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
+      && form.layoutQuestionId
+      && isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, item.afterScore)
+    ) {
+      message.warning('补考成绩策略为封顶60分，单题更正后合成总成绩不能超过60分')
       return null
     }
     items.push({
@@ -738,16 +787,16 @@ function isOperating(planId: string, action: OperationAction): boolean {
   return operatingId.value === planId && operatingAction.value === action
 }
 
-function canSubmit(row: ExamBatchGradeCorrectionPlanVO): boolean {
+function canSubmit(row: ExamBatchGradeCorrectionPlan): boolean {
   return row.approvalStatus === 'DRAFT' || row.approvalStatus === 'REJECTED'
 }
 
-function correctionTypeLabel(row: ExamBatchGradeCorrectionPlanVO): string {
+function correctionTypeLabel(row: ExamBatchGradeCorrectionPlan): string {
   const code: GradeCorrectionTypeCode | undefined = row.correctionType
   return strictEnumLabel(GradeCorrectionTypeDescription, code, '成绩更正类型')
 }
 
-function affectedQuestionSummary(row: ExamBatchGradeCorrectionPlanVO): string {
+function affectedQuestionSummary(row: ExamBatchGradeCorrectionPlan): string {
   if (row.correctionType === 'TOTAL_SCORE') {
     return '总分'
   }
@@ -774,11 +823,11 @@ function reviewRequestQuestionLabel(request: GradeReviewRequestItemResponse): st
     .join('、')
 }
 
-function approvalStatusLabel(row: ExamBatchGradeCorrectionPlanVO): string {
+function approvalStatusLabel(row: ExamBatchGradeCorrectionPlan): string {
   return strictEnumLabel(BatchCorrectionApprovalStatusDescription, row.approvalStatus, '批量更正审批状态')
 }
 
-function approvalStatusColor(row: ExamBatchGradeCorrectionPlanVO): BadgeTone {
+function approvalStatusColor(row: ExamBatchGradeCorrectionPlan): BadgeTone {
   return strictEnumTone(BATCH_CORRECTION_STATUS_TONE, row.approvalStatus, '批量更正审批状态')
 }
 
@@ -812,5 +861,15 @@ watch(
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface-subtle);
+}
+
+.batch-plan-item :deep(.ant-row) {
+  align-items: center;
+}
+
+.batch-plan-item__hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--dp-text-secondary);
 }
 </style>

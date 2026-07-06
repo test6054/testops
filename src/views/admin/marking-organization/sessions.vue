@@ -101,13 +101,13 @@
 
 <script lang="ts" setup>
 import type { LifecycleAction } from './components/SessionLifecycleReasonModal.vue'
-import type { ExamDetailVO } from '@/apis/mark/exam'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
 import type {
-  AllocationPolicyVO,
+  AllocationPolicyResponse,
   AllocationUnitCode,
-  FormalSessionVO,
-  MarkingOrganizationVO,
-  TrialSessionVO,
+  FormalSessionResponse,
+  MarkingOrganizationResponse,
+  TrialSessionResponse,
 } from '@/apis/mark/marking-organization'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
@@ -161,11 +161,11 @@ const organizationId = computed(() => String(route.params.organizationId || ''))
 const routeExamId = computed(() => String(route.params.examId || ''))
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
-const organization = ref<MarkingOrganizationVO | null>(null)
-const examDetail = ref<ExamDetailVO | null>(null)
-const trialSessions = ref<TrialSessionVO[]>([])
-const formalSessions = ref<FormalSessionVO[]>([])
-const allocationPolicies = ref<AllocationPolicyVO[]>([])
+const organization = ref<MarkingOrganizationResponse | null>(null)
+const examDetail = ref<ExamDetailResponse | null>(null)
+const trialSessions = ref<TrialSessionResponse[]>([])
+const formalSessions = ref<FormalSessionResponse[]>([])
+const allocationPolicies = ref<AllocationPolicyResponse[]>([])
 const loading = ref(false)
 const filterGroupId = ref<string | undefined>(undefined)
 
@@ -226,7 +226,7 @@ function resetSessionState(): void {
 /**
  * 会话页必须绑定到组织真实 examId，对齐后工作台阶段与会话操作才属于同一考试。
  */
-async function alignWorkspaceRouteExamId(nextOrganization: MarkingOrganizationVO): Promise<boolean> {
+async function alignWorkspaceRouteExamId(nextOrganization: MarkingOrganizationResponse): Promise<boolean> {
   if (!nextOrganization.examId) {
     return true
   }

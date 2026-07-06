@@ -1,4 +1,4 @@
-import type { MarkingTaskVO } from './marking-organization'
+import type { MarkingTaskResponse } from './marking-organization'
 import http from '@/config/axios'
 
 /** 阅卷任务提交撤销请求 - 对应后端 MarkingTaskWithdrawRequest */
@@ -20,6 +20,6 @@ export const MARKING_RECENT_SUBMIT_MAX = 5
  * 撤回已提交阅卷任务（10 分钟窗口内）。
  * POST /api/mark/organization/withdraw-task
  */
-export function withdrawMarkingTask(request: MarkingTaskWithdrawRequest): Promise<MarkingTaskVO> {
-  return http.post<MarkingTaskVO>('/api/mark/organization/withdraw-task', request)
+export function withdrawMarkingTask(request: MarkingTaskWithdrawRequest): Promise<MarkingTaskResponse> {
+  return http.post<MarkingTaskResponse>('/api/mark/organization/withdraw-task', request)
 }

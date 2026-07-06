@@ -379,7 +379,7 @@ export const ARCHIVE_EVALUATION_CAMPAIGN_STATUS_OPTIONS: Array<{
   label: ArchiveEvaluationCampaignStatusDescription[value],
 }))
 
-export interface ArchiveVolumeVO {
+export interface ArchiveVolumeResponse {
   volumeId: string
   examId?: string
   relatedExamId?: string
@@ -454,7 +454,7 @@ export interface ArchiveVolumeVO {
   volumeRole?: ArchiveVolumeRoleCode
 }
 
-export interface ArchiveVolumeSearchHitVO {
+export interface ArchiveVolumeSearchResponse {
   volumeId: string
   materialId: string
   archiveNo: string
@@ -548,11 +548,11 @@ export interface ArchiveVolumeNavigationSummaryVO {
   fourPropertyStale?: boolean
 }
 
-export interface ArchiveVolumeDetailVO {
-  volume: ArchiveVolumeVO
-  materials: ArchiveVolumeMaterialVO[]
+export interface ArchiveVolumeDetailResponse {
+  volume: ArchiveVolumeResponse
+  materials: ArchiveVolumeMaterialResponse[]
   events: ArchiveVolumeEventVO[]
-  latestFourPropertyCheck?: ArchiveFourPropertyCheckVO
+  latestFourPropertyCheck?: ArchiveFourPropertyCheckResponse
   fourPropertyStale?: boolean
   hasOpenRemediationTask?: boolean
   /** 是否存在 OPEN/IN_PROGRESS/RESUBMITTED 整改任务，阻断提交 */
@@ -561,7 +561,7 @@ export interface ArchiveVolumeDetailVO {
   appraisalDecision?: ArchiveAppraisalDecisionCode
   /** 最近一次销毁申请人 */
   destructionRequestUserId?: string
-  latestIntegrityCheck?: ArchiveIntegrityCheckVO
+  latestIntegrityCheck?: ArchiveIntegrityCheckResponse
   /** 当前用户是否具备卷材料登记/补交写权限 */
   canManageMaterials?: boolean
   /** 当前用户是否具备 STORED 卷鉴定/销毁管理权限 */
@@ -573,9 +573,9 @@ export interface ArchiveVolumeDetailVO {
   /** 当前用户是否可变更卷密级 */
   canUpdateSecurityLevel?: boolean
   /** 最近一次移交验收记录 */
-  latestTransferRecord?: ArchiveVolumeTransferRecordVO
+  latestTransferRecord?: ArchiveVolumeTransferRecordResponse
   /** 当前用户待处理整改任务 */
-  viewerRemediationTask?: ArchiveRemediationTaskVO
+  viewerRemediationTask?: ArchiveRemediationTaskResponse
   /** 关联考试试题总数 */
   courseObjectiveTotalQuestionCount?: number
   /** 已配置试题-课程目标映射数 */
@@ -598,7 +598,7 @@ export interface ArchiveVolumeDetailVO {
   navigationSummary?: ArchiveVolumeNavigationSummaryVO
 }
 
-export interface ArchiveVolumeTransferRecordVO {
+export interface ArchiveVolumeTransferRecordResponse {
   transferRecordId?: string
   transferStatus?: ArchiveTransferStatusCode
   submitUserId?: string
@@ -612,7 +612,7 @@ export interface ArchiveVolumeTransferRecordVO {
   transferPackageFileId?: string
 }
 
-export interface ArchiveVolumeAppraisalFlowRecordVO {
+export interface ArchiveVolumeAppraisalFlowRecordResponse {
   eventId?: string
   eventType?: ArchiveVolumeEventTypeCode
   actionLabel?: string
@@ -623,7 +623,7 @@ export interface ArchiveVolumeAppraisalFlowRecordVO {
   occurredAt?: string
 }
 
-export interface ArchiveVolumeDestructionFlowRecordVO {
+export interface ArchiveVolumeDestructionFlowRecordResponse {
   eventId?: string
   eventType?: ArchiveVolumeEventTypeCode
   actionLabel?: string
@@ -634,7 +634,7 @@ export interface ArchiveVolumeDestructionFlowRecordVO {
   occurredAt?: string
 }
 
-export interface ArchiveVolumeMaterialVO {
+export interface ArchiveVolumeMaterialResponse {
   materialId: string
   materialType: ArchiveMaterialTypeCode
   catalogCode?: string
@@ -722,7 +722,7 @@ export interface ArchiveVolumeEventVO {
   createTime?: string
 }
 
-export interface ArchiveVolumeStatisticsVO {
+export interface ArchiveVolumeStatisticsResponse {
   departmentCompletions: ArchiveDepartmentCompletionVO[]
   missingMaterials: ArchiveMissingMaterialStatVO[]
   overdueVolumeCount: number
@@ -757,7 +757,7 @@ export const ARCHIVE_REMEDIATION_EVIDENCE_STATUS_TONE: Record<
   [ArchiveRemediationEvidenceStatusCode.VERIFIED]: 'green',
 }
 
-export interface ArchiveRemediationEvidenceVO {
+export interface ArchiveRemediationEvidenceResponse {
   evidenceId: string
   taskId?: string
   fileId: string
@@ -767,7 +767,7 @@ export interface ArchiveRemediationEvidenceVO {
   createTime?: string
 }
 
-export interface ArchiveRemediationTaskVO {
+export interface ArchiveRemediationTaskResponse {
   taskId: string
   campaignId?: string
   volumeId: string
@@ -786,7 +786,7 @@ export interface ArchiveRemediationTaskVO {
   verifierNickName?: string
   verifiedTime?: string
   statusHistory?: ArchiveRemediationTaskStatusHistoryVO[]
-  evidenceItems?: ArchiveRemediationEvidenceVO[]
+  evidenceItems?: ArchiveRemediationEvidenceResponse[]
 }
 
 export interface ArchiveRemediationTaskUpdateRequest {
@@ -800,7 +800,7 @@ export interface ArchiveRemediationTaskUpdateRequest {
   verificationComment?: string
 }
 
-export interface ArchiveEvaluationCampaignVO {
+export interface ArchiveEvaluationCampaignResponse {
   campaignId: string
   campaignName: string
   academicYear?: string
@@ -814,7 +814,7 @@ export interface ArchiveEvaluationCampaignVO {
   readinessRatePercent?: number
 }
 
-export interface ArchiveEvaluationVolumeReadinessVO {
+export interface ArchiveEvaluationVolumeReadinessResponse {
   volumeId: string
   archiveNo?: string
   archiveTitle?: string
@@ -890,7 +890,7 @@ export interface ArchiveVolumeMaterialSearchCriteria {
   tagAny?: string[]
 }
 
-export interface ArchiveVolumeMaterialSearchProfileVO {
+export interface ArchiveVolumeMaterialSearchProfileResponse {
   profileId: string
   profileName: string
   sharedFlag: boolean
@@ -915,21 +915,21 @@ export interface ArchiveVolumeStatisticsRequest {
 
 export function pageArchiveVolumes(
   request: ArchiveVolumePageRequest,
-): Promise<PageResult<ArchiveVolumeVO>> {
-  return http.post<PageResult<ArchiveVolumeVO>>('/api/mark/archive-volumes/page', request)
+): Promise<PageResult<ArchiveVolumeResponse>> {
+  return http.post<PageResult<ArchiveVolumeResponse>>('/api/mark/archive-volumes/page', request)
 }
 
 export function searchArchiveVolumes(
   request: ArchiveVolumeSearchRequest,
-): Promise<PageResult<ArchiveVolumeSearchHitVO>> {
-  return http.post<PageResult<ArchiveVolumeSearchHitVO>>(
+): Promise<PageResult<ArchiveVolumeSearchResponse>> {
+  return http.post<PageResult<ArchiveVolumeSearchResponse>>(
     '/api/mark/archive-volumes/search',
     request,
   )
 }
 
-export function listArchiveVolumeSearchProfiles(): Promise<ArchiveVolumeMaterialSearchProfileVO[]> {
-  return http.post<ArchiveVolumeMaterialSearchProfileVO[]>(
+export function listArchiveVolumeSearchProfiles(): Promise<ArchiveVolumeMaterialSearchProfileResponse[]> {
+  return http.post<ArchiveVolumeMaterialSearchProfileResponse[]>(
     '/api/mark/archive-volumes/search/profiles/list',
     {},
   )
@@ -937,8 +937,8 @@ export function listArchiveVolumeSearchProfiles(): Promise<ArchiveVolumeMaterial
 
 export function saveArchiveVolumeSearchProfile(
   request: ArchiveVolumeMaterialSearchProfileSaveRequest,
-): Promise<ArchiveVolumeMaterialSearchProfileVO> {
-  return http.post<ArchiveVolumeMaterialSearchProfileVO>(
+): Promise<ArchiveVolumeMaterialSearchProfileResponse> {
+  return http.post<ArchiveVolumeMaterialSearchProfileResponse>(
     '/api/mark/archive-volumes/search/profiles/save',
     request,
   )
@@ -970,14 +970,14 @@ export function suggestArchiveVolumeMaterialTags(
   return http.post<string[]>('/api/mark/archive-volumes/materials/tags/suggest', request)
 }
 
-export function getArchiveVolumeDetail(volumeId: string): Promise<ArchiveVolumeDetailVO> {
-  return http.post<ArchiveVolumeDetailVO>('/api/mark/archive-volumes/detail', { volumeId })
+export function getArchiveVolumeDetail(volumeId: string): Promise<ArchiveVolumeDetailResponse> {
+  return http.post<ArchiveVolumeDetailResponse>('/api/mark/archive-volumes/detail', { volumeId })
 }
 
 export function pageSupervisionArchiveVolumes(
   request: ArchiveVolumePageRequest,
-): Promise<PageResult<ArchiveVolumeVO>> {
-  return http.post<PageResult<ArchiveVolumeVO>>(
+): Promise<PageResult<ArchiveVolumeResponse>> {
+  return http.post<PageResult<ArchiveVolumeResponse>>(
     '/api/mark/archive-volumes/supervision/volumes/page',
     request,
   )
@@ -985,37 +985,37 @@ export function pageSupervisionArchiveVolumes(
 
 export function getSupervisionArchiveVolumeDetail(
   volumeId: string,
-): Promise<ArchiveVolumeDetailVO> {
-  return http.post<ArchiveVolumeDetailVO>('/api/mark/archive-volumes/supervision/volumes/detail', {
+): Promise<ArchiveVolumeDetailResponse> {
+  return http.post<ArchiveVolumeDetailResponse>('/api/mark/archive-volumes/supervision/volumes/detail', {
     volumeId,
   })
 }
 
 export function getSupervisionArchiveStatistics(
   request: ArchiveVolumeStatisticsRequest,
-): Promise<ArchiveVolumeStatisticsVO> {
-  return http.post<ArchiveVolumeStatisticsVO>(
+): Promise<ArchiveVolumeStatisticsResponse> {
+  return http.post<ArchiveVolumeStatisticsResponse>(
     '/api/mark/archive-volumes/supervision/statistics',
     request,
   )
 }
 
-export function listSupervisionRemediationTasks(): Promise<ArchiveRemediationTaskVO[]> {
-  return http.post<ArchiveRemediationTaskVO[]>(
+export function listSupervisionRemediationTasks(): Promise<ArchiveRemediationTaskResponse[]> {
+  return http.post<ArchiveRemediationTaskResponse[]>(
     '/api/mark/archive-volumes/supervision/remediation/list',
     {},
   )
 }
 
-export function listSupervisionCampaigns(): Promise<ArchiveEvaluationCampaignVO[]> {
-  return http.post<ArchiveEvaluationCampaignVO[]>(
+export function listSupervisionCampaigns(): Promise<ArchiveEvaluationCampaignResponse[]> {
+  return http.post<ArchiveEvaluationCampaignResponse[]>(
     '/api/mark/archive-volumes/supervision/campaign/list',
     {},
   )
 }
 
-export function listEvaluationCampaigns(): Promise<ArchiveEvaluationCampaignVO[]> {
-  return http.post<ArchiveEvaluationCampaignVO[]>(
+export function listEvaluationCampaigns(): Promise<ArchiveEvaluationCampaignResponse[]> {
+  return http.post<ArchiveEvaluationCampaignResponse[]>(
     '/api/mark/archive-volumes/evaluation/campaign/list',
     {},
   )
@@ -1027,23 +1027,23 @@ export interface ArchiveEvaluationCampaignReadinessPanelRequest extends QueryDto
 
 export function getEvaluationCampaignReadinessPanel(
   request: ArchiveEvaluationCampaignReadinessPanelRequest,
-): Promise<PageResult<ArchiveEvaluationVolumeReadinessVO>> {
-  return http.post<PageResult<ArchiveEvaluationVolumeReadinessVO>>(
+): Promise<PageResult<ArchiveEvaluationVolumeReadinessResponse>> {
+  return http.post<PageResult<ArchiveEvaluationVolumeReadinessResponse>>(
     '/api/mark/archive-volumes/evaluation/campaign/readiness-panel',
     request,
   )
 }
 
-export function getRemediationTask(taskId: string): Promise<ArchiveRemediationTaskVO> {
-  return http.post<ArchiveRemediationTaskVO>('/api/mark/archive-volumes/remediation/detail', {
+export function getRemediationTask(taskId: string): Promise<ArchiveRemediationTaskResponse> {
+  return http.post<ArchiveRemediationTaskResponse>('/api/mark/archive-volumes/remediation/detail', {
     taskId,
   })
 }
 
 export function listRemediationTasksByCampaign(
   campaignId: string,
-): Promise<ArchiveRemediationTaskVO[]> {
-  return http.post<ArchiveRemediationTaskVO[]>(
+): Promise<ArchiveRemediationTaskResponse[]> {
+  return http.post<ArchiveRemediationTaskResponse[]>(
     '/api/mark/archive-volumes/remediation/list-by-campaign',
     { campaignId },
   )
@@ -1051,8 +1051,8 @@ export function listRemediationTasksByCampaign(
 
 export function updateRemediationTask(
   request: ArchiveRemediationTaskUpdateRequest,
-): Promise<ArchiveRemediationTaskVO> {
-  return http.post<ArchiveRemediationTaskVO>(
+): Promise<ArchiveRemediationTaskResponse> {
+  return http.post<ArchiveRemediationTaskResponse>(
     '/api/mark/archive-volumes/remediation/update',
     request,
   )
@@ -1065,8 +1065,8 @@ export interface ArchiveRemediationEvidenceRegisterRequest {
 
 export function registerRemediationEvidence(
   request: ArchiveRemediationEvidenceRegisterRequest,
-): Promise<ArchiveRemediationEvidenceVO> {
-  return http.post<ArchiveRemediationEvidenceVO>(
+): Promise<ArchiveRemediationEvidenceResponse> {
+  return http.post<ArchiveRemediationEvidenceResponse>(
     '/api/mark/archive-volumes/remediation/evidence/register',
     request,
   )
@@ -1084,15 +1084,15 @@ export interface ArchiveRemediationTaskCreateRequest {
 
 export function createRemediationTask(
   request: ArchiveRemediationTaskCreateRequest,
-): Promise<ArchiveRemediationTaskVO> {
-  return http.post<ArchiveRemediationTaskVO>(
+): Promise<ArchiveRemediationTaskResponse> {
+  return http.post<ArchiveRemediationTaskResponse>(
     '/api/mark/archive-volumes/remediation/create',
     request,
   )
 }
 
-export function listOpenRemediationTasks(): Promise<ArchiveRemediationTaskVO[]> {
-  return http.post<ArchiveRemediationTaskVO[]>('/api/mark/archive-volumes/remediation/list', {})
+export function listOpenRemediationTasks(): Promise<ArchiveRemediationTaskResponse[]> {
+  return http.post<ArchiveRemediationTaskResponse[]>('/api/mark/archive-volumes/remediation/list', {})
 }
 
 export function remindArchiveDue(volumeId: string): Promise<void> {
@@ -1112,14 +1112,14 @@ export interface ArchiveEvaluationCampaignSaveRequest {
 
 export function saveEvaluationCampaign(
   request: ArchiveEvaluationCampaignSaveRequest,
-): Promise<ArchiveEvaluationCampaignVO> {
-  return http.post<ArchiveEvaluationCampaignVO>(
+): Promise<ArchiveEvaluationCampaignResponse> {
+  return http.post<ArchiveEvaluationCampaignResponse>(
     '/api/mark/archive-volumes/evaluation/campaign/save',
     request,
   )
 }
 
-export interface ArchiveEvaluationExportVO {
+export interface ArchiveEvaluationExportResponse {
   exportFileId: string
   volumeCount?: number
 }
@@ -1128,16 +1128,16 @@ export interface ArchiveEvaluationExportVO {
 export const ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT
   = '含本批次学年学期内已提交/已入库/收集中卷（整改任务关联的收集中卷已包含在内；不含线上阅卷自动建卷失败诊断卷）'
 
-export function exportEvaluationPackage(campaignId: string): Promise<ArchiveEvaluationExportVO> {
-  return http.post<ArchiveEvaluationExportVO>('/api/mark/archive-volumes/evaluation/export', {
+export function exportEvaluationPackage(campaignId: string): Promise<ArchiveEvaluationExportResponse> {
+  return http.post<ArchiveEvaluationExportResponse>('/api/mark/archive-volumes/evaluation/export', {
     campaignId,
   })
 }
 
 export function exportEvaluationArchivePackage(
   campaignId: string,
-): Promise<ArchiveEvaluationExportVO> {
-  return http.post<ArchiveEvaluationExportVO>(
+): Promise<ArchiveEvaluationExportResponse> {
+  return http.post<ArchiveEvaluationExportResponse>(
     '/api/mark/archive-volumes/evaluation/export-archive',
     { campaignId },
   )
@@ -1175,7 +1175,7 @@ export interface ArchiveReadinessMatrixRowVO {
   cells: ArchiveReadinessCellVO[]
 }
 
-export interface ArchiveReadinessMatrixVO {
+export interface ArchiveReadinessMatrixResponse {
   endAcademicYear: string
   endSemester: SemesterCode
   termCount: number
@@ -1185,8 +1185,8 @@ export interface ArchiveReadinessMatrixVO {
 
 export function getSupervisionReadinessMatrix(
   request: ArchiveReadinessMatrixRequest,
-): Promise<ArchiveReadinessMatrixVO> {
-  return http.post<ArchiveReadinessMatrixVO>(
+): Promise<ArchiveReadinessMatrixResponse> {
+  return http.post<ArchiveReadinessMatrixResponse>(
     '/api/mark/archive-volumes/supervision/readiness-matrix',
     request,
   )
@@ -1199,8 +1199,8 @@ export interface ArchiveVolumeMaterialBatchRegisterRequest {
 
 export function batchRegisterArchiveVolumeMaterials(
   request: ArchiveVolumeMaterialBatchRegisterRequest,
-): Promise<ArchiveVolumeMaterialVO[]> {
-  return http.post<ArchiveVolumeMaterialVO[]>(
+): Promise<ArchiveVolumeMaterialResponse[]> {
+  return http.post<ArchiveVolumeMaterialResponse[]>(
     '/api/mark/archive-volumes/materials/batch-register',
     request,
   )
@@ -1208,8 +1208,8 @@ export function batchRegisterArchiveVolumeMaterials(
 
 export function generateArchiveVolumeExamAnalysisReport(
   volumeId: string,
-): Promise<ArchiveVolumeMaterialVO> {
-  return http.post<ArchiveVolumeMaterialVO>(
+): Promise<ArchiveVolumeMaterialResponse> {
+  return http.post<ArchiveVolumeMaterialResponse>(
     '/api/mark/archive-volumes/materials/generate/exam-analysis',
     { volumeId },
   )
@@ -1217,8 +1217,8 @@ export function generateArchiveVolumeExamAnalysisReport(
 
 export function generateArchiveVolumeCourseObjectiveReport(
   volumeId: string,
-): Promise<ArchiveVolumeMaterialVO> {
-  return http.post<ArchiveVolumeMaterialVO>(
+): Promise<ArchiveVolumeMaterialResponse> {
+  return http.post<ArchiveVolumeMaterialResponse>(
     '/api/mark/archive-volumes/materials/generate/course-objective-report',
     { volumeId },
   )
@@ -1235,8 +1235,8 @@ export interface ArchiveVolumeMaterialDelayAllowRequest {
 
 export function allowArchiveMaterialDelay(
   request: ArchiveVolumeMaterialDelayAllowRequest,
-): Promise<ArchiveVolumeMaterialVO> {
-  return http.post<ArchiveVolumeMaterialVO>(
+): Promise<ArchiveVolumeMaterialResponse> {
+  return http.post<ArchiveVolumeMaterialResponse>(
     '/api/mark/archive-volumes/materials/allow-delay',
     request,
   )
@@ -1249,8 +1249,8 @@ export interface ArchiveVolumeIntegrityWaiveRequest {
 
 export function waiveArchiveVolumeIntegrity(
   request: ArchiveVolumeIntegrityWaiveRequest,
-): Promise<ArchiveVolumeVO> {
-  return http.post<ArchiveVolumeVO>('/api/mark/archive-volumes/integrity/waive', request)
+): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/integrity/waive', request)
 }
 
 export interface ArchiveVolumeSecurityMarkConfirmRequest {
@@ -1260,8 +1260,8 @@ export interface ArchiveVolumeSecurityMarkConfirmRequest {
 
 export function confirmArchiveVolumeSecurityMark(
   request: ArchiveVolumeSecurityMarkConfirmRequest,
-): Promise<ArchiveVolumeVO> {
-  return http.post<ArchiveVolumeVO>('/api/mark/archive-volumes/security/confirm-mark', request)
+): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/security/confirm-mark', request)
 }
 
 export interface ArchiveVolumeSecurityLevelUpdateRequest {
@@ -1272,8 +1272,8 @@ export interface ArchiveVolumeSecurityLevelUpdateRequest {
 
 export function updateArchiveVolumeSecurityLevel(
   request: ArchiveVolumeSecurityLevelUpdateRequest,
-): Promise<ArchiveVolumeVO> {
-  return http.post<ArchiveVolumeVO>('/api/mark/archive-volumes/security/update-level', request)
+): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/security/update-level', request)
 }
 
 export interface ArchiveVolumeMaterialWaiveRequest {
@@ -1285,8 +1285,8 @@ export interface ArchiveVolumeMaterialWaiveRequest {
 
 export function waiveArchiveMaterialMissing(
   request: ArchiveVolumeMaterialWaiveRequest,
-): Promise<ArchiveVolumeMaterialVO> {
-  return http.post<ArchiveVolumeMaterialVO>(
+): Promise<ArchiveVolumeMaterialResponse> {
+  return http.post<ArchiveVolumeMaterialResponse>(
     '/api/mark/archive-volumes/materials/waive-missing',
     request,
   )
@@ -1313,7 +1313,7 @@ export interface ArchiveExternalImportFailureRowVO {
   failureReason?: string
 }
 
-export interface ArchiveExcelFileVO {
+export interface ArchiveExcelFileResponse {
   fileName: string
   fileContentBase64: string
 }
@@ -1327,14 +1327,14 @@ export interface ArchiveCoursePlatformSyncRequest {
 
 export function syncArchiveCoursePlatform(
   request: ArchiveCoursePlatformSyncRequest,
-): Promise<ArchiveVolumeMaterialVO[]> {
-  return http.post<ArchiveVolumeMaterialVO[]>(
+): Promise<ArchiveVolumeMaterialResponse[]> {
+  return http.post<ArchiveVolumeMaterialResponse[]>(
     '/api/mark/archive-volumes/sync/course-platform',
     request,
   )
 }
 
-export interface ArchiveVolumeExamGateVO {
+export interface ArchiveVolumeExamGateResponse {
   examId: string
   examClosed?: boolean
   allScoresPublished?: boolean
@@ -1388,8 +1388,8 @@ export interface ArchiveVolumeExamClassPublishProgressVO {
   unpublishedBoundPaperCount?: number
 }
 
-export function getArchiveVolumeExamGate(examId: string): Promise<ArchiveVolumeExamGateVO> {
-  return http.post<ArchiveVolumeExamGateVO>('/api/mark/archive-volumes/exam/archive-gate', {
+export function getArchiveVolumeExamGate(examId: string): Promise<ArchiveVolumeExamGateResponse> {
+  return http.post<ArchiveVolumeExamGateResponse>('/api/mark/archive-volumes/exam/archive-gate', {
     examId,
   })
 }
@@ -1398,7 +1398,7 @@ export function retryArchiveVolumeAutoCreate(examId: string): Promise<void> {
   return http.post<void>('/api/mark/archive-volumes/exam/retry-auto-create', { examId })
 }
 
-export interface ArchiveVolumeAccessRecordVO {
+export interface ArchiveVolumeAccessRecordResponse {
   accessRecordId: string
   volumeId: string
   materialId?: string
@@ -1426,7 +1426,7 @@ export interface ArchiveVolumeAccessRecordVO {
   downloadCount?: number
 }
 
-export interface ArchiveIntegrityCheckVO {
+export interface ArchiveIntegrityCheckResponse {
   volumeId: string
   integrityStatus: ArchiveIntegrityStatusCode
   passed?: boolean
@@ -1441,7 +1441,7 @@ export interface ArchiveIntegrityMissingItemVO {
   missingReason?: string
 }
 
-export interface ArchiveFourPropertyCheckVO {
+export interface ArchiveFourPropertyCheckResponse {
   volumeId: string
   checkId?: string
   authenticityPassed?: boolean
@@ -1454,7 +1454,7 @@ export interface ArchiveFourPropertyCheckVO {
   checkedTime?: string
 }
 
-export interface ArchiveVolumeExportVO {
+export interface ArchiveVolumeExportResponse {
   exportFileId: string
   manifestChecksum?: string
   materialCount?: number
@@ -1464,7 +1464,7 @@ export interface ArchiveVolumeExportVO {
   packageChecksumSha256?: string
 }
 
-export interface ArchiveMaterialCatalogTemplateVO {
+export interface ArchiveMaterialCatalogTemplateResponse {
   templateItemId: string
   examForm?: ArchiveExamFormCode
   materialType: ArchiveMaterialTypeCode
@@ -1608,8 +1608,8 @@ export function createOfflineArchiveVolume(
 
 export function registerArchiveVolumeMaterial(
   request: ArchiveVolumeMaterialRegisterRequest,
-): Promise<ArchiveVolumeMaterialVO> {
-  return http.post<ArchiveVolumeMaterialVO>('/api/mark/archive-volumes/materials/register', request)
+): Promise<ArchiveVolumeMaterialResponse> {
+  return http.post<ArchiveVolumeMaterialResponse>('/api/mark/archive-volumes/materials/register', request)
 }
 
 export interface ArchiveVolumeMaterialOcrTriggerRequest {
@@ -1618,8 +1618,8 @@ export interface ArchiveVolumeMaterialOcrTriggerRequest {
 
 export function triggerArchiveVolumeMaterialOcr(
   materialId: string,
-): Promise<ArchiveVolumeMaterialVO> {
-  return http.post<ArchiveVolumeMaterialVO>('/api/mark/archive-volumes/materials/ocr/trigger', {
+): Promise<ArchiveVolumeMaterialResponse> {
+  return http.post<ArchiveVolumeMaterialResponse>('/api/mark/archive-volumes/materials/ocr/trigger', {
     materialId,
   })
 }
@@ -1637,7 +1637,7 @@ export interface DocumentOcrPageDetailVO {
   engineTraceId?: string
 }
 
-export interface DocumentMaterialOcrDetailVO {
+export interface DocumentMaterialOcrDetailResponse {
   materialId?: string
   ingestionSessionId?: string
   ocrTaskId?: string
@@ -1654,8 +1654,8 @@ export interface DocumentMaterialOcrDetailVO {
 
 export function getArchiveMaterialDocumentOcrDetail(
   materialId: string,
-): Promise<DocumentMaterialOcrDetailVO | null> {
-  return http.post<DocumentMaterialOcrDetailVO | null>(
+): Promise<DocumentMaterialOcrDetailResponse | null> {
+  return http.post<DocumentMaterialOcrDetailResponse | null>(
     '/api/mark/archive-volumes/materials/document-ocr/detail',
     {
       materialId,
@@ -1663,16 +1663,16 @@ export function getArchiveMaterialDocumentOcrDetail(
   )
 }
 
-export function checkArchiveVolumeIntegrity(volumeId: string): Promise<ArchiveIntegrityCheckVO> {
-  return http.post<ArchiveIntegrityCheckVO>('/api/mark/archive-volumes/integrity/check', {
+export function checkArchiveVolumeIntegrity(volumeId: string): Promise<ArchiveIntegrityCheckResponse> {
+  return http.post<ArchiveIntegrityCheckResponse>('/api/mark/archive-volumes/integrity/check', {
     volumeId,
   })
 }
 
 export function checkArchiveVolumeFourProperty(
   volumeId: string,
-): Promise<ArchiveFourPropertyCheckVO> {
-  return http.post<ArchiveFourPropertyCheckVO>('/api/mark/archive-volumes/four-property/check', {
+): Promise<ArchiveFourPropertyCheckResponse> {
+  return http.post<ArchiveFourPropertyCheckResponse>('/api/mark/archive-volumes/four-property/check', {
     volumeId,
   })
 }
@@ -1705,7 +1705,7 @@ export interface ArchiveVolumeCatalogLineVO {
   materialId?: string
 }
 
-export interface ArchiveVolumeCatalogVO {
+export interface ArchiveVolumeCatalogResponse {
   volumeId: string
   catalogStatus: ArchiveCatalogStatusCode
   lines: ArchiveVolumeCatalogLineVO[]
@@ -1728,7 +1728,7 @@ export interface ArchiveVolumeCatalogSaveRequest {
   lines: ArchiveVolumeCatalogLineSaveRequest[]
 }
 
-export interface ArchiveVolumeCatalogExportVO {
+export interface ArchiveVolumeCatalogExportResponse {
   exportFileId?: string
   lineCount?: number
 }
@@ -1744,7 +1744,7 @@ export interface ArchiveVolumeSelfCheckItemVO {
   checkedTime?: string
 }
 
-export interface ArchiveVolumeSelfCheckListVO {
+export interface ArchiveVolumeSelfCheckListResponse {
   volumeId: string
   items: ArchiveVolumeSelfCheckItemVO[]
   completed?: boolean
@@ -1758,12 +1758,12 @@ export interface ArchiveVolumeSelfCheckItemCheckRequest {
   checked: boolean
 }
 
-export interface ArchiveVolumeSelfCheckExportVO {
+export interface ArchiveVolumeSelfCheckExportResponse {
   exportFileId?: string
   itemCount?: number
 }
 
-export interface ArchiveVolumeSubmitChecklistVO {
+export interface ArchiveVolumeSubmitChecklistResponse {
   volumeId: string
   checklistVersion: string
   selfCheckConfirmed?: boolean
@@ -1792,8 +1792,8 @@ export interface ArchiveVolumeSelfCheckConfirmRequest {
 
 export function previewArchiveVolumeSubmitChecklist(
   volumeId: string,
-): Promise<ArchiveVolumeSubmitChecklistVO> {
-  return http.post<ArchiveVolumeSubmitChecklistVO>(
+): Promise<ArchiveVolumeSubmitChecklistResponse> {
+  return http.post<ArchiveVolumeSubmitChecklistResponse>(
     '/api/mark/archive-volumes/submit/checklist/preview',
     { volumeId },
   )
@@ -1805,14 +1805,14 @@ export function confirmArchiveVolumeSelfCheck(
   return http.post<void>('/api/mark/archive-volumes/submit/self-check/confirm', request)
 }
 
-export function getArchiveVolumeCatalog(volumeId: string): Promise<ArchiveVolumeCatalogVO> {
-  return http.post<ArchiveVolumeCatalogVO>('/api/mark/archive-volumes/catalog/get', { volumeId })
+export function getArchiveVolumeCatalog(volumeId: string): Promise<ArchiveVolumeCatalogResponse> {
+  return http.post<ArchiveVolumeCatalogResponse>('/api/mark/archive-volumes/catalog/get', { volumeId })
 }
 
 export function generateArchiveVolumeCatalogDraft(
   volumeId: string,
-): Promise<ArchiveVolumeCatalogVO> {
-  return http.post<ArchiveVolumeCatalogVO>('/api/mark/archive-volumes/catalog/generate-draft', {
+): Promise<ArchiveVolumeCatalogResponse> {
+  return http.post<ArchiveVolumeCatalogResponse>('/api/mark/archive-volumes/catalog/generate-draft', {
     volumeId,
   })
 }
@@ -1829,16 +1829,16 @@ export function confirmArchiveVolumeCatalog(volumeId: string): Promise<void> {
 
 export function exportArchiveVolumeCatalog(
   volumeId: string,
-): Promise<ArchiveVolumeCatalogExportVO> {
-  return http.post<ArchiveVolumeCatalogExportVO>('/api/mark/archive-volumes/catalog/export', {
+): Promise<ArchiveVolumeCatalogExportResponse> {
+  return http.post<ArchiveVolumeCatalogExportResponse>('/api/mark/archive-volumes/catalog/export', {
     volumeId,
   })
 }
 
 export function listArchiveVolumeSelfCheckItems(
   volumeId: string,
-): Promise<ArchiveVolumeSelfCheckListVO> {
-  return http.post<ArchiveVolumeSelfCheckListVO>(
+): Promise<ArchiveVolumeSelfCheckListResponse> {
+  return http.post<ArchiveVolumeSelfCheckListResponse>(
     '/api/mark/archive-volumes/self-check/items/list',
     { volumeId },
   )
@@ -1852,21 +1852,21 @@ export function checkArchiveVolumeSelfCheckItem(
 
 export function exportArchiveVolumeSelfCheck(
   volumeId: string,
-): Promise<ArchiveVolumeSelfCheckExportVO> {
-  return http.post<ArchiveVolumeSelfCheckExportVO>('/api/mark/archive-volumes/self-check/export', {
+): Promise<ArchiveVolumeSelfCheckExportResponse> {
+  return http.post<ArchiveVolumeSelfCheckExportResponse>('/api/mark/archive-volumes/self-check/export', {
     volumeId,
   })
 }
 
-export interface ArchiveVolumeEventExportVO {
+export interface ArchiveVolumeEventExportResponse {
   exportFileId: string
   eventCount: number
 }
 
 export function listArchiveVolumeTransferRecords(
   volumeId: string,
-): Promise<ArchiveVolumeTransferRecordVO[]> {
-  return http.post<ArchiveVolumeTransferRecordVO[]>(
+): Promise<ArchiveVolumeTransferRecordResponse[]> {
+  return http.post<ArchiveVolumeTransferRecordResponse[]>(
     '/api/mark/archive-volumes/transfer-records/list',
     { volumeId },
   )
@@ -1874,8 +1874,8 @@ export function listArchiveVolumeTransferRecords(
 
 export function listArchiveVolumeAppraisalFlowRecords(
   volumeId: string,
-): Promise<ArchiveVolumeAppraisalFlowRecordVO[]> {
-  return http.post<ArchiveVolumeAppraisalFlowRecordVO[]>(
+): Promise<ArchiveVolumeAppraisalFlowRecordResponse[]> {
+  return http.post<ArchiveVolumeAppraisalFlowRecordResponse[]>(
     '/api/mark/archive-volumes/appraisal-flow-records/list',
     { volumeId },
   )
@@ -1883,136 +1883,136 @@ export function listArchiveVolumeAppraisalFlowRecords(
 
 export function listArchiveVolumeDestructionFlowRecords(
   volumeId: string,
-): Promise<ArchiveVolumeDestructionFlowRecordVO[]> {
-  return http.post<ArchiveVolumeDestructionFlowRecordVO[]>(
+): Promise<ArchiveVolumeDestructionFlowRecordResponse[]> {
+  return http.post<ArchiveVolumeDestructionFlowRecordResponse[]>(
     '/api/mark/archive-volumes/destruction-flow-records/list',
     { volumeId },
   )
 }
 
-export function exportArchiveVolumeEvents(volumeId: string): Promise<ArchiveVolumeEventExportVO> {
-  return http.post<ArchiveVolumeEventExportVO>('/api/mark/archive-volumes/events/export', {
+export function exportArchiveVolumeEvents(volumeId: string): Promise<ArchiveVolumeEventExportResponse> {
+  return http.post<ArchiveVolumeEventExportResponse>('/api/mark/archive-volumes/events/export', {
     volumeId,
   })
 }
 
-export function submitArchiveVolume(request: ArchiveVolumeSubmitRequest): Promise<ArchiveVolumeVO> {
-  return http.post<ArchiveVolumeVO>('/api/mark/archive-volumes/submit', request)
+export function submitArchiveVolume(request: ArchiveVolumeSubmitRequest): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/submit', request)
 }
 
 export function approveArchiveVolumeTransfer(
   request: ArchiveVolumeTransferApproveRequest,
-): Promise<ArchiveVolumeVO> {
-  return http.post<ArchiveVolumeVO>('/api/mark/archive-volumes/transfer/approve', request)
+): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/transfer/approve', request)
 }
 
 export function rejectArchiveVolumeTransfer(
   request: ArchiveVolumeTransferRejectRequest,
-): Promise<ArchiveVolumeVO> {
-  return http.post<ArchiveVolumeVO>('/api/mark/archive-volumes/transfer/reject', request)
+): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/transfer/reject', request)
 }
 
 export function requestArchiveVolumeAccess(
   request: ArchiveVolumeAccessRequest,
-): Promise<ArchiveVolumeAccessRecordVO> {
-  return http.post<ArchiveVolumeAccessRecordVO>('/api/mark/archive-volumes/access/request', request)
+): Promise<ArchiveVolumeAccessRecordResponse> {
+  return http.post<ArchiveVolumeAccessRecordResponse>('/api/mark/archive-volumes/access/request', request)
 }
 
 export function approveArchiveVolumeAccess(
   request: ArchiveVolumeAccessDecisionRequest,
-): Promise<ArchiveVolumeAccessRecordVO> {
-  return http.post<ArchiveVolumeAccessRecordVO>('/api/mark/archive-volumes/access/approve', request)
+): Promise<ArchiveVolumeAccessRecordResponse> {
+  return http.post<ArchiveVolumeAccessRecordResponse>('/api/mark/archive-volumes/access/approve', request)
 }
 
 export function rejectArchiveVolumeAccess(
   request: ArchiveVolumeAccessDecisionRequest,
-): Promise<ArchiveVolumeAccessRecordVO> {
-  return http.post<ArchiveVolumeAccessRecordVO>('/api/mark/archive-volumes/access/reject', request)
+): Promise<ArchiveVolumeAccessRecordResponse> {
+  return http.post<ArchiveVolumeAccessRecordResponse>('/api/mark/archive-volumes/access/reject', request)
 }
 
 export function listArchiveVolumeAccessRecords(
   volumeId: string,
-): Promise<ArchiveVolumeAccessRecordVO[]> {
-  return http.post<ArchiveVolumeAccessRecordVO[]>('/api/mark/archive-volumes/access/records', {
+): Promise<ArchiveVolumeAccessRecordResponse[]> {
+  return http.post<ArchiveVolumeAccessRecordResponse[]>('/api/mark/archive-volumes/access/records', {
     volumeId,
   })
 }
 
 export function pageOverdueArchiveVolumes(
   request: ArchiveVolumePageRequest,
-): Promise<PageResult<ArchiveVolumeVO>> {
-  return http.post<PageResult<ArchiveVolumeVO>>('/api/mark/archive-volumes/overdue/page', request)
+): Promise<PageResult<ArchiveVolumeResponse>> {
+  return http.post<PageResult<ArchiveVolumeResponse>>('/api/mark/archive-volumes/overdue/page', request)
 }
 
 export function getArchiveVolumeStatistics(
   request: ArchiveVolumeStatisticsRequest,
-): Promise<ArchiveVolumeStatisticsVO> {
-  return http.post<ArchiveVolumeStatisticsVO>('/api/mark/archive-volumes/statistics', request)
+): Promise<ArchiveVolumeStatisticsResponse> {
+  return http.post<ArchiveVolumeStatisticsResponse>('/api/mark/archive-volumes/statistics', request)
 }
 
 export function exportArchiveVolumeStatisticsExcel(
   request: ArchiveVolumeStatisticsRequest,
-): Promise<ArchiveExcelFileVO> {
-  return http.post<ArchiveExcelFileVO>('/api/mark/archive-volumes/statistics/export', request)
+): Promise<ArchiveExcelFileResponse> {
+  return http.post<ArchiveExcelFileResponse>('/api/mark/archive-volumes/statistics/export', request)
 }
 
-export function exportArchiveVolume(volumeId: string): Promise<ArchiveVolumeExportVO> {
-  return http.post<ArchiveVolumeExportVO>('/api/mark/archive-volumes/export', { volumeId })
+export function exportArchiveVolume(volumeId: string): Promise<ArchiveVolumeExportResponse> {
+  return http.post<ArchiveVolumeExportResponse>('/api/mark/archive-volumes/export', { volumeId })
 }
 
-export function listArchiveCatalogTemplate(): Promise<ArchiveMaterialCatalogTemplateVO[]> {
-  return http.post<ArchiveMaterialCatalogTemplateVO[]>(
+export function listArchiveCatalogTemplate(): Promise<ArchiveMaterialCatalogTemplateResponse[]> {
+  return http.post<ArchiveMaterialCatalogTemplateResponse[]>(
     '/api/mark/archive-volumes/catalog-template/list',
     {},
   )
 }
 
-export function requestArchiveVolumeAppraisal(volumeId: string): Promise<ArchiveVolumeVO> {
-  return http.post<ArchiveVolumeVO>('/api/mark/archive-volumes/appraisal/request', { volumeId })
+export function requestArchiveVolumeAppraisal(volumeId: string): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/appraisal/request', { volumeId })
 }
 
-export function approveArchiveVolumeAppraisal(volumeId: string): Promise<ArchiveVolumeVO> {
-  return http.post<ArchiveVolumeVO>('/api/mark/archive-volumes/appraisal/approve', { volumeId })
+export function approveArchiveVolumeAppraisal(volumeId: string): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/appraisal/approve', { volumeId })
 }
 
 export function rejectArchiveVolumeAppraisal(
   request: ArchiveVolumeAppraisalRejectRequest,
-): Promise<ArchiveVolumeVO> {
-  return http.post<ArchiveVolumeVO>('/api/mark/archive-volumes/appraisal/reject', request)
+): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/appraisal/reject', request)
 }
 
 export function recordArchiveVolumeAppraisalOpinion(
   request: ArchiveVolumeAppraisalRequest,
-): Promise<ArchiveVolumeVO> {
-  return http.post<ArchiveVolumeVO>('/api/mark/archive-volumes/appraisal/record-opinion', request)
+): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/appraisal/record-opinion', request)
 }
 
 export function requestArchiveVolumeDestruction(
   request: ArchiveVolumeDestructionRequest,
-): Promise<ArchiveVolumeVO> {
-  return http.post<ArchiveVolumeVO>('/api/mark/archive-volumes/destruction/request', request)
+): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/destruction/request', request)
 }
 
 export function approveArchiveVolumeDestruction(
   request: ArchiveVolumeDestructionApprovalRequest,
-): Promise<ArchiveVolumeVO> {
-  return http.post<ArchiveVolumeVO>('/api/mark/archive-volumes/destruction/approve', request)
+): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/destruction/approve', request)
 }
 
-export function executeArchiveVolumeDestruction(volumeId: string): Promise<ArchiveVolumeVO> {
-  return http.post<ArchiveVolumeVO>('/api/mark/archive-volumes/destruction/execute', { volumeId })
+export function executeArchiveVolumeDestruction(volumeId: string): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/destruction/execute', { volumeId })
 }
 
 export function confirmArchiveVolumeDestructionSupervision(
   request: ArchiveVolumeDestructionSuperviseRequest,
-): Promise<ArchiveVolumeVO> {
-  return http.post<ArchiveVolumeVO>('/api/mark/archive-volumes/destruction/supervise', request)
+): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/destruction/supervise', request)
 }
 
 export function confirmArchiveVolumeScoreCompletion(
   request: ArchiveScoreCompletionConfirmRequest,
-): Promise<ArchiveVolumeVO> {
-  return http.post<ArchiveVolumeVO>('/api/mark/archive-volumes/score-completion/confirm', request)
+): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/score-completion/confirm', request)
 }
 
 export function batchRejectArchiveVolumeTransfer(
@@ -2027,8 +2027,8 @@ export function saveArchiveCatalogTemplate(
   return http.post<void>('/api/mark/archive-volumes/catalog-template/save', request)
 }
 
-export function listPendingArchiveAccessRecords(): Promise<ArchiveVolumeAccessRecordVO[]> {
-  return http.post<ArchiveVolumeAccessRecordVO[]>(
+export function listPendingArchiveAccessRecords(): Promise<ArchiveVolumeAccessRecordResponse[]> {
+  return http.post<ArchiveVolumeAccessRecordResponse[]>(
     '/api/mark/archive-volumes/access/pending/list',
     {},
   )
@@ -2110,7 +2110,7 @@ export interface ArchiveVolumeAccessLedgerPageRequest extends QueryDto {
   applicantUserId?: string
 }
 
-export interface ArchiveVolumeAccessLedgerRowVO {
+export interface ArchiveVolumeAccessLedgerRowResponse {
   accessRecordId: string
   volumeId: string
   materialId?: string
@@ -2133,8 +2133,8 @@ export interface ArchiveVolumeAccessLedgerRowVO {
 
 export function pageAccessLedger(
   request: ArchiveVolumeAccessLedgerPageRequest,
-): Promise<PageResult<ArchiveVolumeAccessLedgerRowVO>> {
-  return http.post<PageResult<ArchiveVolumeAccessLedgerRowVO>>(
+): Promise<PageResult<ArchiveVolumeAccessLedgerRowResponse>> {
+  return http.post<PageResult<ArchiveVolumeAccessLedgerRowResponse>>(
     '/api/mark/archive-volumes/access/ledger/page',
     request,
   )
@@ -2145,7 +2145,7 @@ export interface ArchiveVolumeDestructionLedgerPageRequest extends QueryDto {
   keyword?: string
 }
 
-export interface ArchiveVolumeDestructionLedgerRowVO {
+export interface ArchiveVolumeDestructionLedgerRowResponse {
   volumeId: string
   archiveNo?: string
   archiveTitle?: string
@@ -2167,8 +2167,8 @@ export interface ArchiveVolumeDestructionLedgerRowVO {
 
 export function pageDestructionLedger(
   request: ArchiveVolumeDestructionLedgerPageRequest,
-): Promise<PageResult<ArchiveVolumeDestructionLedgerRowVO>> {
-  return http.post<PageResult<ArchiveVolumeDestructionLedgerRowVO>>(
+): Promise<PageResult<ArchiveVolumeDestructionLedgerRowResponse>> {
+  return http.post<PageResult<ArchiveVolumeDestructionLedgerRowResponse>>(
     '/api/mark/archive-volumes/destruction/ledger/page',
     request,
   )
@@ -2176,8 +2176,8 @@ export function pageDestructionLedger(
 
 export function exportDestructionLedgerExcel(
   request: ArchiveVolumeDestructionLedgerPageRequest,
-): Promise<ArchiveExcelFileVO> {
-  return http.post<ArchiveExcelFileVO>(
+): Promise<ArchiveExcelFileResponse> {
+  return http.post<ArchiveExcelFileResponse>(
     '/api/mark/archive-volumes/destruction/ledger/export',
     request,
   )
@@ -2191,8 +2191,8 @@ export interface ArchiveVolumeSupervisionMarkProblemRequest {
 
 export function markSupervisionProblem(
   request: ArchiveVolumeSupervisionMarkProblemRequest,
-): Promise<ArchiveRemediationTaskVO> {
-  return http.post<ArchiveRemediationTaskVO>(
+): Promise<ArchiveRemediationTaskResponse> {
+  return http.post<ArchiveRemediationTaskResponse>(
     '/api/mark/archive-volumes/supervision/mark-problem',
     request,
   )
@@ -2203,7 +2203,7 @@ export interface ArchiveVolumeAuditPageRequest extends QueryDto {
   eventType?: ArchiveVolumeEventTypeCode
 }
 
-export interface ArchiveVolumeAuditEventVO {
+export interface ArchiveVolumeAuditEventResponse {
   eventId: string
   volumeId?: string
   eventType?: ArchiveVolumeEventTypeCode
@@ -2220,8 +2220,8 @@ export interface ArchiveVolumeAuditEventVO {
 
 export function pageArchiveAuditEvents(
   request: ArchiveVolumeAuditPageRequest,
-): Promise<PageResult<ArchiveVolumeAuditEventVO>> {
-  return http.post<PageResult<ArchiveVolumeAuditEventVO>>(
+): Promise<PageResult<ArchiveVolumeAuditEventResponse>> {
+  return http.post<PageResult<ArchiveVolumeAuditEventResponse>>(
     '/api/mark/archive-volumes/audit/page',
     request,
   )
@@ -2246,7 +2246,7 @@ export interface ArchiveVolumePhysicalLocationUpdateRequest {
   physicalLocationNote?: string
 }
 
-export interface ArchivePhysicalLocationVO {
+export interface ArchivePhysicalLocationResponse {
   locationId: string
   volumeId?: string
   building?: string
@@ -2265,14 +2265,14 @@ export interface ArchivePhysicalLocationHistoryRequest {
 
 export function updateArchiveVolumePhysicalLocation(
   request: ArchiveVolumePhysicalLocationUpdateRequest,
-): Promise<ArchiveVolumeVO> {
-  return http.post<ArchiveVolumeVO>('/api/mark/archive-volumes/physical-location/update', request)
+): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/physical-location/update', request)
 }
 
 export function listArchivePhysicalLocationHistory(
   request: ArchivePhysicalLocationHistoryRequest,
-): Promise<ArchivePhysicalLocationVO[]> {
-  return http.post<ArchivePhysicalLocationVO[]>(
+): Promise<ArchivePhysicalLocationResponse[]> {
+  return http.post<ArchivePhysicalLocationResponse[]>(
     '/api/mark/archive-volumes/physical-location/history/list',
     request,
   )
@@ -2283,7 +2283,7 @@ export interface ArchiveScanBatchSnapshotPageRequest extends QueryDto {
   batchQualityFlag?: ScanBatchQualityFlagCode
 }
 
-interface ArchiveScanBatchSnapshotPageResponse {
+interface ArchiveScanBatchSnapshotResponse {
   volumeId?: string
   batches?: ArchiveScanBatchSnapshotItemVO[]
   total?: string
@@ -2307,13 +2307,13 @@ export interface ArchiveScanBatchSnapshotItemVO {
   createTime?: string
   updateTime?: string
   scanEndTime?: string
-  materials?: ArchiveVolumeMaterialVO[]
+  materials?: ArchiveVolumeMaterialResponse[]
 }
 
 export async function pageArchiveScanBatchSnapshots(
   request: ArchiveScanBatchSnapshotPageRequest,
 ): Promise<PageResult<ArchiveScanBatchSnapshotItemVO>> {
-  const raw = await http.post<ArchiveScanBatchSnapshotPageResponse>(
+  const raw = await http.post<ArchiveScanBatchSnapshotResponse>(
     '/api/mark/archive-volumes/scan-batch-snapshots/page',
     request,
   )

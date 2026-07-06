@@ -109,8 +109,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { CrossExamTrendAnalysisVO } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { CrossExamTrendAnalysisResponse } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
@@ -184,7 +184,7 @@ const {
   clearHistory,
   applyLoadedList,
   adoptGenerated,
-} = useAiAnalysisHistoryPicker<CrossExamTrendAnalysisVO>()
+} = useAiAnalysisHistoryPicker<CrossExamTrendAnalysisResponse>()
 
 const historyRows = computed(() =>
   historyRecords.value.map((item) => ({
@@ -196,7 +196,7 @@ const historyRows = computed(() =>
   })),
 )
 
-const selectedExams = ref<ExamSummaryVO[]>([])
+const selectedExams = ref<ExamSummaryResponse[]>([])
 const classOptions = ref<{ label: string, value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
@@ -287,7 +287,7 @@ const metaExtraItems = computed(() => {
   ]
 })
 
-function examScopeSummary(value: CrossExamTrendAnalysisVO): string {
+function examScopeSummary(value: CrossExamTrendAnalysisResponse): string {
   if (!value.exams.length) {
     return '无考试范围'
   }
@@ -385,11 +385,11 @@ function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`
 }
 
-function scopeTypeLabel(scopeType: CrossExamTrendAnalysisVO['scopeType']): string {
+function scopeTypeLabel(scopeType: CrossExamTrendAnalysisResponse['scopeType']): string {
   return strictEnumLabel(AnalysisScopeTypeDescription, scopeType, '分析范围类型')
 }
 
-function classNameText(value: CrossExamTrendAnalysisVO): string {
+function classNameText(value: CrossExamTrendAnalysisResponse): string {
   if (value.scopeType === AnalysisScopeTypeCode.COURSE) return '不限定班级'
   return value.className?.trim() || '—'
 }

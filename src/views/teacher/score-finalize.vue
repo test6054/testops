@@ -476,15 +476,15 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
-import type { OperationLogVO, OperationTypeCode } from '@/apis/mark/admin-audit'
+import type { OperationLogResponse, OperationTypeCode } from '@/apis/mark/admin-audit'
 import type {
-  ExamDetailVO,
+  ExamDetailResponse,
 } from '@/apis/mark/exam'
-import type { ExamPaperScoreVO, ExamQuestionScoreVO } from '@/apis/mark/exam-grade'
-import type {WorkbenchScorePanelVO} from '@/apis/mark/exam-progress';
+import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
+import type {ExamWorkbenchScorePanelResponse} from '@/apis/mark/exam-progress';
 import type {
-  ExamScoreSummaryItemVO,
-  FinalScoreRiskOverviewVO,
+  ExamScoreSummaryItemResponse,
+  FinalScoreRiskOverviewResponse,
   FinalScoreRiskReasonCode,
 } from '@/apis/mark/exam-score'
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
@@ -615,7 +615,7 @@ const { selectedExamId } = useMarkExamContext()
 const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('成绩确认')
 const { refreshSnapshot } = useWorkspaceExamId()
 
-const examDetail = ref<ExamDetailVO | null>(null)
+const examDetail = ref<ExamDetailResponse | null>(null)
 
 async function loadExamDetail(): Promise<void> {
   if (!selectedExamId.value) {
@@ -630,10 +630,10 @@ async function loadExamDetail(): Promise<void> {
 }
 
 // ─── 考生名单（服务端分页） ─────────────────────────────
-const candidates = ref<ExamScoreSummaryItemVO[]>([])
+const candidates = ref<ExamScoreSummaryItemResponse[]>([])
 const loading = ref(false)
-const riskOverview = ref<FinalScoreRiskOverviewVO | null>(null)
-const scorePanel = ref<WorkbenchScorePanelVO | null>(null)
+const riskOverview = ref<FinalScoreRiskOverviewResponse | null>(null)
+const scorePanel = ref<ExamWorkbenchScorePanelResponse | null>(null)
 const riskOverviewLoading = ref(false)
 const batchConfirming = ref(false)
 const riskReviewDrawerOpen = ref(false)
@@ -739,24 +739,24 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 }
 
 // ─── 状态机按钮可用性 ─────────────────────────────
-function canConfirm(record: ExamScoreSummaryItemVO): boolean {
+function canConfirm(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
   const s = record.finalScoreStatus
   return s === 'PENDING' || s === 'CALCULATED' || s === 'WITHDRAWN' || s === 'CORRECTED'
 }
-function confirmButtonLabel(record: ExamScoreSummaryItemVO): string {
+function confirmButtonLabel(record: ExamScoreSummaryItemResponse): string {
   const s = record.finalScoreStatus
   if (s === 'WITHDRAWN' || s === 'CORRECTED') return '重新确认'
   return '确认'
 }
-function canPublish(record: ExamScoreSummaryItemVO): boolean {
+function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
   if (hasHardBlockingRisks.value || hasUnreviewedBlockingRisks.value) return false
   const s = record.finalScoreStatus
   // CONFIRMED / WITHDRAWN / CORRECTED 可以发布
   return s === 'CONFIRMED' || s === 'WITHDRAWN' || s === 'CORRECTED'
 }
-function publishButtonLabel(record: ExamScoreSummaryItemVO): string {
+function publishButtonLabel(record: ExamScoreSummaryItemResponse): string {
   return record.finalScoreStatus === 'WITHDRAWN' ? '重新发布' : '发布'
 }
 
@@ -933,7 +933,7 @@ function biasLevelTone(level: ScoreBiasLevelCode): BadgeTone {
   return strictEnumTone(SCORE_BIAS_LEVEL_TONE, level, '成绩偏差等级')
 }
 
-function canWithdraw(record: ExamScoreSummaryItemVO): boolean {
+function canWithdraw(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
   const s = record.finalScoreStatus
   return s === 'PUBLISHED' || s === 'CORRECTED'
@@ -942,13 +942,13 @@ function canWithdraw(record: ExamScoreSummaryItemVO): boolean {
 // ─── 成绩明细 Drawer ─────────────────────────────
 const detailOpen = ref(false)
 const detailLoading = ref(false)
-const detailCandidate = ref<ExamScoreSummaryItemVO | null>(null)
-const paperScore = ref<ExamPaperScoreVO | null>(null)
+const detailCandidate = ref<ExamScoreSummaryItemResponse | null>(null)
+const paperScore = ref<ExamPaperScoreResponse | null>(null)
 
 // computed 派生强类型题目数组，模板侧用 paperQuestions[index] 取 VO，避免 a-table slot record 类型丢失。
-const paperQuestions = computed<ExamQuestionScoreVO[]>(() => paperScore.value?.questions ?? [])
+const paperQuestions = computed<ExamQuestionScoreResponse[]>(() => paperScore.value?.questions ?? [])
 
-const paperItemColumns: ColumnType<ExamQuestionScoreVO>[] = [
+const paperItemColumns: ColumnType<ExamQuestionScoreResponse>[] = [
   { title: '题号', key: 'questionNo', width: 80 },
   { title: '题型', dataIndex: 'questionType', key: 'questionType', width: 100 },
   { title: '满分', dataIndex: 'fullScore', key: 'fullScore', width: 80 },
@@ -957,7 +957,7 @@ const paperItemColumns: ColumnType<ExamQuestionScoreVO>[] = [
 ]
 
 // ─── B-6 操作记录（审计可追溯） ─────────────────────────────
-const auditLogs = ref<OperationLogVO[]>([])
+const auditLogs = ref<OperationLogResponse[]>([])
 const auditLoading = ref(false)
 const TRACE_TAG_TONE: BadgeTone = 'gray'
 
@@ -999,11 +999,11 @@ const SCORE_AUDIT_TONE: Record<OperationTypeCode, BadgeTone> = {
   ARCHIVE_DESTROY: 'red',
 }
 
-function scoreAuditTitle(log: OperationLogVO): string {
+function scoreAuditTitle(log: OperationLogResponse): string {
   return strictEnumLabel(OperationTypeDescription, log.operationType, '审计操作类型')
 }
 
-function scoreAuditTone(log: OperationLogVO): BadgeTone {
+function scoreAuditTone(log: OperationLogResponse): BadgeTone {
   return strictEnumTone(SCORE_AUDIT_TONE, log.operationType, '审计操作类型')
 }
 
@@ -1193,7 +1193,7 @@ const historicalSummary = computed(() => {
   }
 })
 
-async function openDetailDrawer(record: ExamScoreSummaryItemVO): Promise<void> {
+async function openDetailDrawer(record: ExamScoreSummaryItemResponse): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
   detailCandidate.value = record
   detailOpen.value = true
@@ -1219,7 +1219,7 @@ async function openDetailDrawer(record: ExamScoreSummaryItemVO): Promise<void> {
 // ─── 确认成绩 Modal ─────────────────────────────
 const confirmOpen = ref(false)
 const confirming = ref(false)
-const confirmCandidate = ref<ExamScoreSummaryItemVO | null>(null)
+const confirmCandidate = ref<ExamScoreSummaryItemResponse | null>(null)
 const confirmComputedExamScore = ref<number | null>(null)
 const confirmDailyScore = ref<number | undefined>(undefined)
 const confirmAndPublish = ref(false)
@@ -1230,7 +1230,7 @@ const confirmTotalScorePreview = computed(() => {
   return Number((examScore + dailyScore).toFixed(2))
 })
 
-async function openConfirmModal(record: ExamScoreSummaryItemVO): Promise<void> {
+async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
   confirmCandidate.value = record
   confirmOpen.value = true
@@ -1262,7 +1262,7 @@ interface NextStepState {
   /** 描述详情 */
   description: string
   /** 下一份待确认学生（kind === 'continue-next' 时有效） */
-  nextCandidate: ExamScoreSummaryItemVO | null
+  nextCandidate: ExamScoreSummaryItemResponse | null
 }
 
 const nextStep = ref<NextStepState>({
@@ -1367,7 +1367,7 @@ async function handleConfirm(): Promise<void> {
 }
 
 // ─── 发布成绩 ─────────────────────────────
-async function handlePublish(record: ExamScoreSummaryItemVO): Promise<void> {
+async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
   if (warnUnreviewedBlockingRisks()) return
   try {
@@ -1385,10 +1385,10 @@ async function handlePublish(record: ExamScoreSummaryItemVO): Promise<void> {
 // ─── 撤回成绩 Modal ─────────────────────────────
 const withdrawOpen = ref(false)
 const withdrawing = ref(false)
-const withdrawCandidate = ref<ExamScoreSummaryItemVO | null>(null)
+const withdrawCandidate = ref<ExamScoreSummaryItemResponse | null>(null)
 const withdrawReason = ref('')
 
-function openWithdrawModal(record: ExamScoreSummaryItemVO): void {
+function openWithdrawModal(record: ExamScoreSummaryItemResponse): void {
   withdrawCandidate.value = record
   withdrawReason.value = ''
   withdrawOpen.value = true

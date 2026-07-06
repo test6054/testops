@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import type { TableColumnsType } from 'ant-design-vue'
-import type { WorkbenchMarkingProgressPanelVO } from '@/apis/mark/exam-progress'
+import type { ExamWorkbenchMarkingProgressPanelResponse } from '@/apis/mark/exam-progress'
 import type {
+  FormalSessionResponse,
   FormalSessionStatusCode,
-  FormalSessionVO,
+  TrialSessionResponse,
   TrialSessionStatusCode,
-  TrialSessionVO,
 } from '@/apis/mark/marking-organization'
 import type { SignalMetric } from '@/types/workbench'
 import { ReloadOutlined, TableOutlined } from '@ant-design/icons-vue'
@@ -49,7 +49,7 @@ const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar(stageLa
 
 const loading = ref(false)
 const loadFailed = ref(false)
-const panel = ref<WorkbenchMarkingProgressPanelVO | null>(null)
+const panel = ref<ExamWorkbenchMarkingProgressPanelResponse | null>(null)
 
 const taskSummary = computed(() => panel.value?.markingTaskSummary ?? null)
 const progressPercent = computed(() => {
@@ -76,7 +76,7 @@ const sessionRows = computed(() => {
   return isTrialPhase.value ? panel.value.trialSessions : panel.value.formalSessions
 })
 
-const formalColumns: TableColumnsType<FormalSessionVO> = [
+const formalColumns: TableColumnsType<FormalSessionResponse> = [
   { title: '题组', dataIndex: 'groupName', key: 'groupName', width: 160 },
   { title: '状态', key: 'status', width: 120 },
   { title: '总任务', dataIndex: 'totalTaskCount', key: 'totalTaskCount', width: 88, align: 'right' },
@@ -86,7 +86,7 @@ const formalColumns: TableColumnsType<FormalSessionVO> = [
   { title: '操作', key: 'action', width: 100 },
 ]
 
-const trialColumns: TableColumnsType<TrialSessionVO> = [
+const trialColumns: TableColumnsType<TrialSessionResponse> = [
   { title: '题组', dataIndex: 'groupName', key: 'groupName', width: 160 },
   { title: '状态', key: 'status', width: 120 },
   { title: '样卷数', dataIndex: 'totalTaskCount', key: 'totalTaskCount', width: 88, align: 'right' },
@@ -149,7 +149,7 @@ function goMarkingOrg() {
   router.push(resolveMarkingOrganizationIndexRoute(examId.value))
 }
 
-function goSessionManage(record: FormalSessionVO | TrialSessionVO) {
+function goSessionManage(record: FormalSessionResponse | TrialSessionResponse) {
   if (!examId.value || !record.organizationId) return
   router.push(resolveMarkingOrganizationSessionsRoute(record.organizationId, examId.value))
 }
@@ -241,7 +241,7 @@ watch(examId, () => loadPanel(), { immediate: true })
           v-if="isTrialPhase"
           pagination-mode="none"
           :columns="trialColumns"
-          :data-source="sessionRows as TrialSessionVO[]"
+          :data-source="sessionRows as TrialSessionResponse[]"
           :loading="loading"
           :show-pagination="false"
           flat
@@ -275,7 +275,7 @@ watch(examId, () => loadPanel(), { immediate: true })
           v-else
           pagination-mode="none"
           :columns="formalColumns"
-          :data-source="sessionRows as FormalSessionVO[]"
+          :data-source="sessionRows as FormalSessionResponse[]"
           :loading="loading"
           :show-pagination="false"
           flat

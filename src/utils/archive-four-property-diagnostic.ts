@@ -1,4 +1,4 @@
-import type { ArchiveFourPropertyCheckVO } from '@/apis/mark/archive-volume'
+import type { ArchiveFourPropertyCheckResponse } from '@/apis/mark/archive-volume'
 import {
   ALL_ARCHIVE_FOUR_PROPERTY_DIMENSION_CODES,
   ArchiveFourPropertyDimensionCode,
@@ -16,7 +16,7 @@ export interface ArchiveFourPropertyDimensionView {
 
 /** 解析四性检测 diagnostic JSON，按维度聚合诊断说明。 */
 export function buildFourPropertyDimensionViews(
-  check: ArchiveFourPropertyCheckVO | null | undefined,
+  check: ArchiveFourPropertyCheckResponse | null | undefined,
 ): ArchiveFourPropertyDimensionView[] {
   const messages = parseDiagnosticMessages(check?.diagnostic)
   return ALL_ARCHIVE_FOUR_PROPERTY_DIMENSION_CODES.map((key) => ({
@@ -36,7 +36,7 @@ export function countFourPropertyPassed(
 
 /** 提取安全性维度诊断文案，供详情顶栏展示。 */
 export function resolveSecurityDiagnosticMessage(
-  check: ArchiveFourPropertyCheckVO | null | undefined,
+  check: ArchiveFourPropertyCheckResponse | null | undefined,
 ): string {
   const message = parseDiagnosticMessages(check?.diagnostic).get(ArchiveFourPropertyDimensionCode.SECURITY)
   if (message) return message
@@ -44,7 +44,7 @@ export function resolveSecurityDiagnosticMessage(
 }
 
 function resolveDimensionPassed(
-  check: ArchiveFourPropertyCheckVO | null | undefined,
+  check: ArchiveFourPropertyCheckResponse | null | undefined,
   key: ArchiveFourPropertyDimensionCode,
 ): boolean {
   if (!check) return false

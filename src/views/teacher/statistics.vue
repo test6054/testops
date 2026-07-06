@@ -177,7 +177,7 @@
 
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { ExamPaperAnalysisVO } from '@/apis/mark/question-analysis'
+import type { ExamPaperAnalysisResponse } from '@/apis/mark/question-analysis'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { EXAM_STATISTICS_FLOW_HINT, getExamPaperAnalysis } from '@/apis/mark/question-analysis'
@@ -236,7 +236,7 @@ const weaknessToken = ref(0)
 const errorCauseToken = ref(0)
 const profileToken = ref(0)
 
-const paperAnalysis = ref<ExamPaperAnalysisVO | null>(null)
+const paperAnalysis = ref<ExamPaperAnalysisResponse | null>(null)
 const paperAnalysisLoading = ref(false)
 const loadFailed = ref(false)
 

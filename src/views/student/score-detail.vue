@@ -379,14 +379,14 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { StudentWrongBookItemVO } from '@/apis/mark/question-analysis'
+import type { StudentWrongBookItemResponse } from '@/apis/mark/question-analysis'
 import type {
-  StudentAiDiagnosisItemVO,
-  StudentAiErrorClusterVO,
-  StudentAiLearningReportVO,
-  StudentQuestionAnswerDetailVO,
+  StudentAiDiagnosisItemResponse,
+  StudentAiErrorClusterResponse,
+  StudentAiLearningReportResponse,
+  StudentQuestionAnswerDetailResponse,
   StudentQuestionScoreVO,
-  StudentScoreDetailVO,
+  StudentScoreDetailResponse,
 } from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
@@ -439,7 +439,7 @@ defineOptions({ name: 'StudentScoreDetail' })
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
-const detail = ref<StudentScoreDetailVO | null>(null)
+const detail = ref<StudentScoreDetailResponse | null>(null)
 const isExamConfidential = computed(() => isExamConfidentialFlag(detail.value?.confidential))
 const sliceWatermarkLines = computed(() => {
   if (!detail.value || !sliceImageUrl.value) {
@@ -458,7 +458,7 @@ const sliceWatermarkLines = computed(() => {
 const detailQuestions = computed<StudentQuestionScoreVO[]>(() => detail.value?.questions ?? [])
 
 const wrongBookLoading = ref(false)
-const wrongBookRows = ref<StudentWrongBookItemVO[]>([])
+const wrongBookRows = ref<StudentWrongBookItemResponse[]>([])
 const wrongBookTotal = ref(0)
 const wrongBookPagination = reactive({
   current: 1,
@@ -467,7 +467,7 @@ const wrongBookPagination = reactive({
   showSizeChanger: true,
 })
 
-const wrongBookColumns: ColumnType<StudentWrongBookItemVO>[] = [
+const wrongBookColumns: ColumnType<StudentWrongBookItemResponse>[] = [
   { title: '题目', dataIndex: 'layoutQuestionId', key: 'layoutQuestionId', width: 140 },
   { title: '得分', key: 'score', width: 120 },
   { title: '批改状态', key: 'gradeStatus', width: 110 },
@@ -480,7 +480,7 @@ const selectedClusterLabel = ref<string | undefined>(undefined)
 const selectedQuestionId = ref<string | null>(null)
 const panelLoading = ref(false)
 const panelError = ref<string | null>(null)
-const currentDetail = ref<StudentQuestionAnswerDetailVO | null>(null)
+const currentDetail = ref<StudentQuestionAnswerDetailResponse | null>(null)
 const sliceImageUrl = ref<string | null>(null)
 const sliceLoading = ref(false)
 
@@ -585,11 +585,11 @@ function isPartial(q: StudentQuestionScoreVO) {
   return q.teacherReviewScore != null
 }
 
-function finalScoreStatusTone(item: StudentScoreDetailVO): BadgeTone {
+function finalScoreStatusTone(item: StudentScoreDetailResponse): BadgeTone {
   return strictEnumTone(FINAL_SCORE_STATUS_TONE, item.finalScoreStatus, '最终成绩状态')
 }
 
-function finalScoreStatusLabel(item: StudentScoreDetailVO): string {
+function finalScoreStatusLabel(item: StudentScoreDetailResponse): string {
   return strictEnumLabel(FinalScoreStatusDescription, item.finalScoreStatus, '最终成绩状态')
 }
 
@@ -605,11 +605,11 @@ function formatQuestionFinalScore(question: StudentQuestionScoreVO): string {
   return question.teacherReviewScore.toFixed(2)
 }
 
-function formatPublishedTotalScore(item: StudentScoreDetailVO): string {
+function formatPublishedTotalScore(item: StudentScoreDetailResponse): string {
   return formatScore(item.totalScore, 'score')
 }
 
-function formatPublishedScoreSummary(item: StudentScoreDetailVO): string {
+function formatPublishedScoreSummary(item: StudentScoreDetailResponse): string {
   if (item.finalScoreStatus !== 'PUBLISHED') {
     return '--'
   }
@@ -619,7 +619,7 @@ function formatPublishedScoreSummary(item: StudentScoreDetailVO): string {
   return `${formatPublishedTotalScore(item)} / ${formatPublishedFullScore(item)}`
 }
 
-function formatPublishedFullScore(item: StudentScoreDetailVO): string {
+function formatPublishedFullScore(item: StudentScoreDetailResponse): string {
   return formatScore(item.fullScore, 'score')
 }
 
@@ -699,13 +699,13 @@ function goAppealForQuestion(q: StudentQuestionScoreVO): void {
 const learningReport = ref<Awaited<ReturnType<typeof getMyAiLearningReport>> | null>(null)
 const reportLoading = ref(false)
 
-const profileDiagnosisItems = computed<StudentAiDiagnosisItemVO[]>(
+const profileDiagnosisItems = computed<StudentAiDiagnosisItemResponse[]>(
   () => learningReport.value?.diagnosisItems ?? [],
 )
 const profileSuggestions = computed<string[]>(
   () => learningReport.value?.improvementSuggestions ?? [],
 )
-const errorClusters = computed<StudentAiErrorClusterVO[]>(
+const errorClusters = computed<StudentAiErrorClusterResponse[]>(
   () => learningReport.value?.errorClusters ?? [],
 )
 
@@ -731,7 +731,7 @@ async function loadLearningReport(): Promise<void> {
   }
 }
 
-function unavailableLearningReportMessage(report: StudentAiLearningReportVO): string {
+function unavailableLearningReportMessage(report: StudentAiLearningReportResponse): string {
   return report.profileMessage || report.clusterMessage || 'AI 学习报告暂不可用，请稍后重试'
 }
 
@@ -749,11 +749,11 @@ function formatRate(rate: string): string {
   return `${(value * 100).toFixed(1)}%`
 }
 
-function masteryLabel(level: StudentAiDiagnosisItemVO['masteryLevel']): string {
+function masteryLabel(level: StudentAiDiagnosisItemResponse['masteryLevel']): string {
   return strictEnumLabel(MasteryLevelDescription, level, '知识掌握等级')
 }
 
-function masteryTone(level: StudentAiDiagnosisItemVO['masteryLevel']): BadgeTone {
+function masteryTone(level: StudentAiDiagnosisItemResponse['masteryLevel']): BadgeTone {
   return strictEnumTone(MASTERY_LEVEL_TONE, level, '知识掌握等级')
 }
 
@@ -808,7 +808,7 @@ function releaseSliceImage(): void {
 }
 
 /** 抽屉内得分标签的着色：满分绿，零分红，部分得分橙 */
-function getScoreTagTone(answer: StudentQuestionAnswerDetailVO): BadgeTone {
+function getScoreTagTone(answer: StudentQuestionAnswerDetailResponse): BadgeTone {
   if (answer.teacherReviewScore >= answer.fullScore) return 'green'
   if (answer.teacherReviewScore <= 0) return 'red'
   return 'orange'

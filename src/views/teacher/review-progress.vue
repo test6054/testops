@@ -257,8 +257,8 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamProcessingTaskItemVO } from '@/apis/mark/exam-processing-task'
-import type { MarkingProgressVO, ReviewQuestionProgressItemVO } from '@/apis/mark/exam-progress'
+import type { ExamProcessingTaskItemResponse } from '@/apis/mark/exam-processing-task'
+import type { MarkingProgressResponse, ReviewQuestionProgressItemResponse } from '@/apis/mark/exam-progress'
 import type { TaskStatusCode } from '@/apis/mark/task-status'
 import type { ProcessingTaskTypeCode } from '@/apis/mark/task-type'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
@@ -344,11 +344,11 @@ const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 const successColor = toneToColor('green')
 const primaryColor = toneToColor('blue')
 
-const progress = ref<MarkingProgressVO | null>(null)
+const progress = ref<MarkingProgressResponse | null>(null)
 const loading = ref(false)
 const loadFailed = ref(false)
 
-const processingTasks = ref<ExamProcessingTaskItemVO[]>([])
+const processingTasks = ref<ExamProcessingTaskItemResponse[]>([])
 const processingTasksLoading = ref(false)
 const processingTaskTotal = ref(0)
 const processingTaskPageNum = ref(1)
@@ -372,7 +372,7 @@ function processingTaskStatusTone(value: TaskStatusCode) {
   return strictEnumTone(TASK_STATUS_TONE, value, '处理任务状态')
 }
 
-function canRetryPaperGrade(record: ExamProcessingTaskItemVO): boolean {
+function canRetryPaperGrade(record: ExamProcessingTaskItemResponse): boolean {
   if (!record.paperInstanceId) return false
   if (record.taskType !== 'SUBJECTIVE_AI_REVIEW' && record.taskType !== 'OBJECTIVE_AI_REVIEW') return false
   return record.status === 'FAILED' || record.status === 'BLOCKED' || record.status === 'PROCESSING'
@@ -408,7 +408,7 @@ function handleProcessingTaskPageChange(pageEvent: { current: number, pageSize: 
   void loadProcessingTasks()
 }
 
-async function retryPaperGradeForTask(record: ExamProcessingTaskItemVO): Promise<void> {
+async function retryPaperGradeForTask(record: ExamProcessingTaskItemResponse): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
   retryingPaperInstanceId.value = record.paperInstanceId
   try {
@@ -425,7 +425,7 @@ async function retryPaperGradeForTask(record: ExamProcessingTaskItemVO): Promise
   }
 }
 
-const processingTaskColumns: ColumnType<ExamProcessingTaskItemVO>[] = [
+const processingTaskColumns: ColumnType<ExamProcessingTaskItemResponse>[] = [
   { title: '类型', dataIndex: 'taskType', key: 'taskType', width: 140 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
   { title: '试卷实例', dataIndex: 'paperInstanceId', key: 'paperInstanceId', width: 120 },
@@ -607,7 +607,7 @@ const auxStatItems = computed((): UiStatPanelItem[] => {
   ]
 })
 
-const questionRows = computed<ReviewQuestionProgressItemVO[]>(
+const questionRows = computed<ReviewQuestionProgressItemResponse[]>(
   () => progress.value?.reviewQuestionProgressList ?? [],
 )
 const reviewProgressBarItems = computed(() => reviewProgressToBarItems(questionRows.value))
@@ -672,11 +672,11 @@ const reviewProgressChartAriaLabel = computed(() => {
   return `按题目维度的复核进度，共 ${count} 道题`
 })
 
-function questionTypeLabel(questionType: ReviewQuestionProgressItemVO['questionType']): string {
+function questionTypeLabel(questionType: ReviewQuestionProgressItemResponse['questionType']): string {
   return strictEnumLabel(QuestionTypeDescription, questionType, '题型')
 }
 
-const questionColumns: ColumnType<ReviewQuestionProgressItemVO>[] = [
+const questionColumns: ColumnType<ReviewQuestionProgressItemResponse>[] = [
   { title: '题目', dataIndex: 'questionNo', key: 'questionNo', width: 180 },
   { title: '复核进度', dataIndex: 'approvedTaskCount', key: 'progress', width: 240 },
   { title: '待领取', dataIndex: 'pendingTaskCount', key: 'pending', width: 100 },

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { onMounted, ref, watch } from 'vue'
@@ -52,13 +52,13 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  (e: 'selected-exams-change', value: ExamSummaryVO[]): void
+  (e: 'selected-exams-change', value: ExamSummaryResponse[]): void
 }>()
 
 const ANALYSIS_EXAM_SEARCH_PAGE_SIZE = 50
 
 const loading = ref(false)
-const exams = ref<ExamSummaryVO[]>([])
+const exams = ref<ExamSummaryResponse[]>([])
 const examOptions = ref<{ label: string, value: string }[]>([])
 const defaultScopeApplied = ref(false)
 const lastSearchKeyword = ref<string>()
@@ -84,20 +84,20 @@ function buildOrgScope() {
   return Object.keys(orgScope).length > 0 ? orgScope : undefined
 }
 
-function formatExamTermLabel(exam: ExamSummaryVO): string {
+function formatExamTermLabel(exam: ExamSummaryResponse): string {
   return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
 }
 
-function formatExamOptionLabel(exam: ExamSummaryVO): string {
+function formatExamOptionLabel(exam: ExamSummaryResponse): string {
   if (!exam.examNo) return exam.examName
   return `${exam.examName}（${exam.examNo}）`
 }
 
-function mergeExams(loaded: ExamSummaryVO[]): void {
+function mergeExams(loaded: ExamSummaryResponse[]): void {
   const merged = new Map(exams.value.map((exam) => [exam.examId, exam]))
   loaded.forEach((exam) => merged.set(exam.examId, exam))
   exams.value = Array.from(merged.values())
-  examOptions.value = exams.value.map((exam: ExamSummaryVO) => ({
+  examOptions.value = exams.value.map((exam: ExamSummaryResponse) => ({
     label: [formatExamOptionLabel(exam), formatExamTermLabel(exam)].filter(Boolean).join(' · '),
     value: exam.examId,
   }))
@@ -131,7 +131,7 @@ function shouldAutoSelectDefaultScope(): boolean {
 }
 
 /** 解析首次自动勾选的考试 ID：最近 N 学期或 scope 内跨考趋势按最大课程簇，其余路径全选可见考试。 */
-function resolveAutoSelectExamIds(loaded: ExamSummaryVO[]): string[] {
+function resolveAutoSelectExamIds(loaded: ExamSummaryResponse[]): string[] {
   const useLargestCourseCluster = (
     props.defaultRecentSemesterCount > 0
     && !hasExamOccurrenceScope()
@@ -148,7 +148,7 @@ function resolveAutoSelectExamIds(loaded: ExamSummaryVO[]): string[] {
 }
 
 /** 在学期范围或最近 N 学期内默认勾选可见考试。 */
-async function applyDefaultExamScope(loaded: ExamSummaryVO[]): Promise<void> {
+async function applyDefaultExamScope(loaded: ExamSummaryResponse[]): Promise<void> {
   if (
     defaultScopeApplied.value
     || selectedExamIds.value.length > 0
@@ -185,7 +185,7 @@ async function loadExamOptions(keyword?: string): Promise<void> {
       return
     }
 
-    let scopedExams: ExamSummaryVO[] = []
+    let scopedExams: ExamSummaryResponse[] = []
     const orgScope = buildOrgScope()
     if (hasTeachingScope()) {
       scopedExams = await loadExamsForTeachingTerm(

@@ -1,4 +1,4 @@
-import type { MarkingTaskVO } from '@/apis/mark/marking-organization'
+import type { MarkingTaskResponse } from '@/apis/mark/marking-organization'
 import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
 import {
@@ -75,8 +75,8 @@ export function useMarkingRecentSubmit() {
 
   async function withdrawEntry(
     entry: MarkingRecentSubmitEntry,
-    onSuccess?: (task: MarkingTaskVO) => void,
-  ): Promise<MarkingTaskVO | null> {
+    onSuccess?: (task: MarkingTaskResponse) => void,
+  ): Promise<MarkingTaskResponse | null> {
     if (!canWithdrawEntry(entry)) {
       message.warning('撤销窗口已过期（提交后 10 分钟内有效）')
       removeEntry(entry.taskId)
@@ -96,8 +96,8 @@ export function useMarkingRecentSubmit() {
   }
 
   async function withdrawLatest(
-    onSuccess?: (task: MarkingTaskVO) => void,
-  ): Promise<MarkingTaskVO | null> {
+    onSuccess?: (task: MarkingTaskResponse) => void,
+  ): Promise<MarkingTaskResponse | null> {
     const entry = latestWithdrawable.value
     if (!entry) {
       message.warning('没有可撤销的最近提交')

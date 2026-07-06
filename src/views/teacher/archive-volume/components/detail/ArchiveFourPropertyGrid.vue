@@ -14,14 +14,14 @@
 </template>
 
 <script setup lang="ts">
-import type { ArchiveFourPropertyCheckVO } from '@/apis/mark/archive-volume'
+import type { ArchiveFourPropertyCheckResponse } from '@/apis/mark/archive-volume'
 import { computed } from 'vue'
 import { buildFourPropertyDimensionViews } from '@/utils/archive-four-property-diagnostic'
 
 defineOptions({ name: 'ArchiveFourPropertyGrid' })
 
 const props = defineProps<{
-  check: ArchiveFourPropertyCheckVO | null | undefined
+  check: ArchiveFourPropertyCheckResponse | null | undefined
 }>()
 
 const dimensionViews = computed(() => buildFourPropertyDimensionViews(props.check))

@@ -51,7 +51,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { MarkingTaskVO, QuestionMarkingGroupVO } from '@/apis/mark/marking-organization'
+import type { MarkingTaskResponse, QuestionMarkingGroupResponse } from '@/apis/mark/marking-organization'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import {
@@ -72,14 +72,14 @@ defineOptions({ name: 'RecycledTaskReassignPanel' })
 
 const props = defineProps<{
   examId: string
-  groups: QuestionMarkingGroupVO[]
+  groups: QuestionMarkingGroupResponse[]
   viewAllRecycled: boolean
   leaderGroupIds: string[]
 }>()
 
 const loading = ref(false)
 const reassigningId = ref<string | null>(null)
-const tasks = ref<MarkingTaskVO[]>([])
+const tasks = ref<MarkingTaskResponse[]>([])
 // 加载失败：toast 提示，主区保持空态/列表壳
 const targetReviewerByTaskId = reactive<Record<string, string>>({})
 
@@ -125,7 +125,7 @@ async function loadTasks() {
       )
       return
     }
-    const merged: MarkingTaskVO[] = []
+    const merged: MarkingTaskResponse[] = []
     for (const groupId of props.leaderGroupIds) {
       const part = await readAllPages(
         (pageNum) =>
@@ -149,7 +149,7 @@ async function loadTasks() {
   }
 }
 
-async function submitReassign(task: MarkingTaskVO) {
+async function submitReassign(task: MarkingTaskResponse) {
   const targetReviewerUserId = targetReviewerByTaskId[task.id]
   if (!targetReviewerUserId) {
     return

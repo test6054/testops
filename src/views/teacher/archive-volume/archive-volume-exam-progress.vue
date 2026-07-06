@@ -335,9 +335,9 @@
 <script setup lang="ts">
 import type {
   ArchiveVolumeEventVO,
-  ArchiveVolumeExamGateVO,
+  ArchiveVolumeExamGateResponse,
   ArchiveVolumeExamVolumeProgressItemVO,
-  ArchiveVolumeVO,
+  ArchiveVolumeResponse,
 } from '@/apis/mark/archive-volume'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
@@ -403,9 +403,9 @@ const examId = computed(() => String(route.params.examId ?? ''))
 const loading = ref(true)
 const volumeLoadFailed = ref(false)
 const gateLoadFailed = ref(false)
-const healthyVolumes = ref<ArchiveVolumeVO[]>([])
+const healthyVolumes = ref<ArchiveVolumeResponse[]>([])
 const events = ref<ArchiveVolumeEventVO[]>([])
-const examGate = ref<ArchiveVolumeExamGateVO | null>(null)
+const examGate = ref<ArchiveVolumeExamGateResponse | null>(null)
 const primaryVolumeNavigationSummary = ref<
   Awaited<ReturnType<typeof getArchiveVolumeDetail>>['navigationSummary'] | null
 >(null)
@@ -415,7 +415,7 @@ const pollTimedOut = ref(false)
 
 const { polling, pollUntilHealthy } = useArchiveAutoCreatePoll({ examId })
 
-function isAutoCreateFailureStub(vol: ArchiveVolumeVO): boolean {
+function isAutoCreateFailureStub(vol: ArchiveVolumeResponse): boolean {
   return vol.departmentId == null || vol.departmentId === ''
 }
 
@@ -689,11 +689,11 @@ const signalMetrics = computed<SignalMetric[]>(() => {
   return metrics.slice(0, 4)
 })
 
-function volumeStatusLabel(code: ArchiveVolumeVO['volumeStatus']) {
+function volumeStatusLabel(code: ArchiveVolumeResponse['volumeStatus']) {
   return strictEnumLabel(ArchiveVolumeStatusDescription, code, 'volumeStatus')
 }
 
-function integrityStatusLabel(code: ArchiveVolumeVO['integrityStatus']) {
+function integrityStatusLabel(code: ArchiveVolumeResponse['integrityStatus']) {
   return strictEnumLabel(ArchiveIntegrityStatusDescription, code, 'integrityStatus')
 }
 

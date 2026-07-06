@@ -1,11 +1,9 @@
 import type { Ref } from 'vue'
 import type { ClassInfoDto } from '@/apis/edu/class'
-import type {TenantSchoolDepartmentDto} from '@/apis/quality/user-catalog';
 import type { ClassSelectOption } from '@/views/teacher/candidate-roster/class-scope'
 import { computed, ref, watch } from 'vue'
 import { getClassesByDepartment } from '@/apis/edu/class'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
-import { requireArrayResult } from '@/components/quality/selectors/page-contract'
 import { showUserError } from '@/utils/error-handler'
 import { mergeClassSelectOptions } from '@/views/teacher/candidate-roster/class-scope'
 
@@ -55,10 +53,7 @@ export function useExamDepartmentClassScope(options: {
   async function loadDepartments(): Promise<void> {
     departmentLoading.value = true
     try {
-      const departments = requireArrayResult<TenantSchoolDepartmentDto>(
-        await departmentCatalogApi.list(),
-        '院系',
-      )
+      const departments = await departmentCatalogApi.list()
       departmentOptions.value = departments.map(item => ({
         value: item.id,
         label: item.deptName,
@@ -80,10 +75,7 @@ export function useExamDepartmentClassScope(options: {
     }
     classOptionsLoading.value = true
     try {
-      const classes = requireArrayResult<ClassInfoDto>(
-        await getClassesByDepartment({ departmentId: departmentId.value }),
-        '班级',
-      )
+      const classes = await getClassesByDepartment({ departmentId: departmentId.value })
       rememberClassLabels(classes)
       departmentClassOptions.value = classes
         .filter(item => item.id && item.className && (item.studentCount ?? 0) > 0)

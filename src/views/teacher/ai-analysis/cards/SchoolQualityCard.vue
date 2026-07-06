@@ -130,8 +130,8 @@
 
 <script lang="ts" setup>
 import type {
-  SchoolQualityAnalysisVO,
-  SchoolQualityItemVO,
+  SchoolQualityAnalysisResponse,
+  SchoolQualityItemResponse,
   SchoolQualityRatingCode,
 } from '@/apis/mark/school-quality'
 import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
@@ -218,7 +218,7 @@ const {
   clearHistory,
   applyLoadedList,
   adoptGenerated,
-} = useAiAnalysisHistoryPicker<SchoolQualityAnalysisVO>()
+} = useAiAnalysisHistoryPicker<SchoolQualityAnalysisResponse>()
 
 const historyRows = computed(() =>
   historyRecords.value.map((item) => ({
@@ -356,7 +356,7 @@ const metaExtraItems = computed(() => {
   ]
 })
 
-function examScopeSummary(value: SchoolQualityAnalysisVO): string {
+function examScopeSummary(value: SchoolQualityAnalysisResponse): string {
   if (!value.exams?.length) {
     return '—'
   }
@@ -373,7 +373,7 @@ function qualityRatingColor(rating: SchoolQualityRatingCode): BadgeTone {
   return strictEnumTone(SCHOOL_QUALITY_RATING_TONE, rating, '校级质量评价等级')
 }
 
-function qualityItemTitle(item: SchoolQualityItemVO): string {
+function qualityItemTitle(item: SchoolQualityItemResponse): string {
   if (item.qualityDimension) {
     return strictEnumLabel(SchoolQualityItemDimensionDescription, item.qualityDimension, '质量维度')
   }

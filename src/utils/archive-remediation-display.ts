@@ -1,6 +1,6 @@
-import type { ArchiveRemediationTaskVO } from '@/apis/mark/archive-volume'
+import type { ArchiveRemediationTaskResponse } from '@/apis/mark/archive-volume'
 
-export function remediationAssigneeLabel(task: ArchiveRemediationTaskVO) {
+export function remediationAssigneeLabel(task: ArchiveRemediationTaskResponse) {
   if (!task.assigneeUserId) {
     return '—'
   }
@@ -10,7 +10,7 @@ export function remediationAssigneeLabel(task: ArchiveRemediationTaskVO) {
 /**
  * 详情/横幅用的一句责任人摘要；无 assignee 时返回 null。
  */
-export function remediationAssigneeSummary(task: ArchiveRemediationTaskVO | null | undefined) {
+export function remediationAssigneeSummary(task: ArchiveRemediationTaskResponse | null | undefined) {
   if (!task?.assigneeUserId) {
     return null
   }

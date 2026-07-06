@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import type { QuestionMarkingGroupQuestionVO } from '@/apis/mark/marking-organization'
+import type { QuestionMarkingGroupQuestionResponse } from '@/apis/mark/marking-organization'
 import type { WholeQuestionForm } from '@/composables/useWholePaperGallery'
 import { onBeforeUnmount, onMounted } from 'vue'
 import { isGradingEnterInputTarget, isGradingKeyboardInputTarget } from '@/utils/grading-keyboard'
@@ -15,7 +15,7 @@ export interface UseMarkingKeyboardOptions {
   nextTaskId: Ref<string>
   currentWholePageIndex: Ref<number>
   expandedWholeQuestionKey: Ref<string>
-  wholeQuestions: Ref<QuestionMarkingGroupQuestionVO[]>
+  wholeQuestions: Ref<QuestionMarkingGroupQuestionResponse[]>
   getWholeQuestionForm: (layoutQuestionId: string) => WholeQuestionForm
   goToTask: (targetTaskId: string) => void
   submit: () => Promise<void>
@@ -27,7 +27,7 @@ export interface UseMarkingKeyboardOptions {
 }
 
 export function useMarkingKeyboard(options: UseMarkingKeyboardOptions) {
-  function resolveActiveWholeQuestion(): QuestionMarkingGroupQuestionVO | null {
+  function resolveActiveWholeQuestion(): QuestionMarkingGroupQuestionResponse | null {
     const key = options.expandedWholeQuestionKey.value
     if (!key) return options.wholeQuestions.value[0] ?? null
     return options.wholeQuestions.value.find((q) => q.layoutQuestionId === key) ?? null

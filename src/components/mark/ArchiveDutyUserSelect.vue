@@ -7,7 +7,6 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { UserDetailDto, UserListItemDto } from '@/apis/edu/admin-user'
 import { onMounted, ref, watch } from 'vue'
 import { getTenantUserDetail, getTenantUserList } from '@/apis/edu/tenant-user-management'
-import { requirePageList } from '@/components/quality/selectors/page-contract'
 import { showUserError } from '@/utils/error-handler'
 
 interface Props {
@@ -81,7 +80,7 @@ async function loadOptions(keyword?: string) {
       pageSize: 50,
       keyword: keyword?.trim() || undefined,
     })
-    mergeOptions(requirePageList(res, '用户'))
+    mergeOptions(res.list)
   } catch (error) {
     showUserError(error, '用户列表加载失败')
   } finally {

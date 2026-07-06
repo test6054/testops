@@ -69,7 +69,7 @@
 <script lang="ts" setup>
 import type {
   ErrorCauseClusterItemVO,
-  ExamErrorCauseClusterVO,
+  ErrorCauseClusterResponse,
 } from '@/apis/mark/error-cause-cluster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
@@ -108,7 +108,7 @@ const props = withDefaults(
   { embedded: false },
 )
 
-const record = ref<ExamErrorCauseClusterVO | null>(null)
+const record = ref<ErrorCauseClusterResponse | null>(null)
 const loading = ref(false)
 const generating = ref(false)
 
@@ -146,12 +146,12 @@ function formatExamples(examples?: string[]): string | undefined {
   return examples.join('、')
 }
 
-function acceptErrorCauseClusterRecord(value: ExamErrorCauseClusterVO | null): ExamErrorCauseClusterVO | null {
+function acceptErrorCauseClusterRecord(value: ErrorCauseClusterResponse | null): ErrorCauseClusterResponse | null {
   if (!value) return null
   return value
 }
 
-function clusterCountText(value: ExamErrorCauseClusterVO): string {
+function clusterCountText(value: ErrorCauseClusterResponse): string {
   if (typeof value.clusterCount === 'number') return String(value.clusterCount)
   if (value.analysisStatus === 'PENDING') return '待分析'
   return '—'

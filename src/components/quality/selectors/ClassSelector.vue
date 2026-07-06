@@ -8,7 +8,6 @@ import type { ClassInfoDto } from '@/apis/edu/class'
 import { onMounted, ref, watch } from 'vue'
 import { getAllClasses, getClassesByDepartment } from '@/apis/edu/class'
 import { showUserError } from '@/utils/error-handler'
-import { requireArrayResult } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -53,12 +52,9 @@ async function loadOptions() {
   loading.value = true
   try {
     if (props.departmentId) {
-      options.value = requireArrayResult(
-        await getClassesByDepartment({ departmentId: props.departmentId }),
-        '班级',
-      )
+      options.value = await getClassesByDepartment({ departmentId: props.departmentId })
     } else {
-      options.value = requireArrayResult(await getAllClasses(), '班级')
+      options.value = await getAllClasses()
     }
   } catch (e) {
     showUserError(e, '班级列表加载失败')

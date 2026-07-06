@@ -27,7 +27,7 @@ import { readAllPages } from '@/utils/page-result'
 // ─── 题目质量分析 ─────────────────────────────────
 
 /** 题目质量分析记录 - 对应 ExamQuestionAnalysisRecordResponse */
-export interface ExamQuestionAnalysisRecordVO {
+export interface ExamQuestionAnalysisRecordResponse {
   id: string
   tenantId?: string
   examId: string
@@ -68,14 +68,14 @@ export interface ExamClassScopeQueryRequest {
 
 export function generateQuestionAnalysis(
   request: ExamQuestionAnalysisGenerateRequest,
-): Promise<ExamQuestionAnalysisRecordVO> {
-  return http.post<ExamQuestionAnalysisRecordVO>('/api/exam/question-analysis/generate', request)
+): Promise<ExamQuestionAnalysisRecordResponse> {
+  return http.post<ExamQuestionAnalysisRecordResponse>('/api/exam/question-analysis/generate', request)
 }
 
 export function generateAllQuestionAnalysis(
   request: ExamClassScopeQueryRequest,
-): Promise<ExamQuestionAnalysisRecordVO[]> {
-  return http.post<ExamQuestionAnalysisRecordVO[]>(
+): Promise<ExamQuestionAnalysisRecordResponse[]> {
+  return http.post<ExamQuestionAnalysisRecordResponse[]>(
     '/api/exam/question-analysis/generate-all',
     request,
   )
@@ -106,8 +106,8 @@ export interface QuestionAnalysisFetchAllRequest {
  */
 export function pageQuestionAnalysis(
   request: QuestionAnalysisListQueryRequest,
-): Promise<PageResult<ExamQuestionAnalysisRecordVO>> {
-  return http.post<PageResult<ExamQuestionAnalysisRecordVO>>(
+): Promise<PageResult<ExamQuestionAnalysisRecordResponse>> {
+  return http.post<PageResult<ExamQuestionAnalysisRecordResponse>>(
     '/api/exam/question-analysis/list',
     request,
   )
@@ -118,7 +118,7 @@ export function pageQuestionAnalysis(
  */
 export function fetchAllQuestionAnalysisRows(
   request: QuestionAnalysisFetchAllRequest,
-): Promise<ExamQuestionAnalysisRecordVO[]> {
+): Promise<ExamQuestionAnalysisRecordResponse[]> {
   return readAllPages(
     (pageNum) =>
       pageQuestionAnalysis({
@@ -133,16 +133,14 @@ export function fetchAllQuestionAnalysisRows(
 // ─── 学生错题本 ─────────────────────────────────
 
 /** 学生错题本查询请求 - 对应 StudentWrongBookQueryRequest */
-export interface StudentWrongBookQueryRequest {
+export interface StudentWrongBookQueryRequest extends QueryDto {
   examId: string
   layoutQuestionId?: string
   wrongOnly?: boolean
-  pageNum?: number
-  pageSize?: number
 }
 
 /** 学生错题本条目 - 对应 StudentWrongBookItemResponse */
-export interface StudentWrongBookItemVO {
+export interface StudentWrongBookItemResponse {
   gradeResultId: string
   examId: string
   paperInstanceId: string
@@ -161,8 +159,8 @@ export interface StudentWrongBookItemVO {
  */
 export function pageStudentWrongBook(
   request: StudentWrongBookQueryRequest,
-): Promise<PageResult<StudentWrongBookItemVO>> {
-  return http.post<PageResult<StudentWrongBookItemVO>>(
+): Promise<PageResult<StudentWrongBookItemResponse>> {
+  return http.post<PageResult<StudentWrongBookItemResponse>>(
     '/api/exam/question-analysis/wrong-book',
     request,
   )
@@ -181,7 +179,7 @@ export interface AnswerEffectiveConfirmRequest {
 }
 
 /** 答案确认生效配置 - 对应 ExamAnswerEffectiveConfig */
-export interface ExamAnswerEffectiveConfigVO {
+export interface ExamAnswerEffectiveConfig {
   id?: string
   examId: string
   layoutQuestionId: string
@@ -200,8 +198,8 @@ export interface ExamAnswerEffectiveConfigVO {
  */
 export function confirmAnswerEffective(
   request: AnswerEffectiveConfirmRequest,
-): Promise<ExamAnswerEffectiveConfigVO> {
-  return http.post<ExamAnswerEffectiveConfigVO>(
+): Promise<ExamAnswerEffectiveConfig> {
+  return http.post<ExamAnswerEffectiveConfig>(
     '/api/exam/question-analysis/answer-effective/confirm',
     request,
   )
@@ -210,8 +208,8 @@ export function confirmAnswerEffective(
 export function getEffectiveAnswerConfig(params: {
   examId: string
   layoutQuestionId: string
-}): Promise<ExamAnswerEffectiveConfigVO | null> {
-  return http.post<ExamAnswerEffectiveConfigVO | null>(
+}): Promise<ExamAnswerEffectiveConfig | null> {
+  return http.post<ExamAnswerEffectiveConfig | null>(
     '/api/exam/question-analysis/answer-effective/get',
     params,
   )
@@ -260,7 +258,7 @@ export interface RejudgePlanQuestionRefVO {
 }
 
 /** 重判计划 - 对应 ExamRejudgePlan */
-export interface ExamRejudgePlanVO {
+export interface ExamRejudgePlan {
   id: string
   tenantId?: string
   examId: string
@@ -301,8 +299,8 @@ export interface RejudgePlanListQueryRequest extends QueryDto {
  */
 export function listRejudgePlans(
   request: RejudgePlanListQueryRequest,
-): Promise<PageResult<ExamRejudgePlanVO>> {
-  return http.post<PageResult<ExamRejudgePlanVO>>(
+): Promise<PageResult<ExamRejudgePlan>> {
+  return http.post<PageResult<ExamRejudgePlan>>(
     '/api/exam/question-analysis/rejudge-plan/list',
     request,
   )
@@ -327,7 +325,7 @@ export function executeRejudgePlan(request: RejudgePlanExecuteRequest): Promise<
 // ─── 整卷测量学质量 ─────────────────────────────────
 
 /** 整卷质量分析 - 对应 ExamPaperAnalysisResponse */
-export interface ExamPaperAnalysisVO {
+export interface ExamPaperAnalysisResponse {
   examId: string
   classId?: string
   paperDifficultyIndex?: number
@@ -344,6 +342,6 @@ export const EXAM_STATISTICS_FLOW_HINT = '成绩分布 → 题目质量 → 重�
 export function getExamPaperAnalysis(params: {
   examId: string
   classId?: string
-}): Promise<ExamPaperAnalysisVO> {
-  return http.post<ExamPaperAnalysisVO>('/api/exam/question-analysis/paper/get', params)
+}): Promise<ExamPaperAnalysisResponse> {
+  return http.post<ExamPaperAnalysisResponse>('/api/exam/question-analysis/paper/get', params)
 }

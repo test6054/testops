@@ -36,7 +36,7 @@ export interface ImageLedgerDetailRequest {
 }
 
 /** 影像账本详情响应 - 对应 ImageLedgerDetailResponse */
-export interface ImageLedgerDetailVO {
+export interface ImageLedgerDetailResponse {
   ledgerId: string
   examId: string
   ledgerStatus: LedgerStatusCode
@@ -56,8 +56,8 @@ export interface ImageLedgerDetailVO {
  * 归一化影像账本详情：后端在未初始化账本时仅返回 examId 占位，不得当作有效账本渲染。
  */
 export function normalizeImageLedgerDetail(
-  detail: ImageLedgerDetailVO | null | undefined,
-): ImageLedgerDetailVO | null {
+  detail: ImageLedgerDetailResponse | null | undefined,
+): ImageLedgerDetailResponse | null {
   if (!detail?.ledgerId) return null
   return detail
 }
@@ -68,8 +68,8 @@ export function normalizeImageLedgerDetail(
  */
 export function getImageLedgerDetail(
   request: ImageLedgerDetailRequest,
-): Promise<ImageLedgerDetailVO | null> {
-  return http.post<ImageLedgerDetailVO | null>('/api/mark/exams/image-ledger/detail', request)
+): Promise<ImageLedgerDetailResponse | null> {
+  return http.post<ImageLedgerDetailResponse | null>('/api/mark/exams/image-ledger/detail', request)
 }
 
 /** 影像账本对账请求 - 对应 ImageLedgerBalanceRequest */
@@ -83,8 +83,8 @@ export interface ImageLedgerBalanceRequest {
  */
 export function executeImageLedgerBalance(
   request: ImageLedgerBalanceRequest,
-): Promise<ImageLedgerDetailVO> {
-  return http.post<ImageLedgerDetailVO>('/api/mark/exams/image-ledger/balance', request)
+): Promise<ImageLedgerDetailResponse> {
+  return http.post<ImageLedgerDetailResponse>('/api/mark/exams/image-ledger/balance', request)
 }
 
 // ─── 重复影像处置 ─────────────────────────────────────

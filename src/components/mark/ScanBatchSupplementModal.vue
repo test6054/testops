@@ -89,7 +89,7 @@
 
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type { ExamScannerBatchVO } from '@/apis/mark/exam-scan'
+import type { ExamScannerBatchResponse } from '@/apis/mark/exam-scan'
 import type { ExamTeacherScanSupplementPrepareResponse } from '@/apis/mark/scan-source'
 import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
 import message from 'ant-design-vue/es/message'
@@ -111,7 +111,7 @@ defineOptions({ name: 'ScanBatchSupplementModal' })
 const props = defineProps<{
   open: boolean
   examId: string
-  batch: ExamScannerBatchVO | null
+  batch: ExamScannerBatchResponse | null
 }>()
 
 const emit = defineEmits<{
@@ -198,7 +198,7 @@ const formRules: Record<string, Rule[]> = {
   sourceFileId: [{
     validator: async () => {
       if (!form.sourceFileId) {
-        throw new Error('请选择补扫文件')
+        return Promise.reject(new Error('请选择补扫文件'))
       }
     },
   }],
@@ -286,7 +286,6 @@ async function handleSubmit(): Promise<void> {
     emit('success')
   } catch (error) {
     showUserError(error, '指定页补扫失败')
-    throw error
   } finally {
     submitting.value = false
   }

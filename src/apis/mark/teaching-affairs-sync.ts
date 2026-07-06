@@ -152,7 +152,7 @@ export interface PassbackRecordQueryRequest extends QueryDto {
 }
 
 /** 同步任务 VO - 对应 ExamTeachingAffairsSyncTask */
-export interface SyncTaskVO {
+export interface ExamTeachingAffairsSyncTask {
   id?: string
   tenantId?: string
   examId: string
@@ -171,7 +171,7 @@ export interface SyncTaskVO {
 }
 
 /** 回写进度 VO - 对应 PassbackProgressResponse */
-export interface PassbackProgressVO {
+export interface PassbackProgressResponse {
   syncTaskId: string
   totalCount: number
   pendingCount: number
@@ -182,7 +182,7 @@ export interface PassbackProgressVO {
 }
 
 /** 回写记录 VO - 对应 ExamGradebookPassbackRecord */
-export interface PassbackRecordVO {
+export interface PassbackRecordResponse {
   id?: string
   tenantId?: string
   examId: string
@@ -208,8 +208,8 @@ export interface PassbackRecordVO {
  * 创建同步任务
  * POST /api/exam/teaching-affairs/sync-task/create
  */
-export function createSyncTask(request: SyncTaskCreateRequest): Promise<SyncTaskVO> {
-  return http.post<SyncTaskVO>('/api/exam/teaching-affairs/sync-task/create', request)
+export function createSyncTask(request: SyncTaskCreateRequest): Promise<ExamTeachingAffairsSyncTask> {
+  return http.post<ExamTeachingAffairsSyncTask>('/api/exam/teaching-affairs/sync-task/create', request)
 }
 
 export interface SyncTaskListQueryRequest {
@@ -217,8 +217,8 @@ export interface SyncTaskListQueryRequest {
   taskStatus?: SyncTaskStatusCode
 }
 
-export function listSyncTasks(request: SyncTaskListQueryRequest): Promise<SyncTaskVO[]> {
-  return http.post<SyncTaskVO[]>('/api/exam/teaching-affairs/sync-task/list', request)
+export function listSyncTasks(request: SyncTaskListQueryRequest): Promise<ExamTeachingAffairsSyncTask[]> {
+  return http.post<ExamTeachingAffairsSyncTask[]>('/api/exam/teaching-affairs/sync-task/list', request)
 }
 
 export function executeGradePassback(syncTaskId: string): Promise<void> {
@@ -239,8 +239,8 @@ export function cancelSyncTask(syncTaskId: string): Promise<void> {
  */
 export function listPassbackRecords(
   request: PassbackRecordQueryRequest,
-): Promise<PageResult<PassbackRecordVO>> {
-  return http.post<PageResult<PassbackRecordVO>>(
+): Promise<PageResult<PassbackRecordResponse>> {
+  return http.post<PageResult<PassbackRecordResponse>>(
     '/api/exam/teaching-affairs/passback/list',
     request,
   )
@@ -254,8 +254,8 @@ export function reconcilePassback(syncTaskId: string): Promise<void> {
   return http.post<void>('/api/exam/teaching-affairs/passback/reconcile', { id: syncTaskId })
 }
 
-export function getPassbackProgress(syncTaskId: string): Promise<PassbackProgressVO> {
-  return http.post<PassbackProgressVO>('/api/exam/teaching-affairs/passback/progress', {
+export function getPassbackProgress(syncTaskId: string): Promise<PassbackProgressResponse> {
+  return http.post<PassbackProgressResponse>('/api/exam/teaching-affairs/passback/progress', {
     id: syncTaskId,
   })
 }

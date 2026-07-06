@@ -1,4 +1,4 @@
-import type { FinalScoreRiskOverviewVO } from '@/apis/mark/exam-score'
+import type { FinalScoreRiskOverviewResponse } from '@/apis/mark/exam-score'
 
 /** 成绩发布主链步骤状态 */
 export type ScoreReleaseStepStatus = 'done' | 'active' | 'pending'
@@ -16,7 +16,7 @@ export interface ScoreReleaseStep {
  */
 export function buildScoreReleaseSteps(
   currentStep: 'confirm' | 'publish',
-  overview: FinalScoreRiskOverviewVO | null,
+  overview: FinalScoreRiskOverviewResponse | null,
   allScoresPublished?: boolean,
 ): ScoreReleaseStep[] {
   const confirmDone = overview?.readyToPublish === true

@@ -91,9 +91,9 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveMaterialSubmissionStatusCode,
-  ArchiveVolumeDetailVO,
-  ArchiveVolumeExamGateVO,
-  ArchiveVolumeMaterialVO,
+  ArchiveVolumeDetailResponse,
+  ArchiveVolumeExamGateResponse,
+  ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
@@ -124,7 +124,7 @@ defineOptions({ name: 'ArchiveVolumeScoresPanel' })
 
 const props = defineProps<{
   volumeId: string
-  detail: ArchiveVolumeDetailVO
+  detail: ArchiveVolumeDetailResponse
   canConfirmScoreCompletion: boolean
   canSyncTeachingAffairs: boolean
 }>()
@@ -143,7 +143,7 @@ const SCORE_MATERIAL_TYPES = new Set<ArchiveMaterialTypeCode>([
 const scoreConfirmSubmitting = ref(false)
 const teachingAffairsSyncing = ref(false)
 const gateLoading = ref(false)
-const examGate = ref<ArchiveVolumeExamGateVO | null>(null)
+const examGate = ref<ArchiveVolumeExamGateResponse | null>(null)
 const teachingAffairsSyncNo = ref('')
 const teachingAffairsSourceSystem = ref(ArchiveScoreSourceCode.TEACHING_AFFAIRS)
 const teachingAffairsProofFileId = ref('')
@@ -191,14 +191,14 @@ const confirmMeta = computed(() => {
   return parts.length ? parts.join(' · ') : ''
 })
 
-const scoreMaterialColumns: ColumnsType<ArchiveVolumeMaterialVO> = [
+const scoreMaterialColumns: ColumnsType<ArchiveVolumeMaterialResponse> = [
   { title: '材料类型', key: 'materialType', width: 160 },
   { title: '文件名', dataIndex: 'fileName' },
   { title: '学号', dataIndex: 'studentNo', width: 120 },
   { title: '状态', key: 'submissionStatus', width: 120 },
 ]
 
-function scoreCompletionLabel(code: ArchiveVolumeDetailVO['volume']['scoreCompletionStatus']) {
+function scoreCompletionLabel(code: ArchiveVolumeDetailResponse['volume']['scoreCompletionStatus']) {
   return strictEnumLabel(ArchiveScoreCompletionStatusDescription, code, 'scoreCompletionStatus')
 }
 

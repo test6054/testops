@@ -4,7 +4,7 @@ import type {
   ArchiveVolumeCreateConfigForm,
   ArchiveVolumeCreateSectionKey,
 } from './archive-volume-create-context'
-import type { ArchiveTenantTemplateSetVO } from '@/apis/mark/archive-platform-template'
+import type { ArchiveTenantTemplateSetResponse } from '@/apis/mark/archive-platform-template'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -39,7 +39,7 @@ export function useArchiveVolumeCreateOffline() {
   const submitting = ref(false)
   const submitErrorMessage = ref('')
   const templateLoading = ref(false)
-  const templateSets = ref<ArchiveTenantTemplateSetVO[]>([])
+  const templateSets = ref<ArchiveTenantTemplateSetResponse[]>([])
   const activeSection = ref<ArchiveVolumeCreateSectionKey>('archive-create-basic')
   const basicFormRef = ref<FormInstance>()
   const configFormRef = ref<FormInstance>()

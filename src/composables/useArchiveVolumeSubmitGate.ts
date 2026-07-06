@@ -1,13 +1,13 @@
 import type {
-  ArchiveVolumeDetailVO,
+  ArchiveVolumeDetailResponse,
+  ArchiveVolumeResponse,
   ArchiveVolumeRoleCode,
   ArchiveVolumeSubmitChecklistItemVO,
-  ArchiveVolumeVO,
 } from '@/apis/mark/archive-volume'
 
 interface SubmitGateInput {
   volume: Pick<
-    ArchiveVolumeVO,
+    ArchiveVolumeResponse,
     | 'volumeStatus'
     | 'responsibleUserId'
     | 'integrityStatus'
@@ -84,7 +84,7 @@ export function canSubmitArchiveVolume(input: SubmitGateInput): boolean {
 /** 与后端 assertScoreProof / submitReady 成绩分支一致 */
 export function isScoreSubmitReady(
   volume: Pick<
-    ArchiveVolumeVO,
+    ArchiveVolumeResponse,
     | 'scoreSource'
     | 'scoreCompletionStatus'
     | 'scoreProofFileId'
@@ -163,7 +163,7 @@ export function describeSubmitBlockReason(input: SubmitGateInput): string | null
   return null
 }
 
-export function canSubmitArchiveVolumeRow(record: ArchiveVolumeVO, currentUserId: string): boolean {
+export function canSubmitArchiveVolumeRow(record: ArchiveVolumeResponse, currentUserId: string): boolean {
   return canSubmitArchiveVolume({
     volume: record,
     currentUserId,
@@ -174,7 +174,7 @@ export function canSubmitArchiveVolumeRow(record: ArchiveVolumeVO, currentUserId
 }
 
 export function canSubmitArchiveVolumeDetail(
-  detail: ArchiveVolumeDetailVO,
+  detail: ArchiveVolumeDetailResponse,
   currentUserId: string,
 ): boolean {
   return canSubmitArchiveVolume({
@@ -188,7 +188,7 @@ export function canSubmitArchiveVolumeDetail(
 }
 
 export function describeSubmitBlockReasonForDetail(
-  detail: ArchiveVolumeDetailVO,
+  detail: ArchiveVolumeDetailResponse,
   currentUserId: string,
   blockingItems?: ArchiveVolumeSubmitChecklistItemVO[],
 ): string | null {

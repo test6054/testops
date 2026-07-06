@@ -113,8 +113,8 @@
 
 <script lang="ts" setup>
 import type {
-  CourseAchievementItemVO,
-  CourseObjectiveAchievementVO,
+  CourseAchievementItemResponse,
+  CourseObjectiveAchievementResponse,
 } from '@/apis/mark/cross-exam-analysis'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
@@ -214,7 +214,7 @@ const {
   clearHistory,
   applyLoadedList,
   adoptGenerated,
-} = useAiAnalysisHistoryPicker<CourseObjectiveAchievementVO>()
+} = useAiAnalysisHistoryPicker<CourseObjectiveAchievementResponse>()
 
 watch(
   () => form.courseId,
@@ -356,7 +356,7 @@ const metaExtraItems = computed(() => {
   ]
 })
 
-function examScopeSummary(value: CourseObjectiveAchievementVO): string {
+function examScopeSummary(value: CourseObjectiveAchievementResponse): string {
   if (!value.exams.length) {
     return '无考试范围'
   }
@@ -426,13 +426,13 @@ async function handleGenerate(): Promise<void> {
   }
 }
 
-function latencyText(value: CourseObjectiveAchievementVO): string {
+function latencyText(value: CourseObjectiveAchievementResponse): string {
   if (value.latencyMs != null) return `${value.latencyMs} ms`
   if (value.analysisStatus === 'PENDING') return '待分析，尚未生成耗时'
   return '分析未完成，暂无耗时'
 }
 
-function objectiveDimensionLabel(item: CourseAchievementItemVO): string {
+function objectiveDimensionLabel(item: CourseAchievementItemResponse): string {
   if (item.objectiveDimension) {
     return strictEnumLabel(
       CourseObjectiveDimensionDescription,

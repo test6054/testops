@@ -94,7 +94,7 @@ export interface ExportTaskQueryRequest extends QueryDto {
 }
 
 /** 导出任务状态汇总 - 对应 ExportTaskStatusSummaryResponse */
-export interface ExportTaskStatusSummaryVO {
+export interface ExportTaskStatusSummaryResponse {
   totalCount: number
   pendingCount: number
   generatingCount: number
@@ -122,15 +122,15 @@ export interface ExportFailRequest {
 }
 
 /** 导出任务范围明细响应 - 对应 ExportScopeItemResponse */
-export interface ExportScopeItemVO {
+export interface ExportScopeItemResponse {
   scopeType: ExportScopeCode
   targetId: string
   targetCode?: string
   targetName: string
 }
 
-/** 导出任务响应公共字段 - 对应 ExportTaskResponse */
-export interface ExportTaskBaseVO {
+/** 导出任务响应 - 对应 ExportTaskResponse */
+export interface ExportTaskResponse {
   taskId: string
   examId: string
   examName: string
@@ -138,7 +138,7 @@ export interface ExportTaskBaseVO {
   exportType: ExportTypeCode
   exportScope: ExportScopeCode
   scopeSummary: string
-  scopeItems: ExportScopeItemVO[]
+  scopeItems: ExportScopeItemResponse[]
   taskStatus: ExportTaskStatusCode
   fileName?: string
   fileId?: string
@@ -147,38 +147,6 @@ export interface ExportTaskBaseVO {
   startedTime?: string
   completedTime?: string
 }
-
-/** 等待执行导出任务 - 后端状态为 PENDING */
-export interface ExportTaskPendingVO extends ExportTaskBaseVO {
-  taskStatus: ExportTaskStatusCode.PENDING
-}
-
-/** 生成中导出任务 - 后端状态为 GENERATING */
-export interface ExportTaskGeneratingVO extends ExportTaskBaseVO {
-  taskStatus: ExportTaskStatusCode.GENERATING
-  startedTime: string
-}
-
-/** 已完成导出任务 - 后端状态为 COMPLETED，文件字段必须完整 */
-export interface ExportTaskCompletedVO extends ExportTaskBaseVO {
-  taskStatus: ExportTaskStatusCode.COMPLETED
-  fileName: string
-  fileId: string
-  fileSize: number
-  startedTime: string
-  completedTime: string
-}
-
-/** 失败导出任务 - 后端状态为 FAILED，失败说明必须完整 */
-export interface ExportTaskFailedVO extends ExportTaskBaseVO {
-  taskStatus: ExportTaskStatusCode.FAILED
-  errorMessage: string
-  startedTime: string
-}
-
-/** 导出任务响应 - 对应 ExportTaskResponse 的状态判别联合 */
-export type ExportTaskVO
-  = ExportTaskPendingVO | ExportTaskGeneratingVO | ExportTaskCompletedVO | ExportTaskFailedVO
 
 // ─── API ─────────────────────────────────
 
@@ -196,46 +164,46 @@ export function createExportTask(request: ExportCreateRequest): Promise<ExportCr
  */
 export function listExportTasks(
   request: ExportTaskQueryRequest,
-): Promise<PageResult<ExportTaskVO>> {
-  return http.post<PageResult<ExportTaskVO>>('/api/mark/exams/export/list', request)
+): Promise<PageResult<ExportTaskResponse>> {
+  return http.post<PageResult<ExportTaskResponse>>('/api/mark/exams/export/list', request)
 }
 
 /**
  * 查询单场考试导出任务状态汇总
  * POST /api/mark/exams/export/status-summary
  */
-export function getExportTaskStatusSummary(examId: string): Promise<ExportTaskStatusSummaryVO> {
-  return http.post<ExportTaskStatusSummaryVO>('/api/mark/exams/export/status-summary', { examId })
+export function getExportTaskStatusSummary(examId: string): Promise<ExportTaskStatusSummaryResponse> {
+  return http.post<ExportTaskStatusSummaryResponse>('/api/mark/exams/export/status-summary', { examId })
 }
 
 /**
  * 查询单个导出任务详情
  * POST /api/mark/exams/export/detail
  */
-export function getExportTask(request: ExportDetailRequest): Promise<ExportTaskVO> {
-  return http.post<ExportTaskVO>('/api/mark/exams/export/detail', request)
+export function getExportTask(request: ExportDetailRequest): Promise<ExportTaskResponse> {
+  return http.post<ExportTaskResponse>('/api/mark/exams/export/detail', request)
 }
 
 /**
  * 标记导出任务进入生成阶段（仅 worker / 运维使用）
  * POST /api/mark/exams/export/start
  */
-export function startExportTask(request: ExportDetailRequest): Promise<ExportTaskVO> {
-  return http.post<ExportTaskVO>('/api/mark/exams/export/start', request)
+export function startExportTask(request: ExportDetailRequest): Promise<ExportTaskResponse> {
+  return http.post<ExportTaskResponse>('/api/mark/exams/export/start', request)
 }
 
 /**
  * 标记导出任务完成并写入文件元信息（仅 worker / 运维使用）
  * POST /api/mark/exams/export/complete
  */
-export function completeExportTask(request: ExportCompleteRequest): Promise<ExportTaskVO> {
-  return http.post<ExportTaskVO>('/api/mark/exams/export/complete', request)
+export function completeExportTask(request: ExportCompleteRequest): Promise<ExportTaskResponse> {
+  return http.post<ExportTaskResponse>('/api/mark/exams/export/complete', request)
 }
 
 /**
  * 标记导出任务失败（仅 worker / 运维使用）
  * POST /api/mark/exams/export/fail
  */
-export function failExportTask(request: ExportFailRequest): Promise<ExportTaskVO> {
-  return http.post<ExportTaskVO>('/api/mark/exams/export/fail', request)
+export function failExportTask(request: ExportFailRequest): Promise<ExportTaskResponse> {
+  return http.post<ExportTaskResponse>('/api/mark/exams/export/fail', request)
 }

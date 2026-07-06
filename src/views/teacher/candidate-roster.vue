@@ -300,7 +300,7 @@ import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { CandidateRow } from './candidate-roster/types'
 import type { ClassStudentTreeConfirmPayload } from '@/apis/edu/class'
 import type { ExamClassRefVO, ExamRosterScopeModeCode } from '@/apis/mark/exam'
-import type {WorkbenchCandidateRosterPanelVO} from '@/apis/mark/exam-progress';
+import type {ExamWorkbenchCandidateRosterPanelResponse} from '@/apis/mark/exam-progress';
 import type { ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
@@ -382,7 +382,7 @@ const rosterWriteForbidden = ref(false)
 const rosterScopeMode = ref<ExamRosterScopeModeCode | undefined>(undefined)
 const referenceDepartmentName = ref<string | undefined>(undefined)
 const candidateTotal = ref(0)
-const rosterPanel = ref<WorkbenchCandidateRosterPanelVO | null>(null)
+const rosterPanel = ref<ExamWorkbenchCandidateRosterPanelResponse | null>(null)
 let classScopeSaveTimer: ReturnType<typeof setTimeout> | null = null
 let loadContextSeq = 0
 let loadTableSeq = 0
@@ -668,7 +668,6 @@ async function loadRosterStudentIds(examId: string): Promise<void> {
   } catch (error) {
     rosterStudentUserIds.value = []
     showUserError(error, '考生 ID 列表加载失败')
-    throw error
   }
 }
 

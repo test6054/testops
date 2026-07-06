@@ -6,7 +6,7 @@
  * - 租户与操作人从 UserHold 注入，前端只传业务字段
  * - 后端 Long ID 统一用 string 表达到前端（保持与其他模块一致）
  */
-import type { ExamStatusCode, ExamSummaryVO } from './exam'
+import type { ExamStatusCode, ExamSummaryResponse } from './exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { ScannerActivationCodeStatusCode } from '@/types/enums/scanner-activation-code-status-enum'
@@ -148,12 +148,12 @@ export interface ExamScannerDeviceQueryRequest extends QueryDto {
 }
 
 /** 扫描设备物理位置筛选项 - 对应 ExamScannerDeviceLocationOptionResponse */
-export interface ExamScannerDeviceLocationOptionVO {
+export interface ExamScannerDeviceLocationOptionResponse {
   location: string
 }
 
 /** 扫描设备视图 - 对应 ExamScannerDeviceResponse */
-export interface ExamScannerDeviceVO {
+export interface ExamScannerDeviceResponse {
   id: string
   scannerDeviceId: string
   scannerStationId: string
@@ -190,7 +190,7 @@ export interface ExamScannerActivationCodeCreateRequest {
 }
 
 /** 扫描 Agent 激活码响应 */
-export interface ExamScannerActivationCodeVO {
+export interface ExamScannerActivationCodeResponse {
   id: string
   scannerDeviceId: string
   scannerStationId: string
@@ -200,14 +200,14 @@ export interface ExamScannerActivationCodeVO {
 }
 
 /** 扫描设备详情视图 - 对应 ExamScannerDeviceDetailResponse */
-export interface ExamScannerDeviceDetailVO extends ExamScannerDeviceVO {
+export interface ExamScannerDeviceDetailResponse extends ExamScannerDeviceResponse {
   pushToken?: string
   pushUrl?: string
   authorizationHeader?: string
 }
 
 /** 扫描设备激活码交接响应 - 对应 ExamScannerDeviceActivationHandoffResponse */
-export interface ExamScannerDeviceActivationHandoffVO {
+export interface ExamScannerDeviceActivationHandoffResponse {
   id: string
   scannerDeviceId: string
   scannerStationId: string
@@ -251,7 +251,7 @@ export interface ExamScannerDeviceUpdateRequest {
   kioskLockEnabled: boolean
 }
 
-// ScanAttentionQueryRequest / ScanAttentionItemVO 定义在 @/apis/mark/exam-scan，避免重复
+// ScanAttentionQueryRequest / ScanAttentionItemResponse 定义在 @/apis/mark/exam-scan，避免重复
 
 /** 试卷身份批量绑定单项请求 - 对应 ExamPaperBatchBindItemRequest */
 export interface ExamPaperBatchBindItemRequest {
@@ -270,17 +270,17 @@ export interface ExamPaperBatchBindRequest {
 }
 
 /** 试卷身份批量绑定单项结果 - 对应 ExamPaperBatchBindItemResponse */
-export interface ExamPaperBatchBindItemResultVO {
+export interface ExamPaperBatchBindItemResponse {
   paperInstanceId: string
   success: boolean
   errorMessage?: string
 }
 
 /** 试卷身份批量绑定结果 - 对应 ExamPaperBatchBindResponse */
-export interface ExamPaperBatchBindResultVO {
+export interface ExamPaperBatchBindResponse {
   successCount: number
   failureCount: number
-  items: ExamPaperBatchBindItemResultVO[]
+  items: ExamPaperBatchBindItemResponse[]
 }
 
 /**
@@ -289,12 +289,12 @@ export interface ExamPaperBatchBindResultVO {
  */
 export function pageScannerDevices(
   request: ExamScannerDeviceQueryRequest,
-): Promise<PageResult<ExamScannerDeviceVO>> {
-  return http.post<PageResult<ExamScannerDeviceVO>>('/api/mark/exams/scan-devices/list', request)
+): Promise<PageResult<ExamScannerDeviceResponse>> {
+  return http.post<PageResult<ExamScannerDeviceResponse>>('/api/mark/exams/scan-devices/list', request)
 }
 
 /** 扫描设备汇总统计 - 对齐 ExamScannerDeviceSummaryResponse */
-export interface ExamScannerDeviceSummaryVO {
+export interface ExamScannerDeviceSummaryResponse {
   totalCount: number
   onlineCount: number
   agentActivatedCount: number
@@ -306,16 +306,16 @@ export interface ExamScannerDeviceSummaryVO {
  */
 export function summarizeScannerDevices(
   request: ExamScannerDeviceQueryRequest,
-): Promise<ExamScannerDeviceSummaryVO> {
-  return http.post<ExamScannerDeviceSummaryVO>('/api/mark/exams/scan-devices/summary', request)
+): Promise<ExamScannerDeviceSummaryResponse> {
+  return http.post<ExamScannerDeviceSummaryResponse>('/api/mark/exams/scan-devices/summary', request)
 }
 
 /**
  * 查询当前租户扫描设备物理位置选项
  * POST /api/mark/exams/scan-devices/locations
  */
-export function listScannerDeviceLocations(): Promise<ExamScannerDeviceLocationOptionVO[]> {
-  return http.post<ExamScannerDeviceLocationOptionVO[]>(
+export function listScannerDeviceLocations(): Promise<ExamScannerDeviceLocationOptionResponse[]> {
+  return http.post<ExamScannerDeviceLocationOptionResponse[]>(
     '/api/mark/exams/scan-devices/locations',
     {},
   )
@@ -327,8 +327,8 @@ export function listScannerDeviceLocations(): Promise<ExamScannerDeviceLocationO
  */
 export function createScannerDevice(
   request: ExamScannerDeviceCreateRequest,
-): Promise<ExamScannerDeviceActivationHandoffVO> {
-  return http.post<ExamScannerDeviceActivationHandoffVO>(
+): Promise<ExamScannerDeviceActivationHandoffResponse> {
+  return http.post<ExamScannerDeviceActivationHandoffResponse>(
     '/api/mark/exams/scan-devices/create',
     request,
   )
@@ -340,8 +340,8 @@ export function createScannerDevice(
  */
 export function updateScannerDevice(
   request: ExamScannerDeviceUpdateRequest,
-): Promise<ExamScannerDeviceActivationHandoffVO> {
-  return http.post<ExamScannerDeviceActivationHandoffVO>(
+): Promise<ExamScannerDeviceActivationHandoffResponse> {
+  return http.post<ExamScannerDeviceActivationHandoffResponse>(
     '/api/mark/exams/scan-devices/update',
     request,
   )
@@ -367,8 +367,8 @@ export function unbindScannerDeviceAgent(id: string): Promise<boolean> {
  * 查询扫描设备详情（HTTP_PUSH 模式包含明文 push_token 与推荐推送 URL）
  * POST /api/mark/exams/scan-devices/detail
  */
-export function getScannerDeviceDetail(id: string): Promise<ExamScannerDeviceDetailVO> {
-  return http.post<ExamScannerDeviceDetailVO>('/api/mark/exams/scan-devices/detail', { id })
+export function getScannerDeviceDetail(id: string): Promise<ExamScannerDeviceDetailResponse> {
+  return http.post<ExamScannerDeviceDetailResponse>('/api/mark/exams/scan-devices/detail', { id })
 }
 
 /**
@@ -377,8 +377,8 @@ export function getScannerDeviceDetail(id: string): Promise<ExamScannerDeviceDet
  */
 export function resetScannerDevicePushToken(
   id: string,
-): Promise<ExamScannerDeviceActivationHandoffVO> {
-  return http.post<ExamScannerDeviceActivationHandoffVO>(
+): Promise<ExamScannerDeviceActivationHandoffResponse> {
+  return http.post<ExamScannerDeviceActivationHandoffResponse>(
     '/api/mark/exams/scan-devices/reset-token',
     { id },
   )
@@ -390,8 +390,8 @@ export function resetScannerDevicePushToken(
  */
 export function createScannerActivationCode(
   request: ExamScannerActivationCodeCreateRequest,
-): Promise<ExamScannerActivationCodeVO> {
-  return http.post<ExamScannerActivationCodeVO>(
+): Promise<ExamScannerActivationCodeResponse> {
+  return http.post<ExamScannerActivationCodeResponse>(
     '/api/mark/exams/scan-devices/activation-code/create',
     request,
   )
@@ -407,8 +407,8 @@ export function createScannerActivationCode(
  */
 export function batchBindPapers(
   request: ExamPaperBatchBindRequest,
-): Promise<ExamPaperBatchBindResultVO> {
-  return http.post<ExamPaperBatchBindResultVO>('/api/mark/exams/papers/batch-bind', request)
+): Promise<ExamPaperBatchBindResponse> {
+  return http.post<ExamPaperBatchBindResponse>('/api/mark/exams/papers/batch-bind', request)
 }
 
 // ─── 考试列表（供设备管理选择关联考试） ─────────────────────────────────
@@ -437,20 +437,20 @@ export interface MarkExamPageQueryRequest extends QueryDto {
  */
 export function pageMarkExams(
   request: MarkExamPageQueryRequest,
-): Promise<PageResult<ExamSummaryVO>> {
-  return http.post<PageResult<ExamSummaryVO>>('/api/mark/exams/page', request)
+): Promise<PageResult<ExamSummaryResponse>> {
+  return http.post<PageResult<ExamSummaryResponse>>('/api/mark/exams/page', request)
 }
 
 const ACTIVE_SCANNER_DEVICE_PAGE_SIZE = 100
 
 /** 扫描 Agent 端点在线（最近心跳在服务端超时窗口内）；scannerConnected 仅表示物理扫描仪连接，不能替代端点在线。 */
-export function isScannerDeviceOnline(device: ExamScannerDeviceVO): boolean {
+export function isScannerDeviceOnline(device: ExamScannerDeviceResponse): boolean {
   return device.endpointOnlineStatus === ScannerEndpointOnlineStatusCode.ONLINE
 }
 
 /** 分页拉取当前租户全部 ACTIVE 扫描设备。 */
-export async function listActiveScannerDevices(): Promise<ExamScannerDeviceVO[]> {
-  const items: ExamScannerDeviceVO[] = []
+export async function listActiveScannerDevices(): Promise<ExamScannerDeviceResponse[]> {
+  const items: ExamScannerDeviceResponse[] = []
   let pageNum = 1
   while (true) {
     const result = await pageScannerDevices({

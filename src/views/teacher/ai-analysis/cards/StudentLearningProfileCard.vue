@@ -169,7 +169,7 @@
 <script lang="ts" setup>
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
 import type { MasteryLevelCode } from '@/apis/mark/student-mastery-level'
-import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
+import type { TeachingAnalysisRecordResponse } from '@/apis/mark/teaching-analysis'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -210,7 +210,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{ (e: 'student-change', studentUserId: string): void }>()
 
-const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
+const record = ref<TeachingAnalysisRecordResponse | null>(null)
 const loading = ref(false)
 const generating = ref(false)
 const selectedStudentUserId = ref<string | undefined>(undefined)
@@ -235,9 +235,9 @@ const suggestions = computed(() => record.value?.suggestions ?? [])
 const hasDailyScoreConfig = computed(() => scoreComposition.value?.dailyScoreFull != null)
 
 function acceptStudentLearningProfileRecord(
-  value: ExamTeachingAnalysisRecordVO | null,
+  value: TeachingAnalysisRecordResponse | null,
   expectedStudentUserId: string,
-): ExamTeachingAnalysisRecordVO | null {
+): TeachingAnalysisRecordResponse | null {
   void expectedStudentUserId
   if (!value) return null
   return value
@@ -309,7 +309,7 @@ function masteryColor(level: MasteryLevelCode): BadgeTone {
 }
 
 function questionTypeLabel(
-  value: NonNullable<ExamTeachingAnalysisRecordVO['diagnosisItems']>[number]['questionType'],
+  value: NonNullable<TeachingAnalysisRecordResponse['diagnosisItems']>[number]['questionType'],
 ): string {
   return strictEnumLabel(QuestionTypeDescription, value, '题目类型')
 }

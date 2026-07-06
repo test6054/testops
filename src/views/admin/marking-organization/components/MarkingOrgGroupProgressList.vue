@@ -43,7 +43,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { QuestionMarkingGroupVO } from '@/apis/mark/marking-organization'
+import type { QuestionMarkingGroupResponse } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import {
   QUESTION_GROUP_STATUS_TONE,
@@ -59,7 +59,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'MarkingOrgGroupProgressList' })
 
 const props = defineProps<{
-  groups: QuestionMarkingGroupVO[]
+  groups: QuestionMarkingGroupResponse[]
   groupProgressById: Record<string, GroupProgressSnapshot>
   canManage: boolean
 }>()

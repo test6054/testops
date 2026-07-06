@@ -336,9 +336,9 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   AbsenceReasonCode,
-  AbsenceRecordVO,
-  AbsentStudentSnapshotVO,
-  AttendanceReconcileVO,
+  AbsenceRecordResponse,
+  AbsentStudentSnapshotResponse,
+  AttendanceReconcileResponse,
   ScorePolicyCode,
 } from '@/apis/mark/absence'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
@@ -407,12 +407,12 @@ interface AbsentStudentRow {
   className: string
 }
 
-const reconcileVO = ref<AttendanceReconcileVO | null>(null)
+const reconcileVO = ref<AttendanceReconcileResponse | null>(null)
 const reconciling = ref(false)
 const pendingAbsenceCount = ref(0)
 const confirmedAbsenceCount = ref(0)
 
-const records = ref<AbsenceRecordVO[]>([])
+const records = ref<AbsenceRecordResponse[]>([])
 const recordLoading = ref(false)
 const recordFilterForm = reactive<{ status?: AbsenceStatusCode }>({
   status: undefined,
@@ -528,7 +528,7 @@ const absentColumns: ColumnType<AbsentStudentRow>[] = [
   { title: '操作', key: 'actions', width: 100, fixed: 'right' },
 ]
 
-const recordColumns: ColumnType<AbsenceRecordVO>[] = [
+const recordColumns: ColumnType<AbsenceRecordResponse>[] = [
   { title: '学号', key: 'studentNo', width: 120 },
   { title: '姓名', key: 'studentName', dataIndex: 'studentName', width: 96 },
   { title: '缺考类型', key: 'absenceReason', width: 100 },
@@ -538,7 +538,7 @@ const recordColumns: ColumnType<AbsenceRecordVO>[] = [
   { title: '操作', key: 'actions', width: 120, fixed: 'right' },
 ]
 
-function toAbsentStudentRow(student: AbsentStudentSnapshotVO): AbsentStudentRow {
+function toAbsentStudentRow(student: AbsentStudentSnapshotResponse): AbsentStudentRow {
   return {
     studentUserId: student.studentUserId,
     studentNo: student.studentNo,
@@ -548,7 +548,7 @@ function toAbsentStudentRow(student: AbsentStudentSnapshotVO): AbsentStudentRow 
 }
 
 function formatStudentSnapshot(
-  record: Pick<AbsenceRecordVO, 'studentName' | 'studentNo' | 'className'>,
+  record: Pick<AbsenceRecordResponse, 'studentName' | 'studentNo' | 'className'>,
 ): string {
   return `${record.studentName}（${record.studentNo}，${record.className}）`
 }
@@ -569,7 +569,7 @@ function reasonLabel(reason: AbsenceReasonCode): string {
   return strictEnumLabel(AbsenceReasonDescription, reason, '缺考原因')
 }
 
-function isPendingMakeupRecord(record: AbsenceRecordVO): boolean {
+function isPendingMakeupRecord(record: AbsenceRecordResponse): boolean {
   return (
     record.absenceStatus === AbsenceStatusCode.CONFIRMED
     && record.scorePolicy === 'PENDING_MAKEUP'
@@ -759,7 +759,7 @@ const revokeForm = reactive<{ studentUserId: string, revokeReason: string }>({
   revokeReason: '',
 })
 
-function openRevokeModal(record: AbsenceRecordVO): void {
+function openRevokeModal(record: AbsenceRecordResponse): void {
   revokeForm.studentUserId = record.studentUserId
   revokeForm.revokeReason = ''
   revokeTargetName.value = formatStudentSnapshot(record)

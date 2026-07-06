@@ -2,7 +2,7 @@ import type { Ref } from 'vue'
 import type {
   MarkingPageAnnotationSubmitItem,
   MarkingQuestionScoreSubmitItem,
-  QuestionMarkingGroupQuestionVO,
+  QuestionMarkingGroupQuestionResponse,
   ScannedPageRef,
 } from '@/apis/mark/marking-organization'
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
@@ -38,7 +38,7 @@ export interface UseWholePaperGalleryOptions {
 /** 整卷影像画廊 composable 对外 API */
 export interface UseWholePaperGalleryReturn {
   wholePages: Ref<ScannedPageRef[]>
-  wholeQuestions: Ref<QuestionMarkingGroupQuestionVO[]>
+  wholeQuestions: Ref<QuestionMarkingGroupQuestionResponse[]>
   wholePagesLoaded: Ref<boolean>
   wholePagesLoading: Ref<boolean>
   wholePagesError: Ref<Error | null>
@@ -69,7 +69,7 @@ export interface UseWholePaperGalleryReturn {
  */
 export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseWholePaperGalleryReturn {
   const wholePages = ref<ScannedPageRef[]>([])
-  const wholeQuestions = ref<QuestionMarkingGroupQuestionVO[]>([])
+  const wholeQuestions = ref<QuestionMarkingGroupQuestionResponse[]>([])
   const wholePagesLoaded = ref(false)
   const wholePagesLoading = ref(false)
   const wholePagesError = ref<Error | null>(null)
@@ -131,7 +131,7 @@ export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseW
   }
 
   function syncWholePaperForms(
-    questions: QuestionMarkingGroupQuestionVO[],
+    questions: QuestionMarkingGroupQuestionResponse[],
     pages: ScannedPageRef[],
   ): void {
     for (const question of questions) {

@@ -247,12 +247,13 @@ import { navigateToJourneyStep } from '@/utils/mark-stage-navigation'
 defineOptions({ name: 'ExamWorkspaceLayout' })
 
 const menuIconMap: Record<ExamWorkspaceMenuKey, Component> = {
-  "overview": DashboardOutlined,
-  "prep": ContainerOutlined,
+  'overview': DashboardOutlined,
+  'prep': ContainerOutlined,
   'layout-designer': ProfileOutlined,
   'candidate-roster': TeamOutlined,
   'print-package': PrinterOutlined,
   'scan-batches': CloudUploadOutlined,
+  'scan-manual-entry': FileSearchOutlined,
   'scan-monitor': DesktopOutlined,
   'scan-ledger': AuditOutlined,
   'scan-devices': SettingOutlined,

@@ -418,10 +418,10 @@
 <script setup lang="ts">
 import type {
   ArchiveCatalogStatusCode,
-  ArchiveRemediationTaskVO,
+  ArchiveRemediationTaskResponse,
   ArchiveSelfCheckStatusCode,
-  ArchiveVolumeAccessRecordVO,
-  ArchiveVolumeDetailVO,
+  ArchiveVolumeAccessRecordResponse,
+  ArchiveVolumeDetailResponse,
   ArchiveVolumeSubmitChecklistItemVO,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
@@ -498,7 +498,7 @@ const {
 const currentUserId = computed(() => String(userStore.userInfo?.userId ?? ''))
 
 const detailScope = useArchiveVolumeDetailScope(detail, currentUserId)
-const focusedRemediationTask = ref<ArchiveRemediationTaskVO | null>(null)
+const focusedRemediationTask = ref<ArchiveRemediationTaskResponse | null>(null)
 const submitChecklist = ref<Awaited<ReturnType<typeof previewArchiveVolumeSubmitChecklist>> | null>(null)
 const submitChecklistLoadError = ref('')
 
@@ -513,7 +513,7 @@ const selfCheckModalOpen = ref(false)
 const remediationUpdating = ref(false)
 
 const integrityResult = ref<Awaited<ReturnType<typeof checkArchiveVolumeIntegrity>> | null>(null)
-const fourPropertyResult = ref<ArchiveVolumeDetailVO['latestFourPropertyCheck']>(undefined)
+const fourPropertyResult = ref<ArchiveVolumeDetailResponse['latestFourPropertyCheck']>(undefined)
 
 const flowChainSteps = workbench.navigationFlowChainSteps
 const nextStepActions = workbench.nextStepActions
@@ -693,11 +693,11 @@ function remediationStatusTone(code: ArchiveRemediationStatusCode): BadgeTone {
   return strictEnumTone(ARCHIVE_REMEDIATION_STATUS_TONE, code, 'taskStatus')
 }
 
-function sourceTypeLabel(code: ArchiveVolumeDetailVO['volume']['sourceType']) {
+function sourceTypeLabel(code: ArchiveVolumeDetailResponse['volume']['sourceType']) {
   return strictEnumLabel(ArchiveVolumeSourceTypeDescription, code, 'sourceType')
 }
 
-function canApproveAccessRecord(record: ArchiveVolumeAccessRecordVO) {
+function canApproveAccessRecord(record: ArchiveVolumeAccessRecordResponse) {
   return canApproveAccessForVolume({
     departmentId: record.departmentId,
     securityLevel: record.securityLevel,

@@ -65,8 +65,8 @@
               column,
               record,
             }: {
-            column: ColumnType<ReviewTaskItemVO>
-            record: ReviewTaskItemVO
+            column: ColumnType<ReviewTaskItemResponse>
+            record: ReviewTaskItemResponse
             }"
           >
             <template v-if="column.key === 'paper'">
@@ -129,7 +129,7 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   GradeSourceCode,
-  ReviewTaskItemVO,
+  ReviewTaskItemResponse,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
@@ -173,7 +173,7 @@ const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('复核
 const { refreshing: workbenchRefreshing, snapshot } = useMarkWorkbenchContext()
 
 const loading = ref(false)
-const rows = ref<ReviewTaskItemVO[]>([])
+const rows = ref<ReviewTaskItemResponse[]>([])
 const statusFilter = ref<ReviewTaskStatusCode>(ReviewTaskStatusCode.PENDING)
 
 const pagination = reactive({
@@ -265,7 +265,7 @@ function resetStatusFilter(): void {
   onFilterChange()
 }
 
-const columns: ColumnType<ReviewTaskItemVO>[] = [
+const columns: ColumnType<ReviewTaskItemResponse>[] = [
   { title: '答卷', key: 'paper', width: 200 },
   { title: '题号', key: 'question', width: 88 },
   { title: '复核类型', key: 'reviewType', width: 140 },
@@ -346,7 +346,7 @@ function onFilterChange(): void {
   void loadTasks()
 }
 
-function enterReview(record: ReviewTaskItemVO): void {
+function enterReview(record: ReviewTaskItemResponse): void {
   if (!examId.value) {
     return
   }

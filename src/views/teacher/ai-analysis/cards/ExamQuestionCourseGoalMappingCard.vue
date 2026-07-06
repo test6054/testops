@@ -80,7 +80,7 @@ import type {
   ExamQuestionCourseGoalMappingVO,
   QualityCourseGoalForMarkVO,
 } from '@/apis/mark/exam-question-course-goal-mapping'
-import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
+import type { ExamQuestionAnalysisRecordResponse } from '@/apis/mark/question-analysis'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import {
@@ -131,7 +131,7 @@ interface MappingRow {
 const loading = ref(false)
 const courseGoals = ref<QualityCourseGoalForMarkVO[]>([])
 const mappings = ref<ExamQuestionCourseGoalMappingVO[]>([])
-const questions = ref<ExamQuestionAnalysisRecordVO[]>([])
+const questions = ref<ExamQuestionAnalysisRecordResponse[]>([])
 const rows = ref<MappingRow[]>([])
 
 const goalOptions = computed(() =>

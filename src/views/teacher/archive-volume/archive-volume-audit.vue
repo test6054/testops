@@ -78,7 +78,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  ArchiveVolumeAuditEventVO,
+  ArchiveVolumeAuditEventResponse,
   ArchiveVolumeEventTypeCode,
 } from '@/apis/mark/archive-volume'
 import type { FilterField } from '@/components/ui-guide/ui/types'
@@ -109,7 +109,7 @@ defineOptions({ name: 'TeacherArchiveVolumeAudit' })
 const router = useRouter()
 const loading = ref(false)
 const loadFailed = ref(false)
-const events = ref<ArchiveVolumeAuditEventVO[]>([])
+const events = ref<ArchiveVolumeAuditEventResponse[]>([])
 const pagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
 
 const signalMetrics = computed<SignalMetric[]>(() =>
@@ -144,7 +144,7 @@ const filterFields: FilterField[] = [
   },
 ]
 
-const columns: ColumnsType<ArchiveVolumeAuditEventVO> = [
+const columns: ColumnsType<ArchiveVolumeAuditEventResponse> = [
   { title: '事件类型', key: 'eventType', dataIndex: 'eventType', width: 160 },
   { title: '卷ID', key: 'volumeId', dataIndex: 'volumeId', width: 120 },
   { title: '操作人', key: 'operatorUserId', width: 120 },

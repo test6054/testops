@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import type { ExamDetailVO } from '@/apis/mark/exam'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
 import { computed, ref, watch } from 'vue'
 import { getExamDetail } from '@/apis/mark/exam'
 import { useUserStore } from '@/stores'
@@ -42,7 +42,7 @@ function resolveStaffWatermarkViewer(userStore: ReturnType<typeof useUserStore>)
   }
 }
 
-export function formatExamConfidentialLabel(source: Pick<ExamDetailVO, 'examName' | 'examNo'> | null | undefined): string {
+export function formatExamConfidentialLabel(source: Pick<ExamDetailResponse, 'examName' | 'examNo'> | null | undefined): string {
   if (!source) {
     return ''
   }

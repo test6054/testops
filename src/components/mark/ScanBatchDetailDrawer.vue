@@ -229,10 +229,10 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamFileRefVO } from '@/apis/mark/exam'
 import type {
   ExamScannerBatchPageItemVO,
-  ExamScannerBatchVO,
-  ScanAttentionItemVO,
-  ScanBatchOrderAuditIssueVO,
-  ScanBatchOrderAuditVO,
+  ExamScannerBatchResponse,
+  ScanAttentionItemResponse,
+  ScanBatchOrderAuditIssueResponse,
+  ScanBatchOrderAuditResponse,
 } from '@/apis/mark/exam-scan'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
@@ -283,7 +283,7 @@ const props = defineProps<{
   open: boolean
   examId: string
   scanBatchId: string | null
-  batchSummary: ExamScannerBatchVO | null
+  batchSummary: ExamScannerBatchResponse | null
 }>()
 
 const emit = defineEmits<{
@@ -294,7 +294,7 @@ const emit = defineEmits<{
 const { isExamConfidential } = useWorkspaceConfidentialContext()
 
 const activeTab = ref('overview')
-const batchDetail = ref<ExamScannerBatchVO | null>(null)
+const batchDetail = ref<ExamScannerBatchResponse | null>(null)
 const detailLoading = ref(false)
 
 const pages = ref<ExamScannerBatchPageItemVO[]>([])
@@ -302,7 +302,7 @@ const pageTotal = ref(0)
 const pagesLoading = ref(false)
 const pageQuery = reactive({ pageNum: 1, pageSize: 10 })
 
-const attentions = ref<ScanAttentionItemVO[]>([])
+const attentions = ref<ScanAttentionItemResponse[]>([])
 const attentionTotal = ref(0)
 const attentionsLoading = ref(false)
 const attentionQuery = reactive({ pageNum: 1, pageSize: 10 })
@@ -316,7 +316,7 @@ const supplementModalOpen = ref(false)
 
 const orderAuditDrawerOpen = ref(false)
 const orderAuditLoading = ref(false)
-const orderAuditDetail = ref<ScanBatchOrderAuditVO | null>(null)
+const orderAuditDetail = ref<ScanBatchOrderAuditResponse | null>(null)
 
 const drawerTitle = computed(() => {
   const batch = batchDetail.value ?? props.batchSummary
@@ -379,14 +379,14 @@ const pageColumns: ColumnType<ExamScannerBatchPageItemVO>[] = [
   { title: '诊断', dataIndex: 'diagnostic', key: 'diagnostic', ellipsis: true },
 ]
 
-const attentionColumns: ColumnType<ScanAttentionItemVO>[] = [
+const attentionColumns: ColumnType<ScanAttentionItemResponse>[] = [
   { title: '类型', key: 'attentionType', width: 120 },
   { title: '来源', dataIndex: 'sourceDisplayName', key: 'sourceDisplayName', ellipsis: true },
   { title: '页', dataIndex: 'pageDisplayName', key: 'pageDisplayName', width: 120 },
   { title: '诊断', dataIndex: 'diagnostic', key: 'diagnostic', ellipsis: true },
 ]
 
-const orderAuditIssueColumns: ColumnType<ScanBatchOrderAuditIssueVO>[] = [
+const orderAuditIssueColumns: ColumnType<ScanBatchOrderAuditIssueResponse>[] = [
   {
     title: '异常码',
     key: 'auditCode',
@@ -399,14 +399,14 @@ const orderAuditIssueColumns: ColumnType<ScanBatchOrderAuditIssueVO>[] = [
   { title: '模板页', dataIndex: 'templatePageNo', key: 'templatePageNo', width: 72 },
 ]
 
-function batchStatusTone(batch: ExamScannerBatchVO): BadgeTone {
+function batchStatusTone(batch: ExamScannerBatchResponse): BadgeTone {
   if (batch.sealedTime) {
     return 'green'
   }
   return strictEnumTone(SCAN_BATCH_STATUS_TONE, batch.status, '扫描批次状态')
 }
 
-function batchStatusLabel(batch: ExamScannerBatchVO): string {
+function batchStatusLabel(batch: ExamScannerBatchResponse): string {
   if (batch.sealedTime) {
     return '已封存'
   }
@@ -611,7 +611,7 @@ function onDiscardBatch(): void {
 }
 
 async function cleanupLocalAgentScanJobForDiscardedBatch(
-  batch: ExamScannerBatchVO,
+  batch: ExamScannerBatchResponse,
   discardReason: string,
 ): Promise<string> {
   const scannerDeviceId = batch.scannerDeviceId?.trim()

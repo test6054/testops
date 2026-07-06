@@ -1,6 +1,6 @@
-import type { ArchiveVolumeExamGateVO } from '@/apis/mark/archive-volume'
-import type { WorkbenchScorePanelVO } from '@/apis/mark/exam-progress'
-import type { FinalScoreRiskOverviewVO } from '@/apis/mark/exam-score'
+import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
+import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
+import type { FinalScoreRiskOverviewResponse } from '@/apis/mark/exam-score'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import {
   FINAL_SCORE_STATUS_TONE,
@@ -57,7 +57,7 @@ function formatCount(value: number | undefined, unit: string): string {
   return `${value}${unit}`
 }
 
-function statusCount(overview: FinalScoreRiskOverviewVO, code: FinalScoreStatusCode): number {
+function statusCount(overview: FinalScoreRiskOverviewResponse, code: FinalScoreStatusCode): number {
   switch (code) {
     case FinalScoreStatusCode.PENDING:
       return overview.pendingCount
@@ -79,33 +79,28 @@ function statusCount(overview: FinalScoreRiskOverviewVO, code: FinalScoreStatusC
 function resolveFlowEmphasis(
   code: FinalScoreStatusCode,
   mode: ScoreWorkbenchAnalyticsMode,
-  overview: FinalScoreRiskOverviewVO,
+  overview: FinalScoreRiskOverviewResponse,
   publishableCount: number,
 ): boolean {
   if (mode === 'confirm') {
     if (code === FinalScoreStatusCode.CALCULATED && overview.calculatedCount > 0) {
       return true
     }
-    if (
-      code === FinalScoreStatusCode.PENDING
+    return code === FinalScoreStatusCode.PENDING
       && overview.pendingCount > 0
-      && overview.calculatedCount === 0
-    ) {
-      return true
-    }
-    return false
+      && overview.calculatedCount === 0;
   }
   if (code === FinalScoreStatusCode.CONFIRMED && publishableCount > 0) {
     return true
   }
   return code === FinalScoreStatusCode.PUBLISHED
-      && overview.publishedCount > 0
-      && publishableCount === 0;
+    && overview.publishedCount > 0
+    && publishableCount === 0;
 }
 
 /** 有分布时右侧 stat-card 六格（确认 / 发布口径不同）。 */
 export function buildScoreDistributionStatItems(
-  panel: WorkbenchScorePanelVO,
+  panel: ExamWorkbenchScorePanelResponse,
   mode: ScoreWorkbenchAnalyticsMode,
   publishableCount: number,
 ): ScoreAnalyticsStatItem[] {
@@ -171,7 +166,7 @@ export function buildScoreDistributionStatItems(
 
 /** 无分布时 workflow 条（确认页）。 */
 export function buildScoreConfirmWorkflowStatItems(
-  overview: FinalScoreRiskOverviewVO,
+  overview: FinalScoreRiskOverviewResponse,
 ): ScoreAnalyticsStatItem[] {
   return [
     {
@@ -214,9 +209,9 @@ export function buildScoreConfirmWorkflowStatItems(
 
 /** 无分布时 workflow 条（发布页）。 */
 export function buildScorePublishWorkflowStatItems(
-  overview: FinalScoreRiskOverviewVO,
+  overview: FinalScoreRiskOverviewResponse,
   publishableCount: number,
-  gate: ArchiveVolumeExamGateVO | null,
+  gate: ArchiveVolumeExamGateResponse | null,
 ): ScoreAnalyticsStatItem[] {
   const unconfirmed = overview.pendingCount + overview.calculatedCount
   const items: ScoreAnalyticsStatItem[] = [
@@ -271,7 +266,7 @@ export function buildScorePublishWorkflowStatItems(
 
 /** 分数状态流转（带人数与当前阶段强调）。 */
 export function buildScoreAnalyticsFlowSteps(
-  overview: FinalScoreRiskOverviewVO,
+  overview: FinalScoreRiskOverviewResponse,
   mode: ScoreWorkbenchAnalyticsMode,
   publishableCount: number,
 ): ScoreAnalyticsFlowStep[] {
@@ -296,7 +291,7 @@ export function resolveScoreAnalyticsOverviewTitle(
 
 /** 全场发布确认弹窗 KPI 条。 */
 export function buildScoreBulkPublishModalStatItems(
-  overview: FinalScoreRiskOverviewVO,
+  overview: FinalScoreRiskOverviewResponse,
   publishableCount: number,
 ): ScoreAnalyticsStatItem[] {
   const unconfirmed = overview.pendingCount + overview.calculatedCount

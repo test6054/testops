@@ -80,7 +80,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { ExamReviewWindowPolicyVO } from '@/apis/mark/grade-review'
+import type { ExamReviewWindowPolicy } from '@/apis/mark/grade-review'
 import type { UiSectionTabItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, ref, watch } from 'vue'
@@ -124,7 +124,7 @@ const currentExamId = computed(() => selectedExamId.value || '')
 
 const activeTab = ref<AppealTabKey>('policy')
 const pendingCount = ref(0)
-const windowPolicy = ref<ExamReviewWindowPolicyVO | null>(null)
+const windowPolicy = ref<ExamReviewWindowPolicy | null>(null)
 
 const windowStatusLabel = computed(() => {
   const status = windowPolicy.value?.policyStatus

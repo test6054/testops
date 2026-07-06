@@ -1,6 +1,6 @@
 import type { ComputedRef, Ref } from 'vue'
-import type { ExamDetailVO } from '@/apis/mark/exam'
-import type { MarkingProgressVO, WorkbenchStageSnapshotVO } from '@/apis/mark/exam-progress'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
+import type { ExamWorkbenchStageSnapshotResponse, MarkingProgressResponse } from '@/apis/mark/exam-progress'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
@@ -21,7 +21,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 export interface UseExamWorkspaceChromeOptions {
   examId: ComputedRef<string>
-  snapshot: Ref<WorkbenchStageSnapshotVO | null>
+  snapshot: Ref<ExamWorkbenchStageSnapshotResponse | null>
   journeyStages: ComputedRef<WorkbenchStage[]>
   activeJourneyKey: ComputedRef<ExamJourneyKey | 'overview'>
   suggestedStageKey: ComputedRef<MarkStageKey | null | undefined>
@@ -33,10 +33,10 @@ export interface UseExamWorkspaceChromeOptions {
  */
 export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
   const router = useRouter()
-  const examDetail = ref<ExamDetailVO | null>(null)
+  const examDetail = ref<ExamDetailResponse | null>(null)
   const detailLoading = ref(false)
 
-  const markingProgress = computed<MarkingProgressVO | null>(
+  const markingProgress = computed<MarkingProgressResponse | null>(
     () => options.snapshot.value?.markingProgress ?? null,
   )
 

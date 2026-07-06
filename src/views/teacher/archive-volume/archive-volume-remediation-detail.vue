@@ -338,11 +338,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  ArchiveEvaluationCampaignVO,
+  ArchiveEvaluationCampaignResponse,
+  ArchiveRemediationEvidenceResponse,
   ArchiveRemediationEvidenceStatusCode,
-  ArchiveRemediationEvidenceVO,
   ArchiveRemediationPriorityCode,
-  ArchiveRemediationTaskVO,
+  ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
 import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
 import type { SignalMetric } from '@/types/workbench'
@@ -412,12 +412,12 @@ const evidenceUploadOpen = ref(false)
 const evidenceUploadSubmitting = ref(false)
 const evidenceUploadFileId = ref<string>()
 const evidenceUploadFileName = ref('')
-const taskDetail = ref<ArchiveRemediationTaskVO | null>(null)
+const taskDetail = ref<ArchiveRemediationTaskResponse | null>(null)
 const volumeArchiveNo = ref('')
 const taskVolumeDepartmentId = ref<string>()
 const editAssigneeUserId = ref<string>()
-const campaignSummary = ref<ArchiveEvaluationCampaignVO | null>(null)
-const campaignTasks = ref<ArchiveRemediationTaskVO[]>([])
+const campaignSummary = ref<ArchiveEvaluationCampaignResponse | null>(null)
+const campaignTasks = ref<ArchiveRemediationTaskResponse[]>([])
 
 const taskId = computed(() => String(route.params.taskId ?? ''))
 
@@ -549,7 +549,7 @@ const canUploadEvidence = computed(() => {
   return canActOnTask.value
 })
 
-const evidenceColumns: ColumnsType<ArchiveRemediationEvidenceVO> = [
+const evidenceColumns: ColumnsType<ArchiveRemediationEvidenceResponse> = [
   { title: '文件名', key: 'fileName', dataIndex: 'fileName' },
   { title: '大小', key: 'fileSize', width: 100 },
   { title: '上传时间', key: 'createTime', width: 168 },

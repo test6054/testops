@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import type { ExamScannerKioskBatchHistoryItem } from '@/apis/mark/scanner-kiosk'
+import type { ExamScannerBatchResponse } from '@/apis/mark/scanner-kiosk'
 /**
  * 本机历史批次（只读）
  *
@@ -131,7 +131,7 @@ function reloadHistory() {
 }
 
 function historyBadgeTone(
-  item: ExamScannerKioskBatchHistoryItem,
+  item: ExamScannerBatchResponse,
 ): 'success' | 'warning' | 'danger' | 'muted' {
   if (item.discardedTime || item.status === ScanBatchStatusCode.DISCARDED) return 'danger'
   if (item.sealedTime) return 'success'
@@ -139,13 +139,13 @@ function historyBadgeTone(
   return 'muted'
 }
 
-function historyBadgeText(item: ExamScannerKioskBatchHistoryItem): string {
+function historyBadgeText(item: ExamScannerBatchResponse): string {
   if (item.discardedTime || item.status === ScanBatchStatusCode.DISCARDED) return '已废弃'
   if (item.sealedTime) return '已封存'
   return item.statusMessage
 }
 
-function historyModeText(item: ExamScannerKioskBatchHistoryItem): string {
+function historyModeText(item: ExamScannerBatchResponse): string {
   const mode = workflow.scanModeText(item.scanMode, '')
   if (item.scanMode !== ScannerKioskScanModeCode.SUPPLEMENT) return mode
   const replaceText = item.replaceTargetPage ? '替换目标页' : '追加补扫'

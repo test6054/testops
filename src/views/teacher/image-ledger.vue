@@ -49,7 +49,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { ExamPaperDuplicateResolutionVO, ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
+import type { ExamPaperDuplicateResolutionVO, ImageLedgerDetailResponse } from '@/apis/mark/image-ledger'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -82,7 +82,7 @@ const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
   = useExamJourneyContextBar('影像账本')
 const { refreshSnapshot } = useWorkspaceExamId()
 
-const ledger = ref<ImageLedgerDetailVO | null>(null)
+const ledger = ref<ImageLedgerDetailResponse | null>(null)
 const duplicateCardRef = ref<InstanceType<typeof DuplicateResolutionCard> | null>(null)
 const loadingDetail = ref(false)
 const balancing = ref(false)

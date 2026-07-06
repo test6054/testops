@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { ExamDetailVO } from '@/apis/mark/exam'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed } from 'vue'
 import {
@@ -19,7 +19,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'ExamPrepInfoPanels' })
 
 const props = defineProps<{
-  detail: ExamDetailVO
+  detail: ExamDetailResponse
   examFullScore?: number | null
 }>()
 

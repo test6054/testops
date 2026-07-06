@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import type { ArchiveVolumeExamGateVO } from '@/apis/mark/archive-volume'
+import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
 import { onUnmounted, ref } from 'vue'
 import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import {
@@ -16,7 +16,7 @@ export interface ArchiveAutoCreatePollOptions {
   maxIntervalMs?: number
 }
 
-function isPollFailed(gate: ArchiveVolumeExamGateVO): boolean {
+function isPollFailed(gate: ArchiveVolumeExamGateResponse): boolean {
   if (gate.autoCreateFullyHealthy === true) {
     return false
   }
@@ -33,7 +33,7 @@ function isPollFailed(gate: ArchiveVolumeExamGateVO): boolean {
   return false
 }
 
-function isPollSucceeded(gate: ArchiveVolumeExamGateVO): boolean {
+function isPollSucceeded(gate: ArchiveVolumeExamGateResponse): boolean {
   return gate.autoCreateFullyHealthy === true
 }
 
@@ -51,7 +51,7 @@ export function useArchiveAutoCreatePoll(options: ArchiveAutoCreatePollOptions) 
     polling.value = false
   }
 
-  async function pollOnce(): Promise<ArchiveVolumeExamGateVO> {
+  async function pollOnce(): Promise<ArchiveVolumeExamGateResponse> {
     return getArchiveVolumeExamGate(options.examId.value)
   }
 

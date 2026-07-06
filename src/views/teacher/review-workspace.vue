@@ -115,7 +115,7 @@
             <template #icon><FileImageOutlined /></template>
             <UiEmpty
               v-if="
-                !detail?.sliceFileId && !detail?.sourceScanPage && !detail?.masterPaperPage?.fileId
+                !detail?.sliceFileId && !detail?.sourceScanPage && !detail?.layoutPaperPage?.fileId
               "
               description="暂无数据"
             />
@@ -123,7 +123,7 @@
               v-else
               :slice-file-id="detail?.sliceFileId"
               :source-scan-page="detail?.sourceScanPage"
-              :master-paper-page="detail?.masterPaperPage"
+              :layout-paper-page="detail?.layoutPaperPage"
               :confidential="isExamConfidential"
               :exam-label="examConfidentialLabel"
               :watermark-lines="watermarkLines"
@@ -382,15 +382,15 @@
 
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type { AnnotationVO } from '@/apis/mark/exam-annotation'
+import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
-  ExamQuestionAiExecutionItemVO,
+  ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
 import type {
-  ReviewTaskDetailVO,
-  ReviewTaskItemVO,
+  ReviewTaskDetailResponse,
+  ReviewTaskItemResponse,
 } from '@/apis/mark/exam-review-task'
 import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
@@ -520,7 +520,7 @@ function goBack(): void {
 }
 
 // ─── 复核任务详情 ──────────────────────────
-const detail = ref<ReviewTaskDetailVO | null>(null)
+const detail = ref<ReviewTaskDetailResponse | null>(null)
 const loading = ref(false)
 
 const immersionSubtitle = computed(() => {
@@ -556,7 +556,7 @@ const canReject = computed(() => {
 })
 
 // ─── 批注列表 ─────────────────────────────
-const annotations = ref<AnnotationVO[]>([])
+const annotations = ref<AnnotationResponse[]>([])
 
 async function loadAnnotations(): Promise<void> {
   if (!examId.value || !detail.value) return
@@ -581,7 +581,7 @@ async function loadAnnotations(): Promise<void> {
 }
 
 // ─── B-7 同题剩余复核任务队列（用于「提交并取下一份」流水线接力） ─────
-const reviewQueue = ref<ReviewTaskItemVO[]>([])
+const reviewQueue = ref<ReviewTaskItemResponse[]>([])
 
 /**
  * 加载当前考试 + 当前题目下可继续复核的任务集合。
@@ -639,7 +639,7 @@ async function loadReviewQueue(): Promise<void> {
         '同题复核队列加载失败，请刷新后重试',
       ),
     ])
-    const merged = new Map<string, ReviewTaskItemVO>()
+    const merged = new Map<string, ReviewTaskItemResponse>()
     for (const item of pendingItems) {
       merged.set(item.reviewTaskId, item)
     }
@@ -763,7 +763,7 @@ const lastExperienceAssistMeta = ref<{
 } | null>(null)
 
 /** 从复核详情同步经验辅助徽标状态 */
-function syncExperienceAssistMetaFromDetail(taskDetail: ReviewTaskDetailVO | null): void {
+function syncExperienceAssistMetaFromDetail(taskDetail: ReviewTaskDetailResponse | null): void {
   const audit = taskDetail?.referenceExperienceAudit
   if (audit?.referenceExperienceApplied && audit.referenceExperienceSourceExamName) {
     lastExperienceAssistMeta.value = {
@@ -831,7 +831,7 @@ function resetTaskState(): void {
 /**
  * 加载复核任务详情：活跃态任务先 claim 绑定当前教师，只读态（APPROVED/REJECTED 已关闭）走 detail。
  */
-async function loadReviewTaskDetail(): Promise<ReviewTaskDetailVO> {
+async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
   const preview = await getReviewTaskDetail({
     examId: examId.value,
     reviewTaskId: taskId.value,
@@ -994,7 +994,7 @@ function clearAiSuggestionToManual(): void {
 // AI 历史执行记录抽屉状态
 const executionsDrawerOpen = ref<boolean>(false)
 const executionsLoading = ref<boolean>(false)
-const aiExecutions = ref<ExamQuestionAiExecutionItemVO[]>([])
+const aiExecutions = ref<ExamQuestionAiExecutionItemResponse[]>([])
 const highlightExecutionTraceId = ref<string | null>(null)
 
 /** 打开抽屉后拉取历史记录，可选定位当前 AI trace */

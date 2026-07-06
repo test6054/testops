@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ExamCandidateVO } from '@/apis/mark/exam-scope'
+import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
 /**
  * 扫描中异常修正面板：边扫边处理，占用缩略图列（非遮罩叠加）。
  */
@@ -28,7 +28,7 @@ const { workflow, stage } = useKioskCtx()
 
 const studentNo = ref('')
 const candidateRosterId = ref('')
-const candidates = ref<ExamCandidateVO[]>([])
+const candidates = ref<ExamCandidateResponse[]>([])
 const candidatesLoading = ref(false)
 const candidatesLoadError = ref('')
 const binding = ref(false)
@@ -115,7 +115,7 @@ const diagnosticText = computed(() => {
 
 const showRetryUpload = computed(() => currentPage.value?.status === LocalScanPageStatusCode.FAILED)
 
-function isCandidateBindable(candidate: ExamCandidateVO): boolean {
+function isCandidateBindable(candidate: ExamCandidateResponse): boolean {
   return candidate.status === CandidateStatusCode.ACTIVE
 }
 

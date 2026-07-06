@@ -173,7 +173,8 @@ async function openPortfolioGapScan() {
     })
     const ticket = created.ticket
     if (!ticket?.ticketId) {
-      throw new Error('创建档案袋派单失败')
+      showUserError(null, '创建档案袋派单失败')
+      return
     }
     dispatchResult.value = {
       ticketId: ticket.ticketId,

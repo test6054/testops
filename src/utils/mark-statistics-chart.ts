@@ -1,9 +1,9 @@
 import type { DashboardGradingMetricsVO } from '@/apis/mark/admin-dashboard'
-import type { CourseAchievementItemVO, ExamStatSnapshotVO, SemesterGrowthItemVO } from '@/apis/mark/cross-exam-analysis'
+import type { CourseAchievementItemResponse, ExamStatSnapshotResponse, SemesterGrowthItemResponse } from '@/apis/mark/cross-exam-analysis'
 import type { ErrorCauseClusterItemVO } from '@/apis/mark/error-cause-cluster'
-import type { ReviewQuestionProgressItemVO } from '@/apis/mark/exam-progress'
-import type { ProgressMonitorRecordVO } from '@/apis/mark/marking-quality'
-import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
+import type { ReviewQuestionProgressItemResponse } from '@/apis/mark/exam-progress'
+import type { ProgressMonitorRecordResponse } from '@/apis/mark/marking-quality'
+import type { ExamQuestionAnalysisRecordResponse } from '@/apis/mark/question-analysis'
 import type { BadgeTone, UiBarChartItem, UiScatterSeries, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import type { MarkHeatmapCell } from '@/utils/mark-echarts-options'
 import { CourseObjectiveDimensionDescription } from '@/apis/mark/cross-exam-analysis'
@@ -42,7 +42,7 @@ function formatPercentText(value: number | undefined): string {
 }
 
 /** 考试统计快照 → UiTrendChart 点位：纵轴为得分率百分制 */
-export function examStatSnapshotsToTrendPoints(snapshots: ExamStatSnapshotVO[]): UiTrendPoint[] {
+export function examStatSnapshotsToTrendPoints(snapshots: ExamStatSnapshotResponse[]): UiTrendPoint[] {
   if (snapshots.length === 0) return []
   return snapshots.map((snapshot, index) => ({
     key: snapshot.examId || `exam-${index}`,
@@ -66,7 +66,7 @@ export function examScaleMetricsToBarItems(metrics: {
 }
 
 /** 课程目标达成条目 → UiBarChart 条目（百分制纵轴） */
-export function achievementItemsToBarItems(items: CourseAchievementItemVO[]): UiBarChartItem[] {
+export function achievementItemsToBarItems(items: CourseAchievementItemResponse[]): UiBarChartItem[] {
   if (items.length === 0) return []
   return items.map((item, index) => {
     const label = item.objectiveDimension
@@ -84,7 +84,7 @@ export function achievementItemsToBarItems(items: CourseAchievementItemVO[]): Ui
 }
 
 /** 学期成长条目 → UiBarChart 条目：展示结束值，helper 标注起止对照 */
-export function growthItemsToBarItems(items: SemesterGrowthItemVO[]): UiBarChartItem[] {
+export function growthItemsToBarItems(items: SemesterGrowthItemResponse[]): UiBarChartItem[] {
   if (items.length === 0) return []
   return items.map((item, index) => {
     const helperParts = [
@@ -127,7 +127,7 @@ export function scoreHistogramToBarItems(
 
 /** 题目复核进度 → UiBarChart 条目：展示已通过任务数 */
 export function reviewProgressToBarItems(
-  rows: ReviewQuestionProgressItemVO[],
+  rows: ReviewQuestionProgressItemResponse[],
 ): UiBarChartItem[] {
   if (rows.length === 0) return []
   return rows.map((row) => ({
@@ -143,7 +143,7 @@ export function reviewProgressToBarItems(
 
 /** 各题正确率 → UiBarChart 条目（百分制） */
 export function correctRatioToBarItems(
-  rows: ExamQuestionAnalysisRecordVO[],
+  rows: ExamQuestionAnalysisRecordResponse[],
 ): UiBarChartItem[] {
   const validRows = rows.filter((row) => row.totalCount > 0)
   if (validRows.length === 0) return []
@@ -189,7 +189,7 @@ export const SCATTER_ZONE_COLORS: Record<string, string> = {
 
 /** 题目质量分析 → UiScatterChart 序列：按难度/区分度四区段分组 */
 export function buildQuestionQualityScatterSeries(
-  rows: ExamQuestionAnalysisRecordVO[],
+  rows: ExamQuestionAnalysisRecordResponse[],
 ): UiScatterSeries[] {
   const ideal: UiScatterSeries['points'] = []
   const tooHard: UiScatterSeries['points'] = []
@@ -280,7 +280,7 @@ export function gradingMetricsToBarItems(metrics: DashboardGradingMetricsVO): Ui
 }
 
 /** 阅卷进度快照序列 → 完成率趋势点 */
-export function progressSnapshotsToTrendPoints(records: ProgressMonitorRecordVO[]): UiTrendPoint[] {
+export function progressSnapshotsToTrendPoints(records: ProgressMonitorRecordResponse[]): UiTrendPoint[] {
   if (records.length === 0) return []
   return records.map((record, index) => ({
     key: record.id || `snapshot-${index}`,
@@ -298,7 +298,7 @@ function formatSnapshotLabel(snapshotTime: string, index: number): string {
 
 /** 题目复核进度 → 热力图单元格 */
 export function reviewProgressToHeatmapCells(
-  rows: ReviewQuestionProgressItemVO[],
+  rows: ReviewQuestionProgressItemResponse[],
 ): MarkHeatmapCell[] {
   if (rows.length === 0) return []
   return rows.map((row) => {

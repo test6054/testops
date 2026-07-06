@@ -1,4 +1,4 @@
-import type { ExamCandidateVO } from '@/apis/mark/exam-scope'
+import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
 /**
  * 批改主链：考试考生名册 composable
  *
@@ -8,8 +8,8 @@ import type { ExamCandidateVO } from '@/apis/mark/exam-scope'
  * - 切换 examId 时自动重载，调用方只需观察 examId 即可
  *
  * 后端契约：
- * - POST /api/mark/exams/candidates 返回 ExamCandidateVO[]
- * - ExamCandidateVO.className 由后端通过 edu-user 班级主数据回填
+ * - POST /api/mark/exams/candidates 返回 ExamCandidateResponse[]
+ * - ExamCandidateResponse.className 由后端通过 edu-user 班级主数据回填
  *
  * 用法示例：
  * ```ts
@@ -48,7 +48,7 @@ export interface MarkStudentOption {
 }
 
 export function useMarkExamRoster() {
-  const candidates = ref<ExamCandidateVO[]>([])
+  const candidates = ref<ExamCandidateResponse[]>([])
   const loading = ref(false)
 
   const classOptions = computed<MarkClassOption[]>(() => {

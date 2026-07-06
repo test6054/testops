@@ -1,6 +1,6 @@
 import type { InjectionKey, Ref } from 'vue'
 import type { AiAnalysisCenterOverviewResponse } from '@/apis/mark/analysis-center'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import { computed, inject, provide, ref, watch } from 'vue'
@@ -64,7 +64,7 @@ export function useAiAnalysisScope() {
   provide(AI_ANALYSIS_CLASS_ID_KEY, classId)
   provide(AI_ANALYSIS_CLASS_LABEL_KEY, classLabel)
   const examsLoading = ref(false)
-  const exams = ref<ExamSummaryVO[]>([])
+  const exams = ref<ExamSummaryResponse[]>([])
   const overview = ref<AiAnalysisCenterOverviewResponse | null>(null)
   const overviewLoading = ref(false)
   const overviewLoadFailed = ref(false)

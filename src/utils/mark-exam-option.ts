@@ -1,4 +1,4 @@
-import type { ExamDetailVO, ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamDetailResponse, ExamSummaryResponse } from '@/apis/mark/exam'
 import { formatSemester } from '@/types/enums/semester-enum'
 
 export interface MarkExamSelectOption {
@@ -7,19 +7,19 @@ export interface MarkExamSelectOption {
 }
 
 export function formatMarkExamOptionLabel(
-  exam: Pick<ExamSummaryVO, 'examName' | 'examNo'>,
+  exam: Pick<ExamSummaryResponse, 'examName' | 'examNo'>,
 ): string {
   if (!exam.examNo) return exam.examName
   return `${exam.examName} (${exam.examNo})`
 }
 
 export function formatMarkExamAcademicTerm(
-  exam: Pick<ExamSummaryVO, 'academicYear' | 'semester'>,
+  exam: Pick<ExamSummaryResponse, 'academicYear' | 'semester'>,
 ): string {
   return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
 }
 
-export function toMarkExamSelectOption(exam: ExamSummaryVO): MarkExamSelectOption {
+export function toMarkExamSelectOption(exam: ExamSummaryResponse): MarkExamSelectOption {
   return {
     value: exam.examId,
     label: [formatMarkExamOptionLabel(exam), formatMarkExamAcademicTerm(exam)]
@@ -29,7 +29,7 @@ export function toMarkExamSelectOption(exam: ExamSummaryVO): MarkExamSelectOptio
 }
 
 /** 详情转列表项，供 URL 预选考试补全下拉标签 */
-export function examSummaryFromDetail(detail: ExamDetailVO): ExamSummaryVO {
+export function examSummaryFromDetail(detail: ExamDetailResponse): ExamSummaryResponse {
   return {
     examId: detail.examId,
     courseId: detail.courseId,

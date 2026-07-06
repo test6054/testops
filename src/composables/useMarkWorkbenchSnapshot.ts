@@ -1,4 +1,4 @@
-import type { WorkbenchStageSnapshotVO } from '@/apis/mark/exam-progress'
+import type { ExamWorkbenchStageSnapshotResponse } from '@/apis/mark/exam-progress'
 import { storeToRefs } from 'pinia'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { getWorkbenchStageSnapshot } from '@/apis/mark/exam-progress'
@@ -29,7 +29,7 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
   const refreshing = ref(false)
   const pollIntervalMs = ref(SNAPSHOT_POLL_BASE_MS)
 
-  function shouldPollSnapshot(current: WorkbenchStageSnapshotVO | null): boolean {
+  function shouldPollSnapshot(current: ExamWorkbenchStageSnapshotResponse | null): boolean {
     if (!current) {
       return false
     }

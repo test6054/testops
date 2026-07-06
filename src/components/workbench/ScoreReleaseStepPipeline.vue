@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { FinalScoreRiskOverviewVO } from '@/apis/mark/exam-score'
+import type { FinalScoreRiskOverviewResponse } from '@/apis/mark/exam-score'
 import type {ScoreReleaseStep} from '@/utils/score-release-step';
 import CheckOutlined from '@ant-design/icons-vue/CheckOutlined'
 import { computed } from 'vue'
@@ -10,7 +10,7 @@ import { buildScoreReleaseSteps } from '@/utils/score-release-step'
 defineOptions({ name: 'ScoreReleaseStepPipeline' })
 
 const props = defineProps<{
-  overview: FinalScoreRiskOverviewVO | null
+  overview: FinalScoreRiskOverviewResponse | null
   allScoresPublished?: boolean
 }>()
 
@@ -33,28 +33,31 @@ function handleSelect(step: ScoreReleaseStep): void {
       <span class="score-release-pipeline__title">发布流程</span>
       <span class="score-release-pipeline__meta">{{ doneCount }}/{{ steps.length }} 已完成</span>
     </template>
-    <div class="score-release-pipeline__track" role="list" aria-label="成绩发布流程">
-      <button
+    <ul class="score-release-pipeline__track" aria-label="成绩发布流程">
+      <li
         v-for="(step, index) in steps"
         :key="step.key"
-        type="button"
-        class="score-release-pipeline__step"
-        :class="[
-          `score-release-pipeline__step--${step.status}`,
-          { 'score-release-pipeline__step--current': step.status === 'active' },
-        ]"
-        role="listitem"
-        @click="handleSelect(step)"
+        class="score-release-pipeline__item"
       >
-        <span v-if="index < steps.length - 1" class="score-release-pipeline__connector" aria-hidden="true" />
-        <span class="score-release-pipeline__dot">
-          <CheckOutlined v-if="step.status === 'done'" />
-          <span v-else>{{ index + 1 }}</span>
-        </span>
-        <span class="score-release-pipeline__label">{{ step.label }}</span>
-        <span class="score-release-pipeline__desc">{{ step.description }}</span>
-      </button>
-    </div>
+        <button
+          type="button"
+          class="score-release-pipeline__step"
+          :class="[
+            `score-release-pipeline__step--${step.status}`,
+            { 'score-release-pipeline__step--current': step.status === 'active' },
+          ]"
+          @click="handleSelect(step)"
+        >
+          <span v-if="index < steps.length - 1" class="score-release-pipeline__connector" aria-hidden="true" />
+          <span class="score-release-pipeline__dot">
+            <CheckOutlined v-if="step.status === 'done'" />
+            <span v-else>{{ index + 1 }}</span>
+          </span>
+          <span class="score-release-pipeline__label">{{ step.label }}</span>
+          <span class="score-release-pipeline__desc">{{ step.description }}</span>
+        </button>
+      </li>
+    </ul>
   </WorkbenchSurfaceCard>
 </template>
 
@@ -78,9 +81,19 @@ function handleSelect(step: ScoreReleaseStep): void {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__item {
+    margin: 0;
+    padding: 0;
+    min-width: 0;
   }
 
   &__step {
+    width: 100%;
     position: relative;
     display: flex;
     flex-direction: column;

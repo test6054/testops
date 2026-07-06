@@ -129,12 +129,9 @@ function attachmentFileIds(): string[] {
 }
 
 function buildDraftPayload() {
-  if (!currentUserId.value) {
-    throw new Error('未获取当前用户')
-  }
   return {
     id: form.id || undefined,
-    teacherUserId: currentUserId.value,
+    teacherUserId: currentUserId.value!,
     certLevel: form.certLevel.trim() || undefined,
     certYear: form.certYear.trim() || undefined,
     enterprisePracticeDays: form.enterprisePracticeDays ?? undefined,

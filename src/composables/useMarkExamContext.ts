@@ -1,5 +1,5 @@
 import type { InjectionKey } from 'vue'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { MarkExamSelectorOptions } from '@/composables/useMarkExamSelector'
 import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
 import { computed, inject, provide, ref, watch } from 'vue'
@@ -21,7 +21,7 @@ function createWorkbenchExamAdapter(): MarkExamContext {
   }
   const markStageStore = useMarkStageStore()
   const selectedExamId = workbench.selectedExamId
-  const currentExam = ref<ExamSummaryVO | null>(null)
+  const currentExam = ref<ExamSummaryResponse | null>(null)
 
   /** 工作台子页不显示考试选择器，但仍需真实考试详情支撑所有权判断。 */
   async function loadCurrentExamDetail(examId: string | undefined): Promise<void> {
@@ -46,7 +46,7 @@ function createWorkbenchExamAdapter(): MarkExamContext {
   )
 
   return {
-    exams: ref<ExamSummaryVO[]>([]),
+    exams: ref<ExamSummaryResponse[]>([]),
     examOptions: computed<MarkExamSelectOption[]>(() =>
       currentExam.value ? [toMarkExamSelectOption(currentExam.value)] : [],
     ),
@@ -55,7 +55,7 @@ function createWorkbenchExamAdapter(): MarkExamContext {
     resolvingPinned: ref(false),
     selectedExamId,
     selectedExamSelectValue: computed(() => selectedExamId.value || undefined),
-    selectedExam: computed<ExamSummaryVO | null>(() => currentExam.value),
+    selectedExam: computed<ExamSummaryResponse | null>(() => currentExam.value),
     selectedExamLabel: computed(() => {
       if (markStageStore.selectedExamLabel) {
         return markStageStore.selectedExamLabel

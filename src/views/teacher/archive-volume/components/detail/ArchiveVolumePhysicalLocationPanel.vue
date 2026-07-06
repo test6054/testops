@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ArchivePhysicalLocationVO, ArchiveVolumeDetailVO } from '@/apis/mark/archive-volume'
+import type { ArchivePhysicalLocationResponse, ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
@@ -16,7 +16,7 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
   volumeId: string
-  detail: ArchiveVolumeDetailVO
+  detail: ArchiveVolumeDetailResponse
   canEdit: boolean
 }>()
 
@@ -26,7 +26,7 @@ const emit = defineEmits<{
 
 const submitting = ref(false)
 const historyLoading = ref(false)
-const locationHistory = ref<ArchivePhysicalLocationVO[]>([])
+const locationHistory = ref<ArchivePhysicalLocationResponse[]>([])
 const form = reactive({
   building: '',
   room: '',
@@ -116,12 +116,12 @@ async function handleSave() {
 }
 
 function formatStructuredLocation(
-  item: Pick<ArchivePhysicalLocationVO, 'building' | 'room' | 'cabinet' | 'slot'>,
+  item: Pick<ArchivePhysicalLocationResponse, 'building' | 'room' | 'cabinet' | 'slot'>,
 ) {
   return [item.building, item.room, item.cabinet, item.slot].filter(Boolean).join(' / ')
 }
 
-function formatLocationLabel(item: ArchivePhysicalLocationVO) {
+function formatLocationLabel(item: ArchivePhysicalLocationResponse) {
   const structured = formatStructuredLocation(item)
   return structured || '—'
 }

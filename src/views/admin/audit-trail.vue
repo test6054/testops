@@ -290,12 +290,12 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type {
   AuditTargetTypeCode,
+  DiagnosticSampleResponse,
   DiagnosticSampleTypeCode,
-  DiagnosticSampleVO,
-  OperationLogVO,
+  OperationLogResponse,
   OperationTypeCode,
 } from '@/apis/mark/admin-audit'
-import type { IncidentLevelCode, IncidentRecordVO, IncidentTypeCode } from '@/apis/mark/admin-dashboard'
+import type { ExamIncidentRecord, IncidentLevelCode, IncidentTypeCode } from '@/apis/mark/admin-dashboard'
 import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -418,7 +418,7 @@ const auditSignalMetrics = computed((): SignalMetric[] => [
 
 // ─── 审计日志 ──────────────────────────────────
 const logLoading = ref(false)
-const operationLogs = ref<OperationLogVO[]>([])
+const operationLogs = ref<OperationLogResponse[]>([])
 const logFilter = reactive<{ operationType?: OperationTypeCode }>({})
 const logPagination = reactive<TablePaginationConfig>({
   current: 1,
@@ -491,7 +491,7 @@ function handleLogPageChange(pageInfo: { current: number, pageSize: number }) {
 
 // ─── 重大事件 ──────────────────────────────────
 const incidentLoading = ref(false)
-const incidents = ref<IncidentRecordVO[]>([])
+const incidents = ref<ExamIncidentRecord[]>([])
 const incidentFilter = reactive({ unresolvedOnly: false })
 
 const incidentFilterFields: FilterField[] = [
@@ -506,7 +506,7 @@ const incidentFilterFields: FilterField[] = [
   },
 ]
 
-const incidentColumns: ColumnsType<IncidentRecordVO> = [
+const incidentColumns: ColumnsType<ExamIncidentRecord> = [
   { title: '级别', key: 'incidentLevel', dataIndex: 'incidentLevel', width: 90 },
   { title: '类型', key: 'incidentType', dataIndex: 'incidentType', width: 140 },
   { title: '摘要', key: 'summary', dataIndex: 'summary', ellipsis: true },
@@ -542,10 +542,10 @@ async function loadIncidents() {
 // ─── 解决重大事件弹窗 ──────────────────────────────────
 const resolveModalOpen = ref(false)
 const resolving = ref(false)
-const resolvingIncident = ref<IncidentRecordVO | null>(null)
+const resolvingIncident = ref<ExamIncidentRecord | null>(null)
 const resolveNote = ref('')
 
-function openResolveModal(incident: IncidentRecordVO) {
+function openResolveModal(incident: ExamIncidentRecord) {
   resolvingIncident.value = incident
   resolveNote.value = ''
   resolveModalOpen.value = true
@@ -576,7 +576,7 @@ async function submitResolve() {
 
 // ─── 异常留痕样本 ──────────────────────────────────
 const sampleLoading = ref(false)
-const diagnosticSamples = ref<DiagnosticSampleVO[]>([])
+const diagnosticSamples = ref<DiagnosticSampleResponse[]>([])
 const sampleFilter = reactive<{ sampleType?: DiagnosticSampleTypeCode }>({})
 const samplePagination = reactive<TablePaginationConfig>({
   current: 1,

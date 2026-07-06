@@ -1,4 +1,4 @@
-import type { IncidentRecordVO } from '@/apis/mark/admin-dashboard'
+import type { ExamIncidentRecord } from '@/apis/mark/admin-dashboard'
 import type { PageResult, QueryDto } from '@/types'
 import type { AuditTargetTypeCode } from '@/types/enums/audit-target-type-enum'
 import type { DiagnosticSampleTypeCode } from '@/types/enums/diagnostic-sample-type-enum'
@@ -60,7 +60,7 @@ export interface OperationLogQueryRequest extends QueryDto {
 }
 
 /** 审计日志记录 - 对应 OperationLogResponse */
-export interface OperationLogVO {
+export interface OperationLogResponse {
   id: string
   examId: string
   operationType: OperationTypeCode
@@ -94,7 +94,7 @@ export interface DiagnosticSampleQueryRequest extends QueryDto {
 }
 
 /** 诊断样本记录 - 对应 DiagnosticSampleResponse */
-export interface DiagnosticSampleVO {
+export interface DiagnosticSampleResponse {
   id: string
   examId: string
   sampleType: DiagnosticSampleTypeCode
@@ -115,8 +115,8 @@ export interface DiagnosticSampleVO {
  */
 export function listOperationLogs(
   request: OperationLogQueryRequest,
-): Promise<PageResult<OperationLogVO>> {
-  return http.post<PageResult<OperationLogVO>>('/api/mark/exams/audit/operation-logs', request)
+): Promise<PageResult<OperationLogResponse>> {
+  return http.post<PageResult<OperationLogResponse>>('/api/mark/exams/audit/operation-logs', request)
 }
 
 /**
@@ -125,8 +125,8 @@ export function listOperationLogs(
  */
 export function listIncidents(
   request: IncidentQueryRequest,
-): Promise<PageResult<IncidentRecordVO>> {
-  return http.post<PageResult<IncidentRecordVO>>('/api/mark/exams/audit/incidents', request)
+): Promise<PageResult<ExamIncidentRecord>> {
+  return http.post<PageResult<ExamIncidentRecord>>('/api/mark/exams/audit/incidents', request)
 }
 
 /**
@@ -143,8 +143,8 @@ export function resolveIncident(request: IncidentResolveRequest): Promise<boolea
  */
 export function listDiagnosticSamples(
   request: DiagnosticSampleQueryRequest,
-): Promise<PageResult<DiagnosticSampleVO>> {
-  return http.post<PageResult<DiagnosticSampleVO>>(
+): Promise<PageResult<DiagnosticSampleResponse>> {
+  return http.post<PageResult<DiagnosticSampleResponse>>(
     '/api/mark/exams/audit/diagnostic-samples',
     request,
   )

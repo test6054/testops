@@ -9,7 +9,6 @@ import type { RequirementIndicatorVO } from '@/apis/quality/requirement-indicato
 import { computed, onMounted, ref, watch } from 'vue'
 import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
 import { showUserError } from '@/utils/error-handler'
-import { requireArrayResult } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -66,10 +65,7 @@ async function loadOptions() {
   if (!props.requirementId) return
   loading.value = true
   try {
-    options.value = requireArrayResult(
-      await requirementIndicatorApi.listByRequirement(props.requirementId),
-      '毕业要求观测点',
-    )
+    options.value = await requirementIndicatorApi.listByRequirement(props.requirementId)
   } catch (e) {
     showUserError(e, '观测点列表加载失败')
   } finally {

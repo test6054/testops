@@ -267,9 +267,9 @@ import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-statu
 import type {
   ArchiveMaterialTypeCode,
   ArchiveVolumeMaterialSearchCriteria,
-  ArchiveVolumeMaterialSearchProfileVO,
-  ArchiveVolumeSearchHitVO,
+  ArchiveVolumeMaterialSearchProfileResponse,
   ArchiveVolumeSearchRequest,
+  ArchiveVolumeSearchResponse,
 } from '@/apis/mark/archive-volume'
 import type { CourseListVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import type { FilterField } from '@/components/ui-guide/ui/types'
@@ -357,13 +357,13 @@ const ocrDetailInitialPageNo = ref<number>()
 const ocrInlineMaterialId = ref<string>()
 const ocrInlinePageNo = ref<number>()
 const ocrInlineFileName = ref<string>()
-const hits = ref<ArchiveVolumeSearchHitVO[]>([])
+const hits = ref<ArchiveVolumeSearchResponse[]>([])
 const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 const courseOptions = ref<Array<{ value: string, label: string }>>([])
 const examOptions = ref<MarkExamSelectOption[]>([])
 const examLoading = ref(false)
 const examSearching = ref(false)
-const searchProfiles = ref<ArchiveVolumeMaterialSearchProfileVO[]>([])
+const searchProfiles = ref<ArchiveVolumeMaterialSearchProfileResponse[]>([])
 const selectedProfileId = ref<string>()
 const saveProfileForm = reactive({
   profileName: '',
@@ -487,7 +487,7 @@ const filterFields = computed<FilterField[]>(() => [
   },
 ])
 
-const columns: ColumnsType<ArchiveVolumeSearchHitVO> = [
+const columns: ColumnsType<ArchiveVolumeSearchResponse> = [
   { title: '归档卷', key: 'archive', dataIndex: 'archiveNo', width: 200 },
   { title: '学年学期', key: 'term', width: 140 },
   { title: '学号', dataIndex: 'studentNo', width: 120 },
@@ -676,7 +676,7 @@ async function loadCourses() {
 async function loadSearchProfiles() {
   profilesLoading.value = true
   try {
-    searchProfiles.value = readArrayResponse<ArchiveVolumeMaterialSearchProfileVO>(
+    searchProfiles.value = readArrayResponse<ArchiveVolumeMaterialSearchProfileResponse>(
       await listArchiveVolumeSearchProfiles(),
       '检索方案',
     )
@@ -754,19 +754,19 @@ function highlightSnippet(snippet: string): string {
   return highlightArchiveSearchSnippet(snippet, filterForm.keyword)
 }
 
-function canViewMaterialOcr(record: ArchiveVolumeSearchHitVO): boolean {
+function canViewMaterialOcr(record: ArchiveVolumeSearchResponse): boolean {
   return record.ocrStatus === 'COMPLETED'
     || record.ocrStatus === 'FAILED'
     || record.ocrStatus === 'RUNNING'
 }
 
-function openMaterialOcr(record: ArchiveVolumeSearchHitVO): void {
+function openMaterialOcr(record: ArchiveVolumeSearchResponse): void {
   ocrDetailMaterialId.value = record.materialId
   ocrDetailInitialPageNo.value = record.matchPageNo
   ocrDetailOpen.value = true
 }
 
-function openMaterialOcrPreview(record: ArchiveVolumeSearchHitVO): void {
+function openMaterialOcrPreview(record: ArchiveVolumeSearchResponse): void {
   ocrInlineMaterialId.value = record.materialId
   ocrInlinePageNo.value = record.matchPageNo
   ocrInlineFileName.value = record.fileName
@@ -849,7 +849,6 @@ function handleDeleteProfile() {
         await loadSearchProfiles()
       } catch (error) {
         showUserError(error, '删除检索方案失败')
-        throw error
       }
     },
   })

@@ -91,8 +91,8 @@
 <script setup lang="ts">
 import type {
   ArchiveTransferStatusCode,
-  ArchiveVolumeDetailVO,
-  ArchiveVolumeTransferRecordVO,
+  ArchiveVolumeDetailResponse,
+  ArchiveVolumeTransferRecordResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
@@ -120,7 +120,7 @@ defineOptions({ name: 'ArchiveVolumeTransferPanel' })
 
 const props = defineProps<{
   volumeId: string
-  detail: ArchiveVolumeDetailVO
+  detail: ArchiveVolumeDetailResponse
   canReviewTransfer: boolean
   canRejectTransfer: boolean
 }>()
@@ -134,7 +134,7 @@ const rejectingTransfer = ref(false)
 const rejectTransferOpen = ref(false)
 const rejectTransferReason = ref('')
 const historyLoading = ref(false)
-const transferRecords = ref<ArchiveVolumeTransferRecordVO[]>([])
+const transferRecords = ref<ArchiveVolumeTransferRecordResponse[]>([])
 
 function transferStatusLabel(code: ArchiveTransferStatusCode) {
   return strictEnumLabel(ArchiveTransferStatusDescription, code, 'transferStatus')
@@ -159,7 +159,7 @@ function transferCardClass(status?: ArchiveTransferStatusCode): string {
   return ''
 }
 
-function formatRecordTime(record: ArchiveVolumeTransferRecordVO): string {
+function formatRecordTime(record: ArchiveVolumeTransferRecordResponse): string {
   const time
     = record.transferStatus === 'APPROVED' || record.transferStatus === 'REJECTED'
       ? record.reviewedTime
@@ -167,7 +167,7 @@ function formatRecordTime(record: ArchiveVolumeTransferRecordVO): string {
   return time ? formatDateTime(time) : '—'
 }
 
-function formatRecordActor(record: ArchiveVolumeTransferRecordVO): string {
+function formatRecordActor(record: ArchiveVolumeTransferRecordResponse): string {
   if (record.transferStatus === 'APPROVED' || record.transferStatus === 'REJECTED') {
     return record.reviewerUserNickName || '验收人'
   }

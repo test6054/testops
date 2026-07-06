@@ -64,7 +64,7 @@
 </template>
 
 <script lang="ts" setup>
-import type {ArchiveRemediationStatusCode, ArchiveRemediationTaskVO} from '@/apis/mark/archive-volume';
+import type {ArchiveRemediationStatusCode, ArchiveRemediationTaskResponse} from '@/apis/mark/archive-volume';
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed } from 'vue'
 import {
@@ -84,12 +84,12 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 defineOptions({ name: 'ArchiveVolumeMineRemediationBanner' })
 
 const props = defineProps<{
-  tasks: ArchiveRemediationTaskVO[]
+  tasks: ArchiveRemediationTaskResponse[]
   loading: boolean
 }>()
 
 const emit = defineEmits<{
-  go: [task: ArchiveRemediationTaskVO]
+  go: [task: ArchiveRemediationTaskResponse]
 }>()
 
 const singleTaskDescription = computed(() => {
