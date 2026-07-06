@@ -1,22 +1,22 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  PfImpactReportStatus,
-  PfModelStatus,
-  PfSceneCode,
+  PfImpactReportStatusCode,
+  PfModelStatusCode,
+
   PortfolioPublishImpactReportVO,
-  PortfolioRulePublishSnapshotVO,
-} from '@/apis/portfolio/indicator-types'
+  PortfolioRulePublishSnapshotVO} from '@/apis/portfolio/indicator-types'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
-  PF_IMPACT_REPORT_STATUS_LABEL,
   PF_IMPACT_REPORT_STATUS_TONE,
-  PF_MODEL_STATUS_LABEL,
-  PF_SCENE_CODE_LABEL,
   PF_SCENE_CODE_OPTIONS,
+  PfImpactReportStatusDescription,
+  PfModelStatusDescription,
+  PfSceneCode,
+  PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -30,25 +30,25 @@ import { readPageList, readPageTotal } from '@/utils/page-result'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-function modelStatusLabel(value: PfModelStatus): string {
-  return strictEnumLabel(PF_MODEL_STATUS_LABEL, value, '快照状态')
+function modelStatusLabel(value: PfModelStatusCode): string {
+  return strictEnumLabel(PfModelStatusDescription, value, '快照状态')
 }
 
 function sceneCodeLabel(value: PfSceneCode): string {
-  return strictEnumLabel(PF_SCENE_CODE_LABEL, value, '场景编码')
+  return strictEnumLabel(PfSceneCodeDescription, value, '场景编码')
 }
 
-function impactReportStatusLabel(value: PfImpactReportStatus): string {
-  return strictEnumLabel(PF_IMPACT_REPORT_STATUS_LABEL, value, '影响报告状态')
+function impactReportStatusLabel(value: PfImpactReportStatusCode): string {
+  return strictEnumLabel(PfImpactReportStatusDescription, value, '影响报告状态')
 }
 
-function impactReportStatusTone(value: PfImpactReportStatus) {
+function impactReportStatusTone(value: PfImpactReportStatusCode) {
   return strictEnumTone(PF_IMPACT_REPORT_STATUS_TONE, value, '影响报告状态')
 }
 
 const router = useRouter()
 const activeTab = ref('history')
-const sceneCode = ref<PfSceneCode>('PERFORMANCE')
+const sceneCode = ref<PfSceneCode>(PfSceneCode.PERFORMANCE)
 const loading = ref(false)
 const rows = ref<PortfolioRulePublishSnapshotVO[]>([])
 const impactRows = ref<PortfolioPublishImpactReportVO[]>([])

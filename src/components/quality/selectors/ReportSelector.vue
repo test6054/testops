@@ -6,11 +6,11 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ReportVO } from '@/apis/quality/report'
-import type { ReportStatus, ReportType } from '@/apis/quality/types'
+import type { ReportStatusCode, ReportTypeCode } from '@/apis/quality/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import { onMounted, ref, watch } from 'vue'
 import { reportApi } from '@/apis/quality/report'
-import { REPORT_TYPE_LABEL } from '@/apis/quality/types'
+import { ReportTypeDescription } from '@/apis/quality/types'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -23,8 +23,8 @@ interface Props {
   qualityCourseId?: string | null
   schoolYear?: string | null
   semester?: SemesterCode | null
-  status?: ReportStatus
-  reportType?: ReportType
+  status?: ReportStatusCode
+  reportType?: ReportTypeCode
   placeholder?: string
   allowClear?: boolean
   disabled?: boolean
@@ -100,8 +100,8 @@ function handleChange(val: SelectValue) {
   emit('change', next, option)
 }
 
-function reportTypeLabel(value: ReportType) {
-  return strictEnumLabel(REPORT_TYPE_LABEL, value, '教学质量评价报告类型')
+function reportTypeLabel(value: ReportTypeCode) {
+  return strictEnumLabel(ReportTypeDescription, value, '教学质量评价报告类型')
 }
 
 onMounted(() => {

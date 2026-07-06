@@ -1,5 +1,4 @@
 import type { Router } from 'vue-router'
-import type { RoleEnum } from '@/utils/permission'
 import type { SeoMeta } from '@/utils/seo'
 import NProgress from 'nprogress'
 import { runPortfolioTeacherReadinessGuard } from '@/router/guards/portfolio-teacher-readiness'
@@ -38,6 +37,10 @@ function resolveDocumentBrandTitle(): string {
   }
   const shortTitle = rawTitle.split('|')[0]?.trim()
   return shortTitle || rawTitle.trim()
+}
+
+function hasSeoMeta(value: unknown): value is SeoMeta {
+  return typeof value === 'object' && value !== null
 }
 
 /** 初始化路由守卫 */
@@ -218,8 +221,8 @@ export const setupRouterGuard = (router: Router) => {
     NProgress.done()
 
     // SEO：应用路由 SEO 配置
-    if (to.meta.seo) {
-      applySeoMeta(to.meta.seo as SeoMeta)
+    if (hasSeoMeta(to.meta.seo)) {
+      applySeoMeta(to.meta.seo)
     } else if (to.meta.title) {
       document.title = `${to.meta.title} - ${resolveDocumentBrandTitle()}`
     } else {
@@ -233,7 +236,7 @@ export const setupRouterGuard = (router: Router) => {
       // 根据用户角色预加载相关路由
       const userRole = authStore.userRole
       if (userRole && isValidRole(userRole)) {
-        preloadManager.preloadByRole([userRole as RoleEnum]).catch()
+        preloadManager.preloadByRole([userRole]).catch()
       }
     }
   })

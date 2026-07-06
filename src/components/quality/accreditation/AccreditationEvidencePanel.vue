@@ -3,7 +3,6 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   AccreditationCockpitVO,
   AccreditationCycleVO,
-  AccreditationEvidenceCategory,
   AccreditationEvidenceSaveRequest,
   AccreditationEvidenceVO,
 } from '@/apis/quality/accreditation'
@@ -12,9 +11,12 @@ import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
-  ACCREDITATION_EVIDENCE_ANCHOR_LABEL,
-  ACCREDITATION_EVIDENCE_CATEGORY_LABEL,
   accreditationApi,
+  AccreditationEvidenceAnchorTypeCode,
+  AccreditationEvidenceAnchorTypeDescription,
+  AccreditationEvidenceCategoryCode,
+  AccreditationEvidenceCategoryDescription,
+  ALL_ACCREDITATION_EVIDENCE_CATEGORY_CODES,
 } from '@/apis/quality/accreditation'
 import { archiveApi } from '@/apis/quality/archive'
 import { assessmentItemApi } from '@/apis/quality/assessment-item'
@@ -31,6 +33,7 @@ import {
   expertPackageExportBlockers,
 } from '@/composables/useAccreditationWorkbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { ExpertPackageTypeCode } from '@/types/enums/expert-package-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
@@ -45,16 +48,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{ 'count-change': [count: number], "exported": [] }>()
 
-const CATEGORY_TABS: { key: '' | AccreditationEvidenceCategory, label: string }[] = [
+const CATEGORY_TABS: { key: '' | AccreditationEvidenceCategoryCode, label: string }[] = [
   { key: '', label: '全部' },
-  { key: 'EXAM_PAPER', label: '试卷样本' },
-  { key: 'HOMEWORK', label: '作业样本' },
-  { key: 'LAB_REPORT', label: '实验报告' },
-  { key: 'GRADUATION_PROJECT', label: '毕业设计' },
-  { key: 'COURSE_MATERIAL', label: '课程材料' },
-  { key: 'FACILITY', label: '实验设施' },
-  { key: 'MANAGEMENT_DOC', label: '管理文件' },
-  { key: 'OTHER', label: '其他' },
+  ...ALL_ACCREDITATION_EVIDENCE_CATEGORY_CODES.map(key => ({
+    key,
+    label: AccreditationEvidenceCategoryDescription[key],
+  })),
 ]
 
 const columns: ColumnsType = [
@@ -71,7 +70,7 @@ const exporting = ref(false)
 const evidences = ref<AccreditationEvidenceVO[]>([])
 const evidenceQuery = reactive({ pageNum: 1, pageSize: 10 })
 const evidenceTotal = ref(0)
-const categoryFilter = ref<'' | AccreditationEvidenceCategory>('')
+const categoryFilter = ref<'' | AccreditationEvidenceCategoryCode>('')
 const evidenceOpen = ref(false)
 const evidenceDrawerTitle = ref('登记认证证据')
 const markImportOpen = ref(false)
@@ -81,8 +80,8 @@ const selectedExamIds = ref<string[]>([])
 const evidenceForm = reactive<AccreditationEvidenceSaveRequest>({
   programId: '',
   trainingPlanId: '',
-  evidenceCategory: 'HOMEWORK',
-  anchorType: 'MANUAL',
+  evidenceCategory: AccreditationEvidenceCategoryCode.HOMEWORK,
+  anchorType: AccreditationEvidenceAnchorTypeCode.MANUAL,
   evidenceCode: '',
   evidenceTitle: '',
   evidenceDescription: '',
@@ -187,7 +186,7 @@ async function loadLinkedExams() {
   }
 }
 
-function resetEvidenceForm(category?: AccreditationEvidenceCategory) {
+function resetEvidenceForm(category?: AccreditationEvidenceCategoryCode) {
   evidenceForm.id = undefined
   evidenceForm.programId = props.programId
   evidenceForm.trainingPlanId = props.trainingPlanId
@@ -197,8 +196,8 @@ function resetEvidenceForm(category?: AccreditationEvidenceCategory) {
   evidenceForm.anchorId = undefined
   evidenceForm.markScannedPageId = undefined
   evidenceForm.markPaperInstanceId = undefined
-  evidenceForm.evidenceCategory = category || categoryFilter.value || 'HOMEWORK'
-  evidenceForm.anchorType = 'MANUAL'
+  evidenceForm.evidenceCategory = category || categoryFilter.value || AccreditationEvidenceCategoryCode.HOMEWORK
+  evidenceForm.anchorType = AccreditationEvidenceAnchorTypeCode.MANUAL
   evidenceForm.evidenceCode = ''
   evidenceForm.evidenceTitle = ''
   evidenceForm.evidenceDescription = ''
@@ -207,7 +206,7 @@ function resetEvidenceForm(category?: AccreditationEvidenceCategory) {
   evidenceForm.semester = undefined
 }
 
-function openEvidenceCreate(category?: AccreditationEvidenceCategory) {
+function openEvidenceCreate(category?: AccreditationEvidenceCategoryCode) {
   if (!canMutateEvidence.value) {
     message.error(evidenceMutationHint.value || '当前不可登记认证证据')
     return
@@ -261,15 +260,34 @@ async function submitEvidence() {
     return
   }
   if (evidenceForm.qualityCourseId) {
-    evidenceForm.anchorType = 'QUALITY_COURSE'
+    evidenceForm.anchorType = AccreditationEvidenceAnchorTypeCode.QUALITY_COURSE
     evidenceForm.anchorId = evidenceForm.qualityCourseId
+  }
+  const request: AccreditationEvidenceSaveRequest = {
+    id: evidenceForm.id,
+    programId: evidenceForm.programId,
+    trainingPlanId: evidenceForm.trainingPlanId,
+    qualityCourseId: evidenceForm.qualityCourseId || undefined,
+    assessmentItemId: evidenceForm.assessmentItemId || undefined,
+    sourceExamId: evidenceForm.sourceExamId || undefined,
+    evidenceCategory: evidenceForm.evidenceCategory,
+    anchorType: evidenceForm.anchorType,
+    anchorId: evidenceForm.anchorId || undefined,
+    evidenceCode: evidenceForm.evidenceCode.trim(),
+    evidenceTitle: evidenceForm.evidenceTitle.trim(),
+    evidenceDescription: evidenceForm.evidenceDescription?.trim() || undefined,
+    storageFileId: evidenceForm.storageFileId,
+    schoolYear: evidenceForm.schoolYear?.trim() || undefined,
+    semester: evidenceForm.semester,
+    markScannedPageId: evidenceForm.markScannedPageId || undefined,
+    markPaperInstanceId: evidenceForm.markPaperInstanceId || undefined,
   }
   try {
     if (evidenceForm.id) {
-      await accreditationApi.evidenceUpdate(evidenceForm)
+      await accreditationApi.evidenceUpdate(request)
       message.success('证据已更新')
     } else {
-      await accreditationApi.evidenceCreate(evidenceForm)
+      await accreditationApi.evidenceCreate(request)
       message.success('证据已登记')
     }
     evidenceOpen.value = false
@@ -339,10 +357,10 @@ async function exportExpertPackage() {
   exporting.value = true
   try {
     await archiveApi.exportExpertPackage({
-      packageType: 'PROGRAM_ACCREDITATION',
+      packageType: ExpertPackageTypeCode.PROGRAM_ACCREDITATION,
       targetId: props.trainingPlanId,
       archiveCode: `ACCRED-PKG-${props.trainingPlanId}`,
-      archiveCategory: 'PROGRAM_ACCREDITATION',
+      archiveCategory: ExpertPackageTypeCode.PROGRAM_ACCREDITATION,
       notes: '认证驾驶舱导出专业认证专家材料包',
     })
     message.success('专家材料包导出任务已提交')
@@ -425,7 +443,7 @@ defineExpose({ loadEvidences })
         <template v-if="column.key === 'evidenceCategory'">
           {{
             strictEnumLabel(
-              ACCREDITATION_EVIDENCE_CATEGORY_LABEL,
+              AccreditationEvidenceCategoryDescription,
               record.evidenceCategory,
               '认证证据类别',
             )
@@ -434,7 +452,7 @@ defineExpose({ loadEvidences })
         <template v-else-if="column.key === 'anchorType'">
           {{
             strictEnumLabel(
-              ACCREDITATION_EVIDENCE_ANCHOR_LABEL,
+              AccreditationEvidenceAnchorTypeDescription,
               record.anchorType,
               '认证证据锚点类型',
             )

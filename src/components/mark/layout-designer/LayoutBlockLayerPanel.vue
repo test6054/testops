@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
-import type { ExamLayoutBlockTypeCode } from '@/utils/exam-layout-designer'
+import type {
+  ExamLayoutBlockTypeCode} from '@/types/enums/exam-layout-block-type-enum';
 import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import {
+  ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES
+} from '@/types/enums/exam-layout-block-type-enum'
+import {
   blocksOnPage,
   createDefaultBlock,
-  EXAM_LAYOUT_BLOCK_TYPE,
   resolveBlockTypeLabel,
 } from '@/utils/exam-layout-designer'
 
@@ -23,13 +26,7 @@ const emit = defineEmits<{
 
 const pageBlocks = computed(() => blocksOnPage(props.document, props.pageNo))
 
-const addableTypes: ExamLayoutBlockTypeCode[] = [
-  EXAM_LAYOUT_BLOCK_TYPE.IDENTITY_BUBBLE,
-  EXAM_LAYOUT_BLOCK_TYPE.OBJECTIVE_MATRIX,
-  EXAM_LAYOUT_BLOCK_TYPE.SUBJECTIVE_ANSWER,
-  EXAM_LAYOUT_BLOCK_TYPE.QUESTION_STEM,
-  EXAM_LAYOUT_BLOCK_TYPE.FORBIDDEN_ZONE,
-]
+const addableTypes = ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES
 
 function addBlock(blockType: ExamLayoutBlockTypeCode): void {
   if (!props.document) {

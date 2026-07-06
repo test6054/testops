@@ -1,50 +1,53 @@
 <template>
-  <section class="recycled-panel">
-    <div class="recycled-panel__toolbar">
-      <UiButton variant="outline" size="sm" :loading="loading" @click="loadTasks">刷新</UiButton>
-    </div>
+  <WorkbenchSurfaceCard flush class="recycled-panel">
+    <template #toolbar>
+      <div class="recycled-panel__toolbar-row">
+        <span class="recycled-panel__hint">回收任务需指定目标教师后再分配</span>
+        <UiButton variant="outline" size="sm" :loading="loading" @click="loadTasks">刷新</UiButton>
+      </div>
+    </template>
 
-    <a-spin :spinning="loading">
-      <UiEmpty v-if="!loading && !tasks.length" description="暂无待分配回收任务" />
-      <UiDataTable
-        pagination-mode="none"
-        :columns="columns"
-        :data-source="tasks"
-        row-key="id"
-        size="middle"
-        flat
-        :show-pagination="false"
-        :total="tasks.length"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'reviewer'">
-            {{ record.reviewerName }}
-          </template>
-          <template v-else-if="column.key === 'recycledTime'">
-            {{ record.recycledTime ? formatDateTime(record.recycledTime) : '—' }}
-          </template>
-          <template v-else-if="column.key === 'targetReviewer'">
-            <a-select
-              v-model:value="targetReviewerByTaskId[record.id]"
-              placeholder="选择目标教师"
-              :options="reviewerOptionsByGroupId[record.groupId ?? ''] ?? []"
-              style="width: 100%"
-            />
-          </template>
-          <template v-else-if="column.key === 'action'">
-            <UiButton
-              size="sm"
-              :loading="reassigningId === record.id"
-              :disabled="!targetReviewerByTaskId[record.id]"
-              @click="submitReassign(record)"
-            >
-              再分配
-            </UiButton>
-          </template>
+    <UiSkeletonState v-if="loading" variant="table" :rows="4" compact />
+    <UiEmpty v-else-if="!loading && !tasks.length" description="暂无待分配回收任务" />
+    <UiDataTable
+      v-else
+      pagination-mode="none"
+      :columns="columns"
+      :data-source="tasks"
+      row-key="id"
+      size="middle"
+      flat
+      :show-pagination="false"
+      :total="tasks.length"
+    >
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'reviewer'">
+          {{ record.reviewerName }}
         </template>
-      </UiDataTable>
-    </a-spin>
-  </section>
+        <template v-else-if="column.key === 'recycledTime'">
+          {{ record.recycledTime ? formatDateTime(record.recycledTime) : '—' }}
+        </template>
+        <template v-else-if="column.key === 'targetReviewer'">
+          <a-select
+            v-model:value="targetReviewerByTaskId[record.id]"
+            placeholder="选择目标教师"
+            :options="reviewerOptionsByGroupId[record.groupId ?? ''] ?? []"
+            style="width: 100%"
+          />
+        </template>
+        <template v-else-if="column.key === 'action'">
+          <UiButton
+            size="sm"
+            :loading="reassigningId === record.id"
+            :disabled="!targetReviewerByTaskId[record.id]"
+            @click="submitReassign(record)"
+          >
+            再分配
+          </UiButton>
+        </template>
+      </template>
+    </UiDataTable>
+  </WorkbenchSurfaceCard>
 </template>
 
 <script lang="ts" setup>
@@ -54,11 +57,13 @@ import { computed, reactive, ref, watch } from 'vue'
 import {
   pageMarkingTasks,
   reassignRecycledMarkingTask,
-  validateMarkingTaskContract,
 } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { MarkingTaskStatusCode } from '@/types/enums/marking-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages } from '@/utils/page-result'
@@ -111,16 +116,13 @@ async function loadTasks() {
           (pageNum) =>
             pageMarkingTasks({
               examId: props.examId,
-              taskStatus: 'RECYCLED',
+              taskStatus: MarkingTaskStatusCode.RECYCLED,
               pageNum,
               pageSize: 100,
             }),
           '回收待分配任务加载失败，请稍后重试',
         )
-      ).map((task) => {
-        validateMarkingTaskContract(task)
-        return task
-      })
+      )
       return
     }
     const merged: MarkingTaskVO[] = []
@@ -130,16 +132,13 @@ async function loadTasks() {
           pageMarkingTasks({
             examId: props.examId,
             groupId,
-            taskStatus: 'RECYCLED',
+            taskStatus: MarkingTaskStatusCode.RECYCLED,
             pageNum,
             pageSize: 100,
           }),
         '回收待分配任务加载失败，请稍后重试',
       )
-      for (const task of part) {
-        validateMarkingTaskContract(task)
-        merged.push(task)
-      }
+      merged.push(...part)
     }
     tasks.value = merged
   } catch (error) {
@@ -181,9 +180,16 @@ watch(
 </script>
 
 <style scoped>
-.recycled-panel__toolbar {
+.recycled-panel__toolbar-row {
   display: flex;
-  justify-content: flex-end;
-  margin: 8px 0 12px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.recycled-panel__hint {
+  font-size: 13px;
+  color: var(--dp-text-secondary, #475569);
 }
 </style>

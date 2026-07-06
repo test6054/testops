@@ -17,6 +17,7 @@ import {
   UploadOutlined,
 } from '@ant-design/icons-vue'
 import { computed } from 'vue'
+import { LocalScanJobStatusCode } from '@/apis/mark/scanner-agent-local'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow, mutex } = useKioskCtx()
@@ -56,7 +57,9 @@ const exitTitle = computed(() => {
   )
 })
 
-const showResumeInsteadOfPause = computed(() => workflow.currentJob.value?.status === 'PAUSED')
+const showResumeInsteadOfPause = computed(
+  () => workflow.currentJob.value?.status === LocalScanJobStatusCode.PAUSED,
+)
 
 const endBatchMetrics = computed(() => {
   const job = workflow.currentJob.value

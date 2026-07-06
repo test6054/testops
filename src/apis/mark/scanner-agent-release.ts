@@ -46,7 +46,10 @@ export interface ScannerAgentReleaseVO {
 export function pageScannerAgentReleases(
   request: ScannerAgentReleaseQueryRequest,
 ): Promise<PageResult<ScannerAgentReleaseVO>> {
-  return http.post<PageResult<ScannerAgentReleaseVO>>('/api/mark/scanner-agent/releases/list', request)
+  return http.post<PageResult<ScannerAgentReleaseVO>>(
+    '/api/mark/scanner-agent/releases/list',
+    request,
+  )
 }
 
 /** POST /api/mark/scanner-agent/releases/register */

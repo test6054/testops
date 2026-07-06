@@ -23,6 +23,7 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
     suggestedStageKey,
     prepAdvisoryReasons,
     prepBlockingReasons,
+    experienceAssistBlockingReasons,
     selectedExamLabel,
   } = storeToRefs(markStageStore)
   const refreshing = ref(false)
@@ -148,6 +149,7 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
     suggestedStageKey,
     prepAdvisoryReasons,
     prepBlockingReasons,
+    experienceAssistBlockingReasons,
     selectedExamLabel,
     refreshSnapshot,
     syncSnapshotPolling: polling.syncPolling,

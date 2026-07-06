@@ -1,7 +1,7 @@
 /**
  * 学年学期默认计算：9 月起为新学年；3–8 月为春季，其余为秋季。
  */
-import { SemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
+import { ALL_SEMESTER_CODES, SemesterCode } from '@/types/enums/semester-enum'
 
 export interface AcademicYearSemester {
   academicYear: string
@@ -18,6 +18,26 @@ export function getDefaultAcademicYearAndSemester(): AcademicYearSemester {
   const semester = month >= 9 || month <= 1 ? SemesterCode.AUTUMN : SemesterCode.SPRING
 
   return { academicYear, semester }
+}
+
+/** 判断学年学期对象是否满足成对且 semester 为合法编码。 */
+export function isValidAcademicYearSemesterTerm(
+  term: AcademicYearSemester | null | undefined,
+): term is AcademicYearSemester {
+  return Boolean(term?.academicYear?.trim())
+    && (term?.semester === SemesterCode.AUTUMN || term?.semester === SemesterCode.SPRING)
+}
+
+/** flat API 字段合成 UI 用学年学期对象；任一缺失返回 undefined。 */
+export function academicYearSemesterFromFields(
+  academicYear?: string | null,
+  semester?: SemesterCode | null,
+): AcademicYearSemester | undefined {
+  const year = academicYear?.trim()
+  if (!year || (semester !== SemesterCode.AUTUMN && semester !== SemesterCode.SPRING)) {
+    return undefined
+  }
+  return { academicYear: year, semester }
 }
 
 /** 生成学年选项（基准年前后各 2 年，9 月为基准年分界） */
@@ -45,34 +65,12 @@ export function resolveDefaultDashboardFilter(options: DashboardFilterOptions): 
   const academicYears = options.academicYears?.length ? options.academicYears : generateAcademicYearOptions()
   const semesters = options.semesters?.length
     ? options.semesters
-    : SemesterOptions.map(item => item.value)
+    : [...ALL_SEMESTER_CODES]
   const academicYear = academicYears.includes(defaults.academicYear)
     ? defaults.academicYear
     : academicYears[0]
   const semester = semesters.includes(defaults.semester)
     ? defaults.semester
     : semesters[0]
-  return { academicYear, semester }
-}
-
-/** 学年学期 Select 值，仅 UI 边界使用：YYYY-YYYY_学期 */
-export function formatAcademicYearSemesterValue(academicYear: string, semester: SemesterCode): string {
-  return `${academicYear}_${semester}`
-}
-
-/** 解析学年学期 Select 值 */
-export function parseAcademicYearSemesterValue(value: string): AcademicYearSemester {
-  const separatorIndex = value.lastIndexOf('_')
-  if (separatorIndex <= 0 || separatorIndex >= value.length - 1) {
-    throw new Error('学年学期格式须为 YYYY-YYYY_学期编码')
-  }
-  const academicYear = value.substring(0, separatorIndex)
-  const semester = value.substring(separatorIndex + 1) as SemesterCode
-  if (!/^(\d{4})-(\d{4})$/.test(academicYear)) {
-    throw new Error('学年格式须为 YYYY-YYYY')
-  }
-  if (semester !== SemesterCode.AUTUMN && semester !== SemesterCode.SPRING) {
-    throw new Error('学期取值仅支持 1 或 2')
-  }
   return { academicYear, semester }
 }

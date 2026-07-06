@@ -4,6 +4,7 @@
  */
 
 import type { RouteRecordRaw } from 'vue-router'
+import { archiveVolumeWorkspaceRoutes } from '@/router/routes/archive-volume-workspace'
 import { commonRoutes, errorRoutes } from '@/router/routes/common'
 import { constantRoutes } from '@/router/routes/constant'
 import { examWorkspaceRoutes } from '@/router/routes/exam-workspace'
@@ -11,7 +12,7 @@ import { portfolioRoutes } from '@/router/routes/portfolio'
 import { qualityRoutes } from '@/router/routes/quality'
 import { studentRoutes } from '@/router/routes/student'
 import { teacherRoutes } from '@/router/routes/teacher'
-import { RoleEnum } from '@/utils/permission'
+import { isValidRole, RoleEnum } from '@/utils/permission'
 
 export { runPortfolioTeacherReadinessGuard } from '@/router/guards/portfolio-teacher-readiness'
 
@@ -19,6 +20,7 @@ const allRoutes: RouteRecordRaw[] = [
   ...constantRoutes,
   ...teacherRoutes,
   examWorkspaceRoutes,
+  archiveVolumeWorkspaceRoutes,
   ...qualityRoutes,
   ...portfolioRoutes,
   ...studentRoutes,
@@ -137,13 +139,13 @@ export function getRoutePermission(path: string): {
     }
 
     return {
-        roles: route.meta.roles as RoleEnum[] || [],
-        requireTenantAdmin: route.meta.requireTenantAdmin as boolean,
-        requirePortfolioReviewer: route.meta.requirePortfolioReviewer as boolean,
+        roles: route.meta.roles || [],
+        requireTenantAdmin: route.meta.requireTenantAdmin,
+        requirePortfolioReviewer: route.meta.requirePortfolioReviewer,
     }
 }
 
-function passesPortfolioReviewerGate(userRole: string, isTenantAdmin: boolean): boolean {
+function passesPortfolioReviewerGate(userRole: RoleEnum, isTenantAdmin: boolean): boolean {
     if (userRole === RoleEnum.SUPER_ADMIN || isTenantAdmin) {
         return true
     }
@@ -165,18 +167,24 @@ export function hasRoutePermission(
         return false
     }
 
+    if (!isValidRole(userRole)) {
+        return false
+    }
+
     if (userRole === RoleEnum.SUPER_ADMIN) {
         return true
     }
 
     // 检查角色权限
-    const hasRolePermission = permission.roles.includes(userRole as RoleEnum)
+    const hasRolePermission = permission.roles.includes(userRole)
     if (!hasRolePermission) {
         return false
     }
-    // 检查是否需要租户管理员权限
+    // 检查是否需要租户管理员权限（企业管理员 CROP_ADMIN 与后端策略维护口径一致）
     if (permission.requireTenantAdmin && !isTenantAdmin) {
-        return false
+        if (userRole !== RoleEnum.CROP_ADMIN) {
+            return false
+        }
     }
     return !(permission.requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin));
 }
@@ -197,18 +205,23 @@ export function hasRouteNamePermission(
         return false
     }
 
-    const roles = (route.meta.roles as RoleEnum[]) ?? []
+    const roles = route.meta.roles ?? []
+    if (!isValidRole(userRole)) {
+        return false
+    }
     if (userRole === RoleEnum.SUPER_ADMIN) {
         return true
     }
-    if (!roles.includes(userRole as RoleEnum)) {
+    if (!roles.includes(userRole)) {
         return false
     }
-    const requireTenantAdmin = route.meta.requireTenantAdmin as boolean | undefined
+    const requireTenantAdmin = route.meta.requireTenantAdmin
     if (requireTenantAdmin && !isTenantAdmin) {
-        return false
+        if (userRole !== RoleEnum.CROP_ADMIN) {
+            return false
+        }
     }
-    const requirePortfolioReviewer = route.meta.requirePortfolioReviewer as boolean | undefined
+    const requirePortfolioReviewer = route.meta.requirePortfolioReviewer
     return !(requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin));
 }
 

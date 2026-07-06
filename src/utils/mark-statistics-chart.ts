@@ -6,14 +6,14 @@ import type { ProgressMonitorRecordVO } from '@/apis/mark/marking-quality'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
 import type { BadgeTone, UiBarChartItem, UiScatterSeries, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import type { MarkHeatmapCell } from '@/utils/mark-echarts-options'
-import { COURSE_OBJECTIVE_DIMENSION_LABEL } from '@/apis/mark/cross-exam-analysis'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
+import { CourseObjectiveDimensionDescription } from '@/apis/mark/cross-exam-analysis'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import { formatScore, formatScorePercent } from '@/utils/format'
 import { rateTone } from '@/utils/score-tone'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** UiScatterChart 区段色：canvas/SVG 不解析 CSS 变量，故用十六进制单一真源，取值与 --dp/--ant 主题色对齐 */
-const CHART_PALETTE = {
+const CHART_PALETTE: Record<string, string> = {
   primary: '#2563eb',
   success: '#16a34a',
   warning: '#f59e0b',
@@ -23,7 +23,7 @@ const CHART_PALETTE = {
   axisLabel: '#64748b',
   axisLine: '#94a3b8',
   splitLine: '#e2e8f0',
-} as const
+}
 
 function truncateLabel(label: string, max = 8): string {
   const text = label.trim()
@@ -70,7 +70,7 @@ export function achievementItemsToBarItems(items: CourseAchievementItemVO[]): Ui
   if (items.length === 0) return []
   return items.map((item, index) => {
     const label = item.objectiveDimension
-      ? strictEnumLabel(COURSE_OBJECTIVE_DIMENSION_LABEL, item.objectiveDimension, '课程目标维度')
+      ? strictEnumLabel(CourseObjectiveDimensionDescription, item.objectiveDimension, '课程目标维度')
       : truncateLabel(item.objectiveDescription || '课程目标', 10)
     const tone: BadgeTone = item.achievementRate == null ? 'gray' : rateTone(item.achievementRate)
     return {
@@ -101,11 +101,14 @@ export function growthItemsToBarItems(items: SemesterGrowthItemVO[]): UiBarChart
   })
 }
 
-/** 分数段分布 → UiBarChart 条目 */
-export function scoreHistogramToBarItems(distribution: {
-  ranges: string[]
-  counts: number[]
-}): UiBarChartItem[] {
+/** 分数段分布 → UiBarChart 条目；includeZeroBuckets 为 true 时保留 0 人数段（成绩页五级分布） */
+export function scoreHistogramToBarItems(
+  distribution: {
+    ranges: string[]
+    counts: number[]
+  },
+  options?: { includeZeroBuckets?: boolean },
+): UiBarChartItem[] {
   if (!distribution.ranges.length || distribution.ranges.length !== distribution.counts.length) {
     return []
   }
@@ -116,6 +119,9 @@ export function scoreHistogramToBarItems(distribution: {
     tone: 'blue' satisfies BadgeTone,
     helper: `${distribution.counts[index] ?? 0} 人`,
   }))
+  if (options?.includeZeroBuckets) {
+    return items
+  }
   return items.filter((item) => item.value > 0)
 }
 
@@ -125,7 +131,7 @@ export function reviewProgressToBarItems(
 ): UiBarChartItem[] {
   if (rows.length === 0) return []
   return rows.map((row) => ({
-    key: row.questionTemplateId,
+    key: row.layoutQuestionId,
     label: `题${row.questionNo}`,
     value: row.approvedTaskCount,
     tone: row.approvedTaskCount >= row.totalTaskCount && row.totalTaskCount > 0
@@ -145,7 +151,7 @@ export function correctRatioToBarItems(
     const ratio = (row.correctCount / row.totalCount) * 100
     const tone: BadgeTone = ratio < 40 ? 'red' : ratio < 60 ? 'orange' : 'green'
     return {
-      key: row.questionTemplateId,
+      key: row.layoutQuestionId,
       label: `题${row.questionNo}`,
       value: Number(formatScore(ratio, 'percent')),
       tone,
@@ -174,12 +180,12 @@ export function errorCauseToBarItems(
 }
 
 /** UiScatterChart 区段色：与 CHART_PALETTE 对齐 */
-export const SCATTER_ZONE_COLORS = {
+export const SCATTER_ZONE_COLORS: Record<string, string> = {
   ideal: CHART_PALETTE.success,
   tooHard: CHART_PALETTE.danger,
   tooEasy: CHART_PALETTE.warning,
   lowDiscrim: CHART_PALETTE.purple,
-} as const
+}
 
 /** 题目质量分析 → UiScatterChart 序列：按难度/区分度四区段分组 */
 export function buildQuestionQualityScatterSeries(
@@ -194,9 +200,9 @@ export function buildQuestionQualityScatterSeries(
     if (row.difficultyIndex == null || row.discriminationIndex == null) continue
     const difficulty = Number(row.difficultyIndex)
     const discrimination = Number(row.discriminationIndex)
-    const questionType = strictEnumLabel(QUESTION_TYPE_LABEL, row.questionType, '题型')
+    const questionType = strictEnumLabel(QuestionTypeDescription, row.questionType, '题型')
     const point = {
-      key: row.questionTemplateId,
+      key: row.layoutQuestionId,
       x: difficulty,
       y: discrimination,
       weight: row.totalCount,
@@ -300,7 +306,7 @@ export function reviewProgressToHeatmapCells(
       ? 0
       : Math.round((row.approvedTaskCount * 100) / row.totalTaskCount)
     return {
-      key: row.questionTemplateId,
+      key: row.layoutQuestionId,
       label: String(row.questionNo),
       value: percent,
     }
@@ -310,7 +316,7 @@ export function reviewProgressToHeatmapCells(
 /** 学生答题卡 → 热力图单元格（按得分率着色） */
 export function scoreSheetToHeatmapCells(
   questions: Array<{
-    questionTemplateId: string
+    layoutQuestionId: string
     questionNo: string | number
     finalScore?: number | null
     fullScore?: number | null
@@ -322,7 +328,7 @@ export function scoreSheetToHeatmapCells(
     const finalScore = question.finalScore ?? 0
     const percent = full > 0 ? Math.round((finalScore * 100) / full) : 0
     return {
-      key: question.questionTemplateId,
+      key: question.layoutQuestionId,
       label: String(question.questionNo),
       value: percent,
     }

@@ -21,7 +21,9 @@ import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import { qualityCourseApi } from '@/apis/quality/quality-course'
 import { trainingPlanApi } from '@/apis/quality/training-plan'
 import { departmentCatalogApi, majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
+import { ALL_SEMESTER_CODES } from '@/types/enums/semester-enum'
 import { readAllPages } from '@/utils/page-result'
+import { sanitizePersistedSchoolPeriod } from '@/utils/semester-contract'
 
 export const useQualityStore = defineStore(
   'quality',
@@ -223,17 +225,46 @@ export const useQualityStore = defineStore(
       }
     }
 
+    function sanitizePersistedScope(): void {
+      const sanitized = sanitizePersistedSchoolPeriod(
+        currentSchoolYear.value,
+        currentSemester.value,
+      )
+      currentSchoolYear.value = sanitized.schoolYear
+      currentSemester.value = sanitized.semester
+    }
+
     function setSchoolPeriod(schoolYear?: string, semester?: SemesterCode | null) {
-      const yearChanged = schoolYear !== undefined && currentSchoolYear.value !== schoolYear
-      const nextSemester = semester === undefined ? undefined : (semester ?? undefined)
-      const semesterChanged = semester !== undefined && currentSemester.value !== nextSemester
+      let changed = false
+
       if (schoolYear !== undefined) {
-        currentSchoolYear.value = schoolYear
+        const trimmed = schoolYear.trim()
+        if (currentSchoolYear.value !== trimmed) {
+          currentSchoolYear.value = trimmed
+          changed = true
+        }
+        if (!trimmed && currentSemester.value !== undefined) {
+          currentSemester.value = undefined
+          changed = true
+        }
       }
+
       if (semester !== undefined) {
-        currentSemester.value = nextSemester
+        let next: SemesterCode | undefined
+        if (semester === null || semester === undefined) {
+          next = undefined
+        } else if (!ALL_SEMESTER_CODES.includes(semester) || !currentSchoolYear.value.trim()) {
+          next = undefined
+        } else {
+          next = semester
+        }
+        if (currentSemester.value !== next) {
+          currentSemester.value = next
+          changed = true
+        }
       }
-      if (yearChanged || semesterChanged) {
+
+      if (changed) {
         qualityCourseOptions.value = []
         bumpScopeChangeEpoch()
       }
@@ -304,6 +335,7 @@ export const useQualityStore = defineStore(
       setSchoolPeriod,
       setQualityCourse,
       reset,
+      sanitizePersistedScope,
     }
   },
   {
@@ -316,6 +348,9 @@ export const useQualityStore = defineStore(
         'currentSemester',
         'currentQualityCourseId',
       ],
+      afterHydrate: (ctx) => {
+        ctx.store.sanitizePersistedScope()
+      },
     },
   },
 )

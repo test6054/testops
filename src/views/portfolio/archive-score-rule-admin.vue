@@ -2,14 +2,15 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioArchiveScoreRuleSaveRequest,
-  PortfolioArchiveScoreRuleType,
   PortfolioArchiveScoreRuleVO,
 } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import {
-  PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_LABEL,
+  PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_OPTIONS,
   portfolioArchiveScoreApi,
+  PortfolioArchiveScoreRuleTypeCode,
+  PortfolioArchiveScoreRuleTypeDescription,
 } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -28,15 +29,13 @@ const rows = ref<PortfolioArchiveScoreRuleVO[]>([])
 const modalOpen = ref(false)
 const editingId = ref<string>()
 const form = reactive<PortfolioArchiveScoreRuleSaveRequest>({
-  ruleType: 'COMPLETENESS',
+  ruleType: PortfolioArchiveScoreRuleTypeCode.COMPLETENESS,
   ruleName: '',
-  scorePoints: '0',
+  scorePoints: 0,
   officialOnly: 1,
 })
 
-const ruleTypeOptions = (
-  Object.keys(PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_LABEL) as PortfolioArchiveScoreRuleType[]
-).map((value) => ({ value, label: PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_LABEL[value] }))
+const ruleTypeOptions = PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_OPTIONS
 
 const columns: ColumnsType = [
   { title: '规则名称', dataIndex: 'ruleName', key: 'ruleName' },
@@ -48,17 +47,17 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 120 },
 ]
 
-function ruleTypeLabel(type: PortfolioArchiveScoreRuleType): string {
-  return strictEnumLabel(PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_LABEL, type, '评分规则类型')
+function ruleTypeLabel(type: PortfolioArchiveScoreRuleTypeCode): string {
+  return strictEnumLabel(PortfolioArchiveScoreRuleTypeDescription, type, '评分规则类型')
 }
 
 function resetForm() {
   editingId.value = undefined
   form.id = undefined
   form.categoryId = undefined
-  form.ruleType = 'COMPLETENESS'
+  form.ruleType = PortfolioArchiveScoreRuleTypeCode.COMPLETENESS
   form.ruleName = ''
-  form.scorePoints = '0'
+  form.scorePoints = 0
   form.weight = undefined
   form.officialOnly = 1
 }
@@ -92,13 +91,21 @@ function openEdit(row: PortfolioArchiveScoreRuleVO) {
 }
 
 async function handleSave() {
-  if (!form.ruleName.trim() || !form.scorePoints) {
+  if (!form.ruleName.trim() || form.scorePoints === undefined) {
     message.warning('请填写规则名称与分值')
     return
   }
   saving.value = true
   try {
-    await portfolioArchiveScoreApi.saveRule({ ...form })
+    await portfolioArchiveScoreApi.saveRule({
+      id: form.id,
+      categoryId: form.categoryId || undefined,
+      ruleType: form.ruleType,
+      ruleName: form.ruleName.trim(),
+      scorePoints: form.scorePoints,
+      weight: form.weight,
+      officialOnly: form.officialOnly,
+    })
     message.success('规则已保存')
     modalOpen.value = false
     await loadRules()
@@ -175,10 +182,10 @@ onMounted(loadRules)
           <a-input v-model:value="form.categoryId" placeholder="档案分类 ID" />
         </a-form-item>
         <a-form-item label="分值" required>
-          <a-input v-model:value="form.scorePoints" />
+          <a-input-number v-model:value="form.scorePoints" style="width: 100%" />
         </a-form-item>
         <a-form-item label="权重">
-          <a-input v-model:value="form.weight" />
+          <a-input-number v-model:value="form.weight" style="width: 100%" />
         </a-form-item>
         <a-form-item label="仅 OFFICIAL 计分">
           <a-select

@@ -4,6 +4,9 @@ import type { AchievementAuditVO } from '@/apis/quality/achievement-audit'
 import type { AchievementDetailVO } from '@/apis/quality/achievement-detail'
 import type { AchievementManualReviewVO } from '@/apis/quality/achievement-manual-review'
 import type { AchievementResultVO } from '@/apis/quality/achievement-result'
+import type {
+  AchievementDetailTypeCode,
+  AchievementStatusCode} from '@/apis/quality/types';
 /**
  * 质量评价 - 达成度详情
  *
@@ -15,13 +18,6 @@ import type { AchievementResultVO } from '@/apis/quality/achievement-result'
  * - achievementAuditApi.listByResult
  * - achievementManualReviewApi.listByResult / create
  */
-import type {
-  AchievementAuditStatus,
-  AchievementDetailType,
-  AchievementStatus,
-  AchievementTargetType,
-  ManualReviewDecision,
-} from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
@@ -34,12 +30,15 @@ import { achievementManualReviewApi } from '@/apis/quality/achievement-manual-re
 import { achievementResultApi } from '@/apis/quality/achievement-result'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
-  ACHIEVEMENT_AUDIT_STATUS_LABEL,
-  ACHIEVEMENT_DETAIL_TYPE_LABEL,
   ACHIEVEMENT_STATUS_COLOR,
-  ACHIEVEMENT_STATUS_LABEL,
-  ACHIEVEMENT_TARGET_TYPE_LABEL,
-  MANUAL_REVIEW_DECISION_LABEL,
+  AchievementAuditStatusCode,
+  AchievementAuditStatusDescription,
+  AchievementDetailTypeDescription,
+  AchievementStatusDescription,
+  AchievementTargetTypeCode,
+  AchievementTargetTypeDescription,
+  ManualReviewDecisionCode,
+  ManualReviewDecisionDescription,
 } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -83,29 +82,45 @@ const details = ref<AchievementDetailVO[]>([])
 const audits = ref<AchievementAuditVO[]>([])
 const reviews = ref<AchievementManualReviewVO[]>([])
 const loading = ref(false)
-const reviewForm = reactive<{ decision: ManualReviewDecision, reviewRemark: string }>({
-  decision: 'CONFIRMED',
+const reviewForm = reactive<{ decision: ManualReviewDecisionCode, reviewRemark: string }>({
+  decision: ManualReviewDecisionCode.CONFIRMED,
   reviewRemark: '',
 })
 
-function targetTypeLabel(value: AchievementTargetType): string {
-  return strictEnumLabel(ACHIEVEMENT_TARGET_TYPE_LABEL, value, '达成目标类型')
+function targetTypeLabel(value: AchievementTargetTypeCode): string {
+  return strictEnumLabel(AchievementTargetTypeDescription, value, '达成目标类型')
 }
 
-function achievementStatusLabel(value: AchievementStatus): string {
-  return strictEnumLabel(ACHIEVEMENT_STATUS_LABEL, value, '达成状态')
+function achievementStatusLabel(value: AchievementStatusCode): string {
+  return strictEnumLabel(AchievementStatusDescription, value, '达成状态')
 }
 
-function achievementStatusColor(value: AchievementStatus): BadgeTone {
+function achievementStatusColor(value: AchievementStatusCode): BadgeTone {
   return strictEnumTone(ACHIEVEMENT_STATUS_COLOR, value, '达成状态')
 }
 
-function auditStatusLabel(value: AchievementAuditStatus): string {
-  return strictEnumLabel(ACHIEVEMENT_AUDIT_STATUS_LABEL, value, '达成审核状态')
+function achievementStatusLabelMaybe(value: AchievementStatusCode | undefined): string {
+  return value ? achievementStatusLabel(value) : '-'
 }
 
-function auditStatusColor(value: AchievementAuditStatus): BadgeTone {
+function achievementStatusColorMaybe(value: AchievementStatusCode | undefined): BadgeTone {
+  return value ? achievementStatusColor(value) : 'gray'
+}
+
+function auditStatusLabel(value: AchievementAuditStatusCode): string {
+  return strictEnumLabel(AchievementAuditStatusDescription, value, '达成审核状态')
+}
+
+function auditStatusColor(value: AchievementAuditStatusCode): BadgeTone {
   return strictEnumTone(ACHIEVEMENT_AUDIT_STATUS_COLOR, value, '达成审核状态')
+}
+
+function auditStatusLabelMaybe(value: AchievementAuditStatusCode | undefined): string {
+  return value ? auditStatusLabel(value) : '-'
+}
+
+function auditStatusColorMaybe(value: AchievementAuditStatusCode | undefined): BadgeTone {
+  return value ? auditStatusColor(value) : 'gray'
 }
 
 function isResultStale(value: AchievementResultVO | null): boolean {
@@ -120,57 +135,72 @@ function resultValidityColor(value: AchievementResultVO | null): BadgeTone {
   return isResultStale(value) ? 'red' : 'green'
 }
 
-function detailTypeLabel(value: AchievementDetailType): string {
-  return strictEnumLabel(ACHIEVEMENT_DETAIL_TYPE_LABEL, value, '达成明细类型')
+function detailTypeLabel(value: AchievementDetailTypeCode): string {
+  return strictEnumLabel(AchievementDetailTypeDescription, value, '达成明细类型')
 }
 
-function manualReviewDecisionLabel(value: ManualReviewDecision): string {
-  return strictEnumLabel(MANUAL_REVIEW_DECISION_LABEL, value, '人工复核决定')
+function manualReviewDecisionLabel(value: ManualReviewDecisionCode): string {
+  return strictEnumLabel(ManualReviewDecisionDescription, value, '人工复核决定')
 }
 
-function auditEventLabel(event: AchievementAuditStatus): string {
-  if (event === 'CALCULATED') return '达成度计算'
-  return auditStatusLabel(event)
+function auditEventLabel(event: string | undefined): string {
+  if (!event) return '-'
+  if (event === AchievementAuditStatusCode.CALCULATED) return '达成度计算'
+  const auditStatus = event as AchievementAuditStatusCode
+  if (Object.prototype.hasOwnProperty.call(AchievementAuditStatusDescription, auditStatus)) {
+    return auditStatusLabel(auditStatus)
+  }
+  return event
 }
 
-const auditTransitMap: Record<AchievementAuditStatus, AchievementAuditStatus[]> = {
-  DRAFT: ['CALCULATED'],
-  CALCULATED: ['DRAFT', 'SUBMITTED'],
-  SUBMITTED: ['CONFIRMED', 'RETURNED'],
-  CONFIRMED: ['ARCHIVED', 'RETURNED'],
-  RETURNED: [],
-  ARCHIVED: [],
+const auditTransitMap: Record<AchievementAuditStatusCode, AchievementAuditStatusCode[]> = {
+  [AchievementAuditStatusCode.DRAFT]: [AchievementAuditStatusCode.CALCULATED],
+  [AchievementAuditStatusCode.CALCULATED]: [
+    AchievementAuditStatusCode.DRAFT,
+    AchievementAuditStatusCode.SUBMITTED,
+  ],
+  [AchievementAuditStatusCode.SUBMITTED]: [
+    AchievementAuditStatusCode.CONFIRMED,
+    AchievementAuditStatusCode.RETURNED,
+  ],
+  [AchievementAuditStatusCode.CONFIRMED]: [
+    AchievementAuditStatusCode.ARCHIVED,
+    AchievementAuditStatusCode.RETURNED,
+  ],
+  [AchievementAuditStatusCode.RETURNED]: [],
+  [AchievementAuditStatusCode.ARCHIVED]: [],
 }
 
-const nextStatuses = computed<AchievementAuditStatus[]>(() => {
+const nextStatuses = computed<AchievementAuditStatusCode[]>(() => {
   const status = result.value?.auditStatus
   if (!status) return []
   return strictEnumValue(auditTransitMap, status, '达成审核状态')
 })
 
-const targetTypeToComputeKind: Partial<Record<AchievementTargetType, string>> = {
-  COURSE_GOAL: 'COURSE_GOAL',
-  REQUIREMENT_INDICATOR: 'REQUIREMENT',
-  GRADUATION_REQUIREMENT: 'REQUIREMENT',
-  TRAINING_OBJECTIVE: 'TRAINING_OBJECTIVE',
-  PROGRAM_SUMMARY: 'PROGRAM',
-  CIVIC_GOAL_AGGREGATE: 'CIVIC_GOAL_AGGREGATE',
-  COMPLEX_ENGINEERING_AGGREGATE: 'COMPLEX_ENGINEERING',
+const targetTypeToComputeKind: Partial<Record<AchievementTargetTypeCode, string>> = {
+  [AchievementTargetTypeCode.COURSE_GOAL]: 'COURSE_GOAL',
+  [AchievementTargetTypeCode.REQUIREMENT_INDICATOR]: 'REQUIREMENT',
+  [AchievementTargetTypeCode.GRADUATION_REQUIREMENT]: 'REQUIREMENT',
+  [AchievementTargetTypeCode.TRAINING_OBJECTIVE]: 'TRAINING_OBJECTIVE',
+  [AchievementTargetTypeCode.PROGRAM_SUMMARY]: 'PROGRAM',
+  [AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE]: 'CIVIC_GOAL_AGGREGATE',
+  [AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE]: 'COMPLEX_ENGINEERING',
 }
 
 function canRecomputeResult(value: AchievementResultVO | null): boolean {
   if (!value) return false
   return (
-    value.auditStatus === 'RETURNED'
+    value.auditStatus === AchievementAuditStatusCode.RETURNED
     || isResultStale(value)
-    || value.auditStatus === 'DRAFT'
-    || value.auditStatus === 'CALCULATED'
+    || value.auditStatus === AchievementAuditStatusCode.DRAFT
+    || value.auditStatus === AchievementAuditStatusCode.CALCULATED
   )
 }
 
 function canSubmitManualReview(value: AchievementResultVO | null): boolean {
   if (!value?.auditStatus) return false
-  return value.auditStatus === 'SUBMITTED' || value.auditStatus === 'CONFIRMED'
+  return value.auditStatus === AchievementAuditStatusCode.SUBMITTED
+    || value.auditStatus === AchievementAuditStatusCode.CONFIRMED
 }
 
 const recomputeLoading = ref(false)
@@ -246,18 +276,18 @@ async function loadAll() {
   }
 }
 
-async function handleTransit(to: AchievementAuditStatus) {
+async function handleTransit(to: AchievementAuditStatusCode) {
   if (!result.value) return
   const fromStatus = result.value.auditStatus
   if (!fromStatus) return
   const remark = await promptInputAsync({
     title: `${auditStatusLabel(fromStatus)} → ${auditStatusLabel(to)}`,
     placeholder: '审核备注（驳回时必填）',
-    required: to === 'RETURNED',
-    okType: to === 'RETURNED' ? 'danger' : 'primary',
+    required: to === AchievementAuditStatusCode.RETURNED,
+    okType: to === AchievementAuditStatusCode.RETURNED ? 'danger' : 'primary',
     emptyErrorMessage: '驳回必须填写审核备注',
   })
-  if (to === 'RETURNED' && !remark) return
+  if (to === AchievementAuditStatusCode.RETURNED && !remark) return
   await achievementResultApi.updateAuditStatus({
     id: result.value.id,
     auditStatus: to,
@@ -403,8 +433,8 @@ onActivated(() => {
           <UiButton
             v-for="to in nextStatuses"
             :key="to"
-            :variant="to === 'RETURNED' ? 'ghost' : 'primary'"
-            :status="to === 'RETURNED' ? 'danger' : 'normal'"
+            :variant="to === AchievementAuditStatusCode.RETURNED ? 'ghost' : 'primary'"
+            :status="to === AchievementAuditStatusCode.RETURNED ? 'danger' : 'normal'"
             size="sm"
             @click="handleTransit(to)"
           >
@@ -442,8 +472,8 @@ onActivated(() => {
             }}<span v-if="result.semester"> / {{ formatSemester(result.semester) }}</span>
           </a-descriptions-item>
           <a-descriptions-item label="达成结论">
-            <UiTag :tone="achievementStatusColor(result.achievementStatus)" size="sm">
-              {{ achievementStatusLabel(result.achievementStatus) }}
+            <UiTag :tone="achievementStatusColorMaybe(result.achievementStatus)" size="sm">
+              {{ achievementStatusLabelMaybe(result.achievementStatus) }}
             </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="计算时间">
@@ -547,16 +577,16 @@ onActivated(() => {
             <a-timeline-item
               v-for="audit in audits"
               :key="audit.id"
-              :color="auditStatusColor(audit.auditStatusTo) === 'red' ? 'red' : 'blue'"
+              :color="auditStatusColorMaybe(audit.auditStatusTo) === 'red' ? 'red' : 'blue'"
             >
               <p class="achievement-detail__audit-line">
                 <UiTag tone="gray" size="sm">{{ auditEventLabel(audit.auditEvent) }}</UiTag>
                 <strong v-if="audit.auditStatusFrom">
-                  {{ auditStatusLabel(audit.auditStatusFrom) }}
+                  {{ auditStatusLabelMaybe(audit.auditStatusFrom) }}
                 </strong>
                 <span v-if="audit.auditStatusFrom && audit.auditStatusTo"> -> </span>
                 <strong v-if="audit.auditStatusTo">
-                  {{ auditStatusLabel(audit.auditStatusTo) }}
+                  {{ auditStatusLabelMaybe(audit.auditStatusTo) }}
                 </strong>
               </p>
               <p class="achievement-detail__audit-meta">

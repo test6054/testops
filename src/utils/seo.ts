@@ -41,7 +41,10 @@ const DEFAULT_SEO: SeoMeta = {
 function updateMetaTag(name: string, content?: string, attr: 'name' | 'property' = 'name') {
   if (!content) return
 
-  let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null
+  let el = document.querySelector(`meta[${attr}="${name}"]`)
+  if (el !== null && !(el instanceof HTMLMetaElement)) {
+    throw new Error(`SEO meta 标签类型异常：${name}`)
+  }
   if (!el) {
     el = document.createElement('meta')
     el.setAttribute(attr, name)
@@ -57,7 +60,10 @@ function updateMetaTag(name: string, content?: string, attr: 'name' | 'property'
 function updateCanonical(url?: string) {
   if (!url) return
 
-  let el = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null
+  let el = document.querySelector('link[rel="canonical"]')
+  if (el !== null && !(el instanceof HTMLLinkElement)) {
+    throw new Error('SEO canonical 标签类型异常')
+  }
   if (!el) {
     el = document.createElement('link')
     el.setAttribute('rel', 'canonical')

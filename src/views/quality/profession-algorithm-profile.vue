@@ -15,7 +15,6 @@ import type {
   ProfessionAlgorithmProfileVO,
 } from '@/apis/quality/profession-algorithm-profile'
 import type { ProfessionAlgorithmTemplateVO } from '@/apis/quality/profession-algorithm-template'
-import type { AccreditationType, ConfirmationStatus } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
@@ -24,11 +23,16 @@ import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorithm-profile'
 import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import {
-  ACCREDITATION_TYPE_LABEL,
-  AGGREGATION_FUNCTION_CODES,
-  AGGREGATION_FUNCTION_LABEL,
+  AccreditationTypeCode,
+  AccreditationTypeDescription,
+  AggregationFunctionCode,
+  AggregationFunctionDescription,
+  ALL_ACCREDITATION_TYPE_CODES,
+  ALL_AGGREGATION_FUNCTION_CODES,
+  ALL_CONFIRMATION_STATUS_CODES,
   CONFIRMATION_STATUS_COLOR,
-  CONFIRMATION_STATUS_LABEL,
+  ConfirmationStatusCode,
+  ConfirmationStatusDescription,
 } from '@/apis/quality/types'
 import { ProgramSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -59,15 +63,15 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 260, fixed: 'right' },
 ]
 
-function accreditationTypeLabel(value: AccreditationType): string {
-  return strictEnumLabel(ACCREDITATION_TYPE_LABEL, value, '认证类型')
+function accreditationTypeLabel(value: AccreditationTypeCode): string {
+  return strictEnumLabel(AccreditationTypeDescription, value, '认证类型')
 }
 
-function confirmationStatusLabel(value: ConfirmationStatus): string {
-  return strictEnumLabel(CONFIRMATION_STATUS_LABEL, value, '确认状态')
+function confirmationStatusLabel(value: ConfirmationStatusCode): string {
+  return strictEnumLabel(ConfirmationStatusDescription, value, '确认状态')
 }
 
-function confirmationStatusColor(value: ConfirmationStatus): BadgeTone {
+function confirmationStatusColor(value: ConfirmationStatusCode): BadgeTone {
   return strictEnumTone(CONFIRMATION_STATUS_COLOR, value, '确认状态')
 }
 
@@ -88,9 +92,10 @@ const query = reactive<ProfessionAlgorithmProfileQueryRequest>({
 })
 
 interface ProfessionAlgorithmProfileFilterModel {
+  [key: string]: unknown
   programId?: string
-  accreditationType?: AccreditationType
-  confirmationStatus?: ConfirmationStatus
+  accreditationType?: AccreditationTypeCode
+  confirmationStatus?: ConfirmationStatusCode
   keyword: string
 }
 
@@ -102,7 +107,7 @@ const filterForm = reactive<ProfessionAlgorithmProfileFilterModel>({
 })
 
 const filterModel = computed<Record<string, unknown>>({
-  get: () => filterForm as Record<string, unknown>,
+  get: () => filterForm,
   set: (value) => {
     Object.assign(filterForm, value)
   },
@@ -138,26 +143,17 @@ const filterFields = computed<FilterField[]>(() => [
   },
 ])
 
-const accreditationTypes: AccreditationType[] = [
-  'ENGINEERING_ACCREDITATION',
-  'TEACHER_ACCREDITATION',
-  'MEDICAL_HEALTH_ACCREDITATION',
-  'ART_DESIGN_QUALITY_EVALUATION',
-  'ECONOMICS_FINANCE_QUALITY_EVALUATION',
-  'LAW_QUALITY_EVALUATION',
-  'AGRICULTURE_ACCREDITATION',
-  'GENERAL_QUALITY_EVALUATION',
-]
+const accreditationTypes: readonly AccreditationTypeCode[] = ALL_ACCREDITATION_TYPE_CODES
 
 const accreditationOptions = accreditationTypes.map((value) => ({
   value,
   label: accreditationTypeLabel(value),
 }))
-const aggregationOptions = AGGREGATION_FUNCTION_CODES.map((value) => ({
+const aggregationOptions = ALL_AGGREGATION_FUNCTION_CODES.map((value) => ({
   value,
-  label: AGGREGATION_FUNCTION_LABEL[value],
+  label: AggregationFunctionDescription[value],
 }))
-const statusOptions: ConfirmationStatus[] = ['DRAFT', 'SUBMITTED', 'CONFIRMED', 'RETURNED']
+const statusOptions: readonly ConfirmationStatusCode[] = ALL_CONFIRMATION_STATUS_CODES
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
@@ -166,13 +162,13 @@ const editor = reactive<ProfessionAlgorithmProfileSaveRequest>({
   profileName: '',
   templateId: '',
   programId: '',
-  accreditationType: 'ENGINEERING_ACCREDITATION',
+  accreditationType: AccreditationTypeCode.ENGINEERING_ACCREDITATION,
   standardId: undefined,
   accreditationLevel: '',
   standardYear: '',
-  courseGoalAggregation: 'WEIGHTED_SUM',
-  indicatorAggregation: 'WEIGHTED_SUM',
-  requirementAggregation: 'WEIGHTED_SUM',
+  courseGoalAggregation: AggregationFunctionCode.WEIGHTED_SUM,
+  indicatorAggregation: AggregationFunctionCode.WEIGHTED_SUM,
+  requirementAggregation: AggregationFunctionCode.WEIGHTED_SUM,
   directWeight: 0.7,
   indirectWeight: 0.3,
   indirectMinValidSampleCount: 30,
@@ -307,7 +303,7 @@ function openCreate() {
 }
 
 function canEditProfile(record: ProfessionAlgorithmProfileVO): boolean {
-  return record.confirmationStatus !== 'CONFIRMED'
+  return record.confirmationStatus !== ConfirmationStatusCode.CONFIRMED
 }
 
 function openEdit(record: ProfessionAlgorithmProfileVO) {
@@ -316,7 +312,35 @@ function openEdit(record: ProfessionAlgorithmProfileVO) {
     return
   }
   editorMode.value = 'edit'
-  Object.assign(editor, record)
+  Object.assign(editor, {
+    id: record.id,
+    profileCode: record.profileCode,
+    profileName: record.profileName,
+    templateId: record.templateId,
+    programId: record.programId,
+    standardId: record.standardId,
+    accreditationType: record.accreditationType,
+    accreditationLevel: record.accreditationLevel,
+    standardYear: record.standardYear,
+    courseGoalAggregation: record.courseGoalAggregation,
+    indicatorAggregation: record.indicatorAggregation,
+    requirementAggregation: record.requirementAggregation,
+    directWeight: record.directWeight,
+    indirectWeight: record.indirectWeight,
+    indirectMinValidSampleCount: record.indirectMinValidSampleCount,
+    indirectCoverageThreshold: record.indirectCoverageThreshold,
+    courseGoalThreshold: record.courseGoalThreshold,
+    indicatorThreshold: record.indicatorThreshold,
+    requirementThreshold: record.requirementThreshold,
+    inheritAggregationStrategy: record.inheritAggregationStrategy,
+    inheritWeightStrategy: record.inheritWeightStrategy,
+    inheritThresholdStrategy: record.inheritThresholdStrategy,
+    overrideAggregationStrategy: record.overrideAggregationStrategy,
+    overrideWeightStrategy: record.overrideWeightStrategy,
+    overrideThresholdStrategy: record.overrideThresholdStrategy,
+    overrideReason: record.overrideReason,
+    enabled: record.enabled,
+  })
   editorVisible.value = true
 }
 
@@ -340,8 +364,37 @@ async function submitEditor() {
   }
   submitting.value = true
   try {
-    if (editorMode.value === 'create') await professionAlgorithmProfileApi.create(editor)
-    else await professionAlgorithmProfileApi.update(editor)
+    const request: ProfessionAlgorithmProfileSaveRequest = {
+      id: editor.id,
+      profileCode: editor.profileCode.trim(),
+      profileName: editor.profileName.trim(),
+      templateId: editor.templateId,
+      programId: editor.programId,
+      standardId: editor.standardId || undefined,
+      accreditationType: editor.accreditationType,
+      accreditationLevel: editor.accreditationLevel?.trim() || undefined,
+      standardYear: editor.standardYear?.trim() || undefined,
+      courseGoalAggregation: editor.courseGoalAggregation,
+      indicatorAggregation: editor.indicatorAggregation,
+      requirementAggregation: editor.requirementAggregation,
+      directWeight: editor.directWeight,
+      indirectWeight: editor.indirectWeight,
+      indirectMinValidSampleCount: editor.indirectMinValidSampleCount,
+      indirectCoverageThreshold: editor.indirectCoverageThreshold,
+      courseGoalThreshold: editor.courseGoalThreshold,
+      indicatorThreshold: editor.indicatorThreshold,
+      requirementThreshold: editor.requirementThreshold,
+      inheritAggregationStrategy: editor.inheritAggregationStrategy,
+      inheritWeightStrategy: editor.inheritWeightStrategy,
+      inheritThresholdStrategy: editor.inheritThresholdStrategy,
+      overrideAggregationStrategy: editor.overrideAggregationStrategy,
+      overrideWeightStrategy: editor.overrideWeightStrategy,
+      overrideThresholdStrategy: editor.overrideThresholdStrategy,
+      overrideReason: editor.overrideReason?.trim() || undefined,
+      enabled: editor.enabled,
+    }
+    if (editorMode.value === 'create') await professionAlgorithmProfileApi.create(request)
+    else await professionAlgorithmProfileApi.update(request)
     message.success('已保存')
     editorVisible.value = false
     await loadList()
@@ -426,18 +479,18 @@ function handleReset() {
 /* ========== 信号指标：专业算法实例健康度 ========== */
 
 const signals = computed<SignalMetric[]>(() => {
-  const buckets: Record<ConfirmationStatus, number> = {
-    DRAFT: 0,
-    SUBMITTED: 0,
-    CONFIRMED: 0,
-    RETURNED: 0,
+  const buckets: Record<ConfirmationStatusCode, number> = {
+    [ConfirmationStatusCode.DRAFT]: 0,
+    [ConfirmationStatusCode.SUBMITTED]: 0,
+    [ConfirmationStatusCode.CONFIRMED]: 0,
+    [ConfirmationStatusCode.RETURNED]: 0,
   }
   for (const p of list.value) {
     buckets[p.confirmationStatus] += 1
   }
   const enabled = list.value.filter((p) => p.enabled).length
   const disabled = list.value.filter((p) => !p.enabled).length
-  const usable = list.value.filter((p) => p.enabled && p.confirmationStatus === 'CONFIRMED').length
+  const usable = list.value.filter((p) => p.enabled && p.confirmationStatus === ConfirmationStatusCode.CONFIRMED).length
 
   return [
     { key: 'page', label: '当前页记录', value: list.value.length, tone: 'blue' },
@@ -558,7 +611,8 @@ onActivated(() => {
               </UiTextAction>
               <UiTextAction
                 v-if="
-                  record.confirmationStatus === 'DRAFT' || record.confirmationStatus === 'RETURNED'
+                  record.confirmationStatus === ConfirmationStatusCode.DRAFT
+                    || record.confirmationStatus === ConfirmationStatusCode.RETURNED
                 "
                 tone="primary"
                 @click="handleConfirm(record)"
@@ -566,7 +620,7 @@ onActivated(() => {
                 确认
               </UiTextAction>
               <UiTextAction
-                v-if="record.confirmationStatus === 'CONFIRMED'"
+                v-if="record.confirmationStatus === ConfirmationStatusCode.CONFIRMED"
                 tone="danger"
                 @click="handleRevoke(record)"
               >

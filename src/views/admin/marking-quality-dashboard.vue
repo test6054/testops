@@ -2,9 +2,15 @@
   <StageWorkbenchShell>
     <template #context>
       <ContextBar
-        title="阅卷质量看板"
+        layout="workbench"
+        show-title
+        :title="isJourneyChrome ? contextBarTitle : '阅卷质量看板'"
+        :subtitle="isJourneyChrome ? contextBarSubtitle : '阅卷质控'"
       >
         <template #status>
+          <UiTag v-if="isJourneyChrome && examStatusLabel" :tone="examStatusTone" size="sm">
+            {{ examStatusLabel }}
+          </UiTag>
           <MarkExamSelect
             v-if="!isExamWorkspaceRoute"
             :selected-exam-id="selectedExamId"
@@ -17,25 +23,27 @@
             @change="handleExamChange"
             @search="onExamSearch"
           />
-          <a-select
-            :value="selectedOrganizationId"
-            class="quality-dashboard__org-select"
-            placeholder="选择阅卷组织"
-            :options="organizationOptions"
-            :loading="organizationLoading"
-            allow-clear
-            @change="handleOrganizationChange"
-          />
-          <a-select
-            :value="selectedGroupId"
-            class="quality-dashboard__group-select"
-            placeholder="选择题组"
-            :options="groupOptions"
-            allow-clear
-            @change="handleGroupChange"
-          />
+          <template v-if="!isExamWorkspaceRoute">
+            <a-select
+              :value="selectedOrganizationId"
+              class="quality-dashboard__org-select"
+              placeholder="选择阅卷组织"
+              :options="organizationOptions"
+              :loading="organizationLoading"
+              allow-clear
+              @change="handleOrganizationChange"
+            />
+            <a-select
+              :value="selectedGroupId"
+              class="quality-dashboard__group-select"
+              placeholder="选择题组"
+              :options="groupOptions"
+              allow-clear
+              @change="handleGroupChange"
+            />
+          </template>
           <UiTag
-            v-if="selectedExamId && progress?.riskLevel"
+            v-if="!isExamWorkspaceRoute && selectedExamId && progress?.riskLevel"
             :tone="riskTone(progress.riskLevel)"
             size="sm"
           >
@@ -51,163 +59,52 @@
       class="quality-dashboard__empty"
     />
 
-    <template v-else>
-      <SignalBand :metrics="signalMetrics" compact class="quality-dashboard__signals" />
+    <template v-if="selectedExamId" #signal>
+      <SignalBand variant="tiles" :metrics="signalMetrics" compact />
+    </template>
 
-      <a-tabs v-model:active-key="activeTab" class="quality-dashboard__tabs">
-        <!-- ─── Tab 1: 进度监控 ─── -->
-        <a-tab-pane key="progress">
-          <template #tab>
-            <span><LineChartOutlined /> 进度监控</span>
-          </template>
+    <ExamWorkspaceJourneySubNav
+      v-if="selectedExamId && isExamWorkspaceRoute"
+    />
 
-          <UiCard class="info-card">
-            <template #title>
-              <span>进度快照</span>
-              <UiBadge v-if="progress" :tone="riskTone(progress.riskLevel)">
-                {{ riskLabel(progress.riskLevel) }}
-              </UiBadge>
+    <MarkQualityScopeBar
+      v-if="selectedExamId && isExamWorkspaceRoute"
+      mode="workbench"
+      :organization-detail="organizationDetail"
+      :selected-organization-id="selectedOrganizationId"
+      :selected-group-id="selectedGroupId"
+      :organization-loading="organizationLoading"
+      :show-group-scope="showGroupScope"
+      @group-change="handleScopeBarGroupChange"
+    />
+
+    <WorkbenchSurfaceCard v-if="selectedExamId" flush class="quality-dashboard__surface">
+      <template #head>
+        <UiSectionTabs
+          v-model="activeTab"
+          :items="qualityTabItems"
+          compact
+          divided
+        />
+      </template>
+
+      <template v-if="activeTab === 'overview'">
+        <div class="quality-dashboard__overview-grid">
+          <WorkbenchSurfaceCard class="quality-dashboard__inner-panel">
+            <template #head>
+              <span class="quality-dashboard__panel-title">教师质量指标</span>
             </template>
-            <template #extra>
-              <a-space>
-                <UiButton
-                  size="sm"
-                  variant="outline"
-                  :disabled="!scopeValid"
-                  :loading="progressLoading"
-                  @click="loadProgress"
-                >
-                  <template #icon><ReloadOutlined /></template>
-                  查询最新
-                </UiButton>
-                <UiButton
-                  size="sm"
-                  :disabled="!scopeValid"
-                  :loading="snapshotting"
-                  @click="handleSnapshot"
-                >
-                  <template #icon><SyncOutlined /></template>
-                  立即快照
-                </UiButton>
-              </a-space>
-            </template>
-
-
-            <UiEmpty
-              v-if="!scopeValid"
-              description="请选择阅卷组织与题组"
-              class="quality-dashboard__alert"
-            />
-            <a-skeleton v-else-if="progressLoading" active :paragraph="{ rows: 3 }" />
-            <a-descriptions v-else-if="progress" :column="3" bordered size="small">
-              <a-descriptions-item label="总任务数">
-                <b>{{ progress.totalTasks }}</b>
-              </a-descriptions-item>
-              <a-descriptions-item label="已分配">
-                {{ progress.allocatedTasks }}
-              </a-descriptions-item>
-              <a-descriptions-item label="进行中">
-                {{ progress.inProgressTasks }}
-              </a-descriptions-item>
-              <a-descriptions-item label="已提交">
-                {{ progress.submittedTasks }}
-              </a-descriptions-item>
-              <a-descriptions-item label="已定稿">
-                <b class="quality-dashboard__num-success">{{ progress.finalizedTasks }}</b>
-              </a-descriptions-item>
-              <a-descriptions-item label="已回收">
-                <b class="quality-dashboard__num-warning">{{ progress.recycledTasks }}</b>
-              </a-descriptions-item>
-              <a-descriptions-item label="完成率">
-                {{ progress.completionRate.toFixed(2) }}%
-              </a-descriptions-item>
-              <a-descriptions-item label="预估剩余">
-                {{ estimatedRemainingText(progress.estimatedRemainingMinutes) }}
-              </a-descriptions-item>
-              <a-descriptions-item label="风险等级">
-                <UiTag :tone="riskTone(progress.riskLevel)" size="sm">
-                  {{ riskLabel(progress.riskLevel) }}
-                </UiTag>
-              </a-descriptions-item>
-              <a-descriptions-item label="快照时间" :span="2">
-                {{ progress.snapshotTime }}
-              </a-descriptions-item>
-              <a-descriptions-item v-if="progressRiskItems.length > 0" label="风险详情" :span="3">
-                <ul class="quality-dashboard__risk-list">
-                  <li
-                    v-for="(riskItem, riskIndex) in progressRiskItems"
-                    :key="`${riskItem.riskCode}-${riskIndex}`"
-                    class="quality-dashboard__risk-item"
-                  >
-                    <UiTag :tone="riskTone(riskItem.riskLevel)" size="sm">
-                      {{ riskLabel(riskItem.riskLevel) }}
-                    </UiTag>
-                    <span class="quality-dashboard__risk-title">{{ riskItem.riskLabel }}</span>
-                    <span class="quality-dashboard__risk-desc">{{ riskItem.riskDescription }}</span>
-                  </li>
-                </ul>
-              </a-descriptions-item>
-            </a-descriptions>
-            <UiEmpty
-              v-else
-              description="暂无进度快照，请点击「立即快照」生成"
-              class="quality-dashboard__alert"
-            />
-
-            <div v-if="progress" class="quality-dashboard__charts">
-              <MarkTrendSection
-                title="完成率走势"
-                :hint="progressTrendHint"
-                :point-count="progressTrendPoints.length"
-                :option="progressTrendOption"
-                height="260px"
-                value-unit="%"
-                :last-value="progressTrendLastValue"
-                :aria-label="progressTrendAriaLabel"
-              />
-              <MarkBarSection
-                title="当前任务状态分布"
-                :hint="progressTaskBarHint"
-                :item-count="progressTaskBarItems.length"
-                :option="progressTaskBarOption"
-                height="260px"
-                :aria-label="progressTaskBarAriaLabel"
-              />
-            </div>
-          </UiCard>
-        </a-tab-pane>
-
-        <!-- ─── Tab 2: 教师质量 ─── -->
-        <a-tab-pane key="reviewer">
-          <template #tab>
-            <span><UserOutlined /> 教师质量</span>
-          </template>
-
-          <UiCard class="info-card">
-            <template #title>
-              <span>教师质量指标</span>
-            </template>
-            <template #extra>
+            <template #toolbar>
               <UiButton
                 size="sm"
-                :disabled="!scopeValid"
-                :loading="refreshing"
-                @click="handleRefreshMetrics"
+                variant="outline"
+                :loading="reviewerLoading"
+                @click="loadReviewerMetrics"
               >
-                <template #icon><SyncOutlined /></template>
-                立即重算
+                <template #icon><ReloadOutlined /></template>
+                刷新
               </UiButton>
             </template>
-
-            <UiFilterBar
-              variant="plain"
-              v-model="reviewerFilterForm"
-              :fields="reviewerFilterFields"
-              search-text="查询"
-              @search="loadReviewerMetrics"
-              @reset="handleReviewerFilterReset"
-            />
-
             <UiDataTable
               pagination-mode="client"
               class="student-detail-table__data-table"
@@ -254,130 +151,673 @@
                 </template>
               </template>
             </UiDataTable>
-          </UiCard>
-        </a-tab-pane>
+          </WorkbenchSurfaceCard>
 
-        <!-- ─── Tab 3: 抽检 ─── -->
-        <a-tab-pane key="spotcheck">
-          <template #tab>
-            <span><AimOutlined /> 抽检</span>
+          <WorkbenchSurfaceCard class="quality-dashboard__inner-panel">
+            <template #head>
+              <span class="quality-dashboard__panel-title">质量雷达图</span>
+            </template>
+            <UiEmpty v-if="!examQualityPanel" description="暂无质量概览数据" />
+            <template v-else>
+              <div class="quality-dashboard__consistency-summary">
+                <span class="quality-dashboard__consistency-label">考试级一致性</span>
+                <strong class="quality-dashboard__consistency-value">
+                  {{
+                    examQualityPanel.qualitySummary.examConsistencyRate != null
+                      ? `${examQualityPanel.qualitySummary.examConsistencyRate}%`
+                      : '—'
+                  }}
+                </strong>
+                <span class="quality-dashboard__consistency-meta">
+                  {{ examQualityPanel.qualitySummary.consistencyReviewerCount }} 名教师纳入统计
+                </span>
+              </div>
+              <MarkChart
+                v-if="qualityRadarHasData"
+                :option="qualityRadarOption"
+                height="280px"
+                aria-label="考试质量雷达图"
+                class="quality-dashboard__radar-chart"
+              />
+              <UiEmpty v-else description="暂无质量维度数据" />
+              <ul v-if="examQualityPanel.qualityOverviewItems.length > 0" class="quality-dashboard__consistency-list">
+                <li
+                  v-for="item in examQualityPanel.qualityOverviewItems"
+                  :key="item.reviewerUserId"
+                  class="quality-dashboard__consistency-row"
+                >
+                  <span class="quality-dashboard__consistency-name">{{ item.reviewerDisplayName }}</span>
+                  <div class="quality-dashboard__consistency-track">
+                    <div
+                      class="quality-dashboard__consistency-fill"
+                      :style="{ width: `${Math.min(100, Math.max(0, item.consistencyRate))}%` }"
+                    />
+                  </div>
+                  <span class="quality-dashboard__consistency-rate">{{ item.consistencyRate }}%</span>
+                </li>
+              </ul>
+              <UiEmpty v-else description="暂无评阅员一致性样本" />
+            </template>
+          </WorkbenchSurfaceCard>
+        </div>
+
+        <WorkbenchSurfaceCard
+          v-if="selectedExamId"
+          class="quality-dashboard__inner-panel"
+        >
+          <template #head>
+            <span class="quality-dashboard__panel-title">全场抽检记录</span>
+          </template>
+          <template #toolbar>
+            <UiButton size="sm" variant="outline" :loading="examSpotCheckLoading" @click="loadExamSpotCheckRecords">
+              <template #icon><ReloadOutlined /></template>
+              刷新
+            </UiButton>
+          </template>
+          <UiDataTable
+            v-model:current="examSpotCheckPagination.pageNum"
+            v-model:page-size="examSpotCheckPagination.pageSize"
+            pagination-mode="server"
+            class="student-detail-table__data-table"
+            :columns="examSpotCheckColumns"
+            :data-source="examSpotCheckItems"
+            :loading="examSpotCheckLoading"
+            :total="examSpotCheckPagination.total"
+            flat
+            row-key="id"
+            size="middle"
+            empty-kind="first-run"
+            empty-description="暂无抽检记录"
+            @page-change="handleExamSpotCheckPageChange"
+          >
+            <template #bodyCell="{ column, index }">
+              <template v-if="column.key === 'question'">
+                第 {{ examSpotCheckItems[index].questionNo }} 题 ·
+                {{ examSpotCheckItems[index].questionTypeMessage }}
+              </template>
+              <template v-else-if="column.key === 'originalScore'">
+                {{ formatDecimal(examSpotCheckItems[index].originalScore) }}
+              </template>
+              <template v-else-if="column.key === 'reviewScore'">
+                {{
+                  examSpotCheckItems[index].reviewScore != null
+                    ? formatDecimal(examSpotCheckItems[index].reviewScore)
+                    : '—'
+                }}
+              </template>
+              <template v-else-if="column.key === 'spotCheckStatus'">
+                <UiTag
+                  :tone="examSpotCheckStatusTone(examSpotCheckItems[index].spotCheckStatus)"
+                  size="sm"
+                >
+                  {{ examSpotCheckItems[index].spotCheckStatusMessage }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'checkedTime'">
+                {{ examSpotCheckItems[index].checkedTime ?? '—' }}
+              </template>
+            </template>
+          </UiDataTable>
+        </WorkbenchSurfaceCard>
+
+        <WorkbenchSurfaceCard
+          v-if="isExamWorkspaceRoute"
+          class="quality-dashboard__inner-panel"
+        >
+          <template #head>
+            <span class="quality-dashboard__panel-title">我的待处理抽检</span>
+          </template>
+          <template #toolbar>
+            <UiButton size="sm" variant="outline" :loading="mySpotCheckLoading" @click="loadMyPendingSpotChecks">
+              <template #icon><ReloadOutlined /></template>
+              刷新
+            </UiButton>
+          </template>
+          <UiDataTable
+            v-model:current="mySpotCheckPagination.pageNum"
+            v-model:page-size="mySpotCheckPagination.pageSize"
+            pagination-mode="server"
+            class="student-detail-table__data-table"
+            :columns="mySpotCheckColumns"
+            :data-source="mySpotCheckItems"
+            :loading="mySpotCheckLoading"
+            :total="mySpotCheckPagination.total"
+            flat
+            row-key="id"
+            size="middle"
+            empty-kind="first-run"
+            empty-description="暂无待处理抽检"
+            @page-change="handleMySpotCheckPageChange"
+          >
+            <template #bodyCell="{ column, index }">
+              <template v-if="column.key === 'question'">
+                第 {{ mySpotCheckItems[index].questionNo }} 题 ·
+                {{ mySpotCheckItems[index].questionTypeMessage }}
+              </template>
+              <template v-else-if="column.key === 'paper'">
+                {{ mySpotCheckItems[index].paperDisplay.primaryText }}
+              </template>
+              <template v-else-if="column.key === 'originalScore'">
+                {{ formatDecimal(mySpotCheckItems[index].originalScore) }}
+              </template>
+              <template v-else-if="column.key === 'spotCheckStatus'">
+                <UiTag :tone="mySpotCheckStatusTone(mySpotCheckItems[index].spotCheckStatus)" size="sm">
+                  {{ mySpotCheckStatusLabel(mySpotCheckItems[index].spotCheckStatus) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'createTime'">
+                {{ mySpotCheckItems[index].createTime }}
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <UiTextAction tone="primary" @click="goSpotCheckWorkbench">去处理</UiTextAction>
+              </template>
+            </template>
+          </UiDataTable>
+        </WorkbenchSurfaceCard>
+
+        <WorkbenchSurfaceCard
+          v-if="isExamWorkspaceRoute && examQualityPanel"
+          class="quality-dashboard__inner-panel quality-dashboard__todo-panel"
+        >
+          <template #head>
+            <span class="quality-dashboard__panel-title">质控待办入口</span>
+          </template>
+          <div class="quality-dashboard__todo-grid">
+            <button
+              type="button"
+              class="quality-dashboard__todo-card"
+              @click="goSpotCheckWorkbench"
+            >
+              <span class="quality-dashboard__todo-label">待处理抽检</span>
+              <strong class="quality-dashboard__todo-value">{{ examQualityPanel.openSpotCheckCount }}</strong>
+              <span class="quality-dashboard__todo-hint">进入抽检处理</span>
+            </button>
+            <button
+              type="button"
+              class="quality-dashboard__todo-card"
+              @click="goArbitrationWorkbench"
+            >
+              <span class="quality-dashboard__todo-label">待仲裁</span>
+              <strong class="quality-dashboard__todo-value">{{ examQualityPanel.arbitrationPendingCount }}</strong>
+              <span class="quality-dashboard__todo-hint">进入仲裁裁定</span>
+            </button>
+            <button
+              type="button"
+              class="quality-dashboard__todo-card"
+              @click="openSpotCheckTab"
+            >
+              <span class="quality-dashboard__todo-label">预警教师</span>
+              <strong class="quality-dashboard__todo-value">{{ examQualityPanel.reviewerWarningCount }}</strong>
+              <span class="quality-dashboard__todo-hint">创建抽检任务</span>
+            </button>
+            <button
+              type="button"
+              class="quality-dashboard__todo-card"
+              @click="switchToProgressTab"
+            >
+              <span class="quality-dashboard__todo-label">暂停教师</span>
+              <strong class="quality-dashboard__todo-value">{{ examQualityPanel.reviewerSuspendedCount }}</strong>
+              <span class="quality-dashboard__todo-hint">查看题组进度</span>
+            </button>
+          </div>
+        </WorkbenchSurfaceCard>
+      </template>
+
+      <template v-else-if="activeTab === 'progress'">
+        <WorkbenchSurfaceCard v-if="showProgressGroupSummary" class="quality-dashboard__inner-panel">
+          <template #head>
+            <span class="quality-dashboard__panel-title">题组进度汇总</span>
+          </template>
+          <template #toolbar>
+            <span class="quality-dashboard__panel-hint">点击题组查看进度快照与走势</span>
+          </template>
+          <UiEmpty v-if="!scopeValid" description="请先配置阅卷组织" />
+          <UiDataTable
+            v-else
+            pagination-mode="none"
+            :columns="groupSummaryColumns"
+            :data-source="groupSummaryRows"
+            :loading="groupSummaryLoading"
+            :show-pagination="false"
+            flat
+            row-key="groupId"
+            size="middle"
+          >
+            <template #bodyCell="{ column, index }">
+              <template v-if="column.key === 'groupStatus'">
+                <UiTag :tone="groupSummaryRows[index].statusTone" size="sm">
+                  {{ groupSummaryRows[index].statusLabel }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'completionRate'">
+                {{ groupSummaryRows[index].completionRateText }}
+              </template>
+              <template v-else-if="column.key === 'riskLevel'">
+                <UiTag
+                  v-if="groupSummaryRows[index].riskTone"
+                  :tone="groupSummaryRows[index].riskTone"
+                  size="sm"
+                >
+                  {{ groupSummaryRows[index].riskLevelText }}
+                </UiTag>
+                <span v-else>{{ groupSummaryRows[index].riskLevelText }}</span>
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <UiTextAction @click="openGroupProgress(groupSummaryRows[index].groupId)">
+                  查看进度
+                </UiTextAction>
+              </template>
+            </template>
+          </UiDataTable>
+        </WorkbenchSurfaceCard>
+
+        <WorkbenchSurfaceCard v-else class="quality-dashboard__inner-panel">
+          <template #head>
+            <span class="quality-dashboard__panel-title">进度快照</span>
+          </template>
+          <template #toolbar>
+            <a-space>
+              <UiButton
+                size="sm"
+                variant="outline"
+                :disabled="!scopeValid"
+                :loading="progressLoading"
+                @click="loadProgress"
+              >
+                <template #icon><ReloadOutlined /></template>
+                查询最新
+              </UiButton>
+              <UiButton
+                size="sm"
+                :disabled="!scopeValid"
+                :loading="snapshotting"
+                @click="handleSnapshot"
+              >
+                <template #icon><SyncOutlined /></template>
+                立即快照
+              </UiButton>
+            </a-space>
           </template>
 
-          <UiCard class="info-card">
-            <template #title>
-              <span>创建抽检任务</span>
-            </template>
 
-            <a-form layout="vertical" class="quality-dashboard__form">
-              <a-form-item label="阅卷组织" required>
-                <a-select :value="selectedOrganizationId" :options="organizationOptions" disabled />
-              </a-form-item>
-              <a-form-item label="题组（可选）">
-                <a-select
-                  :value="selectedGroupId"
-                  :options="groupOptions"
-                  disabled
-                  placeholder="组织级抽检"
-                />
-              </a-form-item>
-              <a-form-item label="抽检比例（%）" required>
-                <a-input-number
-                  v-model:value="spotForm.sampleRate"
-                  :min="1"
-                  :max="100"
-                  class="quality-dashboard__field-full"
-                  placeholder="请输入 1~100 之间的抽检比例"
-                />
-              </a-form-item>
-              <a-form-item label="目标教师（可选）">
-                <a-select
-                  v-model:value="spotForm.targetReviewerUserId"
-                  :options="reviewerOptions"
-                  placeholder="选择目标教师；留空对全组抽检"
-                  allow-clear
-                  show-search
-                  option-filter-prop="label"
-                />
-              </a-form-item>
-              <a-form-item>
+          <UiEmpty
+            v-if="!scopeValid"
+            description="请选择阅卷组织"
+            class="quality-dashboard__alert"
+          />
+          <a-skeleton v-else-if="progressLoading" active :paragraph="{ rows: 3 }" />
+          <a-descriptions v-else-if="progress" :column="3" bordered size="small">
+            <a-descriptions-item label="总任务数">
+              <b>{{ progress.totalTasks }}</b>
+            </a-descriptions-item>
+            <a-descriptions-item label="已分配">
+              {{ progress.allocatedTasks }}
+            </a-descriptions-item>
+            <a-descriptions-item label="进行中">
+              {{ progress.inProgressTasks }}
+            </a-descriptions-item>
+            <a-descriptions-item label="已提交">
+              {{ progress.submittedTasks }}
+            </a-descriptions-item>
+            <a-descriptions-item label="已定稿">
+              <b class="quality-dashboard__num-success">{{ progress.finalizedTasks }}</b>
+            </a-descriptions-item>
+            <a-descriptions-item label="已回收">
+              <b class="quality-dashboard__num-warning">{{ progress.recycledTasks }}</b>
+            </a-descriptions-item>
+            <a-descriptions-item label="完成率">
+              {{ progress.completionRate.toFixed(2) }}%
+            </a-descriptions-item>
+            <a-descriptions-item label="预估剩余">
+              {{ estimatedRemainingText(progress.estimatedRemainingMinutes) }}
+            </a-descriptions-item>
+            <a-descriptions-item label="风险等级">
+              <UiTag :tone="riskTone(progress.riskLevel)" size="sm">
+                {{ riskLabel(progress.riskLevel) }}
+              </UiTag>
+            </a-descriptions-item>
+            <a-descriptions-item label="快照时间" :span="2">
+              {{ progress.snapshotTime }}
+            </a-descriptions-item>
+            <a-descriptions-item v-if="progressRiskItems.length > 0" label="风险详情" :span="3">
+              <ul class="quality-dashboard__risk-list">
+                <li
+                  v-for="(riskItem, riskIndex) in progressRiskItems"
+                  :key="`${riskItem.riskCode}-${riskIndex}`"
+                  class="quality-dashboard__risk-item"
+                >
+                  <UiTag :tone="riskTone(riskItem.riskLevel)" size="sm">
+                    {{ riskLabel(riskItem.riskLevel) }}
+                  </UiTag>
+                  <span class="quality-dashboard__risk-title">{{ riskItem.riskLabel }}</span>
+                  <span class="quality-dashboard__risk-desc">{{ riskItem.riskDescription }}</span>
+                </li>
+              </ul>
+            </a-descriptions-item>
+          </a-descriptions>
+          <UiEmpty
+            v-else
+            description="暂无进度快照，请点击「立即快照」生成"
+            class="quality-dashboard__alert"
+          />
+
+          <div v-if="progress" class="quality-dashboard__charts">
+            <MarkTrendSection
+              title="完成率走势"
+              :hint="progressTrendHint"
+              :point-count="progressTrendPoints.length"
+              :option="progressTrendOption"
+              height="260px"
+              value-unit="%"
+              :last-value="progressTrendLastValue"
+              :aria-label="progressTrendAriaLabel"
+            />
+            <MarkBarSection
+              title="当前任务状态分布"
+              :hint="progressTaskBarHint"
+              :item-count="progressTaskBarItems.length"
+              :option="progressTaskBarOption"
+              height="260px"
+              :aria-label="progressTaskBarAriaLabel"
+            />
+          </div>
+        </WorkbenchSurfaceCard>
+      </template>
+
+      <template v-else-if="activeTab === 'reviewer'">
+        <WorkbenchSurfaceCard class="quality-dashboard__inner-panel">
+          <template #head>
+            <span class="quality-dashboard__panel-title">教师质量指标</span>
+          </template>
+          <template #toolbar>
+            <UiButton
+              size="sm"
+              :disabled="!scopeValid"
+              :loading="refreshing"
+              @click="handleRefreshMetrics"
+            >
+              <template #icon><SyncOutlined /></template>
+              立即重算
+            </UiButton>
+          </template>
+
+          <UiFilterBar
+            variant="plain"
+            v-model="reviewerFilterForm"
+            :fields="reviewerFilterFields"
+            search-text="查询"
+            @search="loadReviewerMetrics"
+            @reset="handleReviewerFilterReset"
+          />
+
+          <UiDataTable
+            pagination-mode="client"
+            class="student-detail-table__data-table"
+            :columns="reviewerColumns"
+            :data-source="reviewerMetrics"
+            :loading="reviewerLoading"
+            :page-size="20"
+            :total="reviewerMetrics.length"
+            flat
+            row-key="id"
+            size="middle"
+          >
+            <template #bodyCell="{ column, index }">
+              <template v-if="column.key === 'reviewer'">
+                {{ reviewerMetrics[index].reviewerUserName }} ·
+                {{ reviewerMetrics[index].reviewerTeacherNo }}
+              </template>
+              <template v-else-if="column.key === 'organization'">
+                {{ reviewerMetrics[index].organizationStatusMessage }}
+              </template>
+              <template v-else-if="column.key === 'group'">
+                {{
+                  reviewerMetrics[index].groupName
+                    ? `${reviewerMetrics[index].groupName} · ${reviewerMetrics[index].groupStatusMessage}`
+                    : '组织级'
+                }}
+              </template>
+              <template v-else-if="column.key === 'metricStatus'">
+                <UiTag :tone="metricStatusTone(reviewerMetrics[index].metricStatus)" size="sm">
+                  {{ metricStatusLabel(reviewerMetrics[index].metricStatus) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'avgScore'">
+                {{ formatDecimal(reviewerMetrics[index].avgScore) }}
+              </template>
+              <template v-else-if="column.key === 'scoreStddev'">
+                {{ formatDecimal(reviewerMetrics[index].scoreStddev) }}
+              </template>
+              <template v-else-if="column.key === 'consistencyRate'">
+                {{ formatDecimal(reviewerMetrics[index].consistencyRate) }}
+              </template>
+              <template v-else-if="column.key === 'scoreBias'">
+                {{ formatDecimal(reviewerMetrics[index].scoreBias) }}
+              </template>
+            </template>
+          </UiDataTable>
+        </WorkbenchSurfaceCard>
+      </template>
+
+      <template v-else-if="activeTab === 'spotcheck'">
+        <WorkbenchSurfaceCard class="quality-dashboard__inner-panel">
+          <template #head>
+            <span class="quality-dashboard__panel-title">创建抽检任务</span>
+          </template>
+
+          <a-form layout="vertical" class="quality-dashboard__form quality-dashboard__form--spot">
+            <a-form-item v-if="!isExamWorkspaceRoute" label="阅卷组织" required>
+              <a-select :value="selectedOrganizationId" :options="organizationOptions" disabled />
+            </a-form-item>
+            <a-form-item v-if="!isExamWorkspaceRoute" label="题组（可选）">
+              <a-select
+                :value="selectedGroupId"
+                :options="groupOptions"
+                disabled
+                placeholder="组织级抽检"
+              />
+            </a-form-item>
+            <a-form-item label="抽检比例（%）" required>
+              <a-input-number
+                v-model:value="spotForm.sampleRate"
+                :min="1"
+                :max="100"
+                class="quality-dashboard__field-full"
+                placeholder="请输入 1~100 之间的抽检比例"
+              />
+            </a-form-item>
+            <a-form-item label="目标教师（可选）">
+              <a-select
+                v-model:value="spotForm.targetReviewerUserId"
+                :options="reviewerOptions"
+                placeholder="选择目标教师；留空对全组抽检"
+                allow-clear
+                show-search
+                option-filter-prop="label"
+              />
+            </a-form-item>
+            <a-form-item>
+              <UiButton
+                :loading="creatingSpot"
+                :disabled="!scopeValid || !spotForm.sampleRate"
+                @click="handleCreateSpotCheck"
+              >
+                <template #icon><PlusOutlined /></template>
+                创建抽检任务
+              </UiButton>
+            </a-form-item>
+          </a-form>
+        </WorkbenchSurfaceCard>
+
+        <WorkbenchSurfaceCard class="quality-dashboard__inner-panel">
+          <template #head>
+            <span class="quality-dashboard__panel-title">我的待处理抽检</span>
+          </template>
+          <template #toolbar>
+            <UiButton size="sm" variant="outline" :loading="mySpotCheckLoading" @click="loadMyPendingSpotChecks">
+              <template #icon><ReloadOutlined /></template>
+              刷新
+            </UiButton>
+          </template>
+          <UiDataTable
+            v-model:current="mySpotCheckPagination.pageNum"
+            v-model:page-size="mySpotCheckPagination.pageSize"
+            pagination-mode="server"
+            class="student-detail-table__data-table"
+            :columns="mySpotCheckColumns"
+            :data-source="mySpotCheckItems"
+            :loading="mySpotCheckLoading"
+            :total="mySpotCheckPagination.total"
+            flat
+            row-key="id"
+            size="middle"
+            empty-kind="first-run"
+            empty-description="暂无待处理抽检"
+            @page-change="handleMySpotCheckPageChange"
+          >
+            <template #bodyCell="{ column, index }">
+              <template v-if="column.key === 'question'">
+                第 {{ mySpotCheckItems[index].questionNo }} 题 ·
+                {{ mySpotCheckItems[index].questionTypeMessage }}
+              </template>
+              <template v-else-if="column.key === 'paper'">
+                {{ mySpotCheckItems[index].paperDisplay.primaryText }}
+              </template>
+              <template v-else-if="column.key === 'originalScore'">
+                {{ formatDecimal(mySpotCheckItems[index].originalScore) }}
+              </template>
+              <template v-else-if="column.key === 'spotCheckStatus'">
+                <UiTag :tone="mySpotCheckStatusTone(mySpotCheckItems[index].spotCheckStatus)" size="sm">
+                  {{ mySpotCheckStatusLabel(mySpotCheckItems[index].spotCheckStatus) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'createTime'">
+                {{ mySpotCheckItems[index].createTime }}
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <UiTextAction tone="primary" @click="goSpotCheckWorkbench">去处理</UiTextAction>
+              </template>
+            </template>
+          </UiDataTable>
+        </WorkbenchSurfaceCard>
+
+        <WorkbenchSurfaceCard class="quality-dashboard__inner-panel">
+          <template #head>
+            <span class="quality-dashboard__panel-title">全场抽检记录</span>
+          </template>
+          <template #toolbar>
+            <UiButton size="sm" variant="outline" :loading="examSpotCheckLoading" @click="loadExamSpotCheckRecords">
+              <template #icon><ReloadOutlined /></template>
+              刷新
+            </UiButton>
+          </template>
+          <UiDataTable
+            v-model:current="examSpotCheckPagination.pageNum"
+            v-model:page-size="examSpotCheckPagination.pageSize"
+            pagination-mode="server"
+            class="student-detail-table__data-table"
+            :columns="examSpotCheckColumns"
+            :data-source="examSpotCheckItems"
+            :loading="examSpotCheckLoading"
+            :total="examSpotCheckPagination.total"
+            flat
+            row-key="id"
+            size="middle"
+            empty-kind="first-run"
+            empty-description="暂无抽检记录"
+            @page-change="handleExamSpotCheckPageChange"
+          >
+            <template #bodyCell="{ column, index }">
+              <template v-if="column.key === 'question'">
+                第 {{ examSpotCheckItems[index].questionNo }} 题 ·
+                {{ examSpotCheckItems[index].questionTypeMessage }}
+              </template>
+              <template v-else-if="column.key === 'originalScore'">
+                {{ formatDecimal(examSpotCheckItems[index].originalScore) }}
+              </template>
+              <template v-else-if="column.key === 'reviewScore'">
+                {{
+                  examSpotCheckItems[index].reviewScore != null
+                    ? formatDecimal(examSpotCheckItems[index].reviewScore)
+                    : '—'
+                }}
+              </template>
+              <template v-else-if="column.key === 'spotCheckStatus'">
+                <UiTag
+                  :tone="examSpotCheckStatusTone(examSpotCheckItems[index].spotCheckStatus)"
+                  size="sm"
+                >
+                  {{ examSpotCheckItems[index].spotCheckStatusMessage }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'checkedTime'">
+                {{ examSpotCheckItems[index].checkedTime ?? '—' }}
+              </template>
+            </template>
+          </UiDataTable>
+        </WorkbenchSurfaceCard>
+      </template>
+
+      <template v-else-if="activeTab === 'reprocess'">
+        <WorkbenchSurfaceCard class="quality-dashboard__inner-panel">
+          <template #head>
+            <span class="quality-dashboard__panel-title">触发异常批次重处理</span>
+          </template>
+
+
+
+          <a-form layout="vertical" class="quality-dashboard__form">
+            <a-form-item label="扫描批次" required>
+              <a-select
+                v-model:value="reprocessForm.scanBatchId"
+                :options="scannerBatchOptions"
+                :loading="scannerBatchLoading"
+                placeholder="选择扫描批次"
+                show-search
+                option-filter-prop="label"
+              />
+            </a-form-item>
+            <a-form-item label="重处理范围" required>
+              <a-radio-group v-model:value="reprocessForm.scope">
+                <a-radio-button value="FAILED_ONLY">仅失败页</a-radio-button>
+                <a-radio-button value="ALL">整批次</a-radio-button>
+              </a-radio-group>
+            </a-form-item>
+            <a-form-item label="重处理原因" required>
+              <a-textarea
+                v-model:value="reprocessForm.reason"
+                :rows="3"
+                placeholder="请描述重处理原因（必填，会进入审计日志）"
+              />
+            </a-form-item>
+            <a-form-item>
+              <a-popconfirm
+                title="确认触发异常批次重处理？"
+                ok-text="确认"
+                cancel-text="取消"
+                @confirm="handleReprocess"
+              >
                 <UiButton
-                  :loading="creatingSpot"
-                  :disabled="!scopeValid || !spotForm.sampleRate"
-                  @click="handleCreateSpotCheck"
+                  variant="destructive"
+                  :loading="reprocessing"
+                  :disabled="!reprocessValid"
                 >
-                  <template #icon><PlusOutlined /></template>
-                  创建抽检任务
+                  <template #icon><WarningOutlined /></template>
+                  触发重处理
                 </UiButton>
-              </a-form-item>
-            </a-form>
-          </UiCard>
-        </a-tab-pane>
-
-        <!-- ─── Tab 4: 异常批次重处理 ─── -->
-        <a-tab-pane key="reprocess">
-          <template #tab>
-            <span><ReloadOutlined /> 异常批次重处理</span>
-          </template>
-
-          <UiCard class="info-card">
-            <template #title>
-              <span>触发异常批次重处理</span>
-            </template>
-
-
-
-            <a-form layout="vertical" class="quality-dashboard__form">
-              <a-form-item label="扫描批次" required>
-                <a-select
-                  v-model:value="reprocessForm.scanBatchId"
-                  :options="scannerBatchOptions"
-                  :loading="scannerBatchLoading"
-                  placeholder="选择扫描批次"
-                  show-search
-                  option-filter-prop="label"
-                />
-              </a-form-item>
-              <a-form-item label="重处理范围" required>
-                <a-radio-group v-model:value="reprocessForm.scope">
-                  <a-radio-button value="FAILED_ONLY">仅失败页</a-radio-button>
-                  <a-radio-button value="ALL">整批次</a-radio-button>
-                </a-radio-group>
-              </a-form-item>
-              <a-form-item label="重处理原因" required>
-                <a-textarea
-                  v-model:value="reprocessForm.reason"
-                  :rows="3"
-                  placeholder="请描述重处理原因（必填，会进入审计日志）"
-                />
-              </a-form-item>
-              <a-form-item>
-                <a-popconfirm
-                  title="确认触发异常批次重处理？"
-                  ok-text="确认"
-                  cancel-text="取消"
-                  @confirm="handleReprocess"
-                >
-                  <UiButton
-                    variant="destructive"
-                    :loading="reprocessing"
-                    :disabled="!reprocessValid"
-                  >
-                    <template #icon><WarningOutlined /></template>
-                    触发重处理
-                  </UiButton>
-                </a-popconfirm>
-              </a-form-item>
-            </a-form>
-          </UiCard>
-        </a-tab-pane>
-      </a-tabs>
-    </template>
+              </a-popconfirm>
+            </a-form-item>
+          </a-form>
+        </WorkbenchSurfaceCard>
+      </template>
+    </WorkbenchSurfaceCard>
   </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type {WorkbenchQualityPanelVO} from '@/apis/mark/exam-progress';
 import type { ExamScannerBatchVO } from '@/apis/mark/exam-scan'
 import type {
   MarkingOrganizationVO,
@@ -385,60 +825,52 @@ import type {
   QuestionMarkingGroupVO,
 } from '@/apis/mark/marking-organization'
 import type {
-  BatchReprocessScopeCode,
+  ExamSpotCheckRecordItemResponse,
+  MyPendingSpotCheckItemResponse,
   ProgressMonitorRecordVO,
   ProgressRiskItemVO,
   ProgressRiskLevelCode,
-  ReviewerMetricStatusCode,
-  ReviewerQualityMetricResponse,
-} from '@/apis/mark/marking-quality'
-import type { BadgeTone, FilterField, UiBarChartItem } from '@/components/ui-guide/ui/types'
+  ReviewerMetricStatusCode, ReviewerQualityMetricResponse,
+ SpotCheckStatusCode} from '@/apis/mark/marking-quality'
+import type { BadgeTone, FilterField, UiBarChartItem, UiSectionTabItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import AimOutlined from '@ant-design/icons-vue/AimOutlined'
-import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { getQualityPanel } from '@/apis/mark/exam-progress'
 import { pageScannerBatches } from '@/apis/mark/exam-scan'
 import {
   getOrganization,
-  MARKING_ORGANIZATION_STATUS_LABEL,
-  QUESTION_GROUP_STATUS_LABEL,
+  MarkingOrganizationStatusDescription,
+  QUESTION_GROUP_STATUS_TONE,
+  QuestionMarkingGroupStatusDescription,
 } from '@/apis/mark/marking-organization'
-import {
-  createSpotCheckTasks,
-  getLatestProgress,
-  listProgressSnapshots,
-  listReviewerMetrics,
-  PROGRESS_RISK_LEVEL_LABEL,
-  PROGRESS_RISK_LEVEL_TONE,
-  refreshReviewerMetrics,
-  reprocessBatch,
-  REVIEWER_METRIC_STATUS_LABEL,
-  REVIEWER_METRIC_STATUS_TONE,
-  takeProgressSnapshot,
-} from '@/apis/mark/marking-quality'
-import MarkBarSection from '@/components/chart/MarkBarSection.vue'
+import { BatchReprocessScopeCode, createSpotCheckTasks, getLatestProgress, listExamSpotCheckRecords, listMyPendingSpotChecks, listProgressSnapshots, listReviewerMetrics, PROGRESS_RISK_LEVEL_TONE, ProgressRiskLevelDescription, refreshReviewerMetrics, reprocessBatch, REVIEWER_METRIC_STATUS_OPTIONS, REVIEWER_METRIC_STATUS_TONE, ReviewerMetricStatusDescription, SPOT_CHECK_STATUS_TONE, SpotCheckStatusDescription, takeProgressSnapshot } from '@/apis/mark/marking-quality'
+import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
-import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import MarkQualityScopeBar from '@/components/workbench/MarkQualityScopeBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError } from '@/utils/error-handler'
+import { buildExamQualityRadarChartOption } from '@/utils/exam-quality-charts'
 import {
   buildBarChartInsight,
   buildTrendChartInsight,
@@ -446,7 +878,7 @@ import {
 } from '@/utils/mark-chart-insights'
 import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { progressSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
-import { readAllPages } from '@/utils/page-result'
+import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { computeTrendPointDelta } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -460,6 +892,14 @@ const router = useRouter()
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
 const {
+  isJourneyChrome,
+  contextBarTitle,
+  contextBarSubtitle,
+  examStatusLabel,
+  examStatusTone,
+} = useOptionalExamJourneyContextBar('阅卷质控')
+
+const {
   examOptions,
   loading: examLoading,
   selectedExamId,
@@ -470,7 +910,32 @@ const {
   init: initExamSelector,
 } = useMarkExamContext()
 
-const activeTab = ref<'progress' | 'reviewer' | 'spotcheck' | 'reprocess'>('progress')
+type QualityTabKey = 'overview' | 'progress' | 'reviewer' | 'spotcheck' | 'reprocess'
+
+function resolveInitialTab(): QualityTabKey {
+  const queryTab = route.query.tab
+  if (queryTab === 'overview' || queryTab === 'progress' || queryTab === 'reviewer'
+    || queryTab === 'spotcheck' || queryTab === 'reprocess') {
+    return queryTab
+  }
+  return route.meta.layout === 'ExamWorkspace' ? 'overview' : 'progress'
+}
+
+const activeTab = ref<QualityTabKey>(resolveInitialTab())
+
+const qualityTabItems = computed((): UiSectionTabItem[] => {
+  const items: UiSectionTabItem[] = []
+  if (isExamWorkspaceRoute.value) {
+    items.push({ key: 'overview', label: '质量概览' })
+  }
+  items.push(
+    { key: 'progress', label: '进度监控' },
+    { key: 'reviewer', label: '教师质量' },
+    { key: 'spotcheck', label: '抽检' },
+    { key: 'reprocess', label: '异常批次重处理' },
+  )
+  return items
+})
 
 const selectedOrganizationId = ref<string | undefined>(
   route.query.organizationId ? String(route.query.organizationId) : undefined,
@@ -483,9 +948,64 @@ const organizationLoading = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
 const scannerBatches = ref<ExamScannerBatchVO[]>([])
 const scannerBatchLoading = ref(false)
+const examQualityPanel = ref<WorkbenchQualityPanelVO | null>(null)
 // 加载失败：toast 提示，主区保持空态/列表壳
 
 const scopeValid = computed(() => Boolean(selectedExamId.value && selectedOrganizationId.value))
+
+const showGroupScope = computed(() =>
+  isExamWorkspaceRoute.value && (activeTab.value === 'progress' || activeTab.value === 'spotcheck'),
+)
+
+const showProgressGroupSummary = computed(() =>
+  isExamWorkspaceRoute.value && activeTab.value === 'progress' && !selectedGroupId.value,
+)
+
+interface GroupSummaryRow {
+  groupId: string
+  groupName: string
+  leaderUserName: string
+  reviewerCount: number
+  statusLabel: string
+  statusTone: BadgeTone
+  completionRateText: string
+  riskLevelText: string
+  riskTone?: BadgeTone
+}
+
+const groupSummaryColumns: ColumnType<GroupSummaryRow>[] = [
+  { title: '题组', dataIndex: 'groupName', key: 'groupName', width: 160 },
+  { title: '组长', dataIndex: 'leaderUserName', key: 'leaderUserName', width: 100 },
+  { title: '阅卷教师', dataIndex: 'reviewerCount', key: 'reviewerCount', width: 88 },
+  { title: '完成率', key: 'completionRate', width: 88 },
+  { title: '风险', key: 'riskLevel', width: 88 },
+  { title: '状态', key: 'groupStatus', width: 100 },
+  { title: '操作', key: 'actions', width: 100, fixed: 'right' },
+]
+
+const groupSummaryLoading = ref(false)
+const groupProgressByGroupId = ref<Record<string, ProgressMonitorRecordVO | null>>({})
+
+const groupSummaryRows = computed((): GroupSummaryRow[] =>
+  (organizationDetail.value?.groups ?? []).map((group) => {
+    const progressRecord = groupProgressByGroupId.value[group.id] ?? null
+    return {
+      groupId: group.id,
+      groupName: group.groupName,
+      leaderUserName: group.leaderUserName,
+      reviewerCount: group.reviewers.length,
+      statusLabel: strictEnumLabel(QuestionMarkingGroupStatusDescription, group.groupStatus, '题组状态'),
+      statusTone: strictEnumTone(QUESTION_GROUP_STATUS_TONE, group.groupStatus, '题组状态'),
+      completionRateText: progressRecord != null
+        ? `${progressRecord.completionRate.toFixed(1)}%`
+        : '—',
+      riskLevelText: progressRecord != null
+        ? riskLabel(progressRecord.riskLevel)
+        : '暂无快照',
+      riskTone: progressRecord != null ? riskTone(progressRecord.riskLevel) : undefined,
+    }
+  }),
+)
 
 const organizationOptions = computed<DefaultOptionType[]>(() => {
   if (!organizationDetail.value) {
@@ -494,7 +1014,7 @@ const organizationOptions = computed<DefaultOptionType[]>(() => {
   return [
     {
       value: organizationDetail.value.id,
-      label: `阅卷组织 · ${strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, organizationDetail.value.organizationStatus, '阅卷组织状态')} · 负责人 ${organizationDetail.value.leaderUserName}`,
+      label: `阅卷组织 · ${strictEnumLabel(MarkingOrganizationStatusDescription, organizationDetail.value.organizationStatus, '阅卷组织状态')} · 负责人 ${organizationDetail.value.leaderUserName}`,
     },
   ]
 })
@@ -502,7 +1022,7 @@ const organizationOptions = computed<DefaultOptionType[]>(() => {
 const groupOptions = computed<DefaultOptionType[]>(() =>
   (organizationDetail.value?.groups ?? []).map((group) => ({
     value: group.id,
-    label: `${group.groupName} · ${strictEnumLabel(QUESTION_GROUP_STATUS_LABEL, group.groupStatus, '题组状态')} · 组长 ${group.leaderUserName}`,
+    label: `${group.groupName} · ${strictEnumLabel(QuestionMarkingGroupStatusDescription, group.groupStatus, '题组状态')} · 组长 ${group.leaderUserName}`,
   })),
 )
 
@@ -613,6 +1133,152 @@ const progressTaskBarAriaLabel = computed(() => {
   return `当前任务状态分布，共 ${count} 种状态`
 })
 
+const qualityRadarHasData = computed(() =>
+  (examQualityPanel.value?.qualityDimensionItems ?? []).some(item => item.score != null),
+)
+
+const { chartOption: qualityRadarOption } = useChartOption(() =>
+  buildExamQualityRadarChartOption(examQualityPanel.value?.qualityDimensionItems ?? []),
+)
+
+const examSpotCheckItems = ref<ExamSpotCheckRecordItemResponse[]>([])
+const examSpotCheckLoading = ref(false)
+const examSpotCheckPagination = reactive({
+  pageNum: 1,
+  pageSize: 10,
+  total: 0,
+})
+
+const examSpotCheckColumns: ColumnType<ExamSpotCheckRecordItemResponse>[] = [
+  { title: 'ID', key: 'id', width: 88 },
+  { title: '教师', key: 'reviewerDisplayName', width: 120, ellipsis: true },
+  { title: '题号', key: 'question', width: 140 },
+  { title: '原评分', key: 'originalScore', width: 88, align: 'right' },
+  { title: '复核分', key: 'reviewScore', width: 88, align: 'right' },
+  { title: '结论', key: 'spotCheckStatus', width: 100 },
+  { title: '抽检人', key: 'checkerDisplayName', width: 120, ellipsis: true },
+  { title: '时间', key: 'checkedTime', width: 168 },
+]
+
+function examSpotCheckStatusTone(status: SpotCheckStatusCode): BadgeTone {
+  return strictEnumTone(SPOT_CHECK_STATUS_TONE, status, '抽检状态')
+}
+
+async function loadExamSpotCheckRecords(): Promise<void> {
+  if (!selectedExamId.value) {
+    examSpotCheckItems.value = []
+    examSpotCheckPagination.total = 0
+    return
+  }
+  examSpotCheckLoading.value = true
+  try {
+    const result = await listExamSpotCheckRecords({
+      examId: selectedExamId.value,
+      groupId: selectedGroupId.value || undefined,
+      pageNum: examSpotCheckPagination.pageNum,
+      pageSize: examSpotCheckPagination.pageSize,
+    })
+    examSpotCheckItems.value = readPageList(result, '抽检记录加载失败')
+    examSpotCheckPagination.total = readPageTotal(result)
+  } catch (error) {
+    examSpotCheckItems.value = []
+    examSpotCheckPagination.total = 0
+    showUserError(error, '抽检记录加载失败')
+  } finally {
+    examSpotCheckLoading.value = false
+  }
+}
+
+function handleExamSpotCheckPageChange(pageEvent: { current: number, pageSize: number }): void {
+  examSpotCheckPagination.pageNum = pageEvent.current
+  examSpotCheckPagination.pageSize = pageEvent.pageSize
+  void loadExamSpotCheckRecords()
+}
+
+const mySpotCheckItems = ref<MyPendingSpotCheckItemResponse[]>([])
+const mySpotCheckLoading = ref(false)
+const mySpotCheckPagination = reactive({
+  pageNum: 1,
+  pageSize: 10,
+  total: 0,
+})
+
+const mySpotCheckColumns: ColumnType<MyPendingSpotCheckItemResponse>[] = [
+  { title: '题目', key: 'question', width: 160 },
+  { title: '答卷', key: 'paper', ellipsis: true },
+  { title: '原评分', key: 'originalScore', width: 88, align: 'right' },
+  { title: '状态', key: 'spotCheckStatus', width: 100 },
+  { title: '分派时间', key: 'createTime', width: 160 },
+  { title: '操作', key: 'actions', width: 88, fixed: 'right' },
+]
+
+function mySpotCheckStatusTone(status: SpotCheckStatusCode): BadgeTone {
+  return strictEnumTone(SPOT_CHECK_STATUS_TONE, status, '抽检状态')
+}
+
+function mySpotCheckStatusLabel(status: SpotCheckStatusCode): string {
+  return strictEnumLabel(SpotCheckStatusDescription, status, '抽检状态')
+}
+
+async function loadMyPendingSpotChecks(): Promise<void> {
+  if (!selectedExamId.value) {
+    mySpotCheckItems.value = []
+    mySpotCheckPagination.total = 0
+    return
+  }
+  mySpotCheckLoading.value = true
+  try {
+    const result = await listMyPendingSpotChecks({
+      examId: selectedExamId.value,
+      pageNum: mySpotCheckPagination.pageNum,
+      pageSize: mySpotCheckPagination.pageSize,
+    })
+    mySpotCheckItems.value = readPageList(result, '待处理抽检加载失败')
+    mySpotCheckPagination.total = readPageTotal(result)
+  } catch (error) {
+    mySpotCheckItems.value = []
+    mySpotCheckPagination.total = 0
+    showUserError(error, '待处理抽检加载失败')
+  } finally {
+    mySpotCheckLoading.value = false
+  }
+}
+
+function handleMySpotCheckPageChange(pageEvent: { current: number, pageSize: number }): void {
+  mySpotCheckPagination.pageNum = pageEvent.current
+  mySpotCheckPagination.pageSize = pageEvent.pageSize
+  void loadMyPendingSpotChecks()
+}
+
+async function loadGroupSummaryProgress(): Promise<void> {
+  if (!showProgressGroupSummary.value || !scopeValid.value) {
+    groupProgressByGroupId.value = {}
+    return
+  }
+  const groups = organizationDetail.value?.groups ?? []
+  if (groups.length === 0) {
+    groupProgressByGroupId.value = {}
+    return
+  }
+  groupSummaryLoading.value = true
+  try {
+    const entries: Array<[string, ProgressMonitorRecordVO | null]> = await Promise.all(groups.map(async (group) => {
+      const record = await getLatestProgress({
+        examId: selectedExamId.value!,
+        organizationId: selectedOrganizationId.value!,
+        groupId: group.id,
+      })
+      return [group.id, record]
+    }))
+    groupProgressByGroupId.value = Object.fromEntries(entries)
+  } catch (error) {
+    groupProgressByGroupId.value = {}
+    showUserError(error, '题组进度汇总加载失败')
+  } finally {
+    groupSummaryLoading.value = false
+  }
+}
+
 async function loadProgressHistory(): Promise<void> {
   if (!scopeValid.value) {
     progressHistory.value = []
@@ -681,10 +1347,7 @@ const reviewerFilterFields: FilterField[] = [
     placeholder: '状态过滤',
     allowClear: true,
     width: 160,
-    options: Object.entries(REVIEWER_METRIC_STATUS_LABEL).map(([value, label]) => ({
-      value,
-      label,
-    })),
+    options: REVIEWER_METRIC_STATUS_OPTIONS,
   },
 ]
 
@@ -720,6 +1383,7 @@ async function loadReviewerMetrics(): Promise<void> {
       '阅卷教师质量指标加载失败',
     )
   } catch (error) {
+    reviewerMetrics.value = []
     showUserError(error, '阅卷教师质量指标加载失败')
   } finally {
     reviewerLoading.value = false
@@ -773,6 +1437,7 @@ async function handleCreateSpotCheck(): Promise<void> {
       targetReviewerUserId: spotForm.targetReviewerUserId || undefined,
     })
     message.success(`已创建 ${created} 条抽检任务`)
+    void Promise.all([loadMyPendingSpotChecks(), loadExamSpotCheckRecords()])
   } catch (error) {
     showUserError(error, '阅卷质量抽检任务创建失败')
   } finally {
@@ -790,7 +1455,7 @@ const reprocessForm = reactive<{
 }>({
   scanBatchId: '',
   reason: '',
-  scope: 'FAILED_ONLY',
+  scope: BatchReprocessScopeCode.FAILED_ONLY,
 })
 
 const reprocessValid = computed(() =>
@@ -823,7 +1488,7 @@ function metricStatusTone(status: ReviewerMetricStatusCode): BadgeTone {
 }
 
 function metricStatusLabel(status: ReviewerMetricStatusCode): string {
-  return strictEnumLabel(REVIEWER_METRIC_STATUS_LABEL, status, '阅卷员指标状态')
+  return strictEnumLabel(ReviewerMetricStatusDescription, status, '阅卷员指标状态')
 }
 
 function riskTone(level: ProgressRiskLevelCode): BadgeTone {
@@ -831,7 +1496,7 @@ function riskTone(level: ProgressRiskLevelCode): BadgeTone {
 }
 
 function riskLabel(level: ProgressRiskLevelCode): string {
-  return strictEnumLabel(PROGRESS_RISK_LEVEL_LABEL, level, '进度风险等级')
+  return strictEnumLabel(ProgressRiskLevelDescription, level, '进度风险等级')
 }
 
 function estimatedRemainingText(minutes?: number): string {
@@ -841,7 +1506,71 @@ function estimatedRemainingText(minutes?: number): string {
 
 /* ========== 信号指标：阅卷质量全局风险面板 ========== */
 
+async function loadExamQualityPanel(): Promise<void> {
+  if (!selectedExamId.value) {
+    examQualityPanel.value = null
+    return
+  }
+  const shouldLoad = isExamWorkspaceRoute.value
+    || activeTab.value === 'overview'
+    || activeTab.value === 'spotcheck'
+  if (!shouldLoad) {
+    examQualityPanel.value = null
+    return
+  }
+  try {
+    examQualityPanel.value = await getQualityPanel(selectedExamId.value)
+  } catch (error) {
+    examQualityPanel.value = null
+    showUserError(error, '考试质量看板加载失败')
+  }
+}
+
 const signalMetrics = computed<SignalMetric[]>(() => {
+  const useExamQualitySignals = examQualityPanel.value && (
+    isExamWorkspaceRoute.value
+    || activeTab.value === 'overview'
+    || activeTab.value === 'spotcheck'
+  )
+  if (useExamQualitySignals) {
+    const panel = examQualityPanel.value!
+    const summary = panel.qualitySummary
+    const consistency = summary.examConsistencyRate
+    const passRate = summary.spotCheckPassRate
+    return [
+      {
+        key: 'consistency',
+        label: '平均一致性',
+        value: consistency != null ? `${consistency}%` : '—',
+        tone: consistency != null && consistency >= 90 ? 'green' : consistency != null ? 'orange' : 'gray',
+      },
+      {
+        key: 'spotcheck-done',
+        label: '已抽检',
+        value: summary.spotCheckCompletedCount ?? 0,
+        tone: (summary.spotCheckCompletedCount ?? 0) > 0 ? 'blue' : 'gray',
+      },
+      {
+        key: 'spotcheck-abnormal',
+        label: '异常',
+        value: summary.spotCheckAbnormalCount ?? 0,
+        tone: (summary.spotCheckAbnormalCount ?? 0) > 0 ? 'red' : 'green',
+      },
+      {
+        key: 'spotcheck-pass',
+        label: '抽检通过率',
+        value: passRate != null ? `${passRate}%` : '—',
+        tone: passRate != null && passRate >= 80 ? 'green' : passRate != null ? 'orange' : 'gray',
+      },
+      {
+        key: 'spotcheck-open',
+        label: '待抽检',
+        value: panel.openSpotCheckCount,
+        tone: panel.openSpotCheckCount > 0 ? 'orange' : 'gray',
+      },
+    ]
+  }
+
   const p = progress.value
   const reviewerWarning = reviewerMetrics.value.filter((r) => r.metricStatus === 'WARNING').length
   const reviewerSuspended = reviewerMetrics.value.filter(
@@ -916,6 +1645,7 @@ function syncRouteQuery(): void {
       ...(selectedExamId.value ? { examId: selectedExamId.value } : {}),
       ...(selectedOrganizationId.value ? { organizationId: selectedOrganizationId.value } : {}),
       ...(selectedGroupId.value ? { groupId: selectedGroupId.value } : {}),
+      ...(isExamWorkspaceRoute.value ? { tab: activeTab.value } : {}),
     },
   })
 }
@@ -994,18 +1724,81 @@ function handleGroupChange(value: SelectValue): void {
   reloadActiveTab()
 }
 
+function handleScopeBarGroupChange(groupId: string | undefined): void {
+  selectedGroupId.value = groupId
+  spotForm.targetReviewerUserId = ''
+  syncRouteQuery()
+  reloadActiveTab()
+}
+
+function openGroupProgress(groupId: string): void {
+  selectedGroupId.value = groupId
+  syncRouteQuery()
+  void loadProgress()
+}
+
+function goSpotCheckWorkbench(): void {
+  if (!selectedExamId.value) return
+  void router.push({
+    name: 'TeacherExamWorkspaceMarkingQuality',
+    params: { examId: selectedExamId.value },
+  })
+}
+
+function goArbitrationWorkbench(): void {
+  if (!selectedExamId.value) return
+  void router.push({
+    name: 'TeacherExamWorkspaceMarkingArbitration',
+    params: { examId: selectedExamId.value },
+  })
+}
+
+function openSpotCheckTab(): void {
+  activeTab.value = 'spotcheck'
+}
+
+function switchToProgressTab(): void {
+  activeTab.value = 'progress'
+}
+
 function reloadActiveTab(): void {
   if (!selectedExamId.value) return
-  if (activeTab.value === 'progress') void loadProgress()
-  else if (activeTab.value === 'reviewer') void loadReviewerMetrics()
+  if (activeTab.value === 'overview') {
+    void Promise.all([
+      loadExamQualityPanel(),
+      loadReviewerMetrics(),
+      loadMyPendingSpotChecks(),
+      loadExamSpotCheckRecords(),
+    ])
+    return
+  }
+  if (activeTab.value === 'progress') {
+    if (showProgressGroupSummary.value) {
+      progress.value = null
+      progressHistory.value = []
+      void loadGroupSummaryProgress()
+      return
+    }
+    void loadProgress()
+    return
+  }
+  if (activeTab.value === 'reviewer') {
+    void loadReviewerMetrics()
+    return
+  }
+  if (activeTab.value === 'spotcheck') {
+    void Promise.all([loadMyPendingSpotChecks(), loadExamSpotCheckRecords()])
+  }
 }
 
 watch(activeTab, () => {
+  void loadExamQualityPanel()
+  syncRouteQuery()
   reloadActiveTab()
 })
 
 watch(selectedExamId, async () => {
-  await Promise.all([loadOrganizationDetail(), loadScannerBatches()])
+  await Promise.all([loadOrganizationDetail(), loadScannerBatches(), loadExamQualityPanel()])
   syncRouteQuery()
   reloadActiveTab()
 }, { immediate: true })
@@ -1023,15 +1816,156 @@ onActivated(() => {
 
 <style lang="scss" scoped>
 .quality-dashboard {
-  &__signals {
-    margin-bottom: 12px;
+  &__tabs {
+    padding: 0 16px;
   }
 
-  &__tabs {
-    background: var(--dp-surface, #fff);
+  &__surface {
+    margin-top: 0;
+  }
+
+  &__overview-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--dp-space-4, 16px);
+
+    @media (min-width: 992px) {
+      grid-template-columns: 1.2fr 0.8fr;
+    }
+  }
+
+  &__consistency-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--dp-space-2, 8px);
+    margin-bottom: var(--dp-space-4, 16px);
+  }
+
+  &__consistency-label {
+    font-size: var(--dp-type-hint-size, 12px);
+    color: var(--dp-text-muted, #64748b);
+  }
+
+  &__consistency-value {
+    font-size: var(--dp-type-title-size, 20px);
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__consistency-meta {
+    font-size: var(--dp-type-hint-size, 12px);
+    color: var(--dp-text-muted, #64748b);
+  }
+
+  &__consistency-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__consistency-row {
+    display: grid;
+    grid-template-columns: 72px 1fr 48px;
+    align-items: center;
+    gap: var(--dp-space-3, 12px);
+    padding: var(--dp-space-2, 8px) 0;
+  }
+
+  &__consistency-name {
+    font-size: 13px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__consistency-track {
+    height: 6px;
+    border-radius: var(--dp-radius-full, 999px);
+    background: var(--dp-surface-soft, #f1f5f9);
+    overflow: hidden;
+  }
+
+  &__consistency-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--dp-blue-500, #3b82f6);
+  }
+
+  &__consistency-rate {
+    font-size: 12px;
+    font-weight: 600;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__dimension-chart {
+    margin-bottom: var(--dp-space-4, 16px);
+  }
+
+  &__form--spot {
+    max-width: 480px;
+  }
+
+  &__panel-hint {
+    font-size: var(--dp-type-hint-size, 12px);
+    color: var(--dp-text-muted, #64748b);
+  }
+
+  &__todo-panel {
+    margin-top: var(--dp-space-4, 16px);
+  }
+
+  &__todo-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--dp-space-3, 12px);
+
+    @media (min-width: 992px) {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  &__todo-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--dp-space-1, 4px);
+    padding: var(--dp-space-3, 12px);
     border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: 8px;
-    padding: 0 16px;
+    border-radius: var(--dp-radius-panel, 8px);
+    background: var(--dp-surface-soft, #f8fafc);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.2s ease, background 0.2s ease;
+
+    &:hover {
+      border-color: var(--dp-blue-300, #93c5fd);
+      background: var(--dp-surface, #fff);
+    }
+  }
+
+  &__todo-label {
+    font-size: var(--dp-type-hint-size, 12px);
+    color: var(--dp-text-muted, #64748b);
+  }
+
+  &__todo-value {
+    font-size: var(--dp-type-title-size, 20px);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__todo-hint {
+    font-size: var(--dp-type-hint-size, 12px);
+    color: var(--dp-blue-600, #2563eb);
+  }
+
+  &__panel-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
   }
 
   &__charts {
@@ -1094,11 +2028,7 @@ onActivated(() => {
   }
 }
 
-.info-card {
-  :deep(.ant-card-head-title) {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+.quality-dashboard__inner-panel {
+  margin-bottom: 16px;
 }
 </style>

@@ -136,9 +136,16 @@ const tenantDisplayInfo = computed(() => {
 
   return {
     schoolName,
-    tenantTypeText: tenantTypeMap[tenantType as keyof typeof tenantTypeMap] || tenantType,
+    tenantTypeText: tenantTypeText(tenantType),
   }
 })
+
+function tenantTypeText(tenantType: string): string {
+  if (tenantType === 'CHUXIN' || tenantType === 'XINGGUANG' || tenantType === 'ZHIJIAO') {
+    return tenantTypeMap[tenantType]
+  }
+  return tenantType
+}
 
 // 退出登录
 const showLogoutModal = ref(false)

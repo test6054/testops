@@ -1,26 +1,44 @@
 <template>
-  <div class="printer-management-page">
-    <a-card :bordered="false" class="detail-table-card printer-management">
-      <template #title>扫描设备</template>
-      <template #extra>
-        <a-space>
-          <UiTag tone="blue">共 {{ pagination.total }} 台设备</UiTag>
+  <StageWorkbenchShell class="printer-management-page">
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="contextBarTitle"
+        :subtitle="contextBarSubtitle"
+      >
+        <template #status>
+          <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
+            {{ examStatusLabel }}
+          </UiTag>
+        </template>
+        <template #actions>
           <UiButton size="sm" @click="handleCreate">
             <template #icon><PlusOutlined /></template>
             新增设备
           </UiButton>
-        </a-space>
-      </template>
+        </template>
+      </ContextBar>
+    </template>
 
-      <UiFilterBar
-        variant="plain"
-        :model-value="searchForm"
-        :fields="deviceFilterFields"
-        search-text="查询"
-        @update:model-value="syncSearchForm"
-        @search="handleSearch"
-        @reset="handleResetSearch"
-      />
+    <template #signal>
+      <SignalBand variant="tiles" compact :metrics="deviceSignalMetrics" />
+    </template>
+
+    <ExamWorkspaceJourneySubNav />
+
+    <WorkbenchSurfaceCard flush>
+      <template #toolbar>
+        <UiFilterBar
+          variant="plain"
+          :model-value="searchForm"
+          :fields="deviceFilterFields"
+          search-text="查询"
+          @update:model-value="syncSearchForm"
+          @search="handleSearch"
+          @reset="handleResetSearch"
+        />
+      </template>
 
       <UiDataTable
         v-model:current="pagination.current"
@@ -34,7 +52,6 @@
         size="middle"
         flat
         :total="pagination.total"
-        bordered
         @page-change="handleUiPageChange"
       >
         <template #bodyCell="{ column, index }">
@@ -84,15 +101,14 @@
           </template>
         </template>
       </UiDataTable>
-    </a-card>
+    </WorkbenchSurfaceCard>
 
     <!-- 新增/编辑设备弹窗 -->
-    <a-modal
+    <UiDialog
       v-model:open="showFormModal"
       :title="formMode === 'create' ? '新增扫描设备' : '编辑扫描设备'"
-      width="720px"
+      :width="720"
       :confirm-loading="formSubmitting"
-      destroy-on-close
       @ok="handleFormSubmit"
       @cancel="showFormModal = false"
     >
@@ -184,15 +200,14 @@
           </a-col>
         </a-row>
       </a-form>
-    </a-modal>
+    </UiDialog>
 
     <!-- 设备详情弹窗 -->
-    <a-modal
+    <UiDialog
       v-model:open="showDetailModal"
       title="扫描设备详情"
-      width="720px"
-      :footer="null"
-      destroy-on-close
+      :width="720"
+      hide-footer
     >
       <a-descriptions v-if="detailInfo" bordered :column="2" size="small">
         <a-descriptions-item label="设备名称">{{ detailInfo.deviceName }}</a-descriptions-item>
@@ -259,14 +274,13 @@
           {{ detailInfo.remark || '—' }}
         </a-descriptions-item>
       </a-descriptions>
-    </a-modal>
+    </UiDialog>
 
-    <a-modal
+    <UiDialog
       v-model:open="showActivationCodeModal"
       title="一体机激活码"
-      width="520px"
-      :footer="null"
-      destroy-on-close
+      :width="520"
+      hide-footer
     >
       <div v-if="activationCodeInfo" class="activation-code-modal">
         <p class="activation-code-modal__hint">
@@ -290,32 +304,34 @@
           <span>扫描站点：{{ activationCodeInfo.scannerStationId }}</span>
           <span>有效期至：{{ activationCodeInfo.expireTime }}</span>
         </div>
-        <a-space>
-          <a-button type="primary" @click="copyText(activationCodeInfo.activationCode)">
+        <div class="activation-code-modal__actions">
+          <UiButton @click="copyText(activationCodeInfo.activationCode)">
             复制激活码
-          </a-button>
-          <a-button @click="showActivationCodeModal = false"> 关闭 </a-button>
-        </a-space>
+          </UiButton>
+          <UiButton variant="outline" @click="showActivationCodeModal = false">关闭</UiButton>
+        </div>
       </div>
-    </a-modal>
-  </div>
+    </UiDialog>
+  </StageWorkbenchShell>
 </template>
 
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
+import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ExamScannerActivationCodeVO,
   ExamScannerDeviceActivationHandoffVO,
   ExamScannerDeviceCreateRequest,
   ExamScannerDeviceDetailVO,
   ExamScannerDeviceQueryRequest,
+  ExamScannerDeviceSummaryVO,
   ExamScannerDeviceUpdateRequest,
   ExamScannerDeviceVO,
   ScannerAgentDiagnosticStatusCode,
-  ScannerDeviceStatusCode,
   ScannerEndpointOnlineStatusCode,
 } from '@/apis/mark/exam-mark-scanner'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
 import AQrcode from 'ant-design-vue/es/qrcode'
@@ -328,10 +344,14 @@ import {
   listScannerDeviceLocations,
   pageScannerDevices,
   resetScannerDevicePushToken,
-  SCANNER_DEVICE_STATUS_LABEL,
+  SCANNER_DEVICE_STATUS_OPTIONS,
   SCANNER_DEVICE_STATUS_TONE,
-  SCANNER_ENDPOINT_ONLINE_STATUS_LABEL,
   SCANNER_ENDPOINT_ONLINE_STATUS_TONE,
+  ScannerActivationCodeStatusCode,
+  ScannerDeviceStatusCode,
+  ScannerDeviceStatusDescription,
+  ScannerEndpointOnlineStatusDescription,
+  summarizeScannerDevices,
   unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
@@ -339,7 +359,14 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
@@ -349,6 +376,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'PrinterManagement' })
 
 const { refreshSnapshot } = useWorkspaceExamId()
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
+  = useExamJourneyContextBar('扫描设备')
 
 /** 扫描设备写操作后刷新列表，并同步工作台 SCAN 段快照与 OCR 配置页。 */
 async function syncAfterDeviceMutation(): Promise<void> {
@@ -363,6 +392,7 @@ async function syncAfterDeviceMutation(): Promise<void> {
 // ─── 列表与筛选 ───────────────────────────────────────
 const loading = ref(false)
 const devices = ref<ExamScannerDeviceVO[]>([])
+const deviceSummary = ref<ExamScannerDeviceSummaryVO | null>(null)
 const searchForm = reactive<
   Pick<
     ExamScannerDeviceQueryRequest,
@@ -374,6 +404,31 @@ const pagination = reactive({
   pageSize: 20,
   total: 0,
 })
+
+const deviceSignalMetrics = computed((): SignalMetric[] => [
+  {
+    key: 'total',
+    label: '设备总数',
+    value: deviceSummary.value?.totalCount ?? pagination.total,
+    unit: '台',
+    tone: 'blue',
+  },
+  {
+    key: 'online',
+    label: '在线',
+    value: deviceSummary.value?.onlineCount ?? 0,
+    unit: '台',
+    tone: 'green',
+  },
+  {
+    key: 'activated',
+    label: '已激活 Agent',
+    value: deviceSummary.value?.agentActivatedCount ?? 0,
+    unit: '台',
+    tone: 'green',
+  },
+])
+
 const locationOptions = ref<Array<{ label: string, value: string }>>([])
 
 function syncSearchForm(next: Record<string, unknown>): void {
@@ -383,11 +438,7 @@ const showActivationCodeModal = ref(false)
 const activationCodeInfo = ref<ExamScannerActivationCodeVO | null>(null)
 const activationCodeDeviceName = ref('')
 
-const statusOptions = [
-  { value: 'ACTIVE', label: SCANNER_DEVICE_STATUS_LABEL.ACTIVE },
-  { value: 'INACTIVE', label: SCANNER_DEVICE_STATUS_LABEL.INACTIVE },
-  { value: 'DISABLED', label: SCANNER_DEVICE_STATUS_LABEL.DISABLED },
-]
+const statusOptions = SCANNER_DEVICE_STATUS_OPTIONS
 
 const deviceFilterFields = computed<FilterField[]>(() => [
   {
@@ -416,7 +467,7 @@ const deviceFilterFields = computed<FilterField[]>(() => [
   },
 ])
 
-const columns = [
+const columns: ColumnsType<ExamScannerDeviceVO> = [
   { title: '设备名称', dataIndex: 'deviceName', key: 'deviceName', width: 160 },
   { title: '扫描设备编号', dataIndex: 'scannerDeviceId', key: 'scannerDeviceId', width: 160 },
   { title: '站点', dataIndex: 'scannerStationId', key: 'scannerStationId', width: 120 },
@@ -426,7 +477,7 @@ const columns = [
   { title: '组件版本', dataIndex: 'agentVersion', key: 'agentVersion', width: 120 },
   { title: '最近通讯', dataIndex: 'lastSeenTime', key: 'lastSeenTime', width: 170 },
   { title: '位置', dataIndex: 'location', key: 'location', width: 160, ellipsis: true },
-  { title: '操作', dataIndex: 'action', key: 'action', width: 200, fixed: 'right' as const },
+  { title: '操作', dataIndex: 'action', key: 'action', width: 200, fixed: 'right' },
 ]
 
 interface DeviceMenuItem {
@@ -473,13 +524,13 @@ function handleDeviceMenuClick(record: ExamScannerDeviceVO, event: { key: string
 
 // helper 严格只接受后端枚举类型，零 as 断言。
 function statusLabelOf(status: ScannerDeviceStatusCode): string {
-  return strictEnumLabel(SCANNER_DEVICE_STATUS_LABEL, status, '扫描设备状态')
+  return strictEnumLabel(ScannerDeviceStatusDescription, status, '扫描设备状态')
 }
 function statusColorOf(status: ScannerDeviceStatusCode): BadgeTone {
   return strictEnumTone(SCANNER_DEVICE_STATUS_TONE, status, '扫描设备状态')
 }
 function endpointOnlineStatusLabelOf(status: ScannerEndpointOnlineStatusCode): string {
-  return strictEnumLabel(SCANNER_ENDPOINT_ONLINE_STATUS_LABEL, status, '扫描端点在线状态')
+  return strictEnumLabel(ScannerEndpointOnlineStatusDescription, status, '扫描端点在线状态')
 }
 function endpointOnlineStatusColorOf(status: ScannerEndpointOnlineStatusCode): BadgeTone {
   return strictEnumTone(SCANNER_ENDPOINT_ONLINE_STATUS_TONE, status, '扫描端点在线状态')
@@ -511,15 +562,25 @@ async function loadLocationOptions(): Promise<void> {
 async function loadDevices(): Promise<void> {
   loading.value = true
   try {
-    const result = await pageScannerDevices({
+    const query: ExamScannerDeviceQueryRequest = {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
       status: searchForm.status,
       scannerDeviceIdKeyword: searchForm.scannerDeviceIdKeyword,
       location: searchForm.location,
       interfaceMode: searchForm.interfaceMode,
-    })
+    }
+    const [result, summary] = await Promise.all([
+      pageScannerDevices(query),
+      summarizeScannerDevices({
+        status: searchForm.status,
+        scannerDeviceIdKeyword: searchForm.scannerDeviceIdKeyword,
+        location: searchForm.location,
+        interfaceMode: searchForm.interfaceMode,
+      }),
+    ])
     devices.value = readPageList(result, '扫描设备列表加载失败')
+    deviceSummary.value = summary
     pagination.total = readPageTotal(result)
     if (result.pageNum != null) {
       pagination.current = result.pageNum
@@ -529,6 +590,7 @@ async function loadDevices(): Promise<void> {
     }
   } catch (error) {
     devices.value = []
+    deviceSummary.value = null
     pagination.total = 0
     showUserError(error, '扫描设备列表加载失败')
   } finally {
@@ -578,7 +640,7 @@ function defaultFormState(): FormState {
     scannerStationId: '',
     deviceName: '',
     scannerIp: '',
-    status: 'ACTIVE',
+    status: ScannerDeviceStatusCode.ACTIVE,
     kioskLockEnabled: true,
   }
 }
@@ -690,7 +752,7 @@ function openActivationHandoff(handoff: ExamScannerDeviceActivationHandoffVO): v
     scannerDeviceId: handoff.scannerDeviceId,
     scannerStationId: handoff.scannerStationId,
     activationCode: handoff.activationCode,
-    status: 'UNUSED',
+    status: ScannerActivationCodeStatusCode.UNUSED,
     expireTime: handoff.expireTime,
   }
   showActivationCodeModal.value = true
@@ -821,7 +883,11 @@ onBeforeUnmount(() => {
 .printer-management-page {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-4, 16px);
+
+  &__filter {
+    margin-bottom: var(--dp-space-2, 8px);
+  }
 }
 
 .printer-management {
@@ -903,6 +969,13 @@ onBeforeUnmount(() => {
     width: 100%;
     color: #64748b;
     font-size: 13px;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
   }
 }
 </style>

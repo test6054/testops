@@ -66,6 +66,8 @@ export interface SignalMetric {
   helper?: string
   /** 为 true 时 SignalBand 渲染为可点击项并触发 metric-click */
   clickable?: boolean
+  /** 为 true 时高亮当前 KPI 筛选态 */
+  active?: boolean
 }
 
 // ─── 任务结果面板（TaskResultPanel）──────────────────────

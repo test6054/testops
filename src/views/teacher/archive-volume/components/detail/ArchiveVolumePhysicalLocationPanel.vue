@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import type { ArchivePhysicalLocationVO, ArchiveVolumeDetailVO } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
+  ArchiveSecurityLevelDescription,
   listArchivePhysicalLocationHistory,
   updateArchiveVolumePhysicalLocation,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showUserError } from '@/utils/error-handler'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
   volumeId: string
@@ -121,16 +126,48 @@ function formatLocationLabel(item: ArchivePhysicalLocationVO) {
   return structured || '—'
 }
 
+const displayLocation = computed(() => {
+  const volume = props.detail.volume
+  const structured = [volume.physicalBuilding, volume.physicalRoom, volume.physicalCabinet, volume.physicalSlot]
+    .filter(Boolean)
+    .join(' / ')
+  return structured || '尚未登记柜位'
+})
+
+const securityLevelText = computed(() => {
+  const code = props.detail.volume.securityLevel
+  if (!code) return '—'
+  return strictEnumLabel(ArchiveSecurityLevelDescription, code, 'securityLevel')
+})
+
+const retentionUntilText = computed(() => props.detail.volume.retentionUntil || '—')
+
 onMounted(() => {
   void loadLocationHistory()
 })
 </script>
 
 <template>
-  <section class="archive-volume-physical-location">
-    <p class="archive-volume-physical-location__hint">
-      结构化库位用于扫描室派单排序；仅收集中卷可修改，每次变更写入库位历史。
-    </p>
+  <WorkbenchSurfaceCard class="archive-volume-physical-location">
+    <template #head>
+      <div class="archive-volume-physical-location__head">
+        <h3 class="archive-volume-physical-location__title">物理存放位置</h3>
+        <p class="archive-volume-physical-location__hint">
+          结构化库位用于扫描室派单排序；仅收集中卷可修改，每次变更写入库位历史。
+        </p>
+      </div>
+    </template>
+    <template v-if="canEdit" #toolbar>
+      <UiButton size="sm" variant="outline" :loading="submitting" @click="handleSave">
+        更新位置
+      </UiButton>
+    </template>
+    <section class="archive-volume-physical-location__hero">
+      <div class="archive-volume-physical-location__location-text">{{ displayLocation }}</div>
+      <div class="archive-volume-physical-location__hero-meta">
+        密级: {{ securityLevelText }} · 保管至 {{ retentionUntilText }}
+      </div>
+    </section>
     <a-form layout="vertical" class="archive-volume-physical-location__form">
       <a-row :gutter="12">
         <a-col :span="12">
@@ -144,12 +181,19 @@ onMounted(() => {
           </a-form-item>
         </a-col>
         <a-col :span="12">
-          <a-form-item label="柜号" required>
+          <a-form-item
+            label="柜号"
+            required
+            :class="{ 'archive-volume-physical-location__field--filled': Boolean(form.cabinet.trim()) }"
+          >
             <a-input v-model:value="form.cabinet" placeholder="例如 03柜" :disabled="!canEdit" />
           </a-form-item>
         </a-col>
         <a-col :span="12">
-          <a-form-item label="层/格位">
+          <a-form-item
+            label="层/格位"
+            :class="{ 'archive-volume-physical-location__field--filled': Boolean(form.slot.trim()) }"
+          >
             <a-input v-model:value="form.slot" placeholder="例如 2层" :disabled="!canEdit" />
           </a-form-item>
         </a-col>
@@ -161,39 +205,63 @@ onMounted(() => {
           :disabled="!canEdit"
         />
       </a-form-item>
-      <UiButton
-        v-if="canEdit"
-        size="sm"
-        variant="primary"
-        :loading="submitting"
-        @click="handleSave"
-      >
-        保存柜位
-      </UiButton>
-      <p v-else class="archive-volume-physical-location__readonly">当前卷状态不允许修改柜位</p>
+      <p v-if="!canEdit" class="archive-volume-physical-location__readonly">当前卷状态不允许修改柜位</p>
     </a-form>
     <section class="archive-volume-physical-location__timeline">
-      <h3>柜位变更记录</h3>
-      <a-skeleton v-if="historyLoading" active :paragraph="{ rows: 3 }" />
-      <ul v-else-if="locationHistory.length > 0" class="archive-volume-physical-location__list">
-        <li v-for="item in locationHistory" :key="item.locationId">
-          <div class="archive-volume-physical-location__list-top">
-            <strong>{{ formatLocationLabel(item) }}</strong>
-            <span>{{ item.effectiveTime || '—' }}</span>
+      <h3 class="archive-volume-physical-location__timeline-title">位置变更历史</h3>
+      <UiSkeletonState v-if="historyLoading" variant="card" compact />
+      <div v-else-if="locationHistory.length > 0" class="audit-timeline archive-volume-physical-location__audit">
+        <article v-for="item in locationHistory" :key="item.locationId" class="audit-item">
+          <div class="audit-time">{{ item.effectiveTime ? formatDateTime(item.effectiveTime) : '—' }}</div>
+          <div class="audit-body">
+            <div class="audit-title">更新柜位 → {{ formatLocationLabel(item) }}</div>
+            <div v-if="item.note" class="audit-desc">{{ item.note }}</div>
           </div>
-          <p v-if="item.note">{{ item.note }}</p>
-        </li>
-      </ul>
+        </article>
+      </div>
       <p v-else class="archive-volume-physical-location__empty">暂无柜位变更记录</p>
     </section>
-  </section>
+  </WorkbenchSurfaceCard>
 </template>
 
 <style scoped>
+.archive-volume-physical-location__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.archive-volume-physical-location__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
 .archive-volume-physical-location__hint {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 13px;
-  color: var(--nybc-text-secondary, #595959);
+  color: var(--dp-text-secondary);
+}
+.archive-volume-physical-location__hero {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--dp-space-4, 16px);
+  padding: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-4, 16px);
+  background: var(--dp-surface-sunken, #f8fafc);
+  border-radius: var(--dp-radius-control, 4px);
+}
+.archive-volume-physical-location__location-text {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: var(--dp-font-mono, ui-monospace, monospace);
+  color: var(--dp-primary, #2563eb);
+  font-variant-numeric: tabular-nums;
+}
+.archive-volume-physical-location__hero-meta {
+  font-size: 12px;
+  color: var(--dp-text-secondary, #64748b);
 }
 .archive-volume-physical-location__form {
   max-width: 560px;
@@ -205,29 +273,23 @@ onMounted(() => {
 }
 .archive-volume-physical-location__timeline {
   margin-top: 24px;
-  max-width: 560px;
+  max-width: 640px;
 }
-.archive-volume-physical-location__timeline h3 {
+.archive-volume-physical-location__audit {
+  padding-top: 0;
+}
+.archive-volume-physical-location__field--filled :deep(.ant-input) {
+  border-color: var(--dp-primary, #2563eb);
+  background: color-mix(in srgb, var(--dp-primary, #2563eb) 4%, #fff);
+}
+.archive-volume-physical-location__field--filled :deep(.ant-form-item-label > label) {
+  color: var(--dp-primary, #2563eb);
+  font-weight: 600;
+}
+.archive-volume-physical-location__timeline-title {
   margin: 0 0 12px;
   font-size: 15px;
-}
-.archive-volume-physical-location__list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 12px;
-}
-.archive-volume-physical-location__list-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 14px;
-}
-.archive-volume-physical-location__list p {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--nybc-text-secondary, #8c8c8c);
+  font-weight: 600;
 }
 .archive-volume-physical-location__empty {
   margin: 0;

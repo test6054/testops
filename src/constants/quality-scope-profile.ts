@@ -1,5 +1,3 @@
-import { SemesterOptions } from '@/types/enums/semester-enum'
-
 /** 质量评价页上下文维度（路由 meta.scopeProfile） */
 export type QualityScopeProfile
   = | 'none'
@@ -54,5 +52,3 @@ export function scopeProfileShowsChrome(profile: QualityScopeProfile): boolean {
 export function scopeProfileNeedsPlan(profile: QualityScopeProfile): boolean {
   return PLAN_DIMENSION_PROFILES.includes(profile)
 }
-
-export const SEMESTER_OPTIONS = SemesterOptions

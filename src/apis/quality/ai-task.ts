@@ -1,4 +1,4 @@
-import type { AiManualHandlingStatus, AiTaskBusinessType, AiTaskStatus, AiTaskType } from './types'
+import type { AiManualHandlingStatusCode, AiTaskBusinessTypeCode, AiTaskStatusCode, AiTaskTypeCode } from './types'
 /**
  * AI 异步任务主表 API
  *
@@ -20,43 +20,43 @@ export interface AiTaskVO {
   id: string
   tenantId?: string
   operatorUserId?: string
-  operatorUserName: string
-  taskType: AiTaskType
-  businessType: AiTaskBusinessType
+  operatorUserName?: string
+  taskType: AiTaskTypeCode
+  businessType: AiTaskBusinessTypeCode
   businessId: string
-  businessLabel: string
+  businessLabel?: string
   /** 关联专业评价口径 ID；存在时后端必须同步返回 programName。 */
   programId?: string
   /** 关联专业名称，由后端按 programId 从专业评价口径装配。 */
-  programName: string
+  programName?: string
   /** 关联培养方案 ID；存在时后端必须同步返回 trainingPlanCode / trainingPlanName。 */
   trainingPlanId?: string
   /** 培养方案编码，由后端按 trainingPlanId 从培养方案主数据装配。 */
-  trainingPlanCode: string
+  trainingPlanCode?: string
   /** 培养方案名称，由后端按 trainingPlanId 从培养方案主数据装配。 */
-  trainingPlanName: string
+  trainingPlanName?: string
   /** 关联质量课程 ID；存在时后端必须同步返回 qualityCourseCode / qualityCourseName。 */
   qualityCourseId?: string
   /** 质量课程编码，由后端按 qualityCourseId 从质量课程主数据装配。 */
-  qualityCourseCode: string
+  qualityCourseCode?: string
   /** 质量课程名称，由后端按 qualityCourseId 从质量课程主数据装配。 */
-  qualityCourseName: string
+  qualityCourseName?: string
   /** 关联达成度结果 ID；存在时后端必须同步返回 achievementResultLabel。 */
   achievementResultId?: string
   /** 达成度结果展示标签，由后端按 achievementResultId 装配。 */
-  achievementResultLabel: string
+  achievementResultLabel?: string
   /** 关联质量报告 ID；存在时后端必须同步返回 reportTitle。 */
   reportId?: string
   /** 质量报告标题，由后端按 reportId 装配。 */
-  reportTitle: string
-  status: AiTaskStatus
+  reportTitle?: string
+  status: AiTaskStatusCode
   failurePhase?: string
   failureReason?: string
   maskMappingId?: string
   resultId?: string
   startedTime?: string
   finishedTime?: string
-  manualHandlingStatus: AiManualHandlingStatus
+  manualHandlingStatus: AiManualHandlingStatusCode
   manualHandlingRemark?: string
   createTime?: string
   updateTime?: string
@@ -65,10 +65,11 @@ export interface AiTaskVO {
 /** AI 任务分页查询请求 - 严格对齐后端 AiTaskQueryRequest */
 export interface AiTaskQueryRequest extends QueryDto {
   operatorUserId?: string
-  taskType?: AiTaskType
-  businessType?: AiTaskBusinessType
+  taskType?: AiTaskTypeCode
+  taskTypes?: AiTaskTypeCode[]
+  businessType?: AiTaskBusinessTypeCode
   businessId?: string
-  status?: AiTaskStatus
+  status?: AiTaskStatusCode
   programId?: string
   trainingPlanId?: string
   qualityCourseId?: string
@@ -76,16 +77,69 @@ export interface AiTaskQueryRequest extends QueryDto {
   reportId?: string
 }
 
+/** AI 任务创建请求 - 对齐后端 AiTaskCreateRequest */
+export interface AiTaskCreateRequest {
+  taskType: AiTaskTypeCode
+  businessType: AiTaskBusinessTypeCode
+  businessId: string
+  programId?: string
+  trainingPlanId?: string
+  qualityCourseId?: string
+  achievementResultId?: string
+  reportId?: string
+}
+
+/** AI 任务抢占请求 - 对齐后端 AiTaskClaimRequest */
+export interface AiTaskClaimRequest {
+  id: string
+}
+
+/** AI 任务完成登记请求 - 对齐后端 AiTaskCompleteRequest */
+export interface AiTaskCompleteRequest {
+  id: string
+  promptSnapshotId: string
+  maskMappingId: string
+  resultId: string
+}
+
+/** AI 任务失败登记请求 - 对齐后端 AiTaskFailRequest */
+export interface AiTaskFailRequest {
+  id: string
+  failurePhase: string
+  failureReason: string
+  promptSnapshotId?: string
+  maskMappingId?: string
+  resultId?: string
+}
+
 /** AI 人工处置请求 - 对齐后端 AiTaskManualHandlingRequest */
 export interface AiTaskManualHandleRequest {
   id: string
-  manualHandlingStatus: AiManualHandlingStatus
+  manualHandlingStatus: AiManualHandlingStatusCode
   manualHandlingRemark?: string
 }
 
+/** AI 任务取消请求 - 对齐后端 AiTaskCancelRequest */
+export interface AiTaskCancelRequest {
+  id: string
+  reason: string
+}
+
+/** AI 任务按状态统计 - 对齐后端 QualityStatusCountsResponse */
+export interface QualityStatusCountsResponse {
+  totalCount: number
+  statusCounts: Array<{ status: AiTaskStatusCode, recordCount: number }>
+}
+
 export const aiTaskApi = {
+  create: (data: AiTaskCreateRequest) => http.post<string>(`${TASK}/create`, data),
   page: (data: AiTaskQueryRequest) => http.post<PageResult<AiTaskVO>>(`${TASK}/page`, data),
+  statusCounts: (data: AiTaskQueryRequest) =>
+    http.post<QualityStatusCountsResponse>(`${TASK}/status-counts`, data),
   detail: (id: string) => http.post<AiTaskVO>(`${TASK}/detail`, { id }),
-  cancel: (id: string, reason?: string) => http.post<void>(`${TASK}/cancel`, { id, reason }),
+  claim: (data: AiTaskClaimRequest) => http.post<void>(`${TASK}/claim`, data),
+  complete: (data: AiTaskCompleteRequest) => http.post<void>(`${TASK}/complete`, data),
+  fail: (data: AiTaskFailRequest) => http.post<void>(`${TASK}/fail`, data),
+  cancel: (data: AiTaskCancelRequest) => http.post<void>(`${TASK}/cancel`, data),
   manualHandle: (data: AiTaskManualHandleRequest) => http.post<void>(`${TASK}/manual-handle`, data),
 }

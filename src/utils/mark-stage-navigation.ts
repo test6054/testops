@@ -30,7 +30,10 @@ export function navigateToMarkStage(
     )
     return
   }
-  const routeName = MARK_STAGE_DEFAULT_ROUTE[stageKey as MarkStageKey]
+  if (!isMarkStageKey(stageKey)) {
+    return
+  }
+  const routeName = MARK_STAGE_DEFAULT_ROUTE[stageKey]
   if (!routeName) {
     return
   }
@@ -38,6 +41,18 @@ export function navigateToMarkStage(
     name: routeName,
     params: { examId },
   })
+}
+
+function isMarkStageKey(stageKey: string): stageKey is MarkStageKey {
+  return stageKey === 'EXAM_PREP'
+    || stageKey === 'PAPER_TEMPLATE'
+    || stageKey === 'CANDIDATE_ROSTER'
+    || stageKey === 'SCAN'
+    || stageKey === 'MARKING_ORG'
+    || stageKey === 'TRIAL_MARKING'
+    || stageKey === 'FORMAL_MARKING'
+    || stageKey === 'SCORE_PUBLISH'
+    || stageKey === 'ARCHIVE'
 }
 
 /** 顶部六步旅程轨点击：进入旅程默认子路由；mark 默认进正评任务池 */

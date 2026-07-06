@@ -2,6 +2,7 @@ import type { RouteRecordRaw } from 'vue-router'
 import Modal from 'ant-design-vue/es/modal'
 import { createRouter, createWebHistory } from 'vue-router'
 import { setupRouterGuard } from '@/router/guard'
+import { archiveVolumeWorkspaceRoutes } from '@/router/routes/archive-volume-workspace'
 import { commonRoutes, errorRoutes } from '@/router/routes/common'
 import { constantRoutes } from '@/router/routes/constant'
 import { examWorkspaceRoutes } from '@/router/routes/exam-workspace'
@@ -15,6 +16,7 @@ const allRoutes: RouteRecordRaw[] = [
   ...constantRoutes,
   ...teacherRoutes,
   examWorkspaceRoutes,
+  archiveVolumeWorkspaceRoutes,
   ...qualityRoutes,
   ...portfolioRoutes,
   ...studentRoutes,

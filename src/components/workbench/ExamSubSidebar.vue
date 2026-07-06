@@ -10,9 +10,23 @@
       <ExamSidebarExamSwitch
         :exam-display-name="examDisplayName"
         :exam-display-no="examDisplayNo"
+        :exam-context-line="examContextLine"
         :exam-status-label="examStatusLabel"
         :exam-status-tone="examStatusTone"
       />
+    </div>
+
+    <div v-if="!collapsed && journeyStages.length" class="exam-sub-sidebar__progress">
+      <div class="exam-sub-sidebar__progress-meta">
+        <span>{{ journeyProgressLabel }}</span>
+        <span>{{ journeyProgressPercent }}%</span>
+      </div>
+      <div class="exam-sub-sidebar__progress-bar">
+        <div
+          class="exam-sub-sidebar__progress-fill"
+          :style="{ width: `${journeyProgressPercent}%` }"
+        />
+      </div>
     </div>
 
     <a-divider v-if="!collapsed" class="exam-sub-sidebar__divider" />
@@ -63,6 +77,7 @@ import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { WorkbenchStage } from '@/types/workbench'
 import MenuFoldOutlined from '@ant-design/icons-vue/MenuFoldOutlined'
 import MenuUnfoldOutlined from '@ant-design/icons-vue/MenuUnfoldOutlined'
+import { computed } from 'vue'
 import ExamJourneySidebarNav from '@/components/workbench/ExamJourneySidebarNav.vue'
 import ExamSidebarExamSwitch from '@/components/workbench/ExamSidebarExamSwitch.vue'
 import ExamSubSidebarNav from '@/components/workbench/ExamSubSidebarNav.vue'
@@ -71,11 +86,12 @@ defineOptions({
   name: 'ExamSubSidebar',
 })
 
-defineProps<{
+const props = defineProps<{
   examStatusLabel: string
   examStatusTone: BadgeTone | undefined
   examDisplayName?: string
   examDisplayNo?: string
+  examContextLine?: string
   activeMenuKey: string
   activeJourneyKey: ExamWorkspaceJourneyKey
   journeyStages: WorkbenchStage[]
@@ -92,6 +108,24 @@ const emit = defineEmits<{
   (e: 'overview-select'): void
   (e: 'toggle-collapse'): void
 }>()
+
+const journeyProgressPercent = computed(() => {
+  const stages = props.journeyStages
+  if (!stages.length) {
+    return 0
+  }
+  const completedCount = stages.filter(stage => stage.status === 'completed').length
+  return Math.round((completedCount / stages.length) * 100)
+})
+
+const journeyProgressLabel = computed(() => {
+  const stages = props.journeyStages
+  if (!stages.length) {
+    return '旅程进度'
+  }
+  const completedCount = stages.filter(stage => stage.status === 'completed').length
+  return `已完成 ${completedCount}/${stages.length} 步`
+})
 </script>
 
 <style lang="scss" scoped>

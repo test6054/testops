@@ -17,6 +17,9 @@ import {
   WarningFilled,
 } from '@ant-design/icons-vue'
 import { computed } from 'vue'
+import { ScannerKioskScanModeCode } from '@/apis/mark/scanner-kiosk'
+import { ExamScannerPageRegistrationStatusCode } from '@/types/enums/exam-scanner-page-registration-status-enum'
+import { ScanBatchStatusCode } from '@/types/enums/scan-batch-status-enum'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow, ui } = useKioskCtx()
@@ -39,16 +42,16 @@ const attentionItems = computed(() => snapshot.value?.attentionItems ?? [])
 const headerBadgeTone = computed<'success' | 'warning' | 'danger' | 'muted'>(() => {
   const b = batch.value
   if (!b) return 'muted'
-  if (b.discardedTime || b.status === 'DISCARDED') return 'danger'
+  if (b.discardedTime || b.status === ScanBatchStatusCode.DISCARDED) return 'danger'
   if (b.sealedTime) return 'success'
-  if (b.status === 'BLOCKED') return 'warning'
+  if (b.status === ScanBatchStatusCode.BLOCKED) return 'warning'
   return 'muted'
 })
 
 const headerBadgeText = computed(() => {
   const b = batch.value
   if (!b) return ''
-  if (b.discardedTime || b.status === 'DISCARDED') return '已废弃'
+  if (b.discardedTime || b.status === ScanBatchStatusCode.DISCARDED) return '已废弃'
   if (b.sealedTime) return '已封存'
   return b.statusMessage
 })
@@ -57,7 +60,7 @@ function modeText(): string {
   const b = batch.value
   if (!b) return '—'
   const mode = workflow.scanModeText(b.scanMode, '')
-  if (b.scanMode !== 'SUPPLEMENT') return mode
+  if (b.scanMode !== ScannerKioskScanModeCode.SUPPLEMENT) return mode
   const replaceText = b.replaceTargetPage ? '替换目标页' : '追加补扫'
   const targetText = b.targetPageNo
     ? workflow.scanPageDisplayTitleByNoForDuplex(b.targetPageNo, b.scanConfig.duplexMode)
@@ -79,8 +82,8 @@ function pageRowTone(
   item: ExamScannerPageLedgerItemVO,
 ): 'success' | 'warning' | 'danger' | 'muted' {
   if (item.attentionType) return 'warning'
-  if (item.registrationStatus === 'DISCARDED') return 'danger'
-  if (item.registrationStatus === 'REGISTERED') return 'success'
+  if (item.registrationStatus === ExamScannerPageRegistrationStatusCode.DISCARDED) return 'danger'
+  if (item.registrationStatus === ExamScannerPageRegistrationStatusCode.REGISTERED) return 'success'
   return 'muted'
 }
 </script>

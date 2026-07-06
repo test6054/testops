@@ -7,10 +7,10 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ProgramEvaluationProfileVO } from '@/apis/quality/program-evaluation-profile'
-import type { AccreditationType, EvaluationMethod } from '@/apis/quality/types'
+import type { AccreditationTypeCode, EvaluationMethodCode } from '@/apis/quality/types'
 import { onMounted, ref, watch } from 'vue'
 import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
-import { ACCREDITATION_TYPE_LABEL, EVALUATION_METHOD_LABEL } from '@/apis/quality/types'
+import { AccreditationTypeDescription, EvaluationMethodDescription } from '@/apis/quality/types'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { requireAllPages } from './page-contract'
@@ -84,12 +84,12 @@ function handleChange(val: SelectValue) {
   emit('change', next, option)
 }
 
-function accreditationTypeLabel(value: AccreditationType) {
-  return strictEnumLabel(ACCREDITATION_TYPE_LABEL, value, '认证类型')
+function accreditationTypeLabel(value: AccreditationTypeCode) {
+  return strictEnumLabel(AccreditationTypeDescription, value, '认证类型')
 }
 
-function evaluationMethodLabel(value: EvaluationMethod) {
-  return strictEnumLabel(EVALUATION_METHOD_LABEL, value, '评价方法')
+function evaluationMethodLabel(value: EvaluationMethodCode) {
+  return strictEnumLabel(EvaluationMethodDescription, value, '评价方法')
 }
 
 onMounted(() => {

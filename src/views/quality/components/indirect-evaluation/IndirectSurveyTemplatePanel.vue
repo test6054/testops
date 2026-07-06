@@ -9,7 +9,6 @@ import type {
   IndirectEvaluationItemVO,
 } from '@/apis/quality/indirect-item'
 import type { ScaleConversionRuleVO } from '@/apis/quality/scale-conversion-rule'
-import type { AchievementTargetType, IndirectFormType } from '@/apis/quality/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
@@ -17,6 +16,7 @@ import { indirectFormApi } from '@/apis/quality/indirect-form'
 import { indirectItemApi } from '@/apis/quality/indirect-item'
 import { indirectResponseApi } from '@/apis/quality/indirect-response'
 import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
+import { AchievementTargetTypeCode, IndirectFormTypeCode } from '@/apis/quality/types'
 import {
   CourseGoalSelector,
   CourseSelector,
@@ -36,10 +36,10 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 import {
   formatIndirectEvaluationItemType,
-  IndirectEvaluationItemType,
+  INDIRECT_EVALUATION_ITEM_TYPE_OPTIONS,
+  IndirectEvaluationItemTypeCode,
   isIndirectEvaluationItemType,
 } from '@/types/enums/indirect-evaluation-item-type-enum'
-import { throwUserFacing } from '@/utils/contract-guard'
 import { showUserError } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import {
@@ -56,9 +56,7 @@ import {
   isOpenTextItemType,
   isScaleItemType,
   isSingleChoiceItemType,
-  ITEM_CONFIG_ERROR,
   itemColumns,
-  itemTypeOptions,
   requiresTeacherScoreConversion,
   SCALE_CONVERSION_RULE_OPTION_PAGE_SIZE,
   targetTypeLabel,
@@ -91,8 +89,9 @@ const formQuery = reactive<IndirectEvaluationFormQueryRequest>({
 })
 
 interface IndirectFormFilterModel {
-  formType?: IndirectFormType
-  targetType?: AchievementTargetType
+  [key: string]: unknown
+  formType?: IndirectFormTypeCode
+  targetType?: AchievementTargetTypeCode
 }
 
 const formFilterForm = reactive<IndirectFormFilterModel>({
@@ -101,7 +100,7 @@ const formFilterForm = reactive<IndirectFormFilterModel>({
 })
 
 const formFilterModel = computed<Record<string, unknown>>({
-  get: () => formFilterForm as Record<string, unknown>,
+  get: () => formFilterForm,
   set: (value) => {
     Object.assign(formFilterForm, value)
   },
@@ -146,8 +145,8 @@ const formEditorMode = ref<'create' | 'edit'>('create')
 const formEditor = reactive<IndirectEvaluationFormSaveRequest>({
   formCode: '',
   formName: '',
-  formType: 'STUDENT_SELF',
-  targetType: 'COURSE_GOAL',
+  formType: IndirectFormTypeCode.STUDENT_SELF,
+  targetType: AchievementTargetTypeCode.COURSE_GOAL,
   targetId: '',
   programId: '',
   description: '',
@@ -161,12 +160,12 @@ const itemEditor = ref<IndirectEvaluationItemSaveRequest>({
   formId: '',
   itemCode: '',
   itemText: '',
-  targetType: 'COURSE_GOAL',
+  targetType: AchievementTargetTypeCode.COURSE_GOAL,
   targetId: '',
   scaleRuleId: undefined,
   weight: 1,
   sortOrder: 0,
-  itemType: IndirectEvaluationItemType.SCALE,
+  itemType: IndirectEvaluationItemTypeCode.SCALE,
   scaleMin: 1,
   scaleMax: 5,
   scaleLabels: [
@@ -190,9 +189,9 @@ function handleFormTargetTypeChange() {
   formEditorTrainingPlanId.value = ''
   formEditorGraduationRequirementId.value = ''
   if (
-    formEditor.targetType === 'PROGRAM_SUMMARY'
-    || formEditor.targetType === 'CIVIC_GOAL_AGGREGATE'
-    || formEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+    formEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
+    || formEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
+    || formEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
   ) {
     formEditor.targetId = formEditor.programId || ''
   }
@@ -211,7 +210,7 @@ function handleFormTrainingPlanChange(value: string | null | undefined) {
 
 function handleFormGraduationRequirementChange(value: string | null | undefined) {
   formEditorGraduationRequirementId.value = value ?? ''
-  if (formEditor.targetType === 'GRADUATION_REQUIREMENT') {
+  if (formEditor.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT) {
     formEditor.targetId = value ?? ''
   } else {
     formEditor.targetId = ''
@@ -224,12 +223,12 @@ function handleFormProgramChange(value: string | null | undefined) {
   formEditorTrainingPlanId.value = ''
   formEditorGraduationRequirementId.value = ''
   if (
-    formEditor.targetType === 'PROGRAM_SUMMARY'
-    || formEditor.targetType === 'CIVIC_GOAL_AGGREGATE'
-    || formEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+    formEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
+    || formEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
+    || formEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
   ) {
     formEditor.targetId = id
-  } else if (formEditor.targetType !== 'COURSE_GOAL') {
+  } else if (formEditor.targetType !== AchievementTargetTypeCode.COURSE_GOAL) {
     formEditor.targetId = ''
   }
 }
@@ -240,9 +239,9 @@ function handleItemTargetTypeChange() {
   itemEditorTrainingPlanId.value = ''
   itemEditorGraduationRequirementId.value = ''
   if (
-    itemEditor.value.targetType === 'PROGRAM_SUMMARY'
-    || itemEditor.value.targetType === 'CIVIC_GOAL_AGGREGATE'
-    || itemEditor.value.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+    itemEditor.value.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
+    || itemEditor.value.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
+    || itemEditor.value.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
   ) {
     itemEditor.value.targetId = formEditor.programId || qualityStore.currentProgramId
   }
@@ -261,7 +260,7 @@ function handleItemTrainingPlanChange(value: string | null | undefined) {
 
 function handleItemGraduationRequirementChange(value: string | null | undefined) {
   itemEditorGraduationRequirementId.value = value ?? ''
-  if (itemEditor.value.targetType === 'GRADUATION_REQUIREMENT') {
+  if (itemEditor.value.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT) {
     itemEditor.value.targetId = value ?? ''
   } else {
     itemEditor.value.targetId = ''
@@ -276,12 +275,12 @@ function handleItemProgramChange(value: string | null | undefined) {
   itemEditorTrainingPlanId.value = ''
   itemEditorGraduationRequirementId.value = ''
   if (
-    itemEditor.value.targetType === 'PROGRAM_SUMMARY'
-    || itemEditor.value.targetType === 'CIVIC_GOAL_AGGREGATE'
-    || itemEditor.value.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+    itemEditor.value.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
+    || itemEditor.value.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
+    || itemEditor.value.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
   ) {
     itemEditor.value.targetId = value ?? ''
-  } else if (itemEditor.value.targetType !== 'COURSE_GOAL') {
+  } else if (itemEditor.value.targetType !== AchievementTargetTypeCode.COURSE_GOAL) {
     itemEditor.value.targetId = ''
   }
 }
@@ -339,8 +338,8 @@ function openFormCreate() {
     id: undefined,
     formCode: '',
     formName: '',
-    formType: 'STUDENT_SELF',
-    targetType: 'COURSE_GOAL',
+    formType: IndirectFormTypeCode.STUDENT_SELF,
+    targetType: AchievementTargetTypeCode.COURSE_GOAL,
     targetId: '',
     programId: qualityStore.currentProgramId,
     description: '',
@@ -359,7 +358,18 @@ function openFormEdit(record: IndirectEvaluationFormVO) {
   formEditorQualityCourseId.value = qualityStore.currentQualityCourseId
   formEditorTrainingPlanId.value = qualityStore.currentTrainingPlanId
   formEditorGraduationRequirementId.value = ''
-  Object.assign(formEditor, record)
+  Object.assign(formEditor, {
+    id: record.id,
+    formCode: record.formCode,
+    formName: record.formName,
+    formType: record.formType,
+    targetType: record.targetType,
+    targetId: record.targetId,
+    programId: record.programId,
+    description: record.description,
+    expectedSample: record.expectedSample,
+    enabled: record.enabled,
+  })
   formEditorVisible.value = true
 }
 
@@ -368,8 +378,20 @@ async function submitForm() {
     message.error('请填写问卷编码、名称，并选择评价对象')
     return
   }
-  if (formEditorMode.value === 'create') await indirectFormApi.create(formEditor)
-  else await indirectFormApi.update(formEditor)
+  const request: IndirectEvaluationFormSaveRequest = {
+    id: formEditor.id,
+    formCode: formEditor.formCode,
+    formName: formEditor.formName,
+    formType: formEditor.formType,
+    targetType: formEditor.targetType,
+    targetId: formEditor.targetId,
+    programId: formEditor.programId,
+    description: formEditor.description,
+    expectedSample: formEditor.expectedSample,
+    enabled: formEditor.enabled,
+  }
+  if (formEditorMode.value === 'create') await indirectFormApi.create(request)
+  else await indirectFormApi.update(request)
   message.success('已保存')
   formEditorVisible.value = false
   await loadForms()
@@ -438,55 +460,6 @@ function defaultScaleLabels(min: number, max: number) {
   return labels
 }
 
-function assertScaleLabelsComplete(record: IndirectEvaluationItemVO) {
-  if (record.scaleMin == null || record.scaleMax == null || record.scaleMin >= record.scaleMax) {
-    throwUserFacing(ITEM_CONFIG_ERROR)
-  }
-  const labels = record.scaleLabels
-  if (!labels?.length) throwUserFacing(ITEM_CONFIG_ERROR)
-  const values = new Set(labels.map((label) => label.scaleValue))
-  for (let value = record.scaleMin; value <= record.scaleMax; value++) {
-    if (!values.has(value)) throwUserFacing(ITEM_CONFIG_ERROR)
-  }
-}
-
-function assertChoiceOptionsComplete(record: IndirectEvaluationItemVO) {
-  const options = record.choiceOptions
-  if (!options || options.length < 2) {
-    throwUserFacing(ITEM_CONFIG_ERROR)
-  }
-  const values = new Set<string>()
-  for (const option of options) {
-    if (!option.optionValue.trim() || !option.optionLabel.trim()) {
-      throwUserFacing(ITEM_CONFIG_ERROR)
-    }
-    if (values.has(option.optionValue.trim())) {
-      throwUserFacing(ITEM_CONFIG_ERROR)
-    }
-    values.add(option.optionValue.trim())
-  }
-}
-
-function assertEditableItemContract(record: IndirectEvaluationItemVO) {
-  if (record.required == null) {
-    throwUserFacing(ITEM_CONFIG_ERROR)
-  }
-  if (!isIndirectEvaluationItemType(record.itemType)) {
-    throwUserFacing(ITEM_CONFIG_ERROR)
-  }
-  if (isScaleItemType(record.itemType)) {
-    assertScaleLabelsComplete(record)
-    return
-  }
-  if (isSingleChoiceItemType(record.itemType) || isMultiChoiceItemType(record.itemType)) {
-    assertChoiceOptionsComplete(record)
-    return
-  }
-  if (!isOpenTextItemType(record.itemType)) {
-    throwUserFacing(ITEM_CONFIG_ERROR)
-  }
-}
-
 function openItemCreate() {
   if (!selectedForm.value || !isFormStructureMutable(selectedForm.value)) {
     message.error('当前问卷已发布，请先关闭后再维护题项')
@@ -507,7 +480,7 @@ function openItemCreate() {
     scaleRuleId: undefined,
     weight: 1,
     sortOrder: (items.value.length + 1) * 10,
-    itemType: IndirectEvaluationItemType.SCALE,
+    itemType: IndirectEvaluationItemTypeCode.SCALE,
     scaleMin: 1,
     scaleMax: 5,
     scaleLabels: defaultScaleLabels(1, 5),
@@ -522,7 +495,6 @@ function openItemEdit(record: IndirectEvaluationItemVO) {
     message.error('当前问卷已发布，请先关闭后再维护题项')
     return
   }
-  assertEditableItemContract(record)
   itemEditorMode.value = 'edit'
   itemEditorQualityCourseId.value
     = formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
@@ -530,7 +502,15 @@ function openItemEdit(record: IndirectEvaluationItemVO) {
     = formEditorTrainingPlanId.value || qualityStore.currentTrainingPlanId
   itemEditorGraduationRequirementId.value = ''
   itemEditor.value = {
-    ...record,
+    id: record.id,
+    formId: record.formId,
+    itemCode: record.itemCode,
+    itemText: record.itemText,
+    targetType: record.targetType,
+    targetId: record.targetId,
+    scaleRuleId: record.scaleRuleId,
+    weight: record.weight,
+    sortOrder: record.sortOrder,
     itemType: record.itemType,
     scaleLabels: record.scaleLabels?.map((label) => ({ ...label })),
     choiceOptions: record.choiceOptions?.map((option) => ({ ...option })),
@@ -611,8 +591,31 @@ async function submitItem() {
     message.error('题项题型无效，请重新选择')
     return
   }
-  if (itemEditorMode.value === 'create') await indirectItemApi.create(v)
-  else await indirectItemApi.update(v)
+  const request: IndirectEvaluationItemSaveRequest = {
+    id: v.id,
+    formId: v.formId,
+    itemCode: v.itemCode,
+    itemText: v.itemText,
+    targetType: v.targetType,
+    targetId: v.targetId,
+    scaleRuleId: v.scaleRuleId,
+    weight: v.weight,
+    sortOrder: v.sortOrder,
+    itemType: v.itemType,
+    scaleMin: v.scaleMin,
+    scaleMax: v.scaleMax,
+    scaleLabels: v.scaleLabels?.map((label) => ({
+      scaleValue: label.scaleValue,
+      label: label.label,
+    })),
+    choiceOptions: v.choiceOptions?.map((option) => ({
+      optionValue: option.optionValue,
+      optionLabel: option.optionLabel,
+    })),
+    required: v.required,
+  }
+  if (itemEditorMode.value === 'create') await indirectItemApi.create(request)
+  else await indirectItemApi.update(request)
   message.success('已保存')
   itemEditorVisible.value = false
   await loadItems()
@@ -898,19 +901,19 @@ defineExpose({
         </a-col>
         <a-col
           v-if="
-            formEditor.targetType === 'COURSE_GOAL'
-              || formEditor.targetType === 'GRADUATION_REQUIREMENT'
-              || formEditor.targetType === 'REQUIREMENT_INDICATOR'
-              || formEditor.targetType === 'TRAINING_OBJECTIVE'
+            formEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL
+              || formEditor.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT
+              || formEditor.targetType === AchievementTargetTypeCode.REQUIREMENT_INDICATOR
+              || formEditor.targetType === AchievementTargetTypeCode.TRAINING_OBJECTIVE
           "
           :span="8"
         >
           <a-form-item
-            :label="formEditor.targetType === 'COURSE_GOAL' ? '评价课程' : '培养方案'"
+            :label="formEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL ? '评价课程' : '培养方案'"
             required
           >
             <CourseSelector
-              v-if="formEditor.targetType === 'COURSE_GOAL'"
+              v-if="formEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL"
               :value="formEditorQualityCourseId || null"
               :program-id="formEditor.programId || null"
               placeholder="选择评价课程"
@@ -928,29 +931,29 @@ defineExpose({
         <a-col :span="8">
           <a-form-item
             :label="
-              formEditor.targetType === 'PROGRAM_SUMMARY'
-                || formEditor.targetType === 'CIVIC_GOAL_AGGREGATE'
-                || formEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+              formEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
+                || formEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
+                || formEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
                 ? '所属专业'
                 : '目标对象'
             "
             required
           >
             <CourseGoalSelector
-              v-if="formEditor.targetType === 'COURSE_GOAL'"
+              v-if="formEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL"
               :quality-course-id="formEditorQualityCourseId"
               :value="formEditor.targetId || null"
               placeholder="选择课程目标"
               @change="handleFormTargetChange"
             />
             <GraduationRequirementSelector
-              v-else-if="formEditor.targetType === 'GRADUATION_REQUIREMENT'"
+              v-else-if="formEditor.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT"
               :training-plan-id="formEditorTrainingPlanId"
               :value="formEditor.targetId || null"
               placeholder="选择毕业要求"
               @change="handleFormGraduationRequirementChange"
             />
-            <template v-else-if="formEditor.targetType === 'REQUIREMENT_INDICATOR'">
+            <template v-else-if="formEditor.targetType === AchievementTargetTypeCode.REQUIREMENT_INDICATOR">
               <GraduationRequirementSelector
                 :training-plan-id="formEditorTrainingPlanId"
                 :value="formEditorGraduationRequirementId || null"
@@ -966,7 +969,7 @@ defineExpose({
               />
             </template>
             <TrainingObjectiveSelector
-              v-else-if="formEditor.targetType === 'TRAINING_OBJECTIVE'"
+              v-else-if="formEditor.targetType === AchievementTargetTypeCode.TRAINING_OBJECTIVE"
               :training-plan-id="formEditorTrainingPlanId"
               :value="formEditor.targetId || null"
               placeholder="选择培养目标"
@@ -982,9 +985,9 @@ defineExpose({
         </a-col>
         <a-col
           v-if="
-            formEditor.targetType !== 'PROGRAM_SUMMARY'
-              && formEditor.targetType !== 'CIVIC_GOAL_AGGREGATE'
-              && formEditor.targetType !== 'COMPLEX_ENGINEERING_AGGREGATE'
+            formEditor.targetType !== AchievementTargetTypeCode.PROGRAM_SUMMARY
+              && formEditor.targetType !== AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
+              && formEditor.targetType !== AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
           "
           :span="8"
         >
@@ -1037,7 +1040,7 @@ defineExpose({
           <a-form-item label="题型" required>
             <a-select
               v-model:value="itemEditor.itemType"
-              :options="itemTypeOptions"
+              :options="INDIRECT_EVALUATION_ITEM_TYPE_OPTIONS"
               placeholder="请选择题型"
             />
           </a-form-item>
@@ -1063,11 +1066,11 @@ defineExpose({
         </a-col>
         <a-col :span="12">
           <a-form-item
-            :label="itemEditor.targetType === 'COURSE_GOAL' ? '评价课程' : '培养方案'"
+            :label="itemEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL ? '评价课程' : '培养方案'"
             required
           >
             <CourseSelector
-              v-if="itemEditor.targetType === 'COURSE_GOAL'"
+              v-if="itemEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL"
               :value="itemEditorQualityCourseId || null"
               :program-id="formEditor.programId || null"
               placeholder="选择评价课程"
@@ -1075,9 +1078,9 @@ defineExpose({
             />
             <ProgramSelector
               v-else-if="
-                itemEditor.targetType === 'PROGRAM_SUMMARY'
-                  || itemEditor.targetType === 'CIVIC_GOAL_AGGREGATE'
-                  || itemEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+                itemEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
+                  || itemEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
+                  || itemEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
               "
               :value="itemEditor.targetId || null"
               placeholder="选择专业"
@@ -1095,30 +1098,30 @@ defineExpose({
       </a-row>
       <a-form-item
         v-if="
-          itemEditor.targetType === 'COURSE_GOAL'
-            || itemEditor.targetType === 'GRADUATION_REQUIREMENT'
-            || itemEditor.targetType === 'REQUIREMENT_INDICATOR'
-            || itemEditor.targetType === 'TRAINING_OBJECTIVE'
+          itemEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL
+            || itemEditor.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT
+            || itemEditor.targetType === AchievementTargetTypeCode.REQUIREMENT_INDICATOR
+            || itemEditor.targetType === AchievementTargetTypeCode.TRAINING_OBJECTIVE
         "
         label="目标对象"
         required
       >
         <div class="ie__target-picker">
           <CourseGoalSelector
-            v-if="itemEditor.targetType === 'COURSE_GOAL'"
+            v-if="itemEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL"
             :quality-course-id="itemEditorQualityCourseId"
             :value="itemEditor.targetId || null"
             placeholder="选择课程目标"
             @change="handleItemTargetChange"
           />
           <GraduationRequirementSelector
-            v-else-if="itemEditor.targetType === 'GRADUATION_REQUIREMENT'"
+            v-else-if="itemEditor.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT"
             :training-plan-id="itemEditorTrainingPlanId"
             :value="itemEditor.targetId || null"
             placeholder="选择毕业要求"
             @change="handleItemGraduationRequirementChange"
           />
-          <template v-else-if="itemEditor.targetType === 'REQUIREMENT_INDICATOR'">
+          <template v-else-if="itemEditor.targetType === AchievementTargetTypeCode.REQUIREMENT_INDICATOR">
             <GraduationRequirementSelector
               :training-plan-id="itemEditorTrainingPlanId"
               :value="itemEditorGraduationRequirementId || null"

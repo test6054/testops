@@ -7,7 +7,7 @@ export { prefersReducedMotion }
 export const MARK_TREND_MIN_POINTS = 2
 
 /** mark-vue 图表空态与无障碍文案真源 */
-export const MARK_CHART_EMPTY = {
+export const MARK_CHART_EMPTY: Record<string, string> = {
   trendNeedMoreExams: '至少需要 2 场考试才能展示走势',
   trendSingleExam: '本课程仅有当前 1 场考试，暂无纵向趋势可对照',
   trendNoHistory: '该学生在本课程暂无可对照的历次成绩',
@@ -15,7 +15,7 @@ export const MARK_CHART_EMPTY = {
   distributionNoData: '暂无分布数据',
   scatterNoData: '暂无散点图数据',
   heatmapNoData: '暂无热力图数据',
-} as const
+}
 
 /** 环形进度读屏文案：指标名 + 百分比 + 可选明细 */
 export function formatGaugeAriaLabel(label: string, percent: number, detail?: string): string {

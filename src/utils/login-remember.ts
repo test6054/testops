@@ -25,10 +25,15 @@ export function readLoginRememberConfig(): LoginRememberConfig {
     if (!raw) {
       return { ...DEFAULT_LOGIN_CONFIG }
     }
-    const parsed = JSON.parse(raw) as Partial<LoginRememberConfig>
+    const parsed: unknown = JSON.parse(raw)
+    if (typeof parsed !== 'object' || parsed === null) {
+      return { ...DEFAULT_LOGIN_CONFIG }
+    }
+    const rememberMe = Object.getOwnPropertyDescriptor(parsed, 'rememberMe')?.value
+    const username = Object.getOwnPropertyDescriptor(parsed, 'username')?.value
     return {
-      rememberMe: parsed.rememberMe !== false,
-      username: typeof parsed.username === 'string' ? parsed.username : '',
+      rememberMe: rememberMe !== false,
+      username: typeof username === 'string' ? username : '',
     }
   } catch {
     return { ...DEFAULT_LOGIN_CONFIG }

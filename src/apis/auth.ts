@@ -16,6 +16,7 @@ import type {
   UserLoginResponseDto
 } from '@/types'
 import http from '@/config/axios'
+import service from '@/config/axios/service'
 import { getDeviceId } from '@/utils/device'
 
 
@@ -323,13 +324,15 @@ export interface CaptchaRepData {
 }
 
 /** 获取行为验证码（AJ-Captcha） */
-export function getCaptcha(data: CaptchaGetRequest): Promise<CaptchaResponseModel> {
-  return http.post<CaptchaResponseModel>('/api/auth/captcha/get', data)
+export async function getCaptcha(data: CaptchaGetRequest): Promise<CaptchaResponseModel> {
+  const response = await service.post<CaptchaResponseModel>('/api/auth/captcha/get', data)
+  return response.data
 }
 
 /** 校验行为验证码（AJ-Captcha） */
-export function checkCaptcha(data: CaptchaCheckRequest): Promise<CaptchaResponseModel> {
-  return http.post<CaptchaResponseModel>('/api/auth/captcha/check', data)
+export async function checkCaptcha(data: CaptchaCheckRequest): Promise<CaptchaResponseModel> {
+  const response = await service.post<CaptchaResponseModel>('/api/auth/captcha/check', data)
+  return response.data
 }
 
 /** 获取验证码配置（是否启用） */

@@ -11,7 +11,7 @@ const qualityRoutesPath = join(root, 'src/router/routes/quality.ts')
 const source = readFileSync(qualityRoutesPath, 'utf8')
 
 const scopeConsts = {}
-for (const match of source.matchAll(/const (SCOPE_[A-Z_]+|GATE_[A-Z_]+)\s*=\s*\{([^}]*)\}/g)) {
+for (const match of source.matchAll(/const (SCOPE_[A-Z_]+|GATE_[A-Z_]+)(?:\s*:\s*\w+)?\s*=\s*\{([^}]*)\}/g)) {
   scopeConsts[match[1]] = match[2]
 }
 

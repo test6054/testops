@@ -2,13 +2,17 @@
   <StageWorkbenchShell>
     <template #context>
       <ContextBar
+        layout="workbench"
         show-title
-        title="阅卷会话"
-        :subtitle="organizationExamLabel"
+        :title="isJourneyChrome ? contextBarTitle : organizationExamLabel"
+        :subtitle="isJourneyChrome ? contextBarSubtitle : MARKING_SESSIONS_SCOPE_HINT"
       >
         <template #status>
-          <a-select
-            v-model:value="filterGroupId"
+          <UiTag v-if="isJourneyChrome && examStatusLabel" :tone="examStatusTone" size="sm">
+            {{ examStatusLabel }}
+          </UiTag>
+          <UiSelect
+            v-model="filterGroupId"
             class="org-sessions__group-select"
             placeholder="按题组过滤（留空显示全部）"
             :options="groupOptions"
@@ -28,7 +32,7 @@
           >
             {{
               strictEnumLabel(
-                MARKING_ORGANIZATION_STATUS_LABEL,
+                MarkingOrganizationStatusDescription,
                 organization.organizationStatus,
                 '阅卷组织状态',
               )
@@ -43,17 +47,21 @@
       </ContextBar>
     </template>
 
-    <a-skeleton v-if="loading" active :paragraph="{ rows: 4 }" />
+    <template v-if="organization && signalMetrics.length > 0" #signal>
+      <SignalBand variant="tiles" :metrics="signalMetrics" compact />
+    </template>
+
+    <ExamWorkspaceJourneySubNav v-if="isExamWorkspaceRoute" />
+
+    <UiSkeletonState v-if="loading" variant="card" compact />
 
     <UiEmpty
       v-else-if="!organization"
-      description="暂无数据"
+      description="暂无阅卷组织数据"
       class="org-sessions__empty"
     />
 
-    <a-spin v-else :spinning="loading">
-      <SignalBand :metrics="signalMetrics" compact class="org-sessions__signals" />
-
+    <div v-else class="org-sessions__panels">
       <a-row :gutter="16">
         <a-col :xs="24" :lg="12">
           <TrialSessionPanel
@@ -69,6 +77,7 @@
         <a-col :xs="24" :lg="12">
           <FormalSessionPanel
             :organization-id="organizationId"
+            :exam-id="organization?.examId"
             :group-options="groupOptions"
             :group-allocation-units="groupAllocationUnitMap"
             :sessions="formalSessions"
@@ -78,7 +87,7 @@
           />
         </a-col>
       </a-row>
-    </a-spin>
+    </div>
 
     <SessionLifecycleReasonModal
       v-model:open="lifecycleModalOpen"
@@ -110,18 +119,21 @@ import {
   listFormalSessions,
   listMarkingPolicies,
   listTrialSessions,
-  MARKING_ORGANIZATION_STATUS_LABEL,
   MARKING_ORGANIZATION_STATUS_TONE,
+  MARKING_SESSIONS_SCOPE_HINT,
+  MarkingOrganizationStatusDescription,
   requireMarkingOrganizationId,
-  validateFormalSessionContract,
-  validateMarkingOrganizationContract,
-  validateTrialSessionContract,
 } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
@@ -132,6 +144,14 @@ import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModa
 import TrialSessionPanel from './components/TrialSessionPanel.vue'
 
 defineOptions({ name: 'AdminMarkingOrganizationSessions' })
+
+const {
+  isJourneyChrome,
+  contextBarTitle,
+  contextBarSubtitle,
+  examStatusLabel,
+  examStatusTone,
+} = useOptionalExamJourneyContextBar('试评 / 正评')
 
 const route = useRoute()
 const router = useRouter()
@@ -207,10 +227,10 @@ function resetSessionState(): void {
  * 会话页必须绑定到组织真实 examId，对齐后工作台阶段与会话操作才属于同一考试。
  */
 async function alignWorkspaceRouteExamId(nextOrganization: MarkingOrganizationVO): Promise<boolean> {
-  if (!isExamWorkspaceRoute.value) {
+  if (!nextOrganization.examId) {
     return true
   }
-  if (!nextOrganization.examId || routeExamId.value === nextOrganization.examId) {
+  if (isExamWorkspaceRoute.value && routeExamId.value === nextOrganization.examId) {
     return true
   }
   await router.replace(
@@ -229,7 +249,6 @@ async function loadOrganization(): Promise<boolean> {
   }
   try {
     const nextOrganization = await getOrganizationById({ organizationId: organizationId.value })
-    validateMarkingOrganizationContract(nextOrganization)
     if (!(await alignWorkspaceRouteExamId(nextOrganization))) {
       return false
     }
@@ -250,7 +269,6 @@ async function loadTrialSessions(): Promise<void> {
       organizationId: organizationId.value,
       groupId: filterGroupId.value,
     })
-    records.forEach(validateTrialSessionContract)
     trialSessions.value = records
   } catch (error) {
     trialSessions.value = []
@@ -265,7 +283,6 @@ async function loadFormalSessions(): Promise<void> {
       organizationId: organizationId.value,
       groupId: filterGroupId.value,
     })
-    records.forEach(validateFormalSessionContract)
     formalSessions.value = records
   } catch (error) {
     formalSessions.value = []
@@ -324,7 +341,7 @@ const signalMetrics = computed<SignalMetric[]>(() => [
     label: '组织状态',
     value: organization.value?.organizationStatus
       ? strictEnumLabel(
-          MARKING_ORGANIZATION_STATUS_LABEL,
+          MarkingOrganizationStatusDescription,
           organization.value.organizationStatus,
           '阅卷组织状态',
         )
@@ -369,7 +386,7 @@ async function onLifecycleSuccess(): Promise<void> {
   await refreshSnapshot()
 }
 
-watch(() => [organizationId.value, routeExamId.value] as const, () => {
+watch(() => ({ organizationId: organizationId.value, routeExamId: routeExamId.value }), () => {
   void reloadAll()
 }, { immediate: true })
 </script>
@@ -386,6 +403,17 @@ watch(() => [organizationId.value, routeExamId.value] as const, () => {
 
   &__empty {
     padding: 48px 0;
+  }
+
+  &__panels {
+    :deep(.ant-col) {
+      display: flex;
+    }
+
+    :deep(.ant-col > *) {
+      flex: 1;
+      min-width: 0;
+    }
   }
 }
 </style>

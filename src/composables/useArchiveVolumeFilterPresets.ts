@@ -1,6 +1,11 @@
 import type { ArchiveVolumePageRequest, ArchiveVolumeVO } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, ref } from 'vue'
+import {
+  ArchiveIntegrityStatusCode,
+  ArchiveTransferStatusCode,
+  ArchiveVolumeStatusCode,
+} from '@/apis/mark/archive-volume'
 import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 
 export type ArchiveVolumeListTabKey = 'mine' | 'college' | 'archive'
@@ -34,7 +39,7 @@ const ARCHIVE_VOLUME_FILTER_PRESETS: ArchiveVolumeFilterPreset[] = [
     tabs: ['mine'],
     buildRequest: (ctx) => ({
       mineOnly: ctx.listTab === 'mine' ? true : undefined,
-      volumeStatus: 'COLLECTING',
+      volumeStatus: ArchiveVolumeStatusCode.COLLECTING,
       integrityFailedOnly: true,
     }),
   },
@@ -44,12 +49,15 @@ const ARCHIVE_VOLUME_FILTER_PRESETS: ArchiveVolumeFilterPreset[] = [
     tone: 'blue',
     tabs: ['mine', 'college'],
     buildRequest: () => ({
-      volumeStatus: 'COLLECTING',
-      integrityStatus: 'PASSED',
+      volumeStatus: ArchiveVolumeStatusCode.COLLECTING,
+      integrityStatus: ArchiveIntegrityStatusCode.PASSED,
     }),
     matchRow: (row) =>
-      row.volumeStatus === 'COLLECTING'
-      && (row.integrityStatus === 'PASSED' || row.integrityStatus === 'WAIVED')
+      row.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+      && (
+        row.integrityStatus === ArchiveIntegrityStatusCode.PASSED
+        || row.integrityStatus === ArchiveIntegrityStatusCode.WAIVED
+      )
       && row.submitReady !== true
       && row.hasOpenRemediationTask !== true,
   },
@@ -59,9 +67,9 @@ const ARCHIVE_VOLUME_FILTER_PRESETS: ArchiveVolumeFilterPreset[] = [
     tone: 'green',
     tabs: ['mine', 'college'],
     buildRequest: () => ({
-      volumeStatus: 'COLLECTING',
+      volumeStatus: ArchiveVolumeStatusCode.COLLECTING,
     }),
-    matchRow: (row) => row.volumeStatus === 'COLLECTING' && row.submitReady === true,
+    matchRow: row => row.volumeStatus === ArchiveVolumeStatusCode.COLLECTING && row.submitReady === true,
   },
   {
     key: 'remediation-open',
@@ -70,7 +78,7 @@ const ARCHIVE_VOLUME_FILTER_PRESETS: ArchiveVolumeFilterPreset[] = [
     tabs: ['mine', 'college'],
     buildRequest: (ctx) => ({
       mineOnly: ctx.listTab === 'mine' ? true : undefined,
-      volumeStatus: 'COLLECTING',
+      volumeStatus: ArchiveVolumeStatusCode.COLLECTING,
     }),
     matchRow: (row) => row.hasOpenRemediationTask === true,
   },
@@ -80,8 +88,8 @@ const ARCHIVE_VOLUME_FILTER_PRESETS: ArchiveVolumeFilterPreset[] = [
     tone: 'purple',
     tabs: ['archive'],
     buildRequest: () => ({
-      volumeStatus: 'SUBMITTED',
-      transferStatus: 'PENDING_REVIEW',
+      volumeStatus: ArchiveVolumeStatusCode.SUBMITTED,
+      transferStatus: ArchiveTransferStatusCode.PENDING_REVIEW,
     }),
   },
   {
@@ -96,7 +104,7 @@ const ARCHIVE_VOLUME_FILTER_PRESETS: ArchiveVolumeFilterPreset[] = [
         semester,
       }
     },
-    matchRow: (row) => row.volumeStatus !== 'STORED',
+    matchRow: row => row.volumeStatus !== ArchiveVolumeStatusCode.STORED,
   },
 ]
 

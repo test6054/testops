@@ -6,26 +6,23 @@ import type { QuestionTypeCode } from './question-type'
 /**
  * 阅卷考试匿名复核任务 API - 对接 /api/mark/exams/review-tasks/*。
  */
+import type { MarkAiReferenceExperienceAuditVO } from '@/apis/mark/grading-experience-assist'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { ReviewTaskTypeCode } from '@/types/enums/review-task-type-enum'
 import http from '@/config/axios'
+import { GradeSourceCode } from '@/types/enums/grade-source-enum'
 import {
-  assertUserFacing,
-  assertUserFacingFiniteNumber,
-  assertUserFacingText,
-} from '@/utils/contract-guard'
-import { strictEnumLabel } from '@/utils/strict-enum'
-import { AI_ABILITY_LABEL } from './exam-grade'
-import { QUESTION_TYPE_LABEL } from './question-type'
-
-const REVIEW_TASK_DATA_ERROR = '复核任务数据异常，请刷新后重试'
+  ReviewTaskStatusCode,
+  ReviewTaskStatusDescription,
+} from '@/types/enums/review-task-status-enum'
 
 /** 匿名批阅任务查询请求 - 对应 ReviewTaskQueryRequest */
 export interface ReviewTaskQueryRequest extends QueryDto {
   examId: string
   /** 复核状态编码，空查全部 */
   status?: ReviewTaskStatusCode
-  questionTemplateId?: string
+  layoutQuestionId?: string
   /** 复核任务类型过滤，空查全部 */
   reviewType?: ReviewTaskTypeCode
   /** 批改来源过滤，空查全部 */
@@ -34,56 +31,52 @@ export interface ReviewTaskQueryRequest extends QueryDto {
   excludeArbitration?: boolean
 }
 
+export {
+  ALL_GRADE_SOURCE_CODES,
+  GradeSourceCode,
+  GradeSourceDescription,
+} from '@/types/enums/grade-source-enum'
+
+export {
+  ALL_REVIEW_TASK_STATUS_CODES,
+  ReviewTaskStatusCode,
+  ReviewTaskStatusDescription,
+} from '@/types/enums/review-task-status-enum'
 /** 复核任务类型编码 - 与后端 com.nybc.edu.common.enums.TaskType 一一对齐。 */
-export type ReviewTaskTypeCode
-  = | 'OBJECTIVE_AUTO_REVIEW'
-    | 'OBJECTIVE_AI_REVIEW'
-    | 'SUBJECTIVE_AI_REVIEW'
-    | 'QUESTION_REVIEW_ARBITRATION'
-
-/** 复核任务类型中文标签与颜色，便于前端 tag 渲染 */
-export const REVIEW_TASK_TYPE_META: Record<
+export {
+  ALL_REVIEW_TASK_TYPE_CODES,
   ReviewTaskTypeCode,
-  { label: string, color: 'blue' | 'green' | 'purple' }
-> = {
-  OBJECTIVE_AUTO_REVIEW: { label: '客观题（硬比对）', color: 'green' },
-  OBJECTIVE_AI_REVIEW: { label: '客观题（AI 评分）', color: 'blue' },
-  SUBJECTIVE_AI_REVIEW: { label: '主观题（AI 评分）', color: 'purple' },
-  QUESTION_REVIEW_ARBITRATION: { label: '题目复核仲裁', color: 'blue' },
-}
-
-const REVIEW_TASK_TYPE_LABEL: Record<ReviewTaskTypeCode, string> = {
-  OBJECTIVE_AUTO_REVIEW: REVIEW_TASK_TYPE_META.OBJECTIVE_AUTO_REVIEW.label,
-  OBJECTIVE_AI_REVIEW: REVIEW_TASK_TYPE_META.OBJECTIVE_AI_REVIEW.label,
-  SUBJECTIVE_AI_REVIEW: REVIEW_TASK_TYPE_META.SUBJECTIVE_AI_REVIEW.label,
-  QUESTION_REVIEW_ARBITRATION: REVIEW_TASK_TYPE_META.QUESTION_REVIEW_ARBITRATION.label,
-}
-
-/** 批改来源编码 - 与后端 com.nybc.edu.common.enums.GradeSource 一一对齐。 */
-export type GradeSourceCode
-  = 'AUTO_OBJECTIVE' | 'AUTO_OBJECTIVE_AI' | 'LOCAL_SUBJECTIVE_AI' | 'TEACHER'
-
-/** 复核任务状态编码 - 与后端 ReviewTaskStatus 枚举对齐 */
-export type ReviewTaskStatusCode
-  = 'PENDING' | 'IN_PROGRESS' | 'APPROVED' | 'REJECTED' | 'INVALIDATED'
-
-/** 复核任务状态中文标签 */
-export const REVIEW_TASK_STATUS_LABEL: Record<ReviewTaskStatusCode, string> = {
-  PENDING: '待复核',
-  IN_PROGRESS: '复核中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-  INVALIDATED: '已失效',
-}
+  ReviewTaskTypeDescription,
+  ReviewTaskTypeTone,
+} from '@/types/enums/review-task-type-enum'
 
 /** 复核任务状态标签色 */
 export const REVIEW_TASK_STATUS_TONE: Record<ReviewTaskStatusCode, BadgeTone> = {
-  PENDING: 'orange',
-  IN_PROGRESS: 'blue',
-  APPROVED: 'green',
-  REJECTED: 'red',
-  INVALIDATED: 'gray',
+  [ReviewTaskStatusCode.PENDING]: 'orange',
+  [ReviewTaskStatusCode.IN_PROGRESS]: 'blue',
+  [ReviewTaskStatusCode.APPROVED]: 'green',
+  [ReviewTaskStatusCode.REJECTED]: 'red',
+  [ReviewTaskStatusCode.INVALIDATED]: 'gray',
 }
+
+/** 复核任务 Hub 页状态筛选项（仅展示待办相关子集）。 */
+export const REVIEW_TASK_HUB_STATUS_FILTER_OPTIONS: Array<{
+  label: string
+  value: ReviewTaskStatusCode
+}> = [
+  {
+    label: ReviewTaskStatusDescription[ReviewTaskStatusCode.PENDING],
+    value: ReviewTaskStatusCode.PENDING,
+  },
+  {
+    label: ReviewTaskStatusDescription[ReviewTaskStatusCode.IN_PROGRESS],
+    value: ReviewTaskStatusCode.IN_PROGRESS,
+  },
+  {
+    label: ReviewTaskStatusDescription[ReviewTaskStatusCode.INVALIDATED],
+    value: ReviewTaskStatusCode.INVALIDATED,
+  },
+]
 
 /** 匿名批阅任务项 - 对应 ReviewTaskItemResponse */
 export interface ReviewTaskItemVO {
@@ -98,7 +91,7 @@ export interface ReviewTaskItemVO {
   classId?: string
   className: string
   paperDisplay: PaperInstanceDisplayVO
-  questionTemplateId: string
+  layoutQuestionId: string
   questionNo: string
   questionType: QuestionTypeCode
   fullScore: number
@@ -130,6 +123,8 @@ export interface ReviewTaskDetailVO {
   aiAbilityCode?: AiAbilityCode
   /** AI 是否被限流或阻断，为 true 时教师需依赖人工复核 */
   aiLimited?: boolean
+  /** AI 定标引用审计快照 */
+  referenceExperienceAudit?: MarkAiReferenceExperienceAuditVO
   examId: string
   paperInstanceId: string
   candidateRosterId?: string
@@ -139,7 +134,7 @@ export interface ReviewTaskDetailVO {
   classId?: string
   className: string
   paperDisplay: PaperInstanceDisplayVO
-  questionTemplateId: string
+  layoutQuestionId: string
   questionNo: string
   questionType: QuestionTypeCode
   fullScore: number
@@ -174,62 +169,12 @@ export interface ReviewTaskDetailVO {
   evaluationCriteria?: string
 }
 
-/** 批改来源中文标签 - 与后端 GradeSource.message 完全一致 */
-export const GRADE_SOURCE_LABEL: Record<GradeSourceCode, string> = {
-  AUTO_OBJECTIVE: '客观题自动判分',
-  AUTO_OBJECTIVE_AI: '客观题AI批改',
-  LOCAL_SUBJECTIVE_AI: '本地主观题AI批改',
-  TEACHER: '教师人工批改',
-}
-
 /** 批改来源徽标色调 */
 export const GRADE_SOURCE_TONE: Record<GradeSourceCode, BadgeTone> = {
-  AUTO_OBJECTIVE: 'green',
-  AUTO_OBJECTIVE_AI: 'blue',
-  LOCAL_SUBJECTIVE_AI: 'blue',
-  TEACHER: 'orange',
-}
-
-/** 复核任务列表项契约校验，供 store 与列表页在消费前显式失败。 */
-export function validateReviewTaskItemContract(record: ReviewTaskItemVO): void {
-  assertUserFacingText(record.reviewTaskId, REVIEW_TASK_DATA_ERROR)
-  assertUserFacingText(record.examId, REVIEW_TASK_DATA_ERROR)
-  assertUserFacingText(record.paperInstanceId, REVIEW_TASK_DATA_ERROR)
-  assertUserFacingText(record.gradeResultId, REVIEW_TASK_DATA_ERROR)
-  assertUserFacingText(record.questionTemplateId, REVIEW_TASK_DATA_ERROR)
-  assertUserFacingText(record.questionNo, REVIEW_TASK_DATA_ERROR)
-  assertUserFacingText(record.studentUserId, REVIEW_TASK_DATA_ERROR)
-  assertUserFacingText(record.studentNo, REVIEW_TASK_DATA_ERROR)
-  assertUserFacingText(record.studentName, REVIEW_TASK_DATA_ERROR)
-  assertUserFacingText(record.className, REVIEW_TASK_DATA_ERROR)
-  assertUserFacingFiniteNumber(record.fullScore, REVIEW_TASK_DATA_ERROR)
-  strictEnumLabel(REVIEW_TASK_STATUS_LABEL, record.status, '复核任务状态')
-  strictEnumLabel(QUESTION_TYPE_LABEL, record.questionType, '题型')
-  strictEnumLabel(REVIEW_TASK_TYPE_LABEL, record.reviewType, '复核任务类型')
-  strictEnumLabel(GRADE_SOURCE_LABEL, record.gradeSource, '批改来源')
-  assertUserFacingText(record.paperDisplay?.primaryText, REVIEW_TASK_DATA_ERROR)
-}
-
-/** 复核任务详情契约校验：AI trace 与能力编码必须同现。 */
-export function validateReviewTaskDetailContract(record: ReviewTaskDetailVO): void {
-  assertUserFacingText(record.reviewTaskId, REVIEW_TASK_DATA_ERROR)
-  assertUserFacingText(record.examId, REVIEW_TASK_DATA_ERROR)
-  assertUserFacingText(record.paperInstanceId, REVIEW_TASK_DATA_ERROR)
-  assertUserFacingText(record.gradeResultId, REVIEW_TASK_DATA_ERROR)
-  assertUserFacingText(record.questionTemplateId, REVIEW_TASK_DATA_ERROR)
-  assertUserFacingText(record.questionNo, REVIEW_TASK_DATA_ERROR)
-  assertUserFacingText(record.responseSliceId, REVIEW_TASK_DATA_ERROR)
-  assertUserFacingFiniteNumber(record.fullScore, REVIEW_TASK_DATA_ERROR)
-  strictEnumLabel(REVIEW_TASK_STATUS_LABEL, record.status, '复核任务状态')
-  strictEnumLabel(QUESTION_TYPE_LABEL, record.questionType, '题型')
-  strictEnumLabel(REVIEW_TASK_TYPE_LABEL, record.reviewType, '复核任务类型')
-  strictEnumLabel(GRADE_SOURCE_LABEL, record.gradeSource, '批改来源')
-  if (record.aiTraceId && !record.aiAbilityCode) {
-    assertUserFacing(false, REVIEW_TASK_DATA_ERROR)
-  }
-  if (record.aiAbilityCode) {
-    strictEnumLabel(AI_ABILITY_LABEL, record.aiAbilityCode, 'AI 能力编码')
-  }
+  [GradeSourceCode.AUTO_OBJECTIVE]: 'green',
+  [GradeSourceCode.AUTO_OBJECTIVE_AI]: 'blue',
+  [GradeSourceCode.LOCAL_SUBJECTIVE_AI]: 'blue',
+  [GradeSourceCode.TEACHER]: 'orange',
 }
 
 /** 查询匿名批阅任务列表。 */
@@ -241,20 +186,10 @@ export function listReviewTasks(
 
 /** 查询匿名批阅任务详情。 */
 export function getReviewTaskDetail(request: ReviewTaskActionRequest): Promise<ReviewTaskDetailVO> {
-  return http
-    .post<ReviewTaskDetailVO>('/api/mark/exams/review-tasks/detail', request)
-    .then((record) => {
-      validateReviewTaskDetailContract(record)
-      return record
-    })
+  return http.post<ReviewTaskDetailVO>('/api/mark/exams/review-tasks/detail', request)
 }
 
 /** 领取匿名批阅任务（分派给当前教师）。 */
 export function claimReviewTask(request: ReviewTaskActionRequest): Promise<ReviewTaskDetailVO> {
-  return http
-    .post<ReviewTaskDetailVO>('/api/mark/exams/review-tasks/claim', request)
-    .then((record) => {
-      validateReviewTaskDetailContract(record)
-      return record
-    })
+  return http.post<ReviewTaskDetailVO>('/api/mark/exams/review-tasks/claim', request)
 }

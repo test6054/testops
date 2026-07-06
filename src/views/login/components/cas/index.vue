@@ -191,9 +191,9 @@ const handleCasCallback = async (ticket: string, tenantId: string) => {
  * 检查URL中是否有CAS回调参数
  */
 const checkCasCallback = () => {
-  const ticket = route.query.ticket as string
-  const from = route.query.from as string
-  const tenantId = (route.query.tenantId as string) || props.tenantId
+  const ticket = queryString(route.query.ticket)
+  const from = queryString(route.query.from)
+  const tenantId = queryString(route.query.tenantId) || props.tenantId
 
   // 检测是否为CAS回调
   if (ticket && (from === 'cas' || tenantId)) {
@@ -201,6 +201,10 @@ const checkCasCallback = () => {
     return true
   }
   return false
+}
+
+function queryString(value: unknown): string {
+  return typeof value === 'string' ? value : ''
 }
 
 // 组件挂载时检查回调

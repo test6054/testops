@@ -1,12 +1,13 @@
-import type { QualityAuditEvidenceItem } from './audit-evidence'
+import type { AuditEvidenceItemRequest, AuditEvidenceItemVO } from './audit-evidence'
 /**
  * 审核评估整改任务 API - 对接 AuditRectificationController
  *
  * 后端路径：/api/quality/audit-evaluation/rectifications
  */
-import type { AuditIssueSeverity } from './audit-issue'
-import type { AuditIssueStatus, AuditRectificationStatus } from './types'
+import type { AuditIssueSeverityCode } from './audit-issue'
+import type { AuditIssueStatusCode, AuditRectificationStatusCode } from './types'
 import type { PageResult, QueryDto } from '@/types'
+import type { AuditRectificationVerifyDecisionCode } from '@/types/enums/audit-rectification-verify-decision-enum'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/audit-evaluation/rectifications'
@@ -17,24 +18,24 @@ export interface AuditRectificationVO {
   auditIssueId: string
   auditIssueCode: string
   auditIssueTitle: string
-  auditIssueSeverity: AuditIssueSeverity
-  auditIssueStatus: AuditIssueStatus
+  auditIssueSeverity: AuditIssueSeverityCode
+  auditIssueStatus: AuditIssueStatusCode
   rectificationCode: string
   rectificationTitle: string
   rectificationAction: string
-  ownerUserId: string
+  ownerUserId?: string
   /** 责任人用户名称，ownerUserId 非空时后端必填 */
-  ownerUserName: string
+  ownerUserName?: string
   ownerRole?: string
   /** yyyy-MM-dd */
-  dueDate: string
-  status: AuditRectificationStatus
+  dueDate?: string
+  status: AuditRectificationStatusCode
   progressRemark?: string
-  evidenceItems?: QualityAuditEvidenceItem[]
+  evidenceItems?: AuditEvidenceItemVO[]
   submittedTime?: string
   verifiedTime?: string
   verifiedUserId?: string
-  verifyDecision?: string
+  verifyDecision?: AuditRectificationVerifyDecisionCode
   verifyRemark?: string
   closedTime?: string
   createUser?: string
@@ -57,20 +58,20 @@ export interface AuditRectificationSaveRequest {
 export interface AuditRectificationQueryRequest extends QueryDto {
   auditIssueId?: string
   ownerUserId?: string
-  status?: AuditRectificationStatus
+  status?: AuditRectificationStatusCode
   keyword?: string
 }
 
-export interface AuditRectificationProgressRequest {
+export interface AuditRectificationProgressUpdateRequest {
   id: string
-  targetStatus: 'IN_PROGRESS' | 'SUBMITTED'
+  targetStatus: AuditRectificationStatusCode
   progressRemark?: string
-  evidenceItems?: QualityAuditEvidenceItem[]
+  evidenceItems?: AuditEvidenceItemRequest[]
 }
 
 export interface AuditRectificationVerifyRequest {
   id: string
-  decision: 'APPROVED' | 'REJECTED'
+  decision: AuditRectificationVerifyDecisionCode
   remark?: string
 }
 
@@ -82,7 +83,7 @@ export const auditRectificationApi = {
   update: (data: AuditRectificationSaveRequest) => http.post<void>(`${BASE}/update`, data),
   delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
   /** PLANNED -> IN_PROGRESS / IN_PROGRESS -> SUBMITTED / RETURNED -> IN_PROGRESS */
-  updateProgress: (data: AuditRectificationProgressRequest) =>
+  updateProgress: (data: AuditRectificationProgressUpdateRequest) =>
     http.post<void>(`${BASE}/update-progress`, data),
   /** 复核：APPROVED -> VERIFIED / REJECTED -> RETURNED */
   verify: (data: AuditRectificationVerifyRequest) => http.post<void>(`${BASE}/verify`, data),

@@ -9,16 +9,17 @@ import type {
 } from '@/apis/quality/accreditation'
 import type {
   SelfAssessmentSectionEvidenceRefItem,
-  SelfAssessmentSectionKey,
   SelfAssessmentSectionVO,
 } from '@/apis/quality/self-assessment-section'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { accreditationApi } from '@/apis/quality/accreditation'
 import {
-  SELF_ASSESSMENT_SECTION_CONTENT_STATUS_LABEL,
   SELF_ASSESSMENT_SECTION_CONTENT_STATUS_TONE,
   selfAssessmentSectionApi,
+  SelfAssessmentSectionContentStatusDescription,
+  SelfAssessmentSectionEvidenceRefTypeCode,
+  SelfAssessmentSectionKeyCode,
 } from '@/apis/quality/self-assessment-section'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -47,30 +48,36 @@ const emit = defineEmits<{
   (e: 'saved'): void
 }>()
 
-const SECTION_ORDER: SelfAssessmentSectionKey[] = [
-  'STUDENT',
-  'TRAINING_OBJECTIVE',
-  'GRADUATION_REQUIREMENT',
-  'CONTINUOUS_IMPROVEMENT',
-  'CURRICULUM',
-  'FACULTY',
-  'SUPPORT',
-  'ATTACHMENT',
+const SECTION_ORDER: SelfAssessmentSectionKeyCode[] = [
+  SelfAssessmentSectionKeyCode.STUDENT,
+  SelfAssessmentSectionKeyCode.TRAINING_OBJECTIVE,
+  SelfAssessmentSectionKeyCode.GRADUATION_REQUIREMENT,
+  SelfAssessmentSectionKeyCode.CONTINUOUS_IMPROVEMENT,
+  SelfAssessmentSectionKeyCode.CURRICULUM,
+  SelfAssessmentSectionKeyCode.FACULTY,
+  SelfAssessmentSectionKeyCode.SUPPORT,
+  SelfAssessmentSectionKeyCode.ATTACHMENT,
 ]
 
 const loading = ref(false)
 const saving = ref(false)
 const sections = ref<SelfAssessmentSectionVO[]>([])
-const activeSectionKey = ref<SelfAssessmentSectionKey>('STUDENT')
+const activeSectionKey = ref<SelfAssessmentSectionKeyCode>(SelfAssessmentSectionKeyCode.STUDENT)
 const evidenceDrawerOpen = ref(false)
 const evidenceLoading = ref(false)
 const evidenceOptions = ref<AccreditationEvidenceVO[]>([])
 const selectedEvidenceIds = ref<string[]>([])
 
-const editor = reactive({
+interface SelfAssessmentSectionEditorModel {
+  narrativeContent: string
+  evidenceNarrative: string
+  evidenceRefs: SelfAssessmentSectionEvidenceRefItem[]
+}
+
+const editor = reactive<SelfAssessmentSectionEditorModel>({
   narrativeContent: '',
   evidenceNarrative: '',
-  evidenceRefs: [] as SelfAssessmentSectionEvidenceRefItem[],
+  evidenceRefs: [],
 })
 
 const activeSection = computed(() =>
@@ -130,7 +137,7 @@ async function loadSections() {
   }
 }
 
-function selectSection(key: SelfAssessmentSectionKey) {
+function selectSection(key: SelfAssessmentSectionKeyCode) {
   activeSectionKey.value = key
   syncEditor(activeSection.value)
 }
@@ -169,7 +176,11 @@ async function openEvidenceDrawer() {
   evidenceDrawerOpen.value = true
   evidenceLoading.value = true
   selectedEvidenceIds.value = editor.evidenceRefs
-    .filter((item) => item.refType === 'ACCREDITATION_EVIDENCE' && item.accreditationEvidenceId)
+    .filter(
+      item =>
+        item.refType === SelfAssessmentSectionEvidenceRefTypeCode.ACCREDITATION_EVIDENCE
+        && item.accreditationEvidenceId,
+    )
     .map((item) => item.accreditationEvidenceId!)
   try {
     evidenceOptions.value = await readAllPages(
@@ -191,11 +202,13 @@ async function openEvidenceDrawer() {
 }
 
 function applySelectedEvidence() {
-  const keptFieldRefs = editor.evidenceRefs.filter((item) => item.refType === 'FIELD_PATH')
+  const keptFieldRefs = editor.evidenceRefs.filter(
+    item => item.refType === SelfAssessmentSectionEvidenceRefTypeCode.FIELD_PATH,
+  )
   const evidenceRefs: SelfAssessmentSectionEvidenceRefItem[] = [...keptFieldRefs]
   for (const evidenceId of selectedEvidenceIds.value) {
     evidenceRefs.push({
-      refType: 'ACCREDITATION_EVIDENCE',
+      refType: SelfAssessmentSectionEvidenceRefTypeCode.ACCREDITATION_EVIDENCE,
       accreditationEvidenceId: evidenceId,
     })
   }
@@ -205,7 +218,7 @@ function applySelectedEvidence() {
 
 function sectionStatusLabel(section: SelfAssessmentSectionVO): string {
   return strictEnumLabel(
-    SELF_ASSESSMENT_SECTION_CONTENT_STATUS_LABEL,
+    SelfAssessmentSectionContentStatusDescription,
     section.contentStatus,
     '自评章节状态',
   )
@@ -303,11 +316,11 @@ watch(activeSectionKey, () => {
               :key="`${evidenceRef.refType}-${index}`"
             >
               <UiTag tone="gray" size="sm">
-                {{ evidenceRef.refType === 'FIELD_PATH' ? '字段路径' : '认证证据' }}
+                {{ evidenceRef.refType === SelfAssessmentSectionEvidenceRefTypeCode.FIELD_PATH ? '字段路径' : '认证证据' }}
               </UiTag>
               <span>
                 {{
-                  evidenceRef.refType === 'FIELD_PATH'
+                  evidenceRef.refType === SelfAssessmentSectionEvidenceRefTypeCode.FIELD_PATH
                     ? evidenceRef.fieldPath
                     : evidenceRef.accreditationEvidenceId
                 }}

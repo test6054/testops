@@ -9,7 +9,13 @@ import type { RefreshTokenResponse } from '@/types/auth'
 import { jwtDecode } from 'jwt-decode'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import * as authApi from '@/apis/auth'
+import {
+  passwordLogin,
+  phoneLogin,
+  refreshToken,
+  studentLogin,
+  wechatCallback,
+} from '@/apis/auth'
 import { clearAllGradingDrafts } from '@/composables/useGradingDraftPersist'
 import { resetAuthState } from '@/config/axios/auth-state'
 import {
@@ -21,7 +27,6 @@ import { resetRouter } from '@/router'
 import { resetHasMenuFlag } from '@/router/guard'
 import { RoleEnum } from '@/types/enums'
 import { clearToken, getToken, getValidToken, healTokenExpiresAt, setToken } from '@/utils/auth'
-import { throwUserFacing } from '@/utils/contract-guard'
 import { getDeviceId } from '@/utils/device'
 import { syncRememberedAccountOnLogout } from '@/utils/login-remember'
 import mittBus from '@/utils/mitt'
@@ -65,7 +70,7 @@ export const useAuthStore = defineStore(
     const tenantStore = useTenantStore()
 
     const token = ref(getToken() || '')
-    const refreshToken = ref<string | null>(localStorage.getItem(STORAGE_REFRESH_TOKEN))
+    const refreshTokenState = ref<string | null>(localStorage.getItem(STORAGE_REFRESH_TOKEN))
     const tokenExpiresAt = ref<number | null>(null)
     const pwdExpiredShow = ref<boolean>(true)
 
@@ -110,9 +115,10 @@ export const useAuthStore = defineStore(
     // 角色检查 - 使用统一枚举
     const isAdmin = computed(() => userRole.value === RoleEnum.SUPER_ADMIN)
     const isTeacher = computed(() =>
-      [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER, RoleEnum.SUPER_ADMIN].includes(
-        userRole.value as RoleEnum,
-      ),
+      userRole.value === RoleEnum.SCH_TECH
+      || userRole.value === RoleEnum.CROP_ADMIN
+      || userRole.value === RoleEnum.CROP_USER
+      || userRole.value === RoleEnum.SUPER_ADMIN,
     )
     const isStudent = computed(() => userRole.value === RoleEnum.SCH_STU)
 
@@ -132,12 +138,12 @@ export const useAuthStore = defineStore(
     const decodeToken = (tokenStr?: string): JwtClaims => {
       const targetToken = tokenStr || token.value
       if (!targetToken) {
-        throwUserFacing('登录状态已失效，请重新登录')
+        throw new Error('登录状态已失效，请重新登录')
       }
       try {
         return jwtDecode<JwtClaims>(targetToken)
       } catch {
-        throwUserFacing('登录状态已失效，请重新登录')
+        throw new Error('登录状态已失效，请重新登录')
       }
     }
 
@@ -170,7 +176,7 @@ export const useAuthStore = defineStore(
     // 重置token
     const resetToken = () => {
       token.value = ''
-      refreshToken.value = null
+      refreshTokenState.value = null
       tokenExpiresAt.value = null
       clearToken()
       localStorage.removeItem(STORAGE_REFRESH_TOKEN)
@@ -202,7 +208,7 @@ export const useAuthStore = defineStore(
     }
 
     const setRefreshToken = (newRefreshToken: string) => {
-      refreshToken.value = newRefreshToken
+      refreshTokenState.value = newRefreshToken
       localStorage.setItem(STORAGE_REFRESH_TOKEN, newRefreshToken)
     }
 
@@ -248,7 +254,7 @@ export const useAuthStore = defineStore(
         = parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt) ? parsedExpiresAt : null
       const hasChanged
         = token.value !== storedToken
-          || refreshToken.value !== storedRefreshToken
+          || refreshTokenState.value !== storedRefreshToken
           || tokenExpiresAt.value !== normalizedExpiresAt
 
       if (!hasChanged) {
@@ -256,7 +262,7 @@ export const useAuthStore = defineStore(
       }
 
       token.value = storedToken
-      refreshToken.value = storedRefreshToken
+      refreshTokenState.value = storedRefreshToken
       tokenExpiresAt.value = normalizedExpiresAt
 
       if (storedToken && normalizedExpiresAt) {
@@ -349,7 +355,7 @@ export const useAuthStore = defineStore(
           return true
         }
 
-        if (!refreshToken.value) {
+        if (!refreshTokenState.value) {
           return false
         }
 
@@ -361,14 +367,14 @@ export const useAuthStore = defineStore(
             return true
           }
 
-          const attemptedRefreshToken: string | null = refreshToken.value
+          const attemptedRefreshToken: string | null = refreshTokenState.value
           if (!attemptedRefreshToken) {
             return false
           }
 
           try {
             refreshingToken.value = true
-            refreshPromise.value = authApi.refreshToken({ refreshToken: attemptedRefreshToken })
+            refreshPromise.value = refreshToken({ refreshToken: attemptedRefreshToken })
             const refreshData = await refreshPromise.value
 
             if (!refreshData?.accessToken) {
@@ -386,16 +392,16 @@ export const useAuthStore = defineStore(
             }
             return true
           } catch (error) {
-            const refreshError = (
-              error instanceof Error ? error : new Error(String(error))
-            ) as RefreshTokenError
+            const refreshError: RefreshTokenError = error instanceof Error
+              ? error
+              : new Error(String(error))
             lastError = refreshError
 
             if (hasValidAccessToken()) {
               return true
             }
 
-            if (refreshToken.value && refreshToken.value !== attemptedRefreshToken) {
+            if (refreshTokenState.value && refreshTokenState.value !== attemptedRefreshToken) {
               continue
             }
 
@@ -485,7 +491,7 @@ export const useAuthStore = defineStore(
           loginType: 'passwordLogin',
           captchaVerification: req.captchaVerification,
         }
-        const res = await authApi.passwordLogin(loginReq)
+        const res = await passwordLogin(loginReq)
 
         setTokenWithExpiry(res.accessToken, res.expiresIn)
         if (res.refreshToken) {
@@ -527,7 +533,7 @@ export const useAuthStore = defineStore(
           password: req.captcha,
           loginType: 'smsCaptcha',
         }
-        const res = await authApi.phoneLogin(phoneLoginReq)
+        const res = await phoneLogin(phoneLoginReq)
         setTokenWithExpiry(res.accessToken, res.expiresIn)
         if (res.refreshToken) {
           setRefreshToken(res.refreshToken)
@@ -562,7 +568,7 @@ export const useAuthStore = defineStore(
           password: req.captcha,
           loginType: 'emailCaptcha',
         }
-        const res = await authApi.passwordLogin(loginReq)
+        const res = await passwordLogin(loginReq)
         setTokenWithExpiry(res.accessToken, res.expiresIn)
         if (res.refreshToken) {
           setRefreshToken(res.refreshToken)
@@ -594,7 +600,7 @@ export const useAuthStore = defineStore(
           schoolName: req.schoolName,
           captchaVerification: req.captchaVerification,
         }
-        const res = await authApi.studentLogin(studentLoginReq)
+        const res = await studentLogin(studentLoginReq)
 
         setTokenWithExpiry(res.accessToken, res.expiresIn)
         if (res.refreshToken) {
@@ -629,7 +635,7 @@ export const useAuthStore = defineStore(
       if (Array.isArray(value) && typeof value[0] === 'string' && value[0].trim()) {
         return value[0].trim()
       }
-      throwUserFacing('微信登录失败，请重新发起授权')
+      throw new Error('微信登录失败，请重新发起授权')
     }
 
     const socialLogin = async (source: string, req: LocationQuery) => {
@@ -638,7 +644,7 @@ export const useAuthStore = defineStore(
           isLoading.value = true
           resetAuthState()
 
-          const result = await authApi.wechatCallback({
+          const result = await wechatCallback({
             code: queryStringValue(req.code),
             state: queryStringValue(req.state),
           })
@@ -658,12 +664,12 @@ export const useAuthStore = defineStore(
         }
         return
       }
-      throwUserFacing('当前登录方式暂不可用，请重新选择')
+      throw new Error('当前登录方式暂不可用，请重新选择')
     }
 
     const logoutCallBack = async () => {
       try {
-        await authApi.logout()
+        await logout()
       } catch {
         // Silent fail
       }
@@ -697,7 +703,7 @@ export const useAuthStore = defineStore(
         isRefreshing: refreshingToken.value,
         hasRefreshPromise: !!refreshPromise.value,
         hasToken: !!token.value,
-        hasRefreshToken: !!refreshToken.value,
+        hasRefreshToken: !!refreshTokenState.value,
         tokenExpiresAt: tokenExpiresAt.value,
         timeUntilExpiry: tokenExpiresAt.value ? Math.max(0, tokenExpiresAt.value - now) : 0,
         isTokenExpired: tokenExpiresAt.value ? now >= tokenExpiresAt.value : false,
@@ -705,7 +711,7 @@ export const useAuthStore = defineStore(
     }
 
     const refreshTokenMethod = async (refreshTokenValue: string) => {
-      const refreshData = await authApi.refreshToken({
+      const refreshData = await refreshToken({
         refreshToken: refreshTokenValue,
         deviceId: getDeviceId(),
       })
@@ -725,7 +731,7 @@ export const useAuthStore = defineStore(
 
     const handleVisibilityChange = async () => {
       if (document.visibilityState !== 'visible') return
-      if (!token.value && !refreshToken.value) return
+      if (!token.value && !refreshTokenState.value) return
 
       try {
         await checkAndRefreshToken()
@@ -788,7 +794,7 @@ export const useAuthStore = defineStore(
         return
       }
 
-      if (refreshToken.value) {
+      if (refreshTokenState.value) {
         const refreshed = await refreshTokenAutomatically()
         if (!refreshed && !hasValidAccessToken()) {
           resetToken()
@@ -860,7 +866,7 @@ export const useAuthStore = defineStore(
 
     return {
       token,
-      refreshToken,
+      refreshToken: refreshTokenState,
       tokenExpiresAt,
       role,
       permissions,

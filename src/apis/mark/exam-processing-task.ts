@@ -24,7 +24,7 @@ export interface ExamProcessingTaskItemVO {
   examId: string
   scanBatchId?: string
   paperInstanceId?: string
-  questionTemplateId?: string
+  layoutQuestionId?: string
   taskType: ProcessingTaskTypeCode
   status: TaskStatusCode
   retryCount?: number

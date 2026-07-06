@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import type { FileUploadSceneKeyValue } from '@/apis/platform/scene-keys'
+import type { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { FileOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, ref } from 'vue'
@@ -59,7 +59,7 @@ const fileSize = defineModel<number | undefined>('fileSize')
 
 const props = withDefaults(
   defineProps<{
-    sceneKey: FileUploadSceneKeyValue
+    sceneKey: FileUploadSceneKey
     accept?: string
     buttonText?: string
     tip?: string
@@ -84,7 +84,10 @@ function openPicker() {
 }
 
 async function onFileChange(event: Event) {
-  const input = event.target as HTMLInputElement
+  if (!(event.target instanceof HTMLInputElement)) {
+    return
+  }
+  const input = event.target
   const file = input.files?.[0]
   if (!file) {
     return

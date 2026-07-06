@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import type {
   PortfolioAiAnalysisDetailVO,
-  PortfolioReportScene,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
+import { PortfolioMaterialTypeCode } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import { PORTFOLIO_REPORT_SCENE_OPTIONS } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_REPORT_SCENE_OPTIONS,
+  PortfolioAiTaskTypeCode,
+  PortfolioReportSceneCode,
+} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -32,7 +36,7 @@ const teachers = ref<PortfolioTeacherSummaryVO[]>([])
 const reportDetail = ref<PortfolioAiAnalysisDetailVO | null>(null)
 const form = reactive({
   teacherId: '',
-  reportScene: 'ANNUAL_SUMMARY' as PortfolioReportScene,
+  reportScene: PortfolioReportSceneCode.ANNUAL_SUMMARY,
   reportPeriodLabel: `${new Date().getFullYear()} 年度`,
 })
 
@@ -99,9 +103,9 @@ async function submitReport() {
   reportDetail.value = null
   try {
     const submitResult = await portfolioAiJobApi.submit({
-      taskType: 'PORTFOLIO_REPORT_GENERATE',
+      taskType: PortfolioAiTaskTypeCode.PORTFOLIO_REPORT_GENERATE,
       teacherId: form.teacherId,
-      materialType: 'REPORT',
+      materialType: PortfolioMaterialTypeCode.REPORT,
       context: {
         reportScene: form.reportScene,
         reportPeriodLabel: form.reportPeriodLabel.trim(),

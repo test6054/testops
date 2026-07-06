@@ -269,7 +269,7 @@ const doLogin = async () => {
       localStorage.setItem(STORAGE_LAST_STUDENT_SCHOOL, schoolName)
     }
 
-    const finalPath = getSafeRedirect(redirect as string, dashboardPath)
+    const finalPath = getSafeRedirect(queryString(redirect), dashboardPath)
 
     await router.push({
       path: finalPath,
@@ -288,6 +288,10 @@ const doLogin = async () => {
   } finally {
     loading.value = false
   }
+}
+
+function queryString(value: unknown): string {
+  return typeof value === 'string' ? value : ''
 }
 
 onMounted(() => {

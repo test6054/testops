@@ -1,17 +1,14 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { GradeStatusCode } from '@/types/enums/grade-status-enum'
 
-/** 题目批改状态 - 与后端 GradeStatus 枚举完全一致 */
-export type GradeStatusCode = 'PENDING' | 'NEED_REVIEW' | 'CONFIRMED'
-
-/** 题目批改状态文案 - 与后端 GradeStatus.message 完全一致 */
-export const GRADE_STATUS_LABEL: Record<GradeStatusCode, string> = {
-  PENDING: '待批改',
-  NEED_REVIEW: '待复核',
-  CONFIRMED: '已确认',
-}
+export {
+  ALL_GRADE_STATUS_CODES,
+  GradeStatusCode,
+  GradeStatusDescription,
+} from '@/types/enums/grade-status-enum'
 
 export const GRADE_STATUS_TONE: Record<GradeStatusCode, BadgeTone> = {
-  PENDING: 'gray',
-  NEED_REVIEW: 'orange',
-  CONFIRMED: 'green',
+  [GradeStatusCode.PENDING]: 'gray',
+  [GradeStatusCode.NEED_REVIEW]: 'orange',
+  [GradeStatusCode.CONFIRMED]: 'green',
 }

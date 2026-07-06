@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { ScanDispatchQueueSummaryVO } from '@/apis/mark/scanner-dispatch'
-import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { ReloadOutlined, ScanOutlined } from '@ant-design/icons-vue'
-
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+
 import { loadScanDispatchQueueSummary } from '@/apis/mark/scanner-dispatch'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import { DispatchQueueStatusFilterCode } from '@/types/enums/dispatch-queue-status-filter-enum'
+import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import KioskArchivePickPanel from './components/KioskArchivePickPanel.vue'
 import KioskDeviceActivationPanel from './components/KioskDeviceActivationPanel.vue'
@@ -35,7 +36,7 @@ interface HubSignalItem {
 }
 
 const EXAM_CARD: TaskKindCard = {
-  kind: 'EXAM_MARKING',
+  kind: ScanTaskKindCode.EXAM_MARKING,
   title: '考试扫描 / 补录',
   description: '考后答卷直扫、补扫与识别绑定，进入后选择考试并开始扫描批次。',
   route: '/scanner-kiosk/exam/setup',
@@ -46,7 +47,7 @@ const EXAM_CARD: TaskKindCard = {
 
 const DEEPLINK_CARDS: TaskKindCard[] = [
   {
-    kind: 'EXAM_ARCHIVE',
+    kind: ScanTaskKindCode.EXAM_ARCHIVE,
     title: '考后归档',
     description: '查看 PC 派单推送的归档卷待办，或临时选择收集中卷开单扫描。',
     route: '/scanner-kiosk/queue',
@@ -54,7 +55,7 @@ const DEEPLINK_CARDS: TaskKindCard[] = [
     ctaText: '进入队列',
   },
   {
-    kind: 'PORTFOLIO_COLLECT',
+    kind: ScanTaskKindCode.PORTFOLIO_COLLECT,
     title: '教师档案袋',
     description: '查看授权范围内开放的补采待办，或从 PC 档案袋页创建派单后进入工位扫描。',
     route: '/scanner-kiosk/queue',
@@ -243,7 +244,8 @@ const hubSignals = computed<HubSignalItem[]>(() => {
       label: '合成中',
       value: String(queueSummary.value?.committingWorkOrderCount ?? 0),
       ledTone: 'orange',
-      sub: '归档/档案袋异步提交中',
+      sub: 'PC 异常看板查看合成中工单',
+      clickable: true,
     })
   }
 
@@ -301,24 +303,44 @@ function stopQueueSummaryPolling() {
 
 function handleMetricClick(key: string) {
   if (key === 'pending') {
-    void router.push({ path: '/scanner-kiosk/queue', query: { tab: 'PENDING' } })
+    void router.push({
+      path: '/scanner-kiosk/queue',
+      query: { tab: DispatchQueueStatusFilterCode.PENDING },
+    })
     return
   }
   if (key === 'processing') {
-    void router.push({ path: '/scanner-kiosk/queue', query: { tab: 'PROCESSING' } })
+    void router.push({
+      path: '/scanner-kiosk/queue',
+      query: { tab: DispatchQueueStatusFilterCode.PROCESSING },
+    })
     return
   }
   if (key === 'failed') {
-    void router.push({ path: '/scanner-kiosk/queue', query: { tab: 'FAILED' } })
+    void router.push({
+      path: '/scanner-kiosk/queue',
+      query: { tab: DispatchQueueStatusFilterCode.FAILED },
+    })
     return
   }
   if (key === 'suspended') {
-    void router.push({ path: '/scanner-kiosk/queue', query: { tab: 'SUSPENDED' } })
+    void router.push({
+      path: '/scanner-kiosk/queue',
+      query: { tab: DispatchQueueStatusFilterCode.SUSPENDED },
+    })
     return
   }
   if (key === 'mixed') {
     window.open(
-      '/teacher/scanner-exception-dashboard?kind=MIXED_BATCH',
+      '/teacher/scanner-center?tab=exception&kind=MIXED_BATCH',
+      '_blank',
+      'noopener,noreferrer',
+    )
+    return
+  }
+  if (key === 'committing') {
+    window.open(
+      '/teacher/scanner-center?tab=exception&kind=COMMITTING',
       '_blank',
       'noopener,noreferrer',
     )
@@ -350,7 +372,10 @@ async function handleHubActivate() {
 
 function enterCard(card: TaskKindCard) {
   if (card.deeplinkOnly) return
-  if (card.kind === 'EXAM_ARCHIVE' || card.kind === 'PORTFOLIO_COLLECT') {
+  if (
+    card.kind === ScanTaskKindCode.EXAM_ARCHIVE
+    || card.kind === ScanTaskKindCode.PORTFOLIO_COLLECT
+  ) {
     void router.push({ path: card.route, query: { taskKind: card.kind } })
     return
   }
@@ -551,7 +576,7 @@ onUnmounted(() => {
                 <button type="button" class="hub-entry" @click="enterCard(card)">
                   <div class="hub-entry__icon">
                     <svg
-                      v-if="card.kind === 'EXAM_ARCHIVE'"
+                      v-if="card.kind === ScanTaskKindCode.EXAM_ARCHIVE"
                       width="40"
                       height="40"
                       viewBox="0 0 40 40"
@@ -657,7 +682,7 @@ onUnmounted(() => {
                   </div>
                 </button>
                 <button
-                  v-if="card.kind === 'EXAM_ARCHIVE'"
+                  v-if="card.kind === ScanTaskKindCode.EXAM_ARCHIVE"
                   type="button"
                   class="hub-entry__temp-btn"
                   @click="openArchivePick"
@@ -666,7 +691,7 @@ onUnmounted(() => {
                   临时扫描
                 </button>
                 <button
-                  v-if="card.kind === 'PORTFOLIO_COLLECT'"
+                  v-if="card.kind === ScanTaskKindCode.PORTFOLIO_COLLECT"
                   type="button"
                   class="hub-entry__temp-btn"
                   @click="openPortfolioPick"

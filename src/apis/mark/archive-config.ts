@@ -2,26 +2,24 @@
  * 归档配置 API - 职责授权 / 密级策略
  */
 import type { ArchiveSecurityLevelCode } from '@/apis/mark/archive-volume'
+import type { ArchiveDutyTypeCode } from '@/types/enums/archive-duty-type-enum'
 import http from '@/config/axios'
+import {
+  ALL_ARCHIVE_DUTY_TYPE_CODES,
+  ArchiveDutyTypeDescription,
+} from '@/types/enums/archive-duty-type-enum'
 
-export type ArchiveDutyTypeCode
-  = | 'VOLUME_OWNER'
-    | 'CONTRIBUTOR'
-    | 'COLLEGE_COORDINATOR'
-    | 'TRANSFER_REVIEWER'
-    | 'ARCHIVE_ADMIN'
-    | 'DESTRUCTION_APPROVER'
-    | 'SUPERVISION_INSPECTOR'
+export {
+  ALL_ARCHIVE_DUTY_TYPE_CODES,
+  ArchiveDutyTypeCode,
+  ArchiveDutyTypeDescription,
+} from '@/types/enums/archive-duty-type-enum'
 
-export const ARCHIVE_DUTY_TYPE_LABEL: Record<ArchiveDutyTypeCode, string> = {
-  VOLUME_OWNER: '卷归属人',
-  CONTRIBUTOR: '任课教师协作',
-  COLLEGE_COORDINATOR: '学院协调',
-  TRANSFER_REVIEWER: '移交验收',
-  ARCHIVE_ADMIN: '档案管理',
-  DESTRUCTION_APPROVER: '销毁审批',
-  SUPERVISION_INSPECTOR: '督导抽查',
-}
+export const ARCHIVE_DUTY_TYPE_OPTIONS: Array<{ value: ArchiveDutyTypeCode, label: string }>
+  = ALL_ARCHIVE_DUTY_TYPE_CODES.map((value) => ({
+    value,
+    label: ArchiveDutyTypeDescription[value],
+  }))
 
 export interface ArchiveDutyGrantVO {
   grantId: string
@@ -69,6 +67,8 @@ export function listArchiveSecurityPolicy(): Promise<ArchiveSecurityPolicyVO[]> 
   return http.post<ArchiveSecurityPolicyVO[]>('/api/mark/archive-config/security-policy/list', {})
 }
 
-export function saveArchiveSecurityPolicy(items: ArchiveSecurityPolicyItemRequest[]): Promise<void> {
+export function saveArchiveSecurityPolicy(
+  items: ArchiveSecurityPolicyItemRequest[],
+): Promise<void> {
   return http.post<void>('/api/mark/archive-config/security-policy/save', { items })
 }

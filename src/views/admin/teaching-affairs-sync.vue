@@ -1,10 +1,16 @@
 <template>
-  <StageWorkbenchShell>
+  <StageWorkbenchShell class="sync-page">
     <template #context>
       <ContextBar
-        title="教务同步"
+        layout="workbench"
+        show-title
+        :title="isJourneyChrome ? contextBarTitle : '教务同步'"
+        :subtitle="isJourneyChrome ? contextBarSubtitle : '考后归档'"
       >
         <template #status>
+          <UiTag v-if="isJourneyChrome && chromeExamStatusLabel" :tone="chromeExamStatusTone" size="sm">
+            {{ chromeExamStatusLabel }}
+          </UiTag>
           <MarkExamSelect
             v-if="!isExamWorkspaceRoute"
             :selected-exam-id="selectedExamId"
@@ -17,12 +23,6 @@
             @change="handleExamChange"
             @search="onExamSearch"
           />
-          <UiTag v-if="syncTasks.length > 0" tone="blue" size="sm">
-            同步任务 {{ syncTasks.length }}
-          </UiTag>
-          <UiTag v-if="passbackPagination.total > 0" tone="green" size="sm">
-            回写记录 {{ passbackPagination.total }}
-          </UiTag>
         </template>
         <template #actions>
           <UiButton size="sm" :disabled="!selectedExamId" @click="openCreateModal">
@@ -43,27 +43,47 @@
       </ContextBar>
     </template>
 
+    <template v-if="selectedExamId" #signal>
+      <SignalBand variant="tiles" compact :metrics="syncSignalMetrics" />
+    </template>
+
     <UiEmpty
       v-if="!selectedExamId"
       description="请选择考试"
       class="sync-page__empty"
     />
 
-    <template v-else>
-      <UiCard class="info-card">
-        <template #title>
-          <SyncOutlined />
-          <span>同步任务</span>
-        </template>
+    <UiEmpty
+      v-else-if="loadFailed"
+      description="教务同步数据加载失败"
+      action-label="重试"
+      class="sync-page__empty"
+      @action="loadAll"
+    />
 
-        <UiFilterBar
-          v-model="syncFilterForm"
-          :fields="syncFilterFields"
-          variant="plain"
-          search-text="查询"
-          @search="loadSyncTasks"
-          @reset="handleSyncFilterReset"
-        />
+    <template v-else>
+      <ExamWorkspaceJourneySubNav v-if="isExamWorkspaceRoute" />
+
+      <WorkbenchSurfaceCard flush class="sync-page__section">
+        <template #head>
+          <div class="sync-page__card-head">
+            <span class="sync-page__flow-hint">{{ SYNC_TASK_FLOW_HINT }}</span>
+            <span class="sync-page__card-title">
+              <SyncOutlined />
+              同步任务
+            </span>
+          </div>
+        </template>
+        <template #toolbar>
+          <UiFilterBar
+            v-model="syncFilterForm"
+            :fields="syncFilterFields"
+            variant="plain"
+            search-text="查询"
+            @search="loadSyncTasks"
+            @reset="handleSyncFilterReset"
+          />
+        </template>
 
         <UiDataTable
           pagination-mode="client"
@@ -136,22 +156,27 @@
             </template>
           </template>
         </UiDataTable>
-      </UiCard>
+      </WorkbenchSurfaceCard>
 
-      <UiCard class="info-card">
-        <template #title>
-          <FileSyncOutlined />
-          <span>回写记录</span>
+      <WorkbenchSurfaceCard flush class="sync-page__section">
+        <template #head>
+          <div class="sync-page__card-head">
+            <span>
+              <FileSyncOutlined />
+              回写记录
+            </span>
+          </div>
         </template>
-
-        <UiFilterBar
-          v-model="passbackFilterForm"
-          :fields="passbackFilterFields"
-          variant="plain"
-          search-text="查询"
-          @search="reloadPassbackRecordsFromFirstPage"
-          @reset="handlePassbackFilterReset"
-        />
+        <template #toolbar>
+          <UiFilterBar
+            v-model="passbackFilterForm"
+            :fields="passbackFilterFields"
+            variant="plain"
+            search-text="查询"
+            @search="reloadPassbackRecordsFromFirstPage"
+            @reset="handlePassbackFilterReset"
+          />
+        </template>
 
         <UiDataTable
           v-model:current="passbackPagination.pageNum"
@@ -190,41 +215,43 @@
             </template>
           </template>
         </UiDataTable>
-      </UiCard>
+      </WorkbenchSurfaceCard>
     </template>
   </StageWorkbenchShell>
 
   <!-- 创建任务 Modal -->
-  <a-modal
+  <UiDialog
     v-model:open="createModalOpen"
     title="新建同步任务"
-    :destroy-on-close="true"
+    :width="640"
     :confirm-loading="creating"
-    :ok-button-props="{ disabled: !createValid }"
     ok-text="创建"
-    width="640px"
     @ok="handleCreate"
   >
+    <template #footer>
+      <UiButton variant="outline" @click="createModalOpen = false">取消</UiButton>
+      <UiButton :loading="creating" :disabled="!createValid" @click="handleCreate">创建</UiButton>
+    </template>
     <a-form layout="vertical">
       <a-form-item label="外部系统类型" required>
         <a-radio-group v-model:value="createForm.externalSystemType">
           <a-radio-button
-            v-for="(label, code) in EXTERNAL_SYSTEM_TYPE_LABEL"
-            :key="code"
-            :value="code"
+            v-for="option in EXTERNAL_SYSTEM_TYPE_OPTIONS"
+            :key="option.value"
+            :value="option.value"
           >
-            {{ label }}
+            {{ option.label }}
           </a-radio-button>
         </a-radio-group>
       </a-form-item>
       <a-form-item label="同步类型" required>
         <a-radio-group v-model:value="createForm.syncType">
           <a-radio-button
-            v-for="(label, code) in CREATABLE_SYNC_TYPE_LABEL"
-            :key="code"
-            :value="code"
+            v-for="option in CREATABLE_SYNC_TYPE_OPTIONS"
+            :key="option.value"
+            :value="option.value"
           >
-            {{ label }}
+            {{ option.label }}
           </a-radio-button>
         </a-radio-group>
         <div class="hint-text" style="margin-top: 4px">
@@ -241,26 +268,28 @@
         />
       </a-form-item>
     </a-form>
-  </a-modal>
+  </UiDialog>
 
   <!-- 任务详情抽屉 -->
-  <a-drawer v-model:open="taskDetailOpen" title="同步任务详情" width="540" :destroy-on-close="true">
+  <UiDrawer v-model:open="taskDetailOpen" title="同步任务详情" :width="540" hide-footer>
     <!-- 回写进度面板：聚合 PENDING / SENT / SUCCESS / FAILED / WITHDRAWN 五种状态计数 -->
-    <UiCard v-if="detailTask" class="progress-card" size="small">
-      <template #title>
-        <FileSyncOutlined />
-        <span>回写进度</span>
-      </template>
-      <template #extra>
-        <UiButton
-          size="sm"
-          variant="outline"
-          :loading="progressLoading"
-          @click="handleRefreshProgress"
-        >
-          <template #icon><ReloadOutlined /></template>
-          刷新
-        </UiButton>
+    <WorkbenchSurfaceCard v-if="detailTask" class="progress-card">
+      <template #head>
+        <div class="progress-card__head">
+          <span class="progress-card__title">
+            <FileSyncOutlined />
+            回写进度
+          </span>
+          <UiButton
+            size="sm"
+            variant="outline"
+            :loading="progressLoading"
+            @click="handleRefreshProgress"
+          >
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+        </div>
       </template>
 
       <template v-if="detailProgress">
@@ -271,28 +300,28 @@
         />
         <div class="progress-counts">
           <UiTag tone="gray" size="sm">总数 {{ detailProgress.totalCount }}</UiTag>
-          <UiTag :tone="PASSBACK_STATUS_TONE.PENDING" size="sm">
-            {{ PASSBACK_STATUS_LABEL.PENDING }} {{ detailProgress.pendingCount }}
+          <UiTag :tone="PASSBACK_STATUS_TONE[PassbackStatusCode.PENDING]" size="sm">
+            {{ PassbackStatusDescription[PassbackStatusCode.PENDING] }} {{ detailProgress.pendingCount }}
           </UiTag>
-          <UiTag :tone="PASSBACK_STATUS_TONE.SENT" size="sm">
-            {{ PASSBACK_STATUS_LABEL.SENT }} {{ detailProgress.sentCount }}
+          <UiTag :tone="PASSBACK_STATUS_TONE[PassbackStatusCode.SENT]" size="sm">
+            {{ PassbackStatusDescription[PassbackStatusCode.SENT] }} {{ detailProgress.sentCount }}
           </UiTag>
-          <UiTag :tone="PASSBACK_STATUS_TONE.SUCCESS" size="sm">
-            {{ PASSBACK_STATUS_LABEL.SUCCESS }} {{ detailProgress.successCount }}
+          <UiTag :tone="PASSBACK_STATUS_TONE[PassbackStatusCode.SUCCESS]" size="sm">
+            {{ PassbackStatusDescription[PassbackStatusCode.SUCCESS] }} {{ detailProgress.successCount }}
           </UiTag>
-          <UiTag :tone="PASSBACK_STATUS_TONE.FAILED" size="sm">
-            {{ PASSBACK_STATUS_LABEL.FAILED }} {{ detailProgress.failedCount }}
+          <UiTag :tone="PASSBACK_STATUS_TONE[PassbackStatusCode.FAILED]" size="sm">
+            {{ PassbackStatusDescription[PassbackStatusCode.FAILED] }} {{ detailProgress.failedCount }}
           </UiTag>
-          <UiTag :tone="PASSBACK_STATUS_TONE.WITHDRAWN" size="sm">
-            {{ PASSBACK_STATUS_LABEL.WITHDRAWN }} {{ detailProgress.withdrawnCount }}
+          <UiTag :tone="PASSBACK_STATUS_TONE[PassbackStatusCode.WITHDRAWN]" size="sm">
+            {{ PassbackStatusDescription[PassbackStatusCode.WITHDRAWN] }} {{ detailProgress.withdrawnCount }}
           </UiTag>
         </div>
         <div v-if="detailProgress.totalCount === 0" class="hint-text" style="margin-top: 8px">
           该任务尚未生成回写记录，可能仍在等待执行。
         </div>
       </template>
-      <a-skeleton v-else-if="progressLoading" active :paragraph="{ rows: 1 }" />
-    </UiCard>
+      <UiSkeletonState v-else-if="progressLoading" variant="card" compact />
+    </WorkbenchSurfaceCard>
 
     <a-descriptions v-if="detailTask" :column="1" bordered size="small">
       <a-descriptions-item label="同步任务编号">{{ detailTask.id }}</a-descriptions-item>
@@ -341,23 +370,21 @@
         </a-space>
       </a-descriptions-item>
     </a-descriptions>
-  </a-drawer>
+  </UiDrawer>
 </template>
 
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
-  ExternalSystemTypeCode,
   PassbackProgressVO,
   PassbackRecordVO,
-  PassbackStatusCode,
   ReconcileStatusCode,
   SyncTaskStatusCode,
   SyncTaskVO,
-  TeachingAffairsSyncTypeCode,
 } from '@/apis/mark/teaching-affairs-sync'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
 import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -368,33 +395,46 @@ import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch
 import { useRoute } from 'vue-router'
 import {
   cancelSyncTask,
-  CREATABLE_SYNC_TYPE_LABEL,
+  CREATABLE_SYNC_TYPE_OPTIONS,
   createSyncTask,
   executeGradePassback,
-  EXTERNAL_SYSTEM_TYPE_LABEL,
+  EXTERNAL_SYSTEM_TYPE_OPTIONS,
+  ExternalSystemTypeCode,
+  ExternalSystemTypeDescription,
   getPassbackProgress,
   listPassbackRecords,
   listSyncTasks,
-  PASSBACK_STATUS_LABEL,
+  PASSBACK_STATUS_OPTIONS,
   PASSBACK_STATUS_TONE,
-  RECONCILE_STATUS_LABEL,
+  PassbackStatusCode,
+  PassbackStatusDescription,
   RECONCILE_STATUS_TONE,
   reconcilePassback,
+  ReconcileStatusDescription,
   retrySyncTask,
-  SYNC_TASK_STATUS_LABEL,
+  SYNC_TASK_FLOW_HINT,
+  SYNC_TASK_STATUS_OPTIONS,
   SYNC_TASK_STATUS_TONE,
-  SYNC_TYPE_LABEL,
+  SyncTaskStatusDescription,
+  TeachingAffairsSyncTypeCode,
+  TeachingAffairsSyncTypeDescription,
 } from '@/apis/mark/teaching-affairs-sync'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -404,6 +444,14 @@ defineOptions({ name: 'AdminTeachingAffairsSync' })
 
 const route = useRoute()
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
+
+const {
+  isJourneyChrome,
+  contextBarTitle,
+  contextBarSubtitle,
+  examStatusLabel: chromeExamStatusLabel,
+  examStatusTone: chromeExamStatusTone,
+} = useOptionalExamJourneyContextBar('教务同步')
 
 const {
   examOptions,
@@ -417,6 +465,7 @@ const {
   init: initExamSelector,
 } = useMarkExamContext()
 const loading = ref(false)
+const loadFailed = ref(false)
 
 // ─── 同步任务 ─────────────────────────────────
 
@@ -432,10 +481,7 @@ const syncFilterFields: FilterField[] = [
     placeholder: '状态过滤',
     allowClear: true,
     width: 160,
-    options: Object.entries(SYNC_TASK_STATUS_LABEL).map(([value, label]) => ({
-      value,
-      label,
-    })),
+    options: SYNC_TASK_STATUS_OPTIONS,
   },
 ]
 
@@ -458,12 +504,17 @@ async function loadSyncTasks(options?: { quiet?: boolean }): Promise<void> {
   if (!selectedExamId.value) return
   if (!options?.quiet) {
     syncLoading.value = true
+    loadFailed.value = false
   }
   try {
-    syncTasks.value = await listSyncTasks(selectedExamId.value, syncFilterForm.status)
+    syncTasks.value = await listSyncTasks({
+      examId: selectedExamId.value,
+      taskStatus: syncFilterForm.status,
+    })
   } catch (error) {
     if (!options?.quiet) {
       syncTasks.value = []
+      loadFailed.value = true
       showUserError(error, '教务同步任务加载失败')
     }
   } finally {
@@ -567,8 +618,8 @@ const createForm = reactive<{
   externalCourseId: string
   externalLineItemId: string
 }>({
-  externalSystemType: 'SIS',
-  syncType: 'GRADE_EXPORT',
+  externalSystemType: ExternalSystemTypeCode.SIS,
+  syncType: TeachingAffairsSyncTypeCode.GRADE_EXPORT,
   externalCourseId: '',
   externalLineItemId: '',
 })
@@ -578,8 +629,8 @@ const createValid = computed(() =>
 )
 
 function openCreateModal(): void {
-  createForm.externalSystemType = 'SIS'
-  createForm.syncType = 'GRADE_EXPORT'
+  createForm.externalSystemType = ExternalSystemTypeCode.SIS
+  createForm.syncType = TeachingAffairsSyncTypeCode.GRADE_EXPORT
   createForm.externalCourseId = ''
   createForm.externalLineItemId = ''
   createModalOpen.value = true
@@ -707,10 +758,7 @@ const passbackFilterFields: FilterField[] = [
     placeholder: '回写状态',
     allowClear: true,
     width: 160,
-    options: Object.entries(PASSBACK_STATUS_LABEL).map(([value, label]) => ({
-      value,
-      label,
-    })),
+    options: PASSBACK_STATUS_OPTIONS,
   },
 ]
 
@@ -719,6 +767,23 @@ const passbackPagination = reactive({
   pageSize: 50,
   total: 0,
 })
+
+const syncSignalMetrics = computed((): SignalMetric[] => [
+  {
+    key: 'tasks',
+    label: '同步任务',
+    value: syncTasks.value.length,
+    unit: '条',
+    tone: syncTasks.value.length > 0 ? 'blue' : 'gray',
+  },
+  {
+    key: 'passback',
+    label: '回写记录',
+    value: passbackPagination.total,
+    unit: '条',
+    tone: passbackPagination.total > 0 ? 'green' : 'gray',
+  },
+])
 
 const passbackColumns: ColumnType<PassbackRecordVO>[] = [
   { title: '回写记录编号', key: 'id', dataIndex: 'id', width: 110 },
@@ -754,6 +819,7 @@ async function loadPassbackRecords(options?: { quiet?: boolean }): Promise<void>
     if (!options?.quiet) {
       passbackRecords.value = []
       passbackPagination.total = 0
+      loadFailed.value = true
       showUserError(error, '教务回写记录加载失败')
     }
   } finally {
@@ -784,15 +850,15 @@ function handlePassbackPageChange(pageInfo: { current: number, pageSize: number 
 // ─── 共用 ─────────────────────────────────
 
 function externalSystemTypeLabel(code: ExternalSystemTypeCode): string {
-  return strictEnumLabel(EXTERNAL_SYSTEM_TYPE_LABEL, code, '外部系统类型')
+  return strictEnumLabel(ExternalSystemTypeDescription, code, '外部系统类型')
 }
 
 function syncTypeLabel(code: TeachingAffairsSyncTypeCode): string {
-  return strictEnumLabel(SYNC_TYPE_LABEL, code, '同步类型')
+  return strictEnumLabel(TeachingAffairsSyncTypeDescription, code, '同步类型')
 }
 
 function syncTaskStatusLabel(status: SyncTaskStatusCode): string {
-  return strictEnumLabel(SYNC_TASK_STATUS_LABEL, status, '同步任务状态')
+  return strictEnumLabel(SyncTaskStatusDescription, status, '同步任务状态')
 }
 
 function syncStatusTone(status: SyncTaskStatusCode): BadgeTone {
@@ -800,7 +866,7 @@ function syncStatusTone(status: SyncTaskStatusCode): BadgeTone {
 }
 
 function passbackStatusLabel(status: PassbackStatusCode): string {
-  return strictEnumLabel(PASSBACK_STATUS_LABEL, status, '回写状态')
+  return strictEnumLabel(PassbackStatusDescription, status, '回写状态')
 }
 
 function passbackStatusTone(status: PassbackStatusCode): BadgeTone {
@@ -808,7 +874,7 @@ function passbackStatusTone(status: PassbackStatusCode): BadgeTone {
 }
 
 function reconcileStatusLabel(status: ReconcileStatusCode): string {
-  return strictEnumLabel(RECONCILE_STATUS_LABEL, status, '对账状态')
+  return strictEnumLabel(ReconcileStatusDescription, status, '对账状态')
 }
 
 function reconcileStatusTone(status: ReconcileStatusCode): BadgeTone {
@@ -823,6 +889,7 @@ function ellipsis(text: string | undefined, len = 40): string {
 async function loadAll(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
+  loadFailed.value = false
   try {
     await Promise.all([loadSyncTasks(), loadPassbackRecords()])
   } finally {
@@ -873,16 +940,29 @@ onBeforeUnmount(() => {
     padding: 60px 0;
   }
 
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.info-card {
-  :deep(.ant-card-head-title) {
+  &__card-head {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    width: 100%;
+  }
+
+  &__flow-hint {
+    margin-right: auto;
+    font-size: 12px;
+    color: var(--c-text-4);
+    white-space: nowrap;
+  }
+
+  &__card-title {
+    display: inline-flex;
+    align-items: center;
     gap: 8px;
+  }
+
+  &__section + &__section {
+    margin-top: 0;
   }
 }
 
@@ -902,6 +982,22 @@ onBeforeUnmount(() => {
 
 .progress-card {
   margin-bottom: 12px;
+}
+
+.progress-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.progress-card__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: var(--dp-font-weight-title, 600);
 }
 
 .progress-counts {

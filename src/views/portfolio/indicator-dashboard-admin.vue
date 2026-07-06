@@ -11,7 +11,7 @@ import type {
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioIndicatorDashboardApi } from '@/apis/portfolio/indicator'
-import { PF_SCENE_CODE_LABEL, PF_SCENE_CODE_OPTIONS } from '@/apis/portfolio/indicator-types'
+import { PF_SCENE_CODE_OPTIONS, PfSceneCodeDescription } from '@/apis/portfolio/indicator-types'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -32,8 +32,12 @@ const trend = ref<PortfolioIndicatorTrendVO | null>(null)
 const collegeCompare = ref<PortfolioIndicatorCollegeCompareVO | null>(null)
 const teacherTypeCompare = ref<PortfolioIndicatorTeacherTypeCompareVO | null>(null)
 
-const query = reactive({
-  sceneCode: undefined as PfSceneCode | undefined,
+interface DashboardQuery {
+  sceneCode?: PfSceneCode
+  topLimit: number
+}
+
+const query = reactive<DashboardQuery>({
   topLimit: 15,
 })
 
@@ -71,7 +75,7 @@ const dimensionChartOption = computed<EChartsCoreOption>(() =>
       key: item.dimensionL1Code,
       label: item.dimensionL1Name,
       value: item.totalCount,
-      tone: 'blue' as const,
+      tone: 'blue',
     })),
     { yAxisName: '指标数', emptyText: '暂无维度分布' },
   ),
@@ -83,7 +87,7 @@ const enabledDimensionChartOption = computed<EChartsCoreOption>(() =>
       key: `${item.dimensionL1Code}-enabled`,
       label: item.dimensionL1Name,
       value: item.enabledCount,
-      tone: 'green' as const,
+      tone: 'green',
     })),
     { yAxisName: '启用数', emptyText: '暂无启用分布' },
   ),
@@ -100,7 +104,7 @@ const usageChartOption = computed<EChartsCoreOption>(() => {
       key: `usage-${index}`,
       label,
       value,
-      tone: 'blue' as const,
+      tone: 'blue',
     })),
     { orientation: 'horizontal', xAxisName: '使用次数', emptyText: '暂无近三年使用频次' },
   )
@@ -134,7 +138,7 @@ const collegeChartOption = computed<EChartsCoreOption>(() =>
       key: item.collegeId,
       label: item.collegeName,
       value: item.usageCount,
-      tone: 'purple' as const,
+      tone: 'purple',
     })),
     { yAxisName: '使用次数', emptyText: '暂无学院对比数据' },
   ),
@@ -146,7 +150,7 @@ const teacherTypeChartOption = computed<EChartsCoreOption>(() =>
       key: item.teacherTypeCode,
       label: item.teacherTypeLabel,
       value: item.usageCount,
-      tone: 'orange' as const,
+      tone: 'orange',
     })),
     { yAxisName: '使用次数', emptyText: '暂无教师类型对比数据' },
   ),
@@ -186,7 +190,7 @@ onMounted(loadDashboard)
         layout="workbench"
         show-title
         title="指标看板"
-        :subtitle="sceneCode ? `${PF_SCENE_CODE_LABEL[sceneCode]} 统计` : ''"
+        :subtitle="sceneCode ? `${PfSceneCodeDescription[sceneCode]} 统计` : ''"
       />
     </template>
     <div class="toolbar">

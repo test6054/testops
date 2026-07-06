@@ -1,11 +1,6 @@
 import type { MarkOcrProviderTypeCode } from './ocr-types'
 import type { QuestionTypeCode } from './question-type'
 import http from '@/config/axios'
-import { assertUserFacingFiniteNumber, assertUserFacingText } from '@/utils/contract-guard'
-import { strictEnumLabel } from '@/utils/strict-enum'
-import { QUESTION_TYPE_LABEL } from './question-type'
-
-const MARK_OCR_PAPER_SLICE_DATA_ERROR = 'OCR 调试切片数据异常，请刷新后重试'
 
 export interface MarkOcrPaperSliceQueryRequest {
   examId: string
@@ -15,9 +10,10 @@ export interface MarkOcrPaperSliceQueryRequest {
 export interface MarkOcrPaperSliceVO {
   responseSliceId: string
   paperInstanceId: string
-  questionTemplateId: string
+  layoutQuestionId: string
   questionNo: string
   questionType: QuestionTypeCode
+  ocrScene?: string
   fullScore: number
   pageNo: number
   sortNo: number
@@ -28,7 +24,7 @@ export interface MarkOcrRecognizeRequest {
   examId: string
   paperInstanceId: string
   responseSliceId: string
-  questionTemplateId: string
+  layoutQuestionId: string
 }
 
 export interface MarkOcrRecognizeVO {
@@ -36,29 +32,18 @@ export interface MarkOcrRecognizeVO {
   recognizedText: string
   engineTraceId: string
   diagnostic: string
+  diagnosticCode?: string
+  diagnosticMessage?: string
+  preprocessSummary?: string
+  ocrScene?: string
+  manualReviewRequired?: boolean
+  emptyAnswer?: boolean
 }
 
-function validateMarkOcrPaperSliceContract(record: MarkOcrPaperSliceVO): MarkOcrPaperSliceVO {
-  assertUserFacingText(record.responseSliceId, MARK_OCR_PAPER_SLICE_DATA_ERROR)
-  assertUserFacingText(record.paperInstanceId, MARK_OCR_PAPER_SLICE_DATA_ERROR)
-  assertUserFacingText(record.questionTemplateId, MARK_OCR_PAPER_SLICE_DATA_ERROR)
-  assertUserFacingText(record.questionNo, MARK_OCR_PAPER_SLICE_DATA_ERROR)
-  strictEnumLabel(QUESTION_TYPE_LABEL, record.questionType, '题型')
-  assertUserFacingFiniteNumber(record.fullScore, MARK_OCR_PAPER_SLICE_DATA_ERROR)
-  assertUserFacingFiniteNumber(record.pageNo, MARK_OCR_PAPER_SLICE_DATA_ERROR)
-  assertUserFacingFiniteNumber(record.sortNo, MARK_OCR_PAPER_SLICE_DATA_ERROR)
-  assertUserFacingText(record.sliceFileId, MARK_OCR_PAPER_SLICE_DATA_ERROR)
-  return record
-}
-
-export async function listMarkOcrPaperSlices(
+export function listMarkOcrPaperSlices(
   request: MarkOcrPaperSliceQueryRequest,
 ): Promise<MarkOcrPaperSliceVO[]> {
-  const records = await http.post<MarkOcrPaperSliceVO[]>('/api/mark/ocr/paper-slices', request)
-  if (!Array.isArray(records)) {
-    throw new TypeError(MARK_OCR_PAPER_SLICE_DATA_ERROR)
-  }
-  return records.map(validateMarkOcrPaperSliceContract)
+  return http.post<MarkOcrPaperSliceVO[]>('/api/mark/ocr/paper-slices', request)
 }
 
 export function recognizeMarkOcr(request: MarkOcrRecognizeRequest): Promise<MarkOcrRecognizeVO> {

@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
-import type { ExamLayoutBlockTypeCode } from '@/utils/exam-layout-designer'
 import { computed } from 'vue'
-import { throwUserFacing } from '@/utils/contract-guard'
-import { EXAM_LAYOUT_BLOCK_TYPE, EXAM_LAYOUT_BLOCK_TYPE_LABEL } from '@/utils/exam-layout-designer'
+import {
+  ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES,
+  ExamLayoutBlockTypeCode,
+  ExamLayoutBlockTypeOptions,
+} from '@/types/enums/exam-layout-block-type-enum'
 
 const props = defineProps<{
   document: ExamLayoutDocument | null
@@ -15,10 +17,7 @@ const emit = defineEmits<{
   patch: [document: ExamLayoutDocument]
 }>()
 
-const blockTypeOptions = Object.entries(EXAM_LAYOUT_BLOCK_TYPE_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const blockTypeOptions = ExamLayoutBlockTypeOptions
 
 const questionOptions = computed(() =>
   (props.document?.questions ?? []).map((question) => ({
@@ -60,12 +59,13 @@ function onBlockTypeChange(
   _option?: DefaultOptionType | DefaultOptionType[],
 ): void {
   if (typeof value !== 'string') {
-    throwUserFacing('布局块类型契约异常')
+    throw new TypeError('布局块类型契约异常')
   }
-  if (!(value in EXAM_LAYOUT_BLOCK_TYPE)) {
-    throwUserFacing('布局块类型契约异常')
+  const blockType = ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES.find((code) => code === value)
+  if (!blockType) {
+    throw new Error('布局块类型契约异常')
   }
-  patchBlock({ blockType: value as ExamLayoutBlockTypeCode })
+  patchBlock({ blockType })
 }
 
 function onLayoutQuestionChange(
@@ -77,7 +77,7 @@ function onLayoutQuestionChange(
     return
   }
   if (typeof value !== 'string') {
-    throwUserFacing('关联题目契约异常')
+    throw new TypeError('关联题目契约异常')
   }
   patchBlock({ layoutQuestionId: value })
 }
@@ -150,7 +150,7 @@ function onLayoutQuestionChange(
         </div>
       </a-form-item>
       <a-form-item
-        v-if="block.blockType === EXAM_LAYOUT_BLOCK_TYPE.IDENTITY_BUBBLE"
+        v-if="block.blockType === ExamLayoutBlockTypeCode.IDENTITY_BUBBLE"
         label="身份区类型"
       >
         <a-input

@@ -18,7 +18,7 @@ export interface ErrorCauseClusterItemVO {
 export interface ExamErrorCauseClusterVO {
   id: string
   examId?: string
-  questionTemplateId?: string
+  layoutQuestionId?: string
   scopeType?: AnalysisScopeTypeCode
   scopeId?: string
   aiTraceId?: string
@@ -31,22 +31,19 @@ export interface ExamErrorCauseClusterVO {
   createTime?: string
 }
 
+export interface ExamClassScopeQueryRequest {
+  examId: string
+  classId?: string
+}
+
 export function generateErrorCauseCluster(
-  examId: string,
-  classId?: string,
+  request: ExamClassScopeQueryRequest,
 ): Promise<ExamErrorCauseClusterVO> {
-  return http.post<ExamErrorCauseClusterVO>(
-    '/api/exam/error-cause-cluster/generate',
-    { examId, classId },
-  )
+  return http.post<ExamErrorCauseClusterVO>('/api/exam/error-cause-cluster/generate', request)
 }
 
 export function getLatestErrorCauseCluster(
-  examId: string,
-  classId?: string,
+  request: ExamClassScopeQueryRequest,
 ): Promise<ExamErrorCauseClusterVO | null> {
-  return http.post<ExamErrorCauseClusterVO | null>(
-    '/api/exam/error-cause-cluster/latest',
-    { examId, classId },
-  )
+  return http.post<ExamErrorCauseClusterVO | null>('/api/exam/error-cause-cluster/latest', request)
 }

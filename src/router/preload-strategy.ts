@@ -73,9 +73,10 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherExamWorkspaceMarkingOrgDetail: () => import('@/views/admin/marking-organization/detail.vue'),
   TeacherExamWorkspaceMarkingOrgSessions: () => import('@/views/admin/marking-organization/sessions.vue'),
   TeacherExamWorkspaceTrialTaskPool: () => import('@/views/teacher/marking-task-pool.vue'),
-  TeacherExamWorkspaceTrialProgress: () => import('@/views/teacher/review-progress.vue'),
+  TeacherExamWorkspaceTrialProgress: () => import('@/views/teacher/exam-workspace/marking-progress-dashboard.vue'),
   TeacherExamWorkspaceMarkingTaskPool: () => import('@/views/teacher/marking-task-pool.vue'),
-  TeacherExamWorkspaceMarkingProgress: () => import('@/views/teacher/review-progress.vue'),
+  TeacherExamWorkspaceMarkingProgress: () => import('@/views/teacher/exam-workspace/marking-progress-dashboard.vue'),
+  TeacherExamWorkspaceMarkingReviewProgress: () => import('@/views/teacher/review-progress.vue'),
   TeacherExamWorkspaceMarkingArbitration: () => import('@/views/teacher/review-arbitration.vue'),
   TeacherExamWorkspaceMarkingQuality: () => import('@/views/teacher/marking-spot-check.vue'),
   TeacherExamWorkspaceMarkingQualityMonitor: () => import('@/views/admin/marking-quality-dashboard.vue'),
@@ -89,32 +90,33 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherExamWorkspaceScoreAbsence: () => import('@/views/teacher/absence-confirm.vue'),
   TeacherExamWorkspaceScoreAppeal: () => import('@/views/teacher/appeal-handle.vue'),
   TeacherExamWorkspaceArchivePackage: () => import('@/views/teacher/archive-volume/archive-volume-exam-progress.vue'),
+  TeacherExamWorkspaceArchiveAiAnalysis: () => import('@/views/teacher/exam-workspace/exam-workspace-ai-analysis.vue'),
+  TeacherExamWorkspaceArchiveQuestionAnalysis: () => import('@/views/teacher/exam-workspace/exam-workspace-question-analysis.vue'),
   TeacherExamWorkspaceArchiveStatistics: () => import('@/views/teacher/statistics.vue'),
   TeacherExamWorkspaceArchiveExports: () => import('@/views/common/exam-export-tasks.vue'),
   TeacherExamWorkspaceArchiveTeachingAffairs: () => import('@/views/admin/teaching-affairs-sync.vue'),
 
   // ── 教师 ④ 历史归档详情 ───────────────────────────
   TeacherArchiveVolumeList: () => import('@/views/teacher/archive-volume/archive-volume-list.vue'),
+  TeacherArchiveVolumeWorkspace: () => import('@/views/teacher/archive-volume-detail-layout.vue'),
   TeacherArchiveVolumeDetail: () => import('@/views/teacher/archive-volume/archive-volume-detail.vue'),
   TeacherArchiveVolumeCreateOffline: () => import('@/views/teacher/archive-volume/archive-volume-create-offline/archive-volume-create-offline.vue'),
   TeacherArchiveVolumeStatistics: () => import('@/views/teacher/archive-volume/archive-volume-statistics.vue'),
+  TeacherArchiveVolumeEvalCampaign: () => import('@/views/teacher/archive-volume/archive-volume-eval-campaign.vue'),
   TeacherArchiveVolumeReadinessMatrix: () => import('@/views/teacher/archive-volume/archive-volume-readiness-matrix.vue'),
   TeacherArchiveVolumeAudit: () => import('@/views/teacher/archive-volume/archive-volume-audit.vue'),
   TeacherArchiveVolumeLedger: () => import('@/views/teacher/archive-volume/archive-volume-ledger.vue'),
   TeacherArchiveVolumeSearch: () => import('@/views/teacher/archive-volume-search.vue'),
-  TeacherArchiveSupervisionInspect: () => import('@/views/teacher/archive-supervision-inspect.vue'),
-  TeacherArchiveEvaluationRemediation: () => import('@/views/teacher/archive-evaluation-remediation.vue'),
+  TeacherArchiveVolumeRemediationDetail: () => import('@/views/teacher/archive-volume/archive-volume-remediation-detail.vue'),
+
+  // ── 教师 扫描中心 / AI 分析 ─────────────────────────
+  TeacherScannerCenter: () => import('@/views/teacher/scanner-center/scanner-center.vue'),
+  TeacherAiAnalysisCenter: () => import('@/views/teacher/ai-analysis-center.vue'),
 
   // ── 管理员 ───────────────────────────────────────
   TeacherMarkingOverview: () => import('@/views/teacher/marking-overview.vue'),
   AdminArchivePlatformTemplates: () => import('@/views/teacher/archive-platform-template-admin.vue'),
   AdminAuditTrail: () => import('@/views/admin/audit-trail.vue'),
-  AdminMarkingQuality: () => import('@/views/admin/marking-quality-dashboard.vue'),
-  AdminCrossExamDashboard: () => import('@/views/admin/cross-exam-dashboard.vue'),
-  AdminSchoolQualityDashboard: () => import('@/views/admin/school-quality-dashboard.vue'),
-  TeacherMarkingOrganizationIndex: () => import('@/views/admin/marking-organization/index.vue'),
-  TeacherMarkingOrganizationDetail: () => import('@/views/admin/marking-organization/detail.vue'),
-  TeacherMarkingOrganizationSessions: () => import('@/views/admin/marking-organization/sessions.vue'),
   AdminExamExports: () => import('@/views/common/exam-export-tasks.vue'),
   AdminTeachingAffairsSync: () => import('@/views/admin/teaching-affairs-sync.vue'),
 
@@ -166,7 +168,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
 //  角色登录后初始预加载列表（默认工作台 + 通用页 + 1~2 个高频入口）
 // ============================================================================
 
-const ROLE_INITIAL_PRELOAD: Record<string, string[]> = {
+const ROLE_INITIAL_PRELOAD: Partial<Record<RoleEnum, string[]>> = {
   [RoleEnum.SCH_STU]: ['StudentScore', 'StudentExamHistory', 'UserMessage', 'UserProfile'],
   [RoleEnum.SCH_TECH]: [
     'TeacherMarkingOverview',
@@ -195,7 +197,7 @@ const ROLE_INITIAL_PRELOAD: Record<string, string[]> = {
   [RoleEnum.SUPER_ADMIN]: [
     'TeacherMarkingOverview',
     'AdminArchivePlatformTemplates',
-    'AdminCrossExamDashboard',
+    'TeacherAiAnalysisCenter',
     'UserMessage',
     'UserProfile',
   ],
@@ -246,9 +248,15 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
   TeacherExamWorkspaceMarkingQualityMonitor: ['TeacherExamWorkspaceMarkingQuality', 'TeacherExamWorkspaceMarkingAuditTrail'],
   TeacherExamWorkspaceMarkingAuditTrail: ['TeacherExamWorkspaceMarkingQualityMonitor', 'TeacherExamWorkspaceMarkingArbitration'],
   TeacherExamWorkspaceMarkingProgress: [
+    'TeacherExamWorkspaceMarkingReviewProgress',
     'TeacherExamWorkspaceMarkingArbitration',
     'TeacherExamWorkspaceMarkingReview',
     'TeacherExamWorkspaceMarkingTaskPool',
+  ],
+  TeacherExamWorkspaceMarkingReviewProgress: [
+    'TeacherExamWorkspaceMarkingProgress',
+    'TeacherExamWorkspaceMarkingReview',
+    'TeacherExamWorkspaceReviewBatchConfirm',
   ],
   TeacherExamWorkspaceScoreSummary: [
     'TeacherExamWorkspaceScoreRelease',
@@ -281,16 +289,14 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
   TeacherExamWorkspaceArchivePackage: ['TeacherExamWorkspaceArchivePackage', 'TeacherArchiveVolumeList'],
   TeacherExamWorkspaceArchiveExports: ['TeacherExamWorkspaceArchiveTeachingAffairs', 'TeacherExamWorkspaceArchivePackage'],
   TeacherExamWorkspaceArchiveTeachingAffairs: ['TeacherExamWorkspaceArchiveExports', 'TeacherExamWorkspaceArchivePackage'],
-  TeacherArchiveVolumeList: ['TeacherArchiveVolumeDetail', 'TeacherArchiveVolumeSearch'],
+  TeacherArchiveVolumeList: ['TeacherArchiveVolumeWorkspace', 'TeacherArchiveVolumeDetail', 'TeacherArchiveVolumeSearch', 'TeacherArchiveVolumeRemediationDetail'],
   TeacherArchiveVolumeDetail: ['TeacherArchiveVolumeList'],
+  TeacherArchiveVolumeWorkspace: ['TeacherArchiveVolumeList'],
 
   // ── 管理员 ───────────────────────────────────────
-  TeacherMarkingOverview: ['AdminCrossExamDashboard', 'AdminArchivePlatformTemplates', 'TeacherExamList'],
-  AdminCrossExamDashboard: ['AdminSchoolQualityDashboard', 'TeacherMarkingOverview'],
-  AdminSchoolQualityDashboard: ['AdminCrossExamDashboard', 'TeacherMarkingOverview'],
-  TeacherMarkingOrganizationIndex: ['TeacherMarkingOrganizationDetail', 'TeacherMarkingOrganizationSessions'],
-  TeacherMarkingOrganizationDetail: ['TeacherMarkingOrganizationSessions', 'TeacherMarkingOrganizationIndex'],
-  TeacherMarkingOrganizationSessions: ['TeacherMarkingOrganizationDetail', 'TeacherMarkingOrganizationIndex'],
+  TeacherMarkingOverview: ['TeacherAiAnalysisCenter', 'TeacherScannerCenter', 'AdminArchivePlatformTemplates', 'TeacherExamList'],
+  TeacherScannerCenter: ['TeacherExamList', 'TeacherArchiveVolumeList', 'TeacherMarkingOverview'],
+  TeacherAiAnalysisCenter: ['TeacherMarkingOverview', 'TeacherExamList'],
   AdminExamExports: ['AdminTeachingAffairsSync', 'TeacherMarkingOverview'],
   AdminTeachingAffairsSync: ['AdminExamExports', 'TeacherMarkingOverview'],
 
@@ -370,12 +376,12 @@ export class RoutePreloadManager {
    * 由 guard.ts 在登录态下触发（每次路由进入未受保护页面时调用，已加载短路）。
    * 返回 Promise 以兼容调用方 `.catch()` 写法；调度本身是 idle / setTimeout 非阻塞。
    */
-  async preloadByRole(roles: RoleEnum[] | string[]): Promise<void> {
+  async preloadByRole(roles: RoleEnum[]): Promise<void> {
     const authStore = useAuthStore()
     if (!authStore.isAuthenticated) return
 
     for (const role of roles) {
-      const routeNames = ROLE_INITIAL_PRELOAD[role as string]
+      const routeNames = ROLE_INITIAL_PRELOAD[role]
       if (!routeNames) continue
       for (const name of routeNames) {
         this.schedulePreload(name)

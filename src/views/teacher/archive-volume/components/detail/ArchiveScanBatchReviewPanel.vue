@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { Key } from 'ant-design-vue/es/table/interface'
 import type { ArchiveScanBatchSnapshotItemVO } from '@/apis/mark/archive-volume'
 import { message, Modal } from 'ant-design-vue'
@@ -7,13 +8,15 @@ import {
   batchDiscardArchiveScanBatches,
   batchRetryArchiveScanBatches,
   pageArchiveScanBatchSnapshots,
-  SCAN_BATCH_QUALITY_FLAG_LABEL,
   SCAN_BATCH_QUALITY_FLAG_TONE,
+  ScanBatchQualityFlagCode,
+  ScanBatchQualityFlagDescription,
 } from '@/apis/mark/archive-volume'
-import { SCAN_WORK_ORDER_STATUS_LABEL } from '@/apis/mark/scanner-work-order'
+import { ScanWorkOrderStatusDescription } from '@/apis/mark/scanner-work-order'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -37,17 +40,17 @@ const total = ref(0)
 const rows = ref<ArchiveScanBatchSnapshotItemVO[]>([])
 const selectedRowKeys = ref<string[]>([])
 
-const columns = [
+const columns: ColumnsType<ArchiveScanBatchSnapshotItemVO> = [
   { title: '批次号', key: 'batchExternalNo', dataIndex: 'batchExternalNo', width: 140 },
   { title: '质检', key: 'batchQualityFlag', dataIndex: 'batchQualityFlag', width: 96 },
   { title: '状态', key: 'workOrderStatus', dataIndex: 'workOrderStatus', width: 96 },
-  { title: '页数', key: 'pageCount', dataIndex: 'pageCount', width: 72, align: 'right' as const },
+  { title: '页数', key: 'pageCount', dataIndex: 'pageCount', width: 72, align: 'right' },
   {
     title: '材料数',
     key: 'materialCount',
     dataIndex: 'materialCount',
     width: 80,
-    align: 'right' as const,
+    align: 'right',
   },
   { title: '诊断', key: 'diagnostic', dataIndex: 'diagnostic', ellipsis: true },
   { title: '更新时间', key: 'updateTime', dataIndex: 'updateTime', width: 160 },
@@ -70,7 +73,7 @@ async function loadRows() {
   try {
     const page = await pageArchiveScanBatchSnapshots({
       volumeId: props.volumeId,
-      batchQualityFlag: 'SUSPECTED_MIXED',
+      batchQualityFlag: ScanBatchQualityFlagCode.SUSPECTED_MIXED,
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
@@ -133,11 +136,13 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="archive-scan-batch-review">
-    <p class="archive-scan-batch-review__hint">
-      仅展示质检标记为疑似混扫的批次，支持批量重试合成或作废退回。
-    </p>
-    <div v-if="canReview" class="archive-scan-batch-review__toolbar">
+  <WorkbenchSurfaceCard flush class="archive-scan-batch-review">
+    <template #head>
+      <p class="archive-scan-batch-review__hint">
+        仅展示质检标记为疑似混扫的批次，支持批量重试合成或作废退回。
+      </p>
+    </template>
+    <template v-if="canReview" #toolbar>
       <UiButton
         size="sm"
         variant="outline"
@@ -157,7 +162,7 @@ onMounted(() => {
         批量作废
       </UiButton>
       <UiButton size="sm" variant="outline" :disabled="loading" @click="loadRows"> 刷新 </UiButton>
-    </div>
+    </template>
     <p v-if="errorMessage" class="archive-scan-batch-review__error">{{ errorMessage }}</p>
     <UiDataTable
       pagination-mode="server"
@@ -168,7 +173,7 @@ onMounted(() => {
       :current="pageNum"
       :page-size="pageSize"
       :row-selection="rowSelection"
-      row-key="workOrderId"
+      row-key="sourceBatchId"
       size="middle"
       flat
       empty-description="暂无疑似混扫批次"
@@ -188,7 +193,7 @@ onMounted(() => {
           >
             {{
               strictEnumLabel(
-                SCAN_BATCH_QUALITY_FLAG_LABEL,
+                ScanBatchQualityFlagDescription,
                 record.batchQualityFlag,
                 'batchQualityFlag',
               )
@@ -197,7 +202,7 @@ onMounted(() => {
         </template>
         <template v-else-if="column.key === 'workOrderStatus'">
           {{
-            strictEnumLabel(SCAN_WORK_ORDER_STATUS_LABEL, record.workOrderStatus, 'workOrderStatus')
+            strictEnumLabel(ScanWorkOrderStatusDescription, record.workOrderStatus, 'workOrderStatus')
           }}
         </template>
         <template v-else-if="column.key === 'updateTime'">
@@ -208,19 +213,14 @@ onMounted(() => {
         </template>
       </template>
     </UiDataTable>
-  </section>
+  </WorkbenchSurfaceCard>
 </template>
 
 <style scoped>
 .archive-scan-batch-review__hint {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 13px;
   color: var(--nybc-text-secondary, #595959);
-}
-.archive-scan-batch-review__toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
 }
 .archive-scan-batch-review__error {
   margin: 0 0 12px;

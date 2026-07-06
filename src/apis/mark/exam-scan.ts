@@ -3,32 +3,97 @@ import type { EffectiveStatusCode } from './effective-status'
 import type { ExamFileRefVO } from './exam'
 import type { PaperInstanceDisplayVO } from './exam-score'
 import type { GradeStatusCode } from './grade-status'
-import type { ScannerKioskScanMode } from './scanner-kiosk'
+import type { ScannerKioskScanModeCode } from './scanner-kiosk'
 import type { TaskStatusCode } from './task-status'
 /**
  * 阅卷考试扫描批次与扫描异常 API - 对接 /api/mark/exams/scanner-batches/* 与 scan-attentions。
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { ScanAttentionQueryGroupCode } from '@/types/enums/scan-attention-query-group-enum'
+import type { ScanAttentionSourceTypeCode } from '@/types/enums/scan-attention-source-type-enum'
+import type { ScanBatchOrderAuditCode } from '@/types/enums/scan-batch-order-audit-enum'
 import http from '@/config/axios'
-import { assertUserFacingText } from '@/utils/contract-guard'
+import {
+  ALL_QUALITY_DECISION_CODES,
+  QualityDecisionCode,
+  QualityDecisionDescription,
+} from '@/types/enums/quality-decision-enum'
+import {
+  ALL_SCAN_ATTENTION_SOURCE_TYPE_CODES,
+  ScanAttentionSourceTypeDescription,
+} from '@/types/enums/scan-attention-source-type-enum'
+import {
+  ALL_SCAN_ATTENTION_TYPE_CODES,
+  ScanAttentionTypeCode,
+  ScanAttentionTypeDescription,
+} from '@/types/enums/scan-attention-type-enum'
+import {
+  ALL_SCAN_BATCH_STATUS_CODES,
+  ScanBatchStatusCode,
+  ScanBatchStatusDescription,
+} from '@/types/enums/scan-batch-status-enum'
 
-const SCAN_ATTENTION_DATA_ERROR = '扫描异常数据异常，请刷新后重试'
+export {
+  ALL_QUALITY_DECISION_CODES,
+  QualityDecisionCode,
+  QualityDecisionDescription,
+} from '@/types/enums/quality-decision-enum'
 
-/** 扫描页质量判定 - 与后端 QualityDecision 枚举完全一致 */
-export type QualityDecisionCode = 'PASS' | 'BLOCKED'
+export {
+  ALL_SCAN_ATTENTION_QUERY_GROUP_CODES,
+  ScanAttentionQueryGroupCode,
+  ScanAttentionQueryGroupDescription,
+} from '@/types/enums/scan-attention-query-group-enum'
 
-/** 扫描页质量判定文案 */
-export const QUALITY_DECISION_LABEL: Record<QualityDecisionCode, string> = {
-  PASS: '质量通过',
-  BLOCKED: '质量阻断',
-}
+export {
+  ALL_SCAN_ATTENTION_SOURCE_TYPE_CODES,
+  ScanAttentionSourceTypeCode,
+  ScanAttentionSourceTypeDescription,
+} from '@/types/enums/scan-attention-source-type-enum'
+
+export {
+  ALL_SCAN_ATTENTION_TYPE_CODES,
+  ScanAttentionTypeCode,
+  ScanAttentionTypeDescription,
+} from '@/types/enums/scan-attention-type-enum'
 
 /** 扫描页质量判定徽标色调 */
 export const QUALITY_DECISION_TONE: Record<QualityDecisionCode, BadgeTone> = {
-  PASS: 'green',
-  BLOCKED: 'red',
+  [QualityDecisionCode.PASS]: 'green',
+  [QualityDecisionCode.BLOCKED]: 'red',
 }
+
+export const QUALITY_DECISION_OPTIONS: Array<{ label: string, value: QualityDecisionCode }>
+  = ALL_QUALITY_DECISION_CODES.map((value) => ({
+    value,
+    label: QualityDecisionDescription[value],
+  }))
+
+/** 扫描异常类型徽标色调 */
+export const SCAN_ATTENTION_TYPE_TONE: Record<ScanAttentionTypeCode, BadgeTone> = {
+  [ScanAttentionTypeCode.QUALITY_BLOCK]: 'red',
+  [ScanAttentionTypeCode.PROCESSING_BLOCK]: 'orange',
+  [ScanAttentionTypeCode.DUPLICATE_PENDING]: 'purple',
+  [ScanAttentionTypeCode.RECOGNITION_REVIEW]: 'blue',
+  [ScanAttentionTypeCode.BINDING_CONFLICT]: 'gray',
+  [ScanAttentionTypeCode.MISSING_CANDIDATE_ROSTER]: 'orange',
+}
+
+export const SCAN_ATTENTION_TYPE_OPTIONS: Array<{ label: string, value: ScanAttentionTypeCode }>
+  = ALL_SCAN_ATTENTION_TYPE_CODES.map((value) => ({
+    value,
+    label: ScanAttentionTypeDescription[value],
+  }))
+
+/** 扫描异常来源类型文案 - 与后端 ScanAttentionSourceType 展示约定一致 */
+export const SCAN_ATTENTION_SOURCE_TYPE_OPTIONS: Array<{
+  label: string
+  value: ScanAttentionSourceTypeCode
+}> = ALL_SCAN_ATTENTION_SOURCE_TYPE_CODES.map((value) => ({
+  value,
+  label: ScanAttentionSourceTypeDescription[value],
+}))
 
 /** 阅卷原始扫描页引用 - 与后端 ScannedPageRef 字段对齐 */
 export interface MarkingScanPageRefVO {
@@ -55,57 +120,6 @@ export interface MarkingScanPageRefVO {
 /** 批改处理任务状态 - 见 task-status.ts */
 
 /** 重复影像处置状态 - 见 duplicate-resolution-status.ts */
-
-/** 扫描异常待办查询请求 - 对应 ScanAttentionQueryRequest */
-export type ScanAttentionTypeCode
-  = | 'QUALITY_BLOCK'
-    | 'PROCESSING_BLOCK'
-    | 'DUPLICATE_PENDING'
-    | 'RECOGNITION_REVIEW'
-    | 'BINDING_CONFLICT'
-    | 'MISSING_CANDIDATE_ROSTER'
-
-/** 扫描异常查询分组 - 对应 ScanAttentionQueryGroup */
-export type ScanAttentionQueryGroupCode = 'ABNORMAL' | 'DUPLICATE'
-
-/** 扫描异常来源类型 - 对应后端扫描异常聚合 SQL 固定来源 */
-export type ScanAttentionSourceTypeCode
-  = | 'SCANNED_PAGE'
-    | 'PROCESSING_TASK'
-    | 'DUPLICATE_RESOLUTION'
-    | 'GRADE_RESULT'
-    | 'PAPER_INSTANCE'
-    | 'IMAGE_LEDGER'
-
-/** 扫描异常类型文案 - 与后端 ScanAttentionType.message 完全一致 */
-export const SCAN_ATTENTION_TYPE_LABEL: Record<ScanAttentionTypeCode, string> = {
-  QUALITY_BLOCK: '质量阻断',
-  PROCESSING_BLOCK: '处理阻断',
-  DUPLICATE_PENDING: '重复影像',
-  RECOGNITION_REVIEW: '识别复核',
-  BINDING_CONFLICT: '身份绑定冲突',
-  MISSING_CANDIDATE_ROSTER: '缺少考生名单',
-}
-
-/** 扫描异常类型徽标色调 */
-export const SCAN_ATTENTION_TYPE_TONE: Record<ScanAttentionTypeCode, BadgeTone> = {
-  QUALITY_BLOCK: 'red',
-  PROCESSING_BLOCK: 'orange',
-  DUPLICATE_PENDING: 'purple',
-  RECOGNITION_REVIEW: 'blue',
-  BINDING_CONFLICT: 'gray',
-  MISSING_CANDIDATE_ROSTER: 'orange',
-}
-
-/** 扫描异常来源类型文案 - 与后端 ScanAttentionSourceType 展示约定一致 */
-export const SCAN_ATTENTION_SOURCE_TYPE_LABEL: Record<ScanAttentionSourceTypeCode, string> = {
-  SCANNED_PAGE: '扫描页',
-  PROCESSING_TASK: '处理任务',
-  DUPLICATE_RESOLUTION: '重复扫描处置',
-  GRADE_RESULT: '阅卷结果',
-  PAPER_INSTANCE: '试卷实例',
-  IMAGE_LEDGER: '影像账本',
-}
 
 /** 扫描异常待办查询请求 - 对应 ScanAttentionQueryRequest */
 export interface ScanAttentionQueryRequest extends QueryDto {
@@ -140,39 +154,48 @@ export interface ScanAttentionItemVO {
   paperDisplay: PaperInstanceDisplayVO
   pageId?: string
   pageDisplayName: string
-  questionTemplateId?: string
+  layoutQuestionId?: string
   questionDisplayName: string
-  qualityDecision?: QualityDecisionCode
-  processingStatus?: TaskStatusCode
-  duplicateResolutionStatus?: DuplicateResolutionStatusCode
-  gradeStatus?: GradeStatusCode
+  qualityDecision: QualityDecisionCode
+  processingStatus: TaskStatusCode
+  duplicateResolutionStatus: DuplicateResolutionStatusCode
+  gradeStatus: GradeStatusCode
   diagnostic?: string
   updateTime?: string
 }
 
-/** 扫描批次状态码 - 对应后端 ScanBatchStatus 枚举。 */
-export type ScanBatchStatusCode
-  = 'IN_PROGRESS' | 'RECEIVED' | 'BLOCKED' | 'BOUND' | 'COMPLETED' | 'DISCARDED'
+export {
+  ALL_SCAN_BATCH_ORDER_AUDIT_CODES,
+  ScanBatchOrderAuditCode,
+  ScanBatchOrderAuditDescription,
+} from '@/types/enums/scan-batch-order-audit-enum'
 
-/** 扫描批次状态文案映射 - 与后端 ScanBatchStatus.message 完整一致 */
-export const SCAN_BATCH_STATUS_LABEL: Record<ScanBatchStatusCode, string> = {
-  IN_PROGRESS: '进行中',
-  RECEIVED: '已接收',
-  BLOCKED: '已阻断',
-  BOUND: '已绑定',
-  COMPLETED: '已完成',
-  DISCARDED: '已废弃',
-}
+export {
+  ALL_SCAN_BATCH_STATUS_CODES,
+  ScanBatchStatusCode,
+  ScanBatchStatusDescription,
+} from '@/types/enums/scan-batch-status-enum'
 
 /** 扫描批次状态 BadgeTone 映射 */
 export const SCAN_BATCH_STATUS_TONE: Record<ScanBatchStatusCode, BadgeTone> = {
-  IN_PROGRESS: 'blue',
-  RECEIVED: 'blue',
-  BLOCKED: 'red',
-  BOUND: 'green',
-  COMPLETED: 'green',
-  DISCARDED: 'gray',
+  [ScanBatchStatusCode.IN_PROGRESS]: 'blue',
+  [ScanBatchStatusCode.RECEIVED]: 'blue',
+  [ScanBatchStatusCode.BLOCKED]: 'red',
+  [ScanBatchStatusCode.BOUND]: 'green',
+  [ScanBatchStatusCode.COMPLETED]: 'green',
+  [ScanBatchStatusCode.DISCARDED]: 'gray',
 }
+
+export const SCAN_BATCH_STATUS_OPTIONS: Array<{ value: ScanBatchStatusCode, label: string }>
+  = ALL_SCAN_BATCH_STATUS_CODES.map((value) => ({
+    value,
+    label: ScanBatchStatusDescription[value],
+  }))
+
+/** 扫描监控主链路状态说明（批次入账 → 绑定 → 完成；异常与重复须逐条处置） */
+export const SCAN_MONITOR_FLOW_HINT = `${ScanBatchStatusDescription[ScanBatchStatusCode.IN_PROGRESS]} → ${ScanBatchStatusDescription[ScanBatchStatusCode.RECEIVED]} → ${ScanBatchStatusDescription[ScanBatchStatusCode.BOUND]} → ${ScanBatchStatusDescription[ScanBatchStatusCode.COMPLETED]} · 异常与重复须逐条处置`
+
+import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
 
 /** 扫描批次视图 - 对应 ExamScannerBatchResponse */
 export interface ExamScannerBatchVO {
@@ -180,7 +203,7 @@ export interface ExamScannerBatchVO {
   scanBatchId: string
   examId: string
   /** 扫描录入模式 */
-  scanMode?: ScannerKioskScanMode
+  scanMode?: ScannerKioskScanModeCode
   batchNo: string
   batchExternalNo?: string
   scannerDeviceId?: string
@@ -227,6 +250,14 @@ export interface ExamScannerBatchVO {
   orderAuditTime?: string
   /** 顺序审计异常项数量 */
   orderAuditIssueCount?: number
+  /** 批次扫描参数快照（含 DPI） */
+  scanConfig?: ExamScannerScanConfigVO
+  /** 批次内已绑定答卷份数 */
+  boundPaperCount?: number
+  /** 批次操作员用户 ID */
+  operatorUserId?: string
+  /** 批次操作员展示名 */
+  operatorDisplayName?: string
 }
 
 /** 扫描批次创建响应 - 对应 ExamScannerBatchCreateResponse（orphan 补救等场景复用） */
@@ -332,28 +363,6 @@ export interface ExamScannerBatchQueryRequest extends QueryDto {
   includeDiscarded?: boolean
 }
 
-/** 扫描批次顺序审计异常码 - 与后端 ScanBatchOrderAuditCode 完全一致 */
-export type ScanBatchOrderAuditCode
-  = | 'PAGE_COUNT_MISMATCH'
-    | 'SEQ_GAP'
-    | 'TEMPLATE_MISMATCH'
-    | 'SPLIT_BOUNDARY'
-    | 'LEGACY_BULK'
-    | 'DUPLEX_INCOMPLETE'
-    | 'INSTANCE_COUNT_MISMATCH'
-    | 'DIRECT_PAGE_GROUP'
-
-export const SCAN_BATCH_ORDER_AUDIT_CODE_LABEL: Record<ScanBatchOrderAuditCode, string> = {
-  PAGE_COUNT_MISMATCH: '落库页数不一致',
-  SEQ_GAP: '进纸序号不连续',
-  TEMPLATE_MISMATCH: '模板页位错误',
-  SPLIT_BOUNDARY: '切卷边界错误',
-  LEGACY_BULK: '整批单卷误登记',
-  DUPLEX_INCOMPLETE: '双面配对不完整',
-  INSTANCE_COUNT_MISMATCH: '试卷实例数不一致',
-  DIRECT_PAGE_GROUP: '页数不能整卷分组',
-}
-
 /** 扫描批次顺序审计异常项 */
 export interface ScanBatchOrderAuditIssueVO {
   auditCode: ScanBatchOrderAuditCode
@@ -386,17 +395,6 @@ export interface ScanBatchOrderAuditQueryRequest {
 /** 教师 Web 端封存扫描批次请求 */
 export interface ExamScannerBatchTeacherSealRequest {
   scanBatchId: string
-}
-
-/** 扫描异常待办项契约校验。 */
-export function validateScanAttentionItemContract(record: ScanAttentionItemVO): void {
-  assertUserFacingText(record.id, SCAN_ATTENTION_DATA_ERROR)
-  assertUserFacingText(record.examId, SCAN_ATTENTION_DATA_ERROR)
-  assertUserFacingText(record.sourceId, SCAN_ATTENTION_DATA_ERROR)
-  assertUserFacingText(record.sourceDisplayName, SCAN_ATTENTION_DATA_ERROR)
-  assertUserFacingText(record.scanBatchDisplayName, SCAN_ATTENTION_DATA_ERROR)
-  assertUserFacingText(record.pageDisplayName, SCAN_ATTENTION_DATA_ERROR)
-  assertUserFacingText(record.paperDisplay?.primaryText, SCAN_ATTENTION_DATA_ERROR)
 }
 
 /** 查询扫描批次工作台 KPI。 */

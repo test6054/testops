@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { LocalScanPageStatus } from '@/apis/mark/scanner-agent-local'
 /**
  * Stage 2 - 扫描中
  *
@@ -43,6 +42,13 @@ import {
   WarningFilled,
 } from '@ant-design/icons-vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import {
+  KioskSyntheticScanPageStatusCode,
+  KioskSyntheticScanPageStatusDescription,
+  LocalScanJobStatusCode,
+  LocalScanPageStatusCode,
+  LocalScanPageStatusDescription,
+} from '@/apis/mark/scanner-agent-local'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
 import KioskScanExceptionPanel from '../components/KioskScanExceptionPanel.vue'
@@ -58,15 +64,15 @@ const canvasEmptyTitle = computed(() => {
   if (workflow.isWaitingForPaperFeed.value) {
     return '等待扫描仪放纸…'
   }
-  if (job.value?.status === 'SCANNING') {
+  if (job.value?.status === LocalScanJobStatusCode.SCANNING) {
     return job.value.scannedPages > 0
       ? `正在扫描（${job.value.scannedPages} 页）…`
       : '正在连接扫描仪…'
   }
-  if (job.value?.status === 'UPLOADING' || job.value?.status === 'RETRYING') {
+  if (job.value?.status === LocalScanJobStatusCode.UPLOADING || job.value?.status === LocalScanJobStatusCode.RETRYING) {
     return '扫描页上传中…'
   }
-  if (job.value?.status === 'FAILED') {
+  if (job.value?.status === LocalScanJobStatusCode.FAILED) {
     return '扫描失败'
   }
   return '等待扫描仪送纸…'
@@ -75,13 +81,13 @@ const canvasEmptyHint = computed(() => {
   if (workflow.isWaitingForPaperFeed.value) {
     return '请将试卷放入进纸器（ADF），放纸后系统会自动开始扫描，无需再次点击开始。'
   }
-  if (job.value?.status === 'SCANNING') {
+  if (job.value?.status === LocalScanJobStatusCode.SCANNING) {
     return '扫描仪正在采集影像，首张完成后将自动显示预览。'
   }
-  if (job.value?.status === 'UPLOADING' || job.value?.status === 'RETRYING') {
+  if (job.value?.status === LocalScanJobStatusCode.UPLOADING || job.value?.status === LocalScanJobStatusCode.RETRYING) {
     return job.value.message || '上传完成后可在右侧缩略图查看各页。'
   }
-  if (job.value?.status === 'FAILED') {
+  if (job.value?.status === LocalScanJobStatusCode.FAILED) {
     if (workflow.isPreUploadScanFailure.value) {
       return '扫描未采集到页面，请点击底部「取消并清理」后重新开始'
     }
@@ -126,7 +132,7 @@ const imageTransform = computed(
 const imageFilter = computed(() => (grayscale.value ? 'grayscale(1)' : 'none'))
 
 const isPageException = (page: { status: string, diagnostic?: string }) =>
-  page.status === 'FAILED' || Boolean(page.diagnostic)
+  page.status === LocalScanPageStatusCode.FAILED || Boolean(page.diagnostic)
 
 const currentIndex = computed(() => {
   if (!previewPageNo.value) return -1
@@ -203,11 +209,35 @@ function resetView() {
   rotation.value = 0
   grayscale.value = false
 }
+function resolveRotateRight(value: 0 | 90 | 180 | 270): 0 | 90 | 180 | 270 {
+  switch (value) {
+    case 0:
+      return 90
+    case 90:
+      return 180
+    case 180:
+      return 270
+    case 270:
+      return 0
+  }
+}
+function resolveRotateLeft(value: 0 | 90 | 180 | 270): 0 | 90 | 180 | 270 {
+  switch (value) {
+    case 0:
+      return 270
+    case 90:
+      return 0
+    case 180:
+      return 90
+    case 270:
+      return 180
+  }
+}
 function rotateRight() {
-  rotation.value = ((rotation.value + 90) % 360) as 0 | 90 | 180 | 270
+  rotation.value = resolveRotateRight(rotation.value)
 }
 function rotateLeft() {
-  rotation.value = ((rotation.value + 270) % 360) as 0 | 90 | 180 | 270
+  rotation.value = resolveRotateLeft(rotation.value)
 }
 function toggleGrayscale() {
   grayscale.value = !grayscale.value
@@ -243,24 +273,31 @@ const stageMainStyle = computed(() => {
   return { gridTemplateColumns: 'minmax(0, 1fr) 168px' }
 })
 
-const PAGE_STATUS_LABEL: Record<LocalScanPageStatus, string> = {
-  CAPTURED: '已采集',
-  PREPROCESSED: '已预处理',
-  UPLOADING: '上传中',
-  UPLOADED: '已上传',
-  FAILED: '失败',
-  DELETED: '已删除',
-}
-
 function pageStatusLabel(status: string): string {
-  if (status === 'SCANNED') return '已扫描'
-  return strictEnumLabel(PAGE_STATUS_LABEL, status as LocalScanPageStatus, '扫描页状态')
+  if (status === KioskSyntheticScanPageStatusCode.SCANNED) {
+    return KioskSyntheticScanPageStatusDescription[KioskSyntheticScanPageStatusCode.SCANNED]
+  }
+  switch (status) {
+    case LocalScanPageStatusCode.CAPTURED:
+      return strictEnumLabel(LocalScanPageStatusDescription, LocalScanPageStatusCode.CAPTURED, '扫描页状态')
+    case LocalScanPageStatusCode.PREPROCESSED:
+      return strictEnumLabel(LocalScanPageStatusDescription, LocalScanPageStatusCode.PREPROCESSED, '扫描页状态')
+    case LocalScanPageStatusCode.UPLOADING:
+      return strictEnumLabel(LocalScanPageStatusDescription, LocalScanPageStatusCode.UPLOADING, '扫描页状态')
+    case LocalScanPageStatusCode.UPLOADED:
+      return strictEnumLabel(LocalScanPageStatusDescription, LocalScanPageStatusCode.UPLOADED, '扫描页状态')
+    case LocalScanPageStatusCode.FAILED:
+      return strictEnumLabel(LocalScanPageStatusDescription, LocalScanPageStatusCode.FAILED, '扫描页状态')
+    case LocalScanPageStatusCode.DELETED:
+      return strictEnumLabel(LocalScanPageStatusDescription, LocalScanPageStatusCode.DELETED, '扫描页状态')
+  }
+  throw new Error(`扫描页状态缺少展示映射：${status}`)
 }
 
 // stage 内部视图键盘快捷键（与全局 useKioskShortcuts 不冲突）
 function shouldIgnoreKey(event: KeyboardEvent): boolean {
-  const target = event.target as HTMLElement | null
-  if (!target) return false
+  if (!(event.target instanceof HTMLElement)) return false
+  const target = event.target
   const tag = target.tagName
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
   return target.isContentEditable
@@ -343,7 +380,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
           修正异常 ({{ workflow.exceptionPages.value.length }})
         </button>
       </div>
-      <div v-if="job?.status === 'PAUSED'" class="ribbon-paused">
+      <div v-if="job?.status === LocalScanJobStatusCode.PAUSED" class="ribbon-paused">
         <PauseCircleOutlined />
         <span>已暂停</span>
       </div>

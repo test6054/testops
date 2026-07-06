@@ -52,7 +52,7 @@ watch(
 )
 
 watch(
-  () => [props.classId, props.examId] as const,
+  () => [props.classId, props.examId],
   () => {
     if (props.classId) {
       loadOptions()

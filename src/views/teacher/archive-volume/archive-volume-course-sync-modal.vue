@@ -1,13 +1,14 @@
 <template>
-  <a-modal
+  <UiDrawer
     :open="open"
     title="课程平台材料同步"
-    width="880"
+    :width="880"
     :confirm-loading="submitting"
     ok-text="同步"
-    cancel-text="取消"
+    :hide-footer="false"
     @update:open="emit('update:open', $event)"
-    @ok="handleSubmit"
+    @close="emit('update:open', false)"
+    @confirm="handleSubmit"
   >
     <a-form layout="vertical">
       <a-row :gutter="12">
@@ -23,53 +24,55 @@
         </a-col>
       </a-row>
     </a-form>
-    <div class="archive-volume-course-sync__toolbar">
-      <UiButton size="sm" variant="outline" @click="addRow">添加材料行</UiButton>
-    </div>
-    <input ref="rowFileInputRef" type="file" class="sr-only" @change="onRowFileChange" />
-    <UiDataTable
-      pagination-mode="none"
-      :columns="columns"
-      :data-source="rows"
-      :show-pagination="false"
-      flat
-      row-key="uid"
-      size="small"
-      empty-description="请添加待同步材料"
-    >
-      <template #bodyCell="{ column, index }">
-        <template v-if="column.key === 'materialType'">
-          <a-select
-            v-model:value="rows[index].materialType"
-            :options="materialTypeOptions"
-            style="width: 100%"
-          />
-        </template>
-        <template v-else-if="column.key === 'catalogCode'">
-          <a-input v-model:value="rows[index].catalogCode" placeholder="目录编码" />
-        </template>
-        <template v-else-if="column.key === 'file'">
-          <span v-if="rows[index].fileName" class="archive-volume-course-sync__file-name">
-            {{ rows[index].fileName }}
-          </span>
-          <UiButton
-            size="sm"
-            variant="outline"
-            :loading="rows[index].uploading"
-            @click="openRowFilePicker(index)"
-          >
-            {{ rows[index].fileId ? '重新选择' : '选择文件' }}
-          </UiButton>
-        </template>
-        <template v-else-if="column.key === 'studentNo'">
-          <a-input v-model:value="rows[index].studentNo" placeholder="可选" />
-        </template>
-        <template v-else-if="column.key === 'actions'">
-          <UiTextAction tone="danger" @click="removeRow(index)">删除</UiTextAction>
-        </template>
+    <WorkbenchSurfaceCard flush>
+      <template #toolbar>
+        <UiButton size="sm" variant="outline" @click="addRow">添加材料行</UiButton>
       </template>
-    </UiDataTable>
-  </a-modal>
+      <input ref="rowFileInputRef" type="file" class="sr-only" @change="onRowFileChange" />
+      <UiDataTable
+        pagination-mode="none"
+        :columns="columns"
+        :data-source="rows"
+        :show-pagination="false"
+        flat
+        row-key="uid"
+        size="small"
+        empty-description="请添加待同步材料"
+      >
+        <template #bodyCell="{ column, index }">
+          <template v-if="column.key === 'materialType'">
+            <a-select
+              v-model:value="rows[index].materialType"
+              :options="materialTypeOptions"
+              style="width: 100%"
+            />
+          </template>
+          <template v-else-if="column.key === 'catalogCode'">
+            <a-input v-model:value="rows[index].catalogCode" placeholder="目录编码" />
+          </template>
+          <template v-else-if="column.key === 'file'">
+            <span v-if="rows[index].fileName" class="archive-volume-course-sync__file-name">
+              {{ rows[index].fileName }}
+            </span>
+            <UiButton
+              size="sm"
+              variant="outline"
+              :loading="rows[index].uploading"
+              @click="openRowFilePicker(index)"
+            >
+              {{ rows[index].fileId ? '重新选择' : '选择文件' }}
+            </UiButton>
+          </template>
+          <template v-else-if="column.key === 'studentNo'">
+            <a-input v-model:value="rows[index].studentNo" placeholder="可选" />
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <UiTextAction tone="danger" @click="removeRow(index)">删除</UiTextAction>
+          </template>
+        </template>
+      </UiDataTable>
+    </WorkbenchSurfaceCard>
+  </UiDrawer>
 </template>
 
 <script setup lang="ts">
@@ -77,11 +80,19 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { ref, watch } from 'vue'
-import { ARCHIVE_MATERIAL_TYPE_LABEL, syncArchiveCoursePlatform } from '@/apis/mark/archive-volume'
+import {
+  ARCHIVE_MATERIAL_TYPE_OPTIONS,
+  ArchiveElectronicOriginalStatusCode,
+  ArchiveMaterialMediaTypeCode,
+  ArchiveMaterialSortRuleCode,
+  syncArchiveCoursePlatform,
+} from '@/apis/mark/archive-volume'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { showUserError } from '@/utils/error-handler'
 
@@ -114,10 +125,7 @@ const rows = ref<SyncRow[]>([])
 const rowFileInputRef = ref<HTMLInputElement | null>(null)
 const activeRowIndex = ref<number | null>(null)
 
-const materialTypeOptions = Object.entries(ARCHIVE_MATERIAL_TYPE_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const materialTypeOptions = ARCHIVE_MATERIAL_TYPE_OPTIONS
 
 const columns: ColumnsType<SyncRow> = [
   { title: '材料类型', key: 'materialType', width: 180 },
@@ -166,7 +174,10 @@ async function onRowFileChange(event: Event) {
   if (index === null) {
     return
   }
-  const input = event.target as HTMLInputElement
+  if (!(event.target instanceof HTMLInputElement)) {
+    return
+  }
+  const input = event.target
   const file = input.files?.[0]
   if (!file) {
     return
@@ -211,18 +222,27 @@ async function handleSubmit() {
   }
   submitting.value = true
   try {
-    const materials = rows.value.map((row) => ({
+    const materials = rows.value.map((row) => {
+      if (!row.materialType) {
+        throw new Error('材料类型无效，请重新选择')
+      }
+      if (!row.fileId) {
+        throw new Error('每行须上传文件')
+      }
+      return {
       volumeId: props.volumeId,
-      materialType: row.materialType as ArchiveMaterialTypeCode,
+      materialType: row.materialType,
       catalogCode: row.catalogCode.trim() || undefined,
       requiredFlag: true,
-      fileId: row.fileId as string,
-      mediaType: 'ELECTRONIC' as const,
-      sortRule: row.studentNo.trim() ? ('STUDENT_NO' as const) : ('CATALOG_ORDER' as const),
-      electronicOriginalStatus: 'SCANNED' as const,
+      fileId: row.fileId,
+      mediaType: ArchiveMaterialMediaTypeCode.ELECTRONIC,
+      sortRule: row.studentNo.trim()
+        ? ArchiveMaterialSortRuleCode.STUDENT_NO
+        : ArchiveMaterialSortRuleCode.CATALOG_ORDER,
+      electronicOriginalStatus: ArchiveElectronicOriginalStatusCode.SCANNED,
       studentNo: row.studentNo.trim() || undefined,
       triggerOcr: false,
-    }))
+    } })
     await syncArchiveCoursePlatform({
       idempotencyKey: form.value.idempotencyKey.trim(),
       volumeId: props.volumeId,
@@ -241,10 +261,6 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.archive-volume-course-sync__toolbar {
-  margin-bottom: 8px;
-}
-
 .archive-volume-course-sync__file-name {
   display: block;
   margin-bottom: 4px;

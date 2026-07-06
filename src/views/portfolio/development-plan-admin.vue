@@ -2,10 +2,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExcelImportRowDiagnostic } from '@/apis/platform/types'
 import type {
-  PortfolioDevelopmentPlanHistoryImportBatchStatus,
-  PortfolioDevelopmentPlanItemStatus,
-  PortfolioDevelopmentPlanStatus,
-  PortfolioDevelopmentPlanType,
+  PortfolioDevelopmentPlanHistoryImportBatchStatusCode,
 } from '@/apis/portfolio/enums'
 import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
 import type {
@@ -23,11 +20,15 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
-  PORTFOLIO_DEVELOPMENT_PLAN_HISTORY_IMPORT_BATCH_STATUS_LABEL,
-  PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL,
-  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL,
+  PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS,
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
-  PORTFOLIO_DEVELOPMENT_PLAN_TYPE_LABEL,
+  PortfolioDevelopmentPlanHistoryImportBatchStatusDescription,
+  PortfolioDevelopmentPlanItemStatusCode,
+  PortfolioDevelopmentPlanItemStatusDescription,
+  PortfolioDevelopmentPlanStatusCode,
+  PortfolioDevelopmentPlanStatusDescription,
+  PortfolioDevelopmentPlanTypeCode,
+  PortfolioDevelopmentPlanTypeDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
@@ -62,9 +63,9 @@ const historyBatchColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 72 },
 ]
 
-function historyBatchStatusLabel(status: PortfolioDevelopmentPlanHistoryImportBatchStatus): string {
+function historyBatchStatusLabel(status: PortfolioDevelopmentPlanHistoryImportBatchStatusCode): string {
   return strictEnumLabel(
-    PORTFOLIO_DEVELOPMENT_PLAN_HISTORY_IMPORT_BATCH_STATUS_LABEL,
+    PortfolioDevelopmentPlanHistoryImportBatchStatusDescription,
     status,
     '历史规划导入批次状态',
   )
@@ -111,14 +112,32 @@ const historyBatchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() =>
     return []
   }
   try {
-    const parsed = JSON.parse(raw) as Array<{ rowIndex?: number, message?: string }>
-    return parsed.map((item, index) => ({
-      rowIndex: item.rowIndex ?? index + 1,
-      valid: false,
-      invalidReason: item.message ?? '导入失败',
-    }))
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) {
+      return [{ rowIndex: 1, valid: false, invalidReason: '导入错误报告格式异常' }]
+    }
+    return parsed.map((item, index) => {
+      if (typeof item !== 'object' || item === null) {
+        return {
+          rowIndex: index + 1,
+          valid: false,
+          invalidReason: '导入错误报告明细格式异常',
+        }
+      }
+      const rowIndex = 'rowIndex' in item && typeof item.rowIndex === 'number'
+        ? item.rowIndex
+        : index + 1
+      const message = 'message' in item && typeof item.message === 'string'
+        ? item.message
+        : '导入失败'
+      return {
+        rowIndex,
+        valid: false,
+        invalidReason: message,
+      }
+    })
   } catch {
-    return []
+    return [{ rowIndex: 1, valid: false, invalidReason: '导入错误报告不是合法 JSON' }]
   }
 })
 
@@ -139,34 +158,43 @@ const highlightedPlanId = ref('')
 const selectedPlanId = ref('')
 const itemLoading = ref(false)
 const itemSaving = ref(false)
-const planItems = ref<PortfolioDevelopmentPlanItemSaveRequest[]>([])
 
-function planItemRowKey(record: unknown): string {
-  const idx = planItems.value.indexOf(record as PortfolioDevelopmentPlanItemSaveRequest)
-  return idx >= 0 ? String(idx) : '0'
+interface DevelopmentPlanItemEditorRow extends PortfolioDevelopmentPlanItemSaveRequest {
+  rowKey: string
 }
 
-const form = reactive({
+const planItems = ref<DevelopmentPlanItemEditorRow[]>([])
+
+interface DevelopmentPlanForm {
+  planYear: string
+  planTitle: string
+  planSummary: string
+  portfolioOrgId: string
+}
+
+const form = reactive<DevelopmentPlanForm>({
   planYear: String(new Date().getFullYear()),
   planTitle: '',
   planSummary: '',
-  portfolioOrgId: '' as string,
+  portfolioOrgId: '',
 })
 
-function planStatusLabel(status: PortfolioDevelopmentPlanStatus): string {
-  return strictEnumLabel(PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL, status, '发展规划状态')
+function planStatusLabel(status: PortfolioDevelopmentPlanStatusCode): string {
+  return strictEnumLabel(PortfolioDevelopmentPlanStatusDescription, status, '发展规划状态')
 }
 
-function planStatusTone(status: PortfolioDevelopmentPlanStatus) {
+function planStatusTone(status: PortfolioDevelopmentPlanStatusCode) {
   return strictEnumTone(PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE, status, '发展规划状态')
 }
 
-function planTypeLabel(type: PortfolioDevelopmentPlanType): string {
-  return strictEnumLabel(PORTFOLIO_DEVELOPMENT_PLAN_TYPE_LABEL, type, '发展规划类型')
+function planTypeLabel(type: PortfolioDevelopmentPlanTypeCode): string {
+  return strictEnumLabel(PortfolioDevelopmentPlanTypeDescription, type, '发展规划类型')
 }
 
 const approvedCount = computed(
-  () => yearStats.value.find((item) => item.planStatus === 'APPROVED')?.planCount ?? 0,
+  () => yearStats.value.find(
+    (item) => item.planStatus === PortfolioDevelopmentPlanStatusCode.APPROVED,
+  )?.planCount ?? 0,
 )
 
 const columns: ColumnsType = [
@@ -184,9 +212,7 @@ const orgColumns: ColumnsType = [
   { title: '数量', dataIndex: 'planCount', key: 'planCount', width: 80 },
 ]
 
-const itemStatusOptions = (
-  Object.keys(PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL) as PortfolioDevelopmentPlanItemStatus[]
-).map((value) => ({ value, label: PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL[value] }))
+const itemStatusOptions = PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS
 
 const itemColumns: ColumnsType = [
   { title: '标题', dataIndex: 'itemTitle', key: 'itemTitle', width: 160 },
@@ -222,7 +248,8 @@ const selectedPlan = computed(
 
 const planItemEditable = computed(() => {
   const status = selectedPlan.value?.planStatus
-  return status === 'DRAFT' || status === 'DEPARTMENT_RETURNED'
+  return status === PortfolioDevelopmentPlanStatusCode.DRAFT
+    || status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
 })
 
 const planOptions = computed(() =>
@@ -239,7 +266,7 @@ async function loadPage() {
       pageNum: 1,
       pageSize: 50,
       planYear: form.planYear,
-      planType: 'TEACHER',
+      planType: PortfolioDevelopmentPlanTypeCode.TEACHER,
     })
     rows.value = readPageList(page, '加载教师年度规划失败')
     if (!rows.value.some((item) => item.id === selectedPlanId.value)) {
@@ -294,7 +321,10 @@ function openPlanFromQuery() {
   }
   highlightedPlanId.value = planId
   const target = rows.value.find((item) => item.id === planId)
-  if (target?.planStatus === 'DRAFT' || target?.planStatus === 'DEPARTMENT_RETURNED') {
+  if (
+    target?.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT
+    || target?.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+  ) {
     activeTab.value = 'plans'
   }
 }
@@ -334,16 +364,15 @@ async function submitPlan(id: string) {
   }
 }
 
-function orgStatRowKey(record: unknown): string {
-  const row = record as PortfolioDevelopmentPlanOrgStatVO
-  return `${row.portfolioOrgId ?? 'none'}-${row.planStatus}`
+function orgStatRowKey(record: PortfolioDevelopmentPlanOrgStatVO): string {
+  return `${record.portfolioOrgId ?? 'none'}-${record.planStatus}`
 }
 
 async function exportPlans() {
   try {
     const result = await portfolioDevelopmentPlanApi.exportExcel({
       planYear: form.planYear,
-      planType: 'TEACHER',
+      planType: PortfolioDevelopmentPlanTypeCode.TEACHER,
     })
     await downloadPortfolioExcelExport(result)
     message.success('规划已导出')
@@ -358,26 +387,28 @@ function openPlanItems(planId: string) {
   void loadPlanItems()
 }
 
-function createEmptyPlanItem(): PortfolioDevelopmentPlanItemSaveRequest {
+function createEmptyPlanItem(): DevelopmentPlanItemEditorRow {
   return {
+    rowKey: `new-${Date.now()}-${planItems.value.length}`,
     itemTitle: '',
     itemGoal: '',
     indicatorCode: '',
     milestoneText: '',
-    completionPercent: '0',
-    itemStatus: 'NOT_STARTED',
+    completionPercent: 0,
+    itemStatus: PortfolioDevelopmentPlanItemStatusCode.NOT_STARTED,
   }
 }
 
 function toEditableItem(
   item: PortfolioDevelopmentPlanItemVO,
-): PortfolioDevelopmentPlanItemSaveRequest {
+): DevelopmentPlanItemEditorRow {
   return {
+    rowKey: item.id ?? `item-${item.sortOrder ?? 0}-${item.itemTitle}`,
     itemTitle: item.itemTitle,
     itemGoal: item.itemGoal,
     indicatorCode: item.indicatorCode,
     milestoneText: item.milestoneText,
-    completionPercent: item.completionPercent ?? '0',
+    completionPercent: item.completionPercent ?? 0,
     itemStatus: item.itemStatus,
     sortOrder: item.sortOrder,
   }
@@ -415,16 +446,22 @@ async function savePlanItems() {
     message.warning('请选择规划')
     return
   }
-  const items = planItems.value
-    .map((item, index) => ({
-      ...item,
-      itemTitle: item.itemTitle.trim(),
+  const items: PortfolioDevelopmentPlanItemSaveRequest[] = []
+  planItems.value.forEach((item, index) => {
+    const itemTitle = item.itemTitle.trim()
+    if (!itemTitle) {
+      return
+    }
+    items.push({
+      itemTitle,
       itemGoal: item.itemGoal?.trim() || undefined,
       indicatorCode: item.indicatorCode?.trim() || undefined,
       milestoneText: item.milestoneText?.trim() || undefined,
+      completionPercent: item.completionPercent,
+      itemStatus: item.itemStatus,
       sortOrder: index,
-    }))
-    .filter((item) => item.itemTitle)
+    })
+  })
   if (items.length === 0) {
     message.warning('请至少填写一条明细标题')
     return
@@ -503,7 +540,8 @@ onMounted(async () => {
               <template v-else-if="column.key === 'actions'">
                 <UiButton
                   v-if="
-                    record.planStatus === 'DRAFT' || record.planStatus === 'DEPARTMENT_RETURNED'
+                    record.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT
+                      || record.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
                   "
                   size="sm"
                   @click="submitPlan(record.id)"
@@ -541,7 +579,7 @@ onMounted(async () => {
             :columns="itemColumns"
             :data-source="planItems"
             :loading="itemLoading"
-            :row-key="planItemRowKey"
+            row-key="rowKey"
             :pagination="false"
             style="margin-top: 16px"
           >
@@ -586,7 +624,8 @@ onMounted(async () => {
               <template v-else-if="column.key === 'completionPercent'">
                 <input
                   v-if="planItemEditable"
-                  v-model="record.completionPercent"
+                  v-model.number="record.completionPercent"
+                  type="number"
                   class="input input--cell input--short"
                 />
                 <span v-else>{{ record.completionPercent ?? '0' }}%</span>
@@ -601,7 +640,7 @@ onMounted(async () => {
                 <UiTag v-else tone="blue">
                   {{
                     strictEnumLabel(
-                      PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL,
+                      PortfolioDevelopmentPlanItemStatusDescription,
                       record.itemStatus,
                       '规划明细状态',
                     )

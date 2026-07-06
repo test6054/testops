@@ -1,19 +1,18 @@
 import type {
   ArchiveDutyGrantVO,
-  ArchiveDutyTypeCode,
   ArchiveSecurityPolicyVO,
 } from '@/apis/mark/archive-config'
-import type { ArchiveSecurityLevelCode } from '@/apis/mark/archive-volume'
 import { computed, ref } from 'vue'
-import { listArchiveSecurityPolicy, listMyArchiveDutyGrants } from '@/apis/mark/archive-config'
+import { ArchiveDutyTypeCode, listArchiveSecurityPolicy, listMyArchiveDutyGrants } from '@/apis/mark/archive-config'
+import { ArchiveSecurityLevelCode } from '@/apis/mark/archive-volume'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 
 const ARCHIVE_SECURITY_LEVEL_ORDER: Record<ArchiveSecurityLevelCode, number> = {
-  PUBLIC: 0,
-  INTERNAL: 1,
-  RESTRICTED: 2,
-  CONFIDENTIAL: 3,
+  [ArchiveSecurityLevelCode.PUBLIC]: 0,
+  [ArchiveSecurityLevelCode.INTERNAL]: 1,
+  [ArchiveSecurityLevelCode.RESTRICTED]: 2,
+  [ArchiveSecurityLevelCode.CONFIDENTIAL]: 3,
 }
 
 /**
@@ -36,26 +35,27 @@ export function useArchiveDutyAccess() {
     return [
       ...new Set(
         relevant
-          .filter((item) => item.scopeDepartmentId)
-          .map((item) => item.scopeDepartmentId as string),
+          .map((item) => item.scopeDepartmentId)
+          .filter((departmentId): departmentId is string => Boolean(departmentId)),
       ),
     ]
   }
 
   const scopedDepartmentIds = computed(() =>
-    resolveScopedDepartmentIdsForDutyTypes(['COLLEGE_COORDINATOR']),
+    resolveScopedDepartmentIdsForDutyTypes([ArchiveDutyTypeCode.COLLEGE_COORDINATOR]),
   )
 
   /** 与后端 resolveListDepartmentScope 一致：任一 tenantWide 职责则不限院系，否则汇总全部 scopeDepartmentId */
   const listScopedDepartmentIds = computed(() => {
     if (grants.value.some((item) => item.tenantWide)) {
-      return [] as string[]
+      const unrestrictedDepartments: string[] = []
+      return unrestrictedDepartments
     }
     return [
       ...new Set(
         grants.value
-          .filter((item) => item.scopeDepartmentId)
-          .map((item) => item.scopeDepartmentId as string),
+          .map((item) => item.scopeDepartmentId)
+          .filter((departmentId): departmentId is string => Boolean(departmentId)),
       ),
     ]
   })
@@ -64,7 +64,7 @@ export function useArchiveDutyAccess() {
 
   const isTenantWideCollegeCoordinator = computed(() =>
     grants.value.some(
-      (item) => item.dutyType === 'COLLEGE_COORDINATOR' && item.tenantWide === true,
+      item => item.dutyType === ArchiveDutyTypeCode.COLLEGE_COORDINATOR && item.tenantWide === true,
     ),
   )
 
@@ -97,7 +97,7 @@ export function useArchiveDutyAccess() {
       return false
     }
     const targetOrder = ARCHIVE_SECURITY_LEVEL_ORDER[volume.securityLevel]
-    for (const dutyType of ['ARCHIVE_ADMIN', 'TRANSFER_REVIEWER'] as const) {
+    for (const dutyType of [ArchiveDutyTypeCode.ARCHIVE_ADMIN, ArchiveDutyTypeCode.TRANSFER_REVIEWER]) {
       if (!hasDutyForDepartment(dutyType, volume.departmentId)) {
         continue
       }
@@ -113,7 +113,7 @@ export function useArchiveDutyAccess() {
   }
 
   function canManageRemediationAsCoordinator(volume: { departmentId?: string }): boolean {
-    return hasDutyForDepartment('COLLEGE_COORDINATOR', volume.departmentId)
+    return hasDutyForDepartment(ArchiveDutyTypeCode.COLLEGE_COORDINATOR, volume.departmentId)
   }
 
   function filterListDepartmentOptions(
@@ -126,20 +126,26 @@ export function useArchiveDutyAccess() {
     return all.filter((item) => scopeIds.includes(item.value))
   }
 
-  const canViewCollegeBoard = computed(() => hasDuty('COLLEGE_COORDINATOR'))
+  const canViewCollegeBoard = computed(() => hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR))
   const canViewArchiveReviewer = computed(
-    () => hasDuty('TRANSFER_REVIEWER') || hasDuty('ARCHIVE_ADMIN'),
+    () => hasDuty(ArchiveDutyTypeCode.TRANSFER_REVIEWER) || hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN),
   )
-  const canViewSupervision = computed(() => hasDuty('SUPERVISION_INSPECTOR'))
-  const canApproveDestruction = computed(() => hasDuty('DESTRUCTION_APPROVER'))
-  const canApproveAccess = computed(() => hasDuty('ARCHIVE_ADMIN') || hasDuty('TRANSFER_REVIEWER'))
-  const canReviewTransfer = computed(() => hasDuty('TRANSFER_REVIEWER') || hasDuty('ARCHIVE_ADMIN'))
+  const canViewSupervision = computed(() => hasDuty(ArchiveDutyTypeCode.SUPERVISION_INSPECTOR))
+  const canApproveDestruction = computed(() => hasDuty(ArchiveDutyTypeCode.DESTRUCTION_APPROVER))
+  const canApproveAccess = computed(
+    () => hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN) || hasDuty(ArchiveDutyTypeCode.TRANSFER_REVIEWER),
+  )
+  const canReviewTransfer = computed(
+    () => hasDuty(ArchiveDutyTypeCode.TRANSFER_REVIEWER) || hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN),
+  )
   const canRejectTransfer = computed(
     () =>
-      hasDuty('TRANSFER_REVIEWER') || hasDuty('COLLEGE_COORDINATOR') || hasDuty('ARCHIVE_ADMIN'),
+      hasDuty(ArchiveDutyTypeCode.TRANSFER_REVIEWER)
+      || hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR)
+      || hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN),
   )
   const canViewStatisticsKpi = computed(
-    () => hasDuty('COLLEGE_COORDINATOR') || hasDuty('ARCHIVE_ADMIN'),
+    () => hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR) || hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN),
   )
   const canManageConfig = computed(() => isTenantAdmin.value)
 

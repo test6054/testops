@@ -4,35 +4,98 @@ import type { QuestionTypeCode } from './question-type'
  *
  * 后端规则：
  * - 路径前缀 /api/exam/grade-review
- * - 部分查询接口为 GET（@RequestParam），写操作为 POST + DTO body
+ * - 所有 endpoint 均为 POST，查询与写操作统一使用 DTO body
  * - 租户与操作人从 UserHold 注入
  * - 后端 Long ID 统一用 string 表达到前端
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { GradeCorrectionTypeCode } from '@/types/enums/grade-correction-type-enum'
+import type { GradeReviewReasonTypeCode } from '@/types/enums/grade-review-reason-type-enum'
+import type { VisibleMaterialScopeCode } from '@/types/enums/visible-material-scope-enum'
 import http from '@/config/axios'
+import {
+  ALL_BATCH_CORRECTION_APPROVAL_STATUS_CODES,
+  BatchCorrectionApprovalStatusCode,
+  BatchCorrectionApprovalStatusDescription,
+} from '@/types/enums/batch-correction-approval-status-enum'
+import { GradeCorrectionStatusCode } from '@/types/enums/grade-correction-status-enum'
+import {
+  ALL_GRADE_REVIEW_REASON_TYPE_CODES,
+  GradeReviewReasonTypeDescription,
+} from '@/types/enums/grade-review-reason-type-enum'
+import {
+  ALL_GRADE_REVIEW_REQUEST_STATUS_CODES,
+  GradeReviewRequestStatusCode,
+  GradeReviewRequestStatusDescription,
+} from '@/types/enums/grade-review-request-status-enum'
+import {
+  ReviewWindowPolicyStatusCode,
+  ReviewWindowPolicyStatusDescription,
+} from '@/types/enums/review-window-policy-status-enum'
+
+export {
+  ALL_BATCH_CORRECTION_APPROVAL_STATUS_CODES,
+  BatchCorrectionApprovalStatusCode,
+  BatchCorrectionApprovalStatusDescription,
+} from '@/types/enums/batch-correction-approval-status-enum'
+
+export {
+  ALL_GRADE_CORRECTION_STATUS_CODES,
+  GradeCorrectionStatusCode,
+  GradeCorrectionStatusDescription,
+} from '@/types/enums/grade-correction-status-enum'
+
+export {
+  ALL_GRADE_CORRECTION_TYPE_CODES,
+  GradeCorrectionTypeCode,
+  GradeCorrectionTypeDescription,
+} from '@/types/enums/grade-correction-type-enum'
+
+export {
+  ALL_GRADE_REVIEW_REASON_TYPE_CODES,
+  GradeReviewReasonTypeCode,
+  GradeReviewReasonTypeDescription,
+} from '@/types/enums/grade-review-reason-type-enum'
+
+export {
+  ALL_GRADE_REVIEW_REQUEST_STATUS_CODES,
+  GradeReviewRequestStatusCode,
+  GradeReviewRequestStatusDescription,
+} from '@/types/enums/grade-review-request-status-enum'
+
+export {
+  ALL_REVIEW_WINDOW_POLICY_STATUS_CODES,
+  ReviewWindowPolicyStatusCode,
+  ReviewWindowPolicyStatusDescription,
+} from '@/types/enums/review-window-policy-status-enum'
+
+export {
+  ALL_VISIBLE_MATERIAL_SCOPE_CODES,
+  VisibleMaterialScopeCode,
+  VisibleMaterialScopeDescription,
+} from '@/types/enums/visible-material-scope-enum'
 
 // ─── 复核窗口策略 ─────────────────────────────────
 
-/** 复核窗口状态编码 */
-export type ReviewWindowPolicyStatusCode = 'DRAFT' | 'ACTIVE' | 'CLOSED'
-
-/** 学生可见材料范围 */
-export type VisibleMaterialScopeCode = 'SCORE_ONLY' | 'SCORE_AND_ANNOTATION' | 'FULL'
-
-/** 复核窗口状态文案映射 */
-export const REVIEW_WINDOW_STATUS_LABEL: Record<ReviewWindowPolicyStatusCode, string> = {
-  DRAFT: '草稿',
-  ACTIVE: '已开放',
-  CLOSED: '已关闭',
-}
-
 /** 复核窗口状态徽标颜色（统一 BadgeTone） */
 export const REVIEW_WINDOW_STATUS_TONE: Record<ReviewWindowPolicyStatusCode, BadgeTone> = {
-  DRAFT: 'gray',
-  ACTIVE: 'green',
-  CLOSED: 'red',
+  [ReviewWindowPolicyStatusCode.DRAFT]: 'gray',
+  [ReviewWindowPolicyStatusCode.ACTIVE]: 'green',
+  [ReviewWindowPolicyStatusCode.CLOSED]: 'red',
 }
+
+/** 复核窗口主流程状态链，供列表页流程 hint 展示 */
+export const REVIEW_WINDOW_MAIN_FLOW_STATUSES: ReviewWindowPolicyStatusCode[] = [
+  ReviewWindowPolicyStatusCode.DRAFT,
+  ReviewWindowPolicyStatusCode.ACTIVE,
+  ReviewWindowPolicyStatusCode.CLOSED,
+]
+
+/** 复核窗口主流程 hint */
+export const REVIEW_WINDOW_FLOW_HINT = REVIEW_WINDOW_MAIN_FLOW_STATUSES.map(
+  (status) => ReviewWindowPolicyStatusDescription[status],
+).join(' → ')
 
 /** 复核窗口策略保存请求 - 对应 ReviewWindowPolicySaveRequest */
 export interface ReviewWindowPolicySaveRequest {
@@ -72,7 +135,7 @@ export function saveReviewWindowPolicy(
 
 /**
  * 查询复核窗口策略
- * GET /api/exam/grade-review/window/get?examId=
+ * POST /api/exam/grade-review/window/get
  */
 export function getReviewWindowPolicy(examId: string): Promise<ExamReviewWindowPolicyVO | null> {
   return http.post<ExamReviewWindowPolicyVO | null>('/api/exam/grade-review/window/get', { examId })
@@ -88,61 +151,45 @@ export function closeReviewWindow(examId: string): Promise<void> {
 
 // ─── 复核申请 ─────────────────────────────────
 
-/** 复核申请状态编码 */
-export type GradeReviewRequestStatusCode
-  = 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'CORRECTED'
-
-/** 复核申请状态文案映射 */
-export const REVIEW_REQUEST_STATUS_LABEL: Record<GradeReviewRequestStatusCode, string> = {
-  PENDING: '待处理',
-  IN_REVIEW: '处理中',
-  APPROVED: '通过',
-  REJECTED: '驳回',
-  CORRECTED: '已更正',
-}
-
 /** 复核申请状态 BadgeTone 映射（用于 UiTag/UiBadge） */
 export const REVIEW_REQUEST_STATUS_TONE: Record<GradeReviewRequestStatusCode, BadgeTone> = {
-  PENDING: 'orange',
-  IN_REVIEW: 'blue',
-  APPROVED: 'green',
-  REJECTED: 'red',
-  CORRECTED: 'purple',
+  [GradeReviewRequestStatusCode.PENDING]: 'orange',
+  [GradeReviewRequestStatusCode.IN_REVIEW]: 'blue',
+  [GradeReviewRequestStatusCode.APPROVED]: 'green',
+  [GradeReviewRequestStatusCode.REJECTED]: 'red',
+  [GradeReviewRequestStatusCode.CORRECTED]: 'purple',
 }
 
-/** 复核申请状态下拉选项，值必须与后端 GradeReviewRequestStatus 完全一致 */
+/** 复核申请状态下拉选项 */
 export const REVIEW_REQUEST_STATUS_OPTIONS: Array<{
   label: string
   value: GradeReviewRequestStatusCode
-}> = [
-  { value: 'PENDING', label: REVIEW_REQUEST_STATUS_LABEL.PENDING },
-  { value: 'IN_REVIEW', label: REVIEW_REQUEST_STATUS_LABEL.IN_REVIEW },
-  { value: 'APPROVED', label: REVIEW_REQUEST_STATUS_LABEL.APPROVED },
-  { value: 'REJECTED', label: REVIEW_REQUEST_STATUS_LABEL.REJECTED },
-  { value: 'CORRECTED', label: REVIEW_REQUEST_STATUS_LABEL.CORRECTED },
+}> = ALL_GRADE_REVIEW_REQUEST_STATUS_CODES.map((value) => ({
+  value,
+  label: GradeReviewRequestStatusDescription[value],
+}))
+
+/** 复核申请主流程状态链（不含驳回终止分支），供列表页流程 hint 展示 */
+export const REVIEW_REQUEST_MAIN_FLOW_STATUSES: GradeReviewRequestStatusCode[] = [
+  GradeReviewRequestStatusCode.PENDING,
+  GradeReviewRequestStatusCode.IN_REVIEW,
+  GradeReviewRequestStatusCode.APPROVED,
+  GradeReviewRequestStatusCode.CORRECTED,
 ]
 
-/** 复核原因类型编码 - 与后端 GradeReviewReasonType 完全一致 */
-export type GradeReviewReasonTypeCode = 'SCORE_ERROR' | 'RUBRIC' | 'OBJECTIVE' | 'OTHER'
+/** 复核申请主流程 hint */
+export const REVIEW_REQUEST_FLOW_HINT = `${REVIEW_REQUEST_MAIN_FLOW_STATUSES.map(
+  (status) => GradeReviewRequestStatusDescription[status],
+).join(' → ')}（${GradeReviewRequestStatusDescription[GradeReviewRequestStatusCode.REJECTED]}终止）`
 
-/** 复核原因类型文案映射 */
-export const GRADE_REVIEW_REASON_TYPE_LABEL: Record<GradeReviewReasonTypeCode, string> = {
-  SCORE_ERROR: '分数计算错误',
-  RUBRIC: '评分标准争议',
-  OBJECTIVE: '客观题判定争议',
-  OTHER: '其他',
-}
-
-/** 复核原因类型下拉选项，值必须与后端 GradeReviewReasonType 完全一致 */
+/** 复核原因类型下拉选项 */
 export const GRADE_REVIEW_REASON_TYPE_OPTIONS: Array<{
   label: string
   value: GradeReviewReasonTypeCode
-}> = [
-  { value: 'SCORE_ERROR', label: GRADE_REVIEW_REASON_TYPE_LABEL.SCORE_ERROR },
-  { value: 'RUBRIC', label: GRADE_REVIEW_REASON_TYPE_LABEL.RUBRIC },
-  { value: 'OBJECTIVE', label: GRADE_REVIEW_REASON_TYPE_LABEL.OBJECTIVE },
-  { value: 'OTHER', label: GRADE_REVIEW_REASON_TYPE_LABEL.OTHER },
-]
+}> = ALL_GRADE_REVIEW_REASON_TYPE_CODES.map((value) => ({
+  value,
+  label: GradeReviewReasonTypeDescription[value],
+}))
 
 /** 复核申请提交请求 - 对应 GradeReviewSubmitRequest */
 export interface GradeReviewSubmitRequest {
@@ -158,8 +205,8 @@ export interface GradeReviewSubmitRequest {
 
 /** 复核申请题目业务引用 */
 export interface GradeReviewQuestionRefVO {
-  /** 题目模板提交值，仅用于请求参数派生，普通 UI 不直接展示 */
-  questionTemplateId: string
+  /** 制卷题目提交值，仅用于请求参数派生，普通 UI 不直接展示 */
+  layoutQuestionId: string
   questionNo: string
   questionType: QuestionTypeCode
   fullScore: number
@@ -206,13 +253,10 @@ export interface GradeReviewSummaryVO {
   correctionRecordCount: number
 }
 
-/** 复核处理结论 */
-export type ReviewConclusion = 'APPROVED' | 'REJECTED'
-
 /** 复核处理请求 - 对应 GradeReviewHandleRequest */
 export interface GradeReviewHandleRequest {
   reviewRequestId: string
-  conclusion: ReviewConclusion
+  conclusion: GradeReviewRequestStatusCode
   reviewNote?: string
 }
 
@@ -295,7 +339,7 @@ export function listMyReviewRequests(
 
 /**
  * 统计当前学生待处理复核申请数量（PENDING + IN_REVIEW）
- * GET /api/exam/grade-review/request/student-pending-count
+ * POST /api/exam/grade-review/request/student-pending-count
  */
 export function countMyPendingReviewRequests(): Promise<number> {
   return http.post<number>('/api/exam/grade-review/request/student-pending-count', {})
@@ -315,39 +359,18 @@ export function handleReviewRequest(request: GradeReviewHandleRequest): Promise<
 
 // ─── 成绩更正 ─────────────────────────────────
 
-/** 更正类型编码 */
-export type GradeCorrectionTypeCode = 'SINGLE_QUESTION' | 'TOTAL_SCORE' | 'SYSTEM_REJUDGE'
-
-/** 更正状态编码 */
-export type GradeCorrectionStatusCode = 'PENDING' | 'APPROVED' | 'EXECUTED' | 'REJECTED'
-
-/** 更正类型文案映射 */
-export const GRADE_CORRECTION_TYPE_LABEL: Record<GradeCorrectionTypeCode, string> = {
-  SINGLE_QUESTION: '单题更正',
-  TOTAL_SCORE: '总分更正',
-  SYSTEM_REJUDGE: '系统重判',
-}
-
-/** 更正状态文案映射 */
-export const GRADE_CORRECTION_STATUS_LABEL: Record<GradeCorrectionStatusCode, string> = {
-  PENDING: '待审批',
-  APPROVED: '已审批',
-  EXECUTED: '已执行',
-  REJECTED: '已驳回',
-}
-
 /** 更正状态徽标颜色（统一 BadgeTone，cyan→blue） */
 export const GRADE_CORRECTION_STATUS_TONE: Record<GradeCorrectionStatusCode, BadgeTone> = {
-  PENDING: 'orange',
-  APPROVED: 'blue',
-  EXECUTED: 'green',
-  REJECTED: 'red',
+  [GradeCorrectionStatusCode.PENDING]: 'orange',
+  [GradeCorrectionStatusCode.APPROVED]: 'blue',
+  [GradeCorrectionStatusCode.EXECUTED]: 'green',
+  [GradeCorrectionStatusCode.REJECTED]: 'red',
 }
 
 /** 成绩更正请求 - 对应 GradeCorrectionRequest */
 export interface GradeCorrectionRequest {
   examId: string
-  questionTemplateId?: string
+  layoutQuestionId?: string
   /** 更正后分数 - 后端 BigDecimal，前端用 number 传输 */
   afterScore: number
   reason: string
@@ -363,7 +386,7 @@ export interface ExamGradeCorrectionRecordVO {
   studentNo: string
   studentName: string
   paperInstanceId: string
-  questionTemplateId?: string
+  layoutQuestionId?: string
   questionNo: string
   questionType?: QuestionTypeCode
   fullScore?: number
@@ -411,42 +434,38 @@ export function listCorrections(
 
 // ─── 批量更正计划 ─────────────────────────────────
 
-/** 批量更正审批状态编码 */
-export type BatchCorrectionApprovalStatusCode
-  = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'EXECUTING' | 'COMPLETED' | 'REJECTED'
-
-/** 批量更正审批状态文案映射 */
-export const BATCH_CORRECTION_STATUS_LABEL: Record<BatchCorrectionApprovalStatusCode, string> = {
-  DRAFT: '草稿',
-  PENDING_APPROVAL: '待审批',
-  APPROVED: '已审批',
-  EXECUTING: '执行中',
-  COMPLETED: '已完成',
-  REJECTED: '已驳回',
-}
-
 /** 批量更正审批状态徽标颜色（统一 BadgeTone） */
 export const BATCH_CORRECTION_STATUS_TONE: Record<BatchCorrectionApprovalStatusCode, BadgeTone> = {
-  DRAFT: 'gray',
-  PENDING_APPROVAL: 'orange',
-  APPROVED: 'blue',
-  EXECUTING: 'blue',
-  COMPLETED: 'green',
-  REJECTED: 'red',
+  [BatchCorrectionApprovalStatusCode.DRAFT]: 'gray',
+  [BatchCorrectionApprovalStatusCode.PENDING_APPROVAL]: 'orange',
+  [BatchCorrectionApprovalStatusCode.APPROVED]: 'blue',
+  [BatchCorrectionApprovalStatusCode.EXECUTING]: 'blue',
+  [BatchCorrectionApprovalStatusCode.COMPLETED]: 'green',
+  [BatchCorrectionApprovalStatusCode.REJECTED]: 'red',
 }
 
-/** 批量更正审批状态下拉选项，值必须与后端 BatchCorrectionApprovalStatus 完全一致 */
+/** 批量更正审批状态下拉选项 */
 export const BATCH_CORRECTION_STATUS_OPTIONS: Array<{
   label: string
   value: BatchCorrectionApprovalStatusCode
-}> = [
-  { value: 'DRAFT', label: BATCH_CORRECTION_STATUS_LABEL.DRAFT },
-  { value: 'PENDING_APPROVAL', label: BATCH_CORRECTION_STATUS_LABEL.PENDING_APPROVAL },
-  { value: 'APPROVED', label: BATCH_CORRECTION_STATUS_LABEL.APPROVED },
-  { value: 'EXECUTING', label: BATCH_CORRECTION_STATUS_LABEL.EXECUTING },
-  { value: 'COMPLETED', label: BATCH_CORRECTION_STATUS_LABEL.COMPLETED },
-  { value: 'REJECTED', label: BATCH_CORRECTION_STATUS_LABEL.REJECTED },
+}> = ALL_BATCH_CORRECTION_APPROVAL_STATUS_CODES.map((value) => ({
+  value,
+  label: BatchCorrectionApprovalStatusDescription[value],
+}))
+
+/** 批量更正主流程状态链（不含 REJECTED 分支），供列表页流程 hint 展示 */
+export const BATCH_CORRECTION_MAIN_FLOW_STATUSES: BatchCorrectionApprovalStatusCode[] = [
+  BatchCorrectionApprovalStatusCode.DRAFT,
+  BatchCorrectionApprovalStatusCode.PENDING_APPROVAL,
+  BatchCorrectionApprovalStatusCode.APPROVED,
+  BatchCorrectionApprovalStatusCode.EXECUTING,
+  BatchCorrectionApprovalStatusCode.COMPLETED,
 ]
+
+/** 批量更正主流程 hint */
+export const BATCH_CORRECTION_FLOW_HINT = BATCH_CORRECTION_MAIN_FLOW_STATUSES.map(
+  (status) => BatchCorrectionApprovalStatusDescription[status],
+).join(' → ')
 
 /** 批量成绩更正计划 - 对应 ExamBatchGradeCorrectionPlan */
 export interface ExamBatchGradeCorrectionPlanVO {
@@ -482,8 +501,8 @@ export interface BatchCorrectionPlanItemRequest {
 export interface BatchCorrectionPlanCreateRequest {
   examId: string
   planName: string
-  correctionType: Exclude<GradeCorrectionTypeCode, 'SYSTEM_REJUDGE'>
-  questionTemplateId?: string
+  correctionType: Exclude<GradeCorrectionTypeCode, GradeCorrectionTypeCode.SYSTEM_REJUDGE>
+  layoutQuestionId?: string
   items: BatchCorrectionPlanItemRequest[]
   reason: string
 }

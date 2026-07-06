@@ -153,8 +153,8 @@ function switchToStudentTab(val: { studentNo: string, password: string }) {
 }
 
 function checkCasCallback(): boolean {
-  const ticket = route.query.ticket as string
-  const tenantId = route.query.tenantId as string
+  const ticket = queryString(route.query.ticket)
+  const tenantId = queryString(route.query.tenantId)
 
   if (ticket && tenantId) {
     isCasCallback.value = true
@@ -166,12 +166,12 @@ function checkCasCallback(): boolean {
 }
 
 function shouldAutoTriggerCas(): boolean {
-  const autoCas = route.query.autoCas as string | undefined
+  const autoCas = queryString(route.query.autoCas)
   return autoCas === '1' || autoCas === 'true'
 }
 
 async function resolveCurrentTenantId(): Promise<string> {
-  const routeTenantId = route.query.tenantId as string | undefined
+  const routeTenantId = queryString(route.query.tenantId)
   if (routeTenantId) {
     return routeTenantId
   }
@@ -182,6 +182,10 @@ async function resolveCurrentTenantId(): Promise<string> {
   }
 
   return ''
+}
+
+function queryString(value: unknown): string {
+  return typeof value === 'string' ? value : ''
 }
 
 async function triggerAutoCasLogin() {

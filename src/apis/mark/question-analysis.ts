@@ -1,3 +1,4 @@
+import type { AnalysisScopeTypeCode } from './analysis-scope-type'
 import type { EffectiveStatusCode } from './effective-status'
 import type { ObjectiveComparePolicyCode } from './exam-standard-answer'
 import type { GradeStatusCode } from './grade-status'
@@ -9,12 +10,18 @@ import type { QuestionTypeCode } from './question-type'
  * 后端规则：
  * - 路径前缀 /api/exam/question-analysis
  * - 列表查询 POST + QuestionAnalysisListQueryRequest（含 pageNum/pageSize）
- * - 生成类接口 POST + @RequestParam
+ * - 生成类接口 POST + 请求体 DTO
  * - 后端 Long ID 统一用 string 表达到前端
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { RejudgeTriggerTypeCode } from '@/types/enums/rejudge-trigger-type-enum'
 import http from '@/config/axios'
+import {
+  ALL_REJUDGE_PLAN_STATUS_CODES,
+  RejudgePlanStatusCode,
+  RejudgePlanStatusDescription,
+} from '@/types/enums/rejudge-plan-status-enum'
 import { readAllPages } from '@/utils/page-result'
 
 // ─── 题目质量分析 ─────────────────────────────────
@@ -24,9 +31,9 @@ export interface ExamQuestionAnalysisRecordVO {
   id: string
   tenantId?: string
   examId: string
-  scopeType?: 'EXAM' | 'CLASS'
+  scopeType?: AnalysisScopeTypeCode
   scopeId?: string
-  questionTemplateId: string
+  layoutQuestionId: string
   questionNo: string
   questionType: QuestionTypeCode
   questionStem?: string
@@ -48,22 +55,30 @@ export interface ExamQuestionAnalysisRecordVO {
   updateTime?: string
 }
 
-export function generateQuestionAnalysis(params: {
+export interface ExamQuestionAnalysisGenerateRequest {
   examId: string
-  questionTemplateId: string
+  layoutQuestionId: string
   classId?: string
-}): Promise<ExamQuestionAnalysisRecordVO> {
-  return http.post<ExamQuestionAnalysisRecordVO>('/api/exam/question-analysis/generate', params)
+}
+
+export interface ExamClassScopeQueryRequest {
+  examId: string
+  classId?: string
+}
+
+export function generateQuestionAnalysis(
+  request: ExamQuestionAnalysisGenerateRequest,
+): Promise<ExamQuestionAnalysisRecordVO> {
+  return http.post<ExamQuestionAnalysisRecordVO>('/api/exam/question-analysis/generate', request)
 }
 
 export function generateAllQuestionAnalysis(
-  examId: string,
-  classId?: string,
+  request: ExamClassScopeQueryRequest,
 ): Promise<ExamQuestionAnalysisRecordVO[]> {
-  return http.post<ExamQuestionAnalysisRecordVO[]>('/api/exam/question-analysis/generate-all', {
-    examId,
-    classId,
-  })
+  return http.post<ExamQuestionAnalysisRecordVO[]>(
+    '/api/exam/question-analysis/generate-all',
+    request,
+  )
 }
 
 /** 统计页自动翻页拉全量时的单页大小，与后端 PageHelper 默认上限对齐 */
@@ -74,7 +89,14 @@ export const QUESTION_ANALYSIS_LIST_PAGE_SIZE = 500
  */
 export interface QuestionAnalysisListQueryRequest extends QueryDto {
   examId: string
-  questionTemplateId?: string
+  layoutQuestionId?: string
+  classId?: string
+}
+
+/** 题目质量分析全量读取请求 - 与 QuestionAnalysisListQueryRequest 查询字段一致，分页字段由读取器填入 */
+export interface QuestionAnalysisFetchAllRequest {
+  examId: string
+  layoutQuestionId?: string
   classId?: string
 }
 
@@ -95,7 +117,7 @@ export function pageQuestionAnalysis(
  * 统计图表所需全量题目质量分析：按 PageResult 协议自动翻页直至 pages 耗尽。
  */
 export function fetchAllQuestionAnalysisRows(
-  request: Omit<QuestionAnalysisListQueryRequest, 'pageNum' | 'pageSize'>,
+  request: QuestionAnalysisFetchAllRequest,
 ): Promise<ExamQuestionAnalysisRecordVO[]> {
   return readAllPages(
     (pageNum) =>
@@ -113,7 +135,7 @@ export function fetchAllQuestionAnalysisRows(
 /** 学生错题本查询请求 - 对应 StudentWrongBookQueryRequest */
 export interface StudentWrongBookQueryRequest {
   examId: string
-  questionTemplateId?: string
+  layoutQuestionId?: string
   wrongOnly?: boolean
   pageNum?: number
   pageSize?: number
@@ -124,7 +146,7 @@ export interface StudentWrongBookItemVO {
   gradeResultId: string
   examId: string
   paperInstanceId: string
-  questionTemplateId: string
+  layoutQuestionId: string
   fullScore: number
   teacherReviewScore?: number
   objectiveResult?: ObjectiveResultCode
@@ -151,7 +173,7 @@ export function pageStudentWrongBook(
 /** 答案确认生效请求 - 对应 AnswerEffectiveConfirmRequest */
 export interface AnswerEffectiveConfirmRequest {
   examId: string
-  questionTemplateId: string
+  layoutQuestionId: string
   standardAnswerId?: string
   comparePolicy?: ObjectiveComparePolicyCode
   aiReviewHintId?: string
@@ -162,7 +184,7 @@ export interface AnswerEffectiveConfirmRequest {
 export interface ExamAnswerEffectiveConfigVO {
   id?: string
   examId: string
-  questionTemplateId: string
+  layoutQuestionId: string
   standardAnswerId?: string
   comparePolicy?: ObjectiveComparePolicyCode
   aiReviewHintId?: string
@@ -187,7 +209,7 @@ export function confirmAnswerEffective(
 
 export function getEffectiveAnswerConfig(params: {
   examId: string
-  questionTemplateId: string
+  layoutQuestionId: string
 }): Promise<ExamAnswerEffectiveConfigVO | null> {
   return http.post<ExamAnswerEffectiveConfigVO | null>(
     '/api/exam/question-analysis/answer-effective/get',
@@ -197,57 +219,41 @@ export function getEffectiveAnswerConfig(params: {
 
 // ─── 重判计划 ─────────────────────────────────
 
-/** 重判计划状态 */
-export type RejudgePlanStatusCode
-  = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'EXECUTING' | 'COMPLETED' | 'REJECTED'
+export {
+  ALL_REJUDGE_PLAN_STATUS_CODES,
+  RejudgePlanStatusCode,
+  RejudgePlanStatusDescription,
+} from '@/types/enums/rejudge-plan-status-enum'
 
-/** 重判触发类型 */
-export type RejudgeTriggerTypeCode = 'ANSWER_CHANGE' | 'POLICY_CHANGE' | 'SYSTEM_ERROR'
-
-/** 重判计划状态文案映射 */
-export const REJUDGE_PLAN_STATUS_LABEL: Record<RejudgePlanStatusCode, string> = {
-  DRAFT: '草稿',
-  PENDING_APPROVAL: '待审批',
-  APPROVED: '已审批',
-  EXECUTING: '执行中',
-  COMPLETED: '已完成',
-  REJECTED: '已驳回',
-}
+export {
+  ALL_REJUDGE_TRIGGER_TYPE_CODES,
+  RejudgeTriggerTypeCode,
+  RejudgeTriggerTypeDescription,
+} from '@/types/enums/rejudge-trigger-type-enum'
 
 /** 重判计划状态徽标颜色（统一 BadgeTone） */
 export const REJUDGE_PLAN_STATUS_TONE: Record<RejudgePlanStatusCode, BadgeTone> = {
-  DRAFT: 'gray',
-  PENDING_APPROVAL: 'orange',
-  APPROVED: 'blue',
-  EXECUTING: 'blue',
-  COMPLETED: 'green',
-  REJECTED: 'red',
+  [RejudgePlanStatusCode.DRAFT]: 'gray',
+  [RejudgePlanStatusCode.PENDING_APPROVAL]: 'orange',
+  [RejudgePlanStatusCode.APPROVED]: 'blue',
+  [RejudgePlanStatusCode.EXECUTING]: 'blue',
+  [RejudgePlanStatusCode.COMPLETED]: 'green',
+  [RejudgePlanStatusCode.REJECTED]: 'red',
 }
 
 /** 重判计划状态下拉选项，值必须与后端 RejudgePlanStatus 完全一致 */
 export const REJUDGE_PLAN_STATUS_OPTIONS: Array<{
   label: string
   value: RejudgePlanStatusCode
-}> = [
-  { value: 'DRAFT', label: REJUDGE_PLAN_STATUS_LABEL.DRAFT },
-  { value: 'PENDING_APPROVAL', label: REJUDGE_PLAN_STATUS_LABEL.PENDING_APPROVAL },
-  { value: 'APPROVED', label: REJUDGE_PLAN_STATUS_LABEL.APPROVED },
-  { value: 'EXECUTING', label: REJUDGE_PLAN_STATUS_LABEL.EXECUTING },
-  { value: 'COMPLETED', label: REJUDGE_PLAN_STATUS_LABEL.COMPLETED },
-  { value: 'REJECTED', label: REJUDGE_PLAN_STATUS_LABEL.REJECTED },
-]
-
-/** 重判触发类型文案映射 */
-export const REJUDGE_TRIGGER_TYPE_LABEL: Record<RejudgeTriggerTypeCode, string> = {
-  ANSWER_CHANGE: '答案变更',
-  POLICY_CHANGE: '策略变更',
-  SYSTEM_ERROR: '系统错误',
-}
+}> = ALL_REJUDGE_PLAN_STATUS_CODES.map((value) => ({
+  value,
+  label: RejudgePlanStatusDescription[value],
+}))
 
 /** 重判计划题目业务引用 */
 export interface RejudgePlanQuestionRefVO {
-  /** 题目模板 ID 仅作为提交值使用，普通 UI 不直接展示 */
-  questionTemplateId: string
+  /** 制卷题目 ID 仅作为提交值使用，普通 UI 不直接展示 */
+  layoutQuestionId: string
   questionNo: string
   questionType: QuestionTypeCode
   fullScore: number
@@ -330,6 +336,9 @@ export interface ExamPaperAnalysisVO {
   reliabilitySampleCount?: number
   snapshotTime?: string
 }
+
+/** 考后统计页主链 hint：从成绩分布到教学改进的治理顺序 */
+export const EXAM_STATISTICS_FLOW_HINT = '成绩分布 → 题目质量 → 重判计划 → 错因聚类 → 教学改进'
 
 /** 查询整卷难度、区分度与 Cronbach α */
 export function getExamPaperAnalysis(params: {

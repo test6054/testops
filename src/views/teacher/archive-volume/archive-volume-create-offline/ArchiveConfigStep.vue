@@ -1,67 +1,71 @@
 <template>
-  <section id="archive-create-config" class="form-section archive-create-form">
-    <header class="section-header">
-      <h2 class="section-title">归档配置</h2>
-    </header>
-    <p class="section-desc">为本卷选定目录模板套、密级与保管策略；模板决定材料目录与自查项。</p>
-    <a-form
-      ref="formRef"
-      :model="configForm"
-      :rules="configRules"
-      layout="vertical"
-      class="archive-create-form__body"
-    >
-      <div class="archive-create-form__grid">
-        <a-form-item label="目录模板套" name="templateSetCode" class="archive-create-form__full">
-          <a-select
-            v-model:value="templateSetCodeSelectValue"
-            :options="templateSetOptions"
-            :loading="templateLoading"
-            placeholder="选择模板套"
-            show-search
-            option-filter-prop="label"
-            @change="handleTemplateChange"
-          />
-          <div class="archive-create-form__hint">
-            含平台母版与本校副本；建卷后按此套解析材料目录与自查项。
-          </div>
-        </a-form-item>
-        <a-form-item label="考核形式">
-          <a-select
-            v-model:value="configForm.examForm"
-            :options="examFormOptions"
-            allow-clear
-            placeholder="可选，选定模板后可自动带出"
-          />
-        </a-form-item>
-        <a-form-item label="成绩事实源" name="scoreSource">
-          <a-select v-model:value="configForm.scoreSource" :options="scoreSourceOptions" />
-        </a-form-item>
-        <a-form-item label="密级" name="securityLevel">
-          <a-select v-model:value="configForm.securityLevel" :options="securityLevelOptions" />
-        </a-form-item>
-        <a-form-item label="卷责任人" name="responsibleUserId" class="archive-create-form__full">
-          <TeacherSelector
-            :value="configForm.responsibleUserId"
-            placeholder="默认当前用户"
-            @change="handleResponsibleChange"
-          />
-          <div class="archive-create-form__hint">缺省为当前用户；责任人可登记材料并提交本卷。</div>
-        </a-form-item>
-        <a-form-item label="保管年限" class="archive-create-form__full">
-          <a-space>
-            <a-input-number
-              v-model:value="configForm.retentionYears"
-              :min="1"
-              :max="100"
-              :disabled="configForm.permanentRetention"
+  <div id="archive-create-config" class="archive-create-step">
+    <WorkbenchSurfaceCard flush class="archive-create-form">
+      <template #head>
+        <div class="archive-create-step__head">
+          <h2 class="archive-create-step__title">归档配置</h2>
+          <p class="archive-create-step__desc">为本卷选定目录模板套、密级与保管策略；模板决定材料目录与自查项。</p>
+        </div>
+      </template>
+      <a-form
+        ref="formRef"
+        :model="configForm"
+        :rules="configRules"
+        layout="vertical"
+        class="archive-create-form__body"
+      >
+        <div class="archive-create-form__grid">
+          <a-form-item label="目录模板套" name="templateSetCode" class="archive-create-form__full">
+            <a-select
+              v-model:value="templateSetCodeSelectValue"
+              :options="templateSetOptions"
+              :loading="templateLoading"
+              placeholder="选择模板套"
+              show-search
+              option-filter-prop="label"
+              @change="handleTemplateChange"
             />
-            <a-checkbox v-model:checked="configForm.permanentRetention">永久保管</a-checkbox>
-          </a-space>
-        </a-form-item>
-      </div>
-    </a-form>
-  </section>
+            <div class="archive-create-form__hint">
+              含平台母版与本校副本；建卷后按此套解析材料目录与自查项。
+            </div>
+          </a-form-item>
+          <a-form-item label="考核形式">
+            <a-select
+              v-model:value="configForm.examForm"
+              :options="examFormOptions"
+              allow-clear
+              placeholder="可选，选定模板后可自动带出"
+            />
+          </a-form-item>
+          <a-form-item label="成绩事实源" name="scoreSource">
+            <a-select v-model:value="configForm.scoreSource" :options="scoreSourceOptions" />
+          </a-form-item>
+          <a-form-item label="密级" name="securityLevel">
+            <a-select v-model:value="configForm.securityLevel" :options="securityLevelOptions" />
+          </a-form-item>
+          <a-form-item label="卷责任人" name="responsibleUserId" class="archive-create-form__full">
+            <TeacherSelector
+              :value="configForm.responsibleUserId"
+              placeholder="默认当前用户"
+              @change="handleResponsibleChange"
+            />
+            <div class="archive-create-form__hint">缺省为当前用户；责任人可登记材料并提交本卷。</div>
+          </a-form-item>
+          <a-form-item label="保管年限" class="archive-create-form__full">
+            <a-space>
+              <a-input-number
+                v-model:value="configForm.retentionYears"
+                :min="1"
+                :max="100"
+                :disabled="configForm.permanentRetention"
+              />
+              <a-checkbox v-model:checked="configForm.permanentRetention">永久保管</a-checkbox>
+            </a-space>
+          </a-form-item>
+        </div>
+      </a-form>
+    </WorkbenchSurfaceCard>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -71,11 +75,12 @@ import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import { computed, ref, watch } from 'vue'
 import {
-  ARCHIVE_EXAM_FORM_LABEL,
-  ARCHIVE_SCORE_SOURCE_LABEL,
-  ARCHIVE_SECURITY_LEVEL_LABEL,
+  ARCHIVE_EXAM_FORM_OPTIONS,
+  ARCHIVE_SECURITY_LEVEL_OPTIONS,
+  ArchiveScoreSourceDescription,
 } from '@/apis/mark/archive-volume'
 import { TeacherSelector } from '@/components/quality/selectors'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useInjectedArchiveVolumeCreateConfigForm } from './archive-volume-create-context'
 import { nullableStringToSelectValue, selectValueToNullableString } from './select-value-bridge'
 
@@ -101,20 +106,14 @@ const templateSetCodeSelectValue = computed({
   },
 })
 
-const examFormOptions = Object.entries(ARCHIVE_EXAM_FORM_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const examFormOptions = ARCHIVE_EXAM_FORM_OPTIONS
 
 const scoreSourceOptions = [
-  { value: 'TEACHING_AFFAIRS', label: ARCHIVE_SCORE_SOURCE_LABEL.TEACHING_AFFAIRS },
-  { value: 'OFFLINE_CONFIRMED', label: ARCHIVE_SCORE_SOURCE_LABEL.OFFLINE_CONFIRMED },
+  { value: 'TEACHING_AFFAIRS', label: ArchiveScoreSourceDescription.TEACHING_AFFAIRS },
+  { value: 'OFFLINE_CONFIRMED', label: ArchiveScoreSourceDescription.OFFLINE_CONFIRMED },
 ]
 
-const securityLevelOptions = Object.entries(ARCHIVE_SECURITY_LEVEL_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const securityLevelOptions = ARCHIVE_SECURITY_LEVEL_OPTIONS
 
 function handleTemplateChange(value: SelectValue): void {
   const code = selectValueToNullableString(value)

@@ -1,7 +1,12 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="线下纯归档建卷">
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="线下纯归档建卷"
+        subtitle="历史纸质档案 · 基本信息 → 归档配置 → 确认建卷"
+      >
         <template #actions>
           <UiButton variant="ghost" size="sm" @click="ac.handleGoBack"> 返回列表 </UiButton>
           <UiButton
@@ -28,7 +33,23 @@
       </aside>
 
       <div class="create-layout__main">
-        <a-spin :spinning="ac.submitting.value" tip="正在创建…">
+        <ArchiveLifecyclePipe
+          title="建卷步骤"
+          :steps="createLifecycleSteps"
+          clickable
+          class="create-layout__pipe"
+          @step-click="(key) => void scrollToSection(key)"
+        />
+        <UiAlertStrip
+          v-if="ac.submitErrorMessage.value"
+          tone="error"
+          title="创建失败"
+          :description="ac.submitErrorMessage.value"
+          dense
+          class="create-layout__submit-error"
+        />
+        <UiSkeletonState v-if="ac.submitting.value" variant="card" compact />
+        <template v-else>
           <BasicInfoStep
             :basic-rules="ac.basicRules"
             @course-change="ac.setCourseSelection"
@@ -45,18 +66,25 @@
             @update:config-form-ref="ac.configFormRef.value = $event"
           />
           <ConfirmStep />
-        </a-spin>
+        </template>
       </div>
     </div>
+
+    <ArchiveVolumeListNextStepsPanel variant="create-offline" />
   </StageWorkbenchShell>
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, provide, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue'
+import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSidebarNav from '@/components/ui-guide/ui/UiSidebarNav.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { buildArchiveOfflineCreateLifecycleSteps } from '@/utils/archive-volume-lifecycle'
+import ArchiveVolumeListNextStepsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeListNextStepsPanel.vue'
 import {
   archiveVolumeCreateBasicFormKey,
   archiveVolumeCreateConfigFormKey,
@@ -70,6 +98,9 @@ import { useArchiveVolumeCreateOffline } from './useArchiveVolumeCreateOffline'
 defineOptions({ name: 'TeacherArchiveVolumeCreateOffline' })
 
 const ac = useArchiveVolumeCreateOffline()
+const createLifecycleSteps = computed(() =>
+  buildArchiveOfflineCreateLifecycleSteps(ac.activeSection.value),
+)
 provide(archiveVolumeCreateBasicFormKey, ac.basicForm)
 provide(archiveVolumeCreateConfigFormKey, ac.configForm)
 const scrollContainerRef = ref<HTMLElement | null>(null)
@@ -145,6 +176,33 @@ onBeforeUnmount(() => {
     top: 16px;
   }
 
+  &__pipe {
+    margin-bottom: 8px;
+
+    :deep(.archive-lifecycle-pipe) {
+      padding: 4px 0 0;
+    }
+
+    :deep(.archive-lifecycle-pipe__node) {
+      min-width: 68px;
+    }
+
+    :deep(.archive-lifecycle-pipe__dot) {
+      width: 28px;
+      height: 28px;
+      font-size: 10px;
+    }
+
+    :deep(.archive-lifecycle-pipe__connector) {
+      width: 20px;
+      margin-top: 13px;
+    }
+  }
+
+  &__submit-error {
+    margin-bottom: 12px;
+  }
+
   &__main {
     min-width: 0;
     width: 100%;
@@ -153,59 +211,48 @@ onBeforeUnmount(() => {
     background: transparent;
 
     :deep(.archive-create-form:first-of-type) {
-      padding-bottom: 32px;
-      border-bottom: 1px solid var(--dp-border, #e5e7eb);
+      padding-bottom: 0;
+      border-bottom: none;
     }
   }
 }
 
-:deep(.form-section) {
-  padding: 40px 0 32px;
-  border-bottom: 1px solid var(--dp-border, #e5e7eb);
+:deep(.archive-create-step) {
+  padding: 16px 0 20px;
   scroll-margin-top: 16px;
 
-  &:last-child {
-    border-bottom: none;
+  &:not(:last-child) {
+    margin-bottom: 4px;
   }
 }
 
-:deep(.section-header) {
+:deep(.archive-create-step__head) {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  margin-bottom: 8px;
+  flex-direction: column;
+  gap: 4px;
 }
 
-:deep(.section-desc) {
-  margin: 0 0 20px;
+:deep(.archive-create-step__title) {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ant-color-text);
+}
+
+:deep(.archive-create-step__desc) {
+  margin: 0;
   font-size: 13px;
   line-height: 1.5;
   color: var(--dp-text-secondary, #64748b);
 }
 
-:deep(.section-title) {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--ant-color-text);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  &::before {
-    content: '';
-    display: inline-block;
-    width: 3px;
-    height: 18px;
-    background: var(--ant-color-primary, #1677ff);
-    border-radius: 2px;
-    flex-shrink: 0;
-  }
-}
-
 :deep(.archive-create-form__body) {
   max-width: 880px;
+  padding: 0 12px 4px;
+}
+
+:deep(.archive-create-form__body .ant-form-item) {
+  margin-bottom: 12px;
 }
 
 :deep(.archive-create-form__grid) {

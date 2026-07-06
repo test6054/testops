@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type {
   PortfolioArchiveRecordFieldInput,
-  PortfolioArchiveRecordStatus,
   PortfolioTargetFieldDefinition,
 } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
@@ -10,9 +9,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import {
-  PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
-  PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
-} from '@/apis/portfolio/types'
+  PortfolioArchiveRecordStatusCode,
+  PortfolioArchiveRecordStatusDescription,
+} from '@/apis/portfolio/enums'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -36,13 +36,16 @@ const saving = ref(false)
 const submitting = ref(false)
 const categoryName = ref('')
 const recordId = ref<string>()
-const recordStatus = ref<PortfolioArchiveRecordStatus>()
+const recordStatus = ref<PortfolioArchiveRecordStatusCode>()
 const latestRejectReason = ref<string>()
 const fieldDefs = ref<PortfolioTargetFieldDefinition[]>([])
 const fieldValues = reactive<Record<string, string>>({})
 const evidenceRefs = reactive<Record<string, string>>({})
 
-const categoryId = computed(() => route.params.categoryId as string)
+const categoryId = computed(() => {
+  const rawCategoryId = route.params.categoryId
+  return typeof rawCategoryId === 'string' ? rawCategoryId : ''
+})
 const queryRecordId = computed(() =>
   typeof route.query.recordId === 'string' ? route.query.recordId : '',
 )
@@ -53,12 +56,12 @@ const teacherRequest = computed(() =>
 const editableFields = computed(() => fieldDefs.value.filter((item) => !item.readonly))
 
 const statusHint = computed(() => {
-  if (recordStatus.value === 'RETURNED') {
+  if (recordStatus.value === PortfolioArchiveRecordStatusCode.RETURNED) {
     return latestRejectReason.value
       ? `审核退回：${latestRejectReason.value}`
       : '审核退回，请修改后重新提交'
   }
-  if (recordStatus.value === 'DRAFT') {
+  if (recordStatus.value === PortfolioArchiveRecordStatusCode.DRAFT) {
     return '草稿待提交'
   }
   return ''
@@ -115,7 +118,7 @@ async function loadPage() {
     const draftPage = await portfolioArchiveApi.pageRecords({
       ...teacherRequest.value,
       categoryId: categoryId.value,
-      recordStatus: 'DRAFT',
+      recordStatus: PortfolioArchiveRecordStatusCode.DRAFT,
       pageNum: 1,
       pageSize: 1,
     })
@@ -127,7 +130,7 @@ async function loadPage() {
     const returnedPage = await portfolioArchiveApi.pageRecords({
       ...teacherRequest.value,
       categoryId: categoryId.value,
-      recordStatus: 'RETURNED',
+      recordStatus: PortfolioArchiveRecordStatusCode.RETURNED,
       pageNum: 1,
       pageSize: 1,
     })
@@ -235,7 +238,7 @@ usePortfolioScopedLoader(
         <UiTag
           :tone="strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, recordStatus, '档案记录状态')"
         >
-          {{ strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, recordStatus, '档案记录状态') }}
+          {{ strictEnumLabel(PortfolioArchiveRecordStatusDescription, recordStatus, '档案记录状态') }}
         </UiTag>
         <span v-if="statusHint" class="archive-category-edit__status-hint">{{ statusHint }}</span>
       </p>

@@ -23,7 +23,7 @@
         >
           <a-collapse-panel
             v-for="(question, questionIndex) in wholeQuestions"
-            :key="question.questionTemplateId"
+            :key="question.layoutQuestionId"
           >
             <template #header>
               <div class="marking-score-panel__question-header">
@@ -31,11 +31,11 @@
                 <UiTag tone="gray" size="sm">{{ question.questionTypeMessage }}</UiTag>
                 <UiTag tone="green" size="sm">满分 {{ question.fullScore }}</UiTag>
                 <UiTag
-                  v-if="isWholeQuestionScored(question.questionTemplateId)"
+                  v-if="isWholeQuestionScored(question.layoutQuestionId)"
                   tone="green"
                   size="sm"
                 >
-                  已给 {{ getWholeQuestionForm(question.questionTemplateId).score }} 分
+                  已给 {{ getWholeQuestionForm(question.layoutQuestionId).score }} 分
                 </UiTag>
                 <UiTag v-else tone="orange" size="sm">待评分</UiTag>
                 <UiButton
@@ -63,7 +63,7 @@
               正式 OCR 未识别出可展示答案
             </a-typography-text>
             <a-input-number
-              v-model:value="getWholeQuestionForm(question.questionTemplateId).score"
+              v-model:value="getWholeQuestionForm(question.layoutQuestionId).score"
               :ref="(el: unknown) => emit('set-score-input-ref', el, questionIndex)"
               :min="0"
               :max="question.fullScore"
@@ -116,6 +116,19 @@
                 >
                   重新 AI 复评
                 </UiButton>
+                <ExperienceAssistBadge
+                  clickable
+                  :applied="question.referenceExperienceAudit?.referenceExperienceApplied"
+                  :source-exam-name="question.referenceExperienceAudit?.referenceExperienceSourceExamName"
+                  :consistency-rate="question.referenceExperienceAudit?.referenceExperienceConsistencyRate"
+                  @open-ai-history="emit('open-ai-history-from-whole-question', question)"
+                />
+                <p
+                  v-if="question.referenceExperienceAudit?.referenceExperienceApplied && question.referenceExperienceAudit?.referenceExperienceMatchMode"
+                  class="marking-score-panel__match-mode"
+                >
+                  定标方式：{{ matchModeLabel(question.referenceExperienceAudit.referenceExperienceMatchMode) }}
+                </p>
               </a-space>
               <a-typography-paragraph
                 v-if="question.aiDiagnostic"
@@ -132,7 +145,7 @@
               <a-typography-text type="secondary">AI 评分加载中...</a-typography-text>
             </div>
             <a-textarea
-              v-model:value="getWholeQuestionForm(question.questionTemplateId).annotationText"
+              v-model:value="getWholeQuestionForm(question.layoutQuestionId).annotationText"
               :rows="3"
               :maxlength="1000"
               :disabled="isReadOnly"
@@ -220,6 +233,19 @@
           >
             AI 历史
           </UiButton>
+          <ExperienceAssistBadge
+            clickable
+            :applied="experienceAssistApplied"
+            :source-exam-name="experienceAssistSourceExamName"
+            :consistency-rate="experienceAssistConsistencyRate"
+            @open-ai-history="emit('open-ai-history-from-badge')"
+          />
+          <p
+            v-if="experienceAssistApplied && experienceAssistMatchMode"
+            class="marking-score-panel__match-mode"
+          >
+            定标方式：{{ matchModeLabel(experienceAssistMatchMode) }}
+          </p>
         </a-space>
         <div
           v-if="!isReadOnly && canSubmit && questionView?.fullScore != null"
@@ -266,12 +292,16 @@ import type {
   QuestionMarkingGroupQuestionVO,
 } from '@/apis/mark/marking-organization'
 import type { WholeQuestionForm } from '@/composables/useWholePaperGallery'
+import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grading-experience-reference-match-mode-enum'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import { ref, watch } from 'vue'
+import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import { GradingExperienceReferenceMatchModeDescription } from '@/types/enums/grading-experience-reference-match-mode-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'MarkingScorePanel' })
 
@@ -297,10 +327,14 @@ const props = defineProps<{
   canRescoreQuestionView: boolean
   wholeQuestions: QuestionMarkingGroupQuestionVO[]
   rescoringGradeResultId: string | null
-  getWholeQuestionForm: (questionTemplateId: string) => WholeQuestionForm
-  isWholeQuestionScored: (questionTemplateId: string) => boolean
+  getWholeQuestionForm: (layoutQuestionId: string) => WholeQuestionForm
+  isWholeQuestionScored: (layoutQuestionId: string) => boolean
   isWholeQuestionAiScorePending: (question: QuestionMarkingGroupQuestionVO) => boolean
   canRescoreWholeQuestion: (question: QuestionMarkingGroupQuestionVO) => boolean
+  experienceAssistApplied?: boolean
+  experienceAssistSourceExamName?: string
+  experienceAssistConsistencyRate?: number
+  experienceAssistMatchMode?: GradingExperienceReferenceMatchModeCode
 }>()
 
 const emit = defineEmits<{
@@ -315,12 +349,19 @@ const emit = defineEmits<{
   (e: 'rescore-question'): void
   (e: 'rescore-whole', question: QuestionMarkingGroupQuestionVO): void
   (e: 'open-ai-history'): void
+  (e: 'open-ai-history-from-badge'): void
+  (e: 'open-ai-history-from-whole-question', question: QuestionMarkingGroupQuestionVO): void
   (e: 'fill-ai-score', question: QuestionMarkingGroupQuestionVO): void
   (e: 'accept-ai-score', question: QuestionMarkingGroupQuestionVO, index: number): void
   (e: 'focus-page', question: QuestionMarkingGroupQuestionVO): void
   (e: 'whole-question-enter', index: number): void
   (e: 'set-score-input-ref', el: unknown, index: number): void
 }>()
+
+function matchModeLabel(mode: GradingExperienceReferenceMatchModeCode): string {
+  return strictEnumLabel(GradingExperienceReferenceMatchModeDescription, mode, '定标匹配方式')
+}
+
 const innerFormRef = ref<FormInstance>()
 const innerScoreInputRef = ref<{ focus?: () => void } | null>(null)
 
@@ -439,6 +480,12 @@ function quickDigitScores(fullScore: number): number[] {
   &__ai-pending {
     margin-bottom: 8px;
     font-size: 13px;
+  }
+
+  &__match-mode {
+    margin: 0;
+    font-size: 12px;
+    color: var(--dp-text-secondary, #64748b);
   }
 }
 </style>

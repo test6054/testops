@@ -1,3 +1,5 @@
+import type { SemesterCode } from '@/types/enums/semester-enum'
+
 /**
  * 统计数据类型定义
  *
@@ -14,7 +16,7 @@ export interface StudentWorkspaceVO {
   studentName: string
   avatarUrl?: string
   classInfo?: StudentClassInfo
-  semester?: string
+  semester?: SemesterCode
 
   // 任务统计（前端卡片使用）
   totalTasks?: number

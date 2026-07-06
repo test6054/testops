@@ -1,32 +1,34 @@
-import type { AgentWireJsonObject } from './scanner-agent-local-wire'
-import type {
-  ExamScannerKioskContextVO,
-  ExamScannerScanConfigVO,
-  ScannerKioskScanMode,
-} from './scanner-kiosk'
-import { runContractGuard, throwUserFacing } from '@/utils/contract-guard'
+import type { ExamScannerKioskContextVO, ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
+import type { AgentDiagnosticStatusCode } from '@/types/enums/agent-diagnostic-status-enum'
+import type { AgentHealthStatusCode } from '@/types/enums/agent-health-status-enum'
+import type { AgentUpdateStatusCode } from '@/types/enums/agent-update-status-enum'
+import type { ArchiveScanBatchModeCode } from '@/types/enums/archive-scan-batch-mode-enum'
+import type { DirectScanProviderChainCode } from '@/types/enums/direct-scan-provider-chain-enum'
+import type { LocalScanJobStatusCode } from '@/types/enums/local-scan-job-status-enum'
+import type { LocalScanPageStatusCode } from '@/types/enums/local-scan-page-status-enum'
+import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
+import type { ScannerBusinessSceneCode } from '@/types/enums/scanner-business-scene-enum'
+import { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import {
-  LOCAL_AGENT_WIRE_ERROR,
-  requireAgentWireBoolean,
-  requireAgentWireInt32,
-  requireAgentWireInt64,
-  requireAgentWireNullableString,
-  requireAgentWireObject,
-  requireAgentWireString,
-  requireAgentWireStringArray,
-  requireOptionalAgentWireInt32,
-  requireOptionalAgentWireString,
-} from './scanner-agent-local-wire'
+  readAgentHealthResponse,
+  readAgentSetupContextResponse,
+  readBooleanResult,
+  readKioskBrowserAuthResponse,
+  readLocalAgentResponseData,
+  readLocalScannerAgentInstallUpdateResponse,
+  readScanJobListResponse,
+  readScanJobResponse,
+  readScannerAgentActivateResponse,
+  readScannerListResponse,
+} from '@/wire/mark/scanner-agent-local-codec'
 
 const DEFAULT_AGENT_BASE_URL = 'http://127.0.0.1:18761'
 export const LOCAL_AGENT_UNAVAILABLE_ERROR = '本地扫描服务未连接，请确认一体机组件已启动'
-const LOCAL_AGENT_RESPONSE_ERROR = LOCAL_AGENT_WIRE_ERROR
-const LOCAL_AGENT_REQUEST_ERROR = '本地扫描服务处理失败，请检查扫描服务后重试'
 
-type LocalAgentJsonValue
+export type LocalAgentJsonValue
   = string | number | boolean | null | LocalAgentJsonObject | LocalAgentJsonValue[]
 
-interface LocalAgentJsonObject {
+export interface LocalAgentJsonObject {
   [key: string]: LocalAgentJsonValue | undefined
 }
 
@@ -39,13 +41,13 @@ export interface LocalApiResult {
 }
 
 export interface AgentHealthResponse {
-  status: AgentHealthStatus
+  status: AgentHealthStatusCode
   agentVersion: string
   machineCode: string
   bound: boolean
   scannerConnected: boolean
   pendingUploadJobs: number
-  diagnosticStatus: AgentDiagnosticStatus
+  diagnosticStatus: AgentDiagnosticStatusCode
   diagnosticMessage: string
   /** 服务端要求 Agent / WebView2 客户端升级时为 true */
   upgradeRequired: boolean
@@ -68,7 +70,7 @@ export interface AgentHealthResponse {
   /** 服务端是否公告了可下载的 Agent 更新包 */
   updateAvailable: boolean
   /** 本地更新包状态 */
-  updateStatus: AgentUpdateStatus
+  updateStatus: AgentUpdateStatusCode
   /** 可更新或已下载的 Agent 版本号 */
   updatePackageVersion: string
   /** 更新包文件名 */
@@ -81,30 +83,23 @@ export interface AgentHealthResponse {
   updateInstallable: boolean
   /** 是否存在仍占用工作台、应阻断重新激活的本地或服务端扫描任务 */
   workspaceBlocked: boolean
-  /** 本地 SCANNING / PAUSED 等仍占用工作台的任务（旧 Agent 无 workspaceBlocked 时的兜底） */
-  localWorkspaceBlocked: boolean
 }
 
-export type AgentHealthStatus = 'RUNNING'
-
-export const AGENT_HEALTH_STATUS_LABEL: Record<AgentHealthStatus, string> = {
-  RUNNING: '运行中',
-}
-
-export type AgentDiagnosticStatus = 'OK' | 'WARNING'
-
-export type AgentUpdateStatus
-  = 'NONE' | 'AVAILABLE' | 'DOWNLOADING' | 'DOWNLOADED' | 'INSTALLING' | 'INSTALLED' | 'FAILED'
-
-export const AGENT_UPDATE_STATUS_LABEL: Record<AgentUpdateStatus, string> = {
-  NONE: '无更新',
-  AVAILABLE: '可下载',
-  DOWNLOADING: '下载中',
-  DOWNLOADED: '已下载',
-  INSTALLING: '安装中',
-  INSTALLED: '已安装',
-  FAILED: '更新失败',
-}
+export {
+  AgentDiagnosticStatusCode,
+  AgentDiagnosticStatusDescription,
+  ALL_AGENT_DIAGNOSTIC_STATUS_CODES,
+} from '@/types/enums/agent-diagnostic-status-enum'
+export {
+  AgentHealthStatusCode,
+  AgentHealthStatusDescription,
+  ALL_AGENT_HEALTH_STATUS_CODES,
+} from '@/types/enums/agent-health-status-enum'
+export {
+  AgentUpdateStatusCode,
+  AgentUpdateStatusDescription,
+  ALL_AGENT_UPDATE_STATUS_CODES,
+} from '@/types/enums/agent-update-status-enum'
 
 export interface LocalScannerAgentInstallUpdateResponse {
   installing: boolean
@@ -112,36 +107,47 @@ export interface LocalScannerAgentInstallUpdateResponse {
   packageFileName: string
 }
 
-export type LocalScanJobStatus
-  = | 'CREATED'
-    | 'SCANNING'
-    | 'PAUSED'
-    | 'READYTOUPLOAD'
-    | 'UPLOADING'
-    | 'REPORTED'
-    | 'FAILED'
-    | 'RETRYING'
-    | 'CANCELLED'
+export {
+  ALL_DIRECT_SCAN_PROVIDER_CHAIN_CODES,
+  DirectScanProviderChainCode,
+} from '@/types/enums/direct-scan-provider-chain-enum'
+export {
+  ALL_LOCAL_SCAN_JOB_STATUS_CODES,
+  LocalScanJobStatusCode,
+  LocalScanJobStatusDescription,
+} from '@/types/enums/local-scan-job-status-enum'
 
-export type LocalScanPageStatus
-  = 'CAPTURED' | 'PREPROCESSED' | 'UPLOADING' | 'UPLOADED' | 'FAILED' | 'DELETED'
+export {
+  ALL_LOCAL_SCAN_PAGE_STATUS_CODES,
+  KioskSyntheticScanPageStatusCode,
+  KioskSyntheticScanPageStatusDescription,
+  LocalScanPageStatusCode,
+  LocalScanPageStatusDescription,
+} from '@/types/enums/local-scan-page-status-enum'
+export {
+  ALL_SCANNER_BUSINESS_SCENE_CODES,
+  ScannerBusinessSceneCode,
+} from '@/types/enums/scanner-business-scene-enum'
 
 export type LocalScanPageSide = 'FRONT' | 'BACK'
 
-/** 统一文档采集业务场景；与 edu-mark DocumentBusinessScene 一致 */
-export type ScannerBusinessScene
-  = | 'EXAM_DIRECT_SCAN'
-    | 'EXAM_ARCHIVE'
-    | 'COURSE_ASSESSMENT_ARCHIVE'
-    | 'TEACHER_PORTFOLIO'
-    | 'FULLTEXT_IMPORT'
+/** 本地扫描 Agent 输出容器格式。 */
+export enum ScannerOutputContainerFormat {
+  PDF = 'PDF',
+}
 
-/** 试卷直扫互斥识别链路；与 edu-mark DirectScanProviderChain 一致 */
-export type DirectScanProviderChain = 'BAIDU_QWEN' | 'PADDLE_LOCAL'
-
-export type ScannerOutputContainerFormat = 'PDF'
-export type ScannerPageImageFormat = 'PNG' | 'JPEG'
-export type ScannerBlankPagePolicy = 'BACK_BLANK' | 'SEPARATOR' | 'REPORT_ONLY' | 'REVIEW_REQUIRED'
+/** 本地扫描 Agent 逐页图像格式。 */
+export enum ScannerPageImageFormat {
+  PNG = 'PNG',
+  JPEG = 'JPEG',
+}
+/** 本地扫描 Agent 空白页处置策略。 */
+export enum ScannerBlankPagePolicyCode {
+  BACK_BLANK = 'BACK_BLANK',
+  SEPARATOR = 'SEPARATOR',
+  REPORT_ONLY = 'REPORT_ONLY',
+  REVIEW_REQUIRED = 'REVIEW_REQUIRED',
+}
 
 export interface ScannerDeviceInfo {
   localScannerId: string
@@ -185,7 +191,7 @@ export interface KioskBrowserAuthResponse {
   gatewayBaseUrl: string
 }
 
-export interface ScannerAgentActivateResponse {
+export interface LocalScannerAgentActivateResponse {
   scannerDeviceId: string
   scannerStationId: string
   tenantId?: string
@@ -263,25 +269,25 @@ export interface StartScanJobRequest {
   context: ExamScannerKioskContextVO
   localScannerId: string
   /** 扫描任务类型，默认 EXAM_MARKING */
-  taskKind?: 'EXAM_MARKING' | 'EXAM_ARCHIVE' | 'PORTFOLIO_COLLECT'
+  taskKind?: ScanTaskKindCode
   /** 后端 work-order/start 签发的批次外部号 */
   batchExternalNo: string
   /** 后端 work-order/start 签发的扫描报告 ID */
   reportId: string
   /** 统一文档采集业务场景 */
-  businessScene: ScannerBusinessScene
+  businessScene: ScannerBusinessSceneCode
   /** 业务对象 ID；试卷直扫默认使用 examId */
   businessRefId: string
   /** 试卷直扫识别链路；非 EXAM_DIRECT_SCAN 场景不传 */
-  providerChain?: DirectScanProviderChain
+  providerChain?: DirectScanProviderChainCode
   /** 扫描产物容器格式，首期固定 PDF */
   outputContainerFormat: ScannerOutputContainerFormat
   /** 逐页图像格式 */
   pageImageFormat: ScannerPageImageFormat
   /** 空白页处置策略，禁止 SILENT_DROP */
-  blankPagePolicy: ScannerBlankPagePolicy
+  blankPagePolicy: ScannerBlankPagePolicyCode
   expectedPages?: number
-  scanMode: ScannerKioskScanMode
+  scanMode: ScannerKioskScanModeCode
   targetPageNo?: number
   supplementReason?: string
   /**
@@ -296,18 +302,18 @@ export interface StartScanJobRequest {
 
 /** EXAM_ARCHIVE / PORTFOLIO_COLLECT 文档采集开扫请求（不依赖考试 kiosk 上下文）。 */
 export interface DocumentStartScanJobRequest {
-  taskKind: 'EXAM_ARCHIVE' | 'PORTFOLIO_COLLECT'
+  taskKind: ScanTaskKindCode
   localScannerId: string
   batchExternalNo: string
   reportId: string
-  businessScene: ScannerBusinessScene
+  businessScene: ScannerBusinessSceneCode
   businessRefId: string
   scannerDeviceId: string
   scannerStationId: string
-  archiveBatchMode?: 'MERGED' | 'PER_PAGE'
+  archiveBatchMode?: ArchiveScanBatchModeCode
   outputContainerFormat: ScannerOutputContainerFormat
   pageImageFormat: ScannerPageImageFormat
-  blankPagePolicy: ScannerBlankPagePolicy
+  blankPagePolicy: ScannerBlankPagePolicyCode
   resolvedScanConfig: ExamScannerScanConfigVO
 }
 
@@ -317,7 +323,7 @@ export interface ScanPageInfo {
   sheetNo: number
   pageSide: LocalScanPageSide
   pageSideLabel: string
-  status: LocalScanPageStatus
+  status: LocalScanPageStatusCode
   /** Agent ScanPageInfo.SizeBytes（C# long），HTTP 边界为十进制字符串 */
   sizeBytes: string
   diagnostic?: string
@@ -337,12 +343,12 @@ export interface ScanJobResponse {
   scannerStationId: string
   batchExternalNo: string
   scanBatchId?: string
-  scanMode: ScannerKioskScanMode
+  scanMode: ScannerKioskScanModeCode
   targetPageNo?: number
   supplementReason?: string
   /** 是否替换目标页（仅 SUPPLEMENT 模式生效） */
   replaceTargetPage: boolean
-  status: LocalScanJobStatus
+  status: LocalScanJobStatusCode
   duplexMode: ExamScannerScanConfigVO['duplexMode']
   scannedPages: number
   uploadedPages: number
@@ -377,22 +383,22 @@ export function getLocalAgentBaseUrl() {
 
 export async function getAgentHealth(): Promise<AgentHealthResponse> {
   const payload = await localAgentGet('/api/agent/health')
-  return normalizeAgentPayload(() => validateAgentHealthResponse(payload))
+  return readAgentHealthResponse(payload)
 }
 
 export async function getAgentSetupContext(): Promise<AgentSetupContextResponse> {
   const payload = await localAgentGet('/api/agent/setup-context')
-  return normalizeAgentPayload(() => validateAgentSetupContextResponse(payload))
+  return readAgentSetupContextResponse(payload)
 }
 
 export async function getAgentKioskBrowserAuth(): Promise<KioskBrowserAuthResponse> {
   const payload = await localAgentGet('/api/agent/kiosk-browser-auth')
-  return normalizeAgentPayload(() => validateKioskBrowserAuthResponse(payload))
+  return readKioskBrowserAuthResponse(payload)
 }
 
 export async function listLocalScanners(): Promise<ScannerListResponse> {
   const payload = await localAgentGet('/api/scanners')
-  return normalizeAgentPayload(() => validateScannerListResponse(payload))
+  return readScannerListResponse(payload)
 }
 
 export async function setPreferredLocalScanner(localScannerId: string): Promise<void> {
@@ -401,19 +407,19 @@ export async function setPreferredLocalScanner(localScannerId: string): Promise<
 
 export async function activateLocalAgent(
   request: ActivateLocalAgentRequest,
-): Promise<ScannerAgentActivateResponse> {
+): Promise<LocalScannerAgentActivateResponse> {
   const payload = await localAgentPost('/api/agent/activate', request)
-  return normalizeAgentPayload(() => validateScannerAgentActivateResponse(payload))
+  return readScannerAgentActivateResponse(payload)
 }
 
 export async function installAgentUpdate(): Promise<LocalScannerAgentInstallUpdateResponse> {
   const payload = await localAgentPost('/api/agent/update/install', {})
-  return normalizeAgentPayload(() => validateLocalScannerAgentInstallUpdateResponse(payload))
+  return readLocalScannerAgentInstallUpdateResponse(payload)
 }
 
 export async function startScanJob(request: StartScanJobRequest): Promise<ScanJobResponse> {
   const payload = await localAgentPost('/api/scan-jobs/start', request)
-  return normalizeAgentPayload(() => validateScanJobResponse(payload))
+  return readScanJobResponse(payload)
 }
 
 export async function startDocumentScanJob(
@@ -421,20 +427,20 @@ export async function startDocumentScanJob(
 ): Promise<ScanJobResponse> {
   const payload = await localAgentPost('/api/scan-jobs/start', {
     ...request,
-    scanMode: 'DIRECT',
+    scanMode: ScannerKioskScanModeCode.DIRECT,
     replaceTargetPage: false,
   })
-  return normalizeAgentPayload(() => validateScanJobResponse(payload))
+  return readScanJobResponse(payload)
 }
 
 export async function getScanJob(scanJobId: string): Promise<ScanJobResponse> {
   const payload = await localAgentGet(`/api/scan-jobs/${encodeURIComponent(scanJobId)}`)
-  return normalizeAgentPayload(() => validateScanJobResponse(payload))
+  return readScanJobResponse(payload)
 }
 
 export async function listScanJobs(params: ListScanJobsParams): Promise<ScanJobListResponse> {
   if (!params.examId.trim() || !params.scannerDeviceId.trim() || !params.scannerStationId.trim()) {
-    throwUserFacing('当前考试、扫描设备或扫描站点缺失，无法恢复本地扫描任务')
+    throw new Error('当前考试、扫描设备或扫描站点缺失，无法恢复本地扫描任务')
   }
   const query = new URLSearchParams()
   query.set('examId', params.examId.trim())
@@ -444,12 +450,12 @@ export async function listScanJobs(params: ListScanJobsParams): Promise<ScanJobL
     query.set('includeTerminal', String(params.includeTerminal))
   }
   const payload = await localAgentGet(`/api/scan-jobs?${query.toString()}`)
-  return normalizeAgentPayload(() => validateScanJobListResponse(payload))
+  return readScanJobListResponse(payload)
 }
 
 export async function cancelScanJob(scanJobId: string): Promise<ScanJobResponse> {
   const payload = await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/cancel`, {})
-  return normalizeAgentPayload(() => validateScanJobResponse(payload))
+  return readScanJobResponse(payload)
 }
 
 export async function retryUpload(scanJobId: string): Promise<ScanJobResponse> {
@@ -457,7 +463,7 @@ export async function retryUpload(scanJobId: string): Promise<ScanJobResponse> {
     `/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-upload`,
     {},
   )
-  return normalizeAgentPayload(() => validateScanJobResponse(payload))
+  return readScanJobResponse(payload)
 }
 
 /**
@@ -466,7 +472,7 @@ export async function retryUpload(scanJobId: string): Promise<ScanJobResponse> {
  */
 export async function pauseScanJob(scanJobId: string): Promise<ScanJobResponse> {
   const payload = await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/pause`, {})
-  return normalizeAgentPayload(() => validateScanJobResponse(payload))
+  return readScanJobResponse(payload)
 }
 
 /**
@@ -474,7 +480,7 @@ export async function pauseScanJob(scanJobId: string): Promise<ScanJobResponse> 
  */
 export async function resumeScanJob(scanJobId: string): Promise<ScanJobResponse> {
   const payload = await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/resume`, {})
-  return normalizeAgentPayload(() => validateScanJobResponse(payload))
+  return readScanJobResponse(payload)
 }
 
 /**
@@ -486,7 +492,7 @@ export async function endBatch(scanJobId: string): Promise<ScanJobResponse> {
     `/api/scan-jobs/${encodeURIComponent(scanJobId)}/end-batch`,
     {},
   )
-  return normalizeAgentPayload(() => validateScanJobResponse(payload))
+  return readScanJobResponse(payload)
 }
 
 /**
@@ -498,7 +504,7 @@ export async function retryCommit(scanJobId: string): Promise<ScanJobResponse> {
     `/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-commit`,
     {},
   )
-  return normalizeAgentPayload(() => validateScanJobResponse(payload))
+  return readScanJobResponse(payload)
 }
 
 /**
@@ -507,7 +513,7 @@ export async function retryCommit(scanJobId: string): Promise<ScanJobResponse> {
  */
 export async function deleteScanJob(scanJobId: string): Promise<boolean> {
   const payload = await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/delete`, {})
-  return normalizeAgentPayload(() => validateBooleanResult(payload))
+  return readBooleanResult(payload)
 }
 
 /**
@@ -521,7 +527,7 @@ export async function discardScanJob(scanJobId: string, discardReason: string): 
   const payload = await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/discard`, {
     discardReason,
   })
-  return normalizeAgentPayload(() => validateBooleanResult(payload))
+  return readBooleanResult(payload)
 }
 
 export function getPageImageUrl(scanJobId: string, pageNo: number): string {
@@ -532,7 +538,7 @@ async function localAgentGet(path: string): Promise<LocalAgentJsonValue> {
   const response = await requestLocalAgent(path, {
     method: 'GET',
   })
-  return await parseLocalAgentResponse(response)
+  return await readLocalAgentResponseData(response, tryParseBusyError)
 }
 
 async function localAgentPost(path: string, requestBody: object): Promise<LocalAgentJsonValue> {
@@ -543,444 +549,14 @@ async function localAgentPost(path: string, requestBody: object): Promise<LocalA
     },
     body: JSON.stringify(requestBody),
   })
-  return await parseLocalAgentResponse(response)
+  return await readLocalAgentResponseData(response, tryParseBusyError)
 }
 
 async function requestLocalAgent(path: string, init: RequestInit): Promise<Response> {
   const agentBaseUrl = getLocalAgentBaseUrl()
   try {
     return await fetch(`${agentBaseUrl}${path}`, init)
-  } catch (error) {
-    if (isFetchNetworkFailure(error)) {
-      throw new LocalAgentUnavailableError(agentBaseUrl)
-    }
-    throw error
-  }
-}
-
-function isFetchNetworkFailure(error: unknown): boolean {
-  return error instanceof TypeError || error instanceof DOMException
-}
-
-async function parseLocalAgentResponse(response: Response): Promise<LocalAgentJsonValue> {
-  const text = await response.text()
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(text)
   } catch {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
+    throw new LocalAgentUnavailableError(agentBaseUrl)
   }
-  if (!isLocalAgentJsonValue(parsed)) {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  const jsonPayload = parsed
-  const envelope = normalizeAgentPayload(() => validateLocalApiResult(jsonPayload, response))
-  if (!response.ok || !envelope.success) {
-    const message = envelope.message
-    const busyError = tryParseBusyError(message)
-    if (busyError) {
-      throw busyError
-    }
-    throwUserFacing(message || LOCAL_AGENT_REQUEST_ERROR)
-  }
-  if (!Object.hasOwn(envelope, 'data')) {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  const data = envelope.data
-  if (data === undefined) {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return data
-}
-
-function normalizeAgentPayload<T>(action: () => T): T {
-  let result!: T
-  runContractGuard(() => {
-    result = action()
-  }, LOCAL_AGENT_RESPONSE_ERROR)
-  return result
-}
-
-function requireObject(value: LocalAgentJsonValue): AgentWireJsonObject {
-  return requireAgentWireObject(value)
-}
-
-function isLocalAgentJsonValue(value: unknown): value is LocalAgentJsonValue {
-  if (
-    value === null
-    || typeof value === 'string'
-    || typeof value === 'number'
-    || typeof value === 'boolean'
-  ) {
-    return true
-  }
-  if (Array.isArray(value)) {
-    return value.every(isLocalAgentJsonValue)
-  }
-  if (typeof value !== 'object') {
-    return false
-  }
-  return Object.values(value).every(isLocalAgentJsonValue)
-}
-
-function requireScanMode(value: AgentWireJsonObject, field: string): ScannerKioskScanMode {
-  const fieldValue = value[field]
-  if (fieldValue !== 'DIRECT' && fieldValue !== 'SUPPLEMENT') {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return fieldValue
-}
-
-function requireScannerDuplexMode(
-  value: AgentWireJsonObject,
-  field: string,
-): ExamScannerScanConfigVO['duplexMode'] {
-  const fieldValue = value[field]
-  if (fieldValue !== 'SIMPLEX' && fieldValue !== 'DUPLEX') {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return fieldValue
-}
-
-function requireAgentHealthStatus(value: AgentWireJsonObject, field: string): AgentHealthStatus {
-  const fieldValue = value[field]
-  if (fieldValue !== 'RUNNING') {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return fieldValue
-}
-
-function requireAgentDiagnosticStatus(
-  value: AgentWireJsonObject,
-  field: string,
-): AgentDiagnosticStatus {
-  const fieldValue = value[field]
-  if (fieldValue !== 'OK' && fieldValue !== 'WARNING') {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return fieldValue
-}
-
-function requireScanJobStatus(value: AgentWireJsonObject, field: string): LocalScanJobStatus {
-  const fieldValue = value[field]
-  if (
-    fieldValue !== 'CREATED'
-    && fieldValue !== 'SCANNING'
-    && fieldValue !== 'PAUSED'
-    && fieldValue !== 'READYTOUPLOAD'
-    && fieldValue !== 'UPLOADING'
-    && fieldValue !== 'REPORTED'
-    && fieldValue !== 'FAILED'
-    && fieldValue !== 'RETRYING'
-    && fieldValue !== 'CANCELLED'
-  ) {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return fieldValue
-}
-
-function requireScanPageStatus(value: AgentWireJsonObject, field: string): LocalScanPageStatus {
-  const fieldValue = value[field]
-  if (
-    fieldValue !== 'CAPTURED'
-    && fieldValue !== 'PREPROCESSED'
-    && fieldValue !== 'UPLOADING'
-    && fieldValue !== 'UPLOADED'
-    && fieldValue !== 'FAILED'
-    && fieldValue !== 'DELETED'
-  ) {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return fieldValue
-}
-
-function requireScanPageSide(value: AgentWireJsonObject, field: string): LocalScanPageSide {
-  const fieldValue = value[field]
-  if (fieldValue !== 'FRONT' && fieldValue !== 'BACK') {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return fieldValue
-}
-
-function validateLocalApiResult(value: LocalAgentJsonValue, response: Response): LocalApiResult {
-  const result = requireObject(value)
-  const envelope: LocalApiResult = {
-    success: requireAgentWireBoolean(result, 'success'),
-    code: requireAgentWireString(result, 'code'),
-    message: requireAgentWireString(result, 'message'),
-    traceId: requireAgentWireString(result, 'traceId'),
-  }
-  if (Object.hasOwn(result, 'data')) {
-    envelope.data = result.data
-  }
-  if (response.ok && envelope.success && !Object.hasOwn(result, 'data')) {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return envelope
-}
-
-function requireAgentUpdateStatus(value: AgentWireJsonObject, field: string): AgentUpdateStatus {
-  const fieldValue = value[field]
-  if (
-    fieldValue !== 'NONE'
-    && fieldValue !== 'AVAILABLE'
-    && fieldValue !== 'DOWNLOADING'
-    && fieldValue !== 'DOWNLOADED'
-    && fieldValue !== 'INSTALLING'
-    && fieldValue !== 'INSTALLED'
-    && fieldValue !== 'FAILED'
-  ) {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return fieldValue
-}
-
-function validateLocalScannerAgentInstallUpdateResponse(
-  value: LocalAgentJsonValue,
-): LocalScannerAgentInstallUpdateResponse {
-  const result = requireObject(value)
-  return {
-    installing: requireAgentWireBoolean(result, 'installing'),
-    packageVersion: requireAgentWireString(result, 'packageVersion'),
-    packageFileName: requireAgentWireString(result, 'packageFileName'),
-  }
-}
-
-function validateAgentHealthResponse(value: LocalAgentJsonValue): AgentHealthResponse {
-  const result = requireObject(value)
-  return {
-    status: requireAgentHealthStatus(result, 'status'),
-    agentVersion: requireAgentWireString(result, 'agentVersion'),
-    machineCode: requireAgentWireString(result, 'machineCode'),
-    bound: requireAgentWireBoolean(result, 'bound'),
-    scannerConnected: requireAgentWireBoolean(result, 'scannerConnected'),
-    pendingUploadJobs: requireAgentWireInt32(result, 'pendingUploadJobs'),
-    diagnosticStatus: requireAgentDiagnosticStatus(result, 'diagnosticStatus'),
-    diagnosticMessage: requireAgentWireString(result, 'diagnosticMessage'),
-    upgradeRequired: requireAgentWireBoolean(result, 'upgradeRequired'),
-    minimumAgentVersion: requireAgentWireString(result, 'minimumAgentVersion'),
-    latestAgentVersion: requireAgentWireString(result, 'latestAgentVersion'),
-    minimumClientVersion: requireAgentWireString(result, 'minimumClientVersion'),
-    latestClientVersion: requireAgentWireString(result, 'latestClientVersion'),
-    scanAllowed: requireAgentWireBoolean(result, 'scanAllowed'),
-    tokenResetRequired: requireAgentWireBoolean(result, 'tokenResetRequired'),
-    rebindRequired: requireAgentWireBoolean(result, 'rebindRequired'),
-    lastHeartbeatAt: requireAgentWireNullableString(result, 'lastHeartbeatAt'),
-    updateAvailable: requireAgentWireBoolean(result, 'updateAvailable'),
-    updateStatus: requireAgentUpdateStatus(result, 'updateStatus'),
-    updatePackageVersion: requireAgentWireString(result, 'updatePackageVersion'),
-    updatePackageFileName: requireAgentWireString(result, 'updatePackageFileName'),
-    updateDownloadedAt: requireAgentWireNullableString(result, 'updateDownloadedAt'),
-    updateDiagnosticMessage: requireAgentWireString(result, 'updateDiagnosticMessage'),
-    updateInstallable: requireAgentWireBoolean(result, 'updateInstallable'),
-    workspaceBlocked: 'workspaceBlocked' in result && result.workspaceBlocked === true,
-    localWorkspaceBlocked:
-      'localWorkspaceBlocked' in result && result.localWorkspaceBlocked === true,
-  }
-}
-
-function validateScannerListResponse(value: LocalAgentJsonValue): ScannerListResponse {
-  const result = requireObject(value)
-  const devices = result.devices
-  if (!Array.isArray(devices)) {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return {
-    devices: devices.map((item) => validateScannerDeviceInfo(item)),
-  }
-}
-
-function validateScannerDeviceInfo(value: LocalAgentJsonValue): ScannerDeviceInfo {
-  const result = requireObject(value)
-  const scanner: ScannerDeviceInfo = {
-    localScannerId: requireAgentWireString(result, 'localScannerId'),
-    displayName: requireAgentWireString(result, 'displayName'),
-    driverType: requireAgentWireString(result, 'driverType'),
-    supportsAdf: requireAgentWireBoolean(result, 'supportsAdf'),
-    supportsDuplex: requireAgentWireBoolean(result, 'supportsDuplex'),
-    available: requireAgentWireBoolean(result, 'available'),
-  }
-  const maxDpi = requireOptionalAgentWireInt32(result, 'maxDpi')
-  if (maxDpi !== undefined) {
-    scanner.maxDpi = maxDpi
-  }
-  const diagnostic = requireOptionalAgentWireString(result, 'diagnostic')
-  if (diagnostic !== undefined) {
-    scanner.diagnostic = diagnostic
-  }
-  return scanner
-}
-
-function validateAgentSetupContextResponse(value: LocalAgentJsonValue): AgentSetupContextResponse {
-  const result = requireObject(value)
-  const payload: AgentSetupContextResponse = {
-    defaultGatewayBaseUrl: requireAgentWireString(result, 'defaultGatewayBaseUrl'),
-    bound: requireAgentWireBoolean(result, 'bound'),
-  }
-  const scannerDeviceId = requireOptionalAgentWireString(result, 'scannerDeviceId')
-  if (scannerDeviceId !== undefined) {
-    payload.scannerDeviceId = scannerDeviceId
-  }
-  const scannerStationId = requireOptionalAgentWireString(result, 'scannerStationId')
-  if (scannerStationId !== undefined) {
-    payload.scannerStationId = scannerStationId
-  }
-  const deviceName = requireOptionalAgentWireString(result, 'deviceName')
-  if (deviceName !== undefined) {
-    payload.deviceName = deviceName
-  }
-  const gatewayBaseUrl = requireOptionalAgentWireString(result, 'gatewayBaseUrl')
-  if (gatewayBaseUrl !== undefined) {
-    payload.gatewayBaseUrl = gatewayBaseUrl
-  }
-  const activatedAt = requireOptionalAgentWireString(result, 'activatedAt')
-  if (activatedAt !== undefined) {
-    payload.activatedAt = activatedAt
-  }
-  const preferredLocalScannerId = requireOptionalAgentWireString(result, 'preferredLocalScannerId')
-  if (preferredLocalScannerId !== undefined) {
-    payload.preferredLocalScannerId = preferredLocalScannerId
-  }
-  return payload
-}
-
-function validateKioskBrowserAuthResponse(value: LocalAgentJsonValue): KioskBrowserAuthResponse {
-  const result = requireObject(value)
-  const payload: KioskBrowserAuthResponse = {
-    pushAuthorizationHeader: requireAgentWireString(result, 'pushAuthorizationHeader'),
-    scannerDeviceId: requireAgentWireString(result, 'scannerDeviceId'),
-    scannerStationId: requireAgentWireString(result, 'scannerStationId'),
-    deviceName: requireAgentWireString(result, 'deviceName'),
-    gatewayBaseUrl: requireAgentWireString(result, 'gatewayBaseUrl'),
-  }
-  const tenantId = requireOptionalAgentWireString(result, 'tenantId')
-  if (tenantId !== undefined) {
-    payload.tenantId = tenantId
-  }
-  return payload
-}
-
-function validateScannerAgentActivateResponse(
-  value: LocalAgentJsonValue,
-): ScannerAgentActivateResponse {
-  const result = requireObject(value)
-  const payload: ScannerAgentActivateResponse = {
-    scannerDeviceId: requireAgentWireString(result, 'scannerDeviceId'),
-    scannerStationId: requireAgentWireString(result, 'scannerStationId'),
-    deviceName: requireAgentWireString(result, 'deviceName'),
-    gatewayBaseUrl: requireAgentWireString(result, 'gatewayBaseUrl'),
-    pushPageUrl: requireAgentWireString(result, 'pushPageUrl'),
-    pushCommitUrl: requireAgentWireString(result, 'pushCommitUrl'),
-    pushToken: requireAgentWireString(result, 'pushToken'),
-    pushAuthorizationHeader: requireAgentWireString(result, 'pushAuthorizationHeader'),
-    storageUploadUrl: requireAgentWireString(result, 'storageUploadUrl'),
-    storageUploadToken: requireAgentWireString(result, 'storageUploadToken'),
-    storageUploadAuthorizationHeader: requireAgentWireString(
-      result,
-      'storageUploadAuthorizationHeader',
-    ),
-    kioskLockEnabled: requireAgentWireBoolean(result, 'kioskLockEnabled'),
-    activatedAt: requireAgentWireString(result, 'activatedAt'),
-    minimumAgentVersion: requireAgentWireString(result, 'minimumAgentVersion'),
-    latestAgentVersion: requireAgentWireString(result, 'latestAgentVersion'),
-  }
-  const tenantId = requireOptionalAgentWireString(result, 'tenantId')
-  if (tenantId !== undefined) {
-    payload.tenantId = tenantId
-  }
-  return payload
-}
-
-function validateScanJobResponse(value: LocalAgentJsonValue): ScanJobResponse {
-  return validateScanJobResponsePayload(value)
-}
-
-function validateScanJobListResponse(value: LocalAgentJsonValue): ScanJobListResponse {
-  const result = requireObject(value)
-  const jobs = result.jobs
-  if (!Array.isArray(jobs)) {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return {
-    jobs: jobs.map((item) => validateScanJobResponsePayload(item)),
-  }
-}
-
-function validateScanJobResponsePayload(value: LocalAgentJsonValue): ScanJobResponse {
-  const result = requireObject(value)
-  const pages = result.pages
-  if (!Array.isArray(pages)) {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  const payload: ScanJobResponse = {
-    scanJobId: requireAgentWireString(result, 'scanJobId'),
-    examId: requireAgentWireString(result, 'examId'),
-    declaredClassIds: requireAgentWireStringArray(result, 'declaredClassIds'),
-    scannerDeviceId: requireAgentWireString(result, 'scannerDeviceId'),
-    scannerStationId: requireAgentWireString(result, 'scannerStationId'),
-    batchExternalNo: requireAgentWireString(result, 'batchExternalNo'),
-    scanMode: requireScanMode(result, 'scanMode'),
-    status: requireScanJobStatus(result, 'status'),
-    duplexMode: requireScannerDuplexMode(result, 'duplexMode'),
-    scannedPages: requireAgentWireInt32(result, 'scannedPages'),
-    uploadedPages: requireAgentWireInt32(result, 'uploadedPages'),
-    reported: requireAgentWireBoolean(result, 'reported'),
-    replaceTargetPage: requireAgentWireBoolean(result, 'replaceTargetPage'),
-    message: requireAgentWireString(result, 'message'),
-    pages: pages.map((item) => validateScanPageInfo(item)),
-  }
-  const scanBatchId = requireOptionalAgentWireString(result, 'scanBatchId')
-  if (scanBatchId !== undefined) {
-    payload.scanBatchId = scanBatchId
-  }
-  const targetPageNo = requireOptionalAgentWireInt32(result, 'targetPageNo')
-  if (targetPageNo !== undefined) {
-    payload.targetPageNo = targetPageNo
-  }
-  const supplementReason = requireOptionalAgentWireString(result, 'supplementReason')
-  if (supplementReason !== undefined) {
-    payload.supplementReason = supplementReason
-  }
-  if (result.pageRegisterBlocked === true) {
-    payload.pageRegisterBlocked = true
-    const pageRegisterDiagnostic = requireOptionalAgentWireString(result, 'pageRegisterDiagnostic')
-    if (pageRegisterDiagnostic !== undefined) {
-      payload.pageRegisterDiagnostic = pageRegisterDiagnostic
-    }
-  }
-  return payload
-}
-
-function validateScanPageInfo(value: LocalAgentJsonValue): ScanPageInfo {
-  const result = requireObject(value)
-  const page: ScanPageInfo = {
-    captureSeq: requireAgentWireInt32(result, 'captureSeq'),
-    pageNo: requireAgentWireInt32(result, 'pageNo'),
-    sheetNo: requireAgentWireInt32(result, 'sheetNo'),
-    pageSide: requireScanPageSide(result, 'pageSide'),
-    pageSideLabel: requireAgentWireString(result, 'pageSideLabel'),
-    status: requireScanPageStatus(result, 'status'),
-    sizeBytes: requireAgentWireInt64(result, 'sizeBytes'),
-    capturedAt: requireAgentWireString(result, 'capturedAt'),
-  }
-  const diagnostic = requireOptionalAgentWireString(result, 'diagnostic')
-  if (diagnostic !== undefined) {
-    page.diagnostic = diagnostic
-  }
-  const uploadedAt = requireOptionalAgentWireString(result, 'uploadedAt')
-  if (uploadedAt !== undefined) {
-    page.uploadedAt = uploadedAt
-  }
-  const uploadedFileId = requireOptionalAgentWireString(result, 'uploadedFileId')
-  if (uploadedFileId !== undefined) {
-    page.uploadedFileId = uploadedFileId
-  }
-  return page
-}
-
-function validateBooleanResult(value: LocalAgentJsonValue): boolean {
-  if (typeof value !== 'boolean') {
-    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
-  }
-  return value
 }

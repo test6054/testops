@@ -1,4 +1,4 @@
-import type { AiTaskBusinessType, AiTaskStatus, AiTaskType } from './types'
+import type { AiTaskBusinessTypeCode, AiTaskStatusCode, AiTaskTypeCode } from './types'
 /**
  * AI 任务提交与运维触发 API - 对齐 QualityAiTaskTriggerController。
  *
@@ -13,8 +13,8 @@ const BASE = '/api/quality/ai-task'
  * 后端端点：QualityAiTaskTriggerController#submit
  */
 export interface AiTaskSubmitRequest {
-  taskType: AiTaskType
-  businessType: AiTaskBusinessType
+  taskType: AiTaskTypeCode
+  businessType: AiTaskBusinessTypeCode
   businessId: string
   programId?: string
   trainingPlanId?: string
@@ -27,9 +27,9 @@ export interface AiTaskSubmitRequest {
 }
 
 /** 提交响应 - 严格对齐后端 AiTaskSubmitVO */
-export interface AiTaskSubmitResponseVO {
+export interface AiTaskSubmitVO {
   taskId: string
-  status: AiTaskStatus
+  status: AiTaskStatusCode
 }
 
 /** AI 任务运维重置请求 - 对齐后端 AiTaskResetProcessingRequest */
@@ -39,7 +39,7 @@ export interface AiTaskResetProcessingRequest {
 }
 
 export const aiTaskTriggerApi = {
-  submit: (data: AiTaskSubmitRequest) => http.post<AiTaskSubmitResponseVO>(`${BASE}/submit`, data),
+  submit: (data: AiTaskSubmitRequest) => http.post<AiTaskSubmitVO>(`${BASE}/submit`, data),
   runNow: (id: string) => http.post<void>(`${BASE}/run-now`, { id }),
   resetProcessing: (data: AiTaskResetProcessingRequest) =>
     http.post<void>(`${BASE}/reset-processing`, data),

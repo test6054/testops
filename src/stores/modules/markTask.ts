@@ -30,10 +30,8 @@ import {
   claimMarkingTasks,
   getTeacherClaimContext,
   listMarkingTasks,
-  validateMarkingTaskContract,
-  validateTeacherClaimContextContract,
 } from '@/apis/mark/marking-organization'
-import { validateMarkingTaskStreamEvent } from '@/apis/mark/marking-task-stream'
+import { validateMarkingTaskStreamEvent } from '@/wire/mark/marking-task-stream-wire'
 
 export const useMarkTaskStore = defineStore('markTask', () => {
   /** 当前用户在指定考试下的阅卷任务（按 examId 隔离） */
@@ -70,7 +68,6 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     }
     try {
       const loaded = await listMarkingTasks(request)
-      loaded.forEach(validateMarkingTaskContract)
       tasks.value = loaded
       tasksLoadedExamId.value = request.examId
       return tasks.value
@@ -83,7 +80,6 @@ export const useMarkTaskStore = defineStore('markTask', () => {
 
   async function claimTasks(request: MarkingTaskClaimRequest): Promise<MarkingTaskVO[]> {
     const claimed = await claimMarkingTasks(request)
-    claimed.forEach(validateMarkingTaskContract)
     if (claimed.length > 0) {
       tasks.value = [...claimed, ...tasks.value]
     }
@@ -96,7 +92,6 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     claimContextLoading.value = true
     try {
       const result = await getTeacherClaimContext(request)
-      validateTeacherClaimContextContract(result)
       const next = new Map(claimContextByExam.value)
       next.set(claimContextKey(request.examId, request.markingPhase), result)
       claimContextByExam.value = next
@@ -145,11 +140,12 @@ export const useMarkTaskStore = defineStore('markTask', () => {
       case 'SESSION_RESUMED':
       case 'SESSION_PROGRESS':
         return 'none'
+      default:
+        return 'none'
     }
   }
 
   function upsertTask(task: MarkingTaskVO): void {
-    validateMarkingTaskContract(task)
     const idx = tasks.value.findIndex((item) => item.id === task.id)
     if (idx >= 0) {
       tasks.value[idx] = task

@@ -1,130 +1,137 @@
 <template>
-  <section class="appeal-section">
-    <UiFilterBar
-      variant="plain"
-      v-model="filterModel"
-      :fields="filterFields"
-      search-text="查询"
-      @search="handleSearch"
-      @reset="handleFilterReset"
-    />
+  <WorkbenchSurfaceCard flush class="appeal-section">
+    <template #head>
+      <div class="appeal-section__header">
+        <span class="appeal-section__flow-hint">{{ REVIEW_REQUEST_FLOW_HINT }}</span>
+      </div>
+    </template>
 
-    <UiDataTable
-      class="student-detail-table__data-table"
-      v-model:current="pagination.current"
-      v-model:page-size="pagination.pageSize"
-      :columns="columns"
-      :data-source="rows"
-      :loading="loading"
-      row-key="id"
-      size="small"
-      :total="pagination.total"
-      flat
-      @page-change="handlePageChange"
-    >
-      <template #bodyCell="{ column, index }">
-        <template v-if="column.key === 'reasonType'">
-          {{ formatReasonType(rows[index].reasonType) }}
-        </template>
-        <template v-else-if="column.key === 'student'">
-          <span>{{ formatStudent(rows[index]) }}</span>
-        </template>
-        <template v-else-if="column.key === 'requestStatus'">
-          <UiTag :tone="requestStatusColor(rows[index].requestStatus)">
-            {{ requestStatusLabel(rows[index].requestStatus) }}
-          </UiTag>
-        </template>
-        <template v-else-if="column.key === 'questionRefs'">
-          <span class="ellipsis">{{ formatQuestionRefs(rows[index]) }}</span>
-        </template>
-        <template v-else-if="column.key === 'evidenceFileRefs'">
-          <span class="ellipsis">{{ formatEvidenceRefs(rows[index]) }}</span>
-        </template>
-        <template v-else-if="column.key === 'createTime'">
-          {{ formatDateTime(rows[index].createTime) }}
-        </template>
-        <template v-else-if="column.key === 'reviewTime'">
-          {{ formatDateTime(rows[index].reviewTime) }}
-        </template>
-        <template v-else-if="column.key === 'actions'">
-          <div
-            v-if="canHandleReviewRequest(rows[index].requestStatus)"
-            class="operations-cell"
-            @click.stop
-          >
-            <UiTextAction @click="openHandleModal(rows[index], 'APPROVED')">通过</UiTextAction>
-            <UiTextAction tone="danger" @click="openHandleModal(rows[index], 'REJECTED')">
-              驳回
-            </UiTextAction>
-          </div>
-        </template>
-      </template>
-    </UiDataTable>
-
-    <a-modal
-      v-model:open="handleOpen"
-      :title="handleTitle"
-      :confirm-loading="handling"
-      :mask-closable="false"
-      width="520px"
-      @ok="submitHandle"
-    >
-      <a-form layout="vertical">
-        <a-alert
-          :type="conclusionDraft === 'APPROVED' ? 'success' : 'warning'"
-          show-icon
-          style="margin-bottom: 12px"
-          :message="
-            conclusionDraft === 'APPROVED'
-              ? '通过后允许进入成绩更正流程。'
-              : '驳回后申请关闭，无法恢复。'
-          "
+    <template #toolbar>
+      <div class="appeal-section__toolbar">
+        <UiFilterBar
+          variant="plain"
+          v-model="filterModel"
+          :fields="filterFields"
+          search-text="查询"
+          @search="handleSearch"
+          @reset="handleFilterReset"
         />
-        <a-form-item label="申请学生">
-          <a-input :value="targetRequest ? formatStudent(targetRequest) : ''" disabled />
-        </a-form-item>
-        <a-form-item label="复核题目">
-          <a-textarea
-            :value="targetRequest ? formatQuestionRefs(targetRequest) : ''"
-            :rows="2"
-            disabled
-          />
-        </a-form-item>
-        <a-form-item label="原因类型">
-          <a-input
-            :value="targetRequest ? formatReasonType(targetRequest.reasonType) : ''"
-            disabled
-          />
-        </a-form-item>
-        <a-form-item label="申请原因">
-          <a-textarea :value="targetRequest?.requestReason ?? ''" :rows="3" disabled />
-        </a-form-item>
-        <a-form-item
-          v-if="targetRequest && targetRequest.evidenceFileRefs.length > 0"
-          label="佐证材料"
-        >
-          <div class="evidence-file-list">
-            <UiTextAction
-              v-for="file in targetRequest.evidenceFileRefs"
-              :key="file.fileId"
-              @click="downloadEvidenceFile(file)"
+        <span v-if="pagination.total > 0" class="appeal-section__count">{{ pagination.total }} 条</span>
+      </div>
+
+      <UiDataTable
+        class="student-detail-table__data-table"
+        v-model:current="pagination.current"
+        v-model:page-size="pagination.pageSize"
+        :columns="columns"
+        :data-source="rows"
+        :loading="loading"
+        row-key="id"
+        size="small"
+        :total="pagination.total"
+        flat
+        @page-change="handlePageChange"
+      >
+        <template #bodyCell="{ column, index }">
+          <template v-if="column.key === 'studentNo'">
+            <span class="score-summary-table__mono">{{ rows[index].studentNo }}</span>
+          </template>
+          <template v-else-if="column.key === 'questionNo'">
+            {{ primaryQuestionNo(rows[index]) }}
+          </template>
+          <template v-else-if="column.key === 'requestStatus'">
+            <UiTag :tone="requestStatusColor(rows[index].requestStatus)" size="sm">
+              {{ requestStatusLabel(rows[index].requestStatus) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'handleResult'">
+            {{ handleResultLabel(rows[index]) }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <div
+              v-if="canHandleReviewRequest(rows[index].requestStatus)"
+              class="operations-cell"
+              @click.stop
             >
-              {{ file.fileName }}
-            </UiTextAction>
-          </div>
-        </a-form-item>
-        <a-form-item label="复核备注">
-          <a-textarea
-            v-model:value="reviewNote"
-            :rows="3"
-            :max-length="200"
-            show-count
-            placeholder="选填，作为审计记录"
+              <UiTextAction @click="openHandleModal(rows[index], GradeReviewRequestStatusCode.APPROVED)">通过</UiTextAction>
+              <UiTextAction
+                tone="danger"
+                @click="openHandleModal(rows[index], GradeReviewRequestStatusCode.REJECTED)"
+              >
+                驳回
+              </UiTextAction>
+            </div>
+          </template>
+        </template>
+      </UiDataTable>
+
+      <UiDrawer
+        v-model:open="handleOpen"
+        :title="handleTitle"
+        :width="520"
+        :confirm-loading="handling"
+        :mask-closable="false"
+        :hide-footer="false"
+        ok-text="提交"
+        @confirm="submitHandle"
+      >
+        <a-form layout="vertical">
+          <a-alert
+            :type="conclusionDraft === GradeReviewRequestStatusCode.APPROVED ? 'success' : 'warning'"
+            show-icon
+            style="margin-bottom: 12px"
+            :message="
+              conclusionDraft === GradeReviewRequestStatusCode.APPROVED
+                ? '通过后允许进入成绩更正流程。'
+                : '驳回后申请关闭，无法恢复。'
+            "
           />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-  </section>
+          <a-form-item label="申请学生">
+            <a-input :value="targetRequest ? formatStudent(targetRequest) : ''" disabled />
+          </a-form-item>
+          <a-form-item label="复核题目">
+            <a-textarea
+              :value="targetRequest ? formatQuestionRefs(targetRequest) : ''"
+              :rows="2"
+              disabled
+            />
+          </a-form-item>
+          <a-form-item label="原因类型">
+            <a-input
+              :value="targetRequest ? formatReasonType(targetRequest.reasonType) : ''"
+              disabled
+            />
+          </a-form-item>
+          <a-form-item label="申请原因">
+            <a-textarea :value="targetRequest?.requestReason ?? ''" :rows="3" disabled />
+          </a-form-item>
+          <a-form-item
+            v-if="targetRequest && targetRequest.evidenceFileRefs.length > 0"
+            label="佐证材料"
+          >
+            <div class="evidence-file-list">
+              <UiTextAction
+                v-for="file in targetRequest.evidenceFileRefs"
+                :key="file.fileId"
+                @click="downloadEvidenceFile(file)"
+              >
+                {{ file.fileName }}
+              </UiTextAction>
+            </div>
+          </a-form-item>
+          <a-form-item label="复核备注">
+            <a-textarea
+              v-model:value="reviewNote"
+              :rows="3"
+              :max-length="200"
+              show-count
+              placeholder="选填，作为审计记录"
+            />
+          </a-form-item>
+        </a-form>
+      </UiDrawer>
+    </template>
+  </WorkbenchSurfaceCard>
 </template>
 
 <script lang="ts" setup>
@@ -133,29 +140,29 @@ import type {
   GradeReviewEvidenceFileRefVO,
   GradeReviewReasonTypeCode,
   GradeReviewRequestItemResponse,
-  GradeReviewRequestStatusCode,
-  ReviewConclusion,
 } from '@/apis/mark/grade-review'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   getReviewSummary,
-  GRADE_REVIEW_REASON_TYPE_LABEL,
+  GradeReviewReasonTypeDescription,
+  GradeReviewRequestStatusCode,
+  GradeReviewRequestStatusDescription,
   handleReviewRequest,
   listReviewRequests,
-  REVIEW_REQUEST_STATUS_LABEL,
+  REVIEW_REQUEST_FLOW_HINT,
   REVIEW_REQUEST_STATUS_OPTIONS,
   REVIEW_REQUEST_STATUS_TONE,
 } from '@/apis/mark/grade-review'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { assertUserFacing } from '@/utils/contract-guard'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
-import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -212,25 +219,23 @@ const filterFields: FilterField[] = [
 ]
 
 const columns: ColumnType<GradeReviewRequestItemResponse>[] = [
-  { title: '学生', key: 'student', width: 150 },
-  { title: '复核题目', key: 'questionRefs', width: 220 },
-  { title: '佐证', key: 'evidenceFileRefs', width: 140 },
-  { title: '原因类型', dataIndex: 'reasonType', key: 'reasonType', width: 120 },
+  { title: '学号', key: 'studentNo', width: 120 },
+  { title: '姓名', key: 'studentName', dataIndex: 'studentName', width: 96 },
+  { title: '题号', key: 'questionNo', width: 88 },
   { title: '申请原因', dataIndex: 'requestReason', key: 'requestReason', ellipsis: true },
-  { title: '状态', key: 'requestStatus', width: 100 },
-  { title: '提交时间', key: 'createTime', width: 160 },
-  { title: '复核时间', key: 'reviewTime', width: 160 },
-  { title: '操作', key: 'actions', width: 160, fixed: 'right' },
+  { title: '状态', key: 'requestStatus', width: 96 },
+  { title: '处理结果', key: 'handleResult', width: 140, ellipsis: true },
+  { title: '操作', key: 'actions', width: 140, fixed: 'right' },
 ]
 
 const handleOpen = ref(false)
 const handling = ref(false)
 const targetRequest = ref<GradeReviewRequestItemResponse | null>(null)
-const conclusionDraft = ref<ReviewConclusion>('APPROVED')
+const conclusionDraft = ref<GradeReviewRequestStatusCode>(GradeReviewRequestStatusCode.APPROVED)
 const reviewNote = ref('')
 
 const handleTitle = computed(() =>
-  conclusionDraft.value === 'APPROVED' ? '通过复核申请' : '驳回复核申请',
+  conclusionDraft.value === GradeReviewRequestStatusCode.APPROVED ? '通过复核申请' : '驳回复核申请',
 )
 
 /** 后端仅允许 PENDING / IN_REVIEW 状态进入 handleReviewRequest。 */
@@ -240,7 +245,7 @@ function canHandleReviewRequest(status: GradeReviewRequestStatusCode): boolean {
 
 function openHandleModal(
   record: GradeReviewRequestItemResponse,
-  conclusion: ReviewConclusion,
+  conclusion: GradeReviewRequestStatusCode,
 ): void {
   if (!canHandleReviewRequest(record.requestStatus)) {
     return
@@ -275,7 +280,6 @@ async function reload(): Promise<void> {
       pageSize: pagination.pageSize,
     })
     const list = readPageList(result, '复核申请加载失败')
-    validateReviewRequestDisplayContracts(list)
     rows.value = list
     pagination.total = readPageTotal(result, '复核申请加载失败')
     pagination.current = result.pageNum ?? pagination.current
@@ -306,17 +310,6 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
-}
-
-function validateReviewRequestDisplayContracts(list: GradeReviewRequestItemResponse[]): void {
-  const dataError = '复核申请加载失败，请刷新后重试'
-  for (const record of list) {
-    assertUserFacing(
-      Boolean(record.studentName?.trim()) && Boolean(record.studentNo?.trim()),
-      dataError,
-    )
-    assertUserFacing(Array.isArray(record.evidenceFileRefs), dataError)
-  }
 }
 
 async function submitHandle(): Promise<void> {
@@ -351,11 +344,28 @@ function requestStatusColor(status: GradeReviewRequestStatusCode): BadgeTone {
 }
 
 function requestStatusLabel(status: GradeReviewRequestStatusCode): string {
-  return strictEnumLabel(REVIEW_REQUEST_STATUS_LABEL, status, '复核申请状态')
+  return strictEnumLabel(GradeReviewRequestStatusDescription, status, '复核申请状态')
 }
 
 function formatReasonType(reasonType: GradeReviewReasonTypeCode): string {
-  return strictEnumLabel(GRADE_REVIEW_REASON_TYPE_LABEL, reasonType, '复核原因类型')
+  return strictEnumLabel(GradeReviewReasonTypeDescription, reasonType, '复核原因类型')
+}
+
+function primaryQuestionNo(record: GradeReviewRequestItemResponse): string {
+  if (record.questionRefs.length === 0) {
+    return '总分'
+  }
+  return `第${record.questionRefs[0].questionNo}题`
+}
+
+function handleResultLabel(record: GradeReviewRequestItemResponse): string {
+  if (record.requestStatus === 'PENDING' || record.requestStatus === 'IN_REVIEW') {
+    return '—'
+  }
+  if (record.reviewNote?.trim()) {
+    return record.reviewNote.trim()
+  }
+  return requestStatusLabel(record.requestStatus)
 }
 
 function formatStudent(record: GradeReviewRequestItemResponse): string {

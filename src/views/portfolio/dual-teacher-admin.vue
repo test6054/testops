@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioDualTeacherApplicationStatus } from '@/apis/portfolio/enums'
 import type {
   PortfolioDualTeacherApplicationVO,
   PortfolioDualTeacherEligibilityFreezeVO,
@@ -8,7 +7,7 @@ import type {
 import { message, Modal } from 'ant-design-vue'
 import { computed, onMounted, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL } from '@/apis/portfolio/enums'
+import { PortfolioDualTeacherApplicationStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -25,7 +24,6 @@ import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
 import { hasTeacherTenantPermission, RoleEnum } from '@/utils/permission'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { strictEnumLabel } from '@/utils/strict-enum'
 
 const authStore = useAuthStore()
 const userStore = useUserStore()
@@ -39,12 +37,8 @@ const canAcademicReview = computed(() =>
 )
 const canExport = computed(() => canAcademicReview.value)
 
-function statusLabel(status: string) {
-  return strictEnumLabel(
-    PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL,
-    status as PortfolioDualTeacherApplicationStatus,
-    '双师申请状态',
-  )
+function statusLabel(status: PortfolioDualTeacherApplicationVO['applicationStatus']) {
+  return PortfolioDualTeacherApplicationStatusDescription[status]
 }
 
 const loading = ref(false)

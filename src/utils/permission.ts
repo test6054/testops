@@ -33,7 +33,12 @@ export const ALL_TEACHER_ROLES: readonly RoleEnum[] = [...ADMIN_ROLES, ...TEACHE
  * 检查是否为有效角色
  */
 export function isValidRole(role: string): role is RoleEnum {
-    return Object.values(RoleEnum).includes(role as RoleEnum)
+    for (const value of Object.values(RoleEnum)) {
+        if (role === value) {
+            return true
+        }
+    }
+    return false
 }
 
 /**
@@ -47,7 +52,7 @@ export function getRoleName(role: RoleEnum): string {
  */
 export function isAdmin(role?: string): boolean {
     if (!role) return false
-    return ADMIN_ROLES.includes(role as RoleEnum)
+    return isValidRole(role) && ADMIN_ROLES.includes(role)
 }
 
 /**
@@ -55,7 +60,7 @@ export function isAdmin(role?: string): boolean {
  */
 export function isTeacher(role?: string): boolean {
     if (!role) return false
-    return ALL_TEACHER_ROLES.includes(role as RoleEnum)
+    return isValidRole(role) && ALL_TEACHER_ROLES.includes(role)
 }
 
 /**
@@ -63,7 +68,7 @@ export function isTeacher(role?: string): boolean {
  */
 export function isStudent(role?: string): boolean {
     if (!role) return false
-    return STUDENT_ROLES.includes(role as RoleEnum)
+    return isValidRole(role) && STUDENT_ROLES.includes(role)
 }
 /**
  * 检查用户是否具有指定角色

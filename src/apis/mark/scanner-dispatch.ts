@@ -1,30 +1,46 @@
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import type {
   PortfolioCollectModeCode,
-  ScanTaskKindCode,
   ScanWorkOrderStatusCode,
 } from '@/apis/mark/scanner-work-order'
 import type { PageResult, QueryDto } from '@/types'
+import type { ScanBatchQualityFlagCode } from '@/types/enums/scan-batch-quality-flag-enum'
+import type { ScanDispatchTicketStatusCode } from '@/types/enums/scan-dispatch-ticket-status-enum'
+import type { ScanOperationActionCode } from '@/types/enums/scan-operation-action-enum'
+import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import http from '@/config/axios'
+import {
+  ALL_SCAN_DISPATCH_TICKET_STATUS_CODES,
+  ScanDispatchTicketStatusDescription,
+} from '@/types/enums/scan-dispatch-ticket-status-enum'
+import {
+  ALL_SCAN_OPERATION_ACTION_CODES,
+  ScanOperationActionDescription,
+} from '@/types/enums/scan-operation-action-enum'
 
-export type ScanDispatchTicketStatusCode
-  = 'PENDING' | 'PROCESSING' | 'SUSPENDED' | 'DONE' | 'EXPIRED' | 'CANCELLED'
+export {
+  ALL_SCAN_BATCH_QUALITY_FLAG_CODES,
+  ScanBatchQualityFlagCode,
+  ScanBatchQualityFlagDescription,
+} from '@/types/enums/scan-batch-quality-flag-enum'
+export {
+  ALL_SCAN_DISPATCH_TICKET_STATUS_CODES,
+  ScanDispatchTicketStatusCode,
+  ScanDispatchTicketStatusDescription,
+} from '@/types/enums/scan-dispatch-ticket-status-enum'
 
-export const SCAN_DISPATCH_TICKET_STATUS_LABEL: Record<ScanDispatchTicketStatusCode, string> = {
-  PENDING: '待处理',
-  PROCESSING: '处理中',
-  SUSPENDED: '已挂起',
-  DONE: '已完成',
-  EXPIRED: '已过期',
-  CANCELLED: '已取消',
-}
+export const SCAN_DISPATCH_TICKET_STATUS_OPTIONS: Array<{
+  value: ScanDispatchTicketStatusCode
+  label: string
+}> = ALL_SCAN_DISPATCH_TICKET_STATUS_CODES.map((value) => ({
+  value,
+  label: ScanDispatchTicketStatusDescription[value],
+}))
 
-export type ScanBatchQualityFlagCode = 'NORMAL' | 'SUSPECTED_MIXED'
-
-export const SCAN_BATCH_QUALITY_FLAG_LABEL: Record<ScanBatchQualityFlagCode, string> = {
-  NORMAL: '正常',
-  SUSPECTED_MIXED: '疑似混扫',
-}
+export {
+  ScanOperationActionCode,
+  ScanOperationActionDescription,
+} from '@/types/enums/scan-operation-action-enum'
 
 export interface ScanDispatchArchiveSnapshotVO {
   volumeId?: string
@@ -36,12 +52,13 @@ export interface ScanDispatchArchiveSnapshotVO {
   physicalStorageLocation?: string
   physicalLocationNote?: string
   previewFileId?: string
+  materialTags?: string[]
 }
 
 export interface ScanDispatchPortfolioSnapshotVO {
   teacherId?: string
   teacherName?: string
-  collectMode?: 'AI_SUBMIT' | 'GAP_ATTACHMENT'
+  collectMode?: PortfolioCollectModeCode
   gapTaskId?: string
   gapTaskTitle?: string
   categoryId?: string
@@ -52,7 +69,7 @@ export interface ScanDispatchPortfolioSnapshotVO {
 }
 
 export interface ScanDispatchTicketVO {
-  ticketId?: string
+  ticketId: string
   taskKind?: ScanTaskKindCode
   status?: ScanDispatchTicketStatusCode
   traceLabelCode?: string
@@ -66,6 +83,7 @@ export interface ScanDispatchTicketVO {
   lastHeartbeatAt?: string
   suspendedAt?: string
   createTime?: string
+  failureReason?: string
   kioskDispatchUrl?: string
   archiveSnapshot?: ScanDispatchArchiveSnapshotVO
   portfolioSnapshot?: ScanDispatchPortfolioSnapshotVO
@@ -81,12 +99,13 @@ export interface ScanDispatchCreateRequest {
   physicalLocationNote?: string
   generateTraceLabel?: boolean
   teacherId?: string
-  collectMode?: 'AI_SUBMIT' | 'GAP_ATTACHMENT'
+  collectMode?: PortfolioCollectModeCode
   gapTaskId?: string
   categoryId?: string
   taskType?: string
   templateCode?: string
   archiveRecordId?: string
+  materialTags?: string[]
 }
 
 export interface ScanDispatchCreateResponse {
@@ -175,9 +194,15 @@ export interface SuspectedMixedBatchItemVO {
 /** 扫描异常看板聚合 VO，对应后端 ScannerExceptionDashboardVO */
 export interface ScannerExceptionDashboardVO {
   failedTickets?: FailedTicketItemVO[]
+  failedTicketCount?: number
   failedWorkOrders?: FailedWorkOrderItemVO[]
+  failedWorkOrderCount?: number
+  committingWorkOrders?: FailedWorkOrderItemVO[]
+  committingWorkOrderCount?: number
   suspectedMixedBatches?: SuspectedMixedBatchItemVO[]
+  suspectedMixedBatchCount?: number
   pageRegisterBlockedBatches?: PageRegisterBlockedBatchItemVO[]
+  pageRegisterBlockedCount?: number
 }
 
 /** 页登记阻断批次条目，对应 ScannerExceptionDashboardVO.PageRegisterBlockedBatchItemVO */
@@ -198,6 +223,42 @@ export interface PageRegisterBlockedBatchItemVO {
 export interface ScanDispatchForceReleaseRequest {
   ticketId: string
   releaseReason: string
+}
+
+export function resolveMarkVueAppRoot(): string {
+  if (typeof window === 'undefined') {
+    return ''
+  }
+  const baseUrl = import.meta.env.BASE_URL || '/'
+  if (baseUrl === '/') {
+    return window.location.origin
+  }
+  const normalized = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
+  return `${window.location.origin}${normalized}`
+}
+
+export function appendUrlQueryParam(url: string, key: string, value: string): string {
+  const separator = url.includes('?') ? '&' : '?'
+  return `${url}${separator}${key}=${encodeURIComponent(value)}`
+}
+
+/** 工位派单 URL 构建字段 - 对应 ScanDispatchTicketVO 的 ticketId 与 kioskDispatchUrl */
+export interface ScanDispatchKioskUrlTicket {
+  ticketId: string
+  kioskDispatchUrl?: string
+}
+
+export function buildScanDispatchKioskUrl(
+  ticket: ScanDispatchKioskUrlTicket,
+  returnTo?: string,
+): string {
+  const path = ticket.kioskDispatchUrl || `/scanner-kiosk/dispatch/${ticket.ticketId}`
+  const url = `${resolveMarkVueAppRoot()}${path}`
+  const trimmedReturnTo = returnTo?.trim()
+  if (!trimmedReturnTo) {
+    return url
+  }
+  return appendUrlQueryParam(url, 'returnTo', trimmedReturnTo)
 }
 
 export function createScanDispatch(request: ScanDispatchCreateRequest) {
@@ -236,7 +297,7 @@ export function heartbeatScanDispatch(request: ScanDispatchHeartbeatRequest) {
   return http.post<ScanDispatchTicketVO>('/api/mark/scanner/dispatch/heartbeat', request)
 }
 
-/** 目标端点：后端 VO 已定义，Controller 待落地 */
+/** 管理员强制释放 PROCESSING 派单 ticket，回 PENDING 并写审计。 */
 export function forceReleaseScanDispatch(request: ScanDispatchForceReleaseRequest) {
   return http.post<ScanDispatchTicketVO>('/api/mark/scanner/dispatch/force-release', request)
 }
@@ -266,40 +327,13 @@ export function loadScanDispatchQueueSummary(request: ScanDispatchQueueSummaryRe
   return http.post<ScanDispatchQueueSummaryVO>('/api/mark/scanner/dispatch/queue-summary', request)
 }
 
-export type ScanOperationActionCode
-  = | 'OPEN'
-    | 'CONFIRM'
-    | 'DISCARD'
-    | 'DISPATCH_CREATE'
-    | 'DISPATCH_CANCEL'
-    | 'DISPATCH_OPEN'
-    | 'DISPATCH_CLAIM'
-    | 'DISPATCH_SUSPEND'
-    | 'DISPATCH_RESUME'
-    | 'DISPATCH_HEARTBEAT'
-    | 'LEASE_RELEASE'
-    | 'DISPATCH_ADHOC_CREATE'
-    | 'DISPATCH_FORCE_RELEASE'
-    | 'DISPATCH_DONE'
-    | 'PHYSICAL_LOCATION_UPDATE'
-
-export const SCAN_OPERATION_ACTION_LABEL: Record<ScanOperationActionCode, string> = {
-  OPEN: '开单',
-  CONFIRM: '提交',
-  DISCARD: '废弃',
-  DISPATCH_CREATE: '创建派单',
-  DISPATCH_CANCEL: '取消派单',
-  DISPATCH_OPEN: '打开派单',
-  DISPATCH_CLAIM: '领取派单',
-  DISPATCH_SUSPEND: '挂起派单',
-  DISPATCH_RESUME: '恢复派单',
-  DISPATCH_HEARTBEAT: '派单心跳',
-  LEASE_RELEASE: '租约释放',
-  DISPATCH_ADHOC_CREATE: '临时派单',
-  DISPATCH_FORCE_RELEASE: '强制释放',
-  DISPATCH_DONE: '完成派单',
-  PHYSICAL_LOCATION_UPDATE: '柜位更新',
-}
+export const SCAN_OPERATION_ACTION_OPTIONS: Array<{
+  value: ScanOperationActionCode
+  label: string
+}> = ALL_SCAN_OPERATION_ACTION_CODES.map((value) => ({
+  value,
+  label: ScanOperationActionDescription[value],
+}))
 
 export interface ScanOperationLogPageRequest extends QueryDto {
   volumeId?: string

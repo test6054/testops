@@ -1,25 +1,36 @@
 <script setup lang="ts">
-import type { ArchiveSelfCheckStatusCode } from '@/apis/mark/archive-volume'
+import type {
+  ArchiveSelfCheckStatusCode} from '@/apis/mark/archive-volume';
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onMounted } from 'vue'
 import {
-  ARCHIVE_SELF_CHECK_STATUS_LABEL,
   ARCHIVE_SELF_CHECK_STATUS_TONE,
+  ArchiveSelfCheckStatusDescription,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveVolumeSelfCheck } from '@/composables/useArchiveVolumeSelfCheck'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeSelfCheckList' })
 
-const props = defineProps<{
-  volumeId: string
-  selfCheckStatus?: ArchiveSelfCheckStatusCode
-  readonly?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    volumeId: string
+    selfCheckStatus?: ArchiveSelfCheckStatusCode
+    readonly?: boolean
+    /** 嵌入 integrity Tab 时不套 WorkbenchSurfaceCard */
+    embedded?: boolean
+  }>(),
+  {
+    readonly: false,
+    embedded: false,
+  },
+)
 
 const emit = defineEmits<{
   "refreshed": []
@@ -41,7 +52,7 @@ const {
 const effectiveStatus = computed(() => props.selfCheckStatus ?? selfCheckStatus.value)
 
 function statusLabel(code: ArchiveSelfCheckStatusCode) {
-  return strictEnumLabel(ARCHIVE_SELF_CHECK_STATUS_LABEL, code, 'selfCheckStatus')
+  return strictEnumLabel(ArchiveSelfCheckStatusDescription, code, 'selfCheckStatus')
 }
 
 function statusTone(code: ArchiveSelfCheckStatusCode): BadgeTone {
@@ -55,6 +66,11 @@ async function handleToggle(templateItemId: string, checked: boolean) {
   emit('refreshed')
 }
 
+function handleRowClick(item: { templateItemId: string, checked?: boolean }) {
+  if (props.readonly || checking.value) return
+  void handleToggle(item.templateItemId, !item.checked)
+}
+
 onMounted(() => {
   void loadSelfCheck()
 })
@@ -63,10 +79,14 @@ defineExpose({ loadSelfCheck })
 </script>
 
 <template>
-  <section class="archive-volume-self-check-list">
+  <component
+    :is="embedded ? 'section' : WorkbenchSurfaceCard"
+    class="archive-volume-self-check-list"
+    :class="{ 'archive-volume-self-check-list--embedded': embedded }"
+  >
     <div class="archive-volume-self-check-list__head">
       <div class="archive-volume-self-check-list__title-wrap">
-        <h3 class="archive-volume-self-check-list__title">提交前自查清单</h3>
+        <h3 class="archive-volume-self-check-list__title">自检清单</h3>
         <UiTag :tone="statusTone(effectiveStatus)" size="sm">
           {{ statusLabel(effectiveStatus) }}
         </UiTag>
@@ -79,7 +99,7 @@ defineExpose({ loadSelfCheck })
           :disabled="items.length === 0"
           @click="exportSelfCheck"
         >
-          导出自查表
+          导出
         </UiButton>
         <UiButton
           v-if="!readonly && allRequiredChecked"
@@ -92,7 +112,7 @@ defineExpose({ loadSelfCheck })
       </div>
     </div>
 
-    <a-skeleton v-if="loading" active :paragraph="{ rows: 6 }" />
+    <UiSkeletonState v-if="loading" variant="card" compact />
 
     <UiEmpty v-else-if="items.length === 0" description="暂无自查项，请先在设置页配置模板" />
 
@@ -100,29 +120,36 @@ defineExpose({ loadSelfCheck })
       <li
         v-for="item in items"
         :key="item.templateItemId"
-        class="archive-volume-self-check-list__item"
+        class="self-check-row"
+        :class="{ 'self-check-row--interactive': !readonly && !checking }"
+        @click="handleRowClick(item)"
       >
-        <a-checkbox
-          :checked="item.checked"
-          :disabled="readonly || checking"
-          @update:checked="handleToggle(item.templateItemId, $event as boolean)"
+        <span
+          class="self-check-mark"
+          :class="item.checked ? 'self-check-mark--done' : 'self-check-mark--pending'"
+          aria-hidden="true"
         >
-          <span class="archive-volume-self-check-list__text">{{ item.itemText }}</span>
-          <UiTag v-if="item.requiredFlag" tone="orange" size="sm">必查</UiTag>
-        </a-checkbox>
-        <span v-if="item.checked && item.checkedTime" class="archive-volume-self-check-list__meta">
-          {{ item.checkerName || '已确认' }} · {{ formatDateTime(item.checkedTime) }}
+          {{ item.checked ? '✓' : '' }}
+        </span>
+        <span class="self-check-row__label">{{ item.itemText }}</span>
+        <UiTag v-if="item.requiredFlag" tone="orange" size="sm">必查</UiTag>
+        <span v-if="item.checked && item.checkedTime" class="self-check-row__time">
+          已确认 · {{ formatDateTime(item.checkedTime) }}
         </span>
       </li>
     </ul>
-  </section>
+  </component>
 </template>
 
 <style scoped>
 .archive-volume-self-check-list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-3, 12px);
+}
+
+.archive-volume-self-check-list--embedded {
+  gap: var(--dp-space-3, 12px);
 }
 
 .archive-volume-self-check-list__head {
@@ -154,27 +181,5 @@ defineExpose({ loadSelfCheck })
   margin: 0;
   padding: 0;
   list-style: none;
-  display: grid;
-  gap: var(--dp-space-3, 12px);
-}
-
-.archive-volume-self-check-list__item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: var(--dp-space-3, 12px);
-  border: 1px solid var(--dp-border, #e2e8f0);
-  border-radius: var(--dp-radius-control, 4px);
-  background: var(--dp-surface, #fff);
-}
-
-.archive-volume-self-check-list__text {
-  margin-right: var(--dp-space-2, 8px);
-}
-
-.archive-volume-self-check-list__meta {
-  margin-left: 24px;
-  font-size: 12px;
-  color: var(--dp-text-secondary, #64748b);
 }
 </style>

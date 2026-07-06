@@ -13,7 +13,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  *   quality 文本任务和 mark 其他 AI 能力使用 DEEPSEEK。
  */
 import type { AiModelProfileSaveRequest, AiModelProfileVO } from '@/apis/quality/ai-model-profile'
-import type { AiHealthStatus, AiProviderType } from '@/apis/quality/types'
+import type { AiHealthStatusCode } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
@@ -21,8 +21,9 @@ import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { aiModelProfileApi } from '@/apis/quality/ai-model-profile'
 import {
   AI_HEALTH_STATUS_COLOR,
-  AI_HEALTH_STATUS_LABEL,
-  AI_PROVIDER_TYPE_LABEL,
+  AiHealthStatusDescription,
+  AiProviderTypeCode,
+  AiProviderTypeDescription,
 } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -53,18 +54,18 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 380, fixed: 'right' },
 ]
 
-function healthLabel(value: AiHealthStatus | null | undefined): string {
+function healthLabel(value: AiHealthStatusCode | null | undefined): string {
   if (value === null || value === undefined) return ''
-  return strictEnumLabel(AI_HEALTH_STATUS_LABEL, value, 'AI 模型健康状态')
+  return strictEnumLabel(AiHealthStatusDescription, value, 'AI 模型健康状态')
 }
 
-function healthColor(value: AiHealthStatus | null | undefined): BadgeTone {
+function healthColor(value: AiHealthStatusCode | null | undefined): BadgeTone {
   if (value === null || value === undefined) return 'gray'
   return strictEnumTone(AI_HEALTH_STATUS_COLOR, value, 'AI 模型健康状态')
 }
 
-function providerTypeLabel(value: AiProviderType): string {
-  return strictEnumLabel(AI_PROVIDER_TYPE_LABEL, value, 'AI 服务商类型')
+function providerTypeLabel(value: AiProviderTypeCode): string {
+  return strictEnumLabel(AiProviderTypeDescription, value, 'AI 服务商类型')
 }
 
 function aiModelHealthMessageText(messageText?: string): string {
@@ -78,6 +79,7 @@ function aiModelHealthMessageText(messageText?: string): string {
 }
 
 interface AiModelProfileFilterModel {
+  [key: string]: unknown
   enabledOnly: boolean
 }
 
@@ -86,7 +88,7 @@ const filterForm = reactive<AiModelProfileFilterModel>({
 })
 
 const filterModel = computed<Record<string, unknown>>({
-  get: () => filterForm as Record<string, unknown>,
+  get: () => filterForm,
   set: (value) => {
     Object.assign(filterForm, value)
   },
@@ -111,7 +113,7 @@ const editorMode = ref<'create' | 'edit'>('create')
  */
 const editor = reactive<AiModelProfileSaveRequest>({
   profileName: '',
-  providerType: 'DEEPSEEK',
+  providerType: AiProviderTypeCode.DEEPSEEK,
   modelName: 'deepseek-chat',
   apiHost: 'https://api.deepseek.com',
   apiKey: '',

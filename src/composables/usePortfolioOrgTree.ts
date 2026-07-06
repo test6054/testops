@@ -1,7 +1,7 @@
-import type { PortfolioOrgTreeNodeVO, PortfolioOrgUnitType } from '@/apis/portfolio/types'
+import type { PortfolioOrgTreeNodeVO } from '@/apis/portfolio/types'
 import { ref } from 'vue'
+import { PortfolioEduUserOrgTreeNodeTypeCode, PortfolioOrgUnitTypeCode } from '@/apis/portfolio/enums'
 import { portfolioOrgApi } from '@/apis/portfolio/org'
-import { PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES } from '@/apis/portfolio/types'
 import { showUserError } from '@/utils/error-handler'
 
 export interface PortfolioOrgFlatOption {
@@ -28,7 +28,7 @@ export function flattenDepartmentOptions(
 ): PortfolioOrgFlatOption[] {
   const result: PortfolioOrgFlatOption[] = []
   walkTree(roots, (node, label) => {
-    if (node.nodeType === 'DEPARTMENT' && node.id) {
+    if (node.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT && node.id) {
       result.push({ value: node.id, label })
     }
   })
@@ -42,7 +42,7 @@ export function flattenPortfolioOrgOptions(
   walkTree(roots, (node, label) => {
     if (
       node.portfolioOrgId
-      && PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES.includes(node.nodeType as PortfolioOrgUnitType)
+      && isPortfolioUnitNode(node.nodeType)
     ) {
       result.push({ value: node.portfolioOrgId, label })
     }
@@ -50,8 +50,12 @@ export function flattenPortfolioOrgOptions(
   return result
 }
 
-export function isPortfolioUnitNode(nodeType?: string) {
-  return PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES.includes(nodeType as PortfolioOrgUnitType)
+export function isPortfolioUnitNode(
+  nodeType?: PortfolioOrgTreeNodeVO['nodeType'],
+): nodeType is PortfolioOrgUnitTypeCode {
+  return nodeType === PortfolioOrgUnitTypeCode.MAJOR_GROUP
+    || nodeType === PortfolioOrgUnitTypeCode.TEACHING_RESEARCH_OFFICE
+    || nodeType === PortfolioOrgUnitTypeCode.CAMPUS
 }
 
 export function usePortfolioOrgTree() {

@@ -1,17 +1,19 @@
 <script setup lang="ts">
+import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/enums'
 import type {
   PortfolioArchiveRecordFieldInput,
   PortfolioGapTaskDetailVO,
-  PortfolioGapTaskStatus,
 } from '@/apis/portfolio/types'
+import type {ScanDispatchResultPayload} from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue';
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { createScanDispatch } from '@/apis/mark/scanner-dispatch'
+import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
+import { PortfolioCollectModeCode, ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
+import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
-import { PORTFOLIO_GAP_TASK_STATUS_LABEL } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -25,9 +27,10 @@ import {
 } from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
-function gapTaskStatusLabel(status: PortfolioGapTaskStatus): string {
-  return strictEnumLabel(PORTFOLIO_GAP_TASK_STATUS_LABEL, status, '补采任务状态')
+function gapTaskStatusLabel(status: PortfolioGapTaskStatusCode): string {
+  return strictEnumLabel(PortfolioGapTaskStatusDescription, status, '补采任务状态')
 }
 
 function readRouteParamString(value: unknown): string {
@@ -42,6 +45,8 @@ const loading = ref(false)
 const submitting = ref(false)
 const saving = ref(false)
 const scanOpening = ref(false)
+const dispatchResultOpen = ref(false)
+const dispatchResult = ref<ScanDispatchResultPayload | null>(null)
 const detail = ref<PortfolioGapTaskDetailVO | null>(null)
 const fieldValues = reactive<Record<string, string>>({})
 const evidenceRefs = reactive<Record<string, string>>({})
@@ -160,19 +165,25 @@ async function openPortfolioGapScan() {
   scanOpening.value = true
   try {
     const created = await createScanDispatch({
-      taskKind: 'PORTFOLIO_COLLECT',
-      collectMode: 'GAP_ATTACHMENT',
+      taskKind: ScanTaskKindCode.PORTFOLIO_COLLECT,
+      collectMode: PortfolioCollectModeCode.GAP_ATTACHMENT,
       teacherId: targetTeacherId.value,
       gapTaskId: detail.value.id,
       categoryId: detail.value.categoryId,
     })
-    if (!created.ticket?.ticketId) {
+    const ticket = created.ticket
+    if (!ticket?.ticketId) {
       throw new Error('创建档案袋派单失败')
     }
-    void router.push({
-      path: `/scanner-kiosk/dispatch/${created.ticket.ticketId}`,
-      query: { returnTo: route.fullPath },
-    })
+    dispatchResult.value = {
+      ticketId: ticket.ticketId,
+      kioskUrl: buildScanDispatchKioskUrl(ticket, route.fullPath),
+      status: ticket.status,
+      taskKind: ScanTaskKindCode.PORTFOLIO_COLLECT,
+      contextLabel: ticket.portfolioSnapshot?.gapTaskTitle ?? detail.value.taskTitle,
+      gapTaskId: detail.value.id,
+    }
+    dispatchResultOpen.value = true
   } catch (error) {
     showUserError(error, '创建档案袋扫描派单失败')
   } finally {
@@ -272,6 +283,11 @@ watch(
         <UiEmpty v-else description="该分类必填字段已补全，可直接提交或返回首页" />
       </template>
     </a-spin>
+    <ScanDispatchResultDialog
+      v-model:open="dispatchResultOpen"
+      :payload="dispatchResult"
+      :task-kind="ScanTaskKindCode.PORTFOLIO_COLLECT"
+    />
   </StageWorkbenchShell>
 </template>
 

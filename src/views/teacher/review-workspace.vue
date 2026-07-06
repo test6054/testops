@@ -1,33 +1,26 @@
 <template>
   <ReviewTaskHub v-if="!taskId" />
-  <div v-else class="review-workspace">
-    <div class="review-workspace__toolbar">
-      <UiButton variant="outline" size="sm" @click="goBack">返回</UiButton>
-      <UiTag v-if="detail?.paperDisplay" tone="gray" size="sm">
-        {{ detail.paperDisplay.primaryText }}
-      </UiTag>
-      <UiTag v-if="detail?.questionNo" tone="blue" size="sm"> 题 {{ detail.questionNo }} </UiTag>
-      <UiTag v-if="detail?.status" :tone="reviewStatusTone(detail.status)" size="sm">
-        {{ reviewStatusLabel(detail.status) }}
-      </UiTag>
-      <UiTag v-if="queueTotal > 0 && currentQueueIndex > 0" tone="purple" size="sm">
-        同题进度 {{ currentQueueIndex }} / {{ queueTotal }}
-      </UiTag>
-      <UiButton
-        variant="outline"
-        size="sm"
-        :disabled="!canSubmit"
-        :loading="loading"
-        @click="loadTask"
-      >
-        刷新
-      </UiButton>
-    </div>
-
+  <div v-else class="review-workspace grading-immersion-page grading-workspace-page">
     <UiEmpty v-if="!examId" description="缺少考试上下文" class="review-workspace__empty" />
 
-    <a-spin v-else :spinning="loading" tip="正在加载任务...">
-      <div v-if="detail?.status === 'INVALIDATED'" class="review-workspace__invalidated-banner">
+    <UiSkeletonState
+      v-else-if="loading && !detail"
+      variant="card"
+      :card-count="2"
+      compact
+      class="review-workspace__loading"
+    />
+
+    <UiEmpty
+      v-else-if="!loading && !detail"
+      description="复核任务加载失败或不存在"
+      class="review-workspace__empty"
+    >
+      <UiButton size="sm" variant="outline" @click="loadTask">重试</UiButton>
+    </UiEmpty>
+
+    <template v-else-if="detail">
+      <div v-if="detail.status === ReviewTaskStatusCode.INVALIDATED" class="review-workspace__invalidated-banner">
         <div class="review-workspace__invalidated-title">当前复核任务已因补扫替换失效</div>
         <div class="review-workspace__invalidated-text">
           原作答影像已被替换，系统已重新进入识别 / 切片链路，待新复核任务生成后再处理。
@@ -35,11 +28,39 @@
       </div>
       <!-- B-7 流水线进度：当前任务在同题复核队列中的位次 -->
       <GradingWorkspaceLayout
-        v-if="detail"
         :confidential="isExamConfidential"
         :exam-label="examConfidentialLabel"
+        :watermark-lines="watermarkLines"
       >
         <template #queue>
+          <GradingImmersionChrome
+            show-back
+            :back-label="immersionBackLabel"
+            :title="immersionTitle"
+            :subtitle="immersionSubtitle"
+            @back="goBack"
+          >
+            <template #status>
+              <UiTag v-if="detail.paperDisplay" tone="gray" size="sm">
+                {{ detail.paperDisplay.primaryText }}
+              </UiTag>
+              <UiTag v-if="detail.questionNo" tone="blue" size="sm">
+                题 {{ detail.questionNo }}
+              </UiTag>
+              <UiTag :tone="reviewStatusTone(detail.status)" size="sm">
+                {{ reviewStatusLabel(detail.status) }}
+              </UiTag>
+              <UiTag v-if="queueTotal > 0 && currentQueueIndex > 0" tone="blue" size="sm">
+                同题进度 {{ currentQueueIndex }} / {{ queueTotal }}
+              </UiTag>
+            </template>
+            <template #actions>
+              <UiButton variant="outline" size="sm" :loading="loading" @click="loadTask">
+                刷新
+              </UiButton>
+            </template>
+          </GradingImmersionChrome>
+
           <div
             v-if="queueTotal > 0 && currentQueueIndex > 0"
             class="review-workspace__queue-progress"
@@ -80,22 +101,18 @@
         </template>
 
         <template #main>
-          <!-- FIX-3: 题目题干 -->
-          <UiCard v-if="detail?.questionStem" class="review-workspace__card">
-            <template #title>
-              <FileTextOutlined />
-              <span>题目题干 · 第 {{ detail.questionNo }} 题 · 满分 {{ detail.fullScore }}</span>
-            </template>
+          <GradingImmersionSection
+            v-if="detail?.questionStem"
+            :title="`题目题干 · 第 ${detail.questionNo} 题 · 满分 ${detail.fullScore}`"
+          >
+            <template #icon><FileTextOutlined /></template>
             <a-typography-paragraph :ellipsis="{ rows: 4, expandable: true, symbol: '展开' }">
               {{ detail.questionStem }}
             </a-typography-paragraph>
-          </UiCard>
+          </GradingImmersionSection>
 
-          <UiCard class="review-workspace__card">
-            <template #title>
-              <FileImageOutlined />
-              <span>阅卷影像</span>
-            </template>
+          <GradingImmersionSection title="阅卷影像">
+            <template #icon><FileImageOutlined /></template>
             <UiEmpty
               v-if="
                 !detail?.sliceFileId && !detail?.sourceScanPage && !detail?.masterPaperPage?.fileId
@@ -111,25 +128,21 @@
               :exam-label="examConfidentialLabel"
               :watermark-lines="watermarkLines"
             />
-          </UiCard>
+          </GradingImmersionSection>
 
-          <UiCard class="review-workspace__card">
-            <template #title>
-              <FileTextOutlined />
-              <span>识别答案</span>
-            </template>
+          <GradingImmersionSection title="识别答案">
+            <template #icon><FileTextOutlined /></template>
             <UiEmpty v-if="!detail?.recognizedAnswer" description="暂无数据" />
             <div v-else class="review-workspace__text-block">{{ detail.recognizedAnswer }}</div>
-          </UiCard>
+          </GradingImmersionSection>
 
-          <!-- FIX-3: 标准答案对照 -->
-          <UiCard
+          <GradingImmersionSection
             v-if="detail?.standardAnswer"
-            class="review-workspace__card review-workspace__card--standard"
+            title="标准答案"
+            class="review-workspace__section--standard"
           >
-            <template #title>
-              <CheckCircleOutlined />
-              <span>标准答案</span>
+            <template #icon><CheckCircleOutlined /></template>
+            <template #tags>
               <UiTag v-if="detail.comparePolicy" tone="blue" size="sm">
                 {{ comparePolicyLabel(detail.comparePolicy) }}
               </UiTag>
@@ -137,42 +150,46 @@
             <div class="review-workspace__text-block review-workspace__standard-answer">
               {{ detail.standardAnswer }}
             </div>
-          </UiCard>
+          </GradingImmersionSection>
 
-          <UiCard class="review-workspace__card">
-            <template #title>
-              <RobotOutlined />
-              <span>AI 复评说明</span>
+          <GradingImmersionSection title="AI 复评说明">
+            <template #icon><RobotOutlined /></template>
+            <template #tags>
               <UiTag v-if="currentAiSourceLabel" :tone="currentAiSourceTone" size="sm">
                 {{ currentAiSourceLabel }}
               </UiTag>
-              <UiTag v-if="detail?.aiTraceId" tone="gray" size="sm" class="review-workspace__trace">
+              <UiTag v-if="detail?.aiTraceId" tone="gray" size="sm">
                 处理追踪编号 {{ detail.aiTraceId }}
               </UiTag>
               <UiTag v-if="detail?.aiLimited" tone="orange" size="sm">AI 限流/阻断</UiTag>
+              <ExperienceAssistBadge
+                clickable
+                :applied="lastExperienceAssistMeta?.applied"
+                :source-exam-name="lastExperienceAssistMeta?.sourceExamName"
+                :consistency-rate="lastExperienceAssistMeta?.consistencyRate"
+                @open-ai-history="openExecutionsDrawer(detail?.aiTraceId)"
+              />
             </template>
-            <template #extra>
-              <a-space>
-                <UiButton
-                  size="sm"
-                  variant="ghost"
-                  :loading="executionsLoading"
-                  :disabled="!detail"
-                  @click="openExecutionsDrawer"
-                >
-                  查看 AI 历史
-                </UiButton>
-                <UiButton
-                  size="sm"
-                  variant="outline"
-                  :disabled="!canRescoreByAi"
-                  :loading="rescoring"
-                  @click="openRescoreConfirm"
-                >
-                  <template #icon><RobotOutlined /></template>
-                  重新生成 AI 复评
-                </UiButton>
-              </a-space>
+            <template #actions>
+              <UiButton
+                size="sm"
+                variant="ghost"
+                :loading="executionsLoading"
+                :disabled="!detail"
+                @click="() => openExecutionsDrawer()"
+              >
+                查看 AI 历史
+              </UiButton>
+              <UiButton
+                size="sm"
+                variant="outline"
+                :disabled="!canRescoreByAi"
+                :loading="rescoring"
+                @click="openRescoreConfirm"
+              >
+                <template #icon><RobotOutlined /></template>
+                重新生成 AI 复评
+              </UiButton>
             </template>
             <UiEmpty v-if="!detail?.aiDiagnostic" description="暂无数据" />
             <div v-else class="review-workspace__text-block">
@@ -205,73 +222,12 @@
                 清空 AI 评分改人工
               </UiButton>
             </div>
-          </UiCard>
-
-          <!-- AI 历次执行记录抽屉：教师复核异议决策时提供完整审计证据 -->
-          <a-drawer
-            v-model:open="executionsDrawerOpen"
-            title="本题 AI 历次执行记录"
-            width="720"
-            placement="right"
-            :closable="true"
-            destroy-on-close
-          >
-            <a-spin :spinning="executionsLoading" tip="加载 AI 历史...">
-              <UiEmpty
-                v-if="!executionsLoading && aiExecutions.length === 0"
-                description="暂无数据"
-              />
-              <a-timeline v-else>
-                <a-timeline-item
-                  v-for="(item, index) in aiExecutions"
-                  :key="`${item.traceId}-${index}`"
-                  :color="timelineColor(item.status)"
-                >
-                  <div class="review-workspace__execution-item">
-                    <div class="review-workspace__execution-meta">
-                      <UiTag :tone="abilityTone(item.abilityCode)" size="sm">
-                        {{ abilityLabel(item.abilityCode) }}
-                      </UiTag>
-                      <UiTag :tone="statusTone(item.status)" size="sm">
-                        {{ statusLabel(item.status) }}
-                      </UiTag>
-                      <span class="review-workspace__execution-time">
-                        {{ formatDateTime(item.createTime) }}
-                      </span>
-                      <span
-                        v-if="item.latencyMs != null"
-                        class="review-workspace__execution-latency"
-                      >
-                        耗时 {{ item.latencyMs }} ms
-                      </span>
-                    </div>
-                    <div v-if="item.traceId" class="review-workspace__execution-trace">
-                      处理追踪编号：{{ item.traceId }}
-                    </div>
-                    <div v-if="item.modelName" class="review-workspace__execution-model">
-                      模型：{{ item.modelName }}
-                      <span> / {{ providerLabel(item.providerType) }}</span>
-                    </div>
-                    <div v-if="item.diagnostic" class="review-workspace__execution-diag">
-                      <strong>处理说明：</strong>{{ executionDiagnosticText(item.diagnostic) }}
-                    </div>
-                    <div v-if="item.responseSummary" class="review-workspace__execution-summary">
-                      <strong>响应摘要：</strong>{{ item.responseSummary }}
-                    </div>
-                  </div>
-                </a-timeline-item>
-              </a-timeline>
-            </a-spin>
-          </a-drawer>
+          </GradingImmersionSection>
         </template>
 
         <template #aside>
-          <UiCard class="review-workspace__card">
-            <template #title>
-              <EditOutlined />
-              <span>教师给分</span>
-            </template>
-
+          <GradingImmersionSection title="教师给分">
+            <template #icon><EditOutlined /></template>
             <a-form
               ref="gradeFormRef"
               :model="gradeForm"
@@ -344,13 +300,10 @@
                 />
               </a-form-item>
             </a-form>
-          </UiCard>
+          </GradingImmersionSection>
 
-          <UiCard class="review-workspace__card">
-            <template #title>
-              <CommentOutlined />
-              <span>批注历史</span>
-            </template>
+          <GradingImmersionSection title="批注历史">
+            <template #icon><CommentOutlined /></template>
             <UiEmpty v-if="annotations.length === 0" description="暂无数据" />
             <a-list v-else :data-source="annotations" size="small">
               <template #renderItem="{ item }">
@@ -368,7 +321,7 @@
                 </a-list-item>
               </template>
             </a-list>
-          </UiCard>
+          </GradingImmersionSection>
         </template>
 
         <template #footer>
@@ -381,7 +334,6 @@
             </span>
           </div>
           <div class="review-workspace__sticky-actions">
-            <UiButton variant="ghost" size="md" @click="goBack"> 返回 </UiButton>
             <UiButton
               variant="outline"
               size="md"
@@ -412,7 +364,19 @@
           </div>
         </template>
       </GradingWorkspaceLayout>
-    </a-spin>
+    </template>
+
+    <MarkingAiAssistDrawer
+      v-model:open="executionsDrawerOpen"
+      :loading="executionsLoading"
+      :executions="aiExecutions"
+      :highlight-trace-id="highlightExecutionTraceId"
+      :status-label="statusLabel"
+      :status-tone="statusTone"
+      :ability-label="abilityLabel"
+      :ability-tone="abilityTone"
+      :timeline-color="timelineColor"
+    />
   </div>
 </template>
 
@@ -422,13 +386,11 @@ import type { AnnotationVO } from '@/apis/mark/exam-annotation'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
-  AiProviderTypeCode,
   ExamQuestionAiExecutionItemVO,
 } from '@/apis/mark/exam-grade'
 import type {
   ReviewTaskDetailVO,
   ReviewTaskItemVO,
-  ReviewTaskStatusCode,
 } from '@/apis/mark/exam-review-task'
 import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
@@ -439,15 +401,14 @@ import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { listAnnotations, validateAnnotationContract } from '@/apis/mark/exam-annotation'
+import { listAnnotations } from '@/apis/mark/exam-annotation'
 import {
-  AI_ABILITY_LABEL,
   AI_ABILITY_TONE,
-  AI_EXECUTION_STATUS_LABEL,
   AI_EXECUTION_STATUS_TONE,
-  AI_PROVIDER_TYPE_LABEL,
+  AiAbilityDescription,
+  AiExecutionStatusDescription,
   confirmQuestionGrade,
   listAiExecutionsForQuestion,
   rejectQuestionGrade,
@@ -457,19 +418,25 @@ import {
   claimReviewTask,
   getReviewTaskDetail,
   listReviewTasks,
-  REVIEW_TASK_STATUS_LABEL,
   REVIEW_TASK_STATUS_TONE,
+  ReviewTaskStatusCode,
+  ReviewTaskStatusDescription,
+  ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
-import { OBJECTIVE_COMPARE_POLICY_OPTIONS } from '@/apis/mark/exam-standard-answer'
+import { ObjectiveComparePolicyDescription } from '@/apis/mark/exam-standard-answer'
+import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
+import GradingImmersionChrome from '@/components/mark/GradingImmersionChrome.vue'
+import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
 import GradingWorkspaceLayout from '@/components/mark/GradingWorkspaceLayout.vue'
+import MarkingAiAssistDrawer from '@/components/mark/MarkingAiAssistDrawer.vue'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { isExamConfidentialFlag, useExamConfidential } from '@/composables/useConfidentialWatermark'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { EXAM_WORKSPACE_CHROME_KEY, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -487,20 +454,16 @@ function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
 }
 
 function reviewStatusLabel(value: ReviewTaskStatusCode): string {
-  return strictEnumLabel(REVIEW_TASK_STATUS_LABEL, value, '复核任务状态')
+  return strictEnumLabel(ReviewTaskStatusDescription, value, '复核任务状态')
 }
 
-/** 客观题比对策略文案，与后端 ObjectiveComparePolicy 枚举对齐 */
-const COMPARE_POLICY_LABEL = Object.fromEntries(
-  OBJECTIVE_COMPARE_POLICY_OPTIONS.map((item) => [item.value, item.label]),
-) as Record<ObjectiveComparePolicyCode, string>
-
 function comparePolicyLabel(code: ObjectiveComparePolicyCode): string {
-  return strictEnumLabel(COMPARE_POLICY_LABEL, code, '客观题比较策略')
+  return strictEnumLabel(ObjectiveComparePolicyDescription, code, '客观题比较策略')
 }
 
 const route = useRoute()
 const router = useRouter()
+const chrome = inject(EXAM_WORKSPACE_CHROME_KEY, null)
 const { refreshSnapshot } = useWorkspaceExamId()
 const userStore = useUserStore()
 
@@ -512,6 +475,12 @@ const {
 } = useExamConfidential(examId)
 const isExamConfidential = computed(() => isExamConfidentialFlag(examConfidentialRef.value))
 const examConfidentialLabel = computed(() => examConfidentialLabelRef.value)
+const immersionTitle = computed(
+  () => chrome?.contextTitle.value || examConfidentialLabel.value || 'OCR/AI 复核',
+)
+const immersionBackLabel = computed(() =>
+  taskSource.value === 'arbitration' ? '返回仲裁池' : '返回复核队列',
+)
 const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
 const taskSource = computed(() => (route.query.source === 'arbitration' ? 'arbitration' : 'review'))
 /** 当前登录阅卷教师 ID，用于约束队列里可继续接手的 IN_PROGRESS 任务。 */
@@ -554,18 +523,36 @@ function goBack(): void {
 const detail = ref<ReviewTaskDetailVO | null>(null)
 const loading = ref(false)
 
+const immersionSubtitle = computed(() => {
+  const task = detail.value
+  if (!task) {
+    return ''
+  }
+  const parts: string[] = []
+  if (task.paperDisplay?.primaryText) {
+    parts.push(task.paperDisplay.primaryText)
+  }
+  if (task.questionNo) {
+    parts.push(`题 ${task.questionNo}`)
+  }
+  if (task.status) {
+    parts.push(reviewStatusLabel(task.status))
+  }
+  return parts.join(' · ')
+})
+
 const canSubmit = computed(() => !!examId.value && !!taskId.value)
 
 /** 当前任务是否允许提交复核（PENDING / IN_PROGRESS） */
 const canConfirm = computed(() => {
   const status = detail.value?.status
-  return status === 'PENDING' || status === 'IN_PROGRESS'
+  return status === ReviewTaskStatusCode.PENDING || status === ReviewTaskStatusCode.IN_PROGRESS
 })
 
 /** 仅首次复核任务可驳回升级仲裁；仲裁任务本身不可再次驳回。 */
 const canReject = computed(() => {
   if (!canConfirm.value || !detail.value?.gradeResultId) return false
-  return detail.value.reviewType !== 'QUESTION_REVIEW_ARBITRATION'
+  return detail.value.reviewType !== ReviewTaskTypeCode.QUESTION_REVIEW_ARBITRATION
 })
 
 // ─── 批注列表 ─────────────────────────────
@@ -574,21 +561,20 @@ const annotations = ref<AnnotationVO[]>([])
 async function loadAnnotations(): Promise<void> {
   if (!examId.value || !detail.value) return
   const currentExamId = examId.value
-  const { paperInstanceId, questionTemplateId, gradeResultId } = detail.value
+  const { paperInstanceId, layoutQuestionId, gradeResultId } = detail.value
   try {
     annotations.value = await readAllPages(
       (pageNum) =>
         listAnnotations({
           examId: currentExamId,
           paperInstanceId,
-          questionTemplateId,
+          layoutQuestionId,
           gradeResultId,
           pageNum,
           pageSize: REVIEW_WORKSPACE_PAGE_SIZE,
         }),
       '批注记录加载失败，请刷新后重试',
     )
-    annotations.value.forEach(validateAnnotationContract)
   } catch (error) {
     showUserError(error, '批注记录加载失败')
   }
@@ -604,7 +590,7 @@ const reviewQueue = ref<ReviewTaskItemVO[]>([])
 async function loadReviewQueue(): Promise<void> {
   if (
     !examId.value
-    || !detail.value?.questionTemplateId
+    || !detail.value?.layoutQuestionId
     || !detail.value.reviewType
     || !detail.value.gradeSource
   ) {
@@ -620,7 +606,7 @@ async function loadReviewQueue(): Promise<void> {
     return
   }
   const currentExamId = examId.value
-  const { questionTemplateId, reviewType, gradeSource } = detail.value
+  const { layoutQuestionId, reviewType, gradeSource } = detail.value
   try {
     // 后端 ReviewTaskQueryRequest.status 可选；同题下分别拉 PENDING / IN_PROGRESS 后合并去重。
     const [pendingItems, inProgressItems] = await Promise.all([
@@ -628,11 +614,11 @@ async function loadReviewQueue(): Promise<void> {
         (pageNum) =>
           listReviewTasks({
             examId: currentExamId,
-            questionTemplateId,
+            layoutQuestionId,
             reviewType,
             gradeSource,
-            excludeArbitration: reviewType !== 'QUESTION_REVIEW_ARBITRATION',
-            status: 'PENDING',
+            excludeArbitration: reviewType !== ReviewTaskTypeCode.QUESTION_REVIEW_ARBITRATION,
+            status: ReviewTaskStatusCode.PENDING,
             pageNum,
             pageSize: REVIEW_WORKSPACE_PAGE_SIZE,
           }),
@@ -642,11 +628,11 @@ async function loadReviewQueue(): Promise<void> {
         (pageNum) =>
           listReviewTasks({
             examId: currentExamId,
-            questionTemplateId,
+            layoutQuestionId,
             reviewType,
             gradeSource,
-            excludeArbitration: reviewType !== 'QUESTION_REVIEW_ARBITRATION',
-            status: 'IN_PROGRESS',
+            excludeArbitration: reviewType !== ReviewTaskTypeCode.QUESTION_REVIEW_ARBITRATION,
+            status: ReviewTaskStatusCode.IN_PROGRESS,
             pageNum,
             pageSize: REVIEW_WORKSPACE_PAGE_SIZE,
           }),
@@ -765,12 +751,46 @@ function handleReviewWorkspaceKeydown(event: KeyboardEvent): void {
   }
 }
 
+const submitting = ref(false)
+const rejecting = ref(false)
+
+// 单题 AI 复评状态：docs/17 §整卷 AI 与单题复评；仅在教师异议阶段允许调用，服务端守门 CONFIRMED 不可复评
+const rescoring = ref(false)
+const lastExperienceAssistMeta = ref<{
+  applied?: boolean
+  sourceExamName?: string
+  consistencyRate?: number
+} | null>(null)
+
+/** 从复核详情同步经验辅助徽标状态 */
+function syncExperienceAssistMetaFromDetail(taskDetail: ReviewTaskDetailVO | null): void {
+  const audit = taskDetail?.referenceExperienceAudit
+  if (audit?.referenceExperienceApplied && audit.referenceExperienceSourceExamName) {
+    lastExperienceAssistMeta.value = {
+      applied: true,
+      sourceExamName: audit.referenceExperienceSourceExamName,
+      consistencyRate: audit.referenceExperienceConsistencyRate,
+    }
+    return
+  }
+  lastExperienceAssistMeta.value = null
+}
+
+/** 是否可以调用单题 AI 复评，需同时满足：存在 gradeResultId、状态为 PENDING/IN_PROGRESS、未提交中 */
+const canRescoreByAi = computed<boolean>(() => {
+  if (rescoring.value || submitting.value) return false
+  if (!examId.value) return false
+  if (!detail.value) return false
+  return detail.value.status === ReviewTaskStatusCode.PENDING || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
+})
+
 // ─── 加载主流程 ───────────────────────────
 async function loadTask(): Promise<void> {
   if (!canSubmit.value) return
   loading.value = true
   try {
     detail.value = await loadReviewTaskDetail()
+    syncExperienceAssistMetaFromDetail(detail.value)
     await Promise.all([loadAnnotations(), loadReviewQueue()])
     // 默认填充 AI 评分（仅当表单空时；避免覆盖教师正在编辑的值）
     if (
@@ -781,6 +801,9 @@ async function loadTask(): Promise<void> {
       gradeForm.teacherReviewScore = detail.value.aiScore
     }
   } catch (error) {
+    detail.value = null
+    annotations.value = []
+    reviewQueue.value = []
     showUserError(error, '教师复核工作台任务加载失败')
   } finally {
     loading.value = false
@@ -802,6 +825,7 @@ function resetTaskState(): void {
   reviewQueue.value = []
   executionsDrawerOpen.value = false
   aiExecutions.value = []
+  lastExperienceAssistMeta.value = null
 }
 
 /**
@@ -812,7 +836,7 @@ async function loadReviewTaskDetail(): Promise<ReviewTaskDetailVO> {
     examId: examId.value,
     reviewTaskId: taskId.value,
   })
-  if (preview.status === 'PENDING' || preview.status === 'IN_PROGRESS') {
+  if (preview.status === ReviewTaskStatusCode.PENDING || preview.status === ReviewTaskStatusCode.IN_PROGRESS) {
     return claimReviewTask({
       examId: examId.value,
       reviewTaskId: taskId.value,
@@ -859,20 +883,6 @@ const gradeFormRules: Record<string, Rule[]> = {
   annotationText: [{ max: 1000, message: '批注最多 1000 字', trigger: 'blur' }],
 }
 
-const submitting = ref(false)
-const rejecting = ref(false)
-
-// 单题 AI 复评状态：docs/17 §整卷 AI 与单题复评；仅在教师异议阶段允许调用，服务端守门 CONFIRMED 不可复评
-const rescoring = ref(false)
-
-/** 是否可以调用单题 AI 复评，需同时满足：存在 gradeResultId、状态为 PENDING/IN_PROGRESS、未提交中 */
-const canRescoreByAi = computed<boolean>(() => {
-  if (rescoring.value || submitting.value) return false
-  if (!examId.value) return false
-  if (!detail.value) return false
-  return detail.value.status === 'PENDING' || detail.value.status === 'IN_PROGRESS'
-})
-
 /**
  * 二次确认 → 调用 rescoreQuestionByAi → 成功后 loadTask 刷新详情。
  * 后端只会重写 AI 评分 / aiTraceId / aiDiagnostic / aiLimited 等辅助字段，
@@ -899,6 +909,10 @@ async function doRescoreByAi(): Promise<void> {
       examId: examId.value,
       gradeResultId: detail.value.gradeResultId,
     })
+    syncExperienceAssistMetaFromDetail({
+      ...detail.value,
+      referenceExperienceAudit: result.referenceExperienceAudit,
+    })
     if (Boolean(result.scored) && result.aiScore != null) {
       message.success(`AI 复评完成，AI 评分 ${result.aiScore} 分`)
     } else {
@@ -921,7 +935,7 @@ async function doRescoreByAi(): Promise<void> {
 const currentAiSourceLabel = computed<string>(() => {
   const abilityCode = detail.value?.aiAbilityCode
   if (!abilityCode) return ''
-  return strictEnumLabel(AI_ABILITY_LABEL, abilityCode, 'AI 能力编码')
+  return strictEnumLabel(AiAbilityDescription, abilityCode, 'AI 能力编码')
 })
 
 /** 当前 AI 评分来源色调，与 currentAiSourceLabel 保持一致区分 */
@@ -981,10 +995,12 @@ function clearAiSuggestionToManual(): void {
 const executionsDrawerOpen = ref<boolean>(false)
 const executionsLoading = ref<boolean>(false)
 const aiExecutions = ref<ExamQuestionAiExecutionItemVO[]>([])
+const highlightExecutionTraceId = ref<string | null>(null)
 
-/** 打开抽屉后拉取历史记录 */
-function openExecutionsDrawer(): void {
+/** 打开抽屉后拉取历史记录，可选定位当前 AI trace */
+function openExecutionsDrawer(highlightTraceId?: string | null): void {
   if (!detail.value || !examId.value) return
+  highlightExecutionTraceId.value = highlightTraceId ?? detail.value.aiTraceId ?? null
   executionsDrawerOpen.value = true
   void loadAiExecutions()
 }
@@ -997,7 +1013,6 @@ async function loadAiExecutions(): Promise<void> {
       examId: examId.value,
       gradeResultId: detail.value.gradeResultId,
     })
-    validateAiExecutionContracts(records)
     aiExecutions.value = records
   } catch (error) {
     showUserError(error, 'AI 复评历史加载失败')
@@ -1009,7 +1024,7 @@ async function loadAiExecutions(): Promise<void> {
 
 /** 能力编码 -> 来源文案 */
 function abilityLabel(code: AiAbilityCode): string {
-  return strictEnumLabel(AI_ABILITY_LABEL, code, 'AI 能力编码')
+  return strictEnumLabel(AiAbilityDescription, code, 'AI 能力编码')
 }
 
 /** 能力编码 -> 来源色调 */
@@ -1019,7 +1034,7 @@ function abilityTone(code: AiAbilityCode): BadgeTone {
 
 /** 状态编码 -> 文案 */
 function statusLabel(status: AiExecutionStatusCode): string {
-  return strictEnumLabel(AI_EXECUTION_STATUS_LABEL, status, 'AI 执行状态')
+  return strictEnumLabel(AiExecutionStatusDescription, status, 'AI 执行状态')
 }
 
 /** 状态编码 -> 色调 */
@@ -1027,22 +1042,9 @@ function statusTone(status: AiExecutionStatusCode): BadgeTone {
   return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, 'AI 执行状态')
 }
 
-/** AI 供应商类型 -> 中文文案 */
-function providerLabel(providerType: AiProviderTypeCode): string {
-  return strictEnumLabel(AI_PROVIDER_TYPE_LABEL, providerType, 'AI 供应商类型')
-}
-
 /** 时间线节点色彩，与状态一致 */
 function timelineColor(status: AiExecutionStatusCode): string {
   return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, 'AI 执行状态')
-}
-
-function validateAiExecutionContracts(records: ExamQuestionAiExecutionItemVO[]): void {
-  records.forEach((record) => {
-    strictEnumLabel(AI_ABILITY_LABEL, record.abilityCode, 'AI 能力编码')
-    strictEnumLabel(AI_EXECUTION_STATUS_LABEL, record.status, 'AI 执行状态')
-    strictEnumLabel(AI_PROVIDER_TYPE_LABEL, record.providerType, 'AI 供应商类型')
-  })
 }
 
 /**
@@ -1168,7 +1170,7 @@ async function takeNextTask(): Promise<void> {
     await loadReviewQueue()
     const currentTaskId = taskId.value
     const candidate = reviewQueue.value.find(
-      (item) => item.reviewTaskId !== currentTaskId && item.status === 'PENDING',
+      item => item.reviewTaskId !== currentTaskId && item.status === ReviewTaskStatusCode.PENDING,
     )
     if (!candidate) {
       message.success('同题剩余任务复核完毕，返回考试工作台')
@@ -1225,19 +1227,8 @@ onBeforeUnmount(() => {
   gap: 16px;
   min-width: 0;
 
-  &__toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-  }
-
-  &__signals {
-    margin-bottom: 12px;
-    padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: 8px;
+  &__section--standard {
+    border-color: var(--ant-color-success-border, #b7eb8f);
   }
 
   &__queue-progress {
@@ -1297,14 +1288,6 @@ onBeforeUnmount(() => {
 
   &__row {
     row-gap: 16px;
-  }
-
-  &__card {
-    margin-bottom: 16px;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
   }
 
   &__slice-viewer {
@@ -1385,43 +1368,6 @@ onBeforeUnmount(() => {
     font-size: 12px;
     color: var(--dp-text-muted, #64748b);
     margin-left: 8px;
-  }
-
-  &__execution-item {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  &__execution-meta {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  &__execution-time {
-    font-size: 12px;
-    color: var(--dp-text-secondary, #475569);
-  }
-
-  &__execution-latency {
-    font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
-  }
-
-  &__execution-trace {
-    font-size: 12px;
-    color: var(--dp-text-secondary, #475569);
-    word-break: break-all;
-  }
-
-  &__execution-model,
-  &__execution-diag,
-  &__execution-summary {
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--ant-color-text, rgba(0, 0, 0, 0.85));
   }
 }
 </style>

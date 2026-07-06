@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioGapTaskStatus, PortfolioGapTaskSummaryVO } from '@/apis/portfolio/types'
+import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/enums'
+import type { PortfolioGapTaskSummaryVO } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
-import { PORTFOLIO_GAP_TASK_STATUS_LABEL } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -17,8 +18,8 @@ import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-function gapStatusLabel(status: PortfolioGapTaskStatus): string {
-  return strictEnumLabel(PORTFOLIO_GAP_TASK_STATUS_LABEL, status, '补采任务状态')
+function gapStatusLabel(status: PortfolioGapTaskStatusCode): string {
+  return strictEnumLabel(PortfolioGapTaskStatusDescription, status, '补采任务状态')
 }
 
 const router = useRouter()

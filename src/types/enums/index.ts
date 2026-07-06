@@ -1,6 +1,6 @@
 /**
  * 枚举统一导出
- * 所有枚举定义都应该从这里导入，确保与后端枚举保持一致
+ * mark / quality / portfolio 业务枚举真源在 types/enums
  */
 
 // AI相关状态（评分 + 评审）
@@ -79,7 +79,6 @@ export * from './role-enum'
 export {
   formatSemester,
   getSemesterDescription,
-  isValidSemesterCode,
   SemesterCode,
   SemesterDescription,
   SemesterOptions

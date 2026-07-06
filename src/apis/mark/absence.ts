@@ -6,6 +6,7 @@
  *   2. confirmAbsence 教师确认单个学生缺考（写入缺考原因、成绩处理策略）
  *   3. revokeAbsence 教师撤销已确认缺考
  *   4. listAbsenceRecords 查询考试范围内的缺考记录（可按状态过滤）
+ *   5. countPendingMakeupAbsences 统计 CONFIRMED + PENDING_MAKEUP 待补考人数
  *
  * 后端规则：
  *   - 所有 endpoint 均为 POST，入参统一 body
@@ -14,52 +15,65 @@
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { ScorePolicyCode } from '@/types/enums/score-policy-enum'
 import http from '@/config/axios'
+import {
+  AbsenceReasonCode,
+  AbsenceReasonDescription,
+  ALL_ABSENCE_REASON_CODES,
+} from '@/types/enums/absence-reason-enum'
+import { AbsenceStatusCode } from '@/types/enums/absence-status-enum'
+import { ALL_SCORE_POLICY_CODES, ScorePolicyDescription } from '@/types/enums/score-policy-enum'
 
-// ─── 状态与原因枚举 ─────────────────────────────────
+export {
+  AbsenceReasonCode,
+  AbsenceReasonDescription,
+  ALL_ABSENCE_REASON_CODES,
+} from '@/types/enums/absence-reason-enum'
 
-/** 缺考状态编码 - 对应后端 AbsenceStatus */
-export type AbsenceStatusCode = 'PENDING' | 'CONFIRMED' | 'REVOKED' | 'MAKEUP_ARRANGED'
+export {
+  AbsenceStatusCode,
+  AbsenceStatusDescription,
+  ALL_ABSENCE_STATUS_CODES,
+} from '@/types/enums/absence-status-enum'
 
-export const ABSENCE_STATUS_LABEL: Record<AbsenceStatusCode, string> = {
-  PENDING: '待确认',
-  CONFIRMED: '已确认',
-  REVOKED: '已撤销',
-  MAKEUP_ARRANGED: '已安排补考',
-}
+export {
+  ALL_SCORE_POLICY_CODES,
+  ScorePolicyCode,
+  ScorePolicyDescription,
+} from '@/types/enums/score-policy-enum'
 
 /** 缺考状态 BadgeTone 映射（用于 UiTag/UiBadge 等 ui-guide 组件） */
 export const ABSENCE_STATUS_TONE: Record<AbsenceStatusCode, BadgeTone> = {
-  PENDING: 'orange',
-  CONFIRMED: 'red',
-  REVOKED: 'gray',
-  MAKEUP_ARRANGED: 'blue',
+  [AbsenceStatusCode.PENDING]: 'orange',
+  [AbsenceStatusCode.CONFIRMED]: 'red',
+  [AbsenceStatusCode.REVOKED]: 'gray',
+  [AbsenceStatusCode.MAKEUP_ARRANGED]: 'blue',
 }
 
-/** 缺考原因编码 */
-export type AbsenceReasonCode = 'ABSENT' | 'LEAVE' | 'WITHDRAW' | 'PAPER_LOST' | 'OTHER'
+/** 缺考记录状态流转说明（核对 → 确认 → 撤销 / 补考安排） */
+export const ABSENCE_STATUS_FLOW_HINT = '待确认 → 已确认 → 已安排补考；已确认可撤销回待确认'
 
-export const ABSENCE_REASON_LABEL: Record<AbsenceReasonCode, string> = {
-  ABSENT: '缺考',
-  LEAVE: '请假',
-  WITHDRAW: '退课',
-  PAPER_LOST: '试卷遗失',
-  OTHER: '其他',
+/** 缺考原因 BadgeTone 映射（用于 UiTag） */
+export const ABSENCE_REASON_TONE: Record<AbsenceReasonCode, BadgeTone> = {
+  [AbsenceReasonCode.ABSENT]: 'red',
+  [AbsenceReasonCode.LEAVE]: 'orange',
+  [AbsenceReasonCode.WITHDRAW]: 'blue',
+  [AbsenceReasonCode.PAPER_LOST]: 'red',
+  [AbsenceReasonCode.OTHER]: 'gray',
 }
 
-/** 成绩处理策略编码 */
-export type AbsenceScorePolicyCode
-  = | 'SCORE_ZERO'
-    | 'EXCLUDE_STAT'
-    | 'PENDING_MAKEUP'
-    | 'PENDING_EXTERNAL'
+export const ABSENCE_REASON_OPTIONS: Array<{ value: AbsenceReasonCode, label: string }>
+  = ALL_ABSENCE_REASON_CODES.map((value) => ({
+    value,
+    label: AbsenceReasonDescription[value],
+  }))
 
-export const ABSENCE_SCORE_POLICY_LABEL: Record<AbsenceScorePolicyCode, string> = {
-  SCORE_ZERO: '记 0 分',
-  EXCLUDE_STAT: '不计入统计',
-  PENDING_MAKEUP: '待补考',
-  PENDING_EXTERNAL: '移交外部处理',
-}
+export const SCORE_POLICY_OPTIONS: Array<{ value: ScorePolicyCode, label: string }>
+  = ALL_SCORE_POLICY_CODES.map((value) => ({
+    value,
+    label: ScorePolicyDescription[value],
+  }))
 
 // ─── 出勤核对 ─────────────────────────────────
 
@@ -106,7 +120,7 @@ export interface AbsenceConfirmRequest {
   examId: string
   studentUserId: string
   absenceReason: AbsenceReasonCode
-  scorePolicy: AbsenceScorePolicyCode
+  scorePolicy: ScorePolicyCode
 }
 
 /** 缺考记录响应 - 对应 AbsenceRecordResponse */
@@ -121,7 +135,7 @@ export interface AbsenceRecordVO {
   attemptId?: string
   absenceStatus: AbsenceStatusCode
   absenceReason: AbsenceReasonCode
-  scorePolicy: AbsenceScorePolicyCode
+  scorePolicy: ScorePolicyCode
   confirmedUserId?: string
   confirmedTime?: string
   revokedUserId?: string
@@ -171,4 +185,28 @@ export function listAbsenceRecords(
   request: AbsenceQueryRequest,
 ): Promise<PageResult<AbsenceRecordVO>> {
   return http.post<PageResult<AbsenceRecordVO>>('/api/mark/exams/absence/list', request)
+}
+
+/** 待补考缺考计数请求 - 对应 AbsencePendingMakeupCountRequest */
+export interface AbsencePendingMakeupCountRequest {
+  examId: string
+}
+
+/** 待补考缺考计数响应 - 对应 AbsencePendingMakeupCountResponse */
+export interface AbsencePendingMakeupCountVO {
+  examId: string
+  pendingMakeupCount: number
+}
+
+/**
+ * 统计待补考缺考人数（CONFIRMED + PENDING_MAKEUP）
+ * POST /api/mark/exams/absence/pending-makeup-count
+ */
+export function countPendingMakeupAbsences(
+  request: AbsencePendingMakeupCountRequest,
+): Promise<AbsencePendingMakeupCountVO> {
+  return http.post<AbsencePendingMakeupCountVO>(
+    '/api/mark/exams/absence/pending-makeup-count',
+    request,
+  )
 }

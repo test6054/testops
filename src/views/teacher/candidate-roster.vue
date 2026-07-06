@@ -1,270 +1,318 @@
 <template>
-  <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="roster-page__empty" />
-
-  <a-spin v-else :spinning="contextLoading">
-    <UiCard class="exam-scope-card">
-      <template #title>
-        <TeamOutlined />
-        <span>考试范围</span>
-        <UiTag v-if="rosterLocked" tone="orange" size="sm">已有扫描</UiTag>
-        <UiTag v-else-if="archiveClassScopeRecoveryAllowed" tone="orange" size="sm">
-          关考后可修正
-        </UiTag>
-        <UiTag v-else-if="classScopeReadOnly" tone="gray" size="sm">只读</UiTag>
-      </template>
-      <template v-if="canAddClassScope" #extra>
-        <UiButton size="sm" variant="outline" @click="openAddClassModal">
-          <template #icon><PlusOutlined /></template>
-          新增班级
-        </UiButton>
-      </template>
-
-      <div class="exam-scope-meta">
-        <div class="exam-scope-meta__item">
-          <span class="exam-scope-meta__label">纳入方式</span>
-          <span class="exam-scope-meta__value">{{ rosterScopeModeDisplay || '—' }}</span>
-        </div>
-        <div class="exam-scope-meta__item">
-          <span class="exam-scope-meta__label">参考院系</span>
-          <span class="exam-scope-meta__value">{{ referenceDepartmentName || '—' }}</span>
-        </div>
-      </div>
-
-      <div class="exam-scope-classes">
-        <div class="exam-scope-classes__head">
-          <span class="exam-scope-classes__title">参考班级</span>
-          <span v-if="scopedClassTags.length" class="exam-scope-classes__count">{{ scopedClassTags.length }} 个</span>
-        </div>
-        <div v-if="scopedClassTags.length" class="exam-scope-classes__tags">
-          <UiTag v-for="item in scopedClassTags" :key="item.classId" tone="blue" size="sm">
-            {{ item.className }}
+  <StageWorkbenchShell class="roster-page">
+    <template v-if="selectedExamId" #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="contextBarTitle"
+        :subtitle="contextBarSubtitle"
+      >
+        <template #status>
+          <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
+            {{ examStatusLabel }}
           </UiTag>
-        </div>
-        <UiEmpty v-else description="尚未配置参考班级" class="exam-scope-classes__empty" />
-      </div>
-    </UiCard>
+          <UiTag v-if="rosterLocked" tone="orange" size="sm">已有扫描</UiTag>
+          <UiTag v-else-if="archiveClassScopeRecoveryAllowed" tone="orange" size="sm">
+            关考后可修正
+          </UiTag>
+          <UiTag v-else-if="classScopeReadOnly" tone="gray" size="sm">只读</UiTag>
+        </template>
+      </ContextBar>
+    </template>
 
-    <UiAlertStrip
-      v-if="showInferredClassScopeNotice"
-      tone="warning"
-      title="参考班级尚未保存"
-      description="当前班级来自名册或已绑定卷推断，扫描、导出与归档将使用这些班级；建议保存为正式参考班级。"
-      dense
-    >
-      <template #actions>
-        <UiButton
-          variant="primary"
-          size="sm"
-          :loading="persistClassScopeSaving"
-          :disabled="classScopeReadOnly"
-          @click="persistInferredClassScope"
-        >
-          保存为参考班级
-        </UiButton>
-      </template>
-    </UiAlertStrip>
+    <template v-if="selectedExamId" #signal>
+      <SignalBand variant="tiles" compact :metrics="rosterSignalMetrics" />
+    </template>
 
-    <UiAlertStrip
-      v-if="archiveClassScopeRecoveryAllowed"
-      tone="warning"
-      title="自动建卷失败，可修正参考班级"
-      description="关考后不可增删考生，仅可修正参考班级。保存后系统将自动重触发建卷。"
-      dense
+    <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="roster-page__empty" />
+
+    <UiSkeletonState
+      v-else-if="contextLoading"
+      variant="card"
+      :card-count="2"
+      compact
+      class="roster-page__loading"
     />
 
-    <UiCard class="roster-page__table-card">
-      <template #title>
-        <UserOutlined />
-        <span>考生名册</span>
-      </template>
-      <template v-if="candidateRosterWriteAllowed" #extra>
-        <a-space v-if="allowsManualCandidateEdit">
-          <UiButton
-            size="sm"
-            variant="outline"
-            :disabled="!classIds.length"
-            @click="openSelectDrawer"
-          >
-            <template #icon><UserAddOutlined /></template>
-            从学生库选择
-          </UiButton>
-          <UiButton size="sm" variant="outline" @click="openImportModal">
-            <template #icon><UploadOutlined /></template>
-            批量导入考生
-          </UiButton>
-          <UiButton size="sm" @click="openSingleAddModal">
-            <template #icon><PlusOutlined /></template>
-            添加单个考生
-          </UiButton>
-          <UiButton
-            size="sm"
-            variant="outline"
-            :loading="fullScopeSaving"
-            :disabled="!classIds.length || candidateTotal === 0"
-            @click="confirmSaveFullScope"
-          >
-            全量保存名册
-          </UiButton>
-        </a-space>
-      </template>
+    <template v-else>
+      <ExamWorkspaceJourneySubNav />
 
-      <UiFilterBar
-        variant="plain"
-        :model-value="rosterFilterForm"
-        :fields="rosterFilterFields"
-        search-text="查询"
-        @update:model-value="syncRosterFilterForm"
-        @search="handleRosterSearch"
-        @reset="handleRosterReset"
+      <WorkbenchSurfaceCard class="exam-scope-card">
+        <template #head>
+          <div class="exam-scope-card__head">
+            <h3 class="exam-scope-card__title">
+              <TeamOutlined />
+              <span>考试范围</span>
+            </h3>
+            <UiButton
+              v-if="canAddClassScope"
+              size="sm"
+              variant="outline"
+              @click="openAddClassModal"
+            >
+              <template #icon><PlusOutlined /></template>
+              新增班级
+            </UiButton>
+          </div>
+        </template>
+
+        <div class="exam-scope-meta">
+          <div class="exam-scope-meta__item">
+            <span class="exam-scope-meta__label">纳入方式</span>
+            <span class="exam-scope-meta__value">{{ rosterScopeModeDisplay || '—' }}</span>
+          </div>
+          <div class="exam-scope-meta__item">
+            <span class="exam-scope-meta__label">参考院系</span>
+            <span class="exam-scope-meta__value">{{ referenceDepartmentName || '—' }}</span>
+          </div>
+        </div>
+
+        <div class="exam-scope-classes">
+          <div class="exam-scope-classes__head">
+            <span class="exam-scope-classes__title">参考班级</span>
+            <span v-if="scopedClassTags.length" class="exam-scope-classes__count">{{ scopedClassTags.length }} 个</span>
+          </div>
+          <div v-if="scopedClassTags.length" class="exam-scope-classes__tags">
+            <UiTag v-for="item in scopedClassTags" :key="item.classId" tone="blue" size="sm">
+              {{ item.className }}
+            </UiTag>
+          </div>
+          <UiEmpty v-else description="尚未配置参考班级" class="exam-scope-classes__empty" />
+        </div>
+      </WorkbenchSurfaceCard>
+
+      <UiAlertStrip
+        v-if="showInferredClassScopeNotice"
+        tone="warning"
+        title="参考班级尚未保存"
+        description="当前班级来自名册或已绑定卷推断，扫描、导出与归档将使用这些班级；建议保存为正式参考班级。"
+        dense
+      >
+        <template #actions>
+          <UiButton
+            variant="primary"
+            size="sm"
+            :loading="persistClassScopeSaving"
+            :disabled="classScopeReadOnly"
+            @click="persistInferredClassScope"
+          >
+            保存为参考班级
+          </UiButton>
+        </template>
+      </UiAlertStrip>
+
+      <UiAlertStrip
+        v-if="archiveClassScopeRecoveryAllowed"
+        tone="warning"
+        title="自动建卷失败，可修正参考班级"
+        description="关考后不可增删考生，仅可修正参考班级。保存后系统将自动重触发建卷。"
+        dense
       />
 
-      <UiDataTable
-        v-model:current="pagination.current"
-        v-model:page-size="pagination.pageSize"
-        :columns="columns"
-        :data-source="tableCandidates"
-        :loading="tableLoading"
-        :total="pagination.total"
-        row-key="rowKey"
-        size="middle"
-        flat
-        class="roster-table student-detail-table__data-table"
-        bordered
-        @page-change="handlePageChange"
-      >
-        <template #bodyCell="{ column, index }">
-          <template v-if="column.key === 'student'">
-            <div class="roster-student">
-              <span class="roster-student__name">{{ tableCandidates[index].studentName }}</span>
-              <span class="roster-student__no">{{ tableCandidates[index].studentNo }}</span>
-            </div>
-          </template>
-          <template v-else-if="column.key === 'className'">
-            <span class="roster-cell roster-cell--muted">
-              {{ tableCandidates[index].className }}
-            </span>
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiConfirmPopover
-                v-if="canRemoveCandidate(tableCandidates[index])"
-                title="确认移除该考生？"
-                description="移除后需重新加入名册。"
-                danger
-                @confirm="removeCandidate(tableCandidates[index].studentUserId)"
+      <WorkbenchSurfaceCard class="roster-page__table-card" flush>
+        <template v-if="candidateRosterWriteAllowed" #toolbar>
+          <div class="roster-page__filter-stack">
+            <a-space v-if="allowsManualCandidateEdit" class="roster-page__actions-row">
+              <UiButton
+                size="sm"
+                variant="outline"
+                :disabled="!classIds.length"
+                @click="openSelectDrawer"
               >
-                <UiTextAction tone="danger">移除</UiTextAction>
-              </UiConfirmPopover>
-              <span
-                v-else-if="!tableCandidates[index].removable"
-                class="muted"
-                :title="tableCandidates[index].removalBlockReason"
+                <template #icon><UserAddOutlined /></template>
+                从学生库选择
+              </UiButton>
+              <UiButton size="sm" variant="outline" @click="openImportModal">
+                <template #icon><UploadOutlined /></template>
+                批量导入考生
+              </UiButton>
+              <UiButton size="sm" @click="openSingleAddModal">
+                <template #icon><PlusOutlined /></template>
+                添加单个考生
+              </UiButton>
+              <UiButton
+                size="sm"
+                variant="outline"
+                :loading="fullScopeSaving"
+                :disabled="!classIds.length || candidateTotal === 0"
+                @click="confirmSaveFullScope"
               >
-                不可移除
-              </span>
-              <span v-else class="muted">—</span>
-            </div>
-          </template>
+                全量保存名册
+              </UiButton>
+            </a-space>
+            <UiFilterBar
+              variant="plain"
+              :model-value="rosterFilterForm"
+              :fields="rosterFilterFields"
+              search-text="查询"
+              @update:model-value="syncRosterFilterForm"
+              @search="handleRosterSearch"
+              @reset="handleRosterReset"
+            />
+          </div>
         </template>
-      </UiDataTable>
-    </UiCard>
-  </a-spin>
+        <template v-else #toolbar>
+          <UiFilterBar
+            variant="plain"
+            :model-value="rosterFilterForm"
+            :fields="rosterFilterFields"
+            search-text="查询"
+            @update:model-value="syncRosterFilterForm"
+            @search="handleRosterSearch"
+            @reset="handleRosterReset"
+          />
+        </template>
 
-  <ClassStudentTreeSelectorDrawer
-    v-model="selectDrawerOpen"
-    title="选择考试考生"
-    :exam-id="selectedExamId ?? undefined"
-    :allowed-class-ids="classIds"
-    :excluded-student-ids="rosterStudentUserIds"
-    @confirm="handleStudentsSelected"
-  />
-  <UiPlatformExcelImportModal
-    v-model:open="showImportModal"
-    :scene-key="ExcelImportSceneKey.MARK_ROSTER_EXCEL"
-    entity-label="考生名册"
-    :context="importExcelContext"
-    preview-before-commit
-    :requirements="rosterImportRequirements"
-    @success="handleRosterImportSuccess"
-  />
+        <UiDataTable
+          v-model:current="pagination.current"
+          v-model:page-size="pagination.pageSize"
+          :columns="columns"
+          :data-source="tableCandidates"
+          :loading="tableLoading"
+          :total="pagination.total"
+          row-key="rowKey"
+          size="middle"
+          flat
+          class="roster-table student-detail-table__data-table"
+          bordered
+          @page-change="handlePageChange"
+        >
+          <template #bodyCell="{ column, index }">
+            <template v-if="column.key === 'student'">
+              <div class="roster-student">
+                <span class="roster-student__name">{{ tableCandidates[index].studentName }}</span>
+                <span class="roster-student__no">{{ tableCandidates[index].studentNo }}</span>
+              </div>
+            </template>
+            <template v-else-if="column.key === 'className'">
+              <span class="roster-cell roster-cell--muted">
+                {{ tableCandidates[index].className }}
+              </span>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <div class="operations-cell" @click.stop>
+                <UiConfirmPopover
+                  v-if="canRemoveCandidate(tableCandidates[index])"
+                  title="确认移除该考生？"
+                  description="移除后需重新加入名册。"
+                  danger
+                  @confirm="removeCandidate(tableCandidates[index].studentUserId)"
+                >
+                  <UiTextAction tone="danger">移除</UiTextAction>
+                </UiConfirmPopover>
+                <span
+                  v-else-if="!tableCandidates[index].removable"
+                  class="muted"
+                  :title="tableCandidates[index].removalBlockReason"
+                >
+                  不可移除
+                </span>
+                <span v-else class="muted">—</span>
+              </div>
+            </template>
+          </template>
+        </UiDataTable>
+      </WorkbenchSurfaceCard>
+    </template>
 
-  <a-modal
-    v-model:open="singleAddOpen"
-    title="添加考生"
-    ok-text="加入名册"
-    :confirm-loading="singleAddSubmitting"
-    :destroy-on-close="true"
-    width="520px"
-    @ok="handleSingleAddSubmit"
-  >
-    <a-form layout="vertical">
-      <a-form-item label="班级" required>
-        <a-select
-          v-model:value="singleAddClassId"
-          placeholder="请选择班级"
-          :options="classSelectOptions"
-          show-search
-          option-filter-prop="label"
-          style="width: 100%"
-        />
-      </a-form-item>
-      <a-form-item label="学生" required>
-        <StudentSelector
-          v-model:value="singleAddStudentUserId"
-          :class-id="singleAddClassId"
-          :exam-id="selectedExamId"
-          width="100%"
-          @change="handleSingleStudentChange"
-        />
-      </a-form-item>
-    </a-form>
-  </a-modal>
+    <ClassStudentTreeSelectorDrawer
+      v-model="selectDrawerOpen"
+      title="选择考试考生"
+      :exam-id="selectedExamId ?? undefined"
+      :allowed-class-ids="classIds"
+      :excluded-student-ids="rosterStudentUserIds"
+      @confirm="handleStudentsSelected"
+    />
+    <UiPlatformExcelImportModal
+      v-model:open="showImportModal"
+      :scene-key="ExcelImportSceneKey.MARK_ROSTER_EXCEL"
+      entity-label="考生名册"
+      :context="importExcelContext"
+      preview-before-commit
+      :requirements="rosterImportRequirements"
+      @success="handleRosterImportSuccess"
+    />
 
-  <a-modal
-    v-model:open="addClassModalOpen"
-    title="新增参考班级"
-    ok-text="确认新增"
-    :confirm-loading="addClassSubmitting"
-    :destroy-on-close="true"
-    width="520px"
-    @ok="handleAddClassSubmit"
-  >
-    <a-form layout="vertical">
-      <a-form-item label="参考院系">
-        <span class="exam-scope-meta__value">{{ referenceDepartmentName || '—' }}</span>
-      </a-form-item>
-      <a-form-item label="班级" required>
-        <a-select
-          v-model:value="pendingAddClassIds"
-          mode="multiple"
-          placeholder="选择要新增的班级"
-          :options="addableClassOptions"
-          :loading="classOptionsLoading"
-          show-search
-          option-filter-prop="label"
-          style="width: 100%"
-        />
-      </a-form-item>
-    </a-form>
-  </a-modal>
+    <UiDrawer
+      v-model:open="singleAddOpen"
+      title="添加考生"
+      :width="520"
+      :hide-footer="false"
+      ok-text="加入名册"
+      :confirm-loading="singleAddSubmitting"
+      @ok="handleSingleAddSubmit"
+    >
+      <a-form layout="vertical">
+        <a-form-item label="班级" required>
+          <a-select
+            v-model:value="singleAddClassId"
+            placeholder="请选择班级"
+            :options="classSelectOptions"
+            show-search
+            option-filter-prop="label"
+            style="width: 100%"
+          />
+        </a-form-item>
+        <a-form-item label="学生" required>
+          <StudentSelector
+            v-model:value="singleAddStudentUserId"
+            :class-id="singleAddClassId"
+            :exam-id="selectedExamId"
+            width="100%"
+            @change="handleSingleStudentChange"
+          />
+        </a-form-item>
+      </a-form>
+    </UiDrawer>
+
+    <UiDrawer
+      v-model:open="addClassModalOpen"
+      title="新增参考班级"
+      :width="520"
+      :hide-footer="false"
+      ok-text="确认新增"
+      :confirm-loading="addClassSubmitting"
+      @ok="handleAddClassSubmit"
+    >
+      <a-form layout="vertical">
+        <a-form-item label="参考院系">
+          <span class="exam-scope-meta__value">{{ referenceDepartmentName || '—' }}</span>
+        </a-form-item>
+        <a-form-item label="班级" required>
+          <a-select
+            v-model:value="pendingAddClassIds"
+            mode="multiple"
+            placeholder="选择要新增的班级"
+            :options="addableClassOptions"
+            :loading="classOptionsLoading"
+            show-search
+            option-filter-prop="label"
+            style="width: 100%"
+          />
+        </a-form-item>
+      </a-form>
+    </UiDrawer>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { CandidateRow } from './candidate-roster/types'
 import type { ClassStudentTreeConfirmPayload } from '@/apis/edu/class'
-import type { ExamClassRefVO, ExamRosterScopeMode } from '@/apis/mark/exam'
+import type { ExamClassRefVO, ExamRosterScopeModeCode } from '@/apis/mark/exam'
+import type {WorkbenchCandidateRosterPanelVO} from '@/apis/mark/exam-progress';
 import type { ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
+import type { SignalMetric } from '@/types/workbench'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
-import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
 import { useRouter } from 'vue-router'
-import { EXAM_ROSTER_SCOPE_MODE_LABEL, getExamDetail } from '@/apis/mark/exam'
+import { ExamRosterScopeModeDescription, getExamDetail } from '@/apis/mark/exam'
+import { getCandidateRosterPanel } from '@/apis/mark/exam-progress'
 import { pageScannerBatches } from '@/apis/mark/exam-scan'
 import {
   listExamCandidates,
@@ -280,16 +328,23 @@ import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSel
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import StudentSelector from '@/components/quality/selectors/StudentSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiConfirmPopover from '@/components/ui-guide/ui/UiConfirmPopover.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useExamDepartmentClassScope } from '@/composables/useExamDepartmentClassScope'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { ErrorType, handleError, showUserError } from '@/utils/error-handler'
@@ -306,6 +361,12 @@ defineOptions({ name: 'TeacherCandidateRoster' })
 const ROSTER_CANDIDATE_EXPORT_PAGE_SIZE = 100
 
 const { selectedExamId } = useMarkExamContext()
+const {
+  contextBarTitle,
+  contextBarSubtitle,
+  examStatusLabel,
+  examStatusTone,
+} = useExamJourneyContextBar('考生名册')
 const { refreshSnapshot } = useWorkspaceExamId()
 const router = useRouter()
 
@@ -318,9 +379,10 @@ const classScopeHydrating = ref(false)
 const lastSavedClassIds = ref<string[]>([])
 const rosterLocked = ref(false)
 const rosterWriteForbidden = ref(false)
-const rosterScopeMode = ref<ExamRosterScopeMode | undefined>(undefined)
+const rosterScopeMode = ref<ExamRosterScopeModeCode | undefined>(undefined)
 const referenceDepartmentName = ref<string | undefined>(undefined)
 const candidateTotal = ref(0)
+const rosterPanel = ref<WorkbenchCandidateRosterPanelVO | null>(null)
 let classScopeSaveTimer: ReturnType<typeof setTimeout> | null = null
 let loadContextSeq = 0
 let loadTableSeq = 0
@@ -367,6 +429,77 @@ const pagination = reactive<TablePaginationConfig>({
   showTotal: (total: number) => `共 ${total} 条`,
 })
 
+const rosterSignalMetrics = computed((): SignalMetric[] => {
+  const panel = rosterPanel.value
+  if (panel) {
+    const metrics: SignalMetric[] = [
+      {
+        key: 'total',
+        label: '总人数',
+        value: panel.totalCount,
+        unit: '人',
+        tone: 'blue',
+      },
+      {
+        key: 'active',
+        label: '正常',
+        value: panel.activeCount,
+        unit: '人',
+        tone: 'green',
+      },
+      {
+        key: 'absent',
+        label: '缺考',
+        value: panel.absentCount,
+        unit: '人',
+        tone: panel.absentCount > 0 ? 'red' : 'gray',
+      },
+      {
+        key: 'classes',
+        label: '参考班级',
+        value: panel.classCount,
+        unit: '个',
+        tone: 'gray',
+      },
+    ]
+    if (panel.attendanceRate != null) {
+      metrics.push({
+        key: 'attendance',
+        label: '参考率',
+        value: `${panel.attendanceRate}%`,
+        tone: panel.attendanceRate >= 90 ? 'green' : 'orange',
+      })
+    }
+    return metrics
+  }
+  const fallbackMetrics: SignalMetric[] = []
+  if (candidateTotal.value > 0) {
+    fallbackMetrics.push({
+      key: 'total',
+      label: '名册人数',
+      value: candidateTotal.value,
+      unit: '人',
+      tone: 'blue',
+    })
+  }
+  if (classIds.value.length > 0) {
+    fallbackMetrics.push({
+      key: 'classes',
+      label: '参考班级',
+      value: classIds.value.length,
+      unit: '个',
+      tone: 'gray',
+    })
+  }
+  fallbackMetrics.push({
+    key: 'locked',
+    label: '名册状态',
+    value: rosterLocked.value ? '已锁定' : '可编辑',
+    tone: rosterLocked.value ? 'orange' : 'green',
+  })
+  return fallbackMetrics
+})
+
 const selectDrawerOpen = ref(false)
 const showImportModal = ref(false)
 const singleAddOpen = ref(false)
@@ -397,7 +530,7 @@ const rosterScopeModeDisplay = computed(() => {
   if (!rosterScopeMode.value) {
     return undefined
   }
-  return EXAM_ROSTER_SCOPE_MODE_LABEL[rosterScopeMode.value]
+  return ExamRosterScopeModeDescription[rosterScopeMode.value]
 })
 
 const canAddClassScope = computed(() => !classScopeReadOnly.value && !!departmentId.value)
@@ -529,8 +662,14 @@ async function handleAddClassSubmit(): Promise<void> {
 }
 
 async function loadRosterStudentIds(examId: string): Promise<void> {
-  const list = await listExamCandidates(examId)
-  rosterStudentUserIds.value = list.map((item) => item.studentUserId)
+  try {
+    const list = await listExamCandidates(examId)
+    rosterStudentUserIds.value = list.map((item) => item.studentUserId)
+  } catch (error) {
+    rosterStudentUserIds.value = []
+    showUserError(error, '考生 ID 列表加载失败')
+    throw error
+  }
 }
 
 async function loadCandidatePage(): Promise<void> {
@@ -580,6 +719,23 @@ async function reloadExamContext(): Promise<void> {
   await refreshSnapshot()
 }
 
+async function loadRosterPanel(examId: string): Promise<void> {
+  try {
+    rosterPanel.value = await getCandidateRosterPanel(examId)
+  } catch (error) {
+    rosterPanel.value = null
+    showUserError(error, '名册看板加载失败')
+  }
+}
+
+async function refreshRosterPanel(): Promise<void> {
+  if (!selectedExamId.value) {
+    rosterPanel.value = null
+    return
+  }
+  await loadRosterPanel(selectedExamId.value)
+}
+
 async function loadExamContext(): Promise<void> {
   if (!selectedExamId.value) {
     return
@@ -591,6 +747,7 @@ async function loadExamContext(): Promise<void> {
   classScopeHydrating.value = true
   try {
     const [detail, locked] = await Promise.all([getExamDetail(examId), probeRosterLocked(examId)])
+    await loadRosterPanel(examId)
     if (seq !== loadContextSeq) {
       return
     }
@@ -944,6 +1101,17 @@ watch(
     margin-bottom: 0;
   }
 
+  &__filter-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+
+  &__actions-row {
+    flex-wrap: wrap;
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -952,6 +1120,24 @@ watch(
 
 .exam-scope-card {
   margin-bottom: 0;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+  }
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 16px;
+    font-weight: var(--dp-font-weight-title, 600);
+    line-height: 1.5;
+  }
 }
 
 .exam-scope-meta {

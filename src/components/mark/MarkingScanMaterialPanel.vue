@@ -3,7 +3,7 @@ import type { MarkingScanPageRefVO } from '@/apis/mark/exam-scan'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import { QUALITY_DECISION_LABEL, QUALITY_DECISION_TONE } from '@/apis/mark/exam-scan'
+import { QUALITY_DECISION_TONE, QualityDecisionDescription } from '@/apis/mark/exam-scan'
 import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -76,7 +76,7 @@ const masterRoiStyle = computed(() => {
 const sourceQualityLabel = computed(() => {
   const status = props.sourceScanPage?.qualityStatus
   if (!status) return ''
-  return strictEnumLabel(QUALITY_DECISION_LABEL, status, '扫描页质量判定')
+  return strictEnumLabel(QualityDecisionDescription, status, '扫描页质量判定')
 })
 
 const sourceQualityTone = computed((): BadgeTone => {
@@ -152,7 +152,7 @@ async function loadImages(): Promise<void> {
 }
 
 watch(
-  () => [props.sliceFileId, props.sourceScanPage?.fileId, props.masterPaperPage?.fileId] as const,
+  () => [props.sliceFileId, props.sourceScanPage?.fileId, props.masterPaperPage?.fileId],
   () => {
     void loadImages()
   },

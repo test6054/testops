@@ -12,7 +12,7 @@ import type { SelectValue } from 'ant-design-vue/es/select'
  */
 import type { AiMaskMappingVO } from '@/apis/quality/ai-mask-mapping'
 import type { AiTaskVO } from '@/apis/quality/ai-task'
-import type { AiTaskBusinessType, AiTaskStatus, AiTaskType } from '@/apis/quality/types'
+import type { AiTaskBusinessTypeCode, AiTaskStatusCode, AiTaskTypeCode } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
@@ -20,10 +20,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { aiMaskMappingApi } from '@/apis/quality/ai-mask-mapping'
 import { aiTaskApi } from '@/apis/quality/ai-task'
 import {
-  AI_TASK_BUSINESS_TYPE_LABEL,
   AI_TASK_STATUS_COLOR,
-  AI_TASK_STATUS_LABEL,
-  AI_TASK_TYPE_LABEL,
+  AiTaskBusinessTypeDescription,
+  AiTaskStatusDescription,
+  AiTaskTypeDescription,
 } from '@/apis/quality/types'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -33,20 +33,20 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-function aiTaskTypeLabel(value: AiTaskType): string {
-  return strictEnumLabel(AI_TASK_TYPE_LABEL, value, 'AI 任务类型')
+function aiTaskTypeLabel(value: AiTaskTypeCode): string {
+  return strictEnumLabel(AiTaskTypeDescription, value, 'AI 任务类型')
 }
 
-function aiTaskStatusLabel(value: AiTaskStatus): string {
-  return strictEnumLabel(AI_TASK_STATUS_LABEL, value, 'AI 任务状态')
+function aiTaskStatusLabel(value: AiTaskStatusCode): string {
+  return strictEnumLabel(AiTaskStatusDescription, value, 'AI 任务状态')
 }
 
-function aiTaskStatusColor(value: AiTaskStatus): BadgeTone {
+function aiTaskStatusColor(value: AiTaskStatusCode): BadgeTone {
   return strictEnumTone(AI_TASK_STATUS_COLOR, value, 'AI 任务状态')
 }
 
-function aiTaskBusinessTypeLabel(value: AiTaskBusinessType): string {
-  return strictEnumLabel(AI_TASK_BUSINESS_TYPE_LABEL, value, 'AI 任务业务类型')
+function aiTaskBusinessTypeLabel(value: AiTaskBusinessTypeCode): string {
+  return strictEnumLabel(AiTaskBusinessTypeDescription, value, 'AI 任务业务类型')
 }
 
 const route = useRoute()
@@ -62,10 +62,15 @@ const taskOptions = ref<Array<{ value: string, label: string }>>([])
 const taskVO = ref<AiTaskVO | null>(null)
 const mappingVO = ref<AiMaskMappingVO | null>(null)
 
-const filterForm = reactive({ aiTaskId: '' })
+interface AiMaskMappingFilterModel {
+  [key: string]: unknown
+  aiTaskId: string
+}
+
+const filterForm = reactive<AiMaskMappingFilterModel>({ aiTaskId: '' })
 
 const filterModel = computed<Record<string, unknown>>({
-  get: () => filterForm as Record<string, unknown>,
+  get: () => filterForm,
   set: (value) => {
     Object.assign(filterForm, value)
   },

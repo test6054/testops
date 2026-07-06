@@ -18,11 +18,11 @@ export const portfolioOnboardingApi = {
   getState: (data: PortfolioTeacherOnboardingTeacherRequest = {}) =>
     http.post<PortfolioTeacherOnboardingStateVO>(`${BASE}/get-state`, data),
   saveProgress: (data: PortfolioTeacherOnboardingSaveProgressRequest) =>
-    http.post<void>(`${BASE}/save-progress`, data),
+    http.post<PortfolioTeacherOnboardingStateVO>(`${BASE}/save-progress`, data),
   complete: (data: PortfolioTeacherOnboardingTeacherRequest = {}) =>
-    http.post<void>(`${BASE}/complete`, data),
+    http.post<PortfolioTeacherOnboardingStateVO>(`${BASE}/complete`, data),
   dismiss: (data: PortfolioTeacherOnboardingTeacherRequest = {}) =>
-    http.post<void>(`${BASE}/dismiss`, data),
+    http.post<PortfolioTeacherOnboardingStateVO>(`${BASE}/dismiss`, data),
   getReviewContent: (data: PortfolioTeacherOnboardingTeacherRequest = {}) =>
     http.post<PortfolioTeacherOnboardingReviewContentVO>(`${BASE}/get-review-content`, data),
 }

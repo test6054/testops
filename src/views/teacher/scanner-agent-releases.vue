@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScannerAgentReleaseVO } from '@/apis/mark/scanner-agent-release'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -17,10 +18,12 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAuthStore } from '@/stores/modules/auth'
 import { RoleEnum } from '@/types/enums'
@@ -43,10 +46,17 @@ const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
 const filters = reactive({ keyword: '' })
 
 const registerOpen = ref(false)
-const registerForm = reactive({
+interface ScannerAgentReleaseRegisterForm {
+  version: string
+  fileNodeId: string | undefined
+  fileName: string | undefined
+  releaseNotes: string
+}
+
+const registerForm = reactive<ScannerAgentReleaseRegisterForm>({
   version: '',
-  fileNodeId: undefined as string | undefined,
-  fileName: undefined as string | undefined,
+  fileNodeId: undefined,
+  fileName: undefined,
   releaseNotes: '',
 })
 
@@ -80,11 +90,11 @@ const signalMetrics = computed<SignalMetric[]>(() => {
   ]
 })
 
-const filterFields = computed(() => [
+const filterFields = computed<FilterField[]>(() => [
   {
     key: 'keyword',
     label: '关键字',
-    type: 'input' as const,
+    type: 'input',
     placeholder: '版本号或文件名',
   },
 ])
@@ -255,6 +265,7 @@ onMounted(() => {
   <StageWorkbenchShell>
     <template #context>
       <ContextBar
+        layout="workbench"
         show-title
         title="一体机 Agent 版本发布"
         subtitle="注册 MSI/EXE 安装包、切换当前发布版本，MSI 可启用次日 01:00 主动推送"
@@ -277,21 +288,23 @@ onMounted(() => {
     </template>
 
     <template #signal>
-      <SignalBand v-if="signalMetrics.length" :metrics="signalMetrics" compact variant="inline" />
+      <SignalBand v-if="signalMetrics.length" variant="tiles" :metrics="signalMetrics" compact />
     </template>
 
     <UiEmpty v-if="!canManage" description="当前账号无租户管理员权限，无法维护 Agent 发布包" />
 
-    <template v-else>
-      <UiFilterBar
-        variant="plain"
-        :model-value="filters"
-        :fields="filterFields"
-        search-text="查询"
-        @update:model-value="Object.assign(filters, $event)"
-        @search="handleSearch"
-        @reset="handleResetSearch"
-      />
+    <WorkbenchSurfaceCard v-else flush>
+      <template #toolbar>
+        <UiFilterBar
+          variant="plain"
+          :model-value="filters"
+          :fields="filterFields"
+          search-text="查询"
+          @update:model-value="Object.assign(filters, $event)"
+          @search="handleSearch"
+          @reset="handleResetSearch"
+        />
+      </template>
 
       <UiDataTable
         v-model:current="pagination.current"
@@ -353,14 +366,14 @@ onMounted(() => {
           </template>
         </template>
       </UiDataTable>
-    </template>
+    </WorkbenchSurfaceCard>
 
-    <a-modal
+    <UiDialog
       v-model:open="registerOpen"
       title="注册 Agent 发布包"
+      :width="520"
       :confirm-loading="saving"
       ok-text="注册"
-      cancel-text="取消"
       @ok="submitRegister"
     >
       <a-form layout="vertical">
@@ -391,14 +404,14 @@ onMounted(() => {
           />
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiDialog>
 
-    <a-modal
+    <UiDialog
       v-model:open="publishOpen"
       title="发布 Agent 版本"
+      :width="520"
       :confirm-loading="publishing"
       ok-text="确认发布"
-      cancel-text="取消"
       @ok="submitPublish"
     >
       <p v-if="publishTarget">
@@ -412,7 +425,7 @@ onMounted(() => {
       <p v-else-if="publishTarget" class="scanner-agent-releases__hint">
         EXE 安装包不支持主动推送，一体机需通过 Agent 自更新或人工安装。
       </p>
-    </a-modal>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 

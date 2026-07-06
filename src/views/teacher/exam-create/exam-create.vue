@@ -32,7 +32,8 @@
       </aside>
 
       <div class="create-layout__main">
-        <a-spin :spinning="ec.submitting.value" tip="正在创建…">
+        <UiSkeletonState v-if="ec.submitting.value" variant="card" compact />
+        <template v-else>
           <BasicSettingsStep
             :basic-rules="ec.basicRules"
             @course-change="ec.setCourseSelection"
@@ -58,7 +59,7 @@
             :preview-syncing="ec.rosterPreviewSyncing.value"
             @submit="handleSubmit"
           />
-        </a-spin>
+        </template>
       </div>
     </div>
 
@@ -85,6 +86,7 @@ import { nextTick, onBeforeUnmount, onMounted, provide, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiConfirmModal from '@/components/ui-guide/ui/ConfirmModal.vue'
 import UiSidebarNav from '@/components/ui-guide/ui/UiSidebarNav.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import BasicSettingsStep from './BasicSettingsStep.vue'

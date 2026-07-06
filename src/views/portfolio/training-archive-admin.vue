@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  PortfolioArchiveRecordStatus,
-  PortfolioArchiveRecordSummaryVO,
-} from '@/apis/portfolio/types'
+import type { PortfolioArchiveRecordStatusCode } from '@/apis/portfolio/enums'
+import type { PortfolioArchiveRecordSummaryVO } from '@/apis/portfolio/types'
 import { onMounted, ref } from 'vue'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL } from '@/apis/portfolio/types'
+import { PortfolioArchiveRecordStatusDescription } from '@/apis/portfolio/enums'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -28,8 +26,8 @@ const columns: ColumnsType = [
   { title: '学年', dataIndex: 'academicYear', key: 'academicYear', width: 88 },
 ]
 
-function recordStatusLabel(status: PortfolioArchiveRecordStatus): string {
-  return strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, status, '档案记录状态')
+function recordStatusLabel(status: PortfolioArchiveRecordStatusCode): string {
+  return strictEnumLabel(PortfolioArchiveRecordStatusDescription, status, '档案记录状态')
 }
 
 async function loadPage() {

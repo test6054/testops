@@ -8,6 +8,7 @@ import { computed } from 'vue'
 import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
+import { ScanBatchStatusCode } from '@/types/enums/scan-batch-status-enum'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const props = withDefaults(
@@ -62,13 +63,13 @@ function openBatch(row: ExamScannerKioskSessionBatchVO) {
   }
   const activeBatchId
     = workflow.activeBackendBatch.value?.scanBatchId || workflow.currentJob.value?.scanBatchId
-  if (row.status === 'IN_PROGRESS' || activeBatchId === row.scanBatchId) {
+  if (row.status === ScanBatchStatusCode.IN_PROGRESS || activeBatchId === row.scanBatchId) {
     stage.gotoStage('scanning')
   }
 }
 
 async function discardSessionBatch(row: ExamScannerKioskSessionBatchVO) {
-  if (row.status === 'IN_PROGRESS' && workflow.currentJob.value) {
+  if (row.status === ScanBatchStatusCode.IN_PROGRESS && workflow.currentJob.value) {
     workflow.errorMessage.value = '当前批次正在扫描，请先结束或暂停后再删除'
     return
   }

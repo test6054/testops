@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  PfImpactReportStatus,
+  PfImpactReportStatusCode,
   PfSceneCode,
   PortfolioEligibilityEvalLogVO,
   PortfolioIndicatorAutoCollectResultVO,
   PortfolioIndicatorComputeLogVO,
   PortfolioIndicatorScoreComputeResult,
   PortfolioPublishImpactReportVO,
-  PortfolioTenantConfigAuditLogVO,
-} from '@/apis/portfolio/indicator-types'
+
+  PortfolioTenantConfigAuditLogVO} from '@/apis/portfolio/indicator-types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
 import { message } from 'ant-design-vue'
@@ -17,10 +17,10 @@ import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
-  PF_IMPACT_REPORT_STATUS_LABEL,
   PF_IMPACT_REPORT_STATUS_TONE,
-  PF_SCENE_CODE_LABEL,
   PF_SCORE_RULE_TYPE_OPTIONS,
+  PfImpactReportStatusDescription,
+  PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
 import PortfolioIndicatorExplainDrawer from '@/components/portfolio/PortfolioIndicatorExplainDrawer.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
@@ -38,14 +38,14 @@ import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-e
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function sceneCodeLabel(value: PfSceneCode): string {
-  return strictEnumLabel(PF_SCENE_CODE_LABEL, value, '场景编码')
+  return strictEnumLabel(PfSceneCodeDescription, value, '场景编码')
 }
 
-function impactReportStatusLabel(value: PfImpactReportStatus): string {
-  return strictEnumLabel(PF_IMPACT_REPORT_STATUS_LABEL, value, '影响报告状态')
+function impactReportStatusLabel(value: PfImpactReportStatusCode): string {
+  return strictEnumLabel(PfImpactReportStatusDescription, value, '影响报告状态')
 }
 
-function impactReportStatusTone(value: PfImpactReportStatus): BadgeTone {
+function impactReportStatusTone(value: PfImpactReportStatusCode): BadgeTone {
   return strictEnumTone(PF_IMPACT_REPORT_STATUS_TONE, value, '影响报告状态')
 }
 
@@ -144,7 +144,7 @@ async function runTrial() {
       paramsJson: serializeTemplateParams(trialParams.value),
     })
     showComputeResult(result)
-    message.success(`试算得分 ${result.finalScore}`)
+    message.success(result.finalScore != null ? `试算得分 ${result.finalScore}` : '试算完成，待审核')
   }
   catch (error) {
     showUserError(error)
@@ -159,7 +159,7 @@ async function runSnapshotCompute() {
   try {
     const result = await portfolioIndicatorTenantApi.computeSnapshot({ ...snapshotForm })
     showComputeResult(result)
-    message.success(`正式计分 ${result.finalScore}`)
+    message.success(result.finalScore != null ? `正式计分 ${result.finalScore}` : '计分完成，待审核')
     await loadComputeLogs()
   }
   catch (error) {
@@ -475,9 +475,14 @@ onMounted(() => {
         </a-tab-pane>
       </a-tabs>
       <div v-if="computeResult" class="result-panel">
-        <p>原始分 {{ computeResult.rawScore }} → 最终分 {{ computeResult.finalScore }}</p>
-        <p v-if="computeResult.auditPending">
+        <p>
+          计算分 {{ computeResult.calcScore ?? '—' }} → 最终分 {{ computeResult.finalScore ?? '—' }}
+        </p>
+        <p v-if="computeResult.finalScore == null">
           待审核
+        </p>
+        <p v-if="computeResult.hitSegment">
+          命中：{{ computeResult.hitSegment }}
         </p>
         <p>{{ computeResult.explainText }}</p>
         <UiButton @click="explainOpen = true">

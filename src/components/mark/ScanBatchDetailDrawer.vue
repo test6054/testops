@@ -60,12 +60,12 @@
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'qualityStatus'">
                   <UiTag :tone="strictEnumTone(QUALITY_DECISION_TONE, record.qualityStatus, '扫描页质量判定')" size="sm">
-                    {{ strictEnumLabel(QUALITY_DECISION_LABEL, record.qualityStatus, '扫描页质量判定') }}
+                    {{ strictEnumLabel(QualityDecisionDescription, record.qualityStatus, '扫描页质量判定') }}
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'effectiveStatus'">
                   <UiTag tone="gray" size="sm">
-                    {{ strictEnumLabel(EFFECTIVE_STATUS_LABEL, record.effectiveStatus, '扫描页生效状态') }}
+                    {{ strictEnumLabel(EffectiveStatusDescription, record.effectiveStatus, '扫描页生效状态') }}
                   </UiTag>
                 </template>
               </template>
@@ -110,7 +110,7 @@
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'attentionType'">
                   <UiTag :tone="strictEnumTone(SCAN_ATTENTION_TYPE_TONE, record.attentionType, '扫描异常类型')" size="sm">
-                    {{ strictEnumLabel(SCAN_ATTENTION_TYPE_LABEL, record.attentionType, '扫描异常类型') }}
+                    {{ strictEnumLabel(ScanAttentionTypeDescription, record.attentionType, '扫描异常类型') }}
                   </UiTag>
                 </template>
               </template>
@@ -237,20 +237,20 @@ import type {
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import { EFFECTIVE_STATUS_LABEL } from '@/apis/mark/effective-status'
+import { EffectiveStatusDescription } from '@/apis/mark/effective-status'
 import {
   getScanBatchOrderAudit,
   getScannerBatchDetail,
   listScanAttentions,
   pageScannerBatchPages,
-  QUALITY_DECISION_LABEL,
   QUALITY_DECISION_TONE,
+  QualityDecisionDescription,
   retryScanBatchPageRegister,
-  SCAN_ATTENTION_TYPE_LABEL,
   SCAN_ATTENTION_TYPE_TONE,
-  SCAN_BATCH_ORDER_AUDIT_CODE_LABEL,
-  SCAN_BATCH_STATUS_LABEL,
   SCAN_BATCH_STATUS_TONE,
+  ScanAttentionTypeDescription,
+  ScanBatchOrderAuditDescription,
+  ScanBatchStatusDescription,
   sealScanBatchByTeacher,
 } from '@/apis/mark/exam-scan'
 import { discardScanJob, listScanJobs } from '@/apis/mark/scanner-agent-local'
@@ -392,7 +392,7 @@ const orderAuditIssueColumns: ColumnType<ScanBatchOrderAuditIssueVO>[] = [
     key: 'auditCode',
     width: 140,
     customRender: ({ record }) =>
-      strictEnumLabel(SCAN_BATCH_ORDER_AUDIT_CODE_LABEL, record.auditCode, '顺序审计异常码'),
+      strictEnumLabel(ScanBatchOrderAuditDescription, record.auditCode, '顺序审计异常码'),
   },
   { title: '说明', dataIndex: 'message', key: 'message', ellipsis: true },
   { title: '进纸序', dataIndex: 'pageSeq', key: 'pageSeq', width: 72 },
@@ -410,7 +410,7 @@ function batchStatusLabel(batch: ExamScannerBatchVO): string {
   if (batch.sealedTime) {
     return '已封存'
   }
-  return strictEnumLabel(SCAN_BATCH_STATUS_LABEL, batch.status, '扫描批次状态')
+  return strictEnumLabel(ScanBatchStatusDescription, batch.status, '扫描批次状态')
 }
 
 async function loadDetail(): Promise<void> {
@@ -692,7 +692,7 @@ async function refreshAll(): Promise<void> {
 }
 
 watch(
-  () => [props.open, props.scanBatchId, props.examId] as const,
+  () => [props.open, props.scanBatchId, props.examId],
   ([open, scanBatchId]) => {
     if (open && scanBatchId) {
       activeTab.value = 'overview'

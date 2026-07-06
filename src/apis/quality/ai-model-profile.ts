@@ -1,4 +1,4 @@
-import type { AiHealthStatus, AiProviderType } from './types'
+import type { AiHealthStatusCode, AiProviderTypeCode } from './types'
 /**
  * AI 模型配置 API - 对齐 AiModelProfileController。
  *
@@ -18,7 +18,7 @@ const BASE = '/api/quality/ai/model-profiles'
 export interface AiModelProfileVO {
   id: string
   profileName: string
-  providerType: AiProviderType
+  providerType: AiProviderTypeCode
   modelName: string
   apiHost: string
   /** API Key 普通列表不下行明文；后端仅返回配置状态 */
@@ -28,10 +28,10 @@ export interface AiModelProfileVO {
   temperature?: number
   maxTokens?: number
   maxInputChars: number
-  connectTimeoutSecs?: number
-  readTimeoutSecs?: number
+  connectTimeoutSecs: number
+  readTimeoutSecs: number
   enabled?: boolean
-  healthStatus?: AiHealthStatus
+  healthStatus?: AiHealthStatusCode
   lastHealthCheckTime?: string
   lastHealthMessage?: string
 }
@@ -54,15 +54,15 @@ export interface AiModelProfileQueryRequest extends QueryDto {
 export interface AiModelProfileSaveRequest {
   id?: string
   profileName: string
-  providerType: AiProviderType
+  providerType: AiProviderTypeCode
   modelName: string
   apiHost: string
   apiKey?: string
   temperature?: number
   maxTokens?: number
   maxInputChars: number
-  connectTimeoutSecs?: number
-  readTimeoutSecs?: number
+  connectTimeoutSecs: number
+  readTimeoutSecs: number
   enabled?: boolean
 }
 
@@ -78,7 +78,7 @@ export interface AiModelProfileHealthCheckRequest {
 export interface AiModelProfileHealthCheckVO {
   profileId: string
   /** UNKNOWN / HEALTHY / FAILED */
-  healthStatus: AiHealthStatus
+  healthStatus: AiHealthStatusCode
   /** 健康检查诊断消息 */
   healthMessage: string
   /** 模型处理摘要（截断后） */

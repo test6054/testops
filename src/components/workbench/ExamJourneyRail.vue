@@ -15,7 +15,7 @@
 import type { ExamJourneyKey } from '@/constants/exam-journey'
 import type { WorkbenchStage } from '@/types/workbench'
 import StageRail from '@/components/workbench/StageRail.vue'
-import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
+import { isExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 
 defineOptions({
   name: 'ExamJourneyRail',
@@ -30,14 +30,12 @@ const emit = defineEmits<{
   (e: 'select', journeyKey: ExamJourneyKey): void
 }>()
 
-const JOURNEY_KEY_SET = new Set<string>(EXAM_JOURNEY_STEPS.map((step) => step.key))
-
 /** 将 StageRail 选中项映射为六步旅程键并向上抛出 */
 function handleSelect(stage: WorkbenchStage): void {
-  if (!JOURNEY_KEY_SET.has(stage.key)) {
+  if (!isExamWorkspaceJourneyKey(stage.key) || stage.key === 'overview') {
     throw new Error(`未知考试旅程键：${stage.key}`)
   }
-  emit('select', stage.key as ExamJourneyKey)
+  emit('select', stage.key)
 }
 </script>
 

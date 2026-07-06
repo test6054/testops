@@ -1,4 +1,4 @@
-import type { CivicDimension } from './types'
+import type { CivicDimensionCode } from './types'
 /**
  * 毕业要求观测点 API。
  * 后端对象：RequirementIndicatorController /api/quality/requirement-indicators。
@@ -15,7 +15,7 @@ export interface RequirementIndicatorVO {
   description?: string
   requirementWeight: number
   thresholdValue?: number
-  civicDimensions?: CivicDimension[]
+  civicDimensions?: CivicDimensionCode[]
   sortOrder?: number
   createTime?: string
   updateTime?: string
@@ -29,7 +29,7 @@ export interface RequirementIndicatorSaveRequest {
   description?: string
   requirementWeight: number
   thresholdValue?: number
-  civicDimensions?: CivicDimension[]
+  civicDimensions?: CivicDimensionCode[]
   sortOrder?: number
 }
 

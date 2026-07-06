@@ -17,7 +17,7 @@ export function signalsToBarChartItems(metrics: SignalMetric[]): UiBarChartItem[
     .map((metric) => ({
       key: metric.key,
       label: metric.label,
-      value: metric.value as number,
+      value: Number(metric.value),
       tone: metric.tone,
       helper: metric.unit ? `${metric.value}${metric.unit}` : undefined,
     }))

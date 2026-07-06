@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
-import type { SignalMetric } from '@/types/workbench'
+import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
 import { message } from 'ant-design-vue'
 import { computed, inject, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   autoDetectExamLayout,
+  EXAM_LAYOUT_DESIGN_FLOW_HINT,
   generateExamLayoutSheet,
   loadExamLayoutDesign,
   previewExamLayoutDesign,
@@ -19,18 +21,40 @@ import LayoutReviewDrawer from '@/components/mark/layout-designer/LayoutReviewDr
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import PrepStepPipelineRow from '@/components/workbench/PrepStepPipelineRow.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
+import { ALL_EXAM_LAYOUT_PAPER_SPEC_CODES } from '@/types/enums/exam-layout-paper-spec-enum'
 import { showUserError } from '@/utils/error-handler'
-import { hasIdentityBlock, resolvePaperSpecLabel } from '@/utils/exam-layout-designer'
+import { resolvePaperSpecLabel } from '@/utils/exam-layout-designer'
+import {
+  buildLayoutDesignerSignalMetrics,
+  filterLayoutDesignerPrepSteps,
+} from '@/utils/exam-layout-designer-signal'
+import { buildPrepStepCards } from '@/utils/exam-prep-step-ui'
 
 defineOptions({ name: 'TeacherExamWorkspaceLayoutDesigner' })
 
+const router = useRouter()
 const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 const { selectedExamId } = useMarkExamContext()
+const {
+  contextBarTitle,
+  contextBarSubtitle,
+  examStatusLabel,
+  examStatusTone,
+  examDetail,
+  examDetailLoading,
+} = useExamJourneyContextBar('制卷设计器')
 
 const loading = ref(false)
 const saving = ref(false)
@@ -54,54 +78,94 @@ const focusedBlock = computed<ExamLayoutBlockDto | null>(() => {
   return document.value.blocks.find((item) => item.id === focusedBlockId.value) ?? null
 })
 
-const pageTabs = computed(() =>
+const pageTabItems = computed(() =>
   (document.value?.pages ?? []).map((page) => ({
     key: String(page.pageNo),
     label: `第 ${page.pageNo} 页`,
   })),
 )
 
-const paperSpecLabel = computed(() => {
-  const spec = document.value?.paperSpec
-  return spec ? resolvePaperSpecLabel(spec) : ''
+const currentPageTabKey = computed({
+  get: () => String(currentPageNo.value),
+  set: (value) => {
+    currentPageNo.value = Number(value)
+  },
 })
 
-const signalMetrics = computed<SignalMetric[]>(() => {
-  const doc = document.value
-  const blockCount = doc?.blocks?.length ?? 0
-  const questionCount = doc?.questions?.length ?? 0
-  return [
-    {
-      key: 'pages',
-      label: '总页数',
-      value: String(doc?.totalPages ?? 0),
-      tone: doc?.totalPages ? 'gray' : 'orange',
-    },
-    {
-      key: 'blocks',
-      label: '识别块',
-      value: String(blockCount),
-      tone: blockCount > 0 ? 'gray' : 'orange',
-    },
-    {
-      key: 'questions',
-      label: '题目',
-      value: String(questionCount),
-      tone: questionCount > 0 ? 'gray' : 'orange',
-    },
-    {
-      key: 'identity',
-      label: '身份区',
-      value: hasIdentityBlock(doc) ? '已配置' : '未配置',
-      tone: hasIdentityBlock(doc) ? 'green' : 'red',
-      helper: hasIdentityBlock(doc) ? undefined : '保存前须配置身份填涂区',
-    },
-  ]
+const layoutDesignerContextSubtitle = computed(() => {
+  const journeySubtitle = contextBarSubtitle.value
+  if (journeySubtitle.includes('/api/')) {
+    return '制卷设计 · 划区与答题卡编排'
+  }
+  return journeySubtitle
 })
+
+const layoutPaperLabel = computed(() => {
+  const detail = examDetail.value
+  if (detail?.layoutPaperSpecMessage) {
+    return detail.layoutPaperSpecMessage
+  }
+  const spec = document.value?.paperSpec
+  const paperSpec = ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((code) => code === spec)
+  if (paperSpec) {
+    return resolvePaperSpecLabel(paperSpec)
+  }
+  return ''
+})
+
+const materialLayoutModeLabel = computed(
+  () => examDetail.value?.materialLayoutModeMessage ?? '',
+)
+
+const scanPaperStyleLabel = computed(() => examDetail.value?.scanPaperStyleText ?? '')
+
+const materialLayoutMode = computed(() => examDetail.value?.materialLayoutMode)
+
+const snapshot = computed(() => workbenchContext?.snapshot.value ?? null)
+const prepBlockingReasons = computed(() => snapshot.value?.prepBlockingReasons ?? [])
+const prepAdvisoryReasons = computed(() => snapshot.value?.prepAdvisoryReasons ?? [])
+
+const designerPrepSteps = computed<PrepStepCard[]>(() => {
+  const backendSteps = snapshot.value?.prepSteps
+  const detail = examDetail.value
+  if (!backendSteps?.length || !detail) {
+    return []
+  }
+  return filterLayoutDesignerPrepSteps(buildPrepStepCards(backendSteps, detail))
+})
+
+const layoutModeLocked = computed(() => examDetail.value?.layoutModeLocked === true)
+
+const signalMetrics = computed(() => {
+  const detail = examDetail.value
+  if (!detail) {
+    return []
+  }
+  return buildLayoutDesignerSignalMetrics(detail)
+})
+
+const pageLoading = computed(
+  () => loading.value || (examDetailLoading.value && !examDetail.value),
+)
+
+function goDesignerPrepStep(step: PrepStepCard): void {
+  if (!examId.value) {
+    return
+  }
+  if (step.key === 'layoutDesign') {
+    return
+  }
+  if (!examDetail.value?.materialLayoutMode) {
+    return
+  }
+  void router.push({ name: step.routeName, params: { examId: examId.value } })
+}
 
 async function reload(): Promise<void> {
   if (!examId.value) {
     document.value = null
+    focusedBlockId.value = null
+    currentPageNo.value = 1
     layoutWritable.value = true
     writeLockReason.value = undefined
     return
@@ -117,6 +181,8 @@ async function reload(): Promise<void> {
     }
   } catch (error) {
     document.value = null
+    focusedBlockId.value = null
+    currentPageNo.value = 1
     layoutWritable.value = true
     writeLockReason.value = undefined
     showUserError(error, '加载制卷设计失败')
@@ -136,7 +202,7 @@ async function handleSave(): Promise<void> {
       document: { ...document.value, examId: examId.value },
     })
     message.success('制卷设计已保存')
-    await workbenchContext?.refreshSnapshot()
+    await workbenchContext?.refreshChrome?.()
   } catch (error) {
     showUserError(error, '保存制卷设计失败')
   } finally {
@@ -168,6 +234,7 @@ async function handleGenerateSheet(paperSpec: string): Promise<void> {
       currentPageNo.value = document.value.pages[0].pageNo
     }
     message.success('标准答题卡已生成')
+    await workbenchContext?.refreshChrome?.()
   } catch (error) {
     showUserError(error, '生成答题卡失败')
   } finally {
@@ -186,6 +253,7 @@ async function handleAutoDetect(sourcePdfFileId: string): Promise<void> {
       currentPageNo.value = document.value.pages[0].pageNo
     }
     message.success('自动预划区完成')
+    await workbenchContext?.refreshChrome?.()
   } catch (error) {
     showUserError(error, '自动预划区失败')
   } finally {
@@ -201,6 +269,11 @@ function handleBlockFocus(block: ExamLayoutBlockDto | null): void {
   focusedBlockId.value = block?.id ?? null
 }
 
+async function handleReviewSaved(): Promise<void> {
+  await reload()
+  await workbenchContext?.refreshChrome?.()
+}
+
 onMounted(() => {
   void reload()
 })
@@ -211,12 +284,20 @@ onMounted(() => {
     <template #context>
       <ContextBar
         layout="workbench"
-        title="制卷设计器"
-        subtitle="配置身份区、客观填涂与主观作答识别区域"
+        show-title
+        :title="contextBarTitle"
+        :subtitle="layoutDesignerContextSubtitle"
       >
         <template #status>
-          <UiTag v-if="document?.layoutEntryKind" tone="blue">{{ document.layoutEntryKind }}</UiTag>
-          <UiTag v-if="paperSpecLabel" tone="gray">{{ paperSpecLabel }}</UiTag>
+          <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
+            {{ examStatusLabel }}
+          </UiTag>
+          <UiTag v-if="materialLayoutModeLabel" tone="blue" size="sm">
+            形态 {{ materialLayoutModeLabel }}
+          </UiTag>
+          <UiTag v-if="layoutModeLocked" tone="gray" size="sm">形态已锁定</UiTag>
+          <UiTag v-if="layoutPaperLabel" tone="gray" size="sm">纸型 {{ layoutPaperLabel }}</UiTag>
+          <UiTag v-if="scanPaperStyleLabel" tone="gray" size="sm">印张 {{ scanPaperStyleLabel }}</UiTag>
         </template>
         <template #actions>
           <UiButton variant="outline" @click="reviewOpen = true">复核微调</UiButton>
@@ -232,65 +313,108 @@ onMounted(() => {
         </template>
       </ContextBar>
     </template>
-    <template #signal>
-      <SignalBand :metrics="signalMetrics" compact />
+    <template v-if="signalMetrics.length > 0" #signal>
+      <SignalBand variant="tiles" :metrics="signalMetrics" compact />
     </template>
 
     <UiEmpty v-if="!examId" description="缺少考试上下文，请从考试工作台进入" />
-    <a-spin v-else :spinning="loading">
-      <a-alert
+    <template v-else>
+      <ExamWorkspaceJourneySubNav />
+
+      <UiAlertStrip
+        v-if="prepBlockingReasons.length > 0"
+        tone="warning"
+        title="考试准备硬阻断"
+        :description="prepBlockingReasons.join('；')"
+        dense
+        class="layout-designer-alert"
+      />
+      <UiAlertStrip
+        v-else-if="prepAdvisoryReasons.length > 0"
+        tone="info"
+        title="准备建议"
+        :description="prepAdvisoryReasons.join('；')"
+        dense
+        class="layout-designer-alert"
+      />
+
+      <PrepStepPipelineRow
+        v-if="examDetail && designerPrepSteps.length > 0"
+        class="layout-designer-pipeline"
+        :steps="designerPrepSteps"
+        current-step-key="layoutDesign"
+        :locked="!examDetail.materialLayoutMode"
+        @select="goDesignerPrepStep"
+      />
+
+      <UiAlertStrip
         v-if="!layoutWritable && writeLockReason"
-        type="warning"
-        show-icon
-        :message="writeLockReason"
+        tone="warning"
+        :closable="false"
+        dense
+        :title="writeLockReason"
         class="layout-designer-lock-banner"
       />
-      <div class="layout-designer-workspace">
-        <aside class="layout-designer-workspace__left">
-          <LayoutEntryGateway
-            :document="document"
-            :exam-id="examId"
-            :generating="generating"
-            :detecting="detecting"
-            :readonly="!layoutWritable"
-            @generate-sheet="handleGenerateSheet"
-            @auto-detect="handleAutoDetect"
-            @patch="handleDocumentPatch"
-          />
-          <LayoutBlockLayerPanel
-            :document="document"
-            :page-no="currentPageNo"
-            :focused-block-id="focusedBlockId"
-            @focus-block="handleBlockFocus"
-            @patch="handleDocumentPatch"
-          />
-        </aside>
-        <main class="layout-designer-workspace__canvas">
-          <a-tabs
-            v-if="pageTabs.length > 0"
-            :active-key="String(currentPageNo)"
-            size="small"
-            @change="(key) => (currentPageNo = Number(key))"
-          >
-            <a-tab-pane v-for="tab in pageTabs" :key="tab.key" :tab="tab.label" />
-          </a-tabs>
-          <LayoutCanvas
-            :document="document"
-            :page-no="currentPageNo"
-            :focused-block-id="focusedBlockId"
-            @focus-block="handleBlockFocus"
-            @patch="handleDocumentPatch"
-          />
-        </main>
-        <aside class="layout-designer-workspace__right">
-          <LayoutPropertyDrawer
-            :document="document"
-            :block="focusedBlock"
-            @patch="handleDocumentPatch"
-          />
-        </aside>
-      </div>
-    </a-spin>
+
+      <WorkbenchSurfaceCard flush class="layout-designer__surface">
+        <template #toolbar>
+          <span class="layout-designer__flow-hint">{{ EXAM_LAYOUT_DESIGN_FLOW_HINT }}</span>
+        </template>
+
+        <UiSkeletonState
+          v-if="pageLoading"
+          variant="card"
+          :card-count="3"
+          compact
+        />
+        <div v-else class="layout-designer-workspace">
+          <aside class="layout-designer-workspace__left">
+            <LayoutEntryGateway
+              :document="document"
+              :exam-id="examId"
+              :material-layout-mode="materialLayoutMode"
+              :material-layout-mode-message="materialLayoutModeLabel"
+              :layout-paper-spec-message="layoutPaperLabel"
+              :generating="generating"
+              :detecting="detecting"
+              :readonly="!layoutWritable"
+              @generate-sheet="handleGenerateSheet"
+              @auto-detect="handleAutoDetect"
+              @patch="handleDocumentPatch"
+            />
+            <LayoutBlockLayerPanel
+              :document="document"
+              :page-no="currentPageNo"
+              :focused-block-id="focusedBlockId"
+              @focus-block="handleBlockFocus"
+              @patch="handleDocumentPatch"
+            />
+          </aside>
+          <main class="layout-designer-workspace__canvas">
+            <UiSectionTabs
+              v-if="pageTabItems.length > 0"
+              v-model="currentPageTabKey"
+              :items="pageTabItems"
+              compact
+            />
+            <LayoutCanvas
+              :document="document"
+              :page-no="currentPageNo"
+              :focused-block-id="focusedBlockId"
+              @focus-block="handleBlockFocus"
+              @patch="handleDocumentPatch"
+            />
+          </main>
+          <aside class="layout-designer-workspace__right">
+            <LayoutPropertyDrawer
+              :document="document"
+              :block="focusedBlock"
+              @patch="handleDocumentPatch"
+            />
+          </aside>
+        </div>
+      </WorkbenchSurfaceCard>
+    </template>
 
     <LayoutPreviewDrawer v-model:open="previewOpen" :preview-pdf-file-id="previewPdfFileId" />
     <LayoutReviewDrawer
@@ -300,14 +424,22 @@ onMounted(() => {
       :page-no="currentPageNo"
       :readonly="!layoutWritable"
       @patch="handleDocumentPatch"
-      @saved="reload"
+      @saved="handleReviewSaved"
     />
   </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
+.layout-designer-alert,
+.layout-designer-pipeline,
 .layout-designer-lock-banner {
   margin-bottom: 12px;
+}
+
+.layout-designer__flow-hint {
+  font-size: 12px;
+  color: var(--ant-color-text-tertiary);
+  line-height: 1.5;
 }
 
 .layout-designer-workspace {

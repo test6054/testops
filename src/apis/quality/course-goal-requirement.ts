@@ -1,4 +1,4 @@
-import type { SupportLevel } from './types'
+import type { SupportLevelCode } from './types'
 /**
  * 课程目标-毕业要求/观测点支撑映射 API。
  * 后端对象：CourseGoalRequirementController /api/quality/course-goal-requirements。
@@ -18,7 +18,7 @@ export interface CourseGoalRequirementVO {
   indicatorId?: string
   indicatorCode?: string
   indicatorName?: string
-  supportLevel: SupportLevel
+  supportLevel: SupportLevelCode
   supportWeight: number
   createTime?: string
   updateTime?: string
@@ -29,7 +29,7 @@ export interface CourseGoalRequirementSaveRequest {
   courseGoalId: string
   requirementId?: string
   indicatorId?: string
-  supportLevel: SupportLevel
+  supportLevel: SupportLevelCode
   supportWeight: number
 }
 

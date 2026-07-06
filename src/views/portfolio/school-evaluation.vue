@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioEvaluationTaskStatus } from '@/apis/portfolio/enums'
 import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
-import type { PortfolioEvaluationTaskAdvanceAction } from '@/apis/portfolio/types'
 import { Input, message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  PORTFOLIO_EVALUATION_TASK_STATUS_LABEL,
   PORTFOLIO_EVALUATION_TASK_STATUS_TONE,
+  PortfolioEvaluationTaskAdvanceActionCode,
+  PortfolioEvaluationTaskAdvanceActionDescription,
+  PortfolioEvaluationTaskStatusCode,
+  PortfolioEvaluationTaskStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
@@ -25,37 +26,28 @@ import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const ADVANCE_ACTIONS: Partial<
-  Record<PortfolioEvaluationTaskStatus, PortfolioEvaluationTaskAdvanceAction>
+  Record<PortfolioEvaluationTaskStatusCode, PortfolioEvaluationTaskAdvanceActionCode>
 > = {
-  PUBLISHED: 'START_PRELIMINARY_REVIEW',
-  PRELIMINARY_REVIEW: 'START_SCHOOL_REVIEW',
-  SCHOOL_REVIEW: 'START_EXPERT_REVIEW',
-  EXPERT_REVIEW: 'START_RESULT_SUMMARY',
+  [PortfolioEvaluationTaskStatusCode.PUBLISHED]: PortfolioEvaluationTaskAdvanceActionCode.START_PRELIMINARY_REVIEW,
+  [PortfolioEvaluationTaskStatusCode.PRELIMINARY_REVIEW]: PortfolioEvaluationTaskAdvanceActionCode.START_SCHOOL_REVIEW,
+  [PortfolioEvaluationTaskStatusCode.SCHOOL_REVIEW]: PortfolioEvaluationTaskAdvanceActionCode.START_EXPERT_REVIEW,
+  [PortfolioEvaluationTaskStatusCode.EXPERT_REVIEW]: PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY,
 }
 
-function canArchiveTask(status: PortfolioEvaluationTaskStatus): boolean {
-  return status === 'PUBLICITY' || status === 'OBJECTION_HANDLING'
+function canArchiveTask(status: PortfolioEvaluationTaskStatusCode): boolean {
+  return status === PortfolioEvaluationTaskStatusCode.PUBLICITY
+    || status === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING
 }
 
-const ADVANCE_ACTION_LABEL: Record<PortfolioEvaluationTaskAdvanceAction, string> = {
-  START_PRELIMINARY_REVIEW: '进入资格初审',
-  START_SCHOOL_REVIEW: '进入学校复审',
-  START_EXPERT_REVIEW: '进入专家评审',
-  START_RESULT_SUMMARY: '进入结果汇总',
-  START_PUBLICITY: '进入公示',
-  START_OBJECTION_HANDLING: '进入异议处理',
-  ARCHIVE: '归档',
-  SUSPEND: '暂停',
-  RESUME: '恢复',
-  VOID: '作废',
-  CLOSE: '关闭',
+function advanceActionLabel(action: PortfolioEvaluationTaskAdvanceActionCode): string {
+  return strictEnumLabel(PortfolioEvaluationTaskAdvanceActionDescription, action, '评价任务推进动作')
 }
 
-function taskStatusLabel(status: PortfolioEvaluationTaskStatus): string {
-  return strictEnumLabel(PORTFOLIO_EVALUATION_TASK_STATUS_LABEL, status, '多元评价任务状态')
+function taskStatusLabel(status: PortfolioEvaluationTaskStatusCode): string {
+  return strictEnumLabel(PortfolioEvaluationTaskStatusDescription, status, '多元评价任务状态')
 }
 
-function taskStatusTone(status: PortfolioEvaluationTaskStatus) {
+function taskStatusTone(status: PortfolioEvaluationTaskStatusCode) {
   return strictEnumTone(PORTFOLIO_EVALUATION_TASK_STATUS_TONE, status, '多元评价任务状态')
 }
 
@@ -115,8 +107,8 @@ async function loadPage() {
 }
 
 function nextAction(
-  status: PortfolioEvaluationTaskStatus,
-): PortfolioEvaluationTaskAdvanceAction | undefined {
+  status: PortfolioEvaluationTaskStatusCode,
+): PortfolioEvaluationTaskAdvanceActionCode | undefined {
   return ADVANCE_ACTIONS[status]
 }
 
@@ -241,7 +233,7 @@ void loadPage()
                 :disabled="advancingId === record.id"
                 @click="() => void advanceTask(record)"
               >
-                {{ ADVANCE_ACTION_LABEL[nextAction(record.taskStatus)!] }}
+                {{ advanceActionLabel(nextAction(record.taskStatus)!) }}
               </button>
               <button
                 v-if="record.taskStatus === 'RESULT_SUMMARY'"

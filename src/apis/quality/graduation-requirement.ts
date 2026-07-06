@@ -1,4 +1,4 @@
-import type { AggregationFunction, CivicDimension } from './types'
+import type { AggregationFunctionCode, CivicDimensionCode } from './types'
 /**
  * 毕业要求 API - 对接 edu-quality / GraduationRequirementController
  *
@@ -15,9 +15,9 @@ export interface GraduationRequirementVO {
   requirementCode: string
   requirementName: string
   description?: string
-  civicDimensions?: CivicDimension[]
+  civicDimensions?: CivicDimensionCode[]
   thresholdValue?: number
-  aggregation?: AggregationFunction
+  aggregation?: AggregationFunctionCode
   sortOrder?: number
   createTime?: string
   updateTime?: string
@@ -30,9 +30,9 @@ export interface GraduationRequirementSaveRequest {
   requirementCode: string
   requirementName: string
   description?: string
-  civicDimensions?: CivicDimension[]
+  civicDimensions?: CivicDimensionCode[]
   thresholdValue?: number
-  aggregation?: AggregationFunction
+  aggregation?: AggregationFunctionCode
   sortOrder?: number
 }
 

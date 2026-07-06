@@ -44,7 +44,6 @@ import type { RubricItemSaveRequest, RubricItemVO } from '@/apis/quality/rubric-
  *   - 考核 → 课程目标 weight：同一考核内权重和必须 = 1
  *   - Rubric 满分加总 = (item, goal) 的 fullScore
  */
-import type { AggregationFunction, AssessmentItemType, SupportLevel } from '@/apis/quality/types'
 import type { CourseListVO } from '@/apis/quality/user-catalog'
 import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
 import type { SignalMetric } from '@/types/workbench'
@@ -61,11 +60,16 @@ import { qualityCourseApi } from '@/apis/quality/quality-course'
 import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
 import { rubricItemApi } from '@/apis/quality/rubric-item'
 import {
-  AGGREGATION_FUNCTION_CODES,
-  AGGREGATION_FUNCTION_LABEL,
-  ASSESSMENT_ITEM_TYPE_LABEL,
+  AggregationFunctionCode,
+  AggregationFunctionDescription,
+  ALL_AGGREGATION_FUNCTION_CODES,
+  ALL_ASSESSMENT_ITEM_TYPE_CODES,
+  ALL_SUPPORT_LEVEL_CODES,
+  AssessmentItemTypeCode,
+  AssessmentItemTypeDescription,
   SUPPORT_LEVEL_DEFAULT_FACTOR,
-  SUPPORT_LEVEL_LABEL,
+  SupportLevelCode,
+  SupportLevelDescription,
 } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
@@ -88,7 +92,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
-import { formatSemester, isValidSemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
+import { ALL_SEMESTER_CODES, formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const itemColumns: ColumnsType = [
@@ -134,12 +138,12 @@ function guardCourseMatrixEditable(action: string): boolean {
 
 const WEIGHT_EPSILON = 1e-3
 
-function assessmentItemTypeLabel(value: AssessmentItemType | null | undefined): string {
-  return strictEnumLabel(ASSESSMENT_ITEM_TYPE_LABEL, value, '考核环节类型')
+function assessmentItemTypeLabel(value: AssessmentItemTypeCode): string {
+  return strictEnumLabel(AssessmentItemTypeDescription, value, '考核环节类型')
 }
 
-function aggregationFunctionLabel(value: AggregationFunction | null | undefined): string {
-  return strictEnumLabel(AGGREGATION_FUNCTION_LABEL, value, '聚合函数')
+function aggregationFunctionLabel(value: AggregationFunctionCode): string {
+  return strictEnumLabel(AggregationFunctionDescription, value, '聚合函数')
 }
 
 /* ========== 当前课程 ========== */
@@ -502,9 +506,9 @@ const supportMatrixCells = computed<MatrixCell[]>(() => {
         : null
     if (!colKey) continue
     const tone: MatrixCell['tone']
-      = support.supportLevel === 'HIGH'
+      = support.supportLevel === SupportLevelCode.HIGH
         ? 'red'
-        : support.supportLevel === 'MEDIUM'
+        : support.supportLevel === SupportLevelCode.MEDIUM
           ? 'orange'
           : 'blue'
     cells.push({
@@ -622,7 +626,25 @@ function openCourseCreate() {
 function openCourseEdit() {
   if (!currentCourse.value || !guardCourseMatrixEditable('编辑课程')) return
   courseEditorMode.value = 'edit'
-  Object.assign(courseEditor, currentCourse.value)
+  Object.assign(courseEditor, {
+    id: currentCourse.value.id,
+    trainingPlanId: currentCourse.value.trainingPlanId,
+    programId: currentCourse.value.programId,
+    courseId: currentCourse.value.courseId,
+    courseCode: currentCourse.value.courseCode,
+    courseName: currentCourse.value.courseName,
+    courseCategory: currentCourse.value.courseCategory || '',
+    courseNature: currentCourse.value.courseNature || '',
+    schoolYear: currentCourse.value.schoolYear || '',
+    semester: currentCourse.value.semester,
+    teacherUserId: currentCourse.value.teacherUserId || '',
+    classId: currentCourse.value.classId || '',
+    creditHours: currentCourse.value.creditHours,
+    creditValue: currentCourse.value.creditValue,
+    civicObjective: currentCourse.value.civicObjective || '',
+    syllabusFileId: currentCourse.value.syllabusFileId || '',
+    enabled: currentCourse.value.enabled,
+  })
   syllabusFileName.value = currentCourse.value.syllabusFileId ? '已关联教学大纲附件' : ''
   courseEditorVisible.value = true
 }
@@ -672,6 +694,7 @@ async function submitCourse() {
   if (courseEditorMode.value === 'edit' && !guardCourseMatrixEditable('编辑课程')) return
   if (courseEditorMode.value === 'create' && !guardCourseMatrixEditable('新建课程')) return
   const semester = courseEditor.semester
+  const selectedSemester = ALL_SEMESTER_CODES.find((code) => code === semester)
   if (
     !courseEditor.programId.trim()
     || !courseEditor.trainingPlanId.trim()
@@ -679,7 +702,7 @@ async function submitCourse() {
     || !courseEditor.courseCode.trim()
     || !courseEditor.courseName.trim()
     || !courseEditor.schoolYear.trim()
-    || !isValidSemesterCode(semester)
+    || !selectedSemester
   ) {
     message.error('请填写专业、培养方案、目录课程、编码、名称、学年、学期')
     return
@@ -691,16 +714,16 @@ async function submitCourse() {
     courseId: courseEditor.courseId,
     courseCode: courseEditor.courseCode.trim(),
     courseName: courseEditor.courseName.trim(),
-    courseCategory: courseEditor.courseCategory,
-    courseNature: courseEditor.courseNature,
+    courseCategory: courseEditor.courseCategory?.trim() || undefined,
+    courseNature: courseEditor.courseNature?.trim() || undefined,
     schoolYear: courseEditor.schoolYear.trim(),
-    semester,
-    teacherUserId: courseEditor.teacherUserId,
-    classId: courseEditor.classId,
+    semester: selectedSemester,
+    teacherUserId: courseEditor.teacherUserId || undefined,
+    classId: courseEditor.classId || undefined,
     creditHours: courseEditor.creditHours,
     creditValue: courseEditor.creditValue,
-    civicObjective: courseEditor.civicObjective,
-    syllabusFileId: courseEditor.syllabusFileId,
+    civicObjective: courseEditor.civicObjective?.trim() || undefined,
+    syllabusFileId: courseEditor.syllabusFileId || undefined,
     enabled: courseEditor.enabled,
   }
   courseSubmitting.value = true
@@ -756,10 +779,9 @@ const goalEditor = reactive<CourseGoalSaveRequest>({
   thresholdValue: 0.7,
   directWeight: undefined,
   indirectWeight: undefined,
-  aggregation: 'WEIGHTED_SUM',
+  aggregation: AggregationFunctionCode.WEIGHTED_SUM,
   civicObjectiveFlag: false,
   aiLiteracyFlag: false,
-  complexEngineeringFlag: false,
   sortOrder: 0,
 })
 const goalSubmitting = ref(false)
@@ -780,10 +802,9 @@ function openGoalCreate() {
     thresholdValue: 0.7,
     directWeight: undefined,
     indirectWeight: undefined,
-    aggregation: 'WEIGHTED_SUM',
+    aggregation: AggregationFunctionCode.WEIGHTED_SUM,
     civicObjectiveFlag: false,
     aiLiteracyFlag: false,
-    complexEngineeringFlag: false,
     sortOrder: (courseGoals.value.length + 1) * 10,
   })
   goalEditorVisible.value = true
@@ -792,7 +813,20 @@ function openGoalCreate() {
 function openGoalEdit(record: CourseGoalVO) {
   if (!guardCourseMatrixEditable('编辑课程目标')) return
   goalEditorMode.value = 'edit'
-  Object.assign(goalEditor, record)
+  Object.assign(goalEditor, {
+    id: record.id,
+    qualityCourseId: record.qualityCourseId,
+    goalCode: record.goalCode,
+    goalName: record.goalName,
+    description: record.description || '',
+    thresholdValue: record.thresholdValue,
+    directWeight: record.directWeight,
+    indirectWeight: record.indirectWeight,
+    aggregation: record.aggregation,
+    civicObjectiveFlag: record.civicObjectiveFlag,
+    aiLiteracyFlag: record.aiLiteracyFlag,
+    sortOrder: record.sortOrder ?? 0,
+  })
   goalEditorVisible.value = true
 }
 
@@ -836,7 +870,7 @@ const supportEditor = reactive<CourseGoalRequirementSaveRequest>({
   courseGoalId: '',
   requirementId: undefined,
   indicatorId: undefined,
-  supportLevel: 'MEDIUM',
+  supportLevel: SupportLevelCode.MEDIUM,
   supportWeight: 0.8,
 })
 const supportEditorDisplay = reactive({
@@ -859,8 +893,8 @@ function openSupportCreate(rowKey: string, colKey: string) {
     courseGoalId: rowKey,
     requirementId: colMeta.reqId,
     indicatorId: colMeta.indicatorId,
-    supportLevel: 'MEDIUM',
-    supportWeight: SUPPORT_LEVEL_DEFAULT_FACTOR.MEDIUM,
+    supportLevel: SupportLevelCode.MEDIUM,
+    supportWeight: SUPPORT_LEVEL_DEFAULT_FACTOR[SupportLevelCode.MEDIUM],
   })
   Object.assign(supportEditorDisplay, {
     courseGoalName: `${courseGoal.goalCode} ${courseGoal.goalName}`,
@@ -913,12 +947,13 @@ async function submitSupport() {
 }
 
 function handleDeleteSupportClick() {
-  if (supportEditor.id) {
+  const supportId = supportEditor.id
+  if (supportId) {
     void confirmAsync({
       title: '删除该支撑映射？',
       type: 'error',
       onOk: async () => {
-        await courseGoalRequirementApi.delete(supportEditor.id!)
+        await courseGoalRequirementApi.delete(supportId)
         message.success('已删除')
         supportEditorVisible.value = false
         await loadAllSupports()
@@ -927,14 +962,16 @@ function handleDeleteSupportClick() {
   }
 }
 
-function handleSupportLevelChange(level: SupportLevel) {
+function handleSupportLevelChange(level: SupportLevelCode) {
   supportEditor.supportLevel = level
   supportEditor.supportWeight = SUPPORT_LEVEL_DEFAULT_FACTOR[level]
 }
 
 function handleSupportLevelRadioChange(event: RadioChangeEvent) {
-  const value = event.target?.value as SupportLevel
-  handleSupportLevelChange(value)
+  const selected = supportLevelOptions.find(option => option.value === event.target?.value)
+  if (selected) {
+    handleSupportLevelChange(selected.value)
+  }
 }
 
 function handleSupportCellClick(cellEvent: {
@@ -966,7 +1003,7 @@ const itemEditor = reactive<AssessmentItemSaveRequest>({
   qualityCourseId: '',
   itemCode: '',
   itemName: '',
-  itemType: 'HOMEWORK',
+  itemType: AssessmentItemTypeCode.HOMEWORK,
   fullScore: 100,
   passScore: 60,
   weightInCourse: undefined,
@@ -988,7 +1025,7 @@ function openItemCreate() {
     qualityCourseId: qualityStore.currentQualityCourseId,
     itemCode: '',
     itemName: '',
-    itemType: 'HOMEWORK',
+    itemType: AssessmentItemTypeCode.HOMEWORK,
     fullScore: 100,
     passScore: 60,
     weightInCourse: undefined,
@@ -1002,7 +1039,19 @@ function openItemCreate() {
 function openItemEdit(record: AssessmentItemVO) {
   if (!guardCourseMatrixEditable('编辑考核环节')) return
   itemEditorMode.value = 'edit'
-  Object.assign(itemEditor, record)
+  Object.assign(itemEditor, {
+    id: record.id,
+    qualityCourseId: record.qualityCourseId,
+    itemCode: record.itemCode,
+    itemName: record.itemName,
+    itemType: record.itemType,
+    fullScore: record.fullScore,
+    passScore: record.passScore,
+    weightInCourse: record.weightInCourse,
+    isProcessOriented: record.isProcessOriented,
+    description: record.description || '',
+    sortOrder: record.sortOrder ?? 0,
+  })
   itemEditorVisible.value = true
 }
 
@@ -1018,8 +1067,21 @@ async function submitItem() {
   }
   itemSubmitting.value = true
   try {
-    if (itemEditorMode.value === 'create') await assessmentItemApi.create(itemEditor)
-    else await assessmentItemApi.update(itemEditor)
+    const request: AssessmentItemSaveRequest = {
+      id: itemEditor.id,
+      qualityCourseId: itemEditor.qualityCourseId,
+      itemCode: itemEditor.itemCode,
+      itemName: itemEditor.itemName,
+      itemType: itemEditor.itemType,
+      fullScore: itemEditor.fullScore,
+      passScore: itemEditor.passScore,
+      weightInCourse: itemEditor.weightInCourse,
+      isProcessOriented: itemEditor.isProcessOriented,
+      description: itemEditor.description,
+      sortOrder: itemEditor.sortOrder,
+    }
+    if (itemEditorMode.value === 'create') await assessmentItemApi.create(request)
+    else await assessmentItemApi.update(request)
     message.success('考核环节已保存')
     itemEditorVisible.value = false
     await Promise.all([loadAssessmentItems(), loadAllItemMeta()])
@@ -1225,8 +1287,18 @@ async function submitRubric() {
     message.error('请填写名称与满分')
     return
   }
-  if (rubricEditorMode.value === 'create') await rubricItemApi.create(rubricEditor)
-  else await rubricItemApi.update(rubricEditor)
+  const request: RubricItemSaveRequest = {
+    id: rubricEditor.id,
+    assessmentItemId: rubricEditor.assessmentItemId,
+    courseGoalId: rubricEditor.courseGoalId || undefined,
+    rubricCode: rubricEditor.rubricCode,
+    rubricName: rubricEditor.rubricName,
+    description: rubricEditor.description,
+    fullScore: rubricEditor.fullScore,
+    sortOrder: rubricEditor.sortOrder,
+  }
+  if (rubricEditorMode.value === 'create') await rubricItemApi.create(request)
+  else await rubricItemApi.update(request)
   message.success('Rubric 已保存')
   rubricEditorVisible.value = false
   await loadAllItemMeta()
@@ -1252,7 +1324,7 @@ const ruleEditorMode = ref<'create' | 'edit'>('create')
 const ruleGoal = ref<CourseGoalVO | null>(null)
 const ruleEditor = reactive<CourseGoalAssessmentRuleSaveRequest>({
   courseGoalId: '',
-  aggregation: 'WEIGHTED_SUM',
+  aggregation: AggregationFunctionCode.WEIGHTED_SUM,
   directWeight: undefined,
   indirectWeight: undefined,
   thresholdValue: 0.7,
@@ -1344,34 +1416,23 @@ onMounted(async () => {
 
 /* ========== 字典 ========== */
 
-const supportLevelOptions: { value: SupportLevel, label: string }[] = [
-  { value: 'HIGH', label: SUPPORT_LEVEL_LABEL.HIGH },
-  { value: 'MEDIUM', label: SUPPORT_LEVEL_LABEL.MEDIUM },
-  { value: 'LOW', label: SUPPORT_LEVEL_LABEL.LOW },
-]
-
-const aggregationOptions: { value: AggregationFunction, label: string }[]
-  = AGGREGATION_FUNCTION_CODES.map((value) => ({
+const supportLevelOptions: { value: SupportLevelCode, label: string }[]
+  = ALL_SUPPORT_LEVEL_CODES.map((value) => ({
     value,
-    label: AGGREGATION_FUNCTION_LABEL[value],
+    label: strictEnumLabel(SupportLevelDescription, value, '支撑度'),
   }))
 
-const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
-  { value: 'FINAL_EXAM', label: ASSESSMENT_ITEM_TYPE_LABEL.FINAL_EXAM },
-  { value: 'HOMEWORK', label: ASSESSMENT_ITEM_TYPE_LABEL.HOMEWORK },
-  { value: 'EXPERIMENT', label: ASSESSMENT_ITEM_TYPE_LABEL.EXPERIMENT },
-  { value: 'COURSE_DESIGN', label: ASSESSMENT_ITEM_TYPE_LABEL.COURSE_DESIGN },
-  { value: 'INTERNSHIP', label: ASSESSMENT_ITEM_TYPE_LABEL.INTERNSHIP },
-  { value: 'DISSERTATION', label: ASSESSMENT_ITEM_TYPE_LABEL.DISSERTATION },
-  { value: 'PROCESS_NODE', label: ASSESSMENT_ITEM_TYPE_LABEL.PROCESS_NODE },
-  { value: 'PROJECT_MILESTONE', label: ASSESSMENT_ITEM_TYPE_LABEL.PROJECT_MILESTONE },
-  { value: 'CASE_STUDY', label: ASSESSMENT_ITEM_TYPE_LABEL.CASE_STUDY },
-  { value: 'DEFENSE', label: ASSESSMENT_ITEM_TYPE_LABEL.DEFENSE },
-  { value: 'WORK_PORTFOLIO', label: ASSESSMENT_ITEM_TYPE_LABEL.WORK_PORTFOLIO },
-  { value: 'FIELD_TRIAL', label: ASSESSMENT_ITEM_TYPE_LABEL.FIELD_TRIAL },
-  { value: 'CLINICAL_PRACTICE', label: ASSESSMENT_ITEM_TYPE_LABEL.CLINICAL_PRACTICE },
-  { value: 'EXAM', label: ASSESSMENT_ITEM_TYPE_LABEL.EXAM },
-]
+const aggregationOptions: { value: AggregationFunctionCode, label: string }[]
+  = ALL_AGGREGATION_FUNCTION_CODES.map((value) => ({
+    value,
+    label: AggregationFunctionDescription[value],
+  }))
+
+const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
+  = ALL_ASSESSMENT_ITEM_TYPE_CODES.map((value) => ({
+    value,
+    label: strictEnumLabel(AssessmentItemTypeDescription, value, '考核项类型'),
+  }))
 </script>
 
 <template>
@@ -1818,11 +1879,6 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
           <a-col :span="8">
             <a-form-item label="AI 素养">
               <a-switch v-model:checked="goalEditor.aiLiteracyFlag" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="复杂工程问题">
-              <a-switch v-model:checked="goalEditor.complexEngineeringFlag" />
             </a-form-item>
           </a-col>
         </a-row>

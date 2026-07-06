@@ -1,107 +1,136 @@
 /**
  * 教务系统/LMS 集成 API - 对接 edu-mark 模块 TeachingAffairsSyncController
- *
- * 业务能力（按照 docs/17 §L4）：
- *   1. 同步任务生命周期 - createSyncTask / listSyncTasks / executeGradePassback
- *      / retrySyncTask / cancelSyncTask
- *   2. 成绩回写记录与对账 - listPassbackRecords / reconcilePassback
- *
- * 端点说明：查询与写操作均使用 POST + JSON body（IdRequest / QueryRequest DTO）。
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { ExternalSystemTypeCode } from '@/types/enums/external-system-type-enum'
 import http from '@/config/axios'
+import {
+  ALL_EXTERNAL_SYSTEM_TYPE_CODES,
+  ExternalSystemTypeDescription,
+} from '@/types/enums/external-system-type-enum'
+import {
+  ALL_PASSBACK_STATUS_CODES,
+  PassbackStatusCode,
+  PassbackStatusDescription,
+} from '@/types/enums/passback-status-enum'
+import { ReconcileStatusCode } from '@/types/enums/reconcile-status-enum'
+import {
+  ALL_SYNC_TASK_STATUS_CODES,
+  SyncTaskStatusCode,
+  SyncTaskStatusDescription,
+} from '@/types/enums/sync-task-status-enum'
+import {
+  ALL_TEACHING_AFFAIRS_SYNC_TYPE_CODES,
+  TeachingAffairsSyncTypeCode,
+  TeachingAffairsSyncTypeDescription,
+} from '@/types/enums/teaching-affairs-sync-type-enum'
 
-// ─── 状态枚举 ─────────────────────────────────
-
-/** 外部系统类型 - 对应 ExternalSystemType */
-export type ExternalSystemTypeCode = 'SIS' | 'LMS' | 'GRADEBOOK'
-
-export const EXTERNAL_SYSTEM_TYPE_LABEL: Record<ExternalSystemTypeCode, string> = {
-  SIS: '教务系统 (SIS)',
-  LMS: '学习管理系统 (LMS)',
-  GRADEBOOK: '成绩册',
-}
-
-/** 同步任务类型 - 对应 TeachingAffairsSyncType */
-export type TeachingAffairsSyncTypeCode
-  = | 'ROSTER_IMPORT'
-    | 'GRADE_EXPORT'
-    | 'GRADE_CORRECTION'
-    | 'GRADE_WITHDRAW'
-
-export const SYNC_TYPE_LABEL: Record<TeachingAffairsSyncTypeCode, string> = {
-  ROSTER_IMPORT: '名单导入',
-  GRADE_EXPORT: '成绩回写',
-  GRADE_CORRECTION: '成绩更正',
-  GRADE_WITHDRAW: '成绩撤销',
-}
+export {
+  ALL_EXTERNAL_SYSTEM_TYPE_CODES,
+  ExternalSystemTypeCode,
+  ExternalSystemTypeDescription,
+} from '@/types/enums/external-system-type-enum'
+export {
+  ALL_PASSBACK_STATUS_CODES,
+  PassbackStatusCode,
+  PassbackStatusDescription,
+} from '@/types/enums/passback-status-enum'
+export {
+  ALL_RECONCILE_STATUS_CODES,
+  ReconcileStatusCode,
+  ReconcileStatusDescription,
+} from '@/types/enums/reconcile-status-enum'
+export {
+  ALL_SYNC_TASK_STATUS_CODES,
+  SyncTaskStatusCode,
+  SyncTaskStatusDescription,
+} from '@/types/enums/sync-task-status-enum'
+export {
+  ALL_TEACHING_AFFAIRS_SYNC_TYPE_CODES,
+  TeachingAffairsSyncTypeCode,
+  TeachingAffairsSyncTypeDescription,
+} from '@/types/enums/teaching-affairs-sync-type-enum'
 
 /** 当前后端 createSyncTask 已开放的同步类型（与 TeachingAffairsSyncServiceImpl 一致） */
-export const CREATABLE_SYNC_TYPE_LABEL: Partial<Record<TeachingAffairsSyncTypeCode, string>> = {
-  GRADE_EXPORT: SYNC_TYPE_LABEL.GRADE_EXPORT,
-}
-
-/** 同步任务状态 - 对应 SyncTaskStatus */
-export type SyncTaskStatusCode
-  = | 'PENDING'
-    | 'SYNCING'
-    | 'SUCCESS'
-    | 'PARTIAL_SUCCESS'
-    | 'FAILED'
-    | 'CANCELLED'
-
-export const SYNC_TASK_STATUS_LABEL: Record<SyncTaskStatusCode, string> = {
-  PENDING: '待执行',
-  SYNCING: '同步中',
-  SUCCESS: '完成',
-  PARTIAL_SUCCESS: '部分成功',
-  FAILED: '失败',
-  CANCELLED: '已取消',
-}
+export const CREATABLE_SYNC_TYPE_OPTIONS: Array<{
+  value: TeachingAffairsSyncTypeCode
+  label: string
+}> = [
+  {
+    value: TeachingAffairsSyncTypeCode.GRADE_EXPORT,
+    label: TeachingAffairsSyncTypeDescription[TeachingAffairsSyncTypeCode.GRADE_EXPORT],
+  },
+]
 
 export const SYNC_TASK_STATUS_TONE: Record<SyncTaskStatusCode, BadgeTone> = {
-  PENDING: 'gray',
-  SYNCING: 'blue',
-  SUCCESS: 'green',
-  PARTIAL_SUCCESS: 'orange',
-  FAILED: 'red',
-  CANCELLED: 'gray',
+  [SyncTaskStatusCode.PENDING]: 'gray',
+  [SyncTaskStatusCode.SYNCING]: 'blue',
+  [SyncTaskStatusCode.SUCCESS]: 'green',
+  [SyncTaskStatusCode.PARTIAL_SUCCESS]: 'orange',
+  [SyncTaskStatusCode.FAILED]: 'red',
+  [SyncTaskStatusCode.CANCELLED]: 'gray',
 }
 
-/** 回写状态 - 对应 PassbackStatus */
-export type PassbackStatusCode = 'PENDING' | 'SENT' | 'SUCCESS' | 'FAILED' | 'WITHDRAWN'
+export const SYNC_TASK_MAIN_FLOW_STATUSES: SyncTaskStatusCode[] = [
+  SyncTaskStatusCode.PENDING,
+  SyncTaskStatusCode.SYNCING,
+  SyncTaskStatusCode.SUCCESS,
+]
 
-export const PASSBACK_STATUS_LABEL: Record<PassbackStatusCode, string> = {
-  PENDING: '待发送',
-  SENT: '已发送',
-  SUCCESS: '回写成功',
-  FAILED: '回写失败',
-  WITHDRAWN: '已撤回',
-}
+export const SYNC_TASK_BRANCH_STATUS_DESCRIPTIONS: string[] = [
+  SyncTaskStatusDescription[SyncTaskStatusCode.PARTIAL_SUCCESS],
+  SyncTaskStatusDescription[SyncTaskStatusCode.FAILED],
+  SyncTaskStatusDescription[SyncTaskStatusCode.CANCELLED],
+]
+
+export const SYNC_TASK_FLOW_HINT = `${SYNC_TASK_MAIN_FLOW_STATUSES.map(
+  (status) => SyncTaskStatusDescription[status],
+).join(' → ')} / ${SYNC_TASK_BRANCH_STATUS_DESCRIPTIONS.join(' / ')}`
+
+/** 归档卷教务成绩完成同步门禁说明（线下/纯归档卷） */
+export const ARCHIVE_TEACHING_AFFAIRS_SCORE_COMPLETION_HINT
+  = '提交外部同步单号 → 教务成绩完成回写 → 与卷内成绩门禁一并满足后可提交归档'
 
 export const PASSBACK_STATUS_TONE: Record<PassbackStatusCode, BadgeTone> = {
-  PENDING: 'gray',
-  SENT: 'blue',
-  SUCCESS: 'green',
-  FAILED: 'red',
-  WITHDRAWN: 'orange',
+  [PassbackStatusCode.PENDING]: 'gray',
+  [PassbackStatusCode.SENT]: 'blue',
+  [PassbackStatusCode.SUCCESS]: 'green',
+  [PassbackStatusCode.FAILED]: 'red',
+  [PassbackStatusCode.WITHDRAWN]: 'orange',
 }
 
-/** 对账状态 - 对应 ReconcileStatus */
-export type ReconcileStatusCode = 'MATCHED' | 'MISMATCHED' | 'PENDING_RECONCILE'
+export const SYNC_TASK_STATUS_OPTIONS: Array<{ value: SyncTaskStatusCode, label: string }>
+  = ALL_SYNC_TASK_STATUS_CODES.map((value) => ({
+    value,
+    label: SyncTaskStatusDescription[value],
+  }))
 
-export const RECONCILE_STATUS_LABEL: Record<ReconcileStatusCode, string> = {
-  MATCHED: '一致',
-  MISMATCHED: '不一致',
-  PENDING_RECONCILE: '待对账',
-}
+export const PASSBACK_STATUS_OPTIONS: Array<{ value: PassbackStatusCode, label: string }>
+  = ALL_PASSBACK_STATUS_CODES.map((value) => ({
+    value,
+    label: PassbackStatusDescription[value],
+  }))
 
 export const RECONCILE_STATUS_TONE: Record<ReconcileStatusCode, BadgeTone> = {
-  MATCHED: 'green',
-  MISMATCHED: 'red',
-  PENDING_RECONCILE: 'orange',
+  [ReconcileStatusCode.MATCHED]: 'green',
+  [ReconcileStatusCode.MISMATCHED]: 'red',
+  [ReconcileStatusCode.PENDING_RECONCILE]: 'orange',
 }
+
+export const EXTERNAL_SYSTEM_TYPE_OPTIONS: Array<{ value: ExternalSystemTypeCode, label: string }>
+  = ALL_EXTERNAL_SYSTEM_TYPE_CODES.map((value) => ({
+    value,
+    label: ExternalSystemTypeDescription[value],
+  }))
+
+export const TEACHING_AFFAIRS_SYNC_TYPE_OPTIONS: Array<{
+  value: TeachingAffairsSyncTypeCode
+  label: string
+}> = ALL_TEACHING_AFFAIRS_SYNC_TYPE_CODES.map((value) => ({
+  value,
+  label: TeachingAffairsSyncTypeDescription[value],
+}))
 
 // ─── DTO ─────────────────────────────────
 
@@ -183,11 +212,13 @@ export function createSyncTask(request: SyncTaskCreateRequest): Promise<SyncTask
   return http.post<SyncTaskVO>('/api/exam/teaching-affairs/sync-task/create', request)
 }
 
-export function listSyncTasks(examId: string, taskStatus?: SyncTaskStatusCode): Promise<SyncTaskVO[]> {
-  return http.post<SyncTaskVO[]>('/api/exam/teaching-affairs/sync-task/list', {
-    examId,
-    taskStatus,
-  })
+export interface SyncTaskListQueryRequest {
+  examId: string
+  taskStatus?: SyncTaskStatusCode
+}
+
+export function listSyncTasks(request: SyncTaskListQueryRequest): Promise<SyncTaskVO[]> {
+  return http.post<SyncTaskVO[]>('/api/exam/teaching-affairs/sync-task/list', request)
 }
 
 export function executeGradePassback(syncTaskId: string): Promise<void> {
@@ -206,13 +237,18 @@ export function cancelSyncTask(syncTaskId: string): Promise<void> {
  * 查询回写记录列表（2026-05-14 已 GET→POST 整改）
  * POST /api/exam/teaching-affairs/passback/list
  */
-export function listPassbackRecords(request: PassbackRecordQueryRequest): Promise<PageResult<PassbackRecordVO>> {
-  return http.post<PageResult<PassbackRecordVO>>('/api/exam/teaching-affairs/passback/list', request)
+export function listPassbackRecords(
+  request: PassbackRecordQueryRequest,
+): Promise<PageResult<PassbackRecordVO>> {
+  return http.post<PageResult<PassbackRecordVO>>(
+    '/api/exam/teaching-affairs/passback/list',
+    request,
+  )
 }
 
 /**
  * 执行对账（本地分 vs 外部分）
- * POST /api/exam/teaching-affairs/passback/reconcile?syncTaskId=
+ * POST /api/exam/teaching-affairs/passback/reconcile
  */
 export function reconcilePassback(syncTaskId: string): Promise<void> {
   return http.post<void>('/api/exam/teaching-affairs/passback/reconcile', { id: syncTaskId })

@@ -60,9 +60,8 @@ function handleActionLink(linkTarget: string) {
     const url = new URL(normalized, window.location.origin)
     const settingsTab = url.searchParams.get('tab') ?? 'duty'
     void router.push({
-      path: '/teacher/archive-volumes',
+      path: '/teacher/archive-volumes/settings',
       query: {
-        tab: 'settings',
         settingsTab,
       },
     })

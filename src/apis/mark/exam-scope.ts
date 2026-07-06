@@ -3,21 +3,16 @@
  */
 import type { PageResult } from '@/types'
 import type { UserDto } from '@/types/api-types.d'
+import type { CandidateStatusCode } from '@/types/enums/candidate-status-enum'
+import type { ExamClassStudentTreeNodeTypeCode } from '@/types/enums/exam-class-student-tree-node-type-enum'
 import http from '@/config/axios'
-import { assertUserFacingText } from '@/utils/contract-guard'
 import { readAllPages } from '@/utils/page-result'
-import { strictEnumLabel } from '@/utils/strict-enum'
 
-const STUDENT_TREE_DATA_ERROR = '班级学生树数据异常，请刷新后重试'
-
-/** 考生状态编码 - 与后端 CandidateStatus 枚举完全一致 */
-export type CandidateStatusCode = 'ACTIVE' | 'ABSENT'
-
-/** 考生状态文案 - 与后端 CandidateStatus 枚举完全一致 */
-export const CANDIDATE_STATUS_LABEL: Record<CandidateStatusCode, string> = {
-  ACTIVE: '正常',
-  ABSENT: '缺考',
-}
+export {
+  ALL_CANDIDATE_STATUS_CODES,
+  CandidateStatusCode,
+  CandidateStatusDescription,
+} from '@/types/enums/candidate-status-enum'
 
 /** 考生名册项 - 对应 ExamCandidateRosterRequest */
 export interface ExamCandidateRosterRequest {
@@ -89,7 +84,7 @@ export interface ExamClassStudentsPageRequest {
 export interface ExamClassStudentTreeNodeVO {
   id: string
   name: string
-  nodeType: 'DEPARTMENT' | 'CLASS' | 'STUDENT'
+  nodeType: ExamClassStudentTreeNodeTypeCode
   originalId: string
   parentId: string | null
   majorId?: string
@@ -102,35 +97,14 @@ export interface ExamClassStudentTreeNodeVO {
   children?: ExamClassStudentTreeNodeVO[]
 }
 
-const EXAM_CLASS_STUDENT_TREE_NODE_TYPE_LABEL: Record<
-  ExamClassStudentTreeNodeVO['nodeType'],
-  string
-> = {
-  DEPARTMENT: '院系',
-  CLASS: '班级',
-  STUDENT: '学生',
-}
-
-/** 班级学生树节点合同校验，确保树选择器可以直接消费节点层级与可选状态。 */
-function validateExamClassStudentTreeNodeContract(node: ExamClassStudentTreeNodeVO): void {
-  assertUserFacingText(node.id, STUDENT_TREE_DATA_ERROR)
-  assertUserFacingText(node.name, STUDENT_TREE_DATA_ERROR)
-  assertUserFacingText(node.originalId, STUDENT_TREE_DATA_ERROR)
-  strictEnumLabel(EXAM_CLASS_STUDENT_TREE_NODE_TYPE_LABEL, node.nodeType, '树节点类型')
-  if (typeof node.selectable !== 'boolean' || typeof node.isLeaf !== 'boolean') {
-    throw new TypeError(STUDENT_TREE_DATA_ERROR)
-  }
-  node.children?.forEach(validateExamClassStudentTreeNodeContract)
-}
-
 /** 考试学生树查询请求 */
 export interface ExamStudentTreeRequest {
   examId: string
   classIds?: string[]
 }
 
-/** 分页查询考试考生名单 */
-export interface ExamCandidatePageQueryRequest {
+/** 考试考生名单查询请求 - 对应 ExamCandidateQueryRequest */
+export interface ExamCandidateQueryRequest {
   examId: string
   /** 班级 ID 过滤 */
   classId?: string
@@ -178,17 +152,12 @@ export function listExamClassStudents(
 export function listExamStudentTree(
   request: ExamStudentTreeRequest,
 ): Promise<ExamClassStudentTreeNodeVO[]> {
-  return http
-    .post<ExamClassStudentTreeNodeVO[]>('/api/mark/exams/scope/student-tree', request)
-    .then((nodes) => {
-      nodes.forEach(validateExamClassStudentTreeNodeContract)
-      return nodes
-    })
+  return http.post<ExamClassStudentTreeNodeVO[]>('/api/mark/exams/scope/student-tree', request)
 }
 
 /** 分页查询考试考生名单。 */
 export function pageExamCandidates(
-  request: ExamCandidatePageQueryRequest,
+  request: ExamCandidateQueryRequest,
 ): Promise<PageResult<ExamCandidateVO>> {
   return http.post<PageResult<ExamCandidateVO>>('/api/mark/exams/candidates', request)
 }
@@ -198,11 +167,12 @@ const EXAM_CANDIDATE_PAGE_SIZE = 100
 /** 查询考试当前考生名单，按后端分页合同自动拉全。 */
 export async function listExamCandidates(examId: string): Promise<ExamCandidateVO[]> {
   return readAllPages(
-    (pageNum) => pageExamCandidates({
-      examId,
-      pageNum,
-      pageSize: EXAM_CANDIDATE_PAGE_SIZE,
-    }),
+    (pageNum) =>
+      pageExamCandidates({
+        examId,
+        pageNum,
+        pageSize: EXAM_CANDIDATE_PAGE_SIZE,
+      }),
     '考试考生名单加载失败，请稍后重试',
   )
 }

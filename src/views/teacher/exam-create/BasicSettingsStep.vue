@@ -104,7 +104,7 @@
           />
         </a-form-item>
         <a-form-item label="阅卷策略" name="gradingStrategy">
-          <a-input :value="GRADING_STRATEGY_LABEL.SINGLE" disabled />
+          <a-input :value="ExamGradingStrategyDescription[ExamGradingStrategyCode.SINGLE]" disabled />
         </a-form-item>
         <a-form-item label="涉密场次" name="confidential">
           <div class="exam-create-form__switch-row">
@@ -139,13 +139,16 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { ExamKindCode, ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamSummaryVO } from '@/apis/mark/exam'
 import type { CourseListVO } from '@/apis/quality/user-catalog'
 import { computed, onMounted, ref, watch } from 'vue'
 import {
   EXAM_KIND_FILTER_OPTIONS,
+  ExamGradingStrategyCode,
+  ExamGradingStrategyDescription,
+  ExamKindCode,
   examKindRequiresSource,
-  GRADING_STRATEGY_LABEL,
+  ExamStatusCode,
   pageExams,
 } from '@/apis/mark/exam'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
@@ -172,7 +175,7 @@ const SOURCE_EXAM_PAGE_SIZE = 50
 let sourceExamSearchTimer: ReturnType<typeof setTimeout> | undefined
 
 const showSourceExamField = computed(() => examKindRequiresSource(examForm.examKind))
-const makeupScoreLocked = computed(() => examForm.examKind === 'MAKEUP')
+const makeupScoreLocked = computed(() => examForm.examKind === ExamKindCode.MAKEUP)
 
 function handleCourseChange(courseId: string | null, option?: CourseListVO): void {
   emit('course-change', courseId, option?.courseName?.trim() ?? '')
@@ -183,7 +186,7 @@ function formatSourceExamLabel(exam: ExamSummaryVO): string {
 }
 
 function isRegularSourceExam(exam: ExamSummaryVO): boolean {
-  return !exam.examKind || exam.examKind === 'REGULAR'
+  return !exam.examKind || exam.examKind === ExamKindCode.REGULAR
 }
 
 async function loadSourceExamOptions(keyword?: string): Promise<void> {
@@ -192,7 +195,7 @@ async function loadSourceExamOptions(keyword?: string): Promise<void> {
     const result = await pageExams({
       pageNum: 1,
       pageSize: SOURCE_EXAM_PAGE_SIZE,
-      status: 'CLOSED',
+      status: ExamStatusCode.CLOSED,
       courseId: examForm.courseId ?? undefined,
       keyword: keyword?.trim() || undefined,
     })
@@ -239,7 +242,7 @@ watch(
   () => examForm.examKind,
   (examKind: ExamKindCode, previous: ExamKindCode) => {
     if (examKind === previous) return
-    if (examKind === 'MAKEUP') {
+    if (examKind === ExamKindCode.MAKEUP) {
       examForm.scoreCompositionMode = 'EXAM_ONLY'
       examForm.dailyScoreFull = undefined
     }

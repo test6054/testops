@@ -159,12 +159,23 @@ async function submitPlan() {
     message.error('年度评价计划必须绑定当前有效认证周期')
     return
   }
+  const request: AnnualEvaluationPlanSaveRequest = {
+    id: form.id,
+    programId: form.programId,
+    trainingPlanId: form.trainingPlanId,
+    accreditationCycleId: form.accreditationCycleId,
+    planYear: form.planYear.trim(),
+    planTitle: form.planTitle.trim(),
+    coverageTargetRate: form.coverageTargetRate,
+    remark: form.remark?.trim() || undefined,
+    qualityCourseIds: form.qualityCourseIds,
+  }
   try {
     if (form.id) {
-      await accreditationApi.annualPlanUpdate(form)
+      await accreditationApi.annualPlanUpdate(request)
       message.success('年度评价计划已更新')
     } else {
-      await accreditationApi.annualPlanCreate(form)
+      await accreditationApi.annualPlanCreate(request)
       message.success('年度评价计划已保存（已自动纳入全部质量课程）')
     }
     drawerOpen.value = false

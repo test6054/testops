@@ -77,11 +77,11 @@ export const STUDENT_TASK_STATUS_TONE_MAP: Record<StudentTaskStatusEnum, Student
  * @returns 状态配置对象
  */
 export function getTaskStatusConfig(status: StudentTaskStatusEnum): TaskStatusItem {
-  return strictEnumValue(STUDENT_TASK_STATUS_CONFIG, status, '学生任务状态')
+  return STUDENT_TASK_STATUS_CONFIG[status]
 }
 
 export function getTaskStatusTone(status: StudentTaskStatusEnum): StudentTaskStatusTone {
-  return strictEnumTone(STUDENT_TASK_STATUS_TONE_MAP, status, '学生任务状态')
+  return STUDENT_TASK_STATUS_TONE_MAP[status]
 }
 
 export function isInProgress(status: StudentTaskStatusEnum): boolean {
@@ -98,5 +98,3 @@ export function canSubmit(status: StudentTaskStatusEnum): boolean {
     || status === StudentTaskStatusEnum.PENDING_RESUBMISSION
   )
 }
-
-import { strictEnumTone, strictEnumValue } from '@/utils/strict-enum'

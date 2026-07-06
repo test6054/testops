@@ -30,7 +30,7 @@
             <div class="portfolio-ai-candidate-panel__field-code">{{ record.fieldCode }}</div>
           </template>
           <template v-else-if="column.key === 'candidateValue'">
-            <template v-if="rowNeedsManualFill(record) && record.confirmStatus !== 'CONFIRMED'">
+            <template v-if="rowNeedsManualFill(record) && record.confirmStatus !== PortfolioCandidateConfirmStatusCode.CONFIRMED">
               <a-input
                 v-model:value="correctedValues[record.id]"
                 placeholder="补全真实值（不可含 [姓名] 等占位符）"
@@ -54,7 +54,7 @@
               确认
             </UiTextAction>
             <UiTextAction
-              v-if="record.confirmStatus !== 'CONFIRMED' && record.confirmStatus !== 'REJECTED'"
+              v-if="record.confirmStatus !== PortfolioCandidateConfirmStatusCode.CONFIRMED && record.confirmStatus !== PortfolioCandidateConfirmStatusCode.REJECTED"
               tone="danger"
               :disabled="confirming"
               @click="rejectCandidate(record)"
@@ -75,15 +75,13 @@
 <script lang="ts" setup>
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCandidateFieldVO } from '@/apis/portfolio/types'
-import type { AiTaskStatus } from '@/apis/quality/types'
+import type { AiTaskStatusCode } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
-import {
-  PORTFOLIO_CANDIDATE_CONFIRM_STATUS_LABEL,
-  PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE,
-} from '@/apis/portfolio/types'
+import { PortfolioCandidateConfirmStatusCode, PortfolioCandidateConfirmStatusDescription } from '@/apis/portfolio/enums'
+import { PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -120,12 +118,12 @@ const loading = ref(false)
 const confirming = ref(false)
 const candidateRows = ref<PortfolioCandidateFieldVO[]>([])
 const correctedValues = reactive<Record<string, string>>({})
-const taskStatus = ref<AiTaskStatus>()
+const taskStatus = ref<AiTaskStatusCode>()
 
 const manualFillPendingCount = computed(
   () =>
     candidateRows.value.filter(
-      (item) => item.manualFillRequired || item.confirmStatus === 'NEEDS_MANUAL_FILL',
+      (item) => item.manualFillRequired || item.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL,
     ).length,
 )
 
@@ -135,7 +133,7 @@ const pendingTaskPolling = computed(
 
 function candidateStatusLabel(row: PortfolioCandidateFieldVO): string {
   return strictEnumLabel(
-    PORTFOLIO_CANDIDATE_CONFIRM_STATUS_LABEL,
+    PortfolioCandidateConfirmStatusDescription,
     row.confirmStatus,
     '候选字段确认状态',
   )
@@ -150,7 +148,7 @@ function candidateStatusTone(row: PortfolioCandidateFieldVO): BadgeTone {
 }
 
 function rowNeedsManualFill(row: PortfolioCandidateFieldVO): boolean {
-  return Boolean(row.manualFillRequired) || row.confirmStatus === 'NEEDS_MANUAL_FILL'
+  return Boolean(row.manualFillRequired) || row.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL
 }
 
 function correctedValueFor(row: PortfolioCandidateFieldVO): string {
@@ -161,14 +159,14 @@ function canConfirmRow(row: PortfolioCandidateFieldVO): boolean {
   if (props.readonly) {
     return false
   }
-  if (row.confirmStatus === 'CONFIRMED' || row.confirmStatus === 'REJECTED') {
+  if (row.confirmStatus === PortfolioCandidateConfirmStatusCode.CONFIRMED || row.confirmStatus === PortfolioCandidateConfirmStatusCode.REJECTED) {
     return false
   }
   if (rowNeedsManualFill(row)) {
     const corrected = correctedValueFor(row).trim()
     return corrected.length > 0 && !containsPortfolioPiiPlaceholder(corrected)
   }
-  return row.confirmStatus === 'PENDING_CONFIRM'
+  return row.confirmStatus === PortfolioCandidateConfirmStatusCode.PENDING_CONFIRM
 }
 
 async function loadCandidates() {
@@ -209,7 +207,7 @@ async function confirmCandidate(row: PortfolioCandidateFieldVO) {
     await portfolioAiJobApi.confirm({
       candidateFieldId: row.id,
       aiTaskId: row.aiTaskId,
-      confirmStatus: 'CONFIRMED',
+      confirmStatus: PortfolioCandidateConfirmStatusCode.CONFIRMED,
       correctedCandidateValue: rowNeedsManualFill(row) ? correctedValueFor(row).trim() : undefined,
     })
     message.success(`已确认字段：${row.fieldLabel}`)
@@ -233,7 +231,7 @@ async function rejectCandidate(row: PortfolioCandidateFieldVO) {
         await portfolioAiJobApi.confirm({
           candidateFieldId: row.id,
           aiTaskId: row.aiTaskId,
-          confirmStatus: 'REJECTED',
+          confirmStatus: PortfolioCandidateConfirmStatusCode.REJECTED,
         })
         message.success(`已驳回字段：${row.fieldLabel}`)
         await loadCandidates()
@@ -259,7 +257,7 @@ async function confirmAllEligible() {
       await portfolioAiJobApi.confirm({
         candidateFieldId: row.id,
         aiTaskId: row.aiTaskId,
-        confirmStatus: 'CONFIRMED',
+        confirmStatus: PortfolioCandidateConfirmStatusCode.CONFIRMED,
         correctedCandidateValue: rowNeedsManualFill(row)
           ? correctedValueFor(row).trim()
           : undefined,

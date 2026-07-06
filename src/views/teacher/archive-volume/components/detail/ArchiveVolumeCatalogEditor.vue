@@ -1,18 +1,22 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { ArchiveCatalogStatusCode } from '@/apis/mark/archive-volume'
+import type { ArchiveCatalogStatusCode,
+  ArchiveVolumeCatalogLineVO} from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onMounted } from 'vue'
 import {
-  ARCHIVE_CATALOG_STATUS_LABEL,
   ARCHIVE_CATALOG_STATUS_TONE,
+  ArchiveCatalogStatusDescription,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveVolumeCatalog } from '@/composables/useArchiveVolumeCatalog'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import ArchiveVolumeCatalogPreview from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeCatalogPreview.vue'
 
 defineOptions({ name: 'ArchiveVolumeCatalogEditor' })
 
@@ -55,11 +59,55 @@ const columns = computed<ColumnsType>(() => [
 ])
 
 function statusLabel(code: ArchiveCatalogStatusCode) {
-  return strictEnumLabel(ARCHIVE_CATALOG_STATUS_LABEL, code, 'catalogStatus')
+  return strictEnumLabel(ArchiveCatalogStatusDescription, code, 'catalogStatus')
 }
 
 function statusTone(code: ArchiveCatalogStatusCode): BadgeTone {
   return strictEnumTone(ARCHIVE_CATALOG_STATUS_TONE, code, 'catalogStatus')
+}
+
+function catalogCellValue(record: ArchiveVolumeCatalogLineVO, dataIndex: unknown): string | number | undefined {
+  if (dataIndex === 'lineNo') return record.lineNo
+  if (dataIndex === 'archiveCode') return record.archiveCode
+  if (dataIndex === 'title') return record.title
+  if (dataIndex === 'responsible') return record.responsible
+  if (dataIndex === 'pageRange') return record.pageRange
+  if (dataIndex === 'fileDate') return record.fileDate
+  if (dataIndex === 'remark') return record.remark
+  throw new Error('归档目录列契约异常')
+}
+
+function catalogCellInputValue(record: ArchiveVolumeCatalogLineVO, dataIndex: unknown): string {
+  const value = catalogCellValue(record, dataIndex)
+  return value === undefined ? '' : String(value)
+}
+
+function updateCatalogLineValue(index: number, dataIndex: unknown, value: string): void {
+  if (dataIndex === 'archiveCode') {
+    updateLine(index, { archiveCode: value })
+    return
+  }
+  if (dataIndex === 'title') {
+    updateLine(index, { title: value })
+    return
+  }
+  if (dataIndex === 'responsible') {
+    updateLine(index, { responsible: value })
+    return
+  }
+  if (dataIndex === 'pageRange') {
+    updateLine(index, { pageRange: value })
+    return
+  }
+  if (dataIndex === 'fileDate') {
+    updateLine(index, { fileDate: value })
+    return
+  }
+  if (dataIndex === 'remark') {
+    updateLine(index, { remark: value })
+    return
+  }
+  throw new Error('归档目录编辑列契约异常')
 }
 
 async function handleGenerateDraft() {
@@ -85,15 +133,20 @@ defineExpose({ loadCatalog })
 </script>
 
 <template>
-  <section class="archive-volume-catalog-editor">
-    <div class="archive-volume-catalog-editor__head">
+  <WorkbenchSurfaceCard flush class="archive-volume-catalog-editor">
+    <template #head>
       <div class="archive-volume-catalog-editor__title-wrap">
-        <h3 class="archive-volume-catalog-editor__title">归档目录编制</h3>
+        <h3 class="archive-volume-catalog-editor__title">归档目录</h3>
+        <span v-if="editableLines.length > 0" class="archive-volume-catalog-editor__meta">
+          {{ editableLines.length }} 条目
+        </span>
         <UiTag :tone="statusTone(effectiveStatus)" size="sm">
           {{ statusLabel(effectiveStatus) }}
         </UiTag>
       </div>
-      <div v-if="!readonly" class="archive-volume-catalog-editor__actions">
+    </template>
+    <template v-if="!readonly" #toolbar>
+      <div class="archive-volume-catalog-editor__actions">
         <UiButton
           size="sm"
           variant="outline"
@@ -131,11 +184,17 @@ defineExpose({ loadCatalog })
           导出
         </UiButton>
       </div>
-    </div>
+    </template>
 
-    <a-skeleton v-if="loading" active :paragraph="{ rows: 6 }" />
+    <UiSkeletonState v-if="loading" variant="card" compact />
 
     <UiEmpty v-else-if="editableLines.length === 0" description="尚未生成目录草稿" />
+
+    <ArchiveVolumeCatalogPreview
+      v-else-if="readonly || isConfirmed"
+      :lines="editableLines"
+      :catalog-status="effectiveStatus"
+    />
 
     <UiDataTable
       v-else
@@ -149,22 +208,22 @@ defineExpose({ loadCatalog })
     >
       <template #bodyCell="{ column, record, index }">
         <template v-if="readonly || isConfirmed">
-          {{ record[column.dataIndex as keyof typeof record] }}
+          {{ catalogCellValue(record, column.dataIndex) }}
         </template>
         <template v-else-if="column.key === 'lineNo'">
           {{ record.lineNo }}
         </template>
         <template v-else>
           <a-input
-            :value="record[column.dataIndex as keyof typeof record] as string"
+            :value="catalogCellInputValue(record, column.dataIndex)"
             size="small"
             allow-clear
-            @update:value="updateLine(index, { [column.dataIndex as string]: $event })"
+            @update:value="updateCatalogLineValue(index, column.dataIndex, $event)"
           />
         </template>
       </template>
     </UiDataTable>
-  </section>
+  </WorkbenchSurfaceCard>
 </template>
 
 <style scoped>
@@ -191,6 +250,11 @@ defineExpose({ loadCatalog })
   margin: 0;
   font-size: 16px;
   font-weight: 600;
+}
+
+.archive-volume-catalog-editor__meta {
+  font-size: var(--dp-type-hint-size, 11px);
+  color: var(--dp-text-muted);
 }
 
 .archive-volume-catalog-editor__actions {

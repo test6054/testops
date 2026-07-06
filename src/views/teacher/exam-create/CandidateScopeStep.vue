@@ -2,7 +2,7 @@
   <section id="exam-create-candidates" class="form-section exam-create-form">
     <header class="section-header">
       <h2 class="section-title">考生范围</h2>
-      <div v-if="rosterForm.scopeMode === 'BY_STUDENT'" class="section-actions">
+      <div v-if="rosterForm.scopeMode === ExamRosterScopeModeCode.BY_STUDENT" class="section-actions">
         <UiButton size="sm" variant="outline" @click="openStudentDrawer">
           按学生选择
         </UiButton>
@@ -56,7 +56,7 @@
             style="width: 100%"
           />
           <div class="exam-create-form__hint">
-            <template v-if="rosterForm.scopeMode === 'BY_CLASS'">
+            <template v-if="rosterForm.scopeMode === ExamRosterScopeModeCode.BY_CLASS">
               正考场景：按院系选择班级后自动纳入该班全部在籍学生；可切换院系继续添加班级。
             </template>
             <template v-else>
@@ -94,7 +94,7 @@
         </template>
         <template v-else-if="column.key === 'actions'">
           <button
-            v-if="rosterForm.scopeMode === 'BY_STUDENT'"
+            v-if="rosterForm.scopeMode === ExamRosterScopeModeCode.BY_STUDENT"
             type="button"
             class="op-link op-link--danger"
             @click="emit('remove-candidate', record.studentUserId)"
@@ -119,11 +119,10 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamRosterScopeMode } from '@/apis/mark/exam'
 import type { ExamCandidateVO } from '@/apis/mark/exam-scope'
 import { message, Modal } from 'ant-design-vue'
 import { computed, onMounted, ref, toRef, watch } from 'vue'
-import { previewCreateExamRoster } from '@/apis/mark/exam'
+import { EXAM_ROSTER_SCOPE_MODE_OPTIONS, ExamRosterScopeModeCode, previewCreateExamRoster } from '@/apis/mark/exam'
 import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSelectorDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -132,7 +131,6 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { useExamDepartmentClassScope } from '@/composables/useExamDepartmentClassScope'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
 import {
-  EXAM_ROSTER_SCOPE_MODE_LABEL,
   useInjectedExamCreateRosterForm,
 } from './exam-create-context'
 import {
@@ -147,7 +145,7 @@ defineProps<{
 
 const emit = defineEmits<{
   'update:roster-form-ref': [ref: FormInstance | undefined]
-  'change-scope-mode': [mode: ExamRosterScopeMode]
+  'change-scope-mode': [mode: ExamRosterScopeModeCode]
   'sync-class-scope': [candidates: ExamCandidateVO[], classIds: string[]]
   'roster-preview-syncing': [syncing: boolean]
   'add-candidates': [candidates: ExamCandidateVO[]]
@@ -179,15 +177,12 @@ watch(departmentId, (id) => {
   rosterForm.referenceDepartmentId = id
 })
 
-const scopeModeOptions: Array<{ label: string, value: ExamRosterScopeMode }> = [
-  { label: EXAM_ROSTER_SCOPE_MODE_LABEL.BY_CLASS, value: 'BY_CLASS' },
-  { label: EXAM_ROSTER_SCOPE_MODE_LABEL.BY_STUDENT, value: 'BY_STUDENT' },
-]
+const scopeModeOptions = EXAM_ROSTER_SCOPE_MODE_OPTIONS
 
 const selectedStudentIds = computed(() => rosterForm.candidates.map(row => row.studentUserId))
 
 const emptyDescription = computed(() => {
-  if (rosterForm.scopeMode === 'BY_CLASS') {
+  if (rosterForm.scopeMode === ExamRosterScopeModeCode.BY_CLASS) {
     return '选择参考班级后将自动纳入全部在籍学生'
   }
   if (rosterForm.classIds.length > 0) {
@@ -212,10 +207,10 @@ async function loadClassOptions(): Promise<void> {
 }
 
 function handleScopeModeChange(val: string | number): void {
-  if (val !== 'BY_CLASS' && val !== 'BY_STUDENT') {
+  if (val !== ExamRosterScopeModeCode.BY_CLASS && val !== ExamRosterScopeModeCode.BY_STUDENT) {
     throw new Error(`无效考生纳入模式: ${String(val)}`)
   }
-  const mode: ExamRosterScopeMode = val
+  const mode: ExamRosterScopeModeCode = val
   if (mode === rosterForm.scopeMode) return
   const hasDraft = rosterForm.candidates.length > 0 || rosterForm.classIds.length > 0
   if (!hasDraft) {
@@ -260,21 +255,21 @@ function syncByClassScope(addedClassIds: string[]): void {
     return
   }
   const scopeMode = rosterForm.scopeMode
-  if (scopeMode === 'BY_STUDENT' && addedClassIds.length === 0) {
+  if (scopeMode === ExamRosterScopeModeCode.BY_STUDENT && addedClassIds.length === 0) {
     return
   }
-  const fetchClassIds = scopeMode === 'BY_CLASS' ? classIds : addedClassIds
+  const fetchClassIds = scopeMode === ExamRosterScopeModeCode.BY_CLASS ? classIds : addedClassIds
   classScopeSyncing.value = true
   rosterPreviewError.value = ''
   emit('roster-preview-syncing', true)
   void previewCreateExamRoster({
-    scopeMode: 'BY_CLASS',
+    scopeMode: ExamRosterScopeModeCode.BY_CLASS,
     classIds: fetchClassIds,
   })
     .then((preview) => {
       if (syncSeq !== classScopeSyncSeq) return
       const previewCandidates = requirePreviewCandidates(preview.candidates)
-      const nextCandidates = scopeMode === 'BY_CLASS'
+      const nextCandidates = scopeMode === ExamRosterScopeModeCode.BY_CLASS
         ? previewCandidates
         : mergePreviewCandidates(rosterForm.candidates, previewCandidates)
       emit('sync-class-scope', nextCandidates, [...classIds])
@@ -320,7 +315,7 @@ function handleStudentsSelected(data: {
   rosterPreviewError.value = ''
   emit('roster-preview-syncing', true)
   void previewCreateExamRoster({
-    scopeMode: 'BY_STUDENT',
+    scopeMode: ExamRosterScopeModeCode.BY_STUDENT,
     classIds: rosterForm.classIds,
     candidates: rosterRequests,
   })

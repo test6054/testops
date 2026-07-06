@@ -7,8 +7,8 @@
  */
 
 import type { InjectionKey, Ref } from 'vue'
+import type { KioskWorkflow } from './useExamKioskWorkflow'
 import type { KioskMutex } from './useKioskMutex'
-import type { KioskWorkflow } from './useKioskWorkflow'
 import type { KioskStageMachine } from './useStageMachine'
 import type { ExamScannerKioskBatchHistoryItem } from '@/apis/mark/scanner-kiosk'
 import { inject } from 'vue'

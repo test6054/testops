@@ -13,7 +13,6 @@ import type {
   ProfessionAlgorithmTemplateSaveRequest,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality/profession-algorithm-template'
-import type { AccreditationType, AggregationFunction } from '@/apis/quality/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
@@ -21,9 +20,12 @@ import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import {
-  ACCREDITATION_TYPE_LABEL,
-  AGGREGATION_FUNCTION_CODES,
-  AGGREGATION_FUNCTION_LABEL,
+  AccreditationTypeCode,
+  AccreditationTypeDescription,
+  AggregationFunctionCode,
+  AggregationFunctionDescription,
+  ALL_ACCREDITATION_TYPE_CODES,
+  ALL_AGGREGATION_FUNCTION_CODES,
 } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -51,12 +53,12 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 280, fixed: 'right' },
 ]
 
-function accreditationTypeLabel(value: AccreditationType): string {
-  return strictEnumLabel(ACCREDITATION_TYPE_LABEL, value, '认证类型')
+function accreditationTypeLabel(value: AccreditationTypeCode): string {
+  return strictEnumLabel(AccreditationTypeDescription, value, '认证类型')
 }
 
-function aggregationFunctionLabel(value: AggregationFunction): string {
-  return strictEnumLabel(AGGREGATION_FUNCTION_LABEL, value, '聚合函数')
+function aggregationFunctionLabel(value: AggregationFunctionCode): string {
+  return strictEnumLabel(AggregationFunctionDescription, value, '聚合函数')
 }
 
 const list = ref<ProfessionAlgorithmTemplateVO[]>([])
@@ -72,7 +74,8 @@ const query = reactive<ProfessionAlgorithmTemplateQueryRequest>({
 })
 
 interface ProfessionAlgorithmTemplateFilterModel {
-  accreditationType?: AccreditationType
+  [key: string]: unknown
+  accreditationType?: AccreditationTypeCode
   keyword: string
 }
 
@@ -82,7 +85,7 @@ const filterForm = reactive<ProfessionAlgorithmTemplateFilterModel>({
 })
 
 const filterModel = computed<Record<string, unknown>>({
-  get: () => filterForm as Record<string, unknown>,
+  get: () => filterForm,
   set: (value) => {
     Object.assign(filterForm, value)
   },
@@ -111,14 +114,14 @@ const editorMode = ref<'create' | 'edit'>('create')
 const editor = reactive<ProfessionAlgorithmTemplateSaveRequest>({
   templateCode: '',
   templateName: '',
-  accreditationType: 'ENGINEERING_ACCREDITATION',
+  accreditationType: AccreditationTypeCode.ENGINEERING_ACCREDITATION,
   disciplineCategory: '',
   standardId: undefined,
   standardYear: '',
   description: '',
-  courseGoalAggregation: 'WEIGHTED_SUM',
-  indicatorAggregation: 'WEIGHTED_SUM',
-  requirementAggregation: 'WEIGHTED_SUM',
+  courseGoalAggregation: AggregationFunctionCode.WEIGHTED_SUM,
+  indicatorAggregation: AggregationFunctionCode.WEIGHTED_SUM,
+  requirementAggregation: AggregationFunctionCode.WEIGHTED_SUM,
   directWeightDefault: 0.7,
   indirectWeightDefault: 0.3,
   indirectMinValidSampleCount: 30,
@@ -137,24 +140,15 @@ const detailVisible = ref(false)
 const detailLoading = ref(false)
 const detailRecord = ref<ProfessionAlgorithmTemplateVO | null>(null)
 
-const accreditationTypes: AccreditationType[] = [
-  'ENGINEERING_ACCREDITATION',
-  'TEACHER_ACCREDITATION',
-  'MEDICAL_HEALTH_ACCREDITATION',
-  'ART_DESIGN_QUALITY_EVALUATION',
-  'ECONOMICS_FINANCE_QUALITY_EVALUATION',
-  'LAW_QUALITY_EVALUATION',
-  'AGRICULTURE_ACCREDITATION',
-  'GENERAL_QUALITY_EVALUATION',
-]
+const accreditationTypes: readonly AccreditationTypeCode[] = ALL_ACCREDITATION_TYPE_CODES
 
 const accreditationOptions = accreditationTypes.map((value) => ({
   value,
   label: accreditationTypeLabel(value),
 }))
-const aggregationOptions = AGGREGATION_FUNCTION_CODES.map((value) => ({
+const aggregationOptions = ALL_AGGREGATION_FUNCTION_CODES.map((value) => ({
   value,
-  label: AGGREGATION_FUNCTION_LABEL[value],
+  label: AggregationFunctionDescription[value],
 }))
 
 function isSharedTemplate(record: ProfessionAlgorithmTemplateVO) {

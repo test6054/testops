@@ -19,7 +19,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { isIndirectEvaluationItemType } from '@/types/enums/indirect-evaluation-item-type-enum'
-import { isSystemCollectedRespondentType, RespondentType } from '@/types/enums/respondent-type-enum'
+import { isSystemCollectedRespondentType, MANUAL_RESPONDENT_TYPE_OPTIONS, RespondentTypeCode } from '@/types/enums/respondent-type-enum'
 import ImportResponseDocumentModal from '../ImportResponseDocumentModal.vue'
 import {
   isMultiChoiceItemType,
@@ -29,7 +29,6 @@ import {
   isTeacherResponseWritable,
   requiresTeacherScoreConversion,
   respondentTypeLabel,
-  respondentTypeOptions,
   responseColumns,
 } from './indirect-evaluation-shared'
 
@@ -85,7 +84,7 @@ const responseIdentityContact = ref('')
 const responseEditor = ref<IndirectEvaluationResponseSaveRequest>({
   formId: '',
   itemId: '',
-  respondentType: RespondentType.STUDENT,
+  respondentType: RespondentTypeCode.STUDENT,
   respondentId: '',
   scaleValue: undefined,
   singleChoiceValue: '',
@@ -170,7 +169,7 @@ function openResponseCreate() {
   responseEditor.value = {
     formId: props.selectedForm.id,
     itemId: props.selectedItem.id,
-    respondentType: RespondentType.STUDENT,
+    respondentType: RespondentTypeCode.STUDENT,
     respondentId: '',
     scaleValue: undefined,
     singleChoiceValue: '',
@@ -202,9 +201,27 @@ function openResponseEdit(record: IndirectEvaluationResponseVO) {
   responseIdentityContact.value
     = record.identityValues?.find((item) => item.fieldKey === 'CONTACT')?.fieldValue ?? ''
   responseEditor.value = {
-    ...record,
-    multipleChoiceValues: record.multipleChoiceValues?.map((option) => ({ ...option })) ?? [],
-    identityValues: record.identityValues?.map((identity) => ({ ...identity })) ?? [],
+    id: record.id,
+    formId: record.formId,
+    itemId: record.itemId,
+    respondentType: record.respondentType,
+    respondentId: record.respondentId,
+    scaleValue: record.scaleValue,
+    singleChoiceValue: record.singleChoiceValue ?? '',
+    answerSummary: record.answerSummary ?? '',
+    multipleChoiceValues: record.multipleChoiceValues?.map((option) => ({
+      optionValue: option.optionValue,
+      optionLabel: option.optionLabel,
+    })) ?? [],
+    identityValues: record.identityValues?.map((identity) => ({
+      fieldKey: identity.fieldKey,
+      fieldValue: identity.fieldValue,
+    })) ?? [],
+    convertedScore: record.convertedScore,
+    openText: record.openText ?? '',
+    validFlag: record.validFlag,
+    invalidReason: record.invalidReason ?? '',
+    receivedTime: record.receivedTime,
   }
   responseEditorVisible.value = true
 }
@@ -243,18 +260,18 @@ async function submitResponse() {
     return
   }
   if (
-    (v.respondentType === RespondentType.STUDENT
-      || v.respondentType === RespondentType.TEACHER
-      || v.respondentType === RespondentType.EXPERT
-      || v.respondentType === RespondentType.SUPERVISOR)
+    (v.respondentType === RespondentTypeCode.STUDENT
+      || v.respondentType === RespondentTypeCode.TEACHER
+      || v.respondentType === RespondentTypeCode.EXPERT
+      || v.respondentType === RespondentTypeCode.SUPERVISOR)
     && !v.respondentId?.trim()
   ) {
     message.error('请选择应答人')
     return
   }
   if (
-    v.respondentType === RespondentType.GRADUATE
-    || v.respondentType === RespondentType.EMPLOYER
+    v.respondentType === RespondentTypeCode.GRADUATE
+    || v.respondentType === RespondentTypeCode.EMPLOYER
   ) {
     if (!responseIdentityName.value.trim()) {
       message.error('请填写应答人姓名')
@@ -321,9 +338,12 @@ async function submitResponse() {
     v.scaleValue = undefined
     v.singleChoiceValue = ''
     v.openText = ''
-    v.multipleChoiceValues = selectedItemChoiceOptions().filter((option) =>
-      responseMultiChoiceValues.value.includes(option.optionValue),
-    )
+    v.multipleChoiceValues = selectedItemChoiceOptions()
+      .filter((option) => responseMultiChoiceValues.value.includes(option.optionValue))
+      .map((option) => ({
+        optionValue: option.optionValue,
+        optionLabel: option.optionLabel,
+      }))
     v.answerSummary = v.multipleChoiceValues.map((option) => option.optionLabel).join(' | ')
   } else if (isOpenTextItemType(props.selectedItem.itemType)) {
     v.scaleValue = undefined
@@ -563,7 +583,7 @@ defineExpose({
             <span
               v-if="
                 isSystemCollectedRespondentType(responseEditor.respondentType)
-                  || responseEditor.respondentType === RespondentType.AI_DRAFT
+                  || responseEditor.respondentType === RespondentTypeCode.AI_DRAFT
               "
               class="ie__sub-desc"
             >
@@ -572,12 +592,12 @@ defineExpose({
             <a-select
               v-else
               v-model:value="responseEditor.respondentType"
-              :options="respondentTypeOptions"
+              :options="MANUAL_RESPONDENT_TYPE_OPTIONS"
               @change="handleResponseRespondentTypeChange"
             />
           </a-form-item>
         </a-col>
-        <a-col v-if="responseEditor.respondentType === RespondentType.STUDENT" :span="12">
+        <a-col v-if="responseEditor.respondentType === RespondentTypeCode.STUDENT" :span="12">
           <a-form-item label="班级" required>
             <ClassSelector
               :value="responseEditorClassId || null"
@@ -588,9 +608,9 @@ defineExpose({
         </a-col>
         <a-col
           v-else-if="
-            responseEditor.respondentType === RespondentType.TEACHER
-              || responseEditor.respondentType === RespondentType.EXPERT
-              || responseEditor.respondentType === RespondentType.SUPERVISOR
+            responseEditor.respondentType === RespondentTypeCode.TEACHER
+              || responseEditor.respondentType === RespondentTypeCode.EXPERT
+              || responseEditor.respondentType === RespondentTypeCode.SUPERVISOR
           "
           :span="12"
         >
@@ -604,7 +624,7 @@ defineExpose({
         </a-col>
       </a-row>
       <a-form-item
-        v-if="responseEditor.respondentType === RespondentType.STUDENT"
+        v-if="responseEditor.respondentType === RespondentTypeCode.STUDENT"
         label="应答学生"
         required
       >
@@ -617,8 +637,8 @@ defineExpose({
       </a-form-item>
       <a-row
         v-if="
-          responseEditor.respondentType === RespondentType.GRADUATE
-            || responseEditor.respondentType === RespondentType.EMPLOYER
+          responseEditor.respondentType === RespondentTypeCode.GRADUATE
+            || responseEditor.respondentType === RespondentTypeCode.EMPLOYER
         "
         :gutter="12"
       >

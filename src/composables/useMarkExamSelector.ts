@@ -11,14 +11,14 @@ import type { ExamSummaryVO } from '@/apis/mark/exam'
 import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getExamDetail, pageExams } from '@/apis/mark/exam'
+import { ExamStatusCode, getExamDetail, pageExams } from '@/apis/mark/exam'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
 import { showUserError } from '@/utils/error-handler'
-import { examSummaryFromDetail, examSummaryFromMeta, toMarkExamSelectOption } from '@/utils/mark-exam-option'
+import { examSummaryFromDetail, toMarkExamSelectOption } from '@/utils/mark-exam-option'
 import { readPageList } from '@/utils/page-result'
 
 /** 下拉默认展示条数（与后端分页一致，不做全量 readAllPages） */
@@ -126,7 +126,7 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
     return {
       pageNum: 1,
       pageSize,
-      status: 'ACTIVE' as const,
+      status: ExamStatusCode.ACTIVE,
       keyword: keyword?.trim() || undefined,
       createUserId: isAdminView.value ? null : userStore.userInfo.userId || undefined,
     }
@@ -205,12 +205,6 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
     const cachedDetail = examContext.currentExamDetail
     if (cachedDetail?.examId === examId) {
       pinnedExam.value = examSummaryFromDetail(cachedDetail)
-      return
-    }
-
-    const meta = markStageStore.selectedExamMeta
-    if (meta?.examId === examId && markStageStore.selectedExamLabel) {
-      pinnedExam.value = examSummaryFromMeta(meta)
       return
     }
 

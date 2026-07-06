@@ -3,7 +3,7 @@ import type {
   PortfolioMaterialIntakeStartResultVO,
   PortfolioMaterialIntakeStatusVO,
   PortfolioMaterialReassignCategoryResultVO,
-  PortfolioMaterialType,
+  PortfolioMaterialTypeCode,
 } from '@/apis/portfolio/types'
 import http from '@/config/axios'
 
@@ -15,11 +15,10 @@ export interface PortfolioMaterialIntakeStartRequest {
   categoryId?: string
   fileNodeId?: string
   materialTitle?: string
-  materialType?: PortfolioMaterialType
+  materialType?: PortfolioMaterialTypeCode
   submitAi?: boolean
   demoMode?: boolean
   frozenProviderChain?: string
-  scanFileNodeId?: string
 }
 
 export interface PortfolioMaterialIntakeGetStatusRequest {
@@ -52,6 +51,10 @@ export interface PortfolioMaterialReassignCategoryRequest {
   targetCategoryId: string
 }
 
+export interface PortfolioMaterialIntakeProviderChainVO {
+  providerChain?: string
+}
+
 export const portfolioIntakeApi = {
   start: (data: PortfolioMaterialIntakeStartRequest) =>
     http.post<PortfolioMaterialIntakeStartResultVO>(`${INTAKE_BASE}/start`, data),
@@ -62,7 +65,7 @@ export const portfolioIntakeApi = {
   submit: (data: PortfolioMaterialIntakeSubmitRequest) =>
     http.post<PortfolioMaterialIntakeStatusVO>(`${INTAKE_BASE}/submit`, data),
   getProviderChain: () =>
-    http.post<{ providerChain: string }>(`${INTAKE_BASE}/provider-chain/get`, {}),
+    http.post<PortfolioMaterialIntakeProviderChainVO>(`${INTAKE_BASE}/provider-chain/get`, {}),
   reassignCategory: (data: PortfolioMaterialReassignCategoryRequest) =>
     http.post<PortfolioMaterialReassignCategoryResultVO>(
       '/api/portfolio/material/reassign-category',

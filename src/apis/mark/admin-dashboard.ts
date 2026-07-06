@@ -3,14 +3,40 @@
  *
  * 后端规则：
  * - 路径前缀 /api/mark/admin/dashboard
- * - 全部为 GET 查询，租户身份从 UserHold 注入
+ * - 全部为 POST 查询，租户身份从 UserHold 注入
  * - 后端 Long ID 统一以 string 表达到前端
  * - 通用租户/用户/系统公告/存储统计能力由 edu-practice-web-vue 提供，本文件不重复
  */
 import type { ExamStatusCode } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-
+import type { IncidentSourceTypeCode } from '@/types/enums/incident-source-type-enum'
+import type { IncidentTypeCode } from '@/types/enums/incident-type-enum'
 import http from '@/config/axios'
+import { IncidentLevelCode } from '@/types/enums/incident-level-enum'
+
+export {
+  ALL_INCIDENT_LEVEL_CODES,
+  IncidentLevelCode,
+  IncidentLevelDescription,
+} from '@/types/enums/incident-level-enum'
+export {
+  ALL_INCIDENT_SOURCE_TYPE_CODES,
+  IncidentSourceTypeCode,
+  IncidentSourceTypeDescription,
+} from '@/types/enums/incident-source-type-enum'
+export {
+  ALL_INCIDENT_TYPE_CODES,
+  IncidentTypeCode,
+  IncidentTypeDescription,
+} from '@/types/enums/incident-type-enum'
+
+/** 重大事件级别 BadgeTone 映射（UiTag/UiBadge） */
+export const INCIDENT_LEVEL_TONE: Record<IncidentLevelCode, BadgeTone> = {
+  [IncidentLevelCode.BLOCKING]: 'red',
+  [IncidentLevelCode.REVIEW_REQUIRED]: 'orange',
+  [IncidentLevelCode.WARNING]: 'orange',
+  [IncidentLevelCode.INFO]: 'blue',
+}
 
 /** 阅卷规模指标 - 对应 MarkDashboardResponse.ExamMetrics */
 export interface DashboardExamMetricsVO {
@@ -51,71 +77,6 @@ export interface DashboardRecentExamItemVO {
   publishedScoreCount: number
 }
 
-/** 重大事件级别 - 对应后端 IncidentLevel 枚举 */
-export type IncidentLevelCode = 'BLOCKING' | 'REVIEW_REQUIRED' | 'WARNING' | 'INFO'
-
-/** 重大事件来源类型 - 对应后端 IncidentSourceType 枚举 */
-export type IncidentSourceTypeCode
-  = | 'IMAGE_LEDGER'
-    | 'SCAN_BATCH'
-    | 'SCANNED_PAGE'
-    | 'PROCESSING_TASK'
-    | 'DUPLICATE_RESOLUTION'
-    | 'GRADE_RESULT'
-    | 'MESSAGE_NOTIFICATION'
-    | 'PAPER_INSTANCE'
-
-/** 重大事件来源类型文案映射（与 edu-common IncidentSourceType.message 一致） */
-export const INCIDENT_SOURCE_TYPE_LABEL: Record<IncidentSourceTypeCode, string> = {
-  IMAGE_LEDGER: '影像账本',
-  SCAN_BATCH: '扫描批次',
-  SCANNED_PAGE: '扫描页',
-  PROCESSING_TASK: '处理任务',
-  DUPLICATE_RESOLUTION: '重复页处置',
-  GRADE_RESULT: '评分结果',
-  MESSAGE_NOTIFICATION: '站内信通知',
-  PAPER_INSTANCE: '试卷实例',
-}
-
-/** 重大事件级别文案映射 */
-export const INCIDENT_LEVEL_LABEL: Record<IncidentLevelCode, string> = {
-  BLOCKING: '阻断',
-  REVIEW_REQUIRED: '需复核',
-  WARNING: '警告',
-  INFO: '提示',
-}
-
-/** 重大事件级别 BadgeTone 映射（UiTag/UiBadge） */
-export const INCIDENT_LEVEL_TONE: Record<IncidentLevelCode, BadgeTone> = {
-  BLOCKING: 'red',
-  REVIEW_REQUIRED: 'orange',
-  WARNING: 'orange',
-  INFO: 'blue',
-}
-
-/** 重大事件类型 - 对应后端 IncidentType 枚举 */
-export type IncidentTypeCode
-  = | 'DUPLICATE_DETECTED'
-    | 'BINDING_CONFLICT'
-    | 'SCAN_BATCH_REPROCESS'
-    | 'SCORE_ANOMALY'
-    | 'MISSING_SCAN_PAGE'
-    | 'EXTRA_SCAN_PAGE'
-    | 'MISSING_CANDIDATE_BINDING'
-    | 'MESSAGE_DELIVERY_FAILED'
-
-/** 重大事件类型文案映射 */
-export const INCIDENT_TYPE_LABEL: Record<IncidentTypeCode, string> = {
-  DUPLICATE_DETECTED: '重复检测',
-  BINDING_CONFLICT: '绑定冲突',
-  SCAN_BATCH_REPROCESS: '异常批次重处理',
-  SCORE_ANOMALY: '分数异常',
-  MISSING_SCAN_PAGE: '扫描页缺失',
-  EXTRA_SCAN_PAGE: '扫描页超出',
-  MISSING_CANDIDATE_BINDING: '考生未绑定',
-  MESSAGE_DELIVERY_FAILED: '通知投递失败',
-}
-
 /** 重大事件记录 - 对应 ExamIncidentRecord */
 export interface IncidentRecordVO {
   id: string
@@ -150,14 +111,7 @@ export interface DashboardIncidentRecordVO {
   createTime?: string
 }
 
-/**
- * Dashboard 聚合响应 - 对应 MarkDashboardResponse
- *
- * 字段契约：
- * - examMetrics 供管理员 Dashboard 考试规模卡片与环形图消费；
- * - gradingMetrics / incidentMetrics / recentExams / recentIncidents 为前端必需字段；
- *   缺失时 validateDashboardOverview 抛 TypeError，由页面错误面板捕获。
- */
+/** Dashboard 聚合响应 - 对应 MarkDashboardResponse */
 export interface MarkDashboardOverviewVO {
   examMetrics?: DashboardExamMetricsVO
   gradingMetrics: DashboardGradingMetricsVO
@@ -166,50 +120,8 @@ export interface MarkDashboardOverviewVO {
   recentIncidents: DashboardIncidentRecordVO[]
 }
 
-function assertDashboardCount(value: unknown, field: string): number {
-  const count = Number(value)
-  if (!Number.isFinite(count) || count < 0) {
-    throw new TypeError(`Dashboard 响应缺少合法字段：${field}`)
-  }
-  return count
-}
-
-/** 校验 MarkDashboardResponse 必需字段，缺失时抛 TypeError 供页面错误面板捕获。 */
-export function validateDashboardOverview(data: MarkDashboardOverviewVO): MarkDashboardOverviewVO {
-  if (!data || typeof data !== 'object') {
-    throw new TypeError('Dashboard 响应为空')
-  }
-  const grading = data.gradingMetrics
-  if (!grading) {
-    throw new TypeError('Dashboard 响应缺少 gradingMetrics')
-  }
-  assertDashboardCount(grading.publishedScoreCount, 'gradingMetrics.publishedScoreCount')
-  assertDashboardCount(grading.pendingScoreCount, 'gradingMetrics.pendingScoreCount')
-  assertDashboardCount(grading.confirmedScoreCount, 'gradingMetrics.confirmedScoreCount')
-  assertDashboardCount(grading.withdrawnScoreCount, 'gradingMetrics.withdrawnScoreCount')
-  assertDashboardCount(grading.confirmedQuestionResultCount, 'gradingMetrics.confirmedQuestionResultCount')
-  assertDashboardCount(grading.openReviewTaskCount, 'gradingMetrics.openReviewTaskCount')
-  assertDashboardCount(grading.openProcessingTaskCount, 'gradingMetrics.openProcessingTaskCount')
-
-  const incident = data.incidentMetrics
-  if (!incident) {
-    throw new TypeError('Dashboard 响应缺少 incidentMetrics')
-  }
-  assertDashboardCount(incident.unresolvedIncidentCount, 'incidentMetrics.unresolvedIncidentCount')
-  assertDashboardCount(incident.pendingDuplicateCount, 'incidentMetrics.pendingDuplicateCount')
-
-  if (!Array.isArray(data.recentExams)) {
-    throw new TypeError('Dashboard 响应缺少 recentExams')
-  }
-  if (!Array.isArray(data.recentIncidents)) {
-    throw new TypeError('Dashboard 响应缺少 recentIncidents')
-  }
-  return data
-}
-
-export async function loadDashboardOverview(recentLimit = 5): Promise<MarkDashboardOverviewVO> {
-  const data = await http.post<MarkDashboardOverviewVO>('/api/mark/admin/dashboard/overview', {
+export function loadDashboardOverview(recentLimit = 5): Promise<MarkDashboardOverviewVO> {
+  return http.post<MarkDashboardOverviewVO>('/api/mark/admin/dashboard/overview', {
     recentLimit,
   })
-  return validateDashboardOverview(data)
 }

@@ -9,22 +9,46 @@
  * - 上下游 selector 通过 props 联动（如 RequirementIndicatorSelector 必须传 requirementId）
  * - 默认对真源 API 做一次 onMounted 加载，远程搜索类使用 300ms 防抖
  */
-export { default as AchievementResultSelector } from './AchievementResultSelector.vue'
-export { default as ArchiveSelector } from './ArchiveSelector.vue'
-export { default as AssessmentItemSelector } from './AssessmentItemSelector.vue'
-export { default as AuditIssueSelector } from './AuditIssueSelector.vue'
-export { default as AuditRectificationSelector } from './AuditRectificationSelector.vue'
-export { default as CatalogCourseSelector } from './CatalogCourseSelector.vue'
-export { default as ClassSelector } from './ClassSelector.vue'
-export { default as CourseGoalSelector } from './CourseGoalSelector.vue'
-export { default as CourseSelector } from './CourseSelector.vue'
-export { default as GraduationRequirementSelector } from './GraduationRequirementSelector.vue'
-export { default as IndirectFormSelector } from './IndirectFormSelector.vue'
-export { default as ProgramEvaluationProfileSelector } from './ProgramEvaluationProfileSelector.vue'
-export { default as ProgramSelector } from './ProgramSelector.vue'
-export { default as ReportSelector } from './ReportSelector.vue'
-export { default as RequirementIndicatorSelector } from './RequirementIndicatorSelector.vue'
-export { default as StudentSelector } from './StudentSelector.vue'
-export { default as TeacherSelector } from './TeacherSelector.vue'
-export { default as TrainingObjectiveSelector } from './TrainingObjectiveSelector.vue'
-export { default as TrainingPlanSelector } from './TrainingPlanSelector.vue'
+import AchievementResultSelector from './AchievementResultSelector.vue'
+import ArchiveSelector from './ArchiveSelector.vue'
+import AssessmentItemSelector from './AssessmentItemSelector.vue'
+import AuditIssueSelector from './AuditIssueSelector.vue'
+import AuditRectificationSelector from './AuditRectificationSelector.vue'
+import CatalogCourseSelector from './CatalogCourseSelector.vue'
+import ClassSelector from './ClassSelector.vue'
+import CourseGoalSelector from './CourseGoalSelector.vue'
+import CourseSelector from './CourseSelector.vue'
+import DepartmentSelector from './DepartmentSelector.vue'
+import GraduationRequirementSelector from './GraduationRequirementSelector.vue'
+import IndirectFormSelector from './IndirectFormSelector.vue'
+import ProgramEvaluationProfileSelector from './ProgramEvaluationProfileSelector.vue'
+import ProgramSelector from './ProgramSelector.vue'
+import ReportSelector from './ReportSelector.vue'
+import RequirementIndicatorSelector from './RequirementIndicatorSelector.vue'
+import StudentSelector from './StudentSelector.vue'
+import TeacherSelector from './TeacherSelector.vue'
+import TrainingObjectiveSelector from './TrainingObjectiveSelector.vue'
+import TrainingPlanSelector from './TrainingPlanSelector.vue'
+
+export {
+  AchievementResultSelector,
+  ArchiveSelector,
+  AssessmentItemSelector,
+  AuditIssueSelector,
+  AuditRectificationSelector,
+  CatalogCourseSelector,
+  ClassSelector,
+  CourseGoalSelector,
+  CourseSelector,
+  DepartmentSelector,
+  GraduationRequirementSelector,
+  IndirectFormSelector,
+  ProgramEvaluationProfileSelector,
+  ProgramSelector,
+  ReportSelector,
+  RequirementIndicatorSelector,
+  StudentSelector,
+  TeacherSelector,
+  TrainingObjectiveSelector,
+  TrainingPlanSelector,
+}

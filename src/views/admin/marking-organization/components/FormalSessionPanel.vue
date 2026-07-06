@@ -1,9 +1,12 @@
 <template>
-  <UiCard class="session-card">
-    <template #title>
-      <PlayCircleOutlined />
-      <span>正评会话</span>
-      <UiBadge tone="green">教师批阅生效</UiBadge>
+  <WorkbenchSurfaceCard class="session-card">
+    <template #head>
+      <div class="session-card__head">
+        <span class="session-card__flow-hint">{{ FORMAL_SESSION_FLOW_HINT }}</span>
+        <PlayCircleOutlined />
+        <h3 class="session-card__title">正评会话</h3>
+        <span class="session-card__subtitle">教师批阅生效</span>
+      </div>
     </template>
 
     <a-form v-if="canManage" layout="vertical" class="session-form">
@@ -71,8 +74,8 @@
       <div
         v-if="
           selectedSession
-            && (selectedSession.sessionStatus === 'SESSION_ACTIVE'
-              || selectedSession.sessionStatus === 'SESSION_PAUSED')
+            && (selectedSession.sessionStatus === FormalSessionStatusCode.SESSION_ACTIVE
+              || selectedSession.sessionStatus === FormalSessionStatusCode.SESSION_PAUSED)
         "
         class="session-progress-hint"
       >
@@ -102,17 +105,17 @@
               {{ item.groupName }}
             </a-typography-text>
             <UiTag
-              :tone="strictEnumTone(FORMAL_STATUS_TONE, item.sessionStatus, '正评会话状态')"
+              :tone="strictEnumTone(FORMAL_SESSION_STATUS_TONE, item.sessionStatus, '正评会话状态')"
               size="sm"
               class="status-tag"
             >
-              {{ strictEnumLabel(FORMAL_STATUS_LABEL, item.sessionStatus, '正评会话状态') }}
+              {{ strictEnumLabel(FormalSessionStatusDescription, item.sessionStatus, '正评会话状态') }}
             </UiTag>
           </template>
           <template #description>
             <span>
               正评会话 · 创建于 {{ formatDateTime(item.createTime) }} ·
-              {{ strictEnumLabel(ALLOCATION_UNIT_LABEL, item.allocationUnit, '批阅任务单元') }}
+              {{ strictEnumLabel(AllocationUnitDescription, item.allocationUnit, '批阅任务单元') }}
               · {{ formatSessionQuestionScope(item) }} · {{ formatSessionTaskProgress(item) }} ·
               {{ formatSessionGradeClosureProgress(item) }}
               <template v-if="item.startTime">· 开始 {{ formatDateTime(item.startTime) }}</template>
@@ -121,7 +124,7 @@
               <template v-if="item.closeReason"> · 关闭原因：{{ item.closeReason }} </template>
             </span>
             <div
-              v-if="item.allocationUnit === 'RANDOM_QUESTIONS' && item.questionScopes.length > 0"
+              v-if="item.allocationUnit === AllocationUnitCode.RANDOM_QUESTIONS && item.questionScopes.length > 0"
               class="session-scope-note"
             >
               随机抽题结果已在启动时固化；完成正评仅表示本场抽中题目的阅卷任务已交卷，不代表整卷批阅完成。
@@ -171,13 +174,11 @@
         </template>
       </a-list-item>
     </a-list>
-  </UiCard>
+  </WorkbenchSurfaceCard>
 </template>
 
 <script lang="ts" setup>
 import type {
-  AllocationUnitCode,
-  FormalSessionStatusCode,
   FormalSessionVO,
 } from '@/apis/mark/marking-organization'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -186,24 +187,30 @@ import PauseCircleOutlined from '@ant-design/icons-vue/PauseCircleOutlined'
 import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import StopOutlined from '@ant-design/icons-vue/StopOutlined'
+import { Modal } from 'ant-design-vue'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
-  ALLOCATION_UNIT_LABEL,
+  ALLOCATION_UNIT_OPTIONS,
+  AllocationUnitDescription,
   completeFormalSession,
   createFormalSession,
   deleteFormalSession,
-  FORMAL_SESSION_STATUS_LABEL as FORMAL_STATUS_LABEL,
-  FORMAL_SESSION_STATUS_TONE as FORMAL_STATUS_TONE,
+  FORMAL_SESSION_FLOW_HINT,
+  FORMAL_SESSION_STATUS_TONE,
+  FormalSessionStatusDescription,
   resumeFormalSession,
   startFormalSession,
 } from '@/apis/mark/marking-organization'
-import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import { showUserError } from '@/utils/error-handler'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
+import { FormalSessionStatusCode } from '@/types/enums/formal-session-status-enum'
+import { ResultCode } from '@/types/enums/result-code'
+import { getUserErrorMessage, readBusinessResultCode, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -216,6 +223,7 @@ defineOptions({ name: 'FormalSessionPanel' })
 
 const props = defineProps<{
   organizationId: string
+  examId?: string
   groupOptions: GroupOption[]
   sessions: FormalSessionVO[]
   canManage: boolean
@@ -227,7 +235,10 @@ const emit = defineEmits<{
   "refresh": []
   'open-lifecycle': [action: 'pauseFormal' | 'closeFormal', sessionId: string]
 }>()
+const EXPERIENCE_ASSIST_BASELINE_BLOCKING_PREFIX = '标答评分基线未锁定'
+const EXPERIENCE_ASSIST_BINDING_BLOCKING_PREFIX = '经验辅助评阅定标未完成'
 
+const router = useRouter()
 const formalGroupId = ref<string | undefined>(undefined)
 const formalAllocationUnit = ref<AllocationUnitCode | undefined>(undefined)
 const creating = ref(false)
@@ -240,7 +251,7 @@ const deletingId = ref<string | null>(null)
 const formalSessionOptions = computed(() =>
   props.sessions.map((item) => ({
     value: item.id,
-    label: `${item.groupName} · ${strictEnumLabel(FORMAL_STATUS_LABEL, item.sessionStatus, '正评会话状态')} · ${formatDateTime(item.createTime)}`,
+    label: `${item.groupName} · ${strictEnumLabel(FormalSessionStatusDescription, item.sessionStatus, '正评会话状态')} · ${formatDateTime(item.createTime)}`,
   })),
 )
 
@@ -254,16 +265,13 @@ const selectedGroupHasAllocationPolicy = computed(() =>
 
 const canCompleteSelectedSession = computed(() => {
   const session = selectedSession.value
-  if (!session || session.sessionStatus !== 'SESSION_ACTIVE') {
+  if (!session || session.sessionStatus !== FormalSessionStatusCode.SESSION_ACTIVE) {
     return false
   }
   return session.sessionTaskCompletionReady
 })
 
-const allocationUnitOptions = Object.entries(ALLOCATION_UNIT_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const allocationUnitOptions = ALLOCATION_UNIT_OPTIONS
 
 watch(
   () => props.sessions,
@@ -309,26 +317,28 @@ watch(
 )
 
 function canPause(status: FormalSessionStatusCode): boolean {
-  return props.canManage && status === 'SESSION_ACTIVE'
+  return props.canManage && status === FormalSessionStatusCode.SESSION_ACTIVE
 }
 
 function canResume(status: FormalSessionStatusCode): boolean {
-  return props.canManage && status === 'SESSION_PAUSED'
+  return props.canManage && status === FormalSessionStatusCode.SESSION_PAUSED
 }
 
 function canClose(status: FormalSessionStatusCode): boolean {
   return (
     props.canManage
-    && (status === 'SESSION_ACTIVE' || status === 'SESSION_PAUSED' || status === 'SESSION_COMPLETED')
+    && (status === FormalSessionStatusCode.SESSION_ACTIVE
+      || status === FormalSessionStatusCode.SESSION_PAUSED
+      || status === FormalSessionStatusCode.SESSION_COMPLETED)
   )
 }
 
 function canDelete(status: FormalSessionStatusCode): boolean {
-  return props.canManage && status === 'SESSION_CREATED'
+  return props.canManage && status === FormalSessionStatusCode.SESSION_CREATED
 }
 
 function formatSessionQuestionScope(session: FormalSessionVO): string {
-  if (session.allocationUnit === 'WHOLE_PAPER') {
+  if (session.allocationUnit === AllocationUnitCode.WHOLE_PAPER) {
     return '整卷批阅'
   }
   if (!session.questionScopes.length) {
@@ -343,7 +353,7 @@ function formatSessionQuestionScope(session: FormalSessionVO): string {
       return `题 ${scope.questionNo}${progress}`
     })
     .join('、')
-  const prefix = session.allocationUnit === 'RANDOM_QUESTIONS' ? '随机抽题' : '指定题目'
+  const prefix = session.allocationUnit === AllocationUnitCode.RANDOM_QUESTIONS ? '随机抽题' : '指定题目'
   return `${prefix} ${session.questionScopeCount} 题：${questionNos}`
 }
 
@@ -407,10 +417,32 @@ async function submitStart(): Promise<void> {
     message.success('正评会话已启动')
     emit('refresh')
   } catch (error) {
-    showUserError(error, '启动正评会话失败')
+    handleFormalStartError(error)
   } finally {
     starting.value = false
   }
+}
+
+function handleFormalStartError(error: unknown): void {
+  const detail = getUserErrorMessage(error, '')
+  const isConflict = readBusinessResultCode(error) === ResultCode.CONFLICT
+  const isExperienceAssistBlock = isConflict && (
+    detail.includes(EXPERIENCE_ASSIST_BASELINE_BLOCKING_PREFIX)
+    || detail.includes(EXPERIENCE_ASSIST_BINDING_BLOCKING_PREFIX)
+  )
+  if (isExperienceAssistBlock && props.examId) {
+    Modal.warning({
+      title: '无法启动正评',
+      content: detail,
+      okText: '前往经验辅助评阅',
+      onOk: () => router.push({
+        name: 'TeacherExamWorkspaceMarkingExperienceAssistPolicy',
+        params: { examId: props.examId },
+      }),
+    })
+    return
+  }
+  showUserError(error, '启动正评会话失败')
 }
 
 async function submitComplete(): Promise<void> {
@@ -460,6 +492,33 @@ async function submitDelete(sessionId: string): Promise<void> {
 <style lang="scss" scoped>
 .session-card {
   height: 100%;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+
+  &__flow-hint {
+    width: 100%;
+    font-size: 12px;
+    color: var(--c-text-4);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: var(--dp-font-weight-title, 600);
+    line-height: 1.5;
+  }
+
+  &__subtitle {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--dp-text-muted, #64748b);
+  }
 }
 
 .session-form {

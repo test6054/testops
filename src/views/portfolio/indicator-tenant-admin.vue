@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  PfIndicatorStatus,
-  PfModelStatus,
-  PfSceneCode,
+  PfIndicatorStatusCode,
+  PfModelStatusCode,
   PortfolioIndustryPackVO,
   PortfolioTenantIndicatorConfigVO,
 } from '@/apis/portfolio/indicator-types'
@@ -15,10 +14,11 @@ import {
   portfolioIndicatorTenantApi,
 } from '@/apis/portfolio/indicator'
 import {
-  PF_INDICATOR_STATUS_LABEL,
-  PF_MODEL_STATUS_LABEL,
-  PF_SCENE_CODE_LABEL,
   PF_SCENE_CODE_OPTIONS,
+  PfIndicatorStatusDescription,
+  PfModelStatusDescription,
+  PfSceneCode,
+  PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -30,17 +30,17 @@ import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-function modelStatusLabel(value: PfModelStatus): string {
-  return strictEnumLabel(PF_MODEL_STATUS_LABEL, value, '场景模型状态')
+function modelStatusLabel(value: PfModelStatusCode): string {
+  return strictEnumLabel(PfModelStatusDescription, value, '场景模型状态')
 }
 
-function indicatorStatusLabel(value: PfIndicatorStatus): string {
-  return strictEnumLabel(PF_INDICATOR_STATUS_LABEL, value, '指标状态')
+function indicatorStatusLabel(value: PfIndicatorStatusCode): string {
+  return strictEnumLabel(PfIndicatorStatusDescription, value, '指标状态')
 }
 
 const router = useRouter()
 const activeTab = ref('config')
-const sceneCode = ref<PfSceneCode>('PERFORMANCE')
+const sceneCode = ref<PfSceneCode>(PfSceneCode.PERFORMANCE)
 const loading = ref(false)
 const saving = ref(false)
 const trialing = ref(false)
@@ -53,16 +53,23 @@ const industryPacks = ref<PortfolioIndustryPackVO[]>([])
 const bindForm = reactive({ packCode: '', majorGroupCode: '', majorGroupName: '', enabled: true })
 const model = ref<Awaited<ReturnType<typeof portfolioIndicatorTenantApi.getModel>> | null>(null)
 const editDrawerOpen = ref(false)
-const editForm = reactive({
+const editForm = reactive<{
+  indicatorCode: string
+  indicatorName: string
+  enabled: boolean
+  standardScore?: number
+  capScore?: number
+  applicableScenes: string
+}>({
   indicatorCode: '',
   indicatorName: '',
   enabled: true,
-  standardScore: '',
-  capScore: '',
+  standardScore: undefined,
+  capScore: undefined,
   applicableScenes: '',
 })
 
-const sceneLabel = computed(() => PF_SCENE_CODE_LABEL[sceneCode.value])
+const sceneLabel = computed(() => PfSceneCodeDescription[sceneCode.value])
 
 const filteredConfigs = computed(() => {
   const keyword = configFilter.value.trim().toLowerCase()
@@ -143,8 +150,8 @@ function openEdit(record: PortfolioTenantIndicatorConfigVO) {
   editForm.indicatorCode = record.indicatorCode
   editForm.indicatorName = record.indicatorName
   editForm.enabled = record.enabled
-  editForm.standardScore = record.standardScore ?? ''
-  editForm.capScore = record.capScore ?? ''
+  editForm.standardScore = record.standardScore
+  editForm.capScore = record.capScore
   editForm.applicableScenes = record.applicableScenes ?? ''
   editDrawerOpen.value = true
 }
@@ -155,8 +162,8 @@ async function saveEdit() {
     await portfolioIndicatorTenantApi.saveConfig({
       indicatorCode: editForm.indicatorCode,
       enabled: editForm.enabled,
-      standardScore: editForm.standardScore || undefined,
-      capScore: editForm.capScore || undefined,
+      standardScore: editForm.standardScore,
+      capScore: editForm.capScore,
       applicableScenes: editForm.applicableScenes || undefined,
     })
     message.success('配置已保存')
@@ -177,7 +184,11 @@ async function saveModel() {
   try {
     await portfolioIndicatorTenantApi.saveModel({
       sceneCode: sceneCode.value,
-      indicators: model.value.indicators,
+      indicators: model.value.indicators.map((item) => ({
+        indicatorCode: item.indicatorCode,
+        enabled: item.enabled,
+        weightPct: item.weightPct,
+      })),
     })
     message.success('场景模型已保存')
     await loadModel()
@@ -250,7 +261,7 @@ async function exportCatalog() {
 
 function updateIndicatorWeight(
   indicatorCode: string,
-  field: 'weight' | 'enabled',
+  field: 'weightPct' | 'enabled',
   value: number | boolean,
 ) {
   if (!model.value) {
@@ -258,8 +269,8 @@ function updateIndicatorWeight(
   }
   const item = model.value.indicators.find((row) => row.indicatorCode === indicatorCode)
   if (item) {
-    if (field === 'weight') {
-      item.weight = Number(value)
+    if (field === 'weightPct') {
+      item.weightPct = Number(value)
     } else {
       item.enabled = Boolean(value)
     }
@@ -278,7 +289,7 @@ function handleSceneEnabledChange(indicatorCode: string, checked: boolean | stri
 }
 
 function handleSceneWeightChange(indicatorCode: string, value: boolean | string | number | null) {
-  updateIndicatorWeight(indicatorCode, 'weight', typeof value === 'number' ? value : 0)
+  updateIndicatorWeight(indicatorCode, 'weightPct', typeof value === 'number' ? value : 0)
 }
 
 function onTabChange(key: string | number) {
@@ -386,7 +397,7 @@ onMounted(loadConfig)
                   </template>
                   <template v-else-if="column.key === 'weight'">
                     <a-input-number
-                      :value="record.weight"
+                      :value="record.weightPct"
                       :min="0"
                       :max="100"
                       style="width: 100px"
@@ -453,10 +464,10 @@ onMounted(loadConfig)
           <a-switch v-model:checked="editForm.enabled" />
         </a-form-item>
         <a-form-item label="标准分">
-          <a-input v-model:value="editForm.standardScore" />
+          <a-input-number v-model:value="editForm.standardScore" style="width: 100%" />
         </a-form-item>
         <a-form-item label="封顶分">
-          <a-input v-model:value="editForm.capScore" />
+          <a-input-number v-model:value="editForm.capScore" style="width: 100%" />
         </a-form-item>
         <a-form-item label="适用场景">
           <a-input v-model:value="editForm.applicableScenes" placeholder="如 PORTRAIT,EVALUATION" />

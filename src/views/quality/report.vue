@@ -15,7 +15,6 @@ import type {
  * 3. SUBMITTED / CONFIRMED / ARCHIVED 状态可触发 Word / PDF / Excel 异步三格式导出
  * 4. 导出 exportStatus IDLE -> PENDING -> PROCESSING -> COMPLETED / FAILED，前端轮询 5s/次。
  */
-import type { ReportExportStatus, ReportStatus, ReportType } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
@@ -31,12 +30,16 @@ import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { reportApi } from '@/apis/quality/report'
 import {
+  ALL_REPORT_STATUS_CODES,
+  ALL_REPORT_TYPE_CODES,
   REPORT_EXPORT_STATUS_COLOR,
-  REPORT_EXPORT_STATUS_LABEL,
   REPORT_STATUS_COLOR,
-  REPORT_STATUS_LABEL,
-  REPORT_TYPE_CODES,
-  REPORT_TYPE_LABEL,
+  ReportExportStatusCode,
+  ReportExportStatusDescription,
+  ReportStatusCode,
+  ReportStatusDescription,
+  ReportTypeCode,
+  ReportTypeDescription,
 } from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
@@ -61,29 +64,29 @@ import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
-import { formatSemester, isValidSemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
+import { ALL_SEMESTER_CODES, formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
-function reportTypeLabel(value: ReportType): string {
-  return strictEnumLabel(REPORT_TYPE_LABEL, value, '报告类型')
+function reportTypeLabel(value: ReportTypeCode): string {
+  return strictEnumLabel(ReportTypeDescription, value, '报告类型')
 }
 
-function reportStatusLabel(value: ReportStatus): string {
-  return strictEnumLabel(REPORT_STATUS_LABEL, value, '报告状态')
+function reportStatusLabel(value: ReportStatusCode): string {
+  return strictEnumLabel(ReportStatusDescription, value, '报告状态')
 }
 
-function reportStatusColor(value: ReportStatus): BadgeTone {
+function reportStatusColor(value: ReportStatusCode): BadgeTone {
   return strictEnumTone(REPORT_STATUS_COLOR, value, '报告状态')
 }
 
-function exportStatusLabel(value: ReportExportStatus): string {
-  return strictEnumLabel(REPORT_EXPORT_STATUS_LABEL, value, '报告导出状态')
+function exportStatusLabel(value: ReportExportStatusCode): string {
+  return strictEnumLabel(ReportExportStatusDescription, value, '报告导出状态')
 }
 
-function exportStatusColor(value: ReportExportStatus): BadgeTone {
+function exportStatusColor(value: ReportExportStatusCode): BadgeTone {
   return strictEnumTone(REPORT_EXPORT_STATUS_COLOR, value, '报告导出状态')
 }
 
@@ -99,7 +102,7 @@ const qualityStore = useQualityStore()
 const list = ref<ReportVO[]>([])
 const total = ref(0)
 const loading = ref(false)
-const query = reactive<ReportQueryRequest>({
+const query = reactive<ReportQueryRequest & Record<string, unknown>>({
   pageNum: 1,
   pageSize: 10,
   trainingPlanId: qualityStore.currentTrainingPlanId,
@@ -114,7 +117,7 @@ const query = reactive<ReportQueryRequest>({
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
 const editor = reactive<ReportEditorForm>({
-  reportType: 'COURSE_ACHIEVEMENT',
+  reportType: ReportTypeCode.COURSE_ACHIEVEMENT,
   programId: '',
   trainingPlanId: '',
   qualityCourseId: '',
@@ -150,22 +153,20 @@ const detailVisible = ref(false)
 const detailRecord = ref<ReportVO | null>(null)
 const detailLoading = ref(false)
 
-const reportTypeOptions: Array<{ value: ReportType, label: string }> = REPORT_TYPE_CODES.map(
+const reportTypeOptions: Array<{ value: ReportTypeCode, label: string }> = ALL_REPORT_TYPE_CODES.map(
   (value) => ({
     value,
-    label: REPORT_TYPE_LABEL[value],
+    label: ReportTypeDescription[value],
   }),
 )
-const statusOptions: Array<{ value: ReportStatus, label: string }> = [
-  { value: 'DRAFT', label: REPORT_STATUS_LABEL.DRAFT },
-  { value: 'SUBMITTED', label: REPORT_STATUS_LABEL.SUBMITTED },
-  { value: 'CONFIRMED', label: REPORT_STATUS_LABEL.CONFIRMED },
-  { value: 'RETURNED', label: REPORT_STATUS_LABEL.RETURNED },
-  { value: 'ARCHIVED', label: REPORT_STATUS_LABEL.ARCHIVED },
-]
+const statusOptions: Array<{ value: ReportStatusCode, label: string }>
+  = ALL_REPORT_STATUS_CODES.map((value) => ({
+    value,
+    label: strictEnumLabel(ReportStatusDescription, value, '报告状态'),
+  }))
 
 const filterModel = computed<Record<string, unknown>>({
-  get: () => query as Record<string, unknown>,
+  get: () => query,
   set: (value) => {
     Object.assign(query, value)
   },
@@ -227,12 +228,12 @@ function handleReset() {
   resetQuery()
 }
 
-const transitMap: Record<ReportStatus, ReportStatus[]> = {
-  DRAFT: ['SUBMITTED'],
-  SUBMITTED: ['CONFIRMED', 'RETURNED'],
-  CONFIRMED: ['ARCHIVED', 'RETURNED'],
-  RETURNED: ['DRAFT', 'SUBMITTED'],
-  ARCHIVED: [],
+const transitMap: Record<ReportStatusCode, ReportStatusCode[]> = {
+  [ReportStatusCode.DRAFT]: [ReportStatusCode.SUBMITTED],
+  [ReportStatusCode.SUBMITTED]: [ReportStatusCode.CONFIRMED, ReportStatusCode.RETURNED],
+  [ReportStatusCode.CONFIRMED]: [ReportStatusCode.ARCHIVED, ReportStatusCode.RETURNED],
+  [ReportStatusCode.RETURNED]: [ReportStatusCode.DRAFT, ReportStatusCode.SUBMITTED],
+  [ReportStatusCode.ARCHIVED]: [],
 }
 
 async function loadList() {
@@ -309,7 +310,7 @@ function openCreate() {
   editorMode.value = 'create'
   Object.assign(editor, {
     id: undefined,
-    reportType: 'COURSE_ACHIEVEMENT',
+    reportType: ReportTypeCode.COURSE_ACHIEVEMENT,
     programId: qualityStore.currentProgramId || '',
     trainingPlanId: qualityStore.currentTrainingPlanId || '',
     qualityCourseId: '',
@@ -366,7 +367,8 @@ async function submitEditor() {
     return
   }
   const semester = editor.semester
-  if (!editor.schoolYear || !isValidSemesterCode(semester)) {
+  const selectedSemester = ALL_SEMESTER_CODES.find((code) => code === semester)
+  if (!editor.schoolYear || !selectedSemester) {
     message.error('请填写学年与学期')
     return
   }
@@ -381,7 +383,7 @@ async function submitEditor() {
       achievementResultId: editor.achievementResultId || undefined,
       title: editor.title.trim(),
       schoolYear: editor.schoolYear,
-      semester,
+      semester: selectedSemester,
       bodyContent: editor.bodyContent,
     }
     if (editorMode.value === 'create') {
@@ -398,20 +400,20 @@ async function submitEditor() {
   }
 }
 
-function nextStatuses(status: ReportStatus) {
+function nextStatuses(status: ReportStatusCode) {
   return strictEnumValue(transitMap, status, '报告状态')
 }
 
-function canEditReport(status: ReportStatus): boolean {
-  return status === 'DRAFT' || status === 'RETURNED'
+function canEditReport(status: ReportStatusCode): boolean {
+  return status === ReportStatusCode.DRAFT || status === ReportStatusCode.RETURNED
 }
 
 /**
  * 后端 ReportStatusTransitRequest 仅接受 id + targetStatus，不接受备注。
  * 如需记录驳回原因，请使用外层 ImprovementTask / AuditTrail 能力。
  */
-async function handleTransit(record: ReportVO, to: ReportStatus) {
-  if (to === 'RETURNED') {
+async function handleTransit(record: ReportVO, to: ReportStatusCode) {
+  if (to === ReportStatusCode.RETURNED) {
     const ok = await confirmAsync({
       title: `${reportStatusLabel(record.status)} → ${reportStatusLabel(to)}`,
       content: '驳回后报告会重新进入修订状态，驳回原因请在外层改进任务中记录。',
@@ -456,11 +458,11 @@ async function pollExportStatus(id: string) {
       if (idx >= 0) list.value[idx] = detail
       const title = reportTitle(detail)
       const exportStatus = detail.exportStatus
-      if (exportStatus === 'COMPLETED') {
+      if (exportStatus === ReportExportStatusCode.COMPLETED) {
         message.success(`${title} 三格式导出完成`)
         return
       }
-      if (exportStatus === 'FAILED') {
+      if (exportStatus === ReportExportStatusCode.FAILED) {
         Modal.error({
           title: `${title} 导出失败`,
           content: reportExportFailureMessage(detail.exportErrorMessage),
@@ -486,7 +488,10 @@ function reportTitle(record: ReportVO): string {
 
 async function handleExport(record: ReportVO) {
   const currentExport = record.exportStatus
-  if (currentExport === 'PENDING' || currentExport === 'PROCESSING') {
+  if (
+    currentExport === ReportExportStatusCode.PENDING
+    || currentExport === ReportExportStatusCode.PROCESSING
+  ) {
     message.info(
       `${reportTitle(record)}当前处于「${exportStatusLabel(currentExport)}」，请等待完成`,
     )
@@ -505,7 +510,7 @@ async function handleExport(record: ReportVO) {
       if (idx >= 0) {
         list.value[idx] = {
           ...list.value[idx],
-          exportStatus: 'PENDING',
+          exportStatus: ReportExportStatusCode.PENDING,
           exportErrorMessage: undefined,
         }
       }
@@ -514,8 +519,8 @@ async function handleExport(record: ReportVO) {
   })
 }
 
-function isExportInFlight(status: ReportExportStatus | undefined) {
-  return status === 'PENDING' || status === 'PROCESSING'
+function isExportInFlight(status: ReportExportStatusCode | undefined) {
+  return status === ReportExportStatusCode.PENDING || status === ReportExportStatusCode.PROCESSING
 }
 
 function resumeExportPollingForList() {
@@ -541,7 +546,7 @@ async function downloadReportExportFile(record: ReportVO, kind: 'word' | 'pdf' |
 }
 
 async function handleDelete(record: ReportVO) {
-  if (record.status !== 'DRAFT') {
+  if (record.status !== ReportStatusCode.DRAFT) {
     message.warning('只能删除草稿状态的报告')
     return
   }
@@ -569,12 +574,12 @@ async function openDetail(record: ReportVO) {
 /* ========== 阶段轨与信号指标 ========== */
 
 const statusBuckets = computed(() => {
-  const buckets: Record<ReportStatus, number> = {
-    DRAFT: 0,
-    SUBMITTED: 0,
-    CONFIRMED: 0,
-    RETURNED: 0,
-    ARCHIVED: 0,
+  const buckets: Record<ReportStatusCode, number> = {
+    [ReportStatusCode.DRAFT]: 0,
+    [ReportStatusCode.SUBMITTED]: 0,
+    [ReportStatusCode.CONFIRMED]: 0,
+    [ReportStatusCode.RETURNED]: 0,
+    [ReportStatusCode.ARCHIVED]: 0,
   }
   for (const r of list.value) {
     buckets[r.status] += 1
@@ -584,16 +589,16 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: ReportStatus, title: string }> = [
-    { key: 'DRAFT', title: '草稿' },
-    { key: 'SUBMITTED', title: '待确认' },
-    { key: 'CONFIRMED', title: '已确认' },
-    { key: 'ARCHIVED', title: '已归档' },
+  const order: Array<{ key: ReportStatusCode, title: string }> = [
+    { key: ReportStatusCode.DRAFT, title: '草稿' },
+    { key: ReportStatusCode.SUBMITTED, title: '待确认' },
+    { key: ReportStatusCode.CONFIRMED, title: '已确认' },
+    { key: ReportStatusCode.ARCHIVED, title: '已归档' },
   ]
   return order.map((stage) => {
     const count = b[stage.key]
     let status: WorkbenchStageStatus = 'pending'
-    if (stage.key === 'ARCHIVED' && count > 0) status = 'completed'
+    if (stage.key === ReportStatusCode.ARCHIVED && count > 0) status = 'completed'
     else if (count > 0) status = 'active'
     return {
       key: stage.key,
@@ -607,18 +612,32 @@ const stages = computed<WorkbenchStage[]>(() => {
 const signals = computed<SignalMetric[]>(() => {
   const b = statusBuckets.value
   const exporting = list.value.filter((r) => isExportInFlight(r.exportStatus)).length
-  const exportFailed = list.value.filter((r) => r.exportStatus === 'FAILED').length
-  const exportComplete = list.value.filter((r) => r.exportStatus === 'COMPLETED').length
+  const exportFailed = list.value.filter(
+    (r) => r.exportStatus === ReportExportStatusCode.FAILED,
+  ).length
+  const exportComplete = list.value.filter(
+    (r) => r.exportStatus === ReportExportStatusCode.COMPLETED,
+  ).length
   return [
     { key: 'total', label: '本页报告', value: list.value.length, tone: 'blue' },
-    { key: 'draft', label: '草稿', value: b.DRAFT, tone: b.DRAFT > 0 ? 'orange' : 'gray' },
+    {
+      key: 'draft',
+      label: '草稿',
+      value: b[ReportStatusCode.DRAFT],
+      tone: b[ReportStatusCode.DRAFT] > 0 ? 'orange' : 'gray',
+    },
     {
       key: 'submitted',
       label: '待确认',
-      value: b.SUBMITTED,
-      tone: b.SUBMITTED > 0 ? 'blue' : 'gray',
+      value: b[ReportStatusCode.SUBMITTED],
+      tone: b[ReportStatusCode.SUBMITTED] > 0 ? 'blue' : 'gray',
     },
-    { key: 'returned', label: '已驳回', value: b.RETURNED, tone: b.RETURNED > 0 ? 'red' : 'gray' },
+    {
+      key: 'returned',
+      label: '已驳回',
+      value: b[ReportStatusCode.RETURNED],
+      tone: b[ReportStatusCode.RETURNED] > 0 ? 'red' : 'gray',
+    },
     {
       key: 'export-running',
       label: '导出中',
@@ -675,15 +694,19 @@ async function openAuditDrawer(record: ReportVO) {
 
 const reportResultItems = computed<TaskResultItem[]>(() => {
   return list.value
-    .filter((r) => r.status === 'RETURNED' || r.exportStatus === 'FAILED')
+    .filter(
+      (r) =>
+        r.status === ReportStatusCode.RETURNED
+        || r.exportStatus === ReportExportStatusCode.FAILED,
+    )
     .slice(0, 5)
     .map((r) => ({
       id: r.id,
       title: reportTitle(r),
-      statusLabel: r.status === 'RETURNED' ? '已驳回' : '导出未完成',
+      statusLabel: r.status === ReportStatusCode.RETURNED ? '已驳回' : '导出未完成',
       statusTone: 'red',
       description:
-        r.status === 'RETURNED'
+        r.status === ReportStatusCode.RETURNED
           ? '审核驳回，需修订后重新提交'
           : reportExportFailureMessage(r.exportErrorMessage),
       actions: [{ key: 'detail', label: '详情' }],
@@ -820,7 +843,10 @@ onBeforeUnmount(() => {
                   Excel
                 </UiTextAction>
                 <UiTag
-                  v-if="record.exportStatus && record.exportStatus !== 'COMPLETED'"
+                  v-if="
+                    record.exportStatus
+                      && record.exportStatus !== ReportExportStatusCode.COMPLETED
+                  "
                   :tone="exportStatusColor(record.exportStatus)"
                   size="sm"
                 >
@@ -828,7 +854,7 @@ onBeforeUnmount(() => {
                   {{ exportStatusLabel(record.exportStatus) }}
                 </UiTag>
                 <a-tooltip
-                  v-if="record.exportStatus === 'FAILED'"
+                  v-if="record.exportStatus === ReportExportStatusCode.FAILED"
                   :title="reportExportFailureMessage(record.exportErrorMessage)"
                 >
                   <UiTag tone="red" size="sm"> 错误详情 </UiTag>
@@ -844,16 +870,16 @@ onBeforeUnmount(() => {
                 <UiTextAction
                   v-for="to in nextStatuses(record.status)"
                   :key="to"
-                  :tone="to === 'RETURNED' ? 'danger' : 'primary'"
+                  :tone="to === ReportStatusCode.RETURNED ? 'danger' : 'primary'"
                   @click="handleTransit(record, to)"
                 >
                   -> {{ reportStatusLabel(to) }}
                 </UiTextAction>
                 <UiTextAction
                   v-if="
-                    record.status === 'SUBMITTED'
-                      || record.status === 'CONFIRMED'
-                      || record.status === 'ARCHIVED'
+                    record.status === ReportStatusCode.SUBMITTED
+                      || record.status === ReportStatusCode.CONFIRMED
+                      || record.status === ReportStatusCode.ARCHIVED
                   "
                   :disabled="
                     isExportInFlight(record.exportStatus) || pollingExportIds.has(record.id)
@@ -863,7 +889,7 @@ onBeforeUnmount(() => {
                   导出三格式
                 </UiTextAction>
                 <UiTextAction
-                  v-if="record.status === 'DRAFT'"
+                  v-if="record.status === ReportStatusCode.DRAFT"
                   tone="danger"
                   @click="handleDelete(record)"
                 >

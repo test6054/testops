@@ -77,7 +77,7 @@ const props = defineProps<{
   open: boolean
   examId: string
   groupId: string
-  questionTemplateId: string
+  layoutQuestionId: string
   fullScore: number
   selectedTasks: MarkingTaskVO[]
 }>()
@@ -114,7 +114,7 @@ watch(
 )
 
 function createCorrelationId(): string {
-  return `batch-${props.questionTemplateId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  return `batch-${props.layoutQuestionId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 function buildQuestionScores() {
@@ -123,7 +123,7 @@ function buildQuestionScores() {
   }
   return [
     {
-      questionTemplateId: props.questionTemplateId,
+      layoutQuestionId: props.layoutQuestionId,
       score: score.value,
       annotationText: annotationText.value.trim() || undefined,
       correlationId: createCorrelationId(),

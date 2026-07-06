@@ -1,9 +1,11 @@
 import type { ArchiveMaterialTypeCode, ArchiveVolumeStatusCode } from '@/apis/mark/archive-volume'
 import type { DuplicateResolutionStatusCode } from '@/apis/mark/duplicate-resolution-status'
-import type { ExamFileRefVO, ExamStatusCode } from '@/apis/mark/exam'
+import type { ExamFileRefVO, ExamMaterialLayoutModeCode, ExamStatusCode } from '@/apis/mark/exam'
 import type {
   ScannerAgentDiagnosticStatusCode,
+  ScannerColorModeCode,
   ScannerDeviceStatusCode,
+  ScannerDuplexModeCode,
   ScannerEndpointOnlineStatusCode,
 } from '@/apis/mark/exam-mark-scanner'
 import type {
@@ -17,26 +19,46 @@ import type {
 import type { GradeStatusCode } from '@/apis/mark/grade-status'
 import type { MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
-import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
+import type { PortfolioCollectModeCode, ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import type { TaskStatusCode } from '@/apis/mark/task-status'
-import type { PortfolioGapTaskStatus } from '@/apis/portfolio/types'
+import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { ExamScannerLedgerDataSourceCode } from '@/types/enums/exam-scanner-ledger-data-source-enum'
+import type { ExamScannerPageRegistrationStatusCode } from '@/types/enums/exam-scanner-page-registration-status-enum'
+import type { ExamScannerPageScanStatusCode } from '@/types/enums/exam-scanner-page-scan-status-enum'
+import type { ExamScannerPageServerReceiveStatusCode } from '@/types/enums/exam-scanner-page-server-receive-status-enum'
+import type { ExamScannerPageUploadStatusCode } from '@/types/enums/exam-scanner-page-upload-status-enum'
+import type { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
-export type ScannerKioskScanMode = 'DIRECT' | 'SUPPLEMENT'
-export type ExamScannerLedgerDataSource = 'DATABASE' | 'REDIS_PENDING' | 'NONE'
-export type ExamScannerPageScanStatus = 'SCANNED'
-export type ExamScannerPageUploadStatus = 'UPLOADED'
-export type ExamScannerPageServerReceiveStatus = 'RECEIVED'
-export type ExamScannerPageRegistrationStatus
-  = 'REGISTERED' | 'PENDING' | 'DISCARDED' | 'SUPERSEDED'
+export {
+  ALL_EXAM_SCANNER_LEDGER_DATA_SOURCE_CODES,
+  ExamScannerLedgerDataSourceCode,
+  ExamScannerLedgerDataSourceDescription,
+} from '@/types/enums/exam-scanner-ledger-data-source-enum'
+export {
+  ALL_EXAM_SCANNER_PAGE_REGISTRATION_STATUS_CODES,
+  ExamScannerPageRegistrationStatusCode,
+  ExamScannerPageRegistrationStatusDescription,
+} from '@/types/enums/exam-scanner-page-registration-status-enum'
+export { ExamScannerPageScanStatusCode } from '@/types/enums/exam-scanner-page-scan-status-enum'
+export { ExamScannerPageServerReceiveStatusCode } from '@/types/enums/exam-scanner-page-server-receive-status-enum'
+export {
+  ALL_EXAM_SCANNER_PAGE_UPLOAD_STATUS_CODES,
+  ExamScannerPageUploadStatusCode,
+} from '@/types/enums/exam-scanner-page-upload-status-enum'
+export {
+  ALL_SCANNER_KIOSK_SCAN_MODE_CODES,
+  ScannerKioskScanModeCode,
+  ScannerKioskScanModeDescription,
+} from '@/types/enums/scanner-kiosk-scan-mode-enum'
 
 export interface ExamScannerKioskContextRequest {
   examId: string
   scannerDeviceId: string
   scannerStationId: string
-  scanMode: ScannerKioskScanMode
+  scanMode: ScannerKioskScanModeCode
 }
 
 export interface ExamScannerKioskExamVO {
@@ -71,8 +93,8 @@ export interface ExamScannerKioskDeviceVO {
 
 export interface ExamScannerScanConfigVO {
   dpi: number
-  colorMode: 'COLOR' | 'GRAY' | 'LINEART'
-  duplexMode: 'SIMPLEX' | 'DUPLEX'
+  colorMode: ScannerColorModeCode
+  duplexMode: ScannerDuplexModeCode
   blankPageDetectionEnabled: boolean
 }
 
@@ -96,8 +118,8 @@ export interface ExamScannerScanConfigOptionsVO {
   minScanDpi: number
   maxScanDpi: number
   allowedDpis: number[]
-  colorModes: Array<'COLOR' | 'GRAY' | 'LINEART'>
-  duplexModes: Array<'SIMPLEX' | 'DUPLEX'>
+  colorModes: ScannerColorModeCode[]
+  duplexModes: ScannerDuplexModeCode[]
   defaultScanConfig: ExamScannerScanConfigVO
   /** 纸型与设备能力不匹配时的扫描参数提醒 */
   scanConfigAdvisory?: string
@@ -112,7 +134,7 @@ export interface ExamScannerKioskBatchVO {
   scannerDeviceId: string
   /** 扫描站点业务 ID（与 deviceId 共同定位一体机） */
   scannerStationId?: string
-  scanMode: ScannerKioskScanMode
+  scanMode: ScannerKioskScanModeCode
   targetPageNo?: number
   supplementReason?: string
   /** 仅 SUPPLEMENT 模式有效：true=替换目标页，false=追加补扫 */
@@ -169,7 +191,7 @@ export interface ExamScannerKioskContextVO {
   boundPaperInstances: number
   scanBatchCount: number
   attentionCount: number
-  scanMode: ScannerKioskScanMode
+  scanMode: ScannerKioskScanModeCode
   canStartScan: boolean
   canStartSupplementScan: boolean
   blockReason?: string
@@ -198,7 +220,7 @@ export interface ExamScannerKioskTaskContractVO {
   objectiveQuestionCount: number
   subjectiveQuestionCount: number
   /** 制卷形态：ANSWER_SHEET / FULL_PAPER */
-  materialLayoutMode?: 'ANSWER_SHEET' | 'FULL_PAPER'
+  materialLayoutMode?: ExamMaterialLayoutModeCode
   materialLayoutModeText?: string
   /** 单份应扫页数 */
   pagesPerSheet?: number
@@ -208,7 +230,7 @@ export interface ExamScannerKioskSessionBatchVO {
   scanBatchId: string
   batchNo: string
   batchExternalNo: string
-  scanMode: ScannerKioskScanMode
+  scanMode: ScannerKioskScanModeCode
   status: ScanBatchStatusCode
   scannedCount: number
   exceptionCount: number
@@ -323,7 +345,7 @@ export interface ExamScannerBatchStartRequest {
   /** 扫描站点 ID（绑定 station 时使用） */
   scannerStationId: string
   declaredClassIds: string[]
-  scanMode: ScannerKioskScanMode
+  scanMode: ScannerKioskScanModeCode
   /** 仅 SUPPLEMENT 模式必填：补扫的目标页码（>=1） */
   targetPageNo?: number
   /** 仅 SUPPLEMENT 模式必填：补扫原因说明 */
@@ -368,7 +390,7 @@ export interface ExamScannerBatchLifecycleVO {
   examId?: string
   scannerDeviceId?: string
   scannerStationId?: string
-  scanMode?: ScannerKioskScanMode
+  scanMode?: ScannerKioskScanModeCode
   /** 补扫目标页号；仅 SUPPLEMENT 模式有值 */
   targetPageNo?: number
   /** 补扫原因；仅 SUPPLEMENT 模式有值 */
@@ -447,13 +469,13 @@ export interface ExamScannerPageLedgerItemVO {
   /** 扫描页 storage 文件 ID */
   sourceFileId?: string
   /** 当前账本只展示已扫描页 */
-  scanStatus: ExamScannerPageScanStatus
+  scanStatus: ExamScannerPageScanStatusCode
   /** 当前账本只展示已上传到 storage 的页 */
-  uploadStatus: ExamScannerPageUploadStatus
+  uploadStatus: ExamScannerPageUploadStatusCode
   /** 当前账本只展示已被服务端接收的页 */
-  serverReceiveStatus: ExamScannerPageServerReceiveStatus
+  serverReceiveStatus: ExamScannerPageServerReceiveStatusCode
   /** 识别登记状态；异常通过 attentionType 独立表达 */
-  registrationStatus: ExamScannerPageRegistrationStatus
+  registrationStatus: ExamScannerPageRegistrationStatusCode
   /** 异常类型编码：QUALITY_BLOCK / PROCESSING_BLOCK / DUPLICATE_PENDING / RECOGNITION_REVIEW / BINDING_CONFLICT */
   attentionType?: ScanAttentionTypeCode
   attentionMessage?: string
@@ -472,10 +494,10 @@ export interface ExamScannerAttentionItemVO {
   sourceId?: string
   paperInstanceId?: string
   pageId?: string
-  qualityDecision?: QualityDecisionCode
-  processingStatus?: TaskStatusCode
-  duplicateResolutionStatus?: DuplicateResolutionStatusCode
-  gradeStatus?: GradeStatusCode
+  qualityDecision: QualityDecisionCode
+  processingStatus: TaskStatusCode
+  duplicateResolutionStatus: DuplicateResolutionStatusCode
+  gradeStatus: GradeStatusCode
   diagnostic?: string
   updateTime?: string
 }
@@ -489,9 +511,9 @@ export interface ExamScannerPageLedgerVO {
   scanBatchId?: string
   scannerDeviceId: string
   scannerStationId: string
-  scanMode?: ScannerKioskScanMode
+  scanMode?: ScannerKioskScanModeCode
   /** 数据来源：DATABASE 已 commit / REDIS_PENDING 未 commit / NONE 空批次 */
-  dataSource: ExamScannerLedgerDataSource
+  dataSource: ExamScannerLedgerDataSourceCode
   items: ExamScannerPageLedgerItemVO[]
   attentionItems: ExamScannerAttentionItemVO[]
   pendingCount: number
@@ -579,6 +601,7 @@ export interface ExamScannerKioskBatchHistoryRequest extends QueryDto {
  */
 export interface ExamScannerKioskBatchHistoryItem {
   scanBatchId: string
+  examId?: string
   batchNo: string
   batchExternalNo: string
   scannerDeviceId: string
@@ -592,7 +615,7 @@ export interface ExamScannerKioskBatchHistoryItem {
   pendingUploadCount?: number
   /** 异常处置项数量（QUALITY_BLOCK / PROCESSING_BLOCK / DUPLICATE_PENDING / RECOGNITION_REVIEW / BINDING_CONFLICT） */
   attentionItemCount?: number
-  scanMode: ScannerKioskScanMode
+  scanMode: ScannerKioskScanModeCode
   targetPageNo?: number
   supplementReason?: string
   replaceTargetPage: boolean
@@ -610,6 +633,12 @@ export interface ExamScannerKioskBatchHistoryItem {
   createTime?: string
   updateTime?: string
   eventCount?: number
+  orderAuditPassed?: boolean
+  orderAuditTime?: string
+  orderAuditIssueCount?: number
+  boundPaperCount?: number
+  operatorUserId?: string
+  operatorDisplayName?: string
 }
 
 export async function pageScannerKioskBatchHistory(
@@ -641,6 +670,10 @@ export interface ScannerKioskArchiveVolumeItemVO {
 
 export interface ScannerKioskArchiveVolumePageRequest extends QueryDto {
   keyword?: string
+  /** Service 按扫描员职责注入的校区范围，页面不主动传值 */
+  campusIds?: string[]
+  /** Service 按扫描员职责注入的院系范围，页面不主动传值 */
+  departmentIds?: string[]
 }
 
 export interface ScannerKioskPortfolioGapTaskPageRequest extends QueryDto {
@@ -655,7 +688,7 @@ export interface ScannerKioskPortfolioGapTaskSummaryVO {
   categoryId: string
   categoryName?: string
   taskTitle?: string
-  taskStatus: PortfolioGapTaskStatus
+  taskStatus: PortfolioGapTaskStatusCode
   returnReason?: string
   dueTime?: string
   updateTime?: string
@@ -672,12 +705,13 @@ export interface ScanDispatchAdhocTicketCreateRequest {
   materialType?: ArchiveMaterialTypeCode
   archiveBatchMode?: string
   teacherId?: string
-  collectMode?: 'AI_SUBMIT' | 'GAP_ATTACHMENT'
+  collectMode?: PortfolioCollectModeCode
   gapTaskId?: string
   categoryId?: string
   taskType?: string
   templateCode?: string
   archiveRecordId?: string
+  materialTags?: string[]
 }
 
 export interface ScanDispatchAdhocTicketCreateResponse {

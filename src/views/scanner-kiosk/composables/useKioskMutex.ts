@@ -5,9 +5,18 @@
  * 全部聚合为统一的 blockedReasons 对象，UI 层只读这一个 computed 决定 disable 状态。
  */
 
-import type { KioskWorkflow } from './useKioskWorkflow'
+import type { KioskWorkflow } from './useExamKioskWorkflow'
 import { computed } from 'vue'
+import { LocalScanJobStatusCode } from '@/apis/mark/scanner-agent-local'
+import { ScannerKioskScanModeCode } from '@/apis/mark/scanner-kiosk'
 import { resolveKioskActivationGuardMessage } from '../utils/kioskActivationGuard'
+
+const UPLOAD_PHASE_JOB_STATUSES: readonly LocalScanJobStatusCode[] = [
+  LocalScanJobStatusCode.READYTOUPLOAD,
+  LocalScanJobStatusCode.UPLOADING,
+  LocalScanJobStatusCode.RETRYING,
+  LocalScanJobStatusCode.FAILED,
+]
 
 export interface KioskBlockedReasons {
   /** 切换考试是否被阻断（空字符串=不阻断） */
@@ -64,18 +73,18 @@ export function useKioskMutex(workflow: KioskWorkflow) {
       startScan: workflow.scanBlockedReason.value || (workflow.loading.value ? '正在处理中' : ''),
       startSupplementScan:
         workflow.scanBlockedReason.value
-        || (workflow.scanMode.value !== 'SUPPLEMENT' ? '当前不在补扫模式' : ''),
+        || (workflow.scanMode.value !== ScannerKioskScanModeCode.SUPPLEMENT ? '当前不在补扫模式' : ''),
 
       pauseJob:
-        status === 'SCANNING'
+        status === LocalScanJobStatusCode.SCANNING
           ? ''
           : !job
               ? '当前没有可暂停的任务'
-              : ['READYTOUPLOAD', 'UPLOADING', 'RETRYING', 'FAILED'].includes(status || '')
+              : status && UPLOAD_PHASE_JOB_STATUSES.includes(status)
                 ? '本批次已进入上传/提交阶段，不能暂停'
                 : '当前任务不在采集阶段',
       resumeJob:
-        status === 'PAUSED'
+        status === LocalScanJobStatusCode.PAUSED
           ? ''
           : !job
               ? '当前没有可恢复的任务'
@@ -84,14 +93,14 @@ export function useKioskMutex(workflow: KioskWorkflow) {
         ? ''
         : !job
             ? '当前没有进行中的批次'
-            : ['READYTOUPLOAD', 'UPLOADING', 'RETRYING', 'FAILED'].includes(status || '')
+            : status && UPLOAD_PHASE_JOB_STATUSES.includes(status)
               ? '本批次已进入上传/提交阶段，请使用重试上传或重试提交'
               : '当前任务不在采集阶段，不能结束批次',
       cancelJob: workflow.canCancelJob.value
         ? ''
         : !job
             ? '当前没有可取消的任务'
-            : job.status === 'FAILED'
+            : job.status === LocalScanJobStatusCode.FAILED
               ? '扫描已产生页面，请使用重试上传或删除任务'
               : '当前任务已进入上传链路，不能取消',
       retryUpload: workflow.canRetryUpload.value

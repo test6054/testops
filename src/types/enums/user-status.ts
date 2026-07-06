@@ -67,25 +67,43 @@ export const USER_STATUS_TONE_MAP: Record<UserStatusEnum, UserStatusBadgeTone> =
   [UserStatusEnum.DELETED]: 'gray',
 }
 
+/** 全部合法用户状态（显式枚举成员列表，禁止 Object.keys 反射推导）。 */
+export const ALL_USER_STATUS_CODES: readonly UserStatusEnum[] = [
+  UserStatusEnum.ACTIVE,
+  UserStatusEnum.INACTIVE,
+  UserStatusEnum.PENDING_APPROVAL,
+  UserStatusEnum.SUSPENDED,
+  UserStatusEnum.REJECTED,
+  UserStatusEnum.DELETED,
+]
+
+/** 用户状态下拉筛选项 */
+export const USER_STATUS_FILTER_OPTIONS: Array<{ value: UserStatusEnum, label: string }> = [
+  { value: UserStatusEnum.ACTIVE, label: USER_STATUS_CONFIG[UserStatusEnum.ACTIVE].label },
+  { value: UserStatusEnum.INACTIVE, label: USER_STATUS_CONFIG[UserStatusEnum.INACTIVE].label },
+  { value: UserStatusEnum.PENDING_APPROVAL, label: USER_STATUS_CONFIG[UserStatusEnum.PENDING_APPROVAL].label },
+  { value: UserStatusEnum.SUSPENDED, label: USER_STATUS_CONFIG[UserStatusEnum.SUSPENDED].label },
+  { value: UserStatusEnum.REJECTED, label: USER_STATUS_CONFIG[UserStatusEnum.REJECTED].label },
+  { value: UserStatusEnum.DELETED, label: USER_STATUS_CONFIG[UserStatusEnum.DELETED].label },
+]
+
 /**
  * 获取用户状态标签
  */
 export function getUserStatusLabel(status: UserStatusEnum): string {
-  return strictEnumValue(USER_STATUS_CONFIG, status, '用户状态').label
+  return USER_STATUS_CONFIG[status].label
 }
 
 /**
  * 获取用户状态颜色
  */
 export function getUserStatusColor(status: UserStatusEnum): string {
-  return strictEnumValue(USER_STATUS_CONFIG, status, '用户状态').color
+  return USER_STATUS_CONFIG[status].color
 }
 
 /**
  * 获取状态对应的 Badge tone（遵循 /style-guide 状态色板）
  */
 export function getUserStatusTone(status: UserStatusEnum): UserStatusBadgeTone {
-  return strictEnumTone(USER_STATUS_TONE_MAP, status, '用户状态')
+  return USER_STATUS_TONE_MAP[status]
 }
-
-import { strictEnumTone, strictEnumValue } from '@/utils/strict-enum'

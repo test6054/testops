@@ -1,30 +1,26 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  PortfolioTeacherRecommendRunMode,
-  PortfolioTeacherRecommendRunStatus,
-  PortfolioTeacherRecommendScene,
-} from '@/apis/portfolio/enums'
-import type {
   PortfolioTeacherPkCompareVO,
   PortfolioTeacherRecommendCandidateVO,
   PortfolioTeacherRecommendExplainStatusVO,
   PortfolioTeacherRecommendRuleVO,
   PortfolioTeacherRecommendRunVO,
 } from '@/apis/portfolio/teacher-platform'
-import type { AiTaskStatus } from '@/apis/quality/types'
+import type { AiTaskStatusCode } from '@/apis/quality/types'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS,
-  PORTFOLIO_TEACHER_RECOMMEND_RUN_MODE_LABEL,
-  PORTFOLIO_TEACHER_RECOMMEND_RUN_STATUS_LABEL,
-  PORTFOLIO_TEACHER_RECOMMEND_SCENE_LABEL,
+  PortfolioTeacherRecommendRunModeDescription,
+  PortfolioTeacherRecommendRunStatusDescription,
+  PortfolioTeacherRecommendSceneCode,
+  PortfolioTeacherRecommendSceneDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
 import { aiTaskApi } from '@/apis/quality/ai-task'
-import { AI_TASK_STATUS_LABEL } from '@/apis/quality/types'
+import { AiTaskStatusDescription } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -86,11 +82,11 @@ const explainRunId = ref('')
 const route = useRoute()
 const router = useRouter()
 
-function aiTaskStatusLabel(status?: AiTaskStatus): string {
+function aiTaskStatusLabel(status?: AiTaskStatusCode): string {
   if (!status) {
     return '未提交'
   }
-  return strictEnumLabel(AI_TASK_STATUS_LABEL, status, 'AI 任务状态')
+  return strictEnumLabel(AiTaskStatusDescription, status, 'AI 任务状态')
 }
 
 function openExplainAiTask() {
@@ -131,24 +127,16 @@ async function applyRouteDeepLink() {
   }
 }
 
-function runModeLabel(mode: string) {
-  return strictEnumLabel(
-    PORTFOLIO_TEACHER_RECOMMEND_RUN_MODE_LABEL,
-    mode as PortfolioTeacherRecommendRunMode,
-    '推荐运行模式',
-  )
+function runModeLabel(mode: PortfolioTeacherRecommendRunVO['runMode']) {
+  return strictEnumLabel(PortfolioTeacherRecommendRunModeDescription, mode, '推荐运行模式')
 }
 
-function runStatusLabel(status: string) {
-  return strictEnumLabel(
-    PORTFOLIO_TEACHER_RECOMMEND_RUN_STATUS_LABEL,
-    status as PortfolioTeacherRecommendRunStatus,
-    '推荐运行状态',
-  )
+function runStatusLabel(status: PortfolioTeacherRecommendRunVO['runStatus']) {
+  return strictEnumLabel(PortfolioTeacherRecommendRunStatusDescription, status, '推荐运行状态')
 }
 
-function sceneLabel(scene: PortfolioTeacherRecommendScene): string {
-  return strictEnumLabel(PORTFOLIO_TEACHER_RECOMMEND_SCENE_LABEL, scene, '推荐场景')
+function sceneLabel(scene: PortfolioTeacherRecommendSceneCode): string {
+  return strictEnumLabel(PortfolioTeacherRecommendSceneDescription, scene, '推荐场景')
 }
 
 async function loadRules() {
@@ -170,7 +158,7 @@ async function saveRule() {
   try {
     await portfolioTeacherRecommendationApi.saveRule({
       ruleName: ruleForm.ruleName.trim(),
-      recommendScene: 'EXCELLENT_TEACHER',
+      recommendScene: PortfolioTeacherRecommendSceneCode.EXCELLENT_TEACHER,
       filterSnapshot: {
         minHonorCount: ruleForm.minHonorCount,
         requireDualTeacher: ruleForm.requireDualTeacher,

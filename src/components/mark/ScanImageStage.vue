@@ -69,7 +69,8 @@ const ZOOM_STEP = 0.25
 
 // 视图状态：缩放 / 旋转 / 灰度 / 平移
 const zoomLevel = ref(1)
-const rotation = ref<0 | 90 | 180 | 270>(0)
+type ScanImageRotation = 0 | 90 | 180 | 270
+const rotation = ref<ScanImageRotation>(0)
 const grayscale = ref(false)
 const panX = ref(0)
 const panY = ref(0)
@@ -108,13 +109,21 @@ function fitToScreen(): void {
   resetPan()
 }
 function rotateRight(): void {
-  rotation.value = ((rotation.value + 90) % 360) as 0 | 90 | 180 | 270
+  rotation.value = nextRotation(rotation.value, 90)
 }
 function rotateLeft(): void {
-  rotation.value = ((rotation.value + 270) % 360) as 0 | 90 | 180 | 270
+  rotation.value = nextRotation(rotation.value, 270)
 }
 function toggleGrayscale(): void {
   grayscale.value = !grayscale.value
+}
+
+function nextRotation(current: ScanImageRotation, delta: 90 | 270): ScanImageRotation {
+  const next = (current + delta) % 360
+  if (next === 0 || next === 90 || next === 180 || next === 270) {
+    return next
+  }
+  throw new Error(`扫描图像旋转角度异常：${next}`)
 }
 function onConfidentialContextMenu(event: MouseEvent): void {
   if (props.confidential) {

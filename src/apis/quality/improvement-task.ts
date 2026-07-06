@@ -1,4 +1,4 @@
-import type { ImprovementTaskStatus } from './types'
+import type { ImprovementTaskStatusCode } from './types'
 /**
  * 持续改进任务 API - 对接 edu-quality / ImprovementTaskController
  *
@@ -7,8 +7,7 @@ import type { ImprovementTaskStatus } from './types'
  *   ImprovementTaskQueryRequest / ImprovementTaskStatusUpdateRequest /
  *   ImprovementTaskCloseRequest。
  *
- * 注意：创建时可传 submitAiSuggestionDraft=true 同步提交 AI 改进草稿；
- * 已创建任务也可通过 AI 任务中心或本页「AI 改进」手动提交。
+ * AI 改进草稿生成通过 ai-task-trigger.ts 显式提交，不混入保存请求。
  */
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
@@ -19,29 +18,29 @@ const BASE = '/api/quality/improvement-tasks'
 export interface ImprovementTaskVO {
   id: string
   tenantId?: string
-  programId: string
-  programName: string
+  programId?: string
+  programName?: string
   trainingPlanId?: string
-  trainingPlanCode: string
-  trainingPlanName: string
+  trainingPlanCode?: string
+  trainingPlanName?: string
   qualityCourseId?: string
-  qualityCourseCode: string
-  qualityCourseName: string
+  qualityCourseCode?: string
+  qualityCourseName?: string
   achievementResultId?: string
-  achievementResultLabel: string
+  achievementResultLabel?: string
   reportId?: string
-  reportTitle: string
+  reportTitle?: string
   taskCode: string
   taskTitle: string
   problemSummary: string
   proposedAction: string
-  ownerUserId: string
+  ownerUserId?: string
   /** 责任人用户名称，ownerUserId 非空时后端必填 */
-  ownerUserName: string
+  ownerUserName?: string
   ownerRole?: string
   /** yyyy-MM-dd */
-  dueDate: string
-  status: ImprovementTaskStatus
+  dueDate?: string
+  status: ImprovementTaskStatusCode
   progressRemark?: string
   /** 整改证据条目 */
   rectificationEvidenceItems?: string[]
@@ -61,7 +60,7 @@ export interface ImprovementTaskQueryRequest extends QueryDto {
   qualityCourseId?: string
   achievementResultId?: string
   ownerUserId?: string
-  status?: ImprovementTaskStatus
+  status?: ImprovementTaskStatusCode
   keyword?: string
 }
 
@@ -81,14 +80,12 @@ export interface ImprovementTaskSaveRequest {
   ownerRole?: string
   /** yyyy-MM-dd，后端 @NotNull */
   dueDate: string
-  /** 创建时同步提交 AI 改进建议草稿 */
-  submitAiSuggestionDraft?: boolean
 }
 
 /** 状态流转 - 严格对齐后端 ImprovementTaskStatusUpdateRequest */
 export interface ImprovementTaskStatusUpdateRequest {
   id: string
-  targetStatus: ImprovementTaskStatus
+  targetStatus: ImprovementTaskStatusCode
   progressRemark?: string
   /** 整改证据条目 */
   rectificationEvidenceItems?: string[]

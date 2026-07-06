@@ -13,9 +13,9 @@
           v-if="!isExamOwner"
           title="当前为匿名阅卷模式，仅考试主考老师可解匿名查看学生身份"
         >
-          <UiTag tone="purple" size="sm">匿名保护中</UiTag>
+          <UiTag tone="blue" size="sm">匿名保护中</UiTag>
         </a-tooltip>
-        <UiTag v-else tone="purple" size="sm">匿名保护中</UiTag>
+        <UiTag v-else tone="blue" size="sm">匿名保护中</UiTag>
       </template>
       <UiPopoverPanel
         v-if="task"
@@ -66,7 +66,7 @@
       </UiPopoverPanel>
     </div>
     <div class="marking-task-toolbar__actions">
-      <template v-if="batchProgress">
+      <template v-if="batchProgress && !hideBatchNav">
         <UiButton
           size="sm"
           variant="outline"
@@ -165,6 +165,8 @@ const props = defineProps<{
   anonymityModeLabel: (mode: AnonymityModeCode) => string
   recentList: MarkingRecentSubmitEntry[]
   canWithdrawEntry: (entry: MarkingRecentSubmitEntry) => boolean
+  /** 批次 prev/next 由页面 #footer 承载时设为 true */
+  hideBatchNav?: boolean
 }>()
 
 const emit = defineEmits<{

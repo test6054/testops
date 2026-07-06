@@ -1,7 +1,6 @@
 import { PracticeStatusEnum } from '@/types/enums'
 import { StudentTaskStatusEnum } from '@/types/enums/student-task-status'
 import { TeacherReviewStatusEnum } from '@/types/enums/teacher-review-status'
-import { strictEnumTone } from '@/utils/strict-enum'
 
 export type StatusVariant
   = 'neutral' | 'info' | 'pending' | 'success' | 'warning' | 'danger' | 'purple'
@@ -60,11 +59,19 @@ export const PRACTICE_STATUS_VARIANT_MAP: Record<PracticeStatusEnum, StatusVaria
 
 export function mapPracticeStatusToVariant(status?: string | null): StatusVariant {
   if (!status) return 'neutral'
-  const upper = status.toUpperCase() as PracticeStatusEnum
-  try {
-    return strictEnumTone(PRACTICE_STATUS_VARIANT_MAP, upper, 'practice')
-  } catch {
-    return 'neutral'
+  switch (status.toUpperCase()) {
+    case PracticeStatusEnum.DRAFT:
+      return PRACTICE_STATUS_VARIANT_MAP[PracticeStatusEnum.DRAFT]
+    case PracticeStatusEnum.NOT_STARTED:
+      return PRACTICE_STATUS_VARIANT_MAP[PracticeStatusEnum.NOT_STARTED]
+    case PracticeStatusEnum.ACTIVE:
+      return PRACTICE_STATUS_VARIANT_MAP[PracticeStatusEnum.ACTIVE]
+    case PracticeStatusEnum.FINISHED:
+      return PRACTICE_STATUS_VARIANT_MAP[PracticeStatusEnum.FINISHED]
+    case PracticeStatusEnum.CLOSED:
+      return PRACTICE_STATUS_VARIANT_MAP[PracticeStatusEnum.CLOSED]
+    default:
+      return 'neutral'
   }
 }
 
@@ -91,11 +98,21 @@ export function mapStudentStatusToVariant(status?: string | null): StatusVariant
     return customStatusMap[status]
   }
 
-  const upper = status.toUpperCase() as StudentTaskStatusEnum
-  try {
-    return strictEnumTone(STUDENT_STATUS_VARIANT_MAP, upper, 'student')
-  } catch {
-    return 'neutral'
+  switch (status.toUpperCase()) {
+    case StudentTaskStatusEnum.NOT_STARTED:
+      return STUDENT_STATUS_VARIANT_MAP[StudentTaskStatusEnum.NOT_STARTED]
+    case StudentTaskStatusEnum.IN_PROGRESS:
+      return STUDENT_STATUS_VARIANT_MAP[StudentTaskStatusEnum.IN_PROGRESS]
+    case StudentTaskStatusEnum.PENDING_FIRST_REVIEW:
+      return STUDENT_STATUS_VARIANT_MAP[StudentTaskStatusEnum.PENDING_FIRST_REVIEW]
+    case StudentTaskStatusEnum.PENDING_RESUBMISSION:
+      return STUDENT_STATUS_VARIANT_MAP[StudentTaskStatusEnum.PENDING_RESUBMISSION]
+    case StudentTaskStatusEnum.PENDING_RE_REVIEW:
+      return STUDENT_STATUS_VARIANT_MAP[StudentTaskStatusEnum.PENDING_RE_REVIEW]
+    case StudentTaskStatusEnum.COMPLETED:
+      return STUDENT_STATUS_VARIANT_MAP[StudentTaskStatusEnum.COMPLETED]
+    default:
+      return 'neutral'
   }
 }
 
@@ -108,10 +125,16 @@ export const TEACHER_REVIEW_STATUS_VARIANT_MAP: Record<TeacherReviewStatusEnum, 
 
 export function mapTeacherReviewStatusToVariant(status?: string | null): StatusVariant {
   if (!status) return 'neutral'
-  const upper = status.toUpperCase() as TeacherReviewStatusEnum
-  try {
-    return strictEnumTone(TEACHER_REVIEW_STATUS_VARIANT_MAP, upper, 'teacher')
-  } catch {
-    return 'neutral'
+  switch (status.toUpperCase()) {
+    case TeacherReviewStatusEnum.NOT_STARTED:
+      return TEACHER_REVIEW_STATUS_VARIANT_MAP[TeacherReviewStatusEnum.NOT_STARTED]
+    case TeacherReviewStatusEnum.PENDING:
+      return TEACHER_REVIEW_STATUS_VARIANT_MAP[TeacherReviewStatusEnum.PENDING]
+    case TeacherReviewStatusEnum.APPROVED:
+      return TEACHER_REVIEW_STATUS_VARIANT_MAP[TeacherReviewStatusEnum.APPROVED]
+    case TeacherReviewStatusEnum.REJECTED:
+      return TEACHER_REVIEW_STATUS_VARIANT_MAP[TeacherReviewStatusEnum.REJECTED]
+    default:
+      return 'neutral'
   }
 }

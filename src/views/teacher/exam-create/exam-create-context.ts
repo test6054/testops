@@ -1,14 +1,13 @@
 import type { InjectionKey } from 'vue'
 import type {
+  ExamGradingStrategyCode,
   ExamKindCode,
-  ExamRosterScopeMode,
+  ExamRosterScopeModeCode,
   ExamScorePolicyCode,
-  GradingStrategyCode,
 } from '@/apis/mark/exam'
 import type { ExamCandidateVO } from '@/apis/mark/exam-scope'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import { inject } from 'vue'
-import { EXAM_ROSTER_SCOPE_MODE_LABEL } from '@/apis/mark/exam'
 
 export type ExamScoreCompositionMode = 'EXAM_ONLY' | 'EXAM_WITH_DAILY'
 
@@ -34,7 +33,7 @@ export interface ExamCreateBasicForm {
   academicYear: string
   semester: SemesterCode
   examWindow?: [string, string]
-  gradingStrategy: GradingStrategyCode
+  gradingStrategy: ExamGradingStrategyCode
   scoreCompositionMode: ExamScoreCompositionMode
   dailyScoreFull?: number
   /** 是否涉密考试场次 */
@@ -62,7 +61,7 @@ export interface ExamCreateMarkingTeamForm {
 
 /** 考生范围草稿：scope/classIds 对齐 ExamRosterCreateRequest，candidates 为 preview API 的 ExamCandidateVO。 */
 export interface ExamCreateRosterForm {
-  scopeMode: ExamRosterScopeMode
+  scopeMode: ExamRosterScopeModeCode
   classIds: string[]
   /** 参考班级维护上下文院系 ID */
   referenceDepartmentId?: string
@@ -73,8 +72,7 @@ export const examCreateBasicFormKey: InjectionKey<ExamCreateBasicForm> = Symbol(
 export const examCreateMarkingTeamFormKey: InjectionKey<ExamCreateMarkingTeamForm> = Symbol('examCreateMarkingTeamForm')
 export const examCreateRosterFormKey: InjectionKey<ExamCreateRosterForm> = Symbol('examCreateRosterForm')
 
-export type { ExamRosterScopeMode }
-export { EXAM_ROSTER_SCOPE_MODE_LABEL }
+export type { ExamRosterScopeModeCode } from '@/apis/mark/exam'
 
 /** 校验侧栏 sectionId 是否为创建考试步骤键。 */
 export function isExamCreateSectionKey(value: string): value is ExamCreateSectionKey {

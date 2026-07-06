@@ -21,7 +21,7 @@ export interface DownloadOptions {
   onProgress?: (event: AxiosProgressEvent) => void
   onAfterDownload?: (file: FileItem) => void
   onError?: (error: unknown) => void
-  axiosConfig?: Partial<ExtendedAxiosRequestConfig>
+  axiosConfig?: ExtendedAxiosRequestConfig
   showSuccessMessage?: boolean
   showErrorMessage?: boolean
   successMessage?: string
@@ -173,7 +173,7 @@ export async function handleDownloadFile(file: FileItem, options: DownloadOption
   try {
     onBeforeDownload?.(normalizedFile)
 
-    const downloadConfig: Partial<ExtendedAxiosRequestConfig> = {
+    const downloadConfig: ExtendedAxiosRequestConfig = {
       ...axiosConfig
     }
 

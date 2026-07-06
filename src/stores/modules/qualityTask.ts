@@ -27,6 +27,7 @@ import { computed, ref } from 'vue'
 import { aiTaskApi } from '@/apis/quality/ai-task'
 import { improvementTaskApi } from '@/apis/quality/improvement-task'
 import { reportApi } from '@/apis/quality/report'
+import { AiTaskStatusCode } from '@/apis/quality/types'
 
 const DEFAULT_TOP_N = 50
 
@@ -59,11 +60,11 @@ export const useQualityTaskStore = defineStore('qualityTask', () => {
   /* ---------- Computed ---------- */
 
   const aiTasksProcessing = computed(() =>
-    aiTasksInFlight.value.filter((t) => t.status === 'PROCESSING'),
+    aiTasksInFlight.value.filter(t => t.status === AiTaskStatusCode.PROCESSING),
   )
 
   const aiTasksPending = computed(() =>
-    aiTasksInFlight.value.filter((t) => t.status === 'PENDING'),
+    aiTasksInFlight.value.filter(t => t.status === AiTaskStatusCode.PENDING),
   )
 
   const reportExportsFailed = computed(() =>
@@ -88,8 +89,8 @@ export const useQualityTaskStore = defineStore('qualityTask', () => {
     aiTasksLoading.value = true
     try {
       const [pendingPage, processingPage] = await Promise.all([
-        aiTaskApi.page({ pageNum: 1, pageSize: topN, status: 'PENDING' }),
-        aiTaskApi.page({ pageNum: 1, pageSize: topN, status: 'PROCESSING' }),
+        aiTaskApi.page({ pageNum: 1, pageSize: topN, status: AiTaskStatusCode.PENDING }),
+        aiTaskApi.page({ pageNum: 1, pageSize: topN, status: AiTaskStatusCode.PROCESSING }),
       ])
       aiTasksInFlight.value = [
         ...processingPage.list,

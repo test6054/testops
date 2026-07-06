@@ -36,8 +36,7 @@ const auditIssueTabRef = ref<TabLoadExpose | null>(null)
 const auditRectificationTabRef = ref<TabLoadExpose | null>(null)
 const auditSupervisionTabRef = ref<TabLoadExpose | null>(null)
 
-const { signalImprovementList, signalIssueList, signalRectList, signalSupList, loadSignalSources }
-  = useImprovementWorkbenchSignalSources()
+const { signalSummary, loadSignalSources } = useImprovementWorkbenchSignalSources()
 
 /** Tab 加载失败时仅 toast 提示；忽略 onLoadError(null)，避免并行 load 互相覆盖。 */
 function handleTabLoadError(error: Error | null): void {
@@ -51,10 +50,7 @@ function resolveWorkbenchLoadError(error: unknown, fallback: string): Error {
 }
 
 const { signals } = useImprovementWorkbenchSignals({
-  improvementList: signalImprovementList,
-  issueList: signalIssueList,
-  rectList: signalRectList,
-  supList: signalSupList,
+  signalSummary,
 })
 
 /** 仅刷新 SignalBand 全量 VO；scope 已过期时不写入并返回 false */
@@ -138,7 +134,7 @@ watch(activeTab, async (tab) => {
 })
 
 watch(
-  () => [route.query.improvementTaskId, route.query.aiTaskId] as const,
+  () => [route.query.improvementTaskId, route.query.aiTaskId],
   () => {
     void consumeImprovementDeepLink()
   },
@@ -176,7 +172,7 @@ onActivated(async () => {
         !loading
           && qualityStore.currentTrainingPlanId
           && activeTab === 'improvement'
-          && !signalImprovementList.length
+          && !signalSummary?.improvementTotal
       "
       description="当前范围无改进任务"
       class="iwb__empty"

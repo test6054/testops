@@ -1,5 +1,4 @@
 import type { ColProps } from 'ant-design-vue'
-import type { ComputedRef } from 'vue'
 import { useBreakpoints } from '@vueuse/core'
 import { computed } from 'vue'
 import { ANT_GRID_MIN } from '@/constants/breakpoints'
@@ -17,10 +16,23 @@ export function useBreakpoint() {
     xxl: ANT_GRID_MIN.xxl,
   })
 
-  const arr = breakpoints.current() as ComputedRef<Breakpoint[]>
+  const activeBreakpoints = computed<Breakpoint[]>(() =>
+    breakpoints.current().value.filter(isBreakpoint),
+  )
   const breakpoint = computed(() => {
-    return arr.value.length ? arr.value[arr.value.length - 1] : 'xs'
+    return activeBreakpoints.value.length
+      ? activeBreakpoints.value[activeBreakpoints.value.length - 1]
+      : 'xs'
   })
 
   return { breakpoint }
+}
+
+function isBreakpoint(value: string): value is Breakpoint {
+  return value === 'xs'
+    || value === 'sm'
+    || value === 'md'
+    || value === 'lg'
+    || value === 'xl'
+    || value === 'xxl'
 }

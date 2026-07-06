@@ -1,8 +1,7 @@
 <template>
-  <UiCard class="marking-task-info-card info-card">
-    <template #title>
+  <GradingImmersionSection title="任务详情">
+    <template #icon>
       <ProfileOutlined />
-      <span>任务详情</span>
     </template>
     <a-descriptions
       :column="{ xs: 1, sm: 2 }"
@@ -46,7 +45,7 @@
         </a-typography-paragraph>
       </a-descriptions-item>
     </a-descriptions>
-  </UiCard>
+  </GradingImmersionSection>
 </template>
 
 <script lang="ts" setup>
@@ -58,7 +57,7 @@ import type {
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
+import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 
 defineOptions({ name: 'MarkingTaskInfoCard' })
@@ -75,11 +74,8 @@ defineProps<{
 
 <style lang="scss" scoped>
 .marking-task-info-card {
-  margin-bottom: 16px;
-
   &__desc :deep(.ant-descriptions-item-label) {
-    width: 140px;
-    color: #595959;
+    width: 108px;
   }
 }
 </style>

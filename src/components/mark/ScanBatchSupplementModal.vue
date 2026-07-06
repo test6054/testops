@@ -95,14 +95,15 @@ import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { getExamDetail } from '@/apis/mark/exam'
+import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
 import {
   prepareTeacherScanSupplement,
-  TEACHER_SCAN_SUPPLEMENT_MODE,
   teacherSupplementScanSource,
 } from '@/apis/mark/scan-source'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiConfirmModal from '@/components/ui-guide/ui/ConfirmModal.vue'
+import { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'ScanBatchSupplementModal' })
@@ -120,8 +121,8 @@ const emit = defineEmits<{
 
 const DEFAULT_SCAN_CONFIG: ExamScannerScanConfigVO = {
   dpi: 300,
-  colorMode: 'COLOR',
-  duplexMode: 'SIMPLEX',
+  colorMode: ScannerColorModeCode.COLOR,
+  duplexMode: ScannerDuplexModeCode.SIMPLEX,
   blankPageDetectionEnabled: true,
 }
 
@@ -131,13 +132,22 @@ const prepareLoading = ref(false)
 const prepareContext = ref<ExamTeacherScanSupplementPrepareResponse | null>(null)
 const declaredClassIds = ref<string[]>([])
 
-const form = reactive({
-  paperInstanceId: undefined as string | undefined,
-  targetPageNo: undefined as number | undefined,
+interface ScanBatchSupplementForm {
+  paperInstanceId: string | undefined
+  targetPageNo: number | undefined
+  supplementReason: string
+  replaceTargetPage: boolean
+  sourceFileId: string | undefined
+  sourceFileName: string | undefined
+}
+
+const form = reactive<ScanBatchSupplementForm>({
+  paperInstanceId: undefined,
+  targetPageNo: undefined,
   supplementReason: '',
   replaceTargetPage: false,
-  sourceFileId: undefined as string | undefined,
-  sourceFileName: undefined as string | undefined,
+  sourceFileId: undefined,
+  sourceFileName: undefined,
 })
 
 const batchLabel = computed(() => {
@@ -229,7 +239,7 @@ async function loadPrepareContext(): Promise<void> {
       examId: props.examId,
       scannerDeviceId: batch.scannerDeviceId,
       scannerStationId: batch.scannerStationId,
-      scanMode: TEACHER_SCAN_SUPPLEMENT_MODE,
+      scanMode: ScannerKioskScanModeCode.SUPPLEMENT,
       scanBatchId: batch.scanBatchId,
     })
   } catch (error) {
@@ -261,7 +271,7 @@ async function handleSubmit(): Promise<void> {
       scannerDeviceId: batch.scannerDeviceId,
       scannerStationId: batch.scannerStationId,
       declaredClassIds: declaredClassIds.value,
-      scanMode: TEACHER_SCAN_SUPPLEMENT_MODE,
+      scanMode: ScannerKioskScanModeCode.SUPPLEMENT,
       scanBatchId: batch.scanBatchId,
       targetPageNo: form.targetPageNo,
       supplementReason: form.supplementReason.trim(),
@@ -283,7 +293,7 @@ async function handleSubmit(): Promise<void> {
 }
 
 watch(
-  () => [props.open, props.batch?.scanBatchId, props.examId] as const,
+  () => [props.open, props.batch?.scanBatchId, props.examId],
   ([open]) => {
     if (open) {
       resetForm()

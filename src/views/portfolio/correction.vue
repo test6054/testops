@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { PortfolioCorrectionRequestStatusCode } from '@/apis/portfolio/enums'
 import type {
   PortfolioCorrectionDetailVO,
-  PortfolioCorrectionRequestStatus,
   PortfolioCorrectionSummaryVO,
   PortfolioTargetFieldDefinition,
   PortfolioTeacherOneTableCategoryVO,
@@ -15,10 +15,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
-import {
-  PORTFOLIO_CORRECTION_REQUEST_STATUS_LABEL,
-  PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
-} from '@/apis/portfolio/types'
+import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
+import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -43,11 +41,11 @@ function resolveSelectStringValue(value: SelectValue): string {
   return typeof value === 'object' ? String(value.value) : String(value)
 }
 
-function correctionRequestStatusLabel(status: PortfolioCorrectionRequestStatus): string {
-  return strictEnumLabel(PORTFOLIO_CORRECTION_REQUEST_STATUS_LABEL, status, '纠错工单状态')
+function correctionRequestStatusLabel(status: PortfolioCorrectionRequestStatusCode): string {
+  return strictEnumLabel(PortfolioCorrectionRequestStatusDescription, status, '纠错工单状态')
 }
 
-function correctionRequestStatusTone(status: PortfolioCorrectionRequestStatus): BadgeTone {
+function correctionRequestStatusTone(status: PortfolioCorrectionRequestStatusCode): BadgeTone {
   return strictEnumTone(PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE, status, '纠错工单状态')
 }
 

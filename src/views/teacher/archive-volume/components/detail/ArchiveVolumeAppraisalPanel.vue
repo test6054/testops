@@ -1,12 +1,8 @@
 <template>
-  <section class="archive-volume-appraisal-panel">
-    <a-descriptions
-      bordered
-      size="small"
-      :column="2"
-      class="archive-volume-appraisal-panel__lifecycle"
-    >
-      <a-descriptions-item label="鉴定状态">
+  <WorkbenchSurfaceCard class="archive-volume-appraisal-panel">
+    <template #head>
+      <div class="archive-volume-appraisal-panel__head">
+        <span class="archive-volume-appraisal-panel__title">鉴定 / 销毁</span>
         <UiTag
           v-if="detail.volume.appraisalStatus"
           :tone="appraisalStatusTone(detail.volume.appraisalStatus)"
@@ -14,114 +10,218 @@
         >
           {{ appraisalStatusLabel(detail.volume.appraisalStatus) }}
         </UiTag>
-        <span v-else>—</span>
-      </a-descriptions-item>
-      <a-descriptions-item label="销毁状态">
         <UiTag
-          v-if="detail.volume.destructionStatus"
+          v-if="detail.volume.destructionStatus && detail.volume.destructionStatus !== 'NONE'"
           :tone="destructionStatusTone(detail.volume.destructionStatus)"
           size="sm"
         >
           {{ destructionStatusLabel(detail.volume.destructionStatus) }}
         </UiTag>
-        <span v-else>—</span>
-      </a-descriptions-item>
-      <a-descriptions-item label="密级">
-        {{ securityLevelLabel(detail.volume.securityLevel) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="保管期限">
-        <span v-if="detail.volume.permanentRetention">永久保管</span>
-        <span v-else-if="detail.volume.retentionUntil">至 {{ detail.volume.retentionUntil }}</span>
-        <span v-else-if="detail.volume.retentionYears">{{ detail.volume.retentionYears }} 年</span>
-        <span v-else>—</span>
-      </a-descriptions-item>
-    </a-descriptions>
+      </div>
+    </template>
 
-    <ol class="archive-volume-appraisal-panel__steps">
-      <li :class="{ done: appraisalStepDone('request') }">申请鉴定</li>
-      <li :class="{ done: appraisalStepDone('approve') }">鉴定审批</li>
-      <li :class="{ done: appraisalStepDone('opinion') }">记录鉴定决议</li>
-      <li :class="{ done: destructionStepDone('request') }">申请销毁</li>
-      <li :class="{ done: destructionStepDone('approve') }">销毁审批</li>
-      <li :class="{ done: destructionStepDone('execute') }">执行销毁</li>
-      <li :class="{ done: destructionStepDone('supervise') }">监销确认</li>
-    </ol>
+    <template #toolbar>
+      <div class="archive-volume-appraisal-panel__actions">
+        <UiButton
+          v-if="canRequestAppraisal"
+          size="sm"
+          variant="primary"
+          @click="handleRequestAppraisal"
+        >
+          发起鉴定
+        </UiButton>
+        <UiButton
+          v-if="canRequestDestruction"
+          size="sm"
+          variant="outline"
+          @click="openDestructionRequest"
+        >
+          申请销毁
+        </UiButton>
+        <UiButton
+          v-if="canApproveDestructionAction"
+          size="sm"
+          @click="openDestructionApproval(ArchiveDestructionDecisionCode.APPROVED)"
+        >
+          批准销毁
+        </UiButton>
+        <UiButton
+          v-if="canApproveDestructionAction"
+          size="sm"
+          variant="outline"
+          @click="openDestructionApproval(ArchiveDestructionDecisionCode.REJECTED)"
+        >
+          驳回销毁
+        </UiButton>
+        <UiButton v-if="canExecuteDestruction" size="sm" @click="handleExecuteDestruction">
+          执行销毁
+        </UiButton>
+        <UiButton
+          v-if="canSuperviseDestruction"
+          size="sm"
+          variant="outline"
+          @click="openSuperviseModal"
+        >
+          监销确认
+        </UiButton>
+      </div>
+    </template>
 
-    <div class="archive-volume-appraisal-panel__actions">
-      <UiButton
-        v-if="canRequestAppraisal"
-        size="sm"
-        variant="primary"
-        @click="handleRequestAppraisal"
-      >
-        申请鉴定
-      </UiButton>
-      <UiButton v-if="canApproveAppraisal" size="sm" @click="handleApproveAppraisal">
-        鉴定审批通过
-      </UiButton>
-      <UiButton v-if="canRejectAppraisal" size="sm" variant="outline" @click="openRejectAppraisal">
-        鉴定驳回
-      </UiButton>
-      <UiButton
-        v-if="canRecordAppraisalOpinion"
-        size="sm"
-        variant="outline"
-        @click="openAppraisalOpinion"
-      >
-        提交鉴定决议
-      </UiButton>
-      <UiButton
-        v-if="canRequestDestruction"
-        size="sm"
-        variant="outline"
-        @click="openDestructionRequest"
-      >
-        申请销毁
-      </UiButton>
-      <UiButton
-        v-if="canApproveDestructionAction"
-        size="sm"
-        @click="openDestructionApproval('APPROVED')"
-      >
-        批准销毁
-      </UiButton>
-      <UiButton
-        v-if="canApproveDestructionAction"
-        size="sm"
-        variant="outline"
-        @click="openDestructionApproval('REJECTED')"
-      >
-        驳回销毁
-      </UiButton>
-      <UiButton v-if="canExecuteDestruction" size="sm" @click="handleExecuteDestruction">
-        执行销毁
-      </UiButton>
-      <UiButton
-        v-if="canSuperviseDestruction"
-        size="sm"
-        variant="outline"
-        @click="openSuperviseModal"
-      >
-        监销确认
-      </UiButton>
-    </div>
+    <UiAlertStrip
+      v-if="canRequestAppraisal"
+      tone="warning"
+      title="保管期鉴定待启动"
+      description="请发起鉴定申请；审批通过后记录续保或销毁决议，再进入销毁审批链。"
+      dense
+      class="archive-volume-appraisal-panel__guide"
+    />
 
-    <a-modal
-      v-model:open="appraisalModalOpen"
+    <section class="archive-volume-appraisal-panel__section">
+      <div class="archive-volume-appraisal-panel__section-head">
+        <h3 class="archive-volume-appraisal-panel__section-title">鉴定流程</h3>
+        <UiTag
+          v-if="detail.volume.appraisalStatus && detail.volume.appraisalStatus !== 'NOT_DUE'"
+          :tone="appraisalStatusTone(detail.volume.appraisalStatus)"
+          size="sm"
+        >
+          {{ appraisalStatusLabel(detail.volume.appraisalStatus) }}
+        </UiTag>
+        <UiTag v-else tone="gray" size="sm">未启动</UiTag>
+        <div class="archive-volume-appraisal-panel__section-actions">
+          <UiButton
+            v-if="canRequestAppraisal"
+            size="sm"
+            variant="ghost"
+            @click="handleRequestAppraisal"
+          >
+            发起鉴定
+          </UiButton>
+        </div>
+      </div>
+
+      <UiSkeletonState v-if="flowLoading" variant="card" compact />
+      <UiEmpty
+        v-else-if="flowRecords.length === 0"
+        description="保管期未到或尚未发起鉴定"
+      />
+      <div v-else class="archive-volume-appraisal-panel__list">
+        <article
+          v-for="record in flowRecords"
+          :key="record.eventId ?? record.occurredAt"
+          class="approval-card"
+          :class="appraisalCardClass(record.appraisalStatus)"
+        >
+          <div class="approval-card__head">
+            <span class="approval-card__title">{{ flowRecordTitle(record) }}</span>
+            <UiTag
+              v-if="record.appraisalStatus"
+              :tone="appraisalStatusTone(record.appraisalStatus)"
+              size="sm"
+            >
+              {{ appraisalStatusLabel(record.appraisalStatus) }}
+            </UiTag>
+          </div>
+          <p v-if="record.reason && record.eventType !== 'APPRAISAL_REJECTED'" class="approval-card__remark">
+            {{ record.reason }}
+          </p>
+          <p class="approval-card__meta">{{ formatFlowRecordMeta(record) }}</p>
+          <div v-if="showRecordActions(record)" class="approval-card__actions">
+            <UiButton v-if="canApproveAppraisal" size="sm" @click="handleApproveAppraisal">
+              鉴定审批通过
+            </UiButton>
+            <UiButton
+              v-if="canRejectAppraisal"
+              size="sm"
+              variant="outline"
+              @click="openRejectAppraisal"
+            >
+              鉴定驳回
+            </UiButton>
+            <UiButton
+              v-if="canRecordAppraisalOpinion"
+              size="sm"
+              variant="outline"
+              @click="openAppraisalOpinion"
+            >
+              记录意见
+            </UiButton>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="archive-volume-appraisal-panel__section archive-volume-appraisal-panel__section--destruction">
+      <div class="archive-volume-appraisal-panel__section-head">
+        <h3 class="archive-volume-appraisal-panel__section-title">销毁流程</h3>
+        <span class="archive-volume-appraisal-panel__destruction-hint">L2-D3 两阶段物理删除</span>
+        <UiTag
+          v-if="detail.volume.destructionStatus && detail.volume.destructionStatus !== 'NONE'"
+          :tone="destructionStatusTone(detail.volume.destructionStatus)"
+          size="sm"
+        >
+          {{ destructionStatusLabel(detail.volume.destructionStatus) }}
+        </UiTag>
+      </div>
+      <ArchiveLifecyclePipe
+        :steps="destructionLifecycleSteps"
+        class="archive-volume-appraisal-panel__pipe"
+      />
+      <UiSkeletonState v-if="destructionFlowLoading" variant="card" compact />
+      <UiEmpty
+        v-else-if="destructionFlowRecords.length === 0"
+        description="尚未发起销毁流程"
+      />
+      <div v-else class="archive-volume-appraisal-panel__list">
+        <article
+          v-for="record in destructionFlowRecords"
+          :key="record.eventId ?? record.occurredAt"
+          class="approval-card approval-card--destruction"
+        >
+          <div class="approval-card__head">
+            <span class="approval-card__title">{{ destructionFlowRecordTitle(record) }}</span>
+            <UiTag
+              v-if="record.destructionStatus"
+              :tone="destructionStatusTone(record.destructionStatus)"
+              size="sm"
+            >
+              {{ destructionStatusLabel(record.destructionStatus) }}
+            </UiTag>
+          </div>
+          <p v-if="record.reason" class="approval-card__remark">{{ record.reason }}</p>
+          <p class="approval-card__meta">{{ formatDestructionFlowRecordMeta(record) }}</p>
+        </article>
+      </div>
+      <ul class="archive-volume-appraisal-panel__destruction-steps">
+        <li
+          v-for="step in destructionStepDescriptions"
+          :key="step.key"
+          class="archive-volume-appraisal-panel__destruction-step"
+        >
+          <span class="archive-volume-appraisal-panel__destruction-step-label">{{ step.label }}</span>
+          <span class="archive-volume-appraisal-panel__destruction-step-desc">{{ step.description }}</span>
+        </li>
+      </ul>
+    </section>
+
+    <UiDrawer
+      :open="appraisalModalOpen"
       title="鉴定决议"
+      :width="520"
       :confirm-loading="appraisalSubmitting"
       ok-text="提交"
-      cancel-text="取消"
-      @ok="submitAppraisalOpinion"
+      :hide-footer="false"
+      @update:open="(v: boolean) => (appraisalModalOpen = v)"
+      @close="appraisalModalOpen = false"
+      @confirm="submitAppraisalOpinion"
     >
       <a-form layout="vertical">
         <a-form-item label="决议" required>
           <a-radio-group v-model:value="appraisalForm.decision">
-            <a-radio value="RETAIN">继续保留</a-radio>
-            <a-radio value="DESTROY">可销毁</a-radio>
+            <a-radio :value="ArchiveAppraisalDecisionCode.RETAIN">继续保留</a-radio>
+            <a-radio :value="ArchiveAppraisalDecisionCode.DESTROY">可销毁</a-radio>
           </a-radio-group>
         </a-form-item>
-        <a-form-item v-if="appraisalForm.decision === 'RETAIN'" label="延长保管（年）">
+        <a-form-item v-if="appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN" label="延长保管（年）">
           <a-input-number
             :value="appraisalForm.retentionExtensionYears"
             :min="1"
@@ -130,67 +230,79 @@
             @update:value="syncAppraisalRetentionYears"
           />
         </a-form-item>
-        <a-form-item v-if="appraisalForm.decision === 'RETAIN'">
+        <a-form-item v-if="appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN">
           <a-checkbox v-model:checked="appraisalForm.permanentRetention">永久保管</a-checkbox>
         </a-form-item>
         <a-form-item label="备注">
           <a-textarea v-model:value="appraisalForm.remark" :rows="3" />
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiDrawer>
 
-    <a-modal
-      v-model:open="destructionModalOpen"
+    <UiDrawer
+      :open="destructionModalOpen"
       title="申请销毁"
+      :width="520"
       :confirm-loading="destructionSubmitting"
       ok-text="提交"
-      cancel-text="取消"
-      @ok="submitDestructionRequest"
+      :hide-footer="false"
+      @update:open="(v: boolean) => (destructionModalOpen = v)"
+      @close="destructionModalOpen = false"
+      @confirm="submitDestructionRequest"
     >
       <a-form layout="vertical">
         <a-form-item label="销毁原因" required>
           <a-textarea v-model:value="destructionReason" :rows="3" />
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiDrawer>
 
-    <a-modal
-      v-model:open="rejectAppraisalOpen"
+    <UiDrawer
+      :open="rejectAppraisalOpen"
       title="鉴定驳回"
+      :width="520"
       :confirm-loading="rejectAppraisalSubmitting"
       ok-text="确认驳回"
-      cancel-text="取消"
-      @ok="submitRejectAppraisal"
+      :hide-footer="false"
+      @update:open="(v: boolean) => (rejectAppraisalOpen = v)"
+      @close="rejectAppraisalOpen = false"
+      @confirm="submitRejectAppraisal"
     >
       <a-form layout="vertical">
         <a-form-item label="驳回原因" required>
           <a-textarea v-model:value="rejectAppraisalReason" :rows="3" />
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiDrawer>
 
-    <a-modal
-      v-model:open="destructionApprovalOpen"
+    <UiDrawer
+      :open="destructionApprovalOpen"
       title="销毁审批"
+      :width="520"
       :confirm-loading="destructionApprovalSubmitting"
       ok-text="提交"
-      cancel-text="取消"
-      @ok="submitDestructionApproval"
+      :hide-footer="false"
+      @update:open="(v: boolean) => (destructionApprovalOpen = v)"
+      @close="destructionApprovalOpen = false"
+      @confirm="submitDestructionApproval"
     >
       <a-form layout="vertical">
         <a-form-item label="审批备注">
           <a-textarea v-model:value="destructionApprovalRemark" :rows="3" />
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiDrawer>
 
-    <a-modal
-      v-model:open="superviseModalOpen"
+    <UiDrawer
+      :open="superviseModalOpen"
       title="监销确认"
+      :width="520"
       :confirm-loading="superviseSubmitting"
       ok-text="确认"
-      cancel-text="取消"
-      @ok="submitSupervise"
+      :hide-footer="false"
+      @update:open="(v: boolean) => (superviseModalOpen = v)"
+      @close="superviseModalOpen = false"
+      @confirm="submitSupervise"
     >
       <a-form layout="vertical">
         <a-form-item label="见证人" required>
@@ -205,43 +317,58 @@
           />
         </a-form-item>
       </a-form>
-    </a-modal>
-  </section>
+    </UiDrawer>
+  </WorkbenchSurfaceCard>
 </template>
 
 <script setup lang="ts">
 import type {
   ArchiveAppraisalStatusCode,
-  ArchiveDestructionStatusCode,
-  ArchiveSecurityLevelCode,
+  ArchiveVolumeAppraisalFlowRecordVO,
   ArchiveVolumeAppraisalRequest,
+  ArchiveVolumeDestructionFlowRecordVO,
   ArchiveVolumeDetailVO,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
-import { computed, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import {
   approveArchiveVolumeAppraisal,
   approveArchiveVolumeDestruction,
-  ARCHIVE_APPRAISAL_STATUS_LABEL,
   ARCHIVE_APPRAISAL_STATUS_TONE,
-  ARCHIVE_DESTRUCTION_STATUS_LABEL,
   ARCHIVE_DESTRUCTION_STATUS_TONE,
-  ARCHIVE_SECURITY_LEVEL_LABEL,
+  ArchiveAppraisalStatusDescription,
+  ArchiveDestructionStatusCode,
+  ArchiveDestructionStatusDescription,
   confirmArchiveVolumeDestructionSupervision,
   executeArchiveVolumeDestruction,
+  listArchiveVolumeAppraisalFlowRecords,
+  listArchiveVolumeDestructionFlowRecords,
   recordArchiveVolumeAppraisalOpinion,
   rejectArchiveVolumeAppraisal,
   requestArchiveVolumeAppraisal,
   requestArchiveVolumeDestruction,
 } from '@/apis/mark/archive-volume'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { ArchiveAppraisalDecisionCode } from '@/types/enums/archive-appraisal-decision-enum'
+import { ArchiveDestructionDecisionCode } from '@/types/enums/archive-destruction-decision-enum'
+import {
+  buildArchiveDestructionLifecycleSteps,
+  getArchiveDestructionStepDescriptions,
+} from '@/utils/archive-volume-lifecycle'
 import { showUserError } from '@/utils/error-handler'
+import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeAppraisalPanel' })
@@ -259,6 +386,10 @@ const emit = defineEmits<{
 }>()
 
 const appraisalSubmitting = ref(false)
+const flowLoading = ref(false)
+const flowRecords = ref<ArchiveVolumeAppraisalFlowRecordVO[]>([])
+const destructionFlowLoading = ref(false)
+const destructionFlowRecords = ref<ArchiveVolumeDestructionFlowRecordVO[]>([])
 const destructionSubmitting = ref(false)
 const rejectAppraisalSubmitting = ref(false)
 const destructionApprovalSubmitting = ref(false)
@@ -272,17 +403,17 @@ const superviseModalOpen = ref(false)
 const rejectAppraisalReason = ref('')
 const destructionReason = ref('')
 const destructionApprovalRemark = ref('')
-const destructionApprovalDecision = ref<'APPROVED' | 'REJECTED'>('APPROVED')
+const destructionApprovalDecision = ref<ArchiveDestructionDecisionCode>(ArchiveDestructionDecisionCode.APPROVED)
 
 interface ArchiveVolumeAppraisalFormModel {
-  decision: ArchiveVolumeAppraisalRequest['decision']
+  decision: ArchiveAppraisalDecisionCode
   retentionExtensionYears: ArchiveVolumeAppraisalRequest['retentionExtensionYears']
   permanentRetention: boolean
   remark: string
 }
 
 const appraisalForm = reactive<ArchiveVolumeAppraisalFormModel>({
-  decision: 'RETAIN',
+  decision: ArchiveAppraisalDecisionCode.RETAIN,
   retentionExtensionYears: undefined,
   permanentRetention: false,
   remark: '',
@@ -321,13 +452,13 @@ const canRequestDestruction = computed(
   () =>
     props.canManageAppraisal
     && props.detail.volume.appraisalStatus === 'OPINION_RECORDED'
-    && props.detail.appraisalDecision === 'DESTROY'
-    && (props.detail.volume.destructionStatus === 'NONE'
-      || props.detail.volume.destructionStatus === 'FAILED'),
+    && props.detail.appraisalDecision === ArchiveAppraisalDecisionCode.DESTROY
+    && (props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.NONE
+      || props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.FAILED),
 )
 
 const canApproveDestructionAction = computed(() => {
-  if (!props.canApproveDestruction || props.detail.volume.destructionStatus !== 'REQUESTED') {
+  if (!props.canApproveDestruction || props.detail.volume.destructionStatus !== ArchiveDestructionStatusCode.REQUESTED) {
     return false
   }
   const requestUserId = props.detail.destructionRequestUserId
@@ -338,15 +469,122 @@ const canExecuteDestruction = computed(
   () =>
     props.canApproveDestruction
     && props.detail.volume.volumeStatus === 'STORED'
-    && props.detail.volume.destructionStatus === 'APPROVED',
+    && props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.APPROVED,
 )
 
 const canSuperviseDestruction = computed(
-  () => props.canApproveDestruction && props.detail.volume.destructionStatus === 'EXECUTED',
+  () => props.canApproveDestruction && props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.EXECUTED,
 )
 
+const destructionLifecycleSteps = computed(() =>
+  buildArchiveDestructionLifecycleSteps(props.detail.volume.destructionStatus ?? ArchiveDestructionStatusCode.NONE),
+)
+
+const destructionStepDescriptions = getArchiveDestructionStepDescriptions()
+
+const retentionDisplayText = computed(() => {
+  const vol = props.detail.volume
+  if (vol.permanentRetention) return '永久保管'
+  if (vol.retentionUntil) return vol.retentionUntil
+  if (vol.retentionYears) return `${vol.retentionYears} 年`
+  return '—'
+})
+
+function flowRecordTitle(record: ArchiveVolumeAppraisalFlowRecordVO): string {
+  const title = props.detail.volume.archiveTitle || props.detail.volume.archiveNo || '归档卷'
+  return `${title} · ${record.actionLabel || '鉴定'}`
+}
+
+function formatFlowRecordMeta(record: ArchiveVolumeAppraisalFlowRecordVO): string {
+  const actor = record.operatorNickName
+    || (record.eventType === 'RETENTION_REMINDER' ? '系统自动' : '—')
+  const time = record.occurredAt ? formatDateTime(record.occurredAt) : '—'
+  const parts: string[] = []
+  if (record.eventType === 'RETENTION_REMINDER' || record.eventType === 'APPRAISAL_REQUESTED') {
+    parts.push(`保管到期: ${retentionDisplayText.value}`)
+  }
+  if (props.detail.appraisalDecision && record.eventType === 'APPRAISAL_OPINION_RECORDED') {
+    parts.push(
+      `决议: ${props.detail.appraisalDecision === ArchiveAppraisalDecisionCode.RETAIN ? '继续保留' : '建议销毁'}`,
+    )
+  }
+  parts.push(`${actor} · ${time}`)
+  if (record.eventType === 'APPRAISAL_REJECTED' && record.reason) {
+    parts.push(record.reason)
+  }
+  return parts.join(' · ')
+}
+
+function isLatestFlowRecord(record: ArchiveVolumeAppraisalFlowRecordVO): boolean {
+  const records = flowRecords.value
+  if (!records.length || !record.eventId) return false
+  return records[records.length - 1]?.eventId === record.eventId
+}
+
+function showRecordActions(record: ArchiveVolumeAppraisalFlowRecordVO): boolean {
+  if (!isLatestFlowRecord(record)) return false
+  if (record.appraisalStatus === 'REQUESTED' && props.detail.volume.appraisalStatus === 'REQUESTED') {
+    return canApproveAppraisal.value || canRejectAppraisal.value
+  }
+  if (record.appraisalStatus === 'APPROVED' && props.detail.volume.appraisalStatus === 'APPROVED') {
+    return canRecordAppraisalOpinion.value
+  }
+  return false
+}
+
+async function loadAppraisalFlowRecords() {
+  flowLoading.value = true
+  try {
+    flowRecords.value = await listArchiveVolumeAppraisalFlowRecords(props.volumeId)
+  } catch (error) {
+    showUserError(error)
+    flowRecords.value = []
+  } finally {
+    flowLoading.value = false
+  }
+}
+
+function destructionFlowRecordTitle(record: ArchiveVolumeDestructionFlowRecordVO): string {
+  const title = props.detail.volume.archiveTitle || props.detail.volume.archiveNo || '归档卷'
+  return `${title} · ${record.actionLabel || '销毁'}`
+}
+
+function formatDestructionFlowRecordMeta(record: ArchiveVolumeDestructionFlowRecordVO): string {
+  const actor = record.operatorNickName || '—'
+  const time = record.occurredAt ? formatDateTime(record.occurredAt) : '—'
+  return `${actor} · ${time}`
+}
+
+async function loadDestructionFlowRecords() {
+  destructionFlowLoading.value = true
+  try {
+    destructionFlowRecords.value = await listArchiveVolumeDestructionFlowRecords(props.volumeId)
+  } catch (error) {
+    showUserError(error)
+    destructionFlowRecords.value = []
+  } finally {
+    destructionFlowLoading.value = false
+  }
+}
+
+async function loadFlowRecords() {
+  await Promise.all([loadAppraisalFlowRecords(), loadDestructionFlowRecords()])
+}
+
+function refreshPanel() {
+  emit('refreshed')
+  void loadFlowRecords()
+}
+
+function appraisalCardClass(status?: ArchiveAppraisalStatusCode): string {
+  if (status === 'APPROVED' || status === 'OPINION_RECORDED') return 'approval-card--approved'
+  if (status === 'REQUESTED' || status === 'REMINDER_SENT') return 'approval-card--pending'
+  if (status === 'REJECTED') return 'approval-card--rejected'
+  return ''
+}
+
 function appraisalStatusLabel(code: ArchiveAppraisalStatusCode) {
-  return strictEnumLabel(ARCHIVE_APPRAISAL_STATUS_LABEL, code, 'appraisalStatus')
+  return strictEnumLabel(ArchiveAppraisalStatusDescription, code, 'appraisalStatus')
 }
 
 function appraisalStatusTone(code: ArchiveAppraisalStatusCode): BadgeTone {
@@ -354,62 +592,18 @@ function appraisalStatusTone(code: ArchiveAppraisalStatusCode): BadgeTone {
 }
 
 function destructionStatusLabel(code: ArchiveDestructionStatusCode) {
-  return strictEnumLabel(ARCHIVE_DESTRUCTION_STATUS_LABEL, code, 'destructionStatus')
+  return strictEnumLabel(ArchiveDestructionStatusDescription, code, 'destructionStatus')
 }
 
 function destructionStatusTone(code: ArchiveDestructionStatusCode): BadgeTone {
   return strictEnumTone(ARCHIVE_DESTRUCTION_STATUS_TONE, code, 'destructionStatus')
 }
 
-function securityLevelLabel(code?: ArchiveSecurityLevelCode) {
-  if (!code) return '—'
-  return strictEnumLabel(ARCHIVE_SECURITY_LEVEL_LABEL, code, 'securityLevel')
-}
-
-function appraisalStepDone(step: 'request' | 'approve' | 'opinion') {
-  const status = props.detail.volume.appraisalStatus
-  if (!status) return false
-  if (step === 'request') {
-    return status !== 'NOT_DUE'
-  }
-  if (step === 'approve') {
-    return status === 'APPROVED' || status === 'OPINION_RECORDED'
-  }
-  return status === 'OPINION_RECORDED'
-}
-
-function destructionStepDone(step: 'request' | 'approve' | 'execute' | 'supervise') {
-  const status = props.detail.volume.destructionStatus
-  if (!status || status === 'NONE') return false
-  if (step === 'request') {
-    return true
-  }
-  if (step === 'approve') {
-    return (
-      status === 'APPROVED'
-      || status === 'EXECUTING'
-      || status === 'EXECUTED'
-      || status === 'SUPERVISED'
-      || status === 'LEDGER_ARCHIVED'
-      || status === 'FAILED'
-    )
-  }
-  if (step === 'execute') {
-    return (
-      status === 'EXECUTING'
-      || status === 'EXECUTED'
-      || status === 'SUPERVISED'
-      || status === 'LEDGER_ARCHIVED'
-    )
-  }
-  return status === 'LEDGER_ARCHIVED' || status === 'SUPERVISED'
-}
-
 async function handleApproveAppraisal() {
   try {
     await approveArchiveVolumeAppraisal(props.volumeId)
     message.success('鉴定审批通过')
-    emit('refreshed')
+    refreshPanel()
   } catch (error) {
     showUserError(error)
   }
@@ -433,7 +627,7 @@ async function submitRejectAppraisal() {
     })
     message.success('鉴定已驳回')
     rejectAppraisalOpen.value = false
-    emit('refreshed')
+    refreshPanel()
   } catch (error) {
     showUserError(error)
   } finally {
@@ -441,7 +635,7 @@ async function submitRejectAppraisal() {
   }
 }
 
-function openDestructionApproval(decision: 'APPROVED' | 'REJECTED') {
+function openDestructionApproval(decision: ArchiveDestructionDecisionCode) {
   destructionApprovalDecision.value = decision
   destructionApprovalRemark.value = ''
   destructionApprovalOpen.value = true
@@ -544,14 +738,14 @@ async function handleRequestAppraisal() {
   try {
     await requestArchiveVolumeAppraisal(props.volumeId)
     message.success('鉴定申请已提交')
-    emit('refreshed')
+    refreshPanel()
   } catch (error) {
     showUserError(error)
   }
 }
 
 function openAppraisalOpinion() {
-  appraisalForm.decision = 'RETAIN'
+  appraisalForm.decision = ArchiveAppraisalDecisionCode.RETAIN
   appraisalForm.retentionExtensionYears = undefined
   appraisalForm.permanentRetention = false
   appraisalForm.remark = ''
@@ -571,7 +765,7 @@ function syncAppraisalRetentionYears(value: string | number | null | undefined) 
 
 async function submitAppraisalOpinion() {
   if (
-    appraisalForm.decision === 'RETAIN'
+    appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN
     && !appraisalForm.permanentRetention
     && !appraisalForm.retentionExtensionYears
   ) {
@@ -584,16 +778,16 @@ async function submitAppraisalOpinion() {
       volumeId: props.volumeId,
       decision: appraisalForm.decision,
       retentionExtensionYears:
-        appraisalForm.decision === 'RETAIN' && !appraisalForm.permanentRetention
+        appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN && !appraisalForm.permanentRetention
           ? appraisalForm.retentionExtensionYears
           : undefined,
       permanentRetention:
-        appraisalForm.decision === 'RETAIN' ? appraisalForm.permanentRetention : undefined,
+        appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN ? appraisalForm.permanentRetention : undefined,
       remark: appraisalForm.remark.trim() || undefined,
     })
     message.success('鉴定决议已记录')
     appraisalModalOpen.value = false
-    emit('refreshed')
+    refreshPanel()
   } catch (error) {
     showUserError(error)
   } finally {
@@ -627,6 +821,17 @@ async function submitDestructionRequest() {
   }
 }
 
+onMounted(() => {
+  void loadFlowRecords()
+})
+
+watch(
+  () => props.volumeId,
+  () => {
+    void loadFlowRecords()
+  },
+)
+
 onUnmounted(() => {
   if (destructionPollTimer) {
     clearInterval(destructionPollTimer)
@@ -642,36 +847,106 @@ onUnmounted(() => {
   gap: var(--dp-space-4, 16px);
 }
 
-.archive-volume-appraisal-panel__lifecycle {
-  margin-bottom: var(--dp-space-3, 12px);
-}
-
-.archive-volume-appraisal-panel__steps {
-  margin: 0 0 var(--dp-space-4, 16px);
-  padding: 0;
-  list-style: none;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+.archive-volume-appraisal-panel__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: var(--dp-space-2, 8px);
 }
 
-.archive-volume-appraisal-panel__steps li {
-  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel);
-  font-size: 13px;
-  color: var(--dp-text-muted, #64748b);
+.archive-volume-appraisal-panel__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dp-text-primary, #0f172a);
 }
 
-.archive-volume-appraisal-panel__steps li.done {
-  border-color: var(--ant-color-primary-border, #91caff);
-  color: var(--dp-text-primary, #1e293b);
-  background: var(--dp-surface-subtle, #fafafa);
+.archive-volume-appraisal-panel__guide {
+  margin-bottom: var(--dp-space-2, 8px);
+}
+
+.archive-volume-appraisal-panel__section-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2, 8px);
+  margin-bottom: var(--dp-space-2, 8px);
+}
+
+.archive-volume-appraisal-panel__section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2, 8px);
+  margin-left: auto;
+}
+
+.archive-volume-appraisal-panel__section-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dp-text-primary, #0f172a);
+}
+
+.archive-volume-appraisal-panel__destruction-hint {
+  font-size: 12px;
+  color: var(--dp-text-secondary, #64748b);
+}
+
+.archive-volume-appraisal-panel__destruction-steps {
+  margin: var(--dp-space-2, 8px) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--dp-space-2, 8px);
+}
+
+.archive-volume-appraisal-panel__destruction-step {
+  display: flex;
+  gap: var(--dp-space-3, 12px);
+  font-size: 12px;
+}
+
+.archive-volume-appraisal-panel__destruction-step-label {
+  min-width: 60px;
+  font-weight: 600;
+  color: var(--dp-text-secondary, #64748b);
+}
+
+.archive-volume-appraisal-panel__destruction-step-desc {
+  color: var(--dp-text-primary, #0f172a);
+}
+
+.archive-volume-appraisal-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-2, 8px);
+}
+
+.archive-volume-appraisal-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-3, 12px);
+}
+
+.archive-volume-appraisal-panel__section--destruction {
+  padding-top: var(--dp-space-3, 12px);
+  border-top: 1px solid var(--dp-border-subtle, #e2e8f0);
+}
+
+.archive-volume-appraisal-panel__section-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dp-text-primary, #0f172a);
+}
+
+.archive-volume-appraisal-panel__pipe {
+  margin-bottom: var(--dp-space-4, 16px);
 }
 
 .archive-volume-appraisal-panel__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--dp-space-2, 8px);
+  width: 100%;
 }
 </style>

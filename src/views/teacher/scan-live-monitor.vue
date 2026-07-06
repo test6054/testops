@@ -1,14 +1,16 @@
 <template>
-  <div class="scan-monitor">
-    <UiEmpty
-      v-if="!selectedExamId"
-      description="未进入考试工作台"
-      class="scan-monitor__empty"
-    />
-    <template v-else>
-      <header class="scan-monitor__head">
-        <h2 class="scan-monitor__title">扫描监控中控台</h2>
-        <div class="scan-monitor__embedded-toolbar">
+  <StageWorkbenchShell class="scan-monitor">
+    <template v-if="selectedExamId" #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="contextBarTitle"
+        :subtitle="scanMonitorContextSubtitle"
+      >
+        <template #status>
+          <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
+            {{ examStatusLabel }}
+          </UiTag>
           <UiTag
             :tone="connectionTone"
             size="sm"
@@ -19,9 +21,11 @@
           <UiTag :tone="abnormalAttentionTotal > 0 ? 'red' : 'green'" size="sm">
             {{ abnormalAttentionTotal > 0 ? `${abnormalAttentionTotal} 条异常` : '无阻断异常' }}
           </UiTag>
-          <UiTag :tone="duplicateAttentionTotal > 0 ? 'purple' : 'green'" size="sm">
+          <UiTag :tone="duplicateAttentionTotal > 0 ? 'orange' : 'green'" size="sm">
             {{ duplicateAttentionTotal > 0 ? `${duplicateAttentionTotal} 条重复` : '无重复影像' }}
           </UiTag>
+        </template>
+        <template #actions>
           <UiButton
             v-if="abnormalAttentionTotal > 0"
             size="sm"
@@ -38,95 +42,147 @@
           >
             影像账本
           </UiButton>
-        </div>
-      </header>
-      <div class="scan-monitor__overview">
-        <SignalBand
-          :metrics="scanMonitorSignalMetrics"
-          compact
-          class="scan-monitor__stats"
-        />
-        <UiCard :show-header="false" compact class="scan-monitor__health-card">
-          <MarkGaugeBlock v-bind="healthGaugeBlockProps">
-            <ul class="mark-gauge-block__detail-list">
-              <li>实时事件 {{ liveEvents.length }} 条</li>
-              <li>异常阻断 {{ abnormalAttentionTotal }} 条</li>
-              <li>重复影像 {{ duplicateAttentionTotal }} 条</li>
-            </ul>
-          </MarkGaugeBlock>
-        </UiCard>
-      </div>
+        </template>
+      </ContextBar>
+    </template>
 
-      <UiSectionTabs
-        v-model="activeTab"
-        :items="monitorTabs"
+    <template v-if="selectedExamId" #signal>
+      <SignalBand
+        variant="tiles"
+        :metrics="scanMonitorSignalMetrics"
         compact
-        class="scan-monitor__tabs"
-      >
-        <UiFilterBar
-          v-model="filterModel"
-          :fields="monitorFilterFields"
-          show-labels
-          search-text="查询"
-          @search="handleMonitorFilterSearch"
-          @reset="resetFilter"
-        >
-          <template v-if="hasMonitorScanBatchFilter" #field-scanBatchId>
-            <UiSelect
-              v-model="filterForm.scanBatchId"
-              placeholder="选择扫描批次"
-              :options="scanBatchOptions"
-              :loading="scanBatchesLoading"
-              allow-search
-              :filter-option="false"
-              @search="handleScanBatchSearch"
-              @dropdown-visible-change="handleScanBatchDropdownVisibleChange"
-              @change="handleScanBatchFilterChange"
-            />
-          </template>
-          <template v-if="activeTab !== 'normal'" #field-paperInstanceId>
-            <UiSelect
-              v-model="filterForm.paperInstanceId"
-              placeholder="选择答题卡"
-              :options="paperCandidateOptions"
-              :loading="paperCandidatesLoading"
-              allow-search
-              :filter-option="false"
-              @search="handlePaperCandidateSearch"
-              @dropdown-visible-change="handlePaperCandidateDropdownVisibleChange"
-              @change="handlePaperCandidateFilterChange"
-            />
-          </template>
-        </UiFilterBar>
+        class="scan-monitor__stats"
+        @metric-click="handleScanMonitorMetricClick"
+      />
+    </template>
+
+    <UiEmpty
+      v-if="!selectedExamId"
+      description="未进入考试工作台"
+      class="scan-monitor__empty"
+    />
+    <template v-else>
+      <ExamWorkspaceJourneySubNav />
+
+      <UiAlertStrip
+        v-if="scanMonitorPanelLoadFailed"
+        tone="error"
+        title="扫描监控指标加载失败"
+        description="批次汇总与实时指标暂不可用，请刷新后重试。"
+        dense
+        class="scan-monitor__panel-alert"
+      />
+
+      <ScanDeviceCardGrid
+        class="scan-monitor__devices"
+        :devices="scannerDevices"
+        :loading="scannerDevicesLoading"
+        :selected-device-id="filterForm.monitorDeviceId"
+        @select="handleMonitorDeviceSelect"
+      />
+
+      <WorkbenchSurfaceCard flush class="scan-monitor__surface">
+        <template #head>
+          <UiSectionTabs
+            v-model="activeTab"
+            :items="monitorTabs"
+            compact
+            divided
+            class="scan-monitor__tabs"
+          />
+        </template>
+
+        <template #toolbar>
+          <span class="scan-monitor__flow-hint">{{ SCAN_MONITOR_FLOW_HINT }}</span>
+          <UiFilterBar
+            v-model="filterModel"
+            :fields="monitorFilterFields"
+            show-labels
+            search-text="查询"
+            @search="handleMonitorFilterSearch"
+            @reset="resetFilter"
+          >
+            <template v-if="hasMonitorScanBatchFilter" #field-scanBatchId>
+              <UiSelect
+                v-model="filterForm.scanBatchId"
+                placeholder="选择扫描批次"
+                :options="scanBatchOptions"
+                :loading="scanBatchesLoading"
+                allow-search
+                :filter-option="false"
+                @search="handleScanBatchSearch"
+                @dropdown-visible-change="handleScanBatchDropdownVisibleChange"
+                @change="handleScanBatchFilterChange"
+              />
+            </template>
+            <template v-if="activeTab !== 'normal'" #field-paperInstanceId>
+              <UiSelect
+                v-model="filterForm.paperInstanceId"
+                placeholder="选择答题卡"
+                :options="paperCandidateOptions"
+                :loading="paperCandidatesLoading"
+                allow-search
+                :filter-option="false"
+                @search="handlePaperCandidateSearch"
+                @dropdown-visible-change="handlePaperCandidateDropdownVisibleChange"
+                @change="handlePaperCandidateFilterChange"
+              />
+            </template>
+          </UiFilterBar>
+        </template>
 
         <section v-if="activeTab === 'normal'" class="scan-monitor__normal-panel">
           <UiDataTable
-            pagination-mode="none"
+            v-model:current="monitorBatchPagination.current"
+            v-model:page-size="monitorBatchPagination.pageSize"
             class="student-detail-table__data-table"
-            :columns="normalEventColumns"
-            :data-source="filteredLiveEvents"
-            :loading="scanLiveStreaming && !scanLiveReady"
-            :show-pagination="false"
+            :columns="monitorBatchColumns"
+            :data-source="monitorBatches"
+            :loading="monitorBatchLoading"
+            :total="monitorBatchPagination.total"
+            :scroll="{ x: 1340 }"
+            row-key="scanBatchId"
             flat
-            :total="filteredLiveEvents.length"
-            row-key="eventId"
             empty-kind="first-run"
             :empty-description="normalTableEmptyDescription"
+            @page-change="handleMonitorBatchPageChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'batchNo'">
-                {{ record.batchExternalNo || record.reportId || record.eventId }}
+                <a-typography-text strong :content="record.batchNo" />
+                <div v-if="record.batchExternalNo" class="scan-monitor__hint">{{ record.batchExternalNo }}</div>
               </template>
               <template v-else-if="column.key === 'status'">
-                <UiTag :tone="scanEventStatusTone(record.status)" size="sm">
-                  {{ scanEventStatusLabel(record.status) }}
+                <UiTag :tone="monitorBatchStatusTone(record)" size="sm">
+                  {{ monitorBatchStatusLabel(record) }}
                 </UiTag>
               </template>
-              <template v-else-if="column.key === 'scanTime'">
-                {{ formatTimeOfDay(record.scanEndTime || record.createTime) }}
+              <template v-else-if="column.key === 'pageCount'">
+                {{ record.pageCount ?? 0 }}
+              </template>
+              <template v-else-if="column.key === 'boundPaperCount'">
+                {{ record.boundPaperCount ?? 0 }}
+              </template>
+              <template v-else-if="column.key === 'pageProgress'">
+                {{ record.receivedPageCount ?? 0 }} / {{ record.pageCount ?? 0 }}
+              </template>
+              <template v-else-if="column.key === 'scannerDevice'">
+                {{ formatMonitorBatchDeviceLabel(record.scannerDeviceId) }}
+              </template>
+              <template v-else-if="column.key === 'operatorDisplayName'">
+                {{ record.operatorDisplayName ?? '—' }}
+              </template>
+              <template v-else-if="column.key === 'dpi'">
+                {{ record.scanConfig?.dpi ? `${record.scanConfig.dpi} DPI` : '—' }}
+              </template>
+              <template v-else-if="column.key === 'scanStartTime'">
+                {{ formatDateTimeWithSeconds(record.scanStartTime) }}
+              </template>
+              <template v-else-if="column.key === 'scanEndTime'">
+                {{ record.scanEndTime ? formatDateTimeWithSeconds(record.scanEndTime) : '—' }}
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiTextAction @click="openScanEventDetail(record)">查看详情</UiTextAction>
+                <UiTextAction @click="openMonitorBatchDetail(record)">详情</UiTextAction>
               </template>
             </template>
           </UiDataTable>
@@ -219,14 +275,14 @@
                     OCR/AI 复核
                   </UiTextAction>
                   <UiTextAction
-                    v-else-if="record.attentionType === 'DUPLICATE_PENDING'"
+                    v-else-if="record.attentionType === ScanAttentionTypeCode.DUPLICATE_PENDING"
                     tone="primary"
                     @click="goToScanLedger"
                   >
                     去影像账本处置
                   </UiTextAction>
                   <UiTextAction
-                    v-else-if="record.attentionType === 'QUALITY_BLOCK' || record.attentionType === 'PROCESSING_BLOCK'"
+                    v-else-if="record.attentionType === ScanAttentionTypeCode.QUALITY_BLOCK || record.attentionType === ScanAttentionTypeCode.PROCESSING_BLOCK"
                     tone="primary"
                     @click="openDetail(record)"
                   >
@@ -246,299 +302,286 @@
             </template>
           </UiDataTable>
         </section>
-      </UiSectionTabs>
-    </template>
+      </WorkbenchSurfaceCard>
 
-    <UiDrawer
-      :open="liveDrawerOpen"
-      title="扫描事件详情"
-      :width="520"
-      hide-footer
-      @update:open="(v: boolean) => (liveDrawerOpen = v)"
-      @close="liveDrawerOpen = false"
-    >
-      <a-descriptions v-if="currentEvent" :column="1" size="small" bordered>
-        <a-descriptions-item label="事件ID">{{ currentEvent.eventId }}</a-descriptions-item>
-        <a-descriptions-item label="状态">
-          {{ scanEventStatusLabel(currentEvent.status) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="扫描站点">
-          {{ currentEvent.scannerStationId }}
-        </a-descriptions-item>
-        <a-descriptions-item label="扫描设备">
-          {{ currentEvent.scannerDeviceId }}
-        </a-descriptions-item>
-        <a-descriptions-item label="批次号">
-          {{ currentEvent.batchExternalNo || currentEvent.reportId || '-' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="页数">{{ currentEvent.pageCount }}</a-descriptions-item>
-        <a-descriptions-item label="文件数">{{ currentEvent.sourceFileCount }}</a-descriptions-item>
-        <a-descriptions-item label="入库时间">
-          {{ formatDateTimeWithSeconds(currentEvent.createTime) }}
-        </a-descriptions-item>
-      </a-descriptions>
-    </UiDrawer>
+      <ScanBatchDetailDrawer
+        v-model:open="batchDetailDrawerOpen"
+        :exam-id="selectedExamId || ''"
+        :scan-batch-id="batchDetailBatchId"
+        :batch-summary="batchDetailSummary"
+        @updated="handleMonitorBatchUpdated"
+      />
 
-    <!-- 身份绑定抽屉 -->
-    <UiDrawer
-      :open="bindDrawerOpen"
-      title="试卷身份绑定"
-      :width="560"
-      :confirm-loading="binding"
-      @update:open="(v: boolean) => (bindDrawerOpen = v)"
-      @close="bindDrawerOpen = false"
-      @confirm="handleBind"
-    >
-      <a-form ref="bindFormRef" :model="bindForm" :rules="bindFormRules" layout="vertical">
-        <section class="scan-monitor__identity-evidence">
-          <div class="scan-monitor__identity-evidence-header">
-            <div>
-              <h3 class="scan-monitor__identity-evidence-title">身份区证据对比</h3>
-              <p class="scan-monitor__identity-evidence-subtitle">
-                左侧为 OCR 自动裁切身份区，右侧为原始扫描页，用于人工核对姓名、学号与卷面来源
-              </p>
+      <!-- 身份绑定抽屉 -->
+      <UiDrawer
+        :open="bindDrawerOpen"
+        title="试卷身份绑定"
+        :width="560"
+        :confirm-loading="binding"
+        :hide-footer="false"
+        @update:open="(v: boolean) => (bindDrawerOpen = v)"
+        @close="bindDrawerOpen = false"
+        @confirm="handleBind"
+      >
+        <a-form ref="bindFormRef" :model="bindForm" :rules="bindFormRules" layout="vertical">
+          <section class="scan-monitor__identity-evidence">
+            <div class="scan-monitor__identity-evidence-header">
+              <div>
+                <h3 class="scan-monitor__identity-evidence-title">身份区证据对比</h3>
+                <p class="scan-monitor__identity-evidence-subtitle">
+                  左侧为 OCR 自动裁切身份区，右侧为原始扫描页，用于人工核对姓名、学号与卷面来源
+                </p>
+              </div>
+              <UiTag :tone="bindIdentitySliceFileId && bindSourcePageFileId ? 'blue' : 'orange'" size="sm">
+                {{ bindIdentitySliceFileId && bindSourcePageFileId ? '双证据' : '证据缺失' }}
+              </UiTag>
             </div>
-            <UiTag :tone="bindIdentitySliceFileId && bindSourcePageFileId ? 'blue' : 'orange'" size="sm">
-              {{ bindIdentitySliceFileId && bindSourcePageFileId ? '双证据' : '证据缺失' }}
-            </UiTag>
-          </div>
-          <div class="scan-monitor__identity-compare">
-            <div class="scan-monitor__identity-pane">
-              <div class="scan-monitor__identity-pane-title">手写身份区切片</div>
-              <a-skeleton
-                v-if="bindIdentitySliceLoading"
-                active
-                :paragraph="{ rows: 3 }"
-                class="scan-monitor__identity-skeleton"
-              />
-              <ScanImageStage
-                v-else-if="bindIdentitySliceImageUrl"
-                :src="bindIdentitySliceImageUrl"
-                :confidential="isExamConfidential"
-                :exam-label="examConfidentialLabel"
-                :watermark-lines="watermarkLines"
-                :min-height="220"
-                caption="手写身份区切片"
-                empty-text="暂无数据"
-              />
-              <UiEmpty
-                v-else
-                description="暂无数据"
-                class="scan-monitor__identity-empty"
-              />
+            <div class="scan-monitor__identity-compare">
+              <div class="scan-monitor__identity-pane">
+                <div class="scan-monitor__identity-pane-title">手写身份区切片</div>
+                <UiSkeletonState
+                  v-if="bindIdentitySliceLoading"
+                  variant="card"
+                  compact
+                  class="scan-monitor__identity-skeleton"
+                />
+                <ScanImageStage
+                  v-else-if="bindIdentitySliceImageUrl"
+                  :src="bindIdentitySliceImageUrl"
+                  :confidential="isExamConfidential"
+                  :exam-label="examConfidentialLabel"
+                  :watermark-lines="watermarkLines"
+                  :min-height="220"
+                  caption="手写身份区切片"
+                  empty-text="暂无数据"
+                />
+                <UiEmpty
+                  v-else
+                  description="暂无数据"
+                  class="scan-monitor__identity-empty"
+                />
+              </div>
+              <div class="scan-monitor__identity-pane">
+                <div class="scan-monitor__identity-pane-title">原始扫描页</div>
+                <UiSkeletonState
+                  v-if="bindSourcePageLoading"
+                  variant="card"
+                  compact
+                  class="scan-monitor__identity-skeleton"
+                />
+                <ScanImageStage
+                  v-else-if="bindSourcePageImageUrl"
+                  :src="bindSourcePageImageUrl"
+                  :confidential="isExamConfidential"
+                  :exam-label="examConfidentialLabel"
+                  :watermark-lines="watermarkLines"
+                  :min-height="220"
+                  caption="原始扫描页"
+                  empty-text="暂无数据"
+                />
+                <UiEmpty
+                  v-else
+                  description="暂无数据"
+                  class="scan-monitor__identity-empty"
+                />
+              </div>
             </div>
-            <div class="scan-monitor__identity-pane">
-              <div class="scan-monitor__identity-pane-title">原始扫描页</div>
-              <a-skeleton
-                v-if="bindSourcePageLoading"
-                active
-                :paragraph="{ rows: 3 }"
-                class="scan-monitor__identity-skeleton"
-              />
-              <ScanImageStage
-                v-else-if="bindSourcePageImageUrl"
-                :src="bindSourcePageImageUrl"
-                :confidential="isExamConfidential"
-                :exam-label="examConfidentialLabel"
-                :watermark-lines="watermarkLines"
-                :min-height="220"
-                caption="原始扫描页"
-                empty-text="暂无数据"
-              />
-              <UiEmpty
-                v-else
-                description="暂无数据"
-                class="scan-monitor__identity-empty"
-              />
-            </div>
-          </div>
-        </section>
-        <a-form-item label="扫描批次">
-          <a-input :value="bindForm.scanBatchDisplayName" disabled />
-        </a-form-item>
-        <a-form-item label="答卷">
-          <a-input :value="bindForm.paperDisplayName" disabled />
-        </a-form-item>
-        <a-form-item label="识别学号（可选，留空表示未能识别）" name="recognizedStudentNo">
-          <a-input
-            v-model:value="bindForm.recognizedStudentNo"
-            placeholder="OCR / 二维码识别到的学号线索，供后续审计使用"
-            :maxlength="64"
-          />
-        </a-form-item>
-        <a-form-item label="正确考生（从当前考试名册选择）" name="confirmedCandidateRosterId">
-          <a-select
-            v-model:value="bindForm.confirmedCandidateRosterId"
-            placeholder="按姓名或学号搜索"
-            show-search
-            :options="candidateOptions"
-            :filter-option="filterCandidate"
-            :loading="candidatesLoading"
-            allow-clear
-          />
-        </a-form-item>
-        <a-row :gutter="16">
-          <a-col :span="12">
-            <a-form-item label="答卷状态" name="attemptStatus">
-              <a-select
-                v-model:value="bindForm.attemptStatus"
-                placeholder="选择答卷状态"
-                :options="batchAttemptStatusOptions"
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="答卷编号（可选）">
-              <a-input
-                v-model:value="bindForm.attemptNo"
-                placeholder="多试卷时区分"
-                :maxlength="32"
-              />
-            </a-form-item>
-          </a-col>
-        </a-row>
-      </a-form>
-    </UiDrawer>
-
-    <!-- 批量身份绑定抽屉 -->
-    <UiDrawer
-      :open="batchBindDrawerOpen"
-      title="批量试卷身份绑定"
-      :width="880"
-      :confirm-loading="batchBinding"
-      @update:open="(v: boolean) => (batchBindDrawerOpen = v)"
-      @close="closeBatchBindDrawer"
-      @confirm="submitBatchBind"
-    >
-      <div v-if="batchBindResult" class="scan-monitor__batch-result">
-        <div v-if="batchBindFailedItems.length > 0" class="scan-monitor__batch-failures">
-          <div
-            v-for="item in batchBindFailedItems"
-            :key="item.paperInstanceId"
-            class="scan-monitor__batch-failure"
-          >
-            <a-typography-text
-              strong
-              :content="batchBindRowDisplayNameMap.get(item.paperInstanceId)"
-            />
-            <span>{{ item.errorMessage }}</span>
-          </div>
-        </div>
-      </div>
-      <div class="scan-monitor__batch-list">
-        <div v-for="row in batchBindRows" :key="row.attentionId" class="scan-monitor__batch-row">
-          <div class="scan-monitor__batch-main">
-            <a-typography-text strong :content="row.paperDisplayName" />
-            <span class="scan-monitor__hint">{{ row.scanBatchDisplayName }}</span>
-            <span v-if="row.diagnostic" class="scan-monitor__batch-diagnostic">
-              {{ scanAttentionDiagnosticText(row.diagnostic) }}
-            </span>
-          </div>
-          <div class="scan-monitor__batch-form">
+          </section>
+          <a-form-item label="扫描批次">
+            <a-input :value="bindForm.scanBatchDisplayName" disabled />
+          </a-form-item>
+          <a-form-item label="答卷">
+            <a-input :value="bindForm.paperDisplayName" disabled />
+          </a-form-item>
+          <a-form-item label="识别学号（可选，留空表示未能识别）" name="recognizedStudentNo">
             <a-input
-              v-model:value="row.recognizedStudentNo"
-              placeholder="识别学号"
+              v-model:value="bindForm.recognizedStudentNo"
+              placeholder="OCR / 二维码识别到的学号线索，供后续审计使用"
               :maxlength="64"
-              class="scan-monitor__batch-input"
             />
+          </a-form-item>
+          <a-form-item label="正确考生（从当前考试名册选择）" name="confirmedCandidateRosterId">
             <a-select
-              v-model:value="row.confirmedCandidateRosterId"
-              placeholder="选择正确考生"
+              v-model:value="bindForm.confirmedCandidateRosterId"
+              placeholder="按姓名或学号搜索"
               show-search
               :options="candidateOptions"
               :filter-option="filterCandidate"
               :loading="candidatesLoading"
-              class="scan-monitor__batch-candidate"
               allow-clear
             />
-            <a-select
-              v-model:value="row.attemptStatus"
-              placeholder="作答状态"
-              :options="batchAttemptStatusOptions"
-              class="scan-monitor__batch-attempt-status"
-            />
-            <a-input
-              v-model:value="row.attemptNo"
-              placeholder="答卷编号（可选）"
-              :maxlength="32"
-              class="scan-monitor__batch-attempt-no"
-            />
+          </a-form-item>
+          <a-row :gutter="16">
+            <a-col :span="12">
+              <a-form-item label="答卷状态" name="attemptStatus">
+                <a-select
+                  v-model:value="bindForm.attemptStatus"
+                  placeholder="选择答卷状态"
+                  :options="batchAttemptStatusOptions"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :span="12">
+              <a-form-item label="答卷编号（可选）">
+                <a-input
+                  v-model:value="bindForm.attemptNo"
+                  placeholder="多试卷时区分"
+                  :maxlength="32"
+                />
+              </a-form-item>
+            </a-col>
+          </a-row>
+        </a-form>
+      </UiDrawer>
+
+      <!-- 批量身份绑定抽屉 -->
+      <UiDrawer
+        :open="batchBindDrawerOpen"
+        title="批量试卷身份绑定"
+        :width="880"
+        :confirm-loading="batchBinding"
+        :hide-footer="false"
+        @update:open="(v: boolean) => (batchBindDrawerOpen = v)"
+        @close="closeBatchBindDrawer"
+        @confirm="submitBatchBind"
+      >
+        <div v-if="batchBindResult" class="scan-monitor__batch-result">
+          <div v-if="batchBindFailedItems.length > 0" class="scan-monitor__batch-failures">
+            <div
+              v-for="item in batchBindFailedItems"
+              :key="item.paperInstanceId"
+              class="scan-monitor__batch-failure"
+            >
+              <a-typography-text
+                strong
+                :content="batchBindRowDisplayNameMap.get(item.paperInstanceId)"
+              />
+              <span>{{ item.errorMessage }}</span>
+            </div>
           </div>
         </div>
-      </div>
-    </UiDrawer>
-
-    <!-- 详情抽屉 -->
-    <UiDrawer
-      :open="detailDrawerOpen"
-      title="异常详情"
-      :width="560"
-      hide-footer
-      @update:open="(v: boolean) => (detailDrawerOpen = v)"
-      @close="detailDrawerOpen = false"
-    >
-      <a-descriptions v-if="detailRecord" :column="1" size="small" bordered>
-        <a-descriptions-item label="异常类型">
-          {{ attentionTypeLabel(detailRecord.attentionType) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="状态">
-          {{ scanAttentionStatusLabel(detailRecord) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="来源">
-          {{ sourceTypeLabel(detailRecord.sourceType) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="来源说明">
-          {{ detailRecord.sourceDisplayName }}
-        </a-descriptions-item>
-        <a-descriptions-item label="扫描批次">
-          {{ detailRecord.scanBatchDisplayName }}
-        </a-descriptions-item>
-        <a-descriptions-item label="答题卡">
-          {{ detailRecord.paperDisplay.primaryText }}
-        </a-descriptions-item>
-        <a-descriptions-item label="扫描页">{{ detailRecord.pageDisplayName }}</a-descriptions-item>
-        <a-descriptions-item label="题目">
-          {{ detailRecord.questionDisplayName }}
-        </a-descriptions-item>
-        <a-descriptions-item label="处理说明">
-          <div class="scan-monitor__diagnostic-text">
-            {{ scanAttentionDiagnosticText(detailRecord.diagnostic) }}
+        <div class="scan-monitor__batch-list">
+          <div v-for="row in batchBindRows" :key="row.attentionId" class="scan-monitor__batch-row">
+            <div class="scan-monitor__batch-main">
+              <a-typography-text strong :content="row.paperDisplayName" />
+              <span class="scan-monitor__hint">{{ row.scanBatchDisplayName }}</span>
+              <span v-if="row.diagnostic" class="scan-monitor__batch-diagnostic">
+                {{ scanAttentionDiagnosticText(row.diagnostic) }}
+              </span>
+            </div>
+            <div class="scan-monitor__batch-form">
+              <a-input
+                v-model:value="row.recognizedStudentNo"
+                placeholder="识别学号"
+                :maxlength="64"
+                class="scan-monitor__batch-input"
+              />
+              <a-select
+                v-model:value="row.confirmedCandidateRosterId"
+                placeholder="选择正确考生"
+                show-search
+                :options="candidateOptions"
+                :filter-option="filterCandidate"
+                :loading="candidatesLoading"
+                class="scan-monitor__batch-candidate"
+                allow-clear
+              />
+              <a-select
+                v-model:value="row.attemptStatus"
+                placeholder="作答状态"
+                :options="batchAttemptStatusOptions"
+                class="scan-monitor__batch-attempt-status"
+              />
+              <a-input
+                v-model:value="row.attemptNo"
+                placeholder="答卷编号（可选）"
+                :maxlength="32"
+                class="scan-monitor__batch-attempt-no"
+              />
+            </div>
           </div>
-        </a-descriptions-item>
-        <a-descriptions-item label="更新时间">
-          {{ formatDateTimeWithSeconds(detailRecord.updateTime) }}
-        </a-descriptions-item>
-      </a-descriptions>
-    </UiDrawer>
+        </div>
+      </UiDrawer>
 
-    <a-modal
-      v-model:open="pageDiscardModalOpen"
-      title="废弃扫描页"
-      ok-text="废弃"
-      ok-type="danger"
-      cancel-text="取消"
-      :confirm-loading="Boolean(pageDiscarding)"
-      @ok="confirmDiscardPage"
-      @cancel="closePageDiscardModal"
-    >
-      <a-form layout="vertical">
-        <a-form-item
-          label="废弃原因"
-          required
-          :validate-status="pageDiscardReasonError ? 'error' : undefined"
-          :help="pageDiscardReasonError"
-        >
-          <a-textarea
-            v-model:value="pageDiscardReason"
-            placeholder="请输入废弃原因（必填，1-255 字）"
-            :maxlength="255"
-            show-count
-            :rows="4"
-          />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-  </div>
+      <!-- 详情抽屉 -->
+      <UiDrawer
+        :open="detailDrawerOpen"
+        title="异常详情"
+        :width="560"
+        hide-footer
+        @update:open="(v: boolean) => (detailDrawerOpen = v)"
+        @close="detailDrawerOpen = false"
+      >
+        <a-descriptions v-if="detailRecord" :column="1" size="small" bordered>
+          <a-descriptions-item label="异常类型">
+            {{ attentionTypeLabel(detailRecord.attentionType) }}
+          </a-descriptions-item>
+          <a-descriptions-item label="状态">
+            {{ scanAttentionStatusLabel(detailRecord) }}
+          </a-descriptions-item>
+          <a-descriptions-item label="来源">
+            {{ sourceTypeLabel(detailRecord.sourceType) }}
+          </a-descriptions-item>
+          <a-descriptions-item label="来源说明">
+            {{ detailRecord.sourceDisplayName }}
+          </a-descriptions-item>
+          <a-descriptions-item label="扫描批次">
+            {{ detailRecord.scanBatchDisplayName }}
+          </a-descriptions-item>
+          <a-descriptions-item label="答题卡">
+            {{ detailRecord.paperDisplay.primaryText }}
+          </a-descriptions-item>
+          <a-descriptions-item label="扫描页">{{ detailRecord.pageDisplayName }}</a-descriptions-item>
+          <a-descriptions-item label="题目">
+            {{ detailRecord.questionDisplayName }}
+          </a-descriptions-item>
+          <a-descriptions-item label="处理说明">
+            <div class="scan-monitor__diagnostic-text">
+              {{ scanAttentionDiagnosticText(detailRecord.diagnostic) }}
+            </div>
+          </a-descriptions-item>
+          <a-descriptions-item label="更新时间">
+            {{ formatDateTimeWithSeconds(detailRecord.updateTime) }}
+          </a-descriptions-item>
+        </a-descriptions>
+      </UiDrawer>
+
+      <UiDrawer
+        v-model:open="pageDiscardModalOpen"
+        title="废弃扫描页"
+        :width="480"
+        hide-footer
+        @close="closePageDiscardModal"
+      >
+        <a-form layout="vertical">
+          <a-form-item
+            label="废弃原因"
+            required
+            :validate-status="pageDiscardReasonError ? 'error' : undefined"
+            :help="pageDiscardReasonError"
+          >
+            <a-textarea
+              v-model:value="pageDiscardReason"
+              placeholder="请输入废弃原因（必填，1-255 字）"
+              :maxlength="255"
+              show-count
+              :rows="4"
+            />
+          </a-form-item>
+        </a-form>
+        <template #footer>
+          <UiButton variant="outline" @click="closePageDiscardModal">取消</UiButton>
+          <UiButton
+            status="danger"
+            :loading="Boolean(pageDiscarding)"
+            @click="confirmDiscardPage"
+          >
+            废弃
+          </UiButton>
+        </template>
+      </UiDrawer>
+    </template>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
@@ -555,92 +598,126 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamPaperBatchBindResultVO, ExamScannerDeviceVO } from '@/apis/mark/exam-mark-scanner'
+import type {WorkbenchScanMonitorPanelVO} from '@/apis/mark/exam-progress';
 import type {
   ExamScannerBatchVO,
   ScanAttentionItemVO,
-  ScanAttentionQueryGroupCode,
   ScanAttentionSourceTypeCode,
-  ScanAttentionTypeCode,
+  ScanBatchStatusCode,
 } from '@/apis/mark/exam-scan'
 import type {
   CandidateStatusCode,
   ExamCandidateVO,
 } from '@/apis/mark/exam-scope'
 import type { ExamScoreSummaryItemVO } from '@/apis/mark/exam-score'
-import type { ScanLiveEventVO } from '@/apis/mark/scan-live'
 import type { BadgeTone, FilterField, UiSectionTabItem, UiSelectOption } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
-  DUPLICATE_RESOLUTION_STATUS_LABEL,
   DUPLICATE_RESOLUTION_STATUS_TONE,
+  DuplicateResolutionStatusDescription,
 } from '@/apis/mark/duplicate-resolution-status'
 import {
-  BINDING_STATUS_LABEL,
+  BindingStatusDescription,
   bindPaper,
 } from '@/apis/mark/exam-binding'
 import { batchBindPapers, isScannerDeviceOnline, listActiveScannerDevices } from '@/apis/mark/exam-mark-scanner'
+import { getScanMonitorPanel } from '@/apis/mark/exam-progress'
 import {
   listScanAttentions,
   pageScannerBatches,
-  QUALITY_DECISION_LABEL,
   QUALITY_DECISION_TONE,
-  SCAN_ATTENTION_SOURCE_TYPE_LABEL,
-  SCAN_ATTENTION_TYPE_LABEL,
+  QualityDecisionDescription,
+  SCAN_ATTENTION_TYPE_OPTIONS,
   SCAN_ATTENTION_TYPE_TONE,
-  SCAN_BATCH_STATUS_LABEL,
-  validateScanAttentionItemContract,
+  SCAN_BATCH_STATUS_OPTIONS,
+  SCAN_BATCH_STATUS_TONE,
+  SCAN_MONITOR_FLOW_HINT,
+  ScanAttentionQueryGroupCode,
+  ScanAttentionSourceTypeDescription,
+  ScanAttentionTypeCode,
+  ScanAttentionTypeDescription,
+  ScanBatchStatusDescription,
 } from '@/apis/mark/exam-scan'
 import {
-  CANDIDATE_STATUS_LABEL,
+  CandidateStatusDescription,
   listExamCandidates,
 } from '@/apis/mark/exam-scope'
 import { pageExamScoreSummary } from '@/apis/mark/exam-score'
-import { FINAL_SCORE_STATUS_LABEL } from '@/apis/mark/final-score-status'
-import { GRADE_STATUS_LABEL, GRADE_STATUS_TONE } from '@/apis/mark/grade-status'
-import { SCAN_EVENT_STATUS_LABEL, SCAN_EVENT_STATUS_TONE } from '@/apis/mark/scan-live'
+import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
+import { GRADE_STATUS_TONE, GradeStatusDescription } from '@/apis/mark/grade-status'
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
-import { TASK_STATUS_LABEL, TASK_STATUS_TONE } from '@/apis/mark/task-status'
-import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
+import { TASK_STATUS_TONE, TaskStatusDescription } from '@/apis/mark/task-status'
+import ScanBatchDetailDrawer from '@/components/mark/ScanBatchDetailDrawer.vue'
+import ScanDeviceCardGrid from '@/components/mark/ScanDeviceCardGrid.vue'
 import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
 import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
-import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
-import { formatDateTimeWithSeconds, formatTimeOfDay } from '@/utils/format'
-import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
-import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
+import { formatDateTimeWithSeconds } from '@/utils/format'
 import mittBus from '@/utils/mitt'
 import { readArrayResponse, readPageList, readPageTotal } from '@/utils/page-result'
-import { toneToColor } from '@/utils/score-tone'
 import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanLiveMonitor' })
 
 const SCAN_BATCH_FILTER_PAGE_SIZE = 50
+const MONITOR_BATCH_PAGE_SIZE = 10
 const PAPER_CANDIDATE_FILTER_PAGE_SIZE = 50
 
 const router = useRouter()
+const route = useRoute()
 
+enum ScanMonitorTabQuery {
+  NORMAL = 'normal',
+  ABNORMAL = 'abnormal',
+  DUPLICATE = 'duplicate',
+}
+
+function isScanMonitorTabQuery(value: unknown): value is ScanMonitorTabQuery {
+  return value === ScanMonitorTabQuery.NORMAL
+    || value === ScanMonitorTabQuery.ABNORMAL
+    || value === ScanMonitorTabQuery.DUPLICATE
+}
+
+const { selectedExamId } = useMarkExamContext()
 const {
-  selectedExamId,
-} = useMarkExamContext()
+  contextBarTitle,
+  contextBarSubtitle,
+  examStatusLabel,
+  examStatusTone,
+} = useExamJourneyContextBar('扫描监控')
+
+const scanMonitorContextSubtitle = computed(() => {
+  const journeySubtitle = contextBarSubtitle.value
+  if (journeySubtitle.includes('/api/')) {
+    return '扫描监控 · 实时批次与异常处置'
+  }
+  return journeySubtitle
+})
 const { refreshSnapshot } = useWorkspaceExamId()
 const {
   isExamConfidential,
@@ -660,27 +737,24 @@ const filterForm = reactive<{
   scanBatchId?: string
   paperInstanceId?: string
   eventKeyword: string
-  eventStatus?: ScanLiveEventVO['status']
+  batchStatus?: ScanBatchStatusCode
   monitorDeviceId: string
 }>({
   attentionType: '',
   scanBatchId: '',
   paperInstanceId: '',
   eventKeyword: '',
-  eventStatus: undefined,
   monitorDeviceId: '',
 })
 
 const scannerDevices = ref<ExamScannerDeviceVO[]>([])
 const scannerDevicesLoading = ref(false)
+const scanMonitorPanel = ref<WorkbenchScanMonitorPanelVO | null>(null)
+const scanMonitorPanelLoadFailed = ref(false)
 const SCANNER_DEVICE_POLL_INTERVAL_MS = 60_000
 let scannerDevicePollTimer: ReturnType<typeof setInterval> | null = null
 
 const connectedDevices = computed(() => scannerDevices.value.filter(isScannerDeviceOnline))
-
-const selectedMonitorDevice = computed(() =>
-  connectedDevices.value.find((device) => device.scannerDeviceId === filterForm.monitorDeviceId),
-)
 
 function formatMonitorDeviceLabel(device: ExamScannerDeviceVO): string {
   const name = device.deviceName || device.scannerDeviceId
@@ -690,11 +764,13 @@ function formatMonitorDeviceLabel(device: ExamScannerDeviceVO): string {
 const normalFilterApplied = reactive<{
   keyword: string
   scanBatchId: string
-  status?: ScanLiveEventVO['status']
+  batchStatus?: ScanBatchStatusCode
+  scannerDeviceId: string
 }>({
   keyword: '',
   scanBatchId: '',
-  status: undefined,
+  batchStatus: undefined,
+  scannerDeviceId: '',
 })
 
 const filterModel = computed<Record<string, unknown>>({
@@ -705,6 +781,17 @@ const filterModel = computed<Record<string, unknown>>({
 })
 
 const activeTab = ref<'normal' | 'abnormal' | 'duplicate'>('normal')
+
+function syncActiveTabFromRoute(): void {
+  const tab = route.query.tab
+  if (isScanMonitorTabQuery(tab)) {
+    activeTab.value = tab
+    return
+  }
+  if (tab === undefined || tab === null || tab === '') {
+    activeTab.value = 'normal'
+  }
+}
 
 const attentionTableEmptyDescription = computed(() => {
   if (activeTab.value === 'abnormal') {
@@ -717,23 +804,18 @@ const attentionTableEmptyDescription = computed(() => {
 })
 
 const normalTableEmptyDescription = computed(() => {
-  if (connectedDevices.value.length === 0) {
-    return '当前无在线扫描仪，请先在扫描终端登录后再监控'
-  }
-  if (liveEvents.value.length === 0) {
-    return '当前在线扫描仪暂无实时事件，请确认扫描批次已创建'
-  }
   if (hasActiveNormalFilters.value) {
-    return '当前筛选条件下无匹配事件，请调整条件后重试'
+    return '当前筛选条件下无匹配批次，请调整条件后重试'
   }
-  return '当前在线扫描仪暂无实时事件，请确认扫描批次已创建'
+  return '暂无扫描批次，请先在扫描终端完成扫描'
 })
 
 const hasActiveNormalFilters = computed(() =>
   Boolean(
     normalFilterApplied.keyword
     || normalFilterApplied.scanBatchId
-    || normalFilterApplied.status,
+    || normalFilterApplied.batchStatus
+    || normalFilterApplied.scannerDeviceId,
   ),
 )
 
@@ -763,7 +845,7 @@ const normalFilterFields = computed<FilterField[]>(() => {
       key: 'eventKeyword',
       type: 'input',
       label: '关键词',
-      placeholder: '按批次号 / 设备 / 站点搜索',
+      placeholder: '批次号 / 外部编号 / 设备',
       inputPrefixIcon: 'search',
       triggerSearchOnChange: false,
       allowClear: true,
@@ -772,15 +854,7 @@ const normalFilterFields = computed<FilterField[]>(() => {
       maxWidth: 320,
     },
     {
-      key: 'scanBatchId',
-      type: 'custom',
-      label: '扫描批次',
-      width: 200,
-      minWidth: 180,
-      maxWidth: 260,
-    },
-    {
-      key: 'eventStatus',
+      key: 'batchStatus',
       type: 'select',
       label: '状态',
       placeholder: '全部状态',
@@ -789,10 +863,7 @@ const normalFilterFields = computed<FilterField[]>(() => {
       minWidth: 120,
       maxWidth: 160,
       triggerSearchOnChange: false,
-      options: (Object.keys(SCAN_EVENT_STATUS_LABEL) as ScanLiveEventVO['status'][]).map((status) => ({
-        value: status,
-        label: SCAN_EVENT_STATUS_LABEL[status],
-      })),
+      options: SCAN_BATCH_STATUS_OPTIONS,
     },
   )
   return fields
@@ -845,33 +916,109 @@ const hasMonitorScanBatchFilter = computed(() =>
   monitorFilterFields.value.some((field) => field.key === 'scanBatchId'),
 )
 
-const filteredLiveEvents = computed(() => {
-  let rows = liveEvents.value
-  const keyword = normalFilterApplied.keyword.trim().toLowerCase()
-  if (keyword) {
-    rows = rows.filter((event) =>
-      [
-        event.batchExternalNo,
-        event.reportId,
-        event.scannerDeviceId,
-        event.scannerStationId,
-        event.eventId,
-      ].some((value) => value?.toLowerCase().includes(keyword)),
-    )
-  }
-  if (normalFilterApplied.scanBatchId) {
-    rows = rows.filter((event) => event.scanBatchId === normalFilterApplied.scanBatchId)
-  }
-  if (normalFilterApplied.status) {
-    rows = rows.filter((event) => event.status === normalFilterApplied.status)
-  }
-  return rows
+const monitorBatches = ref<ExamScannerBatchVO[]>([])
+const monitorBatchLoading = ref(false)
+const monitorBatchPagination = reactive({
+  current: 1,
+  pageSize: MONITOR_BATCH_PAGE_SIZE,
+  total: 0,
 })
+const batchDetailDrawerOpen = ref(false)
+const batchDetailBatchId = ref<string | null>(null)
+const batchDetailSummary = ref<ExamScannerBatchVO | null>(null)
+
+const monitorBatchColumns: ColumnType<ExamScannerBatchVO>[] = [
+  { title: '批次号', key: 'batchNo', width: 200, ellipsis: true },
+  { title: '状态', key: 'status', width: 100 },
+  { title: '页数', key: 'pageCount', width: 72, align: 'right' },
+  { title: '答卷数', key: 'boundPaperCount', width: 72, align: 'right' },
+  { title: '落库', key: 'pageProgress', width: 88, align: 'right' },
+  { title: '设备', key: 'scannerDevice', width: 160, ellipsis: true },
+  { title: '操作员', key: 'operatorDisplayName', width: 120, ellipsis: true },
+  { title: 'DPI', key: 'dpi', width: 88, align: 'right' },
+  { title: '开始时间', key: 'scanStartTime', width: 168 },
+  { title: '结束时间', key: 'scanEndTime', width: 168 },
+  { title: '操作', key: 'actions', width: 80, fixed: 'right' },
+]
+
+function monitorBatchStatusTone(batch: ExamScannerBatchVO): BadgeTone {
+  if (batch.sealedTime) {
+    return 'green'
+  }
+  return strictEnumTone(SCAN_BATCH_STATUS_TONE, batch.status, '扫描批次状态')
+}
+
+function monitorBatchStatusLabel(batch: ExamScannerBatchVO): string {
+  if (batch.sealedTime) {
+    return '已封存'
+  }
+  return strictEnumLabel(ScanBatchStatusDescription, batch.status, '扫描批次状态')
+}
+
+function formatMonitorBatchDeviceLabel(deviceId?: string): string {
+  if (!deviceId) {
+    return '—'
+  }
+  const device = scannerDevices.value.find((item) => item.scannerDeviceId === deviceId)
+  if (!device) {
+    return deviceId
+  }
+  return formatMonitorDeviceLabel(device)
+}
+
+function openMonitorBatchDetail(batch: ExamScannerBatchVO): void {
+  batchDetailBatchId.value = batch.scanBatchId
+  batchDetailSummary.value = batch
+  batchDetailDrawerOpen.value = true
+}
+
+function handleMonitorBatchUpdated(): void {
+  void loadMonitorBatches()
+  void loadScanOverview(selectedExamId.value!)
+}
+
+function handleMonitorBatchPageChange(pageEvent: { current: number, pageSize: number }): void {
+  monitorBatchPagination.current = pageEvent.current
+  monitorBatchPagination.pageSize = pageEvent.pageSize
+  void loadMonitorBatches()
+}
+
+async function loadMonitorBatches(): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId || activeTab.value !== 'normal') {
+    monitorBatches.value = []
+    monitorBatchPagination.total = 0
+    return
+  }
+  monitorBatchLoading.value = true
+  try {
+    const result = await pageScannerBatches({
+      examId,
+      pageNum: monitorBatchPagination.current,
+      pageSize: monitorBatchPagination.pageSize,
+      keyword: normalFilterApplied.keyword || undefined,
+      scannerDeviceId: normalFilterApplied.scannerDeviceId || undefined,
+      status: normalFilterApplied.batchStatus,
+      includeDiscarded: false,
+    })
+    monitorBatches.value = readPageList(result, '扫描批次加载失败，请稍后重试')
+    monitorBatchPagination.total = readPageTotal(result)
+  } catch (error) {
+    monitorBatches.value = []
+    monitorBatchPagination.total = 0
+    showUserError(error, '扫描批次加载失败')
+  } finally {
+    monitorBatchLoading.value = false
+  }
+}
 
 function applyNormalFilters(): void {
   normalFilterApplied.keyword = filterForm.eventKeyword.trim()
   normalFilterApplied.scanBatchId = filterForm.scanBatchId || ''
-  normalFilterApplied.status = filterForm.eventStatus
+  normalFilterApplied.batchStatus = filterForm.batchStatus
+  normalFilterApplied.scannerDeviceId = filterForm.monitorDeviceId || ''
+  monitorBatchPagination.current = 1
+  void loadMonitorBatches()
 }
 
 const attentions = ref<ScanAttentionItemVO[]>([])
@@ -907,7 +1054,7 @@ const paperCandidateOptions = computed<UiSelectOption[]>(() =>
       label: [
         `${item.studentName}（${item.studentNo}）`,
         item.studentClassName,
-        strictEnumLabel(BINDING_STATUS_LABEL, item.bindingStatus, '试卷绑定状态'),
+        strictEnumLabel(BindingStatusDescription, item.bindingStatus, '试卷绑定状态'),
         finalScoreStatusLabel(item.finalScoreStatus),
       ]
         .filter(Boolean)
@@ -919,133 +1066,197 @@ const abnormalAttentionTotal = ref(0)
 const duplicateAttentionTotal = ref(0)
 const activeAttentionRows = computed(() => attentions.value)
 
-const {
-  events: liveEvents,
-  ready: scanLiveReady,
-  isStreaming: scanLiveStreaming,
-  connectionPhase: scanLiveConnectionPhase,
-  stop: stopScanLive,
-  refresh: refreshScanLive,
-} = useScanLiveStream({
-  filter: () => {
-    const device = selectedMonitorDevice.value
-    return {
-      examId: selectedExamId.value || undefined,
-      scannerDeviceId: device?.scannerDeviceId,
-      scannerStationId: device?.scannerStationId,
-    }
-  },
-  initialLimit: 50,
-  maxEvents: 200,
+const scanLiveStream = useScanLiveStream({
+  filter: () => ({ examId: selectedExamId.value ?? undefined }),
 })
 
-const liveDrawerOpen = ref(false)
-const currentEvent = ref<ScanLiveEventVO | null>(null)
+let monitorBatchReloadTimer: ReturnType<typeof setTimeout> | null = null
+
+function scheduleMonitorBatchReload(): void {
+  if (monitorBatchReloadTimer) {
+    clearTimeout(monitorBatchReloadTimer)
+  }
+  monitorBatchReloadTimer = setTimeout(() => {
+    monitorBatchReloadTimer = null
+    const examId = selectedExamId.value
+    if (!examId) {
+      return
+    }
+    void loadScanOverview(examId)
+    void loadConnectedScannerDevices()
+    if (activeTab.value === 'normal') {
+      void loadMonitorBatches()
+    }
+  }, 800)
+}
 
 const connectionTone = computed<BadgeTone>(() => {
-  if (connectedDevices.value.length === 0) return 'gray'
-  if (scanLiveConnectionPhase.value === 'failed') return 'red'
-  if (scanLiveConnectionPhase.value === 'ready') return 'green'
-  if (scanLiveConnectionPhase.value === 'connecting' || scanLiveConnectionPhase.value === 'reconnecting') {
-    return 'blue'
+  if (scanLiveStream.connectionPhase.value === 'ready' && scanLiveStream.ready.value) {
+    return 'green'
   }
-  return 'gray'
+  if (scanLiveStream.connectionPhase.value === 'reconnecting') {
+    return 'orange'
+  }
+  return connectedDevices.value.length > 0 ? 'green' : 'gray'
 })
 
 const connectionLabel = computed(() => {
-  if (connectedDevices.value.length === 0) return '无在线设备'
-  if (scanLiveConnectionPhase.value === 'failed') return '连接失败'
-  if (scanLiveConnectionPhase.value === 'ready') return '实时同步中'
-  if (scanLiveConnectionPhase.value === 'reconnecting') return '正在重连'
-  if (scanLiveConnectionPhase.value === 'connecting') return '连接建立中'
-  return '未连接'
+  if (scanLiveStream.connectionPhase.value === 'ready' && scanLiveStream.ready.value) {
+    return '实时同步中'
+  }
+  if (scanLiveStream.connectionPhase.value === 'reconnecting') {
+    return '重连中'
+  }
+  if (scanLiveStream.connectionPhase.value === 'connecting') {
+    return '连接中'
+  }
+  return connectedDevices.value.length > 0
+    ? `${connectedDevices.value.length} 台在线`
+    : '无在线设备'
 })
 
-/** 指标卡短文案，与「0 条」类数值卡保持同一视觉节奏 */
-const connectionShortValue = computed(() => {
-  if (connectedDevices.value.length === 0) return '离线'
-  if (scanLiveConnectionPhase.value === 'failed') return '失败'
-  if (scanLiveConnectionPhase.value === 'ready') return '正常'
-  if (scanLiveConnectionPhase.value === 'reconnecting') return '重连'
-  if (scanLiveConnectionPhase.value === 'connecting') return '连接中'
-  return '离线'
-})
-
-/** SSE 已连接时顶栏状态标签 pulse，提示实时监控活跃 */
-const connectionPulsing = computed(
-  () =>
-    connectedDevices.value.length > 0
-    && scanLiveConnectionPhase.value === 'ready'
-    && !!selectedExamId.value,
+const connectionPulsing = computed(() =>
+  scanLiveStream.connectionPhase.value === 'ready' && scanLiveStream.ready.value,
 )
+
+watch(() => scanLiveStream.events.value.length, () => {
+  scheduleMonitorBatchReload()
+})
+
+function handleMonitorDeviceSelect(device: ExamScannerDeviceVO): void {
+  filterForm.monitorDeviceId = device.scannerDeviceId
+  if (activeTab.value === 'normal') {
+    applyNormalFilters()
+  }
+}
+
+async function loadScanOverview(examId: string): Promise<void> {
+  scanMonitorPanelLoadFailed.value = false
+  try {
+    scanMonitorPanel.value = await getScanMonitorPanel(examId)
+  } catch (error) {
+    scanMonitorPanel.value = null
+    scanMonitorPanelLoadFailed.value = true
+    showUserError(error, '扫描监控指标加载失败')
+  }
+}
 
 function jumpToAbnormalTab(): void {
   activeTab.value = 'abnormal'
+  filterForm.attentionType = ''
+  reloadAttentionsFromFirstPage()
 }
 
-const normalEventColumns: ColumnType<ScanLiveEventVO>[] = [
-  { title: '批次号', key: 'batchNo', width: 180, ellipsis: true },
-  { title: '扫描站点', dataIndex: 'scannerStationId', key: 'scannerStationId', width: 120 },
-  { title: '扫描设备', dataIndex: 'scannerDeviceId', key: 'scannerDeviceId', width: 140, ellipsis: true },
-  { title: '状态', key: 'status', width: 100 },
-  { title: '页数', dataIndex: 'pageCount', key: 'pageCount', width: 80, align: 'right' },
-  { title: '文件数', dataIndex: 'sourceFileCount', key: 'sourceFileCount', width: 80, align: 'right' },
-  { title: '扫描时间', key: 'scanTime', width: 100 },
-  { title: '操作', key: 'actions', fixed: 'right', width: 100 },
-]
+function jumpToDuplicateTab(): void {
+  activeTab.value = 'duplicate'
+  filterForm.attentionType = ''
+  reloadAttentionsFromFirstPage()
+}
 
-const healthPercent = computed(() => {
-  if (connectedDevices.value.length === 0) return 0
-  const blocked = abnormalAttentionTotal.value + duplicateAttentionTotal.value
-  const normal = liveEvents.value.length
-  const total = normal + blocked
-  if (total === 0) return 100
-  return Math.round((normal / total) * 100)
+function jumpToMissingCandidateAttention(): void {
+  activeTab.value = 'abnormal'
+  filterForm.attentionType = ScanAttentionTypeCode.MISSING_CANDIDATE_ROSTER
+  reloadAttentionsFromFirstPage()
+}
+
+function goToScanBatchOrphanRecovery(): void {
+  if (!selectedExamId.value) return
+  void router.push({
+    name: 'TeacherExamWorkspaceScanBatches',
+    params: { examId: selectedExamId.value },
+    query: { focus: 'orphan' },
+  })
+}
+
+function handleScanMonitorMetricClick(key: string): void {
+  if (key === 'attention') {
+    jumpToAbnormalTab()
+    return
+  }
+  if (key === 'missing-candidate') {
+    jumpToMissingCandidateAttention()
+    return
+  }
+  if (key === 'orphan-event') {
+    goToScanBatchOrphanRecovery()
+    return
+  }
+  if (key === 'duplicate-page') {
+    jumpToDuplicateTab()
+  }
+}
+
+const statPanelMetrics = computed<SignalMetric[]>(() => {
+  if (scanMonitorPanelLoadFailed.value) {
+    return [{ key: 'monitor-load-failed', label: '监控 KPI', value: '加载失败', tone: 'red' }]
+  }
+  const panel = scanMonitorPanel.value
+  if (!panel) {
+    return [{ key: 'monitor-empty', label: '监控 KPI', value: '—', tone: 'gray' }]
+  }
+  return [
+    {
+      key: 'batch',
+      label: '扫描批次',
+      value: `${panel.settledBatchCount}/${panel.batchTotal}`,
+      tone: 'blue',
+    },
+    {
+      key: 'scanned-page',
+      label: '已扫描页',
+      value: panel.scannedPageCount,
+      tone: panel.scannedPageCount > 0 ? 'green' : 'gray',
+    },
+    {
+      key: 'bound-paper',
+      label: '已绑定',
+      value: panel.boundPaperCount,
+      tone: panel.boundPaperCount > 0 ? 'green' : 'gray',
+    },
+    {
+      key: 'missing-candidate',
+      label: '缺失考生',
+      value: panel.missingCandidateCount,
+      tone: panel.missingCandidateCount > 0 ? 'red' : 'green',
+      clickable: panel.missingCandidateCount > 0,
+      helper: panel.missingCandidateCount > 0 ? '查看缺失名册异常' : undefined,
+    },
+    {
+      key: 'duplicate-page',
+      label: '重复影像',
+      value: panel.duplicatePageCount,
+      tone: panel.duplicatePageCount > 0 ? 'orange' : 'green',
+      clickable: panel.duplicatePageCount > 0,
+      helper: panel.duplicatePageCount > 0 ? '打开重复 tab' : undefined,
+    },
+    {
+      key: 'attention',
+      label: '扫描异常',
+      value: panel.attentionCount,
+      unit: '条',
+      tone: panel.attentionCount > 0 ? 'orange' : 'green',
+      clickable: panel.attentionCount > 0,
+      active: activeTab.value === 'abnormal' && !filterForm.attentionType,
+      helper: panel.attentionCount > 0 ? '打开异常 tab' : undefined,
+    },
+    {
+      key: 'orphan-event',
+      label: '游离页事件',
+      value: panel.orphanPendingEventCount,
+      unit: '条',
+      tone: panel.orphanPendingEventCount > 0 ? 'orange' : 'gray',
+      clickable: panel.orphanPendingEventCount > 0,
+      helper: panel.orphanPendingEventCount > 0 ? '前往批次工作台回收' : undefined,
+    },
+  ]
 })
-
-const healthRingLabel = computed(() => {
-  if (connectedDevices.value.length === 0) return '无在线设备'
-  if (abnormalAttentionTotal.value > 0) return '需处置'
-  if (duplicateAttentionTotal.value > 0) return '需去重'
-  if (liveEvents.value.length > 0) return '入账正常'
-  return '待扫描'
-})
-
-const healthGaugeColor = computed(() => {
-  if (connectedDevices.value.length === 0) return toneToColor('gray')
-  if (abnormalAttentionTotal.value > 0) return toneToColor('red')
-  if (duplicateAttentionTotal.value > 0) return toneToColor('orange')
-  return toneToColor('green')
-})
-
-const { chartOption: healthGaugeOption } = useChartOption(() =>
-  buildGaugeChartOption(healthPercent.value, {
-    label: healthRingLabel.value,
-    color: healthGaugeColor.value,
-    size: 'lg',
-  }),
-)
-
-const healthAriaLabel = computed(() =>
-  formatGaugeAriaLabel(
-    healthRingLabel.value,
-    healthPercent.value,
-    `实时事件 ${liveEvents.value.length} 条，异常 ${abnormalAttentionTotal.value} 条，重复 ${duplicateAttentionTotal.value} 条`,
-  ),
-)
-
-const healthGaugeBlockProps = computed(() => ({
-  option: healthGaugeOption.value,
-  ariaLabel: healthAriaLabel.value,
-  gaugeSize: 'md' as const,
-}))
 
 const monitorTabs = computed<UiSectionTabItem[]>(() => [
   {
     key: 'normal',
-    label: '正常',
-    count: filteredLiveEvents.value.length,
-    badgeTone: filteredLiveEvents.value.length > 0 ? 'blue' : 'gray',
+    label: '扫描批次',
+    count: monitorBatchPagination.total,
+    badgeTone: monitorBatchPagination.total > 0 ? 'blue' : 'gray',
   },
   {
     key: 'abnormal',
@@ -1061,24 +1272,10 @@ const monitorTabs = computed<UiSectionTabItem[]>(() => [
   },
 ])
 
-function scanEventStatusLabel(status: ScanLiveEventVO['status']): string {
-  return strictEnumLabel(SCAN_EVENT_STATUS_LABEL, status, '扫描实时事件状态')
-}
-
-function scanEventStatusTone(status: ScanLiveEventVO['status']): BadgeTone {
-  return strictEnumTone(SCAN_EVENT_STATUS_TONE, status, '扫描实时事件状态')
-}
-
-function openScanEventDetail(event: ScanLiveEventVO): void {
-  currentEvent.value = event
-  liveDrawerOpen.value = true
-}
-
 async function loadConnectedScannerDevices(): Promise<void> {
   if (!selectedExamId.value) {
     scannerDevices.value = []
     filterForm.monitorDeviceId = ''
-    stopScanLive()
     return
   }
   scannerDevicesLoading.value = true
@@ -1087,7 +1284,6 @@ async function loadConnectedScannerDevices(): Promise<void> {
     const online = connectedDevices.value
     if (online.length === 0) {
       filterForm.monitorDeviceId = ''
-      stopScanLive()
       return
     }
     const previousDeviceId = filterForm.monitorDeviceId
@@ -1096,17 +1292,10 @@ async function loadConnectedScannerDevices(): Promise<void> {
       : online[0].scannerDeviceId
     if (nextDeviceId !== previousDeviceId) {
       filterForm.monitorDeviceId = nextDeviceId
-      return
-    }
-    if (selectedMonitorDevice.value) {
-      await refreshScanLive()
-    } else {
-      stopScanLive()
     }
   } catch (error) {
     scannerDevices.value = []
     filterForm.monitorDeviceId = ''
-    stopScanLive()
     showUserError(error, '在线扫描仪加载失败')
   } finally {
     scannerDevicesLoading.value = false
@@ -1137,7 +1326,11 @@ async function handleRefresh(): Promise<void> {
     loadAttentions(),
     loadScanBatches(),
     loadPaperCandidates(),
+    loadMonitorBatches(),
   ])
+  if (selectedExamId.value) {
+    await loadScanOverview(selectedExamId.value)
+  }
 }
 
 function goToScanLedger(): void {
@@ -1156,21 +1349,14 @@ function openAttentionReviewWorkspace(): void {
   })
 }
 
-const attentionTypeOptions: { label: string, value: ScanAttentionTypeCode }[] = [
-  { label: '质量阻断', value: 'QUALITY_BLOCK' },
-  { label: '处理阻断', value: 'PROCESSING_BLOCK' },
-  { label: '重复影像', value: 'DUPLICATE_PENDING' },
-  { label: '识别复核', value: 'RECOGNITION_REVIEW' },
-  { label: '身份绑定冲突', value: 'BINDING_CONFLICT' },
-  { label: '缺少考生名单', value: 'MISSING_CANDIDATE_ROSTER' },
-]
+const attentionTypeOptions = SCAN_ATTENTION_TYPE_OPTIONS
 
 function scanBatchStatusLabel(batch: ExamScannerBatchVO): string {
-  return strictEnumLabel(SCAN_BATCH_STATUS_LABEL, batch.status, '扫描批次状态')
+  return strictEnumLabel(ScanBatchStatusDescription, batch.status, '扫描批次状态')
 }
 
 function finalScoreStatusLabel(status: ExamScoreSummaryItemVO['finalScoreStatus']): string {
-  return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, status, '最终成绩状态')
+  return strictEnumLabel(FinalScoreStatusDescription, status, '最终成绩状态')
 }
 
 const columns: ColumnType<ScanAttentionItemVO>[] = [
@@ -1210,8 +1396,8 @@ async function loadAttentions(): Promise<void> {
 }
 
 function currentAttentionQueryGroup(): ScanAttentionQueryGroupCode | undefined {
-  if (activeTab.value === 'abnormal') return 'ABNORMAL'
-  if (activeTab.value === 'duplicate') return 'DUPLICATE'
+  if (activeTab.value === 'abnormal') return ScanAttentionQueryGroupCode.ABNORMAL
+  if (activeTab.value === 'duplicate') return ScanAttentionQueryGroupCode.DUPLICATE
   return undefined
 }
 
@@ -1232,13 +1418,13 @@ async function loadAttentionCounters(): Promise<void> {
       examId,
       pageNum: 1,
       pageSize: 1,
-      queryGroup: 'ABNORMAL',
+      queryGroup: ScanAttentionQueryGroupCode.ABNORMAL,
     }),
     listScanAttentions({
       examId,
       pageNum: 1,
       pageSize: 1,
-      queryGroup: 'DUPLICATE',
+      queryGroup: ScanAttentionQueryGroupCode.DUPLICATE,
     }),
   ])
   abnormalAttentionTotal.value = readPageTotal(abnormalResult, '扫描异常总数加载失败')
@@ -1275,10 +1461,7 @@ async function loadAttentionPage(queryGroup: ScanAttentionQueryGroupCode): Promi
   if (result.pageSize != null) {
     attentionPagination.pageSize = result.pageSize
   }
-  attentions.value = rows.map((row) => {
-    validateScanAttentionItemContract(row)
-    return row
-  })
+  attentions.value = rows
 }
 
 function reloadAttentionsFromFirstPage(): void {
@@ -1392,11 +1575,11 @@ function attentionTypeTone(type: ScanAttentionTypeCode): BadgeTone {
 }
 
 function attentionTypeLabel(type: ScanAttentionTypeCode): string {
-  return strictEnumLabel(SCAN_ATTENTION_TYPE_LABEL, type, '扫描异常类型')
+  return strictEnumLabel(ScanAttentionTypeDescription, type, '扫描异常类型')
 }
 
 function sourceTypeLabel(type: ScanAttentionSourceTypeCode): string {
-  return strictEnumLabel(SCAN_ATTENTION_SOURCE_TYPE_LABEL, type, '扫描异常来源类型')
+  return strictEnumLabel(ScanAttentionSourceTypeDescription, type, '扫描异常来源类型')
 }
 
 function assertNeverScanAttentionType(_type: never): never {
@@ -1405,21 +1588,21 @@ function assertNeverScanAttentionType(_type: never): never {
 
 function scanAttentionStatusLabel(record: ScanAttentionItemVO): string {
   switch (record.attentionType) {
-    case 'QUALITY_BLOCK':
-      return strictEnumLabel(QUALITY_DECISION_LABEL, record.qualityDecision, '扫描页质量判定')
-    case 'PROCESSING_BLOCK':
-      return strictEnumLabel(TASK_STATUS_LABEL, record.processingStatus, '处理任务状态')
-    case 'DUPLICATE_PENDING':
+    case ScanAttentionTypeCode.QUALITY_BLOCK:
+      return strictEnumLabel(QualityDecisionDescription, record.qualityDecision, '扫描页质量判定')
+    case ScanAttentionTypeCode.PROCESSING_BLOCK:
+      return strictEnumLabel(TaskStatusDescription, record.processingStatus, '处理任务状态')
+    case ScanAttentionTypeCode.DUPLICATE_PENDING:
       return strictEnumLabel(
-        DUPLICATE_RESOLUTION_STATUS_LABEL,
+        DuplicateResolutionStatusDescription,
         record.duplicateResolutionStatus,
         '重复影像处置状态',
       )
-    case 'RECOGNITION_REVIEW':
-      return strictEnumLabel(GRADE_STATUS_LABEL, record.gradeStatus, '题目阅卷状态')
-    case 'BINDING_CONFLICT':
+    case ScanAttentionTypeCode.RECOGNITION_REVIEW:
+      return strictEnumLabel(GradeStatusDescription, record.gradeStatus, '题目阅卷状态')
+    case ScanAttentionTypeCode.BINDING_CONFLICT:
       return '待人工绑定'
-    case 'MISSING_CANDIDATE_ROSTER':
+    case ScanAttentionTypeCode.MISSING_CANDIDATE_ROSTER:
       return '待补录名单'
     default:
       return assertNeverScanAttentionType(record.attentionType)
@@ -1428,71 +1611,41 @@ function scanAttentionStatusLabel(record: ScanAttentionItemVO): string {
 
 function scanAttentionStatusTone(record: ScanAttentionItemVO): BadgeTone {
   switch (record.attentionType) {
-    case 'QUALITY_BLOCK':
+    case ScanAttentionTypeCode.QUALITY_BLOCK:
       return strictEnumTone(QUALITY_DECISION_TONE, record.qualityDecision, '扫描页质量判定')
-    case 'PROCESSING_BLOCK':
+    case ScanAttentionTypeCode.PROCESSING_BLOCK:
       return strictEnumTone(TASK_STATUS_TONE, record.processingStatus, '处理任务状态')
-    case 'DUPLICATE_PENDING':
+    case ScanAttentionTypeCode.DUPLICATE_PENDING:
       return strictEnumTone(
         DUPLICATE_RESOLUTION_STATUS_TONE,
         record.duplicateResolutionStatus,
         '重复影像处置状态',
       )
-    case 'RECOGNITION_REVIEW':
+    case ScanAttentionTypeCode.RECOGNITION_REVIEW:
       return strictEnumTone(GRADE_STATUS_TONE, record.gradeStatus, '题目阅卷状态')
-    case 'BINDING_CONFLICT':
+    case ScanAttentionTypeCode.BINDING_CONFLICT:
       return 'orange'
-    case 'MISSING_CANDIDATE_ROSTER':
+    case ScanAttentionTypeCode.MISSING_CANDIDATE_ROSTER:
       return 'orange'
     default:
       return assertNeverScanAttentionType(record.attentionType)
   }
 }
 
-const statPanelMetrics = computed(() => [
-  {
-    label: '正常入账',
-    value: liveEvents.value.length,
-    unit: '条',
-    tone: liveEvents.value.length > 0 ? ('green' as const) : ('gray' as const),
-  },
-  {
-    label: '异常阻断',
-    value: abnormalAttentionTotal.value,
-    unit: '条',
-    tone: abnormalAttentionTotal.value > 0 ? ('red' as const) : ('green' as const),
-  },
-  {
-    label: '重复影像',
-    value: duplicateAttentionTotal.value,
-    unit: '条',
-    tone: duplicateAttentionTotal.value > 0 ? ('orange' as const) : ('green' as const),
-  },
-  {
-    label: '连接状态',
-    value: connectionShortValue.value,
-    helper: connectionLabel.value,
-    tone: connectionTone.value,
-  },
-])
-
 const scanMonitorSignalMetrics = computed(() => toSignalMetrics(statPanelMetrics.value))
 
 function resetFilter(): void {
   normalFilterApplied.keyword = ''
   normalFilterApplied.scanBatchId = ''
-  normalFilterApplied.status = undefined
+  normalFilterApplied.batchStatus = undefined
+  normalFilterApplied.scannerDeviceId = ''
   filterForm.eventKeyword = ''
-  filterForm.eventStatus = undefined
+  filterForm.batchStatus = undefined
   filterForm.scanBatchId = ''
   if (activeTab.value === 'normal') {
     const firstOnline = connectedDevices.value[0]
     filterForm.monitorDeviceId = firstOnline?.scannerDeviceId ?? ''
-    if (firstOnline) {
-      void refreshScanLive()
-    } else {
-      stopScanLive()
-    }
+    applyNormalFilters()
     return
   }
   filterForm.attentionType = ''
@@ -1644,10 +1797,10 @@ function isCandidateBindable(candidate: ExamCandidateVO): boolean {
 
 /** 输出名册状态文案，状态缺失或未知时显式暴露合同异常而不是默认按正常处理。 */
 function candidateStatusLabel(status: CandidateStatusCode | undefined): string {
-  if (!status || !CANDIDATE_STATUS_LABEL[status]) {
+  if (!status || !CandidateStatusDescription[status]) {
     return '状态异常'
   }
-  return CANDIDATE_STATUS_LABEL[status]
+  return CandidateStatusDescription[status]
 }
 
 function filterCandidate(input: string, option?: DefaultOptionType): boolean {
@@ -2018,8 +2171,11 @@ watch(selectedExamId, (value) => {
   filterForm.scanBatchId = ''
   filterForm.paperInstanceId = ''
   filterForm.eventKeyword = ''
-  filterForm.eventStatus = undefined
+  filterForm.batchStatus = undefined
   filterForm.monitorDeviceId = ''
+  monitorBatches.value = []
+  monitorBatchPagination.current = 1
+  monitorBatchPagination.total = 0
   bindIdentitySliceFileId.value = ''
   bindSourcePageFileId.value = ''
   releaseBindIdentitySliceImage()
@@ -2027,40 +2183,31 @@ watch(selectedExamId, (value) => {
   bindIdentitySliceLoadFailed.value = false
   bindSourcePageLoadFailed.value = false
   batchBindResult.value = null
-  liveDrawerOpen.value = false
-  currentEvent.value = null
+  scanMonitorPanel.value = null
+  scanMonitorPanelLoadFailed.value = false
   if (value) {
+    void loadScanOverview(value)
     void loadScanBatches()
     void loadPaperCandidates()
     void loadAttentions()
     void loadConnectedScannerDevices()
     startScannerDevicePolling()
+    void scanLiveStream.start()
+    if (activeTab.value === 'normal') {
+      void loadMonitorBatches()
+    }
   } else {
-    stopScanLive()
     stopScannerDevicePolling()
+    scanLiveStream.stop()
     scannerDevices.value = []
     attentions.value = []
   }
 }, { immediate: true })
 
-watch(selectedMonitorDevice, (device) => {
-  if (!selectedExamId.value || activeTab.value !== 'normal') {
-    return
-  }
-  if (filterForm.monitorDeviceId && !device) {
-    filterForm.monitorDeviceId = ''
-    stopScanLive()
-  }
-})
-
 watch(() => filterForm.monitorDeviceId, (deviceId, previousDeviceId) => {
   if (!selectedExamId.value || activeTab.value !== 'normal') return
-  if (!deviceId) {
-    stopScanLive()
-    return
-  }
   if (deviceId !== previousDeviceId) {
-    void refreshScanLive()
+    applyNormalFilters()
   }
 })
 
@@ -2075,10 +2222,10 @@ watch(activeTab, (value) => {
   if (value === 'normal') {
     startScannerDevicePolling()
     void loadConnectedScannerDevices()
+    void loadMonitorBatches()
     return
   }
   stopScannerDevicePolling()
-  stopScanLive()
   void loadAttentions()
 })
 
@@ -2100,13 +2247,24 @@ function onWorkbenchRefresh(): void {
 }
 
 onMounted(() => {
+  syncActiveTabFromRoute()
   mittBus.on('scan-workbench:refresh', onWorkbenchRefresh)
 })
+
+watch(
+  () => route.query.tab,
+  () => {
+    syncActiveTabFromRoute()
+  },
+)
 
 onBeforeUnmount(() => {
   mittBus.off('scan-workbench:refresh', onWorkbenchRefresh)
   stopScannerDevicePolling()
-  stopScanLive()
+  scanLiveStream.stop()
+  if (monitorBatchReloadTimer) {
+    clearTimeout(monitorBatchReloadTimer)
+  }
   releaseBindIdentitySliceImage()
   releaseBindSourcePageImage()
 })
@@ -2118,56 +2276,12 @@ onBeforeUnmount(() => {
     width: 280px;
   }
 
-  &__embedded-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-  }
-
-  &__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 1.4;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__overview {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
-    gap: 16px;
-    align-items: stretch;
-    margin-bottom: 16px;
+  &__devices {
+    margin-bottom: var(--dp-space-4, 16px);
   }
 
   &__stats {
     min-width: 0;
-    height: 100%;
-
-    :deep(.ui-stat-panel) {
-      height: 100%;
-    }
-
-    :deep(.ui-stat-panel__list) {
-      align-items: stretch;
-      height: 100%;
-    }
-
-    :deep(.ui-metric-card) {
-      height: 100%;
-      align-items: center;
-    }
   }
 
   &__chart-card {
@@ -2175,6 +2289,8 @@ onBeforeUnmount(() => {
   }
 
   &__health-card {
+    margin-bottom: var(--dp-space-4, 16px);
+    max-width: 320px;
     min-width: 0;
     display: flex;
     align-items: stretch;
@@ -2207,11 +2323,22 @@ onBeforeUnmount(() => {
   }
 
   &__tabs {
-    margin-top: 16px;
+    margin-top: 0;
     padding: 16px;
     border: 1px solid var(--dp-border, #e2e8f0);
     border-radius: var(--dp-radius-panel, 8px);
     background: var(--dp-surface, #fff);
+  }
+
+  &__panel-alert {
+    margin-bottom: var(--dp-space-4, 16px);
+  }
+
+  &__flow-hint {
+    width: 100%;
+    font-size: 12px;
+    color: var(--dp-text-muted, #64748b);
+    line-height: 1.5;
   }
 
   &__normal-panel,

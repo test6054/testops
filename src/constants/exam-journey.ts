@@ -1,9 +1,10 @@
 import type { RouteLocationRaw } from 'vue-router'
 import type { MarkStageKey } from '@/stores/modules/markStage'
+import { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
 import { resolveScanStageEntryRoute } from '@/utils/resolve-scan-stage-entry'
 
 /** 教师可见六步旅程键（不含 overview） */
-export type ExamJourneyKey = 'prep' | 'scan' | 'assign' | 'mark' | 'publish' | 'archive'
+export type ExamJourneyKey = MarkTeacherDashboardJourneyKeyCode
 
 /** 考试工作台旅程键，含概览入口 */
 export type ExamWorkspaceJourneyKey = ExamJourneyKey | 'overview'
@@ -18,37 +19,37 @@ export interface ExamJourneyStepDef {
 /** 六步旅程定义：聚合后端 9 段 ExamWorkbenchStageKey */
 export const EXAM_JOURNEY_STEPS: readonly ExamJourneyStepDef[] = [
   {
-    key: 'prep',
+    key: MarkTeacherDashboardJourneyKeyCode.PREP,
     title: '创建与准备',
     stageKeys: ['EXAM_PREP', 'PAPER_TEMPLATE', 'CANDIDATE_ROSTER'],
     defaultRouteName: 'TeacherExamWorkspacePrep',
   },
   {
-    key: 'scan',
+    key: MarkTeacherDashboardJourneyKeyCode.SCAN,
     title: '扫描识别',
     stageKeys: ['SCAN'],
     defaultRouteName: 'TeacherExamWorkspaceScanBatches',
   },
   {
-    key: 'assign',
+    key: MarkTeacherDashboardJourneyKeyCode.ASSIGN,
     title: '阅卷安排',
     stageKeys: ['MARKING_ORG'],
     defaultRouteName: 'TeacherExamWorkspaceMarkingOrg',
   },
   {
-    key: 'mark',
+    key: MarkTeacherDashboardJourneyKeyCode.MARK,
     title: '批阅',
     stageKeys: ['TRIAL_MARKING', 'FORMAL_MARKING'],
     defaultRouteName: 'TeacherExamWorkspaceMarkingTaskPool',
   },
   {
-    key: 'publish',
+    key: MarkTeacherDashboardJourneyKeyCode.PUBLISH,
     title: '成绩发布',
     stageKeys: ['SCORE_PUBLISH'],
     defaultRouteName: 'TeacherExamWorkspaceScoreSummary',
   },
   {
-    key: 'archive',
+    key: MarkTeacherDashboardJourneyKeyCode.ARCHIVE,
     title: '归档',
     stageKeys: ['ARCHIVE'],
     defaultRouteName: 'TeacherExamWorkspaceArchivePackage',
@@ -57,17 +58,23 @@ export const EXAM_JOURNEY_STEPS: readonly ExamJourneyStepDef[] = [
 
 const WORKSPACE_JOURNEY_KEYS: readonly ExamWorkspaceJourneyKey[] = [
   'overview',
-  'prep',
-  'scan',
-  'assign',
-  'mark',
-  'publish',
-  'archive',
+  MarkTeacherDashboardJourneyKeyCode.PREP,
+  MarkTeacherDashboardJourneyKeyCode.SCAN,
+  MarkTeacherDashboardJourneyKeyCode.ASSIGN,
+  MarkTeacherDashboardJourneyKeyCode.MARK,
+  MarkTeacherDashboardJourneyKeyCode.PUBLISH,
+  MarkTeacherDashboardJourneyKeyCode.ARCHIVE,
 ]
 
 /** 判断 route.meta.journeyKey 是否为合法工作台旅程键 */
 export function isExamWorkspaceJourneyKey(value: unknown): value is ExamWorkspaceJourneyKey {
-  return typeof value === 'string' && (WORKSPACE_JOURNEY_KEYS as readonly string[]).includes(value)
+  return value === 'overview'
+    || value === MarkTeacherDashboardJourneyKeyCode.PREP
+    || value === MarkTeacherDashboardJourneyKeyCode.SCAN
+    || value === MarkTeacherDashboardJourneyKeyCode.ASSIGN
+    || value === MarkTeacherDashboardJourneyKeyCode.MARK
+    || value === MarkTeacherDashboardJourneyKeyCode.PUBLISH
+    || value === MarkTeacherDashboardJourneyKeyCode.ARCHIVE
 }
 
 /** 将后端细阶段键映射为六步旅程键 */
@@ -93,7 +100,7 @@ export function resolveJourneyDefaultRoute(
   examId: string,
   options?: { scanAttentionCount?: number },
 ): RouteLocationRaw {
-  if (journeyKey === 'scan') {
+  if (journeyKey === MarkTeacherDashboardJourneyKeyCode.SCAN) {
     return resolveScanStageEntryRoute(examId, {
       scanAttentionCount: options?.scanAttentionCount,
     })

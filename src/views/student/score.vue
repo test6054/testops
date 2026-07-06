@@ -23,24 +23,26 @@
 
     <template v-else>
       <!-- 最近一场已发布详情卡 -->
-      <UiCard v-if="latestPublished" class="student-score__latest-card">
-        <template #title>
-          <CheckCircleOutlined />
-          <span>最近一场已发布成绩</span>
-          <UiBadge tone="green">已发布</UiBadge>
-        </template>
-        <template #extra>
-          <a-space>
-            <UiButton size="sm" @click="goDetail(latestPublished.examId)">查看明细</UiButton>
-            <UiButton
-              v-if="canSubmitReview(latestPublished)"
-              variant="outline"
-              size="sm"
-              @click="goAppeal(latestPublished.examId)"
-            >
-              提交复核
-            </UiButton>
-          </a-space>
+      <WorkbenchSurfaceCard v-if="latestPublished" class="student-score__latest-card">
+        <template #head>
+          <div class="student-score__latest-head">
+            <div class="student-score__latest-title">
+              <CheckCircleOutlined />
+              <span>最近一场已发布成绩</span>
+              <UiTag tone="green" size="sm">已发布</UiTag>
+            </div>
+            <a-space>
+              <UiButton size="sm" @click="goDetail(latestPublished.examId)">查看明细</UiButton>
+              <UiButton
+                v-if="canSubmitReview(latestPublished)"
+                variant="outline"
+                size="sm"
+                @click="goAppeal(latestPublished.examId)"
+              >
+                提交复核
+              </UiButton>
+            </a-space>
+          </div>
         </template>
 
         <div class="latest-grid">
@@ -83,7 +85,7 @@
             </div>
           </div>
         </div>
-      </UiCard>
+      </WorkbenchSurfaceCard>
 
       <!-- D-6 个性化洞察（基于 exams 已加载数据派生，零额外 RPC） -->
       <SignalBand
@@ -94,10 +96,12 @@
       />
 
       <!-- 全部考试列表 -->
-      <UiCard class="student-score__list-card">
-        <template #title>
-          <FileOutlined />
-          <span>全部考试</span>
+      <WorkbenchSurfaceCard flush class="student-score__list-card">
+        <template #head>
+          <div class="student-score__list-head">
+            <FileOutlined />
+            <span>全部考试</span>
+          </div>
         </template>
 
         <UiDataTable
@@ -166,7 +170,7 @@
             </template>
           </template>
         </UiDataTable>
-      </UiCard>
+      </WorkbenchSurfaceCard>
     </template>
   </StageWorkbenchShell>
 </template>
@@ -179,22 +183,20 @@ import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import { computed, onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from '@/apis/mark/final-score-status'
+import { FINAL_SCORE_STATUS_TONE, FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
 import {
   canSubmitReview,
   listMyExams,
-  STUDENT_REVIEW_WINDOW_STATUS_LABEL,
+  ReviewWindowPolicyStatusDescription,
   STUDENT_REVIEW_WINDOW_STATUS_TONE,
 } from '@/apis/mark/student-exam'
-import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { assertUserFacing } from '@/utils/contract-guard'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime, formatScore } from '@/utils/format'
 import { toSignalMetrics } from '@/utils/stat-metric-helpers'
@@ -221,7 +223,7 @@ function finalScoreStatusTone(item: StudentExamItemVO): BadgeTone {
 }
 
 function finalScoreStatusLabel(item: StudentExamItemVO): string {
-  return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, item.finalScoreStatus, '最终成绩状态')
+  return strictEnumLabel(FinalScoreStatusDescription, item.finalScoreStatus, '最终成绩状态')
 }
 
 function reviewWindowStatusTone(item: StudentExamItemVO): BadgeTone {
@@ -230,7 +232,7 @@ function reviewWindowStatusTone(item: StudentExamItemVO): BadgeTone {
 
 function reviewWindowStatusLabel(item: StudentExamItemVO): string {
   return strictEnumLabel(
-    STUDENT_REVIEW_WINDOW_STATUS_LABEL,
+    ReviewWindowPolicyStatusDescription,
     item.reviewWindowStatus,
     '复核窗口状态',
   )
@@ -247,8 +249,8 @@ const publishedExamsSorted = computed<StudentExamItemVO[]>(() => {
     .filter((e) => e.finalScoreStatus === 'PUBLISHED')
     .slice()
     .sort((a, b) => {
-      const ta = requirePublishedTimestamp(a)
-      const tb = requirePublishedTimestamp(b)
+      const ta = a.publishedTime ? new Date(a.publishedTime).getTime() : 0
+      const tb = b.publishedTime ? new Date(b.publishedTime).getTime() : 0
       return tb - ta
     })
 })
@@ -274,8 +276,8 @@ const unpublishedCount = computed<number>(() => {
 const scoreTrend = computed<{ diff: number, latest: number, previous: number } | null>(() => {
   const list = publishedExamsSorted.value
   if (list.length < 2) return null
-  const latest = requirePublishedScore(list[0])
-  const previous = requirePublishedScore(list[1])
+  const latest = Number(list[0].finalScore)
+  const previous = Number(list[1].finalScore)
   return { diff: latest - previous, latest, previous }
 })
 
@@ -391,7 +393,6 @@ async function loadExams() {
   loading.value = true
   try {
     const loadedExams = await listMyExams()
-    validatePublishedExamContracts(loadedExams)
     exams.value = loadedExams
   } catch (error) {
     exams.value = []
@@ -401,31 +402,12 @@ async function loadExams() {
   }
 }
 
-/** 校验学生成绩列表的发布态合同，避免模板渲染阶段才暴露缺失字段。 */
-function validatePublishedExamContracts(list: StudentExamItemVO[]): void {
-  const dataError = '成绩数据异常，请刷新后重试'
-  for (const item of list) {
-    if (item.finalScoreStatus === 'PUBLISHED') {
-      assertUserFacing(item.finalScore != null, dataError)
-      assertUserFacing(Boolean(item.publishedTime), dataError)
-    }
-  }
-}
-
-function requirePublishedScore(item: StudentExamItemVO): number {
-  return item.finalScore as number
-}
-
 function formatPublishedScore(item: StudentExamItemVO): string {
-  return formatScore(requirePublishedScore(item), 'score')
+  return formatScore(item.finalScore, 'score')
 }
 
 function requirePublishedTime(item: StudentExamItemVO): string {
-  return formatDateTime(requirePublishedTimestamp(item))
-}
-
-function requirePublishedTimestamp(item: StudentExamItemVO): number {
-  return new Date(item.publishedTime as string).getTime()
+  return formatDateTime(item.publishedTime)
 }
 
 function goDetail(examId: string) {
@@ -445,6 +427,30 @@ onActivated(loadExams)
 .student-score {
   &__latest-card {
     margin-bottom: 16px;
+  }
+
+  &__latest-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+  }
+
+  &__latest-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: var(--dp-font-weight-title, 600);
+  }
+
+  &__list-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: var(--dp-font-weight-title, 600);
   }
 
   &__insights {

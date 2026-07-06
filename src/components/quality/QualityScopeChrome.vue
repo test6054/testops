@@ -4,10 +4,9 @@
  * 禁止 silent 自动选首项；仅恢复 persist 选择。
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { CONFIRMATION_STATUS_COLOR, CONFIRMATION_STATUS_LABEL } from '@/apis/quality/types'
+import { CONFIRMATION_STATUS_COLOR, ConfirmationStatusDescription } from '@/apis/quality/types'
 import {
   CourseSelector,
   ProgramSelector,
@@ -16,8 +15,8 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { useQualityScopeProfile } from '@/composables/useQualityScopeProfile'
-import { SEMESTER_OPTIONS } from '@/constants/quality-scope-profile'
 import { useQualityStore } from '@/stores/modules/quality'
+import { ALL_SEMESTER_CODES, SemesterOptions } from '@/types/enums/semester-enum'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'QualityScopeChrome' })
@@ -53,7 +52,7 @@ const planConfirmationLabel = computed(() => {
     return ''
   }
   return strictEnumLabel(
-    CONFIRMATION_STATUS_LABEL,
+    ConfirmationStatusDescription,
     qualityStore.currentPlan.confirmationStatus,
     '培养方案确认状态',
   )
@@ -67,7 +66,7 @@ const planConfirmationTone = computed((): BadgeTone => {
     CONFIRMATION_STATUS_COLOR,
     qualityStore.currentPlan.confirmationStatus,
     '培养方案确认状态',
-  ) as BadgeTone
+  )
 })
 
 async function restorePersistedScope(): Promise<void> {
@@ -98,12 +97,27 @@ function handleTrainingPlanChange(value: string | null): void {
 }
 
 function handleSchoolYearChange(value: string): void {
-  qualityStore.setSchoolPeriod(value, undefined)
+  qualityStore.setSchoolPeriod(value?.trim() || '', value?.trim() ? undefined : null)
   emit('change')
 }
 
-function handleSemesterChange(value: SemesterCode | undefined): void {
-  qualityStore.setSchoolPeriod(undefined, value ?? null)
+function handleSemesterChange(raw: unknown): void {
+  if (raw === undefined || raw === null || raw === '') {
+    qualityStore.setSchoolPeriod(undefined, null)
+    emit('change')
+    return
+  }
+  if (typeof raw !== 'string') {
+    return
+  }
+  const semester = ALL_SEMESTER_CODES.find((code) => code === raw)
+  if (!semester) {
+    return
+  }
+  if (!qualityStore.currentSchoolYear.trim()) {
+    return
+  }
+  qualityStore.setSchoolPeriod(undefined, semester)
   emit('change')
 }
 
@@ -117,6 +131,7 @@ function goSelectPlan(): void {
 }
 
 onMounted(() => {
+  qualityStore.sanitizePersistedScope()
   void restorePersistedScope()
 })
 </script>
@@ -157,10 +172,9 @@ onMounted(() => {
         placeholder="学期"
         class="quality-scope-chrome__select quality-scope-chrome__select--semester"
         allow-clear
-        :options="[...SEMESTER_OPTIONS]"
-        @update:value="
-          (v) => handleSemesterChange(typeof v === 'string' ? (v as SemesterCode) : undefined)
-        "
+        :disabled="!qualityStore.currentSchoolYear.trim()"
+        :options="[...SemesterOptions]"
+        @update:value="handleSemesterChange"
       />
       <CourseSelector
         v-if="showCourse"

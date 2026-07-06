@@ -1,12 +1,12 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title :title="pageTitle" :subtitle="pageSubtitle">
+      <ContextBar layout="workbench" show-title :title="contextBarTitle" :subtitle="contextBarSubtitle">
         <template #status>
           <UiTag v-if="examDetail?.status" :tone="examStatusTone(examDetail.status)" size="sm">
             {{ examStatusLabel(examDetail.status) }}
           </UiTag>
-          <UiTag v-if="isTrialTaskPool" tone="purple" size="sm"> 试评阶段 </UiTag>
+          <UiTag v-if="isTrialTaskPool" tone="orange" size="sm">试评阶段</UiTag>
         </template>
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="() => loadTasks()">
@@ -18,8 +18,10 @@
     </template>
 
     <template v-if="pageSignalMetrics.length > 0" #signal>
-      <SignalBand :metrics="pageSignalMetrics" compact />
+      <SignalBand variant="tiles" :metrics="pageSignalMetrics" compact />
     </template>
+
+    <ExamWorkspaceJourneySubNav />
 
     <UiAlertStrip
       v-if="sessionPausedAlert"
@@ -37,98 +39,113 @@
     </UiAlertStrip>
 
     <div class="marking-task-pool-page">
-      <UiCard class="claim-card">
-        <template #title>
-          <ThunderboltOutlined />
-          <span>领取任务</span>
+      <WorkbenchSurfaceCard class="marking-task-pool-page__claim">
+        <template #head>
+          <div class="marking-task-pool-page__claim-title">
+            <ThunderboltOutlined />
+            <span>领取任务</span>
+          </div>
         </template>
 
-        <a-spin :spinning="claimContextLoading">
-          <UiEmpty
-            v-if="!claimContextLoading && (claimContext?.groups.length ?? 0) === 0"
-            :description="claimEmptyDescription"
-          >
-            <template #action>
-              <UiButton variant="primary" @click="goMarkingOrg"> 前往阅卷安排 </UiButton>
-            </template>
-          </UiEmpty>
-          <a-form v-else layout="inline" :model="claimForm" @submit.prevent="submitClaim">
-            <a-form-item label="题组" required>
-              <a-select
-                v-model:value="claimForm.groupId"
-                :options="claimGroupOptions"
-                :loading="claimContextLoading"
-                placeholder="选择题组"
-                style="width: 240px"
-                show-search
-                option-filter-prop="label"
-                @change="onClaimGroupChange"
-              />
-            </a-form-item>
-            <a-form-item :label="sessionSelectLabel" required>
-              <a-select
-                v-model:value="claimForm.sessionId"
-                :options="claimSessionOptions"
-                :disabled="!claimForm.groupId"
-                placeholder="选择该题组下的活跃会话"
-                style="width: 280px"
-                allow-clear
-              />
-            </a-form-item>
-            <a-form-item>
-              <a-space>
-                <UiButton :disabled="!canClaim" :loading="claiming" @click="submitClaim">
-                  <template #icon><PlusOutlined /></template>
-                  批量领取一批
-                </UiButton>
-                <UiButton
-                  variant="outline"
-                  size="sm"
-                  :loading="claimContextLoading"
-                  @click="loadClaimContext"
-                >
-                  <template #icon><ReloadOutlined /></template>
-                  刷新可领取题组
-                </UiButton>
-              </a-space>
-            </a-form-item>
-          </a-form>
-        </a-spin>
-      </UiCard>
+        <UiSkeletonState v-if="claimContextLoading" variant="card" compact />
 
-      <a-card :bordered="false" class="detail-table-card table-card">
-        <template #title>
-          <TableOutlined />
-          <span class="section-title">任务列表</span>
-          <UiButton
-            variant="outline"
-            size="sm"
-            class="marking-task-pool-page__batch-toggle"
-            @click="toggleBatchMode"
-          >
-            {{ batchMode ? '退出批量' : '批量模式' }}
-          </UiButton>
-        </template>
-
-        <UiBatchActionBar
-          v-if="batchMode && selectedRowKeys.length > 0"
-          :selected-count="selectedRowKeys.length"
-          selection-label="份已选"
-          description="须同题组 · 同题目 · 待批阅状态"
+        <UiEmpty
+          v-else-if="(claimContext?.groups.length ?? 0) === 0"
+          :description="claimEmptyDescription"
         >
-          <UiButton variant="primary" size="sm" @click="openBatchDrawer"> 批量给分 </UiButton>
-          <UiButton variant="outline" size="sm" @click="clearBatchSelection"> 清空 </UiButton>
-        </UiBatchActionBar>
+          <template #action>
+            <UiButton variant="primary" @click="goMarkingOrg"> 前往阅卷安排 </UiButton>
+          </template>
+        </UiEmpty>
+        <a-form v-else layout="inline" :model="claimForm" @submit.prevent="submitClaim">
+          <a-form-item label="题组" required>
+            <a-select
+              v-model:value="claimForm.groupId"
+              :options="claimGroupOptions"
+              :loading="claimContextLoading"
+              placeholder="选择题组"
+              style="width: 240px"
+              show-search
+              option-filter-prop="label"
+              @change="onClaimGroupChange"
+            />
+          </a-form-item>
+          <a-form-item :label="sessionSelectLabel" required>
+            <a-select
+              v-model:value="claimForm.sessionId"
+              :options="claimSessionOptions"
+              :disabled="!claimForm.groupId"
+              placeholder="选择该题组下的活跃会话"
+              style="width: 280px"
+              allow-clear
+            />
+          </a-form-item>
+          <a-form-item>
+            <a-space>
+              <UiButton :disabled="!canClaim" :loading="claiming" @click="submitClaim">
+                <template #icon><PlusOutlined /></template>
+                批量领取一批
+              </UiButton>
+              <UiButton
+                variant="outline"
+                size="sm"
+                :loading="claimContextLoading"
+                @click="loadClaimContext"
+              >
+                <template #icon><ReloadOutlined /></template>
+                刷新可领取题组
+              </UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </WorkbenchSurfaceCard>
 
-        <UiFilterBar
-          v-model="filterModel"
-          :fields="taskFilterFields"
-          variant="panel"
-          show-labels
-          search-text="查询"
-          @search="loadTasks"
-          @reset="resetFilter"
-        />
+      <WorkbenchSurfaceCard flush class="marking-task-pool-page__tasks">
+        <template #head>
+          <header class="marking-task-pool-page__task-header">
+            <h3 class="marking-task-pool-page__task-title">
+              <TableOutlined />
+              任务列表
+            </h3>
+            <UiButton
+              variant="outline"
+              size="sm"
+              @click="toggleBatchMode"
+            >
+              {{ batchMode ? '退出批量' : '批量模式' }}
+            </UiButton>
+          </header>
+        </template>
+
+        <template #toolbar>
+          <UiAlertStrip
+            v-if="tasksLoadError"
+            tone="error"
+            title="任务列表加载失败"
+            :description="tasksLoadError"
+            dense
+          />
+
+          <UiBatchActionBar
+            v-if="batchMode && selectedRowKeys.length > 0"
+            :selected-count="selectedRowKeys.length"
+            selection-label="份已选"
+            description="须同题组 · 同题目 · 待批阅状态"
+          >
+            <UiButton variant="primary" size="sm" @click="openBatchDrawer"> 批量给分 </UiButton>
+            <UiButton variant="outline" size="sm" @click="clearBatchSelection"> 清空 </UiButton>
+          </UiBatchActionBar>
+
+          <UiFilterBar
+            v-model="filterModel"
+            :fields="taskFilterFields"
+            variant="panel"
+            show-labels
+            search-text="查询"
+            @search="loadTasks"
+            @reset="resetFilter"
+          />
+        </template>
 
         <UiDataTable
           pagination-mode="client"
@@ -161,7 +178,7 @@
             </template>
             <template v-else-if="column.key === 'anonymityMode'">
               <UiTag
-                :tone="tasks[index].anonymityMode === 'ANONYMOUS' ? 'purple' : 'gray'"
+                :tone="tasks[index].anonymityMode === 'ANONYMOUS' ? 'blue' : 'gray'"
                 size="sm"
               >
                 {{ anonymityModeLabel(tasks[index].anonymityMode) }}
@@ -208,7 +225,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiButton
-                v-if="['ALLOCATED', 'IN_PROGRESS'].includes(tasks[index].taskStatus)"
+                v-if="[MarkingTaskStatusCode.ALLOCATED, MarkingTaskStatusCode.IN_PROGRESS].includes(tasks[index].taskStatus)"
                 size="sm"
                 variant="primary"
                 @click="goDetail(tasks[index])"
@@ -227,13 +244,13 @@
             </template>
           </template>
         </UiDataTable>
-      </a-card>
+      </WorkbenchSurfaceCard>
 
       <MarkingBatchScoreDrawer
         v-model:open="batchDrawerOpen"
         :exam-id="selectedExamId ?? ''"
         :group-id="batchGroupId"
-        :question-template-id="batchQuestionTemplateId"
+        :layout-question-id="batchLayoutQuestionId"
         :full-score="batchFullScore"
         :selected-tasks="selectedTasks"
         @submitted="handleBatchSubmitted"
@@ -248,10 +265,8 @@ import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
 import type { ExamStatusCode } from '@/apis/mark/exam'
 import type {
   FormalSessionVO,
-  MarkingSessionPhaseCode,
   MarkingTaskClaimRequest,
   MarkingTaskQueryRequest,
-  MarkingTaskStatusCode,
   MarkingTaskVO,
   TeacherClaimContextVO,
   TrialSessionVO,
@@ -266,29 +281,33 @@ import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ANONYMITY_MODE_LABEL } from '@/apis/mark/anonymity-mode'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
+import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
+import { EXAM_STATUS_TONE, ExamStatusDescription } from '@/apis/mark/exam'
 import {
-  FORMAL_SESSION_STATUS_LABEL,
+  FormalSessionStatusDescription,
   getMarkingQuestionView,
   getOrganization,
-  MARKING_TASK_STATUS_LABEL,
   MARKING_TASK_STATUS_OPTIONS,
   MARKING_TASK_STATUS_TONE,
-  TRIAL_SESSION_STATUS_LABEL,
+  MarkingTaskStatusDescription,
+  TrialSessionStatusDescription,
 } from '@/apis/mark/marking-organization'
+import { MarkingTaskStreamSubscribeScopeCode } from '@/apis/mark/marking-task-stream'
 import MarkingBatchScoreDrawer from '@/components/mark/MarkingBatchScoreDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiBatchActionBar from '@/components/ui-guide/ui/UiBatchActionBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkingTaskStream } from '@/composables/useMarkingTaskStream'
 import {
@@ -298,7 +317,10 @@ import {
 import { usePolling } from '@/composables/usePolling'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
-import { showUserError } from '@/utils/error-handler'
+import { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
+import { MarkingSessionPhaseCode } from '@/types/enums/marking-session-phase-enum'
+import { MarkingTaskStatusCode } from '@/types/enums/marking-task-status-enum'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime, formatSessionOptionTime } from '@/utils/format'
 import { navigateToJourneyStep } from '@/utils/mark-stage-navigation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -312,8 +334,8 @@ const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 
 const isTrialTaskPool = computed(() => route.meta.workspacePhase === 'trial')
 
-const markingPhase = computed(
-  () => (isTrialTaskPool.value ? 'TRIAL' : 'FORMAL') as MarkingSessionPhaseCode,
+const markingPhase = computed(() =>
+  isTrialTaskPool.value ? MarkingSessionPhaseCode.TRIAL : MarkingSessionPhaseCode.FORMAL,
 )
 
 const sessionSelectLabel = computed(() => (isTrialTaskPool.value ? '试评会话' : '正评会话'))
@@ -333,9 +355,10 @@ const taskTableEmptyDescription = computed(() =>
 const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
 
+const taskPoolStageLabel = computed(() => String(route.meta.title ?? '阅卷任务池'))
+const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar(taskPoolStageLabel)
+
 const examDetail = computed(() => workbenchContext?.examDetail?.value ?? null)
-const pageTitle = computed(() => String(route.meta.title ?? '阅卷任务池'))
-const pageSubtitle = computed(() => examDetail.value?.examName ?? '')
 
 /**
  * 当前登录教师 ID 参与查询条件组装。
@@ -368,9 +391,13 @@ const filterModel = computed<Record<string, unknown>>({
 
 const statusOptions = MARKING_TASK_STATUS_OPTIONS
 
-const inProgressCount = computed(
-  () => tasks.value.filter((task) => task.taskStatus === 'IN_PROGRESS').length,
-)
+const taskPoolSummary = computed(() => claimContext.value?.taskSummary ?? null)
+
+const completedTaskCount = computed(() => {
+  const summary = taskPoolSummary.value
+  if (!summary) return 0
+  return summary.submittedTaskCount + summary.finalizedTaskCount
+})
 
 const highlightedTaskIds = ref<Set<string>>(new Set())
 const highlightTimers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -379,9 +406,10 @@ const batchMode = ref(false)
 const selectedRowKeys = ref<string[]>([])
 const batchSelectionAnchor = ref<MarkingTaskVO | null>(null)
 const batchDrawerOpen = ref(false)
-const batchQuestionTemplateId = ref('')
+const batchLayoutQuestionId = ref('')
 const batchFullScore = ref(0)
 const batchGroupId = ref('')
+const tasksLoadError = ref('')
 const sessionPausedAlert = ref(false)
 const isGroupLeader = ref(false)
 const groupLeaderProgress = ref<{ pendingCount?: number, submittedCount?: number } | null>(null)
@@ -391,7 +419,8 @@ const selectedTasks = computed(() =>
 )
 
 function isBatchSelectable(task: MarkingTaskVO): boolean {
-  return task.taskStatus === 'ALLOCATED' || task.taskStatus === 'IN_PROGRESS'
+  return task.taskStatus === MarkingTaskStatusCode.ALLOCATED
+    || task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS
 }
 
 function isSameBatchGroup(task: MarkingTaskVO, anchor: MarkingTaskVO): boolean {
@@ -438,7 +467,7 @@ async function openBatchDrawer(): Promise<void> {
       examId: selectedExamId.value,
       taskId: first.id,
     })
-    batchQuestionTemplateId.value = view.questionTemplateId
+    batchLayoutQuestionId.value = view.layoutQuestionId
     batchFullScore.value = view.fullScore
     batchGroupId.value = first.groupId ?? ''
     batchDrawerOpen.value = true
@@ -449,7 +478,7 @@ async function openBatchDrawer(): Promise<void> {
 
 async function handleBatchSubmitted(): Promise<void> {
   clearBatchSelection()
-  await loadTasks()
+  await Promise.all([loadTasks(), loadClaimContext()])
 }
 
 async function loadGroupLeaderFlag(): Promise<void> {
@@ -469,7 +498,7 @@ const teacherTaskStream = useMarkingTaskStream({
   filter: () => ({
     examId: selectedExamId.value ?? '',
     sessionId: filterForm.sessionId?.trim() || undefined,
-    scope: 'teacher',
+    scope: MarkingTaskStreamSubscribeScopeCode.TEACHER,
   }),
   when: () => Boolean(selectedExamId.value && currentUserId.value),
   onEvent: (event) => {
@@ -499,7 +528,7 @@ const teacherTaskStream = useMarkingTaskStream({
 const groupLeaderStream = useMarkingTaskStream({
   filter: () => ({
     examId: selectedExamId.value ?? '',
-    scope: 'groupLeader',
+    scope: MarkingTaskStreamSubscribeScopeCode.GROUP_LEADER,
   }),
   when: () => Boolean(selectedExamId.value && isGroupLeader.value),
   onEvent: (event) => {
@@ -528,7 +557,8 @@ function getPollingIntervalMs(): number {
     return 0
   }
   const hasPending = tasks.value.some(
-    (task) => task.taskStatus === 'ALLOCATED' || task.taskStatus === 'IN_PROGRESS',
+    (task) => task.taskStatus === MarkingTaskStatusCode.ALLOCATED
+      || task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS,
   )
   if (hasPending) {
     return 5000
@@ -539,20 +569,17 @@ function getPollingIntervalMs(): number {
   return 15000
 }
 
-/** 任务完成度 KPI：ALLOCATED 计入待领取，不与阅卷中重复 */
+/** 任务池 KPI 真源：claim-context.taskSummary，非当前筛选列表 client 聚合 */
 const pageSignalMetrics = computed((): SignalMetric[] => {
-  if (!selectedExamId.value) {
+  const summary = taskPoolSummary.value
+  if (!summary) {
     return []
   }
-  const allocatedCount = tasks.value.filter((task) => task.taskStatus === 'ALLOCATED').length
-  const doneCount = tasks.value.filter(
-    (task) => task.taskStatus === 'SUBMITTED' || task.taskStatus === 'FINALIZED',
-  ).length
   return [
-    { key: 'total', label: '总数', value: String(tasks.value.length), tone: 'blue' },
-    { key: 'allocated', label: '待领取', value: String(allocatedCount), tone: 'gray' },
-    { key: 'inProgress', label: '进行中', value: String(inProgressCount.value), tone: 'blue' },
-    { key: 'done', label: '已完成', value: String(doneCount), tone: 'green' },
+    { key: 'total', label: '我的任务', value: summary.totalTaskCount, tone: 'blue' },
+    { key: 'allocated', label: '待领取', value: summary.allocatedTaskCount, tone: 'gray' },
+    { key: 'inProgress', label: '批阅中', value: summary.inProgressTaskCount, tone: 'blue' },
+    { key: 'done', label: '已完成', value: completedTaskCount.value, tone: 'green' },
   ]
 })
 
@@ -573,10 +600,13 @@ const columns = computed<ColumnType<MarkingTaskVO>[]>(() => [
 async function loadTasks(options?: { silent?: boolean }): Promise<void> {
   if (!selectedExamId.value) {
     markTaskStore.clearTasks()
+    tasksLoadError.value = ''
     return
   }
   if (!currentUserId.value) {
+    markTaskStore.clearTasks()
     if (!options?.silent) {
+      tasksLoadError.value = '当前登录用户缺少 userId，无法加载阅卷任务'
       showUserError(
         new Error('当前登录用户缺少 userId，无法加载阅卷任务'),
         '当前登录用户缺少 userId，无法加载阅卷任务',
@@ -598,6 +628,7 @@ async function loadTasks(options?: { silent?: boolean }): Promise<void> {
       taskStatus: filterForm.taskStatus,
     }
     await markTaskStore.loadTasks(request, { silent: options?.silent })
+    tasksLoadError.value = ''
     if (options?.silent && isGroupLeader.value) {
       void loadClaimContext()
     }
@@ -606,7 +637,10 @@ async function loadTasks(options?: { silent?: boolean }): Promise<void> {
     }
     taskListPolling.syncPolling()
   } catch (error) {
+    markTaskStore.clearTasks()
+    const errorMessage = getUserErrorMessage(error, '阅卷任务列表加载失败')
     if (!options?.silent) {
+      tasksLoadError.value = errorMessage
       showUserError(error, '阅卷任务列表加载失败')
     }
   }
@@ -684,7 +718,7 @@ watch(
 const claimForm = reactive<MarkingTaskClaimRequest>({
   sessionId: '',
   groupId: '',
-  markingPhase: 'FORMAL',
+  markingPhase: MarkingSessionPhaseCode.FORMAL,
 })
 
 const canClaim = computed(() => !!claimForm.sessionId.trim() && !!claimForm.groupId.trim())
@@ -722,7 +756,7 @@ function buildTrialSessionSelectOptions(sessions: TrialSessionVO[]) {
   return sessions.map((session) => ({
     value: session.id,
     label: formatSessionSelectLabel(
-      strictEnumLabel(TRIAL_SESSION_STATUS_LABEL, session.sessionStatus, '试评会话状态'),
+      strictEnumLabel(TrialSessionStatusDescription, session.sessionStatus, '试评会话状态'),
       session.createTime,
     ),
   }))
@@ -732,7 +766,7 @@ function buildFormalSessionSelectOptions(sessions: FormalSessionVO[]) {
   return sessions.map((session) => ({
     value: session.id,
     label: formatSessionSelectLabel(
-      strictEnumLabel(FORMAL_SESSION_STATUS_LABEL, session.sessionStatus, '正评会话状态'),
+      strictEnumLabel(FormalSessionStatusDescription, session.sessionStatus, '正评会话状态'),
       session.startTime ?? session.createTime,
       session.pendingTaskCount,
     ),
@@ -838,7 +872,7 @@ async function submitClaim(): Promise<void> {
       message.info('当前会话 / 题组没有可领取的任务')
     } else {
       message.success(`成功领取 ${claimed.length} 个任务`)
-      await loadTasks()
+      await Promise.all([loadTasks(), loadClaimContext()])
       try {
         await refreshSnapshot()
       } catch {
@@ -862,11 +896,11 @@ function goDetail(task: MarkingTaskVO): void {
 
 function goMarkingOrg(): void {
   if (!selectedExamId.value) return
-  navigateToJourneyStep(router, 'assign', selectedExamId.value)
+  navigateToJourneyStep(router, MarkTeacherDashboardJourneyKeyCode.ASSIGN, selectedExamId.value)
 }
 
 function examStatusLabel(status: ExamStatusCode): string {
-  return strictEnumLabel(EXAM_STATUS_LABEL, status, '考试状态')
+  return strictEnumLabel(ExamStatusDescription, status, '考试状态')
 }
 
 function examStatusTone(status: ExamStatusCode): BadgeTone {
@@ -877,11 +911,11 @@ function examStatusTone(status: ExamStatusCode): BadgeTone {
  * 把 record.taskStatus 渲染成中文标签，未知枚举直接暴露契约错误。
  */
 function taskStatusLabel(value: MarkingTaskStatusCode): string {
-  return strictEnumLabel(MARKING_TASK_STATUS_LABEL, value, '阅卷任务状态')
+  return strictEnumLabel(MarkingTaskStatusDescription, value, '阅卷任务状态')
 }
 
 function anonymityModeLabel(mode: AnonymityModeCode): string {
-  return strictEnumLabel(ANONYMITY_MODE_LABEL, mode, '匿名模式')
+  return strictEnumLabel(AnonymityModeDescription, mode, '匿名模式')
 }
 
 /**
@@ -898,6 +932,7 @@ watch(
     claimForm.sessionId = ''
     claimForm.markingPhase = markingPhase.value
     sessionPausedAlert.value = false
+    tasksLoadError.value = ''
     groupLeaderProgress.value = null
     clearBatchSelection()
     batchMode.value = false
@@ -927,25 +962,26 @@ watch(markingPhase, () => {
   gap: 16px;
   min-width: 0;
 
-  &__toolbar {
+  &__claim-title,
+  &__task-title {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-2, 8px);
+    margin: 0;
+    font-size: 16px;
+    font-weight: var(--dp-font-weight-title, 600);
+    line-height: 1.5;
+    color: var(--dp-text-primary, #0f172a);
   }
-}
 
-.empty-block {
-  margin-top: 48px;
-}
-
-.claim-card,
-.table-card {
-  margin-bottom: 0;
-}
-
-.marking-task-pool-page__batch-toggle {
-  margin-left: 8px;
+  &__task-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--dp-space-3, 12px);
+    flex-wrap: wrap;
+    width: 100%;
+  }
 }
 
 .muted {

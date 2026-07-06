@@ -1,8 +1,8 @@
 import type {
-  AchievementStatus,
-  AchievementTargetType,
-  AggregationFunction,
-  EvaluationMethod,
+  AchievementStatusCode,
+  AchievementTargetTypeCode,
+  AggregationFunctionCode,
+  EvaluationMethodCode,
 } from './types'
 /**
  * 达成度计算 API - 对齐 AchievementCalculationController
@@ -30,7 +30,7 @@ export interface ComputeCourseGoalRequest {
   schoolYear?: string
   semester?: SemesterCode
   classId?: string
-  evaluationMethod?: EvaluationMethod
+  evaluationMethod?: EvaluationMethodCode
   professionProfileId?: string
 }
 
@@ -62,13 +62,13 @@ export interface CourseGoalAchievementSummaryVO {
   indirectValue?: number
   finalValue?: number
   thresholdValue?: number
-  achievementStatus?: AchievementStatus
-  evaluationMethod: EvaluationMethod
+  achievementStatus?: AchievementStatusCode
+  evaluationMethod?: EvaluationMethodCode
   directWeight?: number
   indirectWeight?: number
-  assessmentItemCount: number
-  directSampleCount: number
-  indirectValidSampleCount: number
+  assessmentItemCount?: number
+  directSampleCount?: number
+  indirectValidSampleCount?: number
   indirectCoverage?: number
   evidenceGap?: string
 }
@@ -76,14 +76,14 @@ export interface CourseGoalAchievementSummaryVO {
 /** 单条毕业要求 / 观测点摘要 - 严格对齐 RequirementAchievementSummaryVO */
 export interface RequirementAchievementSummaryVO {
   achievementResultId?: string
-  targetType: AchievementTargetType
+  targetType: AchievementTargetTypeCode
   targetId?: string
   targetCode?: string
   targetName?: string
   finalValue?: number
   thresholdValue?: number
-  achievementStatus?: AchievementStatus
-  aggregation?: AggregationFunction
+  achievementStatus?: AchievementStatusCode
+  aggregation?: AggregationFunctionCode
   inputCount?: number
 }
 
@@ -100,7 +100,7 @@ export interface ProgramAchievementSummaryVO {
   trainingPlanId?: string
   finalValue?: number
   thresholdValue?: number
-  achievementStatus?: AchievementStatus
+  achievementStatus?: AchievementStatusCode
   aggregation?: string
   requirementCount?: number
 }
@@ -114,7 +114,7 @@ export interface TrainingObjectiveAchievementSummaryVO {
   trainingPlanId?: string
   finalValue?: number
   thresholdValue?: number
-  achievementStatus?: AchievementStatus
+  achievementStatus?: AchievementStatusCode
   aggregation?: string
   requirementCount?: number
 }
@@ -126,9 +126,9 @@ export interface CivicGoalAchievementSummaryVO {
   trainingPlanId?: string
   finalValue?: number
   thresholdValue?: number
-  achievementStatus?: AchievementStatus
-  aggregation?: AggregationFunction
-  dimensionCount?: number
+  achievementStatus?: AchievementStatusCode
+  aggregation?: AggregationFunctionCode
+  civicGoalCount?: number
 }
 
 /** 复杂工程问题专项 VO - 严格对齐 ComplexEngineeringGoalAchievementSummaryVO */
@@ -138,9 +138,9 @@ export interface ComplexEngineeringGoalAchievementSummaryVO {
   trainingPlanId?: string
   finalValue?: number
   thresholdValue?: number
-  achievementStatus?: AchievementStatus
-  aggregation?: AggregationFunction
-  indicatorCount?: number
+  achievementStatus?: AchievementStatusCode
+  aggregation?: AggregationFunctionCode
+  complexEngineeringGoalCount?: number
 }
 
 /** 计算就绪查询 - 严格对齐 AchievementComputeReadinessRequest */

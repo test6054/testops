@@ -1,24 +1,24 @@
 <script setup lang="ts">
 import type {
   PortfolioAiAnalysisDetailVO,
-  PortfolioAiAnalysisType,
-  PortfolioMaterialType,
-  PortfolioPolicyMatchConclusion,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import { portfolioAiOrchestrationApi } from '@/apis/portfolio/ai-orchestration'
+import {
+  PortfolioAiAnalysisTypeCode,
+  PortfolioAiAnalysisTypeDescription,
+  PortfolioMaterialTypeCode,
+  PortfolioPolicyMatchConclusionDescription,
+} from '@/apis/portfolio/enums'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import {
-  PORTFOLIO_AI_ANALYSIS_TYPE_LABEL,
-  PORTFOLIO_POLICY_MATCH_CONCLUSION_LABEL,
-  PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE,
-} from '@/apis/portfolio/types'
+import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -32,7 +32,6 @@ import {
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
-import { assertPortfolioAiAnalysisType } from '@/utils/portfolio-ai-analysis-contract'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function readRouteStringParam(value: unknown): string {
@@ -52,7 +51,7 @@ const selectedTeacherProgramId = ref<string>()
 const registeredMaterialId = ref<string>()
 const materialFileNodeId = ref<string>()
 const materialFileName = ref<string>()
-const materialType = ref<PortfolioMaterialType>('DOCUMENT')
+const materialType = ref<PortfolioMaterialTypeCode>(PortfolioMaterialTypeCode.DOCUMENT)
 const analysisDetail = ref<PortfolioAiAnalysisDetailVO | null>(null)
 const teacherOptions = ref<PortfolioTeacherSummaryVO[]>([])
 
@@ -79,7 +78,7 @@ const canOperate = computed(() =>
 const analysisTypeLabel = computed(() =>
   analysisDetail.value
     ? strictEnumLabel(
-        PORTFOLIO_AI_ANALYSIS_TYPE_LABEL,
+        PortfolioAiAnalysisTypeDescription,
         analysisDetail.value.analysisType,
         'AI 分析类型',
       )
@@ -92,31 +91,32 @@ const policyConclusionLabel = computed(() => {
     return ''
   }
   return strictEnumLabel(
-    PORTFOLIO_POLICY_MATCH_CONCLUSION_LABEL,
-    code as PortfolioPolicyMatchConclusion,
+    PortfolioPolicyMatchConclusionDescription,
+    code,
     '政策匹配结论',
   )
 })
 
-const policyConclusionTone = computed(() => {
+const policyConclusionTone = computed<BadgeTone>(() => {
   const code = analysisDetail.value?.conclusionCode
   if (!code) {
-    return 'gray' as const
+    return 'gray'
   }
   return strictEnumTone(
     PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE,
-    code as PortfolioPolicyMatchConclusion,
+    code,
     '政策匹配结论',
   )
 })
 
-function isAnalysisType(type: PortfolioAiAnalysisType) {
+function isAnalysisType(type: PortfolioAiAnalysisTypeCode) {
   return analysisDetail.value!.analysisType === type
 }
 
 const supportedOrchestrationAnalysis = computed(() => {
   const type = analysisDetail.value?.analysisType
-  return type === 'MATERIAL_QA' || type === 'POLICY_MATCH'
+  return type === PortfolioAiAnalysisTypeCode.MATERIAL_QA
+    || type === PortfolioAiAnalysisTypeCode.POLICY_MATCH
 })
 
 function sleep(ms: number) {
@@ -183,12 +183,10 @@ async function ensureMaterialRegistered(): Promise<string> {
 }
 
 function applyOrchestrationAnalysisDetail(detail: PortfolioAiAnalysisDetailVO) {
-  if (detail.analysisType === 'POLICY_MATCH') {
+  if (detail.analysisType === PortfolioAiAnalysisTypeCode.POLICY_MATCH) {
     activeTab.value = 'policy'
-    assertPortfolioAiAnalysisType(detail, 'POLICY_MATCH')
-  } else if (detail.analysisType === 'MATERIAL_QA') {
+  } else if (detail.analysisType === PortfolioAiAnalysisTypeCode.MATERIAL_QA) {
     activeTab.value = 'ask'
-    assertPortfolioAiAnalysisType(detail, 'MATERIAL_QA')
   } else {
     throw new Error('该 AI 任务不属于智能问数或政策核验')
   }
@@ -315,12 +313,12 @@ watch(
 )
 
 watch(
-  () => [readRouteStringParam(route.query.taskId), scopeReady.value] as const,
-  ([taskId, ready]) => {
-    if (!taskId || !ready) {
+  () => ({ ready: scopeReady.value, taskId: readRouteStringParam(route.query.taskId) }),
+  (routeState) => {
+    if (!routeState.taskId || !routeState.ready) {
       return
     }
-    void pollAnalysis(taskId).catch((error) => {
+    void pollAnalysis(routeState.taskId).catch((error) => {
       showUserError(error, '加载 AI 分析结果失败')
     })
   },
@@ -356,7 +354,7 @@ onMounted(() => {
         v-model:value="materialType"
         class="ai-orchestration__field"
         :options="[
-          { value: 'DOCUMENT', label: '文档' },
+          { value: PortfolioMaterialTypeCode.DOCUMENT, label: '文档' },
           { value: 'CERTIFICATE', label: '证书' },
         ]"
       />
@@ -429,7 +427,9 @@ onMounted(() => {
       </p>
       <p class="ai-orchestration__meta">类型：{{ analysisTypeLabel }}</p>
 
-      <template v-if="supportedOrchestrationAnalysis && isAnalysisType('MATERIAL_QA')">
+      <template
+        v-if="supportedOrchestrationAnalysis && isAnalysisType(PortfolioAiAnalysisTypeCode.MATERIAL_QA)"
+      >
         <p v-if="analysisDetail.reportScene" class="ai-orchestration__meta">
           用户问题：{{ analysisDetail.reportScene }}
         </p>
@@ -454,7 +454,9 @@ onMounted(() => {
         </section>
       </template>
 
-      <template v-else-if="supportedOrchestrationAnalysis && isAnalysisType('POLICY_MATCH')">
+      <template
+        v-else-if="supportedOrchestrationAnalysis && isAnalysisType(PortfolioAiAnalysisTypeCode.POLICY_MATCH)"
+      >
         <p v-if="analysisDetail.conclusionCode" class="ai-orchestration__meta">
           结论：
           <UiTag :tone="policyConclusionTone">{{ policyConclusionLabel }}</UiTag>

@@ -1,22 +1,63 @@
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
-import type { ExamScannerKioskContextVO, ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
-
+import type {
+  ExamScannerKioskContextVO,
+  ExamScannerScanConfigVO,
+  ScannerKioskScanModeCode,
+} from '@/apis/mark/scanner-kiosk'
+import type { ArchiveScanBatchModeCode } from '@/types/enums/archive-scan-batch-mode-enum'
+import type { DirectScanProviderChainCode } from '@/types/enums/direct-scan-provider-chain-enum'
+import type { DocumentBlankPageStatusCode } from '@/types/enums/document-blank-page-status-enum'
+import type { DocumentBusinessSceneCode } from '@/types/enums/document-business-scene-enum'
+import type { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
+import type { ScannerColorModeCode } from '@/types/enums/scanner-color-mode-enum'
+import type { ScannerDuplexModeCode } from '@/types/enums/scanner-duplex-mode-enum'
 import http from '@/config/axios'
+import {
+  ALL_SCAN_TASK_KIND_CODES,
+  ScanTaskKindCode,
+  ScanTaskKindDescription,
+} from '@/types/enums/scan-task-kind-enum'
 
-export type ScanTaskKindCode = 'EXAM_MARKING' | 'EXAM_ARCHIVE' | 'PORTFOLIO_COLLECT'
-export type ScanWorkOrderStatusCode
-  = 'IN_PROGRESS' | 'COMMITTING' | 'FAILED' | 'COMMITTED' | 'DISCARDED'
+import { ScanWorkOrderStatusCode } from '@/types/enums/scan-work-order-status-enum'
 
-/** 扫描工单生命周期状态展示文案 */
-export const SCAN_WORK_ORDER_STATUS_LABEL: Record<ScanWorkOrderStatusCode, string> = {
-  IN_PROGRESS: '扫描中',
-  COMMITTING: '提交中',
-  FAILED: '失败',
-  COMMITTED: '已提交',
-  DISCARDED: '已作废',
+export {
+  ALL_ARCHIVE_SCAN_BATCH_MODE_CODES,
+  ArchiveScanBatchModeCode,
+  ArchiveScanBatchModeDescription,
+} from '@/types/enums/archive-scan-batch-mode-enum'
+
+export {
+  ALL_PORTFOLIO_COLLECT_MODE_CODES,
+  PortfolioCollectModeCode,
+  PortfolioCollectModeDescription,
+} from '@/types/enums/portfolio-collect-mode-enum'
+
+export const SCAN_TASK_KIND_OPTIONS: Array<{ value: ScanTaskKindCode, label: string }>
+  = ALL_SCAN_TASK_KIND_CODES.map((value) => ({
+    value,
+    label: ScanTaskKindDescription[value],
+  }))
+
+export const SCAN_WORK_ORDER_STATUS_TONE: Record<
+  ScanWorkOrderStatusCode,
+  'gray' | 'blue' | 'green' | 'red' | 'orange' | 'purple'
+> = {
+  [ScanWorkOrderStatusCode.IN_PROGRESS]: 'blue',
+  [ScanWorkOrderStatusCode.COMMITTING]: 'orange',
+  [ScanWorkOrderStatusCode.FAILED]: 'red',
+  [ScanWorkOrderStatusCode.COMMITTED]: 'green',
+  [ScanWorkOrderStatusCode.DISCARDED]: 'gray',
 }
-export type ArchiveScanBatchModeCode = 'MERGED' | 'PER_PAGE'
-export type PortfolioCollectModeCode = 'AI_SUBMIT' | 'GAP_ATTACHMENT'
+export {
+  ALL_SCAN_TASK_KIND_CODES,
+  ScanTaskKindCode,
+  ScanTaskKindDescription,
+} from '@/types/enums/scan-task-kind-enum'
+export {
+  ALL_SCAN_WORK_ORDER_STATUS_CODES,
+  ScanWorkOrderStatusCode,
+  ScanWorkOrderStatusDescription,
+} from '@/types/enums/scan-work-order-status-enum'
 
 export interface ScanWorkOrderStartRequest {
   taskKind: ScanTaskKindCode
@@ -24,7 +65,7 @@ export interface ScanWorkOrderStartRequest {
   scannerStationId: string
   examId?: string
   declaredClassIds?: string[]
-  examScanMode?: 'DIRECT' | 'SUPPLEMENT'
+  examScanMode?: ScannerKioskScanModeCode
   targetPageNo?: number
   supplementReason?: string
   replaceTargetPage?: boolean
@@ -42,7 +83,7 @@ export interface ScanWorkOrderStartRequest {
   taskType?: string
   templateCode?: string
   archiveRecordId?: string
-  providerChain?: 'BAIDU_QWEN' | 'PADDLE_LOCAL'
+  providerChain?: DirectScanProviderChainCode
 }
 
 export interface ScanWorkOrderLifecycleVO {
@@ -54,7 +95,7 @@ export interface ScanWorkOrderLifecycleVO {
   examId?: string
   scannerDeviceId?: string
   scannerStationId?: string
-  examScanMode?: 'DIRECT' | 'SUPPLEMENT'
+  examScanMode?: ScannerKioskScanModeCode
   targetPageNo?: number
   supplementReason?: string
   replaceTargetPage?: boolean
@@ -76,6 +117,8 @@ export interface ScanWorkOrderLifecycleVO {
   pendingPageCount?: number
   pendingPagesDiagnostic?: string
   committedAiJobId?: string
+  committedQualityAiTaskId?: string
+  committedMaterialId?: string
   committedFileNodeId?: string
   archiveBatchMode?: ArchiveScanBatchModeCode
 }
@@ -83,6 +126,7 @@ export interface ScanWorkOrderLifecycleVO {
 export interface ScanWorkOrderPortfolioContextVO {
   collectMode?: PortfolioCollectModeCode
   teacherId?: string
+  teacherName?: string
   gapTaskId?: string
   gapTaskTitle?: string
   categoryId?: string
@@ -125,17 +169,40 @@ export interface ScanWorkOrderContextVO {
 export interface ScanWorkOrderCommitRequest {
   taskKind: ScanTaskKindCode
   batchExternalNo: string
+  examId?: string
+  reportId?: string
+  declaredClassIds?: string[]
+  examScanMode?: ScannerKioskScanModeCode
+  targetPageNo?: number
+  supplementReason?: string
+  replaceTargetPage?: boolean
   pageCount?: number
+  sourceFileIds?: string[]
   containerFileId?: string
   containerSha256?: string
-  archiveBatchMode?: ArchiveScanBatchModeCode
   dpi?: number
-  colorMode?: string
-  duplexMode?: string
+  colorMode?: ScannerColorModeCode
+  duplexMode?: ScannerDuplexModeCode
   scanStartTime?: string
   scanEndTime?: string
   scannerIp?: string
   traceId?: string
+  scanSessionId?: string
+  businessScene?: DocumentBusinessSceneCode
+  businessRefId?: string
+  providerChain?: DirectScanProviderChainCode
+  documentPages?: ExamScannerCommitDocumentPageRequest[]
+  archiveBatchMode?: ArchiveScanBatchModeCode
+}
+
+export interface ExamScannerCommitDocumentPageRequest {
+  pageNo: number
+  pageFileId: string
+  widthPx: number
+  heightPx: number
+  dpi?: number
+  sha256: string
+  blankPageStatus?: DocumentBlankPageStatusCode
 }
 
 export interface ScanWorkOrderDiscardRequest {
@@ -147,12 +214,27 @@ export interface ScanWorkOrderDiscardRequest {
   discardPendingPages: boolean
 }
 
-/** 考试扫描开单：taskKind 由 startExamScanWorkOrder 注入。 */
-export type ExamScanWorkOrderStartRequest = Omit<ScanWorkOrderStartRequest, 'taskKind'>
+export interface ExamScanWorkOrderStartRequest {
+  scannerDeviceId: string
+  scannerStationId: string
+  examId?: string
+  declaredClassIds?: string[]
+  examScanMode?: ScannerKioskScanModeCode
+  targetPageNo?: number
+  supplementReason?: string
+  replaceTargetPage?: boolean
+  paperInstanceId?: string
+  scanConfig: ExamScannerScanConfigVO
+  dispatchTicketId?: string
+  providerChain?: DirectScanProviderChainCode
+}
 
-/** 考试扫描 discard：taskKind 由 discardExamScanWorkOrder 注入，examId 关闭 kiosk 锚点必填。 */
-export type ExamScanWorkOrderDiscardRequest = Omit<ScanWorkOrderDiscardRequest, 'taskKind'> & {
+export interface ExamScanWorkOrderDiscardRequest {
+  batchExternalNo: string
   examId: string
+  scannerDeviceId: string
+  scannerStationId: string
+  discardPendingPages: boolean
 }
 
 export interface ScanWorkOrderContextRequest {
@@ -160,7 +242,7 @@ export interface ScanWorkOrderContextRequest {
   scannerDeviceId: string
   scannerStationId: string
   examId?: string
-  examScanMode?: 'DIRECT' | 'SUPPLEMENT'
+  examScanMode?: ScannerKioskScanModeCode
   volumeId?: string
   batchExternalNo?: string
   collectMode?: PortfolioCollectModeCode
@@ -199,11 +281,11 @@ export function getScanWorkOrderContext(
 export function startExamScanWorkOrder(
   request: ExamScanWorkOrderStartRequest,
 ): Promise<ScanWorkOrderLifecycleVO> {
-  return startScanWorkOrder({ ...request, taskKind: 'EXAM_MARKING' })
+  return startScanWorkOrder({ ...request, taskKind: ScanTaskKindCode.EXAM_MARKING })
 }
 
 export function discardExamScanWorkOrder(
   request: ExamScanWorkOrderDiscardRequest,
 ): Promise<ScanWorkOrderLifecycleVO> {
-  return discardScanWorkOrder({ ...request, taskKind: 'EXAM_MARKING' })
+  return discardScanWorkOrder({ ...request, taskKind: ScanTaskKindCode.EXAM_MARKING })
 }

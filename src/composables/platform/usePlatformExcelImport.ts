@@ -1,14 +1,14 @@
-import type { ExcelImportSceneKeyValue } from '@/apis/platform/scene-keys'
-import type { ExcelImportResult } from '@/apis/platform/types'
+import type { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import type { ExcelImportResult, PlatformJsonObject } from '@/apis/platform/types'
 import { getExcelImportBatch, submitExcelImport } from '@/apis/platform/excel-import'
 
 const ASYNC_POLL_INTERVAL_MS = 2000
 const ASYNC_POLL_MAX_ATTEMPTS = 60
 
 export interface SubmitPlatformExcelImportOptions {
-  sceneKey: ExcelImportSceneKeyValue
+  sceneKey: ExcelImportSceneKey
   fileNodeId: string
-  context?: Record<string, unknown>
+  context?: PlatformJsonObject
   /** 异步 scene 提交后轮询 platform get，直至解析完成或失败 */
   pollAsync?: boolean
 }
@@ -30,7 +30,7 @@ export async function submitPlatformExcelImport(
 
 /** 轮询异步 Excel 导入批次直至解析完成。 */
 export async function pollPlatformExcelImportBatch(
-  sceneKey: ExcelImportSceneKeyValue,
+  sceneKey: ExcelImportSceneKey,
   batchId: string,
 ): Promise<ExcelImportResult> {
   for (let attempt = 0; attempt < ASYNC_POLL_MAX_ATTEMPTS; attempt += 1) {

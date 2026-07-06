@@ -202,17 +202,19 @@ function getErrorMessage(error: HandledError, errorType: ErrorType): string {
 
 function getResponseMessage(error: unknown): string | undefined {
   if (error == null || typeof error !== 'object') return undefined
-  const obj = error as Record<string, unknown>
-  const directMsg = obj.msg
+  const directMsg = readProperty(error, 'msg')
   if (typeof directMsg === 'string' && directMsg.trim()) return directMsg
 
-  const response = obj.response
+  const response = readProperty(error, 'response')
   if (response == null || typeof response !== 'object') return undefined
-  const data = (response as Record<string, unknown>).data
+  const data = readProperty(response, 'data')
   if (data == null || typeof data !== 'object') return undefined
-  const responseData = data as Record<string, unknown>
-  const backendMsg = responseData.msg ?? responseData.message
+  const backendMsg = readProperty(data, 'msg') ?? readProperty(data, 'message')
   return typeof backendMsg === 'string' && backendMsg.trim() ? backendMsg : undefined
+}
+
+function readProperty(source: object, key: string): unknown {
+  return Object.getOwnPropertyDescriptor(source, key)?.value
 }
 
 /**
@@ -223,8 +225,7 @@ export function readBusinessResultCode(error: unknown): number | undefined {
   if (error == null || typeof error !== 'object') {
     return undefined
   }
-  const obj = error as Record<string, unknown>
-  const directCode = obj.code
+  const directCode = readProperty(error, 'code')
   if (typeof directCode === 'number' && Number.isFinite(directCode)) {
     return directCode
   }
@@ -234,15 +235,15 @@ export function readBusinessResultCode(error: unknown): number | undefined {
       return parsed
     }
   }
-  const response = obj.response
+  const response = readProperty(error, 'response')
   if (response == null || typeof response !== 'object') {
     return undefined
   }
-  const data = (response as Record<string, unknown>).data
+  const data = readProperty(response, 'data')
   if (data == null || typeof data !== 'object') {
     return undefined
   }
-  const code = (data as Record<string, unknown>).code
+  const code = readProperty(data, 'code')
   if (typeof code === 'number' && Number.isFinite(code)) {
     return code
   }
@@ -308,9 +309,29 @@ function formatErrorCode(_error: HandledError): string {
  * 将 unknown 类型的 catch 错误安全转为 HandledError
  */
 function toHandledError(error: unknown): HandledError {
-  if (error != null && typeof error === 'object') return error as HandledError
+  if (error instanceof Error) {
+    return { message: error.message }
+  }
+  if (error != null && typeof error === 'object') {
+    const code = readProperty(error, 'code')
+    const response = readProperty(error, 'response')
+    return {
+      message: readMessage(error),
+      code: typeof code === 'number' || typeof code === 'string' ? code : undefined,
+      response: isHandledErrorResponse(response) ? response : undefined,
+    }
+  }
   if (typeof error === 'string') return { message: '操作未完成，请稍后重试' }
   return { message: '操作未完成，请稍后重试' }
+}
+
+function readMessage(error: object): string {
+  const message = readProperty(error, 'message')
+  return typeof message === 'string' && message.trim() ? message : '操作未完成，请稍后重试'
+}
+
+function isHandledErrorResponse(value: unknown): value is HandledError['response'] {
+  return typeof value === 'object' && value !== null
 }
 
 function resolveErrorCode(error: HandledError): number | string {
@@ -504,7 +525,7 @@ export class ErrorHandler {
 
 /** 503 / 网络抖动等临时失败，不应触发登出 */
 export function isTransientRequestError(error: unknown): boolean {
-  const err = error as HandledError
+  const err = toHandledError(error)
   const status = err?.response?.status
   if (status === 401) {
     return false
@@ -517,7 +538,7 @@ export function isTransientRequestError(error: unknown): boolean {
 
 /** 用户信息拉取失败且会话不可恢复时才应登出 */
 export function isAuthRequestFailure(error: unknown): boolean {
-  const err = error as HandledError
+  const err = toHandledError(error)
   const status = err?.response?.status
   const businessCode = err?.response?.data?.code ?? err?.code
   return status === 401 || businessCode === 401;

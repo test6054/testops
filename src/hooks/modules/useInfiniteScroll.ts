@@ -66,9 +66,8 @@ export function useInfiniteScroll<T extends U, U = T>(
         totalCount = res.length
         hasMore.value = res.length === pageSize
       } else {
-        const pageResult = res as PageResult<T>
-        newData = readPageList(pageResult, '数据加载失败，请稍后重试')
-        totalCount = readPageTotal(pageResult, '数据加载失败，请稍后重试')
+        newData = readPageList(res, '数据加载失败，请稍后重试')
+        totalCount = readPageTotal(res, '数据加载失败，请稍后重试')
 
         // 计算是否还有更多数据
         const currentTotal = isLoadMore ? dataList.value.length + newData.length : newData.length
@@ -91,7 +90,7 @@ export function useInfiniteScroll<T extends U, U = T>(
       total.value = totalCount
       onSuccess?.()
     } catch (err) {
-      error.value = err as Error
+      error.value = err instanceof Error ? err : new Error(String(err))
       showUserError(err, '数据加载失败，请稍后重试')
       if (!isLoadMore) {
         dataList.value = []

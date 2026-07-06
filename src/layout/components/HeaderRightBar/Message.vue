@@ -156,7 +156,7 @@ const getMessageData = async () => {
             subject: item.subject,
             content: stripHtmlAndTruncate(item.contentHtml),
             sendTime: item.sendTime,
-            type: 'inbox' as const,
+            type: 'inbox',
             metadata: item.metadata,
           }))
         : []
@@ -168,7 +168,7 @@ const getMessageData = async () => {
             subject: `【公告】${item.title}`,
             content: stripHtmlAndTruncate(item.content),
             sendTime: item.publishTime,
-            type: 'announcement' as const,
+            type: 'announcement',
             metadata: { jumpUrl: `/messages?tab=notice&id=${item.id}` },
           }))
         : []

@@ -37,7 +37,7 @@ export function useArchiveTemplateTableSortable<T>(
   }
 
   watch(
-    () => [tableRootRef.value, listRef.value.length] as const,
+    () => [tableRootRef.value, listRef.value.length],
     () => {
       void refreshSortable()
     },

@@ -1,215 +1,133 @@
 <template>
   <div class="archive-volume-remediation-panel">
-    <div class="archive-volume-remediation-panel__toolbar">
-      <a-select
-        v-model:value="selectedCampaignId"
-        :loading="campaignLoading"
-        :options="campaignOptions"
-        allow-clear
-        placeholder="选择评估批次"
-        style="width: 280px"
-        @change="loadTasks"
-      />
-      <UiButton size="sm" :disabled="!selectedCampaignId" @click="loadTasks">刷新</UiButton>
-      <UiButton
-        v-if="isTenantWideCollegeCoordinator"
-        size="sm"
-        variant="outline"
-        @click="openCampaignModal()"
-      >
-        新建批次
-      </UiButton>
-      <UiButton
-        v-if="isTenantWideCollegeCoordinator && selectedCampaign"
-        size="sm"
-        variant="outline"
-        @click="openCampaignModal(selectedCampaign)"
-      >
-        编辑批次
-      </UiButton>
-      <p
-        v-if="isTenantWideCollegeCoordinator && selectedCampaignId"
-        class="archive-volume-remediation-panel__export-hint"
-      >
-        导出范围：{{ ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT }}
-      </p>
-      <UiButton
-        v-if="isTenantWideCollegeCoordinator && selectedCampaignId"
-        size="sm"
-        variant="outline"
-        :loading="exporting"
-        @click="handleExportCampaign"
-      >
-        导出 manifest
-      </UiButton>
-      <UiButton
-        v-if="isTenantWideCollegeCoordinator && selectedCampaignId"
-        size="sm"
-        variant="outline"
-        :loading="exportingArchive"
-        @click="handleExportArchiveCampaign"
-      >
-        导出四级目录包
-      </UiButton>
-      <UiButton
-        v-if="canShowCreateRemediationTask"
-        size="sm"
-        variant="primary"
-        @click="openCreateTaskModal"
-      >
-        创建整改任务
-      </UiButton>
-    </div>
-
-    <UiDataTable
-      pagination-mode="none"
-      :columns="taskColumns"
-      :data-source="tasks"
-      :loading="taskLoading"
-      :show-pagination="false"
-      flat
-      row-key="taskId"
-      size="middle"
-      class="student-detail-table__data-table"
-      empty-description="请选择评估批次查看整改任务"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'taskStatus'">
-          <UiTag :tone="remediationStatusTone(record.taskStatus)" size="sm">
-            {{ remediationStatusLabel(record.taskStatus) }}
-          </UiTag>
-        </template>
-        <template v-else-if="column.key === 'assigneeNickName'">
-          {{ remediationAssigneeLabel(record) }}
-        </template>
-        <template v-else-if="column.key === 'volumeId'">
-          <UiTextAction @click="goVolumeDetail(record.volumeId, record.taskId)">
-            {{ record.volumeId }}
-          </UiTextAction>
-        </template>
-        <template v-else-if="column.key === 'actions'">
-          <UiTextAction @click="openTask(record.taskId)">详情</UiTextAction>
-        </template>
-      </template>
-    </UiDataTable>
-
-    <a-drawer
-      v-model:open="detailOpen"
-      title="整改任务"
-      width="560"
-      :destroy-on-close="true"
-      @close="selectedTaskId = ''"
-    >
-      <a-spin :spinning="detailLoading">
-        <template v-if="taskDetail">
-          <a-descriptions bordered size="small" :column="1" class="detail-desc">
-            <a-descriptions-item label="标题">{{ taskDetail.taskTitle }}</a-descriptions-item>
-            <a-descriptions-item label="卷 ID">
-              <UiTextAction @click="goVolumeDetail(taskDetail.volumeId, taskDetail.taskId)">
-                {{ taskDetail.volumeId }}
-              </UiTextAction>
-            </a-descriptions-item>
-            <a-descriptions-item label="状态">
-              {{ remediationStatusLabel(taskDetail.taskStatus) }}
-            </a-descriptions-item>
-            <a-descriptions-item label="责任人">
-              {{ remediationAssigneeLabel(taskDetail) }}
-            </a-descriptions-item>
-            <a-descriptions-item
-              v-if="canManageTaskAsCoordinator && taskDetail.taskStatus !== 'CLOSED'"
-              label="改派责任人"
-            >
-              <ArchiveDutyUserSelect v-model:value="editAssigneeUserId" />
-            </a-descriptions-item>
-            <a-descriptions-item label="诊断码">
-              {{ taskDetail.diagnosticCode || '—' }}
-            </a-descriptions-item>
-            <a-descriptions-item label="说明">
-              {{ taskDetail.taskDescription || '—' }}
-            </a-descriptions-item>
-            <a-descriptions-item label="截止">{{ taskDetail.dueTime || '—' }}</a-descriptions-item>
-            <a-descriptions-item label="关闭">
-              {{ taskDetail.closedTime || '—' }}
-            </a-descriptions-item>
-          </a-descriptions>
-          <div v-if="taskDetail.taskStatus !== 'CLOSED'" class="task-actions">
-            <template v-if="canManageTaskAsCoordinator">
-              <UiButton
-                v-if="canSaveAssigneeReassign"
-                size="sm"
-                variant="outline"
-                :loading="reassigning"
-                @click="reassignAssignee"
-              >
-                保存改派
-              </UiButton>
-              <template v-if="taskDetail.taskStatus === 'OPEN'">
-                <UiButton size="sm" :loading="updating" @click="advanceStatus('IN_PROGRESS')">
-                  开始处理
-                </UiButton>
-                <UiButton
-                  size="sm"
-                  variant="outline"
-                  :loading="updating"
-                  @click="advanceStatus('CLOSED')"
-                >
-                  关闭
-                </UiButton>
-              </template>
-              <template v-else-if="taskDetail.taskStatus === 'IN_PROGRESS'">
-                <UiButton size="sm" :loading="updating" @click="advanceStatus('RESUBMITTED')">
-                  标记已重提
-                </UiButton>
-                <UiButton
-                  size="sm"
-                  variant="outline"
-                  :loading="updating"
-                  @click="advanceStatus('CLOSED')"
-                >
-                  关闭
-                </UiButton>
-              </template>
-              <template v-else-if="taskDetail.taskStatus === 'RESUBMITTED'">
-                <UiButton
-                  size="sm"
-                  variant="outline"
-                  :loading="updating"
-                  @click="advanceStatus('CLOSED')"
-                >
-                  复检关闭
-                </UiButton>
-              </template>
-            </template>
-            <template v-else-if="isCurrentAssignee">
-              <UiButton
-                v-if="taskDetail.taskStatus === 'OPEN'"
-                size="sm"
-                :loading="updating"
-                @click="advanceStatus('IN_PROGRESS')"
-              >
-                开始处理
-              </UiButton>
-              <UiButton
-                v-if="taskDetail.taskStatus === 'IN_PROGRESS'"
-                size="sm"
-                :loading="updating"
-                @click="advanceStatus('RESUBMITTED')"
-              >
-                标记已重提
-              </UiButton>
-            </template>
+    <WorkbenchSurfaceCard flush>
+      <template #head>整改活动</template>
+      <template #toolbar>
+        <div class="archive-volume-remediation-panel__actions">
+          <a-select
+            v-model:value="selectedCampaignId"
+            :loading="campaignLoading"
+            :options="campaignOptions"
+            allow-clear
+            placeholder="选择评估批次"
+            style="width: 280px"
+            @change="loadTasks"
+          />
+          <div
+            v-if="selectedCampaign && selectedCampaign.readinessRatePercent != null"
+            class="archive-volume-remediation-panel__campaign-rate"
+          >
+            <span class="archive-volume-remediation-panel__campaign-rate-label">批次就绪率</span>
+            <ArchiveReadinessRateBar :percent="selectedCampaign.readinessRatePercent" />
           </div>
-        </template>
-      </a-spin>
-    </a-drawer>
+          <UiButton size="sm" :disabled="!selectedCampaignId" @click="loadTasks">刷新</UiButton>
+          <UiButton
+            v-if="isTenantWideCollegeCoordinator"
+            size="sm"
+            variant="outline"
+            @click="openCampaignModal()"
+          >
+            新建批次
+          </UiButton>
+          <UiButton
+            v-if="isTenantWideCollegeCoordinator && selectedCampaign"
+            size="sm"
+            variant="outline"
+            @click="openCampaignModal(selectedCampaign)"
+          >
+            编辑批次
+          </UiButton>
+          <p
+            v-if="isTenantWideCollegeCoordinator && selectedCampaignId"
+            class="archive-volume-remediation-panel__export-hint"
+          >
+            导出范围：{{ ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT }}
+          </p>
+          <UiButton
+            v-if="isTenantWideCollegeCoordinator && selectedCampaignId"
+            size="sm"
+            variant="outline"
+            :loading="exporting"
+            @click="handleExportCampaign"
+          >
+            导出 manifest
+          </UiButton>
+          <UiButton
+            v-if="isTenantWideCollegeCoordinator && selectedCampaignId"
+            size="sm"
+            variant="outline"
+            :loading="exportingArchive"
+            @click="handleExportArchiveCampaign"
+          >
+            导出四级目录包
+          </UiButton>
+          <UiButton
+            v-if="canShowCreateRemediationTask"
+            size="sm"
+            variant="primary"
+            @click="openCreateTaskModal"
+          >
+            创建整改任务
+          </UiButton>
+        </div>
+      </template>
 
-    <a-modal
-      v-model:open="campaignModalOpen"
+      <UiSkeletonState v-if="taskLoading" variant="card" compact />
+      <UiEmpty
+        v-else-if="!selectedCampaignId"
+        description="请选择评估批次查看整改任务"
+      />
+      <UiEmpty
+        v-else-if="tasks.length === 0"
+        description="当前批次暂无整改任务"
+      />
+      <div v-else class="archive-remediation-card-list">
+        <article
+          v-for="task in tasks"
+          :key="task.taskId"
+          class="remediation-card"
+          :class="remediationPriorityCardClass(task.taskPriority)"
+        >
+          <div class="remediation-card__head">
+            <UiTag :tone="remediationStatusTone(task.taskStatus)" size="sm">
+              {{ remediationStatusLabel(task.taskStatus) }}
+            </UiTag>
+            <span class="remediation-card__title">{{ task.taskTitle }}</span>
+            <UiTag :tone="remediationPriorityTone(task.taskPriority)" size="sm">
+              {{ remediationPriorityLabel(task.taskPriority) }}
+            </UiTag>
+          </div>
+          <p v-if="task.taskDescription" class="remediation-card__desc">{{ task.taskDescription }}</p>
+          <div class="remediation-card__meta">
+            <span>负责人: {{ remediationAssigneeLabel(task) }}</span>
+            <span v-if="task.dueTime">截止: {{ formatDateTime(task.dueTime) }}</span>
+            <span v-if="task.createTime">创建: {{ formatDateTime(task.createTime) }}</span>
+          </div>
+          <div class="remediation-card__actions">
+            <UiButton
+              v-if="task.taskStatus === ArchiveRemediationStatusCode.OPEN || task.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS"
+              size="sm"
+              variant="outline"
+              @click="openTask(task.taskId)"
+            >
+              去整改
+            </UiButton>
+            <UiTextAction @click="openTask(task.taskId)">详情</UiTextAction>
+          </div>
+        </article>
+      </div>
+    </WorkbenchSurfaceCard>
+
+    <UiDrawer
+      :open="campaignModalOpen"
       :title="campaignForm.campaignId ? '编辑评估批次' : '新建评估批次'"
+      :width="560"
       :confirm-loading="campaignSaving"
       ok-text="保存"
-      cancel-text="取消"
-      @ok="submitCampaign"
+      :hide-footer="false"
+      @update:open="(v: boolean) => (campaignModalOpen = v)"
+      @close="campaignModalOpen = false"
+      @confirm="submitCampaign"
     >
       <a-form layout="vertical">
         <a-form-item label="批次名称" required>
@@ -225,7 +143,7 @@
             <a-form-item label="学期">
               <a-select
                 v-model:value="campaignForm.semester"
-                :options="semesterOptions"
+                :options="SemesterOptions"
                 allow-clear
                 style="width: 100%"
               />
@@ -265,15 +183,18 @@
           <a-textarea v-model:value="campaignForm.description" :rows="2" />
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiDrawer>
 
-    <a-modal
-      v-model:open="createTaskOpen"
+    <UiDrawer
+      :open="createTaskOpen"
       title="创建整改任务"
+      :width="560"
       :confirm-loading="createTaskSubmitting"
       ok-text="创建"
-      cancel-text="取消"
-      @ok="submitCreateTask"
+      :hide-footer="false"
+      @update:open="(v: boolean) => (createTaskOpen = v)"
+      @close="createTaskOpen = false"
+      @confirm="submitCreateTask"
     >
       <a-form layout="vertical">
         <a-form-item label="关联批次">
@@ -292,7 +213,13 @@
           <a-input v-model:value="createTaskForm.taskTitle" />
         </a-form-item>
         <a-form-item label="诊断码">
-          <a-input v-model:value="createTaskForm.diagnosticCode" />
+          <a-select
+            v-model:value="createTaskForm.diagnosticCode"
+            :options="remediationDiagnosticOptions"
+            allow-clear
+            placeholder="选择诊断类型"
+            style="width: 100%"
+          />
         </a-form-item>
         <a-form-item label="说明">
           <a-textarea v-model:value="createTaskForm.taskDescription" :rows="2" />
@@ -309,16 +236,14 @@
           />
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiDrawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  ArchiveEvaluationCampaignStatusCode,
   ArchiveEvaluationCampaignVO,
-  ArchiveRemediationStatusCode,
+  ArchiveRemediationPriorityCode,
   ArchiveRemediationTaskVO,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
@@ -328,35 +253,45 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
 import {
-  ARCHIVE_EVALUATION_CAMPAIGN_STATUS_LABEL,
+  ARCHIVE_EVALUATION_CAMPAIGN_STATUS_OPTIONS,
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
-  ARCHIVE_REMEDIATION_STATUS_LABEL,
+  ARCHIVE_REMEDIATION_DIAGNOSTIC_CODE_OPTIONS,
+  ArchiveEvaluationCampaignStatusCode,
+  ArchiveRemediationStatusCode,
+  ArchiveRemediationStatusDescription,
   createRemediationTask,
   exportEvaluationArchivePackage,
   exportEvaluationPackage,
   getArchiveVolumeDetail,
-  getRemediationTask,
   listEvaluationCampaigns,
   listRemediationTasksByCampaign,
   saveEvaluationCampaign,
-  updateRemediationTask,
 } from '@/apis/mark/archive-volume'
+import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
-import { useUserStore } from '@/stores/modules/user'
 import { SemesterOptions } from '@/types/enums/semester-enum'
+import { ensureAcademicYearSemesterPair } from '@/utils/academic-year-semester-query'
 import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
+import {
+  ARCHIVE_REMEDIATION_PRIORITY_TONE,
+  ArchiveRemediationPriorityDescription,
+  remediationPriorityCardClass,
+} from '@/utils/archive-remediation-priority'
 import { showUserError } from '@/utils/error-handler'
-import { strictEnumLabel } from '@/utils/strict-enum'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeRemediationPanel' })
 
 const router = useRouter()
-const userStore = useUserStore()
 const {
   isTenantWideCollegeCoordinator,
   scopedDepartmentIds,
@@ -366,52 +301,60 @@ const {
 
 const campaignLoading = ref(false)
 const taskLoading = ref(false)
-const detailLoading = ref(false)
-const updating = ref(false)
-const reassigning = ref(false)
-const editAssigneeUserId = ref<string | undefined>(undefined)
 const exporting = ref(false)
 const exportingArchive = ref(false)
 const campaignSaving = ref(false)
 const createTaskSubmitting = ref(false)
-const detailOpen = ref(false)
 const campaignModalOpen = ref(false)
 const createTaskOpen = ref(false)
 const campaigns = ref<ArchiveEvaluationCampaignVO[]>([])
 const tasks = ref<ArchiveRemediationTaskVO[]>([])
-const taskDetail = ref<ArchiveRemediationTaskVO | null>(null)
-const taskVolumeDepartmentId = ref<string>()
 const selectedCampaignId = ref<string>()
-const selectedTaskId = ref('')
 
-const semesterOptions = SemesterOptions
+const remediationDiagnosticOptions = ARCHIVE_REMEDIATION_DIAGNOSTIC_CODE_OPTIONS
 
-const campaignStatusOptions = Object.entries(ARCHIVE_EVALUATION_CAMPAIGN_STATUS_LABEL).map(
-  ([value, label]) => ({
-    value,
-    label,
-  }),
-)
+const campaignStatusOptions = ARCHIVE_EVALUATION_CAMPAIGN_STATUS_OPTIONS
 
-const campaignForm = reactive({
-  campaignId: undefined as string | undefined,
+interface RemediationCampaignForm {
+  campaignId: string | undefined
+  campaignName: string
+  academicYear: string
+  semester: SemesterCode | undefined
+  campaignStatus: ArchiveEvaluationCampaignStatusCode
+  startTime: string | undefined
+  endTime: string | undefined
+  description: string
+}
+
+const campaignForm = reactive<RemediationCampaignForm>({
+  campaignId: undefined,
   campaignName: '',
   academicYear: '',
-  semester: undefined as SemesterCode | undefined,
-  campaignStatus: 'ACTIVE' as ArchiveEvaluationCampaignStatusCode,
-  startTime: undefined as string | undefined,
-  endTime: undefined as string | undefined,
+  semester: undefined,
+  campaignStatus: ArchiveEvaluationCampaignStatusCode.ACTIVE,
+  startTime: undefined,
+  endTime: undefined,
   description: '',
 })
 
-const createTaskForm = reactive({
-  campaignId: undefined as string | undefined,
+interface ArchiveRemediationCreateTaskForm {
+  campaignId: string | undefined
+  volumeId: string
+  taskTitle: string
+  taskDescription: string
+  diagnosticCode: string
+  assigneeUserId: string | undefined
+  dueTime: string | undefined
+}
+
+const createTaskForm = reactive<ArchiveRemediationCreateTaskForm>({
+  campaignId: undefined,
   volumeId: '',
   taskTitle: '',
   taskDescription: '',
   diagnosticCode: '',
-  assigneeUserId: undefined as string | undefined,
-  dueTime: undefined as string | undefined,
+  assigneeUserId: undefined,
+  dueTime: undefined,
 })
 
 const selectedCampaign = computed(() =>
@@ -429,51 +372,23 @@ const canShowCreateRemediationTask = computed(
   () => isTenantWideCollegeCoordinator.value || scopedDepartmentIds.value.length > 0,
 )
 
-const canManageTaskAsCoordinator = computed(() =>
-  taskVolumeDepartmentId.value
-    ? canManageRemediationAsCoordinator({ departmentId: taskVolumeDepartmentId.value })
-    : false,
-)
-
-const isCurrentAssignee = computed(
-  () => taskDetail.value?.assigneeUserId === userStore.userInfo.userId,
-)
-
-const canSaveAssigneeReassign = computed(() => {
-  const task = taskDetail.value
-  if (!task || task.taskStatus === 'CLOSED') return false
-  if (!editAssigneeUserId.value) return false
-  return editAssigneeUserId.value !== task.assigneeUserId
-})
-
-const taskColumns: ColumnsType<ArchiveRemediationTaskVO> = [
-  { title: '任务', dataIndex: 'taskTitle', key: 'taskTitle' },
-  { title: '卷 ID', dataIndex: 'volumeId', key: 'volumeId', width: 100 },
-  { title: '状态', key: 'taskStatus', dataIndex: 'taskStatus', width: 110 },
-  { title: '责任人', key: 'assigneeNickName', dataIndex: 'assigneeNickName', width: 120 },
-  { title: '操作', key: 'actions', width: 80 },
-]
-
 function remediationStatusLabel(code: ArchiveRemediationStatusCode) {
-  return strictEnumLabel(ARCHIVE_REMEDIATION_STATUS_LABEL, code, 'taskStatus')
+  return strictEnumLabel(ArchiveRemediationStatusDescription, code, 'taskStatus')
 }
 
 function remediationStatusTone(code: ArchiveRemediationStatusCode): BadgeTone {
-  if (code === 'CLOSED') return 'gray'
-  if (code === 'RESUBMITTED') return 'green'
-  if (code === 'IN_PROGRESS') return 'blue'
+  if (code === ArchiveRemediationStatusCode.CLOSED) return 'gray'
+  if (code === ArchiveRemediationStatusCode.RESUBMITTED) return 'green'
+  if (code === ArchiveRemediationStatusCode.IN_PROGRESS) return 'blue'
   return 'orange'
 }
 
-function goVolumeDetail(volumeId: string, remediationTaskId?: string) {
-  void router.push({
-    name: 'TeacherArchiveVolumeDetail',
-    params: { volumeId },
-    query: {
-      tab: 'materials',
-      ...(remediationTaskId ? { remediationTaskId } : {}),
-    },
-  })
+function remediationPriorityLabel(code: ArchiveRemediationPriorityCode) {
+  return strictEnumLabel(ArchiveRemediationPriorityDescription, code, 'taskPriority')
+}
+
+function remediationPriorityTone(code: ArchiveRemediationPriorityCode): BadgeTone {
+  return strictEnumTone(ARCHIVE_REMEDIATION_PRIORITY_TONE, code, 'taskPriority')
 }
 
 async function loadCampaigns() {
@@ -511,7 +426,7 @@ function openCampaignModal(campaign?: ArchiveEvaluationCampaignVO) {
   campaignForm.campaignName = campaign?.campaignName ?? ''
   campaignForm.academicYear = campaign?.academicYear ?? ''
   campaignForm.semester = campaign?.semester
-  campaignForm.campaignStatus = campaign?.campaignStatus ?? 'ACTIVE'
+  campaignForm.campaignStatus = campaign?.campaignStatus ?? ArchiveEvaluationCampaignStatusCode.ACTIVE
   campaignForm.startTime = campaign?.startTime
   campaignForm.endTime = campaign?.endTime
   campaignForm.description = campaign?.description ?? ''
@@ -521,6 +436,9 @@ function openCampaignModal(campaign?: ArchiveEvaluationCampaignVO) {
 async function submitCampaign() {
   if (!campaignForm.campaignName.trim()) {
     message.warning('请填写批次名称')
+    return
+  }
+  if (!ensureAcademicYearSemesterPair(campaignForm.academicYear, campaignForm.semester)) {
     return
   }
   campaignSaving.value = true
@@ -641,56 +559,10 @@ async function submitCreateTask() {
 }
 
 async function openTask(taskId: string) {
-  selectedTaskId.value = taskId
-  detailOpen.value = true
-  detailLoading.value = true
-  taskVolumeDepartmentId.value = undefined
-  try {
-    taskDetail.value = await getRemediationTask(taskId)
-    editAssigneeUserId.value = taskDetail.value.assigneeUserId
-    const volumeDetail = await getArchiveVolumeDetail(taskDetail.value.volumeId)
-    taskVolumeDepartmentId.value = volumeDetail.volume.departmentId
-  } catch (error) {
-    showUserError(error)
-    detailOpen.value = false
-  } finally {
-    detailLoading.value = false
-  }
-}
-
-async function reassignAssignee() {
-  if (!selectedTaskId.value || !editAssigneeUserId.value) return
-  reassigning.value = true
-  try {
-    taskDetail.value = await updateRemediationTask({
-      taskId: selectedTaskId.value,
-      assigneeUserId: editAssigneeUserId.value,
-    })
-    editAssigneeUserId.value = taskDetail.value.assigneeUserId
-    message.success('责任人已改派')
-    await loadTasks()
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    reassigning.value = false
-  }
-}
-
-async function advanceStatus(taskStatus: ArchiveRemediationStatusCode) {
-  if (!selectedTaskId.value) return
-  updating.value = true
-  try {
-    taskDetail.value = await updateRemediationTask({
-      taskId: selectedTaskId.value,
-      taskStatus,
-    })
-    message.success('整改任务已更新')
-    await loadTasks()
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    updating.value = false
-  }
+  void router.push({
+    name: 'TeacherArchiveVolumeRemediationDetail',
+    params: { taskId },
+  })
 }
 
 onMounted(() => {
@@ -700,11 +572,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.archive-volume-remediation-panel__toolbar {
+.archive-volume-remediation-panel__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 16px;
+  align-items: center;
 }
 
 .archive-volume-remediation-panel__export-hint {
@@ -715,12 +587,88 @@ onMounted(() => {
   line-height: 1.5;
 }
 
+.archive-volume-remediation-panel__campaign-rate {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-2, 8px);
+  padding: 0 var(--dp-space-2, 8px);
+}
+
+.archive-volume-remediation-panel__campaign-rate-label {
+  font-size: 12px;
+  color: var(--dp-text-muted);
+  white-space: nowrap;
+}
+
 .detail-desc {
   margin-bottom: 16px;
 }
 
 .task-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.archive-remediation-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-3, 12px);
+  padding: var(--dp-space-3, 12px) 0;
+}
+
+.remediation-card {
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
+  border: 1px solid var(--dp-border-light, #eef0f3);
+  border-radius: var(--dp-radius-sm, 4px);
+  background: var(--dp-surface, #fff);
+}
+
+.remediation-card--high {
+  border-left: 3px solid var(--dp-danger, #dc2626);
+}
+
+.remediation-card--medium {
+  border-left: 3px solid var(--dp-warning, #f59e0b);
+}
+
+.remediation-card--low {
+  border-left: 3px solid var(--dp-primary, #2d7ff9);
+}
+
+.remediation-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--dp-space-2, 8px);
+}
+
+.remediation-card__title {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dp-text, #1a1d21);
+}
+
+.remediation-card__desc {
+  margin: var(--dp-space-2, 8px) 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dp-text-3, #64748b);
+}
+
+.remediation-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-4, 16px);
+  margin-top: var(--dp-space-2, 8px);
+  font-size: 12px;
+  color: var(--dp-text-4, #8b919a);
+}
+
+.remediation-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2, 8px);
+  margin-top: var(--dp-space-2, 8px);
 }
 </style>

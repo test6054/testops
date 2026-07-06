@@ -6,6 +6,18 @@ import {
   resolveJourneyKeyByStage,
 } from '@/constants/exam-journey'
 
+function isMarkStageKey(value: unknown): value is MarkStageKey {
+  return value === 'EXAM_PREP'
+    || value === 'PAPER_TEMPLATE'
+    || value === 'CANDIDATE_ROSTER'
+    || value === 'SCAN'
+    || value === 'MARKING_ORG'
+    || value === 'TRIAL_MARKING'
+    || value === 'FORMAL_MARKING'
+    || value === 'SCORE_PUBLISH'
+    || value === 'ARCHIVE'
+}
+
 function resolveJourneyIndex(stageKey: MarkStageKey | undefined): number {
   if (!stageKey) return -1
   const journeyKey = resolveJourneyKeyByStage(stageKey)
@@ -44,14 +56,14 @@ export function buildMarkDashboardJourneyRail(
   exams: MarkTeacherDashboardOngoingExamItemVO[],
 ): WorkbenchStage[] {
   const maxJourneyIndex = exams.reduce((max, exam) => {
-    const index = resolveJourneyIndex(exam.currentStageKey as MarkStageKey | undefined)
+    const index = resolveJourneyIndex(isMarkStageKey(exam.currentStageKey) ? exam.currentStageKey : undefined)
     return index > max ? index : max
   }, -1)
 
   return EXAM_JOURNEY_STEPS.map((step, index) => {
     const count = exams.filter((exam) => {
-      if (!exam.currentStageKey) return false
-      return step.stageKeys.includes(exam.currentStageKey as MarkStageKey)
+      if (!isMarkStageKey(exam.currentStageKey)) return false
+      return step.stageKeys.includes(exam.currentStageKey)
     }).length
 
     let status: WorkbenchStageStatus = 'pending'
@@ -75,7 +87,7 @@ export function resolveExamJourneyDotStatus(
   exam: MarkTeacherDashboardOngoingExamItemVO,
   journeyIndex: number,
 ): 'done' | 'current' | 'pending' {
-  const currentIndex = resolveJourneyIndex(exam.currentStageKey as MarkStageKey | undefined)
+  const currentIndex = resolveJourneyIndex(isMarkStageKey(exam.currentStageKey) ? exam.currentStageKey : undefined)
   const completedSegments = Math.round(
     ((exam.progressPercent ?? 0) / 100) * EXAM_JOURNEY_STEPS.length,
   )

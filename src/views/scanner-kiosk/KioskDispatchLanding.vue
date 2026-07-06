@@ -1,12 +1,22 @@
 <script setup lang="ts">
+import type { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
 import { computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { SCAN_DISPATCH_TICKET_STATUS_LABEL } from '@/apis/mark/scanner-dispatch'
+import { ScanDispatchTicketStatusDescription } from '@/apis/mark/scanner-dispatch'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import { PortfolioCollectModeDescription } from '@/types/enums/portfolio-collect-mode-enum'
+import { ScanDispatchTicketStatusCode } from '@/types/enums/scan-dispatch-ticket-status-enum'
 import CognitiveConfirmModal from './components/CognitiveConfirmModal.vue'
 import DocumentKioskActivationGate from './components/DocumentKioskActivationGate.vue'
 import { useDispatchSession } from './core/useDispatchSession'
+
+function portfolioCollectModeLabel(value: PortfolioCollectModeCode | undefined): string {
+  if (!value) {
+    throw new Error(`档案袋采集模式缺少展示映射：${String(value)}`)
+  }
+  return PortfolioCollectModeDescription[value]
+}
 
 const router = useRouter()
 const session = useDispatchSession()
@@ -14,31 +24,31 @@ const session = useDispatchSession()
 const ticketStatus = computed(() => session.ticket.value?.status)
 const isTerminalStatus = computed(
   () =>
-    ticketStatus.value === 'DONE'
-    || ticketStatus.value === 'EXPIRED'
-    || ticketStatus.value === 'CANCELLED',
+    ticketStatus.value === ScanDispatchTicketStatusCode.DONE
+    || ticketStatus.value === ScanDispatchTicketStatusCode.EXPIRED
+    || ticketStatus.value === ScanDispatchTicketStatusCode.CANCELLED,
 )
 const terminalHint = computed(() => {
-  if (ticketStatus.value === 'DONE') {
+  if (ticketStatus.value === ScanDispatchTicketStatusCode.DONE) {
     return '本派单已完成，无需再次扫描。'
   }
-  if (ticketStatus.value === 'EXPIRED') {
+  if (ticketStatus.value === ScanDispatchTicketStatusCode.EXPIRED) {
     return '派单已过期，请返回队列处理其他任务。'
   }
-  if (ticketStatus.value === 'CANCELLED') {
+  if (ticketStatus.value === ScanDispatchTicketStatusCode.CANCELLED) {
     return '派单已取消，请返回队列。'
   }
   return ''
 })
 const canContinueScan = computed(
-  () => ticketStatus.value === 'PROCESSING' && Boolean(session.ticket.value?.workOrderId),
+  () => ticketStatus.value === ScanDispatchTicketStatusCode.PROCESSING && Boolean(session.ticket.value?.workOrderId),
 )
 
 onMounted(async () => {
   await session.bootstrap.initBootstrap()
   if (session.bootstrap.activation.isActivatedForMarkApis()) {
     await session.loadTicket()
-    if (session.ticket.value?.status === 'PROCESSING') {
+    if (session.ticket.value?.status === ScanDispatchTicketStatusCode.PROCESSING) {
       session.startProcessingHeartbeat()
     }
   }
@@ -73,7 +83,7 @@ function goHub() {
       <div>
         <h1>派单任务</h1>
         <UiTag v-if="ticketStatus" tone="blue" size="sm">
-          {{ SCAN_DISPATCH_TICKET_STATUS_LABEL[ticketStatus] }}
+          {{ ScanDispatchTicketStatusDescription[ticketStatus] }}
         </UiTag>
       </div>
       <div class="dispatch-landing__head-actions">
@@ -91,11 +101,7 @@ function goHub() {
     <section v-else-if="session.ticket.value?.portfolioSnapshot" class="dispatch-landing__panel">
       <h2>
         教师档案袋 ·
-        {{
-          session.ticket.value.portfolioSnapshot.collectMode === 'GAP_ATTACHMENT'
-            ? '补采附件'
-            : 'AI 候选提交'
-        }}
+        {{ portfolioCollectModeLabel(session.ticket.value.portfolioSnapshot.collectMode) }}
       </h2>
       <p v-if="session.ticket.value.portfolioSnapshot.teacherName">
         教师 {{ session.ticket.value.portfolioSnapshot.teacherName }}
@@ -118,7 +124,7 @@ function goHub() {
         <UiButton variant="primary" @click="goQueue">返回队列</UiButton>
         <UiButton variant="outline" @click="goHub">回 Hub</UiButton>
       </div>
-      <div v-else-if="ticketStatus === 'SUSPENDED'" class="dispatch-landing__actions">
+      <div v-else-if="ticketStatus === ScanDispatchTicketStatusCode.SUSPENDED" class="dispatch-landing__actions">
         <UiButton variant="primary" @click="goQueue">返回队列</UiButton>
         <UiButton :disabled="session.actionLoading.value" @click="session.resumeTicket()">
           恢复任务
@@ -126,7 +132,7 @@ function goHub() {
       </div>
       <div v-else-if="!session.isPreviewMode" class="dispatch-landing__actions">
         <UiButton
-          v-if="ticketStatus === 'PENDING'"
+          v-if="ticketStatus === ScanDispatchTicketStatusCode.PENDING"
           :disabled="session.actionLoading.value || !session.canClaimTicket.value"
           @click="session.claimTicket()"
         >
@@ -141,7 +147,7 @@ function goHub() {
           继续扫描
         </UiButton>
         <UiButton
-          v-if="ticketStatus === 'PROCESSING'"
+          v-if="ticketStatus === ScanDispatchTicketStatusCode.PROCESSING"
           variant="outline"
           :disabled="session.actionLoading.value"
           @click="session.suspendTicket()"
@@ -149,7 +155,7 @@ function goHub() {
           挂起
         </UiButton>
         <UiButton
-          v-if="ticketStatus === 'PROCESSING'"
+          v-if="ticketStatus === ScanDispatchTicketStatusCode.PROCESSING"
           :disabled="session.actionLoading.value || !session.canClaimTicket.value"
           @click="session.cognitive.requestConfirm(session.ticket.value!)"
         >
@@ -169,7 +175,7 @@ function goHub() {
         <UiButton variant="primary" @click="goQueue">返回队列</UiButton>
         <UiButton variant="outline" @click="goHub">回 Hub</UiButton>
       </div>
-      <div v-else-if="ticketStatus === 'SUSPENDED'" class="dispatch-landing__actions">
+      <div v-else-if="ticketStatus === ScanDispatchTicketStatusCode.SUSPENDED" class="dispatch-landing__actions">
         <UiButton variant="primary" @click="goQueue">返回队列</UiButton>
         <UiButton :disabled="session.actionLoading.value" @click="session.resumeTicket()">
           恢复任务
@@ -177,7 +183,7 @@ function goHub() {
       </div>
       <div v-else-if="!session.isPreviewMode" class="dispatch-landing__actions">
         <UiButton
-          v-if="ticketStatus === 'PENDING'"
+          v-if="ticketStatus === ScanDispatchTicketStatusCode.PENDING"
           :disabled="session.actionLoading.value || !session.canClaimTicket.value"
           @click="session.claimTicket()"
         >
@@ -192,7 +198,7 @@ function goHub() {
           继续扫描
         </UiButton>
         <UiButton
-          v-if="ticketStatus === 'PROCESSING'"
+          v-if="ticketStatus === ScanDispatchTicketStatusCode.PROCESSING"
           variant="outline"
           :disabled="session.actionLoading.value"
           @click="session.suspendTicket()"
@@ -200,7 +206,7 @@ function goHub() {
           挂起
         </UiButton>
         <UiButton
-          v-if="ticketStatus === 'PROCESSING'"
+          v-if="ticketStatus === ScanDispatchTicketStatusCode.PROCESSING"
           :disabled="session.actionLoading.value || !session.canClaimTicket.value"
           @click="session.cognitive.requestConfirm(session.ticket.value!)"
         >

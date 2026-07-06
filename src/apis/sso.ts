@@ -10,6 +10,7 @@
  */
 
 import type { LoginResponse } from '@/apis/auth'
+import type { RoleEnum } from '@/types/enums'
 import http from '@/config/axios'
 
 
@@ -65,7 +66,7 @@ export interface CasProfileCompletionResponse {
   /** 处理状态 */
   status: 'PROFILE_COMPLETION_REQUIRED'
   /** 锁定角色 */
-  lockedRoleKey: string
+  lockedRoleKey: RoleEnum
   /** 补录令牌 */
   completionToken: string
   /** 缺失字段 */
@@ -111,17 +112,13 @@ export interface CasFirstLoginSubmitRequest {
  */
 export type CasCallbackResponse = LoginResponse['data'] | CasProfileCompletionResponse
 
-interface CasProfileCompletionStatusCarrier {
-  status?: CasProfileCompletionResponse['status'] | string
-}
-
 function hasProfileCompletionStatus(
   response: CasCallbackResponse,
 ): response is CasProfileCompletionResponse {
   if (typeof response !== 'object' || response === null) {
     return false
   }
-  return (response as CasProfileCompletionStatusCarrier).status === 'PROFILE_COMPLETION_REQUIRED'
+  return 'status' in response && response.status === 'PROFILE_COMPLETION_REQUIRED'
 }
 
 /**

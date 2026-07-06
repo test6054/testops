@@ -45,28 +45,18 @@ export interface TenantResourceQuotaHistoryDto {
     resourceType: string
     /** 资源类型描述 */
     resourceTypeDesc?: string
-    /** 操作类型 */
-    operationType: string
-    /** 操作前配额限制 */
-    beforeQuotaLimit?: number
-    /** 操作后配额限制 */
-    afterQuotaLimit?: number
-    /** 操作前使用量 */
-    beforeUsageCount?: number
-    /** 操作后使用量 */
-    afterUsageCount?: number
-    /** 变更量 */
-    changeAmount?: number
+    /** 旧配额限制值 */
+    oldQuotaLimit?: string
+    /** 新配额限制值 */
+    newQuotaLimit?: string
     /** 变更原因 */
-    reason?: string
-    /** 操作者ID - 修复字段名：后端使用operatorUserId */
+    changeReason?: string
+    /** 变更时间 */
+    changeTime: string
+    /** 操作者ID */
     operatorUserId?: string
-    /** 操作者姓名 - 修复字段名：后端使用operatorUserName */
+    /** 操作者姓名 */
     operatorUserName?: string
-    /** 操作时间 */
-    operationTime: string
-    /** 创建时间 */
-    createTime?: string
 }
 
 /** 租户资源配额历史查询DTO - 对应后端TenantResourceQuotaHistoryQueryDto */

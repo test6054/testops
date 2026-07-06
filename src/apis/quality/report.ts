@@ -1,4 +1,4 @@
-import type { ReportExportStatus, ReportStatus, ReportType } from './types'
+import type { ReportExportStatusCode, ReportStatusCode, ReportTypeCode } from './types'
 /**
  * 教学质量评价报告 API - 对接 edu-quality / ReportController
  *
@@ -18,17 +18,17 @@ const BASE = '/api/quality/reports'
 export interface ReportVO {
   id: string
   tenantId?: string
-  reportType: ReportType
+  reportType: ReportTypeCode
   programId?: string
-  programName: string
+  programName?: string
   trainingPlanId?: string
-  trainingPlanCode: string
-  trainingPlanName: string
+  trainingPlanCode?: string
+  trainingPlanName?: string
   qualityCourseId?: string
-  qualityCourseCode: string
-  qualityCourseName: string
+  qualityCourseCode?: string
+  qualityCourseName?: string
   achievementResultId?: string
-  achievementResultLabel: string
+  achievementResultLabel?: string
   title: string
   schoolYear: string
   semester: SemesterCode
@@ -36,13 +36,13 @@ export interface ReportVO {
   wordFileId?: string
   pdfFileId?: string
   excelFileId?: string
-  status: ReportStatus
+  status: ReportStatusCode
   confirmedUserId?: string
   confirmedTime?: string
   archivedUserId?: string
   archivedTime?: string
   /** 三格式导出状态机（IDLE/PENDING/PROCESSING/COMPLETED/FAILED） */
-  exportStatus: ReportExportStatus
+  exportStatus: ReportExportStatusCode
   /** 导出失败原因（FAILED 状态下由 ReportExportExecutor 回填） */
   exportErrorMessage?: string
   exportStartedTime?: string
@@ -55,21 +55,21 @@ export interface ReportVO {
 
 /** 后端 ReportQueryRequest 真值 */
 export interface ReportQueryRequest extends QueryDto {
-  reportType?: ReportType
+  reportType?: ReportTypeCode
   programId?: string
   trainingPlanId?: string
   qualityCourseId?: string
   achievementResultId?: string
   schoolYear?: string
   semester?: SemesterCode
-  status?: ReportStatus
+  status?: ReportStatusCode
   keyword?: string
 }
 
 /** 后端 ReportSaveRequest 真值 */
 export interface ReportSaveRequest {
   id?: string
-  reportType: ReportType
+  reportType: ReportTypeCode
   programId: string
   trainingPlanId?: string
   qualityCourseId?: string
@@ -84,19 +84,33 @@ export interface ReportSaveRequest {
 }
 
 /** 报告编辑表单：学期未选时为 undefined，提交前须显式选择，禁止静默默认 */
-export type ReportEditorForm = Omit<ReportSaveRequest, 'semester'> & {
+export interface ReportEditorForm {
+  id?: string
+  reportType: ReportTypeCode
+  programId: string
+  trainingPlanId?: string
+  qualityCourseId?: string
+  achievementResultId?: string
+  title: string
+  schoolYear: string
   semester?: SemesterCode
+  bodyContent?: string
+  wordFileId?: string
+  pdfFileId?: string
+  excelFileId?: string
 }
 
 /** 后端 ReportStatusTransitRequest 真值 */
 export interface ReportStatusTransitRequest {
   id: string
-  targetStatus: ReportStatus
+  targetStatus: ReportStatusCode
 }
 
 export const reportApi = {
-  page: (data: ReportQueryRequest) => http.post<PageResult<ReportVO>>(`${BASE}/page`, data),
-  detail: (id: string) => http.post<ReportVO>(`${BASE}/detail`, { id }),
+  page: (data: ReportQueryRequest) =>
+    http.post<PageResult<ReportVO>>(`${BASE}/page`, data),
+  detail: (id: string) =>
+    http.post<ReportVO>(`${BASE}/detail`, { id }),
   create: (data: ReportSaveRequest) => http.post<string>(`${BASE}/create`, data),
   update: (data: ReportSaveRequest) => http.post<void>(`${BASE}/update`, data),
   delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),

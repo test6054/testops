@@ -3,6 +3,7 @@ import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
 import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
 import { forceReleaseScanDispatch } from '@/apis/mark/scanner-dispatch'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
@@ -58,15 +59,16 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <a-modal
+  <UiDrawer
     :open="open"
     title="强制解锁派单"
-    width="520"
+    :width="520"
     :confirm-loading="submitting"
     ok-text="确认解锁"
-    cancel-text="取消"
+    :hide-footer="false"
     @update:open="emit('update:open', $event)"
-    @ok="handleSubmit"
+    @close="emit('update:open', false)"
+    @confirm="handleSubmit"
   >
     <p v-if="ticket?.archiveSnapshot?.archiveTitle" class="scan-dispatch-force-release__hint">
       卷：{{ ticket.archiveSnapshot.archiveTitle }}
@@ -79,7 +81,7 @@ async function handleSubmit() {
         <a-textarea v-model:value="form.releaseReason" :rows="3" placeholder="说明强制解锁原因" />
       </a-form-item>
     </a-form>
-  </a-modal>
+  </UiDrawer>
 </template>
 
 <style scoped>

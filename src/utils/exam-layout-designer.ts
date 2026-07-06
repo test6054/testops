@@ -4,113 +4,98 @@ import type {
   ExamLayoutPageDto,
   ExamLayoutRectNorm
 } from '@/apis/mark/exam-layout-design'
-import { throwUserFacing } from '@/utils/contract-guard'
+import {
+  ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES,
+  ExamLayoutBlockTypeCode,
+  getExamLayoutBlockTypeDescription,
+  requireExamLayoutBlockTypeCode,
+} from '@/types/enums/exam-layout-block-type-enum'
+import {
+  ALL_EXAM_LAYOUT_PAPER_SPEC_CODES,
+  ExamLayoutPaperSpecCode,
+  ExamLayoutPaperSpecMm,
+  getExamLayoutPaperSpecDescription,
+  requireExamLayoutPaperSpecCode,
+} from '@/types/enums/exam-layout-paper-spec-enum'
 
-/** 与后端 ExamLayoutBlockType 逐值一致 */
-export const EXAM_LAYOUT_BLOCK_TYPE = {
-  IDENTITY_BUBBLE: 'IDENTITY_BUBBLE',
-  OBJECTIVE_MATRIX: 'OBJECTIVE_MATRIX',
-  SUBJECTIVE_ANSWER: 'SUBJECTIVE_ANSWER',
-  QUESTION_STEM: 'QUESTION_STEM',
-  FORBIDDEN_ZONE: 'FORBIDDEN_ZONE',
-} as const
+export {
+  ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES,
+  ExamLayoutBlockTypeCode,
+  ExamLayoutBlockTypeDescription,
+  ExamLayoutBlockTypeOptions,
+  getExamLayoutBlockTypeDescription,
+  requireExamLayoutBlockTypeCode,
+} from '@/types/enums/exam-layout-block-type-enum'
 
-export type ExamLayoutBlockTypeCode
-  = (typeof EXAM_LAYOUT_BLOCK_TYPE)[keyof typeof EXAM_LAYOUT_BLOCK_TYPE]
+export {
+  ExamLayoutEntryKindCode,
+  ExamLayoutEntryKindDescription,
+} from '@/types/enums/exam-layout-entry-kind-enum'
 
-export const EXAM_LAYOUT_BLOCK_TYPE_LABEL: Record<ExamLayoutBlockTypeCode, string> = {
-  IDENTITY_BUBBLE: '身份填涂区',
-  OBJECTIVE_MATRIX: '客观填涂矩阵',
-  SUBJECTIVE_ANSWER: '主观作答区',
-  QUESTION_STEM: '题面区',
-  FORBIDDEN_ZONE: '禁止识别区',
-}
+export {
+  ALL_EXAM_LAYOUT_PAPER_SPEC_CODES,
+  defaultBlankSheetPaperSpec,
+  ExamLayoutPaperSpecCode,
+  ExamLayoutPaperSpecDescription,
+  ExamLayoutPaperSpecMm,
+  ExamLayoutPaperSpecOptions,
+  getExamLayoutPaperSpecDescription,
+  requireExamLayoutPaperSpecCode,
+} from '@/types/enums/exam-layout-paper-spec-enum'
 
 export const EXAM_LAYOUT_BLOCK_TYPE_COLOR: Record<ExamLayoutBlockTypeCode, string> = {
-  IDENTITY_BUBBLE: 'rgba(22, 119, 255, 0.14)',
-  OBJECTIVE_MATRIX: 'rgba(82, 196, 26, 0.14)',
-  SUBJECTIVE_ANSWER: 'rgba(250, 173, 20, 0.16)',
-  QUESTION_STEM: 'rgba(114, 46, 209, 0.12)',
-  FORBIDDEN_ZONE: 'rgba(255, 77, 79, 0.12)',
+  [ExamLayoutBlockTypeCode.IDENTITY_BUBBLE]: 'rgba(22, 119, 255, 0.14)',
+  [ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX]: 'rgba(82, 196, 26, 0.14)',
+  [ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER]: 'rgba(250, 173, 20, 0.16)',
+  [ExamLayoutBlockTypeCode.QUESTION_STEM]: 'rgba(114, 46, 209, 0.12)',
+  [ExamLayoutBlockTypeCode.FORBIDDEN_ZONE]: 'rgba(255, 77, 79, 0.12)',
 }
 
 export const EXAM_LAYOUT_BLOCK_TYPE_STROKE: Record<ExamLayoutBlockTypeCode, string> = {
-  IDENTITY_BUBBLE: '#1677ff',
-  OBJECTIVE_MATRIX: '#52c41a',
-  SUBJECTIVE_ANSWER: '#faad14',
-  QUESTION_STEM: '#722ed1',
-  FORBIDDEN_ZONE: '#ff4d4f',
-}
-
-export const EXAM_LAYOUT_ENTRY_KIND = {
-  SOURCE_FILE: 'SOURCE_FILE',
-  BLANK_SHEET: 'BLANK_SHEET',
-} as const
-
-export const EXAM_LAYOUT_ENTRY_KIND_LABEL: Record<string, string> = {
-  SOURCE_FILE: '有源整卷',
-  BLANK_SHEET: '标准答题卡',
-}
-
-export const EXAM_LAYOUT_PAPER_SPEC = {
-  A4_1COL: 'A4_1COL',
-  A3_2COL: 'A3_2COL',
-} as const
-
-export type ExamLayoutPaperSpecCode
-  = (typeof EXAM_LAYOUT_PAPER_SPEC)[keyof typeof EXAM_LAYOUT_PAPER_SPEC]
-
-export const EXAM_LAYOUT_PAPER_SPEC_LABEL: Record<ExamLayoutPaperSpecCode, string> = {
-  A3_2COL: 'A3 双栏（推荐）',
-  A4_1COL: 'A4 单栏',
-}
-
-/** 与后端 ExamLayoutPaperSpec 毫米尺寸一致 */
-export const EXAM_LAYOUT_PAPER_SPEC_MM: Record<ExamLayoutPaperSpecCode, { widthMm: number, heightMm: number }> = {
-  A4_1COL: { widthMm: 210, heightMm: 297 },
-  A3_2COL: { widthMm: 420, heightMm: 297 },
+  [ExamLayoutBlockTypeCode.IDENTITY_BUBBLE]: '#1677ff',
+  [ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX]: '#52c41a',
+  [ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER]: '#faad14',
+  [ExamLayoutBlockTypeCode.QUESTION_STEM]: '#722ed1',
+  [ExamLayoutBlockTypeCode.FORBIDDEN_ZONE]: '#ff4d4f',
 }
 
 const DEFAULT_SAFE_MARGIN_MM = 5
 const DEFAULT_STAGE_WIDTH = 760
 
 export function resolvePaperSpecLabel(paperSpec: string | undefined): string {
-  if (!paperSpec || !(paperSpec in EXAM_LAYOUT_PAPER_SPEC_LABEL)) {
-    throwUserFacing('纸张规格契约异常，请刷新后重试')
-  }
-  return EXAM_LAYOUT_PAPER_SPEC_LABEL[paperSpec as ExamLayoutPaperSpecCode]
+  return getExamLayoutPaperSpecDescription(requireExamLayoutPaperSpecCode(paperSpec))
 }
 
 export function resolvePaperMm(
   paperSpec: string | undefined,
   page: ExamLayoutPageDto,
 ): { widthMm: number, heightMm: number } {
-  if (paperSpec && paperSpec in EXAM_LAYOUT_PAPER_SPEC_MM) {
-    return EXAM_LAYOUT_PAPER_SPEC_MM[paperSpec as ExamLayoutPaperSpecCode]
+  const code = ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((item) => item === paperSpec)
+  if (code) {
+    return ExamLayoutPaperSpecMm[code]
   }
   if (page.naturalWidthPx >= page.naturalHeightPx) {
-    return EXAM_LAYOUT_PAPER_SPEC_MM.A3_2COL
+    return ExamLayoutPaperSpecMm[ExamLayoutPaperSpecCode.A3_2COL]
   }
-  return EXAM_LAYOUT_PAPER_SPEC_MM.A4_1COL
+  return ExamLayoutPaperSpecMm[ExamLayoutPaperSpecCode.A4_1COL]
 }
 
 export function resolveBlockTypeLabel(blockType: string | undefined): string {
-  if (!blockType || !(blockType in EXAM_LAYOUT_BLOCK_TYPE_LABEL)) {
-    throwUserFacing('布局块类型契约异常，请刷新后重试')
-  }
-  return EXAM_LAYOUT_BLOCK_TYPE_LABEL[blockType as ExamLayoutBlockTypeCode]
+  return getExamLayoutBlockTypeDescription(requireExamLayoutBlockTypeCode(blockType))
 }
 
 export function resolveBlockFill(blockType: string): string {
-  if (blockType in EXAM_LAYOUT_BLOCK_TYPE_COLOR) {
-    return EXAM_LAYOUT_BLOCK_TYPE_COLOR[blockType as ExamLayoutBlockTypeCode]
+  const code = ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES.find((item) => item === blockType)
+  if (code) {
+    return EXAM_LAYOUT_BLOCK_TYPE_COLOR[code]
   }
   return 'rgba(22, 119, 255, 0.08)'
 }
 
 export function resolveBlockStroke(blockType: string): string {
-  if (blockType in EXAM_LAYOUT_BLOCK_TYPE_STROKE) {
-    return EXAM_LAYOUT_BLOCK_TYPE_STROKE[blockType as ExamLayoutBlockTypeCode]
+  const code = ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES.find((item) => item === blockType)
+  if (code) {
+    return EXAM_LAYOUT_BLOCK_TYPE_STROKE[code]
   }
   return '#94a3b8'
 }
@@ -233,7 +218,9 @@ export function formatRectMmLabel(
 
 export function hasIdentityBlock(document: ExamLayoutDocument | null): boolean {
   return Boolean(
-    document?.blocks?.some((block) => block.blockType === EXAM_LAYOUT_BLOCK_TYPE.IDENTITY_BUBBLE),
+    document?.blocks?.some(
+      (block) => block.blockType === ExamLayoutBlockTypeCode.IDENTITY_BUBBLE,
+    ),
   )
 }
 

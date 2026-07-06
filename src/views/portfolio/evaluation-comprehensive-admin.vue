@@ -7,11 +7,12 @@ import type {
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
-  PORTFOLIO_EVALUATION_MODE_LABEL,
+  PortfolioEvaluationModeDescription,
 } from '@/apis/portfolio/enums'
 import {
   portfolioEvaluationEntryApi,
@@ -37,14 +38,20 @@ const tasksLoading = ref(false)
 const tasks = ref<PortfolioEvaluationTaskVO[]>([])
 const workgroups = ref<EvaluationWorkgroupVO[]>([])
 const analysis = ref<PortfolioEvaluationComprehensiveAnalysisVO | null>(null)
-const filter = reactive({
+interface PortfolioEvaluationComprehensiveFilter {
+  planYear: string
+  workgroupId: string
+  selectedTaskIds: string[]
+}
+
+const filter = reactive<PortfolioEvaluationComprehensiveFilter>({
   planYear: '',
-  workgroupId: '' as string,
-  selectedTaskIds: [] as string[],
+  workgroupId: '',
+  selectedTaskIds: [],
 })
 const { hydrateTeacherLabels, teacherLabel } = usePortfolioTeacherSearch()
 
-const kpiItems = computed(() => {
+const kpiItems = computed<UiStatPanelItem[]>(() => {
   if (!analysis.value) {
     return []
   }
@@ -53,7 +60,7 @@ const kpiItems = computed(() => {
       key: 'tasks',
       label: '纳入任务',
       value: String(analysis.value.taskCount),
-      tone: 'blue' as const,
+      tone: 'blue',
     },
     { key: 'entries', label: '填报条目', value: String(analysis.value.totalEntryCount) },
     { key: 'avg', label: '总体均分', value: analysis.value.overallAverageScore, unit: '分' },
@@ -101,7 +108,7 @@ const teacherColumns: ColumnsType<PortfolioEvaluationComprehensiveTeacherRowVO> 
 function evaluationModeLabel(
   mode: PortfolioEvaluationComprehensiveTaskItemVO['evaluationMode'],
 ): string {
-  return strictEnumLabel(PORTFOLIO_EVALUATION_MODE_LABEL, mode, '多元评价模式')
+  return strictEnumLabel(PortfolioEvaluationModeDescription, mode, '多元评价模式')
 }
 
 function buildAnalysisParams() {
@@ -121,7 +128,7 @@ function canRunAnalysis(): boolean {
 
 async function loadWorkgroups() {
   try {
-    const page = await evaluationWorkgroupApi.page({ pageNum: 1, pageSize: 100, enabled: true })
+    const page = await evaluationWorkgroupApi.page({ pageNum: 1, pageSize: 100 })
     workgroups.value = page.list ?? []
   } catch (error) {
     showUserError(error)

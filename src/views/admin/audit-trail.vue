@@ -4,9 +4,13 @@
       <ContextBar
         layout="workbench"
         show-title
-        title="审计追踪"
+        :title="isJourneyChrome ? contextBarTitle : '审计追踪'"
+        :subtitle="isJourneyChrome ? contextBarSubtitle : '质控审计'"
       >
         <template #status>
+          <UiTag v-if="isJourneyChrome && examStatusLabel" :tone="examStatusTone" size="sm">
+            {{ examStatusLabel }}
+          </UiTag>
           <MarkExamSelect
             v-if="!isExamWorkspaceRoute"
             :selected-exam-id="selectedExamId"
@@ -20,229 +24,238 @@
             @search="onExamSearch"
           />
           <UiTag tone="blue" size="sm">考试维度</UiTag>
-          <UiTag v-if="selectedExamId" tone="green" size="sm">
-            日志 {{ logPagination.total }} · 事件 {{ incidents.length }}
-          </UiTag>
+        </template>
+        <template #actions>
+          <UiButton
+            variant="outline"
+            size="sm"
+            :disabled="!selectedExamId"
+            :loading="loading"
+            @click="reloadAll"
+          >
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
         </template>
       </ContextBar>
     </template>
 
-    <!-- 主工作面 -->
     <UiEmpty
       v-if="!selectedExamId"
       description="请选择考试"
       class="audit-trail__empty"
     />
 
-    <UiCard v-else class="detail-table-card audit-trail-page__main-card">
-      <template #title>
-        <FileSearchOutlined />
-        <span>审计内容</span>
+    <template v-else-if="selectedExamId" #signal>
+      <SignalBand variant="tiles" compact :metrics="auditSignalMetrics" />
+    </template>
+
+    <ExamWorkspaceJourneySubNav
+      v-if="selectedExamId && isExamWorkspaceRoute"
+    />
+
+    <WorkbenchSurfaceCard v-if="selectedExamId" flush class="audit-trail__surface">
+      <template #head>
+        <UiSectionTabs
+          v-model="activeTab"
+          :items="auditTabItems"
+          compact
+          divided
+        />
       </template>
-      <template #extra>
-        <UiButton
-          variant="outline"
-          size="sm"
-          :disabled="!selectedExamId"
-          :loading="loading"
-          @click="reloadAll"
+
+      <template v-if="activeTab === 'logs'">
+        <UiFilterBar
+          v-model="logFilter"
+          :fields="logFilterFields"
+          search-text="查询"
+          @search="searchLogs"
+        />
+
+
+
+        <UiDataTable
+          :columns="logColumns"
+          :data-source="operationLogs"
+          :loading="logLoading"
+          row-key="id"
+          size="middle"
+          class="audit-table student-detail-table__data-table"
+          v-model:current="logPagination.current"
+          v-model:page-size="logPagination.pageSize"
+          :total="logPagination.total"
+          flat
+          @page-change="handleLogPageChange"
         >
-          <template #icon><ReloadOutlined /></template>
-          刷新
-        </UiButton>
+          <template #bodyCell="{ column, index }">
+            <template v-if="column.key === 'operationType'">
+              <UiTag
+                :tone="strictEnumTone(OPERATION_TYPE_TONE, operationLogs[index].operationType, '审计操作类型')"
+                size="sm"
+              >
+                {{ operationTypeText(operationLogs[index].operationType) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'targetType'">
+              <span>
+                {{ targetTypeText(operationLogs[index].targetType) }}
+              </span>
+            </template>
+            <template v-else-if="column.key === 'targetLabel'">
+              <a-tooltip :title="operationLogs[index].targetLabel">
+                <span>{{ operationLogs[index].targetLabel }}</span>
+              </a-tooltip>
+            </template>
+            <template v-else-if="column.key === 'createTime'">
+              {{ formatDateTimeWithSeconds(operationLogs[index].createTime) }}
+            </template>
+            <template v-else-if="column.key === 'reason'">
+              <a-tooltip :title="operationLogs[index].reason">
+                <span>{{ operationLogs[index].reason }}</span>
+              </a-tooltip>
+            </template>
+          </template>
+        </UiDataTable>
       </template>
 
-      <a-tabs v-model:active-key="activeTab" class="audit-tabs" @change="onTabChange">
-        <!-- 审计日志 -->
-        <a-tab-pane key="logs" tab="审计日志">
-          <UiFilterBar
-            v-model="logFilter"
-            :fields="logFilterFields"
-            search-text="查询"
-            @search="searchLogs"
-          />
+      <template v-else-if="activeTab === 'incidents'">
+        <UiFilterBar
+          v-model="incidentFilter"
+          :fields="incidentFilterFields"
+          search-text="查询"
+          @search="loadIncidents"
+        >
+          <template #field-unresolvedOnly="{ update }">
+            <a-checkbox
+              :checked="Boolean(incidentFilter.unresolvedOnly)"
+              @update:checked="(checked: boolean) => update(checked)"
+            >
+              仅未解决
+            </a-checkbox>
+          </template>
+        </UiFilterBar>
 
 
 
-          <UiDataTable
-            :columns="logColumns"
-            :data-source="operationLogs"
-            :loading="logLoading"
-            row-key="id"
-            size="middle"
-            class="audit-table student-detail-table__data-table"
-            v-model:current="logPagination.current"
-            v-model:page-size="logPagination.pageSize"
-            :total="logPagination.total"
-            flat
-            @page-change="handleLogPageChange"
-          >
-            <template #bodyCell="{ column, index }">
-              <template v-if="column.key === 'operationType'">
-                <UiTag tone="blue" size="sm">
-                  {{ operationTypeText(operationLogs[index].operationType) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'targetType'">
-                <span>
-                  {{ targetTypeText(operationLogs[index].targetType) }}
-                </span>
-              </template>
-              <template v-else-if="column.key === 'targetLabel'">
-                <a-tooltip :title="operationLogs[index].targetLabel">
-                  <span>{{ operationLogs[index].targetLabel }}</span>
-                </a-tooltip>
-              </template>
-              <template v-else-if="column.key === 'createTime'">
-                {{ formatDateTimeWithSeconds(operationLogs[index].createTime) }}
-              </template>
-              <template v-else-if="column.key === 'reason'">
-                <a-tooltip :title="operationLogs[index].reason">
-                  <span>{{ operationLogs[index].reason }}</span>
-                </a-tooltip>
-              </template>
-            </template>
-          </UiDataTable>
-        </a-tab-pane>
-
-        <!-- 重大事件 -->
-        <a-tab-pane key="incidents" tab="重大事件">
-          <UiFilterBar
-            v-model="incidentFilter"
-            :fields="incidentFilterFields"
-            search-text="查询"
-            @search="loadIncidents"
-          >
-            <template #field-unresolvedOnly="{ update }">
-              <a-checkbox
-                :checked="Boolean(incidentFilter.unresolvedOnly)"
-                @update:checked="(checked: boolean) => update(checked)"
+        <UiDataTable
+          pagination-mode="client"
+          :columns="incidentColumns"
+          :data-source="incidents"
+          :loading="incidentLoading"
+          row-key="id"
+          size="middle"
+          class="audit-table student-detail-table__data-table"
+          :page-size="20"
+          :total="incidents.length"
+          flat
+        >
+          <template #bodyCell="{ column, index }">
+            <template v-if="column.key === 'incidentLevel'">
+              <UiTag
+                v-if="incidents[index].incidentLevel"
+                :tone="incidentLevelTone(incidents[index].incidentLevel)"
+                size="sm"
               >
-                仅未解决
-              </a-checkbox>
+                {{ incidentLevelLabel(incidents[index].incidentLevel) }}
+              </UiTag>
+              <span v-else class="muted">-</span>
             </template>
-          </UiFilterBar>
-
-
-
-          <UiDataTable
-            pagination-mode="client"
-            :columns="incidentColumns"
-            :data-source="incidents"
-            :loading="incidentLoading"
-            row-key="id"
-            size="middle"
-            class="audit-table student-detail-table__data-table"
-            :page-size="20"
-            :total="incidents.length"
-            flat
-          >
-            <template #bodyCell="{ column, index }">
-              <template v-if="column.key === 'incidentLevel'">
-                <UiTag
-                  v-if="incidents[index].incidentLevel"
-                  :tone="incidentLevelTone(incidents[index].incidentLevel)"
-                  size="sm"
-                >
-                  {{ incidentLevelLabel(incidents[index].incidentLevel) }}
-                </UiTag>
-                <span v-else class="muted">-</span>
-              </template>
-              <template v-else-if="column.key === 'incidentType'">
-                <span v-if="incidents[index].incidentType">
-                  {{ incidentTypeLabel(incidents[index].incidentType) }}
-                </span>
-                <span v-else class="muted">-</span>
-              </template>
-              <template v-else-if="column.key === 'resolved'">
-                <UiTag :tone="incidents[index].resolved ? 'green' : 'orange'" size="sm">
-                  {{ incidents[index].resolved ? '已解决' : '未解决' }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'createTime'">
-                {{ formatDateTimeWithSeconds(incidents[index].createTime) }}
-              </template>
-              <template v-else-if="column.key === 'resolvedTime'">
-                {{ formatDateTimeWithSeconds(incidents[index].resolvedTime) }}
-              </template>
-              <template v-else-if="column.key === 'detail'">
-                <a-typography-paragraph
-                  v-if="incidents[index].detail"
-                  :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
-                >
-                  {{ incidents[index].detail }}
-                </a-typography-paragraph>
-                <span v-else class="muted">-</span>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <div class="operations-cell" @click.stop>
-                  <UiTextAction
-                    v-if="!incidents[index].resolved"
-                    tone="primary"
-                    @click="openResolveModal(incidents[index])"
-                  >
-                    解决事件
-                  </UiTextAction>
-                  <span v-else class="muted">-</span>
-                </div>
-              </template>
+            <template v-else-if="column.key === 'incidentType'">
+              <span v-if="incidents[index].incidentType">
+                {{ incidentTypeLabel(incidents[index].incidentType) }}
+              </span>
+              <span v-else class="muted">-</span>
             </template>
-          </UiDataTable>
-        </a-tab-pane>
-
-        <!-- 异常留痕样本 -->
-        <a-tab-pane key="diagnostic-samples" tab="异常留痕样本">
-          <UiFilterBar
-            v-model="sampleFilter"
-            :fields="sampleFilterFields"
-            search-text="查询"
-            @search="searchDiagnosticSamples"
-          />
-
-
-
-          <UiDataTable
-            :columns="sampleColumns"
-            :data-source="diagnosticSamples"
-            :loading="sampleLoading"
-            row-key="id"
-            size="middle"
-            class="audit-table student-detail-table__data-table"
-            v-model:current="samplePagination.current"
-            v-model:page-size="samplePagination.pageSize"
-            :total="samplePagination.total"
-            flat
-            @page-change="handleSamplePageChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'sampleType'">
-                <UiTag tone="purple" size="sm">
-                  {{
-                    strictEnumLabel(
-                      DIAGNOSTIC_SAMPLE_TYPE_LABEL,
-                      record.sampleType,
-                      '异常留痕样本类型',
-                    )
-                  }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'createTime'">
-                {{ formatDateTimeWithSeconds(record.createTime) }}
-              </template>
-              <template v-else-if="column.key === 'diagnostic'">
-                <a-typography-paragraph
-                  v-if="record.diagnostic"
-                  :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
-                >
-                  {{ record.diagnostic }}
-                </a-typography-paragraph>
-                <span v-else class="muted">-</span>
-              </template>
+            <template v-else-if="column.key === 'resolved'">
+              <UiTag :tone="incidents[index].resolved ? 'green' : 'orange'" size="sm">
+                {{ incidents[index].resolved ? '已解决' : '未解决' }}
+              </UiTag>
             </template>
-          </UiDataTable>
-        </a-tab-pane>
-      </a-tabs>
-    </UiCard>
+            <template v-else-if="column.key === 'createTime'">
+              {{ formatDateTimeWithSeconds(incidents[index].createTime) }}
+            </template>
+            <template v-else-if="column.key === 'resolvedTime'">
+              {{ formatDateTimeWithSeconds(incidents[index].resolvedTime) }}
+            </template>
+            <template v-else-if="column.key === 'detail'">
+              <a-typography-paragraph
+                v-if="incidents[index].detail"
+                :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
+              >
+                {{ incidents[index].detail }}
+              </a-typography-paragraph>
+              <span v-else class="muted">-</span>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <div class="operations-cell" @click.stop>
+                <UiTextAction
+                  v-if="!incidents[index].resolved"
+                  tone="primary"
+                  @click="openResolveModal(incidents[index])"
+                >
+                  解决事件
+                </UiTextAction>
+                <span v-else class="muted">-</span>
+              </div>
+            </template>
+          </template>
+        </UiDataTable>
+      </template>
+
+      <template v-else-if="activeTab === 'diagnostic-samples'">
+        <UiFilterBar
+          v-model="sampleFilter"
+          :fields="sampleFilterFields"
+          search-text="查询"
+          @search="searchDiagnosticSamples"
+        />
+
+
+
+        <UiDataTable
+          :columns="sampleColumns"
+          :data-source="diagnosticSamples"
+          :loading="sampleLoading"
+          row-key="id"
+          size="middle"
+          class="audit-table student-detail-table__data-table"
+          v-model:current="samplePagination.current"
+          v-model:page-size="samplePagination.pageSize"
+          :total="samplePagination.total"
+          flat
+          @page-change="handleSamplePageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'sampleType'">
+              <UiTag
+                :tone="strictEnumTone(DIAGNOSTIC_SAMPLE_TYPE_TONE, record.sampleType, '异常留痕样本类型')"
+                size="sm"
+              >
+                {{
+                  strictEnumLabel(
+                    DiagnosticSampleTypeDescription,
+                    record.sampleType,
+                    '异常留痕样本类型',
+                  )
+                }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'createTime'">
+              {{ formatDateTimeWithSeconds(record.createTime) }}
+            </template>
+            <template v-else-if="column.key === 'diagnostic'">
+              <a-typography-paragraph
+                v-if="record.diagnostic"
+                :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
+              >
+                {{ record.diagnostic }}
+              </a-typography-paragraph>
+              <span v-else class="muted">-</span>
+            </template>
+          </template>
+        </UiDataTable>
+      </template>
+    </WorkbenchSurfaceCard>
 
     <!-- 解决事件弹窗 -->
     <a-modal
@@ -274,7 +287,7 @@
 
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { TablePaginationConfig } from 'ant-design-vue/es/table'
+import type { ColumnsType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type {
   AuditTargetTypeCode,
   DiagnosticSampleTypeCode,
@@ -283,34 +296,40 @@ import type {
   OperationTypeCode,
 } from '@/apis/mark/admin-audit'
 import type { IncidentLevelCode, IncidentRecordVO, IncidentTypeCode } from '@/apis/mark/admin-dashboard'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  AUDIT_TARGET_TYPE_LABEL,
-  DIAGNOSTIC_SAMPLE_TYPE_LABEL,
+  AuditTargetTypeDescription,
   DIAGNOSTIC_SAMPLE_TYPE_OPTIONS,
+  DIAGNOSTIC_SAMPLE_TYPE_TONE,
+  DiagnosticSampleTypeDescription,
   listDiagnosticSamples,
   listIncidents,
   listOperationLogs,
-  OPERATION_TYPE_LABEL,
   OPERATION_TYPE_OPTIONS,
+  OPERATION_TYPE_TONE,
+  OperationTypeDescription,
   resolveIncident,
 } from '@/apis/mark/admin-audit'
-import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE, INCIDENT_TYPE_LABEL } from '@/apis/mark/admin-dashboard'
+import { INCIDENT_LEVEL_TONE, IncidentLevelDescription, IncidentTypeDescription } from '@/apis/mark/admin-dashboard'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
@@ -321,6 +340,14 @@ defineOptions({ name: 'AdminAuditTrail' })
 
 const route = useRoute()
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
+
+const {
+  isJourneyChrome,
+  contextBarTitle,
+  contextBarSubtitle,
+  examStatusLabel,
+  examStatusTone,
+} = useOptionalExamJourneyContextBar('质控审计')
 
 const {
   examOptions,
@@ -334,6 +361,60 @@ const {
 } = useMarkExamContext()
 
 const activeTab = ref<'logs' | 'incidents' | 'diagnostic-samples'>('logs')
+
+const unresolvedIncidentCount = computed(
+  () => incidents.value.filter((item) => !item.resolved).length,
+)
+
+const auditTabItems = computed((): UiSectionTabItem[] => [
+  {
+    key: 'logs',
+    label: '审计日志',
+    count: logPagination.total || undefined,
+  },
+  {
+    key: 'incidents',
+    label: '重大事件',
+    count: incidents.value.length || undefined,
+    badgeTone: unresolvedIncidentCount.value > 0 ? 'orange' : undefined,
+  },
+  {
+    key: 'diagnostic-samples',
+    label: '异常留痕样本',
+    count: samplePagination.total || undefined,
+  },
+])
+
+const auditSignalMetrics = computed((): SignalMetric[] => [
+  {
+    key: 'logs',
+    label: '审计日志',
+    value: logPagination.total ?? 0,
+    unit: '条',
+    tone: 'blue',
+  },
+  {
+    key: 'incidents',
+    label: '重大事件',
+    value: incidents.value.length,
+    unit: '条',
+    tone: unresolvedIncidentCount.value > 0 ? 'orange' : 'gray',
+  },
+  {
+    key: 'unresolved',
+    label: '未解决',
+    value: unresolvedIncidentCount.value,
+    unit: '条',
+    tone: unresolvedIncidentCount.value > 0 ? 'orange' : 'green',
+  },
+  {
+    key: 'samples',
+    label: '留痕样本',
+    value: samplePagination.total ?? 0,
+    unit: '条',
+    tone: 'blue',
+  },
+])
 
 // ─── 审计日志 ──────────────────────────────────
 const logLoading = ref(false)
@@ -389,6 +470,8 @@ async function loadLogs() {
     logPagination.pageSize = page.pageSize
     logPagination.total = readPageTotal(page, '审计日志加载失败，请稍后重试')
   } catch (error) {
+    operationLogs.value = []
+    logPagination.total = 0
     showUserError(error, '审计日志加载失败')
   } finally {
     logLoading.value = false
@@ -423,7 +506,7 @@ const incidentFilterFields: FilterField[] = [
   },
 ]
 
-const incidentColumns = [
+const incidentColumns: ColumnsType<IncidentRecordVO> = [
   { title: '级别', key: 'incidentLevel', dataIndex: 'incidentLevel', width: 90 },
   { title: '类型', key: 'incidentType', dataIndex: 'incidentType', width: 140 },
   { title: '摘要', key: 'summary', dataIndex: 'summary', ellipsis: true },
@@ -431,7 +514,7 @@ const incidentColumns = [
   { title: '状态', key: 'resolved', dataIndex: 'resolved', width: 100 },
   { title: '创建时间', key: 'createTime', dataIndex: 'createTime', width: 170 },
   { title: '解决时间', key: 'resolvedTime', dataIndex: 'resolvedTime', width: 170 },
-  { title: '操作', key: 'actions', fixed: 'right' as const, width: 110 },
+  { title: '操作', key: 'actions', fixed: 'right', width: 110 },
 ]
 
 async function loadIncidents() {
@@ -449,6 +532,7 @@ async function loadIncidents() {
       '重大事件加载失败，请稍后重试',
     )
   } catch (error) {
+    incidents.value = []
     showUserError(error, '重大事件加载失败')
   } finally {
     incidentLoading.value = false
@@ -543,6 +627,8 @@ async function loadDiagnosticSamples() {
     samplePagination.pageSize = page.pageSize
     samplePagination.total = readPageTotal(page, '异常留痕样本加载失败，请稍后重试')
   } catch (error) {
+    diagnosticSamples.value = []
+    samplePagination.total = 0
     showUserError(error, '异常留痕样本加载失败')
   } finally {
     sampleLoading.value = false
@@ -569,7 +655,7 @@ function reloadAll() {
   loadDiagnosticSamples()
 }
 
-function onTabChange(_key: string | number) {
+function onTabChange(): void {
   if (!selectedExamId.value) return
   if (activeTab.value === 'logs' && operationLogs.value.length === 0) {
     loadLogs()
@@ -579,6 +665,10 @@ function onTabChange(_key: string | number) {
     loadDiagnosticSamples()
   }
 }
+
+watch(activeTab, () => {
+  onTabChange()
+})
 
 function onExamChange(value: SelectValue) {
   onSelectorChange(value)
@@ -597,11 +687,11 @@ function onExamChange(value: SelectValue) {
 // 严格 typed helper：模板侧用 operationLogs[index] / incidents[index] 取后端 VO，
 // helper 把 OperationTypeCode/IncidentLevelCode 映射成 a-table 单元格需要的字符串/BadgeTone。
 function operationTypeText(code: OperationTypeCode): string {
-  return strictEnumLabel(OPERATION_TYPE_LABEL, code, '审计操作类型')
+  return strictEnumLabel(OperationTypeDescription, code, '审计操作类型')
 }
 
 function targetTypeText(code: AuditTargetTypeCode): string {
-  return strictEnumLabel(AUDIT_TARGET_TYPE_LABEL, code, '审计目标类型')
+  return strictEnumLabel(AuditTargetTypeDescription, code, '审计目标类型')
 }
 
 function incidentLevelTone(level: IncidentLevelCode): BadgeTone {
@@ -609,11 +699,11 @@ function incidentLevelTone(level: IncidentLevelCode): BadgeTone {
 }
 
 function incidentLevelLabel(level: IncidentLevelCode): string {
-  return strictEnumLabel(INCIDENT_LEVEL_LABEL, level, '重大事件级别')
+  return strictEnumLabel(IncidentLevelDescription, level, '重大事件级别')
 }
 
 function incidentTypeLabel(type: IncidentTypeCode): string {
-  return strictEnumLabel(INCIDENT_TYPE_LABEL, type, '重大事件类型')
+  return strictEnumLabel(IncidentTypeDescription, type, '重大事件类型')
 }
 
 onMounted(async () => {
@@ -638,32 +728,11 @@ onActivated(() => {
 </script>
 
 <style lang="scss" scoped>
-.audit-trail-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 8px 10px;
-}
-
-.audit-tabs {
-  margin-top: 4px;
-}
-
-.filter-bar {
-  margin-bottom: 12px;
-  padding: 12px 16px;
-  background: var(--ant-color-fill-quaternary);
-  border-radius: var(--dp-radius-panel, 6px);
-}
-
-.audit-table {
-  :deep(.ant-table-thead > tr > th) {
-    background: var(--ant-color-fill-quaternary);
-    font-weight: 600;
-  }
-}
-
 .audit-trail {
+  &__tabs {
+    padding: 0 16px;
+  }
+
   &__exam-select {
     width: 280px;
   }

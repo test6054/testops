@@ -1,11 +1,9 @@
 <template>
-  <a-card :bordered="false" size="small">
-    <template #title>
-      <a-space>
-        <span>待处置重复影像</span>
-        <UiTag tone="orange">待处置 {{ pendingCount }}</UiTag>
-      </a-space>
-    </template>
+  <section class="duplicate-resolution">
+    <header class="duplicate-resolution__head">
+      <h3 class="duplicate-resolution__title">待处置重复影像</h3>
+      <UiTag tone="orange" size="sm">待处置 {{ pendingCount }}</UiTag>
+    </header>
 
     <UiDataTable
       pagination-mode="client"
@@ -32,7 +30,7 @@
         </template>
       </template>
     </UiDataTable>
-  </a-card>
+  </section>
 </template>
 
 <script lang="ts" setup>
@@ -41,12 +39,13 @@ import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, ref, watch } from 'vue'
 import {
-  DUPLICATE_RESOLUTION_STATUS_LABEL,
   DUPLICATE_RESOLUTION_STATUS_TONE,
+  DuplicateResolutionStatusDescription,
 } from '@/apis/mark/duplicate-resolution-status'
 import { listPendingDuplicates } from '@/apis/mark/image-ledger'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -86,7 +85,7 @@ function duplicateStatusColor(row: ExamPaperDuplicateResolutionVO): BadgeTone {
 
 function duplicateStatusLabel(row: ExamPaperDuplicateResolutionVO): string {
   return strictEnumLabel(
-    DUPLICATE_RESOLUTION_STATUS_LABEL,
+    DuplicateResolutionStatusDescription,
     row.resolutionStatus,
     '重复影像处置状态',
   )
@@ -118,3 +117,24 @@ watch(
 
 defineExpose({ reload })
 </script>
+
+<style lang="scss" scoped>
+.duplicate-resolution {
+  border-top: 1px solid var(--dp-border, #e2e8f0);
+  padding-top: var(--dp-space-4, 16px);
+}
+
+.duplicate-resolution__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: var(--dp-space-3, 12px);
+}
+
+.duplicate-resolution__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: var(--dp-font-weight-title, 600);
+  line-height: 1.5;
+}
+</style>

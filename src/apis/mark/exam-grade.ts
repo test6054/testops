@@ -2,17 +2,15 @@ import type { FinalScoreStatusCode } from './final-score-status'
 import type { GradeStatusCode } from './grade-status'
 import type { ObjectiveResultCode } from './objective-result'
 import type { QuestionTypeCode } from './question-type'
+import type { MarkAiReferenceExperienceAuditVO } from '@/apis/mark/grading-experience-assist'
 /**
  * 阅卷考试题目评分确认与 AI 复评 API - 对接 /api/mark/exams/question-grades/*。
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { AiProviderTypeCode } from '@/types/enums/ai-provider-type-enum'
 import http from '@/config/axios'
-import { assertUserFacingFiniteNumber, assertUserFacingText } from '@/utils/contract-guard'
-import { strictEnumLabel } from '@/utils/strict-enum'
-import { FINAL_SCORE_STATUS_LABEL } from './final-score-status'
-import { QUESTION_TYPE_LABEL } from './question-type'
-
-const EXAM_SCORE_DATA_ERROR = '成绩数据异常，请刷新后重试'
+import { AiAbilityCode } from '@/types/enums/ai-ability-enum'
+import { AiExecutionStatusCode } from '@/types/enums/ai-execution-status-enum'
 
 /** 题目成绩确认请求 - 对应 ExamGradeConfirmRequest */
 export interface ExamGradeConfirmRequest {
@@ -27,13 +25,15 @@ export interface ExamGradeConfirmRequest {
 
 /** 试卷题目得分明细 - 对应 ExamQuestionScoreDto */
 export interface ExamQuestionScoreVO {
-  questionTemplateId: string
+  layoutQuestionId: string
   questionNo: string
   questionType: QuestionTypeCode
   fullScore: number
   teacherReviewScore?: number
   gradeStatus?: GradeStatusCode
   objectiveResult?: ObjectiveResultCode
+  improvementSuggestion?: string
+  mistakeClusterLabel?: string
 }
 
 /** 试卷成绩明细响应 - 对应 ExamPaperScoreResponse */
@@ -106,13 +106,35 @@ export interface SubjectiveAiRiskFlagVO {
   message?: string
 }
 
-/** AI 供应商类型编码 - 对应后端 AiProviderType */
-export type AiProviderTypeCode = 'DEEPSEEK' | 'QWEN'
+export {
+  AiAbilityCode,
+  AiAbilityDescription,
+  ALL_AI_ABILITY_CODES,
+} from '@/types/enums/ai-ability-enum'
 
-/** AI 供应商类型中文文案映射 */
-export const AI_PROVIDER_TYPE_LABEL: Record<AiProviderTypeCode, string> = {
-  DEEPSEEK: 'DeepSeek 模型服务',
-  QWEN: '通义千问模型服务',
+export {
+  AiExecutionStatusCode,
+  AiExecutionStatusDescription,
+  ALL_AI_EXECUTION_STATUS_CODES,
+} from '@/types/enums/ai-execution-status-enum'
+
+export {
+  AiProviderTypeCode,
+  AiProviderTypeDescription,
+  ALL_AI_PROVIDER_TYPE_CODES,
+} from '@/types/enums/ai-provider-type-enum'
+
+/** AI 能力编码 -> 来源徽标色调 */
+export const AI_ABILITY_TONE: Record<AiAbilityCode, BadgeTone> = {
+  [AiAbilityCode.PAPER_GRADE_SUGGESTION]: 'blue',
+  [AiAbilityCode.SUBJECTIVE_GRADE_SUGGESTION]: 'purple',
+}
+
+/** AI 执行状态徽标色调 */
+export const AI_EXECUTION_STATUS_TONE: Record<AiExecutionStatusCode, BadgeTone> = {
+  [AiExecutionStatusCode.SUCCESS]: 'green',
+  [AiExecutionStatusCode.BLOCKED]: 'orange',
+  [AiExecutionStatusCode.FAILED]: 'red',
 }
 
 /** 单题 AI 复评结果 - 对应后端 SubjectiveGradeSuggestionResult 合同 */
@@ -127,38 +149,10 @@ export interface SubjectiveGradeSuggestionResultVO {
   traceId?: string
   limited?: boolean
   riskFlags?: SubjectiveAiRiskFlagVO[]
-}
-
-/** AI 能力编码 - docs/17 §整卷 AI 与单题复评；首次整卷 AI / 教师异议单题 AI 复评 */
-export type AiAbilityCode = 'PAPER_GRADE_SUGGESTION' | 'SUBJECTIVE_GRADE_SUGGESTION'
-
-/** AI 能力编码 -> 来源中文文案 */
-export const AI_ABILITY_LABEL: Record<AiAbilityCode, string> = {
-  PAPER_GRADE_SUGGESTION: '整卷 AI 批阅',
-  SUBJECTIVE_GRADE_SUGGESTION: '单题 AI 复评',
-}
-
-/** AI 能力编码 -> 来源徽标色调 */
-export const AI_ABILITY_TONE: Record<AiAbilityCode, BadgeTone> = {
-  PAPER_GRADE_SUGGESTION: 'blue',
-  SUBJECTIVE_GRADE_SUGGESTION: 'purple',
-}
-
-/** AI 执行状态编码 - 对应后端 AiExecutionStatus */
-export type AiExecutionStatusCode = 'SUCCESS' | 'BLOCKED' | 'FAILED'
-
-/** AI 执行状态文案映射 */
-export const AI_EXECUTION_STATUS_LABEL: Record<AiExecutionStatusCode, string> = {
-  SUCCESS: '成功',
-  BLOCKED: '阻断',
-  FAILED: '失败',
-}
-
-/** AI 执行状态徽标色调 */
-export const AI_EXECUTION_STATUS_TONE: Record<AiExecutionStatusCode, BadgeTone> = {
-  SUCCESS: 'green',
-  BLOCKED: 'orange',
-  FAILED: 'red',
+  referenceExperienceCaseId?: string
+  referenceExperienceEvalId?: string
+  referenceBindingId?: string
+  referenceExperienceAudit?: MarkAiReferenceExperienceAuditVO
 }
 
 /** 单题历次 AI 执行查询请求 - 对应 ExamQuestionAiExecutionsRequest */
@@ -167,37 +161,19 @@ export interface ExamQuestionAiExecutionsRequest {
   gradeResultId: string
 }
 
-/** 单题历次 AI 执行记录条目 - 对应 ExamQuestionAiExecutionItemResponse */
 export interface ExamQuestionAiExecutionItemVO {
   traceId: string
   abilityCode: AiAbilityCode
   status: AiExecutionStatusCode
-  providerType: AiProviderTypeCode
-  modelName: string
+  providerType?: AiProviderTypeCode
+  modelName?: string
   requestSummary?: string
   responseSummary?: string
   diagnostic?: string
   latencyMs: number
   createTime: string
   createUser: string
-}
-
-/** 试卷成绩合同校验，确保成绩详情的试卷身份、学生身份和题目分值完整。 */
-function validateExamPaperScoreContract(record: ExamPaperScoreVO): ExamPaperScoreVO {
-  assertUserFacingText(record.examId, EXAM_SCORE_DATA_ERROR)
-  assertUserFacingText(record.paperInstanceId, EXAM_SCORE_DATA_ERROR)
-  assertUserFacingText(record.candidateRosterId, EXAM_SCORE_DATA_ERROR)
-  assertUserFacingText(record.studentUserId, EXAM_SCORE_DATA_ERROR)
-  assertUserFacingText(record.studentNo, EXAM_SCORE_DATA_ERROR)
-  assertUserFacingText(record.studentName, EXAM_SCORE_DATA_ERROR)
-  strictEnumLabel(FINAL_SCORE_STATUS_LABEL, record.finalScoreStatus, '最终成绩状态')
-  record.questions?.forEach((item) => {
-    assertUserFacingText(item.questionTemplateId, EXAM_SCORE_DATA_ERROR)
-    assertUserFacingText(item.questionNo, EXAM_SCORE_DATA_ERROR)
-    strictEnumLabel(QUESTION_TYPE_LABEL, item.questionType, '题型')
-    assertUserFacingFiniteNumber(item.fullScore, EXAM_SCORE_DATA_ERROR)
-  })
-  return record
+  referenceExperienceAudit?: MarkAiReferenceExperienceAuditVO
 }
 
 /** 教师确认题目得分。 */
@@ -240,9 +216,12 @@ export function listAiExecutionsForQuestion(
   )
 }
 
+export interface ExamPaperScoreQueryRequest {
+  examId: string
+  paperInstanceId: string
+}
+
 /** 查询试卷当前成绩明细。 */
-export function getPaperScore(examId: string, paperInstanceId: string): Promise<ExamPaperScoreVO> {
-  return http
-    .post<ExamPaperScoreVO>('/api/mark/exams/paper-score', { examId, paperInstanceId })
-    .then(validateExamPaperScoreContract)
+export function getPaperScore(request: ExamPaperScoreQueryRequest): Promise<ExamPaperScoreVO> {
+  return http.post<ExamPaperScoreVO>('/api/mark/exams/paper-score', request)
 }

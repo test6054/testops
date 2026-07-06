@@ -3,6 +3,8 @@
  * 扫描参数与模式抽屉：硬件参数与扫描模式；制卷核对在就绪页制卷摘要区。
  */
 import { computed } from 'vue'
+import { ScannerBusinessSceneCode } from '@/apis/mark/scanner-agent-local'
+import { ScannerKioskScanModeCode } from '@/apis/mark/scanner-kiosk'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow, ui } = useKioskCtx()
@@ -36,7 +38,7 @@ const duplexModeOptions = computed(() =>
   })),
 )
 const paramsDisabled = computed(() => !workflow.canSwitchScanMode.value || !scanConfigOptions.value)
-const isSupplement = computed(() => workflow.scanMode.value === 'SUPPLEMENT')
+const isSupplement = computed(() => workflow.scanMode.value === ScannerKioskScanModeCode.SUPPLEMENT)
 const scanMaterialAdvisory = computed(() => workflow.scanMaterialAdvisory.value)
 const scanModeAdvisory = computed(() => workflow.scanModeAdvisory.value)
 
@@ -61,7 +63,7 @@ const scanModeSummary = computed(() => workflow.scanModeText(workflow.scanMode.v
 
 const scanModeTone = computed(() => {
   const mode = workflow.scanMode.value
-  if (mode === 'SUPPLEMENT') return 'supplement'
+  if (mode === ScannerKioskScanModeCode.SUPPLEMENT) return 'supplement'
   return 'direct'
 })
 
@@ -82,11 +84,11 @@ const duplexMismatchHint = computed(() => {
 })
 
 const SCAN_MODES = [
-  { id: 'DIRECT' as const, label: '首次扫描' },
-  { id: 'SUPPLEMENT' as const, label: '补扫' },
+  { id: ScannerKioskScanModeCode.DIRECT, label: '首次扫描' },
+  { id: ScannerKioskScanModeCode.SUPPLEMENT, label: '补扫' },
 ]
 
-function selectMode(mode: 'DIRECT' | 'SUPPLEMENT') {
+function selectMode(mode: ScannerKioskScanModeCode) {
   if (mode !== workflow.scanMode.value) workflow.changeScanMode(mode)
 }
 
@@ -159,7 +161,7 @@ function applyRecommendedScanConfig() {
         </div>
       </div>
 
-      <div v-if="workflow.businessScene.value === 'EXAM_DIRECT_SCAN'" class="field">
+      <div v-if="workflow.businessScene.value === ScannerBusinessSceneCode.EXAM_DIRECT_SCAN" class="field">
         <span class="field__label">识别链路</span>
         <div class="seg seg--stack">
           <button

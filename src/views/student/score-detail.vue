@@ -47,21 +47,23 @@
       />
 
       <div v-if="detail.finalScoreStatus === 'PUBLISHED'" class="score-detail__layout">
-        <UiCard class="score-detail__sheet-card">
-          <template #title>
-            <BarChartOutlined />
-            <span>答题卡</span>
-          </template>
-          <template #extra>
-            <a-select
-              v-if="clusterLabelOptions.length > 0"
-              v-model:value="selectedClusterLabel"
-              class="score-detail__cluster-select"
-              placeholder="错题聚类"
-              :options="clusterLabelOptions"
-              allow-clear
-              size="small"
-            />
+        <WorkbenchSurfaceCard class="score-detail__sheet-card">
+          <template #head>
+            <div class="score-detail__card-head">
+              <div class="score-detail__card-title">
+                <BarChartOutlined />
+                <span>答题卡</span>
+              </div>
+              <a-select
+                v-if="clusterLabelOptions.length > 0"
+                v-model:value="selectedClusterLabel"
+                class="score-detail__cluster-select"
+                placeholder="错题聚类"
+                :options="clusterLabelOptions"
+                allow-clear
+                size="small"
+              />
+            </div>
           </template>
 
           <div class="score-detail__stats">
@@ -83,12 +85,14 @@
             class="score-detail__heatmap"
             @cell-click="handleScoreHeatmapClick"
           />
-        </UiCard>
+        </WorkbenchSurfaceCard>
 
-        <UiCard class="score-detail__panel-card">
-          <template #title>
-            <ProfileOutlined />
-            <span>题目详情</span>
+        <WorkbenchSurfaceCard class="score-detail__panel-card">
+          <template #head>
+            <div class="score-detail__card-title">
+              <ProfileOutlined />
+              <span>题目详情</span>
+            </div>
           </template>
           <UiEmpty v-if="!selectedQuestion" description="请选择" />
           <a-spin v-else :spinning="panelLoading">
@@ -111,7 +115,7 @@
                 >
                   {{
                     strictEnumLabel(
-                      OBJECTIVE_RESULT_LABEL,
+                      ObjectiveResultDescription,
                       currentDetail.objectiveResult,
                       '客观判定',
                     )
@@ -196,19 +200,25 @@
               </div>
             </div>
           </a-spin>
-        </UiCard>
+        </WorkbenchSurfaceCard>
       </div>
 
-      <UiCard v-if="detail.finalScoreStatus === 'PUBLISHED'" class="score-detail__wrong-book-card">
-        <template #title>
-          <ProfileOutlined />
-          <span>错题本</span>
-          <UiBadge tone="red">{{ wrongBookTotal }} 条</UiBadge>
-        </template>
-        <template #extra>
-          <UiButton size="sm" variant="outline" :loading="wrongBookLoading" @click="loadWrongBook">
-            刷新
-          </UiButton>
+      <WorkbenchSurfaceCard
+        v-if="detail.finalScoreStatus === 'PUBLISHED'"
+        flush
+        class="score-detail__wrong-book-card"
+      >
+        <template #head>
+          <div class="score-detail__card-head">
+            <div class="score-detail__card-title">
+              <ProfileOutlined />
+              <span>错题本</span>
+              <UiTag tone="red" size="sm">{{ wrongBookTotal }} 条</UiTag>
+            </div>
+            <UiButton size="sm" variant="outline" :loading="wrongBookLoading" @click="loadWrongBook">
+              刷新
+            </UiButton>
+          </div>
         </template>
         <UiEmpty v-if="!wrongBookLoading && wrongBookRows.length === 0" description="暂无数据" />
         <UiDataTable
@@ -242,35 +252,41 @@
                 :tone="strictEnumTone(OBJECTIVE_RESULT_TONE, item.objectiveResult, '客观判定')"
                 size="sm"
               >
-                {{ strictEnumLabel(OBJECTIVE_RESULT_LABEL, item.objectiveResult, '客观判定') }}
+                {{ strictEnumLabel(ObjectiveResultDescription, item.objectiveResult, '客观判定') }}
               </UiTag>
               <span v-else class="score-detail__hint">-</span>
             </template>
           </template>
         </UiDataTable>
-      </UiCard>
+      </WorkbenchSurfaceCard>
 
-      <UiCard v-if="detail.finalScoreStatus === 'PUBLISHED'" class="score-detail__profile-card">
-        <template #title>
-          <BulbOutlined />
-          <span>AI 学习报告</span>
-          <UiBadge
-            v-if="learningReport?.profileStatus"
-            :tone="aiAnalysisStatusColor(learningReport.profileStatus)"
-          >
-            {{ aiAnalysisStatusLabel(learningReport.profileStatus) }}
-          </UiBadge>
-        </template>
-        <template #extra>
-          <UiButton
-            size="sm"
-            variant="outline"
-            :loading="reportLoading"
-            @click="loadLearningReport"
-          >
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
+      <WorkbenchSurfaceCard
+        v-if="detail.finalScoreStatus === 'PUBLISHED'"
+        class="score-detail__profile-card"
+      >
+        <template #head>
+          <div class="score-detail__card-head">
+            <div class="score-detail__card-title">
+              <BulbOutlined />
+              <span>AI 学习报告</span>
+              <UiTag
+                v-if="learningReport?.profileStatus"
+                :tone="aiAnalysisStatusColor(learningReport.profileStatus)"
+                size="sm"
+              >
+                {{ aiAnalysisStatusLabel(learningReport.profileStatus) }}
+              </UiTag>
+            </div>
+            <UiButton
+              size="sm"
+              variant="outline"
+              :loading="reportLoading"
+              @click="loadLearningReport"
+            >
+              <template #icon><ReloadOutlined /></template>
+              刷新
+            </UiButton>
+          </div>
         </template>
 
         <a-spin :spinning="reportLoading">
@@ -356,7 +372,7 @@
             </div>
           </div>
         </a-spin>
-      </UiCard>
+      </WorkbenchSurfaceCard>
     </template>
   </StageWorkbenchShell>
 </template>
@@ -384,9 +400,9 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
-import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from '@/apis/mark/final-score-status'
-import { GRADE_STATUS_LABEL, GRADE_STATUS_TONE } from '@/apis/mark/grade-status'
-import { OBJECTIVE_RESULT_LABEL, OBJECTIVE_RESULT_TONE } from '@/apis/mark/objective-result'
+import { FINAL_SCORE_STATUS_TONE, FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
+import { GRADE_STATUS_TONE, GradeStatusDescription } from '@/apis/mark/grade-status'
+import { OBJECTIVE_RESULT_TONE, ObjectiveResultDescription } from '@/apis/mark/objective-result'
 import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
 import {
   canSubmitReview,
@@ -394,25 +410,24 @@ import {
   getMyQuestionAnswerDetail,
   getMyScoreDetail,
 } from '@/apis/mark/student-exam'
-import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-mastery-level'
+import { MASTERY_LEVEL_TONE, MasteryLevelDescription } from '@/apis/mark/student-mastery-level'
 import MarkHeatmapSection from '@/components/chart/MarkHeatmapSection.vue'
 import ScanImageStage from '@/components/mark/ScanImageStage.vue'
-import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import {
   buildConfidentialWatermarkLines,
   isExamConfidentialFlag,
 } from '@/composables/useConfidentialWatermark'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { formatScore } from '@/utils/format'
 import { buildHeatmapChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { buildHeatmapChartOption } from '@/utils/mark-echarts-options'
 import { scoreSheetToHeatmapCells } from '@/utils/mark-statistics-chart'
@@ -453,7 +468,7 @@ const wrongBookPagination = reactive({
 })
 
 const wrongBookColumns: ColumnType<StudentWrongBookItemVO>[] = [
-  { title: '题目', dataIndex: 'questionTemplateId', key: 'questionTemplateId', width: 140 },
+  { title: '题目', dataIndex: 'layoutQuestionId', key: 'layoutQuestionId', width: 140 },
   { title: '得分', key: 'score', width: 120 },
   { title: '批改状态', key: 'gradeStatus', width: 110 },
   { title: '客观判定', key: 'objectiveResult', width: 110 },
@@ -494,7 +509,7 @@ const filteredQuestions = computed<StudentQuestionScoreVO[]>(() => {
 const scoreHeatmapCells = computed(() =>
   scoreSheetToHeatmapCells(
     filteredQuestions.value.map((question) => ({
-      questionTemplateId: question.questionTemplateId,
+      layoutQuestionId: question.layoutQuestionId,
       questionNo: question.questionNo,
       finalScore: question.teacherReviewScore,
       fullScore: question.fullScore,
@@ -542,7 +557,7 @@ const selectedQuestion = computed<StudentQuestionScoreVO | null>(() => {
     return null
   }
   return (
-    filteredQuestions.value.find((item) => item.questionTemplateId === selectedQuestionId.value)
+    filteredQuestions.value.find((item) => item.layoutQuestionId === selectedQuestionId.value)
     ?? null
   )
 })
@@ -575,11 +590,11 @@ function finalScoreStatusTone(item: StudentScoreDetailVO): BadgeTone {
 }
 
 function finalScoreStatusLabel(item: StudentScoreDetailVO): string {
-  return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, item.finalScoreStatus, '最终成绩状态')
+  return strictEnumLabel(FinalScoreStatusDescription, item.finalScoreStatus, '最终成绩状态')
 }
 
 function formatGradeStatus(status: StudentQuestionScoreVO['gradeStatus']): string {
-  return strictEnumLabel(GRADE_STATUS_LABEL, status, '题目批改状态')
+  return strictEnumLabel(GradeStatusDescription, status, '题目批改状态')
 }
 
 function getGradeStatusTone(status: StudentQuestionScoreVO['gradeStatus']): BadgeTone {
@@ -591,7 +606,7 @@ function formatQuestionFinalScore(question: StudentQuestionScoreVO): string {
 }
 
 function formatPublishedTotalScore(item: StudentScoreDetailVO): string {
-  return (item.totalScore as number).toFixed(2)
+  return formatScore(item.totalScore, 'score')
 }
 
 function formatPublishedScoreSummary(item: StudentScoreDetailVO): string {
@@ -599,13 +614,13 @@ function formatPublishedScoreSummary(item: StudentScoreDetailVO): string {
     return '--'
   }
   if (item.dailyScoreFull != null) {
-    return `考试 ${(item.examScore as number).toFixed(2)} + 日常 ${(item.dailyScore as number).toFixed(2)} = 总 ${formatPublishedTotalScore(item)} / ${formatPublishedFullScore(item)}`
+    return `考试 ${formatScore(item.examScore, 'score')} + 日常 ${formatScore(item.dailyScore, 'score')} = 总 ${formatPublishedTotalScore(item)} / ${formatPublishedFullScore(item)}`
   }
   return `${formatPublishedTotalScore(item)} / ${formatPublishedFullScore(item)}`
 }
 
 function formatPublishedFullScore(item: StudentScoreDetailVO): string {
-  return (item.fullScore as number).toFixed(2)
+  return formatScore(item.fullScore, 'score')
 }
 
 async function loadWrongBook(): Promise<void> {
@@ -648,7 +663,6 @@ async function loadDetail() {
   loading.value = true
   try {
     const loadedDetail = await getMyScoreDetail(examId.value)
-    validateScoreDetailContract(loadedDetail)
     detail.value = loadedDetail
     if (loadedDetail.finalScoreStatus === 'PUBLISHED') {
       wrongBookPagination.current = 1
@@ -662,19 +676,6 @@ async function loadDetail() {
   }
 }
 
-/** 校验已发布成绩详情的必需字段，避免题目表格渲染时整页崩溃。 */
-function validateScoreDetailContract(item: StudentScoreDetailVO): void {
-  if (item.finalScoreStatus !== 'PUBLISHED') return
-  const dataError = '成绩详情数据异常，请刷新后重试'
-  assertUserFacing(item.totalScore != null, dataError)
-  assertUserFacing(item.examScore != null, dataError)
-  assertUserFacing(item.dailyScore != null, dataError)
-  assertUserFacing(item.fullScore != null, dataError)
-  for (const question of item.questions) {
-    assertUserFacing(question.teacherReviewScore != null, dataError)
-  }
-}
-
 function goAppeal(id: string) {
   router.push({ name: 'StudentAppeal', query: { examId: id } })
 }
@@ -685,12 +686,12 @@ function canApplyReviewOnQuestion(q: StudentQuestionScoreVO): boolean {
 }
 
 function goAppealForQuestion(q: StudentQuestionScoreVO): void {
-  if (!detail.value?.examId || !q.questionTemplateId) return
+  if (!detail.value?.examId || !q.layoutQuestionId) return
   router.push({
     name: 'StudentAppeal',
     query: {
       examId: detail.value.examId,
-      questionId: q.questionTemplateId,
+      questionId: q.layoutQuestionId,
     },
   })
 }
@@ -721,7 +722,6 @@ async function loadLearningReport(): Promise<void> {
   reportLoading.value = true
   try {
     const report = await getMyAiLearningReport(detail.value.examId)
-    validateLearningReportContract(report)
     learningReport.value = report
   } catch (error) {
     showUserError(error, 'AI 学习报告加载失败')
@@ -731,15 +731,8 @@ async function loadLearningReport(): Promise<void> {
   }
 }
 
-/** 校验 AI 学习报告不可用态必须返回原因，合同缺失进入报告错误态。 */
-function validateLearningReportContract(report: StudentAiLearningReportVO): void {
-  if (!report.available && !report.profileMessage && !report.clusterMessage) {
-    assertUserFacing(false, 'AI 学习报告暂不可用，请稍后重试')
-  }
-}
-
 function unavailableLearningReportMessage(report: StudentAiLearningReportVO): string {
-  return (report.profileMessage || report.clusterMessage) as string
+  return report.profileMessage || report.clusterMessage || 'AI 学习报告暂不可用，请稍后重试'
 }
 
 /** 将 AI 明细诊断转为学生侧学习提示，不暴露模型或接口内部细节。 */
@@ -757,7 +750,7 @@ function formatRate(rate: string): string {
 }
 
 function masteryLabel(level: StudentAiDiagnosisItemVO['masteryLevel']): string {
-  return strictEnumLabel(MASTERY_LEVEL_LABEL, level, '知识掌握等级')
+  return strictEnumLabel(MasteryLevelDescription, level, '知识掌握等级')
 }
 
 function masteryTone(level: StudentAiDiagnosisItemVO['masteryLevel']): BadgeTone {
@@ -776,14 +769,14 @@ async function selectQuestion(question: StudentQuestionScoreVO): Promise<void> {
     panelError.value = '已发布成绩详情缺少考试信息。'
     return
   }
-  selectedQuestionId.value = question.questionTemplateId
+  selectedQuestionId.value = question.layoutQuestionId
   panelLoading.value = true
   panelError.value = null
   currentDetail.value = null
   releaseSliceImage()
 
   try {
-    const result = await getMyQuestionAnswerDetail(detail.value.examId, question.questionTemplateId)
+    const result = await getMyQuestionAnswerDetail(detail.value.examId, question.layoutQuestionId)
     currentDetail.value = result
     if (result.sliceFileId) {
       void loadSliceImage(result.sliceFileId)
@@ -838,7 +831,7 @@ watch(filteredQuestions, (list) => {
   }
   if (
     !selectedQuestionId.value
-    || !list.some((item) => item.questionTemplateId === selectedQuestionId.value)
+    || !list.some((item) => item.layoutQuestionId === selectedQuestionId.value)
   ) {
     void selectQuestion(list[0])
   }
@@ -889,6 +882,22 @@ onBeforeUnmount(() => {
 
 .score-detail__cluster-select {
   min-width: 160px;
+}
+
+.score-detail__card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.score-detail__card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: var(--dp-font-weight-title, 600);
 }
 
 .score-detail__wrong-book-card,

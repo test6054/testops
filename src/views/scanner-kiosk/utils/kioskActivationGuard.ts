@@ -4,7 +4,7 @@ export const ACTIVATION_BLOCKED_BY_SCAN_JOB = '当前扫描任务未结束，不
 
 /** Agent 本地或服务端是否存在仍占用工作台的扫描任务（与 exam currentJobBlocksWorkspace 对齐）。 */
 export function isAgentWorkspaceBlocked(health: AgentHealthResponse | null | undefined): boolean {
-  if (health?.workspaceBlocked === true || health?.localWorkspaceBlocked === true) {
+  if (health?.workspaceBlocked === true) {
     return true
   }
   return (health?.pendingUploadJobs ?? 0) > 0

@@ -91,7 +91,7 @@ export function usePortfolioScopedLoader(
 
   if (watchScope) {
     watch(
-      () => [portfolioStore.scopeChangeEpoch, getTeacherId()] as const,
+      () => [portfolioStore.scopeChangeEpoch, getTeacherId()],
       () => {
         guardedReload()
       },

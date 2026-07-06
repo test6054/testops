@@ -7,26 +7,41 @@
         title="工作台总览"
         :subtitle="pageSubtitle"
       >
-        <template #toolbar>
-          <UiFilterBar
-            v-model="filterBarModel"
-            :fields="dashboardFilterFields"
-            variant="panel"
-            show-labels
-            search-text="应用"
-            actions-align="end"
-            @search="handleFilterChange"
-          >
-            <template #actions>
-              <UiButton variant="outline" size="sm" :loading="dashboardRefreshing" @click="() => load()">
-                <template #icon><ReloadOutlined /></template>
-                刷新
-              </UiButton>
-              <UiButton size="sm" @click="goExamList">
-                查看全部考试
-              </UiButton>
-            </template>
-          </UiFilterBar>
+        <template #status>
+          <a-select
+            v-model:value="filter.academicYear"
+            :options="academicYearOptions"
+            style="width: 120px"
+            placeholder="学年"
+            allow-clear
+            @change="handleFilterChange"
+          />
+          <a-select
+            v-model:value="filter.semester"
+            :options="semesterOptions"
+            style="width: 120px"
+            placeholder="学期"
+            allow-clear
+            :disabled="!filter.academicYear"
+            @change="handleFilterChange"
+          />
+          <a-select
+            v-model:value="filter.status"
+            :options="statusOptions"
+            style="width: 120px"
+            placeholder="状态"
+            allow-clear
+            @change="handleFilterChange"
+          />
+        </template>
+        <template #actions>
+          <UiButton variant="outline" size="sm" :loading="dashboardRefreshing" @click="() => load()">
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+          <UiButton size="sm" @click="goExamList">
+            查看全部考试
+          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -47,116 +62,135 @@
         compact
       />
       <MarkingOverviewSignalBand
-        v-else
-        :filter-context="overview?.filterContext"
-        :signal-metrics="overview?.signalMetrics"
-        :marking-progress-summary="overview?.markingProgressSummary"
-        :placeholder="!overview"
+        v-else-if="overview"
+        :filter-context="overview.filterContext"
+        :signal-metrics="overview.signalMetrics"
+        :marking-progress-summary="overview.markingProgressSummary"
+        :placeholder="false"
+        @metric-click="handleSignalMetricClick"
       />
     </template>
 
-    <div class="marking-overview__content-grid">
-      <UiCard title="进行中的考试" :description="ongoingCardHint" bordered>
-        <template #extra>
-          <UiButton variant="outline" size="sm" @click="goExamList">
-            查看全部
-          </UiButton>
-        </template>
-        <UiSkeletonState
-          v-if="examsLoading"
-          variant="card"
-          :card-count="3"
-          compact
-        />
-        <OngoingExamCardGrid
-          v-else
-          :exams="overview?.ongoingExams ?? []"
-          @navigate="goExamWorkspace"
-        />
-      </UiCard>
-      <UiCard
-        title="待处理事项"
-        :description="pendingTodoHint"
-        bordered
-      >
-        <template #extra>
-          <UiButton variant="ghost" size="sm" @click="goPriorityExamList">
-            查看优先推进
-          </UiButton>
-        </template>
-        <UiSkeletonState
-          v-if="todosLoading"
-          variant="list"
-          :rows="5"
-          compact
-        />
-        <PendingTodoFeed
-          v-else
-          :todos="overview?.pendingTodos ?? []"
-          empty-action-label="查看优先推进"
-          @navigate="goExamWorkspace"
-          @empty-action="goPriorityExamList"
-        />
-      </UiCard>
-    </div>
+    <UiEmpty
+      v-if="loadFailed"
+      description="阅卷概览加载失败"
+      action-label="重试"
+      @action="() => load()"
+    />
 
-    <a-row :gutter="20" class="marking-overview__analytics-row">
-      <a-col :span="24">
-        <UiSkeletonState
-          v-if="examsLoading"
-          variant="card"
-          :card-count="3"
-          compact
-        />
-        <MarkingOverviewAnalytics
-          v-else
-          :journey-stage-summary="overview?.journeyStageSummary ?? []"
-          :marking-progress-summary="overview?.markingProgressSummary ?? emptyMarkingProgressSummary"
-          :todo-type-summary="overview?.todoTypeSummary ?? []"
-          :filtered-exam-count="overview?.filterContext.filteredExamCount ?? 0"
-        />
-      </a-col>
-    </a-row>
-
-    <a-row :gutter="20" class="marking-overview__bottom-row">
-      <a-col :span="24">
-        <UiCard title="已发布学情" description="已发布成绩考试学情摘要" bordered>
+    <div v-else class="marking-overview__content">
+      <div class="marking-overview__content-grid">
+        <WorkbenchSurfaceCard class="marking-overview__panel">
+          <template #head>
+            <div class="marking-overview__panel-head">
+              <div>
+                <h3 class="marking-overview__panel-title">进行中的考试</h3>
+                <p class="marking-overview__panel-desc">{{ ongoingCardHint }}</p>
+              </div>
+              <UiButton variant="outline" size="sm" @click="goExamList">查看全部</UiButton>
+            </div>
+          </template>
           <UiSkeletonState
             v-if="examsLoading"
-            variant="table"
-            :rows="4"
-            :columns="5"
+            variant="card"
+            :card-count="3"
             compact
           />
-          <template v-else>
-            <PublishedExamInsightChart
-              :insights="overview?.publishedExamInsights ?? []"
-            />
-            <PublishedExamInsightTable
-              :insights="overview?.publishedExamInsights ?? []"
-              class="marking-overview__insight-table"
-              @statistics="goArchiveStatistics"
-            />
+          <OngoingExamCardGrid
+            v-else
+            :exams="overview?.ongoingExams ?? []"
+            @navigate="goExamWorkspace"
+          />
+        </WorkbenchSurfaceCard>
+        <WorkbenchSurfaceCard class="marking-overview__panel marking-overview__panel--todos">
+          <template #head>
+            <div class="marking-overview__panel-head">
+              <div>
+                <h3 class="marking-overview__panel-title">待处理事项</h3>
+                <p class="marking-overview__panel-desc">{{ pendingTodoHint }}</p>
+              </div>
+              <UiButton variant="ghost" size="sm" @click="goPriorityExamList">查看优先推进</UiButton>
+            </div>
           </template>
-        </UiCard>
-      </a-col>
-    </a-row>
+          <UiSkeletonState
+            v-if="todosLoading"
+            variant="list"
+            :rows="5"
+            compact
+          />
+          <PendingTodoFeed
+            v-else
+            :todos="overview?.pendingTodos ?? []"
+            empty-action-label="查看优先推进"
+            @navigate="goExamWorkspace"
+            @empty-action="goPriorityExamList"
+          />
+        </WorkbenchSurfaceCard>
+      </div>
+
+      <a-row :gutter="20" class="marking-overview__analytics-row">
+        <a-col :span="24">
+          <UiSkeletonState
+            v-if="examsLoading"
+            variant="card"
+            :card-count="3"
+            compact
+          />
+          <MarkingOverviewAnalytics
+            v-else
+            :journey-stage-summary="overview?.journeyStageSummary ?? []"
+            :marking-progress-summary="overview?.markingProgressSummary ?? emptyMarkingProgressSummary"
+            :todo-type-summary="overview?.todoTypeSummary ?? []"
+            :filtered-exam-count="overview?.filterContext.filteredExamCount ?? 0"
+          />
+        </a-col>
+      </a-row>
+
+      <a-row :gutter="20" class="marking-overview__bottom-row">
+        <a-col :span="24">
+          <WorkbenchSurfaceCard class="marking-overview__panel">
+            <template #head>
+              <div class="marking-overview__panel-head">
+                <div>
+                  <h3 class="marking-overview__panel-title">已发布学情</h3>
+                  <p class="marking-overview__panel-desc">已发布成绩考试学情摘要</p>
+                </div>
+              </div>
+            </template>
+            <UiSkeletonState
+              v-if="examsLoading"
+              variant="table"
+              :rows="4"
+              :columns="5"
+              compact
+            />
+            <template v-else>
+              <PublishedExamInsightChart
+                :insights="overview?.publishedExamInsights ?? []"
+              />
+              <PublishedExamInsightTable
+                :insights="overview?.publishedExamInsights ?? []"
+                class="marking-overview__insight-table"
+                @statistics="goArchiveStatistics"
+              />
+            </template>
+          </WorkbenchSurfaceCard>
+        </a-col>
+      </a-row>
+    </div>
   </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
-import type { ExamStatusCode } from '@/apis/mark/exam'
 import type {
   MarkTeacherDashboardMarkingProgressSummaryVO,
   MarkTeacherDashboardOverviewVO,
   MarkTeacherDashboardQuery,
 } from '@/apis/mark/teacher-dashboard'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { EXAM_STATUS_FILTER_OPTIONS } from '@/apis/mark/exam'
+import { EXAM_STATUS_FILTER_OPTIONS, ExamStatusCode } from '@/apis/mark/exam'
 import {
   loadTeacherDashboardOverviewOnce,
   loadTeacherDashboardOverviewSilent,
@@ -169,29 +203,33 @@ import PendingTodoFeed from '@/components/mark/dashboard/PendingTodoFeed.vue'
 import PublishedExamInsightChart from '@/components/mark/dashboard/PublishedExamInsightChart.vue'
 import PublishedExamInsightTable from '@/components/mark/dashboard/PublishedExamInsightTable.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { useUserStore } from '@/stores'
-import { formatSemester, isValidSemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import {
   generateAcademicYearOptions,
   getDefaultAcademicYearAndSemester,
   resolveDefaultDashboardFilter,
 } from '@/utils/academic-year'
+import {
+  buildOptionalAcademicYearSemesterQuery,
+  ensureAcademicYearSemesterPair,
+} from '@/utils/academic-year-semester-query'
 import { showUserError } from '@/utils/error-handler'
 import { buildExamListRoute } from '@/utils/exam-list-navigation'
+import { buildPendingTodoHint } from '@/utils/mark-dashboard-todo'
 
 defineOptions({ name: 'TeacherMarkingOverview' })
 
 const router = useRouter()
-const userStore = useUserStore()
 
 const signalLoading = ref(false)
 const examsLoading = ref(false)
 const todosLoading = ref(false)
+const loadFailed = ref(false)
 const dashboardRefreshing = computed(() => signalLoading.value || examsLoading.value || todosLoading.value)
 const overview = ref<MarkTeacherDashboardOverviewVO | null>(null)
 const defaultYearSemester = getDefaultAcademicYearAndSemester()
@@ -208,7 +246,7 @@ const emptyMarkingProgressSummary: MarkTeacherDashboardMarkingProgressSummaryVO 
 const filter = ref<MarkTeacherDashboardQuery>({
   academicYear: defaultYearSemester.academicYear,
   semester: defaultYearSemester.semester,
-  status: 'ACTIVE',
+  status: ExamStatusCode.ACTIVE,
 })
 const committedFilter = ref<MarkTeacherDashboardQuery>({ ...filter.value })
 
@@ -229,87 +267,6 @@ const semesterOptions = computed(() => {
 })
 const statusOptions = EXAM_STATUS_FILTER_OPTIONS
 
-function isExamStatusCode(value: unknown): value is ExamStatusCode {
-  return value === 'ACTIVE' || value === 'CLOSED'
-}
-
-function parseFilterAcademicYear(value: unknown): string | undefined {
-  if (value === null || value === undefined || value === '') {
-    return undefined
-  }
-  if (typeof value !== 'string') {
-    return undefined
-  }
-  const trimmed = value.trim()
-  return trimmed || undefined
-}
-
-function parseFilterSemester(value: unknown): SemesterCode | undefined {
-  if (value === null || value === undefined || value === '') {
-    return undefined
-  }
-  if (typeof value !== 'string' || !isValidSemesterCode(value)) {
-    return undefined
-  }
-  return value
-}
-
-function parseFilterExamStatus(value: unknown): ExamStatusCode | undefined {
-  if (value === null || value === undefined || value === '') {
-    return undefined
-  }
-  if (!isExamStatusCode(value)) {
-    return undefined
-  }
-  return value
-}
-
-const filterBarModel = computed({
-  get: () => ({
-    academicYear: filter.value.academicYear ?? undefined,
-    semester: filter.value.semester ?? undefined,
-    status: filter.value.status ?? undefined,
-  }),
-  set: (value: Record<string, unknown>) => {
-    filter.value = {
-      academicYear: parseFilterAcademicYear(value.academicYear),
-      semester: parseFilterSemester(value.semester),
-      status: parseFilterExamStatus(value.status),
-    }
-  },
-})
-
-const dashboardFilterFields = computed<FilterField[]>(() => [
-  {
-    key: 'academicYear',
-    label: '学年',
-    type: 'select',
-    placeholder: '全部学年',
-    options: academicYearOptions.value,
-    allowClear: true,
-    triggerSearchOnChange: true,
-  },
-  {
-    key: 'semester',
-    label: '学期',
-    type: 'select',
-    placeholder: '全部学期',
-    options: semesterOptions.value,
-    allowClear: true,
-    triggerSearchOnChange: true,
-  },
-  {
-    key: 'status',
-    label: '状态',
-    type: 'select',
-    placeholder: '全部状态',
-    options: statusOptions,
-    allowClear: true,
-    defaultValue: 'ACTIVE',
-    triggerSearchOnChange: true,
-  },
-])
-
 const pageSubtitle = computed(() => {
   if (signalLoading.value && !overview.value) return '加载筛选范围内考试概览'
   if (!overview.value) return '加载筛选范围内考试概览'
@@ -325,14 +282,7 @@ const pendingTodoHint = computed(() => {
   if (todosLoading.value) return '加载待处理事项'
   const todos = overview.value?.pendingTodos ?? []
   if (!overview.value) return ''
-  if (!todos.length) return '暂无待处理事项'
-  const urgent = todos.filter(item =>
-    item.blocking
-    || item.todoType === 'SCAN_ATTENTION'
-    || item.todoType === 'REVIEW_PENDING',
-  ).length
-  if (urgent > 0) return `共 ${todos.length} 项待处理，${urgent} 项紧急`
-  return `共 ${todos.length} 项待处理`
+  return buildPendingTodoHint(todos)
 })
 
 const ongoingCardHint = computed(() => {
@@ -342,13 +292,6 @@ const ongoingCardHint = computed(() => {
   if (count === 0) return '当前筛选暂无进行中的考试'
   return '优先推进中的考试，点击进入工作台'
 })
-
-function assertTenantContract(data: MarkTeacherDashboardOverviewVO) {
-  const sessionTenantId = userStore.userInfo.tenantId
-  if (sessionTenantId && String(data.filterContext.tenantId) !== String(sessionTenantId)) {
-    throw new TypeError('阅卷概览租户契约不一致')
-  }
-}
 
 function isFilterRangeError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : ''
@@ -360,7 +303,7 @@ function applyOverview(data: MarkTeacherDashboardOverviewVO) {
   filter.value = {
     academicYear: data.filterContext.academicYear ?? filter.value.academicYear,
     semester: data.filterContext.semester ?? filter.value.semester,
-    status: data.filterContext.status ?? filter.value.status ?? 'ACTIVE',
+    status: data.filterContext.status ?? filter.value.status ?? ExamStatusCode.ACTIVE,
   }
   committedFilter.value = { ...filter.value }
 }
@@ -385,12 +328,10 @@ async function loadOverviewWithFallback(
 ): Promise<MarkTeacherDashboardOverviewVO> {
   try {
     const data = await loadTeacherDashboardOverviewOnce({ ...query })
-    assertTenantContract(data)
     return data
   } catch (error) {
     if (isFilterRangeError(error) && (query.academicYear || query.semester)) {
       const bootstrap = await loadTeacherDashboardOverviewSilent({})
-      assertTenantContract(bootstrap)
       const reconciled = resolveDefaultDashboardFilter(bootstrap.filterOptions)
       filter.value = {
         ...filter.value,
@@ -398,7 +339,6 @@ async function loadOverviewWithFallback(
         semester: reconciled.semester,
       }
       const data = await loadTeacherDashboardOverviewOnce({ ...filter.value })
-      assertTenantContract(data)
       return data
     }
     if (options?.rollbackFilterOnError) {
@@ -415,7 +355,6 @@ async function loadSignalSection(
   signalLoading.value = true
   try {
     const data = await fetchOverview(query, options)
-    assertTenantContract(data)
     applyOverview(data)
   } finally {
     signalLoading.value = false
@@ -429,7 +368,6 @@ async function loadExamsSection(
   examsLoading.value = true
   try {
     const data = await fetchOverview(query, options)
-    assertTenantContract(data)
     applyOverview(data)
   } finally {
     examsLoading.value = false
@@ -443,7 +381,6 @@ async function loadTodosSection(
   todosLoading.value = true
   try {
     const data = await fetchOverview(query, options)
-    assertTenantContract(data)
     applyOverview(data)
   } finally {
     todosLoading.value = false
@@ -451,7 +388,24 @@ async function loadTodosSection(
 }
 
 async function load(options?: { rollbackFilterOnError?: boolean }) {
-  const query = { ...filter.value }
+  if (!ensureAcademicYearSemesterPair(filter.value.academicYear, filter.value.semester)) {
+    return
+  }
+  const termQuery = buildOptionalAcademicYearSemesterQuery(
+    filter.value.academicYear,
+    filter.value.semester,
+  )
+  if (termQuery === null) {
+    return
+  }
+  const query: MarkTeacherDashboardQuery = {
+    status: filter.value.status,
+    ongoingLimit: filter.value.ongoingLimit,
+    publishedInsightLimit: filter.value.publishedInsightLimit,
+    todoLimit: filter.value.todoLimit,
+    ...termQuery,
+  }
+  loadFailed.value = false
   try {
     await Promise.all([
       loadSignalSection(query, options),
@@ -461,6 +415,7 @@ async function load(options?: { rollbackFilterOnError?: boolean }) {
     committedFilter.value = { ...filter.value }
   } catch (error) {
     overview.value = null
+    loadFailed.value = true
     showUserError(error, '阅卷概览加载失败')
   }
 }
@@ -469,11 +424,29 @@ function handleFilterChange() {
   if (!filter.value.academicYear) {
     filter.value.semester = undefined
   }
+  if (!ensureAcademicYearSemesterPair(filter.value.academicYear, filter.value.semester)) {
+    return
+  }
   void load({ rollbackFilterOnError: true })
 }
 
 function goExamList() {
   void router.push({ name: 'TeacherExamList' })
+}
+
+function handleSignalMetricClick(key: string): void {
+  if (key === 'active' || key === 'unpublished') {
+    void router.push(buildExamListRoute({
+      tab: 'ongoing',
+      academicYear: filter.value.academicYear,
+      semester: filter.value.semester,
+      status: filter.value.status,
+    }))
+    return
+  }
+  if (key === 'exceptions' || key === 'arbitration' || key === 'spot-check') {
+    goPriorityExamList()
+  }
 }
 
 /** 待处理事项深链：携带当前学年学期筛选，打开考试列表「优先推进」Tab。 */
@@ -501,6 +474,12 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.marking-overview__content {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 .marking-overview__content-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
@@ -529,5 +508,27 @@ onMounted(() => {
 
 .marking-overview__insight-table {
   margin-top: 16px;
+}
+
+.marking-overview__panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+.marking-overview__panel-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: var(--dp-font-weight-title, 600);
+  line-height: 1.5;
+}
+
+.marking-overview__panel-desc {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--dp-text-secondary, #475569);
+  line-height: 1.5;
 }
 </style>

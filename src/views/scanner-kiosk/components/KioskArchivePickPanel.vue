@@ -3,11 +3,14 @@ import type { ScannerKioskArchiveVolumeItemVO } from '@/apis/mark/scanner-kiosk'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ARCHIVE_VOLUME_STATUS_LABEL, ARCHIVE_VOLUME_STATUS_TONE } from '@/apis/mark/archive-volume'
+import { ARCHIVE_VOLUME_STATUS_TONE, ArchiveVolumeStatusDescription } from '@/apis/mark/archive-volume'
 import { createAdhocDispatchTicket, pageKioskArchiveVolumes } from '@/apis/mark/scanner-kiosk'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
+import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -90,7 +93,7 @@ async function pickVolume(row: ScannerKioskArchiveVolumeItemVO) {
     message.error('工位未激活，无法创建临时派单')
     return
   }
-  if (row.volumeStatus !== 'COLLECTING') {
+  if (row.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING) {
     message.error('仅收集中归档卷可临时开单')
     return
   }
@@ -101,7 +104,7 @@ async function pickVolume(row: ScannerKioskArchiveVolumeItemVO) {
   pickingVolumeId.value = row.volumeId
   try {
     const response = await createAdhocDispatchTicket({
-      taskKind: 'EXAM_ARCHIVE',
+      taskKind: ScanTaskKindCode.EXAM_ARCHIVE,
       volumeId: row.volumeId,
       scannerDeviceId: props.scannerDeviceId,
       scannerStationId: props.scannerStationId,
@@ -114,7 +117,11 @@ async function pickVolume(row: ScannerKioskArchiveVolumeItemVO) {
       return
     }
     emit('update:open', false)
-    void router.push(`/scanner-kiosk/dispatch/${ticketId}`)
+    const kioskPath = response.ticket?.kioskDispatchUrl
+      || (ticketId ? `/scanner-kiosk/dispatch/${ticketId}` : '')
+    if (kioskPath) {
+      void router.push(kioskPath)
+    }
   } catch (error) {
     message.error(getUserErrorMessage(error))
   } finally {
@@ -123,7 +130,7 @@ async function pickVolume(row: ScannerKioskArchiveVolumeItemVO) {
 }
 
 function volumeStatusLabel(status: ScannerKioskArchiveVolumeItemVO['volumeStatus']) {
-  return strictEnumLabel(ARCHIVE_VOLUME_STATUS_LABEL, status, 'volumeStatus')
+  return strictEnumLabel(ArchiveVolumeStatusDescription, status, 'volumeStatus')
 }
 
 function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus']) {
@@ -142,58 +149,62 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
     <p class="kiosk-archive-pick__hint">
       仅展示当前权限范围内、状态为收集中且按柜位排序的归档卷。选定后将创建临时派单并进入认知确认。
     </p>
-    <div class="kiosk-archive-pick__toolbar">
-      <a-input-search
-        v-model:value="keyword"
-        placeholder="搜索卷名 / 编号 / 柜位"
-        allow-clear
-        @search="
-          () => {
-            pageNum = 1
-            loadVolumes()
-          }
-        "
-      />
-      <UiButton size="sm" variant="outline" :disabled="loading" @click="loadVolumes">
-        刷新
-      </UiButton>
-    </div>
-    <p v-if="errorMessage" class="kiosk-archive-pick__error">{{ errorMessage }}</p>
-    <UiDataTable
-      pagination-mode="server"
-      :columns="columns"
-      :data-source="volumes"
-      :loading="loading"
-      :total="total"
-      :current="pageNum"
-      :page-size="pageSize"
-      row-key="volumeId"
-      size="middle"
-      flat
-      @page-change="handlePageChange"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'physicalStorageLocation'">
-          {{ record.physicalStorageLocation || '—' }}
-        </template>
-        <template v-else-if="column.key === 'volumeStatus'">
-          <UiTag :tone="volumeStatusTone(record.volumeStatus)" size="sm">
-            {{ volumeStatusLabel(record.volumeStatus) }}
-          </UiTag>
-        </template>
-        <template v-else-if="column.key === 'actions'">
-          <UiButton
-            size="sm"
-            variant="primary"
-            :loading="pickingVolumeId === record.volumeId"
-            :disabled="!canPick || record.volumeStatus !== 'COLLECTING'"
-            @click="pickVolume(record)"
-          >
-            开单
-          </UiButton>
-        </template>
+    <WorkbenchSurfaceCard flush>
+      <template #toolbar>
+        <a-input-search
+          v-model:value="keyword"
+          placeholder="搜索卷名 / 编号 / 柜位"
+          allow-clear
+          class="kiosk-archive-pick__search"
+          @search="
+            () => {
+              pageNum = 1
+              loadVolumes()
+            }
+          "
+        />
+        <UiButton size="sm" variant="outline" :disabled="loading" @click="loadVolumes">
+          刷新
+        </UiButton>
       </template>
-    </UiDataTable>
+
+      <p v-if="errorMessage" class="kiosk-archive-pick__error">{{ errorMessage }}</p>
+      <UiDataTable
+        pagination-mode="server"
+        :columns="columns"
+        :data-source="volumes"
+        :loading="loading"
+        :total="total"
+        :current="pageNum"
+        :page-size="pageSize"
+        row-key="volumeId"
+        size="middle"
+        flat
+        @page-change="handlePageChange"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'physicalStorageLocation'">
+            {{ record.physicalStorageLocation || '—' }}
+          </template>
+          <template v-else-if="column.key === 'volumeStatus'">
+            <UiTag :tone="volumeStatusTone(record.volumeStatus)" size="sm">
+              {{ volumeStatusLabel(record.volumeStatus) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <UiButton
+              size="sm"
+              variant="primary"
+              :loading="pickingVolumeId === record.volumeId"
+              :disabled="!canPick || record.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING"
+              @click="pickVolume(record)"
+            >
+              开单
+            </UiButton>
+          </template>
+        </template>
+      </UiDataTable>
+    </WorkbenchSurfaceCard>
   </a-drawer>
 </template>
 
@@ -203,16 +214,13 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
   font-size: 13px;
   color: var(--nybc-text-secondary, #595959);
 }
-.kiosk-archive-pick__toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.kiosk-archive-pick__toolbar :deep(.ant-input-search) {
+.kiosk-archive-pick__search {
   flex: 1;
+  min-width: 0;
 }
 .kiosk-archive-pick__error {
   margin: 0 0 12px;
+  padding: 0 var(--dp-space-5, 20px);
   color: #cf1322;
 }
 </style>

@@ -4,10 +4,13 @@ import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { createAdhocDispatchTicket, pageKioskPortfolioGapTasks } from '@/apis/mark/scanner-kiosk'
-import { PORTFOLIO_GAP_TASK_STATUS_LABEL } from '@/apis/portfolio/types'
+import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
+import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -86,7 +89,7 @@ function handlePageChange(pageEvent: { current: number, pageSize: number }) {
 }
 
 function gapStatusLabel(status: ScannerKioskPortfolioGapTaskSummaryVO['taskStatus']) {
-  return strictEnumLabel(PORTFOLIO_GAP_TASK_STATUS_LABEL, status, 'taskStatus')
+  return strictEnumLabel(PortfolioGapTaskStatusDescription, status, 'taskStatus')
 }
 
 async function openGapScan(row: ScannerKioskPortfolioGapTaskSummaryVO) {
@@ -97,8 +100,8 @@ async function openGapScan(row: ScannerKioskPortfolioGapTaskSummaryVO) {
   pickingTaskId.value = row.id
   try {
     const created = await createAdhocDispatchTicket({
-      taskKind: 'PORTFOLIO_COLLECT',
-      collectMode: 'GAP_ATTACHMENT',
+      taskKind: ScanTaskKindCode.PORTFOLIO_COLLECT,
+      collectMode: PortfolioCollectModeCode.GAP_ATTACHMENT,
       teacherId: row.teacherId,
       gapTaskId: row.id,
       categoryId: row.categoryId,
@@ -131,51 +134,55 @@ async function openGapScan(row: ScannerKioskPortfolioGapTaskSummaryVO) {
     <p class="kiosk-portfolio-pick__hint">
       展示仍开放的补采任务。选定后将创建派单 ticket 并进入认知确认。
     </p>
-    <div class="kiosk-portfolio-pick__toolbar">
-      <a-input-search
-        v-model:value="keyword"
-        placeholder="搜索任务标题"
-        allow-clear
-        @search="() => { pageNum = 1; loadTasks() }"
-      />
-      <UiButton size="sm" variant="outline" :disabled="loading" @click="loadTasks">
-        刷新
-      </UiButton>
-    </div>
-    <p v-if="errorMessage" class="kiosk-portfolio-pick__error">{{ errorMessage }}</p>
-    <UiDataTable
-      pagination-mode="server"
-      :columns="columns"
-      :data-source="tasks"
-      :loading="loading"
-      :total="total"
-      :current="pageNum"
-      :page-size="pageSize"
-      row-key="id"
-      size="middle"
-      flat
-      @page-change="handlePageChange"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'categoryName'">
-          {{ record.categoryName || '—' }}
-        </template>
-        <template v-else-if="column.key === 'taskStatus'">
-          <UiTag tone="blue" size="sm">{{ gapStatusLabel(record.taskStatus) }}</UiTag>
-        </template>
-        <template v-else-if="column.key === 'actions'">
-          <UiButton
-            size="sm"
-            variant="primary"
-            :loading="pickingTaskId === record.id"
-            :disabled="!canPick"
-            @click="openGapScan(record)"
-          >
-            开单
-          </UiButton>
-        </template>
+    <WorkbenchSurfaceCard flush>
+      <template #toolbar>
+        <a-input-search
+          v-model:value="keyword"
+          placeholder="搜索任务标题"
+          allow-clear
+          class="kiosk-portfolio-pick__search"
+          @search="() => { pageNum = 1; loadTasks() }"
+        />
+        <UiButton size="sm" variant="outline" :disabled="loading" @click="loadTasks">
+          刷新
+        </UiButton>
       </template>
-    </UiDataTable>
+
+      <p v-if="errorMessage" class="kiosk-portfolio-pick__error">{{ errorMessage }}</p>
+      <UiDataTable
+        pagination-mode="server"
+        :columns="columns"
+        :data-source="tasks"
+        :loading="loading"
+        :total="total"
+        :current="pageNum"
+        :page-size="pageSize"
+        row-key="id"
+        size="middle"
+        flat
+        @page-change="handlePageChange"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'categoryName'">
+            {{ record.categoryName || '—' }}
+          </template>
+          <template v-else-if="column.key === 'taskStatus'">
+            <UiTag tone="blue" size="sm">{{ gapStatusLabel(record.taskStatus) }}</UiTag>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <UiButton
+              size="sm"
+              variant="primary"
+              :loading="pickingTaskId === record.id"
+              :disabled="!canPick"
+              @click="openGapScan(record)"
+            >
+              开单
+            </UiButton>
+          </template>
+        </template>
+      </UiDataTable>
+    </WorkbenchSurfaceCard>
   </a-drawer>
 </template>
 
@@ -185,16 +192,13 @@ async function openGapScan(row: ScannerKioskPortfolioGapTaskSummaryVO) {
   font-size: 13px;
   color: var(--nybc-text-secondary, #595959);
 }
-.kiosk-portfolio-pick__toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.kiosk-portfolio-pick__toolbar :deep(.ant-input-search) {
+.kiosk-portfolio-pick__search {
   flex: 1;
+  min-width: 0;
 }
 .kiosk-portfolio-pick__error {
   margin: 0 0 12px;
+  padding: 0 var(--dp-space-5, 20px);
   color: #cf1322;
 }
 </style>

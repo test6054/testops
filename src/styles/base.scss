@@ -1,5 +1,3 @@
-@use './var.scss' as *;
-
 body {
   --margin: 16px; // 通用外边距（与 var.scss $margin 保持一致）
   --padding: 16px; // 通用内边距

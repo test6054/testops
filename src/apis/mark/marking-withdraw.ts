@@ -20,8 +20,6 @@ export const MARKING_RECENT_SUBMIT_MAX = 5
  * 撤回已提交阅卷任务（10 分钟窗口内）。
  * POST /api/mark/organization/withdraw-task
  */
-export function withdrawMarkingTask(
-  request: MarkingTaskWithdrawRequest,
-): Promise<MarkingTaskVO> {
+export function withdrawMarkingTask(request: MarkingTaskWithdrawRequest): Promise<MarkingTaskVO> {
   return http.post<MarkingTaskVO>('/api/mark/organization/withdraw-task', request)
 }

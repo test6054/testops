@@ -1,187 +1,307 @@
 <template>
-  <div v-if="selectedExamId" class="print-package-page__toolbar">
-    <UiTag v-if="pagination.total > 0" tone="blue" size="sm">
-      共 {{ pagination.total }} 个印刷包
-    </UiTag>
-    <UiButton size="sm" :loading="generating" @click="openGenerateModal">
-      <template #icon><ThunderboltOutlined /></template>
-      一键生成印刷包
-    </UiButton>
-  </div>
-
-  <UiEmpty v-if="!selectedExamId" description="请选择考试" class="print-package-page__empty" />
-
-  <UiCard v-else class="print-package-page__list-card">
-    <UiDataTable
-      v-model:current="pagination.pageNum"
-      v-model:page-size="pagination.pageSize"
-      class="student-detail-table__data-table"
-      :columns="packageColumns"
-      :data-source="packageList"
-      :loading="loading"
-      :total="pagination.total"
-      row-key="printPackageId"
-      size="middle"
-      flat
-      @page-change="handlePackagePageChange"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'packageName'">
-          {{ record.packageName }}
-        </template>
-        <template v-else-if="column.key === 'status'">
-          <UiTag :tone="statusTone(record.status)" size="sm">
-            {{ statusLabel(record.status) }}
+  <StageWorkbenchShell class="print-package-page">
+    <template v-if="selectedExamId" #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="contextBarTitle"
+        :subtitle="contextBarSubtitle"
+      >
+        <template #status>
+          <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
+            {{ examStatusLabel }}
           </UiTag>
         </template>
-        <template v-else-if="column.key === 'sealRemark'">
-          {{ record.sealRemark || '未填写封装备注' }}
-        </template>
-        <template v-else-if="column.key === 'actions'">
-          <div class="operations-cell" @click.stop>
-            <UiTextAction @click="viewDetail(record)">查看明细</UiTextAction>
-            <UiTextAction
-              v-if="record.packageFileId"
-              tone="primary"
-              @click="previewPackagePdf(record)"
+        <template #actions>
+          <a-tooltip :title="generateDisabledReason">
+            <UiButton
+              size="sm"
+              :loading="generating"
+              :disabled="generateBlocked"
+              @click="openGenerateModal"
             >
-              预览
-            </UiTextAction>
-            <UiTextAction v-if="record.packageFileId" @click="downloadPackagePdf(record)">
-              下载 PDF
-            </UiTextAction>
-          </div>
+              <template #icon><ThunderboltOutlined /></template>
+              一键生成印刷包
+            </UiButton>
+          </a-tooltip>
         </template>
-      </template>
-    </UiDataTable>
-  </UiCard>
+      </ContextBar>
+    </template>
 
-  <!-- 一键生成印刷包弹窗 -->
-  <a-modal
-    v-model:open="generateModalVisible"
-    title="一键生成印刷包"
-    :width="560"
-    :confirm-loading="generating"
-    ok-text="开始生成"
-    cancel-text="取消"
-    @ok="handleGenerate"
-  >
-    <a-form layout="vertical" style="margin-top: 8px">
-      <a-form-item label="印刷包编号" required>
-        <a-input
-          v-model:value="generateForm.packageNo"
-          placeholder="例如：PKG-2026-001"
-          :maxlength="50"
-        />
-      </a-form-item>
-      <a-form-item label="印刷包名称" required>
-        <a-input
-          v-model:value="generateForm.packageName"
-          placeholder="例如：期末A卷-第一批次"
-          :maxlength="100"
-        />
-      </a-form-item>
-      <a-form-item label="封装备注">
-        <a-textarea
-          v-model:value="generateForm.sealRemark"
-          :rows="2"
-          :maxlength="500"
-          placeholder="可选"
-        />
-      </a-form-item>
-    </a-form>
-  </a-modal>
+    <UiAlertStrip
+      v-if="selectedExamId && prepBlockingReasons.length > 0"
+      tone="warning"
+      title="考试准备硬阻断"
+      :description="prepBlockingReasons.join('；')"
+      dense
+      class="print-package-page__blocking-strip"
+    />
 
-  <!-- 印刷包明细弹窗 -->
-  <a-modal
-    v-model:open="detailModalVisible"
-    :title="`印刷包明细 - ${detailPackage?.packageName ?? ''}`"
-    :width="960"
-    :footer="null"
-  >
-    <a-spin :spinning="detailLoading">
-      <UiDataTable
-        pagination-mode="none"
-        class="student-detail-table__data-table"
-        :columns="detailColumns"
-        :data-source="detailItems"
-        :show-pagination="false"
-        flat
-        :total="detailItems.length"
-        row-key="printPackageItemId"
-        size="small"
-        bordered
-        :scroll="{ y: 400 }"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'status'">
-            <UiTag :tone="record.status === 'PRINTED' ? 'green' : 'gray'" size="sm">
-              {{ record.status === 'PRINTED' ? '已印刷' : '待印刷' }}
-            </UiTag>
+    <template v-if="selectedExamId" #signal>
+      <SignalBand variant="tiles" compact :metrics="packageSignalMetrics" />
+    </template>
+
+    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="print-package-page__empty" />
+
+    <template v-else>
+      <ExamWorkspaceJourneySubNav />
+
+      <WorkbenchSurfaceCard flush>
+        <template #toolbar>
+          <span class="print-package-page__flow-hint">{{ PRINT_PACKAGE_FLOW_HINT }}</span>
+        </template>
+        <UiDataTable
+          v-model:current="pagination.pageNum"
+          v-model:page-size="pagination.pageSize"
+          class="student-detail-table__data-table"
+          :columns="packageColumns"
+          :data-source="packageList"
+          :loading="loading"
+          :total="pagination.total"
+          row-key="printPackageId"
+          size="middle"
+          flat
+          @page-change="handlePackagePageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'packageName'">
+              {{ record.packageName }}
+            </template>
+            <template v-else-if="column.key === 'status'">
+              <UiTag :tone="statusTone(record.status)" size="sm">
+                {{ statusLabel(record.status) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'sealRemark'">
+              {{ record.sealRemark || '未填写封装备注' }}
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <div class="operations-cell" @click.stop>
+                <UiTextAction @click="viewDetail(record)">查看明细</UiTextAction>
+                <UiTextAction
+                  v-if="record.packageFileId"
+                  tone="primary"
+                  @click="previewPackagePdf(record)"
+                >
+                  预览
+                </UiTextAction>
+                <UiTextAction v-if="record.packageFileId" @click="downloadPackagePdf(record)">
+                  下载 PDF
+                </UiTextAction>
+              </div>
+            </template>
           </template>
-        </template>
-      </UiDataTable>
-    </a-spin>
-  </a-modal>
+        </UiDataTable>
+      </WorkbenchSurfaceCard>
 
-  <!-- PDF 预览 Modal -->
-  <a-modal
-    v-model:open="previewModalOpen"
-    title="印刷包 PDF 预览"
-    width="900px"
-    :footer="null"
-    :destroy-on-close="true"
-  >
-    <a-spin :spinning="previewLoading">
-      <iframe
-        v-if="previewPdfUrl"
-        :src="previewPdfUrl"
-        style="width: 100%; height: 70vh; border: none"
-      />
-      <UiEmpty v-else-if="!previewLoading" description="暂无数据" />
-    </a-spin>
-  </a-modal>
+      <!-- 一键生成印刷包 -->
+      <UiDrawer
+        v-model:open="generateModalVisible"
+        title="一键生成印刷包"
+        :width="560"
+        :hide-footer="false"
+        ok-text="开始生成"
+        cancel-text="取消"
+        :confirm-loading="generating"
+        @ok="handleGenerate"
+      >
+        <a-form layout="vertical" style="margin-top: 8px">
+          <a-form-item label="印刷包编号" required>
+            <a-input
+              v-model:value="generateForm.packageNo"
+              placeholder="例如：PKG-2026-001"
+              :maxlength="50"
+            />
+          </a-form-item>
+          <a-form-item label="印刷包名称" required>
+            <a-input
+              v-model:value="generateForm.packageName"
+              placeholder="例如：期末A卷-第一批次"
+              :maxlength="100"
+            />
+          </a-form-item>
+          <a-form-item label="封装备注">
+            <a-textarea
+              v-model:value="generateForm.sealRemark"
+              :rows="2"
+              :maxlength="500"
+              placeholder="可选"
+            />
+          </a-form-item>
+        </a-form>
+      </UiDrawer>
+
+      <!-- 印刷包明细 -->
+      <UiDrawer
+        v-model:open="detailModalVisible"
+        :title="`印刷包明细 - ${detailPackage?.packageName ?? ''}`"
+        :width="960"
+        hide-footer
+      >
+        <UiSkeletonState v-if="detailLoading" variant="table" compact />
+        <UiDataTable
+          v-else
+          pagination-mode="none"
+          class="student-detail-table__data-table"
+          :columns="detailColumns"
+          :data-source="detailItems"
+          :show-pagination="false"
+          flat
+          :total="detailItems.length"
+          row-key="printPackageItemId"
+          size="small"
+          bordered
+          :scroll="{ y: 400 }"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'status'">
+              <UiTag :tone="record.status === 'PRINTED' ? 'green' : 'gray'" size="sm">
+                {{ record.status === 'PRINTED' ? '已印刷' : '待印刷' }}
+              </UiTag>
+            </template>
+          </template>
+        </UiDataTable>
+      </UiDrawer>
+
+      <!-- PDF 预览 -->
+      <UiDrawer
+        v-model:open="previewModalOpen"
+        title="印刷包 PDF 预览"
+        :width="900"
+        hide-footer
+      >
+        <UiSkeletonState v-if="previewLoading" variant="card" compact />
+        <iframe
+          v-else-if="previewPdfUrl"
+          :src="previewPdfUrl"
+          class="print-package__preview-frame"
+        />
+        <UiEmpty v-else description="暂无数据" />
+      </UiDrawer>
+    </template>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type {WorkbenchPrintPackagePanelVO} from '@/apis/mark/exam-progress';
 import type { PrintPackageItemVO, PrintPackageVO } from '@/apis/mark/print-package'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
+import { getPrintPackagePanel } from '@/apis/mark/exam-progress'
 import {
   generatePrintPackage,
   getPrintPackage,
   isPaperMasterNotConfiguredError,
   pagePrintPackages,
-  PRINT_PACKAGE_STATUS_LABEL,
+  PRINT_PACKAGE_FLOW_HINT,
   PRINT_PACKAGE_STATUS_TONE,
+  PrintPackageStatusDescription,
 } from '@/apis/mark/print-package'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
-import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
+import { hasPrepHardBlocking } from '@/utils/exam-workspace-entry-gates'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherPrintPackage' })
 
 const { selectedExamId } = useMarkExamContext()
+const workbenchContext = useMarkWorkbenchContext()
+const {
+  contextBarTitle,
+  contextBarSubtitle,
+  examStatusLabel,
+  examStatusTone,
+} = useExamJourneyContextBar('印刷包')
 const { refreshSnapshot } = useWorkspaceExamId()
+
+const prepBlockingReasons = computed(
+  () => workbenchContext.snapshot.value?.prepBlockingReasons ?? [],
+)
+const generateBlocked = computed(() => hasPrepHardBlocking(prepBlockingReasons.value))
+const generateDisabledReason = computed(() =>
+  generateBlocked.value ? prepBlockingReasons.value.join('；') : undefined,
+)
 
 // ─── 印刷包分页列表 ─────────────────────────────────────────────────
 
 const loading = ref(false)
 const packageList = ref<PrintPackageVO[]>([])
+const printPackagePanel = ref<WorkbenchPrintPackagePanelVO | null>(null)
 // 加载失败：toast 提示，主区保持空态/列表壳
 const pagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
+
+const packageSignalMetrics = computed((): SignalMetric[] => {
+  const panel = printPackagePanel.value
+  if (!panel) {
+    return [{ key: 'packages', label: '印刷包', value: '—', tone: 'gray' }]
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'packages',
+      label: '印刷包',
+      value: panel.packageCount,
+      unit: '个',
+      tone: 'blue',
+    },
+    {
+      key: 'generated',
+      label: '已生成',
+      value: panel.generatedPackageCount,
+      unit: '个',
+      tone: panel.generatedPackageCount > 0 ? 'green' : 'gray',
+    },
+    {
+      key: 'items',
+      label: '印刷人数',
+      value: panel.totalItemCount,
+      unit: '人',
+      tone: 'green',
+    },
+    {
+      key: 'candidates',
+      label: '名册人数',
+      value: panel.candidateCount,
+      unit: '人',
+      tone: 'gray',
+    },
+  ]
+  if (panel.coverageRate != null) {
+    metrics.push({
+      key: 'coverage',
+      label: '覆盖比例',
+      value: `${panel.coverageRate}%`,
+      tone: panel.coverageRate >= 100 ? 'green' : 'orange',
+    })
+  }
+  metrics.push({
+    key: 'ready',
+    label: '印刷就绪',
+    value: panel.printPackageReady ? '是' : '否',
+    tone: panel.printPackageReady ? 'green' : 'orange',
+  })
+  return metrics
+})
 
 const packageColumns: ColumnType<PrintPackageVO>[] = [
   { title: '名称', key: 'packageName', width: 200, ellipsis: true },
@@ -192,6 +312,19 @@ const packageColumns: ColumnType<PrintPackageVO>[] = [
   { title: '封装备注', key: 'sealRemark', ellipsis: true },
   { title: '操作', key: 'actions', fixed: 'right', width: 220 },
 ]
+
+async function loadPrintPackagePanel(): Promise<void> {
+  if (!selectedExamId.value) {
+    printPackagePanel.value = null
+    return
+  }
+  try {
+    printPackagePanel.value = await getPrintPackagePanel(selectedExamId.value)
+  } catch (error) {
+    printPackagePanel.value = null
+    showUserError(error, '印刷包看板加载失败')
+  }
+}
 
 async function loadPackageList() {
   if (!selectedExamId.value) return
@@ -228,7 +361,7 @@ function statusTone(status: PrintPackageVO['status']): BadgeTone {
 }
 
 function statusLabel(status: PrintPackageVO['status']): string {
-  return strictEnumLabel(PRINT_PACKAGE_STATUS_LABEL, status, '印刷包状态')
+  return strictEnumLabel(PrintPackageStatusDescription, status, '印刷包状态')
 }
 
 // ─── 一键生成印刷包 ──────────────────────────────────────────────────
@@ -243,6 +376,10 @@ const generateForm = reactive({
 })
 
 function openGenerateModal() {
+  if (generateBlocked.value) {
+    message.warning(generateDisabledReason.value ?? '考试准备未完成，暂不可生成印刷包')
+    return
+  }
   generateForm.packageNo = ''
   generateForm.packageName = ''
   generateForm.sealRemark = ''
@@ -271,7 +408,7 @@ async function handleGenerate() {
     message.success('印刷包生成成功')
     generateModalVisible.value = false
     pagination.pageNum = 1
-    await loadPackageList()
+    await Promise.all([loadPackageList(), loadPrintPackagePanel()])
     await refreshSnapshot()
   } catch (error) {
     if (error instanceof Error && isPaperMasterNotConfiguredError(error)) {
@@ -357,9 +494,10 @@ watch(
   (val) => {
     pagination.pageNum = 1
     if (val) {
-      loadPackageList()
+      void Promise.all([loadPackageList(), loadPrintPackagePanel()])
     } else {
       packageList.value = []
+      printPackagePanel.value = null
       pagination.total = 0
     }
   },
@@ -369,20 +507,29 @@ watch(
 
 <style lang="scss" scoped>
 .print-package-page {
-  &__toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-
   &__empty {
     margin-top: 80px;
   }
 
+  &__blocking-strip {
+    margin-bottom: var(--dp-space-4, 16px);
+  }
+
+  &__flow-hint {
+    font-size: 12px;
+    color: var(--ant-color-text-tertiary);
+    line-height: 1.5;
+  }
+
   &__list-card {
     margin-top: 8px;
+  }
+
+  &__preview-frame {
+    min-height: 360px;
+    border: 1px solid var(--ant-color-border-secondary);
+    border-radius: var(--dp-radius-md, 6px);
+    overflow: hidden;
   }
 }
 </style>

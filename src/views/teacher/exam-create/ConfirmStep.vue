@@ -26,8 +26,12 @@
         <dd>{{ examForm.examNo || '—' }}</dd>
       </div>
       <div class="exam-create-summary__row">
-        <dt>学年学期</dt>
-        <dd>{{ academicTermText }}</dd>
+        <dt>学年</dt>
+        <dd>{{ examForm.academicYear?.trim() || '未设置' }}</dd>
+      </div>
+      <div class="exam-create-summary__row">
+        <dt>学期</dt>
+        <dd>{{ examForm.semester ? formatSemester(examForm.semester) : '未设置' }}</dd>
       </div>
       <div class="exam-create-summary__row">
         <dt>考试时间</dt>
@@ -35,7 +39,7 @@
       </div>
       <div class="exam-create-summary__row">
         <dt>阅卷策略</dt>
-        <dd>{{ GRADING_STRATEGY_LABEL.SINGLE }}</dd>
+        <dd>{{ ExamGradingStrategyDescription[ExamGradingStrategyCode.SINGLE] }}</dd>
       </div>
       <div class="exam-create-summary__row">
         <dt>成绩构成</dt>
@@ -87,12 +91,16 @@
 <script setup lang="ts">
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import { computed } from 'vue'
-import { EXAM_KIND_LABEL, GRADING_STRATEGY_LABEL } from '@/apis/mark/exam'
+import {
+  ExamGradingStrategyCode,
+  ExamGradingStrategyDescription,
+  ExamKindDescription,
+  ExamRosterScopeModeDescription,
+} from '@/apis/mark/exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { formatDateTime } from '@/utils/format'
 import {
-  EXAM_ROSTER_SCOPE_MODE_LABEL,
   useInjectedExamCreateBasicForm,
   useInjectedExamCreateMarkingTeamForm,
   useInjectedExamCreateRosterForm,
@@ -111,15 +119,7 @@ const examForm = useInjectedExamCreateBasicForm()
 const markingTeamForm = useInjectedExamCreateMarkingTeamForm()
 const rosterForm = useInjectedExamCreateRosterForm()
 
-const examKindText = computed(() => EXAM_KIND_LABEL[examForm.examKind])
-
-const academicTermText = computed(() => {
-  const year = examForm.academicYear?.trim()
-  const semester = examForm.semester
-  if (!year && !semester) return '未设置'
-  if (!year || !semester) return '学年学期不完整'
-  return `${year} ${formatSemester(semester)}`
-})
+const examKindText = computed(() => ExamKindDescription[examForm.examKind])
 
 const examWindowText = computed(() => {
   const [start, end] = examForm.examWindow ?? []
@@ -139,7 +139,7 @@ const selectionModeText = computed(() => {
   if (!rosterForm.candidates.length) {
     return '创建后补录'
   }
-  return EXAM_ROSTER_SCOPE_MODE_LABEL[rosterForm.scopeMode]
+  return ExamRosterScopeModeDescription[rosterForm.scopeMode]
 })
 
 const reviewerText = computed(() => {

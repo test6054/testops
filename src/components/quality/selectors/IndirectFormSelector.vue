@@ -5,18 +5,18 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { IndirectEvaluationFormVO } from '@/apis/quality/indirect-form'
-import type { AchievementTargetType, IndirectFormType } from '@/apis/quality/types'
+import type { AchievementTargetTypeCode, IndirectFormTypeCode } from '@/apis/quality/types'
 import { computed, onMounted, ref, watch } from 'vue'
 import { indirectFormApi } from '@/apis/quality/indirect-form'
-import { INDIRECT_FORM_TYPE_LABEL } from '@/apis/quality/types'
+import { IndirectFormTypeDescription } from '@/apis/quality/types'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { requireAllPages } from './page-contract'
 
 interface Props {
   value?: string | null
-  formType?: IndirectFormType | null
-  targetType?: AchievementTargetType
+  formType?: IndirectFormTypeCode | null
+  targetType?: AchievementTargetTypeCode
   targetId?: string | null
   programId?: string | null
   enabled?: boolean
@@ -100,8 +100,8 @@ function handleChange(value: SelectValue): void {
   emit('change', next, option)
 }
 
-function formTypeLabel(value: IndirectFormType): string {
-  return strictEnumLabel(INDIRECT_FORM_TYPE_LABEL, value, '间接评价问卷类型')
+function formTypeLabel(value: IndirectFormTypeCode): string {
+  return strictEnumLabel(IndirectFormTypeDescription, value, '间接评价问卷类型')
 }
 
 onMounted(() => {

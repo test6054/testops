@@ -30,10 +30,12 @@
     </template>
 
     <!-- 选择考试 -->
-    <UiCard class="appeal-page__select-card">
-      <template #title>
-        <CheckCircleOutlined />
-        <span>选择待申诉的考试</span>
+    <WorkbenchSurfaceCard class="appeal-page__select-card">
+      <template #head>
+        <div class="appeal-page__select-head">
+          <CheckCircleOutlined />
+          <span>选择待申诉的考试</span>
+        </div>
       </template>
 
       <a-skeleton v-if="loadingExams" active :paragraph="{ rows: 3 }" />
@@ -81,22 +83,26 @@
           </div>
         </article>
       </div>
-    </UiCard>
+    </WorkbenchSurfaceCard>
 
-    <!-- 我的复核申请 -->
-    <a-card :bordered="false" class="detail-table-card appeal-page__list-card">
-      <template #title>
-        <FileSearchOutlined />
-        <span>我的复核申请</span>
+    <WorkbenchSurfaceCard flush class="appeal-page__list-card">
+      <template #head>
+        <div class="appeal-page__list-head">
+          <FileSearchOutlined />
+          <span>我的复核申请</span>
+        </div>
       </template>
-      <UiFilterBar
-        v-model="requestFilterForm"
-        :fields="requestFilterFields"
-        show-labels
-        search-text="查询"
-        @search="handleRequestFilterSearch"
-        @reset="handleRequestFilterReset"
-      />
+      <template #toolbar>
+        <UiFilterBar
+          v-model="requestFilterForm"
+          :fields="requestFilterFields"
+          variant="plain"
+          show-labels
+          search-text="查询"
+          @search="handleRequestFilterSearch"
+          @reset="handleRequestFilterReset"
+        />
+      </template>
 
       <UiDataTable
         v-model:current="requestPagination.current"
@@ -160,7 +166,7 @@
           </template>
         </template>
       </UiDataTable>
-    </a-card>
+    </WorkbenchSurfaceCard>
 
     <!-- 提交复核弹窗 -->
     <a-modal
@@ -250,10 +256,9 @@
 <script lang="ts" setup>
 import type {
   GradeReviewEvidenceFileRefVO,
-  GradeReviewReasonTypeCode,
   GradeReviewRequestStatusCode,
-  StudentGradeReviewRequestItemVO,
-} from '@/apis/mark/grade-review'
+
+  StudentGradeReviewRequestItemVO} from '@/apis/mark/grade-review'
 import type { StudentExamItemVO, StudentQuestionScoreVO } from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -264,13 +269,15 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from '@/apis/mark/final-score-status'
+import { FINAL_SCORE_STATUS_TONE, FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
 import {
   countMyPendingReviewRequests,
-  GRADE_REVIEW_REASON_TYPE_LABEL,
   GRADE_REVIEW_REASON_TYPE_OPTIONS,
+  GradeReviewReasonTypeCode,
+  GradeReviewReasonTypeDescription,
+  GradeReviewRequestStatusDescription,
   listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_LABEL,
+  REVIEW_REQUEST_STATUS_OPTIONS,
   REVIEW_REQUEST_STATUS_TONE,
   submitReviewRequest,
 } from '@/apis/mark/grade-review'
@@ -278,12 +285,11 @@ import {
   canSubmitReview,
   getMyScoreDetail,
   listMyExams,
-  STUDENT_REVIEW_WINDOW_STATUS_LABEL,
+  ReviewWindowPolicyStatusDescription,
   STUDENT_REVIEW_WINDOW_STATUS_TONE,
 } from '@/apis/mark/student-exam'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -291,11 +297,11 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
-import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
-import { formatDateTime } from '@/utils/format'
+import { formatDateTime, formatScore } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -327,13 +333,8 @@ const sourceQuestionId = ref<string | undefined>(undefined)
 
 const reasonTypeOptions = GRADE_REVIEW_REASON_TYPE_OPTIONS
 
-const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }> = [
-  { value: 'PENDING', label: '待处理' },
-  { value: 'IN_REVIEW', label: '处理中' },
-  { value: 'APPROVED', label: '通过' },
-  { value: 'REJECTED', label: '驳回' },
-  { value: 'CORRECTED', label: '已更正' },
-]
+const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }>
+  = REVIEW_REQUEST_STATUS_OPTIONS
 
 const requestFilterForm = reactive<{
   status?: GradeReviewRequestStatusCode
@@ -374,7 +375,7 @@ const requestFilterFields = computed<FilterField[]>(() => [
   },
 ])
 
-const DEFAULT_REASON_TYPE: GradeReviewReasonTypeCode = 'SCORE_ERROR'
+const DEFAULT_REASON_TYPE: GradeReviewReasonTypeCode = GradeReviewReasonTypeCode.SCORE_ERROR
 
 interface ReviewRequestFormState {
   reasonType: GradeReviewReasonTypeCode
@@ -406,7 +407,7 @@ const selectedAppealableExam = computed<StudentExamItemVO | null>(() => {
 
 const questionOptions = computed(() =>
   selectedExamQuestions.value.map((question) => ({
-    value: question.questionTemplateId,
+    value: question.layoutQuestionId,
     label: `第 ${question.questionNo} 题 · ${question.questionType} · 满分 ${question.fullScore} 分`,
   })),
 )
@@ -466,7 +467,6 @@ async function loadExams() {
   loadingExams.value = true
   try {
     const loadedExams = await listMyExams()
-    validateAppealableExamContracts(loadedExams)
     exams.value = loadedExams
     if (!selectedExamId.value && appealableExams.value.length > 0) {
       const queryExamId = typeof route.query.examId === 'string' ? route.query.examId : undefined
@@ -490,16 +490,6 @@ async function loadExams() {
   }
 }
 
-/** 校验学生复核入口依赖的已发布成绩字段，合同缺失时进入页面错误态。 */
-function validateAppealableExamContracts(list: StudentExamItemVO[]): void {
-  const dataError = '成绩数据异常，请刷新后重试'
-  for (const exam of list) {
-    if (exam.finalScoreStatus === 'PUBLISHED') {
-      assertUserFacing(exam.finalScore != null, dataError)
-    }
-  }
-}
-
 /**
  * 一次性加载当前学生的全部复核申请。
  * 后端 /api/exam/grade-review/request/student-list 已聚合 examName/examNo，
@@ -515,7 +505,6 @@ async function loadRequests() {
       pageSize: requestPagination.pageSize,
     })
     const list = readPageList(result, '复核申请列表加载失败')
-    validateReviewRequestEvidenceContracts(list)
     requests.value = list
     requestPagination.total = readPageTotal(result, '复核申请列表加载失败')
     requestPagination.current = result.pageNum ?? requestPagination.current
@@ -561,7 +550,7 @@ function handleRequestFilterReset() {
 }
 
 function finalScoreStatusLabel(exam: StudentExamItemVO): string {
-  return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, exam.finalScoreStatus, '最终成绩状态')
+  return strictEnumLabel(FinalScoreStatusDescription, exam.finalScoreStatus, '最终成绩状态')
 }
 
 function finalScoreStatusTone(exam: StudentExamItemVO): BadgeTone {
@@ -570,7 +559,7 @@ function finalScoreStatusTone(exam: StudentExamItemVO): BadgeTone {
 
 function reviewWindowStatusLabel(exam: StudentExamItemVO): string {
   return strictEnumLabel(
-    STUDENT_REVIEW_WINDOW_STATUS_LABEL,
+    ReviewWindowPolicyStatusDescription,
     exam.reviewWindowStatus,
     '成绩复核窗口状态',
   )
@@ -585,7 +574,7 @@ function reviewWindowStatusTone(exam: StudentExamItemVO): BadgeTone {
 }
 
 function formatPublishedScore(exam: StudentExamItemVO): string {
-  return (exam.finalScore as number).toFixed(2)
+  return formatScore(exam.finalScore, 'score')
 }
 
 function requestStatusTone(status: GradeReviewRequestStatusCode): BadgeTone {
@@ -593,7 +582,7 @@ function requestStatusTone(status: GradeReviewRequestStatusCode): BadgeTone {
 }
 
 function requestStatusLabel(status: GradeReviewRequestStatusCode): string {
-  return strictEnumLabel(REVIEW_REQUEST_STATUS_LABEL, status, '复核申请状态')
+  return strictEnumLabel(GradeReviewRequestStatusDescription, status, '复核申请状态')
 }
 
 function reviewNoteText(item: StudentGradeReviewRequestItemVO): string {
@@ -604,14 +593,7 @@ function reviewNoteText(item: StudentGradeReviewRequestItemVO): string {
 }
 
 function formatReasonType(value: GradeReviewReasonTypeCode): string {
-  return strictEnumLabel(GRADE_REVIEW_REASON_TYPE_LABEL, value, '复核原因类型')
-}
-
-function validateReviewRequestEvidenceContracts(list: StudentGradeReviewRequestItemVO[]): void {
-  const dataError = '复核申请列表数据异常，请刷新后重试'
-  for (const item of list) {
-    assertUserFacing(Array.isArray(item.evidenceFileRefs), dataError)
-  }
+  return strictEnumLabel(GradeReviewReasonTypeDescription, value, '复核原因类型')
 }
 
 async function downloadEvidenceFile(file: GradeReviewEvidenceFileRefVO): Promise<void> {
@@ -631,7 +613,10 @@ function openEvidencePicker(): void {
 }
 
 async function onEvidencePick(event: Event): Promise<void> {
-  const input = event.target as HTMLInputElement
+  if (!(event.target instanceof HTMLInputElement)) {
+    return
+  }
+  const input = event.target
   const file = input.files?.[0]
   if (!file) {
     return
@@ -801,10 +786,21 @@ async function loadSelectedExamQuestions(): Promise<void> {
 </script>
 
 <style lang="scss" scoped>
+.appeal-page__select-card {
+  margin-bottom: 16px;
+}
+
+.appeal-page__select-head,
+.appeal-page__list-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: var(--dp-font-weight-title, 600);
+}
+
 .appeal-page__list-card {
-  :deep(.ant-card-body) {
-    padding-top: 0;
-  }
+  margin-top: 8px;
 }
 
 .exam-pick-list {

@@ -1,8 +1,6 @@
-import type { Ref } from 'vue'
 import type { MarkingTaskVO } from '@/apis/mark/marking-organization'
 import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
-import { validateMarkingTaskContract } from '@/apis/mark/marking-organization'
 import {
   MARKING_RECENT_SUBMIT_MAX,
   MARKING_WITHDRAW_WINDOW_MS,
@@ -86,7 +84,6 @@ export function useMarkingRecentSubmit() {
     }
     try {
       const task = await withdrawMarkingTask({ taskId: entry.taskId })
-      validateMarkingTaskContract(task)
       removeEntry(entry.taskId)
       message.success('已撤销提交，原给分已保留为草稿')
       onSuccess?.(task)
@@ -110,7 +107,7 @@ export function useMarkingRecentSubmit() {
   }
 
   return {
-    recentSubmits: recentSubmits as Ref<MarkingRecentSubmitEntry[]>,
+    recentSubmits,
     latestWithdrawable,
     recentList,
     recordSubmit,

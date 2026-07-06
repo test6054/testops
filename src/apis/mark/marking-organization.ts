@@ -1,162 +1,176 @@
-import type { AnonymityModeCode } from './anonymity-mode'
-import type { EffectiveStatusCode } from './effective-status'
 import type { QualityDecisionCode } from './exam-scan'
 import type { PaperInstanceDisplayVO } from './exam-score'
 import type { QuestionTypeCode } from './question-type'
+import type { MarkAiReferenceExperienceAuditVO } from '@/apis/mark/grading-experience-assist'
 import type { PageResult, QueryDto } from '@/types'
+import type { AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
+import type { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
+import type { AnonymousTokenPolicyCode } from '@/types/enums/anonymous-token-policy-enum'
+import type { EffectiveStatusCode } from '@/types/enums/effective-status-enum'
+import type { MarkingAllocationModeCode } from '@/types/enums/marking-allocation-mode-enum'
+import type { MarkingReassignModeCode } from '@/types/enums/marking-reassign-mode-enum'
+import type { MarkingSessionPhaseCode } from '@/types/enums/marking-session-phase-enum'
 import http from '@/config/axios'
-import { assertUserFacingText } from '@/utils/contract-guard'
+import {
+  ALL_ALLOCATION_UNIT_CODES,
+  AllocationUnitDescription,
+} from '@/types/enums/allocation-unit-enum'
+import {
+  ALL_ANONYMOUS_TOKEN_POLICY_CODES,
+  AnonymousTokenPolicyDescription,
+} from '@/types/enums/anonymous-token-policy-enum'
+import {
+  FormalSessionStatusCode,
+  FormalSessionStatusDescription,
+} from '@/types/enums/formal-session-status-enum'
+import {
+  ALL_MARKING_ALLOCATION_MODE_CODES,
+  MarkingAllocationModeDescription,
+} from '@/types/enums/marking-allocation-mode-enum'
+import { MarkingOrganizationStatusCode } from '@/types/enums/marking-organization-status-enum'
+import {
+  ALL_MARKING_REASSIGN_MODE_CODES,
+  MarkingReassignModeDescription,
+} from '@/types/enums/marking-reassign-mode-enum'
+import {
+  ALL_MARKING_TASK_STATUS_CODES,
+  MarkingTaskStatusCode,
+  MarkingTaskStatusDescription,
+} from '@/types/enums/marking-task-status-enum'
+import { QuestionMarkingGroupStatusCode } from '@/types/enums/question-marking-group-status-enum'
+import {
+  TRIAL_SESSION_MAIN_FLOW_STATUS_CODES,
+  TrialSessionStatusCode,
+  TrialSessionStatusDescription,
+} from '@/types/enums/trial-session-status-enum'
 import { readAllPages } from '@/utils/page-result'
-import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import { ANONYMITY_MODE_LABEL } from './anonymity-mode'
-import { QUESTION_TYPE_LABEL } from './question-type'
 
-/** 阅卷组织列表默认分页大小（SessionListQuery / MarkingTaskQuery 缺省时使用） */
-const MARK_ORG_LIST_PAGE_SIZE = 100
+export { ALL_ALLOCATION_UNIT_CODES, AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
+export { AllocationUnitDescription } from '@/types/enums/allocation-unit-enum'
+export { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
+export {
+  ALL_ANONYMOUS_TOKEN_POLICY_CODES,
+  AnonymousTokenPolicyCode,
+} from '@/types/enums/anonymous-token-policy-enum'
+export { AnonymousTokenPolicyDescription } from '@/types/enums/anonymous-token-policy-enum'
+export {
+  ALL_FORMAL_SESSION_STATUS_CODES,
+  FormalSessionStatusCode,
+} from '@/types/enums/formal-session-status-enum'
+export { FormalSessionStatusDescription } from '@/types/enums/formal-session-status-enum'
+export {
+  ALL_MARKING_ALLOCATION_MODE_CODES,
+  MarkingAllocationModeCode,
+} from '@/types/enums/marking-allocation-mode-enum'
+export { MarkingAllocationModeDescription } from '@/types/enums/marking-allocation-mode-enum'
+export {
+  ALL_MARKING_ORGANIZATION_STATUS_CODES,
+  MarkingOrganizationStatusCode,
+} from '@/types/enums/marking-organization-status-enum'
+export { MarkingOrganizationStatusDescription } from '@/types/enums/marking-organization-status-enum'
+
+export {
+  ALL_MARKING_REASSIGN_MODE_CODES,
+  MarkingReassignModeCode,
+} from '@/types/enums/marking-reassign-mode-enum'
+export { MarkingReassignModeDescription } from '@/types/enums/marking-reassign-mode-enum'
+export {
+  ALL_MARKING_SESSION_PHASE_CODES,
+  MarkingSessionPhaseCode,
+} from '@/types/enums/marking-session-phase-enum'
+export { MarkingSessionPhaseDescription } from '@/types/enums/marking-session-phase-enum'
+export {
+  ALL_MARKING_TASK_STATUS_CODES,
+  MarkingTaskStatusCode,
+} from '@/types/enums/marking-task-status-enum'
+export { MarkingTaskStatusDescription } from '@/types/enums/marking-task-status-enum'
+export {
+  ALL_QUESTION_MARKING_GROUP_STATUS_CODES,
+  QuestionMarkingGroupStatusCode,
+} from '@/types/enums/question-marking-group-status-enum'
+export { QuestionMarkingGroupStatusDescription } from '@/types/enums/question-marking-group-status-enum'
+export {
+  TRIAL_SESSION_MAIN_FLOW_STATUS_CODES,
+  TrialSessionStatusCode,
+  TrialSessionStatusDescription,
+} from '@/types/enums/trial-session-status-enum'
 
 // ─── 状态枚举与文案 ─────────────────────────────────────────
-
-/** 阅卷组织状态编码 - 与后端 OrganizationStatus enum 对齐 */
-export type MarkingOrganizationStatusCode
-  = | 'ORG_DRAFT'
-    | 'ORG_CONFIGURED'
-    | 'TRIAL_MARKING'
-    | 'FORMAL_MARKING'
-    | 'QUALITY_REVIEW'
-    | 'CLOSED'
-
-export const MARKING_ORGANIZATION_STATUS_LABEL: Record<MarkingOrganizationStatusCode, string> = {
-  ORG_DRAFT: '草稿',
-  ORG_CONFIGURED: '已配置',
-  TRIAL_MARKING: '试评中',
-  FORMAL_MARKING: '正评中',
-  QUALITY_REVIEW: '质量复核中',
-  CLOSED: '已关闭',
-}
 
 export const MARKING_ORGANIZATION_STATUS_TONE: Record<
   MarkingOrganizationStatusCode,
   'gray' | 'blue' | 'green' | 'orange' | 'red' | 'purple'
 > = {
-  ORG_DRAFT: 'gray',
-  ORG_CONFIGURED: 'blue',
-  TRIAL_MARKING: 'orange',
-  FORMAL_MARKING: 'green',
-  QUALITY_REVIEW: 'purple',
-  CLOSED: 'red',
+  [MarkingOrganizationStatusCode.ORG_DRAFT]: 'gray',
+  [MarkingOrganizationStatusCode.ORG_CONFIGURED]: 'blue',
+  [MarkingOrganizationStatusCode.TRIAL_MARKING]: 'orange',
+  [MarkingOrganizationStatusCode.FORMAL_MARKING]: 'green',
+  [MarkingOrganizationStatusCode.QUALITY_REVIEW]: 'purple',
+  [MarkingOrganizationStatusCode.CLOSED]: 'red',
 }
 
-/** 题组状态编码 - 与后端 QuestionGroupStatus enum 对齐 */
-export type QuestionMarkingGroupStatusCode
-  = | 'GROUP_DRAFT'
-    | 'GROUP_CONFIGURED'
-    | 'GROUP_ACTIVE'
-    | 'GROUP_CLOSED'
-
-export const QUESTION_GROUP_STATUS_LABEL: Record<QuestionMarkingGroupStatusCode, string> = {
-  GROUP_DRAFT: '草稿',
-  GROUP_CONFIGURED: '已配置',
-  GROUP_ACTIVE: '启用',
-  GROUP_CLOSED: '已关闭',
-}
+/** 阅卷组织列表默认分页大小（SessionListQuery / MarkingTaskQuery 缺省时使用） */
+const MARK_ORG_LIST_PAGE_SIZE = 100
 
 export const QUESTION_GROUP_STATUS_TONE: Record<
   QuestionMarkingGroupStatusCode,
   'gray' | 'blue' | 'green' | 'red'
 > = {
-  GROUP_DRAFT: 'gray',
-  GROUP_CONFIGURED: 'blue',
-  GROUP_ACTIVE: 'green',
-  GROUP_CLOSED: 'red',
+  [QuestionMarkingGroupStatusCode.GROUP_DRAFT]: 'gray',
+  [QuestionMarkingGroupStatusCode.GROUP_CONFIGURED]: 'blue',
+  [QuestionMarkingGroupStatusCode.GROUP_ACTIVE]: 'green',
+  [QuestionMarkingGroupStatusCode.GROUP_CLOSED]: 'red',
 }
 
-/** 任务分配模式编码 - 与后端 AllocationMode enum 对齐 */
-export type MarkingAllocationModeCode
-  = | 'BY_QUESTION'
-    | 'BY_CLASS'
-    | 'ROUND_ROBIN'
-    | 'RANDOM'
-    | 'BY_PAPER_RANDOM'
+export const MARKING_ALLOCATION_MODE_OPTIONS: Array<{
+  value: MarkingAllocationModeCode
+  label: string
+}> = ALL_MARKING_ALLOCATION_MODE_CODES.map((value) => ({
+  value,
+  label: MarkingAllocationModeDescription[value],
+}))
 
-export const MARKING_ALLOCATION_MODE_LABEL: Record<MarkingAllocationModeCode, string> = {
-  BY_QUESTION: '按题目分配',
-  BY_CLASS: '按班级分配',
-  ROUND_ROBIN: '轮询分配',
-  RANDOM: '随机分配',
-  BY_PAPER_RANDOM: '整卷随机派发',
-}
-/** 阅卷分配单元编码 - 与后端 AllocationUnit enum 对齐 */
-export type AllocationUnitCode = 'WHOLE_PAPER' | 'SELECTED_QUESTIONS' | 'RANDOM_QUESTIONS'
+export const ALLOCATION_UNIT_OPTIONS: Array<{ value: AllocationUnitCode, label: string }>
+  = ALL_ALLOCATION_UNIT_CODES.map((value) => ({
+    value,
+    label: AllocationUnitDescription[value],
+  }))
 
-export const ALLOCATION_UNIT_LABEL: Record<AllocationUnitCode, string> = {
-  WHOLE_PAPER: '整卷批阅',
-  SELECTED_QUESTIONS: '选中试题批阅',
-  RANDOM_QUESTIONS: '随机题目批阅',
-}
+export const MARKING_REASSIGN_MODE_OPTIONS: Array<{
+  value: MarkingReassignModeCode
+  label: string
+}> = ALL_MARKING_REASSIGN_MODE_CODES.map((value) => ({
+  value,
+  label: MarkingReassignModeDescription[value],
+}))
 
-/** 阅卷会话阶段 - 与后端 MarkingSessionPhase enum 对齐 */
-export type MarkingSessionPhaseCode = 'TRIAL' | 'FORMAL'
-
-export const MARKING_SESSION_PHASE_LABEL: Record<MarkingSessionPhaseCode, string> = {
-  TRIAL: '试评',
-  FORMAL: '正评',
-}
-
-/** 任务回收 / 再分配模式编码 - 与后端 ReassignMode enum 对齐 */
-export type MarkingReassignModeCode = 'AUTO' | 'MANUAL'
-
-export const MARKING_REASSIGN_MODE_LABEL: Record<MarkingReassignModeCode, string> = {
-  AUTO: '自动再分配',
-  MANUAL: '手动再分配',
-}
-
-/** 匿名令牌策略编码 - 与后端 AnonymousTokenPolicy enum 对齐 */
-export type AnonymousTokenPolicyCode = 'NONE' | 'PER_EXAM' | 'PER_GROUP'
-
-export const ANONYMOUS_TOKEN_POLICY_LABEL: Record<AnonymousTokenPolicyCode, string> = {
-  NONE: '不匿名',
-  PER_EXAM: '考试级匿名',
-  PER_GROUP: '题组级匿名',
-}
-
-/** 阅卷任务状态编码 - 与后端 MarkingTaskStatus enum 对齐 */
-export type MarkingTaskStatusCode
-  = | 'ALLOCATED'
-    | 'IN_PROGRESS'
-    | 'SUBMITTED'
-    | 'FINALIZED'
-    | 'RECYCLED'
-
-export const MARKING_TASK_STATUS_LABEL: Record<MarkingTaskStatusCode, string> = {
-  ALLOCATED: '已分配',
-  IN_PROGRESS: '批改中',
-  SUBMITTED: '已提交',
-  FINALIZED: '已定稿',
-  RECYCLED: '已回收',
-}
+export const ANONYMOUS_TOKEN_POLICY_OPTIONS: Array<{
+  value: AnonymousTokenPolicyCode
+  label: string
+}> = ALL_ANONYMOUS_TOKEN_POLICY_CODES.map((value) => ({
+  value,
+  label: AnonymousTokenPolicyDescription[value],
+}))
 
 export const MARKING_TASK_STATUS_TONE: Record<
   MarkingTaskStatusCode,
   'gray' | 'blue' | 'orange' | 'green' | 'red'
 > = {
-  ALLOCATED: 'blue',
-  IN_PROGRESS: 'blue',
-  SUBMITTED: 'green',
-  FINALIZED: 'green',
-  RECYCLED: 'gray',
+  [MarkingTaskStatusCode.ALLOCATED]: 'blue',
+  [MarkingTaskStatusCode.IN_PROGRESS]: 'blue',
+  [MarkingTaskStatusCode.SUBMITTED]: 'green',
+  [MarkingTaskStatusCode.FINALIZED]: 'green',
+  [MarkingTaskStatusCode.RECYCLED]: 'gray',
 }
 
 /** 阅卷任务状态下拉选项，值必须与后端 MarkingTaskStatus enum 完全一致 */
 export const MARKING_TASK_STATUS_OPTIONS: Array<{
   label: string
   value: MarkingTaskStatusCode
-}> = [
-  { value: 'ALLOCATED', label: MARKING_TASK_STATUS_LABEL.ALLOCATED },
-  { value: 'IN_PROGRESS', label: MARKING_TASK_STATUS_LABEL.IN_PROGRESS },
-  { value: 'SUBMITTED', label: MARKING_TASK_STATUS_LABEL.SUBMITTED },
-  { value: 'FINALIZED', label: MARKING_TASK_STATUS_LABEL.FINALIZED },
-  { value: 'RECYCLED', label: MARKING_TASK_STATUS_LABEL.RECYCLED },
-]
+}> = ALL_MARKING_TASK_STATUS_CODES.map((value) => ({
+  value,
+  label: MarkingTaskStatusDescription[value],
+}))
 
 /** 创建阅卷组织请求 - 对应后端 OrganizationCreateRequest */
 export interface OrganizationCreateRequest {
@@ -194,7 +208,7 @@ export interface QuestionGroupSaveRequest {
   organizationId: string
   groupId?: string
   groupName: string
-  questionTemplateIds: string[]
+  layoutQuestionIds: string[]
   /** 整卷批阅题组标记；为 true 时题目范围可为空 */
   wholePaperGroup?: boolean
   leaderUserId: string
@@ -314,7 +328,7 @@ export interface MarkingTaskSubmitRequest {
 
 /** 阅卷任务题目给分提交项 - 对应后端 MarkingQuestionScoreSubmitItem */
 export interface MarkingQuestionScoreSubmitItem {
-  questionTemplateId: string
+  layoutQuestionId: string
   score: number
   annotationText?: string
   correlationId: string
@@ -348,7 +362,7 @@ export interface QuestionGroupReviewerVO {
 /** 题组负责题目详情 - 对应后端 QuestionMarkingGroupQuestionResponse */
 export interface QuestionMarkingGroupQuestionVO {
   groupId: string | null
-  questionTemplateId: string
+  layoutQuestionId: string
   /** 题目批改结果 ID，供单题 AI 复评使用 */
   gradeResultId?: string
   questionNo: string
@@ -359,6 +373,8 @@ export interface QuestionMarkingGroupQuestionVO {
   aiScore?: number
   /** AI诊断说明 */
   aiDiagnostic?: string
+  /** 当前题目 AI 执行 trace，供定标徽标跳转 AI 历史定位 */
+  aiTraceId?: string
   /** 正式作答切片ID */
   responseSliceId: string
   /** 正式OCR识别结果ID */
@@ -371,6 +387,8 @@ export interface QuestionMarkingGroupQuestionVO {
   recognizedAnswer?: string
   questionStem?: string
   questionOrder: number
+  /** AI 定标引用审计快照 */
+  referenceExperienceAudit?: MarkAiReferenceExperienceAuditVO
 }
 
 export interface QuestionMarkingGroupVO {
@@ -382,6 +400,7 @@ export interface QuestionMarkingGroupVO {
   leaderTeacherNo: string
   groupStatus: QuestionMarkingGroupStatusCode
   reviewers: QuestionGroupReviewerVO[]
+  reviewerUserIds?: string[]
   createTime?: string
 }
 
@@ -396,7 +415,7 @@ export interface MarkingOrganizationVO {
   leaderUserId?: string
   leaderUserName?: string
   leaderTeacherNo?: string
-  organizationStatus?: MarkingOrganizationStatusCode
+  organizationStatus: MarkingOrganizationStatusCode
   anonymousMode?: boolean
   remark?: string
   /** 考试主考老师用户 ID - 对应后端 MarkingOrganizationResponse.examCreateUserId */
@@ -404,6 +423,10 @@ export interface MarkingOrganizationVO {
   /** 当前用户是否具备主考专属权限 - 对应后端 canManageExamOwner */
   canManageExamOwner?: boolean
   groups: QuestionMarkingGroupVO[]
+  /** 题组数量 - 对应后端 groupCount */
+  groupCount?: number
+  /** 去重阅卷教师人数 - 对应后端 uniqueReviewerCount */
+  uniqueReviewerCount?: number
   createTime?: string
   updateTime?: string
 }
@@ -411,7 +434,7 @@ export interface MarkingOrganizationVO {
 /** 阅卷任务详情响应 - 对应后端 MarkingTaskResponse */
 /** 已定稿阅卷任务逐题给分回显 - 对应 MarkingTaskSubmittedQuestionScoreResponse */
 export interface MarkingTaskSubmittedQuestionScoreVO {
-  questionTemplateId: string
+  layoutQuestionId: string
   questionNo: string
   score: number
   annotationText?: string
@@ -453,59 +476,41 @@ export interface MarkingTaskVO {
   submittedQuestionScores?: MarkingTaskSubmittedQuestionScoreVO[]
 }
 
-/** 试评会话状态编码 - 与后端 TrialSessionStatus enum 对齐 */
-export type TrialSessionStatusCode
-  = | 'TRIAL_CREATED'
-    | 'TRIAL_ASSIGNED'
-    | 'TRIAL_SUBMITTED'
-    | 'CALIBRATED'
-    | 'TRIAL_CLOSED'
-
-export const TRIAL_SESSION_STATUS_LABEL: Record<TrialSessionStatusCode, string> = {
-  TRIAL_CREATED: '已创建',
-  TRIAL_ASSIGNED: '已分配样本',
-  TRIAL_SUBMITTED: '教师已提交',
-  CALIBRATED: '已校准',
-  TRIAL_CLOSED: '试评关闭',
-}
-
 export const TRIAL_SESSION_STATUS_TONE: Record<
   TrialSessionStatusCode,
   'gray' | 'blue' | 'orange' | 'green' | 'red'
 > = {
-  TRIAL_CREATED: 'gray',
-  TRIAL_ASSIGNED: 'blue',
-  TRIAL_SUBMITTED: 'orange',
-  CALIBRATED: 'green',
-  TRIAL_CLOSED: 'red',
-}
-
-/** 正评会话状态编码 - 与后端 FormalSessionStatus enum 对齐 */
-export type FormalSessionStatusCode
-  = | 'SESSION_CREATED'
-    | 'SESSION_ACTIVE'
-    | 'SESSION_PAUSED'
-    | 'SESSION_COMPLETED'
-    | 'SESSION_CLOSED'
-
-export const FORMAL_SESSION_STATUS_LABEL: Record<FormalSessionStatusCode, string> = {
-  SESSION_CREATED: '已创建',
-  SESSION_ACTIVE: '进行中',
-  SESSION_PAUSED: '已暂停',
-  SESSION_COMPLETED: '已完成',
-  SESSION_CLOSED: '已关闭',
+  [TrialSessionStatusCode.TRIAL_CREATED]: 'gray',
+  [TrialSessionStatusCode.TRIAL_ASSIGNED]: 'blue',
+  [TrialSessionStatusCode.TRIAL_SUBMITTED]: 'orange',
+  [TrialSessionStatusCode.CALIBRATED]: 'green',
+  [TrialSessionStatusCode.TRIAL_CLOSED]: 'red',
 }
 
 export const FORMAL_SESSION_STATUS_TONE: Record<
   FormalSessionStatusCode,
   'gray' | 'green' | 'orange' | 'purple' | 'red'
 > = {
-  SESSION_CREATED: 'gray',
-  SESSION_ACTIVE: 'green',
-  SESSION_PAUSED: 'orange',
-  SESSION_COMPLETED: 'purple',
-  SESSION_CLOSED: 'red',
+  [FormalSessionStatusCode.SESSION_CREATED]: 'gray',
+  [FormalSessionStatusCode.SESSION_ACTIVE]: 'green',
+  [FormalSessionStatusCode.SESSION_PAUSED]: 'orange',
+  [FormalSessionStatusCode.SESSION_COMPLETED]: 'purple',
+  [FormalSessionStatusCode.SESSION_CLOSED]: 'red',
 }
+
+/** 试评会话主流程状态链，供列表页流程 hint 展示 */
+export const TRIAL_SESSION_MAIN_FLOW_STATUSES = TRIAL_SESSION_MAIN_FLOW_STATUS_CODES
+
+/** 试评会话主流程 hint，文案与 TrialSessionStatusDescription 一致 */
+export const TRIAL_SESSION_FLOW_HINT = TRIAL_SESSION_MAIN_FLOW_STATUSES.map(
+  (status) => TrialSessionStatusDescription[status],
+).join(' → ')
+
+/** 正评会话主流程 hint，文案与 FormalSessionStatusDescription 一致（进行中与已暂停可往返） */
+export const FORMAL_SESSION_FLOW_HINT = `${FormalSessionStatusDescription[FormalSessionStatusCode.SESSION_CREATED]} → ${FormalSessionStatusDescription[FormalSessionStatusCode.SESSION_ACTIVE]} ⇄ ${FormalSessionStatusDescription[FormalSessionStatusCode.SESSION_PAUSED]} → ${FormalSessionStatusDescription[FormalSessionStatusCode.SESSION_COMPLETED]} → ${FormalSessionStatusDescription[FormalSessionStatusCode.SESSION_CLOSED]}`
+
+/** 阅卷组织会话页范围说明，供 ContextBar 副标题展示 */
+export const MARKING_SESSIONS_SCOPE_HINT = '按题组创建试评校准与正评启停，推进阅卷组织生效'
 
 /** 会话列表查询请求 - 对应后端 SessionListQueryRequest（继承 QueryDto） */
 export interface SessionListQueryRequest extends QueryDto {
@@ -531,12 +536,18 @@ export interface TrialSessionVO {
   closeTime?: string
   createTime?: string
   updateTime?: string
+  /** 本会话派发试评任务总数 */
+  totalTaskCount: number
+  /** 本会话已定稿试评任务数 */
+  finalizedTaskCount: number
+  /** 待领取或批改中试评任务数 */
+  pendingTaskCount: number
 }
 
 /** 正评会话详情响应 - 对应后端 FormalSessionResponse */
 export interface FormalSessionQuestionScopeVO {
   sessionId: string
-  questionTemplateId: string
+  layoutQuestionId: string
   questionNo: string
   questionType: QuestionTypeCode
   questionTypeMessage: string
@@ -609,114 +620,14 @@ export interface FormalSessionVO {
   updateTime?: string
 }
 
-/**
- * 校验题组合同枚举，保证页面状态写入前已发现后端枚举漂移。
- */
-export function validateQuestionMarkingGroupContract(record: QuestionMarkingGroupVO): void {
-  strictEnumLabel(QUESTION_GROUP_STATUS_LABEL, record.groupStatus, '题组状态')
-  strictEnumTone(QUESTION_GROUP_STATUS_TONE, record.groupStatus, '题组状态')
-  ;(record.questions ?? []).forEach((question) => {
-    strictEnumLabel(QUESTION_TYPE_LABEL, question.questionType, '题型')
-  })
-}
-
 const MARKING_ORG_DATA_ERROR = '阅卷组织数据异常，请刷新后重试'
-
-/** 已创建阅卷组织的响应合同校验。 */
-function validateConfiguredMarkingOrganization(record: MarkingOrganizationVO): MarkingOrganizationVO {
-  assertUserFacingText(record.id, MARKING_ORG_DATA_ERROR)
-  assertUserFacingText(record.leaderUserId, MARKING_ORG_DATA_ERROR)
-  assertUserFacingText(record.leaderUserName, MARKING_ORG_DATA_ERROR)
-  assertUserFacingText(record.leaderTeacherNo, MARKING_ORG_DATA_ERROR)
-  strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, record.organizationStatus, '阅卷组织状态')
-  strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, record.organizationStatus, '阅卷组织状态')
-  ;(record.groups ?? []).forEach(validateQuestionMarkingGroupContract)
-  return record
-}
-
-/**
- * 校验阅卷组织合同枚举，避免模板渲染路径成为首次失败位置。
- */
-export function validateMarkingOrganizationContract(record: MarkingOrganizationVO): void {
-  if (!record.configured) {
-    return
-  }
-  validateConfiguredMarkingOrganization(record)
-}
 
 /** 读取已配置阅卷组织的组织 ID；configured 为 true 但 id 缺失时拒绝继续。 */
 export function requireMarkingOrganizationId(record: MarkingOrganizationVO): string {
-  assertUserFacingText(record.id, MARKING_ORG_DATA_ERROR)
+  if (!record.id) {
+    throw new Error(MARKING_ORG_DATA_ERROR)
+  }
   return record.id
-}
-
-/**
- * 校验试评会话合同枚举，确保会话列表展示前合同已通过。
- */
-export function validateTrialSessionContract(record: TrialSessionVO): void {
-  strictEnumLabel(TRIAL_SESSION_STATUS_LABEL, record.sessionStatus, '试评会话状态')
-  strictEnumTone(TRIAL_SESSION_STATUS_TONE, record.sessionStatus, '试评会话状态')
-}
-
-/**
- * 校验正评会话合同枚举，确保会话状态和任务单元与后端枚举一致。
- */
-export function validateFormalSessionContract(record: FormalSessionVO): void {
-  strictEnumLabel(FORMAL_SESSION_STATUS_LABEL, record.sessionStatus, '正评会话状态')
-  strictEnumTone(FORMAL_SESSION_STATUS_TONE, record.sessionStatus, '正评会话状态')
-  strictEnumLabel(ALLOCATION_UNIT_LABEL, record.allocationUnit, '批阅任务单元')
-  record.questionScopes.forEach((scope) => {
-    strictEnumLabel(QUESTION_TYPE_LABEL, scope.questionType, '正评会话题型')
-  })
-}
-
-/** 校验阅卷任务合同枚举，供回收待分配等管理页使用。 */
-export function validateMarkingTaskContract(record: MarkingTaskVO): void {
-  strictEnumLabel(MARKING_TASK_STATUS_LABEL, record.taskStatus, '阅卷任务状态')
-  strictEnumTone(MARKING_TASK_STATUS_TONE, record.taskStatus, '阅卷任务状态')
-  strictEnumLabel(FORMAL_SESSION_STATUS_LABEL, record.sessionStatus, '正评会话状态')
-  strictEnumLabel(ALLOCATION_UNIT_LABEL, record.taskUnit, '批阅任务单元')
-  if (record.questionType != null) {
-    strictEnumLabel(QUESTION_TYPE_LABEL, record.questionType, '题型')
-  }
-}
-
-/** 校验任务分配策略合同枚举，供策略 Tab 回显前使用。 */
-export function validateAllocationPolicyContract(record: AllocationPolicyVO): void {
-  strictEnumLabel(MARKING_ALLOCATION_MODE_LABEL, record.allocationMode, '分配模式')
-  strictEnumLabel(ALLOCATION_UNIT_LABEL, record.allocationUnit, '批阅任务单元')
-  strictEnumLabel(ANONYMITY_MODE_LABEL, record.anonymityMode, '匿名模式')
-  strictEnumLabel(ANONYMOUS_TOKEN_POLICY_LABEL, record.anonymousTokenPolicy, '匿名令牌策略')
-}
-
-/** 校验任务回收策略合同枚举，供策略 Tab 回显前使用。 */
-export function validateRecyclePolicyContract(record: RecyclePolicyVO): void {
-  if (record.reassignMode != null) {
-    strictEnumLabel(MARKING_REASSIGN_MODE_LABEL, record.reassignMode, '再分配模式')
-  }
-}
-
-/** 校验阅卷组织任务策略列表合同，避免策略 Tab 成为首次枚举失败位置。 */
-export function validateMarkingPolicyListContract(record: MarkingPolicyListVO): void {
-  for (const policy of record.allocationPolicies ?? []) {
-    validateAllocationPolicyContract(policy)
-  }
-  for (const policy of record.recyclePolicies ?? []) {
-    validateRecyclePolicyContract(policy)
-  }
-}
-
-/** 校验教师领取上下文合同，供任务池 claim 下拉使用前发现枚举漂移。 */
-export function validateTeacherClaimContextContract(record: TeacherClaimContextVO): void {
-  strictEnumLabel(MARKING_SESSION_PHASE_LABEL, record.markingPhase, '阅卷会话阶段')
-  for (const group of record.groups ?? []) {
-    for (const session of group.activeSessions ?? []) {
-      validateFormalSessionContract(session)
-    }
-    for (const session of group.activeTrialSessions ?? []) {
-      validateTrialSessionContract(session)
-    }
-  }
 }
 
 // ─── API 调用 ────────────────────────────────────────────────
@@ -737,21 +648,10 @@ export function createOrganization(
  * 查询阅卷组织详情；未创建时返回 configured=false 空壳，不触发业务错误。
  * POST /api/mark/organization/detail
  */
-export async function getOrganization(request: OrganizationQueryRequest): Promise<MarkingOrganizationVO> {
-  const record = await http.post<MarkingOrganizationVO>('/api/mark/organization/detail', request)
-  assertUserFacingText(record.examId, MARKING_ORG_DATA_ERROR)
-  if (!record.configured) {
-    return {
-      configured: false,
-      examId: record.examId,
-      groups: [],
-    }
-  }
-  return validateConfiguredMarkingOrganization({
-    ...record,
-    configured: true,
-    groups: record.groups ?? [],
-  })
+export async function getOrganization(
+  request: OrganizationQueryRequest,
+): Promise<MarkingOrganizationVO> {
+  return http.post<MarkingOrganizationVO>('/api/mark/organization/detail', request)
 }
 
 /**
@@ -761,13 +661,7 @@ export async function getOrganization(request: OrganizationQueryRequest): Promis
 export async function getOrganizationById(
   request: OrganizationQueryByIdRequest,
 ): Promise<MarkingOrganizationVO> {
-  const record = await http.post<MarkingOrganizationVO>('/api/mark/organization/detailById', request)
-  assertUserFacingText(record.examId, MARKING_ORG_DATA_ERROR)
-  return validateConfiguredMarkingOrganization({
-    ...record,
-    configured: true,
-    groups: record.groups ?? [],
-  })
+  return http.post<MarkingOrganizationVO>('/api/mark/organization/detailById', request)
 }
 
 /**
@@ -836,7 +730,9 @@ export function saveRecyclePolicy(request: RecyclePolicySaveRequest): Promise<bo
  * 查询阅卷组织任务策略列表。
  * POST /api/mark/organization/policy/list
  */
-export function listMarkingPolicies(request: OrganizationQueryByIdRequest): Promise<MarkingPolicyListVO> {
+export function listMarkingPolicies(
+  request: OrganizationQueryByIdRequest,
+): Promise<MarkingPolicyListVO> {
   return http.post<MarkingPolicyListVO>('/api/mark/organization/policy/list', request)
 }
 
@@ -880,7 +776,9 @@ export function pageTrialSessions(
  * 查询试评会话列表（自动分页拉全）。
  * POST /api/mark/organization/trial/list
  */
-export async function listTrialSessions(request: SessionListQueryRequest): Promise<TrialSessionVO[]> {
+export async function listTrialSessions(
+  request: SessionListQueryRequest,
+): Promise<TrialSessionVO[]> {
   const pageSize = request.pageSize ?? MARK_ORG_LIST_PAGE_SIZE
   return readAllPages(
     (pageNum) => pageTrialSessions({ ...request, pageNum, pageSize }),
@@ -967,7 +865,9 @@ export interface MarkingTaskReassignRequest {
  * 手动再分配已回收阅卷任务（RECYCLED → ALLOCATED）。
  * POST /api/mark/organization/task/reassign-recycled
  */
-export function reassignRecycledMarkingTask(request: MarkingTaskReassignRequest): Promise<MarkingTaskVO> {
+export function reassignRecycledMarkingTask(
+  request: MarkingTaskReassignRequest,
+): Promise<MarkingTaskVO> {
   return http.post<MarkingTaskVO>('/api/mark/organization/task/reassign-recycled', request)
 }
 
@@ -985,9 +885,7 @@ export function pageMarkingTasks(
  * 查询阅卷任务列表（自动分页拉全）。
  * POST /api/mark/organization/task/list
  */
-export async function listMarkingTasks(
-  request: MarkingTaskQueryRequest,
-): Promise<MarkingTaskVO[]> {
+export async function listMarkingTasks(request: MarkingTaskQueryRequest): Promise<MarkingTaskVO[]> {
   const pageSize = request.pageSize ?? MARK_ORG_LIST_PAGE_SIZE
   return readAllPages(
     (pageNum) => pageMarkingTasks({ ...request, pageNum, pageSize }),
@@ -1028,12 +926,24 @@ export interface GroupClaimContextVO {
   activeTrialSessions: TrialSessionVO[]
 }
 
+/** 教师任务池状态汇总 - 对应 TeacherMarkingTaskPoolSummaryResponse */
+export interface TeacherMarkingTaskPoolSummaryVO {
+  totalTaskCount: number
+  allocatedTaskCount: number
+  inProgressTaskCount: number
+  submittedTaskCount: number
+  finalizedTaskCount: number
+  recycledTaskCount: number
+}
+
 /** 教师领取上下文响应 - 对应后端 TeacherClaimContextResponse */
 export interface TeacherClaimContextVO {
   examId: string
   markingPhase: MarkingSessionPhaseCode
   /** 教师所属的活跃题组上下文列表 */
   groups: GroupClaimContextVO[]
+  /** 当前评阅员在本考试本阶段下的任务状态汇总 */
+  taskSummary: TeacherMarkingTaskPoolSummaryVO
 }
 
 /**
@@ -1077,6 +987,10 @@ export interface ScannedPageRef {
   roiWidth?: number
   /** 题目区域 ROI 高度（像素） */
   roiHeight?: number
+  /** 扫描页图像宽度（像素） */
+  pageImageWidth?: number
+  /** 扫描页图像高度（像素） */
+  pageImageHeight?: number
 }
 
 /** 整卷视图响应 - 对应后端 WholePaperViewResponse */
@@ -1102,7 +1016,7 @@ export interface MarkingQuestionViewRequest {
 export interface MarkingQuestionViewVO {
   /** 匿名 token 值；匿名模式为真实令牌，实名模式为 null */
   anonymousToken: string | null
-  questionTemplateId: string
+  layoutQuestionId: string
   /** 题目批改结果 ID，供单题 AI 复评使用 */
   gradeResultId?: string
   questionNo: string
@@ -1128,8 +1042,12 @@ export interface MarkingQuestionViewVO {
   aiScore?: number
   /** AI诊断说明 */
   aiDiagnostic?: string
+  /** 当前题目 AI 执行 trace，供定标徽标跳转 AI 历史定位 */
+  aiTraceId?: string
   /** 试卷母版页引用，仅 ANSWER_SHEET 模式回填 */
   masterPaperPage?: ScannedPageRef
+  /** AI 定标引用审计快照 */
+  referenceExperienceAudit?: MarkAiReferenceExperienceAuditVO
 }
 
 /**
@@ -1143,7 +1061,7 @@ export function getWholePaperView(request: WholePaperViewRequest): Promise<Whole
 
 /**
  * 查询阅卷任务对应的题目级批阅视图。
- * 后端校验 task.reviewerUserId == 当前用户，并由 taskId 推导题目模板和切片信息。
+ * 后端校验 task.reviewerUserId == 当前用户，并由 taskId 推导制卷题目和切片信息。
  * POST /api/mark/organization/task/question-view
  */
 export function getMarkingQuestionView(

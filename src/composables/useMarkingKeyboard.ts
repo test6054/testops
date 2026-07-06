@@ -16,7 +16,7 @@ export interface UseMarkingKeyboardOptions {
   currentWholePageIndex: Ref<number>
   expandedWholeQuestionKey: Ref<string>
   wholeQuestions: Ref<QuestionMarkingGroupQuestionVO[]>
-  getWholeQuestionForm: (questionTemplateId: string) => WholeQuestionForm
+  getWholeQuestionForm: (layoutQuestionId: string) => WholeQuestionForm
   goToTask: (targetTaskId: string) => void
   submit: () => Promise<void>
   scrollToWholePage: (index: number) => void
@@ -30,7 +30,7 @@ export function useMarkingKeyboard(options: UseMarkingKeyboardOptions) {
   function resolveActiveWholeQuestion(): QuestionMarkingGroupQuestionVO | null {
     const key = options.expandedWholeQuestionKey.value
     if (!key) return options.wholeQuestions.value[0] ?? null
-    return options.wholeQuestions.value.find((q) => q.questionTemplateId === key) ?? null
+    return options.wholeQuestions.value.find((q) => q.layoutQuestionId === key) ?? null
   }
 
   function handleWorkspaceKeydown(event: KeyboardEvent): void {
@@ -80,7 +80,7 @@ export function useMarkingKeyboard(options: UseMarkingKeyboardOptions) {
         const question = resolveActiveWholeQuestion()
         if (question && digit <= question.fullScore) {
           event.preventDefault()
-          options.getWholeQuestionForm(question.questionTemplateId).score = digit
+          options.getWholeQuestionForm(question.layoutQuestionId).score = digit
         }
         return
       }

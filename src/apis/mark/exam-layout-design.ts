@@ -1,4 +1,8 @@
+import type { ExamLayoutStatusCode } from '@/apis/mark/exam-layout-status'
 import http from '@/config/axios'
+
+/** 制卷设计主流程 hint：形态确定后生成或导入底图，划区编排后保存并预览 */
+export const EXAM_LAYOUT_DESIGN_FLOW_HINT = '确定制卷形态 → 生成或导入底图 → 划区编排 → 保存并预览'
 
 export interface ExamLayoutRectNorm {
   x: number
@@ -48,8 +52,12 @@ export interface ExamLayoutBlockOptionDto {
 }
 
 export interface ExamLayoutDocument {
+  /** 制卷布局 ID - 对应 ExamLayoutDocument.layoutId */
+  layoutId?: string
   examId?: string
   layoutName?: string
+  /** 制卷状态 - 对应 ExamLayoutDocument.status */
+  status?: ExamLayoutStatusCode
   layoutEntryKind?: string
   totalPages?: number
   paperSpec?: string
@@ -101,8 +109,6 @@ export interface ExamLayoutAutoDetectRequest {
 }
 
 export interface ExamLayoutPageUploadMetaRequest {
-  examId: string
-  pageNo: number
   backgroundFileId: string
 }
 
@@ -145,5 +151,5 @@ export function fetchExamLayoutPageUploadMeta(data: ExamLayoutPageUploadMetaRequ
 }
 
 export function adjustExamLayoutQuestionRegion(data: ExamLayoutQuestionRegionAdjustRequest) {
-  return http.post<void>('/api/mark/exams/layout-design/question-region/adjust', data)
+  return http.post<boolean>('/api/mark/exams/layout-design/question-region/adjust', data)
 }

@@ -52,7 +52,5 @@ export const PRACTICE_STATUS_CONFIG: Record<PracticeStatusEnum, PracticeStatusIt
 
 /** 获取实训状态标签 */
 export function getPracticeStatusLabel(status: PracticeStatusEnum): string {
-  return strictEnumValue(PRACTICE_STATUS_CONFIG, status, '实训状态').description
+  return PRACTICE_STATUS_CONFIG[status].description
 }
-
-import { strictEnumValue } from '@/utils/strict-enum'

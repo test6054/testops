@@ -9,11 +9,9 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
+import { PortfolioCompletenessLevelDescription } from '@/apis/portfolio/enums'
 import { portfolioTodoApi } from '@/apis/portfolio/todo'
-import {
-  PORTFOLIO_COMPLETENESS_LEVEL_LABEL,
-  PORTFOLIO_COMPLETENESS_LEVEL_TONE,
-} from '@/apis/portfolio/types'
+import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import PortfolioProgressCockpitBand from '@/components/portfolio/PortfolioProgressCockpitBand.vue'
 import PortfolioProgressCompareDrawer from '@/components/portfolio/PortfolioProgressCompareDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -371,7 +369,7 @@ onUnmounted(() => {
               >
                 {{
                   strictEnumLabel(
-                    PORTFOLIO_COMPLETENESS_LEVEL_LABEL,
+                    PortfolioCompletenessLevelDescription,
                     workbenchSummary.completenessLevel,
                     '档案完整度等级',
                   )

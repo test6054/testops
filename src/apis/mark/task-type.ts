@@ -1,44 +1,33 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import {
+  ALL_PROCESSING_TASK_TYPE_CODES,
+  ProcessingTaskTypeCode,
+  ProcessingTaskTypeDescription,
+} from '@/types/enums/processing-task-type-enum'
 
-/** 批改处理任务类型 - 与后端 TaskType 枚举完全一致 */
-export type ProcessingTaskTypeCode
-  = | 'PAGE_REGISTER'
-    | 'SCAN_ORDER_AUDIT'
-    | 'PAPER_BINDING'
-    | 'RECOGNITION'
-    | 'SUBJECTIVE_AI_REVIEW'
-    | 'OBJECTIVE_AUTO_REVIEW'
-    | 'OBJECTIVE_AI_REVIEW'
-    | 'QUESTION_REVIEW_ARBITRATION'
-    | 'GRADING'
-    | 'EXPORT_GENERATE'
-    | 'ARCHIVE_PACKAGING'
-
-/** 处理任务类型文案 - 与后端 TaskType.message 完全一致 */
-export const PROCESSING_TASK_TYPE_LABEL: Record<ProcessingTaskTypeCode, string> = {
-  PAGE_REGISTER: '页面登记',
-  SCAN_ORDER_AUDIT: '顺序审计',
-  PAPER_BINDING: '身份绑定',
-  RECOGNITION: '题目识别',
-  SUBJECTIVE_AI_REVIEW: '主观题建议评分',
-  OBJECTIVE_AUTO_REVIEW: '客观题自动判分复核',
-  OBJECTIVE_AI_REVIEW: '客观题AI评分复核',
-  QUESTION_REVIEW_ARBITRATION: '题目复核仲裁',
-  GRADING: '批改',
-  EXPORT_GENERATE: '导出生成',
-  ARCHIVE_PACKAGING: '考后归档打包',
-}
+export {
+  ALL_PROCESSING_TASK_TYPE_CODES,
+  ProcessingTaskTypeCode,
+  ProcessingTaskTypeDescription,
+} from '@/types/enums/processing-task-type-enum'
 
 export const PROCESSING_TASK_TYPE_TONE: Record<ProcessingTaskTypeCode, BadgeTone> = {
-  PAGE_REGISTER: 'gray',
-  SCAN_ORDER_AUDIT: 'orange',
-  PAPER_BINDING: 'blue',
-  RECOGNITION: 'blue',
-  SUBJECTIVE_AI_REVIEW: 'purple',
-  OBJECTIVE_AUTO_REVIEW: 'green',
-  OBJECTIVE_AI_REVIEW: 'purple',
-  QUESTION_REVIEW_ARBITRATION: 'red',
-  GRADING: 'blue',
-  EXPORT_GENERATE: 'gray',
-  ARCHIVE_PACKAGING: 'gray',
+  [ProcessingTaskTypeCode.PAGE_REGISTER]: 'gray',
+  [ProcessingTaskTypeCode.SCAN_ORDER_AUDIT]: 'orange',
+  [ProcessingTaskTypeCode.PAPER_BINDING]: 'blue',
+  [ProcessingTaskTypeCode.RECOGNITION]: 'blue',
+  [ProcessingTaskTypeCode.SUBJECTIVE_AI_REVIEW]: 'purple',
+  [ProcessingTaskTypeCode.OBJECTIVE_AUTO_REVIEW]: 'green',
+  [ProcessingTaskTypeCode.OBJECTIVE_AI_REVIEW]: 'purple',
+  [ProcessingTaskTypeCode.QUESTION_REVIEW_ARBITRATION]: 'red',
+  [ProcessingTaskTypeCode.GRADING]: 'blue',
+  [ProcessingTaskTypeCode.EXPORT_GENERATE]: 'gray',
+  [ProcessingTaskTypeCode.ARCHIVE_PACKAGING]: 'gray',
+  [ProcessingTaskTypeCode.DELAYED_FINAL_SCORE_CONFIRM]: 'orange',
 }
+
+export const PROCESSING_TASK_TYPE_OPTIONS: Array<{ value: ProcessingTaskTypeCode, label: string }>
+  = ALL_PROCESSING_TASK_TYPE_CODES.map((value) => ({
+    value,
+    label: ProcessingTaskTypeDescription[value],
+  }))

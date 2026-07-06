@@ -41,7 +41,7 @@ export interface UseMarkingSubmitOptions {
   tenantId: Ref<string>
   form: { score?: number, annotationNote?: string }
   wholeQuestions: Ref<QuestionMarkingGroupQuestionVO[]>
-  getWholeQuestionForm: (questionTemplateId: string) => WholeQuestionForm
+  getWholeQuestionForm: (layoutQuestionId: string) => WholeQuestionForm
   wholePageAnnotationForms: Record<string, string>
   buildWholePaperSubmitRequest: () => {
     questionScores: MarkingQuestionScoreSubmitItem[]
@@ -63,7 +63,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   const submittedScoreSnapshot = ref<number | undefined>(undefined)
   const remainingSameQuestionCount = ref(0)
   const pendingBatchTaskIds = ref<string[]>([])
-  const pendingBatchQuestionTemplateId = ref('')
+  const pendingBatchLayoutQuestionId = ref('')
   const pendingBatchGroupId = ref('')
   const pendingBatchFullScore = ref(0)
 
@@ -74,6 +74,10 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
         validator(_rule, value) {
           if (value === undefined || value === null) return Promise.resolve()
           if (Number(value) < 0) return Promise.reject(new Error('给分不能为负'))
+          const fullScore = options.questionView.value?.fullScore
+          if (fullScore != null && Number(value) > fullScore) {
+            return Promise.reject(new Error(`给分不能超过满分 ${fullScore}`))
+          }
           return Promise.resolve()
         },
         trigger: 'change',
@@ -94,10 +98,10 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       throw new Error('请填写教师给分')
     }
     return {
-      questionTemplateId: options.questionView.value.questionTemplateId,
+      layoutQuestionId: options.questionView.value.layoutQuestionId,
       score: options.form.score,
       annotationText: options.form.annotationNote?.trim() || undefined,
-      correlationId: createCorrelationId('question', options.questionView.value.questionTemplateId),
+      correlationId: createCorrelationId('question', options.questionView.value.layoutQuestionId),
     }
   }
 
@@ -116,8 +120,8 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     if (currentTask.taskUnit === 'WHOLE_PAPER') {
       return []
     }
-    const questionTemplateId = options.questionView.value?.questionTemplateId
-    if (!questionTemplateId) {
+    const layoutQuestionId = options.questionView.value?.layoutQuestionId
+    if (!layoutQuestionId) {
       return []
     }
     return options.batchTasks.value.filter((item) => {
@@ -133,9 +137,9 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   function buildDraftPayload() {
     const wholeQuestionForms: Record<string, { score?: number, annotationText: string }> = {}
     for (const question of options.wholeQuestions.value) {
-      const qForm = options.getWholeQuestionForm(question.questionTemplateId)
+      const qForm = options.getWholeQuestionForm(question.layoutQuestionId)
       if (qForm.score !== undefined || qForm.annotationText.trim()) {
-        wholeQuestionForms[question.questionTemplateId] = {
+        wholeQuestionForms[question.layoutQuestionId] = {
           score: qForm.score,
           annotationText: qForm.annotationText,
         }
@@ -186,13 +190,13 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   async function applyScoreToRemaining(): Promise<void> {
     const currentTask = options.task.value
     const score = submittedScoreSnapshot.value
-    const questionTemplateId
-      = pendingBatchQuestionTemplateId.value || options.questionView.value?.questionTemplateId
+    const layoutQuestionId
+      = pendingBatchLayoutQuestionId.value || options.questionView.value?.layoutQuestionId
     if (
       !currentTask?.examId
       || !currentTask.groupId
       || score === undefined
-      || !questionTemplateId
+      || !layoutQuestionId
     ) {
       closeApplyModal()
       return
@@ -216,10 +220,10 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
 
     const questionScores: MarkingQuestionScoreSubmitItem[] = [
       {
-        questionTemplateId,
+        layoutQuestionId,
         score,
         annotationText: options.form.annotationNote?.trim() || undefined,
-        correlationId: createCorrelationId('question', questionTemplateId),
+        correlationId: createCorrelationId('question', layoutQuestionId),
       },
     ]
 
@@ -291,14 +295,14 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     score: number,
     remainingTasks: MarkingTaskVO[],
   ): void {
-    if (remainingTasks.length === 0 || !options.questionView.value?.questionTemplateId) {
+    if (remainingTasks.length === 0 || !options.questionView.value?.layoutQuestionId) {
       continueAfterSubmit()
       return
     }
     submittedScoreSnapshot.value = score
     remainingSameQuestionCount.value = remainingTasks.length
     pendingBatchTaskIds.value = remainingTasks.map((item) => item.id)
-    pendingBatchQuestionTemplateId.value = options.questionView.value.questionTemplateId
+    pendingBatchLayoutQuestionId.value = options.questionView.value.layoutQuestionId
     pendingBatchGroupId.value = currentTask.groupId ?? ''
     pendingBatchFullScore.value = options.questionView.value.fullScore
     applyModalOpen.value = true
@@ -386,7 +390,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     }
     if (options.usesWholePaperWorkspace.value) {
       const hasQuestionDraft = options.wholeQuestions.value.some((question) => {
-        const questionForm = options.getWholeQuestionForm(question.questionTemplateId)
+        const questionForm = options.getWholeQuestionForm(question.layoutQuestionId)
         return (
           (questionForm.score !== undefined && questionForm.score !== null)
           || (questionForm.annotationText?.trim() ?? '') !== ''

@@ -1,7 +1,7 @@
 import type { ExamDetailVO } from '@/apis/mark/exam'
 import type { ExamWorkbenchPrepStepVO } from '@/apis/mark/exam-progress'
 import type { WorkbenchStageStatus } from '@/types/workbench'
-import { EXAM_MATERIAL_LAYOUT_MODE_LABEL, EXAM_PRINT_SOURCE_MODE_LABEL } from '@/apis/mark/exam'
+import { ExamMaterialLayoutModeDescription, ExamPrintSourceModeDescription } from '@/apis/mark/exam'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** 考试准备页步骤卡片：后端诊断步骤 + 前端路由与操作文案 */
@@ -30,9 +30,9 @@ function resolvePrepStepDescription(step: ExamWorkbenchPrepStepVO, detail: ExamD
       if (!detail.materialLayoutMode) {
         return '先确定答卷页或整卷作答形态，后续扫描、身份识别与印刷包都按该形态执行'
       }
-      return `${strictEnumLabel(EXAM_MATERIAL_LAYOUT_MODE_LABEL, detail.materialLayoutMode, '制卷形态')}，${
+      return `${strictEnumLabel(ExamMaterialLayoutModeDescription, detail.materialLayoutMode, '制卷形态')}，${
         detail.printSourceMode
-          ? strictEnumLabel(EXAM_PRINT_SOURCE_MODE_LABEL, detail.printSourceMode, '印刷来源')
+          ? strictEnumLabel(ExamPrintSourceModeDescription, detail.printSourceMode, '印刷来源')
           : '无需系统印刷'
       }`
     case 'candidateRoster':

@@ -12,7 +12,13 @@ const route = useRoute()
 const router = useRouter()
 const qualityStore = useQualityStore()
 
-const tabs = [
+interface QualityIngestHubTab {
+  key: string
+  label: string
+  path: string
+}
+
+const tabs: QualityIngestHubTab[] = [
   { key: 'score-batch', label: '成绩 Excel 导入', path: '/quality/ingest-hub/score-batch' },
   { key: 'score-record', label: '成绩明细核对', path: '/quality/ingest-hub/score-record' },
   {
@@ -26,7 +32,7 @@ const tabs = [
     path: '/quality/ingest-hub/indirect-evaluation',
   },
   { key: 'external-pull', label: '外部数据拔取', path: '/quality/ingest-hub/external-pull' },
-] as const
+]
 
 const activeTab = computed(() => {
   const matched = tabs.find((item) => route.path.startsWith(item.path))

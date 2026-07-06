@@ -1,30 +1,32 @@
 import type {
   AccreditationCockpitVO,
-  AccreditationCyclePhase,
   AccreditationCycleVO,
 } from '@/apis/quality/accreditation'
-import type { WorkbenchStage } from '@/types/workbench'
+import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
 import { computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ACCREDITATION_CYCLE_PHASE_LABEL } from '@/apis/quality/accreditation'
+import {
+  AccreditationCyclePhaseCode,
+  AccreditationCyclePhaseDescription,
+} from '@/apis/quality/accreditation'
 import { useAccreditationCockpit } from '@/composables/useAccreditationCockpit'
 import { useQualityStore } from '@/stores/modules/quality'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const PHASE_ORDER: AccreditationCyclePhase[] = [
-  'SELF_EVALUATION',
-  'SELF_ASSESSMENT_REVIEW',
-  'ONSITE_VISIT',
-  'CONCLUSION',
-  'MAINTENANCE',
+const PHASE_ORDER: AccreditationCyclePhaseCode[] = [
+  AccreditationCyclePhaseCode.SELF_EVALUATION,
+  AccreditationCyclePhaseCode.SELF_ASSESSMENT_REVIEW,
+  AccreditationCyclePhaseCode.ONSITE_VISIT,
+  AccreditationCyclePhaseCode.CONCLUSION,
+  AccreditationCyclePhaseCode.MAINTENANCE,
 ]
 
-const PHASE_TAB: Record<AccreditationCyclePhase, string> = {
-  SELF_EVALUATION: 'cycle',
-  SELF_ASSESSMENT_REVIEW: 'cycle',
-  ONSITE_VISIT: 'onsite',
-  CONCLUSION: 'cycle',
-  MAINTENANCE: 'cycle',
+const PHASE_TAB: Record<AccreditationCyclePhaseCode, string> = {
+  [AccreditationCyclePhaseCode.SELF_EVALUATION]: 'cycle',
+  [AccreditationCyclePhaseCode.SELF_ASSESSMENT_REVIEW]: 'cycle',
+  [AccreditationCyclePhaseCode.ONSITE_VISIT]: 'onsite',
+  [AccreditationCyclePhaseCode.CONCLUSION]: 'cycle',
+  [AccreditationCyclePhaseCode.MAINTENANCE]: 'cycle',
 }
 
 export function useAccreditationWorkbench() {
@@ -51,8 +53,8 @@ export function useAccreditationWorkbench() {
     if (!cycle) {
       return PHASE_ORDER.map((key) => ({
         key,
-        title: strictEnumLabel(ACCREDITATION_CYCLE_PHASE_LABEL, key, '认证周期阶段'),
-        status: 'pending' as const,
+        title: strictEnumLabel(AccreditationCyclePhaseDescription, key, '认证周期阶段'),
+        status: 'pending',
       }))
     }
     const currentIdx = PHASE_ORDER.indexOf(cycle.currentPhase)
@@ -60,26 +62,26 @@ export function useAccreditationWorkbench() {
       let status: WorkbenchStage['status'] = 'pending'
       if (idx < currentIdx) status = 'completed'
       else if (idx === currentIdx)
-        status = cycle.cycleStatus === 'CLOSED' && key !== 'MAINTENANCE' ? 'warning' : 'active'
+        status = cycle.cycleStatus === 'CLOSED' && key !== AccreditationCyclePhaseCode.MAINTENANCE ? 'warning' : 'active'
       const stage: WorkbenchStage = {
         key,
-        title: strictEnumLabel(ACCREDITATION_CYCLE_PHASE_LABEL, key, '认证周期阶段'),
+        title: strictEnumLabel(AccreditationCyclePhaseDescription, key, '认证周期阶段'),
         status,
       }
-      if (key === 'SELF_EVALUATION' && cycle.applicationRecordedTime) {
+      if (key === AccreditationCyclePhaseCode.SELF_EVALUATION && cycle.applicationRecordedTime) {
         stage.statusText = '已登记申请'
       }
-      if (key === 'SELF_ASSESSMENT_REVIEW' && cycle.selfAssessmentSubmittedTime) {
+      if (key === AccreditationCyclePhaseCode.SELF_ASSESSMENT_REVIEW && cycle.selfAssessmentSubmittedTime) {
         stage.statusText = cycle.selfAssessmentReviewDecision || '审阅中'
       }
-      if (key === 'ONSITE_VISIT' && cycle.onsiteVisitStart) {
+      if (key === AccreditationCyclePhaseCode.ONSITE_VISIT && cycle.onsiteVisitStart) {
         stage.dateRange = `${cycle.onsiteVisitStart} ~ ${cycle.onsiteVisitEnd || ''}`
       }
-      if (key === 'CONCLUSION' && cycle.conclusionType) {
+      if (key === AccreditationCyclePhaseCode.CONCLUSION && cycle.conclusionType) {
         stage.statusText = cycle.conclusionType
         stage.status = 'completed'
       }
-      if (key === 'MAINTENANCE' && cycle.currentPhase === 'MAINTENANCE') {
+      if (key === AccreditationCyclePhaseCode.MAINTENANCE && cycle.currentPhase === AccreditationCyclePhaseCode.MAINTENANCE) {
         stage.status = 'active'
         if (cycle.conditionalDueDate) {
           stage.statusText = `改进截止 ${cycle.conditionalDueDate}`
@@ -89,7 +91,7 @@ export function useAccreditationWorkbench() {
     })
   })
 
-  const metrics = computed(() => {
+  const metrics = computed<SignalMetric[]>(() => {
     const c = cockpit.value
     if (!c) return []
     return [
@@ -105,7 +107,7 @@ export function useAccreditationWorkbench() {
         key: 'support',
         label: '支持条件档案',
         value: c.supportProfileConfirmed ? '已确认' : '未确认',
-        tone: c.supportProfileConfirmed ? ('green' as const) : ('orange' as const),
+        tone: c.supportProfileConfirmed ? 'green' : 'orange',
       },
       {
         key: 'faculty-profile',
@@ -118,7 +120,7 @@ export function useAccreditationWorkbench() {
         label: '年度报备材料',
         value: c.annualReportMaterialsReady ? '就绪' : '未就绪',
         helper: `材料 ${c.annualReportMaterialCount}，课程覆盖 ${annualCourseCoverageSummary.value}`,
-        tone: c.annualReportMaterialsReady ? ('green' as const) : ('orange' as const),
+        tone: c.annualReportMaterialsReady ? 'green' : 'orange',
       },
     ]
   })
@@ -142,7 +144,7 @@ export function useAccreditationWorkbench() {
     }
   }
 
-  function tabForPhase(phase: AccreditationCyclePhase) {
+  function tabForPhase(phase: AccreditationCyclePhaseCode) {
     return PHASE_TAB[phase] || 'cycle'
   }
 

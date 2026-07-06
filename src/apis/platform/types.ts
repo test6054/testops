@@ -2,7 +2,13 @@
  * 平台文件 / Excel 导入 API 类型（与 edu-common 契约一致）。
  * Excel 批量导入真源契约；业务域 apis/* 不重复定义 import Request/Result。
  */
-export type ExcelImportExecutionMode = 'SYNC' | 'ASYNC'
+import type { ExcelImportSceneKey, FileUploadSceneKey } from './scene-keys'
+
+/** Excel 导入执行模式 - 与平台 Excel 导入返回契约对齐。 */
+export enum ExcelImportExecutionMode {
+  SYNC = 'SYNC',
+  ASYNC = 'ASYNC',
+}
 
 export interface ExcelImportRowField {
   columnName: string
@@ -18,7 +24,10 @@ export interface ExcelImportRowDiagnostic {
 }
 
 /** 名册 Excel 导入预览行（MARK_ROSTER_EXCEL 正式契约） */
-export type ExcelImportRosterImportAction = 'EXISTING_STUDENT' | 'CREATE_STUDENT'
+export enum ExcelImportRosterImportAction {
+  EXISTING_STUDENT = 'EXISTING_STUDENT',
+  CREATE_STUDENT = 'CREATE_STUDENT',
+}
 
 export interface ExcelImportRosterPreviewRow {
   rowNo: number
@@ -60,7 +69,7 @@ export interface PlatformFileStageVO {
   fileNodeId: string
   fileName: string
   fileSize: number
-  sceneKey: string
+  sceneKey: FileUploadSceneKey
 }
 
 export interface ExcelImportTemplateVO {
@@ -69,18 +78,27 @@ export interface ExcelImportTemplateVO {
   sampleRowCount?: number
 }
 
+/** 平台 Excel 导入域上下文 JSON - 对齐后端 FastJson2 JSONObject */
+export type PlatformJsonPrimitive = string | number | boolean | null
+
+export interface PlatformJsonObject {
+  [key: string]: PlatformJsonValue | undefined
+}
+
+export type PlatformJsonValue = PlatformJsonPrimitive | PlatformJsonObject | PlatformJsonValue[]
+
 export interface ExcelImportTemplateRequest {
-  sceneKey: string
-  context?: Record<string, unknown>
+  sceneKey: ExcelImportSceneKey
+  context?: PlatformJsonObject
 }
 
 export interface ExcelImportSubmitRequest {
-  sceneKey: string
+  sceneKey: ExcelImportSceneKey
   fileNodeId: string
-  context?: Record<string, unknown>
+  context?: PlatformJsonObject
 }
 
 export interface ExcelImportGetRequest {
   batchId: string
-  sceneKey: string
+  sceneKey: ExcelImportSceneKey
 }

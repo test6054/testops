@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioDevelopmentRecordType } from '@/apis/portfolio/enums'
 import type {
   PortfolioAchievementStatsVO,
   PortfolioDevelopmentRecordVO,
 } from '@/apis/portfolio/teacher-platform'
-import { onMounted, reactive, ref } from 'vue'
-import { PORTFOLIO_DEVELOPMENT_RECORD_TYPE_LABEL } from '@/apis/portfolio/enums'
+import {
+  PortfolioDevelopmentRecordTypeCode,
+  PortfolioDevelopmentRecordTypeDescription,
+} from '@/apis/portfolio/enums'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -19,10 +20,14 @@ import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const recordTypeKeys: PortfolioDevelopmentRecordType[] = ['ACHIEVEMENT', 'HONOR', 'POLICY']
+const recordTypeKeys: PortfolioDevelopmentRecordTypeCode[] = [
+  PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT,
+  PortfolioDevelopmentRecordTypeCode.HONOR,
+  PortfolioDevelopmentRecordTypeCode.POLICY,
+]
 
-function recordTypeLabel(type: PortfolioDevelopmentRecordType): string {
-  return strictEnumLabel(PORTFOLIO_DEVELOPMENT_RECORD_TYPE_LABEL, type, '发展档案条目类型')
+function recordTypeLabel(type: PortfolioDevelopmentRecordTypeCode): string {
+  return strictEnumLabel(PortfolioDevelopmentRecordTypeDescription, type, '发展档案条目类型')
 }
 
 const loading = ref(false)

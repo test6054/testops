@@ -1,10 +1,5 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  PortfolioDevelopmentPlanItemStatus,
-  PortfolioDevelopmentPlanStatus,
-  PortfolioDevelopmentPlanType,
-} from '@/apis/portfolio/enums'
 import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
 import type {
   PortfolioDevelopmentPlanItemSaveRequest,
@@ -14,9 +9,13 @@ import type {
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
-  PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL,
-  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL,
+  PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS,
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
+  PortfolioDevelopmentPlanItemStatusCode,
+  PortfolioDevelopmentPlanItemStatusDescription,
+  PortfolioDevelopmentPlanStatusCode,
+  PortfolioDevelopmentPlanStatusDescription,
+  PortfolioDevelopmentPlanTypeCode,
 } from '@/apis/portfolio/enums'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
@@ -40,18 +39,25 @@ const rows = ref<PortfolioDevelopmentPlanVO[]>([])
 const selectedPlanId = ref('')
 const itemLoading = ref(false)
 const itemSaving = ref(false)
-const planItems = ref<PortfolioDevelopmentPlanItemSaveRequest[]>([])
 
-function planItemRowKey(record: unknown): string {
-  const idx = planItems.value.indexOf(record as PortfolioDevelopmentPlanItemSaveRequest)
-  return idx >= 0 ? String(idx) : '0'
+interface DevelopmentPlanItemEditorRow extends PortfolioDevelopmentPlanItemSaveRequest {
+  rowKey: string
 }
 
-const form = reactive({
+const planItems = ref<DevelopmentPlanItemEditorRow[]>([])
+
+interface DevelopmentPlanDepartmentForm {
+  planYear: string
+  planTitle: string
+  planSummary: string
+  portfolioOrgId: string
+}
+
+const form = reactive<DevelopmentPlanDepartmentForm>({
   planYear: String(new Date().getFullYear()),
   planTitle: '',
   planSummary: '',
-  portfolioOrgId: '' as string,
+  portfolioOrgId: '',
 })
 
 const columns: ColumnsType = [
@@ -62,9 +68,7 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 140 },
 ]
 
-const itemStatusOptions = (
-  Object.keys(PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL) as PortfolioDevelopmentPlanItemStatus[]
-).map((value) => ({ value, label: PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL[value] }))
+const itemStatusOptions = PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS
 
 const itemColumns: ColumnsType = [
   { title: '标题', dataIndex: 'itemTitle', key: 'itemTitle', width: 160 },
@@ -100,7 +104,8 @@ const selectedPlan = computed(
 
 const planItemEditable = computed(() => {
   const status = selectedPlan.value?.planStatus
-  return status === 'DRAFT' || status === 'DEPARTMENT_RETURNED'
+  return status === PortfolioDevelopmentPlanStatusCode.DRAFT
+    || status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
 })
 
 const planOptions = computed(() =>
@@ -110,11 +115,11 @@ const planOptions = computed(() =>
   })),
 )
 
-function planStatusLabel(status: PortfolioDevelopmentPlanStatus): string {
-  return strictEnumLabel(PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL, status, '发展规划状态')
+function planStatusLabel(status: PortfolioDevelopmentPlanStatusCode): string {
+  return strictEnumLabel(PortfolioDevelopmentPlanStatusDescription, status, '发展规划状态')
 }
 
-function planStatusTone(status: PortfolioDevelopmentPlanStatus) {
+function planStatusTone(status: PortfolioDevelopmentPlanStatusCode) {
   return strictEnumTone(PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE, status, '发展规划状态')
 }
 
@@ -125,7 +130,7 @@ async function loadPage() {
       pageNum: 1,
       pageSize: 50,
       planYear: form.planYear,
-      planType: 'DEPARTMENT' as PortfolioDevelopmentPlanType,
+      planType: PortfolioDevelopmentPlanTypeCode.DEPARTMENT,
     })
     rows.value = readPageList(page, '加载部门年度规划失败')
     if (!rows.value.some((item) => item.id === selectedPlanId.value)) {
@@ -181,7 +186,7 @@ async function exportPlans() {
   try {
     const result = await portfolioDevelopmentPlanApi.exportExcel({
       planYear: form.planYear,
-      planType: 'DEPARTMENT',
+      planType: PortfolioDevelopmentPlanTypeCode.DEPARTMENT,
     })
     await downloadPortfolioExcelExport(result)
     message.success('规划已导出')
@@ -196,26 +201,28 @@ function openPlanItems(planId: string) {
   void loadPlanItems()
 }
 
-function createEmptyPlanItem(): PortfolioDevelopmentPlanItemSaveRequest {
+function createEmptyPlanItem(): DevelopmentPlanItemEditorRow {
   return {
+    rowKey: `new-${Date.now()}-${planItems.value.length}`,
     itemTitle: '',
     itemGoal: '',
     indicatorCode: '',
     milestoneText: '',
-    completionPercent: '0',
-    itemStatus: 'NOT_STARTED',
+    completionPercent: 0,
+    itemStatus: PortfolioDevelopmentPlanItemStatusCode.NOT_STARTED,
   }
 }
 
 function toEditableItem(
   item: PortfolioDevelopmentPlanItemVO,
-): PortfolioDevelopmentPlanItemSaveRequest {
+): DevelopmentPlanItemEditorRow {
   return {
+    rowKey: item.id ?? `item-${item.sortOrder ?? 0}-${item.itemTitle}`,
     itemTitle: item.itemTitle,
     itemGoal: item.itemGoal,
     indicatorCode: item.indicatorCode,
     milestoneText: item.milestoneText,
-    completionPercent: item.completionPercent ?? '0',
+    completionPercent: item.completionPercent ?? 0,
     itemStatus: item.itemStatus,
     sortOrder: item.sortOrder,
   }
@@ -253,16 +260,22 @@ async function savePlanItems() {
     message.warning('请选择规划')
     return
   }
-  const items = planItems.value
-    .map((item, index) => ({
-      ...item,
-      itemTitle: item.itemTitle.trim(),
+  const items: PortfolioDevelopmentPlanItemSaveRequest[] = []
+  planItems.value.forEach((item, index) => {
+    const itemTitle = item.itemTitle.trim()
+    if (!itemTitle) {
+      return
+    }
+    items.push({
+      itemTitle,
       itemGoal: item.itemGoal?.trim() || undefined,
       indicatorCode: item.indicatorCode?.trim() || undefined,
       milestoneText: item.milestoneText?.trim() || undefined,
+      completionPercent: item.completionPercent,
+      itemStatus: item.itemStatus,
       sortOrder: index,
-    }))
-    .filter((item) => item.itemTitle)
+    })
+  })
   if (items.length === 0) {
     message.warning('请至少填写一条明细标题')
     return
@@ -329,7 +342,8 @@ onMounted(async () => {
               <template v-else-if="column.key === 'actions'">
                 <UiButton
                   v-if="
-                    record.planStatus === 'DRAFT' || record.planStatus === 'DEPARTMENT_RETURNED'
+                    record.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT
+                      || record.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
                   "
                   size="sm"
                   @click="submitPlan(record.id)"
@@ -367,7 +381,7 @@ onMounted(async () => {
             :columns="itemColumns"
             :data-source="planItems"
             :loading="itemLoading"
-            :row-key="planItemRowKey"
+            row-key="rowKey"
             :pagination="false"
             style="margin-top: 16px"
           >
@@ -412,7 +426,8 @@ onMounted(async () => {
               <template v-else-if="column.key === 'completionPercent'">
                 <input
                   v-if="planItemEditable"
-                  v-model="record.completionPercent"
+                  v-model.number="record.completionPercent"
+                  type="number"
                   class="input input--cell input--short"
                 />
                 <span v-else>{{ record.completionPercent ?? '0' }}%</span>
@@ -427,7 +442,7 @@ onMounted(async () => {
                 <UiTag v-else tone="blue">
                   {{
                     strictEnumLabel(
-                      PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_LABEL,
+                      PortfolioDevelopmentPlanItemStatusDescription,
                       record.itemStatus,
                       '规划明细状态',
                     )

@@ -2,34 +2,99 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
+import {
+  AccreditationConclusionTypeCode,
+  AccreditationConclusionTypeDescription,
+  ALL_ACCREDITATION_CONCLUSION_TYPE_CODES,
+} from '@/types/enums/accreditation-conclusion-type-enum'
+import {
+  AccreditationCyclePhaseCode,
+  AccreditationCyclePhaseDescription,
+  ALL_ACCREDITATION_CYCLE_PHASE_CODES,
+} from '@/types/enums/accreditation-cycle-phase-enum'
+import {
+  AccreditationCycleStatusCode,
+  AccreditationCycleStatusDescription,
+  ALL_ACCREDITATION_CYCLE_STATUS_CODES,
+} from '@/types/enums/accreditation-cycle-status-enum'
+import {
+  AccreditationEvidenceAnchorTypeCode,
+  AccreditationEvidenceAnchorTypeDescription,
+  ALL_ACCREDITATION_EVIDENCE_ANCHOR_TYPE_CODES,
+} from '@/types/enums/accreditation-evidence-anchor-type-enum'
+import {
+  AccreditationEvidenceCategoryCode,
+  AccreditationEvidenceCategoryDescription,
+  ALL_ACCREDITATION_EVIDENCE_CATEGORY_CODES,
+} from '@/types/enums/accreditation-evidence-category-enum'
+import {
+  ALL_ANNUAL_REPORT_MATERIAL_CATEGORY_CODES,
+  AnnualReportMaterialCategoryCode,
+  AnnualReportMaterialCategoryDescription,
+} from '@/types/enums/annual-report-material-category-enum'
+import {
+  ALL_ANNUAL_REPORT_MATERIAL_REVIEW_STATUS_CODES,
+  AnnualReportMaterialReviewStatusCode,
+  AnnualReportMaterialReviewStatusDescription,
+} from '@/types/enums/annual-report-material-review-status-enum'
+import {
+  ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES,
+  AnnualReportMaterialStatusCode,
+  AnnualReportMaterialStatusDescription,
+} from '@/types/enums/annual-report-material-status-enum'
+import {
+  ALL_ONSITE_CHECKLIST_CATEGORY_CODES,
+  OnsiteChecklistCategoryCode,
+  OnsiteChecklistCategoryDescription,
+} from '@/types/enums/onsite-checklist-category-enum'
+import {
+  ALL_ONSITE_CHECKLIST_ITEM_STATUS_CODES,
+  OnsiteChecklistItemStatusCode,
+  OnsiteChecklistItemStatusDescription,
+} from '@/types/enums/onsite-checklist-item-status-enum'
+import {
+  ALL_SELF_ASSESSMENT_REVIEW_DECISION_CODES,
+  SelfAssessmentReviewDecisionCode,
+  SelfAssessmentReviewDecisionDescription,
+} from '@/types/enums/self-assessment-review-decision-enum'
+
+export {
+  AccreditationConclusionTypeCode,
+  AccreditationConclusionTypeDescription,
+  AccreditationCyclePhaseCode,
+  AccreditationCyclePhaseDescription,
+  AccreditationCycleStatusCode,
+  AccreditationCycleStatusDescription,
+  AccreditationEvidenceAnchorTypeCode,
+  AccreditationEvidenceAnchorTypeDescription,
+  AccreditationEvidenceCategoryCode,
+  AccreditationEvidenceCategoryDescription,
+  ALL_ACCREDITATION_CONCLUSION_TYPE_CODES,
+  ALL_ACCREDITATION_CYCLE_PHASE_CODES,
+  ALL_ACCREDITATION_CYCLE_STATUS_CODES,
+  ALL_ACCREDITATION_EVIDENCE_ANCHOR_TYPE_CODES,
+  ALL_ACCREDITATION_EVIDENCE_CATEGORY_CODES,
+  ALL_ANNUAL_REPORT_MATERIAL_CATEGORY_CODES,
+  ALL_ANNUAL_REPORT_MATERIAL_REVIEW_STATUS_CODES,
+  ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES,
+  ALL_ONSITE_CHECKLIST_CATEGORY_CODES,
+  ALL_ONSITE_CHECKLIST_ITEM_STATUS_CODES,
+  ALL_SELF_ASSESSMENT_REVIEW_DECISION_CODES,
+  AnnualReportMaterialCategoryCode,
+  AnnualReportMaterialCategoryDescription,
+  AnnualReportMaterialReviewStatusCode,
+  AnnualReportMaterialReviewStatusDescription,
+  AnnualReportMaterialStatusCode,
+  AnnualReportMaterialStatusDescription,
+  OnsiteChecklistCategoryCode,
+  OnsiteChecklistCategoryDescription,
+  OnsiteChecklistItemStatusCode,
+  OnsiteChecklistItemStatusDescription,
+  SelfAssessmentReviewDecisionCode,
+  SelfAssessmentReviewDecisionDescription,
+}
 
 const BASE = '/api/quality/accreditation'
-
-export type AccreditationCyclePhase
-  = 'SELF_EVALUATION' | 'SELF_ASSESSMENT_REVIEW' | 'ONSITE_VISIT' | 'CONCLUSION' | 'MAINTENANCE'
-
-export type AccreditationCycleStatus = 'ACTIVE' | 'CLOSED' | 'SUSPENDED'
-
-export type SelfAssessmentReviewDecision = 'ACCEPTED' | 'SUPPLEMENT_REQUIRED' | 'REJECTED'
-
-export type AccreditationConclusionType = 'FULL_6Y' | 'CONDITIONAL_6Y' | 'NOT_PASS'
-
-export type OnsiteChecklistItemStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'NOT_APPLICABLE'
-
-export type AnnualReportMaterialStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED'
-
-export type AnnualReportMaterialReviewStatus = 'APPROVED' | 'REJECTED'
-
-export type AnnualReportMaterialCategory
-  = | 'CONTINUOUS_IMPROVEMENT_REPORT'
-    | 'MIDTERM_CONTINUOUS_IMPROVEMENT_REPORT'
-    | 'COURSE_QUALITY_EVALUATION'
-    | 'FACULTY_AND_SUPPORT'
-    | 'QUALITY_ASSURANCE'
-    | 'INDUSTRY_GRADUATE_FEEDBACK'
-
-export type OnsiteChecklistCategory
-  = 'FACILITY' | 'PAPER_SAMPLE' | 'CLASS_OBSERVATION' | 'INTERVIEW' | 'DOCUMENT' | 'OTHER'
 
 export interface AccreditationCycleVO {
   id: string
@@ -41,18 +106,18 @@ export interface AccreditationCycleVO {
   accreditationStandardId?: string
   cycleCode: string
   cycleName: string
-  currentPhase: AccreditationCyclePhase
-  cycleStatus: AccreditationCycleStatus
+  currentPhase: AccreditationCyclePhaseCode
+  cycleStatus: AccreditationCycleStatusCode
   applicationRecordedTime?: string
   selfAssessmentSubmittedTime?: string
   selfAssessmentReviewStatus?: string
-  selfAssessmentReviewDecision?: SelfAssessmentReviewDecision
+  selfAssessmentReviewDecision?: SelfAssessmentReviewDecisionCode
   selfAssessmentReviewRemark?: string
   selfAssessmentReviewTime?: string
   onsiteVisitStart?: string
   onsiteVisitEnd?: string
   onsiteReportDueDate?: string
-  conclusionType?: AccreditationConclusionType
+  conclusionType?: AccreditationConclusionTypeCode
   validFrom?: string
   validUntil?: string
   conditionalDueDate?: string
@@ -99,8 +164,8 @@ export interface AccreditationCockpitVO {
 export interface AccreditationCycleQueryRequest extends QueryDto {
   programId?: string
   trainingPlanId?: string
-  currentPhase?: AccreditationCyclePhase
-  cycleStatus?: AccreditationCycleStatus
+  currentPhase?: AccreditationCyclePhaseCode
+  cycleStatus?: AccreditationCycleStatusCode
   keyword?: string
 }
 
@@ -119,14 +184,14 @@ export interface AccreditationCycleSaveRequest {
 
 export interface SelfAssessmentReviewDecisionRequest {
   accreditationCycleId: string
-  reviewDecision: SelfAssessmentReviewDecision
+  reviewDecision: SelfAssessmentReviewDecisionCode
   reviewRemark?: string
   supplementDeadline?: string
 }
 
 export interface AccreditationConclusionRegisterRequest {
   accreditationCycleId: string
-  conclusionType: AccreditationConclusionType
+  conclusionType: AccreditationConclusionTypeCode
   validFrom?: string
   validUntil?: string
   conditionalDueDate?: string
@@ -180,12 +245,12 @@ export interface OnsiteVisitPlanSaveRequest {
 
 export interface OnsiteChecklistItemVO {
   id: string
-  itemCategory: OnsiteChecklistCategory
+  itemCategory: OnsiteChecklistCategoryCode
   itemCode: string
   itemTitle: string
   itemDescription?: string
   responsibleUserId?: string
-  itemStatus: OnsiteChecklistItemStatus
+  itemStatus: OnsiteChecklistItemStatusCode
   evidenceArchiveId?: string
   completedTime?: string
   sortOrder?: number
@@ -214,7 +279,7 @@ export interface OnsiteVisitPlanVO {
 export interface OnsiteChecklistItemUpdateRequest {
   id: string
   responsibleUserId?: string
-  itemStatus: OnsiteChecklistItemStatus
+  itemStatus: OnsiteChecklistItemStatusCode
   evidenceArchiveId?: string
   remark?: string
 }
@@ -268,7 +333,7 @@ export interface AnnualReportMaterialSaveRequest {
   accreditationCycleId: string
   trainingPlanId: string
   reportYear: string
-  materialCategory: AnnualReportMaterialCategory
+  materialCategory: AnnualReportMaterialCategoryCode
   qualityCourseId?: string
   materialName: string
   materialDescription?: string
@@ -279,14 +344,14 @@ export interface AnnualReportMaterialQueryRequest extends QueryDto {
   accreditationCycleId?: string
   trainingPlanId?: string
   reportYear?: string
-  materialCategory?: AnnualReportMaterialCategory
-  reportStatus?: AnnualReportMaterialStatus
+  materialCategory?: AnnualReportMaterialCategoryCode
+  reportStatus?: AnnualReportMaterialStatusCode
   keyword?: string
 }
 
 export interface AnnualReportMaterialReviewRequest {
   id: string
-  reviewStatus: AnnualReportMaterialReviewStatus
+  reviewStatus: AnnualReportMaterialReviewStatusCode
   reviewComment?: string
 }
 
@@ -295,14 +360,14 @@ export interface AnnualReportMaterialVO {
   accreditationCycleId: string
   trainingPlanId: string
   reportYear: string
-  materialCategory: AnnualReportMaterialCategory
+  materialCategory: AnnualReportMaterialCategoryCode
   qualityCourseId?: string
   qualityCourseCode?: string
   qualityCourseName?: string
   materialName: string
   materialDescription?: string
   storageFileId?: string
-  reportStatus: AnnualReportMaterialStatus
+  reportStatus: AnnualReportMaterialStatusCode
   submittedTime?: string
   reviewerUserId?: string
   reviewComment?: string
@@ -317,24 +382,6 @@ export interface AccreditationScopeRequest {
   accreditationCycleId?: string
 }
 
-export type AccreditationEvidenceCategory
-  = | 'EXAM_PAPER'
-    | 'HOMEWORK'
-    | 'LAB_REPORT'
-    | 'GRADUATION_PROJECT'
-    | 'COURSE_MATERIAL'
-    | 'FACILITY'
-    | 'MANAGEMENT_DOC'
-    | 'OTHER'
-
-export type AccreditationEvidenceAnchorType
-  = | 'TRAINING_PLAN'
-    | 'QUALITY_COURSE'
-    | 'ASSESSMENT_ITEM'
-    | 'MARK_EXAM'
-    | 'MARK_SCANNED_PAGE'
-    | 'MANUAL'
-
 export interface AccreditationEvidenceVO {
   id: string
   programId: string
@@ -342,13 +389,14 @@ export interface AccreditationEvidenceVO {
   qualityCourseId?: string
   assessmentItemId?: string
   sourceExamId?: string
-  evidenceCategory: AccreditationEvidenceCategory
-  anchorType: AccreditationEvidenceAnchorType
+  evidenceCategory: AccreditationEvidenceCategoryCode
+  anchorType: AccreditationEvidenceAnchorTypeCode
   anchorId?: string
   evidenceCode: string
   evidenceTitle: string
   evidenceDescription?: string
   storageFileId: string
+  archiveId?: string
   schoolYear?: string
   semester?: SemesterCode
   markScannedPageId?: string
@@ -361,7 +409,7 @@ export interface AccreditationEvidenceQueryRequest extends QueryDto {
   programId?: string
   trainingPlanId?: string
   qualityCourseId?: string
-  evidenceCategory?: AccreditationEvidenceCategory
+  evidenceCategory?: AccreditationEvidenceCategoryCode
   keyword?: string
 }
 
@@ -372,8 +420,8 @@ export interface AccreditationEvidenceSaveRequest {
   qualityCourseId?: string
   assessmentItemId?: string
   sourceExamId?: string
-  evidenceCategory: AccreditationEvidenceCategory
-  anchorType: AccreditationEvidenceAnchorType
+  evidenceCategory: AccreditationEvidenceCategoryCode
+  anchorType: AccreditationEvidenceAnchorTypeCode
   anchorId?: string
   evidenceCode: string
   evidenceTitle: string
@@ -391,86 +439,20 @@ export interface ImportMarkExamEvidenceRequest {
   examIds: string[]
 }
 
-export const ACCREDITATION_CYCLE_PHASE_LABEL: Record<AccreditationCyclePhase, string> = {
-  SELF_EVALUATION: '校内自评',
-  SELF_ASSESSMENT_REVIEW: '自评审阅',
-  ONSITE_VISIT: '现场考查',
-  CONCLUSION: '认证结论',
-  MAINTENANCE: '保持改进',
+export const ANNUAL_REPORT_MATERIAL_STATUS_TONE: Record<AnnualReportMaterialStatusCode, BadgeTone> = {
+  [AnnualReportMaterialStatusCode.DRAFT]: 'gray',
+  [AnnualReportMaterialStatusCode.SUBMITTED]: 'blue',
+  [AnnualReportMaterialStatusCode.APPROVED]: 'green',
+  [AnnualReportMaterialStatusCode.REJECTED]: 'orange',
 }
 
-export const ACCREDITATION_CYCLE_STATUS_LABEL: Record<AccreditationCycleStatus, string> = {
-  ACTIVE: '进行中',
-  CLOSED: '已关闭',
-  SUSPENDED: '已暂停',
-}
-
-export const ACCREDITATION_CONCLUSION_LABEL: Record<AccreditationConclusionType, string> = {
-  FULL_6Y: '通过（6年）',
-  CONDITIONAL_6Y: '有条件通过',
-  NOT_PASS: '不通过',
-}
-
-export const ONSITE_CHECKLIST_STATUS_LABEL: Record<OnsiteChecklistItemStatus, string> = {
-  PENDING: '待准备',
-  IN_PROGRESS: '准备中',
-  COMPLETED: '已完成',
-  NOT_APPLICABLE: '不适用',
-}
-
-export const ONSITE_CHECKLIST_CATEGORY_LABEL: Record<OnsiteChecklistCategory, string> = {
-  FACILITY: '实验与工程训练设施',
-  PAPER_SAMPLE: '试卷与作业样本',
-  CLASS_OBSERVATION: '课堂听课',
-  INTERVIEW: '访谈座谈',
-  DOCUMENT: '支撑材料与档案',
-  OTHER: '其他',
-}
-
-export const ACCREDITATION_EVIDENCE_CATEGORY_LABEL: Record<AccreditationEvidenceCategory, string>
-  = {
-    EXAM_PAPER: '试卷样本',
-    HOMEWORK: '作业样本',
-    LAB_REPORT: '实验报告',
-    GRADUATION_PROJECT: '毕业设计',
-    COURSE_MATERIAL: '课程材料',
-    FACILITY: '实验设施',
-    MANAGEMENT_DOC: '管理文件',
-    OTHER: '其他',
-  }
-
-export const ACCREDITATION_EVIDENCE_ANCHOR_LABEL: Record<AccreditationEvidenceAnchorType, string>
-  = {
-    TRAINING_PLAN: '培养方案',
-    QUALITY_COURSE: '质量评价课程',
-    ASSESSMENT_ITEM: '考核环节',
-    MARK_EXAM: 'edu-mark 考试',
-    MARK_SCANNED_PAGE: 'edu-mark 扫描页',
-    MANUAL: '手工上传',
-  }
-
-export const ANNUAL_REPORT_MATERIAL_STATUS_LABEL: Record<AnnualReportMaterialStatus, string> = {
-  DRAFT: '草稿',
-  SUBMITTED: '已提交',
-  APPROVED: '已通过',
-  REJECTED: '已退回',
-}
-
-export const ANNUAL_REPORT_MATERIAL_STATUS_TONE: Record<AnnualReportMaterialStatus, BadgeTone> = {
-  DRAFT: 'gray',
-  SUBMITTED: 'blue',
-  APPROVED: 'green',
-  REJECTED: 'orange',
-}
-
-export const ANNUAL_REPORT_MATERIAL_CATEGORY_LABEL: Record<AnnualReportMaterialCategory, string> = {
-  CONTINUOUS_IMPROVEMENT_REPORT: '年度持续改进报告',
-  MIDTERM_CONTINUOUS_IMPROVEMENT_REPORT: '第三年持续改进情况报告',
-  COURSE_QUALITY_EVALUATION: '课程评价与达成度材料',
-  FACULTY_AND_SUPPORT: '师资与支持条件材料',
-  QUALITY_ASSURANCE: '校内质量保障材料',
-  INDUSTRY_GRADUATE_FEEDBACK: '行业与毕业生反馈材料',
-}
+export const ANNUAL_REPORT_MATERIAL_CATEGORY_OPTIONS: Array<{
+  value: AnnualReportMaterialCategoryCode
+  label: string
+}> = ALL_ANNUAL_REPORT_MATERIAL_CATEGORY_CODES.map(value => ({
+  value,
+  label: AnnualReportMaterialCategoryDescription[value],
+}))
 
 export const accreditationApi = {
   cyclePage: (data: AccreditationCycleQueryRequest) =>

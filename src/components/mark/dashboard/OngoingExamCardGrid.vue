@@ -72,8 +72,8 @@
       </div>
 
       <footer class="ongoing-exam-card__footer">
-        <UiTag v-if="formatAcademicTerm(exam)" tone="gray" size="sm">
-          {{ formatAcademicTerm(exam) }}
+        <UiTag v-if="formatAcademicYearSemester(exam.academicYear, exam.semester)" tone="gray" size="sm">
+          {{ formatAcademicYearSemester(exam.academicYear, exam.semester) }}
         </UiTag>
         <UiButton
           size="sm"
@@ -94,7 +94,7 @@ import type { MarkStageKey } from '@/stores/modules/markStage'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import { formatSemester } from '@/types/enums/semester-enum'
+import { formatAcademicYearSemester } from '@/types/enums/semester-enum'
 
 defineOptions({ name: 'OngoingExamCardGrid' })
 
@@ -114,15 +114,10 @@ function formatCount(value: number | undefined): string {
   return (value ?? 0).toLocaleString('zh-CN')
 }
 
-function formatAcademicTerm(exam: MarkTeacherDashboardOngoingExamItemVO): string {
-  if (!exam.academicYear && !exam.semester) return ''
-  return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
-}
-
 function examMeta(exam: MarkTeacherDashboardOngoingExamItemVO): string {
   const parts: string[] = []
   if (exam.examNo) parts.push(exam.examNo)
-  const term = formatAcademicTerm(exam)
+  const term = formatAcademicYearSemester(exam.academicYear, exam.semester)
   if (term && !exam.examNo) parts.push(term)
   return parts.join(' · ')
 }

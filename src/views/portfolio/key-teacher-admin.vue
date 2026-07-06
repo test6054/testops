@@ -1,16 +1,15 @@
 <script setup lang="ts">
-import type { Key } from 'ant-design-vue/es/_util/type'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  PortfolioKeyTeacherRegistryStatus,
-  PortfolioKeyTeacherRegistryType,
+  PortfolioKeyTeacherRegistryStatusCode,
 } from '@/apis/portfolio/enums'
 import type { PortfolioKeyTeacherRegistryVO } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import {
-  PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL,
-  PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_LABEL,
+  PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_OPTIONS,
+  PortfolioKeyTeacherRegistryStatusDescription,
+  PortfolioKeyTeacherRegistryTypeCode,
 } from '@/apis/portfolio/enums'
 import { portfolioKeyTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -24,15 +23,13 @@ import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSear
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { strictEnumLabel } from '@/utils/strict-enum'
 
-const REGISTRY_TABS = (
-  Object.keys(PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_LABEL) as PortfolioKeyTeacherRegistryType[]
-).map((key) => ({ key, label: PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_LABEL[key] }))
+const REGISTRY_TABS = PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_OPTIONS.map((item) => ({
+  key: item.value,
+  label: item.label,
+}))
 
-type RegistryType = PortfolioKeyTeacherRegistryType
-
-const activeType = ref<RegistryType>('PROGRAM_LEADER')
+const activeType = ref<PortfolioKeyTeacherRegistryTypeCode>(PortfolioKeyTeacherRegistryTypeCode.PROGRAM_LEADER)
 const loading = ref(false)
 const rows = ref<PortfolioKeyTeacherRegistryVO[]>([])
 const form = reactive({
@@ -54,8 +51,8 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 80 },
 ]
 
-function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatus): string {
-  return strictEnumLabel(PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL, status, '骨干带头人登记状态')
+function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatusCode): string {
+  return PortfolioKeyTeacherRegistryStatusDescription[status]
 }
 
 async function loadPage() {
@@ -121,9 +118,16 @@ async function exportRoster() {
   }
 }
 
-function switchType(key: RegistryType) {
-  activeType.value = key
-  loadPage()
+function switchType(key: string | number) {
+  switch (key) {
+    case PortfolioKeyTeacherRegistryTypeCode.PROGRAM_LEADER:
+      activeType.value = PortfolioKeyTeacherRegistryTypeCode.PROGRAM_LEADER
+      break
+    case PortfolioKeyTeacherRegistryTypeCode.KEY_TEACHER:
+      activeType.value = PortfolioKeyTeacherRegistryTypeCode.KEY_TEACHER
+      break
+  }
+  void loadPage()
 }
 
 onMounted(loadPage)
@@ -135,7 +139,7 @@ onMounted(loadPage)
       <ContextBar layout="workbench" show-title title="骨干/带头人登记" />
     </template>
     <UiCard>
-      <a-tabs :active-key="activeType" @change="(k: Key) => switchType(String(k) as RegistryType)">
+      <a-tabs :active-key="activeType" @change="switchType">
         <a-tab-pane v-for="tab in REGISTRY_TABS" :key="tab.key" :tab="tab.label" />
       </a-tabs>
       <div class="form-row">

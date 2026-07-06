@@ -3,9 +3,12 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchivePlatformMaterialItemVO,
   ArchivePlatformTemplateSetSaveRequest,
-  ArchivePlatformTemplateSetVO, ArchiveTemplateMaterialEditRow, ArchiveTemplateSelfCheckEditRow
+  ArchivePlatformTemplateSetVO,
 } from '@/apis/mark/archive-platform-template'
-import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
+import type {
+  ArchiveTemplateMaterialEditRow,
+  ArchiveTemplateSelfCheckEditRow,
+} from '@/views/teacher/archive-volume/components/archive-template-editor-types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
@@ -18,16 +21,16 @@ import {
   archiveTemplateScopeLabel,
   archiveTemplateScopeTone,
 } from '@/apis/mark/archive-template-scope'
-import { ARCHIVE_EXAM_FORM_LABEL } from '@/apis/mark/archive-volume'
+import { ARCHIVE_EXAM_FORM_OPTIONS, ArchiveExamFormDescription } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiFormActions from '@/components/ui-guide/ui/UiFormActions.vue'
-import UiFormSection from '@/components/ui-guide/ui/UiFormSection.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useAuthStore } from '@/stores/modules/auth'
+import { ArchiveExamFormCode } from '@/types/enums/archive-exam-form-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ArchiveTemplateSetEditorDrawer from '@/views/teacher/archive-volume/components/ArchiveTemplateSetEditorDrawer.vue'
@@ -51,7 +54,7 @@ const editorSetCode = ref('')
 const editorMeta = reactive({
   setCode: '',
   setName: '',
-  examForm: 'WRITTEN_EXAM' as ArchiveExamFormCode,
+  examForm: ArchiveExamFormCode.WRITTEN_EXAM,
   description: '',
   releaseTag: '',
 })
@@ -63,10 +66,7 @@ const editorDrawerTitle = computed(() =>
   editorSetCode.value ? `编辑模板：${editorSetCode.value}` : '新建模板套',
 )
 
-const examFormOptions = Object.entries(ARCHIVE_EXAM_FORM_LABEL).map(([value, label]) => ({
-  value: value as ArchiveExamFormCode,
-  label,
-}))
+const examFormOptions = ARCHIVE_EXAM_FORM_OPTIONS
 
 const platformColumns: ColumnsType<ArchivePlatformTemplateSetVO> = [
   { title: '作用域', key: 'templateScope', width: 100, align: 'center' },
@@ -79,7 +79,7 @@ const platformColumns: ColumnsType<ArchivePlatformTemplateSetVO> = [
 
 function examFormLabel(code?: ArchiveExamFormCode) {
   if (!code) return '—'
-  return strictEnumLabel(ARCHIVE_EXAM_FORM_LABEL, code, 'examForm')
+  return strictEnumLabel(ArchiveExamFormDescription, code, 'examForm')
 }
 
 function resetEditor() {
@@ -87,7 +87,7 @@ function resetEditor() {
   editorSetCode.value = ''
   editorMeta.setCode = ''
   editorMeta.setName = ''
-  editorMeta.examForm = 'WRITTEN_EXAM'
+  editorMeta.examForm = ArchiveExamFormCode.WRITTEN_EXAM
   editorMeta.description = ''
   editorMeta.releaseTag = ''
   materialRows.value = []
@@ -121,7 +121,7 @@ async function openEditEditor(setCode: string) {
     const set = preview.templateSet
     editorMeta.setCode = set.setCode
     editorMeta.setName = set.setName ?? ''
-    editorMeta.examForm = set.examForm ?? 'WRITTEN_EXAM'
+    editorMeta.examForm = set.examForm ?? ArchiveExamFormCode.WRITTEN_EXAM
     editorMeta.description = set.description ?? ''
     editorMeta.releaseTag = set.releaseTag ?? ''
     materialRows.value = preview.materialItems.map((item, index) => mapMaterialRow(item, index))
@@ -238,15 +238,21 @@ onMounted(loadPlatformSets)
     <ArchiveVolumeTemplateSetsPanel v-if="!isSuperAdmin" />
 
     <template v-else>
-      <UiFormSection title="平台模板">
-        <UiFormActions align="between">
-          <span v-if="platformSets.length === 0" class="archive-platform-admin__hint">尚未配置任何平台模板</span>
-          <span v-else class="archive-platform-admin__hint">共 {{ platformSets.length }} 套</span>
-          <div class="archive-platform-admin__toolbar">
-            <UiButton size="sm" :loading="seeding" @click="submitInitializeDefaults">初始化默认模板</UiButton>
-            <UiButton size="sm" variant="primary" @click="openCreateEditor">新建模板套</UiButton>
+      <WorkbenchSurfaceCard flush class="archive-platform-admin__surface">
+        <template #head>
+          <h3 class="archive-platform-admin__title">平台模板</h3>
+        </template>
+        <template #toolbar>
+          <div class="archive-platform-admin__toolbar-row">
+            <span v-if="platformSets.length === 0" class="archive-platform-admin__hint">尚未配置任何平台模板</span>
+            <span v-else class="archive-platform-admin__hint">共 {{ platformSets.length }} 套</span>
+            <div class="archive-platform-admin__actions">
+              <UiButton size="sm" :loading="seeding" @click="submitInitializeDefaults">初始化默认模板</UiButton>
+              <UiButton size="sm" variant="primary" @click="openCreateEditor">新建模板套</UiButton>
+            </div>
           </div>
-        </UiFormActions>
+        </template>
+
         <UiDataTable
           pagination-mode="none"
           :columns="platformColumns"
@@ -276,7 +282,7 @@ onMounted(loadPlatformSets)
             </template>
           </template>
         </UiDataTable>
-      </UiFormSection>
+      </WorkbenchSurfaceCard>
 
       <ArchiveTemplateSetEditorDrawer
         v-model:open="editorDrawerOpen"
@@ -325,7 +331,21 @@ onMounted(loadPlatformSets)
   color: var(--dp-text-secondary, #64748b);
   font-size: 14px;
 }
-.archive-platform-admin__toolbar {
+.archive-platform-admin__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: var(--dp-font-weight-title, 600);
+  line-height: 1.5;
+}
+.archive-platform-admin__toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+}
+.archive-platform-admin__actions {
   display: flex;
   gap: 8px;
 }

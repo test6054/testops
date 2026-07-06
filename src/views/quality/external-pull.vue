@@ -5,23 +5,22 @@ import type {
   ExternalDataSourceSaveRequest,
   ExternalDataSourceVO,
   ExternalSourceFieldScope,
+  ExternalSourceFieldScopeRequest,
 } from '@/apis/quality/external-data-source'
 import type { ExternalPullAuditVO } from '@/apis/quality/external-pull-audit'
 import type { ExternalPullResultVO } from '@/apis/quality/external-pull-result'
 import type {
-  ExternalPullFilterOperator,
-  ExternalPullSortDirection,
   ExternalPullTaskQueryRequest,
   ExternalPullTaskSaveRequest,
   ExternalPullTaskVO,
 } from '@/apis/quality/external-pull-task'
 import type {
-  ExternalPullAuditCheckStatus,
-  ExternalPullAuditEvent,
-  ExternalPullConfirmationStatus,
-  ExternalSourceType,
+  ExternalPullAuditCheckStatusCode,
+  ExternalPullAuditEventCode,
+  ExternalPullConfirmationStatusCode,
 } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { BusinessAnchorCode } from '@/types/enums/business-anchor-code-enum'
 import type { SignalMetric, TaskResultItem } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -29,17 +28,16 @@ import { externalDataSourceApi } from '@/apis/quality/external-data-source'
 import { externalPullAuditApi } from '@/apis/quality/external-pull-audit'
 import { externalPullResultApi } from '@/apis/quality/external-pull-result'
 import { externalPullTaskApi } from '@/apis/quality/external-pull-task'
-import {
-  EXTERNAL_PULL_AUDIT_CHECK_STATUS_LABEL,
-  EXTERNAL_PULL_AUDIT_EVENT_LABEL,
-  EXTERNAL_PULL_CONFIRMATION_STATUS_COLOR,
-  EXTERNAL_PULL_CONFIRMATION_STATUS_LABEL,
+import { EXTERNAL_PULL_CONFIRMATION_STATUS_COLOR,
   EXTERNAL_PULL_TASK_STATUS_COLOR,
-  EXTERNAL_PULL_TASK_STATUS_LABEL,
   EXTERNAL_PULL_TASK_STATUS_OPTIONS,
-  EXTERNAL_SOURCE_TYPE_LABEL,
   EXTERNAL_SOURCE_TYPE_OPTIONS,
-} from '@/apis/quality/types'
+  ExternalPullAuditCheckStatusDescription,
+  ExternalPullAuditEventDescription,
+  ExternalPullConfirmationStatusDescription,
+  ExternalPullTaskStatusDescription,
+  ExternalSourceTypeCode,
+  ExternalSourceTypeDescription } from '@/apis/quality/types'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import {
   AchievementResultSelector,
@@ -65,6 +63,20 @@ import { usePolling } from '@/composables/usePolling'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
+import {
+  ALL_BUSINESS_ANCHOR_CODES,
+  BUSINESS_ANCHOR_OPTIONS,
+  
+  BusinessAnchorCodeDescription
+} from '@/types/enums/business-anchor-code-enum'
+import {
+  EXTERNAL_PULL_FILTER_OPERATOR_OPTIONS,
+  ExternalPullFilterOperatorCode,
+} from '@/types/enums/external-pull-filter-operator-enum'
+import {
+  EXTERNAL_PULL_SORT_DIRECTION_OPTIONS,
+  ExternalPullSortDirectionCode,
+} from '@/types/enums/external-pull-sort-direction-enum'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -81,7 +93,7 @@ interface SourceFieldScopeEditorRow {
 interface PullFilterEditorRow {
   key: string
   fieldName: string
-  operator: ExternalPullFilterOperator
+  operator: ExternalPullFilterOperatorCode
   singleValue: string
   multipleValues: string[]
 }
@@ -89,7 +101,7 @@ interface PullFilterEditorRow {
 interface PullSortEditorRow {
   key: string
   fieldName: string
-  sortDirection: ExternalPullSortDirection
+  sortDirection: ExternalPullSortDirectionCode
 }
 
 interface SelectOption {
@@ -100,7 +112,7 @@ interface SelectOption {
 interface ExternalDataSourceFormState {
   sourceCode: string
   sourceName: string
-  sourceType: ExternalSourceType
+  sourceType: ExternalSourceTypeCode
   jdbcUrl: string
   username: string
   password: string
@@ -108,6 +120,20 @@ interface ExternalDataSourceFormState {
   maxRowCount: number
   queryTimeoutSeconds: number
   enabled: boolean
+}
+
+interface ExternalPullTaskFormState {
+  sourceId: string
+  taskCode: string
+  taskName: string
+  businessAnchor?: BusinessAnchorCode
+  businessId: string
+  sourceObjectName: string
+  fields: ExternalPullTaskSaveRequest['fields']
+  filters?: ExternalPullTaskSaveRequest['filters']
+  sorts?: ExternalPullTaskSaveRequest['sorts']
+  maxRowCount?: number
+  queryTimeoutSeconds?: number
 }
 
 const sourceColumns: ColumnsType = [
@@ -142,21 +168,9 @@ const detailResultColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 180 },
 ]
 
-const filterOperatorOptions: Array<{ value: ExternalPullFilterOperator, label: string }> = [
-  { value: 'EQ', label: '等于' },
-  { value: 'NE', label: '不等于' },
-  { value: 'GT', label: '大于' },
-  { value: 'GTE', label: '大于等于' },
-  { value: 'LT', label: '小于' },
-  { value: 'LTE', label: '小于等于' },
-  { value: 'LIKE', label: '包含' },
-  { value: 'IN', label: '属于多个值' },
-]
+const filterOperatorOptions = EXTERNAL_PULL_FILTER_OPERATOR_OPTIONS
 
-const sortDirectionOptions: Array<{ value: ExternalPullSortDirection, label: string }> = [
-  { value: 'ASC', label: '升序' },
-  { value: 'DESC', label: '降序' },
-]
+const sortDirectionOptions = EXTERNAL_PULL_SORT_DIRECTION_OPTIONS
 
 const sources = ref<ExternalDataSourceVO[]>([])
 const sourceTotal = ref(0)
@@ -182,7 +196,7 @@ const sourceFieldScopes = ref<SourceFieldScopeEditorRow[]>([])
 const sourceForm = reactive<ExternalDataSourceFormState>({
   sourceCode: '',
   sourceName: '',
-  sourceType: 'POSTGRESQL',
+  sourceType: ExternalSourceTypeCode.POSTGRESQL,
   jdbcUrl: '',
   username: '',
   password: '',
@@ -198,11 +212,11 @@ const taskSelectedFields = ref<string[]>([])
 const taskFilters = ref<PullFilterEditorRow[]>([])
 const taskSorts = ref<PullSortEditorRow[]>([])
 const taskAssessmentCourseId = ref<string>('')
-const taskForm = reactive<ExternalPullTaskSaveRequest>({
+const taskForm = reactive<ExternalPullTaskFormState>({
   sourceId: '',
   taskCode: '',
   taskName: '',
-  businessAnchor: '',
+  businessAnchor: undefined,
   businessId: '',
   sourceObjectName: '',
   fields: [],
@@ -220,37 +234,13 @@ const detailLoading = ref(false)
 
 const sourceTypeOptions = EXTERNAL_SOURCE_TYPE_OPTIONS
 const taskStatusOptions = EXTERNAL_PULL_TASK_STATUS_OPTIONS
-const BUSINESS_ANCHOR_LABEL = {
-  TRAINING_PLAN: '培养方案',
-  QUALITY_COURSE: '质量评价课程',
-  ASSESSMENT_ITEM: '考核环节',
-  ACHIEVEMENT_RESULT: '达成度结果',
-  REPORT: '质量报告',
-  AUDIT_ISSUE: '审查问题',
-  AUDIT_RECTIFICATION: '整改任务',
-} as const
-
-type BusinessAnchorCode = keyof typeof BUSINESS_ANCHOR_LABEL
-
-const BUSINESS_ANCHOR_CODES: BusinessAnchorCode[] = [
-  'TRAINING_PLAN',
-  'QUALITY_COURSE',
-  'ASSESSMENT_ITEM',
-  'ACHIEVEMENT_RESULT',
-  'REPORT',
-  'AUDIT_ISSUE',
-  'AUDIT_RECTIFICATION',
-]
-
-const businessAnchorOptions = BUSINESS_ANCHOR_CODES.map((value) => ({
-  value,
-  label: BUSINESS_ANCHOR_LABEL[value],
-}))
+const businessAnchorOptions = BUSINESS_ANCHOR_OPTIONS
 
 interface ExternalPullTaskFilterModel {
+  [key: string]: unknown
   sourceId?: string
   status?: ExternalPullTaskVO['status']
-  businessAnchor?: string
+  businessAnchor?: BusinessAnchorCode
 }
 
 const taskFilterForm = reactive<ExternalPullTaskFilterModel>({
@@ -260,7 +250,7 @@ const taskFilterForm = reactive<ExternalPullTaskFilterModel>({
 })
 
 const taskFilterModel = computed<Record<string, unknown>>({
-  get: () => taskFilterForm as Record<string, unknown>,
+  get: () => taskFilterForm,
   set: (value) => {
     Object.assign(taskFilterForm, value)
   },
@@ -371,14 +361,18 @@ const taskRuleSummaryLines = computed(() => {
   const activeFilters = taskFilters.value.filter(
     (item) =>
       item.fieldName
-      && (item.operator === 'IN' ? item.multipleValues.length > 0 : Boolean(item.singleValue.trim())),
+      && (item.operator === ExternalPullFilterOperatorCode.IN
+        ? item.multipleValues.length > 0
+        : Boolean(item.singleValue.trim())),
   )
   if (activeFilters.length) {
     lines.push(
       `筛选条件：${activeFilters
         .map((item) => {
           const valueText
-            = item.operator === 'IN' ? item.multipleValues.join('、') : item.singleValue.trim()
+            = item.operator === ExternalPullFilterOperatorCode.IN
+              ? item.multipleValues.join('、')
+              : item.singleValue.trim()
           return `${item.fieldName}${filterOperatorText(item.operator)}${valueText}`
         })
         .join('；')}`,
@@ -388,7 +382,9 @@ const taskRuleSummaryLines = computed(() => {
   if (activeSorts.length) {
     lines.push(
       `排序规则：${activeSorts
-        .map((item) => `${item.fieldName}${item.sortDirection === 'ASC' ? '升序' : '降序'}`)
+        .map((item) =>
+          `${item.fieldName}${item.sortDirection === ExternalPullSortDirectionCode.ASC ? '升序' : '降序'}`,
+        )
         .join('；')}`,
     )
   }
@@ -415,26 +411,26 @@ const pullResultItems = computed<TaskResultItem[]>(() => {
 })
 
 function taskStatusLabel(value: ExternalPullTaskVO['status']): string {
-  return strictEnumLabel(EXTERNAL_PULL_TASK_STATUS_LABEL, value, '外部拔取任务状态')
+  return strictEnumLabel(ExternalPullTaskStatusDescription, value, '外部拔取任务状态')
 }
 
 function taskStatusColor(value: ExternalPullTaskVO['status']): BadgeTone {
   return strictEnumTone(EXTERNAL_PULL_TASK_STATUS_COLOR, value, '外部拔取任务状态')
 }
 
-function sourceTypeLabel(value: ExternalSourceType): string {
-  return strictEnumLabel(EXTERNAL_SOURCE_TYPE_LABEL, value, '外部数据源类型')
+function sourceTypeLabel(value: ExternalSourceTypeCode): string {
+  return strictEnumLabel(ExternalSourceTypeDescription, value, '外部数据源类型')
 }
 
-function confirmationStatusLabel(value: ExternalPullConfirmationStatus): string {
-  return strictEnumLabel(EXTERNAL_PULL_CONFIRMATION_STATUS_LABEL, value, '结果批次确认状态')
+function confirmationStatusLabel(value: ExternalPullConfirmationStatusCode): string {
+  return strictEnumLabel(ExternalPullConfirmationStatusDescription, value, '结果批次确认状态')
 }
 
-function confirmationStatusColor(value: ExternalPullConfirmationStatus): BadgeTone {
+function confirmationStatusColor(value: ExternalPullConfirmationStatusCode): BadgeTone {
   return strictEnumTone(EXTERNAL_PULL_CONFIRMATION_STATUS_COLOR, value, '结果批次确认状态')
 }
 
-function auditTone(status: ExternalPullAuditCheckStatus): string {
+function auditTone(status: ExternalPullAuditCheckStatusCode): string {
   if (status === 'PASSED') return 'green'
   if (status === 'REJECTED') return 'red'
   if (status === 'WARNING') return 'orange'
@@ -447,22 +443,22 @@ function auditTimelineTone(audit: ExternalPullAuditVO): string {
   return 'gray'
 }
 
-function auditEventLabel(value: ExternalPullAuditEvent): string {
-  return strictEnumLabel(EXTERNAL_PULL_AUDIT_EVENT_LABEL, value, '外部拔取审计事件')
+function auditEventLabel(value: ExternalPullAuditEventCode): string {
+  return strictEnumLabel(ExternalPullAuditEventDescription, value, '外部拔取审计事件')
 }
 
-function auditCheckStatusLabel(value: ExternalPullAuditCheckStatus): string {
-  return strictEnumLabel(EXTERNAL_PULL_AUDIT_CHECK_STATUS_LABEL, value, '外部拔取审计状态')
+function auditCheckStatusLabel(value: ExternalPullAuditCheckStatusCode): string {
+  return strictEnumLabel(ExternalPullAuditCheckStatusDescription, value, '外部拔取审计状态')
 }
 
-function filterOperatorText(operator: ExternalPullFilterOperator): string {
+function filterOperatorText(operator: ExternalPullFilterOperatorCode): string {
   const option = filterOperatorOptions.find((item) => item.value === operator)
   if (!option) return ' '
   return option.label
 }
 
-function businessAnchorLabel(value: string): string {
-  return strictEnumLabel(BUSINESS_ANCHOR_LABEL, value as BusinessAnchorCode, '外部拔取业务归属')
+function businessAnchorLabel(value: BusinessAnchorCode): string {
+  return strictEnumLabel(BusinessAnchorCodeDescription, value, '外部拔取业务归属')
 }
 
 function createSourceFieldScopeRow(scope?: ExternalSourceFieldScope): SourceFieldScopeEditorRow {
@@ -480,7 +476,7 @@ function createFilterRow(): PullFilterEditorRow {
   return {
     key: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     fieldName: '',
-    operator: 'EQ',
+    operator: ExternalPullFilterOperatorCode.EQ,
     singleValue: '',
     multipleValues: [],
   }
@@ -490,7 +486,7 @@ function createSortRow(): PullSortEditorRow {
   return {
     key: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     fieldName: '',
-    sortDirection: 'ASC',
+    sortDirection: ExternalPullSortDirectionCode.ASC,
   }
 }
 
@@ -550,7 +546,7 @@ function handleTaskBusinessAnchorChange(value: SelectValue) {
     message.error('业务归属选择无效，请重新选择')
     return
   }
-  taskForm.businessAnchor = typeof value === 'string' ? value : ''
+  taskForm.businessAnchor = ALL_BUSINESS_ANCHOR_CODES.find((code) => code === value)
   taskForm.businessId = ''
   taskAssessmentCourseId.value = ''
 }
@@ -601,7 +597,7 @@ async function loadTasks() {
       ...taskQuery,
       sourceId: taskQuery.sourceId || undefined,
       status: taskQuery.status || undefined,
-      businessAnchor: taskQuery.businessAnchor?.trim() || undefined,
+      businessAnchor: taskQuery.businessAnchor,
     })
     if (scope.isStale()) {
       return
@@ -641,7 +637,7 @@ async function loadTasksQuietly(): Promise<void> {
       ...taskQuery,
       sourceId: taskQuery.sourceId || undefined,
       status: taskQuery.status || undefined,
-      businessAnchor: taskQuery.businessAnchor?.trim() || undefined,
+      businessAnchor: taskQuery.businessAnchor,
     })
     if (scope.isStale()) {
       return
@@ -663,7 +659,7 @@ function openSourceCreate() {
   Object.assign(sourceForm, {
     sourceCode: '',
     sourceName: '',
-    sourceType: 'POSTGRESQL',
+    sourceType: ExternalSourceTypeCode.POSTGRESQL,
     jdbcUrl: '',
     username: '',
     password: '',
@@ -716,7 +712,7 @@ async function submitSource() {
   }
 
   const seen = new Set<string>()
-  const fieldScopes: ExternalSourceFieldScope[] = []
+  const fieldScopes: ExternalSourceFieldScopeRequest[] = []
   for (let index = 0; index < sourceFieldScopes.value.length; index += 1) {
     const row = sourceFieldScopes.value[index]
     const sourceObjectName = row.sourceObjectName.trim()
@@ -775,7 +771,7 @@ async function submitSource() {
 }
 
 async function toggleSourceEnabled(record: ExternalDataSourceVO) {
-  await externalDataSourceApi.toggleEnabled(record.id, !record.enabled)
+  await externalDataSourceApi.toggleEnabled({ id: record.id, enabled: !record.enabled })
   message.success('已切换状态')
   await loadSources()
 }
@@ -797,7 +793,7 @@ function openTaskCreate() {
     sourceId: '',
     taskCode: '',
     taskName: '',
-    businessAnchor: '',
+    businessAnchor: undefined,
     businessId: '',
     sourceObjectName: '',
     fields: [],
@@ -818,7 +814,7 @@ async function submitTask() {
     !taskForm.taskName.trim()
     || !taskForm.taskCode.trim()
     || !taskForm.sourceId
-    || !taskForm.businessAnchor.trim()
+    || !taskForm.businessAnchor
     || !taskForm.businessId
     || !taskForm.sourceObjectName
   ) {
@@ -838,13 +834,15 @@ async function submitTask() {
   for (let index = 0; index < taskFilters.value.length; index += 1) {
     const row = taskFilters.value[index]
     const hasValue
-      = row.operator === 'IN' ? row.multipleValues.length > 0 : Boolean(row.singleValue.trim())
+      = row.operator === ExternalPullFilterOperatorCode.IN
+        ? row.multipleValues.length > 0
+        : Boolean(row.singleValue.trim())
     if (!row.fieldName && !hasValue) continue
     if (!row.fieldName || !hasValue) {
       message.error(`筛选条件 ${index + 1} 需要同时选择字段并填写取值`)
       return
     }
-    if (row.operator === 'IN') {
+    if (row.operator === ExternalPullFilterOperatorCode.IN) {
       const values = row.multipleValues.map((value) => value.trim()).filter(Boolean)
       if (!values.length) {
         message.error(`筛选条件 ${index + 1} 至少填写一个取值`)
@@ -883,7 +881,7 @@ async function submitTask() {
       sourceId: taskForm.sourceId,
       taskCode: taskForm.taskCode.trim(),
       taskName: taskForm.taskName.trim(),
-      businessAnchor: taskForm.businessAnchor.trim(),
+      businessAnchor: taskForm.businessAnchor,
       businessId: taskForm.businessId,
       sourceObjectName: taskForm.sourceObjectName,
       fields,
@@ -909,7 +907,7 @@ async function cancelTask(record: ExternalPullTaskVO) {
     emptyErrorMessage: '请填写取消原因',
   })
   if (!reason) return
-  await externalPullTaskApi.cancel(record.id, reason)
+  await externalPullTaskApi.cancel({ id: record.id, reason })
   message.success('已取消')
   await loadTasks()
 }
@@ -1406,7 +1404,7 @@ onMounted(async () => {
                 </a-col>
                 <a-col :span="10">
                   <a-select
-                    v-if="entry.operator === 'IN'"
+                    v-if="entry.operator === ExternalPullFilterOperatorCode.IN"
                     v-model:value="entry.multipleValues"
                     mode="tags"
                     placeholder="逐项录入筛选值"
@@ -1571,7 +1569,13 @@ onMounted(async () => {
             <div class="external-pull__detail-grid">
               <div class="external-pull__detail-line">
                 <strong>返回字段</strong>
-                <span>{{ detailRecord.fields.map((field) => field.fieldName).join('、') }}</span>
+                <span>
+                  {{
+                    detailRecord.fields?.length
+                      ? detailRecord.fields.map((field) => field.fieldName).join('、')
+                      : '-'
+                  }}
+                </span>
               </div>
               <div class="external-pull__detail-line">
                 <strong>筛选条件</strong>
@@ -1594,7 +1598,7 @@ onMounted(async () => {
                     detailRecord.sorts
                       .map(
                         (sort) =>
-                          `${sort.fieldName}${sort.sortDirection === 'ASC' ? '升序' : '降序'}`,
+                          `${sort.fieldName}${sort.sortDirection === ExternalPullSortDirectionCode.ASC ? '升序' : '降序'}`,
                       )
                       .join('；')
                   }}

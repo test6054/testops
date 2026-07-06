@@ -1,22 +1,22 @@
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
+import {
+  MarkExamQualitySyncStatusCode,
+} from '@/types/enums/mark-exam-quality-sync-status-enum'
 
-/** edu-mark 考试质量同步状态 */
-export type MarkExamQualitySyncStatus = 'NOT_CONFIGURED' | 'NOT_SYNCED' | 'SYNCED'
-
-export const MARK_EXAM_QUALITY_SYNC_STATUS_LABEL: Record<MarkExamQualitySyncStatus, string> = {
-  NOT_CONFIGURED: '未配置质量课程',
-  NOT_SYNCED: '未同步',
-  SYNCED: '已同步',
-}
+export {
+  ALL_MARK_EXAM_QUALITY_SYNC_STATUS_CODES,
+  MarkExamQualitySyncStatusCode,
+  MarkExamQualitySyncStatusDescription,
+} from '@/types/enums/mark-exam-quality-sync-status-enum'
 
 export const MARK_EXAM_QUALITY_SYNC_STATUS_TONE: Record<
-  MarkExamQualitySyncStatus,
+  MarkExamQualitySyncStatusCode,
   'gray' | 'orange' | 'green'
 > = {
-  NOT_CONFIGURED: 'orange',
-  NOT_SYNCED: 'gray',
-  SYNCED: 'green',
+  [MarkExamQualitySyncStatusCode.NOT_CONFIGURED]: 'orange',
+  [MarkExamQualitySyncStatusCode.NOT_SYNCED]: 'gray',
+  [MarkExamQualitySyncStatusCode.SYNCED]: 'green',
 }
 
 export interface MarkExamSyncStatusRequest {
@@ -27,7 +27,7 @@ export interface MarkExamSyncStatusRequest {
 }
 
 export interface MarkExamSyncStatusVO {
-  status: MarkExamQualitySyncStatus
+  status: MarkExamQualitySyncStatusCode
   examId?: string
   qualityCourseId?: string
   trainingPlanId?: string

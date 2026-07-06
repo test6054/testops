@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import type { CandidateStatusCode, ExamCandidateVO } from '@/apis/mark/exam-scope'
+import type { ExamCandidateVO } from '@/apis/mark/exam-scope'
 /**
  * 扫描中异常修正面板：边扫边处理，占用缩略图列（非遮罩叠加）。
  */
 import { CloseOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
 import { bindPaper } from '@/apis/mark/exam-binding'
-import { CANDIDATE_STATUS_LABEL, listExamCandidates } from '@/apis/mark/exam-scope'
-import { TASK_STATUS_LABEL } from '@/apis/mark/task-status'
+import { CandidateStatusDescription, listExamCandidates } from '@/apis/mark/exam-scope'
+import { LocalScanPageStatusCode } from '@/apis/mark/scanner-agent-local'
+import { TaskStatusDescription } from '@/apis/mark/task-status'
+import { CandidateStatusCode } from '@/types/enums/candidate-status-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { useKioskCtx } from '../composables/kioskInjection'
 
@@ -66,7 +68,7 @@ const attentionItem = computed(() => {
 const processingStatusText = computed(() => {
   const status = attentionItem.value?.processingStatus
   if (!status) return ''
-  return strictEnumLabel(TASK_STATUS_LABEL, status, '处理任务状态')
+  return strictEnumLabel(TaskStatusDescription, status, '处理任务状态')
 })
 
 const canBindCandidate = computed(() =>
@@ -81,19 +83,19 @@ const diagnosticText = computed(() => {
   if (ledgerItem.value?.attentionType) {
     return workflow.attentionTypeText(ledgerItem.value.attentionType)
   }
-  if (currentPage.value?.status === 'FAILED') return '页面上传失败，可重试上传后继续扫描'
+  if (currentPage.value?.status === LocalScanPageStatusCode.FAILED) return '页面上传失败，可重试上传后继续扫描'
   return '页面处理异常，请核对影像与考号'
 })
 
-const showRetryUpload = computed(() => currentPage.value?.status === 'FAILED')
+const showRetryUpload = computed(() => currentPage.value?.status === LocalScanPageStatusCode.FAILED)
 
 function isCandidateBindable(candidate: ExamCandidateVO): boolean {
-  return candidate.status === 'ACTIVE'
+  return candidate.status === CandidateStatusCode.ACTIVE
 }
 
 function candidateStatusLabel(status: CandidateStatusCode | undefined): string {
-  if (!status || !CANDIDATE_STATUS_LABEL[status]) return '状态异常'
-  return CANDIDATE_STATUS_LABEL[status]
+  if (!status || !CandidateStatusDescription[status]) return '状态异常'
+  return CandidateStatusDescription[status]
 }
 
 function candidateBindingBlockReason(rosterId: string): string {
@@ -136,7 +138,11 @@ watch(
   },
 )
 
-function onCandidateChange(rosterId: string) {
+function onCandidateChange(event: Event) {
+  if (!(event.target instanceof HTMLSelectElement)) {
+    return
+  }
+  const rosterId = event.target.value
   candidateRosterId.value = rosterId
   const hit = candidates.value.find((c) => c.candidateRosterId === rosterId)
   if (hit) studentNo.value = hit.studentNo
@@ -218,7 +224,7 @@ function gotoReview() {
           v-model="candidateRosterId"
           class="field__input"
           :disabled="candidatesLoading"
-          @change="onCandidateChange(($event.target as HTMLSelectElement).value)"
+          @change="onCandidateChange"
         >
           <option value="">请选择考生</option>
           <option

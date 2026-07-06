@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
+import type { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import { PortfolioCollectModeDescription } from '@/types/enums/portfolio-collect-mode-enum'
+import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 
 const props = defineProps<{
   open: boolean
@@ -16,12 +19,19 @@ const emit = defineEmits<{
   "cancel": []
 }>()
 
+function portfolioCollectModeLabel(value: PortfolioCollectModeCode | undefined): string {
+  if (!value) {
+    throw new Error(`档案袋采集模式缺少展示映射：${String(value)}`)
+  }
+  return PortfolioCollectModeDescription[value]
+}
+
 const previewUrl = ref('')
 const previewLoading = ref(false)
 const previewError = ref(false)
 let previewObjectUrl = ''
 
-const isPortfolio = computed(() => props.ticket?.taskKind === 'PORTFOLIO_COLLECT')
+const isPortfolio = computed(() => props.ticket?.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT)
 const cabinetLocation = computed(
   () => props.ticket?.archiveSnapshot?.physicalStorageLocation?.trim() ?? '',
 )
@@ -64,9 +74,9 @@ async function loadPreview() {
 }
 
 watch(
-  () => [props.open, previewFileId.value] as const,
-  ([open]) => {
-    if (open) {
+  () => ({ open: props.open, previewFileId: previewFileId.value }),
+  (previewState) => {
+    if (previewState.open) {
       void loadPreview()
     } else {
       revokePreviewUrl()
@@ -118,7 +128,7 @@ function handleOk() {
         <div>
           <dt>模式</dt>
           <dd>
-            {{ portfolioSnapshot.collectMode === 'GAP_ATTACHMENT' ? '补采附件' : 'AI 候选提交' }}
+            {{ portfolioCollectModeLabel(portfolioSnapshot.collectMode) }}
           </dd>
         </div>
         <div>

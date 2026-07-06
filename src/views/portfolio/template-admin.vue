@@ -16,14 +16,20 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import {
+  PortfolioArchiveCategoryScopeCode,
+  PortfolioArchiveCategoryStatusCode,
+  PortfolioArchiveCategoryStatusDescription,
+  PortfolioArchiveFieldSourceTypeCode,
+  PortfolioArchiveFieldSourceTypeDescription,
+  PortfolioArchiveFieldTypeCode,
+  PortfolioArchiveFieldTypeDescription,
+  PortfolioArchiveTemplateVersionStatusDescription,
+} from '@/apis/portfolio/enums'
+import {
   PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_OPTIONS,
-  PORTFOLIO_ARCHIVE_CATEGORY_STATUS_LABEL,
   PORTFOLIO_ARCHIVE_CATEGORY_STATUS_OPTIONS,
-  PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_LABEL,
   PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_OPTIONS,
-  PORTFOLIO_ARCHIVE_FIELD_TYPE_LABEL,
   PORTFOLIO_ARCHIVE_FIELD_TYPE_OPTIONS,
-  PORTFOLIO_ARCHIVE_TEMPLATE_VERSION_STATUS_LABEL,
   PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
 } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -47,6 +53,49 @@ interface TreeNode {
   title: string
   raw: PortfolioArchiveCategoryTreeNodeVO
   children?: TreeNode[]
+}
+
+function isTreeNode(value: unknown): value is TreeNode {
+  return typeof value === 'object'
+    && value !== null
+    && 'key' in value
+    && 'title' in value
+    && 'raw' in value
+}
+
+function isArchiveFieldRecord(record: unknown): record is PortfolioArchiveFieldDefVO {
+  return typeof record === 'object'
+    && record !== null
+    && 'id' in record
+    && 'templateVersionId' in record
+    && 'fieldCode' in record
+    && 'fieldLabel' in record
+    && 'fieldType' in record
+    && 'sourceType' in record
+}
+
+function archiveFieldRecord(record: unknown): PortfolioArchiveFieldDefVO {
+  if (!isArchiveFieldRecord(record)) {
+    throw new Error('档案字段行契约异常')
+  }
+  return record
+}
+
+function isArchiveTemplateVersionRecord(record: unknown): record is PortfolioArchiveTemplateVersionVO {
+  return typeof record === 'object'
+    && record !== null
+    && 'id' in record
+    && 'categoryId' in record
+    && 'templateCode' in record
+    && 'versionNo' in record
+    && 'status' in record
+}
+
+function archiveTemplateVersionRecord(record: unknown): PortfolioArchiveTemplateVersionVO {
+  if (!isArchiveTemplateVersionRecord(record)) {
+    throw new Error('档案模板版本行契约异常')
+  }
+  return record
 }
 
 interface DiffParseError {
@@ -103,8 +152,8 @@ const canManageTenant = computed(() =>
 const categoryEditor = reactive<PortfolioArchiveCategorySaveRequest>({
   categoryCode: '',
   categoryName: '',
-  scope: 'SCHOOL',
-  status: 'ACTIVE',
+  scope: PortfolioArchiveCategoryScopeCode.SCHOOL,
+  status: PortfolioArchiveCategoryStatusCode.ACTIVE,
   sortOrder: 0,
 })
 
@@ -112,10 +161,10 @@ const fieldEditor = reactive<PortfolioArchiveFieldDefSaveRequest>({
   templateVersionId: '',
   fieldCode: '',
   fieldLabel: '',
-  fieldType: 'TEXT',
+  fieldType: PortfolioArchiveFieldTypeCode.TEXT,
   required: false,
   readonly: false,
-  sourceType: 'MANUAL',
+  sourceType: PortfolioArchiveFieldSourceTypeCode.MANUAL,
   sortOrder: 0,
 })
 
@@ -124,7 +173,7 @@ const versionStatusLabel = computed(() => {
   const current = versionHistory.value.find((item) => item.id === activeVersionId.value)
   return current?.status
     ? strictEnumLabel(
-        PORTFOLIO_ARCHIVE_TEMPLATE_VERSION_STATUS_LABEL,
+        PortfolioArchiveTemplateVersionStatusDescription,
         current.status,
         '模板版本状态',
       )
@@ -139,7 +188,7 @@ const versionOptions = computed(() =>
   versionHistory.value.map(
     (item): { value: PortfolioArchiveTemplateVersionVO['id'], label: string } => ({
       value: item.id,
-      label: `${item.versionNo} (${strictEnumLabel(PORTFOLIO_ARCHIVE_TEMPLATE_VERSION_STATUS_LABEL, item.status, '模板版本状态')})`,
+      label: `${item.versionNo} (${strictEnumLabel(PortfolioArchiveTemplateVersionStatusDescription, item.status, '模板版本状态')})`,
     }),
   ),
 )
@@ -190,9 +239,8 @@ function parseDiffSummary(json?: string): PortfolioArchiveTemplateDiffSummary | 
   try {
     const parsed: unknown = JSON.parse(json)
     if (!parsed || typeof parsed !== 'object') return { message: '变更摘要格式异常' }
-    const obj = parsed as Record<string, unknown>
     const readCodes = (key: string): string[] => {
-      const val = obj[key]
+      const val = Object.getOwnPropertyDescriptor(parsed, key)?.value
       if (!Array.isArray(val)) throw new Error(`diff.${key} 必须为数组`)
       return val.map((item) => {
         if (typeof item !== 'string') throw new Error(`diff.${key} 元素必须为字符串`)
@@ -392,7 +440,7 @@ function openEditCategory() {
 }
 
 async function deactivateCategory() {
-  if (!selectedCategory.value || selectedCategory.value.status === 'INACTIVE') return
+  if (!selectedCategory.value || selectedCategory.value.status === PortfolioArchiveCategoryStatusCode.INACTIVE) return
   if (
     !(await confirmAsync({
       content: `确认停用分类「${selectedCategory.value.categoryName}」？停用后 AI 将无法解析该分类。`,
@@ -407,7 +455,7 @@ async function deactivateCategory() {
       categoryName: selectedCategory.value.categoryName,
       parentId: selectedCategory.value.parentId,
       scope: selectedCategory.value.scope,
-      status: 'INACTIVE',
+      status: PortfolioArchiveCategoryStatusCode.INACTIVE,
       sortOrder: selectedCategory.value.sortOrder,
     })
     message.success('分类已停用')
@@ -452,7 +500,15 @@ async function onScopeFilterChange() {
 
 async function submitCategory() {
   try {
-    await portfolioArchiveTemplateApi.saveCategory(categoryEditor)
+    await portfolioArchiveTemplateApi.saveCategory({
+      id: categoryEditor.id,
+      categoryCode: categoryEditor.categoryCode.trim(),
+      categoryName: categoryEditor.categoryName.trim(),
+      parentId: categoryEditor.parentId,
+      scope: categoryEditor.scope,
+      sortOrder: categoryEditor.sortOrder,
+      status: categoryEditor.status,
+    })
     message.success('分类已保存')
     categoryVisible.value = false
     await loadTree()
@@ -558,7 +614,18 @@ async function removeField(record: PortfolioArchiveFieldDefVO) {
 async function submitField() {
   try {
     fieldEditor.templateVersionId = activeVersionId.value ?? fieldEditor.templateVersionId
-    await portfolioArchiveTemplateApi.saveFieldDef(fieldEditor)
+    await portfolioArchiveTemplateApi.saveFieldDef({
+      id: fieldEditor.id,
+      templateVersionId: fieldEditor.templateVersionId,
+      fieldCode: fieldEditor.fieldCode.trim(),
+      fieldLabel: fieldEditor.fieldLabel.trim(),
+      fieldType: fieldEditor.fieldType,
+      required: fieldEditor.required,
+      readonly: fieldEditor.readonly,
+      enumRef: fieldEditor.enumRef?.trim() || undefined,
+      sourceType: fieldEditor.sourceType,
+      sortOrder: fieldEditor.sortOrder,
+    })
     message.success('字段已保存')
     fieldVisible.value = false
     await loadFields()
@@ -629,7 +696,13 @@ async function runDeprecate() {
 }
 
 const onTreeSelect: TreeProps['onSelect'] = (_keys, info) => {
-  if (info.node) selectCategory(info.node as unknown as TreeNode)
+  if (!info.node) {
+    return
+  }
+  if (!isTreeNode(info.node)) {
+    throw new Error('档案模板分类树节点契约异常')
+  }
+  selectCategory(info.node)
 }
 
 async function loadTeacherReadiness() {
@@ -710,7 +783,7 @@ onMounted(async () => {
             <UiTag>
               {{
                 strictEnumLabel(
-                  PORTFOLIO_ARCHIVE_CATEGORY_STATUS_LABEL,
+                  PortfolioArchiveCategoryStatusDescription,
                   selectedCategory.status,
                   '分类状态',
                 )
@@ -764,8 +837,8 @@ onMounted(async () => {
               <template v-if="column.key === 'fieldType'">
                 {{
                   strictEnumLabel(
-                    PORTFOLIO_ARCHIVE_FIELD_TYPE_LABEL,
-                    (record as PortfolioArchiveFieldDefVO).fieldType,
+                    PortfolioArchiveFieldTypeDescription,
+                    archiveFieldRecord(record).fieldType,
                     '档案字段类型',
                   )
                 }}
@@ -773,25 +846,25 @@ onMounted(async () => {
               <template v-else-if="column.key === 'sourceType'">
                 {{
                   strictEnumLabel(
-                    PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_LABEL,
-                    (record as PortfolioArchiveFieldDefVO).sourceType,
+                    PortfolioArchiveFieldSourceTypeDescription,
+                    archiveFieldRecord(record).sourceType,
                     '档案字段来源',
                   )
                 }}
               </template>
               <template v-else-if="column.key === 'required'">
-                {{ (record as PortfolioArchiveFieldDefVO).required ? '是' : '否' }}
+                {{ archiveFieldRecord(record).required ? '是' : '否' }}
               </template>
               <template v-else-if="column.key === 'readonly'">
-                {{ (record as PortfolioArchiveFieldDefVO).readonly ? '是' : '否' }}
+                {{ archiveFieldRecord(record).readonly ? '是' : '否' }}
               </template>
               <template v-else-if="column.key === 'actions' && canManageTenant && canEditFields">
-                <UiTextAction @click="openEditField(record as PortfolioArchiveFieldDefVO)">
+                <UiTextAction @click="openEditField(archiveFieldRecord(record))">
                   编辑
                 </UiTextAction>
                 <UiTextAction
                   tone="danger"
-                  @click="removeField(record as PortfolioArchiveFieldDefVO)"
+                  @click="removeField(archiveFieldRecord(record))"
                 >
                   删除
                 </UiTextAction>
@@ -891,15 +964,15 @@ onMounted(async () => {
           <template v-if="column.key === 'status'">
             {{
               strictEnumLabel(
-                PORTFOLIO_ARCHIVE_TEMPLATE_VERSION_STATUS_LABEL,
-                (record as PortfolioArchiveTemplateVersionVO).status,
+                PortfolioArchiveTemplateVersionStatusDescription,
+                archiveTemplateVersionRecord(record).status,
                 '模板版本状态',
               )
             }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTextAction
-              @click="selectVersionFromHistory(record as PortfolioArchiveTemplateVersionVO)"
+              @click="selectVersionFromHistory(archiveTemplateVersionRecord(record))"
             >
               查看
             </UiTextAction>

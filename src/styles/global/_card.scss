@@ -1,4 +1,4 @@
-@use '../var.scss' as *;
+@use '../var.scss';
 
 :global(.stats-row .stat-card),
 :global(.overview-stat-card),
@@ -54,12 +54,12 @@
 
   & > .ant-card-head {
     height: auto;
-    padding: $padding;
+    padding: var.$padding;
     border: none;
   }
 
   & > .ant-card-body {
-    padding: 0 $padding $padding $padding;
+    padding: 0 var.$padding var.$padding var.$padding;
   }
 }
 

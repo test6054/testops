@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PaperArchiveOcrStatusCode } from '@/apis/mark/paper-archive'
+import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
+import type {
+  PortfolioMaterialStatusCode,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioMaterialSaveRequest,
   PortfolioMaterialSearchResponse,
-  PortfolioMaterialStatus,
-  PortfolioMaterialType,
   PortfolioMaterialVO,
 } from '@/apis/portfolio/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
@@ -13,16 +14,19 @@ import { Input, message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  PAPER_ARCHIVE_OCR_STATUS_LABEL,
-  PAPER_ARCHIVE_OCR_STATUS_TONE,
-} from '@/apis/mark/paper-archive'
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import {
-  PORTFOLIO_MATERIAL_STATUS_LABEL,
-  PORTFOLIO_MATERIAL_STATUS_TONE,
-  PORTFOLIO_MATERIAL_TYPE_LABEL,
-} from '@/apis/portfolio/types'
+  PORTFOLIO_MATERIAL_STATUS_OPTIONS,
+  PORTFOLIO_MATERIAL_TYPE_OPTIONS,
+  PortfolioMaterialStatusDescription,
+  PortfolioMaterialTypeCode,
+  PortfolioMaterialTypeDescription,
+} from '@/apis/portfolio/enums'
+import { portfolioMaterialApi } from '@/apis/portfolio/material'
+import { PORTFOLIO_MATERIAL_STATUS_TONE } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -49,41 +53,43 @@ const router = useRouter()
 const { targetTeacherId } = usePortfolioPageScope()
 
 interface MaterialFilterModel {
-  materialType?: PortfolioMaterialType
-  status?: PortfolioMaterialStatus
+  materialType?: PortfolioMaterialTypeCode
+  status?: PortfolioMaterialStatusCode
 }
 
-function materialTypeLabel(type: PortfolioMaterialType): string {
-  return strictEnumLabel(PORTFOLIO_MATERIAL_TYPE_LABEL, type, '材料类型')
+function materialTypeLabel(type: PortfolioMaterialTypeCode): string {
+  return strictEnumLabel(PortfolioMaterialTypeDescription, type, '材料类型')
 }
 
-function materialStatusLabel(status: PortfolioMaterialStatus): string {
-  return strictEnumLabel(PORTFOLIO_MATERIAL_STATUS_LABEL, status, '材料状态')
+function materialStatusLabel(status: PortfolioMaterialStatusCode): string {
+  return strictEnumLabel(PortfolioMaterialStatusDescription, status, '材料状态')
 }
 
-function materialStatusTone(status: PortfolioMaterialStatus) {
+function materialStatusTone(status: PortfolioMaterialStatusCode) {
   return strictEnumTone(PORTFOLIO_MATERIAL_STATUS_TONE, status, '材料状态')
 }
 
-function ocrStatusLabel(status: PaperArchiveOcrStatusCode): string {
-  return strictEnumLabel(PAPER_ARCHIVE_OCR_STATUS_LABEL, status, 'OCR 状态')
+function ocrStatusLabel(status: ArchiveMaterialOcrStatusCode): string {
+  return strictEnumLabel(ArchiveMaterialOcrStatusDescription, status, 'OCR 状态')
 }
 
-function ocrStatusTone(status: PaperArchiveOcrStatusCode) {
-  return strictEnumTone(PAPER_ARCHIVE_OCR_STATUS_TONE, status, 'OCR 状态')
+function ocrStatusTone(status: ArchiveMaterialOcrStatusCode) {
+  return strictEnumTone(ARCHIVE_MATERIAL_OCR_STATUS_TONE, status, 'OCR 状态')
 }
 
-function isOcrStatusCode(value: string | undefined): value is PaperArchiveOcrStatusCode {
-  return !!value && Object.hasOwn(PAPER_ARCHIVE_OCR_STATUS_LABEL, value)
+function isOcrStatusCode(value: string | undefined): value is ArchiveMaterialOcrStatusCode {
+  return !!value && Object.hasOwn(ArchiveMaterialOcrStatusDescription, value)
 }
 
-const materialTypeOptions = (
-  Object.keys(PORTFOLIO_MATERIAL_TYPE_LABEL) as PortfolioMaterialType[]
-).map((value) => ({ value, label: materialTypeLabel(value) }))
+const materialTypeOptions = PORTFOLIO_MATERIAL_TYPE_OPTIONS.map((item) => ({
+  value: item.value,
+  label: materialTypeLabel(item.value),
+}))
 
-const materialStatusOptions = (
-  Object.keys(PORTFOLIO_MATERIAL_STATUS_LABEL) as PortfolioMaterialStatus[]
-).map((value) => ({ value, label: materialStatusLabel(value) }))
+const materialStatusOptions = PORTFOLIO_MATERIAL_STATUS_OPTIONS.map((item) => ({
+  value: item.value,
+  label: materialStatusLabel(item.value),
+}))
 
 const filterFields: FilterField[] = [
   { key: 'materialType', label: '材料类型', type: 'select', options: materialTypeOptions },
@@ -121,7 +127,7 @@ const searchKeyword = ref('')
 const formModalOpen = ref(false)
 const editingId = ref<string>()
 const form = reactive<PortfolioMaterialSaveRequest>({
-  materialType: 'DOCUMENT',
+  materialType: PortfolioMaterialTypeCode.DOCUMENT,
   materialTitle: '',
   fileNodeId: '',
   categoryCode: '',
@@ -186,7 +192,7 @@ function handleSearch() {
 
 function openCreateModal() {
   editingId.value = undefined
-  form.materialType = 'DOCUMENT'
+  form.materialType = PortfolioMaterialTypeCode.DOCUMENT
   form.materialTitle = ''
   form.fileNodeId = ''
   form.categoryCode = ''

@@ -39,6 +39,18 @@ export const MARK_STAGE_ORDER: ReadonlyArray<MarkStageKey> = [
   'ARCHIVE',
 ]
 
+function isMarkStageKey(key: string): key is MarkStageKey {
+  return key === 'EXAM_PREP'
+    || key === 'PAPER_TEMPLATE'
+    || key === 'CANDIDATE_ROSTER'
+    || key === 'SCAN'
+    || key === 'MARKING_ORG'
+    || key === 'TRIAL_MARKING'
+    || key === 'FORMAL_MARKING'
+    || key === 'SCORE_PUBLISH'
+    || key === 'ARCHIVE'
+}
+
 function mapSnapshotStatus(status: string): WorkbenchStageStatus {
   if (status === 'pending'
     || status === 'active'
@@ -88,14 +100,17 @@ export const useMarkStageStore = defineStore('markStage', () => {
     if (!key) {
       return null
     }
-    if (!MARK_STAGE_ORDER.includes(key as MarkStageKey)) {
+    if (!isMarkStageKey(key)) {
       throw new Error(`未知建议阶段：${key}`)
     }
-    return key as MarkStageKey
+    return key
   })
 
   const prepAdvisoryReasons = computed(() => snapshot.value?.prepAdvisoryReasons ?? [])
   const prepBlockingReasons = computed(() => snapshot.value?.prepBlockingReasons ?? [])
+  const experienceAssistBlockingReasons = computed(
+    () => snapshot.value?.experienceAssistBlockingReasons ?? [],
+  )
   const isExamConfidential = computed(() => isExamConfidentialFlag(snapshot.value?.confidential))
   const examConfidentialLabel = computed(() => formatExamConfidentialLabel(snapshot.value))
 
@@ -145,6 +160,7 @@ export const useMarkStageStore = defineStore('markStage', () => {
     suggestedStageKey,
     prepAdvisoryReasons,
     prepBlockingReasons,
+    experienceAssistBlockingReasons,
     isExamConfidential,
     examConfidentialLabel,
     selectedExamLabel,

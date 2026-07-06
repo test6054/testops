@@ -5,7 +5,6 @@ import type {
   ImprovementTaskSaveRequest,
   ImprovementTaskVO,
 } from '@/apis/quality/improvement-task'
-import type { ImprovementTaskStatus } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
 import { message } from 'ant-design-vue'
@@ -13,7 +12,13 @@ import { reactive, ref, watch } from 'vue'
 import { aiTaskApi } from '@/apis/quality/ai-task'
 import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
 import { improvementTaskApi } from '@/apis/quality/improvement-task'
-import { IMPROVEMENT_TASK_STATUS_COLOR, IMPROVEMENT_TASK_STATUS_LABEL } from '@/apis/quality/types'
+import {
+  AiTaskBusinessTypeCode,
+  AiTaskTypeCode,
+  IMPROVEMENT_TASK_STATUS_COLOR,
+  ImprovementTaskStatusCode,
+  ImprovementTaskStatusDescription,
+} from '@/apis/quality/types'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
 import {
   AchievementResultSelector,
@@ -81,18 +86,27 @@ const improvementQuery = reactive<ImprovementTaskQueryRequest>({
   keyword: '',
 })
 
-const improvementStatusOptions: Array<{ value: ImprovementTaskStatus, label: string }> = [
-  { value: 'OPEN', label: IMPROVEMENT_TASK_STATUS_LABEL.OPEN },
-  { value: 'IN_PROGRESS', label: IMPROVEMENT_TASK_STATUS_LABEL.IN_PROGRESS },
-  { value: 'SUBMITTED', label: IMPROVEMENT_TASK_STATUS_LABEL.SUBMITTED },
-  { value: 'CLOSED', label: IMPROVEMENT_TASK_STATUS_LABEL.CLOSED },
-  { value: 'RETURNED', label: IMPROVEMENT_TASK_STATUS_LABEL.RETURNED },
+const improvementStatusOptions: Array<{ value: ImprovementTaskStatusCode, label: string }> = [
+  { value: ImprovementTaskStatusCode.OPEN, label: ImprovementTaskStatusDescription.OPEN },
+  {
+    value: ImprovementTaskStatusCode.IN_PROGRESS,
+    label: ImprovementTaskStatusDescription.IN_PROGRESS,
+  },
+  { value: ImprovementTaskStatusCode.SUBMITTED, label: ImprovementTaskStatusDescription.SUBMITTED },
+  { value: ImprovementTaskStatusCode.CLOSED, label: ImprovementTaskStatusDescription.CLOSED },
+  { value: ImprovementTaskStatusCode.RETURNED, label: ImprovementTaskStatusDescription.RETURNED },
 ]
 
-const improvementFilterForm = reactive({
+interface ImprovementFilterForm {
+  qualityCourseId: string
+  ownerUserId: string
+  status?: ImprovementTaskStatusCode
+  keyword: string
+}
+
+const improvementFilterForm = reactive<ImprovementFilterForm>({
   qualityCourseId: '',
   ownerUserId: '',
-  status: undefined as ImprovementTaskStatus | undefined,
   keyword: '',
 })
 
@@ -146,20 +160,23 @@ const improvementDetailVisible = ref(false)
 const improvementDetailRecord = ref<ImprovementTaskVO | null>(null)
 const improvementDetailLoading = ref(false)
 
-const improvementTransitMap: Record<ImprovementTaskStatus, ImprovementTaskStatus[]> = {
-  OPEN: ['IN_PROGRESS'],
-  IN_PROGRESS: ['SUBMITTED'],
-  SUBMITTED: ['CLOSED', 'RETURNED'],
-  REVIEWED: [],
-  RETURNED: ['IN_PROGRESS'],
-  CLOSED: [],
+const improvementTransitMap: Record<ImprovementTaskStatusCode, ImprovementTaskStatusCode[]> = {
+  [ImprovementTaskStatusCode.OPEN]: [ImprovementTaskStatusCode.IN_PROGRESS],
+  [ImprovementTaskStatusCode.IN_PROGRESS]: [ImprovementTaskStatusCode.SUBMITTED],
+  [ImprovementTaskStatusCode.SUBMITTED]: [
+    ImprovementTaskStatusCode.CLOSED,
+    ImprovementTaskStatusCode.RETURNED,
+  ],
+  [ImprovementTaskStatusCode.REVIEWED]: [],
+  [ImprovementTaskStatusCode.RETURNED]: [ImprovementTaskStatusCode.IN_PROGRESS],
+  [ImprovementTaskStatusCode.CLOSED]: [],
 }
 
-function improvementStatusLabel(value: ImprovementTaskStatus): string {
-  return strictEnumLabel(IMPROVEMENT_TASK_STATUS_LABEL, value, '持续改进任务状态')
+function improvementStatusLabel(value: ImprovementTaskStatusCode): string {
+  return strictEnumLabel(ImprovementTaskStatusDescription, value, '持续改进任务状态')
 }
 
-function improvementStatusColor(value: ImprovementTaskStatus): BadgeTone {
+function improvementStatusColor(value: ImprovementTaskStatusCode): BadgeTone {
   return strictEnumTone(IMPROVEMENT_TASK_STATUS_COLOR, value, '持续改进任务状态')
 }
 
@@ -335,7 +352,7 @@ async function sleep(ms: number): Promise<void> {
 async function startPollingImprovementAiTask(improvementTaskId: string): Promise<void> {
   for (let attempt = 0; attempt < 15; attempt += 1) {
     const result = await aiTaskApi.page({
-      taskType: 'IMPROVEMENT_SUGGESTION_GENERATE',
+      taskType: AiTaskTypeCode.IMPROVEMENT_SUGGESTION_GENERATE,
       reportId: improvementTaskId,
       pageNum: 1,
       pageSize: 1,
@@ -395,13 +412,28 @@ async function submitImprovementEditor(): Promise<void> {
       dueDate: improvementEditor.dueDate,
     }
     if (improvementEditorMode.value === 'create') {
-      const improvementTaskId = await improvementTaskApi.create({
-        ...request,
-        submitAiSuggestionDraft: submitAiSuggestionDraft.value || undefined,
-      })
+      const improvementTaskId = await improvementTaskApi.create(request)
       if (submitAiSuggestionDraft.value && improvementTaskId) {
+        const achievementResultId = request.achievementResultId
+        if (!achievementResultId) {
+          throw new Error('生成 AI 改进草稿需要先关联达成度计算结果')
+        }
+        const res = await aiTaskTriggerApi.submit({
+          taskType: AiTaskTypeCode.IMPROVEMENT_SUGGESTION_GENERATE,
+          businessType: AiTaskBusinessTypeCode.ACHIEVEMENT_RESULT,
+          businessId: achievementResultId,
+          trainingPlanId: request.trainingPlanId,
+          programId: request.programId,
+          qualityCourseId: request.qualityCourseId,
+          achievementResultId,
+          reportId: improvementTaskId,
+        })
         message.success('改进任务已创建，AI 改进草稿已排队生成')
-        void startPollingImprovementAiTask(String(improvementTaskId))
+        if (res.taskId) {
+          aiTaskStore.startPolling(res.taskId)
+        } else {
+          void startPollingImprovementAiTask(String(improvementTaskId))
+        }
       } else {
         message.success('改进任务已创建')
       }
@@ -416,46 +448,50 @@ async function submitImprovementEditor(): Promise<void> {
   }
 }
 
-function nextImprovementStatuses(status: ImprovementTaskStatus): ImprovementTaskStatus[] {
+function nextImprovementStatuses(status: ImprovementTaskStatusCode): ImprovementTaskStatusCode[] {
   return strictEnumValue(improvementTransitMap, status, '持续改进任务状态')
 }
 
-function canEditImprovementTask(status: ImprovementTaskStatus): boolean {
-  return status === 'OPEN' || status === 'RETURNED'
+function canEditImprovementTask(status: ImprovementTaskStatusCode): boolean {
+  return status === ImprovementTaskStatusCode.OPEN
+    || status === ImprovementTaskStatusCode.RETURNED
 }
 
 async function handleImprovementTransit(
   record: ImprovementTaskVO,
-  to: ImprovementTaskStatus,
+  to: ImprovementTaskStatusCode,
 ): Promise<void> {
-  if (record.status === 'SUBMITTED' && (to === 'CLOSED' || to === 'RETURNED')) {
+  if (
+    record.status === ImprovementTaskStatusCode.SUBMITTED
+    && (to === ImprovementTaskStatusCode.CLOSED || to === ImprovementTaskStatusCode.RETURNED)
+  ) {
     const reviewRemark = await promptInputAsync({
-      title: to === 'CLOSED' ? '复评通过并闭环' : '复评退回任务',
-      placeholder: to === 'RETURNED' ? '退回原因（必填）' : '复评意见（可选）',
-      required: to === 'RETURNED',
-      okType: to === 'RETURNED' ? 'danger' : 'primary',
+      title: to === ImprovementTaskStatusCode.CLOSED ? '复评通过并闭环' : '复评退回任务',
+      placeholder: to === ImprovementTaskStatusCode.RETURNED ? '退回原因（必填）' : '复评意见（可选）',
+      required: to === ImprovementTaskStatusCode.RETURNED,
+      okType: to === ImprovementTaskStatusCode.RETURNED ? 'danger' : 'primary',
       emptyErrorMessage: '请填写退回原因',
     })
     if (reviewRemark === null) return
-    if (to === 'RETURNED' && !reviewRemark) return
+    if (to === ImprovementTaskStatusCode.RETURNED && !reviewRemark) return
     await improvementTaskApi.close({
       id: record.id,
-      reviewDecision: to === 'CLOSED' ? 'APPROVED' : 'REJECTED',
+      reviewDecision: to === ImprovementTaskStatusCode.CLOSED ? 'APPROVED' : 'REJECTED',
       reviewRemark: reviewRemark || undefined,
     })
-    message.success(to === 'CLOSED' ? '已闭环' : '已退回')
+    message.success(to === ImprovementTaskStatusCode.CLOSED ? '已闭环' : '已退回')
     await loadList({ refreshSignals: true })
     return
   }
   const remark = await promptInputAsync({
     title: `${improvementStatusLabel(record.status)} → ${improvementStatusLabel(to)}`,
-    placeholder: to === 'SUBMITTED' ? '整改进度说明（提交时必填）' : '进度备注（可选）',
+    placeholder: to === ImprovementTaskStatusCode.SUBMITTED ? '整改进度说明（提交时必填）' : '进度备注（可选）',
     required: false,
     okType: 'primary',
   })
   if (remark === null) return
   let rectificationEvidenceItems: string[] | undefined
-  if (to === 'SUBMITTED') {
+  if (to === ImprovementTaskStatusCode.SUBMITTED) {
     const evidenceText = await promptInputAsync({
       title: '填写整改证据说明',
       placeholder: '每行填写一条证据，例如：已上传课程考核分析表',
@@ -489,8 +525,8 @@ async function handleImprovementAiSuggestion(record: ImprovementTaskVO): Promise
     type: 'info',
     onOk: async () => {
       const res = await aiTaskTriggerApi.submit({
-        taskType: 'IMPROVEMENT_SUGGESTION_GENERATE',
-        businessType: 'ACHIEVEMENT_RESULT',
+        taskType: AiTaskTypeCode.IMPROVEMENT_SUGGESTION_GENERATE,
+        businessType: AiTaskBusinessTypeCode.ACHIEVEMENT_RESULT,
         businessId: achievementResultId,
         trainingPlanId: record.trainingPlanId,
         programId: record.programId,
@@ -628,7 +664,7 @@ defineExpose({
             <UiTextAction
               v-for="to in nextImprovementStatuses(record.status)"
               :key="to"
-              :tone="to === 'RETURNED' ? 'danger' : 'primary'"
+              :tone="to === ImprovementTaskStatusCode.RETURNED ? 'danger' : 'primary'"
               @click="handleImprovementTransit(record, to)"
             >
               → {{ improvementStatusLabel(to) }}
@@ -640,7 +676,7 @@ defineExpose({
               AI 改进
             </UiTextAction>
             <UiTextAction
-              v-if="record.status === 'OPEN'"
+              v-if="record.status === ImprovementTaskStatusCode.OPEN"
               tone="danger"
               @click="handleImprovementDelete(record)"
             >

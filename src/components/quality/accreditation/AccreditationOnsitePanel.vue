@@ -2,7 +2,6 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   AccreditationCycleVO,
-  OnsiteChecklistCategory,
   OnsiteChecklistItemUpdateRequest,
   OnsiteChecklistItemVO,
   OnsiteVisitPlanSaveRequest,
@@ -12,8 +11,10 @@ import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   accreditationApi,
-  ONSITE_CHECKLIST_CATEGORY_LABEL,
-  ONSITE_CHECKLIST_STATUS_LABEL,
+  OnsiteChecklistCategoryCode,
+  OnsiteChecklistCategoryDescription,
+  OnsiteChecklistItemStatusCode,
+  OnsiteChecklistItemStatusDescription,
 } from '@/apis/quality/accreditation'
 import { ArchiveSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -50,14 +51,14 @@ const checklistColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 100 },
 ]
 
-const CATEGORY_TABS: { key: '' | OnsiteChecklistCategory, label: string }[] = [
+const CATEGORY_TABS: { key: '' | OnsiteChecklistCategoryCode, label: string }[] = [
   { key: '', label: '全部' },
-  { key: 'FACILITY', label: '设施' },
-  { key: 'PAPER_SAMPLE', label: '样本' },
-  { key: 'CLASS_OBSERVATION', label: '听课' },
-  { key: 'INTERVIEW', label: '访谈' },
-  { key: 'DOCUMENT', label: '材料' },
-  { key: 'OTHER', label: '其他' },
+  { key: OnsiteChecklistCategoryCode.FACILITY, label: '设施' },
+  { key: OnsiteChecklistCategoryCode.PAPER_SAMPLE, label: '样本' },
+  { key: OnsiteChecklistCategoryCode.CLASS_OBSERVATION, label: '听课' },
+  { key: OnsiteChecklistCategoryCode.INTERVIEW, label: '访谈' },
+  { key: OnsiteChecklistCategoryCode.DOCUMENT, label: '材料' },
+  { key: OnsiteChecklistCategoryCode.OTHER, label: '其他' },
 ]
 
 const loading = ref(false)
@@ -67,7 +68,7 @@ const drawerOpen = ref(false)
 const drawerTitle = ref('现场考查计划')
 const checklistDrawerOpen = ref(false)
 const editingItem = ref<OnsiteChecklistItemVO>()
-const checklistCategoryFilter = ref<'' | OnsiteChecklistCategory>('')
+const checklistCategoryFilter = ref<'' | OnsiteChecklistCategoryCode>('')
 
 const canMutateOnsitePlan = computed(
   () =>
@@ -81,7 +82,9 @@ const checklistProgress = computed(() => {
   const items = selectedPlan.value?.checklistItems || []
   if (items.length === 0) return 0
   const done = items.filter(
-    (i) => i.itemStatus === 'COMPLETED' || i.itemStatus === 'NOT_APPLICABLE',
+    i =>
+      i.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED
+      || i.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE,
   ).length
   return Math.round((done / items.length) * 100)
 })
@@ -104,7 +107,7 @@ const form = reactive<OnsiteVisitPlanSaveRequest>({
 
 const checklistForm = reactive<OnsiteChecklistItemUpdateRequest>({
   id: '',
-  itemStatus: 'PENDING',
+  itemStatus: OnsiteChecklistItemStatusCode.PENDING,
   evidenceArchiveId: undefined,
   remark: '',
 })
@@ -192,13 +195,27 @@ async function submitPlan() {
     message.error('请完整填写考查计划信息')
     return
   }
+  const request: OnsiteVisitPlanSaveRequest = {
+    id: form.id,
+    programId: form.programId,
+    trainingPlanId: form.trainingPlanId,
+    accreditationCycleId: form.accreditationCycleId,
+    visitCode: form.visitCode.trim(),
+    visitTitle: form.visitTitle.trim(),
+    visitStart: form.visitStart,
+    visitEnd: form.visitEnd,
+    leadExpertName: form.leadExpertName?.trim() || undefined,
+    expertGroupRemark: form.expertGroupRemark?.trim() || undefined,
+    auditSupervisionId: form.auditSupervisionId,
+    remark: form.remark?.trim() || undefined,
+  }
   try {
     if (form.id) {
-      await accreditationApi.updateOnsitePlan(form)
+      await accreditationApi.updateOnsitePlan(request)
       message.success('考查计划已更新')
       if (selectedPlan.value?.id === form.id) await selectPlan(form.id)
     } else {
-      const id = await accreditationApi.createOnsitePlan(form)
+      const id = await accreditationApi.createOnsitePlan(request)
       message.success('已创建考查计划并预置 10 项 CEEAA 检查清单')
       await selectPlan(id)
     }
@@ -241,21 +258,22 @@ async function submitChecklistItem() {
     message.error('仅现场考查阶段可更新检查项')
     return
   }
-  if (checklistForm.itemStatus === 'COMPLETED' && !checklistForm.evidenceArchiveId) {
+  if (checklistForm.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED && !checklistForm.evidenceArchiveId) {
     message.error('已完成检查项必须关联证据归档')
     return
   }
-  if (checklistForm.itemStatus === 'NOT_APPLICABLE' && !checklistForm.remark?.trim()) {
+  if (checklistForm.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE && !checklistForm.remark?.trim()) {
     message.error('不适用检查项必须填写说明')
     return
   }
   try {
-    await accreditationApi.updateChecklistItem({
+    const request: OnsiteChecklistItemUpdateRequest = {
       id: checklistForm.id,
       itemStatus: checklistForm.itemStatus,
       evidenceArchiveId: checklistForm.evidenceArchiveId || undefined,
-      remark: checklistForm.remark || undefined,
-    })
+      remark: checklistForm.remark?.trim() || undefined,
+    }
+    await accreditationApi.updateChecklistItem(request)
     message.success('检查项已更新')
     checklistDrawerOpen.value = false
     if (selectedPlan.value) await selectPlan(selectedPlan.value.id)
@@ -356,7 +374,7 @@ defineExpose({ openCreate, loadPlans })
           <template v-if="column.key === 'itemCategory'">
             {{
               strictEnumLabel(
-                ONSITE_CHECKLIST_CATEGORY_LABEL,
+                OnsiteChecklistCategoryDescription,
                 record.itemCategory,
                 '现场考查清单类别',
               )
@@ -364,7 +382,7 @@ defineExpose({ openCreate, loadPlans })
           </template>
           <template v-else-if="column.key === 'itemStatus'">
             {{
-              strictEnumLabel(ONSITE_CHECKLIST_STATUS_LABEL, record.itemStatus, '现场考查清单状态')
+              strictEnumLabel(OnsiteChecklistItemStatusDescription, record.itemStatus, '现场考查清单状态')
             }}
           </template>
           <template v-else-if="column.key === 'actions'">
@@ -424,16 +442,16 @@ defineExpose({ openCreate, loadPlans })
         <a-form layout="vertical">
           <a-form-item label="状态" required>
             <a-select v-model:value="checklistForm.itemStatus">
-              <a-select-option value="PENDING">待准备</a-select-option>
-              <a-select-option value="IN_PROGRESS">准备中</a-select-option>
-              <a-select-option value="COMPLETED">已完成</a-select-option>
-              <a-select-option value="NOT_APPLICABLE">不适用</a-select-option>
+              <a-select-option :value="OnsiteChecklistItemStatusCode.PENDING">待准备</a-select-option>
+              <a-select-option :value="OnsiteChecklistItemStatusCode.IN_PROGRESS">准备中</a-select-option>
+              <a-select-option :value="OnsiteChecklistItemStatusCode.COMPLETED">已完成</a-select-option>
+              <a-select-option :value="OnsiteChecklistItemStatusCode.NOT_APPLICABLE">不适用</a-select-option>
             </a-select>
           </a-form-item>
-          <a-form-item label="证据归档" :required="checklistForm.itemStatus === 'COMPLETED'">
+          <a-form-item label="证据归档" :required="checklistForm.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED">
             <ArchiveSelector v-model:value="checklistForm.evidenceArchiveId" />
           </a-form-item>
-          <a-form-item label="备注" :required="checklistForm.itemStatus === 'NOT_APPLICABLE'">
+          <a-form-item label="备注" :required="checklistForm.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE">
             <a-textarea v-model:value="checklistForm.remark" :rows="3" />
           </a-form-item>
         </a-form>

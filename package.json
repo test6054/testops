@@ -12,7 +12,7 @@
     "build": "vue-tsc -p tsconfig.app.json --noEmit && NODE_OPTIONS=--max-old-space-size=8192 vite build",
     "build:test": "vue-tsc -p tsconfig.app.json --noEmit && vite build --mode test",
     "preview": "vite preview --port 5050",
-    "typecheck": "node scripts/verify-quality-route-contract.mjs && pnpm exec vue-tsc -p tsconfig.app.json --noEmit",
+    "typecheck": "node scripts/verify-quality-route-contract.mjs && node scripts/verify-mark-ui-skill-gates.mjs && node scripts/verify-analysis-exam-auto-select.mjs && node scripts/verify-exam-workspace-menu-contract.mjs && pnpm exec vue-tsc -p tsconfig.app.json --noEmit",
     "lint": "eslint",
     "lint:fix": "eslint . --fix"
   },

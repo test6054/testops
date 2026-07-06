@@ -1,5 +1,5 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { ExamJourneyKey, ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
+import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 import { resolveJourneyKeyByStage } from '@/constants/exam-journey'
@@ -33,7 +33,7 @@ export const MARK_STAGE_DEFAULT_ROUTE: Record<MarkStageKey, string> = {
 }
 
 /** 阶段状态短标签：侧栏分组标题旁展示 */
-export const WORKSPACE_STAGE_STATUS_LABEL: Record<WorkbenchStageStatus, string> = {
+export const WorkbenchStageStatusDescription: Record<WorkbenchStageStatus, string> = {
   pending: '待开始',
   active: '进行中',
   completed: '已完成',
@@ -99,7 +99,7 @@ export function shouldShowJourneySuggestion(
   if (activeJourneyKey === suggestedJourney) {
     return false
   }
-  const activeIndex = resolveJourneyIndex(activeJourneyKey as ExamJourneyKey)
+  const activeIndex = resolveJourneyIndex(activeJourneyKey)
   const suggestedIndex = resolveJourneyIndex(suggestedJourney)
   if (activeIndex < 0 || suggestedIndex < 0) {
     throw new Error(`无法比较旅程序：${activeJourneyKey} / ${suggestedJourney}`)

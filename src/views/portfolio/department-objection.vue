@@ -1,21 +1,23 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  PortfolioEvaluationObjectionHandleAction,
-  PortfolioEvaluationObjectionStatus,
   PortfolioEvaluationObjectionSummaryVO,
-  PortfolioEvaluationObjectionType,
 } from '@/apis/portfolio/types'
 import { Input, InputNumber, message, Select } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import {
+  PortfolioEvaluationObjectionHandleActionCode,
+  PortfolioEvaluationObjectionHandleActionDescription,
+  PortfolioEvaluationObjectionStatusCode,
+  PortfolioEvaluationObjectionStatusDescription,
+  PortfolioEvaluationObjectionTypeCode,
+  PortfolioEvaluationObjectionTypeDescription,
+} from '@/apis/portfolio/enums'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import {
-  PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_LABEL,
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
-  PORTFOLIO_EVALUATION_OBJECTION_STATUS_LABEL,
   PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
-  PORTFOLIO_EVALUATION_OBJECTION_TYPE_LABEL,
 } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -31,30 +33,30 @@ import { handleDownloadFile } from '@/utils/file-download'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-const HANDLE_ACTION_OPTIONS: PortfolioEvaluationObjectionHandleAction[] = [
-  'MAINTAIN',
-  'CORRECT',
-  'REVOKE',
-  'RE_REVIEW',
+const HANDLE_ACTION_OPTIONS: PortfolioEvaluationObjectionHandleActionCode[] = [
+  PortfolioEvaluationObjectionHandleActionCode.MAINTAIN,
+  PortfolioEvaluationObjectionHandleActionCode.CORRECT,
+  PortfolioEvaluationObjectionHandleActionCode.REVOKE,
+  PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW,
 ]
 
-function statusLabel(status: PortfolioEvaluationObjectionStatus): string {
-  return strictEnumLabel(PORTFOLIO_EVALUATION_OBJECTION_STATUS_LABEL, status, '评价异议状态')
+function statusLabel(status: PortfolioEvaluationObjectionStatusCode): string {
+  return strictEnumLabel(PortfolioEvaluationObjectionStatusDescription, status, '评价异议状态')
 }
 
-function statusTone(status: PortfolioEvaluationObjectionStatus) {
+function statusTone(status: PortfolioEvaluationObjectionStatusCode) {
   return strictEnumTone(PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE, status, '评价异议状态')
 }
 
-function actionLabel(action: PortfolioEvaluationObjectionHandleAction): string {
+function actionLabel(action: PortfolioEvaluationObjectionHandleActionCode): string {
   return strictEnumLabel(
-    PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_LABEL,
+    PortfolioEvaluationObjectionHandleActionDescription,
     action,
     '评价异议复核动作',
   )
 }
 
-function actionTone(action: PortfolioEvaluationObjectionHandleAction) {
+function actionTone(action: PortfolioEvaluationObjectionHandleActionCode) {
   return strictEnumTone(
     PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
     action,
@@ -62,27 +64,30 @@ function actionTone(action: PortfolioEvaluationObjectionHandleAction) {
   )
 }
 
-function requiresDangerConfirm(action: PortfolioEvaluationObjectionHandleAction): boolean {
-  return action === 'REVOKE' || action === 'RE_REVIEW'
+function requiresDangerConfirm(action: PortfolioEvaluationObjectionHandleActionCode): boolean {
+  return action === PortfolioEvaluationObjectionHandleActionCode.REVOKE
+    || action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
 }
 
 const STATUS_FILTER_OPTIONS: Array<{
-  value: '' | PortfolioEvaluationObjectionStatus
+  value: '' | PortfolioEvaluationObjectionStatusCode
   label: string
 }> = [
-  { value: 'SUBMITTED', label: '待复核' },
+  { value: PortfolioEvaluationObjectionStatusCode.SUBMITTED, label: '待复核' },
   { value: '', label: '全部记录' },
-  { value: 'UPHELD', label: '已成立' },
-  { value: 'REJECTED', label: '已驳回' },
-  { value: 'CLOSED', label: '已关闭' },
+  { value: PortfolioEvaluationObjectionStatusCode.UPHELD, label: '已成立' },
+  { value: PortfolioEvaluationObjectionStatusCode.REJECTED, label: '已驳回' },
+  { value: PortfolioEvaluationObjectionStatusCode.CLOSED, label: '已关闭' },
 ]
 
-function requiresCorrectedScore(objectionType: PortfolioEvaluationObjectionType): boolean {
-  return objectionType === 'RESULT_DISPUTE' || objectionType === 'SCORE_DISPUTE'
+function requiresCorrectedScore(objectionType: PortfolioEvaluationObjectionTypeCode): boolean {
+  return objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE
+    || objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE
 }
 
-function requiresOpinion(action: PortfolioEvaluationObjectionHandleAction): boolean {
-  return action === 'MAINTAIN' || action === 'RE_REVIEW'
+function requiresOpinion(action: PortfolioEvaluationObjectionHandleActionCode): boolean {
+  return action === PortfolioEvaluationObjectionHandleActionCode.MAINTAIN
+    || action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
 }
 
 const route = useRoute()
@@ -95,21 +100,24 @@ const pageTotal = ref(0)
 const reviewDrawerOpen = ref(false)
 const reviewTarget = ref<PortfolioEvaluationObjectionSummaryVO | null>(null)
 const reviewForm = reactive({
-  action: 'CORRECT' as PortfolioEvaluationObjectionHandleAction,
+  action: PortfolioEvaluationObjectionHandleActionCode.CORRECT,
   handleOpinion: '',
-  correctedScore: undefined as number | undefined,
+  correctedScore: undefined,
 })
 
 const evaluationTaskId = ref(
   typeof route.query.evaluationTaskId === 'string' ? route.query.evaluationTaskId : '',
 )
-const objectionStatusFilter = ref<'' | PortfolioEvaluationObjectionStatus>('SUBMITTED')
+const objectionStatusFilter = ref<'' | PortfolioEvaluationObjectionStatusCode>(
+  PortfolioEvaluationObjectionStatusCode.SUBMITTED,
+)
 
 const showCorrectedScore = computed(() => {
   if (!reviewTarget.value) {
     return false
   }
-  return reviewForm.action === 'CORRECT' && requiresCorrectedScore(reviewTarget.value.objectionType)
+  return reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.CORRECT
+    && requiresCorrectedScore(reviewTarget.value.objectionType)
 })
 
 const columns: ColumnsType<PortfolioEvaluationObjectionSummaryVO> = [
@@ -156,7 +164,9 @@ async function submitReview() {
   const opinion = reviewForm.handleOpinion.trim()
   if (requiresOpinion(reviewForm.action) && !opinion) {
     message.warning(
-      reviewForm.action === 'MAINTAIN' ? '维持原结果须填写复核意见' : '重新评审须填写复核说明',
+      reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.MAINTAIN
+        ? '维持原结果须填写复核意见'
+        : '重新评审须填写复核说明',
     )
     return
   }
@@ -167,9 +177,11 @@ async function submitReview() {
   if (requiresDangerConfirm(reviewForm.action)) {
     const confirmed = await confirmAsync({
       type: 'error',
-      title: reviewForm.action === 'REVOKE' ? '确认撤销评价结论？' : '确认退回重新评审？',
+      title: reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.REVOKE
+        ? '确认撤销评价结论？'
+        : '确认退回重新评审？',
       content:
-        reviewForm.action === 'REVOKE'
+        reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.REVOKE
           ? '将软删该教师当前评价条目并重算画像，操作不可自动恢复。'
           : '将关闭公示、软删评价条目并回退任务至专家评审，需重新组织评审。',
       okText: '确认提交',
@@ -189,7 +201,7 @@ async function submitReview() {
     message.success('复核完成')
     reviewDrawerOpen.value = false
     reviewTarget.value = null
-    reviewForm.action = 'CORRECT'
+    reviewForm.action = PortfolioEvaluationObjectionHandleActionCode.CORRECT
     reviewForm.handleOpinion = ''
     reviewForm.correctedScore = undefined
     await loadPage()
@@ -202,7 +214,9 @@ async function submitReview() {
 
 function openReviewDrawer(row: PortfolioEvaluationObjectionSummaryVO) {
   reviewTarget.value = row
-  reviewForm.action = requiresCorrectedScore(row.objectionType) ? 'CORRECT' : 'MAINTAIN'
+  reviewForm.action = requiresCorrectedScore(row.objectionType)
+    ? PortfolioEvaluationObjectionHandleActionCode.CORRECT
+    : PortfolioEvaluationObjectionHandleActionCode.MAINTAIN
   reviewForm.handleOpinion = ''
   reviewForm.correctedScore = undefined
   reviewDrawerOpen.value = true
@@ -259,7 +273,7 @@ void loadPage()
           <template v-else-if="column.key === 'objectionType'">
             {{
               strictEnumLabel(
-                PORTFOLIO_EVALUATION_OBJECTION_TYPE_LABEL,
+                PortfolioEvaluationObjectionTypeDescription,
                 record.objectionType,
                 '评价异议类型',
               )
@@ -288,7 +302,10 @@ void loadPage()
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div v-if="record.objectionStatus === 'SUBMITTED'" class="operations-cell">
+            <div
+              v-if="record.objectionStatus === PortfolioEvaluationObjectionStatusCode.SUBMITTED"
+              class="operations-cell"
+            >
               <UiButton
                 variant="primary"
                 size="sm"
@@ -306,7 +323,11 @@ void loadPage()
       </UiDataTable>
       <UiEmpty
         v-else
-        :description="objectionStatusFilter === 'SUBMITTED' ? '暂无待复核异议' : '暂无异议记录'"
+        :description="
+          objectionStatusFilter === PortfolioEvaluationObjectionStatusCode.SUBMITTED
+            ? '暂无待复核异议'
+            : '暂无异议记录'
+        "
       />
     </UiCard>
 

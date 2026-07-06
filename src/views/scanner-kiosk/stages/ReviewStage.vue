@@ -19,7 +19,11 @@ import {
   WarningFilled,
 } from '@ant-design/icons-vue'
 import { computed, watch } from 'vue'
-import { TASK_STATUS_LABEL } from '@/apis/mark/task-status'
+import { LocalScanPageStatusCode } from '@/apis/mark/scanner-agent-local'
+import { TaskStatusDescription } from '@/apis/mark/task-status'
+import {
+  ExamScannerPageRegistrationStatusCode,
+} from '@/types/enums/exam-scanner-page-registration-status-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
@@ -46,7 +50,7 @@ const failedPages = computed<ReviewItem[]>(() =>
     pageNo: page.pageNo,
     type: 'page-failed',
     title: workflow.scanPageDisplayTitleByNo(page.pageNo),
-    description: page.status === 'FAILED' ? '上传失败' : '页处理异常',
+    description: page.status === LocalScanPageStatusCode.FAILED ? '上传失败' : '页处理异常',
     detail:
       typeof page.diagnostic === 'string'
         ? workflow.scannerDiagnosticText(page.diagnostic)
@@ -95,7 +99,9 @@ const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
       title: `${workflow.scanPageDisplayTitleByNo(pageNo)} 路 ${workflow.attentionTypeText(att.attentionType)}`,
       description:
         att.diagnostic
-        || workflow.registrationStatusText(pageItem?.registrationStatus ?? 'PENDING'),
+        || workflow.registrationStatusText(
+          pageItem?.registrationStatus ?? ExamScannerPageRegistrationStatusCode.PENDING,
+        ),
       detail: workflow.formatTime(att.updateTime),
       processingStatus: att.processingStatus,
       source: 'ledger',
@@ -107,7 +113,7 @@ const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
 
 function processingStatusLabel(status?: TaskStatusCode) {
   if (!status) return ''
-  return strictEnumLabel(TASK_STATUS_LABEL, status, '处理任务状态')
+  return strictEnumLabel(TaskStatusDescription, status, '处理任务状态')
 }
 
 const reviewItems = computed(() => {
@@ -127,7 +133,9 @@ const registeredPages = computed<ReviewItem[]>(() => {
   const issuePageNos = new Set(reviewItems.value.map((item) => item.pageNo))
   return ledger.items
     .filter(
-      (item) => item.registrationStatus !== 'DISCARDED' && item.registrationStatus !== 'SUPERSEDED',
+      (item) =>
+        item.registrationStatus !== ExamScannerPageRegistrationStatusCode.DISCARDED
+        && item.registrationStatus !== ExamScannerPageRegistrationStatusCode.SUPERSEDED,
     )
     .filter((item) => !issuePageNos.has(item.pageNo))
     .map((item): ReviewItem => ({
@@ -170,14 +178,14 @@ const localBrowsablePages = computed<ReviewItem[]>(() => {
   const issuePageNos = new Set(reviewItems.value.map((item) => item.pageNo))
   const registeredPageNos = new Set(registeredPages.value.map((item) => item.pageNo))
   return job.pages
-    .filter((page) => page.status !== 'DELETED')
+    .filter((page) => page.status !== LocalScanPageStatusCode.DELETED)
     .filter((page) => !issuePageNos.has(page.pageNo) && !registeredPageNos.has(page.pageNo))
     .map((page): ReviewItem => ({
       key: `local-${page.pageNo}`,
       pageNo: page.pageNo,
       type: 'page-registered',
       title: workflow.scanPageDisplayTitleByNo(page.pageNo),
-      description: page.status === 'UPLOADED' ? '本机已上传' : '本机已扫描',
+      description: page.status === LocalScanPageStatusCode.UPLOADED ? '本机已上传' : '本机已扫描',
       detail: page.uploadedFileId ? `鏂囦欢 ${page.uploadedFileId}` : undefined,
       status: page.status,
       source: 'job',

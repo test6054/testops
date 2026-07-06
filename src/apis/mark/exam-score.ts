@@ -6,9 +6,6 @@ import type { FinalScoreStatusCode } from './final-score-status'
  */
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
-import { assertUserFacingFiniteNumber, assertUserFacingText } from '@/utils/contract-guard'
-
-const EXAM_SCORE_DATA_ERROR = '成绩数据异常，请刷新后重试'
 
 /** 答卷展示基础信息 - 对应 PaperInstanceDisplayVO 公共字段 */
 interface PaperInstanceDisplayBaseVO {
@@ -73,7 +70,7 @@ export interface ExamScoreSummaryItemVO {
   candidateStatus?: CandidateStatusCode
   /** 试卷实例ID，未绑定试卷时为 undefined */
   paperInstanceId?: string
-  bindingStatus?: BindingStatusCode
+  bindingStatus: BindingStatusCode
   scanBatchId?: string
   finalScoreStatus: FinalScoreStatusCode
   finalScoreStatusMessage: string
@@ -224,28 +221,10 @@ export interface ExamScoreDistributionVO {
   maxScore: number
   minScore: number
   stdDev: number
+  medianScore?: number
+  excellentRate?: number
   ranges: string[]
   counts: number[]
-}
-
-/** 考试分数分布合同校验，确保图表分段和计数可一一对应。 */
-function validateExamScoreDistributionContract(
-  record: ExamScoreDistributionVO,
-): ExamScoreDistributionVO {
-  assertUserFacingText(record.examId, EXAM_SCORE_DATA_ERROR)
-  assertUserFacingFiniteNumber(record.fullScore, EXAM_SCORE_DATA_ERROR)
-  assertUserFacingFiniteNumber(record.passScore, EXAM_SCORE_DATA_ERROR)
-  assertUserFacingFiniteNumber(record.participantCount, EXAM_SCORE_DATA_ERROR)
-  assertUserFacingFiniteNumber(record.passCount, EXAM_SCORE_DATA_ERROR)
-  assertUserFacingFiniteNumber(record.avgScore, EXAM_SCORE_DATA_ERROR)
-  assertUserFacingFiniteNumber(record.stdDev, EXAM_SCORE_DATA_ERROR)
-  if (!Array.isArray(record.ranges) || !Array.isArray(record.counts)) {
-    throw new TypeError(EXAM_SCORE_DATA_ERROR)
-  }
-  if (record.ranges.length !== record.counts.length) {
-    throw new TypeError(EXAM_SCORE_DATA_ERROR)
-  }
-  return record
 }
 
 /** 分页查询考试成绩汇总。 */
@@ -308,7 +287,5 @@ export function withdrawFinalScore(request: ExamFinalScoreWithdrawRequest): Prom
 export function getExamScoreDistribution(
   request: ExamScoreDistributionQueryRequest,
 ): Promise<ExamScoreDistributionVO> {
-  return http
-    .post<ExamScoreDistributionVO>('/api/mark/exams/score-distribution', request)
-    .then(validateExamScoreDistributionContract)
+  return http.post<ExamScoreDistributionVO>('/api/mark/exams/score-distribution', request)
 }

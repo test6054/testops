@@ -48,6 +48,7 @@
         :exam-status-tone="examStatusTone"
         :exam-display-name="snapshot?.examName"
         :exam-display-no="snapshot?.examNo"
+        :exam-context-line="sidebarContextLine"
         :active-menu-key="activeMenuKey"
         :active-journey-key="activeJourneyKey"
         :journey-stages="journeyStages"
@@ -75,7 +76,15 @@
             <UiButton variant="primary" @click="goExamList">返回考试列表</UiButton>
           </UiEmpty>
 
-          <a-spin v-else :spinning="loading && !snapshot">
+          <UiSkeletonState
+            v-else-if="loading && !snapshot"
+            variant="card"
+            :card-count="2"
+            compact
+            class="exam-detail-layout__empty"
+          />
+
+          <template v-else>
             <UiAlertStrip
               v-if="
                 prepBlockingReasons.length > 0 && !isImmersiveWorkspace && !isPrepSelfManagedPage
@@ -86,6 +95,20 @@
               dense
               class="exam-detail-layout__prep-blocking"
             />
+            <UiAlertStrip
+              v-if="experienceAssistBlockingReasons.length > 0 && !isImmersiveWorkspace"
+              tone="warning"
+              title="经验定标待完成"
+              :description="experienceAssistBlockingReasons.join('；')"
+              dense
+              class="exam-detail-layout__experience-assist-blocking"
+            >
+              <template #actions>
+                <UiButton size="sm" variant="primary" @click="goExperienceAssistPolicy">
+                  前往定标
+                </UiButton>
+              </template>
+            </UiAlertStrip>
             <UiAlertStrip
               v-if="isExamConfidential && !isImmersiveWorkspace"
               tone="error"
@@ -119,6 +142,14 @@
               :show-journey-rail="false"
               :show-signal-band="false"
             />
+            <ExamWorkspaceFlowBar
+              v-if="showFlowContextBar"
+              :chain-steps="flowSteps"
+              :active-menu-key="flowActiveMenuKey"
+              :title="flowTitle"
+              :subtitle="flowSubtitle"
+              @step-change="navigateToFlowStep"
+            />
             <UiEmpty
               v-if="isImmersiveWorkspace && !isDesktopMarkingViewport"
               description="批阅与复核需在较宽屏幕操作，请使用桌面端（宽度 ≥ 1024px）"
@@ -127,14 +158,16 @@
               <UiButton variant="primary" @click="exitImmersiveWorkspace">返回任务列表</UiButton>
             </UiEmpty>
             <router-view v-else v-slot="{ Component: ViewComponent, route: childRoute }">
-              <template v-if="ViewComponent">
-                <keep-alive v-if="shouldCacheWorkspaceRoute(childRoute)">
-                  <component :is="ViewComponent" :key="getWorkspaceRouteKey(childRoute)" />
-                </keep-alive>
-                <component v-else :is="ViewComponent" :key="getWorkspaceRouteKey(childRoute)" />
-              </template>
+              <ExamWorkspaceChildFrame
+                v-if="ViewComponent"
+                :child-route="childRoute"
+                :child-component="ViewComponent"
+                :immersive="isImmersiveWorkspace"
+                :should-cache="shouldCacheWorkspaceRoute(childRoute)"
+                :route-key="getWorkspaceRouteKey(childRoute)"
+              />
             </router-view>
-          </a-spin>
+          </template>
         </div>
       </main>
     </div>
@@ -145,10 +178,12 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { Component } from 'vue'
 import type { RouteLocationNormalized } from 'vue-router'
+import type { ExamStatusCode } from '@/apis/mark/exam'
 import type { ExamSwitcherOption } from '@/components/workbench/ExamSwitcher.vue'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
 import type { MarkStageKey } from '@/stores/modules/markStage'
+import AimOutlined from '@ant-design/icons-vue/AimOutlined'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
 import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
@@ -161,6 +196,7 @@ import DesktopOutlined from '@ant-design/icons-vue/DesktopOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import ExportOutlined from '@ant-design/icons-vue/ExportOutlined'
 import FileProtectOutlined from '@ant-design/icons-vue/FileProtectOutlined'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import FolderOutlined from '@ant-design/icons-vue/FolderOutlined'
 import FundOutlined from '@ant-design/icons-vue/FundOutlined'
 import HighlightOutlined from '@ant-design/icons-vue/HighlightOutlined'
@@ -168,6 +204,7 @@ import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
 import MenuOutlined from '@ant-design/icons-vue/MenuOutlined'
 import PrinterOutlined from '@ant-design/icons-vue/PrinterOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import SafetyOutlined from '@ant-design/icons-vue/SafetyOutlined'
 import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
@@ -175,15 +212,19 @@ import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import { useBreakpoints } from '@vueuse/core'
 import { computed, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
+import { EXAM_STATUS_TONE, ExamStatusDescription } from '@/apis/mark/exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ExamSubSidebar from '@/components/workbench/ExamSubSidebar.vue'
 import ExamSwitcher from '@/components/workbench/ExamSwitcher.vue'
+import ExamWorkspaceChildFrame from '@/components/workbench/ExamWorkspaceChildFrame.vue'
 import ExamWorkspaceChrome from '@/components/workbench/ExamWorkspaceChrome.vue'
+import ExamWorkspaceFlowBar from '@/components/workbench/ExamWorkspaceFlowBar.vue'
 import { useExamJourneySteps } from '@/composables/useExamJourneySteps'
 import { useExamWorkspaceChrome } from '@/composables/useExamWorkspaceChrome'
+import { useExamWorkspaceFlowContext } from '@/composables/useExamWorkspaceFlowContext'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import {
   EXAM_WORKSPACE_CHROME_KEY,
@@ -199,6 +240,7 @@ import {
 import { MARK_STAGE_TITLE, shouldShowStageSuggestionBanner } from '@/constants/mark-workspace-nav'
 import HeaderRightBar from '@/layout/components/HeaderRightBar/index.vue'
 import { useAppStore } from '@/stores/modules/app'
+import { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
 import { formatMarkExamOptionLabel } from '@/utils/mark-exam-option'
 import { navigateToJourneyStep } from '@/utils/mark-stage-navigation'
 
@@ -216,11 +258,12 @@ const menuIconMap: Record<ExamWorkspaceMenuKey, Component> = {
   'scan-devices': SettingOutlined,
   'scan-ocr': ScanOutlined,
   'marking-org': EditOutlined,
-  'marking-assignment': TeamOutlined,
   'trial-pool': HighlightOutlined,
   'trial-progress': LineChartOutlined,
+  'marking-experience-assist': AimOutlined,
   'marking-pool': HighlightOutlined,
   'marking-progress': LineChartOutlined,
+  'marking-review-progress': LineChartOutlined,
   'marking-arbitration': AuditOutlined,
   'marking-quality': CheckCircleOutlined,
   'marking-quality-monitor': SafetyOutlined,
@@ -233,6 +276,8 @@ const menuIconMap: Record<ExamWorkspaceMenuKey, Component> = {
   'score-absence': TeamOutlined,
   'score-appeal': AuditOutlined,
   'archive-package': FolderOutlined,
+  'archive-ai-analysis': RobotOutlined,
+  'archive-question-analysis': FileSearchOutlined,
   'archive-statistics': BarChartOutlined,
   'archive-exports': ExportOutlined,
   'archive-teaching-affairs': ApiOutlined,
@@ -263,6 +308,19 @@ const showWorkspaceChrome = computed(
     Boolean(examId.value) && !isImmersiveWorkspace.value && route.meta.hasWorkbenchShell !== true,
 )
 
+const {
+  flowSteps,
+  flowTitle,
+  flowSubtitle,
+  activeMenuKey: flowActiveMenuKey,
+  showFlowBar,
+  navigateToStep: navigateToFlowStep,
+} = useExamWorkspaceFlowContext()
+
+const showFlowContextBar = computed(
+  () => Boolean(examId.value) && !isImmersiveWorkspace.value && showFlowBar.value,
+)
+
 const workspacePageTitle = computed(() => {
   const title = route.meta.title
   return typeof title === 'string' ? title : ''
@@ -290,6 +348,7 @@ const {
   orderedStages,
   suggestedStageKey,
   prepBlockingReasons,
+  experienceAssistBlockingReasons,
   refreshSnapshot,
 } = useMarkWorkbenchSnapshot(() => examId.value)
 
@@ -310,6 +369,7 @@ const workspaceChrome = useExamWorkspaceChrome({
   suggestedStageKey,
   refreshSnapshot,
 })
+const { sidebarContextLine } = workspaceChrome
 provide(EXAM_WORKSPACE_CHROME_KEY, workspaceChrome)
 
 provideMarkWorkbenchContext({
@@ -373,7 +433,7 @@ const examStatusLabel = computed(() => {
   if (!status) {
     return ''
   }
-  return EXAM_STATUS_LABEL[status]
+  return ExamStatusDescription[status]
 })
 
 const examStatusTone = computed(() => {
@@ -388,8 +448,8 @@ function toExamSwitcherOption(exam: {
   examId: string
   examName: string
   examNo?: string
-  status?: keyof typeof EXAM_STATUS_LABEL
-  examStatus?: keyof typeof EXAM_STATUS_LABEL
+  status?: ExamStatusCode
+  examStatus?: ExamStatusCode
 }): ExamSwitcherOption {
   const status = exam.examStatus ?? exam.status
   return {
@@ -398,7 +458,7 @@ function toExamSwitcherOption(exam: {
       examName: exam.examName,
       examNo: exam.examNo ?? '',
     }),
-    statusLabel: status ? EXAM_STATUS_LABEL[status] : undefined,
+    statusLabel: status ? ExamStatusDescription[status] : undefined,
     statusTone: status ? EXAM_STATUS_TONE[status] : undefined,
   }
 }
@@ -421,6 +481,16 @@ const examSwitcherOptions = computed<ExamSwitcherOption[]>(() => {
 
 function goExamList(): void {
   void router.push({ name: 'TeacherExamList' })
+}
+
+function goExperienceAssistPolicy(): void {
+  if (!examId.value) {
+    return
+  }
+  void router.push({
+    name: 'TeacherExamWorkspaceMarkingExperienceAssistPolicy',
+    params: { examId: examId.value },
+  })
 }
 
 /** 识别详情页对象 ID 参数，切换考试时不得复用 */
@@ -494,7 +564,7 @@ function exitImmersiveWorkspace(): void {
     })
     return
   }
-  navigateToJourneyStep(router, 'mark', examId.value, {
+  navigateToJourneyStep(router, MarkTeacherDashboardJourneyKeyCode.MARK, examId.value, {
     scanAttentionCount: snapshot.value?.markingProgress?.scanAttentionCount,
   })
 }
@@ -655,7 +725,8 @@ watch(isImmersiveWorkspace, (immersive) => {
   &__content {
     flex: 1;
     overflow: auto;
-    padding: 16px;
+    padding: var(--dp-space-5, 20px);
+    background: var(--dp-gray-50, #f8fafc);
 
     &--wide {
       padding: 8px;

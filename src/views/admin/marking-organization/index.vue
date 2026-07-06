@@ -2,9 +2,15 @@
   <StageWorkbenchShell>
     <template #context>
       <ContextBar
-        title="阅卷组织"
+        layout="workbench"
+        show-title
+        :title="isJourneyChrome ? contextBarTitle : '阅卷组织'"
+        :subtitle="isJourneyChrome ? contextBarSubtitle : '阅卷安排'"
       >
         <template #status>
+          <UiTag v-if="isJourneyChrome && examStatusLabel" :tone="examStatusTone" size="sm">
+            {{ examStatusLabel }}
+          </UiTag>
           <MarkExamSelect
             v-if="!isExamWorkspaceRoute"
             :selected-exam-id="selectedExamId"
@@ -22,7 +28,7 @@
             :tone="strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
             size="sm"
           >
-            {{ strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, organization.organizationStatus, '阅卷组织状态') }}
+            {{ strictEnumLabel(MarkingOrganizationStatusDescription, organization.organizationStatus, '阅卷组织状态') }}
           </UiTag>
         </template>
         <template #actions>
@@ -50,6 +56,15 @@
       </ContextBar>
     </template>
 
+    <template v-if="selectedExamId && signalMetrics.length > 0" #signal>
+      <SignalBand
+        variant="tiles"
+        :metrics="signalMetrics"
+        compact
+        @metric-click="handleOrgSignalClick"
+      />
+    </template>
+
     <UiEmpty
       v-if="!selectedExamId"
       description="请选择考试"
@@ -57,116 +72,107 @@
     />
 
 
-    <a-spin v-else :spinning="loading" tip="加载组织中...">
-      <SignalBand
-        v-if="signalMetrics.length > 0"
-        :metrics="signalMetrics"
-        compact
-        class="org-index__signals"
-        @metric-click="handleOrgSignalClick"
-      />
+    <UiSkeletonState v-if="loading" variant="card" compact />
 
-      <a-card v-if="organization" :bordered="false" class="detail-table-card org-index__overview-card">
-        <a-alert
-          v-if="!canManageExamOwner"
-          type="info"
-          show-icon
-          class="org-index__readonly-banner"
-          message="当前为只读视图"
-          description="阅卷方案由考试主考老师配置；如需调整题组、策略或启动正评，请联系主考老师。"
-        />
-        <template #title>
+    <WorkbenchSurfaceCard v-else-if="organization" class="org-index__overview-card">
+      <a-alert
+        v-if="!canManageExamOwner"
+        type="info"
+        show-icon
+        class="org-index__readonly-banner"
+        message="当前为只读视图"
+        description="阅卷方案由考试主考老师配置；如需调整题组、策略或启动正评，请联系主考老师。"
+      />
+      <template #head>
+        <div class="org-index__overview-title">
           <ProfileOutlined />
           <span>组织全貌</span>
-        </template>
-
-        <a-descriptions
-          :column="{ xs: 1, sm: 2, lg: 3 }"
-          size="middle"
-          bordered
-          class="org-index__descriptions"
-        >
-          <a-descriptions-item label="主考老师">
-            {{ organization.leaderUserName }}（{{ organization.leaderTeacherNo }}）
-          </a-descriptions-item>
-          <a-descriptions-item label="组织状态">
-            <UiTag
-              :tone="strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
-              size="sm"
-            >
-              {{ strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, organization.organizationStatus, '阅卷组织状态') }}
-            </UiTag>
-          </a-descriptions-item>
-          <a-descriptions-item label="匿名阅卷">
-            <UiTag :tone="organization.anonymousMode ? 'green' : 'gray'" size="sm">
-              {{ organization.anonymousMode ? '启用' : '关闭' }}
-            </UiTag>
-          </a-descriptions-item>
-          <a-descriptions-item label="题组数量">
-            {{ organization.groups.length }} 组
-          </a-descriptions-item>
-          <a-descriptions-item label="创建时间">
-            {{ formatDateTime(organization.createTime) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="更新时间">
-            {{ formatDateTime(organization.updateTime) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="备注" :span="3">
-            <span v-if="organization.remark">
-              {{ organization.remark }}
-            </span>
-            <span v-else class="org-index__hint">-</span>
-          </a-descriptions-item>
-        </a-descriptions>
-
-        <div class="org-index__actions">
-          <UiButton size="sm" @click="goDetail">
-            {{ canManageExamOwner ? '管理题组与策略' : '查看题组与策略' }}
-          </UiButton>
-          <UiButton
-            v-if="canManageExamOwner"
-            size="sm"
-            variant="outline"
-            @click="openEditDrawer"
-          >
-            编辑组织
-          </UiButton>
-          <UiButton size="sm" variant="outline" @click="goSessions"> 试评 / 正评会话 </UiButton>
-          <a-popconfirm
-            v-if="canManageExamOwner"
-            title="确认删除该阅卷组织？"
-            ok-text="删除"
-            cancel-text="取消"
-            :ok-button-props="{ danger: true, loading: deleting }"
-            @confirm="submitDelete"
-          >
-            <UiButton size="sm" variant="outline" status="danger" :loading="deleting">
-              删除组织
-            </UiButton>
-          </a-popconfirm>
         </div>
-      </a-card>
+      </template>
 
-      <a-card v-else-if="!loading" :bordered="false" class="detail-table-card org-index__overview-card org-index__panel--empty">
-        <h3 class="org-index__empty-title">
-          <InfoCircleOutlined />
-          本考试尚未创建阅卷组织
-        </h3>
+      <a-descriptions
+        :column="{ xs: 1, sm: 2, lg: 3 }"
+        size="middle"
+        bordered
+        class="org-index__descriptions"
+      >
+        <a-descriptions-item label="主考老师">
+          {{ organization.leaderUserName }}（{{ organization.leaderTeacherNo }}）
+        </a-descriptions-item>
+        <a-descriptions-item label="组织状态">
+          <UiTag
+            :tone="strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
+            size="sm"
+          >
+            {{ strictEnumLabel(MarkingOrganizationStatusDescription, organization.organizationStatus, '阅卷组织状态') }}
+          </UiTag>
+        </a-descriptions-item>
+        <a-descriptions-item label="匿名阅卷">
+          <UiTag :tone="organization.anonymousMode ? 'green' : 'gray'" size="sm">
+            {{ organization.anonymousMode ? '启用' : '关闭' }}
+          </UiTag>
+        </a-descriptions-item>
+        <a-descriptions-item label="题组数量">
+          {{ organization.groups.length }} 组
+        </a-descriptions-item>
+        <a-descriptions-item label="创建时间">
+          {{ formatDateTime(organization.createTime) }}
+        </a-descriptions-item>
+        <a-descriptions-item label="更新时间">
+          {{ formatDateTime(organization.updateTime) }}
+        </a-descriptions-item>
+        <a-descriptions-item label="备注" :span="3">
+          <span v-if="organization.remark">
+            {{ organization.remark }}
+          </span>
+          <span v-else class="org-index__hint">-</span>
+        </a-descriptions-item>
+      </a-descriptions>
+
+      <div class="org-index__actions">
+        <UiButton size="sm" @click="goDetail">
+          {{ canManageExamOwner ? '管理题组与策略' : '查看题组与策略' }}
+        </UiButton>
+        <UiButton
+          v-if="canManageExamOwner"
+          size="sm"
+          variant="outline"
+          @click="openEditDrawer"
+        >
+          编辑组织
+        </UiButton>
+        <UiButton size="sm" variant="outline" @click="goSessions"> 试评 / 正评会话 </UiButton>
+        <a-popconfirm
+          v-if="canManageExamOwner"
+          title="确认删除该阅卷组织？"
+          ok-text="删除"
+          cancel-text="取消"
+          :ok-button-props="{ danger: true, loading: deleting }"
+          @confirm="submitDelete"
+        >
+          <UiButton size="sm" variant="outline" status="danger" :loading="deleting">
+            删除组织
+          </UiButton>
+        </a-popconfirm>
+      </div>
+    </WorkbenchSurfaceCard>
+
+    <WorkbenchSurfaceCard v-else class="org-index__panel--empty">
+      <UiEmpty
+        description="本考试尚未创建阅卷组织"
+      >
         <p class="org-index__empty-desc">
           阅卷组织是组织教师批改试卷的核心实体；创建后可继续编排题组、配置分配策略并启动试评 /
           正评。
         </p>
-        <UiButton
-          v-if="canManageExamOwner"
-          variant="primary"
-          size="md"
-          @click="openCreateDrawer"
-        >
-          立即创建阅卷组织
-        </UiButton>
+        <template v-if="canManageExamOwner" #action>
+          <UiButton variant="primary" size="md" @click="openCreateDrawer">
+            立即创建阅卷组织
+          </UiButton>
+        </template>
         <p v-else class="org-index__empty-desc">该考试的阅卷组织由考试主考老师创建和分配。</p>
-      </a-card>
-    </a-spin>
+      </UiEmpty>
+    </WorkbenchSurfaceCard>
 
     <!-- 新建组织抽屉 -->
     <UiDrawer
@@ -245,7 +251,6 @@ import type {
   OrganizationUpdateRequest,
 } from '@/apis/mark/marking-organization'
 import type { SignalMetric } from '@/types/workbench'
-import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, inject, onActivated, onMounted, reactive, ref, watch } from 'vue'
@@ -254,20 +259,22 @@ import {
   createOrganization,
   deleteOrganization,
   getOrganization,
-  MARKING_ORGANIZATION_STATUS_LABEL,
   MARKING_ORGANIZATION_STATUS_TONE,
+  MarkingOrganizationStatusDescription,
   requireMarkingOrganizationId,
   updateOrganization,
-  validateMarkingOrganizationContract,
 } from '@/apis/mark/marking-organization'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
 import { MARK_WORKBENCH_CONTEXT_KEY, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
@@ -283,6 +290,14 @@ defineOptions({ name: 'AdminMarkingOrganizationIndex' })
 
 const router = useRouter()
 const route = useRoute()
+
+const {
+  isJourneyChrome,
+  contextBarTitle,
+  contextBarSubtitle,
+  examStatusLabel,
+  examStatusTone,
+} = useOptionalExamJourneyContextBar('阅卷安排')
 
 const {
   examOptions,
@@ -358,7 +373,7 @@ const signalMetrics = computed<SignalMetric[]>(() => {
       {
         key: 'status',
         label: '组织状态',
-        value: strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, org.organizationStatus, '阅卷组织状态'),
+        value: strictEnumLabel(MarkingOrganizationStatusDescription, org.organizationStatus, '阅卷组织状态'),
         tone: strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, org.organizationStatus, '阅卷组织状态'),
       },
     ]
@@ -446,7 +461,6 @@ async function submitCreate(): Promise<void> {
       remark: createForm.remark?.trim() || undefined,
     }
     const nextOrganization = await createOrganization(request)
-    validateMarkingOrganizationContract(nextOrganization)
     organization.value = nextOrganization
     message.success('阅卷组织已创建')
     createDrawerOpen.value = false
@@ -482,7 +496,6 @@ async function submitUpdate(): Promise<void> {
       remark: editForm.remark?.trim() || undefined,
     }
     const nextOrganization = await updateOrganization(request)
-    validateMarkingOrganizationContract(nextOrganization)
     organization.value = nextOrganization
     message.success('阅卷组织已更新')
     editDrawerOpen.value = false
@@ -514,17 +527,21 @@ async function submitDelete(): Promise<void> {
  * 组装阅卷组织详情路由，隔离按钮点击事件和业务 tab 参数。
  */
 function buildDetailRoute(tab?: string): RouteLocationRaw {
-  const target = resolveMarkingOrganizationDetailRoute(
-    requireMarkingOrganizationId(organization.value!),
-    isExamWorkspaceRoute.value ? selectedExamId.value : undefined,
+  const examId = organization.value?.examId ?? selectedExamId.value
+  if (!examId || !organization.value) {
+    return { name: 'TeacherExamList' }
+  }
+  const target: RouteLocationRaw = resolveMarkingOrganizationDetailRoute(
+    requireMarkingOrganizationId(organization.value),
+    examId,
   )
   if (typeof target === 'string') {
     return target
   }
-  return {
-    ...target,
-    query: tab ? { ...(target.query ?? {}), tab } : target.query,
+  if (tab) {
+    return { ...target, query: { tab } }
   }
+  return target
 }
 
 function goDetail(): void {
@@ -539,9 +556,14 @@ function goDetailTab(tab: string): void {
 
 function goSessions(): void {
   if (!organization.value) return
+  const examId = organization.value.examId ?? selectedExamId.value
+  if (!examId) {
+    showUserError(new Error('缺少考试上下文'), '无法进入试评 / 正评')
+    return
+  }
   void router.push(resolveMarkingOrganizationSessionsRoute(
     requireMarkingOrganizationId(organization.value),
-    isExamWorkspaceRoute.value ? selectedExamId.value : undefined,
+    examId,
   ))
 }
 
@@ -550,10 +572,14 @@ watch(selectedExamId, () => {
 }, { immediate: true })
 
 watch(
-  () => [route.query.tab, route.query.setupTab, organization.value?.id] as const,
-  ([tab, setupTab, orgId]) => {
-    const launchTab = tab === 'launch' || setupTab === 'launch'
-    if (launchTab && orgId) {
+  () => ({
+    organizationId: organization.value?.id,
+    setupTab: route.query.setupTab,
+    tab: route.query.tab,
+  }),
+  (routeState) => {
+    const launchTab = routeState.tab === 'launch' || routeState.setupTab === 'launch'
+    if (launchTab && routeState.organizationId) {
       goDetailTab('launch')
     }
   },
@@ -573,6 +599,15 @@ onActivated(() => {
 .org-index {
   &__readonly-banner {
     margin-bottom: 12px;
+  }
+
+  &__overview-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
   }
 
   &__exam-select {

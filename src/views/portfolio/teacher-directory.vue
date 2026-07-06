@@ -12,17 +12,19 @@ import type { UserStatusEnum } from '@/types/enums/user-status'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS,
+  PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS,
+  PortfolioTeacherIdentityStatusCode,
+  PortfolioTeacherIdentityStatusDescription,
+  PortfolioTeacherIdentityTypeCode,
+  PortfolioTeacherIdentityTypeDescription,
+} from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   portfolioTeacherLibraryApi,
   portfolioTeacherSalaryApi,
 } from '@/apis/portfolio/teacher-platform'
-import {
-  PORTFOLIO_TEACHER_IDENTITY_STATUS_LABEL,
-  PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS,
-  PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL,
-  PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS,
-} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -34,15 +36,11 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { getUserStatusLabel, USER_STATUS_CONFIG } from '@/types/enums/user-status'
+import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { strictEnumLabel } from '@/utils/strict-enum'
 
-const USER_STATUS_FILTER_OPTIONS = (Object.keys(USER_STATUS_CONFIG) as UserStatusEnum[]).map(
-  (value) => ({ value, label: USER_STATUS_CONFIG[value].label }),
-)
 
 const listColumns: ColumnsType = [
   { title: '工号', dataIndex: 'teacherNumber', key: 'teacherNumber', width: 120 },
@@ -65,7 +63,7 @@ const identityColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 80, fixed: 'right' },
 ]
 
-interface TeacherFilterModel {
+interface TeacherFilterModel extends Record<string, unknown> {
   searchText?: string
   title?: string
   identityType?: PortfolioTeacherPageRequest['identityType']
@@ -87,7 +85,7 @@ const filterForm = reactive<TeacherFilterModel>({
 })
 
 const filterModel = computed<Record<string, unknown>>({
-  get: () => filterForm as Record<string, unknown>,
+  get: () => filterForm,
   set: (value) => {
     Object.assign(filterForm, value)
   },
@@ -154,33 +152,25 @@ const identityVisible = ref(false)
 const identityMode = ref<'create' | 'edit'>('create')
 const identityEditor = reactive<PortfolioTeacherIdentitySaveRequest>({
   teacherUserId: undefined,
-  identityType: 'INDUSTRY_MENTOR',
-  identityStatus: 'ACTIVE',
+  identityType: PortfolioTeacherIdentityTypeCode.INDUSTRY_MENTOR,
+  identityStatus: PortfolioTeacherIdentityStatusCode.ACTIVE,
   appointmentNo: '',
   displayName: '',
   enterpriseName: '',
 })
 
-function identityTypeLabel(type?: string) {
+function identityTypeLabel(type?: PortfolioTeacherIdentityVO['identityType']) {
   if (!type) {
     return '—'
   }
-  return strictEnumLabel(
-    PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL,
-    type as keyof typeof PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL,
-    '教师身份类型',
-  )
+  return PortfolioTeacherIdentityTypeDescription[type]
 }
 
-function identityStatusLabel(status?: string) {
+function identityStatusLabel(status?: PortfolioTeacherIdentityVO['identityStatus']) {
   if (!status) {
     return '—'
   }
-  return strictEnumLabel(
-    PORTFOLIO_TEACHER_IDENTITY_STATUS_LABEL,
-    status as keyof typeof PORTFOLIO_TEACHER_IDENTITY_STATUS_LABEL,
-    '教师身份状态',
-  )
+  return PortfolioTeacherIdentityStatusDescription[status]
 }
 
 async function loadPage() {
@@ -256,8 +246,8 @@ function openIdentityCreate(context: { userId: string, nickName?: string, depart
   identityMode.value = 'create'
   identityEditor.teacherUserId = context.userId
   identityEditor.id = undefined
-  identityEditor.identityType = 'INDUSTRY_MENTOR'
-  identityEditor.identityStatus = 'ACTIVE'
+  identityEditor.identityType = PortfolioTeacherIdentityTypeCode.INDUSTRY_MENTOR
+  identityEditor.identityStatus = PortfolioTeacherIdentityStatusCode.ACTIVE
   identityEditor.appointmentNo = ''
   identityEditor.displayName = context.nickName!
   identityEditor.enterpriseName = ''
@@ -291,7 +281,20 @@ function openIdentityEdit(identity: PortfolioTeacherIdentityVO) {
 
 async function submitIdentity() {
   try {
-    await portfolioTeacherApi.saveIdentity({ ...identityEditor })
+    await portfolioTeacherApi.saveIdentity({
+      id: identityEditor.id,
+      teacherUserId: identityEditor.teacherUserId,
+      identityType: identityEditor.identityType,
+      identityStatus: identityEditor.identityStatus,
+      appointmentNo: identityEditor.appointmentNo?.trim() || undefined,
+      displayName: identityEditor.displayName?.trim() || undefined,
+      enterpriseName: identityEditor.enterpriseName?.trim() || undefined,
+      anchorDepartmentId: identityEditor.anchorDepartmentId,
+      anchorPortfolioOrgId: identityEditor.anchorPortfolioOrgId,
+      titleAtIdentity: identityEditor.titleAtIdentity?.trim() || undefined,
+      validFrom: identityEditor.validFrom,
+      validTo: identityEditor.validTo,
+    })
     message.success(identityMode.value === 'edit' ? '身份已更新' : '身份已保存')
     identityVisible.value = false
     await loadPage()
@@ -395,7 +398,7 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'userStatus'">
             <span v-if="record.status">
-              {{ getUserStatusLabel(record.status as UserStatusEnum) }}
+              {{ getUserStatusLabel(record.status) }}
             </span>
             <span v-else>—</span>
           </template>

@@ -3,7 +3,7 @@ import type Konva from 'konva'
 import type { ComponentPublicInstance } from 'vue'
 import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { Image as KonvaImage, Layer, Line, Rect, Stage, Text, Transformer } from 'vue-konva'
+import { Image, Layer, Line, Rect, Stage, Text, Transformer } from 'vue-konva'
 import LayoutCanvasToolbar from '@/components/mark/layout-designer/LayoutCanvasToolbar.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import { useLayoutPageRaster } from '@/composables/useLayoutPageRaster'
@@ -327,7 +327,7 @@ onMounted(() => {
           @touchstart="handleStageClick"
         >
           <Layer>
-            <KonvaImage v-if="bgImageConfig" :config="bgImageConfig" />
+            <Image v-if="bgImageConfig" :config="bgImageConfig" />
             <Rect
               v-else
               :config="{

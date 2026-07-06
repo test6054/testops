@@ -2,9 +2,9 @@
  * 考试阅卷路由（/teacher）
  *
  * L0 全局左栏：
- *   - 教师业务：阅卷概览、考试列表、历史归档、扫描运营等租户内能力
- *   - 租户级 AI 分析：跨考试 / 校级质量（L0 侧栏，非单场考试内）
- *   - SUPER_ADMIN SaaS 治理：平台管理中的归档模板等平台配置
+ *   - 教师业务：阅卷概览、考试列表、归档工作台
+ *   - 扫描中心：异常 / 运营 / 日志 / 调度（单页 4 Tab）
+ *   - AI 分析中心：教学 / 趋势 / 聚类 / 校级（单页 4 Tab）
  * L1：/teacher/exam-workspace/:examId/* 考试详情工作台
  */
 import type { RouteRecordRaw } from 'vue-router'
@@ -39,6 +39,10 @@ export const teacherRoutes: RouteRecordRaw[] = [
           icon: 'dashboard',
           hideInMenu: false,
           keepAlive: true,
+          menuGroup: 'marking-workbench',
+          menuGroupTitle: '考试阅卷',
+          menuGroupIcon: 'audit',
+          menuGroupOrder: 1,
         },
       },
       {
@@ -51,6 +55,10 @@ export const teacherRoutes: RouteRecordRaw[] = [
           icon: 'unordered-list',
           hideInMenu: false,
           keepAlive: true,
+          menuGroup: 'marking-workbench',
+          menuGroupTitle: '考试阅卷',
+          menuGroupIcon: 'audit',
+          menuGroupOrder: 1,
         },
       },
       {
@@ -65,22 +73,34 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'paper-archive-list',
-        redirect: {
-          name: 'TeacherArchiveVolumeList',
-          query: { sourceType: 'HISTORY_IMPORT' },
-        },
-      },
-      {
         path: 'archive-volumes',
         name: 'TeacherArchiveVolumeList',
         component: () => import('@/views/teacher/archive-volume/archive-volume-list.vue'),
         meta: {
-          title: '历史归档',
+          title: '归档工作台',
           roles: TEACHER_ROLES,
           icon: 'container',
           hideInMenu: false,
           keepAlive: true,
+          menuGroup: 'archive-workbench',
+          menuGroupTitle: '课程考核归档',
+          menuGroupIcon: 'container',
+          menuGroupOrder: 2,
+        },
+      },
+      {
+        path: 'archive-volumes/settings',
+        name: 'TeacherArchiveVolumeSettings',
+        component: () => import('@/views/teacher/archive-volume/archive-volume-settings.vue'),
+        props: route => ({
+          initialTab: typeof route.query.settingsTab === 'string' ? route.query.settingsTab : undefined,
+        }),
+        meta: {
+          title: '归档配置',
+          roles: TEACHER_ROLES,
+          hideInMenu: true,
+          keepAlive: true,
+          activeMenu: '/teacher/archive-volumes',
         },
       },
       {
@@ -88,7 +108,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
         name: 'TeacherArchiveVolumeSearch',
         component: () => import('@/views/teacher/archive-volume-search.vue'),
         meta: {
-          title: '归档 OCR 检索',
+          title: '材料检索',
           roles: TEACHER_ROLES,
           icon: 'search',
           hideInMenu: true,
@@ -102,6 +122,18 @@ export const teacherRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/teacher/archive-volume/archive-volume-statistics.vue'),
         meta: {
           title: '迎评统计',
+          roles: TEACHER_ROLES,
+          hideInMenu: true,
+          keepAlive: true,
+          activeMenu: '/teacher/archive-volumes',
+        },
+      },
+      {
+        path: 'archive-volumes/eval-campaign',
+        name: 'TeacherArchiveVolumeEvalCampaign',
+        component: () => import('@/views/teacher/archive-volume/archive-volume-eval-campaign.vue'),
+        meta: {
+          title: '评估迎评',
           roles: TEACHER_ROLES,
           hideInMenu: true,
           keepAlive: true,
@@ -157,11 +189,11 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'archive-volumes/:volumeId/detail',
-        name: 'TeacherArchiveVolumeDetail',
-        component: () => import('@/views/teacher/archive-volume/archive-volume-detail.vue'),
+        path: 'archive-volumes/remediation/:taskId',
+        name: 'TeacherArchiveVolumeRemediationDetail',
+        component: () => import('@/views/teacher/archive-volume/archive-volume-remediation-detail.vue'),
         meta: {
-          title: '归档卷详情',
+          title: '整改任务详情',
           roles: TEACHER_ROLES,
           hideInMenu: true,
           noCache: true,
@@ -169,39 +201,19 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'scanner-exception-dashboard',
-        name: 'TeacherScannerExceptionDashboard',
-        component: () => import('@/views/teacher/scanner-exception-dashboard.vue'),
+        path: 'scanner-center',
+        name: 'TeacherScannerCenter',
+        component: () => import('@/views/teacher/scanner-center/scanner-center.vue'),
         meta: {
-          title: '扫描异常看板',
+          title: '扫描中心',
           roles: TEACHER_ROLES,
-          icon: 'warning',
+          icon: 'scan',
           hideInMenu: false,
           keepAlive: true,
-        },
-      },
-      {
-        path: 'scanner-operation-logs',
-        name: 'TeacherScannerOperationLogs',
-        component: () => import('@/views/teacher/scanner-operation-logs.vue'),
-        meta: {
-          title: '扫描操作日志',
-          roles: TEACHER_ROLES,
-          icon: 'file-text',
-          hideInMenu: false,
-          keepAlive: true,
-        },
-      },
-      {
-        path: 'scanner-ops',
-        name: 'TeacherScannerOpsDashboard',
-        component: () => import('@/views/teacher/scanner-ops/ScannerOpsDashboard.vue'),
-        meta: {
-          title: '扫描运营看板',
-          roles: TEACHER_ROLES,
-          icon: 'bar-chart',
-          hideInMenu: false,
-          keepAlive: true,
+          menuGroup: 'scan-center',
+          menuGroupTitle: '扫描中心',
+          menuGroupIcon: 'scan',
+          menuGroupOrder: 3,
         },
       },
       {
@@ -217,33 +229,36 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'archive-volume-search',
-        name: 'TeacherArchiveVolumeSearchLegacy',
-        redirect: { name: 'TeacherArchiveVolumeSearch' },
+        path: 'mark-tenant-grading-policy',
+        name: 'AdminMarkTenantGradingPolicy',
+        component: () => import('@/views/admin/mark-tenant-grading-policy.vue'),
         meta: {
-          title: '归档 OCR 检索',
+          title: '租户阅卷策略',
           roles: TEACHER_ROLES,
-          hideInMenu: true,
+          requireTenantAdmin: true,
+          icon: 'setting',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'marking-workbench',
+          menuGroupTitle: '考试阅卷',
+          menuGroupIcon: 'audit',
+          menuGroupOrder: 1,
         },
       },
       {
-        path: 'archive-supervision-inspect',
-        name: 'TeacherArchiveSupervisionInspect',
-        redirect: { name: 'TeacherArchiveVolumeList', query: { tab: 'supervision' } },
+        path: 'ai-analysis-center',
+        name: 'TeacherAiAnalysisCenter',
+        component: () => import('@/views/teacher/ai-analysis-center.vue'),
         meta: {
-          title: '督导抽查',
+          title: 'AI 分析中心',
           roles: TEACHER_ROLES,
-          hideInMenu: true,
-        },
-      },
-      {
-        path: 'archive-evaluation-remediation',
-        name: 'TeacherArchiveEvaluationRemediation',
-        redirect: { name: 'TeacherArchiveVolumeList', query: { tab: 'remediation' } },
-        meta: {
-          title: '迎评整改',
-          roles: TEACHER_ROLES,
-          hideInMenu: true,
+          icon: 'experiment',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'ai-analysis',
+          menuGroupTitle: 'AI 分析',
+          menuGroupIcon: 'experiment',
+          menuGroupOrder: 5,
         },
       },
       {
@@ -254,86 +269,6 @@ export const teacherRoutes: RouteRecordRaw[] = [
           title: '批改审计',
           roles: TEACHER_ROLES,
           icon: 'file-protect',
-          hideInMenu: true,
-          keepAlive: true,
-        },
-      },
-      {
-        path: 'marking-organization',
-        name: 'TeacherMarkingOrganizationIndex',
-        component: () => import('@/views/admin/marking-organization/index.vue'),
-        meta: {
-          title: '阅卷组织',
-          roles: TEACHER_ROLES,
-          icon: 'team',
-          hideInMenu: true,
-          keepAlive: true,
-        },
-      },
-      {
-        path: 'marking-organization/:organizationId',
-        name: 'TeacherMarkingOrganizationDetail',
-        component: () => import('@/views/admin/marking-organization/detail.vue'),
-        meta: {
-          title: '组织详情',
-          roles: TEACHER_ROLES,
-          icon: 'setting',
-          hideInMenu: true,
-          noCache: true,
-          activeMenu: '/teacher/exam-list',
-        },
-      },
-      {
-        path: 'marking-organization/:organizationId/sessions',
-        name: 'TeacherMarkingOrganizationSessions',
-        component: () => import('@/views/admin/marking-organization/sessions.vue'),
-        meta: {
-          title: '试评 / 正评',
-          roles: TEACHER_ROLES,
-          icon: 'play-circle',
-          hideInMenu: true,
-          noCache: true,
-          activeMenu: '/teacher/exam-list',
-        },
-      },
-      {
-        path: 'cross-exam-dashboard',
-        name: 'AdminCrossExamDashboard',
-        component: () => import('@/views/admin/cross-exam-dashboard.vue'),
-        meta: {
-          title: '跨考试纵向分析',
-          roles: TEACHER_ROLES,
-          icon: 'line-chart',
-          hideInMenu: false,
-          menuGroup: 'ai-analysis',
-          menuGroupTitle: 'AI 分析',
-          menuGroupIcon: 'experiment',
-          menuGroupOrder: 5,
-        },
-      },
-      {
-        path: 'school-quality-dashboard',
-        name: 'AdminSchoolQualityDashboard',
-        component: () => import('@/views/admin/school-quality-dashboard.vue'),
-        meta: {
-          title: '校级质量分析',
-          roles: TEACHER_ROLES,
-          icon: 'bank',
-          hideInMenu: false,
-          menuGroup: 'ai-analysis',
-          menuGroupTitle: 'AI 分析',
-          menuGroupIcon: 'experiment',
-          menuGroupOrder: 5,
-        },
-      },
-      {
-        path: 'marking-quality',
-        name: 'AdminMarkingQuality',
-        component: () => import('@/views/admin/marking-quality-dashboard.vue'),
-        meta: {
-          title: '阅卷质量监控',
-          roles: TEACHER_ROLES,
-          icon: 'safety',
           hideInMenu: true,
           keepAlive: true,
         },
@@ -360,25 +295,6 @@ export const teacherRoutes: RouteRecordRaw[] = [
           icon: 'api',
           hideInMenu: true,
           keepAlive: true,
-        },
-      },
-      {
-        path: 'paper-archive/:archiveSetId/detail',
-        redirect: {
-          name: 'TeacherArchiveVolumeList',
-          query: { sourceType: 'HISTORY_IMPORT' },
-        },
-      },
-      {
-        path: 'archive/:archiveId/detail',
-        redirect: to => ({
-          name: 'TeacherArchiveVolumeDetail',
-          params: { volumeId: to.params.archiveId },
-        }),
-        meta: {
-          title: '归档详情',
-          roles: TEACHER_ROLES,
-          hideInMenu: true,
         },
       },
     ],

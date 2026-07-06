@@ -1,5 +1,5 @@
 <template>
-  <SignalBand :metrics="metrics" compact variant="panel" />
+  <SignalBand :metrics="metrics" compact variant="tiles" @metric-click="(key) => emit('metric-click', key)" />
 </template>
 
 <script lang="ts" setup>
@@ -27,6 +27,10 @@ const props = withDefaults(
   },
 )
 
+const emit = defineEmits<{
+  'metric-click': [key: string]
+}>()
+
 const metrics = computed<SignalMetric[]>(() => {
   const dash = props.placeholder ? '—' : 0
   const m = props.signalMetrics
@@ -48,19 +52,56 @@ const metrics = computed<SignalMetric[]>(() => {
     + (progress.pendingGradeCount ?? 0)
     : dash
 
-  return [
+  const activeExamCount = m?.activeExamCount ?? dash
+  const unpublishedCount = m?.confirmedUnpublishedScoreCount ?? 0
+
+  const arbitrationCount = m?.arbitrationPendingCount ?? 0
+  const spotCheckCount = m?.spotCheckPendingCount ?? 0
+
+  const tiles: SignalMetric[] = []
+
+  if (typeof arbitrationCount === 'number' && arbitrationCount > 0) {
+    tiles.push({
+      key: 'arbitration',
+      label: '仲裁待审核',
+      value: arbitrationCount,
+      unit: '项',
+      tone: 'red',
+      helper: '点击查看待处理事项',
+      trendPolarity: 'negative',
+      clickable: true,
+    })
+  }
+
+  if (typeof spotCheckCount === 'number' && spotCheckCount > 0) {
+    tiles.push({
+      key: 'spot-check',
+      label: '抽检待处理',
+      value: spotCheckCount,
+      unit: '项',
+      tone: 'orange',
+      helper: '点击查看待处理事项',
+      trendPolarity: 'negative',
+      clickable: true,
+    })
+  }
+
+  tiles.push(
     {
       key: 'active',
       label: '进行中考试',
-      value: m?.activeExamCount ?? dash,
+      value: activeExamCount,
       unit: m ? '场' : undefined,
+      tone: 'blue',
       helper: scopeHint,
+      clickable: typeof activeExamCount === 'number' && activeExamCount > 0,
     },
     {
       key: 'graded-questions',
       label: '已评题目',
       value: progress?.confirmedQuestionGradeCount ?? dash,
       unit: progress ? '题' : undefined,
+      tone: 'green',
       helper: '筛选范围内',
     },
     {
@@ -68,6 +109,7 @@ const metrics = computed<SignalMetric[]>(() => {
       label: '阅卷进度',
       value: progress ? markingPercent : dash,
       unit: progress ? '%' : undefined,
+      tone: 'blue',
       helper: totalQuestions > 0 ? `共 ${totalQuestions.toLocaleString('zh-CN')} 题` : '暂无题目',
       trendPolarity: 'positive',
     },
@@ -79,19 +121,23 @@ const metrics = computed<SignalMetric[]>(() => {
       tone: typeof pendingExceptionCount === 'number' && pendingExceptionCount > 0 ? 'red' : 'gray',
       helper:
         typeof pendingExceptionCount === 'number' && pendingExceptionCount > 0
-          ? '需关注'
+          ? '点击查看优先推进'
           : '暂无积压',
       trendPolarity: 'negative',
+      clickable: typeof pendingExceptionCount === 'number' && pendingExceptionCount > 0,
     },
     {
       key: 'unpublished',
       label: '待发布成绩',
       value: m?.confirmedUnpublishedScoreCount ?? dash,
       unit: m ? '份' : undefined,
-      tone: (m?.confirmedUnpublishedScoreCount ?? 0) > 0 ? 'orange' : 'gray',
-      helper: (m?.confirmedUnpublishedScoreCount ?? 0) > 0 ? '已确认未发布' : '暂无待发布',
+      tone: unpublishedCount > 0 ? 'orange' : 'gray',
+      helper: unpublishedCount > 0 ? '点击查看进行中考试' : '暂无待发布',
       trendPolarity: 'negative',
+      clickable: unpublishedCount > 0,
     },
-  ]
+  )
+
+  return tiles
 })
 </script>

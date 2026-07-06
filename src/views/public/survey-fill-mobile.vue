@@ -168,7 +168,7 @@
 
             <!-- 量表题 -->
             <div
-              v-if="currentItem?.itemType === IndirectEvaluationItemType.SCALE"
+              v-if="currentItem?.itemType === IndirectEvaluationItemTypeCode.SCALE"
               class="m-survey__scale"
             >
               <div class="m-survey__scale-labels">
@@ -193,7 +193,7 @@
 
             <!-- 单选题 -->
             <div
-              v-else-if="currentItem?.itemType === IndirectEvaluationItemType.SINGLE_CHOICE"
+              v-else-if="currentItem?.itemType === IndirectEvaluationItemTypeCode.SINGLE_CHOICE"
               class="m-survey__choices"
             >
               <button
@@ -231,7 +231,7 @@
 
             <!-- 多选题 -->
             <div
-              v-else-if="currentItem?.itemType === IndirectEvaluationItemType.MULTI_CHOICE"
+              v-else-if="currentItem?.itemType === IndirectEvaluationItemTypeCode.MULTI_CHOICE"
               class="m-survey__choices"
             >
               <button
@@ -271,7 +271,7 @@
 
             <!-- 开放文本 -->
             <div
-              v-else-if="currentItem?.itemType === IndirectEvaluationItemType.OPEN_TEXT"
+              v-else-if="currentItem?.itemType === IndirectEvaluationItemTypeCode.OPEN_TEXT"
               class="m-survey__open"
             >
               <textarea
@@ -314,12 +314,11 @@
 </template>
 
 <script setup lang="ts">
-import type { PublicSurveyItemType } from '@/apis/public-survey'
 import { message } from 'ant-design-vue'
 import { computed, ref } from 'vue'
 import { formatPublicSurveyItemType } from '@/apis/public-survey'
 import { useSurveyFill } from '@/composables/useSurveyFill'
-import { IndirectEvaluationItemType } from '@/types/enums/indirect-evaluation-item-type-enum'
+import { IndirectEvaluationItemTypeCode } from '@/types/enums/indirect-evaluation-item-type-enum'
 
 const {
   loading,
@@ -399,7 +398,7 @@ function toggleMulti(itemId: string, opt: string) {
   }
 }
 
-function itemTypeLabel(type: PublicSurveyItemType): string {
+function itemTypeLabel(type: IndirectEvaluationItemTypeCode): string {
   return formatPublicSurveyItemType(type)
 }
 

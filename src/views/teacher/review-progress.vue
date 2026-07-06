@@ -1,26 +1,55 @@
 <template>
-  <div class="progress-page">
-    <div class="progress-page__toolbar">
-      <UiTag :tone="confirmedPercent >= 100 ? 'green' : 'blue'" size="sm">
-        已确认 {{ confirmedPercent }}%
-      </UiTag>
-      <UiButton variant="outline" size="sm" :loading="loading" @click="loadAll">
-        <template #icon><ReloadOutlined /></template>
-        刷新
-      </UiButton>
-    </div>
+  <StageWorkbenchShell class="progress-page">
+    <template v-if="selectedExamId" #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="contextBarTitle"
+        :subtitle="contextBarSubtitle"
+      >
+        <template #status>
+          <UiTag :tone="confirmedPercent >= 100 ? 'green' : 'blue'" size="sm">
+            已确认 {{ confirmedPercent }}%
+          </UiTag>
+        </template>
+        <template #actions>
+          <UiButton variant="outline" size="sm" :loading="loading" @click="loadAll">
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
 
-    <a-skeleton v-if="loading" active :paragraph="{ rows: 4 }" />
+    <template v-if="selectedExamId && progress" #signal>
+      <SignalBand variant="tiles" compact :metrics="pageSignalMetrics" />
+    </template>
 
-    <UiEmpty v-else-if="!progress" description="暂无数据" class="progress-page__empty" />
+    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="progress-page__empty" />
+
+    <UiEmpty
+      v-else-if="loadFailed"
+      description="复核进度加载失败"
+      action-label="重试"
+      class="progress-page__empty"
+      @action="loadAll"
+    />
+
+    <UiSkeletonState v-else-if="loading && !progress" variant="card" compact />
+
+    <UiEmpty v-else-if="!progress" description="暂无复核进度数据" class="progress-page__empty" />
 
     <template v-else-if="progress">
+      <ExamWorkspaceJourneySubNav />
+
       <a-row :gutter="16" class="overview-row">
         <a-col :xs="24" :md="8">
-          <UiCard class="overview-card">
-            <template #title>
-              <DashboardOutlined />
-              <span>教师复核进度</span>
+          <WorkbenchSurfaceCard class="overview-card">
+            <template #head>
+              <div class="overview-card__title">
+                <DashboardOutlined />
+                <span>教师复核进度</span>
+              </div>
             </template>
             <div class="overview-card__body">
               <div class="overview-card__ring-block">
@@ -36,13 +65,15 @@
               </div>
               <SignalBand :metrics="overviewSignalMetrics" compact variant="inline" />
             </div>
-          </UiCard>
+          </WorkbenchSurfaceCard>
         </a-col>
         <a-col :xs="24" :md="16">
-          <UiCard class="status-card">
-            <template #title>
-              <PieChartOutlined />
-              <span>复核任务状态分布</span>
+          <WorkbenchSurfaceCard class="status-card">
+            <template #head>
+              <div class="status-card__title">
+                <PieChartOutlined />
+                <span>复核任务状态分布</span>
+              </div>
             </template>
             <div class="status-card__body">
               <MarkDistributionSection
@@ -60,14 +91,16 @@
                 class="status-card__aux"
               />
             </div>
-          </UiCard>
+          </WorkbenchSurfaceCard>
         </a-col>
       </a-row>
 
-      <UiCard class="question-card">
-        <template #title>
-          <TableOutlined />
-          <span>按题目维度的复核进度</span>
+      <WorkbenchSurfaceCard flush class="question-card">
+        <template #head>
+          <div class="question-card__title">
+            <TableOutlined />
+            <span>按题目维度的复核进度</span>
+          </div>
         </template>
 
         <MarkHeatmapSection
@@ -100,7 +133,7 @@
           :show-pagination="false"
           flat
           :total="questionRows.length"
-          row-key="questionTemplateId"
+          row-key="layoutQuestionId"
           size="middle"
           class="question-table student-detail-table__data-table"
         >
@@ -109,7 +142,7 @@
               <div
                 class="question-cell"
                 :class="{
-                  'question-cell--highlight': highlightedQuestionId === record.questionTemplateId,
+                  'question-cell--highlight': highlightedQuestionId === record.layoutQuestionId,
                 }"
               >
                 <UiTag tone="blue" size="sm">题{{ record.questionNo }}</UiTag>
@@ -154,21 +187,23 @@
             </template>
           </template>
         </UiDataTable>
-      </UiCard>
+      </WorkbenchSurfaceCard>
 
-      <UiCard class="processing-card">
-        <template #title>
-          <RobotOutlined />
-          <span>批改处理任务</span>
+      <WorkbenchSurfaceCard flush class="processing-card">
+        <template #head>
+          <div class="processing-card__title">
+            <RobotOutlined />
+            <span>批改处理任务</span>
+          </div>
         </template>
-        <template #extra>
+        <template #toolbar>
           <a-select
             v-model:value="processingTaskTypeFilter"
             allow-clear
             placeholder="任务类型"
             size="small"
             style="width: 160px"
-            :options="processingTaskTypeOptions"
+            :options="PROCESSING_TASK_TYPE_OPTIONS"
             @change="reloadProcessingTasks"
           />
         </template>
@@ -215,22 +250,19 @@
             </template>
           </template>
         </UiDataTable>
-      </UiCard>
+      </WorkbenchSurfaceCard>
     </template>
-    <a-spin v-else :spinning="loading" tip="正在加载复核进度...">
-      <UiEmpty description="暂无数据" class="progress-page__empty" />
-    </a-spin>
-  </div>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamProcessingTaskItemVO } from '@/apis/mark/exam-processing-task'
 import type { MarkingProgressVO, ReviewQuestionProgressItemVO } from '@/apis/mark/exam-progress'
-import type { ReviewTaskStatusCode } from '@/apis/mark/exam-review-task'
 import type { TaskStatusCode } from '@/apis/mark/task-status'
 import type { ProcessingTaskTypeCode } from '@/apis/mark/task-type'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -238,28 +270,39 @@ import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, inject, onActivated, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   pageExamProcessingTasks,
   retryPaperGradeSuggestion,
 } from '@/apis/mark/exam-processing-task'
 import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import {
-  REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
-  REVIEW_TASK_STATUS_TONE as STATUS_TONE,
+  REVIEW_TASK_STATUS_TONE,
+  ReviewTaskStatusCode,
+  ReviewTaskStatusDescription,
 } from '@/apis/mark/exam-review-task'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
-import { TASK_STATUS_LABEL, TASK_STATUS_TONE } from '@/apis/mark/task-status'
-import { PROCESSING_TASK_TYPE_LABEL, PROCESSING_TASK_TYPE_TONE } from '@/apis/mark/task-type'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
+import { TASK_STATUS_TONE, TaskStatusDescription } from '@/apis/mark/task-status'
+import {
+  PROCESSING_TASK_TYPE_OPTIONS,
+  PROCESSING_TASK_TYPE_TONE,
+  ProcessingTaskTypeDescription,
+} from '@/apis/mark/task-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkDistributionSection from '@/components/chart/MarkDistributionSection.vue'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import MarkHeatmapSection from '@/components/chart/MarkHeatmapSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
@@ -292,7 +335,10 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherReviewProgress' })
 
+const route = useRoute()
 const { selectedExamId } = useMarkExamContext()
+const progressStageLabel = computed(() => String(route.meta.title ?? '进度看板'))
+const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar(progressStageLabel)
 const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 
 const successColor = toneToColor('green')
@@ -300,6 +346,7 @@ const primaryColor = toneToColor('blue')
 
 const progress = ref<MarkingProgressVO | null>(null)
 const loading = ref(false)
+const loadFailed = ref(false)
 
 const processingTasks = ref<ExamProcessingTaskItemVO[]>([])
 const processingTasksLoading = ref(false)
@@ -309,15 +356,8 @@ const processingTaskPageSize = ref(10)
 const processingTaskTypeFilter = ref<ProcessingTaskTypeCode | undefined>(undefined)
 const retryingPaperInstanceId = ref<string | null>(null)
 
-const processingTaskTypeOptions = computed(() =>
-  (Object.keys(PROCESSING_TASK_TYPE_LABEL) as ProcessingTaskTypeCode[]).map((value) => ({
-    value,
-    label: PROCESSING_TASK_TYPE_LABEL[value],
-  })),
-)
-
 function processingTaskTypeLabel(value: ProcessingTaskTypeCode): string {
-  return strictEnumLabel(PROCESSING_TASK_TYPE_LABEL, value, '处理任务类型')
+  return strictEnumLabel(ProcessingTaskTypeDescription, value, '处理任务类型')
 }
 
 function processingTaskTypeTone(value: ProcessingTaskTypeCode) {
@@ -325,7 +365,7 @@ function processingTaskTypeTone(value: ProcessingTaskTypeCode) {
 }
 
 function processingTaskStatusLabel(value: TaskStatusCode): string {
-  return strictEnumLabel(TASK_STATUS_LABEL, value, '处理任务状态')
+  return strictEnumLabel(TaskStatusDescription, value, '处理任务状态')
 }
 
 function processingTaskStatusTone(value: TaskStatusCode) {
@@ -334,7 +374,7 @@ function processingTaskStatusTone(value: TaskStatusCode) {
 
 function canRetryPaperGrade(record: ExamProcessingTaskItemVO): boolean {
   if (!record.paperInstanceId) return false
-  if (record.taskType !== 'SUBJECTIVE_AI_REVIEW') return false
+  if (record.taskType !== 'SUBJECTIVE_AI_REVIEW' && record.taskType !== 'OBJECTIVE_AI_REVIEW') return false
   return record.status === 'FAILED' || record.status === 'BLOCKED' || record.status === 'PROCESSING'
 }
 
@@ -389,7 +429,7 @@ const processingTaskColumns: ColumnType<ExamProcessingTaskItemVO>[] = [
   { title: '类型', dataIndex: 'taskType', key: 'taskType', width: 140 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
   { title: '试卷实例', dataIndex: 'paperInstanceId', key: 'paperInstanceId', width: 120 },
-  { title: '题目模板', dataIndex: 'questionTemplateId', key: 'questionTemplateId', width: 120 },
+  { title: '制卷题目', dataIndex: 'layoutQuestionId', key: 'layoutQuestionId', width: 120 },
   { title: '诊断', dataIndex: 'diagnostic', key: 'diagnostic' },
   { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 160 },
   { title: '操作', key: 'actions', width: 120 },
@@ -461,16 +501,16 @@ const statusBreakdown = computed(() => {
   })
   // 显式列出全部枚举值，避免 Object.keys + as 推断。
   const codes: ReviewTaskStatusCode[] = [
-    'PENDING',
-    'IN_PROGRESS',
-    'APPROVED',
-    'REJECTED',
-    'INVALIDATED',
+    ReviewTaskStatusCode.PENDING,
+    ReviewTaskStatusCode.IN_PROGRESS,
+    ReviewTaskStatusCode.APPROVED,
+    ReviewTaskStatusCode.REJECTED,
+    ReviewTaskStatusCode.INVALIDATED,
   ]
   return codes.map((code) => ({
     code,
-    label: strictEnumLabel(STATUS_LABEL, code, '复核任务状态'),
-    tone: strictEnumTone(STATUS_TONE, code, '复核任务状态'),
+    label: strictEnumLabel(ReviewTaskStatusDescription, code, '复核任务状态'),
+    tone: strictEnumTone(REVIEW_TASK_STATUS_TONE, code, '复核任务状态'),
     count: taskCountMap.get(code) ?? 0,
   }))
 })
@@ -497,10 +537,14 @@ const confirmedGaugeAriaLabel = computed(() => {
   return formatGaugeAriaLabel('已确认率', confirmedPercent.value, detail)
 })
 
-const confirmedGaugeBlockProps = computed(() => ({
+const confirmedGaugeBlockProps = computed((): {
+  option: typeof confirmedGaugeOption.value
+  ariaLabel: string
+  layout: 'stacked'
+} => ({
   option: confirmedGaugeOption.value,
   ariaLabel: confirmedGaugeAriaLabel.value,
-  layout: 'stacked' as const,
+  layout: 'stacked',
 }))
 
 const { chartOption: statusDistributionOption } = useChartOption(() =>
@@ -520,6 +564,22 @@ const statusDistributionAriaLabel = computed(() => {
 })
 
 const overviewSignalMetrics = computed(() => toSignalMetrics(overviewStatItems.value))
+
+const pageSignalMetrics = computed((): SignalMetric[] => {
+  if (!progress.value) {
+    return []
+  }
+  return [
+    {
+      key: 'confirmed',
+      label: '已确认率',
+      value: confirmedPercent.value,
+      unit: '%',
+      tone: confirmedPercent.value >= 100 ? 'green' : 'blue',
+    },
+    ...toSignalMetrics(overviewStatItems.value),
+  ]
+})
 
 const statusSignalMetrics = computed(() =>
   toShareSignalMetrics(statusBreakdown.value, totalTaskCount.value, '暂无复核任务'),
@@ -592,7 +652,7 @@ const highlightedQuestionId = ref<string | null>(null)
 
 function handleHeatmapCellClick(index: number): void {
   const row = questionRows.value[index]
-  highlightedQuestionId.value = row?.questionTemplateId ?? null
+  highlightedQuestionId.value = row?.layoutQuestionId ?? null
 }
 
 const { chartOption: reviewProgressChartOption } = useChartOption(() =>
@@ -613,7 +673,7 @@ const reviewProgressChartAriaLabel = computed(() => {
 })
 
 function questionTypeLabel(questionType: ReviewQuestionProgressItemVO['questionType']): string {
-  return strictEnumLabel(QUESTION_TYPE_LABEL, questionType, '题型')
+  return strictEnumLabel(QuestionTypeDescription, questionType, '题型')
 }
 
 const questionColumns: ColumnType<ReviewQuestionProgressItemVO>[] = [
@@ -627,6 +687,7 @@ const questionColumns: ColumnType<ReviewQuestionProgressItemVO>[] = [
 async function loadAll(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
+  loadFailed.value = false
   try {
     if (workbenchContext?.refreshChrome) {
       await workbenchContext.refreshChrome()
@@ -635,6 +696,7 @@ async function loadAll(): Promise<void> {
     }
     await loadProcessingTasks()
   } catch (error) {
+    loadFailed.value = true
     showUserError(error, '复核进度加载失败')
   } finally {
     loading.value = false
@@ -671,13 +733,6 @@ onActivated(() => {
   min-width: 0;
   padding: 8px 10px;
 
-  &__toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-  }
-
   &__empty {
     padding: 60px 0;
   }
@@ -689,6 +744,15 @@ onActivated(() => {
 
 .status-card {
   height: 100%;
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
 
   &__body {
     display: flex;
@@ -704,6 +768,15 @@ onActivated(() => {
 
 .overview-card {
   height: 100%;
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
 
   &__body {
     display: flex;
@@ -739,6 +812,26 @@ onActivated(() => {
 
 .question-card {
   height: 100%;
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+}
+
+.processing-card {
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
 }
 
 .processing-card__diagnostic {

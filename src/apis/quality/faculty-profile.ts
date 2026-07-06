@@ -53,7 +53,7 @@ export interface FacultyProfileVO {
   teacherDevelopmentRecord: string
   teachingReformContribution: string
   graduationDesignGuidance: string
-  profileStatus: 'ACTIVE'
+  profileStatus: string
   createTime?: string
   updateTime?: string
 }

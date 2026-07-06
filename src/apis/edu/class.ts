@@ -8,8 +8,8 @@ import type { UserQueryDto } from './admin-user'
 import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
 import type { IdRequest, PageResult, QueryDto } from '@/types'
 import type { UserDto } from '@/types/api-types.d'
+import type { ExamClassStudentTreeNodeTypeCode } from '@/types/enums/exam-class-student-tree-node-type-enum'
 import http from '@/config/axios'
-import { throwUserFacing } from '@/utils/contract-guard'
 
 
 /** 班级信息DTO - 与后端ClassInfoDto完全对齐 */
@@ -93,7 +93,7 @@ export interface ClassStudentTreeNode {
   /** 节点名称 */
   name: string
   /** 节点类型：DEPARTMENT, CLASS, STUDENT */
-  nodeType: 'DEPARTMENT' | 'CLASS' | 'STUDENT'
+  nodeType: ExamClassStudentTreeNodeTypeCode
   /** 原始ID（用于提交后端） */
   originalId: string
   /** 父节点ID */
@@ -151,7 +151,7 @@ export function createClass(data: ClassInfoDto) {
 export function updateClass(data: ClassInfoDto) {
   // 确保data中包含id字段
   if (!data.id) {
-    throwUserFacing('班级信息保存失败，请刷新后重试')
+    throw new Error('班级信息保存失败，请刷新后重试')
   }
   return http.post<void>(`/api/user/admin/classes/update`, data)
 }
@@ -191,7 +191,7 @@ export function getAllClasses() {
  */
 export function getClassesByDepartment(
   data: { tenantId?: string, departmentId?: string },
-  config?: Partial<ExtendedAxiosRequestConfig>,
+  config?: ExtendedAxiosRequestConfig,
 ) {
   return http.post<ClassInfoDto[]>(`/api/user/admin/classes/list-by-department`, data, config)
 }

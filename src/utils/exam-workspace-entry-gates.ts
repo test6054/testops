@@ -1,16 +1,17 @@
 import type {
   MarkingProgressVO,
-  WorkbenchNextActionKeyCode,
   WorkbenchNextActionVO,
 } from '@/apis/mark/exam-progress'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
+import { WorkbenchNextActionKeyCode } from '@/apis/mark/exam-progress'
+import { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
 import { resolveScanStageEntryRouteName } from '@/utils/resolve-scan-stage-entry'
 
 const NEXT_ACTION_ROUTE: Record<WorkbenchNextActionKeyCode, string> = {
-  START_SCAN: 'TeacherExamWorkspaceScanBatches',
-  ENTER_REVIEW: 'TeacherExamWorkspaceReviewBatchConfirm',
-  ENTER_MARKING: 'TeacherExamWorkspaceMarkingTaskPool',
+  [WorkbenchNextActionKeyCode.START_SCAN]: 'TeacherExamWorkspaceScanBatches',
+  [WorkbenchNextActionKeyCode.ENTER_REVIEW]: 'TeacherExamWorkspaceReviewBatchConfirm',
+  [WorkbenchNextActionKeyCode.ENTER_MARKING]: 'TeacherExamWorkspaceMarkingTaskPool',
 }
 
 /** 是否存在扫描登记硬阻断 */
@@ -32,7 +33,7 @@ export function canStartScanRegistration(
   prepBlockingReasons: string[] | null | undefined,
   nextActions?: WorkbenchNextActionVO[] | null,
 ): boolean {
-  const action = findWorkbenchNextAction(nextActions, 'START_SCAN')
+  const action = findWorkbenchNextAction(nextActions, WorkbenchNextActionKeyCode.START_SCAN)
   if (action) {
     return action.enabled
   }
@@ -44,7 +45,7 @@ export function canEnterReviewBatch(
   nextActions?: WorkbenchNextActionVO[] | null,
   progress?: MarkingProgressVO | null,
 ): boolean {
-  const action = findWorkbenchNextAction(nextActions, 'ENTER_REVIEW')
+  const action = findWorkbenchNextAction(nextActions, WorkbenchNextActionKeyCode.ENTER_REVIEW)
   if (action) {
     return action.enabled
   }
@@ -94,7 +95,7 @@ export function resolveNextActionRouteName(
   examId?: string,
   scanAttentionCount?: number,
 ): string {
-  if (actionKey === 'START_SCAN' && examId) {
+  if (actionKey === WorkbenchNextActionKeyCode.START_SCAN && examId) {
     return resolveScanStageEntryRouteName({ scanAttentionCount })
   }
   return NEXT_ACTION_ROUTE[actionKey]
@@ -153,6 +154,13 @@ export function resolveSmartExamEntryRouteName(exam: {
 }
 
 export function resolveJourneyIndex(journeyKey: ExamJourneyKey): number {
-  const order: ExamJourneyKey[] = ['prep', 'scan', 'assign', 'mark', 'publish', 'archive']
+  const order: ExamJourneyKey[] = [
+    MarkTeacherDashboardJourneyKeyCode.PREP,
+    MarkTeacherDashboardJourneyKeyCode.SCAN,
+    MarkTeacherDashboardJourneyKeyCode.ASSIGN,
+    MarkTeacherDashboardJourneyKeyCode.MARK,
+    MarkTeacherDashboardJourneyKeyCode.PUBLISH,
+    MarkTeacherDashboardJourneyKeyCode.ARCHIVE,
+  ]
   return order.indexOf(journeyKey)
 }

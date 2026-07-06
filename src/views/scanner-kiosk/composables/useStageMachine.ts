@@ -5,9 +5,10 @@
  * 历史：侧栏入口进入 /scanner-kiosk/history，不参与 StageBar
  */
 
-import type { KioskWorkflow } from './useKioskWorkflow'
+import type { KioskWorkflow } from './useExamKioskWorkflow'
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { LocalScanJobStatusCode } from '@/apis/mark/scanner-agent-local'
 
 export type KioskStageId = 'setup' | 'scanning' | 'review' | 'history'
 
@@ -55,13 +56,13 @@ export const KIOSK_HISTORY_STAGE: KioskStageDef = Object.freeze({
 
 const ALL_KIOSK_STAGES: readonly KioskStageDef[] = Object.freeze([...KIOSK_STAGES, KIOSK_HISTORY_STAGE])
 
-const SCANNING_JOB_STATUS = new Set([
-  'CREATED',
-  'SCANNING',
-  'PAUSED',
-  'READYTOUPLOAD',
-  'UPLOADING',
-  'RETRYING',
+const SCANNING_JOB_STATUS = new Set<LocalScanJobStatusCode>([
+  LocalScanJobStatusCode.CREATED,
+  LocalScanJobStatusCode.SCANNING,
+  LocalScanJobStatusCode.PAUSED,
+  LocalScanJobStatusCode.READYTOUPLOAD,
+  LocalScanJobStatusCode.UPLOADING,
+  LocalScanJobStatusCode.RETRYING,
 ])
 
 export function useStageMachine(workflow: KioskWorkflow) {

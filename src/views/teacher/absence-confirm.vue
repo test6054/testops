@@ -1,9 +1,20 @@
 <template>
-  <div class="absence-page">
-    <UiCard class="absence-page__summary-card">
-      <template #title>出勤核对摘要</template>
-      <template #extra>
-        <a-space>
+  <StageWorkbenchShell class="absence-page">
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="contextBarTitle"
+        :subtitle="contextBarSubtitle"
+      >
+        <template #status>
+          <UiTag tone="blue" size="sm">阶段 缺考确认</UiTag>
+          <UiTag v-if="pendingAbsenceCount > 0" tone="orange" size="sm">
+            待确认 {{ pendingAbsenceCount }} 条
+          </UiTag>
+          <UiTag v-else-if="reconcileVO" tone="green" size="sm">无缺考阻塞</UiTag>
+        </template>
+        <template #actions>
           <UiButton size="sm" :loading="reconciling" @click="handleReconcile(false)">
             <template #icon><SyncOutlined /></template>
             出勤核对
@@ -17,172 +28,308 @@
             <template #icon><PlusOutlined /></template>
             核对并新建待确认记录
           </UiButton>
-        </a-space>
-      </template>
-      <UiEmpty v-if="!reconcileVO" description="暂无数据" />
-      <div v-else class="absence-page__summary">
+          <UiButton
+            v-if="pendingMakeupCount > 0"
+            size="sm"
+            @click="openDeriveMakeupModal"
+          >
+            派生补考
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
+
+    <template v-if="reconcileVO" #signal>
+      <div class="absence-page__summary">
         <div class="absence-page__summary-ring">
           <MarkGaugeBlock v-bind="attendanceGaugeBlockProps" />
         </div>
-        <SignalBand :metrics="reconcileSignalMetrics" compact class="absence-page__summary-stats" />
+        <SignalBand variant="tiles" :metrics="absenceListMetrics" compact class="absence-page__summary-stats" />
       </div>
-    </UiCard>
+    </template>
 
-    <UiCard v-if="reconcileVO && absentStudents.length" class="info-card">
-      <template #title>
-        <UserDeleteOutlined />
-        <span class="section-title">核对检出的缺考学生</span>
-      </template>
-      <UiDataTable
-        pagination-mode="none"
-        class="student-detail-table__data-table"
-        :columns="absentColumns"
-        :data-source="absentStudents"
-        :show-pagination="false"
-        flat
-        :total="absentStudents.length"
-        row-key="studentUserId"
-        size="middle"
+    <UiEmpty v-if="!selectedExamId" description="请从考试工作台进入缺考确认" />
+
+    <template v-else>
+      <ExamWorkspaceJourneySubNav />
+
+      <UiAlertStrip
+        v-if="pendingAbsenceCount > 0"
+        tone="warning"
+        title="仍有缺考记录待确认"
+        :description="`当前还有 ${pendingAbsenceCount} 条待确认缺考，成绩发布前须完成核对。`"
+        dense
+        class="absence-page__alert"
       >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiTextAction
-                tone="primary"
-                @click="openConfirmModal(record.studentUserId, formatStudentSnapshot(record))"
-              >
-                确认缺考
-              </UiTextAction>
-            </div>
-          </template>
+        <template #actions>
+          <UiButton variant="primary" size="sm" @click="goScorePublish">
+            前往成绩发布
+          </UiButton>
         </template>
-      </UiDataTable>
-    </UiCard>
+      </UiAlertStrip>
 
-    <a-card :bordered="false" class="detail-table-card info-card absence-page__records-card">
-      <template #title>
-        <SolutionOutlined />
-        <span>缺考记录</span>
-      </template>
-      <UiFilterBar
-        v-model="recordFilterForm"
-        :fields="recordFilterFields"
-        variant="panel"
-        show-labels
-        search-text="查询"
-        @search="handleRecordFilterSearch"
-        @reset="handleRecordFilterReset"
-      />
+      <UiEmpty v-if="!reconcileVO && !recordLoading" description="暂无核对数据，请先执行出勤核对" />
 
-      <UiDataTable
-        class="student-detail-table__data-table"
-        :columns="recordColumns"
-        :data-source="records"
-        :loading="recordLoading"
-        v-model:current="recordPagination.pageNum"
-        v-model:page-size="recordPagination.pageSize"
-        flat
-        :total="recordPagination.total"
-        row-key="absenceRecordId"
-        size="middle"
-        @page-change="handleRecordPageChange"
+      <WorkbenchSurfaceCard
+        v-if="reconcileVO && absentStudents.length"
+        flush
+        class="absence-page__section"
       >
-        <template #bodyCell="{ column, index }">
-          <template v-if="column.key === 'absenceStatus'">
-            <UiTag :tone="statusTone(records[index].absenceStatus)" size="sm">
-              {{ statusLabel(records[index].absenceStatus) }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'absenceReason'">
-            {{ reasonLabel(records[index].absenceReason) }}
-          </template>
-          <template v-else-if="column.key === 'scorePolicy'">
-            {{ scorePolicyLabel(records[index].scorePolicy) }}
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiTextAction
-                v-if="records[index].absenceStatus === 'CONFIRMED'"
-                @click="openRevokeModal(records[index])"
-              >
-                撤销
-              </UiTextAction>
-              <UiTextAction
-                v-else-if="records[index].absenceStatus === 'PENDING'"
-                tone="primary"
-                @click="
-                  openConfirmModal(
-                    records[index].studentUserId,
-                    formatStudentSnapshot(records[index]),
-                  )
-                "
-              >
-                确认
-              </UiTextAction>
-              <span v-else class="hint-text">-</span>
-            </div>
-          </template>
+        <template #head>
+          <h3 class="absence-page__section-title">核对检出的缺考学生</h3>
         </template>
-      </UiDataTable>
-    </a-card>
-  </div>
+        <UiDataTable
+          pagination-mode="none"
+          class="student-detail-table__data-table"
+          :columns="absentColumns"
+          :data-source="absentStudents"
+          :show-pagination="false"
+          flat
+          :total="absentStudents.length"
+          row-key="studentUserId"
+          size="middle"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'studentNo'">
+              <span class="score-summary-table__mono">{{ record.studentNo || '—' }}</span>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <div class="operations-cell" @click.stop>
+                <UiTextAction
+                  tone="primary"
+                  @click="openConfirmModal(record.studentUserId, formatStudentSnapshot(record))"
+                >
+                  确认缺考
+                </UiTextAction>
+              </div>
+            </template>
+          </template>
+        </UiDataTable>
+      </WorkbenchSurfaceCard>
 
-  <a-modal
-    v-model:open="confirmModalOpen"
-    title="确认缺考"
-    :destroy-on-close="true"
-    :confirm-loading="confirming"
-    :ok-button-props="{ disabled: !confirmValid }"
-    ok-text="确认"
-    @ok="handleConfirm"
-  >
-    <a-form layout="vertical">
-      <a-form-item label="学生">
-        <a-input :value="confirmTargetName" disabled />
-      </a-form-item>
-      <a-form-item label="缺考原因" required>
-        <a-select v-model:value="confirmForm.absenceReason" placeholder="选择缺考原因">
-          <a-select-option v-for="(label, code) in ABSENCE_REASON_LABEL" :key="code" :value="code">
-            {{ label }}
-          </a-select-option>
-        </a-select>
-      </a-form-item>
-      <a-form-item label="成绩处理策略" required>
-        <a-select v-model:value="confirmForm.scorePolicy" placeholder="选择成绩处理策略">
-          <a-select-option
-            v-for="(label, code) in ABSENCE_SCORE_POLICY_LABEL"
-            :key="code"
-            :value="code"
-          >
-            {{ label }}
-          </a-select-option>
-        </a-select>
-      </a-form-item>
-    </a-form>
-  </a-modal>
+      <WorkbenchSurfaceCard flush class="absence-page__section">
+        <template #head>缺考记录</template>
+        <template #toolbar>
+          <div class="absence-page__record-toolbar">
+            <UiFilterBar
+              v-model="recordFilterForm"
+              :fields="recordFilterFields"
+              search-text="查询"
+              variant="plain"
+              @search="handleRecordFilterSearch"
+              @reset="handleRecordFilterReset"
+            />
+            <p class="absence-page__flow-hint">{{ ABSENCE_STATUS_FLOW_HINT }}</p>
+            <UiButton
+              v-if="pendingMakeupCount > 0"
+              size="sm"
+              variant="outline"
+              @click="openDeriveMakeupModal"
+            >
+              推导补考名单
+            </UiButton>
+          </div>
+        </template>
+        <UiDataTable
+          class="student-detail-table__data-table"
+          :columns="recordColumns"
+          :data-source="records"
+          :loading="recordLoading"
+          v-model:current="recordPagination.pageNum"
+          v-model:page-size="recordPagination.pageSize"
+          flat
+          :total="recordPagination.total"
+          row-key="absenceRecordId"
+          size="middle"
+          @page-change="handleRecordPageChange"
+        >
+          <template #bodyCell="{ column, index }">
+            <template v-if="column.key === 'studentNo'">
+              <span class="score-summary-table__mono">{{ records[index].studentNo || '—' }}</span>
+            </template>
+            <template v-else-if="column.key === 'absenceReason'">
+              <UiTag :tone="reasonTone(records[index].absenceReason)" size="sm">
+                {{ reasonLabel(records[index].absenceReason) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'confirmState'">
+              <UiTag :tone="confirmStateTone(records[index].absenceStatus)" size="sm">
+                {{ confirmStateLabel(records[index].absenceStatus) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'confirmedBy'">
+              {{ records[index].confirmedUserId || '—' }}
+            </template>
+            <template v-else-if="column.key === 'makeupEligible'">
+              <UiTag
+                v-if="isPendingMakeupRecord(records[index])"
+                tone="green"
+                size="sm"
+              >
+                可补考
+              </UiTag>
+              <UiTag
+                v-else-if="records[index].absenceStatus === AbsenceStatusCode.CONFIRMED"
+                tone="gray"
+                size="sm"
+              >
+                不可
+              </UiTag>
+              <span v-else class="hint-text">—</span>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <div class="operations-cell" @click.stop>
+                <UiTextAction
+                  v-if="isPendingMakeupRecord(records[index])"
+                  tone="primary"
+                  @click="openDeriveMakeupModal"
+                >
+                  派生补考
+                </UiTextAction>
+                <UiTextAction
+                  v-else-if="records[index].absenceStatus === AbsenceStatusCode.CONFIRMED"
+                  @click="openRevokeModal(records[index])"
+                >
+                  撤销
+                </UiTextAction>
+                <UiTextAction
+                  v-else-if="records[index].absenceStatus === AbsenceStatusCode.PENDING"
+                  tone="primary"
+                  @click="
+                    openConfirmModal(
+                      records[index].studentUserId,
+                      formatStudentSnapshot(records[index]),
+                    )
+                  "
+                >
+                  确认
+                </UiTextAction>
+                <span v-else class="hint-text">-</span>
+              </div>
+            </template>
+          </template>
+        </UiDataTable>
+      </WorkbenchSurfaceCard>
 
-  <a-modal
-    v-model:open="revokeModalOpen"
-    title="撤销缺考"
-    :destroy-on-close="true"
-    :confirm-loading="revoking"
-    :ok-button-props="{ disabled: !revokeForm.revokeReason.trim() }"
-    ok-text="撤销"
-    @ok="handleRevoke"
-  >
-    <a-form layout="vertical">
-      <a-form-item label="学生">
-        <a-input :value="revokeTargetName" disabled />
-      </a-form-item>
-      <a-form-item label="撤销原因" required>
-        <a-textarea
-          v-model:value="revokeForm.revokeReason"
-          :rows="4"
-          placeholder="请描述撤销原因（必填）"
-        />
-      </a-form-item>
-    </a-form>
-  </a-modal>
+      <ScorePublishRelatedLinksCard variant="absence" />
+    </template>
+
+    <UiDrawer
+      v-model:open="confirmModalOpen"
+      title="确认缺考"
+      :width="520"
+      :hide-footer="false"
+      @close="confirmModalOpen = false"
+    >
+      <a-form layout="vertical">
+        <a-form-item label="学生">
+          <a-input :value="confirmTargetName" disabled />
+        </a-form-item>
+        <a-form-item label="缺考原因" required>
+          <a-select v-model:value="confirmForm.absenceReason" placeholder="选择缺考原因">
+            <a-select-option v-for="opt in ABSENCE_REASON_OPTIONS" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="成绩处理策略" required>
+          <a-select v-model:value="confirmForm.scorePolicy" placeholder="选择成绩处理策略">
+            <a-select-option
+              v-for="opt in SCORE_POLICY_OPTIONS"
+              :key="opt.value"
+              :value="opt.value"
+            >
+              {{ opt.label }}
+            </a-select-option>
+          </a-select>
+        </a-form-item>
+      </a-form>
+      <template #footer>
+        <UiButton variant="outline" @click="confirmModalOpen = false">取消</UiButton>
+        <UiButton :loading="confirming" :disabled="!confirmValid" @click="handleConfirm">确认</UiButton>
+      </template>
+    </UiDrawer>
+
+    <UiDrawer
+      v-model:open="revokeModalOpen"
+      title="撤销缺考"
+      :width="520"
+      :hide-footer="false"
+      @close="revokeModalOpen = false"
+    >
+      <a-form layout="vertical">
+        <a-form-item label="学生">
+          <a-input :value="revokeTargetName" disabled />
+        </a-form-item>
+        <a-form-item label="撤销原因" required>
+          <a-textarea
+            v-model:value="revokeForm.revokeReason"
+            :rows="4"
+            placeholder="请描述撤销原因（必填）"
+          />
+        </a-form-item>
+      </a-form>
+      <template #footer>
+        <UiButton variant="outline" @click="revokeModalOpen = false">取消</UiButton>
+        <UiButton :loading="revoking" :disabled="!revokeForm.revokeReason.trim()" @click="handleRevoke">
+          撤销
+        </UiButton>
+      </template>
+    </UiDrawer>
+
+    <UiDrawer
+      v-model:open="deriveModalOpen"
+      title="派生补考"
+      :width="520"
+      :hide-footer="false"
+      @close="deriveModalOpen = false"
+    >
+      <UiSkeletonState v-if="deriveDetailLoading" variant="card" compact />
+      <a-form v-else layout="vertical">
+        <a-form-item label="待补考学生">
+          <a-input :value="`${pendingMakeupCount} 人`" disabled />
+        </a-form-item>
+        <a-form-item label="补考学年" required>
+          <a-input
+            v-model:value="deriveForm.academicYear"
+            placeholder="如 2024-2025"
+          />
+        </a-form-item>
+        <a-form-item label="补考学期" required>
+          <a-select
+            v-model:value="deriveForm.semester"
+            placeholder="选择学期"
+            :options="SemesterOptions"
+          />
+        </a-form-item>
+        <a-form-item label="补考名称" required>
+          <a-input v-model:value="deriveForm.examName" placeholder="补考名称" />
+        </a-form-item>
+        <a-form-item label="补考编号" required>
+          <a-input v-model:value="deriveForm.examNo" placeholder="补考编号" />
+        </a-form-item>
+        <a-form-item label="考试时间窗" required>
+          <a-range-picker
+            v-model:value="deriveForm.examWindow"
+            show-time
+            value-format="YYYY-MM-DD HH:mm:ss"
+            format="YYYY-MM-DD HH:mm"
+            style="width: 100%"
+          />
+        </a-form-item>
+      </a-form>
+      <template #footer>
+        <UiButton variant="outline" @click="deriveModalOpen = false">取消</UiButton>
+        <UiButton
+          :loading="deriving"
+          :disabled="!deriveValid || deriveDetailLoading"
+          @click="handleDeriveMakeup"
+        >
+          派生
+        </UiButton>
+      </template>
+    </UiDrawer>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
@@ -190,41 +337,55 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   AbsenceReasonCode,
   AbsenceRecordVO,
-  AbsenceScorePolicyCode,
-  AbsenceStatusCode,
   AbsentStudentSnapshotVO,
   AttendanceReconcileVO,
+  ScorePolicyCode,
 } from '@/apis/mark/absence'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode} from '@/types/enums/semester-enum';
 import type { SignalMetric } from '@/types/workbench'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
 import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
-  ABSENCE_REASON_LABEL,
-  ABSENCE_SCORE_POLICY_LABEL,
-  ABSENCE_STATUS_LABEL,
+  ABSENCE_REASON_OPTIONS,
+  ABSENCE_REASON_TONE,
+  ABSENCE_STATUS_FLOW_HINT,
   ABSENCE_STATUS_TONE,
+  AbsenceReasonDescription,
+  AbsenceStatusCode,
+  AbsenceStatusDescription,
   confirmAbsence,
+  countPendingMakeupAbsences,
   listAbsenceRecords,
   reconcileAttendance,
   revokeAbsence,
+  SCORE_POLICY_OPTIONS,
 } from '@/apis/mark/absence'
+import { deriveMakeupExam, getExamDetail } from '@/apis/mark/exam'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import ScorePublishRelatedLinksCard from '@/components/workbench/ScorePublishRelatedLinksCard.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
 import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
@@ -235,6 +396,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherAbsenceConfirm' })
 
 const { selectedExamId } = useMarkExamContext()
+const router = useRouter()
+const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('缺考确认')
 const { refreshSnapshot } = useWorkspaceExamId()
 
 interface AbsentStudentRow {
@@ -246,6 +409,8 @@ interface AbsentStudentRow {
 
 const reconcileVO = ref<AttendanceReconcileVO | null>(null)
 const reconciling = ref(false)
+const pendingAbsenceCount = ref(0)
+const confirmedAbsenceCount = ref(0)
 
 const records = ref<AbsenceRecordVO[]>([])
 const recordLoading = ref(false)
@@ -262,8 +427,9 @@ const recordFilterFields: FilterField[] = [
     allowClear: true,
     width: 160,
     options: [
-      { value: 'PENDING', label: '待确认' },
-      { value: 'CONFIRMED', label: '已确认' },
+      { value: AbsenceStatusCode.PENDING, label: '待确认' },
+      { value: AbsenceStatusCode.CONFIRMED, label: '已确认' },
+      { value: 'MAKEUP_ARRANGED', label: '已安排补考' },
       { value: 'REVOKED', label: '已撤销' },
     ],
   },
@@ -278,7 +444,11 @@ const absentStudents = computed<AbsentStudentRow[]>(() => {
   if (!reconcileVO.value) return []
   const confirmedIds = new Set(
     records.value
-      .filter((r) => r.absenceStatus === 'CONFIRMED' || r.absenceStatus === 'PENDING')
+      .filter(
+        (r) =>
+          r.absenceStatus === AbsenceStatusCode.CONFIRMED
+          || r.absenceStatus === AbsenceStatusCode.PENDING,
+      )
       .map((r) => r.studentUserId),
   )
   return reconcileVO.value.absentStudents
@@ -314,42 +484,42 @@ const attendanceAriaLabel = computed(() => {
   return formatGaugeAriaLabel('出勤率', attendancePercent.value, detail)
 })
 
-const attendanceGaugeBlockProps = computed(() => ({
+const attendanceGaugeBlockProps = computed((): {
+  option: typeof attendanceGaugeOption.value
+  ariaLabel: string
+  layout: 'stacked'
+} => ({
   option: attendanceGaugeOption.value,
   ariaLabel: attendanceAriaLabel.value,
-  layout: 'stacked' as const,
+  layout: 'stacked',
 }))
 
-const reconcileSignalMetrics = computed((): SignalMetric[] => [
-  {
-    key: 'expected',
-    label: '应考人数',
-    value: reconcileVO.value?.expectedCount ?? 0,
-    unit: '人',
-    tone: 'blue',
-  },
-  {
-    key: 'attended',
-    label: '已绑定试卷',
-    value: reconcileVO.value?.attendedCount ?? 0,
-    unit: '人',
-    tone: 'green',
-  },
-  {
-    key: 'absent',
-    label: '缺考人数',
-    value: reconcileVO.value?.absentCount ?? 0,
-    unit: '人',
-    tone: (reconcileVO.value?.absentCount ?? 0) > 0 ? 'orange' : 'green',
-  },
-  {
-    key: 'pending',
-    label: '本次新建待确认记录',
-    value: reconcileVO.value?.createdPendingCount ?? 0,
-    unit: '条',
-    tone: (reconcileVO.value?.createdPendingCount ?? 0) > 0 ? 'blue' : 'gray',
-  },
-])
+const absenceListMetrics = computed((): SignalMetric[] => {
+  const absentTotal = reconcileVO.value?.absentCount ?? 0
+  return [
+    {
+      key: 'absent',
+      label: '缺考人数',
+      value: absentTotal,
+      unit: '人',
+      tone: absentTotal > 0 ? 'red' : 'gray',
+    },
+    {
+      key: 'confirmed',
+      label: '已确认',
+      value: confirmedAbsenceCount.value,
+      unit: '人',
+      tone: 'green',
+    },
+    {
+      key: 'makeup',
+      label: '可补考',
+      value: pendingMakeupCount.value,
+      unit: '人',
+      tone: pendingMakeupCount.value > 0 ? 'blue' : 'gray',
+    },
+  ]
+})
 
 const absentColumns: ColumnType<AbsentStudentRow>[] = [
   { title: '学号', key: 'studentNo', dataIndex: 'studentNo', width: 160 },
@@ -359,20 +529,13 @@ const absentColumns: ColumnType<AbsentStudentRow>[] = [
 ]
 
 const recordColumns: ColumnType<AbsenceRecordVO>[] = [
-  { title: '学号', key: 'studentNo', dataIndex: 'studentNo', width: 150 },
-  {
-    title: '姓名',
-    key: 'studentName',
-    dataIndex: 'studentName',
-    width: 120,
-  },
-  { title: '班级', key: 'className', dataIndex: 'className', width: 180 },
-  { title: '状态', key: 'absenceStatus', width: 100 },
-  { title: '缺考原因', key: 'absenceReason', width: 120 },
-  { title: '成绩处理策略', key: 'scorePolicy', width: 140 },
-  { title: '确认时间', key: 'confirmedTime', dataIndex: 'confirmedTime', width: 180 },
-  { title: '撤销时间', key: 'revokedTime', dataIndex: 'revokedTime', width: 180 },
-  { title: '操作', key: 'actions', width: 100, fixed: 'right' },
+  { title: '学号', key: 'studentNo', width: 120 },
+  { title: '姓名', key: 'studentName', dataIndex: 'studentName', width: 96 },
+  { title: '缺考类型', key: 'absenceReason', width: 100 },
+  { title: '已确认', key: 'confirmState', width: 96 },
+  { title: '确认人', key: 'confirmedBy', width: 120 },
+  { title: '可补考', key: 'makeupEligible', width: 88 },
+  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
 ]
 
 function toAbsentStudentRow(student: AbsentStudentSnapshotVO): AbsentStudentRow {
@@ -390,20 +553,93 @@ function formatStudentSnapshot(
   return `${record.studentName}（${record.studentNo}，${record.className}）`
 }
 
-function statusLabel(status: AbsenceStatusCode): string {
-  return strictEnumLabel(ABSENCE_STATUS_LABEL, status, '缺考状态')
+function reasonTone(reason: AbsenceReasonCode): BadgeTone {
+  return strictEnumTone(ABSENCE_REASON_TONE, reason, '缺考原因')
 }
 
-function statusTone(status: AbsenceStatusCode): BadgeTone {
-  return strictEnumTone(ABSENCE_STATUS_TONE, status, '缺考状态')
+function confirmStateLabel(status: AbsenceStatusCode): string {
+  return strictEnumLabel(AbsenceStatusDescription, status, 'absenceStatus')
+}
+
+function confirmStateTone(status: AbsenceStatusCode): BadgeTone {
+  return strictEnumTone(ABSENCE_STATUS_TONE, status, 'absenceStatus')
 }
 
 function reasonLabel(reason: AbsenceReasonCode): string {
-  return strictEnumLabel(ABSENCE_REASON_LABEL, reason, '缺考原因')
+  return strictEnumLabel(AbsenceReasonDescription, reason, '缺考原因')
 }
 
-function scorePolicyLabel(policy: AbsenceScorePolicyCode): string {
-  return strictEnumLabel(ABSENCE_SCORE_POLICY_LABEL, policy, '缺考成绩策略')
+function isPendingMakeupRecord(record: AbsenceRecordVO): boolean {
+  return (
+    record.absenceStatus === AbsenceStatusCode.CONFIRMED
+    && record.scorePolicy === 'PENDING_MAKEUP'
+  )
+}
+
+const pendingMakeupTotal = ref(0)
+
+const pendingMakeupCount = computed(() => pendingMakeupTotal.value)
+
+async function loadPendingMakeupTotal(): Promise<void> {
+  if (!selectedExamId.value) {
+    pendingMakeupTotal.value = 0
+    return
+  }
+  try {
+    const result = await countPendingMakeupAbsences({ examId: selectedExamId.value })
+    pendingMakeupTotal.value = result.pendingMakeupCount
+  } catch (error) {
+    pendingMakeupTotal.value = 0
+    showUserError(error, '待补考人数加载失败')
+  }
+}
+
+async function loadPendingAbsenceCount(): Promise<void> {
+  if (!selectedExamId.value) {
+    pendingAbsenceCount.value = 0
+    return
+  }
+  try {
+    const result = await listAbsenceRecords({
+      examId: selectedExamId.value,
+      absenceStatus: AbsenceStatusCode.PENDING,
+      pageNum: 1,
+      pageSize: 1,
+    })
+    pendingAbsenceCount.value = readPageTotal(result)
+  } catch (error) {
+    pendingAbsenceCount.value = 0
+    showUserError(error, '待确认缺考记录查询失败')
+  }
+}
+
+function goScorePublish(): void {
+  if (!selectedExamId.value) {
+    return
+  }
+  void router.push({
+    name: 'TeacherExamWorkspaceScoreRelease',
+    params: { examId: selectedExamId.value },
+  })
+}
+
+async function loadAbsenceKpiCounts(): Promise<void> {
+  if (!selectedExamId.value) {
+    confirmedAbsenceCount.value = 0
+    return
+  }
+  try {
+    const confirmedResult = await listAbsenceRecords({
+      examId: selectedExamId.value,
+      absenceStatus: AbsenceStatusCode.CONFIRMED,
+      pageNum: 1,
+      pageSize: 1,
+    })
+    confirmedAbsenceCount.value = readPageTotal(confirmedResult)
+  } catch (error) {
+    confirmedAbsenceCount.value = 0
+    showUserError(error, '缺考统计加载失败')
+  }
 }
 
 async function loadRecords(): Promise<void> {
@@ -424,6 +660,7 @@ async function loadRecords(): Promise<void> {
     recordPagination.pageNum = page.pageNum
     recordPagination.pageSize = page.pageSize
     recordPagination.total = readPageTotal(page, '缺考记录加载失败，请稍后重试')
+    await Promise.all([loadPendingMakeupTotal(), loadPendingAbsenceCount(), loadAbsenceKpiCounts()])
   } catch (error) {
     showUserError(error, '缺考记录加载失败')
   } finally {
@@ -461,15 +698,13 @@ async function handleReconcile(createPending: boolean): Promise<void> {
   }
 }
 
-// ─── 确认缺考 Modal ─────────────────────────────
-
 const confirmModalOpen = ref(false)
 const confirming = ref(false)
 const confirmTargetName = ref('')
 const confirmForm = reactive<{
   studentUserId: string
   absenceReason: AbsenceReasonCode | undefined
-  scorePolicy: AbsenceScorePolicyCode | undefined
+  scorePolicy: ScorePolicyCode | undefined
 }>({
   studentUserId: '',
   absenceReason: undefined,
@@ -516,8 +751,6 @@ async function handleConfirm(): Promise<void> {
   }
 }
 
-// ─── 撤销缺考 Modal ─────────────────────────────
-
 const revokeModalOpen = ref(false)
 const revoking = ref(false)
 const revokeTargetName = ref('')
@@ -559,13 +792,114 @@ async function handleRevoke(): Promise<void> {
   }
 }
 
-// ─── 事件处理 ─────────────────────────────────
+const deriveModalOpen = ref(false)
+const deriving = ref(false)
+const deriveDetailLoading = ref(false)
+const deriveForm = reactive<{
+  academicYear: string
+  semester: SemesterCode | undefined
+  examName: string
+  examNo: string
+  examWindow: [string, string] | undefined
+}>({
+  academicYear: '',
+  semester: undefined,
+  examName: '',
+  examNo: '',
+  examWindow: undefined,
+})
+
+const deriveValid = computed(() => {
+  const [startTime, endTime] = deriveForm.examWindow ?? []
+  return Boolean(
+    deriveForm.academicYear.trim()
+    && deriveForm.semester
+    && deriveForm.examName.trim()
+    && deriveForm.examNo.trim()
+    && startTime
+    && endTime
+    && startTime < endTime,
+  )
+})
+
+function resetDeriveForm(): void {
+  deriveForm.academicYear = ''
+  deriveForm.semester = undefined
+  deriveForm.examName = ''
+  deriveForm.examNo = ''
+  deriveForm.examWindow = undefined
+}
+
+async function openDeriveMakeupModal(): Promise<void> {
+  if (!selectedExamId.value || pendingMakeupCount.value === 0) return
+  resetDeriveForm()
+  deriveModalOpen.value = true
+  deriveDetailLoading.value = true
+  try {
+    const detail = await getExamDetail(selectedExamId.value)
+    if (detail.examKind && detail.examKind !== 'REGULAR') {
+      message.error('仅可从正考考试派生补考')
+      deriveModalOpen.value = false
+      return
+    }
+    if (detail.status !== 'CLOSED') {
+      message.error('原考试须已关考后才能派生补考')
+      deriveModalOpen.value = false
+      return
+    }
+    deriveForm.examName = `补考-${detail.examName}`
+    deriveForm.examNo = `MK-${detail.examNo}`
+  } catch (error) {
+    deriveModalOpen.value = false
+    showUserError(error, '原考试信息加载失败')
+  } finally {
+    deriveDetailLoading.value = false
+  }
+}
+
+async function handleDeriveMakeup(): Promise<void> {
+  if (!selectedExamId.value || !deriveValid.value) return
+  const [startTime, endTime] = deriveForm.examWindow ?? []
+  const semester = deriveForm.semester
+  if (!startTime || !endTime || !semester) return
+  deriving.value = true
+  try {
+    const makeupExamId = await deriveMakeupExam({
+      sourceExamId: selectedExamId.value,
+      academicYear: deriveForm.academicYear.trim(),
+      semester,
+      examName: deriveForm.examName.trim(),
+      examNo: deriveForm.examNo.trim(),
+      examStartTime: startTime,
+      examEndTime: endTime,
+    })
+    message.success('已派生补考考试')
+    deriveModalOpen.value = false
+    await loadRecords()
+    try {
+      await refreshSnapshot()
+    } catch {
+      // 非工作台上下文时忽略
+    }
+    await router.push({
+      name: 'TeacherExamWorkspaceOverview',
+      params: { examId: makeupExamId },
+    })
+  } catch (error) {
+    showUserError(error, '派生补考失败')
+  } finally {
+    deriving.value = false
+  }
+}
 
 watch(
   selectedExamId,
   async (value) => {
     reconcileVO.value = null
     records.value = []
+    pendingMakeupTotal.value = 0
+    pendingAbsenceCount.value = 0
+    confirmedAbsenceCount.value = 0
     recordPagination.pageNum = 1
     recordPagination.total = 0
     if (value) {
@@ -582,6 +916,7 @@ function handleRecordFilterSearch() {
 }
 
 function handleRecordFilterReset() {
+  recordFilterForm.status = undefined
   recordPagination.pageNum = 1
   if (selectedExamId.value) {
     void loadRecords()
@@ -595,24 +930,14 @@ function handleRecordFilterReset() {
   font-size: 12px;
 }
 
-.info-card {
-  :deep(.ant-card-head-title) {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-}
-
 .absence-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
   min-width: 0;
 
   &__summary {
     display: flex;
     align-items: center;
     gap: 24px;
+    width: 100%;
   }
 
   &__summary-ring {
@@ -628,6 +953,37 @@ function handleRecordFilterReset() {
     :deep(.signal-band) {
       width: 100%;
     }
+  }
+
+  &__section {
+    margin-top: var(--dp-space-4, 16px);
+  }
+
+  &__alert {
+    margin-top: var(--dp-space-3, 12px);
+  }
+
+  &__record-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--dp-space-2, 8px);
+    width: 100%;
+  }
+
+  &__flow-hint {
+    flex: 1 1 100%;
+    margin: 0;
+    font-size: 12px;
+    color: var(--dp-text-muted, #64748b);
+  }
+
+  &__section-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: var(--dp-font-weight-title, 600);
+    line-height: 1.5;
   }
 }
 </style>

@@ -1,5 +1,4 @@
 import type { PortfolioCockpitAskResultPayload } from '@/apis/portfolio/types'
-import { assertUserFacing, throwUserFacing } from '@/utils/contract-guard'
 
 const COCKPIT_PAYLOAD_ERROR = '驾驶舱问数结果数据异常，请刷新后重试'
 
@@ -8,18 +7,12 @@ export function parsePortfolioCockpitAskPayload(
   draftMarkdown: string | undefined,
 ): PortfolioCockpitAskResultPayload {
   if (typeof draftMarkdown !== 'string' || !draftMarkdown.trim()) {
-    throwUserFacing(COCKPIT_PAYLOAD_ERROR)
+    throw new Error(COCKPIT_PAYLOAD_ERROR)
   }
-  let parsed: unknown
   try {
-    parsed = JSON.parse(draftMarkdown)
+    const parsed: PortfolioCockpitAskResultPayload = JSON.parse(draftMarkdown)
+    return parsed
   } catch {
-    throwUserFacing(COCKPIT_PAYLOAD_ERROR)
+    throw new Error(COCKPIT_PAYLOAD_ERROR)
   }
-  const record = parsed as PortfolioCockpitAskResultPayload
-  assertUserFacing(record && typeof record === 'object', COCKPIT_PAYLOAD_ERROR)
-  if (record.teacherRows !== undefined) {
-    assertUserFacing(Array.isArray(record.teacherRows), COCKPIT_PAYLOAD_ERROR)
-  }
-  return record
 }

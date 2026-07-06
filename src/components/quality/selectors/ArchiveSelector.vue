@@ -6,17 +6,17 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ArchiveVO } from '@/apis/quality/archive'
-import type { ArchiveBusinessType } from '@/apis/quality/types'
+import type { ArchiveBusinessTypeCode } from '@/apis/quality/types'
 import { onMounted, ref, watch } from 'vue'
 import { archiveApi } from '@/apis/quality/archive'
-import { ARCHIVE_BUSINESS_TYPE_LABEL } from '@/apis/quality/types'
+import { ArchiveBusinessTypeDescription } from '@/apis/quality/types'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { requireAllPages } from './page-contract'
 
 interface Props {
   value?: string | null
-  businessType?: ArchiveBusinessType | null
+  businessType?: ArchiveBusinessTypeCode | null
   archiveCategory?: string | null
   /** 仅返回已被档案室确认的归档 */
   onlyConfirmed?: boolean
@@ -76,8 +76,8 @@ async function loadOptions() {
   }
 }
 
-function archiveBusinessTypeLabel(value: ArchiveBusinessType): string {
-  return strictEnumLabel(ARCHIVE_BUSINESS_TYPE_LABEL, value, '归档业务类型')
+function archiveBusinessTypeLabel(value: ArchiveBusinessTypeCode): string {
+  return strictEnumLabel(ArchiveBusinessTypeDescription, value, '归档业务类型')
 }
 
 function handleChange(val: SelectValue) {

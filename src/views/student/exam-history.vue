@@ -11,18 +11,21 @@
       </ContextBar>
     </template>
 
-    <a-card :bordered="false" class="detail-table-card exam-history-page__table-card">
-      <template #title>
-        <FileSearchOutlined />
-        <span>考试列表</span>
+    <WorkbenchSurfaceCard flush class="exam-history-page__table-card">
+      <template #head>
+        <div class="exam-history-page__list-head">
+          <FileSearchOutlined />
+          <span>考试列表</span>
+        </div>
       </template>
-
-      <UiFilterBar
-        v-model="historyFilterForm"
-        :fields="historyFilterFields"
-        variant="plain"
-        search-text="查询"
-      />
+      <template #toolbar>
+        <UiFilterBar
+          v-model="historyFilterForm"
+          :fields="historyFilterFields"
+          variant="plain"
+          search-text="查询"
+        />
+      </template>
 
       <UiDataTable
         pagination-mode="client"
@@ -88,11 +91,12 @@
           </template>
         </template>
       </UiDataTable>
-    </a-card>
+    </WorkbenchSurfaceCard>
   </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
+import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
@@ -101,13 +105,13 @@ import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   FINAL_SCORE_STATUS_CODES,
-  FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_TONE,
+  FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
 import {
   canSubmitReview,
   listMyExams,
-  STUDENT_REVIEW_WINDOW_STATUS_LABEL,
+  ReviewWindowPolicyStatusDescription,
   STUDENT_REVIEW_WINDOW_STATUS_TONE,
 } from '@/apis/mark/student-exam'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -116,7 +120,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { assertUserFacing } from '@/utils/contract-guard'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -137,7 +141,7 @@ const historyFilterForm = reactive<{
 
 const statusOptions = FINAL_SCORE_STATUS_CODES.map((value) => ({
   value,
-  label: strictEnumLabel(FINAL_SCORE_STATUS_LABEL, value, '最终成绩状态'),
+  label: strictEnumLabel(FinalScoreStatusDescription, value, '最终成绩状态'),
 }))
 
 const historyFilterFields: FilterField[] = [
@@ -160,7 +164,7 @@ const historyFilterFields: FilterField[] = [
   },
 ]
 
-const columns = [
+const columns: ColumnsType<StudentExamItemVO> = [
   { title: '考试', key: 'examName', dataIndex: 'examName', width: 260 },
   { title: '开始时间', key: 'examStartTime', dataIndex: 'examStartTime', width: 170 },
   { title: '成绩状态', key: 'finalScoreStatus', dataIndex: 'finalScoreStatus', width: 110 },
@@ -169,11 +173,11 @@ const columns = [
     key: 'finalScore',
     dataIndex: 'finalScore',
     width: 100,
-    align: 'right' as const,
+    align: 'right',
   },
   { title: '发布时间', key: 'publishedTime', dataIndex: 'publishedTime', width: 170 },
   { title: '复核窗口', key: 'reviewWindowStatus', dataIndex: 'reviewWindowStatus', width: 120 },
-  { title: '操作', key: 'actions', fixed: 'right' as const, width: 200 },
+  { title: '操作', key: 'actions', fixed: 'right', width: 200 },
 ]
 
 const filteredExams = computed<StudentExamItemVO[]>(() => {
@@ -204,7 +208,6 @@ async function loadExams() {
   loading.value = true
   try {
     const loadedExams = await listMyExams()
-    validatePublishedExamContracts(loadedExams)
     exams.value = loadedExams
   } catch (error) {
     exams.value = []
@@ -214,23 +217,12 @@ async function loadExams() {
   }
 }
 
-/** 校验学生考试列表的发布态合同，避免模板渲染阶段才暴露缺失字段。 */
-function validatePublishedExamContracts(list: StudentExamItemVO[]): void {
-  const dataError = '成绩数据异常，请刷新后重试'
-  for (const item of list) {
-    if (item.finalScoreStatus === 'PUBLISHED') {
-      assertUserFacing(item.finalScore != null, dataError)
-      assertUserFacing(Boolean(item.publishedTime), dataError)
-    }
-  }
-}
-
 function finalScoreStatusTone(status: FinalScoreStatusCode): BadgeTone {
   return strictEnumTone(FINAL_SCORE_STATUS_TONE, status, '最终成绩状态')
 }
 
 function finalScoreStatusLabel(status: FinalScoreStatusCode): string {
-  return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, status, '最终成绩状态')
+  return strictEnumLabel(FinalScoreStatusDescription, status, '最终成绩状态')
 }
 
 function reviewWindowStatusTone(item: StudentExamItemVO): BadgeTone {
@@ -239,7 +231,7 @@ function reviewWindowStatusTone(item: StudentExamItemVO): BadgeTone {
 
 function reviewWindowStatusLabel(item: StudentExamItemVO): string {
   return strictEnumLabel(
-    STUDENT_REVIEW_WINDOW_STATUS_LABEL,
+    ReviewWindowPolicyStatusDescription,
     item.reviewWindowStatus,
     '复核窗口状态',
   )
@@ -267,10 +259,12 @@ onActivated(loadExams)
 </script>
 
 <style lang="scss" scoped>
-.exam-history-page__table-card {
-  :deep(.ant-card-body) {
-    padding-top: 0;
-  }
+.exam-history-page__list-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: var(--dp-font-weight-title, 600);
 }
 
 .history-table {

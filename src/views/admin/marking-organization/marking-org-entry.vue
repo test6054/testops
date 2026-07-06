@@ -1,33 +1,48 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar title="阅卷组织" />
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="contextBarTitle"
+        :subtitle="contextBarSubtitle"
+      >
+        <template #status>
+          <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
+            {{ examStatusLabel }}
+          </UiTag>
+        </template>
+        <template v-if="canManageExamOwner && !resolving" #actions>
+          <UiButton variant="primary" size="sm" @click="openCreateDrawer">
+            创建阅卷组织
+          </UiButton>
+        </template>
+      </ContextBar>
     </template>
 
-    <a-spin v-if="resolving" tip="加载组织中..." />
+    <template v-if="selectedExamId && !resolving" #signal>
+      <SignalBand variant="tiles" :metrics="entrySignalMetrics" compact />
+    </template>
 
-    <a-card
+    <ExamWorkspaceJourneySubNav v-if="selectedExamId" />
+
+    <UiSkeletonState v-if="resolving" variant="card" compact />
+
+    <UiEmpty
       v-else
-      :bordered="false"
-      class="detail-table-card org-entry__panel org-entry__panel--empty"
+      description="本考试尚未创建阅卷组织"
+      class="org-entry__panel--empty"
     >
-      <h3 class="org-entry__empty-title">
-        <InfoCircleOutlined />
-        本考试尚未创建阅卷组织
-      </h3>
       <p class="org-entry__empty-desc">
         阅卷组织是组织教师批改试卷的核心实体；创建后可编排题组、配置分配策略并启动试评 / 正评。
       </p>
-      <UiButton
-        v-if="canManageExamOwner"
-        variant="primary"
-        size="md"
-        @click="openCreateDrawer"
-      >
-        立即创建阅卷组织
-      </UiButton>
+      <template v-if="canManageExamOwner" #action>
+        <UiButton variant="primary" size="md" @click="openCreateDrawer">
+          立即创建阅卷组织
+        </UiButton>
+      </template>
       <p v-else class="org-entry__empty-desc">该考试的阅卷组织由考试主考老师创建和分配。</p>
-    </a-card>
+    </UiEmpty>
 
     <UiDrawer
       :open="createDrawerOpen"
@@ -63,7 +78,7 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { OrganizationCreateRequest } from '@/apis/mark/marking-organization'
-import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -72,9 +87,15 @@ import {
   getOrganization,
 } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
@@ -82,6 +103,13 @@ import { showUserError } from '@/utils/error-handler'
 import { resolveMarkingOrganizationDetailRoute } from '@/utils/marking-organization-navigation'
 
 defineOptions({ name: 'MarkingOrgWorkspaceEntry' })
+
+const {
+  contextBarTitle,
+  contextBarSubtitle,
+  examStatusLabel,
+  examStatusTone,
+} = useExamJourneyContextBar('阅卷组织')
 
 const route = useRoute()
 const router = useRouter()
@@ -93,6 +121,27 @@ const { canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, ref(nul
 
 const resolving = ref(true)
 const examLabel = computed(() => selectedExamLabel.value || '未选择考试')
+
+const entrySignalMetrics = computed<SignalMetric[]>(() => [
+  {
+    key: 'configured',
+    label: '组织状态',
+    value: '未创建',
+    tone: 'orange',
+  },
+  {
+    key: 'exam',
+    label: '关联考试',
+    value: examLabel.value,
+    tone: 'blue',
+  },
+  {
+    key: 'anonymous',
+    label: '匿名阅卷',
+    value: '创建时配置',
+    tone: 'gray',
+  },
+])
 
 /** 已配置组织时跳转详情页，未配置时留在本页展示创建入口。 */
 async function redirectToDetailIfConfigured(): Promise<void> {

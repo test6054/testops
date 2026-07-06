@@ -1,265 +1,278 @@
 <template>
-  <section class="appeal-section">
-    <div class="appeal-section__header">
-      <a-button type="primary" @click="openCreateModal">
-        <template #icon><PlusOutlined /></template>新建计划
-      </a-button>
-    </div>
+  <WorkbenchSurfaceCard flush class="appeal-section">
+    <template #head>
+      <div class="appeal-section__header">
+        <span class="appeal-section__flow-hint">{{ BATCH_CORRECTION_FLOW_HINT }}</span>
+        <UiButton size="sm" variant="primary" @click="openCreateModal">
+          新建计划
+        </UiButton>
+      </div>
+    </template>
 
-    <UiFilterBar
-      variant="plain"
-      v-model="filterModel"
-      :fields="filterFields"
-      search-text="查询"
-      @search="handleSearch"
-      @reset="handleFilterReset"
-    />
+    <template #toolbar>
+      <UiFilterBar
+        variant="plain"
+        v-model="filterModel"
+        :fields="filterFields"
+        search-text="查询"
+        @search="handleSearch"
+        @reset="handleFilterReset"
+      />
 
-    <UiDataTable
-      class="student-detail-table__data-table"
-      v-model:current="pagination.current"
-      v-model:page-size="pagination.pageSize"
-      :columns="columns"
-      :data-source="rows"
-      :loading="loading"
-      row-key="id"
-      size="small"
-      :total="pagination.total"
-      flat
-      @page-change="handlePageChange"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'correctionType'">
-          {{ correctionTypeLabel(record) }}
-        </template>
-        <template v-else-if="column.key === 'affectedQuestionRefs'">
-          {{ affectedQuestionSummary(record) }}
-        </template>
-        <template v-else-if="column.key === 'approvalStatus'">
-          <UiTag :tone="approvalStatusColor(record)">
-            {{ approvalStatusLabel(record) }}
-          </UiTag>
-        </template>
-        <template v-else-if="column.key === 'approvedTime'">
-          {{ formatDateTime(record.approvedTime) }}
-        </template>
-        <template v-else-if="column.key === 'executedTime'">
-          {{ formatDateTime(record.executedTime) }}
-        </template>
-        <template v-else-if="column.key === 'createTime'">
-          {{ formatDateTime(record.createTime) }}
-        </template>
-        <template v-else-if="column.key === 'actions'">
-          <div class="operations-cell" @click.stop>
-            <a-popconfirm
-              title="确认提交审批？"
-              :disabled="!canSubmit(record)"
-              @confirm="handleSubmitPlan(record.id)"
-            >
-              <a-button
-                type="link"
-                size="small"
+      <UiDataTable
+        class="student-detail-table__data-table"
+        v-model:current="pagination.current"
+        v-model:page-size="pagination.pageSize"
+        :columns="columns"
+        :data-source="rows"
+        :loading="loading"
+        row-key="id"
+        size="small"
+        :total="pagination.total"
+        flat
+        @page-change="handlePageChange"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'correctionType'">
+            {{ correctionTypeLabel(record) }}
+          </template>
+          <template v-else-if="column.key === 'affectedQuestionRefs'">
+            {{ affectedQuestionSummary(record) }}
+          </template>
+          <template v-else-if="column.key === 'approvalStatus'">
+            <UiTag :tone="approvalStatusColor(record)">
+              {{ approvalStatusLabel(record) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'approvedTime'">
+            {{ formatDateTime(record.approvedTime) }}
+          </template>
+          <template v-else-if="column.key === 'executedTime'">
+            {{ formatDateTime(record.executedTime) }}
+          </template>
+          <template v-else-if="column.key === 'createTime'">
+            {{ formatDateTime(record.createTime) }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <a-popconfirm
+                title="确认提交审批？"
                 :disabled="!canSubmit(record)"
-                :loading="isOperating(record.id, 'submit')"
+                @confirm="handleSubmitPlan(record.id)"
               >
-                提交
-              </a-button>
-            </a-popconfirm>
-            <a-popconfirm
-              title="确认审批通过？"
-              :disabled="record.approvalStatus !== 'PENDING_APPROVAL'"
-              @confirm="handleApprove(record.id)"
-            >
+                <a-button
+                  type="link"
+                  size="small"
+                  :disabled="!canSubmit(record)"
+                  :loading="isOperating(record.id, 'submit')"
+                >
+                  提交
+                </a-button>
+              </a-popconfirm>
+              <a-popconfirm
+                title="确认审批通过？"
+                :disabled="record.approvalStatus !== 'PENDING_APPROVAL'"
+                @confirm="handleApprove(record.id)"
+              >
+                <a-button
+                  type="link"
+                  size="small"
+                  :disabled="record.approvalStatus !== 'PENDING_APPROVAL'"
+                  :loading="isOperating(record.id, 'approve')"
+                >
+                  通过
+                </a-button>
+              </a-popconfirm>
+              <UiTextAction
+                tone="danger"
+                :disabled="record.approvalStatus !== 'PENDING_APPROVAL'"
+                @click="openRejectModal(record.id)"
+              >
+                驳回
+              </UiTextAction>
               <a-button
                 type="link"
                 size="small"
-                :disabled="record.approvalStatus !== 'PENDING_APPROVAL'"
-                :loading="isOperating(record.id, 'approve')"
+                :disabled="record.approvalStatus !== BatchCorrectionApprovalStatusCode.APPROVED"
+                :loading="isOperating(record.id, 'execute')"
+                @click="openExecuteModal(record.id)"
               >
-                通过
+                执行
               </a-button>
-            </a-popconfirm>
-            <UiTextAction
-              tone="danger"
-              :disabled="record.approvalStatus !== 'PENDING_APPROVAL'"
-              @click="openRejectModal(record.id)"
-            >
-              驳回
-            </UiTextAction>
-            <a-button
-              type="link"
-              size="small"
-              :disabled="record.approvalStatus !== 'APPROVED'"
-              :loading="isOperating(record.id, 'execute')"
-              @click="openExecuteModal(record.id)"
-            >
-              执行
-            </a-button>
-          </div>
+            </div>
+          </template>
         </template>
-      </template>
-    </UiDataTable>
+      </UiDataTable>
 
-    <a-modal
-      v-model:open="createOpen"
-      title="新建批量更正计划"
-      ok-text="保存草稿"
-      cancel-text="取消"
-      :confirm-loading="creating"
-      :mask-closable="false"
-      width="840px"
-      @ok="handleCreate"
-    >
-      <a-form layout="vertical" :model="form">
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="计划名称" required>
-              <a-input v-model:value="form.planName" :maxlength="100" placeholder="必填" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="更正类型" required>
-              <a-select
-                v-model:value="form.correctionType"
-                :options="correctionTypeOptions"
-                @change="handleCorrectionTypeChange"
-              />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item v-if="form.correctionType === 'SINGLE_QUESTION'" label="更正题目" required>
-          <a-select
-            v-model:value="form.questionTemplateId"
-            :loading="reviewRequestLoading"
-            :options="questionOptions"
-            placeholder="选择需要批量更正的题目"
-            show-search
-            option-filter-prop="label"
-            @change="handleQuestionChange"
-          />
-        </a-form-item>
-        <a-form-item label="更正原因" required>
-          <a-textarea v-model:value="form.reason" :rows="3" :maxlength="500" show-count />
-        </a-form-item>
-        <div class="batch-plan-items">
-          <div class="batch-plan-items__header">
-            <span>更正明细</span>
-            <a-button size="small" @click="addItem">
-              <template #icon><PlusOutlined /></template>添加明细
-            </a-button>
+      <UiDrawer
+        v-model:open="createOpen"
+        title="新建批量更正计划"
+        :width="840"
+        :confirm-loading="creating"
+        :mask-closable="false"
+        :hide-footer="false"
+        ok-text="保存草稿"
+        cancel-text="取消"
+        @confirm="handleCreate"
+      >
+        <a-form layout="vertical" :model="form">
+          <a-row :gutter="12">
+            <a-col :span="12">
+              <a-form-item label="计划名称" required>
+                <a-input v-model:value="form.planName" :maxlength="100" placeholder="必填" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="12">
+              <a-form-item label="更正类型" required>
+                <a-select
+                  v-model:value="form.correctionType"
+                  :options="correctionTypeOptions"
+                  @change="handleCorrectionTypeChange"
+                />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <a-form-item v-if="form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION" label="更正题目" required>
+            <a-select
+              v-model:value="form.layoutQuestionId"
+              :loading="reviewRequestLoading"
+              :options="questionOptions"
+              placeholder="选择需要批量更正的题目"
+              show-search
+              option-filter-prop="label"
+              @change="handleQuestionChange"
+            />
+          </a-form-item>
+          <a-form-item label="更正原因" required>
+            <a-textarea v-model:value="form.reason" :rows="3" :maxlength="500" show-count />
+          </a-form-item>
+          <div class="batch-plan-items">
+            <div class="batch-plan-items__header">
+              <span>更正明细</span>
+              <a-button size="small" @click="addItem">
+                <template #icon><PlusOutlined /></template>添加明细
+              </a-button>
+            </div>
+            <div v-for="(item, index) in form.items" :key="item.localId" class="batch-plan-item">
+              <a-row :gutter="12" align="middle">
+                <a-col :span="14">
+                  <a-form-item label="复核申请" required>
+                    <a-select
+                      v-model:value="item.reviewRequestId"
+                      :loading="reviewRequestLoading"
+                      :options="itemReviewRequestOptions"
+                      placeholder="选择已通过的复核申请"
+                      show-search
+                      option-filter-prop="label"
+                    />
+                  </a-form-item>
+                </a-col>
+                <a-col :span="6">
+                  <a-form-item label="更正后分数" required>
+                    <a-input-number
+                      v-model:value="item.afterScore"
+                      :min="0"
+                      :precision="2"
+                      style="width: 100%"
+                    />
+                  </a-form-item>
+                </a-col>
+                <a-col :span="4">
+                  <a-button
+                    danger
+                    size="small"
+                    :disabled="form.items.length === 1"
+                    @click="removeItem(index)"
+                  >
+                    删除
+                  </a-button>
+                </a-col>
+              </a-row>
+            </div>
           </div>
-          <div v-for="(item, index) in form.items" :key="item.localId" class="batch-plan-item">
-            <a-row :gutter="12" align="middle">
-              <a-col :span="14">
-                <a-form-item label="复核申请" required>
-                  <a-select
-                    v-model:value="item.reviewRequestId"
-                    :loading="reviewRequestLoading"
-                    :options="itemReviewRequestOptions"
-                    placeholder="选择已通过的复核申请"
-                    show-search
-                    option-filter-prop="label"
-                  />
-                </a-form-item>
-              </a-col>
-              <a-col :span="6">
-                <a-form-item label="更正后分数" required>
-                  <a-input-number
-                    v-model:value="item.afterScore"
-                    :min="0"
-                    :precision="2"
-                    style="width: 100%"
-                  />
-                </a-form-item>
-              </a-col>
-              <a-col :span="4">
-                <a-button
-                  danger
-                  size="small"
-                  :disabled="form.items.length === 1"
-                  @click="removeItem(index)"
-                >
-                  删除
-                </a-button>
-              </a-col>
-            </a-row>
-          </div>
-        </div>
-      </a-form>
-    </a-modal>
+        </a-form>
+      </UiDrawer>
 
-    <a-modal
-      v-model:open="rejectModalOpen"
-      title="驳回批量更正计划"
-      ok-text="确认驳回"
-      cancel-text="取消"
-      :confirm-loading="operatingAction === 'reject'"
-      @ok="handleReject"
-    >
-      <a-textarea
-        v-model:value="rejectReason"
-        :maxlength="500"
-        :rows="4"
-        show-count
-        placeholder="请输入驳回原因"
-      />
-    </a-modal>
+      <UiDrawer
+        v-model:open="rejectModalOpen"
+        title="驳回批量更正计划"
+        :width="520"
+        :confirm-loading="operatingAction === 'reject'"
+        :hide-footer="false"
+        ok-text="确认驳回"
+        cancel-text="取消"
+        @confirm="handleReject"
+      >
+        <a-textarea
+          v-model:value="rejectReason"
+          :maxlength="500"
+          :rows="4"
+          show-count
+          placeholder="请输入驳回原因"
+        />
+      </UiDrawer>
 
-    <a-modal
-      v-model:open="executeModalOpen"
-      title="执行批量更正计划"
-      ok-text="确认执行"
-      cancel-text="取消"
-      :confirm-loading="operatingAction === 'execute'"
-      @ok="handleExecute"
-    >
-      <a-alert
-        type="warning"
-        show-icon
-        message="执行后会写入当前成绩并刷新统计，此操作不可撤销。"
-        style="margin-bottom: 12px"
-      />
-      <a-textarea
-        v-model:value="executeReason"
-        :maxlength="500"
-        :rows="4"
-        show-count
-        placeholder="请输入执行说明（不少于 5 字，将写入审计记录）"
-      />
-    </a-modal>
-  </section>
+      <UiDrawer
+        v-model:open="executeModalOpen"
+        title="执行批量更正计划"
+        :width="520"
+        :confirm-loading="operatingAction === 'execute'"
+        :hide-footer="false"
+        ok-text="确认执行"
+        cancel-text="取消"
+        @confirm="handleExecute"
+      >
+        <a-alert
+          type="warning"
+          show-icon
+          message="执行后会写入当前成绩并刷新统计，此操作不可撤销。"
+          style="margin-bottom: 12px"
+        />
+        <a-textarea
+          v-model:value="executeReason"
+          :maxlength="500"
+          :rows="4"
+          show-count
+          placeholder="请输入执行说明（不少于 5 字，将写入审计记录）"
+        />
+      </UiDrawer>
+    </template>
+  </WorkbenchSurfaceCard>
 </template>
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
-  BatchCorrectionApprovalStatusCode,
   BatchCorrectionPlanCreateRequest,
   ExamBatchGradeCorrectionPlanVO,
-  GradeCorrectionTypeCode,
   GradeReviewQuestionRefVO,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   approveBatchCorrectionPlan,
-  BATCH_CORRECTION_STATUS_LABEL,
+  BATCH_CORRECTION_FLOW_HINT,
   BATCH_CORRECTION_STATUS_OPTIONS,
   BATCH_CORRECTION_STATUS_TONE,
+  BatchCorrectionApprovalStatusCode,
+  BatchCorrectionApprovalStatusDescription,
   createBatchCorrectionPlan,
   executeBatchCorrectionPlan,
-  GRADE_CORRECTION_TYPE_LABEL,
+  GradeCorrectionTypeCode,
+  GradeCorrectionTypeDescription,
+  GradeReviewRequestStatusCode,
   listBatchCorrectionPlans,
   listReviewRequests,
   submitBatchCorrectionPlan,
 } from '@/apis/mark/grade-review'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import { assertUserFacing } from '@/utils/contract-guard'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
@@ -340,33 +353,33 @@ const reviewRequestLoading = ref(false)
 const form = reactive<{
   planName: string
   correctionType: BatchCorrectionPlanCreateRequest['correctionType']
-  questionTemplateId: string
+  layoutQuestionId: string
   reason: string
   items: PlanItemForm[]
 }>({
   planName: '',
-  correctionType: 'SINGLE_QUESTION',
-  questionTemplateId: '',
+  correctionType: GradeCorrectionTypeCode.SINGLE_QUESTION,
+  layoutQuestionId: '',
   reason: '',
   items: [],
 })
 
 const correctionTypeOptions = [
-  { value: 'SINGLE_QUESTION', label: GRADE_CORRECTION_TYPE_LABEL.SINGLE_QUESTION },
-  { value: 'TOTAL_SCORE', label: GRADE_CORRECTION_TYPE_LABEL.TOTAL_SCORE },
+  { value: GradeCorrectionTypeCode.SINGLE_QUESTION, label: GradeCorrectionTypeDescription[GradeCorrectionTypeCode.SINGLE_QUESTION] },
+  { value: GradeCorrectionTypeCode.TOTAL_SCORE, label: GradeCorrectionTypeDescription[GradeCorrectionTypeCode.TOTAL_SCORE] },
 ]
 
 const questionOptions = computed(() => {
   const questionMap = new Map<string, GradeReviewQuestionRefVO>()
   for (const request of approvedReviewRequests.value) {
     for (const question of request.questionRefs) {
-      if (!questionMap.has(question.questionTemplateId)) {
-        questionMap.set(question.questionTemplateId, question)
+      if (!questionMap.has(question.layoutQuestionId)) {
+        questionMap.set(question.layoutQuestionId, question)
       }
     }
   }
   return Array.from(questionMap.values()).map((question) => ({
-    value: question.questionTemplateId,
+    value: question.layoutQuestionId,
     label: `第 ${question.questionNo} 题 · ${question.questionType} · 满分 ${question.fullScore} 分`,
   }))
 })
@@ -377,7 +390,7 @@ const itemReviewRequestOptions = computed(() =>
       (request) =>
         form.correctionType === 'TOTAL_SCORE'
         || request.questionRefs.some(
-          (question) => question.questionTemplateId === form.questionTemplateId,
+          (question) => question.layoutQuestionId === form.layoutQuestionId,
         ),
     )
     .map((request) => ({
@@ -391,10 +404,11 @@ const columns: ColumnType<ExamBatchGradeCorrectionPlanVO>[] = [
   { title: '类型', key: 'correctionType', width: 110 },
   { title: '受影响题目', key: 'affectedQuestionRefs', width: 160 },
   {
-    title: '受影响学生',
+    title: '影响人数',
     dataIndex: 'affectedStudentCount',
     key: 'affectedStudentCount',
-    width: 120,
+    width: 96,
+    align: 'right',
   },
   { title: '已执行', dataIndex: 'executedCount', key: 'executedCount', width: 90 },
   { title: '审批状态', key: 'approvalStatus', width: 110 },
@@ -417,7 +431,6 @@ async function reload(): Promise<void> {
       pageSize: pagination.pageSize,
     })
     const list = readPageList(result, '批量成绩更正计划加载失败')
-    validateBatchCorrectionPlanDisplayContracts(list)
     rows.value = list
     pagination.total = readPageTotal(result, '批量成绩更正计划加载失败')
     pagination.current = result.pageNum ?? pagination.current
@@ -451,8 +464,8 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 
 async function openCreateModal(): Promise<void> {
   form.planName = ''
-  form.correctionType = 'SINGLE_QUESTION'
-  form.questionTemplateId = ''
+  form.correctionType = GradeCorrectionTypeCode.SINGLE_QUESTION
+  form.layoutQuestionId = ''
   form.reason = ''
   form.items = [createEmptyItem()]
   createOpen.value = true
@@ -475,7 +488,7 @@ function removeItem(index: number): void {
 }
 
 function handleCorrectionTypeChange(): void {
-  form.questionTemplateId = ''
+  form.layoutQuestionId = ''
   for (const item of form.items) {
     item.reviewRequestId = ''
   }
@@ -495,13 +508,12 @@ async function loadApprovedReviewRequests(): Promise<void> {
       (pageNum) =>
         listReviewRequests({
           examId: props.examId,
-          requestStatus: 'APPROVED',
+          requestStatus: GradeReviewRequestStatusCode.APPROVED,
           pageNum,
           pageSize: APPROVED_REVIEW_REQUEST_PAGE_SIZE,
         }),
       '已通过复核申请加载失败',
     )
-    validateReviewRequestDisplayContracts(requests)
     approvedReviewRequests.value = requests
   } catch (e) {
     approvedReviewRequests.value = []
@@ -511,33 +523,12 @@ async function loadApprovedReviewRequests(): Promise<void> {
   }
 }
 
-/** 校验批量更正计划列表所需受影响题目字段，缺失时进入组件错误态。 */
-function validateBatchCorrectionPlanDisplayContracts(list: ExamBatchGradeCorrectionPlanVO[]): void {
-  const dataError = '批量成绩更正计划加载失败，请刷新后重试'
-  for (const row of list) {
-    if (row.correctionType !== 'TOTAL_SCORE') {
-      assertUserFacing(Boolean(row.affectedQuestionRefs?.length), dataError)
-    }
-  }
-}
-
-/** 校验可纳入批量更正的复核申请学生展示字段，缺失时中断弹窗数据源。 */
-function validateReviewRequestDisplayContracts(list: GradeReviewRequestItemResponse[]): void {
-  const dataError = '复核申请加载失败，请刷新后重试'
-  for (const request of list) {
-    assertUserFacing(
-      Boolean(request.studentName?.trim()) && Boolean(request.studentNo?.trim()),
-      dataError,
-    )
-  }
-}
-
 function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
   if (!form.planName.trim()) {
     message.warning('计划名称必填')
     return null
   }
-  if (form.correctionType === 'SINGLE_QUESTION' && !form.questionTemplateId) {
+  if (form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION && !form.layoutQuestionId) {
     message.warning('单题批量更正请选择题目')
     return null
   }
@@ -559,9 +550,9 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
       return null
     }
     if (
-      form.correctionType === 'SINGLE_QUESTION'
+      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION
       && !request.questionRefs.some(
-        (question) => question.questionTemplateId === form.questionTemplateId,
+        (question) => question.layoutQuestionId === form.layoutQuestionId,
       )
     ) {
       message.warning('更正明细包含未申请该题目的学生')
@@ -590,8 +581,8 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
     examId: props.examId,
     planName: form.planName.trim(),
     correctionType: form.correctionType,
-    questionTemplateId:
-      form.correctionType === 'SINGLE_QUESTION' ? form.questionTemplateId : undefined,
+    layoutQuestionId:
+      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION ? form.layoutQuestionId : undefined,
     items,
     reason: form.reason.trim(),
   }
@@ -678,7 +669,7 @@ async function handleReject(): Promise<void> {
 
 function openExecuteModal(planId: string): void {
   const row = rows.value.find((item) => item.id === planId)
-  if (!row || row.approvalStatus !== 'APPROVED') {
+  if (!row || row.approvalStatus !== BatchCorrectionApprovalStatusCode.APPROVED) {
     return
   }
   executePlanId.value = planId
@@ -724,7 +715,7 @@ function canSubmit(row: ExamBatchGradeCorrectionPlanVO): boolean {
 
 function correctionTypeLabel(row: ExamBatchGradeCorrectionPlanVO): string {
   const code: GradeCorrectionTypeCode | undefined = row.correctionType
-  return strictEnumLabel(GRADE_CORRECTION_TYPE_LABEL, code, '成绩更正类型')
+  return strictEnumLabel(GradeCorrectionTypeDescription, code, '成绩更正类型')
 }
 
 function affectedQuestionSummary(row: ExamBatchGradeCorrectionPlanVO): string {
@@ -755,7 +746,7 @@ function reviewRequestQuestionLabel(request: GradeReviewRequestItemResponse): st
 }
 
 function approvalStatusLabel(row: ExamBatchGradeCorrectionPlanVO): string {
-  return strictEnumLabel(BATCH_CORRECTION_STATUS_LABEL, row.approvalStatus, '批量更正审批状态')
+  return strictEnumLabel(BatchCorrectionApprovalStatusDescription, row.approvalStatus, '批量更正审批状态')
 }
 
 function approvalStatusColor(row: ExamBatchGradeCorrectionPlanVO): BadgeTone {

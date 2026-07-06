@@ -7,10 +7,16 @@ import type {
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import {
+  ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES,
   confirmArchiveVolumeSelfCheck,
   previewArchiveVolumeSubmitChecklist,
 } from '@/apis/mark/archive-volume'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { showUserError } from '@/utils/error-handler'
+import ArchiveVolumeSubmitTaskList from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitTaskList.vue'
 
 const props = defineProps<{
   open: boolean
@@ -77,7 +83,7 @@ function resetFormFromChecklist(data: ArchiveVolumeSubmitChecklistVO) {
   materialCompleteConfirmed.value = false
   gradingNormConfirmed.value = false
   reason.value = ''
-  for (const role of Object.keys(signOffState.value) as ArchiveVolumeSignOffRoleCode[]) {
+  for (const role of ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES) {
     signOffState.value[role] = { confirmed: false, signatoryName: '' }
   }
   for (const item of data.signOffItems ?? []) {
@@ -104,7 +110,7 @@ async function handleConfirm() {
     materialCompleteConfirmed: materialCompleteConfirmed.value,
     gradingNormConfirmed: gradingNormConfirmed.value,
     reason: reason.value.trim() || undefined,
-    signOffItems: (Object.keys(signOffState.value) as ArchiveVolumeSignOffRoleCode[]).map(
+    signOffItems: ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES.map(
       (role) => ({
         role,
         confirmed: signOffState.value[role].confirmed,
@@ -127,18 +133,15 @@ async function handleConfirm() {
 </script>
 
 <template>
-  <a-modal
+  <UiDrawer
     :open="open"
     title="提交前自查与签字确认"
-    width="640px"
-    :confirm-loading="submitting"
-    ok-text="确认自查"
-    cancel-text="取消"
-    :ok-button-props="{ disabled: !canConfirm }"
-    @cancel="close"
-    @ok="handleConfirm"
+    :width="640"
+    :hide-footer="false"
+    @update:open="emit('update:open', $event)"
+    @close="close"
   >
-    <a-skeleton v-if="loading" active :paragraph="{ rows: 6 }" />
+    <UiSkeletonState v-if="loading" variant="card" compact />
     <template v-else-if="checklist">
       <UiAlertStrip
         v-if="blockingItems.length"
@@ -147,9 +150,12 @@ async function handleConfirm() {
         dense
         class="submit-checklist-modal__alert"
       />
-      <ul v-if="blockingItems.length" class="submit-checklist-modal__list">
-        <li v-for="(item, index) in blockingItems" :key="index">{{ item.message }}</li>
-      </ul>
+      <ArchiveVolumeSubmitTaskList
+        v-if="blockingItems.length"
+        :items="blockingItems"
+        readonly
+        class="submit-checklist-modal__tasks"
+      />
       <a-checkbox v-model:checked="materialCompleteConfirmed">材料齐全性已核对</a-checkbox>
       <a-checkbox v-model:checked="gradingNormConfirmed" class="submit-checklist-modal__check">
         阅卷规范性已核对
@@ -173,19 +179,24 @@ async function handleConfirm() {
       </div>
       <a-textarea v-model:value="reason" placeholder="自查说明（可选）" :rows="2" />
     </template>
-  </a-modal>
+    <template #footer>
+      <UiButton variant="outline" @click="close">取消</UiButton>
+      <UiButton :loading="submitting" :disabled="!canConfirm" @click="handleConfirm">
+        确认自查
+      </UiButton>
+    </template>
+  </UiDrawer>
 </template>
 
 <style scoped>
 .submit-checklist-modal__alert {
   margin-bottom: 12px;
 }
-.submit-checklist-modal__list {
-  margin: 0 0 12px;
-  padding-left: 18px;
-  font-size: 14px;
-  color: var(--nybc-text-secondary);
+
+.submit-checklist-modal__tasks {
+  margin-bottom: 12px;
 }
+
 .submit-checklist-modal__check {
   display: block;
   margin-top: 8px;

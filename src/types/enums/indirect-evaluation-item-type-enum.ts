@@ -2,85 +2,60 @@
  * 间接评价题项题型枚举
  * 取值与展示文案以后端 {@code IndirectEvaluationItemTypeEnum} 为真源，须逐值同步。
  */
-import { throwUserFacing } from '@/utils/contract-guard'
 
-export enum IndirectEvaluationItemType {
+export enum IndirectEvaluationItemTypeCode {
   SCALE = 'SCALE',
   SINGLE_CHOICE = 'SINGLE_CHOICE',
   MULTI_CHOICE = 'MULTI_CHOICE',
   OPEN_TEXT = 'OPEN_TEXT',
 }
 
-/** 与后端 IndirectEvaluationItemTypeEnum.label 一致 */
-export const INDIRECT_EVALUATION_ITEM_TYPE_LABEL: Record<IndirectEvaluationItemType, string> = {
-  [IndirectEvaluationItemType.SCALE]: '量表题',
-  [IndirectEvaluationItemType.SINGLE_CHOICE]: '单选题',
-  [IndirectEvaluationItemType.MULTI_CHOICE]: '多选题',
-  [IndirectEvaluationItemType.OPEN_TEXT]: '开放文本题',
-}
+export const ALL_INDIRECT_EVALUATION_ITEM_TYPE_CODES: readonly IndirectEvaluationItemTypeCode[] = [
+  IndirectEvaluationItemTypeCode.SCALE,
+  IndirectEvaluationItemTypeCode.SINGLE_CHOICE,
+  IndirectEvaluationItemTypeCode.MULTI_CHOICE,
+  IndirectEvaluationItemTypeCode.OPEN_TEXT,
+]
 
-/** 公开问卷填写页题型展示；枚举取值同上，文案与后端 label 一致 */
-export const PUBLIC_SURVEY_ITEM_TYPE_LABEL: Record<IndirectEvaluationItemType, string> = {
-  [IndirectEvaluationItemType.SCALE]: '量表题',
-  [IndirectEvaluationItemType.SINGLE_CHOICE]: '单选题',
-  [IndirectEvaluationItemType.MULTI_CHOICE]: '多选题',
-  [IndirectEvaluationItemType.OPEN_TEXT]: '开放文本题',
+/** 与后端 IndirectEvaluationItemTypeEnum.label 一致 */
+export const IndirectEvaluationItemTypeDescription: Record<IndirectEvaluationItemTypeCode, string> = {
+  [IndirectEvaluationItemTypeCode.SCALE]: '量表题',
+  [IndirectEvaluationItemTypeCode.SINGLE_CHOICE]: '单选题',
+  [IndirectEvaluationItemTypeCode.MULTI_CHOICE]: '多选题',
+  [IndirectEvaluationItemTypeCode.OPEN_TEXT]: '开放文本题',
 }
 
 export const INDIRECT_EVALUATION_ITEM_TYPE_OPTIONS: Array<{
-  value: IndirectEvaluationItemType
+  value: IndirectEvaluationItemTypeCode
   label: string
-}> = [
-  { value: IndirectEvaluationItemType.SCALE, label: INDIRECT_EVALUATION_ITEM_TYPE_LABEL.SCALE },
-  {
-    value: IndirectEvaluationItemType.SINGLE_CHOICE,
-    label: INDIRECT_EVALUATION_ITEM_TYPE_LABEL.SINGLE_CHOICE,
-  },
-  {
-    value: IndirectEvaluationItemType.MULTI_CHOICE,
-    label: INDIRECT_EVALUATION_ITEM_TYPE_LABEL.MULTI_CHOICE,
-  },
-  {
-    value: IndirectEvaluationItemType.OPEN_TEXT,
-    label: INDIRECT_EVALUATION_ITEM_TYPE_LABEL.OPEN_TEXT,
-  },
-]
+}> = ALL_INDIRECT_EVALUATION_ITEM_TYPE_CODES.map((value) => ({
+  value,
+  label: IndirectEvaluationItemTypeDescription[value],
+}))
 
-const ITEM_TYPE_SET = new Set<string>(Object.values(IndirectEvaluationItemType))
+const ITEM_TYPE_SET = new Set<string>(Object.values(IndirectEvaluationItemTypeCode))
 
 export function isIndirectEvaluationItemType(
   value: string | null | undefined,
-): value is IndirectEvaluationItemType {
+): value is IndirectEvaluationItemTypeCode {
   return value !== null && value !== undefined && ITEM_TYPE_SET.has(value)
 }
 
 export function formatIndirectEvaluationItemType(
-  value: string | null | undefined,
+  value: IndirectEvaluationItemTypeCode,
 ): string {
-  if (value === null || value === undefined || value === '') {
-    return ''
-  }
-  if (!isIndirectEvaluationItemType(value)) {
-    throwUserFacing('数据异常，请刷新后重试')
-  }
-  return INDIRECT_EVALUATION_ITEM_TYPE_LABEL[value]
+  return IndirectEvaluationItemTypeDescription[value]
 }
 
 export function formatPublicSurveyItemType(
-  value: string | null | undefined,
+  value: IndirectEvaluationItemTypeCode,
 ): string {
-  if (value === null || value === undefined || value === '') {
-    return ''
-  }
-  if (!isIndirectEvaluationItemType(value)) {
-    throwUserFacing('数据异常，请刷新后重试')
-  }
-  return PUBLIC_SURVEY_ITEM_TYPE_LABEL[value]
+  return formatIndirectEvaluationItemType(value)
 }
 
 export function isIndirectEvaluationChoiceItemType(
-  value: IndirectEvaluationItemType | null | undefined,
+  value: IndirectEvaluationItemTypeCode | null | undefined,
 ): boolean {
-  return value === IndirectEvaluationItemType.SINGLE_CHOICE
-    || value === IndirectEvaluationItemType.MULTI_CHOICE
+  return value === IndirectEvaluationItemTypeCode.SINGLE_CHOICE
+    || value === IndirectEvaluationItemTypeCode.MULTI_CHOICE
 }

@@ -48,15 +48,14 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
         setTotal(actualData.length)
       } else {
         // 如果返回的是PageResult格式
-        const pageResult = actualData as PageResult<T>
-        const data = readPageList(pageResult, '数据加载失败，请稍后重试')
+        const data = readPageList(actualData, '数据加载失败，请稍后重试')
         tableData.value = formatResult ? formatResult(data) : data
-        setTotal(readPageTotal(pageResult, '数据加载失败，请稍后重试'))
+        setTotal(readPageTotal(actualData, '数据加载失败，请稍后重试'))
       }
 
       onSuccess && onSuccess()
     } catch (err) {
-      tableError.value = err as Error
+      tableError.value = err instanceof Error ? err : new Error(String(err))
       tableData.value = []
       setTotal(0)
       showUserError(err, '数据加载失败，请稍后重试')
@@ -88,9 +87,26 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
   // 全选
   const selectAll: OnSelectAll = (checked: boolean) => {
     const key = rowKey ?? 'id'
-    type Row = { disabled?: boolean } & Record<string, string | number>
-    const arr = (tableData.value as Row[]).filter((i) => !(i?.disabled ?? false))
-    selectedKeys.value = checked ? arr.map((i) => i[key as string]) : []
+    const rows = tableData.value.filter((item) => !isDisabledTableRow(item))
+    selectedKeys.value = checked ? rows.map((item) => resolveSelectedRowKey(item, key)) : []
+  }
+
+  function isDisabledTableRow(item: U): boolean {
+    if (typeof item !== 'object' || item === null || !('disabled' in item)) {
+      return false
+    }
+    return item.disabled === true
+  }
+
+  function resolveSelectedRowKey(item: U, key: keyof T | 'id'): string | number {
+    if (typeof item !== 'object' || item === null || !(key in item)) {
+      throw new Error(`表格行缺少选择键：${String(key)}`)
+    }
+    const value = Object.getOwnPropertyDescriptor(item, key)?.value
+    if (typeof value !== 'string' && typeof value !== 'number') {
+      throw new TypeError(`表格行选择键不是字符串或数字：${String(key)}`)
+    }
+    return value
   }
 
   // 查询

@@ -187,7 +187,6 @@ import { getDefaultRoute } from '@/router/permission'
 import { useAuthStore, useUserStore } from '@/stores'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
-import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CasFirstLoginCompletion' })
 
@@ -202,12 +201,7 @@ interface FieldErrors {
   title: string
 }
 
-const ROLE_LABEL_MAP: Record<string, string> = {
-  SCH_STU: '学生',
-  SCH_TECH: '教师',
-  CROP_ADMIN: '教师',
-  CROP_USER: '教师',
-}
+import { casFirstLoginLockedRoleDescription } from '@/types/enums/cas-first-login-locked-role-enum'
 
 const route = useRoute()
 const router = useRouter()
@@ -253,11 +247,11 @@ const missingFields = computed<CasCompletionField[]>(() => {
 })
 
 const roleLabel = computed(() => {
-  const roleKey = context.value?.lockedRoleKey ?? ''
-  if (!roleKey) {
+  const role = context.value?.lockedRoleKey
+  if (!role) {
     return ''
   }
-  return strictEnumLabel(ROLE_LABEL_MAP, roleKey, 'CAS 锁定角色')
+  return casFirstLoginLockedRoleDescription(role)
 })
 
 const classOptions = computed<UiSelectOption[]>(() => {

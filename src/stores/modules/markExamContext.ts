@@ -20,7 +20,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import { useMarkStageStore } from '@/stores/modules/markStage'
-import { formatSemester } from '@/types/enums/semester-enum'
+import { formatAcademicYearSemester } from '@/types/enums/semester-enum'
 import { readAllPages } from '@/utils/page-result'
 
 export const useMarkExamContextStore = defineStore(
@@ -50,7 +50,7 @@ export const useMarkExamContextStore = defineStore(
     const examOptions = computed(() =>
       exams.value.map((e) => ({
         value: e.examId,
-        label: [formatExamOptionLabel(e), formatAcademicTerm(e)].filter(Boolean).join(' · '),
+        label: [formatExamOptionLabel(e), formatAcademicYearSemester(e.academicYear, e.semester)].filter(Boolean).join(' · '),
       })),
     )
 
@@ -141,10 +141,6 @@ export const useMarkExamContextStore = defineStore(
       exams.value = []
       detailCache.value = new Map()
       useMarkStageStore().reset()
-    }
-
-    function formatAcademicTerm(exam: ExamSummaryVO): string {
-      return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
     }
 
     function formatExamOptionLabel(exam: ExamSummaryVO): string {

@@ -164,3 +164,23 @@
   --kiosk-z-drawer: 90;
   --kiosk-z-modal: 100;
 }
+
+/* 一体机触摸屏：粗指针下放大可点控件（Fitts 定律） */
+@media (pointer: coarse) {
+  :root {
+    --kiosk-h-icon-button: 56px;
+    --kiosk-h-action-md: 64px;
+    --kiosk-h-action-lg: 72px;
+    --kiosk-h-cta: 104px;
+    --kiosk-h-bottom-bar: 96px;
+  }
+}
+
+/* 触控设备减少 300ms 延迟、禁止双击缩放误触 */
+.kiosk-layout button,
+.kiosk-layout summary,
+.hub-shell button,
+.hub-entry,
+.hub-signal--clickable {
+  touch-action: manipulation;
+}

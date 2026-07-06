@@ -11,12 +11,12 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import { portfolioCockpitApi } from '@/apis/portfolio/cockpit'
+import { PortfolioAiAnalysisTypeCode } from '@/apis/portfolio/enums'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
-import { assertPortfolioAiAnalysisType } from '@/utils/portfolio-ai-analysis-contract'
 import { parsePortfolioCockpitAskPayload } from '@/utils/portfolio-cockpit-payload'
 
 const props = defineProps<{
@@ -53,14 +53,12 @@ const teacherRows = computed<PortfolioCockpitAskTeacherRow[]>(
   () => askPayload.value?.teacherRows ?? [],
 )
 
-function teacherRowKey(record: unknown): string {
-  const row = record as PortfolioCockpitAskTeacherRow
-  return row.teacherUserId ?? row.teacherNumber ?? row.nickName ?? ''
+function teacherRowKey(record: PortfolioCockpitAskTeacherRow): string {
+  return record.teacherUserId ?? record.teacherNumber ?? record.nickName ?? ''
 }
 
-function historyRowKey(record: unknown): string {
-  const row = record as PortfolioAiAnalysisSummaryVO
-  return row.aiTaskId ?? row.id
+function historyRowKey(record: PortfolioAiAnalysisSummaryVO): string {
+  return record.aiTaskId ?? record.id
 }
 
 const refusalReason = computed(() => askPayload.value?.queryPlan?.refusalReason ?? '')
@@ -80,7 +78,9 @@ function sleep(ms: number) {
 }
 
 function applyAnalysisDetail(detail: PortfolioAiAnalysisDetailVO) {
-  assertPortfolioAiAnalysisType(detail, 'COCKPIT_ASK')
+  if (detail.analysisType !== PortfolioAiAnalysisTypeCode.COCKPIT_ASK) {
+    throw new Error('该 AI 任务不属于驾驶舱智能问数')
+  }
   analysisDetail.value = detail
   askPayload.value = parsePortfolioCockpitAskPayload(detail.draftMarkdown)
 }
@@ -91,7 +91,7 @@ async function loadHistory() {
     const page = await portfolioAiJobApi.pageAnalysis({
       pageNum: 1,
       pageSize: 10,
-      analysisType: 'COCKPIT_ASK',
+      analysisType: PortfolioAiAnalysisTypeCode.COCKPIT_ASK,
       departmentId: props.departmentId,
     })
     historyRows.value = readPageList(page, '加载驾驶舱问数历史失败')
@@ -234,7 +234,7 @@ async function openTaskResult(taskId: string) {
         <template v-if="column.key === 'action'">
           <a
             class="cockpit-ask__link"
-            @click="() => void openHistoryRow(record as PortfolioAiAnalysisSummaryVO)"
+            @click="() => void openHistoryRow(record)"
           >查看</a>
         </template>
       </template>

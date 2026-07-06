@@ -24,7 +24,7 @@ export interface OperationLogQueryDto extends QueryDto {
   bizId?: string
 }
 
-/** 操作日志DTO - 与后端OperateLogDto完全对应 */
+/** 操作日志DTO - 与后端 OperateLogDto 完全对应 */
 export interface OperationLogDto {
   /** 记录ID - 后端Long转String */
   id: string
@@ -38,10 +38,6 @@ export interface OperationLogDto {
   bizId?: string
   /** 租户ID - 后端String */
   tenantId: string
-  /** 业务名称 */
-  bizName?: string
-  /** 项目名称 */
-  projectName?: string
   /** 操作详情 */
   detail: string
   /** 请求URL */
@@ -68,24 +64,13 @@ export interface OperationLogDto {
   changeDetails?: string
 }
 
-/** 操作日志详情 - 对应后端 OperateLogDto 详情接口返回 */
-export interface OperationLogDetailDto extends OperationLogDto {
-  /** 追踪ID */
-  traceId?: string
-  /** 请求方法 */
-  requestMethod?: string
-  /** 请求头 */
-  requestHeaders?: string
-  /** 请求体 */
-  requestBody?: string
-  /** 状态码 */
-  statusCode?: number
-  /** 响应头 */
-  responseHeaders?: string
-  /** 响应体 */
-  responseBody?: string
+/** 日志清空请求 - 对应后端 LogClearRequest */
+export interface LogClearRequest {
+  /** 清空多少天前的日志，默认 30 天 */
+  beforeDays?: number
+  /** 租户ID，不传则清空所有租户的日志 */
+  tenantId?: string
 }
-
 
 /**
  * 分页查询操作日志 - 对应后端 POST /api/admin/operation-logs/page
@@ -99,8 +84,8 @@ export function getOperationLogPage(
 /**
  * 查询操作日志详情 - 对应后端 POST /api/admin/operation-logs/detail
  */
-export function getOperationLogDetail(id: string): Promise<OperationLogDetailDto> {
-  return http.post<OperationLogDetailDto>('/api/admin/operation-logs/detail', { id })
+export function getOperationLogDetail(id: string): Promise<OperationLogDto> {
+  return http.post<OperationLogDto>('/api/admin/operation-logs/detail', { id })
 }
 
 /**
@@ -127,6 +112,6 @@ export function getOperationCategories(): Promise<string[]> {
 /**
  * 清空操作日志 - 对应后端 POST /api/admin/operation-logs/clear
  */
-export function clearOperationLogs(): Promise<void> {
-  return http.post<void>('/api/admin/operation-logs/clear')
+export function clearOperationLogs(request: LogClearRequest): Promise<void> {
+  return http.post<void>('/api/admin/operation-logs/clear', request)
 }

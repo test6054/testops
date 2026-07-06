@@ -6,11 +6,11 @@ import type {
   IndirectEvaluationProgressVO,
   IndirectEvaluationStatisticsVO,
 } from '@/apis/quality/indirect-form'
-import type { IndirectFormAccessMode, IndirectFormStatus } from '@/apis/quality/types'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { reactive, ref, watch } from 'vue'
 import { indirectFormApi } from '@/apis/quality/indirect-form'
+import { IndirectFormAccessModeCode } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -42,7 +42,7 @@ const publishEditor = reactive<IndirectEvaluationFormPublishRequest>({
   id: '',
   startTime: '',
   endTime: '',
-  accessMode: 'PUBLIC_LINK',
+  accessMode: IndirectFormAccessModeCode.PUBLIC_LINK,
   allowAnonymous: false,
   requireIdentityFields: [...DEFAULT_IDENTITY_FIELDS],
   maxSubmissionsPerRespondent: 1,
@@ -72,7 +72,7 @@ function openPublishDrawer(record: IndirectEvaluationFormVO) {
     id: record.id,
     startTime: start.format('YYYY-MM-DD HH:mm:ss'),
     endTime: end.format('YYYY-MM-DD HH:mm:ss'),
-    accessMode: 'PUBLIC_LINK' as IndirectFormAccessMode,
+    accessMode: IndirectFormAccessModeCode.PUBLIC_LINK,
     allowAnonymous: false,
     requireIdentityFields: [...DEFAULT_IDENTITY_FIELDS],
     maxSubmissionsPerRespondent: 1,
@@ -302,7 +302,7 @@ defineExpose({
     <a-spin :spinning="progressLoading">
       <template v-if="progressData">
         <p>问卷：{{ progressData.formName }}</p>
-        <p>状态：{{ formStatusLabel(progressData.status as IndirectFormStatus | undefined) }}</p>
+        <p>状态：{{ formStatusLabel(progressData.status) }}</p>
         <p>
           填答份数：{{ progressData.submissionCount }} / 有效批次 {{ progressData.validCount }}
           <span v-if="progressData.expectedSample">（预期 {{ progressData.expectedSample }} 份）</span>

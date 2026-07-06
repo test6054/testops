@@ -18,11 +18,6 @@ import type {
  * - compute-civic-goal-aggregate     课程思政独立汇总
  * - compute-complex-engineering-aggregate 复杂工程问题专项
  */
-import type {
-  AchievementAuditStatus,
-  AchievementStatus,
-  AchievementTargetType,
-} from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type {
@@ -42,10 +37,13 @@ import { achievementAuditApi } from '@/apis/quality/achievement-audit'
 import { achievementResultApi } from '@/apis/quality/achievement-result'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
-  ACHIEVEMENT_AUDIT_STATUS_LABEL,
   ACHIEVEMENT_STATUS_COLOR,
-  ACHIEVEMENT_STATUS_LABEL,
-  ACHIEVEMENT_TARGET_TYPE_LABEL,
+  AchievementAuditStatusCode,
+  AchievementAuditStatusDescription,
+  AchievementStatusCode,
+  AchievementStatusDescription,
+  AchievementTargetTypeCode,
+  AchievementTargetTypeDescription,
 } from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
@@ -78,23 +76,23 @@ import { formatScore } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
-function targetTypeLabel(value: AchievementTargetType): string {
-  return strictEnumLabel(ACHIEVEMENT_TARGET_TYPE_LABEL, value, '达成目标类型')
+function targetTypeLabel(value: AchievementTargetTypeCode): string {
+  return strictEnumLabel(AchievementTargetTypeDescription, value, '达成目标类型')
 }
 
-function auditStatusLabel(value: AchievementAuditStatus): string {
-  return strictEnumLabel(ACHIEVEMENT_AUDIT_STATUS_LABEL, value, '达成审核状态')
+function auditStatusLabel(value: AchievementAuditStatusCode): string {
+  return strictEnumLabel(AchievementAuditStatusDescription, value, '达成审核状态')
 }
 
-function auditStatusColor(value: AchievementAuditStatus): BadgeTone {
+function auditStatusColor(value: AchievementAuditStatusCode): BadgeTone {
   return strictEnumTone(ACHIEVEMENT_AUDIT_STATUS_COLOR, value, '达成审核状态')
 }
 
-function achievementStatusLabel(value: AchievementStatus): string {
-  return strictEnumLabel(ACHIEVEMENT_STATUS_LABEL, value, '达成状态')
+function achievementStatusLabel(value: AchievementStatusCode): string {
+  return strictEnumLabel(AchievementStatusDescription, value, '达成状态')
 }
 
-function achievementStatusColor(value: AchievementStatus): BadgeTone {
+function achievementStatusColor(value: AchievementStatusCode): BadgeTone {
   return strictEnumTone(ACHIEVEMENT_STATUS_COLOR, value, '达成状态')
 }
 
@@ -102,17 +100,26 @@ function isResultStale(record: AchievementResultVO): boolean {
   return record.staleFlag === true
 }
 
-function auditEventLabel(event: AchievementAuditStatus): string {
-  if (event === 'CALCULATED') return '达成度计算'
-  return auditStatusLabel(event)
+function auditEventLabel(event: string | undefined): string {
+  if (!event) return '-'
+  if (event === AchievementAuditStatusCode.CALCULATED) return '达成度计算'
+  const auditStatus = event as AchievementAuditStatusCode
+  if (Object.prototype.hasOwnProperty.call(AchievementAuditStatusDescription, auditStatus)) {
+    return auditStatusLabel(auditStatus)
+  }
+  return event
+}
+
+function auditStatusLabelMaybe(value: AchievementAuditStatusCode | undefined): string {
+  return value ? auditStatusLabel(value) : '-'
 }
 
 function canRecomputeRecord(record: AchievementResultVO): boolean {
   return (
-    record.auditStatus === 'RETURNED'
+    record.auditStatus === AchievementAuditStatusCode.RETURNED
     || isResultStale(record)
-    || record.auditStatus === 'DRAFT'
-    || record.auditStatus === 'CALCULATED'
+    || record.auditStatus === AchievementAuditStatusCode.DRAFT
+    || record.auditStatus === AchievementAuditStatusCode.CALCULATED
   )
 }
 
@@ -135,7 +142,7 @@ const triggerLoading = ref<string>('')
 const { exporting: achievementExporting, exportExcel: exportAchievementExcel }
   = useQualityTableExport()
 
-const query = reactive<AchievementResultQueryRequest>({
+const query = reactive<AchievementResultQueryRequest & Record<string, unknown>>({
   pageNum: 1,
   pageSize: 10,
   trainingPlanId: qualityStore.currentTrainingPlanId,
@@ -193,35 +200,35 @@ function handleTrainingObjectiveChange(value: string | null) {
   triggerForm.trainingObjectiveId = value ?? ''
 }
 
-const targetTypeOptions: Array<{ value: AchievementTargetType, label: string }> = [
-  { value: 'COURSE_GOAL', label: ACHIEVEMENT_TARGET_TYPE_LABEL.COURSE_GOAL },
-  { value: 'REQUIREMENT_INDICATOR', label: ACHIEVEMENT_TARGET_TYPE_LABEL.REQUIREMENT_INDICATOR },
-  { value: 'GRADUATION_REQUIREMENT', label: ACHIEVEMENT_TARGET_TYPE_LABEL.GRADUATION_REQUIREMENT },
-  { value: 'TRAINING_OBJECTIVE', label: ACHIEVEMENT_TARGET_TYPE_LABEL.TRAINING_OBJECTIVE },
-  { value: 'PROGRAM_SUMMARY', label: ACHIEVEMENT_TARGET_TYPE_LABEL.PROGRAM_SUMMARY },
-  { value: 'CIVIC_GOAL_AGGREGATE', label: ACHIEVEMENT_TARGET_TYPE_LABEL.CIVIC_GOAL_AGGREGATE },
+const targetTypeOptions: Array<{ value: AchievementTargetTypeCode, label: string }> = [
+  { value: AchievementTargetTypeCode.COURSE_GOAL, label: AchievementTargetTypeDescription.COURSE_GOAL },
+  { value: AchievementTargetTypeCode.REQUIREMENT_INDICATOR, label: AchievementTargetTypeDescription.REQUIREMENT_INDICATOR },
+  { value: AchievementTargetTypeCode.GRADUATION_REQUIREMENT, label: AchievementTargetTypeDescription.GRADUATION_REQUIREMENT },
+  { value: AchievementTargetTypeCode.TRAINING_OBJECTIVE, label: AchievementTargetTypeDescription.TRAINING_OBJECTIVE },
+  { value: AchievementTargetTypeCode.PROGRAM_SUMMARY, label: AchievementTargetTypeDescription.PROGRAM_SUMMARY },
+  { value: AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE, label: AchievementTargetTypeDescription.CIVIC_GOAL_AGGREGATE },
   {
-    value: 'COMPLEX_ENGINEERING_AGGREGATE',
-    label: ACHIEVEMENT_TARGET_TYPE_LABEL.COMPLEX_ENGINEERING_AGGREGATE,
+    value: AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE,
+    label: AchievementTargetTypeDescription.COMPLEX_ENGINEERING_AGGREGATE,
   },
 ]
-const auditStatusOptions: Array<{ value: AchievementAuditStatus, label: string }> = [
-  { value: 'DRAFT', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.DRAFT },
-  { value: 'CALCULATED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.CALCULATED },
-  { value: 'SUBMITTED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.SUBMITTED },
-  { value: 'CONFIRMED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.CONFIRMED },
-  { value: 'RETURNED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.RETURNED },
-  { value: 'ARCHIVED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.ARCHIVED },
+const auditStatusOptions: Array<{ value: AchievementAuditStatusCode, label: string }> = [
+  { value: AchievementAuditStatusCode.DRAFT, label: AchievementAuditStatusDescription.DRAFT },
+  { value: AchievementAuditStatusCode.CALCULATED, label: AchievementAuditStatusDescription.CALCULATED },
+  { value: AchievementAuditStatusCode.SUBMITTED, label: AchievementAuditStatusDescription.SUBMITTED },
+  { value: AchievementAuditStatusCode.CONFIRMED, label: AchievementAuditStatusDescription.CONFIRMED },
+  { value: AchievementAuditStatusCode.RETURNED, label: AchievementAuditStatusDescription.RETURNED },
+  { value: AchievementAuditStatusCode.ARCHIVED, label: AchievementAuditStatusDescription.ARCHIVED },
 ]
-const achievementStatusOptions: Array<{ value: AchievementStatus, label: string }> = [
-  { value: 'ACHIEVED', label: ACHIEVEMENT_STATUS_LABEL.ACHIEVED },
-  { value: 'PARTIALLY_ACHIEVED', label: ACHIEVEMENT_STATUS_LABEL.PARTIALLY_ACHIEVED },
-  { value: 'NOT_ACHIEVED', label: ACHIEVEMENT_STATUS_LABEL.NOT_ACHIEVED },
-  { value: 'INSUFFICIENT_EVIDENCE', label: ACHIEVEMENT_STATUS_LABEL.INSUFFICIENT_EVIDENCE },
+const achievementStatusOptions: Array<{ value: AchievementStatusCode, label: string }> = [
+  { value: AchievementStatusCode.ACHIEVED, label: AchievementStatusDescription.ACHIEVED },
+  { value: AchievementStatusCode.PARTIALLY_ACHIEVED, label: AchievementStatusDescription.PARTIALLY_ACHIEVED },
+  { value: AchievementStatusCode.NOT_ACHIEVED, label: AchievementStatusDescription.NOT_ACHIEVED },
+  { value: AchievementStatusCode.INSUFFICIENT_EVIDENCE, label: AchievementStatusDescription.INSUFFICIENT_EVIDENCE },
 ]
 
 const filterModel = computed<Record<string, unknown>>({
-  get: () => query as Record<string, unknown>,
+  get: () => query,
   set: (value) => {
     Object.assign(query, value)
   },
@@ -566,29 +573,38 @@ async function handleTrigger(key: string, handler: () => Promise<AchievementComp
   }
 }
 
-const auditTransitMap: Record<AchievementAuditStatus, AchievementAuditStatus[]> = {
-  DRAFT: ['CALCULATED'],
-  CALCULATED: ['DRAFT', 'SUBMITTED'],
-  SUBMITTED: ['CONFIRMED', 'RETURNED'],
-  CONFIRMED: ['ARCHIVED', 'RETURNED'],
-  RETURNED: [],
-  ARCHIVED: [],
+const auditTransitMap: Record<AchievementAuditStatusCode, AchievementAuditStatusCode[]> = {
+  [AchievementAuditStatusCode.DRAFT]: [AchievementAuditStatusCode.CALCULATED],
+  [AchievementAuditStatusCode.CALCULATED]: [
+    AchievementAuditStatusCode.DRAFT,
+    AchievementAuditStatusCode.SUBMITTED,
+  ],
+  [AchievementAuditStatusCode.SUBMITTED]: [
+    AchievementAuditStatusCode.CONFIRMED,
+    AchievementAuditStatusCode.RETURNED,
+  ],
+  [AchievementAuditStatusCode.CONFIRMED]: [
+    AchievementAuditStatusCode.ARCHIVED,
+    AchievementAuditStatusCode.RETURNED,
+  ],
+  [AchievementAuditStatusCode.RETURNED]: [],
+  [AchievementAuditStatusCode.ARCHIVED]: [],
 }
 
-function nextStatuses(current: AchievementAuditStatus | undefined): AchievementAuditStatus[] {
+function nextStatuses(current: AchievementAuditStatusCode | undefined): AchievementAuditStatusCode[] {
   if (!current) return []
   return strictEnumValue(auditTransitMap, current, '达成审核状态')
 }
 
-async function handleTransit(record: AchievementResultVO, to: AchievementAuditStatus) {
+async function handleTransit(record: AchievementResultVO, to: AchievementAuditStatusCode) {
   const remark = await promptInputAsync({
     title: `${auditStatusLabel(record.auditStatus)} -> ${auditStatusLabel(to)}`,
     placeholder: '审核备注（驳回时必填）',
-    required: to === 'RETURNED',
-    okType: to === 'RETURNED' ? 'danger' : 'primary',
+    required: to === AchievementAuditStatusCode.RETURNED,
+    okType: to === AchievementAuditStatusCode.RETURNED ? 'danger' : 'primary',
     emptyErrorMessage: '驳回必须填写审核备注',
   })
-  if (to === 'RETURNED' && !remark) return
+  if (to === AchievementAuditStatusCode.RETURNED && !remark) return
   await achievementResultApi.updateAuditStatus({
     id: record.id,
     auditStatus: to,
@@ -601,13 +617,13 @@ async function handleTransit(record: AchievementResultVO, to: AchievementAuditSt
 /* ========== 阶段轨与信号指标带 ========== */
 
 const auditBuckets = computed(() => {
-  const buckets: Record<AchievementAuditStatus, number> = {
-    DRAFT: 0,
-    CALCULATED: 0,
-    SUBMITTED: 0,
-    CONFIRMED: 0,
-    RETURNED: 0,
-    ARCHIVED: 0,
+  const buckets: Record<AchievementAuditStatusCode, number> = {
+    [AchievementAuditStatusCode.DRAFT]: 0,
+    [AchievementAuditStatusCode.CALCULATED]: 0,
+    [AchievementAuditStatusCode.SUBMITTED]: 0,
+    [AchievementAuditStatusCode.CONFIRMED]: 0,
+    [AchievementAuditStatusCode.RETURNED]: 0,
+    [AchievementAuditStatusCode.ARCHIVED]: 0,
   }
   for (const r of list.value) {
     buckets[r.auditStatus] += 1
@@ -617,17 +633,17 @@ const auditBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = auditBuckets.value
-  const order: Array<{ key: AchievementAuditStatus, title: string }> = [
-    { key: 'DRAFT', title: '草稿' },
-    { key: 'CALCULATED', title: '已计算' },
-    { key: 'SUBMITTED', title: '已提交' },
-    { key: 'CONFIRMED', title: '已确认' },
-    { key: 'ARCHIVED', title: '已归档' },
+  const order: Array<{ key: AchievementAuditStatusCode, title: string }> = [
+    { key: AchievementAuditStatusCode.DRAFT, title: '草稿' },
+    { key: AchievementAuditStatusCode.CALCULATED, title: '已计算' },
+    { key: AchievementAuditStatusCode.SUBMITTED, title: '已提交' },
+    { key: AchievementAuditStatusCode.CONFIRMED, title: '已确认' },
+    { key: AchievementAuditStatusCode.ARCHIVED, title: '已归档' },
   ]
   return order.map((stage) => {
     const count = b[stage.key]
     let status: WorkbenchStageStatus = 'pending'
-    if (stage.key === 'ARCHIVED' && count > 0) status = 'completed'
+    if (stage.key === AchievementAuditStatusCode.ARCHIVED && count > 0) status = 'completed'
     else if (count > 0) status = 'active'
     return {
       key: stage.key,
@@ -640,9 +656,9 @@ const stages = computed<WorkbenchStage[]>(() => {
 
 const signals = computed<SignalMetric[]>(() => {
   const b = auditBuckets.value
-  const notAchieved = list.value.filter((r) => r.achievementStatus === 'NOT_ACHIEVED').length
-  const partial = list.value.filter((r) => r.achievementStatus === 'PARTIALLY_ACHIEVED').length
-  const achieved = list.value.filter((r) => r.achievementStatus === 'ACHIEVED').length
+  const notAchieved = list.value.filter((r) => r.achievementStatus === AchievementStatusCode.NOT_ACHIEVED).length
+  const partial = list.value.filter((r) => r.achievementStatus === AchievementStatusCode.PARTIALLY_ACHIEVED).length
+  const achieved = list.value.filter((r) => r.achievementStatus === AchievementStatusCode.ACHIEVED).length
   const stale = list.value.filter((r) => isResultStale(r)).length
   return [
     {
@@ -676,8 +692,8 @@ const signals = computed<SignalMetric[]>(() => {
     {
       key: 'pending-audit',
       label: '待提交',
-      value: b.DRAFT + b.CALCULATED,
-      tone: b.DRAFT + b.CALCULATED > 0 ? 'orange' : 'gray',
+      value: b[AchievementAuditStatusCode.DRAFT] + b[AchievementAuditStatusCode.CALCULATED],
+      tone: b[AchievementAuditStatusCode.DRAFT] + b[AchievementAuditStatusCode.CALCULATED] > 0 ? 'orange' : 'gray',
       trendPolarity: 'negative',
     },
     {
@@ -690,8 +706,8 @@ const signals = computed<SignalMetric[]>(() => {
     {
       key: 'returned',
       label: '已驳回',
-      value: b.RETURNED,
-      tone: b.RETURNED > 0 ? 'red' : 'gray',
+      value: b[AchievementAuditStatusCode.RETURNED],
+      tone: b[AchievementAuditStatusCode.RETURNED] > 0 ? 'red' : 'gray',
       trendPolarity: 'negative',
     },
   ]
@@ -750,14 +766,14 @@ function openTriggerDrawer() {
   void loadComputeReadiness()
 }
 
-const targetTypeToComputeKind: Partial<Record<AchievementTargetType, string>> = {
-  COURSE_GOAL: 'COURSE_GOAL',
-  REQUIREMENT_INDICATOR: 'REQUIREMENT',
-  GRADUATION_REQUIREMENT: 'REQUIREMENT',
-  TRAINING_OBJECTIVE: 'TRAINING_OBJECTIVE',
-  PROGRAM_SUMMARY: 'PROGRAM',
-  CIVIC_GOAL_AGGREGATE: 'CIVIC_GOAL_AGGREGATE',
-  COMPLEX_ENGINEERING_AGGREGATE: 'COMPLEX_ENGINEERING',
+const targetTypeToComputeKind: Partial<Record<AchievementTargetTypeCode, string>> = {
+  [AchievementTargetTypeCode.COURSE_GOAL]: 'COURSE_GOAL',
+  [AchievementTargetTypeCode.REQUIREMENT_INDICATOR]: 'REQUIREMENT',
+  [AchievementTargetTypeCode.GRADUATION_REQUIREMENT]: 'REQUIREMENT',
+  [AchievementTargetTypeCode.TRAINING_OBJECTIVE]: 'TRAINING_OBJECTIVE',
+  [AchievementTargetTypeCode.PROGRAM_SUMMARY]: 'PROGRAM',
+  [AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE]: 'CIVIC_GOAL_AGGREGATE',
+  [AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE]: 'COMPLEX_ENGINEERING',
 }
 
 async function handleRecomputeRecord(record: AchievementResultVO) {
@@ -772,10 +788,10 @@ async function handleRecomputeRecord(record: AchievementResultVO) {
   if (record.qualityCourseId) {
     triggerForm.qualityCourseId = record.qualityCourseId
   }
-  if (record.targetType === 'COURSE_GOAL') {
+  if (record.targetType === AchievementTargetTypeCode.COURSE_GOAL) {
     triggerForm.courseGoalId = record.targetId
   }
-  if (record.targetType === 'TRAINING_OBJECTIVE') {
+  if (record.targetType === AchievementTargetTypeCode.TRAINING_OBJECTIVE) {
     triggerForm.trainingObjectiveId = record.targetId
   }
   if (record.schoolYear) {
@@ -828,9 +844,9 @@ async function openAuditDrawer(record: AchievementResultVO) {
       operatorName: a.auditorNickName,
       operationType: a.auditEvent,
       operationLabel:
-        a.auditEvent === 'CALCULATED'
-          ? auditEventLabel('CALCULATED')
-          : `${auditStatusLabel(a.auditStatusFrom)} → ${auditStatusLabel(a.auditStatusTo)}`,
+        a.auditEvent === AchievementAuditStatusCode.CALCULATED
+          ? auditEventLabel(a.auditEvent)
+          : `${auditStatusLabelMaybe(a.auditStatusFrom)} → ${auditStatusLabelMaybe(a.auditStatusTo)}`,
       time: a.auditedTime,
       detail: a.auditOpinion || a.returnReason || undefined,
       targetType: '达成度结果',
@@ -845,17 +861,19 @@ const achievementResultItems = computed<TaskResultItem[]>(() => {
   return list.value
     .filter(
       (r) =>
-        r.auditStatus === 'RETURNED' || r.achievementStatus === 'NOT_ACHIEVED' || isResultStale(r),
+        r.auditStatus === AchievementAuditStatusCode.RETURNED
+        || r.achievementStatus === AchievementStatusCode.NOT_ACHIEVED
+        || isResultStale(r),
     )
     .slice(0, 5)
     .map((r) => ({
       id: r.id,
       title: `${targetTypeLabel(r.targetType)} · ${r.targetLabel}`,
       statusLabel:
-        r.auditStatus === 'RETURNED' ? '已驳回' : isResultStale(r) ? '结果过期' : '未达成',
+        r.auditStatus === AchievementAuditStatusCode.RETURNED ? '已驳回' : isResultStale(r) ? '结果过期' : '未达成',
       statusTone: abnormalTone,
       description:
-        r.auditStatus === 'RETURNED'
+        r.auditStatus === AchievementAuditStatusCode.RETURNED
           ? `审核驳回，需修正后重新提交`
           : isResultStale(r)
             ? `结果已过期，需按最新成绩或配置重新计算`
@@ -1090,7 +1108,7 @@ onActivated(async () => {
                 <UiTextAction
                   v-for="to in nextStatuses(record.auditStatus)"
                   :key="to"
-                  :tone="to === 'RETURNED' ? 'danger' : 'primary'"
+                  :tone="to === AchievementAuditStatusCode.RETURNED ? 'danger' : 'primary'"
                   @click="handleTransit(record, to)"
                 >
                   -> {{ auditStatusLabel(to) }}

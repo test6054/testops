@@ -1,64 +1,63 @@
 <template>
-  <a-spin :spinning="loading">
-    <UiEmpty
-      v-if="!ledger"
-      description="尚未建立影像账本，执行整体对账后将汇总扫描收录与绑定进度"
-    />
-    <div v-else class="ledger-summary">
-      <!-- 顶栏：状态 + 进度环 + 操作 -->
-      <div class="ledger-summary__hero">
-        <div class="ledger-summary__hero-left">
-          <MarkGaugeBlock v-bind="scanGaugeBlockProps">
-            <div class="ledger-summary__hero-meta">
-              <div class="ledger-summary__hero-status">
-                <UiTag :tone="statusTone" size="sm">{{ statusLabel }}</UiTag>
-                <span class="ledger-summary__hero-time">
-                  最近对账：{{ formatDateTime(ledger.balancedTime) }}
-                </span>
-              </div>
-              <UiProgressBarNew
-                :percent="scanPercent"
-                size="sm"
-                :color="scanRingColor"
-                :label="scanProgressLabel"
-                class="ledger-summary__scan-bar"
-                aria-label="页级扫描进度"
-              />
-              <div v-if="ledger.diagnostic" class="ledger-summary__diagnostic">
-                <ExclamationCircleOutlined style="color: var(--ant-color-warning)" />
-                <span>{{ ledgerDiagnosticText(ledger.diagnostic) }}</span>
-              </div>
+  <UiSkeletonState v-if="loading" variant="card" :card-count="3" compact />
+  <UiEmpty
+    v-else-if="!ledger"
+    description="尚未建立影像账本，执行整体对账后将汇总扫描收录与绑定进度"
+  />
+  <div v-else class="ledger-summary">
+    <!-- 顶栏：状态 + 进度环 + 操作 -->
+    <div class="ledger-summary__hero">
+      <div class="ledger-summary__hero-left">
+        <MarkGaugeBlock v-bind="scanGaugeBlockProps">
+          <div class="ledger-summary__hero-meta">
+            <div class="ledger-summary__hero-status">
+              <UiTag :tone="statusTone" size="sm">{{ statusLabel }}</UiTag>
+              <span class="ledger-summary__hero-time">
+                最近对账：{{ formatDateTime(ledger.balancedTime) }}
+              </span>
             </div>
-          </MarkGaugeBlock>
-        </div>
-        <div class="ledger-summary__hero-right">
-          <UiButton
-            variant="primary"
-            size="sm"
-            :loading="balancing"
-            :disabled="!ledger"
-            @click="$emit('balance')"
-          >
-            执行整体对账
-          </UiButton>
-        </div>
+            <UiProgressBarNew
+              :percent="scanPercent"
+              size="sm"
+              :color="scanRingColor"
+              :label="scanProgressLabel"
+              class="ledger-summary__scan-bar"
+              aria-label="页级扫描进度"
+            />
+            <div v-if="ledger.diagnostic" class="ledger-summary__diagnostic">
+              <ExclamationCircleOutlined style="color: var(--ant-color-warning)" />
+              <span>{{ ledgerDiagnosticText(ledger.diagnostic) }}</span>
+            </div>
+          </div>
+        </MarkGaugeBlock>
       </div>
-
-      <!-- KPI 分组 -->
-      <section class="ledger-summary__group">
-        <h3 class="ledger-summary__group-title">影像收录</h3>
-        <SignalBand :metrics="scanSignalMetrics" compact />
-      </section>
-      <section class="ledger-summary__group">
-        <h3 class="ledger-summary__group-title">试卷重构与绑定</h3>
-        <SignalBand :metrics="bindSignalMetrics" compact />
-      </section>
-      <section class="ledger-summary__group">
-        <h3 class="ledger-summary__group-title">偏差与异常</h3>
-        <SignalBand :metrics="deviationSignalMetrics" compact />
-      </section>
+      <div class="ledger-summary__hero-right">
+        <UiButton
+          variant="primary"
+          size="sm"
+          :loading="balancing"
+          :disabled="!ledger"
+          @click="$emit('balance')"
+        >
+          执行整体对账
+        </UiButton>
+      </div>
     </div>
-  </a-spin>
+
+    <!-- KPI 分组 -->
+    <section class="ledger-summary__group">
+      <h3 class="ledger-summary__group-title">影像收录</h3>
+      <SignalBand :metrics="scanSignalMetrics" compact />
+    </section>
+    <section class="ledger-summary__group">
+      <h3 class="ledger-summary__group-title">试卷重构与绑定</h3>
+      <SignalBand :metrics="bindSignalMetrics" compact />
+    </section>
+    <section class="ledger-summary__group">
+      <h3 class="ledger-summary__group-title">偏差与异常</h3>
+      <SignalBand :metrics="deviationSignalMetrics" compact />
+    </section>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -67,16 +66,13 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import { computed } from 'vue'
-import {
-  hasImageLedgerPageStats,
-  LEDGER_STATUS_LABEL,
-  LEDGER_STATUS_TONE,
-} from '@/apis/mark/image-ledger'
+import { LEDGER_STATUS_TONE, LedgerStatusDescription } from '@/apis/mark/image-ledger'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiProgressBarNew from '@/components/ui-guide/ui/UiProgressBar.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage } from '@/utils/error-handler'
@@ -96,16 +92,18 @@ const props = defineProps<{
 defineEmits<{ (e: 'balance'): void }>()
 
 const statusLabel = computed(() => {
-  return strictEnumLabel(LEDGER_STATUS_LABEL, props.ledger?.ledgerStatus, '影像账本状态')
+  if (!props.ledger) return ''
+  return strictEnumLabel(LedgerStatusDescription, props.ledger.ledgerStatus, '影像账本状态')
 })
 
 const statusTone = computed(() => {
-  return strictEnumTone(LEDGER_STATUS_TONE, props.ledger?.ledgerStatus, '影像账本状态')
+  if (!props.ledger) return 'gray'
+  return strictEnumTone(LEDGER_STATUS_TONE, props.ledger.ledgerStatus, '影像账本状态')
 })
 
 const scanPercent = computed(() => {
   const ledger = props.ledger
-  if (!ledger || !hasImageLedgerPageStats(ledger)) return 0
+  if (!ledger) return 0
   const expected = ledger.expectedPageCount
   const scanned = ledger.scannedPageCount
   if (expected <= 0) return 0
@@ -115,15 +113,11 @@ const scanPercent = computed(() => {
 const scanProgressLabel = computed(() => {
   const ledger = props.ledger
   if (!ledger) return ''
-  if (!hasImageLedgerPageStats(ledger)) {
-    return '页数统计待对账生成'
-  }
   return `已扫 ${ledger.scannedPageCount} / ${ledger.expectedPageCount} 页`
 })
 
 function formatLedgerMetric(value: number | null | undefined): string | number {
-  if (typeof value === 'number' && Number.isFinite(value)) return value
-  return '—'
+  return value ?? '—'
 }
 
 /** 扫描完成率环色：100% 完成绿 / ≥60% 推进蓝 / 其余推进橙 */
@@ -143,18 +137,23 @@ const { chartOption: scanGaugeOption } = useChartOption(() =>
 
 const scanGaugeAriaLabel = computed(() => {
   const ledger = props.ledger
-  const detail
-    = ledger && hasImageLedgerPageStats(ledger)
-      ? `已扫 ${ledger.scannedPageCount} / ${ledger.expectedPageCount} 页`
-      : scanProgressLabel.value
+  const detail = ledger
+    ? `已扫 ${ledger.scannedPageCount} / ${ledger.expectedPageCount} 页`
+    : scanProgressLabel.value
   return formatGaugeAriaLabel('扫描进度', scanPercent.value, detail)
 })
 
-const scanGaugeBlockProps = computed(() => ({
-  option: scanGaugeOption.value,
-  ariaLabel: scanGaugeAriaLabel.value,
-  layout: 'inline' as const,
-}))
+const scanGaugeBlockProps = computed(
+  (): {
+    option: typeof scanGaugeOption.value
+    ariaLabel: string
+    layout: 'inline'
+  } => ({
+    option: scanGaugeOption.value,
+    ariaLabel: scanGaugeAriaLabel.value,
+    layout: 'inline',
+  }),
+)
 
 /** 将影像账本诊断转为扫描交付处置提示，避免展示底层对账细节。 */
 function ledgerDiagnosticText(diagnostic?: string): string {

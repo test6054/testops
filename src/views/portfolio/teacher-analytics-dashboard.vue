@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  PortfolioDualTeacherApplicationStatus,
-  PortfolioKeyTeacherRegistryStatus,
+  PortfolioDualTeacherApplicationStatusCode,
+  PortfolioKeyTeacherRegistryStatusCode,
 } from '@/apis/portfolio/enums'
 import type { PortfolioDeptStructureStatVO } from '@/apis/portfolio/teacher'
 import type {
@@ -12,8 +12,8 @@ import type {
 } from '@/apis/portfolio/teacher-platform'
 import { onMounted, ref } from 'vue'
 import {
-  PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL,
-  PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL,
+  PortfolioDualTeacherApplicationStatusDescription,
+  PortfolioKeyTeacherRegistryStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
@@ -65,16 +65,16 @@ const appointYearColumns: ColumnsType = [
   { title: '数量', dataIndex: 'count', key: 'count', width: 88 },
 ]
 
-function applicationStatusLabel(status: PortfolioDualTeacherApplicationStatus): string {
+function applicationStatusLabel(status: PortfolioDualTeacherApplicationStatusCode): string {
   return strictEnumLabel(
-    PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL,
+    PortfolioDualTeacherApplicationStatusDescription,
     status,
     '双师认定申请状态',
   )
 }
 
-function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatus): string {
-  return strictEnumLabel(PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL, status, '台账状态')
+function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatusCode): string {
+  return strictEnumLabel(PortfolioKeyTeacherRegistryStatusDescription, status, '台账状态')
 }
 
 async function loadAll() {

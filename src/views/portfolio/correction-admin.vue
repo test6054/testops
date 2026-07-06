@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  PortfolioCorrectionHandleAction,
-  PortfolioCorrectionRequestStatus,
-  PortfolioCorrectionSummaryVO,
-} from '@/apis/portfolio/types'
+  PortfolioCorrectionRequestStatusCode} from '@/apis/portfolio/enums';
+import type { PortfolioCorrectionSummaryVO } from '@/apis/portfolio/types'
 import { Input, message } from 'ant-design-vue'
 import { reactive, ref } from 'vue'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
 import {
-  PORTFOLIO_CORRECTION_REQUEST_STATUS_LABEL,
-  PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
-} from '@/apis/portfolio/types'
+  PortfolioCorrectionHandleActionCode,
+  PortfolioCorrectionRequestStatusDescription,
+} from '@/apis/portfolio/enums'
+import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -24,11 +23,11 @@ import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-function statusLabel(status: PortfolioCorrectionRequestStatus): string {
-  return strictEnumLabel(PORTFOLIO_CORRECTION_REQUEST_STATUS_LABEL, status, '纠错工单状态')
+function statusLabel(status: PortfolioCorrectionRequestStatusCode): string {
+  return strictEnumLabel(PortfolioCorrectionRequestStatusDescription, status, '纠错工单状态')
 }
 
-function statusTone(status: PortfolioCorrectionRequestStatus) {
+function statusTone(status: PortfolioCorrectionRequestStatusCode) {
   return strictEnumTone(PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE, status, '纠错工单状态')
 }
 
@@ -69,7 +68,7 @@ async function loadPage() {
 
 async function handleRow(
   row: PortfolioCorrectionSummaryVO,
-  action: PortfolioCorrectionHandleAction,
+  action: PortfolioCorrectionHandleActionCode,
   handleOpinion?: string,
 ) {
   handlingId.value = row.id
@@ -106,7 +105,7 @@ async function submitReject() {
     message.warning('请填写驳回意见')
     return
   }
-  await handleRow(rejectTarget.value, 'REJECT', opinion)
+  await handleRow(rejectTarget.value, PortfolioCorrectionHandleActionCode.REJECT, opinion)
 }
 
 void loadPage()
@@ -149,7 +148,7 @@ void loadPage()
                 variant="primary"
                 size="sm"
                 :loading="handlingId === record.id"
-                @click="() => void handleRow(record, 'ACCEPT')"
+                @click="() => void handleRow(record, PortfolioCorrectionHandleActionCode.ACCEPT)"
               >
                 受理
               </UiButton>
@@ -166,7 +165,7 @@ void loadPage()
                   type="button"
                   class="op-link"
                   :disabled="handlingId === record.id"
-                  @click="() => void handleRow(record, 'MARK_ARCHIVE_CORRECTING')"
+                  @click="() => void handleRow(record, PortfolioCorrectionHandleActionCode.MARK_ARCHIVE_CORRECTING)"
                 >
                   档案更正
                 </button>
@@ -174,7 +173,7 @@ void loadPage()
                   type="button"
                   class="op-link"
                   :disabled="handlingId === record.id"
-                  @click="() => void handleRow(record, 'MARK_SOURCE_FIXING')"
+                  @click="() => void handleRow(record, PortfolioCorrectionHandleActionCode.MARK_SOURCE_FIXING)"
                 >
                   源系统整改
                 </button>
@@ -184,7 +183,7 @@ void loadPage()
                 type="button"
                 class="op-link op-link--primary"
                 :disabled="handlingId === record.id"
-                @click="() => void handleRow(record, 'MARK_PENDING_VERIFY')"
+                @click="() => void handleRow(record, PortfolioCorrectionHandleActionCode.MARK_PENDING_VERIFY)"
               >
                 标记待验证
               </button>
@@ -196,7 +195,7 @@ void loadPage()
                 type="button"
                 class="op-link op-link--primary"
                 :disabled="handlingId === record.id"
-                @click="() => void handleRow(record, 'CLOSE')"
+                @click="() => void handleRow(record, PortfolioCorrectionHandleActionCode.CLOSE)"
               >
                 关闭
               </button>

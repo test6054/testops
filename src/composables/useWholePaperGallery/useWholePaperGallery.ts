@@ -52,7 +52,7 @@ export interface UseWholePaperGalleryReturn {
   visibleWholePages: Ref<VisibleWholePage[]>
   wholePageTopSpacerHeight: Ref<number>
   wholePageBottomSpacerHeight: Ref<number>
-  getWholeQuestionForm: (questionTemplateId: string) => WholeQuestionForm
+  getWholeQuestionForm: (layoutQuestionId: string) => WholeQuestionForm
   openWholePaperView: () => Promise<void>
   reloadWholePaperView: () => Promise<void>
   resetWholePaperState: () => void
@@ -119,15 +119,15 @@ export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseW
     return `${scope}-${id}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
   }
 
-  function getWholeQuestionForm(questionTemplateId: string): WholeQuestionForm {
-    if (!wholeQuestionForms[questionTemplateId]) {
-      wholeQuestionForms[questionTemplateId] = {
+  function getWholeQuestionForm(layoutQuestionId: string): WholeQuestionForm {
+    if (!wholeQuestionForms[layoutQuestionId]) {
+      wholeQuestionForms[layoutQuestionId] = {
         score: undefined,
         annotationText: '',
-        correlationId: createCorrelationId('question', questionTemplateId),
+        correlationId: createCorrelationId('question', layoutQuestionId),
       }
     }
-    return wholeQuestionForms[questionTemplateId]
+    return wholeQuestionForms[layoutQuestionId]
   }
 
   function syncWholePaperForms(
@@ -135,7 +135,7 @@ export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseW
     pages: ScannedPageRef[],
   ): void {
     for (const question of questions) {
-      getWholeQuestionForm(question.questionTemplateId)
+      getWholeQuestionForm(question.layoutQuestionId)
     }
     for (const page of pages) {
       if (wholePageAnnotationForms[page.pageId] === undefined) {
@@ -302,12 +302,12 @@ export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseW
       throw new Error('当前任务负责题目未加载，请刷新后重试')
     }
     const questionScores: MarkingQuestionScoreSubmitItem[] = wholeQuestions.value.map((question) => {
-      const questionForm = getWholeQuestionForm(question.questionTemplateId)
+      const questionForm = getWholeQuestionForm(question.layoutQuestionId)
       if (questionForm.score === undefined) {
         throw new Error(`请填写第 ${question.questionNo} 题给分`)
       }
       return {
-        questionTemplateId: question.questionTemplateId,
+        layoutQuestionId: question.layoutQuestionId,
         score: questionForm.score,
         annotationText: questionForm.annotationText.trim() || undefined,
         correlationId: questionForm.correlationId,

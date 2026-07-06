@@ -1,4 +1,4 @@
-@use '../var.scss' as *;
+@use '../var.scss';
 
 .w-full {
   width: 100%;
@@ -24,12 +24,12 @@
 
 // 通用外边距
 .gi_margin {
-  margin: $margin;
+  margin: var.$margin;
 }
 
 // 通用内边距
 .gi_padding {
-  padding: $padding;
+  padding: var.$padding;
 }
 
 .gi_relative {
@@ -102,27 +102,27 @@
 }
 
 .gi_mt {
-  margin-top: $margin;
+  margin-top: var.$margin;
 }
 
 .gi_mb {
-  margin-bottom: $margin;
+  margin-bottom: var.$margin;
 }
 
 .gi_ml {
-  margin-left: $margin;
+  margin-left: var.$margin;
 }
 
 .gi_mr {
-  margin-right: $margin;
+  margin-right: var.$margin;
 }
 
 .gi_mx {
-  margin: 0 $margin;
+  margin: 0 var.$margin;
 }
 
 .gi_my {
-  margin: $margin 0;
+  margin: var.$margin 0;
 }
 
 .gi_m0 {
@@ -130,27 +130,27 @@
 }
 
 .gi_pt {
-  padding-top: $margin;
+  padding-top: var.$margin;
 }
 
 .gi_pb {
-  padding-bottom: $margin;
+  padding-bottom: var.$margin;
 }
 
 .gi_pl {
-  padding-left: $margin;
+  padding-left: var.$margin;
 }
 
 .gi_pr {
-  padding-right: $margin;
+  padding-right: var.$margin;
 }
 
 .gi_px {
-  padding: 0 $padding;
+  padding: 0 var.$padding;
 }
 
 .gi_py {
-  padding: $padding 0;
+  padding: var.$padding 0;
 }
 
 .gi_p0 {

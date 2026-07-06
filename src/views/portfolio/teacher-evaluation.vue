@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  PortfolioEvaluationObjectionHandleActionCode,
+  PortfolioEvaluationTeacherNoticeStatusCode,
+} from '@/apis/portfolio/enums'
+import type {
   PortfolioEvaluationMaterialCategoryItemVO,
   PortfolioEvaluationMaterialPreviewVO,
-  PortfolioEvaluationObjectionHandleAction,
-  PortfolioEvaluationObjectionType,
   PortfolioEvaluationPublicityListItemVO,
-  PortfolioEvaluationTeacherNoticeStatus,
   PortfolioEvaluationTeacherNoticeVO,
   PortfolioEvaluationTeacherResultSummaryVO,
 } from '@/apis/portfolio/types'
@@ -14,17 +15,20 @@ import { Input, message, Select } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import {
+  PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS,
+  PortfolioEvaluationObjectionHandleActionDescription,
+  PortfolioEvaluationObjectionStatusDescription,
+  PortfolioEvaluationObjectionTypeCode,
+  PortfolioEvaluationPublicityStatusDescription,
+  PortfolioEvaluationTeacherNoticeStatusDescription,
+} from '@/apis/portfolio/enums'
 import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import {
-  PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_LABEL,
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
-  PORTFOLIO_EVALUATION_OBJECTION_STATUS_LABEL,
   PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
-  PORTFOLIO_EVALUATION_OBJECTION_TYPE_LABEL,
-  PORTFOLIO_EVALUATION_PUBLICITY_STATUS_LABEL,
   PORTFOLIO_EVALUATION_PUBLICITY_STATUS_TONE,
-  PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_LABEL,
   PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE,
 } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
@@ -44,18 +48,18 @@ import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-function noticeStatusLabel(status: PortfolioEvaluationTeacherNoticeStatus): string {
-  return strictEnumLabel(PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_LABEL, status, '评价通知状态')
+function noticeStatusLabel(status: PortfolioEvaluationTeacherNoticeStatusCode): string {
+  return strictEnumLabel(PortfolioEvaluationTeacherNoticeStatusDescription, status, '评价通知状态')
 }
 
-function noticeStatusTone(status: PortfolioEvaluationTeacherNoticeStatus) {
+function noticeStatusTone(status: PortfolioEvaluationTeacherNoticeStatusCode) {
   return strictEnumTone(PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE, status, '评价通知状态')
 }
 
 function publicityStatusLabel(
   status: PortfolioEvaluationPublicityListItemVO['publicityStatus'],
 ): string {
-  return strictEnumLabel(PORTFOLIO_EVALUATION_PUBLICITY_STATUS_LABEL, status, '评价公示状态')
+  return strictEnumLabel(PortfolioEvaluationPublicityStatusDescription, status, '评价公示状态')
 }
 
 function publicityStatusTone(status: PortfolioEvaluationPublicityListItemVO['publicityStatus']) {
@@ -65,7 +69,7 @@ function publicityStatusTone(status: PortfolioEvaluationPublicityListItemVO['pub
 function objectionStatusLabel(
   status: NonNullable<PortfolioEvaluationPublicityListItemVO['objectionStatus']>,
 ): string {
-  return strictEnumLabel(PORTFOLIO_EVALUATION_OBJECTION_STATUS_LABEL, status, '评价异议状态')
+  return strictEnumLabel(PortfolioEvaluationObjectionStatusDescription, status, '评价异议状态')
 }
 
 function objectionStatusTone(
@@ -74,15 +78,15 @@ function objectionStatusTone(
   return strictEnumTone(PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE, status, '评价异议状态')
 }
 
-function handleActionLabel(action: PortfolioEvaluationObjectionHandleAction): string {
+function handleActionLabel(action: PortfolioEvaluationObjectionHandleActionCode): string {
   return strictEnumLabel(
-    PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_LABEL,
+    PortfolioEvaluationObjectionHandleActionDescription,
     action,
     '评价异议复核动作',
   )
 }
 
-function handleActionTone(action: PortfolioEvaluationObjectionHandleAction) {
+function handleActionTone(action: PortfolioEvaluationObjectionHandleActionCode) {
   return strictEnumTone(
     PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
     action,
@@ -111,15 +115,13 @@ const pageTotal = ref(0)
 const objectionModalOpen = ref(false)
 const objectionTarget = ref<PortfolioEvaluationPublicityListItemVO | null>(null)
 const objectionForm = reactive({
-  objectionType: 'RESULT_DISPUTE' as PortfolioEvaluationObjectionType,
+  objectionType: PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE,
   objectionReason: '',
 })
 const objectionEvidenceFileNodeId = ref('')
 const objectionEvidenceFileName = ref('')
 
-const objectionTypeOptions = (
-  Object.keys(PORTFOLIO_EVALUATION_OBJECTION_TYPE_LABEL) as PortfolioEvaluationObjectionType[]
-).map((value) => ({ value, label: PORTFOLIO_EVALUATION_OBJECTION_TYPE_LABEL[value] }))
+const objectionTypeOptions = PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS
 
 const selectedNotice = computed(
   () => notices.value.find((item) => item.id === selectedNoticeId.value) ?? null,
@@ -165,9 +167,8 @@ function canViewerSubmitObjection(record: PortfolioEvaluationPublicityListItemVO
   )
 }
 
-function publicityRowKey(record: unknown): string {
-  const row = record as PortfolioEvaluationPublicityListItemVO
-  return `${row.publicityId}-${row.teacherId ?? ''}`
+function publicityRowKey(record: PortfolioEvaluationPublicityListItemVO): string {
+  return `${record.publicityId}-${record.teacherId ?? ''}`
 }
 
 async function loadNotices() {
@@ -261,7 +262,7 @@ async function confirmSelected() {
 
 function openObjectionModal(row: PortfolioEvaluationPublicityListItemVO) {
   objectionTarget.value = row
-  objectionForm.objectionType = 'RESULT_DISPUTE'
+  objectionForm.objectionType = PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE
   objectionForm.objectionReason = ''
   objectionEvidenceFileNodeId.value = ''
   objectionEvidenceFileName.value = ''

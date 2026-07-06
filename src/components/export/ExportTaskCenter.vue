@@ -216,14 +216,17 @@ defineOptions({ name: 'ExportTaskCenter' })
 const exportTaskStore = useExportTaskStore()
 
 // 筛选条件
-const filterForm = reactive({
-  businessType: undefined as ExportBusinessType | undefined,
-  status: undefined as AsyncTaskStatusEnum | undefined,
-  dateRange: undefined as [string, string] | undefined,
-})
+interface ExportTaskFilterForm {
+  [key: string]: unknown
+  businessType?: ExportBusinessType
+  status?: AsyncTaskStatusEnum
+  dateRange?: [string, string]
+}
+
+const filterForm = reactive<ExportTaskFilterForm>({})
 
 const filterModel = computed<Record<string, unknown>>({
-  get: () => filterForm as Record<string, unknown>,
+  get: () => filterForm,
   set: (value) => {
     Object.assign(filterForm, value)
   },
@@ -366,7 +369,7 @@ async function fetchTasksWithFilter() {
     pageNum: 1,
   }
 
-  const dateRangeVal = filterForm.dateRange as [string, string] | undefined
+  const dateRangeVal = filterForm.dateRange
   if (dateRangeVal && dateRangeVal.length === 2) {
     params.startTime = dateRangeVal[0]
     params.endTime = dateRangeVal[1]

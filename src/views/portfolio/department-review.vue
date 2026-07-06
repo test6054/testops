@@ -1,32 +1,36 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  PortfolioArchiveRecordSourceTypeCode,
+  PortfolioArchiveRecordStatusCode,
+  PortfolioMaterialRiskLevelCode,
+  PortfolioReviewActionTypeCode,
+} from '@/apis/portfolio/enums'
+import type {
   PortfolioAiAnalysisDetailVO,
   PortfolioArchiveCategoryTreeNodeVO,
-  PortfolioArchiveRecordSourceType,
-  PortfolioArchiveRecordStatus,
-  PortfolioMaterialRiskLevel,
-  PortfolioReviewActionType,
   PortfolioReviewArchiveRecordDetailVO,
   PortfolioReviewLogVO,
   PortfolioReviewTaskPageRequest,
-  PortfolioReviewTaskStatus,
   PortfolioReviewTaskSummaryVO,
 } from '@/apis/portfolio/types'
 import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
 import { Input, message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
+import {
+  PortfolioArchiveRecordSourceTypeDescription,
+  PortfolioArchiveRecordStatusDescription,
+  PortfolioMaterialRiskLevelDescription,
+  PortfolioReviewActionTypeDescription,
+  PortfolioReviewTaskStatusCode,
+  PortfolioReviewTaskStatusDescription,
+} from '@/apis/portfolio/enums'
 import { portfolioReviewApi } from '@/apis/portfolio/review'
 import {
-  PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL,
-  PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
   PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
-  PORTFOLIO_MATERIAL_RISK_LEVEL_LABEL,
   PORTFOLIO_MATERIAL_RISK_LEVEL_TONE,
-  PORTFOLIO_REVIEW_ACTION_TYPE_LABEL,
-  PORTFOLIO_REVIEW_TASK_STATUS_LABEL,
   PORTFOLIO_REVIEW_TASK_STATUS_TONE,
   PORTFOLIO_SCHOOL_REVIEW_FLOW_CODE,
 } from '@/apis/portfolio/types'
@@ -49,44 +53,44 @@ import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const PORTFOLIO_REVIEW_TASK_STATUS_FILTER_CODES = [
-  'PENDING',
-  'SECOND_REVIEW',
-  'APPROVED',
-  'RETURNED',
-  'DISMISSED',
-  'CLOSED',
-] satisfies readonly PortfolioReviewTaskStatus[]
+  PortfolioReviewTaskStatusCode.PENDING,
+  PortfolioReviewTaskStatusCode.SECOND_REVIEW,
+  PortfolioReviewTaskStatusCode.APPROVED,
+  PortfolioReviewTaskStatusCode.RETURNED,
+  PortfolioReviewTaskStatusCode.DISMISSED,
+  PortfolioReviewTaskStatusCode.CLOSED,
+] satisfies readonly PortfolioReviewTaskStatusCode[]
 
-function reviewTaskStatusLabel(status: PortfolioReviewTaskStatus): string {
-  return strictEnumLabel(PORTFOLIO_REVIEW_TASK_STATUS_LABEL, status, '审核任务状态')
+function reviewTaskStatusLabel(status: PortfolioReviewTaskStatusCode): string {
+  return strictEnumLabel(PortfolioReviewTaskStatusDescription, status, '审核任务状态')
 }
 
-function reviewTaskStatusTone(status: PortfolioReviewTaskStatus): BadgeTone {
+function reviewTaskStatusTone(status: PortfolioReviewTaskStatusCode): BadgeTone {
   return strictEnumTone(PORTFOLIO_REVIEW_TASK_STATUS_TONE, status, '审核任务状态')
 }
 
-function materialRiskLevelLabel(riskLevel: PortfolioMaterialRiskLevel): string {
-  return strictEnumLabel(PORTFOLIO_MATERIAL_RISK_LEVEL_LABEL, riskLevel, '档案材料风险等级')
+function materialRiskLevelLabel(riskLevel: PortfolioMaterialRiskLevelCode): string {
+  return strictEnumLabel(PortfolioMaterialRiskLevelDescription, riskLevel, '档案材料风险等级')
 }
 
-function materialRiskLevelTone(riskLevel: PortfolioMaterialRiskLevel): BadgeTone {
+function materialRiskLevelTone(riskLevel: PortfolioMaterialRiskLevelCode): BadgeTone {
   return strictEnumTone(PORTFOLIO_MATERIAL_RISK_LEVEL_TONE, riskLevel, '档案材料风险等级')
 }
 
-function archiveRecordSourceTypeLabel(sourceType: PortfolioArchiveRecordSourceType): string {
-  return strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL, sourceType, '档案记录来源类型')
+function archiveRecordSourceTypeLabel(sourceType: PortfolioArchiveRecordSourceTypeCode): string {
+  return strictEnumLabel(PortfolioArchiveRecordSourceTypeDescription, sourceType, '档案记录来源类型')
 }
 
-function archiveRecordStatusLabel(status: PortfolioArchiveRecordStatus): string {
-  return strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, status, '档案记录状态')
+function archiveRecordStatusLabel(status: PortfolioArchiveRecordStatusCode): string {
+  return strictEnumLabel(PortfolioArchiveRecordStatusDescription, status, '档案记录状态')
 }
 
-function archiveRecordStatusTone(status: PortfolioArchiveRecordStatus): BadgeTone {
+function archiveRecordStatusTone(status: PortfolioArchiveRecordStatusCode): BadgeTone {
   return strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, status, '档案记录状态')
 }
 
-function reviewActionTypeLabel(actionType: PortfolioReviewActionType): string {
-  return strictEnumLabel(PORTFOLIO_REVIEW_ACTION_TYPE_LABEL, actionType, '审核操作类型')
+function reviewActionTypeLabel(actionType: PortfolioReviewActionTypeCode): string {
+  return strictEnumLabel(PortfolioReviewActionTypeDescription, actionType, '审核操作类型')
 }
 
 function reviewTaskStatusFilterOptions(): FilterOption[] {
@@ -96,7 +100,7 @@ function reviewTaskStatusFilterOptions(): FilterOption[] {
   }))
 }
 
-interface ReviewFilterModel {
+interface ReviewFilterModel extends Record<string, unknown> {
   departmentId?: string
   categoryId?: string
   teacherId?: string
@@ -142,7 +146,7 @@ const hasSensitiveRows = computed(() => rows.value.some((item) => item.riskLevel
 const showReviewActions = computed(() => Boolean(activeRow.value?.reviewActionAllowed))
 
 const filterModel = computed<Record<string, unknown>>({
-  get: () => filterForm as Record<string, unknown>,
+  get: () => filterForm,
   set: (value) => {
     Object.assign(filterForm, value)
   },

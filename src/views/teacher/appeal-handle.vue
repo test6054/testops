@@ -1,59 +1,105 @@
 <template>
-  <StageWorkbenchShell>
+  <StageWorkbenchShell class="appeal-page">
     <template #context>
-      <ContextBar show-title title="成绩复核与更正">
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="contextBarTitle"
+        :subtitle="contextBarSubtitle"
+      >
         <template #status>
+          <UiTag tone="blue" size="sm">阶段 成绩复核</UiTag>
+          <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
+            {{ examStatusLabel }}
+          </UiTag>
+          <UiTag
+            v-if="windowPolicy?.policyStatus"
+            :tone="windowStatusTone"
+            size="sm"
+          >
+            {{ windowStatusLabel }}
+          </UiTag>
           <UiTag v-if="pendingCount > 0" tone="orange" size="sm">
-            待处理复核 {{ pendingCount }}
+            待处理 {{ pendingCount }} 条
           </UiTag>
         </template>
       </ContextBar>
     </template>
 
-    <a-tabs v-model:active-key="activeTab" class="appeal-page__tabs">
-      <a-tab-pane key="policy" tab="复核窗口策略">
-        <ReviewWindowPolicyCard
-          :exam-id="currentExamId"
-          :reload-token="windowReloadToken"
-          @changed="onAppealFlowChanged"
-        />
-      </a-tab-pane>
+    <template v-if="currentExamId" #signal>
+      <SignalBand variant="tiles" compact :metrics="appealSignalMetrics" />
+    </template>
 
-      <a-tab-pane key="requests" tab="复核申请">
-        <ReviewRequestsCard
-          :exam-id="currentExamId"
-          :reload-token="requestReloadToken"
-          @handled="onRequestHandled"
-          @pending-change="pendingCount = $event"
-        />
-      </a-tab-pane>
+    <UiEmpty v-if="!currentExamId" description="请选择考试" class="appeal-page__empty" />
 
-      <a-tab-pane key="corrections" tab="成绩更正">
-        <CorrectionsCard
-          :exam-id="currentExamId"
-          :reload-token="correctionReloadToken"
-          @created="onCorrectionCreated"
-        />
-      </a-tab-pane>
+    <template v-else>
+      <ExamWorkspaceJourneySubNav />
 
-      <a-tab-pane key="batch" tab="批量更正计划">
-        <BatchCorrectionPlansCard
-          :exam-id="currentExamId"
-          :reload-token="batchReloadToken"
-          @changed="onAppealFlowChanged"
-        />
-      </a-tab-pane>
-    </a-tabs>
+      <UiSectionTabs
+        v-model="activeTab"
+        :items="tabItems"
+        compact
+        divided
+        class="appeal-page__tabs"
+      />
+
+      <ReviewWindowPolicyCard
+        v-if="activeTab === 'policy'"
+        :exam-id="currentExamId"
+        :reload-token="windowReloadToken"
+        @changed="onAppealFlowChanged"
+      />
+
+      <ReviewRequestsCard
+        v-else-if="activeTab === 'requests'"
+        :exam-id="currentExamId"
+        :reload-token="requestReloadToken"
+        @handled="onRequestHandled"
+        @pending-change="pendingCount = $event"
+      />
+
+      <CorrectionsCard
+        v-else-if="activeTab === 'corrections'"
+        :exam-id="currentExamId"
+        :reload-token="correctionReloadToken"
+        @created="onCorrectionCreated"
+      />
+
+      <BatchCorrectionPlansCard
+        v-else
+        :exam-id="currentExamId"
+        :reload-token="batchReloadToken"
+        @changed="onAppealFlowChanged"
+      />
+
+      <ScorePublishRelatedLinksCard variant="appeal" />
+    </template>
   </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
+import type { ExamReviewWindowPolicyVO } from '@/apis/mark/grade-review'
+import type { UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, ref, watch } from 'vue'
+import {
+  getReviewWindowPolicy,
+  REVIEW_WINDOW_STATUS_TONE,
+  ReviewWindowPolicyStatusDescription,
+} from '@/apis/mark/grade-review'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import ScorePublishRelatedLinksCard from '@/components/workbench/ScorePublishRelatedLinksCard.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { formatDateTimeWithSeconds } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import BatchCorrectionPlansCard from './appeal-handle/BatchCorrectionPlansCard.vue'
 import CorrectionsCard from './appeal-handle/CorrectionsCard.vue'
 import ReviewRequestsCard from './appeal-handle/ReviewRequestsCard.vue'
@@ -65,40 +111,121 @@ type AppealTabKey = 'policy' | 'requests' | 'corrections' | 'batch'
 
 const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
+const {
+  contextBarTitle,
+  contextBarSubtitle,
+  examStatusLabel,
+  examStatusTone,
+} = useExamJourneyContextBar('成绩复核')
+
 const currentExamId = computed(() => selectedExamId.value || '')
 
 const activeTab = ref<AppealTabKey>('policy')
 const pendingCount = ref(0)
+const windowPolicy = ref<ExamReviewWindowPolicyVO | null>(null)
+
+const windowStatusLabel = computed(() => {
+  const status = windowPolicy.value?.policyStatus
+  if (!status) {
+    return ''
+  }
+  return strictEnumLabel(ReviewWindowPolicyStatusDescription, status, '复核窗口状态')
+})
+
+const windowStatusTone = computed(() => {
+  const status = windowPolicy.value?.policyStatus
+  if (!status) {
+    return undefined
+  }
+  return strictEnumTone(REVIEW_WINDOW_STATUS_TONE, status, '复核窗口状态')
+})
+
+const tabItems = computed((): UiSectionTabItem[] => [
+  { key: 'policy', label: '复核窗口' },
+  {
+    key: 'requests',
+    label: '复核申请',
+    count: pendingCount.value > 0 ? pendingCount.value : undefined,
+    badgeTone: pendingCount.value > 0 ? 'orange' : undefined,
+  },
+  { key: 'corrections', label: '成绩纠正' },
+  { key: 'batch', label: '批量纠正' },
+])
+
+const appealSignalMetrics = computed((): SignalMetric[] => {
+  const policy = windowPolicy.value
+  const statusLabel = policy
+    ? strictEnumLabel(ReviewWindowPolicyStatusDescription, policy.policyStatus, '复核窗口状态')
+    : '未配置'
+  const statusTone = policy
+    ? strictEnumTone(REVIEW_WINDOW_STATUS_TONE, policy.policyStatus, '复核窗口状态')
+    : 'gray'
+  return [
+    {
+      key: 'window-status',
+      label: '窗口状态',
+      value: statusLabel,
+      tone: statusTone,
+    },
+    {
+      key: 'open-time',
+      label: '开放时间',
+      value: policy?.openTime ? formatDateTimeWithSeconds(policy.openTime).split(' ')[0] : '—',
+      tone: policy?.openTime ? 'blue' : 'gray',
+    },
+    {
+      key: 'close-time',
+      label: '截止时间',
+      value: policy?.closeTime ? formatDateTimeWithSeconds(policy.closeTime).split(' ')[0] : '—',
+      tone: policy?.closeTime ? 'orange' : 'gray',
+    },
+    {
+      key: 'pending',
+      label: '待处理',
+      value: pendingCount.value,
+      unit: '条',
+      tone: pendingCount.value > 0 ? 'orange' : 'green',
+    },
+  ]
+})
 
 const windowReloadToken = ref(0)
 const requestReloadToken = ref(0)
 const correctionReloadToken = ref(0)
 const batchReloadToken = ref(0)
 
+async function loadWindowPolicy(): Promise<void> {
+  if (!currentExamId.value) {
+    windowPolicy.value = null
+    return
+  }
+  windowPolicy.value = await getReviewWindowPolicy(currentExamId.value)
+}
+
 function reloadAll(): void {
   windowReloadToken.value += 1
   requestReloadToken.value += 1
   correctionReloadToken.value += 1
   batchReloadToken.value += 1
+  void loadWindowPolicy()
 }
 
 async function onRequestHandled(): Promise<void> {
   requestReloadToken.value += 1
   correctionReloadToken.value += 1
   await refreshSnapshot()
+  await loadWindowPolicy()
 }
 
 async function onCorrectionCreated(): Promise<void> {
   correctionReloadToken.value += 1
   requestReloadToken.value += 1
   await refreshSnapshot()
+  await loadWindowPolicy()
 }
 
 async function onAppealFlowChanged(): Promise<void> {
-  windowReloadToken.value += 1
-  requestReloadToken.value += 1
-  correctionReloadToken.value += 1
-  batchReloadToken.value += 1
+  reloadAll()
   await refreshSnapshot()
 }
 
@@ -109,6 +236,7 @@ watch(
       reloadAll()
     } else {
       pendingCount.value = 0
+      windowPolicy.value = null
     }
   },
   { immediate: true },
@@ -116,17 +244,20 @@ watch(
 </script>
 
 <style lang="scss" scoped>
-.appeal-page__tabs {
-  :deep(.ant-tabs-nav) {
+.appeal-page {
+  &__empty {
+    margin-top: 32px;
+  }
+
+  &__tabs {
     margin-bottom: 16px;
   }
 }
 
 :deep(.appeal-section) {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   min-width: 0;
+  border: none;
+  box-shadow: none;
 }
 
 :deep(.appeal-section__header) {
@@ -134,5 +265,27 @@ watch(
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
+}
+
+:deep(.appeal-section__flow-hint) {
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--c-text-4);
+  white-space: nowrap;
+}
+
+:deep(.appeal-section__toolbar) {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+:deep(.appeal-section__count) {
+  flex-shrink: 0;
+  padding-top: 8px;
+  font-size: 12px;
+  color: var(--c-text-4);
+  white-space: nowrap;
 }
 </style>

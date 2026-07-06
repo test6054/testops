@@ -1,14 +1,13 @@
 <template>
-  <a-modal
+  <UiDrawer
     :open="open"
     :title="modalTitle"
-    :confirm-loading="submitting"
-    :ok-button-props="{ disabled: !canManage }"
-    ok-text="提交"
-    cancel-text="取消"
     :width="520"
+    :confirm-loading="submitting"
+    ok-text="提交"
+    :hide-footer="false"
     @update:open="handleOpenChange"
-    @ok="confirm"
+    @close="handleOpenChange(false)"
   >
     <a-alert :message="modalAlert" type="warning" show-icon style="margin-bottom: 12px" />
     <a-alert
@@ -29,7 +28,11 @@
         />
       </a-form-item>
     </a-form>
-  </a-modal>
+    <template #footer>
+      <UiButton variant="outline" @click="handleOpenChange(false)">取消</UiButton>
+      <UiButton :loading="submitting" :disabled="!canManage" @click="confirm">提交</UiButton>
+    </template>
+  </UiDrawer>
 </template>
 
 <script lang="ts" setup>
@@ -40,6 +43,8 @@ import {
   closeTrialSession,
   pauseFormalSession,
 } from '@/apis/mark/marking-organization'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 
 export type LifecycleAction = 'pauseFormal' | 'closeFormal' | 'closeTrial'

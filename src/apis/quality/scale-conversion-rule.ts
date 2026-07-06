@@ -1,4 +1,4 @@
-import type { ScaleType } from './types'
+import type { ScaleTypeCode } from './types'
 /**
  * 量表换算规则 API - 对应 ScaleConversionRuleController
  * 后端路径：/api/quality/scale-conversion-rules
@@ -10,7 +10,13 @@ import http from '@/config/axios'
 
 const BASE = '/api/quality/scale-conversion-rules'
 
-export interface ScaleConversionRuleItem {
+export interface ScaleConversionRuleItemSaveRequest {
+  sourceValue: string
+  normalizedScore: number
+  sortOrder?: number
+}
+
+export interface ScaleConversionRuleItemVO {
   id?: string
   ruleId?: string
   sourceValue: string
@@ -22,8 +28,8 @@ export interface ScaleConversionRuleVO {
   id: string
   ruleCode: string
   ruleName: string
-  scaleType: ScaleType
-  items: ScaleConversionRuleItem[]
+  scaleType: ScaleTypeCode
+  items: ScaleConversionRuleItemVO[]
   description?: string
   enabled: boolean
   createTime?: string
@@ -34,14 +40,14 @@ export interface ScaleConversionRuleSaveRequest {
   id?: string
   ruleCode: string
   ruleName: string
-  scaleType: ScaleType
-  items: ScaleConversionRuleItem[]
+  scaleType: ScaleTypeCode
+  items: ScaleConversionRuleItemSaveRequest[]
   description?: string
   enabled?: boolean
 }
 
 export interface ScaleConversionRuleQueryRequest extends QueryDto {
-  scaleType?: ScaleType
+  scaleType?: ScaleTypeCode
   enabled?: boolean
 }
 
