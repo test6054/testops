@@ -353,8 +353,6 @@ export interface PortfolioIndicatorSnapshotComputeRequest {
   snapshotId: string
   indicatorCode: string
   rawValue: number
-  auditRequired?: boolean
-  auditApproved?: boolean
 }
 
 export interface PortfolioExplainGetRequest {

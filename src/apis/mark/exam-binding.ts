@@ -15,7 +15,7 @@ export interface ExamPaperBindRequest {
   scanBatchId: string
   paperInstanceId: string
   recognizedStudentNo?: string
-  confirmedCandidateRosterId?: string
+  confirmedCandidateRosterId: string
   attemptStatus: 'NORMAL' | 'MAKEUP' | 'RETAKE'
   attemptNo?: string
 }

@@ -448,7 +448,12 @@ export interface MarkingTaskVO {
   /** 题组名称；组织级整卷任务无题组时为 null */
   groupName?: string | null
   sessionId: string
-  sessionStatus: FormalSessionStatusCode
+  /** 阅卷阶段：试评 / 正评 */
+  markingPhase: MarkingSessionPhaseCode
+  /** 正评会话状态；试评任务为空 */
+  sessionStatus?: FormalSessionStatusCode
+  /** 试评会话状态；正评任务为空 */
+  trialSessionStatus?: TrialSessionStatusCode
   sessionStatusMessage: string
   sessionStartTime?: string
   reviewerUserId: string

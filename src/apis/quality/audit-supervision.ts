@@ -7,8 +7,7 @@ import type { AuditEvidenceItemRequest, AuditEvidenceItemVO } from './audit-evid
 import type { AuditSupervisionTypeCode } from './types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
-import type {
-  AuditSupervisionScopeCode} from '@/types/enums/audit-supervision-scope-enum';
+import type { AuditSupervisionScopeCode } from '@/types/enums/audit-supervision-scope-enum'
 import http from '@/config/axios'
 import {
   ALL_AUDIT_SUPERVISION_CONCLUSION_CODES,

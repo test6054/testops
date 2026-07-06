@@ -46,5 +46,11 @@ export function examSummaryFromDetail(detail: ExamDetailVO): ExamSummaryVO {
     remark: detail.remark,
     createUser: detail.createUser,
     createTime: detail.createTime,
+    dailyScoreFull: detail.dailyScoreFull,
+    examKindMessage: detail.examKindMessage,
+    sourceExamId: detail.sourceExamId,
+    scorePolicy: detail.scorePolicy,
+    teachingAcademicYear: detail.teachingAcademicYear,
+    teachingSemester: detail.teachingSemester,
   }
 }

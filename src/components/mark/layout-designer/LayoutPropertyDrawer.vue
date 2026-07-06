@@ -2,6 +2,7 @@
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
 import { computed } from 'vue'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import {
   ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES,
   ExamLayoutBlockTypeCode,
@@ -19,12 +20,24 @@ const emit = defineEmits<{
 
 const blockTypeOptions = ExamLayoutBlockTypeOptions
 
-const questionOptions = computed(() =>
-  (props.document?.questions ?? []).map((question) => ({
+const questionOptions = computed(() => {
+  const questions = (props.document?.questions ?? []).filter((question) => {
+    if (props.block?.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX) {
+      return question.questionType === 'OBJECTIVE'
+    }
+    if (props.block?.blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER) {
+      return question.questionType === 'SUBJECTIVE'
+    }
+    return true
+  })
+  return questions.map((question) => ({
     value: question.id,
-    label: `${question.questionNo} · ${question.questionType}`,
-  })),
-)
+    label: `${question.questionNo} · ${
+      QuestionTypeDescription[question.questionType as keyof typeof QuestionTypeDescription]
+      ?? question.questionType
+    }`,
+  }))
+})
 
 const rectNorm = computed(() => props.block?.rectNorm)
 
@@ -32,10 +45,15 @@ function patchBlock(partial: Partial<ExamLayoutBlockDto>): void {
   if (!props.document || !props.block) {
     return
   }
+  const nextBlock = { ...props.block, ...partial }
   const blocks = props.document.blocks.map((item) =>
-    item.id === props.block?.id ? { ...item, ...partial } : item,
+    item.id === props.block?.id ? nextBlock : item,
   )
-  emit('patch', { ...props.document, blocks })
+  const blockOptions
+    = nextBlock.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
+      ? props.document.blockOptions
+      : props.document.blockOptions?.filter((option) => option.blockId !== props.block?.id)
+  emit('patch', { ...props.document, blocks, blockOptions })
 }
 
 function patchRectField(field: 'x' | 'y' | 'w' | 'h', value: number | string | null): void {
@@ -65,7 +83,16 @@ function onBlockTypeChange(
   if (!blockType) {
     throw new Error('布局块类型契约异常')
   }
-  patchBlock({ blockType })
+  if (blockType === ExamLayoutBlockTypeCode.IDENTITY_BUBBLE) {
+    patchBlock({ blockType, layoutQuestionId: undefined, identityAreaType: props.block?.identityAreaType || 'STUDENT_NO' })
+    return
+  }
+  if (blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
+    || blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX) {
+    patchBlock({ blockType, identityAreaType: undefined })
+    return
+  }
+  patchBlock({ blockType, layoutQuestionId: undefined, identityAreaType: undefined })
 }
 
 function onLayoutQuestionChange(

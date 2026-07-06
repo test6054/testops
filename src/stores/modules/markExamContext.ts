@@ -68,8 +68,7 @@ export const useMarkExamContextStore = defineStore(
     /* ---------- Actions ---------- */
 
     /**
-     * 加载当前用户可见的完整考试列表。
-     * 业务用 createUserId 过滤教师本人创建的考试；管理员场景需调用方在 request 中显式置空。
+     * 加载当前用户可见的完整考试列表；可见性由后端按当前登录身份注入。
      */
     async function loadExams(request?: Partial<ExamPageQueryRequest>): Promise<void> {
       examsLoading.value = true
@@ -82,7 +81,6 @@ export const useMarkExamContextStore = defineStore(
               pageSize,
               status: request?.status,
               keyword: request?.keyword,
-              createUserId: request?.createUserId,
               startTime: request?.startTime,
               endTime: request?.endTime,
             }),

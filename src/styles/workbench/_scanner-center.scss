@@ -1,0 +1,18 @@
+.scanner-center__surface {
+  margin-top: var(--dp-space-4, 16px);
+}
+
+.scanner-center__signal {
+  margin-bottom: var(--dp-space-4, 16px);
+}
+
+.scanner-dispatch-panel__signal {
+  margin-bottom: var(--dp-space-4, 16px);
+}
+
+.scanner-dispatch-panel__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2, 8px);
+  align-items: center;
+}

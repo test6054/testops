@@ -103,12 +103,20 @@
                 <a-input-number
                   v-model:value="form.afterScore"
                   :min="0"
+                  :max="totalCorrectionScoreMax"
                   :precision="2"
                   style="width: 100%"
                 />
               </a-form-item>
             </a-col>
           </a-row>
+          <a-alert
+            v-if="makeupCap60Hint"
+            type="info"
+            show-icon
+            message="本场为补考封顶60分：总分更正不得超过60分"
+            style="margin-bottom: 12px"
+          />
           <a-form-item label="申请学生">
             <a-input :value="selectedReviewStudentLabel" disabled />
           </a-form-item>
@@ -141,13 +149,18 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { ExamScorePolicyCode } from '@/types/enums/exam-score-policy-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 
 defineOptions({ name: 'CorrectionsCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{
+  examId: string
+  reloadToken: number
+  scorePolicy?: ExamScorePolicyCode
+}>()
 const emit = defineEmits<{ (e: 'created'): void }>()
 
 const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 100
@@ -233,6 +246,17 @@ const selectedReviewRequestScope = computed(() =>
 const selectedReviewStudentLabel = computed(() =>
   selectedReviewRequest.value ? reviewRequestStudentLabel(selectedReviewRequest.value) : '',
 )
+
+/** 总分更正且补考封顶60时限制输入上限 */
+const isTotalScoreCorrection = computed(
+  () => !!selectedReviewRequest.value && selectedReviewRequest.value.questionRefs.length === 0,
+)
+
+const makeupCap60Hint = computed(
+  () => isTotalScoreCorrection.value && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60,
+)
+
+const totalCorrectionScoreMax = computed(() => (makeupCap60Hint.value ? 60 : undefined))
 
 async function openCreateModal(): Promise<void> {
   form.layoutQuestionId = ''
@@ -337,6 +361,14 @@ async function submit(): Promise<void> {
     )
   ) {
     message.warning('更正题目必须来自选中的复核申请')
+    return
+  }
+  if (
+    request.questionRefs.length === 0
+    && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
+    && form.afterScore > 60
+  ) {
+    message.warning('补考成绩策略为封顶60分，更正后总成绩不能超过60分')
     return
   }
   submitting.value = true

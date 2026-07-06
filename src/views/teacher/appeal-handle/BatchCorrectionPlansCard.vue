@@ -143,6 +143,13 @@
               @change="handleQuestionChange"
             />
           </a-form-item>
+          <a-alert
+            v-if="makeupCap60TotalHint"
+            type="info"
+            show-icon
+            message="本场为补考封顶60分：总分批量更正每条明细不得超过60分"
+            style="margin-bottom: 12px"
+          />
           <a-form-item label="更正原因" required>
             <a-textarea v-model:value="form.reason" :rows="3" :maxlength="500" show-count />
           </a-form-item>
@@ -172,6 +179,7 @@
                     <a-input-number
                       v-model:value="item.afterScore"
                       :min="0"
+                      :max="batchTotalScoreMax"
                       :precision="2"
                       style="width: 100%"
                     />
@@ -273,6 +281,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { ExamScorePolicyCode } from '@/types/enums/exam-score-policy-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
@@ -280,7 +289,11 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'BatchCorrectionPlansCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{
+  examId: string
+  reloadToken: number
+  scorePolicy?: ExamScorePolicyCode
+}>()
 const emit = defineEmits<{ (e: 'changed'): void }>()
 
 const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 100
@@ -363,6 +376,14 @@ const form = reactive<{
   reason: '',
   items: [],
 })
+
+const makeupCap60TotalHint = computed(
+  () =>
+    form.correctionType === GradeCorrectionTypeCode.TOTAL_SCORE
+    && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60,
+)
+
+const batchTotalScoreMax = computed(() => (makeupCap60TotalHint.value ? 60 : undefined))
 
 const correctionTypeOptions = [
   { value: GradeCorrectionTypeCode.SINGLE_QUESTION, label: GradeCorrectionTypeDescription[GradeCorrectionTypeCode.SINGLE_QUESTION] },
@@ -560,6 +581,14 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
     }
     if (typeof item.afterScore !== 'number') {
       message.warning('更正明细中的更正后分数必填')
+      return null
+    }
+    if (
+      form.correctionType === GradeCorrectionTypeCode.TOTAL_SCORE
+      && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
+      && item.afterScore > 60
+    ) {
+      message.warning('补考成绩策略为封顶60分，更正后总成绩不能超过60分')
       return null
     }
     items.push({

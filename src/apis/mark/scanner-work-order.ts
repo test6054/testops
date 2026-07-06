@@ -284,6 +284,12 @@ export function startExamScanWorkOrder(
   return startScanWorkOrder({ ...request, taskKind: ScanTaskKindCode.EXAM_MARKING })
 }
 
+export function commitExamScanWorkOrder(
+  request: Omit<ScanWorkOrderCommitRequest, 'taskKind'>,
+): Promise<ScanWorkOrderLifecycleVO> {
+  return commitScanWorkOrder({ ...request, taskKind: ScanTaskKindCode.EXAM_MARKING })
+}
+
 export function discardExamScanWorkOrder(
   request: ExamScanWorkOrderDiscardRequest,
 ): Promise<ScanWorkOrderLifecycleVO> {

@@ -33,9 +33,10 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
+import { ExamLayoutEntryKindCode } from '@/types/enums/exam-layout-entry-kind-enum'
 import { ALL_EXAM_LAYOUT_PAPER_SPEC_CODES } from '@/types/enums/exam-layout-paper-spec-enum'
 import { showUserError } from '@/utils/error-handler'
-import { resolvePaperSpecLabel } from '@/utils/exam-layout-designer'
+import { resolvePaperSpecLabel, validateLayoutDocumentForSave } from '@/utils/exam-layout-designer'
 import {
   buildLayoutDesignerSignalMetrics,
   filterLayoutDesignerPrepSteps,
@@ -147,6 +148,8 @@ const signalMetrics = computed(() => {
 const pageLoading = computed(
   () => loading.value || (examDetailLoading.value && !examDetail.value),
 )
+const saveBlockingReasons = computed(() => validateLayoutDocumentForSave(document.value))
+const previewDisabled = computed(() => !materialLayoutMode.value || !document.value)
 
 function goDesignerPrepStep(step: PrepStepCard): void {
   if (!examId.value) {
@@ -195,6 +198,10 @@ async function handleSave(): Promise<void> {
   if (!document.value || !examId.value || !layoutWritable.value) {
     return
   }
+  if (saveBlockingReasons.value.length > 0) {
+    message.warning(saveBlockingReasons.value[0])
+    return
+  }
   saving.value = true
   try {
     document.value = await saveExamLayoutDesign({
@@ -212,6 +219,16 @@ async function handleSave(): Promise<void> {
 
 async function handlePreview(): Promise<void> {
   if (!examId.value) {
+    return
+  }
+  if (document.value?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE && document.value.sourcePdfFileId) {
+    previewPdfFileId.value = document.value.sourcePdfFileId
+    previewOpen.value = true
+    return
+  }
+  if (document.value?.layoutEntryKind === ExamLayoutEntryKindCode.BLANK_SHEET && document.value.previewPdfFileId) {
+    previewPdfFileId.value = document.value.previewPdfFileId
+    previewOpen.value = true
     return
   }
   try {
@@ -301,11 +318,11 @@ onMounted(() => {
         </template>
         <template #actions>
           <UiButton variant="outline" @click="reviewOpen = true">复核微调</UiButton>
-          <UiButton variant="outline" @click="handlePreview">预览 PDF</UiButton>
+          <UiButton variant="outline" :disabled="previewDisabled" @click="handlePreview">预览 PDF</UiButton>
           <UiButton
             variant="primary"
             :loading="saving"
-            :disabled="!layoutWritable"
+            :disabled="!layoutWritable || saveBlockingReasons.length > 0"
             @click="handleSave"
           >
             保存设计
@@ -353,6 +370,15 @@ onMounted(() => {
         :closable="false"
         dense
         :title="writeLockReason"
+        class="layout-designer-lock-banner"
+      />
+      <UiAlertStrip
+        v-else-if="saveBlockingReasons.length > 0"
+        tone="warning"
+        :closable="false"
+        dense
+        title="制卷设计尚未满足保存条件"
+        :description="saveBlockingReasons.slice(0, 4).join('；')"
         class="layout-designer-lock-banner"
       />
 

@@ -829,16 +829,10 @@ export interface ArchiveEvaluationVolumeReadinessVO {
 export interface ArchiveVolumePageRequest extends QueryDto {
   keyword?: string
   departmentId?: string
-  /** Service 按档案职责写入的院系范围，页面不主动传值 */
-  scopeDepartmentIds?: string[]
   courseId?: string
   examId?: string
   academicYear?: string
-  /** Service 由 academicYear 解析写入的 SQL 筛选字段，页面不主动传值 */
-  filterAcademicYear?: string
   semester?: SemesterCode
-  /** Service 由 semester 解析写入的 SQL 筛选字段，页面不主动传值 */
-  filterSemester?: SemesterCode
   sourceType?: ArchiveVolumeSourceTypeCode
   volumeStatus?: ArchiveVolumeStatusCode
   integrityStatus?: ArchiveIntegrityStatusCode
@@ -851,20 +845,12 @@ export interface ArchiveVolumePageRequest extends QueryDto {
   studentNo?: string
   studentName?: string
   mineOnly?: boolean
-  /** Service 按职责与密级矩阵写入的可读密级上限，页面不主动传值 */
-  maxReadableSecurityLevel?: ArchiveSecurityLevelCode
-  /** Service 按“我的归档卷”语义写入的责任人过滤，页面不主动传值 */
-  ownerUserId?: string
-  /** Service 按“我的整改”语义写入的整改责任人过滤，页面不主动传值 */
-  remediationAssigneeUserId?: string
   integrityFailedOnly?: boolean
   archiveOverdueOnly?: boolean
   delaySubmissionOverdueOnly?: boolean
 }
 
 export interface ArchiveVolumeSearchRequest extends QueryDto {
-  /** Service 从登录上下文写入，页面不主动传值 */
-  tenantId?: string
   keyword?: string
   volumeId?: string
   examId?: string
@@ -873,17 +859,9 @@ export interface ArchiveVolumeSearchRequest extends QueryDto {
   ocrStatus?: ArchiveMaterialOcrStatusCode
   materialType?: ArchiveMaterialTypeCode
   academicYear?: string
-  /** Service 由 academicYear 解析写入的 SQL 筛选字段，页面不主动传值 */
-  filterAcademicYear?: string
   semester?: SemesterCode
-  /** Service 由 semester 解析写入的 SQL 筛选字段，页面不主动传值 */
-  filterSemester?: SemesterCode
   departmentId?: string
-  /** Service 按档案职责写入的院系范围，页面不主动传值 */
-  scopeDepartmentIds?: string[]
   courseId?: string
-  /** Service 按职责与密级矩阵写入的可读密级上限，页面不主动传值 */
-  maxReadableSecurityLevel?: ArchiveSecurityLevelCode
   catalogCode?: string
   catalogNameKeyword?: string
   tagAny?: string[]
@@ -933,7 +911,6 @@ export interface ArchiveVolumeStatisticsRequest {
   academicYear?: string
   semester?: SemesterCode
   departmentId?: string
-  scopeDepartmentIds?: string[]
 }
 
 export function pageArchiveVolumes(
@@ -1171,7 +1148,6 @@ export interface ArchiveReadinessMatrixRequest {
   endSemester: SemesterCode
   termCount?: number
   departmentId?: string
-  scopeDepartmentIds?: string[]
 }
 
 export interface ArchiveReadinessTermColumnVO {
@@ -1529,7 +1505,6 @@ export interface ArchiveVolumeMaterialRegisterRequest {
   requiredFlag?: boolean
   fileId: string
   mediaType: ArchiveMaterialMediaTypeCode
-  fileFormat?: string
   sortRule: ArchiveMaterialSortRuleCode
   sortKey?: string
   electronicOriginalStatus: ArchiveElectronicOriginalStatusCode
@@ -2133,8 +2108,6 @@ export interface ArchiveVolumeAccessLedgerPageRequest extends QueryDto {
   departmentId?: string
   accessStatus?: ArchiveAccessStatusCode
   applicantUserId?: string
-  /** Service 按档案职责写入的院系范围，页面不主动传值 */
-  scopeDepartmentIds?: string[]
 }
 
 export interface ArchiveVolumeAccessLedgerRowVO {
@@ -2170,8 +2143,6 @@ export function pageAccessLedger(
 export interface ArchiveVolumeDestructionLedgerPageRequest extends QueryDto {
   departmentId?: string
   keyword?: string
-  /** Service 按档案职责写入的院系范围，页面不主动传值 */
-  scopeDepartmentIds?: string[]
 }
 
 export interface ArchiveVolumeDestructionLedgerRowVO {

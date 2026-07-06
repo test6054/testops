@@ -167,8 +167,9 @@ function canViewerSubmitObjection(record: PortfolioEvaluationPublicityListItemVO
   )
 }
 
-function publicityRowKey(record: PortfolioEvaluationPublicityListItemVO): string {
-  return `${record.publicityId}-${record.teacherId ?? ''}`
+function publicityRowKey(record: unknown): string {
+  const row = record as PortfolioEvaluationPublicityListItemVO
+  return `${row.publicityId}-${row.teacherId ?? ''}`
 }
 
 async function loadNotices() {

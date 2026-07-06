@@ -12,11 +12,8 @@ import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ExamStatusCode, getExamDetail, pageExams } from '@/apis/mark/exam'
-import { useAuthStore } from '@/stores/modules/auth'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
-import { useUserStore } from '@/stores/modules/user'
-import { RoleEnum } from '@/types/enums'
 import { showUserError } from '@/utils/error-handler'
 import { examSummaryFromDetail, toMarkExamSelectOption } from '@/utils/mark-exam-option'
 import { readPageList } from '@/utils/page-result'
@@ -38,8 +35,6 @@ export type { MarkExamSelectOption }
 export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
   const route = useRoute()
   const router = useRouter()
-  const authStore = useAuthStore()
-  const userStore = useUserStore()
   const examContext = useMarkExamContextStore()
   const markStageStore = useMarkStageStore()
 
@@ -115,20 +110,12 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
     return exam.examNo ? `${exam.examName}（${exam.examNo}）` : exam.examName
   })
 
-  const isAdminView = computed(() => {
-    const role = authStore.userRole
-    return (
-      role === RoleEnum.SUPER_ADMIN || role === RoleEnum.CROP_ADMIN || role === RoleEnum.CROP_USER
-    )
-  })
-
   function buildPageRequest(keyword?: string) {
     return {
       pageNum: 1,
       pageSize,
       status: ExamStatusCode.ACTIVE,
       keyword: keyword?.trim() || undefined,
-      createUserId: isAdminView.value ? null : userStore.userInfo.userId || undefined,
     }
   }
 
@@ -256,7 +243,6 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
     selectedExamSelectValue,
     selectedExam,
     selectedExamLabel,
-    isAdminView,
     loadExams,
     searchExams,
     onExamSearch,

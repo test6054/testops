@@ -83,7 +83,10 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   const canDiscard = computed(() => {
     if (!lifecycle.value?.batchExternalNo) return false
     const status = lifecycle.value.status
-    if (status === ScanWorkOrderStatusCode.COMMITTING || status === ScanWorkOrderStatusCode.FAILED) {
+    if (status === ScanWorkOrderStatusCode.COMMITTING) {
+      return false
+    }
+    if (status === ScanWorkOrderStatusCode.FAILED) {
       return true
     }
     return !isReported.value

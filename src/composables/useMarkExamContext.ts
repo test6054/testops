@@ -67,7 +67,6 @@ function createWorkbenchExamAdapter(): MarkExamContext {
         ? `${currentExam.value.examName}（${currentExam.value.examNo}）`
         : currentExam.value.examName
     }),
-    isAdminView: computed(() => false),
     loadExams: async () => {},
     searchExams: async () => {},
     onExamSearch: () => {},

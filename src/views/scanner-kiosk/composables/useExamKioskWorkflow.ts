@@ -14,7 +14,6 @@
  */
 
 import type { LocationQueryValue } from 'vue-router'
-import { MarkOcrProviderTypeCode } from '@/types/enums/mark-ocr-provider-type-enum'
 
 type KioskWorkStateTone = 'success' | 'running' | 'danger' | 'muted'
 
@@ -102,7 +101,7 @@ import {
   ScannerKioskScanModeCode,
   ScannerKioskScanModeDescription,
 } from '@/apis/mark/scanner-kiosk'
-import { discardExamScanWorkOrder, startExamScanWorkOrder } from '@/apis/mark/scanner-work-order'
+import { commitExamScanWorkOrder, discardExamScanWorkOrder, startExamScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
@@ -167,19 +166,6 @@ function resolveBusinessSceneFromScanMode(): ScannerBusinessSceneCode {
   return ScannerBusinessSceneCode.EXAM_DIRECT_SCAN
 }
 
-/** 租户 OCR 渠道到试卷直扫 provider chain 的映射 */
-function resolveProviderChainFromOcrProvider(
-  providerType: MarkOcrProviderTypeCode | undefined,
-): DirectScanProviderChainCode | undefined {
-  if (providerType === MarkOcrProviderTypeCode.BAIDU) {
-    return DirectScanProviderChainCode.BAIDU_QWEN
-  }
-  if (providerType === MarkOcrProviderTypeCode.PADDLE) {
-    return DirectScanProviderChainCode.PADDLE_LOCAL
-  }
-  return undefined
-}
-
 export { getSemesterDescription, SemesterOptions }
 
 // ================================================================
@@ -235,6 +221,10 @@ export function useExamKioskWorkflow() {
   const activeBatchExternalNo = ref('')
   /** batch/start 落库的当前工作台批次 ID，供绑定查询与侧栏展示锚定。 */
   const activeScanBatchId = ref('')
+  /** 当前 IN_PROGRESS 工单 reportId，浏览器 commit 兜底时使用。 */
+  const activeReportId = ref('')
+  /** start 时冻结的扫描参数，浏览器 commit 兜底时使用。 */
+  const activeResolvedScanConfig = ref<ExamScannerScanConfigVO | null>(null)
   /**
    * 补扫子模式：true=替换目标页（旧扫描页 SUPERSEDED），false=纯追加补扫。
    * 仅在 scanMode==='SUPPLEMENT' 时有效；切到其他模式由 changeScanMode 自动重置。
@@ -1636,19 +1626,7 @@ export function useExamKioskWorkflow() {
       applyExamRecommendedScanConfig()
     }
     examBindingRequired.value = Boolean(kioskContext.value?.examBindingRequired)
-    syncProviderChainFromKioskContext()
     await refreshBoundPapers()
-  }
-
-  /** 从 kiosk 上下文 OCR 配置同步默认 providerChain，不覆盖用户已选手动值 */
-  function syncProviderChainFromKioskContext() {
-    if (providerChain.value != null) {
-      return
-    }
-    const resolved = resolveProviderChainFromOcrProvider(kioskContext.value?.ocrConfig?.providerType)
-    if (resolved) {
-      providerChain.value = resolved
-    }
   }
 
   const providerChainOptions = [
@@ -1675,7 +1653,7 @@ export function useExamKioskWorkflow() {
     if (chain === DirectScanProviderChainCode.PADDLE_LOCAL) {
       return '本地 PaddleOCR'
     }
-    return '未选择'
+    return '按租户配置'
   }
 
   function resolveStartScanProviderChain(): DirectScanProviderChainCode | undefined {
@@ -1683,7 +1661,6 @@ export function useExamKioskWorkflow() {
       return undefined
     }
     return providerChain.value
-      ?? resolveProviderChainFromOcrProvider(kioskContext.value?.ocrConfig?.providerType)
   }
 
   async function loadKioskBootstrap() {
@@ -2081,10 +2058,19 @@ export function useExamKioskWorkflow() {
     }
     if (!recoverableJob) {
       if (activeBackendScanSession.value) {
-        await closeActiveBatch(true)
-        await refreshKioskContext()
-        await refreshPageLedger()
-        successMessage.value = '已清理服务端残留扫描批次，可重新开始扫描'
+        const pendingCount = activeBackendBatch.value?.pendingUploadCount ?? 0
+        if (pendingCount > 0) {
+          errorMessage.value = `服务端仍有 ${pendingCount} 页待提交，请恢复本地扫描任务；如需放弃请使用「结束未完成进程」`
+          return
+        }
+        try {
+          await closeActiveBatch(false)
+          await refreshKioskContext()
+          await refreshPageLedger()
+          successMessage.value = '已清理服务端空扫描批次，可重新开始扫描'
+        } catch (error) {
+          handleError(error, '清理服务端空扫描批次失败')
+        }
       }
       return
     }
@@ -2258,6 +2244,8 @@ export function useExamKioskWorkflow() {
         )
         return
       }
+      activeReportId.value = batchLifecycle.reportId
+      activeResolvedScanConfig.value = batchLifecycle.resolvedScanConfig ?? null
       if (!batchLifecycle.resolvedScanConfig) {
         await handleScanJobStartFailure(
           null,
@@ -2439,6 +2427,63 @@ export function useExamKioskWorkflow() {
     }
   }
 
+  async function commitCurrentJobViaBrowser(job: ScanJobResponse) {
+    const config = activeResolvedScanConfig.value
+    if (!config) {
+      throw toUserError(null, '缺少冻结扫描参数，无法通过浏览器提交批次')
+    }
+    if (!activeReportId.value.trim()) {
+      throw toUserError(null, '缺少扫描报告 ID，无法通过浏览器提交批次')
+    }
+    const uploadedPages = job.pages
+      .filter((page) => page.status !== LocalScanPageStatusCode.DELETED && page.uploadedFileId)
+      .slice()
+      .sort((left, right) => left.pageNo - right.pageNo)
+    if (uploadedPages.length === 0) {
+      throw toUserError(null, '没有已上传页面，无法提交批次')
+    }
+    const sourceFileIds = uploadedPages.map((page) => page.uploadedFileId as string)
+    const scanStartTime = uploadedPages[0]?.capturedAt
+    const scanEndTime = uploadedPages.at(-1)?.uploadedAt ?? uploadedPages.at(-1)?.capturedAt
+    if (!scanStartTime || !scanEndTime) {
+      throw toUserError(null, '扫描页缺少时间信息，无法通过浏览器提交批次')
+    }
+    const lifecycle = await commitExamScanWorkOrder({
+      batchExternalNo: job.batchExternalNo,
+      examId: job.examId,
+      reportId: activeReportId.value,
+      declaredClassIds: job.declaredClassIds,
+      examScanMode: job.scanMode,
+      targetPageNo: job.targetPageNo,
+      supplementReason: job.supplementReason,
+      replaceTargetPage: job.replaceTargetPage,
+      pageCount: uploadedPages.length,
+      sourceFileIds,
+      dpi: config.dpi,
+      colorMode: config.colorMode,
+      duplexMode: config.duplexMode,
+      scanStartTime,
+      scanEndTime,
+      scanSessionId: job.batchExternalNo,
+      businessRefId: examId.value,
+      providerChain: providerChain.value,
+    })
+    if (lifecycle.committedExamBatchId) {
+      activeScanBatchId.value = String(lifecycle.committedExamBatchId)
+    }
+    activeBatchExternalNo.value = ''
+    activeReportId.value = ''
+    activeResolvedScanConfig.value = null
+    currentJob.value = null
+    await refreshKioskContext()
+    await refreshPageLedger()
+    if (lifecycle.pageRegisterBlocked) {
+      errorMessage.value = `批次已提交，但自动页登记被阻断：${lifecycle.pageRegisterDiagnostic ?? '请前往 PC 端处理'}`
+    } else {
+      successMessage.value = KIOSK_BATCH_SUBMITTED_HINT
+    }
+  }
+
   async function retryCurrentCommit() {
     if (!currentJob.value) return
     loading.value = true
@@ -2448,10 +2493,23 @@ export function useExamKioskWorkflow() {
       startJobPolling(currentJob.value.scanJobId)
       successMessage.value = '已重新进入提交队列'
     } catch (error) {
+      if (error instanceof LocalAgentUnavailableError && currentJob.value) {
+        await commitCurrentJobViaBrowser(currentJob.value)
+        return
+      }
       const message = getUserErrorMessage(error)
       if (isMissingLocalScanJobMessage(message)) {
         await reconcileMissingCurrentJob(message)
         return
+      }
+      if (currentJob.value && currentJobAllPagesUploadedButUnconfirmed.value) {
+        try {
+          await commitCurrentJobViaBrowser(currentJob.value)
+          return
+        } catch (browserCommitError) {
+          handleError(browserCommitError, '浏览器提交批次失败')
+          return
+        }
       }
       handleError(error)
     } finally {

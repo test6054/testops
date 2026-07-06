@@ -4,7 +4,6 @@ import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
-import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 
 export interface BatchProgress {
@@ -20,7 +19,6 @@ export interface UseMarkingTaskNavigationOptions {
 export function useMarkingTaskNavigation(options: UseMarkingTaskNavigationOptions) {
   const route = useRoute()
   const router = useRouter()
-  const userStore = useUserStore()
   const markTaskStore = useMarkTaskStore()
   const { tasks: batchTasks } = storeToRefs(markTaskStore)
 
@@ -49,10 +47,8 @@ export function useMarkingTaskNavigation(options: UseMarkingTaskNavigationOption
   async function ensureBatchLoaded(examId: string): Promise<void> {
     if (!examId) return
     if (markTaskStore.tasksLoadedExamId === examId && batchTasks.value.length > 0) return
-    const reviewerUserId = userStore.userInfo.userId
-    if (!reviewerUserId) return
     try {
-      await markTaskStore.loadTasks({ examId, reviewerUserId })
+      await markTaskStore.loadTasks({ examId })
     } catch (error) {
       showUserError(error, '上下题导航任务列表加载失败')
     }

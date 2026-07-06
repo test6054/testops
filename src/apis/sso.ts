@@ -9,7 +9,7 @@
  * 4. 从 URL 提取 ticket，调用 casCallback 完成登录
  */
 
-import type { LoginResponse } from '@/apis/auth'
+import type { UserLoginResponseDto } from '@/types/auth'
 import type { RoleEnum } from '@/types/enums'
 import http from '@/config/axios'
 
@@ -76,6 +76,28 @@ export interface CasProfileCompletionResponse {
 }
 
 /**
+ * CAS 登录成功响应
+ */
+export interface CasLoginSuccessResponse {
+  /** 访问令牌 */
+  accessToken: string
+  /** 刷新令牌 */
+  refreshToken?: string
+  /** 令牌过期时间（秒） */
+  expiresIn?: number
+  /** 用户信息 */
+  userInfo: UserLoginResponseDto
+  /** 租户信息 */
+  tenantInfo: {
+    id: string
+    tenantName: string
+    logoUrl?: string
+  }
+  /** 是否强制修改密码 */
+  forcePasswordChange?: boolean
+}
+
+/**
  * CAS 可选班级
  */
 export interface CasAvailableClassResponse {
@@ -107,13 +129,8 @@ export interface CasFirstLoginSubmitRequest {
   title?: string
 }
 
-/**
- * CAS 回调响应
- */
-export type CasCallbackResponse = LoginResponse['data'] | CasProfileCompletionResponse
-
 function hasProfileCompletionStatus(
-  response: CasCallbackResponse,
+  response: CasLoginSuccessResponse | CasProfileCompletionResponse,
 ): response is CasProfileCompletionResponse {
   if (typeof response !== 'object' || response === null) {
     return false
@@ -125,7 +142,7 @@ function hasProfileCompletionStatus(
  * 判断是否为首次补录分支响应
  */
 export function isCasProfileCompletionResponse(
-  response: CasCallbackResponse,
+  response: CasLoginSuccessResponse | CasProfileCompletionResponse,
 ): response is CasProfileCompletionResponse {
   return hasProfileCompletionStatus(response)
 }
@@ -181,8 +198,14 @@ export function getCasLoginUrl(tenantId: string): Promise<string> {
  * @param tenantId 租户ID
  * @returns 登录响应，包含 accessToken、userInfo 等
  */
-export function casCallback(ticket: string, tenantId: string): Promise<CasCallbackResponse> {
-  return http.post<CasCallbackResponse>('/api/sso/cas/callback', { ticket, tenantId })
+export function casCallback(
+  ticket: string,
+  tenantId: string,
+): Promise<CasLoginSuccessResponse | CasProfileCompletionResponse> {
+  return http.post<CasLoginSuccessResponse | CasProfileCompletionResponse>(
+    '/api/sso/cas/callback',
+    { ticket, tenantId },
+  )
 }
 
 /**
@@ -218,6 +241,6 @@ export function getCasAvailableClasses(
  */
 export function completeCasFirstLogin(
   data: CasFirstLoginSubmitRequest,
-): Promise<LoginResponse['data']> {
-  return http.post<LoginResponse['data']>('/api/sso/cas/complete-first-login', data)
+): Promise<CasLoginSuccessResponse> {
+  return http.post<CasLoginSuccessResponse>('/api/sso/cas/complete-first-login', data)
 }

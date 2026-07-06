@@ -1,0 +1,55 @@
+/** 扫描操作动作 */
+export enum ScanOperationActionCode {
+  OPEN = 'OPEN',
+  CONFIRM = 'CONFIRM',
+  DISCARD = 'DISCARD',
+  DISPATCH_CREATE = 'DISPATCH_CREATE',
+  DISPATCH_CANCEL = 'DISPATCH_CANCEL',
+  DISPATCH_OPEN = 'DISPATCH_OPEN',
+  DISPATCH_CLAIM = 'DISPATCH_CLAIM',
+  DISPATCH_SUSPEND = 'DISPATCH_SUSPEND',
+  DISPATCH_RESUME = 'DISPATCH_RESUME',
+  DISPATCH_HEARTBEAT = 'DISPATCH_HEARTBEAT',
+  LEASE_RELEASE = 'LEASE_RELEASE',
+  DISPATCH_ADHOC_CREATE = 'DISPATCH_ADHOC_CREATE',
+  DISPATCH_FORCE_RELEASE = 'DISPATCH_FORCE_RELEASE',
+  DISPATCH_DONE = 'DISPATCH_DONE',
+  PHYSICAL_LOCATION_UPDATE = 'PHYSICAL_LOCATION_UPDATE',
+}
+
+export const ALL_SCAN_OPERATION_ACTION_CODES: readonly ScanOperationActionCode[] = [
+  ScanOperationActionCode.OPEN,
+  ScanOperationActionCode.CONFIRM,
+  ScanOperationActionCode.DISCARD,
+  ScanOperationActionCode.DISPATCH_CREATE,
+  ScanOperationActionCode.DISPATCH_CANCEL,
+  ScanOperationActionCode.DISPATCH_OPEN,
+  ScanOperationActionCode.DISPATCH_CLAIM,
+  ScanOperationActionCode.DISPATCH_SUSPEND,
+  ScanOperationActionCode.DISPATCH_RESUME,
+  ScanOperationActionCode.DISPATCH_HEARTBEAT,
+  ScanOperationActionCode.LEASE_RELEASE,
+  ScanOperationActionCode.DISPATCH_ADHOC_CREATE,
+  ScanOperationActionCode.DISPATCH_FORCE_RELEASE,
+  ScanOperationActionCode.DISPATCH_DONE,
+  ScanOperationActionCode.PHYSICAL_LOCATION_UPDATE,
+]
+export const ScanOperationActionDescription: Record<ScanOperationActionCode, string> = {
+  [ScanOperationActionCode.OPEN]: '开单',
+  [ScanOperationActionCode.CONFIRM]: '提交',
+  [ScanOperationActionCode.DISCARD]: '废弃',
+  [ScanOperationActionCode.DISPATCH_CREATE]: '创建派单',
+  [ScanOperationActionCode.DISPATCH_CANCEL]: '取消派单',
+  [ScanOperationActionCode.DISPATCH_OPEN]: '打开派单',
+  [ScanOperationActionCode.DISPATCH_CLAIM]: '领取派单',
+  [ScanOperationActionCode.DISPATCH_SUSPEND]: '挂起派单',
+  [ScanOperationActionCode.DISPATCH_RESUME]: '恢复派单',
+  [ScanOperationActionCode.DISPATCH_HEARTBEAT]: '派单心跳',
+  [ScanOperationActionCode.LEASE_RELEASE]: '租约释放',
+  [ScanOperationActionCode.DISPATCH_ADHOC_CREATE]: '临时派单',
+  [ScanOperationActionCode.DISPATCH_FORCE_RELEASE]: '强制释放',
+  [ScanOperationActionCode.DISPATCH_DONE]: '完成派单',
+  [ScanOperationActionCode.PHYSICAL_LOCATION_UPDATE]: '柜位更新',
+}
+
+

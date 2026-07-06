@@ -48,6 +48,9 @@ function removeFocusedBlock(): void {
   emit('patch', {
     ...props.document,
     blocks: props.document.blocks.filter((block) => block.id !== props.focusedBlockId),
+    blockOptions: props.document.blockOptions?.filter(
+      (option) => option.blockId !== props.focusedBlockId,
+    ),
   })
   emit('focus-block', null)
 }

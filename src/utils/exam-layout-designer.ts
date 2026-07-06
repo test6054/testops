@@ -194,13 +194,17 @@ export function createDefaultBlock(
   blockType: ExamLayoutBlockTypeCode,
   layer: number,
 ): ExamLayoutBlockDto {
-  return {
+  const block: ExamLayoutBlockDto = {
     id: createClientBlockId(),
     pageNo,
     blockType,
     layer,
     rectNorm: { x: 0.12, y: 0.12, w: 0.28, h: 0.06 },
   }
+  if (blockType === ExamLayoutBlockTypeCode.IDENTITY_BUBBLE) {
+    block.identityAreaType = 'STUDENT_NO'
+  }
+  return block
 }
 
 export function formatRectMmLabel(
@@ -222,6 +226,154 @@ export function hasIdentityBlock(document: ExamLayoutDocument | null): boolean {
       (block) => block.blockType === ExamLayoutBlockTypeCode.IDENTITY_BUBBLE,
     ),
   )
+}
+
+/**
+ * 制卷保存前业务校验；不变量：与后端 ExamLayoutDesignValidator 保存门禁保持一致，前端只提前暴露可修复问题。
+ */
+export function validateLayoutDocumentForSave(document: ExamLayoutDocument | null): string[] {
+  const reasons: string[] = []
+  if (!document) {
+    return ['请先生成答题卡或自动预划区后再保存']
+  }
+  if (!document.layoutName?.trim()) {
+    reasons.push('请填写制卷名称')
+  }
+  if (!document.totalPages || document.totalPages <= 0) {
+    reasons.push('总页数必须大于 0')
+  }
+  const pageNos = new Set<number>()
+  for (const page of document.pages ?? []) {
+    if (!page.pageNo || page.pageNo <= 0 || (document.totalPages && page.pageNo > document.totalPages)) {
+      reasons.push('制卷页号必须在 1 到总页数之间')
+      continue
+    }
+    if (pageNos.has(page.pageNo)) {
+      reasons.push(`第 ${page.pageNo} 页重复`)
+    }
+    pageNos.add(page.pageNo)
+    if (!page.backgroundFileId) {
+      reasons.push(`第 ${page.pageNo} 页缺少背景文件`)
+    }
+    if (!page.naturalWidthPx || !page.naturalHeightPx) {
+      reasons.push(`第 ${page.pageNo} 页尺寸未解析`)
+    }
+  }
+  if (document.totalPages && pageNos.size !== document.totalPages) {
+    reasons.push('制卷页数量必须与总页数一致')
+  }
+  for (let pageNo = 1; pageNo <= (document.totalPages ?? 0); pageNo += 1) {
+    if (!pageNos.has(pageNo)) {
+      reasons.push(`缺少第 ${pageNo} 页制卷背景`)
+    }
+  }
+
+  const questionIds = new Set<string>()
+  const questionTypeById = new Map<string, string>()
+  for (const question of document.questions ?? []) {
+    if (!question.id) {
+      reasons.push('制卷题目缺少前端标识')
+      continue
+    }
+    if (questionIds.has(question.id)) {
+      reasons.push(`制卷题目标识重复：${question.questionNo || question.id}`)
+    }
+    questionIds.add(question.id)
+    if (!question.questionNo?.trim() || !question.normalizedQuestionNo?.trim()) {
+      reasons.push('制卷题目题号不能为空')
+    }
+    if (question.questionType !== 'OBJECTIVE' && question.questionType !== 'SUBJECTIVE') {
+      reasons.push(`题 ${question.questionNo || question.id} 的题型必须是客观题或主观题`)
+    }
+    if (question.fullScore == null || Number(question.fullScore) <= 0) {
+      reasons.push(`题 ${question.questionNo || question.id} 的满分必须大于 0`)
+    }
+    questionTypeById.set(question.id, question.questionType)
+  }
+  if (questionIds.size === 0) {
+    reasons.push('请至少配置一道制卷题目')
+  }
+
+  const blockIds = new Set<string>()
+  const objectiveBlockIds = new Set<string>()
+  let hasIdentity = false
+  for (const block of document.blocks ?? []) {
+    if (!block.id) {
+      reasons.push('识别区域缺少前端标识')
+      continue
+    }
+    if (blockIds.has(block.id)) {
+      reasons.push('识别区域标识重复')
+    }
+    blockIds.add(block.id)
+    if (!block.blockType) {
+      reasons.push('识别区域类型不能为空')
+    }
+    if (!pageNos.has(block.pageNo)) {
+      reasons.push(`识别区域绑定的第 ${block.pageNo} 页不存在`)
+    }
+    if (block.blockType === ExamLayoutBlockTypeCode.IDENTITY_BUBBLE) {
+      hasIdentity = true
+      if (!block.identityAreaType?.trim()) {
+        reasons.push('身份填涂区必须配置身份字段类型')
+      }
+    }
+    if (block.blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER && !block.layoutQuestionId) {
+      reasons.push('主观作答区必须关联制卷题目')
+    }
+    if (
+      block.blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
+      && block.layoutQuestionId
+      && questionTypeById.get(block.layoutQuestionId) !== 'SUBJECTIVE'
+    ) {
+      reasons.push('主观作答区只能关联主观题')
+    }
+    if (block.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX && !block.layoutQuestionId) {
+      reasons.push('客观填涂矩阵必须关联制卷题目')
+    }
+    if (
+      block.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
+      && block.layoutQuestionId
+      && questionTypeById.get(block.layoutQuestionId) !== 'OBJECTIVE'
+    ) {
+      reasons.push('客观填涂矩阵只能关联客观题')
+    }
+    if (block.layoutQuestionId && !questionIds.has(block.layoutQuestionId)) {
+      reasons.push('识别区域关联的制卷题目不存在')
+    }
+    if (block.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX) {
+      objectiveBlockIds.add(block.id)
+    }
+    if (!block.rectNorm || block.rectNorm.w <= 0 || block.rectNorm.h <= 0) {
+      reasons.push('识别区域坐标不完整')
+    }
+  }
+  if (!document.blocks?.length) {
+    reasons.push('请至少配置身份填涂区和作答识别区')
+  }
+  if (!hasIdentity) {
+    reasons.push('请至少配置一个身份填涂区')
+  }
+
+  for (const option of document.blockOptions ?? []) {
+    if (!blockIds.has(option.blockId)) {
+      reasons.push('客观填涂格关联的识别区域不存在')
+    }
+    if (!objectiveBlockIds.has(option.blockId)) {
+      reasons.push('客观填涂格必须归属客观题矩阵区')
+    }
+    if (!option.layoutQuestionId || !questionIds.has(option.layoutQuestionId)) {
+      reasons.push('客观填涂格关联的制卷题目不存在')
+    }
+    if (!option.optionLabel?.trim()) {
+      reasons.push('客观填涂格选项标签不能为空')
+    }
+    if (!option.rectNorm || option.rectNorm.w <= 0 || option.rectNorm.h <= 0) {
+      reasons.push('客观填涂格坐标不完整')
+    }
+  }
+
+  return Array.from(new Set(reasons))
 }
 
 export function snapStageValue(

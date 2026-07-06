@@ -7,8 +7,7 @@ import type { AuditIssueStatusCode } from './types'
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
-import type {
-  AuditIssueSourceCode} from '@/types/enums/audit-issue-source-enum';
+import type { AuditIssueSourceCode } from '@/types/enums/audit-issue-source-enum'
 import http from '@/config/axios'
 import {
   ALL_AUDIT_ISSUE_SEVERITY_CODES,

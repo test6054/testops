@@ -1,0 +1,34 @@
+/** 归档销毁状态 */
+export enum ArchiveDestructionStatusCode {
+  NONE = 'NONE',
+  REQUESTED = 'REQUESTED',
+  APPROVED = 'APPROVED',
+  EXECUTING = 'EXECUTING',
+  EXECUTED = 'EXECUTED',
+  FAILED = 'FAILED',
+  SUPERVISED = 'SUPERVISED',
+  LEDGER_ARCHIVED = 'LEDGER_ARCHIVED',
+}
+
+export const ALL_ARCHIVE_DESTRUCTION_STATUS_CODES: readonly ArchiveDestructionStatusCode[] = [
+  ArchiveDestructionStatusCode.NONE,
+  ArchiveDestructionStatusCode.REQUESTED,
+  ArchiveDestructionStatusCode.APPROVED,
+  ArchiveDestructionStatusCode.EXECUTING,
+  ArchiveDestructionStatusCode.EXECUTED,
+  ArchiveDestructionStatusCode.FAILED,
+  ArchiveDestructionStatusCode.SUPERVISED,
+  ArchiveDestructionStatusCode.LEDGER_ARCHIVED,
+]
+export const ArchiveDestructionStatusDescription: Record<ArchiveDestructionStatusCode, string> = {
+  [ArchiveDestructionStatusCode.NONE]: '无',
+  [ArchiveDestructionStatusCode.REQUESTED]: '销毁申请中',
+  [ArchiveDestructionStatusCode.APPROVED]: '销毁已批准',
+  [ArchiveDestructionStatusCode.EXECUTING]: '销毁执行中',
+  [ArchiveDestructionStatusCode.EXECUTED]: '已销毁',
+  [ArchiveDestructionStatusCode.FAILED]: '销毁失败',
+  [ArchiveDestructionStatusCode.SUPERVISED]: '已监销',
+  [ArchiveDestructionStatusCode.LEDGER_ARCHIVED]: '清册已归档',
+}
+
+

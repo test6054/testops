@@ -1,0 +1,51 @@
+/** 考核环节类型 - AssessmentItemTypeEnum */
+export enum AssessmentItemTypeCode {
+  FINAL_EXAM = 'FINAL_EXAM',
+  HOMEWORK = 'HOMEWORK',
+  EXPERIMENT = 'EXPERIMENT',
+  COURSE_DESIGN = 'COURSE_DESIGN',
+  INTERNSHIP = 'INTERNSHIP',
+  DISSERTATION = 'DISSERTATION',
+  PROCESS_NODE = 'PROCESS_NODE',
+  PROJECT_MILESTONE = 'PROJECT_MILESTONE',
+  CASE_STUDY = 'CASE_STUDY',
+  DEFENSE = 'DEFENSE',
+  WORK_PORTFOLIO = 'WORK_PORTFOLIO',
+  FIELD_TRIAL = 'FIELD_TRIAL',
+  CLINICAL_PRACTICE = 'CLINICAL_PRACTICE',
+  EXAM = 'EXAM',
+}
+
+export const ALL_ASSESSMENT_ITEM_TYPE_CODES: readonly AssessmentItemTypeCode[] = [
+  AssessmentItemTypeCode.FINAL_EXAM,
+  AssessmentItemTypeCode.HOMEWORK,
+  AssessmentItemTypeCode.EXPERIMENT,
+  AssessmentItemTypeCode.COURSE_DESIGN,
+  AssessmentItemTypeCode.INTERNSHIP,
+  AssessmentItemTypeCode.DISSERTATION,
+  AssessmentItemTypeCode.PROCESS_NODE,
+  AssessmentItemTypeCode.PROJECT_MILESTONE,
+  AssessmentItemTypeCode.CASE_STUDY,
+  AssessmentItemTypeCode.DEFENSE,
+  AssessmentItemTypeCode.WORK_PORTFOLIO,
+  AssessmentItemTypeCode.FIELD_TRIAL,
+  AssessmentItemTypeCode.CLINICAL_PRACTICE,
+  AssessmentItemTypeCode.EXAM,
+]
+
+export const AssessmentItemTypeDescription: Record<AssessmentItemTypeCode, string> = {
+  [AssessmentItemTypeCode.FINAL_EXAM]: '期末考试',
+  [AssessmentItemTypeCode.HOMEWORK]: '作业',
+  [AssessmentItemTypeCode.EXPERIMENT]: '实验',
+  [AssessmentItemTypeCode.COURSE_DESIGN]: '课程设计',
+  [AssessmentItemTypeCode.INTERNSHIP]: '实习实训',
+  [AssessmentItemTypeCode.DISSERTATION]: '毕业论文或设计',
+  [AssessmentItemTypeCode.PROCESS_NODE]: '过程性评价节点',
+  [AssessmentItemTypeCode.PROJECT_MILESTONE]: '项目里程碑',
+  [AssessmentItemTypeCode.CASE_STUDY]: '案例研讨',
+  [AssessmentItemTypeCode.DEFENSE]: '答辩',
+  [AssessmentItemTypeCode.WORK_PORTFOLIO]: '作品集',
+  [AssessmentItemTypeCode.FIELD_TRIAL]: '田间或现场试验',
+  [AssessmentItemTypeCode.CLINICAL_PRACTICE]: '临床实习与轮转',
+  [AssessmentItemTypeCode.EXAM]: '考试（edu-mark 同步）',
+}

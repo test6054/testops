@@ -151,12 +151,6 @@ export interface ExamPageQueryRequest extends QueryDto {
   classId?: string
   /** 参考院系 ID（edu-user）；非空时仅返回 reference_department_id 命中该院系的考试 */
   referenceDepartmentId?: string
-  /** Service 内 enforced：referenceDepartmentId 解析后的班级 ID 列表，页面不主动传值 */
-  departmentScopeClassIds?: string[]
-  /** 创建人ID（教师视角传当前用户；管理员传 null） */
-  createUserId?: string | null
-  /** Service 内 enforced：教师被分配为题组/阅卷任务评阅人的可见性过滤，页面不主动传值 */
-  assignedReviewerUserId?: string
   /** 考试状态 */
   status?: ExamStatusCode
   /** 学年，如 '2024-2025' */
@@ -569,7 +563,6 @@ export interface ExamDistinctTermQueryRequest {
   classId?: string
   /** 参考院系 ID（edu-user）；非空时仅统计该院系参考上下文下的考试学期 */
   referenceDepartmentId?: string
-  createUserId?: string | null
 }
 
 /** DISTINCT 学期项 - 对应 ExamDistinctTermItemResponse */

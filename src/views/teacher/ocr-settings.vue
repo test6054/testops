@@ -43,7 +43,6 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useAuthStore } from '@/stores/modules/auth'
-import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
@@ -77,13 +76,15 @@ const {
   examStatusTone,
 } = useExamJourneyContextBar('OCR 识别配置')
 const authStore = useAuthStore()
-const userStore = useUserStore()
 
 /** 同步调试仅平台管理员可用，教师工作台路径不暴露识别试跑入口。 */
 const ocrDebugAllowed = computed(
   () =>
     authStore.userRole === RoleEnum.SUPER_ADMIN || authStore.userRole === RoleEnum.CROP_ADMIN,
 )
+
+/** OCR 渠道健康检查会写入租户配置状态，仅超级管理员可执行。 */
+const ocrHealthCheckAllowed = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
 
 // 仅 PADDLE 渠道相关：展示后端已注册的 PaddleOCR 服务实例列表。
 // 用 watch(currentConfig.providerType) 自动开关加载，无需手动触发。
@@ -251,8 +252,7 @@ async function loadConfig(): Promise<void> {
   loading.value = true
   loadFailed.value = false
   try {
-    const tenantId = userStore.userInfo.tenantId
-    applyConfig(await getCurrentMarkOcrConfig(tenantId))
+    applyConfig(await getCurrentMarkOcrConfig())
   } catch (error) {
     currentConfig.value = null
     loadFailed.value = true
@@ -264,9 +264,9 @@ async function loadConfig(): Promise<void> {
 
 /** 触发当前租户 OCR 渠道健康探活，并刷新只读配置展示。 */
 async function handleHealthCheck(): Promise<void> {
-  const tenantId = userStore.userInfo.tenantId
+  const tenantId = currentConfig.value?.tenantId
   if (!tenantId) {
-    message.error('当前会话缺少租户信息，不能执行 OCR 健康检查')
+    message.error('当前 OCR 配置缺少租户信息，不能执行健康检查')
     return
   }
   healthChecking.value = true
@@ -490,6 +490,7 @@ onBeforeUnmount(() => {
         </template>
         <template #actions>
           <UiButton
+            v-if="ocrHealthCheckAllowed"
             variant="outline"
             size="sm"
             :loading="healthChecking"

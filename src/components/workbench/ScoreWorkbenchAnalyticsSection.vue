@@ -1,0 +1,226 @@
+<template>
+  <section v-if="visible" class="score-workbench-analytics">
+    <div v-if="hasDistribution" class="score-workbench-analytics__grid">
+      <WorkbenchSurfaceCard class="score-workbench-analytics__card">
+        <template #head>
+          <h3 class="score-workbench-analytics__title">成绩分布</h3>
+        </template>
+        <template v-if="participantLabel" #toolbar>
+          <span class="score-workbench-analytics__hint">{{ participantLabel }}</span>
+        </template>
+        <a-skeleton v-if="loading" active :paragraph="{ rows: 4 }" />
+        <MarkBarSection
+          v-else
+          title=""
+          :hint="chartHint"
+          :item-count="histogramBarItems.length"
+          :option="histogramChartOption"
+          height="280px"
+          :aria-label="histogramChartAriaLabel"
+          class="score-workbench-analytics__chart"
+        />
+      </WorkbenchSurfaceCard>
+
+      <WorkbenchSurfaceCard class="score-workbench-analytics__card">
+        <template #head>
+          <h3 class="score-workbench-analytics__title">{{ overviewTitle }}</h3>
+        </template>
+        <a-skeleton v-if="loading" active :paragraph="{ rows: 4 }" />
+        <template v-else>
+          <div class="score-workbench-analytics__stat-grid">
+            <div v-for="item in statItems" :key="item.key" class="stat-card">
+              <div class="stat-card__val" :class="item.valClass">{{ item.value }}</div>
+              <div class="stat-card__label">{{ item.label }}</div>
+            </div>
+          </div>
+          <ScoreAnalyticsStatusFlow :steps="flowSteps" />
+        </template>
+      </WorkbenchSurfaceCard>
+    </div>
+
+    <WorkbenchSurfaceCard v-else flush class="score-workbench-analytics__workflow">
+      <template #head>
+        <h3 class="score-workbench-analytics__title">{{ overviewTitle }}</h3>
+      </template>
+      <a-skeleton v-if="loading" active :paragraph="{ rows: 3 }" />
+      <template v-else-if="overview">
+        <div class="analytics-stats score-workbench-analytics__workflow-stats">
+          <div v-for="item in statItems" :key="item.key" class="analytics-stats__card">
+            <div class="analytics-stats__value" :class="workflowValueClass(item.valClass)">
+              {{ item.value }}
+            </div>
+            <div class="analytics-stats__label">{{ item.label }}</div>
+          </div>
+        </div>
+        <ScoreAnalyticsStatusFlow :steps="flowSteps" />
+      </template>
+    </WorkbenchSurfaceCard>
+  </section>
+</template>
+
+<script lang="ts" setup>
+import type { ArchiveVolumeExamGateVO } from '@/apis/mark/archive-volume'
+import type { WorkbenchScorePanelVO } from '@/apis/mark/exam-progress'
+import type {ScoreWorkbenchAnalyticsMode} from '@/utils/score-workbench-analytics';
+import { computed } from 'vue'
+import MarkBarSection from '@/components/chart/MarkBarSection.vue'
+import ScoreAnalyticsStatusFlow from '@/components/workbench/ScoreAnalyticsStatusFlow.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useChartOption } from '@/hooks/modules/useChartOption'
+import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
+import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
+import { scoreHistogramToBarItems } from '@/utils/mark-statistics-chart'
+import {
+  buildScoreAnalyticsFlowSteps,
+  buildScoreConfirmWorkflowStatItems,
+  buildScoreDistributionStatItems,
+  buildScorePublishWorkflowStatItems,
+  resolveScoreAnalyticsOverviewTitle
+  
+} from '@/utils/score-workbench-analytics'
+
+defineOptions({ name: 'ScoreWorkbenchAnalyticsSection' })
+
+const props = withDefaults(
+  defineProps<{
+    panel: WorkbenchScorePanelVO | null
+    loading?: boolean
+    mode?: ScoreWorkbenchAnalyticsMode
+    publishableCount?: number
+    gate?: ArchiveVolumeExamGateVO | null
+  }>(),
+  {
+    loading: false,
+    mode: 'confirm',
+    publishableCount: 0,
+    gate: null,
+  },
+)
+
+const visible = computed(() => props.panel != null)
+const overview = computed(() => props.panel?.riskOverview ?? null)
+const hasDistribution = computed(() => Boolean(props.panel?.distributionAvailable))
+
+const overviewTitle = computed(() =>
+  resolveScoreAnalyticsOverviewTitle(hasDistribution.value, props.mode),
+)
+
+const statItems = computed(() => {
+  const panel = props.panel
+  const riskOverview = overview.value
+  if (!panel || !riskOverview) {
+    return []
+  }
+  if (hasDistribution.value) {
+    return buildScoreDistributionStatItems(panel, props.mode, props.publishableCount)
+  }
+  if (props.mode === 'publish') {
+    return buildScorePublishWorkflowStatItems(riskOverview, props.publishableCount, props.gate)
+  }
+  return buildScoreConfirmWorkflowStatItems(riskOverview)
+})
+
+const flowSteps = computed(() => {
+  const riskOverview = overview.value
+  if (!riskOverview) {
+    return []
+  }
+  return buildScoreAnalyticsFlowSteps(riskOverview, props.mode, props.publishableCount)
+})
+
+const histogramBarItems = computed(() => {
+  const panel = props.panel
+  if (!panel?.ranges?.length || !panel.counts?.length) {
+    return []
+  }
+  return scoreHistogramToBarItems(
+    { ranges: panel.ranges, counts: panel.counts },
+    { includeZeroBuckets: true },
+  )
+})
+
+const chartHint = computed(() => {
+  const panel = props.panel
+  if (!panel?.participantCount) {
+    return mergeChartHint(undefined, buildBarChartInsight(histogramBarItems.value, { valueUnit: ' 人' }))
+  }
+  const passRate = panel.passRate != null ? `${panel.passRate}%` : '—'
+  return `${panel.participantCount} 人参考，及格率 ${passRate}`
+})
+
+const { chartOption: histogramChartOption } = useChartOption(() =>
+  buildCategoryBarChartOption(histogramBarItems.value, {
+    orientation: 'vertical',
+    yAxisName: '人数',
+    emptyText: '暂无分数段数据',
+    innerCountLabel: true,
+  }),
+)
+
+const histogramChartAriaLabel = computed(() => {
+  const count = histogramBarItems.value.length
+  if (count <= 0) {
+    return '成绩分布，暂无数据'
+  }
+  return `成绩分布，共 ${count} 个分数段`
+})
+
+const participantLabel = computed(() => {
+  const count = props.panel?.participantCount
+  return count != null && count > 0 ? `${count} 人参考` : ''
+})
+
+function workflowValueClass(valClass?: string): string | undefined {
+  if (valClass === 'stat-card__val--ok') {
+    return 'analytics-stats__value--green'
+  }
+  if (valClass === 'stat-card__val--warn') {
+    return 'analytics-stats__value--warn'
+  }
+  return undefined
+}
+</script>
+
+<style lang="scss" scoped>
+.score-workbench-analytics {
+  margin-top: var(--dp-space-3, 12px);
+
+  &__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--dp-space-4, 16px);
+
+    @media (min-width: 992px) {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  &__title {
+    margin: 0;
+    font-size: var(--dp-type-body-size, 14px);
+    font-weight: var(--dp-font-weight-title, 600);
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__hint {
+    font-size: var(--dp-type-hint-size, 12px);
+    color: var(--dp-text-muted, #64748b);
+  }
+
+  &__chart {
+    width: 100%;
+  }
+
+  &__stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--dp-space-3, 12px);
+  }
+
+  &__workflow-stats {
+    margin-bottom: var(--dp-space-4, 16px);
+  }
+}
+</style>
+
+

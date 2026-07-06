@@ -128,14 +128,15 @@ function evaluationModeLabel(mode: PortfolioEvaluationModeCode): string {
   return strictEnumLabel(PortfolioEvaluationModeDescription, mode, '多元评价模式')
 }
 
-function summaryRowKey(record: PortfolioEvaluationEntrySummaryItemVO): string {
-  if (record.indicatorCode) {
-    return record.indicatorCode
+function summaryRowKey(record: unknown): string {
+  const row = record as PortfolioEvaluationEntrySummaryItemVO
+  if (row.indicatorCode) {
+    return row.indicatorCode
   }
-  if (record.subjectTeacherUserId) {
-    return record.subjectTeacherUserId
+  if (row.subjectTeacherUserId) {
+    return row.subjectTeacherUserId
   }
-  return `${record.entryCount}-${record.averageScore}`
+  return `${row.entryCount}-${row.averageScore}`
 }
 
 function subjectTeacherLabel(teacherUserId: string): string {

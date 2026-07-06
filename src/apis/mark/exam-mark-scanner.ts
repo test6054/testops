@@ -428,7 +428,6 @@ export interface MarkExamPageQueryRequest extends QueryDto {
   teachingAcademicYear?: string
   /** 开课学期；用于跨考试分析按课程实际开课周期过滤 */
   teachingSemester?: SemesterCode
-  createUserId?: string | null
   keyword?: string
 }
 

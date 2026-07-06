@@ -202,7 +202,12 @@
             </template>
             <template v-else-if="column.key === 'session'">
               <a-space direction="vertical" :size="2">
-                <UiTag tone="green" size="sm">{{ tasks[index].sessionStatusMessage }}</UiTag>
+                <UiTag
+                  :tone="tasks[index].markingPhase === 'TRIAL' ? 'orange' : 'green'"
+                  size="sm"
+                >
+                  {{ tasks[index].sessionStatusMessage }}
+                </UiTag>
                 <span class="muted">{{ formatDateTime(tasks[index].sessionStartTime) }}</span>
               </a-space>
             </template>
@@ -622,7 +627,6 @@ async function loadTasks(options?: { silent?: boolean }): Promise<void> {
   try {
     const request: MarkingTaskQueryRequest = {
       examId: selectedExamId.value,
-      reviewerUserId: currentUserId.value,
       groupId: filterForm.groupId?.trim() || undefined,
       sessionId: filterForm.sessionId?.trim() || undefined,
       taskStatus: filterForm.taskStatus,

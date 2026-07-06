@@ -79,8 +79,10 @@ export interface DownloadFileRequestDTO {
 /** 预览文件请求DTO */
 export interface PreviewFileRequestDTO {
   nodeId: string
-  tenantId: string
-  userId: string
+  /** 后端从当前登录态注入租户 */
+  tenantId?: string
+  /** 后端从当前登录态注入用户 */
+  userId?: string
 }
 
 /** 旧版 Office 转 OOXML 预览请求 - 对应 edu-cad /api/cad/office/convert-legacy-office */

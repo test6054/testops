@@ -364,8 +364,9 @@ async function submitPlan(id: string) {
   }
 }
 
-function orgStatRowKey(record: PortfolioDevelopmentPlanOrgStatVO): string {
-  return `${record.portfolioOrgId ?? 'none'}-${record.planStatus}`
+function orgStatRowKey(record: unknown): string {
+  const row = record as PortfolioDevelopmentPlanOrgStatVO
+  return `${row.portfolioOrgId ?? 'none'}-${row.planStatus}`
 }
 
 async function exportPlans() {

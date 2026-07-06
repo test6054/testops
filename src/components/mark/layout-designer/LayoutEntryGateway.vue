@@ -8,6 +8,7 @@ import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { ExamLayoutEntryKindCode } from '@/types/enums/exam-layout-entry-kind-enum'
 import {
   ALL_EXAM_LAYOUT_PAPER_SPEC_CODES,
@@ -46,6 +47,7 @@ const printSafeMarginMm = ref(props.document?.printSafeMarginMm ?? 5)
 
 const isAnswerSheetMode = computed(() => props.materialLayoutMode === 'ANSWER_SHEET')
 const isFullPaperMode = computed(() => props.materialLayoutMode === 'FULL_PAPER')
+const entryReadonly = computed(() => props.readonly || !props.materialLayoutMode)
 
 const materialLayoutModeLabel = computed(() => {
   if (props.materialLayoutModeMessage) {
@@ -198,7 +200,16 @@ function onSourcePdfChange(fileId: string | undefined): void {
         />
       </a-form-item>
 
-      <template v-if="isFullPaperMode || !materialLayoutMode">
+      <UiAlertStrip
+        v-if="!materialLayoutMode"
+        tone="warning"
+        title="制卷形态未保存"
+        description="请先回到考试准备页保存答卷页模式或整卷模式，再进入制卷设计。"
+        dense
+        :closable="false"
+      />
+
+      <template v-if="isFullPaperMode">
         <a-divider />
         <h3 class="layout-entry-gateway__section">整卷试卷 · 上传 PDF</h3>
         <p class="layout-entry-gateway__hint">
@@ -210,6 +221,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
             v-model:file-name="sourcePdfFileName"
             :scene-key="FileUploadSceneKey.MARK_EXAM_TEMPLATE"
             accept=".pdf,application/pdf"
+            :disabled="entryReadonly"
             button-text="上传整卷 PDF"
             tip="上传后自动解析页尺寸与纸型"
             @update:file-node-id="onSourcePdfChange"
@@ -219,25 +231,25 @@ function onSourcePdfChange(fileId: string | undefined): void {
           block
           variant="primary"
           :loading="detecting"
-          :disabled="readonly"
+          :disabled="entryReadonly"
           @click="handleAutoDetect"
         >
           自动预划区
         </UiButton>
       </template>
 
-      <template v-if="isAnswerSheetMode || !materialLayoutMode">
+      <template v-if="isAnswerSheetMode">
         <a-divider />
         <h3 class="layout-entry-gateway__section">纸型规格（答题卡）</h3>
         <a-form-item label="纸型">
-          <a-select v-model:value="paperSpec" :options="paperSpecOptions" />
+          <a-select v-model:value="paperSpec" :options="paperSpecOptions" :disabled="entryReadonly" />
         </a-form-item>
         <p class="layout-entry-gateway__hint">{{ paperSpecHint }}</p>
         <UiButton
           block
           variant="primary"
           :loading="generating"
-          :disabled="readonly"
+          :disabled="entryReadonly"
           @click="handleGenerateSheet"
         >
           生成标准答题卡

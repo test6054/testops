@@ -654,6 +654,18 @@ async function ensureNoPendingAbsenceBeforePublish(): Promise<boolean> {
     goToAbsenceConfirm()
     return false
   }
+  const overview = finalScoreOverview.value
+  if (overview && overview.unreconciledAbsenceCount > 0) {
+    message.warning(
+      `仍有 ${overview.unreconciledAbsenceCount} 名应考学生未完成缺考核对，请先完成缺考 reconcile 后再发布`,
+    )
+    goToAbsenceConfirm()
+    return false
+  }
+  if (overview && !overview.readyToPublish && overview.blockedCount > 0) {
+    message.warning(`仍有 ${overview.blockedCount} 项成绩风险未处置，请先完成确认或风险复核后再发布`)
+    return false
+  }
   return true
 }
 
@@ -701,7 +713,12 @@ function bulkModalValueClass(valClass?: string): string | undefined {
   return undefined
 }
 
-const canBulkPublish = computed(() => Boolean(selectedExamId.value) && publishableOverviewCount.value > 0)
+const canBulkPublish = computed(() =>
+  Boolean(selectedExamId.value)
+  && publishableOverviewCount.value > 0
+  && finalScoreOverview.value?.readyToPublish === true
+  && (finalScoreOverview.value?.blockedCount ?? 0) === 0,
+)
 
 const bulkOpen = ref(false)
 const bulkRunning = ref(false)
@@ -786,6 +803,10 @@ const publishSignalMetrics = computed(() =>
 // ─── 状态机按钮 ─────────────────────────────
 function canPublish(record: ExamScoreSummaryItemVO): boolean {
   if (!record.paperInstanceId) return false
+  const overview = finalScoreOverview.value
+  if (overview && (!overview.readyToPublish || overview.blockedCount > 0)) {
+    return false
+  }
   const s = record.finalScoreStatus
   return s === 'CONFIRMED' || s === 'WITHDRAWN' || s === 'CORRECTED'
 }

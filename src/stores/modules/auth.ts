@@ -1,7 +1,7 @@
 import type { LocationQuery } from 'vue-router'
 import type {
   LoginRequest,
-  LoginResponse,
+  LoginSuccessResponse,
   PhoneLoginRequest,
   StudentLoginRequest,
 } from '@/apis/auth'
@@ -459,7 +459,7 @@ export const useAuthStore = defineStore(
       }
     }
 
-    const applyLoginUserData = (res: LoginResponse['data']) => {
+    const applyLoginUserData = (res: LoginSuccessResponse) => {
       if (!res.userInfo) return
 
       const userData = res.userInfo

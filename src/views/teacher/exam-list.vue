@@ -481,7 +481,7 @@ const userStore = useUserStore()
  * 租户管理员（SCH_TECH + isTenantAdmin）在阅卷链路上与普通教师一致，
  * 仅可见自己创建 + 被分配评阅的考试。这是用户口径下的"禁止越权"硬约束。</p>
  *
- * <p>后端 listExamPage 切面已强制按角色注入 createUserId，前端传值在教师视角下被忽略；
+ * <p>后端 listExamPage 已按角色注入创建人 / 评阅人可见性；
  * 这个 computed 仅用于 UI 显隐（创建人列、教师下钻控件、KPI 文案）。</p>
  */
 const isAdminView = computed(() => {
@@ -1014,7 +1014,6 @@ function buildScopeCountQuery(): ExamPageQueryRequest {
     keyword: filterForm.keyword?.trim() || undefined,
     startTime: startTime || undefined,
     endTime: endTime || undefined,
-    createUserId: isAdminView.value ? null : userStore.userInfo.userId || undefined,
   }
 }
 
@@ -1037,7 +1036,6 @@ function buildWorkbenchQuery(
     keyword: filterForm.keyword?.trim() || undefined,
     startTime: startTime || undefined,
     endTime: endTime || undefined,
-    createUserId: isAdminView.value ? null : userStore.userInfo.userId || undefined,
   }
 }
 

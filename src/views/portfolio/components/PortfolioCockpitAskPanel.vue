@@ -53,12 +53,14 @@ const teacherRows = computed<PortfolioCockpitAskTeacherRow[]>(
   () => askPayload.value?.teacherRows ?? [],
 )
 
-function teacherRowKey(record: PortfolioCockpitAskTeacherRow): string {
-  return record.teacherUserId ?? record.teacherNumber ?? record.nickName ?? ''
+function teacherRowKey(record: unknown): string {
+  const row = record as PortfolioCockpitAskTeacherRow
+  return row.teacherUserId ?? row.teacherNumber ?? row.nickName ?? ''
 }
 
-function historyRowKey(record: PortfolioAiAnalysisSummaryVO): string {
-  return record.aiTaskId ?? record.id
+function historyRowKey(record: unknown): string {
+  const row = record as PortfolioAiAnalysisSummaryVO
+  return row.aiTaskId ?? row.id
 }
 
 const refusalReason = computed(() => askPayload.value?.queryPlan?.refusalReason ?? '')

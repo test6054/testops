@@ -65,7 +65,6 @@ import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContex
 import { useWholePaperGallery } from '@/composables/useWholePaperGallery'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useTenantStore } from '@/stores/modules/tenant'
-import { useUserStore } from '@/stores/modules/user'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages } from '@/utils/page-result'
@@ -109,7 +108,6 @@ export function useMarkingTaskDetailState() {
   const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
   const tenantStore = useTenantStore()
   const markTaskStore = useMarkTaskStore()
-  const userStore = useUserStore()
   const { tasks: batchTasks } = storeToRefs(markTaskStore)
   const { latestWithdrawable, recentList, canWithdrawEntry, withdrawEntry, withdrawLatest }
     = useMarkingRecentSubmit()
@@ -272,7 +270,6 @@ export function useMarkingTaskDetailState() {
           void markTaskStore.loadTasks(
             {
               examId: task.value.examId,
-              reviewerUserId: navigationBatchReviewerId(),
             },
             { silent: true },
           )
@@ -286,10 +283,6 @@ export function useMarkingTaskDetailState() {
       }
     },
   })
-
-  function navigationBatchReviewerId(): string {
-    return userStore.userInfo.userId ?? task.value?.reviewerUserId ?? ''
-  }
 
   async function handleWithdrawLatest(): Promise<void> {
     await withdrawLatest((withdrawnTask) => {

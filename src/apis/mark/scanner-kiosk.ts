@@ -17,7 +17,6 @@ import type {
   ScanBatchStatusCode,
 } from '@/apis/mark/exam-scan'
 import type { GradeStatusCode } from '@/apis/mark/grade-status'
-import type { MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
 import type { PortfolioCollectModeCode, ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import type { TaskStatusCode } from '@/apis/mark/task-status'
@@ -109,11 +108,6 @@ export interface ExamScannerCapabilitiesVO {
   scannerConnected?: boolean
 }
 
-/** 工作台上下文携带的租户 OCR 渠道快照，用于默认 providerChain 解析 */
-export interface ExamScannerKioskOcrConfigVO {
-  providerType?: MarkOcrProviderTypeCode
-}
-
 export interface ExamScannerScanConfigOptionsVO {
   minScanDpi: number
   maxScanDpi: number
@@ -202,8 +196,6 @@ export interface ExamScannerKioskContextVO {
   examBindingRequired?: boolean
   /** 本工位可补扫的已绑定试卷（仅 SUPPLEMENT） */
   supplementBoundPapers?: ExamScannerBoundPaperItemVO[]
-  /** 租户 OCR 渠道快照；试卷直扫时用于默认 providerChain */
-  ocrConfig?: ExamScannerKioskOcrConfigVO
 }
 
 export interface ExamScannerKioskTaskContractVO {
@@ -670,10 +662,6 @@ export interface ScannerKioskArchiveVolumeItemVO {
 
 export interface ScannerKioskArchiveVolumePageRequest extends QueryDto {
   keyword?: string
-  /** Service 按扫描员职责注入的校区范围，页面不主动传值 */
-  campusIds?: string[]
-  /** Service 按扫描员职责注入的院系范围，页面不主动传值 */
-  departmentIds?: string[]
 }
 
 export interface ScannerKioskPortfolioGapTaskPageRequest extends QueryDto {

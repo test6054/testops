@@ -332,8 +332,8 @@
                   左侧为 OCR 自动裁切身份区，右侧为原始扫描页，用于人工核对姓名、学号与卷面来源
                 </p>
               </div>
-              <UiTag :tone="bindIdentitySliceFileId && bindSourcePageFileId ? 'blue' : 'orange'" size="sm">
-                {{ bindIdentitySliceFileId && bindSourcePageFileId ? '双证据' : '证据缺失' }}
+              <UiTag :tone="bindEvidenceTagTone" size="sm">
+                {{ bindEvidenceTagLabel }}
               </UiTag>
             </div>
             <div class="scan-monitor__identity-compare">
@@ -1134,6 +1134,7 @@ async function loadScanOverview(examId: string): Promise<void> {
   scanMonitorPanelLoadFailed.value = false
   try {
     scanMonitorPanel.value = await getScanMonitorPanel(examId)
+    await loadAttentionCounters()
   } catch (error) {
     scanMonitorPanel.value = null
     scanMonitorPanelLoadFailed.value = true
@@ -1232,12 +1233,12 @@ const statPanelMetrics = computed<SignalMetric[]>(() => {
     {
       key: 'attention',
       label: '扫描异常',
-      value: panel.attentionCount,
+      value: abnormalAttentionTotal.value,
       unit: '条',
-      tone: panel.attentionCount > 0 ? 'orange' : 'green',
-      clickable: panel.attentionCount > 0,
+      tone: abnormalAttentionTotal.value > 0 ? 'orange' : 'green',
+      clickable: abnormalAttentionTotal.value > 0,
       active: activeTab.value === 'abnormal' && !filterForm.attentionType,
-      helper: panel.attentionCount > 0 ? '打开异常 tab' : undefined,
+      helper: abnormalAttentionTotal.value > 0 ? '打开异常 tab' : undefined,
     },
     {
       key: 'orphan-event',
@@ -1769,18 +1770,40 @@ const bindSourcePageImageUrl = ref('')
 const bindSourcePageLoading = ref(false)
 const bindSourcePageLoadFailed = ref(false)
 
+/**
+ * 证据门禁：有身份切片时必须完成切片+原页可见复核；仅有原页（二维码/条码冲突）时校验原页；
+ * 无任何影像证据时允许依名册人工确认绑定（后端可保留 null identitySliceFileId）。
+ */
 const bindIdentityEvidenceBlockReason = computed(() => {
   if (!bindDrawerOpen.value) return ''
-  if (!bindIdentitySliceFileId.value) return '当前异常没有身份切片文件，不能提交身份绑定；请先回到扫描识别链路补齐身份区证据。'
-  if (bindIdentitySliceLoading.value) return '手写身份切片仍在加载，确认可见后才能提交身份绑定。'
-  if (bindIdentitySliceLoadFailed.value) return '手写身份切片加载失败，请刷新影像后重试身份绑定。'
-  if (!bindIdentitySliceImageUrl.value) return '手写身份切片尚未显示，不能提交身份绑定。'
-  if (!bindSourcePageFileId.value) return '当前异常缺少原始扫描页文件引用，请检查扫描页登记链路后再绑定。'
-  if (bindSourcePageLoading.value) return '原始扫描页仍在加载，确认可见后才能提交身份绑定。'
-  if (bindSourcePageLoadFailed.value) return '原始扫描页加载失败，请刷新影像后重试身份绑定。'
-  if (!bindSourcePageImageUrl.value) return '原始扫描页尚未显示，不能提交身份绑定。'
+  if (bindIdentitySliceFileId.value) {
+    if (bindIdentitySliceLoading.value) return '手写身份切片仍在加载，确认可见后才能提交身份绑定。'
+    if (bindIdentitySliceLoadFailed.value) return '手写身份切片加载失败，请刷新影像后重试身份绑定。'
+    if (!bindIdentitySliceImageUrl.value) return '手写身份切片尚未显示，不能提交身份绑定。'
+    if (!bindSourcePageFileId.value) return '当前异常缺少原始扫描页文件引用，请检查扫描页登记链路后再绑定。'
+    if (bindSourcePageLoading.value) return '原始扫描页仍在加载，确认可见后才能提交身份绑定。'
+    if (bindSourcePageLoadFailed.value) return '原始扫描页加载失败，请刷新影像后重试身份绑定。'
+    if (!bindSourcePageImageUrl.value) return '原始扫描页尚未显示，不能提交身份绑定。'
+    return ''
+  }
+  if (bindSourcePageFileId.value) {
+    if (bindSourcePageLoading.value) return '原始扫描页仍在加载，确认可见后才能提交身份绑定。'
+    if (bindSourcePageLoadFailed.value) return '原始扫描页加载失败，请刷新影像后重试身份绑定。'
+    if (!bindSourcePageImageUrl.value) return '原始扫描页尚未显示，不能提交身份绑定。'
+  }
   return ''
 })
+
+const bindEvidenceTagLabel = computed(() => {
+  if (bindIdentitySliceFileId.value && bindSourcePageFileId.value) return '双证据'
+  if (bindIdentitySliceFileId.value) return '切片证据'
+  if (bindSourcePageFileId.value) return '原页证据'
+  return '名册人工确认'
+})
+
+const bindEvidenceTagTone = computed(() =>
+  bindIdentitySliceFileId.value || bindSourcePageFileId.value ? 'blue' : 'orange',
+)
 
 const candidateOptions = computed(() =>
   candidates.value.map((item) => ({
@@ -1901,7 +1924,7 @@ function openBindDrawer(record: ScanAttentionItemVO): void {
     return
   }
   bindForm.scanBatchId = record.scanBatchId
-  bindForm.scanBatchDisplayName = record.scanBatchDisplayName
+  bindForm.scanBatchDisplayName = record.scanBatchDisplayName ?? ''
   bindForm.paperInstanceId = record.paperInstanceId
   bindForm.paperDisplayName = record.paperDisplay.primaryText
   bindForm.recognizedStudentNo = record.studentNo?.trim() || ''
@@ -1934,7 +1957,8 @@ async function handleBind(): Promise<void> {
     message.error('答卷状态只能选择普通答卷、补考答卷或重考答卷')
     return
   }
-  const candidateBlockReason = candidateBindingBlockReason(bindForm.confirmedCandidateRosterId)
+  const confirmedCandidateRosterId = bindForm.confirmedCandidateRosterId ?? ''
+  const candidateBlockReason = candidateBindingBlockReason(confirmedCandidateRosterId)
   if (candidateBlockReason) {
     message.error(candidateBlockReason)
     return
@@ -1946,7 +1970,7 @@ async function handleBind(): Promise<void> {
       scanBatchId: bindForm.scanBatchId,
       paperInstanceId: bindForm.paperInstanceId,
       recognizedStudentNo: bindForm.recognizedStudentNo?.trim() || undefined,
-      confirmedCandidateRosterId: bindForm.confirmedCandidateRosterId,
+      confirmedCandidateRosterId,
       attemptStatus: validAttemptStatus,
       attemptNo: bindForm.attemptNo?.trim() || undefined,
     })

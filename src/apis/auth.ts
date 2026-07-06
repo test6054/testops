@@ -155,46 +155,48 @@ export interface LoginResponse {
   /** 提示信息 */
   msg: string
   /** 返回数据 - 与后端LoginSuccessHandler的responseData完全一致 */
-  data: {
-    /** 访问令牌 */
-    accessToken: string
-    /** 刷新令牌 */
-    refreshToken?: string
-    /** 令牌过期时间（秒） */
-    expiresIn?: number
-    /** 用户信息 */
-    userInfo: UserLoginResponseDto
-    /** 租户信息 */
-    tenantInfo: {
-      id: string
-      tenantName: string
-      logoUrl?: string
-    }
-    /** 是否强制修改密码 */
-    forcePasswordChange?: boolean
-  }
+  data: LoginSuccessResponse
 }
 
+/** 登录成功响应数据 - 与后端 LoginSuccessHandler.responseData 完全一致 */
+export interface LoginSuccessResponse {
+  /** 访问令牌 */
+  accessToken: string
+  /** 刷新令牌 */
+  refreshToken?: string
+  /** 令牌过期时间（秒） */
+  expiresIn?: number
+  /** 用户信息 */
+  userInfo: UserLoginResponseDto
+  /** 租户信息 */
+  tenantInfo: {
+    id: string
+    tenantName: string
+    logoUrl?: string
+  }
+  /** 是否强制修改密码 */
+  forcePasswordChange?: boolean
+}
 
 /**
  * 密码登录 - 对接后端 POST /api/login
  */
-export function passwordLogin(data: LoginRequest): Promise<LoginResponse['data']> {
-  return http.post<LoginResponse['data']>('/api/login', data)
+export function passwordLogin(data: LoginRequest): Promise<LoginSuccessResponse> {
+  return http.post<LoginSuccessResponse>('/api/login', data)
 }
 
 /**
  * 手机号登录 - 对接后端 POST /api/login
  */
-export function phoneLogin(data: PhoneLoginRequest): Promise<LoginResponse['data']> {
-  return http.post<LoginResponse['data']>('/api/login', data)
+export function phoneLogin(data: PhoneLoginRequest): Promise<LoginSuccessResponse> {
+  return http.post<LoginSuccessResponse>('/api/login', data)
 }
 
 /**
  * 学号登录 - 对接后端 POST /api/login
  */
-export function studentLogin(data: StudentLoginRequest): Promise<LoginResponse['data']> {
-  return http.post<LoginResponse['data']>('/api/login', data)
+export function studentLogin(data: StudentLoginRequest): Promise<LoginSuccessResponse> {
+  return http.post<LoginSuccessResponse>('/api/login', data)
 }
 
 /**

@@ -61,6 +61,7 @@
       <CorrectionsCard
         v-else-if="activeTab === 'corrections'"
         :exam-id="currentExamId"
+        :score-policy="selectedExam?.scorePolicy"
         :reload-token="correctionReloadToken"
         @created="onCorrectionCreated"
       />
@@ -68,6 +69,7 @@
       <BatchCorrectionPlansCard
         v-else
         :exam-id="currentExamId"
+        :score-policy="selectedExam?.scorePolicy"
         :reload-token="batchReloadToken"
         @changed="onAppealFlowChanged"
       />
@@ -109,7 +111,7 @@ defineOptions({ name: 'TeacherAppealHandle' })
 
 type AppealTabKey = 'policy' | 'requests' | 'corrections' | 'batch'
 
-const { selectedExamId } = useMarkExamContext()
+const { selectedExamId, selectedExam } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
 const {
   contextBarTitle,
