@@ -108,6 +108,14 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       keepAlive: true,
       hasWorkbenchShell: true,
     }),
+    workspaceChild('scan/manual-entry', 'TeacherExamWorkspaceScanManualEntry', () => import('@/views/teacher/scan-manual-entry.vue'), {
+      title: '手动补录',
+      markStageKey: 'SCAN',
+      journeyKey: 'scan',
+      workspacePhase: 'scan',
+      keepAlive: false,
+      hasWorkbenchShell: true,
+    }),
     workspaceChild('scan/monitor', 'TeacherExamWorkspaceScanMonitor', () => import('@/views/teacher/scan-live-monitor.vue'), {
       title: '扫描监控',
       markStageKey: 'SCAN',

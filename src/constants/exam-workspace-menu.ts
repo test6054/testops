@@ -78,6 +78,12 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
         markStageKey: 'SCAN',
       },
       {
+        key: 'scan-manual-entry',
+        label: '手动补录',
+        routeName: 'TeacherExamWorkspaceScanManualEntry',
+        markStageKey: 'SCAN',
+      },
+      {
         key: 'scan-monitor',
         label: '扫描监控',
         routeName: 'TeacherExamWorkspaceScanMonitor',
