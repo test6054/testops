@@ -31,7 +31,6 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -197,7 +196,7 @@ async function loadPage() {
       teacherSource: teacherSourceFilter.value.trim() || undefined,
       contractStatus: contractStatusFilter.value.trim() || undefined,
     })
-    rows.value = readPageList(page, '加载外聘教师失败')
+    rows.value = page.list
   } catch (error) {
     showUserError(error)
   } finally {
@@ -220,7 +219,7 @@ async function loadImportBatches() {
   batchLoading.value = true
   try {
     const page = await portfolioExternalTeacherApi.importBatchPage({ pageNum: 1, pageSize: 50 })
-    batchRows.value = readPageList(page, '加载导入批次失败')
+    batchRows.value = page.list
   } catch (error) {
     showUserError(error)
   } finally {

@@ -304,7 +304,6 @@ import { useNotificationStore } from '@/stores/modules/notification'
 import { NotificationTypeEnum } from '@/types/enums/notification-type'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 
 defineOptions({ name: 'UserMessage' })
 
@@ -414,10 +413,10 @@ async function loadMessages(page = messagePageState.pageNum) {
       pageNum: page,
       pageSize: messagePageState.pageSize,
     })
-    messages.value = readPageList(result, '消息列表加载失败，请稍后重试')
+    messages.value = result.list
     messagePageState.pageNum = result.pageNum
     messagePageState.pageSize = result.pageSize
-    messagePageState.total = readPageTotal(result, '消息列表加载失败，请稍后重试')
+    messagePageState.total = Number(result.total)
   } catch (error) {
     showUserError(error, '站内信加载失败')
   } finally {
@@ -458,10 +457,10 @@ async function loadAnnouncements(page = announcementPageState.pageNum) {
       pageNum: page,
       pageSize: announcementPageState.pageSize,
     })
-    announcements.value = readPageList(result, '公告列表加载失败，请稍后重试')
+    announcements.value = result.list
     announcementPageState.pageNum = result.pageNum
     announcementPageState.pageSize = result.pageSize
-    announcementPageState.total = readPageTotal(result, '公告列表加载失败，请稍后重试')
+    announcementPageState.total = Number(result.total)
   } catch (error) {
     showUserError(error, '系统公告加载失败')
   } finally {

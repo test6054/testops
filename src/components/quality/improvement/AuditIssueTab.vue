@@ -51,7 +51,7 @@ import {
 } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
-import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AuditIssueTab' })
@@ -253,10 +253,10 @@ async function loadList(options?: { refreshSignals?: boolean }) {
       keyword: issueQuery.keyword?.trim() || undefined,
     })
     assertQualityScopeFresh(scope)
-    issueList.value = readPageList(page, '审核评估问题加载失败，请稍后重试')
+    issueList.value = page.list
     issueQuery.pageNum = page.pageNum
     issueQuery.pageSize = page.pageSize
-    issueTotal.value = readPageTotal(page, '审核评估问题加载失败，请稍后重试')
+    issueTotal.value = Number(page.total)
     if (issueList.value.length === 0 && issueTotal.value > 0 && issueQuery.pageNum > 1) {
       issueQuery.pageNum -= 1
       await loadList(options)

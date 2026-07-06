@@ -24,7 +24,6 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const route = useRoute()
@@ -122,7 +121,7 @@ async function loadPage() {
       pageNum: 1,
       pageSize: 1,
     })
-    const draft = readPageList(draftPage, '加载草稿记录失败')[0]
+    const draft = draftPage.list[0]
     if (draft) {
       await applyRecordDetail(draft.id)
       return
@@ -134,7 +133,7 @@ async function loadPage() {
       pageNum: 1,
       pageSize: 1,
     })
-    const returned = readPageList(returnedPage, '加载退回记录失败')[0]
+    const returned = returnedPage.list[0]
     if (returned) {
       await applyRecordDetail(returned.id)
     }

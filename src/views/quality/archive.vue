@@ -54,7 +54,6 @@ import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function archiveBusinessTypeLabel(value: ArchiveBusinessTypeCode): string {
@@ -219,7 +218,7 @@ async function loadProgramExportReadiness(trainingPlanId: string) {
   }
   exportReadinessLoading.value = true
   try {
-    const cockpit = await accreditationApi.cockpit(trainingPlanId.trim())
+    const cockpit = await accreditationApi.cockpit({ trainingPlanId: trainingPlanId.trim() })
     exportCockpit.value = cockpit
     exportActiveCycle.value = cockpit.activeCycle
     const programId = qualityStore.currentProgramId
@@ -233,7 +232,7 @@ async function loadProgramExportReadiness(trainingPlanId: string) {
       pageNum: 1,
       pageSize: 1,
     })
-    exportEvidenceCount.value = readPageTotal(evidencePage, '认证证据数量加载失败，请刷新后重试')
+    exportEvidenceCount.value = Number(evidencePage.total)
   } catch (error) {
     exportCockpit.value = undefined
     exportActiveCycle.value = undefined
@@ -276,10 +275,10 @@ async function loadList() {
       archiveCategory: query.archiveCategory?.trim() || undefined,
       keyword: query.keyword?.trim() || undefined,
     })
-    list.value = readPageList(page, '质量归档材料加载失败，请稍后重试')
+    list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = readPageTotal(page, '质量归档材料加载失败，请稍后重试')
+    total.value = Number(page.total)
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()
@@ -582,7 +581,7 @@ async function openAuditDrawer(record: ArchiveVO) {
       category: 'QUALITY',
       bizId: record.id,
     })
-    auditEvents.value = readPageList(page, '归档审计记录加载失败，请稍后重试').map((log) => {
+    auditEvents.value = page.list.map((log) => {
       return {
         id: log.id,
         operatorName: log.userDto.nickName,

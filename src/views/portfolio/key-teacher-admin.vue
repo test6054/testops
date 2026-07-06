@@ -21,7 +21,6 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
 const REGISTRY_TABS = PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_OPTIONS.map((item) => ({
@@ -63,7 +62,7 @@ async function loadPage() {
       pageSize: 50,
       registryType: activeType.value,
     })
-    rows.value = readPageList(page, '加载骨干带头人登记失败')
+    rows.value = page.list
     await hydrateTeacherLabels(rows.value.map((row) => row.teacherUserId ?? ''))
   } catch (error) {
     showUserError(error)

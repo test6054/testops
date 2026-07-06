@@ -47,7 +47,9 @@ export function buildScoreFinalizeSignalMetrics(
   const confirmed = overview?.confirmedCount ?? 0
   const published = overview?.publishedCount ?? 0
   const blocked = overview?.blockedCount ?? 0
-  return [
+  const pendingDelayed = panel?.pendingDelayedFinalScoreConfirmCount ?? 0
+  const delayedMinutes = panel?.delayedFinalScoreConfirmMinutes
+  const metrics: SignalMetric[] = [
     { key: 'total', label: '全场考生', value: total, unit: '人', tone: 'blue' },
     {
       key: 'pending',
@@ -85,6 +87,17 @@ export function buildScoreFinalizeSignalMetrics(
       tone: blocked > 0 ? 'red' : 'gray',
     },
   ]
+  if (panel?.manualFinalScoreConfirmRequired === false && pendingDelayed > 0 && delayedMinutes != null) {
+    metrics.push({
+      key: 'delayedConfirm',
+      label: '延迟自动确认',
+      value: pendingDelayed,
+      unit: '份',
+      tone: 'blue',
+      helper: `${delayedMinutes} 分钟窗口`,
+    })
+  }
+  return metrics
 }
 
 /** 成绩发布页 Signal：有分布时展示统计 KPI + 已发布；否则展示发布流程计数。 */

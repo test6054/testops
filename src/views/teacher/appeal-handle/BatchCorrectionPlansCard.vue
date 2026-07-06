@@ -290,7 +290,7 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { ExamScorePolicyCode } from '@/types/enums/exam-score-policy-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'BatchCorrectionPlansCard' })
@@ -493,8 +493,8 @@ async function reload(): Promise<void> {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
-    rows.value = readPageList(result, '批量成绩更正计划加载失败')
-    pagination.total = readPageTotal(result, '批量成绩更正计划加载失败')
+    rows.value = result.list
+    pagination.total = Number(result.total)
     pagination.current = result.pageNum ?? pagination.current
     pagination.pageSize = result.pageSize ?? pagination.pageSize
   } catch (e) {

@@ -32,6 +32,8 @@ const {
   sessionPausedAlert,
   withdrawToastVisible,
   latestWithdrawable,
+  withdrawWindowLabel,
+  withdrawConfirmHint,
   recentList,
   canWithdrawEntry,
   handleWithdrawLatest,
@@ -145,7 +147,7 @@ const {
       v-if="withdrawToastVisible && latestWithdrawable"
       tone="success"
       :title="`已提交第 ${latestWithdrawable.batchIndex ?? '-'}/${latestWithdrawable.batchTotal ?? '-'} 份 · 撤销 (Ctrl+Z)`"
-      description="10 分钟内有效"
+      :description="withdrawWindowLabel ?? '撤回窗口加载中'"
       closable
       dense
       @close="dismissWithdrawToast"

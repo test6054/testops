@@ -4,8 +4,8 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ExternalDataSourceSaveRequest,
   ExternalDataSourceVO,
-  ExternalSourceFieldScope,
   ExternalSourceFieldScopeRequest,
+  ExternalSourceFieldScopeVO,
 } from '@/apis/quality/external-data-source'
 import type { ExternalPullAuditVO } from '@/apis/quality/external-pull-audit'
 import type { ExternalPullResultVO } from '@/apis/quality/external-pull-result'
@@ -78,7 +78,7 @@ import {
   ExternalPullSortDirectionCode,
 } from '@/types/enums/external-pull-sort-direction-enum'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
-import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 interface SourceFieldScopeEditorRow {
@@ -461,7 +461,7 @@ function businessAnchorLabel(value: BusinessAnchorCode): string {
   return strictEnumLabel(BusinessAnchorCodeDescription, value, '外部拔取业务归属')
 }
 
-function createSourceFieldScopeRow(scope?: ExternalSourceFieldScope): SourceFieldScopeEditorRow {
+function createSourceFieldScopeRow(scope?: ExternalSourceFieldScopeVO): SourceFieldScopeEditorRow {
   return {
     key: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     sourceObjectName: scope?.sourceObjectName || '',
@@ -602,10 +602,10 @@ async function loadTasks() {
     if (scope.isStale()) {
       return
     }
-    tasks.value = readPageList(page, '外部拉取任务加载失败，请稍后重试')
+    tasks.value = page.list
     taskQuery.pageNum = page.pageNum
     taskQuery.pageSize = page.pageSize
-    taskTotal.value = readPageTotal(page, '外部拉取任务加载失败，请稍后重试')
+    taskTotal.value = Number(page.total)
     if (tasks.value.length === 0 && taskTotal.value > 0 && taskQuery.pageNum > 1) {
       taskQuery.pageNum -= 1
       await loadTasks()
@@ -642,10 +642,10 @@ async function loadTasksQuietly(): Promise<void> {
     if (scope.isStale()) {
       return
     }
-    tasks.value = readPageList(page, '外部拉取任务加载失败，请稍后重试')
+    tasks.value = page.list
     taskQuery.pageNum = page.pageNum
     taskQuery.pageSize = page.pageSize
-    taskTotal.value = readPageTotal(page, '外部拉取任务加载失败，请稍后重试')
+    taskTotal.value = Number(page.total)
     taskPolling.syncPolling()
   } catch {
     // 轮询刷新失败时不打断当前页面操作

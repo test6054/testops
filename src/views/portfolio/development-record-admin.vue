@@ -22,7 +22,6 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -94,7 +93,7 @@ async function loadPage() {
       pageSize: 50,
       recordType: activeType.value,
     })
-    rows.value = readPageList(page, '加载发展记录失败')
+    rows.value = page.list
     const userIds = rows.value
       .map((row) => row.teacherUserId)
       .filter((id): id is string => Boolean(id))

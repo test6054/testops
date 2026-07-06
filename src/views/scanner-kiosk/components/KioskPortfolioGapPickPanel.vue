@@ -12,7 +12,6 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -69,8 +68,8 @@ async function loadTasks() {
       openOnly: true,
       keyword: keyword.value.trim() || undefined,
     })
-    tasks.value = readPageList(page, '补采待办加载失败，请稍后重试')
-    total.value = readPageTotal(page, '补采待办总数加载失败，请稍后重试')
+    tasks.value = page.list
+    total.value = Number(page.total)
   }
   catch (error) {
     errorMessage.value = getUserErrorMessage(error)

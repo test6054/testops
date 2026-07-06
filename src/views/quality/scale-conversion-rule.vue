@@ -25,7 +25,6 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const list = ref<ScaleConversionRuleVO[]>([])
@@ -154,10 +153,10 @@ async function loadList() {
   loading.value = true
   try {
     const page = await scaleConversionRuleApi.page({ ...query })
-    list.value = readPageList(page, '量表换算规则加载失败，请稍后重试')
+    list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = readPageTotal(page, '量表换算规则加载失败，请稍后重试')
+    total.value = Number(page.total)
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()

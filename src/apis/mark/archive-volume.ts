@@ -2278,17 +2278,9 @@ export function listArchivePhysicalLocationHistory(
   )
 }
 
-export interface ArchiveScanBatchSnapshotPageRequest extends QueryDto {
+export interface ArchiveScanBatchSnapshotRequest extends QueryDto {
   volumeId: string
   batchQualityFlag?: ScanBatchQualityFlagCode
-}
-
-interface ArchiveScanBatchSnapshotResponse {
-  volumeId?: string
-  batches?: ArchiveScanBatchSnapshotItemVO[]
-  total?: string
-  pageNum?: number
-  pageSize?: number
 }
 
 export interface ArchiveScanBatchSnapshotItemVO {
@@ -2310,28 +2302,13 @@ export interface ArchiveScanBatchSnapshotItemVO {
   materials?: ArchiveVolumeMaterialResponse[]
 }
 
-export async function pageArchiveScanBatchSnapshots(
-  request: ArchiveScanBatchSnapshotPageRequest,
+export function pageArchiveScanBatchSnapshots(
+  request: ArchiveScanBatchSnapshotRequest,
 ): Promise<PageResult<ArchiveScanBatchSnapshotItemVO>> {
-  const raw = await http.post<ArchiveScanBatchSnapshotResponse>(
+  return http.post<PageResult<ArchiveScanBatchSnapshotItemVO>>(
     '/api/mark/archive-volumes/scan-batch-snapshots/page',
     request,
   )
-  const pageNum = raw.pageNum ?? request.pageNum ?? 1
-  const pageSize = raw.pageSize ?? request.pageSize ?? 10
-  const totalText = raw.total ?? '0'
-  const totalCount = Number(totalText)
-  const pages
-    = Number.isFinite(totalCount) && totalCount > 0 && pageSize > 0
-      ? Math.ceil(totalCount / pageSize)
-      : 0
-  return {
-    list: raw.batches ?? [],
-    total: totalText,
-    pageNum,
-    pageSize,
-    pages,
-  }
 }
 
 export interface ArchiveScanBatchBatchActionRequest {

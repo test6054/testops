@@ -182,6 +182,10 @@ export interface AccreditationCycleSaveRequest {
   onsiteReportDueDate?: string
 }
 
+export interface TrainingPlanIdRequest {
+  trainingPlanId: string
+}
+
 export interface SelfAssessmentReviewDecisionRequest {
   accreditationCycleId: string
   reviewDecision: SelfAssessmentReviewDecisionCode
@@ -470,10 +474,10 @@ export const accreditationApi = {
     http.post<void>(`${BASE}/cycles/decide-self-assessment-review`, data),
   registerConclusion: (data: AccreditationConclusionRegisterRequest) =>
     http.post<void>(`${BASE}/cycles/register-conclusion`, data),
-  cockpit: (trainingPlanId: string) =>
-    http.post<AccreditationCockpitVO>(`${BASE}/cockpit`, { trainingPlanId }),
-  annualPlanList: (trainingPlanId: string) =>
-    http.post<AnnualEvaluationPlanVO[]>(`${BASE}/annual-plans/list`, { trainingPlanId }),
+  cockpit: (data: TrainingPlanIdRequest) =>
+    http.post<AccreditationCockpitVO>(`${BASE}/cockpit`, data),
+  annualPlanList: (data: TrainingPlanIdRequest) =>
+    http.post<AnnualEvaluationPlanVO[]>(`${BASE}/annual-plans/list`, data),
   annualPlanDetail: (id: string) =>
     http.post<AnnualEvaluationPlanVO>(`${BASE}/annual-plans/detail`, { id }),
   annualPlanCreate: (data: AnnualEvaluationPlanSaveRequest) =>
@@ -508,10 +512,8 @@ export const accreditationApi = {
   deleteOnsitePlan: (id: string) => http.post<void>(`${BASE}/onsite-plans/delete`, { id }),
   updateChecklistItem: (data: OnsiteChecklistItemUpdateRequest) =>
     http.post<void>(`${BASE}/onsite-plans/update-checklist-item`, data),
-  currentSupportProfile: (trainingPlanId: string) =>
-    http.post<ProgramSupportProfileVO | null>(`${BASE}/support-profiles/current`, {
-      trainingPlanId,
-    }),
+  currentSupportProfile: (data: TrainingPlanIdRequest) =>
+    http.post<ProgramSupportProfileVO | null>(`${BASE}/support-profiles/current`, data),
   saveSupportProfile: (data: ProgramSupportProfileSaveRequest) =>
     http.post<string>(`${BASE}/support-profiles/save`, data),
   confirmSupportProfile: (id: string) =>

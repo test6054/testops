@@ -17,7 +17,6 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const recordTypeKeys: PortfolioDevelopmentRecordTypeCode[] = [
@@ -62,7 +61,7 @@ async function loadPage() {
       nationalOnly: query.nationalOnly || undefined,
       recordTypes: query.recordTypes,
     })
-    rows.value = readPageList(page, '加载成果列表失败')
+    rows.value = page.list
     await hydrateTeacherLabels(
       rows.value.map((row) => row.teacherUserId).filter((id): id is string => Boolean(id)),
     )

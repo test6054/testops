@@ -269,7 +269,6 @@ import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfi
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { formatDateTimeWithSeconds } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import {
   batchSealBlockedReason,
   canSealBatch,
@@ -446,8 +445,8 @@ async function loadPages(): Promise<void> {
       pageNum: pageQuery.pageNum,
       pageSize: pageQuery.pageSize,
     })
-    pages.value = readPageList(result, '扫描页列表加载失败')
-    pageTotal.value = readPageTotal(result, '扫描页列表加载失败')
+    pages.value = result.list
+    pageTotal.value = Number(result.total)
   } catch (error) {
     pages.value = []
     pageTotal.value = 0
@@ -471,8 +470,8 @@ async function loadAttentions(): Promise<void> {
       pageNum: attentionQuery.pageNum,
       pageSize: attentionQuery.pageSize,
     })
-    attentions.value = readPageList(result, '扫描异常列表加载失败')
-    attentionTotal.value = readPageTotal(result, '扫描异常列表加载失败')
+    attentions.value = result.list
+    attentionTotal.value = Number(result.total)
   } catch (error) {
     attentions.value = []
     attentionTotal.value = 0

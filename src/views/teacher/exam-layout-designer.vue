@@ -3,14 +3,16 @@ import type {
   ExamLayoutBlockDto,
   ExamLayoutDocument,
   ExamLayoutGenerateQuestionRequest,
+  ExamLayoutQuestionDto,
 } from '@/apis/mark/exam-layout-design'
 import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
 import { message } from 'ant-design-vue'
-import { computed, inject, onMounted, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   autoDetectExamLayout,
   EXAM_LAYOUT_DESIGN_FLOW_HINT,
+  fetchExamLayoutDetectStatus,
   generateExamLayoutSheet,
   loadExamLayoutDesign,
   previewExamLayoutDesign,
@@ -21,6 +23,9 @@ import LayoutCanvas from '@/components/mark/layout-designer/LayoutCanvas.vue'
 import LayoutEntryGateway from '@/components/mark/layout-designer/LayoutEntryGateway.vue'
 import LayoutPreviewDrawer from '@/components/mark/layout-designer/LayoutPreviewDrawer.vue'
 import LayoutPropertyDrawer from '@/components/mark/layout-designer/LayoutPropertyDrawer.vue'
+import LayoutQuestionCropStrip from '@/components/mark/layout-designer/LayoutQuestionCropStrip.vue'
+import LayoutQuestionOutlinePanel from '@/components/mark/layout-designer/LayoutQuestionOutlinePanel.vue'
+import LayoutQuestionPropertyPanel from '@/components/mark/layout-designer/LayoutQuestionPropertyPanel.vue'
 import LayoutReviewDrawer from '@/components/mark/layout-designer/LayoutReviewDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -37,9 +42,10 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
+import { ExamLayoutEntryKindCode } from '@/types/enums/exam-layout-entry-kind-enum'
 import { ALL_EXAM_LAYOUT_PAPER_SPEC_CODES } from '@/types/enums/exam-layout-paper-spec-enum'
 import { showUserError } from '@/utils/error-handler'
-import { resolvePaperSpecLabel, validateLayoutDocumentForSave } from '@/utils/exam-layout-designer'
+import { computeLayoutRoiStats, resolvePaperSpecLabel, validateLayoutDocumentForSave } from '@/utils/exam-layout-designer'
 import {
   buildLayoutDesignerSignalMetrics,
   filterLayoutDesignerPrepSteps,
@@ -64,11 +70,15 @@ const loading = ref(false)
 const saving = ref(false)
 const generating = ref(false)
 const detecting = ref(false)
+const detectProgressText = ref('')
+/** 递增代次：离开页/重复触发时废止进行中的 detect-status 轮询，避免旧任务结果覆盖当前源文件。 */
+let detectSessionSeq = 0
 const previewing = ref(false)
 const layoutWritable = ref(true)
 const writeLockReason = ref<string>()
 const document = ref<ExamLayoutDocument | null>(null)
 const focusedBlockId = ref<string | null>(null)
+const focusedQuestionId = ref<string | null>(null)
 const currentPageNo = ref(1)
 const previewOpen = ref(false)
 const reviewOpen = ref(false)
@@ -149,13 +159,32 @@ const signalMetrics = computed(() => {
   return buildLayoutDesignerSignalMetrics(detail)
 })
 
+const focusedQuestion = computed<ExamLayoutQuestionDto | null>(() => {
+  if (!document.value || !focusedQuestionId.value) {
+    return null
+  }
+  return document.value.questions.find((item) => item.id === focusedQuestionId.value) ?? null
+})
+
+const isSourceFileLayout = computed(
+  () => document.value?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE,
+)
+
+const layoutRoiStats = computed(() => computeLayoutRoiStats(document.value))
+
 const pageLoading = computed(
   () => loading.value || (examDetailLoading.value && !examDetail.value),
 )
 const saveBlockingReasons = computed(() => validateLayoutDocumentForSave(document.value))
-const previewDisabled = computed(
-  () => !materialLayoutMode.value || !document.value || saveBlockingReasons.value.length > 0,
-)
+const previewDisabled = computed(() => {
+  if (!materialLayoutMode.value || !document.value) {
+    return true
+  }
+  if (document.value.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE) {
+    return !document.value.sourcePdfFileId?.trim()
+  }
+  return saveBlockingReasons.value.length > 0
+})
 
 function goDesignerPrepStep(step: PrepStepCard): void {
   if (!examId.value) {
@@ -174,6 +203,7 @@ async function reload(): Promise<void> {
   if (!examId.value) {
     document.value = null
     focusedBlockId.value = null
+    focusedQuestionId.value = null
     currentPageNo.value = 1
     layoutWritable.value = true
     writeLockReason.value = undefined
@@ -188,14 +218,42 @@ async function reload(): Promise<void> {
     if (document.value?.pages?.length) {
       currentPageNo.value = document.value.pages[0].pageNo
     }
+    if (document.value?.questions?.length) {
+      focusedQuestionId.value = document.value.questions[0].id
+    }
+    const inFlightTaskId = res.activeDetect?.detectTaskId
+    const shouldResumeDetect = Boolean(inFlightTaskId
+      && (res.activeDetect?.status === 'QUEUED' || res.activeDetect?.status === 'RUNNING')
+      && layoutWritable.value
+      && !detecting.value)
+    loading.value = false
+    if (shouldResumeDetect && inFlightTaskId) {
+      const session = ++detectSessionSeq
+      detecting.value = true
+      detectProgressText.value = res.activeDetect?.status === 'QUEUED'
+        ? '识别任务排队中'
+        : '正在识别题目并生成划区'
+      try {
+        await pollDetectStatus(inFlightTaskId, session)
+      } catch (error) {
+        if (session === detectSessionSeq) {
+          showUserError(error, '自动预划区失败')
+        }
+      } finally {
+        if (session === detectSessionSeq) {
+          detecting.value = false
+          detectProgressText.value = ''
+        }
+      }
+    }
   } catch (error) {
     document.value = null
     focusedBlockId.value = null
+    focusedQuestionId.value = null
     currentPageNo.value = 1
     layoutWritable.value = true
     writeLockReason.value = undefined
     showUserError(error, '加载制卷设计失败')
-  } finally {
     loading.value = false
   }
 }
@@ -227,7 +285,8 @@ async function handlePreview(): Promise<void> {
   if (!examId.value || !document.value) {
     return
   }
-  if (saveBlockingReasons.value.length > 0) {
+  if (document.value.layoutEntryKind !== ExamLayoutEntryKindCode.SOURCE_FILE
+    && saveBlockingReasons.value.length > 0) {
     message.warning(saveBlockingReasons.value[0])
     return
   }
@@ -268,23 +327,90 @@ async function handleGenerateSheet(
   }
 }
 
+async function pollDetectStatus(detectTaskId: string, session: number): Promise<void> {
+  const deadline = Date.now() + 10 * 60 * 1000
+  while (Date.now() < deadline) {
+    if (session !== detectSessionSeq) {
+      return
+    }
+    const status = await fetchExamLayoutDetectStatus({
+      examId: examId.value,
+      detectTaskId,
+    })
+    if (session !== detectSessionSeq) {
+      return
+    }
+    if (status.progressTotalPages && status.progressTotalPages > 0) {
+      detectProgressText.value = `正在识别第 ${status.progressPageNo ?? 0}/${status.progressTotalPages} 页`
+    } else if (status.status === 'QUEUED') {
+      detectProgressText.value = '识别任务排队中'
+    } else {
+      detectProgressText.value = '正在识别题目并生成划区'
+    }
+    if (status.status === 'SUCCEEDED') {
+      if (!status.document?.pages?.length) {
+        throw new Error('识别完成但未返回制卷文档')
+      }
+      if (session !== detectSessionSeq) {
+        return
+      }
+      document.value = status.document
+      focusedQuestionId.value = document.value.questions?.[0]?.id ?? null
+      focusedBlockId.value = null
+      currentPageNo.value = document.value.pages[0].pageNo
+      message.success('题目识别与划区已完成并自动保存草稿，请核对 ROI 后继续审阅')
+      await workbenchContext?.refreshChrome?.()
+      return
+    }
+    if (status.status === 'FAILED') {
+      throw new Error(status.errorMessage || '自动预划区失败')
+    }
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, 1200)
+    })
+  }
+  throw new Error('识别超时，请点击重新识别')
+}
+
 async function handleAutoDetect(sourcePdfFileId: string): Promise<void> {
   if (!examId.value || !layoutWritable.value) {
     return
   }
-  detecting.value = true
-  try {
-    document.value = await autoDetectExamLayout({ examId: examId.value, sourcePdfFileId })
-    if (document.value.pages?.length) {
-      currentPageNo.value = document.value.pages[0].pageNo
-    }
-    message.success('自动预划区完成')
-    await workbenchContext?.refreshChrome?.()
-  } catch (error) {
-    showUserError(error, '自动预划区失败')
-  } finally {
-    detecting.value = false
+  if (detecting.value) {
+    message.warning('当前试卷正在识别题目，请稍候再重新上传或识别')
+    return
   }
+  const session = ++detectSessionSeq
+  detecting.value = true
+  detectProgressText.value = '识别任务排队中'
+  try {
+    const started = await autoDetectExamLayout({ examId: examId.value, sourcePdfFileId })
+    if (session !== detectSessionSeq) {
+      return
+    }
+    if (!started.detectTaskId) {
+      throw new Error('识别任务未返回任务号')
+    }
+    await pollDetectStatus(started.detectTaskId, session)
+  } catch (error) {
+    if (session === detectSessionSeq) {
+      showUserError(error, '自动预划区失败')
+    }
+  } finally {
+    if (session === detectSessionSeq) {
+      detecting.value = false
+      detectProgressText.value = ''
+    }
+  }
+}
+
+function handleQuestionFocus(question: ExamLayoutQuestionDto | null): void {
+  focusedQuestionId.value = question?.id ?? null
+}
+
+function handleBlockFocusFromOutline(block: ExamLayoutBlockDto | null, pageNo: number): void {
+  focusedBlockId.value = block?.id ?? null
+  currentPageNo.value = pageNo
 }
 
 function handleDocumentPatch(next: ExamLayoutDocument): void {
@@ -293,6 +419,12 @@ function handleDocumentPatch(next: ExamLayoutDocument): void {
 
 function handleBlockFocus(block: ExamLayoutBlockDto | null): void {
   focusedBlockId.value = block?.id ?? null
+  if (block?.pageNo != null) {
+    currentPageNo.value = block.pageNo
+  }
+  if (block?.layoutQuestionId) {
+    focusedQuestionId.value = block.layoutQuestionId
+  }
 }
 
 async function handleReviewSaved(): Promise<void> {
@@ -302,6 +434,10 @@ async function handleReviewSaved(): Promise<void> {
 
 onMounted(() => {
   void reload()
+})
+
+onBeforeUnmount(() => {
+  detectSessionSeq += 1
 })
 </script>
 
@@ -324,6 +460,13 @@ onMounted(() => {
           <UiTag v-if="layoutModeLocked" tone="gray" size="sm">形态已锁定</UiTag>
           <UiTag v-if="layoutPaperLabel" tone="gray" size="sm">纸型 {{ layoutPaperLabel }}</UiTag>
           <UiTag v-if="scanPaperStyleLabel" tone="gray" size="sm">印张 {{ scanPaperStyleLabel }}</UiTag>
+          <UiTag
+            v-if="layoutRoiStats.totalQuestionCount > 0"
+            :tone="layoutRoiStats.roiReadyQuestionCount === layoutRoiStats.totalQuestionCount ? 'green' : 'orange'"
+            size="sm"
+          >
+            ROI {{ layoutRoiStats.roiReadyQuestionCount }}/{{ layoutRoiStats.totalQuestionCount }}
+          </UiTag>
         </template>
         <template #actions>
           <UiButton variant="outline" @click="reviewOpen = true">复核微调</UiButton>
@@ -381,7 +524,25 @@ onMounted(() => {
       />
 
       <UiAlertStrip
-        v-if="!layoutWritable && writeLockReason"
+        v-if="detecting"
+        tone="info"
+        :closable="false"
+        dense
+        :title="detectProgressText || '正在识别题目并生成划区'"
+        description="识别在后台异步执行，请勿关闭页面；完成后将自动填充题单与 ROI。"
+        class="layout-designer-lock-banner"
+      />
+      <UiAlertStrip
+        v-else-if="layoutRoiStats.notReadyQuestionNos.length > 0"
+        tone="warning"
+        :closable="false"
+        dense
+        :title="`${layoutRoiStats.notReadyQuestionNos.length} 道题未配置 ROI`"
+        :description="`第 ${layoutRoiStats.notReadyQuestionNos.slice(0, 8).join('、')} 题缺少主作答区，保存前须补全或重新识别。`"
+        class="layout-designer-lock-banner"
+      />
+      <UiAlertStrip
+        v-else-if="!layoutWritable && writeLockReason"
         tone="warning"
         :closable="false"
         dense
@@ -424,7 +585,16 @@ onMounted(() => {
               @auto-detect="handleAutoDetect"
               @patch="handleDocumentPatch"
             />
+            <LayoutQuestionOutlinePanel
+              v-if="isSourceFileLayout"
+              :document="document"
+              :focused-question-id="focusedQuestionId"
+              :focused-block-id="focusedBlockId"
+              @focus-question="handleQuestionFocus"
+              @focus-block="handleBlockFocusFromOutline"
+            />
             <LayoutBlockLayerPanel
+              v-else
               :document="document"
               :page-no="currentPageNo"
               :focused-block-id="focusedBlockId"
@@ -439,6 +609,12 @@ onMounted(() => {
               :items="pageTabItems"
               compact
             />
+            <LayoutQuestionCropStrip
+              v-if="isSourceFileLayout && focusedQuestion"
+              :document="document"
+              :question="focusedQuestion"
+              @focus-block="handleBlockFocus"
+            />
             <LayoutCanvas
               :document="document"
               :page-no="currentPageNo"
@@ -448,9 +624,24 @@ onMounted(() => {
             />
           </main>
           <aside class="layout-designer-workspace__right">
+            <LayoutQuestionPropertyPanel
+              v-if="isSourceFileLayout"
+              :document="document"
+              :question="focusedQuestion"
+              @patch="handleDocumentPatch"
+            />
             <LayoutPropertyDrawer
+              v-else
               :document="document"
               :block="focusedBlock"
+              @patch="handleDocumentPatch"
+            />
+            <LayoutBlockLayerPanel
+              v-if="isSourceFileLayout"
+              :document="document"
+              :page-no="currentPageNo"
+              :focused-block-id="focusedBlockId"
+              @focus-block="handleBlockFocus"
               @patch="handleDocumentPatch"
             />
           </aside>

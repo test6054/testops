@@ -45,7 +45,6 @@ import {
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function archiveRecordStatusLabel(status: PortfolioArchiveRecordStatusCode): string {
@@ -195,8 +194,8 @@ async function loadRecords() {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
-    records.value = readPageList(page, '加载档案记录失败')
-    pageTotal.value = readPageTotal(page, '加载档案记录失败')
+    records.value = page.list
+    pageTotal.value = Number(page.total)
   } catch (error) {
     showUserError(error, '加载档案记录失败')
   } finally {

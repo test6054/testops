@@ -197,7 +197,6 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { highlightArchiveSearchSnippet } from '@/utils/archive-search-snippet'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveVolumeMaterialOcrDetailModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailModal.vue'
 
@@ -321,8 +320,10 @@ async function loadHits(): Promise<void> {
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize,
     })
-    hits.value = readPageList(result, '卷内检索结果异常')
-    pagination.total = readPageTotal(result)
+    hits.value = result.list
+    pagination.total = Number(result.total)
+    pagination.pageNum = result.pageNum
+    pagination.pageSize = result.pageSize
     searched.value = true
   } catch (error) {
     showUserError(error, '卷内检索失败')

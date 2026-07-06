@@ -52,7 +52,6 @@ import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { buildStatusChartGroup } from '@/utils/quality-workbench-charts'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -294,8 +293,8 @@ async function loadAchievement() {
       pageSize: 5,
       trainingPlanId: trainingPlanId.value,
     })
-    recentAchievements.value = readPageList(page, '达成度结果加载失败，请稍后重试')
-    achievementCounts.total = readPageTotal(page)
+    recentAchievements.value = page.list
+    achievementCounts.total = Number(page.total)
 
     const [calculated, submitted, confirmed, archived, notAchieved] = await Promise.all([
       achievementResultApi.page({
@@ -329,11 +328,11 @@ async function loadAchievement() {
         achievementStatus: AchievementStatusCode.NOT_ACHIEVED,
       }),
     ])
-    achievementCounts.calculated = readPageTotal(calculated, '达成度状态统计加载失败，请稍后重试')
-    achievementCounts.submitted = readPageTotal(submitted, '达成度状态统计加载失败，请稍后重试')
-    achievementCounts.confirmed = readPageTotal(confirmed, '达成度状态统计加载失败，请稍后重试')
-    achievementCounts.archived = readPageTotal(archived, '达成度状态统计加载失败，请稍后重试')
-    achievementCounts.notAchieved = readPageTotal(notAchieved, '达成度状态统计加载失败，请稍后重试')
+    achievementCounts.calculated = Number(calculated.total)
+    achievementCounts.submitted = Number(submitted.total)
+    achievementCounts.confirmed = Number(confirmed.total)
+    achievementCounts.archived = Number(archived.total)
+    achievementCounts.notAchieved = Number(notAchieved.total)
   } catch (error) {
     showUserError(error, '达成度数据加载失败')
   } finally {
@@ -350,8 +349,8 @@ async function loadImprovement() {
       pageSize: 5,
       trainingPlanId: trainingPlanId.value,
     })
-    recentImprovements.value = readPageList(page, '改进任务加载失败，请稍后重试')
-    improvementCounts.total = readPageTotal(page)
+    recentImprovements.value = page.list
+    improvementCounts.total = Number(page.total)
 
     const [open, inProgress, submitted, closed] = await Promise.all([
       improvementTaskApi.page({
@@ -379,10 +378,10 @@ async function loadImprovement() {
         status: ImprovementTaskStatusCode.CLOSED,
       }),
     ])
-    improvementCounts.open = readPageTotal(open, '改进任务状态统计加载失败，请稍后重试')
-    improvementCounts.inProgress = readPageTotal(inProgress, '改进任务状态统计加载失败，请稍后重试')
-    improvementCounts.submitted = readPageTotal(submitted, '改进任务状态统计加载失败，请稍后重试')
-    improvementCounts.closed = readPageTotal(closed, '改进任务状态统计加载失败，请稍后重试')
+    improvementCounts.open = Number(open.total)
+    improvementCounts.inProgress = Number(inProgress.total)
+    improvementCounts.submitted = Number(submitted.total)
+    improvementCounts.closed = Number(closed.total)
   } catch (error) {
     showUserError(error, '改进任务数据加载失败')
   } finally {
@@ -400,8 +399,8 @@ async function loadAiTasks() {
       pageSize: 5,
       trainingPlanId: plan,
     })
-    recentAiTasks.value = readPageList(page, 'AI 任务加载失败，请稍后重试')
-    aiCounts.total = readPageTotal(page)
+    recentAiTasks.value = page.list
+    aiCounts.total = Number(page.total)
 
     const [pending, processing, succeeded, failed] = await Promise.all([
       aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: AiTaskStatusCode.PENDING }),
@@ -409,10 +408,10 @@ async function loadAiTasks() {
       aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: AiTaskStatusCode.SUCCEEDED }),
       aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: AiTaskStatusCode.FAILED }),
     ])
-    aiCounts.pending = readPageTotal(pending, 'AI 任务状态统计加载失败，请稍后重试')
-    aiCounts.processing = readPageTotal(processing, 'AI 任务状态统计加载失败，请稍后重试')
-    aiCounts.succeeded = readPageTotal(succeeded, 'AI 任务状态统计加载失败，请稍后重试')
-    aiCounts.failed = readPageTotal(failed, 'AI 任务状态统计加载失败，请稍后重试')
+    aiCounts.pending = Number(pending.total)
+    aiCounts.processing = Number(processing.total)
+    aiCounts.succeeded = Number(succeeded.total)
+    aiCounts.failed = Number(failed.total)
   } catch (error) {
     showUserError(error, 'AI 任务数据加载失败')
   } finally {

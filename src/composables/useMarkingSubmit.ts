@@ -24,6 +24,7 @@ import {
 } from '@/composables/useGradingDraftPersist'
 import { useMarkingRecentSubmit } from '@/composables/useMarkingRecentSubmit'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { useTenantMarkingWithdrawPolicy } from '@/composables/useTenantMarkingWithdrawPolicy'
 import { showUserError } from '@/utils/error-handler'
 
 export interface UseMarkingSubmitOptions {
@@ -53,6 +54,7 @@ export interface UseMarkingSubmitOptions {
 export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   const { refreshSnapshot } = useWorkspaceExamId()
   const { recordSubmit } = useMarkingRecentSubmit()
+  const { requireWithdrawWindowMinutes } = useTenantMarkingWithdrawPolicy()
   const formRef = ref<FormInstance>()
   const submitting = ref(false)
   const applyModalOpen = ref(false)
@@ -132,8 +134,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       if (item.taskStatus !== 'ALLOCATED' && item.taskStatus !== 'IN_PROGRESS') return false
       if (item.groupId !== currentTask.groupId) return false
       if (item.taskUnit === 'WHOLE_PAPER') return false
-      if (item.questionNo !== currentTask.questionNo) return false
-      return true
+      return item.questionNo === currentTask.questionNo;
     })
   }
 
@@ -262,6 +263,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
           examId: currentTask.examId,
           groupId: currentTask.groupId,
           score,
+          withdrawWindowMinutes: requireWithdrawWindowMinutes(),
         })
       }
       await refreshSnapshot()
@@ -375,6 +377,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
         examId: currentTask.examId,
         groupId: currentTask.groupId ?? null,
         score,
+        withdrawWindowMinutes: requireWithdrawWindowMinutes(),
         batchIndex: options.batchTasks.value.findIndex((item) => item.id === currentTask.id) + 1,
         batchTotal: options.batchTasks.value.length,
       })

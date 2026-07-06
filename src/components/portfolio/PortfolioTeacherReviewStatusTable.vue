@@ -55,7 +55,6 @@ import {
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'PortfolioTeacherReviewStatusTable' })
@@ -113,8 +112,8 @@ async function loadPage() {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
-    rows.value = readPageList(page, '加载审核进度失败')
-    total.value = readPageTotal(page, '加载审核进度失败')
+    rows.value = page.list
+    total.value = Number(page.total)
   } catch (error) {
     showUserError(error, '加载审核进度失败')
   } finally {

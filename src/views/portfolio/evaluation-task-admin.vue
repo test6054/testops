@@ -23,7 +23,6 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -110,8 +109,8 @@ async function loadPage() {
       pageSize: query.pageSize,
       taskStatus: query.taskStatus || undefined,
     })
-    rows.value = readPageList(page, '加载评价任务失败')
-    total.value = readPageTotal(page)
+    rows.value = page.list
+    total.value = Number(page.total)
   } catch (error) {
     showUserError(error)
   } finally {

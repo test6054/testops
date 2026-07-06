@@ -84,6 +84,15 @@ const OBJECTIVE_SCENES = new Set(['CHOICE', 'TRUE_FALSE', 'FILL_BLANK', 'NUMERIC
 
 const sourcePdfFileId = ref(props.document?.sourcePdfFileId ?? '')
 const sourcePdfFileName = ref('')
+const sourceFileCanAutoDetect = computed(() => {
+  if (!sourcePdfFileId.value.trim()) {
+    return false
+  }
+  if (!sourcePdfFileName.value.trim()) {
+    return true
+  }
+  return /\.(pdf|doc|docx|png|jpe?g)$/i.test(sourcePdfFileName.value)
+})
 const paperSpec = ref<ExamLayoutPaperSpecCode>(
   ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((code) => code === props.document?.paperSpec) ?? defaultBlankSheetPaperSpec(),
 )
@@ -93,7 +102,9 @@ const questionRows = ref<LayoutQuestionDraft[]>(createDefaultQuestionRows())
 
 const isAnswerSheetMode = computed(() => props.materialLayoutMode === 'ANSWER_SHEET')
 const isFullPaperMode = computed(() => props.materialLayoutMode === 'FULL_PAPER')
-const entryReadonly = computed(() => props.readonly || !props.materialLayoutMode)
+const entryReadonly = computed(
+  () => props.readonly || !props.materialLayoutMode || props.detecting === true,
+)
 
 const materialLayoutModeLabel = computed(() => {
   if (props.materialLayoutModeMessage) {
@@ -145,11 +156,31 @@ function startBlankSheet(): void {
 }
 
 function startSourceFile(): void {
-  patchDocument({
+  emit('patch', buildSourceFileDocument(props.document))
+}
+
+function buildSourceFileDocument(currentDocument: ExamLayoutDocument | null): ExamLayoutDocument {
+  const nextDocument: ExamLayoutDocument = currentDocument ?? {
+    examId: props.examId,
+    pages: [],
+    questions: [],
+    blocks: [],
+    blockOptions: [],
+  }
+  return {
+    ...nextDocument,
+    examId: props.examId,
     layoutEntryKind: ExamLayoutEntryKindCode.SOURCE_FILE,
-    layoutName: layoutName.value || '有源整卷',
+    layoutName: layoutName.value || '整卷试卷源文件',
     printSafeMarginMm: printSafeMarginMm.value,
-  })
+    totalPages: Math.max(nextDocument.totalPages ?? 1, 1),
+    sourcePdfFileId: sourcePdfFileId.value.trim(),
+    previewPdfFileId: undefined,
+    pages: nextDocument.pages ?? [],
+    questions: nextDocument.questions ?? [],
+    blocks: nextDocument.blocks ?? [],
+    blockOptions: nextDocument.blockOptions ?? [],
+  }
 }
 
 function handleGenerateSheet(): void {
@@ -258,7 +289,11 @@ function ocrSceneLabel(ocrScene: string): string {
 
 function handleAutoDetect(): void {
   if (!sourcePdfFileId.value.trim()) {
-    message.warning('请先上传整卷 PDF')
+    message.warning('请先上传整卷源文件')
+    return
+  }
+  if (!sourceFileCanAutoDetect.value) {
+    message.warning('自动预划区仅支持 PDF、Word（doc/docx）或图片（png/jpg/jpeg）')
     return
   }
   startSourceFile()
@@ -267,15 +302,17 @@ function handleAutoDetect(): void {
 }
 
 async function syncUploadedPageMeta(fileId: string): Promise<void> {
-  if (!props.document || !fileId) {
+  if (!fileId) {
     return
   }
+  const sourceDocument = buildSourceFileDocument(props.document)
+  emit('patch', sourceDocument)
   try {
     const meta = await fetchExamLayoutPageUploadMeta({
       backgroundFileId: fileId,
     })
-    const pages = props.document.pages?.length
-      ? props.document.pages.map((page, index) =>
+    const pages = sourceDocument.pages?.length
+      ? sourceDocument.pages.map((page, index) =>
           index === 0
             ? {
                 ...page,
@@ -295,18 +332,38 @@ async function syncUploadedPageMeta(fileId: string): Promise<void> {
           },
         ]
     emit('patch', {
-      ...props.document,
+      ...sourceDocument,
+      examId: props.examId,
+      layoutEntryKind: ExamLayoutEntryKindCode.SOURCE_FILE,
       sourcePdfFileId: fileId,
       pages,
-      totalPages: Math.max(props.document.totalPages ?? 1, pages.length),
+      totalPages: Math.max(sourceDocument.totalPages ?? 1, pages.length),
     })
   } catch (error) {
-    showUserError(error, '页背景尺寸解析失败')
+    emit('patch', {
+      ...sourceDocument,
+      examId: props.examId,
+      layoutEntryKind: ExamLayoutEntryKindCode.SOURCE_FILE,
+      sourcePdfFileId: fileId,
+      totalPages: Math.max(sourceDocument.totalPages ?? 1, 1),
+      pages: sourceDocument.pages ?? [],
+      questions: sourceDocument.questions ?? [],
+      blocks: sourceDocument.blocks ?? [],
+      blockOptions: sourceDocument.blockOptions ?? [],
+    })
+    showUserError(error, '源文件页尺寸未解析，请重新上传 PDF、Word 或图片并完成题目识别')
   }
 }
 
 function onSourcePdfChange(fileId: string | undefined): void {
   if (!fileId) {
+    return
+  }
+  sourcePdfFileId.value = fileId
+  if (sourceFileCanAutoDetect.value) {
+    startSourceFile()
+    patchDocument({ sourcePdfFileId: fileId.trim() })
+    emit('auto-detect', fileId.trim())
     return
   }
   void syncUploadedPageMeta(fileId)
@@ -356,19 +413,19 @@ function onSourcePdfChange(fileId: string | undefined): void {
 
       <template v-if="isFullPaperMode">
         <a-divider />
-        <h3 class="layout-entry-gateway__section">整卷试卷 · 上传 PDF</h3>
+        <h3 class="layout-entry-gateway__section">整卷试卷 · 源文件</h3>
         <p class="layout-entry-gateway__hint">
-          上传整卷 PDF，系统自动识别 A3/A4 尺寸；2 页模板建议双面扫描，1 页为单面。
+          上传 PDF、Word 或图片后将异步识别题目、分页入库并生成题单。
         </p>
-        <a-form-item label="整卷 PDF">
+        <a-form-item label="整卷源文件">
           <UiPlatformFileField
             v-model:file-node-id="sourcePdfFileId"
             v-model:file-name="sourcePdfFileName"
             :scene-key="FileUploadSceneKey.MARK_EXAM_TEMPLATE"
-            accept=".pdf,application/pdf"
+            accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg"
             :disabled="entryReadonly"
-            button-text="上传整卷 PDF"
-            tip="上传后自动解析页尺寸与纸型"
+            button-text="上传源文件"
+            tip="PDF / Word / 图片上传后自动预划题区"
             @update:file-node-id="onSourcePdfChange"
           />
         </a-form-item>
@@ -376,10 +433,10 @@ function onSourcePdfChange(fileId: string | undefined): void {
           block
           variant="primary"
           :loading="detecting"
-          :disabled="entryReadonly"
+          :disabled="entryReadonly || !sourceFileCanAutoDetect"
           @click="handleAutoDetect"
         >
-          自动预划区
+          重新识别题目区域
         </UiButton>
       </template>
 

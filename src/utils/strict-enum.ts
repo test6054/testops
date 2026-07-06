@@ -1,23 +1,35 @@
 export function strictEnumLabel<TCode extends string>(
   labels: Record<TCode, string>,
   code: TCode,
-  _fieldName: string,
+  fieldName: string,
 ): string {
-  return labels[code]
+  const label = labels[code]
+  if (label === undefined) {
+    throw new Error(`枚举合同不同步：${fieldName}=${code}`)
+  }
+  return label
 }
 
 export function strictEnumTone<TCode extends string, TTone extends string>(
   tones: Record<TCode, TTone>,
   code: TCode,
-  _fieldName: string,
+  fieldName: string,
 ): TTone {
-  return tones[code]
+  const tone = tones[code]
+  if (tone === undefined) {
+    throw new Error(`枚举合同不同步：${fieldName}=${code}`)
+  }
+  return tone
 }
 
 export function strictEnumValue<TCode extends string, TValue>(
   values: Record<TCode, TValue>,
   code: TCode,
-  _fieldName: string,
+  fieldName: string,
 ): TValue {
-  return values[code]
+  const value = values[code]
+  if (value === undefined) {
+    throw new Error(`枚举合同不同步：${fieldName}=${code}`)
+  }
+  return value
 }

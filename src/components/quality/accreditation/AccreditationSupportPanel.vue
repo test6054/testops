@@ -17,7 +17,6 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 
 const props = defineProps<{
   programId: string
@@ -138,7 +137,7 @@ async function loadProfile() {
   }
   loading.value = true
   try {
-    profile.value = await accreditationApi.currentSupportProfile(props.trainingPlanId)
+    profile.value = await accreditationApi.currentSupportProfile({ trainingPlanId: props.trainingPlanId })
     syncFormFromProfile(profile.value)
   } catch (e) {
     showUserError(e)
@@ -163,10 +162,10 @@ async function loadFacultyProfiles() {
       department: facultyQuery.department || undefined,
       title: facultyQuery.title || undefined,
     })
-    facultyProfiles.value = readPageList(page, '教师档案列表加载失败，请刷新后重试')
+    facultyProfiles.value = page.list
     facultyQuery.pageNum = page.pageNum
     facultyQuery.pageSize = page.pageSize
-    facultyTotal.value = readPageTotal(page)
+    facultyTotal.value = Number(page.total)
     if (facultyProfiles.value.length === 0 && facultyTotal.value > 0 && facultyQuery.pageNum > 1) {
       facultyQuery.pageNum -= 1
       await loadFacultyProfiles()

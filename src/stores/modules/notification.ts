@@ -33,7 +33,6 @@ import {
   updateMessageStatus,
 } from '@/apis/edu/message'
 import { getValidToken } from '@/utils/auth'
-import { readPageList } from '@/utils/page-result'
 
 const DEFAULT_POLL_INTERVAL_MS = 60_000
 
@@ -105,7 +104,7 @@ export const useNotificationStore = defineStore('notification', () => {
         folder: query.folder ?? MessageFolderEnum.INBOX,
         messageType: query.messageType,
       })
-      recentMessages.value = readPageList(result, '消息列表加载失败，请稍后重试')
+      recentMessages.value = result.list
       return recentMessages.value
     }
     finally {

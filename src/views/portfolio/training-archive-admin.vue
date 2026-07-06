@@ -12,7 +12,6 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
@@ -38,7 +37,7 @@ async function loadPage() {
       pageSize: 50,
       materialType: 'CERTIFICATE',
     })
-    rows.value = readPageList(page, '加载培训档案失败')
+    rows.value = page.list
   } catch (error) {
     showUserError(error)
   } finally {

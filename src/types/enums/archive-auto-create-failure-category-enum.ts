@@ -6,6 +6,7 @@ export enum ArchiveAutoCreateFailureCategoryCode {
   AGGREGATE_FAILED = 'AGGREGATE_FAILED',
   EXISTING_STUB_BLOCKS = 'EXISTING_STUB_BLOCKS',
   GATE_DEFERRED = 'GATE_DEFERRED',
+  PACKAGE_PENDING = 'PACKAGE_PENDING',
   UNKNOWN = 'UNKNOWN',
 }
 
@@ -16,6 +17,7 @@ export const ALL_ARCHIVE_AUTO_CREATE_FAILURE_CATEGORY_CODES: readonly ArchiveAut
   ArchiveAutoCreateFailureCategoryCode.AGGREGATE_FAILED,
   ArchiveAutoCreateFailureCategoryCode.EXISTING_STUB_BLOCKS,
   ArchiveAutoCreateFailureCategoryCode.GATE_DEFERRED,
+  ArchiveAutoCreateFailureCategoryCode.PACKAGE_PENDING,
   ArchiveAutoCreateFailureCategoryCode.UNKNOWN,
 ]
 
@@ -26,6 +28,7 @@ export const ArchiveAutoCreateFailureCategoryDescription: Record<ArchiveAutoCrea
   [ArchiveAutoCreateFailureCategoryCode.AGGREGATE_FAILED]: '材料聚合失败',
   [ArchiveAutoCreateFailureCategoryCode.EXISTING_STUB_BLOCKS]: '失败诊断卷阻断',
   [ArchiveAutoCreateFailureCategoryCode.GATE_DEFERRED]: '双门禁未满足',
+  [ArchiveAutoCreateFailureCategoryCode.PACKAGE_PENDING]: '归档包或材料聚合待完成',
   [ArchiveAutoCreateFailureCategoryCode.UNKNOWN]: '未知失败',
 }
 
@@ -42,6 +45,8 @@ export const ArchiveAutoCreateFailureCategoryHintDescription: Record<ArchiveAuto
     '存在自动建卷失败诊断卷。请使用「重新触发自动建卷」清除诊断并重试；仅当失败类别为跨院系或班级院系缺失时再修正参考班级。',
   [ArchiveAutoCreateFailureCategoryCode.GATE_DEFERRED]:
     '成绩发布或关考尚未完成，系统将自动重试建卷。',
+  [ArchiveAutoCreateFailureCategoryCode.PACKAGE_PENDING]:
+    '双门禁已满足，考后归档包正在投递或材料正在聚合，系统将自动重试并刷新进度。',
   [ArchiveAutoCreateFailureCategoryCode.UNKNOWN]:
     '自动建卷失败，请查看诊断信息并联系管理员。',
 }

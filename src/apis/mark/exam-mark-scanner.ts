@@ -38,8 +38,6 @@ import {
   ScannerInterfaceModeCode,
   ScannerInterfaceModeDescription,
 } from '@/types/enums/scanner-interface-mode-enum'
-import { readPageList, readPageTotal } from '@/utils/page-result'
-
 /** 扫描 Agent 激活码状态编码 */
 export {
   ALL_SCANNER_ACTIVATION_CODE_STATUS_CODES,
@@ -426,6 +424,10 @@ export interface MarkExamPageQueryRequest extends QueryDto {
   referenceDepartmentId?: string
   /** 开课学年；用于跨考试分析按课程实际开课周期过滤 */
   teachingAcademicYear?: string
+  /** 创建时间范围下界 */
+  startTime?: string
+  /** 创建时间范围上界 */
+  endTime?: string
   /** 开课学期；用于跨考试分析按课程实际开课周期过滤 */
   teachingSemester?: SemesterCode
   keyword?: string
@@ -458,8 +460,8 @@ export async function listActiveScannerDevices(): Promise<ExamScannerDeviceRespo
       pageSize: ACTIVE_SCANNER_DEVICE_PAGE_SIZE,
       status: ScannerDeviceStatusCode.ACTIVE,
     })
-    items.push(...readPageList(result, '扫描设备列表加载失败'))
-    if (items.length >= readPageTotal(result, '扫描设备列表加载失败')) {
+    items.push(...result.list)
+    if (items.length >= Number(result.total)) {
       break
     }
     pageNum += 1

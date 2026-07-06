@@ -15,7 +15,6 @@ import {
 } from '@/composables/useCrossExamDefaultScope'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 
 defineOptions({ name: 'AnalysisExamMultiSelect' })
 
@@ -179,13 +178,13 @@ async function loadExamOptions(keyword?: string): Promise<void> {
         teachingAcademicYear: props.scopeTeachingAcademicYear,
         teachingSemester: props.scopeTeachingSemester,
       })
-      mergeExams(readPageList(result, '考试列表加载失败，请稍后重试'))
+      mergeExams(result.list)
       lastSearchKeyword.value = trimmedKeyword
       emitSelectedExamsChange()
       return
     }
 
-    let scopedExams: ExamSummaryResponse[] = []
+    let scopedExams: ExamSummaryResponse[]
     const orgScope = buildOrgScope()
     if (hasTeachingScope()) {
       scopedExams = await loadExamsForTeachingTerm(

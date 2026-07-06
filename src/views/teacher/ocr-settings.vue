@@ -46,7 +46,6 @@ import { useAuthStore } from '@/stores/modules/auth'
 import { RoleEnum } from '@/types/enums'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
-import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherOcrSettings' })
@@ -339,7 +338,7 @@ async function loadPaperCandidates(
       pageSize: PAPER_CANDIDATE_FILTER_PAGE_SIZE,
       keyword: normalizedKeyword || undefined,
     })
-    paperCandidates.value = readPageList(result, '卷面候选加载失败，请稍后重试').filter(
+    paperCandidates.value = result.list.filter(
       (item) => item.paperInstanceId && item.bindingStatus === 'BOUND',
     )
   } catch (error) {

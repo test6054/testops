@@ -878,7 +878,7 @@ import {
 } from '@/utils/mark-chart-insights'
 import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { progressSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
-import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { computeTrendPointDelta } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -1178,8 +1178,8 @@ async function loadExamSpotCheckRecords(): Promise<void> {
       pageNum: examSpotCheckPagination.pageNum,
       pageSize: examSpotCheckPagination.pageSize,
     })
-    examSpotCheckItems.value = readPageList(result, '抽检记录加载失败')
-    examSpotCheckPagination.total = readPageTotal(result)
+    examSpotCheckItems.value = result.list
+    examSpotCheckPagination.total = Number(result.total)
   } catch (error) {
     examSpotCheckItems.value = []
     examSpotCheckPagination.total = 0
@@ -1233,8 +1233,8 @@ async function loadMyPendingSpotChecks(): Promise<void> {
       pageNum: mySpotCheckPagination.pageNum,
       pageSize: mySpotCheckPagination.pageSize,
     })
-    mySpotCheckItems.value = readPageList(result, '待处理抽检加载失败')
-    mySpotCheckPagination.total = readPageTotal(result)
+    mySpotCheckItems.value = result.list
+    mySpotCheckPagination.total = Number(result.total)
   } catch (error) {
     mySpotCheckItems.value = []
     mySpotCheckPagination.total = 0

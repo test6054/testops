@@ -103,7 +103,6 @@ import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { useInjectedArchiveVolumeCreateBasicForm } from './archive-volume-create-context'
 import { nullableStringToSelectValue, selectValueToNullableString } from './select-value-bridge'
 
@@ -205,7 +204,7 @@ async function loadRelatedExamOptions(keyword?: string): Promise<void> {
       semester: basicForm.semester,
       keyword: keyword?.trim() || undefined,
     })
-    relatedExamOptions.value = readPageList(result, '关联考试列表加载失败').map((exam) => ({
+    relatedExamOptions.value = result.list.map((exam) => ({
       label: formatRelatedExamLabel(exam),
       value: exam.examId,
     }))

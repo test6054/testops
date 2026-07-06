@@ -44,7 +44,6 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -78,7 +77,7 @@ async function loadHistoryImportBatches() {
       pageNum: 1,
       pageSize: 50,
     })
-    historyBatchRows.value = readPageList(page, '加载历史规划导入批次失败')
+    historyBatchRows.value = page.list
   } catch (error) {
     showUserError(error)
   } finally {
@@ -268,7 +267,7 @@ async function loadPage() {
       planYear: form.planYear,
       planType: PortfolioDevelopmentPlanTypeCode.TEACHER,
     })
-    rows.value = readPageList(page, '加载教师年度规划失败')
+    rows.value = page.list
     if (!rows.value.some((item) => item.id === selectedPlanId.value)) {
       selectedPlanId.value = rows.value[0]?.id ?? ''
       planItems.value = []

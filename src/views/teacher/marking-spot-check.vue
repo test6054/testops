@@ -205,7 +205,6 @@ import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherMarkingSpotCheck' })
@@ -255,8 +254,8 @@ async function loadList(): Promise<void> {
       }),
       loadPendingCount(),
     ])
-    pendingItems.value = readPageList(page, '待处理阅卷抽检加载失败，请稍后重试')
-    pagination.total = readPageTotal(page, '待处理阅卷抽检加载失败，请稍后重试')
+    pendingItems.value = page.list
+    pagination.total = Number(page.total)
     pagination.pageNum = page.pageNum ?? pagination.pageNum
     pagination.pageSize = page.pageSize ?? pagination.pageSize
   } catch (error) {

@@ -28,7 +28,6 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function readRouteStringParam(value: unknown): string {
@@ -221,7 +220,7 @@ async function loadRuns() {
       pageNum: 1,
       pageSize: 50,
     })
-    runs.value = readPageList(page, '加载执行历史失败')
+    runs.value = page.list
   } catch (error) {
     showUserError(error)
   } finally {
@@ -259,7 +258,7 @@ async function loadCandidates() {
       pageNum: 1,
       pageSize: 50,
     })
-    candidates.value = readPageList(page, '加载推荐候选失败')
+    candidates.value = page.list
   } catch (error) {
     showUserError(error)
   }

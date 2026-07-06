@@ -19,7 +19,7 @@
           </template>
 
           <p class="tenant-policy__hint">
-            关闭「须人工确认最终成绩」后，全部题目教师确认完成将延迟自动汇总确认，延迟分钟数与阅卷任务撤回窗口一致。
+            「撤回窗口」始终按下方分钟数生效。关闭「须人工确认最终成绩」后，全部题目教师确认完成还将按同一分钟数延迟自动汇总确认。
           </p>
 
           <form class="tenant-policy__form" @submit.prevent="handleSave">
@@ -29,12 +29,11 @@
             </label>
 
             <label class="tenant-policy__field">
-              <span>延迟自动确认 / 撤回窗口（分钟）</span>
+              <span>撤回窗口 / 延迟自动确认（分钟）</span>
               <a-input-number
                 v-model:value="form.delayedFinalScoreConfirmMinutes"
                 :min="1"
                 :max="120"
-                :disabled="form.manualFinalScoreConfirmRequired"
               />
             </label>
           </form>

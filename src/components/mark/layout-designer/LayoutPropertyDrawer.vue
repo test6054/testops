@@ -8,6 +8,7 @@ import {
   ExamLayoutBlockTypeCode,
   ExamLayoutBlockTypeOptions,
 } from '@/types/enums/exam-layout-block-type-enum'
+import { expectedAnswerBlockTypeForOcrScene } from '@/utils/exam-layout-designer'
 
 const props = defineProps<{
   document: ExamLayoutDocument | null
@@ -22,11 +23,9 @@ const blockTypeOptions = ExamLayoutBlockTypeOptions
 
 const questionOptions = computed(() => {
   const questions = (props.document?.questions ?? []).filter((question) => {
-    if (props.block?.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX) {
-      return question.questionType === 'OBJECTIVE'
-    }
-    if (props.block?.blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER) {
-      return question.questionType === 'SUBJECTIVE'
+    if (props.block?.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
+      || props.block?.blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER) {
+      return expectedAnswerBlockTypeForOcrScene(question.ocrScene) === props.block?.blockType
     }
     return true
   })

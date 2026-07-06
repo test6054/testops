@@ -224,7 +224,6 @@ import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import mittBus from '@/utils/mitt'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanBatchWorkbench' })
@@ -490,8 +489,8 @@ async function loadBatches(pageNum?: number): Promise<void> {
   batchListLoadFailed.value = false
   try {
     const result = await pageScannerBatches(buildBatchQuery())
-    batches.value = readPageList(result, '扫描批次列表加载失败')
-    batchTotal.value = readPageTotal(result, '扫描批次列表加载失败')
+    batches.value = result.list
+    batchTotal.value = Number(result.total)
   } catch (error) {
     batches.value = []
     batchTotal.value = 0

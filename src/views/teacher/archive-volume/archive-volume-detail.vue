@@ -301,7 +301,7 @@
               :selected-catalog-keys="selectedCatalogKeys"
               :can-register-material="detailScope.canRegisterMaterial"
               @refreshed="(opts) => loadDetail(opts)"
-              @ocr-completed-stale="message.info('OCR 已完成，请重新执行完整性/四性检测')"
+              @ocr-completed-stale="handleMaterialOcrCompleted"
             />
           </div>
         </WorkbenchSurfaceCard>
@@ -801,6 +801,14 @@ async function loadDetail(options?: { silent?: boolean }) {
     integrityResult.value = detail.value.latestIntegrityCheck ?? null
     syncFocusedRemediationTaskFromDetail()
     await loadSubmitChecklist({ silent: options?.silent })
+  }
+}
+
+/** OCR 终态后刷新卷详情与提交清单；不变量：提示基于刷新后的 fourPropertyStale，避免使用旧 props 判断。 */
+async function handleMaterialOcrCompleted() {
+  await loadDetail({ silent: true })
+  if (detail.value?.fourPropertyStale) {
+    message.info('OCR 已完成，请重新执行完整性/四性检测')
   }
 }
 

@@ -43,7 +43,6 @@ import {
 } from '@/composables/useScopeRequestGuard'
 import { AuditRectificationVerifyDecisionCode } from '@/types/enums/audit-rectification-verify-decision-enum'
 import { showUserError, toUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AuditRectificationTab' })
@@ -186,10 +185,10 @@ async function loadList(options?: { refreshSignals?: boolean }) {
       keyword: rectQuery.keyword?.trim() || undefined,
     })
     assertQualityScopeFresh(scope)
-    rectList.value = readPageList(page, '整改任务加载失败，请稍后重试')
+    rectList.value = page.list
     rectQuery.pageNum = page.pageNum
     rectQuery.pageSize = page.pageSize
-    rectTotal.value = readPageTotal(page, '整改任务加载失败，请稍后重试')
+    rectTotal.value = Number(page.total)
     if (rectList.value.length === 0 && rectTotal.value > 0 && rectQuery.pageNum > 1) {
       rectQuery.pageNum -= 1
       await loadList(options)

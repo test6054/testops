@@ -370,7 +370,6 @@ import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'PrinterManagement' })
@@ -579,9 +578,9 @@ async function loadDevices(): Promise<void> {
         interfaceMode: searchForm.interfaceMode,
       }),
     ])
-    devices.value = readPageList(result, '扫描设备列表加载失败')
+    devices.value = result.list
     deviceSummary.value = summary
-    pagination.total = readPageTotal(result)
+    pagination.total = Number(result.total)
     if (result.pageNum != null) {
       pagination.current = result.pageNum
     }

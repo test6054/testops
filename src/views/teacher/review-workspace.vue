@@ -20,7 +20,10 @@
     </UiEmpty>
 
     <template v-else-if="detail">
-      <div v-if="detail.status === ReviewTaskStatusCode.INVALIDATED" class="review-workspace__invalidated-banner">
+      <div
+        v-if="detail.status === ReviewTaskStatusCode.INVALIDATED"
+        class="review-workspace__invalidated-banner"
+      >
         <div class="review-workspace__invalidated-title">当前复核任务已因补扫替换失效</div>
         <div class="review-workspace__invalidated-text">
           原作答影像已被替换，系统已重新进入识别 / 切片链路，待新复核任务生成后再处理。
@@ -388,10 +391,7 @@ import type {
   AiExecutionStatusCode,
   ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
-import type {
-  ReviewTaskDetailResponse,
-  ReviewTaskItemResponse,
-} from '@/apis/mark/exam-review-task'
+import type { ReviewTaskDetailResponse, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
 import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -436,7 +436,10 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { isExamConfidentialFlag, useExamConfidential } from '@/composables/useConfidentialWatermark'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { EXAM_WORKSPACE_CHROME_KEY, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import {
+  EXAM_WORKSPACE_CHROME_KEY,
+  useWorkspaceExamId,
+} from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -781,7 +784,10 @@ const canRescoreByAi = computed<boolean>(() => {
   if (rescoring.value || submitting.value) return false
   if (!examId.value) return false
   if (!detail.value) return false
-  return detail.value.status === ReviewTaskStatusCode.PENDING || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
+  return (
+    detail.value.status === ReviewTaskStatusCode.PENDING
+    || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
+  )
 })
 
 // ─── 加载主流程 ───────────────────────────
@@ -836,7 +842,10 @@ async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
     examId: examId.value,
     reviewTaskId: taskId.value,
   })
-  if (preview.status === ReviewTaskStatusCode.PENDING || preview.status === ReviewTaskStatusCode.IN_PROGRESS) {
+  if (
+    preview.status === ReviewTaskStatusCode.PENDING
+    || preview.status === ReviewTaskStatusCode.IN_PROGRESS
+  ) {
     return claimReviewTask({
       examId: examId.value,
       reviewTaskId: taskId.value,
@@ -1009,11 +1018,10 @@ async function loadAiExecutions(): Promise<void> {
   if (!examId.value || !detail.value) return
   executionsLoading.value = true
   try {
-    const records = await listAiExecutionsForQuestion({
+    aiExecutions.value = await listAiExecutionsForQuestion({
       examId: examId.value,
       gradeResultId: detail.value.gradeResultId,
     })
-    aiExecutions.value = records
   } catch (error) {
     showUserError(error, 'AI 复评历史加载失败')
     aiExecutions.value = []
@@ -1170,7 +1178,7 @@ async function takeNextTask(): Promise<void> {
     await loadReviewQueue()
     const currentTaskId = taskId.value
     const candidate = reviewQueue.value.find(
-      item => item.reviewTaskId !== currentTaskId && item.status === ReviewTaskStatusCode.PENDING,
+      (item) => item.reviewTaskId !== currentTaskId && item.status === ReviewTaskStatusCode.PENDING,
     )
     if (!candidate) {
       message.success('同题剩余任务复核完毕，返回考试工作台')

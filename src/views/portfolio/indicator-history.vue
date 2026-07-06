@@ -26,7 +26,6 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -91,8 +90,8 @@ async function loadImpactReports() {
   loading.value = true
   try {
     const page = await portfolioIndicatorTenantApi.pageImpactReport(impactQuery)
-    impactRows.value = readPageList(page, '影响报告加载失败')
-    impactTotal.value = readPageTotal(page)
+    impactRows.value = page.list
+    impactTotal.value = Number(page.total)
   } catch (error) {
     showUserError(error)
   } finally {

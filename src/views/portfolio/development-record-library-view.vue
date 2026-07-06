@@ -21,7 +21,6 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -86,7 +85,7 @@ async function loadPage() {
       categoryCode: props.categoryCode,
       levelCode: props.levelCode ?? (props.nationalOnly ? 'NATIONAL' : undefined),
     })
-    rows.value = readPageList(page, '加载发展记录失败')
+    rows.value = page.list
     if (requiresTeacher.value) {
       const userIds = rows.value
         .map((row) => row.teacherUserId)

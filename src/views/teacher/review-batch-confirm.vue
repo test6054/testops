@@ -166,7 +166,6 @@ import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 
 defineOptions({ name: 'TeacherReviewBatchConfirm' })
 
@@ -265,9 +264,9 @@ async function loadTasks(): Promise<void> {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
-    const records = readPageList(result, '复核任务列表加载失败')
+    const records = result.list
     rows.value = records
-    pagination.total = readPageTotal(result)
+    pagination.total = Number(result.total)
     initScoreDraft(records)
     selectedRowKeys.value = selectedRowKeys.value.filter((id) =>
       records.some((row) => row.gradeResultId === id),

@@ -2,7 +2,6 @@ import type { PortfolioTeacherDetailVO, PortfolioTeacherSummaryVO } from '@/apis
 import { ref } from 'vue'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import {
   formatPortfolioTeacherDetailSelectLabel,
   toPortfolioTeacherSelectOption
@@ -38,7 +37,7 @@ export function usePortfolioTeacherSearch() {
     }
     try {
       const page = await portfolioTeacherApi.page({ pageNum: 1, pageSize: 20, searchText: text })
-      teacherOptions.value = readPageList(page, '搜索教师失败').flatMap((teacher) => {
+      teacherOptions.value = page.list.flatMap((teacher) => {
         rememberTeacherSummaryOption(teacher)
         const option = toPortfolioTeacherSelectOption(teacher)
         return option ? [option] : []

@@ -12,7 +12,6 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { getUserErrorMessage } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -71,8 +70,8 @@ async function loadVolumes() {
       pageSize: pageSize.value,
       keyword: keyword.value.trim() || undefined,
     })
-    volumes.value = readPageList(page, '归档卷列表加载失败，请稍后重试')
-    total.value = readPageTotal(page, '归档卷总数加载失败，请稍后重试')
+    volumes.value = page.list
+    total.value = Number(page.total)
   } catch (error) {
     errorMessage.value = getUserErrorMessage(error)
     volumes.value = []

@@ -10,6 +10,7 @@ import {
   getExamLayoutBlockTypeDescription,
   requireExamLayoutBlockTypeCode,
 } from '@/types/enums/exam-layout-block-type-enum'
+import { ExamLayoutEntryKindCode } from '@/types/enums/exam-layout-entry-kind-enum'
 import {
   ALL_EXAM_LAYOUT_PAPER_SPEC_CODES,
   ExamLayoutPaperSpecCode,
@@ -228,6 +229,109 @@ export function hasIdentityBlock(document: ExamLayoutDocument | null): boolean {
   )
 }
 
+const ANSWER_BLOCK_TYPES = new Set<string>([
+  ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER,
+  ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX,
+])
+
+/** 题级主作答 ROI 是否就绪，与 summary roiReady 谓词一致。 */
+export function isLayoutQuestionRoiReady(
+  document: ExamLayoutDocument | null,
+  questionId: string,
+): boolean {
+  return Boolean(
+    document?.blocks?.some(
+      (block) => block.layoutQuestionId === questionId && ANSWER_BLOCK_TYPES.has(block.blockType),
+    ),
+  )
+}
+
+/** 查找题目主作答块，用于题单点击定位 ROI。 */
+export function findPrimaryAnswerBlockForQuestion(
+  document: ExamLayoutDocument | null,
+  questionId: string,
+): ExamLayoutBlockDto | null {
+  if (!document?.blocks?.length) {
+    return null
+  }
+  const answerBlocks = document.blocks.filter(
+    (block) => block.layoutQuestionId === questionId && ANSWER_BLOCK_TYPES.has(block.blockType),
+  )
+  if (answerBlocks.length === 0) {
+    return null
+  }
+  return answerBlocks.sort((a, b) => (a.layer ?? 0) - (b.layer ?? 0))[0]
+}
+
+/** 查找题目的首个结构块；不变量：题单点击即使缺少作答 ROI，也要定位到可复核的题干切片。 */
+export function findPrimaryBlockForQuestion(
+  document: ExamLayoutDocument | null,
+  questionId: string,
+): ExamLayoutBlockDto | null {
+  if (!document?.blocks?.length) {
+    return null
+  }
+  const relatedBlocks = document.blocks.filter((block) => block.layoutQuestionId === questionId)
+  if (relatedBlocks.length === 0) {
+    return null
+  }
+  return relatedBlocks.sort((a, b) => {
+    const typeOrder = (blockType: string) => {
+      if (blockType === ExamLayoutBlockTypeCode.QUESTION_STEM) {
+        return 0
+      }
+      if (ANSWER_BLOCK_TYPES.has(blockType)) {
+        return 1
+      }
+      return 2
+    }
+    return typeOrder(a.blockType) - typeOrder(b.blockType)
+      || a.pageNo - b.pageNo
+      || (a.layer ?? 0) - (b.layer ?? 0)
+  })[0]
+}
+
+/** 仅选择/判断使用客观填涂矩阵；填空/数值虽为主类型 OBJECTIVE，但作答块仍为书写作答区。 */
+const BUBBLE_OCR_SCENES = new Set(['CHOICE', 'TRUE_FALSE'])
+
+export function isBubbleOcrScene(ocrScene?: string): boolean {
+  return Boolean(ocrScene && BUBBLE_OCR_SCENES.has(ocrScene))
+}
+
+export function expectedAnswerBlockTypeForOcrScene(ocrScene?: string): string {
+  return isBubbleOcrScene(ocrScene)
+    ? ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
+    : ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
+}
+
+export interface LayoutRoiStats {
+  totalQuestionCount: number
+  roiReadyQuestionCount: number
+  notReadyQuestionNos: string[]
+}
+
+/** 统计设计器内题级 ROI 就绪度，供顶栏与 Banner 展示。 */
+export function computeLayoutRoiStats(document: ExamLayoutDocument | null): LayoutRoiStats {
+  const questions = document?.questions ?? []
+  const notReadyQuestionNos: string[] = []
+  let roiReadyQuestionCount = 0
+  for (const question of questions) {
+    if (!question.id) {
+      continue
+    }
+    if (isLayoutQuestionRoiReady(document, question.id)) {
+      roiReadyQuestionCount += 1
+    } else if (question.questionNo) {
+      notReadyQuestionNos.push(question.questionNo)
+    }
+  }
+  return {
+    totalQuestionCount: questions.length,
+    roiReadyQuestionCount,
+    notReadyQuestionNos,
+  }
+}
+
 /**
  * 制卷保存前业务校验；不变量：与后端 ExamLayoutDesignValidator 保存门禁保持一致，前端只提前暴露可修复问题。
  */
@@ -238,6 +342,65 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
   }
   if (!document.layoutName?.trim()) {
     reasons.push('请填写制卷名称')
+  }
+  if (document.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE) {
+    if (!document.sourcePdfFileId?.trim()) {
+      reasons.push('请上传整卷试卷源文件')
+    }
+    if (document.totalPages != null && document.totalPages < 0) {
+      reasons.push('整卷试卷页数不能为负数')
+    }
+    if (!document.pages?.length) {
+      reasons.push('整卷试卷尚未完成分页解析，请等待题目识别完成')
+    }
+    const sourcePageNos = new Set<number>()
+    const sourceTotalPages = document.totalPages && document.totalPages > 0
+      ? document.totalPages
+      : document.pages?.length
+    for (const page of document.pages ?? []) {
+      if (!page.pageNo || page.pageNo <= 0 || (sourceTotalPages && page.pageNo > sourceTotalPages)) {
+        reasons.push('整卷试卷页号必须在 1 到总页数之间')
+        continue
+      }
+      if (sourcePageNos.has(page.pageNo)) {
+        reasons.push(`整卷试卷第 ${page.pageNo} 页重复`)
+      }
+      sourcePageNos.add(page.pageNo)
+      if (!page.backgroundFileId) {
+        reasons.push(`整卷试卷第 ${page.pageNo} 页缺少背景文件`)
+      }
+      if (!page.naturalWidthPx || !page.naturalHeightPx) {
+        reasons.push(`整卷试卷第 ${page.pageNo} 页尺寸未解析`)
+      }
+    }
+    const sourceQuestions = document.questions ?? []
+    if (sourceQuestions.length === 0) {
+      reasons.push('整卷试卷尚未解析出题目，请重新识别后再保存')
+    }
+    const roiStats = computeLayoutRoiStats(document)
+    if (roiStats.notReadyQuestionNos.length > 0) {
+      const preview = roiStats.notReadyQuestionNos.slice(0, 6).join('、')
+      const suffix = roiStats.notReadyQuestionNos.length > 6 ? ' 等' : ''
+      reasons.push(`${roiStats.notReadyQuestionNos.length} 道题未配置 ROI：第 ${preview}${suffix} 题`)
+    }
+    for (const question of sourceQuestions) {
+      if (!question.id) {
+        reasons.push('整卷试卷题目缺少前端标识')
+      }
+      if (!question.questionNo?.trim() || !question.normalizedQuestionNo?.trim()) {
+        reasons.push(`题 ${question.questionNo || question.id || '-'} 缺少题号`)
+      }
+      if (question.questionType !== 'OBJECTIVE' && question.questionType !== 'SUBJECTIVE') {
+        reasons.push(`题 ${question.questionNo || question.id} 的题型必须是客观题或主观题`)
+      }
+      if (!question.ocrScene?.trim()) {
+        reasons.push(`题 ${question.questionNo || question.id} 缺少 OCR 场景`)
+      }
+      if (question.fullScore == null || Number(question.fullScore) <= 0) {
+        reasons.push(`题 ${question.questionNo || question.id} 的满分必须大于 0`)
+      }
+    }
+    return reasons
   }
   if (!document.totalPages || document.totalPages <= 0) {
     reasons.push('总页数必须大于 0')
@@ -269,7 +432,7 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
   }
 
   const questionIds = new Set<string>()
-  const questionTypeById = new Map<string, string>()
+  const questionOcrSceneById = new Map<string, string | undefined>()
   for (const question of document.questions ?? []) {
     if (!question.id) {
       reasons.push('制卷题目缺少前端标识')
@@ -285,10 +448,13 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
     if (question.questionType !== 'OBJECTIVE' && question.questionType !== 'SUBJECTIVE') {
       reasons.push(`题 ${question.questionNo || question.id} 的题型必须是客观题或主观题`)
     }
+    if (!question.ocrScene?.trim()) {
+      reasons.push(`题 ${question.questionNo || question.id} 缺少 OCR 场景`)
+    }
     if (question.fullScore == null || Number(question.fullScore) <= 0) {
       reasons.push(`题 ${question.questionNo || question.id} 的满分必须大于 0`)
     }
-    questionTypeById.set(question.id, question.questionType)
+    questionOcrSceneById.set(question.id, question.ocrScene)
   }
   if (questionIds.size === 0) {
     reasons.push('请至少配置一道制卷题目')
@@ -319,14 +485,15 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
       }
     }
     if (block.blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER && !block.layoutQuestionId) {
-      reasons.push('主观作答区必须关联制卷题目')
+      reasons.push('书写作答区必须关联制卷题目')
     }
     if (
       block.blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
       && block.layoutQuestionId
-      && questionTypeById.get(block.layoutQuestionId) !== 'SUBJECTIVE'
+      && expectedAnswerBlockTypeForOcrScene(questionOcrSceneById.get(block.layoutQuestionId))
+        !== ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
     ) {
-      reasons.push('主观作答区只能关联主观题')
+      reasons.push('书写作答区只能关联填空、数值、简答等非填涂题')
     }
     if (block.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX && !block.layoutQuestionId) {
       reasons.push('客观填涂矩阵必须关联制卷题目')
@@ -334,9 +501,10 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
     if (
       block.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
       && block.layoutQuestionId
-      && questionTypeById.get(block.layoutQuestionId) !== 'OBJECTIVE'
+      && expectedAnswerBlockTypeForOcrScene(questionOcrSceneById.get(block.layoutQuestionId))
+        !== ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
     ) {
-      reasons.push('客观填涂矩阵只能关联客观题')
+      reasons.push('客观填涂矩阵只能关联选择题或判断题')
     }
     if (block.layoutQuestionId && !questionIds.has(block.layoutQuestionId)) {
       reasons.push('识别区域关联的制卷题目不存在')

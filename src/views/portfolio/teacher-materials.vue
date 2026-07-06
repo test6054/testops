@@ -42,7 +42,6 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import {
   buildPortfolioIntakeReassignQuery,
   canReassignPortfolioMaterial,
@@ -147,8 +146,8 @@ async function loadPage() {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
-    rows.value = readPageList(page, '加载材料库失败')
-    pageTotal.value = readPageTotal(page)
+    rows.value = page.list
+    pageTotal.value = Number(page.total)
   } catch (error) {
     showUserError(error, '加载材料库失败')
   } finally {
@@ -172,8 +171,8 @@ async function searchOcr() {
       pageNum: searchPageNum.value,
       pageSize: searchPageSize.value,
     })
-    searchRows.value = readPageList(page, 'OCR 检索失败')
-    searchPageTotal.value = readPageTotal(page)
+    searchRows.value = page.list
+    searchPageTotal.value = Number(page.total)
   } catch (error) {
     showUserError(error, 'OCR 检索失败')
   } finally {

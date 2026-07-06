@@ -73,7 +73,6 @@ import { useQualityStore } from '@/stores/modules/quality'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatScore } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
 function targetTypeLabel(value: AchievementTargetTypeCode): string {
@@ -318,10 +317,10 @@ async function loadList() {
       auditStatus: query.auditStatus || undefined,
       achievementStatus: query.achievementStatus || undefined,
     })
-    list.value = readPageList(page, '达成度结果加载失败，请稍后重试')
+    list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = readPageTotal(page, '达成度结果加载失败，请稍后重试')
+    total.value = Number(page.total)
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()

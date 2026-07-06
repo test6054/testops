@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
 import type {
-  ExamLayoutBlockTypeCode} from '@/types/enums/exam-layout-block-type-enum';
+  ExamLayoutBlockTypeCode,
+} from '@/types/enums/exam-layout-block-type-enum'
 import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import {
-  ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES
+  ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES,
 } from '@/types/enums/exam-layout-block-type-enum'
 import {
   blocksOnPage,

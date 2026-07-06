@@ -30,7 +30,6 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function aiTaskTypeLabel(value: AiTaskTypeCode): string {
@@ -100,7 +99,7 @@ async function loadTaskOptions() {
       pageNum: 1,
       pageSize: 50,
     })
-    taskOptions.value = readPageList(page, 'AI 任务列表加载失败，请稍后重试').map((task) => ({
+    taskOptions.value = page.list.map((task) => ({
       value: task.id,
       label: `${aiTaskTypeLabel(task.taskType)} / ${aiTaskStatusLabel(task.status)} / ${task.businessLabel}`,
     }))

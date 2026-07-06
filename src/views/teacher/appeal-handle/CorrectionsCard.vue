@@ -159,7 +159,7 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { ExamScorePolicyCode } from '@/types/enums/exam-score-policy-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 
 defineOptions({ name: 'CorrectionsCard' })
 
@@ -321,8 +321,8 @@ async function reload(): Promise<void> {
       pageSize: pagination.pageSize,
     })
 
-    rows.value = readPageList(result, '成绩更正记录加载失败')
-    pagination.total = readPageTotal(result, '成绩更正记录加载失败')
+    rows.value = result.list
+    pagination.total = Number(result.total)
     pagination.current = result.pageNum ?? pagination.current
     pagination.pageSize = result.pageSize ?? pagination.pageSize
     if (rows.value.length === 0 && pagination.total > 0 && pagination.current > 1) {

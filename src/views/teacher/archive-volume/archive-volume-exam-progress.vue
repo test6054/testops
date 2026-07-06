@@ -371,6 +371,7 @@ import { useExamArchiveGateHint } from '@/composables/useExamArchiveGateHint'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useScoreReleaseNavigation } from '@/composables/useScoreReleaseNavigation'
 import {
+  ArchiveAutoCreateFailureCategoryCode,
   ArchiveAutoCreateFailureCategoryHintDescription,
   CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES,
   isArchiveAutoCreateFailureCategory,
@@ -387,7 +388,6 @@ import {
 } from '@/utils/archive-navigation-summary'
 import { buildArchiveExamGateLifecycleSteps } from '@/utils/archive-volume-lifecycle'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveVolumeExamProgress' })
@@ -583,6 +583,11 @@ const pendingRetryDescription = computed(() => {
   if (gate?.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED) {
     return gate.autoCreateLastError || '自动建卷多次失败，请修复问题后重新触发'
   }
+  if (gate?.autoCreateFailureCategory === ArchiveAutoCreateFailureCategoryCode.PACKAGE_PENDING) {
+    return gate.autoCreateLastError
+      ? `${gate.autoCreateLastError}；系统正在等待归档包投递或材料聚合完成`
+      : '双门禁已满足，系统正在投递考后归档包并聚合卷内材料'
+  }
   if (gate?.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.PENDING) {
     return gate.autoCreateLastError
       ? `${gate.autoCreateLastError}；系统仍将自动重试`
@@ -740,7 +745,7 @@ async function loadVolume() {
       pageNum: 1,
       pageSize: EXAM_ARCHIVE_VOLUME_PAGE_SIZE,
     })
-    const list = readPageList(page, '归档卷查询异常')
+    const list = page.list
     healthyVolumes.value = list.filter((item) => !isAutoCreateFailureStub(item))
     const stubRow = list.find((item) => isAutoCreateFailureStub(item))
     if (stubRow) {

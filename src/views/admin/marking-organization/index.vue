@@ -25,10 +25,22 @@
           />
           <UiTag
             v-if="organization"
-            :tone="strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
+            :tone="
+              strictEnumTone(
+                MARKING_ORGANIZATION_STATUS_TONE,
+                organization.organizationStatus,
+                '阅卷组织状态',
+              )
+            "
             size="sm"
           >
-            {{ strictEnumLabel(MarkingOrganizationStatusDescription, organization.organizationStatus, '阅卷组织状态') }}
+            {{
+              strictEnumLabel(
+                MarkingOrganizationStatusDescription,
+                organization.organizationStatus,
+                '阅卷组织状态',
+              )
+            }}
           </UiTag>
         </template>
         <template #actions>
@@ -65,12 +77,7 @@
       />
     </template>
 
-    <UiEmpty
-      v-if="!selectedExamId"
-      description="请选择考试"
-      class="org-index__empty"
-    />
-
+    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="org-index__empty" />
 
     <UiSkeletonState v-if="loading" variant="card" compact />
 
@@ -101,10 +108,22 @@
         </a-descriptions-item>
         <a-descriptions-item label="组织状态">
           <UiTag
-            :tone="strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
+            :tone="
+              strictEnumTone(
+                MARKING_ORGANIZATION_STATUS_TONE,
+                organization.organizationStatus,
+                '阅卷组织状态',
+              )
+            "
             size="sm"
           >
-            {{ strictEnumLabel(MarkingOrganizationStatusDescription, organization.organizationStatus, '阅卷组织状态') }}
+            {{
+              strictEnumLabel(
+                MarkingOrganizationStatusDescription,
+                organization.organizationStatus,
+                '阅卷组织状态',
+              )
+            }}
           </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="匿名阅卷">
@@ -133,12 +152,7 @@
         <UiButton size="sm" @click="goDetail">
           {{ canManageExamOwner ? '管理题组与策略' : '查看题组与策略' }}
         </UiButton>
-        <UiButton
-          v-if="canManageExamOwner"
-          size="sm"
-          variant="outline"
-          @click="openEditDrawer"
-        >
+        <UiButton v-if="canManageExamOwner" size="sm" variant="outline" @click="openEditDrawer">
           编辑组织
         </UiButton>
         <UiButton size="sm" variant="outline" @click="goSessions"> 试评 / 正评会话 </UiButton>
@@ -158,9 +172,7 @@
     </WorkbenchSurfaceCard>
 
     <WorkbenchSurfaceCard v-else class="org-index__panel--empty">
-      <UiEmpty
-        description="本考试尚未创建阅卷组织"
-      >
+      <UiEmpty description="本考试尚未创建阅卷组织">
         <p class="org-index__empty-desc">
           阅卷组织是组织教师批改试卷的核心实体；创建后可继续编排题组、配置分配策略并启动试评 /
           正评。
@@ -244,7 +256,7 @@
  * - createOrganization(request)  创建阅卷组织
  */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type {RouteLocationRaw} from 'vue-router';
+import type { RouteLocationRaw } from 'vue-router'
 import type {
   MarkingOrganizationResponse,
   OrganizationCreateRequest,
@@ -277,7 +289,10 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
-import { MARK_WORKBENCH_CONTEXT_KEY, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import {
+  MARK_WORKBENCH_CONTEXT_KEY,
+  useWorkspaceExamId,
+} from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import {
@@ -291,13 +306,8 @@ defineOptions({ name: 'AdminMarkingOrganizationIndex' })
 const router = useRouter()
 const route = useRoute()
 
-const {
-  isJourneyChrome,
-  contextBarTitle,
-  contextBarSubtitle,
-  examStatusLabel,
-  examStatusTone,
-} = useOptionalExamJourneyContextBar('阅卷安排')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
+  = useOptionalExamJourneyContextBar('阅卷安排')
 
 const {
   examOptions,
@@ -363,7 +373,12 @@ const signalMetrics = computed<SignalMetric[]>(() => {
   if (org) {
     const groupCount = org.groups.length
     return [
-      { key: 'groups', label: '题组数', value: groupCount, tone: groupCount > 0 ? 'blue' : 'orange' },
+      {
+        key: 'groups',
+        label: '题组数',
+        value: groupCount,
+        tone: groupCount > 0 ? 'blue' : 'orange',
+      },
       {
         key: 'anonymous',
         label: '匿名阅卷',
@@ -373,20 +388,30 @@ const signalMetrics = computed<SignalMetric[]>(() => {
       {
         key: 'status',
         label: '组织状态',
-        value: strictEnumLabel(MarkingOrganizationStatusDescription, org.organizationStatus, '阅卷组织状态'),
-        tone: strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, org.organizationStatus, '阅卷组织状态'),
+        value: strictEnumLabel(
+          MarkingOrganizationStatusDescription,
+          org.organizationStatus,
+          '阅卷组织状态',
+        ),
+        tone: strictEnumTone(
+          MARKING_ORGANIZATION_STATUS_TONE,
+          org.organizationStatus,
+          '阅卷组织状态',
+        ),
       },
     ]
   }
   const snapshot = workbenchContext?.snapshot.value
   if (snapshot && !snapshot.markingOrgConfigured) {
-    return [{
-      key: 'org-pending',
-      label: '阅卷设置',
-      value: '待配置',
-      tone: 'orange',
-      clickable: canManageExamOwner.value,
-    }]
+    return [
+      {
+        key: 'org-pending',
+        label: '阅卷设置',
+        value: '待配置',
+        tone: 'orange',
+        clickable: canManageExamOwner.value,
+      },
+    ]
   }
   return []
 })
@@ -460,8 +485,7 @@ async function submitCreate(): Promise<void> {
       anonymousMode: createForm.anonymousMode,
       remark: createForm.remark?.trim() || undefined,
     }
-    const nextOrganization = await createOrganization(request)
-    organization.value = nextOrganization
+    organization.value = await createOrganization(request)
     message.success('阅卷组织已创建')
     createDrawerOpen.value = false
     await refreshSnapshot()
@@ -495,8 +519,7 @@ async function submitUpdate(): Promise<void> {
       anonymousMode: editForm.anonymousMode,
       remark: editForm.remark?.trim() || undefined,
     }
-    const nextOrganization = await updateOrganization(request)
-    organization.value = nextOrganization
+    organization.value = await updateOrganization(request)
     message.success('阅卷组织已更新')
     editDrawerOpen.value = false
     await refreshSnapshot()
@@ -561,15 +584,21 @@ function goSessions(): void {
     showUserError(new Error('缺少考试上下文'), '无法进入试评 / 正评')
     return
   }
-  void router.push(resolveMarkingOrganizationSessionsRoute(
-    requireMarkingOrganizationId(organization.value),
-    examId,
-  ))
+  void router.push(
+    resolveMarkingOrganizationSessionsRoute(
+      requireMarkingOrganizationId(organization.value),
+      examId,
+    ),
+  )
 }
 
-watch(selectedExamId, () => {
-  void loadOrganization()
-}, { immediate: true })
+watch(
+  selectedExamId,
+  () => {
+    void loadOrganization()
+  },
+  { immediate: true },
+)
 
 watch(
   () => ({

@@ -24,7 +24,6 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -134,10 +133,10 @@ async function loadTeachers() {
       pageNum: teacherQuery.pageNum,
       pageSize: teacherQuery.pageSize,
     })
-    teacherRows.value = readPageList(page, '加载教师明细失败')
+    teacherRows.value = page.list
     teacherQuery.pageNum = page.pageNum
     teacherQuery.pageSize = page.pageSize
-    teacherTotal.value = readPageTotal(page, '加载教师明细失败')
+    teacherTotal.value = Number(page.total)
   } catch (error) {
     showUserError(error)
   } finally {

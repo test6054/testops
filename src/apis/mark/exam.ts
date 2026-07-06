@@ -161,6 +161,10 @@ export interface ExamPageQueryRequest extends QueryDto {
   teachingAcademicYear?: string
   /** 开课学期：1=秋季学期，2=春季学期 */
   teachingSemester?: SemesterCode
+  /** 创建时间范围下界 */
+  startTime?: string
+  /** 创建时间范围上界 */
+  endTime?: string
   /** 名称关键词（模糊匹配 exam_name / exam_no） */
   keyword?: string
 }

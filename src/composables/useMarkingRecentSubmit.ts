@@ -2,9 +2,10 @@ import type { MarkingTaskResponse } from '@/apis/mark/marking-organization'
 import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
 import {
+  formatMarkingWithdrawWindowLabel,
   MARKING_RECENT_SUBMIT_MAX,
-  MARKING_WITHDRAW_WINDOW_MS,
-  withdrawMarkingTask
+  resolveMarkingWithdrawWindowMs,
+  withdrawMarkingTask,
 } from '@/apis/mark/marking-withdraw'
 import { showUserError } from '@/utils/error-handler'
 
@@ -15,6 +16,7 @@ export interface MarkingRecentSubmitEntry {
   groupId: string | null
   score: number
   submittedAt: number
+  withdrawWindowMinutes: number
   withdrawDeadline: number
   batchIndex?: number
   batchTotal?: number
@@ -43,19 +45,22 @@ export function useMarkingRecentSubmit() {
     examId: string
     groupId: string | null
     score: number
+    withdrawWindowMinutes: number
     submittedAt?: number
     batchIndex?: number
     batchTotal?: number
   }): void {
     pruneExpired()
     const submittedAt = payload.submittedAt ?? Date.now()
+    const withdrawWindowMinutes = payload.withdrawWindowMinutes
     const entry: MarkingRecentSubmitEntry = {
       taskId: payload.taskId,
       examId: payload.examId,
       groupId: payload.groupId,
       score: payload.score,
       submittedAt,
-      withdrawDeadline: submittedAt + MARKING_WITHDRAW_WINDOW_MS,
+      withdrawWindowMinutes,
+      withdrawDeadline: submittedAt + resolveMarkingWithdrawWindowMs(withdrawWindowMinutes),
       batchIndex: payload.batchIndex,
       batchTotal: payload.batchTotal,
     }
@@ -78,7 +83,7 @@ export function useMarkingRecentSubmit() {
     onSuccess?: (task: MarkingTaskResponse) => void,
   ): Promise<MarkingTaskResponse | null> {
     if (!canWithdrawEntry(entry)) {
-      message.warning('撤销窗口已过期（提交后 10 分钟内有效）')
+      message.warning(`撤销窗口已过期（${formatMarkingWithdrawWindowLabel(entry.withdrawWindowMinutes)}）`)
       removeEntry(entry.taskId)
       return null
     }

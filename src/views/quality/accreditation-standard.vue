@@ -33,7 +33,6 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const list = ref<AccreditationStandardVO[]>([])
@@ -143,10 +142,10 @@ async function loadList() {
       ...query,
       keyword: query.keyword?.trim() || undefined,
     })
-    list.value = readPageList(page, '认证标准加载失败，请稍后重试')
+    list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = readPageTotal(page, '认证标准加载失败，请稍后重试')
+    total.value = Number(page.total)
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()

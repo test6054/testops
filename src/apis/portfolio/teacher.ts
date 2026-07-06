@@ -3,6 +3,8 @@ import type {
   PortfolioTeacherDetailVO,
   PortfolioTeacherIdentitySaveRequest,
   PortfolioTeacherIdentityTypeCode,
+  PortfolioTeacherOneTableCategoryVO,
+  PortfolioTeacherOneTableGetRequest,
   PortfolioTeacherPageRequest,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
@@ -20,12 +22,7 @@ export interface PortfolioTeacherOneTableSummaryVO {
   honorCount?: number
   correctionPending?: boolean
   recentChangeSummary: string[]
-  categories: Array<{
-    categoryId: string
-    categoryName: string
-    recordCount: number
-    officialRecordId?: string
-  }>
+  categories: PortfolioTeacherOneTableCategoryVO[]
 }
 
 export interface PortfolioDeptOneTableSummaryVO {
@@ -66,15 +63,13 @@ export interface PortfolioDeptOneTableTeacherRowVO {
 
 export interface PortfolioDeptStructureStatVO {
   totalTeacherCount: number
-  departments: Array<{
-    departmentId: string
-    departmentName?: string
-    teacherCount: number
-  }>
+  departments: PortfolioDeptStructureStatItemVO[]
 }
 
-export interface PortfolioTeacherOneTableGetRequest {
-  teacherId?: string
+export interface PortfolioDeptStructureStatItemVO {
+  departmentId: string
+  departmentName?: string
+  teacherCount: number
 }
 
 export interface PortfolioDeptOneTableGetRequest {
@@ -122,6 +117,8 @@ export const portfolioTeacherApi = {
 export type {
   PortfolioTeacherDetailVO,
   PortfolioTeacherIdentitySaveRequest,
+  PortfolioTeacherOneTableCategoryVO,
+  PortfolioTeacherOneTableGetRequest,
   PortfolioTeacherPageRequest,
   PortfolioTeacherSummaryVO,
 }

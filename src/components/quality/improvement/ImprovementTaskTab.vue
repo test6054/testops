@@ -49,7 +49,6 @@ import {
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ImprovementTaskTab' })
@@ -263,10 +262,10 @@ async function loadList(options?: { refreshSignals?: boolean }): Promise<void> {
       keyword: improvementQuery.keyword?.trim() || undefined,
     })
     assertQualityScopeFresh(scope)
-    improvementList.value = readPageList(page, '持续改进任务加载失败，请稍后重试')
+    improvementList.value = page.list
     improvementQuery.pageNum = page.pageNum
     improvementQuery.pageSize = page.pageSize
-    improvementTotal.value = readPageTotal(page, '持续改进任务加载失败，请稍后重试')
+    improvementTotal.value = Number(page.total)
     if (
       improvementList.value.length === 0
       && improvementTotal.value > 0
@@ -357,7 +356,7 @@ async function startPollingImprovementAiTask(improvementTaskId: string): Promise
       pageNum: 1,
       pageSize: 1,
     })
-    const task = readPageList(result, '查询改进草稿 AI 任务失败')[0]
+    const task = result.list[0]
     if (task?.id) {
       aiTaskStore.startPolling(task.id)
       return

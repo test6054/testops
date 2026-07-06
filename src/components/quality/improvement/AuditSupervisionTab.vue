@@ -50,7 +50,6 @@ import {
 } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AuditSupervisionTab' })
@@ -255,10 +254,10 @@ async function loadList(options?: { refreshSignals?: boolean }) {
       keyword: supQuery.keyword?.trim() || undefined,
     })
     assertQualityScopeFresh(scope)
-    supList.value = readPageList(page, '督导复查记录加载失败，请稍后重试')
+    supList.value = page.list
     supQuery.pageNum = page.pageNum
     supQuery.pageSize = page.pageSize
-    supTotal.value = readPageTotal(page, '督导复查记录加载失败，请稍后重试')
+    supTotal.value = Number(page.total)
     if (supList.value.length === 0 && supTotal.value > 0 && supQuery.pageNum > 1) {
       supQuery.pageNum -= 1
       await loadList(options)

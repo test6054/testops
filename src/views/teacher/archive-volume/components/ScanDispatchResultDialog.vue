@@ -16,7 +16,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 
 export interface ScanDispatchResultPayload {
   ticketId: string
@@ -85,7 +84,7 @@ async function loadPendingTickets() {
         ScanDispatchTicketStatusCode.SUSPENDED,
       ],
     })
-    const items = readPageList(page, '派单列表加载失败')
+    const items = page.list
     pendingTickets.value = items
       .filter((item) => item.ticketId)
       .filter((item) => {

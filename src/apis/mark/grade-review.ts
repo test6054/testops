@@ -281,7 +281,7 @@ export function submitReviewRequest(
 /**
  * 复核申请列表查询请求 - 对应 GradeReviewRequestListQuery
  */
-export interface GradeReviewRequestListQueryRequest extends QueryDto {
+export interface GradeReviewRequestListQuery extends QueryDto {
   examId: string
   studentUserId?: string
   requestStatus?: GradeReviewRequestStatusCode
@@ -296,7 +296,7 @@ export interface GradeReviewRequestListQueryRequest extends QueryDto {
  * 后端由 GET + @RequestParam(examId, studentUserId, requestStatus) 重构为 POST + GradeReviewRequestListQuery。
  */
 export function listReviewRequests(
-  request: GradeReviewRequestListQueryRequest,
+  request: GradeReviewRequestListQuery,
 ): Promise<PageResult<GradeReviewRequestItemResponse>> {
   return http.post<PageResult<GradeReviewRequestItemResponse>>(
     '/api/exam/grade-review/request/list',
@@ -331,13 +331,13 @@ export interface StudentGradeReviewRequestItemResponse {
  * 用于学生端 /student/appeal，避免按考试逐个调用 listReviewRequests 的 N+1。
  * POST /api/exam/grade-review/request/student-list
  */
-export interface StudentGradeReviewRequestListQueryRequest extends QueryDto {
+export interface StudentGradeReviewRequestListQuery extends QueryDto {
   requestStatus?: GradeReviewRequestStatusCode
   examId?: string
 }
 
 export function listMyReviewRequests(
-  request: StudentGradeReviewRequestListQueryRequest = {},
+  request: StudentGradeReviewRequestListQuery = {},
 ): Promise<PageResult<StudentGradeReviewRequestItemResponse>> {
   return http.post<PageResult<StudentGradeReviewRequestItemResponse>>(
     '/api/exam/grade-review/request/student-list',
@@ -425,14 +425,14 @@ export function createCorrection(
  * 查询成绩更正记录
  * POST /api/exam/grade-review/correction/list
  */
-export interface GradeCorrectionListQueryRequest extends QueryDto {
+export interface GradeCorrectionListQuery extends QueryDto {
   examId: string
   studentUserId?: string
   keyword?: string
 }
 
 export function listCorrections(
-  request: GradeCorrectionListQueryRequest,
+  request: GradeCorrectionListQuery,
 ): Promise<PageResult<ExamGradeCorrectionRecordResponse>> {
   return http.post<PageResult<ExamGradeCorrectionRecordResponse>>(
     '/api/exam/grade-review/correction/list',
@@ -531,7 +531,7 @@ export interface BatchCorrectionPlanExecuteRequest {
 }
 
 /** 批量更正计划列表查询 - 对应 BatchCorrectionPlanListQuery */
-export interface BatchCorrectionPlanListQueryRequest extends QueryDto {
+export interface BatchCorrectionPlanListQuery extends QueryDto {
   examId: string
   approvalStatus?: BatchCorrectionApprovalStatusCode
   keyword?: string
@@ -542,7 +542,7 @@ export interface BatchCorrectionPlanListQueryRequest extends QueryDto {
  * POST /api/exam/grade-review/batch-correction/list
  */
 export function listBatchCorrectionPlans(
-  request: BatchCorrectionPlanListQueryRequest,
+  request: BatchCorrectionPlanListQuery,
 ): Promise<PageResult<ExamBatchGradeCorrectionPlan>> {
   return http.post<PageResult<ExamBatchGradeCorrectionPlan>>(
     '/api/exam/grade-review/batch-correction/list',

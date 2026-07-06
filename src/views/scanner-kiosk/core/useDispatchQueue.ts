@@ -5,7 +5,6 @@ import { pageScanDispatchTickets } from '@/apis/mark/scanner-dispatch'
 import { DispatchQueueStatusFilterCode } from '@/types/enums/dispatch-queue-status-filter-enum'
 import { ScanDispatchTicketStatusCode } from '@/types/enums/scan-dispatch-ticket-status-enum'
 import { getUserErrorMessage } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 
 const STATUS_FILTER_MAP: Record<DispatchQueueStatusFilterCode, ScanDispatchTicketStatusCode[]> = {
   [DispatchQueueStatusFilterCode.ALL]: [
@@ -58,8 +57,8 @@ export function useDispatchQueue() {
           ? true
           : undefined,
       })
-      tickets.value = readPageList(page, '派单队列加载失败，请稍后重试')
-      total.value = readPageTotal(page, '派单队列总数加载失败，请稍后重试')
+      tickets.value = page.list
+      total.value = Number(page.total)
     }
     catch (error) {
       errorMessage.value = getUserErrorMessage(error)

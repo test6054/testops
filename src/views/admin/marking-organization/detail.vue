@@ -5,11 +5,7 @@
         layout="workbench"
         show-title
         :title="
-          isJourneyChrome
-            ? contextBarTitle
-            : organization
-              ? organizationExamLabel
-              : '阅卷组织详情'
+          isJourneyChrome ? contextBarTitle : organization ? organizationExamLabel : '阅卷组织详情'
         "
         :subtitle="isJourneyChrome ? contextBarSubtitle : '阅卷安排'"
       >
@@ -86,14 +82,17 @@
 
     <UiSkeletonState v-if="loading && !organization" variant="card" compact />
 
-    <UiEmpty
-      v-else-if="!organization"
-      description="暂无数据"
-      class="org-detail__empty"
-    />
+    <UiEmpty v-else-if="!organization" description="暂无数据" class="org-detail__empty" />
 
     <template v-else-if="organization">
       <template v-if="isExamWorkspaceRoute">
+        <UiAlertStrip
+          v-if="layoutRoiGap > 0"
+          tone="warning"
+          class="org-detail__readonly-banner"
+          :title="`制卷识别区域未就绪（${layoutRoiGap} 道题）`"
+          description="未配置 ROI 的题目无法分配题组、按题导出或生成按题学情，请先在制卷工作台补全识别区域。"
+        />
         <UiAlertStrip
           v-if="!canManageExamOwner"
           tone="info"
@@ -176,12 +175,7 @@
           description="题组、策略与正评启动由考试主考老师配置。"
         />
         <template #head>
-          <UiSectionTabs
-            v-model="activeTab"
-            :items="detailTabItems"
-            compact
-            divided
-          />
+          <UiSectionTabs v-model="activeTab" :items="detailTabItems" compact divided />
         </template>
 
         <template v-if="activeTab === 'info'">
@@ -352,7 +346,12 @@
         </template>
 
         <template v-else-if="activeTab === 'policy'">
-          <a-form v-if="canManageExamOwner" :model="policyForm" layout="vertical" class="policy-form">
+          <a-form
+            v-if="canManageExamOwner"
+            :model="policyForm"
+            layout="vertical"
+            class="policy-form"
+          >
             <a-row :gutter="16">
               <a-col :xs="24" :lg="12">
                 <h4 class="subsection-title">任务分配策略</h4>
@@ -382,9 +381,12 @@
                 <a-form-item label="匿名模式" required>
                   <a-select
                     v-model:value="policyForm.anonymityMode"
-                    :options="ANONYMITY_MODE_OPTIONS"
-                    :disabled="!canManageExamOwner"
+                    :options="effectiveAnonymityModeOptions"
+                    :disabled="true"
                   />
+                  <div class="policy-hint">
+                    匿名模式由阅卷组织主配置统一裁决，题组策略只继承当前组织模式。
+                  </div>
                 </a-form-item>
                 <a-form-item
                   v-if="policyForm.allocationUnit === AllocationUnitCode.RANDOM_QUESTIONS"
@@ -475,11 +477,7 @@
                     :disabled="!canManageExamOwner"
                   />
                 </a-form-item>
-                <UiButton
-                  v-if="canManageExamOwner"
-                  :loading="savingRecycle"
-                  @click="submitRecycle"
-                >
+                <UiButton v-if="canManageExamOwner" :loading="savingRecycle" @click="submitRecycle">
                   <template #icon><SaveOutlined /></template>
                   保存回收策略
                 </UiButton>
@@ -494,7 +492,9 @@
                   {{ policyScopeLabel(policyForm.allocationGroupId) }}
                 </a-descriptions-item>
                 <a-descriptions-item label="分配模式">
-                  {{ policyOptionLabel(MARKING_ALLOCATION_MODE_OPTIONS, policyForm.allocationMode) }}
+                  {{
+                    policyOptionLabel(MARKING_ALLOCATION_MODE_OPTIONS, policyForm.allocationMode)
+                  }}
                 </a-descriptions-item>
                 <a-descriptions-item label="批阅任务单元">
                   {{ policyOptionLabel(ALLOCATION_UNIT_OPTIONS, policyForm.allocationUnit) }}
@@ -515,7 +515,12 @@
                   {{ policyForm.loadLimit }}
                 </a-descriptions-item>
                 <a-descriptions-item label="匿名令牌策略">
-                  {{ policyOptionLabel(ANONYMOUS_TOKEN_POLICY_OPTIONS, policyForm.anonymousTokenPolicy) }}
+                  {{
+                    policyOptionLabel(
+                      ANONYMOUS_TOKEN_POLICY_OPTIONS,
+                      policyForm.anonymousTokenPolicy,
+                    )
+                  }}
                 </a-descriptions-item>
               </a-descriptions>
             </a-col>
@@ -672,13 +677,26 @@
                 />
               </a-form-item>
               <a-form-item label="分配模式" required>
-                <a-select v-model:value="policyForm.allocationMode" :options="MARKING_ALLOCATION_MODE_OPTIONS" />
+                <a-select
+                  v-model:value="policyForm.allocationMode"
+                  :options="MARKING_ALLOCATION_MODE_OPTIONS"
+                />
               </a-form-item>
               <a-form-item label="批阅任务单元" required>
-                <a-select v-model:value="policyForm.allocationUnit" :options="ALLOCATION_UNIT_OPTIONS" />
+                <a-select
+                  v-model:value="policyForm.allocationUnit"
+                  :options="ALLOCATION_UNIT_OPTIONS"
+                />
               </a-form-item>
               <a-form-item label="匿名模式" required>
-                <a-select v-model:value="policyForm.anonymityMode" :options="ANONYMITY_MODE_OPTIONS" />
+                <a-select
+                  v-model:value="policyForm.anonymityMode"
+                  :options="effectiveAnonymityModeOptions"
+                  :disabled="true"
+                />
+                <div class="policy-hint">
+                  匿名模式由阅卷组织主配置统一裁决，题组策略只继承当前组织模式。
+                </div>
               </a-form-item>
               <a-form-item
                 v-if="policyForm.allocationUnit === AllocationUnitCode.RANDOM_QUESTIONS"
@@ -693,10 +711,20 @@
                 />
               </a-form-item>
               <a-form-item label="每批分配任务数">
-                <a-input-number v-model:value="policyForm.batchSize" :min="1" :max="500" style="width: 100%" />
+                <a-input-number
+                  v-model:value="policyForm.batchSize"
+                  :min="1"
+                  :max="500"
+                  style="width: 100%"
+                />
               </a-form-item>
               <a-form-item label="教师最大待处理任务数">
-                <a-input-number v-model:value="policyForm.loadLimit" :min="1" :max="500" style="width: 100%" />
+                <a-input-number
+                  v-model:value="policyForm.loadLimit"
+                  :min="1"
+                  :max="500"
+                  style="width: 100%"
+                />
               </a-form-item>
               <a-form-item label="匿名令牌策略">
                 <a-select
@@ -721,10 +749,20 @@
                 />
               </a-form-item>
               <a-form-item label="超时时间（分钟）">
-                <a-input-number v-model:value="policyForm.timeoutMinutes" :min="1" :max="1440" style="width: 100%" />
+                <a-input-number
+                  v-model:value="policyForm.timeoutMinutes"
+                  :min="1"
+                  :max="1440"
+                  style="width: 100%"
+                />
               </a-form-item>
               <a-form-item label="教师最大待处理任务数">
-                <a-input-number v-model:value="policyForm.maxPendingCount" :min="1" :max="500" style="width: 100%" />
+                <a-input-number
+                  v-model:value="policyForm.maxPendingCount"
+                  :min="1"
+                  :max="500"
+                  style="width: 100%"
+                />
               </a-form-item>
               <a-form-item label="再分配模式">
                 <a-select
@@ -750,7 +788,8 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import type {ExamWorkbenchMarkingProgressPanelResponse} from '@/apis/mark/exam-progress';
+import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
+import type { ExamWorkbenchMarkingProgressPanelResponse } from '@/apis/mark/exam-progress'
 import type {
   AllocationPolicyResponse,
   AllocationPolicySaveRequest,
@@ -759,9 +798,10 @@ import type {
   OrganizationUpdateRequest,
   QuestionGroupSaveRequest,
   QuestionMarkingGroupResponse,
-  RecyclePolicyResponse, RecyclePolicySaveRequest
+  RecyclePolicyResponse,
+  RecyclePolicySaveRequest,
 } from '@/apis/mark/marking-organization'
-import type {ReviewerQualityMetricResponse} from '@/apis/mark/marking-quality';
+import type { ReviewerQualityMetricResponse } from '@/apis/mark/marking-quality'
 import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -796,7 +836,6 @@ import {
   updateOrganization,
 } from '@/apis/mark/marking-organization'
 import { listReviewerMetrics } from '@/apis/mark/marking-quality'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInfoGrid from '@/components/ui-guide/ui/InfoGrid.vue'
@@ -826,6 +865,7 @@ import { MarkingReassignModeCode } from '@/types/enums/marking-reassign-mode-enu
 import { QuestionMarkingGroupStatusCode } from '@/types/enums/question-marking-group-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { buildExamLayoutQuestionOptions } from '@/utils/format-exam-layout-question-summary'
 import {
   resolveMarkingOrganizationDetailRoute,
   resolveMarkingOrganizationIndexRoute,
@@ -844,13 +884,8 @@ defineOptions({ name: 'AdminMarkingOrganizationDetail' })
 
 const MARKING_TEACHER_OPTION_PAGE_SIZE = 100
 
-const {
-  isJourneyChrome,
-  contextBarTitle,
-  contextBarSubtitle,
-  examStatusLabel,
-  examStatusTone,
-} = useOptionalExamJourneyContextBar('阅卷安排')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
+  = useOptionalExamJourneyContextBar('阅卷安排')
 
 const route = useRoute()
 const router = useRouter()
@@ -923,7 +958,7 @@ function matchesGroupSearch(group: QuestionMarkingGroupResponse, keyword: string
     (question) =>
       String(question.questionNo).includes(keyword)
       || question.questionTypeMessage?.toLowerCase().includes(keyword),
-  );
+  )
 }
 
 const filteredGroups = computed(() => {
@@ -963,9 +998,10 @@ const orgSignalMetrics = computed((): SignalMetric[] => {
     return []
   }
   const summary = markingProgressPanel.value?.markingTaskSummary
-  const overallPercent = summary && summary.totalTaskCount > 0
-    ? Math.round((summary.finalizedTaskCount * 100) / summary.totalTaskCount)
-    : null
+  const overallPercent
+    = summary && summary.totalTaskCount > 0
+      ? Math.round((summary.finalizedTaskCount * 100) / summary.totalTaskCount)
+      : null
   const metrics: SignalMetric[] = [
     {
       key: 'leader',
@@ -1052,7 +1088,9 @@ const workspaceSecondaryTabItems = computed((): UiSectionTabItem[] => {
   return items
 })
 
-const examCreateUserId = computed(() => examDetail.value?.createUser ?? organization.value?.examCreateUserId)
+const examCreateUserId = computed(
+  () => examDetail.value?.createUser ?? organization.value?.examCreateUserId,
+)
 const { canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, organization)
 
 function guardExamOwnerAction(): boolean {
@@ -1069,8 +1107,7 @@ async function loadFormalSessions(): Promise<void> {
     return
   }
   try {
-    const sessions = await listFormalSessions({ organizationId: organizationId.value })
-    formalSessions.value = sessions
+    formalSessions.value = await listFormalSessions({ organizationId: organizationId.value })
   } catch (error) {
     formalSessions.value = []
     showUserError(error, '正评会话加载失败')
@@ -1170,7 +1207,9 @@ function resetPolicyState(): void {
 /**
  * 工作台详情路由必须与组织真实 examId 对齐，否则阶段快照、回跳目标与当前操作对象会错位。
  */
-async function alignWorkspaceRouteExamId(nextOrganization: MarkingOrganizationResponse): Promise<boolean> {
+async function alignWorkspaceRouteExamId(
+  nextOrganization: MarkingOrganizationResponse,
+): Promise<boolean> {
   if (!nextOrganization.examId) {
     return true
   }
@@ -1240,11 +1279,12 @@ async function loadTeachers(): Promise<void> {
   teacherLoading.value = true
   try {
     teacherList.value = await readAllPages(
-      (pageNum) => adminGetUserPage({
-        pageNum,
-        pageSize: MARKING_TEACHER_OPTION_PAGE_SIZE,
-        roleKey: 'SCH_TECH',
-      }),
+      (pageNum) =>
+        adminGetUserPage({
+          pageNum,
+          pageSize: MARKING_TEACHER_OPTION_PAGE_SIZE,
+          roleKey: 'SCH_TECH',
+        }),
       '阅卷教师列表加载失败，请稍后重试',
     )
   } catch (error) {
@@ -1257,29 +1297,37 @@ async function loadTeachers(): Promise<void> {
 interface QuestionOption {
   value: string
   label: string
+  disabled?: boolean
+  title?: string
 }
 
 const questionOptions = ref<QuestionOption[]>([])
+const layoutSummary = ref<ExamTemplateResponse | null>(null)
+const layoutRoiGap = computed(() => {
+  if (!layoutSummary.value?.configured) {
+    return 0
+  }
+  const total = layoutSummary.value.totalQuestionCount ?? 0
+  const ready = layoutSummary.value.roiReadyQuestionCount ?? 0
+  return Math.max(0, total - ready)
+})
 const loadedLayoutQuestionExamId = ref<string | null>(null)
 const templateLoading = ref(false)
 
 async function loadLayoutQuestions(): Promise<void> {
   const currentExamId = examId.value
   if (!currentExamId) return
-  if (loadedLayoutQuestionExamId.value === currentExamId && questionOptions.value.length > 0)
-    return
+  if (loadedLayoutQuestionExamId.value === currentExamId && questionOptions.value.length > 0) return
   templateLoading.value = true
   try {
     const tpl = await getExamLayoutQuestionSummary(currentExamId)
+    layoutSummary.value = tpl
     if (!tpl.configured) {
       questionOptions.value = []
       loadedLayoutQuestionExamId.value = currentExamId
       return
     }
-    questionOptions.value = tpl.questions.map((q) => ({
-      value: q.layoutQuestionId,
-      label: `第 ${q.questionNo} 题（${strictEnumLabel(QuestionTypeDescription, q.questionType, '题型')}，满分 ${q.fullScore}）`,
-    }))
+    questionOptions.value = buildExamLayoutQuestionOptions(tpl.questions)
     loadedLayoutQuestionExamId.value = currentExamId
   } catch (error) {
     showUserError(error, '考试制卷题目加载失败')
@@ -1448,11 +1496,15 @@ async function submitGroup(): Promise<void> {
 }
 
 function canEditGroup(record: QuestionMarkingGroupResponse): boolean {
-  return canManageExamOwner.value && record.groupStatus !== QuestionMarkingGroupStatusCode.GROUP_CLOSED
+  return (
+    canManageExamOwner.value && record.groupStatus !== QuestionMarkingGroupStatusCode.GROUP_CLOSED
+  )
 }
 
 function canDeleteGroup(record: QuestionMarkingGroupResponse): boolean {
-  return canManageExamOwner.value && record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_DRAFT
+  return (
+    canManageExamOwner.value && record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_DRAFT
+  )
 }
 
 function canCloseGroup(record: QuestionMarkingGroupResponse): boolean {
@@ -1517,8 +1569,7 @@ async function submitUpdate(): Promise<void> {
       anonymousMode: editForm.anonymousMode,
       remark: editForm.remark?.trim() || undefined,
     }
-    const nextOrganization = await updateOrganization(request)
-    organization.value = nextOrganization
+    organization.value = await updateOrganization(request)
     message.success('阅卷组织已更新')
     editDrawerOpen.value = false
     await refreshSnapshot()
@@ -1578,6 +1629,14 @@ const policyForm = reactive<PolicyForm>({
 const allocationPolicies = ref<AllocationPolicyResponse[]>([])
 const recyclePolicies = ref<RecyclePolicyResponse[]>([])
 
+const effectiveAnonymityMode = computed(() =>
+  organization.value?.anonymousMode ? AnonymityModeCode.ANONYMOUS : AnonymityModeCode.NAMED,
+)
+
+const effectiveAnonymityModeOptions = computed(() =>
+  ANONYMITY_MODE_OPTIONS.filter((option) => option.value === effectiveAnonymityMode.value),
+)
+
 const DEFAULT_ALLOCATION_POLICY_FIELDS = {
   allocationMode: MarkingAllocationModeCode.BY_QUESTION,
   allocationUnit: AllocationUnitCode.SELECTED_QUESTIONS,
@@ -1609,7 +1668,7 @@ function applyAllocationPolicyToForm(): void {
   if (saved) {
     policyForm.allocationMode = saved.allocationMode
     policyForm.allocationUnit = saved.allocationUnit
-    policyForm.anonymityMode = saved.anonymityMode
+    policyForm.anonymityMode = effectiveAnonymityMode.value
     policyForm.randomQuestionSampleSize = saved.randomQuestionSampleSize
     policyForm.batchSize = saved.batchSize
     policyForm.loadLimit = saved.loadLimit
@@ -1617,6 +1676,7 @@ function applyAllocationPolicyToForm(): void {
     return
   }
   Object.assign(policyForm, DEFAULT_ALLOCATION_POLICY_FIELDS)
+  policyForm.anonymityMode = effectiveAnonymityMode.value
 }
 
 function applyRecyclePolicyToForm(): void {
@@ -1652,6 +1712,9 @@ async function loadMarkingPolicies(): Promise<void> {
 
 watch(() => policyForm.allocationGroupId, applyAllocationPolicyToForm)
 watch(() => policyForm.recycleGroupId, applyRecyclePolicyToForm)
+watch(effectiveAnonymityMode, (mode) => {
+  policyForm.anonymityMode = mode
+})
 
 const groupSelectOptions = computed(() => [
   ...groups.value.map((g) => ({ value: g.id, label: g.groupName })),
@@ -1659,7 +1722,9 @@ const groupSelectOptions = computed(() => [
 
 const groupAllocationUnitMap = computed(() => {
   const map: Record<string, AllocationUnitCode> = {}
-  const defaultAllocationUnit = allocationPolicies.value.find((policy) => policy.groupId == null)?.allocationUnit
+  const defaultAllocationUnit = allocationPolicies.value.find(
+    (policy) => policy.groupId == null,
+  )?.allocationUnit
   for (const group of groups.value) {
     const groupPolicy = allocationPolicies.value.find((policy) => policy.groupId === group.id)
     const allocationUnit = groupPolicy?.allocationUnit ?? defaultAllocationUnit
@@ -1698,7 +1763,7 @@ async function submitAllocation(): Promise<void> {
       groupId: policyForm.allocationGroupId,
       allocationMode: policyForm.allocationMode,
       allocationUnit: policyForm.allocationUnit,
-      anonymityMode: policyForm.anonymityMode,
+      anonymityMode: effectiveAnonymityMode.value,
       randomQuestionSampleSize: policyForm.randomQuestionSampleSize,
       batchSize: policyForm.batchSize,
       loadLimit: policyForm.loadLimit,
@@ -1759,9 +1824,13 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
   return strictEnumLabel(QuestionMarkingGroupStatusDescription, status, '题组状态')
 }
 
-watch(() => ({ organizationId: organizationId.value, routeExamId: routeExamId.value }), () => {
-  void loadOrganization()
-}, { immediate: true })
+watch(
+  () => ({ organizationId: organizationId.value, routeExamId: routeExamId.value }),
+  () => {
+    void loadOrganization()
+  },
+  { immediate: true },
+)
 
 watch(
   () => ({ canManage: canManageExamOwner.value, tab: route.query.tab }),
@@ -1773,9 +1842,10 @@ watch(
       activeTab.value = 'info'
       return
     }
-    activeTab.value = routeState.tab === 'launch' || routeState.tab === 'policy' || routeState.tab === 'recycled'
-      ? routeState.tab
-      : 'info'
+    activeTab.value
+      = routeState.tab === 'launch' || routeState.tab === 'policy' || routeState.tab === 'recycled'
+        ? routeState.tab
+        : 'info'
   },
   { immediate: true },
 )

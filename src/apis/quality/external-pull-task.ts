@@ -23,9 +23,9 @@ export interface ExternalPullTaskVO {
   businessId: string
   businessLabel?: string
   sourceObjectName: string
-  fields?: ExternalPullTaskField[]
-  filters?: ExternalPullTaskFilter[]
-  sorts?: ExternalPullTaskSort[]
+  fields?: ExternalPullTaskFieldVO[]
+  filters?: ExternalPullTaskFilterVO[]
+  sorts?: ExternalPullTaskSortVO[]
   maxRowCount?: number
   queryTimeoutSeconds?: number
   status: ExternalPullTaskStatusCode
@@ -46,13 +46,13 @@ export interface ExternalPullTaskQueryRequest extends QueryDto {
   businessId?: string
 }
 
-export interface ExternalPullTaskField {
+export interface ExternalPullTaskFieldVO {
   id?: string
   fieldName: string
   fieldOrder: number
 }
 
-export interface ExternalPullTaskFilter {
+export interface ExternalPullTaskFilterVO {
   id?: string
   fieldName: string
   filterOperator: ExternalPullFilterOperatorCode
@@ -61,8 +61,27 @@ export interface ExternalPullTaskFilter {
   valueOrder: number
 }
 
-export interface ExternalPullTaskSort {
+export interface ExternalPullTaskSortVO {
   id?: string
+  fieldName: string
+  sortDirection: ExternalPullSortDirectionCode
+  sortOrder: number
+}
+
+export interface ExternalPullTaskFieldRequest {
+  fieldName: string
+  fieldOrder: number
+}
+
+export interface ExternalPullTaskFilterRequest {
+  fieldName: string
+  filterOperator: ExternalPullFilterOperatorCode
+  filterValue: string
+  conditionOrder: number
+  valueOrder: number
+}
+
+export interface ExternalPullTaskSortRequest {
   fieldName: string
   sortDirection: ExternalPullSortDirectionCode
   sortOrder: number
@@ -76,9 +95,9 @@ export interface ExternalPullTaskSaveRequest {
   businessAnchor: BusinessAnchorCode
   businessId: string
   sourceObjectName: string
-  fields: ExternalPullTaskField[]
-  filters?: ExternalPullTaskFilter[]
-  sorts?: ExternalPullTaskSort[]
+  fields: ExternalPullTaskFieldRequest[]
+  filters?: ExternalPullTaskFilterRequest[]
+  sorts?: ExternalPullTaskSortRequest[]
   maxRowCount?: number
   queryTimeoutSeconds?: number
 }

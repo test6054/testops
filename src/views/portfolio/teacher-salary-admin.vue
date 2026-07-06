@@ -12,7 +12,6 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
 const loading = ref(false)
@@ -64,7 +63,7 @@ async function loadPage() {
   loading.value = true
   try {
     const page = await portfolioTeacherSalaryApi.page({ pageNum: 1, pageSize: 50 })
-    rows.value = readPageList(page, '加载薪酬记录失败')
+    rows.value = page.list
     await hydrateTeacherLabels(rows.value.map((row) => row.teacherUserId ?? ''))
   } catch (error) {
     showUserError(error)

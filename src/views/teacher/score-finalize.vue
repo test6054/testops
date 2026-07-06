@@ -63,6 +63,14 @@
         </template>
       </UiAlertStrip>
       <UiAlertStrip
+        v-if="delayedAutoConfirmNotice"
+        tone="info"
+        title="延迟自动确认进行中"
+        :description="delayedAutoConfirmNotice"
+        dense
+        class="score-finalize__alert"
+      />
+      <UiAlertStrip
         v-else-if="riskOverview?.readyToPublish"
         tone="success"
         title="全场成绩已具备发布条件"
@@ -552,7 +560,7 @@ import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
 import { formatTrendAriaLabel, MARK_CHART_EMPTY } from '@/utils/mark-chart-accessibility'
 import { buildTrendChartInsight } from '@/utils/mark-chart-insights'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
-import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { buildScoreFinalizeSignalMetrics } from '@/utils/score-workbench-signal'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -670,8 +678,8 @@ async function loadCandidates(): Promise<void> {
       pageNum: pagination.current ?? 1,
       pageSize: pagination.pageSize ?? 20,
     })
-    candidates.value = readPageList(result, '成绩确认名单加载失败，请稍后重试')
-    pagination.total = readPageTotal(result)
+    candidates.value = result.list
+    pagination.total = Number(result.total)
     if (result.pageNum != null) {
       pagination.current = result.pageNum
     }
@@ -893,6 +901,18 @@ async function handleBatchConfirmSafe(): Promise<void> {
 const statMetrics = computed((): SignalMetric[] =>
   buildScoreFinalizeSignalMetrics(scorePanel.value, riskOverview.value),
 )
+
+const delayedAutoConfirmNotice = computed(() => {
+  const panel = scorePanel.value
+  if (!panel || panel.manualFinalScoreConfirmRequired) {
+    return null
+  }
+  const pending = panel.pendingDelayedFinalScoreConfirmCount
+  if (pending <= 0) {
+    return null
+  }
+  return `当前有 ${pending} 份答卷处于 ${panel.delayedFinalScoreConfirmMinutes} 分钟延迟自动确认窗口内，到期后将自动汇总确认最终成绩。`
+})
 
 /** 当前页候选状态分桶，仅用于页内偏差提示与下一份核对引导。 */
 const candidateBuckets = computed<Record<FinalScoreStatusCode, number>>(() => {
@@ -1230,6 +1250,28 @@ const confirmTotalScorePreview = computed(() => {
   return Number((examScore + dailyScore).toFixed(2))
 })
 
+/** 按试卷题目明细计算确认弹窗卷面分预览；后端 confirmFinalScore 仍是最终写入真源。 */
+function resolveConfirmExamScorePreview(score: ExamPaperScoreResponse): number {
+  if (score.examScore != null) {
+    return score.examScore
+  }
+  if (score.totalScore != null && !hasDailyScoreConfig.value) {
+    return score.totalScore
+  }
+  const questions = score.questions ?? []
+  if (
+    questions.length === 0
+    || questions.some((question) => question.gradeStatus !== 'CONFIRMED' || question.teacherReviewScore == null)
+  ) {
+    return 0
+  }
+  return Number(
+    questions
+      .reduce((sum, question) => sum + Number(question.teacherReviewScore ?? 0), 0)
+      .toFixed(2),
+  )
+}
+
 async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
   confirmCandidate.value = record
@@ -1242,7 +1284,7 @@ async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<v
       examId: selectedExamId.value,
       paperInstanceId: record.paperInstanceId,
     })
-    confirmComputedExamScore.value = score.examScore ?? score.totalScore ?? 0
+    confirmComputedExamScore.value = resolveConfirmExamScorePreview(score)
     if (hasDailyScoreConfig.value) {
       confirmDailyScore.value = score.dailyScore ?? undefined
     }

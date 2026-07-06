@@ -112,8 +112,8 @@ export interface AiTaskFailRequest {
   resultId?: string
 }
 
-/** AI 人工处置请求 - 对齐后端 AiTaskManualHandlingRequest */
-export interface AiTaskManualHandleRequest {
+/** AI 人工处置请求 - 严格对齐后端 AiTaskManualHandlingRequest */
+export interface AiTaskManualHandlingRequest {
   id: string
   manualHandlingStatus: AiManualHandlingStatusCode
   manualHandlingRemark?: string
@@ -141,5 +141,5 @@ export const aiTaskApi = {
   complete: (data: AiTaskCompleteRequest) => http.post<void>(`${TASK}/complete`, data),
   fail: (data: AiTaskFailRequest) => http.post<void>(`${TASK}/fail`, data),
   cancel: (data: AiTaskCancelRequest) => http.post<void>(`${TASK}/cancel`, data),
-  manualHandle: (data: AiTaskManualHandleRequest) => http.post<void>(`${TASK}/manual-handle`, data),
+  manualHandle: (data: AiTaskManualHandlingRequest) => http.post<void>(`${TASK}/manual-handle`, data),
 }

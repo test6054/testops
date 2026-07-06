@@ -263,9 +263,16 @@ export interface ExamRejudgePlan {
   tenantId?: string
   examId: string
   triggerType: RejudgeTriggerTypeCode
+  triggerSourceId?: string
   affectedQuestionRefs?: RejudgePlanQuestionRefVO[]
   affectedStudentCount?: number
   planStatus: RejudgePlanStatusCode
+  /** 审批备注或驳回原因 */
+  decisionReason?: string
+  /** 执行说明 */
+  executeReason?: string
+  /** 执行失败原因 */
+  failureReason?: string
   approvedUserId?: string
   approvedTime?: string
   executedTime?: string
@@ -288,7 +295,7 @@ export interface RejudgePlanExecuteRequest {
 }
 
 /** 重判计划列表查询 - 对应 RejudgePlanListQuery */
-export interface RejudgePlanListQueryRequest extends QueryDto {
+export interface RejudgePlanListQuery extends QueryDto {
   examId: string
   planStatus?: RejudgePlanStatusCode
 }
@@ -298,7 +305,7 @@ export interface RejudgePlanListQueryRequest extends QueryDto {
  * POST /api/exam/question-analysis/rejudge-plan/list
  */
 export function listRejudgePlans(
-  request: RejudgePlanListQueryRequest,
+  request: RejudgePlanListQuery,
 ): Promise<PageResult<ExamRejudgePlan>> {
   return http.post<PageResult<ExamRejudgePlan>>(
     '/api/exam/question-analysis/rejudge-plan/list',

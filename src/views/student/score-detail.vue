@@ -215,7 +215,12 @@
               <span>错题本</span>
               <UiTag tone="red" size="sm">{{ wrongBookTotal }} 条</UiTag>
             </div>
-            <UiButton size="sm" variant="outline" :loading="wrongBookLoading" @click="loadWrongBook">
+            <UiButton
+              size="sm"
+              variant="outline"
+              :loading="wrongBookLoading"
+              @click="loadWrongBook"
+            >
               刷新
             </UiButton>
           </div>
@@ -400,7 +405,10 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
-import { FINAL_SCORE_STATUS_TONE, FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
+import {
+  FINAL_SCORE_STATUS_TONE,
+  FinalScoreStatusDescription,
+} from '@/apis/mark/final-score-status'
 import { GRADE_STATUS_TONE, GradeStatusDescription } from '@/apis/mark/grade-status'
 import { OBJECTIVE_RESULT_TONE, ObjectiveResultDescription } from '@/apis/mark/objective-result'
 import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
@@ -431,7 +439,6 @@ import { formatScore } from '@/utils/format'
 import { buildHeatmapChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { buildHeatmapChartOption } from '@/utils/mark-echarts-options'
 import { scoreSheetToHeatmapCells } from '@/utils/mark-statistics-chart'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'StudentScoreDetail' })
@@ -637,10 +644,10 @@ async function loadWrongBook(): Promise<void> {
       pageNum: wrongBookPagination.current,
       pageSize: wrongBookPagination.pageSize,
     })
-    wrongBookRows.value = readPageList(result, '错题本加载失败，请稍后重试')
+    wrongBookRows.value = result.list
     wrongBookPagination.current = result.pageNum
     wrongBookPagination.pageSize = result.pageSize
-    wrongBookTotal.value = readPageTotal(result, '错题本加载失败，请稍后重试')
+    wrongBookTotal.value = Number(result.total)
     wrongBookPagination.total = wrongBookTotal.value
   } catch (error) {
     showUserError(error, '错题本加载失败')
@@ -721,8 +728,7 @@ async function loadLearningReport(): Promise<void> {
   }
   reportLoading.value = true
   try {
-    const report = await getMyAiLearningReport(detail.value.examId)
-    learningReport.value = report
+    learningReport.value = await getMyAiLearningReport(detail.value.examId)
   } catch (error) {
     showUserError(error, 'AI 学习报告加载失败')
     learningReport.value = null

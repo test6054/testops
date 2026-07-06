@@ -27,7 +27,6 @@ import {
 } from '@/composables/usePortfolioPageScope'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const route = useRoute()
@@ -134,7 +133,7 @@ async function loadTodos() {
       pageNum: 1,
       pageSize: 20,
     })
-    todos.value = readPageList(page, '加载待办失败')
+    todos.value = page.list
   } catch (error) {
     showUserError(error, '加载待办失败')
   } finally {

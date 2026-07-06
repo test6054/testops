@@ -46,6 +46,14 @@
     </template>
 
     <div class="question-analysis-card" :class="{ 'question-analysis-card--embedded': embedded }">
+      <UiAlertStrip
+        v-if="layoutRoiGap > 0"
+        tone="warning"
+        class="question-analysis-card__roi-gap-strip"
+        :title="`制卷识别区域未就绪（${layoutRoiGap} 道题）`"
+        description="未配置 ROI 的题目无法生成按题质量分析，请先在制卷工作台补全识别区域。"
+        dense
+      />
       <MarkScatterSection
         ref="scatterSectionRef"
         title="难度-区分度分布"
@@ -177,7 +185,7 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamLayoutQuestionViewResponse } from '@/apis/mark/exam-layout-question'
+import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
 import type { ExamQuestionAnalysisRecordResponse, QuestionAnalysisListQueryRequest } from '@/apis/mark/question-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
@@ -190,12 +198,14 @@ import MarkScatterSection from '@/components/chart/MarkScatterSection.vue'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { buildExamLayoutQuestionOptions } from '@/utils/format-exam-layout-question-summary'
 import {
   buildBarChartInsight,
   buildScatterChartInsight,
@@ -206,7 +216,6 @@ import {
   buildQuestionQualityScatterSeries,
   correctRatioToBarItems,
 } from '@/utils/mark-statistics-chart'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
@@ -240,7 +249,16 @@ const generatingAll = ref(false)
 const generatingId = ref<string>('')
 const selectedLayoutQuestionId = ref<string>()
 const questionLoading = ref(false)
-const questionOptions = ref<{ value: string, label: string }[]>([])
+const questionOptions = ref<Array<{ value: string, label: string, disabled?: boolean, title?: string }>>([])
+const layoutSummary = ref<ExamTemplateResponse | null>(null)
+const layoutRoiGap = computed(() => {
+  if (!layoutSummary.value?.configured) {
+    return 0
+  }
+  const total = layoutSummary.value.totalQuestionCount ?? 0
+  const ready = layoutSummary.value.roiReadyQuestionCount ?? 0
+  return Math.max(0, total - ready)
+})
 const generationSummary = ref('')
 const tablePageNum = ref(1)
 const tablePageSize = ref(20)
@@ -328,9 +346,9 @@ async function loadTablePage(pageNum = tablePageNum.value, pageSize = tablePageS
       pageSize,
     })
     tableRows.value = acceptQuestionAnalysisRows(
-      readPageList(page, '题目质量分析列表加载失败'),
+      page.list,
     )
-    tableTotal.value = readPageTotal(page, '题目质量分析列表加载失败')
+    tableTotal.value = Number(page.total)
     tablePageNum.value = page.pageNum
     tablePageSize.value = page.pageSize
   } catch (e) {
@@ -360,22 +378,16 @@ async function loadQuestionOptions(): Promise<void> {
   questionLoading.value = true
   try {
     const template = await getExamLayoutQuestionSummary(props.examId)
+    layoutSummary.value = template
     if (!template.configured) {
       questionOptions.value = []
       return
     }
-    questionOptions.value = template.questions.map((question: ExamLayoutQuestionViewResponse) => ({
-      value: question.layoutQuestionId,
-      label: `题${question.questionNo} · ${question.questionType} · ${question.fullScore}分${
-        question.questionStem
-          ? ` · ${
-              question.questionStem.length > 24
-                ? `${question.questionStem.slice(0, 24)}...`
-                : question.questionStem
-            }`
-          : ''
-      }`,
-    }))
+    questionOptions.value = buildExamLayoutQuestionOptions(template.questions)
+    if (selectedLayoutQuestionId.value
+      && !template.questions.some(q => q.layoutQuestionId === selectedLayoutQuestionId.value && q.roiReady)) {
+      selectedLayoutQuestionId.value = undefined
+    }
   } catch (e) {
     questionOptions.value = []
     showUserError(e, '题目列表加载失败')

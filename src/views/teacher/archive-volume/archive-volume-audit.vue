@@ -85,7 +85,10 @@ import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ARCHIVE_VOLUME_EVENT_TYPE_OPTIONS, pageArchiveAuditEvents } from '@/apis/mark/archive-volume'
+import {
+  ARCHIVE_VOLUME_EVENT_TYPE_OPTIONS,
+  pageArchiveAuditEvents,
+} from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -101,7 +104,6 @@ import {
 } from '@/utils/archive-volume-event-ui'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import ArchiveVolumeListNextStepsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeListNextStepsPanel.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeAudit' })
@@ -131,15 +133,13 @@ const filterModel = computed<Record<string, unknown>>({
   },
 })
 
-const eventTypeOptions = ARCHIVE_VOLUME_EVENT_TYPE_OPTIONS
-
 const filterFields: FilterField[] = [
   { key: 'volumeId', label: '卷ID', type: 'input', placeholder: '归档卷 ID' },
   {
     key: 'eventType',
     label: '事件类型',
     type: 'select',
-    options: eventTypeOptions,
+    options: ARCHIVE_VOLUME_EVENT_TYPE_OPTIONS,
     allowClear: true,
   },
 ]
@@ -164,8 +164,10 @@ async function loadEvents() {
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize,
     })
-    events.value = readPageList(result, '审计事件列表异常')
-    pagination.total = readPageTotal(result)
+    events.value = result.list
+    pagination.total = Number(result.total)
+    pagination.pageNum = result.pageNum
+    pagination.pageSize = result.pageSize
   } catch (error) {
     events.value = []
     pagination.total = 0

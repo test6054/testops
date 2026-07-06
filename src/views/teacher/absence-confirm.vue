@@ -389,7 +389,6 @@ import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
 import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -606,7 +605,7 @@ async function loadPendingAbsenceCount(): Promise<void> {
       pageNum: 1,
       pageSize: 1,
     })
-    pendingAbsenceCount.value = readPageTotal(result)
+    pendingAbsenceCount.value = Number(result.total)
   } catch (error) {
     pendingAbsenceCount.value = 0
     showUserError(error, '待确认缺考记录查询失败')
@@ -635,7 +634,7 @@ async function loadAbsenceKpiCounts(): Promise<void> {
       pageNum: 1,
       pageSize: 1,
     })
-    confirmedAbsenceCount.value = readPageTotal(confirmedResult)
+    confirmedAbsenceCount.value = Number(confirmedResult.total)
   } catch (error) {
     confirmedAbsenceCount.value = 0
     showUserError(error, '缺考统计加载失败')
@@ -656,10 +655,10 @@ async function loadRecords(): Promise<void> {
       pageNum: recordPagination.pageNum,
       pageSize: recordPagination.pageSize,
     })
-    records.value = readPageList(page, '缺考记录加载失败，请稍后重试')
+    records.value = page.list
     recordPagination.pageNum = page.pageNum
     recordPagination.pageSize = page.pageSize
-    recordPagination.total = readPageTotal(page, '缺考记录加载失败，请稍后重试')
+    recordPagination.total = Number(page.total)
     await Promise.all([loadPendingMakeupTotal(), loadPendingAbsenceCount(), loadAbsenceKpiCounts()])
   } catch (error) {
     showUserError(error, '缺考记录加载失败')

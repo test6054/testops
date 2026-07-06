@@ -196,7 +196,6 @@ import {
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ArchiveVolumeListNextStepsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeListNextStepsPanel.vue'
 
@@ -367,8 +366,10 @@ async function loadReadinessVolumes(): Promise<void> {
       pageNum: readinessPagination.pageNum,
       pageSize: readinessPagination.pageSize,
     })
-    readinessRows.value = readPageList(result, '卷就绪度加载失败')
-    readinessPagination.total = readPageTotal(result)
+    readinessRows.value = result.list
+    readinessPagination.total = Number(result.total)
+    readinessPagination.pageNum = result.pageNum
+    readinessPagination.pageSize = result.pageSize
   } catch (error) {
     showUserError(error, '卷就绪度加载失败')
     readinessRows.value = []

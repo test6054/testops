@@ -36,7 +36,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { ExpertPackageTypeCode } from '@/types/enums/expert-package-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
-import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -137,8 +137,8 @@ async function loadEvidences() {
       pageNum: evidenceQuery.pageNum,
       pageSize: evidenceQuery.pageSize,
     })
-    evidences.value = readPageList(result, '认证证据列表加载失败，请刷新后重试')
-    evidenceTotal.value = readPageTotal(result, '认证证据列表加载失败，请刷新后重试')
+    evidences.value = result.list
+    evidenceTotal.value = Number(result.total)
     evidenceQuery.pageNum = result.pageNum
     evidenceQuery.pageSize = result.pageSize
     if (evidences.value.length === 0 && evidenceTotal.value > 0 && evidenceQuery.pageNum > 1) {

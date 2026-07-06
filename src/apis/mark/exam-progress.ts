@@ -184,6 +184,10 @@ export interface ExamWorkbenchStageSnapshotResponse {
   confidential?: boolean
   nextActions: ExamWorkbenchNextActionResponse[]
   dashboardPanel: ExamWorkbenchDashboardPanelResponse
+  /** 是否须人工确认最终成绩 */
+  manualFinalScoreConfirmRequired: boolean
+  /** 延迟自动确认与撤回窗口（分钟） */
+  delayedFinalScoreConfirmMinutes: number
 }
 
 /** 批量阅卷进度响应 */
@@ -281,6 +285,9 @@ export interface ExamWorkbenchScorePanelResponse {
   excellentRate?: number
   ranges?: string[]
   counts?: number[]
+  manualFinalScoreConfirmRequired: boolean
+  delayedFinalScoreConfirmMinutes: number
+  pendingDelayedFinalScoreConfirmCount: number
 }
 
 /** 查询考试成绩看板（成绩确认 / 发布页 Signal 真源）。 */

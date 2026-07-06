@@ -49,7 +49,6 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const PORTFOLIO_REVIEW_TASK_STATUS_FILTER_CODES = [
@@ -262,8 +261,8 @@ async function loadPage() {
       auditFlowCode: filterForm.auditFlowCode,
       reviewStatus: filterForm.reviewStatus,
     })
-    rows.value = readPageList(result, '加载审核待办失败')
-    pageTotal.value = readPageTotal(result, '加载审核待办失败')
+    rows.value = result.list
+    pageTotal.value = Number(result.total)
     selectedRowKeys.value = selectedRowKeys.value.filter((id) =>
       batchSelectableKeys.value.includes(id),
     )

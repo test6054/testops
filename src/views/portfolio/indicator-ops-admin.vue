@@ -33,7 +33,6 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
 import { defaultTemplateParams, serializeTemplateParams } from '@/utils/indicator-template-params'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -174,8 +173,8 @@ async function loadComputeLogs() {
   loading.value = true
   try {
     const page = await portfolioIndicatorTenantApi.pageComputeLog(pageQuery)
-    computeLogs.value = readPageList(page, '计分日志加载失败')
-    computeTotal.value = readPageTotal(page)
+    computeLogs.value = page.list
+    computeTotal.value = Number(page.total)
   }
   catch (error) {
     showUserError(error)
@@ -189,8 +188,8 @@ async function loadAuditLogs() {
   loading.value = true
   try {
     const page = await portfolioIndicatorTenantApi.pageAuditLog(pageQuery)
-    auditLogs.value = readPageList(page, '审计日志加载失败')
-    auditTotal.value = readPageTotal(page)
+    auditLogs.value = page.list
+    auditTotal.value = Number(page.total)
   }
   catch (error) {
     showUserError(error)
@@ -204,8 +203,8 @@ async function loadEvalLogs() {
   loading.value = true
   try {
     const page = await portfolioIndicatorTenantApi.pageEvalLog(pageQuery)
-    evalLogs.value = readPageList(page, '评估日志加载失败')
-    evalTotal.value = readPageTotal(page)
+    evalLogs.value = page.list
+    evalTotal.value = Number(page.total)
   }
   catch (error) {
     showUserError(error)
@@ -219,8 +218,8 @@ async function loadImpactReports() {
   loading.value = true
   try {
     const page = await portfolioIndicatorTenantApi.pageImpactReport(pageQuery)
-    impactReports.value = readPageList(page, '影响报告加载失败')
-    impactTotal.value = readPageTotal(page)
+    impactReports.value = page.list
+    impactTotal.value = Number(page.total)
   }
   catch (error) {
     showUserError(error)

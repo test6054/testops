@@ -28,7 +28,6 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -132,7 +131,7 @@ async function loadPage() {
       planYear: form.planYear,
       planType: PortfolioDevelopmentPlanTypeCode.DEPARTMENT,
     })
-    rows.value = readPageList(page, '加载部门年度规划失败')
+    rows.value = page.list
     if (!rows.value.some((item) => item.id === selectedPlanId.value)) {
       selectedPlanId.value = rows.value[0]?.id ?? ''
       planItems.value = []

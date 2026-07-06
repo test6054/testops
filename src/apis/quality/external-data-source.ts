@@ -20,7 +20,7 @@ export interface ExternalDataSourceVO {
   usernameConfigured?: boolean
   passwordConfigured?: boolean
   driverClass?: string
-  fieldScopes?: ExternalSourceFieldScope[]
+  fieldScopes?: ExternalSourceFieldScopeVO[]
   maxRowCount?: number
   queryTimeoutSeconds?: number
   enabled?: boolean
@@ -28,7 +28,7 @@ export interface ExternalDataSourceVO {
   updateTime?: string
 }
 
-export interface ExternalSourceFieldScope {
+export interface ExternalSourceFieldScopeVO {
   id?: string
   sourceId?: string
   sourceObjectName: string

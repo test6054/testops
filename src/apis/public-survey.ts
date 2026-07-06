@@ -33,6 +33,13 @@ export interface SurveyIdentityFieldVO {
   required: boolean
 }
 
+export interface SurveyIdentityFieldRequest {
+  fieldKey: string
+  fieldLabel: string
+  fieldType: string
+  required?: boolean
+}
+
 export interface SurveyScaleLabelVO {
   scaleValue: number
   label: string
@@ -83,10 +90,10 @@ export interface PublicSurveyItemVO {
 
 export interface PublicSurveySubmitRequest {
   respondentIdentity?: SurveyRespondentIdentityRequest
-  answers: PublicSurveyAnswerItem[]
+  answers: PublicSurveyAnswerSubmitRequest[]
 }
 
-export interface PublicSurveyAnswerItem {
+export interface PublicSurveyAnswerSubmitRequest {
   itemToken: string
   scaleValue?: number
   singleChoiceValue?: string

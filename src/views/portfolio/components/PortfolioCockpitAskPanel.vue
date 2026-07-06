@@ -16,7 +16,6 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
-import { readPageList } from '@/utils/page-result'
 import { parsePortfolioCockpitAskPayload } from '@/utils/portfolio-cockpit-payload'
 
 const props = defineProps<{
@@ -97,7 +96,7 @@ async function loadHistory() {
       analysisType: PortfolioAiAnalysisTypeCode.COCKPIT_ASK,
       departmentId: props.departmentId,
     })
-    historyRows.value = readPageList(page, '加载驾驶舱问数历史失败')
+    historyRows.value = page.list
   } catch (error) {
     showUserError(error, '加载驾驶舱问数历史失败')
   } finally {

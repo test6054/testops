@@ -31,7 +31,6 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function resolveSelectStringValue(value: SelectValue): string {
@@ -170,8 +169,8 @@ async function loadCorrections() {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
-    rows.value = readPageList(page, '加载纠错列表失败')
-    pageTotal.value = readPageTotal(page, '加载纠错列表失败')
+    rows.value = page.list
+    pageTotal.value = Number(page.total)
   } catch (error) {
     showUserError(error, '加载纠错列表失败')
   } finally {

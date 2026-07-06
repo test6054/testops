@@ -9,7 +9,7 @@ import type {
   IndirectFormStatusCode,
   IndirectFormTypeCode,
 } from './types'
-import type { SurveyIdentityFieldVO } from '@/apis/public-survey'
+import type { SurveyIdentityFieldRequest, SurveyIdentityFieldVO } from '@/apis/public-survey'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
@@ -67,7 +67,7 @@ export interface IndirectEvaluationFormPublishRequest {
   endTime: string
   accessMode: IndirectFormAccessModeCode
   allowAnonymous?: boolean
-  requireIdentityFields?: SurveyIdentityFieldVO[]
+  requireIdentityFields?: SurveyIdentityFieldRequest[]
   maxSubmissionsPerRespondent: number
   welcomeMessage?: string
   thankYouMessage?: string
@@ -102,10 +102,10 @@ export interface IndirectEvaluationStatisticsVO {
   overallScore?: number
   overallScoredCount?: number
   pendingConversionCount?: number
-  items: IndirectEvaluationItemStatistics[]
+  items: IndirectEvaluationItemStatisticsVO[]
 }
 
-export interface IndirectEvaluationItemStatistics {
+export interface IndirectEvaluationItemStatisticsVO {
   itemId: string
   itemCode: string
   itemText: string
@@ -118,19 +118,19 @@ export interface IndirectEvaluationItemStatistics {
   mean?: number
   median?: number
   stdDev?: number
-  distributionBuckets?: ScaleDistributionBucketVO[]
-  openTextSummaries?: OpenTextSummaryVO[]
+  distributionBuckets?: IndirectEvaluationScaleDistributionBucketVO[]
+  openTextSummaries?: IndirectEvaluationOpenTextSummaryVO[]
   convertedScore?: number
 }
 
-export interface ScaleDistributionBucketVO {
+export interface IndirectEvaluationScaleDistributionBucketVO {
   scaleValue?: number
   label?: string
   count: number
   ratio?: number
 }
 
-export interface OpenTextSummaryVO {
+export interface IndirectEvaluationOpenTextSummaryVO {
   content: string
   count: number
 }

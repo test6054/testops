@@ -20,7 +20,6 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ScannerOperationLogPanel' })
@@ -99,8 +98,8 @@ async function loadLogs() {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
-    logs.value = readPageList(result, '扫描操作日志加载失败')
-    pagination.total = readPageTotal(result)
+    logs.value = result.list
+    pagination.total = Number(result.total)
   }
   catch (error) {
     logs.value = []

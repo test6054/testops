@@ -33,7 +33,6 @@ import {
 } from '@/types/enums/dispatch-queue-status-filter-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ScanDispatchForceReleaseDialog from '@/views/teacher/archive-volume/components/ScanDispatchForceReleaseDialog.vue'
 
@@ -330,8 +329,8 @@ async function loadTickets() {
         ? true
         : undefined,
     })
-    tickets.value = readPageList(result, '派单列表加载失败')
-    pagination.total = readPageTotal(result)
+    tickets.value = result.list
+    pagination.total = Number(result.total)
   }
   catch (error) {
     tickets.value = []

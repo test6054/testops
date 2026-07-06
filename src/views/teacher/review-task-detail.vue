@@ -62,6 +62,16 @@
         </template>
 
         <template #main>
+          <GradingImmersionSection
+            v-if="detail.questionStem"
+            :title="`题目题干 · 第 ${detail.questionNo} 题 · 满分 ${detail.fullScore}`"
+          >
+            <template #icon><FileTextOutlined /></template>
+            <a-typography-paragraph :ellipsis="{ rows: 4, expandable: true, symbol: '展开' }">
+              {{ detail.questionStem }}
+            </a-typography-paragraph>
+          </GradingImmersionSection>
+
           <GradingImmersionSection title="阅卷影像">
             <template #icon><PictureOutlined /></template>
             <UiEmpty v-if="!detail.sliceFileId && !detail.sourceScanPage" description="暂无数据" />

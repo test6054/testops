@@ -678,7 +678,6 @@ import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfi
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import mittBus from '@/utils/mitt'
-import { readArrayResponse, readPageList, readPageTotal } from '@/utils/page-result'
 import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -1001,8 +1000,8 @@ async function loadMonitorBatches(): Promise<void> {
       status: normalFilterApplied.batchStatus,
       includeDiscarded: false,
     })
-    monitorBatches.value = readPageList(result, '扫描批次加载失败，请稍后重试')
-    monitorBatchPagination.total = readPageTotal(result)
+    monitorBatches.value = result.list
+    monitorBatchPagination.total = Number(result.total)
   } catch (error) {
     monitorBatches.value = []
     monitorBatchPagination.total = 0
@@ -1428,8 +1427,8 @@ async function loadAttentionCounters(): Promise<void> {
       queryGroup: ScanAttentionQueryGroupCode.DUPLICATE,
     }),
   ])
-  abnormalAttentionTotal.value = readPageTotal(abnormalResult, '扫描异常总数加载失败')
-  duplicateAttentionTotal.value = readPageTotal(duplicateResult, '重复影像总数加载失败')
+  abnormalAttentionTotal.value = Number(abnormalResult.total)
+  duplicateAttentionTotal.value = Number(duplicateResult.total)
 }
 
 async function loadAttentionPage(queryGroup: ScanAttentionQueryGroupCode): Promise<void> {
@@ -1448,8 +1447,8 @@ async function loadAttentionPage(queryGroup: ScanAttentionQueryGroupCode): Promi
     scanBatchId: filterForm.scanBatchId?.trim() || undefined,
     paperInstanceId: filterForm.paperInstanceId?.trim() || undefined,
   })
-  const total = readPageTotal(result, '扫描异常列表加载失败')
-  const rows = readPageList(result, '扫描异常列表加载失败')
+  const total = Number(result.total)
+  const rows = result.list
   if (rows.length === 0 && total > 0 && attentionPagination.current > 1) {
     attentionPagination.current = Math.ceil(total / attentionPagination.pageSize)
     await loadAttentionPage(queryGroup)
@@ -1494,7 +1493,7 @@ async function loadScanBatches(keyword = scanBatchKeyword.value): Promise<void> 
       keyword: normalizedKeyword || undefined,
       includeDiscarded: false,
     })
-    scanBatches.value = readPageList(result, '扫描批次加载失败，请稍后重试')
+    scanBatches.value = result.list
   } catch (error) {
     scanBatches.value = []
     showUserError(error, '扫描批次加载失败')
@@ -1518,7 +1517,7 @@ async function loadPaperCandidates(keyword = paperCandidateKeyword.value): Promi
       pageSize: PAPER_CANDIDATE_FILTER_PAGE_SIZE,
       keyword: normalizedKeyword || undefined,
     })
-    paperCandidates.value = readPageList(result, '答题卡名单加载失败，请稍后重试')
+    paperCandidates.value = result.list
       .filter((item) => item.paperInstanceId)
   } catch (error) {
     paperCandidates.value = []
@@ -1860,7 +1859,7 @@ async function ensureCandidatesLoaded(): Promise<boolean> {
   candidatesLoading.value = true
   try {
     const result = await listExamCandidates(selectedExamId.value)
-    candidates.value = readArrayResponse(result, '考生名册加载失败')
+    candidates.value = result
     return true
   } catch (error) {
     showUserError(error, '考生名册加载失败')

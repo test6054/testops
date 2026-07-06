@@ -770,21 +770,19 @@ export interface PortfolioAiCockpitAskRequest {
   userQuestion: string
 }
 
-export interface PortfolioAiAnalysisIssueItem {
+export interface PortfolioAiAnalysisIssueVO {
   issueTitle: string
   issueDescription?: string
   severity?: string
 }
 
-/** AI 分析证据条目 - PortfolioAiAnalysisEvidenceVO */
-export interface PortfolioAiAnalysisEvidenceItem {
+export interface PortfolioAiAnalysisEvidenceVO {
   evidenceTitle: string
   evidenceSource?: string
   evidenceContent: string
 }
 
-/** AI 分析建议条目 - PortfolioAiAnalysisSuggestionVO */
-export interface PortfolioAiAnalysisSuggestionItem {
+export interface PortfolioAiAnalysisSuggestionVO {
   suggestionTitle: string
   suggestionContent: string
   priority?: string
@@ -1027,9 +1025,9 @@ export interface PortfolioAiAnalysisSummaryVO {
 export interface PortfolioAiAnalysisDetailVO extends PortfolioAiAnalysisSummaryVO {
   policyClauseDigest?: string
   draftMarkdown?: string
-  issueItems: PortfolioAiAnalysisIssueItem[]
-  evidenceItems: PortfolioAiAnalysisEvidenceItem[]
-  suggestionItems: PortfolioAiAnalysisSuggestionItem[]
+  issueItems: PortfolioAiAnalysisIssueVO[]
+  evidenceItems: PortfolioAiAnalysisEvidenceVO[]
+  suggestionItems: PortfolioAiAnalysisSuggestionVO[]
 }
 
 /** 教学档案袋 AI 分析结果分页 - PortfolioAiAnalysisPageRequest */
@@ -1117,7 +1115,7 @@ export interface PortfolioReviewLogVO {
   createTime?: string
 }
 
-export interface PortfolioRecordFieldCore {
+export interface PortfolioReviewRecordFieldVO {
   fieldCode: string
   fieldLabel?: string
   fieldValue: string
@@ -1132,10 +1130,14 @@ export interface PortfolioReviewArchiveRecordDetailVO {
   recordStatus: PortfolioArchiveRecordStatusCode
   sourceType: PortfolioArchiveRecordSourceTypeCode
   aiTaskId?: string
-  fields: PortfolioRecordFieldCore[]
+  fields: PortfolioReviewRecordFieldVO[]
 }
 
 export interface PortfolioTeacherCompletenessGetRequest {
+  teacherId?: string
+}
+
+export interface PortfolioTeacherProgressCockpitGetRequest {
   teacherId?: string
 }
 
@@ -1210,7 +1212,7 @@ export interface PortfolioMaterialIntakeStatusVO {
   demoMode?: boolean
   recordStatus?: PortfolioArchiveRecordStatusCode
   latestRejectReason?: string
-  fieldValues?: PortfolioRecordFieldCore[]
+  fieldValues?: PortfolioArchiveRecordFieldVO[]
   targetFields?: PortfolioTargetFieldDefinition[]
   clearedFieldsFromReassign?: PortfolioMaterialUnmappedFieldVO[]
 }

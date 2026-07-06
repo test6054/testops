@@ -41,7 +41,7 @@ import {
   isIndirectEvaluationItemType,
 } from '@/types/enums/indirect-evaluation-item-type-enum'
 import { showUserError } from '@/utils/error-handler'
-import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import {
   canCloseForm,
   canPublishForm,
@@ -290,10 +290,10 @@ async function loadForms() {
   formsLoading.value = true
   try {
     const page = await indirectFormApi.page({ ...formQuery })
-    forms.value = readPageList(page, '间接评价问卷加载失败，请稍后重试')
+    forms.value = page.list
     formQuery.pageNum = page.pageNum
     formQuery.pageSize = page.pageSize
-    formsTotal.value = readPageTotal(page, '间接评价问卷加载失败，请稍后重试')
+    formsTotal.value = Number(page.total)
     if (forms.value.length === 0 && formsTotal.value > 0 && formQuery.pageNum > 1) {
       formQuery.pageNum -= 1
       await loadForms()

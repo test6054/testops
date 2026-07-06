@@ -17,7 +17,6 @@ import {
   PortfolioKeyTeacherRegistryStatusDescription,
 } from '@/types/enums/portfolio-key-teacher-registry-status-enum'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -49,7 +48,7 @@ async function loadPage() {
   loading.value = true
   try {
     const page = await portfolioDoubleDutyApi.page({ pageNum: 1, pageSize: 50 })
-    rows.value = readPageList(page, '加载双肩挑台账失败')
+    rows.value = page.list
   } catch (error) {
     showUserError(error)
   } finally {

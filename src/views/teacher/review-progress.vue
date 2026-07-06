@@ -324,7 +324,6 @@ import {
   reviewProgressToBarItems,
   reviewProgressToHeatmapCells,
 } from '@/utils/mark-statistics-chart'
-import { readPageTotal } from '@/utils/page-result'
 import { toneToColor } from '@/utils/score-tone'
 import {
   toDistributionSegments,
@@ -389,7 +388,7 @@ async function loadProcessingTasks(): Promise<void> {
       pageSize: processingTaskPageSize.value,
     })
     processingTasks.value = result.list ?? []
-    processingTaskTotal.value = readPageTotal(result, '批改处理任务总数加载失败')
+    processingTaskTotal.value = Number(result.total)
   } catch (error) {
     showUserError(error, '批改处理任务加载失败')
   } finally {

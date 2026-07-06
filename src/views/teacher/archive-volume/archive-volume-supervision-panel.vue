@@ -388,7 +388,6 @@ import {
 } from '@/utils/archive-remediation-diagnostic'
 import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeSupervisionPanel' })
@@ -726,8 +725,10 @@ async function loadVolumes() {
       pageNum: volumePagination.pageNum,
       pageSize: volumePagination.pageSize,
     })
-    volumes.value = readPageList(result, '督导归档卷列表异常，请刷新后重试')
-    volumePagination.total = readPageTotal(result)
+    volumes.value = result.list
+    volumePagination.total = Number(result.total)
+    volumePagination.pageNum = result.pageNum
+    volumePagination.pageSize = result.pageSize
   } catch (error) {
     showUserError(error)
   } finally {

@@ -44,6 +44,14 @@
     <template v-else>
       <ExamWorkspaceJourneySubNav v-if="isExamWorkspaceRoute" />
 
+      <UiAlertStrip
+        v-if="layoutRoiGap > 0"
+        tone="warning"
+        class="export-page__roi-gap-strip"
+        :title="`制卷识别区域未就绪（${layoutRoiGap} 道题）`"
+        description="按题导出仅可选择已配置识别区域的题目；请先在制卷工作台补全 ROI。"
+      />
+
       <WorkbenchSurfaceCard flush class="export-page__table-card">
         <template #head>
           <div class="export-page__card-head">
@@ -278,7 +286,7 @@ import type {
   ExportTaskResponse,
   ExportTaskStatusSummaryResponse,
 } from '@/apis/mark/exam-export'
-import type { ExamLayoutQuestionViewResponse } from '@/apis/mark/exam-layout-question'
+import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
@@ -326,7 +334,7 @@ import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
+import { buildExamLayoutQuestionOptions } from '@/utils/format-exam-layout-question-summary'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ExamExportTasks' })
@@ -366,7 +374,16 @@ const tasks = ref<ExportTaskResponse[]>([])
 const loading = ref(false)
 const loadFailed = ref(false)
 const downloadingId = ref<string | undefined>(undefined)
-const questionOptions = ref<Array<{ value: string, label: string }>>([])
+const questionOptions = ref<Array<{ value: string, label: string, disabled?: boolean, title?: string }>>([])
+const layoutSummary = ref<ExamTemplateResponse | null>(null)
+const layoutRoiGap = computed(() => {
+  if (!layoutSummary.value?.configured) {
+    return 0
+  }
+  const total = layoutSummary.value.totalQuestionCount ?? 0
+  const ready = layoutSummary.value.roiReadyQuestionCount ?? 0
+  return Math.max(0, total - ready)
+})
 const questionLoading = ref(false)
 const taskPagination = reactive({
   pageNum: 1,
@@ -508,7 +525,7 @@ async function typeFilterHidesActiveTasks(examId: string): Promise<boolean> {
       pageSize: 20,
       taskStatus,
     })
-    const activeTasks = readPageList(page, '导出任务加载失败，请稍后重试')
+    const activeTasks = page.list
     if (activeTasks.some((task) => task.exportType !== typeFilter)) {
       return true
     }
@@ -697,17 +714,17 @@ async function loadTasks(options?: { quiet?: boolean }): Promise<void> {
       return
     }
     let page = await listExportTasks(request)
-    let taskList = readPageList(page, '导出任务加载失败，请稍后重试')
+    let taskList = page.list
     if (shouldReloadFirstPageForActiveTasks(taskList)) {
       taskPagination.pageNum = 1
       const firstPageRequest = buildExportTaskListRequest(1)
       if (firstPageRequest) {
         page = await listExportTasks(firstPageRequest)
-        taskList = readPageList(page, '导出任务加载失败，请稍后重试')
+        taskList = page.list
       }
     }
     tasks.value = taskList
-    taskPagination.total = readPageTotal(page, '导出任务加载失败，请稍后重试')
+    taskPagination.total = Number(page.total)
     await refreshOpenDetailIfNeeded()
     syncExportPolling()
   } catch (error) {
@@ -801,19 +818,17 @@ async function loadQuestionOptions(examId: string | undefined): Promise<void> {
   questionLoading.value = true
   try {
     const template = await getExamLayoutQuestionSummary(examId)
+    layoutSummary.value = template
     if (!template.configured) {
       questionOptions.value = []
       return
     }
-    questionOptions.value = [...template.questions]
-      .sort(
-        (left: ExamLayoutQuestionViewResponse, right: ExamLayoutQuestionViewResponse) =>
-          (left.sortNo ?? 0) - (right.sortNo ?? 0),
-      )
-      .map((question) => ({
-        value: question.layoutQuestionId,
-        label: `第 ${question.questionNo} 题 · ${question.fullScore} 分`,
-      }))
+    questionOptions.value = [...buildExamLayoutQuestionOptions(template.questions)]
+      .sort((left, right) => {
+        const leftSort = template.questions.find(q => q.layoutQuestionId === left.value)?.sortNo ?? 0
+        const rightSort = template.questions.find(q => q.layoutQuestionId === right.value)?.sortNo ?? 0
+        return leftSort - rightSort
+      })
   } catch (error) {
     questionOptions.value = []
     showUserError(error, '制卷题目加载失败')

@@ -16,8 +16,6 @@ import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { showUserError } from '@/utils/error-handler'
 import { examSummaryFromDetail, toMarkExamSelectOption } from '@/utils/mark-exam-option'
-import { readPageList } from '@/utils/page-result'
-
 /** 下拉默认展示条数（与后端分页一致，不做全量 readAllPages） */
 export const MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE = 20
 
@@ -121,7 +119,7 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
 
   async function fetchExamPage(keyword?: string): Promise<ExamSummaryResponse[]> {
     const result = await pageExams(buildPageRequest(keyword))
-    return readPageList(result, '考试列表加载失败，请稍后重试')
+    return result.list
   }
 
   async function loadExams(keyword?: string): Promise<void> {

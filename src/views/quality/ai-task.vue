@@ -15,7 +15,7 @@ import type {
  * - 结果 updateValidation 可调 PASSED / WARN / REJECTED
  */
 import type {
-  AiTaskManualHandleRequest,
+  AiTaskManualHandlingRequest,
   AiTaskQueryRequest,
   AiTaskVO,
   QualityStatusCountsResponse,
@@ -90,7 +90,6 @@ import { useAuthStore } from '@/stores'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { RoleEnum } from '@/utils/permission'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -192,7 +191,7 @@ const detailResult = ref<AiResultVO | null>(null)
 const validationUpdating = ref(false)
 const manualHandleVisible = ref(false)
 const manualHandleSubmitting = ref(false)
-const manualHandleForm = reactive<AiTaskManualHandleRequest>({
+const manualHandleForm = reactive<AiTaskManualHandlingRequest>({
   id: '',
   manualHandlingStatus: AiManualHandlingStatusCode.PENDING,
   manualHandlingRemark: '',
@@ -478,11 +477,11 @@ async function loadList() {
     if (scope.isStale()) {
       return
     }
-    list.value = readPageList(page, 'AI 任务加载失败，请稍后重试')
+    list.value = page.list
     taskStatusCounts.value = counts
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = readPageTotal(page, 'AI 任务加载失败，请稍后重试')
+    total.value = Number(page.total)
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()
@@ -538,11 +537,11 @@ async function loadListQuietly(): Promise<void> {
     if (scope.isStale()) {
       return
     }
-    list.value = readPageList(page, 'AI 任务加载失败，请稍后重试')
+    list.value = page.list
     taskStatusCounts.value = counts
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = readPageTotal(page, 'AI 任务加载失败，请稍后重试')
+    total.value = Number(page.total)
     if (detailRecord.value?.id && detailVisible.value) {
       const updated = list.value.find((item) => item.id === detailRecord.value!.id)
       if (updated) {
@@ -1012,7 +1011,7 @@ async function openAuditDrawer(record: AiTaskVO) {
       category: 'QUALITY',
       bizId: record.id,
     })
-    auditEvents.value = readPageList(page, 'AI 任务审计记录加载失败，请稍后重试').map((log) => {
+    auditEvents.value = page.list.map((log) => {
       return {
         id: log.id,
         operatorName: log.userDto.nickName,

@@ -62,6 +62,7 @@ import { useMarkingSubmit } from '@/composables/useMarkingSubmit'
 import { useMarkingTaskNavigation } from '@/composables/useMarkingTaskNavigation'
 import { useMarkingTaskStream } from '@/composables/useMarkingTaskStream'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
+import { useTenantMarkingWithdrawPolicy } from '@/composables/useTenantMarkingWithdrawPolicy'
 import { useWholePaperGallery } from '@/composables/useWholePaperGallery'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useTenantStore } from '@/stores/modules/tenant'
@@ -111,6 +112,7 @@ export function useMarkingTaskDetailState() {
   const { tasks: batchTasks } = storeToRefs(markTaskStore)
   const { latestWithdrawable, recentList, canWithdrawEntry, withdrawEntry, withdrawLatest }
     = useMarkingRecentSubmit()
+  const { withdrawWindowLabel, withdrawConfirmHint } = useTenantMarkingWithdrawPolicy()
 
   const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
   const tenantId = computed(() => tenantStore.tenantId ?? '')
@@ -918,6 +920,8 @@ export function useMarkingTaskDetailState() {
     sessionPausedAlert,
     withdrawToastVisible,
     latestWithdrawable,
+    withdrawWindowLabel,
+    withdrawConfirmHint,
     recentList,
     canWithdrawEntry,
     handleWithdrawLatest,

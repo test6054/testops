@@ -6,7 +6,6 @@ import { computed, ref } from 'vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useBreakpoint, usePagination } from '@/hooks'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 
 interface UseTableOptions<T, U> {
   formatResult?: (data: T[]) => U[]
@@ -48,9 +47,9 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
         setTotal(actualData.length)
       } else {
         // 如果返回的是PageResult格式
-        const data = readPageList(actualData, '数据加载失败，请稍后重试')
+        const data = actualData.list
         tableData.value = formatResult ? formatResult(data) : data
-        setTotal(readPageTotal(actualData, '数据加载失败，请稍后重试'))
+        setTotal(Number(actualData.total))
       }
 
       onSuccess && onSuccess()

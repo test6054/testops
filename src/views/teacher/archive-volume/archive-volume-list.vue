@@ -360,7 +360,6 @@ import {
 } from '@/utils/archive-volume-list-ui'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveVolumeExternalImportPanel from '@/views/teacher/archive-volume/archive-volume-external-import-panel.vue'
 import ArchiveVolumeHistoryImportPanel from '@/views/teacher/archive-volume/archive-volume-history-import-panel.vue'
@@ -902,12 +901,12 @@ async function loadListOverviewKpis(): Promise<void> {
       pageArchiveVolumes({ ...countBase, dueAppraisalOnly: true, pageNum: 1, pageSize: 1 }),
       pageArchiveVolumes({ ...countBase, transferStatus: ArchiveTransferStatusCode.PENDING_REVIEW, pageNum: 1, pageSize: 1 }),
     ])
-    kpiTotalCount.value = readPageTotal(totalResult)
-    kpiStoredCount.value = readPageTotal(storedResult)
-    kpiSubmittedCount.value = readPageTotal(submittedResult)
-    kpiCollectingCount.value = readPageTotal(collectingResult)
-    kpiDueAppraisalCount.value = readPageTotal(dueAppraisalResult)
-    kpiPendingTransferCount.value = readPageTotal(pendingResult)
+    kpiTotalCount.value = Number(totalResult.total)
+    kpiStoredCount.value = Number(storedResult.total)
+    kpiSubmittedCount.value = Number(submittedResult.total)
+    kpiCollectingCount.value = Number(collectingResult.total)
+    kpiDueAppraisalCount.value = Number(dueAppraisalResult.total)
+    kpiPendingTransferCount.value = Number(pendingResult.total)
     if (canViewStatisticsKpi.value) {
       const statsRequest: { departmentId?: string } = {}
       if (countBase.departmentId) {
@@ -1059,8 +1058,10 @@ async function loadVolumes() {
     const result = isOverdueQuickFilter
       ? await pageOverdueArchiveVolumes(request)
       : await pageArchiveVolumes(request)
-    volumes.value = filterScenarioRows(readPageList(result, '归档卷列表异常，请刷新后重试'))
-    pagination.total = readPageTotal(result)
+    volumes.value = filterScenarioRows(result.list)
+    pagination.total = Number(result.total)
+    pagination.pageNum = result.pageNum
+    pagination.pageSize = result.pageSize
     if (showVolumeListPanel.value) {
       void loadListOverviewKpis()
     }

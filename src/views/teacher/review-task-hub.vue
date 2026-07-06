@@ -8,9 +8,7 @@
         :subtitle="contextBarSubtitle"
       >
         <template #actions>
-          <UiButton variant="outline" size="sm" @click="goBatchConfirm">
-            批量复核确认
-          </UiButton>
+          <UiButton variant="outline" size="sm" @click="goBatchConfirm"> 批量复核确认 </UiButton>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadTasks">
             <template #icon><ReloadOutlined /></template>
             刷新
@@ -20,7 +18,12 @@
     </template>
 
     <template v-if="examId" #signal>
-      <SignalBand variant="tiles" :metrics="hubSignalMetrics" compact @metric-click="handleHubSignalClick" />
+      <SignalBand
+        variant="tiles"
+        :metrics="hubSignalMetrics"
+        compact
+        @metric-click="handleHubSignalClick"
+      />
     </template>
 
     <UiEmpty v-if="!examId" description="缺少考试上下文，请从考试列表进入" />
@@ -65,8 +68,8 @@
               column,
               record,
             }: {
-            column: ColumnType<ReviewTaskItemResponse>
-            record: ReviewTaskItemResponse
+              column: ColumnType<ReviewTaskItemResponse>
+              record: ReviewTaskItemResponse
             }"
           >
             <template v-if="column.key === 'paper'">
@@ -163,7 +166,6 @@ import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMa
 import { ReviewTaskStatusCode } from '@/types/enums/review-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 
 defineOptions({ name: 'ReviewTaskHub' })
 
@@ -182,8 +184,6 @@ const pagination = reactive({
   total: 0,
 })
 
-const statusFilterOptions = REVIEW_TASK_HUB_STATUS_FILTER_OPTIONS
-
 const statusFilterFields: FilterField[] = [
   {
     key: 'status',
@@ -192,7 +192,7 @@ const statusFilterFields: FilterField[] = [
     placeholder: '任务状态',
     width: 160,
     minWidth: 160,
-    options: statusFilterOptions,
+    options: REVIEW_TASK_HUB_STATUS_FILTER_OPTIONS,
   },
 ]
 
@@ -323,9 +323,8 @@ async function loadTasks(): Promise<void> {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
-    const records = readPageList(result, '复核任务列表加载失败')
-    rows.value = records
-    pagination.total = readPageTotal(result)
+    rows.value = result.list
+    pagination.total = Number(result.total)
   } catch (error) {
     rows.value = []
     pagination.total = 0

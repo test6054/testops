@@ -20,7 +20,6 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function statusLabel(status: PortfolioCorrectionRequestStatusCode): string {
@@ -57,8 +56,8 @@ async function loadPage() {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
-    rows.value = readPageList(page, '加载纠错工单失败')
-    pageTotal.value = readPageTotal(page)
+    rows.value = page.list
+    pageTotal.value = Number(page.total)
   } catch (error) {
     showUserError(error, '加载纠错工单失败')
   } finally {

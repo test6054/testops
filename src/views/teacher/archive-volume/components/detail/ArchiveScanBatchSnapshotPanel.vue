@@ -3,7 +3,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { Key } from 'ant-design-vue/es/table/interface'
 import type { ArchiveScanBatchSnapshotItemVO } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
-import { onMounted, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import {
   batchRetryArchiveScanBatches,
   pageArchiveScanBatchSnapshots,
@@ -17,7 +17,6 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -27,9 +26,7 @@ const props = defineProps<{
 const loading = ref(false)
 const retrying = ref(false)
 const errorMessage = ref('')
-const pageNum = ref(1)
-const pageSize = ref(20)
-const total = ref(0)
+const pagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
 const rows = ref<ArchiveScanBatchSnapshotItemVO[]>([])
 const selectedWorkOrderIds = ref<string[]>([])
 
@@ -57,20 +54,22 @@ async function loadRows() {
   loading.value = true
   errorMessage.value = ''
   try {
-    const page = await pageArchiveScanBatchSnapshots({
+    const result = await pageArchiveScanBatchSnapshots({
       volumeId: props.volumeId,
-      pageNum: pageNum.value,
-      pageSize: pageSize.value,
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize,
     })
-    rows.value = readPageList(page, '扫描批次快照加载失败，请稍后重试')
-    total.value = readPageTotal(page, '扫描批次总数加载失败，请稍后重试')
+    rows.value = result.list
+    pagination.total = Number(result.total)
+    pagination.pageNum = result.pageNum
+    pagination.pageSize = result.pageSize
     selectedWorkOrderIds.value = selectedWorkOrderIds.value.filter((id) =>
       rows.value.some((row) => row.sourceBatchId === id),
     )
   } catch (error) {
     errorMessage.value = getUserErrorMessage(error)
     rows.value = []
-    total.value = 0
+    pagination.total = 0
     selectedWorkOrderIds.value = []
   } finally {
     loading.value = false
@@ -96,12 +95,6 @@ async function handleBatchRetry() {
   } finally {
     retrying.value = false
   }
-}
-
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
-  pageNum.value = pageEvent.current
-  pageSize.value = pageEvent.pageSize
-  void loadRows()
 }
 
 onMounted(() => {
@@ -132,19 +125,18 @@ onMounted(() => {
     </template>
     <p v-if="errorMessage" class="archive-scan-batch-snapshot__error">{{ errorMessage }}</p>
     <UiDataTable
-      pagination-mode="server"
+      v-model:current="pagination.pageNum"
+      v-model:page-size="pagination.pageSize"
       :columns="columns"
       :data-source="rows"
       :loading="loading"
-      :total="total"
-      :current="pageNum"
-      :page-size="pageSize"
+      :total="pagination.total"
       enable-selection
       :selected-row-keys="selectedWorkOrderIds"
       row-key="sourceBatchId"
       size="middle"
       flat
-      @page-change="handlePageChange"
+      @page-change="loadRows"
       @selection-change="handleSelectionChange"
     >
       <template #bodyCell="{ column, record }">

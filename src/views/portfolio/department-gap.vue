@@ -15,7 +15,6 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function gapStatusLabel(status: PortfolioGapTaskStatusCode): string {
@@ -47,8 +46,8 @@ async function loadPage() {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
-    rows.value = readPageList(page, '加载补采任务失败')
-    pageTotal.value = readPageTotal(page)
+    rows.value = page.list
+    pageTotal.value = Number(page.total)
   } catch (error) {
     showUserError(error, '加载补采任务失败')
   } finally {

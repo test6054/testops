@@ -408,7 +408,6 @@ import { useScoreReleaseNavigation } from '@/composables/useScoreReleaseNavigati
 import { showUserError } from '@/utils/error-handler'
 import { buildExamScoreSummaryTableColumns } from '@/utils/exam-score-summary-table-columns'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { buildScoreBulkPublishModalStatItems } from '@/utils/score-workbench-analytics'
 import { buildScorePublishSignalMetrics } from '@/utils/score-workbench-signal'
 import { toSignalMetrics } from '@/utils/stat-metric-helpers'
@@ -578,8 +577,8 @@ async function loadCandidates(): Promise<void> {
       pageNum: pagination.current ?? 1,
       pageSize: pagination.pageSize ?? 20,
     })
-    candidates.value = readPageList(result, '成绩发布名单加载失败，请稍后重试')
-    pagination.total = readPageTotal(result)
+    candidates.value = result.list
+    pagination.total = Number(result.total)
     if (result.pageNum != null) {
       pagination.current = result.pageNum
     }
@@ -625,7 +624,7 @@ async function loadPendingAbsenceCount(): Promise<void> {
       pageNum: 1,
       pageSize: 1,
     })
-    pendingAbsenceCount.value = readPageTotal(result)
+    pendingAbsenceCount.value = Number(result.total)
   } catch (error) {
     pendingAbsenceCount.value = 0
     showUserError(error, '待确认缺考记录查询失败')

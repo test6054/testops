@@ -67,7 +67,6 @@ import { useQualityStore } from '@/stores/modules/quality'
 import { ALL_SEMESTER_CODES, formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
 function reportTypeLabel(value: ReportTypeCode): string {
@@ -249,10 +248,10 @@ async function loadList() {
       status: query.status || undefined,
       keyword: query.keyword?.trim() || undefined,
     })
-    list.value = readPageList(page, '质量报告加载失败，请稍后重试')
+    list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = readPageTotal(page, '质量报告加载失败，请稍后重试')
+    total.value = Number(page.total)
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()
@@ -675,7 +674,7 @@ async function openAuditDrawer(record: ReportVO) {
       category: 'QUALITY',
       bizId: record.id,
     })
-    auditEvents.value = readPageList(page, '报告审计记录加载失败，请稍后重试').map((log) => {
+    auditEvents.value = page.list.map((log) => {
       return {
         id: log.id,
         operatorName: log.userDto.nickName,

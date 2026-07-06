@@ -84,7 +84,7 @@ async function loadPlans() {
   if (!props.trainingPlanId) return
   loading.value = true
   try {
-    plans.value = await accreditationApi.annualPlanList(props.trainingPlanId)
+    plans.value = await accreditationApi.annualPlanList({ trainingPlanId: props.trainingPlanId })
     if (selectedPlan.value) {
       const hit = plans.value.find((p) => p.id === selectedPlan.value?.id)
       if (hit) await selectPlan(hit.id)

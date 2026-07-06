@@ -461,7 +461,6 @@ import {
   resolveSmartExamEntryRouteName,
 } from '@/utils/exam-workspace-entry-gates'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { resolveScanStageEntryRoute } from '@/utils/resolve-scan-stage-entry'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ExamListExamWindowCell from '@/views/teacher/components/ExamListExamWindowCell.vue'
@@ -1062,8 +1061,8 @@ async function loadTabData(scope: ExamListScopeCode): Promise<void> {
     const result = await pageExamWorkbench(
       buildWorkbenchQuery(scope, paginationState.current ?? 1, paginationState.pageSize ?? 10),
     )
-    dataSourceRef.value = readPageList(result, '考试列表加载失败，请稍后重试')
-    paginationState.total = readPageTotal(result)
+    dataSourceRef.value = result.list
+    paginationState.total = Number(result.total)
     if (result.pageNum != null) {
       paginationState.current = result.pageNum
     }

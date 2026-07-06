@@ -47,7 +47,6 @@ import {
   parseTemplateParamsJson,
   serializeTemplateParams,
 } from '@/utils/indicator-template-params'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function dataSourceLabel(value: PfIndicatorDataSourceChannelCode): string {
@@ -213,7 +212,7 @@ async function loadPage() {
   loading.value = true
   try {
     const page = await portfolioIndicatorPlatformApi.pageDefinition(query)
-    rows.value = readPageList(page, '指标分页数据异常')
+    rows.value = page.list
   } catch (error) {
     showUserError(error)
   } finally {
@@ -236,8 +235,8 @@ async function loadTemplates() {
   loading.value = true
   try {
     const page = await portfolioIndicatorPlatformApi.pageTemplate(templateQuery)
-    templates.value = readPageList(page, '规则模板分页数据异常')
-    templateTotal.value = readPageTotal(page)
+    templates.value = page.list
+    templateTotal.value = Number(page.total)
   } catch (error) {
     showUserError(error)
   } finally {

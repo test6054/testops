@@ -30,7 +30,6 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const HANDLE_ACTION_OPTIONS: PortfolioEvaluationObjectionHandleActionCode[] = [
@@ -148,8 +147,8 @@ async function loadPage() {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
-    rows.value = readPageList(page, '加载公示异议失败')
-    pageTotal.value = readPageTotal(page)
+    rows.value = page.list
+    pageTotal.value = Number(page.total)
   } catch (error) {
     showUserError(error, '加载公示异议失败')
   } finally {

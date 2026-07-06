@@ -333,7 +333,7 @@ import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyCo
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
-import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminAuditTrail' })
@@ -465,10 +465,10 @@ async function loadLogs() {
       pageNum: logPagination.current ?? 1,
       pageSize: logPagination.pageSize ?? 20,
     })
-    operationLogs.value = readPageList(page, '审计日志加载失败，请稍后重试')
+    operationLogs.value = page.list
     logPagination.current = page.pageNum
     logPagination.pageSize = page.pageSize
-    logPagination.total = readPageTotal(page, '审计日志加载失败，请稍后重试')
+    logPagination.total = Number(page.total)
   } catch (error) {
     operationLogs.value = []
     logPagination.total = 0
@@ -622,10 +622,10 @@ async function loadDiagnosticSamples() {
       pageNum: samplePagination.current ?? 1,
       pageSize: samplePagination.pageSize ?? 20,
     })
-    diagnosticSamples.value = readPageList(page, '异常留痕样本加载失败，请稍后重试')
+    diagnosticSamples.value = page.list
     samplePagination.current = page.pageNum
     samplePagination.pageSize = page.pageSize
-    samplePagination.total = readPageTotal(page, '异常留痕样本加载失败，请稍后重试')
+    samplePagination.total = Number(page.total)
   } catch (error) {
     diagnosticSamples.value = []
     samplePagination.total = 0

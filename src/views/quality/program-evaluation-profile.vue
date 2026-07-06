@@ -41,7 +41,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
-import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const ACCREDITATION_STANDARD_OPTION_PAGE_SIZE = 100
@@ -155,10 +155,10 @@ async function loadList() {
       ...query,
       keyword: query.keyword?.trim() || undefined,
     })
-    list.value = readPageList(page, '专业评价口径加载失败，请稍后重试')
+    list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = readPageTotal(page, '专业评价口径加载失败，请稍后重试')
+    total.value = Number(page.total)
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()

@@ -21,7 +21,6 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { hasTeacherTenantPermission, RoleEnum } from '@/utils/permission'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
@@ -65,7 +64,7 @@ async function loadPage() {
   loading.value = true
   try {
     const page = await portfolioDualTeacherApi.page({ pageNum: 1, pageSize: 50 })
-    rows.value = readPageList(page, '加载双师申请失败')
+    rows.value = page.list
   } catch (error) {
     showUserError(error)
   } finally {

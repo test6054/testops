@@ -31,7 +31,6 @@ import {
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
-import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function readRouteStringParam(value: unknown): string {
@@ -134,7 +133,7 @@ async function loadTeacherProgram() {
       pageNum: 1,
       pageSize: 100,
     })
-    teacherOptions.value = readPageList(page, '加载教师名册失败')
+    teacherOptions.value = page.list
   } catch (error) {
     showUserError(error, '加载教师专业信息失败')
   }

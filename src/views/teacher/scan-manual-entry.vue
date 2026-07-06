@@ -319,7 +319,6 @@ import { ScannerColorModeCode } from '@/types/enums/scanner-color-mode-enum'
 import { ScannerDuplexModeCode } from '@/types/enums/scanner-duplex-mode-enum'
 import { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanManualEntry' })
@@ -595,7 +594,7 @@ async function loadBatches(): Promise<void> {
       pageNum: 1,
       pageSize: 200,
     })
-    batches.value = readPageList(result, '扫描批次加载失败')
+    batches.value = result.list
   } catch (error) {
     batches.value = []
     showUserError(error, '扫描批次加载失败')
@@ -615,7 +614,7 @@ async function loadPaperCandidates(): Promise<void> {
       pageNum: 1,
       pageSize: 100,
     })
-    paperCandidateOptions.value = readPageList(result, '卷面候选加载失败')
+    paperCandidateOptions.value = result.list
       .filter((item) => item.paperInstanceId && item.bindingStatus === 'BOUND')
       .map((item) => ({
         value: item.paperInstanceId!,

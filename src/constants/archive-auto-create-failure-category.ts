@@ -34,5 +34,6 @@ export function isArchiveAutoCreateFailureCategory(
     || value === ArchiveAutoCreateFailureCategoryCode.AGGREGATE_FAILED
     || value === ArchiveAutoCreateFailureCategoryCode.EXISTING_STUB_BLOCKS
     || value === ArchiveAutoCreateFailureCategoryCode.GATE_DEFERRED
+    || value === ArchiveAutoCreateFailureCategoryCode.PACKAGE_PENDING
     || value === ArchiveAutoCreateFailureCategoryCode.UNKNOWN
 }

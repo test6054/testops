@@ -38,7 +38,7 @@ import {
 } from '@/composables/useAccreditationWorkbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
-import { readAllPages, readPageList } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -156,7 +156,7 @@ async function loadCycles() {
       pageNum: 1,
       pageSize: 50,
     })
-    cycles.value = readPageList(page, '认证周期列表加载失败，请刷新后重试')
+    cycles.value = page.list
   } catch (e) {
     showUserError(e)
   } finally {

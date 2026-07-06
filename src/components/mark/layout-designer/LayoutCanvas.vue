@@ -311,7 +311,7 @@ onMounted(() => {
     <a-spin :spinning="rasterLoading">
       <UiEmpty
         v-if="!page"
-        description="当前页尚未配置背景，请从无源生成或上传有源 PDF"
+        description="当前页尚未配置背景，请生成答题卡或上传整卷源文件"
         class="layout-canvas__empty"
       />
       <div v-else class="layout-canvas__viewport">

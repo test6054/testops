@@ -72,7 +72,7 @@ import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
-import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const qualityStore = useQualityStore()
@@ -432,11 +432,11 @@ async function loadBatches() {
     if (scope.isStale()) {
       return
     }
-    batches.value = readPageList(page, '成绩批次加载失败，请稍后重试')
+    batches.value = page.list
     batchStatusCounts.value = counts
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = readPageTotal(page, '成绩批次加载失败，请稍后重试')
+    total.value = Number(page.total)
     if (batches.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadBatches()
@@ -477,11 +477,11 @@ async function loadBatchesQuietly(): Promise<void> {
     if (scope.isStale()) {
       return
     }
-    batches.value = readPageList(page, '成绩批次加载失败，请稍后重试')
+    batches.value = page.list
     batchStatusCounts.value = counts
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = readPageTotal(page, '成绩批次加载失败，请稍后重试')
+    total.value = Number(page.total)
     batchPolling.syncPolling()
   } catch {
     // 轮询刷新失败时不打断当前页面操作
@@ -772,7 +772,7 @@ async function openAuditDrawer(record: ScoreBatchVO) {
       category: 'QUALITY',
       bizId: record.id,
     })
-    auditEvents.value = readPageList(page, '成绩批次审计记录加载失败，请稍后重试').map((log) => {
+    auditEvents.value = page.list.map((log) => {
       return {
         id: log.id,
         operatorName: log.userDto.nickName,

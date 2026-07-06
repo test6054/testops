@@ -3,7 +3,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { Key } from 'ant-design-vue/es/table/interface'
 import type { ArchiveScanBatchSnapshotItemVO } from '@/apis/mark/archive-volume'
 import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   batchDiscardArchiveScanBatches,
   batchRetryArchiveScanBatches,
@@ -19,7 +19,6 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -34,9 +33,7 @@ const emit = defineEmits<{
 const loading = ref(false)
 const actionLoading = ref(false)
 const errorMessage = ref('')
-const pageNum = ref(1)
-const pageSize = ref(20)
-const total = ref(0)
+const pagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
 const rows = ref<ArchiveScanBatchSnapshotItemVO[]>([])
 const selectedRowKeys = ref<string[]>([])
 
@@ -71,28 +68,24 @@ async function loadRows() {
   loading.value = true
   errorMessage.value = ''
   try {
-    const page = await pageArchiveScanBatchSnapshots({
+    const result = await pageArchiveScanBatchSnapshots({
       volumeId: props.volumeId,
       batchQualityFlag: ScanBatchQualityFlagCode.SUSPECTED_MIXED,
-      pageNum: pageNum.value,
-      pageSize: pageSize.value,
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize,
     })
-    rows.value = readPageList(page, '扫描批次加载失败，请稍后重试')
-    total.value = readPageTotal(page, '扫描批次总数加载失败，请稍后重试')
+    rows.value = result.list
+    pagination.total = Number(result.total)
+    pagination.pageNum = result.pageNum
+    pagination.pageSize = result.pageSize
     selectedRowKeys.value = []
   } catch (error) {
     errorMessage.value = getUserErrorMessage(error)
     rows.value = []
-    total.value = 0
+    pagination.total = 0
   } finally {
     loading.value = false
   }
-}
-
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
-  pageNum.value = pageEvent.current
-  pageSize.value = pageEvent.pageSize
-  void loadRows()
 }
 
 async function runBatchAction(action: 'retry' | 'discard') {
@@ -165,19 +158,18 @@ onMounted(() => {
     </template>
     <p v-if="errorMessage" class="archive-scan-batch-review__error">{{ errorMessage }}</p>
     <UiDataTable
-      pagination-mode="server"
+      v-model:current="pagination.pageNum"
+      v-model:page-size="pagination.pageSize"
       :columns="columns"
       :data-source="rows"
       :loading="loading"
-      :total="total"
-      :current="pageNum"
-      :page-size="pageSize"
+      :total="pagination.total"
       :row-selection="rowSelection"
       row-key="sourceBatchId"
       size="middle"
       flat
       empty-description="暂无疑似混扫批次"
-      @page-change="handlePageChange"
+      @page-change="loadRows"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'batchQualityFlag'">

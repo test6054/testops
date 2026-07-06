@@ -49,6 +49,13 @@
               </div>
             </template>
             <a-typography-paragraph
+              v-if="question.questionStem"
+              class="marking-score-panel__question-stem"
+              :ellipsis="{ rows: 3, expandable: true, symbol: '展开' }"
+            >
+              {{ question.questionStem }}
+            </a-typography-paragraph>
+            <a-typography-paragraph
               v-if="question.recognizedAnswer"
               class="marking-score-panel__recognized-answer"
               :ellipsis="{ rows: 3, expandable: true, symbol: '展开' }"
@@ -436,6 +443,15 @@ function quickDigitScores(fullScore: number): number[] {
     gap: 8px;
     align-items: center;
     width: 100%;
+  }
+
+  &__question-stem {
+    margin: 0 0 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--dp-border-subtle, #e2e8f0);
+    border-radius: var(--dp-radius-panel, 8px);
+    color: var(--dp-text-primary, #0f172a);
+    background: var(--ant-color-bg-container, #fff);
   }
 
   &__recognized-answer {

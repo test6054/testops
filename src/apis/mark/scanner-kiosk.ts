@@ -274,7 +274,7 @@ export function getScannerKioskContext(
 /**
  * 扫描工作台考试选择下拉请求。
  *
- * 仅用于在一体机端开始扫描前的考试搜索：按学年、学期、班级与关键字过滤当前租户内
+ * 仅用于在一体机端开始扫描前的考试搜索：按学年、学期、班级与考试名或考试编号关键字过滤当前租户内
  * status=ACTIVE 的考试。已归档（CLOSED）考试在后端被强制过滤，不会出现在响应中。
  */
 export interface ExamScannerKioskExamOptionRequest extends QueryDto {

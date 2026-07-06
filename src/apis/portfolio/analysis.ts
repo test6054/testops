@@ -8,6 +8,7 @@ import type {
   PortfolioTeacherPortraitTrendGetRequest,
   PortfolioTeacherPortraitTrendVO,
   PortfolioTeacherPortraitVO,
+  PortfolioTeacherProgressCockpitGetRequest,
   PortfolioTeacherProgressCockpitVO,
   PortfolioTeacherWorkbenchSummaryVO,
 } from '@/apis/portfolio/types'
@@ -19,7 +20,7 @@ export const portfolioAnalysisApi = {
       '/api/portfolio/analysis/workbench-summary/get',
       data,
     ),
-  getProgressCockpit: (data: PortfolioTeacherCompletenessGetRequest = {}) =>
+  getProgressCockpit: (data: PortfolioTeacherProgressCockpitGetRequest = {}) =>
     http.post<PortfolioTeacherProgressCockpitVO>(
       '/api/portfolio/analysis/progress-cockpit/get',
       data,

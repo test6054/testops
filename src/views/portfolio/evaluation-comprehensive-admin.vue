@@ -28,7 +28,6 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -142,7 +141,7 @@ async function loadTasks() {
       pageNum: 1,
       pageSize: 200,
     })
-    tasks.value = readPageList(page, '加载评价任务失败').filter((item) =>
+    tasks.value = page.list.filter((item) =>
       PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES.includes(item.taskStatus),
     )
   } catch (error) {

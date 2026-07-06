@@ -348,7 +348,7 @@ import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { ErrorType, handleError, showUserError } from '@/utils/error-handler'
-import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { buildScopedClassTags } from './candidate-roster/class-scope'
 import {
   buildExamCandidateMergeRequests,
@@ -622,7 +622,7 @@ function buildClassScopeSavePayload(classIdList: string[]) {
 
 async function probeRosterLocked(examId: string): Promise<boolean> {
   const result = await pageScannerBatches({ examId, pageNum: 1, pageSize: 1 })
-  return readPageTotal(result) > 0
+  return Number(result.total) > 0
 }
 
 async function loadClassOptionsForExam(_examId: string): Promise<void> {
@@ -689,8 +689,8 @@ async function loadCandidatePage(): Promise<void> {
     if (seq !== loadTableSeq) {
       return
     }
-    tableCandidates.value = readPageList(result, '考生列表加载失败').map(candidateRowFromExamCandidate)
-    pagination.total = readPageTotal(result)
+    tableCandidates.value = result.list.map(candidateRowFromExamCandidate)
+    pagination.total = Number(result.total)
     if (result.pageNum != null) {
       pagination.current = result.pageNum
     }

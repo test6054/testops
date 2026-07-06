@@ -162,7 +162,6 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'RejudgePlanCard' })
@@ -258,8 +257,8 @@ async function reload(): Promise<void> {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
-    rows.value = readPageList(result, '重判计划加载失败')
-    pagination.total = readPageTotal(result, '重判计划加载失败')
+    rows.value = result.list
+    pagination.total = Number(result.total)
     pagination.current = result.pageNum ?? pagination.current
     pagination.pageSize = result.pageSize ?? pagination.pageSize
   } catch (e) {

@@ -29,7 +29,6 @@ import { useAuthStore } from '@/stores/modules/auth'
 import { RoleEnum } from '@/types/enums'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime, formatFileSize } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 
 defineOptions({ name: 'ScannerAgentReleasesPage' })
 
@@ -136,8 +135,8 @@ async function loadReleases() {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
-    releases.value = readPageList(result, 'Agent 发布包列表加载失败')
-    pagination.total = readPageTotal(result)
+    releases.value = result.list
+    pagination.total = Number(result.total)
     const publishedInPage = releases.value.find(item => item.published === true)
     if (publishedInPage) {
       publishedReleaseSnapshot.value = publishedInPage

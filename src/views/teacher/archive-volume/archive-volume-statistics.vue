@@ -192,7 +192,6 @@ import {
 import { downloadArchiveExcelBase64 } from '@/utils/archive-excel-export'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveVolumeListNextStepsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeListNextStepsPanel.vue'
 
@@ -494,8 +493,10 @@ async function loadDestructionLedger() {
       pageNum: destructionPagination.pageNum,
       pageSize: destructionPagination.pageSize,
     })
-    destructionRows.value = readPageList(result, '销毁清册台账异常')
-    destructionPagination.total = readPageTotal(result)
+    destructionRows.value = result.list
+    destructionPagination.total = Number(result.total)
+    destructionPagination.pageNum = result.pageNum
+    destructionPagination.pageSize = result.pageSize
   } catch (error) {
     showUserError(error)
   } finally {

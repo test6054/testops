@@ -38,7 +38,6 @@ import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
 
@@ -177,8 +176,8 @@ async function loadPage() {
   loading.value = true
   try {
     const page = await portfolioTeacherApi.page({ ...query })
-    list.value = readPageList(page, '加载教师名册失败')
-    total.value = readPageTotal(page)
+    list.value = page.list
+    total.value = Number(page.total)
   } catch (error) {
     showUserError(error, '加载教师名册失败')
   } finally {

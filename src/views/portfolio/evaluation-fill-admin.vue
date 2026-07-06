@@ -28,7 +28,6 @@ import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -160,7 +159,7 @@ async function loadTasks() {
       pageNum: 1,
       pageSize: 100,
     })
-    tasks.value = readPageList(page, '加载评价任务失败')
+    tasks.value = page.list
     const pool = selectableTasks.value
     if (!selectedTaskId.value && pool.length) {
       selectedTaskId.value = pool[0].id
@@ -205,7 +204,7 @@ async function loadEntries() {
       pageNum: 1,
       pageSize: 100,
     })
-    entries.value = readPageList(page, '加载填报条目失败')
+    entries.value = page.list
   } catch (error) {
     showUserError(error)
   } finally {

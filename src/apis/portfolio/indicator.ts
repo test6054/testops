@@ -44,6 +44,7 @@ import type {
   PortfolioIndustryPackBindRequest,
   PortfolioIndustryPackSaveRequest,
   PortfolioIndustryPackVO,
+  PortfolioPublishImpactReportGetRequest,
   PortfolioPublishImpactReportVO,
   PortfolioRulePublishSnapshotVO,
   PortfolioRuleRetroactiveGetRequest,
@@ -142,7 +143,7 @@ export const portfolioIndicatorTenantApi: PortfolioIndicatorTenantApi = {
     http.post<PortfolioEligibilityRuleVO>(`${TENANT}/eligibility/rule/get`, data),
   impactPreview: (data: PortfolioSceneCodeRequest) =>
     http.post<string>(`${TENANT}/publish/impact-preview`, data),
-  getImpactReport: (data: { id: string }) =>
+  getImpactReport: (data: PortfolioPublishImpactReportGetRequest) =>
     http.post<PortfolioPublishImpactReportVO>(`${TENANT}/publish/impact-report/get`, data),
   pageImpactReport: (data: QueryDto) =>
     http.post<PageResult<PortfolioPublishImpactReportVO>>(`${TENANT}/publish/impact-report/page`, data),
@@ -156,7 +157,7 @@ export const portfolioIndicatorTenantApi: PortfolioIndicatorTenantApi = {
     http.post<PortfolioIndicatorExportResultVO>(`${TENANT}/export/indicator-catalog`, {}),
   exportSnapshotDiff: (data: PortfolioExportSnapshotDiffRequest) =>
     http.post<PortfolioIndicatorExportResultVO>(`${TENANT}/export/snapshot-diff`, data),
-  exportImpactReport: (data: { id: string }) =>
+  exportImpactReport: (data: PortfolioPublishImpactReportGetRequest) =>
     http.post<PortfolioIndicatorExportResultVO>(`${TENANT}/export/impact-report`, data),
   computeTrial: (data: PortfolioIndicatorComputeTrialRequest) =>
     http.post<PortfolioIndicatorScoreComputeResult>(`${TENANT}/compute/trial`, data),

@@ -123,10 +123,7 @@ export function shouldAutoSelectAnalysisExams(input: {
   if (input.autoSelectLargestCourseClusterInScope && (hasExamScope || hasTeachingScope)) {
     return true
   }
-  if (input.autoSelectScopedExams && (hasExamScope || hasTeachingScope)) {
-    return true
-  }
-  return false
+  return input.autoSelectScopedExams && (hasExamScope || hasTeachingScope);
 }
 
 /** 跨考趋势等卡片自动勾选时，同一课程簇至少须 2 场考试才预填。 */

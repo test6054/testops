@@ -163,7 +163,6 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewRequestsCard' })
@@ -279,9 +278,9 @@ async function reload(): Promise<void> {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
-    const list = readPageList(result, '复核申请加载失败')
+    const list = result.list
     rows.value = list
-    pagination.total = readPageTotal(result, '复核申请加载失败')
+    pagination.total = Number(result.total)
     pagination.current = result.pageNum ?? pagination.current
     pagination.pageSize = result.pageSize ?? pagination.pageSize
     await loadPendingCount()

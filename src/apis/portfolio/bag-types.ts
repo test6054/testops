@@ -101,7 +101,7 @@ export interface PortfolioArchiveScoreResultVO {
   computedTime?: string
 }
 
-export interface PortfolioArchiveBagFilterRequest {
+export interface PortfolioArchiveBagTeacherRequest {
   teacherId?: string
   academicYear?: string
   semester?: SemesterCode

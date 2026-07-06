@@ -565,6 +565,10 @@ export interface PortfolioEligibilityRuleGetRequest {
   eligibilityCode: string
 }
 
+export interface PortfolioPublishImpactReportGetRequest {
+  id: string
+}
+
 export interface PortfolioIndicatorAutoCollectRequest {
   teacherId: string
 }
@@ -702,14 +706,14 @@ export interface PortfolioIndicatorTenantApi {
   saveEligibilityRule: (data: PortfolioEligibilityRuleSaveRequest) => Promise<string>
   getEligibilityRule: (data: PortfolioEligibilityRuleGetRequest) => Promise<PortfolioEligibilityRuleVO>
   impactPreview: (data: PortfolioSceneCodeRequest) => Promise<string>
-  getImpactReport: (data: { id: string }) => Promise<PortfolioPublishImpactReportVO>
+  getImpactReport: (data: PortfolioPublishImpactReportGetRequest) => Promise<PortfolioPublishImpactReportVO>
   pageImpactReport: (data: QueryDto) => Promise<PageResult<PortfolioPublishImpactReportVO>>
   evaluateEligibility: (data: PortfolioEligibilityEvaluateRequest) => Promise<PortfolioEligibilityEvalResultDto>
   pageEvalLog: (data: QueryDto) => Promise<PageResult<PortfolioEligibilityEvalLogVO>>
   getExplain: (data: PortfolioExplainGetRequest) => Promise<string>
   exportIndicatorCatalog: () => Promise<PortfolioIndicatorExportResultVO>
   exportSnapshotDiff: (data: PortfolioExportSnapshotDiffRequest) => Promise<PortfolioIndicatorExportResultVO>
-  exportImpactReport: (data: { id: string }) => Promise<PortfolioIndicatorExportResultVO>
+  exportImpactReport: (data: PortfolioPublishImpactReportGetRequest) => Promise<PortfolioIndicatorExportResultVO>
   computeTrial: (data: PortfolioIndicatorComputeTrialRequest) => Promise<PortfolioIndicatorScoreComputeResult>
   computeSnapshot: (data: PortfolioIndicatorSnapshotComputeRequest) => Promise<PortfolioIndicatorScoreComputeResult>
   pageComputeLog: (data: QueryDto) => Promise<PageResult<PortfolioIndicatorComputeLogVO>>

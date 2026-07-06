@@ -111,6 +111,12 @@ export const useMarkStageStore = defineStore('markStage', () => {
   const experienceAssistBlockingReasons = computed(
     () => snapshot.value?.experienceAssistBlockingReasons ?? [],
   )
+  const manualFinalScoreConfirmRequired = computed(
+    () => snapshot.value?.manualFinalScoreConfirmRequired,
+  )
+  const delayedFinalScoreConfirmMinutes = computed(
+    () => snapshot.value?.delayedFinalScoreConfirmMinutes,
+  )
   const isExamConfidential = computed(() => isExamConfidentialFlag(snapshot.value?.confidential))
   const examConfidentialLabel = computed(() => formatExamConfidentialLabel(snapshot.value))
 
@@ -161,6 +167,8 @@ export const useMarkStageStore = defineStore('markStage', () => {
     prepAdvisoryReasons,
     prepBlockingReasons,
     experienceAssistBlockingReasons,
+    manualFinalScoreConfirmRequired,
+    delayedFinalScoreConfirmMinutes,
     isExamConfidential,
     examConfidentialLabel,
     selectedExamLabel,

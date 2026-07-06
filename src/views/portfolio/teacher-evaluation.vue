@@ -45,7 +45,6 @@ import {
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function noticeStatusLabel(status: PortfolioEvaluationTeacherNoticeStatusCode): string {
@@ -181,8 +180,8 @@ async function loadNotices() {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
-    notices.value = readPageList(page, '加载评价待办失败')
-    pageTotal.value = readPageTotal(page)
+    notices.value = page.list
+    pageTotal.value = Number(page.total)
     const routeNoticeId = typeof route.query.noticeId === 'string' ? route.query.noticeId : ''
     const matched = routeNoticeId
       ? notices.value.find((item) => item.id === routeNoticeId)

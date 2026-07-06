@@ -175,7 +175,6 @@ import {
 } from '@/utils/archive-access-record-ui'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import ArchiveVolumeListNextStepsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeListNextStepsPanel.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeLedger' })
@@ -297,7 +296,7 @@ async function locateVolume() {
   volumeLoading.value = true
   try {
     const page = await pageArchiveVolumes({ keyword, pageNum: 1, pageSize: 1 })
-    const list = readPageList(page, '归档卷查询异常')
+    const list = page.list
     const volume: ArchiveVolumeResponse | undefined = list[0]
     if (!volume) {
       message.warning('未找到匹配的归档卷')
@@ -325,8 +324,10 @@ async function loadTenantLedger() {
       pageNum: tenantPagination.pageNum,
       pageSize: tenantPagination.pageSize,
     })
-    tenantRows.value = readPageList(result, '查阅利用台账异常')
-    tenantPagination.total = readPageTotal(result)
+    tenantRows.value = result.list
+    tenantPagination.total = Number(result.total)
+    tenantPagination.pageNum = result.pageNum
+    tenantPagination.pageSize = result.pageSize
   } catch (error) {
     showUserError(error, '加载查阅台账失败')
   } finally {

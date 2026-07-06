@@ -622,9 +622,7 @@ watch(
     if (wasPolling && !shouldPoll) {
       void (async () => {
         emitRefreshed({ silent: true })
-        if (props.detail.fourPropertyStale) {
-          emit('ocr-completed-stale')
-        }
+        emit('ocr-completed-stale')
       })()
     }
   },

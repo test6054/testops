@@ -1,8 +1,8 @@
 import type {
   PortfolioArchiveBagAssembleVO,
   PortfolioArchiveBagExportResultVO,
-  PortfolioArchiveBagFilterRequest,
   PortfolioArchiveBagPreviewVO,
+  PortfolioArchiveBagTeacherRequest,
   PortfolioArchiveScoreResultVO,
 } from '@/apis/portfolio/bag-types'
 import type {
@@ -29,13 +29,13 @@ import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 export const portfolioArchiveBagApi = {
-  assemble: (data: PortfolioArchiveBagFilterRequest = {}) =>
+  assemble: (data: PortfolioArchiveBagTeacherRequest = {}) =>
     http.post<PortfolioArchiveBagAssembleVO>('/api/portfolio/archive/bag/assemble', data),
-  preview: (data: PortfolioArchiveBagFilterRequest = {}) =>
+  preview: (data: PortfolioArchiveBagTeacherRequest = {}) =>
     http.post<PortfolioArchiveBagPreviewVO>('/api/portfolio/archive/bag/preview', data),
-  buildMaterialPackage: (data: PortfolioArchiveBagFilterRequest = {}) =>
+  buildMaterialPackage: (data: PortfolioArchiveBagTeacherRequest = {}) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/material-package/build', data),
-  exportBag: (data: PortfolioArchiveBagFilterRequest = {}) =>
+  exportBag: (data: PortfolioArchiveBagTeacherRequest = {}) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/archive/bag/export', data),
   computeScore: (data: PortfolioArchiveScoreComputeRequest = {}) =>
     http.post<PortfolioArchiveScoreResultVO>('/api/portfolio/archive-score/compute', data),
@@ -195,8 +195,18 @@ export const portfolioDualTeacherApi = {
 export interface PortfolioDualTeacherAnalyticsVO {
   totalCount: number
   approvedCount: number
-  statusCounts: Array<{ applicationStatus: string, count: number }>
-  certLevelCounts: Array<{ certLevel: string, count: number }>
+  statusCounts: PortfolioDualTeacherStatusCountVO[]
+  certLevelCounts: PortfolioDualTeacherCertLevelCountVO[]
+}
+
+export interface PortfolioDualTeacherStatusCountVO {
+  applicationStatus: string
+  count: number
+}
+
+export interface PortfolioDualTeacherCertLevelCountVO {
+  certLevel: string
+  count: number
 }
 
 export interface PortfolioExternalTeacherVO {
@@ -227,8 +237,13 @@ export interface PortfolioExternalTeacherVO {
 }
 
 export interface PortfolioExternalTeacherStatsVO {
-  contractStatusCounts: Array<{ dimensionCode?: string, count?: number }>
-  teacherSourceCounts: Array<{ dimensionCode?: string, count?: number }>
+  contractStatusCounts: PortfolioExternalTeacherStatCountVO[]
+  teacherSourceCounts: PortfolioExternalTeacherStatCountVO[]
+}
+
+export interface PortfolioExternalTeacherStatCountVO {
+  dimensionCode?: string
+  count?: number
 }
 
 export interface PortfolioExternalTeacherSaveRequest {
@@ -508,15 +523,25 @@ export interface PortfolioDevelopmentRecordVO {
 }
 
 export interface PortfolioHonorStatsVO {
-  levelCounts: Array<{ levelCode: string, count: number }>
-  yearCounts: Array<{ year: number, count: number }>
+  levelCounts: PortfolioHonorLevelCountVO[]
+  yearCounts: PortfolioHonorYearCountVO[]
 }
 
 export interface PortfolioAchievementStatsVO {
   totalCount: number
   nationalCount: number
-  levelCounts: Array<{ levelCode: string, count: number }>
-  yearCounts: Array<{ year: number, count: number }>
+  levelCounts: PortfolioHonorLevelCountVO[]
+  yearCounts: PortfolioHonorYearCountVO[]
+}
+
+export interface PortfolioHonorLevelCountVO {
+  levelCode: string
+  count: number
+}
+
+export interface PortfolioHonorYearCountVO {
+  year: number
+  count: number
 }
 
 export interface PortfolioDevelopmentRecordPageRequest extends QueryDto {
@@ -911,13 +936,13 @@ export interface PortfolioTeacherPkCompareDimensionRowVO {
   dimensionScore: number
 }
 
-export interface PortfolioTeacherPkCompareTeacherRowVO {
+export interface PortfolioTeacherPkCompareTeacherVO {
   teacherUserId: string
   dimensionRows: PortfolioTeacherPkCompareDimensionRowVO[]
 }
 
 export interface PortfolioTeacherPkCompareVO {
-  teachers: PortfolioTeacherPkCompareTeacherRowVO[]
+  teachers: PortfolioTeacherPkCompareTeacherVO[]
 }
 
 export interface PortfolioTeacherRecommendRunPageRequest extends QueryDto {

@@ -19,7 +19,6 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
-import { readPageList } from '@/utils/page-result'
 import {
   portfolioTeacherSelectOptionsFromSummaries,
   resolvePortfolioTeacherDisplayName,
@@ -51,7 +50,7 @@ function sleep(ms: number) {
 async function loadTeachers() {
   try {
     const page = await portfolioTeacherApi.page({ pageNum: 1, pageSize: 100 })
-    teachers.value = readPageList(page, '加载教师名册失败')
+    teachers.value = page.list
     if (!form.teacherId) {
       const firstOption = portfolioTeacherSelectOptionsFromSummaries(teachers.value)[0]
       if (firstOption) {

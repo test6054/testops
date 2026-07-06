@@ -23,7 +23,6 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -113,8 +112,8 @@ async function loadPage() {
       planStatus: filterForm.planStatus,
       portfolioOrgId: filterForm.portfolioOrgId,
     })
-    rows.value = readPageList(page, '加载待审规划失败')
-    pageTotal.value = readPageTotal(page)
+    rows.value = page.list
+    pageTotal.value = Number(page.total)
   } catch (error) {
     showUserError(error)
   } finally {

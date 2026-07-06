@@ -154,7 +154,6 @@ import {
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { useInjectedExamCreateBasicForm } from './exam-create-context'
 
 defineProps<{
@@ -199,7 +198,7 @@ async function loadSourceExamOptions(keyword?: string): Promise<void> {
       courseId: examForm.courseId ?? undefined,
       keyword: keyword?.trim() || undefined,
     })
-    sourceExamOptions.value = readPageList(result, '原考试列表加载失败')
+    sourceExamOptions.value = result.list
       .filter(isRegularSourceExam)
       .map((exam) => ({
         label: formatSourceExamLabel(exam),

@@ -314,7 +314,6 @@ import {
 import { highlightArchiveSearchSnippet } from '@/utils/archive-search-snippet'
 import { showUserError } from '@/utils/error-handler'
 import { examSummaryFromDetail, toMarkExamSelectOption } from '@/utils/mark-exam-option'
-import { readArrayResponse, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveVolumeListNextStepsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeListNextStepsPanel.vue'
 import ArchiveVolumeMaterialOcrDetailContent from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailContent.vue'
@@ -613,8 +612,7 @@ async function loadExamOptions(keyword?: string) {
       status: ExamStatusCode.ACTIVE,
       keyword: keyword?.trim() || undefined,
     })
-    examOptions.value = readPageList(page, '考试列表加载失败，请稍后重试')
-      .map(toMarkExamSelectOption)
+    examOptions.value = page.list.map(toMarkExamSelectOption)
   } catch (error) {
     showUserError(error, '考试列表加载失败')
   } finally {
@@ -645,10 +643,7 @@ function handleExamChange(value: SelectValue): void {
 
 async function loadDepartments() {
   try {
-    const departments = readArrayResponse<TenantSchoolDepartmentDto>(
-      await departmentCatalogApi.list(),
-      '院系',
-    )
+    const departments = await departmentCatalogApi.list()
     departmentOptions.value = departments.map((item: TenantSchoolDepartmentDto) => ({
       value: item.id,
       label: item.deptName,
@@ -660,10 +655,7 @@ async function loadDepartments() {
 
 async function loadCourses() {
   try {
-    const courses = readArrayResponse<CourseListVO>(
-      await courseCatalogApi.authorizedList(),
-      '课程',
-    )
+    const courses = await courseCatalogApi.authorizedList()
     courseOptions.value = courses.map((item: CourseListVO) => ({
       value: item.id,
       label: item.courseName,
@@ -676,10 +668,7 @@ async function loadCourses() {
 async function loadSearchProfiles() {
   profilesLoading.value = true
   try {
-    searchProfiles.value = readArrayResponse<ArchiveVolumeMaterialSearchProfileResponse>(
-      await listArchiveVolumeSearchProfiles(),
-      '检索方案',
-    )
+    searchProfiles.value = await listArchiveVolumeSearchProfiles()
   } catch (error) {
     showUserError(error)
   } finally {
@@ -699,8 +688,10 @@ async function loadHits() {
   loading.value = true
   try {
     const result = await searchArchiveVolumes(buildSearchRequest())
-    hits.value = readPageList(result, '材料检索结果异常，请刷新后重试')
-    pagination.total = readPageTotal(result)
+    hits.value = result.list
+    pagination.total = Number(result.total)
+    pagination.pageNum = result.pageNum
+    pagination.pageSize = result.pageSize
   } catch (error) {
     showUserError(error, '材料检索失败')
   } finally {

@@ -124,7 +124,6 @@ import {
   needsKioskBrowserSessionSync,
   recoverKioskBrowserSessionFromAgent,
 } from '@/utils/kiosk-auth'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import {
   kioskMaterialKindLabel,
   kioskScanModeAdvisory,
@@ -1771,10 +1770,10 @@ export function useExamKioskWorkflow() {
       if (examOptionFilter.semester) request.semester = examOptionFilter.semester
       if (examOptionFilter.classId) request.classId = examOptionFilter.classId
       const result = await pageScannerKioskExamOptions(request)
-      examOptions.value = readPageList(result, '考试列表加载失败，请稍后重试')
+      examOptions.value = result.list
       examOptionFilter.pageNum = result.pageNum
       examOptionFilter.pageSize = result.pageSize
-      examOptionTotal.value = readPageTotal(result)
+      examOptionTotal.value = Number(result.total)
     } catch (error) {
       showUserError(error, '考试列表加载失败')
       examOptions.value = []
@@ -1862,10 +1861,10 @@ export function useExamKioskWorkflow() {
       const toIso = normalizeDatetimeLocal(batchHistoryFilter.scanStartTimeTo)
       if (toIso) request.scanStartTimeTo = toIso
       const result = await pageScannerKioskBatchHistory(request)
-      batchHistoryList.value = readPageList(result, '扫描批次历史加载失败，请稍后重试')
+      batchHistoryList.value = result.list
       batchHistoryFilter.pageNum = result.pageNum
       batchHistoryFilter.pageSize = result.pageSize
-      batchHistoryTotal.value = readPageTotal(result, '扫描批次历史加载失败，请稍后重试')
+      batchHistoryTotal.value = Number(result.total)
     } catch (error) {
       handleError(error)
       batchHistoryList.value = []

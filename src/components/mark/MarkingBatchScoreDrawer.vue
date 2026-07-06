@@ -69,9 +69,8 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useTenantMarkingWithdrawPolicy } from '@/composables/useTenantMarkingWithdrawPolicy'
 import { showUserError } from '@/utils/error-handler'
-
-defineOptions({ name: 'MarkingBatchScoreDrawer' })
 
 const props = defineProps<{
   open: boolean
@@ -94,6 +93,7 @@ const progressDone = ref(0)
 const progressTotal = ref(0)
 const progressFailed = ref(false)
 const annotationWarning = ref('')
+const { withdrawConfirmHint, requireWithdrawWindowMinutes } = useTenantMarkingWithdrawPolicy()
 
 const selectedTaskIds = ref<string[]>([])
 
@@ -136,11 +136,12 @@ async function confirmExtremeScore(): Promise<boolean> {
   if (score.value === undefined) return false
   if (score.value !== 0 && score.value !== props.fullScore) return true
   const isZero = score.value === 0
+  const withdrawHint = withdrawConfirmHint.value ?? `提交后可在 ${requireWithdrawWindowMinutes()} 分钟内撤销`
   return confirmAsync({
     title: isZero ? '确认批量零分？' : '确认批量满分？',
     content: isZero
-      ? `将对 ${selectedTaskIds.value.length} 份答卷统一给 0 分，提交后可在 10 分钟内撤销。`
-      : `将对 ${selectedTaskIds.value.length} 份答卷统一给满分 ${props.fullScore} 分，提交后可在 10 分钟内撤销。`,
+      ? `将对 ${selectedTaskIds.value.length} 份答卷统一给 0 分，${withdrawHint}。`
+      : `将对 ${selectedTaskIds.value.length} 份答卷统一给满分 ${props.fullScore} 分，${withdrawHint}。`,
     type: 'warning',
     okText: '确认提交',
     cancelText: '取消',

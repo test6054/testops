@@ -55,11 +55,7 @@
 
     <UiSkeletonState v-if="loading" variant="card" compact />
 
-    <UiEmpty
-      v-else-if="!organization"
-      description="暂无阅卷组织数据"
-      class="org-sessions__empty"
-    />
+    <UiEmpty v-else-if="!organization" description="暂无阅卷组织数据" class="org-sessions__empty" />
 
     <div v-else class="org-sessions__panels">
       <a-row :gutter="16">
@@ -145,13 +141,8 @@ import TrialSessionPanel from './components/TrialSessionPanel.vue'
 
 defineOptions({ name: 'AdminMarkingOrganizationSessions' })
 
-const {
-  isJourneyChrome,
-  contextBarTitle,
-  contextBarSubtitle,
-  examStatusLabel,
-  examStatusTone,
-} = useOptionalExamJourneyContextBar('试评 / 正评')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
+  = useOptionalExamJourneyContextBar('试评 / 正评')
 
 const route = useRoute()
 const router = useRouter()
@@ -178,7 +169,9 @@ const groupOptions = computed(() =>
 
 const groupAllocationUnitMap = computed(() => {
   const map: Record<string, AllocationUnitCode> = {}
-  const defaultAllocationUnit = allocationPolicies.value.find((policy) => policy.groupId == null)?.allocationUnit
+  const defaultAllocationUnit = allocationPolicies.value.find(
+    (policy) => policy.groupId == null,
+  )?.allocationUnit
   for (const group of organization.value?.groups ?? []) {
     const groupPolicy = allocationPolicies.value.find((policy) => policy.groupId === group.id)
     const allocationUnit = groupPolicy?.allocationUnit ?? defaultAllocationUnit
@@ -206,8 +199,13 @@ const organizationExamLabel = computed(() => {
   return '阅卷组织'
 })
 
-const examCreateUserId = computed(() => examDetail.value?.createUser ?? organization.value?.examCreateUserId)
-const { canManageExamOwner: canManageOrganization } = useMarkingOrgPermission(examCreateUserId, organization)
+const examCreateUserId = computed(
+  () => examDetail.value?.createUser ?? organization.value?.examCreateUserId,
+)
+const { canManageExamOwner: canManageOrganization } = useMarkingOrgPermission(
+  examCreateUserId,
+  organization,
+)
 
 function guardOrganizationOwnerAction(): boolean {
   if (canManageOrganization.value) return true
@@ -226,7 +224,9 @@ function resetSessionState(): void {
 /**
  * 会话页必须绑定到组织真实 examId，对齐后工作台阶段与会话操作才属于同一考试。
  */
-async function alignWorkspaceRouteExamId(nextOrganization: MarkingOrganizationResponse): Promise<boolean> {
+async function alignWorkspaceRouteExamId(
+  nextOrganization: MarkingOrganizationResponse,
+): Promise<boolean> {
   if (!nextOrganization.examId) {
     return true
   }
@@ -265,11 +265,10 @@ async function loadOrganization(): Promise<boolean> {
 async function loadTrialSessions(): Promise<void> {
   if (!organizationId.value) return
   try {
-    const records = await listTrialSessions({
+    trialSessions.value = await listTrialSessions({
       organizationId: organizationId.value,
       groupId: filterGroupId.value,
     })
-    trialSessions.value = records
   } catch (error) {
     trialSessions.value = []
     showUserError(error, '试评会话列表加载失败')
@@ -279,11 +278,10 @@ async function loadTrialSessions(): Promise<void> {
 async function loadFormalSessions(): Promise<void> {
   if (!organizationId.value) return
   try {
-    const records = await listFormalSessions({
+    formalSessions.value = await listFormalSessions({
       organizationId: organizationId.value,
       groupId: filterGroupId.value,
     })
-    formalSessions.value = records
   } catch (error) {
     formalSessions.value = []
     showUserError(error, '正评会话列表加载失败')
@@ -386,9 +384,13 @@ async function onLifecycleSuccess(): Promise<void> {
   await refreshSnapshot()
 }
 
-watch(() => ({ organizationId: organizationId.value, routeExamId: routeExamId.value }), () => {
-  void reloadAll()
-}, { immediate: true })
+watch(
+  () => ({ organizationId: organizationId.value, routeExamId: routeExamId.value }),
+  () => {
+    void reloadAll()
+  },
+  { immediate: true },
+)
 </script>
 
 <style lang="scss" scoped>

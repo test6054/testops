@@ -437,7 +437,6 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminTeachingAffairsSync' })
@@ -811,10 +810,10 @@ async function loadPassbackRecords(options?: { quiet?: boolean }): Promise<void>
       pageNum: passbackPagination.pageNum,
       pageSize: passbackPagination.pageSize,
     })
-    passbackRecords.value = readPageList(page, '教务回写记录加载失败，请稍后重试')
+    passbackRecords.value = page.list
     passbackPagination.pageNum = page.pageNum
     passbackPagination.pageSize = page.pageSize
-    passbackPagination.total = readPageTotal(page, '教务回写记录加载失败，请稍后重试')
+    passbackPagination.total = Number(page.total)
   } catch (error) {
     if (!options?.quiet) {
       passbackRecords.value = []

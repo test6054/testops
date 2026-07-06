@@ -57,14 +57,10 @@
             <div class="exam-pick-item__title-row">
               <h3 class="exam-pick-item__title">{{ exam.examName }}</h3>
               <UiTag :tone="finalScoreStatusTone(exam)" size="sm">
-                {{
-                  finalScoreStatusLabel(exam)
-                }}
+                {{ finalScoreStatusLabel(exam) }}
               </UiTag>
               <UiTag :tone="reviewWindowStatusTone(exam)" size="sm">
-                {{
-                  reviewWindowStatusLabel(exam)
-                }}
+                {{ reviewWindowStatusLabel(exam) }}
               </UiTag>
             </div>
             <div class="exam-pick-item__meta">
@@ -257,8 +253,8 @@
 import type {
   GradeReviewEvidenceFileRefVO,
   GradeReviewRequestStatusCode,
-
-  StudentGradeReviewRequestItemResponse} from '@/apis/mark/grade-review'
+  StudentGradeReviewRequestItemResponse,
+} from '@/apis/mark/grade-review'
 import type { StudentExamItemVO, StudentQuestionScoreVO } from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -269,7 +265,10 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { FINAL_SCORE_STATUS_TONE, FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
+import {
+  FINAL_SCORE_STATUS_TONE,
+  FinalScoreStatusDescription,
+} from '@/apis/mark/final-score-status'
 import {
   countMyPendingReviewRequests,
   GRADE_REVIEW_REASON_TYPE_OPTIONS,
@@ -302,7 +301,6 @@ import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { formatDateTime, formatScore } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'StudentAppeal' })
@@ -504,9 +502,8 @@ async function loadRequests() {
       pageNum: requestPagination.current,
       pageSize: requestPagination.pageSize,
     })
-    const list = readPageList(result, '复核申请列表加载失败')
-    requests.value = list
-    requestPagination.total = readPageTotal(result, '复核申请列表加载失败')
+    requests.value = result.list
+    requestPagination.total = Number(result.total)
     requestPagination.current = result.pageNum ?? requestPagination.current
     requestPagination.pageSize = result.pageSize ?? requestPagination.pageSize
     if (

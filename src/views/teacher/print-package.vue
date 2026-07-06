@@ -220,7 +220,6 @@ import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
 import { hasPrepHardBlocking } from '@/utils/exam-workspace-entry-gates'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherPrintPackage' })
@@ -335,10 +334,10 @@ async function loadPackageList() {
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize,
     })
-    packageList.value = readPageList(res, '印刷包列表加载失败，请稍后重试')
+    packageList.value = res.list
     pagination.pageNum = res.pageNum
     pagination.pageSize = res.pageSize
-    pagination.total = readPageTotal(res, '印刷包列表加载失败，请稍后重试')
+    pagination.total = Number(res.total)
   } catch (e) {
     packageList.value = []
     pagination.total = 0

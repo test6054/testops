@@ -1,8 +1,10 @@
 import type { ExamLayoutStatusCode } from '@/apis/mark/exam-layout-status'
+import type { MarkOcrSceneCode } from '@/apis/mark/ocr-scene'
+import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import http from '@/config/axios'
 
-/** 制卷设计主流程 hint：形态确定后生成或导入底图，划区编排后保存并预览 */
-export const EXAM_LAYOUT_DESIGN_FLOW_HINT = '确定制卷形态 → 生成或导入底图 → 划区编排 → 保存并预览'
+/** 制卷设计主流程 hint：整卷直接上传源文件，答题卡生成识别版式后保存并预览 */
+export const EXAM_LAYOUT_DESIGN_FLOW_HINT = '确定制卷形态 → 整卷上传资料异步识别题单 / 答题卡生成版式 → 核对 ROI 后保存并预览'
 
 export interface ExamLayoutRectNorm {
   x: number
@@ -23,8 +25,8 @@ export interface ExamLayoutQuestionDto {
   id: string
   questionNo: string
   normalizedQuestionNo?: string
-  questionType: string
-  ocrScene?: string
+  questionType: QuestionTypeCode
+  ocrScene?: MarkOcrSceneCode
   fullScore?: number
   sortNo?: number
   questionStem?: string
@@ -78,6 +80,8 @@ export interface ExamLayoutDesignLoadResponse {
   document: ExamLayoutDocument | null
   writable: boolean
   writeLockReason?: string
+  /** 进行中的自动预划区任务；QUEUED/RUNNING 时有值，刷新后续轮询 */
+  activeDetect?: ExamLayoutDetectStatusResponse
 }
 
 export interface ExamLayoutDesignLoadRequest {
@@ -119,6 +123,29 @@ export interface ExamLayoutAutoDetectRequest {
   sourcePdfFileId: string
 }
 
+export type ExamLayoutDetectTaskStatusCode = 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'
+
+export interface ExamLayoutDetectTaskResponse {
+  detectTaskId: string
+  examId: string
+  status: ExamLayoutDetectTaskStatusCode
+}
+
+export interface ExamLayoutDetectStatusRequest {
+  examId: string
+  detectTaskId: string
+}
+
+export interface ExamLayoutDetectStatusResponse {
+  detectTaskId: string
+  examId: string
+  status: ExamLayoutDetectTaskStatusCode
+  progressPageNo?: number
+  progressTotalPages?: number
+  errorMessage?: string
+  document?: ExamLayoutDocument
+}
+
 export interface ExamLayoutPageUploadMetaRequest {
   backgroundFileId: string
 }
@@ -151,7 +178,11 @@ export function generateExamLayoutSheet(data: ExamLayoutGenerateSheetRequest) {
 }
 
 export function autoDetectExamLayout(data: ExamLayoutAutoDetectRequest) {
-  return http.post<ExamLayoutDocument>('/api/mark/exams/layout-design/auto-detect', data)
+  return http.post<ExamLayoutDetectTaskResponse>('/api/mark/exams/layout-design/auto-detect', data)
+}
+
+export function fetchExamLayoutDetectStatus(data: ExamLayoutDetectStatusRequest) {
+  return http.post<ExamLayoutDetectStatusResponse>('/api/mark/exams/layout-design/detect-status', data)
 }
 
 export function fetchExamLayoutPageUploadMeta(data: ExamLayoutPageUploadMetaRequest) {
