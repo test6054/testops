@@ -14,7 +14,6 @@ import {
   PortfolioCollectModeDescription,
 } from '@/types/enums/portfolio-collect-mode-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
-import { ScanWorkOrderStatusCode } from '@/types/enums/scan-work-order-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { mergeWorkOrderLifecycleFromContext } from '../composables/mergeWorkOrderLifecycleFromContext'
 

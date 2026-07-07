@@ -351,7 +351,6 @@ import {
   pageArchiveVolumes,
   retryArchiveVolumeAutoCreate,
 } from '@/apis/mark/archive-volume'
-import { readAllPages } from '@/utils/page-result'
 import ArchiveDimPill from '@/components/archive-volume/ArchiveDimPill.vue'
 import ArchiveExamScoreGatePanel from '@/components/archive-volume/ArchiveExamScoreGatePanel.vue'
 import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
@@ -389,6 +388,7 @@ import {
 } from '@/utils/archive-navigation-summary'
 import { buildArchiveExamGateLifecycleSteps } from '@/utils/archive-volume-lifecycle'
 import { showUserError } from '@/utils/error-handler'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveVolumeExamProgress' })

@@ -164,6 +164,7 @@ export interface ScanWorkOrderContextVO {
   activeBatchExternalNo?: string
   examKioskContext?: ExamScannerKioskContextVO
   archiveContext?: ScanWorkOrderArchiveContextVO
+  portfolioContext?: ScanWorkOrderPortfolioContextVO
   activeWorkOrderLifecycle?: ScanWorkOrderLifecycleVO
 }
 
