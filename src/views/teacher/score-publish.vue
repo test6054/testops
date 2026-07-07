@@ -77,6 +77,24 @@
       </UiAlertStrip>
 
       <UiAlertStrip
+        v-if="blockedDelayedAutoConfirmNotice"
+        tone="danger"
+        title="延迟自动确认连续失败"
+        :description="blockedDelayedAutoConfirmNotice"
+        dense
+        class="score-publish__alert"
+      >
+        <template #actions>
+          <UiButton variant="primary" size="sm" @click="goScoreConfirm">
+            前往成绩确认
+          </UiButton>
+          <UiButton variant="ghost" size="sm" @click="goDelayedConfirmTasks">
+            查看处理任务
+          </UiButton>
+        </template>
+      </UiAlertStrip>
+
+      <UiAlertStrip
         v-if="correctedRepublishNotice"
         tone="warning"
         title="存在已更正未重发布成绩"
@@ -526,6 +544,18 @@ const correctedRepublishNotice = computed(() => {
   return `有 ${count} 名考生成绩处于「已更正」状态，学生端不可见。请筛选后逐份重新发布。`
 })
 
+const blockedDelayedAutoConfirmNotice = computed(() => {
+  const panel = scorePanel.value
+  if (!panel || panel.manualFinalScoreConfirmRequired) {
+    return null
+  }
+  const blocked = panel.blockedDelayedFinalScoreConfirmCount
+  if (blocked <= 0) {
+    return null
+  }
+  return `有 ${blocked} 份答卷延迟自动确认连续失败，成绩仍停留在可确认态。须先在成绩确认页逐份确认，暂不可发布。`
+})
+
 function filterCorrectedOnly(): void {
   scoreFilterForm.statusFilter = 'CORRECTED'
   scoreFilterForm.unpublishedBoundOnly = false
@@ -535,6 +565,18 @@ function filterCorrectedOnly(): void {
 
 const router = useRouter()
 const { goScoreConfirm, goExportTasks } = useScoreReleaseNavigation()
+
+function goDelayedConfirmTasks(): void {
+  if (!selectedExamId.value) {
+    return
+  }
+  void router.push({
+    name: 'TeacherExamWorkspaceMarkingReviewProgress',
+    params: { examId: selectedExamId.value },
+    query: { taskType: 'DELAYED_FINAL_SCORE_CONFIRM' },
+  })
+}
+
 const gateBannerRef = ref<InstanceType<typeof ExamArchiveGateBanner> | null>(null)
 
 async function refreshArchiveGate(): Promise<void> {
@@ -708,6 +750,14 @@ async function ensureNoPendingAbsenceBeforePublish(): Promise<boolean> {
   }
   if (overview && !overview.readyToPublish && overview.blockedCount > 0) {
     message.warning(`仍有 ${overview.blockedCount} 项成绩风险未处置，请先完成确认或风险复核后再发布`)
+    return false
+  }
+  const panel = scorePanel.value
+  if (panel && !panel.manualFinalScoreConfirmRequired && panel.blockedDelayedFinalScoreConfirmCount > 0) {
+    message.warning(
+      `仍有 ${panel.blockedDelayedFinalScoreConfirmCount} 份答卷延迟自动确认失败，请先在成绩确认页逐份确认后再发布`,
+    )
+    goScoreConfirm()
     return false
   }
   return true

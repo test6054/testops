@@ -12,10 +12,6 @@ import {
 } from '@/types/enums/exam-layout-block-type-enum'
 import { ExamLayoutEntryKindCode } from '@/types/enums/exam-layout-entry-kind-enum'
 import {
-  ALL_PAPER_MASTER_IDENTITY_AREA_TYPE_CODES,
-  PaperMasterIdentityAreaTypeCode,
-} from '@/types/enums/paper-master-identity-area-type-enum'
-import {
   ALL_EXAM_LAYOUT_PAPER_SPEC_CODES,
   ExamLayoutPaperSpecCode,
   ExamLayoutPaperSpecMm,
@@ -23,6 +19,10 @@ import {
   requireExamLayoutPaperSpecCode,
 } from '@/types/enums/exam-layout-paper-spec-enum'
 import { ObjectiveComparePolicyCode } from '@/types/enums/objective-compare-policy-enum'
+import {
+  ALL_PAPER_MASTER_IDENTITY_AREA_TYPE_CODES,
+  PaperMasterIdentityAreaTypeCode,
+} from '@/types/enums/paper-master-identity-area-type-enum'
 
 export {
   ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES,
@@ -570,7 +570,7 @@ function validateIdentityAreaTypes(document: ExamLayoutDocument | null): string[
       reasons.push('身份填涂区必须配置身份字段类型')
       continue
     }
-    if (!ALL_PAPER_MASTER_IDENTITY_AREA_TYPE_CODES.some((code) => code === block.identityAreaType)) {
+    if (!ALL_PAPER_MASTER_IDENTITY_AREA_TYPE_CODES.includes(block.identityAreaType)) {
       reasons.push('身份填涂区类型无效，请选择学号、班级或姓名填涂区')
     }
   }

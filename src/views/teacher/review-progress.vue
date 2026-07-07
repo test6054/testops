@@ -260,7 +260,8 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamProcessingTaskItemResponse } from '@/apis/mark/exam-processing-task'
 import type { MarkingProgressResponse, ReviewQuestionProgressItemResponse } from '@/apis/mark/exam-progress'
 import type { TaskStatusCode } from '@/apis/mark/task-status'
-import type { ProcessingTaskTypeCode } from '@/apis/mark/task-type'
+import type { ProcessingTaskTypeCode,
+  } from '@/apis/mark/task-type'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
@@ -287,7 +288,6 @@ import {
   ALL_PROCESSING_TASK_TYPE_CODES,
   PROCESSING_TASK_TYPE_OPTIONS,
   PROCESSING_TASK_TYPE_TONE,
-  ProcessingTaskTypeCode,
   ProcessingTaskTypeDescription,
 } from '@/apis/mark/task-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
@@ -356,6 +356,10 @@ const processingTaskPageNum = ref(1)
 const processingTaskPageSize = ref(10)
 const processingTaskTypeFilter = ref<ProcessingTaskTypeCode | undefined>(undefined)
 const retryingPaperInstanceId = ref<string | null>(null)
+/** 丢弃过期的批改处理任务分页请求，避免 watch 与 onActivated 并发覆盖。 */
+let processingTasksLoadGeneration = 0
+/** 丢弃过期的整页刷新，避免 keep-alive 激活时重复 loadAll 覆盖。 */
+let pageLoadGeneration = 0
 
 function processingTaskTypeLabel(value: ProcessingTaskTypeCode): string {
   return strictEnumLabel(ProcessingTaskTypeDescription, value, '处理任务类型')
@@ -381,6 +385,7 @@ function canRetryPaperGrade(record: ExamProcessingTaskItemResponse): boolean {
 
 async function loadProcessingTasks(): Promise<void> {
   if (!selectedExamId.value) return
+  const generation = ++processingTasksLoadGeneration
   processingTasksLoading.value = true
   try {
     const result = await pageExamProcessingTasks({
@@ -389,12 +394,20 @@ async function loadProcessingTasks(): Promise<void> {
       pageNum: processingTaskPageNum.value,
       pageSize: processingTaskPageSize.value,
     })
+    if (generation !== processingTasksLoadGeneration) {
+      return
+    }
     processingTasks.value = result.list ?? []
     processingTaskTotal.value = Number(result.total)
   } catch (error) {
+    if (generation !== processingTasksLoadGeneration) {
+      return
+    }
     showUserError(error, '批改处理任务加载失败')
   } finally {
-    processingTasksLoading.value = false
+    if (generation === processingTasksLoadGeneration) {
+      processingTasksLoading.value = false
+    }
   }
 }
 
@@ -403,9 +416,11 @@ function reloadProcessingTasks(): void {
   void loadProcessingTasks()
 }
 
-function applyProcessingTaskQueryFromRoute(): void {
+/** 从路由 query 同步处理任务类型筛选，须在每次拉取任务列表前调用。 */
+function syncProcessingTaskFilterFromRoute(): void {
   const taskType = route.query.taskType
   if (typeof taskType !== 'string') {
+    processingTaskTypeFilter.value = undefined
     return
   }
   if ((ALL_PROCESSING_TASK_TYPE_CODES as readonly string[]).includes(taskType)) {
@@ -413,15 +428,16 @@ function applyProcessingTaskQueryFromRoute(): void {
   }
 }
 
-applyProcessingTaskQueryFromRoute()
-
-watch(
-  () => route.query.taskType,
-  () => {
-    applyProcessingTaskQueryFromRoute()
-    reloadProcessingTasks()
-  },
-)
+async function reloadProcessingTasksFromRoute(resetPage = true): Promise<void> {
+  if (!selectedExamId.value) {
+    return
+  }
+  syncProcessingTaskFilterFromRoute()
+  if (resetPage) {
+    processingTaskPageNum.value = 1
+  }
+  await loadProcessingTasks()
+}
 
 function handleProcessingTaskPageChange(pageEvent: { current: number, pageSize: number }): void {
   processingTaskPageNum.value = pageEvent.current
@@ -707,36 +723,52 @@ const questionColumns: ColumnType<ReviewQuestionProgressItemResponse>[] = [
 
 async function loadAll(): Promise<void> {
   if (!selectedExamId.value) return
+  const generation = ++pageLoadGeneration
   loading.value = true
   loadFailed.value = false
+  syncProcessingTaskFilterFromRoute()
   try {
     if (workbenchContext?.refreshChrome) {
       await workbenchContext.refreshChrome()
     } else {
       progress.value = await getMarkingProgress(selectedExamId.value)
     }
+    if (generation !== pageLoadGeneration) {
+      return
+    }
+    processingTaskPageNum.value = 1
     await loadProcessingTasks()
   } catch (error) {
+    if (generation !== pageLoadGeneration) {
+      return
+    }
     loadFailed.value = true
     showUserError(error, '复核进度加载失败')
   } finally {
-    loading.value = false
+    if (generation === pageLoadGeneration) {
+      loading.value = false
+    }
   }
 }
 
 watch(
-  selectedExamId,
-  (value) => {
-    if (!value) {
+  [selectedExamId, () => route.query.taskType],
+  ([examId], [prevExamId]) => {
+    if (!examId) {
+      pageLoadGeneration++
+      processingTasksLoadGeneration++
       progress.value = null
       processingTasks.value = []
       processingTaskTotal.value = 0
+      processingTaskTypeFilter.value = undefined
       return
     }
-    processingTaskPageNum.value = 1
-    void loadProcessingTasks()
+    if (examId !== prevExamId) {
+      void loadAll()
+      return
+    }
+    void reloadProcessingTasksFromRoute()
   },
-  { immediate: true },
 )
 
 onActivated(() => {

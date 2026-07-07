@@ -30,8 +30,8 @@ import { useTenantMarkingWithdrawPolicy } from '@/composables/useTenantMarkingWi
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import {
   isMultiResponseSliceConflict,
-  messageIncludesConflictHint,
   MarkingConflictHint,
+  messageIncludesConflictHint,
 } from '@/utils/marking-workflow-conflict'
 
 export interface UseMarkingSubmitOptions {

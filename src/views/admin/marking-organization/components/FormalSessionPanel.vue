@@ -211,8 +211,8 @@ import { AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
 import { FormalSessionStatusCode } from '@/types/enums/formal-session-status-enum'
 import { ResultCode } from '@/types/enums/result-code'
 import { getUserErrorMessage, readBusinessResultCode, showUserError } from '@/utils/error-handler'
-import { isFormalStartPendingReviewConflict } from '@/utils/marking-workflow-conflict'
 import { formatDateTime } from '@/utils/format'
+import { isFormalStartPendingReviewConflict } from '@/utils/marking-workflow-conflict'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 interface GroupOption {

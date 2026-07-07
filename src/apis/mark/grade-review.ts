@@ -1,5 +1,5 @@
-import type { QuestionTypeCode } from './question-type'
 import type { FinalScoreStatusCode } from './final-score-status'
+import type { QuestionTypeCode } from './question-type'
 /**
  * 成绩复核与更正 API - 对接 edu-mark 模块 GradeReviewController
  *

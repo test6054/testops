@@ -72,6 +72,7 @@
 </template>
 
 <script setup lang="ts">
+import type {ArchiveVolumeCreateBasicForm} from '@/views/teacher/archive-volume/archive-volume-create-offline/archive-volume-create-context';
 import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue'
 import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -81,18 +82,18 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { buildArchiveOfflineCreateLifecycleSteps } from '@/utils/archive-volume-lifecycle'
-import ArchiveVolumeListNextStepsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeListNextStepsPanel.vue'
-import BasicInfoStep from '@/views/teacher/archive-volume/archive-volume-create-offline/BasicInfoStep.vue'
 import {
-  archiveVolumeCreateBasicFormKey,
-  type ArchiveVolumeCreateBasicForm,
+  
+  archiveVolumeCreateBasicFormKey
 } from '@/views/teacher/archive-volume/archive-volume-create-offline/archive-volume-create-context'
-import SupplementConfirmStep from './SupplementConfirmStep.vue'
-import SupplementConfigStep from './SupplementConfigStep.vue'
+import BasicInfoStep from '@/views/teacher/archive-volume/archive-volume-create-offline/BasicInfoStep.vue'
+import ArchiveVolumeListNextStepsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeListNextStepsPanel.vue'
 import {
   archiveVolumeSupplementConfigFormKey,
   isArchiveVolumeSupplementSectionKey,
 } from './archive-volume-create-supplement-context'
+import SupplementConfigStep from './SupplementConfigStep.vue'
+import SupplementConfirmStep from './SupplementConfirmStep.vue'
 import { useArchiveVolumeCreateSupplement } from './useArchiveVolumeCreateSupplement'
 
 defineOptions({ name: 'TeacherArchiveVolumeCreateSupplement' })

@@ -30,12 +30,17 @@
           />
         </a-form-item>
         <a-form-item label="成绩构成" name="scoreCompositionMode">
-          <a-radio-group v-model:value="examForm.scoreCompositionMode" :disabled="makeupScoreLocked">
+          <a-radio-group v-model:value="examForm.scoreCompositionMode" :disabled="nonRegularScoreLocked">
             <a-radio value="EXAM_ONLY">仅计入考试成绩（期末笔试）</a-radio>
             <a-radio value="EXAM_WITH_DAILY">期末考试 + 平时成绩合成</a-radio>
           </a-radio-group>
           <div class="exam-create-form__hint">
-            <template v-if="makeupScoreLocked"> 补考仅计入卷面实际分，且合成后封顶 60 分。 </template>
+            <template v-if="examForm.examKind === ExamKindCode.MAKEUP || examForm.examKind === ExamKindCode.REEXAM || examForm.examKind === ExamKindCode.DEFERRED">
+              补考、重考、缓考按非正考成绩规则处理，合成后封顶 60 分。
+            </template>
+            <template v-else-if="examForm.examKind === ExamKindCode.RETAKE">
+              重修仅计入本次考试实际成绩，不纳入原正考平时分。
+            </template>
             <template v-else>
               平时成绩指出勤、作业、课堂表现等；选择合成后，成绩确认时需为每位考生录入平时分。
             </template>
@@ -174,7 +179,7 @@ const SOURCE_EXAM_PAGE_SIZE = 50
 let sourceExamSearchTimer: ReturnType<typeof setTimeout> | undefined
 
 const showSourceExamField = computed(() => examKindRequiresSource(examForm.examKind))
-const makeupScoreLocked = computed(() => examForm.examKind === ExamKindCode.MAKEUP)
+const nonRegularScoreLocked = computed(() => examKindRequiresSource(examForm.examKind))
 
 function handleCourseChange(courseId: string | null, option?: CourseListVO): void {
   emit('course-change', courseId, option?.courseName?.trim() ?? '')
@@ -241,7 +246,7 @@ watch(
   () => examForm.examKind,
   (examKind: ExamKindCode, previous: ExamKindCode) => {
     if (examKind === previous) return
-    if (examKind === ExamKindCode.MAKEUP) {
+    if (examKindRequiresSource(examKind)) {
       examForm.scoreCompositionMode = 'EXAM_ONLY'
       examForm.dailyScoreFull = undefined
     }

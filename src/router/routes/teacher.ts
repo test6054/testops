@@ -12,7 +12,6 @@ import { RoleEnum } from '@/utils/permission'
 
 const TEACHER_ROLES = [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER]
 const ALL_TEACHER_ROLES = [RoleEnum.SUPER_ADMIN, ...TEACHER_ROLES]
-const SUPER_ADMIN_ROLES = [RoleEnum.SUPER_ADMIN]
 const SCANNER_ADMIN_ROLES = [RoleEnum.CROP_ADMIN, RoleEnum.SUPER_ADMIN]
 
 export const teacherRoutes: RouteRecordRaw[] = [

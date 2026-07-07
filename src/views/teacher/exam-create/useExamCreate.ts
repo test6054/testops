@@ -178,7 +178,7 @@ export function useExamCreate() {
     dailyScoreFull: [
       {
         validator: async (): Promise<void> => {
-          if (examForm.examKind === ExamKindCode.MAKEUP) return
+          if (examForm.examKind !== ExamKindCode.REGULAR) return
           if (examForm.scoreCompositionMode !== 'EXAM_WITH_DAILY') return
           const value = examForm.dailyScoreFull
           if (value == null || value <= 0) {
@@ -677,7 +677,9 @@ export function useExamCreate() {
   watch(
     () => examForm.examKind,
     (examKind: ExamKindCode) => {
-    if (examKind === ExamKindCode.MAKEUP) {
+      if (examKindRequiresSource(examKind)) {
+        examForm.scoreCompositionMode = 'EXAM_ONLY'
+        examForm.dailyScoreFull = undefined
         rosterForm.scopeMode = ExamRosterScopeModeCode.BY_STUDENT
         rosterForm.classIds = []
         rosterForm.candidates = []

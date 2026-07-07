@@ -48,17 +48,17 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
-import { ExamLayoutEntryKindCode } from '@/types/enums/exam-layout-entry-kind-enum'
 import { ExamLayoutDetectTaskStatusCode, isExamLayoutDetectInFlightStatus, requireExamLayoutDetectTaskStatusCode } from '@/types/enums/exam-layout-detect-task-status-enum'
+import { ExamLayoutEntryKindCode } from '@/types/enums/exam-layout-entry-kind-enum'
 import { ALL_EXAM_LAYOUT_PAPER_SPEC_CODES } from '@/types/enums/exam-layout-paper-spec-enum'
 import { showUserError } from '@/utils/error-handler'
-import { isLayoutDetectInFlightConflict } from '@/utils/marking-workflow-conflict'
 import { computeLayoutRoiStats, hasIdentityBlock, resolvePaperSpecLabel, validateLayoutDocumentForSave } from '@/utils/exam-layout-designer'
 import {
   buildLayoutDesignerSignalMetrics,
   filterLayoutDesignerPrepSteps,
 } from '@/utils/exam-layout-designer-signal'
 import { buildPrepStepCards } from '@/utils/exam-prep-step-ui'
+import { isLayoutDetectInFlightConflict } from '@/utils/marking-workflow-conflict'
 
 defineOptions({ name: 'TeacherExamWorkspaceLayoutDesigner' })
 
@@ -454,7 +454,8 @@ async function handleAutoDetect(sourcePdfFileId: string): Promise<void> {
       detectPollingPolicy.value = started.detectPollingPolicy
     }
     if (!started.detectTaskId) {
-      throw new Error('识别任务未返回任务号')
+      showUserError(new Error('识别任务未返回任务号'), '自动预划区失败')
+      return
     }
     activeDetectTaskId.value = started.detectTaskId
     await pollDetectStatus(started.detectTaskId, session)
