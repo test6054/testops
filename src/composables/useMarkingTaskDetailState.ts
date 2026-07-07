@@ -357,7 +357,7 @@ export function useMarkingTaskDetailState() {
   })
 
   watch(
-    () => task.value?.examId,
+    () => [task.value?.examId, task.value?.sessionId, task.value?.taskId] as const,
     () => {
       void taskStream.refresh()
     },

@@ -525,6 +525,8 @@ function goBack(): void {
 // ─── 复核任务详情 ──────────────────────────
 const detail = ref<ReviewTaskDetailResponse | null>(null)
 const loading = ref(false)
+/** 丢弃过期的复核任务加载，避免 J/K 导航与 claim 并发覆盖 detail。 */
+let loadTaskGeneration = 0
 
 const immersionSubtitle = computed(() => {
   const task = detail.value
@@ -793,12 +795,25 @@ const canRescoreByAi = computed<boolean>(() => {
 // ─── 加载主流程 ───────────────────────────
 async function loadTask(): Promise<void> {
   if (!canSubmit.value) return
+  const expectedExamId = examId.value
+  const expectedTaskId = taskId.value
+  const generation = ++loadTaskGeneration
   loading.value = true
   try {
-    detail.value = await loadReviewTaskDetail()
+    const loadedDetail = await loadReviewTaskDetail()
+    if (generation !== loadTaskGeneration
+      || expectedExamId !== examId.value
+      || expectedTaskId !== taskId.value) {
+      return
+    }
+    detail.value = loadedDetail
     syncExperienceAssistMetaFromDetail(detail.value)
     await Promise.all([loadAnnotations(), loadReviewQueue()])
-    // 默认填充 AI 评分（仅当表单空时；避免覆盖教师正在编辑的值）
+    if (generation !== loadTaskGeneration
+      || expectedExamId !== examId.value
+      || expectedTaskId !== taskId.value) {
+      return
+    }
     if (
       gradeForm.teacherReviewScore === undefined
       && detail.value?.aiScore !== undefined
@@ -807,12 +822,17 @@ async function loadTask(): Promise<void> {
       gradeForm.teacherReviewScore = detail.value.aiScore
     }
   } catch (error) {
+    if (generation !== loadTaskGeneration) {
+      return
+    }
     detail.value = null
     annotations.value = []
     reviewQueue.value = []
     showUserError(error, '教师复核工作台任务加载失败')
   } finally {
-    loading.value = false
+    if (generation === loadTaskGeneration) {
+      loading.value = false
+    }
   }
 }
 

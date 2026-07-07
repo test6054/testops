@@ -1,9 +1,9 @@
 import type { Ref } from 'vue'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
 import type { FinalScoreRiskOverviewResponse } from '@/apis/mark/exam-score'
+import message from 'ant-design-vue/es/message'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import message from 'ant-design-vue/es/message'
 import { AbsenceStatusCode, listAbsenceRecords } from '@/apis/mark/absence'
 import { useScoreReleaseNavigation } from '@/composables/useScoreReleaseNavigation'
 import { showUserError } from '@/utils/error-handler'
@@ -16,7 +16,7 @@ export function useScorePublishPreconditions(options: {
 }) {
   const router = useRouter()
   const { goScoreConfirm } = useScoreReleaseNavigation()
-  const pendingAbsenceCount = ref(0)
+  const pendingAbsenceCount = ref<number | null>(null)
 
   function goToAbsenceConfirm(): void {
     const examId = options.examId.value
@@ -31,7 +31,7 @@ export function useScorePublishPreconditions(options: {
 
   async function refreshPendingAbsenceCount(): Promise<void> {
     if (!options.examId.value) {
-      pendingAbsenceCount.value = 0
+      pendingAbsenceCount.value = null
       return
     }
     try {
@@ -43,7 +43,7 @@ export function useScorePublishPreconditions(options: {
       })
       pendingAbsenceCount.value = Number(result.total)
     } catch (error) {
-      pendingAbsenceCount.value = 0
+      pendingAbsenceCount.value = null
       showUserError(error, '待确认缺考记录查询失败')
     }
   }
@@ -53,6 +53,10 @@ export function useScorePublishPreconditions(options: {
       return false
     }
     await refreshPendingAbsenceCount()
+    if (pendingAbsenceCount.value === null) {
+      message.error('待确认缺考状态未知，请刷新后重试')
+      return false
+    }
     if (pendingAbsenceCount.value > 0) {
       message.warning(
         `当前考试仍有 ${pendingAbsenceCount.value} 条待确认缺考记录，请先完成核对后再发布成绩`,
