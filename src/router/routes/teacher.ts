@@ -165,6 +165,18 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'archive-volumes/access-pending',
+        name: 'TeacherArchiveVolumeAccessPending',
+        component: () => import('@/views/teacher/archive-volume/archive-volume-access-pending.vue'),
+        meta: {
+          title: '待审批查阅',
+          roles: TEACHER_ROLES,
+          hideInMenu: true,
+          keepAlive: true,
+          activeMenu: '/teacher/archive-volumes',
+        },
+      },
+      {
         path: 'archive-volumes/audit',
         name: 'TeacherArchiveVolumeAudit',
         component: () => import('@/views/teacher/archive-volume/archive-volume-audit.vue'),
@@ -182,6 +194,18 @@ export const teacherRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/teacher/archive-volume/archive-volume-create-offline/archive-volume-create-offline.vue'),
         meta: {
           title: '线下建卷',
+          roles: TEACHER_ROLES,
+          hideInMenu: true,
+          noCache: true,
+          activeMenu: '/teacher/archive-volumes',
+        },
+      },
+      {
+        path: 'archive-volumes/create-supplement',
+        name: 'TeacherArchiveVolumeCreateSupplement',
+        component: () => import('@/views/teacher/archive-volume/archive-volume-create-supplement/archive-volume-create-supplement.vue'),
+        meta: {
+          title: '补录建卷',
           roles: TEACHER_ROLES,
           hideInMenu: true,
           noCache: true,

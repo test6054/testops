@@ -124,9 +124,7 @@ const query = reactive<ScoreBatchQueryRequest & Record<string, unknown>>({
   keyword: '',
 })
 
-const DATA_SOURCE_MODES: readonly DataSourceModeCode[] = ALL_DATA_SOURCE_MODE_CODES
-
-const SOURCE_MODE_OPTIONS = DATA_SOURCE_MODES.map((value) => ({
+const SOURCE_MODE_OPTIONS = ALL_DATA_SOURCE_MODE_CODES.map((value) => ({
   value,
   label: strictEnumLabel(DataSourceModeDescription, value, '数据来源模式'),
 }))
@@ -142,9 +140,7 @@ const uploadForm = reactive<ScoreBatchSaveRequest & { fileName?: string }>({
   fileName: '',
 })
 
-const SCORE_BATCH_STATUSES: readonly ScoreBatchStatusCode[] = ALL_SCORE_BATCH_STATUS_CODES
-
-const statusOptions = SCORE_BATCH_STATUSES.map((value) => ({
+const statusOptions = ALL_SCORE_BATCH_STATUS_CODES.map((value) => ({
   value,
   label: strictEnumLabel(ScoreBatchStatusDescription, value, '成绩批次状态'),
 }))

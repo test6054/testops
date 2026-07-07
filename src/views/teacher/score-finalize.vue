@@ -71,6 +71,20 @@
         class="score-finalize__alert"
       />
       <UiAlertStrip
+        v-if="blockedDelayedAutoConfirmNotice"
+        tone="error"
+        title="延迟自动确认已失败"
+        :description="blockedDelayedAutoConfirmNotice"
+        dense
+        class="score-finalize__alert"
+      >
+        <template #actions>
+          <UiButton variant="primary" size="sm" @click="goDelayedConfirmTasks">
+            查看失败任务
+          </UiButton>
+        </template>
+      </UiAlertStrip>
+      <UiAlertStrip
         v-else-if="riskOverview?.readyToPublish"
         tone="success"
         title="全场成绩已具备发布条件"
@@ -913,6 +927,29 @@ const delayedAutoConfirmNotice = computed(() => {
   }
   return `当前有 ${pending} 份答卷处于 ${panel.delayedFinalScoreConfirmMinutes} 分钟延迟自动确认窗口内，到期后将自动汇总确认最终成绩。`
 })
+
+const blockedDelayedAutoConfirmNotice = computed(() => {
+  const panel = scorePanel.value
+  if (!panel || panel.manualFinalScoreConfirmRequired) {
+    return null
+  }
+  const blocked = panel.blockedDelayedFinalScoreConfirmCount
+  if (blocked <= 0) {
+    return null
+  }
+  return `有 ${blocked} 份答卷延迟自动确认连续失败，成绩仍停留在可确认态。请在本页逐份确认最终成绩，或前往批改进度查看任务诊断。`
+})
+
+function goDelayedConfirmTasks(): void {
+  if (!selectedExamId.value) {
+    return
+  }
+  void router.push({
+    name: 'TeacherExamWorkspaceMarkingReviewProgress',
+    params: { examId: selectedExamId.value },
+    query: { taskType: 'DELAYED_FINAL_SCORE_CONFIRM' },
+  })
+}
 
 /** 当前页候选状态分桶，仅用于页内偏差提示与下一份核对引导。 */
 const candidateBuckets = computed<Record<FinalScoreStatusCode, number>>(() => {

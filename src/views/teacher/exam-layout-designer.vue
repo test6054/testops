@@ -1,26 +1,31 @@
 <script setup lang="ts">
 import type {
   ExamLayoutBlockDto,
+  ExamLayoutDesignLoadResponse,
+  ExamLayoutDetectPollingPolicy,
   ExamLayoutDocument,
   ExamLayoutGenerateQuestionRequest,
   ExamLayoutQuestionDto,
 } from '@/apis/mark/exam-layout-design'
 import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
 import { message } from 'ant-design-vue'
-import { computed, inject, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   autoDetectExamLayout,
+  cancelExamLayoutDetect,
   EXAM_LAYOUT_DESIGN_FLOW_HINT,
   fetchExamLayoutDetectStatus,
   generateExamLayoutSheet,
   loadExamLayoutDesign,
   previewExamLayoutDesign,
+  resolveExamLayoutDetectPollDeadlineMs,
   saveExamLayoutDesign,
 } from '@/apis/mark/exam-layout-design'
 import LayoutBlockLayerPanel from '@/components/mark/layout-designer/LayoutBlockLayerPanel.vue'
 import LayoutCanvas from '@/components/mark/layout-designer/LayoutCanvas.vue'
 import LayoutEntryGateway from '@/components/mark/layout-designer/LayoutEntryGateway.vue'
+import LayoutIdentitySetupStrip from '@/components/mark/layout-designer/LayoutIdentitySetupStrip.vue'
 import LayoutPreviewDrawer from '@/components/mark/layout-designer/LayoutPreviewDrawer.vue'
 import LayoutPropertyDrawer from '@/components/mark/layout-designer/LayoutPropertyDrawer.vue'
 import LayoutQuestionCropStrip from '@/components/mark/layout-designer/LayoutQuestionCropStrip.vue'
@@ -39,13 +44,16 @@ import PrepStepPipelineRow from '@/components/workbench/PrepStepPipelineRow.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { ExamLayoutEntryKindCode } from '@/types/enums/exam-layout-entry-kind-enum'
+import { ExamLayoutDetectTaskStatusCode, isExamLayoutDetectInFlightStatus, requireExamLayoutDetectTaskStatusCode } from '@/types/enums/exam-layout-detect-task-status-enum'
 import { ALL_EXAM_LAYOUT_PAPER_SPEC_CODES } from '@/types/enums/exam-layout-paper-spec-enum'
 import { showUserError } from '@/utils/error-handler'
-import { computeLayoutRoiStats, resolvePaperSpecLabel, validateLayoutDocumentForSave } from '@/utils/exam-layout-designer'
+import { isLayoutDetectInFlightConflict } from '@/utils/marking-workflow-conflict'
+import { computeLayoutRoiStats, hasIdentityBlock, resolvePaperSpecLabel, validateLayoutDocumentForSave } from '@/utils/exam-layout-designer'
 import {
   buildLayoutDesignerSignalMetrics,
   filterLayoutDesignerPrepSteps,
@@ -71,6 +79,10 @@ const saving = ref(false)
 const generating = ref(false)
 const detecting = ref(false)
 const detectProgressText = ref('')
+const activeDetectTaskId = ref<string | null>(null)
+const cancellingDetect = ref(false)
+/** 后端下发的 detect-status 轮询 deadline，与僵死回收阈值同源。 */
+const detectPollingPolicy = ref<ExamLayoutDetectPollingPolicy | null>(null)
 /** 递增代次：离开页/重复触发时废止进行中的 detect-status 轮询，避免旧任务结果覆盖当前源文件。 */
 let detectSessionSeq = 0
 const previewing = ref(false)
@@ -83,6 +95,7 @@ const currentPageNo = ref(1)
 const previewOpen = ref(false)
 const reviewOpen = ref(false)
 const previewPdfFileId = ref<string>()
+const blockLayerPanelAnchor = ref<HTMLElement | null>(null)
 
 const examId = computed(() => selectedExamId.value ?? '')
 
@@ -172,6 +185,13 @@ const isSourceFileLayout = computed(
 
 const layoutRoiStats = computed(() => computeLayoutRoiStats(document.value))
 
+const identitySetupPending = computed(
+  () => isSourceFileLayout.value
+    && !detecting.value
+    && Boolean(document.value)
+    && !hasIdentityBlock(document.value),
+)
+
 const pageLoading = computed(
   () => loading.value || (examDetailLoading.value && !examDetail.value),
 )
@@ -179,9 +199,6 @@ const saveBlockingReasons = computed(() => validateLayoutDocumentForSave(documen
 const previewDisabled = computed(() => {
   if (!materialLayoutMode.value || !document.value) {
     return true
-  }
-  if (document.value.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE) {
-    return !document.value.sourcePdfFileId?.trim()
   }
   return saveBlockingReasons.value.length > 0
 })
@@ -214,6 +231,7 @@ async function reload(): Promise<void> {
     const res = await loadExamLayoutDesign({ examId: examId.value })
     layoutWritable.value = res.writable
     writeLockReason.value = res.writeLockReason
+    detectPollingPolicy.value = res.detectPollingPolicy
     document.value = res.document
     if (document.value?.pages?.length) {
       currentPageNo.value = document.value.pages[0].pageNo
@@ -222,29 +240,18 @@ async function reload(): Promise<void> {
       focusedQuestionId.value = document.value.questions[0].id
     }
     const inFlightTaskId = res.activeDetect?.detectTaskId
+    const inFlightStatus = res.activeDetect?.status
+      ? requireExamLayoutDetectTaskStatusCode(res.activeDetect.status)
+      : null
     const shouldResumeDetect = Boolean(inFlightTaskId
-      && (res.activeDetect?.status === 'QUEUED' || res.activeDetect?.status === 'RUNNING')
+      && inFlightStatus
+      && isExamLayoutDetectInFlightStatus(inFlightStatus)
       && layoutWritable.value
       && !detecting.value)
     loading.value = false
     if (shouldResumeDetect && inFlightTaskId) {
-      const session = ++detectSessionSeq
-      detecting.value = true
-      detectProgressText.value = res.activeDetect?.status === 'QUEUED'
-        ? '识别任务排队中'
-        : '正在识别题目并生成划区'
-      try {
-        await pollDetectStatus(inFlightTaskId, session)
-      } catch (error) {
-        if (session === detectSessionSeq) {
-          showUserError(error, '自动预划区失败')
-        }
-      } finally {
-        if (session === detectSessionSeq) {
-          detecting.value = false
-          detectProgressText.value = ''
-        }
-      }
+      activeDetectTaskId.value = inFlightTaskId
+      await resumeActiveDetectPolling(res, inFlightTaskId)
     }
   } catch (error) {
     document.value = null
@@ -285,8 +292,7 @@ async function handlePreview(): Promise<void> {
   if (!examId.value || !document.value) {
     return
   }
-  if (document.value.layoutEntryKind !== ExamLayoutEntryKindCode.SOURCE_FILE
-    && saveBlockingReasons.value.length > 0) {
+  if (saveBlockingReasons.value.length > 0) {
     message.warning(saveBlockingReasons.value[0])
     return
   }
@@ -328,7 +334,7 @@ async function handleGenerateSheet(
 }
 
 async function pollDetectStatus(detectTaskId: string, session: number): Promise<void> {
-  const deadline = Date.now() + 10 * 60 * 1000
+  const deadline = Date.now() + resolveExamLayoutDetectPollDeadlineMs(detectPollingPolicy.value)
   while (Date.now() < deadline) {
     if (session !== detectSessionSeq) {
       return
@@ -342,12 +348,13 @@ async function pollDetectStatus(detectTaskId: string, session: number): Promise<
     }
     if (status.progressTotalPages && status.progressTotalPages > 0) {
       detectProgressText.value = `正在识别第 ${status.progressPageNo ?? 0}/${status.progressTotalPages} 页`
-    } else if (status.status === 'QUEUED') {
+    } else if (status.status === ExamLayoutDetectTaskStatusCode.QUEUED) {
       detectProgressText.value = '识别任务排队中'
     } else {
       detectProgressText.value = '正在识别题目并生成划区'
     }
-    if (status.status === 'SUCCEEDED') {
+    const taskStatus = requireExamLayoutDetectTaskStatusCode(status.status)
+    if (taskStatus === ExamLayoutDetectTaskStatusCode.SUCCEEDED) {
       if (!status.document?.pages?.length) {
         throw new Error('识别完成但未返回制卷文档')
       }
@@ -358,18 +365,72 @@ async function pollDetectStatus(detectTaskId: string, session: number): Promise<
       focusedQuestionId.value = document.value.questions?.[0]?.id ?? null
       focusedBlockId.value = null
       currentPageNo.value = document.value.pages[0].pageNo
-      message.success('题目识别与划区已完成并自动保存草稿，请核对 ROI 后继续审阅')
+      message.success('题目识别与划区已完成并自动保存草稿，请核对 ROI 后配置身份填涂区')
       await workbenchContext?.refreshChrome?.()
       return
     }
-    if (status.status === 'FAILED') {
+    if (taskStatus === ExamLayoutDetectTaskStatusCode.FAILED) {
       throw new Error(status.errorMessage || '自动预划区失败')
+    }
+    if (taskStatus === ExamLayoutDetectTaskStatusCode.CANCELLED) {
+      return
     }
     await new Promise((resolve) => {
       window.setTimeout(resolve, 1200)
     })
   }
   throw new Error('识别超时，请点击重新识别')
+}
+
+async function resumeActiveDetectPolling(
+  loadResponse: ExamLayoutDesignLoadResponse,
+  detectTaskId: string,
+): Promise<void> {
+  const session = ++detectSessionSeq
+  detecting.value = true
+  activeDetectTaskId.value = detectTaskId
+  if (loadResponse.detectPollingPolicy) {
+    detectPollingPolicy.value = loadResponse.detectPollingPolicy
+  }
+  detectProgressText.value = loadResponse.activeDetect?.status === ExamLayoutDetectTaskStatusCode.QUEUED
+    ? '识别任务排队中'
+    : '正在识别题目并生成划区'
+  try {
+    await pollDetectStatus(detectTaskId, session)
+  } catch (error) {
+    if (session === detectSessionSeq) {
+      showUserError(error, '自动预划区失败')
+      await reload()
+    }
+  } finally {
+    if (session === detectSessionSeq) {
+      detecting.value = false
+      detectProgressText.value = ''
+      activeDetectTaskId.value = null
+    }
+  }
+}
+
+async function tryResumeDetectOnInFlightConflict(session: number): Promise<boolean> {
+  if (!examId.value) {
+    return false
+  }
+  const res = await loadExamLayoutDesign({ examId: examId.value })
+  layoutWritable.value = res.writable
+  writeLockReason.value = res.writeLockReason
+  detectPollingPolicy.value = res.detectPollingPolicy
+  const detectTaskId = res.activeDetect?.detectTaskId
+  const inFlightStatus = res.activeDetect?.status
+    ? requireExamLayoutDetectTaskStatusCode(res.activeDetect.status)
+    : null
+  if (!detectTaskId || !inFlightStatus || !isExamLayoutDetectInFlightStatus(inFlightStatus) || !layoutWritable.value) {
+    return false
+  }
+  if (session !== detectSessionSeq) {
+    return true
+  }
+  await resumeActiveDetectPolling(res, detectTaskId)
+  return true
 }
 
 async function handleAutoDetect(sourcePdfFileId: string): Promise<void> {
@@ -383,38 +444,112 @@ async function handleAutoDetect(sourcePdfFileId: string): Promise<void> {
   const session = ++detectSessionSeq
   detecting.value = true
   detectProgressText.value = '识别任务排队中'
+  let conflictResumed = false
   try {
     const started = await autoDetectExamLayout({ examId: examId.value, sourcePdfFileId })
     if (session !== detectSessionSeq) {
       return
     }
+    if (started.detectPollingPolicy) {
+      detectPollingPolicy.value = started.detectPollingPolicy
+    }
     if (!started.detectTaskId) {
       throw new Error('识别任务未返回任务号')
     }
+    activeDetectTaskId.value = started.detectTaskId
     await pollDetectStatus(started.detectTaskId, session)
   } catch (error) {
-    if (session === detectSessionSeq) {
-      showUserError(error, '自动预划区失败')
+    if (session !== detectSessionSeq) {
+      return
     }
+    if (isLayoutDetectInFlightConflict(error)) {
+      message.info('识别任务仍在进行，已切换为查看识别进度')
+      conflictResumed = await tryResumeDetectOnInFlightConflict(session)
+      if (conflictResumed) {
+        return
+      }
+    }
+    showUserError(error, '自动预划区失败')
   } finally {
-    if (session === detectSessionSeq) {
+    if (session === detectSessionSeq && !conflictResumed) {
       detecting.value = false
       detectProgressText.value = ''
+      activeDetectTaskId.value = null
     }
+  }
+}
+
+async function handleCancelDetect(): Promise<void> {
+  if (!examId.value || !activeDetectTaskId.value || cancellingDetect.value) {
+    return
+  }
+  const ok = await confirmAsync({
+    title: '取消题目识别？',
+    content: '取消后不会保存本次识别结果，可重新上传源文件并识别。',
+    type: 'warning',
+    okText: '取消识别',
+  })
+  if (!ok) {
+    return
+  }
+  cancellingDetect.value = true
+  const taskId = activeDetectTaskId.value
+  detectSessionSeq += 1
+  try {
+    await cancelExamLayoutDetect({
+      examId: examId.value,
+      detectTaskId: taskId,
+    })
+    detecting.value = false
+    detectProgressText.value = ''
+    activeDetectTaskId.value = null
+    message.info('识别任务已取消')
+  } catch (error) {
+    showUserError(error, '取消识别失败')
+    detecting.value = false
+    detectProgressText.value = ''
+    activeDetectTaskId.value = null
+    await reload()
+  } finally {
+    cancellingDetect.value = false
   }
 }
 
 function handleQuestionFocus(question: ExamLayoutQuestionDto | null): void {
   focusedQuestionId.value = question?.id ?? null
+  if (question) {
+    focusedBlockId.value = null
+  }
 }
 
 function handleBlockFocusFromOutline(block: ExamLayoutBlockDto | null, pageNo: number): void {
-  focusedBlockId.value = block?.id ?? null
   currentPageNo.value = pageNo
+  handleBlockFocus(block)
 }
 
 function handleDocumentPatch(next: ExamLayoutDocument): void {
   document.value = next
+}
+
+function handleAddIdentityBlock(block: ExamLayoutBlockDto): void {
+  if (!document.value || !layoutWritable.value) {
+    return
+  }
+  handleDocumentPatch({
+    ...document.value,
+    blocks: [...document.value.blocks, block],
+  })
+  currentPageNo.value = 1
+  focusedBlockId.value = block.id
+  focusedQuestionId.value = null
+}
+
+function handleFocusIdentityLayers(): void {
+  currentPageNo.value = 1
+  focusedQuestionId.value = null
+  void nextTick(() => {
+    blockLayerPanelAnchor.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  })
 }
 
 function handleBlockFocus(block: ExamLayoutBlockDto | null): void {
@@ -424,6 +559,8 @@ function handleBlockFocus(block: ExamLayoutBlockDto | null): void {
   }
   if (block?.layoutQuestionId) {
     focusedQuestionId.value = block.layoutQuestionId
+  } else {
+    focusedQuestionId.value = null
   }
 }
 
@@ -529,11 +666,32 @@ onBeforeUnmount(() => {
         :closable="false"
         dense
         :title="detectProgressText || '正在识别题目并生成划区'"
-        description="识别在后台异步执行，请勿关闭页面；完成后将自动填充题单与 ROI。"
+        description="识别在后台异步执行；离开本页后返回将自动续查进度，也可手动取消识别。"
         class="layout-designer-lock-banner"
+      >
+        <template #actions>
+          <UiButton
+            size="sm"
+            variant="outline"
+            :loading="cancellingDetect"
+            :disabled="!activeDetectTaskId || cancellingDetect"
+            @click="handleCancelDetect"
+          >
+            取消识别
+          </UiButton>
+        </template>
+      </UiAlertStrip>
+      <LayoutIdentitySetupStrip
+        v-if="!detecting && identitySetupPending"
+        :document="document"
+        :detecting="detecting"
+        :readonly="!layoutWritable"
+        class="layout-designer-lock-banner"
+        @add-identity-block="handleAddIdentityBlock"
+        @focus-layers="handleFocusIdentityLayers"
       />
       <UiAlertStrip
-        v-else-if="layoutRoiStats.notReadyQuestionNos.length > 0"
+        v-if="!detecting && layoutRoiStats.notReadyQuestionNos.length > 0"
         tone="warning"
         :closable="false"
         dense
@@ -550,7 +708,7 @@ onBeforeUnmount(() => {
         class="layout-designer-lock-banner"
       />
       <UiAlertStrip
-        v-else-if="saveBlockingReasons.length > 0"
+        v-else-if="saveBlockingReasons.length > 0 && !identitySetupPending && layoutRoiStats.notReadyQuestionNos.length === 0"
         tone="warning"
         :closable="false"
         dense
@@ -625,9 +783,21 @@ onBeforeUnmount(() => {
           </main>
           <aside class="layout-designer-workspace__right">
             <LayoutQuestionPropertyPanel
-              v-if="isSourceFileLayout"
+              v-if="isSourceFileLayout && focusedQuestion"
               :document="document"
               :question="focusedQuestion"
+              @patch="handleDocumentPatch"
+            />
+            <LayoutPropertyDrawer
+              v-else-if="isSourceFileLayout && focusedBlock"
+              :document="document"
+              :block="focusedBlock"
+              @patch="handleDocumentPatch"
+            />
+            <LayoutQuestionPropertyPanel
+              v-else-if="isSourceFileLayout"
+              :document="document"
+              :question="null"
               @patch="handleDocumentPatch"
             />
             <LayoutPropertyDrawer
@@ -636,14 +806,19 @@ onBeforeUnmount(() => {
               :block="focusedBlock"
               @patch="handleDocumentPatch"
             />
-            <LayoutBlockLayerPanel
+            <div
               v-if="isSourceFileLayout"
-              :document="document"
-              :page-no="currentPageNo"
-              :focused-block-id="focusedBlockId"
-              @focus-block="handleBlockFocus"
-              @patch="handleDocumentPatch"
-            />
+              ref="blockLayerPanelAnchor"
+              class="layout-designer-block-layer-anchor"
+            >
+              <LayoutBlockLayerPanel
+                :document="document"
+                :page-no="currentPageNo"
+                :focused-block-id="focusedBlockId"
+                @focus-block="handleBlockFocus"
+                @patch="handleDocumentPatch"
+              />
+            </div>
           </aside>
         </div>
       </WorkbenchSurfaceCard>

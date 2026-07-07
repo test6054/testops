@@ -71,6 +71,9 @@
 
       <a-space>
         <a-button type="primary" :loading="saving" @click="handleSave">保存策略</a-button>
+        <a-button type="primary" ghost :loading="savingAndActivating" @click="handleSaveAndActivate">
+          保存并启用
+        </a-button>
         <a-button
           :loading="activating"
           :disabled="!policy || policy.policyStatus === 'ACTIVE'"
@@ -134,6 +137,7 @@ function reviewWindowStatusLabel(status: ReviewWindowPolicyStatusCode): string {
 const policy = ref<ExamReviewWindowPolicy | null>(null)
 const loading = ref(false)
 const saving = ref(false)
+const savingAndActivating = ref(false)
 const activating = ref(false)
 const closing = ref(false)
 
@@ -202,6 +206,14 @@ async function reload(): Promise<void> {
 }
 
 async function handleSave(): Promise<void> {
+  await persistPolicy(false)
+}
+
+async function handleSaveAndActivate(): Promise<void> {
+  await persistPolicy(true)
+}
+
+async function persistPolicy(activateImmediately: boolean): Promise<void> {
   if (!form.openTime || !form.closeTime) {
     message.warning('请选择开放和关闭时间')
     return
@@ -210,7 +222,11 @@ async function handleSave(): Promise<void> {
     message.warning('关闭时间需晚于开放时间')
     return
   }
-  saving.value = true
+  if (activateImmediately) {
+    savingAndActivating.value = true
+  } else {
+    saving.value = true
+  }
   try {
     policy.value = await saveReviewWindowPolicy({
       examId: props.examId,
@@ -219,13 +235,15 @@ async function handleSave(): Promise<void> {
       maxRequestCount: form.maxRequestCount,
       visibleMaterialScope: form.visibleMaterialScope,
       allowedReasonTypes: form.allowedReasonTypes.length > 0 ? form.allowedReasonTypes : undefined,
+      activateImmediately,
     })
-    message.success('复核窗口策略已保存')
+    message.success(activateImmediately ? '复核窗口已保存并启用' : '复核窗口策略已保存')
     emit('changed')
   } catch (e) {
-    showUserError(e, '成绩复核窗口保存失败')
+    showUserError(e, activateImmediately ? '保存并启用失败' : '成绩复核窗口保存失败')
   } finally {
     saving.value = false
+    savingAndActivating.value = false
   }
 }
 

@@ -140,9 +140,7 @@ const detailVisible = ref(false)
 const detailLoading = ref(false)
 const detailRecord = ref<ProfessionAlgorithmTemplateVO | null>(null)
 
-const accreditationTypes: readonly AccreditationTypeCode[] = ALL_ACCREDITATION_TYPE_CODES
-
-const accreditationOptions = accreditationTypes.map((value) => ({
+const accreditationOptions = ALL_ACCREDITATION_TYPE_CODES.map((value) => ({
   value,
   label: accreditationTypeLabel(value),
 }))

@@ -9,6 +9,7 @@ export type ArchiveSatelliteNextStepsVariant
     | 'search'
     | 'settings'
     | 'create-offline'
+    | 'create-supplement'
 
 export interface ArchiveSatelliteNextStep {
   key: string
@@ -249,6 +250,29 @@ export const ARCHIVE_SATELLITE_NEXT_STEPS: Record<ArchiveSatelliteNextStepsVaria
       label: '迎评统计',
       description: '查看院系归档完成率',
       routeName: 'TeacherArchiveVolumeStatistics',
+    },
+  ],
+  'create-supplement': [
+    {
+      key: 'list',
+      icon: '归',
+      label: '归档卷列表',
+      description: '补录建卷完成后返回列表',
+      routeName: 'TeacherArchiveVolumeList',
+    },
+    {
+      key: 'create-offline',
+      icon: '离',
+      label: '线下纯归档',
+      description: '无线上考试绑定的纯纸质建卷',
+      routeName: 'TeacherArchiveVolumeCreateOffline',
+    },
+    {
+      key: 'settings',
+      icon: '配',
+      label: '归档配置',
+      description: '目录模板与职责授权',
+      routeName: 'TeacherArchiveVolumeSettings',
     },
   ],
 }

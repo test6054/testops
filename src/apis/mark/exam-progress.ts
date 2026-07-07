@@ -288,6 +288,7 @@ export interface ExamWorkbenchScorePanelResponse {
   manualFinalScoreConfirmRequired: boolean
   delayedFinalScoreConfirmMinutes: number
   pendingDelayedFinalScoreConfirmCount: number
+  blockedDelayedFinalScoreConfirmCount: number
 }
 
 /** 查询考试成绩看板（成绩确认 / 发布页 Signal 真源）。 */

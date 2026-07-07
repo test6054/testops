@@ -284,8 +284,10 @@ import {
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import { TASK_STATUS_TONE, TaskStatusDescription } from '@/apis/mark/task-status'
 import {
+  ALL_PROCESSING_TASK_TYPE_CODES,
   PROCESSING_TASK_TYPE_OPTIONS,
   PROCESSING_TASK_TYPE_TONE,
+  ProcessingTaskTypeCode,
   ProcessingTaskTypeDescription,
 } from '@/apis/mark/task-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
@@ -400,6 +402,26 @@ function reloadProcessingTasks(): void {
   processingTaskPageNum.value = 1
   void loadProcessingTasks()
 }
+
+function applyProcessingTaskQueryFromRoute(): void {
+  const taskType = route.query.taskType
+  if (typeof taskType !== 'string') {
+    return
+  }
+  if ((ALL_PROCESSING_TASK_TYPE_CODES as readonly string[]).includes(taskType)) {
+    processingTaskTypeFilter.value = taskType as ProcessingTaskTypeCode
+  }
+}
+
+applyProcessingTaskQueryFromRoute()
+
+watch(
+  () => route.query.taskType,
+  () => {
+    applyProcessingTaskQueryFromRoute()
+    reloadProcessingTasks()
+  },
+)
 
 function handleProcessingTaskPageChange(pageEvent: { current: number, pageSize: number }): void {
   processingTaskPageNum.value = pageEvent.current

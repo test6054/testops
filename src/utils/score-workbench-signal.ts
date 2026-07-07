@@ -48,6 +48,7 @@ export function buildScoreFinalizeSignalMetrics(
   const published = overview?.publishedCount ?? 0
   const blocked = overview?.blockedCount ?? 0
   const pendingDelayed = panel?.pendingDelayedFinalScoreConfirmCount ?? 0
+  const blockedDelayed = panel?.blockedDelayedFinalScoreConfirmCount ?? 0
   const delayedMinutes = panel?.delayedFinalScoreConfirmMinutes
   const metrics: SignalMetric[] = [
     { key: 'total', label: '全场考生', value: total, unit: '人', tone: 'blue' },
@@ -95,6 +96,16 @@ export function buildScoreFinalizeSignalMetrics(
       unit: '份',
       tone: 'blue',
       helper: `${delayedMinutes} 分钟窗口`,
+    })
+  }
+  if (panel?.manualFinalScoreConfirmRequired === false && blockedDelayed > 0) {
+    metrics.push({
+      key: 'blockedDelayedConfirm',
+      label: '自动确认失败',
+      value: blockedDelayed,
+      unit: '份',
+      tone: 'red',
+      helper: '须人工确认',
     })
   }
   return metrics

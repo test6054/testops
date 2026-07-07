@@ -1770,8 +1770,8 @@ const bindSourcePageLoading = ref(false)
 const bindSourcePageLoadFailed = ref(false)
 
 /**
- * 证据门禁：有身份切片时必须完成切片+原页可见复核；仅有原页（二维码/条码冲突）时校验原页；
- * 无任何影像证据时允许依名册人工确认绑定（后端可保留 null identitySliceFileId）。
+ * 证据门禁：有身份切片时须切片可见；原页有 fileId 时须原页可见。
+ * pageId 缺失时允许切片+名册人工确认（与 kiosk 异常面板一致）。
  */
 const bindIdentityEvidenceBlockReason = computed(() => {
   if (!bindDrawerOpen.value) return ''
@@ -1779,10 +1779,11 @@ const bindIdentityEvidenceBlockReason = computed(() => {
     if (bindIdentitySliceLoading.value) return '手写身份切片仍在加载，确认可见后才能提交身份绑定。'
     if (bindIdentitySliceLoadFailed.value) return '手写身份切片加载失败，请刷新影像后重试身份绑定。'
     if (!bindIdentitySliceImageUrl.value) return '手写身份切片尚未显示，不能提交身份绑定。'
-    if (!bindSourcePageFileId.value) return '当前异常缺少原始扫描页文件引用，请检查扫描页登记链路后再绑定。'
-    if (bindSourcePageLoading.value) return '原始扫描页仍在加载，确认可见后才能提交身份绑定。'
-    if (bindSourcePageLoadFailed.value) return '原始扫描页加载失败，请刷新影像后重试身份绑定。'
-    if (!bindSourcePageImageUrl.value) return '原始扫描页尚未显示，不能提交身份绑定。'
+    if (bindSourcePageFileId.value) {
+      if (bindSourcePageLoading.value) return '原始扫描页仍在加载，确认可见后才能提交身份绑定。'
+      if (bindSourcePageLoadFailed.value) return '原始扫描页加载失败，请刷新影像后重试身份绑定。'
+      if (!bindSourcePageImageUrl.value) return '原始扫描页尚未显示，不能提交身份绑定。'
+    }
     return ''
   }
   if (bindSourcePageFileId.value) {
@@ -1858,8 +1859,7 @@ async function ensureCandidatesLoaded(): Promise<boolean> {
   }
   candidatesLoading.value = true
   try {
-    const result = await listExamCandidates(selectedExamId.value)
-    candidates.value = result
+    candidates.value = await listExamCandidates(selectedExamId.value)
     return true
   } catch (error) {
     showUserError(error, '考生名册加载失败')

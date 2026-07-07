@@ -12,12 +12,17 @@ import {
 } from '@/types/enums/exam-layout-block-type-enum'
 import { ExamLayoutEntryKindCode } from '@/types/enums/exam-layout-entry-kind-enum'
 import {
+  ALL_PAPER_MASTER_IDENTITY_AREA_TYPE_CODES,
+  PaperMasterIdentityAreaTypeCode,
+} from '@/types/enums/paper-master-identity-area-type-enum'
+import {
   ALL_EXAM_LAYOUT_PAPER_SPEC_CODES,
   ExamLayoutPaperSpecCode,
   ExamLayoutPaperSpecMm,
   getExamLayoutPaperSpecDescription,
   requireExamLayoutPaperSpecCode,
 } from '@/types/enums/exam-layout-paper-spec-enum'
+import { ObjectiveComparePolicyCode } from '@/types/enums/objective-compare-policy-enum'
 
 export {
   ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES,
@@ -203,7 +208,7 @@ export function createDefaultBlock(
     rectNorm: { x: 0.12, y: 0.12, w: 0.28, h: 0.06 },
   }
   if (blockType === ExamLayoutBlockTypeCode.IDENTITY_BUBBLE) {
-    block.identityAreaType = 'STUDENT_NO'
+    block.identityAreaType = PaperMasterIdentityAreaTypeCode.STUDENT_NO
   }
   return block
 }
@@ -400,6 +405,11 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
         reasons.push(`题 ${question.questionNo || question.id} 的满分必须大于 0`)
       }
     }
+    if (!hasIdentityBlock(document)) {
+      reasons.push('请至少配置一个身份填涂区')
+    } else {
+      reasons.push(...validateIdentityAreaTypes(document))
+    }
     return reasons
   }
   if (!document.totalPages || document.totalPages <= 0) {
@@ -454,6 +464,7 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
     if (question.fullScore == null || Number(question.fullScore) <= 0) {
       reasons.push(`题 ${question.questionNo || question.id} 的满分必须大于 0`)
     }
+    reasons.push(...validateQuestionAnswerAsset(question))
     questionOcrSceneById.set(question.id, question.ocrScene)
   }
   if (questionIds.size === 0) {
@@ -480,9 +491,6 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
     }
     if (block.blockType === ExamLayoutBlockTypeCode.IDENTITY_BUBBLE) {
       hasIdentity = true
-      if (!block.identityAreaType?.trim()) {
-        reasons.push('身份填涂区必须配置身份字段类型')
-      }
     }
     if (block.blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER && !block.layoutQuestionId) {
       reasons.push('书写作答区必须关联制卷题目')
@@ -491,7 +499,7 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
       block.blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
       && block.layoutQuestionId
       && expectedAnswerBlockTypeForOcrScene(questionOcrSceneById.get(block.layoutQuestionId))
-        !== ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
+      !== ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
     ) {
       reasons.push('书写作答区只能关联填空、数值、简答等非填涂题')
     }
@@ -502,7 +510,7 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
       block.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
       && block.layoutQuestionId
       && expectedAnswerBlockTypeForOcrScene(questionOcrSceneById.get(block.layoutQuestionId))
-        !== ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
+      !== ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
     ) {
       reasons.push('客观填涂矩阵只能关联选择题或判断题')
     }
@@ -522,6 +530,7 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
   if (!hasIdentity) {
     reasons.push('请至少配置一个身份填涂区')
   }
+  reasons.push(...validateIdentityAreaTypes(document))
 
   for (const option of document.blockOptions ?? []) {
     if (!blockIds.has(option.blockId)) {
@@ -542,6 +551,82 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
   }
 
   return Array.from(new Set(reasons))
+}
+
+/** 有源整卷是否已有识别结果（重新识别会覆盖题单/ROI/身份区）。 */
+export function layoutHasSourceFileDetectResult(document: ExamLayoutDocument | null): boolean {
+  return document?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE
+    && (document.questions?.length ?? 0) > 0
+}
+
+/** 校验身份填涂区类型；须与 PaperMasterIdentityAreaType 枚举一致。 */
+function validateIdentityAreaTypes(document: ExamLayoutDocument | null): string[] {
+  const reasons: string[] = []
+  for (const block of document?.blocks ?? []) {
+    if (block.blockType !== ExamLayoutBlockTypeCode.IDENTITY_BUBBLE) {
+      continue
+    }
+    if (!block.identityAreaType?.trim()) {
+      reasons.push('身份填涂区必须配置身份字段类型')
+      continue
+    }
+    if (!ALL_PAPER_MASTER_IDENTITY_AREA_TYPE_CODES.some((code) => code === block.identityAreaType)) {
+      reasons.push('身份填涂区类型无效，请选择学号、班级或姓名填涂区')
+    }
+  }
+  return reasons
+}
+
+/**
+ * 校验题目评分资产完整性；不变量：进入保存的题目必须能支撑客观自动判分或主观/AI评分。
+ */
+function validateQuestionAnswerAsset(question: {
+  id?: string
+  questionNo?: string
+  questionType?: string
+  answer?: {
+    standardAnswer?: string
+    comparePolicy?: string
+    numericExpectedValue?: number
+    gradingRubric?: string
+    declaredOptions?: Array<{ optionLabel?: string }>
+    choiceOptions?: Array<{ optionLabel?: string }>
+  }
+}): string[] {
+  const label = `题 ${question.questionNo || question.id || '-'}`
+  const answer = question.answer
+  if (question.questionType === 'SUBJECTIVE') {
+    if (answer?.standardAnswer?.trim() || answer?.gradingRubric?.trim()) {
+      return []
+    }
+    return [`${label} 需填写参考答案或评分细则`]
+  }
+  if (!answer?.comparePolicy) {
+    return [`${label} 需配置客观题比较策略`]
+  }
+  if (answer.comparePolicy === ObjectiveComparePolicyCode.CHOICE_SET) {
+    if (!hasNonBlankOption(answer.declaredOptions)) {
+      return [`${label} 需填写选项空间`]
+    }
+    if (!hasNonBlankOption(answer.choiceOptions)) {
+      return [`${label} 需填写正确选项`]
+    }
+    return []
+  }
+  if (answer.comparePolicy === ObjectiveComparePolicyCode.NUMERIC_TOLERANCE) {
+    return answer.numericExpectedValue == null ? [`${label} 需填写数值标准值`] : []
+  }
+  if (answer.comparePolicy === ObjectiveComparePolicyCode.AI_GRADE) {
+    return answer.gradingRubric?.trim() ? [] : [`${label} 使用 AI 评分时需填写评分细则`]
+  }
+  return answer.standardAnswer?.trim() ? [] : [`${label} 需填写标准答案`]
+}
+
+/**
+ * 判断选项数组是否存在有效标签；不变量：空白选项不构成可评分选项空间。
+ */
+function hasNonBlankOption(options?: Array<{ optionLabel?: string }>): boolean {
+  return Boolean(options?.some((option) => option.optionLabel?.trim()))
 }
 
 export function snapStageValue(

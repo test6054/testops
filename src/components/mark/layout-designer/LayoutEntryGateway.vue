@@ -5,13 +5,14 @@ import type {
   ExamLayoutGenerateQuestionRequest,
 } from '@/apis/mark/exam-layout-design'
 import { message } from 'ant-design-vue'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ExamMaterialLayoutModeDescription } from '@/apis/mark/exam'
 import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { ExamLayoutEntryKindCode } from '@/types/enums/exam-layout-entry-kind-enum'
 import {
   ALL_EXAM_LAYOUT_PAPER_SPEC_CODES,
@@ -21,6 +22,7 @@ import {
   getExamLayoutPaperSpecDescription,
 } from '@/types/enums/exam-layout-paper-spec-enum'
 import { showUserError } from '@/utils/error-handler'
+import { layoutHasSourceFileDetectResult } from '@/utils/exam-layout-designer'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 type LayoutQuestionType = 'OBJECTIVE' | 'SUBJECTIVE'
@@ -100,10 +102,37 @@ const layoutName = ref(props.document?.layoutName ?? '')
 const printSafeMarginMm = ref(props.document?.printSafeMarginMm ?? 5)
 const questionRows = ref<LayoutQuestionDraft[]>(createDefaultQuestionRows())
 
+watch(
+  () => props.document?.sourcePdfFileId,
+  (value) => {
+    if (value?.trim()) {
+      sourcePdfFileId.value = value
+    }
+  },
+)
+
+watch(
+  () => props.document?.layoutName,
+  (value) => {
+    if (value?.trim()) {
+      layoutName.value = value
+    }
+  },
+)
+
+watch(
+  () => props.document?.printSafeMarginMm,
+  (value) => {
+    if (value != null) {
+      printSafeMarginMm.value = value
+    }
+  },
+)
+
 const isAnswerSheetMode = computed(() => props.materialLayoutMode === 'ANSWER_SHEET')
 const isFullPaperMode = computed(() => props.materialLayoutMode === 'FULL_PAPER')
 const entryReadonly = computed(
-  () => props.readonly || !props.materialLayoutMode || props.detecting === true,
+  () => props.readonly || !props.materialLayoutMode || props.detecting,
 )
 
 const materialLayoutModeLabel = computed(() => {
@@ -287,6 +316,28 @@ function ocrSceneLabel(ocrScene: string): string {
   return OCR_SCENE_OPTIONS.find((option) => option.value === ocrScene)?.label ?? ocrScene
 }
 
+async function confirmRedetectIfNeeded(): Promise<boolean> {
+  if (!layoutHasSourceFileDetectResult(props.document)) {
+    return true
+  }
+  return confirmAsync({
+    title: '重新识别题目区域？',
+    content: '将覆盖当前题单、ROI 与身份填涂区配置；识别完成前无法更换源文件。',
+    type: 'warning',
+    okText: '重新识别',
+  })
+}
+
+async function startAutoDetect(sourceFileId: string): Promise<void> {
+  if (!(await confirmRedetectIfNeeded())) {
+    sourcePdfFileId.value = props.document?.sourcePdfFileId ?? ''
+    return
+  }
+  startSourceFile()
+  patchDocument({ sourcePdfFileId: sourceFileId.trim() })
+  emit('auto-detect', sourceFileId.trim())
+}
+
 function handleAutoDetect(): void {
   if (!sourcePdfFileId.value.trim()) {
     message.warning('请先上传整卷源文件')
@@ -296,9 +347,7 @@ function handleAutoDetect(): void {
     message.warning('自动预划区仅支持 PDF、Word（doc/docx）或图片（png/jpg/jpeg）')
     return
   }
-  startSourceFile()
-  patchDocument({ sourcePdfFileId: sourcePdfFileId.value.trim() })
-  emit('auto-detect', sourcePdfFileId.value.trim())
+  void startAutoDetect(sourcePdfFileId.value)
 }
 
 async function syncUploadedPageMeta(fileId: string): Promise<void> {
@@ -359,11 +408,14 @@ function onSourcePdfChange(fileId: string | undefined): void {
   if (!fileId) {
     return
   }
+  if (props.detecting) {
+    message.warning('识别进行中，请等待完成后再更换源文件')
+    sourcePdfFileId.value = props.document?.sourcePdfFileId ?? ''
+    return
+  }
   sourcePdfFileId.value = fileId
   if (sourceFileCanAutoDetect.value) {
-    startSourceFile()
-    patchDocument({ sourcePdfFileId: fileId.trim() })
-    emit('auto-detect', fileId.trim())
+    void startAutoDetect(fileId)
     return
   }
   void syncUploadedPageMeta(fileId)

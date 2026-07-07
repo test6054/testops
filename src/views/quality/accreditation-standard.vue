@@ -75,9 +75,7 @@ interface AccreditationStandardFilterModel {
   keyword: string
 }
 
-const ACCREDITATION_TYPES: readonly AccreditationTypeCode[] = ALL_ACCREDITATION_TYPE_CODES
-
-const accreditationOptions = ACCREDITATION_TYPES.map((value) => ({
+const accreditationOptions = ALL_ACCREDITATION_TYPE_CODES.map((value) => ({
   value,
   label: strictEnumLabel(AccreditationTypeDescription, value, '认证类型'),
 }))

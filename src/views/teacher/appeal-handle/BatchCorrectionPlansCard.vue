@@ -261,8 +261,10 @@ import type {
 } from '@/apis/mark/grade-review'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import Modal from 'ant-design-vue/es/modal'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   approveBatchCorrectionPlan,
   BATCH_CORRECTION_FLOW_HINT,
@@ -301,6 +303,7 @@ const props = defineProps<{
   scorePolicy?: ExamScorePolicyCode
 }>()
 const emit = defineEmits<{ (e: 'changed'): void }>()
+const router = useRouter()
 
 const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 100
 
@@ -771,6 +774,15 @@ async function handleExecute(): Promise<void> {
     executeModalOpen.value = false
     await reload()
     emit('changed')
+    Modal.info({
+      title: '请确认成绩发布状态',
+      content: '若更正前成绩已发布，学生端暂不可见最新分数。请前往成绩发布页重新发布。',
+      okText: '前往发布',
+      onOk: () => router.push({
+        name: 'TeacherExamWorkspaceScoreRelease',
+        params: { examId: props.examId },
+      }),
+    })
   } catch (e) {
     showUserError(e, '批量成绩更正计划执行失败')
   } finally {

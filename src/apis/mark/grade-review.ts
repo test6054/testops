@@ -1,4 +1,5 @@
 import type { QuestionTypeCode } from './question-type'
+import type { FinalScoreStatusCode } from './final-score-status'
 /**
  * 成绩复核与更正 API - 对接 edu-mark 模块 GradeReviewController
  *
@@ -106,6 +107,8 @@ export interface ReviewWindowPolicySaveRequest {
   visibleMaterialScope?: VisibleMaterialScopeCode
   /** 允许的申请原因类型 */
   allowedReasonTypes?: GradeReviewReasonTypeCode[]
+  /** 保存后立即激活复核窗口 */
+  activateImmediately?: boolean
 }
 
 /** 复核窗口策略 - 对应 ExamReviewWindowPolicy */
@@ -409,6 +412,10 @@ export interface ExamGradeCorrectionRecordResponse {
   correctionStatus: GradeCorrectionStatusCode
   createTime: string
   updateTime?: string
+  /** 更正前成绩已发布时须重新发布 */
+  requiresRepublish?: boolean
+  /** 更正后最终成绩状态 */
+  finalScoreStatusAfterCorrection?: FinalScoreStatusCode
 }
 
 /**

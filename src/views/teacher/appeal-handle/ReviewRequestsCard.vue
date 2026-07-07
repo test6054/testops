@@ -278,8 +278,7 @@ async function reload(): Promise<void> {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
-    const list = result.list
-    rows.value = list
+    rows.value = result.list
     pagination.total = Number(result.total)
     pagination.current = result.pageNum ?? pagination.current
     pagination.pageSize = result.pageSize ?? pagination.pageSize

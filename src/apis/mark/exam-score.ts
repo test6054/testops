@@ -244,19 +244,22 @@ export function batchPublishFinalScores(
   return http.post<FinalScoreBatchPublishResponse>('/api/mark/exams/final-scores/batch-publish', request)
 }
 
+/** 最终成绩 ID；后端 ResultInfo<Long>，客户端按 string 语义传递 */
+export type FinalScoreId = string
+
 /** 确认试卷最终成绩，仅落库 CONFIRMED 状态，不发送学生通知。 */
-export function confirmFinalScore(request: ExamFinalScoreConfirmRequest): Promise<string> {
-  return http.post<string>('/api/mark/exams/final-scores/confirm', request)
+export function confirmFinalScore(request: ExamFinalScoreConfirmRequest): Promise<FinalScoreId> {
+  return http.post<FinalScoreId>('/api/mark/exams/final-scores/confirm', request)
 }
 
 /** 发布试卷最终成绩，并向学生发送通知。 */
-export function publishFinalScore(request: ExamFinalScorePublishRequest): Promise<string> {
-  return http.post<string>('/api/mark/exams/final-scores/publish', request)
+export function publishFinalScore(request: ExamFinalScorePublishRequest): Promise<FinalScoreId> {
+  return http.post<FinalScoreId>('/api/mark/exams/final-scores/publish', request)
 }
 
 /** 撤回试卷最终成绩，撤回后学生侧成绩不再可见。 */
-export function withdrawFinalScore(request: ExamFinalScoreWithdrawRequest): Promise<string> {
-  return http.post<string>('/api/mark/exams/final-scores/withdraw', request)
+export function withdrawFinalScore(request: ExamFinalScoreWithdrawRequest): Promise<FinalScoreId> {
+  return http.post<FinalScoreId>('/api/mark/exams/final-scores/withdraw', request)
 }
 
 /** 查询考试分数分布（五级分段直方图）。 */

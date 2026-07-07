@@ -136,13 +136,15 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type {
   ExamGradeCorrectionRecordResponse,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import Modal from 'ant-design-vue/es/modal'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   computeSingleQuestionCorrectionCompositeTotal,
   createCorrection,
@@ -169,6 +171,7 @@ const props = defineProps<{
   scorePolicy?: ExamScorePolicyCode
 }>()
 const emit = defineEmits<{ (e: 'created'): void }>()
+const router = useRouter()
 
 const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 100
 
@@ -420,7 +423,7 @@ async function submit(): Promise<void> {
   }
   submitting.value = true
   try {
-    await createCorrection({
+    const result = await createCorrection({
       examId: props.examId,
       layoutQuestionId: form.layoutQuestionId || undefined,
       afterScore: form.afterScore,
@@ -434,6 +437,18 @@ async function submit(): Promise<void> {
     createOpen.value = false
     await reload()
     emit('created')
+    if (result.requiresRepublish) {
+      Modal.confirm({
+        title: '需重新发布成绩',
+        content: '更正前成绩已发布，学生端暂不可见最新分数。请前往成绩发布页重新发布。',
+        okText: '前往发布',
+        cancelText: '稍后处理',
+        onOk: () => router.push({
+          name: 'TeacherExamWorkspaceScoreRelease',
+          params: { examId: props.examId },
+        }),
+      })
+    }
   } catch (e) {
     showUserError(e, '成绩更正提交失败')
   } finally {

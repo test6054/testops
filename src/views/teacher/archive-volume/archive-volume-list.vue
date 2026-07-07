@@ -15,6 +15,9 @@
           <UiButton variant="outline" size="sm" @click="goEvalCampaign">
             评估迎评
           </UiButton>
+          <UiButton variant="outline" size="sm" @click="goAccessPending">
+            待审批查阅
+          </UiButton>
           <UiButton v-if="canViewStatisticsKpi" variant="outline" size="sm" @click="goAudit">
             审计查询
           </UiButton>
@@ -88,6 +91,14 @@
               @click="importDrawerOpen = true"
             >
               外部导入
+            </UiButton>
+            <UiButton
+              v-if="listTab === 'mine'"
+              size="sm"
+              variant="outline"
+              @click="goCreateSupplement"
+            >
+              补录建卷
             </UiButton>
             <UiButton
               v-if="listTab === 'mine'"
@@ -1262,6 +1273,10 @@ function goAudit() {
   void router.push({ name: 'TeacherArchiveVolumeAudit' })
 }
 
+function goAccessPending(): void {
+  void router.push({ name: 'TeacherArchiveVolumeAccessPending' })
+}
+
 function goSearch() {
   void router.push({ name: 'TeacherArchiveVolumeSearch' })
 }
@@ -1274,6 +1289,10 @@ function handleRefresh(): void {
     void loadVolumes()
     void loadListOverviewKpis()
   }
+}
+
+function goCreateSupplement() {
+  void router.push({ name: 'TeacherArchiveVolumeCreateSupplement' })
 }
 
 function goCreateOffline() {

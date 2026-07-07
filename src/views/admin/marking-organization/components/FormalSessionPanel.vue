@@ -211,6 +211,7 @@ import { AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
 import { FormalSessionStatusCode } from '@/types/enums/formal-session-status-enum'
 import { ResultCode } from '@/types/enums/result-code'
 import { getUserErrorMessage, readBusinessResultCode, showUserError } from '@/utils/error-handler'
+import { isFormalStartPendingReviewConflict } from '@/utils/marking-workflow-conflict'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -437,6 +438,18 @@ function handleFormalStartError(error: unknown): void {
       okText: '前往经验辅助评阅',
       onOk: () => router.push({
         name: 'TeacherExamWorkspaceMarkingExperienceAssistPolicy',
+        params: { examId: props.examId },
+      }),
+    })
+    return
+  }
+  if (isFormalStartPendingReviewConflict(error) && props.examId) {
+    Modal.warning({
+      title: '无法启动正评',
+      content: detail,
+      okText: '前往识别复核',
+      onOk: () => router.push({
+        name: 'TeacherExamWorkspaceReviewBatchConfirm',
         params: { examId: props.examId },
       }),
     })

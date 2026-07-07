@@ -8,6 +8,17 @@ import {
   withdrawMarkingTask,
 } from '@/apis/mark/marking-withdraw'
 import { showUserError } from '@/utils/error-handler'
+import {
+  isWithdrawScoreConfirmLockConflict,
+} from '@/utils/marking-workflow-conflict'
+
+const WITHDRAW_LOCK_RETRY_DELAYS_MS = [800, 1600, 2400] as const
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
 
 /** 最近提交记录，供快捷撤销与工具栏列表使用 */
 export interface MarkingRecentSubmitEntry {
@@ -87,17 +98,27 @@ export function useMarkingRecentSubmit() {
       removeEntry(entry.taskId)
       return null
     }
-    try {
-      const task = await withdrawMarkingTask({ taskId: entry.taskId })
-      removeEntry(entry.taskId)
-      message.success('已撤销提交，原给分已保留为草稿')
-      onSuccess?.(task)
-      return task
+    let lastError: unknown = null
+    for (let attempt = 0; attempt <= WITHDRAW_LOCK_RETRY_DELAYS_MS.length; attempt += 1) {
+      try {
+        const task = await withdrawMarkingTask({ taskId: entry.taskId })
+        removeEntry(entry.taskId)
+        message.success('已撤销提交，原给分已保留为草稿')
+        onSuccess?.(task)
+        return task
+      } catch (error) {
+        lastError = error
+        const canRetry = isWithdrawScoreConfirmLockConflict(error)
+          && attempt < WITHDRAW_LOCK_RETRY_DELAYS_MS.length
+        if (!canRetry) {
+          break
+        }
+        message.info('成绩确认处理中，正在重试撤回…')
+        await sleep(WITHDRAW_LOCK_RETRY_DELAYS_MS[attempt])
+      }
     }
-    catch (error) {
-      showUserError(error, '撤销提交失败')
-      return null
-    }
+    showUserError(lastError, '撤销提交失败')
+    return null
   }
 
   async function withdrawLatest(

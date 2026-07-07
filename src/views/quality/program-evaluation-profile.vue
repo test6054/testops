@@ -79,13 +79,14 @@ const listFilterForm = reactive<ProgramProfileFilterModel>({
   keyword: '',
 })
 
-const accreditationTypes: readonly AccreditationTypeCode[] = ALL_ACCREDITATION_TYPE_CODES
-
-const evaluationMethods: readonly EvaluationMethodCode[] = ALL_EVALUATION_METHOD_CODES
-
-const accreditationOptions = accreditationTypes.map((value) => ({
+const accreditationOptions = ALL_ACCREDITATION_TYPE_CODES.map((value) => ({
   value,
   label: strictEnumLabel(AccreditationTypeDescription, value, '认证类型'),
+}))
+
+const evaluationMethodOptions = ALL_EVALUATION_METHOD_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(EvaluationMethodDescription, value, '评价方法'),
 }))
 
 const filterFields: FilterField[] = [
@@ -108,10 +109,6 @@ const filterFields: FilterField[] = [
     triggerSearchOnChange: false,
   },
 ]
-const evaluationMethodOptions = evaluationMethods.map((value) => ({
-  value,
-  label: strictEnumLabel(EvaluationMethodDescription, value, '评价方法'),
-}))
 
 const evaluationCycleOptions: Array<{ value: EvaluationCycleCode, label: string }>
   = ALL_EVALUATION_CYCLE_CODES.map((value) => ({

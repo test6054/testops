@@ -1475,6 +1475,28 @@ export interface ArchiveMaterialCatalogTemplateResponse {
   sortOrder?: number
 }
 
+/** 归档卷创建请求（线下/历史补录）- 对应 ArchiveVolumeCreateRequest */
+export interface ArchiveVolumeCreateRequest {
+  sourceType: ArchiveVolumeSourceTypeCode
+  examId?: string
+  courseId: string
+  teachingClassId?: string
+  departmentId?: string
+  departmentName?: string
+  teachingClassName?: string
+  academicYear: string
+  semester: SemesterCode
+  relatedExamId?: string
+  examForm?: ArchiveExamFormCode
+  archiveNo?: string
+  archiveTitle: string
+  scoreSource: ArchiveScoreSourceCode
+  securityLevel: ArchiveSecurityLevelCode
+  retentionYears?: number
+  permanentRetention?: boolean
+  responsibleUserId?: string
+}
+
 export interface OfflineMarkedArchiveCreateRequest {
   courseId: string
   teachingClassId?: string
@@ -1598,6 +1620,10 @@ export interface ArchiveScoreCompletionConfirmRequest {
   volumeId: string
   scoreCompletionStatus: ArchiveScoreCompletionStatusCode
   scoreProofFileId?: string
+}
+
+export function createArchiveVolume(request: ArchiveVolumeCreateRequest): Promise<string> {
+  return http.post<string>('/api/mark/archive-volumes/create', request)
 }
 
 export function createOfflineArchiveVolume(

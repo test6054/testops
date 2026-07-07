@@ -129,7 +129,7 @@ const filterFields = computed<FilterField[]>(() => [
     placeholder: '状态',
     allowClear: true,
     width: 120,
-    options: statusOptions.map((value) => ({
+    options: ALL_CONFIRMATION_STATUS_CODES.map((value) => ({
       value,
       label: confirmationStatusLabel(value),
     })),
@@ -143,9 +143,7 @@ const filterFields = computed<FilterField[]>(() => [
   },
 ])
 
-const accreditationTypes: readonly AccreditationTypeCode[] = ALL_ACCREDITATION_TYPE_CODES
-
-const accreditationOptions = accreditationTypes.map((value) => ({
+const accreditationOptions = ALL_ACCREDITATION_TYPE_CODES.map((value) => ({
   value,
   label: accreditationTypeLabel(value),
 }))
@@ -153,8 +151,6 @@ const aggregationOptions = ALL_AGGREGATION_FUNCTION_CODES.map((value) => ({
   value,
   label: AggregationFunctionDescription[value],
 }))
-const statusOptions: readonly ConfirmationStatusCode[] = ALL_CONFIRMATION_STATUS_CODES
-
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
 const editor = reactive<ProfessionAlgorithmProfileSaveRequest>({

@@ -8,6 +8,11 @@ import {
   ExamLayoutBlockTypeCode,
   ExamLayoutBlockTypeOptions,
 } from '@/types/enums/exam-layout-block-type-enum'
+import {
+  ALL_PAPER_MASTER_IDENTITY_AREA_TYPE_CODES,
+  PaperMasterIdentityAreaTypeCode,
+  PaperMasterIdentityAreaTypeOptions,
+} from '@/types/enums/paper-master-identity-area-type-enum'
 import { expectedAnswerBlockTypeForOcrScene } from '@/utils/exam-layout-designer'
 
 const props = defineProps<{
@@ -20,6 +25,7 @@ const emit = defineEmits<{
 }>()
 
 const blockTypeOptions = ExamLayoutBlockTypeOptions
+const identityAreaTypeOptions = PaperMasterIdentityAreaTypeOptions
 
 const questionOptions = computed(() => {
   const questions = (props.document?.questions ?? []).filter((question) => {
@@ -83,7 +89,11 @@ function onBlockTypeChange(
     throw new Error('布局块类型契约异常')
   }
   if (blockType === ExamLayoutBlockTypeCode.IDENTITY_BUBBLE) {
-    patchBlock({ blockType, layoutQuestionId: undefined, identityAreaType: props.block?.identityAreaType || 'STUDENT_NO' })
+    patchBlock({
+      blockType,
+      layoutQuestionId: undefined,
+      identityAreaType: props.block?.identityAreaType || PaperMasterIdentityAreaTypeCode.STUDENT_NO,
+    })
     return
   }
   if (blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
@@ -92,6 +102,20 @@ function onBlockTypeChange(
     return
   }
   patchBlock({ blockType, layoutQuestionId: undefined, identityAreaType: undefined })
+}
+
+function onIdentityAreaTypeChange(
+  value: SelectValue,
+  _option?: DefaultOptionType | DefaultOptionType[],
+): void {
+  if (typeof value !== 'string') {
+    throw new TypeError('身份填涂区类型契约异常')
+  }
+  const areaType = ALL_PAPER_MASTER_IDENTITY_AREA_TYPE_CODES.find((code) => code === value)
+  if (!areaType) {
+    throw new Error('身份填涂区类型契约异常')
+  }
+  patchBlock({ identityAreaType: areaType })
 }
 
 function onLayoutQuestionChange(
@@ -179,10 +203,10 @@ function onLayoutQuestionChange(
         v-if="block.blockType === ExamLayoutBlockTypeCode.IDENTITY_BUBBLE"
         label="身份区类型"
       >
-        <a-input
+        <a-select
           :value="block.identityAreaType"
-          placeholder="如 STUDENT_NO"
-          @change="patchBlock({ identityAreaType: ($event.target as HTMLInputElement).value })"
+          :options="identityAreaTypeOptions"
+          @change="onIdentityAreaTypeChange"
         />
       </a-form-item>
     </a-form>

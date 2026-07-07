@@ -12,6 +12,9 @@
           <UiTag v-if="pendingAbsenceCount > 0" tone="orange" size="sm">
             待确认 {{ pendingAbsenceCount }} 条
           </UiTag>
+          <UiTag v-else-if="unreconciledAbsenceCount > 0" tone="orange" size="sm">
+            未对账 {{ unreconciledAbsenceCount }} 人
+          </UiTag>
           <UiTag v-else-if="reconcileVO" tone="green" size="sm">无缺考阻塞</UiTag>
         </template>
         <template #actions>
@@ -64,6 +67,21 @@
         <template #actions>
           <UiButton variant="primary" size="sm" @click="goScorePublish">
             前往成绩发布
+          </UiButton>
+        </template>
+      </UiAlertStrip>
+
+      <UiAlertStrip
+        v-if="unreconciledAbsenceCount > 0"
+        tone="warning"
+        title="仍有应考学生未完成缺考核对"
+        :description="`当前还有 ${unreconciledAbsenceCount} 名应考学生未对账，仅出勤核对不足以发布成绩，请执行「核对并新建待确认记录」后逐条确认。`"
+        dense
+        class="absence-page__alert"
+      >
+        <template #actions>
+          <UiButton variant="primary" size="sm" :loading="reconciling" @click="handleReconcile(true)">
+            核对并新建待确认记录
           </UiButton>
         </template>
       </UiAlertStrip>
@@ -365,6 +383,7 @@ import {
   SCORE_POLICY_OPTIONS,
 } from '@/apis/mark/absence'
 import { deriveMakeupExam, getExamDetail } from '@/apis/mark/exam'
+import { getScorePanel } from '@/apis/mark/exam-progress'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -410,6 +429,7 @@ const reconcileVO = ref<AttendanceReconcileResponse | null>(null)
 const reconciling = ref(false)
 const pendingAbsenceCount = ref(0)
 const confirmedAbsenceCount = ref(0)
+const unreconciledAbsenceCount = ref(0)
 
 const records = ref<AbsenceRecordResponse[]>([])
 const recordLoading = ref(false)
@@ -612,6 +632,20 @@ async function loadPendingAbsenceCount(): Promise<void> {
   }
 }
 
+async function loadUnreconciledAbsenceCount(): Promise<void> {
+  if (!selectedExamId.value) {
+    unreconciledAbsenceCount.value = 0
+    return
+  }
+  try {
+    const panel = await getScorePanel(selectedExamId.value)
+    unreconciledAbsenceCount.value = Number(panel.riskOverview?.unreconciledAbsenceCount ?? 0)
+  } catch (error) {
+    unreconciledAbsenceCount.value = 0
+    showUserError(error, '缺考对账状态加载失败')
+  }
+}
+
 function goScorePublish(): void {
   if (!selectedExamId.value) {
     return
@@ -659,7 +693,12 @@ async function loadRecords(): Promise<void> {
     recordPagination.pageNum = page.pageNum
     recordPagination.pageSize = page.pageSize
     recordPagination.total = Number(page.total)
-    await Promise.all([loadPendingMakeupTotal(), loadPendingAbsenceCount(), loadAbsenceKpiCounts()])
+    await Promise.all([
+      loadPendingMakeupTotal(),
+      loadPendingAbsenceCount(),
+      loadAbsenceKpiCounts(),
+      loadUnreconciledAbsenceCount(),
+    ])
   } catch (error) {
     showUserError(error, '缺考记录加载失败')
   } finally {
@@ -899,6 +938,7 @@ watch(
     pendingMakeupTotal.value = 0
     pendingAbsenceCount.value = 0
     confirmedAbsenceCount.value = 0
+    unreconciledAbsenceCount.value = 0
     recordPagination.pageNum = 1
     recordPagination.total = 0
     if (value) {

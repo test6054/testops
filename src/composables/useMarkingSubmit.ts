@@ -9,7 +9,9 @@ import type {
 } from '@/apis/mark/marking-organization'
 import type { WholeQuestionForm } from '@/composables/useWholePaperGallery'
 import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   batchSubmitMarkingTasksInChunks,
   precheckMarkingTaskBatch,
@@ -25,7 +27,12 @@ import {
 import { useMarkingRecentSubmit } from '@/composables/useMarkingRecentSubmit'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useTenantMarkingWithdrawPolicy } from '@/composables/useTenantMarkingWithdrawPolicy'
-import { showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import {
+  isMultiResponseSliceConflict,
+  messageIncludesConflictHint,
+  MarkingConflictHint,
+} from '@/utils/marking-workflow-conflict'
 
 export interface UseMarkingSubmitOptions {
   taskId: Ref<string>
@@ -52,6 +59,7 @@ export interface UseMarkingSubmitOptions {
 }
 
 export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
+  const router = useRouter()
   const { refreshSnapshot } = useWorkspaceExamId()
   const { recordSubmit } = useMarkingRecentSubmit()
   const { requireWithdrawWindowMinutes } = useTenantMarkingWithdrawPolicy()
@@ -68,6 +76,26 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   const pendingBatchLayoutQuestionId = ref('')
   const pendingBatchGroupId = ref('')
   const pendingBatchFullScore = ref(0)
+
+  function promptMultiResponseSliceConflict(examId: string, detail: string): void {
+    Modal.warning({
+      title: '无法提交给分',
+      content: `${detail}。请先到扫描监控清理重复作答切片后再提交。`,
+      okText: '前往扫描监控',
+      onOk: () => router.push({
+        name: 'TeacherExamWorkspaceScanMonitor',
+        params: { examId },
+      }),
+    })
+  }
+
+  function handleSubmitFailure(error: unknown, examId: string, fallback: string): void {
+    if (isMultiResponseSliceConflict(error)) {
+      promptMultiResponseSliceConflict(examId, getUserErrorMessage(error, fallback))
+      return
+    }
+    showUserError(error, fallback)
+  }
 
   const rules: Record<string, Rule[]> = {
     score: [
@@ -248,7 +276,12 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       })
       const failed = results.find((item) => item.outcome === 'FAILED')
       if (failed) {
-        message.error(failed.failureMessage ?? '批量提交失败')
+        const failureMessage = failed.failureMessage ?? '批量提交失败'
+        if (messageIncludesConflictHint(failureMessage, MarkingConflictHint.MULTI_RESPONSE_SLICE)) {
+          promptMultiResponseSliceConflict(currentTask.examId, failureMessage)
+          return
+        }
+        message.error(failureMessage)
         return
       }
       const warn = results.find((item) => item.outcome === 'WARN')
@@ -268,7 +301,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       }
       await refreshSnapshot()
     } catch (error) {
-      showUserError(error, '批量应用给分失败')
+      handleSubmitFailure(error, currentTask.examId, '批量应用给分失败')
     } finally {
       batchApplying.value = false
     }
@@ -390,7 +423,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       }
       continueAfterSubmit()
     } catch (error) {
-      showUserError(error, '提交阅卷任务失败')
+      handleSubmitFailure(error, currentTask.examId, '提交阅卷任务失败')
     } finally {
       submitting.value = false
     }

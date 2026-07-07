@@ -102,6 +102,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherArchiveVolumeWorkspace: () => import('@/views/teacher/archive-volume-detail-layout.vue'),
   TeacherArchiveVolumeDetail: () => import('@/views/teacher/archive-volume/archive-volume-detail.vue'),
   TeacherArchiveVolumeCreateOffline: () => import('@/views/teacher/archive-volume/archive-volume-create-offline/archive-volume-create-offline.vue'),
+  TeacherArchiveVolumeCreateSupplement: () => import('@/views/teacher/archive-volume/archive-volume-create-supplement/archive-volume-create-supplement.vue'),
   TeacherArchiveVolumeStatistics: () => import('@/views/teacher/archive-volume/archive-volume-statistics.vue'),
   TeacherArchiveVolumeEvalCampaign: () => import('@/views/teacher/archive-volume/archive-volume-eval-campaign.vue'),
   TeacherArchiveVolumeReadinessMatrix: () => import('@/views/teacher/archive-volume/archive-volume-readiness-matrix.vue'),

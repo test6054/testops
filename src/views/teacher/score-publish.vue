@@ -61,6 +61,36 @@
         </template>
       </UiAlertStrip>
 
+      <UiAlertStrip
+        v-if="publishRiskBlocked"
+        tone="warning"
+        title="仍有成绩风险未复核"
+        :description="`当前有 ${finalScoreOverview?.blockedCount ?? 0} 项成绩风险未处置，须先在成绩确认页完成集中复核后再发布。`"
+        dense
+        class="score-publish__alert"
+      >
+        <template #actions>
+          <UiButton variant="primary" size="sm" @click="goScoreConfirm">
+            前往成绩确认复核
+          </UiButton>
+        </template>
+      </UiAlertStrip>
+
+      <UiAlertStrip
+        v-if="correctedRepublishNotice"
+        tone="warning"
+        title="存在已更正未重发布成绩"
+        :description="correctedRepublishNotice"
+        dense
+        class="score-publish__alert"
+      >
+        <template #actions>
+          <UiButton variant="primary" size="sm" @click="filterCorrectedOnly">
+            仅看已更正
+          </UiButton>
+        </template>
+      </UiAlertStrip>
+
       <ScoreWorkbenchAnalyticsSection
         :panel="scorePanel"
         :loading="finalScoreOverviewLoading"
@@ -488,6 +518,21 @@ const showIncompleteClassChip = computed(() =>
   (examArchiveGate.value?.unpublishedBoundPaperCount ?? 0) > 0,
 )
 
+const correctedRepublishNotice = computed(() => {
+  const count = finalScoreOverview.value?.correctedCount ?? 0
+  if (count <= 0) {
+    return null
+  }
+  return `有 ${count} 名考生成绩处于「已更正」状态，学生端不可见。请筛选后逐份重新发布。`
+})
+
+function filterCorrectedOnly(): void {
+  scoreFilterForm.statusFilter = 'CORRECTED'
+  scoreFilterForm.unpublishedBoundOnly = false
+  pagination.current = 1
+  void loadCandidates()
+}
+
 const router = useRouter()
 const { goScoreConfirm, goExportTasks } = useScoreReleaseNavigation()
 const gateBannerRef = ref<InstanceType<typeof ExamArchiveGateBanner> | null>(null)
@@ -692,6 +737,11 @@ const publishableOverviewCount = computed(() => {
   const overview = finalScoreOverview.value
   if (!overview) return 0
   return overview.confirmedCount + overview.withdrawnCount + overview.correctedCount
+})
+
+const publishRiskBlocked = computed(() => {
+  const overview = finalScoreOverview.value
+  return Boolean(overview && !overview.readyToPublish && (overview.blockedCount ?? 0) > 0)
 })
 
 const bulkModalStatItems = computed(() => {
