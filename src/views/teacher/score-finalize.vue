@@ -566,6 +566,7 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { useScorePublishPreconditions } from '@/composables/useScorePublishPreconditions'
 import { useScoreReleaseNavigation } from '@/composables/useScoreReleaseNavigation'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
@@ -657,6 +658,13 @@ const loading = ref(false)
 const riskOverview = ref<FinalScoreRiskOverviewResponse | null>(null)
 const scorePanel = ref<ExamWorkbenchScorePanelResponse | null>(null)
 const riskOverviewLoading = ref(false)
+
+const { ensureScorePublishPreconditions } = useScorePublishPreconditions({
+  examId: selectedExamId,
+  riskOverview,
+  scorePanel,
+})
+
 const batchConfirming = ref(false)
 const riskReviewDrawerOpen = ref(false)
 const riskReviewSavingReasonCode = ref<FinalScoreRiskReasonCode | null>(null)
@@ -1430,6 +1438,14 @@ async function handleConfirm(): Promise<void> {
       dailyScore: hasDailyScoreConfig.value ? confirmDailyScore.value ?? undefined : undefined,
     })
     if (confirmAndPublish.value) {
+      const canContinue = await ensureScorePublishPreconditions()
+      if (!canContinue) {
+        message.success('成绩已确认，发布前请先完成缺考核对或风险处置')
+        confirmOpen.value = false
+        await refreshAfterScoreWrite()
+        deriveNextStepSuggestion()
+        return
+      }
       await publishFinalScore({ examId, paperInstanceId })
       message.success('成绩已确认并发布，学生通知已下发')
     } else {
@@ -1449,6 +1465,10 @@ async function handleConfirm(): Promise<void> {
 async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
   if (warnUnreviewedBlockingRisks()) return
+  const canContinue = await ensureScorePublishPreconditions()
+  if (!canContinue) {
+    return
+  }
   try {
     await publishFinalScore({
       examId: selectedExamId.value,

@@ -373,6 +373,10 @@ async function pollDetectStatus(detectTaskId: string, session: number): Promise<
       throw new Error(status.errorMessage || '自动预划区失败')
     }
     if (taskStatus === ExamLayoutDetectTaskStatusCode.CANCELLED) {
+      if (session === detectSessionSeq) {
+        message.info('识别任务已结束，未保存本次识别结果，可重新上传源文件并识别')
+        await reload()
+      }
       return
     }
     await new Promise((resolve) => {

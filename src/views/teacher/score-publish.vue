@@ -328,7 +328,7 @@
       :width="720"
       :mask-closable="!bulkRunning"
       :closable="!bulkRunning"
-      hide-footer
+      :hide-footer="false"
       @update:open="(v: boolean) => { if (!bulkRunning) bulkOpen = v }"
       @close="bulkOpen = false"
     >
@@ -357,25 +357,25 @@
       <a-list
         v-if="bulkResult?.failures.length"
         size="small"
-        :data-source="bulkResult.failures"
         class="score-publish__bulk-list"
       >
-        <template #renderItem="{ item, index }">
-          <a-list-item>
-            <a-list-item-meta>
-              <template #title>
-                试卷实例 {{ item.paperInstanceId }}
-              </template>
-              <template #description>
-                <UiTag tone="red" size="sm" class="score-publish__bulk-error-tag">
-                  {{ item.code }}
-                </UiTag>
-                {{ item.message }}
-              </template>
-            </a-list-item-meta>
-            <UiTag tone="red" size="sm">失败 {{ index + 1 }}</UiTag>
-          </a-list-item>
-        </template>
+        <a-list-item
+          v-for="(item, index) in bulkResult.failures"
+          :key="item.paperInstanceId"
+        >
+          <a-list-item-meta>
+            <template #title>
+              试卷实例 {{ item.paperInstanceId }}
+            </template>
+            <template #description>
+              <UiTag tone="red" size="sm" class="score-publish__bulk-error-tag">
+                {{ item.code }}
+              </UiTag>
+              {{ item.message }}
+            </template>
+          </a-list-item-meta>
+          <UiTag tone="red" size="sm">失败 {{ index + 1 }}</UiTag>
+        </a-list-item>
       </a-list>
       <template #footer>
         <UiButton variant="outline" size="md" :disabled="bulkRunning" @click="bulkOpen = false">
@@ -413,7 +413,6 @@ import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { AbsenceStatusCode, listAbsenceRecords } from '@/apis/mark/absence'
 import {
   getExamDetail,
 } from '@/apis/mark/exam'
@@ -452,6 +451,7 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { useScorePublishPreconditions } from '@/composables/useScorePublishPreconditions'
 import { useScoreReleaseNavigation } from '@/composables/useScoreReleaseNavigation'
 import { showUserError } from '@/utils/error-handler'
 import { buildExamScoreSummaryTableColumns } from '@/utils/exam-score-summary-table-columns'
@@ -600,17 +600,6 @@ function goExamListForClose(): void {
   void router.push({ name: 'TeacherExamList' })
 }
 
-function goAbsenceConfirm(): void {
-  const examId = selectedExamId.value
-  if (!examId) {
-    return
-  }
-  void router.push({
-    name: 'TeacherExamWorkspaceScoreAbsence',
-    params: { examId },
-  })
-}
-
 const { selectedExamId } = useMarkExamContext()
 const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('成绩发布')
 const { refreshSnapshot } = useWorkspaceExamId()
@@ -638,10 +627,20 @@ const columns = computed(() =>
 // ─── 数据加载（服务端分页） ─────────────────────────────
 const candidates = ref<ExamScoreSummaryItemResponse[]>([])
 const loading = ref(false)
-const pendingAbsenceCount = ref(0)
 const finalScoreOverview = ref<FinalScoreRiskOverviewResponse | null>(null)
 const scorePanel = ref<ExamWorkbenchScorePanelResponse | null>(null)
 const finalScoreOverviewLoading = ref(false)
+
+const {
+  pendingAbsenceCount,
+  refreshPendingAbsenceCount,
+  ensureScorePublishPreconditions,
+  goToAbsenceConfirm: goAbsenceConfirm,
+} = useScorePublishPreconditions({
+  examId: selectedExamId,
+  riskOverview: finalScoreOverview,
+  scorePanel,
+})
 
 const pagination = reactive<TablePaginationConfig>({
   current: 1,
@@ -697,70 +696,6 @@ async function loadFinalScoreOverview(): Promise<void> {
   } finally {
     finalScoreOverviewLoading.value = false
   }
-}
-
-async function loadPendingAbsenceCount(): Promise<void> {
-  if (!selectedExamId.value) {
-    pendingAbsenceCount.value = 0
-    return
-  }
-  try {
-    const result = await listAbsenceRecords({
-      examId: selectedExamId.value,
-      absenceStatus: AbsenceStatusCode.PENDING,
-      pageNum: 1,
-      pageSize: 1,
-    })
-    pendingAbsenceCount.value = Number(result.total)
-  } catch (error) {
-    pendingAbsenceCount.value = 0
-    showUserError(error, '待确认缺考记录查询失败')
-  }
-}
-
-function goToAbsenceConfirm(): void {
-  if (!selectedExamId.value) {
-    return
-  }
-  void router.push({
-    name: 'TeacherExamWorkspaceScoreAbsence',
-    params: { examId: selectedExamId.value },
-  })
-}
-
-async function ensureNoPendingAbsenceBeforePublish(): Promise<boolean> {
-  if (!selectedExamId.value) {
-    return false
-  }
-  await loadPendingAbsenceCount()
-  if (pendingAbsenceCount.value > 0) {
-    message.warning(
-      `当前考试仍有 ${pendingAbsenceCount.value} 条待确认缺考记录，请先完成核对后再发布成绩`,
-    )
-    goToAbsenceConfirm()
-    return false
-  }
-  const overview = finalScoreOverview.value
-  if (overview && overview.unreconciledAbsenceCount > 0) {
-    message.warning(
-      `仍有 ${overview.unreconciledAbsenceCount} 名应考学生未完成缺考核对，请先完成缺考 reconcile 后再发布`,
-    )
-    goToAbsenceConfirm()
-    return false
-  }
-  if (overview && !overview.readyToPublish && overview.blockedCount > 0) {
-    message.warning(`仍有 ${overview.blockedCount} 项成绩风险未处置，请先完成确认或风险复核后再发布`)
-    return false
-  }
-  const panel = scorePanel.value
-  if (panel && !panel.manualFinalScoreConfirmRequired && panel.blockedDelayedFinalScoreConfirmCount > 0) {
-    message.warning(
-      `仍有 ${panel.blockedDelayedFinalScoreConfirmCount} 份答卷延迟自动确认失败，请先在成绩确认页逐份确认后再发布`,
-    )
-    goScoreConfirm()
-    return false
-  }
-  return true
 }
 
 function handleSearch(): void {
@@ -839,7 +774,7 @@ function openBulkPublishModal(): void {
   }
   void (async () => {
     await loadFinalScoreOverview()
-    const canContinue = await ensureNoPendingAbsenceBeforePublish()
+    const canContinue = await ensureScorePublishPreconditions()
     if (!canContinue) {
       return
     }
@@ -851,7 +786,7 @@ function openBulkPublishModal(): void {
 /** 调用后端全场发布入口，避免前端用当前分页候选误当全场候选。 */
 async function runBulkPublish(): Promise<void> {
   if (!selectedExamId.value || bulkRunning.value) return
-  const canContinue = await ensureNoPendingAbsenceBeforePublish()
+  const canContinue = await ensureScorePublishPreconditions()
   if (!canContinue) {
     bulkOpen.value = false
     return
@@ -920,7 +855,7 @@ function canWithdraw(record: ExamScoreSummaryItemResponse): boolean {
 
 async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
-  const canContinue = await ensureNoPendingAbsenceBeforePublish()
+  const canContinue = await ensureScorePublishPreconditions()
   if (!canContinue) {
     return
   }
@@ -1024,7 +959,7 @@ watch(selectedExamId, (value) => {
     void Promise.all([
       loadExamDetail(),
       loadCandidates(),
-      loadPendingAbsenceCount(),
+      refreshPendingAbsenceCount(),
       loadFinalScoreOverview(),
     ])
   } else {
