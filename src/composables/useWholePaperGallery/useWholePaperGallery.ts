@@ -83,6 +83,7 @@ export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseW
   const wholePageViewportHeight = ref(900)
   const currentWholePageIndex = ref(0)
   let wholePageImageLoadBatch = 0
+  let wholePageViewGeneration = 0
 
   const visibleWholePageRange = computed(() => {
     if (wholePages.value.length === 0) return { start: 0, end: -1 }
@@ -238,10 +239,14 @@ export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseW
     if (!examId || !taskId) {
       return
     }
+    const generation = ++wholePageViewGeneration
     wholePagesLoading.value = true
     wholePagesError.value = null
     try {
       const view = await getWholePaperView({ examId, taskId })
+      if (generation !== wholePageViewGeneration) {
+        return
+      }
       wholePages.value = view.pages
       wholeQuestions.value = view.questions
       currentWholePageIndex.value = 0
@@ -255,10 +260,15 @@ export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseW
         void preloadWholePageImagesForWindow()
       })
     } catch (error) {
+      if (generation !== wholePageViewGeneration) {
+        return
+      }
       wholePagesError.value = toUserError(error, '阅卷影像加载失败')
       showUserError(error, '影像工作区加载失败')
     } finally {
-      wholePagesLoading.value = false
+      if (generation === wholePageViewGeneration) {
+        wholePagesLoading.value = false
+      }
     }
   }
 
@@ -328,6 +338,7 @@ export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseW
   }
 
   function resetWholePaperState(): void {
+    wholePageViewGeneration++
     releaseWholePageImages()
     wholePages.value = []
     wholeQuestions.value = []

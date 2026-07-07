@@ -183,6 +183,9 @@ const isSourceFileLayout = computed(
   () => document.value?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE,
 )
 
+/** 识别进行中与后端写锁同时禁止画布编辑，避免与 Worker 落库竞态。 */
+const layoutCanvasReadonly = computed(() => !layoutWritable.value || detecting.value)
+
 const layoutRoiStats = computed(() => computeLayoutRoiStats(document.value))
 
 const identitySetupPending = computed(
@@ -198,6 +201,9 @@ const pageLoading = computed(
 const saveBlockingReasons = computed(() => validateLayoutDocumentForSave(document.value))
 const previewDisabled = computed(() => {
   if (!materialLayoutMode.value || !document.value) {
+    return true
+  }
+  if (detecting.value) {
     return true
   }
   return saveBlockingReasons.value.length > 0
@@ -266,7 +272,7 @@ async function reload(): Promise<void> {
 }
 
 async function handleSave(): Promise<void> {
-  if (!document.value || !examId.value || !layoutWritable.value) {
+  if (!document.value || !examId.value || !layoutWritable.value || detecting.value) {
     return
   }
   if (saveBlockingReasons.value.length > 0) {
@@ -292,6 +298,10 @@ async function handlePreview(): Promise<void> {
   if (!examId.value || !document.value) {
     return
   }
+  if (detecting.value) {
+    message.warning('识别进行中，请等待完成后再预览')
+    return
+  }
   if (saveBlockingReasons.value.length > 0) {
     message.warning(saveBlockingReasons.value[0])
     return
@@ -315,7 +325,7 @@ async function handleGenerateSheet(
   paperSpec: string,
   questions: ExamLayoutGenerateQuestionRequest[],
 ): Promise<void> {
-  if (!examId.value || !layoutWritable.value) {
+  if (!examId.value || !layoutWritable.value || detecting.value) {
     return
   }
   generating.value = true
@@ -533,11 +543,14 @@ function handleBlockFocusFromOutline(block: ExamLayoutBlockDto | null, pageNo: n
 }
 
 function handleDocumentPatch(next: ExamLayoutDocument): void {
+  if (layoutCanvasReadonly.value) {
+    return
+  }
   document.value = next
 }
 
 function handleAddIdentityBlock(block: ExamLayoutBlockDto): void {
-  if (!document.value || !layoutWritable.value) {
+  if (!document.value || layoutCanvasReadonly.value) {
     return
   }
   handleDocumentPatch({
@@ -623,7 +636,7 @@ onBeforeUnmount(() => {
           <UiButton
             variant="primary"
             :loading="saving"
-            :disabled="!layoutWritable || saveBlockingReasons.length > 0"
+            :disabled="!layoutWritable || detecting || saveBlockingReasons.length > 0"
             @click="handleSave"
           >
             保存设计
@@ -690,7 +703,7 @@ onBeforeUnmount(() => {
         v-if="!detecting && identitySetupPending"
         :document="document"
         :detecting="detecting"
-        :readonly="!layoutWritable"
+        :readonly="layoutCanvasReadonly"
         class="layout-designer-lock-banner"
         @add-identity-block="handleAddIdentityBlock"
         @focus-layers="handleFocusIdentityLayers"
@@ -743,7 +756,7 @@ onBeforeUnmount(() => {
               :layout-paper-spec-message="layoutPaperLabel"
               :generating="generating"
               :detecting="detecting"
-              :readonly="!layoutWritable"
+              :readonly="layoutCanvasReadonly"
               @generate-sheet="handleGenerateSheet"
               @auto-detect="handleAutoDetect"
               @patch="handleDocumentPatch"
@@ -835,7 +848,7 @@ onBeforeUnmount(() => {
       :exam-id="examId"
       :document="document"
       :page-no="currentPageNo"
-      :readonly="!layoutWritable"
+      :readonly="layoutCanvasReadonly"
       @patch="handleDocumentPatch"
       @saved="handleReviewSaved"
     />

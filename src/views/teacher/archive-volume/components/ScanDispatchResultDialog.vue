@@ -45,6 +45,7 @@ const emit = defineEmits<{
 const cancelling = ref(false)
 const downloading = ref(false)
 const pendingTickets = ref<ScanDispatchResultPayload[]>([])
+let pendingTicketsLoadGeneration = 0
 
 const previewUrl = computed(() =>
   props.payload?.kioskUrl ? appendUrlQueryParam(props.payload.kioskUrl, 'mode', 'preview') : '',
@@ -72,6 +73,7 @@ watch(
 )
 
 async function loadPendingTickets() {
+  const generation = ++pendingTicketsLoadGeneration
   try {
     const page = await pageScanDispatchTickets({
       pageNum: 1,
@@ -84,6 +86,9 @@ async function loadPendingTickets() {
         ScanDispatchTicketStatusCode.SUSPENDED,
       ],
     })
+    if (generation !== pendingTicketsLoadGeneration) {
+      return
+    }
     const items = page.list
     pendingTickets.value = items
       .filter((item) => item.ticketId)
@@ -113,8 +118,12 @@ async function loadPendingTickets() {
         gapTaskId: item.portfolioSnapshot?.gapTaskId,
       }))
   }
-  catch {
+  catch (error) {
+    if (generation !== pendingTicketsLoadGeneration) {
+      return
+    }
     pendingTickets.value = []
+    showUserError(error, '进行中派单列表加载失败')
   }
 }
 

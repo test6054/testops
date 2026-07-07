@@ -46,6 +46,9 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
   const detail = ref<ArchiveVolumeDetailResponse | null>(null)
   const loading = ref(true)
   const activeTab = ref<string>('materials')
+  let loadDetailGeneration = 0
+  let silentRefreshFailureCount = 0
+  const SILENT_REFRESH_FAILURE_THRESHOLD = 2
 
   const navigationChainSteps = computed(() => detail.value?.navigationSummary?.chainSteps ?? [])
   const navigationFlowChainSteps = computed(
@@ -121,21 +124,37 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
       loading.value = false
       return
     }
+    const loadGeneration = ++loadDetailGeneration
     if (!options?.silent) {
       loading.value = true
     }
     try {
-      detail.value = await getArchiveVolumeDetail(volumeId.value)
+      const nextDetail = await getArchiveVolumeDetail(volumeId.value)
+      if (loadGeneration !== loadDetailGeneration) {
+        return
+      }
+      detail.value = nextDetail
+      silentRefreshFailureCount = 0
       syncActiveTabFromNavigation({ preserveUserTab: options?.silent === true })
     }
     catch (error) {
+      if (loadGeneration !== loadDetailGeneration) {
+        return
+      }
       if (!options?.silent) {
         showUserError(error, getUserErrorMessage(error, '加载归档卷详情失败'))
         detail.value = null
+      } else {
+        silentRefreshFailureCount += 1
+        if (silentRefreshFailureCount >= SILENT_REFRESH_FAILURE_THRESHOLD) {
+          showUserError(error, getUserErrorMessage(error, '归档卷材料状态刷新失败'))
+        }
       }
     }
     finally {
-      loading.value = false
+      if (loadGeneration === loadDetailGeneration) {
+        loading.value = false
+      }
     }
   }
 

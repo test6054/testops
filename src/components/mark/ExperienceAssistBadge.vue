@@ -8,7 +8,7 @@
     :title="clickable ? '查看 AI 历史并定位本次定标引用' : undefined"
     @click="handleClick"
   >
-    参考定标经验 · {{ sourceExamName }}<template v-if="consistencyLabel"> · 一致率 {{ consistencyLabel }}</template>
+    参考定标经验<template v-if="displaySourceExamName"> · {{ displaySourceExamName }}</template><template v-if="consistencyLabel"> · 一致率 {{ consistencyLabel }}</template>
   </UiTag>
 </template>
 
@@ -29,7 +29,11 @@ const emit = defineEmits<{
   (e: 'open-ai-history'): void
 }>()
 
-const visible = computed(() => Boolean(props.applied && props.sourceExamName))
+const visible = computed(() => Boolean(props.applied))
+
+const displaySourceExamName = computed(() =>
+  props.sourceExamName?.trim() || (props.applied ? '来源考试待补录' : ''),
+)
 
 const consistencyLabel = computed(() => {
   if (props.consistencyRate == null) return ''

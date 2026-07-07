@@ -46,6 +46,7 @@ export interface UseMarkingSubmitOptions {
   nextTaskId: Ref<string>
   goToTask: (targetTaskId: string) => void
   loadTask: () => Promise<void>
+  ensureBatchLoaded: (examId: string) => Promise<void>
   tenantId: Ref<string>
   form: { score?: number, annotationNote?: string }
   wholeQuestions: Ref<QuestionMarkingGroupQuestionResponse[]>
@@ -416,6 +417,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       })
       options.onSubmitSuccess?.({ taskId: currentTask.id, score })
       await refreshSnapshot()
+      await options.ensureBatchLoaded(currentTask.examId)
       const remainingTasks = resolveSameQuestionRemainingTasks(currentTask)
       if (remainingTasks.length > 0 && !options.usesWholePaperWorkspace.value) {
         openApplyModalIfNeeded(currentTask, score, remainingTasks)

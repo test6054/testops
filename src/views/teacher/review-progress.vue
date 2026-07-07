@@ -482,6 +482,15 @@ const contextProgress = computed(
 watch(
   contextProgress,
   (value) => {
+    const examId = selectedExamId.value
+    if (!examId) {
+      progress.value = null
+      return
+    }
+    const contextExamId = workbenchContext?.examId?.value ?? workbenchContext?.snapshot.value?.examId
+    if (contextExamId && String(contextExamId) !== String(examId)) {
+      return
+    }
     progress.value = value
   },
   { immediate: true },

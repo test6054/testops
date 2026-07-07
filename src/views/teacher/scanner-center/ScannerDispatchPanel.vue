@@ -77,6 +77,9 @@ const tickets = ref<ScanDispatchTicketVO[]>([])
 const queueSummary = ref<Awaited<ReturnType<typeof loadScanDispatchQueueSummary>> | null>(null)
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
 const queueFilter = ref<DispatchQueueStatusFilterCode>(DispatchQueueStatusFilterCode.ALL)
+/** 丢弃过期派单列表/概览请求，避免快切队列或并发刷新覆盖。 */
+let ticketsLoadGeneration = 0
+let summaryLoadGeneration = 0
 
 interface DispatchFilters {
   status?: ScanDispatchTicketStatusCode
@@ -301,20 +304,31 @@ function contextVolumeId(record: ScanDispatchTicketVO) {
 }
 
 async function loadSummary() {
+  const generation = ++summaryLoadGeneration
   summaryLoading.value = true
   try {
-    queueSummary.value = await loadScanDispatchQueueSummary()
+    const summary = await loadScanDispatchQueueSummary()
+    if (generation !== summaryLoadGeneration) {
+      return
+    }
+    queueSummary.value = summary
   }
   catch (error) {
+    if (generation !== summaryLoadGeneration) {
+      return
+    }
     queueSummary.value = null
     showUserError(error, '派单队列概览加载失败')
   }
   finally {
-    summaryLoading.value = false
+    if (generation === summaryLoadGeneration) {
+      summaryLoading.value = false
+    }
   }
 }
 
 async function loadTickets() {
+  const generation = ++ticketsLoadGeneration
   loading.value = true
   try {
     const filter = queueFilter.value
@@ -329,16 +343,24 @@ async function loadTickets() {
         ? true
         : undefined,
     })
+    if (generation !== ticketsLoadGeneration) {
+      return
+    }
     tickets.value = result.list
     pagination.total = Number(result.total)
   }
   catch (error) {
+    if (generation !== ticketsLoadGeneration) {
+      return
+    }
     tickets.value = []
     pagination.total = 0
     showUserError(error, '派单列表加载失败')
   }
   finally {
-    loading.value = false
+    if (generation === ticketsLoadGeneration) {
+      loading.value = false
+    }
   }
 }
 

@@ -676,6 +676,7 @@ import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
 import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { readAllPages } from '@/utils/page-result'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import mittBus from '@/utils/mitt'
 import { toSignalMetrics } from '@/utils/stat-metric-helpers'
@@ -751,7 +752,8 @@ const scannerDevicesLoading = ref(false)
 const scanMonitorPanel = ref<ExamWorkbenchScanMonitorPanelResponse | null>(null)
 const scanMonitorPanelLoadFailed = ref(false)
 const SCANNER_DEVICE_POLL_INTERVAL_MS = 60_000
-let scannerDevicePollTimer: ReturnType<typeof setInterval> | null = null
+const ATTENTION_FALLBACK_POLL_INTERVAL_MS = 15_000
+let monitorFallbackPollTimer: ReturnType<typeof setInterval> | null = null
 
 const connectedDevices = computed(() => scannerDevices.value.filter(isScannerDeviceOnline))
 
@@ -1085,7 +1087,7 @@ function scheduleMonitorBatchReload(): void {
     void loadConnectedScannerDevices()
     if (activeTab.value === 'normal') {
       void loadMonitorBatches()
-    } else if (activeTab.value === 'abnormal') {
+    } else if (activeTab.value === 'abnormal' || activeTab.value === 'duplicate') {
       void loadAttentions()
     }
   }, 800)
@@ -1308,20 +1310,39 @@ async function loadConnectedScannerDevices(): Promise<void> {
   }
 }
 
-function startScannerDevicePolling(): void {
-  stopScannerDevicePolling()
-  scannerDevicePollTimer = setInterval(() => {
-    if (!selectedExamId.value || activeTab.value !== 'normal') {
-      return
-    }
-    void loadConnectedScannerDevices()
-  }, SCANNER_DEVICE_POLL_INTERVAL_MS)
+function isScanLiveStreamReady(): boolean {
+  return scanLiveStream.connectionPhase.value === 'ready' && scanLiveStream.ready.value
 }
 
-function stopScannerDevicePolling(): void {
-  if (scannerDevicePollTimer) {
-    clearInterval(scannerDevicePollTimer)
-    scannerDevicePollTimer = null
+function isAttentionMonitorTab(): boolean {
+  return activeTab.value === 'abnormal' || activeTab.value === 'duplicate'
+}
+
+function tickMonitorFallbackPoll(): void {
+  if (!selectedExamId.value) {
+    return
+  }
+  if (activeTab.value === 'normal') {
+    void loadConnectedScannerDevices()
+    return
+  }
+  if (isAttentionMonitorTab() && !isScanLiveStreamReady()) {
+    void loadAttentions()
+  }
+}
+
+function startMonitorFallbackPolling(): void {
+  stopMonitorFallbackPolling()
+  const intervalMs = activeTab.value === 'normal'
+    ? SCANNER_DEVICE_POLL_INTERVAL_MS
+    : ATTENTION_FALLBACK_POLL_INTERVAL_MS
+  monitorFallbackPollTimer = setInterval(tickMonitorFallbackPoll, intervalMs)
+}
+
+function stopMonitorFallbackPolling(): void {
+  if (monitorFallbackPollTimer) {
+    clearInterval(monitorFallbackPollTimer)
+    monitorFallbackPollTimer = null
   }
 }
 
@@ -1437,7 +1458,10 @@ async function loadAttentionCounters(): Promise<void> {
   duplicateAttentionTotal.value = Number(duplicateResult.total)
 }
 
+let attentionLoadGeneration = 0
+
 async function loadAttentionPage(queryGroup: ScanAttentionQueryGroupCode): Promise<void> {
+  const loadGeneration = ++attentionLoadGeneration
   const examId = selectedExamId.value
   if (!examId) {
     attentions.value = []
@@ -1453,6 +1477,9 @@ async function loadAttentionPage(queryGroup: ScanAttentionQueryGroupCode): Promi
     scanBatchId: filterForm.scanBatchId?.trim() || undefined,
     paperInstanceId: filterForm.paperInstanceId?.trim() || undefined,
   })
+  if (loadGeneration !== attentionLoadGeneration) {
+    return
+  }
   const total = Number(result.total)
   const rows = result.list
   if (rows.length === 0 && total > 0 && attentionPagination.current > 1) {
@@ -1492,14 +1519,16 @@ async function loadScanBatches(keyword = scanBatchKeyword.value): Promise<void> 
   const normalizedKeyword = keyword.trim()
   scanBatchesLoading.value = true
   try {
-    const result = await pageScannerBatches({
-      examId,
-      pageNum: 1,
-      pageSize: SCAN_BATCH_FILTER_PAGE_SIZE,
-      keyword: normalizedKeyword || undefined,
-      includeDiscarded: false,
-    })
-    scanBatches.value = result.list
+    scanBatches.value = await readAllPages(
+      (pageNum) => pageScannerBatches({
+        examId,
+        pageNum,
+        pageSize: SCAN_BATCH_FILTER_PAGE_SIZE,
+        keyword: normalizedKeyword || undefined,
+        includeDiscarded: false,
+      }),
+      '扫描批次加载失败',
+    )
   } catch (error) {
     scanBatches.value = []
     showUserError(error, '扫描批次加载失败')
@@ -1517,13 +1546,16 @@ async function loadPaperCandidates(keyword = paperCandidateKeyword.value): Promi
   const normalizedKeyword = keyword.trim()
   paperCandidatesLoading.value = true
   try {
-    const result = await pageExamScoreSummary({
-      examId,
-      pageNum: 1,
-      pageSize: PAPER_CANDIDATE_FILTER_PAGE_SIZE,
-      keyword: normalizedKeyword || undefined,
-    })
-    paperCandidates.value = result.list
+    const list = await readAllPages(
+      (pageNum) => pageExamScoreSummary({
+        examId,
+        pageNum,
+        pageSize: PAPER_CANDIDATE_FILTER_PAGE_SIZE,
+        keyword: normalizedKeyword || undefined,
+      }),
+      '答卷筛选加载失败',
+    )
+    paperCandidates.value = list
       .filter((item) => item.paperInstanceId)
   } catch (error) {
     paperCandidates.value = []
@@ -2220,13 +2252,13 @@ watch(selectedExamId, (value) => {
     void loadPaperCandidates()
     void loadAttentions()
     void loadConnectedScannerDevices()
-    startScannerDevicePolling()
+    startMonitorFallbackPolling()
     void scanLiveStream.start()
     if (activeTab.value === 'normal') {
       void loadMonitorBatches()
     }
   } else {
-    stopScannerDevicePolling()
+    stopMonitorFallbackPolling()
     scanLiveStream.stop()
     scannerDevices.value = []
     attentions.value = []
@@ -2249,14 +2281,30 @@ watch(activeTab, (value) => {
     filterForm.attentionType = ''
   }
   if (value === 'normal') {
-    startScannerDevicePolling()
+    startMonitorFallbackPolling()
     void loadConnectedScannerDevices()
     void loadMonitorBatches()
     return
   }
-  stopScannerDevicePolling()
+  startMonitorFallbackPolling()
   void loadAttentions()
+  if (!isScanLiveStreamReady()) {
+    tickMonitorFallbackPoll()
+  }
 })
+
+watch(
+  () => scanLiveStream.connectionPhase.value,
+  () => {
+    if (!selectedExamId.value || !isAttentionMonitorTab()) {
+      return
+    }
+    startMonitorFallbackPolling()
+    if (!isScanLiveStreamReady()) {
+      tickMonitorFallbackPoll()
+    }
+  },
+)
 
 watch(bindDrawerOpen, (open) => {
   if (!open) {
@@ -2289,7 +2337,7 @@ watch(
 
 onBeforeUnmount(() => {
   mittBus.off('scan-workbench:refresh', onWorkbenchRefresh)
-  stopScannerDevicePolling()
+  stopMonitorFallbackPolling()
   scanLiveStream.stop()
   if (monitorBatchReloadTimer) {
     clearTimeout(monitorBatchReloadTimer)

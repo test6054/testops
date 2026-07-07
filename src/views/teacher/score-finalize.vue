@@ -20,7 +20,7 @@
             v-if="riskOverview?.readyToPublish"
             variant="outline"
             size="sm"
-            @click="goScorePublish"
+            @click="handleGoScorePublish"
           >
             前往成绩发布
           </UiButton>
@@ -93,7 +93,7 @@
         class="score-finalize__alert"
       >
         <template #actions>
-          <UiButton variant="primary" size="sm" @click="goScorePublish">
+          <UiButton variant="primary" size="sm" @click="handleGoScorePublish">
             前往成绩发布
           </UiButton>
         </template>
@@ -647,8 +647,9 @@ async function loadExamDetail(): Promise<void> {
   }
   try {
     examDetail.value = await getExamDetail(selectedExamId.value)
-  } catch {
+  } catch (error) {
     examDetail.value = null
+    showUserError(error, '考试详情加载失败')
   }
 }
 
@@ -1418,6 +1419,14 @@ function handleNextStepConfirmContinue(): void {
 
 function handleNextStepGoPublish(): void {
   closeNextStep()
+  void handleGoScorePublish()
+}
+
+async function handleGoScorePublish(): Promise<void> {
+  const canContinue = await ensureScorePublishPreconditions()
+  if (!canContinue) {
+    return
+  }
   goScorePublish()
 }
 
