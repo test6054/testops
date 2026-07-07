@@ -6,6 +6,7 @@ import type {
   ReportSaveRequest,
   ReportVO,
 } from '@/apis/quality/report'
+import { reportApi } from '@/apis/quality/report'
 /**
  * 质量评价 - 报告生成与确认台
  *
@@ -15,7 +16,7 @@ import type {
  * 3. SUBMITTED / CONFIRMED / ARCHIVED 状态可触发 Word / PDF / Excel 异步三格式导出
  * 4. 导出 exportStatus IDLE -> PENDING -> PROCESSING -> COMPLETED / FAILED，前端轮询 5s/次。
  */
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
   SignalMetric,
@@ -28,7 +29,6 @@ import { message } from 'ant-design-vue'
 import Modal from 'ant-design-vue/es/modal'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
-import { reportApi } from '@/apis/quality/report'
 import {
   ALL_REPORT_STATUS_CODES,
   ALL_REPORT_TYPE_CODES,
@@ -55,7 +55,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import AuditTimelineDrawer from '@/components/workbench/AuditTimelineDrawer.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageRail from '@/components/workbench/StageRail.vue'
@@ -152,14 +152,13 @@ const detailVisible = ref(false)
 const detailRecord = ref<ReportVO | null>(null)
 const detailLoading = ref(false)
 
-const reportTypeOptions: Array<{ value: ReportTypeCode, label: string }> = ALL_REPORT_TYPE_CODES.map(
-  (value) => ({
+const reportTypeOptions: Array<{ value: ReportTypeCode; label: string }> =
+  ALL_REPORT_TYPE_CODES.map((value) => ({
     value,
     label: ReportTypeDescription[value],
-  }),
-)
-const statusOptions: Array<{ value: ReportStatusCode, label: string }>
-  = ALL_REPORT_STATUS_CODES.map((value) => ({
+  }))
+const statusOptions: Array<{ value: ReportStatusCode; label: string }> =
+  ALL_REPORT_STATUS_CODES.map((value) => ({
     value,
     label: strictEnumLabel(ReportStatusDescription, value, '报告状态'),
   }))
@@ -275,7 +274,7 @@ useQualityScopedLoader(handleScopeChange, {
   reloadOnActivated: false,
 })
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -488,8 +487,8 @@ function reportTitle(record: ReportVO): string {
 async function handleExport(record: ReportVO) {
   const currentExport = record.exportStatus
   if (
-    currentExport === ReportExportStatusCode.PENDING
-    || currentExport === ReportExportStatusCode.PROCESSING
+    currentExport === ReportExportStatusCode.PENDING ||
+    currentExport === ReportExportStatusCode.PROCESSING
   ) {
     message.info(
       `${reportTitle(record)}当前处于「${exportStatusLabel(currentExport)}」，请等待完成`,
@@ -531,8 +530,8 @@ function resumeExportPollingForList() {
 }
 
 async function downloadReportExportFile(record: ReportVO, kind: 'word' | 'pdf' | 'excel') {
-  const fileId
-    = kind === 'word' ? record.wordFileId : kind === 'pdf' ? record.pdfFileId : record.excelFileId
+  const fileId =
+    kind === 'word' ? record.wordFileId : kind === 'pdf' ? record.pdfFileId : record.excelFileId
   if (!fileId) {
     message.warning('该格式文件尚未生成')
     return
@@ -588,7 +587,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: ReportStatusCode, title: string }> = [
+  const order: Array<{ key: ReportStatusCode; title: string }> = [
     { key: ReportStatusCode.DRAFT, title: '草稿' },
     { key: ReportStatusCode.SUBMITTED, title: '待确认' },
     { key: ReportStatusCode.CONFIRMED, title: '已确认' },
@@ -695,8 +694,7 @@ const reportResultItems = computed<TaskResultItem[]>(() => {
   return list.value
     .filter(
       (r) =>
-        r.status === ReportStatusCode.RETURNED
-        || r.exportStatus === ReportExportStatusCode.FAILED,
+        r.status === ReportStatusCode.RETURNED || r.exportStatus === ReportExportStatusCode.FAILED,
     )
     .slice(0, 5)
     .map((r) => ({
@@ -712,9 +710,70 @@ const reportResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleReportResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
+function handleReportResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
   const record = list.value.find((r) => r.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'detail') openDetail(record)
+}
+
+function buildReportActions(record: ReportVO): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = [
+    { key: 'detail', label: '详情' },
+    {
+      key: 'edit',
+      label: '编辑',
+      disabled: !canEditReport(record.status),
+    },
+  ]
+  for (const to of nextStatuses(record.status)) {
+    actions.push({
+      key: `transit:${to}`,
+      label: `→ ${reportStatusLabel(to)}`,
+      tone: to === ReportStatusCode.RETURNED ? 'danger' : 'primary',
+    })
+  }
+  if (
+    record.status === ReportStatusCode.SUBMITTED ||
+    record.status === ReportStatusCode.CONFIRMED ||
+    record.status === ReportStatusCode.ARCHIVED
+  ) {
+    actions.push({
+      key: 'export',
+      label: '导出三格式',
+      disabled: isExportInFlight(record.exportStatus) || pollingExportIds.value.has(record.id),
+    })
+  }
+  if (record.status === ReportStatusCode.DRAFT) {
+    actions.push({ key: 'delete', label: '删除', tone: 'danger' })
+  }
+  actions.push({ key: 'audit', label: '审计' })
+  return actions
+}
+
+function handleReportAction(key: string, record: ReportVO): void {
+  if (key === 'detail') {
+    void openDetail(record)
+    return
+  }
+  if (key === 'edit') {
+    void openEdit(record)
+    return
+  }
+  if (key === 'export') {
+    void handleExport(record)
+    return
+  }
+  if (key === 'delete') {
+    void handleDelete(record)
+    return
+  }
+  if (key === 'audit') {
+    void openAuditDrawer(record)
+    return
+  }
+  if (key.startsWith('transit:')) {
+    const target = key.slice('transit:'.length) as ReportStatusCode
+    void handleTransit(record, target)
+  }
 }
 
 onMounted(loadList)
@@ -843,8 +902,7 @@ onBeforeUnmount(() => {
                 </UiTextAction>
                 <UiTag
                   v-if="
-                    record.exportStatus
-                      && record.exportStatus !== ReportExportStatusCode.COMPLETED
+                    record.exportStatus && record.exportStatus !== ReportExportStatusCode.COMPLETED
                   "
                   :tone="exportStatusColor(record.exportStatus)"
                   size="sm"
@@ -861,41 +919,11 @@ onBeforeUnmount(() => {
               </a-space>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction @click="openDetail(record)">详情</UiTextAction>
-                <UiTextAction :disabled="!canEditReport(record.status)" @click="openEdit(record)">
-                  编辑
-                </UiTextAction>
-                <UiTextAction
-                  v-for="to in nextStatuses(record.status)"
-                  :key="to"
-                  :tone="to === ReportStatusCode.RETURNED ? 'danger' : 'primary'"
-                  @click="handleTransit(record, to)"
-                >
-                  -> {{ reportStatusLabel(to) }}
-                </UiTextAction>
-                <UiTextAction
-                  v-if="
-                    record.status === ReportStatusCode.SUBMITTED
-                      || record.status === ReportStatusCode.CONFIRMED
-                      || record.status === ReportStatusCode.ARCHIVED
-                  "
-                  :disabled="
-                    isExportInFlight(record.exportStatus) || pollingExportIds.has(record.id)
-                  "
-                  @click="handleExport(record)"
-                >
-                  导出三格式
-                </UiTextAction>
-                <UiTextAction
-                  v-if="record.status === ReportStatusCode.DRAFT"
-                  tone="danger"
-                  @click="handleDelete(record)"
-                >
-                  删除
-                </UiTextAction>
-                <UiTextAction @click="openAuditDrawer(record)">审计</UiTextAction>
-              </div>
+              <UiTableActions
+                :items="buildReportActions(record)"
+                split
+                @action="(key) => handleReportAction(key, record)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -1038,7 +1066,8 @@ onBeforeUnmount(() => {
           <a-descriptions-item label="学年 / 学期">
             {{ detailRecord.schoolYear
             }}<span v-if="detailRecord.semester">
-              / {{ formatSemester(detailRecord.semester) }}</span>
+              / {{ formatSemester(detailRecord.semester) }}</span
+            >
           </a-descriptions-item>
           <a-descriptions-item label="Word 文件">
             <UiTextAction

@@ -3,9 +3,7 @@
     <template #head>
       <div class="appeal-section__header">
         <span class="appeal-section__flow-hint">{{ BATCH_CORRECTION_FLOW_HINT }}</span>
-        <UiButton size="sm" variant="primary" @click="openCreateModal">
-          新建计划
-        </UiButton>
+        <UiButton size="sm" variant="primary" @click="openCreateModal"> 新建计划 </UiButton>
       </div>
     </template>
 
@@ -54,52 +52,11 @@
             {{ formatDateTime(record.createTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <a-popconfirm
-                title="确认提交审批？"
-                :disabled="!canSubmit(record)"
-                @confirm="handleSubmitPlan(record.id)"
-              >
-                <a-button
-                  type="link"
-                  size="small"
-                  :disabled="!canSubmit(record)"
-                  :loading="isOperating(record.id, 'submit')"
-                >
-                  提交
-                </a-button>
-              </a-popconfirm>
-              <a-popconfirm
-                title="确认审批通过？"
-                :disabled="record.approvalStatus !== 'PENDING_APPROVAL'"
-                @confirm="handleApprove(record.id)"
-              >
-                <a-button
-                  type="link"
-                  size="small"
-                  :disabled="record.approvalStatus !== 'PENDING_APPROVAL'"
-                  :loading="isOperating(record.id, 'approve')"
-                >
-                  通过
-                </a-button>
-              </a-popconfirm>
-              <UiTextAction
-                tone="danger"
-                :disabled="record.approvalStatus !== 'PENDING_APPROVAL'"
-                @click="openRejectModal(record.id)"
-              >
-                驳回
-              </UiTextAction>
-              <a-button
-                type="link"
-                size="small"
-                :disabled="record.approvalStatus !== BatchCorrectionApprovalStatusCode.APPROVED"
-                :loading="isOperating(record.id, 'execute')"
-                @click="openExecuteModal(record.id)"
-              >
-                执行
-              </a-button>
-            </div>
+            <UiTableActions
+              :items="buildBatchCorrectionPlanActions(record)"
+              split
+              @action="(key) => handleBatchCorrectionPlanAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>
@@ -132,7 +89,11 @@
               </a-form-item>
             </a-col>
           </a-row>
-          <a-form-item v-if="form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION" label="更正题目" required>
+          <a-form-item
+            v-if="form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION"
+            label="更正题目"
+            required
+          >
             <a-select
               v-model:value="form.layoutQuestionId"
               :loading="reviewRequestLoading"
@@ -259,12 +220,6 @@ import type {
   GradeReviewQuestionRefVO,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   approveBatchCorrectionPlan,
   BATCH_CORRECTION_FLOW_HINT,
@@ -283,10 +238,17 @@ import {
   listReviewRequests,
   submitBatchCorrectionPlan,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { ExamScorePolicyCode } from '@/types/enums/exam-score-policy-enum'
@@ -324,7 +286,7 @@ const pagination = reactive({
   total: 0,
 })
 
-const filterForm = reactive<{ status?: BatchCorrectionApprovalStatusCode, keyword: string }>({
+const filterForm = reactive<{ status?: BatchCorrectionApprovalStatusCode; keyword: string }>({
   keyword: '',
 })
 
@@ -386,9 +348,7 @@ const form = reactive<{
   items: [],
 })
 
-const makeupCap60Hint = computed(
-  () => props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60,
-)
+const makeupCap60Hint = computed(() => props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60)
 
 const makeupCap60AlertMessage = computed(() =>
   form.correctionType === GradeCorrectionTypeCode.TOTAL_SCORE
@@ -397,16 +357,18 @@ const makeupCap60AlertMessage = computed(() =>
 )
 
 const batchTotalScoreMax = computed(() =>
-  makeupCap60Hint.value && form.correctionType === GradeCorrectionTypeCode.TOTAL_SCORE ? 60 : undefined,
+  makeupCap60Hint.value && form.correctionType === GradeCorrectionTypeCode.TOTAL_SCORE
+    ? 60
+    : undefined,
 )
 
 function batchItemProjectionHint(item: PlanItemForm): string {
   if (
-    !makeupCap60Hint.value
-    || form.correctionType !== GradeCorrectionTypeCode.SINGLE_QUESTION
-    || !form.layoutQuestionId
-    || !item.reviewRequestId
-    || typeof item.afterScore !== 'number'
+    !makeupCap60Hint.value ||
+    form.correctionType !== GradeCorrectionTypeCode.SINGLE_QUESTION ||
+    !form.layoutQuestionId ||
+    !item.reviewRequestId ||
+    typeof item.afterScore !== 'number'
   ) {
     return ''
   }
@@ -431,8 +393,14 @@ function batchItemProjectionHint(item: PlanItemForm): string {
 }
 
 const correctionTypeOptions = [
-  { value: GradeCorrectionTypeCode.SINGLE_QUESTION, label: GradeCorrectionTypeDescription[GradeCorrectionTypeCode.SINGLE_QUESTION] },
-  { value: GradeCorrectionTypeCode.TOTAL_SCORE, label: GradeCorrectionTypeDescription[GradeCorrectionTypeCode.TOTAL_SCORE] },
+  {
+    value: GradeCorrectionTypeCode.SINGLE_QUESTION,
+    label: GradeCorrectionTypeDescription[GradeCorrectionTypeCode.SINGLE_QUESTION],
+  },
+  {
+    value: GradeCorrectionTypeCode.TOTAL_SCORE,
+    label: GradeCorrectionTypeDescription[GradeCorrectionTypeCode.TOTAL_SCORE],
+  },
 ]
 
 const questionOptions = computed(() => {
@@ -454,8 +422,8 @@ const itemReviewRequestOptions = computed(() =>
   approvedReviewRequests.value
     .filter(
       (request) =>
-        form.correctionType === 'TOTAL_SCORE'
-        || request.questionRefs.some(
+        form.correctionType === 'TOTAL_SCORE' ||
+        request.questionRefs.some(
           (question) => question.layoutQuestionId === form.layoutQuestionId,
         ),
     )
@@ -521,7 +489,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -614,10 +582,8 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
       return null
     }
     if (
-      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION
-      && !request.questionRefs.some(
-        (question) => question.layoutQuestionId === form.layoutQuestionId,
-      )
+      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION &&
+      !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
     ) {
       message.warning('更正明细包含未申请该题目的学生')
       return null
@@ -627,18 +593,18 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
       return null
     }
     if (
-      form.correctionType === GradeCorrectionTypeCode.TOTAL_SCORE
-      && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
-      && item.afterScore > 60
+      form.correctionType === GradeCorrectionTypeCode.TOTAL_SCORE &&
+      props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
+      item.afterScore > 60
     ) {
       message.warning('补考成绩策略为封顶60分，更正后总成绩不能超过60分')
       return null
     }
     if (
-      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION
-      && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
-      && form.layoutQuestionId
-      && isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, item.afterScore)
+      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION &&
+      props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
+      form.layoutQuestionId &&
+      isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, item.afterScore)
     ) {
       message.warning('补考成绩策略为封顶60分，单题更正后合成总成绩不能超过60分')
       return null
@@ -663,7 +629,9 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
     planName: form.planName.trim(),
     correctionType: form.correctionType,
     layoutQuestionId:
-      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION ? form.layoutQuestionId : undefined,
+      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION
+        ? form.layoutQuestionId
+        : undefined,
     items,
     reason: form.reason.trim(),
   }
@@ -778,10 +746,11 @@ async function handleExecute(): Promise<void> {
       title: '请确认成绩发布状态',
       content: '若更正前成绩已发布，学生端暂不可见最新分数。请前往成绩发布页重新发布。',
       okText: '前往发布',
-      onOk: () => router.push({
-        name: 'TeacherExamWorkspaceScoreRelease',
-        params: { examId: props.examId },
-      }),
+      onOk: () =>
+        router.push({
+          name: 'TeacherExamWorkspaceScoreRelease',
+          params: { examId: props.examId },
+        }),
     })
   } catch (e) {
     showUserError(e, '批量成绩更正计划执行失败')
@@ -801,6 +770,68 @@ function isOperating(planId: string, action: OperationAction): boolean {
 
 function canSubmit(row: ExamBatchGradeCorrectionPlan): boolean {
   return row.approvalStatus === 'DRAFT' || row.approvalStatus === 'REJECTED'
+}
+
+function buildBatchCorrectionPlanActions(
+  row: ExamBatchGradeCorrectionPlan,
+): UiTableRowActionItem[] {
+  const operating = (action: OperationAction) => isOperating(row.id, action)
+  return [
+    {
+      key: 'submit',
+      label: '提交',
+      hidden: !canSubmit(row),
+      disabled: operating('submit'),
+    },
+    {
+      key: 'approve',
+      label: '通过',
+      hidden: row.approvalStatus !== 'PENDING_APPROVAL',
+      disabled: operating('approve'),
+    },
+    {
+      key: 'reject',
+      label: '驳回',
+      tone: 'danger',
+      hidden: row.approvalStatus !== 'PENDING_APPROVAL',
+      disabled: operating('reject'),
+    },
+    {
+      key: 'execute',
+      label: '执行',
+      hidden: row.approvalStatus !== BatchCorrectionApprovalStatusCode.APPROVED,
+      disabled: operating('execute'),
+    },
+  ]
+}
+
+function handleBatchCorrectionPlanAction(key: string, row: ExamBatchGradeCorrectionPlan): void {
+  switch (key) {
+    case 'submit':
+      if (!canSubmit(row)) return
+      Modal.confirm({
+        title: '确认提交审批？',
+        okText: '提交',
+        cancelText: '取消',
+        onOk: () => handleSubmitPlan(row.id),
+      })
+      break
+    case 'approve':
+      if (row.approvalStatus !== 'PENDING_APPROVAL') return
+      Modal.confirm({
+        title: '确认审批通过？',
+        okText: '通过',
+        cancelText: '取消',
+        onOk: () => handleApprove(row.id),
+      })
+      break
+    case 'reject':
+      openRejectModal(row.id)
+      break
+    case 'execute':
+      openExecuteModal(row.id)
+      break
+  }
 }
 
 function correctionTypeLabel(row: ExamBatchGradeCorrectionPlan): string {
@@ -836,7 +867,11 @@ function reviewRequestQuestionLabel(request: GradeReviewRequestItemResponse): st
 }
 
 function approvalStatusLabel(row: ExamBatchGradeCorrectionPlan): string {
-  return strictEnumLabel(BatchCorrectionApprovalStatusDescription, row.approvalStatus, '批量更正审批状态')
+  return strictEnumLabel(
+    BatchCorrectionApprovalStatusDescription,
+    row.approvalStatus,
+    '批量更正审批状态',
+  )
 }
 
 function approvalStatusColor(row: ExamBatchGradeCorrectionPlan): BadgeTone {

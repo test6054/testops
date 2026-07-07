@@ -1,89 +1,99 @@
 <template>
-  <UiEmpty v-if="!exams.length" description="当前筛选下暂无考试" />
-  <div v-else class="ongoing-exam-card-grid">
-    <article
-      v-for="exam in exams"
-      :key="exam.examId"
-      class="ongoing-exam-card"
-      :class="{ 'ongoing-exam-card--blocking': (exam.blockingTodoCount ?? 0) > 0 }"
-      tabindex="0"
-      role="button"
-      @click="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
-      @keydown.enter="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
-    >
-      <div class="ongoing-exam-card__header">
-        <div class="ongoing-exam-card__title-block">
-          <div class="ongoing-exam-card__name">{{ exam.examName }}</div>
-          <div v-if="examMeta(exam)" class="ongoing-exam-card__meta">{{ examMeta(exam) }}</div>
+  <div class="ongoing-exam-card-grid-wrap">
+    <UiEmpty v-if="!exams.length" size="sm" description="当前筛选下暂无考试" />
+    <div v-else class="ongoing-exam-card-grid">
+      <article
+        v-for="exam in exams"
+        :key="exam.examId"
+        class="ongoing-exam-card"
+        :class="{ 'ongoing-exam-card--blocking': (exam.blockingTodoCount ?? 0) > 0 }"
+        tabindex="0"
+        role="button"
+        @click="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
+        @keydown.enter="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
+      >
+        <div class="ongoing-exam-card__header">
+          <div class="ongoing-exam-card__title-block">
+            <div class="ongoing-exam-card__name">{{ exam.examName }}</div>
+            <div v-if="examMeta(exam)" class="ongoing-exam-card__meta">{{ examMeta(exam) }}</div>
+          </div>
+          <UiTag :tone="stageTagTone(exam.currentStageKey)" size="sm">
+            {{ stageTagLabel(exam) }}
+          </UiTag>
         </div>
-        <UiTag :tone="stageTagTone(exam.currentStageKey)" size="sm">
-          {{ stageTagLabel(exam) }}
-        </UiTag>
-      </div>
 
-      <div class="ongoing-exam-card__progress">
-        <div class="ongoing-exam-card__progress-track">
-          <div
-            class="ongoing-exam-card__progress-fill"
-            :class="progressFillClass(exam.progressPercent ?? 0)"
-            :style="{ width: `${Math.min(exam.progressPercent ?? 0, 100)}%` }"
-          />
+        <div class="ongoing-exam-card__progress">
+          <div class="ongoing-exam-card__progress-track">
+            <div
+              class="ongoing-exam-card__progress-fill"
+              :class="progressFillClass(exam.progressPercent ?? 0)"
+              :style="{ width: `${Math.min(exam.progressPercent ?? 0, 100)}%` }"
+            />
+          </div>
+          <div class="ongoing-exam-card__progress-label">
+            <span>{{ progressFractionLabel(exam) }}</span>
+            <span>{{ exam.progressPercent ?? 0 }}%</span>
+          </div>
         </div>
-        <div class="ongoing-exam-card__progress-label">
-          <span>{{ progressFractionLabel(exam) }}</span>
-          <span>{{ exam.progressPercent ?? 0 }}%</span>
-        </div>
-      </div>
 
-      <div class="ongoing-exam-card__stats">
-        <div class="ongoing-exam-card__stat">
-          <span class="ongoing-exam-card__stat-label">考生数</span>
-          <span class="ongoing-exam-card__stat-value">{{ formatCount(exam.candidateCount) }}</span>
+        <div class="ongoing-exam-card__stats">
+          <div class="ongoing-exam-card__stat">
+            <span class="ongoing-exam-card__stat-label">考生数</span>
+            <span class="ongoing-exam-card__stat-value">{{
+              formatCount(exam.candidateCount)
+            }}</span>
+          </div>
+          <div class="ongoing-exam-card__stat">
+            <span class="ongoing-exam-card__stat-label">扫描关注</span>
+            <span
+              class="ongoing-exam-card__stat-value"
+              :class="{
+                'ongoing-exam-card__stat-value--alert': (exam.scanAttentionCount ?? 0) > 0,
+              }"
+            >
+              {{ formatCount(exam.scanAttentionCount) }}
+            </span>
+          </div>
+          <div class="ongoing-exam-card__stat">
+            <span class="ongoing-exam-card__stat-label">待复核</span>
+            <span
+              class="ongoing-exam-card__stat-value"
+              :class="{
+                'ongoing-exam-card__stat-value--warn': (exam.pendingReviewTaskCount ?? 0) > 0,
+              }"
+            >
+              {{ formatCount(exam.pendingReviewTaskCount) }}
+            </span>
+          </div>
+          <div class="ongoing-exam-card__stat">
+            <span class="ongoing-exam-card__stat-label">待确认题</span>
+            <span
+              class="ongoing-exam-card__stat-value"
+              :class="{ 'ongoing-exam-card__stat-value--warn': (exam.pendingGradeCount ?? 0) > 0 }"
+            >
+              {{ formatCount(exam.pendingGradeCount) }}
+            </span>
+          </div>
         </div>
-        <div class="ongoing-exam-card__stat">
-          <span class="ongoing-exam-card__stat-label">扫描关注</span>
-          <span
-            class="ongoing-exam-card__stat-value"
-            :class="{ 'ongoing-exam-card__stat-value--alert': (exam.scanAttentionCount ?? 0) > 0 }"
-          >
-            {{ formatCount(exam.scanAttentionCount) }}
-          </span>
-        </div>
-        <div class="ongoing-exam-card__stat">
-          <span class="ongoing-exam-card__stat-label">待复核</span>
-          <span
-            class="ongoing-exam-card__stat-value"
-            :class="{
-              'ongoing-exam-card__stat-value--warn': (exam.pendingReviewTaskCount ?? 0) > 0,
-            }"
-          >
-            {{ formatCount(exam.pendingReviewTaskCount) }}
-          </span>
-        </div>
-        <div class="ongoing-exam-card__stat">
-          <span class="ongoing-exam-card__stat-label">待确认题</span>
-          <span
-            class="ongoing-exam-card__stat-value"
-            :class="{ 'ongoing-exam-card__stat-value--warn': (exam.pendingGradeCount ?? 0) > 0 }"
-          >
-            {{ formatCount(exam.pendingGradeCount) }}
-          </span>
-        </div>
-      </div>
 
-      <footer class="ongoing-exam-card__footer">
-        <UiTag v-if="formatAcademicYearSemester(exam.academicYear, exam.semester)" tone="gray" size="sm">
-          {{ formatAcademicYearSemester(exam.academicYear, exam.semester) }}
-        </UiTag>
-        <UiButton
-          size="sm"
-          class="ongoing-exam-card__enter"
-          @click.stop="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
-        >
-          进入考试
-        </UiButton>
-      </footer>
-    </article>
+        <footer class="ongoing-exam-card__footer">
+          <UiTag
+            v-if="formatAcademicYearSemester(exam.academicYear, exam.semester)"
+            tone="gray"
+            size="sm"
+          >
+            {{ formatAcademicYearSemester(exam.academicYear, exam.semester) }}
+          </UiTag>
+          <UiButton
+            size="sm"
+            class="ongoing-exam-card__enter"
+            @click.stop="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
+          >
+            进入考试
+          </UiButton>
+        </footer>
+      </article>
+    </div>
   </div>
 </template>
 
@@ -156,6 +166,21 @@ function progressFillClass(progress: number): string {
 </script>
 
 <style scoped>
+.ongoing-exam-card-grid-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ongoing-exam-card-grid-wrap > :deep(.ui-empty) {
+  flex: 1;
+  justify-content: center;
+  padding: var(--dp-space-6) var(--dp-space-4);
+  background: var(--dp-surface);
+  min-height: 200px;
+}
+
 .ongoing-exam-card-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

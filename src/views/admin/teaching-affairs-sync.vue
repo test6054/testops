@@ -8,7 +8,11 @@
         :subtitle="isJourneyChrome ? contextBarSubtitle : '考后归档'"
       >
         <template #status>
-          <UiTag v-if="isJourneyChrome && chromeExamStatusLabel" :tone="chromeExamStatusTone" size="sm">
+          <UiTag
+            v-if="isJourneyChrome && chromeExamStatusLabel"
+            :tone="chromeExamStatusTone"
+            size="sm"
+          >
             {{ chromeExamStatusLabel }}
           </UiTag>
           <MarkExamSelect
@@ -47,11 +51,7 @@
       <SignalBand variant="tiles" compact :metrics="syncSignalMetrics" />
     </template>
 
-    <UiEmpty
-      v-if="!selectedExamId"
-      description="请选择考试"
-      class="sync-page__empty"
-    />
+    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="sync-page__empty" />
 
     <UiEmpty
       v-else-if="loadFailed"
@@ -124,35 +124,11 @@
               <span v-else class="hint-text">-</span>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction
-                  v-if="canExecute(syncTasks[index])"
-                  tone="primary"
-                  :disabled="actionLoadingId === syncTasks[index].id"
-                  @click="handleExecute(syncTasks[index])"
-                >
-                  执行回写
-                </UiTextAction>
-                <UiTextAction
-                  v-if="canRetry(syncTasks[index].taskStatus)"
-                  tone="primary"
-                  :disabled="actionLoadingId === syncTasks[index].id"
-                  @click="handleRetry(syncTasks[index])"
-                >
-                  重试
-                </UiTextAction>
-                <UiTextAction
-                  v-if="canCancel(syncTasks[index].taskStatus)"
-                  tone="danger"
-                  :disabled="actionLoadingId === syncTasks[index].id"
-                  @click="handleCancel(syncTasks[index])"
-                >
-                  取消
-                </UiTextAction>
-                <UiTextAction @click="openTaskDetail(syncTasks[index])">
-                  详情
-                </UiTextAction>
-              </div>
+              <UiTableActions
+                :items="buildSyncTaskActions(syncTasks[index])"
+                split
+                @action="(key) => handleSyncTaskAction(key, syncTasks[index])"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -301,19 +277,23 @@
         <div class="progress-counts">
           <UiTag tone="gray" size="sm">总数 {{ detailProgress.totalCount }}</UiTag>
           <UiTag :tone="PASSBACK_STATUS_TONE[PassbackStatusCode.PENDING]" size="sm">
-            {{ PassbackStatusDescription[PassbackStatusCode.PENDING] }} {{ detailProgress.pendingCount }}
+            {{ PassbackStatusDescription[PassbackStatusCode.PENDING] }}
+            {{ detailProgress.pendingCount }}
           </UiTag>
           <UiTag :tone="PASSBACK_STATUS_TONE[PassbackStatusCode.SENT]" size="sm">
             {{ PassbackStatusDescription[PassbackStatusCode.SENT] }} {{ detailProgress.sentCount }}
           </UiTag>
           <UiTag :tone="PASSBACK_STATUS_TONE[PassbackStatusCode.SUCCESS]" size="sm">
-            {{ PassbackStatusDescription[PassbackStatusCode.SUCCESS] }} {{ detailProgress.successCount }}
+            {{ PassbackStatusDescription[PassbackStatusCode.SUCCESS] }}
+            {{ detailProgress.successCount }}
           </UiTag>
           <UiTag :tone="PASSBACK_STATUS_TONE[PassbackStatusCode.FAILED]" size="sm">
-            {{ PassbackStatusDescription[PassbackStatusCode.FAILED] }} {{ detailProgress.failedCount }}
+            {{ PassbackStatusDescription[PassbackStatusCode.FAILED] }}
+            {{ detailProgress.failedCount }}
           </UiTag>
           <UiTag :tone="PASSBACK_STATUS_TONE[PassbackStatusCode.WITHDRAWN]" size="sm">
-            {{ PassbackStatusDescription[PassbackStatusCode.WITHDRAWN] }} {{ detailProgress.withdrawnCount }}
+            {{ PassbackStatusDescription[PassbackStatusCode.WITHDRAWN] }}
+            {{ detailProgress.withdrawnCount }}
           </UiTag>
         </div>
         <div v-if="detailProgress.totalCount === 0" class="hint-text" style="margin-top: 8px">
@@ -383,16 +363,6 @@ import type {
   ReconcileStatusCode,
   SyncTaskStatusCode,
 } from '@/apis/mark/teaching-affairs-sync'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
-import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
 import {
   cancelSyncTask,
   CREATABLE_SYNC_TYPE_OPTIONS,
@@ -419,6 +389,16 @@ import {
   TeachingAffairsSyncTypeCode,
   TeachingAffairsSyncTypeDescription,
 } from '@/apis/mark/teaching-affairs-sync'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
+import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -428,7 +408,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -498,7 +478,6 @@ const syncColumns: ColumnType<ExamTeachingAffairsSyncTask>[] = [
   { title: '操作', key: 'actions', width: 280, fixed: 'right' },
 ]
 
-
 async function loadSyncTasks(options?: { quiet?: boolean }): Promise<void> {
   if (!selectedExamId.value) return
   if (!options?.quiet) {
@@ -547,10 +526,7 @@ async function loadAllQuietly(): Promise<void> {
     return
   }
   try {
-    await Promise.all([
-      loadSyncTasks({ quiet: true }),
-      loadPassbackRecords({ quiet: true }),
-    ])
+    await Promise.all([loadSyncTasks({ quiet: true }), loadPassbackRecords({ quiet: true })])
     if (taskDetailOpen.value && detailTask.value?.id) {
       await loadProgress(detailTask.value.id)
     }
@@ -575,6 +551,51 @@ function canRetry(status: SyncTaskStatusCode): boolean {
 
 function canCancel(status: SyncTaskStatusCode): boolean {
   return status === 'PENDING' || status === 'SYNCING'
+}
+
+function buildSyncTaskActions(record: ExamTeachingAffairsSyncTask): UiTableRowActionItem[] {
+  const loading = actionLoadingId.value === record.id
+  return [
+    {
+      key: 'execute',
+      label: '执行回写',
+      tone: 'primary',
+      hidden: !canExecute(record),
+      disabled: loading,
+    },
+    {
+      key: 'retry',
+      label: '重试',
+      tone: 'primary',
+      hidden: !canRetry(record.taskStatus),
+      disabled: loading,
+    },
+    {
+      key: 'cancel',
+      label: '取消',
+      tone: 'danger',
+      hidden: !canCancel(record.taskStatus),
+      disabled: loading,
+    },
+    { key: 'detail', label: '详情' },
+  ]
+}
+
+function handleSyncTaskAction(key: string, record: ExamTeachingAffairsSyncTask): void {
+  switch (key) {
+    case 'execute':
+      handleExecute(record)
+      break
+    case 'retry':
+      handleRetry(record)
+      break
+    case 'cancel':
+      handleCancel(record)
+      break
+    case 'detail':
+      openTaskDetail(record)
+      break
+  }
 }
 
 async function withTaskAction(
@@ -740,7 +761,9 @@ async function handleReconcile(record: ExamTeachingAffairsSyncTask): Promise<voi
 const passbackRecords = ref<PassbackRecordResponse[]>([])
 const passbackLoading = ref(false)
 
-const passbackFilterForm = reactive<{ syncTaskId?: string, passbackStatus?: PassbackStatusCode }>({})
+const passbackFilterForm = reactive<{ syncTaskId?: string; passbackStatus?: PassbackStatusCode }>(
+  {},
+)
 
 const passbackFilterFields: FilterField[] = [
   {
@@ -840,7 +863,7 @@ function handlePassbackFilterReset(): void {
   reloadPassbackRecordsFromFirstPage()
 }
 
-function handlePassbackPageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePassbackPageChange(pageInfo: { current: number; pageSize: number }): void {
   passbackPagination.pageNum = pageInfo.current
   passbackPagination.pageSize = pageInfo.pageSize
   void loadPassbackRecords()
@@ -901,15 +924,19 @@ function handleExamChange(value: SelectValue): void {
 }
 
 // B-8: selectedExamId 由 useMarkExamSelector 与 URL 双向同步
-watch(selectedExamId, (value) => {
-  syncTasks.value = []
-  passbackRecords.value = []
-  passbackPagination.pageNum = 1
-  passbackPagination.total = 0
-  if (value) {
-    void loadAll()
-  }
-}, { immediate: true })
+watch(
+  selectedExamId,
+  (value) => {
+    syncTasks.value = []
+    passbackRecords.value = []
+    passbackPagination.pageNum = 1
+    passbackPagination.total = 0
+    if (value) {
+      void loadAll()
+    }
+  },
+  { immediate: true },
+)
 
 onMounted(async () => {
   await initExamSelector()

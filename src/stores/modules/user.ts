@@ -1,10 +1,10 @@
 import type { UserDetailedInfoVO } from '@/apis/auth'
+import { getUserDetailedInfo } from '@/apis/auth'
 import type { UserLoginResponseDto } from '@/types/auth'
 import { defineStore } from 'pinia'
 import { computed, reactive, ref } from 'vue'
-import { getUserDetailedInfo } from '@/apis/auth'
 import { checkTenantAdminPermission } from '@/apis/edu/tenant-admin'
-import { RoleEnum, UserStatusEnum } from '@/types/enums'
+import { UserStatusEnum } from '@/types/enums'
 import { useAuthStore } from './auth'
 
 export const useUserStore = defineStore(
@@ -75,7 +75,9 @@ export const useUserStore = defineStore(
     const getUserInfoPromise = ref<Promise<UserDetailedInfoVO | void> | null>(null)
 
     /** 登录接口部分字段仍为 number，与 detailed/me、选择器 string 合同对齐。 */
-    function normalizeUserIdentityFields(userData: Partial<UserLoginResponseDto>): Partial<UserLoginResponseDto> {
+    function normalizeUserIdentityFields(
+      userData: Partial<UserLoginResponseDto>,
+    ): Partial<UserLoginResponseDto> {
       const normalized: Partial<UserLoginResponseDto> = { ...userData }
       if (userData.userId != null && userData.userId !== '') {
         normalized.userId = String(userData.userId)
@@ -183,11 +185,12 @@ export const useUserStore = defineStore(
       }
       // 如果已经有用户信息且token有效，且不是强制刷新，直接返回
       if (
-        !forceRefresh
-        && userInfo.userId
-        && authStore.token
-        && !authStore.isTokenExpiredCheck(authStore.token)
+        !forceRefresh &&
+        userInfo.userId &&
+        authStore.token &&
+        !authStore.isTokenExpiredCheck(authStore.token)
       ) {
+        await fetchTenantAdminPermission(false)
         return Promise.resolve()
       }
 
@@ -230,23 +233,14 @@ export const useUserStore = defineStore(
 
     // 获取租户管理员权限 - 优化：避免重复调用
     const fetchTenantAdminPermission = async (skipIfAlreadySet = false) => {
-      const authStore = useAuthStore()
-
       // 如果已经设置过且要求跳过重复调用，则直接返回
       if (skipIfAlreadySet && userInfo.isTenantAdmin !== undefined) {
         return
       }
 
       try {
-        // 只有非超级管理员需要检查租户管理员权限
-        if (authStore.userRole !== RoleEnum.SUPER_ADMIN) {
-          const response = await checkTenantAdminPermission()
-          // 确保赋值为布尔值
-          userInfo.isTenantAdmin = !!response?.isTenantAdmin
-        } else {
-          // 超级管理员默认具有租户管理员权限
-          userInfo.isTenantAdmin = true
-        }
+        const response = await checkTenantAdminPermission()
+        userInfo.isTenantAdmin = response?.isTenantAdmin === true
       } catch {
         userInfo.isTenantAdmin = false
       }
@@ -296,7 +290,6 @@ export const useUserStore = defineStore(
         'userInfo.roleId',
         'userInfo.tenantId',
         'userInfo.status',
-        'userInfo.isTenantAdmin',
         'userInfo.gender',
         'userInfo.roleDisplayName',
         'userInfo.createTime',

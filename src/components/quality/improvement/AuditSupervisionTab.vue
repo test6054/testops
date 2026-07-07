@@ -6,15 +6,8 @@ import type {
   AuditSupervisionFindingItemRequest,
   AuditSupervisionQueryRequest,
   AuditSupervisionSaveRequest,
-
-  AuditSupervisionVO} from '@/apis/quality/audit-supervision'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type {
-  QualitySelectorChangeValue,
-  WorkbenchSignalRefreshHandler,
-} from '@/composables/quality/improvement'
-import { message } from 'ant-design-vue'
-import { reactive, ref } from 'vue'
+  AuditSupervisionVO,
+} from '@/apis/quality/audit-supervision'
 import {
   AUDIT_SUPERVISION_CONCLUSION_OPTIONS,
   AUDIT_SUPERVISION_CONCLUSION_TONE,
@@ -24,6 +17,14 @@ import {
   AuditSupervisionScopeCode,
   AuditSupervisionScopeDescription,
 } from '@/apis/quality/audit-supervision'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type {
+  QualitySelectorChangeValue,
+  WorkbenchSignalRefreshHandler,
+} from '@/composables/quality/improvement'
+import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
+import { message } from 'ant-design-vue'
+import { reactive, ref } from 'vue'
 import { AuditSupervisionTypeCode, AuditSupervisionTypeDescription } from '@/apis/quality/types'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
 import {
@@ -40,8 +41,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   assertQualityScopeFresh,
@@ -71,7 +71,7 @@ const supColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 160, fixed: 'right' },
 ]
 
-const supervisionTypeOptions: Array<{ value: AuditSupervisionTypeCode, label: string }> = [
+const supervisionTypeOptions: Array<{ value: AuditSupervisionTypeCode; label: string }> = [
   { value: AuditSupervisionTypeCode.DAILY, label: AuditSupervisionTypeDescription.DAILY },
   { value: AuditSupervisionTypeCode.SPECIAL, label: AuditSupervisionTypeDescription.SPECIAL },
   {
@@ -284,7 +284,7 @@ async function loadList(options?: { refreshSignals?: boolean }) {
   }
 }
 
-function handleSupPageChange(page: { current: number, pageSize: number }) {
+function handleSupPageChange(page: { current: number; pageSize: number }) {
   supQuery.pageNum = page.current
   supQuery.pageSize = page.pageSize
   loadList()
@@ -337,34 +337,36 @@ function openSupEdit(record: AuditSupervisionVO) {
     supervisorUserId: record.supervisorUserId || '',
     supervisedTime: record.supervisedTime || '',
     summary: record.summary || '',
-    findingItems: record.findingItems?.map((item) => ({
-      findingType: item.findingType,
-      findingTitle: item.findingTitle,
-      findingDescription: item.findingDescription,
-      severity: item.severity,
-      responsibleUnit: item.responsibleUnit,
-      improvementSuggestion: item.improvementSuggestion,
-    })) || [],
+    findingItems:
+      record.findingItems?.map((item) => ({
+        findingType: item.findingType,
+        findingTitle: item.findingTitle,
+        findingDescription: item.findingDescription,
+        severity: item.severity,
+        responsibleUnit: item.responsibleUnit,
+        improvementSuggestion: item.improvementSuggestion,
+      })) || [],
     conclusion: record.conclusion || '',
     archiveId: record.archiveId || '',
-    evidenceItems: record.evidenceItems?.map((item) => ({
-      evidenceType: item.evidenceType,
-      evidenceTitle: item.evidenceTitle,
-      evidenceCode: item.evidenceCode,
-      archiveId: item.archiveId,
-      fileNodeId: item.fileNodeId,
-      reportId: item.reportId,
-      remark: item.remark,
-    })) || [],
+    evidenceItems:
+      record.evidenceItems?.map((item) => ({
+        evidenceType: item.evidenceType,
+        evidenceTitle: item.evidenceTitle,
+        evidenceCode: item.evidenceCode,
+        archiveId: item.archiveId,
+        fileNodeId: item.fileNodeId,
+        reportId: item.reportId,
+        remark: item.remark,
+      })) || [],
   })
   supEditorVisible.value = true
 }
 
 async function submitSupEditor() {
   if (
-    !supEditor.supervisionCode.trim()
-    || !supEditor.supervisionTitle.trim()
-    || !supEditor.supervisionType
+    !supEditor.supervisionCode.trim() ||
+    !supEditor.supervisionTitle.trim() ||
+    !supEditor.supervisionType
   ) {
     message.error('请填写编码、标题、督导类型')
     return
@@ -441,6 +443,24 @@ async function handleSupDelete(record: AuditSupervisionVO) {
       await loadList({ refreshSignals: true })
     },
   })
+}
+
+function buildAuditSupervisionActions(_record: AuditSupervisionVO): UiTableRowActionItem[] {
+  return [
+    { key: 'edit', label: '编辑' },
+    { key: 'delete', label: '删除', tone: 'danger' },
+  ]
+}
+
+function handleAuditSupervisionAction(key: string, record: AuditSupervisionVO): void {
+  switch (key) {
+    case 'edit':
+      openSupEdit(record)
+      break
+    case 'delete':
+      void handleSupDelete(record)
+      break
+  }
 }
 
 function handleSupSupervisorChange(value: string | string[] | null) {
@@ -550,10 +570,11 @@ defineExpose({
           <span v-else class="iwb-tab__muted">未形成结论</span>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <div class="operations-cell" @click.stop>
-            <UiTextAction @click="openSupEdit(record)">编辑</UiTextAction>
-            <UiTextAction tone="danger" @click="handleSupDelete(record)">删除</UiTextAction>
-          </div>
+          <UiTableActions
+            :items="buildAuditSupervisionActions(record)"
+            split
+            @action="(key) => handleAuditSupervisionAction(key, record)"
+          />
         </template>
       </template>
     </UiDataTable>

@@ -189,32 +189,11 @@
               {{ formatDateTime(candidates[index].confirmedTime) }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction
-                  :disabled="!candidates[index].paperInstanceId"
-                  @click="openDetailDrawer(candidates[index])"
-                >
-                  明细
-                </UiTextAction>
-                <UiTextAction
-                  :disabled="!canConfirm(candidates[index])"
-                  @click="openConfirmModal(candidates[index])"
-                >
-                  {{ confirmButtonLabel(candidates[index]) }}
-                </UiTextAction>
-                <UiTextAction
-                  :disabled="!canPublish(candidates[index])"
-                  @click="handlePublish(candidates[index])"
-                >
-                  {{ publishButtonLabel(candidates[index]) }}
-                </UiTextAction>
-                <UiTextAction
-                  :disabled="!canWithdraw(candidates[index])"
-                  @click="openWithdrawModal(candidates[index])"
-                >
-                  撤回
-                </UiTextAction>
-              </div>
+              <UiTableActions
+                :items="buildFinalizeActions(candidates[index])"
+                split
+                @action="(key) => handleFinalizeRowAction(key, candidates[index])"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -511,7 +490,7 @@ import type {
 } from '@/apis/mark/exam-score'
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
 import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
-import type { BadgeTone, FilterField, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField, UiTableRowActionItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
@@ -554,7 +533,7 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import ScorePublishRelatedLinksCard from '@/components/workbench/ScorePublishRelatedLinksCard.vue'
@@ -996,6 +975,40 @@ function biasLevelLabel(level: ScoreBiasLevelCode): string {
 
 function biasLevelTone(level: ScoreBiasLevelCode): BadgeTone {
   return strictEnumTone(SCORE_BIAS_LEVEL_TONE, level, '成绩偏差等级')
+}
+
+function buildFinalizeActions(record: ExamScoreSummaryItemResponse): UiTableRowActionItem[] {
+  return [
+    { key: 'detail', label: '明细', disabled: !record.paperInstanceId },
+    {
+      key: 'confirm',
+      label: confirmButtonLabel(record),
+      disabled: !canConfirm(record),
+    },
+    {
+      key: 'publish',
+      label: publishButtonLabel(record),
+      disabled: !canPublish(record),
+    },
+    { key: 'withdraw', label: '撤回', disabled: !canWithdraw(record) },
+  ]
+}
+
+function handleFinalizeRowAction(key: string, record: ExamScoreSummaryItemResponse): void {
+  switch (key) {
+    case 'detail':
+      void openDetailDrawer(record)
+      break
+    case 'confirm':
+      void openConfirmModal(record)
+      break
+    case 'publish':
+      void handlePublish(record)
+      break
+    case 'withdraw':
+      openWithdrawModal(record)
+      break
+  }
 }
 
 function canWithdraw(record: ExamScoreSummaryItemResponse): boolean {

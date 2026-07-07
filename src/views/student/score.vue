@@ -149,24 +149,11 @@
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiButton
-                  size="sm"
-                  variant="outline"
-                  :disabled="record.finalScoreStatus !== 'PUBLISHED'"
-                  @click="goDetail(record.examId)"
-                >
-                  查看详情
-                </UiButton>
-                <UiButton
-                  size="sm"
-                  :variant="canSubmitReview(record) ? 'primary' : 'ghost'"
-                  :disabled="!canSubmitReview(record)"
-                  @click="goAppeal(record.examId)"
-                >
-                  提交复核
-                </UiButton>
-              </div>
+              <UiTableActions
+                :items="buildExamScoreActions(record)"
+                split
+                @action="(key) => handleExamScoreAction(key, record)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -178,21 +165,25 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import FileOutlined from '@ant-design/icons-vue/FileOutlined'
-import { computed, onActivated, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { FINAL_SCORE_STATUS_TONE, FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
 import {
   canSubmitReview,
   listMyExams,
   ReviewWindowPolicyStatusDescription,
   STUDENT_REVIEW_WINDOW_STATUS_TONE,
 } from '@/apis/mark/student-exam'
+import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import FileOutlined from '@ant-design/icons-vue/FileOutlined'
+import { computed, onActivated, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  FINAL_SCORE_STATUS_TONE,
+  FinalScoreStatusDescription,
+} from '@/apis/mark/final-score-status'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -273,7 +264,7 @@ const unpublishedCount = computed<number>(() => {
 })
 
 /** 最近两次发布的分数差（最新 - 上一次），无足够数据返回 null */
-const scoreTrend = computed<{ diff: number, latest: number, previous: number } | null>(() => {
+const scoreTrend = computed<{ diff: number; latest: number; previous: number } | null>(() => {
   const list = publishedExamsSorted.value
   if (list.length < 2) return null
   const latest = Number(list[0].finalScore)
@@ -408,6 +399,30 @@ function formatPublishedScore(item: StudentExamItemVO): string {
 
 function requirePublishedTime(item: StudentExamItemVO): string {
   return formatDateTime(item.publishedTime)
+}
+
+function buildExamScoreActions(record: StudentExamItemVO): UiTableRowActionItem[] {
+  return [
+    {
+      key: 'detail',
+      label: '查看详情',
+      disabled: record.finalScoreStatus !== 'PUBLISHED',
+    },
+    {
+      key: 'appeal',
+      label: '提交复核',
+      tone: canSubmitReview(record) ? 'primary' : 'default',
+      disabled: !canSubmitReview(record),
+    },
+  ]
+}
+
+function handleExamScoreAction(key: string, record: StudentExamItemVO): void {
+  if (key === 'detail') {
+    goDetail(record.examId)
+  } else if (key === 'appeal') {
+    goAppeal(record.examId)
+  }
 }
 
 function goDetail(examId: string) {

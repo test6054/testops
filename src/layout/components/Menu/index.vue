@@ -3,6 +3,7 @@
     v-if="isDualTeacherQualityMenu"
     :collapsed="!isDesktop ? false : appStore.menuCollapse"
     :marking-grouped="markingGroupedMenus"
+    :platform-grouped="platformGroupedMenus"
     :quality-grouped="qualityGroupedMenus"
     :portfolio-grouped="portfolioGroupedMenus"
     @menu-item-click-after="emit('menu-item-click-after')"
@@ -38,13 +39,18 @@
 <script lang="ts" setup>
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { CSSProperties } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { debounce } from 'lodash-es'
-import { computed, ref, watch } from 'vue'
 import { useDevice } from '@/hooks'
-import { useAppStore, useQualityStore, useRouteStore } from '@/stores'
-import { isQualityEvaluationRoute, PORTFOLIO_ROUTE_PREFIX } from '@/utils/portfolio-route'
+import { useAppStore, useAuthStore, useQualityStore, useRouteStore, useUserStore } from '@/stores'
+import { RoleEnum } from '@/utils/permission'
+import {
+  isQualityEvaluationRoute,
+  PORTFOLIO_ROUTE_PREFIX,
+  QUALITY_ADMIN_MENU_GROUP,
+} from '@/utils/portfolio-route'
 import { isExternal } from '@/utils/validate'
 import DualDomainSideNav from './DualDomainSideNav.vue'
 import MenuIcon from './MenuIcon.vue'
@@ -68,13 +74,24 @@ const router = useRouter()
 const appStore = useAppStore()
 const routeStore = useRouteStore()
 const qualityStore = useQualityStore()
+const authStore = useAuthStore()
+const userStore = useUserStore()
+
+function canSeePlatformManagement(): boolean {
+  return authStore.userRole === RoleEnum.SUPER_ADMIN || userStore.isTenantAdmin === true
+}
 
 const ROLE_LAYOUT_PREFIXES: string[] = ['/teacher', '/student', '/quality', PORTFOLIO_ROUTE_PREFIX]
-/** 质量域侧栏中的超管租户级配置分组，展示时归入考试阅卷域。 */
-const QUALITY_ADMIN_MENU_GROUP = 'quality-admin'
+
+function isPlatformAdminRoute(item: RouteRecordRaw): boolean {
+  return item.meta?.menuGroup === QUALITY_ADMIN_MENU_GROUP
+}
 
 function isSidebarMenuRoute(routeRecord: RouteRecordRaw): boolean {
-  return !routeRecord.meta?.hideInMenu && !(routeRecord.redirect && !routeRecord.component && !routeRecord.components)
+  return (
+    !routeRecord.meta?.hideInMenu &&
+    !(routeRecord.redirect && !routeRecord.component && !routeRecord.components)
+  )
 }
 
 function toAbsoluteLayoutPath(prefix: string, child: RouteRecordRaw): RouteRecordRaw {
@@ -150,11 +167,14 @@ function numberMetaValue(value: unknown): number | undefined {
   return value
 }
 
-function emptyMenuGroups(): { ungrouped: RouteRecordRaw[], groups: MenuGroup[] } {
+function emptyMenuGroups(): { ungrouped: RouteRecordRaw[]; groups: MenuGroup[] } {
   return { ungrouped: [], groups: [] }
 }
 
-function groupRoutes(routes: RouteRecordRaw[]): { ungrouped: RouteRecordRaw[], groups: MenuGroup[] } {
+function groupRoutes(routes: RouteRecordRaw[]): {
+  ungrouped: RouteRecordRaw[]
+  groups: MenuGroup[]
+} {
   const ungrouped: RouteRecordRaw[] = []
   const groupMap = new Map<string, MenuGroup>()
 
@@ -186,9 +206,15 @@ const layoutRouteSource = computed(() => {
   return routeStore.routes.length > 0 ? routeStore.routes : routeStore.getMenuRoutes()
 })
 
-const hasMarkingDomain = computed(() => layoutRouteSource.value.some((entry) => entry.path === '/teacher'))
-const hasQualityDomain = computed(() => layoutRouteSource.value.some((entry) => entry.path === '/quality'))
-const hasPortfolioDomain = computed(() => layoutRouteSource.value.some((entry) => entry.path === PORTFOLIO_ROUTE_PREFIX))
+const hasMarkingDomain = computed(() =>
+  layoutRouteSource.value.some((entry) => entry.path === '/teacher'),
+)
+const hasQualityDomain = computed(() =>
+  layoutRouteSource.value.some((entry) => entry.path === '/quality'),
+)
+const hasPortfolioDomain = computed(() =>
+  layoutRouteSource.value.some((entry) => entry.path === PORTFOLIO_ROUTE_PREFIX),
+)
 const isDualTeacherQualityMenu = computed(() => {
   if (props.menus) {
     return false
@@ -196,9 +222,11 @@ const isDualTeacherQualityMenu = computed(() => {
   if (!hasMarkingDomain.value || !hasQualityDomain.value || !hasPortfolioDomain.value) {
     return false
   }
-  return route.path.startsWith('/teacher')
-    || isQualityEvaluationRoute(route.path)
-    || route.path.startsWith(PORTFOLIO_ROUTE_PREFIX)
+  return (
+    route.path.startsWith('/teacher') ||
+    isQualityEvaluationRoute(route.path) ||
+    route.path.startsWith(PORTFOLIO_ROUTE_PREFIX)
+  )
 })
 
 const activeLayoutPrefix = computed(() => {
@@ -221,20 +249,28 @@ const qualitySidebarRoutes = computed(() => {
 const portfolioSidebarRoutes = computed(() => buildLayoutChildren(PORTFOLIO_ROUTE_PREFIX))
 
 const qualitySidebarRoutesForMenu = computed(() =>
-  qualitySidebarRoutes.value.filter((item) => item.meta?.menuGroup !== QUALITY_ADMIN_MENU_GROUP),
+  qualitySidebarRoutes.value.filter((item) => !isPlatformAdminRoute(item)),
 )
 
-const markingSidebarRoutesForMenu = computed(() => {
-  const platformAdminRoutes = qualitySidebarRoutes.value.filter(
-    (item) => item.meta?.menuGroup === QUALITY_ADMIN_MENU_GROUP,
-  )
+const platformSidebarRoutes = computed(() => {
+  if (!canSeePlatformManagement()) {
+    return []
+  }
   return [
-    ...markingSidebarRoutes.value,
-    ...platformAdminRoutes,
+    ...markingSidebarRoutes.value.filter(isPlatformAdminRoute),
+    ...qualitySidebarRoutes.value.filter(isPlatformAdminRoute),
   ]
 })
 
+const markingSidebarRoutesForMenu = computed(() =>
+  markingSidebarRoutes.value.filter((item) => !isPlatformAdminRoute(item)),
+)
+
 const markingGroupedMenus = computed(() => groupRoutes(markingSidebarRoutesForMenu.value))
+const platformGroupedMenus = computed(() => ({
+  ungrouped: platformSidebarRoutes.value,
+  groups: [] as MenuGroup[],
+}))
 const qualityGroupedMenus = computed(() => groupRoutes(qualitySidebarRoutesForMenu.value))
 const portfolioGroupedMenus = computed(() => groupRoutes(portfolioSidebarRoutes.value))
 
@@ -247,6 +283,7 @@ const sidebarRoutes = computed(() => {
       ...markingSidebarRoutesForMenu.value,
       ...qualitySidebarRoutesForMenu.value,
       ...portfolioSidebarRoutes.value,
+      ...platformSidebarRoutes.value,
     ]
   }
   const prefix = activeLayoutPrefix.value
@@ -333,6 +370,18 @@ function findSidebarItemByKey(keyStr: string): RouteRecordRaw | undefined {
     return portfolioDirect
   }
 
+  for (const group of platformGroupedMenus.value.groups) {
+    const found = searchInRoutes(group.items)
+    if (found) {
+      return found
+    }
+  }
+
+  const platformDirect = searchInRoutes(platformGroupedMenus.value.ungrouped)
+  if (platformDirect) {
+    return platformDirect
+  }
+
   for (const group of qualityGroupedMenus.value.groups) {
     const found = searchInRoutes(group.items)
     if (found) {
@@ -356,7 +405,9 @@ const onMenuItemClick = ({ key }: { key: Key }) => {
     window.open(keyStr)
     return
   }
-  const menuItem = findSidebarItemByKey(keyStr.startsWith('/') ? keyStr : `${activeLayoutPrefix.value}/${keyStr}`)
+  const menuItem = findSidebarItemByKey(
+    keyStr.startsWith('/') ? keyStr : `${activeLayoutPrefix.value}/${keyStr}`,
+  )
   if (menuItem?.meta?.disabled) {
     message.error('培养方案尚未确认，请先在「培养方案体系工作台」完成确认')
     return

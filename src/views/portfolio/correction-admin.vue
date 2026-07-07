@@ -1,21 +1,22 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  PortfolioCorrectionRequestStatusCode} from '@/apis/portfolio/enums';
-import type { PortfolioCorrectionSummaryVO } from '@/apis/portfolio/types'
-import { Input, message } from 'ant-design-vue'
-import { reactive, ref } from 'vue'
-import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
+import type { PortfolioCorrectionRequestStatusCode } from '@/apis/portfolio/enums'
 import {
   PortfolioCorrectionHandleActionCode,
   PortfolioCorrectionRequestStatusDescription,
 } from '@/apis/portfolio/enums'
+import type { PortfolioCorrectionSummaryVO } from '@/apis/portfolio/types'
 import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
+import { Input, message } from 'ant-design-vue'
+import { reactive, ref } from 'vue'
+import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -107,6 +108,67 @@ async function submitReject() {
   await handleRow(rejectTarget.value, PortfolioCorrectionHandleActionCode.REJECT, opinion)
 }
 
+/** 组装纠错工单行内操作。 */
+function buildCorrectionRowActions(row: PortfolioCorrectionSummaryVO): UiTableRowActionItem[] {
+  const busy = handlingId.value === row.id
+  const actions: UiTableRowActionItem[] = []
+  if (row.requestStatus === 'SUBMITTED') {
+    actions.push({
+      key: 'accept',
+      label: '受理',
+      tone: 'primary',
+      disabled: busy,
+    })
+  }
+  if (row.requestStatus === 'ACCEPTING') {
+    actions.push(
+      { key: 'reject', label: '驳回', tone: 'danger', disabled: busy },
+      { key: 'archiveCorrect', label: '档案更正', disabled: busy },
+      { key: 'sourceFix', label: '源系统整改', disabled: busy },
+    )
+  }
+  if (row.requestStatus === 'SOURCE_FIXING') {
+    actions.push({
+      key: 'pendingVerify',
+      label: '标记待验证',
+      tone: 'primary',
+      disabled: busy,
+    })
+  }
+  if (row.requestStatus === 'PENDING_VERIFY' || row.requestStatus === 'ARCHIVE_CORRECTING') {
+    actions.push({
+      key: 'close',
+      label: '关闭',
+      tone: 'primary',
+      disabled: busy,
+    })
+  }
+  return actions
+}
+
+function handleCorrectionRowAction(key: string, row: PortfolioCorrectionSummaryVO): void {
+  switch (key) {
+    case 'accept':
+      void handleRow(row, PortfolioCorrectionHandleActionCode.ACCEPT)
+      break
+    case 'reject':
+      openRejectDrawer(row)
+      break
+    case 'archiveCorrect':
+      void handleRow(row, PortfolioCorrectionHandleActionCode.MARK_ARCHIVE_CORRECTING)
+      break
+    case 'sourceFix':
+      void handleRow(row, PortfolioCorrectionHandleActionCode.MARK_SOURCE_FIXING)
+      break
+    case 'pendingVerify':
+      void handleRow(row, PortfolioCorrectionHandleActionCode.MARK_PENDING_VERIFY)
+      break
+    case 'close':
+      void handleRow(row, PortfolioCorrectionHandleActionCode.CLOSE)
+      break
+  }
+}
+
 void loadPage()
 </script>
 
@@ -141,64 +203,10 @@ void loadPage()
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell">
-              <UiButton
-                v-if="record.requestStatus === 'SUBMITTED'"
-                variant="primary"
-                size="sm"
-                :loading="handlingId === record.id"
-                @click="() => void handleRow(record, PortfolioCorrectionHandleActionCode.ACCEPT)"
-              >
-                受理
-              </UiButton>
-              <template v-if="record.requestStatus === 'ACCEPTING'">
-                <button
-                  type="button"
-                  class="op-link op-link--danger"
-                  :disabled="handlingId === record.id"
-                  @click="openRejectDrawer(record)"
-                >
-                  驳回
-                </button>
-                <button
-                  type="button"
-                  class="op-link"
-                  :disabled="handlingId === record.id"
-                  @click="() => void handleRow(record, PortfolioCorrectionHandleActionCode.MARK_ARCHIVE_CORRECTING)"
-                >
-                  档案更正
-                </button>
-                <button
-                  type="button"
-                  class="op-link"
-                  :disabled="handlingId === record.id"
-                  @click="() => void handleRow(record, PortfolioCorrectionHandleActionCode.MARK_SOURCE_FIXING)"
-                >
-                  源系统整改
-                </button>
-              </template>
-              <button
-                v-if="record.requestStatus === 'SOURCE_FIXING'"
-                type="button"
-                class="op-link op-link--primary"
-                :disabled="handlingId === record.id"
-                @click="() => void handleRow(record, PortfolioCorrectionHandleActionCode.MARK_PENDING_VERIFY)"
-              >
-                标记待验证
-              </button>
-              <button
-                v-if="
-                  record.requestStatus === 'PENDING_VERIFY'
-                    || record.requestStatus === 'ARCHIVE_CORRECTING'
-                "
-                type="button"
-                class="op-link op-link--primary"
-                :disabled="handlingId === record.id"
-                @click="() => void handleRow(record, PortfolioCorrectionHandleActionCode.CLOSE)"
-              >
-                关闭
-              </button>
-            </div>
+            <UiTableActions
+              :items="buildCorrectionRowActions(record)"
+              @action="(key) => handleCorrectionRowAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>

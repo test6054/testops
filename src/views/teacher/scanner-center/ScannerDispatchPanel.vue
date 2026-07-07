@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
-import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   ALL_SCAN_DISPATCH_TICKET_STATUS_CODES,
   cancelScanDispatch,
@@ -15,22 +10,22 @@ import {
   ScanDispatchTicketStatusCode,
   ScanDispatchTicketStatusDescription,
 } from '@/apis/mark/scanner-dispatch'
-import {
-  SCAN_TASK_KIND_OPTIONS,
-  ScanTaskKindDescription,
-} from '@/apis/mark/scanner-work-order'
+import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
+import { SCAN_TASK_KIND_OPTIONS, ScanTaskKindDescription } from '@/apis/mark/scanner-work-order'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import {
-  DispatchQueueStatusFilterCode,
-} from '@/types/enums/dispatch-queue-status-filter-enum'
+import { DispatchQueueStatusFilterCode } from '@/types/enums/dispatch-queue-status-filter-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -44,12 +39,14 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'open-log': [payload: {
-    ticketId?: string
-    volumeId?: string
-    dispatchFilter?: string
-    dispatchStatus?: string
-  }]
+  'open-log': [
+    payload: {
+      ticketId?: string
+      volumeId?: string
+      dispatchFilter?: string
+      dispatchStatus?: string
+    },
+  ]
   'metrics-changed': []
 }>()
 
@@ -174,7 +171,8 @@ const tableEmptyDescription = computed(() =>
 
 function resolveLifecycleFilter(
   value: unknown,
-): DispatchQueueStatusFilterCode.PENDING
+):
+  | DispatchQueueStatusFilterCode.PENDING
   | DispatchQueueStatusFilterCode.PROCESSING
   | DispatchQueueStatusFilterCode.SUSPENDED
   | undefined {
@@ -224,7 +222,9 @@ function applyRouteQueueFilter() {
 
 function syncDispatchRouteQuery() {
   if (queueFilter.value === DispatchQueueStatusFilterCode.FAILED) {
-    void router.replace({ query: { tab: 'dispatch', dispatchFilter: DispatchQueueStatusFilterCode.FAILED } })
+    void router.replace({
+      query: { tab: 'dispatch', dispatchFilter: DispatchQueueStatusFilterCode.FAILED },
+    })
     return
   }
   const status = lifecycleFilterToStatus(queueFilter.value)
@@ -239,11 +239,9 @@ function applyQueueFilter(filter: DispatchQueueStatusFilterCode) {
   queueFilter.value = filter
   if (filter === DispatchQueueStatusFilterCode.FAILED) {
     filters.status = undefined
-  }
-  else if (filter === DispatchQueueStatusFilterCode.ALL) {
+  } else if (filter === DispatchQueueStatusFilterCode.ALL) {
     filters.status = undefined
-  }
-  else {
+  } else {
     filters.status = lifecycleFilterToStatus(filter)
   }
   pagination.current = 1
@@ -304,12 +302,10 @@ async function loadSummary() {
   summaryLoading.value = true
   try {
     queueSummary.value = await loadScanDispatchQueueSummary()
-  }
-  catch (error) {
+  } catch (error) {
     queueSummary.value = null
     showUserError(error, '派单队列概览加载失败')
-  }
-  finally {
+  } finally {
     summaryLoading.value = false
   }
 }
@@ -324,20 +320,19 @@ async function loadTickets() {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
       failureOnly: filter === DispatchQueueStatusFilterCode.FAILED ? true : undefined,
-      excludeFailed: filter === DispatchQueueStatusFilterCode.ALL
-        || filter === DispatchQueueStatusFilterCode.PENDING
-        ? true
-        : undefined,
+      excludeFailed:
+        filter === DispatchQueueStatusFilterCode.ALL ||
+        filter === DispatchQueueStatusFilterCode.PENDING
+          ? true
+          : undefined,
     })
     tickets.value = result.list
     pagination.total = Number(result.total)
-  }
-  catch (error) {
+  } catch (error) {
     tickets.value = []
     pagination.total = 0
     showUserError(error, '派单列表加载失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -355,8 +350,7 @@ function handleSearch() {
   if (filters.status) {
     const lifecycle = resolveLifecycleFilter(filters.status)
     queueFilter.value = lifecycle ?? DispatchQueueStatusFilterCode.ALL
-  }
-  else {
+  } else {
     queueFilter.value = DispatchQueueStatusFilterCode.ALL
   }
   syncDispatchRouteQuery()
@@ -372,7 +366,7 @@ function handleResetSearch() {
   void loadTickets()
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pagination.current = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   void loadTickets()
@@ -397,6 +391,42 @@ function currentDispatchRouteContext(): {
   return {}
 }
 
+function buildDispatchRowActions(record: ScanDispatchTicketVO): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = [
+    { key: 'open-kiosk', label: '打开工位', tone: 'primary' },
+  ]
+  if (canCancelTicket(record)) {
+    actions.push({
+      key: 'cancel',
+      label: '取消派单',
+      tone: 'danger',
+      disabled: cancellingTicketId.value === record.ticketId,
+    })
+  }
+  if (canForceReleaseTicket(record)) {
+    actions.push({ key: 'force-release', label: '强制解锁', tone: 'danger' })
+  }
+  actions.push({ key: 'logs', label: '操作日志' })
+  return actions
+}
+
+function handleDispatchRowAction(key: string, record: ScanDispatchTicketVO): void {
+  switch (key) {
+    case 'open-kiosk':
+      openKiosk(record.ticketId)
+      break
+    case 'cancel':
+      void cancelTicket(record)
+      break
+    case 'force-release':
+      openForceRelease(record)
+      break
+    case 'logs':
+      openOperationLog(record)
+      break
+  }
+}
+
 function openOperationLog(record: ScanDispatchTicketVO) {
   emit('open-log', {
     ticketId: record.ticketId,
@@ -410,9 +440,11 @@ function canCancelTicket(record: ScanDispatchTicketVO) {
 }
 
 function canForceReleaseTicket(record: ScanDispatchTicketVO) {
-  return Boolean(record.ticketId)
-    && (record.status === ScanDispatchTicketStatusCode.PROCESSING
-      || record.status === ScanDispatchTicketStatusCode.SUSPENDED)
+  return (
+    Boolean(record.ticketId) &&
+    (record.status === ScanDispatchTicketStatusCode.PROCESSING ||
+      record.status === ScanDispatchTicketStatusCode.SUSPENDED)
+  )
 }
 
 function openForceRelease(record: ScanDispatchTicketVO) {
@@ -437,11 +469,9 @@ async function cancelTicket(record: ScanDispatchTicketVO) {
         await cancelScanDispatch({ ticketId: record.ticketId! })
         await reloadAll()
         emit('metrics-changed')
-      }
-      catch (error) {
+      } catch (error) {
         showUserError(error, '取消派单失败')
-      }
-      finally {
+      } finally {
         cancellingTicketId.value = undefined
       }
     },
@@ -470,7 +500,10 @@ watch(
     }
     const lifecycle = resolveLifecycleFilter(dispatchQuery.statusRaw)
     if (lifecycle !== undefined) {
-      if (queueFilter.value === lifecycle && filters.status === lifecycleFilterToStatus(lifecycle)) {
+      if (
+        queueFilter.value === lifecycle &&
+        filters.status === lifecycleFilterToStatus(lifecycle)
+      ) {
         return
       }
       queueFilter.value = lifecycle
@@ -542,7 +575,12 @@ onMounted(() => {
             @search="handleSearch"
             @reset="handleResetSearch"
           />
-          <UiButton size="sm" variant="outline" :loading="loading || summaryLoading" @click="() => reloadAll()">
+          <UiButton
+            size="sm"
+            variant="outline"
+            :loading="loading || summaryLoading"
+            @click="() => reloadAll()"
+          >
             刷新
           </UiButton>
         </div>
@@ -578,29 +616,11 @@ onMounted(() => {
             {{ record.createTime ? formatDateTime(record.createTime) : '—' }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="scanner-dispatch-panel__actions">
-              <UiTextAction tone="primary" @click="openKiosk(record.ticketId)">
-                打开工位
-              </UiTextAction>
-              <UiTextAction
-                v-if="canCancelTicket(record)"
-                tone="danger"
-                :disabled="cancellingTicketId === record.ticketId"
-                @click="() => cancelTicket(record)"
-              >
-                取消派单
-              </UiTextAction>
-              <UiTextAction
-                v-if="canForceReleaseTicket(record)"
-                tone="danger"
-                @click="() => openForceRelease(record)"
-              >
-                强制解锁
-              </UiTextAction>
-              <UiTextAction @click="openOperationLog(record)">
-                操作日志
-              </UiTextAction>
-            </div>
+            <UiTableActions
+              :items="buildDispatchRowActions(record)"
+              split
+              @action="(key) => handleDispatchRowAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>

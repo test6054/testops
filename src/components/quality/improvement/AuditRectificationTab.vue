@@ -2,20 +2,21 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AuditEvidenceItemRequest } from '@/apis/quality/audit-evidence'
 import type { AuditIssueVO } from '@/apis/quality/audit-issue'
+import { auditIssueApi } from '@/apis/quality/audit-issue'
 import type {
   AuditRectificationQueryRequest,
   AuditRectificationSaveRequest,
   AuditRectificationVO,
 } from '@/apis/quality/audit-rectification'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import { auditRectificationApi } from '@/apis/quality/audit-rectification'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type {
   QualitySelectorChangeValue,
   WorkbenchSignalRefreshHandler,
 } from '@/composables/quality/improvement'
+import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
 import { message } from 'ant-design-vue'
 import { reactive, ref } from 'vue'
-import { auditIssueApi } from '@/apis/quality/audit-issue'
-import { auditRectificationApi } from '@/apis/quality/audit-rectification'
 import {
   AUDIT_RECTIFICATION_STATUS_COLOR,
   AuditRectificationStatusCode,
@@ -32,8 +33,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import {
@@ -228,7 +228,7 @@ function rectIssueCode(value: string | null | undefined): string {
   return issue?.issueCode?.trim() || '—'
 }
 
-function handleRectPageChange(page: { current: number, pageSize: number }) {
+function handleRectPageChange(page: { current: number; pageSize: number }) {
   rectQuery.pageNum = page.current
   rectQuery.pageSize = page.pageSize
   loadList()
@@ -284,11 +284,11 @@ async function submitRectEditor() {
     }
   }
   if (
-    !rectEditor.auditIssueId
-    || !rectEditor.rectificationCode.trim()
-    || !rectEditor.rectificationTitle.trim()
-    || !rectEditor.ownerUserId
-    || !rectEditor.dueDate
+    !rectEditor.auditIssueId ||
+    !rectEditor.rectificationCode.trim() ||
+    !rectEditor.rectificationTitle.trim() ||
+    !rectEditor.ownerUserId ||
+    !rectEditor.dueDate
   ) {
     message.error('请填写关联问题、编码、标题、责任人、截止日期')
     return
@@ -328,9 +328,11 @@ async function handleRectDelete(record: AuditRectificationVO) {
 }
 
 function canEditAuditRectification(status: AuditRectificationStatusCode): boolean {
-  return status === AuditRectificationStatusCode.PLANNED
-    || status === AuditRectificationStatusCode.IN_PROGRESS
-    || status === AuditRectificationStatusCode.RETURNED
+  return (
+    status === AuditRectificationStatusCode.PLANNED ||
+    status === AuditRectificationStatusCode.IN_PROGRESS ||
+    status === AuditRectificationStatusCode.RETURNED
+  )
 }
 
 function addRectEvidenceItem() {
@@ -425,7 +427,10 @@ async function advanceRectProgress(
   await loadList({ refreshSignals: true })
 }
 
-async function verifyRect(record: AuditRectificationVO, decision: AuditRectificationVerifyDecisionCode) {
+async function verifyRect(
+  record: AuditRectificationVO,
+  decision: AuditRectificationVerifyDecisionCode,
+) {
   const remark = await promptInputAsync({
     title: decision === AuditRectificationVerifyDecisionCode.APPROVED ? '复核通过' : '复核退回',
     placeholder: '请填写复核说明',
@@ -454,6 +459,65 @@ async function closeRect(record: AuditRectificationVO) {
       await loadList({ refreshSignals: true })
     },
   })
+}
+
+function buildAuditRectificationActions(record: AuditRectificationVO): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = [
+    {
+      key: 'edit',
+      label: '编辑',
+      disabled: !canEditAuditRectification(record.status),
+    },
+  ]
+  if (record.status === AuditRectificationStatusCode.PLANNED) {
+    actions.push({ key: 'start', label: '开始', tone: 'primary' })
+  }
+  if (record.status === AuditRectificationStatusCode.IN_PROGRESS) {
+    actions.push({ key: 'submit-review', label: '提交复核', tone: 'primary' })
+  }
+  if (record.status === AuditRectificationStatusCode.RETURNED) {
+    actions.push({ key: 'restart', label: '重新整改', tone: 'primary' })
+  }
+  if (record.status === AuditRectificationStatusCode.SUBMITTED) {
+    actions.push({ key: 'approve', label: '通过', tone: 'primary' })
+    actions.push({ key: 'reject', label: '退回', tone: 'danger' })
+  }
+  if (record.status === AuditRectificationStatusCode.VERIFIED) {
+    actions.push({ key: 'close', label: '闭环', tone: 'primary' })
+  }
+  if (record.status === AuditRectificationStatusCode.PLANNED) {
+    actions.push({ key: 'delete', label: '删除', tone: 'danger' })
+  }
+  return actions
+}
+
+function handleAuditRectificationAction(key: string, record: AuditRectificationVO): void {
+  switch (key) {
+    case 'edit':
+      openRectEdit(record)
+      break
+    case 'start':
+      void advanceRectProgress(record, AuditRectificationStatusCode.IN_PROGRESS)
+      break
+    case 'submit-review':
+      void advanceRectProgress(record, AuditRectificationStatusCode.SUBMITTED)
+      break
+    case 'restart':
+      void advanceRectProgress(record, AuditRectificationStatusCode.IN_PROGRESS)
+      break
+    case 'approve':
+      void verifyRect(record, AuditRectificationVerifyDecisionCode.APPROVED)
+      break
+    case 'reject':
+      void verifyRect(record, AuditRectificationVerifyDecisionCode.REJECTED)
+      break
+    case 'close':
+      void closeRect(record)
+      break
+    case 'delete':
+      void handleRectDelete(record)
+      break
+  }
 }
 
 function handleRectQueryAuditIssueChange(value: string | null | undefined) {
@@ -547,63 +611,11 @@ defineExpose({
           </UiTag>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <div class="operations-cell" @click.stop>
-            <UiTextAction
-              :disabled="!canEditAuditRectification(record.status)"
-              @click="openRectEdit(record)"
-            >
-              编辑
-            </UiTextAction>
-            <UiTextAction
-              v-if="record.status === AuditRectificationStatusCode.PLANNED"
-              tone="primary"
-              @click="advanceRectProgress(record, AuditRectificationStatusCode.IN_PROGRESS)"
-            >
-              开始
-            </UiTextAction>
-            <UiTextAction
-              v-if="record.status === AuditRectificationStatusCode.IN_PROGRESS"
-              tone="primary"
-              @click="advanceRectProgress(record, AuditRectificationStatusCode.SUBMITTED)"
-            >
-              提交复核
-            </UiTextAction>
-            <UiTextAction
-              v-if="record.status === AuditRectificationStatusCode.RETURNED"
-              tone="primary"
-              @click="advanceRectProgress(record, AuditRectificationStatusCode.IN_PROGRESS)"
-            >
-              重新整改
-            </UiTextAction>
-            <UiTextAction
-              v-if="record.status === AuditRectificationStatusCode.SUBMITTED"
-              tone="primary"
-              @click="verifyRect(record, AuditRectificationVerifyDecisionCode.APPROVED)"
-            >
-              通过
-            </UiTextAction>
-            <UiTextAction
-              v-if="record.status === AuditRectificationStatusCode.SUBMITTED"
-              tone="danger"
-              @click="verifyRect(record, AuditRectificationVerifyDecisionCode.REJECTED)"
-            >
-              退回
-            </UiTextAction>
-            <UiTextAction
-              v-if="record.status === AuditRectificationStatusCode.VERIFIED"
-              tone="primary"
-              @click="closeRect(record)"
-            >
-              闭环
-            </UiTextAction>
-            <UiTextAction
-              v-if="record.status === AuditRectificationStatusCode.PLANNED"
-              tone="danger"
-              @click="handleRectDelete(record)"
-            >
-              删除
-            </UiTextAction>
-          </div>
+          <UiTableActions
+            :items="buildAuditRectificationActions(record)"
+            split
+            @action="(key) => handleAuditRectificationAction(key, record)"
+          />
         </template>
       </template>
     </UiDataTable>

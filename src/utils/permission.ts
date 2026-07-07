@@ -19,7 +19,7 @@ export const ROLE_NAMES: Record<RoleEnum, string> = {
 // 角色层级（数字越小权限越高）
 // 角色分组（单角色模式：用于角色类型判断）
 export const ADMIN_ROLES: readonly RoleEnum[] = [RoleEnum.SUPER_ADMIN]
-export const TEACHER_ROLES: readonly RoleEnum[] = [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER]
+export const TEACHER_ROLES: readonly RoleEnum[] = [RoleEnum.SCH_TECH]
 export const STUDENT_ROLES: readonly RoleEnum[] = [RoleEnum.SCH_STU]
 
 // 所有教师类角色（包括超级管理员）

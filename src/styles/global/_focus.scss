@@ -1,7 +1,7 @@
 @use '../mixins/focus';
 
 // 未单独 styling 的原生 button / 外链：ScanImageStage 工具栏、卡片内 button 等
-button:focus-visible:not(.dp-btn):not(.ant-btn):not(.op-link):not(.ui-text-action),
+button:focus-visible:not(.dp-btn):not(.ant-btn):not(.ui-text-action),
 a[href]:focus-visible {
   @include focus.dp-focus-visible-ring;
 }

@@ -14,7 +14,12 @@
         class="scan-manual-entry__alert"
       />
 
-      <UiSectionTabs v-model="activeTab" :items="tabItems" compact class="scan-manual-entry__tabs" />
+      <UiSectionTabs
+        v-model="activeTab"
+        :items="tabItems"
+        compact
+        class="scan-manual-entry__tabs"
+      />
 
       <!-- 首次文件导入 -->
       <a-form
@@ -60,7 +65,12 @@
           />
         </a-form-item>
         <p v-if="directPrepareHint" class="scan-manual-entry__hint">{{ directPrepareHint }}</p>
-        <UiButton variant="primary" :loading="directSubmitting" :disabled="directSubmitDisabled" @click="submitDirect">
+        <UiButton
+          variant="primary"
+          :loading="directSubmitting"
+          :disabled="directSubmitDisabled"
+          @click="submitDirect"
+        >
           提交首次导入
         </UiButton>
       </a-form>
@@ -105,7 +115,11 @@
         <a-row :gutter="16">
           <a-col :xs="24" :md="8">
             <a-form-item label="补扫目标页" name="targetPageNo" required>
-              <a-input-number v-model:value="supplementForm.targetPageNo" :min="1" style="width: 100%" />
+              <a-input-number
+                v-model:value="supplementForm.targetPageNo"
+                :min="1"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :md="16">
@@ -128,8 +142,15 @@
             button-text="选择文件"
           />
         </a-form-item>
-        <p v-if="supplementPrepareHint" class="scan-manual-entry__hint">{{ supplementPrepareHint }}</p>
-        <UiButton variant="primary" :loading="supplementSubmitting" :disabled="supplementSubmitDisabled" @click="submitSupplement">
+        <p v-if="supplementPrepareHint" class="scan-manual-entry__hint">
+          {{ supplementPrepareHint }}
+        </p>
+        <UiButton
+          variant="primary"
+          :loading="supplementSubmitting"
+          :disabled="supplementSubmitDisabled"
+          @click="submitSupplement"
+        >
           提交指定页补扫
         </UiButton>
       </a-form>
@@ -161,17 +182,28 @@
           <a-row :gutter="16">
             <a-col :xs="24" :md="8">
               <a-form-item label="扫描页序号" name="pageSeq" required>
-                <a-input-number v-model:value="maintenanceForm.pageSeq" :min="1" style="width: 100%" />
+                <a-input-number
+                  v-model:value="maintenanceForm.pageSeq"
+                  :min="1"
+                  style="width: 100%"
+                />
               </a-form-item>
             </a-col>
             <a-col :xs="24" :md="8">
               <a-form-item label="模板页号" name="templatePageNo" required>
-                <a-input-number v-model:value="maintenanceForm.templatePageNo" :min="1" style="width: 100%" />
+                <a-input-number
+                  v-model:value="maintenanceForm.templatePageNo"
+                  :min="1"
+                  style="width: 100%"
+                />
               </a-form-item>
             </a-col>
             <a-col :xs="24" :md="8">
               <a-form-item label="已有试卷实例 ID">
-                <a-input v-model:value="maintenanceForm.paperInstanceId" placeholder="可选，续扫时填写" />
+                <a-input
+                  v-model:value="maintenanceForm.paperInstanceId"
+                  placeholder="可选，续扫时填写"
+                />
               </a-form-item>
             </a-col>
           </a-row>
@@ -192,12 +224,20 @@
           <a-row :gutter="16">
             <a-col :xs="24" :md="8">
               <a-form-item label="起始扫描页序号" name="startPageSeq">
-                <a-input-number v-model:value="maintenanceForm.startPageSeq" :min="1" style="width: 100%" />
+                <a-input-number
+                  v-model:value="maintenanceForm.startPageSeq"
+                  :min="1"
+                  style="width: 100%"
+                />
               </a-form-item>
             </a-col>
             <a-col :xs="24" :md="8">
               <a-form-item label="起始模板页号" name="startTemplatePageNo">
-                <a-input-number v-model:value="maintenanceForm.startTemplatePageNo" :min="1" style="width: 100%" />
+                <a-input-number
+                  v-model:value="maintenanceForm.startTemplatePageNo"
+                  :min="1"
+                  style="width: 100%"
+                />
               </a-form-item>
             </a-col>
             <a-col :xs="24" :md="8">
@@ -251,22 +291,25 @@
               {{ strictEnumLabel(MARK_OCR_SCENE_LABEL, record.ocrScene, 'OCR 识别场景') }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction :loading="recognizingSliceId === record.responseSliceId" @click="handleRecognizeSlice(record)">
-                OCR 识别
-              </UiTextAction>
-              <UiTextAction
-                :loading="submittingSliceId === record.responseSliceId"
-                :disabled="!sliceRecognizeMap[record.responseSliceId]"
-                @click="handleSubmitRecognition(record)"
-              >
-                提交识别
-              </UiTextAction>
+              <UiTableActions
+                :items="buildSliceRowActions(record)"
+                split
+                @action="(key) => handleSliceRowAction(key, record)"
+              />
             </template>
           </template>
         </UiDataTable>
-        <UiCard v-if="lastRecognizePreview" title="最近识别结果" class="scan-manual-entry__recognize-card">
-          <p class="scan-manual-entry__recognize-text">{{ lastRecognizePreview.recognizedText || '（空作答）' }}</p>
-          <p v-if="lastRecognizePreview.diagnostic" class="scan-manual-entry__hint">{{ lastRecognizePreview.diagnostic }}</p>
+        <UiCard
+          v-if="lastRecognizePreview"
+          title="最近识别结果"
+          class="scan-manual-entry__recognize-card"
+        >
+          <p class="scan-manual-entry__recognize-text">
+            {{ lastRecognizePreview.recognizedText || '（空作答）' }}
+          </p>
+          <p v-if="lastRecognizePreview.diagnostic" class="scan-manual-entry__hint">
+            {{ lastRecognizePreview.diagnostic }}
+          </p>
         </UiCard>
       </template>
     </template>
@@ -277,31 +320,32 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamScannerDeviceResponse } from '@/apis/mark/exam-mark-scanner'
-import type { ExamScannerBatchResponse } from '@/apis/mark/exam-scan'
-import type { MarkOcrPaperSliceVO, MarkOcrRecognizeResponse } from '@/apis/mark/ocr-recognition'
-import type { ExamTeacherScanSupplementPrepareResponse } from '@/apis/mark/scan-source'
-import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { getExamDetail } from '@/apis/mark/exam'
 import { listActiveScannerDevices } from '@/apis/mark/exam-mark-scanner'
+import type { ExamScannerBatchResponse } from '@/apis/mark/exam-scan'
 import { pageScannerBatches, QualityDecisionCode } from '@/apis/mark/exam-scan'
-import { pageExamScoreSummary } from '@/apis/mark/exam-score'
+import type { MarkOcrPaperSliceVO, MarkOcrRecognizeResponse } from '@/apis/mark/ocr-recognition'
 import {
   listMarkOcrPaperSlices,
   recognizeMarkOcr,
   submitRecognition,
 } from '@/apis/mark/ocr-recognition'
-import { MARK_OCR_SCENE_LABEL } from '@/apis/mark/ocr-scene'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
+import type { ExamTeacherScanSupplementPrepareResponse } from '@/apis/mark/scan-source'
 import {
   importScanSource,
   prepareTeacherScanSupplement,
   registerScannedPage,
   teacherSupplementScanSource,
 } from '@/apis/mark/scan-source'
+import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
+import type { SignalMetric } from '@/types/workbench'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { getExamDetail } from '@/apis/mark/exam'
+import { pageExamScoreSummary } from '@/apis/mark/exam-score'
+import { MARK_OCR_SCENE_LABEL } from '@/apis/mark/ocr-scene'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -311,7 +355,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
@@ -394,7 +438,7 @@ const maintenanceForm = reactive({
 const maintenanceSubmitting = ref(false)
 
 const recognitionFilter = reactive({ paperInstanceId: undefined as string | undefined })
-const paperCandidateOptions = ref<Array<{ value: string, label: string }>>([])
+const paperCandidateOptions = ref<Array<{ value: string; label: string }>>([])
 const paperSlices = ref<MarkOcrPaperSliceVO[]>([])
 const slicesLoading = ref(false)
 const recognizingSliceId = ref<string | null>(null)
@@ -436,7 +480,9 @@ const boundPaperOptions = computed(() =>
   })),
 )
 
-function resolveDeviceFromKey(deviceKey?: string): { scannerDeviceId: string, scannerStationId: string } | null {
+function resolveDeviceFromKey(
+  deviceKey?: string,
+): { scannerDeviceId: string; scannerStationId: string } | null {
   if (!deviceKey) return null
   const [scannerDeviceId, scannerStationId] = deviceKey.split('::')
   if (!scannerDeviceId || !scannerStationId) return null
@@ -460,16 +506,18 @@ function buildPrepareHint(context: ExamTeacherScanSupplementPrepareResponse | nu
 const directPrepareHint = computed(() => buildPrepareHint(directPrepare.value))
 const supplementPrepareHint = computed(() => buildPrepareHint(supplementPrepare.value))
 
-const directSubmitDisabled = computed(() =>
-  declaredClassIds.value.length === 0
-  || directPrepareLoading.value
-  || directPrepare.value?.canSubmitManualSupplement === false,
+const directSubmitDisabled = computed(
+  () =>
+    declaredClassIds.value.length === 0 ||
+    directPrepareLoading.value ||
+    directPrepare.value?.canSubmitManualSupplement === false,
 )
 
-const supplementSubmitDisabled = computed(() =>
-  declaredClassIds.value.length === 0
-  || supplementPrepareLoading.value
-  || supplementPrepare.value?.canSubmitManualSupplement === false,
+const supplementSubmitDisabled = computed(
+  () =>
+    declaredClassIds.value.length === 0 ||
+    supplementPrepareLoading.value ||
+    supplementPrepare.value?.canSubmitManualSupplement === false,
 )
 
 const summaryMetrics = computed<SignalMetric[]>(() => [
@@ -518,13 +566,15 @@ const sliceColumns: ColumnType<MarkOcrPaperSliceVO>[] = [
 
 const directRules: Record<string, Rule[]> = {
   deviceKey: [{ required: true, message: '请选择扫描设备' }],
-  sourceFileId: [{
-    validator: async () => {
-      if (!directForm.sourceFileId) {
-        return Promise.reject(new Error('请选择扫描来源文件'))
-      }
+  sourceFileId: [
+    {
+      validator: async () => {
+        if (!directForm.sourceFileId) {
+          return Promise.reject(new Error('请选择扫描来源文件'))
+        }
+      },
     },
-  }],
+  ],
 }
 
 const supplementRules: Record<string, Rule[]> = {
@@ -532,13 +582,15 @@ const supplementRules: Record<string, Rule[]> = {
   paperInstanceId: [{ required: true, message: '请选择已绑定试卷' }],
   targetPageNo: [{ required: true, type: 'number', min: 1, message: '请填写补扫目标页号' }],
   supplementReason: [{ required: true, message: '请填写补扫原因' }],
-  sourceFileId: [{
-    validator: async () => {
-      if (!supplementForm.sourceFileId) {
-        return Promise.reject(new Error('请选择补扫文件'))
-      }
+  sourceFileId: [
+    {
+      validator: async () => {
+        if (!supplementForm.sourceFileId) {
+          return Promise.reject(new Error('请选择补扫文件'))
+        }
+      },
     },
-  }],
+  ],
 }
 
 const maintenanceRules: Record<string, Rule[]> = {
@@ -563,7 +615,8 @@ async function loadExamContext(): Promise<void> {
   try {
     const detail = await getExamDetail(selectedExamId.value)
     declaredClassIds.value = (detail.classRefs ?? []).map((item) => item.classId)
-    prepBlockReason.value = declaredClassIds.value.length === 0 ? '请先在考生名册维护考试班级范围' : ''
+    prepBlockReason.value =
+      declaredClassIds.value.length === 0 ? '请先在考生名册维护考试班级范围' : ''
   } catch (error) {
     declaredClassIds.value = []
     showUserError(error, '考试详情加载失败')
@@ -700,7 +753,9 @@ async function submitDirect(): Promise<void> {
       sourceFileId: directForm.sourceFileId,
       startTemplatePageNo: directForm.startTemplatePageNo,
     })
-    message.success(`首次导入成功，批次 ${response.batchExternalNo}，登记 ${response.registeredPageCount} 页`)
+    message.success(
+      `首次导入成功，批次 ${response.batchExternalNo}，登记 ${response.registeredPageCount} 页`,
+    )
     directForm.sourceFileId = undefined
     directForm.sourceFileName = undefined
     void loadBatches()
@@ -719,7 +774,13 @@ async function submitSupplement(): Promise<void> {
   await supplementFormRef.value?.validate()
   const examId = selectedExamId.value
   const batch = resolveBatch(supplementForm.scanBatchId)
-  if (!examId || !batch?.scanBatchId || !batch.scannerDeviceId || !batch.scannerStationId || !supplementForm.sourceFileId) {
+  if (
+    !examId ||
+    !batch?.scanBatchId ||
+    !batch.scannerDeviceId ||
+    !batch.scannerStationId ||
+    !supplementForm.sourceFileId
+  ) {
     return
   }
   supplementSubmitting.value = true
@@ -822,6 +883,33 @@ async function loadPaperSlices(): Promise<void> {
   }
 }
 
+function buildSliceRowActions(slice: MarkOcrPaperSliceVO): UiTableRowActionItem[] {
+  return [
+    {
+      key: 'recognize',
+      label: 'OCR 识别',
+      disabled: recognizingSliceId.value === slice.responseSliceId,
+    },
+    {
+      key: 'submit',
+      label: '提交识别',
+      disabled:
+        submittingSliceId.value === slice.responseSliceId ||
+        !sliceRecognizeMap[slice.responseSliceId],
+    },
+  ]
+}
+
+function handleSliceRowAction(key: string, slice: MarkOcrPaperSliceVO): void {
+  if (key === 'recognize') {
+    void handleRecognizeSlice(slice)
+    return
+  }
+  if (key === 'submit') {
+    void handleSubmitRecognition(slice)
+  }
+}
+
 async function handleRecognizeSlice(slice: MarkOcrPaperSliceVO): Promise<void> {
   const examId = selectedExamId.value
   if (!examId) return
@@ -881,11 +969,15 @@ async function handleSubmitRecognition(slice: MarkOcrPaperSliceVO): Promise<void
   }
 }
 
-watch(selectedExamId, () => {
-  void loadExamContext()
-  void loadBatches()
-  void loadPaperCandidates()
-}, { immediate: true })
+watch(
+  selectedExamId,
+  () => {
+    void loadExamContext()
+    void loadBatches()
+    void loadPaperCandidates()
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   void loadDevices()

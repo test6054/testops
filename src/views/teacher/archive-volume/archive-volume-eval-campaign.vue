@@ -8,12 +8,8 @@
         subtitle="归档全链路 · 迎评批次与卷就绪度"
       >
         <template #actions>
-          <UiButton variant="ghost" size="sm" @click="goList">
-            返回列表
-          </UiButton>
-          <UiButton variant="outline" size="sm" @click="goReadinessMatrix">
-            就绪度矩阵
-          </UiButton>
+          <UiButton variant="ghost" size="sm" @click="goList"> 返回列表 </UiButton>
+          <UiButton variant="outline" size="sm" @click="goReadinessMatrix"> 就绪度矩阵 </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -67,16 +63,16 @@
               {{ formatDateTime(record.endTime) }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction
-                  v-if="record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE && canExportCampaign"
-                  tone="primary"
-                  @click="handleExportArchive(record.campaignId)"
-                >
-                  导出目录包
-                </UiTextAction>
-                <span v-else class="link-cell__sub">—</span>
-              </div>
+              <UiTableActions
+                v-if="
+                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE &&
+                  canExportCampaign
+                "
+                :items="buildCampaignActions(record)"
+                split
+                @action="(key) => handleCampaignAction(key, record)"
+              />
+              <span v-else class="link-cell__sub">—</span>
             </template>
           </template>
         </UiDataTable>
@@ -119,34 +115,51 @@
               {{ record.teachingClassName || record.archiveTitle || '—' }}
             </template>
             <template v-else-if="column.key === 'catalogReady'">
-              <UiTag :tone="evaluationDimensionReadyTone(record.catalogReady, 'catalogReady')" size="sm">
+              <UiTag
+                :tone="evaluationDimensionReadyTone(record.catalogReady, 'catalogReady')"
+                size="sm"
+              >
                 {{ evaluationDimensionReadyLabel(record.catalogReady, 'catalogReady') }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'integrityReady'">
-              <UiTag :tone="evaluationDimensionReadyTone(record.integrityReady, 'integrityReady')" size="sm">
+              <UiTag
+                :tone="evaluationDimensionReadyTone(record.integrityReady, 'integrityReady')"
+                size="sm"
+              >
                 {{ evaluationDimensionReadyLabel(record.integrityReady, 'integrityReady') }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'fourPropertyReady'">
-              <UiTag :tone="evaluationDimensionReadyTone(record.fourPropertyReady, 'fourPropertyReady')" size="sm">
+              <UiTag
+                :tone="evaluationDimensionReadyTone(record.fourPropertyReady, 'fourPropertyReady')"
+                size="sm"
+              >
                 {{ evaluationDimensionReadyLabel(record.fourPropertyReady, 'fourPropertyReady') }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'transferReady'">
-              <UiTag :tone="evaluationDimensionReadyTone(record.transferReady, 'transferReady')" size="sm">
+              <UiTag
+                :tone="evaluationDimensionReadyTone(record.transferReady, 'transferReady')"
+                size="sm"
+              >
                 {{ evaluationDimensionReadyLabel(record.transferReady, 'transferReady') }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'overallReady'">
-              <UiTag :tone="evaluationDimensionReadyTone(record.overallReady, 'overallReady')" size="sm">
+              <UiTag
+                :tone="evaluationDimensionReadyTone(record.overallReady, 'overallReady')"
+                size="sm"
+              >
                 {{ evaluationDimensionReadyLabel(record.overallReady, 'overallReady') }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction tone="primary" @click="goVolumeDetail(record.volumeId)">
-                查看卷
-              </UiTextAction>
+              <UiTableActions
+                :items="buildReadinessActions(record)"
+                split
+                @action="(key) => handleReadinessAction(key, record)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -163,13 +176,6 @@ import type {
   ArchiveEvaluationCampaignResponse,
   ArchiveEvaluationVolumeReadinessResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
-import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
 import {
   ArchiveEvaluationCampaignStatusCode,
   ArchiveEvaluationCampaignStatusDescription,
@@ -177,11 +183,23 @@ import {
   getEvaluationCampaignReadinessPanel,
   listEvaluationCampaigns,
 } from '@/apis/mark/archive-volume'
+import type {
+  BadgeTone,
+  UiSectionTabItem,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
+import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -219,20 +237,12 @@ const readinessPagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
 const canExportCampaign = computed(() => hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR))
 
 const evalCampaignSignalMetrics = computed((): SignalMetric[] => {
-  const activeCount = campaigns.value.filter((item) =>
-    item.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE,
+  const activeCount = campaigns.value.filter(
+    (item) => item.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE,
   ).length
-  const totalVolumes = campaigns.value.reduce(
-    (sum, item) => sum + (item.totalVolumeCount ?? 0),
-    0,
-  )
-  const readyVolumes = campaigns.value.reduce(
-    (sum, item) => sum + (item.readyVolumeCount ?? 0),
-    0,
-  )
-  const readinessRate = totalVolumes > 0
-    ? Math.round((readyVolumes / totalVolumes) * 100)
-    : 0
+  const totalVolumes = campaigns.value.reduce((sum, item) => sum + (item.totalVolumeCount ?? 0), 0)
+  const readyVolumes = campaigns.value.reduce((sum, item) => sum + (item.readyVolumeCount ?? 0), 0)
+  const readinessRate = totalVolumes > 0 ? Math.round((readyVolumes / totalVolumes) * 100) : 0
   return [
     {
       key: 'campaigns',
@@ -329,6 +339,31 @@ function goList(): void {
 
 function goReadinessMatrix(): void {
   void router.push({ name: 'TeacherArchiveVolumeReadinessMatrix' })
+}
+
+function buildCampaignActions(_record: ArchiveEvaluationCampaignResponse): UiTableRowActionItem[] {
+  return [{ key: 'export', label: '导出目录包', tone: 'primary' }]
+}
+
+function handleCampaignAction(key: string, record: ArchiveEvaluationCampaignResponse): void {
+  if (key === 'export') {
+    void handleExportArchive(record.campaignId)
+  }
+}
+
+function buildReadinessActions(
+  _record: ArchiveEvaluationVolumeReadinessResponse,
+): UiTableRowActionItem[] {
+  return [{ key: 'detail', label: '查看卷', tone: 'primary' }]
+}
+
+function handleReadinessAction(
+  key: string,
+  record: ArchiveEvaluationVolumeReadinessResponse,
+): void {
+  if (key === 'detail') {
+    goVolumeDetail(record.volumeId)
+  }
 }
 
 function goVolumeDetail(volumeId: string): void {

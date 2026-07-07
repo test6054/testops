@@ -2,10 +2,11 @@
   <section id="exam-create-candidates" class="form-section exam-create-form">
     <header class="section-header">
       <h2 class="section-title">考生范围</h2>
-      <div v-if="rosterForm.scopeMode === ExamRosterScopeModeCode.BY_STUDENT" class="section-actions">
-        <UiButton size="sm" variant="outline" @click="openStudentDrawer">
-          按学生选择
-        </UiButton>
+      <div
+        v-if="rosterForm.scopeMode === ExamRosterScopeModeCode.BY_STUDENT"
+        class="section-actions"
+      >
+        <UiButton size="sm" variant="outline" @click="openStudentDrawer"> 按学生选择 </UiButton>
       </div>
     </header>
     <p class="section-desc">选择参考班级与纳入方式；创建后仍可在工作台名册中调整。</p>
@@ -20,7 +21,13 @@
       @close="rosterPreviewError = ''"
     />
 
-    <a-form ref="formRef" :model="rosterForm" :rules="rosterRules" layout="vertical" class="exam-create-form__body">
+    <a-form
+      ref="formRef"
+      :model="rosterForm"
+      :rules="rosterRules"
+      layout="vertical"
+      class="exam-create-form__body"
+    >
       <div class="exam-create-form__grid exam-create-form__grid--single">
         <a-form-item label="纳入方式" name="scopeMode">
           <a-segmented
@@ -93,14 +100,12 @@
           <span class="roster-cell roster-cell--muted">{{ record.className }}</span>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <button
+          <UiTableActions
             v-if="rosterForm.scopeMode === ExamRosterScopeModeCode.BY_STUDENT"
-            type="button"
-            class="op-link op-link--danger"
-            @click="emit('remove-candidate', record.studentUserId)"
-          >
-            移除
-          </button>
+            :items="[{ key: 'remove', label: '移除', tone: 'danger' }]"
+            split
+            @action="() => emit('remove-candidate', record.studentUserId)"
+          />
           <span v-else class="roster-cell roster-cell--muted">整班纳入</span>
         </template>
       </template>
@@ -122,17 +127,20 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
 import { message, Modal } from 'ant-design-vue'
 import { computed, onMounted, ref, toRef, watch } from 'vue'
-import { EXAM_ROSTER_SCOPE_MODE_OPTIONS, ExamRosterScopeModeCode, previewCreateExamRoster } from '@/apis/mark/exam'
+import {
+  EXAM_ROSTER_SCOPE_MODE_OPTIONS,
+  ExamRosterScopeModeCode,
+  previewCreateExamRoster,
+} from '@/apis/mark/exam'
 import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSelectorDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { useExamDepartmentClassScope } from '@/composables/useExamDepartmentClassScope'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
-import {
-  useInjectedExamCreateRosterForm,
-} from './exam-create-context'
+import { useInjectedExamCreateRosterForm } from './exam-create-context'
 import {
   buildRosterRequestsFromDrawerSelection,
   mergePreviewCandidates,
@@ -179,7 +187,7 @@ watch(departmentId, (id) => {
 
 const scopeModeOptions = EXAM_ROSTER_SCOPE_MODE_OPTIONS
 
-const selectedStudentIds = computed(() => rosterForm.candidates.map(row => row.studentUserId))
+const selectedStudentIds = computed(() => rosterForm.candidates.map((row) => row.studentUserId))
 
 const emptyDescription = computed(() => {
   if (rosterForm.scopeMode === ExamRosterScopeModeCode.BY_CLASS) {
@@ -237,7 +245,7 @@ function openStudentDrawer(): void {
 function isSameClassIdSet(left: string[], right: string[]): boolean {
   if (left.length !== right.length) return false
   const leftSet = new Set(left)
-  return right.every(id => leftSet.has(id))
+  return right.every((id) => leftSet.has(id))
 }
 
 function syncByClassScope(addedClassIds: string[]): void {
@@ -269,9 +277,10 @@ function syncByClassScope(addedClassIds: string[]): void {
     .then((preview) => {
       if (syncSeq !== classScopeSyncSeq) return
       const previewCandidates = requirePreviewCandidates(preview.candidates)
-      const nextCandidates = scopeMode === ExamRosterScopeModeCode.BY_CLASS
-        ? previewCandidates
-        : mergePreviewCandidates(rosterForm.candidates, previewCandidates)
+      const nextCandidates =
+        scopeMode === ExamRosterScopeModeCode.BY_CLASS
+          ? previewCandidates
+          : mergePreviewCandidates(rosterForm.candidates, previewCandidates)
       emit('sync-class-scope', nextCandidates, [...classIds])
     })
     .catch((error) => {
@@ -290,7 +299,9 @@ function syncByClassScope(addedClassIds: string[]): void {
       classScopeSyncing.value = false
       emit('roster-preview-syncing', false)
       if (!isSameClassIdSet(classIds, rosterForm.classIds)) {
-        const pendingAddedClassIds = rosterForm.classIds.filter(id => !trackedClassIds.includes(id))
+        const pendingAddedClassIds = rosterForm.classIds.filter(
+          (id) => !trackedClassIds.includes(id),
+        )
         syncByClassScope(pendingAddedClassIds)
       }
     })
@@ -349,7 +360,7 @@ watch(
   () => {
     if (classScopeSyncing.value) return
     const currentClassIds = [...rosterForm.classIds]
-    const addedClassIds = currentClassIds.filter(id => !trackedClassIds.includes(id))
+    const addedClassIds = currentClassIds.filter((id) => !trackedClassIds.includes(id))
     trackedClassIds = [...currentClassIds]
     syncByClassScope(addedClassIds)
   },

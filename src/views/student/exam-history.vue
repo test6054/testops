@@ -77,17 +77,11 @@
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiTextAction
-                :disabled="item.finalScoreStatus !== 'PUBLISHED'"
-                @click="goDetail(item.examId)"
-              >
-                查看详情
-              </UiTextAction>
-              <UiTextAction :disabled="!canSubmitReview(item)" @click="goAppeal(item.examId)">
-                提交复核
-              </UiTextAction>
-            </div>
+            <UiTableActions
+              :items="buildExamHistoryActions(item)"
+              split
+              @action="(key) => handleExamHistoryAction(key, item)"
+            />
           </template>
         </template>
       </UiDataTable>
@@ -98,26 +92,26 @@
 <script lang="ts" setup>
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
-import type { StudentExamItemVO } from '@/apis/mark/student-exam'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   FINAL_SCORE_STATUS_CODES,
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
+import type { StudentExamItemVO } from '@/apis/mark/student-exam'
 import {
   canSubmitReview,
   listMyExams,
   ReviewWindowPolicyStatusDescription,
   STUDENT_REVIEW_WINDOW_STATUS_TONE,
 } from '@/apis/mark/student-exam'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -183,8 +177,8 @@ const columns: ColumnsType<StudentExamItemVO> = [
 const filteredExams = computed<StudentExamItemVO[]>(() => {
   return exams.value.filter((item) => {
     if (
-      historyFilterForm.statusFilter
-      && item.finalScoreStatus !== historyFilterForm.statusFilter
+      historyFilterForm.statusFilter &&
+      item.finalScoreStatus !== historyFilterForm.statusFilter
     ) {
       return false
     }
@@ -243,6 +237,30 @@ function unpublishedScoreText(status: FinalScoreStatusCode): string {
     return '--'
   }
   return '尚未公布'
+}
+
+function buildExamHistoryActions(record: StudentExamItemVO): UiTableRowActionItem[] {
+  return [
+    {
+      key: 'detail',
+      label: '查看详情',
+      disabled: record.finalScoreStatus !== 'PUBLISHED',
+    },
+    {
+      key: 'appeal',
+      label: '提交复核',
+      tone: canSubmitReview(record) ? 'primary' : 'default',
+      disabled: !canSubmitReview(record),
+    },
+  ]
+}
+
+function handleExamHistoryAction(key: string, record: StudentExamItemVO): void {
+  if (key === 'detail') {
+    goDetail(record.examId)
+  } else if (key === 'appeal') {
+    goAppeal(record.examId)
+  }
 }
 
 function goDetail(examId: string) {

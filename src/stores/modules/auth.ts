@@ -5,17 +5,11 @@ import type {
   PhoneLoginRequest,
   StudentLoginRequest,
 } from '@/apis/auth'
+import { passwordLogin, phoneLogin, refreshToken, studentLogin, wechatCallback } from '@/apis/auth'
 import type { RefreshTokenResponse } from '@/types/auth'
 import { jwtDecode } from 'jwt-decode'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import {
-  passwordLogin,
-  phoneLogin,
-  refreshToken,
-  studentLogin,
-  wechatCallback,
-} from '@/apis/auth'
 import { clearAllGradingDrafts } from '@/composables/useGradingDraftPersist'
 import { resetAuthState } from '@/config/axios/auth-state'
 import {
@@ -114,11 +108,8 @@ export const useAuthStore = defineStore(
 
     // 角色检查 - 使用统一枚举
     const isAdmin = computed(() => userRole.value === RoleEnum.SUPER_ADMIN)
-    const isTeacher = computed(() =>
-      userRole.value === RoleEnum.SCH_TECH
-      || userRole.value === RoleEnum.CROP_ADMIN
-      || userRole.value === RoleEnum.CROP_USER
-      || userRole.value === RoleEnum.SUPER_ADMIN,
+    const isTeacher = computed(
+      () => userRole.value === RoleEnum.SCH_TECH || userRole.value === RoleEnum.SUPER_ADMIN,
     )
     const isStudent = computed(() => userRole.value === RoleEnum.SCH_STU)
 
@@ -250,12 +241,12 @@ export const useAuthStore = defineStore(
       }
 
       const parsedExpiresAt = storedTokenExpiresAt ? Number.parseInt(storedTokenExpiresAt) : null
-      const normalizedExpiresAt
-        = parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt) ? parsedExpiresAt : null
-      const hasChanged
-        = token.value !== storedToken
-          || refreshTokenState.value !== storedRefreshToken
-          || tokenExpiresAt.value !== normalizedExpiresAt
+      const normalizedExpiresAt =
+        parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt) ? parsedExpiresAt : null
+      const hasChanged =
+        token.value !== storedToken ||
+        refreshTokenState.value !== storedRefreshToken ||
+        tokenExpiresAt.value !== normalizedExpiresAt
 
       if (!hasChanged) {
         return false
@@ -392,9 +383,8 @@ export const useAuthStore = defineStore(
             }
             return true
           } catch (error) {
-            const refreshError: RefreshTokenError = error instanceof Error
-              ? error
-              : new Error(String(error))
+            const refreshError: RefreshTokenError =
+              error instanceof Error ? error : new Error(String(error))
             lastError = refreshError
 
             if (hasValidAccessToken()) {
@@ -510,6 +500,8 @@ export const useAuthStore = defineStore(
         }
 
         applyLoginUserData(res)
+        userStore.userInfo.isTenantAdmin = undefined
+        resetHasMenuFlag()
 
         // Critical tasks
         const criticalTasks: Promise<void>[] = []
@@ -525,7 +517,7 @@ export const useAuthStore = defineStore(
       }
     }
 
-    const phoneLoginMethod = async (req: { phone: string, captcha: string }) => {
+    const phoneLoginMethod = async (req: { phone: string; captcha: string }) => {
       try {
         isLoading.value = true
         const phoneLoginReq: PhoneLoginRequest = {
@@ -560,7 +552,7 @@ export const useAuthStore = defineStore(
      * 邮箱验证码登录
      * 登录后需调用方通过 userStore.getInfo() 获取完整用户信息
      */
-    const emailLogin = async (req: { email: string, captcha: string }) => {
+    const emailLogin = async (req: { email: string; captcha: string }) => {
       try {
         isLoading.value = true
         const loginReq: LoginRequest = {
@@ -743,10 +735,10 @@ export const useAuthStore = defineStore(
     const handleStorageChange = (event: StorageEvent) => {
       if (event.storageArea !== localStorage) return
       if (
-        event.key !== null
-        && event.key !== STORAGE_TOKEN
-        && event.key !== STORAGE_REFRESH_TOKEN
-        && event.key !== STORAGE_TOKEN_EXPIRES_AT
+        event.key !== null &&
+        event.key !== STORAGE_TOKEN &&
+        event.key !== STORAGE_REFRESH_TOKEN &&
+        event.key !== STORAGE_TOKEN_EXPIRES_AT
       ) {
         return
       }

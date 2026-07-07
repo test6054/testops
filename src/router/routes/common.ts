@@ -4,13 +4,7 @@
 import type { RouteRecordRaw } from 'vue-router'
 import { RoleEnum } from '@/utils/permission'
 
-const ALL_ROLES = [
-  RoleEnum.SUPER_ADMIN,
-  RoleEnum.SCH_TECH,
-  RoleEnum.CROP_ADMIN,
-  RoleEnum.CROP_USER,
-  RoleEnum.SCH_STU,
-]
+const ALL_ROLES = [RoleEnum.SUPER_ADMIN, RoleEnum.SCH_TECH, RoleEnum.SCH_STU]
 
 export const commonRoutes: RouteRecordRaw[] = [
   {

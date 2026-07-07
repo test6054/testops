@@ -7,7 +7,7 @@
 import type { RouteMeta, RouteRecordRaw } from 'vue-router'
 import { RoleEnum } from '@/utils/permission'
 
-const TEACHER_ROLES = [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER]
+const TEACHER_ROLES = [RoleEnum.SCH_TECH]
 
 /**
  * 考试工作台子路由 meta：journeyKey 与 markStageKey 必填。

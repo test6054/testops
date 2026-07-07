@@ -1,9 +1,5 @@
 <template>
-  <div
-    ref="tableRoot"
-    class="ui-data-table"
-    :class="rootClasses"
-  >
+  <div ref="tableRoot" class="ui-data-table" :class="rootClasses">
     <component
       :is="props.flat ? 'div' : UiCard"
       :class="props.flat ? 'ui-data-table__flat-wrap' : 'ui-data-table__card'"
@@ -93,9 +89,6 @@ import type {
   UiDataTableEmptyKind,
   UiDataTablePaginationMode,
 } from './data-table'
-import { useBreakpoints } from '@vueuse/core'
-import { computed, getCurrentInstance, ref, useAttrs, useSlots, watch } from 'vue'
-import UiCard from './Card.vue'
 import {
   filterResponsiveDataTableColumns,
   normalizeDataTableColumns,
@@ -104,6 +97,9 @@ import {
   UI_DATA_TABLE_EMPTY_PRESETS,
   UI_DATA_TABLE_VIEWPORT,
 } from './data-table'
+import { useBreakpoints } from '@vueuse/core'
+import { computed, getCurrentInstance, ref, useAttrs, useSlots, watch } from 'vue'
+import UiCard from './Card.vue'
 import UiEmpty from './Empty.vue'
 import UiPagination from './Pagination.vue'
 import { resolvePopupContainer } from './popup-container'
@@ -183,7 +179,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'change', changeEvent: UiDataTableChangeEvent): void
-  (e: 'page-change', pageEvent: { current: number, pageSize: number }): void
+  (e: 'page-change', pageEvent: { current: number; pageSize: number }): void
   (e: 'selection-change', rowKeys: Key[]): void
 }>()
 
@@ -308,18 +304,24 @@ const effectiveShowPagination = computed(() => {
   if (!props.showPagination || props.paginationMode === 'none') {
     return false
   }
-  if (props.paginationMode === 'server' && effectiveTotal.value > pageSize.value && !hasPageChangeListener.value) {
+  if (
+    props.paginationMode === 'server' &&
+    effectiveTotal.value > pageSize.value &&
+    !hasPageChangeListener.value
+  ) {
     return false
   }
   return props.showPagination
 })
 
 const hasTopBar = computed(() => {
-  return !!props.title
-    || !!props.description
-    || !!props.sortedInfo
-    || !!slots['toolbar-left']
-    || !!slots['toolbar-right']
+  return (
+    !!props.title ||
+    !!props.description ||
+    !!props.sortedInfo ||
+    !!slots['toolbar-left'] ||
+    !!slots['toolbar-right']
+  )
 })
 
 const forwardedSlots = computed(() => {
@@ -367,8 +369,8 @@ watch(
     }
     missingPageChangeWarned = true
     console.warn(
-      '[UiDataTable] paginationMode="server" 且 total 大于 pageSize，但未监听 @page-change；分页栏已自动隐藏。'
-      + '请绑定 @page-change 走服务端分页，或改用 paginationMode="client" / "none"。',
+      '[UiDataTable] paginationMode="server" 且 total 大于 pageSize，但未监听 @page-change；分页栏已自动隐藏。' +
+        '请绑定 @page-change 走服务端分页，或改用 paginationMode="client" / "none"。',
     )
   },
   { immediate: true },
@@ -502,7 +504,8 @@ const handlePageChange = (page: number, size: number) => {
   color: var(--ant-color-primary, #1677ff);
 }
 
-.ui-data-table__table :deep(.ant-table-thead > tr > th.ui-data-table__col--numeric .ant-table-column-sorters) {
+.ui-data-table__table
+  :deep(.ant-table-thead > tr > th.ui-data-table__col--numeric .ant-table-column-sorters) {
   justify-content: flex-end;
 }
 
@@ -565,7 +568,7 @@ const handlePageChange = (page: number, size: number) => {
   overflow-wrap: anywhere;
 }
 
-.ui-data-table__table :deep(.ant-table-tbody > tr > td .operations-cell) {
+.ui-data-table__table :deep(.ant-table-tbody > tr > td .ui-table-actions) {
   max-width: 100%;
 }
 
@@ -609,8 +612,10 @@ const handlePageChange = (page: number, size: number) => {
   background: var(--dp-gray-50, #f8fafc) !important;
 }
 
-.ui-data-table__table :deep(.ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-fix-left),
-.ui-data-table__table :deep(.ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-fix-right) {
+.ui-data-table__table
+  :deep(.ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-fix-left),
+.ui-data-table__table
+  :deep(.ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-fix-right) {
   background: var(--dp-blue-50, #eff6ff) !important;
 }
 
@@ -665,23 +670,5 @@ const handlePageChange = (page: number, size: number) => {
 
 .ui-data-table__pagination {
   margin-top: 16px;
-}
-
-.ui-data-table--compact-viewport .ui-data-table__table :deep(.operations-cell) {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-}
-
-.ui-data-table--compact-viewport .ui-data-table__table :deep(.operations-cell .ui-text-action),
-.ui-data-table--compact-viewport .ui-data-table__table :deep(.operations-cell .op-link),
-.ui-data-table--compact-viewport .ui-data-table__table :deep(.operations-cell .ant-btn),
-.ui-data-table--compact-viewport .ui-data-table__table :deep(.operations-cell .dp-btn) {
-  min-height: 44px;
-  justify-content: center;
-}
-
-.ui-data-table--compact-viewport .ui-data-table__table :deep(.operations-cell--buttons .dp-btn) {
-  min-height: var(--dp-button-height-sm, 32px);
 }
 </style>

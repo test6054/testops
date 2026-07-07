@@ -25,8 +25,8 @@ import {
 const DEFAULT_AGENT_BASE_URL = 'http://127.0.0.1:18761'
 export const LOCAL_AGENT_UNAVAILABLE_ERROR = '本地扫描服务未连接，请确认一体机组件已启动'
 
-export type LocalAgentJsonValue
-  = string | number | boolean | null | LocalAgentJsonObject | LocalAgentJsonValue[]
+export type LocalAgentJsonValue =
+  string | number | boolean | null | LocalAgentJsonObject | LocalAgentJsonValue[]
 
 export interface LocalAgentJsonObject {
   [key: string]: LocalAgentJsonValue | undefined
@@ -162,6 +162,7 @@ export interface ScannerDeviceInfo {
 
 export interface ScannerListResponse {
   devices: ScannerDeviceInfo[]
+  catalogDiagnostic?: string
 }
 
 export interface ActivateLocalAgentRequest {

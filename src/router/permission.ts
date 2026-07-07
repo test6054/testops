@@ -145,11 +145,12 @@ export function getRoutePermission(path: string): {
     }
 }
 
+function passesTenantAdminRouteGate(userRole: RoleEnum, isTenantAdmin: boolean): boolean {
+    return userRole === RoleEnum.SUPER_ADMIN || isTenantAdmin
+}
+
 function passesPortfolioReviewerGate(userRole: RoleEnum, isTenantAdmin: boolean): boolean {
-    if (userRole === RoleEnum.SUPER_ADMIN || isTenantAdmin) {
-        return true
-    }
-    return userRole === RoleEnum.CROP_ADMIN
+    return userRole === RoleEnum.SUPER_ADMIN || isTenantAdmin
 }
 
 /**
@@ -172,6 +173,9 @@ export function hasRoutePermission(
     }
 
     if (userRole === RoleEnum.SUPER_ADMIN) {
+        if (permission.requireTenantAdmin) {
+            return passesTenantAdminRouteGate(userRole, isTenantAdmin)
+        }
         return true
     }
 
@@ -180,11 +184,8 @@ export function hasRoutePermission(
     if (!hasRolePermission) {
         return false
     }
-    // 检查是否需要租户管理员权限（企业管理员 CROP_ADMIN 与后端策略维护口径一致）
-    if (permission.requireTenantAdmin && !isTenantAdmin) {
-        if (userRole !== RoleEnum.CROP_ADMIN) {
-            return false
-        }
+    if (permission.requireTenantAdmin && !passesTenantAdminRouteGate(userRole, isTenantAdmin)) {
+        return false
     }
     return !(permission.requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin));
 }
@@ -206,20 +207,21 @@ export function hasRouteNamePermission(
     }
 
     const roles = route.meta.roles ?? []
+    const requireTenantAdmin = route.meta.requireTenantAdmin
     if (!isValidRole(userRole)) {
         return false
     }
     if (userRole === RoleEnum.SUPER_ADMIN) {
+        if (requireTenantAdmin) {
+            return passesTenantAdminRouteGate(userRole, isTenantAdmin)
+        }
         return true
     }
     if (!roles.includes(userRole)) {
         return false
     }
-    const requireTenantAdmin = route.meta.requireTenantAdmin
-    if (requireTenantAdmin && !isTenantAdmin) {
-        if (userRole !== RoleEnum.CROP_ADMIN) {
-            return false
-        }
+    if (requireTenantAdmin && !passesTenantAdminRouteGate(userRole, isTenantAdmin)) {
+        return false
     }
     const requirePortfolioReviewer = route.meta.requirePortfolioReviewer
     return !(requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin));
@@ -233,8 +235,6 @@ export function getDefaultRoute(userRole: string): string {
         case RoleEnum.SUPER_ADMIN:
             return '/teacher/dashboard'
         case RoleEnum.SCH_TECH:
-        case RoleEnum.CROP_ADMIN:
-        case RoleEnum.CROP_USER:
             return '/teacher/dashboard'
         case RoleEnum.SCH_STU:
             return '/student/score'

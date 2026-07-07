@@ -74,30 +74,11 @@
             <span v-else class="text-muted">从未通讯</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <div class="operations-cell operations-cell--split" @click.stop>
-              <button type="button" class="op-link" @click="handleViewDetail(devices[index])">
-                详情
-              </button>
-              <span class="operations-cell__sep" aria-hidden="true" />
-              <button type="button" class="op-link" @click="handleEdit(devices[index])">
-                编辑
-              </button>
-              <span class="operations-cell__sep" aria-hidden="true" />
-              <a-dropdown trigger="click">
-                <button type="button" class="op-link" @click.stop.prevent>更多</button>
-                <template #overlay>
-                  <a-menu @click="(event) => handleDeviceMenuClick(devices[index], event)">
-                    <a-menu-item
-                      v-for="item in buildDeviceMenuItems(devices[index])"
-                      :key="item.key"
-                      :danger="item.danger"
-                    >
-                      {{ item.label }}
-                    </a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
-            </div>
+            <UiTableActions
+              :items="buildDeviceActions(devices[index])"
+              split
+              @action="(key) => handleDeviceAction(key, devices[index])"
+            />
           </template>
         </template>
       </UiDataTable>
@@ -203,12 +184,7 @@
     </UiDialog>
 
     <!-- 设备详情弹窗 -->
-    <UiDialog
-      v-model:open="showDetailModal"
-      title="扫描设备详情"
-      :width="720"
-      hide-footer
-    >
+    <UiDialog v-model:open="showDetailModal" title="扫描设备详情" :width="720" hide-footer>
       <a-descriptions v-if="detailInfo" bordered :column="2" size="small">
         <a-descriptions-item label="设备名称">{{ detailInfo.deviceName }}</a-descriptions-item>
         <a-descriptions-item label="扫描设备编号">
@@ -276,12 +252,7 @@
       </a-descriptions>
     </UiDialog>
 
-    <UiDialog
-      v-model:open="showActivationCodeModal"
-      title="一体机激活码"
-      :width="520"
-      hide-footer
-    >
+    <UiDialog v-model:open="showActivationCodeModal" title="一体机激活码" :width="520" hide-footer>
       <div v-if="activationCodeInfo" class="activation-code-modal">
         <p class="activation-code-modal__hint">
           请在一体机 Kiosk 页面输入 8
@@ -305,9 +276,7 @@
           <span>有效期至：{{ activationCodeInfo.expireTime }}</span>
         </div>
         <div class="activation-code-modal__actions">
-          <UiButton @click="copyText(activationCodeInfo.activationCode)">
-            复制激活码
-          </UiButton>
+          <UiButton @click="copyText(activationCodeInfo.activationCode)"> 复制激活码 </UiButton>
           <UiButton variant="outline" @click="showActivationCodeModal = false">关闭</UiButton>
         </div>
       </div>
@@ -330,12 +299,6 @@ import type {
   ScannerAgentDiagnosticStatusCode,
   ScannerEndpointOnlineStatusCode,
 } from '@/apis/mark/exam-mark-scanner'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import AQrcode from 'ant-design-vue/es/qrcode'
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   createScannerActivationCode,
   createScannerDevice,
@@ -355,10 +318,17 @@ import {
   unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import AQrcode from 'ant-design-vue/es/qrcode'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
@@ -375,8 +345,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'PrinterManagement' })
 
 const { refreshSnapshot } = useWorkspaceExamId()
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useExamJourneyContextBar('扫描设备')
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useExamJourneyContextBar('扫描设备')
 
 /** 扫描设备写操作后刷新列表，并同步工作台 SCAN 段快照与 OCR 配置页。 */
 async function syncAfterDeviceMutation(): Promise<void> {
@@ -428,7 +398,7 @@ const deviceSignalMetrics = computed((): SignalMetric[] => [
   },
 ])
 
-const locationOptions = ref<Array<{ label: string, value: string }>>([])
+const locationOptions = ref<Array<{ label: string; value: string }>>([])
 
 function syncSearchForm(next: Record<string, unknown>): void {
   Object.assign(searchForm, next)
@@ -479,46 +449,41 @@ const columns: ColumnsType<ExamScannerDeviceResponse> = [
   { title: '操作', dataIndex: 'action', key: 'action', width: 200, fixed: 'right' },
 ]
 
-interface DeviceMenuItem {
-  key: 'rebind' | 'activation' | 'unbind' | 'delete'
-  label: string
-  danger?: boolean
-}
-
-/** 扫描设备行内次要操作：收进「更多」下拉，避免操作列横向积压换行。 */
-function buildDeviceMenuItems(record: ExamScannerDeviceResponse): DeviceMenuItem[] {
-  const items: DeviceMenuItem[] = [
+function buildDeviceActions(record: ExamScannerDeviceResponse): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = [
+    { key: 'detail', label: '详情' },
+    { key: 'edit', label: '编辑' },
     { key: 'rebind', label: '重新绑定' },
     { key: 'activation', label: '激活码' },
   ]
   if (record.endpointMachineCode) {
-    items.push({ key: 'unbind', label: '解绑扫描组件', danger: true })
+    actions.push({ key: 'unbind', label: '解绑扫描组件', tone: 'danger' })
   }
-  items.push({ key: 'delete', label: '删除', danger: true })
-  return items
+  actions.push({ key: 'delete', label: '删除', tone: 'danger' })
+  return actions
 }
 
-function handleDeviceMenuClick(record: ExamScannerDeviceResponse, event: { key: string | number }): void {
-  if (typeof event.key !== 'string') {
-    return
+function handleDeviceAction(key: string, record: ExamScannerDeviceResponse): void {
+  switch (key) {
+    case 'detail':
+      void handleViewDetail(record)
+      break
+    case 'edit':
+      handleEdit(record)
+      break
+    case 'rebind':
+      void handleRebindAgent(record)
+      break
+    case 'activation':
+      void handleCreateActivationCode(record)
+      break
+    case 'unbind':
+      handleUnbindAgent(record)
+      break
+    case 'delete':
+      handleDelete(record)
+      break
   }
-  const matchedItem = buildDeviceMenuItems(record).find((item) => item.key === event.key)
-  if (!matchedItem) {
-    return
-  }
-  if (matchedItem.key === 'rebind') {
-    void handleRebindAgent(record)
-    return
-  }
-  if (matchedItem.key === 'activation') {
-    void handleCreateActivationCode(record)
-    return
-  }
-  if (matchedItem.key === 'unbind') {
-    handleUnbindAgent(record)
-    return
-  }
-  handleDelete(record)
 }
 
 // helper 严格只接受后端枚举类型，零 as 断言。
@@ -607,7 +572,7 @@ function handleResetSearch(): void {
   void loadDevices()
 }
 
-function handleUiPageChange(page: { current: number, pageSize: number }): void {
+function handleUiPageChange(page: { current: number; pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadDevices()

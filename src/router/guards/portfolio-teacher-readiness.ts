@@ -9,12 +9,7 @@ const TEACHER_PORTFOLIO_PREFIX = '/portfolio/teacher/'
 const ONBOARDING_PATH = '/portfolio/teacher/onboarding'
 const HOME_PATH = '/portfolio/teacher/home'
 
-const PORTFOLIO_TEACHER_ROLES = new Set<string>([
-  RoleEnum.SCH_TECH,
-  RoleEnum.CROP_ADMIN,
-  RoleEnum.CROP_USER,
-  RoleEnum.SUPER_ADMIN,
-])
+const PORTFOLIO_TEACHER_ROLES = new Set<string>([RoleEnum.SCH_TECH, RoleEnum.SUPER_ADMIN])
 
 function resolveTeacherId(to: RouteLocationNormalized): string | undefined {
   const queryTeacherId = typeof to.query.teacherId === 'string' ? to.query.teacherId : ''

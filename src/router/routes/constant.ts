@@ -57,8 +57,6 @@ export const constantRoutes: RouteRecordRaw[] = [
       roles: [
         RoleEnum.SUPER_ADMIN,
         RoleEnum.SCH_TECH,
-        RoleEnum.CROP_ADMIN,
-        RoleEnum.CROP_USER,
         RoleEnum.SCH_STU,
       ],
     },
@@ -76,7 +74,7 @@ export const constantRoutes: RouteRecordRaw[] = [
   {
     path: '/scanner-kiosk/exam',
     name: 'ScannerExamKiosk',
-    component: () => import('@/views/scanner-kiosk/exam/ExamKioskLayout.vue'),
+    component: () => import('@/views/scanner-kiosk/KioskLayout.vue'),
     redirect: '/scanner-kiosk/exam/setup',
     meta: {
       title: '考试扫描一体机',

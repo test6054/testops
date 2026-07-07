@@ -1,36 +1,40 @@
 <template>
-  <UiEmpty v-if="!todos.length" :description="emptyDescription">
-    <template v-if="emptyActionLabel" #action>
-      <UiButton variant="outline" size="sm" @click="emit('empty-action')">
-        {{ emptyActionLabel }}
-      </UiButton>
-    </template>
-  </UiEmpty>
-  <ul v-else class="todo-feed">
-    <li
-      v-for="(todo, index) in todos"
-      :key="`${todo.todoType}-${todo.examId}-${index}`"
-      class="todo-feed__row"
-    >
-      <span
-        class="todo-feed__dot"
-        :class="`todo-feed__dot--${resolveTodoUrgency(todo)}`"
-        aria-hidden="true"
-      />
-      <div class="todo-feed__content">
-        <div class="todo-feed__title">{{ todo.label }}</div>
-        <div v-if="todoMeta(todo)" class="todo-feed__meta">{{ todoMeta(todo) }}</div>
-      </div>
-      <UiButton
-        :variant="resolveTodoUrgency(todo) === 'urgent' ? 'primary' : 'outline'"
-        size="sm"
-        class="todo-feed__action"
-        @click="emit('navigate', todo.workspacePath, todo.examId)"
+  <div class="pending-todo-feed">
+    <div v-if="!todos.length" class="pending-todo-feed__empty">
+      <UiEmpty size="sm" :description="emptyDescription">
+        <template v-if="emptyActionLabel" #action>
+          <UiButton variant="outline" size="sm" @click="emit('empty-action')">
+            {{ emptyActionLabel }}
+          </UiButton>
+        </template>
+      </UiEmpty>
+    </div>
+    <ul v-else class="todo-feed">
+      <li
+        v-for="(todo, index) in todos"
+        :key="`${todo.todoType}-${todo.examId}-${index}`"
+        class="todo-feed__row"
       >
-        {{ todoActionLabel(todo) }}
-      </UiButton>
-    </li>
-  </ul>
+        <span
+          class="todo-feed__dot"
+          :class="`todo-feed__dot--${resolveTodoUrgency(todo)}`"
+          aria-hidden="true"
+        />
+        <div class="todo-feed__content">
+          <div class="todo-feed__title">{{ todo.label }}</div>
+          <div v-if="todoMeta(todo)" class="todo-feed__meta">{{ todoMeta(todo) }}</div>
+        </div>
+        <UiButton
+          :variant="resolveTodoUrgency(todo) === 'urgent' ? 'primary' : 'outline'"
+          size="sm"
+          class="todo-feed__action"
+          @click="emit('navigate', todo.workspacePath, todo.examId)"
+        >
+          {{ todoActionLabel(todo) }}
+        </UiButton>
+      </li>
+    </ul>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -58,11 +62,9 @@ withDefaults(
 )
 
 const emit = defineEmits<{
-  "navigate": [routeName: string | undefined, examId: string | undefined]
+  navigate: [routeName: string | undefined, examId: string | undefined]
   'empty-action': []
 }>()
-
-type TodoUrgency = 'urgent' | 'normal' | 'info' | 'attention'
 
 const TODO_COUNT_UNIT: Record<MarkTeacherDashboardTodoTypeCode, string> = {
   SCAN_ATTENTION: '份',
@@ -101,3 +103,22 @@ function todoActionLabel(todo: MarkTeacherDashboardPendingTodoItemVO): string {
   return actionMap[todo.todoType] ?? '查看'
 }
 </script>
+
+<style scoped>
+.pending-todo-feed {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.pending-todo-feed__empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--dp-space-6) var(--dp-space-4);
+  background: var(--dp-surface);
+  min-height: 200px;
+}
+</style>

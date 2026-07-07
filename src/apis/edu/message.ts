@@ -548,7 +548,7 @@ export function markAllAnnouncementsAsRead(): Promise<void> {
  *
  * 说明：此接口使用MessagePublishController，支持：
  * - SUPER_ADMIN 发布系统通知
- * - 教师(SCH_TECH/CROP_ADMIN/CROP_USER) 发布班级公告
+ * - 教师(SCH_TECH) 发布班级公告
  * 后端会自动根据消息类型填充接收者列表
  *
  * @param data 消息创建请求

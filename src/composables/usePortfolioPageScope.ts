@@ -2,16 +2,13 @@ import { computed, inject, onActivated, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioLayoutScopeProvidedKey } from '@/composables/portfolio-layout-context'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { useAuthStore } from '@/stores/modules/auth'
 import { usePortfolioStore } from '@/stores/modules/portfolio'
-import { RoleEnum } from '@/utils/permission'
 
 /** 解析当前页应使用的目标教师 ID（store > query > 本人默认） */
 export function usePortfolioPageScope() {
   const route = useRoute()
   const portfolioStore = usePortfolioStore()
   const layoutScopeProvided = inject(portfolioLayoutScopeProvidedKey, undefined)
-  const authStore = useAuthStore()
   const { canPickTeachers, resolveDefaultTeacherId, currentUserId } = usePortfolioTeacherAccess()
 
   const queryTeacherId = computed(() =>
@@ -24,9 +21,6 @@ export function usePortfolioPageScope() {
     const queryId = queryTeacherId.value
     if (queryId) {
       if (canPickTeachers.value) {
-        return queryId
-      }
-      if (authStore.userRole === RoleEnum.CROP_ADMIN) {
         return queryId
       }
       if (queryId === currentUserId.value) {

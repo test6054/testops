@@ -60,7 +60,6 @@
       <template #head>
         <div class="exam-list-page__scope-head">
           <UiSectionTabs v-model="listTab" :items="examListTabs" compact divided />
-          <span class="exam-list-page__scope-hint">{{ scopeDisplayHint }}</span>
         </div>
       </template>
 
@@ -125,14 +124,16 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'examName'">
-            <div class="exam-list-page__exam-name-row">
-              <span class="exam-list-page__exam-name exam-list-page__exam-name--link">
-                {{ record.examName }}
-              </span>
-              <UiTag v-if="isExamPriorityRow(record)" tone="orange" size="sm">优先</UiTag>
-            </div>
-            <div v-if="examListExamSubMeta(record)" class="exam-list-page__exam-no">
-              <span class="exam-list-page__exam-no-code">{{ examListExamSubMeta(record) }}</span>
+            <div class="exam-list-page__exam-name-cell">
+              <div class="exam-list-page__exam-name-row">
+                <span class="exam-list-page__exam-name exam-list-page__exam-name--link">
+                  {{ record.examName }}
+                </span>
+                <UiTag v-if="isExamPriorityRow(record)" tone="orange" size="sm">优先</UiTag>
+              </div>
+              <div v-if="examListExamSubMeta(record)" class="exam-list-page__exam-no">
+                <span class="exam-list-page__exam-no-code">{{ examListExamSubMeta(record) }}</span>
+              </div>
             </div>
           </template>
           <template v-else-if="column.key === 'academicYear'">
@@ -168,10 +169,7 @@
             </UiTag>
           </template>
           <template v-else-if="column.key === 'progress'">
-            <div
-              v-if="record.totalQuestionGradeCount > 0"
-              class="exam-list-page__progress"
-            >
+            <div v-if="record.totalQuestionGradeCount > 0" class="exam-list-page__progress">
               <div class="exam-list-page__progress-track">
                 <div
                   class="exam-list-page__progress-fill"
@@ -211,41 +209,11 @@
             {{ formatDateTime(record.createTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell operations-cell--split" @click.stop>
-              <button type="button" class="op-link" @click="goSmartExamEntry(record)">进入</button>
-              <template v-if="record.status === ExamStatusCode.ACTIVE">
-                <span class="operations-cell__sep" aria-hidden="true" />
-                <button
-                  type="button"
-                  class="op-link op-link--primary"
-                  @click="goMarkingTaskPool(record)"
-                >
-                  阅卷
-                </button>
-              </template>
-              <template v-if="isExamArchiveReady(record)">
-                <span class="operations-cell__sep" aria-hidden="true" />
-                <button type="button" class="op-link" @click="goArchiveVolumeList">归档</button>
-              </template>
-              <template v-if="record.status !== ExamStatusCode.CLOSED">
-                <span class="operations-cell__sep" aria-hidden="true" />
-                <button type="button" class="op-link" @click="openEditModal(record)">编辑</button>
-                <template v-if="isExamOwner(record)">
-                  <span class="operations-cell__sep" aria-hidden="true" />
-                  <button type="button" class="op-link" @click="confirmClose(record)">
-                    关闭
-                  </button>
-                  <span class="operations-cell__sep" aria-hidden="true" />
-                  <button
-                    type="button"
-                    class="op-link op-link--danger"
-                    @click="confirmDelete(record)"
-                  >
-                    删除
-                  </button>
-                </template>
-              </template>
-            </div>
+            <UiTableActions
+              :items="buildExamRowActions(record)"
+              split
+              @action="(key) => handleExamRowAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>
@@ -395,21 +363,11 @@ import type {
   ExamUpdateRequest,
   ExamWorkbenchSummaryResponse,
 } from '@/apis/mark/exam'
-import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import {
   closeExam,
   countExamWorkbenchScopes,
   deleteExam,
   EXAM_KIND_TONE,
-  EXAM_LIST_SCOPE_HINT,
   EXAM_STATUS_FILTER_OPTIONS,
   EXAM_STATUS_TONE,
   ExamGradingStrategyCode,
@@ -423,6 +381,21 @@ import {
   pageExamWorkbench,
   updateExam,
 } from '@/apis/mark/exam'
+import type {
+  BadgeTone,
+  FilterField,
+  UiSectionTabItem,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -433,6 +406,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -445,7 +419,6 @@ import {
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import {
   generateAcademicYearOptions,
   getDefaultAcademicYearAndSemester,
@@ -476,19 +449,14 @@ const userStore = useUserStore()
  * 是否全租户审计读视角。
  *
  * <p>与后端 ExamMarkPermissionService.hasFullTenantReadView() 对齐：
- * 仅平台超管 + 企业管理员（CROP_ADMIN / CROP_USER）享有跨主考可见性；
+ * 仅平台超管享有跨主考可见性；
  * 租户管理员（SCH_TECH + isTenantAdmin）在阅卷链路上与普通教师一致，
  * 仅可见自己创建 + 被分配评阅的考试。这是用户口径下的"禁止越权"硬约束。</p>
  *
  * <p>后端 listExamPage 已按角色注入创建人 / 评阅人可见性；
  * 这个 computed 仅用于 UI 显隐（创建人列、教师下钻控件、KPI 文案）。</p>
  */
-const isAdminView = computed(() => {
-  const role = authStore.userRole
-  return (
-    role === RoleEnum.SUPER_ADMIN || role === RoleEnum.CROP_ADMIN || role === RoleEnum.CROP_USER
-  )
-})
+const isAdminView = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
 
 interface ExamListFilterForm {
   status?: ExamStatusCode
@@ -548,12 +516,6 @@ const pageSubtitle = computed(() => {
   return `${scope} · 共 ${allBadgeTotal.value} 场考试`
 })
 
-const scopeDisplayHint = computed(() => {
-  const scopeHint = EXAM_LIST_SCOPE_HINT[tabToScope(listTab.value)]
-  const shown = currentPagination.value.total ?? 0
-  return `${scopeHint} · 显示 ${shown} / ${allBadgeTotal.value} 条`
-})
-
 const filterFields = computed<FilterField[]>(() => [
   {
     key: 'keyword',
@@ -599,6 +561,7 @@ const allTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
     title: '考试名称',
     dataIndex: 'examName',
     key: 'examName',
+    align: 'center',
     ellipsis: true,
     width: 360,
     fixed: 'left',
@@ -609,7 +572,7 @@ const allTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
   { title: '阅卷进度', key: 'progress', width: 140 },
   { title: '考试时间', key: 'examWindow', width: 160 },
   { title: '创建时间', key: 'createTime', width: 180 },
-  { title: '操作', key: 'actions', width: 260, fixed: 'right' },
+  { title: '操作', key: 'actions', align: 'center', width: 200, fixed: 'right' },
 ]
 
 const workbenchTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
@@ -617,6 +580,7 @@ const workbenchTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
     title: '考试名称',
     dataIndex: 'examName',
     key: 'examName',
+    align: 'center',
     ellipsis: true,
     width: 300,
     fixed: 'left',
@@ -630,7 +594,7 @@ const workbenchTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
   { title: '进行中批阅', key: 'openMarking', width: 108 },
   { title: '考试时间', key: 'examWindow', width: 160 },
   { title: '创建时间', key: 'createTime', width: 168 },
-  { title: '操作', key: 'actions', width: 260, fixed: 'right' },
+  { title: '操作', key: 'actions', align: 'center', width: 200, fixed: 'right' },
 ]
 
 const ongoingTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
@@ -638,6 +602,7 @@ const ongoingTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
     title: '考试名称',
     dataIndex: 'examName',
     key: 'examName',
+    align: 'center',
     ellipsis: true,
     width: 300,
     fixed: 'left',
@@ -652,7 +617,7 @@ const ongoingTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
   { title: '进行中批阅', key: 'openMarking', width: 108 },
   { title: '考试时间', key: 'examWindow', width: 160 },
   { title: '创建时间', key: 'createTime', width: 168 },
-  { title: '操作', key: 'actions', width: 260, fixed: 'right' },
+  { title: '操作', key: 'actions', align: 'center', width: 200, fixed: 'right' },
 ]
 
 type ExamListTabKey = 'priority' | 'ongoing' | 'all'
@@ -777,7 +742,6 @@ const summarySignalMetrics = computed((): SignalMetric[] => {
       unit: '场',
       tone: 'blue',
       clickable: true,
-      helper: '当前列表范围，点击查看全部 Tab',
     },
     {
       key: 'active',
@@ -786,7 +750,6 @@ const summarySignalMetrics = computed((): SignalMetric[] => {
       unit: '场',
       tone: 'green',
       clickable: true,
-      helper: 'ACTIVE 考试，点击查看进行中 Tab',
     },
     {
       key: 'closed',
@@ -795,7 +758,6 @@ const summarySignalMetrics = computed((): SignalMetric[] => {
       unit: '场',
       tone: 'gray',
       clickable: !statusTotalsFailed.value,
-      helper: statusTotalsFailed.value ? '计数暂不可用' : '点击查看已关闭考试',
     },
     {
       key: 'stale',
@@ -804,11 +766,6 @@ const summarySignalMetrics = computed((): SignalMetric[] => {
       unit: '场',
       tone: stalePushTotal.value > 0 ? 'orange' : 'gray',
       clickable: !statusTotalsFailed.value && stalePushTotal.value > 0,
-      helper: statusTotalsFailed.value
-        ? '计数暂不可用'
-        : stalePushTotal.value > 0
-          ? '有待处理信号，点击查看优先推进'
-          : '暂无待推进',
     },
   ]
 })
@@ -880,9 +837,9 @@ function isExamPriorityRow(exam: ExamWorkbenchSummaryResponse): boolean {
   if (listTab.value === 'priority') return true
   if (exam.status !== ExamStatusCode.ACTIVE) return false
   return (
-    getScanAttentionCount(exam) > 0
-    || getPendingConfirmCount(exam) > 0
-    || getExamGradingPercent(exam) < 50
+    getScanAttentionCount(exam) > 0 ||
+    getPendingConfirmCount(exam) > 0 ||
+    getExamGradingPercent(exam) < 50
   )
 }
 
@@ -1003,10 +960,8 @@ function getLoadingRefByScope(scope: ExamListScopeCode): typeof priorityLoading 
 
 function buildScopeCountQuery(): ExamPageQueryRequest {
   const [startTime, endTime] = filterForm.dateRange ?? []
-  const termQuery = buildOptionalAcademicYearSemesterQuery(
-    filterForm.academicYear,
-    filterForm.semester,
-  ) ?? {}
+  const termQuery =
+    buildOptionalAcademicYearSemesterQuery(filterForm.academicYear, filterForm.semester) ?? {}
   return {
     status: filterForm.status,
     ...termQuery,
@@ -1022,10 +977,8 @@ function buildWorkbenchQuery(
   pageSize: number,
 ): Parameters<typeof pageExamWorkbench>[0] {
   const [startTime, endTime] = filterForm.dateRange ?? []
-  const termQuery = buildOptionalAcademicYearSemesterQuery(
-    filterForm.academicYear,
-    filterForm.semester,
-  ) ?? {}
+  const termQuery =
+    buildOptionalAcademicYearSemesterQuery(filterForm.academicYear, filterForm.semester) ?? {}
   return {
     listScope: scope,
     pageNum,
@@ -1109,7 +1062,7 @@ function handleReset(): void {
   void reloadListAndCounts()
 }
 
-function handleUiPageChange(page: { current: number, pageSize: number }): void {
+function handleUiPageChange(page: { current: number; pageSize: number }): void {
   const scope = tabToScope(listTab.value)
   const paginationState = getPaginationByScope(scope)
   paginationState.current = page.current
@@ -1315,8 +1268,8 @@ async function openEditModal(exam: ExamWorkbenchSummaryResponse): Promise<void> 
   examForm.examNo = exam.examNo
   examForm.academicYear = exam.academicYear ?? ''
   examForm.semester = exam.semester
-  examForm.examWindow
-    = exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
+  examForm.examWindow =
+    exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
   examForm.scoreCompositionMode = exam.dailyScoreFull != null ? 'EXAM_WITH_DAILY' : 'EXAM_ONLY'
   examForm.dailyScoreFull = exam.dailyScoreFull ?? undefined
   examForm.examKind = exam.examKind ?? ExamKindCode.REGULAR
@@ -1397,6 +1350,48 @@ async function handleSave(): Promise<void> {
 
 function isExamOwner(exam: ExamWorkbenchSummaryResponse): boolean {
   return !!exam.createUser && exam.createUser === userStore.userInfo.userId
+}
+
+/** 组装考试列表行内操作：默认展示 3 项，其余由 UiTableActions 收入「更多」。 */
+function buildExamRowActions(exam: ExamWorkbenchSummaryResponse): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = [{ key: 'enter', label: '进入' }]
+  if (exam.status === ExamStatusCode.ACTIVE) {
+    actions.push({ key: 'marking', label: '阅卷', tone: 'primary' })
+  }
+  if (isExamArchiveReady(exam)) {
+    actions.push({ key: 'archive', label: '归档' })
+  }
+  if (exam.status !== ExamStatusCode.CLOSED) {
+    actions.push({ key: 'edit', label: '编辑' })
+    if (isExamOwner(exam)) {
+      actions.push({ key: 'close', label: '关闭' })
+      actions.push({ key: 'delete', label: '删除', tone: 'danger' })
+    }
+  }
+  return actions
+}
+
+function handleExamRowAction(key: string, exam: ExamWorkbenchSummaryResponse): void {
+  switch (key) {
+    case 'enter':
+      goSmartExamEntry(exam)
+      break
+    case 'marking':
+      goMarkingTaskPool(exam)
+      break
+    case 'archive':
+      goArchiveVolumeList()
+      break
+    case 'edit':
+      openEditModal(exam)
+      break
+    case 'close':
+      confirmClose(exam)
+      break
+    case 'delete':
+      confirmDelete(exam)
+      break
+  }
 }
 
 function confirmClose(exam: ExamWorkbenchSummaryResponse): void {
@@ -1497,26 +1492,28 @@ onActivated(() => {
 .exam-list-page__scope-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--dp-space-4);
   width: 100%;
-}
-
-.exam-list-page__scope-hint {
-  flex-shrink: 0;
-  font-size: 12px;
-  color: var(--ant-color-text-quaternary);
-  white-space: nowrap;
 }
 
 .exam-list-page__empty {
   padding: var(--dp-space-10) var(--dp-space-5);
 }
 
+.exam-list-page__exam-name-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  text-align: center;
+}
+
 .exam-list-page__exam-name-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -1530,8 +1527,8 @@ onActivated(() => {
 }
 
 .exam-list-page__exam-no {
-  margin-top: 2px;
   font-size: 12px;
+  line-height: 1.4;
   color: var(--ant-color-text-tertiary);
 }
 
@@ -1709,6 +1706,10 @@ onActivated(() => {
   font-size: 12px;
   line-height: 1.4;
   color: var(--ant-color-text-quaternary);
+}
+
+.exam-table :deep(.ant-table-tbody > tr > td) {
+  vertical-align: middle;
 }
 
 .exam-table :deep(.ant-table-tbody > tr) {

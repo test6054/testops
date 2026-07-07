@@ -238,15 +238,18 @@
               <span v-else class="muted">-</span>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiButton
+              <UiTableActions
                 v-if="canRetryPaperGrade(record)"
-                size="sm"
-                variant="outline"
-                :loading="retryingPaperInstanceId === record.paperInstanceId"
-                @click="retryPaperGradeForTask(record)"
-              >
-                重试整卷 AI
-              </UiButton>
+                :items="[
+                  {
+                    key: 'retry',
+                    label: '重试整卷 AI',
+                    disabled: retryingPaperInstanceId === record.paperInstanceId,
+                  },
+                ]"
+                split
+                @action="() => retryPaperGradeForTask(record)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -258,10 +261,24 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamProcessingTaskItemResponse } from '@/apis/mark/exam-processing-task'
-import type { MarkingProgressResponse, ReviewQuestionProgressItemResponse } from '@/apis/mark/exam-progress'
+import {
+  pageExamProcessingTasks,
+  retryPaperGradeSuggestion,
+} from '@/apis/mark/exam-processing-task'
+import type {
+  MarkingProgressResponse,
+  ReviewQuestionProgressItemResponse,
+} from '@/apis/mark/exam-progress'
+import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import type { TaskStatusCode } from '@/apis/mark/task-status'
-import type { ProcessingTaskTypeCode,
-  } from '@/apis/mark/task-type'
+import { TASK_STATUS_TONE, TaskStatusDescription } from '@/apis/mark/task-status'
+import type { ProcessingTaskTypeCode } from '@/apis/mark/task-type'
+import {
+  ALL_PROCESSING_TASK_TYPE_CODES,
+  PROCESSING_TASK_TYPE_OPTIONS,
+  PROCESSING_TASK_TYPE_TONE,
+  ProcessingTaskTypeDescription,
+} from '@/apis/mark/task-type'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
@@ -273,23 +290,11 @@ import message from 'ant-design-vue/es/message'
 import { computed, inject, onActivated, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  pageExamProcessingTasks,
-  retryPaperGradeSuggestion,
-} from '@/apis/mark/exam-processing-task'
-import { getMarkingProgress } from '@/apis/mark/exam-progress'
-import {
   REVIEW_TASK_STATUS_TONE,
   ReviewTaskStatusCode,
   ReviewTaskStatusDescription,
 } from '@/apis/mark/exam-review-task'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
-import { TASK_STATUS_TONE, TaskStatusDescription } from '@/apis/mark/task-status'
-import {
-  ALL_PROCESSING_TASK_TYPE_CODES,
-  PROCESSING_TASK_TYPE_OPTIONS,
-  PROCESSING_TASK_TYPE_TONE,
-  ProcessingTaskTypeDescription,
-} from '@/apis/mark/task-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkDistributionSection from '@/components/chart/MarkDistributionSection.vue'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
@@ -299,6 +304,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -379,7 +385,8 @@ function processingTaskStatusTone(value: TaskStatusCode) {
 
 function canRetryPaperGrade(record: ExamProcessingTaskItemResponse): boolean {
   if (!record.paperInstanceId) return false
-  if (record.taskType !== 'SUBJECTIVE_AI_REVIEW' && record.taskType !== 'OBJECTIVE_AI_REVIEW') return false
+  if (record.taskType !== 'SUBJECTIVE_AI_REVIEW' && record.taskType !== 'OBJECTIVE_AI_REVIEW')
+    return false
   return record.status === 'FAILED' || record.status === 'BLOCKED' || record.status === 'PROCESSING'
 }
 
@@ -439,7 +446,7 @@ async function reloadProcessingTasksFromRoute(resetPage = true): Promise<void> {
   await loadProcessingTasks()
 }
 
-function handleProcessingTaskPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleProcessingTaskPageChange(pageEvent: { current: number; pageSize: number }): void {
   processingTaskPageNum.value = pageEvent.current
   processingTaskPageSize.value = pageEvent.pageSize
   void loadProcessingTasks()
@@ -474,9 +481,9 @@ const processingTaskColumns: ColumnType<ExamProcessingTaskItemResponse>[] = [
 
 const contextProgress = computed(
   () =>
-    workbenchContext?.markingProgress?.value
-    ?? workbenchContext?.snapshot.value?.markingProgress
-    ?? null,
+    workbenchContext?.markingProgress?.value ??
+    workbenchContext?.snapshot.value?.markingProgress ??
+    null,
 )
 
 watch(
@@ -574,15 +581,17 @@ const confirmedGaugeAriaLabel = computed(() => {
   return formatGaugeAriaLabel('已确认率', confirmedPercent.value, detail)
 })
 
-const confirmedGaugeBlockProps = computed((): {
-  option: typeof confirmedGaugeOption.value
-  ariaLabel: string
-  layout: 'stacked'
-} => ({
-  option: confirmedGaugeOption.value,
-  ariaLabel: confirmedGaugeAriaLabel.value,
-  layout: 'stacked',
-}))
+const confirmedGaugeBlockProps = computed(
+  (): {
+    option: typeof confirmedGaugeOption.value
+    ariaLabel: string
+    layout: 'stacked'
+  } => ({
+    option: confirmedGaugeOption.value,
+    ariaLabel: confirmedGaugeAriaLabel.value,
+    layout: 'stacked',
+  }),
+)
 
 const { chartOption: statusDistributionOption } = useChartOption(() =>
   buildDistributionBarChartOption(statusDistributionSegments.value, {
@@ -709,7 +718,9 @@ const reviewProgressChartAriaLabel = computed(() => {
   return `按题目维度的复核进度，共 ${count} 道题`
 })
 
-function questionTypeLabel(questionType: ReviewQuestionProgressItemResponse['questionType']): string {
+function questionTypeLabel(
+  questionType: ReviewQuestionProgressItemResponse['questionType'],
+): string {
   return strictEnumLabel(QuestionTypeDescription, questionType, '题型')
 }
 
@@ -751,25 +762,22 @@ async function loadAll(): Promise<void> {
   }
 }
 
-watch(
-  [selectedExamId, () => route.query.taskType],
-  ([examId], [prevExamId]) => {
-    if (!examId) {
-      pageLoadGeneration++
-      processingTasksLoadGeneration++
-      progress.value = null
-      processingTasks.value = []
-      processingTaskTotal.value = 0
-      processingTaskTypeFilter.value = undefined
-      return
-    }
-    if (examId !== prevExamId) {
-      void loadAll()
-      return
-    }
-    void reloadProcessingTasksFromRoute()
-  },
-)
+watch([selectedExamId, () => route.query.taskType], ([examId], [prevExamId]) => {
+  if (!examId) {
+    pageLoadGeneration++
+    processingTasksLoadGeneration++
+    progress.value = null
+    processingTasks.value = []
+    processingTaskTotal.value = 0
+    processingTaskTypeFilter.value = undefined
+    return
+  }
+  if (examId !== prevExamId) {
+    void loadAll()
+    return
+  }
+  void reloadProcessingTasksFromRoute()
+})
 
 onActivated(() => {
   if (selectedExamId.value) {

@@ -53,19 +53,13 @@
       </ContextBar>
     </template>
 
-    <UiEmpty
-      v-if="!selectedExamId"
-      description="请选择考试"
-      class="quality-dashboard__empty"
-    />
+    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="quality-dashboard__empty" />
 
     <template v-if="selectedExamId" #signal>
       <SignalBand variant="tiles" :metrics="signalMetrics" compact />
     </template>
 
-    <ExamWorkspaceJourneySubNav
-      v-if="selectedExamId && isExamWorkspaceRoute"
-    />
+    <ExamWorkspaceJourneySubNav v-if="selectedExamId && isExamWorkspaceRoute" />
 
     <MarkQualityScopeBar
       v-if="selectedExamId && isExamWorkspaceRoute"
@@ -80,12 +74,7 @@
 
     <WorkbenchSurfaceCard v-if="selectedExamId" flush class="quality-dashboard__surface">
       <template #head>
-        <UiSectionTabs
-          v-model="activeTab"
-          :items="qualityTabItems"
-          compact
-          divided
-        />
+        <UiSectionTabs v-model="activeTab" :items="qualityTabItems" compact divided />
       </template>
 
       <template v-if="activeTab === 'overview'">
@@ -180,20 +169,27 @@
                 class="quality-dashboard__radar-chart"
               />
               <UiEmpty v-else description="暂无质量维度数据" />
-              <ul v-if="examQualityPanel.qualityOverviewItems.length > 0" class="quality-dashboard__consistency-list">
+              <ul
+                v-if="examQualityPanel.qualityOverviewItems.length > 0"
+                class="quality-dashboard__consistency-list"
+              >
                 <li
                   v-for="item in examQualityPanel.qualityOverviewItems"
                   :key="item.reviewerUserId"
                   class="quality-dashboard__consistency-row"
                 >
-                  <span class="quality-dashboard__consistency-name">{{ item.reviewerDisplayName }}</span>
+                  <span class="quality-dashboard__consistency-name">{{
+                    item.reviewerDisplayName
+                  }}</span>
                   <div class="quality-dashboard__consistency-track">
                     <div
                       class="quality-dashboard__consistency-fill"
                       :style="{ width: `${Math.min(100, Math.max(0, item.consistencyRate))}%` }"
                     />
                   </div>
-                  <span class="quality-dashboard__consistency-rate">{{ item.consistencyRate }}%</span>
+                  <span class="quality-dashboard__consistency-rate"
+                    >{{ item.consistencyRate }}%</span
+                  >
                 </li>
               </ul>
               <UiEmpty v-else description="暂无评阅员一致性样本" />
@@ -201,15 +197,17 @@
           </WorkbenchSurfaceCard>
         </div>
 
-        <WorkbenchSurfaceCard
-          v-if="selectedExamId"
-          class="quality-dashboard__inner-panel"
-        >
+        <WorkbenchSurfaceCard v-if="selectedExamId" class="quality-dashboard__inner-panel">
           <template #head>
             <span class="quality-dashboard__panel-title">全场抽检记录</span>
           </template>
           <template #toolbar>
-            <UiButton size="sm" variant="outline" :loading="examSpotCheckLoading" @click="loadExamSpotCheckRecords">
+            <UiButton
+              size="sm"
+              variant="outline"
+              :loading="examSpotCheckLoading"
+              @click="loadExamSpotCheckRecords"
+            >
               <template #icon><ReloadOutlined /></template>
               刷新
             </UiButton>
@@ -260,15 +258,17 @@
           </UiDataTable>
         </WorkbenchSurfaceCard>
 
-        <WorkbenchSurfaceCard
-          v-if="isExamWorkspaceRoute"
-          class="quality-dashboard__inner-panel"
-        >
+        <WorkbenchSurfaceCard v-if="isExamWorkspaceRoute" class="quality-dashboard__inner-panel">
           <template #head>
             <span class="quality-dashboard__panel-title">我的待处理抽检</span>
           </template>
           <template #toolbar>
-            <UiButton size="sm" variant="outline" :loading="mySpotCheckLoading" @click="loadMyPendingSpotChecks">
+            <UiButton
+              size="sm"
+              variant="outline"
+              :loading="mySpotCheckLoading"
+              @click="loadMyPendingSpotChecks"
+            >
               <template #icon><ReloadOutlined /></template>
               刷新
             </UiButton>
@@ -301,7 +301,10 @@
                 {{ formatDecimal(mySpotCheckItems[index].originalScore) }}
               </template>
               <template v-else-if="column.key === 'spotCheckStatus'">
-                <UiTag :tone="mySpotCheckStatusTone(mySpotCheckItems[index].spotCheckStatus)" size="sm">
+                <UiTag
+                  :tone="mySpotCheckStatusTone(mySpotCheckItems[index].spotCheckStatus)"
+                  size="sm"
+                >
                   {{ mySpotCheckStatusLabel(mySpotCheckItems[index].spotCheckStatus) }}
                 </UiTag>
               </template>
@@ -309,7 +312,11 @@
                 {{ mySpotCheckItems[index].createTime }}
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiTextAction tone="primary" @click="goSpotCheckWorkbench">去处理</UiTextAction>
+                <UiTableActions
+                  :items="[{ key: 'handle', label: '去处理', tone: 'primary' }]"
+                  split
+                  @action="goSpotCheckWorkbench"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -329,7 +336,9 @@
               @click="goSpotCheckWorkbench"
             >
               <span class="quality-dashboard__todo-label">待处理抽检</span>
-              <strong class="quality-dashboard__todo-value">{{ examQualityPanel.openSpotCheckCount }}</strong>
+              <strong class="quality-dashboard__todo-value">{{
+                examQualityPanel.openSpotCheckCount
+              }}</strong>
               <span class="quality-dashboard__todo-hint">进入抽检处理</span>
             </button>
             <button
@@ -338,25 +347,23 @@
               @click="goArbitrationWorkbench"
             >
               <span class="quality-dashboard__todo-label">待仲裁</span>
-              <strong class="quality-dashboard__todo-value">{{ examQualityPanel.arbitrationPendingCount }}</strong>
+              <strong class="quality-dashboard__todo-value">{{
+                examQualityPanel.arbitrationPendingCount
+              }}</strong>
               <span class="quality-dashboard__todo-hint">进入仲裁裁定</span>
             </button>
-            <button
-              type="button"
-              class="quality-dashboard__todo-card"
-              @click="openSpotCheckTab"
-            >
+            <button type="button" class="quality-dashboard__todo-card" @click="openSpotCheckTab">
               <span class="quality-dashboard__todo-label">预警教师</span>
-              <strong class="quality-dashboard__todo-value">{{ examQualityPanel.reviewerWarningCount }}</strong>
+              <strong class="quality-dashboard__todo-value">{{
+                examQualityPanel.reviewerWarningCount
+              }}</strong>
               <span class="quality-dashboard__todo-hint">创建抽检任务</span>
             </button>
-            <button
-              type="button"
-              class="quality-dashboard__todo-card"
-              @click="switchToProgressTab"
-            >
+            <button type="button" class="quality-dashboard__todo-card" @click="switchToProgressTab">
               <span class="quality-dashboard__todo-label">暂停教师</span>
-              <strong class="quality-dashboard__todo-value">{{ examQualityPanel.reviewerSuspendedCount }}</strong>
+              <strong class="quality-dashboard__todo-value">{{
+                examQualityPanel.reviewerSuspendedCount
+              }}</strong>
               <span class="quality-dashboard__todo-hint">查看题组进度</span>
             </button>
           </div>
@@ -364,7 +371,10 @@
       </template>
 
       <template v-else-if="activeTab === 'progress'">
-        <WorkbenchSurfaceCard v-if="showProgressGroupSummary" class="quality-dashboard__inner-panel">
+        <WorkbenchSurfaceCard
+          v-if="showProgressGroupSummary"
+          class="quality-dashboard__inner-panel"
+        >
           <template #head>
             <span class="quality-dashboard__panel-title">题组进度汇总</span>
           </template>
@@ -403,9 +413,11 @@
                 <span v-else>{{ groupSummaryRows[index].riskLevelText }}</span>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiTextAction @click="openGroupProgress(groupSummaryRows[index].groupId)">
-                  查看进度
-                </UiTextAction>
+                <UiTableActions
+                  :items="[{ key: 'progress', label: '查看进度' }]"
+                  split
+                  @action="() => openGroupProgress(groupSummaryRows[index].groupId)"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -438,7 +450,6 @@
               </UiButton>
             </a-space>
           </template>
-
 
           <UiEmpty
             v-if="!scopeValid"
@@ -654,7 +665,12 @@
             <span class="quality-dashboard__panel-title">我的待处理抽检</span>
           </template>
           <template #toolbar>
-            <UiButton size="sm" variant="outline" :loading="mySpotCheckLoading" @click="loadMyPendingSpotChecks">
+            <UiButton
+              size="sm"
+              variant="outline"
+              :loading="mySpotCheckLoading"
+              @click="loadMyPendingSpotChecks"
+            >
               <template #icon><ReloadOutlined /></template>
               刷新
             </UiButton>
@@ -687,7 +703,10 @@
                 {{ formatDecimal(mySpotCheckItems[index].originalScore) }}
               </template>
               <template v-else-if="column.key === 'spotCheckStatus'">
-                <UiTag :tone="mySpotCheckStatusTone(mySpotCheckItems[index].spotCheckStatus)" size="sm">
+                <UiTag
+                  :tone="mySpotCheckStatusTone(mySpotCheckItems[index].spotCheckStatus)"
+                  size="sm"
+                >
                   {{ mySpotCheckStatusLabel(mySpotCheckItems[index].spotCheckStatus) }}
                 </UiTag>
               </template>
@@ -695,7 +714,11 @@
                 {{ mySpotCheckItems[index].createTime }}
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiTextAction tone="primary" @click="goSpotCheckWorkbench">去处理</UiTextAction>
+                <UiTableActions
+                  :items="[{ key: 'handle', label: '去处理', tone: 'primary' }]"
+                  split
+                  @action="goSpotCheckWorkbench"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -706,7 +729,12 @@
             <span class="quality-dashboard__panel-title">全场抽检记录</span>
           </template>
           <template #toolbar>
-            <UiButton size="sm" variant="outline" :loading="examSpotCheckLoading" @click="loadExamSpotCheckRecords">
+            <UiButton
+              size="sm"
+              variant="outline"
+              :loading="examSpotCheckLoading"
+              @click="loadExamSpotCheckRecords"
+            >
               <template #icon><ReloadOutlined /></template>
               刷新
             </UiButton>
@@ -764,8 +792,6 @@
             <span class="quality-dashboard__panel-title">触发异常批次重处理</span>
           </template>
 
-
-
           <a-form layout="vertical" class="quality-dashboard__form">
             <a-form-item label="扫描批次" required>
               <a-select
@@ -797,11 +823,7 @@
                 cancel-text="取消"
                 @confirm="handleReprocess"
               >
-                <UiButton
-                  variant="destructive"
-                  :loading="reprocessing"
-                  :disabled="!reprocessValid"
-                >
+                <UiButton variant="destructive" :loading="reprocessing" :disabled="!reprocessValid">
                   <template #icon><WarningOutlined /></template>
                   触发重处理
                 </UiButton>
@@ -817,12 +839,20 @@
 <script lang="ts" setup>
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type {ExamWorkbenchQualityPanelResponse} from '@/apis/mark/exam-progress';
+import type { ExamWorkbenchQualityPanelResponse } from '@/apis/mark/exam-progress'
+import { getQualityPanel } from '@/apis/mark/exam-progress'
 import type { ExamScannerBatchResponse } from '@/apis/mark/exam-scan'
+import { pageScannerBatches } from '@/apis/mark/exam-scan'
 import type {
   MarkingOrganizationResponse,
   QuestionGroupReviewerResponse,
   QuestionMarkingGroupResponse,
+} from '@/apis/mark/marking-organization'
+import {
+  getOrganization,
+  MarkingOrganizationStatusDescription,
+  QUESTION_GROUP_STATUS_TONE,
+  QuestionMarkingGroupStatusDescription,
 } from '@/apis/mark/marking-organization'
 import type {
   ExamSpotCheckRecordItemResponse,
@@ -830,9 +860,35 @@ import type {
   ProgressMonitorRecordResponse,
   ProgressRiskItemResponse,
   ProgressRiskLevelCode,
-  ReviewerMetricStatusCode, ReviewerQualityMetricResponse,
- SpotCheckStatusCode} from '@/apis/mark/marking-quality'
-import type { BadgeTone, FilterField, UiBarChartItem, UiSectionTabItem } from '@/components/ui-guide/ui/types'
+  ReviewerMetricStatusCode,
+  ReviewerQualityMetricResponse,
+  SpotCheckStatusCode,
+} from '@/apis/mark/marking-quality'
+import {
+  BatchReprocessScopeCode,
+  createSpotCheckTasks,
+  getLatestProgress,
+  listExamSpotCheckRecords,
+  listMyPendingSpotChecks,
+  listProgressSnapshots,
+  listReviewerMetrics,
+  PROGRESS_RISK_LEVEL_TONE,
+  ProgressRiskLevelDescription,
+  refreshReviewerMetrics,
+  reprocessBatch,
+  REVIEWER_METRIC_STATUS_OPTIONS,
+  REVIEWER_METRIC_STATUS_TONE,
+  ReviewerMetricStatusDescription,
+  SPOT_CHECK_STATUS_TONE,
+  SpotCheckStatusDescription,
+  takeProgressSnapshot,
+} from '@/apis/mark/marking-quality'
+import type {
+  BadgeTone,
+  FilterField,
+  UiBarChartItem,
+  UiSectionTabItem,
+} from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -841,15 +897,6 @@ import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getQualityPanel } from '@/apis/mark/exam-progress'
-import { pageScannerBatches } from '@/apis/mark/exam-scan'
-import {
-  getOrganization,
-  MarkingOrganizationStatusDescription,
-  QUESTION_GROUP_STATUS_TONE,
-  QuestionMarkingGroupStatusDescription,
-} from '@/apis/mark/marking-organization'
-import { BatchReprocessScopeCode, createSpotCheckTasks, getLatestProgress, listExamSpotCheckRecords, listMyPendingSpotChecks, listProgressSnapshots, listReviewerMetrics, PROGRESS_RISK_LEVEL_TONE, ProgressRiskLevelDescription, refreshReviewerMetrics, reprocessBatch, REVIEWER_METRIC_STATUS_OPTIONS, REVIEWER_METRIC_STATUS_TONE, ReviewerMetricStatusDescription, SPOT_CHECK_STATUS_TONE, SpotCheckStatusDescription, takeProgressSnapshot } from '@/apis/mark/marking-quality'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
@@ -859,7 +906,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import MarkQualityScopeBar from '@/components/workbench/MarkQualityScopeBar.vue'
@@ -876,7 +923,10 @@ import {
   buildTrendChartInsight,
   mergeChartHint,
 } from '@/utils/mark-chart-insights'
-import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
+import {
+  buildCategoryBarChartOption,
+  buildTrendLineChartOption,
+} from '@/utils/mark-echarts-options'
 import { progressSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
 import { readAllPages } from '@/utils/page-result'
 import { computeTrendPointDelta } from '@/utils/stat-metric-helpers'
@@ -891,13 +941,8 @@ const route = useRoute()
 const router = useRouter()
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
-const {
-  isJourneyChrome,
-  contextBarTitle,
-  contextBarSubtitle,
-  examStatusLabel,
-  examStatusTone,
-} = useOptionalExamJourneyContextBar('阅卷质控')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('阅卷质控')
 
 const {
   examOptions,
@@ -914,8 +959,13 @@ type QualityTabKey = 'overview' | 'progress' | 'reviewer' | 'spotcheck' | 'repro
 
 function resolveInitialTab(): QualityTabKey {
   const queryTab = route.query.tab
-  if (queryTab === 'overview' || queryTab === 'progress' || queryTab === 'reviewer'
-    || queryTab === 'spotcheck' || queryTab === 'reprocess') {
+  if (
+    queryTab === 'overview' ||
+    queryTab === 'progress' ||
+    queryTab === 'reviewer' ||
+    queryTab === 'spotcheck' ||
+    queryTab === 'reprocess'
+  ) {
     return queryTab
   }
   return route.meta.layout === 'ExamWorkspace' ? 'overview' : 'progress'
@@ -953,12 +1003,14 @@ const examQualityPanel = ref<ExamWorkbenchQualityPanelResponse | null>(null)
 
 const scopeValid = computed(() => Boolean(selectedExamId.value && selectedOrganizationId.value))
 
-const showGroupScope = computed(() =>
-  isExamWorkspaceRoute.value && (activeTab.value === 'progress' || activeTab.value === 'spotcheck'),
+const showGroupScope = computed(
+  () =>
+    isExamWorkspaceRoute.value &&
+    (activeTab.value === 'progress' || activeTab.value === 'spotcheck'),
 )
 
-const showProgressGroupSummary = computed(() =>
-  isExamWorkspaceRoute.value && activeTab.value === 'progress' && !selectedGroupId.value,
+const showProgressGroupSummary = computed(
+  () => isExamWorkspaceRoute.value && activeTab.value === 'progress' && !selectedGroupId.value,
 )
 
 interface GroupSummaryRow {
@@ -994,14 +1046,15 @@ const groupSummaryRows = computed((): GroupSummaryRow[] =>
       groupName: group.groupName,
       leaderUserName: group.leaderUserName,
       reviewerCount: group.reviewers.length,
-      statusLabel: strictEnumLabel(QuestionMarkingGroupStatusDescription, group.groupStatus, '题组状态'),
+      statusLabel: strictEnumLabel(
+        QuestionMarkingGroupStatusDescription,
+        group.groupStatus,
+        '题组状态',
+      ),
       statusTone: strictEnumTone(QUESTION_GROUP_STATUS_TONE, group.groupStatus, '题组状态'),
-      completionRateText: progressRecord != null
-        ? `${progressRecord.completionRate.toFixed(1)}%`
-        : '—',
-      riskLevelText: progressRecord != null
-        ? riskLabel(progressRecord.riskLevel)
-        : '暂无快照',
+      completionRateText:
+        progressRecord != null ? `${progressRecord.completionRate.toFixed(1)}%` : '—',
+      riskLevelText: progressRecord != null ? riskLabel(progressRecord.riskLevel) : '暂无快照',
       riskTone: progressRecord != null ? riskTone(progressRecord.riskLevel) : undefined,
     }
   }),
@@ -1067,14 +1120,18 @@ const progress = ref<ProgressMonitorRecordResponse | null>(null)
 const progressHistory = ref<ProgressMonitorRecordResponse[]>([])
 const progressLoading = ref(false)
 const snapshotting = ref(false)
-const progressRiskItems = computed<ProgressRiskItemResponse[]>(() => progress.value?.riskItems ?? [])
+const progressRiskItems = computed<ProgressRiskItemResponse[]>(
+  () => progress.value?.riskItems ?? [],
+)
 
 const progressTrendPoints = computed(() => progressSnapshotsToTrendPoints(progressHistory.value))
 
-const progressTrendHint = computed(() => mergeChartHint(
-  '基于历史进度快照，悬停查看各时点完成率',
-  buildTrendChartInsight(progressTrendPoints.value),
-))
+const progressTrendHint = computed(() =>
+  mergeChartHint(
+    '基于历史进度快照，悬停查看各时点完成率',
+    buildTrendChartInsight(progressTrendPoints.value),
+  ),
+)
 
 const progressTrendLastValue = computed(() => {
   const points = progressTrendPoints.value
@@ -1112,10 +1169,12 @@ const progressTaskBarItems = computed((): UiBarChartItem[] => {
   return items.filter((item) => item.value > 0)
 })
 
-const progressTaskBarHint = computed(() => mergeChartHint(
-  '最新快照各状态任务量',
-  buildBarChartInsight(progressTaskBarItems.value, { valueUnit: ' 项' }),
-))
+const progressTaskBarHint = computed(() =>
+  mergeChartHint(
+    '最新快照各状态任务量',
+    buildBarChartInsight(progressTaskBarItems.value, { valueUnit: ' 项' }),
+  ),
+)
 
 const { chartOption: progressTaskBarOption } = useChartOption(() =>
   buildCategoryBarChartOption(progressTaskBarItems.value, {
@@ -1134,7 +1193,7 @@ const progressTaskBarAriaLabel = computed(() => {
 })
 
 const qualityRadarHasData = computed(() =>
-  (examQualityPanel.value?.qualityDimensionItems ?? []).some(item => item.score != null),
+  (examQualityPanel.value?.qualityDimensionItems ?? []).some((item) => item.score != null),
 )
 
 const { chartOption: qualityRadarOption } = useChartOption(() =>
@@ -1189,7 +1248,7 @@ async function loadExamSpotCheckRecords(): Promise<void> {
   }
 }
 
-function handleExamSpotCheckPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleExamSpotCheckPageChange(pageEvent: { current: number; pageSize: number }): void {
   examSpotCheckPagination.pageNum = pageEvent.current
   examSpotCheckPagination.pageSize = pageEvent.pageSize
   void loadExamSpotCheckRecords()
@@ -1244,7 +1303,7 @@ async function loadMyPendingSpotChecks(): Promise<void> {
   }
 }
 
-function handleMySpotCheckPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleMySpotCheckPageChange(pageEvent: { current: number; pageSize: number }): void {
   mySpotCheckPagination.pageNum = pageEvent.current
   mySpotCheckPagination.pageSize = pageEvent.pageSize
   void loadMyPendingSpotChecks()
@@ -1262,14 +1321,16 @@ async function loadGroupSummaryProgress(): Promise<void> {
   }
   groupSummaryLoading.value = true
   try {
-    const entries: Array<[string, ProgressMonitorRecordResponse | null]> = await Promise.all(groups.map(async (group) => {
-      const record = await getLatestProgress({
-        examId: selectedExamId.value!,
-        organizationId: selectedOrganizationId.value!,
-        groupId: group.id,
-      })
-      return [group.id, record]
-    }))
+    const entries: Array<[string, ProgressMonitorRecordResponse | null]> = await Promise.all(
+      groups.map(async (group) => {
+        const record = await getLatestProgress({
+          examId: selectedExamId.value!,
+          organizationId: selectedOrganizationId.value!,
+          groupId: group.id,
+        })
+        return [group.id, record]
+      }),
+    )
     groupProgressByGroupId.value = Object.fromEntries(entries)
   } catch (error) {
     groupProgressByGroupId.value = {}
@@ -1351,7 +1412,6 @@ const reviewerFilterFields: FilterField[] = [
   },
 ]
 
-
 const reviewerColumns: ColumnType<ReviewerQualityMetricResponse>[] = [
   { title: '教师', key: 'reviewer', width: 180 },
   { title: '阅卷组织', key: 'organization', width: 140 },
@@ -1372,14 +1432,15 @@ async function loadReviewerMetrics(): Promise<void> {
   reviewerLoading.value = true
   try {
     reviewerMetrics.value = await readAllPages(
-      (pageNum) => listReviewerMetrics({
-        examId: selectedExamId.value!,
-        organizationId: selectedOrganizationId.value,
-        groupId: selectedGroupId.value,
-        metricStatus: reviewerFilterForm.metricStatus,
-        pageNum,
-        pageSize: REVIEWER_METRIC_PAGE_SIZE,
-      }),
+      (pageNum) =>
+        listReviewerMetrics({
+          examId: selectedExamId.value!,
+          organizationId: selectedOrganizationId.value,
+          groupId: selectedGroupId.value,
+          metricStatus: reviewerFilterForm.metricStatus,
+          pageNum,
+          pageSize: REVIEWER_METRIC_PAGE_SIZE,
+        }),
       '阅卷教师质量指标加载失败',
     )
   } catch (error) {
@@ -1511,9 +1572,8 @@ async function loadExamQualityPanel(): Promise<void> {
     examQualityPanel.value = null
     return
   }
-  const shouldLoad = isExamWorkspaceRoute.value
-    || activeTab.value === 'overview'
-    || activeTab.value === 'spotcheck'
+  const shouldLoad =
+    isExamWorkspaceRoute.value || activeTab.value === 'overview' || activeTab.value === 'spotcheck'
   if (!shouldLoad) {
     examQualityPanel.value = null
     return
@@ -1527,11 +1587,11 @@ async function loadExamQualityPanel(): Promise<void> {
 }
 
 const signalMetrics = computed<SignalMetric[]>(() => {
-  const useExamQualitySignals = examQualityPanel.value && (
-    isExamWorkspaceRoute.value
-    || activeTab.value === 'overview'
-    || activeTab.value === 'spotcheck'
-  )
+  const useExamQualitySignals =
+    examQualityPanel.value &&
+    (isExamWorkspaceRoute.value ||
+      activeTab.value === 'overview' ||
+      activeTab.value === 'spotcheck')
   if (useExamQualitySignals) {
     const panel = examQualityPanel.value!
     const summary = panel.qualitySummary
@@ -1542,7 +1602,12 @@ const signalMetrics = computed<SignalMetric[]>(() => {
         key: 'consistency',
         label: '平均一致性',
         value: consistency != null ? `${consistency}%` : '—',
-        tone: consistency != null && consistency >= 90 ? 'green' : consistency != null ? 'orange' : 'gray',
+        tone:
+          consistency != null && consistency >= 90
+            ? 'green'
+            : consistency != null
+              ? 'orange'
+              : 'gray',
       },
       {
         key: 'spotcheck-done',
@@ -1577,8 +1642,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     (r) => r.metricStatus === 'SUSPENDED',
   ).length
 
-  const completionRate
-    = typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
+  const completionRate =
+    typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
   const recycledCount = p?.recycledTasks ?? 0
   const inProgressCount = p?.inProgressTasks ?? 0
   const finalizedCount = p?.finalizedTasks ?? 0
@@ -1686,12 +1751,13 @@ async function loadScannerBatches(): Promise<void> {
   scannerBatchLoading.value = true
   try {
     scannerBatches.value = await readAllPages(
-      (pageNum) => pageScannerBatches({
-        examId: selectedExamId.value!,
-        pageNum,
-        pageSize: SCANNER_BATCH_OPTION_PAGE_SIZE,
-        includeDiscarded: true,
-      }),
+      (pageNum) =>
+        pageScannerBatches({
+          examId: selectedExamId.value!,
+          pageNum,
+          pageSize: SCANNER_BATCH_OPTION_PAGE_SIZE,
+          includeDiscarded: true,
+        }),
       '扫描批次加载失败',
     )
   } catch (error) {
@@ -1797,11 +1863,15 @@ watch(activeTab, () => {
   reloadActiveTab()
 })
 
-watch(selectedExamId, async () => {
-  await Promise.all([loadOrganizationDetail(), loadScannerBatches(), loadExamQualityPanel()])
-  syncRouteQuery()
-  reloadActiveTab()
-}, { immediate: true })
+watch(
+  selectedExamId,
+  async () => {
+    await Promise.all([loadOrganizationDetail(), loadScannerBatches(), loadExamQualityPanel()])
+    syncRouteQuery()
+    reloadActiveTab()
+  },
+  { immediate: true },
+)
 
 onMounted(async () => {
   await initExamSelector()
@@ -1937,7 +2007,9 @@ onActivated(() => {
     background: var(--dp-surface-soft, #f8fafc);
     cursor: pointer;
     text-align: left;
-    transition: border-color 0.2s ease, background 0.2s ease;
+    transition:
+      border-color 0.2s ease,
+      background 0.2s ease;
 
     &:hover {
       border-color: var(--dp-blue-300, #93c5fd);

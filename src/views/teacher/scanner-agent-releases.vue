@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScannerAgentReleaseResponse } from '@/apis/mark/scanner-agent-release'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -19,7 +19,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -34,7 +34,7 @@ defineOptions({ name: 'ScannerAgentReleasesPage' })
 
 const authStore = useAuthStore()
 const canManage = computed(() =>
-  authStore.userRole === RoleEnum.CROP_ADMIN || authStore.userRole === RoleEnum.SUPER_ADMIN,
+  authStore.userRole === RoleEnum.SUPER_ADMIN,
 )
 
 const loading = ref(false)
@@ -182,6 +182,23 @@ async function submitRegister() {
   }
   finally {
     saving.value = false
+  }
+}
+
+function buildReleaseRowActions(): UiTableRowActionItem[] {
+  return [
+    { key: 'publish', label: '发布' },
+    { key: 'delete', label: '删除', tone: 'danger' },
+  ]
+}
+
+function handleReleaseRowAction(key: string, record: ScannerAgentReleaseResponse): void {
+  if (key === 'publish') {
+    openPublishModal(record)
+    return
+  }
+  if (key === 'delete') {
+    void confirmDelete(record)
   }
 }
 
@@ -346,22 +363,13 @@ onMounted(() => {
             {{ record.createTime ? formatDateTime(record.createTime) : '-' }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <a-space size="small">
-              <UiTextAction
-                v-if="!record.published"
-                @click="openPublishModal(record)"
-              >
-                发布
-              </UiTextAction>
-              <UiTextAction
-                v-if="!record.published"
-                tone="danger"
-                @click="() => confirmDelete(record)"
-              >
-                删除
-              </UiTextAction>
-              <span v-if="record.published" class="muted">-</span>
-            </a-space>
+            <UiTableActions
+              v-if="!record.published"
+              :items="buildReleaseRowActions()"
+              split
+              @action="(key) => handleReleaseRowAction(key, record)"
+            />
+            <span v-else class="muted">-</span>
           </template>
         </template>
       </UiDataTable>

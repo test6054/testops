@@ -12,7 +12,9 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 5. PENDING / FAILED 可 POST /update-status { id, status: 'CANCELLED' } 取消
  */
 import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import type { QualityCourseVO } from '@/apis/quality/quality-course'
+import { qualityCourseApi } from '@/apis/quality/quality-course'
 import type {
   QualityStatusCountsResponse,
   ScoreBatchQueryRequest,
@@ -21,7 +23,8 @@ import type {
   ScoreBatchVO,
   ScoreImportRowDiagnostic,
 } from '@/apis/quality/score-batch'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import { scoreBatchApi } from '@/apis/quality/score-batch'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
   SignalMetric,
@@ -36,9 +39,6 @@ import { downloadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { downloadExcelImportTemplate } from '@/apis/platform/excel-import'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
-import { qualityCourseApi } from '@/apis/quality/quality-course'
-import { scoreBatchApi } from '@/apis/quality/score-batch'
 import {
   ALL_DATA_SOURCE_MODE_CODES,
   ALL_SCORE_BATCH_STATUS_CODES,
@@ -58,7 +58,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import AuditTimelineDrawer from '@/components/workbench/AuditTimelineDrawer.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageRail from '@/components/workbench/StageRail.vue'
@@ -81,8 +81,8 @@ const batches = ref<ScoreBatchVO[]>([])
 const total = ref(0)
 const batchStatusCounts = ref<QualityStatusCountsResponse | null>(null)
 const loading = ref(false)
-const { exporting: scoreBatchExporting, exportExcel: exportScoreBatchExcel }
-  = useQualityTableExport()
+const { exporting: scoreBatchExporting, exportExcel: exportScoreBatchExcel } =
+  useQualityTableExport()
 const uploading = ref(false)
 const uploadFileNodeId = ref<string>()
 const uploadFileName = ref<string>()
@@ -250,17 +250,17 @@ function hasGeneratedRowStatistics(
   record: Pick<ScoreBatchVO, 'totalRows' | 'successRows' | 'errorRows'> | ScoreImportPreviewSummary,
 ): boolean {
   return (
-    record.totalRows !== undefined
-    && record.successRows !== undefined
-    && record.errorRows !== undefined
+    record.totalRows !== undefined &&
+    record.successRows !== undefined &&
+    record.errorRows !== undefined
   )
 }
 
 function scoreBatchRowStatisticsText(record: ScoreBatchVO): string {
   if (
-    record.status === ScoreBatchStatusCode.PENDING
-    || record.status === ScoreBatchStatusCode.PARSING
-    || record.status === ScoreBatchStatusCode.CANCELLED
+    record.status === ScoreBatchStatusCode.PENDING ||
+    record.status === ScoreBatchStatusCode.PARSING ||
+    record.status === ScoreBatchStatusCode.CANCELLED
   ) {
     return '未生成'
   }
@@ -311,7 +311,7 @@ const statusBuckets = computed(() => buildScoreBatchStatusBuckets(batchStatusCou
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const stageOrder: Array<{ key: ScoreBatchStatusCode, title: string }> = [
+  const stageOrder: Array<{ key: ScoreBatchStatusCode; title: string }> = [
     { key: ScoreBatchStatusCode.PENDING, title: '待处理' },
     { key: ScoreBatchStatusCode.PARSING, title: '解析中' },
     { key: ScoreBatchStatusCode.PREVIEW_READY, title: '预览就绪' },
@@ -491,7 +491,7 @@ async function handleScopeChange(): Promise<void> {
 
 useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false })
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadBatches()
@@ -587,9 +587,9 @@ async function openPreview(record: ScoreBatchVO) {
     const preview = await scoreBatchApi.preview(record.id)
     for (const diagnostic of preview.diagnostics) {
       if (
-        diagnostic.valid === false
-        && diagnostic.errorMessages.length === 0
-        && diagnostic.errorCodes.length === 0
+        diagnostic.valid === false &&
+        diagnostic.errorMessages.length === 0 &&
+        diagnostic.errorCodes.length === 0
       ) {
         message.error('成绩预览结果异常，请重新导入后再试')
         return
@@ -746,9 +746,9 @@ async function submitEditor() {
 
 function canEdit(status: ScoreBatchStatusCode) {
   return (
-    status === ScoreBatchStatusCode.PENDING
-    || status === ScoreBatchStatusCode.FAILED
-    || status === ScoreBatchStatusCode.CANCELLED
+    status === ScoreBatchStatusCode.PENDING ||
+    status === ScoreBatchStatusCode.FAILED ||
+    status === ScoreBatchStatusCode.CANCELLED
   )
 }
 
@@ -803,16 +803,16 @@ const batchResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleBatchResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
+function handleBatchResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
   const record = batches.value.find((b) => b.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'preview') openPreview(record)
 }
 
 function canDelete(status: ScoreBatchStatusCode) {
   return (
-    status === ScoreBatchStatusCode.PENDING
-    || status === ScoreBatchStatusCode.FAILED
-    || status === ScoreBatchStatusCode.CANCELLED
+    status === ScoreBatchStatusCode.PENDING ||
+    status === ScoreBatchStatusCode.FAILED ||
+    status === ScoreBatchStatusCode.CANCELLED
   )
 }
 
@@ -831,9 +831,9 @@ async function handleDelete(record: ScoreBatchVO) {
 
 function canValidate(record: ScoreBatchVO) {
   return (
-    record.status === ScoreBatchStatusCode.PREVIEW_READY
-    && (record.errorRows ?? 0) === 0
-    && (record.successRows ?? 0) > 0
+    record.status === ScoreBatchStatusCode.PREVIEW_READY &&
+    (record.errorRows ?? 0) === 0 &&
+    (record.successRows ?? 0) > 0
   )
 }
 function canConfirm(status: ScoreBatchStatusCode) {
@@ -841,9 +841,9 @@ function canConfirm(status: ScoreBatchStatusCode) {
 }
 function canPreview(status: ScoreBatchStatusCode) {
   return (
-    status === ScoreBatchStatusCode.PREVIEW_READY
-    || status === ScoreBatchStatusCode.VALIDATED
-    || status === ScoreBatchStatusCode.FAILED
+    status === ScoreBatchStatusCode.PREVIEW_READY ||
+    status === ScoreBatchStatusCode.VALIDATED ||
+    status === ScoreBatchStatusCode.FAILED
   )
 }
 function canCancel(status: ScoreBatchStatusCode) {
@@ -851,6 +851,62 @@ function canCancel(status: ScoreBatchStatusCode) {
 }
 function canReParse(status: ScoreBatchStatusCode) {
   return status === ScoreBatchStatusCode.PENDING || status === ScoreBatchStatusCode.FAILED
+}
+
+function buildScoreBatchActions(record: ScoreBatchVO): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = []
+  if (canPreview(record.status)) {
+    actions.push({ key: 'preview', label: '预览' })
+  }
+  if (canValidate(record)) {
+    actions.push({ key: 'validate', label: '校验' })
+  }
+  if (canConfirm(record.status)) {
+    actions.push({ key: 'confirm', label: '确认', tone: 'primary' })
+  }
+  if (canReParse(record.status)) {
+    actions.push({ key: 'reparse', label: '重新解析', tone: 'primary' })
+  }
+  if (canEdit(record.status)) {
+    actions.push({ key: 'edit', label: '编辑' })
+  }
+  if (canCancel(record.status)) {
+    actions.push({ key: 'cancel', label: '取消', tone: 'danger' })
+  }
+  if (canDelete(record.status)) {
+    actions.push({ key: 'delete', label: '删除', tone: 'danger' })
+  }
+  actions.push({ key: 'audit', label: '审计' })
+  return actions
+}
+
+function handleScoreBatchAction(key: string, record: ScoreBatchVO): void {
+  switch (key) {
+    case 'preview':
+      openPreview(record)
+      break
+    case 'validate':
+      void handleValidate(record)
+      break
+    case 'confirm':
+      void handleConfirm(record)
+      break
+    case 'reparse':
+      void handleReParse(record)
+      break
+    case 'edit':
+      openEdit(record)
+      break
+    case 'cancel':
+      void handleCancel(record)
+      break
+    case 'delete':
+      void handleDelete(record)
+      break
+    case 'audit':
+      void openAuditDrawer(record)
+      break
+  }
 }
 
 watch(
@@ -1071,9 +1127,9 @@ onMounted(async () => {
             </template>
             <template
               v-else-if="
-                column.key === 'schoolYear'
-                  || column.key === 'semester'
-                  || column.key === 'createTime'
+                column.key === 'schoolYear' ||
+                column.key === 'semester' ||
+                column.key === 'createTime'
               "
             >
               <template v-if="column.key === 'schoolYear'">
@@ -1107,46 +1163,11 @@ onMounted(async () => {
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction v-if="canPreview(record.status)" @click="openPreview(record)">
-                  预览
-                </UiTextAction>
-                <UiTextAction v-if="canValidate(record)" @click="handleValidate(record)">
-                  校验
-                </UiTextAction>
-                <UiTextAction
-                  v-if="canConfirm(record.status)"
-                  tone="primary"
-                  @click="handleConfirm(record)"
-                >
-                  确认
-                </UiTextAction>
-                <UiTextAction
-                  v-if="canReParse(record.status)"
-                  tone="primary"
-                  @click="handleReParse(record)"
-                >
-                  重新解析
-                </UiTextAction>
-                <UiTextAction v-if="canEdit(record.status)" @click="openEdit(record)">
-                  编辑
-                </UiTextAction>
-                <UiTextAction
-                  v-if="canCancel(record.status)"
-                  tone="danger"
-                  @click="handleCancel(record)"
-                >
-                  取消
-                </UiTextAction>
-                <UiTextAction
-                  v-if="canDelete(record.status)"
-                  tone="danger"
-                  @click="handleDelete(record)"
-                >
-                  删除
-                </UiTextAction>
-                <UiTextAction @click="openAuditDrawer(record)">审计</UiTextAction>
-              </div>
+              <UiTableActions
+                :items="buildScoreBatchActions(record)"
+                split
+                @action="(key) => handleScoreBatchAction(key, record)"
+              />
             </template>
           </template>
         </UiDataTable>

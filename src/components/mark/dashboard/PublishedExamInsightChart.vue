@@ -2,7 +2,6 @@
   <section class="published-insight-chart">
     <header class="published-insight-chart__head">
       <strong class="published-insight-chart__title">均分 / 及格率</strong>
-      <span class="published-insight-chart__hint">已发布成绩考试</span>
     </header>
     <UiEmpty
       v-if="!chartExams.length"
@@ -37,7 +36,9 @@ const props = defineProps<{
 
 const chartExams = computed(() => buildPublishedInsightChartExams(props.insights))
 
-const chartOption = computed((): EChartsCoreOption => buildDashboardPublishedInsightChartOption(chartExams.value))
+const chartOption = computed((): EChartsCoreOption =>
+  buildDashboardPublishedInsightChartOption(chartExams.value),
+)
 
 const chartAriaLabel = computed(() => {
   const count = chartExams.value.length
@@ -46,11 +47,14 @@ const chartAriaLabel = computed(() => {
 </script>
 
 <style scoped>
-.published-insight-chart__head {
+.published-insight-chart {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  height: 100%;
+  min-height: 220px;
+}
+
+.published-insight-chart__head {
   margin-bottom: 12px;
 }
 
@@ -60,16 +64,13 @@ const chartAriaLabel = computed(() => {
   color: var(--dp-text-primary, #0f172a);
 }
 
-.published-insight-chart__hint {
-  font-size: 12px;
-  color: var(--dp-text-muted, #64748b);
-}
-
 .published-insight-chart__empty {
+  flex: 1;
   min-height: 180px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--dp-surface);
 }
 
 .published-insight-chart__canvas {

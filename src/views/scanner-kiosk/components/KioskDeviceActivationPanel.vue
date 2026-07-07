@@ -23,11 +23,9 @@ const emit = defineEmits<{
 
 const activation = useKioskDeviceActivation()
 
-const formDisabled = computed(
-  () => props.submitLoading
-    || !props.canActivate
-    || !activation.localAgentReachable.value,
-)
+const formDisabled = computed(() => props.submitLoading || !props.canActivate)
+
+const submitDisabled = computed(() => formDisabled.value || !activation.localAgentReachable.value)
 
 const agentOfflineHint = computed(() =>
   !activation.localAgentReachable.value
@@ -36,7 +34,7 @@ const agentOfflineHint = computed(() =>
 )
 
 function handleActivate() {
-  if (formDisabled.value) return
+  if (submitDisabled.value) return
   emit('submit')
 }
 </script>
@@ -92,7 +90,7 @@ function handleActivate() {
       <button
         type="button"
         class="activation-panel__submit"
-        :disabled="formDisabled"
+        :disabled="submitDisabled"
         @click="handleActivate"
       >
         <ThunderboltFilled />

@@ -1,25 +1,36 @@
 <script setup lang="ts">
 import type { RadioChangeEvent } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   AssessmentGoalWeightSaveRequest,
   AssessmentGoalWeightVO,
 } from '@/apis/quality/assessment-goal-weight'
+import { assessmentGoalWeightApi } from '@/apis/quality/assessment-goal-weight'
 import type { AssessmentItemSaveRequest, AssessmentItemVO } from '@/apis/quality/assessment-item'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import type { CourseGoalSaveRequest, CourseGoalVO } from '@/apis/quality/course-goal'
+import { courseGoalApi } from '@/apis/quality/course-goal'
 import type { CourseGoalAssessmentRuleSaveRequest } from '@/apis/quality/course-goal-assessment-rule'
+import { courseGoalAssessmentRuleApi } from '@/apis/quality/course-goal-assessment-rule'
 import type {
   CourseGoalRequirementSaveRequest,
   CourseGoalRequirementVO,
 } from '@/apis/quality/course-goal-requirement'
+import { courseGoalRequirementApi } from '@/apis/quality/course-goal-requirement'
 import type { GraduationRequirementVO } from '@/apis/quality/graduation-requirement'
+import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import type {
   QualityCourseEditorForm,
   QualityCourseSaveRequest,
   QualityCourseVO,
 } from '@/apis/quality/quality-course'
+import { qualityCourseApi } from '@/apis/quality/quality-course'
 import type { RequirementIndicatorVO } from '@/apis/quality/requirement-indicator'
+import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
 import type { RubricItemSaveRequest, RubricItemVO } from '@/apis/quality/rubric-item'
+import { rubricItemApi } from '@/apis/quality/rubric-item'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 /**
  * 质量评价课程 - 支撑矩阵工作台（3-in-1）
  *
@@ -47,18 +58,8 @@ import type { RubricItemSaveRequest, RubricItemVO } from '@/apis/quality/rubric-
 import type { CourseListVO } from '@/apis/quality/user-catalog'
 import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { assessmentGoalWeightApi } from '@/apis/quality/assessment-goal-weight'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
-import { courseGoalApi } from '@/apis/quality/course-goal'
-import { courseGoalAssessmentRuleApi } from '@/apis/quality/course-goal-assessment-rule'
-import { courseGoalRequirementApi } from '@/apis/quality/course-goal-requirement'
-import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
-import { qualityCourseApi } from '@/apis/quality/quality-course'
-import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
-import { rubricItemApi } from '@/apis/quality/rubric-item'
 import {
   AggregationFunctionCode,
   AggregationFunctionDescription,
@@ -85,6 +86,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import MatrixWorkbench from '@/components/workbench/MatrixWorkbench.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -505,8 +507,8 @@ const supportMatrixCells = computed<MatrixCell[]>(() => {
         ? `R::${support.requirementId}`
         : null
     if (!colKey) continue
-    const tone: MatrixCell['tone']
-      = support.supportLevel === SupportLevelCode.HIGH
+    const tone: MatrixCell['tone'] =
+      support.supportLevel === SupportLevelCode.HIGH
         ? 'red'
         : support.supportLevel === SupportLevelCode.MEDIUM
           ? 'orange'
@@ -696,13 +698,13 @@ async function submitCourse() {
   const semester = courseEditor.semester
   const selectedSemester = ALL_SEMESTER_CODES.find((code) => code === semester)
   if (
-    !courseEditor.programId.trim()
-    || !courseEditor.trainingPlanId.trim()
-    || !courseEditor.courseId.trim()
-    || !courseEditor.courseCode.trim()
-    || !courseEditor.courseName.trim()
-    || !courseEditor.schoolYear.trim()
-    || !selectedSemester
+    !courseEditor.programId.trim() ||
+    !courseEditor.trainingPlanId.trim() ||
+    !courseEditor.courseId.trim() ||
+    !courseEditor.courseCode.trim() ||
+    !courseEditor.courseName.trim() ||
+    !courseEditor.schoolYear.trim() ||
+    !selectedSemester
   ) {
     message.error('请填写专业、培养方案、目录课程、编码、名称、学年、学期')
     return
@@ -932,9 +934,9 @@ async function submitSupport() {
     return
   }
   if (
-    supportEditor.supportWeight == null
-    || supportEditor.supportWeight <= 0
-    || supportEditor.supportWeight > 1
+    supportEditor.supportWeight == null ||
+    supportEditor.supportWeight <= 0 ||
+    supportEditor.supportWeight > 1
   ) {
     message.error('权重必须在 (0, 1] 之间')
     return
@@ -968,7 +970,7 @@ function handleSupportLevelChange(level: SupportLevelCode) {
 }
 
 function handleSupportLevelRadioChange(event: RadioChangeEvent) {
-  const selected = supportLevelOptions.find(option => option.value === event.target?.value)
+  const selected = supportLevelOptions.find((option) => option.value === event.target?.value)
   if (selected) {
     handleSupportLevelChange(selected.value)
   }
@@ -985,11 +987,11 @@ function handleSupportCellClick(cellEvent: {
   const goalSupports = supportsOfGoal(cellEvent.row.key)
   const matched = goalSupports.find(
     (s) =>
-      (colMeta.indicatorId && s.indicatorId === colMeta.indicatorId)
-      || (colMeta.reqId
-        && !colMeta.indicatorId
-        && s.requirementId === colMeta.reqId
-        && !s.indicatorId),
+      (colMeta.indicatorId && s.indicatorId === colMeta.indicatorId) ||
+      (colMeta.reqId &&
+        !colMeta.indicatorId &&
+        s.requirementId === colMeta.reqId &&
+        !s.indicatorId),
   )
   if (matched) openSupportEdit(matched)
   else openSupportCreate(cellEvent.row.key, cellEvent.col.key)
@@ -1280,9 +1282,9 @@ function openRubricEdit(record: RubricItemVO) {
 async function submitRubric() {
   if (!guardCourseMatrixEditable('保存 Rubric')) return
   if (
-    !rubricEditor.rubricName.trim()
-    || rubricEditor.fullScore == null
-    || rubricEditor.fullScore <= 0
+    !rubricEditor.rubricName.trim() ||
+    rubricEditor.fullScore == null ||
+    rubricEditor.fullScore <= 0
   ) {
     message.error('请填写名称与满分')
     return
@@ -1315,6 +1317,76 @@ async function deleteRubric(record: RubricItemVO) {
       await loadAllItemMeta()
     },
   })
+}
+
+function buildAssessmentItemActions(_record: AssessmentItemVO): UiTableRowActionItem[] {
+  return [
+    { key: 'edit', label: '编辑' },
+    { key: 'rubric', label: 'Rubric' },
+    { key: 'validate-weights', label: '校验权重' },
+    { key: 'validate-rubric', label: '校验 Rubric' },
+    { key: 'delete', label: '删除', tone: 'danger' },
+  ]
+}
+
+function handleAssessmentItemAction(key: string, record: AssessmentItemVO): void {
+  switch (key) {
+    case 'edit':
+      openItemEdit(record)
+      break
+    case 'rubric':
+      openRubricList(record)
+      break
+    case 'validate-weights':
+      validateItemWeights(record)
+      break
+    case 'validate-rubric':
+      validateRubricFullScore(record)
+      break
+    case 'delete':
+      void deleteItem(record)
+      break
+  }
+}
+
+function buildCourseGoalActions(_record: CourseGoalVO): UiTableRowActionItem[] {
+  return [
+    { key: 'edit', label: '编辑' },
+    { key: 'rule', label: '计算规则' },
+    { key: 'delete', label: '删除', tone: 'danger' },
+  ]
+}
+
+function handleCourseGoalAction(key: string, record: CourseGoalVO): void {
+  switch (key) {
+    case 'edit':
+      openGoalEdit(record)
+      break
+    case 'rule':
+      openRuleEditor(record)
+      break
+    case 'delete':
+      void deleteGoal(record)
+      break
+  }
+}
+
+function buildRubricActions(_record: RubricItemVO): UiTableRowActionItem[] {
+  return [
+    { key: 'edit', label: '编辑' },
+    { key: 'delete', label: '删除', tone: 'danger' },
+  ]
+}
+
+function handleRubricAction(key: string, record: RubricItemVO): void {
+  switch (key) {
+    case 'edit':
+      openRubricEdit(record)
+      break
+    case 'delete':
+      void deleteRubric(record)
+      break
+  }
 }
 
 /* ========== 编辑器：课程目标计算规则 ========== */
@@ -1416,20 +1488,20 @@ onMounted(async () => {
 
 /* ========== 字典 ========== */
 
-const supportLevelOptions: { value: SupportLevelCode, label: string }[]
-  = ALL_SUPPORT_LEVEL_CODES.map((value) => ({
+const supportLevelOptions: { value: SupportLevelCode; label: string }[] =
+  ALL_SUPPORT_LEVEL_CODES.map((value) => ({
     value,
     label: strictEnumLabel(SupportLevelDescription, value, '支撑度'),
   }))
 
-const aggregationOptions: { value: AggregationFunctionCode, label: string }[]
-  = ALL_AGGREGATION_FUNCTION_CODES.map((value) => ({
+const aggregationOptions: { value: AggregationFunctionCode; label: string }[] =
+  ALL_AGGREGATION_FUNCTION_CODES.map((value) => ({
     value,
     label: AggregationFunctionDescription[value],
   }))
 
-const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
-  = ALL_ASSESSMENT_ITEM_TYPE_CODES.map((value) => ({
+const itemTypeOptions: { value: AssessmentItemTypeCode; label: string }[] =
+  ALL_ASSESSMENT_ITEM_TYPE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(AssessmentItemTypeDescription, value, '考核项类型'),
   }))
@@ -1452,7 +1524,8 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
           <UiTag v-if="currentCourse?.schoolYear" tone="blue">
             {{ currentCourse.schoolYear
             }}<span v-if="currentCourse.semester">
-              · {{ formatSemester(currentCourse.semester) }}</span>
+              · {{ formatSemester(currentCourse.semester) }}</span
+            >
           </UiTag>
           <UiTag v-if="currentCourse?.creditValue != null" tone="gray">
             {{ currentCourse.creditValue }} 学分
@@ -1585,13 +1658,11 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
                 {{ rubricsOfItem(record.id).length }}
               </template>
               <template v-else-if="column.key === 'actions'">
-                <div class="operations-cell" @click.stop>
-                  <UiTextAction @click="openItemEdit(record)">编辑</UiTextAction>
-                  <UiTextAction @click="openRubricList(record)">Rubric</UiTextAction>
-                  <UiTextAction @click="validateItemWeights(record)">校验权重</UiTextAction>
-                  <UiTextAction @click="validateRubricFullScore(record)">校验 Rubric</UiTextAction>
-                  <UiTextAction tone="danger" @click="deleteItem(record)">删除</UiTextAction>
-                </div>
+                <UiTableActions
+                  :items="buildAssessmentItemActions(record)"
+                  split
+                  @action="(key) => handleAssessmentItemAction(key, record)"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -1636,20 +1707,21 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
                   <UiTag v-if="record.complexEngineeringFlag" tone="orange"> 复杂工程 </UiTag>
                   <span
                     v-if="
-                      !record.civicObjectiveFlag
-                        && !record.aiLiteracyFlag
-                        && !record.complexEngineeringFlag
+                      !record.civicObjectiveFlag &&
+                      !record.aiLiteracyFlag &&
+                      !record.complexEngineeringFlag
                     "
                     class="qcm__muted"
-                  >-</span>
+                    >-</span
+                  >
                 </a-space>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <div class="operations-cell" @click.stop>
-                  <UiTextAction @click="openGoalEdit(record)">编辑</UiTextAction>
-                  <UiTextAction @click="openRuleEditor(record)">计算规则</UiTextAction>
-                  <UiTextAction tone="danger" @click="deleteGoal(record)">删除</UiTextAction>
-                </div>
+                <UiTableActions
+                  :items="buildCourseGoalActions(record)"
+                  split
+                  @action="(key) => handleCourseGoalAction(key, record)"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -2087,10 +2159,11 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
             {{ record.fullScore.toFixed(0) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiTextAction @click="openRubricEdit(record)">编辑</UiTextAction>
-              <UiTextAction tone="danger" @click="deleteRubric(record)">删除</UiTextAction>
-            </div>
+            <UiTableActions
+              :items="buildRubricActions(record)"
+              split
+              @action="(key) => handleRubricAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>

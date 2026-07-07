@@ -3,25 +3,16 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
-import type { MarkOcrConfigResponse } from '@/apis/mark/ocr-config'
-import type { PaddleOcrInstanceResponse } from '@/apis/mark/ocr-paddle-instance'
-import type { MarkOcrPaperSliceVO, MarkOcrRecognizeResponse } from '@/apis/mark/ocr-recognition'
-import type { MarkOcrHealthStatusCode, MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
-import type { SignalMetric } from '@/types/workbench'
-import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
-import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
-import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { getExamDetail } from '@/apis/mark/exam'
-import { BindingStatusDescription } from '@/apis/mark/exam-binding'
+import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
 import { pageExamScoreSummary } from '@/apis/mark/exam-score'
-import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
+import type { MarkOcrConfigResponse } from '@/apis/mark/ocr-config'
 import { checkMarkOcrHealth, getCurrentMarkOcrConfig } from '@/apis/mark/ocr-config'
+import type { PaddleOcrInstanceResponse } from '@/apis/mark/ocr-paddle-instance'
 import { listPaddleOcrInstances } from '@/apis/mark/ocr-paddle-instance'
+import type { MarkOcrPaperSliceVO, MarkOcrRecognizeResponse } from '@/apis/mark/ocr-recognition'
 import { listMarkOcrPaperSlices, recognizeMarkOcr } from '@/apis/mark/ocr-recognition'
+import type { MarkOcrHealthStatusCode, MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
 import {
   MARK_OCR_HEALTH_STATUS_TONE,
   MARK_OCR_PAPER_CUT_CAPABILITY,
@@ -29,6 +20,15 @@ import {
   MarkOcrHealthStatusDescription,
   MarkOcrProviderTypeDescription,
 } from '@/apis/mark/ocr-types'
+import type { SignalMetric } from '@/types/workbench'
+import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
+import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
+import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { BindingStatusDescription } from '@/apis/mark/exam-binding'
+import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -68,19 +68,12 @@ const currentConfig = ref<MarkOcrConfigResponse | null>(null)
 const recognizeResult = ref<MarkOcrRecognizeResponse | null>(null)
 const debugForm = ref<DebugFormState>({})
 const { selectedExamId } = useMarkExamContext()
-const {
-  contextBarTitle,
-  contextBarSubtitle,
-  examStatusLabel,
-  examStatusTone,
-} = useExamJourneyContextBar('OCR 识别配置')
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useExamJourneyContextBar('OCR 识别配置')
 const authStore = useAuthStore()
 
 /** 同步调试仅平台管理员可用，教师工作台路径不暴露识别试跑入口。 */
-const ocrDebugAllowed = computed(
-  () =>
-    authStore.userRole === RoleEnum.SUPER_ADMIN || authStore.userRole === RoleEnum.CROP_ADMIN,
-)
+const ocrDebugAllowed = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
 
 /** OCR 渠道健康检查会写入租户配置状态，仅超级管理员可执行。 */
 const ocrHealthCheckAllowed = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
@@ -179,11 +172,11 @@ const paperCutCapability = computed(() => {
 
 const canRecognize = computed(() =>
   Boolean(
-    ocrDebugReady.value
-    && currentConfig.value?.providerType
-    && currentConfig.value.enabled
-    && debugForm.value.paperInstanceId
-    && debugForm.value.responseSliceId,
+    ocrDebugReady.value &&
+    currentConfig.value?.providerType &&
+    currentConfig.value.enabled &&
+    debugForm.value.paperInstanceId &&
+    debugForm.value.responseSliceId,
   ),
 )
 const currentPaperSlice = computed(() =>
@@ -219,7 +212,9 @@ function finalScoreStatusLabel(status: ExamScoreSummaryItemResponse['finalScoreS
   return strictEnumLabel(FinalScoreStatusDescription, status, '最终成绩状态')
 }
 
-function bindingStatusLabel(status: ExamScoreSummaryItemResponse['bindingStatus']): string | undefined {
+function bindingStatusLabel(
+  status: ExamScoreSummaryItemResponse['bindingStatus'],
+): string | undefined {
   if (!status) return undefined
   return strictEnumLabel(BindingStatusDescription, status, '试卷绑定状态')
 }

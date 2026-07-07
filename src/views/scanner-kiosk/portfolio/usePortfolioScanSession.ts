@@ -3,18 +3,17 @@ import type {
   ScanWorkOrderLifecycleVO,
   ScanWorkOrderPortfolioContextVO,
 } from '@/apis/mark/scanner-work-order'
+import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
 import { getAgentSetupContext } from '@/apis/mark/scanner-agent-local'
-import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { buildPortfolioIntakeScanReturnTo } from '@/composables/usePortfolioIntake'
 import {
   ALL_PORTFOLIO_COLLECT_MODE_CODES,
   PortfolioCollectModeDescription,
 } from '@/types/enums/portfolio-collect-mode-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
-import { ScanWorkOrderStatusCode } from '@/types/enums/scan-work-order-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { mergeWorkOrderLifecycleFromContext } from '../composables/mergeWorkOrderLifecycleFromContext'
 

@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import type {
-  PortfolioAiAnalysisDetailVO,
-  PortfolioTeacherSummaryVO,
-} from '@/apis/portfolio/types'
+import type { PortfolioAiAnalysisDetailVO, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
+import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -17,7 +15,6 @@ import {
 } from '@/apis/portfolio/enums'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -65,13 +62,7 @@ const policyForm = reactive({
 })
 
 const canOperate = computed(() =>
-  Boolean(
-    targetTeacherId.value
-    && canManageTeacherAi(
-      targetTeacherId.value,
-      teacherOptions.value.some((item) => item.userId === targetTeacherId.value),
-    ),
-  ),
+  Boolean(targetTeacherId.value && canManageTeacherAi(targetTeacherId.value)),
 )
 
 const analysisTypeLabel = computed(() =>
@@ -89,11 +80,7 @@ const policyConclusionLabel = computed(() => {
   if (!code) {
     return ''
   }
-  return strictEnumLabel(
-    PortfolioPolicyMatchConclusionDescription,
-    code,
-    '政策匹配结论',
-  )
+  return strictEnumLabel(PortfolioPolicyMatchConclusionDescription, code, '政策匹配结论')
 })
 
 const policyConclusionTone = computed<BadgeTone>(() => {
@@ -101,11 +88,7 @@ const policyConclusionTone = computed<BadgeTone>(() => {
   if (!code) {
     return 'gray'
   }
-  return strictEnumTone(
-    PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE,
-    code,
-    '政策匹配结论',
-  )
+  return strictEnumTone(PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE, code, '政策匹配结论')
 })
 
 function isAnalysisType(type: PortfolioAiAnalysisTypeCode) {
@@ -114,8 +97,10 @@ function isAnalysisType(type: PortfolioAiAnalysisTypeCode) {
 
 const supportedOrchestrationAnalysis = computed(() => {
   const type = analysisDetail.value?.analysisType
-  return type === PortfolioAiAnalysisTypeCode.MATERIAL_QA
-    || type === PortfolioAiAnalysisTypeCode.POLICY_MATCH
+  return (
+    type === PortfolioAiAnalysisTypeCode.MATERIAL_QA ||
+    type === PortfolioAiAnalysisTypeCode.POLICY_MATCH
+  )
 })
 
 function sleep(ms: number) {
@@ -437,7 +422,9 @@ onMounted(() => {
       <p class="ai-orchestration__meta">类型：{{ analysisTypeLabel }}</p>
 
       <template
-        v-if="supportedOrchestrationAnalysis && isAnalysisType(PortfolioAiAnalysisTypeCode.MATERIAL_QA)"
+        v-if="
+          supportedOrchestrationAnalysis && isAnalysisType(PortfolioAiAnalysisTypeCode.MATERIAL_QA)
+        "
       >
         <p v-if="analysisDetail.reportScene" class="ai-orchestration__meta">
           用户问题：{{ analysisDetail.reportScene }}
@@ -464,7 +451,9 @@ onMounted(() => {
       </template>
 
       <template
-        v-else-if="supportedOrchestrationAnalysis && isAnalysisType(PortfolioAiAnalysisTypeCode.POLICY_MATCH)"
+        v-else-if="
+          supportedOrchestrationAnalysis && isAnalysisType(PortfolioAiAnalysisTypeCode.POLICY_MATCH)
+        "
       >
         <p v-if="analysisDetail.conclusionCode" class="ai-orchestration__meta">
           结论：

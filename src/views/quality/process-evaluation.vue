@@ -5,11 +5,13 @@ import type {
   ProcessEvaluationNodeUpdateRequest,
   ProcessEvaluationNodeVO,
 } from '@/apis/quality/process-evaluation'
+import { processNodeApi } from '@/apis/quality/process-evaluation'
 import type {
   ProcessEvaluationRecordSaveRequest,
   ProcessEvaluationRecordUpdateRequest,
   ProcessEvaluationRecordVO,
 } from '@/apis/quality/process-evaluation-record'
+import { processRecordApi } from '@/apis/quality/process-evaluation-record'
 /**
  * 过程性评价节点配置 + 节点记录管理
  *
@@ -24,13 +26,11 @@ import type {
  * - 记录确认状态机与节点对称：DRAFT→SUBMITTED→CONFIRMED/RETURNED
  * - 已确认记录才进入达成度计算
  */
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message, Modal } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { processNodeApi } from '@/apis/quality/process-evaluation'
-import { processRecordApi } from '@/apis/quality/process-evaluation-record'
 import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_TRANSIT_MAP,
@@ -59,7 +59,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
@@ -113,8 +113,10 @@ function isNodeMutable(node: ProcessEvaluationNodeVO): boolean {
 }
 
 function isRecordMutable(record: ProcessEvaluationRecordVO): boolean {
-  return record.confirmationStatus === ConfirmationStatusCode.DRAFT
-    || record.confirmationStatus === ConfirmationStatusCode.RETURNED
+  return (
+    record.confirmationStatus === ConfirmationStatusCode.DRAFT ||
+    record.confirmationStatus === ConfirmationStatusCode.RETURNED
+  )
 }
 
 function processNodeTypeLabel(value: ProcessNodeTypeCode): string {
@@ -513,7 +515,10 @@ async function submitRecord() {
   }
 }
 
-async function changeRecordStatus(record: ProcessEvaluationRecordVO, target: ConfirmationStatusCode) {
+async function changeRecordStatus(
+  record: ProcessEvaluationRecordVO,
+  target: ConfirmationStatusCode,
+) {
   if (!allowedConfirmationTransitions(record.confirmationStatus).includes(target)) {
     message.warning(
       `禁止由 ${confirmationStatusLabel(record.confirmationStatus)} 流转到 ${confirmationStatusLabel(target)}`,
@@ -545,12 +550,78 @@ async function deleteRecord(record: ProcessEvaluationRecordVO) {
   })
 }
 
+function buildProcessNodeActions(record: ProcessEvaluationNodeVO): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = []
+  if (isNodeMutable(record)) {
+    actions.push({ key: 'edit', label: '编辑' })
+  }
+  for (const target of allowedConfirmationTransitions(record.confirmationStatus)) {
+    actions.push({
+      key: `status:${target}`,
+      label: confirmationStatusLabel(target),
+      tone: 'primary',
+    })
+  }
+  if (isNodeMutable(record)) {
+    actions.push({ key: 'delete', label: '删除', tone: 'danger' })
+  }
+  return actions
+}
+
+function handleProcessNodeAction(key: string, record: ProcessEvaluationNodeVO): void {
+  if (key === 'edit') {
+    openNodeEdit(record)
+    return
+  }
+  if (key === 'delete') {
+    void handleNodeDelete(record)
+    return
+  }
+  if (key.startsWith('status:')) {
+    const target = key.slice('status:'.length) as ConfirmationStatusCode
+    void changeNodeStatus(record, target)
+  }
+}
+
+function buildProcessRecordActions(record: ProcessEvaluationRecordVO): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = []
+  if (isRecordMutable(record)) {
+    actions.push({ key: 'edit', label: '编辑' })
+  }
+  for (const target of allowedConfirmationTransitions(record.confirmationStatus)) {
+    actions.push({
+      key: `status:${target}`,
+      label: confirmationStatusLabel(target),
+      tone: 'primary',
+    })
+  }
+  if (isRecordMutable(record)) {
+    actions.push({ key: 'delete', label: '删除', tone: 'danger' })
+  }
+  return actions
+}
+
+function handleProcessRecordAction(key: string, record: ProcessEvaluationRecordVO): void {
+  if (key === 'edit') {
+    openRecordEdit(record)
+    return
+  }
+  if (key === 'delete') {
+    void deleteRecord(record)
+    return
+  }
+  if (key.startsWith('status:')) {
+    const target = key.slice('status:'.length) as ConfirmationStatusCode
+    void changeRecordStatus(record, target)
+  }
+}
+
 /* ========== 节点记录 Excel 导入（同步） ========== */
 
 const importExcelVisible = ref(false)
 const importConfirmationStatus = ref<ConfirmationStatusCode>(ConfirmationStatusCode.SUBMITTED)
 
-const importConfirmationStatusOptions: { label: string, value: ConfirmationStatusCode }[] = [
+const importConfirmationStatusOptions: { label: string; value: ConfirmationStatusCode }[] = [
   { label: ConfirmationStatusDescription.DRAFT, value: ConfirmationStatusCode.DRAFT },
   { label: ConfirmationStatusDescription.SUBMITTED, value: ConfirmationStatusCode.SUBMITTED },
   { label: ConfirmationStatusDescription.CONFIRMED, value: ConfirmationStatusCode.CONFIRMED },
@@ -810,36 +881,11 @@ function handleCourseChange(courseId: string | null) {
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <div class="operations-cell" @click.stop>
-                  <UiTextAction v-if="isNodeMutable(record)" @click.stop="openNodeEdit(record)">
-                    编辑
-                  </UiTextAction>
-                  <a-dropdown
-                    v-if="allowedConfirmationTransitions(record.confirmationStatus).length"
-                  >
-                    <UiTextAction tone="primary" @click.stop.prevent>状态</UiTextAction>
-                    <template #overlay>
-                      <a-menu>
-                        <a-menu-item
-                          v-for="target in allowedConfirmationTransitions(
-                            record.confirmationStatus,
-                          )"
-                          :key="target"
-                          @click.stop="changeNodeStatus(record, target)"
-                        >
-                          {{ confirmationStatusLabel(target) }}
-                        </a-menu-item>
-                      </a-menu>
-                    </template>
-                  </a-dropdown>
-                  <UiTextAction
-                    v-if="isNodeMutable(record)"
-                    tone="danger"
-                    @click.stop="handleNodeDelete(record)"
-                  >
-                    删除
-                  </UiTextAction>
-                </div>
+                <UiTableActions
+                  :items="buildProcessNodeActions(record)"
+                  split
+                  @action="(key) => handleProcessNodeAction(key, record)"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -924,36 +970,11 @@ function handleCourseChange(courseId: string | null) {
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <div class="operations-cell" @click.stop>
-                  <UiTextAction v-if="isRecordMutable(record)" @click="openRecordEdit(record)">
-                    编辑
-                  </UiTextAction>
-                  <a-dropdown
-                    v-if="allowedConfirmationTransitions(record.confirmationStatus).length"
-                  >
-                    <UiTextAction tone="primary" @click.stop.prevent>状态</UiTextAction>
-                    <template #overlay>
-                      <a-menu>
-                        <a-menu-item
-                          v-for="target in allowedConfirmationTransitions(
-                            record.confirmationStatus,
-                          )"
-                          :key="target"
-                          @click.stop="changeRecordStatus(record, target)"
-                        >
-                          {{ confirmationStatusLabel(target) }}
-                        </a-menu-item>
-                      </a-menu>
-                    </template>
-                  </a-dropdown>
-                  <UiTextAction
-                    v-if="isRecordMutable(record)"
-                    tone="danger"
-                    @click="deleteRecord(record)"
-                  >
-                    删除
-                  </UiTextAction>
-                </div>
+                <UiTableActions
+                  :items="buildProcessRecordActions(record)"
+                  split
+                  @action="(key) => handleProcessRecordAction(key, record)"
+                />
               </template>
             </template>
           </UiDataTable>

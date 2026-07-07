@@ -81,11 +81,11 @@
               {{ formatDateTime(pendingItems[index].createTime) }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction tone="primary" @click="openHandleModal(pendingItems[index])">
-                  处理结论
-                </UiTextAction>
-              </div>
+              <UiTableActions
+                :items="buildSpotCheckActions(pendingItems[index])"
+                split
+                @action="(key) => handleSpotCheckAction(key, pendingItems[index])"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -142,7 +142,10 @@
           </a-radio-group>
         </a-form-item>
 
-        <a-form-item v-if="form.conclusion === SpotCheckConclusionCode.ABNORMAL" label="抽检评分（可选）">
+        <a-form-item
+          v-if="form.conclusion === SpotCheckConclusionCode.ABNORMAL"
+          label="抽检评分（可选）"
+        >
           <a-input-number
             v-model:value="form.reviewScore"
             :min="0"
@@ -174,13 +177,8 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   MyPendingSpotCheckItemResponse,
-
-  SpotCheckStatusCode} from '@/apis/mark/marking-quality'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+  SpotCheckStatusCode,
+} from '@/apis/mark/marking-quality'
 import {
   countMyPendingSpotChecks,
   handleSpotCheck,
@@ -189,12 +187,17 @@ import {
   SpotCheckConclusionCode,
   SpotCheckStatusDescription,
 } from '@/apis/mark/marking-quality'
+import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -268,7 +271,7 @@ async function loadList(): Promise<void> {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }): void {
+function handlePageChange(page: { current: number; pageSize: number }): void {
   pagination.pageNum = page.current
   pagination.pageSize = page.pageSize
   void loadList()
@@ -312,6 +315,16 @@ const form = reactive<SpotCheckForm>({
 })
 
 const valid = computed(() => Boolean(targetItem.value?.id && form.conclusion))
+
+function buildSpotCheckActions(_item: MyPendingSpotCheckItemResponse): UiTableRowActionItem[] {
+  return [{ key: 'handle', label: '处理结论', tone: 'primary' }]
+}
+
+function handleSpotCheckAction(key: string, item: MyPendingSpotCheckItemResponse): void {
+  if (key === 'handle') {
+    openHandleModal(item)
+  }
+}
 
 function openHandleModal(item: MyPendingSpotCheckItemResponse): void {
   targetItem.value = item

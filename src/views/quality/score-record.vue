@@ -9,27 +9,27 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * - /api/quality/score-batches: page（按 qualityCourseId 拉批次列表）
  */
 import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import type { RubricItemVO } from '@/apis/quality/rubric-item'
+import { rubricItemApi } from '@/apis/quality/rubric-item'
 import type { ScoreBatchVO } from '@/apis/quality/score-batch'
+import { scoreBatchApi } from '@/apis/quality/score-batch'
 import type {
   ScoreRecordRubricScoreRequest,
   ScoreRecordSaveRequest,
   ScoreRecordUpdateRequest,
   ScoreRecordVO,
 } from '@/apis/quality/score-record'
+import { scoreRecordApi } from '@/apis/quality/score-record'
 import type { ScoreBatchStatusCode } from '@/apis/quality/types'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import { SCORE_BATCH_STATUS_COLOR, ScoreBatchStatusDescription } from '@/apis/quality/types'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
 import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ExportBusinessType } from '@/apis/edu/export'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
-import { rubricItemApi } from '@/apis/quality/rubric-item'
-import { scoreBatchApi } from '@/apis/quality/score-batch'
-import { scoreRecordApi } from '@/apis/quality/score-record'
-import { SCORE_BATCH_STATUS_COLOR, ScoreBatchStatusDescription } from '@/apis/quality/types'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import { ClassSelector, CourseSelector, StudentSelector } from '@/components/quality/selectors'
@@ -40,6 +40,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -100,8 +101,8 @@ const qualityStore = useQualityStore()
 const batches = ref<ScoreBatchVO[]>([])
 const batchesLoading = ref(false)
 const selectedBatch = ref<ScoreBatchVO | null>(null)
-const { exporting: scoreRecordExporting, exportExcel: exportScoreRecordExcel }
-  = useQualityTableExport()
+const { exporting: scoreRecordExporting, exportExcel: exportScoreRecordExcel } =
+  useQualityTableExport()
 
 const isBatchRecordEditable = computed(() => {
   if (!selectedBatch.value) return false
@@ -155,8 +156,8 @@ const batchStatusPolling = usePolling(() => refreshBatchesQuietly(), {
   getOptions: () => ({
     intervalMs: 3000,
     when:
-      batches.value.some((batch) => batch.status === 'PARSING')
-      || selectedBatch.value?.status === 'PARSING',
+      batches.value.some((batch) => batch.status === 'PARSING') ||
+      selectedBatch.value?.status === 'PARSING',
   }),
   pauseWhenDocumentHidden: true,
 })
@@ -558,6 +559,24 @@ async function submitEditor() {
   }
 }
 
+function buildScoreRecordActions(_record: ScoreRecordVO): UiTableRowActionItem[] {
+  return [
+    { key: 'edit', label: '编辑' },
+    { key: 'delete', label: '删除', tone: 'danger' },
+  ]
+}
+
+function handleScoreRecordAction(key: string, record: ScoreRecordVO): void {
+  switch (key) {
+    case 'edit':
+      openEdit(record)
+      break
+    case 'delete':
+      void handleDelete(record)
+      break
+  }
+}
+
 async function handleDelete(record: ScoreRecordVO) {
   if (!isBatchRecordEditable.value) {
     message.error('批次已确认，不允许删除成绩明细')
@@ -823,10 +842,12 @@ function handleCourseChange(courseId: string | null) {
                   </a-space>
                 </template>
                 <template v-else-if="column.key === 'actions'">
-                  <div v-if="isBatchRecordEditable" class="operations-cell" @click.stop>
-                    <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
-                    <UiTextAction tone="danger" @click="handleDelete(record)">删除</UiTextAction>
-                  </div>
+                  <UiTableActions
+                    v-if="isBatchRecordEditable"
+                    :items="buildScoreRecordActions(record)"
+                    split
+                    @action="(key) => handleScoreRecordAction(key, record)"
+                  />
                   <span v-else class="score-record__locked-hint">已锁定</span>
                 </template>
               </template>

@@ -1,8 +1,8 @@
 import type { Ref } from 'vue'
+import { ref, watch } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { cloneDeep } from 'lodash-es'
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
 import XEUtils from 'xe-utils'
 import { commonRoutes } from '@/router/routes/common'
 import { portfolioRoutes } from '@/router/routes/portfolio'
@@ -12,6 +12,11 @@ import { teacherRoutes } from '@/router/routes/teacher'
 import { RoleEnum } from '@/types/enums'
 import { useAuthStore } from './auth'
 import { useUserStore } from './user'
+
+/** 系统管理 / requireTenantAdmin 路由：超管或 edu-user 判定的租户管理员可访问 */
+function passesTenantAdminRouteGate(userRole: string, userIsTenantAdmin: boolean): boolean {
+  return userRole === RoleEnum.SUPER_ADMIN || userIsTenantAdmin
+}
 
 function isSidebarMenuRoute(route: RouteRecordRaw): boolean {
   return !route.meta?.hideInMenu && !(route.redirect && !route.component && !route.components)
@@ -78,8 +83,7 @@ const storeSetup = (): RouteStoreState => {
   watch(
     () => userStore.isTenantAdmin,
     (newValue, oldValue) => {
-      // 只有当isTenantAdmin从undefined变为具体值，或者值发生变化时才重新生成菜单
-      if (oldValue !== newValue && routes.value.length > 0) {
+      if (oldValue !== newValue) {
         generateMenus().catch(() => {})
       }
     },
@@ -98,11 +102,7 @@ const storeSetup = (): RouteStoreState => {
     if (userRole === RoleEnum.SUPER_ADMIN) {
       // 超管：考试阅卷（含 SaaS 监管）+ 质量评价
       roleRoutes = [...teacherRoutes, ...qualityRoutes, ...portfolioRoutes, ...commonRoutes]
-    } else if (
-      userRole === RoleEnum.SCH_TECH
-      || userRole === RoleEnum.CROP_ADMIN
-      || userRole === RoleEnum.CROP_USER
-    ) {
+    } else if (userRole === RoleEnum.SCH_TECH) {
       // 教师角色：阅卷工作台 + 教学质量评价 + 教学档案袋
       roleRoutes = [...teacherRoutes, ...qualityRoutes, ...portfolioRoutes, ...commonRoutes]
     } else if (userRole === RoleEnum.SCH_STU) {
@@ -128,6 +128,10 @@ const storeSetup = (): RouteStoreState => {
   ): RouteRecordRaw[] => {
     return routes
       .filter((route) => {
+        if (route.meta?.requireTenantAdmin) {
+          return passesTenantAdminRouteGate(userRole, userIsTenantAdmin)
+        }
+
         if (userRole === RoleEnum.SUPER_ADMIN) {
           return true
         }
@@ -141,21 +145,9 @@ const storeSetup = (): RouteStoreState => {
           }
         }
 
-        // 检查租户管理员权限（企业管理员 CROP_ADMIN 与后端策略维护口径一致）
-        if (route.meta?.requireTenantAdmin && !userIsTenantAdmin) {
-          if (userRole !== RoleEnum.CROP_ADMIN) {
-            return false
-          }
-        }
-
         // 档案审核台：院系负责人 / 租户管理员 / 超管
         if (route.meta?.requirePortfolioReviewer) {
-          if (userRole === RoleEnum.SUPER_ADMIN || userIsTenantAdmin) {
-            return true
-          }
-          if (userRole !== RoleEnum.CROP_ADMIN) {
-            return false
-          }
+          return userRole === RoleEnum.SUPER_ADMIN || userIsTenantAdmin
         }
 
         return true

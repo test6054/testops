@@ -114,12 +114,11 @@
               {{ formatDateTime(record.updateTime) }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction
-                :tone="record.status === 'INVALIDATED' ? 'default' : 'primary'"
-                @click="enterReview(record)"
-              >
-                {{ record.status === 'INVALIDATED' ? '查看详情' : '进入复核' }}
-              </UiTextAction>
+              <UiTableActions
+                :items="buildReviewTaskRowActions(record)"
+                split
+                @action="() => enterReview(record)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -135,11 +134,6 @@ import type {
   ReviewTaskItemResponse,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   GRADE_SOURCE_TONE,
   GradeSourceDescription,
@@ -150,12 +144,17 @@ import {
   ReviewTaskTypeDescription,
   ReviewTaskTypeTone,
 } from '@/apis/mark/exam-review-task'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -200,11 +199,11 @@ const filterModel = computed<Record<string, unknown>>({
   get: () => ({ status: statusFilter.value }),
   set: (value) => {
     if (
-      value.status === ReviewTaskStatusCode.PENDING
-      || value.status === ReviewTaskStatusCode.IN_PROGRESS
-      || value.status === ReviewTaskStatusCode.APPROVED
-      || value.status === ReviewTaskStatusCode.REJECTED
-      || value.status === ReviewTaskStatusCode.INVALIDATED
+      value.status === ReviewTaskStatusCode.PENDING ||
+      value.status === ReviewTaskStatusCode.IN_PROGRESS ||
+      value.status === ReviewTaskStatusCode.APPROVED ||
+      value.status === ReviewTaskStatusCode.REJECTED ||
+      value.status === ReviewTaskStatusCode.INVALIDATED
     ) {
       statusFilter.value = value.status
     }
@@ -252,8 +251,8 @@ function handleHubSignalClick(key: string): void {
     return
   }
   if (
-    key === 'in-progress'
-    && (snapshot.value?.markingProgress?.inProgressReviewTaskCount ?? 0) > 0
+    key === 'in-progress' &&
+    (snapshot.value?.markingProgress?.inProgressReviewTaskCount ?? 0) > 0
   ) {
     statusFilter.value = ReviewTaskStatusCode.IN_PROGRESS
     onFilterChange()
@@ -334,7 +333,7 @@ async function loadTasks(): Promise<void> {
   }
 }
 
-function onPageChange(page: { current: number, pageSize: number }): void {
+function onPageChange(page: { current: number; pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadTasks()
@@ -343,6 +342,16 @@ function onPageChange(page: { current: number, pageSize: number }): void {
 function onFilterChange(): void {
   pagination.current = 1
   void loadTasks()
+}
+
+function buildReviewTaskRowActions(record: ReviewTaskItemResponse): UiTableRowActionItem[] {
+  return [
+    {
+      key: 'enter',
+      label: record.status === 'INVALIDATED' ? '查看详情' : '进入复核',
+      tone: record.status === 'INVALIDATED' ? 'default' : 'primary',
+    },
+  ]
 }
 
 function enterReview(record: ReviewTaskItemResponse): void {

@@ -9,7 +9,7 @@
       />
     </template>
 
-    <UiEmpty v-if="!canManage" description="仅租户管理员或企业管理员可维护租户阅卷策略" />
+    <UiEmpty v-if="!canManage" description="仅超级管理员或租户管理员可维护租户阅卷策略" />
     <template v-else>
       <UiSkeletonState v-if="loading" variant="card" :card-count="2" compact />
       <template v-else>
@@ -134,13 +134,13 @@ import type {
   MarkTenantGradingPolicyResponse,
   MarkTenantGradingPolicySaveRequest,
 } from '@/apis/mark/grading-experience-assist'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   getTenantGradingOpsOverview,
   getTenantGradingPolicy,
   saveTenantGradingPolicy,
 } from '@/apis/mark/grading-experience-assist'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
@@ -156,10 +156,8 @@ defineOptions({ name: 'AdminMarkTenantGradingPolicy' })
 
 const authStore = useAuthStore()
 const userStore = useUserStore()
-const canManage = computed(() =>
-  authStore.userRole === RoleEnum.CROP_ADMIN
-  || authStore.userRole === RoleEnum.SUPER_ADMIN
-  || userStore.isTenantAdmin === true,
+const canManage = computed(
+  () => authStore.userRole === RoleEnum.SUPER_ADMIN || userStore.isTenantAdmin === true,
 )
 
 const loading = ref(false)
@@ -184,7 +182,12 @@ const opsColumns = [
   { title: '考务编号', dataIndex: 'examNo', key: 'examNo' },
   { title: '待办项', dataIndex: 'pendingItemCount', key: 'pendingItemCount', width: 80 },
   { title: '基线缺失', dataIndex: 'baselineMissingCount', key: 'baselineMissingCount', width: 88 },
-  { title: '定标未就绪', dataIndex: 'assistUnresolvedCount', key: 'assistUnresolvedCount', width: 96 },
+  {
+    title: '定标未就绪',
+    dataIndex: 'assistUnresolvedCount',
+    key: 'assistUnresolvedCount',
+    width: 96,
+  },
   {
     title: '正评就绪',
     dataIndex: 'readyForFormalMarking',

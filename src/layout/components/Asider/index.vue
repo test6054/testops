@@ -1,7 +1,7 @@
 <template>
   <aside
     v-if="isDesktop"
-    :class="{ 'app-menu-dark': appStore.menuDark, 'collapsed': appStore.menuCollapse }"
+    :class="{ 'app-menu-dark': appStore.menuDark, collapsed: appStore.menuCollapse }"
     :style="appStore.menuDark ? appStore.themeCSSVar : undefined"
     class="asider"
   >
@@ -67,6 +67,9 @@ const { isDesktop } = useDevice()
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  position: relative;
   border-right: 1px solid var(--ant-color-border-secondary);
   box-sizing: border-box;
   color: var(--ant-color-text);
@@ -78,10 +81,11 @@ const { isDesktop } = useDevice()
   }
 
   .menu-scroll-view {
-    flex: 1 1 0;
+    flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+    padding-bottom: 56px;
     background-color: inherit;
 
     &::-webkit-scrollbar {
@@ -99,7 +103,11 @@ const { isDesktop } = useDevice()
   }
 
   .menu-toggle-wrap {
-    flex-shrink: 0;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
     display: flex;
     justify-content: center;
     align-items: center;

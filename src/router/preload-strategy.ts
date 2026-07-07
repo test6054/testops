@@ -180,22 +180,6 @@ const ROLE_INITIAL_PRELOAD: Partial<Record<RoleEnum, string[]>> = {
     'UserMessage',
     'UserProfile',
   ],
-  [RoleEnum.CROP_ADMIN]: [
-    'TeacherMarkingOverview',
-    'TeacherExamList',
-    'TeacherExamWorkspaceScanMonitor',
-    'TeacherExamWorkspaceMarkingProgress',
-    'UserMessage',
-    'UserProfile',
-  ],
-  [RoleEnum.CROP_USER]: [
-    'TeacherMarkingOverview',
-    'TeacherExamList',
-    'TeacherExamWorkspaceScanMonitor',
-    'TeacherExamWorkspaceMarkingProgress',
-    'UserMessage',
-    'UserProfile',
-  ],
   [RoleEnum.SUPER_ADMIN]: [
     'TeacherMarkingOverview',
     'AdminArchivePlatformTemplates',

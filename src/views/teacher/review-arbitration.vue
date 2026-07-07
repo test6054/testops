@@ -81,8 +81,8 @@
               column,
               record,
             }: {
-            column: ColumnType<ReviewTaskItemResponse>
-            record: ReviewTaskItemResponse
+              column: ColumnType<ReviewTaskItemResponse>
+              record: ReviewTaskItemResponse
             }"
           >
             <template v-if="column.key === 'questionNo'">
@@ -96,7 +96,9 @@
             </template>
             <template v-else-if="column.key === 'paperDisplay'">
               <div class="arbitration-table__paper-cell">
-                <span class="arbitration-table__paper-primary">{{ record.paperDisplay.primaryText }}</span>
+                <span class="arbitration-table__paper-primary">{{
+                  record.paperDisplay.primaryText
+                }}</span>
                 <span
                   v-if="record.paperDisplay.secondaryText"
                   class="arbitration-table__paper-secondary"
@@ -137,16 +139,11 @@
               {{ formatDateTime(record.updateTime) }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction @click="goReviewDetail(record)">详情</UiTextAction>
-                <UiTextAction
-                  v-if="isActionableTask(record)"
-                  tone="primary"
-                  @click="goReviewWorkspace(record)"
-                >
-                  进入仲裁
-                </UiTextAction>
-              </div>
+              <UiTableActions
+                :items="buildArbitrationActions(record)"
+                split
+                @action="(key) => handleArbitrationAction(key, record)"
+              />
             </template>
           </template>
 
@@ -185,14 +182,7 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type {
-  ReviewTaskItemResponse,
-} from '@/apis/mark/exam-review-task'
-import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, onActivated, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import type { ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
 import {
   listReviewTasks,
   REVIEW_TASK_STATUS_TONE,
@@ -200,13 +190,23 @@ import {
   ReviewTaskStatusDescription,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
+import type {
+  BadgeTone,
+  FilterField,
+  UiSectionTabItem,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { computed, onActivated, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -243,7 +243,9 @@ const actionableCount = computed(() => {
   return allTasks.value.filter((item) => isActionableTask(item)).length
 })
 
-const pendingCount = computed(() => allTasks.value.filter((item) => item.status === 'PENDING').length)
+const pendingCount = computed(
+  () => allTasks.value.filter((item) => item.status === 'PENDING').length,
+)
 
 const inProgressMineCount = computed(() => {
   return allTasks.value.filter(
@@ -252,9 +254,8 @@ const inProgressMineCount = computed(() => {
 })
 
 const completedCount = computed(() => {
-  return allTasks.value.filter(
-    (item) => item.status === 'APPROVED' || item.status === 'REJECTED',
-  ).length
+  return allTasks.value.filter((item) => item.status === 'APPROVED' || item.status === 'REJECTED')
+    .length
 })
 
 const avgAiRatio = computed(() => {
@@ -375,8 +376,7 @@ const filteredTasks = computed(() => {
     rows = rows.filter((item) => item.status === 'PENDING')
   } else if (statusTab.value === 'in-progress') {
     rows = rows.filter(
-      (item) =>
-        item.status === 'IN_PROGRESS' && item.assignedTeacherUserId === currentUserId.value,
+      (item) => item.status === 'IN_PROGRESS' && item.assignedTeacherUserId === currentUserId.value,
     )
   } else if (statusTab.value === 'completed') {
     rows = rows.filter((item) => item.status === 'APPROVED' || item.status === 'REJECTED')
@@ -454,14 +454,30 @@ function formatAssignedTeacher(record: ReviewTaskItemResponse): string {
   return ''
 }
 
+function buildArbitrationActions(record: ReviewTaskItemResponse): UiTableRowActionItem[] {
+  return [
+    { key: 'detail', label: '详情' },
+    { key: 'workspace', label: '进入仲裁', tone: 'primary', hidden: !isActionableTask(record) },
+  ]
+}
+
+function handleArbitrationAction(key: string, record: ReviewTaskItemResponse): void {
+  switch (key) {
+    case 'detail':
+      goReviewDetail(record)
+      break
+    case 'workspace':
+      goReviewWorkspace(record)
+      break
+  }
+}
+
 /** 待领取或当前教师进行中的任务可进入仲裁工作台。 */
 function isActionableTask(record: ReviewTaskItemResponse): boolean {
   if (record.status === 'PENDING') {
     return true
   }
-  return (
-    record.status === 'IN_PROGRESS' && record.assignedTeacherUserId === currentUserId.value
-  )
+  return record.status === 'IN_PROGRESS' && record.assignedTeacherUserId === currentUserId.value
 }
 
 function handleSignalClick(key: string): void {

@@ -351,9 +351,14 @@ function validateScannerListResponse(value: LocalAgentJsonValue): ScannerListRes
   if (!Array.isArray(devices)) {
     rejectLocalAgentResponse()
   }
-  return {
+  const payload: ScannerListResponse = {
     devices: devices.map((item) => validateScannerDeviceInfo(item)),
   }
+  const catalogDiagnostic = requireOptionalAgentWireString(result, 'catalogDiagnostic')
+  if (catalogDiagnostic !== undefined) {
+    payload.catalogDiagnostic = catalogDiagnostic
+  }
+  return payload
 }
 
 function validateScannerDeviceInfo(value: LocalAgentJsonValue): ScannerDeviceInfo {

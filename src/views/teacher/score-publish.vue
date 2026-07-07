@@ -10,7 +10,7 @@
         <template #status>
           <UiTag tone="blue" size="sm">阶段 成绩发布</UiTag>
           <UiTag v-if="examArchiveGate?.allScoresPublished" tone="green" size="sm">已全部发布</UiTag>
-          <UiTag v-else-if="pendingAbsenceCount > 0" tone="orange" size="sm">缺考待确认</UiTag>
+          <UiTag v-else-if="hasPendingAbsence" tone="orange" size="sm">缺考待确认</UiTag>
         </template>
         <template #actions>
           <UiButton variant="ghost" size="sm" @click="goExportTasks">
@@ -47,10 +47,10 @@
       />
 
       <UiAlertStrip
-        v-if="pendingAbsenceCount > 0"
+        v-if="hasPendingAbsence"
         tone="warning"
         title="仍有缺考记录待确认"
-        :description="`当前还有 ${pendingAbsenceCount} 条待确认缺考，发布前须完成核对。`"
+        :description="`当前还有 ${pendingAbsenceCountForDisplay} 条待确认缺考，发布前须完成核对。`"
         dense
         class="score-publish__alert"
       >
@@ -195,28 +195,13 @@
               {{ formatDateTime(candidates[index].confirmedTime) }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction
-                  v-if="candidates[index].paperInstanceId"
-                  @click="openDetailDrawer(candidates[index])"
-                >
-                  明细
-                </UiTextAction>
-                <span v-else class="muted">—</span>
-                <UiTextAction
-                  tone="primary"
-                  :disabled="!canPublish(candidates[index])"
-                  @click="handlePublish(candidates[index])"
-                >
-                  {{ publishButtonLabel(candidates[index]) }}
-                </UiTextAction>
-                <UiTextAction
-                  :disabled="!canWithdraw(candidates[index])"
-                  @click="openWithdrawModal(candidates[index])"
-                >
-                  撤回
-                </UiTextAction>
-              </div>
+              <UiTableActions
+                v-if="candidates[index].paperInstanceId"
+                :items="buildPublishActions(candidates[index])"
+                split
+                @action="(key) => handlePublishRowAction(key, candidates[index])"
+              />
+              <span v-else class="score-publish__hint">—</span>
             </template>
           </template>
         </UiDataTable>
@@ -408,7 +393,7 @@ import type {
   FinalScoreBatchPublishResponse,
   FinalScoreRiskOverviewResponse,
 } from '@/apis/mark/exam-score'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
@@ -439,7 +424,7 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import ScorePublishRelatedLinksCard from '@/components/workbench/ScorePublishRelatedLinksCard.vue'
@@ -641,6 +626,9 @@ const {
   riskOverview: finalScoreOverview,
   scorePanel,
 })
+
+const pendingAbsenceCountForDisplay = computed(() => pendingAbsenceCount.value ?? 0)
+const hasPendingAbsence = computed(() => pendingAbsenceCountForDisplay.value > 0)
 
 const pagination = reactive<TablePaginationConfig>({
   current: 1,
@@ -851,6 +839,33 @@ function canWithdraw(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
   const s = record.finalScoreStatus
   return s === 'PUBLISHED' || s === 'CORRECTED'
+}
+
+function buildPublishActions(record: ExamScoreSummaryItemResponse): UiTableRowActionItem[] {
+  return [
+    { key: 'detail', label: '明细' },
+    {
+      key: 'publish',
+      label: publishButtonLabel(record),
+      tone: 'primary',
+      disabled: !canPublish(record),
+    },
+    { key: 'withdraw', label: '撤回', disabled: !canWithdraw(record) },
+  ]
+}
+
+function handlePublishRowAction(key: string, record: ExamScoreSummaryItemResponse): void {
+  switch (key) {
+    case 'detail':
+      void openDetailDrawer(record)
+      break
+    case 'publish':
+      void handlePublish(record)
+      break
+    case 'withdraw':
+      openWithdrawModal(record)
+      break
+  }
 }
 
 async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void> {

@@ -13,18 +13,18 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  *   quality 文本任务和 mark 其他 AI 能力使用 DEEPSEEK。
  */
 import type { AiModelProfileSaveRequest, AiModelProfileVO } from '@/apis/quality/ai-model-profile'
-import type { AiHealthStatusCode } from '@/apis/quality/types'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { aiModelProfileApi } from '@/apis/quality/ai-model-profile'
+import type { AiHealthStatusCode } from '@/apis/quality/types'
 import {
   AI_HEALTH_STATUS_COLOR,
   AiHealthStatusDescription,
   AiProviderTypeCode,
   AiProviderTypeDescription,
 } from '@/apis/quality/types'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -32,7 +32,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -254,6 +254,44 @@ async function submitEditor() {
  * 后端会在 advisory lock 下把平台同供应商其它配置置为停用，前端仅负责颗粒度提交
  * （携带原记录 + apiKey 留空保留原密钥）。
  */
+function buildAiModelProfileActions(record: AiModelProfileVO): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = []
+  if (!record.enabled) {
+    actions.push({
+      key: 'activate',
+      label: '设为启用',
+      tone: 'primary',
+      disabled: activatingId.value === record.id,
+    })
+  }
+  actions.push({
+    key: 'health-check',
+    label: '健康检查',
+    tone: 'primary',
+    disabled: healthLoading.value === record.id,
+  })
+  actions.push({ key: 'edit', label: '编辑' })
+  actions.push({ key: 'disable', label: '停用', tone: 'danger' })
+  return actions
+}
+
+function handleAiModelProfileAction(key: string, record: AiModelProfileVO): void {
+  switch (key) {
+    case 'activate':
+      void handleActivate(record)
+      break
+    case 'health-check':
+      void handleHealthCheck(record)
+      break
+    case 'edit':
+      openEdit(record)
+      break
+    case 'disable':
+      void handleDisable(record)
+      break
+  }
+}
+
 async function handleActivate(record: AiModelProfileVO) {
   if (record.enabled) {
     return
@@ -492,25 +530,11 @@ onActivated(() => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiTextAction
-                v-if="!record.enabled"
-                tone="primary"
-                :disabled="activatingId === record.id"
-                @click="handleActivate(record)"
-              >
-                设为启用
-              </UiTextAction>
-              <UiTextAction
-                tone="primary"
-                :disabled="healthLoading === record.id"
-                @click="handleHealthCheck(record)"
-              >
-                健康检查
-              </UiTextAction>
-              <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
-              <UiTextAction tone="danger" @click="handleDisable(record)">停用</UiTextAction>
-            </div>
+            <UiTableActions
+              :items="buildAiModelProfileActions(record)"
+              split
+              @action="(key) => handleAiModelProfileAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>

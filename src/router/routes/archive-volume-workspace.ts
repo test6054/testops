@@ -7,7 +7,7 @@
 import type { RouteRecordRaw } from 'vue-router'
 import { RoleEnum } from '@/utils/permission'
 
-const TEACHER_ROLES = [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER]
+const TEACHER_ROLES = [RoleEnum.SCH_TECH]
 
 export const archiveVolumeWorkspaceRoutes: RouteRecordRaw = {
   path: '/teacher/archive-volumes/:volumeId',

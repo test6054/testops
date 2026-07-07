@@ -1,7 +1,12 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="课程考核归档卷" :subtitle="contextBarSubtitle">
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="课程考核归档卷"
+        :subtitle="contextBarSubtitle"
+      >
         <template #status>
           <UiTag tone="blue" size="sm">{{ currentListTabLabel }}</UiTag>
         </template>
@@ -9,15 +14,9 @@
           <UiButton variant="ghost" size="sm" :loading="loading" @click="handleRefresh">
             刷新
           </UiButton>
-          <UiButton variant="outline" size="sm" @click="goSearch">
-            全文检索
-          </UiButton>
-          <UiButton variant="outline" size="sm" @click="goEvalCampaign">
-            评估迎评
-          </UiButton>
-          <UiButton variant="outline" size="sm" @click="goAccessPending">
-            待审批查阅
-          </UiButton>
+          <UiButton variant="outline" size="sm" @click="goSearch"> 全文检索 </UiButton>
+          <UiButton variant="outline" size="sm" @click="goEvalCampaign"> 评估迎评 </UiButton>
+          <UiButton variant="outline" size="sm" @click="goAccessPending"> 待审批查阅 </UiButton>
           <UiButton v-if="canViewStatisticsKpi" variant="outline" size="sm" @click="goAudit">
             审计查询
           </UiButton>
@@ -58,7 +57,11 @@
         <ArchiveVolumeRemediationPanel />
       </WorkbenchSurfaceCard>
 
-      <WorkbenchSurfaceCard v-else-if="showVolumeListPanel" flush class="archive-volume-list__panel">
+      <WorkbenchSurfaceCard
+        v-else-if="showVolumeListPanel"
+        flush
+        class="archive-volume-list__panel"
+      >
         <template #toolbar>
           <UiBatchActionBar
             v-if="listTab === 'college' && canRejectTransfer && selectedVolumeIds.length > 0"
@@ -68,10 +71,7 @@
             <UiButton size="sm" variant="outline" @click="openBatchReject">批量退回</UiButton>
           </UiBatchActionBar>
 
-          <div
-            v-if="showVolumeFilter"
-            class="archive-volume-list__filter"
-          >
+          <div v-if="showVolumeFilter" class="archive-volume-list__filter">
             <UiFilterBar
               v-model="filterModel"
               :fields="filterFields"
@@ -108,12 +108,7 @@
             >
               离线创建
             </UiButton>
-            <UiButton
-              v-if="canViewStatisticsKpi"
-              size="sm"
-              variant="outline"
-              @click="goStatistics"
-            >
+            <UiButton v-if="canViewStatisticsKpi" size="sm" variant="outline" @click="goStatistics">
               导出统计
             </UiButton>
           </div>
@@ -124,11 +119,7 @@
           </div>
 
           <div v-if="listTab === 'mine'" class="archive-volume-list__scope-bar">
-            <UiSectionTabs
-              v-model="volumeScope"
-              :items="volumeScopeTabs"
-              compact
-            />
+            <UiSectionTabs v-model="volumeScope" :items="volumeScopeTabs" compact />
           </div>
 
           <div
@@ -227,42 +218,11 @@
               </span>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction tone="primary" @click="goDetail(record.volumeId)">详情</UiTextAction>
-                <UiTextAction
-                  v-if="record.appraisalStatus === 'REMINDER_SENT'"
-                  tone="primary"
-                  @click="goAppraisal(record.volumeId)"
-                >
-                  鉴定
-                </UiTextAction>
-                <UiTextAction
-                  v-if="
-                    listTab === 'mine'
-                      && volumeScope === 'mine'
-                      && hasOpenRemediationForVolume(record.volumeId)
-                  "
-                  tone="primary"
-                  @click="goRemediationVolumeByVolumeId(record.volumeId)"
-                >
-                  去整改
-                </UiTextAction>
-                <UiTextAction
-                  v-if="canSubmitVolumeRow(record) && listTab === 'mine' && volumeScope === 'mine'"
-                  @click="goDetail(record.volumeId)"
-                >
-                  提交归档
-                </UiTextAction>
-                <span
-                  v-else-if="isSubmitBlockedByRemediation(record)"
-                  title="存在进行中的整改任务，须完成整改后再提交归档"
-                >
-                  <UiTextAction tone="primary" disabled>提交归档</UiTextAction>
-                </span>
-                <UiTextAction v-if="shouldRemindVolume(record)" @click="remindVolume(record)">
-                  催办
-                </UiTextAction>
-              </div>
+              <UiTableActions
+                :items="buildVolumeActions(record)"
+                split
+                @action="(key) => handleVolumeAction(key, record)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -302,6 +262,7 @@
 <script setup lang="ts">
 import type { ColumnsType, TableProps } from 'ant-design-vue/es/table'
 import type { LocationQueryRaw } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type {
   ArchiveAppraisalStatusCode,
   ArchiveIntegrityStatusCode,
@@ -310,14 +271,6 @@ import type {
   ArchiveVolumeResponse,
   ArchiveVolumeSourceTypeCode,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { ArchiveVolumeScenarioKey } from '@/composables/useArchiveVolumeFilterPresets'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
 import {
   ARCHIVE_APPRAISAL_STATUS_OPTIONS,
   ARCHIVE_INTEGRITY_STATUS_OPTIONS,
@@ -335,6 +288,15 @@ import {
   pageOverdueArchiveVolumes,
   remindArchiveDue,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { ArchiveVolumeScenarioKey } from '@/composables/useArchiveVolumeFilterPresets'
+import { useArchiveVolumeFilterPresets } from '@/composables/useArchiveVolumeFilterPresets'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import ArchiveDimPill from '@/components/archive-volume/ArchiveDimPill.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -344,6 +306,7 @@ import UiBatchActionBar from '@/components/ui-guide/ui/UiBatchActionBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -351,10 +314,8 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { useArchiveTenantSetupReadiness } from '@/composables/useArchiveTenantSetupReadiness'
-import { useArchiveVolumeFilterPresets } from '@/composables/useArchiveVolumeFilterPresets'
 import { canSubmitArchiveVolumeRow } from '@/composables/useArchiveVolumeSubmitGate'
 import { useUserStore } from '@/stores/modules/user'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import {
   generateAcademicYearOptions,
   getDefaultAcademicYearAndSemester,
@@ -451,7 +412,7 @@ const openRemediationVolumeIdSet = computed(
 )
 const selectedVolumeIds = ref<string[]>([])
 const pagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
-const allDepartmentOptions = ref<Array<{ value: string, label: string }>>([])
+const allDepartmentOptions = ref<Array<{ value: string; label: string }>>([])
 const kpiCollectingCount = ref<number | string>('—')
 const kpiPendingTransferCount = ref<number | string>('—')
 const kpiMissingCount = ref<number | string>('—')
@@ -503,7 +464,7 @@ const filterModel = computed<Record<string, unknown>>({
 })
 
 const visibleListTabs = computed(() => {
-  const tabs: Array<{ key: ListTabKey, label: string, count?: number, badgeTone?: BadgeTone }> = [
+  const tabs: Array<{ key: ListTabKey; label: string; count?: number; badgeTone?: BadgeTone }> = [
     {
       key: 'mine',
       label: '我的归档卷',
@@ -514,8 +475,7 @@ const visibleListTabs = computed(() => {
     tabs.push({ key: 'college', label: '院系看板' })
   }
   if (canViewArchiveReviewer.value) {
-    const archiveBadge
-      = Number(kpiPendingTransferCount.value) + Number(kpiDueAppraisalCount.value)
+    const archiveBadge = Number(kpiPendingTransferCount.value) + Number(kpiDueAppraisalCount.value)
     tabs.push({
       key: 'archive',
       label: '档案验收',
@@ -526,7 +486,11 @@ const visibleListTabs = computed(() => {
   if (canViewSupervision.value) {
     tabs.push({ key: 'supervision', label: '督导抽查' })
   }
-  if (canViewCollegeBoard.value || canViewSupervision.value || hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN)) {
+  if (
+    canViewCollegeBoard.value ||
+    canViewSupervision.value ||
+    hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN)
+  ) {
     tabs.push({
       key: 'remediation',
       label: '迎评整改',
@@ -553,7 +517,7 @@ const contextBarSubtitle = computed(() => {
   return parts.join(' · ')
 })
 
-const volumeScopeTabs: Array<{ key: VolumeScopeKey, label: string }> = [
+const volumeScopeTabs: Array<{ key: VolumeScopeKey; label: string }> = [
   { key: 'all', label: '全部' },
   { key: 'mine', label: '我的' },
 ]
@@ -600,13 +564,13 @@ const showSignalBand = computed(() => showVolumeListPanel.value)
 
 const hasActiveListFilters = computed(() =>
   Boolean(
-    archiveListQuickFilter.value
-    || filterForm.volumeStatus
-    || filterForm.integrityStatus
-    || filterForm.transferStatus
-    || filterForm.appraisalStatus
-    || filterExtras.integrityFailedOnly
-    || filterExtras.archiveOverdueOnly,
+    archiveListQuickFilter.value ||
+    filterForm.volumeStatus ||
+    filterForm.integrityStatus ||
+    filterForm.transferStatus ||
+    filterForm.appraisalStatus ||
+    filterExtras.integrityFailedOnly ||
+    filterExtras.archiveOverdueOnly,
   ),
 )
 
@@ -650,17 +614,42 @@ function buildListOverviewMetric(
     value: failed ? '—' : value,
     unit: '卷',
     tone,
-    clickable: !failed && (countForClick > 0 || isActive || (key === 'total' && hasActiveListFilters.value)),
+    clickable:
+      !failed && (countForClick > 0 || isActive || (key === 'total' && hasActiveListFilters.value)),
     active: isActive,
   }
 }
 
 const listOverviewSignalMetrics = computed<SignalMetric[]>(() => {
   const metrics: SignalMetric[] = [
-    buildListOverviewMetric('total', '归档卷总数', kpiTotalCount.value, 'blue', Number(kpiTotalCount.value)),
-    buildListOverviewMetric('stored', '已入库', kpiStoredCount.value, 'green', Number(kpiStoredCount.value)),
-    buildListOverviewMetric('submitted', '已提交', kpiSubmittedCount.value, 'blue', Number(kpiSubmittedCount.value)),
-    buildListOverviewMetric('collecting', '收集中', kpiCollectingCount.value, 'orange', Number(kpiCollectingCount.value)),
+    buildListOverviewMetric(
+      'total',
+      '归档卷总数',
+      kpiTotalCount.value,
+      'blue',
+      Number(kpiTotalCount.value),
+    ),
+    buildListOverviewMetric(
+      'stored',
+      '已入库',
+      kpiStoredCount.value,
+      'green',
+      Number(kpiStoredCount.value),
+    ),
+    buildListOverviewMetric(
+      'submitted',
+      '已提交',
+      kpiSubmittedCount.value,
+      'blue',
+      Number(kpiSubmittedCount.value),
+    ),
+    buildListOverviewMetric(
+      'collecting',
+      '收集中',
+      kpiCollectingCount.value,
+      'orange',
+      Number(kpiCollectingCount.value),
+    ),
     buildListOverviewMetric(
       'dueAppraisal',
       '待鉴定',
@@ -670,40 +659,42 @@ const listOverviewSignalMetrics = computed<SignalMetric[]>(() => {
     ),
   ]
   if (canViewArchiveReviewer.value) {
-    metrics.push(buildListOverviewMetric(
-      'pending',
-      '待验收移交',
-      kpiPendingTransferCount.value,
-      Number(kpiPendingTransferCount.value) > 0 ? 'orange' : 'gray',
-      Number(kpiPendingTransferCount.value),
-    ))
+    metrics.push(
+      buildListOverviewMetric(
+        'pending',
+        '待验收移交',
+        kpiPendingTransferCount.value,
+        Number(kpiPendingTransferCount.value) > 0 ? 'orange' : 'gray',
+        Number(kpiPendingTransferCount.value),
+      ),
+    )
   }
   if (canViewStatisticsKpi.value) {
-    metrics.push(buildListOverviewMetric(
-      'missing',
-      '缺项材料',
-      kpiMissingCount.value,
-      Number(kpiMissingCount.value) > 0 ? 'red' : 'gray',
-      Number(kpiMissingCount.value),
-    ))
-    metrics.push(buildListOverviewMetric(
-      'overdue',
-      '逾期卷',
-      kpiOverdueCount.value,
-      Number(kpiOverdueCount.value) > 0 ? 'red' : 'gray',
-      Number(kpiOverdueCount.value),
-    ))
+    metrics.push(
+      buildListOverviewMetric(
+        'missing',
+        '缺项材料',
+        kpiMissingCount.value,
+        Number(kpiMissingCount.value) > 0 ? 'red' : 'gray',
+        Number(kpiMissingCount.value),
+      ),
+    )
+    metrics.push(
+      buildListOverviewMetric(
+        'overdue',
+        '逾期卷',
+        kpiOverdueCount.value,
+        Number(kpiOverdueCount.value) > 0 ? 'red' : 'gray',
+        Number(kpiOverdueCount.value),
+      ),
+    )
   }
-  return metrics.map((metric) =>
-    metric.key === 'missing' ? { ...metric, unit: '项' } : metric,
-  )
+  return metrics.map((metric) => (metric.key === 'missing' ? { ...metric, unit: '项' } : metric))
 })
 
 const activeSignalMetrics = computed(() => listOverviewSignalMetrics.value)
 
-const appraisalFilterDisabled = computed(
-  () => archiveListQuickFilter.value === 'due-appraisal',
-)
+const appraisalFilterDisabled = computed(() => archiveListQuickFilter.value === 'due-appraisal')
 
 const showVolumeFilter = computed(() => showVolumeListPanel.value)
 
@@ -848,6 +839,54 @@ function shouldRemindVolume(record: ArchiveVolumeResponse) {
   return new Date(record.archiveDueTime).getTime() < Date.now()
 }
 
+function buildVolumeActions(record: ArchiveVolumeResponse): UiTableRowActionItem[] {
+  const showSubmitInMine = listTab.value === 'mine' && volumeScope.value === 'mine'
+  const submitBlocked = isSubmitBlockedByRemediation(record)
+  const canSubmit = canSubmitVolumeRow(record) && showSubmitInMine
+  return [
+    { key: 'detail', label: '详情', tone: 'primary' },
+    {
+      key: 'appraisal',
+      label: '鉴定',
+      tone: 'primary',
+      hidden: record.appraisalStatus !== 'REMINDER_SENT',
+    },
+    {
+      key: 'remediation',
+      label: '去整改',
+      tone: 'primary',
+      hidden: !showSubmitInMine || !hasOpenRemediationForVolume(record.volumeId),
+    },
+    {
+      key: 'submit',
+      label: '提交归档',
+      hidden: !showSubmitInMine || (!canSubmit && !submitBlocked),
+      disabled: submitBlocked,
+    },
+    { key: 'remind', label: '催办', hidden: !shouldRemindVolume(record) },
+  ]
+}
+
+function handleVolumeAction(key: string, record: ArchiveVolumeResponse): void {
+  switch (key) {
+    case 'detail':
+      goDetail(record.volumeId)
+      break
+    case 'appraisal':
+      goAppraisal(record.volumeId)
+      break
+    case 'remediation':
+      goRemediationVolumeByVolumeId(record.volumeId)
+      break
+    case 'submit':
+      goDetail(record.volumeId)
+      break
+    case 'remind':
+      remindVolume(record)
+      break
+  }
+}
+
 async function loadDepartments() {
   try {
     const departments = await departmentCatalogApi.list()
@@ -871,8 +910,8 @@ function applyScopedDepartmentDefault() {
     return
   }
   if (
-    filterForm.departmentId
-    && !visibleDepartmentOptions.value.some((item) => item.value === filterForm.departmentId)
+    filterForm.departmentId &&
+    !visibleDepartmentOptions.value.some((item) => item.value === filterForm.departmentId)
   ) {
     filterForm.departmentId = undefined
   }
@@ -891,8 +930,8 @@ async function loadListOverviewKpis(): Promise<void> {
     delete countBase.transferStatus
     delete countBase.appraisalStatus
     if (listTab.value === 'college' || listTab.value === 'archive') {
-      const scopeIds
-        = listTab.value === 'college' ? scopedDepartmentIds.value : listScopedDepartmentIds.value
+      const scopeIds =
+        listTab.value === 'college' ? scopedDepartmentIds.value : listScopedDepartmentIds.value
       if (scopeIds.length === 1) {
         countBase.departmentId = scopeIds[0]
       }
@@ -906,11 +945,31 @@ async function loadListOverviewKpis(): Promise<void> {
       pendingResult,
     ] = await Promise.all([
       pageArchiveVolumes({ ...countBase, pageNum: 1, pageSize: 1 }),
-      pageArchiveVolumes({ ...countBase, volumeStatus: ArchiveVolumeStatusCode.STORED, pageNum: 1, pageSize: 1 }),
-      pageArchiveVolumes({ ...countBase, volumeStatus: ArchiveVolumeStatusCode.SUBMITTED, pageNum: 1, pageSize: 1 }),
-      pageArchiveVolumes({ ...countBase, volumeStatus: ArchiveVolumeStatusCode.COLLECTING, pageNum: 1, pageSize: 1 }),
+      pageArchiveVolumes({
+        ...countBase,
+        volumeStatus: ArchiveVolumeStatusCode.STORED,
+        pageNum: 1,
+        pageSize: 1,
+      }),
+      pageArchiveVolumes({
+        ...countBase,
+        volumeStatus: ArchiveVolumeStatusCode.SUBMITTED,
+        pageNum: 1,
+        pageSize: 1,
+      }),
+      pageArchiveVolumes({
+        ...countBase,
+        volumeStatus: ArchiveVolumeStatusCode.COLLECTING,
+        pageNum: 1,
+        pageSize: 1,
+      }),
       pageArchiveVolumes({ ...countBase, dueAppraisalOnly: true, pageNum: 1, pageSize: 1 }),
-      pageArchiveVolumes({ ...countBase, transferStatus: ArchiveTransferStatusCode.PENDING_REVIEW, pageNum: 1, pageSize: 1 }),
+      pageArchiveVolumes({
+        ...countBase,
+        transferStatus: ArchiveTransferStatusCode.PENDING_REVIEW,
+        pageNum: 1,
+        pageSize: 1,
+      }),
     ])
     kpiTotalCount.value = Number(totalResult.total)
     kpiStoredCount.value = Number(storedResult.total)
@@ -943,9 +1002,9 @@ async function loadListOverviewKpis(): Promise<void> {
 
 async function loadRemediationTabCount(): Promise<void> {
   if (
-    !canViewCollegeBoard.value
-    && !canViewSupervision.value
-    && !hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN)
+    !canViewCollegeBoard.value &&
+    !canViewSupervision.value &&
+    !hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN)
   ) {
     remediationTabCount.value = 0
     return
@@ -974,7 +1033,9 @@ function stripScopeQueryFromRoute() {
   void router.replace({ query: nextQuery })
 }
 function applySourceTypeFromQuery() {
-  const parsed = ARCHIVE_VOLUME_SOURCE_TYPE_OPTIONS.find((option) => option.value === route.query.sourceType)?.value
+  const parsed = ARCHIVE_VOLUME_SOURCE_TYPE_OPTIONS.find(
+    (option) => option.value === route.query.sourceType,
+  )?.value
   if (!parsed) return
   filterForm.sourceType = parsed
   if (canViewArchiveReviewer.value) {
@@ -1177,8 +1238,8 @@ function goDetail(volumeId: string) {
   const record = volumes.value.find((item) => item.volumeId === volumeId)
   const query: LocationQueryRaw = {}
   if (
-    archiveListQuickFilter.value === 'pending-transfer'
-    || record?.transferStatus === 'PENDING_REVIEW'
+    archiveListQuickFilter.value === 'pending-transfer' ||
+    record?.transferStatus === 'PENDING_REVIEW'
   ) {
     query.tab = 'transfer'
   }

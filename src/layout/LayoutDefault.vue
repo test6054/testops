@@ -80,10 +80,19 @@ onMounted(() => {
 
 .layout {
   height: 100%;
+  min-height: 0;
 }
 
 .layout-default {
   flex-direction: row;
+  height: 100%;
+  min-height: 0;
+  align-items: stretch;
+
+  :deep(> .ant-layout) {
+    height: 100%;
+    min-height: 0;
+  }
 
   &-right {
     overflow: auto;

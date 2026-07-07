@@ -100,6 +100,15 @@ export interface UiDropdownActionItem {
   type?: 'item' | 'divider'
 }
 
+/** 表格行内操作项：默认展示 maxVisible 条，超出项收入「更多」下拉 */
+export interface UiTableRowActionItem {
+  key: string
+  label: string
+  tone?: 'default' | 'primary' | 'danger'
+  disabled?: boolean
+  hidden?: boolean
+}
+
 /** 通知列表动作项 */
 export interface UiNoticeAction {
   key: string

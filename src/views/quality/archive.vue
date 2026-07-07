@@ -1,20 +1,20 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AccreditationCockpitVO, AccreditationCycleVO } from '@/apis/quality/accreditation'
+import { accreditationApi } from '@/apis/quality/accreditation'
 import type {
   ArchiveQueryRequest,
   ArchiveSaveRequest,
   ArchiveVO,
   ExpertPackageExportRequest,
 } from '@/apis/quality/archive'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import { archiveApi } from '@/apis/quality/archive'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { accreditationApi } from '@/apis/quality/accreditation'
-import { archiveApi } from '@/apis/quality/archive'
 import {
   ALL_ARCHIVE_BUSINESS_TYPE_CODES,
   ArchiveBusinessTypeCode,
@@ -41,7 +41,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import AuditTimelineDrawer from '@/components/workbench/AuditTimelineDrawer.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -296,7 +296,7 @@ async function handleScopeChange(): Promise<void> {
 
 useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false })
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -495,6 +495,41 @@ function isArchiveDestroyable(record: ArchiveVO): boolean {
   return Date.now() >= expireAt.getTime()
 }
 
+function buildArchiveActions(record: ArchiveVO): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
+  if (record.fileId) {
+    actions.push({ key: 'download', label: '下载' })
+  }
+  actions.push({ key: 'edit', label: '编辑' })
+  if (isArchiveDestroyable(record)) {
+    actions.push({ key: 'delete', label: '删除', tone: 'danger' })
+  } else {
+    actions.push({ key: 'locked', label: '保管期内', disabled: true })
+  }
+  actions.push({ key: 'audit', label: '审计' })
+  return actions
+}
+
+function handleArchiveAction(key: string, record: ArchiveVO): void {
+  switch (key) {
+    case 'detail':
+      void openDetail(record)
+      break
+    case 'download':
+      void downloadArchiveFile(record)
+      break
+    case 'edit':
+      void openEdit(record)
+      break
+    case 'delete':
+      handleDelete(record)
+      break
+    case 'audit':
+      void openAuditDrawer(record)
+      break
+  }
+}
+
 function handleDelete(record: ArchiveVO) {
   if (!isArchiveDestroyable(record)) {
     message.warning('档案保管期未到期，禁止删除')
@@ -611,7 +646,10 @@ watch(
 watch(
   () => ({ packageType: exportForm.packageType, targetId: exportForm.targetId }),
   async (exportState) => {
-    if (exportState.packageType !== ExpertPackageTypeCode.PROGRAM_ACCREDITATION || !exportState.targetId.trim()) {
+    if (
+      exportState.packageType !== ExpertPackageTypeCode.PROGRAM_ACCREDITATION ||
+      !exportState.targetId.trim()
+    ) {
       exportCockpit.value = undefined
       exportActiveCycle.value = undefined
       exportEvidenceCount.value = 0
@@ -718,22 +756,11 @@ onMounted(async () => {
             {{ record.archivedTime || '尚未归档确认' }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiTextAction @click="openDetail(record)">详情</UiTextAction>
-              <UiTextAction v-if="record.fileId" @click="downloadArchiveFile(record)">
-                下载
-              </UiTextAction>
-              <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
-              <UiTextAction
-                v-if="isArchiveDestroyable(record)"
-                tone="danger"
-                @click="handleDelete(record)"
-              >
-                删除
-              </UiTextAction>
-              <span v-else class="archive-page__locked-hint">保管期内</span>
-              <UiTextAction @click="openAuditDrawer(record)">审计</UiTextAction>
-            </div>
+            <UiTableActions
+              :items="buildArchiveActions(record)"
+              split
+              @action="(key) => handleArchiveAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>
@@ -761,7 +788,9 @@ onMounted(async () => {
           </a-radio-group>
         </a-form-item>
         <a-form-item
-          :label="exportForm.packageType === ExpertPackageTypeCode.REQUIREMENT ? '毕业要求' : '培养方案'"
+          :label="
+            exportForm.packageType === ExpertPackageTypeCode.REQUIREMENT ? '毕业要求' : '培养方案'
+          "
           required
         >
           <TrainingPlanSelector
@@ -786,7 +815,10 @@ onMounted(async () => {
           />
         </a-form-item>
         <div
-          v-if="exportForm.packageType === ExpertPackageTypeCode.PROGRAM_ACCREDITATION && exportForm.targetId"
+          v-if="
+            exportForm.packageType === ExpertPackageTypeCode.PROGRAM_ACCREDITATION &&
+            exportForm.targetId
+          "
           class="archive-page__export-readiness"
         >
           <p class="archive-page__export-readiness-text">

@@ -13,19 +13,23 @@ import type {
   EvaluationWorkgroupVO,
   WorkgroupMember,
 } from '@/apis/quality/evaluation-workgroup'
+import {
+  evaluationWorkgroupApi,
+  WorkgroupMemberRoleCode,
+  WorkgroupMemberRoleDescription,
+} from '@/apis/quality/evaluation-workgroup'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
-  evaluationWorkgroupApi,
-  WorkgroupMemberRoleCode,
-  WorkgroupMemberRoleDescription,
-} from '@/apis/quality/evaluation-workgroup'
-import { WORKGROUP_LEVEL_OPTIONS, WorkgroupLevelCode, WorkgroupLevelDescription } from '@/apis/quality/types'
+  WORKGROUP_LEVEL_OPTIONS,
+  WorkgroupLevelCode,
+  WorkgroupLevelDescription,
+} from '@/apis/quality/types'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import { ProgramSelector, TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -34,6 +38,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -56,8 +61,8 @@ const route = useRoute()
 /** 教学档案袋 /portfolio 域独立壳层；质量评价 /quality 仍走 OBE scope 加载 */
 const isPortfolioDomain = computed(
   () =>
-    props.domainShell === 'portfolio'
-    || (props.domainShell !== 'quality' && Boolean(route.meta.portfolioDomain)),
+    props.domainShell === 'portfolio' ||
+    (props.domainShell !== 'quality' && Boolean(route.meta.portfolioDomain)),
 )
 
 interface EvaluationWorkgroupFilterModel {
@@ -123,7 +128,7 @@ const query = reactive<EvaluationWorkgroupQueryRequest>({
 
 const levelOptions = WORKGROUP_LEVEL_OPTIONS
 
-const memberRoleOptions: Array<{ value: WorkgroupMemberRoleCode, label: string }> = [
+const memberRoleOptions: Array<{ value: WorkgroupMemberRoleCode; label: string }> = [
   { value: WorkgroupMemberRoleCode.CONVENER, label: '召集人' },
   { value: WorkgroupMemberRoleCode.MEMBER, label: '成员' },
   { value: WorkgroupMemberRoleCode.EXTERNAL_EXPERT, label: '外部专家' },
@@ -173,7 +178,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -248,7 +253,10 @@ function handleEditorProgramChange(value: string | null) {
 }
 
 function getEditorConvenerId(): string | null {
-  return editor.members.find(member => member.role === WorkgroupMemberRoleCode.CONVENER)?.userId ?? null
+  return (
+    editor.members.find((member) => member.role === WorkgroupMemberRoleCode.CONVENER)?.userId ??
+    null
+  )
 }
 
 function handleEditorConvenerChange(
@@ -259,7 +267,9 @@ function handleEditorConvenerChange(
     showUserError(null, '召集人只能单选，请重新选择')
     return
   }
-  editor.members = editor.members.filter(member => member.role !== WorkgroupMemberRoleCode.CONVENER)
+  editor.members = editor.members.filter(
+    (member) => member.role !== WorkgroupMemberRoleCode.CONVENER,
+  )
   editor.convenerUserId = ''
   if (!value || Array.isArray(option) || !option) {
     return
@@ -304,11 +314,7 @@ function removeMember(index: number) {
 }
 
 async function submitEditor() {
-  if (
-    !editor.programId
-    || !editor.workgroupCode.trim()
-    || !editor.workgroupName.trim()
-  ) {
+  if (!editor.programId || !editor.workgroupCode.trim() || !editor.workgroupName.trim()) {
     message.error('请填写专业、编码、名称，并在成员清单中设置召集人')
     return
   }
@@ -339,9 +345,7 @@ async function submitEditor() {
       note: member.note ? member.note.trim() : '',
     })
   }
-  const convenerMember = members.find(
-    member => member.role === WorkgroupMemberRoleCode.CONVENER,
-  )
+  const convenerMember = members.find((member) => member.role === WorkgroupMemberRoleCode.CONVENER)
   if (!convenerMember || !convenerMember.userId) {
     message.error('召集人必须出现在成员清单中且角色为 CONVENER')
     return
@@ -366,6 +370,32 @@ async function submitEditor() {
     await loadList()
   } finally {
     submitting.value = false
+  }
+}
+
+function buildWorkgroupActions(_record: EvaluationWorkgroupVO): UiTableRowActionItem[] {
+  return [
+    { key: 'members', label: '成员' },
+    { key: 'import', label: 'Excel 导入' },
+    { key: 'edit', label: '编辑' },
+    { key: 'delete', label: '删除', tone: 'danger' },
+  ]
+}
+
+function handleWorkgroupAction(key: string, record: EvaluationWorkgroupVO): void {
+  switch (key) {
+    case 'members':
+      openMembersDrawer(record)
+      break
+    case 'import':
+      openImportMembers(record)
+      break
+    case 'edit':
+      openEdit(record)
+      break
+    case 'delete':
+      void handleDelete(record)
+      break
   }
 }
 
@@ -409,9 +439,11 @@ function memberCountOf(record: EvaluationWorkgroupVO): number {
 }
 
 function convenerNameOf(record: EvaluationWorkgroupVO): string {
-  return record.convenerUserName
-    ?? record.members?.find(member => member.role === WorkgroupMemberRoleCode.CONVENER)?.userName
-    ?? '—'
+  return (
+    record.convenerUserName ??
+    record.members?.find((member) => member.role === WorkgroupMemberRoleCode.CONVENER)?.userName ??
+    '—'
+  )
 }
 
 function openImportMembers(record: EvaluationWorkgroupVO) {
@@ -539,12 +571,11 @@ onActivated(() => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiTextAction @click="openMembersDrawer(record)">成员</UiTextAction>
-              <UiTextAction @click="openImportMembers(record)">Excel 导入</UiTextAction>
-              <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
-              <UiTextAction tone="danger" @click="handleDelete(record)">删除</UiTextAction>
-            </div>
+            <UiTableActions
+              :items="buildWorkgroupActions(record)"
+              split
+              @action="(key) => handleWorkgroupAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>
@@ -593,10 +624,7 @@ onActivated(() => {
           />
         </a-form-item>
         <a-form-item label="召集人" required>
-          <TeacherSelector
-            :value="getEditorConvenerId()"
-            @change="handleEditorConvenerChange"
-          />
+          <TeacherSelector :value="getEditorConvenerId()" @change="handleEditorConvenerChange" />
         </a-form-item>
         <a-form-item label="职责说明">
           <a-textarea

@@ -5,13 +5,18 @@ import type {
   ImprovementTaskSaveRequest,
   ImprovementTaskVO,
 } from '@/apis/quality/improvement-task'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import { improvementTaskApi } from '@/apis/quality/improvement-task'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
+import {
+  normalizeTextareaLineItems,
+  refreshWorkbenchSignalsAfterMutation,
+  selectedId,
+} from '@/composables/quality/improvement'
 import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
 import { aiTaskApi } from '@/apis/quality/ai-task'
 import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
-import { improvementTaskApi } from '@/apis/quality/improvement-task'
 import {
   AiTaskBusinessTypeCode,
   AiTaskTypeCode,
@@ -33,12 +38,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import {
-  normalizeTextareaLineItems,
-  refreshWorkbenchSignalsAfterMutation,
-  selectedId,
-} from '@/composables/quality/improvement'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import {
@@ -85,7 +85,7 @@ const improvementQuery = reactive<ImprovementTaskQueryRequest>({
   keyword: '',
 })
 
-const improvementStatusOptions: Array<{ value: ImprovementTaskStatusCode, label: string }> = [
+const improvementStatusOptions: Array<{ value: ImprovementTaskStatusCode; label: string }> = [
   { value: ImprovementTaskStatusCode.OPEN, label: ImprovementTaskStatusDescription.OPEN },
   {
     value: ImprovementTaskStatusCode.IN_PROGRESS,
@@ -192,7 +192,7 @@ function handleImprovementFilterSearch(): void {
   void loadList()
 }
 
-function handleImprovementPageChange(page: { current: number, pageSize: number }): void {
+function handleImprovementPageChange(page: { current: number; pageSize: number }): void {
   improvementQuery.pageNum = page.current
   improvementQuery.pageSize = page.pageSize
   void loadList()
@@ -267,9 +267,9 @@ async function loadList(options?: { refreshSignals?: boolean }): Promise<void> {
     improvementQuery.pageSize = page.pageSize
     improvementTotal.value = Number(page.total)
     if (
-      improvementList.value.length === 0
-      && improvementTotal.value > 0
-      && improvementQuery.pageNum > 1
+      improvementList.value.length === 0 &&
+      improvementTotal.value > 0 &&
+      improvementQuery.pageNum > 1
     ) {
       improvementQuery.pageNum -= 1
       await loadList(options)
@@ -374,20 +374,20 @@ async function submitImprovementEditor(): Promise<void> {
     }
   }
   if (
-    !improvementEditor.taskTitle.trim()
-    || !improvementEditor.problemSummary.trim()
-    || !improvementEditor.proposedAction.trim()
-    || !improvementEditor.programId
-    || !improvementEditor.ownerUserId
-    || !improvementEditor.dueDate
+    !improvementEditor.taskTitle.trim() ||
+    !improvementEditor.problemSummary.trim() ||
+    !improvementEditor.proposedAction.trim() ||
+    !improvementEditor.programId ||
+    !improvementEditor.ownerUserId ||
+    !improvementEditor.dueDate
   ) {
     message.error('请填写标题、问题概述、改进措施、专业、负责人和截止日期')
     return
   }
   if (
-    improvementEditorMode.value === 'create'
-    && submitAiSuggestionDraft.value
-    && !improvementEditor.achievementResultId
+    improvementEditorMode.value === 'create' &&
+    submitAiSuggestionDraft.value &&
+    !improvementEditor.achievementResultId
   ) {
     message.error('生成 AI 改进草稿需要先关联达成度计算结果')
     return
@@ -453,8 +453,7 @@ function nextImprovementStatuses(status: ImprovementTaskStatusCode): Improvement
 }
 
 function canEditImprovementTask(status: ImprovementTaskStatusCode): boolean {
-  return status === ImprovementTaskStatusCode.OPEN
-    || status === ImprovementTaskStatusCode.RETURNED
+  return status === ImprovementTaskStatusCode.OPEN || status === ImprovementTaskStatusCode.RETURNED
 }
 
 async function handleImprovementTransit(
@@ -462,12 +461,13 @@ async function handleImprovementTransit(
   to: ImprovementTaskStatusCode,
 ): Promise<void> {
   if (
-    record.status === ImprovementTaskStatusCode.SUBMITTED
-    && (to === ImprovementTaskStatusCode.CLOSED || to === ImprovementTaskStatusCode.RETURNED)
+    record.status === ImprovementTaskStatusCode.SUBMITTED &&
+    (to === ImprovementTaskStatusCode.CLOSED || to === ImprovementTaskStatusCode.RETURNED)
   ) {
     const reviewRemark = await promptInputAsync({
       title: to === ImprovementTaskStatusCode.CLOSED ? '复评通过并闭环' : '复评退回任务',
-      placeholder: to === ImprovementTaskStatusCode.RETURNED ? '退回原因（必填）' : '复评意见（可选）',
+      placeholder:
+        to === ImprovementTaskStatusCode.RETURNED ? '退回原因（必填）' : '复评意见（可选）',
       required: to === ImprovementTaskStatusCode.RETURNED,
       okType: to === ImprovementTaskStatusCode.RETURNED ? 'danger' : 'primary',
       emptyErrorMessage: '请填写退回原因',
@@ -485,7 +485,10 @@ async function handleImprovementTransit(
   }
   const remark = await promptInputAsync({
     title: `${improvementStatusLabel(record.status)} → ${improvementStatusLabel(to)}`,
-    placeholder: to === ImprovementTaskStatusCode.SUBMITTED ? '整改进度说明（提交时必填）' : '进度备注（可选）',
+    placeholder:
+      to === ImprovementTaskStatusCode.SUBMITTED
+        ? '整改进度说明（提交时必填）'
+        : '进度备注（可选）',
     required: false,
     okType: 'primary',
   })
@@ -560,6 +563,56 @@ async function openImprovementDetail(record: ImprovementTaskVO): Promise<void> {
     improvementDetailRecord.value = await improvementTaskApi.detail(record.id)
   } finally {
     improvementDetailLoading.value = false
+  }
+}
+
+function buildImprovementTaskActions(record: ImprovementTaskVO): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = [
+    { key: 'detail', label: '详情' },
+    {
+      key: 'edit',
+      label: '编辑',
+      disabled: !canEditImprovementTask(record.status),
+    },
+  ]
+  for (const to of nextImprovementStatuses(record.status)) {
+    actions.push({
+      key: `transit:${to}`,
+      label: `→ ${improvementStatusLabel(to)}`,
+      tone: to === ImprovementTaskStatusCode.RETURNED ? 'danger' : 'primary',
+    })
+  }
+  actions.push({
+    key: 'ai-suggestion',
+    label: 'AI 改进',
+    disabled: !record.achievementResultId,
+  })
+  if (record.status === ImprovementTaskStatusCode.OPEN) {
+    actions.push({ key: 'delete', label: '删除', tone: 'danger' })
+  }
+  return actions
+}
+
+function handleImprovementTaskAction(key: string, record: ImprovementTaskVO): void {
+  if (key === 'detail') {
+    void openImprovementDetail(record)
+    return
+  }
+  if (key === 'edit') {
+    openImprovementEdit(record)
+    return
+  }
+  if (key === 'ai-suggestion') {
+    void handleImprovementAiSuggestion(record)
+    return
+  }
+  if (key === 'delete') {
+    void handleImprovementDelete(record)
+    return
+  }
+  if (key.startsWith('transit:')) {
+    const target = key.slice('transit:'.length) as ImprovementTaskStatusCode
+    void handleImprovementTransit(record, target)
   }
 }
 
@@ -653,36 +706,11 @@ defineExpose({
           </UiTag>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <div class="operations-cell" @click.stop>
-            <UiTextAction @click="openImprovementDetail(record)">详情</UiTextAction>
-            <UiTextAction
-              :disabled="!canEditImprovementTask(record.status)"
-              @click="openImprovementEdit(record)"
-            >
-              编辑
-            </UiTextAction>
-            <UiTextAction
-              v-for="to in nextImprovementStatuses(record.status)"
-              :key="to"
-              :tone="to === ImprovementTaskStatusCode.RETURNED ? 'danger' : 'primary'"
-              @click="handleImprovementTransit(record, to)"
-            >
-              → {{ improvementStatusLabel(to) }}
-            </UiTextAction>
-            <UiTextAction
-              :disabled="!record.achievementResultId"
-              @click="handleImprovementAiSuggestion(record)"
-            >
-              AI 改进
-            </UiTextAction>
-            <UiTextAction
-              v-if="record.status === ImprovementTaskStatusCode.OPEN"
-              tone="danger"
-              @click="handleImprovementDelete(record)"
-            >
-              删除
-            </UiTextAction>
-          </div>
+          <UiTableActions
+            :items="buildImprovementTaskActions(record)"
+            split
+            @action="(key) => handleImprovementTaskAction(key, record)"
+          />
         </template>
       </template>
     </UiDataTable>

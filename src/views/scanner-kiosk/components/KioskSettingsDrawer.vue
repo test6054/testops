@@ -110,19 +110,19 @@ const agentUpdateAvailable = computed(() => Boolean(health.value?.updateAvailabl
 const agentUpdateInstallable = computed(() => Boolean(health.value?.updateInstallable))
 const agentUpdateInProgress = computed(
   () =>
-    agentUpdateStatus.value === AgentUpdateStatusCode.DOWNLOADING
-    || agentUpdateStatus.value === AgentUpdateStatusCode.INSTALLING,
+    agentUpdateStatus.value === AgentUpdateStatusCode.DOWNLOADING ||
+    agentUpdateStatus.value === AgentUpdateStatusCode.INSTALLING,
 )
 const agentUpdateFailed = computed(() => agentUpdateStatus.value === AgentUpdateStatusCode.FAILED)
 const showMaintenanceSection = computed(
   () =>
-    upgradeRequired.value
-    || tokenResetRequired.value
-    || rebindRequired.value
-    || kioskBrowserSessionSyncNeeded.value
-    || agentUpdateInProgress.value
-    || agentUpdateFailed.value
-    || agentUpdateAvailable.value,
+    upgradeRequired.value ||
+    tokenResetRequired.value ||
+    rebindRequired.value ||
+    kioskBrowserSessionSyncNeeded.value ||
+    agentUpdateInProgress.value ||
+    agentUpdateFailed.value ||
+    agentUpdateAvailable.value,
 )
 
 const minAgentVersion = computed(() => health.value?.minimumAgentVersion || '')
@@ -168,7 +168,9 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
 
           <div v-if="kioskBrowserSessionSyncNeeded" class="alert-block">
             <p>浏览器会话未与 Agent 对齐</p>
-            <small>正在从本机 Agent 同步 push_token；若长时间无响应，请刷新连接或重新输入激活码。</small>
+            <small
+              >正在从本机 Agent 同步 push_token；若长时间无响应，请刷新连接或重新输入激活码。</small
+            >
             <button type="button" class="ghost-btn" @click="handleRefreshSession">
               <ReloadOutlined />
               刷新连接
@@ -330,7 +332,10 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
           <div v-if="workflow.scanners.value.length === 0" class="empty-block">
             <ScanOutlined class="empty-icon" />
             <p>未检测到扫描仪</p>
-            <small>请确认 USB 或网络连接、驱动已安装，再点击刷新</small>
+            <small v-if="workflow.scannerCatalogDiagnostic.value">{{
+              workflow.scannerCatalogDiagnostic.value
+            }}</small>
+            <small v-else>请确认 USB 或网络连接、驱动已安装，再点击刷新</small>
           </div>
 
           <ul v-else class="scanner-list">

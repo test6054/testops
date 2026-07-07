@@ -1,23 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
-import type {
-  PortfolioMaterialStatusCode,
-} from '@/apis/portfolio/enums'
-import type {
-  PortfolioMaterialSaveRequest,
-  PortfolioMaterialSearchResponse,
-  PortfolioMaterialVO,
-} from '@/apis/portfolio/types'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import { Input, message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ARCHIVE_MATERIAL_OCR_STATUS_TONE,
   ArchiveMaterialOcrStatusDescription,
 } from '@/apis/mark/archive-ocr-status'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import type { PortfolioMaterialStatusCode } from '@/apis/portfolio/enums'
 import {
   PORTFOLIO_MATERIAL_STATUS_OPTIONS,
   PORTFOLIO_MATERIAL_TYPE_OPTIONS,
@@ -25,8 +13,18 @@ import {
   PortfolioMaterialTypeCode,
   PortfolioMaterialTypeDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioMaterialApi } from '@/apis/portfolio/material'
+import type {
+  PortfolioMaterialSaveRequest,
+  PortfolioMaterialSearchResponse,
+  PortfolioMaterialVO,
+} from '@/apis/portfolio/types'
 import { PORTFOLIO_MATERIAL_STATUS_TONE } from '@/apis/portfolio/types'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import { Input, message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -34,6 +32,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -311,6 +310,45 @@ function openIntakeReassign(row: PortfolioMaterialVO) {
   })
 }
 
+/** 组装材料行内操作：重分类与 AI 链路收入「更多」。 */
+function buildMaterialRowActions(row: PortfolioMaterialVO): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = []
+  if (canReassignPortfolioMaterial(row)) {
+    actions.push({ key: 'reassign', label: '重分类' })
+  }
+  actions.push(
+    { key: 'aiExtract', label: 'AI 抽取' },
+    { key: 'aiAsk', label: '智能问数' },
+    { key: 'aiPolicy', label: '政策核验' },
+    { key: 'edit', label: '编辑' },
+    { key: 'delete', label: '删除', tone: 'danger' },
+  )
+  return actions
+}
+
+function handleMaterialRowAction(key: string, row: PortfolioMaterialVO): void {
+  switch (key) {
+    case 'reassign':
+      openIntakeReassign(row)
+      break
+    case 'aiExtract':
+      openAiExtract(row)
+      break
+    case 'aiAsk':
+      openAiOrchestration(row, 'ask')
+      break
+    case 'aiPolicy':
+      openAiOrchestration(row, 'policy')
+      break
+    case 'edit':
+      openEditModal(row)
+      break
+    case 'delete':
+      void deleteMaterial(row)
+      break
+  }
+}
+
 usePortfolioScopedLoader(
   () => {
     pageNum.value = 1
@@ -386,31 +424,10 @@ usePortfolioScopedLoader(
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell">
-              <button
-                v-if="canReassignPortfolioMaterial(record)"
-                type="button"
-                class="op-link"
-                @click="openIntakeReassign(record)"
-              >
-                重分类
-              </button>
-              <button type="button" class="op-link" @click="openAiExtract(record)">AI 抽取</button>
-              <button type="button" class="op-link" @click="openAiOrchestration(record, 'ask')">
-                智能问数
-              </button>
-              <button type="button" class="op-link" @click="openAiOrchestration(record, 'policy')">
-                政策核验
-              </button>
-              <button type="button" class="op-link" @click="openEditModal(record)">编辑</button>
-              <button
-                type="button"
-                class="op-link op-link--danger"
-                @click="() => void deleteMaterial(record)"
-              >
-                删除
-              </button>
-            </div>
+            <UiTableActions
+              :items="buildMaterialRowActions(record)"
+              @action="(key) => handleMaterialRowAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>

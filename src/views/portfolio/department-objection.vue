@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  PortfolioEvaluationObjectionSummaryVO,
+import type { PortfolioEvaluationObjectionSummaryVO } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
+  PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
 } from '@/apis/portfolio/types'
 import { Input, InputNumber, message, Select } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -15,15 +17,13 @@ import {
   PortfolioEvaluationObjectionTypeDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
-import {
-  PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
-  PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
-} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -64,8 +64,10 @@ function actionTone(action: PortfolioEvaluationObjectionHandleActionCode) {
 }
 
 function requiresDangerConfirm(action: PortfolioEvaluationObjectionHandleActionCode): boolean {
-  return action === PortfolioEvaluationObjectionHandleActionCode.REVOKE
-    || action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
+  return (
+    action === PortfolioEvaluationObjectionHandleActionCode.REVOKE ||
+    action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
+  )
 }
 
 const STATUS_FILTER_OPTIONS: Array<{
@@ -80,13 +82,17 @@ const STATUS_FILTER_OPTIONS: Array<{
 ]
 
 function requiresCorrectedScore(objectionType: PortfolioEvaluationObjectionTypeCode): boolean {
-  return objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE
-    || objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE
+  return (
+    objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE ||
+    objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE
+  )
 }
 
 function requiresOpinion(action: PortfolioEvaluationObjectionHandleActionCode): boolean {
-  return action === PortfolioEvaluationObjectionHandleActionCode.MAINTAIN
-    || action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
+  return (
+    action === PortfolioEvaluationObjectionHandleActionCode.MAINTAIN ||
+    action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
+  )
 }
 
 const route = useRoute()
@@ -115,8 +121,10 @@ const showCorrectedScore = computed(() => {
   if (!reviewTarget.value) {
     return false
   }
-  return reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.CORRECT
-    && requiresCorrectedScore(reviewTarget.value.objectionType)
+  return (
+    reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.CORRECT &&
+    requiresCorrectedScore(reviewTarget.value.objectionType)
+  )
 })
 
 const columns: ColumnsType<PortfolioEvaluationObjectionSummaryVO> = [
@@ -176,9 +184,10 @@ async function submitReview() {
   if (requiresDangerConfirm(reviewForm.action)) {
     const confirmed = await confirmAsync({
       type: 'error',
-      title: reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.REVOKE
-        ? '确认撤销评价结论？'
-        : '确认退回重新评审？',
+      title:
+        reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.REVOKE
+          ? '确认撤销评价结论？'
+          : '确认退回重新评审？',
       content:
         reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.REVOKE
           ? '将软删该教师当前评价条目并重算画像，操作不可自动恢复。'
@@ -233,6 +242,43 @@ watch(
 function onStatusFilterChange() {
   pageNum.value = 1
   void loadPage()
+}
+
+/** 组装异议佐证下载操作。 */
+function buildEvidenceActions(row: PortfolioEvaluationObjectionSummaryVO): UiTableRowActionItem[] {
+  if (!row.evidenceRef) {
+    return []
+  }
+  return [{ key: 'download', label: '下载' }]
+}
+
+function handleEvidenceAction(key: string, row: PortfolioEvaluationObjectionSummaryVO): void {
+  if (key === 'download') {
+    void downloadEvidence(row)
+  }
+}
+
+/** 组装异议工单行内操作。 */
+function buildObjectionRowActions(
+  row: PortfolioEvaluationObjectionSummaryVO,
+): UiTableRowActionItem[] {
+  if (row.objectionStatus !== PortfolioEvaluationObjectionStatusCode.SUBMITTED) {
+    return []
+  }
+  return [
+    {
+      key: 'review',
+      label: '复核',
+      tone: 'primary',
+      disabled: handlingId.value === row.objectionId,
+    },
+  ]
+}
+
+function handleObjectionRowAction(key: string, row: PortfolioEvaluationObjectionSummaryVO): void {
+  if (key === 'review') {
+    openReviewDrawer(row)
+  }
 }
 
 void loadPage()
@@ -290,30 +336,21 @@ void loadPage()
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'evidenceRef'">
-            <button
+            <UiTableActions
               v-if="record.evidenceRef"
-              type="button"
-              class="op-link"
-              @click="() => void downloadEvidence(record)"
-            >
-              下载
-            </button>
+              :items="buildEvidenceActions(record)"
+              :split="false"
+              @action="(key) => handleEvidenceAction(key, record)"
+            />
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div
+            <UiTableActions
               v-if="record.objectionStatus === PortfolioEvaluationObjectionStatusCode.SUBMITTED"
-              class="operations-cell"
-            >
-              <UiButton
-                variant="primary"
-                size="sm"
-                :loading="handlingId === record.objectionId"
-                @click="openReviewDrawer(record)"
-              >
-                复核
-              </UiButton>
-            </div>
+              :items="buildObjectionRowActions(record)"
+              :split="false"
+              @action="(key) => handleObjectionRowAction(key, record)"
+            />
             <span v-else-if="record.handleOpinion" class="department-objection__opinion">
               {{ record.handleOpinion }}
             </span>

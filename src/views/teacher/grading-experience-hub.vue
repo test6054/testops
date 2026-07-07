@@ -35,7 +35,9 @@
           <div class="experience-page__panel-head">
             <span class="experience-page__panel-title">考试题目签名</span>
             <div class="experience-page__panel-actions">
-              <span class="experience-page__flow-hint">{{ EXPERIENCE_ASSIST_CALIBRATION_HINT }}</span>
+              <span class="experience-page__flow-hint">{{
+                EXPERIENCE_ASSIST_CALIBRATION_HINT
+              }}</span>
               <span class="experience-page__flow-hint">{{ EXPERIENCE_CASE_FLOW_HINT }}</span>
               <UiButton
                 size="sm"
@@ -73,7 +75,9 @@
                 {{ questionTypeLabel(signatures[index].questionType) }}
               </template>
               <template v-else-if="column.key === 'experienceCount'">
-                <span class="score-summary-table__mono">{{ experienceCountForQuestion(signatures[index].layoutQuestionId) }}</span>
+                <span class="score-summary-table__mono">{{
+                  experienceCountForQuestion(signatures[index].layoutQuestionId)
+                }}</span>
               </template>
               <template v-else-if="column.key === 'questionDigest'">
                 <a-tooltip :title="signatures[index].questionDigest">
@@ -81,11 +85,11 @@
                 </a-tooltip>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <div class="operations-cell" @click.stop>
-                  <UiTextAction @click="openSimilarDrawer(signatures[index])">
-                    查找相似题
-                  </UiTextAction>
-                </div>
+                <UiTableActions
+                  :items="buildSignatureRowActions(signatures[index])"
+                  split
+                  @action="(key) => handleSignatureRowAction(key, signatures[index])"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -95,7 +99,9 @@
           <div class="experience-page__panel-head">
             <span class="experience-page__panel-title">阅卷经验案例</span>
             <div class="experience-page__panel-actions">
-              <span class="experience-page__flow-hint">{{ EXPERIENCE_ASSIST_CALIBRATION_HINT }}</span>
+              <span class="experience-page__flow-hint">{{
+                EXPERIENCE_ASSIST_CALIBRATION_HINT
+              }}</span>
               <span class="experience-page__flow-hint">{{ EXPERIENCE_CASE_FLOW_HINT }}</span>
               <UiButton
                 size="sm"
@@ -150,11 +156,7 @@
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'assistEligible'">
-                <UiTag
-                  v-if="experiences[index].assistEligible"
-                  tone="green"
-                  size="sm"
-                >
+                <UiTag v-if="experiences[index].assistEligible" tone="green" size="sm">
                   可定标
                 </UiTag>
                 <UiTag
@@ -178,9 +180,11 @@
                 {{ formatDateTime(experiences[index].createTime) }}
               </template>
               <template v-else-if="column.key === 'actions'">
-                <div class="operations-cell" @click.stop>
-                  <UiTextAction @click="openExperienceDrawer(experiences[index])">详情</UiTextAction>
-                </div>
+                <UiTableActions
+                  :items="buildExperienceRowActions(experiences[index])"
+                  split
+                  @action="(key) => handleExperienceRowAction(key, experiences[index])"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -190,7 +194,11 @@
           <div class="experience-page__panel-head">
             <span class="experience-page__panel-title">
               答案聚类
-              <UiTag v-if="latestCluster" :tone="aiStatusTone(latestCluster.analysisStatus)" size="sm">
+              <UiTag
+                v-if="latestCluster"
+                :tone="aiStatusTone(latestCluster.analysisStatus)"
+                size="sm"
+              >
                 {{ aiStatusLabel(latestCluster.analysisStatus) }}
               </UiTag>
             </span>
@@ -411,7 +419,11 @@
     </a-list>
     <template #footer>
       <a-space v-if="canConfirmExperience || canDeprecateExperience">
-        <UiButton v-if="canConfirmExperience" :loading="confirmingExperience" @click="handleConfirmExperience">
+        <UiButton
+          v-if="canConfirmExperience"
+          :loading="confirmingExperience"
+          @click="handleConfirmExperience"
+        >
           确认沉淀
         </UiButton>
         <UiButton
@@ -431,21 +443,17 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
+import {
+  AI_ANALYSIS_FLOW_HINT,
+  AI_ANALYSIS_STATUS_TONE,
+  AiAnalysisStatusDescription,
+} from '@/apis/mark/ai-analysis-status'
 import type {
   AnswerClusterRecordResponse,
   ExperienceCaseStatusCode,
   GradingExperienceCaseResponse,
   QuestionSignatureResponse,
 } from '@/apis/mark/grading-experience'
-import type { QuestionTypeCode } from '@/apis/mark/question-type'
-import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { AI_ANALYSIS_FLOW_HINT, AI_ANALYSIS_STATUS_TONE, AiAnalysisStatusDescription } from '@/apis/mark/ai-analysis-status'
 import {
   confirmExperienceCase,
   deprecateExperienceCase,
@@ -462,7 +470,20 @@ import {
   listSignatures,
   searchSimilar,
 } from '@/apis/mark/grading-experience'
+import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
+import type {
+  BadgeTone,
+  FilterField,
+  UiSectionTabItem,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -471,7 +492,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -557,7 +578,6 @@ const clusterFilterFields = computed<FilterField[]>(() => [
   },
 ])
 
-
 async function loadSignatures(): Promise<void> {
   if (!selectedExamId.value) return
   signaturesLoading.value = true
@@ -595,6 +615,26 @@ const similarLoading = ref(false)
 const similarResults = ref<QuestionSignatureResponse[]>([])
 const similarSourceQuestionNo = ref<string | undefined>(undefined)
 
+function buildSignatureRowActions(_record: QuestionSignatureResponse): UiTableRowActionItem[] {
+  return [{ key: 'similar', label: '查找相似题' }]
+}
+
+function handleSignatureRowAction(key: string, record: QuestionSignatureResponse): void {
+  if (key === 'similar') {
+    void openSimilarDrawer(record)
+  }
+}
+
+function buildExperienceRowActions(_record: GradingExperienceCaseResponse): UiTableRowActionItem[] {
+  return [{ key: 'detail', label: '详情' }]
+}
+
+function handleExperienceRowAction(key: string, record: GradingExperienceCaseResponse): void {
+  if (key === 'detail') {
+    openExperienceDrawer(record)
+  }
+}
+
 async function openSimilarDrawer(record: QuestionSignatureResponse): Promise<void> {
   if (!selectedExamId.value) return
   similarSourceQuestionNo.value = record.questionNo
@@ -622,7 +662,9 @@ const extracting = ref(false)
 
 const experienceSignalMetrics = computed((): SignalMetric[] => {
   const confirmedCount = experiences.value.filter((item) => item.caseStatus === 'CONFIRMED').length
-  const pendingAnalysisCount = experiences.value.filter((item) => item.analysisStatus === 'PENDING').length
+  const pendingAnalysisCount = experiences.value.filter(
+    (item) => item.analysisStatus === 'PENDING',
+  ).length
   return [
     {
       key: 'signatures',
@@ -645,15 +687,15 @@ const experienceSignalMetrics = computed((): SignalMetric[] => {
       unit: '条',
       tone: pendingAnalysisCount > 0 ? 'orange' : 'gray',
     },
-      {
-        key: 'assist-ready',
-        label: '可定标',
-        value: experiences.value.filter((item) => item.assistEligible).length,
-        unit: '条',
-        tone: experiences.value.some((item) => item.assistEligible) ? 'green' : 'gray',
-      },
-      {
-        key: 'experiences',
+    {
+      key: 'assist-ready',
+      label: '可定标',
+      value: experiences.value.filter((item) => item.assistEligible).length,
+      unit: '条',
+      tone: experiences.value.some((item) => item.assistEligible) ? 'green' : 'gray',
+    },
+    {
+      key: 'experiences',
       label: '经验案例',
       value: experiences.value.length,
       unit: '条',
@@ -719,16 +761,18 @@ const detailExperience = ref<GradingExperienceCaseResponse | null>(null)
 const confirmingExperience = ref(false)
 const deprecatingExperience = ref(false)
 
-const canConfirmExperience = computed(() =>
-  detailExperience.value?.caseStatus === 'DRAFT'
-  && detailExperience.value?.analysisStatus === 'SUCCESS'
-  && Boolean(detailExperience.value?.id),
+const canConfirmExperience = computed(
+  () =>
+    detailExperience.value?.caseStatus === 'DRAFT' &&
+    detailExperience.value?.analysisStatus === 'SUCCESS' &&
+    Boolean(detailExperience.value?.id),
 )
 
-const canDeprecateExperience = computed(() =>
-  detailExperience.value?.caseStatus === 'CONFIRMED'
-  && detailExperience.value?.analysisStatus === 'SUCCESS'
-  && Boolean(detailExperience.value?.id),
+const canDeprecateExperience = computed(
+  () =>
+    detailExperience.value?.caseStatus === 'CONFIRMED' &&
+    detailExperience.value?.analysisStatus === 'SUCCESS' &&
+    Boolean(detailExperience.value?.id),
 )
 
 async function handleConfirmExperience(): Promise<void> {
@@ -852,7 +896,9 @@ function experienceCountForQuestion(layoutQuestionId: string): number {
 }
 
 function ellipsis(
-  text: QuestionSignatureResponse['questionDigest'] | GradingExperienceCaseResponse['experienceSummary'],
+  text:
+    | QuestionSignatureResponse['questionDigest']
+    | GradingExperienceCaseResponse['experienceSummary'],
   len = 60,
 ): string {
   if (!text) return '—'
@@ -944,16 +990,20 @@ watch(activeTab, () => {
   void reloadActiveTab()
 })
 
-watch(selectedExamId, (value) => {
-  signatures.value = []
-  experiences.value = []
-  latestCluster.value = null
-  experienceFilterForm.layoutQuestionId = undefined
-  clusterFilterForm.layoutQuestionId = undefined
-  if (value) {
-    void reloadActiveTab()
-  }
-}, { immediate: true })
+watch(
+  selectedExamId,
+  (value) => {
+    signatures.value = []
+    experiences.value = []
+    latestCluster.value = null
+    experienceFilterForm.layoutQuestionId = undefined
+    clusterFilterForm.layoutQuestionId = undefined
+    if (value) {
+      void reloadActiveTab()
+    }
+  },
+  { immediate: true },
+)
 
 const skipNextActivatedReload = ref(true)
 

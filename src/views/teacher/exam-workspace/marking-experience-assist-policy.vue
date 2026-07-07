@@ -62,9 +62,18 @@
           租户未启用经验辅助评阅，请联系教务管理员在「租户阅卷策略」中开启后再回到本页配置。
         </p>
         <dl v-else class="experience-assist-policy__meta">
-          <div><dt>一致率阈值</dt><dd>{{ formatRate(policy?.effectiveMinConsistencyRate) }}</dd></div>
-          <div><dt>签名距离上限</dt><dd>{{ policy?.effectiveMaxHammingDistance ?? '—' }}</dd></div>
-          <div><dt>经验条目上限</dt><dd>{{ policy?.effectiveMaxExperienceItems ?? '—' }}</dd></div>
+          <div>
+            <dt>一致率阈值</dt>
+            <dd>{{ formatRate(policy?.effectiveMinConsistencyRate) }}</dd>
+          </div>
+          <div>
+            <dt>签名距离上限</dt>
+            <dd>{{ policy?.effectiveMaxHammingDistance ?? '—' }}</dd>
+          </div>
+          <div>
+            <dt>经验条目上限</dt>
+            <dd>{{ policy?.effectiveMaxExperienceItems ?? '—' }}</dd>
+          </div>
         </dl>
 
         <div class="experience-assist-policy__actions">
@@ -73,13 +82,15 @@
             class="experience-assist-policy__hint"
           >
             <template v-if="baselineMissingCount > 0">
-              尚有 {{ baselineMissingCount }} 道主观题标答基线未锁定，请先在「标答与评分基线」确认生效。
+              尚有
+              {{ baselineMissingCount }} 道主观题标答基线未锁定，请先在「标答与评分基线」确认生效。
             </template>
             <template v-else-if="requiresExplicitBinding">
               尚有 {{ unboundSubjectiveCount }} 道主观题未绑定，完成全部绑定后可启用本场。
             </template>
             <template v-else>
-              尚有 {{ needsExplicitBindingCount }} 道主观题无法自动匹配，须显式绑定定标经验后方可启用。
+              尚有
+              {{ needsExplicitBindingCount }} 道主观题无法自动匹配，须显式绑定定标经验后方可启用。
             </template>
           </p>
           <UiButton
@@ -102,7 +113,10 @@
         </div>
       </WorkbenchSurfaceCard>
 
-      <WorkbenchSurfaceCard v-if="policy?.tenantExperienceAssistEnabled" class="experience-assist-policy__bindings">
+      <WorkbenchSurfaceCard
+        v-if="policy?.tenantExperienceAssistEnabled"
+        class="experience-assist-policy__bindings"
+      >
         <template #head>
           <h3 class="experience-assist-policy__title">题目定标绑定</h3>
         </template>
@@ -120,10 +134,7 @@
         >
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'baselineReady'">
-              <UiTag
-                :tone="bindings[index].baselineReady ? 'green' : 'red'"
-                size="sm"
-              >
+              <UiTag :tone="bindings[index].baselineReady ? 'green' : 'red'" size="sm">
                 {{ bindings[index].baselineReady ? '已锁定' : '未锁定' }}
               </UiTag>
             </template>
@@ -140,22 +151,11 @@
               {{ formatRate(bindings[index].consistencyRate) }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <div class="experience-assist-policy__row-actions">
-                <UiTextAction
-                  :disabled="policy?.policyStatus === 'FROZEN'"
-                  @click="openBindingModal(bindings[index])"
-                >
-                  {{ bindings[index].experienceCaseId ? '更换' : '绑定' }}
-                </UiTextAction>
-                <UiTextAction
-                  v-if="bindings[index].experienceCaseId"
-                  tone="danger"
-                  :disabled="policy?.policyStatus === 'FROZEN' || unbindingQuestionId === bindings[index].layoutQuestionId"
-                  @click="confirmUnbind(bindings[index])"
-                >
-                  解除绑定
-                </UiTextAction>
-              </div>
+              <UiTableActions
+                :items="buildBindingRowActions(bindings[index])"
+                split
+                @action="(key) => handleBindingRowAction(key, bindings[index])"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -179,9 +179,6 @@ import type {
   ExamQuestionExperienceAssistBindingResponse,
   GradingExperienceAssistReadinessResponse,
 } from '@/apis/mark/grading-experience-assist'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, ref, watch } from 'vue'
 import {
   disableExamGradingExperienceAssistPolicy,
   enableExamGradingExperienceAssistPolicy,
@@ -190,6 +187,9 @@ import {
   listExamExperienceAssistBindings,
   saveExamExperienceAssistBinding,
 } from '@/apis/mark/grading-experience-assist'
+import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, ref, watch } from 'vue'
 import QuestionExperienceAssistBindingModal from '@/components/mark/QuestionExperienceAssistBindingModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -197,7 +197,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -253,8 +253,9 @@ const pageSubtitle = computed(() => {
   return '试评完成后定标，正考同课相似题可自动匹配；正评任务生成后自动冻结'
 })
 
-const explicitBindingHint = computed(() =>
-  `${examKindLabel.value}不支持相似题自动匹配。请为每道主观题绑定历史正考定标经验后再启用本场。`,
+const explicitBindingHint = computed(
+  () =>
+    `${examKindLabel.value}不支持相似题自动匹配。请为每道主观题绑定历史正考定标经验后再启用本场。`,
 )
 
 const bindingGuideText = computed(() => {
@@ -278,10 +279,10 @@ const policyTone = computed((): BadgeTone => {
 
 const canEnable = computed(() =>
   Boolean(
-    policy.value?.tenantExperienceAssistEnabled
-    && policy.value?.policyStatus !== 'FROZEN'
-    && !bindingsLoading.value
-    && unresolvedSubjectiveCount.value === 0,
+    policy.value?.tenantExperienceAssistEnabled &&
+    policy.value?.policyStatus !== 'FROZEN' &&
+    !bindingsLoading.value &&
+    unresolvedSubjectiveCount.value === 0,
   ),
 )
 
@@ -289,23 +290,31 @@ const canDisable = computed(() =>
   Boolean(policy.value?.enabled && policy.value?.policyStatus !== 'FROZEN'),
 )
 
-const baselineMissingCount = computed(() =>
-  readiness.value?.baselineMissingCount
-  ?? bindings.value.filter((row) => row.baselineReady === false).length,
+const baselineMissingCount = computed(
+  () =>
+    readiness.value?.baselineMissingCount ??
+    bindings.value.filter((row) => row.baselineReady === false).length,
 )
 
-const unboundSubjectiveCount = computed(() =>
-  readiness.value?.assistUnresolvedCount
-  ?? bindings.value.filter((row) =>
-    row.assistResolutionStatus === GradingExperienceAssistQuestionResolutionCode.NEEDS_EXPLICIT_BINDING,
-  ).length,
+const unboundSubjectiveCount = computed(
+  () =>
+    readiness.value?.assistUnresolvedCount ??
+    bindings.value.filter(
+      (row) =>
+        row.assistResolutionStatus ===
+        GradingExperienceAssistQuestionResolutionCode.NEEDS_EXPLICIT_BINDING,
+    ).length,
 )
 
 const unresolvedSubjectiveCount = computed(() => {
   if (readiness.value) {
-    return (readiness.value.baselineMissingCount ?? 0) + (readiness.value.assistUnresolvedCount ?? 0)
+    return (
+      (readiness.value.baselineMissingCount ?? 0) + (readiness.value.assistUnresolvedCount ?? 0)
+    )
   }
-  return bindings.value.filter((row) => !isGradingExperienceAssistQuestionReady(row.assistResolutionStatus)).length
+  return bindings.value.filter(
+    (row) => !isGradingExperienceAssistQuestionReady(row.assistResolutionStatus),
+  ).length
 })
 
 const needsExplicitBindingCount = unboundSubjectiveCount
@@ -316,8 +325,8 @@ function resolutionLabel(
 ): string {
   if (!status) return '—'
   if (
-    status === GradingExperienceAssistQuestionResolutionCode.NEEDS_EXPLICIT_BINDING
-    && row?.experienceCaseId
+    status === GradingExperienceAssistQuestionResolutionCode.NEEDS_EXPLICIT_BINDING &&
+    row?.experienceCaseId
   ) {
     return '定标引用失效'
   }
@@ -403,6 +412,41 @@ async function handleDisable(): Promise<void> {
   }
 }
 
+function buildBindingRowActions(
+  row: ExamQuestionExperienceAssistBindingResponse,
+): UiTableRowActionItem[] {
+  const frozen = policy.value?.policyStatus === 'FROZEN'
+  const actions: UiTableRowActionItem[] = [
+    {
+      key: 'bind',
+      label: row.experienceCaseId ? '更换' : '绑定',
+      disabled: frozen,
+    },
+  ]
+  if (row.experienceCaseId) {
+    actions.push({
+      key: 'unbind',
+      label: '解除绑定',
+      tone: 'danger',
+      disabled: frozen || unbindingQuestionId.value === row.layoutQuestionId,
+    })
+  }
+  return actions
+}
+
+function handleBindingRowAction(
+  key: string,
+  row: ExamQuestionExperienceAssistBindingResponse,
+): void {
+  if (key === 'bind') {
+    openBindingModal(row)
+    return
+  }
+  if (key === 'unbind') {
+    confirmUnbind(row)
+  }
+}
+
 function openBindingModal(row: ExamQuestionExperienceAssistBindingResponse): void {
   bindingTarget.value = row
   bindingModalOpen.value = true
@@ -441,9 +485,13 @@ async function handleBindingSaved(): Promise<void> {
   await loadBindings()
 }
 
-watch(examId, () => {
-  void loadPolicy()
-}, { immediate: true })
+watch(
+  examId,
+  () => {
+    void loadPolicy()
+  },
+  { immediate: true },
+)
 watch(policy, () => {
   void loadBindings()
 })

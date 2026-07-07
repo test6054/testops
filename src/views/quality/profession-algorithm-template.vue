@@ -8,17 +8,17 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  *      平台维护，专业负责人在创建实例时基于模板继承字段。
  */
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   ProfessionAlgorithmTemplateQueryRequest,
   ProfessionAlgorithmTemplateSaveRequest,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality/profession-algorithm-template'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
-import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import {
   AccreditationTypeCode,
   AccreditationTypeDescription,
@@ -33,7 +33,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -237,7 +237,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -367,6 +367,42 @@ async function submitEditor() {
   }
 }
 
+function buildAlgorithmTemplateActions(
+  record: ProfessionAlgorithmTemplateVO,
+): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
+  if (isSharedTemplate(record)) {
+    actions.push({
+      key: 'copy',
+      label: '复制为租户模板',
+      tone: 'primary',
+      disabled: copyingTemplateId.value === record.id,
+    })
+  }
+  if (!isSharedTemplate(record)) {
+    actions.push({ key: 'edit', label: '编辑' })
+    actions.push({ key: 'delete', label: '删除', tone: 'danger' })
+  }
+  return actions
+}
+
+function handleAlgorithmTemplateAction(key: string, record: ProfessionAlgorithmTemplateVO): void {
+  switch (key) {
+    case 'detail':
+      openDetail(record)
+      break
+    case 'copy':
+      void copyAsTenantTemplate(record)
+      break
+    case 'edit':
+      openEdit(record)
+      break
+    case 'delete':
+      void handleDelete(record)
+      break
+  }
+}
+
 async function handleDelete(record: ProfessionAlgorithmTemplateVO) {
   if (isSharedTemplate(record)) {
     message.info('平台共享模板不能在租户侧删除')
@@ -443,27 +479,11 @@ onActivated(() => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiTextAction @click="openDetail(record)">详情</UiTextAction>
-              <UiTextAction
-                v-if="isSharedTemplate(record)"
-                tone="primary"
-                :disabled="copyingTemplateId === record.id"
-                @click="copyAsTenantTemplate(record)"
-              >
-                复制为租户模板
-              </UiTextAction>
-              <UiTextAction v-if="!isSharedTemplate(record)" @click="openEdit(record)">
-                编辑
-              </UiTextAction>
-              <UiTextAction
-                v-if="!isSharedTemplate(record)"
-                tone="danger"
-                @click="handleDelete(record)"
-              >
-                删除
-              </UiTextAction>
-            </div>
+            <UiTableActions
+              :items="buildAlgorithmTemplateActions(record)"
+              split
+              @action="(key) => handleAlgorithmTemplateAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>

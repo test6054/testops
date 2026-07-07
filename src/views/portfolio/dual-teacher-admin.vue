@@ -4,11 +4,11 @@ import type {
   PortfolioDualTeacherApplicationVO,
   PortfolioDualTeacherEligibilityFreezeVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import { message, Modal } from 'ant-design-vue'
 import { computed, onMounted, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { PortfolioDualTeacherApplicationStatusDescription } from '@/apis/portfolio/enums'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -21,13 +21,13 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
-import { hasTeacherTenantPermission, RoleEnum } from '@/utils/permission'
+import { hasTeacherTenantPermission } from '@/utils/permission'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
 const authStore = useAuthStore()
 const userStore = useUserStore()
 const collegeEligibilityById = ref<Record<string, PortfolioDualTeacherEligibilityFreezeVO>>({})
-const canCollegeReview = computed(() => authStore.userRole === RoleEnum.CROP_ADMIN)
+const canCollegeReview = computed(() => false)
 const canAcademicReview = computed(() =>
   hasTeacherTenantPermission({
     roleKey: authStore.userRole,
@@ -199,9 +199,9 @@ onMounted(loadPage)
           <template v-else-if="column.key === 'actions'">
             <UiTextAction
               v-if="
-                record.applicationStatus === 'DRAFT'
-                  || record.applicationStatus === 'COLLEGE_RETURNED'
-                  || record.applicationStatus === 'ACADEMIC_RETURNED'
+                record.applicationStatus === 'DRAFT' ||
+                record.applicationStatus === 'COLLEGE_RETURNED' ||
+                record.applicationStatus === 'ACADEMIC_RETURNED'
               "
               @click="runWorkflow('submit', record.id)"
             >

@@ -40,28 +40,17 @@
       </ContextBar>
     </template>
 
-    <UiEmpty
-      v-if="!selectedExamId"
-      description="请选择考试"
-      class="audit-trail__empty"
-    />
+    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="audit-trail__empty" />
 
     <template v-else-if="selectedExamId" #signal>
       <SignalBand variant="tiles" compact :metrics="auditSignalMetrics" />
     </template>
 
-    <ExamWorkspaceJourneySubNav
-      v-if="selectedExamId && isExamWorkspaceRoute"
-    />
+    <ExamWorkspaceJourneySubNav v-if="selectedExamId && isExamWorkspaceRoute" />
 
     <WorkbenchSurfaceCard v-if="selectedExamId" flush class="audit-trail__surface">
       <template #head>
-        <UiSectionTabs
-          v-model="activeTab"
-          :items="auditTabItems"
-          compact
-          divided
-        />
+        <UiSectionTabs v-model="activeTab" :items="auditTabItems" compact divided />
       </template>
 
       <template v-if="activeTab === 'logs'">
@@ -71,8 +60,6 @@
           search-text="查询"
           @search="searchLogs"
         />
-
-
 
         <UiDataTable
           :columns="logColumns"
@@ -90,7 +77,13 @@
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'operationType'">
               <UiTag
-                :tone="strictEnumTone(OPERATION_TYPE_TONE, operationLogs[index].operationType, '审计操作类型')"
+                :tone="
+                  strictEnumTone(
+                    OPERATION_TYPE_TONE,
+                    operationLogs[index].operationType,
+                    '审计操作类型',
+                  )
+                "
                 size="sm"
               >
                 {{ operationTypeText(operationLogs[index].operationType) }}
@@ -134,8 +127,6 @@
             </a-checkbox>
           </template>
         </UiFilterBar>
-
-
 
         <UiDataTable
           pagination-mode="client"
@@ -187,16 +178,13 @@
               <span v-else class="muted">-</span>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction
-                  v-if="!incidents[index].resolved"
-                  tone="primary"
-                  @click="openResolveModal(incidents[index])"
-                >
-                  解决事件
-                </UiTextAction>
-                <span v-else class="muted">-</span>
-              </div>
+              <UiTableActions
+                v-if="!incidents[index].resolved"
+                :items="buildIncidentActions(incidents[index])"
+                split
+                @action="(key) => handleIncidentAction(key, incidents[index])"
+              />
+              <span v-else class="muted">-</span>
             </template>
           </template>
         </UiDataTable>
@@ -209,8 +197,6 @@
           search-text="查询"
           @search="searchDiagnosticSamples"
         />
-
-
 
         <UiDataTable
           :columns="sampleColumns"
@@ -228,7 +214,9 @@
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'sampleType'">
               <UiTag
-                :tone="strictEnumTone(DIAGNOSTIC_SAMPLE_TYPE_TONE, record.sampleType, '异常留痕样本类型')"
+                :tone="
+                  strictEnumTone(DIAGNOSTIC_SAMPLE_TYPE_TONE, record.sampleType, '异常留痕样本类型')
+                "
                 size="sm"
               >
                 {{
@@ -295,13 +283,6 @@ import type {
   OperationLogResponse,
   OperationTypeCode,
 } from '@/apis/mark/admin-audit'
-import type { ExamIncidentRecord, IncidentLevelCode, IncidentTypeCode } from '@/apis/mark/admin-dashboard'
-import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
 import {
   AuditTargetTypeDescription,
   DIAGNOSTIC_SAMPLE_TYPE_OPTIONS,
@@ -315,7 +296,27 @@ import {
   OperationTypeDescription,
   resolveIncident,
 } from '@/apis/mark/admin-audit'
-import { INCIDENT_LEVEL_TONE, IncidentLevelDescription, IncidentTypeDescription } from '@/apis/mark/admin-dashboard'
+import type {
+  ExamIncidentRecord,
+  IncidentLevelCode,
+  IncidentTypeCode,
+} from '@/apis/mark/admin-dashboard'
+import {
+  INCIDENT_LEVEL_TONE,
+  IncidentLevelDescription,
+  IncidentTypeDescription,
+} from '@/apis/mark/admin-dashboard'
+import type {
+  BadgeTone,
+  FilterField,
+  UiSectionTabItem,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -323,7 +324,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -341,13 +342,8 @@ defineOptions({ name: 'AdminAuditTrail' })
 const route = useRoute()
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
-const {
-  isJourneyChrome,
-  contextBarTitle,
-  contextBarSubtitle,
-  examStatusLabel,
-  examStatusTone,
-} = useOptionalExamJourneyContextBar('质控审计')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('质控审计')
 
 const {
   examOptions,
@@ -427,7 +423,7 @@ const logPagination = reactive<TablePaginationConfig>({
   showSizeChanger: true,
   showTotal: (total: number) => `共 ${total} 条`,
 })
-const operationTypeOptions = computed<Array<{ value: OperationTypeCode, label: string }>>(
+const operationTypeOptions = computed<Array<{ value: OperationTypeCode; label: string }>>(
   () => OPERATION_TYPE_OPTIONS,
 )
 
@@ -483,7 +479,7 @@ function searchLogs() {
   void loadLogs()
 }
 
-function handleLogPageChange(pageInfo: { current: number, pageSize: number }) {
+function handleLogPageChange(pageInfo: { current: number; pageSize: number }) {
   logPagination.current = pageInfo.current
   logPagination.pageSize = pageInfo.pageSize
   void loadLogs()
@@ -523,12 +519,13 @@ async function loadIncidents() {
   incidentLoading.value = true
   try {
     incidents.value = await readAllPages(
-      (pageNum) => listIncidents({
-        examId,
-        unresolvedOnly: incidentFilter.unresolvedOnly,
-        pageNum,
-        pageSize: 100,
-      }),
+      (pageNum) =>
+        listIncidents({
+          examId,
+          unresolvedOnly: incidentFilter.unresolvedOnly,
+          pageNum,
+          pageSize: 100,
+        }),
       '重大事件加载失败，请稍后重试',
     )
   } catch (error) {
@@ -544,6 +541,23 @@ const resolveModalOpen = ref(false)
 const resolving = ref(false)
 const resolvingIncident = ref<ExamIncidentRecord | null>(null)
 const resolveNote = ref('')
+
+function buildIncidentActions(record: ExamIncidentRecord): UiTableRowActionItem[] {
+  return [
+    {
+      key: 'resolve',
+      label: '解决事件',
+      tone: 'primary',
+      hidden: record.resolved,
+    },
+  ]
+}
+
+function handleIncidentAction(key: string, record: ExamIncidentRecord): void {
+  if (key === 'resolve') {
+    openResolveModal(record)
+  }
+}
 
 function openResolveModal(incident: ExamIncidentRecord) {
   resolvingIncident.value = incident
@@ -586,7 +600,7 @@ const samplePagination = reactive<TablePaginationConfig>({
   showTotal: (total: number) => `共 ${total} 条`,
 })
 const diagnosticSampleTypeOptions = computed<
-  Array<{ value: DiagnosticSampleTypeCode, label: string }>
+  Array<{ value: DiagnosticSampleTypeCode; label: string }>
 >(() => DIAGNOSTIC_SAMPLE_TYPE_OPTIONS)
 
 const sampleFilterFields = computed<FilterField[]>(() => [
@@ -640,7 +654,7 @@ function searchDiagnosticSamples() {
   void loadDiagnosticSamples()
 }
 
-function handleSamplePageChange(pageInfo: { current: number, pageSize: number }) {
+function handleSamplePageChange(pageInfo: { current: number; pageSize: number }) {
   samplePagination.current = pageInfo.current
   samplePagination.pageSize = pageInfo.pageSize
   void loadDiagnosticSamples()

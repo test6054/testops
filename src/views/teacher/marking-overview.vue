@@ -1,12 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        title="工作台总览"
-        :subtitle="pageSubtitle"
-      >
+      <ContextBar layout="workbench" show-title title="工作台总览" :subtitle="pageSubtitle">
         <template #status>
           <a-select
             v-model:value="filter.academicYear"
@@ -35,13 +30,16 @@
           />
         </template>
         <template #actions>
-          <UiButton variant="outline" size="sm" :loading="dashboardRefreshing" @click="() => load()">
+          <UiButton
+            variant="outline"
+            size="sm"
+            :loading="dashboardRefreshing"
+            @click="() => load()"
+          >
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-          <UiButton size="sm" @click="goExamList">
-            查看全部考试
-          </UiButton>
+          <UiButton size="sm" @click="goExamList"> 查看全部考试 </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -55,12 +53,7 @@
     </template>
 
     <template #signal>
-      <UiSkeletonState
-        v-if="signalLoading"
-        variant="card"
-        :card-count="4"
-        compact
-      />
+      <UiSkeletonState v-if="signalLoading" variant="card" :card-count="4" compact />
       <MarkingOverviewSignalBand
         v-else-if="overview"
         :filter-context="overview.filterContext"
@@ -80,66 +73,70 @@
 
     <div v-else class="marking-overview__content">
       <div class="marking-overview__content-grid">
-        <WorkbenchSurfaceCard class="marking-overview__panel">
-          <template #head>
-            <div class="marking-overview__panel-head">
-              <div>
+        <section class="marking-overview__main">
+          <WorkbenchSurfaceCard class="marking-overview__panel">
+            <template #head>
+              <div class="marking-overview__panel-head">
                 <h3 class="marking-overview__panel-title">进行中的考试</h3>
-                <p class="marking-overview__panel-desc">{{ ongoingCardHint }}</p>
+                <UiButton variant="outline" size="sm" @click="goExamList">查看全部</UiButton>
               </div>
-              <UiButton variant="outline" size="sm" @click="goExamList">查看全部</UiButton>
+            </template>
+            <div
+              class="marking-overview__panel-body"
+              :class="{ 'marking-overview__panel-body--empty': !examsLoading && !hasOngoingExams }"
+            >
+              <UiSkeletonState v-if="examsLoading" variant="card" :card-count="3" compact />
+              <OngoingExamCardGrid
+                v-else
+                :exams="overview?.ongoingExams ?? []"
+                @navigate="goExamWorkspace"
+              />
             </div>
-          </template>
-          <UiSkeletonState
-            v-if="examsLoading"
-            variant="card"
-            :card-count="3"
-            compact
-          />
-          <OngoingExamCardGrid
-            v-else
-            :exams="overview?.ongoingExams ?? []"
-            @navigate="goExamWorkspace"
-          />
-        </WorkbenchSurfaceCard>
-        <WorkbenchSurfaceCard class="marking-overview__panel marking-overview__panel--todos">
-          <template #head>
-            <div class="marking-overview__panel-head">
-              <div>
+          </WorkbenchSurfaceCard>
+        </section>
+        <aside class="marking-overview__side">
+          <WorkbenchSurfaceCard
+            class="marking-overview__panel marking-overview__panel--todos"
+            :flush="hasPendingTodos"
+          >
+            <template #head>
+              <div class="marking-overview__panel-head">
                 <h3 class="marking-overview__panel-title">待处理事项</h3>
-                <p class="marking-overview__panel-desc">{{ pendingTodoHint }}</p>
+                <UiButton
+                  v-if="hasPendingTodos"
+                  variant="ghost"
+                  size="sm"
+                  @click="goPriorityExamList"
+                >
+                  查看优先推进
+                </UiButton>
               </div>
-              <UiButton variant="ghost" size="sm" @click="goPriorityExamList">查看优先推进</UiButton>
+            </template>
+            <div
+              class="marking-overview__panel-body"
+              :class="{ 'marking-overview__panel-body--empty': !todosLoading && !hasPendingTodos }"
+            >
+              <UiSkeletonState v-if="todosLoading" variant="list" :rows="5" compact />
+              <PendingTodoFeed
+                v-else
+                :todos="overview?.pendingTodos ?? []"
+                empty-description="当前筛选范围内无阻断事项"
+                @navigate="goExamWorkspace"
+              />
             </div>
-          </template>
-          <UiSkeletonState
-            v-if="todosLoading"
-            variant="list"
-            :rows="5"
-            compact
-          />
-          <PendingTodoFeed
-            v-else
-            :todos="overview?.pendingTodos ?? []"
-            empty-action-label="查看优先推进"
-            @navigate="goExamWorkspace"
-            @empty-action="goPriorityExamList"
-          />
-        </WorkbenchSurfaceCard>
+          </WorkbenchSurfaceCard>
+        </aside>
       </div>
 
       <a-row :gutter="20" class="marking-overview__analytics-row">
         <a-col :span="24">
-          <UiSkeletonState
-            v-if="examsLoading"
-            variant="card"
-            :card-count="3"
-            compact
-          />
+          <UiSkeletonState v-if="examsLoading" variant="card" :card-count="3" compact />
           <MarkingOverviewAnalytics
             v-else
             :journey-stage-summary="overview?.journeyStageSummary ?? []"
-            :marking-progress-summary="overview?.markingProgressSummary ?? emptyMarkingProgressSummary"
+            :marking-progress-summary="
+              overview?.markingProgressSummary ?? emptyMarkingProgressSummary
+            "
             :todo-type-summary="overview?.todoTypeSummary ?? []"
             :filtered-exam-count="overview?.filterContext.filteredExamCount ?? 0"
           />
@@ -151,29 +148,21 @@
           <WorkbenchSurfaceCard class="marking-overview__panel">
             <template #head>
               <div class="marking-overview__panel-head">
-                <div>
-                  <h3 class="marking-overview__panel-title">已发布学情</h3>
-                  <p class="marking-overview__panel-desc">已发布成绩考试学情摘要</p>
-                </div>
+                <h3 class="marking-overview__panel-title">已发布学情</h3>
               </div>
             </template>
-            <UiSkeletonState
-              v-if="examsLoading"
-              variant="table"
-              :rows="4"
-              :columns="5"
-              compact
-            />
-            <template v-else>
-              <PublishedExamInsightChart
-                :insights="overview?.publishedExamInsights ?? []"
-              />
-              <PublishedExamInsightTable
-                :insights="overview?.publishedExamInsights ?? []"
-                class="marking-overview__insight-table"
-                @statistics="goArchiveStatistics"
-              />
-            </template>
+            <UiSkeletonState v-if="examsLoading" variant="table" :rows="4" :columns="5" compact />
+            <div v-else class="marking-overview__insight-grid">
+              <section class="marking-overview__insight-slot">
+                <PublishedExamInsightChart :insights="overview?.publishedExamInsights ?? []" />
+              </section>
+              <section class="marking-overview__insight-slot">
+                <PublishedExamInsightTable
+                  :insights="overview?.publishedExamInsights ?? []"
+                  @statistics="goArchiveStatistics"
+                />
+              </section>
+            </div>
           </WorkbenchSurfaceCard>
         </a-col>
       </a-row>
@@ -187,14 +176,14 @@ import type {
   MarkTeacherDashboardOverviewVO,
   MarkTeacherDashboardQuery,
 } from '@/apis/mark/teacher-dashboard'
-import { ReloadOutlined } from '@ant-design/icons-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { EXAM_STATUS_FILTER_OPTIONS, ExamStatusCode } from '@/apis/mark/exam'
 import {
   loadTeacherDashboardOverviewOnce,
   loadTeacherDashboardOverviewSilent,
 } from '@/apis/mark/teacher-dashboard'
+import { ReloadOutlined } from '@ant-design/icons-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { EXAM_STATUS_FILTER_OPTIONS, ExamStatusCode } from '@/apis/mark/exam'
 import MarkingOverviewAnalytics from '@/components/mark/dashboard/MarkingOverviewAnalytics.vue'
 import MarkingOverviewSignalBand from '@/components/mark/dashboard/MarkingOverviewSignalBand.vue'
 import MarkingOverviewStageRail from '@/components/mark/dashboard/MarkingOverviewStageRail.vue'
@@ -220,7 +209,6 @@ import {
 } from '@/utils/academic-year-semester-query'
 import { showUserError } from '@/utils/error-handler'
 import { buildExamListRoute } from '@/utils/exam-list-navigation'
-import { buildPendingTodoHint } from '@/utils/mark-dashboard-todo'
 
 defineOptions({ name: 'TeacherMarkingOverview' })
 
@@ -230,7 +218,9 @@ const signalLoading = ref(false)
 const examsLoading = ref(false)
 const todosLoading = ref(false)
 const loadFailed = ref(false)
-const dashboardRefreshing = computed(() => signalLoading.value || examsLoading.value || todosLoading.value)
+const dashboardRefreshing = computed(
+  () => signalLoading.value || examsLoading.value || todosLoading.value,
+)
 const overview = ref<MarkTeacherDashboardOverviewVO | null>(null)
 const defaultYearSemester = getDefaultAcademicYearAndSemester()
 const emptyMarkingProgressSummary: MarkTeacherDashboardMarkingProgressSummaryVO = {
@@ -253,14 +243,12 @@ const committedFilter = ref<MarkTeacherDashboardQuery>({ ...filter.value })
 const academicYearOptions = computed(() => {
   const apiYears = overview.value?.filterOptions.academicYears
   const years = apiYears?.length ? apiYears : generateAcademicYearOptions()
-  return years.map(year => ({ label: year, value: year }))
+  return years.map((year) => ({ label: year, value: year }))
 })
 const semesterOptions = computed(() => {
   const apiSemesters = overview.value?.filterOptions.semesters
-  const codes = apiSemesters?.length
-    ? apiSemesters
-    : SemesterOptions.map(item => item.value)
-  return codes.map(code => ({
+  const codes = apiSemesters?.length ? apiSemesters : SemesterOptions.map((item) => item.value)
+  return codes.map((code) => ({
     label: formatSemester(code),
     value: code,
   }))
@@ -278,20 +266,8 @@ const pageSubtitle = computed(() => {
   return `${scope} · 共 ${total} 场考试`
 })
 
-const pendingTodoHint = computed(() => {
-  if (todosLoading.value) return '加载待处理事项'
-  const todos = overview.value?.pendingTodos ?? []
-  if (!overview.value) return ''
-  return buildPendingTodoHint(todos)
-})
-
-const ongoingCardHint = computed(() => {
-  if (examsLoading.value) return '加载进行中考试'
-  if (!overview.value) return ''
-  const count = overview.value.ongoingExams.length
-  if (count === 0) return '当前筛选暂无进行中的考试'
-  return '优先推进中的考试，点击进入工作台'
-})
+const hasOngoingExams = computed(() => (overview.value?.ongoingExams.length ?? 0) > 0)
+const hasPendingTodos = computed(() => (overview.value?.pendingTodos.length ?? 0) > 0)
 
 function isFilterRangeError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : ''
@@ -436,12 +412,14 @@ function goExamList() {
 
 function handleSignalMetricClick(key: string): void {
   if (key === 'active' || key === 'unpublished') {
-    void router.push(buildExamListRoute({
-      tab: 'ongoing',
-      academicYear: filter.value.academicYear,
-      semester: filter.value.semester,
-      status: filter.value.status,
-    }))
+    void router.push(
+      buildExamListRoute({
+        tab: 'ongoing',
+        academicYear: filter.value.academicYear,
+        semester: filter.value.semester,
+        status: filter.value.status,
+      }),
+    )
     return
   }
   if (key === 'exceptions' || key === 'arbitration' || key === 'spot-check') {
@@ -451,12 +429,14 @@ function handleSignalMetricClick(key: string): void {
 
 /** 待处理事项深链：携带当前学年学期筛选，打开考试列表「优先推进」Tab。 */
 function goPriorityExamList() {
-  void router.push(buildExamListRoute({
-    tab: 'priority',
-    academicYear: filter.value.academicYear,
-    semester: filter.value.semester,
-    status: filter.value.status,
-  }))
+  void router.push(
+    buildExamListRoute({
+      tab: 'priority',
+      academicYear: filter.value.academicYear,
+      semester: filter.value.semester,
+      status: filter.value.status,
+    }),
+  )
 }
 
 function goExamWorkspace(routeName: string | undefined, examId: string | undefined) {
@@ -482,9 +462,52 @@ onMounted(() => {
 
 .marking-overview__content-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr) 360px;
   gap: var(--dp-space-5);
+  align-items: stretch;
   margin-bottom: var(--dp-space-5);
+}
+
+.marking-overview__main,
+.marking-overview__side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.marking-overview__panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 360px;
+  height: 100%;
+}
+
+.marking-overview__panel :deep(.workbench-surface-card__head) {
+  width: 100%;
+}
+
+.marking-overview__panel :deep(.workbench-surface-card__body) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.marking-overview__panel-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.marking-overview__panel-body--empty {
+  justify-content: center;
+  min-height: 240px;
+}
+
+.marking-overview__panel--todos :deep(.workbench-surface-card__body--flush) {
+  padding: 0;
 }
 
 .marking-overview__analytics-row,
@@ -506,13 +529,29 @@ onMounted(() => {
   }
 }
 
-.marking-overview__insight-table {
-  margin-top: 16px;
+.marking-overview__insight-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--dp-space-5);
+}
+
+.marking-overview__insight-slot {
+  min-height: 260px;
+  padding: var(--dp-space-4);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+}
+
+@media (max-width: 1199px) {
+  .marking-overview__insight-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .marking-overview__panel-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   width: 100%;

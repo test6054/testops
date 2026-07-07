@@ -1,5 +1,6 @@
 import type { Router } from 'vue-router'
 import type { SeoMeta } from '@/utils/seo'
+import { applySeoMeta } from '@/utils/seo'
 import NProgress from 'nprogress'
 import { runPortfolioTeacherReadinessGuard } from '@/router/guards/portfolio-teacher-readiness'
 import { getDefaultRoute, hasRoutePermission, requiresAuth } from '@/router/permission'
@@ -11,7 +12,6 @@ import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement
 import { isValidRole } from '@/utils/permission'
 import { isQualityEvaluationRoute } from '@/utils/portfolio-route'
 import { ensureQualityPlanConfirmedForNavigation } from '@/utils/quality-plan-guard'
-import { applySeoMeta } from '@/utils/seo'
 import { getRoutePreloadManager } from './preload-strategy'
 import 'nprogress/nprogress.css'
 
@@ -107,44 +107,31 @@ export const setupRouterGuard = (router: Router) => {
       return `/login?redirect=${encodeURIComponent(to.fullPath)}`
     }
 
-    // 确保用户信息和权限完整加载后再生成菜单
-    const promises: Promise<unknown>[] = []
-
-    // 只有在用户信息缺失时才获取
+    // 确保用户信息、租户管理员权限加载完成后再生成菜单
     let userInfoLoadFailed = false
     if (!userStore.userInfo.userId) {
-      promises.push(
-        userStore.getInfo().catch((error) => {
-          if (isAuthRequestFailure(error)) {
-            userInfoLoadFailed = true
-          }
-        }),
-      )
-    } else {
-      // 用户信息存在，但需要确保isTenantAdmin已加载
-      // 如果isTenantAdmin为undefined，说明还未加载，需要获取
-      if (userStore.userInfo.isTenantAdmin === undefined) {
-        promises.push(
-          userStore.fetchTenantAdminPermission().catch(() => {
-            // 获取失败，默认设为false
-            userStore.userInfo.isTenantAdmin = false
-          }),
-        )
+      try {
+        await userStore.getInfo()
+      } catch (error) {
+        if (isAuthRequestFailure(error)) {
+          userInfoLoadFailed = true
+        }
       }
     }
 
-    // 等待用户信息和权限加载完成
-    if (promises.length > 0) {
-      await Promise.all(promises)
-      if (userInfoLoadFailed && !userStore.userInfo.userId) {
-        await authStore.logoutCallBack()
-        return `/login?redirect=${encodeURIComponent(to.fullPath)}`
-      }
+    if (userInfoLoadFailed && !userStore.userInfo.userId) {
+      await authStore.logoutCallBack()
+      return `/login?redirect=${encodeURIComponent(to.fullPath)}`
     }
 
-    // 用户信息和权限加载完成后，再加载菜单数据
+    const tenantAdminBeforeRefresh = userStore.isTenantAdmin
+    await userStore.fetchTenantAdminPermission().catch(() => {
+      userStore.userInfo.isTenantAdmin = false
+    })
+
     const routeStore = useRouteStore()
-    if (!hasMenuFlag || routeStore.asyncRoutes.length === 0) {
+    const tenantAdminChanged = tenantAdminBeforeRefresh !== userStore.isTenantAdmin
+    if (!hasMenuFlag || routeStore.asyncRoutes.length === 0 || tenantAdminChanged) {
       try {
         await routeStore.generateMenus()
         hasMenuFlag = true
@@ -163,9 +150,9 @@ export const setupRouterGuard = (router: Router) => {
       return getDefaultRoute(authStore.userRole)
     }
 
-    const needsSecurityRefresh
-      = to.path !== '/change-password'
-        && (!userStore.userInfo.forcePasswordChange || !userStore.userInfo.currentLoginProviderType)
+    const needsSecurityRefresh =
+      to.path !== '/change-password' &&
+      (!userStore.userInfo.forcePasswordChange || !userStore.userInfo.currentLoginProviderType)
 
     if (needsSecurityRefresh) {
       try {

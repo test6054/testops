@@ -18,22 +18,19 @@ export function usePortfolioTeacherAccess() {
     isTenantAdmin: userStore.isTenantAdmin,
   }))
 
-  /** 是否可进入档案审核台：超管、租户管理员、院系负责人 */
+  /** 是否可进入档案审核台：超管、租户管理员 */
   const canReviewPortfolio = computed(() => {
     if (authStore.userRole === RoleEnum.SUPER_ADMIN) {
       return true
     }
-    if (canPickTeachers.value) {
-      return true
-    }
-    return authStore.userRole === RoleEnum.CROP_ADMIN
+    return canPickTeachers.value
   })
 
   /**
-   * 是否可为指定教师操作档案袋 AI：本人、超管、租户管理员、同院系院系负责人。
-   * fromScopedRoster：目标教师已出现在当前院系过滤后的名册/选项中（CROP_ADMIN 必填）。
+   * 是否可为指定教师操作档案袋 AI：本人、超管、租户管理员。
+   * fromScopedRoster：目标教师已出现在当前过滤后的名册/选项中。
    */
-  function canManageTeacherAi(teacherUserId: string, fromScopedRoster = false): boolean {
+  function canManageTeacherAi(teacherUserId: string): boolean {
     if (!teacherUserId) {
       return false
     }
@@ -45,9 +42,6 @@ export function usePortfolioTeacherAccess() {
     }
     if (canPickTeachers.value) {
       return true
-    }
-    if (authStore.userRole === RoleEnum.CROP_ADMIN) {
-      return fromScopedRoster
     }
     return false
   }

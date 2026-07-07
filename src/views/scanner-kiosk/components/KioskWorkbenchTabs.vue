@@ -11,21 +11,21 @@ const route = useRoute()
 const router = useRouter()
 
 const activeTab = computed<'scan' | 'records'>(() => {
-  if (route.name === 'ScannerKioskHistory') return 'records'
+  if (route.name === 'ScannerExamKioskHistory') return 'records'
   return workflow.workbenchTab.value
 })
 
 function goScan() {
   workflow.workbenchTab.value = 'scan'
-  if (route.name !== 'ScannerKioskSetup') {
-    router.push({ name: 'ScannerKioskSetup', query: route.query })
+  if (route.name !== 'ScannerExamKioskSetup') {
+    router.push({ name: 'ScannerExamKioskSetup', query: route.query })
   }
 }
 
 function goRecords() {
   workflow.workbenchTab.value = 'records'
-  if (route.name !== 'ScannerKioskHistory') {
-    router.push({ name: 'ScannerKioskHistory', query: route.query })
+  if (route.name !== 'ScannerExamKioskHistory') {
+    router.push({ name: 'ScannerExamKioskHistory', query: route.query })
   }
 }
 </script>

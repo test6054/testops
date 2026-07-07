@@ -10,7 +10,9 @@
         <template #status>
           <UiTag tone="blue" size="sm">形态 课程考核归档卷</UiTag>
           <UiTag v-if="examGate?.gateOpen === true" tone="green" size="sm">双门禁已满足</UiTag>
-          <UiTag v-else-if="examGate?.gateOpen === false" tone="orange" size="sm">双门禁未满足</UiTag>
+          <UiTag v-else-if="examGate?.gateOpen === false" tone="orange" size="sm"
+            >双门禁未满足</UiTag
+          >
           <UiTag v-if="polling" tone="orange" size="sm">系统正在创建归档卷…</UiTag>
           <UiTag v-else-if="showCompleteProgress && isMultiVolumeExam" tone="gray" size="sm">
             归档卷 {{ autoCreateVolumeProgressHint }}
@@ -94,15 +96,13 @@
                     >
                       四性失效
                     </UiTag>
-                    <UiTag
-                      v-else-if="record.securityMarkPending"
-                      tone="orange"
-                      size="sm"
-                    >
+                    <UiTag v-else-if="record.securityMarkPending" tone="orange" size="sm">
                       定密待确认
                     </UiTag>
                     <UiTag
-                      v-else-if="(volumeProgressItem(record.volumeId)?.openScanReviewCount ?? 0) > 0"
+                      v-else-if="
+                        (volumeProgressItem(record.volumeId)?.openScanReviewCount ?? 0) > 0
+                      "
                       tone="orange"
                       size="sm"
                     >
@@ -111,9 +111,11 @@
                   </span>
                 </template>
                 <template v-else-if="column.key === 'action'">
-                  <UiButton variant="ghost" size="sm" @click="goDetail(record.volumeId)">
-                    打开详情
-                  </UiButton>
+                  <UiTableActions
+                    :items="[{ key: 'detail', label: '打开详情' }]"
+                    split
+                    @action="() => goDetail(record.volumeId)"
+                  />
                 </template>
               </template>
             </UiDataTable>
@@ -226,7 +228,9 @@
                 </li>
               </ul>
             </UiAlertStrip>
-            <p v-if="gateProgressHint" class="archive-volume-exam-progress__gate-hint">{{ gateProgressHint }}</p>
+            <p v-if="gateProgressHint" class="archive-volume-exam-progress__gate-hint">
+              {{ gateProgressHint }}
+            </p>
             <UiAlertStrip
               v-if="gateAnomaly"
               tone="error"
@@ -317,9 +321,11 @@
                     />
                   </template>
                   <template v-else-if="column.key === 'action'">
-                    <UiButton variant="ghost" size="sm" @click="goDetail(record.volumeId)">
-                      打开详情
-                    </UiButton>
+                    <UiTableActions
+                      :items="[{ key: 'detail', label: '打开详情' }]"
+                      split
+                      @action="() => goDetail(record.volumeId)"
+                    />
                   </template>
                 </template>
               </UiDataTable>
@@ -339,10 +345,6 @@ import type {
   ArchiveVolumeExamVolumeProgressItemVO,
   ArchiveVolumeResponse,
 } from '@/apis/mark/archive-volume'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   ArchiveIntegrityStatusDescription,
   ArchiveVolumeStatusDescription,
@@ -351,7 +353,10 @@ import {
   pageArchiveVolumes,
   retryArchiveVolumeAutoCreate,
 } from '@/apis/mark/archive-volume'
-import { readAllPages } from '@/utils/page-result'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ArchiveDimPill from '@/components/archive-volume/ArchiveDimPill.vue'
 import ArchiveExamScoreGatePanel from '@/components/archive-volume/ArchiveExamScoreGatePanel.vue'
 import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
@@ -362,6 +367,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -379,16 +385,14 @@ import {
 } from '@/constants/archive-auto-create-failure-category'
 import { ARCHIVE_VOLUME_DETAIL_SECTION_TABS } from '@/constants/archive-volume-detail-tabs'
 import { ArchiveVolumeAutoCreatePendingStatusCode } from '@/types/enums/archive-volume-auto-create-pending-status-enum'
-import {
-  integrityStatusDimTone,
-  volumeStatusDimTone,
-} from '@/utils/archive-dimension-pill'
+import { integrityStatusDimTone, volumeStatusDimTone } from '@/utils/archive-dimension-pill'
 import {
   buildVolumeNavigationLifecycleView,
   mapNavigationLifecycleNodesToPipeSteps,
 } from '@/utils/archive-navigation-summary'
 import { buildArchiveExamGateLifecycleSteps } from '@/utils/archive-volume-lifecycle'
 import { showUserError } from '@/utils/error-handler'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveVolumeExamProgress' })
@@ -545,23 +549,24 @@ const autoCreateFailedEvent = computed(() =>
 const autoCreateFailedNeedsClassScope = computed(() => {
   const category = examGate.value?.autoCreateFailureCategory
   return (
-    category != null
-    && isArchiveAutoCreateFailureCategory(category)
-    && CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES.has(category)
+    category != null &&
+    isArchiveAutoCreateFailureCategory(category) &&
+    CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES.has(category)
   )
 })
 
 const hasAutoCreateFailure = computed(
   () =>
-    examGate.value?.autoCreateFailureStubPresent === true
-    || autoCreateFailedEvent.value != null
-    || examGate.value?.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED,
+    examGate.value?.autoCreateFailureStubPresent === true ||
+    autoCreateFailedEvent.value != null ||
+    examGate.value?.autoCreatePendingStatus ===
+      ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED,
 )
 
 const showRetryAutoCreate = computed(
   () =>
-    examGate.value?.archiveAutoCreateRetryAllowed === true
-    && !autoCreateFailedNeedsClassScope.value,
+    examGate.value?.archiveAutoCreateRetryAllowed === true &&
+    !autoCreateFailedNeedsClassScope.value,
 )
 
 const showNonOwnerHint = computed(() => {
@@ -573,9 +578,9 @@ const showNonOwnerHint = computed(() => {
     return false
   }
   return (
-    hasAutoCreateFailure.value
-    || gate.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED
-    || (gate.gateOpen === true && !gate.autoCreateFailureStubPresent)
+    hasAutoCreateFailure.value ||
+    gate.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED ||
+    (gate.gateOpen === true && !gate.autoCreateFailureStubPresent)
   )
 })
 
@@ -742,11 +747,12 @@ async function loadVolume() {
   primaryVolumeNavigationSummary.value = null
   try {
     const list = await readAllPages(
-      (pageNum) => pageArchiveVolumes({
-        examId: examId.value!,
-        pageNum,
-        pageSize: EXAM_ARCHIVE_VOLUME_PAGE_SIZE,
-      }),
+      (pageNum) =>
+        pageArchiveVolumes({
+          examId: examId.value!,
+          pageNum,
+          pageSize: EXAM_ARCHIVE_VOLUME_PAGE_SIZE,
+        }),
       '加载归档卷失败',
     )
     healthyVolumes.value = list.filter((item) => !isAutoCreateFailureStub(item))

@@ -7,17 +7,17 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 配置某专业采用的认证标准、评价方法、评价周期、样本范围、责任链与归档策略。
  */
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   ProgramEvaluationProfileQueryRequest,
   ProgramEvaluationProfileSaveRequest,
   ProgramEvaluationProfileVO,
 } from '@/apis/quality/program-evaluation-profile'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
-import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
 import {
   AccreditationTypeCode,
   AccreditationTypeDescription,
@@ -37,6 +37,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -110,8 +111,8 @@ const filterFields: FilterField[] = [
   },
 ]
 
-const evaluationCycleOptions: Array<{ value: EvaluationCycleCode, label: string }>
-  = ALL_EVALUATION_CYCLE_CODES.map((value) => ({
+const evaluationCycleOptions: Array<{ value: EvaluationCycleCode; label: string }> =
+  ALL_EVALUATION_CYCLE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(EvaluationCycleDescription, value, '评价周期'),
   }))
@@ -220,7 +221,7 @@ async function loadDicts() {
   )
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -352,6 +353,29 @@ async function submitEditor() {
   }
 }
 
+function buildProgramEvaluationProfileActions(
+  _record: ProgramEvaluationProfileVO,
+): UiTableRowActionItem[] {
+  return [
+    { key: 'edit', label: '编辑' },
+    { key: 'delete', label: '删除', tone: 'danger' },
+  ]
+}
+
+function handleProgramEvaluationProfileAction(
+  key: string,
+  record: ProgramEvaluationProfileVO,
+): void {
+  switch (key) {
+    case 'edit':
+      openEdit(record)
+      break
+    case 'delete':
+      void handleDelete(record)
+      break
+  }
+}
+
 async function handleDelete(record: ProgramEvaluationProfileVO) {
   void confirmAsync({
     title: `删除专业 ${record.programName} 的评价口径？`,
@@ -437,10 +461,11 @@ onActivated(() => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
-              <UiTextAction tone="danger" @click="handleDelete(record)">删除</UiTextAction>
-            </div>
+            <UiTableActions
+              :items="buildProgramEvaluationProfileActions(record)"
+              split
+              @action="(key) => handleProgramEvaluationProfileAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>

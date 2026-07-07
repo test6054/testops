@@ -10,9 +10,9 @@
 import type { RouteRecordRaw } from 'vue-router'
 import { RoleEnum } from '@/utils/permission'
 
-const TEACHER_ROLES = [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER]
+const TEACHER_ROLES = [RoleEnum.SCH_TECH]
 const ALL_TEACHER_ROLES = [RoleEnum.SUPER_ADMIN, ...TEACHER_ROLES]
-const SCANNER_ADMIN_ROLES = [RoleEnum.CROP_ADMIN, RoleEnum.SUPER_ADMIN]
+const SCANNER_ADMIN_ROLES = [RoleEnum.SUPER_ADMIN]
 
 export const teacherRoutes: RouteRecordRaw[] = [
   {
@@ -262,10 +262,10 @@ export const teacherRoutes: RouteRecordRaw[] = [
           icon: 'setting',
           hideInMenu: false,
           keepAlive: true,
-          menuGroup: 'marking-workbench',
-          menuGroupTitle: '考试阅卷',
-          menuGroupIcon: 'audit',
-          menuGroupOrder: 1,
+          menuGroup: 'quality-admin',
+          menuGroupTitle: '系统管理',
+          menuGroupIcon: 'setting',
+          menuGroupOrder: 5,
         },
       },
       {

@@ -9,19 +9,19 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 只有 CONFIRMED + enabled 的实例进入达成度计算。
  */
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   ProfessionAlgorithmProfileQueryRequest,
   ProfessionAlgorithmProfileSaveRequest,
   ProfessionAlgorithmProfileVO,
 } from '@/apis/quality/profession-algorithm-profile'
+import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorithm-profile'
 import type { ProfessionAlgorithmTemplateVO } from '@/apis/quality/profession-algorithm-template'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
-import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorithm-profile'
-import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import {
   AccreditationTypeCode,
   AccreditationTypeDescription,
@@ -41,7 +41,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -342,18 +342,18 @@ function openEdit(record: ProfessionAlgorithmProfileVO) {
 
 async function submitEditor() {
   if (
-    !editor.profileCode.trim()
-    || !editor.profileName.trim()
-    || !editor.templateId
-    || !editor.programId
+    !editor.profileCode.trim() ||
+    !editor.profileName.trim() ||
+    !editor.templateId ||
+    !editor.programId
   ) {
     message.error('请填写编码、名称、模板、专业')
     return
   }
-  const hasOverride
-    = editor.overrideAggregationStrategy
-      || editor.overrideWeightStrategy
-      || editor.overrideThresholdStrategy
+  const hasOverride =
+    editor.overrideAggregationStrategy ||
+    editor.overrideWeightStrategy ||
+    editor.overrideThresholdStrategy
   if (hasOverride && !editor.overrideReason?.trim()) {
     message.error('存在模板策略调整时必须填写覆盖原因')
     return
@@ -425,6 +425,45 @@ async function handleRevoke(record: ProfessionAlgorithmProfileVO) {
   })
 }
 
+function buildAlgorithmProfileActions(
+  record: ProfessionAlgorithmProfileVO,
+): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = []
+  if (canEditProfile(record)) {
+    actions.push({ key: 'edit', label: '编辑' })
+  }
+  if (
+    record.confirmationStatus === ConfirmationStatusCode.DRAFT ||
+    record.confirmationStatus === ConfirmationStatusCode.RETURNED
+  ) {
+    actions.push({ key: 'confirm', label: '确认', tone: 'primary' })
+  }
+  if (record.confirmationStatus === ConfirmationStatusCode.CONFIRMED) {
+    actions.push({ key: 'revoke', label: '退回', tone: 'danger' })
+  }
+  if (canEditProfile(record)) {
+    actions.push({ key: 'delete', label: '删除', tone: 'danger' })
+  }
+  return actions
+}
+
+function handleAlgorithmProfileAction(key: string, record: ProfessionAlgorithmProfileVO): void {
+  switch (key) {
+    case 'edit':
+      openEdit(record)
+      break
+    case 'confirm':
+      void handleConfirm(record)
+      break
+    case 'revoke':
+      void handleRevoke(record)
+      break
+    case 'delete':
+      void handleDelete(record)
+      break
+  }
+}
+
 async function handleDelete(record: ProfessionAlgorithmProfileVO) {
   if (!canEditProfile(record)) {
     message.error('已确认实例禁止删除')
@@ -441,7 +480,7 @@ async function handleDelete(record: ProfessionAlgorithmProfileVO) {
   })
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -486,7 +525,9 @@ const signals = computed<SignalMetric[]>(() => {
   }
   const enabled = list.value.filter((p) => p.enabled).length
   const disabled = list.value.filter((p) => !p.enabled).length
-  const usable = list.value.filter((p) => p.enabled && p.confirmationStatus === ConfirmationStatusCode.CONFIRMED).length
+  const usable = list.value.filter(
+    (p) => p.enabled && p.confirmationStatus === ConfirmationStatusCode.CONFIRMED,
+  ).length
 
   return [
     { key: 'page', label: '当前页记录', value: list.value.length, tone: 'blue' },
@@ -601,35 +642,11 @@ onActivated(() => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiTextAction v-if="canEditProfile(record)" @click="openEdit(record)">
-                编辑
-              </UiTextAction>
-              <UiTextAction
-                v-if="
-                  record.confirmationStatus === ConfirmationStatusCode.DRAFT
-                    || record.confirmationStatus === ConfirmationStatusCode.RETURNED
-                "
-                tone="primary"
-                @click="handleConfirm(record)"
-              >
-                确认
-              </UiTextAction>
-              <UiTextAction
-                v-if="record.confirmationStatus === ConfirmationStatusCode.CONFIRMED"
-                tone="danger"
-                @click="handleRevoke(record)"
-              >
-                退回
-              </UiTextAction>
-              <UiTextAction
-                v-if="canEditProfile(record)"
-                tone="danger"
-                @click="handleDelete(record)"
-              >
-                删除
-              </UiTextAction>
-            </div>
+            <UiTableActions
+              :items="buildAlgorithmProfileActions(record)"
+              split
+              @action="(key) => handleAlgorithmProfileAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>

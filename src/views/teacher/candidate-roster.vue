@@ -70,7 +70,9 @@
         <div class="exam-scope-classes">
           <div class="exam-scope-classes__head">
             <span class="exam-scope-classes__title">参考班级</span>
-            <span v-if="scopedClassTags.length" class="exam-scope-classes__count">{{ scopedClassTags.length }} 个</span>
+            <span v-if="scopedClassTags.length" class="exam-scope-classes__count"
+              >{{ scopedClassTags.length }} 个</span
+            >
           </div>
           <div v-if="scopedClassTags.length" class="exam-scope-classes__tags">
             <UiTag v-for="item in scopedClassTags" :key="item.classId" tone="blue" size="sm">
@@ -190,25 +192,20 @@
               </span>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiConfirmPopover
-                  v-if="canRemoveCandidate(tableCandidates[index])"
-                  title="确认移除该考生？"
-                  description="移除后需重新加入名册。"
-                  danger
-                  @confirm="removeCandidate(tableCandidates[index].studentUserId)"
-                >
-                  <UiTextAction tone="danger">移除</UiTextAction>
-                </UiConfirmPopover>
-                <span
-                  v-else-if="!tableCandidates[index].removable"
-                  class="muted"
-                  :title="tableCandidates[index].removalBlockReason"
-                >
-                  不可移除
-                </span>
-                <span v-else class="muted">—</span>
-              </div>
+              <UiTableActions
+                v-if="canRemoveCandidate(tableCandidates[index])"
+                :items="buildRosterActions(tableCandidates[index])"
+                split
+                @action="(key) => handleRosterAction(key, tableCandidates[index])"
+              />
+              <span
+                v-else-if="!tableCandidates[index].removable"
+                class="muted"
+                :title="tableCandidates[index].removalBlockReason"
+              >
+                不可移除
+              </span>
+              <span v-else class="muted">—</span>
             </template>
           </template>
         </UiDataTable>
@@ -300,20 +297,10 @@ import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { CandidateRow } from './candidate-roster/types'
 import type { ClassStudentTreeConfirmPayload } from '@/apis/edu/class'
 import type { ExamClassRefVO, ExamRosterScopeModeCode } from '@/apis/mark/exam'
-import type {ExamWorkbenchCandidateRosterPanelResponse} from '@/apis/mark/exam-progress';
-import type { ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { UserDto } from '@/types/api-types.d'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
-import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
-import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
-import message from 'ant-design-vue/es/message'
-import { useRouter } from 'vue-router'
 import { ExamRosterScopeModeDescription, getExamDetail } from '@/apis/mark/exam'
+import type { ExamWorkbenchCandidateRosterPanelResponse } from '@/apis/mark/exam-progress'
 import { getCandidateRosterPanel } from '@/apis/mark/exam-progress'
-import { pageScannerBatches } from '@/apis/mark/exam-scan'
+import type { ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
 import {
   listExamCandidates,
   mergeExamCandidates,
@@ -323,6 +310,16 @@ import {
   saveExamClassScope,
   saveExamScope,
 } from '@/apis/mark/exam-scope'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { UserDto } from '@/types/api-types.d'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
+import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
+import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
+import message from 'ant-design-vue/es/message'
+import { useRouter } from 'vue-router'
+import { pageScannerBatches } from '@/apis/mark/exam-scan'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSelectorDrawer.vue'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
@@ -332,11 +329,10 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiConfirmPopover from '@/components/ui-guide/ui/UiConfirmPopover.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -361,12 +357,8 @@ defineOptions({ name: 'TeacherCandidateRoster' })
 const ROSTER_CANDIDATE_EXPORT_PAGE_SIZE = 100
 
 const { selectedExamId } = useMarkExamContext()
-const {
-  contextBarTitle,
-  contextBarSubtitle,
-  examStatusLabel,
-  examStatusTone,
-} = useExamJourneyContextBar('考生名册')
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useExamJourneyContextBar('考生名册')
 const { refreshSnapshot } = useWorkspaceExamId()
 const router = useRouter()
 
@@ -387,8 +379,8 @@ let classScopeSaveTimer: ReturnType<typeof setTimeout> | null = null
 let loadContextSeq = 0
 let loadTableSeq = 0
 
-const { departmentId, classOptionsLoading, classSelectOptions, loadClassesForDepartment }
-  = useExamDepartmentClassScope({
+const { departmentId, classOptionsLoading, classSelectOptions, loadClassesForDepartment } =
+  useExamDepartmentClassScope({
     selectedClassIds: classIds,
     seedOptions: computed(() =>
       examClassRefs.value.flatMap((item) => {
@@ -753,8 +745,8 @@ async function loadExamContext(): Promise<void> {
     rosterLocked.value = locked
     examStatus.value = detail.status
     rosterScopeMode.value = detail.rosterScopeMode
-    archiveClassScopeRecoveryAllowed.value
-      = detail.archiveAutoCreateClassScopeRecoveryAllowed === true
+    archiveClassScopeRecoveryAllowed.value =
+      detail.archiveAutoCreateClassScopeRecoveryAllowed === true
     examClassRefs.value = [...(detail.classRefs ?? [])]
     candidateTotal.value = detail.candidateCount ?? 0
     classIds.value = [...new Set(detail.classIds ?? [])]
@@ -810,7 +802,7 @@ function handleRosterReset(): void {
   void loadCandidatePage()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidatePage()
@@ -978,6 +970,22 @@ async function handleSingleAddSubmit(): Promise<void> {
   } finally {
     singleAddSubmitting.value = false
   }
+}
+
+function buildRosterActions(_record: CandidateRow): UiTableRowActionItem[] {
+  return [{ key: 'remove', label: '移除', tone: 'danger' }]
+}
+
+function handleRosterAction(key: string, record: CandidateRow): void {
+  if (key !== 'remove') {
+    return
+  }
+  void confirmAsync({
+    title: '确认移除该考生？',
+    content: '移除后需重新加入名册。',
+    type: 'warning',
+    onOk: () => removeCandidate(record.studentUserId),
+  })
 }
 
 function canRemoveCandidate(record: CandidateRow): boolean {

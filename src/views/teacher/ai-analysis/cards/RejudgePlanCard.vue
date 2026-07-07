@@ -56,35 +56,11 @@
             {{ formatDateTime(rows[index].createTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <a-popconfirm
-                title="确认审批通过？"
-                :disabled="rows[index].planStatus !== 'PENDING_APPROVAL'"
-                @confirm="handleApprove(rows[index].id)"
-              >
-                <a-button
-                  type="link"
-                  size="small"
-                  :disabled="rows[index].planStatus !== 'PENDING_APPROVAL'"
-                  :loading="operatingId === rows[index].id && operatingAction === 'approve'"
-                >
-                  通过
-                </a-button>
-              </a-popconfirm>
-              <UiTextAction
-                tone="danger"
-                :disabled="rows[index].planStatus !== 'PENDING_APPROVAL'"
-                @click="openRejectModal(rows[index].id)"
-              >
-                驳回
-              </UiTextAction>
-              <UiTextAction
-                :disabled="rows[index].planStatus !== 'APPROVED'"
-                @click="openExecuteModal(rows[index].id)"
-              >
-                执行
-              </UiTextAction>
-            </div>
+            <UiTableActions
+              :items="buildRejudgePlanActions(rows[index])"
+              split
+              @action="(key) => handleRejudgePlanAction(key, rows[index])"
+            />
           </template>
         </template>
       </UiDataTable>
@@ -141,9 +117,6 @@ import type {
   RejudgePlanStatusCode,
   RejudgeTriggerTypeCode,
 } from '@/apis/mark/question-analysis'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   approveRejudgePlan,
   executeRejudgePlan,
@@ -153,12 +126,15 @@ import {
   RejudgePlanStatusDescription,
   RejudgeTriggerTypeDescription,
 } from '@/apis/mark/question-analysis'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -179,9 +155,7 @@ const props = withDefaults(
 const emit = defineEmits<{ changed: [] }>()
 
 const shellProps = computed(() =>
-  props.embedded
-    ? { title: '重判计划', context: props.examLabel }
-    : { class: 'stats-card' },
+  props.embedded ? { title: '重判计划', context: props.examLabel } : { class: 'stats-card' },
 )
 
 const rows = ref<ExamRejudgePlan[]>([])
@@ -281,7 +255,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -392,6 +366,50 @@ function planStatusColor(code: RejudgePlanStatusCode): BadgeTone {
 
 function planStatusLabel(code: RejudgePlanStatusCode): string {
   return strictEnumLabel(RejudgePlanStatusDescription, code, '重判计划状态')
+}
+
+function isOperating(planId: string, action: 'approve' | 'reject' | 'execute'): boolean {
+  return operatingId.value === planId && operatingAction.value === action
+}
+
+function buildRejudgePlanActions(row: ExamRejudgePlan): UiTableRowActionItem[] {
+  const operating = (action: 'approve' | 'reject' | 'execute') => isOperating(row.id, action)
+  return [
+    {
+      key: 'approve',
+      label: '通过',
+      hidden: row.planStatus !== 'PENDING_APPROVAL',
+      disabled: operating('approve'),
+    },
+    {
+      key: 'reject',
+      label: '驳回',
+      tone: 'danger',
+      hidden: row.planStatus !== 'PENDING_APPROVAL',
+      disabled: operating('reject'),
+    },
+    {
+      key: 'execute',
+      label: '执行',
+      hidden: row.planStatus !== 'APPROVED',
+      disabled: operating('execute'),
+    },
+  ]
+}
+
+function handleRejudgePlanAction(key: string, row: ExamRejudgePlan): void {
+  switch (key) {
+    case 'approve':
+      if (row.planStatus !== 'PENDING_APPROVAL') return
+      void handleApprove(row.id)
+      break
+    case 'reject':
+      openRejectModal(row.id)
+      break
+    case 'execute':
+      openExecuteModal(row.id)
+      break
+  }
 }
 
 watch(

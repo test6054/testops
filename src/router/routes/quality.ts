@@ -8,7 +8,7 @@ import type { RouteRecordRaw } from 'vue-router'
 import type { QualityGate, QualityScopeProfile } from '@/constants/quality-scope-profile'
 import { RoleEnum } from '@/utils/permission'
 
-const TEACHER_ROLES = [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER]
+const TEACHER_ROLES = [RoleEnum.SCH_TECH]
 const ALL_ROLES = [RoleEnum.SUPER_ADMIN, ...TEACHER_ROLES]
 const SUPER_ADMIN_ROLES = [RoleEnum.SUPER_ADMIN]
 
@@ -64,7 +64,7 @@ const OUTPUT_GROUP: QualityMenuGroupMeta = {
 
 const ADMIN_GROUP: QualityMenuGroupMeta = {
   menuGroup: 'quality-admin',
-  menuGroupTitle: '平台管理',
+  menuGroupTitle: '系统管理',
   menuGroupIcon: 'setting',
   menuGroupOrder: 5,
 }

@@ -26,21 +26,14 @@
         </template>
         <span>{{ item.meta?.title }}</span>
       </a-menu-item>
-      <a-sub-menu
-        v-for="group in markingGrouped.groups"
-        :key="group.key"
-      >
+      <a-sub-menu v-for="group in markingGrouped.groups" :key="group.key">
         <template #title>
           <span>{{ group.title }}</span>
         </template>
         <template #icon>
           <MenuIcon :icon="group.icon" />
         </template>
-        <a-menu-item
-          v-for="item in group.items"
-          :key="item.path"
-          :disabled="item.meta?.disabled"
-        >
+        <a-menu-item v-for="item in group.items" :key="item.path" :disabled="item.meta?.disabled">
           <template #icon>
             <MenuIcon :icon="routeIcon(item, 'folder')" />
           </template>
@@ -66,21 +59,14 @@
         </template>
         <span>{{ item.meta?.title }}</span>
       </a-menu-item>
-      <a-sub-menu
-        v-for="group in qualityGrouped.groups"
-        :key="group.key"
-      >
+      <a-sub-menu v-for="group in qualityGrouped.groups" :key="group.key">
         <template #title>
           <span>{{ group.title }}</span>
         </template>
         <template #icon>
           <MenuIcon :icon="group.icon" />
         </template>
-        <a-menu-item
-          v-for="item in group.items"
-          :key="item.path"
-          :disabled="item.meta?.disabled"
-        >
+        <a-menu-item v-for="item in group.items" :key="item.path" :disabled="item.meta?.disabled">
           <template #icon>
             <MenuIcon :icon="routeIcon(item, 'folder')" />
           </template>
@@ -106,21 +92,14 @@
         </template>
         <span>{{ item.meta?.title }}</span>
       </a-menu-item>
-      <a-sub-menu
-        v-for="group in portfolioGrouped.groups"
-        :key="group.key"
-      >
+      <a-sub-menu v-for="group in portfolioGrouped.groups" :key="group.key">
         <template #title>
           <span>{{ group.title }}</span>
         </template>
         <template #icon>
           <MenuIcon :icon="group.icon" />
         </template>
-        <a-menu-item
-          v-for="item in group.items"
-          :key="item.path"
-          :disabled="item.meta?.disabled"
-        >
+        <a-menu-item v-for="item in group.items" :key="item.path" :disabled="item.meta?.disabled">
           <template #icon>
             <MenuIcon :icon="routeIcon(item, 'folder')" />
           </template>
@@ -128,16 +107,35 @@
         </a-menu-item>
       </a-sub-menu>
     </a-sub-menu>
+
+    <a-sub-menu v-if="platformMenuItems.length > 0" key="domain-platform">
+      <template #title>
+        <span>系统管理</span>
+      </template>
+      <template #icon>
+        <MenuIcon icon="setting" />
+      </template>
+      <a-menu-item
+        v-for="item in platformMenuItems"
+        :key="item.path"
+        :disabled="item.meta?.disabled"
+      >
+        <template #icon>
+          <MenuIcon :icon="routeIcon(item, 'setting')" />
+        </template>
+        <span>{{ item.meta?.title }}</span>
+      </a-menu-item>
+    </a-sub-menu>
   </a-menu>
 </template>
 
 <script lang="ts" setup>
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { RouteRecordRaw } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { isPortfolioRoute } from '@/utils/portfolio-route'
+import { isPortfolioRoute, QUALITY_ADMIN_MENU_GROUP } from '@/utils/portfolio-route'
 import { isExternal } from '@/utils/validate'
 import MenuIcon from './MenuIcon.vue'
 
@@ -146,6 +144,10 @@ defineOptions({ name: 'DualDomainSideNav' })
 const props = defineProps<{
   collapsed: boolean
   markingGrouped: {
+    ungrouped: RouteRecordRaw[]
+    groups: MenuGroup[]
+  }
+  platformGrouped: {
     ungrouped: RouteRecordRaw[]
     groups: MenuGroup[]
   }
@@ -162,13 +164,9 @@ const emit = defineEmits<{
   (e: 'menu-item-click-after'): void
 }>()
 const MARKING_DOMAIN_KEY = 'domain-marking'
+const PLATFORM_DOMAIN_KEY = 'domain-platform'
 const QUALITY_DOMAIN_KEY = 'domain-quality'
 const PORTFOLIO_DOMAIN_KEY = 'domain-portfolio'
-
-/** 超管 SaaS 监管分组；平台管理见 quality-admin，展示时归入考试阅卷域。 */
-const MARKING_DOMAIN_MENU_GROUPS = new Set([
-  'quality-admin',
-])
 
 interface MenuGroup {
   key: string
@@ -186,7 +184,7 @@ function stringMetaValue(value: unknown): string | undefined {
     return undefined
   }
   if (typeof value !== 'string') {
-    throw new TypeError('三域侧栏路由 meta 字符串契约异常')
+    throw new TypeError('四域侧栏路由 meta 字符串契约异常')
   }
   return value
 }
@@ -206,6 +204,8 @@ const activeMenuKeys = computed<Key[]>(() => {
 
 const openMenuKeys = ref<Key[]>([])
 
+const platformMenuItems = computed(() => collectGroupedRoutes(props.platformGrouped))
+
 function collectGroupKeySet(grouped: { groups: MenuGroup[] }): Set<string> {
   return new Set(grouped.groups.map((group) => group.key))
 }
@@ -214,11 +214,17 @@ function collectGroupKeySet(grouped: { groups: MenuGroup[] }): Set<string> {
 function normalizeOpenKeys(keys: Key[]): Key[] {
   const next = new Set(keys.map(String))
   const markingGroupKeys = collectGroupKeySet(props.markingGrouped)
+  const platformGroupKeys = collectGroupKeySet(props.platformGrouped)
   const qualityGroupKeys = collectGroupKeySet(props.qualityGrouped)
   const portfolioGroupKeys = collectGroupKeySet(props.portfolioGrouped)
 
   if (!next.has(MARKING_DOMAIN_KEY)) {
     for (const groupKey of markingGroupKeys) {
+      next.delete(groupKey)
+    }
+  }
+  if (!next.has(PLATFORM_DOMAIN_KEY)) {
+    for (const groupKey of platformGroupKeys) {
       next.delete(groupKey)
     }
   }
@@ -237,6 +243,11 @@ function normalizeOpenKeys(keys: Key[]): Key[] {
       next.add(MARKING_DOMAIN_KEY)
     }
   }
+  for (const groupKey of platformGroupKeys) {
+    if (next.has(groupKey)) {
+      next.add(PLATFORM_DOMAIN_KEY)
+    }
+  }
   for (const groupKey of qualityGroupKeys) {
     if (next.has(groupKey)) {
       next.add(QUALITY_DOMAIN_KEY)
@@ -250,13 +261,18 @@ function normalizeOpenKeys(keys: Key[]): Key[] {
   return [...next]
 }
 
-/** 按当前路由展开对应一级域；超管平台配置项归属考试阅卷域。 */
+/** 按当前路由展开对应一级域；quality-admin 路由归属系统管理域。 */
 function resolveDefaultOpenKeys(): Key[] {
   if (props.collapsed) {
     return []
   }
   const keys: Key[] = []
   const groupKey = stringMetaValue(route.meta?.menuGroup)
+
+  if (groupKey === QUALITY_ADMIN_MENU_GROUP) {
+    keys.push(PLATFORM_DOMAIN_KEY)
+    return keys
+  }
 
   if (route.path.startsWith('/teacher')) {
     keys.push(MARKING_DOMAIN_KEY)
@@ -275,13 +291,9 @@ function resolveDefaultOpenKeys(): Key[] {
   }
 
   if (route.path.startsWith('/quality')) {
-    if (groupKey && MARKING_DOMAIN_MENU_GROUPS.has(groupKey)) {
-      keys.push(MARKING_DOMAIN_KEY, groupKey)
-    } else {
-      keys.push(QUALITY_DOMAIN_KEY)
-      if (groupKey) {
-        keys.push(groupKey)
-      }
+    keys.push(QUALITY_DOMAIN_KEY)
+    if (groupKey) {
+      keys.push(groupKey)
     }
   }
 
@@ -300,19 +312,20 @@ function onOpenChange(keys: Key[]) {
   openMenuKeys.value = normalizeOpenKeys(keys)
 }
 
-function collectGroupedRoutes(grouped: { ungrouped: RouteRecordRaw[], groups: MenuGroup[] }): RouteRecordRaw[] {
-  return [
-    ...grouped.ungrouped,
-    ...grouped.groups.flatMap((group) => group.items),
-  ]
+function collectGroupedRoutes(grouped: {
+  ungrouped: RouteRecordRaw[]
+  groups: MenuGroup[]
+}): RouteRecordRaw[] {
+  return [...grouped.ungrouped, ...grouped.groups.flatMap((group) => group.items)]
 }
 
 function onMenuClick({ key }: { key: Key }) {
   const keyStr = String(key)
   if (
-    keyStr === MARKING_DOMAIN_KEY
-    || keyStr === QUALITY_DOMAIN_KEY
-    || keyStr === PORTFOLIO_DOMAIN_KEY
+    keyStr === MARKING_DOMAIN_KEY ||
+    keyStr === PLATFORM_DOMAIN_KEY ||
+    keyStr === QUALITY_DOMAIN_KEY ||
+    keyStr === PORTFOLIO_DOMAIN_KEY
   ) {
     return
   }
@@ -322,6 +335,7 @@ function onMenuClick({ key }: { key: Key }) {
   }
   const allRoutes = [
     ...collectGroupedRoutes(props.markingGrouped),
+    ...collectGroupedRoutes(props.platformGrouped),
     ...collectGroupedRoutes(props.qualityGrouped),
     ...collectGroupedRoutes(props.portfolioGrouped),
   ]

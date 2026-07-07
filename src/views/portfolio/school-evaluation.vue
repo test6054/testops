@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import { Input, message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -12,13 +13,14 @@ import {
   PortfolioEvaluationTaskStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
-import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -27,19 +29,29 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 const ADVANCE_ACTIONS: Partial<
   Record<PortfolioEvaluationTaskStatusCode, PortfolioEvaluationTaskAdvanceActionCode>
 > = {
-  [PortfolioEvaluationTaskStatusCode.PUBLISHED]: PortfolioEvaluationTaskAdvanceActionCode.START_PRELIMINARY_REVIEW,
-  [PortfolioEvaluationTaskStatusCode.PRELIMINARY_REVIEW]: PortfolioEvaluationTaskAdvanceActionCode.START_SCHOOL_REVIEW,
-  [PortfolioEvaluationTaskStatusCode.SCHOOL_REVIEW]: PortfolioEvaluationTaskAdvanceActionCode.START_EXPERT_REVIEW,
-  [PortfolioEvaluationTaskStatusCode.EXPERT_REVIEW]: PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY,
+  [PortfolioEvaluationTaskStatusCode.PUBLISHED]:
+    PortfolioEvaluationTaskAdvanceActionCode.START_PRELIMINARY_REVIEW,
+  [PortfolioEvaluationTaskStatusCode.PRELIMINARY_REVIEW]:
+    PortfolioEvaluationTaskAdvanceActionCode.START_SCHOOL_REVIEW,
+  [PortfolioEvaluationTaskStatusCode.SCHOOL_REVIEW]:
+    PortfolioEvaluationTaskAdvanceActionCode.START_EXPERT_REVIEW,
+  [PortfolioEvaluationTaskStatusCode.EXPERT_REVIEW]:
+    PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY,
 }
 
 function canArchiveTask(status: PortfolioEvaluationTaskStatusCode): boolean {
-  return status === PortfolioEvaluationTaskStatusCode.PUBLICITY
-    || status === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING
+  return (
+    status === PortfolioEvaluationTaskStatusCode.PUBLICITY ||
+    status === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING
+  )
 }
 
 function advanceActionLabel(action: PortfolioEvaluationTaskAdvanceActionCode): string {
-  return strictEnumLabel(PortfolioEvaluationTaskAdvanceActionDescription, action, '评价任务推进动作')
+  return strictEnumLabel(
+    PortfolioEvaluationTaskAdvanceActionDescription,
+    action,
+    '评价任务推进动作',
+  )
 }
 
 function taskStatusLabel(status: PortfolioEvaluationTaskStatusCode): string {
@@ -183,6 +195,52 @@ async function submitPublish() {
   }
 }
 
+/** 组装学校评价任务行内操作。 */
+function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = []
+  const advance = nextAction(row.taskStatus)
+  if (advance) {
+    actions.push({
+      key: 'advance',
+      label: advanceActionLabel(advance),
+      tone: 'primary',
+      disabled: advancingId.value === row.id,
+    })
+  }
+  if (row.taskStatus === PortfolioEvaluationTaskStatusCode.RESULT_SUMMARY) {
+    actions.push({ key: 'publish', label: '发布公示', tone: 'primary' })
+  }
+  if (row.taskStatus === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING) {
+    actions.push({ key: 'objection', label: '处理异议', tone: 'primary' })
+  }
+  if (canArchiveTask(row.taskStatus)) {
+    actions.push({
+      key: 'archive',
+      label: '归档',
+      tone: 'primary',
+      disabled: archivingId.value === row.id,
+    })
+  }
+  return actions
+}
+
+function handleTaskRowAction(key: string, row: PortfolioEvaluationTaskVO): void {
+  switch (key) {
+    case 'advance':
+      void advanceTask(row)
+      break
+    case 'publish':
+      openPublishModal(row)
+      break
+    case 'objection':
+      goObjectionHandling(row)
+      break
+    case 'archive':
+      void archiveTask(row)
+      break
+  }
+}
+
 void loadPage()
 </script>
 
@@ -224,42 +282,10 @@ void loadPage()
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell">
-              <button
-                v-if="nextAction(record.taskStatus)"
-                type="button"
-                class="op-link op-link--primary"
-                :disabled="advancingId === record.id"
-                @click="() => void advanceTask(record)"
-              >
-                {{ advanceActionLabel(nextAction(record.taskStatus)!) }}
-              </button>
-              <button
-                v-if="record.taskStatus === 'RESULT_SUMMARY'"
-                type="button"
-                class="op-link op-link--primary"
-                @click="openPublishModal(record)"
-              >
-                发布公示
-              </button>
-              <button
-                v-if="record.taskStatus === 'OBJECTION_HANDLING'"
-                type="button"
-                class="op-link op-link--primary"
-                @click="goObjectionHandling(record)"
-              >
-                处理异议
-              </button>
-              <button
-                v-if="canArchiveTask(record.taskStatus)"
-                type="button"
-                class="op-link op-link--primary"
-                :disabled="archivingId === record.id"
-                @click="() => void archiveTask(record)"
-              >
-                归档
-              </button>
-            </div>
+            <UiTableActions
+              :items="buildTaskRowActions(record)"
+              @action="(key) => handleTaskRowAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>

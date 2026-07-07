@@ -26,7 +26,11 @@
           </UiTag>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <UiTextAction @click="$emit('resolve', rows[index])">处置</UiTextAction>
+          <UiTableActions
+            :items="[{ key: 'resolve', label: '处置' }]"
+            split
+            @action="() => $emit('resolve', rows[index])"
+          />
         </template>
       </template>
     </UiDataTable>
@@ -36,16 +40,16 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
+import { listPendingDuplicates } from '@/apis/mark/image-ledger'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, ref, watch } from 'vue'
 import {
   DUPLICATE_RESOLUTION_STATUS_TONE,
   DuplicateResolutionStatusDescription,
 } from '@/apis/mark/duplicate-resolution-status'
-import { listPendingDuplicates } from '@/apis/mark/image-ledger'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 

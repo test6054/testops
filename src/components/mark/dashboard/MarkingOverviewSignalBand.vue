@@ -1,5 +1,10 @@
 <template>
-  <SignalBand :metrics="metrics" compact variant="tiles" @metric-click="(key) => emit('metric-click', key)" />
+  <SignalBand
+    :metrics="metrics"
+    compact
+    variant="tiles"
+    @metric-click="(key) => emit('metric-click', key)"
+  />
 </template>
 
 <script lang="ts" setup>
@@ -11,7 +16,6 @@ import type {
 import type { SignalMetric } from '@/types/workbench'
 import { computed } from 'vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
-import { formatSemester } from '@/types/enums/semester-enum'
 
 defineOptions({ name: 'MarkingOverviewSignalBand' })
 
@@ -35,21 +39,16 @@ const metrics = computed<SignalMetric[]>(() => {
   const dash = props.placeholder ? '—' : 0
   const m = props.signalMetrics
   const progress = props.markingProgressSummary
-  const ctx = props.filterContext
-  const scopeParts: string[] = []
-  if (ctx?.academicYear) scopeParts.push(ctx.academicYear)
-  if (ctx?.semester) scopeParts.push(formatSemester(ctx.semester))
-  const scopeHint = scopeParts.length ? scopeParts.join(' · ') : '全部学年学期'
 
   const totalQuestions = progress?.totalQuestionGradeCount ?? 0
   const confirmedQuestions = progress?.confirmedQuestionGradeCount ?? 0
-  const markingPercent
-    = totalQuestions > 0 ? Math.round((confirmedQuestions / totalQuestions) * 1000) / 10 : 0
+  const markingPercent =
+    totalQuestions > 0 ? Math.round((confirmedQuestions / totalQuestions) * 1000) / 10 : 0
 
   const pendingExceptionCount = progress
-    ? (progress.scanAttentionCount ?? 0)
-    + (progress.pendingReviewTaskCount ?? 0)
-    + (progress.pendingGradeCount ?? 0)
+    ? (progress.scanAttentionCount ?? 0) +
+      (progress.pendingReviewTaskCount ?? 0) +
+      (progress.pendingGradeCount ?? 0)
     : dash
 
   const activeExamCount = m?.activeExamCount ?? dash
@@ -67,7 +66,6 @@ const metrics = computed<SignalMetric[]>(() => {
       value: arbitrationCount,
       unit: '项',
       tone: 'red',
-      helper: '点击查看待处理事项',
       trendPolarity: 'negative',
       clickable: true,
     })
@@ -80,7 +78,6 @@ const metrics = computed<SignalMetric[]>(() => {
       value: spotCheckCount,
       unit: '项',
       tone: 'orange',
-      helper: '点击查看待处理事项',
       trendPolarity: 'negative',
       clickable: true,
     })
@@ -93,7 +90,6 @@ const metrics = computed<SignalMetric[]>(() => {
       value: activeExamCount,
       unit: m ? '场' : undefined,
       tone: 'blue',
-      helper: scopeHint,
       clickable: typeof activeExamCount === 'number' && activeExamCount > 0,
     },
     {
@@ -102,7 +98,6 @@ const metrics = computed<SignalMetric[]>(() => {
       value: progress?.confirmedQuestionGradeCount ?? dash,
       unit: progress ? '题' : undefined,
       tone: 'green',
-      helper: '筛选范围内',
     },
     {
       key: 'marking-progress',
@@ -110,7 +105,6 @@ const metrics = computed<SignalMetric[]>(() => {
       value: progress ? markingPercent : dash,
       unit: progress ? '%' : undefined,
       tone: 'blue',
-      helper: totalQuestions > 0 ? `共 ${totalQuestions.toLocaleString('zh-CN')} 题` : '暂无题目',
       trendPolarity: 'positive',
     },
     {
@@ -119,10 +113,6 @@ const metrics = computed<SignalMetric[]>(() => {
       value: pendingExceptionCount,
       unit: progress ? '项' : undefined,
       tone: typeof pendingExceptionCount === 'number' && pendingExceptionCount > 0 ? 'red' : 'gray',
-      helper:
-        typeof pendingExceptionCount === 'number' && pendingExceptionCount > 0
-          ? '点击查看优先推进'
-          : '暂无积压',
       trendPolarity: 'negative',
       clickable: typeof pendingExceptionCount === 'number' && pendingExceptionCount > 0,
     },
@@ -132,7 +122,6 @@ const metrics = computed<SignalMetric[]>(() => {
       value: m?.confirmedUnpublishedScoreCount ?? dash,
       unit: m ? '份' : undefined,
       tone: unpublishedCount > 0 ? 'orange' : 'gray',
-      helper: unpublishedCount > 0 ? '点击查看进行中考试' : '暂无待发布',
       trendPolarity: 'negative',
       clickable: unpublishedCount > 0,
     },

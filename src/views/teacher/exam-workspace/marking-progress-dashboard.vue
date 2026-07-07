@@ -1,28 +1,29 @@
 <script lang="ts" setup>
 import type { TableColumnsType } from 'ant-design-vue'
 import type { ExamWorkbenchMarkingProgressPanelResponse } from '@/apis/mark/exam-progress'
+import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import type {
   FormalSessionResponse,
   FormalSessionStatusCode,
   TrialSessionResponse,
   TrialSessionStatusCode,
 } from '@/apis/mark/marking-organization'
-import type { SignalMetric } from '@/types/workbench'
-import { ReloadOutlined, TableOutlined } from '@ant-design/icons-vue'
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import {
   FORMAL_SESSION_STATUS_TONE,
   FormalSessionStatusDescription,
   TRIAL_SESSION_STATUS_TONE,
   TrialSessionStatusDescription,
 } from '@/apis/mark/marking-organization'
+import type { SignalMetric } from '@/types/workbench'
+import { ReloadOutlined, TableOutlined } from '@ant-design/icons-vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -79,8 +80,20 @@ const sessionRows = computed(() => {
 const formalColumns: TableColumnsType<FormalSessionResponse> = [
   { title: '题组', dataIndex: 'groupName', key: 'groupName', width: 160 },
   { title: '状态', key: 'status', width: 120 },
-  { title: '总任务', dataIndex: 'totalTaskCount', key: 'totalTaskCount', width: 88, align: 'right' },
-  { title: '已完成', dataIndex: 'finalizedTaskCount', key: 'finalizedTaskCount', width: 88, align: 'right' },
+  {
+    title: '总任务',
+    dataIndex: 'totalTaskCount',
+    key: 'totalTaskCount',
+    width: 88,
+    align: 'right',
+  },
+  {
+    title: '已完成',
+    dataIndex: 'finalizedTaskCount',
+    key: 'finalizedTaskCount',
+    width: 88,
+    align: 'right',
+  },
   { title: '进度', key: 'progress', width: 180 },
   { title: '创建时间', key: 'createTime', width: 168 },
   { title: '操作', key: 'action', width: 100 },
@@ -89,8 +102,20 @@ const formalColumns: TableColumnsType<FormalSessionResponse> = [
 const trialColumns: TableColumnsType<TrialSessionResponse> = [
   { title: '题组', dataIndex: 'groupName', key: 'groupName', width: 160 },
   { title: '状态', key: 'status', width: 120 },
-  { title: '样卷数', dataIndex: 'totalTaskCount', key: 'totalTaskCount', width: 88, align: 'right' },
-  { title: '已完成', dataIndex: 'finalizedTaskCount', key: 'finalizedTaskCount', width: 88, align: 'right' },
+  {
+    title: '样卷数',
+    dataIndex: 'totalTaskCount',
+    key: 'totalTaskCount',
+    width: 88,
+    align: 'right',
+  },
+  {
+    title: '已完成',
+    dataIndex: 'finalizedTaskCount',
+    key: 'finalizedTaskCount',
+    width: 88,
+    align: 'right',
+  },
   { title: '进度', key: 'progress', width: 180 },
   { title: '校准结论', dataIndex: 'calibrationSummary', key: 'calibrationSummary', ellipsis: true },
   { title: '关闭时间', key: 'closeTime', width: 168 },
@@ -139,7 +164,9 @@ async function loadPanel() {
 function goTaskPool() {
   if (!examId.value) return
   router.push({
-    name: isTrialPhase.value ? 'TeacherExamWorkspaceTrialTaskPool' : 'TeacherExamWorkspaceMarkingTaskPool',
+    name: isTrialPhase.value
+      ? 'TeacherExamWorkspaceTrialTaskPool'
+      : 'TeacherExamWorkspaceMarkingTaskPool',
     params: { examId: examId.value },
   })
 }
@@ -259,14 +286,24 @@ watch(examId, () => loadPanel(), { immediate: true })
               <a-progress
                 :percent="sessionProgressPercent(record.totalTaskCount, record.finalizedTaskCount)"
                 size="small"
-                :stroke-color="record.finalizedTaskCount >= record.totalTaskCount && record.totalTaskCount > 0 ? '#52c41a' : '#1677ff'"
+                :stroke-color="
+                  record.finalizedTaskCount >= record.totalTaskCount && record.totalTaskCount > 0
+                    ? '#52c41a'
+                    : '#1677ff'
+                "
               />
             </template>
             <template v-else-if="column.key === 'closeTime'">
-              <span class="marking-progress-dash__mono">{{ formatDateTime(record.closeTime) || '—' }}</span>
+              <span class="marking-progress-dash__mono">{{
+                formatDateTime(record.closeTime) || '—'
+              }}</span>
             </template>
             <template v-else-if="column.key === 'action'">
-              <UiButton variant="ghost" size="sm" @click="goSessionManage(record)">管理</UiButton>
+              <UiTableActions
+                :items="[{ key: 'manage', label: '管理' }]"
+                split
+                @action="() => goSessionManage(record)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -293,14 +330,24 @@ watch(examId, () => loadPanel(), { immediate: true })
               <a-progress
                 :percent="sessionProgressPercent(record.totalTaskCount, record.finalizedTaskCount)"
                 size="small"
-                :stroke-color="record.finalizedTaskCount >= record.totalTaskCount && record.totalTaskCount > 0 ? '#52c41a' : '#1677ff'"
+                :stroke-color="
+                  record.finalizedTaskCount >= record.totalTaskCount && record.totalTaskCount > 0
+                    ? '#52c41a'
+                    : '#1677ff'
+                "
               />
             </template>
             <template v-else-if="column.key === 'createTime'">
-              <span class="marking-progress-dash__mono">{{ formatDateTime(record.createTime) || '—' }}</span>
+              <span class="marking-progress-dash__mono">{{
+                formatDateTime(record.createTime) || '—'
+              }}</span>
             </template>
             <template v-else-if="column.key === 'action'">
-              <UiButton variant="ghost" size="sm" @click="goSessionManage(record)">管理</UiButton>
+              <UiTableActions
+                :items="[{ key: 'manage', label: '管理' }]"
+                split
+                @action="() => goSessionManage(record)"
+              />
             </template>
           </template>
         </UiDataTable>

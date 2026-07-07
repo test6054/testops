@@ -12,11 +12,11 @@ import type {
   AccreditationStandardSummaryVO,
   AccreditationStandardVO,
 } from '@/apis/quality/accreditation-standard'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import {
   AccreditationTypeCode,
   AccreditationTypeDescription,
@@ -28,7 +28,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -169,7 +169,7 @@ async function loadPageData() {
   await Promise.all([loadList(), loadSummary()])
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -177,8 +177,8 @@ function handlePageChange(page: { current: number, pageSize: number }) {
 
 function syncFilterToQuery() {
   query.accreditationType = filterModel.value.accreditationType
-  query.enabled
-    = filterModel.value.enabled === 'enabled'
+  query.enabled =
+    filterModel.value.enabled === 'enabled'
       ? true
       : filterModel.value.enabled === 'disabled'
         ? false
@@ -261,6 +261,26 @@ async function submitEditor() {
     await loadPageData()
   } finally {
     submitting.value = false
+  }
+}
+
+function buildAccreditationStandardActions(
+  _record: AccreditationStandardVO,
+): UiTableRowActionItem[] {
+  return [
+    { key: 'edit', label: '编辑' },
+    { key: 'delete', label: '删除', tone: 'danger' },
+  ]
+}
+
+function handleAccreditationStandardAction(key: string, record: AccreditationStandardVO): void {
+  switch (key) {
+    case 'edit':
+      openEdit(record)
+      break
+    case 'delete':
+      void handleDelete(record)
+      break
   }
 }
 
@@ -366,10 +386,11 @@ onActivated(() => {
             <UiTag v-if="record.isPilotOnly" tone="orange" size="sm">试点</UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
-              <UiTextAction tone="danger" @click="handleDelete(record)">删除</UiTextAction>
-            </div>
+            <UiTableActions
+              :items="buildAccreditationStandardActions(record)"
+              split
+              @action="(key) => handleAccreditationStandardAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>

@@ -9,6 +9,7 @@ import type {
 } from '@/apis/portfolio/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
+import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -36,10 +37,8 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-
 
 const listColumns: ColumnsType = [
   { title: '工号', dataIndex: 'teacherNumber', key: 'teacherNumber', width: 120 },
@@ -196,7 +195,7 @@ function handleSearch() {
   loadPage()
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadPage()
@@ -241,7 +240,7 @@ async function reloadDetail() {
   await loadTeacherExtensions(detail.value.userId)
 }
 
-function openIdentityCreate(context: { userId: string, nickName?: string, departmentId?: string }) {
+function openIdentityCreate(context: { userId: string; nickName?: string; departmentId?: string }) {
   identityMode.value = 'create'
   identityEditor.teacherUserId = context.userId
   identityEditor.id = undefined
@@ -407,7 +406,7 @@ onMounted(async () => {
             <UiTextAction @click="openTeacherArchive(record.userId)"> 档案 </UiTextAction>
             <UiTextAction @click="openOneTable(record.userId)"> 一张表 </UiTextAction>
             <UiTextAction
-              v-if="canManageTeacherAi(record.userId, true)"
+              v-if="canManageTeacherAi(record.userId)"
               @click="openAiCandidateConfirm(record.userId)"
             >
               AI 确认

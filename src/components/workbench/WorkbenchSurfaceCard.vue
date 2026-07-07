@@ -28,3 +28,44 @@ withDefaults(
   },
 )
 </script>
+
+<style scoped>
+.workbench-surface-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--dp-surface);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  box-shadow: var(--dp-shadow-sm);
+  overflow: hidden;
+}
+
+.workbench-surface-card__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--dp-space-3);
+  padding: var(--dp-space-4) var(--dp-space-5);
+  border-bottom: 1px solid var(--dp-border);
+}
+
+.workbench-surface-card__toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2);
+  padding: var(--dp-space-3) var(--dp-space-5);
+  border-bottom: 1px solid var(--dp-border);
+  background: var(--dp-surface-subtle);
+}
+
+.workbench-surface-card__body {
+  flex: 1;
+  padding: var(--dp-space-5);
+  min-height: 0;
+}
+
+.workbench-surface-card__body--flush {
+  padding: 0;
+}
+</style>

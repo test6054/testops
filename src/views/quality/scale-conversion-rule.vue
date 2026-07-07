@@ -8,11 +8,11 @@ import type {
   ScaleConversionRuleSaveRequest,
   ScaleConversionRuleVO,
 } from '@/apis/quality/scale-conversion-rule'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
 import { ALL_SCALE_TYPE_CODES, ScaleTypeCode, ScaleTypeDescription } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -20,6 +20,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -37,10 +38,12 @@ const query = reactive<ScaleConversionRuleQueryRequest>({
   enabled: undefined,
 })
 
-const scaleTypeOptions: { value: ScaleTypeCode, label: string }[] = ALL_SCALE_TYPE_CODES.map((value) => ({
-  value,
-  label: strictEnumLabel(ScaleTypeDescription, value, '量表类型'),
-}))
+const scaleTypeOptions: { value: ScaleTypeCode; label: string }[] = ALL_SCALE_TYPE_CODES.map(
+  (value) => ({
+    value,
+    label: strictEnumLabel(ScaleTypeDescription, value, '量表类型'),
+  }),
+)
 
 interface ScaleConversionRuleFilterModel {
   [key: string]: unknown
@@ -166,7 +169,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -339,6 +342,24 @@ async function submitEditor() {
   }
 }
 
+function buildScaleConversionRuleActions(_record: ScaleConversionRuleVO): UiTableRowActionItem[] {
+  return [
+    { key: 'edit', label: '编辑' },
+    { key: 'delete', label: '删除', tone: 'danger' },
+  ]
+}
+
+function handleScaleConversionRuleAction(key: string, record: ScaleConversionRuleVO): void {
+  switch (key) {
+    case 'edit':
+      openEdit(record)
+      break
+    case 'delete':
+      void handleDelete(record)
+      break
+  }
+}
+
 async function handleDelete(record: ScaleConversionRuleVO) {
   await confirmAsync({
     title: `删除换算规则 ${record.ruleCode}？`,
@@ -439,10 +460,11 @@ onActivated(() => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
-              <UiTextAction tone="danger" @click="handleDelete(record)">删除</UiTextAction>
-            </div>
+            <UiTableActions
+              :items="buildScaleConversionRuleActions(record)"
+              split
+              @action="(key) => handleScaleConversionRuleAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>

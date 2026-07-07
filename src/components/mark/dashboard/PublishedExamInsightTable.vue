@@ -1,52 +1,64 @@
 <template>
-  <UiEmpty v-if="!insights.length" description="暂无已发布成绩学情" />
-  <UiDataTable
-    v-else
-    :columns="columns"
-    :data-source="insights"
-    :pagination="false"
-    row-key="examId"
-    size="small"
-    flat
-  >
-    <template #bodyCell="{ column, record }">
-      <template v-if="column.key === 'academicYear'">
-        {{ record.academicYear || '—' }}
+  <section class="published-insight-table">
+    <header class="published-insight-table__head">
+      <strong class="published-insight-table__title">学情明细</strong>
+    </header>
+    <UiEmpty
+      v-if="!insights.length"
+      size="sm"
+      description="暂无已发布成绩学情"
+      class="published-insight-table__empty"
+    />
+    <UiDataTable
+      v-else
+      :columns="columns"
+      :data-source="insights"
+      :pagination="false"
+      row-key="examId"
+      size="small"
+      flat
+    >
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'academicYear'">
+          {{ record.academicYear || '—' }}
+        </template>
+        <template v-else-if="column.key === 'semester'">
+          {{ record.semester ? formatSemester(record.semester) : '—' }}
+        </template>
+        <template v-else-if="column.key === 'passRate'">
+          {{ formatPassRate(record.passRate) }}
+        </template>
+        <template v-else-if="column.key === 'scoreRange'">
+          <span v-if="record.minScore != null && record.maxScore != null">
+            {{ record.minScore }} ~ {{ record.maxScore }}
+          </span>
+          <span v-else>—</span>
+        </template>
+        <template v-else-if="column.key === 'passLine'">
+          <span v-if="record.passScore != null && record.fullScore != null">
+            {{ record.passScore }} / {{ record.fullScore }}
+          </span>
+          <span v-else-if="record.passScore != null">{{ record.passScore }}</span>
+          <span v-else>—</span>
+        </template>
+        <template v-else-if="column.key === 'actions'">
+          <UiTableActions
+            :items="[{ key: 'statistics', label: '统计' }]"
+            split
+            @action="() => emit('statistics', record.examId)"
+          />
+        </template>
       </template>
-      <template v-else-if="column.key === 'semester'">
-        {{ record.semester ? formatSemester(record.semester) : '—' }}
-      </template>
-      <template v-else-if="column.key === 'passRate'">
-        {{ formatPassRate(record.passRate) }}
-      </template>
-      <template v-else-if="column.key === 'scoreRange'">
-        <span v-if="record.minScore != null && record.maxScore != null">
-          {{ record.minScore }} ~ {{ record.maxScore }}
-        </span>
-        <span v-else>—</span>
-      </template>
-      <template v-else-if="column.key === 'passLine'">
-        <span v-if="record.passScore != null && record.fullScore != null">
-          {{ record.passScore }} / {{ record.fullScore }}
-        </span>
-        <span v-else-if="record.passScore != null">{{ record.passScore }}</span>
-        <span v-else>—</span>
-      </template>
-      <template v-else-if="column.key === 'actions'">
-        <UiButton size="sm" variant="ghost" @click="emit('statistics', record.examId)">
-          统计
-        </UiButton>
-      </template>
-    </template>
-  </UiDataTable>
+    </UiDataTable>
+  </section>
 </template>
 
 <script lang="ts" setup>
 import type { TableColumnsType } from 'ant-design-vue'
 import type { MarkTeacherDashboardPublishedExamInsightItemVO } from '@/apis/mark/teacher-dashboard'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { formatSemester } from '@/types/enums/semester-enum'
 
 defineOptions({ name: 'PublishedExamInsightTable' })
@@ -76,3 +88,31 @@ function formatPassRate(value?: number): string {
   return `${(value * 100).toFixed(1)}%`
 }
 </script>
+
+<style scoped>
+.published-insight-table {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 220px;
+}
+
+.published-insight-table__head {
+  margin-bottom: 12px;
+}
+
+.published-insight-table__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dp-text-primary, #0f172a);
+}
+
+.published-insight-table__empty {
+  flex: 1;
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--dp-surface);
+}
+</style>

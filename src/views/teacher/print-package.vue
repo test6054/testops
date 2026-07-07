@@ -76,19 +76,11 @@
               {{ record.sealRemark || '未填写封装备注' }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction @click="viewDetail(record)">查看明细</UiTextAction>
-                <UiTextAction
-                  v-if="record.packageFileId"
-                  tone="primary"
-                  @click="previewPackagePdf(record)"
-                >
-                  预览
-                </UiTextAction>
-                <UiTextAction v-if="record.packageFileId" @click="downloadPackagePdf(record)">
-                  下载 PDF
-                </UiTextAction>
-              </div>
+              <UiTableActions
+                :items="buildPackageActions(record)"
+                split
+                @action="(key) => handlePackageAction(key, record)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -164,12 +156,7 @@
       </UiDrawer>
 
       <!-- PDF 预览 -->
-      <UiDrawer
-        v-model:open="previewModalOpen"
-        title="印刷包 PDF 预览"
-        :width="900"
-        hide-footer
-      >
+      <UiDrawer v-model:open="previewModalOpen" title="印刷包 PDF 预览" :width="900" hide-footer>
         <UiSkeletonState v-if="previewLoading" variant="card" compact />
         <iframe
           v-else-if="previewPdfUrl"
@@ -184,15 +171,9 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type {ExamWorkbenchPrintPackagePanelResponse} from '@/apis/mark/exam-progress';
-import type { ExamPrintPackageResponse, PrintPackageItemVO } from '@/apis/mark/print-package'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
+import type { ExamWorkbenchPrintPackagePanelResponse } from '@/apis/mark/exam-progress'
 import { getPrintPackagePanel } from '@/apis/mark/exam-progress'
+import type { ExamPrintPackageResponse, PrintPackageItemVO } from '@/apis/mark/print-package'
 import {
   generatePrintPackage,
   getPrintPackage,
@@ -202,6 +183,12 @@ import {
   PRINT_PACKAGE_STATUS_TONE,
   PrintPackageStatusDescription,
 } from '@/apis/mark/print-package'
+import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -209,7 +196,7 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -226,12 +213,8 @@ defineOptions({ name: 'TeacherPrintPackage' })
 
 const { selectedExamId } = useMarkExamContext()
 const workbenchContext = useMarkWorkbenchContext()
-const {
-  contextBarTitle,
-  contextBarSubtitle,
-  examStatusLabel,
-  examStatusTone,
-} = useExamJourneyContextBar('印刷包')
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useExamJourneyContextBar('印刷包')
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const prepBlockingReasons = computed(
@@ -347,7 +330,7 @@ async function loadPackageList() {
   }
 }
 
-function handlePackagePageChange(pageEvent: { current: number, pageSize: number }): void {
+function handlePackagePageChange(pageEvent: { current: number; pageSize: number }): void {
   pagination.pageNum = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   loadPackageList()
@@ -456,6 +439,28 @@ const detailModalVisible = ref(false)
 const detailLoading = ref(false)
 const detailPackage = ref<ExamPrintPackageResponse | null>(null)
 const detailItems = ref<PrintPackageItemVO[]>([])
+
+function buildPackageActions(pkg: ExamPrintPackageResponse): UiTableRowActionItem[] {
+  return [
+    { key: 'detail', label: '查看明细' },
+    { key: 'preview', label: '预览', tone: 'primary', hidden: !pkg.packageFileId },
+    { key: 'download', label: '下载 PDF', hidden: !pkg.packageFileId },
+  ]
+}
+
+function handlePackageAction(key: string, pkg: ExamPrintPackageResponse): void {
+  switch (key) {
+    case 'detail':
+      void viewDetail(pkg)
+      break
+    case 'preview':
+      void previewPackagePdf(pkg)
+      break
+    case 'download':
+      void downloadPackagePdf(pkg)
+      break
+  }
+}
 
 async function viewDetail(pkg: ExamPrintPackageResponse) {
   detailPackage.value = pkg

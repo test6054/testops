@@ -1,22 +1,20 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  PortfolioKeyTeacherRegistryStatusCode,
-} from '@/apis/portfolio/enums'
-import type { PortfolioKeyTeacherRegistryVO } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
+import type { PortfolioKeyTeacherRegistryStatusCode } from '@/apis/portfolio/enums'
 import {
   PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_OPTIONS,
   PortfolioKeyTeacherRegistryStatusDescription,
   PortfolioKeyTeacherRegistryTypeCode,
 } from '@/apis/portfolio/enums'
+import type { PortfolioKeyTeacherRegistryVO } from '@/apis/portfolio/teacher-platform'
 import { portfolioKeyTeacherApi } from '@/apis/portfolio/teacher-platform'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
@@ -28,7 +26,9 @@ const REGISTRY_TABS = PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_OPTIONS.map((item) => 
   label: item.label,
 }))
 
-const activeType = ref<PortfolioKeyTeacherRegistryTypeCode>(PortfolioKeyTeacherRegistryTypeCode.PROGRAM_LEADER)
+const activeType = ref<PortfolioKeyTeacherRegistryTypeCode>(
+  PortfolioKeyTeacherRegistryTypeCode.PROGRAM_LEADER,
+)
 const loading = ref(false)
 const rows = ref<PortfolioKeyTeacherRegistryVO[]>([])
 const form = reactive({
@@ -38,8 +38,8 @@ const form = reactive({
   appointYear: '',
   dutyScope: '',
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
 
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
@@ -174,8 +174,13 @@ onMounted(loadPage)
           <template v-else-if="column.key === 'registryStatus'">
             {{ registryStatusLabel(record.registryStatus) }}
           </template>
-          <template v-else-if="column.key === 'actions' && record.registryStatus === 'ACTIVE'">
-            <UiTextAction @click="revokeRegistry(record.id)"> 作废 </UiTextAction>
+          <template v-else-if="column.key === 'actions'">
+            <UiTableActions
+              v-if="record.registryStatus === 'ACTIVE'"
+              :items="[{ key: 'revoke', label: '作废', tone: 'danger' }]"
+              split
+              @action="() => revokeRegistry(record.id)"
+            />
           </template>
         </template>
       </UiDataTable>

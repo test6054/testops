@@ -159,11 +159,17 @@
               <UiTag v-if="record.orderAuditPassed === false" tone="red" size="sm">
                 {{ record.orderAuditIssueCount ?? 0 }} 项异常
               </UiTag>
-              <UiTag v-else-if="record.orderAuditPassed === true" tone="green" size="sm">通过</UiTag>
+              <UiTag v-else-if="record.orderAuditPassed === true" tone="green" size="sm"
+                >通过</UiTag
+              >
               <span v-else class="muted">待审计</span>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction @click.stop="openBatchDetail(record)">详情</UiTextAction>
+              <UiTableActions
+                :items="[{ key: 'detail', label: '详情' }]"
+                split
+                @action="() => openBatchDetail(record)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -183,19 +189,14 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamScannerDeviceResponse } from '@/apis/mark/exam-mark-scanner'
+import { listActiveScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import type { MarkingProgressResponse } from '@/apis/mark/exam-progress'
+import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import type {
   ExamScannerBatchQueryRequest,
   ExamScannerBatchResponse,
   ExamScannerBatchWorkbenchSummaryResponse,
 } from '@/apis/mark/exam-scan'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { listActiveScannerDevices } from '@/apis/mark/exam-mark-scanner'
-import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import {
   getScannerBatchWorkbenchSummary,
   pageScannerBatches,
@@ -203,6 +204,11 @@ import {
   ScanBatchStatusCode,
   ScanBatchStatusDescription,
 } from '@/apis/mark/exam-scan'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ScanBatchDetailDrawer from '@/components/mark/ScanBatchDetailDrawer.vue'
 import ScanOrphanRecoveryAlert from '@/components/mark/ScanOrphanRecoveryAlert.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -212,7 +218,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -233,12 +239,8 @@ type StatusTabKey = 'ALL' | ScanBatchStatusCode
 const route = useRoute()
 const router = useRouter()
 const { selectedExamId } = useMarkExamContext()
-const {
-  contextBarTitle,
-  contextBarSubtitle,
-  examStatusLabel,
-  examStatusTone,
-} = useExamJourneyContextBar('扫描批次')
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useExamJourneyContextBar('扫描批次')
 
 const scanBatchContextSubtitle = computed(() => {
   const journeySubtitle = contextBarSubtitle.value
@@ -265,7 +267,7 @@ const scanAttentionAlertDescription = computed(() => {
 const batches = ref<ExamScannerBatchResponse[]>([])
 const batchTotal = ref(0)
 const batchLoading = ref(false)
-const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
+const batchQuery = reactive<{ pageNum: number; pageSize: number }>({
   pageNum: 1,
   pageSize: 10,
 })
@@ -386,7 +388,12 @@ const batchColumns: ColumnType<ExamScannerBatchResponse>[] = [
   { title: '扫描设备', key: 'scannerDevice', width: 200, ellipsis: true },
   { title: '扫描时间窗', key: 'scanWindow', width: 210 },
   { title: '事件', dataIndex: 'eventCount', key: 'eventCount', width: 72 },
-  { title: '文件', key: 'fileCount', width: 72, customRender: ({ record }) => `${record.sourceFileCount ?? 0}` },
+  {
+    title: '文件',
+    key: 'fileCount',
+    width: 72,
+    customRender: ({ record }) => `${record.sourceFileCount ?? 0}`,
+  },
   { title: '页数', dataIndex: 'pageCount', key: 'pageCount', width: 72 },
   { title: '落库', key: 'pageProgress', width: 90 },
   { title: '异常', key: 'attentionCount', width: 80 },
@@ -423,15 +430,18 @@ function formatDeviceLabel(deviceId?: string): string {
 
 function syncFilterForm(next: Record<string, unknown>): void {
   filterForm.keyword = String(next.keyword ?? '')
-  filterForm.scannerDeviceId = typeof next.scannerDeviceId === 'string' ? next.scannerDeviceId : undefined
+  filterForm.scannerDeviceId =
+    typeof next.scannerDeviceId === 'string' ? next.scannerDeviceId : undefined
   filterForm.scanWindow = isScanWindow(next.scanWindow) ? next.scanWindow : undefined
 }
 
 function isScanWindow(value: unknown): value is [string, string] {
-  return Array.isArray(value)
-    && value.length === 2
-    && typeof value[0] === 'string'
-    && typeof value[1] === 'string'
+  return (
+    Array.isArray(value) &&
+    value.length === 2 &&
+    typeof value[0] === 'string' &&
+    typeof value[1] === 'string'
+  )
 }
 
 function buildBatchQuery(): ExamScannerBatchQueryRequest {
@@ -537,7 +547,7 @@ function handleStatusTabChange(): void {
   void loadBatches()
 }
 
-function onBatchPageChange(page: { current: number, pageSize: number }): void {
+function onBatchPageChange(page: { current: number; pageSize: number }): void {
   batchQuery.pageNum = page.current
   batchQuery.pageSize = page.pageSize
   void loadBatches()
@@ -661,24 +671,28 @@ function goScanMonitor(): void {
   })
 }
 
-watch(selectedExamId, (examId) => {
-  statusTab.value = 'ALL'
-  detailDrawerOpen.value = false
-  detailBatchId.value = null
-  detailBatchSummary.value = null
-  if (examId) {
-    void loadAllForExam().then(() => {
-      tryFocusOrphanFromRoute()
-    })
-  } else {
-    summary.value = null
-    summaryLoadFailed.value = false
-    batchListLoadFailed.value = false
-    markingProgress.value = null
-    batches.value = []
-    batchTotal.value = 0
-  }
-}, { immediate: true })
+watch(
+  selectedExamId,
+  (examId) => {
+    statusTab.value = 'ALL'
+    detailDrawerOpen.value = false
+    detailBatchId.value = null
+    detailBatchSummary.value = null
+    if (examId) {
+      void loadAllForExam().then(() => {
+        tryFocusOrphanFromRoute()
+      })
+    } else {
+      summary.value = null
+      summaryLoadFailed.value = false
+      batchListLoadFailed.value = false
+      markingProgress.value = null
+      batches.value = []
+      batchTotal.value = 0
+    }
+  },
+  { immediate: true },
+)
 
 watch(
   () => route.query.focus,

@@ -4,17 +4,6 @@ import type {
   PortfolioEvaluationObjectionHandleActionCode,
   PortfolioEvaluationTeacherNoticeStatusCode,
 } from '@/apis/portfolio/enums'
-import type {
-  PortfolioEvaluationMaterialCategoryItemVO,
-  PortfolioEvaluationMaterialPreviewVO,
-  PortfolioEvaluationPublicityListItemVO,
-  PortfolioEvaluationTeacherNoticeVO,
-  PortfolioEvaluationTeacherResultSummaryVO,
-} from '@/apis/portfolio/types'
-import { Input, message, Select } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS,
   PortfolioEvaluationObjectionHandleActionDescription,
@@ -23,20 +12,33 @@ import {
   PortfolioEvaluationPublicityStatusDescription,
   PortfolioEvaluationTeacherNoticeStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
-import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
+import type {
+  PortfolioEvaluationMaterialCategoryItemVO,
+  PortfolioEvaluationMaterialPreviewVO,
+  PortfolioEvaluationPublicityListItemVO,
+  PortfolioEvaluationTeacherNoticeVO,
+  PortfolioEvaluationTeacherResultSummaryVO,
+} from '@/apis/portfolio/types'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
   PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
   PORTFOLIO_EVALUATION_PUBLICITY_STATUS_TONE,
   PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE,
 } from '@/apis/portfolio/types'
+import { Input, message, Select } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
+import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import {
@@ -160,9 +162,9 @@ function canViewerSubmitObjection(record: PortfolioEvaluationPublicityListItemVO
     return false
   }
   return !(
-    canPickTeachers.value
-    && targetTeacherId.value
-    && targetTeacherId.value !== currentUserId.value
+    canPickTeachers.value &&
+    targetTeacherId.value &&
+    targetTeacherId.value !== currentUserId.value
   )
 }
 
@@ -307,6 +309,63 @@ function goArchive() {
   })
 }
 
+/** 组装评价待办行内操作。 */
+function buildNoticeRowActions(record: PortfolioEvaluationTeacherNoticeVO): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = [{ key: 'preview', label: '预览材料' }]
+  if (record.noticeStatus !== 'CONFIRMED') {
+    actions.push({
+      key: 'confirm',
+      label: '确认材料',
+      tone: 'primary',
+      disabled: confirming.value && selectedNoticeId.value === record.id,
+    })
+  }
+  return actions
+}
+
+function handleNoticeRowAction(key: string, record: PortfolioEvaluationTeacherNoticeVO): void {
+  switch (key) {
+    case 'preview':
+      void loadPreview(record.id)
+      break
+    case 'confirm':
+      selectedNoticeId.value = record.id
+      void confirmSelected()
+      break
+  }
+}
+
+/** 组装评价公示行内操作。 */
+function buildPublicityRowActions(
+  record: PortfolioEvaluationPublicityListItemVO,
+): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = [
+    {
+      key: 'viewResult',
+      label: '查看结果',
+      disabled: resultLoading.value,
+    },
+  ]
+  if (canViewerSubmitObjection(record)) {
+    actions.push({ key: 'submitObjection', label: '提交异议', tone: 'primary' })
+  }
+  return actions
+}
+
+function handlePublicityRowAction(
+  key: string,
+  record: PortfolioEvaluationPublicityListItemVO,
+): void {
+  switch (key) {
+    case 'viewResult':
+      void loadResultSummary(record.evaluationTaskId)
+      break
+    case 'submitObjection':
+      openObjectionModal(record)
+      break
+  }
+}
+
 usePortfolioScopedLoader(
   () => {
     pageNum.value = 1
@@ -356,25 +415,10 @@ usePortfolioScopedLoader(
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell">
-              <button type="button" class="op-link" @click="() => void loadPreview(record.id)">
-                预览材料
-              </button>
-              <button
-                v-if="record.noticeStatus !== 'CONFIRMED'"
-                type="button"
-                class="op-link op-link--primary"
-                :disabled="confirming && selectedNoticeId === record.id"
-                @click="
-                  () => {
-                    selectedNoticeId = record.id
-                    void confirmSelected()
-                  }
-                "
-              >
-                确认材料
-              </button>
-            </div>
+            <UiTableActions
+              :items="buildNoticeRowActions(record)"
+              @action="(key) => handleNoticeRowAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>
@@ -442,24 +486,10 @@ usePortfolioScopedLoader(
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell">
-              <button
-                type="button"
-                class="op-link"
-                :disabled="resultLoading"
-                @click="() => void loadResultSummary(record.evaluationTaskId)"
-              >
-                查看结果
-              </button>
-              <button
-                v-if="canViewerSubmitObjection(record)"
-                type="button"
-                class="op-link op-link--primary"
-                @click="openObjectionModal(record)"
-              >
-                提交异议
-              </button>
-            </div>
+            <UiTableActions
+              :items="buildPublicityRowActions(record)"
+              @action="(key) => handlePublicityRowAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>

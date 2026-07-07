@@ -16,12 +16,12 @@
 
 <script lang="ts" setup>
 import type { Component } from 'vue'
+import { computed } from 'vue'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import FolderOutlined from '@ant-design/icons-vue/FolderOutlined'
 import HistoryOutlined from '@ant-design/icons-vue/HistoryOutlined'
 import MailOutlined from '@ant-design/icons-vue/MailOutlined'
 import ReconciliationOutlined from '@ant-design/icons-vue/ReconciliationOutlined'
-import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDevice } from '@/hooks'
 import { useAuthStore } from '@/stores'
@@ -70,19 +70,19 @@ const allTabBarItems: TabBarItem[] = [
     path: '/teacher/dashboard',
     label: '考试阅卷',
     icon: DashboardOutlined,
-    roles: [RoleEnum.SUPER_ADMIN, RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER],
+    roles: [RoleEnum.SUPER_ADMIN, RoleEnum.SCH_TECH],
   },
   {
     path: '/quality/dashboard',
     label: '质量评价',
     icon: ReconciliationOutlined,
-    roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER, RoleEnum.SUPER_ADMIN],
+    roles: [RoleEnum.SCH_TECH, RoleEnum.SUPER_ADMIN],
   },
   {
     path: `${PORTFOLIO_ROUTE_PREFIX}/teacher/home`,
     label: '教学档案袋',
     icon: FolderOutlined,
-    roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER, RoleEnum.SUPER_ADMIN],
+    roles: [RoleEnum.SCH_TECH, RoleEnum.SUPER_ADMIN],
   },
 ]
 
@@ -108,10 +108,10 @@ const tabBarItems = computed(() => {
 function isActive(path: string): boolean {
   if (path === '/teacher/dashboard') {
     return (
-      route.path.startsWith('/teacher/dashboard')
-      || route.path.startsWith('/teacher/exam-list')
-      || route.path.startsWith('/teacher/exam-workspace/')
-      || route.path.startsWith('/teacher/archive-volumes')
+      route.path.startsWith('/teacher/dashboard') ||
+      route.path.startsWith('/teacher/exam-list') ||
+      route.path.startsWith('/teacher/exam-workspace/') ||
+      route.path.startsWith('/teacher/archive-volumes')
     )
   }
   if (path === '/quality/dashboard') {

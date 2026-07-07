@@ -1,16 +1,10 @@
 <script setup lang="ts">
-import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   AuditIssueQueryRequest,
   AuditIssueSaveRequest,
   AuditIssueVO,
 } from '@/apis/quality/audit-issue'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
-import type { QualityScopeRequestToken } from '@/composables/useScopeRequestGuard'
-import { message } from 'ant-design-vue'
-import { reactive, ref } from 'vue'
 import {
   AUDIT_ISSUE_SEVERITY_OPTIONS,
   AUDIT_ISSUE_SEVERITY_TONE,
@@ -21,6 +15,17 @@ import {
   AuditIssueSourceCode,
   AuditIssueSourceDescription,
 } from '@/apis/quality/audit-issue'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
+import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
+import type { QualityScopeRequestToken } from '@/composables/useScopeRequestGuard'
+import {
+  assertQualityScopeFresh,
+  beginQualityScopeRequest,
+  isQualityScopeStaleError,
+} from '@/composables/useScopeRequestGuard'
+import { message } from 'ant-design-vue'
+import { reactive, ref } from 'vue'
 import { auditRectificationApi } from '@/apis/quality/audit-rectification'
 import {
   AUDIT_ISSUE_STATUS_COLOR,
@@ -41,14 +46,8 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import {
-  assertQualityScopeFresh,
-  beginQualityScopeRequest,
-  isQualityScopeStaleError,
-} from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { readAllPages } from '@/utils/page-result'
@@ -284,7 +283,7 @@ async function loadList(options?: { refreshSignals?: boolean }) {
   }
 }
 
-function handleIssuePageChange(page: { current: number, pageSize: number }) {
+function handleIssuePageChange(page: { current: number; pageSize: number }) {
   issueQuery.pageNum = page.current
   issueQuery.pageSize = page.pageSize
   loadList()
@@ -358,10 +357,10 @@ async function submitIssueEditor() {
     }
   }
   if (
-    !issueEditor.issueCode.trim()
-    || !issueEditor.issueTitle.trim()
-    || !issueEditor.issueSource
-    || !issueEditor.severity
+    !issueEditor.issueCode.trim() ||
+    !issueEditor.issueTitle.trim() ||
+    !issueEditor.issueSource ||
+    !issueEditor.severity
   ) {
     message.error('请填写编码、标题、来源、严重程度')
     return
@@ -411,8 +410,7 @@ async function handleIssueDelete(record: AuditIssueVO) {
 }
 
 function canEditAuditIssue(status: AuditIssueStatusCode): boolean {
-  return status === AuditIssueStatusCode.OPEN
-    || status === AuditIssueStatusCode.IN_RECTIFICATION
+  return status === AuditIssueStatusCode.OPEN || status === AuditIssueStatusCode.IN_RECTIFICATION
 }
 
 function nextAuditIssueStatuses(status: AuditIssueStatusCode): AuditIssueStatusCode[] {
@@ -425,17 +423,40 @@ async function changeIssueStatus(record: AuditIssueVO, target: AuditIssueStatusC
   await loadList({ refreshSignals: true })
 }
 
-function handleIssueStatusMenuClick(record: AuditIssueVO, event: MenuInfo) {
-  if (typeof event.key !== 'string') {
-    showUserError(null, '状态切换无效，请重新操作')
+function buildAuditIssueActions(record: AuditIssueVO): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = [
+    {
+      key: 'edit',
+      label: '编辑',
+      disabled: !canEditAuditIssue(record.status),
+    },
+  ]
+  for (const status of nextAuditIssueStatuses(record.status)) {
+    actions.push({
+      key: `status:${status}`,
+      label: issueStatusLabel(status),
+      tone: 'primary',
+    })
+  }
+  if (record.status === AuditIssueStatusCode.OPEN && !hasLinkedRectification(record.id)) {
+    actions.push({ key: 'delete', label: '删除', tone: 'danger' })
+  }
+  return actions
+}
+
+function handleAuditIssueAction(key: string, record: AuditIssueVO): void {
+  if (key === 'edit') {
+    openIssueEdit(record)
     return
   }
-  const targetStatus = nextAuditIssueStatuses(record.status).find(status => status === event.key)
-  if (!targetStatus) {
-    showUserError(null, '当前状态无法切换到所选状态')
+  if (key === 'delete') {
+    void handleIssueDelete(record)
     return
   }
-  changeIssueStatus(record, targetStatus)
+  if (key.startsWith('status:')) {
+    const target = key.slice('status:'.length) as AuditIssueStatusCode
+    void changeIssueStatus(record, target)
+  }
 }
 
 function handleIssueProgramChange(value: string | null | undefined) {
@@ -524,31 +545,11 @@ defineExpose({
           </UiTag>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <div class="operations-cell" @click.stop>
-            <UiTextAction
-              :disabled="!canEditAuditIssue(record.status)"
-              @click="openIssueEdit(record)"
-            >
-              编辑
-            </UiTextAction>
-            <a-dropdown v-if="nextAuditIssueStatuses(record.status).length">
-              <UiTextAction tone="primary" @click.prevent>状态</UiTextAction>
-              <template #overlay>
-                <a-menu @click="handleIssueStatusMenuClick(record, $event)">
-                  <a-menu-item v-for="s in nextAuditIssueStatuses(record.status)" :key="s">
-                    {{ issueStatusLabel(s) }}
-                  </a-menu-item>
-                </a-menu>
-              </template>
-            </a-dropdown>
-            <UiTextAction
-              v-if="record.status === AuditIssueStatusCode.OPEN && !hasLinkedRectification(record.id)"
-              tone="danger"
-              @click="handleIssueDelete(record)"
-            >
-              删除
-            </UiTextAction>
-          </div>
+          <UiTableActions
+            :items="buildAuditIssueActions(record)"
+            split
+            @action="(key) => handleAuditIssueAction(key, record)"
+          />
         </template>
       </template>
     </UiDataTable>

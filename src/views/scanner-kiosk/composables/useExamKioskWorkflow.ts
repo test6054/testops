@@ -14,13 +14,7 @@
  */
 
 import type { LocationQueryValue } from 'vue-router'
-
-type KioskWorkStateTone = 'success' | 'running' | 'danger' | 'muted'
-
-interface KioskWorkState {
-  text: string
-  tone: KioskWorkStateTone
-}
+import { useRoute, useRouter } from 'vue-router'
 import type {
   AgentHealthStatusCode,
   LocalScanPageSide,
@@ -29,29 +23,6 @@ import type {
   ScannerDeviceInfo,
   ScannerListResponse,
 } from '@/apis/mark/scanner-agent-local'
-import type {
-  ExamScannerBatchResponse,
-  ExamScannerBoundPaperItemVO,
-  ExamScannerKioskBatchHistoryRequest,
-  ExamScannerKioskContextVO,
-  ExamScannerKioskExamOptionRequest,
-  ExamScannerKioskExamOptionVO,
-  ExamScannerPageLedgerVO,
-  ExamScannerScanConfigOptionsVO,
-  ExamScannerScanConfigVO,
-} from '@/apis/mark/scanner-kiosk'
-import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
-import type { SemesterCode } from '@/types/enums'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import {
-  ScannerColorModeCode,
-  ScannerColorModeDescription,
-  ScannerDuplexModeCode,
-  ScannerDuplexModeDescription,
-  ScannerEndpointOnlineStatusDescription,
-} from '@/apis/mark/exam-mark-scanner'
-import { ScanAttentionTypeCode, ScanAttentionTypeDescription } from '@/apis/mark/exam-scan'
 import {
   AgentHealthStatusDescription,
   AgentUpdateStatusCode,
@@ -85,6 +56,17 @@ import {
   setPreferredLocalScanner,
   startScanJob,
 } from '@/apis/mark/scanner-agent-local'
+import type {
+  ExamScannerBatchResponse,
+  ExamScannerBoundPaperItemVO,
+  ExamScannerKioskBatchHistoryRequest,
+  ExamScannerKioskContextVO,
+  ExamScannerKioskExamOptionRequest,
+  ExamScannerKioskExamOptionVO,
+  ExamScannerPageLedgerVO,
+  ExamScannerScanConfigOptionsVO,
+  ExamScannerScanConfigVO,
+} from '@/apis/mark/scanner-kiosk'
 import {
   bindScannerKioskExam,
   discardScannedPage,
@@ -102,11 +84,26 @@ import {
   ScannerKioskScanModeCode,
   ScannerKioskScanModeDescription,
 } from '@/apis/mark/scanner-kiosk'
-import { commitExamScanWorkOrder, discardExamScanWorkOrder, startExamScanWorkOrder } from '@/apis/mark/scanner-work-order'
+import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
+import {
+  commitExamScanWorkOrder,
+  discardExamScanWorkOrder,
+  startExamScanWorkOrder,
+} from '@/apis/mark/scanner-work-order'
+import type { SemesterCode } from '@/types/enums'
+import { getSemesterDescription, SemesterOptions } from '@/types/enums'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import {
+  ScannerColorModeCode,
+  ScannerColorModeDescription,
+  ScannerDuplexModeCode,
+  ScannerDuplexModeDescription,
+  ScannerEndpointOnlineStatusDescription,
+} from '@/apis/mark/exam-mark-scanner'
+import { ScanAttentionTypeCode, ScanAttentionTypeDescription } from '@/apis/mark/exam-scan'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
-import { getSemesterDescription, SemesterOptions } from '@/types/enums'
 import { ExamScannerPageUploadStatusCode } from '@/types/enums/exam-scanner-page-upload-status-enum'
 import {
   KioskActivationGateReasonCode,
@@ -138,6 +135,13 @@ import {
   isAgentWorkspaceBlocked,
   resolveKioskActivationGuardMessage,
 } from '@/views/scanner-kiosk/utils/kioskActivationGuard'
+
+type KioskWorkStateTone = 'success' | 'running' | 'danger' | 'muted'
+
+interface KioskWorkState {
+  text: string
+  tone: KioskWorkStateTone
+}
 
 // ================================================================
 // 静态字典：扫描策略色彩 / 单面双面扫描文案，由 UI / SideRail 直接读取。
@@ -194,6 +198,7 @@ export function useExamKioskWorkflow() {
   // reactive state：承载一体机工作台的浏览器态、Agent 态和后端上下文锚点。
   // -------------------------------------------------------------
   const scanners = ref<ScannerDeviceInfo[]>([])
+  const scannerCatalogDiagnostic = ref('')
   const selectedScannerId = ref('')
   const agentPreferredLocalScannerId = ref('')
   const kioskContext = ref<ExamScannerKioskContextVO | null>(null)
@@ -865,12 +870,15 @@ export function useExamKioskWorkflow() {
       }
     }
     if (!health.value?.scannerConnected) {
+      const catalogHint = scannerCatalogDiagnostic.value.trim()
       return {
         tone: 'danger',
         statusText: '扫描仪连接异常',
         headline: '扫描仪未连接',
-        detail: '请检查 USB 连接与驱动，并在设备设置中刷新扫描仪列表。',
-        troubleshooting: '确认扫描仪电源已打开、USB 线牢固，并退出其他占用扫描仪的软件后重试。',
+        detail: catalogHint || '请检查 USB 连接与驱动，并在设备设置中刷新扫描仪列表。',
+        troubleshooting: catalogHint
+          ? `${catalogHint}；确认扫描仪电源已打开、驱动已安装，并退出其他占用扫描仪的软件后重试。`
+          : '确认扫描仪电源已打开、USB 线牢固，并退出其他占用扫描仪的软件后重试。',
       }
     }
     if (health.value?.upgradeRequired || health.value?.updateStatus === AgentUpdateStatusCode.FAILED) {
@@ -882,11 +890,16 @@ export function useExamKioskWorkflow() {
       }
     }
     if (scanBlockedReason.value) {
+      const noScanner = scanBlockedReason.value.includes('未检测到可用本地扫描仪')
+      const catalogHint = scannerCatalogDiagnostic.value.trim()
       return {
         tone: 'warning',
         statusText: '暂不可开始扫描',
         headline: scanBlockedReason.value,
-        detail: scanBlockedReason.value,
+        detail: noScanner && catalogHint ? catalogHint : scanBlockedReason.value,
+        troubleshooting: noScanner && catalogHint
+          ? `${catalogHint}；可在设备设置中刷新扫描仪列表并选择可用设备。`
+          : undefined,
       }
     }
     return {
@@ -1540,6 +1553,7 @@ export function useExamKioskWorkflow() {
       }
     }
     scanners.value = response.devices
+    scannerCatalogDiagnostic.value = response.catalogDiagnostic?.trim() || ''
     const available = availableScanners.value
     if (available.length === 0) return
     const current = selectedScannerId.value?.trim()
@@ -3177,6 +3191,7 @@ export function useExamKioskWorkflow() {
     // ---- reactive state ----
     health,
     scanners,
+    scannerCatalogDiagnostic,
     selectedScannerId,
     kioskContext,
     boundPapers,
